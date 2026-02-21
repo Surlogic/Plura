@@ -12,6 +12,8 @@ importers:
         specifier: ^9.0.0
         version: 9.2.1
 
+  apps/mobile: {}
+
   apps/web:
     dependencies:
       axios:

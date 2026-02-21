@@ -1,0 +1,80 @@
+name: plura-dev
+
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: plura
+    ports:
+      - "5544:5432"
+    volumes:
+      - db_data:/var/lib/postgresql/data
+
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    working_dir: /app
+    depends_on:
+      - db
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@db:5432/plura?schema=public
+      PORT: 3000
+      CHOKIDAR_USEPOLLING: "true"
+    volumes:
+      - ./:/app
+      - backend_root_node_modules:/app/node_modules
+      - backend_node_modules:/app/backend/node_modules
+      - pnpm_store:/pnpm-store
+    ports:
+      - "3004:3000"
+    command: >
+      sh -c "pnpm install --filter backend... && cd backend && pnpm prisma generate && pnpm dev"
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    working_dir: /app
+    depends_on:
+      - backend
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:3004
+      CHOKIDAR_USEPOLLING: "true"
+      WATCHPACK_POLLING: "true"
+    volumes:
+      - ./:/app
+      - web_root_node_modules:/app/node_modules
+      - web_node_modules:/app/apps/web/node_modules
+      - pnpm_store:/pnpm-store
+    ports:
+      - "3003:3002"
+    command: >
+      sh -c "pnpm install --filter web... && pnpm -C apps/web dev"
+
+  mobile:
+    build:
+      context: .
+      dockerfile: apps/mobile/Dockerfile
+    working_dir: /app
+    environment:
+      CHOKIDAR_USEPOLLING: "true"
+    volumes:
+      - ./:/app
+      - mobile_root_node_modules:/app/node_modules
+      - mobile_node_modules:/app/apps/mobile/node_modules
+      - pnpm_store:/pnpm-store
+    command: >
+      sh -c "pnpm install --filter mobile... && pnpm -C apps/mobile dev"
+
+volumes:
+  db_data:
+  pnpm_store:
+  backend_root_node_modules:
+  backend_node_modules:
+  web_root_node_modules:
+  web_node_modules:
+  mobile_root_node_modules:
+  mobile_node_modules:

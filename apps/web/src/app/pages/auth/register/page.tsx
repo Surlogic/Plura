@@ -6,11 +6,14 @@ import { useState } from 'react';
 import Navbar from '@/components/shared/Navbar';
 import Footer from '@/components/shared/Footer';
 import api from '@/services/api';
+import type { AxiosError } from 'axios';
 
 export default function RegisterPage() {
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
+  const [confirmEmail, setConfirmEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [message, setMessage] = useState<string | null>(null);
 
@@ -18,6 +21,18 @@ export default function RegisterPage() {
     event.preventDefault();
     setStatus('loading');
     setMessage(null);
+
+    if (email.trim() !== confirmEmail.trim()) {
+      setStatus('error');
+      setMessage('Los correos no coinciden.');
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      setStatus('error');
+      setMessage('Las contraseñas no coinciden.');
+      return;
+    }
 
     try {
       await api.post('/auth/register', {
@@ -29,10 +44,18 @@ export default function RegisterPage() {
       setMessage('Registro exitoso. Ya podés iniciar sesión.');
       setFullName('');
       setEmail('');
+      setConfirmEmail('');
       setPassword('');
+      setConfirmPassword('');
     } catch (error) {
+      const axiosError = error as AxiosError<{ message?: string | string[] }>;
+      const apiMessage = axiosError.response?.data?.message;
       setStatus('error');
-      setMessage('No se pudo completar el registro.');
+      setMessage(
+        Array.isArray(apiMessage)
+          ? apiMessage.join(', ')
+          : apiMessage || 'No se pudo completar el registro.',
+      );
     }
   };
 
@@ -83,6 +106,20 @@ export default function RegisterPage() {
 
             <div className="space-y-2">
               <label className="text-sm font-medium text-[#0E2A47]">
+                Confirmar Gmail
+              </label>
+              <input
+                className="h-12 w-full rounded-[16px] border border-[#0E2A47]/10 bg-[#F4F6F8] px-4 text-sm text-[#0E2A47] placeholder:text-[#6B7280] focus:outline-none focus:ring-2 focus:ring-[#1FB6A6]/40"
+                placeholder="tucorreo@gmail.com"
+                type="email"
+                value={confirmEmail}
+                onChange={(event) => setConfirmEmail(event.target.value)}
+                required
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-[#0E2A47]">
                 Contraseña
               </label>
               <input
@@ -91,6 +128,20 @@ export default function RegisterPage() {
                 placeholder="••••••••"
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
+                required
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-[#0E2A47]">
+                Confirmar contraseña
+              </label>
+              <input
+                type="password"
+                className="h-12 w-full rounded-[16px] border border-[#0E2A47]/10 bg-[#F4F6F8] px-4 text-sm text-[#0E2A47] placeholder:text-[#6B7280] focus:outline-none focus:ring-2 focus:ring-[#1FB6A6]/40"
+                placeholder="••••••••"
+                value={confirmPassword}
+                onChange={(event) => setConfirmPassword(event.target.value)}
                 required
               />
             </div>

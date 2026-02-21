@@ -1,27 +1,14 @@
 name: plura-dev
 
 services:
-  db:
-    image: postgres:16
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: plura
-    ports:
-      - "5544:5432"
-    volumes:
-      - db_data:/var/lib/postgresql/data
-
   backend:
     build:
       context: .
       dockerfile: backend/Dockerfile
     working_dir: /app
-    depends_on:
-      - db
+    env_file:
+      - backend/.env
     environment:
-      DATABASE_URL: postgresql://postgres:postgres@db:5432/plura?schema=public
-      PORT: 3000
       CHOKIDAR_USEPOLLING: "true"
     volumes:
       - ./:/app
@@ -70,7 +57,6 @@ services:
       sh -c "pnpm install --filter mobile... && pnpm -C apps/mobile dev"
 
 volumes:
-  db_data:
   pnpm_store:
   backend_root_node_modules:
   backend_node_modules:

@@ -41,3 +41,4 @@ NEXT_PUBLIC_API_URL=http://localhost:3000
 ## Puertos
 - Backend: 3000
 - Web: 3001
+# Plura

@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
-import { Sora } from "next/font/google";
+import { Nunito } from "next/font/google";
 import "./globals.css";
 
-const sora = Sora({
-  variable: "--font-sora",
+const nunito = Nunito({
+  variable: "--font-nunito",
   subsets: ["latin"],
   weight: ["300", "400", "500", "600", "700"],
   display: "swap",
@@ -21,7 +21,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${sora.variable} ${sora.className} font-sans antialiased`}>
+      <body className={`${nunito.variable} ${nunito.className} font-sans antialiased`}>
         {children}
       </body>
     </html>

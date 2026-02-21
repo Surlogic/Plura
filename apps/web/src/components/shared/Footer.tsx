@@ -1,10 +1,18 @@
+import Image from 'next/image';
+
 export default function Footer() {
   return (
     <footer className="mt-16 border-t border-[#0E2A47]/10 bg-[#F4F6F8] text-[#0E2A47]">
       <div className="mx-auto grid w-full max-w-6xl gap-8 px-4 py-12 sm:grid-cols-2 lg:grid-cols-4">
         <div className="space-y-3">
           <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-full bg-[linear-gradient(135deg,#1FB6A6,#0E2A47)]" />
+            <Image
+              src="/logo.png"
+              alt="Plura"
+              width={40}
+              height={40}
+              className="h-10 w-10"
+            />
             <span className="text-lg font-semibold">Plura</span>
           </div>
           <p className="text-sm text-[#6B7280]">

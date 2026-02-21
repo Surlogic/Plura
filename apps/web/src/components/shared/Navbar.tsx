@@ -1,3 +1,4 @@
+import Image from 'next/image';
 import Link from 'next/link';
 
 export default function Navbar() {
@@ -5,7 +6,14 @@ export default function Navbar() {
     <header className="sticky top-0 z-50 border-b border-[#0E2A47]/10 bg-[#F4F6F8]/95 backdrop-blur">
       <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-4 px-4 py-4">
         <Link href="/" className="flex items-center gap-3">
-          <div className="h-10 w-10 rounded-full bg-[linear-gradient(135deg,#1FB6A6,#0E2A47)]" />
+          <Image
+            src="/logo.png"
+            alt="Plura"
+            width={40}
+            height={40}
+            className="h-10 w-10"
+            priority
+          />
           <span className="text-lg font-semibold text-[#0E2A47]">Plura</span>
         </Link>
         <div className="flex flex-col gap-2 text-sm sm:flex-row sm:items-center">

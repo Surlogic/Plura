@@ -9,12 +9,29 @@ datasource db {
 
 model User {
   id        String      @id @default(uuid())
+  fullName  String
   email     String      @unique
   password  String
   role      String      @default("user")
   createdAt DateTime    @default(now())
   businesses Business[] @relation("UserBusinesses")
   bookings  Booking[]
+}
+
+model UserNormal {
+  id        String   @id @default(uuid())
+  fullName  String
+  email     String   @unique
+  password  String
+  createdAt DateTime @default(now())
+}
+
+model UserCliente {
+  id        String   @id @default(uuid())
+  fullName  String
+  email     String   @unique
+  password  String
+  createdAt DateTime @default(now())
 }
 
 model Business {

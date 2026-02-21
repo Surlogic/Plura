@@ -1,3 +1,5 @@
+import Link from 'next/link';
+
 export default function Navbar() {
   return (
     <header className="sticky top-0 z-50 border-b border-[#0E2A47]/10 bg-[#F4F6F8]/95 backdrop-blur">
@@ -10,9 +12,12 @@ export default function Navbar() {
           <button className="rounded-full border border-[#0E2A47]/10 bg-white px-4 py-2 text-[#0E2A47] shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
             Soy profesional o empresa
           </button>
-          <button className="rounded-full bg-[#0E2A47] px-4 py-2 text-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
+          <Link
+            href="/pages/auth/register"
+            className="rounded-full bg-[#0E2A47] px-4 py-2 text-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
+          >
             Soy cliente
-          </button>
+          </Link>
         </div>
       </div>
     </header>

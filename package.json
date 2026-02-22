@@ -6,10 +6,12 @@
     "node": ">=20"
   },
   "scripts": {
-    "dev": "concurrently \"pnpm -C backend dev\" \"pnpm -C apps/web dev\"",
+    "dev": "concurrently \"pnpm -C apps/web dev\" \"cd backend-java && ./gradlew bootRun\"",
     "dev:web": "pnpm -C apps/web dev",
-    "dev:backend": "pnpm -C backend dev",
+    "dev:backend": "cd backend-java && ./gradlew bootRun",
+    "dev:backend-java": "cd backend-java && ./gradlew bootRun",
     "build": "pnpm -r build",
+    "build:backend-java": "cd backend-java && ./gradlew build",
     "lint": "pnpm -r lint"
   },
   "devDependencies": {

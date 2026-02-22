@@ -3,10 +3,16 @@
   "pipeline": {
     "build": {
       "dependsOn": ["^build"],
-      "outputs": [".next/**", "dist/**"]
+      "outputs": [".next/**", "dist/**", "build/**"]
+    },
+    "build:backend-java": {
+      "outputs": ["backend-java/build/**"]
     },
     "lint": {},
     "dev": {
+      "cache": false
+    },
+    "dev:backend-java": {
       "cache": false
     }
   }

@@ -31,6 +31,7 @@ dependencies {
 	implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.6.0'
 	implementation 'org.springframework.security:spring-security-crypto'
 	implementation 'com.auth0:java-jwt:4.4.0'
+	implementation 'io.github.cdimascio:dotenv-java:3.0.0'
 	compileOnly 'org.projectlombok:lombok'
 	runtimeOnly 'org.postgresql:postgresql'
 	annotationProcessor 'org.projectlombok:lombok'

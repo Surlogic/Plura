@@ -3,9 +3,9 @@ server:
 
 spring:
   datasource:
-    url: ${SPRING_DATASOURCE_URL}
-    username: ${SPRING_DATASOURCE_USERNAME}
-    password: ${SPRING_DATASOURCE_PASSWORD}
+    url: "jdbc:postgresql://dpg-d6d1h2fpm1nc739hh2h0-a.oregon-postgres.render.com:5432/plura_8vs8?sslmode=require"
+    username: "plura_8vs8_user"
+    password: "2H8CTQNKnEOSJBa3H5A1SgjtjjA6G6qx"
   jpa:
     hibernate:
       ddl-auto: update
@@ -15,7 +15,7 @@ spring:
         globally_quoted_identifiers: true
 
 jwt:
-  secret: ${JWT_SECRET}
+  secret: "CWd6Mi9b4sa2iJ3eE5xaanA1iN45ObqRnVoBvYkc071UG0eI5kSvEyOSjpGetrDbdKVA+uVolv4G4Dtfjq5VBg"
 
 springdoc:
   swagger-ui:

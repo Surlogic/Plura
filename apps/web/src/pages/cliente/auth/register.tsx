@@ -19,6 +19,14 @@ export default function ClienteRegisterPage() {
     password: '',
     confirmPassword: '',
   });
+  const [touched, setTouched] = useState({
+    fullName: false,
+    email: false,
+    confirmEmail: false,
+    phoneNumber: false,
+    password: false,
+    confirmPassword: false,
+  });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
@@ -27,6 +35,64 @@ export default function ClienteRegisterPage() {
     const { name, value } = event.target;
     setForm((prev) => ({ ...prev, [name]: value }));
   };
+
+  const handleBlur = (event: ChangeEvent<HTMLInputElement>) => {
+    const { name } = event.target;
+    setTouched((prev) => ({ ...prev, [name]: true }));
+  };
+
+  const emailValue = form.email.trim().toLowerCase();
+  const confirmEmailValue = form.confirmEmail.trim().toLowerCase();
+  const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  const passwordRules: Array<{
+    id: string;
+    label: string;
+    test: (value: string) => boolean;
+  }> = [
+    {
+      id: 'length',
+      label: 'Minimo 10 caracteres.',
+      test: (value: string) => value.length >= 10,
+    },
+    {
+      id: 'uppercase',
+      label: 'Al menos 1 mayuscula.',
+      test: (value: string) => /[A-Z]/.test(value),
+    },
+    {
+      id: 'lowercase',
+      label: 'Al menos 1 minuscula.',
+      test: (value: string) => /[a-z]/.test(value),
+    },
+    {
+      id: 'number',
+      label: 'Al menos 1 numero.',
+      test: (value: string) => /[0-9]/.test(value),
+    },
+  ];
+  const passwordChecks = passwordRules.map((rule) => ({
+    ...rule,
+    valid: rule.test(form.password),
+  }));
+  const passwordValid = passwordChecks.every((rule) => rule.valid);
+  const validationErrors = {
+    fullName: form.fullName.trim().length >= 3 ? '' : 'Mínimo 3 caracteres.',
+    email: emailPattern.test(emailValue) ? '' : 'Email inválido.',
+    confirmEmail: confirmEmailValue.length > 0 && confirmEmailValue === emailValue
+      ? ''
+      : 'Los correos no coinciden.',
+    phoneNumber: form.phoneNumber.trim().length >= 8 ? '' : 'Mínimo 8 dígitos.',
+    password: passwordValid ? '' : 'La contraseña no cumple los requisitos.',
+    confirmPassword: form.confirmPassword.length > 0 && form.confirmPassword === form.password
+      ? ''
+      : 'Las contraseñas no coinciden.',
+  };
+  const isFormValid = Object.values(validationErrors).every((value) => value === '');
+
+  const inputClass = (field: keyof typeof validationErrors) =>
+    `${inputClassName}${
+      touched[field] && validationErrors[field] ? ' border-red-300 focus:ring-red-200' : ''
+    }`;
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -45,6 +111,11 @@ export default function ClienteRegisterPage() {
 
     if (form.password.length < 10) {
       setErrorMessage('La contraseña debe tener al menos 10 caracteres.');
+      return;
+    }
+
+    if (!passwordValid) {
+      setErrorMessage('La contraseña no cumple los requisitos.');
       return;
     }
 
@@ -106,81 +177,120 @@ export default function ClienteRegisterPage() {
             <div className="space-y-2">
               <label className="text-sm font-medium text-[#0E2A47]">Nombre completo</label>
               <input
-                className={inputClassName}
+                className={inputClass('fullName')}
                 placeholder="Tu nombre y apellido"
                 name="fullName"
                 value={form.fullName}
                 onChange={handleChange}
+                onBlur={handleBlur}
                 required
                 minLength={3}
               />
+              {touched.fullName && validationErrors.fullName ? (
+                <p className="text-xs text-red-600">{validationErrors.fullName}</p>
+              ) : null}
             </div>
 
             <div className="space-y-2">
               <label className="text-sm font-medium text-[#0E2A47]">Gmail</label>
               <input
-                className={inputClassName}
+                className={inputClass('email')}
                 placeholder="tucorreo@gmail.com"
                 type="email"
                 name="email"
                 value={form.email}
                 onChange={handleChange}
+                onBlur={handleBlur}
                 required
               />
+              {touched.email && validationErrors.email ? (
+                <p className="text-xs text-red-600">{validationErrors.email}</p>
+              ) : null}
             </div>
 
             <div className="space-y-2">
               <label className="text-sm font-medium text-[#0E2A47]">Confirmar Gmail</label>
               <input
-                className={inputClassName}
+                className={inputClass('confirmEmail')}
                 placeholder="tucorreo@gmail.com"
                 type="email"
                 name="confirmEmail"
                 value={form.confirmEmail}
                 onChange={handleChange}
+                onBlur={handleBlur}
                 required
               />
+              {touched.confirmEmail && validationErrors.confirmEmail ? (
+                <p className="text-xs text-red-600">{validationErrors.confirmEmail}</p>
+              ) : null}
             </div>
 
             <div className="space-y-2">
               <label className="text-sm font-medium text-[#0E2A47]">Celular</label>
               <input
-                className={inputClassName}
+                className={inputClass('phoneNumber')}
                 placeholder="Tu número de celular"
                 type="tel"
                 name="phoneNumber"
                 value={form.phoneNumber}
                 onChange={handleChange}
+                onBlur={handleBlur}
                 required
               />
+              {touched.phoneNumber && validationErrors.phoneNumber ? (
+                <p className="text-xs text-red-600">{validationErrors.phoneNumber}</p>
+              ) : null}
             </div>
 
             <div className="space-y-2">
               <label className="text-sm font-medium text-[#0E2A47]">Contraseña</label>
               <input
                 type="password"
-                className={inputClassName}
+                className={inputClass('password')}
                 placeholder="••••••••"
                 name="password"
                 value={form.password}
                 onChange={handleChange}
+                onBlur={handleBlur}
                 required
                 minLength={10}
               />
+              <ul className="space-y-1 text-xs">
+                {passwordChecks.map((rule) => (
+                  <li
+                    key={rule.id}
+                    className={rule.valid ? 'text-emerald-600' : 'text-[#94A3B8]'}
+                  >
+                    <span
+                      className={`mr-2 inline-block h-2 w-2 rounded-full ${
+                        rule.valid ? 'bg-emerald-500' : 'bg-[#CBD5E1]'
+                      }`}
+                    />
+                    {rule.label}
+                  </li>
+                ))}
+              </ul>
+              {touched.password && validationErrors.password ? (
+                <p className="text-xs text-red-600">{validationErrors.password}</p>
+              ) : null}
             </div>
 
             <div className="space-y-2">
               <label className="text-sm font-medium text-[#0E2A47]">Confirmar contraseña</label>
               <input
                 type="password"
-                className={inputClassName}
+                className={inputClass('confirmPassword')}
                 placeholder="••••••••"
                 name="confirmPassword"
                 value={form.confirmPassword}
                 onChange={handleChange}
+                onBlur={handleBlur}
                 required
                 minLength={10}
               />
+              {touched.confirmPassword && validationErrors.confirmPassword ? (
+                <p className="text-xs text-red-600">{validationErrors.confirmPassword}</p>
+              ) : null}
             </div>
 
             {errorMessage ? (
@@ -197,7 +307,7 @@ export default function ClienteRegisterPage() {
             <button
               type="submit"
               className="h-12 w-full rounded-full bg-[linear-gradient(135deg,#1FB6A6,#0E2A47)] text-sm font-semibold text-white shadow-sm transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-70"
-              disabled={isSubmitting}
+              disabled={isSubmitting || !isFormValid}
             >
               {isSubmitting ? 'Creando cuenta...' : 'Crear cuenta'}
             </button>

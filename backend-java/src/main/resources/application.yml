@@ -9,6 +9,8 @@ spring:
   jpa:
     hibernate:
       ddl-auto: ${SPRING_JPA_DDL_AUTO:update}
+      naming:
+        physical-strategy: org.hibernate.boot.model.naming.PhysicalNamingStrategyStandardImpl
     show-sql: ${SPRING_JPA_SHOW_SQL:false}
     properties:
       hibernate:

@@ -27,7 +27,7 @@ public class UserProfesional {
     private String id;
 
     // Nombre visible del profesional/empresa.
-    @Column(nullable = false)
+    @Column(name = "full_name", nullable = false)
     private String fullName;
 
     // Rubro principal.
@@ -39,7 +39,7 @@ public class UserProfesional {
     private String email;
 
     // Teléfono de contacto.
-    @Column(nullable = false)
+    @Column(name = "phone_number", nullable = false)
     private String phoneNumber;
 
     // Ubicación del local (si aplica).
@@ -48,7 +48,7 @@ public class UserProfesional {
 
     // Tipo de cliente (con o sin local).
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(name = "tipo_cliente", nullable = false)
     private TipoCliente tipoCliente;
 
     // Hash de la contraseña (nunca exponer en JSON).
@@ -57,7 +57,7 @@ public class UserProfesional {
     private String password;
 
     // Timestamp de creación.
-    @Column(nullable = false)
+    @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
 
     @PrePersist

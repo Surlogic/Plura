@@ -216,24 +216,29 @@ export default function ProfesionalDetailPage() {
           </div>
         </section>
 
-        <section className="mt-10 grid gap-6 lg:grid-cols-2">
-          <div className="rounded-[28px] border border-white/70 bg-white/95 p-6 shadow-[0_18px_40px_rgba(15,23,42,0.12)]">
-            <p className="text-[0.65rem] uppercase tracking-[0.35em] text-[#94A3B8]">Sobre</p>
-            <h2 className="mt-2 text-xl font-semibold">Sobre el local o profesional</h2>
-            <p className="mt-3 text-sm text-[#64748B]">
-              Somos un equipo especializado en bienestar y estética con foco en la experiencia. Trabajamos con
-              productos de primera línea y un equipo que acompaña cada detalle para que te sientas cómodo desde la
-              primera visita.
-            </p>
-          </div>
-          <div className="rounded-[28px] border border-white/70 bg-white/95 p-6 shadow-[0_18px_40px_rgba(15,23,42,0.12)]">
-            <p className="text-[0.65rem] uppercase tracking-[0.35em] text-[#94A3B8]">Tipo</p>
-            <h2 className="mt-2 text-xl font-semibold">Profesional o profesional en un local</h2>
-            <p className="mt-3 text-sm text-[#64748B]">
-              Atención en local propio, con disponibilidad extendida y posibilidad de turnos para eventos especiales.
-            </p>
-            <div className="mt-4 inline-flex items-center gap-2 rounded-full bg-[#1FB6A6]/10 px-4 py-2 text-xs font-semibold text-[#1FB6A6]">
-              Disponible hoy
+        <section className="mt-10 rounded-[28px] border border-white/70 bg-white/95 p-6 shadow-[0_18px_40px_rgba(15,23,42,0.12)]">
+          <div
+            className="grid gap-8"
+            style={{ gridTemplateColumns: '1.1fr 0.9fr' }}
+          >
+            <div className="pr-6">
+              <p className="text-[0.65rem] uppercase tracking-[0.35em] text-[#94A3B8]">Sobre</p>
+              <h2 className="mt-2 text-xl font-semibold">Sobre el local o profesional</h2>
+              <p className="mt-3 text-sm text-[#64748B]">
+                Somos un equipo especializado en bienestar y estética con foco en la experiencia. Trabajamos con
+                productos de primera línea y un equipo que acompaña cada detalle para que te sientas cómodo desde la
+                primera visita.
+              </p>
+            </div>
+            <div className="border-l border-[#E2E8F0] pl-6">
+              <p className="text-[0.65rem] uppercase tracking-[0.35em] text-[#94A3B8]">Tipo</p>
+              <h2 className="mt-2 text-xl font-semibold">Profesional o profesional en un local</h2>
+              <p className="mt-3 text-sm text-[#64748B]">
+                Atención en local propio, con disponibilidad extendida y posibilidad de turnos para eventos especiales.
+              </p>
+              <div className="mt-4 inline-flex items-center gap-2 rounded-full bg-[#1FB6A6]/10 px-4 py-2 text-xs font-semibold text-[#1FB6A6]">
+                Disponible hoy
+              </div>
             </div>
           </div>
         </section>

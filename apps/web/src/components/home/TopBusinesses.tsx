@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import BusinessCard from './BusinessCard';
 
 const businesses = [
@@ -5,6 +6,15 @@ const businesses = [
   { name: 'Barbería Sur', category: 'Barbería', rating: '4.8' },
   { name: 'Studio Aura', category: 'Cosmetología', rating: '4.9' },
 ];
+
+const slugify = (value: string) =>
+  value
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9\s-]/g, '')
+    .trim()
+    .replace(/\s+/g, '-');
 
 export default function TopBusinesses() {
   return (
@@ -19,9 +29,14 @@ export default function TopBusinesses() {
           </button>
         </div>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {businesses.map((business) => (
-            <BusinessCard key={business.name} {...business} />
-          ))}
+          {businesses.map((business) => {
+            const slug = slugify(business.name);
+            return (
+              <Link key={business.name} href={`/profesional/pagina/${slug}`} className="block">
+                <BusinessCard {...business} />
+              </Link>
+            );
+          })}
         </div>
       </div>
     </section>

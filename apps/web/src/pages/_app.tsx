@@ -1,6 +1,6 @@
 import type { AppProps } from 'next/app';
 import { Comfortaa, Fraunces, Manrope } from 'next/font/google';
-import '@/3_user/globals.css';
+import '@/pages/globals.css';
 
 const manrope = Manrope({
   variable: '--font-manrope',

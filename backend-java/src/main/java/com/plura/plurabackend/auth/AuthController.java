@@ -1,6 +1,7 @@
 package com.plura.plurabackend.auth;
 
 import com.plura.plurabackend.auth.dto.RegisterRequest;
+import com.plura.plurabackend.auth.dto.RegisterProfesionalRequest;
 import com.plura.plurabackend.auth.dto.RegisterResponse;
 import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -18,8 +19,13 @@ public class AuthController {
         this.authService = authService;
     }
 
-    @PostMapping("/register")
-    public RegisterResponse register(@Valid @RequestBody RegisterRequest request) {
-        return authService.register(request);
+    @PostMapping({"/register", "/register/cliente"})
+    public RegisterResponse registerCliente(@Valid @RequestBody RegisterRequest request) {
+        return authService.registerCliente(request);
+    }
+
+    @PostMapping("/register/profesional")
+    public RegisterResponse registerProfesional(@Valid @RequestBody RegisterProfesionalRequest request) {
+        return authService.registerProfesional(request);
     }
 }

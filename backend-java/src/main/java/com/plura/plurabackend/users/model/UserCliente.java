@@ -3,7 +3,9 @@ package com.plura.plurabackend.users.model;
 import java.time.LocalDateTime;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
 import jakarta.persistence.Id;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
@@ -24,8 +26,21 @@ public class UserCliente {
     @Column(nullable = false)
     private String fullName;
 
+    @Column(nullable = false)
+    private String rubro;
+
     @Column(nullable = false, unique = true)
     private String email;
+
+    @Column(nullable = false)
+    private String phoneNumber;
+
+    @Column
+    private String location;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private TipoCliente tipoCliente;
 
     @Column(nullable = false)
     private String password;

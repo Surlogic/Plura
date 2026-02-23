@@ -30,4 +30,4 @@ http://localhost:3000/swagger-ui.html
 ## Notas
 - Puerto por defecto: `3000`
 - CORS permitido para `http://localhost:3002`
-- Registro crea usuarios en `UserNormal`
+- Registro crea usuarios en `user_cliente` y `user_profesional`

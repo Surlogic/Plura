@@ -15,15 +15,18 @@ public class AuthController {
 
     private final AuthService authService;
 
+    // Constructor injection to keep the controller immutable and testable.
     public AuthController(AuthService authService) {
         this.authService = authService;
     }
 
+    // Registro de clientes (alias /register).
     @PostMapping({"/register", "/register/cliente"})
     public RegisterResponse registerCliente(@Valid @RequestBody RegisterRequest request) {
         return authService.registerCliente(request);
     }
 
+    // Registro de profesionales con campos específicos.
     @PostMapping("/register/profesional")
     public RegisterResponse registerProfesional(@Valid @RequestBody RegisterProfesionalRequest request) {
         return authService.registerProfesional(request);

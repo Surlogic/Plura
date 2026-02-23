@@ -13,7 +13,7 @@ export default function Footer() {
               height={40}
               className="h-10 w-10"
             />
-            <span className="text-lg font-semibold">Plura</span>
+            <span className="logo-type text-lg">Plura</span>
           </div>
           <p className="text-sm text-[#6B7280]">
             Tu próximo turno, en segundos.

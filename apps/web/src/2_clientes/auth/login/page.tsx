@@ -2,7 +2,7 @@ import Link from 'next/link';
 import Navbar from '@/components/shared/Navbar';
 import Footer from '@/components/shared/Footer';
 
-export default function ProfesionalLoginPage() {
+export default function ClienteLoginPage() {
   return (
     <div className="min-h-screen bg-[#F4F6F8] text-[#0E2A47]">
       <Navbar />
@@ -13,10 +13,10 @@ export default function ProfesionalLoginPage() {
               Login
             </p>
             <h1 className="text-2xl font-semibold text-[#0E2A47]">
-              Acceso para profesionales
+              Iniciar sesión
             </h1>
             <p className="text-sm text-[#6B7280]">
-              Gestioná tu agenda y tus clientes desde Plura.
+              Accedé a tu cuenta para reservar turnos.
             </p>
           </div>
 
@@ -52,10 +52,10 @@ export default function ProfesionalLoginPage() {
           <p className="text-center text-xs text-[#6B7280]">
             ¿No tenés cuenta?{' '}
             <Link
-              href="/pages/auth/profesional/register"
+              href="/cliente/register"
               className="font-semibold text-[#1FB6A6]"
             >
-              Crear cuenta profesional
+              Crear cuenta
             </Link>
           </p>
         </div>

@@ -1,4 +1,4 @@
-import ExplorarPage from '@/app/pages/explorar/ExplorarPage';
+import ExplorarPage from './ExplorarPage';
 
 export default function ExplorarPageRoute() {
   return <ExplorarPage />;

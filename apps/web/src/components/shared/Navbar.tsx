@@ -14,17 +14,17 @@ export default function Navbar() {
             className="h-10 w-10"
             priority
           />
-          <span className="text-lg font-semibold text-[#0E2A47]">Plura</span>
+          <span className="logo-type text-lg text-[#0E2A47]">Plura</span>
         </Link>
         <div className="flex flex-col gap-2 text-sm sm:flex-row sm:items-center">
           <Link
-            href="/pages/auth/profesional/login"
+            href="/profesional/login"
             className="rounded-full border border-[#0E2A47]/10 bg-white px-4 py-2 text-[#0E2A47] shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
           >
             Soy profesional o empresa
           </Link>
           <Link
-            href="/pages/auth/cliente/login"
+            href="/cliente/login"
             className="rounded-full bg-[#0E2A47] px-4 py-2 text-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
           >
             Soy cliente

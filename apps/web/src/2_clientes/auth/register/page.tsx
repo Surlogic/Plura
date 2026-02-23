@@ -7,17 +7,14 @@ import Navbar from '@/components/shared/Navbar';
 import Footer from '@/components/shared/Footer';
 import api from '@/services/api';
 
-export default function ProfesionalRegisterPage() {
+export default function ClienteRegisterPage() {
   const inputClassName =
     'h-12 w-full rounded-[16px] border border-[#0E2A47]/10 bg-[#F4F6F8] px-4 text-sm text-[#0E2A47] placeholder:text-[#6B7280] focus:outline-none focus:ring-2 focus:ring-[#1FB6A6]/40';
   const [form, setForm] = useState({
     fullName: '',
-    rubro: '',
     email: '',
     confirmEmail: '',
     phoneNumber: '',
-    tipoCliente: 'LOCAL',
-    location: '',
     password: '',
     confirmPassword: '',
   });
@@ -25,7 +22,7 @@ export default function ProfesionalRegisterPage() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
-  const handleChange = (event: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+  const handleChange = (event: ChangeEvent<HTMLInputElement>) => {
     const { name, value } = event.target;
     setForm((prev) => ({ ...prev, [name]: value }));
   };
@@ -45,32 +42,20 @@ export default function ProfesionalRegisterPage() {
       return;
     }
 
-    const requiresLocation = form.tipoCliente === 'LOCAL' || form.tipoCliente === 'PROF';
-    if (requiresLocation && !form.location.trim()) {
-      setErrorMessage('Indicá la ubicación del local.');
-      return;
-    }
-
     try {
       setIsSubmitting(true);
-      await api.post('/auth/register/profesional', {
+      await api.post('/auth/register/cliente', {
         fullName: form.fullName,
-        rubro: form.rubro,
         email: form.email,
         phoneNumber: form.phoneNumber,
-        location: requiresLocation ? form.location : null,
-        tipoCliente: form.tipoCliente,
         password: form.password,
       });
-      setSuccessMessage('Cuenta profesional creada. Ya podés iniciar sesión.');
+      setSuccessMessage('Cuenta creada. Ya podés iniciar sesión.');
       setForm({
         fullName: '',
-        rubro: '',
         email: '',
         confirmEmail: '',
         phoneNumber: '',
-        tipoCliente: 'LOCAL',
-        location: '',
         password: '',
         confirmPassword: '',
       });
@@ -81,8 +66,6 @@ export default function ProfesionalRegisterPage() {
     }
   };
 
-  const requiresLocation = form.tipoCliente === 'LOCAL' || form.tipoCliente === 'PROF';
-
   return (
     <div className="min-h-screen bg-[#F4F6F8] text-[#0E2A47]">
       <Navbar />
@@ -92,36 +75,20 @@ export default function ProfesionalRegisterPage() {
             <p className="text-xs uppercase tracking-[0.35em] text-[#6B7280]">
               Registro
             </p>
-            <h1 className="text-2xl font-semibold text-[#0E2A47]">
-              Registro profesional
-            </h1>
+            <h1 className="text-2xl font-semibold text-[#0E2A47]">Crear cuenta</h1>
             <p className="text-sm text-[#6B7280]">
-              Completá tus datos para gestionar tu negocio en Plura.
+              Completá tus datos para comenzar en Plura.
             </p>
           </div>
 
           <form className="space-y-4" onSubmit={handleSubmit}>
             <div className="space-y-2">
-              <label className="text-sm font-medium text-[#0E2A47]">
-                Nombre o empresa
-              </label>
+              <label className="text-sm font-medium text-[#0E2A47]">Nombre completo</label>
               <input
                 className={inputClassName}
-                placeholder="Nombre del profesional o empresa"
+                placeholder="Tu nombre y apellido"
                 name="fullName"
                 value={form.fullName}
-                onChange={handleChange}
-                required
-              />
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-[#0E2A47]">Rubro</label>
-              <input
-                className={inputClassName}
-                placeholder="Ej: peluquería, estética, barbería"
-                name="rubro"
-                value={form.rubro}
                 onChange={handleChange}
                 required
               />
@@ -154,7 +121,7 @@ export default function ProfesionalRegisterPage() {
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-medium text-[#0E2A47]">Número</label>
+              <label className="text-sm font-medium text-[#0E2A47]">Celular</label>
               <input
                 className={inputClassName}
                 placeholder="Tu número de celular"
@@ -165,37 +132,6 @@ export default function ProfesionalRegisterPage() {
                 required
               />
             </div>
-
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-[#0E2A47]">
-                Tipo de cliente
-              </label>
-              <select
-                className={inputClassName}
-                name="tipoCliente"
-                value={form.tipoCliente}
-                onChange={handleChange}
-                required
-              >
-                <option value="LOCAL">Local</option>
-                <option value="PROF">Profesional con local</option>
-                <option value="SIN_LOCAL">Profesional sin local</option>
-              </select>
-            </div>
-
-            {requiresLocation ? (
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-[#0E2A47]">Ubicación</label>
-                <input
-                  className={inputClassName}
-                  placeholder="Dirección o zona del local"
-                  name="location"
-                  value={form.location}
-                  onChange={handleChange}
-                  required={requiresLocation}
-                />
-              </div>
-            ) : null}
 
             <div className="space-y-2">
               <label className="text-sm font-medium text-[#0E2A47]">Contraseña</label>
@@ -211,9 +147,7 @@ export default function ProfesionalRegisterPage() {
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-medium text-[#0E2A47]">
-                Confirmar contraseña
-              </label>
+              <label className="text-sm font-medium text-[#0E2A47]">Confirmar contraseña</label>
               <input
                 type="password"
                 className={inputClassName}
@@ -248,10 +182,10 @@ export default function ProfesionalRegisterPage() {
           <p className="text-center text-xs text-[#6B7280]">
             ¿Ya tenés cuenta?{' '}
             <Link
-              href="/pages/auth/profesional/login"
+              href="/cliente/login"
               className="font-semibold text-[#1FB6A6]"
             >
-              Iniciar sesión profesional
+              Iniciar sesión
             </Link>
           </p>
         </div>

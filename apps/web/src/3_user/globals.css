@@ -1,0 +1,53 @@
+@import "tailwindcss";
+
+:root {
+  --background: #f5f8f7;
+  --foreground: #171717;
+  --bg-glow-1: rgba(31, 182, 166, 0.2);
+  --bg-glow-2: rgba(255, 198, 128, 0.24);
+  --bg-glow-3: rgba(14, 42, 71, 0.12);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-manrope);
+  --font-display: var(--font-fraunces);
+  --font-logo: var(--font-comfortaa);
+  --font-mono: var(--font-manrope);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0b1113;
+    --foreground: #ededed;
+    --bg-glow-1: rgba(31, 182, 166, 0.2);
+    --bg-glow-2: rgba(255, 198, 128, 0.18);
+    --bg-glow-3: rgba(255, 255, 255, 0.08);
+  }
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans);
+  line-height: 1.6;
+  letter-spacing: 0.005em;
+  background-image:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.7), rgba(245, 248, 247, 0.9)),
+    radial-gradient(1200px 800px at 10% -10%, var(--bg-glow-1), transparent 60%),
+    radial-gradient(900px 600px at 90% 0%, var(--bg-glow-2), transparent 55%),
+    radial-gradient(800px 500px at 50% 100%, var(--bg-glow-3), transparent 60%);
+  background-repeat: no-repeat;
+}
+
+:where(h1, h2, h3, h4, h5, h6) {
+  font-family: var(--font-display);
+  letter-spacing: -0.01em;
+}
+
+.logo-type {
+  font-family: var(--font-logo);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}

@@ -2,6 +2,8 @@ package com.plura.plurabackend.auth;
 
 import com.auth0.jwt.JWT;
 import com.auth0.jwt.algorithms.Algorithm;
+import com.plura.plurabackend.auth.dto.LoginRequest;
+import com.plura.plurabackend.auth.dto.ProfesionalProfileResponse;
 import com.plura.plurabackend.auth.dto.RegisterRequest;
 import com.plura.plurabackend.auth.dto.RegisterProfesionalRequest;
 import com.plura.plurabackend.auth.dto.RegisterResponse;
@@ -138,5 +140,79 @@ public class AuthService {
         );
 
         return new RegisterResponse(token, userResponse);
+    }
+
+    public RegisterResponse loginProfesional(LoginRequest request) {
+        UserProfesional user = userProfesionalRepository.findByEmail(request.getEmail())
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Credenciales inválidas"));
+
+        if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Credenciales inválidas");
+        }
+
+        Date now = new Date();
+        Date expiresAt = Date.from(Instant.now().plus(jwtExpirationMinutes, ChronoUnit.MINUTES));
+        String token = JWT.create()
+            .withSubject(user.getId())
+            .withClaim("email", user.getEmail())
+            .withClaim("type", "profesional")
+            .withIssuer(jwtIssuer)
+            .withIssuedAt(now)
+            .withExpiresAt(expiresAt)
+            .sign(jwtAlgorithm);
+
+        UserResponse userResponse = new UserResponse(
+            user.getId(),
+            user.getEmail(),
+            user.getFullName(),
+            user.getCreatedAt()
+        );
+
+        return new RegisterResponse(token, userResponse);
+    }
+
+    public RegisterResponse loginCliente(LoginRequest request) {
+        UserCliente user = userClienteRepository.findByEmail(request.getEmail())
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Credenciales inválidas"));
+
+        if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Credenciales inválidas");
+        }
+
+        Date now = new Date();
+        Date expiresAt = Date.from(Instant.now().plus(jwtExpirationMinutes, ChronoUnit.MINUTES));
+        String token = JWT.create()
+            .withSubject(user.getId())
+            .withClaim("email", user.getEmail())
+            .withClaim("type", "cliente")
+            .withIssuer(jwtIssuer)
+            .withIssuedAt(now)
+            .withExpiresAt(expiresAt)
+            .sign(jwtAlgorithm);
+
+        UserResponse userResponse = new UserResponse(
+            user.getId(),
+            user.getEmail(),
+            user.getFullName(),
+            user.getCreatedAt()
+        );
+
+        return new RegisterResponse(token, userResponse);
+    }
+
+    public ProfesionalProfileResponse getProfesionalProfile(String profesionalId) {
+        UserProfesional user = userProfesionalRepository.findById(profesionalId)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Profesional no encontrado"));
+
+        return new ProfesionalProfileResponse(
+            user.getId(),
+            user.getFullName(),
+            user.getEmail(),
+            user.getPhoneNumber(),
+            user.getRubro(),
+            user.getLocation(),
+            user.getTipoCliente(),
+            user.getCreatedAt()
+        );
     }
 }

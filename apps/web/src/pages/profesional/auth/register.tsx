@@ -9,6 +9,16 @@ import Footer from '@/components/shared/Footer';
 import api from '@/services/api';
 
 export default function ProfesionalRegisterPage() {
+  type RegisterResponse = {
+    accessToken: string;
+    user: {
+      id: string;
+      email: string;
+      fullName: string;
+      createdAt: string;
+    };
+  };
+
   const inputClassName =
     'h-12 w-full rounded-[16px] border border-[#0E2A47]/10 bg-[#F4F6F8] px-4 text-sm text-[#0E2A47] placeholder:text-[#6B7280] focus:outline-none focus:ring-2 focus:ring-[#1FB6A6]/40';
   const [form, setForm] = useState({
@@ -148,7 +158,7 @@ export default function ProfesionalRegisterPage() {
 
     try {
       setIsSubmitting(true);
-      await api.post('/auth/register/profesional', payload);
+      await api.post<RegisterResponse>('/auth/register/profesional', payload);
       setSuccessMessage('Cuenta profesional creada. Ya podés iniciar sesión.');
       setForm({
         fullName: '',

@@ -248,7 +248,7 @@ export default function ProfesionalRegisterPage() {
           <p className="text-center text-xs text-[#6B7280]">
             ¿Ya tenés cuenta?{' '}
             <Link
-              href="/profesional/login"
+              href="/profesional/auth/login"
               className="font-semibold text-[#1FB6A6]"
             >
               Iniciar sesión profesional

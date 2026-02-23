@@ -182,7 +182,7 @@ export default function ClienteRegisterPage() {
           <p className="text-center text-xs text-[#6B7280]">
             ¿Ya tenés cuenta?{' '}
             <Link
-              href="/cliente/login"
+              href="/cliente/auth/login"
               className="font-semibold text-[#1FB6A6]"
             >
               Iniciar sesión

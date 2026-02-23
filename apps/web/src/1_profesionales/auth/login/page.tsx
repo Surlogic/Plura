@@ -52,7 +52,7 @@ export default function ProfesionalLoginPage() {
           <p className="text-center text-xs text-[#6B7280]">
             ¿No tenés cuenta?{' '}
             <Link
-              href="/profesional/register"
+              href="/profesional/auth/register"
               className="font-semibold text-[#1FB6A6]"
             >
               Crear cuenta profesional

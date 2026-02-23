@@ -1,8 +1,17 @@
 import Link from 'next/link';
+import { useRouter } from 'next/router';
+import type { FormEvent } from 'react';
 import Navbar from '@/components/shared/Navbar';
 import Footer from '@/components/shared/Footer';
 
 export default function ProfesionalLoginPage() {
+  const router = useRouter();
+
+  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    router.push('/profesional/dashboard');
+  };
+
   return (
     <div className="min-h-screen bg-[#F4F6F8] text-[#0E2A47]">
       <Navbar />
@@ -20,7 +29,7 @@ export default function ProfesionalLoginPage() {
             </p>
           </div>
 
-          <form className="space-y-4">
+          <form className="space-y-4" onSubmit={handleSubmit}>
             <div className="space-y-2">
               <label className="text-sm font-medium text-[#0E2A47]">Gmail</label>
               <input

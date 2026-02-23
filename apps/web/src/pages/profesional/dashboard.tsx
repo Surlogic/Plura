@@ -1,7 +1,11 @@
 'use client';
 
+import { useEffect, useMemo, useState } from 'react';
+import { useRouter } from 'next/router';
 import Navbar from '@/components/shared/Navbar';
 import Footer from '@/components/shared/Footer';
+import api from '@/services/api';
+import { getProfessionalToken } from '@/services/session';
 
 const menuItems = [
   { label: 'Perfil del negocio', active: false },
@@ -21,6 +25,49 @@ const stats = [
 const weekDays = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
 
 export default function ProfesionalDashboardPage() {
+  const router = useRouter();
+  const [profile, setProfile] = useState<{
+    id: string;
+    fullName: string;
+    email: string;
+    phoneNumber: string;
+    rubro: string;
+    location: string | null;
+    tipoCliente: string;
+  } | null>(null);
+
+  useEffect(() => {
+    const token = getProfessionalToken();
+    if (!token) {
+      router.push('/profesional/auth/login');
+      return;
+    }
+
+    api
+      .get('/auth/me/profesional', {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      .then((response) => {
+        setProfile(response.data);
+      })
+      .catch(() => {
+        router.push('/profesional/auth/login');
+      });
+  }, [router]);
+
+  const initials = useMemo(() => {
+    if (!profile?.fullName) return 'PR';
+    return profile.fullName
+      .split(' ')
+      .map((part) => part[0])
+      .join('')
+      .slice(0, 2)
+      .toUpperCase();
+  }, [profile?.fullName]);
+
+  const displayName = profile?.fullName || 'Profesional';
+  const displayMeta = profile?.rubro || profile?.email || 'Cuenta profesional';
+
   return (
     <div
       className="min-h-screen bg-[radial-gradient(circle_at_top,#FFFFFF_0%,#EEF2F6_45%,#D3D7DC_100%)] text-[#0E2A47]"
@@ -31,17 +78,18 @@ export default function ProfesionalDashboardPage() {
       `}</style>
       <Navbar />
       <main className="mx-auto w-full max-w-6xl px-4 pb-24 pt-10">
-        <section className="grid gap-6 lg:grid-cols-[260px,1fr]">
-          <aside className="rounded-[26px] bg-[#0B1D2A] p-5 text-white shadow-[0_20px_60px_rgba(4,16,32,0.35)]">
+        <section className="flex flex-row items-start gap-6">
+          <aside className="w-72 shrink-0 rounded-[26px] bg-[#0B1D2A] p-5 text-white shadow-[0_20px_60px_rgba(4,16,32,0.35)]">
             <div className="flex items-center gap-3 rounded-[18px] bg-white/10 p-3">
               <div className="flex h-12 w-12 items-center justify-center rounded-full bg-white/20 text-sm font-semibold">
-                AG
+                {initials}
               </div>
               <div>
                 <p className="text-xs uppercase tracking-[0.3em] text-white/60">
                   Profesional
                 </p>
-                <p className="text-sm font-semibold">Atelier Glow</p>
+                <p className="text-sm font-semibold">{displayName}</p>
+                <p className="text-xs text-white/60">{displayMeta}</p>
               </div>
             </div>
             <p className="mt-6 text-[0.65rem] uppercase tracking-[0.35em] text-white/60">
@@ -67,7 +115,7 @@ export default function ProfesionalDashboardPage() {
             </div>
           </aside>
 
-          <div className="space-y-6">
+          <div className="min-w-0 flex-1 space-y-6">
             <div className="rounded-[28px] border border-white/70 bg-white/95 p-6 shadow-[0_28px_70px_rgba(15,23,42,0.18)]">
               <div className="flex flex-wrap items-center justify-between gap-4">
                 <div>

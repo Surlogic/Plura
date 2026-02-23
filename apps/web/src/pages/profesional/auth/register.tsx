@@ -161,6 +161,17 @@ export default function ProfesionalRegisterPage() {
         password: '',
         confirmPassword: '',
       });
+      setTouched({
+        fullName: false,
+        rubro: false,
+        email: false,
+        confirmEmail: false,
+        phoneNumber: false,
+        tipoCliente: false,
+        location: false,
+        password: false,
+        confirmPassword: false,
+      });
     } catch (error) {
       if (axios.isAxiosError(error)) {
         if (!error.response) {

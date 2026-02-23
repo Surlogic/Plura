@@ -138,6 +138,14 @@ export default function ClienteRegisterPage() {
         password: '',
         confirmPassword: '',
       });
+      setTouched({
+        fullName: false,
+        email: false,
+        confirmEmail: false,
+        phoneNumber: false,
+        password: false,
+        confirmPassword: false,
+      });
     } catch (error) {
       if (axios.isAxiosError(error)) {
         if (!error.response) {

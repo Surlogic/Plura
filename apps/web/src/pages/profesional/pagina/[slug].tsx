@@ -58,6 +58,8 @@ const reviews = [
   },
 ];
 
+const ratingBreakdown = [68, 18, 9, 3, 2];
+
 export default function ProfesionalDetailPage() {
   const router = useRouter();
   const slug = Array.isArray(router.query.slug)
@@ -160,40 +162,56 @@ export default function ProfesionalDetailPage() {
           </div>
         </section>
 
-        <section className="mt-10 grid gap-6 lg:grid-cols-[1fr,1.2fr]">
-          <div className="rounded-[28px] border border-white/70 bg-white/95 p-6 shadow-[0_18px_40px_rgba(15,23,42,0.12)]">
+        <section className="mt-10 rounded-[28px] border border-white/70 bg-white/95 p-6 shadow-[0_18px_40px_rgba(15,23,42,0.12)]">
+          <div
+            className="grid gap-8"
+            style={{ gridTemplateColumns: '1fr 1.4fr' }}
+          >
+            <div className="border-r border-[#E2E8F0] pr-8">
             <p className="text-[0.65rem] uppercase tracking-[0.35em] text-[#94A3B8]">Reseñas</p>
             <h2 className="mt-2 text-xl font-semibold">Las marcas de reseñas</h2>
-            <div className="mt-4 rounded-[18px] bg-[#F7F9FB] p-4">
-              <p className="text-3xl font-semibold">{data.rating}</p>
+            <div className="mt-4 rounded-[20px] bg-[#F7F9FB] px-6 py-5">
+              <p className="text-3xl font-semibold text-[#0E2A47]">{data.rating}</p>
               <p className="text-sm text-[#64748B]">Basado en {data.reviews} reseñas</p>
-              <div className="mt-2 flex gap-1 text-[#F5B301]">
+              <div className="mt-2 flex gap-1 text-[#1FB6A6]">
                 {Array.from({ length: 5 }).map((_, index) => (
                   <span key={index}>★</span>
                 ))}
               </div>
             </div>
-            <button className="mt-4 w-full rounded-full border border-[#E2E7EC] bg-white px-4 py-2 text-sm font-semibold text-[#0E2A47] shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
+            <div className="mt-4 space-y-2">
+              {ratingBreakdown.map((value, index) => (
+                <div key={`rating-${index}`} className="flex items-center gap-3 text-xs text-[#64748B]">
+                  <span className="w-4 text-[0.7rem] font-semibold text-[#0E2A47]">{5 - index}</span>
+                  <div className="h-2 flex-1 rounded-full bg-[#E2E8F0]">
+                    <div className="h-full rounded-full bg-[#1FB6A6]" style={{ width: `${value}%` }} />
+                  </div>
+                  <span className="w-10 text-right text-[0.7rem] text-[#64748B]">{value}%</span>
+                </div>
+              ))}
+            </div>
+            <button className="mt-4 w-full rounded-full border border-[#E2E8F0] bg-white px-4 py-2 text-sm font-semibold text-[#0E2A47] shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
               Ver en lista
             </button>
-          </div>
+            </div>
 
-          <div className="rounded-[28px] border border-white/70 bg-white/95 p-6 shadow-[0_18px_40px_rgba(15,23,42,0.12)]">
+            <div className="pl-2">
             <p className="text-[0.65rem] uppercase tracking-[0.35em] text-[#94A3B8]">Opiniones</p>
             <h2 className="mt-2 text-xl font-semibold">Reseñas en sitio</h2>
             <div className="mt-4 space-y-4">
               {reviews.map((review) => (
                 <div
                   key={review.name}
-                  className="rounded-[18px] border border-[#E2E7EC] bg-[#F7F9FB] px-4 py-3"
+                  className="rounded-[18px] border border-[#E2E8F0] bg-white px-4 py-3 shadow-sm"
                 >
                   <div className="flex items-center justify-between text-sm">
-                    <p className="font-semibold">{review.name}</p>
+                    <p className="font-semibold text-[#0E2A47]">{review.name}</p>
                     <span className="text-xs text-[#64748B]">{review.date}</span>
                   </div>
                   <p className="mt-2 text-sm text-[#64748B]">{review.text}</p>
                 </div>
               ))}
+            </div>
             </div>
           </div>
         </section>
@@ -223,7 +241,10 @@ export default function ProfesionalDetailPage() {
         <section className="mt-10 rounded-[28px] border border-white/70 bg-white/95 p-6 shadow-[0_18px_40px_rgba(15,23,42,0.12)]">
           <p className="text-[0.65rem] uppercase tracking-[0.35em] text-[#94A3B8]">Ubicación</p>
           <h2 className="mt-2 text-xl font-semibold">Datos, ubicación y mapa</h2>
-          <div className="mt-4 grid gap-4 lg:grid-cols-[1fr,2fr]">
+          <div
+            className="mt-4 grid gap-4"
+            style={{ gridTemplateColumns: '1fr 1.6fr' }}
+          >
             <div className="rounded-[18px] border border-[#E2E7EC] bg-[#F7F9FB] p-4 text-sm text-[#64748B]">
               <p className="font-semibold text-[#0E2A47]">Dirección</p>
               <p className="mt-1">{data.location}</p>
@@ -231,7 +252,7 @@ export default function ProfesionalDetailPage() {
               <p className="mt-1">hola@plura.com</p>
               <p className="mt-1">+54 11 5555 4444</p>
             </div>
-            <div className="h-48 rounded-[18px] border border-[#E2E7EC] bg-[#E7EDF2] sm:h-64 lg:h-full">
+            <div className="min-h-[160px] rounded-[18px] border border-[#E2E7EC] bg-[#E7EDF2]">
               <div className="flex h-full items-center justify-center text-xs uppercase tracking-[0.3em] text-[#94A3B8]">
                 Mapa
               </div>

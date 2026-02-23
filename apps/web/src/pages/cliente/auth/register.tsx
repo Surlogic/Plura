@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import type { ChangeEvent, FormEvent } from 'react';
 import Link from 'next/link';
+import axios from 'axios';
 import Navbar from '@/components/shared/Navbar';
 import Footer from '@/components/shared/Footer';
 import api from '@/services/api';
@@ -42,14 +43,21 @@ export default function ClienteRegisterPage() {
       return;
     }
 
+    if (form.password.length < 10) {
+      setErrorMessage('La contraseña debe tener al menos 10 caracteres.');
+      return;
+    }
+
+    const payload = {
+      fullName: form.fullName.trim(),
+      email: form.email.trim().toLowerCase(),
+      phoneNumber: form.phoneNumber.trim(),
+      password: form.password,
+    };
+
     try {
       setIsSubmitting(true);
-      await api.post('/auth/register/cliente', {
-        fullName: form.fullName,
-        email: form.email,
-        phoneNumber: form.phoneNumber,
-        password: form.password,
-      });
+      await api.post('/auth/register/cliente', payload);
       setSuccessMessage('Cuenta creada. Ya podés iniciar sesión.');
       setForm({
         fullName: '',
@@ -60,7 +68,20 @@ export default function ClienteRegisterPage() {
         confirmPassword: '',
       });
     } catch (error) {
-      setErrorMessage('No se pudo crear la cuenta. Verificá los datos e intentá de nuevo.');
+      if (axios.isAxiosError(error)) {
+        if (!error.response) {
+          setErrorMessage('No se pudo conectar con el servidor.');
+        } else {
+          const data = error.response.data as { message?: string; error?: string; errors?: Array<{ defaultMessage?: string }> };
+          const details =
+            data?.message ||
+            data?.error ||
+            (data?.errors && data.errors.length > 0 ? data.errors.map((item) => item.defaultMessage).join(' ') : null);
+          setErrorMessage(details || `No se pudo crear la cuenta (HTTP ${error.response.status}).`);
+        }
+      } else {
+        setErrorMessage('No se pudo crear la cuenta. Verificá los datos e intentá de nuevo.');
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -91,6 +112,7 @@ export default function ClienteRegisterPage() {
                 value={form.fullName}
                 onChange={handleChange}
                 required
+                minLength={3}
               />
             </div>
 
@@ -143,6 +165,7 @@ export default function ClienteRegisterPage() {
                 value={form.password}
                 onChange={handleChange}
                 required
+                minLength={10}
               />
             </div>
 
@@ -156,6 +179,7 @@ export default function ClienteRegisterPage() {
                 value={form.confirmPassword}
                 onChange={handleChange}
                 required
+                minLength={10}
               />
             </div>
 

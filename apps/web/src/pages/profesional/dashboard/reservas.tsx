@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Navbar from '@/components/shared/Navbar';
 import ProfesionalSidebar from '@/components/profesional/Sidebar';
 import { useProfessionalProfile } from '@/hooks/useProfessionalProfile';
@@ -51,7 +51,14 @@ export default function ProfesionalReservationsPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const formRef = useRef<HTMLDivElement | null>(null);
+  const [selectedReservation, setSelectedReservation] =
+    useState<ProfessionalReservation | null>(null);
+  const [activeDrawer, setActiveDrawer] = useState<'form' | 'detail' | null>(null);
+  const [drawerVisible, setDrawerVisible] = useState(false);
+  const [editingReservationId, setEditingReservationId] = useState<string | null>(
+    null,
+  );
+  const [formMode, setFormMode] = useState<'create' | 'edit'>('create');
   const [form, setForm] = useState({
     serviceName: '',
     clientName: '',
@@ -126,9 +133,68 @@ export default function ProfesionalReservationsPage() {
     setIsMenuOpen((prev) => !prev);
   };
 
-  const handleScrollToForm = () => {
-    if (!formRef.current) return;
-    formRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  useEffect(() => {
+    if (activeDrawer) {
+      const frame = requestAnimationFrame(() => setDrawerVisible(true));
+      return () => cancelAnimationFrame(frame);
+    }
+    setDrawerVisible(false);
+    return undefined;
+  }, [activeDrawer]);
+
+  const closeDrawer = () => {
+    setDrawerVisible(false);
+    window.setTimeout(() => {
+      setActiveDrawer(null);
+      setSelectedReservation(null);
+    }, 200);
+  };
+
+  const openCreateDrawer = () => {
+    setFormMode('create');
+    setEditingReservationId(null);
+    setForm({
+      serviceName: '',
+      clientName: '',
+      date: '',
+      time: '',
+      price: '',
+      duration: '',
+      status: 'confirmed',
+      notes: '',
+    });
+    setActiveDrawer('form');
+  };
+
+  const openDetailDrawer = (reservation: ProfessionalReservation) => {
+    setSelectedReservation(reservation);
+    setActiveDrawer('detail');
+  };
+
+  const openEditDrawer = (reservation: ProfessionalReservation) => {
+    setFormMode('edit');
+    setEditingReservationId(reservation.id);
+    setForm({
+      serviceName: reservation.serviceName,
+      clientName: reservation.clientName,
+      date: reservation.date,
+      time: reservation.time,
+      price: reservation.price ?? '',
+      duration: reservation.duration ?? '',
+      status: reservation.status ?? 'confirmed',
+      notes: reservation.notes ?? '',
+    });
+    setActiveDrawer('form');
+  };
+
+  const handleUpdateStatus = (status: ReservationStatus) => {
+    if (!selectedReservation || !profile?.id) return;
+    const nextReservations = reservations.map((reservation) =>
+      reservation.id === selectedReservation.id ? { ...reservation, status } : reservation,
+    );
+    setReservations(nextReservations);
+    saveProfessionalReservations(profile.id, nextReservations);
+    setSelectedReservation((prev) => (prev ? { ...prev, status } : prev));
   };
 
   const handleSaveReservation = () => {
@@ -141,8 +207,8 @@ export default function ProfesionalReservationsPage() {
     setIsSaving(true);
     setSaveMessage(null);
 
-    const newReservation: ProfessionalReservation = {
-      id: `reservation-${Date.now()}`,
+    const payload: ProfessionalReservation = {
+      id: editingReservationId ?? `reservation-${Date.now()}`,
       serviceName: form.serviceName,
       clientName: form.clientName,
       date: form.date,
@@ -153,21 +219,21 @@ export default function ProfesionalReservationsPage() {
       notes: form.notes,
     };
 
-    const nextReservations = [newReservation, ...reservations];
+    const nextReservations =
+      formMode === 'edit' && editingReservationId
+        ? reservations.map((reservation) =>
+            reservation.id === editingReservationId ? payload : reservation,
+          )
+        : [payload, ...reservations];
     try {
       saveProfessionalReservations(profile.id, nextReservations);
       setReservations(nextReservations);
-      setForm({
-        serviceName: '',
-        clientName: '',
-        date: '',
-        time: '',
-        price: '',
-        duration: '',
-        status: 'confirmed',
-        notes: '',
-      });
-      setSaveMessage('Reserva creada correctamente.');
+      if (formMode === 'edit') {
+        setSaveMessage('Reserva actualizada correctamente.');
+      } else {
+        setSaveMessage('Reserva creada correctamente.');
+      }
+      closeDrawer();
     } catch {
       setSaveMessage('No se pudo guardar la reserva.');
     } finally {
@@ -176,37 +242,31 @@ export default function ProfesionalReservationsPage() {
   };
 
   const renderReservationCard = (reservation: ProfessionalReservation) => (
-    <div
+    <button
       key={reservation.id}
-      className="rounded-[18px] border border-[#E2E7EC] bg-[#F7F9FB] px-4 py-3"
+      type="button"
+      onClick={() => openDetailDrawer(reservation)}
+      className="flex w-full items-center justify-between gap-4 rounded-[14px] border border-[#E2E7EC] bg-white px-4 py-2 text-left text-sm text-[#0E2A47] transition hover:border-[#CBD5F5] hover:shadow-[0_6px_14px_rgba(15,23,42,0.08)]"
     >
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <p className="font-semibold text-[#0E2A47]">{reservation.serviceName}</p>
-          <p className="text-xs text-[#64748B]">
-            {reservation.clientName} · {reservation.date} · {reservation.time}
-          </p>
-          {reservation.duration ? (
-            <p className="text-xs text-[#64748B]">Duración: {reservation.duration}</p>
-          ) : null}
-        </div>
-        <div className="flex items-center gap-2">
-          <span
-            className={`rounded-full px-3 py-1 text-xs font-semibold ${statusStyles[reservation.status || 'confirmed']}`}
-          >
-            {statusLabel[reservation.status || 'confirmed']}
-          </span>
-          {reservation.price ? (
-            <span className="text-sm font-semibold text-[#1FB6A6]">
-              {reservation.price.includes('$') ? reservation.price : `$${reservation.price}`}
-            </span>
-          ) : null}
-        </div>
+      <div className="min-w-0">
+        <p className="truncate font-semibold">{reservation.serviceName}</p>
+        <p className="mt-0.5 text-xs text-[#64748B]">
+          {reservation.date} · {reservation.time} · {reservation.clientName}
+        </p>
       </div>
-      {reservation.notes ? (
-        <p className="mt-2 text-xs text-[#64748B]">{reservation.notes}</p>
-      ) : null}
-    </div>
+      <div className="flex shrink-0 items-center gap-3">
+        <span
+          className={`rounded-full px-2.5 py-1 text-[0.7rem] font-semibold ${statusStyles[reservation.status || 'confirmed']}`}
+        >
+          {statusLabel[reservation.status || 'confirmed']}
+        </span>
+        {reservation.price ? (
+          <span className="text-sm font-semibold text-[#1FB6A6]">
+            {reservation.price.includes('$') ? reservation.price : `$${reservation.price}`}
+          </span>
+        ) : null}
+      </div>
+    </button>
   );
 
   return (
@@ -246,7 +306,7 @@ export default function ProfesionalReservationsPage() {
                     </div>
                     <button
                       type="button"
-                      onClick={handleScrollToForm}
+                      onClick={openCreateDrawer}
                       className="rounded-full bg-[#0B1D2A] px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
                     >
                       Crear reserva
@@ -267,8 +327,7 @@ export default function ProfesionalReservationsPage() {
                     </div>
                   </div>
                 ) : (
-                  <div className="grid gap-6 lg:grid-cols-[1.1fr,0.9fr]">
-                    <div className="space-y-6">
+                  <div className="space-y-6">
                       <div className="grid gap-4 sm:grid-cols-3">
                         <div className="rounded-[18px] border border-[#E2E7EC] bg-[#F7F9FB] p-4">
                           <p className="text-xs uppercase tracking-[0.3em] text-[#94A3B8]">
@@ -340,143 +399,6 @@ export default function ProfesionalReservationsPage() {
                           )}
                         </div>
                       </div>
-                    </div>
-
-                    <div className="space-y-6">
-                      <div
-                        ref={formRef}
-                        id="nueva-reserva"
-                        className="scroll-mt-24 rounded-[24px] border border-white/70 bg-white/95 p-5 shadow-[0_16px_36px_rgba(15,23,42,0.12)]"
-                      >
-                        <p className="text-[0.65rem] uppercase tracking-[0.35em] text-[#94A3B8]">
-                          Crear reserva manual
-                        </p>
-                        <h2 className="mt-2 text-lg font-semibold text-[#0E2A47]">
-                          Nueva reserva
-                        </h2>
-                        <div className="mt-4 grid gap-4">
-                          <div>
-                            <label className="text-sm font-medium text-[#0E2A47]">
-                              Servicio
-                            </label>
-                            <input
-                              className="h-11 w-full rounded-[14px] border border-[#E2E7EC] bg-white px-3 text-sm text-[#0E2A47]"
-                              value={form.serviceName}
-                              onChange={(event) =>
-                                handleFormChange('serviceName', event.target.value)
-                              }
-                              placeholder="Ej: Corte + styling"
-                            />
-                          </div>
-                          <div>
-                            <label className="text-sm font-medium text-[#0E2A47]">
-                              Cliente
-                            </label>
-                            <input
-                              className="h-11 w-full rounded-[14px] border border-[#E2E7EC] bg-white px-3 text-sm text-[#0E2A47]"
-                              value={form.clientName}
-                              onChange={(event) =>
-                                handleFormChange('clientName', event.target.value)
-                              }
-                              placeholder="Ej: Sofía Pérez"
-                            />
-                          </div>
-                          <div className="grid gap-4 sm:grid-cols-2">
-                            <div>
-                              <label className="text-sm font-medium text-[#0E2A47]">
-                                Fecha
-                              </label>
-                              <input
-                                type="date"
-                                className="h-11 w-full rounded-[14px] border border-[#E2E7EC] bg-white px-3 text-sm text-[#0E2A47]"
-                                value={form.date}
-                                onChange={(event) =>
-                                  handleFormChange('date', event.target.value)
-                                }
-                              />
-                            </div>
-                            <div>
-                              <label className="text-sm font-medium text-[#0E2A47]">
-                                Hora
-                              </label>
-                              <input
-                                type="time"
-                                className="h-11 w-full rounded-[14px] border border-[#E2E7EC] bg-white px-3 text-sm text-[#0E2A47]"
-                                value={form.time}
-                                onChange={(event) =>
-                                  handleFormChange('time', event.target.value)
-                                }
-                              />
-                            </div>
-                          </div>
-                          <div className="grid gap-4 sm:grid-cols-2">
-                            <div>
-                              <label className="text-sm font-medium text-[#0E2A47]">
-                                Precio
-                              </label>
-                              <input
-                                className="h-11 w-full rounded-[14px] border border-[#E2E7EC] bg-white px-3 text-sm text-[#0E2A47]"
-                                value={form.price}
-                                onChange={(event) =>
-                                  handleFormChange('price', event.target.value)
-                                }
-                                placeholder="Ej: $9.500"
-                              />
-                            </div>
-                            <div>
-                              <label className="text-sm font-medium text-[#0E2A47]">
-                                Duración
-                              </label>
-                              <input
-                                className="h-11 w-full rounded-[14px] border border-[#E2E7EC] bg-white px-3 text-sm text-[#0E2A47]"
-                                value={form.duration}
-                                onChange={(event) =>
-                                  handleFormChange('duration', event.target.value)
-                                }
-                                placeholder="Ej: 45 min"
-                              />
-                            </div>
-                          </div>
-                          <div>
-                            <label className="text-sm font-medium text-[#0E2A47]">
-                              Estado
-                            </label>
-                            <select
-                              className="h-11 w-full rounded-[14px] border border-[#E2E7EC] bg-white px-3 text-sm text-[#0E2A47]"
-                              value={form.status}
-                              onChange={(event) =>
-                                handleFormChange('status', event.target.value)
-                              }
-                            >
-                              <option value="confirmed">Confirmada</option>
-                              <option value="pending">Pendiente</option>
-                              <option value="completed">Completada</option>
-                              <option value="cancelled">Cancelada</option>
-                            </select>
-                          </div>
-                          <div>
-                            <label className="text-sm font-medium text-[#0E2A47]">
-                              Nota
-                            </label>
-                            <textarea
-                              className="h-24 w-full resize-none rounded-[14px] border border-[#E2E7EC] bg-white px-3 py-2 text-sm text-[#0E2A47]"
-                              value={form.notes}
-                              onChange={(event) =>
-                                handleFormChange('notes', event.target.value)
-                              }
-                              placeholder="Comentarios adicionales."
-                            />
-                          </div>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={handleSaveReservation}
-                          className="mt-4 w-full rounded-full bg-[#1FB6A6] px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
-                        >
-                          Guardar reserva
-                        </button>
-                      </div>
-                    </div>
                   </div>
                 )}
               </div>
@@ -484,6 +406,280 @@ export default function ProfesionalReservationsPage() {
           </div>
         </div>
       </div>
+      {activeDrawer ? (
+        <div className="fixed inset-0 z-50 flex justify-end">
+          <button
+            type="button"
+            className={`absolute inset-0 bg-[#0B1D2A]/40 backdrop-blur-sm transition-opacity duration-200 ${
+              drawerVisible ? 'opacity-100' : 'pointer-events-none opacity-0'
+            }`}
+            onClick={closeDrawer}
+            aria-label="Cerrar panel de reserva"
+          />
+          <aside
+            className={`relative flex h-full w-full max-w-[420px] flex-col overflow-y-auto bg-white p-6 shadow-[-12px_0_40px_rgba(15,23,42,0.18)] transition-transform duration-300 ${
+              drawerVisible ? 'translate-x-0' : 'translate-x-full'
+            }`}
+          >
+            {activeDrawer === 'detail' && selectedReservation ? (
+              <>
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-xs uppercase tracking-[0.3em] text-[#94A3B8]">
+                      Reserva
+                    </p>
+                    <h2 className="mt-2 text-2xl font-semibold text-[#0E2A47]">
+                      {selectedReservation.serviceName || 'Servicio'}
+                    </h2>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={closeDrawer}
+                    className="rounded-full border border-[#E2E7EC] px-3 py-1 text-xs font-semibold text-[#64748B] transition hover:bg-[#F8FAFC]"
+                  >
+                    Cerrar
+                  </button>
+                </div>
+                <div className="mt-4 flex flex-wrap items-center gap-2">
+                  <span
+                    className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                      statusStyles[selectedReservation.status || 'confirmed']
+                    }`}
+                  >
+                    {statusLabel[selectedReservation.status || 'confirmed']}
+                  </span>
+                  <span className="text-xs text-[#64748B]">
+                    {selectedReservation.date} · {selectedReservation.time}
+                  </span>
+                </div>
+
+                <div className="mt-6 space-y-4 text-sm text-[#64748B]">
+                  <div>
+                    <p className="text-xs uppercase tracking-[0.3em] text-[#94A3B8]">
+                      Cliente
+                    </p>
+                    <p className="mt-1 text-base font-semibold text-[#0E2A47]">
+                      {selectedReservation.clientName || 'Cliente sin nombre'}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs uppercase tracking-[0.3em] text-[#94A3B8]">
+                      Precio
+                    </p>
+                    <p className="mt-1 text-base font-semibold text-[#0E2A47]">
+                      {selectedReservation.price
+                        ? selectedReservation.price.includes('$')
+                          ? selectedReservation.price
+                          : `$${selectedReservation.price}`
+                        : 'A definir'}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs uppercase tracking-[0.3em] text-[#94A3B8]">
+                      Duración
+                    </p>
+                    <p className="mt-1 text-sm text-[#64748B]">
+                      {selectedReservation.duration || 'Sin definir'}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs uppercase tracking-[0.3em] text-[#94A3B8]">
+                      Nota
+                    </p>
+                    <p className="mt-1 text-sm text-[#64748B]">
+                      {selectedReservation.notes || 'Sin notas adicionales.'}
+                    </p>
+                  </div>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div>
+                      <p className="text-xs uppercase tracking-[0.3em] text-[#94A3B8]">
+                        Email
+                      </p>
+                      <p className="mt-1 text-sm text-[#64748B]">Sin dato</p>
+                    </div>
+                    <div>
+                      <p className="text-xs uppercase tracking-[0.3em] text-[#94A3B8]">
+                        Teléfono
+                      </p>
+                      <p className="mt-1 text-sm text-[#64748B]">Sin dato</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-8 grid gap-3">
+                  <button
+                    type="button"
+                    onClick={() => handleUpdateStatus('confirmed')}
+                    className="rounded-full bg-[#1FB6A6] px-4 py-2 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:shadow-md"
+                  >
+                    Confirmar
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleUpdateStatus('cancelled')}
+                    className="rounded-full border border-[#FCA5A5] bg-[#FEF2F2] px-4 py-2 text-sm font-semibold text-[#DC2626] transition hover:-translate-y-0.5 hover:shadow-md"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => openEditDrawer(selectedReservation)}
+                    className="rounded-full border border-[#E2E7EC] bg-white px-4 py-2 text-sm font-semibold text-[#0E2A47] transition hover:-translate-y-0.5 hover:shadow-md"
+                  >
+                    Editar
+                  </button>
+                </div>
+              </>
+            ) : null}
+
+            {activeDrawer === 'form' ? (
+              <>
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-xs uppercase tracking-[0.3em] text-[#94A3B8]">
+                      {formMode === 'edit' ? 'Editar reserva' : 'Nueva reserva'}
+                    </p>
+                    <h2 className="mt-2 text-2xl font-semibold text-[#0E2A47]">
+                      {formMode === 'edit' ? 'Editar reserva' : 'Crear reserva'}
+                    </h2>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={closeDrawer}
+                    className="rounded-full border border-[#E2E7EC] px-3 py-1 text-xs font-semibold text-[#64748B] transition hover:bg-[#F8FAFC]"
+                  >
+                    Cerrar
+                  </button>
+                </div>
+
+                <div className="mt-6 grid gap-4">
+                  <div>
+                    <label className="text-sm font-medium text-[#0E2A47]">
+                      Servicio
+                    </label>
+                    <input
+                      className="h-11 w-full rounded-[14px] border border-[#E2E7EC] bg-white px-3 text-sm text-[#0E2A47]"
+                      value={form.serviceName}
+                      onChange={(event) =>
+                        handleFormChange('serviceName', event.target.value)
+                      }
+                      placeholder="Ej: Corte + styling"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-[#0E2A47]">
+                      Cliente
+                    </label>
+                    <input
+                      className="h-11 w-full rounded-[14px] border border-[#E2E7EC] bg-white px-3 text-sm text-[#0E2A47]"
+                      value={form.clientName}
+                      onChange={(event) =>
+                        handleFormChange('clientName', event.target.value)
+                      }
+                      placeholder="Ej: Sofía Pérez"
+                    />
+                  </div>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div>
+                      <label className="text-sm font-medium text-[#0E2A47]">
+                        Fecha
+                      </label>
+                      <input
+                        type="date"
+                        className="h-11 w-full rounded-[14px] border border-[#E2E7EC] bg-white px-3 text-sm text-[#0E2A47]"
+                        value={form.date}
+                        onChange={(event) =>
+                          handleFormChange('date', event.target.value)
+                        }
+                      />
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-[#0E2A47]">
+                        Hora
+                      </label>
+                      <input
+                        type="time"
+                        className="h-11 w-full rounded-[14px] border border-[#E2E7EC] bg-white px-3 text-sm text-[#0E2A47]"
+                        value={form.time}
+                        onChange={(event) =>
+                          handleFormChange('time', event.target.value)
+                        }
+                      />
+                    </div>
+                  </div>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div>
+                      <label className="text-sm font-medium text-[#0E2A47]">
+                        Precio
+                      </label>
+                      <input
+                        className="h-11 w-full rounded-[14px] border border-[#E2E7EC] bg-white px-3 text-sm text-[#0E2A47]"
+                        value={form.price}
+                        onChange={(event) =>
+                          handleFormChange('price', event.target.value)
+                        }
+                        placeholder="Ej: $9.500"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-[#0E2A47]">
+                        Duración
+                      </label>
+                      <input
+                        className="h-11 w-full rounded-[14px] border border-[#E2E7EC] bg-white px-3 text-sm text-[#0E2A47]"
+                        value={form.duration}
+                        onChange={(event) =>
+                          handleFormChange('duration', event.target.value)
+                        }
+                        placeholder="Ej: 45 min"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-[#0E2A47]">
+                      Estado
+                    </label>
+                    <select
+                      className="h-11 w-full rounded-[14px] border border-[#E2E7EC] bg-white px-3 text-sm text-[#0E2A47]"
+                      value={form.status}
+                      onChange={(event) =>
+                        handleFormChange('status', event.target.value)
+                      }
+                    >
+                      <option value="confirmed">Confirmada</option>
+                      <option value="pending">Pendiente</option>
+                      <option value="completed">Completada</option>
+                      <option value="cancelled">Cancelada</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-[#0E2A47]">
+                      Nota
+                    </label>
+                    <textarea
+                      className="h-24 w-full resize-none rounded-[14px] border border-[#E2E7EC] bg-white px-3 py-2 text-sm text-[#0E2A47]"
+                      value={form.notes}
+                      onChange={(event) =>
+                        handleFormChange('notes', event.target.value)
+                      }
+                      placeholder="Comentarios adicionales."
+                    />
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleSaveReservation}
+                  className="mt-6 w-full rounded-full bg-[#1FB6A6] px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
+                  disabled={isSaving}
+                >
+                  {formMode === 'edit' ? 'Guardar cambios' : 'Guardar reserva'}
+                </button>
+              </>
+            ) : null}
+          </aside>
+        </div>
+      ) : null}
     </div>
   );
 }

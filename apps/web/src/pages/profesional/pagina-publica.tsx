@@ -4,7 +4,6 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import type { ChangeEvent } from 'react';
 import { useRouter } from 'next/router';
 import Navbar from '@/components/shared/Navbar';
-import Footer from '@/components/shared/Footer';
 import ProfesionalSidebar from '@/components/profesional/Sidebar';
 import { useProfessionalProfile } from '@/hooks/useProfessionalProfile';
 import {
@@ -49,6 +48,7 @@ export default function ProfesionalPublicPageBuilder() {
   const [isDirty, setIsDirty] = useState(false);
   const [showExitWarning, setShowExitWarning] = useState(false);
   const [hasLoadedPage, setHasLoadedPage] = useState(false);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [services, setServices] = useState<ProfessionalService[]>([]);
   const [schedule, setSchedule] = useState<ProfessionalSchedule | null>(null);
   const [form, setForm] = useState({
@@ -267,6 +267,9 @@ export default function ProfesionalPublicPageBuilder() {
     pendingRouteRef.current = null;
     if (url) void router.push(url);
   };
+  const handleToggleMenu = () => {
+    setIsMenuOpen((prev) => !prev);
+  };
 
   return (
     <div className="min-h-screen bg-[radial-gradient(circle_at_top,#FFFFFF_0%,#EEF2F6_45%,#D3D7DC_100%)] text-[#0E2A47]">
@@ -306,12 +309,26 @@ export default function ProfesionalPublicPageBuilder() {
         </div>
       ) : null}
 
-      <Navbar />
-      <main className="mx-auto w-full max-w-[1400px] px-4 sm:px-6 lg:px-10 pb-24 pt-10">
-        <section className="flex flex-col lg:flex-row items-start gap-6 lg:pl-[300px]">
-          <ProfesionalSidebar profile={profile} active="Página pública" />
-
-          <div className="min-w-0 flex-1 space-y-6">
+      <div className="flex min-h-screen flex-col">
+        <Navbar
+          variant="dashboard"
+          showMenuButton
+          onMenuClick={handleToggleMenu}
+        />
+        <div className="flex flex-1">
+          <aside className="hidden w-[260px] shrink-0 border-r border-[#0E2A47]/10 bg-[#0B1D2A] lg:block">
+            <div className="sticky top-0 h-screen overflow-y-auto">
+              <ProfesionalSidebar profile={profile} active="Página pública" />
+            </div>
+          </aside>
+          <div className="flex-1">
+            {isMenuOpen ? (
+              <div className="border-b border-[#0E2A47]/10 bg-[#0B1D2A] lg:hidden">
+                <ProfesionalSidebar profile={profile} active="Página pública" />
+              </div>
+            ) : null}
+            <main className="mx-auto w-full max-w-[1400px] px-4 py-8 sm:px-6 lg:px-10">
+              <div className="space-y-6">
             <div className="rounded-[28px] border border-white/70 bg-white/95 p-6 shadow-[0_28px_70px_rgba(15,23,42,0.18)]">
               <div className="flex flex-wrap items-center justify-between gap-4">
                 <div>
@@ -512,10 +529,11 @@ export default function ProfesionalPublicPageBuilder() {
                 </div>
               </div>
             )}
+              </div>
+            </main>
           </div>
-        </section>
-      </main>
-      <Footer />
+        </div>
+      </div>
     </div>
   );
 }

@@ -9,12 +9,12 @@ type MenuItem = {
 };
 
 const menuItems: MenuItem[] = [
-  { label: 'Perfil del negocio', href: '/profesional/perfil-negocio' },
+  { label: 'Perfil del negocio', href: '/profesional/dashboard/perfil-negocio' },
   { label: 'Agenda', href: '/profesional/dashboard' },
-  { label: 'Página pública', href: '/profesional/pagina-publica' },
-  { label: 'Horarios de trabajo', href: '/profesional/horarios' },
-  { label: 'Servicios', href: '/profesional/servicios' },
-  { label: 'Reservas', href: '/profesional/reservas' },
+  { label: 'Página pública', href: '/profesional/dashboard/pagina-publica' },
+  { label: 'Horarios de trabajo', href: '/profesional/dashboard/horarios' },
+  { label: 'Servicios', href: '/profesional/dashboard/servicios' },
+  { label: 'Reservas', href: '/profesional/dashboard/reservas' },
 ];
 
 type SidebarProps = {

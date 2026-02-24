@@ -61,6 +61,65 @@ const parseTimeToMinutes = (value: string) => {
   return hours * 60 + minutes;
 };
 
+const parseDurationToMinutes = (value?: string) => {
+  if (!value) return null;
+  const normalized = value.toLowerCase();
+  const hourMatch = normalized.match(/(\d+)\s*(h|hr|hora)/);
+  const minMatch = normalized.match(/(\d+)\s*(m|min)/);
+  let minutes = 0;
+  if (hourMatch) minutes += Number(hourMatch[1]) * 60;
+  if (minMatch) minutes += Number(minMatch[1]);
+  if (!hourMatch && !minMatch) {
+    const numeric = Number(normalized.replace(/[^0-9]/g, ''));
+    if (Number.isFinite(numeric)) minutes = numeric;
+  }
+  return minutes > 0 ? minutes : null;
+};
+
+const calendarStartHour = 8;
+const calendarEndHour = 20;
+const hourRowHeight = 56;
+const calendarTotalMinutes = (calendarEndHour - calendarStartHour) * 60;
+const calendarHeight = (calendarEndHour - calendarStartHour) * hourRowHeight;
+const hourSlots = Array.from(
+  { length: calendarEndHour - calendarStartHour + 1 },
+  (_, index) => calendarStartHour + index,
+);
+const formatHourLabel = (hour: number) =>
+  `${String(hour).padStart(2, '0')}:00`;
+const formatMinutesLabel = (minutes: number) => {
+  const safeMinutes = Math.max(0, Math.round(minutes));
+  const hours = Math.floor(safeMinutes / 60) % 24;
+  const mins = safeMinutes % 60;
+  return `${String(hours).padStart(2, '0')}:${String(mins).padStart(2, '0')}`;
+};
+
+const reservationStatusPalette = {
+  confirmed: {
+    line: 'bg-[#1FB6A6]',
+    badge: 'bg-[#1FB6A6]/10 text-[#1FB6A6]',
+  },
+  pending: {
+    line: 'bg-[#F59E0B]',
+    badge: 'bg-[#F59E0B]/10 text-[#F59E0B]',
+  },
+  cancelled: {
+    line: 'bg-[#EF4444]',
+    badge: 'bg-[#EF4444]/10 text-[#EF4444]',
+  },
+  completed: {
+    line: 'bg-[#0B1D2A]',
+    badge: 'bg-[#0B1D2A]/10 text-[#0B1D2A]',
+  },
+};
+
+const reservationStatusLabel = {
+  confirmed: 'Confirmada',
+  pending: 'Pendiente',
+  cancelled: 'Cancelada',
+  completed: 'Completada',
+};
+
 export default function ProfesionalDashboardPage() {
   const { profile } = useProfessionalProfile();
   const [reservations, setReservations] = useState<ProfessionalReservation[]>([]);
@@ -275,13 +334,13 @@ export default function ProfesionalDashboardPage() {
                     </div>
                     <div className="flex flex-wrap gap-2">
                       <Link
-                        href="/profesional/reservas"
+                        href="/profesional/dashboard/reservas"
                         className="rounded-full border border-[#E2E7EC] bg-white px-4 py-2 text-sm font-semibold text-[#0E2A47] transition hover:-translate-y-0.5 hover:shadow-md"
                       >
                         Ver lista de reservas
                       </Link>
                       <Link
-                        href="/profesional/reservas#nueva-reserva"
+                        href="/profesional/dashboard/reservas#nueva-reserva"
                         className="rounded-full bg-[#0B1D2A] px-4 py-2 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:shadow-md"
                       >
                         Crear reserva
@@ -309,19 +368,22 @@ export default function ProfesionalDashboardPage() {
                   </div>
                 </section>
 
-                <section className="bg-white/90 px-4 py-6 sm:px-6 lg:px-10">
+                <section className="rounded-[28px] border border-white/70 bg-white/95 p-6 shadow-[0_18px_40px_rgba(15,23,42,0.08)]">
                   <div className="flex flex-wrap items-center justify-between gap-4">
                     <div>
                       <p className="text-[0.65rem] uppercase tracking-[0.35em] text-[#94A3B8]">
                         Agenda
                       </p>
                       <h2 className="mt-2 text-xl font-semibold text-[#0E2A47]">
-                        {calendarView === 'week' ? 'Calendario semanal' : 'Calendario mensual'}
+                        {calendarView === 'week' ? 'Semana actual' : 'Calendario mensual'}
                       </h2>
+                      <p className="mt-1 text-sm text-[#64748B]">
+                        {calendarView === 'week' ? calendarWeekLabel : monthLabel}
+                      </p>
                     </div>
 
                     <div className="flex flex-wrap items-center gap-2">
-                      <div className="flex rounded-full border border-[#E2E7EC] bg-white p-0.5">
+                      <div className="flex rounded-full border border-[#E2E7EC] bg-white p-0.5 shadow-sm">
                         <button
                           type="button"
                           onClick={() => handleSetView('week')}
@@ -346,7 +408,7 @@ export default function ProfesionalDashboardPage() {
                         </button>
                       </div>
 
-                      <div className="flex items-center gap-0.5 rounded-full border border-[#E2E7EC] bg-white px-1 py-1">
+                      <div className="flex items-center gap-0.5 rounded-full border border-[#E2E7EC] bg-white px-1 py-1 shadow-sm">
                         <button
                           type="button"
                           onClick={handlePrev}
@@ -377,70 +439,161 @@ export default function ProfesionalDashboardPage() {
                   </div>
 
                   {calendarView === 'week' ? (
-                    <div className="mt-6 border border-[#E2E7EC] bg-white">
-                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-7">
-                        {weekDays.map((day, index) => {
-                          const dayReservations = reservationsByDate.get(day.dateKey) ?? [];
-                          const isToday = day.dateKey === todayKey;
-                          const isLast = index === weekDays.length - 1;
-                          return (
-                            <div
-                              key={day.dateKey}
-                              className={`flex min-h-[240px] flex-col p-4 ${
-                                index < weekDays.length - 1
-                                  ? 'border-b border-[#E2E7EC] lg:border-b-0'
-                                  : ''
-                              } ${!isLast ? 'lg:border-r lg:border-[#E2E7EC]' : ''} ${
-                                isToday ? 'bg-[#F6FFFD]' : ''
-                              }`}
-                            >
-                              <div className="flex items-center justify-between text-xs font-semibold text-[#64748B]">
-                                <span className="text-[0.6rem] uppercase tracking-[0.3em]">
-                                  {dayLabelsShort[day.dayKey]}
-                                </span>
-                                <span className="text-sm font-semibold text-[#0E2A47]">
-                                  {day.dayNumber}
-                                  <span className="ml-1 text-[0.6rem] uppercase text-[#94A3B8]">
-                                    {day.monthLabel}
+                    <div className="mt-6 overflow-x-auto">
+                      <div className="min-w-[980px] rounded-[24px] border border-[#E2E7EC] bg-white shadow-[0_20px_45px_rgba(15,23,42,0.08)]">
+                        <div className="flex border-b border-[#E2E7EC] bg-[#F9FBFD]">
+                          <div className="sticky left-0 z-20 w-20 shrink-0 bg-[#F9FBFD] px-4 py-3 text-[0.6rem] uppercase tracking-[0.3em] text-[#94A3B8]">
+                            Hora
+                          </div>
+                          <div className="grid flex-1 grid-cols-7">
+                            {weekDays.map((day, index) => {
+                              const isToday = day.dateKey === todayKey;
+                              return (
+                                <div
+                                  key={day.dateKey}
+                                  className={`flex items-center justify-between px-4 py-3 text-xs ${
+                                    index < weekDays.length - 1 ? 'border-r border-[#E2E7EC]' : ''
+                                  } ${isToday ? 'bg-[#F2FFFB]' : ''}`}
+                                >
+                                  <span className="text-[0.6rem] uppercase tracking-[0.3em] text-[#94A3B8]">
+                                    {dayLabelsShort[day.dayKey]}
                                   </span>
-                                </span>
-                              </div>
+                                  <span className="text-sm font-semibold text-[#0E2A47]">
+                                    {day.dayNumber}
+                                    <span className="ml-1 text-[0.6rem] uppercase text-[#94A3B8]">
+                                      {day.monthLabel}
+                                    </span>
+                                  </span>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
 
-                              <div className="mt-3 flex flex-1 flex-col gap-2">
-                                {dayReservations.length === 0 ? (
-                                  <div className="border border-dashed border-[#CBD5F5] bg-[#F8FAFC] px-3 py-2 text-xs text-[#94A3B8]">
-                                    Sin reservas
+                        <div className="flex">
+                          <div className="sticky left-0 z-10 w-20 shrink-0 border-r border-[#E2E7EC] bg-white shadow-[4px_0_12px_rgba(15,23,42,0.06)]">
+                            <div className="relative" style={{ height: calendarHeight }}>
+                              {hourSlots.map((hour, index) => {
+                                const top = Math.min(
+                                  index * hourRowHeight,
+                                  calendarHeight - 14,
+                                );
+                                return (
+                                  <div
+                                    key={`hour-${hour}`}
+                                    className="absolute right-3 text-[0.65rem] font-medium text-[#94A3B8]"
+                                    style={{ top }}
+                                  >
+                                    {formatHourLabel(hour)}
                                   </div>
-                                ) : (
-                                  dayReservations.map((reservation) => (
-                                    <div
-                                      key={reservation.id}
-                                      className="border border-[#E2E7EC] bg-[#F7F9FB] px-3 py-2 text-xs text-[#0E2A47]"
-                                    >
-                                      <div className="flex items-center justify-between gap-2">
-                                        <span className="font-semibold">
-                                          {reservation.time || '--:--'}
-                                        </span>
-                                        <span className="text-[0.7rem] font-semibold text-[#1FB6A6]">
-                                          {reservation.serviceName || 'Servicio'}
-                                        </span>
-                                      </div>
-                                      {reservation.clientName ? (
-                                        <p className="mt-1 text-[0.7rem] text-[#64748B]">
-                                          {reservation.clientName}
-                                        </p>
-                                      ) : null}
-                                    </div>
-                                  ))
-                                )}
-                              </div>
+                                );
+                              })}
                             </div>
-                          );
-                        })}
+                          </div>
+
+                          <div className="grid flex-1 grid-cols-7">
+                            {weekDays.map((day, index) => {
+                              const dayReservations = reservationsByDate.get(day.dateKey) ?? [];
+                              const isToday = day.dateKey === todayKey;
+                              const baseBackground = index % 2 === 0 ? 'bg-white' : 'bg-[#FBFCFD]';
+                              return (
+                                <div
+                                  key={day.dateKey}
+                                  className={`relative ${
+                                    index < weekDays.length - 1 ? 'border-r border-[#E2E7EC]' : ''
+                                  } ${isToday ? 'bg-[#F2FFFB]' : baseBackground}`}
+                                  style={{ height: calendarHeight }}
+                                >
+                                  <div className="pointer-events-none absolute inset-0">
+                                    {hourSlots.slice(0, -1).map((hour) => (
+                                      <div
+                                        key={`${day.dateKey}-${hour}`}
+                                        className="border-b border-[#EEF2F6]"
+                                        style={{ height: hourRowHeight }}
+                                      />
+                                    ))}
+                                  </div>
+
+                                  {dayReservations.length === 0 ? (
+                                    <div className="absolute left-3 top-3 rounded-full border border-dashed border-[#E2E7EC] bg-white px-3 py-1 text-[0.65rem] text-[#94A3B8]">
+                                      Sin reservas
+                                    </div>
+                                  ) : null}
+
+                                  {dayReservations.map((reservation) => {
+                                    if (!reservation.time) return null;
+                                    const startMinutes = parseTimeToMinutes(reservation.time);
+                                    if (startMinutes === null) return null;
+                                    const offsetMinutes =
+                                      startMinutes - calendarStartHour * 60;
+                                    if (offsetMinutes < 0 || offsetMinutes > calendarTotalMinutes) {
+                                      return null;
+                                    }
+                                    const durationMinutes =
+                                      parseDurationToMinutes(reservation.duration) ?? 30;
+                                    const clampedMinutes = Math.min(
+                                      durationMinutes,
+                                      calendarTotalMinutes - offsetMinutes,
+                                    );
+                                    const endMinutes = startMinutes + durationMinutes;
+                                    const timeRangeLabel = `${reservation.time} – ${formatMinutesLabel(endMinutes)}`;
+                                    const top = (offsetMinutes / 60) * hourRowHeight;
+                                    const height = Math.max(
+                                      (clampedMinutes / 60) * hourRowHeight,
+                                      28,
+                                    );
+                                    const statusKey = reservation.status ?? 'confirmed';
+                                    const palette =
+                                      reservationStatusPalette[
+                                        statusKey as keyof typeof reservationStatusPalette
+                                      ] ?? reservationStatusPalette.confirmed;
+                                    const statusText =
+                                      reservationStatusLabel[
+                                        statusKey as keyof typeof reservationStatusLabel
+                                      ] ?? reservationStatusLabel.confirmed;
+
+                                    return (
+                                      <div
+                                        key={reservation.id}
+                                        className="absolute left-3 right-3"
+                                        style={{ top, height }}
+                                      >
+                                        <div className="group relative flex h-full flex-col justify-between rounded-[12px] border border-[#E2E7EC] bg-white px-3 py-2 text-xs text-[#0E2A47] shadow-[0_6px_12px_rgba(15,23,42,0.08)] transition hover:-translate-y-0.5 hover:shadow-[0_12px_20px_rgba(15,23,42,0.12)]">
+                                          <span
+                                            className={`absolute left-0 top-0 h-full w-1 rounded-l-[12px] ${palette.line}`}
+                                          />
+                                          <div className="flex items-center justify-between gap-2">
+                                            <span className="text-xs font-semibold">
+                                              {timeRangeLabel}
+                                            </span>
+                                            <span
+                                              className={`rounded-full px-2 py-0.5 text-[0.6rem] font-semibold ${palette.badge}`}
+                                            >
+                                              {statusText}
+                                            </span>
+                                          </div>
+                                          <p className="mt-1 text-sm font-medium text-[#0E2A47]">
+                                            {reservation.serviceName || 'Servicio'}
+                                          </p>
+                                          {reservation.clientName ? (
+                                            <p className="text-[0.7rem] text-[#94A3B8]">
+                                              {reservation.clientName}
+                                            </p>
+                                          ) : (
+                                            <span className="text-[0.65rem] text-[#CBD5E1]">
+                                              Cliente pendiente
+                                            </span>
+                                          )}
+                                        </div>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
                       </div>
-                      <p className="border-t border-[#E2E7EC] py-3 text-center text-xs uppercase tracking-[0.4em] text-[#94A3B8]">
-                        {calendarWeekLabel}
-                      </p>
                     </div>
                   ) : (
                     <div className="mt-6 border border-[#E2E7EC] bg-white">

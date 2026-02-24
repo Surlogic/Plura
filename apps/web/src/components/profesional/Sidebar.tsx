@@ -2,7 +2,13 @@ import Link from 'next/link';
 import { useMemo } from 'react';
 import type { ProfessionalProfile } from '@/types/professional';
 
-const menuItems = [
+type MenuItem = {
+  label: string;
+  href: string;
+  disabled?: boolean; 
+};
+
+const menuItems: MenuItem[] = [
   { label: 'Perfil del negocio', href: '/profesional/perfil-negocio' },
   { label: 'Agenda', href: '/profesional/dashboard' },
   { label: 'Página pública', href: '/profesional/pagina-publica' },

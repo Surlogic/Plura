@@ -6,9 +6,9 @@ const menuItems = [
   { label: 'Perfil del negocio', href: '/profesional/perfil-negocio' },
   { label: 'Agenda', href: '/profesional/dashboard' },
   { label: 'Página pública', href: '/profesional/pagina-publica' },
-  { label: 'Horarios de trabajo', href: '', disabled: true },
-  { label: 'Servicios', href: '', disabled: true },
-  { label: 'Reservas', href: '', disabled: true },
+  { label: 'Horarios de trabajo', href: '/profesional/horarios' },
+  { label: 'Servicios', href: '/profesional/servicios' },
+  { label: 'Reservas', href: '/profesional/reservas' },
 ];
 
 type SidebarProps = {

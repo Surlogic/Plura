@@ -5,15 +5,15 @@ export default function Footer() {
     <footer className="mt-16 border-t border-[#0E2A47]/10 bg-[#F4F6F8] text-[#0E2A47]">
       <div className="mx-auto grid w-full max-w-6xl gap-8 px-4 py-12 sm:grid-cols-2 lg:grid-cols-4">
         <div className="space-y-3">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-0">
             <Image
               src="/logo.png"
               alt="Plura"
-              width={40}
-              height={40}
-              className="h-10 w-10"
+              width={96}
+              height={96}
+              className="h-24 w-24 object-contain"
             />
-            <span className="logo-type text-lg">Plura</span>
+            <span className="-ml-4 logo-type text-3xl">Plura</span>
           </div>
           <p className="text-sm text-[#6B7280]">
             Tu próximo turno, en segundos.

@@ -37,9 +37,9 @@ export default function ProfesionalSidebar({ profile, active }: SidebarProps) {
   const displayMeta = profile?.rubro || profile?.email || 'Cuenta profesional';
 
   return (
-    <aside className="w-full shrink-0 bg-[#0B1D2A] p-5 text-white lg:fixed lg:left-0 lg:top-0 lg:h-screen lg:w-[280px] lg:overflow-y-auto lg:border-r lg:border-[#0E2A47]/20 lg:pt-24 lg:pb-10">
-      <div className="flex items-center gap-3 rounded-[18px] bg-white/10 p-3">
-        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-white/20 text-sm font-semibold">
+    <aside className="h-full bg-[#0B1D2A] p-5 text-white">
+      <div className="flex items-center gap-3 border-b border-white/10 pb-4">
+        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-white/15 text-sm font-semibold">
           {initials}
         </div>
         <div>
@@ -50,18 +50,18 @@ export default function ProfesionalSidebar({ profile, active }: SidebarProps) {
           <p className="text-xs text-white/60">{displayMeta}</p>
         </div>
       </div>
-      <p className="mt-6 text-[0.65rem] uppercase tracking-[0.35em] text-white/60">
+      <p className="mt-6 text-[0.65rem] uppercase tracking-[0.35em] text-white/50">
         Navegación
       </p>
       <nav className="mt-3 space-y-2 text-sm font-semibold">
         {menuItems.map((item) => {
           const isActive = item.label === active;
-          const className = `block w-full rounded-[16px] px-3 py-3 text-left transition ${
+          const className = `block w-full rounded-lg px-3 py-3 text-left transition ${
             isActive
-              ? 'bg-white text-[#0B1D2A] shadow-md'
+              ? 'bg-white text-[#0B1D2A]'
               : item.disabled
                 ? 'cursor-not-allowed bg-white/5 text-white/40'
-                : 'bg-white/10 text-white hover:bg-white/20'
+                : 'bg-white/5 text-white hover:bg-white/10'
           }`;
 
           if (!item.href || item.disabled) {
@@ -79,7 +79,7 @@ export default function ProfesionalSidebar({ profile, active }: SidebarProps) {
           );
         })}
       </nav>
-      <div className="mt-6 rounded-[18px] border border-white/10 bg-white/5 p-4 text-xs text-white/70">
+      <div className="mt-6 border-t border-white/10 pt-4 text-xs text-white/60">
         Tip: completá tu perfil para aparecer en las búsquedas destacadas.
       </div>
     </aside>

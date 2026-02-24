@@ -5,7 +5,10 @@ import Link from 'next/link';
 import Navbar from '@/components/shared/Navbar';
 import ProfesionalSidebar from '@/components/profesional/Sidebar';
 import { useProfessionalProfile } from '@/hooks/useProfessionalProfile';
-import { loadProfessionalReservations } from '@/lib/professionalReservations';
+import {
+  loadProfessionalReservations,
+  saveProfessionalReservations,
+} from '@/lib/professionalReservations';
 import { loadProfessionalSchedule } from '@/lib/professionalSchedule';
 import type {
   ProfessionalReservation,
@@ -13,6 +16,7 @@ import type {
   WorkDayKey,
   WorkDaySchedule,
   WorkShift,
+  ReservationStatus,
 } from '@/types/professional';
 
 const dayLabelsShort: Record<WorkDayKey, string> = {
@@ -199,12 +203,24 @@ export default function ProfesionalDashboardPage() {
   const [weekOffset, setWeekOffset] = useState(0);
   const [monthOffset, setMonthOffset] = useState(0);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [selectedReservation, setSelectedReservation] =
+    useState<ProfessionalReservation | null>(null);
+  const [drawerVisible, setDrawerVisible] = useState(false);
 
   useEffect(() => {
     if (!profile?.id) return;
     setReservations(loadProfessionalReservations(profile.id));
     setSchedule(loadProfessionalSchedule(profile.id, { allowFallback: false }));
   }, [profile?.id]);
+
+  useEffect(() => {
+    if (selectedReservation) {
+      const frame = requestAnimationFrame(() => setDrawerVisible(true));
+      return () => cancelAnimationFrame(frame);
+    }
+    setDrawerVisible(false);
+    return undefined;
+  }, [selectedReservation]);
 
   const today = new Date();
   const todayKey = toLocalDateKey(today);
@@ -369,6 +385,27 @@ export default function ProfesionalDashboardPage() {
   };
   const handleToggleMenu = () => {
     setIsMenuOpen((prev) => !prev);
+  };
+
+  const handleOpenReservation = (reservation: ProfessionalReservation) => {
+    setSelectedReservation(reservation);
+  };
+
+  const handleCloseReservation = () => {
+    setDrawerVisible(false);
+    window.setTimeout(() => {
+      setSelectedReservation(null);
+    }, 200);
+  };
+
+  const handleUpdateReservationStatus = (status: ReservationStatus) => {
+    if (!selectedReservation || !profile?.id) return;
+    const nextReservations = reservations.map((item) =>
+      item.id === selectedReservation.id ? { ...item, status } : item,
+    );
+    setReservations(nextReservations);
+    saveProfessionalReservations(profile.id, nextReservations);
+    setSelectedReservation((prev) => (prev ? { ...prev, status } : prev));
   };
 
   return (
@@ -611,6 +648,8 @@ export default function ProfesionalDashboardPage() {
                                       (clampedMinutes / 60) * hourRowHeight,
                                       28,
                                     );
+                                    const showClient = height > 60;
+                                    const isCompact = height < 50;
                                     const gap = 8;
                                     const columns = Math.max(layout.columns, 1);
                                     const width = `calc((100% - ${(columns - 1) * gap}px) / ${columns})`;
@@ -626,39 +665,36 @@ export default function ProfesionalDashboardPage() {
                                       ] ?? reservationStatusLabel.confirmed;
 
                                     return (
-                                      <div
+                                      <button
+                                        type="button"
                                         key={layout.reservation.id}
-                                        className="absolute"
+                                        className="absolute text-left"
                                         style={{ top, height, width, left }}
+                                        onClick={() => handleOpenReservation(layout.reservation)}
                                       >
-                                        <div className="group relative flex h-full flex-col justify-between rounded-[12px] border border-[#E2E7EC] bg-white px-3 py-2 text-xs text-[#0E2A47] shadow-[0_6px_12px_rgba(15,23,42,0.08)] transition hover:-translate-y-0.5 hover:shadow-[0_12px_20px_rgba(15,23,42,0.12)]">
+                                        <div className="group relative flex h-full flex-col justify-between overflow-hidden rounded-[10px] border border-[#E2E7EC] bg-white px-2 py-1.5 text-xs text-[#0E2A47] shadow-[0_2px_6px_rgba(15,23,42,0.08)] transition hover:-translate-y-0.5 hover:shadow-[0_6px_12px_rgba(15,23,42,0.12)]">
                                           <span
-                                            className={`absolute left-0 top-0 h-full w-1 rounded-l-[12px] ${palette.line}`}
+                                            className={`absolute left-0 top-0 h-full w-1 rounded-l-[10px] ${palette.line}`}
+                                          />
+                                          <span
+                                            className={`absolute right-2 top-2 h-2 w-2 rounded-full ${palette.line}`}
+                                            aria-hidden="true"
                                           />
                                           <div className="flex items-center justify-between gap-2">
-                                            <span className="text-xs font-semibold">
+                                            <span className="text-[0.65rem] font-medium text-[#64748B]">
                                               {timeRangeLabel}
                                             </span>
-                                            <span
-                                              className={`rounded-full px-2 py-0.5 text-[0.6rem] font-semibold ${palette.badge}`}
-                                            >
-                                              {statusText}
-                                            </span>
                                           </div>
-                                          <p className="mt-1 text-sm font-medium text-[#0E2A47]">
+                                          <p className={`mt-0.5 font-semibold text-[#0E2A47] ${isCompact ? 'text-xs' : 'text-sm'}`}>
                                             {layout.reservation.serviceName || 'Servicio'}
                                           </p>
-                                          {layout.reservation.clientName ? (
+                                          {showClient && layout.reservation.clientName ? (
                                             <p className="text-[0.7rem] text-[#94A3B8]">
                                               {layout.reservation.clientName}
                                             </p>
-                                          ) : (
-                                            <span className="text-[0.65rem] text-[#CBD5E1]">
-                                              Cliente pendiente
-                                            </span>
-                                          )}
+                                          ) : null}
                                         </div>
-                                      </div>
+                                      </button>
                                     );
                                   })}
                                 </div>
@@ -720,6 +756,123 @@ export default function ProfesionalDashboardPage() {
           </div>
         </div>
       </div>
+      {selectedReservation ? (
+        <div className="fixed inset-0 z-50 flex justify-end">
+          <button
+            type="button"
+            className={`absolute inset-0 bg-[#0B1D2A]/40 backdrop-blur-sm transition-opacity duration-200 ${
+              drawerVisible ? 'opacity-100' : 'pointer-events-none opacity-0'
+            }`}
+            onClick={handleCloseReservation}
+            aria-label="Cerrar detalle de reserva"
+          />
+          <aside
+            className={`relative flex h-full w-full max-w-[420px] flex-col overflow-y-auto bg-white p-6 shadow-[-12px_0_40px_rgba(15,23,42,0.18)] transition-transform duration-300 ${
+              drawerVisible ? 'translate-x-0' : 'translate-x-full'
+            }`}
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-xs uppercase tracking-[0.3em] text-[#94A3B8]">
+                  Reserva
+                </p>
+                <h3 className="mt-2 text-2xl font-semibold text-[#0E2A47]">
+                  {selectedReservation.serviceName || 'Servicio'}
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={handleCloseReservation}
+                className="rounded-full border border-[#E2E7EC] px-3 py-1 text-xs font-semibold text-[#64748B] transition hover:bg-[#F8FAFC]"
+              >
+                Cerrar
+              </button>
+            </div>
+
+            <div className="mt-4 flex flex-wrap items-center gap-2">
+              <span
+                className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                  reservationStatusPalette[
+                    (selectedReservation.status ?? 'confirmed') as keyof typeof reservationStatusPalette
+                  ]?.badge ?? reservationStatusPalette.confirmed.badge
+                }`}
+              >
+                {reservationStatusLabel[
+                  (selectedReservation.status ?? 'confirmed') as keyof typeof reservationStatusLabel
+                ] ?? reservationStatusLabel.confirmed}
+              </span>
+              <span className="text-xs text-[#64748B]">
+                {selectedReservation.time
+                  ? `${selectedReservation.time} – ${formatMinutesLabel(
+                      parseTimeToMinutes(selectedReservation.time) ?? 0 +
+                        (parseDurationToMinutes(selectedReservation.duration) ?? 30),
+                    )}`
+                  : 'Horario pendiente'}
+              </span>
+            </div>
+
+            <div className="mt-6 space-y-4 text-sm text-[#64748B]">
+              <div>
+                <p className="text-xs uppercase tracking-[0.3em] text-[#94A3B8]">
+                  Cliente
+                </p>
+                <p className="mt-1 text-base font-semibold text-[#0E2A47]">
+                  {selectedReservation.clientName || 'Cliente sin nombre'}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs uppercase tracking-[0.3em] text-[#94A3B8]">
+                  Precio
+                </p>
+                <p className="mt-1 text-base font-semibold text-[#0E2A47]">
+                  {selectedReservation.price
+                    ? selectedReservation.price.includes('$')
+                      ? selectedReservation.price
+                      : `$${selectedReservation.price}`
+                    : 'A definir'}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs uppercase tracking-[0.3em] text-[#94A3B8]">
+                  Notas
+                </p>
+                <p className="mt-1 text-sm text-[#64748B]">
+                  {selectedReservation.notes || 'Sin notas adicionales.'}
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-8 grid gap-3">
+              <button
+                type="button"
+                onClick={() => handleUpdateReservationStatus('confirmed')}
+                className="rounded-full bg-[#1FB6A6] px-4 py-2 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:shadow-md"
+              >
+                Confirmar
+              </button>
+              <button
+                type="button"
+                onClick={() => handleUpdateReservationStatus('cancelled')}
+                className="rounded-full border border-[#FCA5A5] bg-[#FEF2F2] px-4 py-2 text-sm font-semibold text-[#DC2626] transition hover:-translate-y-0.5 hover:shadow-md"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                className="rounded-full border border-[#E2E7EC] bg-white px-4 py-2 text-sm font-semibold text-[#0E2A47] transition hover:-translate-y-0.5 hover:shadow-md"
+              >
+                Editar
+              </button>
+              <Link
+                href="/profesional/dashboard/reservas"
+                className="rounded-full border border-[#E2E7EC] bg-[#F8FAFC] px-4 py-2 text-center text-sm font-semibold text-[#0E2A47] transition hover:-translate-y-0.5 hover:shadow-md"
+              >
+                Ver en reservas
+              </Link>
+            </div>
+          </aside>
+        </div>
+      ) : null}
     </div>
   );
 }

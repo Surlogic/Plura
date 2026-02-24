@@ -31,7 +31,7 @@ export default function ProfesionalSidebar({ profile, active }: SidebarProps) {
   const displayMeta = profile?.rubro || profile?.email || 'Cuenta profesional';
 
   return (
-    <aside className="w-72 shrink-0 rounded-[26px] bg-[#0B1D2A] p-5 text-white shadow-[0_20px_60px_rgba(4,16,32,0.35)]">
+    <aside className="w-full shrink-0 bg-[#0B1D2A] p-5 text-white lg:fixed lg:left-0 lg:top-0 lg:h-screen lg:w-[280px] lg:overflow-y-auto lg:border-r lg:border-[#0E2A47]/20 lg:pt-24 lg:pb-10">
       <div className="flex items-center gap-3 rounded-[18px] bg-white/10 p-3">
         <div className="flex h-12 w-12 items-center justify-center rounded-full bg-white/20 text-sm font-semibold">
           {initials}
@@ -73,7 +73,7 @@ export default function ProfesionalSidebar({ profile, active }: SidebarProps) {
           );
         })}
       </nav>
-      <div className="mt-6 rounded-[18px] bg-white/10 p-4 text-xs text-white/70">
+      <div className="mt-6 rounded-[18px] border border-white/10 bg-white/5 p-4 text-xs text-white/70">
         Tip: completá tu perfil para aparecer en las búsquedas destacadas.
       </div>
     </aside>

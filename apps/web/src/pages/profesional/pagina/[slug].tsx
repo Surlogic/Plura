@@ -347,7 +347,7 @@ export default function ProfesionalDetailPage() {
     >
       {isPreview ? null : <Navbar />}
       <main
-        className={`mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8 ${
+        className={`mx-auto w-full max-w-[1400px] px-4 sm:px-6 lg:px-10 ${
           isPreview ? 'pb-6 pt-6' : 'pb-24 pt-10'
         }`}
       >

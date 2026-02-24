@@ -66,7 +66,7 @@ export default function ProfesionalBusinessProfilePage() {
     <div className="min-h-screen bg-[radial-gradient(circle_at_top,#FFFFFF_0%,#EEF2F6_45%,#D3D7DC_100%)] text-[#0E2A47]">
       <Navbar />
       <main className="mx-auto w-full max-w-[1400px] px-4 sm:px-6 lg:px-10 pb-24 pt-10">
-        <section className="flex flex-row items-start gap-6">
+        <section className="flex flex-col lg:flex-row items-start gap-6 lg:pl-[300px]">
           <ProfesionalSidebar profile={profile} active="Perfil del negocio" />
 
           <div className="min-w-0 flex-1 space-y-6">

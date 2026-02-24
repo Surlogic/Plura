@@ -1,9 +1,26 @@
+'use client';
+
 import Image from 'next/image';
+import { useRouter } from 'next/router';
 
 export default function Footer() {
+  const router = useRouter();
+  const pathForCheck =
+    typeof window !== 'undefined'
+      ? window.location.pathname
+      : router.pathname || '';
+  const isProfessionalShell =
+    pathForCheck.startsWith('/profesional') &&
+    !pathForCheck.startsWith('/profesional/pagina') &&
+    !pathForCheck.startsWith('/profesional/auth');
+
   return (
-    <footer className="mt-16 border-t border-[#0E2A47]/10 bg-[#F4F6F8] text-[#0E2A47]">
-      <div className="mx-auto grid w-full max-w-6xl gap-8 px-4 py-12 sm:grid-cols-2 lg:grid-cols-4">
+    <footer
+      className={`mt-16 border-t border-[#0E2A47]/10 bg-[#F4F6F8] text-[#0E2A47] ${
+        isProfessionalShell ? 'lg:ml-[280px] lg:w-[calc(100%-280px)]' : ''
+      }`}
+    >
+      <div className="mx-auto grid w-full max-w-[1400px] gap-8 px-4 py-12 sm:grid-cols-2 lg:grid-cols-4 sm:px-6 lg:px-10">
         <div className="space-y-3">
           <div className="flex items-center gap-0">
             <Image

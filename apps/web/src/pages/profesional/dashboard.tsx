@@ -101,6 +101,8 @@ export default function ProfesionalDashboardPage() {
         dayKey,
         dateKey: toLocalDateKey(date),
         label: `${dayLabelsShort[dayKey]} ${date.getDate()}`,
+        dayNumber: date.getDate(),
+        monthLabel: monthNamesShort[date.getMonth()],
       };
     });
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -240,7 +242,7 @@ export default function ProfesionalDashboardPage() {
     <div className="min-h-screen bg-[radial-gradient(circle_at_top,#FFFFFF_0%,#EEF2F6_45%,#D3D7DC_100%)] text-[#0E2A47]">
       <Navbar />
       <main className="mx-auto w-full max-w-[1400px] px-4 sm:px-6 lg:px-10 pb-24 pt-10">
-        <section className="flex flex-row items-start gap-6">
+        <section className="flex flex-col lg:flex-row items-start gap-6 lg:pl-[300px]">
           <ProfesionalSidebar profile={profile} active="Agenda" />
           <div className="min-w-0 flex-1 space-y-6">
             <div className="rounded-[28px] border border-white/70 bg-white/95 p-6 shadow-[0_28px_70px_rgba(15,23,42,0.18)]">
@@ -358,42 +360,47 @@ export default function ProfesionalDashboardPage() {
 
               {calendarView === 'week' ? (
                 <div className="mt-6 rounded-[24px] border border-[#E2E7EC] bg-[#F7F9FB] p-4">
-                  <div className="grid grid-cols-7 gap-3 text-center text-xs font-semibold text-[#64748B]">
-                    {weekDays.map((day) => (
-                      <div
-                        key={day.dateKey}
-                        className={`rounded-[12px] py-2 shadow-sm ${
-                          day.dateKey === todayKey
-                            ? 'bg-[#0B1D2A] text-white'
-                            : 'bg-white'
-                        }`}
-                      >
-                        {day.label}
-                      </div>
-                    ))}
-                  </div>
-                  <div className="mt-4 grid grid-cols-7 gap-3">
+                  <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-7">
                     {weekDays.map((day) => {
                       const dayReservations = reservationsByDate.get(day.dateKey) ?? [];
+                      const isToday = day.dateKey === todayKey;
                       return (
                         <div
                           key={day.dateKey}
-                          className={`min-h-[220px] rounded-[18px] border p-3 ${
-                            day.dateKey === todayKey
+                          className={`flex min-h-[240px] flex-col rounded-[20px] border p-3 ${
+                            isToday
                               ? 'border-[#1FB6A6]/30 bg-[#EDFAF8]'
                               : 'border-[#E2E7EC] bg-white'
                           }`}
                         >
-                          {dayReservations.length === 0 ? (
-                            <div className="rounded-[12px] border border-dashed border-[#CBD5F5] bg-[#F8FAFC] px-3 py-3 text-xs text-[#94A3B8]">
-                              Sin reservas
-                            </div>
-                          ) : (
-                            <div className="space-y-3">
-                              {dayReservations.map((reservation) => (
+                          <div
+                            className={`flex items-center justify-between rounded-[14px] px-3 py-2 text-xs font-semibold ${
+                              isToday
+                                ? 'bg-[#0B1D2A] text-white'
+                                : 'bg-[#F1F5F9] text-[#64748B]'
+                            }`}
+                          >
+                            <span className="text-[0.6rem] uppercase tracking-[0.3em]">
+                              {dayLabelsShort[day.dayKey]}
+                            </span>
+                            <span className="text-sm font-semibold">
+                              {day.dayNumber}
+                              <span className={`ml-1 text-[0.6rem] uppercase ${isToday ? 'text-white/70' : 'text-[#94A3B8]'}`}>
+                                {day.monthLabel}
+                              </span>
+                            </span>
+                          </div>
+
+                          <div className="mt-3 flex flex-1 flex-col gap-2">
+                            {dayReservations.length === 0 ? (
+                              <div className="rounded-[12px] border border-dashed border-[#CBD5F5] bg-[#F8FAFC] px-3 py-2 text-xs text-[#94A3B8]">
+                                Sin reservas
+                              </div>
+                            ) : (
+                              dayReservations.map((reservation) => (
                                 <div
                                   key={reservation.id}
-                                  className="rounded-[12px] border border-[#E2E7EC] bg-[#F7F9FB] px-3 py-2 text-xs text-[#0E2A47]"
+                                  className="rounded-[12px] border border-[#E2E7EC] bg-[#F7F9FB] px-3 py-2 text-xs text-[#0E2A47] shadow-sm"
                                 >
                                   <div className="flex items-center justify-between gap-2">
                                     <span className="font-semibold">
@@ -409,9 +416,9 @@ export default function ProfesionalDashboardPage() {
                                     </p>
                                   ) : null}
                                 </div>
-                              ))}
-                            </div>
-                          )}
+                              ))
+                            )}
+                          </div>
                         </div>
                       );
                     })}

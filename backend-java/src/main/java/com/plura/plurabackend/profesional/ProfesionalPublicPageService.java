@@ -59,8 +59,13 @@ public class ProfesionalPublicPageService {
             List<String> cleaned = request.getPhotos().stream()
                 .map(photo -> photo == null ? "" : photo.trim())
                 .filter(photo -> !photo.isBlank())
-                .toList();
-            user.setPublicPhotos(cleaned);
+                // Cambiar .toList() por .collect(Collectors.toList())
+                .collect(Collectors.toList()); 
+            
+            // Opcional y recomendado para Hibernate: en lugar de asignar una nueva lista,
+            // limpia y agrega los elementos a la lista existente administrada por Hibernate
+            user.getPublicPhotos().clear();
+            user.getPublicPhotos().addAll(cleaned);
         }
 
         ensureSlug(user);

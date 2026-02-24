@@ -24,7 +24,7 @@ const slugify = (value: string) =>
     .replace(/^-+|-+$/g, '');
 
 export default function ProfesionalPublicPageBuilder() {
-  const { profile } = useProfessionalProfile();
+  const { profile, isLoading, hasLoaded } = useProfessionalProfile();
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
   const [iframeReady, setIframeReady] = useState(false);
   const [origin, setOrigin] = useState('https://plura.com');
@@ -40,13 +40,14 @@ export default function ProfesionalPublicPageBuilder() {
     { id: 'photo-4', url: '' },
   ]);
 
-  const displayName = profile?.fullName || 'Profesional';
-  const displayCategory = profile?.rubro || 'Rubro';
+  const displayName = profile?.fullName || '';
+  const displayCategory = profile?.rubro || '';
   const slug = useMemo(
     () => slugify(displayName || 'profesional'),
     [displayName],
   );
   const publicUrl = `${origin}/profesional/pagina/${slug || 'profesional'}`;
+  const showSkeleton = !hasLoaded || (isLoading && !profile);
   const previewPayload = useMemo(
     () => ({
       type: 'plura-preview',
@@ -135,121 +136,150 @@ export default function ProfesionalPublicPageBuilder() {
               </div>
             </div>
 
-            <div className="grid gap-6 lg:grid-cols-[1.1fr,0.9fr]">
-              <div className="space-y-6">
-                <div className="rounded-[24px] border border-white/70 bg-white/95 p-5 shadow-[0_16px_36px_rgba(15,23,42,0.12)]">
-                  <h2 className="text-lg font-semibold text-[#0E2A47]">
-                    Frase principal
-                  </h2>
-                  <p className="mt-1 text-sm text-[#64748B]">
-                    La frase que aparece debajo del nombre en tu página pública.
-                  </p>
-                  <div className="mt-4">
-                    <input
-                      className={inputClassName}
-                      name="headline"
-                      value={form.headline}
-                      onChange={handleChange}
-                    />
+            {showSkeleton ? (
+              <div className="rounded-[28px] border border-white/70 bg-white/95 p-6 shadow-[0_18px_40px_rgba(15,23,42,0.12)]">
+                <div className="h-5 w-48 rounded-full bg-[#E2E7EC]" />
+                <div className="mt-4 space-y-3">
+                  <div className="h-10 w-full rounded-[14px] bg-[#F1F5F9]" />
+                  <div className="h-10 w-full rounded-[14px] bg-[#F1F5F9]" />
+                  <div className="h-10 w-full rounded-[14px] bg-[#F1F5F9]" />
+                </div>
+              </div>
+            ) : (
+              <div className="grid gap-6 lg:grid-cols-[1.1fr,0.9fr]">
+                <div className="space-y-6">
+                  <div className="rounded-[24px] border border-white/70 bg-white/95 p-5 shadow-[0_16px_36px_rgba(15,23,42,0.12)]">
+                    <h2 className="text-lg font-semibold text-[#0E2A47]">
+                      Frase principal
+                    </h2>
+                    <p className="mt-1 text-sm text-[#64748B]">
+                      La frase que aparece debajo del nombre en tu página pública.
+                    </p>
+                    <div className="mt-4">
+                      <input
+                        className={inputClassName}
+                        name="headline"
+                        value={form.headline}
+                        onChange={handleChange}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="rounded-[24px] border border-white/70 bg-white/95 p-5 shadow-[0_16px_36px_rgba(15,23,42,0.12)]">
+                    <div className="flex items-center justify-between">
+                      <h2 className="text-lg font-semibold text-[#0E2A47]">
+                        Fotos del negocio o trabajos
+                      </h2>
+                      <button
+                        type="button"
+                        onClick={addPhoto}
+                        className="rounded-full border border-[#E2E7EC] bg-white px-3 py-1 text-xs font-semibold text-[#0E2A47]"
+                      >
+                        Agregar foto
+                      </button>
+                    </div>
+                    <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                      {photos.map((photo, index) => (
+                        <div key={photo.id} className="space-y-2">
+                          <div
+                            className="h-28 rounded-[18px] border border-[#E2E7EC] bg-[#F4F6F8] bg-cover bg-center"
+                            style={{
+                              backgroundImage: photo.url
+                                ? `url(${photo.url})`
+                                : undefined,
+                            }}
+                          />
+                          <input
+                            className={inputClassName}
+                            placeholder="Pegá la URL de la foto"
+                            value={photo.url}
+                            onChange={(event) =>
+                              handlePhotoChange(index, event.target.value)
+                            }
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="rounded-[24px] border border-white/70 bg-white/95 p-5 shadow-[0_16px_36px_rgba(15,23,42,0.12)]">
+                    <h2 className="text-lg font-semibold text-[#0E2A47]">
+                      Sobre mí
+                    </h2>
+                    <p className="mt-1 text-sm text-[#64748B]">
+                      Contá quién sos y qué hacés.
+                    </p>
+                    <div className="mt-4">
+                      <textarea
+                        className={`${inputClassName} h-28 resize-none`}
+                        name="about"
+                        value={form.about}
+                        onChange={handleChange}
+                      />
+                    </div>
                   </div>
                 </div>
 
-                <div className="rounded-[24px] border border-white/70 bg-white/95 p-5 shadow-[0_16px_36px_rgba(15,23,42,0.12)]">
-                  <div className="flex items-center justify-between">
+                <div className="space-y-6">
+                  <div className="rounded-[24px] border border-white/70 bg-white/95 p-5 shadow-[0_16px_36px_rgba(15,23,42,0.12)]">
                     <h2 className="text-lg font-semibold text-[#0E2A47]">
-                      Fotos del negocio o trabajos
+                      URL pública
                     </h2>
-                    <button
-                      type="button"
-                      onClick={addPhoto}
-                      className="rounded-full border border-[#E2E7EC] bg-white px-3 py-1 text-xs font-semibold text-[#0E2A47]"
-                    >
-                      Agregar foto
-                    </button>
-                  </div>
-                  <div className="mt-4 grid gap-4 sm:grid-cols-2">
-                    {photos.map((photo, index) => (
-                      <div key={photo.id} className="space-y-2">
-                        <div
-                          className="h-28 rounded-[18px] border border-[#E2E7EC] bg-[#F4F6F8] bg-cover bg-center"
-                          style={{
-                            backgroundImage: photo.url ? `url(${photo.url})` : undefined,
-                          }}
-                        />
+                    <p className="mt-1 text-sm text-[#64748B]">
+                      Usá este link o QR para compartir tu página.
+                    </p>
+                    <div className="mt-4 grid gap-4">
+                      <div>
+                        <label className="text-sm font-medium text-[#0E2A47]">
+                          Slug
+                        </label>
+                        <input className={inputClassName} value={slug} readOnly />
+                      </div>
+                      <div>
+                        <label className="text-sm font-medium text-[#0E2A47]">
+                          Link
+                        </label>
                         <input
                           className={inputClassName}
-                          placeholder="Pegá la URL de la foto"
-                          value={photo.url}
-                          onChange={(event) => handlePhotoChange(index, event.target.value)}
+                          value={publicUrl}
+                          readOnly
                         />
                       </div>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="rounded-[24px] border border-white/70 bg-white/95 p-5 shadow-[0_16px_36px_rgba(15,23,42,0.12)]">
-                  <h2 className="text-lg font-semibold text-[#0E2A47]">Sobre mí</h2>
-                  <p className="mt-1 text-sm text-[#64748B]">
-                    Contá quién sos y qué hacés.
-                  </p>
-                  <div className="mt-4">
-                    <textarea
-                      className={`${inputClassName} h-28 resize-none`}
-                      name="about"
-                      value={form.about}
-                      onChange={handleChange}
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <div className="space-y-6">
-                <div className="rounded-[24px] border border-white/70 bg-white/95 p-5 shadow-[0_16px_36px_rgba(15,23,42,0.12)]">
-                  <h2 className="text-lg font-semibold text-[#0E2A47]">URL pública</h2>
-                  <p className="mt-1 text-sm text-[#64748B]">
-                    Usá este link o QR para compartir tu página.
-                  </p>
-                  <div className="mt-4 grid gap-4">
-                    <div>
-                      <label className="text-sm font-medium text-[#0E2A47]">Slug</label>
-                      <input className={inputClassName} value={slug} readOnly />
+                      <div className="flex flex-col items-center justify-center rounded-[18px] border border-[#E2E7EC] bg-white p-4">
+                        <img
+                          src={`https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(
+                            publicUrl,
+                          )}`}
+                          alt="QR de la página pública"
+                          className="h-32 w-32"
+                        />
+                        <p className="mt-2 text-xs text-[#94A3B8]">
+                          QR de tu página
+                        </p>
+                      </div>
                     </div>
-                    <div>
-                      <label className="text-sm font-medium text-[#0E2A47]">Link</label>
-                      <input className={inputClassName} value={publicUrl} readOnly />
-                    </div>
-                    <div className="flex flex-col items-center justify-center rounded-[18px] border border-[#E2E7EC] bg-white p-4">
-                      <img
-                        src={`https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(
-                          publicUrl,
-                        )}`}
-                        alt="QR de la página pública"
-                        className="h-32 w-32"
+                  </div>
+
+                  <div className="rounded-[28px] border border-white/70 bg-white/95 p-6 shadow-[0_18px_40px_rgba(15,23,42,0.12)]">
+                    <p className="text-[0.65rem] uppercase tracking-[0.35em] text-[#94A3B8]">
+                      Vista previa
+                    </p>
+                    <h2 className="mt-2 text-lg font-semibold text-[#0E2A47]">
+                      Página pública
+                    </h2>
+                    <div className="mt-5 overflow-hidden rounded-[22px] border border-[#E2E7EC] bg-white">
+                      <iframe
+                        ref={iframeRef}
+                        title="Vista previa página pública"
+                        src="/profesional/pagina/preview?preview=1"
+                        className="h-[720px] w-full"
+                        onLoad={() => setIframeReady(true)}
                       />
-                      <p className="mt-2 text-xs text-[#94A3B8]">QR de tu página</p>
                     </div>
                   </div>
                 </div>
-
-                <div className="rounded-[28px] border border-white/70 bg-white/95 p-6 shadow-[0_18px_40px_rgba(15,23,42,0.12)]">
-                  <p className="text-[0.65rem] uppercase tracking-[0.35em] text-[#94A3B8]">
-                    Vista previa
-                  </p>
-                  <h2 className="mt-2 text-lg font-semibold text-[#0E2A47]">
-                    Página pública
-                  </h2>
-                  <div className="mt-5 overflow-hidden rounded-[22px] border border-[#E2E7EC] bg-white">
-                    <iframe
-                      ref={iframeRef}
-                      title="Vista previa página pública"
-                      src="/profesional/pagina/preview?preview=1"
-                      className="h-[720px] w-full"
-                      onLoad={() => setIframeReady(true)}
-                    />
-                  </div>
-                </div>
               </div>
-            </div>
+            )}
           </div>
         </section>
       </main>

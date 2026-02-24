@@ -6,9 +6,11 @@ import Navbar from '@/components/shared/Navbar';
 import Footer from '@/components/shared/Footer';
 import api from '@/services/api';
 import { setProfessionalToken } from '@/services/session';
+import { useProfessionalProfileContext } from '@/context/ProfessionalProfileContext';
 
 export default function ProfesionalLoginPage() {
   const router = useRouter();
+  const { refreshProfile } = useProfessionalProfileContext();
   const [form, setForm] = useState({ email: '', password: '' });
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -31,6 +33,7 @@ export default function ProfesionalLoginPage() {
         password: form.password,
       });
       setProfessionalToken(response.data.accessToken);
+      await refreshProfile();
       router.push('/profesional/dashboard');
     } catch (error) {
       setErrorMessage('Credenciales inválidas o error de servidor.');

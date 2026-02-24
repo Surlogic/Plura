@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { useMemo } from 'react';
-import type { ProfessionalProfile } from '@/hooks/useProfessionalProfile';
+import type { ProfessionalProfile } from '@/types/professional';
 
 const menuItems = [
   { label: 'Perfil del negocio', href: '/profesional/perfil-negocio' },

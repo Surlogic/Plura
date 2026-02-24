@@ -1,58 +1,30 @@
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { useRouter } from 'next/router';
-import api from '@/services/api';
 import { getProfessionalToken } from '@/services/session';
-
-export type ProfessionalProfile = {
-  id: string;
-  fullName: string;
-  email: string;
-  phoneNumber: string;
-  rubro: string;
-  location: string | null;
-  tipoCliente: string;
-};
+import { useProfessionalProfileContext } from '@/context/ProfessionalProfileContext';
 
 export const useProfessionalProfile = () => {
   const router = useRouter();
-  const [profile, setProfile] = useState<ProfessionalProfile | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const { profile, isLoading, hasLoaded, refreshProfile, clearProfile } =
+    useProfessionalProfileContext();
 
   useEffect(() => {
-    let cancelled = false;
     const token = getProfessionalToken();
     if (!token) {
-      setIsLoading(false);
+      clearProfile();
       router.push('/profesional/auth/login');
-      return () => {
-        cancelled = true;
-      };
+      return;
     }
 
-    api
-      .get('/auth/me/profesional', {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-      .then((response) => {
-        if (!cancelled) {
-          setProfile(response.data);
-        }
-      })
-      .catch(() => {
-        if (!cancelled) {
-          router.push('/profesional/auth/login');
-        }
-      })
-      .finally(() => {
-        if (!cancelled) {
-          setIsLoading(false);
-        }
-      });
+    if (!hasLoaded && !isLoading) {
+      refreshProfile();
+      return;
+    }
 
-    return () => {
-      cancelled = true;
-    };
-  }, [router]);
+    if (hasLoaded && !isLoading && !profile) {
+      router.push('/profesional/auth/login');
+    }
+  }, [router, hasLoaded, isLoading, profile, refreshProfile, clearProfile]);
 
-  return { profile, isLoading };
+  return { profile, isLoading, hasLoaded };
 };

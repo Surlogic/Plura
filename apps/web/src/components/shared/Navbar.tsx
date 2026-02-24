@@ -5,9 +5,11 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import { clearProfessionalToken, getProfessionalToken } from '@/services/session';
+import { useProfessionalProfileContext } from '@/context/ProfessionalProfileContext';
 
 export default function Navbar() {
   const router = useRouter();
+  const { clearProfile } = useProfessionalProfileContext();
   const [hasProfessionalSession, setHasProfessionalSession] = useState(false);
 
   useEffect(() => {
@@ -16,6 +18,7 @@ export default function Navbar() {
 
   const handleLogout = () => {
     clearProfessionalToken();
+    clearProfile();
     setHasProfessionalSession(false);
     router.push('/profesional/auth/login');
   };

@@ -1,6 +1,7 @@
 import type { AppProps } from 'next/app';
 import { Comfortaa, Fraunces, Manrope } from 'next/font/google';
 import '@/pages/globals.css';
+import { ProfessionalProfileProvider } from '@/context/ProfessionalProfileContext';
 
 const manrope = Manrope({
   variable: '--font-manrope',
@@ -25,8 +26,12 @@ const comfortaa = Comfortaa({
 
 export default function App({ Component, pageProps }: AppProps) {
   return (
-    <div className={`${manrope.variable} ${fraunces.variable} ${comfortaa.variable} ${manrope.className} font-sans antialiased`}>
-      <Component {...pageProps} />
-    </div>
+    <ProfessionalProfileProvider>
+      <div
+        className={`${manrope.variable} ${fraunces.variable} ${comfortaa.variable} ${manrope.className} font-sans antialiased`}
+      >
+        <Component {...pageProps} />
+      </div>
+    </ProfessionalProfileProvider>
   );
 }

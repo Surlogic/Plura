@@ -78,7 +78,7 @@ const parseDurationToMinutes = (value?: string) => {
 
 const calendarStartHour = 8;
 const calendarEndHour = 20;
-const hourRowHeight = 56;
+const hourRowHeight = 80;
 const calendarTotalMinutes = (calendarEndHour - calendarStartHour) * 60;
 const calendarHeight = (calendarEndHour - calendarStartHour) * hourRowHeight;
 const hourSlots = Array.from(
@@ -118,6 +118,77 @@ const reservationStatusLabel = {
   pending: 'Pendiente',
   cancelled: 'Cancelada',
   completed: 'Completada',
+};
+
+type ReservationLayout = {
+  reservation: ProfessionalReservation;
+  startMinutes: number;
+  endMinutes: number;
+  column: number;
+  columns: number;
+};
+
+const buildDayLayouts = (items: ProfessionalReservation[]) => {
+  const reservations = items
+    .map((reservation) => {
+      if (!reservation.time) return null;
+      const startMinutes = parseTimeToMinutes(reservation.time);
+      if (startMinutes === null) return null;
+      const durationMinutes = parseDurationToMinutes(reservation.duration) ?? 30;
+      return {
+        reservation,
+        startMinutes,
+        endMinutes: startMinutes + durationMinutes,
+      };
+    })
+    .filter(Boolean) as Array<{
+    reservation: ProfessionalReservation;
+    startMinutes: number;
+    endMinutes: number;
+  }>;
+
+  reservations.sort((a, b) => a.startMinutes - b.startMinutes);
+
+  const layouts: ReservationLayout[] = [];
+  let active: Array<{ endMinutes: number; column: number }> = [];
+  let groupIndexes: number[] = [];
+  let groupColumns = 0;
+
+  reservations.forEach((event) => {
+    active = active.filter((item) => item.endMinutes > event.startMinutes);
+    if (active.length === 0 && groupIndexes.length > 0) {
+      groupIndexes.forEach((idx) => {
+        layouts[idx].columns = groupColumns;
+      });
+      groupIndexes = [];
+      groupColumns = 0;
+    }
+
+    const usedColumns = new Set(active.map((item) => item.column));
+    let column = 0;
+    while (usedColumns.has(column)) column += 1;
+
+    const layout: ReservationLayout = {
+      reservation: event.reservation,
+      startMinutes: event.startMinutes,
+      endMinutes: event.endMinutes,
+      column,
+      columns: 1,
+    };
+
+    layouts.push(layout);
+    groupIndexes.push(layouts.length - 1);
+    groupColumns = Math.max(groupColumns, active.length + 1, column + 1);
+    active.push({ endMinutes: event.endMinutes, column });
+  });
+
+  if (groupIndexes.length > 0) {
+    groupIndexes.forEach((idx) => {
+      layouts[idx].columns = groupColumns;
+    });
+  }
+
+  return layouts;
 };
 
 export default function ProfesionalDashboardPage() {
@@ -494,6 +565,7 @@ export default function ProfesionalDashboardPage() {
                           <div className="grid flex-1 grid-cols-7">
                             {weekDays.map((day, index) => {
                               const dayReservations = reservationsByDate.get(day.dateKey) ?? [];
+                              const dayLayouts = buildDayLayouts(dayReservations);
                               const isToday = day.dateKey === todayKey;
                               const baseBackground = index % 2 === 0 ? 'bg-white' : 'bg-[#FBFCFD]';
                               return (
@@ -505,44 +577,45 @@ export default function ProfesionalDashboardPage() {
                                   style={{ height: calendarHeight }}
                                 >
                                   <div className="pointer-events-none absolute inset-0">
-                                    {hourSlots.slice(0, -1).map((hour) => (
+                                    {hourSlots.slice(0, -1).map((hour, lineIndex) => (
                                       <div
                                         key={`${day.dateKey}-${hour}`}
-                                        className="border-b border-[#EEF2F6]"
-                                        style={{ height: hourRowHeight }}
+                                        className="absolute left-0 right-0 border-b border-[#EEF2F6]"
+                                        style={{
+                                          top: lineIndex * hourRowHeight,
+                                        }}
                                       />
                                     ))}
                                   </div>
 
-                                  {dayReservations.length === 0 ? (
+                                  {dayLayouts.length === 0 ? (
                                     <div className="absolute left-3 top-3 rounded-full border border-dashed border-[#E2E7EC] bg-white px-3 py-1 text-[0.65rem] text-[#94A3B8]">
                                       Sin reservas
                                     </div>
                                   ) : null}
 
-                                  {dayReservations.map((reservation) => {
-                                    if (!reservation.time) return null;
-                                    const startMinutes = parseTimeToMinutes(reservation.time);
-                                    if (startMinutes === null) return null;
-                                    const offsetMinutes =
-                                      startMinutes - calendarStartHour * 60;
-                                    if (offsetMinutes < 0 || offsetMinutes > calendarTotalMinutes) {
+                                  {dayLayouts.map((layout) => {
+                                    const dayStartMinutes = calendarStartHour * 60;
+                                    const dayEndMinutes = calendarEndHour * 60;
+                                    const clampedStart = Math.max(layout.startMinutes, dayStartMinutes);
+                                    const clampedEnd = Math.min(layout.endMinutes, dayEndMinutes);
+                                    if (clampedEnd <= dayStartMinutes || clampedStart >= dayEndMinutes) {
                                       return null;
                                     }
-                                    const durationMinutes =
-                                      parseDurationToMinutes(reservation.duration) ?? 30;
-                                    const clampedMinutes = Math.min(
-                                      durationMinutes,
-                                      calendarTotalMinutes - offsetMinutes,
-                                    );
-                                    const endMinutes = startMinutes + durationMinutes;
-                                    const timeRangeLabel = `${reservation.time} – ${formatMinutesLabel(endMinutes)}`;
+
+                                    const offsetMinutes = clampedStart - dayStartMinutes;
+                                    const clampedMinutes = clampedEnd - clampedStart;
+                                    const timeRangeLabel = `${formatMinutesLabel(layout.startMinutes)} – ${formatMinutesLabel(layout.endMinutes)}`;
                                     const top = (offsetMinutes / 60) * hourRowHeight;
                                     const height = Math.max(
                                       (clampedMinutes / 60) * hourRowHeight,
                                       28,
                                     );
-                                    const statusKey = reservation.status ?? 'confirmed';
+                                    const gap = 8;
+                                    const columns = Math.max(layout.columns, 1);
+                                    const width = `calc((100% - ${(columns - 1) * gap}px) / ${columns})`;
+                                    const left = `calc(${layout.column} * ((100% - ${(columns - 1) * gap}px) / ${columns} + ${gap}px))`;
+                                    const statusKey = layout.reservation.status ?? 'confirmed';
                                     const palette =
                                       reservationStatusPalette[
                                         statusKey as keyof typeof reservationStatusPalette
@@ -554,9 +627,9 @@ export default function ProfesionalDashboardPage() {
 
                                     return (
                                       <div
-                                        key={reservation.id}
-                                        className="absolute left-3 right-3"
-                                        style={{ top, height }}
+                                        key={layout.reservation.id}
+                                        className="absolute"
+                                        style={{ top, height, width, left }}
                                       >
                                         <div className="group relative flex h-full flex-col justify-between rounded-[12px] border border-[#E2E7EC] bg-white px-3 py-2 text-xs text-[#0E2A47] shadow-[0_6px_12px_rgba(15,23,42,0.08)] transition hover:-translate-y-0.5 hover:shadow-[0_12px_20px_rgba(15,23,42,0.12)]">
                                           <span
@@ -573,11 +646,11 @@ export default function ProfesionalDashboardPage() {
                                             </span>
                                           </div>
                                           <p className="mt-1 text-sm font-medium text-[#0E2A47]">
-                                            {reservation.serviceName || 'Servicio'}
+                                            {layout.reservation.serviceName || 'Servicio'}
                                           </p>
-                                          {reservation.clientName ? (
+                                          {layout.reservation.clientName ? (
                                             <p className="text-[0.7rem] text-[#94A3B8]">
-                                              {reservation.clientName}
+                                              {layout.reservation.clientName}
                                             </p>
                                           ) : (
                                             <span className="text-[0.65rem] text-[#CBD5E1]">

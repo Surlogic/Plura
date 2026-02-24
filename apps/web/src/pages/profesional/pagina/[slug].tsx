@@ -2,38 +2,9 @@ import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/router';
 import Navbar from '@/components/shared/Navbar';
 import Footer from '@/components/shared/Footer';
+import api from '@/services/api';
 
-const businesses = [
-  {
-    slug: 'atelier-glow',
-    name: 'Atelier Glow',
-    category: 'Salón de belleza',
-    rating: '4.9',
-    reviews: '420',
-    location: 'Palermo, Buenos Aires',
-    headline: 'Color, cuidado y estilo con agenda online.',
-  },
-  {
-    slug: 'barberia-sur',
-    name: 'Barbería Sur',
-    category: 'Barbería',
-    rating: '4.8',
-    reviews: '310',
-    location: 'San Telmo, Buenos Aires',
-    headline: 'Cortes clásicos y modernos con atención personalizada.',
-  },
-  {
-    slug: 'studio-aura',
-    name: 'Studio Aura',
-    category: 'Cosmetología',
-    rating: '4.9',
-    reviews: '275',
-    location: 'Recoleta, Buenos Aires',
-    headline: 'Tratamientos faciales premium con productos orgánicos.',
-  },
-];
-
-const services = [
+const defaultServices = [
   { name: 'Corte + styling', price: 'Desde $9.500', duration: '45 min' },
   { name: 'Color completo', price: 'Desde $18.000', duration: '2 hs' },
   { name: 'Tratamiento nutritivo', price: 'Desde $6.200', duration: '30 min' },
@@ -68,6 +39,27 @@ type PreviewPayload = {
   photos?: string[];
 };
 
+type PublicService = {
+  id: string;
+  name: string;
+  price: string;
+  duration: string;
+};
+
+type PublicProfessional = {
+  id: string;
+  slug: string;
+  fullName: string;
+  rubro: string;
+  headline?: string | null;
+  about?: string | null;
+  location?: string | null;
+  email?: string | null;
+  phoneNumber?: string | null;
+  photos?: string[];
+  services?: PublicService[];
+};
+
 export default function ProfesionalDetailPage() {
   const router = useRouter();
   const slug = Array.isArray(router.query.slug)
@@ -77,10 +69,27 @@ export default function ProfesionalDetailPage() {
     ? router.query.preview[0] === '1'
     : router.query.preview === '1';
   const [preview, setPreview] = useState<PreviewPayload | null>(null);
+  const [data, setData] = useState<PublicProfessional | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const data = useMemo(() => {
-    return businesses.find((business) => business.slug === slug) ?? businesses[0];
-  }, [slug]);
+  useEffect(() => {
+    if (!slug || isPreview) return;
+    setIsLoading(true);
+    setErrorMessage(null);
+
+    api
+      .get(`/public/profesionales/${slug}`)
+      .then((response) => {
+        setData(response.data);
+      })
+      .catch(() => {
+        setErrorMessage('No encontramos este profesional.');
+      })
+      .finally(() => {
+        setIsLoading(false);
+      });
+  }, [slug, isPreview]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -97,15 +106,57 @@ export default function ProfesionalDetailPage() {
     return () => window.removeEventListener('message', handleMessage);
   }, []);
 
-  const merged = useMemo(() => {
-    if (!preview) return data;
-    return {
-      ...data,
-      name: preview.name || data.name,
-      category: preview.category || data.category,
-      headline: preview.headline || data.headline,
+  const resolved = useMemo(() => {
+    const fallback = {
+      name: 'Profesional',
+      category: 'Rubro',
+      rating: '4.9',
+      reviews: '420',
+      location: 'Buenos Aires',
+      headline: 'Color, cuidado y estilo con agenda online.',
+      about:
+        'Somos un equipo especializado en bienestar y estética con foco en la experiencia. Trabajamos con productos de primera línea y un equipo que acompaña cada detalle para que te sientas cómodo desde la primera visita.',
+      email: 'hola@plura.com',
+      phoneNumber: '+54 11 5555 4444',
+      photos: [],
+      services: [] as PublicService[],
     };
-  }, [data, preview]);
+
+    if (!data) {
+      return fallback;
+    }
+
+    return {
+      ...fallback,
+      name: data.fullName || fallback.name,
+      category: data.rubro || fallback.category,
+      headline: data.headline || fallback.headline,
+      about: data.about || fallback.about,
+      location: data.location || fallback.location,
+      email: data.email || fallback.email,
+      phoneNumber: data.phoneNumber || fallback.phoneNumber,
+      photos: data.photos || fallback.photos,
+      services: data.services || fallback.services,
+    };
+  }, [data]);
+
+  const merged = useMemo(() => {
+    if (!preview) return resolved;
+    return {
+      ...resolved,
+      name: preview.name || resolved.name,
+      category: preview.category || resolved.category,
+      headline: preview.headline || resolved.headline,
+      about: preview.about || resolved.about,
+      photos:
+        preview.photos && preview.photos.length > 0
+          ? preview.photos
+          : resolved.photos,
+    };
+  }, [resolved, preview]);
+
+  const displayServices =
+    data?.services && data.services.length > 0 ? data.services : defaultServices;
 
   const initials = merged.name
     .split(' ')
@@ -126,6 +177,16 @@ export default function ProfesionalDetailPage() {
           isPreview ? 'pb-6 pt-6' : 'pb-24 pt-10'
         }`}
       >
+        {!isPreview && isLoading ? (
+          <div className="mb-6 rounded-[24px] border border-[#E2E7EC] bg-white/80 px-6 py-4 text-sm text-[#64748B]">
+            Cargando información del profesional...
+          </div>
+        ) : null}
+        {!isPreview && errorMessage ? (
+          <div className="mb-6 rounded-[24px] border border-red-200 bg-red-50 px-6 py-4 text-sm text-red-600">
+            {errorMessage}
+          </div>
+        ) : null}
         <section className="rounded-[34px] border border-white/70 bg-white/95 p-8 shadow-[0_28px_70px_rgba(15,23,42,0.18)]">
           <div className="flex flex-col items-start gap-6 lg:flex-row lg:items-start">
             <div className="flex items-center gap-5 lg:shrink-0">
@@ -156,12 +217,14 @@ export default function ProfesionalDetailPage() {
                 <div className="rounded-[18px] border border-[#E2E7EC] bg-[#F7F9FB] px-4 py-3">
                   <p className="text-[0.65rem] uppercase tracking-[0.35em] text-[#94A3B8]">Puntuación</p>
                   <p className="text-sm font-semibold text-[#0E2A47]">
-                    {data.rating} <span className="text-[#F5B301]">★</span>
+                    {resolved.rating} <span className="text-[#F5B301]">★</span>
                   </p>
                 </div>
                 <div className="rounded-[18px] border border-[#E2E7EC] bg-[#F7F9FB] px-4 py-3">
                   <p className="text-[0.65rem] uppercase tracking-[0.35em] text-[#94A3B8]">Reseñas</p>
-                  <p className="text-sm font-semibold text-[#0E2A47]">{data.reviews} opiniones</p>
+                  <p className="text-sm font-semibold text-[#0E2A47]">
+                    {resolved.reviews} opiniones
+                  </p>
                 </div>
               </div>
             </div>
@@ -173,8 +236,8 @@ export default function ProfesionalDetailPage() {
             <p className="text-[0.65rem] uppercase tracking-[0.35em] text-[#94A3B8]">Galería</p>
             <h2 className="mt-2 text-xl font-semibold">Fotos del negocio o de los trabajos</h2>
             <div className="mt-4 grid gap-3 sm:grid-cols-2">
-              {(preview?.photos && preview.photos.length > 0
-                ? preview.photos
+              {(merged.photos && merged.photos.length > 0
+                ? merged.photos
                 : Array.from({ length: 4 }).map(() => '')
               ).map((src, index) => (
                 <div
@@ -195,7 +258,7 @@ export default function ProfesionalDetailPage() {
               <span className="rounded-full bg-[#1FB6A6]/10 px-3 py-1">Agenda</span>
             </div>
             <div className="mt-4 space-y-3">
-              {services.map((service) => (
+              {displayServices.map((service) => (
                 <div
                   key={service.name}
                   className="flex items-center justify-between rounded-[18px] border border-[#E2E7EC] bg-[#F7F9FB] px-4 py-3"
@@ -223,8 +286,8 @@ export default function ProfesionalDetailPage() {
             <p className="text-[0.65rem] uppercase tracking-[0.35em] text-[#94A3B8]">Reseñas</p>
             <h2 className="mt-2 text-xl font-semibold">Las marcas de reseñas</h2>
             <div className="mt-4 rounded-[20px] bg-[#F7F9FB] px-6 py-5">
-              <p className="text-3xl font-semibold text-[#0E2A47]">{data.rating}</p>
-              <p className="text-sm text-[#64748B]">Basado en {data.reviews} reseñas</p>
+              <p className="text-3xl font-semibold text-[#0E2A47]">{resolved.rating}</p>
+              <p className="text-sm text-[#64748B]">Basado en {resolved.reviews} reseñas</p>
               <div className="mt-2 flex gap-1 text-[#1FB6A6]">
                 {Array.from({ length: 5 }).map((_, index) => (
                   <span key={index}>★</span>
@@ -276,10 +339,7 @@ export default function ProfesionalDetailPage() {
             <div className="pr-6">
               <p className="text-[0.65rem] uppercase tracking-[0.35em] text-[#94A3B8]">Sobre</p>
               <h2 className="mt-2 text-xl font-semibold">Sobre el local o profesional</h2>
-              <p className="mt-3 text-sm text-[#64748B]">
-                {preview?.about ||
-                  'Somos un equipo especializado en bienestar y estética con foco en la experiencia. Trabajamos con productos de primera línea y un equipo que acompaña cada detalle para que te sientas cómodo desde la primera visita.'}
-              </p>
+              <p className="mt-3 text-sm text-[#64748B]">{merged.about}</p>
             </div>
             <div className="border-l border-[#E2E8F0] pl-6">
               <p className="text-[0.65rem] uppercase tracking-[0.35em] text-[#94A3B8]">Tipo</p>
@@ -303,10 +363,10 @@ export default function ProfesionalDetailPage() {
           >
             <div className="rounded-[18px] border border-[#E2E7EC] bg-[#F7F9FB] p-4 text-sm text-[#64748B]">
               <p className="font-semibold text-[#0E2A47]">Dirección</p>
-              <p className="mt-1">{data.location}</p>
+              <p className="mt-1">{merged.location}</p>
               <p className="mt-4 font-semibold text-[#0E2A47]">Contacto</p>
-              <p className="mt-1">hola@plura.com</p>
-              <p className="mt-1">+54 11 5555 4444</p>
+              <p className="mt-1">{merged.email}</p>
+              <p className="mt-1">{merged.phoneNumber}</p>
             </div>
             <div className="min-h-[160px] rounded-[18px] border border-[#E2E7EC] bg-[#E7EDF2]">
               <div className="flex h-full items-center justify-center text-xs uppercase tracking-[0.3em] text-[#94A3B8]">

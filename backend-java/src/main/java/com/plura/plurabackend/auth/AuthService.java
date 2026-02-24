@@ -13,6 +13,7 @@ import com.plura.plurabackend.users.model.UserCliente;
 import com.plura.plurabackend.users.model.UserProfesional;
 import com.plura.plurabackend.users.repository.UserClienteRepository;
 import com.plura.plurabackend.users.repository.UserProfesionalRepository;
+import com.plura.plurabackend.util.SlugUtils;
 import org.springframework.beans.factory.annotation.Value;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
@@ -117,6 +118,7 @@ public class AuthService {
         user.setLocation(request.getTipoCliente() == TipoCliente.SIN_LOCAL ? null : request.getLocation());
         user.setTipoCliente(request.getTipoCliente());
         user.setPassword(passwordEncoder.encode(request.getPassword()));
+        user.setSlug(SlugUtils.generateUniqueSlug(user.getFullName(), userProfesionalRepository::existsBySlug));
 
         UserProfesional saved = userProfesionalRepository.save(user);
 
@@ -204,14 +206,23 @@ public class AuthService {
         UserProfesional user = userProfesionalRepository.findById(profesionalId)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Profesional no encontrado"));
 
+        if (user.getSlug() == null || user.getSlug().isBlank()) {
+            user.setSlug(SlugUtils.generateUniqueSlug(user.getFullName(), userProfesionalRepository::existsBySlug));
+            user = userProfesionalRepository.save(user);
+        }
+
         return new ProfesionalProfileResponse(
             user.getId(),
+            user.getSlug(),
             user.getFullName(),
             user.getEmail(),
             user.getPhoneNumber(),
             user.getRubro(),
             user.getLocation(),
             user.getTipoCliente(),
+            user.getPublicHeadline(),
+            user.getPublicAbout(),
+            user.getPublicPhotos(),
             user.getCreatedAt()
         );
     }

@@ -36,6 +36,7 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                 // Endpoints públicos.
                 .requestMatchers("/auth/**", "/health", "/error").permitAll()
+                .requestMatchers(HttpMethod.GET, "/public/**").permitAll()
                 // Swagger público (idealmente deshabilitar en prod).
                 .requestMatchers("/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**").permitAll()
                 // Todo lo demás requiere JWT válido.

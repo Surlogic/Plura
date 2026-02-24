@@ -6,6 +6,8 @@ import Navbar from '@/components/shared/Navbar';
 import Footer from '@/components/shared/Footer';
 import ProfesionalSidebar from '@/components/profesional/Sidebar';
 import { useProfessionalProfile } from '@/hooks/useProfessionalProfile';
+import api from '@/services/api';
+import { getProfessionalToken } from '@/services/session';
 
 type PhotoItem = {
   id: string;
@@ -28,6 +30,9 @@ export default function ProfesionalPublicPageBuilder() {
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
   const [iframeReady, setIframeReady] = useState(false);
   const [origin, setOrigin] = useState('https://plura.com');
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveMessage, setSaveMessage] = useState<string | null>(null);
+  const [hasLoadedPage, setHasLoadedPage] = useState(false);
   const [form, setForm] = useState({
     headline: 'Color, cuidado y estilo con agenda online.',
     about:
@@ -42,9 +47,10 @@ export default function ProfesionalPublicPageBuilder() {
 
   const displayName = profile?.fullName || '';
   const displayCategory = profile?.rubro || '';
+  const resolvedSlug = profile?.slug?.trim() || slugify(displayName || 'profesional');
   const slug = useMemo(
-    () => slugify(displayName || 'profesional'),
-    [displayName],
+    () => resolvedSlug || 'profesional',
+    [resolvedSlug],
   );
   const publicUrl = `${origin}/profesional/pagina/${slug || 'profesional'}`;
   const showSkeleton = !hasLoaded || (isLoading && !profile);
@@ -75,6 +81,39 @@ export default function ProfesionalPublicPageBuilder() {
     setOrigin(window.location.origin);
   }, []);
 
+  useEffect(() => {
+    if (!profile || hasLoadedPage) return;
+    const token = getProfessionalToken();
+    if (!token) return;
+
+    api
+      .get('/profesional/public-page', {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      .then((response) => {
+        const data = response.data as {
+          headline?: string | null;
+          about?: string | null;
+          photos?: string[] | null;
+        };
+        setForm((prev) => ({
+          headline: data.headline ?? prev.headline,
+          about: data.about ?? prev.about,
+        }));
+        if (data.photos && data.photos.length > 0) {
+          setPhotos(
+            data.photos.map((url, index) => ({
+              id: `photo-${index + 1}`,
+              url,
+            })),
+          );
+        }
+      })
+      .finally(() => {
+        setHasLoadedPage(true);
+      });
+  }, [profile, hasLoadedPage]);
+
   const inputClassName =
     'h-11 w-full rounded-[14px] border border-[#E2E7EC] bg-white px-3 text-sm text-[#0E2A47] placeholder:text-[#94A3B8] focus:outline-none focus:ring-2 focus:ring-[#1FB6A6]/30';
 
@@ -98,6 +137,32 @@ export default function ProfesionalPublicPageBuilder() {
       ...prev,
       { id: `photo-${prev.length + 1}`, url: '' },
     ]);
+  };
+
+  const handleSave = async () => {
+    const token = getProfessionalToken();
+    if (!token) return;
+    setIsSaving(true);
+    setSaveMessage(null);
+
+    try {
+      await api.put(
+        '/profesional/public-page',
+        {
+          headline: form.headline,
+          about: form.about,
+          photos: photos.map((photo) => photo.url).filter(Boolean),
+        },
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        },
+      );
+      setSaveMessage('Guardado correctamente.');
+    } catch (error) {
+      setSaveMessage('No se pudo guardar. Intentá de nuevo.');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -129,11 +194,16 @@ export default function ProfesionalPublicPageBuilder() {
                 </div>
                 <button
                   type="button"
+                  onClick={handleSave}
                   className="rounded-full bg-[#0B1D2A] px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
+                  disabled={isSaving}
                 >
-                  Guardar cambios
+                  {isSaving ? 'Guardando...' : 'Guardar cambios'}
                 </button>
               </div>
+              {saveMessage ? (
+                <p className="mt-3 text-sm text-[#1FB6A6]">{saveMessage}</p>
+              ) : null}
             </div>
 
             {showSkeleton ? (

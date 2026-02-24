@@ -12,10 +12,22 @@ type PhotoItem = {
   url: string;
 };
 
+const slugify = (value: string) =>
+  value
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9\s-]/g, '')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-+|-+$/g, '');
+
 export default function ProfesionalPublicPageBuilder() {
   const { profile } = useProfessionalProfile();
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
   const [iframeReady, setIframeReady] = useState(false);
+  const [origin, setOrigin] = useState('https://plura.com');
   const [form, setForm] = useState({
     headline: 'Color, cuidado y estilo con agenda online.',
     about:
@@ -30,6 +42,11 @@ export default function ProfesionalPublicPageBuilder() {
 
   const displayName = profile?.fullName || 'Profesional';
   const displayCategory = profile?.rubro || 'Rubro';
+  const slug = useMemo(
+    () => slugify(displayName || 'profesional'),
+    [displayName],
+  );
+  const publicUrl = `${origin}/profesional/pagina/${slug || 'profesional'}`;
   const previewPayload = useMemo(
     () => ({
       type: 'plura-preview',
@@ -51,6 +68,11 @@ export default function ProfesionalPublicPageBuilder() {
     if (!targetWindow) return;
     targetWindow.postMessage(previewPayload, window.location.origin);
   }, [iframeReady, previewPayload]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    setOrigin(window.location.origin);
+  }, []);
 
   const inputClassName =
     'h-11 w-full rounded-[14px] border border-[#E2E7EC] bg-white px-3 text-sm text-[#0E2A47] placeholder:text-[#94A3B8] focus:outline-none focus:ring-2 focus:ring-[#1FB6A6]/30';
@@ -182,6 +204,33 @@ export default function ProfesionalPublicPageBuilder() {
               </div>
 
               <div className="space-y-6">
+                <div className="rounded-[24px] border border-white/70 bg-white/95 p-5 shadow-[0_16px_36px_rgba(15,23,42,0.12)]">
+                  <h2 className="text-lg font-semibold text-[#0E2A47]">URL pública</h2>
+                  <p className="mt-1 text-sm text-[#64748B]">
+                    Usá este link o QR para compartir tu página.
+                  </p>
+                  <div className="mt-4 grid gap-4">
+                    <div>
+                      <label className="text-sm font-medium text-[#0E2A47]">Slug</label>
+                      <input className={inputClassName} value={slug} readOnly />
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-[#0E2A47]">Link</label>
+                      <input className={inputClassName} value={publicUrl} readOnly />
+                    </div>
+                    <div className="flex flex-col items-center justify-center rounded-[18px] border border-[#E2E7EC] bg-white p-4">
+                      <img
+                        src={`https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(
+                          publicUrl,
+                        )}`}
+                        alt="QR de la página pública"
+                        className="h-32 w-32"
+                      />
+                      <p className="mt-2 text-xs text-[#94A3B8]">QR de tu página</p>
+                    </div>
+                  </div>
+                </div>
+
                 <div className="rounded-[28px] border border-white/70 bg-white/95 p-6 shadow-[0_18px_40px_rgba(15,23,42,0.12)]">
                   <p className="text-[0.65rem] uppercase tracking-[0.35em] text-[#94A3B8]">
                     Vista previa

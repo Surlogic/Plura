@@ -3,7 +3,7 @@ import { useMemo } from 'react';
 import type { ProfessionalProfile } from '@/hooks/useProfessionalProfile';
 
 const menuItems = [
-  { label: 'Perfil del negocio', href: '', disabled: true },
+  { label: 'Perfil del negocio', href: '/profesional/perfil-negocio' },
   { label: 'Agenda', href: '/profesional/dashboard' },
   { label: 'Página pública', href: '/profesional/pagina-publica' },
   { label: 'Horarios de trabajo', href: '', disabled: true },

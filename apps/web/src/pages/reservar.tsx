@@ -344,11 +344,15 @@ export default function ReservationPage() {
     const leadingEmpty = weekIndexByDay[firstDayKey];
     const emptyCells = Array.from({ length: leadingEmpty }).map((_, index) => ({
       key: `empty-${index}`,
-      empty: true,
+      empty: true as const, // <-- Agregá "as const" acá
     }));
     return [
       ...emptyCells,
-      ...calendarDays.map((day) => ({ ...day, key: day.dateKey, empty: false })),
+      ...calendarDays.map((day) => ({ 
+        ...day, 
+        key: day.dateKey, 
+        empty: false as const // <-- Y agregá "as const" acá también
+      })),
     ];
   }, [calendarDays]);
 
@@ -358,6 +362,7 @@ export default function ReservationPage() {
   ) => {
     setClient((prev) => ({ ...prev, [field]: value }));
   };
+
 
 
   const buildNotes = () => {

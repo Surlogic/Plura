@@ -17,13 +17,7 @@ export default function ProfesionalDashboardPage() {
   const { profile } = useProfessionalProfile();
 
   return (
-    <div
-      className="min-h-screen bg-[radial-gradient(circle_at_top,#FFFFFF_0%,#EEF2F6_45%,#D3D7DC_100%)] text-[#0E2A47]"
-      style={{ fontFamily: '"Manrope", "Segoe UI", sans-serif' }}
-    >
-      <style jsx global>{`
-        @import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&display=swap');
-      `}</style>
+    <div className="min-h-screen bg-[radial-gradient(circle_at_top,#FFFFFF_0%,#EEF2F6_45%,#D3D7DC_100%)] text-[#0E2A47]">
       <Navbar />
       <main className="mx-auto w-full max-w-6xl px-4 pb-24 pt-10">
         <section className="flex flex-row items-start gap-6">

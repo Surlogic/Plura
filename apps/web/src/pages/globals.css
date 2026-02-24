@@ -11,10 +11,10 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-manrope);
-  --font-display: var(--font-fraunces);
-  --font-logo: var(--font-comfortaa);
-  --font-mono: var(--font-manrope);
+  --font-sans: var(--font-sora);
+  --font-display: var(--font-sora);
+  --font-logo: var(--font-sora);
+  --font-mono: var(--font-sora);
 }
 
 @media (prefers-color-scheme: dark) {

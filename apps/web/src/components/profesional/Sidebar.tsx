@@ -50,7 +50,7 @@ export default function ProfesionalSidebar({ profile, active }: SidebarProps) {
       <nav className="mt-3 space-y-2 text-sm font-semibold">
         {menuItems.map((item) => {
           const isActive = item.label === active;
-          const className = `w-full rounded-[16px] px-3 py-3 text-left transition ${
+          const className = `block w-full rounded-[16px] px-3 py-3 text-left transition ${
             isActive
               ? 'bg-white text-[#0B1D2A] shadow-md'
               : item.disabled

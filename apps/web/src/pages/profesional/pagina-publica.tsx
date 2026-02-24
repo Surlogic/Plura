@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { ChangeEvent } from 'react';
 import Navbar from '@/components/shared/Navbar';
 import Footer from '@/components/shared/Footer';
@@ -14,6 +14,8 @@ type PhotoItem = {
 
 export default function ProfesionalPublicPageBuilder() {
   const { profile } = useProfessionalProfile();
+  const iframeRef = useRef<HTMLIFrameElement | null>(null);
+  const [iframeReady, setIframeReady] = useState(false);
   const [form, setForm] = useState({
     headline: 'Color, cuidado y estilo con agenda online.',
     about:
@@ -26,27 +28,29 @@ export default function ProfesionalPublicPageBuilder() {
     { id: 'photo-4', url: '' },
   ]);
 
-  useEffect(() => {
-    if (!profile) return;
-    setForm((prev) => ({
-      ...prev,
-      headline: prev.headline,
-      about: prev.about,
-    }));
-  }, [profile]);
-
-  const initials = useMemo(() => {
-    const name = profile?.fullName || 'Profesional';
-    return name
-      .split(' ')
-      .map((part) => part[0])
-      .join('')
-      .slice(0, 2)
-      .toUpperCase();
-  }, [profile?.fullName]);
-
   const displayName = profile?.fullName || 'Profesional';
   const displayCategory = profile?.rubro || 'Rubro';
+  const previewPayload = useMemo(
+    () => ({
+      type: 'plura-preview',
+      payload: {
+        name: displayName,
+        category: displayCategory,
+        headline: form.headline,
+        about: form.about,
+        photos: photos.map((photo) => photo.url).filter(Boolean),
+      },
+    }),
+    [displayCategory, displayName, form.about, form.headline, photos],
+  );
+
+  useEffect(() => {
+    if (!iframeReady) return;
+    if (typeof window === 'undefined') return;
+    const targetWindow = iframeRef.current?.contentWindow;
+    if (!targetWindow) return;
+    targetWindow.postMessage(previewPayload, window.location.origin);
+  }, [iframeReady, previewPayload]);
 
   const inputClassName =
     'h-11 w-full rounded-[14px] border border-[#E2E7EC] bg-white px-3 text-sm text-[#0E2A47] placeholder:text-[#94A3B8] focus:outline-none focus:ring-2 focus:ring-[#1FB6A6]/30';
@@ -185,44 +189,14 @@ export default function ProfesionalPublicPageBuilder() {
                   <h2 className="mt-2 text-lg font-semibold text-[#0E2A47]">
                     Página pública
                   </h2>
-
-                  <div className="mt-5 rounded-[22px] border border-[#E2E7EC] bg-[#F7F9FB] p-4">
-                    <div className="flex items-start gap-4">
-                      <div className="flex h-12 w-12 items-center justify-center rounded-full border border-[#1FB6A6] bg-white text-sm font-semibold text-[#0E2A47]">
-                        {initials}
-                      </div>
-                      <div>
-                        <p className="text-xs uppercase tracking-[0.3em] text-[#94A3B8]">
-                          Profesional / Empresa
-                        </p>
-                        <p className="text-lg font-semibold text-[#0E2A47]">
-                          {displayName}
-                        </p>
-                        <p className="text-sm text-[#64748B]">{form.headline}</p>
-                        <p className="text-xs text-[#94A3B8]">{displayCategory}</p>
-                      </div>
-                    </div>
-
-                    <div className="mt-4">
-                      <p className="text-[0.65rem] uppercase tracking-[0.35em] text-[#94A3B8]">
-                        Galería
-                      </p>
-                      <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                        {photos.map((photo) => (
-                          <div
-                            key={`preview-${photo.id}`}
-                            className="h-24 rounded-[16px] border border-[#E2E7EC] bg-[#EEF2F6] bg-cover bg-center"
-                            style={{
-                              backgroundImage: photo.url ? `url(${photo.url})` : undefined,
-                            }}
-                          />
-                        ))}
-                      </div>
-                    </div>
-
-                    <div className="mt-4 rounded-[16px] border border-[#E2E7EC] bg-white p-3 text-sm text-[#64748B]">
-                      {form.about}
-                    </div>
+                  <div className="mt-5 overflow-hidden rounded-[22px] border border-[#E2E7EC] bg-white">
+                    <iframe
+                      ref={iframeRef}
+                      title="Vista previa página pública"
+                      src="/profesional/pagina/preview?preview=1"
+                      className="h-[720px] w-full"
+                      onLoad={() => setIframeReady(true)}
+                    />
                   </div>
                 </div>
               </div>

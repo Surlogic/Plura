@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/router';
 import Navbar from '@/components/shared/Navbar';
 import Footer from '@/components/shared/Footer';
@@ -60,17 +60,54 @@ const reviews = [
 
 const ratingBreakdown = [68, 18, 9, 3, 2];
 
+type PreviewPayload = {
+  name?: string;
+  category?: string;
+  headline?: string;
+  about?: string;
+  photos?: string[];
+};
+
 export default function ProfesionalDetailPage() {
   const router = useRouter();
   const slug = Array.isArray(router.query.slug)
     ? router.query.slug[0]
     : router.query.slug;
+  const isPreview = Array.isArray(router.query.preview)
+    ? router.query.preview[0] === '1'
+    : router.query.preview === '1';
+  const [preview, setPreview] = useState<PreviewPayload | null>(null);
 
   const data = useMemo(() => {
     return businesses.find((business) => business.slug === slug) ?? businesses[0];
   }, [slug]);
 
-  const initials = data.name
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('preview') !== '1') return;
+
+    const handleMessage = (event: MessageEvent) => {
+      if (event.origin !== window.location.origin) return;
+      if (!event.data || event.data.type !== 'plura-preview') return;
+      setPreview(event.data.payload as PreviewPayload);
+    };
+
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
+  }, []);
+
+  const merged = useMemo(() => {
+    if (!preview) return data;
+    return {
+      ...data,
+      name: preview.name || data.name,
+      category: preview.category || data.category,
+      headline: preview.headline || data.headline,
+    };
+  }, [data, preview]);
+
+  const initials = merged.name
     .split(' ')
     .map((part) => part[0])
     .join('')
@@ -78,9 +115,17 @@ export default function ProfesionalDetailPage() {
     .toUpperCase();
 
   return (
-    <div className="min-h-screen bg-[#BFC2C5] text-[#0E2A47]">
-      <Navbar />
-      <main className="mx-auto w-full max-w-6xl px-4 pb-24 pt-10">
+    <div
+      className={`min-h-screen text-[#0E2A47] ${
+        isPreview ? 'bg-transparent' : 'bg-[#BFC2C5]'
+      }`}
+    >
+      {isPreview ? null : <Navbar />}
+      <main
+        className={`mx-auto w-full max-w-6xl px-4 ${
+          isPreview ? 'pb-6 pt-6' : 'pb-24 pt-10'
+        }`}
+      >
         <section className="rounded-[34px] border border-white/70 bg-white/95 p-8 shadow-[0_28px_70px_rgba(15,23,42,0.18)]">
           <div className="flex flex-col items-start gap-6 lg:flex-row lg:items-start">
             <div className="flex items-center gap-5 lg:shrink-0">
@@ -92,9 +137,9 @@ export default function ProfesionalDetailPage() {
                   Profesional / Empresa
                 </p>
                 <h1 className="text-3xl font-semibold text-[#0E2A47] sm:text-4xl">
-                  {data.name}
+                  {merged.name}
                 </h1>
-                <p className="text-sm text-[#64748B] sm:text-base">{data.headline}</p>
+                <p className="text-sm text-[#64748B] sm:text-base">{merged.headline}</p>
               </div>
             </div>
 
@@ -105,7 +150,7 @@ export default function ProfesionalDetailPage() {
             <div className="w-full lg:w-56">
               <div className="rounded-[18px] border border-[#E2E7EC] bg-[#F7F9FB] px-4 py-3">
                 <p className="text-[0.65rem] uppercase tracking-[0.35em] text-[#94A3B8]">Rubro</p>
-                <p className="text-sm font-semibold text-[#0E2A47]">{data.category}</p>
+                <p className="text-sm font-semibold text-[#0E2A47]">{merged.category}</p>
               </div>
               <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-2">
                 <div className="rounded-[18px] border border-[#E2E7EC] bg-[#F7F9FB] px-4 py-3">
@@ -128,8 +173,15 @@ export default function ProfesionalDetailPage() {
             <p className="text-[0.65rem] uppercase tracking-[0.35em] text-[#94A3B8]">Galería</p>
             <h2 className="mt-2 text-xl font-semibold">Fotos del negocio o de los trabajos</h2>
             <div className="mt-4 grid gap-3 sm:grid-cols-2">
-              {Array.from({ length: 4 }).map((_, index) => (
-                <div key={index} className="h-36 rounded-[18px] bg-[#EEF2F6]" />
+              {(preview?.photos && preview.photos.length > 0
+                ? preview.photos
+                : Array.from({ length: 4 }).map(() => '')
+              ).map((src, index) => (
+                <div
+                  key={`gallery-${index}`}
+                  className="h-36 rounded-[18px] bg-[#EEF2F6] bg-cover bg-center"
+                  style={{ backgroundImage: src ? `url(${src})` : undefined }}
+                />
               ))}
             </div>
           </div>
@@ -225,9 +277,8 @@ export default function ProfesionalDetailPage() {
               <p className="text-[0.65rem] uppercase tracking-[0.35em] text-[#94A3B8]">Sobre</p>
               <h2 className="mt-2 text-xl font-semibold">Sobre el local o profesional</h2>
               <p className="mt-3 text-sm text-[#64748B]">
-                Somos un equipo especializado en bienestar y estética con foco en la experiencia. Trabajamos con
-                productos de primera línea y un equipo que acompaña cada detalle para que te sientas cómodo desde la
-                primera visita.
+                {preview?.about ||
+                  'Somos un equipo especializado en bienestar y estética con foco en la experiencia. Trabajamos con productos de primera línea y un equipo que acompaña cada detalle para que te sientas cómodo desde la primera visita.'}
               </p>
             </div>
             <div className="border-l border-[#E2E8F0] pl-6">
@@ -265,7 +316,7 @@ export default function ProfesionalDetailPage() {
           </div>
         </section>
       </main>
-      <Footer />
+      {isPreview ? null : <Footer />}
     </div>
   );
 }

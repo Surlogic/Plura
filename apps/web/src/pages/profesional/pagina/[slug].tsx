@@ -199,7 +199,9 @@ export default function ProfesionalDetailPage() {
     const formatDayLabel = (days: WorkDayKey[]) => {
       const set = new Set(days);
       if (set.has('mon') && set.has('fri') && days.length >= 5) {
-        const weekdays = ['mon', 'tue', 'wed', 'thu', 'fri'];
+        
+        const weekdays: WorkDayKey[] = ['mon', 'tue', 'wed', 'thu', 'fri'];
+        
         if (weekdays.every((day) => set.has(day)) && days.length === 5) {
           return 'Lun a Vie';
         }

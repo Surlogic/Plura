@@ -1,5 +1,8 @@
 import Link from 'next/link';
-import type { SVGProps } from 'react';
+
+type IconProps = {
+  className?: string;
+};
 
 export type ClientSidebarSection =
   | 'inicio'
@@ -12,37 +15,37 @@ type SidebarItem = {
   id: ClientSidebarSection;
   label: string;
   href: string;
-  icon: (props: SVGProps<SVGSVGElement>) => JSX.Element;
+  icon: (props: IconProps) => JSX.Element;
 };
 
-const HomeIcon = (props: SVGProps<SVGSVGElement>) => (
-  <svg viewBox="0 0 24 24" fill="none" {...props}>
+const HomeIcon = ({ className }: IconProps) => (
+  <svg viewBox="0 0 24 24" fill="none" className={className} aria-hidden="true">
     <path d="M4 10.5L12 4l8 6.5V20a1 1 0 0 1-1 1h-5v-6h-4v6H5a1 1 0 0 1-1-1v-9.5z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
   </svg>
 );
 
-const CalendarIcon = (props: SVGProps<SVGSVGElement>) => (
-  <svg viewBox="0 0 24 24" fill="none" {...props}>
+const CalendarIcon = ({ className }: IconProps) => (
+  <svg viewBox="0 0 24 24" fill="none" className={className} aria-hidden="true">
     <rect x="3" y="5" width="18" height="16" rx="3" stroke="currentColor" strokeWidth="1.8" />
     <path d="M8 3v4M16 3v4M3 10h18" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
   </svg>
 );
 
-const HeartIcon = (props: SVGProps<SVGSVGElement>) => (
-  <svg viewBox="0 0 24 24" fill="none" {...props}>
+const HeartIcon = ({ className }: IconProps) => (
+  <svg viewBox="0 0 24 24" fill="none" className={className} aria-hidden="true">
     <path d="M12 20s-7-4.3-7-10a4 4 0 0 1 7-2.5A4 4 0 0 1 19 10c0 5.7-7 10-7 10z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
   </svg>
 );
 
-const UserIcon = (props: SVGProps<SVGSVGElement>) => (
-  <svg viewBox="0 0 24 24" fill="none" {...props}>
+const UserIcon = ({ className }: IconProps) => (
+  <svg viewBox="0 0 24 24" fill="none" className={className} aria-hidden="true">
     <circle cx="12" cy="8" r="3.5" stroke="currentColor" strokeWidth="1.8" />
     <path d="M5 20c0-3.9 3.1-6 7-6s7 2.1 7 6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
   </svg>
 );
 
-const SettingsIcon = (props: SVGProps<SVGSVGElement>) => (
-  <svg viewBox="0 0 24 24" fill="none" {...props}>
+const SettingsIcon = ({ className }: IconProps) => (
+  <svg viewBox="0 0 24 24" fill="none" className={className} aria-hidden="true">
     <path d="M12 15.2a3.2 3.2 0 1 0 0-6.4 3.2 3.2 0 0 0 0 6.4z" stroke="currentColor" strokeWidth="1.8" />
     <path d="M19.4 13a7.7 7.7 0 0 0 .1-2l2-1.5-2-3.5-2.4.7a7.9 7.9 0 0 0-1.7-1l-.4-2.5h-4l-.4 2.5a7.9 7.9 0 0 0-1.7 1l-2.4-.7-2 3.5 2 1.5a7.7 7.7 0 0 0 .1 2l-2 1.5 2 3.5 2.4-.7c.5.4 1.1.7 1.7 1l.4 2.5h4l.4-2.5c.6-.3 1.2-.6 1.7-1l2.4.7 2-3.5-2-1.5z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round" />
   </svg>

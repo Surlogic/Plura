@@ -29,6 +29,31 @@ type PreviewPayload = {
   schedule?: ProfessionalSchedule;
 };
 
+// Valida que el payload de postMessage tenga la forma esperada
+const isValidPreviewPayload = (value: unknown): value is PreviewPayload => {
+  if (!value || typeof value !== 'object') return false;
+  const obj = value as Record<string, unknown>;
+  if ('name' in obj && obj.name !== undefined && typeof obj.name !== 'string') return false;
+  if ('category' in obj && obj.category !== undefined && typeof obj.category !== 'string') return false;
+  if ('headline' in obj && obj.headline !== undefined && typeof obj.headline !== 'string') return false;
+  if ('about' in obj && obj.about !== undefined && typeof obj.about !== 'string') return false;
+  if ('photos' in obj && obj.photos !== undefined && (!Array.isArray(obj.photos) || !obj.photos.every((item) => typeof item === 'string'))) return false;
+  return true;
+};
+
+// Acepta solo URLs de imagen con protocolo seguro para evitar inyección CSS
+const sanitizeImageSrc = (src: string): string | undefined => {
+  if (!src) return undefined;
+  try {
+    const url = new URL(src, window.location.origin);
+    if (['https:', 'http:', 'data:'].includes(url.protocol)) return src;
+    return undefined;
+  } catch {
+    if (src.startsWith('/') || src.startsWith('./')) return src;
+    return undefined;
+  }
+};
+
 type PublicProfessional = {
   id: string;
   slug: string;
@@ -56,6 +81,7 @@ export default function ProfesionalDetailPage() {
   const [data, setData] = useState<PublicProfessional | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [showContact, setShowContact] = useState(false);
 
   useEffect(() => {
     if (!slug || isPreview) return;
@@ -83,7 +109,8 @@ export default function ProfesionalDetailPage() {
     const handleMessage = (event: MessageEvent) => {
       if (event.origin !== window.location.origin) return;
       if (!event.data || event.data.type !== 'plura-preview') return;
-      setPreview(event.data.payload as PreviewPayload);
+      if (!isValidPreviewPayload(event.data.payload)) return;
+      setPreview(event.data.payload);
     };
 
     window.addEventListener('message', handleMessage);
@@ -288,31 +315,9 @@ export default function ProfesionalDetailPage() {
   const professionalSlug = typeof slug === 'string' ? slug : '';
 
   const handleReserve = (service: PublicService) => {
-    if (typeof window !== 'undefined') {
-      window.sessionStorage.setItem(
-        'plura:reservationContext',
-        JSON.stringify({
-          service: {
-            name: service.name,
-            price: service.price,
-            duration: service.duration,
-            paymentType: service.paymentType,
-            photos: service.photos ?? [],
-          },
-          schedule: displaySchedule,
-          professional: {
-            name: merged.name,
-            slug: professionalSlug,
-            id: data?.id,
-          },
-        }),
-      );
-    }
-
     const params = new URLSearchParams();
+    if (service.id) params.set('serviceId', service.id);
     if (service.name) params.set('servicio', service.name);
-    if (service.price) params.set('precio', service.price);
-    if (service.duration) params.set('duracion', service.duration);
     if (professionalSlug) params.set('profesional', professionalSlug);
     const query = params.toString();
     router.push(query ? `/reservar?${query}` : '/reservar');
@@ -398,7 +403,7 @@ export default function ProfesionalDetailPage() {
                 <div
                   key={`gallery-${index}`}
                   className="h-40 rounded-[20px] bg-[#EEF2F6] bg-cover bg-center"
-                  style={{ backgroundImage: src ? `url("${src}")` : undefined }}
+                  style={{ backgroundImage: src ? `url("${sanitizeImageSrc(src) ?? ''}")` : undefined }}
                 />
               ))}
             </div>
@@ -488,9 +493,21 @@ export default function ProfesionalDetailPage() {
               <p className="font-semibold text-[#0E2A47]">Dirección</p>
               {merged.location ? <p className="mt-1">{merged.location}</p> : <p className="mt-1">-</p>}
               <p className="mt-4 font-semibold text-[#0E2A47]">Contacto</p>
-              {merged.email ? <p className="mt-1">{merged.email}</p> : <p className="mt-1">-</p>}
-              {merged.phoneNumber ? (
-                <p className="mt-1">{merged.phoneNumber}</p>
+              {(merged.email || merged.phoneNumber) ? (
+                showContact ? (
+                  <div className="mt-1 space-y-1">
+                    {merged.email ? <p>{merged.email}</p> : null}
+                    {merged.phoneNumber ? <p>{merged.phoneNumber}</p> : null}
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setShowContact(true)}
+                    className="mt-2 rounded-full border border-[#1FB6A6] px-3 py-1 text-xs font-semibold text-[#1FB6A6] transition hover:bg-[#1FB6A6]/10"
+                  >
+                    Ver datos de contacto
+                  </button>
+                )
               ) : (
                 <p className="mt-1">-</p>
               )}

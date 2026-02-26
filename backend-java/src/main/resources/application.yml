@@ -6,30 +6,43 @@ spring:
     url: ${SPRING_DATASOURCE_URL}
     username: ${SPRING_DATASOURCE_USERNAME}
     password: ${SPRING_DATASOURCE_PASSWORD}
+  jackson:
+    time-zone: ${APP_TIMEZONE:America/Montevideo}
   jpa:
     hibernate:
-      ddl-auto: ${SPRING_JPA_DDL_AUTO:update}
+      # Producción: validate. Desarrollo: setear SPRING_JPA_DDL_AUTO=update en .env
+      ddl-auto: ${SPRING_JPA_DDL_AUTO:validate}
       naming:
         physical-strategy: org.hibernate.boot.model.naming.PhysicalNamingStrategyStandardImpl
     show-sql: ${SPRING_JPA_SHOW_SQL:false}
     properties:
       hibernate:
         globally_quoted_identifiers: true
+        jdbc:
+          time_zone: ${APP_TIMEZONE:America/Montevideo}
 
 jwt:
   secret: ${JWT_SECRET}
   issuer: ${JWT_ISSUER:plura}
   expiration-minutes: ${JWT_EXPIRATION_MINUTES:30}
   refresh-days: ${JWT_REFRESH_DAYS:30}
-  refresh-pepper: ${JWT_REFRESH_PEPPER:}
+  # Sin default: la app falla en startup si no está configurado.
+  refresh-pepper: ${JWT_REFRESH_PEPPER}
 
 app:
+  # Zona horaria única del sistema (MVP). Slots y reservas se calculan en esta zona.
+  timezone: ${APP_TIMEZONE:America/Montevideo}
   cors:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3002}
   auth:
-    cookie-secure: ${AUTH_COOKIE_SECURE:false}
-    cookie-same-site: ${AUTH_COOKIE_SAMESITE:Lax}
+    # Producción: true. Desarrollo local (HTTP): setear AUTH_COOKIE_SECURE=false en .env
+    cookie-secure: ${AUTH_COOKIE_SECURE:true}
+    cookie-same-site: ${AUTH_COOKIE_SAMESITE:Strict}
 
 springdoc:
   swagger-ui:
     path: /swagger-ui.html
+    # Deshabilitado por defecto. Desarrollo: setear SWAGGER_ENABLED=true en .env
+    enabled: ${SWAGGER_ENABLED:false}
+  api-docs:
+    enabled: ${SWAGGER_ENABLED:false}

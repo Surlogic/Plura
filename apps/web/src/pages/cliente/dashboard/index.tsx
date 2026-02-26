@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Footer from '@/components/shared/Footer';
 import ClientDashboardNavbar from '@/components/dashboard/ClientDashboardNavbar';
 import DashboardHero from '@/components/dashboard/DashboardHero';
@@ -9,6 +9,10 @@ import FavoritesSection from '@/components/dashboard/FavoritesSection';
 import SuggestedSection from '@/components/dashboard/SuggestedSection';
 import { useClientProfile } from '@/hooks/useClientProfile';
 import { usePublicProfessionals } from '@/hooks/usePublicProfessionals';
+import {
+  getClientNextBooking,
+  type ClientDashboardNextBooking,
+} from '@/services/clientBookings';
 
 const categories = [
   { id: 'cat-1', label: 'Uñas', query: 'Uñas' },
@@ -24,7 +28,26 @@ const categories = [
 export default function ClienteDashboardPage() {
   const { profile } = useClientProfile();
   const { professionals, isLoading } = usePublicProfessionals();
+  const [nextBooking, setNextBooking] = useState<ClientDashboardNextBooking | null>(null);
   const displayName = profile?.fullName || 'Cliente';
+
+  useEffect(() => {
+    let isCancelled = false;
+
+    getClientNextBooking()
+      .then((response) => {
+        if (isCancelled) return;
+        setNextBooking(response);
+      })
+      .catch(() => {
+        if (isCancelled) return;
+        setNextBooking(null);
+      });
+
+    return () => {
+      isCancelled = true;
+    };
+  }, []);
 
   const availableNow = useMemo(
     () =>
@@ -59,7 +82,7 @@ export default function ClienteDashboardPage() {
 
           <CategoryChips categories={categories} />
 
-          <NextBookingSection booking={null} />
+          <NextBookingSection booking={nextBooking} />
 
           <FavoritesSection favorites={[]} />
 

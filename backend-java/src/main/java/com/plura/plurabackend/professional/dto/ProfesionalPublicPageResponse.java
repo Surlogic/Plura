@@ -15,8 +15,6 @@ public class ProfesionalPublicPageResponse {
     private String headline;
     private String about;
     private String location;
-    private String email;
-    private String phoneNumber;
     private List<String> photos;
     private List<ProfesionalServiceResponse> services;
 }

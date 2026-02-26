@@ -30,6 +30,9 @@ import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.OffsetDateTime;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
@@ -44,6 +47,7 @@ import java.util.UUID;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -69,12 +73,14 @@ public class ProfesionalPublicPageService {
     private final BookingRepository bookingRepository;
     private final UserRepository userRepository;
     private final ObjectMapper objectMapper;
+    private final ZoneId systemZoneId;
 
     public ProfesionalPublicPageService(
         ProfessionalProfileRepository professionalProfileRepository,
         ProfesionalServiceRepository profesionalServiceRepository,
         BookingRepository bookingRepository,
         UserRepository userRepository,
+        @Value("${app.timezone:America/Montevideo}") String appTimezone,
         ObjectMapper objectMapper
     ) {
         this.professionalProfileRepository = professionalProfileRepository;
@@ -82,6 +88,7 @@ public class ProfesionalPublicPageService {
         this.bookingRepository = bookingRepository;
         this.userRepository = userRepository;
         this.objectMapper = objectMapper;
+        this.systemZoneId = ZoneId.of(appTimezone);
     }
 
     public ProfesionalPublicPageResponse getPublicPageBySlug(String slug) {
@@ -137,6 +144,10 @@ public class ProfesionalPublicPageService {
         int durationMinutes = parseDurationToMinutes(service.getDuration());
         LocalDateTime dayStart = date.atStartOfDay();
         LocalDateTime dayEnd = date.atTime(LocalTime.MAX);
+        LocalDateTime now = nowInSystemZone();
+        if (date.isBefore(now.toLocalDate())) {
+            return List.of();
+        }
 
         Set<LocalTime> bookedTimes = bookingRepository
             .findByProfessionalAndStartDateTimeBetween(profile, dayStart, dayEnd)
@@ -145,10 +156,9 @@ public class ProfesionalPublicPageService {
             .map(booking -> booking.getStartDateTime().toLocalTime())
             .collect(Collectors.toSet());
 
-        LocalDateTime now = LocalDateTime.now();
         Set<String> slots = new LinkedHashSet<>();
         List<ProfesionalScheduleRangeDto> sortedRanges = new ArrayList<>(daySchedule.getRanges());
-        sortedRanges.sort(Comparator.comparing(ProfesionalScheduleRangeDto::getStart));
+        sortedRanges.sort(Comparator.comparing(range -> parseTime(range.getStart())));
 
         for (ProfesionalScheduleRangeDto range : sortedRanges) {
             if (range == null) continue;
@@ -194,7 +204,8 @@ public class ProfesionalPublicPageService {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Solo clientes pueden reservar");
         }
 
-        ProfessionalProfile profile = professionalProfileRepository.findBySlug(slug)
+        // Lock pesimista: serializa reservas concurrentes para el mismo profesional.
+        ProfessionalProfile profile = professionalProfileRepository.findBySlugForUpdate(slug)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Profesional no encontrado"));
 
         ProfesionalService service = profesionalServiceRepository.findById(request.getServiceId().trim())
@@ -203,17 +214,12 @@ public class ProfesionalPublicPageService {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Servicio no encontrado");
         }
 
-        LocalDateTime startDateTime;
-        try {
-            startDateTime = LocalDateTime.parse(request.getStartDateTime().trim());
-        } catch (DateTimeParseException exception) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "startDateTime inválido");
-        }
+        LocalDateTime startDateTime = parseClientDateTimeToSystemZone(request.getStartDateTime());
 
         if (startDateTime.getSecond() != 0 || startDateTime.getNano() != 0) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "El slot debe venir en minutos exactos");
         }
-        if (!startDateTime.isAfter(LocalDateTime.now())) {
+        if (!startDateTime.isAfter(nowInSystemZone())) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "La fecha de reserva debe ser futura");
         }
 
@@ -235,6 +241,7 @@ public class ProfesionalPublicPageService {
         booking.setService(service);
         booking.setStartDateTime(startDateTime);
         booking.setStatus(BookingStatus.PENDING);
+        booking.setCreatedAt(nowInSystemZone());
         Booking saved = bookingRepository.save(booking);
 
         return new PublicBookingResponse(
@@ -285,6 +292,7 @@ public class ProfesionalPublicPageService {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "No autorizado");
         }
 
+        validateBookingStatusTransition(booking.getStatus(), request.getStatus());
         booking.setStatus(request.getStatus());
         Booking saved = bookingRepository.save(booking);
         return mapProfessionalBooking(saved);
@@ -713,8 +721,6 @@ public class ProfesionalPublicPageService {
             profile.getPublicHeadline(),
             profile.getPublicAbout(),
             profile.getLocation(),
-            user.getEmail(),
-            user.getPhoneNumber(),
             profile.getPublicPhotos(),
             services
         );
@@ -800,6 +806,50 @@ public class ProfesionalPublicPageService {
         };
     }
 
+    private LocalDateTime parseClientDateTimeToSystemZone(String rawDateTime) {
+        if (rawDateTime == null || rawDateTime.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "startDateTime inválido");
+        }
+
+        String value = rawDateTime.trim();
+        try {
+            return LocalDateTime.parse(value);
+        } catch (DateTimeParseException ignored) {
+            // Intenta parsear ISO con offset/zona y convertir a la zona del sistema.
+        }
+
+        try {
+            return OffsetDateTime.parse(value)
+                .atZoneSameInstant(systemZoneId)
+                .toLocalDateTime();
+        } catch (DateTimeParseException ignored) {
+            // Intenta parsear formato ZonedDateTime.
+        }
+
+        try {
+            return ZonedDateTime.parse(value)
+                .withZoneSameInstant(systemZoneId)
+                .toLocalDateTime();
+        } catch (DateTimeParseException exception) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "startDateTime inválido");
+        }
+    }
+
+    private LocalDateTime nowInSystemZone() {
+        return ZonedDateTime.now(systemZoneId).toLocalDateTime();
+    }
+
+    private LocalTime parseTime(String rawTime) {
+        if (rawTime == null || rawTime.isBlank()) {
+            return LocalTime.MAX;
+        }
+        try {
+            return LocalTime.parse(rawTime.trim());
+        } catch (DateTimeParseException exception) {
+            return LocalTime.MAX;
+        }
+    }
+
     private int parseDurationToMinutes(String duration) {
         if (duration == null || duration.isBlank()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Duración del servicio inválida");
@@ -836,5 +886,27 @@ public class ProfesionalPublicPageService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Duración del servicio inválida");
         }
         return minutes;
+    }
+
+    private void validateBookingStatusTransition(BookingStatus current, BookingStatus next) {
+        if (current == null || next == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Estado de reserva inválido");
+        }
+        if (current == next) {
+            return;
+        }
+
+        boolean allowed = switch (current) {
+            case PENDING -> next == BookingStatus.CONFIRMED || next == BookingStatus.CANCELLED;
+            case CONFIRMED -> next == BookingStatus.COMPLETED || next == BookingStatus.CANCELLED;
+            case CANCELLED, COMPLETED -> false;
+        };
+
+        if (!allowed) {
+            throw new ResponseStatusException(
+                HttpStatus.BAD_REQUEST,
+                "Transición de estado inválida"
+            );
+        }
     }
 }

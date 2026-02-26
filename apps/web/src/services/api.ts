@@ -34,6 +34,8 @@ const redirectToLogin = () => {
   }
 };
 
+// Variable de módulo para deduplicar refreshes concurrentes.
+// El guard typeof window evita que se comparta entre requests en SSR.
 let refreshPromise: Promise<void> | null = null;
 
 api.interceptors.response.use(
@@ -49,7 +51,7 @@ api.interceptors.response.use(
     ) {
       originalRequest._retry = true;
 
-      if (!refreshPromise) {
+      if (!refreshPromise && typeof window !== 'undefined') {
         refreshPromise = authApi
           .post('/auth/refresh')
           .then(() => undefined)

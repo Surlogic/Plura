@@ -84,6 +84,8 @@ export type ReservationStatus =
 
 export type ProfessionalReservation = {
   id: string;
+  userId?: string;
+  serviceId?: string;
   serviceName: string;
   clientName: string;
   date: string;

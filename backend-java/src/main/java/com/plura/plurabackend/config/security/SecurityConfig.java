@@ -50,8 +50,9 @@ public class SecurityConfig {
                 .requestMatchers("/auth/me/cliente").hasRole("USER")
                 .requestMatchers("/profesional/**").hasRole("PROFESSIONAL")
                 .requestMatchers("/cliente/**").hasRole("USER")
-                // Swagger público (idealmente deshabilitar en prod).
-                .requestMatchers("/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**").permitAll()
+                // Swagger: deshabilitado por defecto via springdoc.swagger-ui.enabled=false.
+                // Si se habilita (SWAGGER_ENABLED=true), requiere autenticación.
+                .requestMatchers("/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**").authenticated()
                 // Todo lo demás requiere JWT válido.
                 .anyRequest().authenticated()
             )

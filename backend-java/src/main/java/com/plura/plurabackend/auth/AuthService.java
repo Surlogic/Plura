@@ -52,11 +52,14 @@ public class AuthService {
         @Value("${jwt.secret}") String jwtSecret,
         @Value("${jwt.expiration-minutes:30}") long jwtExpirationMinutes,
         @Value("${jwt.refresh-days:30}") long refreshTokenDays,
-        @Value("${jwt.refresh-pepper:}") String refreshTokenPepper,
+        @Value("${jwt.refresh-pepper}") String refreshTokenPepper,
         @Value("${jwt.issuer:plura}") String jwtIssuer
     ) {
         if (jwtSecret == null || jwtSecret.isBlank()) {
             throw new IllegalStateException("JWT_SECRET no está configurado");
+        }
+        if (refreshTokenPepper == null || refreshTokenPepper.isBlank()) {
+            throw new IllegalStateException("JWT_REFRESH_PEPPER no está configurado");
         }
         this.userRepository = userRepository;
         this.professionalProfileRepository = professionalProfileRepository;
@@ -65,7 +68,7 @@ public class AuthService {
         this.jwtAlgorithm = Algorithm.HMAC256(jwtSecret);
         this.jwtExpirationMinutes = jwtExpirationMinutes;
         this.refreshTokenDays = refreshTokenDays;
-        this.refreshTokenPepper = refreshTokenPepper == null ? "" : refreshTokenPepper;
+        this.refreshTokenPepper = refreshTokenPepper;
         this.jwtIssuer = jwtIssuer;
     }
 

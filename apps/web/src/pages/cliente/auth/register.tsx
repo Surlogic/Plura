@@ -151,12 +151,16 @@ export default function ClienteRegisterPage() {
         if (!error.response) {
           setErrorMessage('No se pudo conectar con el servidor.');
         } else {
-          const data = error.response.data as { message?: string; error?: string; errors?: Array<{ defaultMessage?: string }> };
-          const details =
-            data?.message ||
-            data?.error ||
-            (data?.errors && data.errors.length > 0 ? data.errors.map((item) => item.defaultMessage).join(' ') : null);
-          setErrorMessage(details || `No se pudo crear la cuenta (HTTP ${error.response.status}).`);
+          const status = error.response.status;
+          if (status === 409) {
+            setErrorMessage('Ya existe una cuenta registrada con ese email.');
+          } else if (status === 400) {
+            setErrorMessage('Los datos ingresados no son válidos. Verificá el formulario.');
+          } else if (status >= 500) {
+            setErrorMessage('Error del servidor. Intentá de nuevo más tarde.');
+          } else {
+            setErrorMessage('No se pudo crear la cuenta. Verificá los datos e intentá de nuevo.');
+          }
         }
       } else {
         setErrorMessage('No se pudo crear la cuenta. Verificá los datos e intentá de nuevo.');

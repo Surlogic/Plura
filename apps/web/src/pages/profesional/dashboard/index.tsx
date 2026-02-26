@@ -1,21 +1,20 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { isAxiosError } from 'axios';
 import Link from 'next/link';
 import Navbar from '@/components/shared/Navbar';
 import ProfesionalSidebar from '@/components/profesional/Sidebar';
 import { useProfessionalProfile } from '@/hooks/useProfessionalProfile';
-import {
-  loadProfessionalReservations,
-  saveProfessionalReservations,
-} from '@/lib/professionalReservations';
 import api from '@/services/api';
+import {
+  getProfessionalReservationsForDates,
+  updateProfessionalReservationStatus,
+} from '@/services/professionalBookings';
 import type {
   ProfessionalReservation,
   ProfessionalSchedule,
   WorkDayKey,
-  WorkDaySchedule,
-  WorkShift,
   ReservationStatus,
 } from '@/types/professional';
 
@@ -124,6 +123,13 @@ const reservationStatusLabel = {
   completed: 'Completada',
 };
 
+const resolveBackendMessage = (error: unknown, fallback: string) => {
+  if (isAxiosError<{ message?: string }>(error)) {
+    return error.response?.data?.message || fallback;
+  }
+  return fallback;
+};
+
 type ReservationLayout = {
   reservation: ProfessionalReservation;
   startMinutes: number;
@@ -199,6 +205,8 @@ export default function ProfesionalDashboardPage() {
   const { profile } = useProfessionalProfile();
   const [reservations, setReservations] = useState<ProfessionalReservation[]>([]);
   const [schedule, setSchedule] = useState<ProfessionalSchedule | null>(null);
+  const [statusMessage, setStatusMessage] = useState<string | null>(null);
+  const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
   const [calendarView, setCalendarView] = useState<'week' | 'month'>('week');
   const [weekOffset, setWeekOffset] = useState(0);
   const [monthOffset, setMonthOffset] = useState(0);
@@ -206,10 +214,10 @@ export default function ProfesionalDashboardPage() {
   const [selectedReservation, setSelectedReservation] =
     useState<ProfessionalReservation | null>(null);
   const [drawerVisible, setDrawerVisible] = useState(false);
+  const closeTimeoutRef = useRef<ReturnType<typeof window.setTimeout> | null>(null);
 
   useEffect(() => {
     if (!profile?.id) return;
-    setReservations(loadProfessionalReservations(profile.id));
     api
       .get<ProfessionalSchedule>('/profesional/schedule')
       .then((response) => {
@@ -346,6 +354,40 @@ export default function ProfesionalDashboardPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const requiredReservationDates = useMemo(() => {
+    const dateKeys = new Set<string>([todayKey, yesterdayKey]);
+    currentWeekDays.forEach((day) => dateKeys.add(day.dateKey));
+    weekDays.forEach((day) => dateKeys.add(day.dateKey));
+    monthGridDays.forEach((day) => dateKeys.add(day.dateKey));
+    return Array.from(dateKeys).sort();
+  }, [todayKey, yesterdayKey, currentWeekDays, weekDays, monthGridDays]);
+
+  useEffect(() => {
+    if (!profile?.id) return;
+
+    let isCancelled = false;
+    const loadReservations = async () => {
+      try {
+        const allReservations = await getProfessionalReservationsForDates(requiredReservationDates);
+        if (isCancelled) return;
+        setReservations(allReservations);
+        setStatusMessage(null);
+      } catch (error) {
+        if (!isCancelled) {
+          setReservations([]);
+          setStatusMessage(
+            resolveBackendMessage(error, 'No se pudieron cargar las reservas del panel.'),
+          );
+        }
+      }
+    };
+
+    loadReservations();
+    return () => {
+      isCancelled = true;
+    };
+  }, [profile?.id, requiredReservationDates]);
+
   const daysWithReservations = currentWeekDays.filter((day) => {
     if (!scheduleDaySet.has(day.dayKey)) return false;
     return (reservationsByDate.get(day.dateKey)?.length ?? 0) > 0;
@@ -408,19 +450,44 @@ export default function ProfesionalDashboardPage() {
 
   const handleCloseReservation = () => {
     setDrawerVisible(false);
-    window.setTimeout(() => {
+    if (closeTimeoutRef.current !== null) {
+      window.clearTimeout(closeTimeoutRef.current);
+    }
+    closeTimeoutRef.current = window.setTimeout(() => {
+      closeTimeoutRef.current = null;
       setSelectedReservation(null);
     }, 200);
   };
 
-  const handleUpdateReservationStatus = (status: ReservationStatus) => {
-    if (!selectedReservation || !profile?.id) return;
-    const nextReservations = reservations.map((item) =>
-      item.id === selectedReservation.id ? { ...item, status } : item,
-    );
-    setReservations(nextReservations);
-    saveProfessionalReservations(profile.id, nextReservations);
-    setSelectedReservation((prev) => (prev ? { ...prev, status } : prev));
+  useEffect(() => {
+    return () => {
+      if (closeTimeoutRef.current !== null) {
+        window.clearTimeout(closeTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  const handleUpdateReservationStatus = async (status: ReservationStatus) => {
+    if (!selectedReservation) return;
+
+    setIsUpdatingStatus(true);
+    setStatusMessage(null);
+    try {
+      const updated = await updateProfessionalReservationStatus(selectedReservation.id, status);
+      setReservations((prev) =>
+        prev.map((item) => (item.id === updated.id ? { ...item, ...updated } : item)),
+      );
+      setSelectedReservation((prev) =>
+        prev && prev.id === updated.id ? { ...prev, ...updated } : prev,
+      );
+      setStatusMessage('Estado de reserva actualizado.');
+    } catch (error) {
+      setStatusMessage(
+        resolveBackendMessage(error, 'No se pudo actualizar el estado de la reserva.'),
+      );
+    } finally {
+      setIsUpdatingStatus(false);
+    }
   };
 
   return (
@@ -462,14 +529,11 @@ export default function ProfesionalDashboardPage() {
                       >
                         Ver lista de reservas
                       </Link>
-                      <Link
-                        href="/profesional/dashboard/reservas#nueva-reserva"
-                        className="rounded-full bg-[#0B1D2A] px-4 py-2 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:shadow-md"
-                      >
-                        Crear reserva
-                      </Link>
                     </div>
                   </div>
+                  {statusMessage ? (
+                    <p className="mt-4 text-sm text-[#64748B]">{statusMessage}</p>
+                  ) : null}
 
                   <div className="mt-6 grid gap-6 sm:grid-cols-3">
                     {stats.map((item, index) => (
@@ -861,22 +925,26 @@ export default function ProfesionalDashboardPage() {
               <button
                 type="button"
                 onClick={() => handleUpdateReservationStatus('confirmed')}
+                disabled={isUpdatingStatus}
                 className="rounded-full bg-[#1FB6A6] px-4 py-2 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:shadow-md"
               >
                 Confirmar
               </button>
               <button
                 type="button"
-                onClick={() => handleUpdateReservationStatus('cancelled')}
-                className="rounded-full border border-[#FCA5A5] bg-[#FEF2F2] px-4 py-2 text-sm font-semibold text-[#DC2626] transition hover:-translate-y-0.5 hover:shadow-md"
+                onClick={() => handleUpdateReservationStatus('completed')}
+                disabled={isUpdatingStatus}
+                className="rounded-full border border-[#0B1D2A] bg-[#0B1D2A]/10 px-4 py-2 text-sm font-semibold text-[#0B1D2A] transition hover:-translate-y-0.5 hover:shadow-md"
               >
-                Cancelar
+                Completar
               </button>
               <button
                 type="button"
-                className="rounded-full border border-[#E2E7EC] bg-white px-4 py-2 text-sm font-semibold text-[#0E2A47] transition hover:-translate-y-0.5 hover:shadow-md"
+                onClick={() => handleUpdateReservationStatus('cancelled')}
+                disabled={isUpdatingStatus}
+                className="rounded-full border border-[#FCA5A5] bg-[#FEF2F2] px-4 py-2 text-sm font-semibold text-[#DC2626] transition hover:-translate-y-0.5 hover:shadow-md"
               >
-                Editar
+                Cancelar
               </button>
               <Link
                 href="/profesional/dashboard/reservas"

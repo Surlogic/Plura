@@ -2,6 +2,7 @@ package com.plura.plurabackend.professional;
 
 import com.plura.plurabackend.booking.dto.ProfessionalBookingResponse;
 import com.plura.plurabackend.booking.dto.ProfessionalBookingUpdateRequest;
+import com.plura.plurabackend.professional.dto.ProfesionalBusinessProfileUpdateRequest;
 import com.plura.plurabackend.professional.dto.ProfesionalPublicPageResponse;
 import com.plura.plurabackend.professional.dto.ProfesionalPublicPageUpdateRequest;
 import com.plura.plurabackend.professional.schedule.dto.ProfesionalScheduleDto;
@@ -46,6 +47,12 @@ public class ProfesionalConfigController {
         return profesionalPublicPageService.updatePublicPage(getProfesionalId(), request);
     }
 
+    @PutMapping("/profile")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void updateBusinessProfile(@RequestBody ProfesionalBusinessProfileUpdateRequest request) {
+        profesionalPublicPageService.updateBusinessProfile(getProfesionalId(), request);
+    }
+
     @GetMapping("/schedule")
     public ProfesionalScheduleDto getSchedule() {
         return profesionalPublicPageService.getSchedule(getProfesionalId());
@@ -82,8 +89,17 @@ public class ProfesionalConfigController {
     }
 
     @GetMapping("/reservas")
-    public List<ProfessionalBookingResponse> listReservations(@RequestParam String date) {
-        return profesionalPublicPageService.getProfessionalBookingsByDate(getProfesionalId(), date);
+    public List<ProfessionalBookingResponse> listReservations(
+        @RequestParam(required = false) String date,
+        @RequestParam(required = false) String dateFrom,
+        @RequestParam(required = false) String dateTo
+    ) {
+        return profesionalPublicPageService.getProfessionalBookings(
+            getProfesionalId(),
+            date,
+            dateFrom,
+            dateTo
+        );
     }
 
     @PutMapping("/reservas/{id}")

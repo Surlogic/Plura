@@ -6,8 +6,10 @@ import jakarta.validation.Valid;
 import com.plura.plurabackend.professional.dto.ProfesionalPublicPageResponse;
 import com.plura.plurabackend.professional.dto.ProfesionalPublicSummaryResponse;
 import java.util.List;
+import java.util.Map;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -51,7 +53,7 @@ public class ProfesionalPublicController {
     }
 
     @PostMapping("/{slug}/reservas")
-    public ResponseEntity<PublicBookingResponse> createReservation(
+    public ResponseEntity<?> createReservation(
         @PathVariable String slug,
         @Valid @RequestBody PublicBookingRequest request,
         Authentication authentication
@@ -65,11 +67,24 @@ public class ProfesionalPublicController {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "No autenticado");
         }
 
-        PublicBookingResponse response = profesionalPublicPageService.createPublicBooking(
-            slug,
-            request,
-            authentication.getPrincipal().toString()
-        );
-        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+        try {
+            PublicBookingResponse response = profesionalPublicPageService.createPublicBooking(
+                slug,
+                request,
+                authentication.getPrincipal().toString()
+            );
+            return ResponseEntity.status(HttpStatus.CREATED).body(response);
+        } catch (DataIntegrityViolationException exception) {
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(Map.of("message", "El horario ya fue reservado."));
+        } catch (ResponseStatusException exception) {
+            if (exception.getStatusCode() == HttpStatus.CONFLICT) {
+                String message = exception.getReason() == null || exception.getReason().isBlank()
+                    ? "El horario ya fue reservado."
+                    : exception.getReason();
+                return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("message", message));
+            }
+            throw exception;
+        }
     }
 }

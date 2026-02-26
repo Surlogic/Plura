@@ -5,9 +5,11 @@ import type { ChangeEvent, FormEvent } from 'react';
 import Navbar from '@/components/shared/Navbar';
 import Footer from '@/components/shared/Footer';
 import api from '@/services/api';
+import { useClientProfileContext } from '@/context/ClientProfileContext';
 
 export default function ClienteLoginPage() {
   const router = useRouter();
+  const { refreshProfile } = useClientProfileContext();
   const [form, setForm] = useState({ email: '', password: '' });
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -26,7 +28,8 @@ export default function ClienteLoginPage() {
         email: form.email.trim().toLowerCase(),
         password: form.password,
       });
-      router.push('/cliente/dashboard');
+      await refreshProfile();
+      router.push('/cliente/inicio');
     } catch {
       setErrorMessage('Credenciales inválidas o error de servidor.');
     } finally {

@@ -6,7 +6,7 @@
     "node": ">=20"
   },
   "scripts": {
-    "dev": "concurrently \"pnpm -C apps/web dev\" \"cd backend-java && gradlew.bat bootRun\"",
+    "dev": "concurrently --kill-others-on-fail --names web,api \"pnpm -C apps/web dev\" \"cd backend-java && ./gradlew bootRun\"",
     "dev:web": "pnpm -C apps/web dev",
     "dev:backend": "cd backend-java && ./gradlew bootRun",
     "dev:backend-java": "cd backend-java && ./gradlew bootRun",

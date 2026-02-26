@@ -11,18 +11,21 @@ type ProfesionalServiceItem = {
   name: string;
   price: string;
   duration: string;
+  active?: boolean;
 };
 
 type ServiceDraft = {
   name: string;
   price: string;
   duration: string;
+  active: boolean;
 };
 
 const createEmptyDraft = (): ServiceDraft => ({
   name: '',
   price: '',
   duration: '',
+  active: true,
 });
 
 const normalizeDurationLabel = (value: string) => {
@@ -88,6 +91,7 @@ export default function ProfesionalServicesBuilderPage() {
       name: service.name,
       price: service.price,
       duration: service.duration,
+      active: service.active !== false,
     });
     setEditingId(service.id);
   };
@@ -124,6 +128,7 @@ export default function ProfesionalServicesBuilderPage() {
       name: draft.name.trim(),
       price: draft.price.trim(),
       duration: draft.duration.trim(),
+      active: draft.active,
     };
 
     setIsSubmitting(true);
@@ -151,6 +156,29 @@ export default function ProfesionalServicesBuilderPage() {
 
   const handleToggleMenu = () => {
     setIsMenuOpen((prev) => !prev);
+  };
+
+  const handleToggleServiceActive = async (service: ProfesionalServiceItem) => {
+    setIsSubmitting(true);
+    setSaveMessage(null);
+    setSaveError(false);
+
+    try {
+      await api.put(`/profesional/services/${service.id}`, {
+        name: service.name,
+        price: service.price,
+        duration: service.duration,
+        active: !(service.active !== false),
+      });
+      setSaveMessage(service.active === false ? 'Servicio activado.' : 'Servicio desactivado.');
+      setSaveError(false);
+      await loadServices();
+    } catch {
+      setSaveMessage('No se pudo actualizar el estado del servicio.');
+      setSaveError(true);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const serviceCount = useMemo(() => services.length, [services]);
@@ -328,6 +356,9 @@ export default function ProfesionalServicesBuilderPage() {
                                       {normalizeDurationLabel(service.duration) ||
                                         'Duración a definir'}
                                     </p>
+                                    <p className="mt-1 text-xs font-semibold text-[#64748B]">
+                                      {service.active === false ? 'Inactivo' : 'Activo'}
+                                    </p>
                                   </div>
                                   <span className="text-sm font-semibold text-[#1FB6A6]">
                                     {service.price || 'Consultar'}
@@ -340,6 +371,17 @@ export default function ProfesionalServicesBuilderPage() {
                                     className="rounded-full border border-[#E2E7EC] bg-white px-3 py-1 text-xs font-semibold text-[#0E2A47] transition hover:-translate-y-0.5 hover:shadow-sm"
                                   >
                                     Editar
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => void handleToggleServiceActive(service)}
+                                    className={`rounded-full px-3 py-1 text-xs font-semibold transition hover:-translate-y-0.5 hover:shadow-sm ${
+                                      service.active === false
+                                        ? 'border border-[#1FB6A6]/30 bg-[#1FB6A6]/10 text-[#1FB6A6]'
+                                        : 'border border-amber-200 bg-amber-50 text-amber-600'
+                                    }`}
+                                  >
+                                    {service.active === false ? 'Activar' : 'Desactivar'}
                                   </button>
                                   <button
                                     type="button"

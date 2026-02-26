@@ -46,3 +46,7 @@ springdoc:
     enabled: ${SWAGGER_ENABLED:false}
   api-docs:
     enabled: ${SWAGGER_ENABLED:false}
+
+logging:
+  level:
+    root: ${LOG_LEVEL_ROOT:INFO}

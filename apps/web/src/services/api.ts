@@ -21,14 +21,32 @@ const isAuthRoute = (url?: string) => {
   );
 };
 
+const isRouteOrChild = (path: string, route: string) =>
+  path === route || path.startsWith(`${route}/`);
+
+const isProfessionalProtectedPath = (path: string) =>
+  isRouteOrChild(path, '/profesional/dashboard');
+
+const clientProtectedRoutes = [
+  '/cliente/dashboard',
+  '/cliente/inicio',
+  '/cliente/reservas',
+  '/cliente/favoritos',
+  '/cliente/perfil',
+  '/cliente/configuracion',
+];
+
+const isClientProtectedPath = (path: string) =>
+  clientProtectedRoutes.some((route) => isRouteOrChild(path, route));
+
 const redirectToLogin = () => {
   if (typeof window === 'undefined') return;
   const path = window.location.pathname;
-  if (path.startsWith('/profesional')) {
+  if (isProfessionalProtectedPath(path)) {
     window.location.href = '/profesional/auth/login';
     return;
   }
-  if (path.startsWith('/cliente')) {
+  if (isClientProtectedPath(path)) {
     window.location.href = '/cliente/auth/login';
     return;
   }

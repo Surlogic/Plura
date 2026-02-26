@@ -14,7 +14,12 @@ import type {
   ReservationStatus,
 } from '@/types/professional';
 
-const toLocalDateKey = (date: Date) => date.toLocaleDateString('en-CA');
+const toLocalDateKey = (date: Date) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
 
 const parseTimeToMinutes = (value: string) => {
   const [hours, minutes] = value.split(':').map(Number);
@@ -103,13 +108,8 @@ export default function ProfesionalReservationsPage() {
   const [drawerVisible, setDrawerVisible] = useState(false);
 
   const todayKey = toLocalDateKey(new Date());
-  const nowMinutes =
-    parseTimeToMinutes(
-      new Date().toLocaleTimeString('en-GB', {
-        hour: '2-digit',
-        minute: '2-digit',
-      }),
-    ) ?? 0;
+  const now = new Date();
+  const nowMinutes = now.getHours() * 60 + now.getMinutes();
 
   const reservationDates = useMemo(() => buildDateWindow(30, 90), [todayKey]);
 

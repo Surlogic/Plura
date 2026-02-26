@@ -1,5 +1,6 @@
 package com.plura.plurabackend.professional.dto;
 
+import com.plura.plurabackend.professional.schedule.dto.ProfesionalScheduleDto;
 import com.plura.plurabackend.professional.service.dto.ProfesionalServiceResponse;
 import java.util.List;
 import lombok.AllArgsConstructor;
@@ -16,5 +17,6 @@ public class ProfesionalPublicPageResponse {
     private String about;
     private String location;
     private List<String> photos;
+    private ProfesionalScheduleDto schedule;
     private List<ProfesionalServiceResponse> services;
 }

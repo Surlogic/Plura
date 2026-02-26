@@ -1,3 +1,5 @@
+import Link from 'next/link';
+
 type MarketplaceCardProps = {
   name: string;
   category: string;
@@ -7,6 +9,7 @@ type MarketplaceCardProps = {
   location?: string;
   badge?: string;
   badgeTone?: 'primary' | 'success';
+  href?: string;
 };
 
 const badgeStyles: Record<NonNullable<MarketplaceCardProps['badgeTone']>, string> = {
@@ -23,6 +26,7 @@ export default function MarketplaceCard({
   location,
   badge,
   badgeTone = 'primary',
+  href,
 }: MarketplaceCardProps) {
   const displayRating = rating?.trim();
   const displayPrice = price?.trim() || 'Precio a confirmar';
@@ -43,7 +47,16 @@ export default function MarketplaceCard({
       <div className="mt-4 space-y-3">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <h3 className="text-lg font-semibold text-[#0E2A47]">{name}</h3>
+            {href ? (
+              <Link
+                href={href}
+                className="text-lg font-semibold text-[#0E2A47] hover:underline"
+              >
+                {name}
+              </Link>
+            ) : (
+              <h3 className="text-lg font-semibold text-[#0E2A47]">{name}</h3>
+            )}
             <p className="text-sm text-[#6B7280]">{category}</p>
             {location ? (
               <p className="text-xs text-[#94A3B8]">{location}</p>
@@ -68,12 +81,21 @@ export default function MarketplaceCard({
           </span>
         </div>
 
-        <button
-          type="button"
-          className="w-full rounded-full bg-[#F59E0B] px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
-        >
-          Reservar rápido
-        </button>
+        {href ? (
+          <Link
+            href={href}
+            className="block w-full rounded-full bg-[#F59E0B] px-4 py-2 text-center text-sm font-semibold text-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
+          >
+            Ver perfil
+          </Link>
+        ) : (
+          <button
+            type="button"
+            className="w-full rounded-full bg-[#F59E0B] px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
+          >
+            Reservar rápido
+          </button>
+        )}
       </div>
     </article>
   );

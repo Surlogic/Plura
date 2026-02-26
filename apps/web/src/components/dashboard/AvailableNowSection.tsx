@@ -1,7 +1,9 @@
 import MarketplaceCard from './MarketplaceCard';
+import HorizontalScroller from './HorizontalScroller';
 
 type AvailableNowItem = {
   id: string;
+  slug?: string;
   name: string;
   category: string;
   rating?: string;
@@ -48,9 +50,9 @@ export default function AvailableNowSection({
             : 'Todavía no hay profesionales disponibles.'}
         </div>
       ) : (
-        <div className="flex gap-4 overflow-x-auto pb-2">
+        <HorizontalScroller itemsCount={items.length}>
           {items.map((item) => (
-            <div key={item.id} className="min-w-[260px] sm:min-w-[300px]">
+            <div key={item.id} className="min-w-[260px] snap-start sm:min-w-[300px]">
               <MarketplaceCard
                 name={item.name}
                 category={item.category}
@@ -58,12 +60,13 @@ export default function AvailableNowSection({
                 price={item.price}
                 nextSlot={item.nextSlot}
                 location={item.location}
+                href={item.slug ? `/profesional/pagina/${encodeURIComponent(item.slug)}` : undefined}
                 badge={item.nextSlot ? 'Disponible ahora' : undefined}
                 badgeTone="success"
               />
             </div>
           ))}
-        </div>
+        </HorizontalScroller>
       )}
     </section>
   );

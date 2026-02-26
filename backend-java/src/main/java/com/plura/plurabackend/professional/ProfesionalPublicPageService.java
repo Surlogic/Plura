@@ -10,6 +10,7 @@ import com.plura.plurabackend.booking.model.Booking;
 import com.plura.plurabackend.booking.model.BookingStatus;
 import com.plura.plurabackend.booking.repository.BookingRepository;
 import com.plura.plurabackend.common.util.SlugUtils;
+import com.plura.plurabackend.professional.dto.ProfesionalBusinessProfileUpdateRequest;
 import com.plura.plurabackend.professional.dto.ProfesionalPublicPageResponse;
 import com.plura.plurabackend.professional.dto.ProfesionalPublicPageUpdateRequest;
 import com.plura.plurabackend.professional.dto.ProfesionalPublicSummaryResponse;
@@ -66,6 +67,15 @@ public class ProfesionalPublicPageService {
         "sat",
         "sun"
     );
+    private static final Map<String, String> DAY_ALIASES = Map.ofEntries(
+        Map.entry("monday", "mon"),
+        Map.entry("tuesday", "tue"),
+        Map.entry("wednesday", "wed"),
+        Map.entry("thursday", "thu"),
+        Map.entry("friday", "fri"),
+        Map.entry("saturday", "sat"),
+        Map.entry("sunday", "sun")
+    );
     private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("HH:mm");
 
     private final ProfessionalProfileRepository professionalProfileRepository;
@@ -94,6 +104,7 @@ public class ProfesionalPublicPageService {
     public ProfesionalPublicPageResponse getPublicPageBySlug(String slug) {
         ProfessionalProfile profile = professionalProfileRepository.findBySlug(slug)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Profesional no encontrado"));
+        ensurePublicProfessionalIsActive(profile);
         return mapToPublicPage(profile);
     }
 
@@ -114,81 +125,19 @@ public class ProfesionalPublicPageService {
 
         ProfessionalProfile profile = professionalProfileRepository.findBySlug(slug)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Profesional no encontrado"));
+        ensureProfessionalReservable(profile);
 
         ProfesionalService service = profesionalServiceRepository.findById(serviceId.trim())
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Servicio no encontrado"));
         if (!service.getProfessional().getId().equals(profile.getId())) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Servicio no encontrado");
         }
+        ensureServiceReservable(service);
 
         ProfesionalScheduleDto schedule = readStoredSchedule(profile.getScheduleJson());
-        if (isDatePaused(date, schedule.getPauses())) {
-            return List.of();
-        }
-
-        String dayKey = dayKeyFromDate(date);
-        ProfesionalScheduleDayDto daySchedule = schedule.getDays().stream()
-            .filter(day -> day != null && dayKey.equalsIgnoreCase(day.getDay()))
-            .findFirst()
-            .orElse(null);
-        if (
-            daySchedule == null
-                || !daySchedule.isEnabled()
-                || daySchedule.isPaused()
-                || daySchedule.getRanges() == null
-                || daySchedule.getRanges().isEmpty()
-        ) {
-            return List.of();
-        }
-
-        int durationMinutes = parseDurationToMinutes(service.getDuration());
-        LocalDateTime dayStart = date.atStartOfDay();
-        LocalDateTime dayEnd = date.atTime(LocalTime.MAX);
         LocalDateTime now = nowInSystemZone();
-        if (date.isBefore(now.toLocalDate())) {
-            return List.of();
-        }
-
-        Set<LocalTime> bookedTimes = bookingRepository
-            .findByProfessionalAndStartDateTimeBetween(profile, dayStart, dayEnd)
-            .stream()
-            .filter(booking -> booking.getStatus() != BookingStatus.CANCELLED)
-            .map(booking -> booking.getStartDateTime().toLocalTime())
-            .collect(Collectors.toSet());
-
-        Set<String> slots = new LinkedHashSet<>();
-        List<ProfesionalScheduleRangeDto> sortedRanges = new ArrayList<>(daySchedule.getRanges());
-        sortedRanges.sort(Comparator.comparing(range -> parseTime(range.getStart())));
-
-        for (ProfesionalScheduleRangeDto range : sortedRanges) {
-            if (range == null) continue;
-
-            LocalTime rangeStart;
-            LocalTime rangeEnd;
-            try {
-                rangeStart = LocalTime.parse(range.getStart());
-                rangeEnd = LocalTime.parse(range.getEnd());
-            } catch (Exception exception) {
-                continue;
-            }
-
-            if (!rangeStart.isBefore(rangeEnd)) {
-                continue;
-            }
-
-            LocalDateTime slotStart = date.atTime(rangeStart);
-            LocalDateTime rangeEndDateTime = date.atTime(rangeEnd);
-
-            while (!slotStart.plusMinutes(durationMinutes).isAfter(rangeEndDateTime)) {
-                LocalTime slotTime = slotStart.toLocalTime();
-                if (slotStart.isAfter(now) && !bookedTimes.contains(slotTime)) {
-                    slots.add(slotTime.format(TIME_FORMATTER));
-                }
-                slotStart = slotStart.plusMinutes(durationMinutes);
-            }
-        }
-
-        return slots.stream().sorted().toList();
+        Set<LocalTime> bookedTimes = loadBookedTimes(profile, date);
+        return calculateAvailableSlots(date, service, schedule, bookedTimes, now);
     }
 
     @Transactional
@@ -207,30 +156,33 @@ public class ProfesionalPublicPageService {
         // Lock pesimista: serializa reservas concurrentes para el mismo profesional.
         ProfessionalProfile profile = professionalProfileRepository.findBySlugForUpdate(slug)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Profesional no encontrado"));
+        ensureProfessionalReservable(profile);
 
         ProfesionalService service = profesionalServiceRepository.findById(request.getServiceId().trim())
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Servicio no encontrado"));
         if (!service.getProfessional().getId().equals(profile.getId())) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Servicio no encontrado");
         }
+        ensureServiceReservable(service);
 
         LocalDateTime startDateTime = parseClientDateTimeToSystemZone(request.getStartDateTime());
 
         if (startDateTime.getSecond() != 0 || startDateTime.getNano() != 0) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "El slot debe venir en minutos exactos");
         }
-        if (!startDateTime.isAfter(nowInSystemZone())) {
+        LocalDateTime now = nowInSystemZone();
+        if (!startDateTime.isAfter(now)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "La fecha de reserva debe ser futura");
         }
 
-        boolean alreadyBooked = bookingRepository.existsByProfessionalAndStartDateTime(profile, startDateTime);
-        if (alreadyBooked) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "El horario ya fue reservado");
-        }
-
-        String dayKey = startDateTime.toLocalDate().toString();
+        LocalDate bookingDate = startDateTime.toLocalDate();
         String slotTime = startDateTime.toLocalTime().format(TIME_FORMATTER);
-        List<String> availableSlots = getAvailableSlots(slug, dayKey, service.getId());
+        ProfesionalScheduleDto schedule = readStoredSchedule(profile.getScheduleJson());
+        Set<LocalTime> bookedTimes = loadBookedTimes(profile, bookingDate);
+        if (bookedTimes.contains(startDateTime.toLocalTime())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "El horario ya fue reservado.");
+        }
+        List<String> availableSlots = calculateAvailableSlots(bookingDate, service, schedule, bookedTimes, now);
         if (!availableSlots.contains(slotTime)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "El horario seleccionado no está disponible");
         }
@@ -241,8 +193,8 @@ public class ProfesionalPublicPageService {
         booking.setService(service);
         booking.setStartDateTime(startDateTime);
         booking.setStatus(BookingStatus.PENDING);
-        booking.setCreatedAt(nowInSystemZone());
-        Booking saved = bookingRepository.save(booking);
+        booking.setCreatedAt(now);
+        Booking saved = bookingRepository.saveAndFlush(booking);
 
         return new PublicBookingResponse(
             saved.getId(),
@@ -254,27 +206,51 @@ public class ProfesionalPublicPageService {
         );
     }
 
-    public List<ProfessionalBookingResponse> getProfessionalBookingsByDate(String rawUserId, String rawDate) {
-        if (rawDate == null || rawDate.isBlank()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "La fecha es obligatoria");
-        }
-
-        LocalDate date;
-        try {
-            date = LocalDate.parse(rawDate.trim());
-        } catch (DateTimeParseException exception) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Formato de fecha inválido");
+    public List<ProfessionalBookingResponse> getProfessionalBookings(
+        String rawUserId,
+        String rawDate,
+        String rawDateFrom,
+        String rawDateTo
+    ) {
+        LocalDate dateFrom;
+        LocalDate dateTo;
+        if (rawDate != null && !rawDate.isBlank()) {
+            if (
+                (rawDateFrom != null && !rawDateFrom.isBlank())
+                    || (rawDateTo != null && !rawDateTo.isBlank())
+            ) {
+                throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Usá date o dateFrom/dateTo, pero no ambos"
+                );
+            }
+            dateFrom = parseDate(rawDate, "Formato de fecha inválido");
+            dateTo = dateFrom;
+        } else {
+            if (rawDateFrom == null || rawDateFrom.isBlank() || rawDateTo == null || rawDateTo.isBlank()) {
+                throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Debés enviar date o dateFrom/dateTo"
+                );
+            }
+            dateFrom = parseDate(rawDateFrom, "Formato de dateFrom inválido");
+            dateTo = parseDate(rawDateTo, "Formato de dateTo inválido");
+            if (dateTo.isBefore(dateFrom)) {
+                throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "dateTo debe ser mayor o igual a dateFrom"
+                );
+            }
         }
 
         ProfessionalProfile profile = loadProfessionalByUserId(rawUserId);
-        LocalDateTime start = date.atStartOfDay();
-        LocalDateTime end = date.atTime(LocalTime.MAX);
-
-        return bookingRepository.findByProfessionalAndStartDateTimeBetweenOrderByStartDateTimeAsc(
+        LocalDateTime start = dateFrom.atStartOfDay();
+        LocalDateTime end = dateTo.atTime(LocalTime.MAX);
+        return bookingRepository.findProfessionalBookingResponsesByProfessionalAndStartDateTimeBetween(
             profile,
             start,
             end
-        ).stream().map(this::mapProfessionalBooking).toList();
+        );
     }
 
     @Transactional
@@ -301,7 +277,9 @@ public class ProfesionalPublicPageService {
     public List<ProfesionalPublicSummaryResponse> listPublicProfessionals(Integer limit) {
         List<ProfessionalProfile> profiles = professionalProfileRepository.findAll(
             Sort.by(Sort.Direction.DESC, "createdAt")
-        );
+        ).stream()
+            .filter(this::isProfessionalActive)
+            .toList();
 
         if (limit != null && limit > 0 && profiles.size() > limit) {
             profiles = profiles.subList(0, limit);
@@ -356,6 +334,50 @@ public class ProfesionalPublicPageService {
         return mapToPublicPage(profile);
     }
 
+    @Transactional
+    public void updateBusinessProfile(
+        String rawUserId,
+        ProfesionalBusinessProfileUpdateRequest request
+    ) {
+        if (request == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Payload inválido");
+        }
+        ProfessionalProfile profile = loadProfessionalByUserId(rawUserId);
+        User user = profile.getUser();
+
+        if (request.getFullName() != null) {
+            String fullName = request.getFullName().trim();
+            if (fullName.isBlank()) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "El nombre no puede estar vacío");
+            }
+            user.setFullName(fullName);
+        }
+
+        if (request.getPhoneNumber() != null) {
+            String phone = request.getPhoneNumber().trim();
+            if (phone.isBlank()) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "El teléfono no puede estar vacío");
+            }
+            user.setPhoneNumber(phone);
+        }
+
+        if (request.getRubro() != null) {
+            String rubro = request.getRubro().trim();
+            if (rubro.isBlank()) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "El rubro no puede estar vacío");
+            }
+            profile.setRubro(rubro);
+        }
+
+        if (request.getLocation() != null) {
+            String location = request.getLocation().trim();
+            profile.setLocation(location.isBlank() ? null : location);
+        }
+
+        userRepository.save(user);
+        professionalProfileRepository.save(profile);
+    }
+
     public ProfesionalScheduleDto getSchedule(String rawUserId) {
         ProfessionalProfile profile = loadProfessionalByUserId(rawUserId);
         return readStoredSchedule(profile.getScheduleJson());
@@ -399,6 +421,7 @@ public class ProfesionalPublicPageService {
         service.setName(request.getName());
         service.setPrice(request.getPrice());
         service.setDuration(request.getDuration());
+        service.setActive(request.getActive() == null ? true : request.getActive());
 
         ProfesionalService saved = profesionalServiceRepository.save(service);
         return mapService(saved);
@@ -426,6 +449,9 @@ public class ProfesionalPublicPageService {
         }
         if (request.getDuration() != null) {
             service.setDuration(request.getDuration());
+        }
+        if (request.getActive() != null) {
+            service.setActive(request.getActive());
         }
 
         ProfesionalService saved = profesionalServiceRepository.save(service);
@@ -459,6 +485,85 @@ public class ProfesionalPublicPageService {
         }
     }
 
+    private LocalDate parseDate(String rawDate, String errorMessage) {
+        try {
+            return LocalDate.parse(rawDate.trim());
+        } catch (DateTimeParseException exception) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, errorMessage);
+        }
+    }
+
+    private Set<LocalTime> loadBookedTimes(ProfessionalProfile profile, LocalDate date) {
+        LocalDateTime dayStart = date.atStartOfDay();
+        LocalDateTime dayEnd = date.atTime(LocalTime.MAX);
+        return bookingRepository.findBookedStartDateTimes(profile, dayStart, dayEnd, BookingStatus.CANCELLED)
+            .stream()
+            .map(LocalDateTime::toLocalTime)
+            .collect(Collectors.toSet());
+    }
+
+    private List<String> calculateAvailableSlots(
+        LocalDate date,
+        ProfesionalService service,
+        ProfesionalScheduleDto schedule,
+        Set<LocalTime> bookedTimes,
+        LocalDateTime now
+    ) {
+        if (date.isBefore(now.toLocalDate()) || isDatePaused(date, schedule.getPauses())) {
+            return List.of();
+        }
+
+        String dayKey = dayKeyFromDate(date);
+        ProfesionalScheduleDayDto daySchedule = schedule.getDays().stream()
+            .filter(day -> day != null && dayKey.equalsIgnoreCase(day.getDay()))
+            .findFirst()
+            .orElse(null);
+        if (
+            daySchedule == null
+                || !daySchedule.isEnabled()
+                || daySchedule.isPaused()
+                || daySchedule.getRanges() == null
+                || daySchedule.getRanges().isEmpty()
+        ) {
+            return List.of();
+        }
+
+        int durationMinutes = parseDurationToMinutes(service.getDuration());
+        Set<String> slots = new LinkedHashSet<>();
+        List<ProfesionalScheduleRangeDto> sortedRanges = new ArrayList<>(daySchedule.getRanges());
+        sortedRanges.sort(Comparator.comparing(range -> parseTime(range.getStart())));
+
+        for (ProfesionalScheduleRangeDto range : sortedRanges) {
+            if (range == null) continue;
+
+            LocalTime rangeStart;
+            LocalTime rangeEnd;
+            try {
+                rangeStart = LocalTime.parse(range.getStart());
+                rangeEnd = LocalTime.parse(range.getEnd());
+            } catch (Exception exception) {
+                continue;
+            }
+
+            if (!rangeStart.isBefore(rangeEnd)) {
+                continue;
+            }
+
+            LocalDateTime slotStart = date.atTime(rangeStart);
+            LocalDateTime rangeEndDateTime = date.atTime(rangeEnd);
+
+            while (!slotStart.plusMinutes(durationMinutes).isAfter(rangeEndDateTime)) {
+                LocalTime slotTime = slotStart.toLocalTime();
+                if (slotStart.isAfter(now) && !bookedTimes.contains(slotTime)) {
+                    slots.add(slotTime.format(TIME_FORMATTER));
+                }
+                slotStart = slotStart.plusMinutes(durationMinutes);
+            }
+        }
+
+        return slots.stream().sorted().toList();
+    }
+
     private ProfesionalScheduleDto readStoredSchedule(String rawScheduleJson) {
         if (rawScheduleJson == null || rawScheduleJson.isBlank()) {
             return createDefaultSchedule();
@@ -474,31 +579,13 @@ public class ProfesionalPublicPageService {
 
     private ProfesionalScheduleDto createDefaultSchedule() {
         List<ProfesionalScheduleDayDto> days = new ArrayList<>();
-        days.add(defaultDay("mon", true, "09:00", "18:00"));
-        days.add(defaultDay("tue", true, "09:00", "18:00"));
-        days.add(defaultDay("wed", true, "09:00", "18:00"));
-        days.add(defaultDay("thu", true, "09:00", "18:00"));
-        days.add(defaultDay("fri", true, "09:00", "18:00"));
-        days.add(defaultDay("sat", true, "09:00", "13:00"));
-        days.add(defaultDay("sun", false, "09:00", "13:00"));
+        DAY_ORDER.forEach(day -> days.add(new ProfesionalScheduleDayDto(day, false, false, new ArrayList<>())));
         return new ProfesionalScheduleDto(days, new ArrayList<>());
     }
 
-    private ProfesionalScheduleDayDto defaultDay(
-        String day,
-        boolean enabled,
-        String start,
-        String end
-    ) {
-        List<ProfesionalScheduleRangeDto> ranges = new ArrayList<>();
-        ranges.add(new ProfesionalScheduleRangeDto("range-" + day + "-1", start, end));
-        return new ProfesionalScheduleDayDto(day, enabled, false, ranges);
-    }
-
     private ProfesionalScheduleDto normalizeSchedule(ProfesionalScheduleDto source) {
-        ProfesionalScheduleDto fallback = createDefaultSchedule();
         if (source == null) {
-            return fallback;
+            return createDefaultSchedule();
         }
 
         List<ProfesionalScheduleDayDto> sourceDays = source.getDays() == null
@@ -507,7 +594,7 @@ public class ProfesionalPublicPageService {
         Map<String, ProfesionalScheduleDayDto> byDay = new LinkedHashMap<>();
         sourceDays.forEach(day -> {
             if (day == null || day.getDay() == null) return;
-            String key = day.getDay().trim().toLowerCase();
+            String key = normalizeDayKey(day.getDay());
             if (key.isBlank()) return;
             byDay.put(key, day);
         });
@@ -515,21 +602,12 @@ public class ProfesionalPublicPageService {
         List<ProfesionalScheduleDayDto> normalizedDays = new ArrayList<>();
         for (String dayKey : DAY_ORDER) {
             ProfesionalScheduleDayDto sourceDay = byDay.get(dayKey);
-            ProfesionalScheduleDayDto fallbackDay = fallback.getDays().stream()
-                .filter(day -> dayKey.equals(day.getDay()))
-                .findFirst()
-                .orElse(null);
-
-            boolean enabled = sourceDay != null
-                ? sourceDay.isEnabled()
-                : fallbackDay != null && fallbackDay.isEnabled();
+            boolean enabled = sourceDay != null && sourceDay.isEnabled();
             boolean paused = sourceDay != null && sourceDay.isPaused();
 
             List<ProfesionalScheduleRangeDto> sourceRanges = sourceDay != null && sourceDay.getRanges() != null
                 ? sourceDay.getRanges()
-                : fallbackDay != null && fallbackDay.getRanges() != null
-                    ? fallbackDay.getRanges()
-                    : List.of();
+                : List.of();
 
             List<ProfesionalScheduleRangeDto> normalizedRanges = new ArrayList<>();
             for (ProfesionalScheduleRangeDto range : sourceRanges) {
@@ -589,7 +667,7 @@ public class ProfesionalPublicPageService {
             if (day == null || day.getDay() == null) {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Día inválido en horario");
             }
-            String dayKey = day.getDay().trim().toLowerCase();
+            String dayKey = normalizeDayKey(day.getDay());
             if (!DAY_ORDER.contains(dayKey)) {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Día inválido: " + day.getDay());
             }
@@ -600,6 +678,17 @@ public class ProfesionalPublicPageService {
         }
 
         validatePauses(schedule.getPauses());
+    }
+
+    private String normalizeDayKey(String rawDay) {
+        if (rawDay == null) {
+            return "";
+        }
+        String normalized = rawDay.trim().toLowerCase();
+        if (normalized.isBlank()) {
+            return "";
+        }
+        return DAY_ALIASES.getOrDefault(normalized, normalized);
     }
 
     private void validateDayRanges(String day, List<ProfesionalScheduleRangeDto> ranges) {
@@ -707,9 +796,11 @@ public class ProfesionalPublicPageService {
 
     private ProfesionalPublicPageResponse mapToPublicPage(ProfessionalProfile profile) {
         User user = profile.getUser();
+        ProfesionalScheduleDto schedule = readStoredSchedule(profile.getScheduleJson());
         List<ProfesionalServiceResponse> services = profesionalServiceRepository
             .findByProfessional_IdOrderByCreatedAtDesc(profile.getId())
             .stream()
+            .filter(this::isServiceActive)
             .map(this::mapService)
             .collect(Collectors.toList());
 
@@ -722,6 +813,7 @@ public class ProfesionalPublicPageService {
             profile.getPublicAbout(),
             profile.getLocation(),
             profile.getPublicPhotos(),
+            schedule,
             services
         );
     }
@@ -731,7 +823,8 @@ public class ProfesionalPublicPageService {
             service.getId(),
             service.getName(),
             service.getPrice(),
-            service.getDuration()
+            service.getDuration(),
+            service.getActive()
         );
     }
 
@@ -757,6 +850,35 @@ public class ProfesionalPublicPageService {
             profile.getLocation(),
             profile.getPublicHeadline()
         );
+    }
+
+    private boolean isProfessionalActive(ProfessionalProfile profile) {
+        return !Boolean.FALSE.equals(profile.getActive());
+    }
+
+    private boolean isServiceActive(ProfesionalService service) {
+        return !Boolean.FALSE.equals(service.getActive());
+    }
+
+    private void ensurePublicProfessionalIsActive(ProfessionalProfile profile) {
+        if (isProfessionalActive(profile)) {
+            return;
+        }
+        throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Profesional no encontrado");
+    }
+
+    private void ensureProfessionalReservable(ProfessionalProfile profile) {
+        if (isProfessionalActive(profile)) {
+            return;
+        }
+        throw new ResponseStatusException(HttpStatus.CONFLICT, "El profesional está inactivo.");
+    }
+
+    private void ensureServiceReservable(ProfesionalService service) {
+        if (isServiceActive(service)) {
+            return;
+        }
+        throw new ResponseStatusException(HttpStatus.CONFLICT, "El servicio está inactivo.");
     }
 
     private void ensureSlug(ProfessionalProfile profile) {

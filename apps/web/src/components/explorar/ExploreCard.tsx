@@ -1,9 +1,12 @@
+import Link from 'next/link';
+
 type ExploreCardProps = {
   name: string;
   category: string;
   rating?: string;
   price?: string;
   available?: boolean;
+  href?: string;
 };
 
 export default function ExploreCard({
@@ -12,11 +15,13 @@ export default function ExploreCard({
   rating,
   price,
   available,
+  href,
 }: ExploreCardProps) {
   const displayRating = rating?.trim();
   const displayPrice = price?.trim() || 'Precio a confirmar';
-  return (
-    <div className="rounded-[24px] bg-white p-4 shadow-sm transition hover:-translate-y-1 hover:shadow-md">
+
+  const cardContent = (
+    <>
       <div className="h-40 w-full rounded-[20px] bg-[#E9EEF2]" />
       <div className="mt-4 flex items-start justify-between gap-3">
         <div>
@@ -49,6 +54,23 @@ export default function ExploreCard({
         )}
         <span className="text-[#6B7280]">{displayPrice}</span>
       </div>
-    </div>
+    </>
+  );
+
+  if (!href) {
+    return (
+      <div className="rounded-[24px] bg-white p-4 shadow-sm transition hover:-translate-y-1 hover:shadow-md">
+        {cardContent}
+      </div>
+    );
+  }
+
+  return (
+    <Link
+      href={href}
+      className="block rounded-[24px] bg-white p-4 shadow-sm transition hover:-translate-y-1 hover:shadow-md"
+    >
+      {cardContent}
+    </Link>
   );
 }

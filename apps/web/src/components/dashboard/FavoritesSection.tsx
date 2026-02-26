@@ -1,4 +1,5 @@
 import MarketplaceCard from './MarketplaceCard';
+import HorizontalScroller from './HorizontalScroller';
 
 type FavoriteProfessional = {
   id: string;
@@ -46,9 +47,9 @@ export default function FavoritesSection({
             : 'Todavía no marcaste profesionales como favoritos.'}
         </div>
       ) : (
-        <div className="flex gap-4 overflow-x-auto pb-2">
+        <HorizontalScroller itemsCount={favorites.length}>
           {favorites.map((favorite) => (
-            <div key={favorite.id} className="min-w-[260px] sm:min-w-[300px]">
+            <div key={favorite.id} className="min-w-[260px] snap-start sm:min-w-[300px]">
               <MarketplaceCard
                 name={favorite.name}
                 category={favorite.category}
@@ -61,7 +62,7 @@ export default function FavoritesSection({
               />
             </div>
           ))}
-        </div>
+        </HorizontalScroller>
       )}
     </section>
   );

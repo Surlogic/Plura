@@ -19,5 +19,5 @@ export const useProfessionalProfile = () => {
     }
   }, [router, hasLoaded, isLoading, profile, refreshProfile, clearProfile]);
 
-  return { profile, isLoading, hasLoaded };
+  return { profile, isLoading, hasLoaded, refreshProfile };
 };

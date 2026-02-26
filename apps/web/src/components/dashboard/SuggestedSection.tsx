@@ -1,7 +1,9 @@
 import ExploreCard from '@/components/explorar/ExploreCard';
+import HorizontalScroller from './HorizontalScroller';
 
 type SuggestedProfessional = {
   id: string;
+  slug?: string;
   name: string;
   category: string;
   rating?: string;
@@ -47,7 +49,7 @@ export default function SuggestedSection({
             : 'Todavía no tenemos sugerencias para vos.'}
         </div>
       ) : (
-        <div className="flex gap-4 overflow-x-auto pb-4">
+        <HorizontalScroller itemsCount={suggestions.length}>
           {suggestions.map((suggested) => (
             <div
               key={suggested.id}
@@ -59,10 +61,11 @@ export default function SuggestedSection({
                 rating={suggested.rating}
                 price={suggested.price}
                 available={suggested.available}
+                href={suggested.slug ? `/profesional/pagina/${encodeURIComponent(suggested.slug)}` : undefined}
               />
             </div>
           ))}
-        </div>
+        </HorizontalScroller>
       )}
     </section>
   );

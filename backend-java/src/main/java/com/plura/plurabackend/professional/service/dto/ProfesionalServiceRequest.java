@@ -7,4 +7,5 @@ public class ProfesionalServiceRequest {
     private String name;
     private String price;
     private String duration;
+    private Boolean active;
 }

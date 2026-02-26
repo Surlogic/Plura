@@ -47,7 +47,12 @@ const monthNamesShort = [
   'jul', 'ago', 'sep', 'oct', 'nov', 'dic',
 ];
 
-const toLocalDateKey = (date: Date) => date.toLocaleDateString('en-CA');
+const toLocalDateKey = (date: Date) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
 
 const startOfWeek = (date: Date) => {
   const result = new Date(date);
@@ -214,7 +219,7 @@ export default function ProfesionalDashboardPage() {
   const [selectedReservation, setSelectedReservation] =
     useState<ProfessionalReservation | null>(null);
   const [drawerVisible, setDrawerVisible] = useState(false);
-  const closeTimeoutRef = useRef<ReturnType<typeof window.setTimeout> | null>(null);
+  const closeTimeoutRef = useRef<number | null>(null);
 
   useEffect(() => {
     if (!profile?.id) return;

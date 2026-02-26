@@ -1,4 +1,5 @@
 import api from '@/services/api';
+import type { ProfessionalSchedule } from '@/types/professional';
 
 export type PublicProfessionalService = {
   id: string;
@@ -12,6 +13,7 @@ export type PublicProfessionalPage = {
   slug: string;
   fullName: string;
   location?: string | null;
+  schedule?: ProfessionalSchedule;
   services: PublicProfessionalService[];
 };
 

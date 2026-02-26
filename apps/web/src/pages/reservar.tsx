@@ -279,7 +279,7 @@ export default function ReservationPage() {
     if (!confirmation) return;
 
     const timeoutId = window.setTimeout(() => {
-      router.push('/cliente/dashboard');
+      router.push('/cliente/inicio');
     }, 2500);
 
     return () => {
@@ -311,7 +311,7 @@ export default function ReservationPage() {
         date: selectedDate,
         time: selectedTime,
       });
-      setSaveMessage('Reserva creada. Redirigiendo al dashboard cliente...');
+      setSaveMessage('Reserva creada. Redirigiendo al inicio cliente...');
       setSelectedTime(null);
 
       const refreshedSlots = await getPublicSlots(professionalSlug, selectedDate, service.id);
@@ -522,10 +522,10 @@ export default function ReservationPage() {
                   <p>Estado: {bookingStatusLabel[confirmation.status]}</p>
                   <button
                     type="button"
-                    onClick={() => router.push('/cliente/dashboard')}
+                    onClick={() => router.push('/cliente/inicio')}
                     className="mt-3 rounded-full border border-[#14532D] px-3 py-1 text-xs font-semibold text-[#14532D]"
                   >
-                    Ir al dashboard cliente
+                    Ir al inicio cliente
                   </button>
                 </div>
               ) : null}

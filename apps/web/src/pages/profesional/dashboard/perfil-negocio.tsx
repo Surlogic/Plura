@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import Navbar from '@/components/shared/Navbar';
 import ProfesionalSidebar from '@/components/profesional/Sidebar';
 import { useProfessionalProfile } from '@/hooks/useProfessionalProfile';
+import api from '@/services/api';
 
 const slugify = (value: string) =>
   value
@@ -17,10 +18,14 @@ const slugify = (value: string) =>
     .replace(/^-+|-+$/g, '');
 
 export default function ProfesionalBusinessProfilePage() {
-  const { profile, isLoading, hasLoaded } = useProfessionalProfile();
+  const { profile, isLoading, hasLoaded, refreshProfile } = useProfessionalProfile();
   const [origin, setOrigin] = useState('https://plura.com');
   const [hasInitialized, setHasInitialized] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isDirty, setIsDirty] = useState(false);
+  const [saveMessage, setSaveMessage] = useState<string | null>(null);
+  const [saveError, setSaveError] = useState(false);
   const [form, setForm] = useState({
     businessName: '',
     category: '',
@@ -39,6 +44,7 @@ export default function ProfesionalBusinessProfilePage() {
       email: profile.email || prev.email,
       phone: profile.phoneNumber || prev.phone,
     }));
+    setIsDirty(false);
     setHasInitialized(true);
   }, [profile, hasInitialized]);
 
@@ -48,8 +54,8 @@ export default function ProfesionalBusinessProfilePage() {
   }, []);
 
   const slug = useMemo(
-    () => slugify(form.businessName || 'profesional'),
-    [form.businessName],
+    () => profile?.slug?.trim() || slugify(form.businessName || 'profesional'),
+    [profile?.slug, form.businessName],
   );
   const publicUrl = `${origin}/profesional/pagina/${slug || 'profesional'}`;
   const showSkeleton = !hasLoaded || (isLoading && !profile);
@@ -60,6 +66,38 @@ export default function ProfesionalBusinessProfilePage() {
   const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = event.target;
     setForm((prev) => ({ ...prev, [name]: value }));
+    setIsDirty(true);
+    setSaveMessage(null);
+  };
+
+  const handleSave = async () => {
+    if (!form.businessName.trim() || !form.category.trim() || !form.phone.trim()) {
+      setSaveMessage('Completá nombre, rubro y teléfono para guardar.');
+      setSaveError(true);
+      return;
+    }
+
+    setIsSaving(true);
+    setSaveMessage(null);
+    setSaveError(false);
+
+    try {
+      await api.put('/profesional/profile', {
+        fullName: form.businessName.trim(),
+        rubro: form.category.trim(),
+        location: form.location.trim(),
+        phoneNumber: form.phone.trim(),
+      });
+      await refreshProfile();
+      setSaveMessage('Perfil actualizado correctamente.');
+      setSaveError(false);
+      setIsDirty(false);
+    } catch {
+      setSaveMessage('No se pudo guardar el perfil del negocio.');
+      setSaveError(true);
+    } finally {
+      setIsSaving(false);
+    }
   };
   const handleToggleMenu = () => {
     setIsMenuOpen((prev) => !prev);
@@ -102,11 +140,23 @@ export default function ProfesionalBusinessProfilePage() {
                 </div>
                 <button
                   type="button"
+                  onClick={() => void handleSave()}
+                  disabled={isSaving}
                   className="rounded-full bg-[#0B1D2A] px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
                 >
-                  Guardar cambios
+                  {isSaving ? 'Guardando...' : 'Guardar cambios'}
                 </button>
               </div>
+              {saveMessage ? (
+                <p className={`mt-3 text-sm font-medium ${saveError ? 'text-red-500' : 'text-[#1FB6A6]'}`}>
+                  {saveMessage}
+                </p>
+              ) : null}
+              {isDirty && !saveMessage ? (
+                <p className="mt-3 text-xs font-medium text-amber-600">
+                  Tenés cambios sin guardar.
+                </p>
+              ) : null}
             </div>
 
             {showSkeleton ? (
@@ -176,10 +226,10 @@ export default function ProfesionalBusinessProfilePage() {
                             Email
                           </label>
                           <input
-                            className={inputClassName}
+                            className={`${inputClassName} bg-[#F8FAFC] text-[#64748B]`}
                             name="email"
                             value={form.email}
-                            onChange={handleChange}
+                            readOnly
                             placeholder="Ej: hola@plura.com"
                           />
                         </div>

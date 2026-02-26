@@ -60,32 +60,25 @@ const mapBooking = (booking: ProfessionalBookingDto): ProfessionalReservation =>
 export const getProfessionalReservationsByDate = async (
   date: string,
 ): Promise<ProfessionalReservation[]> => {
+  return getProfessionalReservationsByRange(date, date);
+};
+
+export const getProfessionalReservationsByRange = async (
+  dateFrom: string,
+  dateTo: string,
+): Promise<ProfessionalReservation[]> => {
   const response = await api.get<ProfessionalBookingDto[]>('/profesional/reservas', {
-    params: { date },
+    params: { dateFrom, dateTo },
   });
   return response.data.map(mapBooking);
 };
 
-export const getProfessionalReservationsForDates = async (
-  dates: string[],
-): Promise<ProfessionalReservation[]> => {
+export const getProfessionalReservationsForDates = async (dates: string[]): Promise<ProfessionalReservation[]> => {
   const uniqueDates = Array.from(new Set(dates.filter(Boolean))).sort();
   if (uniqueDates.length === 0) return [];
-
-  const responses = await Promise.all(
-    uniqueDates.map((date) => getProfessionalReservationsByDate(date)),
-  );
-
-  const reservationsById = new Map<string, ProfessionalReservation>();
-  responses.flat().forEach((reservation) => {
-    reservationsById.set(reservation.id, reservation);
-  });
-
-  return Array.from(reservationsById.values()).sort((a, b) => {
-    const aDateTime = `${a.date}T${a.time || '00:00'}`;
-    const bDateTime = `${b.date}T${b.time || '00:00'}`;
-    return aDateTime.localeCompare(bDateTime);
-  });
+  const dateFrom = uniqueDates[0];
+  const dateTo = uniqueDates[uniqueDates.length - 1];
+  return getProfessionalReservationsByRange(dateFrom, dateTo);
 };
 
 export const updateProfessionalReservationStatus = async (

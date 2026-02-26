@@ -10,4 +10,5 @@ public class ProfesionalServiceResponse {
     private String name;
     private String price;
     private String duration;
+    private Boolean active;
 }

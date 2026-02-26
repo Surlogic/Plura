@@ -4,10 +4,13 @@ import Navbar from '@/components/shared/Navbar';
 import Footer from '@/components/shared/Footer';
 import ExploreFilters from '@/components/explorar/ExploreFilters';
 import ExploreCard from '@/components/explorar/ExploreCard';
+import ClientDashboardNavbar from '@/components/dashboard/ClientDashboardNavbar';
+import { useClientProfileContext } from '@/context/ClientProfileContext';
 import { usePublicProfessionals } from '@/hooks/usePublicProfessionals';
 
 export default function ExplorarPage() {
   const router = useRouter();
+  const { profile, hasLoaded } = useClientProfileContext();
   const { professionals, isLoading, error } = usePublicProfessionals();
   const rawCategory = router.query.categoria;
   const normalizedCategory =
@@ -38,9 +41,16 @@ export default function ExplorarPage() {
     );
   }, [activeCategory, professionals]);
 
+  const hasClientSession = hasLoaded && Boolean(profile);
+  const displayName = profile?.fullName || 'Cliente';
+
   return (
     <div className="min-h-screen bg-[#F4F6F8] text-[#0E2A47]">
-      <Navbar />
+      {hasClientSession ? (
+        <ClientDashboardNavbar name={displayName} />
+      ) : (
+        <Navbar />
+      )}
       <main className="mx-auto w-full max-w-6xl space-y-10 px-4 pb-24 pt-12">
         <header className="space-y-2">
           <p className="text-xs uppercase tracking-[0.35em] text-[#6B7280]">
@@ -97,6 +107,7 @@ export default function ExplorarPage() {
                   key={place.id}
                   name={place.fullName}
                   category={place.rubro}
+                  href={`/profesional/pagina/${encodeURIComponent(place.slug)}`}
                 />
               ))}
             </div>

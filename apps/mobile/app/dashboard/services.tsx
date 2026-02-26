@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import api from '../../../src/services/api';
-import type { ProfessionalService } from '../../../src/types/professional';
+import api from '../../src/services/api';
+import type { ProfessionalService } from '../../src/types/professional';
 
 export default function ServicesScreen() {
   const [services, setServices] = useState<ProfessionalService[]>([]);

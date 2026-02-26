@@ -7,6 +7,7 @@ import {
   useEffect,
   useMemo,
   useState,
+  type ReactNode,
 } from 'react';
 import api from '@/services/api';
 import type { ProfessionalProfile } from '@/types/professional';
@@ -25,7 +26,7 @@ const ProfessionalProfileContext =
 export function ProfessionalProfileProvider({
   children,
 }: {
-  children: React.ReactNode;
+  children: ReactNode;
 }) {
   const [profile, setProfile] = useState<ProfessionalProfile | null>(null);
   const [isLoading, setIsLoading] = useState(false);

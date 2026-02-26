@@ -7,6 +7,7 @@ import {
   useEffect,
   useMemo,
   useState,
+  type ReactNode,
 } from 'react';
 import api from '@/services/api';
 import type { ClientProfile } from '@/types/client';
@@ -25,7 +26,7 @@ const ClientProfileContext =
 export function ClientProfileProvider({
   children,
 }: {
-  children: React.ReactNode;
+  children: ReactNode;
 }) {
   const [profile, setProfile] = useState<ClientProfile | null>(null);
   const [isLoading, setIsLoading] = useState(false);

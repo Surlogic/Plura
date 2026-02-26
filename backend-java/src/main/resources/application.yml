@@ -20,10 +20,15 @@ jwt:
   secret: ${JWT_SECRET}
   issuer: ${JWT_ISSUER:plura}
   expiration-minutes: ${JWT_EXPIRATION_MINUTES:30}
+  refresh-days: ${JWT_REFRESH_DAYS:30}
+  refresh-pepper: ${JWT_REFRESH_PEPPER:}
 
 app:
   cors:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3002}
+  auth:
+    cookie-secure: ${AUTH_COOKIE_SECURE:false}
+    cookie-same-site: ${AUTH_COOKIE_SAMESITE:Lax}
 
 springdoc:
   swagger-ui:

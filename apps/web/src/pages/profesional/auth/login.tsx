@@ -5,7 +5,6 @@ import type { ChangeEvent, FormEvent } from 'react';
 import Navbar from '@/components/shared/Navbar';
 import Footer from '@/components/shared/Footer';
 import api from '@/services/api';
-import { setProfessionalToken } from '@/services/session';
 import { useProfessionalProfileContext } from '@/context/ProfessionalProfileContext';
 
 export default function ProfesionalLoginPage() {
@@ -26,13 +25,10 @@ export default function ProfesionalLoginPage() {
 
     try {
       setIsSubmitting(true);
-      const response = await api.post<{
-        accessToken: string;
-      }>('/auth/login/profesional', {
+      await api.post('/auth/login/profesional', {
         email: form.email.trim().toLowerCase(),
         password: form.password,
       });
-      setProfessionalToken(response.data.accessToken);
       await refreshProfile();
       router.push('/profesional/dashboard');
     } catch (error) {

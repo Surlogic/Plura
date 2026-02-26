@@ -1,68 +1,43 @@
+import { useMemo } from 'react';
+import { useRouter } from 'next/router';
 import Navbar from '@/components/shared/Navbar';
 import Footer from '@/components/shared/Footer';
 import ExploreFilters from '@/components/explorar/ExploreFilters';
 import ExploreCard from '@/components/explorar/ExploreCard';
-
-const places = [
-  {
-    name: 'Atelier Glow',
-    category: 'Salón de belleza',
-    rating: '4.9',
-    price: 'Desde $9.500',
-    available: true,
-  },
-  {
-    name: 'Barbería Sur',
-    category: 'Barbería',
-    rating: '4.8',
-    price: 'Desde $6.200',
-    available: true,
-  },
-  {
-    name: 'Studio Aura',
-    category: 'Cosmetología',
-    rating: '4.9',
-    price: 'Desde $8.900',
-    available: false,
-  },
-  {
-    name: 'Nail District',
-    category: 'Uñas',
-    rating: '4.7',
-    price: 'Desde $5.400',
-    available: true,
-  },
-  {
-    name: 'Zen Spa',
-    category: 'Spa',
-    rating: '4.8',
-    price: 'Desde $12.000',
-    available: false,
-  },
-  {
-    name: 'Lumiere Studio',
-    category: 'Maquillaje',
-    rating: '4.9',
-    price: 'Desde $7.800',
-    available: true,
-  },
-  {
-    name: 'Nova Beauty',
-    category: 'Peluquería',
-    rating: '4.7',
-    price: 'Desde $6.900',
-    available: false,
-  },
-  {
-    name: 'Aura Skin',
-    category: 'Cosmetología',
-    rating: '4.8',
-    price: 'Desde $10.200',
-    available: true,
-  },
-];
+import { usePublicProfessionals } from '@/hooks/usePublicProfessionals';
 
 export default function ExplorarPage() {
+  const router = useRouter();
+  const { professionals, isLoading, error } = usePublicProfessionals();
+  const rawCategory = router.query.categoria;
+  const normalizedCategory =
+    typeof rawCategory === 'string' ? decodeURIComponent(rawCategory) : '';
+
+  const categoryLookup: Record<string, string> = {
+    unas: 'Uñas',
+    cabello: 'Peluquería',
+    barberia: 'Barbería',
+    cejas: 'Cejas',
+    spa: 'Spa',
+    masajes: 'Masajes',
+    faciales: 'Cosmetología',
+    maquillaje: 'Maquillaje',
+  };
+
+  const activeCategory = useMemo(() => {
+    if (!normalizedCategory) return '';
+    const key = normalizedCategory.trim().toLowerCase();
+    return categoryLookup[key] || normalizedCategory;
+  }, [normalizedCategory]);
+
+  const filteredPlaces = useMemo(() => {
+    if (!activeCategory) return professionals;
+    const needle = activeCategory.toLowerCase();
+    return professionals.filter((place) =>
+      place.rubro.toLowerCase().includes(needle),
+    );
+  }, [activeCategory, professionals]);
+
   return (
     <div className="min-h-screen bg-[#F4F6F8] text-[#0E2A47]">
       <Navbar />
@@ -77,6 +52,11 @@ export default function ExplorarPage() {
           <p className="max-w-2xl text-sm text-[#6B7280] sm:text-base">
             Visualizá disponibilidad y filtra por rubro para encontrar tu próximo turno.
           </p>
+          {activeCategory ? (
+            <span className="inline-flex rounded-full bg-[#F59E0B]/10 px-3 py-1 text-xs font-semibold text-[#F59E0B]">
+              Filtrado por {activeCategory}
+            </span>
+          ) : null}
         </header>
 
         <ExploreFilters />
@@ -96,13 +76,31 @@ export default function ExplorarPage() {
         <section className="space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="text-xl font-semibold text-[#0E2A47]">Resultados</h2>
-            <span className="text-sm text-[#6B7280]">48 locales</span>
+            <span className="text-sm text-[#6B7280]">
+              {isLoading ? 'Cargando...' : `${filteredPlaces.length} locales`}
+            </span>
           </div>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {places.map((place) => (
-              <ExploreCard key={place.name} {...place} />
-            ))}
-          </div>
+          {error ? (
+            <div className="rounded-[20px] border border-dashed border-[#E2E7EC] bg-white px-4 py-6 text-sm text-[#64748B]">
+              {error}
+            </div>
+          ) : filteredPlaces.length === 0 ? (
+            <div className="rounded-[20px] border border-dashed border-[#E2E7EC] bg-white px-4 py-6 text-sm text-[#64748B]">
+              {isLoading
+                ? 'Cargando profesionales...'
+                : 'No hay resultados para mostrar.'}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              {filteredPlaces.map((place) => (
+                <ExploreCard
+                  key={place.id}
+                  name={place.fullName}
+                  category={place.rubro}
+                />
+              ))}
+            </div>
+          )}
         </section>
       </main>
       <Footer />

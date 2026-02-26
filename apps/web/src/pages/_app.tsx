@@ -2,6 +2,7 @@ import type { AppProps } from 'next/app';
 import { Sora } from 'next/font/google';
 import '@/pages/globals.css';
 import { ProfessionalProfileProvider } from '@/context/ProfessionalProfileContext';
+import { ClientProfileProvider } from '@/context/ClientProfileContext';
 
 const sora = Sora({
   variable: '--font-sora',
@@ -13,11 +14,13 @@ const sora = Sora({
 export default function App({ Component, pageProps }: AppProps) {
   return (
     <ProfessionalProfileProvider>
-      <div
-        className={`${sora.variable} ${sora.className} font-sans antialiased`}
-      >
-        <Component {...pageProps} />
-      </div>
+      <ClientProfileProvider>
+        <div
+          className={`${sora.variable} ${sora.className} font-sans antialiased`}
+        >
+          <Component {...pageProps} />
+        </div>
+      </ClientProfileProvider>
     </ProfessionalProfileProvider>
   );
 }

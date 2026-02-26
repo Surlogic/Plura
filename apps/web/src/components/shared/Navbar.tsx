@@ -2,9 +2,8 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
-import { clearProfessionalToken, getProfessionalToken } from '@/services/session';
+import api from '@/services/api';
 import { useProfessionalProfileContext } from '@/context/ProfessionalProfileContext';
 
 type NavbarProps = {
@@ -19,18 +18,17 @@ export default function Navbar({
   onMenuClick,
 }: NavbarProps) {
   const router = useRouter();
-  const { clearProfile } = useProfessionalProfileContext();
-  const [hasProfessionalSession, setHasProfessionalSession] = useState(false);
-
-  useEffect(() => {
-    setHasProfessionalSession(Boolean(getProfessionalToken()));
-  }, [router.pathname]);
+  const { clearProfile, profile, hasLoaded } = useProfessionalProfileContext();
+  const hasProfessionalSession = hasLoaded && Boolean(profile);
 
   const handleLogout = () => {
-    clearProfessionalToken();
-    clearProfile();
-    setHasProfessionalSession(false);
-    router.push('/profesional/auth/login');
+    api
+      .post('/auth/logout')
+      .catch(() => undefined)
+      .finally(() => {
+        clearProfile();
+        router.push('/profesional/auth/login');
+      });
   };
 
   const isDashboard = variant === 'dashboard';

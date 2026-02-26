@@ -1,8 +1,39 @@
 import Link from 'next/link';
+import { useRouter } from 'next/router';
+import { useState } from 'react';
+import type { ChangeEvent, FormEvent } from 'react';
 import Navbar from '@/components/shared/Navbar';
 import Footer from '@/components/shared/Footer';
+import api from '@/services/api';
 
 export default function ClienteLoginPage() {
+  const router = useRouter();
+  const [form, setForm] = useState({ email: '', password: '' });
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = event.target;
+    setForm((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setErrorMessage(null);
+    try {
+      setIsSubmitting(true);
+      await api.post('/auth/login/cliente', {
+        email: form.email.trim().toLowerCase(),
+        password: form.password,
+      });
+      router.push('/cliente/dashboard');
+    } catch {
+      setErrorMessage('Credenciales inválidas o error de servidor.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-[#F4F6F8] text-[#0E2A47]">
       <Navbar />
@@ -20,13 +51,16 @@ export default function ClienteLoginPage() {
             </p>
           </div>
 
-          <form className="space-y-4">
+          <form className="space-y-4" onSubmit={handleSubmit}>
             <div className="space-y-2">
               <label className="text-sm font-medium text-[#0E2A47]">Gmail</label>
               <input
                 className="h-12 w-full rounded-[16px] border border-[#0E2A47]/10 bg-[#F4F6F8] px-4 text-sm text-[#0E2A47] placeholder:text-[#6B7280] focus:outline-none focus:ring-2 focus:ring-[#1FB6A6]/40"
                 placeholder="tucorreo@gmail.com"
                 type="email"
+                name="email"
+                value={form.email}
+                onChange={handleChange}
                 required
               />
             </div>
@@ -37,15 +71,25 @@ export default function ClienteLoginPage() {
                 type="password"
                 className="h-12 w-full rounded-[16px] border border-[#0E2A47]/10 bg-[#F4F6F8] px-4 text-sm text-[#0E2A47] placeholder:text-[#6B7280] focus:outline-none focus:ring-2 focus:ring-[#1FB6A6]/40"
                 placeholder="••••••••"
+                name="password"
+                value={form.password}
+                onChange={handleChange}
                 required
               />
             </div>
 
+            {errorMessage ? (
+              <p className="rounded-[12px] bg-red-50 px-3 py-2 text-xs text-red-600">
+                {errorMessage}
+              </p>
+            ) : null}
+
             <button
               type="submit"
-              className="h-12 w-full rounded-full bg-[linear-gradient(135deg,#1FB6A6,#0E2A47)] text-sm font-semibold text-white shadow-sm transition hover:opacity-90"
+              className="h-12 w-full rounded-full bg-[linear-gradient(135deg,#1FB6A6,#0E2A47)] text-sm font-semibold text-white shadow-sm transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-70"
+              disabled={isSubmitting}
             >
-              Iniciar sesión
+              {isSubmitting ? 'Ingresando...' : 'Iniciar sesión'}
             </button>
           </form>
 

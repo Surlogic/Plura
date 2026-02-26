@@ -9,7 +9,6 @@ import {
   useState,
 } from 'react';
 import api from '@/services/api';
-import { getProfessionalToken } from '@/services/session';
 import type { ProfessionalProfile } from '@/types/professional';
 
 type ProfessionalProfileContextValue = {
@@ -39,17 +38,9 @@ export function ProfessionalProfileProvider({
   }, []);
 
   const refreshProfile = useCallback(async () => {
-    const token = getProfessionalToken();
-    if (!token) {
-      clearProfile();
-      return;
-    }
-
     setIsLoading(true);
     try {
-      const response = await api.get('/auth/me/profesional', {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const response = await api.get('/auth/me/profesional');
       setProfile(response.data);
     } catch {
       setProfile(null);

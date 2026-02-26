@@ -6,16 +6,9 @@ import { useRouter } from 'next/router';
 import Navbar from '@/components/shared/Navbar';
 import ProfesionalSidebar from '@/components/profesional/Sidebar';
 import { useProfessionalProfile } from '@/hooks/useProfessionalProfile';
-import {
-  buildServicePreview,
-  loadProfessionalServices,
-} from '@/lib/professionalServices';
-import { loadProfessionalSchedule } from '@/lib/professionalSchedule';
 import api from '@/services/api';
-import { getProfessionalToken } from '@/services/session';
 import type {
   ProfessionalSchedule,
-  ProfessionalService,
   PublicService,
 } from '@/types/professional';
 
@@ -49,7 +42,7 @@ export default function ProfesionalPublicPageBuilder() {
   const [showExitWarning, setShowExitWarning] = useState(false);
   const [hasLoadedPage, setHasLoadedPage] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [services, setServices] = useState<ProfessionalService[]>([]);
+  const [services, setServices] = useState<PublicService[]>([]);
   const [schedule, setSchedule] = useState<ProfessionalSchedule | null>(null);
   const [form, setForm] = useState({
     headline: '',
@@ -73,7 +66,13 @@ export default function ProfesionalPublicPageBuilder() {
   const publicUrl = `${origin}/profesional/pagina/${slug || 'profesional'}`;
   const showSkeleton = !hasLoaded || (isLoading && !profile);
   const previewServices: PublicService[] = useMemo(
-    () => services.map(buildServicePreview),
+    () =>
+      services.map((service) => ({
+        id: service.id,
+        name: service.name || 'Servicio',
+        price: service.price || 'Consultar',
+        duration: service.duration || '',
+      })),
     [services],
   );
   const canAddPhoto = photos.length < maxBusinessPhotos;
@@ -122,34 +121,42 @@ export default function ProfesionalPublicPageBuilder() {
   }, [iframeReady, previewPayload]);
 
   useEffect(() => {
-    if (!slug || !profile?.id || typeof window === 'undefined') return;
-    if (previewServices.length === 0) return;
-    window.localStorage.setItem(
-      `plura:public-services:${slug}`,
-      JSON.stringify(previewServices),
-    );
-  }, [slug, previewServices, profile?.id]);
-
-  useEffect(() => {
     if (typeof window === 'undefined') return;
     setOrigin(window.location.origin);
   }, []);
 
   useEffect(() => {
     if (!profile?.id) return;
-    setServices(loadProfessionalServices(profile.id));
-    setSchedule(loadProfessionalSchedule(profile.id, { allowFallback: false }));
+    api
+      .get<PublicService[]>('/profesional/services')
+      .then((response) => {
+        setServices(Array.isArray(response.data) ? response.data : []);
+      })
+      .catch(() => {
+        setServices([]);
+      });
+    api
+      .get<ProfessionalSchedule>('/profesional/schedule')
+      .then((response) => {
+        const data = response.data;
+        if (!data || !Array.isArray(data.days)) {
+          setSchedule(null);
+          return;
+        }
+        setSchedule({
+          days: data.days,
+          pauses: Array.isArray(data.pauses) ? data.pauses : [],
+        });
+      })
+      .catch(() => {
+        setSchedule(null);
+      });
   }, [profile?.id]);
 
   useEffect(() => {
     if (!profile || hasLoadedPage) return;
-    const token = getProfessionalToken();
-    if (!token) return;
-
     api
-      .get('/profesional/public-page', {
-        headers: { Authorization: `Bearer ${token}` },
-      })
+      .get('/profesional/public-page')
       .then((response) => {
         const data = response.data as {
           headline?: string | null;
@@ -231,24 +238,16 @@ export default function ProfesionalPublicPageBuilder() {
   };
 
   const handleSave = async () => {
-    const token = getProfessionalToken();
-    if (!token) return;
     setIsSaving(true);
     setSaveMessage(null);
     setSaveError(false);
 
     try {
-      await api.put(
-        '/profesional/public-page',
-        {
-          headline: form.headline,
-          about: form.about,
-          photos: photos.map((photo) => photo.url).filter(Boolean),
-        },
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        },
-      );
+      await api.put('/profesional/public-page', {
+        headline: form.headline,
+        about: form.about,
+        photos: photos.map((photo) => photo.url).filter(Boolean),
+      });
       setSaveMessage('Guardado correctamente.');
       setSaveError(false);
       setIsDirty(false);

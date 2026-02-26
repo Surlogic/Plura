@@ -1,11 +1,6 @@
 import Link from 'next/link';
 import BusinessCard from './BusinessCard';
-
-const businesses = [
-  { name: 'Atelier Glow', category: 'Salón de belleza', rating: '4.9' },
-  { name: 'Barbería Sur', category: 'Barbería', rating: '4.8' },
-  { name: 'Studio Aura', category: 'Cosmetología', rating: '4.9' },
-];
+import { usePublicProfessionals } from '@/hooks/usePublicProfessionals';
 
 const slugify = (value: string) =>
   value
@@ -17,6 +12,9 @@ const slugify = (value: string) =>
     .replace(/\s+/g, '-');
 
 export default function TopBusinesses() {
+  const { professionals, isLoading } = usePublicProfessionals(3);
+  const items = professionals.slice(0, 3);
+
   return (
     <section className="px-4">
       <div className="mx-auto w-full max-w-6xl space-y-6">
@@ -28,16 +26,31 @@ export default function TopBusinesses() {
             Ver todos
           </button>
         </div>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {businesses.map((business) => {
-            const slug = slugify(business.name);
-            return (
-              <Link key={business.name} href={`/profesional/pagina/${slug}`} className="block">
-                <BusinessCard {...business} />
-              </Link>
-            );
-          })}
-        </div>
+        {items.length === 0 ? (
+          <div className="rounded-[20px] border border-dashed border-[#E2E7EC] bg-white px-4 py-6 text-sm text-[#64748B]">
+            {isLoading
+              ? 'Cargando profesionales destacados...'
+              : 'Todavía no hay profesionales destacados.'}
+          </div>
+        ) : (
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {items.map((business) => {
+              const slug = business.slug || slugify(business.fullName);
+              return (
+                <Link
+                  key={business.id}
+                  href={`/profesional/pagina/${slug}`}
+                  className="block"
+                >
+                  <BusinessCard
+                    name={business.fullName}
+                    category={business.rubro}
+                  />
+                </Link>
+              );
+            })}
+          </div>
+        )}
       </div>
     </section>
   );

@@ -1,9 +1,7 @@
 package com.plura.plurabackend.auth.dto;
 
-import com.plura.plurabackend.users.model.TipoCliente;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
 
@@ -32,8 +30,8 @@ public class RegisterProfesionalRequest {
     private String location;
 
     // Define si tiene local o es a domicilio.
-    @NotNull
-    private TipoCliente tipoCliente;
+    @NotBlank
+    private String tipoCliente;
 
     // Contraseña en texto plano (se hashea al persistir).
     @NotBlank

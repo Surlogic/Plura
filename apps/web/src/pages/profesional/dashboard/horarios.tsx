@@ -4,10 +4,8 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import Navbar from '@/components/shared/Navbar';
 import ProfesionalSidebar from '@/components/profesional/Sidebar';
 import { useProfessionalProfile } from '@/hooks/useProfessionalProfile';
-import {
-  loadProfessionalSchedule,
-  saveProfessionalSchedule,
-} from '@/lib/professionalSchedule';
+import { isAxiosError } from 'axios';
+import api from '@/services/api';
 import type {
   ProfessionalSchedule,
   SchedulePauseRange,
@@ -43,11 +41,125 @@ const buildEmptyPause = (): SchedulePauseRange => ({
   note: '',
 });
 
-const createRange = (start = '09:00', end = '18:00'): WorkShift => ({
-  id: `range-${Date.now()}`,
+const createRange = (
+  day: WorkDayKey,
+  start = '09:00',
+  end = '18:00',
+  index = 1,
+): WorkShift => ({
+  id: `range-${day}-${Date.now()}-${index}`,
   start,
   end,
 });
+
+const createDefaultDays = (): WorkDaySchedule[] => [
+  {
+    day: 'mon',
+    enabled: true,
+    paused: false,
+    ranges: [createRange('mon', '09:00', '18:00')],
+  },
+  {
+    day: 'tue',
+    enabled: true,
+    paused: false,
+    ranges: [createRange('tue', '09:00', '18:00')],
+  },
+  {
+    day: 'wed',
+    enabled: true,
+    paused: false,
+    ranges: [createRange('wed', '09:00', '18:00')],
+  },
+  {
+    day: 'thu',
+    enabled: true,
+    paused: false,
+    ranges: [createRange('thu', '09:00', '18:00')],
+  },
+  {
+    day: 'fri',
+    enabled: true,
+    paused: false,
+    ranges: [createRange('fri', '09:00', '18:00')],
+  },
+  {
+    day: 'sat',
+    enabled: true,
+    paused: false,
+    ranges: [createRange('sat', '09:00', '13:00')],
+  },
+  {
+    day: 'sun',
+    enabled: false,
+    paused: false,
+    ranges: [createRange('sun', '09:00', '13:00')],
+  },
+];
+
+const createDefaultSchedule = (): ProfessionalSchedule => ({
+  days: createDefaultDays(),
+  pauses: [],
+});
+
+const normalizeSchedule = (value: Partial<ProfessionalSchedule> | null | undefined): ProfessionalSchedule => {
+  const fallback = createDefaultSchedule();
+  if (!value) return fallback;
+
+  const dayMap = new Map<WorkDayKey, WorkDaySchedule>();
+  if (Array.isArray(value.days)) {
+    value.days.forEach((day) => {
+      if (!day || !day.day || !dayOptions.includes(day.day)) return;
+      dayMap.set(day.day, day);
+    });
+  }
+
+  const days = dayOptions.map((dayKey, index) => {
+    const fallbackDay = fallback.days[index];
+    const stored = dayMap.get(dayKey);
+    const ranges = Array.isArray(stored?.ranges)
+      ? stored.ranges.map((range, rangeIndex) => ({
+          id: range?.id || `range-${dayKey}-${Date.now()}-${rangeIndex}`,
+          start: range?.start || fallbackDay.ranges[0].start,
+          end: range?.end || fallbackDay.ranges[0].end,
+        }))
+      : fallbackDay.ranges.map((range, rangeIndex) => ({
+          id: range.id || `range-${dayKey}-${Date.now()}-${rangeIndex}`,
+          start: range.start,
+          end: range.end,
+        }));
+
+    return {
+      day: dayKey,
+      enabled: stored?.paused ? false : Boolean(stored?.enabled ?? fallbackDay.enabled),
+      paused: Boolean(stored?.paused),
+      ranges,
+    };
+  });
+
+  const pauses = Array.isArray(value.pauses)
+    ? value.pauses
+        .map((pause, index) => ({
+          id: pause?.id || `pause-${Date.now()}-${index}`,
+          startDate: pause?.startDate || '',
+          endDate: pause?.endDate || pause?.startDate || '',
+          note: pause?.note || '',
+        }))
+        .filter((pause) => Boolean(pause.startDate))
+    : [];
+
+  return { days, pauses };
+};
+
+const extractApiErrorMessage = (error: unknown, fallback: string) => {
+  if (isAxiosError<{ message?: string }>(error)) {
+    const backendMessage = error.response?.data?.message;
+    if (backendMessage && backendMessage.trim()) {
+      return backendMessage.trim();
+    }
+  }
+  return fallback;
+};
 
 export default function ProfesionalScheduleBuilderPage() {
   const { profile, isLoading, hasLoaded } = useProfessionalProfile();
@@ -74,15 +186,40 @@ export default function ProfesionalScheduleBuilderPage() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   useEffect(() => {
+    if (typeof window === 'undefined') return;
+    Object.keys(window.localStorage)
+      .filter((key) => key.startsWith('plura:schedule:'))
+      .forEach((key) => window.localStorage.removeItem(key));
+  }, []);
+
+  useEffect(() => {
     if (!profile?.id || hasInitialized) return;
-    const schedule = loadProfessionalSchedule(profile.id);
-    setDays(schedule.days);
-    setPauses(schedule.pauses);
-    if (schedule.days.length > 0) {
-      setConstructorDay(schedule.days[0].day);
-      setRepeatSource(schedule.days[0].day);
-    }
-    setHasInitialized(true);
+    api
+      .get<ProfessionalSchedule>('/profesional/schedule')
+      .then((response) => {
+        const schedule = normalizeSchedule(response.data);
+        setDays(schedule.days);
+        setPauses(schedule.pauses);
+        if (schedule.days.length > 0) {
+          setConstructorDay(schedule.days[0].day);
+          setRepeatSource(schedule.days[0].day);
+        }
+      })
+      .catch((error) => {
+        const fallback = createDefaultSchedule();
+        setDays(fallback.days);
+        setPauses(fallback.pauses);
+        setSaveMessage(
+          extractApiErrorMessage(
+            error,
+            'No se pudieron cargar los horarios. Mostramos una base inicial.',
+          ),
+        );
+        setSaveError(true);
+      })
+      .finally(() => {
+        setHasInitialized(true);
+      });
   }, [profile?.id, hasInitialized]);
 
   useEffect(() => {
@@ -94,12 +231,12 @@ export default function ProfesionalScheduleBuilderPage() {
     }
   }, [scrollTarget, days]);
 
-  const showSkeleton = !hasLoaded || (isLoading && !profile);
+  const showSkeleton = !hasLoaded || (isLoading && !profile) || !hasInitialized;
 
   const inputClassName =
     'h-11 w-full rounded-[14px] border border-[#E2E7EC] bg-white px-3 text-sm text-[#0E2A47] placeholder:text-[#94A3B8] focus:outline-none focus:ring-2 focus:ring-[#1FB6A6]/30';
 
-  const handleSave = (nextSchedule?: ProfessionalSchedule, message?: string) => {
+  const handleSave = async (nextSchedule?: ProfessionalSchedule, message?: string) => {
     if (!profile?.id) return;
     setIsSaving(true);
     setSaveMessage(null);
@@ -107,13 +244,16 @@ export default function ProfesionalScheduleBuilderPage() {
 
     try {
       const schedule = nextSchedule ?? { days, pauses };
-      saveProfessionalSchedule(profile.id, schedule);
+      const response = await api.put<ProfessionalSchedule>('/profesional/schedule', schedule);
+      const persisted = normalizeSchedule(response.data);
       setSaveMessage(message ?? 'Horarios guardados correctamente.');
       setSaveError(false);
-      setDays(schedule.days);
-      setPauses(schedule.pauses);
-    } catch {
-      setSaveMessage('No se pudieron guardar. Intentá de nuevo.');
+      setDays(persisted.days);
+      setPauses(persisted.pauses);
+    } catch (error) {
+      setSaveMessage(
+        extractApiErrorMessage(error, 'No se pudieron guardar. Intentá de nuevo.'),
+      );
       setSaveError(true);
     } finally {
       setIsSaving(false);
@@ -264,7 +404,7 @@ export default function ProfesionalScheduleBuilderPage() {
     setDays(nextDays);
     setEditingRange(null);
     setConstructorError(null);
-    handleSave({ days: nextDays, pauses }, 'Horario actualizado correctamente.');
+    void handleSave({ days: nextDays, pauses }, 'Horario actualizado correctamente.');
   };
 
   const handleAddRange = () => {
@@ -278,7 +418,7 @@ export default function ProfesionalScheduleBuilderPage() {
       setConstructorError(error);
       return;
     }
-    const newRange = createRange(rangeDraft.start, rangeDraft.end);
+    const newRange = createRange(constructorDay, rangeDraft.start, rangeDraft.end);
     const nextDays = days.map((day) =>
       day.day === constructorDay
         ? { ...day, enabled: true, ranges: [...day.ranges, newRange] }
@@ -286,7 +426,7 @@ export default function ProfesionalScheduleBuilderPage() {
     );
     setDays(nextDays);
     setScrollTarget(`range-${constructorDay}-${newRange.id}`);
-    handleSave({ days: nextDays, pauses }, 'Horario creado correctamente.');
+    void handleSave({ days: nextDays, pauses }, 'Horario creado correctamente.');
     resetRangeDraft(constructorDay);
   };
 
@@ -300,7 +440,7 @@ export default function ProfesionalScheduleBuilderPage() {
     if (editingRange?.rangeId === rangeId && editingRange.day === dayKey) {
       setEditingRange(null);
     }
-    handleSave({ days: nextDays, pauses }, 'Horario eliminado.');
+    void handleSave({ days: nextDays, pauses }, 'Horario eliminado.');
   };
 
   const handleCreateFromDay = (dayKey: WorkDayKey) => {
@@ -332,13 +472,13 @@ export default function ProfesionalScheduleBuilderPage() {
     ];
     setPauses(nextPauses);
     setPauseDraft(buildEmptyPause());
-    handleSave({ days, pauses: nextPauses }, 'Pausa agregada correctamente.');
+    void handleSave({ days, pauses: nextPauses }, 'Pausa agregada correctamente.');
   };
 
   const handleRemovePause = (pauseId: string) => {
     const nextPauses = pauses.filter((pause) => pause.id !== pauseId);
     setPauses(nextPauses);
-    handleSave({ days, pauses: nextPauses }, 'Pausa eliminada.');
+    void handleSave({ days, pauses: nextPauses }, 'Pausa eliminada.');
   };
 
   const summary = useMemo(() => {
@@ -389,7 +529,7 @@ export default function ProfesionalScheduleBuilderPage() {
                 </div>
                 <button
                   type="button"
-                  onClick={() => handleSave(undefined, 'Horarios guardados correctamente.')}
+                  onClick={() => void handleSave(undefined, 'Horarios guardados correctamente.')}
                   className="rounded-full bg-[#0B1D2A] px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
                   disabled={isSaving}
                 >

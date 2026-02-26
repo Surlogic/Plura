@@ -12,6 +12,15 @@ export type ProfessionalProfile = {
   publicPhotos?: string[];
 };
 
+export type PublicProfessionalSummary = {
+  id: string;
+  slug: string;
+  fullName: string;
+  rubro: string;
+  location?: string | null;
+  headline?: string | null;
+};
+
 export type ServicePaymentType = 'full' | 'deposit' | 'on_site';
 
 export type ServicePhoto = {

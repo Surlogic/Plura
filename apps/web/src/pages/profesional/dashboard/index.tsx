@@ -9,7 +9,7 @@ import {
   loadProfessionalReservations,
   saveProfessionalReservations,
 } from '@/lib/professionalReservations';
-import { loadProfessionalSchedule } from '@/lib/professionalSchedule';
+import api from '@/services/api';
 import type {
   ProfessionalReservation,
   ProfessionalSchedule,
@@ -210,7 +210,22 @@ export default function ProfesionalDashboardPage() {
   useEffect(() => {
     if (!profile?.id) return;
     setReservations(loadProfessionalReservations(profile.id));
-    setSchedule(loadProfessionalSchedule(profile.id, { allowFallback: false }));
+    api
+      .get<ProfessionalSchedule>('/profesional/schedule')
+      .then((response) => {
+        const data = response.data;
+        if (!data || !Array.isArray(data.days)) {
+          setSchedule(null);
+          return;
+        }
+        setSchedule({
+          days: data.days,
+          pauses: Array.isArray(data.pauses) ? data.pauses : [],
+        });
+      })
+      .catch(() => {
+        setSchedule(null);
+      });
   }, [profile?.id]);
 
   useEffect(() => {

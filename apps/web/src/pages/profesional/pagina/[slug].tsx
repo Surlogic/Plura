@@ -54,7 +54,6 @@ export default function ProfesionalDetailPage() {
     : router.query.preview === '1';
   const [preview, setPreview] = useState<PreviewPayload | null>(null);
   const [data, setData] = useState<PublicProfessional | null>(null);
-  const [localServices, setLocalServices] = useState<PublicService[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -68,19 +67,6 @@ export default function ProfesionalDetailPage() {
       .then((response) => {
         const professional = response.data as PublicProfessional;
         setData(professional);
-        if (!professional.services || professional.services.length === 0) {
-          if (typeof window !== 'undefined') {
-            try {
-              const raw = window.localStorage.getItem(`plura:public-services:${slug}`);
-              if (raw) {
-                const parsed = JSON.parse(raw) as PublicService[];
-                if (Array.isArray(parsed)) setLocalServices(parsed);
-              }
-            } catch {
-              // ignore
-            }
-          }
-        }
       })
       .catch(() => {
         setErrorMessage('No encontramos este profesional.');
@@ -156,9 +142,9 @@ export default function ProfesionalDetailPage() {
     ? Array.isArray(preview.services)
       ? preview.services
       : []
-    : Array.isArray(data?.services) && data.services.length > 0
+    : Array.isArray(data?.services)
       ? data.services
-      : localServices;
+      : [];
 
   const displaySchedule = merged.schedule ?? null;
   const scheduleDays = Array.isArray(displaySchedule?.days)

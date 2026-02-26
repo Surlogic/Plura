@@ -48,7 +48,7 @@ export default function LoginScreen() {
             
             {/* Cabecera */}
             <View className="space-y-2 mb-4">
-              <Text className="text-xs font-bold uppercase tracking-[0.35em] text-gray-500">
+              <Text className="text-xs font-bold uppercase tracking-[2px] text-gray-500">
                 Login
               </Text>
               <Text className="text-3xl font-semibold text-secondary">

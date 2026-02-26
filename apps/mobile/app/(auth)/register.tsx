@@ -51,7 +51,7 @@ export default function RegisterScreen() {
           
           <View className="w-full space-y-4 rounded-[32px] bg-white p-8 shadow-sm">
             <View className="space-y-2 mb-4">
-              <Text className="text-xs font-bold uppercase tracking-[0.35em] text-gray-500">
+              <Text className="text-xs font-bold uppercase tracking-[2px] text-gray-500">
                 Registro
               </Text>
               <Text className="text-2xl font-semibold text-secondary">

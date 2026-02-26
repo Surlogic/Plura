@@ -81,7 +81,7 @@ export default function ProfesionalDetailScreen() {
                 <Text className="text-xl font-bold text-secondary">{initials}</Text>
               </View>
               <View className="flex-1">
-                <Text className="text-xs font-bold uppercase tracking-widest text-gray-400">
+                <Text className="text-xs font-bold uppercase tracking-[2px] text-gray-400">
                   {data.rubro || 'Profesional'}
                 </Text>
                 <Text className="text-2xl font-bold text-secondary mt-0.5" numberOfLines={2}>

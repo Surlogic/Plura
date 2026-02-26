@@ -69,7 +69,7 @@ export default function ExploreScreen() {
         {/* Lista de Resultados */}
         <View className="px-6 space-y-4 mt-2">
           <View className="flex-row justify-between items-center mb-2">
-            <Text className="text-sm font-semibold text-gray-500 uppercase tracking-widest">
+            <Text className="text-sm font-semibold text-gray-500 uppercase tracking-[2px]">
               Resultados ({places.length})
             </Text>
           </View>

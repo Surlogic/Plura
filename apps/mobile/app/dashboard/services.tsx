@@ -35,7 +35,7 @@ export default function ServicesScreen() {
       <ScrollView contentContainerStyle={{ paddingHorizontal: 24, paddingTop: 20, paddingBottom: 40 }}>
         
         <View className="flex-row justify-between items-center mb-6">
-          <Text className="text-sm font-semibold text-gray-500 uppercase tracking-widest">
+          <Text className="text-sm font-semibold text-gray-500 uppercase tracking-[2px]">
             Tus Servicios ({services.length})
           </Text>
           <TouchableOpacity className="bg-secondary px-3 py-1.5 rounded-full">

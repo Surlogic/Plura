@@ -24,7 +24,7 @@ export default function HomeScreen() {
         <View className="px-6 pt-6 pb-4">
           <View className="flex-row items-center justify-between mb-6">
             <View>
-              <Text className="text-sm font-semibold text-gray-500 uppercase tracking-widest">
+              <Text className="text-sm font-semibold text-gray-500 uppercase tracking-[2px]">
                 Bienvenido a Plura
               </Text>
               <Text className="text-2xl font-bold text-secondary mt-1">

@@ -1,7 +1,20 @@
 /** @type {import('next').NextConfig} */
+const path = require('path');
 
 const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
 const isDev = process.env.NODE_ENV !== 'production';
+
+const resolvePackagePath = (packageName) => {
+  try {
+    return path.dirname(require.resolve(`${packageName}/package.json`, { paths: [__dirname] }));
+  } catch {
+    return path.resolve(__dirname, `node_modules/${packageName}`);
+  }
+};
+
+const reactPath = resolvePackagePath('react');
+const reactDomPath = resolvePackagePath('react-dom');
+const styledJsxPath = resolvePackagePath('styled-jsx');
 
 const apiOrigin = (() => {
   try {
@@ -37,6 +50,17 @@ const securityHeaders = [
 
 const nextConfig = {
   poweredByHeader: false,
+  webpack: (config) => {
+    config.resolve.alias = {
+      ...(config.resolve.alias || {}),
+      react: reactPath,
+      'react/jsx-runtime': path.join(reactPath, 'jsx-runtime.js'),
+      'react/jsx-dev-runtime': path.join(reactPath, 'jsx-dev-runtime.js'),
+      'react-dom': reactDomPath,
+      'styled-jsx': styledJsxPath,
+    };
+    return config;
+  },
   async headers() {
     return [
       {

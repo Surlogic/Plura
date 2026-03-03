@@ -21,7 +21,7 @@ const isAuthRoute = (url?: string) => {
   );
 };
 
-const isRouteOrChild = (path: string, route: string) =>
+const isRouteOrChilds = (path: string, route: string) =>
   path === route || path.startsWith(`${route}/`);
 
 const isProfessionalProtectedPath = (path: string) =>

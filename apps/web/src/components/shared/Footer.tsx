@@ -5,6 +5,8 @@ import { useRouter } from 'next/router';
 
 export default function Footer() {
   const router = useRouter();
+  // Agrega un guard para evitar el error en el servidor
+  if (!router.isReady) return null; 
   const pathForCheck = router.pathname || '';
   const isProfessionalShell =
     pathForCheck.startsWith('/profesional') &&

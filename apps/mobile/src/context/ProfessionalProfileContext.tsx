@@ -1,72 +1,64 @@
-import React, { createContext, useContext, useEffect, useState, useCallback, useMemo } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import api from '../services/api';
-import { getProfessionalToken } from '../services/session';
-import type { ProfessionalProfile } from '../types/professional';
+import { getProfessionalToken, clearProfessionalToken } from '../services/session';
+import { ProfessionalProfile } from '../types/professional'; // Ajusta la ruta a tus tipos si es necesario
 
-type ProfessionalProfileContextValue = {
+interface ContextProps {
   profile: ProfessionalProfile | null;
-  isLoading: boolean;
   hasLoaded: boolean;
   refreshProfile: () => Promise<void>;
-  clearProfile: () => void;
-};
+  logout: () => Promise<void>;
+}
 
-const ProfessionalProfileContext = createContext<ProfessionalProfileContextValue | null>(null);
+const ProfessionalProfileContext = createContext<ContextProps | undefined>(undefined);
 
-export function ProfessionalProfileProvider({ children }: { children: React.ReactNode }) {
+export const ProfessionalProfileProvider = ({ children }: { children: ReactNode }) => {
   const [profile, setProfile] = useState<ProfessionalProfile | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
   const [hasLoaded, setHasLoaded] = useState(false);
 
-  const clearProfile = useCallback(() => {
+  const refreshProfile = async () => {
+    try {
+      const token = await getProfessionalToken();
+      
+      // Si no hay token válido, cortamos acá
+      if (!token || token === "null" || token === "undefined") {
+        setProfile(null);
+        setHasLoaded(true); // <- APAGA LA RUEDITA
+        return;
+      }
+
+      const response = await api.get('/auth/me/profesional');
+      setProfile(response.data);
+      
+    } catch (error) {
+      console.log('Error al cargar perfil:', error);
+      // Si hay error (ej. timeout o token vencido), borramos el perfil
+      setProfile(null); 
+    } finally {
+      // ESTO ES CLAVE: Pase lo que pase, apaga la ruedita cargando
+      setHasLoaded(true); 
+    }
+  };
+
+  const logout = async () => {
+    await clearProfessionalToken();
     setProfile(null);
-    setHasLoaded(true);
-    setIsLoading(false);
+  };
+
+  // Cargar el perfil automáticamente al abrir la app
+  useEffect(() => {
+    refreshProfile();
   }, []);
 
-  const refreshProfile = useCallback(async () => {
-    setIsLoading(true);
-    const token = await getProfessionalToken();
-    
-    if (!token) {
-      clearProfile();
-      return;
-    }
-
-    try {
-      const response = await api.get('/auth/me/profesional', {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      setProfile(response.data);
-    } catch {
-      setProfile(null);
-    } finally {
-      setIsLoading(false);
-      setHasLoaded(true);
-    }
-  }, [clearProfile]);
-
-  useEffect(() => {
-    if (hasLoaded || isLoading) return;
-    refreshProfile();
-  }, [hasLoaded, isLoading, refreshProfile]);
-
-  const value = useMemo(
-    () => ({ profile, isLoading, hasLoaded, refreshProfile, clearProfile }),
-    [profile, isLoading, hasLoaded, refreshProfile, clearProfile],
-  );
-
   return (
-    <ProfessionalProfileContext.Provider value={value}>
+    <ProfessionalProfileContext.Provider value={{ profile, hasLoaded, refreshProfile, logout }}>
       {children}
     </ProfessionalProfileContext.Provider>
   );
-}
+};
 
 export const useProfessionalProfileContext = () => {
   const context = useContext(ProfessionalProfileContext);
-  if (!context) {
-    throw new Error('useProfessionalProfileContext must be used within ProfessionalProfileProvider');
-  }
+  if (!context) throw new Error('Debe usarse dentro de un Provider');
   return context;
 };

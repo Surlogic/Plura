@@ -12,7 +12,12 @@ export const getProfessionalToken = async (): Promise<string | null> => {
 
 export const setProfessionalToken = async (token: string) => {
   try {
-    await SecureStore.setItemAsync(TOKEN_KEY, token);
+    if (!token) {
+      console.warn('Se intentó guardar un token vacío o indefinido.');
+      return;
+    }
+    // String() asegura que aunque llegue un número o algo raro, se convierta a texto
+    await SecureStore.setItemAsync(TOKEN_KEY, String(token));
   } catch (error) {
     console.error('Error guardando el token', error);
   }

@@ -11,6 +11,9 @@ export default function LoginScreen() {
   const [form, setForm] = useState({ email: '', password: '' });
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // Agregamos un estado para el tipo de login
+  const [role, setRole] = useState<'cliente' | 'profesional'>('cliente');
 
   const handleSubmit = async () => {
     setErrorMessage(null);
@@ -25,10 +28,22 @@ export default function LoginScreen() {
         email: form.email.trim().toLowerCase(),
         password: form.password,
       });
-      await setProfessionalToken(response.data.accessToken);
+      
+      // Intentamos capturar 'token' o 'accessToken'
+      const tokenRecibido = response.data.accessToken || response.data.token;
+
+      if (!tokenRecibido) {
+        // Si entra acá, es porque el backend está mandando el token con otro nombre
+        console.log("Respuesta del backend:", response.data);
+        setErrorMessage('Error: El servidor no devolvió un token válido.');
+        return;
+      }
+
+      await setProfessionalToken(tokenRecibido);
       await refreshProfile();
       router.replace('/(tabs)/dashboard');
     } catch (error) {
+      console.error("Error en login:", error);
       setErrorMessage('Credenciales inválidas o error de servidor.');
     } finally {
       setIsSubmitting(false);
@@ -43,23 +58,33 @@ export default function LoginScreen() {
       <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: 'center' }} keyboardShouldPersistTaps="handled">
         <View className="px-6 py-12">
           
-          {/* Tarjeta Blanca Principal */}
           <View className="w-full space-y-6 rounded-[32px] bg-white p-8 shadow-sm">
             
-            {/* Cabecera */}
-            <View className="space-y-2 mb-4">
+            <View className="space-y-2 mb-2">
               <Text className="text-xs font-bold uppercase tracking-[2px] text-gray-500">
                 Login
               </Text>
               <Text className="text-3xl font-semibold text-secondary">
                 Acceso Plura
               </Text>
-              <Text className="text-sm text-gray-500 mt-1">
-                Gestioná tu agenda y tus clientes desde tu celular.
-              </Text>
             </View>
 
-            {/* Formulario */}
+            {/* Pestañas para elegir el rol */}
+            <View className="flex-row rounded-full bg-background p-1 mb-2">
+              <TouchableOpacity 
+                className={`flex-1 items-center justify-center rounded-full py-2.5 ${role === 'cliente' ? 'bg-white shadow-sm' : ''}`}
+                onPress={() => setRole('cliente')}
+              >
+                <Text className={`font-bold text-sm ${role === 'cliente' ? 'text-secondary' : 'text-gray-400'}`}>Cliente</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                className={`flex-1 items-center justify-center rounded-full py-2.5 ${role === 'profesional' ? 'bg-white shadow-sm' : ''}`}
+                onPress={() => setRole('profesional')}
+              >
+                <Text className={`font-bold text-sm ${role === 'profesional' ? 'text-secondary' : 'text-gray-400'}`}>Profesional</Text>
+              </TouchableOpacity>
+            </View>
+
             <View className="space-y-5">
               <View>
                 <Text className="mb-2 text-sm font-medium text-secondary">Email</Text>
@@ -92,7 +117,6 @@ export default function LoginScreen() {
                 </View>
               )}
 
-              {/* Botón con Degradado Premium */}
               <TouchableOpacity 
                 className="mt-6 shadow-md"
                 onPress={handleSubmit}
@@ -114,7 +138,6 @@ export default function LoginScreen() {
               </TouchableOpacity>
             </View>
 
-            {/* Link al registro */}
             <View className="mt-8 flex-row justify-center">
               <Text className="text-sm text-gray-500">¿No tenés cuenta? </Text>
               <Link href="/(auth)/register" asChild>

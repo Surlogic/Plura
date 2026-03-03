@@ -35,6 +35,7 @@ export default function RegisterScreen() {
       // Una vez creado, lo mandamos al login para que inicie sesión
       router.replace('/(auth)/login');
     } catch (error: any) {
+      console.log('error', error);
       setErrorMessage(error.response?.data?.message || 'No se pudo crear la cuenta.');
     } finally {
       setIsSubmitting(false);

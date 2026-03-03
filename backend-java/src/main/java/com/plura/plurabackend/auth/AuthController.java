@@ -129,7 +129,9 @@ public class AuthController {
     private ResponseEntity<RegisterResponse> buildAuthResponse(AuthService.AuthResult result) {
         ResponseCookie accessCookie = buildAccessCookie(result.accessToken());
         ResponseCookie refreshCookie = buildRefreshCookie(result.refreshToken());
-        RegisterResponse payload = new RegisterResponse(null, result.user());
+        
+        // Pasamos result.accessToken() en lugar de null
+        RegisterResponse payload = new RegisterResponse(result.accessToken(), result.user());
 
         return ResponseEntity.ok()
             .header(HttpHeaders.SET_COOKIE, accessCookie.toString())

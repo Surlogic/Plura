@@ -110,7 +110,7 @@ public class AuthController {
             .build();
     }
 
-    @GetMapping("/me/profesional")
+    @GetMapping({"/me/profesional", "/me/professional"})
     public ProfesionalProfileResponse getProfesionalProfile() {
         Authentication authentication = requireAuthentication();
         requireRole(authentication, "ROLE_PROFESSIONAL");

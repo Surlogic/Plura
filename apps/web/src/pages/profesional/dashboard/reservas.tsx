@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from 'react';
 import Navbar from '@/components/shared/Navbar';
 import ProfesionalSidebar from '@/components/profesional/Sidebar';
 import { useProfessionalProfile } from '@/hooks/useProfessionalProfile';
+import { useProfessionalDashboardUnsavedSection } from '@/context/ProfessionalDashboardUnsavedChangesContext';
 import {
   getProfessionalReservationsForDates,
   updateProfessionalReservationStatus,
@@ -253,6 +254,12 @@ export default function ProfesionalReservationsPage() {
       setIsUpdatingStatus(false);
     }
   };
+
+  useProfessionalDashboardUnsavedSection({
+    sectionId: 'reservations',
+    isDirty: false,
+    isSaving: isUpdatingStatus,
+  });
 
   const renderReservationCard = (reservation: ProfessionalReservation) => {
     const status = reservation.status ?? 'pending';

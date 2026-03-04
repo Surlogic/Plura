@@ -2,7 +2,13 @@ import { useEffect, useState } from 'react';
 import api from '@/services/api';
 import type { PublicProfessionalSummary } from '@/types/professional';
 
-export const usePublicProfessionals = (limit?: number) => {
+type UsePublicProfessionalsOptions = {
+  limit?: number;
+  categoryId?: string;
+  categorySlug?: string;
+};
+
+export const usePublicProfessionals = (options?: UsePublicProfessionalsOptions) => {
   const [professionals, setProfessionals] = useState<
     PublicProfessionalSummary[]
   >([]);
@@ -20,7 +26,11 @@ export const usePublicProfessionals = (limit?: number) => {
         const response = await api.get<PublicProfessionalSummary[]>(
           '/public/profesionales',
           {
-            params: limit ? { limit } : undefined,
+            params: {
+              ...(options?.limit ? { limit: options.limit } : {}),
+              ...(options?.categoryId ? { categoryId: options.categoryId } : {}),
+              ...(options?.categorySlug ? { categorySlug: options.categorySlug } : {}),
+            },
             signal: controller.signal,
           },
         );
@@ -42,7 +52,7 @@ export const usePublicProfessionals = (limit?: number) => {
       isMounted = false;
       controller.abort();
     };
-  }, [limit]);
+  }, [options?.limit, options?.categoryId, options?.categorySlug]);
 
   return { professionals, isLoading, error };
 };

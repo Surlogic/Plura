@@ -1,5 +1,6 @@
 package com.plura.plurabackend.professional.model;
 
+import com.plura.plurabackend.category.model.Category;
 import com.plura.plurabackend.user.model.User;
 import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
@@ -10,16 +11,22 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
+import jakarta.persistence.JoinTable;
+import jakarta.persistence.ManyToMany;
 import jakarta.persistence.OneToOne;
 import jakarta.persistence.OrderColumn;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
+import lombok.ToString;
 
 @Data
 @NoArgsConstructor
@@ -39,6 +46,9 @@ public class ProfessionalProfile {
     @Column(nullable = false)
     private String rubro;
 
+    @Column(name = "display_name")
+    private String displayName;
+
     @Column(unique = true)
     private String slug;
 
@@ -47,6 +57,9 @@ public class ProfessionalProfile {
 
     @Column(name = "public_about", columnDefinition = "text")
     private String publicAbout;
+
+    @Column(name = "logo_url")
+    private String logoUrl;
 
     @ElementCollection
     @CollectionTable(
@@ -60,11 +73,39 @@ public class ProfessionalProfile {
     @Column
     private String location;
 
+    @Column(name = "location_text")
+    private String locationText;
+
+    @Column(name = "latitude")
+    private Double latitude;
+
+    @Column(name = "longitude")
+    private Double longitude;
+
+    @Column(name = "rating", nullable = false)
+    private Double rating = 0d;
+
+    @Column(name = "reviews_count", nullable = false)
+    private Integer reviewsCount = 0;
+
     @Column(name = "tipo_cliente")
     private String tipoCliente;
 
     @Column(name = "schedule_json", columnDefinition = "text")
     private String scheduleJson;
+
+    @Column(name = "slot_duration_minutes", nullable = false)
+    private Integer slotDurationMinutes = 15;
+
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(
+        name = "professional_categories",
+        joinColumns = @JoinColumn(name = "professional_id"),
+        inverseJoinColumns = @JoinColumn(name = "category_id")
+    )
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
+    private Set<Category> categories = new HashSet<>();
 
     @Column(name = "active", nullable = false)
     private Boolean active = true;
@@ -77,8 +118,17 @@ public class ProfessionalProfile {
         if (this.active == null) {
             this.active = true;
         }
+        if (this.rating == null) {
+            this.rating = 0d;
+        }
+        if (this.reviewsCount == null) {
+            this.reviewsCount = 0;
+        }
         if (this.createdAt == null) {
             this.createdAt = LocalDateTime.now();
+        }
+        if (this.slotDurationMinutes == null) {
+            this.slotDurationMinutes = 15;
         }
     }
 }

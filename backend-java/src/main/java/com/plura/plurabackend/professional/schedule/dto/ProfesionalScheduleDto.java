@@ -11,4 +11,5 @@ import lombok.NoArgsConstructor;
 public class ProfesionalScheduleDto {
     private List<ProfesionalScheduleDayDto> days;
     private List<ProfesionalSchedulePauseDto> pauses;
+    private Integer slotDurationMinutes;
 }

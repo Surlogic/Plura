@@ -9,10 +9,15 @@ import {
   createPublicReservation,
   getPublicProfessionalBySlug,
   getPublicSlots,
-  type PublicBookingStatus,
   type PublicProfessionalPage,
   type PublicProfessionalService,
 } from '@/services/publicBookings';
+import { useClientProfileContext } from '@/context/ClientProfileContext';
+import {
+  clearPendingReservation,
+  getPendingReservation,
+  savePendingReservation,
+} from '@/services/pendingReservation';
 import type { WorkDayKey } from '@/types/professional';
 
 const dayLabelsShort: Record<WorkDayKey, string> = {
@@ -38,12 +43,10 @@ const dayKeyByIndex: Record<number, WorkDayKey> = {
 const weekOrder: WorkDayKey[] = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
 const DAYS_AHEAD = 28;
 
-const bookingStatusLabel: Record<PublicBookingStatus, string> = {
-  PENDING: 'Pendiente',
-  CONFIRMED: 'Confirmada',
-  CANCELLED: 'Cancelada',
-  COMPLETED: 'Completada',
-};
+const RESERVATION_ERROR_FALLBACK = 'No se pudo crear la reserva. Intenta nuevamente.';
+const RESERVATION_TIMEOUT_ERROR =
+  'La solicitud tardó demasiado. Intenta nuevamente.';
+const RESERVATION_LOGIN_REDIRECT = '/login?redirect=confirm-reservation';
 
 const toLocalDateKey = (date: Date) => date.toLocaleDateString('en-CA');
 
@@ -85,18 +88,44 @@ const formatPrice = (value?: string) => {
   return `$${trimmed}`;
 };
 
-type ReservationConfirmation = {
-  status: PublicBookingStatus;
-  professionalName: string;
-  serviceName: string;
-  date: string;
-  time: string;
+const extractApiMessage = (error: unknown, fallback: string) => {
+  if (isAxiosError(error)) {
+    if (error.code === 'ECONNABORTED') {
+      return fallback;
+    }
+    const responseData = error.response?.data;
+    if (typeof responseData === 'string' && responseData.trim()) {
+      return responseData.trim();
+    }
+    if (responseData && typeof responseData === 'object') {
+      const message = (responseData as { message?: unknown }).message;
+      if (typeof message === 'string' && message.trim()) {
+        return message.trim();
+      }
+      const errorMessage = (responseData as { error?: unknown }).error;
+      if (typeof errorMessage === 'string' && errorMessage.trim()) {
+        return errorMessage.trim();
+      }
+    }
+  }
+
+  if (error instanceof Error && error.message.trim()) {
+    return error.message.trim();
+  }
+  return fallback;
 };
 
-const extractApiMessage = (_error: unknown, fallback: string) => fallback;
+const isReservationTimeoutError = (error: unknown) => {
+  if (!isAxiosError(error)) return false;
+  if (error.code === 'ECONNABORTED') return true;
+  const message = typeof error.message === 'string' ? error.message.toLowerCase() : '';
+  return message.includes('timeout') || message.includes('timed out');
+};
 
 export default function ReservationPage() {
   const router = useRouter();
+  const { profile: clientProfile, hasLoaded: clientHasLoaded, isLoading: clientLoading } =
+    useClientProfileContext();
   const [professional, setProfessional] = useState<PublicProfessionalPage | null>(null);
   const [service, setService] = useState<PublicProfessionalService | null>(null);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
@@ -108,13 +137,14 @@ export default function ReservationPage() {
   const [contextError, setContextError] = useState<string | null>(null);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
-  const [confirmation, setConfirmation] = useState<ReservationConfirmation | null>(null);
+  const [hasAppliedPendingSelection, setHasAppliedPendingSelection] = useState(false);
 
   const professionalSlug = resolveQueryValue(router.query.profesional).trim();
   const serviceId =
     resolveQueryValue(router.query.serviceId).trim() ||
     resolveQueryValue(router.query.servicioId).trim();
   const serviceNameQuery = resolveQueryValue(router.query.servicio).trim();
+  const resumeQuery = resolveQueryValue(router.query.resume).trim();
 
   const calendarDays = useMemo(() => {
     const result: Array<{
@@ -144,6 +174,11 @@ export default function ReservationPage() {
       setSelectedDate(calendarDays[0].dateKey);
     }
   }, [calendarDays, selectedDate]);
+
+  useEffect(() => {
+    if (resumeQuery !== '1') return;
+    setSaveError('No pudimos confirmar automáticamente la reserva. Revisá y confirmá nuevamente.');
+  }, [resumeQuery]);
 
   const calendarCells = useMemo(() => {
     if (calendarDays.length === 0) return [];
@@ -196,7 +231,6 @@ export default function ReservationPage() {
     setContextError(null);
     setSaveError(null);
     setSaveMessage(null);
-    setConfirmation(null);
 
     if (!professionalSlug) {
       setProfessional(null);
@@ -276,16 +310,29 @@ export default function ReservationPage() {
   }, [professionalSlug, selectedDate, service?.id]);
 
   useEffect(() => {
-    if (!confirmation) return;
+    if (hasAppliedPendingSelection) return;
+    if (!professionalSlug || !service?.id) return;
+    if (calendarDays.length === 0) return;
 
-    const timeoutId = window.setTimeout(() => {
-      router.push('/cliente/inicio');
-    }, 2500);
+    const pendingReservation = getPendingReservation();
+    if (
+      !pendingReservation
+      || pendingReservation.professionalSlug !== professionalSlug
+      || pendingReservation.serviceId !== service.id
+    ) {
+      setHasAppliedPendingSelection(true);
+      return;
+    }
 
-    return () => {
-      window.clearTimeout(timeoutId);
-    };
-  }, [confirmation, router]);
+    const hasPendingDate = calendarDays.some((item) => item.dateKey === pendingReservation.date);
+    if (hasPendingDate) {
+      setSelectedDate(pendingReservation.date);
+    }
+    if (pendingReservation.time) {
+      setSelectedTime(pendingReservation.time);
+    }
+    setHasAppliedPendingSelection(true);
+  }, [calendarDays, hasAppliedPendingSelection, professionalSlug, service?.id]);
 
   const handleConfirm = async () => {
     if (!professionalSlug || !service?.id || !selectedDate || !selectedTime) {
@@ -294,39 +341,73 @@ export default function ReservationPage() {
       return;
     }
 
+    if (!clientHasLoaded || clientLoading) {
+      setSaveMessage(null);
+      setSaveError('Estamos verificando tu sesión. Intenta nuevamente.');
+      return;
+    }
+
+    if (!clientProfile) {
+      savePendingReservation({
+        professionalSlug,
+        serviceId: service.id,
+        date: selectedDate,
+        time: selectedTime,
+        professionalName: professional?.fullName || undefined,
+        serviceName: service.name,
+      });
+      router.push(RESERVATION_LOGIN_REDIRECT);
+      return;
+    }
+
     setIsSaving(true);
     setSaveError(null);
     setSaveMessage(null);
 
     try {
-      const created = await createPublicReservation(professionalSlug, {
+      const payload = {
         serviceId: service.id,
         startDateTime: `${selectedDate}T${selectedTime}`,
-      });
+      };
 
-      setConfirmation({
-        status: created.status,
-        professionalName: professional?.fullName || 'Profesional',
-        serviceName: service.name,
-        date: selectedDate,
-        time: selectedTime,
-      });
-      setSaveMessage('Reserva creada. Redirigiendo al inicio cliente...');
-      setSelectedTime(null);
+      const created = await createPublicReservation(professionalSlug, payload);
+      if (!created || typeof created.id !== 'number') {
+        throw new Error(RESERVATION_ERROR_FALLBACK);
+      }
 
-      const refreshedSlots = await getPublicSlots(professionalSlug, selectedDate, service.id);
-      setSlots(refreshedSlots);
+      clearPendingReservation();
+      setSaveMessage('Reserva creada. Redirigiendo...');
+      router.push({
+        pathname: '/reserva-confirmada',
+        query: {
+          id: String(created.id),
+          professional: professional?.fullName || 'Profesional',
+          service: service.name,
+          date: selectedDate,
+          time: selectedTime,
+          status: created.status,
+        },
+      });
     } catch (error) {
-      if (isAxiosError(error) && error.response?.status === 409) {
-        setSaveError('Ese horario ya esta reservado. Elegi otro.');
+      if (isReservationTimeoutError(error)) {
+        setSaveError(RESERVATION_TIMEOUT_ERROR);
+      } else if (isAxiosError(error) && error.response?.status === 409) {
+        setSaveError(extractApiMessage(error, 'Ese horario ya esta reservado. Elegi otro.'));
       } else if (isAxiosError(error) && error.response?.status === 401) {
+        savePendingReservation({
+          professionalSlug,
+          serviceId: service.id,
+          date: selectedDate,
+          time: selectedTime,
+          professionalName: professional?.fullName || undefined,
+          serviceName: service.name,
+        });
         setSaveError('Necesitas iniciar sesion como cliente para reservar.');
-        router.push('/cliente/auth/login');
+        router.push(RESERVATION_LOGIN_REDIRECT);
       } else {
-        setSaveError(extractApiMessage(error, 'No se pudo crear la reserva.'));
+        setSaveError(extractApiMessage(error, RESERVATION_ERROR_FALLBACK));
       }
       setSaveMessage(null);
-      setConfirmation(null);
     } finally {
       setIsSaving(false);
     }
@@ -494,9 +575,21 @@ export default function ReservationPage() {
               <button
                 type="button"
                 onClick={handleConfirm}
-                disabled={!selectedTime || isSaving || isLoadingContext || !service?.id}
+                disabled={
+                  !selectedTime ||
+                  isSaving ||
+                  isLoadingContext ||
+                  !service?.id ||
+                  clientLoading ||
+                  !clientHasLoaded
+                }
                 className={`mt-4 w-full rounded-full px-4 py-2 text-sm font-semibold shadow-sm transition ${
-                  selectedTime && !isSaving && !isLoadingContext && service?.id
+                  selectedTime &&
+                  !isSaving &&
+                  !isLoadingContext &&
+                  service?.id &&
+                  !clientLoading &&
+                  clientHasLoaded
                     ? 'bg-[#0B1D2A] text-white hover:-translate-y-0.5 hover:shadow-md'
                     : 'cursor-not-allowed bg-[#E2E8F0] text-[#94A3B8]'
                 }`}
@@ -511,24 +604,6 @@ export default function ReservationPage() {
                 <p className="mt-3 text-xs font-semibold text-[#EF4444]">{saveError}</p>
               ) : null}
 
-              {confirmation ? (
-                <div className="mt-4 rounded-[16px] border border-[#BBF7D0] bg-[#F0FDF4] p-4 text-sm text-[#14532D]">
-                  <p className="font-semibold">Reserva creada</p>
-                  <p className="mt-1">Profesional: {confirmation.professionalName}</p>
-                  <p>Servicio: {confirmation.serviceName}</p>
-                  <p>
-                    Fecha y hora: {confirmation.date} {confirmation.time}
-                  </p>
-                  <p>Estado: {bookingStatusLabel[confirmation.status]}</p>
-                  <button
-                    type="button"
-                    onClick={() => router.push('/cliente/inicio')}
-                    className="mt-3 rounded-full border border-[#14532D] px-3 py-1 text-xs font-semibold text-[#14532D]"
-                  >
-                    Ir al inicio cliente
-                  </button>
-                </div>
-              ) : null}
             </div>
           </div>
         </section>

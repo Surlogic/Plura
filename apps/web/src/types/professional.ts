@@ -1,3 +1,5 @@
+import type { Category } from '@/types/category';
+
 export type ProfessionalProfile = {
   id: string;
   slug?: string;
@@ -6,10 +8,14 @@ export type ProfessionalProfile = {
   phoneNumber: string;
   rubro: string;
   location: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
   tipoCliente: string;
+  logoUrl?: string | null;
   publicHeadline?: string | null;
   publicAbout?: string | null;
   publicPhotos?: string[];
+  categories?: Category[];
 };
 
 export type PublicProfessionalSummary = {
@@ -17,8 +23,10 @@ export type PublicProfessionalSummary = {
   slug: string;
   fullName: string;
   rubro: string;
+  logoUrl?: string | null;
   location?: string | null;
   headline?: string | null;
+  categories?: Category[];
 };
 
 export type ServicePaymentType = 'full' | 'deposit' | 'on_site';
@@ -33,6 +41,7 @@ export type ProfessionalService = {
   name: string;
   price: string;
   duration: string;
+  postBufferMinutes?: number;
   bufferTime: string;
   paymentType: ServicePaymentType;
   photos: ServicePhoto[];
@@ -44,6 +53,7 @@ export type PublicService = {
   name: string;
   price: string;
   duration: string;
+  postBufferMinutes?: number;
   bufferTime?: string;
   paymentType?: ServicePaymentType;
   photos?: string[];
@@ -74,6 +84,7 @@ export type SchedulePauseRange = {
 export type ProfessionalSchedule = {
   days: WorkDaySchedule[];
   pauses: SchedulePauseRange[];
+  slotDurationMinutes?: number;
 };
 
 export type ReservationStatus =
@@ -92,6 +103,8 @@ export type ProfessionalReservation = {
   time: string;
   price?: string;
   duration?: string;
+  postBufferMinutes?: number;
+  effectiveDurationMinutes?: number;
   status?: ReservationStatus;
   notes?: string;
 };

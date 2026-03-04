@@ -1,0 +1,46 @@
+services:
+  - type: web
+    name: plura-api
+    runtime: docker
+    rootDir: backend-java
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /health
+    envVars:
+      - key: PORT
+        value: 3000
+      - key: APP_TIMEZONE
+        value: America/Montevideo
+      - key: CORS_ALLOWED_ORIGINS
+        sync: false
+      - key: SPRING_DATASOURCE_URL
+        sync: false
+      - key: SPRING_DATASOURCE_USERNAME
+        sync: false
+      - key: SPRING_DATASOURCE_PASSWORD
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: JWT_REFRESH_PEPPER
+        sync: false
+      - key: AUTH_COOKIE_SECURE
+        value: true
+      - key: AUTH_COOKIE_SAMESITE
+        value: Lax
+      - key: SWAGGER_ENABLED
+        value: false
+      - key: LOG_LEVEL_ROOT
+        value: INFO
+
+  - type: web
+    name: plura-web
+    runtime: node
+    rootDir: .
+    buildCommand: corepack enable && corepack prepare pnpm@10.23.0 --activate && pnpm install --frozen-lockfile && pnpm -C apps/web build
+    startCommand: corepack enable && corepack prepare pnpm@10.23.0 --activate && pnpm -C apps/web start
+    envVars:
+      - key: NODE_VERSION
+        value: 20
+      - key: NEXT_PUBLIC_API_URL
+        sync: false
+      - key: NEXT_PUBLIC_MAPBOX_TOKEN
+        sync: false

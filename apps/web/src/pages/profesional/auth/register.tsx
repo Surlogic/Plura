@@ -1,12 +1,14 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import type { ChangeEvent, FormEvent } from 'react';
 import Link from 'next/link';
 import axios from 'axios';
 import Navbar from '@/components/shared/Navbar';
 import Footer from '@/components/shared/Footer';
 import api from '@/services/api';
+import { useCategories } from '@/hooks/useCategories';
+import { mapboxForwardGeocode } from '@/services/mapbox';
 
 export default function ProfesionalRegisterPage() {
   type RegisterResponse = {
@@ -21,9 +23,10 @@ export default function ProfesionalRegisterPage() {
 
   const inputClassName =
     'h-12 w-full rounded-[16px] border border-[#0E2A47]/10 bg-[#F4F6F8] px-4 text-sm text-[#0E2A47] placeholder:text-[#6B7280] focus:outline-none focus:ring-2 focus:ring-[#1FB6A6]/40';
+  const { categories, isLoading: categoriesLoading } = useCategories();
   const [form, setForm] = useState({
     fullName: '',
-    rubro: '',
+    categorySlugs: [] as string[],
     email: '',
     confirmEmail: '',
     phoneNumber: '',
@@ -34,7 +37,7 @@ export default function ProfesionalRegisterPage() {
   });
   const [touched, setTouched] = useState({
     fullName: false,
-    rubro: false,
+    categorySlugs: false,
     email: false,
     confirmEmail: false,
     phoneNumber: false,
@@ -94,7 +97,7 @@ export default function ProfesionalRegisterPage() {
   const passwordValid = passwordChecks.every((rule) => rule.valid);
   const validationErrors = {
     fullName: form.fullName.trim().length >= 3 ? '' : 'Mínimo 3 caracteres.',
-    rubro: form.rubro.trim().length >= 3 ? '' : 'Mínimo 3 caracteres.',
+    categorySlugs: form.categorySlugs.length > 0 ? '' : 'Seleccioná al menos un rubro.',
     email: emailPattern.test(emailValue) ? '' : 'Email inválido.',
     confirmEmail: confirmEmailValue.length > 0 && confirmEmailValue === emailValue
       ? ''
@@ -115,6 +118,23 @@ export default function ProfesionalRegisterPage() {
     `${inputClassName}${
       touched[field] && validationErrors[field] ? ' border-red-300 focus:ring-red-200' : ''
     }`;
+  const categoryNameBySlug = useMemo(
+    () => new Map(categories.map((category) => [category.slug, category.name])),
+    [categories],
+  );
+
+  const toggleCategory = (slug: string) => {
+    setTouched((prev) => ({ ...prev, categorySlugs: true }));
+    setForm((prev) => {
+      const selected = prev.categorySlugs.includes(slug);
+      return {
+        ...prev,
+        categorySlugs: selected
+          ? prev.categorySlugs.filter((value) => value !== slug)
+          : [...prev.categorySlugs, slug],
+      };
+    });
+  };
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -145,24 +165,42 @@ export default function ProfesionalRegisterPage() {
       setErrorMessage('Indicá la ubicación del local.');
       return;
     }
+    if (form.categorySlugs.length === 0) {
+      setErrorMessage('Seleccioná al menos un rubro.');
+      return;
+    }
 
-    const payload = {
-      fullName: form.fullName.trim(),
-      rubro: form.rubro.trim(),
-      email: form.email.trim().toLowerCase(),
-      phoneNumber: form.phoneNumber.trim(),
-      location: requiresLocation ? form.location.trim() : null,
-      tipoCliente: form.tipoCliente,
-      password: form.password,
-    };
+    const primaryCategoryName = categoryNameBySlug.get(form.categorySlugs[0]) || '';
 
+    setIsSubmitting(true);
     try {
-      setIsSubmitting(true);
+      const normalizedLocation = requiresLocation ? form.location.trim() : '';
+      const geocodedLocation = requiresLocation
+        ? await mapboxForwardGeocode(normalizedLocation)
+        : null;
+      if (requiresLocation && !geocodedLocation) {
+        setErrorMessage('No pudimos ubicar esa dirección. Revisala e intentá de nuevo.');
+        return;
+      }
+
+      const payload = {
+        fullName: form.fullName.trim(),
+        rubro: primaryCategoryName,
+        categorySlugs: form.categorySlugs,
+        email: form.email.trim().toLowerCase(),
+        phoneNumber: form.phoneNumber.trim(),
+        location: requiresLocation ? normalizedLocation : null,
+        latitude: geocodedLocation?.latitude ?? null,
+        longitude: geocodedLocation?.longitude ?? null,
+        tipoCliente: form.tipoCliente,
+        password: form.password,
+      };
+
       await api.post<RegisterResponse>('/auth/register/profesional', payload);
       setSuccessMessage('Cuenta profesional creada. Ya podés iniciar sesión.');
       setForm({
         fullName: '',
-        rubro: '',
+        categorySlugs: [],
         email: '',
         confirmEmail: '',
         phoneNumber: '',
@@ -173,7 +211,7 @@ export default function ProfesionalRegisterPage() {
       });
       setTouched({
         fullName: false,
-        rubro: false,
+        categorySlugs: false,
         email: false,
         confirmEmail: false,
         phoneNumber: false,
@@ -244,19 +282,35 @@ export default function ProfesionalRegisterPage() {
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-medium text-[#0E2A47]">Rubro</label>
-              <input
-                className={inputClass('rubro')}
-                placeholder="Ej: peluquería, estética, barbería"
-                name="rubro"
-                value={form.rubro}
-                onChange={handleChange}
-                onBlur={handleBlur}
-                required
-                minLength={3}
-              />
-              {touched.rubro && validationErrors.rubro ? (
-                <p className="text-xs text-red-600">{validationErrors.rubro}</p>
+              <label className="text-sm font-medium text-[#0E2A47]">Rubros</label>
+              <div className="grid gap-2 sm:grid-cols-2">
+                {categories.map((category) => {
+                  const checked = form.categorySlugs.includes(category.slug);
+                  return (
+                    <label
+                      key={category.id}
+                      className={`flex cursor-pointer items-center gap-2 rounded-[12px] border px-3 py-2 text-sm transition ${
+                        checked
+                          ? 'border-[#1FB6A6] bg-[#1FB6A6]/10 text-[#0E2A47]'
+                          : 'border-[#E2E7EC] bg-white text-[#334155] hover:bg-[#F8FAFC]'
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        className="h-4 w-4 rounded border-[#CBD5E1] text-[#1FB6A6] focus:ring-[#1FB6A6]/40"
+                        checked={checked}
+                        onChange={() => toggleCategory(category.slug)}
+                      />
+                      <span>{category.name}</span>
+                    </label>
+                  );
+                })}
+              </div>
+              {categoriesLoading ? (
+                <p className="text-xs text-[#6B7280]">Cargando rubros...</p>
+              ) : null}
+              {touched.categorySlugs && validationErrors.categorySlugs ? (
+                <p className="text-xs text-red-600">{validationErrors.categorySlugs}</p>
               ) : null}
             </div>
 

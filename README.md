@@ -37,6 +37,7 @@ postgresql://postgres:postgres@localhost:5432/plura?schema=public
 ## Variables de entorno (Web)
 apps/web/.env.local:
 NEXT_PUBLIC_API_URL=http://localhost:3000
+NEXT_PUBLIC_MAPBOX_TOKEN=tu_token_publico_mapbox
 
 ## Puertos
 - Backend: 3000

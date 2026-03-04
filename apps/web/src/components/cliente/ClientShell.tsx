@@ -38,15 +38,14 @@ export default function ClientShell({ name, active, children }: ClientShellProps
   }, [isMobileSidebarOpen]);
 
   return (
-    <div className="relative min-h-screen bg-[#F4F6F8] text-[#0E2A47]">
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(245,158,11,0.12),transparent_60%)]" />
-      <div className="relative z-10">
+    <div className="min-h-screen bg-[#F8FAFC] text-[#0E2A47]">
+      <div>
         <ClientDashboardNavbar name={name} onOpenSidebar={() => setIsMobileSidebarOpen(true)} />
-        <div className="mx-auto w-full max-w-[1400px] px-4 pb-16 pt-8 sm:px-6 lg:px-10">
-          <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
+        <div className="mx-auto w-full max-w-[1400px] px-4 pb-16 pt-10 sm:px-6 lg:px-10">
+          <div className="flex flex-col gap-8 lg:flex-row lg:items-start">
             <aside
               className={`hidden shrink-0 transition-[width] duration-300 lg:block ${
-                isSidebarCollapsed ? 'w-[92px]' : 'w-[248px]'
+                isSidebarCollapsed ? 'w-[82px]' : 'w-[220px]'
               }`}
             >
               <div className="sticky top-28">
@@ -58,7 +57,7 @@ export default function ClientShell({ name, active, children }: ClientShellProps
               </div>
             </aside>
 
-            <div className="min-w-0 flex-1 space-y-6">
+            <div className="min-w-0 flex-1 space-y-8">
               {children}
             </div>
           </div>

@@ -1,11 +1,11 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ChangeEvent } from 'react';
-import { useRouter } from 'next/router';
 import Navbar from '@/components/shared/Navbar';
 import ProfesionalSidebar from '@/components/profesional/Sidebar';
 import { useProfessionalProfile } from '@/hooks/useProfessionalProfile';
+import { useProfessionalDashboardUnsavedSection } from '@/context/ProfessionalDashboardUnsavedChangesContext';
 import api from '@/services/api';
 import type {
   ProfessionalSchedule,
@@ -15,6 +15,11 @@ import type {
 type PhotoItem = {
   id: string;
   url: string;
+};
+
+type PublicPageForm = {
+  headline: string;
+  about: string;
 };
 
 const slugify = (value: string) =>
@@ -29,25 +34,23 @@ const slugify = (value: string) =>
     .replace(/^-+|-+$/g, '');
 
 export default function ProfesionalPublicPageBuilder() {
-  const router = useRouter();
   const { profile, isLoading, hasLoaded } = useProfessionalProfile();
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
-  const pendingRouteRef = useRef<string | null>(null);
   const [iframeReady, setIframeReady] = useState(false);
   const [origin, setOrigin] = useState('https://plura.com');
   const [isSaving, setIsSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
   const [saveError, setSaveError] = useState(false);
   const [isDirty, setIsDirty] = useState(false);
-  const [showExitWarning, setShowExitWarning] = useState(false);
   const [hasLoadedPage, setHasLoadedPage] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [services, setServices] = useState<PublicService[]>([]);
   const [schedule, setSchedule] = useState<ProfessionalSchedule | null>(null);
-  const [form, setForm] = useState({
+  const [form, setForm] = useState<PublicPageForm>({
     headline: '',
     about: '',
   });
+  const [initialForm, setInitialForm] = useState<PublicPageForm | null>(null);
   const maxBusinessPhotos = 5;
   const [photos, setPhotos] = useState<PhotoItem[]>([
     { id: 'photo-1', url: '' },
@@ -55,6 +58,7 @@ export default function ProfesionalPublicPageBuilder() {
     { id: 'photo-3', url: '' },
     { id: 'photo-4', url: '' },
   ]);
+  const [initialPhotos, setInitialPhotos] = useState<PhotoItem[] | null>(null);
 
   const displayName = profile?.fullName || '';
   const displayCategory = profile?.rubro || '';
@@ -82,6 +86,7 @@ export default function ProfesionalPublicPageBuilder() {
       payload: {
         name: displayName,
         category: displayCategory,
+        logoUrl: profile?.logoUrl || '',
         headline: form.headline,
         about: form.about,
         photos: photos.map((photo) => photo.url).filter(Boolean),
@@ -95,6 +100,7 @@ export default function ProfesionalPublicPageBuilder() {
       form.about,
       form.headline,
       photos,
+      profile?.logoUrl,
       previewServices,
       schedule,
     ],
@@ -163,18 +169,27 @@ export default function ProfesionalPublicPageBuilder() {
           about?: string | null;
           photos?: string[] | null;
         };
-        setForm((prev) => ({
-          headline: data.headline ?? prev.headline,
-          about: data.about ?? prev.about,
-        }));
-        if (data.photos && data.photos.length > 0) {
-          setPhotos(
-            data.photos.slice(0, maxBusinessPhotos).map((url, index) => ({
-              id: `photo-${index + 1}`,
-              url,
-            })),
-          );
-        }
+        const loadedForm: PublicPageForm = {
+          headline: data.headline ?? '',
+          about: data.about ?? '',
+        };
+        const loadedPhotos =
+          data.photos && data.photos.length > 0
+            ? data.photos.slice(0, maxBusinessPhotos).map((url, index) => ({
+                id: `photo-${index + 1}`,
+                url,
+              }))
+            : [
+                { id: 'photo-1', url: '' },
+                { id: 'photo-2', url: '' },
+                { id: 'photo-3', url: '' },
+                { id: 'photo-4', url: '' },
+              ];
+        setForm(loadedForm);
+        setInitialForm(loadedForm);
+        setPhotos(loadedPhotos);
+        setInitialPhotos(loadedPhotos);
+        setIsDirty(false);
       })
       .catch(() => {
         setSaveMessage('No se pudo cargar la información. Intentá recargar la página.');
@@ -184,31 +199,6 @@ export default function ProfesionalPublicPageBuilder() {
         setHasLoadedPage(true);
       });
   }, [profile, hasLoadedPage]);
-
-  // Warn before closing/reloading the browser tab
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
-      if (!isDirty) return;
-      event.preventDefault();
-      event.returnValue = '';
-    };
-    window.addEventListener('beforeunload', handleBeforeUnload);
-    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
-  }, [isDirty]);
-
-  // Intercept Next.js in-app navigation
-  useEffect(() => {
-    if (!isDirty) return;
-    const handleRouteStart = (url: string) => {
-      pendingRouteRef.current = url;
-      setShowExitWarning(true);
-      router.events.emit('routeChangeError');
-      throw 'routeChange aborted.';
-    };
-    router.events.on('routeChangeStart', handleRouteStart);
-    return () => router.events.off('routeChangeStart', handleRouteStart);
-  }, [isDirty, router.events]);
 
   const inputClassName =
     'h-11 w-full rounded-[14px] border border-[#E2E7EC] bg-white px-3 text-sm text-[#0E2A47] placeholder:text-[#94A3B8] focus:outline-none focus:ring-2 focus:ring-[#1FB6A6]/30';
@@ -233,81 +223,72 @@ export default function ProfesionalPublicPageBuilder() {
   const addPhoto = () => {
     setPhotos((prev) => {
       if (prev.length >= maxBusinessPhotos) return prev;
+      setIsDirty(true);
       return [...prev, { id: `photo-${prev.length + 1}`, url: '' }];
     });
   };
 
-  const handleSave = async () => {
+  const handleSave = useCallback(async (): Promise<boolean> => {
+    if (isSaving) return false;
     setIsSaving(true);
     setSaveMessage(null);
     setSaveError(false);
 
     try {
+      const persistedPhotos = photos.map((photo) => photo.url).filter(Boolean);
       await api.put('/profesional/public-page', {
         headline: form.headline,
         about: form.about,
-        photos: photos.map((photo) => photo.url).filter(Boolean),
+        photos: persistedPhotos,
       });
+      const nextForm: PublicPageForm = {
+        headline: form.headline,
+        about: form.about,
+      };
+      const nextPhotos = photos.map((photo, index) => ({
+        id: photo.id || `photo-${index + 1}`,
+        url: photo.url,
+      }));
+      setForm(nextForm);
+      setInitialForm(nextForm);
+      setPhotos(nextPhotos);
+      setInitialPhotos(nextPhotos);
       setSaveMessage('Guardado correctamente.');
       setSaveError(false);
       setIsDirty(false);
+      return true;
     } catch (error) {
       setSaveMessage('No se pudo guardar. Intentá de nuevo.');
       setSaveError(true);
+      return false;
     } finally {
       setIsSaving(false);
     }
-  };
+  }, [form, isSaving, photos]);
 
-  const handleConfirmExit = () => {
+  const handleReset = useCallback(() => {
+    if (!initialForm || !initialPhotos) return;
+    setForm(initialForm);
+    setPhotos(initialPhotos);
     setIsDirty(false);
-    setShowExitWarning(false);
-    const url = pendingRouteRef.current;
-    pendingRouteRef.current = null;
-    if (url) void router.push(url);
-  };
+    setSaveMessage(null);
+    setSaveError(false);
+  }, [initialForm, initialPhotos]);
+
+  useProfessionalDashboardUnsavedSection({
+    sectionId: 'public-page',
+    isDirty,
+    isSaving,
+    onSave: handleSave,
+    onReset: handleReset,
+  });
+
   const handleToggleMenu = () => {
     setIsMenuOpen((prev) => !prev);
   };
 
   return (
     <div className="min-h-screen bg-[radial-gradient(circle_at_top,#FFFFFF_0%,#EEF2F6_45%,#D3D7DC_100%)] text-[#0E2A47]">
-      {isSaving ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#0B1D2A]/40 backdrop-blur-sm">
-          <div className="flex flex-col items-center gap-4 rounded-[28px] bg-white px-10 py-8 shadow-[0_28px_70px_rgba(15,23,42,0.25)]">
-            <div className="h-10 w-10 animate-spin rounded-full border-4 border-[#E2E7EC] border-t-[#1FB6A6]" />
-            <p className="text-sm font-semibold text-[#0E2A47]">Guardando cambios...</p>
-          </div>
-        </div>
-      ) : null}
-
-      {showExitWarning ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#0B1D2A]/40 backdrop-blur-sm">
-          <div className="mx-4 w-full max-w-sm rounded-[28px] bg-white p-8 shadow-[0_28px_70px_rgba(15,23,42,0.25)]">
-            <h3 className="text-lg font-semibold text-[#0E2A47]">Cambios sin guardar</h3>
-            <p className="mt-2 text-sm text-[#64748B]">
-              Tenés cambios que no guardaste. ¿Querés salir de todos modos?
-            </p>
-            <div className="mt-6 flex gap-3">
-              <button
-                type="button"
-                onClick={handleConfirmExit}
-                className="flex-1 rounded-full bg-[#0B1D2A] px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
-              >
-                Salir sin guardar
-              </button>
-              <button
-                type="button"
-                onClick={() => setShowExitWarning(false)}
-                className="flex-1 rounded-full border border-[#E2E7EC] bg-white px-4 py-2 text-sm font-semibold text-[#0E2A47] transition hover:-translate-y-0.5 hover:shadow-sm"
-              >
-                Cancelar
-              </button>
-            </div>
-          </div>
-        </div>
-      ) : null}
-
       <div className="flex min-h-screen flex-col">
         <Navbar
           variant="dashboard"
@@ -510,7 +491,7 @@ export default function ProfesionalPublicPageBuilder() {
                       <a
                         href={publicUrl}
                         target="_blank"
-                        rel="noreferrer"
+                        rel="noopener noreferrer"
                         className="rounded-full border border-[#E2E7EC] bg-white px-4 py-2 text-xs font-semibold text-[#0E2A47] transition hover:-translate-y-0.5 hover:shadow-sm"
                       >
                         Ir al sitio

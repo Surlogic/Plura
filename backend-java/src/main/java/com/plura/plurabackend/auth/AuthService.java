@@ -7,6 +7,9 @@ import com.plura.plurabackend.auth.dto.ProfesionalProfileResponse;
 import com.plura.plurabackend.auth.dto.RegisterProfesionalRequest;
 import com.plura.plurabackend.auth.dto.RegisterRequest;
 import com.plura.plurabackend.auth.dto.UserResponse;
+import com.plura.plurabackend.category.dto.CategoryResponse;
+import com.plura.plurabackend.category.model.Category;
+import com.plura.plurabackend.category.repository.CategoryRepository;
 import com.plura.plurabackend.auth.model.RefreshToken;
 import com.plura.plurabackend.auth.repository.RefreshTokenRepository;
 import com.plura.plurabackend.common.util.SlugUtils;
@@ -22,7 +25,15 @@ import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.Base64;
+import java.util.Comparator;
 import java.util.Date;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -35,6 +46,7 @@ public class AuthService {
 
     private final UserRepository userRepository;
     private final ProfessionalProfileRepository professionalProfileRepository;
+    private final CategoryRepository categoryRepository;
     private final RefreshTokenRepository refreshTokenRepository;
     private final PasswordEncoder passwordEncoder;
     private final Algorithm jwtAlgorithm;
@@ -43,10 +55,20 @@ public class AuthService {
     private final String refreshTokenPepper;
     private final String jwtIssuer;
     private static final SecureRandom SECURE_RANDOM = new SecureRandom();
+    private static final Map<String, String> LEGACY_CATEGORY_ALIASES = Map.ofEntries(
+        Map.entry("peluqueria", "cabello"),
+        Map.entry("cejas", "pestanas-cejas"),
+        Map.entry("pestanas", "pestanas-cejas"),
+        Map.entry("faciales", "estetica-facial"),
+        Map.entry("tratamientos-corporales", "tratamientos-corporales"),
+        Map.entry("medicina-estetica", "medicina-estetica"),
+        Map.entry("bienestar-holistico", "bienestar-holistico")
+    );
 
     public AuthService(
         UserRepository userRepository,
         ProfessionalProfileRepository professionalProfileRepository,
+        CategoryRepository categoryRepository,
         RefreshTokenRepository refreshTokenRepository,
         PasswordEncoder passwordEncoder,
         @Value("${jwt.secret}") String jwtSecret,
@@ -63,6 +85,7 @@ public class AuthService {
         }
         this.userRepository = userRepository;
         this.professionalProfileRepository = professionalProfileRepository;
+        this.categoryRepository = categoryRepository;
         this.refreshTokenRepository = refreshTokenRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtAlgorithm = Algorithm.HMAC256(jwtSecret);
@@ -107,11 +130,25 @@ public class AuthService {
 
         String tipoCliente = normalizeTipoCliente(request.getTipoCliente());
         String location = normalizeLocation(request.getLocation());
+        Double latitude = normalizeLatitude(request.getLatitude());
+        Double longitude = normalizeLongitude(request.getLongitude());
+        validateCoordinatesPair(latitude, longitude);
+
         if (!"SIN_LOCAL".equals(tipoCliente) && (location == null || location.isBlank())) {
             throw new ResponseStatusException(
                 HttpStatus.BAD_REQUEST,
                 "La ubicación es obligatoria para locales o profesionales con local propio"
             );
+        }
+        if (!"SIN_LOCAL".equals(tipoCliente) && (latitude == null || longitude == null)) {
+            throw new ResponseStatusException(
+                HttpStatus.BAD_REQUEST,
+                "No se pudo geocodificar la ubicación"
+            );
+        }
+        if ("SIN_LOCAL".equals(tipoCliente)) {
+            latitude = null;
+            longitude = null;
         }
 
         User user = new User();
@@ -124,7 +161,10 @@ public class AuthService {
 
         ProfessionalProfile profile = new ProfessionalProfile();
         profile.setUser(savedUser);
-        profile.setRubro(request.getRubro().trim());
+        Set<Category> categories = resolveCategoriesForRegistration(request);
+        profile.setCategories(categories);
+        profile.setRubro(resolvePrimaryCategoryName(categories, request.getRubro()));
+        profile.setDisplayName(savedUser.getFullName());
         profile.setSlug(
             SlugUtils.generateUniqueSlug(
                 savedUser.getFullName(),
@@ -132,8 +172,12 @@ public class AuthService {
             )
         );
         profile.setLocation("SIN_LOCAL".equals(tipoCliente) ? null : location);
+        profile.setLocationText("SIN_LOCAL".equals(tipoCliente) ? null : location);
+        profile.setLatitude(latitude);
+        profile.setLongitude(longitude);
         profile.setTipoCliente(tipoCliente);
-        professionalProfileRepository.save(profile);
+        profile = professionalProfileRepository.save(profile);
+        professionalProfileRepository.updateCoordinates(profile.getId(), latitude, longitude);
 
         UserResponse userResponse = toUserResponse(savedUser);
         return issueTokens(savedUser, userResponse, userAgent);
@@ -287,7 +331,7 @@ public class AuthService {
         }
 
         ProfessionalProfile profile = professionalProfileRepository.findByUser_Id(user.getId())
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Perfil profesional no encontrado"));
+            .orElseGet(() -> bootstrapMissingProfessionalProfile(user));
 
         if (profile.getSlug() == null || profile.getSlug().isBlank()) {
             profile.setSlug(
@@ -304,12 +348,45 @@ public class AuthService {
             user.getPhoneNumber(),
             profile.getRubro(),
             profile.getLocation(),
+            profile.getLatitude(),
+            profile.getLongitude(),
             profile.getTipoCliente(),
+            profile.getLogoUrl(),
             profile.getPublicHeadline(),
             profile.getPublicAbout(),
             profile.getPublicPhotos(),
+            mapCategories(profile.getCategories()),
             user.getCreatedAt()
         );
+    }
+
+    private ProfessionalProfile bootstrapMissingProfessionalProfile(User user) {
+        ProfessionalProfile profile = new ProfessionalProfile();
+        profile.setUser(user);
+        profile.setRubro("Profesional");
+        profile.setDisplayName(user.getFullName());
+        profile.setSlug(
+            SlugUtils.generateUniqueSlug(
+                user.getFullName(),
+                professionalProfileRepository::existsBySlug
+            )
+        );
+        profile.setTipoCliente("SIN_LOCAL");
+        profile.setLocation(null);
+        profile.setLocationText(null);
+        profile.setLatitude(null);
+        profile.setLongitude(null);
+        profile.setActive(true);
+
+        try {
+            return professionalProfileRepository.save(profile);
+        } catch (DataIntegrityViolationException exception) {
+            return professionalProfileRepository.findByUser_Id(user.getId())
+                .orElseThrow(() -> new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "No se pudo inicializar el perfil profesional"
+                ));
+        }
     }
 
     public UserResponse getClienteProfile(String rawUserId) {
@@ -338,5 +415,113 @@ public class AuthService {
         if (rawLocation == null) return null;
         String trimmed = rawLocation.trim();
         return trimmed.isBlank() ? null : trimmed;
+    }
+
+    private void validateCoordinatesPair(Double latitude, Double longitude) {
+        if ((latitude == null) == (longitude == null)) {
+            return;
+        }
+        throw new ResponseStatusException(
+            HttpStatus.BAD_REQUEST,
+            "latitude y longitude deben enviarse juntas"
+        );
+    }
+
+    private Double normalizeLatitude(Double rawLatitude) {
+        if (rawLatitude == null) {
+            return null;
+        }
+        if (rawLatitude < -90d || rawLatitude > 90d) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "latitude fuera de rango");
+        }
+        return rawLatitude;
+    }
+
+    private Double normalizeLongitude(Double rawLongitude) {
+        if (rawLongitude == null) {
+            return null;
+        }
+        if (rawLongitude < -180d || rawLongitude > 180d) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "longitude fuera de rango");
+        }
+        return rawLongitude;
+    }
+
+    private Set<Category> resolveCategoriesForRegistration(RegisterProfesionalRequest request) {
+        List<String> incoming = request.getCategorySlugs();
+        if (incoming != null && !incoming.isEmpty()) {
+            Set<String> normalizedSlugs = incoming.stream()
+                .map(this::normalizeSlug)
+                .filter(slug -> !slug.isBlank())
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+            if (normalizedSlugs.isEmpty()) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Seleccioná al menos un rubro");
+            }
+            return loadCategoriesBySlugs(normalizedSlugs);
+        }
+
+        String legacyRubro = request.getRubro() == null ? "" : request.getRubro().trim();
+        if (legacyRubro.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Seleccioná al menos un rubro");
+        }
+        String slug = mapLegacyCategorySlug(SlugUtils.toSlug(legacyRubro));
+        return loadCategoriesBySlugs(Set.of(slug));
+    }
+
+    private Set<Category> loadCategoriesBySlugs(Set<String> slugs) {
+        List<Category> categories = categoryRepository.findBySlugIn(slugs);
+        Set<String> foundSlugs = categories.stream()
+            .map(Category::getSlug)
+            .collect(Collectors.toSet());
+        Set<String> missing = slugs.stream()
+            .filter(slug -> !foundSlugs.contains(slug))
+            .collect(Collectors.toCollection(LinkedHashSet::new));
+        if (!missing.isEmpty()) {
+            throw new ResponseStatusException(
+                HttpStatus.BAD_REQUEST,
+                "Rubros inválidos: " + String.join(", ", missing)
+            );
+        }
+        return new LinkedHashSet<>(categories);
+    }
+
+    private String resolvePrimaryCategoryName(Set<Category> categories, String legacyRubro) {
+        return categories.stream()
+            .sorted(categoryComparator())
+            .map(Category::getName)
+            .findFirst()
+            .orElseGet(() -> legacyRubro == null ? "" : legacyRubro.trim());
+    }
+
+    private String normalizeSlug(String rawSlug) {
+        if (rawSlug == null) return "";
+        String normalized = rawSlug.trim().toLowerCase(Locale.ROOT);
+        return mapLegacyCategorySlug(normalized);
+    }
+
+    private String mapLegacyCategorySlug(String slug) {
+        return LEGACY_CATEGORY_ALIASES.getOrDefault(slug, slug);
+    }
+
+    private List<CategoryResponse> mapCategories(Set<Category> categories) {
+        if (categories == null || categories.isEmpty()) {
+            return List.of();
+        }
+        return categories.stream()
+            .sorted(categoryComparator())
+            .map(category -> new CategoryResponse(
+                category.getId(),
+                category.getName(),
+                category.getSlug(),
+                category.getImageUrl(),
+                category.getDisplayOrder()
+            ))
+            .toList();
+    }
+
+    private Comparator<Category> categoryComparator() {
+        return Comparator.comparingInt(
+            (Category category) -> category.getDisplayOrder() == null ? Integer.MAX_VALUE : category.getDisplayOrder()
+        ).thenComparing(Category::getName);
     }
 }

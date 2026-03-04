@@ -1,6 +1,8 @@
 import Link from 'next/link';
 import { useMemo } from 'react';
 import type { ProfessionalProfile } from '@/types/professional';
+import { useProfessionalDashboardUnsavedChanges } from '@/context/ProfessionalDashboardUnsavedChangesContext';
+import Logo from '@/components/ui/Logo';
 
 type MenuItem = {
   label: string;
@@ -23,6 +25,7 @@ type SidebarProps = {
 };
 
 export default function ProfesionalSidebar({ profile, active }: SidebarProps) {
+  const { requestNavigation } = useProfessionalDashboardUnsavedChanges();
   const initials = useMemo(() => {
     if (!profile?.fullName) return 'PR';
     return profile.fullName
@@ -38,16 +41,32 @@ export default function ProfesionalSidebar({ profile, active }: SidebarProps) {
 
   return (
     <aside className="h-full bg-[#0B1D2A] p-5 text-white">
-      <div className="flex items-center gap-3 border-b border-white/10 pb-4">
-        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-white/15 text-sm font-semibold">
-          {initials}
-        </div>
-        <div>
-          <p className="text-xs uppercase tracking-[0.3em] text-white/60">
-            Profesional
-          </p>
-          <p className="text-sm font-semibold">{displayName}</p>
-          <p className="text-xs text-white/60">{displayMeta}</p>
+      <div className="border-b border-white/10 pb-4">
+        <Logo
+          href="/"
+          size={30}
+          className="mb-4"
+          textClassName="text-white"
+        />
+        <div className="flex items-center gap-3">
+          <div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-full bg-white/15 text-sm font-semibold">
+            {profile?.logoUrl ? (
+              <img
+                src={profile.logoUrl}
+                alt={`Logo de ${displayName}`}
+                className="h-full w-full object-cover"
+              />
+            ) : (
+              initials
+            )}
+          </div>
+          <div>
+            <p className="text-xs uppercase tracking-[0.3em] text-white/60">
+              Profesional
+            </p>
+            <p className="text-sm font-semibold">{displayName}</p>
+            <p className="text-xs text-white/60">{displayMeta}</p>
+          </div>
         </div>
       </div>
       <p className="mt-6 text-[0.65rem] uppercase tracking-[0.35em] text-white/50">
@@ -73,7 +92,15 @@ export default function ProfesionalSidebar({ profile, active }: SidebarProps) {
           }
 
           return (
-            <Link key={item.label} href={item.href} className={className}>
+            <Link
+              key={item.label}
+              href={item.href}
+              className={className}
+              onClick={(event) => {
+                event.preventDefault();
+                requestNavigation(item.href);
+              }}
+            >
               {item.label}
             </Link>
           );

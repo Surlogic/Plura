@@ -1,10 +1,14 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import Navbar from '@/components/shared/Navbar';
 import ProfesionalSidebar from '@/components/profesional/Sidebar';
 import { useProfessionalProfile } from '@/hooks/useProfessionalProfile';
+import { useCategories } from '@/hooks/useCategories';
 import api from '@/services/api';
+import { isAxiosError } from 'axios';
+import { useProfessionalDashboardUnsavedSection } from '@/context/ProfessionalDashboardUnsavedChangesContext';
+import { mapboxForwardGeocode } from '@/services/mapbox';
 
 const slugify = (value: string) =>
   value
@@ -17,8 +21,39 @@ const slugify = (value: string) =>
     .replace(/-+/g, '-')
     .replace(/^-+|-+$/g, '');
 
+const LEGACY_CATEGORY_ALIASES: Record<string, string> = {
+  peluqueria: 'cabello',
+  cejas: 'pestanas-cejas',
+  pestanas: 'pestanas-cejas',
+  faciales: 'estetica-facial',
+  'tratamientos-corporales': 'tratamientos-corporales',
+  'medicina-estetica': 'medicina-estetica',
+  'bienestar-holistico': 'bienestar-holistico',
+};
+
+const dedupeSlugs = (slugs: string[]) =>
+  Array.from(
+    new Set(
+      slugs
+        .map((slug) => slug.trim())
+        .filter(Boolean),
+    ),
+  );
+
+type BusinessProfileForm = {
+  businessName: string;
+  categorySlugs: string[];
+  logoUrl: string;
+  location: string;
+  latitude?: number;
+  longitude?: number;
+  email: string;
+  phone: string;
+};
+
 export default function ProfesionalBusinessProfilePage() {
   const { profile, isLoading, hasLoaded, refreshProfile } = useProfessionalProfile();
+  const { categories, isLoading: isLoadingCategories } = useCategories();
   const [origin, setOrigin] = useState('https://plura.com');
   const [hasInitialized, setHasInitialized] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -26,27 +61,56 @@ export default function ProfesionalBusinessProfilePage() {
   const [isDirty, setIsDirty] = useState(false);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
   const [saveError, setSaveError] = useState(false);
-  const [form, setForm] = useState({
+  const [form, setForm] = useState<BusinessProfileForm>({
     businessName: '',
-    category: '',
+    categorySlugs: [] as string[],
+    logoUrl: '',
     location: '',
+    latitude: undefined,
+    longitude: undefined,
     email: '',
     phone: '',
   });
+  const [initialForm, setInitialForm] = useState<BusinessProfileForm | null>(null);
 
   useEffect(() => {
     if (!profile || hasInitialized) return;
-    setForm((prev) => ({
-      ...prev,
-      businessName: profile.fullName || prev.businessName,
-      category: profile.rubro || prev.category,
-      location: profile.location || prev.location,
-      email: profile.email || prev.email,
-      phone: profile.phoneNumber || prev.phone,
-    }));
+    const hasProfileCategories =
+      Array.isArray(profile.categories) && profile.categories.length > 0;
+    if (!hasProfileCategories && isLoadingCategories) return;
+
+    const profileCategorySlugs = hasProfileCategories
+      ? dedupeSlugs(profile.categories!.map((category) => category.slug))
+      : [];
+
+    const fallbackRubroSlug = profile.rubro ? slugify(profile.rubro) : '';
+    const mappedFallbackSlug = LEGACY_CATEGORY_ALIASES[fallbackRubroSlug] || fallbackRubroSlug;
+    const fallbackCategory = categories.find((category) =>
+      category.slug === mappedFallbackSlug || slugify(category.name) === mappedFallbackSlug,
+    );
+
+    const categorySlugs = profileCategorySlugs.length > 0
+      ? profileCategorySlugs
+      : fallbackCategory
+        ? [fallbackCategory.slug]
+        : [];
+
+    const initialData: BusinessProfileForm = {
+      businessName: profile.fullName || '',
+      categorySlugs,
+      logoUrl: profile.logoUrl || '',
+      location: profile.location || '',
+      latitude: typeof profile.latitude === 'number' ? profile.latitude : undefined,
+      longitude: typeof profile.longitude === 'number' ? profile.longitude : undefined,
+      email: profile.email || '',
+      phone: profile.phoneNumber || '',
+    };
+
+    setForm(initialData);
+    setInitialForm(initialData);
     setIsDirty(false);
     setHasInitialized(true);
-  }, [profile, hasInitialized]);
+  }, [profile, hasInitialized, categories, isLoadingCategories]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -65,16 +129,40 @@ export default function ProfesionalBusinessProfilePage() {
 
   const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = event.target;
-    setForm((prev) => ({ ...prev, [name]: value }));
+    setForm((prev) => ({
+      ...prev,
+      [name]: value,
+      ...(name === 'location'
+        ? {
+            latitude: undefined,
+            longitude: undefined,
+          }
+        : {}),
+    }));
     setIsDirty(true);
     setSaveMessage(null);
   };
 
-  const handleSave = async () => {
-    if (!form.businessName.trim() || !form.category.trim() || !form.phone.trim()) {
+  const toggleCategory = (slug: string) => {
+    setForm((prev) => {
+      const selected = prev.categorySlugs.includes(slug);
+      return {
+        ...prev,
+        categorySlugs: selected
+          ? prev.categorySlugs.filter((value) => value !== slug)
+          : [...prev.categorySlugs, slug],
+      };
+    });
+    setIsDirty(true);
+    setSaveMessage(null);
+  };
+
+  const handleSave = useCallback(async (): Promise<boolean> => {
+    if (isSaving) return false;
+    if (!form.businessName.trim() || !form.phone.trim()) {
       setSaveMessage('Completá nombre, rubro y teléfono para guardar.');
       setSaveError(true);
-      return;
+      return false;
     }
 
     setIsSaving(true);
@@ -82,23 +170,113 @@ export default function ProfesionalBusinessProfilePage() {
     setSaveError(false);
 
     try {
-      await api.put('/profesional/profile', {
+      const categoryNameBySlug = new Map(
+        categories.map((category) => [category.slug, category.name]),
+      );
+      const validCategorySlugs = dedupeSlugs(form.categorySlugs).filter((slug) =>
+        categoryNameBySlug.has(slug),
+      );
+      if (validCategorySlugs.length === 0) {
+        setSaveMessage('Seleccioná al menos un rubro válido para guardar.');
+        setSaveError(true);
+        setIsSaving(false);
+        return false;
+      }
+
+      const primaryCategoryName = categoryNameBySlug.get(validCategorySlugs[0]) || '';
+      const normalizedLocation = form.location.trim();
+
+      let latitude: number | null =
+        typeof form.latitude === 'number' ? form.latitude : null;
+      let longitude: number | null =
+        typeof form.longitude === 'number' ? form.longitude : null;
+
+      if (normalizedLocation) {
+        const needsGeocoding =
+          !initialForm ||
+          normalizedLocation.toLocaleLowerCase('es-UY') !==
+            initialForm.location.trim().toLocaleLowerCase('es-UY') ||
+          latitude === null ||
+          longitude === null;
+
+        if (needsGeocoding) {
+          const geocoded = await mapboxForwardGeocode(normalizedLocation);
+          if (!geocoded) {
+            setSaveMessage(
+              'No pudimos ubicar esa dirección. Revisala antes de guardar.',
+            );
+            setSaveError(true);
+            return false;
+          }
+          latitude = geocoded.latitude;
+          longitude = geocoded.longitude;
+        }
+      } else {
+        latitude = null;
+        longitude = null;
+      }
+
+      const normalizedPayload = {
         fullName: form.businessName.trim(),
-        rubro: form.category.trim(),
-        location: form.location.trim(),
+        rubro: primaryCategoryName,
+        categorySlugs: validCategorySlugs,
+        logoUrl: form.logoUrl.trim(),
+        location: normalizedLocation,
+        latitude,
+        longitude,
         phoneNumber: form.phone.trim(),
+      };
+      await api.put('/profesional/profile', {
+        ...normalizedPayload,
       });
-      await refreshProfile();
+      void refreshProfile();
+      const persistedForm: BusinessProfileForm = {
+        businessName: normalizedPayload.fullName,
+        categorySlugs: normalizedPayload.categorySlugs,
+        logoUrl: normalizedPayload.logoUrl,
+        location: normalizedPayload.location,
+        latitude: normalizedPayload.latitude ?? undefined,
+        longitude: normalizedPayload.longitude ?? undefined,
+        email: form.email,
+        phone: normalizedPayload.phoneNumber,
+      };
+      setForm(persistedForm);
+      setInitialForm(persistedForm);
       setSaveMessage('Perfil actualizado correctamente.');
       setSaveError(false);
       setIsDirty(false);
-    } catch {
-      setSaveMessage('No se pudo guardar el perfil del negocio.');
+      return true;
+    } catch (error) {
+      const backendMessage = isAxiosError<{ message?: string }>(error)
+        ? error.response?.data?.message
+        : null;
+      setSaveMessage(
+        backendMessage && backendMessage.trim()
+          ? backendMessage.trim()
+          : 'No se pudo guardar el perfil del negocio.',
+      );
       setSaveError(true);
+      return false;
     } finally {
       setIsSaving(false);
     }
-  };
+  }, [categories, form, initialForm, isSaving, refreshProfile]);
+
+  const handleReset = useCallback(() => {
+    if (!initialForm) return;
+    setForm(initialForm);
+    setIsDirty(false);
+    setSaveMessage(null);
+    setSaveError(false);
+  }, [initialForm]);
+
+  useProfessionalDashboardUnsavedSection({
+    sectionId: 'business-profile',
+    isDirty,
+    isSaving,
+    onSave: handleSave,
+    onReset: handleReset,
+  });
   const handleToggleMenu = () => {
     setIsMenuOpen((prev) => !prev);
   };
@@ -190,15 +368,77 @@ export default function ProfesionalBusinessProfilePage() {
                       </div>
                       <div>
                         <label className="text-sm font-medium text-[#0E2A47]">
+                          Logo (URL)
+                        </label>
+                        <div className="mt-2 flex items-center gap-3">
+                          <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full border border-[#E2E7EC] bg-[#F8FAFC] text-xs font-semibold text-[#94A3B8]">
+                            {form.logoUrl.trim() ? (
+                              <img
+                                src={form.logoUrl.trim()}
+                                alt="Logo del negocio"
+                                className="h-full w-full object-cover"
+                              />
+                            ) : (
+                              'LOGO'
+                            )}
+                          </div>
+                          <input
+                            className={inputClassName}
+                            name="logoUrl"
+                            value={form.logoUrl}
+                            onChange={handleChange}
+                            placeholder="https://..."
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <label className="text-sm font-medium text-[#0E2A47]">
                           Rubro
                         </label>
-                        <input
-                          className={inputClassName}
-                          name="category"
-                          value={form.category}
-                          onChange={handleChange}
-                          placeholder="Ej: Salón de belleza"
-                        />
+                        <div className="mt-2 flex items-center justify-between gap-3">
+                          <p className="text-xs text-[#64748B]">
+                            Seleccioná uno o más rubros.
+                          </p>
+                          <p className="text-[0.68rem] font-semibold uppercase tracking-[0.12em] text-[#94A3B8]">
+                            {form.categorySlugs.length} seleccionados
+                          </p>
+                        </div>
+                        <div className="mt-2 max-h-[250px] overflow-y-auto pr-1">
+                          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
+                            {categories.map((category) => {
+                              const checked = form.categorySlugs.includes(category.slug);
+                              return (
+                                <label
+                                  key={category.id}
+                                  className={`flex cursor-pointer items-center gap-2 rounded-full border px-3 py-1.5 text-sm transition ${
+                                    checked
+                                      ? 'border-[#1FB6A6] bg-[#1FB6A6]/12 text-[#0E2A47]'
+                                      : 'border-[#D7DEE8] bg-white text-[#334155] hover:border-[#A5B4C7] hover:bg-[#F8FAFC]'
+                                  }`}
+                                >
+                                  <input
+                                    type="checkbox"
+                                    className="sr-only"
+                                    checked={checked}
+                                    onChange={() => toggleCategory(category.slug)}
+                                    aria-label={`Rubro ${category.name}`}
+                                  />
+                                  <span
+                                    aria-hidden="true"
+                                    className={`inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full border text-[0.62rem] font-bold ${
+                                      checked
+                                        ? 'border-[#1FB6A6] bg-[#1FB6A6] text-white'
+                                        : 'border-[#C7D2E1] text-transparent'
+                                    }`}
+                                  >
+                                    ✓
+                                  </span>
+                                  <span className="truncate">{category.name}</span>
+                                </label>
+                              );
+                            })}
+                          </div>
+                        </div>
                       </div>
                     </div>
                   </div>

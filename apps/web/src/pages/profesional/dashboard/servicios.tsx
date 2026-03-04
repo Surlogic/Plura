@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import Navbar from '@/components/shared/Navbar';
 import ProfesionalSidebar from '@/components/profesional/Sidebar';
 import { useProfessionalProfile } from '@/hooks/useProfessionalProfile';
+import { useProfessionalDashboardUnsavedSection } from '@/context/ProfessionalDashboardUnsavedChangesContext';
 import api from '@/services/api';
 
 type ProfesionalServiceItem = {
@@ -11,6 +12,7 @@ type ProfesionalServiceItem = {
   name: string;
   price: string;
   duration: string;
+  postBufferMinutes?: number | null;
   active?: boolean;
 };
 
@@ -18,6 +20,7 @@ type ServiceDraft = {
   name: string;
   price: string;
   duration: string;
+  postBufferMinutes: string;
   active: boolean;
 };
 
@@ -25,6 +28,7 @@ const createEmptyDraft = (): ServiceDraft => ({
   name: '',
   price: '',
   duration: '',
+  postBufferMinutes: '',
   active: true,
 });
 
@@ -45,7 +49,9 @@ export default function ProfesionalServicesBuilderPage() {
   const { profile, isLoading, hasLoaded } = useProfessionalProfile();
   const [services, setServices] = useState<ProfesionalServiceItem[]>([]);
   const [draft, setDraft] = useState<ServiceDraft>(createEmptyDraft());
+  const [initialDraft, setInitialDraft] = useState<ServiceDraft>(createEmptyDraft());
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [initialEditingId, setInitialEditingId] = useState<string | null>(null);
   const [isLoadingServices, setIsLoadingServices] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
@@ -82,21 +88,32 @@ export default function ProfesionalServicesBuilderPage() {
   };
 
   const resetDraft = () => {
-    setDraft(createEmptyDraft());
+    const empty = createEmptyDraft();
+    setDraft(empty);
+    setInitialDraft(empty);
     setEditingId(null);
+    setInitialEditingId(null);
   };
 
   const handleEditService = (service: ProfesionalServiceItem) => {
-    setDraft({
+    const editDraft = {
       name: service.name,
       price: service.price,
       duration: service.duration,
+      postBufferMinutes:
+        service.postBufferMinutes && service.postBufferMinutes > 0
+          ? String(service.postBufferMinutes)
+          : '',
       active: service.active !== false,
-    });
+    };
+    setDraft(editDraft);
+    setInitialDraft(editDraft);
     setEditingId(service.id);
+    setInitialEditingId(service.id);
   };
 
   const handleDeleteService = async (serviceId: string) => {
+    if (isSubmitting) return;
     setIsSubmitting(true);
     setSaveMessage(null);
     setSaveError(false);
@@ -105,10 +122,10 @@ export default function ProfesionalServicesBuilderPage() {
       await api.delete(`/profesional/services/${serviceId}`);
       setSaveMessage('Servicio eliminado correctamente.');
       setSaveError(false);
+      setServices((prev) => prev.filter((item) => item.id !== serviceId));
       if (editingId === serviceId) {
         resetDraft();
       }
-      await loadServices();
     } catch {
       setSaveMessage('No se pudo eliminar el servicio.');
       setSaveError(true);
@@ -117,17 +134,31 @@ export default function ProfesionalServicesBuilderPage() {
     }
   };
 
-  const handleSubmitService = async () => {
+  const handleSubmitService = async (): Promise<boolean> => {
+    if (isSubmitting) return false;
     if (!draft.name.trim() || !draft.price.trim() || !draft.duration.trim()) {
       setSaveMessage('Completá nombre, precio y duración.');
       setSaveError(true);
-      return;
+      return false;
+    }
+
+    const normalizedBufferRaw = draft.postBufferMinutes.trim();
+    const normalizedBuffer = normalizedBufferRaw === '' ? 0 : Number(normalizedBufferRaw);
+    if (
+      !Number.isFinite(normalizedBuffer)
+      || !Number.isInteger(normalizedBuffer)
+      || normalizedBuffer < 0
+    ) {
+      setSaveMessage('El tiempo extra debe ser un número entero mayor o igual a 0.');
+      setSaveError(true);
+      return false;
     }
 
     const payload = {
       name: draft.name.trim(),
       price: draft.price.trim(),
       duration: draft.duration.trim(),
+      postBufferMinutes: normalizedBuffer,
       active: draft.active,
     };
 
@@ -137,18 +168,40 @@ export default function ProfesionalServicesBuilderPage() {
 
     try {
       if (editingId) {
-        await api.put(`/profesional/services/${editingId}`, payload);
+        const response = await api.put<ProfesionalServiceItem>(
+          `/profesional/services/${editingId}`,
+          payload,
+        );
+        const updatedService = response.data?.id
+          ? response.data
+          : { id: editingId, ...payload };
+        setServices((prev) =>
+          prev.map((item) =>
+            item.id === editingId ? { ...item, ...updatedService } : item,
+          ),
+        );
         setSaveMessage('Servicio actualizado correctamente.');
       } else {
-        await api.post('/profesional/services', payload);
+        const response = await api.post<ProfesionalServiceItem>(
+          '/profesional/services',
+          payload,
+        );
+        const createdService = response.data?.id
+          ? response.data
+          : {
+              id: `temp-${Date.now()}`,
+              ...payload,
+            };
+        setServices((prev) => [createdService, ...prev]);
         setSaveMessage('Servicio creado correctamente.');
       }
       setSaveError(false);
       resetDraft();
-      await loadServices();
+      return true;
     } catch {
       setSaveMessage('No se pudo guardar el servicio.');
       setSaveError(true);
+      return false;
     } finally {
       setIsSubmitting(false);
     }
@@ -159,20 +212,30 @@ export default function ProfesionalServicesBuilderPage() {
   };
 
   const handleToggleServiceActive = async (service: ProfesionalServiceItem) => {
+    if (isSubmitting) return;
     setIsSubmitting(true);
     setSaveMessage(null);
     setSaveError(false);
 
     try {
-      await api.put(`/profesional/services/${service.id}`, {
+      const nextActive = !(service.active !== false);
+      const response = await api.put<ProfesionalServiceItem>(`/profesional/services/${service.id}`, {
         name: service.name,
         price: service.price,
         duration: service.duration,
-        active: !(service.active !== false),
+        postBufferMinutes: service.postBufferMinutes ?? 0,
+        active: nextActive,
       });
+      const updatedService = response.data?.id
+        ? response.data
+        : { ...service, active: nextActive };
+      setServices((prev) =>
+        prev.map((item) =>
+          item.id === service.id ? { ...item, ...updatedService } : item,
+        ),
+      );
       setSaveMessage(service.active === false ? 'Servicio activado.' : 'Servicio desactivado.');
       setSaveError(false);
-      await loadServices();
     } catch {
       setSaveMessage('No se pudo actualizar el estado del servicio.');
       setSaveError(true);
@@ -182,6 +245,31 @@ export default function ProfesionalServicesBuilderPage() {
   };
 
   const serviceCount = useMemo(() => services.length, [services]);
+  const isDirty = useMemo(() => {
+    const hasDifferentMode = editingId !== initialEditingId;
+    const hasDifferentDraft =
+      draft.name !== initialDraft.name ||
+      draft.price !== initialDraft.price ||
+      draft.duration !== initialDraft.duration ||
+      draft.postBufferMinutes !== initialDraft.postBufferMinutes ||
+      draft.active !== initialDraft.active;
+    return hasDifferentMode || hasDifferentDraft;
+  }, [draft, editingId, initialDraft, initialEditingId]);
+
+  const handleResetUnsaved = useCallback(() => {
+    setDraft(initialDraft);
+    setEditingId(initialEditingId);
+    setSaveMessage(null);
+    setSaveError(false);
+  }, [initialDraft, initialEditingId]);
+
+  useProfessionalDashboardUnsavedSection({
+    sectionId: 'services-builder',
+    isDirty,
+    isSaving: isSubmitting,
+    onSave: handleSubmitService,
+    onReset: handleResetUnsaved,
+  });
 
   return (
     <div className="min-h-screen bg-[radial-gradient(circle_at_top,#FFFFFF_0%,#EEF2F6_45%,#D3D7DC_100%)] text-[#0E2A47]">
@@ -299,6 +387,26 @@ export default function ProfesionalServicesBuilderPage() {
                               }
                               placeholder="Ej: 45 min"
                             />
+                          </div>
+                          <div>
+                            <label className="text-sm font-medium text-[#0E2A47]">
+                              Tiempo extra (opcional)
+                            </label>
+                            <input
+                              type="number"
+                              min={0}
+                              step={1}
+                              className={inputClassName}
+                              value={draft.postBufferMinutes}
+                              onChange={(event) =>
+                                handleDraftChange('postBufferMinutes', event.target.value)
+                              }
+                              placeholder="Ej: 10"
+                            />
+                            <p className="mt-1 text-xs text-[#64748B]">
+                              Se usa para bloquear tiempo adicional después del turno y evitar
+                              solapamientos. No se muestra en tu página pública.
+                            </p>
                           </div>
                         </div>
 

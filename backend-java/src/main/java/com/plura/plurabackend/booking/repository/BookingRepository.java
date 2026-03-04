@@ -8,6 +8,7 @@ import com.plura.plurabackend.user.model.User;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -33,6 +34,8 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
             s.id,
             s.name,
             b.startDateTime,
+            s.duration,
+            s.postBufferMinutes,
             b.status
         )
         FROM Booking b
@@ -63,5 +66,44 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
         @Param("start") LocalDateTime start,
         @Param("end") LocalDateTime end,
         @Param("excludedStatus") BookingStatus excludedStatus
+    );
+
+    @Query(
+        """
+        SELECT b
+        FROM Booking b
+        JOIN FETCH b.service s
+        WHERE b.professional = :professional
+            AND b.startDateTime >= :start
+            AND b.startDateTime <= :end
+            AND b.status <> :excludedStatus
+        ORDER BY b.startDateTime ASC
+        """
+    )
+    List<Booking> findBookedWithServiceByProfessionalAndStartDateTimeBetween(
+        @Param("professional") ProfessionalProfile professional,
+        @Param("start") LocalDateTime start,
+        @Param("end") LocalDateTime end,
+        @Param("excludedStatus") BookingStatus excludedStatus
+    );
+
+    long countByCreatedAtGreaterThanEqualAndCreatedAtLessThanAndStatusNot(
+        LocalDateTime from,
+        LocalDateTime to,
+        BookingStatus status
+    );
+
+    @Query(
+        """
+        SELECT b.professional.id, COUNT(b.id)
+        FROM Booking b
+        WHERE b.status IN :statuses
+        GROUP BY b.professional.id
+        ORDER BY COUNT(b.id) DESC
+        """
+    )
+    List<Object[]> findTopProfessionalIdsByStatuses(
+        @Param("statuses") List<BookingStatus> statuses,
+        Pageable pageable
     );
 }

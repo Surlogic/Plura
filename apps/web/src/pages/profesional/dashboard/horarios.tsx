@@ -1,11 +1,12 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Navbar from '@/components/shared/Navbar';
 import ProfesionalSidebar from '@/components/profesional/Sidebar';
 import { useProfessionalProfile } from '@/hooks/useProfessionalProfile';
 import { isAxiosError } from 'axios';
 import api from '@/services/api';
+import { useProfessionalDashboardUnsavedSection } from '@/context/ProfessionalDashboardUnsavedChangesContext';
 import type {
   ProfessionalSchedule,
   SchedulePauseRange,
@@ -33,6 +34,12 @@ const dayOptions: WorkDayKey[] = [
   'sat',
   'sun',
 ];
+
+const weekdayOptions: WorkDayKey[] = ['mon', 'tue', 'wed', 'thu', 'fri'];
+const SLOT_DURATION_OPTIONS = [10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60] as const;
+const DEFAULT_SLOT_DURATION_MINUTES = 15;
+
+type ConstructorApplyMode = 'append' | 'replace';
 
 const buildEmptyPause = (): SchedulePauseRange => ({
   id: `pause-${Date.now()}`,
@@ -100,7 +107,15 @@ const createDefaultDays = (): WorkDaySchedule[] => [
 const createDefaultSchedule = (): ProfessionalSchedule => ({
   days: createDefaultDays(),
   pauses: [],
+  slotDurationMinutes: DEFAULT_SLOT_DURATION_MINUTES,
 });
+
+const normalizeSlotDuration = (value: unknown): number => {
+  if (typeof value !== 'number') return DEFAULT_SLOT_DURATION_MINUTES;
+  return SLOT_DURATION_OPTIONS.includes(value as (typeof SLOT_DURATION_OPTIONS)[number])
+    ? value
+    : DEFAULT_SLOT_DURATION_MINUTES;
+};
 
 const normalizeSchedule = (value: Partial<ProfessionalSchedule> | null | undefined): ProfessionalSchedule => {
   const fallback = createDefaultSchedule();
@@ -148,7 +163,11 @@ const normalizeSchedule = (value: Partial<ProfessionalSchedule> | null | undefin
         .filter((pause) => Boolean(pause.startDate))
     : [];
 
-  return { days, pauses };
+  return {
+    days,
+    pauses,
+    slotDurationMinutes: normalizeSlotDuration(value.slotDurationMinutes),
+  };
 };
 
 const extractApiErrorMessage = (error: unknown, fallback: string) => {
@@ -161,14 +180,39 @@ const extractApiErrorMessage = (error: unknown, fallback: string) => {
   return fallback;
 };
 
+const createScheduleSignature = (schedule: ProfessionalSchedule) =>
+  JSON.stringify({
+    slotDurationMinutes: normalizeSlotDuration(schedule.slotDurationMinutes),
+    days: dayOptions.map((dayKey) => {
+      const day = schedule.days.find((item) => item.day === dayKey);
+      return {
+        day: dayKey,
+        enabled: Boolean(day?.enabled),
+        paused: Boolean(day?.paused),
+        ranges: (day?.ranges ?? []).map((range) => ({
+          start: range.start,
+          end: range.end,
+        })),
+      };
+    }),
+    pauses: (schedule.pauses ?? []).map((pause) => ({
+      startDate: pause.startDate,
+      endDate: pause.endDate,
+      note: pause.note ?? '',
+    })),
+  });
+
 export default function ProfesionalScheduleBuilderPage() {
   const { profile, isLoading, hasLoaded } = useProfessionalProfile();
   const constructorRef = useRef<HTMLDivElement | null>(null);
   const [days, setDays] = useState<WorkDaySchedule[]>([]);
   const [pauses, setPauses] = useState<SchedulePauseRange[]>([]);
-  const [repeatSource, setRepeatSource] = useState<WorkDayKey>('mon');
-  const [repeatTargets, setRepeatTargets] = useState<WorkDayKey[]>([]);
+  const [slotDurationMinutes, setSlotDurationMinutes] = useState<number>(
+    DEFAULT_SLOT_DURATION_MINUTES,
+  );
   const [constructorDay, setConstructorDay] = useState<WorkDayKey>('mon');
+  const [constructorTargets, setConstructorTargets] = useState<WorkDayKey[]>(['mon']);
+  const [constructorMode, setConstructorMode] = useState<ConstructorApplyMode>('append');
   const [constructorError, setConstructorError] = useState<string | null>(null);
   const [scrollTarget, setScrollTarget] = useState<string | null>(null);
   const [editingRange, setEditingRange] = useState<{
@@ -183,6 +227,8 @@ export default function ProfesionalScheduleBuilderPage() {
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
   const [saveError, setSaveError] = useState(false);
   const [hasInitialized, setHasInitialized] = useState(false);
+  const [lastSavedSchedule, setLastSavedSchedule] = useState<ProfessionalSchedule | null>(null);
+  const [isDirty, setIsDirty] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   useEffect(() => {
@@ -200,15 +246,21 @@ export default function ProfesionalScheduleBuilderPage() {
         const schedule = normalizeSchedule(response.data);
         setDays(schedule.days);
         setPauses(schedule.pauses);
+        setSlotDurationMinutes(normalizeSlotDuration(schedule.slotDurationMinutes));
+        setLastSavedSchedule(schedule);
+        setIsDirty(false);
         if (schedule.days.length > 0) {
           setConstructorDay(schedule.days[0].day);
-          setRepeatSource(schedule.days[0].day);
+          setConstructorTargets([schedule.days[0].day]);
         }
       })
       .catch((error) => {
         const fallback = createDefaultSchedule();
         setDays(fallback.days);
         setPauses(fallback.pauses);
+        setSlotDurationMinutes(normalizeSlotDuration(fallback.slotDurationMinutes));
+        setLastSavedSchedule(fallback);
+        setIsDirty(false);
         setSaveMessage(
           extractApiErrorMessage(
             error,
@@ -231,42 +283,94 @@ export default function ProfesionalScheduleBuilderPage() {
     }
   }, [scrollTarget, days]);
 
+  const currentSchedule = useMemo<ProfessionalSchedule>(
+    () => ({ days, pauses, slotDurationMinutes }),
+    [days, pauses, slotDurationMinutes],
+  );
+  const currentSignature = useMemo(
+    () => createScheduleSignature(currentSchedule),
+    [currentSchedule],
+  );
+  const savedSignature = useMemo(
+    () => (lastSavedSchedule ? createScheduleSignature(lastSavedSchedule) : null),
+    [lastSavedSchedule],
+  );
+
+  useEffect(() => {
+    if (!lastSavedSchedule) {
+      setIsDirty(false);
+      return;
+    }
+    setIsDirty(currentSignature !== savedSignature);
+  }, [currentSignature, lastSavedSchedule, savedSignature]);
+
   const showSkeleton = !hasLoaded || (isLoading && !profile) || !hasInitialized;
 
   const inputClassName =
     'h-11 w-full rounded-[14px] border border-[#E2E7EC] bg-white px-3 text-sm text-[#0E2A47] placeholder:text-[#94A3B8] focus:outline-none focus:ring-2 focus:ring-[#1FB6A6]/30';
 
-  const handleSave = async (nextSchedule?: ProfessionalSchedule, message?: string) => {
-    if (!profile?.id) return;
+  const handleSave = useCallback(async (nextSchedule?: ProfessionalSchedule, message?: string) => {
+    if (isSaving) return false;
+    if (!profile?.id) return false;
     setIsSaving(true);
     setSaveMessage(null);
     setSaveError(false);
 
     try {
-      const schedule = nextSchedule ?? { days, pauses };
+      const schedule = nextSchedule ?? { days, pauses, slotDurationMinutes };
       const response = await api.put<ProfessionalSchedule>('/profesional/schedule', schedule);
       const persisted = normalizeSchedule(response.data);
       setSaveMessage(message ?? 'Horarios guardados correctamente.');
       setSaveError(false);
       setDays(persisted.days);
       setPauses(persisted.pauses);
+      setSlotDurationMinutes(normalizeSlotDuration(persisted.slotDurationMinutes));
+      setLastSavedSchedule(persisted);
+      return true;
     } catch (error) {
       setSaveMessage(
         extractApiErrorMessage(error, 'No se pudieron guardar. Intentá de nuevo.'),
       );
       setSaveError(true);
+      return false;
     } finally {
       setIsSaving(false);
     }
-  };
+  }, [days, isSaving, pauses, profile?.id, slotDurationMinutes]);
+
+  const handleResetUnsaved = useCallback(() => {
+    if (!lastSavedSchedule) return;
+    setDays(lastSavedSchedule.days);
+    setPauses(lastSavedSchedule.pauses);
+    setSlotDurationMinutes(normalizeSlotDuration(lastSavedSchedule.slotDurationMinutes));
+    setEditingRange(null);
+    setConstructorError(null);
+    setPauseDraft(buildEmptyPause());
+    setSaveMessage(null);
+    setSaveError(false);
+  }, [lastSavedSchedule]);
+
+  useProfessionalDashboardUnsavedSection({
+    sectionId: 'schedule-builder',
+    isDirty,
+    isSaving,
+    onSave: () => handleSave(undefined, 'Horarios guardados correctamente.'),
+    onReset: handleResetUnsaved,
+  });
+
   const handleToggleMenu = () => {
     setIsMenuOpen((prev) => !prev);
   };
 
-  const handleDayChange = (dayKey: WorkDayKey, updates: Partial<WorkDaySchedule>) => {
-    setDays((prev) =>
-      prev.map((day) => (day.day === dayKey ? { ...day, ...updates } : day)),
-    );
+  const markPendingSave = (message: string) => {
+    setSaveMessage(message);
+    setSaveError(false);
+  };
+
+  const handleSlotDurationChange = (value: string) => {
+    const nextValue = normalizeSlotDuration(Number(value));
+    setSlotDurationMinutes(nextValue);
+    markPendingSave('Duración de turnos actualizada. Guardá cambios para confirmar.');
   };
 
   const handleToggleAvailable = (dayKey: WorkDayKey, checked: boolean) => {
@@ -289,34 +393,32 @@ export default function ProfesionalScheduleBuilderPage() {
     );
   };
 
-  const toggleRepeatTarget = (dayKey: WorkDayKey) => {
-    setRepeatTargets((prev) =>
-      prev.includes(dayKey) ? prev.filter((day) => day !== dayKey) : [...prev, dayKey],
-    );
+  const sortDaysByWeek = (selectedDays: WorkDayKey[]) =>
+    dayOptions.filter((day) => selectedDays.includes(day));
+
+  const toggleConstructorTarget = (dayKey: WorkDayKey) => {
+    setConstructorTargets((prev) => {
+      const next = prev.includes(dayKey)
+        ? prev.filter((day) => day !== dayKey)
+        : [...prev, dayKey];
+      return sortDaysByWeek(next);
+    });
+    setConstructorError(null);
   };
 
-  const handleApplyRepeat = () => {
-    if (repeatTargets.length === 0) return;
-    const source = days.find((day) => day.day === repeatSource);
-    if (!source) return;
-    const targets = repeatTargets.filter((day) => day !== repeatSource);
-    setDays((prev) =>
-      prev.map((day) =>
-        targets.includes(day.day)
-          ? {
-              ...day,
-              enabled: source.enabled,
-              ranges: source.ranges.map((range, index) => ({
-                id: `range-${day.day}-${Date.now()}-${index}`,
-                start: range.start,
-                end: range.end,
-              })),
-            }
-          : day,
-      ),
-    );
-    setRepeatTargets([]);
-    setSaveMessage('Horario copiado a los días seleccionados.');
+  const selectAllConstructorTargets = () => {
+    setConstructorTargets([...dayOptions]);
+    setConstructorError(null);
+  };
+
+  const selectWeekdayConstructorTargets = () => {
+    setConstructorTargets([...weekdayOptions]);
+    setConstructorError(null);
+  };
+
+  const clearConstructorTargets = () => {
+    setConstructorTargets([]);
+    setConstructorError(null);
   };
 
   const scrollToConstructor = () => {
@@ -327,6 +429,7 @@ export default function ProfesionalScheduleBuilderPage() {
     setEditingRange({ day: dayKey, rangeId: range.id });
     setRangeDraft({ start: range.start, end: range.end });
     setConstructorDay(dayKey);
+    setConstructorTargets([dayKey]);
     setConstructorError(null);
     scrollToConstructor();
   };
@@ -404,30 +507,74 @@ export default function ProfesionalScheduleBuilderPage() {
     setDays(nextDays);
     setEditingRange(null);
     setConstructorError(null);
-    void handleSave({ days: nextDays, pauses }, 'Horario actualizado correctamente.');
+    markPendingSave('Horario actualizado. Guardá cambios para confirmar.');
   };
 
   const handleAddRange = () => {
-    if (!constructorDay) return;
-    const error = getRangeError(
-      constructorDay,
-      rangeDraft.start,
-      rangeDraft.end,
-    );
-    if (error) {
-      setConstructorError(error);
+    if (constructorTargets.length === 0) {
+      setConstructorError('Seleccioná al menos un día.');
       return;
     }
-    const newRange = createRange(constructorDay, rangeDraft.start, rangeDraft.end);
+
+    const start = parseTime(rangeDraft.start);
+    const end = parseTime(rangeDraft.end);
+    if (start === null || end === null) {
+      setConstructorError('Completá el inicio y el fin.');
+      return;
+    }
+    if (end <= start) {
+      setConstructorError('El horario de fin debe ser mayor al inicio.');
+      return;
+    }
+
+    if (constructorMode === 'append') {
+      const overlappingDays = constructorTargets.filter((dayKey) =>
+        Boolean(getRangeError(dayKey, rangeDraft.start, rangeDraft.end)),
+      );
+      if (overlappingDays.length > 0) {
+        const labels = overlappingDays.map((day) => dayLabels[day]).join(', ');
+        setConstructorError(`Ya existe una franja superpuesta en: ${labels}.`);
+        return;
+      }
+    }
+
     const nextDays = days.map((day) =>
-      day.day === constructorDay
-        ? { ...day, enabled: true, ranges: [...day.ranges, newRange] }
+      constructorTargets.includes(day.day)
+        ? (() => {
+            const newRange = createRange(day.day, rangeDraft.start, rangeDraft.end);
+            if (constructorMode === 'replace') {
+              return {
+                ...day,
+                enabled: true,
+                paused: false,
+                ranges: [newRange],
+              };
+            }
+            return {
+              ...day,
+              enabled: true,
+              paused: false,
+              ranges: [...day.ranges, newRange],
+            };
+          })()
         : day,
     );
+
     setDays(nextDays);
-    setScrollTarget(`range-${constructorDay}-${newRange.id}`);
-    void handleSave({ days: nextDays, pauses }, 'Horario creado correctamente.');
-    resetRangeDraft(constructorDay);
+    const firstTarget = constructorTargets[0];
+    if (firstTarget) {
+      const targetDay = nextDays.find((day) => day.day === firstTarget);
+      const targetRange = targetDay?.ranges[targetDay.ranges.length - 1];
+      if (targetRange) {
+        setScrollTarget(`range-${firstTarget}-${targetRange.id}`);
+      }
+    }
+    const dayCount = constructorTargets.length;
+    const actionLabel = constructorMode === 'replace' ? 'reemplazados' : 'creados';
+    markPendingSave(
+      `Horarios ${actionLabel} en ${dayCount} día${dayCount === 1 ? '' : 's'}. Guardá cambios para confirmar.`,
+    );
+    resetRangeDraft(constructorTargets[0]);
   };
 
   const handleRemoveRange = (dayKey: WorkDayKey, rangeId: string) => {
@@ -440,10 +587,11 @@ export default function ProfesionalScheduleBuilderPage() {
     if (editingRange?.rangeId === rangeId && editingRange.day === dayKey) {
       setEditingRange(null);
     }
-    void handleSave({ days: nextDays, pauses }, 'Horario eliminado.');
+    markPendingSave('Horario eliminado. Guardá cambios para confirmar.');
   };
 
   const handleCreateFromDay = (dayKey: WorkDayKey) => {
+    setConstructorTargets([dayKey]);
     resetRangeDraft(dayKey);
     scrollToConstructor();
   };
@@ -472,13 +620,13 @@ export default function ProfesionalScheduleBuilderPage() {
     ];
     setPauses(nextPauses);
     setPauseDraft(buildEmptyPause());
-    void handleSave({ days, pauses: nextPauses }, 'Pausa agregada correctamente.');
+    markPendingSave('Pausa agregada. Guardá cambios para confirmar.');
   };
 
   const handleRemovePause = (pauseId: string) => {
     const nextPauses = pauses.filter((pause) => pause.id !== pauseId);
     setPauses(nextPauses);
-    void handleSave({ days, pauses: nextPauses }, 'Pausa eliminada.');
+    markPendingSave('Pausa eliminada. Guardá cambios para confirmar.');
   };
 
   const summary = useMemo(() => {
@@ -491,6 +639,14 @@ export default function ProfesionalScheduleBuilderPage() {
       closedCount: days.filter((day) => !day.enabled).length,
     };
   }, [days]);
+
+  const slotDurationChanged = useMemo(() => {
+    if (!lastSavedSchedule) return false;
+    return (
+      normalizeSlotDuration(slotDurationMinutes) !==
+      normalizeSlotDuration(lastSavedSchedule.slotDurationMinutes)
+    );
+  }, [lastSavedSchedule, slotDurationMinutes]);
 
   return (
     <div className="min-h-screen bg-[radial-gradient(circle_at_top,#FFFFFF_0%,#EEF2F6_45%,#D3D7DC_100%)] text-[#0E2A47]">
@@ -524,7 +680,7 @@ export default function ProfesionalScheduleBuilderPage() {
                     Constructor de horarios de trabajo
                   </h1>
                   <p className="mt-1 text-sm text-[#64748B]">
-                    Configurá tus días, repetí horarios y pausá disponibilidad.
+                    Creá franjas para uno o varios días en una sola acción.
                   </p>
                 </div>
                 <button
@@ -543,6 +699,46 @@ export default function ProfesionalScheduleBuilderPage() {
               ) : null}
             </div>
 
+            <div className="rounded-[22px] border border-white/70 bg-white/95 px-4 py-3 shadow-[0_14px_30px_rgba(15,23,42,0.10)] sm:px-5 sm:py-4">
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-[minmax(220px,1.25fr)_repeat(3,minmax(0,1fr))]">
+                <div className="col-span-2 border-b border-[#E2E8F0] pb-2 sm:col-span-3 sm:pb-3 lg:col-span-1 lg:border-b-0 lg:border-r lg:pb-0 lg:pr-4">
+                  <p className="text-[0.62rem] uppercase tracking-[0.3em] text-[#94A3B8]">
+                    Resumen
+                  </p>
+                  <h2 className="mt-1 text-base font-semibold text-[#0E2A47]">
+                    Estado semanal
+                  </h2>
+                </div>
+
+                <div className="rounded-[14px] border border-[#E2E7EC] bg-[#F7F9FB] px-3 py-2.5">
+                  <p className="text-[0.62rem] uppercase tracking-[0.16em] text-[#94A3B8]">
+                    Activos
+                  </p>
+                  <p className="mt-1 text-2xl font-semibold leading-none text-[#0E2A47]">
+                    {summary.activeCount}
+                  </p>
+                </div>
+
+                <div className="rounded-[14px] border border-[#E2E7EC] bg-[#F7F9FB] px-3 py-2.5">
+                  <p className="text-[0.62rem] uppercase tracking-[0.16em] text-[#94A3B8]">
+                    Pausados
+                  </p>
+                  <p className="mt-1 text-2xl font-semibold leading-none text-[#0E2A47]">
+                    {summary.pausedCount}
+                  </p>
+                </div>
+
+                <div className="col-span-2 rounded-[14px] border border-[#E2E7EC] bg-[#F7F9FB] px-3 py-2.5 sm:col-span-1">
+                  <p className="text-[0.62rem] uppercase tracking-[0.16em] text-[#94A3B8]">
+                    Cerrados
+                  </p>
+                  <p className="mt-1 text-2xl font-semibold leading-none text-[#0E2A47]">
+                    {summary.closedCount}
+                  </p>
+                </div>
+              </div>
+            </div>
+
             {showSkeleton ? (
               <div className="rounded-[28px] border border-white/70 bg-white/95 p-6 shadow-[0_18px_40px_rgba(15,23,42,0.12)]">
                 <div className="h-5 w-52 rounded-full bg-[#E2E7EC]" />
@@ -559,185 +755,187 @@ export default function ProfesionalScheduleBuilderPage() {
                     ref={constructorRef}
                     className="rounded-[24px] border border-white/70 bg-white/95 p-6 shadow-[0_16px_36px_rgba(15,23,42,0.12)]"
                   >
-                    <div className="grid gap-6 lg:grid-cols-[1.15fr,0.85fr]">
-                      <div>
-                        <p className="text-[0.65rem] uppercase tracking-[0.35em] text-[#94A3B8]">
-                          Constructor
-                        </p>
-                        <h2 className="mt-2 text-lg font-semibold text-[#0E2A47]">
-                          Crear horario
-                        </h2>
-                        <p className="mt-1 text-sm text-[#64748B]">
-                          Definí la franja y asignala a un día.
-                        </p>
-                        <div className="mt-4 grid gap-4 sm:grid-cols-3">
-                          <div className="sm:col-span-1">
-                            <label className="text-sm font-medium text-[#0E2A47]">
-                              Día
-                            </label>
-                            <select
-                              className={inputClassName}
-                              value={constructorDay}
-                              onChange={(event) => {
-                                setConstructorDay(event.target.value as WorkDayKey);
-                                setConstructorError(null);
-                              }}
-                              disabled={Boolean(editingRange)}
-                            >
-                              {dayOptions.map((day) => (
-                                <option key={day} value={day}>
-                                  {dayLabels[day]}
-                                </option>
-                              ))}
-                            </select>
-                          </div>
-                          <div>
-                            <label className="text-sm font-medium text-[#0E2A47]">
-                              Inicio
-                            </label>
-                            <input
-                              type="time"
-                              className={inputClassName}
-                              value={rangeDraft.start}
-                              onChange={(event) =>
-                                handleRangeDraftChange('start', event.target.value)
-                              }
-                            />
-                          </div>
-                          <div>
-                            <label className="text-sm font-medium text-[#0E2A47]">
-                              Fin
-                            </label>
-                            <input
-                              type="time"
-                              className={inputClassName}
-                              value={rangeDraft.end}
-                              onChange={(event) =>
-                                handleRangeDraftChange('end', event.target.value)
-                              }
-                            />
-                          </div>
-                        </div>
-                        <div className="mt-4 flex flex-wrap items-center gap-3">
-                          {editingRange ? (
-                            <>
-                              <button
-                                type="button"
-                                onClick={handleSaveRange}
-                                className="rounded-full bg-[#1FB6A6] px-4 py-2 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:shadow-md"
-                              >
-                                Guardar cambios
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => resetRangeDraft()}
-                                className="rounded-full border border-[#E2E7EC] bg-white px-4 py-2 text-sm font-semibold text-[#0E2A47]"
-                              >
-                                Cancelar edición
-                              </button>
-                              <p className="text-xs text-[#94A3B8]">
-                                Editando franja de {dayLabels[constructorDay]}.
-                              </p>
-                            </>
-                          ) : (
-                            <>
-                              <button
-                                type="button"
-                                onClick={handleAddRange}
-                                className="rounded-full bg-[#1FB6A6] px-4 py-2 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:shadow-md"
-                              >
-                                Crear horario
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => resetRangeDraft()}
-                                className="rounded-full border border-[#E2E7EC] bg-white px-4 py-2 text-sm font-semibold text-[#0E2A47]"
-                              >
-                                Limpiar
-                              </button>
-                            </>
-                          )}
-                        </div>
-                        {constructorError ? (
-                          <p className="mt-2 text-xs font-semibold text-[#C24141]">
-                            {constructorError}
-                          </p>
-                        ) : null}
-                      </div>
+                    <div>
+                      <p className="text-[0.65rem] uppercase tracking-[0.35em] text-[#94A3B8]">
+                        Constructor
+                      </p>
+                      <h2 className="mt-2 text-lg font-semibold text-[#0E2A47]">
+                        Crear horarios en lote
+                      </h2>
+                      <p className="mt-1 text-sm text-[#64748B]">
+                        Seleccioná los días, definí la franja y creá todo de una.
+                      </p>
 
-                      <div className="lg:border-l lg:border-[#E2E8F0] lg:pl-6">
-                        <p className="text-[0.65rem] uppercase tracking-[0.35em] text-[#94A3B8]">
-                          Repetir horario
-                        </p>
-                        <h2 className="mt-2 text-lg font-semibold text-[#0E2A47]">
-                          Copiar horario a otros días
-                        </h2>
-                        <div className="mt-4 grid gap-4">
-                          <div>
-                            <label className="text-sm font-medium text-[#0E2A47]">
-                              Día base
-                            </label>
-                            <select
-                              className={inputClassName}
-                              value={repeatSource}
-                              onChange={(event) =>
-                                setRepeatSource(event.target.value as WorkDayKey)
-                              }
-                            >
-                              {dayOptions.map((day) => (
-                                <option key={day} value={day}>
-                                  {dayLabels[day]}
-                                </option>
-                              ))}
-                            </select>
-                          </div>
-                          <div>
-                            <p className="text-sm font-medium text-[#0E2A47]">
-                              Días a copiar
-                            </p>
-                            <div className="mt-2 flex flex-wrap gap-2">
-                              {dayOptions.map((day) => (
-                                <button
-                                  key={day}
-                                  type="button"
-                                  onClick={() => toggleRepeatTarget(day)}
-                                  className={`rounded-full border px-3 py-1 text-xs font-semibold transition ${
-                                    repeatTargets.includes(day)
-                                      ? 'border-[#1FB6A6] bg-[#1FB6A6]/10 text-[#0E2A47]'
-                                      : 'border-[#E2E7EC] bg-white text-[#64748B]'
-                                  }`}
-                                >
-                                  {dayLabels[day]}
-                                </button>
-                              ))}
-                            </div>
-                            <div className="mt-3 flex flex-wrap gap-2">
+                      <div className="mt-4">
+                        <p className="text-sm font-medium text-[#0E2A47]">Días</p>
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          {dayOptions.map((day) => {
+                            const selected = constructorTargets.includes(day);
+                            return (
                               <button
+                                key={day}
                                 type="button"
-                                onClick={() => setRepeatTargets(dayOptions)}
-                                className="rounded-full border border-[#E2E7EC] bg-white px-3 py-1 text-xs font-semibold text-[#0E2A47] transition hover:-translate-y-0.5 hover:shadow-sm"
+                                disabled={Boolean(editingRange)}
+                                onClick={() => toggleConstructorTarget(day)}
+                                className={`rounded-full border px-3 py-1 text-xs font-semibold transition ${
+                                  selected
+                                    ? 'border-[#1FB6A6] bg-[#1FB6A6]/10 text-[#0E2A47]'
+                                    : 'border-[#E2E7EC] bg-white text-[#64748B]'
+                                } ${
+                                  editingRange
+                                    ? 'cursor-not-allowed opacity-60'
+                                    : 'hover:-translate-y-0.5 hover:shadow-sm'
+                                }`}
                               >
-                                Seleccionar todos
+                                {dayLabels[day]}
                               </button>
-                              <button
-                                type="button"
-                                onClick={() => setRepeatTargets([])}
-                                className="rounded-full border border-[#E2E7EC] bg-white px-3 py-1 text-xs font-semibold text-[#0E2A47] transition hover:-translate-y-0.5 hover:shadow-sm"
-                              >
-                                Limpiar selección
-                              </button>
-                            </div>
-                          </div>
+                            );
+                          })}
+                        </div>
+                        <div className="mt-3 flex flex-wrap gap-2">
                           <button
                             type="button"
-                            onClick={handleApplyRepeat}
-                            className="w-full rounded-full bg-[#1FB6A6] px-4 py-2 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:shadow-md"
+                            disabled={Boolean(editingRange)}
+                            onClick={selectAllConstructorTargets}
+                            className="rounded-full border border-[#E2E7EC] bg-white px-3 py-1 text-xs font-semibold text-[#0E2A47] transition enabled:hover:-translate-y-0.5 enabled:hover:shadow-sm disabled:cursor-not-allowed disabled:opacity-60"
                           >
-                            Aplicar a seleccionados
+                            Todos
                           </button>
-                </div>
-              </div>
-            </div>
+                          <button
+                            type="button"
+                            disabled={Boolean(editingRange)}
+                            onClick={selectWeekdayConstructorTargets}
+                            className="rounded-full border border-[#E2E7EC] bg-white px-3 py-1 text-xs font-semibold text-[#0E2A47] transition enabled:hover:-translate-y-0.5 enabled:hover:shadow-sm disabled:cursor-not-allowed disabled:opacity-60"
+                          >
+                            Laborables
+                          </button>
+                          <button
+                            type="button"
+                            disabled={Boolean(editingRange)}
+                            onClick={clearConstructorTargets}
+                            className="rounded-full border border-[#E2E7EC] bg-white px-3 py-1 text-xs font-semibold text-[#0E2A47] transition enabled:hover:-translate-y-0.5 enabled:hover:shadow-sm disabled:cursor-not-allowed disabled:opacity-60"
+                          >
+                            Limpiar
+                          </button>
+                        </div>
+                        <p className="mt-2 text-xs text-[#64748B]">
+                          Seleccionados: {constructorTargets.length}
+                        </p>
+                      </div>
+
+                      <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                        <div>
+                          <label className="text-sm font-medium text-[#0E2A47]">
+                            Inicio
+                          </label>
+                          <input
+                            type="time"
+                            className={inputClassName}
+                            value={rangeDraft.start}
+                            onChange={(event) =>
+                              handleRangeDraftChange('start', event.target.value)
+                            }
+                          />
+                        </div>
+                        <div>
+                          <label className="text-sm font-medium text-[#0E2A47]">
+                            Fin
+                          </label>
+                          <input
+                            type="time"
+                            className={inputClassName}
+                            value={rangeDraft.end}
+                            onChange={(event) =>
+                              handleRangeDraftChange('end', event.target.value)
+                            }
+                          />
+                        </div>
+                      </div>
+
+                      <div className="mt-4">
+                        <p className="text-sm font-medium text-[#0E2A47]">
+                          Modo de aplicación
+                        </p>
+                        <div className="mt-2 inline-flex rounded-full border border-[#E2E7EC] bg-white p-1">
+                          <button
+                            type="button"
+                            disabled={Boolean(editingRange)}
+                            onClick={() => setConstructorMode('append')}
+                            className={`rounded-full px-3 py-1 text-xs font-semibold transition ${
+                              constructorMode === 'append'
+                                ? 'bg-[#1FB6A6] text-white'
+                                : 'text-[#0E2A47]'
+                            }`}
+                          >
+                            Agregar franja
+                          </button>
+                          <button
+                            type="button"
+                            disabled={Boolean(editingRange)}
+                            onClick={() => setConstructorMode('replace')}
+                            className={`rounded-full px-3 py-1 text-xs font-semibold transition ${
+                              constructorMode === 'replace'
+                                ? 'bg-[#1FB6A6] text-white'
+                                : 'text-[#0E2A47]'
+                            }`}
+                          >
+                            Reemplazar existentes
+                          </button>
+                        </div>
+                        <p className="mt-2 text-xs text-[#64748B]">
+                          {constructorMode === 'replace'
+                            ? 'Reemplaza todas las franjas del día seleccionado por esta nueva.'
+                            : 'Agrega una nueva franja y conserva las existentes.'}
+                        </p>
+                      </div>
+
+                      <div className="mt-4 flex flex-wrap items-center gap-3">
+                        {editingRange ? (
+                          <>
+                            <button
+                              type="button"
+                              onClick={handleSaveRange}
+                              className="rounded-full bg-[#1FB6A6] px-4 py-2 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:shadow-md"
+                            >
+                              Guardar cambios
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => resetRangeDraft(constructorTargets[0] ?? constructorDay)}
+                              className="rounded-full border border-[#E2E7EC] bg-white px-4 py-2 text-sm font-semibold text-[#0E2A47]"
+                            >
+                              Cancelar edición
+                            </button>
+                            <p className="text-xs text-[#94A3B8]">
+                              Editando franja de {dayLabels[constructorDay]}.
+                            </p>
+                          </>
+                        ) : (
+                          <>
+                            <button
+                              type="button"
+                              onClick={handleAddRange}
+                              disabled={constructorTargets.length === 0}
+                              className="rounded-full bg-[#1FB6A6] px-4 py-2 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-60"
+                            >
+                              Crear horarios
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => resetRangeDraft(constructorTargets[0] ?? constructorDay)}
+                              className="rounded-full border border-[#E2E7EC] bg-white px-4 py-2 text-sm font-semibold text-[#0E2A47]"
+                            >
+                              Limpiar
+                            </button>
+                          </>
+                        )}
+                      </div>
+                      {constructorError ? (
+                        <p className="mt-2 text-xs font-semibold text-[#C24141]">
+                          {constructorError}
+                        </p>
+                      ) : null}
+                    </div>
                   </div>
 
                   <div className="space-y-4">
@@ -947,25 +1145,36 @@ export default function ProfesionalScheduleBuilderPage() {
                 <div className="space-y-6">
                   <div className="rounded-[24px] border border-white/70 bg-white/95 p-5 shadow-[0_16px_36px_rgba(15,23,42,0.12)]">
                     <p className="text-[0.65rem] uppercase tracking-[0.35em] text-[#94A3B8]">
-                      Resumen
+                      Agenda
                     </p>
                     <h2 className="mt-2 text-lg font-semibold text-[#0E2A47]">
-                      Estado semanal
+                      Duración de turnos
                     </h2>
-                    <div className="mt-4 grid gap-3">
-                      <div className="flex items-center justify-between rounded-[16px] border border-[#E2E7EC] bg-[#F7F9FB] px-4 py-3 text-sm font-semibold text-[#0E2A47]">
-                        <span>Días activos</span>
-                        <span>{summary.activeCount}</span>
-                      </div>
-                      <div className="flex items-center justify-between rounded-[16px] border border-[#E2E7EC] bg-[#F7F9FB] px-4 py-3 text-sm font-semibold text-[#0E2A47]">
-                        <span>Días pausados</span>
-                        <span>{summary.pausedCount}</span>
-                      </div>
-                      <div className="flex items-center justify-between rounded-[16px] border border-[#E2E7EC] bg-[#F7F9FB] px-4 py-3 text-sm font-semibold text-[#0E2A47]">
-                        <span>Días cerrados</span>
-                        <span>{summary.closedCount}</span>
-                      </div>
+                    <p className="mt-1 text-sm text-[#64748B]">
+                      Elegí cada cuánto tiempo se generan los turnos disponibles en tu agenda.
+                    </p>
+                    <div className="mt-4">
+                      <label htmlFor="slot-duration-minutes" className="text-sm font-medium text-[#0E2A47]">
+                        Duración de turnos
+                      </label>
+                      <select
+                        id="slot-duration-minutes"
+                        value={slotDurationMinutes}
+                        onChange={(event) => handleSlotDurationChange(event.target.value)}
+                        className={inputClassName}
+                      >
+                        {SLOT_DURATION_OPTIONS.map((minutes) => (
+                          <option key={minutes} value={minutes}>
+                            {minutes} minutos
+                          </option>
+                        ))}
+                      </select>
                     </div>
+                    {slotDurationChanged ? (
+                      <p className="mt-3 text-xs font-semibold text-[#B45309]">
+                        Cambiar la duración de turnos puede modificar la disponibilidad de tu agenda.
+                      </p>
+                    ) : null}
                   </div>
 
                   <div className="rounded-[24px] border border-white/70 bg-white/95 p-5 shadow-[0_16px_36px_rgba(15,23,42,0.12)]">

@@ -10,6 +10,9 @@ type ProfessionalBookingDto = {
   serviceId: string;
   serviceName: string;
   startDateTime: string;
+  duration?: string;
+  postBufferMinutes?: number;
+  effectiveDurationMinutes?: number;
   status: ApiReservationStatus;
 };
 
@@ -51,6 +54,9 @@ const mapBooking = (booking: ProfessionalBookingDto): ProfessionalReservation =>
     clientName: booking.clientName,
     date: datePart ?? '',
     time: timePart.slice(0, 5),
+    duration: booking.duration,
+    postBufferMinutes: booking.postBufferMinutes ?? 0,
+    effectiveDurationMinutes: booking.effectiveDurationMinutes,
     status: toFrontendStatus(booking.status),
     serviceId: booking.serviceId,
     userId: booking.userId,

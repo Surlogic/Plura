@@ -1,10 +1,10 @@
 'use client';
 
-import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import api from '@/services/api';
 import { useProfessionalProfileContext } from '@/context/ProfessionalProfileContext';
+import Logo from '@/components/ui/Logo';
 
 type NavbarProps = {
   variant?: 'default' | 'dashboard';
@@ -18,7 +18,8 @@ export default function Navbar({
   onMenuClick,
 }: NavbarProps) {
   const router = useRouter();
-  const { clearProfile, profile, hasLoaded } = useProfessionalProfileContext();
+  const { clearProfile, profile, hasLoaded, isLoading } = useProfessionalProfileContext();
+  const showAuthLoading = isLoading || !hasLoaded;
   const hasProfessionalSession = hasLoaded && Boolean(profile);
 
   const handleLogout = () => {
@@ -52,20 +53,14 @@ export default function Navbar({
               Menú
             </button>
           ) : null}
-          <Link href="/" className="flex items-center">
-          <Image
-            src="/logo.png"
-            alt="Plura"
-            width={64}
-            height={64}
-            className="logo-animate relative z-10 h-16 w-16 object-contain"
-            priority
-          />
-          <span className="logo-text-animate logo-type -ml-3 text-3xl text-[#0E2A47]">Plura</span>
-          </Link>
+          <Logo href="/" size={38} priority textClassName="text-[#0E2A47]" />
         </div>
         <div className="flex flex-col gap-2 text-sm sm:flex-row sm:items-center">
-          {hasProfessionalSession ? (
+          {showAuthLoading ? (
+            <span className="rounded-full border border-[#0E2A47]/10 bg-white px-4 py-2 text-[#64748B] shadow-sm">
+              Cargando...
+            </span>
+          ) : hasProfessionalSession ? (
             <>
               <Link
                 href="/profesional/dashboard"

@@ -23,6 +23,17 @@ type ClientProfileContextValue = {
 const ClientProfileContext =
   createContext<ClientProfileContextValue | null>(null);
 
+const CLIENT_SESSION_ROUTES = ['/cliente', '/reservar', '/reserva-confirmada'];
+
+const isRouteOrChild = (path: string, route: string) =>
+  path === route || path.startsWith(`${route}/`);
+
+const shouldSkipClientProfileLoad = () => {
+  if (typeof window === 'undefined') return false;
+  const path = window.location.pathname;
+  return !CLIENT_SESSION_ROUTES.some((route) => isRouteOrChild(path, route));
+};
+
 export function ClientProfileProvider({
   children,
 }: {
@@ -39,6 +50,12 @@ export function ClientProfileProvider({
   }, []);
 
   const refreshProfile = useCallback(async () => {
+    if (shouldSkipClientProfileLoad()) {
+      setProfile(null);
+      setHasLoaded(true);
+      setIsLoading(false);
+      return;
+    }
     setIsLoading(true);
     try {
       const response = await api.get('/auth/me/cliente');

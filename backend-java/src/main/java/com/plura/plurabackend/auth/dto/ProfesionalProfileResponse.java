@@ -1,5 +1,6 @@
 package com.plura.plurabackend.auth.dto;
 
+import com.plura.plurabackend.category.dto.CategoryResponse;
 import java.time.LocalDateTime;
 import java.util.List;
 import lombok.AllArgsConstructor;
@@ -15,9 +16,13 @@ public class ProfesionalProfileResponse {
     private String phoneNumber;
     private String rubro;
     private String location;
+    private Double latitude;
+    private Double longitude;
     private String tipoCliente;
+    private String logoUrl;
     private String publicHeadline;
     private String publicAbout;
     private List<String> publicPhotos;
+    private List<CategoryResponse> categories;
     private LocalDateTime createdAt;
 }

@@ -3,18 +3,23 @@ package com.plura.plurabackend.config.security;
 import com.plura.plurabackend.config.jwt.JwtAuthenticationFilter;
 import java.util.Arrays;
 import java.util.List;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.env.Environment;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.config.Customizer;
+import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.HttpStatusEntryPoint;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter;
+import org.springframework.security.web.header.writers.StaticHeadersWriter;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -23,6 +28,8 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 @EnableWebSecurity
 public class SecurityConfig {
 
+    private static final Logger LOGGER = LoggerFactory.getLogger(SecurityConfig.class);
+
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http, JwtAuthenticationFilter jwtFilter)
         throws Exception {
@@ -30,7 +37,18 @@ public class SecurityConfig {
             // API stateless: no sesiones y sin CSRF para API token-based.
             .csrf(csrf -> csrf.disable())
             .cors(Customizer.withDefaults())
+            .httpBasic(AbstractHttpConfigurer::disable)
+            .formLogin(AbstractHttpConfigurer::disable)
+            .logout(AbstractHttpConfigurer::disable)
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+            .headers(headers -> headers
+                .contentTypeOptions(Customizer.withDefaults())
+                .frameOptions(frame -> frame.sameOrigin())
+                .referrerPolicy(referrer -> referrer
+                    .policy(ReferrerPolicyHeaderWriter.ReferrerPolicy.STRICT_ORIGIN_WHEN_CROSS_ORIGIN)
+                )
+                .addHeaderWriter(new StaticHeadersWriter("Permissions-Policy", "geolocation=(), microphone=(), camera=()"))
+            )
             .authorizeHttpRequests(auth -> auth
                 // Permite preflight CORS.
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
@@ -42,11 +60,17 @@ public class SecurityConfig {
                     "/auth/register/**",
                     "/auth/refresh",
                     "/auth/logout",
+                    "/api/home",
+                    "/api/search",
+                    "/api/search/suggest",
+                    "/api/geo/autocomplete",
+                    "/categories",
+                    "/api/categories",
                     "/health",
                     "/error"
                 ).permitAll()
                 .requestMatchers("/public/**").permitAll()
-                .requestMatchers("/auth/me/profesional").hasRole("PROFESSIONAL")
+                .requestMatchers("/auth/me/profesional", "/auth/me/professional").hasRole("PROFESSIONAL")
                 .requestMatchers("/auth/me/cliente").hasRole("USER")
                 .requestMatchers("/profesional/**").hasRole("PROFESSIONAL")
                 .requestMatchers("/cliente/**").hasRole("USER")
@@ -73,7 +97,15 @@ public class SecurityConfig {
         List<String> allowedOrigins = Arrays.stream(rawOrigins.split(","))
             .map(String::trim)
             .filter(origin -> !origin.isEmpty())
+            .filter(origin -> !"*".equals(origin))
             .toList();
+
+        if (rawOrigins.contains("*")) {
+            LOGGER.warn("Se ignoró origen CORS wildcard '*' para evitar uso con credenciales.");
+        }
+        if (allowedOrigins.isEmpty()) {
+            allowedOrigins = List.of("http://localhost:3002");
+        }
 
         CorsConfiguration configuration = new CorsConfiguration();
         configuration.setAllowedOrigins(allowedOrigins);

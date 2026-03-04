@@ -6,6 +6,7 @@ import Link from 'next/link';
 import Navbar from '@/components/shared/Navbar';
 import ProfesionalSidebar from '@/components/profesional/Sidebar';
 import { useProfessionalProfile } from '@/hooks/useProfessionalProfile';
+import { useProfessionalDashboardUnsavedSection } from '@/context/ProfessionalDashboardUnsavedChangesContext';
 import api from '@/services/api';
 import {
   getProfessionalReservationsForDates,
@@ -149,7 +150,10 @@ const buildDayLayouts = (items: ProfessionalReservation[]) => {
       if (!reservation.time) return null;
       const startMinutes = parseTimeToMinutes(reservation.time);
       if (startMinutes === null) return null;
-      const durationMinutes = parseDurationToMinutes(reservation.duration) ?? 30;
+      const durationMinutes =
+        reservation.effectiveDurationMinutes
+        ?? parseDurationToMinutes(reservation.duration)
+        ?? 30;
       return {
         reservation,
         startMinutes,
@@ -220,6 +224,12 @@ export default function ProfesionalDashboardPage() {
     useState<ProfessionalReservation | null>(null);
   const [drawerVisible, setDrawerVisible] = useState(false);
   const closeTimeoutRef = useRef<number | null>(null);
+
+  const { requestNavigation } = useProfessionalDashboardUnsavedSection({
+    sectionId: 'agenda-dashboard',
+    isDirty: false,
+    isSaving: isUpdatingStatus,
+  });
 
   useEffect(() => {
     if (!profile?.id) return;
@@ -531,6 +541,10 @@ export default function ProfesionalDashboardPage() {
                       <Link
                         href="/profesional/dashboard/reservas"
                         className="rounded-full border border-[#E2E7EC] bg-white px-4 py-2 text-sm font-semibold text-[#0E2A47] transition hover:-translate-y-0.5 hover:shadow-md"
+                        onClick={(event) => {
+                          event.preventDefault();
+                          requestNavigation('/profesional/dashboard/reservas');
+                        }}
                       >
                         Ver lista de reservas
                       </Link>
@@ -889,7 +903,9 @@ export default function ProfesionalDashboardPage() {
                 {selectedReservation.time
                   ? `${selectedReservation.time} – ${formatMinutesLabel(
                       parseTimeToMinutes(selectedReservation.time) ?? 0 +
-                        (parseDurationToMinutes(selectedReservation.duration) ?? 30),
+                        (selectedReservation.effectiveDurationMinutes
+                          ?? parseDurationToMinutes(selectedReservation.duration)
+                          ?? 30),
                     )}`
                   : 'Horario pendiente'}
               </span>
@@ -954,6 +970,10 @@ export default function ProfesionalDashboardPage() {
               <Link
                 href="/profesional/dashboard/reservas"
                 className="rounded-full border border-[#E2E7EC] bg-[#F8FAFC] px-4 py-2 text-center text-sm font-semibold text-[#0E2A47] transition hover:-translate-y-0.5 hover:shadow-md"
+                onClick={(event) => {
+                  event.preventDefault();
+                  requestNavigation('/profesional/dashboard/reservas');
+                }}
               >
                 Ver en reservas
               </Link>

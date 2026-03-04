@@ -1,13 +1,20 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/router';
+import dynamic from 'next/dynamic';
 import Navbar from '@/components/shared/Navbar';
 import Footer from '@/components/shared/Footer';
 import api from '@/services/api';
+import { mapboxForwardGeocode } from '@/services/mapbox';
 import type {
   ProfessionalSchedule,
   PublicService,
   WorkDayKey,
 } from '@/types/professional';
+
+const PublicProfileMap = dynamic(
+  () => import('@/components/profesional/PublicProfileMap'),
+  { ssr: false },
+);
 
 const dayLabels: Record<WorkDayKey, string> = {
   mon: 'Lunes',
@@ -22,6 +29,7 @@ const dayLabels: Record<WorkDayKey, string> = {
 type PreviewPayload = {
   name?: string;
   category?: string;
+  logoUrl?: string;
   headline?: string;
   about?: string;
   photos?: string[];
@@ -35,6 +43,7 @@ const isValidPreviewPayload = (value: unknown): value is PreviewPayload => {
   const obj = value as Record<string, unknown>;
   if ('name' in obj && obj.name !== undefined && typeof obj.name !== 'string') return false;
   if ('category' in obj && obj.category !== undefined && typeof obj.category !== 'string') return false;
+  if ('logoUrl' in obj && obj.logoUrl !== undefined && typeof obj.logoUrl !== 'string') return false;
   if ('headline' in obj && obj.headline !== undefined && typeof obj.headline !== 'string') return false;
   if ('about' in obj && obj.about !== undefined && typeof obj.about !== 'string') return false;
   if ('photos' in obj && obj.photos !== undefined && (!Array.isArray(obj.photos) || !obj.photos.every((item) => typeof item === 'string'))) return false;
@@ -46,7 +55,7 @@ const sanitizeImageSrc = (src: string): string | undefined => {
   if (!src) return undefined;
   try {
     const url = new URL(src, window.location.origin);
-    if (['https:', 'http:', 'data:'].includes(url.protocol)) return src;
+    if (url.protocol === 'https:' || url.protocol === 'http:') return src;
     return undefined;
   } catch {
     if (src.startsWith('/') || src.startsWith('./')) return src;
@@ -54,14 +63,49 @@ const sanitizeImageSrc = (src: string): string | undefined => {
   }
 };
 
+const parseOptionalNumber = (value: unknown): number | null => {
+  if (typeof value === 'number') {
+    return Number.isFinite(value) ? value : null;
+  }
+  if (typeof value === 'string') {
+    const parsed = Number.parseFloat(value);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+  return null;
+};
+
+const splitLocationLines = (location: string) => {
+  const normalized = location.trim();
+  if (!normalized) {
+    return { addressLine: '', cityLine: '' };
+  }
+  const parts = normalized
+    .split(',')
+    .map((part) => part.trim())
+    .filter(Boolean);
+  if (parts.length === 0) {
+    return { addressLine: '', cityLine: '' };
+  }
+  if (parts.length === 1) {
+    return { addressLine: parts[0], cityLine: '' };
+  }
+  return {
+    addressLine: parts[0],
+    cityLine: parts.slice(1).join(', '),
+  };
+};
+
 type PublicProfessional = {
   id: string;
   slug: string;
   fullName: string;
   rubro: string;
+  logoUrl?: string | null;
   headline?: string | null;
   about?: string | null;
   location?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
   email?: string | null;
   phoneNumber?: string | null;
   photos?: string[];
@@ -82,6 +126,10 @@ export default function ProfesionalDetailPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [showContact, setShowContact] = useState(false);
+  const [fallbackCoordinates, setFallbackCoordinates] = useState<{
+    latitude: number;
+    longitude: number;
+  } | null>(null);
 
   useEffect(() => {
     if (!slug || isPreview) return;
@@ -123,11 +171,14 @@ export default function ProfesionalDetailPage() {
     const fallback = {
       name: '',
       category: '',
+      logoUrl: '',
       location: '',
       headline: '',
       about: '',
       email: '',
       phoneNumber: '',
+      latitude: null as number | null,
+      longitude: null as number | null,
       photos: [],
       services: [] as PublicService[],
       schedule: null as ProfessionalSchedule | null,
@@ -141,11 +192,14 @@ export default function ProfesionalDetailPage() {
       ...fallback,
       name: data.fullName || fallback.name,
       category: data.rubro || fallback.category,
+      logoUrl: data.logoUrl || fallback.logoUrl,
       headline: data.headline || fallback.headline,
       about: data.about || fallback.about,
       location: data.location || fallback.location,
       email: data.email || fallback.email,
       phoneNumber: data.phoneNumber || fallback.phoneNumber,
+      latitude: parseOptionalNumber(data.latitude),
+      longitude: parseOptionalNumber(data.longitude),
       photos: data.photos || fallback.photos,
       services: data.services || fallback.services,
       schedule: data.schedule ?? fallback.schedule,
@@ -158,6 +212,7 @@ export default function ProfesionalDetailPage() {
       ...resolved,
       name: preview.name ?? resolved.name,
       category: preview.category ?? resolved.category,
+      logoUrl: preview.logoUrl ?? resolved.logoUrl,
       headline: preview.headline ?? resolved.headline,
       about: preview.about ?? resolved.about,
       photos: preview.photos ?? resolved.photos,
@@ -327,10 +382,64 @@ export default function ProfesionalDetailPage() {
     merged.name ||
       merged.headline ||
       merged.category ||
+      merged.logoUrl ||
       merged.about ||
       (Array.isArray(merged.photos) && merged.photos.some(Boolean)) ||
       displayServices.length > 0,
   );
+
+  const { addressLine, cityLine } = useMemo(
+    () => splitLocationLines(merged.location || ''),
+    [merged.location],
+  );
+  const hasCoordinates =
+    typeof merged.latitude === 'number' &&
+    Number.isFinite(merged.latitude) &&
+    typeof merged.longitude === 'number' &&
+    Number.isFinite(merged.longitude);
+  useEffect(() => {
+    if (hasCoordinates || isPreview) {
+      setFallbackCoordinates(null);
+      return;
+    }
+    const location = (merged.location || '').trim();
+    if (!location) {
+      setFallbackCoordinates(null);
+      return;
+    }
+
+    let cancelled = false;
+    mapboxForwardGeocode(location)
+      .then((result) => {
+        if (cancelled) return;
+        if (!result) {
+          setFallbackCoordinates(null);
+          return;
+        }
+        setFallbackCoordinates({
+          latitude: result.latitude,
+          longitude: result.longitude,
+        });
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setFallbackCoordinates(null);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [hasCoordinates, isPreview, merged.location]);
+
+  const mapLatitude = hasCoordinates ? merged.latitude : fallbackCoordinates?.latitude;
+  const mapLongitude = hasCoordinates ? merged.longitude : fallbackCoordinates?.longitude;
+  const hasRenderableCoordinates =
+    typeof mapLatitude === 'number' &&
+    Number.isFinite(mapLatitude) &&
+    typeof mapLongitude === 'number' &&
+    Number.isFinite(mapLongitude);
+  const canShowMap = Boolean(addressLine) && hasRenderableCoordinates;
 
   return (
     <div
@@ -364,8 +473,18 @@ export default function ProfesionalDetailPage() {
           <div className="relative -mt-10 px-6 pb-8 sm:-mt-12 lg:-mt-14">
             <div className="flex flex-col gap-6 rounded-[28px] border border-white/80 bg-white/95 p-6 shadow-[0_20px_60px_rgba(15,23,42,0.14)] lg:flex-row lg:items-end lg:justify-between">
               <div className="flex items-center gap-5">
-                <div className="flex h-16 w-16 items-center justify-center rounded-full border-2 border-[#1FB6A6] bg-white text-base font-semibold text-[#0E2A47]">
-                  {initials}
+                <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-full border-2 border-[#1FB6A6] bg-white text-base font-semibold text-[#0E2A47]">
+                  {(() => {
+                    const safeLogoSrc = merged.logoUrl ? sanitizeImageSrc(merged.logoUrl) : undefined;
+                    if (!safeLogoSrc) return initials;
+                    return (
+                      <img
+                        src={safeLogoSrc}
+                        alt={`Logo de ${merged.name || 'profesional'}`}
+                        className="h-full w-full object-cover"
+                      />
+                    );
+                  })()}
                 </div>
                 <div className="space-y-1">
                   <p className="text-[0.7rem] uppercase tracking-[0.4em] text-[#94A3B8]">
@@ -491,7 +610,14 @@ export default function ProfesionalDetailPage() {
           <div className="mt-4 grid gap-6 lg:grid-cols-[1fr,1.6fr]">
             <div className="rounded-[18px] border border-[#E2E7EC] bg-[#F7F9FB] p-4 text-sm text-[#64748B]">
               <p className="font-semibold text-[#0E2A47]">Dirección</p>
-              {merged.location ? <p className="mt-1">{merged.location}</p> : <p className="mt-1">-</p>}
+              {addressLine ? (
+                <>
+                  <p className="mt-1">{addressLine}</p>
+                  {cityLine ? <p>{cityLine}</p> : null}
+                </>
+              ) : (
+                <p className="mt-1">Ubicación no disponible</p>
+              )}
               <p className="mt-4 font-semibold text-[#0E2A47]">Contacto</p>
               {(merged.email || merged.phoneNumber) ? (
                 showContact ? (
@@ -512,11 +638,20 @@ export default function ProfesionalDetailPage() {
                 <p className="mt-1">-</p>
               )}
             </div>
-            <div className="min-h-[180px] rounded-[18px] border border-[#E2E7EC] bg-[#E7EDF2] lg:min-h-[240px]">
-              <div className="flex h-full items-center justify-center text-xs uppercase tracking-[0.3em] text-[#94A3B8]">
-                Mapa
+            {canShowMap ? (
+              <PublicProfileMap
+                name={merged.name}
+                category={merged.category}
+                address={addressLine}
+                city={cityLine}
+                latitude={mapLatitude as number}
+                longitude={mapLongitude as number}
+              />
+            ) : (
+              <div className="flex h-80 items-center justify-center rounded-2xl border border-[#E2E7EC] bg-[#E7EDF2] px-4 text-center text-sm text-[#64748B]">
+                Ubicación no disponible
               </div>
-            </div>
+            )}
           </div>
         </section>
       </main>

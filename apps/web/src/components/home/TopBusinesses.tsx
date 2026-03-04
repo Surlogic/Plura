@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import BusinessCard from './BusinessCard';
-import { usePublicProfessionals } from '@/hooks/usePublicProfessionals';
+import type { HomeTopProfessional } from '@/types/home';
 
 const slugify = (value: string) =>
   value
@@ -11,8 +11,11 @@ const slugify = (value: string) =>
     .trim()
     .replace(/\s+/g, '-');
 
-export default function TopBusinesses() {
-  const { professionals, isLoading } = usePublicProfessionals(3);
+type TopBusinessesProps = {
+  professionals: HomeTopProfessional[];
+};
+
+export default function TopBusinesses({ professionals }: TopBusinessesProps) {
   const items = professionals.slice(0, 3);
 
   return (
@@ -22,20 +25,18 @@ export default function TopBusinesses() {
           <h2 className="text-2xl font-semibold text-[#0E2A47]">
             Top locales y profesionales
           </h2>
-          <button className="text-sm font-semibold text-[#1FB6A6]">
+          <Link href="/explorar" className="text-sm font-semibold text-[#1FB6A6]">
             Ver todos
-          </button>
+          </Link>
         </div>
         {items.length === 0 ? (
           <div className="rounded-[20px] border border-dashed border-[#E2E7EC] bg-white px-4 py-6 text-sm text-[#64748B]">
-            {isLoading
-              ? 'Cargando profesionales destacados...'
-              : 'Todavía no hay profesionales destacados.'}
+            Todavía no hay profesionales destacados.
           </div>
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {items.map((business) => {
-              const slug = business.slug || slugify(business.fullName);
+              const slug = business.slug || slugify(business.name);
               return (
                 <Link
                   key={business.id}
@@ -43,8 +44,10 @@ export default function TopBusinesses() {
                   className="block"
                 >
                   <BusinessCard
-                    name={business.fullName}
-                    category={business.rubro}
+                    name={business.name}
+                    category={business.category}
+                    rating={business.rating}
+                    imageUrl={business.imageUrl}
                   />
                 </Link>
               );

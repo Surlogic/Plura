@@ -77,21 +77,21 @@ export default function ClientSidebar({
   const isCollapsed = collapsed && !mobile;
 
   return (
-    <div className={`rounded-[24px] border border-[#E2E7EC] bg-white/95 shadow-sm transition-[padding] duration-300 ${isCollapsed ? 'p-3' : 'p-4'}`}>
+    <div className={`rounded-[20px] border border-[#E5EDF4] bg-white transition-[padding] duration-300 ${isCollapsed ? 'p-2.5' : 'p-3.5'}`}>
       <div className={`mb-3 flex items-center ${isCollapsed ? 'justify-center' : 'justify-between'} gap-2 px-2`}>
         <p
           className={`text-[0.65rem] uppercase tracking-[0.3em] text-[#94A3B8] transition-[max-width,opacity] duration-300 ${
             isCollapsed ? 'max-w-0 overflow-hidden opacity-0' : 'max-w-[120px] opacity-100'
           }`}
         >
-          Cliente
+          Menú
         </p>
 
         {onToggleCollapsed && !mobile ? (
           <button
             type="button"
             onClick={onToggleCollapsed}
-            className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-[#E2E7EC] bg-white text-[#475569] transition hover:-translate-y-0.5 hover:shadow-sm"
+            className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-[#E5EDF4] bg-white text-[#475569] transition hover:bg-[#F8FAFC]"
             aria-label={isCollapsed ? 'Expandir menu' : 'Colapsar menu'}
             aria-pressed={isCollapsed}
           >
@@ -113,7 +113,7 @@ export default function ClientSidebar({
         ) : null}
       </div>
 
-      <nav className="mt-3 space-y-1">
+      <nav className="mt-2 space-y-1">
         {sidebarItems.map((item) => {
           const isActive = item.id === active;
           const Icon = item.icon;
@@ -125,7 +125,7 @@ export default function ClientSidebar({
               onClick={onNavigate}
               className={`group relative flex items-center rounded-[14px] py-2 text-sm font-semibold transition ${
                 isActive
-                  ? 'bg-[#0E2A47] text-white'
+                  ? 'bg-[#F1F5F9] text-[#0E2A47]'
                   : 'text-[#0E2A47] hover:bg-[#F8FAFC]'
               } ${isCollapsed ? 'justify-center px-2' : 'justify-start px-3'}`}
               aria-current={isActive ? 'page' : undefined}
@@ -133,7 +133,7 @@ export default function ClientSidebar({
             >
               <span
                 className={`flex h-8 w-8 items-center justify-center rounded-full transition ${
-                  isActive ? 'bg-white/15 text-white' : 'bg-[#F8FAFC] text-[#475569]'
+                  isActive ? 'bg-[#0E2A47]/10 text-[#0E2A47]' : 'bg-[#F8FAFC] text-[#475569]'
                 }`}
                 aria-hidden="true"
               >

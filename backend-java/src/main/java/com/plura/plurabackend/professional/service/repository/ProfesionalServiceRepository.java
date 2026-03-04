@@ -6,4 +6,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface ProfesionalServiceRepository extends JpaRepository<ProfesionalService, String> {
     List<ProfesionalService> findByProfessional_IdOrderByCreatedAtDesc(Long professionalId);
+
+    List<ProfesionalService> findByProfessional_IdAndActiveTrueOrderByCreatedAtDesc(Long professionalId);
 }

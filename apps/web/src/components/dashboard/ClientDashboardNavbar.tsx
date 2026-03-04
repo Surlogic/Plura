@@ -1,7 +1,7 @@
-import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import api from '@/services/api';
+import Logo from '@/components/ui/Logo';
 
 type ClientDashboardNavbarProps = {
   name: string;
@@ -52,17 +52,7 @@ export default function ClientDashboardNavbar({
             </button>
           ) : null}
 
-          <Link href="/cliente/inicio" className="flex items-center gap-2">
-            <Image
-              src="/logo.png"
-              alt="Plura"
-              width={52}
-              height={52}
-              className="h-10 w-10 object-contain sm:h-12 sm:w-12"
-              priority
-            />
-            <span className="logo-type text-2xl text-[#0E2A47]">Plura</span>
-          </Link>
+          <Logo href="/cliente/inicio" size={38} priority textClassName="text-[#0E2A47]" />
         </div>
 
         <nav className="hidden items-center gap-2 text-sm font-semibold text-[#0E2A47] md:flex">
@@ -76,7 +66,7 @@ export default function ClientDashboardNavbar({
             href="/cliente/reservas"
             className="rounded-full px-3 py-2 transition hover:bg-white"
           >
-            Reservas
+            Mis reservas
           </Link>
           <Link
             href="/cliente/favoritos"
@@ -87,29 +77,44 @@ export default function ClientDashboardNavbar({
         </nav>
 
         <div className="flex items-center gap-2 sm:gap-3">
-          <Link
-            href="/explorar"
-            className="hidden rounded-full border border-[#E2E7EC] bg-white px-4 py-2 text-xs font-semibold text-[#0E2A47] shadow-sm transition hover:-translate-y-0.5 hover:shadow-md md:inline-flex"
-          >
-            Ver mapa
-          </Link>
-          <Link
-            href="/explorar"
-            className="rounded-full bg-[#F59E0B] px-4 py-2 text-xs font-semibold text-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md sm:text-sm"
-          >
-            Agendar ahora
-          </Link>
-          <button
-            type="button"
-            onClick={handleLogout}
-            className="inline-flex items-center rounded-full border border-[#E2E7EC] bg-white px-3 py-2 text-xs font-semibold text-[#0E2A47] shadow-sm transition hover:-translate-y-0.5 hover:shadow-md sm:px-4 sm:text-sm"
-          >
-            <span className="sm:hidden">Salir</span>
-            <span className="hidden sm:inline">Cerrar sesión</span>
-          </button>
-          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#E9EEF2] text-xs font-semibold text-[#0E2A47]">
-            {getInitials(name)}
-          </div>
+          <details className="group relative">
+            <summary className="flex h-10 cursor-pointer list-none items-center gap-2 rounded-full border border-[#E2E7EC] bg-white px-2 pr-3 text-xs font-semibold text-[#0E2A47] transition hover:bg-[#F8FAFC] [&::-webkit-details-marker]:hidden">
+              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[#E9EEF2]">
+                {getInitials(name)}
+              </span>
+              <span className="hidden sm:inline">Perfil</span>
+              <svg viewBox="0 0 20 20" fill="none" className="h-3.5 w-3.5" aria-hidden="true">
+                <path
+                  d="M5.5 7.5L10 12l4.5-4.5"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </summary>
+            <div className="absolute right-0 top-[calc(100%+8px)] z-30 w-44 rounded-[14px] border border-[#DFE7EF] bg-white p-1.5 shadow-lg">
+              <Link
+                href="/cliente/perfil"
+                className="block rounded-lg px-3 py-2 text-sm font-semibold text-[#0E2A47] transition hover:bg-[#F8FAFC]"
+              >
+                Mi perfil
+              </Link>
+              <Link
+                href="/cliente/configuracion"
+                className="block rounded-lg px-3 py-2 text-sm font-semibold text-[#0E2A47] transition hover:bg-[#F8FAFC]"
+              >
+                Configuración
+              </Link>
+              <button
+                type="button"
+                onClick={handleLogout}
+                className="mt-1 block w-full rounded-lg px-3 py-2 text-left text-sm font-semibold text-[#B91C1C] transition hover:bg-[#FEF2F2]"
+              >
+                Cerrar sesión
+              </button>
+            </div>
+          </details>
         </div>
       </div>
     </header>

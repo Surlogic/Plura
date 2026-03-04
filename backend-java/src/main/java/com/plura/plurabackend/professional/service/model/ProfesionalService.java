@@ -38,6 +38,9 @@ public class ProfesionalService {
     @Column(nullable = false)
     private String duration;
 
+    @Column(name = "post_buffer_minutes")
+    private Integer postBufferMinutes = 0;
+
     @Column(name = "active", nullable = false)
     private Boolean active = true;
 
@@ -51,6 +54,9 @@ public class ProfesionalService {
         }
         if (this.active == null) {
             this.active = true;
+        }
+        if (this.postBufferMinutes == null || this.postBufferMinutes < 0) {
+            this.postBufferMinutes = 0;
         }
         if (this.createdAt == null) {
             this.createdAt = LocalDateTime.now();

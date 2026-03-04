@@ -1,36 +1,62 @@
+import Image from 'next/image';
 import Link from 'next/link';
+import { memo } from 'react';
 
 type ExploreCardProps = {
   name: string;
   category: string;
+  city?: string;
+  distance?: number | null;
   rating?: string;
   price?: string;
   available?: boolean;
+  imageUrl?: string | null;
   href?: string;
 };
 
-export default function ExploreCard({
+export default memo(function ExploreCard({
   name,
   category,
+  city,
+  distance,
   rating,
   price,
   available,
+  imageUrl,
   href,
 }: ExploreCardProps) {
   const displayRating = rating?.trim();
-  const displayPrice = price?.trim() || 'Precio a confirmar';
+  const displayPrice = price?.trim() || 'Ver perfil';
+  const displayCity = city?.trim();
+  const displayDistance = typeof distance === 'number' ? `${distance.toFixed(1)} km` : '';
 
   const cardContent = (
     <>
-      <div className="h-40 w-full rounded-[20px] bg-[#E9EEF2]" />
+      <div className="relative h-40 w-full overflow-hidden rounded-[20px] bg-[#E9EEF2]">
+        {imageUrl ? (
+          <Image
+            src={imageUrl}
+            alt={name}
+            fill
+            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+            className="object-cover transition duration-500 group-hover:scale-105"
+          />
+        ) : null}
+        <div className="absolute inset-0 bg-gradient-to-t from-[#0E2A47]/45 via-transparent to-transparent" />
+      </div>
       <div className="mt-4 flex items-start justify-between gap-3">
-        <div>
+        <div className="space-y-1">
           <h3 className="text-lg font-semibold text-[#0E2A47]">{name}</h3>
-          <p className="text-sm text-[#6B7280]">{category}</p>
+          <p className="text-sm text-[#6B7280]">{category || 'Profesional'}</p>
+          {displayCity || displayDistance ? (
+            <p className="text-xs text-[#94A3B8]">
+              {[displayCity, displayDistance].filter(Boolean).join(' · ')}
+            </p>
+          ) : null}
         </div>
         {available ? (
           <span className="rounded-full bg-[#1FB6A6]/10 px-3 py-1 text-xs font-semibold text-[#1FB6A6]">
-            Disponible hoy
+            Disponible ahora
           </span>
         ) : null}
       </div>
@@ -48,9 +74,7 @@ export default function ExploreCard({
             <span>{displayRating}</span>
           </div>
         ) : (
-          <span className="text-xs font-semibold text-[#94A3B8]">
-            Sin reseñas
-          </span>
+          <span className="text-xs font-semibold text-[#94A3B8]">Sin reseñas</span>
         )}
         <span className="text-[#6B7280]">{displayPrice}</span>
       </div>
@@ -59,7 +83,7 @@ export default function ExploreCard({
 
   if (!href) {
     return (
-      <div className="rounded-[24px] bg-white p-4 shadow-sm transition hover:-translate-y-1 hover:shadow-md">
+      <div className="group rounded-[24px] bg-white p-4 shadow-sm transition hover:-translate-y-1 hover:shadow-md">
         {cardContent}
       </div>
     );
@@ -68,9 +92,9 @@ export default function ExploreCard({
   return (
     <Link
       href={href}
-      className="block rounded-[24px] bg-white p-4 shadow-sm transition hover:-translate-y-1 hover:shadow-md"
+      className="group block rounded-[24px] bg-white p-4 shadow-sm transition hover:-translate-y-1 hover:shadow-md"
     >
       {cardContent}
     </Link>
   );
-}
+});

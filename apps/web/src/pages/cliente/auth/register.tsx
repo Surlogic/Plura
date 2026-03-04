@@ -3,12 +3,20 @@
 import { useState } from 'react';
 import type { ChangeEvent, FormEvent } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/router';
 import axios from 'axios';
 import Navbar from '@/components/shared/Navbar';
 import Footer from '@/components/shared/Footer';
 import api from '@/services/api';
 
 export default function ClienteRegisterPage() {
+  const router = useRouter();
+  const redirectIntent = Array.isArray(router.query.redirect)
+    ? router.query.redirect[0]
+    : router.query.redirect;
+  const loginHref = redirectIntent === 'confirm-reservation'
+    ? '/cliente/auth/login?redirect=confirm-reservation'
+    : '/cliente/auth/login';
   const inputClassName =
     'h-12 w-full rounded-[16px] border border-[#0E2A47]/10 bg-[#F4F6F8] px-4 text-sm text-[#0E2A47] placeholder:text-[#6B7280] focus:outline-none focus:ring-2 focus:ring-[#1FB6A6]/40';
   const [form, setForm] = useState({
@@ -328,7 +336,7 @@ export default function ClienteRegisterPage() {
           <p className="text-center text-xs text-[#6B7280]">
             ¿Ya tenés cuenta?{' '}
             <Link
-              href="/cliente/auth/login"
+              href={loginHref}
               className="font-semibold text-[#1FB6A6]"
             >
               Iniciar sesión

@@ -144,6 +144,8 @@ export default function ReservationPage() {
     resolveQueryValue(router.query.serviceId).trim() ||
     resolveQueryValue(router.query.servicioId).trim();
   const serviceNameQuery = resolveQueryValue(router.query.servicio).trim();
+  const dateQuery = resolveQueryValue(router.query.date).trim();
+  const timeQuery = resolveQueryValue(router.query.time).trim();
   const resumeQuery = resolveQueryValue(router.query.resume).trim();
 
   const calendarDays = useMemo(() => {
@@ -174,6 +176,18 @@ export default function ReservationPage() {
       setSelectedDate(calendarDays[0].dateKey);
     }
   }, [calendarDays, selectedDate]);
+
+  useEffect(() => {
+    if (!router.isReady) return;
+    if (!dateQuery && !timeQuery) return;
+
+    if (dateQuery && calendarDays.some((item) => item.dateKey === dateQuery)) {
+      setSelectedDate(dateQuery);
+    }
+    if (timeQuery) {
+      setSelectedTime(timeQuery);
+    }
+  }, [calendarDays, dateQuery, router.isReady, timeQuery]);
 
   useEffect(() => {
     if (resumeQuery !== '1') return;

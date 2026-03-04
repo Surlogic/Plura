@@ -6,11 +6,9 @@ import {
   useContext,
   useEffect,
   useMemo,
-  useRef,
   useState,
   type ReactNode,
 } from 'react';
-import { useRouter } from 'next/router';
 import api from '@/services/api';
 import type { ProfessionalProfile } from '@/types/professional';
 
@@ -30,22 +28,14 @@ const PROFESSIONAL_PROFILE_ENDPOINTS = [
   '/auth/me/professional',
 ];
 
-const isRouteOrChild = (path: string, route: string) =>
-  path === route || path.startsWith(`${route}/`);
-
-const shouldSkipProfessionalProfileLoad = (path: string) =>
-  !isRouteOrChild(path, '/profesional/dashboard');
-
 export function ProfessionalProfileProvider({
   children,
 }: {
   children: ReactNode;
 }) {
-  const router = useRouter();
   const [profile, setProfile] = useState<ProfessionalProfile | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [hasLoaded, setHasLoaded] = useState(false);
-  const autoLoadPathRef = useRef<string>('');
 
   const clearProfile = useCallback(() => {
     setProfile(null);
@@ -87,20 +77,9 @@ export function ProfessionalProfileProvider({
   }, []);
 
   useEffect(() => {
-    const currentPath = router.pathname || '';
-    if (!currentPath || autoLoadPathRef.current === currentPath) return;
-
-    autoLoadPathRef.current = currentPath;
-    if (shouldSkipProfessionalProfileLoad(currentPath)) {
-      setProfile(null);
-      setHasLoaded(true);
-      setIsLoading(false);
-      return;
-    }
-
-    if (hasLoaded && profile) return;
+    if (hasLoaded || isLoading) return;
     void refreshProfile();
-  }, [hasLoaded, profile, refreshProfile, router.pathname]);
+  }, [hasLoaded, isLoading, refreshProfile]);
 
   const value = useMemo(
     () => ({ profile, isLoading, hasLoaded, refreshProfile, clearProfile }),

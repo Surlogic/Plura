@@ -5,6 +5,7 @@ import Navbar from '@/components/shared/Navbar';
 import Footer from '@/components/shared/Footer';
 import api from '@/services/api';
 import { mapboxForwardGeocode } from '@/services/mapbox';
+import { getPublicSlots } from '@/services/publicBookings';
 import type {
   ProfessionalSchedule,
   PublicService,
@@ -35,6 +36,19 @@ type PreviewPayload = {
   photos?: string[];
   services?: PublicService[];
   schedule?: ProfessionalSchedule;
+};
+
+type QuickSlotGroup = {
+  label: 'Hoy' | 'Mañana';
+  dateKey: string;
+  slots: string[];
+};
+
+const toLocalDateKey = (daysFromToday = 0) => {
+  const date = new Date();
+  date.setHours(0, 0, 0, 0);
+  date.setDate(date.getDate() + daysFromToday);
+  return date.toLocaleDateString('en-CA');
 };
 
 // Valida que el payload de postMessage tenga la forma esperada
@@ -130,6 +144,15 @@ export default function ProfesionalDetailPage() {
     latitude: number;
     longitude: number;
   } | null>(null);
+  const [selectedServiceIndex, setSelectedServiceIndex] = useState(0);
+  const [quickSlotGroups, setQuickSlotGroups] = useState<QuickSlotGroup[]>([]);
+  const [isLoadingQuickSlots, setIsLoadingQuickSlots] = useState(false);
+
+  useEffect(() => {
+    if (isPreview) return;
+    if (typeof window === 'undefined') return;
+    window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+  }, [isPreview, slug]);
 
   useEffect(() => {
     if (!slug || isPreview) return;
@@ -227,6 +250,17 @@ export default function ProfesionalDetailPage() {
     : Array.isArray(data?.services)
       ? data.services
       : [];
+  const selectedService = displayServices[selectedServiceIndex] ?? null;
+
+  useEffect(() => {
+    if (displayServices.length === 0) {
+      setSelectedServiceIndex(0);
+      return;
+    }
+    if (selectedServiceIndex >= displayServices.length) {
+      setSelectedServiceIndex(0);
+    }
+  }, [displayServices.length, selectedServiceIndex]);
 
   const displaySchedule = merged.schedule ?? null;
   const scheduleDays = Array.isArray(displaySchedule?.days)
@@ -366,14 +400,51 @@ export default function ProfesionalDetailPage() {
     if (combined.length > 0) return combined;
     return Array.from({ length: 4 }).map(() => '');
   }, [merged.photos, serviceGalleryPhotos]);
+  const hasRealGalleryPhotos = galleryPhotos.some((photo) => Boolean(photo));
 
   const professionalSlug = typeof slug === 'string' ? slug : '';
 
-  const handleReserve = (service: PublicService) => {
+  useEffect(() => {
+    if (isPreview || !professionalSlug || !selectedService?.id) {
+      setQuickSlotGroups([]);
+      setIsLoadingQuickSlots(false);
+      return;
+    }
+
+    let cancelled = false;
+    const todayKey = toLocalDateKey(0);
+    const tomorrowKey = toLocalDateKey(1);
+
+    setIsLoadingQuickSlots(true);
+    Promise.all([
+      getPublicSlots(professionalSlug, todayKey, selectedService.id).catch(() => []),
+      getPublicSlots(professionalSlug, tomorrowKey, selectedService.id).catch(() => []),
+    ])
+      .then(([todaySlots, tomorrowSlots]) => {
+        if (cancelled) return;
+        setQuickSlotGroups([
+          { label: 'Hoy', dateKey: todayKey, slots: todaySlots.slice(0, 3) },
+          { label: 'Mañana', dateKey: tomorrowKey, slots: tomorrowSlots.slice(0, 3) },
+        ]);
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setIsLoadingQuickSlots(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isPreview, professionalSlug, selectedService?.id]);
+
+  const handleReserve = (service: PublicService, date?: string, time?: string) => {
     const params = new URLSearchParams();
     if (service.id) params.set('serviceId', service.id);
     if (service.name) params.set('servicio', service.name);
     if (professionalSlug) params.set('profesional', professionalSlug);
+    if (date) params.set('date', date);
+    if (time) params.set('time', time);
     const query = params.toString();
     router.push(query ? `/reservar?${query}` : '/reservar');
   };
@@ -449,8 +520,8 @@ export default function ProfesionalDetailPage() {
     >
       {isPreview ? null : <Navbar />}
       <main
-        className={`mx-auto w-full max-w-[1400px] px-4 sm:px-6 lg:px-10 ${
-          isPreview ? 'pb-6 pt-6' : 'pb-24 pt-10'
+        className={`mx-auto w-full max-w-[1100px] px-4 sm:px-6 lg:px-10 ${
+          isPreview ? 'pb-6 pt-6' : 'pb-32 pt-10'
         }`}
       >
         {!isPreview && isLoading ? (
@@ -494,11 +565,19 @@ export default function ProfesionalDetailPage() {
                     {merged.name}
                   </h1>
                   <p className="text-sm text-[#64748B] sm:text-base">{merged.headline}</p>
+                  <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
+                    <span className="rounded-full border border-[#E2E7EC] bg-white px-2.5 py-1 font-semibold text-[#0E2A47]">
+                      4.9 (120 reseñas)
+                    </span>
+                    <span className="rounded-full border border-[#BFEDE7] bg-[#ECFEFB] px-2.5 py-1 font-semibold text-[#0B7E7B]">
+                      Confirmación inmediata
+                    </span>
+                  </div>
                 </div>
               </div>
 
-              {merged.category ? (
-                <div className="w-full lg:w-64">
+              <div className="w-full space-y-3 lg:w-64">
+                {merged.category ? (
                   <div className="rounded-[18px] border border-[#E2E7EC] bg-[#F7F9FB] px-4 py-3">
                     <p className="text-[0.65rem] uppercase tracking-[0.35em] text-[#94A3B8]">
                       Rubro
@@ -507,154 +586,233 @@ export default function ProfesionalDetailPage() {
                       {merged.category}
                     </p>
                   </div>
-                </div>
-              ) : null}
-            </div>
-          </div>
-        </section>
-
-        <section className="mt-10 grid gap-8 lg:grid-cols-[1.6fr,1fr]">
-          <div className="rounded-[30px] border border-white/70 bg-white/95 p-8 shadow-[0_18px_40px_rgba(15,23,42,0.12)]">
-            <p className="text-[0.65rem] uppercase tracking-[0.35em] text-[#94A3B8]">Galería</p>
-            <h2 className="mt-2 text-xl font-semibold">Fotos del local y de los servicios</h2>
-            <div className="mt-4 grid gap-4 sm:grid-cols-2">
-              {galleryPhotos.map((src, index) => (
-                <div
-                  key={`gallery-${index}`}
-                  className="h-40 rounded-[20px] bg-[#EEF2F6] bg-cover bg-center"
-                  style={{ backgroundImage: src ? `url("${sanitizeImageSrc(src) ?? ''}")` : undefined }}
-                />
-              ))}
-            </div>
-          </div>
-
-          <div className="rounded-[30px] border border-white/70 bg-white/95 p-8 shadow-[0_18px_40px_rgba(15,23,42,0.12)]">
-            <p className="text-[0.65rem] uppercase tracking-[0.35em] text-[#94A3B8]">Resumen</p>
-            <h2 className="mt-2 text-xl font-semibold">Servicios destacados</h2>
-            <div className="mt-4 space-y-3">
-              {displayServices.length === 0 ? (
-                <div className="rounded-[18px] border border-dashed border-[#CBD5F5] bg-white/70 px-4 py-4 text-sm text-[#64748B]">
-                  No hay servicios cargados todavía.
-                </div>
-              ) : (
-                displayServices.map((service, index) => (
-                  <div
-                    key={service.id ?? service.name ?? `service-${index}`}
-                    className="flex flex-col gap-4 rounded-[18px] border border-[#E2E7EC] bg-[#F7F9FB] px-4 py-4 sm:flex-row sm:items-center sm:justify-between"
-                  >
-                    <div>
-                      <p className="text-base font-semibold">{service.name}</p>
-                      <div className="mt-2 flex flex-wrap gap-3 text-xs text-[#64748B]">
-                        <span className="rounded-full bg-white px-3 py-1">
-                          {formatServiceDuration(service.duration)}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="flex flex-col items-start gap-2 sm:items-end">
-                      <span className="text-base font-semibold text-[#1FB6A6]">
-                        {formatServicePrice(service.price)}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => handleReserve(service)}
-                        className="rounded-full bg-[#0B1D2A] px-4 py-2 text-xs font-semibold text-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
-                      >
-                        Reservar
-                      </button>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-            {displayServices.length > 0 ? (
-              <button className="mt-4 w-full rounded-full border border-[#E2E7EC] bg-white px-4 py-2 text-sm font-semibold text-[#0E2A47] shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
-                Ver todo
-              </button>
-            ) : null}
-          </div>
-        </section>
-
-        {scheduleSummary.length > 0 ? (
-          <section className="mt-10 rounded-[30px] border border-white/70 bg-white/95 p-8 shadow-[0_18px_40px_rgba(15,23,42,0.12)]">
-            <p className="text-[0.65rem] uppercase tracking-[0.35em] text-[#94A3B8]">Horarios</p>
-            <h2 className="mt-2 text-xl font-semibold">Horarios de atención</h2>
-            <div className="mt-4 space-y-3">
-              {scheduleSummary.map((item, index) => (
-                <div
-                  key={`${item.label}-${index}`}
-                  className="flex flex-wrap items-center justify-between gap-3 rounded-[18px] border border-[#E2E7EC] bg-[#F7F9FB] px-4 py-3 text-sm text-[#0E2A47]"
+                ) : null}
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (selectedService) {
+                      handleReserve(selectedService);
+                    }
+                  }}
+                  disabled={!selectedService}
+                  className={`w-full rounded-full px-4 py-2 text-sm font-semibold shadow-sm transition ${
+                    selectedService
+                      ? 'bg-[#0B1D2A] text-white hover:-translate-y-0.5 hover:shadow-md'
+                      : 'cursor-not-allowed bg-[#E2E8F0] text-[#94A3B8]'
+                  }`}
                 >
-                  <span className="font-semibold">{item.label}</span>
-                  <span className="text-sm font-semibold text-[#1FB6A6]">
-                    {item.ranges}
-                  </span>
-                </div>
-              ))}
+                  Reservar turno
+                </button>
+              </div>
             </div>
-          </section>
-        ) : null}
-
-        <section className="mt-10 rounded-[30px] border border-white/70 bg-white/95 p-8 shadow-[0_18px_40px_rgba(15,23,42,0.12)]">
-          <p className="text-[0.65rem] uppercase tracking-[0.35em] text-[#94A3B8]">Sobre</p>
-          <h2 className="mt-2 text-xl font-semibold">Sobre el local o profesional</h2>
-          {merged.about ? (
-            <p className="mt-3 text-sm text-[#64748B]">{merged.about}</p>
-          ) : (
-            <p className="mt-3 text-sm text-[#64748B]">Sin descripción cargada.</p>
-          )}
+          </div>
         </section>
 
-        <section className="mt-10 rounded-[30px] border border-white/70 bg-white/95 p-8 shadow-[0_18px_40px_rgba(15,23,42,0.12)]">
-          <p className="text-[0.65rem] uppercase tracking-[0.35em] text-[#94A3B8]">Ubicación</p>
-          <h2 className="mt-2 text-xl font-semibold">Datos, ubicación y mapa</h2>
-          <div className="mt-4 grid gap-6 lg:grid-cols-[1fr,1.6fr]">
-            <div className="rounded-[18px] border border-[#E2E7EC] bg-[#F7F9FB] p-4 text-sm text-[#64748B]">
-              <p className="font-semibold text-[#0E2A47]">Dirección</p>
-              {addressLine ? (
-                <>
-                  <p className="mt-1">{addressLine}</p>
-                  {cityLine ? <p>{cityLine}</p> : null}
-                </>
-              ) : (
-                <p className="mt-1">Ubicación no disponible</p>
-              )}
-              <p className="mt-4 font-semibold text-[#0E2A47]">Contacto</p>
-              {(merged.email || merged.phoneNumber) ? (
-                showContact ? (
-                  <div className="mt-1 space-y-1">
-                    {merged.email ? <p>{merged.email}</p> : null}
-                    {merged.phoneNumber ? <p>{merged.phoneNumber}</p> : null}
-                  </div>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => setShowContact(true)}
-                    className="mt-2 rounded-full border border-[#1FB6A6] px-3 py-1 text-xs font-semibold text-[#1FB6A6] transition hover:bg-[#1FB6A6]/10"
-                  >
-                    Ver datos de contacto
-                  </button>
-                )
-              ) : (
-                <p className="mt-1">-</p>
-              )}
-            </div>
-            {canShowMap ? (
-              <PublicProfileMap
-                name={merged.name}
-                category={merged.category}
-                address={addressLine}
-                city={cityLine}
-                latitude={mapLatitude as number}
-                longitude={mapLongitude as number}
-              />
+        <section className="mt-10 rounded-[30px] bg-white/95 px-6 py-8 shadow-[0_18px_40px_rgba(15,23,42,0.12)] sm:px-8">
+          <section>
+            <p className="text-[0.65rem] uppercase tracking-[0.35em] text-[#94A3B8]">Servicios</p>
+            <h2 className="mt-2 text-2xl font-semibold">Seleccioná tu servicio</h2>
+            {displayServices.length === 0 ? (
+              <p className="mt-4 text-sm text-[#64748B]">No hay servicios cargados todavía.</p>
             ) : (
-              <div className="flex h-80 items-center justify-center rounded-2xl border border-[#E2E7EC] bg-[#E7EDF2] px-4 text-center text-sm text-[#64748B]">
-                Ubicación no disponible
+              <div className="mt-6 divide-y divide-[#E6EBF0]">
+                {displayServices.map((service, index) => (
+                  <button
+                    key={service.id ?? service.name ?? `service-${index}`}
+                    type="button"
+                    onClick={() => setSelectedServiceIndex(index)}
+                    className={`grid w-full gap-3 py-4 text-left transition sm:grid-cols-[32px_minmax(0,1fr)_140px_120px] sm:items-center ${
+                      selectedServiceIndex === index ? 'bg-[#F7FBFA]' : ''
+                    }`}
+                  >
+                    <span className="mt-1 flex h-5 w-5 items-center justify-center rounded-full border border-[#C7D1DB]">
+                      <span
+                        className={`h-2.5 w-2.5 rounded-full ${
+                          selectedServiceIndex === index ? 'bg-[#0B1D2A]' : 'bg-transparent'
+                        }`}
+                      />
+                    </span>
+                    <p className="text-base font-semibold text-[#0E2A47]">{service.name}</p>
+                    <p className="text-sm text-[#64748B]">{formatServiceDuration(service.duration)}</p>
+                    <p className="text-base font-semibold text-[#1FB6A6]">{formatServicePrice(service.price)}</p>
+                  </button>
+                ))}
               </div>
             )}
-          </div>
+            {displayServices.length > 0 ? (
+              <button
+                type="button"
+                onClick={() => {
+                  if (selectedService) {
+                    handleReserve(selectedService);
+                  }
+                }}
+                disabled={!selectedService}
+                className={`mt-6 rounded-full px-5 py-2.5 text-sm font-semibold shadow-sm transition ${
+                  selectedService
+                    ? 'bg-[#0B1D2A] text-white hover:-translate-y-0.5 hover:shadow-md'
+                    : 'cursor-not-allowed bg-[#E2E8F0] text-[#94A3B8]'
+                }`}
+              >
+                Continuar
+              </button>
+            ) : null}
+          </section>
+
+          <section className="mt-10 border-t border-[#E6EBF0] pt-10">
+            <p className="text-[0.65rem] uppercase tracking-[0.35em] text-[#94A3B8]">Próximos turnos</p>
+            <h2 className="mt-2 text-2xl font-semibold">Próximos turnos disponibles</h2>
+            {isPreview ? (
+              <p className="mt-4 text-sm text-[#64748B]">Disponible al publicar la página.</p>
+            ) : isLoadingQuickSlots ? (
+              <p className="mt-4 text-sm text-[#64748B]">Buscando horarios...</p>
+            ) : quickSlotGroups.every((group) => group.slots.length === 0) ? (
+              <p className="mt-4 text-sm text-[#64748B]">No hay turnos próximos para este servicio.</p>
+            ) : (
+              <div className="mt-5 space-y-5">
+                {quickSlotGroups.map((group) => (
+                  <div key={group.dateKey}>
+                    <p className="text-sm font-semibold text-[#0E2A47]">{group.label}</p>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {group.slots.length > 0 ? (
+                        group.slots.map((slot) => (
+                          <button
+                            key={`${group.dateKey}-${slot}`}
+                            type="button"
+                            onClick={() => {
+                              if (selectedService) {
+                                handleReserve(selectedService, group.dateKey, slot);
+                              }
+                            }}
+                            className="rounded-full border border-[#D9E3EC] bg-white px-3 py-1.5 text-sm font-semibold text-[#0E2A47] transition hover:-translate-y-0.5 hover:border-[#0B1D2A]/30 hover:shadow-sm"
+                          >
+                            {slot}
+                          </button>
+                        ))
+                      ) : (
+                        <span className="text-sm text-[#94A3B8]">Sin turnos</span>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
+
+          {scheduleSummary.length > 0 ? (
+            <section className="mt-10 border-t border-[#E6EBF0] pt-10">
+              <p className="text-[0.65rem] uppercase tracking-[0.35em] text-[#94A3B8]">Horarios</p>
+              <h2 className="mt-2 text-2xl font-semibold">Horarios de atención</h2>
+              <div className="mt-5 space-y-2">
+                {scheduleSummary.map((item, index) => (
+                  <div
+                    key={`${item.label}-${index}`}
+                    className="flex flex-wrap items-center justify-between gap-3 border-b border-[#EEF2F6] py-2 text-sm text-[#0E2A47]"
+                  >
+                    <span className="font-medium">{item.label}</span>
+                    <span className="font-semibold text-[#1FB6A6]">{item.ranges}</span>
+                  </div>
+                ))}
+              </div>
+            </section>
+          ) : null}
+
+          <section className="mt-10 border-t border-[#E6EBF0] pt-10">
+            <p className="text-[0.65rem] uppercase tracking-[0.35em] text-[#94A3B8]">Sobre</p>
+            <h2 className="mt-2 text-2xl font-semibold">Sobre el local o profesional</h2>
+            {merged.about ? (
+              <p className="mt-4 text-sm leading-relaxed text-[#64748B]">{merged.about}</p>
+            ) : (
+              <p className="mt-4 text-sm text-[#64748B]">Sin descripción cargada.</p>
+            )}
+
+            {hasRealGalleryPhotos ? (
+              <div className="mt-6 grid gap-4 sm:grid-cols-2">
+                {galleryPhotos.filter(Boolean).map((src, index) => (
+                  <div
+                    key={`gallery-${index}`}
+                    className="h-40 rounded-[18px] bg-[#EEF2F6] bg-cover bg-center"
+                    style={{ backgroundImage: `url("${sanitizeImageSrc(src) ?? ''}")` }}
+                  />
+                ))}
+              </div>
+            ) : null}
+          </section>
+
+          <section className="mt-10 border-t border-[#E6EBF0] pt-10">
+            <p className="text-[0.65rem] uppercase tracking-[0.35em] text-[#94A3B8]">Ubicación</p>
+            <h2 className="mt-2 text-2xl font-semibold">Datos, ubicación y mapa</h2>
+            <div className="mt-5 grid gap-6 lg:grid-cols-[280px,1fr]">
+              <div className="text-sm text-[#64748B]">
+                <p className="font-semibold text-[#0E2A47]">Dirección</p>
+                {addressLine ? (
+                  <>
+                    <p className="mt-1">{addressLine}</p>
+                    {cityLine ? <p>{cityLine}</p> : null}
+                  </>
+                ) : (
+                  <p className="mt-1">Ubicación no disponible</p>
+                )}
+
+                <p className="mt-5 font-semibold text-[#0E2A47]">Contacto</p>
+                {(merged.email || merged.phoneNumber) ? (
+                  showContact ? (
+                    <div className="mt-1 space-y-1">
+                      {merged.email ? <p>{merged.email}</p> : null}
+                      {merged.phoneNumber ? <p>{merged.phoneNumber}</p> : null}
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setShowContact(true)}
+                      className="mt-2 rounded-full border border-[#1FB6A6] px-3 py-1 text-xs font-semibold text-[#1FB6A6] transition hover:bg-[#1FB6A6]/10"
+                    >
+                      Ver datos de contacto
+                    </button>
+                  )
+                ) : (
+                  <p className="mt-1">-</p>
+                )}
+              </div>
+              {canShowMap ? (
+                <PublicProfileMap
+                  name={merged.name}
+                  category={merged.category}
+                  address={addressLine}
+                  city={cityLine}
+                  latitude={mapLatitude as number}
+                  longitude={mapLongitude as number}
+                />
+              ) : (
+                <div className="flex h-80 items-center justify-center rounded-2xl bg-[#E7EDF2] px-4 text-center text-sm text-[#64748B]">
+                  Ubicación no disponible
+                </div>
+              )}
+            </div>
+          </section>
         </section>
       </main>
+      {!isPreview && selectedService ? (
+        <div className="fixed inset-x-0 bottom-3 z-40 px-3 sm:px-6">
+          <div className="mx-auto flex w-full max-w-[1100px] flex-col gap-3 rounded-2xl border border-[#D9E3EC] bg-white/95 px-4 py-3 shadow-[0_16px_40px_rgba(15,23,42,0.16)] backdrop-blur sm:flex-row sm:items-center sm:justify-between">
+            <div className="min-w-0">
+              <p className="truncate text-sm font-semibold text-[#0E2A47]">
+                {selectedService.name}
+              </p>
+              <p className="text-xs text-[#64748B]">
+                {formatServicePrice(selectedService.price)} · {formatServiceDuration(selectedService.duration)} · Confirmación inmediata
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => handleReserve(selectedService)}
+              className="rounded-full bg-[#0B1D2A] px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
+            >
+              Reservar
+            </button>
+          </div>
+        </div>
+      ) : null}
       {isPreview ? null : <Footer />}
     </div>
   );

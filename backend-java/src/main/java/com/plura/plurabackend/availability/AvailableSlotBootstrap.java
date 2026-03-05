@@ -13,15 +13,18 @@ public class AvailableSlotBootstrap {
     private static final Logger LOGGER = LoggerFactory.getLogger(AvailableSlotBootstrap.class);
     private final AvailableSlotAsyncDispatcher availableSlotAsyncDispatcher;
     private final boolean enabled;
+    private final boolean slotRebuildEnabled;
     private final int lookaheadDays;
 
     public AvailableSlotBootstrap(
         AvailableSlotAsyncDispatcher availableSlotAsyncDispatcher,
         @Value("${app.search.slot-bootstrap-enabled:true}") boolean enabled,
+        @Value("${feature.availability.slot-rebuild-enabled:true}") boolean slotRebuildEnabled,
         @Value("${app.search.slot-bootstrap-days:7}") int lookaheadDays
     ) {
         this.availableSlotAsyncDispatcher = availableSlotAsyncDispatcher;
         this.enabled = enabled;
+        this.slotRebuildEnabled = slotRebuildEnabled;
         this.lookaheadDays = lookaheadDays;
     }
 
@@ -29,6 +32,10 @@ public class AvailableSlotBootstrap {
     public void onStartup() {
         if (!enabled) {
             LOGGER.info("Slot bootstrap inicial deshabilitado por configuración.");
+            return;
+        }
+        if (!slotRebuildEnabled) {
+            LOGGER.info("Slot rebuild deshabilitado por flag AVAILABLE_SLOT_REBUILD_ENABLED.");
             return;
         }
         int normalizedDays = Math.max(1, lookaheadDays);

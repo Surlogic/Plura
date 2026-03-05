@@ -87,3 +87,21 @@
 - `apps/web/src/pages/profesional/pagina/[slug].tsx`
 - `apps/web/src/pages/profesional/dashboard/pagina-publica.tsx`
 - `render.yaml`
+
+## 3) Código corregido (buscador marketplace)
+- Backend (causa raíz 500):
+  - `backend-java/src/main/java/com/plura/plurabackend/search/SearchNativeRepository.java`
+  - Se corrigió el armado SQL para respetar el orden válido: `FROM + LEFT JOIN + WHERE`.
+  - Antes: la consulta armaba `WHERE ... LEFT JOIN ...` y PostgreSQL devolvía `syntax error at or near LEFT`.
+- Frontend (robustez de filtros):
+  - `apps/web/src/components/search/UnifiedSearchBar.tsx`
+  - Se evita enviar `query` duplicado cuando `type=RUBRO` y `query` equivale al `categorySlug` (ej: `Barbería` + `barberia`).
+
+## 4) Mejora estructural del buscador
+- Normalización centralizada:
+  - `apps/web/src/utils/searchQuery.ts` (nuevo)
+  - Funciones compartidas: `slugToLabel`, `normalizeSearchText`, `shouldOmitRubroQuery`.
+- Capa de servicio más consistente:
+  - `apps/web/src/services/search.ts`
+  - Se agregó saneamiento único de parámetros (`sanitizeSearchParams`) antes de llamar a `/api/search`.
+  - Esto evita divergencias entre componentes y reduce errores por combinaciones de filtros redundantes.

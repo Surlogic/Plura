@@ -1,6 +1,7 @@
 package com.plura.plurabackend.config.security;
 
 import com.plura.plurabackend.config.jwt.JwtAuthenticationFilter;
+import com.plura.plurabackend.config.ratelimit.RateLimitingFilter;
 import java.util.Arrays;
 import java.util.List;
 import org.slf4j.Logger;
@@ -31,7 +32,11 @@ public class SecurityConfig {
     private static final Logger LOGGER = LoggerFactory.getLogger(SecurityConfig.class);
 
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http, JwtAuthenticationFilter jwtFilter)
+    public SecurityFilterChain securityFilterChain(
+        HttpSecurity http,
+        JwtAuthenticationFilter jwtFilter,
+        RateLimitingFilter rateLimitingFilter
+    )
         throws Exception {
         http
             // API stateless: no sesiones y sin CSRF para API token-based.
@@ -47,11 +52,13 @@ public class SecurityConfig {
                 .referrerPolicy(referrer -> referrer
                     .policy(ReferrerPolicyHeaderWriter.ReferrerPolicy.STRICT_ORIGIN_WHEN_CROSS_ORIGIN)
                 )
+                .addHeaderWriter(new StaticHeadersWriter("X-XSS-Protection", "1; mode=block"))
                 .addHeaderWriter(new StaticHeadersWriter("Permissions-Policy", "geolocation=(), microphone=(), camera=()"))
             )
             .authorizeHttpRequests(auth -> auth
                 // Permite preflight CORS.
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                .requestMatchers(HttpMethod.POST, "/auth/oauth").permitAll()
                 // Endpoints públicos de autenticación.
                 .requestMatchers(
                     "/auth/login",
@@ -67,12 +74,16 @@ public class SecurityConfig {
                     "/categories",
                     "/api/categories",
                     "/health",
+                    "/webhooks/mercadopago",
+                    "/webhooks/dlocal",
+                    "/uploads/**",
                     "/error"
                 ).permitAll()
                 .requestMatchers("/public/**").permitAll()
                 .requestMatchers("/auth/me/profesional", "/auth/me/professional").hasRole("PROFESSIONAL")
                 .requestMatchers("/auth/me/cliente").hasRole("USER")
                 .requestMatchers("/profesional/**").hasRole("PROFESSIONAL")
+                .requestMatchers("/billing/**").hasRole("PROFESSIONAL")
                 .requestMatchers("/cliente/**").hasRole("USER")
                 // Swagger: deshabilitado por defecto via springdoc.swagger-ui.enabled=false.
                 // Si se habilita (SWAGGER_ENABLED=true), requiere autenticación.
@@ -82,7 +93,8 @@ public class SecurityConfig {
             )
             // Respuesta 401 si no hay autenticación.
             .exceptionHandling(ex -> ex.authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)))
-            .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
+            .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)
+            .addFilterAfter(rateLimitingFilter, JwtAuthenticationFilter.class);
 
         return http.build();
     }
@@ -94,6 +106,7 @@ public class SecurityConfig {
             "app.cors.allowed-origins",
             "http://localhost:3002"
         );
+        long corsMaxAgeSeconds = environment.getProperty("app.cors.max-age-seconds", Long.class, 86400L);
         List<String> allowedOrigins = Arrays.stream(rawOrigins.split(","))
             .map(String::trim)
             .filter(origin -> !origin.isEmpty())
@@ -112,7 +125,7 @@ public class SecurityConfig {
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("Authorization", "Content-Type", "Accept"));
         configuration.setAllowCredentials(true);
-        configuration.setMaxAge(3600L);
+        configuration.setMaxAge(corsMaxAgeSeconds);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);

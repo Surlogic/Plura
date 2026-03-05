@@ -7,6 +7,10 @@ import com.plura.plurabackend.auth.dto.ProfesionalProfileResponse;
 import com.plura.plurabackend.auth.dto.RegisterProfesionalRequest;
 import com.plura.plurabackend.auth.dto.RegisterRequest;
 import com.plura.plurabackend.auth.dto.UserResponse;
+import com.plura.plurabackend.auth.oauth.AppleEmailRequiredFirstLoginException;
+import com.plura.plurabackend.auth.oauth.OAuthService;
+import com.plura.plurabackend.auth.oauth.OAuthProviderMismatchException;
+import com.plura.plurabackend.auth.oauth.OAuthUserInfo;
 import com.plura.plurabackend.category.dto.CategoryResponse;
 import com.plura.plurabackend.category.model.Category;
 import com.plura.plurabackend.category.repository.CategoryRepository;
@@ -15,6 +19,7 @@ import com.plura.plurabackend.auth.repository.RefreshTokenRepository;
 import com.plura.plurabackend.common.util.SlugUtils;
 import com.plura.plurabackend.professional.model.ProfessionalProfile;
 import com.plura.plurabackend.professional.repository.ProfessionalProfileRepository;
+import com.plura.plurabackend.search.engine.SearchSyncPublisher;
 import com.plura.plurabackend.user.model.User;
 import com.plura.plurabackend.user.model.UserRole;
 import com.plura.plurabackend.user.repository.UserRepository;
@@ -32,6 +37,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import java.util.stream.Collectors;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.beans.factory.annotation.Value;
@@ -48,6 +54,8 @@ public class AuthService {
     private final ProfessionalProfileRepository professionalProfileRepository;
     private final CategoryRepository categoryRepository;
     private final RefreshTokenRepository refreshTokenRepository;
+    private final OAuthService oAuthService;
+    private final SearchSyncPublisher searchSyncPublisher;
     private final PasswordEncoder passwordEncoder;
     private final Algorithm jwtAlgorithm;
     private final long jwtExpirationMinutes;
@@ -70,6 +78,8 @@ public class AuthService {
         ProfessionalProfileRepository professionalProfileRepository,
         CategoryRepository categoryRepository,
         RefreshTokenRepository refreshTokenRepository,
+        OAuthService oAuthService,
+        SearchSyncPublisher searchSyncPublisher,
         PasswordEncoder passwordEncoder,
         @Value("${jwt.secret}") String jwtSecret,
         @Value("${jwt.expiration-minutes:30}") long jwtExpirationMinutes,
@@ -87,6 +97,8 @@ public class AuthService {
         this.professionalProfileRepository = professionalProfileRepository;
         this.categoryRepository = categoryRepository;
         this.refreshTokenRepository = refreshTokenRepository;
+        this.oAuthService = oAuthService;
+        this.searchSyncPublisher = searchSyncPublisher;
         this.passwordEncoder = passwordEncoder;
         this.jwtAlgorithm = Algorithm.HMAC256(jwtSecret);
         this.jwtExpirationMinutes = jwtExpirationMinutes;
@@ -178,6 +190,7 @@ public class AuthService {
         profile.setTipoCliente(tipoCliente);
         profile = professionalProfileRepository.save(profile);
         professionalProfileRepository.updateCoordinates(profile.getId(), latitude, longitude);
+        searchSyncPublisher.publishProfileChanged(profile.getId());
 
         UserResponse userResponse = toUserResponse(savedUser);
         return issueTokens(savedUser, userResponse, userAgent);
@@ -206,6 +219,72 @@ public class AuthService {
         }
         if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Credenciales inválidas");
+        }
+
+        return issueTokens(user, toUserResponse(user), userAgent);
+    }
+
+    @Transactional
+    public AuthResult loginWithOAuth(String provider, String token, String userAgent) {
+        OAuthUserInfo userInfo = oAuthService.verify(provider, token);
+        String normalizedProvider = normalizeOAuthProvider(userInfo.provider());
+        String providerId = normalizeOAuthValue(userInfo.providerId());
+        String email = normalizeOAuthEmail(userInfo.email());
+
+        if (providerId == null) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Token OAuth sin providerId");
+        }
+
+        User user = null;
+        if (email != null) {
+            user = userRepository.findByEmail(email).orElse(null);
+            if (user != null) {
+                String existingProvider = normalizeOAuthValue(user.getProvider());
+                if (existingProvider != null && !normalizedProvider.equals(existingProvider.toLowerCase(Locale.ROOT))) {
+                    throw new OAuthProviderMismatchException();
+                }
+            }
+        }
+        if (user == null) {
+            user = userRepository.findByProviderAndProviderId(normalizedProvider, providerId).orElse(null);
+        }
+
+        if (user == null) {
+            if ("apple".equals(normalizedProvider) && email == null) {
+                throw new AppleEmailRequiredFirstLoginException();
+            }
+            if (email == null) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "OAuth email es obligatorio");
+            }
+            user = new User();
+            user.setRole(UserRole.USER);
+            user.setEmail(email);
+            user.setPassword(passwordEncoder.encode(UUID.randomUUID().toString()));
+            user.setFullName(resolveOAuthDisplayName(userInfo.name(), user.getEmail()));
+            user.setProvider(normalizedProvider);
+            user.setProviderId(providerId);
+            user.setAvatar(normalizeOAuthValue(userInfo.avatar()));
+            user = userRepository.save(user);
+        } else {
+            boolean changed = false;
+            if ((user.getProvider() == null || user.getProvider().isBlank()) || normalizedProvider.equals(user.getProvider())) {
+                if (!normalizedProvider.equals(user.getProvider())) {
+                    user.setProvider(normalizedProvider);
+                    changed = true;
+                }
+                if (!providerId.equals(user.getProviderId())) {
+                    user.setProviderId(providerId);
+                    changed = true;
+                }
+            }
+            String avatar = normalizeOAuthValue(userInfo.avatar());
+            if (avatar != null && !avatar.equals(user.getAvatar())) {
+                user.setAvatar(avatar);
+                changed = true;
+            }
+            if (changed) {
+                user = userRepository.save(user);
+            }
         }
 
         return issueTokens(user, toUserResponse(user), userAgent);
@@ -338,6 +417,7 @@ public class AuthService {
                 SlugUtils.generateUniqueSlug(user.getFullName(), professionalProfileRepository::existsBySlug)
             );
             profile = professionalProfileRepository.save(profile);
+            searchSyncPublisher.publishProfileChanged(profile.getId());
         }
 
         return new ProfesionalProfileResponse(
@@ -352,6 +432,11 @@ public class AuthService {
             profile.getLongitude(),
             profile.getTipoCliente(),
             profile.getLogoUrl(),
+            profile.getInstagram(),
+            profile.getFacebook(),
+            profile.getTiktok(),
+            profile.getWebsite(),
+            profile.getWhatsapp(),
             profile.getPublicHeadline(),
             profile.getPublicAbout(),
             profile.getPublicPhotos(),
@@ -379,7 +464,9 @@ public class AuthService {
         profile.setActive(true);
 
         try {
-            return professionalProfileRepository.save(profile);
+            ProfessionalProfile created = professionalProfileRepository.save(profile);
+            searchSyncPublisher.publishProfileChanged(created.getId());
+            return created;
         } catch (DataIntegrityViolationException exception) {
             return professionalProfileRepository.findByUser_Id(user.getId())
                 .orElseThrow(() -> new ResponseStatusException(
@@ -404,6 +491,42 @@ public class AuthService {
             user.getFullName(),
             user.getCreatedAt()
         );
+    }
+
+    private String normalizeOAuthEmail(String email) {
+        String normalized = normalizeOAuthValue(email);
+        if (normalized == null) {
+            return null;
+        }
+        return normalized.toLowerCase(Locale.ROOT);
+    }
+
+    private String normalizeOAuthProvider(String provider) {
+        String normalized = normalizeOAuthValue(provider);
+        if (normalized == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Provider OAuth inválido");
+        }
+        return normalized.toLowerCase(Locale.ROOT);
+    }
+
+    private String normalizeOAuthValue(String value) {
+        if (value == null) {
+            return null;
+        }
+        String trimmed = value.trim();
+        return trimmed.isBlank() ? null : trimmed;
+    }
+
+    private String resolveOAuthDisplayName(String name, String email) {
+        String normalizedName = normalizeOAuthValue(name);
+        if (normalizedName != null) {
+            return normalizedName;
+        }
+        int atIndex = email == null ? -1 : email.indexOf('@');
+        if (atIndex > 0) {
+            return email.substring(0, atIndex);
+        }
+        return "Usuario";
     }
 
     private String normalizeTipoCliente(String rawTipoCliente) {

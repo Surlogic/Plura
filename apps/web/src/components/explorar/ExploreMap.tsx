@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import type { SearchItem } from '@/types/search';
-import Map, {
+import {
   Layer,
   Marker,
   NavigationControl,
@@ -12,6 +12,7 @@ import Map, {
   type MapRef,
 } from 'react-map-gl/mapbox';
 import mapboxgl from 'mapbox-gl';
+import MapView from '@/components/map/MapView';
 
 type ExploreMapItem = {
   id: string;
@@ -31,10 +32,10 @@ type ExploreMapProps = {
     latitude: number;
     longitude: number;
   };
+  activeResultId?: string | null;
+  onActiveResultChange?: (id: string | null) => void;
 };
 
-const MAPBOX_TOKEN = (process.env.NEXT_PUBLIC_MAPBOX_TOKEN || '').trim();
-const MAPBOX_STYLE = 'mapbox://styles/mapbox/light-v11';
 const DEFAULT_CENTER = {
   latitude: -34.9011,
   longitude: -56.1645,
@@ -43,7 +44,12 @@ const MAP_SOURCE_ID = 'plura-professionals';
 const CLUSTER_LAYER_ID = 'plura-clusters';
 const CLUSTER_COUNT_LAYER_ID = 'plura-clusters-count';
 const UNCLUSTERED_LAYER_ID = 'plura-unclustered-points';
-const INTERACTIVE_LAYER_IDS = [CLUSTER_LAYER_ID, UNCLUSTERED_LAYER_ID];
+const UNCLUSTERED_LABEL_LAYER_ID = 'plura-unclustered-labels';
+const INTERACTIVE_LAYER_IDS = [
+  CLUSTER_LAYER_ID,
+  UNCLUSTERED_LAYER_ID,
+  UNCLUSTERED_LABEL_LAYER_ID,
+];
 const NOISE_LAYER_MATCHERS = [
   /poi/i,
   /transit/i,
@@ -62,17 +68,7 @@ const clusterLayer: LayerProps = {
   filter: ['has', 'point_count'],
   paint: {
     'circle-color': '#0E2A47',
-    'circle-radius': [
-      'step',
-      ['get', 'point_count'],
-      18,
-      10,
-      22,
-      30,
-      26,
-      60,
-      30,
-    ],
+    'circle-radius': ['step', ['get', 'point_count'], 18, 10, 22, 30, 26, 60, 30],
     'circle-opacity': 0.88,
     'circle-stroke-width': 2,
     'circle-stroke-color': '#FFFFFF',
@@ -100,10 +96,27 @@ const unclusteredLayer: LayerProps = {
   source: MAP_SOURCE_ID,
   filter: ['!', ['has', 'point_count']],
   paint: {
-    'circle-color': '#1FB6A6',
-    'circle-radius': 8,
+    'circle-color': '#0E2A47',
+    'circle-radius': 19,
     'circle-stroke-width': 2,
     'circle-stroke-color': '#FFFFFF',
+  },
+};
+
+const unclusteredLabelLayer: LayerProps = {
+  id: UNCLUSTERED_LABEL_LAYER_ID,
+  type: 'symbol',
+  source: MAP_SOURCE_ID,
+  filter: ['!', ['has', 'point_count']],
+  layout: {
+    'text-field': ['coalesce', ['get', 'markerLabel'], 'Perfil'],
+    'text-size': 11,
+    'text-font': ['Open Sans Bold', 'Arial Unicode MS Bold'],
+    'text-allow-overlap': true,
+    'text-ignore-placement': true,
+  },
+  paint: {
+    'text-color': '#000000',
   },
 };
 
@@ -111,6 +124,12 @@ const formatPriceFrom = (value?: number | null) => {
   if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0) return 'Ver perfil';
   const rounded = Math.round(value);
   return `Desde $${new Intl.NumberFormat('es-UY').format(rounded)}`;
+};
+
+const formatMarkerLabel = (value?: number | null) => {
+  if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0) return 'Perfil';
+  const rounded = Math.max(0, Math.round(value));
+  return `$${new Intl.NumberFormat('es-UY').format(rounded)}`;
 };
 
 const humanizeSlug = (slug: string) =>
@@ -131,11 +150,16 @@ const parseOptionalNumber = (value: unknown): number | null => {
   return null;
 };
 
-export default function ExploreMap({ results, userLocation }: ExploreMapProps) {
+export default function ExploreMap({
+  results,
+  userLocation,
+  activeResultId = null,
+  onActiveResultChange,
+}: ExploreMapProps) {
   const mapRef = useRef<MapRef | null>(null);
+  const lastExternalFocusRef = useRef<string | null>(null);
   const [mapReady, setMapReady] = useState(false);
-  const [pinnedId, setPinnedId] = useState<string | null>(null);
-  const [hoveredId, setHoveredId] = useState<string | null>(null);
+  const [selectedResultId, setSelectedResultId] = useState<string | null>(null);
   const [cursor, setCursor] = useState<'default' | 'pointer'>('default');
 
   const items = useMemo<ExploreMapItem[]>(
@@ -177,29 +201,29 @@ export default function ExploreMap({ results, userLocation }: ExploreMapProps) {
         },
         properties: {
           id: item.id,
+          markerLabel: formatMarkerLabel(item.priceFrom),
         },
       })),
     }),
     [items],
   );
 
+  const effectiveActiveResultId = selectedResultId || activeResultId;
+
   const selectedItem = useMemo(
     () => {
-      const activeId = pinnedId || hoveredId;
-      if (!activeId) return null;
-      return items.find((item) => item.id === activeId) || null;
+      if (!effectiveActiveResultId) return null;
+      return items.find((item) => item.id === effectiveActiveResultId) || null;
     },
-    [items, pinnedId, hoveredId],
+    [effectiveActiveResultId, items],
   );
 
   useEffect(() => {
-    if (pinnedId && !items.some((item) => item.id === pinnedId)) {
-      setPinnedId(null);
+    if (selectedResultId && !items.some((item) => item.id === selectedResultId)) {
+      setSelectedResultId(null);
+      onActiveResultChange?.(null);
     }
-    if (hoveredId && !items.some((item) => item.id === hoveredId)) {
-      setHoveredId(null);
-    }
-  }, [items, pinnedId, hoveredId]);
+  }, [items, onActiveResultChange, selectedResultId]);
 
   useEffect(() => {
     if (!mapReady || !mapRef.current || items.length === 0) return;
@@ -225,6 +249,27 @@ export default function ExploreMap({ results, userLocation }: ExploreMapProps) {
       maxZoom: 14,
     });
   }, [items, mapReady, userLocation]);
+
+  useEffect(() => {
+    if (!mapReady || !mapRef.current || !activeResultId || selectedResultId) return;
+    if (lastExternalFocusRef.current === activeResultId) return;
+    const nextItem = items.find((item) => item.id === activeResultId);
+    if (!nextItem) return;
+
+    lastExternalFocusRef.current = activeResultId;
+    const currentZoom = mapRef.current.getZoom();
+    mapRef.current.easeTo({
+      center: [nextItem.longitude, nextItem.latitude],
+      zoom: Math.max(currentZoom, 12),
+      duration: 360,
+    });
+  }, [activeResultId, items, mapReady, selectedResultId]);
+
+  useEffect(() => {
+    if (!activeResultId) {
+      lastExternalFocusRef.current = null;
+    }
+  }, [activeResultId]);
 
   const hideVisualNoiseLayers = () => {
     const map = mapRef.current?.getMap();
@@ -253,7 +298,8 @@ export default function ExploreMap({ results, userLocation }: ExploreMapProps) {
       .features;
     const feature = features?.[0];
     if (!feature) {
-      setPinnedId(null);
+      setSelectedResultId(null);
+      onActiveResultChange?.(null);
       return;
     }
     const layerId = feature.layer?.id || '';
@@ -280,67 +326,51 @@ export default function ExploreMap({ results, userLocation }: ExploreMapProps) {
       return;
     }
 
-    if (layerId === UNCLUSTERED_LAYER_ID) {
+    if (layerId === UNCLUSTERED_LAYER_ID || layerId === UNCLUSTERED_LABEL_LAYER_ID) {
       const clickedId = String(feature.properties?.id || '');
       if (!clickedId) return;
-      setPinnedId(clickedId);
-      setHoveredId(clickedId);
+      setSelectedResultId(clickedId);
+      onActiveResultChange?.(clickedId);
     }
   };
 
   const handleMapMouseMove = (event: MapMouseEvent) => {
     const features = (event as MapMouseEvent & { features?: mapboxgl.MapboxGeoJSONFeature[] })
       .features;
-    const feature = features?.find(
+    const hasInteractiveFeature = features?.some(
       (item) =>
-        item.layer?.id === UNCLUSTERED_LAYER_ID || item.layer?.id === CLUSTER_LAYER_ID,
+        item.layer?.id === UNCLUSTERED_LAYER_ID ||
+        item.layer?.id === UNCLUSTERED_LABEL_LAYER_ID ||
+        item.layer?.id === CLUSTER_LAYER_ID,
     );
-    if (!feature) {
-      setCursor('default');
-      setHoveredId(null);
-      return;
-    }
-
-    setCursor('pointer');
-    if (feature.layer?.id === UNCLUSTERED_LAYER_ID) {
-      const nextHoveredId = String(feature.properties?.id || '');
-      setHoveredId(nextHoveredId || null);
-      return;
-    }
-
-    setHoveredId(null);
+    setCursor(hasInteractiveFeature ? 'pointer' : 'default');
   };
-
-  if (!MAPBOX_TOKEN) {
-    return (
-      <div className="flex h-[420px] items-center justify-center rounded-[20px] bg-[#E9EEF2] px-4 text-center text-sm text-[#6B7280]">
-        Falta `NEXT_PUBLIC_MAPBOX_TOKEN` para mostrar el mapa.
-      </div>
-    );
-  }
+  const initialViewState = useMemo(
+    () => ({
+      latitude: userLocation?.latitude ?? DEFAULT_CENTER.latitude,
+      longitude: userLocation?.longitude ?? DEFAULT_CENTER.longitude,
+      zoom: userLocation ? 11 : 10,
+    }),
+    [userLocation?.latitude, userLocation?.longitude],
+  );
 
   return (
-    <div className="relative h-[420px] overflow-hidden rounded-[20px] border border-[#DCE5ED]">
-      <Map
-        ref={mapRef}
-        initialViewState={{
-          latitude: userLocation?.latitude ?? DEFAULT_CENTER.latitude,
-          longitude: userLocation?.longitude ?? DEFAULT_CENTER.longitude,
-          zoom: userLocation ? 11 : 10,
-        }}
+    <div className="relative h-[420px]">
+      <MapView
+        mapRef={mapRef}
+        initialViewState={initialViewState}
         onLoad={handleMapLoad}
         onClick={handleMapClick}
         onMouseMove={handleMapMouseMove}
         onMouseLeave={() => {
           setCursor('default');
-          setHoveredId(null);
         }}
         interactiveLayerIds={INTERACTIVE_LAYER_IDS}
         cursor={cursor}
-        mapStyle={MAPBOX_STYLE}
-        mapboxAccessToken={MAPBOX_TOKEN}
         dragRotate={false}
         touchZoomRotate={false}
+        containerClassName="h-full overflow-hidden rounded-[20px] border border-[#DCE5ED]"
+        fallbackClassName="h-full rounded-[20px] bg-[#E9EEF2]"
       >
         <NavigationControl position="top-right" showCompass={false} />
 
@@ -355,6 +385,7 @@ export default function ExploreMap({ results, userLocation }: ExploreMapProps) {
           <Layer {...clusterLayer} />
           <Layer {...clusterCountLayer} />
           <Layer {...unclusteredLayer} />
+          <Layer {...unclusteredLabelLayer} />
         </Source>
 
         {userLocation ? (
@@ -370,8 +401,8 @@ export default function ExploreMap({ results, userLocation }: ExploreMapProps) {
             anchor="top"
             closeOnClick={false}
             onClose={() => {
-              setPinnedId(null);
-              setHoveredId(null);
+              setSelectedResultId(null);
+              onActiveResultChange?.(null);
             }}
             offset={14}
           >
@@ -387,7 +418,7 @@ export default function ExploreMap({ results, userLocation }: ExploreMapProps) {
                     ? `★ ${selectedItem.rating.toFixed(1)}`
                     : 'Sin reseñas'}
                 </span>
-                <span>{formatPriceFrom(selectedItem.priceFrom)}</span>
+                <span className="text-[#000000]">{formatPriceFrom(selectedItem.priceFrom)}</span>
               </div>
               <Link
                 href={`/profesional/pagina/${encodeURIComponent(selectedItem.slug)}`}
@@ -398,7 +429,7 @@ export default function ExploreMap({ results, userLocation }: ExploreMapProps) {
             </div>
           </Popup>
         ) : null}
-      </Map>
+      </MapView>
       {results.length > 0 && items.length === 0 ? (
         <div className="pointer-events-none absolute inset-x-0 bottom-3 flex justify-center px-4">
           <p className="rounded-full bg-white/95 px-3 py-1 text-xs font-semibold text-[#0E2A47] shadow-sm">

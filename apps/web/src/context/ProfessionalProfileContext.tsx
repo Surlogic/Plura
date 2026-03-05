@@ -6,10 +6,11 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from 'react';
-import api from '@/services/api';
+import { cachedGet } from '@/services/cachedGet';
 import type { ProfessionalProfile } from '@/types/professional';
 
 type ProfessionalProfileContextValue = {
@@ -30,8 +31,10 @@ const PROFESSIONAL_PROFILE_ENDPOINTS = [
 
 export function ProfessionalProfileProvider({
   children,
+  autoLoad = false,
 }: {
   children: ReactNode;
+  autoLoad?: boolean;
 }) {
   const [profile, setProfile] = useState<ProfessionalProfile | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -51,7 +54,9 @@ export function ProfessionalProfileProvider({
       for (let index = 0; index < PROFESSIONAL_PROFILE_ENDPOINTS.length; index += 1) {
         const endpoint = PROFESSIONAL_PROFILE_ENDPOINTS[index];
         try {
-          const response = await api.get<ProfessionalProfile>(endpoint);
+          const response = await cachedGet<ProfessionalProfile>(endpoint, undefined, {
+            ttlMs: 15000,
+          });
           loadedProfile = response.data;
           break;
         } catch (error) {
@@ -76,10 +81,16 @@ export function ProfessionalProfileProvider({
     }
   }, []);
 
+  const refreshProfileRef = useRef(refreshProfile);
+
   useEffect(() => {
-    if (hasLoaded || isLoading) return;
-    void refreshProfile();
-  }, [hasLoaded, isLoading, refreshProfile]);
+    refreshProfileRef.current = refreshProfile;
+  }, [refreshProfile]);
+
+  useEffect(() => {
+    if (!autoLoad || hasLoaded || isLoading) return;
+    void refreshProfileRef.current();
+  }, [autoLoad, hasLoaded, isLoading]);
 
   const value = useMemo(
     () => ({ profile, isLoading, hasLoaded, refreshProfile, clearProfile }),

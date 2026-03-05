@@ -1,6 +1,8 @@
 'use client';
 
-import Map, { Marker } from 'react-map-gl/mapbox';
+import { useMemo } from 'react';
+import { Marker } from 'react-map-gl/mapbox';
+import MapView from '@/components/map/MapView';
 
 type PublicProfileMapProps = {
   name: string;
@@ -9,10 +11,10 @@ type PublicProfileMapProps = {
   city: string;
   latitude: number;
   longitude: number;
+  heightClassName?: string;
+  interactive?: boolean;
+  zoom?: number;
 };
-
-const MAPBOX_TOKEN = (process.env.NEXT_PUBLIC_MAPBOX_TOKEN || '').trim();
-const MAPBOX_STYLE = 'mapbox://styles/mapbox/light-v11';
 
 export default function PublicProfileMap({
   name,
@@ -21,42 +23,41 @@ export default function PublicProfileMap({
   city,
   latitude,
   longitude,
+  heightClassName = 'h-80',
+  interactive = false,
+  zoom = 14,
 }: PublicProfileMapProps) {
-  if (!MAPBOX_TOKEN) {
-    return (
-      <div className="flex h-80 items-center justify-center rounded-2xl border border-[#E2E7EC] bg-[#F3F6F9] px-4 text-center text-sm text-[#64748B]">
-        Falta `NEXT_PUBLIC_MAPBOX_TOKEN` para mostrar el mapa.
-      </div>
-    );
-  }
+  const initialViewState = useMemo(
+    () => ({
+      latitude,
+      longitude,
+      zoom,
+    }),
+    [latitude, longitude, zoom],
+  );
 
   return (
-    <div className="h-80 overflow-hidden rounded-2xl">
-      <Map
-        initialViewState={{
-          latitude,
-          longitude,
-          zoom: 14,
-        }}
-        mapStyle={MAPBOX_STYLE}
-        mapboxAccessToken={MAPBOX_TOKEN}
-        interactive={false}
-        dragRotate={false}
-        dragPan={false}
-        doubleClickZoom={false}
-        scrollZoom={false}
-        boxZoom={false}
-        touchPitch={false}
-        touchZoomRotate={false}
-        keyboard={false}
-      >
-        <Marker longitude={longitude} latitude={latitude} anchor="bottom">
-          <div
-            className="h-4 w-4 rounded-full border-2 border-white bg-[#0E2A47] shadow-[0_0_0_4px_rgba(14,42,71,0.18)]"
-            title={`${name || 'Profesional'} · ${category || 'Negocio'} · ${address}${city ? `, ${city}` : ''}`}
-          />
-        </Marker>
-      </Map>
-    </div>
+    <MapView
+      containerClassName={`${heightClassName} overflow-hidden rounded-2xl border border-[#E2E7EC]`}
+      fallbackClassName={`${heightClassName} rounded-2xl border border-[#E2E7EC] bg-[#F3F6F9]`}
+      fallbackMessage="Falta `NEXT_PUBLIC_MAPBOX_TOKEN` para mostrar el mapa."
+      initialViewState={initialViewState}
+      interactive={interactive}
+      dragRotate={false}
+      dragPan={interactive}
+      doubleClickZoom={interactive}
+      scrollZoom={interactive}
+      boxZoom={interactive}
+      touchPitch={false}
+      touchZoomRotate={interactive}
+      keyboard={interactive}
+    >
+      <Marker longitude={longitude} latitude={latitude} anchor="bottom">
+        <div
+          className="h-4 w-4 rounded-full border-2 border-white bg-[#0E2A47] shadow-[0_0_0_4px_rgba(14,42,71,0.18)]"
+          title={`${name || 'Profesional'} · ${category || 'Negocio'} · ${address}${city ? `, ${city}` : ''}`}
+        />
+      </Marker>
+    </MapView>
   );
 }

@@ -74,6 +74,8 @@ export default function ProfesionalPublicPageBuilder() {
       services.map((service) => ({
         id: service.id,
         name: service.name || 'Servicio',
+        description: service.description || '',
+        imageUrl: service.imageUrl || '',
         price: service.price || 'Consultar',
         duration: service.duration || '',
       })),

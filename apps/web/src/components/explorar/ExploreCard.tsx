@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { memo } from 'react';
 
 type ExploreCardProps = {
+  id?: string;
   name: string;
   category: string;
   city?: string;
@@ -12,9 +13,14 @@ type ExploreCardProps = {
   available?: boolean;
   imageUrl?: string | null;
   href?: string;
+  isHighlighted?: boolean;
+  priority?: boolean;
+  onHoverStart?: (id?: string) => void;
+  onHoverEnd?: (id?: string) => void;
 };
 
 export default memo(function ExploreCard({
+  id,
   name,
   category,
   city,
@@ -24,6 +30,10 @@ export default memo(function ExploreCard({
   available,
   imageUrl,
   href,
+  isHighlighted = false,
+  priority = false,
+  onHoverStart,
+  onHoverEnd,
 }: ExploreCardProps) {
   const displayRating = rating?.trim();
   const displayPrice = price?.trim() || 'Ver perfil';
@@ -39,6 +49,7 @@ export default memo(function ExploreCard({
             alt={name}
             fill
             sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+            priority={priority}
             className="object-cover transition duration-500 group-hover:scale-105"
           />
         ) : null}
@@ -76,14 +87,20 @@ export default memo(function ExploreCard({
         ) : (
           <span className="text-xs font-semibold text-[#94A3B8]">Sin reseñas</span>
         )}
-        <span className="text-[#6B7280]">{displayPrice}</span>
+        <span className="text-[#000000]">{displayPrice}</span>
       </div>
     </>
   );
 
   if (!href) {
     return (
-      <div className="group rounded-[24px] bg-white p-4 shadow-sm transition hover:-translate-y-1 hover:shadow-md">
+      <div
+        className={`group rounded-[24px] bg-white p-4 shadow-sm transition hover:-translate-y-1 hover:shadow-md ${
+          isHighlighted ? 'ring-2 ring-[#0E2A47]/20' : ''
+        }`}
+        onMouseEnter={() => onHoverStart?.(id)}
+        onMouseLeave={() => onHoverEnd?.(id)}
+      >
         {cardContent}
       </div>
     );
@@ -92,7 +109,11 @@ export default memo(function ExploreCard({
   return (
     <Link
       href={href}
-      className="group block rounded-[24px] bg-white p-4 shadow-sm transition hover:-translate-y-1 hover:shadow-md"
+      className={`group block rounded-[24px] bg-white p-4 shadow-sm transition hover:-translate-y-1 hover:shadow-md ${
+        isHighlighted ? 'ring-2 ring-[#0E2A47]/20' : ''
+      }`}
+      onMouseEnter={() => onHoverStart?.(id)}
+      onMouseLeave={() => onHoverEnd?.(id)}
     >
       {cardContent}
     </Link>

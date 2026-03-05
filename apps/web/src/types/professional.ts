@@ -12,6 +12,11 @@ export type ProfessionalProfile = {
   longitude?: number | null;
   tipoCliente: string;
   logoUrl?: string | null;
+  instagram?: string | null;
+  facebook?: string | null;
+  tiktok?: string | null;
+  website?: string | null;
+  whatsapp?: string | null;
   publicHeadline?: string | null;
   publicAbout?: string | null;
   publicPhotos?: string[];
@@ -39,6 +44,8 @@ export type ServicePhoto = {
 export type ProfessionalService = {
   id: string;
   name: string;
+  description?: string;
+  imageUrl?: string;
   price: string;
   duration: string;
   postBufferMinutes?: number;
@@ -51,6 +58,8 @@ export type ProfessionalService = {
 export type PublicService = {
   id?: string;
   name: string;
+  description?: string;
+  imageUrl?: string;
   price: string;
   duration: string;
   postBufferMinutes?: number;

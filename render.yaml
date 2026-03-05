@@ -3,7 +3,8 @@ services:
     name: plura-api
     runtime: docker
     rootDir: backend-java
-    dockerfilePath: ./Dockerfile
+    dockerfilePath: ./backend-java/Dockerfile
+    dockerContext: ./backend-java
     healthCheckPath: /health
     envVars:
       - key: PORT
@@ -36,7 +37,7 @@ services:
     runtime: node
     rootDir: .
     buildCommand: corepack enable && corepack prepare pnpm@10.23.0 --activate && pnpm install --frozen-lockfile && pnpm -C apps/web build
-    startCommand: corepack enable && corepack prepare pnpm@10.23.0 --activate && pnpm -C apps/web start
+    startCommand: corepack enable && corepack prepare pnpm@10.23.0 --activate && NODE_ENV=production pnpm -C apps/web exec next start -p ${PORT}
     envVars:
       - key: NODE_VERSION
         value: 20

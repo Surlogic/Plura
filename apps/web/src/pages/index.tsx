@@ -51,7 +51,9 @@ export const getStaticProps: GetStaticProps<HomePageProps> = async () => {
     }
 
     homeData = (await response.json()) as HomeResponse;
-  } catch {}
+  } catch (error) {
+    console.error('[HOME] Error fetching /api/home:', error instanceof Error ? error.message : error);
+  }
 
   const hasTopProfessionals = (homeData?.topProfessionals?.length || 0) > 0;
   if (!hasTopProfessionals) {
@@ -77,7 +79,9 @@ export const getStaticProps: GetStaticProps<HomePageProps> = async () => {
           };
         }
       }
-    } catch {}
+    } catch (error) {
+      console.error('[HOME] Error fetching /public/profesionales:', error instanceof Error ? error.message : error);
+    }
   }
 
   return { props: { homeData }, revalidate: 300 };

@@ -10,6 +10,7 @@ import {
 import { useRouter } from 'next/router';
 import DateFilter from '@/components/search/DateFilter';
 import LocationAutocomplete from '@/components/search/LocationAutocomplete';
+import SearchField from '@/components/search/SearchField';
 import SuggestDropdown, { type SuggestDropdownItem } from '@/components/search/SuggestDropdown';
 import {
   SEARCH_CITY_SUGGESTIONS_LIMIT,
@@ -21,6 +22,11 @@ import {
 } from '@/config/search';
 import { useCategories } from '@/hooks/useCategories';
 import { autocompleteGeo, searchSuggestions } from '@/services/search';
+import {
+  normalizeSearchText,
+  shouldOmitRubroQuery,
+  slugToLabel,
+} from '@/utils/searchQuery';
 import type {
   GeoAutocompleteItem,
   RecentSearchEntry,
@@ -96,13 +102,6 @@ const normalizeDate = (value?: string) => {
   return /^\d{4}-\d{2}-\d{2}$/.test(trimmed) ? trimmed : '';
 };
 
-const slugToLabel = (slug: string) =>
-  slug
-    .split('-')
-    .filter(Boolean)
-    .map((chunk) => chunk.charAt(0).toUpperCase() + chunk.slice(1))
-    .join(' ');
-
 const normalizeInitialValues = (
   initialValues?: Partial<UnifiedSearchValues>,
 ): UnifiedSearchValues => {
@@ -154,13 +153,6 @@ const recentSearchKey = (value: UnifiedSearchValues) =>
     value.to || '',
     value.availableNow ? '1' : '0',
   ].join('|');
-
-const normalizeSearchText = (value: string) =>
-  value
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toLocaleLowerCase('es-UY')
-    .trim();
 
 const recentSearchKeyFromEntry = (entry: RecentSearchEntry) =>
   recentSearchKey({
@@ -543,8 +535,15 @@ export default function UnifiedSearchBar({
           : 'RATING',
     };
 
-    if (formValues.query.trim()) {
-      query.query = formValues.query.trim();
+    const trimmedQuery = formValues.query.trim();
+    const isDuplicateRubroQuery = shouldOmitRubroQuery(
+      formValues.type,
+      trimmedQuery,
+      formValues.categorySlug,
+    );
+
+    if (trimmedQuery && !isDuplicateRubroQuery) {
+      query.query = trimmedQuery;
     }
     if (formValues.categorySlug?.trim()) {
       query.categorySlug = formValues.categorySlug.trim();
@@ -1098,17 +1097,8 @@ export default function UnifiedSearchBar({
           <div className="overflow-x-auto overflow-y-visible">
             <div className="grid min-w-[740px] grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_auto] gap-1.5 p-2 sm:p-3">
               <div className="min-w-0">
-                <div
-                  className={`flex min-h-[62px] min-w-0 flex-col justify-between rounded-xl border px-3 py-2 transition focus-within:ring-2 focus-within:ring-[#1B6B5C]/12 ${
-                    isSearchActive
-                      ? 'border-[#BFD3C9] bg-white shadow-[0_2px_8px_rgba(14,42,71,0.06)]'
-                      : 'border-transparent bg-transparent hover:border-[#DEE8E3]'
-                  }`}
-                >
-                  <p className="truncate whitespace-nowrap text-[0.58rem] font-semibold uppercase tracking-[0.08em] text-[#9AA7B5]">
-                    Servicio o rubro
-                  </p>
-                  <div className="mt-1 flex min-w-0 items-center gap-2">
+                <SearchField label="Servicio o rubro" active={isSearchActive}>
+                  <div className="flex min-w-0 items-center gap-2">
                     <svg
                       viewBox="0 0 20 20"
                       fill="none"
@@ -1152,137 +1142,60 @@ export default function UnifiedSearchBar({
                       autoComplete="off"
                     />
                   </div>
-                </div>
+                </SearchField>
               </div>
 
-            <div className="relative z-10 min-w-0">
-              <button
-                type="button"
-                onClick={() => {
-                  setIsDateOpen((current) => !current);
-                  setIsSearchOpen(false);
-                  setIsLocationOpen(false);
-                }}
-                className={`flex min-h-[62px] w-full min-w-0 flex-col items-start justify-center rounded-xl border px-3 py-2 text-left transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[#1B6B5C]/12 ${
-                  isDateActive
-                    ? 'border-[#BFD3C9] bg-white shadow-[0_2px_8px_rgba(14,42,71,0.06)]'
-                    : 'border-transparent bg-transparent hover:border-[#DEE8E3]'
-                }`}
-              >
-                <span className="w-full text-[0.58rem] font-semibold uppercase tracking-[0.08em] text-[#9AA7B5]">
-                  Fecha
-                </span>
-                <span className="mt-1 w-full truncate text-[0.95rem] font-semibold leading-5 text-[#0E2A47]">
-                  {dateSummary}
-                </span>
-              </button>
-
-              {isDateOpen ? (
-                <div className="absolute left-0 top-[calc(100%+8px)] z-50 w-full rounded-xl border border-[#DCE8E3] bg-white p-2.5 shadow-[0_10px_22px_rgba(14,42,71,0.10)]">
-                  <DateFilter
-                    date={values.date}
-                    availableNow={values.availableNow}
-                    todayIso={todayIso}
-                    onPickAnytime={setAnytime}
-                    onPickToday={pickToday}
-                    onPickTomorrow={pickTomorrow}
-                    onPickThisWeek={pickThisWeek}
-                    onPickDate={(value) => {
-                      const nextDate = normalizeDate(value);
-                      setValues((previous) => ({
-                        ...previous,
-                        date: nextDate,
-                        from: undefined,
-                        to: undefined,
-                      }));
-                    }}
-                    onToggleAvailableNow={() =>
-                      setValues((previous) => ({
-                        ...previous,
-                        availableNow: !previous.availableNow,
-                      }))
-                    }
-                    showAvailableToggle
-                  />
-                </div>
-              ) : null}
-            </div>
-
-            <div className="relative z-10 min-w-0">
-              <button
-                type="button"
-                onClick={() => {
-                  setIsLocationOpen((current) => !current);
-                  setIsSearchOpen(false);
-                  setIsDateOpen(false);
-                }}
-                className={`flex min-h-[62px] w-full min-w-0 flex-col items-start justify-center rounded-xl border px-3 py-2 text-left transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[#1B6B5C]/12 ${
-                  isLocationActive
-                    ? 'border-[#BFD3C9] bg-white shadow-[0_2px_8px_rgba(14,42,71,0.06)]'
-                    : 'border-transparent bg-transparent hover:border-[#DEE8E3]'
-                }`}
-              >
-                <span className="w-full text-[0.58rem] font-semibold uppercase tracking-[0.08em] text-[#9AA7B5]">
-                  Ubicación
-                </span>
-                <span className={`mt-1 w-full truncate font-semibold leading-5 text-[#0E2A47] ${locationValueClass}`}>
-                  {locationSummary}
-                </span>
-              </button>
-
-              {isLocationOpen ? (
-                <div className="absolute left-0 top-[calc(100%+8px)] z-50 w-full rounded-xl border border-[#DCE8E3] bg-white p-2.5 shadow-[0_10px_22px_rgba(14,42,71,0.10)]">
-                  <LocationAutocomplete
-                    locationInput={locationInput}
-                    onLocationInputChange={(value) => {
-                      setLocationInput(value);
-                      setValues((previous) => ({
-                        ...previous,
-                        city: value,
-                        lat: undefined,
-                        lng: undefined,
-                      }));
-                    }}
-                    onUseCurrentLocation={handleUseCurrentLocation}
-                    onSelectGeoItem={selectGeoItem}
-                    onSelectCity={selectCity}
-                    geoSuggestions={geoSuggestions}
-                    recentCities={mergedCitySuggestions}
-                    geoStatus={geoStatus}
-                    geoMessage={geoMessage}
-                    popularNearby={nearbyCandidates}
-                    onPickPopularNearby={(item) => {
-                      const nextValues: UnifiedSearchValues = {
-                        ...values,
-                        type: 'LOCAL',
-                        query: item.name,
-                        categorySlug: undefined,
-                      };
-                      setValues(nextValues);
-                      setSearchInput(item.name);
-                      setIsLocationOpen(false);
-                    }}
-                  />
-                </div>
-              ) : null}
-            </div>
-
-              <button
-                type="submit"
-                className="inline-flex h-[62px] min-w-[7rem] items-center justify-center rounded-xl bg-[#0E2A47] px-6 text-base font-semibold text-white transition hover:brightness-110 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0E2A47]/30 focus-visible:ring-offset-2"
-              >
-                {submitLabel}
-              </button>
-
-              {showClearButton ? (
-                <button
-                  type="button"
-                  onClick={handleClear}
-                  className="col-span-4 ml-auto inline-flex h-10 items-center justify-center rounded-xl border border-[#D8E2EA] bg-white px-4 text-sm font-semibold text-[#0E2A47] transition hover:bg-[#F7FAFD] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0E2A47]/20"
+              <div className="min-w-0">
+                <SearchField
+                  label="Fecha"
+                  active={isDateActive}
+                  asButton
+                  onClick={() => {
+                    setIsDateOpen((current) => !current);
+                    setIsSearchOpen(false);
+                    setIsLocationOpen(false);
+                  }}
                 >
-                  Limpiar
+                  <span className="w-full truncate text-[0.95rem] font-semibold leading-5 text-[#0E2A47]">
+                    {dateSummary}
+                  </span>
+                </SearchField>
+              </div>
+
+              <div className="min-w-0">
+                <SearchField
+                  label="Ubicación"
+                  active={isLocationActive}
+                  asButton
+                  onClick={() => {
+                    setIsLocationOpen((current) => !current);
+                    setIsSearchOpen(false);
+                    setIsDateOpen(false);
+                  }}
+                >
+                  <span className={`w-full truncate font-semibold leading-5 text-[#0E2A47] ${locationValueClass}`}>
+                    {locationSummary}
+                  </span>
+                </SearchField>
+              </div>
+
+              <div className="inline-flex items-center gap-2">
+                <button
+                  type="submit"
+                  className="inline-flex h-[62px] min-w-[7rem] items-center justify-center rounded-xl bg-[#0E2A47] px-6 text-base font-semibold text-white transition hover:brightness-110 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0E2A47]/30 focus-visible:ring-offset-2"
+                >
+                  {submitLabel}
                 </button>
-              ) : null}
+                {showClearButton ? (
+                  <button
+                    type="button"
+                    onClick={handleClear}
+                    className="inline-flex h-[62px] items-center justify-center rounded-xl border border-[#D8E2EA] bg-white px-4 text-sm font-semibold text-[#0E2A47] transition hover:bg-[#F7FAFD] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0E2A47]/20"
+                  >
+                    Limpiar
+                  </button>
+                ) : null}
+              </div>
             </div>
           </div>
 
@@ -1302,6 +1215,76 @@ export default function UnifiedSearchBar({
                   applySuggestion(item);
                 }}
               />
+            </div>
+          ) : null}
+
+          {isDateOpen ? (
+            <div className="absolute left-0 top-[calc(100%+8px)] z-50 w-full pointer-events-auto">
+              <div className="w-full rounded-xl border border-[#DCE8E3] bg-white p-2.5 shadow-[0_10px_22px_rgba(14,42,71,0.10)]">
+                <DateFilter
+                  date={values.date}
+                  availableNow={values.availableNow}
+                  todayIso={todayIso}
+                  onPickAnytime={setAnytime}
+                  onPickToday={pickToday}
+                  onPickTomorrow={pickTomorrow}
+                  onPickThisWeek={pickThisWeek}
+                  onPickDate={(value) => {
+                    const nextDate = normalizeDate(value);
+                    setValues((previous) => ({
+                      ...previous,
+                      date: nextDate,
+                      from: undefined,
+                      to: undefined,
+                    }));
+                  }}
+                  onToggleAvailableNow={() =>
+                    setValues((previous) => ({
+                      ...previous,
+                      availableNow: !previous.availableNow,
+                    }))
+                  }
+                  showAvailableToggle
+                />
+              </div>
+            </div>
+          ) : null}
+
+          {isLocationOpen ? (
+            <div className="absolute left-0 top-[calc(100%+8px)] z-50 w-full pointer-events-auto">
+              <div className="w-full rounded-xl border border-[#DCE8E3] bg-white p-2.5 shadow-[0_10px_22px_rgba(14,42,71,0.10)]">
+                <LocationAutocomplete
+                  locationInput={locationInput}
+                  onLocationInputChange={(value) => {
+                    setLocationInput(value);
+                    setValues((previous) => ({
+                      ...previous,
+                      city: value,
+                      lat: undefined,
+                      lng: undefined,
+                    }));
+                  }}
+                  onUseCurrentLocation={handleUseCurrentLocation}
+                  onSelectGeoItem={selectGeoItem}
+                  onSelectCity={selectCity}
+                  geoSuggestions={geoSuggestions}
+                  recentCities={mergedCitySuggestions}
+                  geoStatus={geoStatus}
+                  geoMessage={geoMessage}
+                  popularNearby={nearbyCandidates}
+                  onPickPopularNearby={(item) => {
+                    const nextValues: UnifiedSearchValues = {
+                      ...values,
+                      type: 'LOCAL',
+                      query: item.name,
+                      categorySlug: undefined,
+                    };
+                    setValues(nextValues);
+                    setSearchInput(item.name);
+                    setIsLocationOpen(false);
+                  }}
+                />
+              </div>
             </div>
           ) : null}
         </div>

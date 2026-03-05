@@ -7,6 +7,7 @@ type BusinessCardProps = {
   rating?: number | string | null;
   badge?: string;
   imageUrl?: string | null;
+  priority?: boolean;
 };
 
 const normalizeImageUrl = (value?: string | null) => {
@@ -30,6 +31,7 @@ export default memo(function BusinessCard({
   rating,
   badge,
   imageUrl,
+  priority = false,
 }: BusinessCardProps) {
   const displayRating = typeof rating === 'number' ? rating.toFixed(1) : rating?.trim();
   const safeImageUrl = normalizeImageUrl(imageUrl);
@@ -42,6 +44,7 @@ export default memo(function BusinessCard({
             alt={name}
             fill
             sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+            priority={priority}
             className="object-cover"
           />
         ) : null}

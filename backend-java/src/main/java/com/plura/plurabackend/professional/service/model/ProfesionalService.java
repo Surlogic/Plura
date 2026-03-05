@@ -32,11 +32,17 @@ public class ProfesionalService {
     @Column(nullable = false)
     private String name;
 
+    @Column(length = 200)
+    private String description;
+
     @Column(nullable = false)
     private String price;
 
     @Column(nullable = false)
     private String duration;
+
+    @Column(name = "image_url", length = 500)
+    private String imageUrl;
 
     @Column(name = "post_buffer_minutes")
     private Integer postBufferMinutes = 0;

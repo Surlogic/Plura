@@ -4,8 +4,16 @@ type CategoryCardProps = {
   title: string;
   imageUrl?: string | null;
   slug: string;
+  priority?: boolean;
 };
 
-export default function CategoryCard({ title, imageUrl, slug }: CategoryCardProps) {
-  return <RubroCard title={title} imageUrl={imageUrl} slug={slug} />;
+export default function CategoryCard({
+  title,
+  imageUrl,
+  slug,
+  priority = false,
+}: CategoryCardProps) {
+  return (
+    <RubroCard title={title} imageUrl={imageUrl} slug={slug} priority={priority} />
+  );
 }

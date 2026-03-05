@@ -3,9 +3,12 @@ import { useRouter } from 'next/router';
 import dynamic from 'next/dynamic';
 import Navbar from '@/components/shared/Navbar';
 import Footer from '@/components/shared/Footer';
+import BusinessGallery from '@/components/profesional/BusinessGallery';
+import ServiceDetailModal from '@/components/profesional/ServiceDetailModal';
 import api from '@/services/api';
 import { mapboxForwardGeocode } from '@/services/mapbox';
 import { getPublicSlots } from '@/services/publicBookings';
+import { resolveAssetUrl } from '@/utils/assetUrl';
 import type {
   ProfessionalSchedule,
   PublicService,
@@ -67,14 +70,68 @@ const isValidPreviewPayload = (value: unknown): value is PreviewPayload => {
 // Acepta solo URLs de imagen con protocolo seguro para evitar inyección CSS
 const sanitizeImageSrc = (src: string): string | undefined => {
   if (!src) return undefined;
+  const resolved = resolveAssetUrl(src);
+  if (!resolved) return undefined;
   try {
-    const url = new URL(src, window.location.origin);
-    if (url.protocol === 'https:' || url.protocol === 'http:') return src;
+    const baseOrigin =
+      typeof window !== 'undefined' ? window.location.origin : 'http://localhost';
+    const url = new URL(resolved, baseOrigin);
+    if (url.protocol === 'https:' || url.protocol === 'http:') return resolved;
     return undefined;
   } catch {
-    if (src.startsWith('/') || src.startsWith('./')) return src;
+    if (resolved.startsWith('/') || resolved.startsWith('./')) return resolved;
     return undefined;
   }
+};
+
+const sanitizeExternalUrl = (value: string): string | null => {
+  if (!value) return null;
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  try {
+    const parsed = new URL(trimmed);
+    if (parsed.protocol === 'http:' || parsed.protocol === 'https:') {
+      return parsed.toString();
+    }
+    return null;
+  } catch {
+    return null;
+  }
+};
+
+const resolveSocialHref = (
+  value: string | null | undefined,
+  platform: SocialPlatform,
+): string => {
+  const trimmed = value?.trim() || '';
+  if (!trimmed) return '';
+  const safe = sanitizeExternalUrl(trimmed);
+  if (safe) return safe;
+  if (/^www\./i.test(trimmed) || /^[a-z0-9.-]+\.[a-z]{2,}/i.test(trimmed)) {
+    return `https://${trimmed}`;
+  }
+  if (platform === 'whatsapp') {
+    const digits = trimmed.replace(/[^\d]/g, '');
+    if (digits.length >= 8) {
+      return `https://wa.me/${digits}`;
+    }
+    return '';
+  }
+  if (platform === 'instagram' || platform === 'facebook') {
+    const handle = trimmed.replace(/^@/, '').trim();
+    if (/^[a-zA-Z0-9._-]{2,60}$/.test(handle)) {
+      return `https://${platform}.com/${handle}`;
+    }
+    return '';
+  }
+  if (platform === 'tiktok') {
+    const handle = trimmed.startsWith('@') ? trimmed : `@${trimmed}`;
+    if (/^@[a-zA-Z0-9._-]{2,60}$/.test(handle)) {
+      return `https://tiktok.com/${handle}`;
+    }
+    return '';
+  }
+  return '';
 };
 
 const parseOptionalNumber = (value: unknown): number | null => {
@@ -109,19 +166,68 @@ const splitLocationLines = (location: string) => {
   };
 };
 
+type SocialPlatform = 'instagram' | 'facebook' | 'tiktok' | 'website' | 'whatsapp';
+
+const SocialIcon = ({ platform }: { platform: SocialPlatform }) => {
+  if (platform === 'instagram') {
+    return (
+      <svg viewBox="0 0 24 24" aria-hidden="true" className="h-4 w-4 fill-current">
+        <path d="M7 2h10a5 5 0 0 1 5 5v10a5 5 0 0 1-5 5H7a5 5 0 0 1-5-5V7a5 5 0 0 1 5-5Zm10 2H7a3 3 0 0 0-3 3v10a3 3 0 0 0 3 3h10a3 3 0 0 0 3-3V7a3 3 0 0 0-3-3Zm-5 3.5A4.5 4.5 0 1 1 7.5 12 4.5 4.5 0 0 1 12 7.5Zm0 2A2.5 2.5 0 1 0 14.5 12 2.5 2.5 0 0 0 12 9.5ZM17.75 6.5a1.25 1.25 0 1 1-1.25 1.25 1.25 1.25 0 0 1 1.25-1.25Z" />
+      </svg>
+    );
+  }
+  if (platform === 'facebook') {
+    return (
+      <svg viewBox="0 0 24 24" aria-hidden="true" className="h-4 w-4 fill-current">
+        <path d="M13 22v-9h3l.5-3H13V8.3c0-.9.3-1.5 1.6-1.5H16V4.1c-.3 0-1.2-.1-2.3-.1-2.3 0-3.8 1.4-3.8 4V10H7v3h2.9v9H13Z" />
+      </svg>
+    );
+  }
+  if (platform === 'tiktok') {
+    return (
+      <svg viewBox="0 0 24 24" aria-hidden="true" className="h-4 w-4 fill-current">
+        <path d="M15 3c.4 2 1.8 3.5 4 3.8v2.7c-1.6 0-3.1-.5-4.3-1.4v6.1a5.2 5.2 0 1 1-5.2-5.2c.4 0 .8 0 1.2.1v2.8a2.6 2.6 0 1 0 1.4 2.3V3H15Z" />
+      </svg>
+    );
+  }
+  if (platform === 'website') {
+    return (
+      <svg viewBox="0 0 24 24" aria-hidden="true" className="h-4 w-4 fill-current">
+        <path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2Zm7.9 9h-3.1a15.4 15.4 0 0 0-1.2-5A8 8 0 0 1 19.9 11Zm-7.9 9a13.2 13.2 0 0 1-2-7 13.2 13.2 0 0 1 2-7 13.2 13.2 0 0 1 2 7 13.2 13.2 0 0 1-2 7Zm-2.6-.4A15.4 15.4 0 0 1 8.2 13H4.1a8 8 0 0 0 5.3 6.6ZM4.1 11h4.1a15.4 15.4 0 0 1 1.2-5A8 8 0 0 0 4.1 11Zm10.5 8.6a15.4 15.4 0 0 0 1.2-5h4.1a8 8 0 0 1-5.3 5Zm1.2-8.6a15.4 15.4 0 0 0-1.2-5 8 8 0 0 1 5.3 5Z" />
+      </svg>
+    );
+  }
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" className="h-4 w-4 fill-current">
+      <path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5.1-1.3A10 10 0 1 0 12 2Zm0 18a8 8 0 0 1-4.2-1.2l-.4-.2-3 .8.8-2.9-.2-.4A8 8 0 1 1 12 20Zm4.2-6c-.2-.1-1.2-.6-1.4-.7s-.3-.1-.5.1-.6.7-.7.8-.3.1-.5 0a5.8 5.8 0 0 1-1.7-1.1 6.5 6.5 0 0 1-1.2-1.5c-.1-.2 0-.3.1-.4l.3-.4a1.5 1.5 0 0 0 .2-.4.5.5 0 0 0 0-.5c0-.1-.5-1.1-.7-1.5s-.4-.3-.5-.3h-.4a.8.8 0 0 0-.6.3 2.4 2.4 0 0 0-.8 1.8 4 4 0 0 0 .9 2.2 9.1 9.1 0 0 0 3.4 3 11.3 11.3 0 0 0 1.1.4 2.7 2.7 0 0 0 1.2.1 2 2 0 0 0 1.3-.9 1.6 1.6 0 0 0 .1-.9c0-.1-.2-.2-.4-.3Z" />
+    </svg>
+  );
+};
+
 type PublicProfessional = {
   id: string;
   slug: string;
+  name?: string;
   fullName: string;
   rubro: string;
+  description?: string | null;
   logoUrl?: string | null;
   headline?: string | null;
   about?: string | null;
+  address?: string | null;
   location?: string | null;
+  lat?: number | null;
+  lng?: number | null;
   latitude?: number | null;
   longitude?: number | null;
   email?: string | null;
+  phone?: string | null;
   phoneNumber?: string | null;
+  instagram?: string | null;
+  facebook?: string | null;
+  tiktok?: string | null;
+  website?: string | null;
+  whatsapp?: string | null;
   photos?: string[];
   services?: PublicService[];
   schedule?: ProfessionalSchedule;
@@ -139,12 +245,12 @@ export default function ProfesionalDetailPage() {
   const [data, setData] = useState<PublicProfessional | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [showContact, setShowContact] = useState(false);
   const [fallbackCoordinates, setFallbackCoordinates] = useState<{
     latitude: number;
     longitude: number;
   } | null>(null);
   const [selectedServiceIndex, setSelectedServiceIndex] = useState(0);
+  const [serviceDetailIndex, setServiceDetailIndex] = useState<number | null>(null);
   const [quickSlotGroups, setQuickSlotGroups] = useState<QuickSlotGroup[]>([]);
   const [isLoadingQuickSlots, setIsLoadingQuickSlots] = useState(false);
 
@@ -200,6 +306,11 @@ export default function ProfesionalDetailPage() {
       about: '',
       email: '',
       phoneNumber: '',
+      instagram: '',
+      facebook: '',
+      tiktok: '',
+      website: '',
+      whatsapp: '',
       latitude: null as number | null,
       longitude: null as number | null,
       photos: [],
@@ -213,16 +324,21 @@ export default function ProfesionalDetailPage() {
 
     return {
       ...fallback,
-      name: data.fullName || fallback.name,
+      name: data.fullName || data.name || fallback.name,
       category: data.rubro || fallback.category,
       logoUrl: data.logoUrl || fallback.logoUrl,
       headline: data.headline || fallback.headline,
-      about: data.about || fallback.about,
-      location: data.location || fallback.location,
+      about: data.about || data.description || fallback.about,
+      location: data.location || data.address || fallback.location,
       email: data.email || fallback.email,
-      phoneNumber: data.phoneNumber || fallback.phoneNumber,
-      latitude: parseOptionalNumber(data.latitude),
-      longitude: parseOptionalNumber(data.longitude),
+      phoneNumber: data.phoneNumber || data.phone || fallback.phoneNumber,
+      instagram: data.instagram || fallback.instagram,
+      facebook: data.facebook || fallback.facebook,
+      tiktok: data.tiktok || fallback.tiktok,
+      website: data.website || fallback.website,
+      whatsapp: data.whatsapp || fallback.whatsapp,
+      latitude: parseOptionalNumber(data.latitude ?? data.lat),
+      longitude: parseOptionalNumber(data.longitude ?? data.lng),
       photos: data.photos || fallback.photos,
       services: data.services || fallback.services,
       schedule: data.schedule ?? fallback.schedule,
@@ -251,16 +367,23 @@ export default function ProfesionalDetailPage() {
       ? data.services
       : [];
   const selectedService = displayServices[selectedServiceIndex] ?? null;
+  const serviceDetail = serviceDetailIndex !== null
+    ? displayServices[serviceDetailIndex] ?? null
+    : null;
 
   useEffect(() => {
     if (displayServices.length === 0) {
       setSelectedServiceIndex(0);
+      setServiceDetailIndex(null);
       return;
     }
     if (selectedServiceIndex >= displayServices.length) {
       setSelectedServiceIndex(0);
     }
-  }, [displayServices.length, selectedServiceIndex]);
+    if (serviceDetailIndex !== null && serviceDetailIndex >= displayServices.length) {
+      setServiceDetailIndex(null);
+    }
+  }, [displayServices.length, selectedServiceIndex, serviceDetailIndex]);
 
   const displaySchedule = merged.schedule ?? null;
   const scheduleDays = Array.isArray(displaySchedule?.days)
@@ -389,7 +512,10 @@ export default function ProfesionalDetailPage() {
   const serviceGalleryPhotos = useMemo(
     () =>
       displayServices
-        .flatMap((service) => service.photos ?? [])
+        .flatMap((service) => {
+          const galleryPhotos = Array.isArray(service.photos) ? service.photos : [];
+          return service.imageUrl ? [service.imageUrl, ...galleryPhotos] : galleryPhotos;
+        })
         .filter(Boolean),
     [displayServices],
   );
@@ -397,8 +523,7 @@ export default function ProfesionalDetailPage() {
   const galleryPhotos = useMemo(() => {
     const localPhotos = merged.photos ?? [];
     const combined = [...localPhotos, ...serviceGalleryPhotos];
-    if (combined.length > 0) return combined;
-    return Array.from({ length: 4 }).map(() => '');
+    return Array.from(new Set(combined.filter(Boolean))).slice(0, 15);
   }, [merged.photos, serviceGalleryPhotos]);
   const hasRealGalleryPhotos = galleryPhotos.some((photo) => Boolean(photo));
 
@@ -447,6 +572,20 @@ export default function ProfesionalDetailPage() {
     if (time) params.set('time', time);
     const query = params.toString();
     router.push(query ? `/reservar?${query}` : '/reservar');
+  };
+
+  const openServiceDetail = (index: number) => {
+    setServiceDetailIndex(index);
+  };
+
+  const closeServiceDetail = () => {
+    setServiceDetailIndex(null);
+  };
+
+  const handleSelectServiceFromDetail = () => {
+    if (serviceDetailIndex === null) return;
+    setSelectedServiceIndex(serviceDetailIndex);
+    setServiceDetailIndex(null);
   };
 
   const hasPublicContent = Boolean(
@@ -511,6 +650,27 @@ export default function ProfesionalDetailPage() {
     typeof mapLongitude === 'number' &&
     Number.isFinite(mapLongitude);
   const canShowMap = Boolean(addressLine) && hasRenderableCoordinates;
+  const profile = merged;
+  const addressValue = [addressLine, cityLine].filter(Boolean).join(', ');
+  const phoneValue = profile.phoneNumber?.trim() || '';
+  const emailValue = profile.email?.trim() || '';
+  const instagramValue = profile.instagram?.trim() || '';
+  const facebookValue = profile.facebook?.trim() || '';
+  const tiktokValue = profile.tiktok?.trim() || '';
+  const websiteValue = profile.website?.trim() || '';
+  const whatsappValue = profile.whatsapp?.trim() || '';
+  const hasSocial = Boolean(
+    profile.instagram ||
+      profile.facebook ||
+      profile.tiktok ||
+      profile.website ||
+      profile.whatsapp,
+  );
+  const instagramHref = resolveSocialHref(instagramValue, 'instagram');
+  const facebookHref = resolveSocialHref(facebookValue, 'facebook');
+  const tiktokHref = resolveSocialHref(tiktokValue, 'tiktok');
+  const websiteHref = resolveSocialHref(websiteValue, 'website');
+  const whatsappHref = resolveSocialHref(whatsappValue, 'whatsapp');
 
   return (
     <div
@@ -608,6 +768,19 @@ export default function ProfesionalDetailPage() {
           </div>
         </section>
 
+        <section className="mt-8 rounded-[30px] bg-white/95 px-6 py-7 shadow-[0_18px_40px_rgba(15,23,42,0.12)] sm:px-8">
+          <p className="text-[0.65rem] uppercase tracking-[0.35em] text-[#94A3B8]">Galeria</p>
+          <h2 className="mt-2 text-2xl font-semibold">Fotos del local, trabajos y servicios</h2>
+          <div className="mt-5">
+            <BusinessGallery photos={galleryPhotos} businessName={merged.name} />
+          </div>
+          {hasRealGalleryPhotos ? (
+            <p className="mt-3 text-xs text-[#94A3B8]">
+              Mostrando {Math.min(galleryPhotos.length, 6)} de {galleryPhotos.length} fotos.
+            </p>
+          ) : null}
+        </section>
+
         <section className="mt-10 rounded-[30px] bg-white/95 px-6 py-8 shadow-[0_18px_40px_rgba(15,23,42,0.12)] sm:px-8">
           <section>
             <p className="text-[0.65rem] uppercase tracking-[0.35em] text-[#94A3B8]">Servicios</p>
@@ -617,11 +790,18 @@ export default function ProfesionalDetailPage() {
             ) : (
               <div className="mt-6 divide-y divide-[#E6EBF0]">
                 {displayServices.map((service, index) => (
-                  <button
+                  <div
                     key={service.id ?? service.name ?? `service-${index}`}
-                    type="button"
+                    role="button"
+                    tabIndex={0}
                     onClick={() => setSelectedServiceIndex(index)}
-                    className={`grid w-full gap-3 py-4 text-left transition sm:grid-cols-[32px_minmax(0,1fr)_140px_120px] sm:items-center ${
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter' || event.key === ' ') {
+                        event.preventDefault();
+                        setSelectedServiceIndex(index);
+                      }
+                    }}
+                    className={`grid w-full gap-3 py-4 text-left transition sm:grid-cols-[32px_56px_minmax(0,1fr)_140px_120px] sm:items-center ${
                       selectedServiceIndex === index ? 'bg-[#F7FBFA]' : ''
                     }`}
                   >
@@ -632,10 +812,40 @@ export default function ProfesionalDetailPage() {
                         }`}
                       />
                     </span>
-                    <p className="text-base font-semibold text-[#0E2A47]">{service.name}</p>
+                    <div className="h-14 w-14 overflow-hidden rounded-[12px] border border-[#D9E2EC] bg-white">
+                      {service.imageUrl && sanitizeImageSrc(service.imageUrl) ? (
+                        <img
+                          src={sanitizeImageSrc(service.imageUrl)}
+                          alt={service.name || 'Servicio'}
+                          className="h-full w-full object-cover"
+                        />
+                      ) : (
+                        <div className="flex h-full w-full items-center justify-center text-[0.55rem] font-semibold uppercase tracking-[0.1em] text-[#94A3B8]">
+                          Sin foto
+                        </div>
+                      )}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-base font-semibold text-[#0E2A47]">{service.name}</p>
+                      {service.description ? (
+                        <p className="mt-0.5 line-clamp-2 text-xs text-[#64748B]">
+                          {service.description}
+                        </p>
+                      ) : null}
+                      <button
+                        type="button"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          openServiceDetail(index);
+                        }}
+                        className="mt-1 rounded-full border border-[#D9E2EC] bg-white px-2.5 py-1 text-[0.68rem] font-semibold text-[#0E2A47] transition hover:-translate-y-0.5 hover:shadow-sm"
+                      >
+                        Ver info
+                      </button>
+                    </div>
                     <p className="text-sm text-[#64748B]">{formatServiceDuration(service.duration)}</p>
                     <p className="text-base font-semibold text-[#1FB6A6]">{formatServicePrice(service.price)}</p>
-                  </button>
+                  </div>
                 ))}
               </div>
             )}
@@ -725,18 +935,6 @@ export default function ProfesionalDetailPage() {
             ) : (
               <p className="mt-4 text-sm text-[#64748B]">Sin descripción cargada.</p>
             )}
-
-            {hasRealGalleryPhotos ? (
-              <div className="mt-6 grid gap-4 sm:grid-cols-2">
-                {galleryPhotos.filter(Boolean).map((src, index) => (
-                  <div
-                    key={`gallery-${index}`}
-                    className="h-40 rounded-[18px] bg-[#EEF2F6] bg-cover bg-center"
-                    style={{ backgroundImage: `url("${sanitizeImageSrc(src) ?? ''}")` }}
-                  />
-                ))}
-              </div>
-            ) : null}
           </section>
 
           <section className="mt-10 border-t border-[#E6EBF0] pt-10">
@@ -744,35 +942,99 @@ export default function ProfesionalDetailPage() {
             <h2 className="mt-2 text-2xl font-semibold">Datos, ubicación y mapa</h2>
             <div className="mt-5 grid gap-6 lg:grid-cols-[280px,1fr]">
               <div className="text-sm text-[#64748B]">
-                <p className="font-semibold text-[#0E2A47]">Dirección</p>
-                {addressLine ? (
-                  <>
-                    <p className="mt-1">{addressLine}</p>
-                    {cityLine ? <p>{cityLine}</p> : null}
-                  </>
-                ) : (
-                  <p className="mt-1">Ubicación no disponible</p>
-                )}
-
-                <p className="mt-5 font-semibold text-[#0E2A47]">Contacto</p>
-                {(merged.email || merged.phoneNumber) ? (
-                  showContact ? (
-                    <div className="mt-1 space-y-1">
-                      {merged.email ? <p>{merged.email}</p> : null}
-                      {merged.phoneNumber ? <p>{merged.phoneNumber}</p> : null}
-                    </div>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => setShowContact(true)}
-                      className="mt-2 rounded-full border border-[#1FB6A6] px-3 py-1 text-xs font-semibold text-[#1FB6A6] transition hover:bg-[#1FB6A6]/10"
-                    >
-                      Ver datos de contacto
-                    </button>
-                  )
+                <p className="font-semibold text-[#0E2A47]">Contacto</p>
+                {addressValue || phoneValue || emailValue ? (
+                  <div className="mt-2 space-y-2">
+                    {addressValue ? (
+                      <div className="flex items-center gap-2">
+                        <span className="inline-flex min-w-[1.8rem] justify-center text-sm">📍</span>
+                        <span className="text-sm text-[#475569]">{addressValue}</span>
+                      </div>
+                    ) : null}
+                    {phoneValue ? (
+                      <div className="flex items-center gap-2">
+                        <span className="inline-flex min-w-[1.8rem] justify-center text-sm">📞</span>
+                        <span className="text-sm text-[#475569]">{phoneValue}</span>
+                      </div>
+                    ) : null}
+                    {emailValue ? (
+                      <div className="flex items-center gap-2">
+                        <span className="inline-flex min-w-[1.8rem] justify-center text-sm">✉️</span>
+                        <span className="text-sm text-[#475569]">{emailValue}</span>
+                      </div>
+                    ) : null}
+                  </div>
                 ) : (
                   <p className="mt-1">-</p>
                 )}
+
+                {hasSocial ? (
+                  <>
+                    <p className="mt-6 font-semibold text-[#0E2A47]">Redes</p>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {instagramValue && instagramHref ? (
+                        <a
+                          href={instagramHref}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-[#D9E2EC] bg-white text-[#0E2A47] transition hover:-translate-y-0.5 hover:shadow-sm"
+                          title="Instagram"
+                          aria-label="Instagram"
+                        >
+                          <SocialIcon platform="instagram" />
+                        </a>
+                      ) : null}
+                      {facebookValue && facebookHref ? (
+                        <a
+                          href={facebookHref}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-[#D9E2EC] bg-white text-[#0E2A47] transition hover:-translate-y-0.5 hover:shadow-sm"
+                          title="Facebook"
+                          aria-label="Facebook"
+                        >
+                          <SocialIcon platform="facebook" />
+                        </a>
+                      ) : null}
+                      {tiktokValue && tiktokHref ? (
+                        <a
+                          href={tiktokHref}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-[#D9E2EC] bg-white text-[#0E2A47] transition hover:-translate-y-0.5 hover:shadow-sm"
+                          title="TikTok"
+                          aria-label="TikTok"
+                        >
+                          <SocialIcon platform="tiktok" />
+                        </a>
+                      ) : null}
+                      {websiteValue && websiteHref ? (
+                        <a
+                          href={websiteHref}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-[#D9E2EC] bg-white text-[#0E2A47] transition hover:-translate-y-0.5 hover:shadow-sm"
+                          title="Website"
+                          aria-label="Website"
+                        >
+                          <SocialIcon platform="website" />
+                        </a>
+                      ) : null}
+                      {whatsappValue && whatsappHref ? (
+                        <a
+                          href={whatsappHref}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-[#D9E2EC] bg-white text-[#0E2A47] transition hover:-translate-y-0.5 hover:shadow-sm"
+                          title="WhatsApp"
+                          aria-label="WhatsApp"
+                        >
+                          <SocialIcon platform="whatsapp" />
+                        </a>
+                      ) : null}
+                    </div>
+                  </>
+                ) : null}
               </div>
               {canShowMap ? (
                 <PublicProfileMap
@@ -814,6 +1076,12 @@ export default function ProfesionalDetailPage() {
         </div>
       ) : null}
       {isPreview ? null : <Footer />}
+      <ServiceDetailModal
+        isOpen={serviceDetailIndex !== null}
+        service={serviceDetail}
+        onClose={closeServiceDetail}
+        onSelectService={handleSelectServiceFromDetail}
+      />
     </div>
   );
 }

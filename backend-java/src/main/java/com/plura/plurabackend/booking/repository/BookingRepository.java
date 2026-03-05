@@ -6,6 +6,7 @@ import com.plura.plurabackend.booking.model.BookingStatus;
 import com.plura.plurabackend.professional.model.ProfessionalProfile;
 import com.plura.plurabackend.user.model.User;
 import java.time.LocalDateTime;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.domain.Pageable;
@@ -82,6 +83,26 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
     )
     List<Booking> findBookedWithServiceByProfessionalAndStartDateTimeBetween(
         @Param("professional") ProfessionalProfile professional,
+        @Param("start") LocalDateTime start,
+        @Param("end") LocalDateTime end,
+        @Param("excludedStatus") BookingStatus excludedStatus
+    );
+
+    @Query(
+        """
+        SELECT b
+        FROM Booking b
+        JOIN FETCH b.service s
+        JOIN FETCH b.professional p
+        WHERE p.id IN :professionalIds
+            AND b.startDateTime >= :start
+            AND b.startDateTime <= :end
+            AND b.status <> :excludedStatus
+        ORDER BY p.id ASC, b.startDateTime ASC
+        """
+    )
+    List<Booking> findBookedWithServiceByProfessionalIdsAndStartDateTimeBetween(
+        @Param("professionalIds") Collection<Long> professionalIds,
         @Param("start") LocalDateTime start,
         @Param("end") LocalDateTime end,
         @Param("excludedStatus") BookingStatus excludedStatus

@@ -16,6 +16,7 @@ const isAuthRoute = (url?: string) => {
   return (
     url.includes('/auth/login') ||
     url.includes('/auth/register') ||
+    url.includes('/auth/oauth') ||
     url.includes('/auth/refresh') ||
     url.includes('/auth/logout')
   );
@@ -50,6 +51,7 @@ const redirectToLogin = () => {
     window.location.href = '/cliente/auth/login';
     return;
   }
+  window.location.href = `/cliente/auth/login?redirect=${encodeURIComponent(path + window.location.search)}`;
 };
 
 // Variable de módulo para deduplicar refreshes concurrentes.
@@ -69,7 +71,11 @@ api.interceptors.response.use(
     ) {
       originalRequest._retry = true;
 
-      if (!refreshPromise && typeof window !== 'undefined') {
+      if (typeof window === 'undefined') {
+        return Promise.reject(error);
+      }
+
+      if (!refreshPromise) {
         refreshPromise = authApi
           .post('/auth/refresh')
           .then(() => undefined)

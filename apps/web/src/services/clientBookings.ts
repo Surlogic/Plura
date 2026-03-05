@@ -1,4 +1,4 @@
-import api from '@/services/api';
+import { cachedGet } from '@/services/cachedGet';
 
 type ClientNextBookingDto = {
   id: number;
@@ -45,7 +45,11 @@ const formatTimeLabel = (startDateTime: string) => {
 };
 
 export const getClientNextBooking = async (): Promise<ClientDashboardNextBooking | null> => {
-  const response = await api.get<ClientNextBookingDto | ''>('/cliente/reservas/proxima');
+  const response = await cachedGet<ClientNextBookingDto | ''>(
+    '/cliente/reservas/proxima',
+    undefined,
+    { ttlMs: 15000, staleWhileRevalidate: true },
+  );
 
   if (!response.data || typeof response.data === 'string') {
     return null;

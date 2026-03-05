@@ -11,6 +11,8 @@ import org.springframework.boot.test.context.SpringBootTest;
 	"JWT_SECRET=test-secret-for-context-load",
 	"JWT_REFRESH_PEPPER=test-refresh-pepper",
 	"APP_TIMEZONE=America/Montevideo",
+	"CACHE_ENABLED=false",
+	"HIKARI_CONNECTION_INIT_SQL=SELECT 1",
 	"SWAGGER_ENABLED=false",
 })
 class PluraBackendApplicationTests {

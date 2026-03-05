@@ -4,8 +4,6 @@
   --background: #f5f8f7;
   --foreground: #171717;
   --bg-glow-1: rgba(31, 182, 166, 0.2);
-  --bg-glow-2: rgba(255, 198, 128, 0.24);
-  --bg-glow-3: rgba(14, 42, 71, 0.12);
 }
 
 @theme inline {
@@ -22,8 +20,6 @@
     --background: #0b1113;
     --foreground: #ededed;
     --bg-glow-1: rgba(31, 182, 166, 0.2);
-    --bg-glow-2: rgba(255, 198, 128, 0.18);
-    --bg-glow-3: rgba(255, 255, 255, 0.08);
   }
 }
 
@@ -34,10 +30,8 @@ body {
   line-height: 1.6;
   letter-spacing: 0.005em;
   background-image:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.7), rgba(245, 248, 247, 0.9)),
-    radial-gradient(1200px 800px at 10% -10%, var(--bg-glow-1), transparent 60%),
-    radial-gradient(900px 600px at 90% 0%, var(--bg-glow-2), transparent 55%),
-    radial-gradient(800px 500px at 50% 100%, var(--bg-glow-3), transparent 60%);
+    linear-gradient(180deg, rgba(255, 255, 255, 0.72), rgba(245, 248, 247, 0.96)),
+    radial-gradient(900px 560px at 12% -8%, var(--bg-glow-1), transparent 68%);
   background-repeat: no-repeat;
 }
 

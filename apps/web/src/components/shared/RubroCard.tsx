@@ -7,6 +7,7 @@ type RubroCardProps = {
   imageUrl?: string | null;
   className?: string;
   sizes?: string;
+  priority?: boolean;
 };
 
 const normalizeImageUrl = (value?: string | null) => {
@@ -30,6 +31,7 @@ export default function RubroCard({
   imageUrl,
   className,
   sizes = '(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw',
+  priority = false,
 }: RubroCardProps) {
   const normalizedImageUrl = normalizeImageUrl(imageUrl);
 
@@ -48,6 +50,7 @@ export default function RubroCard({
             alt={title}
             fill
             sizes={sizes}
+            priority={priority}
             className="object-cover transition duration-500 group-hover:scale-105"
           />
         ) : (

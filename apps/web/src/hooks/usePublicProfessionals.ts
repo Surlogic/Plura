@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import api from '@/services/api';
+import { cachedGet } from '@/services/cachedGet';
 import type { PublicProfessionalSummary } from '@/types/professional';
 
 type UsePublicProfessionalsOptions = {
@@ -23,7 +23,7 @@ export const usePublicProfessionals = (options?: UsePublicProfessionalsOptions) 
       setIsLoading(true);
       setError(null);
       try {
-        const response = await api.get<PublicProfessionalSummary[]>(
+        const response = await cachedGet<PublicProfessionalSummary[]>(
           '/public/profesionales',
           {
             params: {
@@ -32,6 +32,10 @@ export const usePublicProfessionals = (options?: UsePublicProfessionalsOptions) 
               ...(options?.categorySlug ? { categorySlug: options.categorySlug } : {}),
             },
             signal: controller.signal,
+          },
+          {
+            ttlMs: 30000,
+            staleWhileRevalidate: true,
           },
         );
         if (!isMounted) return;

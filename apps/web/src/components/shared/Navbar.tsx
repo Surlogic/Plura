@@ -40,11 +40,15 @@ export default function Navbar({
     hasLoaded: clientHasLoaded,
     isLoading: clientLoading,
   } = useClientProfileContext();
-  const showAuthLoading =
-    !professionalHasLoaded ||
-    !clientHasLoaded ||
-    professionalLoading ||
-    clientLoading;
+  const isAuthPage = router.pathname.startsWith('/cliente/auth') ||
+    router.pathname.startsWith('/profesional/auth');
+  const showAuthLoading = !isAuthPage && (
+    (router.pathname.startsWith('/profesional/dashboard') &&
+      (!professionalHasLoaded || professionalLoading)) ||
+    ((router.pathname.startsWith('/cliente') ||
+      router.pathname.startsWith('/explorar') ||
+      router.pathname.startsWith('/reservar')) &&
+      (!clientHasLoaded || clientLoading)));
   const role: 'PUBLIC' | 'CLIENT' | 'PROFESSIONAL' = professionalProfile
     ? 'PROFESSIONAL'
     : clientProfile

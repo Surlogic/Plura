@@ -7,10 +7,17 @@ import { useRouter } from 'next/router';
 import axios from 'axios';
 import Navbar from '@/components/shared/Navbar';
 import Footer from '@/components/shared/Footer';
+import GoogleLoginButton from '@/components/auth/GoogleLoginButton';
+import AppleLoginButton from '@/components/auth/AppleLoginButton';
 import api from '@/services/api';
+import { useClientProfileContext } from '@/context/ClientProfileContext';
+import { useProfessionalProfileContext } from '@/context/ProfessionalProfileContext';
+import type { OAuthLoginResult } from '@/lib/auth/oauthLogin';
 
 export default function ClienteRegisterPage() {
   const router = useRouter();
+  const { refreshProfile: refreshClientProfile } = useClientProfileContext();
+  const { refreshProfile: refreshProfessionalProfile } = useProfessionalProfileContext();
   const redirectIntent = Array.isArray(router.query.redirect)
     ? router.query.redirect[0]
     : router.query.redirect;
@@ -38,6 +45,17 @@ export default function ClienteRegisterPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+
+  const handleOAuthAuthenticated = async (result: OAuthLoginResult) => {
+    setErrorMessage(null);
+    if (result.role === 'PROFESSIONAL') {
+      await refreshProfessionalProfile();
+      router.push('/profesional/dashboard');
+      return;
+    }
+    await refreshClientProfile();
+    router.push('/cliente/inicio');
+  };
 
   const handleChange = (event: ChangeEvent<HTMLInputElement>) => {
     const { name, value } = event.target;
@@ -191,6 +209,34 @@ export default function ClienteRegisterPage() {
             <p className="text-sm text-[#6B7280]">
               Completá tus datos para comenzar en Plura.
             </p>
+          </div>
+
+          <div className="space-y-3">
+            <div className="flex items-center gap-3">
+              <div className="h-px flex-1 bg-[#E2E8F0]" />
+              <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#94A3B8]">
+                Registrate con
+              </span>
+              <div className="h-px flex-1 bg-[#E2E8F0]" />
+            </div>
+            <div className="space-y-2">
+              <GoogleLoginButton
+                onAuthenticated={handleOAuthAuthenticated}
+                onError={setErrorMessage}
+              />
+              <AppleLoginButton
+                onAuthenticated={handleOAuthAuthenticated}
+                onError={setErrorMessage}
+              />
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <div className="h-px flex-1 bg-[#E2E8F0]" />
+            <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#94A3B8]">
+              o con email
+            </span>
+            <div className="h-px flex-1 bg-[#E2E8F0]" />
           </div>
 
           <form className="space-y-4" onSubmit={handleSubmit}>

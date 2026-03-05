@@ -1,3 +1,4 @@
+import { isAxiosError } from 'axios';
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/router';
 import dynamic from 'next/dynamic';
@@ -185,6 +186,8 @@ export default function ExplorarPage() {
   const [total, setTotal] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [selectedMapItemId, setSelectedMapItemId] = useState<string | null>(null);
+  const [hoveredMapItemId, setHoveredMapItemId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!router.isReady) return;
@@ -228,6 +231,16 @@ export default function ExplorarPage() {
         }
         setItems([]);
         setTotal(0);
+        if (isAxiosError(err) && !err.response) {
+          setError(
+            'No pudimos conectar con el backend de búsqueda. Verificá que el API esté corriendo en localhost:3000.',
+          );
+          return;
+        }
+        if (isAxiosError(err) && err.response?.status && err.response.status >= 500) {
+          setError('El backend devolvió un error interno al buscar resultados.');
+          return;
+        }
         setError('No se pudieron cargar los resultados de búsqueda.');
       })
       .finally(() => {
@@ -256,6 +269,15 @@ export default function ExplorarPage() {
     size,
     sort,
   ]);
+
+  useEffect(() => {
+    if (selectedMapItemId && !items.some((item) => String(item.id) === selectedMapItemId)) {
+      setSelectedMapItemId(null);
+    }
+    if (hoveredMapItemId && !items.some((item) => String(item.id) === hoveredMapItemId)) {
+      setHoveredMapItemId(null);
+    }
+  }, [hoveredMapItemId, items, selectedMapItemId]);
 
   const filterValues = useMemo<Partial<UnifiedSearchValues>>(
     () => ({
@@ -398,6 +420,7 @@ export default function ExplorarPage() {
     const rounded = Math.round(radiusKm);
     return RADIUS_OPTIONS.includes(rounded) ? rounded : SEARCH_DEFAULT_RADIUS_KM;
   }, [radiusKm]);
+  const activeMapItemId = hoveredMapItemId || selectedMapItemId;
 
   return (
     <div className="min-h-screen bg-[#F4F6F8] text-[#0E2A47]">
@@ -504,21 +527,31 @@ export default function ExplorarPage() {
                 {isLoading ? 'Cargando...' : `${total.toLocaleString('es-UY')} resultados`}
               </span>
             </div>
-            {error ? (
-              <div className="rounded-[20px] border border-dashed border-[#E2E7EC] bg-white px-4 py-6 text-sm text-[#64748B]">
-                {error}
-              </div>
-            ) : items.length === 0 ? (
-              <div className="rounded-[20px] border border-dashed border-[#E2E7EC] bg-white px-4 py-6 text-sm text-[#64748B]">
-                {isLoading ? 'Buscando profesionales...' : 'No hay resultados para esos filtros.'}
-              </div>
-            ) : (
-              <div className="grid gap-4 lg:grid-cols-12">
-                <div className="order-2 rounded-[24px] border border-[#0E2A47]/10 bg-white p-4 shadow-sm lg:order-1 lg:col-span-5 lg:max-h-[620px] lg:overflow-y-auto">
+            <div className="grid gap-4 lg:grid-cols-12">
+              <div className="order-2 rounded-[24px] border border-[#0E2A47]/10 bg-white p-4 shadow-sm lg:order-1 lg:col-span-5 lg:max-h-[620px] lg:overflow-y-auto">
+                {error ? (
+                  <div className="rounded-[16px] border border-dashed border-[#E2E7EC] bg-[#F8FAFC] px-4 py-6 text-sm text-[#64748B]">
+                    {error}
+                  </div>
+                ) : items.length === 0 ? (
+                  <div className="rounded-[16px] border border-dashed border-[#E2E7EC] bg-[#F8FAFC] px-4 py-6 text-sm text-[#64748B]">
+                    {isLoading ? (
+                      'Buscando profesionales...'
+                    ) : (
+                      <div className="space-y-1">
+                        <p className="font-semibold text-[#0E2A47]">
+                          No encontramos profesionales en esta zona.
+                        </p>
+                        <p>Intentá ampliar el radio, buscar otro rubro o quitar filtros.</p>
+                      </div>
+                    )}
+                  </div>
+                ) : (
                   <div className="grid grid-cols-1 gap-4">
-                    {items.map((item) => (
+                    {items.map((item, index) => (
                       <ExploreCard
                         key={item.id}
+                        id={String(item.id)}
                         name={item.name}
                         category={
                           item.categorySlugs.length > 0
@@ -536,21 +569,49 @@ export default function ExplorarPage() {
                             ? `/profesional/pagina/${encodeURIComponent(item.slug)}`
                             : undefined
                         }
+                        isHighlighted={activeMapItemId === String(item.id)}
+                        priority={index < 2}
+                        onHoverStart={(id) => {
+                          if (!id) return;
+                          setHoveredMapItemId(id);
+                        }}
+                        onHoverEnd={(id) => {
+                          if (!id) {
+                            setHoveredMapItemId(null);
+                            return;
+                          }
+                          setHoveredMapItemId((current) => (current === id ? null : current));
+                        }}
                       />
                     ))}
                   </div>
-                </div>
-                <div className="order-1 rounded-[24px] border border-[#0E2A47]/10 bg-white p-4 shadow-sm lg:order-2 lg:col-span-7">
-                  {items.length > 0 ? (
-                    <ExploreMap results={items} userLocation={mapUserLocation} />
-                  ) : (
-                    <div className="flex h-[420px] items-center justify-center rounded-[20px] bg-[#E9EEF2] px-4 text-center text-sm text-[#6B7280]">
-                      No hay resultados para mostrar en el mapa.
+                )}
+              </div>
+              <div className="order-1 rounded-[24px] border border-[#0E2A47]/10 bg-white p-4 shadow-sm lg:order-2 lg:col-span-7">
+                <div className="relative">
+                  <ExploreMap
+                    results={items}
+                    userLocation={mapUserLocation}
+                    activeResultId={activeMapItemId}
+                    onActiveResultChange={setSelectedMapItemId}
+                  />
+                  {isLoading ? (
+                    <div className="pointer-events-none absolute inset-x-0 top-3 flex justify-center px-4">
+                      <p className="rounded-full bg-white/95 px-3 py-1 text-xs font-semibold text-[#0E2A47] shadow-sm">
+                        Cargando resultados...
+                      </p>
                     </div>
-                  )}
+                  ) : null}
+                  {!isLoading && items.length === 0 ? (
+                    <div className="pointer-events-none absolute inset-x-0 bottom-3 flex justify-center px-4">
+                      <p className="rounded-full bg-white/95 px-3 py-1 text-xs font-semibold text-[#0E2A47] shadow-sm">
+                        No hay profesionales en esta zona. Mové el mapa o ampliá el radio.
+                      </p>
+                    </div>
+                  ) : null}
                 </div>
               </div>
-            )}
+            </div>
           </section>
         ) : (
           <section className="space-y-4">
@@ -566,12 +627,21 @@ export default function ExplorarPage() {
               </div>
             ) : items.length === 0 ? (
               <div className="rounded-[20px] border border-dashed border-[#E2E7EC] bg-white px-4 py-6 text-sm text-[#64748B]">
-                {isLoading ? 'Buscando profesionales...' : 'No hay resultados para esos filtros.'}
+                {isLoading ? (
+                  'Buscando profesionales...'
+                ) : (
+                  <div className="space-y-1">
+                    <p className="font-semibold text-[#0E2A47]">
+                      No encontramos profesionales en esta zona.
+                    </p>
+                    <p>Intentá ampliar el radio, buscar otro rubro o quitar filtros.</p>
+                  </div>
+                )}
               </div>
             ) : (
               <>
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                  {items.map((item) => (
+                  {items.map((item, index) => (
                     <ExploreCard
                       key={item.id}
                       name={item.name}
@@ -591,6 +661,7 @@ export default function ExplorarPage() {
                           ? `/profesional/pagina/${encodeURIComponent(item.slug)}`
                           : undefined
                       }
+                      priority={index < 4}
                     />
                   ))}
                 </div>

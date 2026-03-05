@@ -1,10 +1,14 @@
 package com.plura.plurabackend.professional.repository;
 
 import com.plura.plurabackend.professional.model.ProfessionalProfile;
+import org.springframework.data.jpa.repository.EntityGraph;
 import jakarta.persistence.LockModeType;
+import java.util.UUID;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
+import java.time.LocalDateTime;
+import org.springframework.data.domain.Page;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Modifying;
@@ -13,10 +17,12 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.repository.query.Param;
 
 public interface ProfessionalProfileRepository extends JpaRepository<ProfessionalProfile, Long> {
+    @EntityGraph(attributePaths = {"user", "categories"})
     Optional<ProfessionalProfile> findBySlug(String slug);
 
     boolean existsBySlug(String slug);
 
+    @EntityGraph(attributePaths = {"user", "categories"})
     Optional<ProfessionalProfile> findByUser_Id(Long userId);
 
     long countByActiveTrue();
@@ -47,6 +53,37 @@ public interface ProfessionalProfileRepository extends JpaRepository<Professiona
         """
     )
     List<ProfessionalProfile> findByActiveTrueWithRelationsOrderByCreatedAtDesc(Pageable pageable);
+
+    @Query(
+        """
+        SELECT p.id
+        FROM ProfessionalProfile p
+        WHERE p.active = true
+            AND (
+                :categoryId IS NULL
+                OR EXISTS (
+                    SELECT 1
+                    FROM p.categories categoryById
+                    WHERE categoryById.id = :categoryId
+                )
+            )
+            AND (
+                :categorySlug IS NULL
+                OR :categorySlug = ''
+                OR EXISTS (
+                    SELECT 1
+                    FROM p.categories categoryBySlug
+                    WHERE LOWER(categoryBySlug.slug) = LOWER(:categorySlug)
+                )
+            )
+        ORDER BY p.createdAt DESC
+        """
+    )
+    Page<Long> findActiveIdsForPublicListing(
+        @Param("categoryId") UUID categoryId,
+        @Param("categorySlug") String categorySlug,
+        Pageable pageable
+    );
 
     @Query(
         """
@@ -83,4 +120,43 @@ public interface ProfessionalProfileRepository extends JpaRepository<Professiona
         @Param("lat") Double latitude,
         @Param("lng") Double longitude
     );
+
+    @Modifying
+    @Query(
+        value = """
+            UPDATE professional_profile
+            SET has_availability_today = :hasAvailabilityToday
+            WHERE id = :profileId
+            """,
+        nativeQuery = true
+    )
+    void updateHasAvailabilityToday(
+        @Param("profileId") Long profileId,
+        @Param("hasAvailabilityToday") boolean hasAvailabilityToday
+    );
+
+    @Modifying
+    @Query(
+        value = """
+            UPDATE professional_profile
+            SET has_availability_today = :hasAvailabilityToday,
+                next_available_at = :nextAvailableAt
+            WHERE id = :profileId
+            """,
+        nativeQuery = true
+    )
+    void updateAvailabilitySummary(
+        @Param("profileId") Long profileId,
+        @Param("hasAvailabilityToday") boolean hasAvailabilityToday,
+        @Param("nextAvailableAt") LocalDateTime nextAvailableAt
+    );
+
+    @Query(
+        """
+        SELECT COUNT(p)
+        FROM ProfessionalProfile p
+        WHERE p.active = true AND p.nextAvailableAt IS NULL
+        """
+    )
+    long countActiveWithNextAvailableAtNull();
 }

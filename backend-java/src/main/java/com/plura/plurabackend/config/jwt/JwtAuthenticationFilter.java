@@ -75,6 +75,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 authorities.add(new SimpleGrantedAuthority("ROLE_PROFESSIONAL"));
             } else if ("USER".equals(role)) {
                 authorities.add(new SimpleGrantedAuthority("ROLE_USER"));
+            } else {
+                SecurityContextHolder.clearContext();
+                response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Rol de token inválido");
+                return;
             }
 
             // Crea la autenticación con el subject del JWT.

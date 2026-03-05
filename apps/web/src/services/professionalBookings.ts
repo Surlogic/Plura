@@ -1,4 +1,5 @@
 import api from '@/services/api';
+import { cachedGet, invalidateCachedGet } from '@/services/cachedGet';
 import type { ProfessionalReservation, ReservationStatus } from '@/types/professional';
 
 type ApiReservationStatus = 'PENDING' | 'CONFIRMED' | 'CANCELLED' | 'COMPLETED';
@@ -14,6 +15,20 @@ type ProfessionalBookingDto = {
   postBufferMinutes?: number;
   effectiveDurationMinutes?: number;
   status: ApiReservationStatus;
+};
+
+type ProfessionalBookingCreatePayload = {
+  clientName: string;
+  clientEmail?: string;
+  clientPhone?: string;
+  serviceId: string;
+  startDateTime: string;
+};
+
+type ProfessionalServiceDto = {
+  id: string;
+  name: string;
+  active?: boolean;
 };
 
 const toFrontendStatus = (status: ApiReservationStatus): ReservationStatus => {
@@ -73,9 +88,16 @@ export const getProfessionalReservationsByRange = async (
   dateFrom: string,
   dateTo: string,
 ): Promise<ProfessionalReservation[]> => {
-  const response = await api.get<ProfessionalBookingDto[]>('/profesional/reservas', {
-    params: { dateFrom, dateTo },
-  });
+  const response = await cachedGet<ProfessionalBookingDto[]>(
+    '/profesional/reservas',
+    {
+      params: { dateFrom, dateTo },
+    },
+    {
+      ttlMs: 8000,
+      staleWhileRevalidate: true,
+    },
+  );
   return response.data.map(mapBooking);
 };
 
@@ -95,5 +117,27 @@ export const updateProfessionalReservationStatus = async (
     `/profesional/reservas/${id}`,
     { status: toApiStatus(status) },
   );
+  invalidateCachedGet('/profesional/reservas');
   return mapBooking(response.data);
+};
+
+export const createProfessionalReservation = async (
+  payload: ProfessionalBookingCreatePayload,
+): Promise<ProfessionalReservation> => {
+  const response = await api.post<ProfessionalBookingDto>('/profesional/reservas', payload);
+  invalidateCachedGet('/profesional/reservas');
+  return mapBooking(response.data);
+};
+
+export const listProfessionalServices = async (): Promise<ProfessionalServiceDto[]> => {
+  const response = await cachedGet<ProfessionalServiceDto[]>(
+    '/profesional/services',
+    undefined,
+    {
+      ttlMs: 15000,
+      staleWhileRevalidate: true,
+    },
+  );
+  const services = Array.isArray(response.data) ? response.data : [];
+  return services.filter((service) => service?.active !== false);
 };

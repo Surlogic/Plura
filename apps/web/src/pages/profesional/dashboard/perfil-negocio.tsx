@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import Navbar from '@/components/shared/Navbar';
 import ProfesionalSidebar from '@/components/profesional/Sidebar';
 import { useProfessionalProfile } from '@/hooks/useProfessionalProfile';
@@ -49,12 +49,16 @@ type BusinessProfileForm = {
   longitude?: number;
   email: string;
   phone: string;
+  instagram: string;
+  facebook: string;
+  tiktok: string;
+  website: string;
+  whatsapp: string;
 };
 
 export default function ProfesionalBusinessProfilePage() {
   const { profile, isLoading, hasLoaded, refreshProfile } = useProfessionalProfile();
   const { categories, isLoading: isLoadingCategories } = useCategories();
-  const [origin, setOrigin] = useState('https://plura.com');
   const [hasInitialized, setHasInitialized] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -70,6 +74,11 @@ export default function ProfesionalBusinessProfilePage() {
     longitude: undefined,
     email: '',
     phone: '',
+    instagram: '',
+    facebook: '',
+    tiktok: '',
+    website: '',
+    whatsapp: '',
   });
   const [initialForm, setInitialForm] = useState<BusinessProfileForm | null>(null);
 
@@ -104,6 +113,11 @@ export default function ProfesionalBusinessProfilePage() {
       longitude: typeof profile.longitude === 'number' ? profile.longitude : undefined,
       email: profile.email || '',
       phone: profile.phoneNumber || '',
+      instagram: profile.instagram || '',
+      facebook: profile.facebook || '',
+      tiktok: profile.tiktok || '',
+      website: profile.website || '',
+      whatsapp: profile.whatsapp || '',
     };
 
     setForm(initialData);
@@ -112,16 +126,6 @@ export default function ProfesionalBusinessProfilePage() {
     setHasInitialized(true);
   }, [profile, hasInitialized, categories, isLoadingCategories]);
 
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    setOrigin(window.location.origin);
-  }, []);
-
-  const slug = useMemo(
-    () => profile?.slug?.trim() || slugify(form.businessName || 'profesional'),
-    [profile?.slug, form.businessName],
-  );
-  const publicUrl = `${origin}/profesional/pagina/${slug || 'profesional'}`;
   const showSkeleton = !hasLoaded || (isLoading && !profile);
 
   const inputClassName =
@@ -225,6 +229,11 @@ export default function ProfesionalBusinessProfilePage() {
         latitude,
         longitude,
         phoneNumber: form.phone.trim(),
+        instagram: form.instagram.trim(),
+        facebook: form.facebook.trim(),
+        tiktok: form.tiktok.trim(),
+        website: form.website.trim(),
+        whatsapp: form.whatsapp.trim(),
       };
       await api.put('/profesional/profile', {
         ...normalizedPayload,
@@ -239,6 +248,11 @@ export default function ProfesionalBusinessProfilePage() {
         longitude: normalizedPayload.longitude ?? undefined,
         email: form.email,
         phone: normalizedPayload.phoneNumber,
+        instagram: normalizedPayload.instagram || '',
+        facebook: normalizedPayload.facebook || '',
+        tiktok: normalizedPayload.tiktok || '',
+        website: normalizedPayload.website || '',
+        whatsapp: normalizedPayload.whatsapp || '',
       };
       setForm(persistedForm);
       setInitialForm(persistedForm);
@@ -347,186 +361,211 @@ export default function ProfesionalBusinessProfilePage() {
                 </div>
               </div>
             ) : (
-              <div className="grid gap-6 lg:grid-cols-[1.1fr,0.9fr]">
-                <div className="space-y-6">
-                  <div className="rounded-[24px] border border-white/70 bg-white/95 p-5 shadow-[0_16px_36px_rgba(15,23,42,0.12)]">
-                    <h2 className="text-lg font-semibold text-[#0E2A47]">
-                      Identidad
-                    </h2>
-                    <div className="mt-4 grid gap-4">
-                      <div>
-                        <label className="text-sm font-medium text-[#0E2A47]">
-                          Nombre
-                        </label>
+              <div className="space-y-6">
+                <div className="rounded-[24px] border border-white/70 bg-white/95 p-5 shadow-[0_16px_36px_rgba(15,23,42,0.12)]">
+                  <h2 className="text-lg font-semibold text-[#0E2A47]">
+                    Identidad
+                  </h2>
+                  <div className="mt-4 grid gap-4">
+                    <div>
+                      <label className="text-sm font-medium text-[#0E2A47]">
+                        Nombre
+                      </label>
+                      <input
+                        className={inputClassName}
+                        name="businessName"
+                        value={form.businessName}
+                        onChange={handleChange}
+                        placeholder="Ej: Atelier Glow"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-[#0E2A47]">
+                        Logo (URL)
+                      </label>
+                      <div className="mt-2 flex items-center gap-3">
+                        <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full border border-[#E2E7EC] bg-[#F8FAFC] text-xs font-semibold text-[#94A3B8]">
+                          {form.logoUrl.trim() ? (
+                            <img
+                              src={form.logoUrl.trim()}
+                              alt="Logo del negocio"
+                              className="h-full w-full object-cover"
+                            />
+                          ) : (
+                            'LOGO'
+                          )}
+                        </div>
                         <input
                           className={inputClassName}
-                          name="businessName"
-                          value={form.businessName}
+                          name="logoUrl"
+                          value={form.logoUrl}
                           onChange={handleChange}
-                          placeholder="Ej: Atelier Glow"
+                          placeholder="https://..."
                         />
-                      </div>
-                      <div>
-                        <label className="text-sm font-medium text-[#0E2A47]">
-                          Logo (URL)
-                        </label>
-                        <div className="mt-2 flex items-center gap-3">
-                          <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full border border-[#E2E7EC] bg-[#F8FAFC] text-xs font-semibold text-[#94A3B8]">
-                            {form.logoUrl.trim() ? (
-                              <img
-                                src={form.logoUrl.trim()}
-                                alt="Logo del negocio"
-                                className="h-full w-full object-cover"
-                              />
-                            ) : (
-                              'LOGO'
-                            )}
-                          </div>
-                          <input
-                            className={inputClassName}
-                            name="logoUrl"
-                            value={form.logoUrl}
-                            onChange={handleChange}
-                            placeholder="https://..."
-                          />
-                        </div>
-                      </div>
-                      <div>
-                        <label className="text-sm font-medium text-[#0E2A47]">
-                          Rubro
-                        </label>
-                        <div className="mt-2 flex items-center justify-between gap-3">
-                          <p className="text-xs text-[#64748B]">
-                            Seleccioná uno o más rubros.
-                          </p>
-                          <p className="text-[0.68rem] font-semibold uppercase tracking-[0.12em] text-[#94A3B8]">
-                            {form.categorySlugs.length} seleccionados
-                          </p>
-                        </div>
-                        <div className="mt-2 max-h-[250px] overflow-y-auto pr-1">
-                          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
-                            {categories.map((category) => {
-                              const checked = form.categorySlugs.includes(category.slug);
-                              return (
-                                <label
-                                  key={category.id}
-                                  className={`flex cursor-pointer items-center gap-2 rounded-full border px-3 py-1.5 text-sm transition ${
-                                    checked
-                                      ? 'border-[#1FB6A6] bg-[#1FB6A6]/12 text-[#0E2A47]'
-                                      : 'border-[#D7DEE8] bg-white text-[#334155] hover:border-[#A5B4C7] hover:bg-[#F8FAFC]'
-                                  }`}
-                                >
-                                  <input
-                                    type="checkbox"
-                                    className="sr-only"
-                                    checked={checked}
-                                    onChange={() => toggleCategory(category.slug)}
-                                    aria-label={`Rubro ${category.name}`}
-                                  />
-                                  <span
-                                    aria-hidden="true"
-                                    className={`inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full border text-[0.62rem] font-bold ${
-                                      checked
-                                        ? 'border-[#1FB6A6] bg-[#1FB6A6] text-white'
-                                        : 'border-[#C7D2E1] text-transparent'
-                                    }`}
-                                  >
-                                    ✓
-                                  </span>
-                                  <span className="truncate">{category.name}</span>
-                                </label>
-                              );
-                            })}
-                          </div>
-                        </div>
                       </div>
                     </div>
-                  </div>
-
-                  <div className="rounded-[24px] border border-white/70 bg-white/95 p-5 shadow-[0_16px_36px_rgba(15,23,42,0.12)]">
-                    <h2 className="text-lg font-semibold text-[#0E2A47]">
-                      Contacto
-                    </h2>
-                    <div className="mt-4 grid gap-4">
-                      <div>
-                        <label className="text-sm font-medium text-[#0E2A47]">
-                          Ubicación
-                        </label>
-                        <input
-                          className={inputClassName}
-                          name="location"
-                          value={form.location}
-                          onChange={handleChange}
-                          placeholder="Ej: Palermo, Buenos Aires"
-                        />
+                    <div>
+                      <label className="text-sm font-medium text-[#0E2A47]">
+                        Rubro
+                      </label>
+                      <div className="mt-2 flex items-center justify-between gap-3">
+                        <p className="text-xs text-[#64748B]">
+                          Seleccioná uno o más rubros.
+                        </p>
+                        <p className="text-[0.68rem] font-semibold uppercase tracking-[0.12em] text-[#94A3B8]">
+                          {form.categorySlugs.length} seleccionados
+                        </p>
                       </div>
-                      <div className="grid gap-4 sm:grid-cols-2">
-                        <div>
-                          <label className="text-sm font-medium text-[#0E2A47]">
-                            Email
-                          </label>
-                          <input
-                            className={`${inputClassName} bg-[#F8FAFC] text-[#64748B]`}
-                            name="email"
-                            value={form.email}
-                            readOnly
-                            placeholder="Ej: hola@plura.com"
-                          />
-                        </div>
-                        <div>
-                          <label className="text-sm font-medium text-[#0E2A47]">
-                            Teléfono
-                          </label>
-                          <input
-                            className={inputClassName}
-                            name="phone"
-                            value={form.phone}
-                            onChange={handleChange}
-                            placeholder="Ej: +54 11 5555 4444"
-                          />
+                      <div className="mt-2 max-h-[250px] overflow-y-auto pr-1">
+                        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
+                          {categories.map((category) => {
+                            const checked = form.categorySlugs.includes(category.slug);
+                            return (
+                              <label
+                                key={category.id}
+                                className={`flex cursor-pointer items-center gap-2 rounded-full border px-3 py-1.5 text-sm transition ${
+                                  checked
+                                    ? 'border-[#1FB6A6] bg-[#1FB6A6]/12 text-[#0E2A47]'
+                                    : 'border-[#D7DEE8] bg-white text-[#334155] hover:border-[#A5B4C7] hover:bg-[#F8FAFC]'
+                                }`}
+                              >
+                                <input
+                                  type="checkbox"
+                                  className="sr-only"
+                                  checked={checked}
+                                  onChange={() => toggleCategory(category.slug)}
+                                  aria-label={`Rubro ${category.name}`}
+                                />
+                                <span
+                                  aria-hidden="true"
+                                  className={`inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full border text-[0.62rem] font-bold ${
+                                    checked
+                                      ? 'border-[#1FB6A6] bg-[#1FB6A6] text-white'
+                                      : 'border-[#C7D2E1] text-transparent'
+                                  }`}
+                                >
+                                  ✓
+                                </span>
+                                <span className="truncate">{category.name}</span>
+                              </label>
+                            );
+                          })}
                         </div>
                       </div>
                     </div>
                   </div>
                 </div>
 
-                <div className="space-y-6">
-                  <div className="rounded-[24px] border border-white/70 bg-white/95 p-5 shadow-[0_16px_36px_rgba(15,23,42,0.12)]">
-                    <h2 className="text-lg font-semibold text-[#0E2A47]">
-                      URL pública
-                    </h2>
-                    <div className="mt-4 grid gap-4">
+                <div className="rounded-[24px] border border-white/70 bg-white/95 p-5 shadow-[0_16px_36px_rgba(15,23,42,0.12)]">
+                  <h2 className="text-lg font-semibold text-[#0E2A47]">
+                    Contacto
+                  </h2>
+                  <div className="mt-4 grid gap-4">
+                    <div>
+                      <label className="text-sm font-medium text-[#0E2A47]">
+                        Ubicación
+                      </label>
+                      <input
+                        className={inputClassName}
+                        name="location"
+                        value={form.location}
+                        onChange={handleChange}
+                        placeholder="Ej: Palermo, Buenos Aires"
+                      />
+                    </div>
+                    <div className="grid gap-4 sm:grid-cols-2">
                       <div>
                         <label className="text-sm font-medium text-[#0E2A47]">
-                          Slug
+                          Email
                         </label>
-                        <input className={inputClassName} value={slug} readOnly />
-                        <p className="mt-1 text-xs text-[#94A3B8]">
-                          Se genera automáticamente según el nombre.
-                        </p>
+                        <input
+                          className={`${inputClassName} bg-[#F8FAFC] text-[#64748B]`}
+                          name="email"
+                          value={form.email}
+                          readOnly
+                          placeholder="Ej: hola@plura.com"
+                        />
                       </div>
                       <div>
                         <label className="text-sm font-medium text-[#0E2A47]">
-                          Link
+                          Teléfono
                         </label>
                         <input
                           className={inputClassName}
-                          value={publicUrl}
-                          readOnly
+                          name="phone"
+                          value={form.phone}
+                          onChange={handleChange}
+                          placeholder="Ej: +54 11 5555 4444"
                         />
                       </div>
-                      <div className="flex flex-col items-center justify-center rounded-[18px] border border-[#E2E7EC] bg-white p-4">
-                        <img
-                          src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(
-                            publicUrl,
-                          )}`}
-                          alt="QR de la página pública"
-                          className="h-36 w-36"
-                        />
-                        <p className="mt-2 text-xs text-[#94A3B8]">
-                          QR de tu página
-                        </p>
-                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="rounded-[24px] border border-white/70 bg-white/95 p-5 shadow-[0_16px_36px_rgba(15,23,42,0.12)]">
+                  <h2 className="text-lg font-semibold text-[#0E2A47]">
+                    Redes sociales
+                  </h2>
+                  <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                    <div>
+                      <label className="text-sm font-medium text-[#0E2A47]">
+                        Instagram
+                      </label>
+                      <input
+                        className={inputClassName}
+                        name="instagram"
+                        value={form.instagram}
+                        onChange={handleChange}
+                        placeholder="https://instagram.com/usuario"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-[#0E2A47]">
+                        Facebook
+                      </label>
+                      <input
+                        className={inputClassName}
+                        name="facebook"
+                        value={form.facebook}
+                        onChange={handleChange}
+                        placeholder="https://facebook.com/pagina"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-[#0E2A47]">
+                        TikTok
+                      </label>
+                      <input
+                        className={inputClassName}
+                        name="tiktok"
+                        value={form.tiktok}
+                        onChange={handleChange}
+                        placeholder="https://tiktok.com/@usuario"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-[#0E2A47]">
+                        Sitio web
+                      </label>
+                      <input
+                        className={inputClassName}
+                        name="website"
+                        value={form.website}
+                        onChange={handleChange}
+                        placeholder="https://miweb.com"
+                      />
+                    </div>
+                    <div className="sm:col-span-2">
+                      <label className="text-sm font-medium text-[#0E2A47]">
+                        WhatsApp
+                      </label>
+                      <input
+                        className={inputClassName}
+                        name="whatsapp"
+                        value={form.whatsapp}
+                        onChange={handleChange}
+                        placeholder="https://wa.me/598XXXXXXXX"
+                      />
                     </div>
                   </div>
                 </div>

@@ -8,8 +8,10 @@ import lombok.Data;
 public class ProfesionalServiceResponse {
     private String id;
     private String name;
+    private String description;
     private String price;
     private String duration;
+    private String imageUrl;
     private Integer postBufferMinutes;
     private Boolean active;
 }

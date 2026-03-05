@@ -20,6 +20,11 @@ public class ProfesionalProfileResponse {
     private Double longitude;
     private String tipoCliente;
     private String logoUrl;
+    private String instagram;
+    private String facebook;
+    private String tiktok;
+    private String website;
+    private String whatsapp;
     private String publicHeadline;
     private String publicAbout;
     private List<String> publicPhotos;

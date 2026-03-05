@@ -6,10 +6,14 @@ import ProfesionalSidebar from '@/components/profesional/Sidebar';
 import { useProfessionalProfile } from '@/hooks/useProfessionalProfile';
 import { useProfessionalDashboardUnsavedSection } from '@/context/ProfessionalDashboardUnsavedChangesContext';
 import api from '@/services/api';
+import { cachedGet, invalidateCachedGet } from '@/services/cachedGet';
+import { resolveAssetUrl } from '@/utils/assetUrl';
 
 type ProfesionalServiceItem = {
   id: string;
   name: string;
+  description?: string | null;
+  imageUrl?: string | null;
   price: string;
   duration: string;
   postBufferMinutes?: number | null;
@@ -18,6 +22,8 @@ type ProfesionalServiceItem = {
 
 type ServiceDraft = {
   name: string;
+  description: string;
+  imageUrl: string;
   price: string;
   duration: string;
   postBufferMinutes: string;
@@ -26,11 +32,16 @@ type ServiceDraft = {
 
 const createEmptyDraft = (): ServiceDraft => ({
   name: '',
+  description: '',
+  imageUrl: '',
   price: '',
   duration: '',
   postBufferMinutes: '',
   active: true,
 });
+
+const MAX_SERVICE_IMAGE_SIZE = 1024 * 1024;
+const ALLOWED_IMAGE_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 
 const normalizeDurationLabel = (value: string) => {
   const trimmed = value.trim();
@@ -57,6 +68,8 @@ export default function ProfesionalServicesBuilderPage() {
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
   const [saveError, setSaveError] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [selectedImageFile, setSelectedImageFile] = useState<File | null>(null);
+  const [selectedImagePreview, setSelectedImagePreview] = useState<string>('');
 
   const showSkeleton = !hasLoaded || (isLoading && !profile);
 
@@ -67,7 +80,14 @@ export default function ProfesionalServicesBuilderPage() {
     if (!profile?.id) return;
     setIsLoadingServices(true);
     try {
-      const response = await api.get<ProfesionalServiceItem[]>('/profesional/services');
+      const response = await cachedGet<ProfesionalServiceItem[]>(
+        '/profesional/services',
+        undefined,
+        {
+          ttlMs: 15000,
+          staleWhileRevalidate: true,
+        },
+      );
       setServices(Array.isArray(response.data) ? response.data : []);
     } catch {
       setServices([]);
@@ -87,7 +107,29 @@ export default function ProfesionalServicesBuilderPage() {
     setDraft((prev) => ({ ...prev, [field]: value }));
   };
 
+  const clearImageSelection = useCallback(() => {
+    setSelectedImageFile(null);
+    setSelectedImagePreview((prev) => {
+      if (prev.startsWith('blob:')) {
+        URL.revokeObjectURL(prev);
+      }
+      return '';
+    });
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      setSelectedImagePreview((prev) => {
+        if (prev.startsWith('blob:')) {
+          URL.revokeObjectURL(prev);
+        }
+        return '';
+      });
+    };
+  }, []);
+
   const resetDraft = () => {
+    clearImageSelection();
     const empty = createEmptyDraft();
     setDraft(empty);
     setInitialDraft(empty);
@@ -96,8 +138,11 @@ export default function ProfesionalServicesBuilderPage() {
   };
 
   const handleEditService = (service: ProfesionalServiceItem) => {
+    clearImageSelection();
     const editDraft = {
       name: service.name,
+      description: service.description ?? '',
+      imageUrl: service.imageUrl ?? '',
       price: service.price,
       duration: service.duration,
       postBufferMinutes:
@@ -107,6 +152,7 @@ export default function ProfesionalServicesBuilderPage() {
       active: service.active !== false,
     };
     setDraft(editDraft);
+    setSelectedImagePreview(service.imageUrl ?? '');
     setInitialDraft(editDraft);
     setEditingId(service.id);
     setInitialEditingId(service.id);
@@ -120,6 +166,7 @@ export default function ProfesionalServicesBuilderPage() {
 
     try {
       await api.delete(`/profesional/services/${serviceId}`);
+      invalidateCachedGet('/profesional/services');
       setSaveMessage('Servicio eliminado correctamente.');
       setSaveError(false);
       setServices((prev) => prev.filter((item) => item.id !== serviceId));
@@ -132,6 +179,32 @@ export default function ProfesionalServicesBuilderPage() {
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const handleServiceImageChange = (file: File | null) => {
+    if (!file) {
+      clearImageSelection();
+      return;
+    }
+
+    if (!ALLOWED_IMAGE_MIME_TYPES.includes(file.type)) {
+      setSaveMessage('Formato inválido. Usá jpg, png o webp.');
+      setSaveError(true);
+      return;
+    }
+
+    if (file.size > MAX_SERVICE_IMAGE_SIZE) {
+      setSaveMessage('La imagen supera 1MB.');
+      setSaveError(true);
+      return;
+    }
+
+    clearImageSelection();
+    const previewUrl = URL.createObjectURL(file);
+    setSelectedImageFile(file);
+    setSelectedImagePreview(previewUrl);
+    setSaveMessage(null);
+    setSaveError(false);
   };
 
   const handleSubmitService = async (): Promise<boolean> => {
@@ -154,24 +227,41 @@ export default function ProfesionalServicesBuilderPage() {
       return false;
     }
 
-    const payload = {
-      name: draft.name.trim(),
-      price: draft.price.trim(),
-      duration: draft.duration.trim(),
-      postBufferMinutes: normalizedBuffer,
-      active: draft.active,
-    };
-
     setIsSubmitting(true);
     setSaveMessage(null);
     setSaveError(false);
 
     try {
+      let resolvedImageUrl = draft.imageUrl.trim();
+      if (selectedImageFile) {
+        const formData = new FormData();
+        formData.append('file', selectedImageFile);
+        const uploadResponse = await api.post<{ imageUrl?: string }>(
+          '/profesional/services/image',
+          formData,
+          {
+            headers: { 'Content-Type': 'multipart/form-data' },
+          },
+        );
+        resolvedImageUrl = uploadResponse.data?.imageUrl?.trim() ?? '';
+      }
+
+      const payload = {
+        name: draft.name.trim(),
+        description: draft.description.trim(),
+        imageUrl: resolvedImageUrl,
+        price: draft.price.trim(),
+        duration: draft.duration.trim(),
+        postBufferMinutes: normalizedBuffer,
+        active: draft.active,
+      };
+
       if (editingId) {
         const response = await api.put<ProfesionalServiceItem>(
           `/profesional/services/${editingId}`,
           payload,
         );
+        invalidateCachedGet('/profesional/services');
         const updatedService = response.data?.id
           ? response.data
           : { id: editingId, ...payload };
@@ -186,6 +276,7 @@ export default function ProfesionalServicesBuilderPage() {
           '/profesional/services',
           payload,
         );
+        invalidateCachedGet('/profesional/services');
         const createdService = response.data?.id
           ? response.data
           : {
@@ -221,6 +312,8 @@ export default function ProfesionalServicesBuilderPage() {
       const nextActive = !(service.active !== false);
       const response = await api.put<ProfesionalServiceItem>(`/profesional/services/${service.id}`, {
         name: service.name,
+        description: service.description ?? '',
+        imageUrl: service.imageUrl ?? '',
         price: service.price,
         duration: service.duration,
         postBufferMinutes: service.postBufferMinutes ?? 0,
@@ -249,19 +342,23 @@ export default function ProfesionalServicesBuilderPage() {
     const hasDifferentMode = editingId !== initialEditingId;
     const hasDifferentDraft =
       draft.name !== initialDraft.name ||
+      draft.description !== initialDraft.description ||
+      draft.imageUrl !== initialDraft.imageUrl ||
       draft.price !== initialDraft.price ||
       draft.duration !== initialDraft.duration ||
       draft.postBufferMinutes !== initialDraft.postBufferMinutes ||
       draft.active !== initialDraft.active;
-    return hasDifferentMode || hasDifferentDraft;
-  }, [draft, editingId, initialDraft, initialEditingId]);
+    return hasDifferentMode || hasDifferentDraft || Boolean(selectedImageFile);
+  }, [draft, editingId, initialDraft, initialEditingId, selectedImageFile]);
 
   const handleResetUnsaved = useCallback(() => {
+    clearImageSelection();
     setDraft(initialDraft);
+    setSelectedImagePreview(initialDraft.imageUrl || '');
     setEditingId(initialEditingId);
     setSaveMessage(null);
     setSaveError(false);
-  }, [initialDraft, initialEditingId]);
+  }, [clearImageSelection, initialDraft, initialEditingId]);
 
   useProfessionalDashboardUnsavedSection({
     sectionId: 'services-builder',
@@ -364,6 +461,69 @@ export default function ProfesionalServicesBuilderPage() {
                           </div>
                           <div>
                             <label className="text-sm font-medium text-[#0E2A47]">
+                              Descripción del servicio
+                            </label>
+                            <textarea
+                              className={`${inputClassName} h-24 resize-none py-3`}
+                              maxLength={200}
+                              value={draft.description}
+                              onChange={(event) =>
+                                handleDraftChange('description', event.target.value)
+                              }
+                              placeholder="Ej: Corte clásico con degradé y perfilado de barba."
+                            />
+                            <p className="mt-1 text-xs text-[#64748B]">
+                              {draft.description.length}/200
+                            </p>
+                          </div>
+                          <div>
+                            <label className="text-sm font-medium text-[#0E2A47]">
+                              Foto del servicio
+                            </label>
+                            <div className="mt-2 rounded-[16px] border border-[#E2E7EC] bg-[#F8FAFC] p-3">
+                              <div className="flex flex-wrap items-center gap-3">
+                                <label className="cursor-pointer rounded-full border border-[#E2E7EC] bg-white px-4 py-2 text-xs font-semibold text-[#0E2A47] transition hover:-translate-y-0.5 hover:shadow-sm">
+                                  Subir imagen
+                                  <input
+                                    type="file"
+                                    accept="image/jpeg,image/png,image/webp"
+                                    className="hidden"
+                                    onChange={(event) =>
+                                      handleServiceImageChange(event.target.files?.[0] ?? null)
+                                    }
+                                  />
+                                </label>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    clearImageSelection();
+                                    handleDraftChange('imageUrl', '');
+                                  }}
+                                  className="rounded-full border border-[#E2E7EC] bg-white px-4 py-2 text-xs font-semibold text-[#64748B] transition hover:-translate-y-0.5 hover:shadow-sm"
+                                >
+                                  Quitar foto
+                                </button>
+                                <p className="text-xs text-[#64748B]">
+                                  Formatos: jpg, png, webp. Máximo 1MB.
+                                </p>
+                              </div>
+                              {(selectedImagePreview || draft.imageUrl) ? (
+                                <div className="mt-3 h-32 w-full overflow-hidden rounded-[12px] border border-[#D9E2EC] bg-white">
+                                  <img
+                                    src={resolveAssetUrl(selectedImagePreview || draft.imageUrl)}
+                                    alt={draft.name ? `Foto de ${draft.name}` : 'Foto del servicio'}
+                                    className="h-full w-full object-cover"
+                                  />
+                                </div>
+                              ) : (
+                                <div className="mt-3 rounded-[12px] border border-dashed border-[#D9E2EC] bg-white px-3 py-4 text-xs text-[#94A3B8]">
+                                  Vista previa de la imagen.
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                          <div>
+                            <label className="text-sm font-medium text-[#0E2A47]">
                               Precio
                             </label>
                             <input
@@ -455,22 +615,40 @@ export default function ProfesionalServicesBuilderPage() {
                                 key={service.id}
                                 className="rounded-[18px] border border-[#E2E7EC] bg-[#F7F9FB] px-4 py-3"
                               >
-                                <div className="flex flex-wrap items-start justify-between gap-3">
-                                  <div>
-                                    <p className="font-semibold text-[#0E2A47]">
+                                <div className="flex items-start gap-3">
+                                  <div className="h-16 w-16 shrink-0 overflow-hidden rounded-[12px] border border-[#D9E2EC] bg-white">
+                                    {service.imageUrl ? (
+                                      <img
+                                        src={resolveAssetUrl(service.imageUrl)}
+                                        alt={service.name || 'Servicio'}
+                                        className="h-full w-full object-cover"
+                                      />
+                                    ) : (
+                                      <div className="flex h-full w-full items-center justify-center text-[0.6rem] font-semibold uppercase tracking-[0.15em] text-[#94A3B8]">
+                                        Sin foto
+                                      </div>
+                                    )}
+                                  </div>
+                                  <div className="min-w-0 flex-1">
+                                    <p className="truncate font-semibold text-[#0E2A47]">
                                       {service.name || 'Servicio sin nombre'}
                                     </p>
-                                    <p className="text-xs text-[#64748B]">
+                                    <p className="mt-0.5 text-xs text-[#64748B]">
                                       {normalizeDurationLabel(service.duration) ||
                                         'Duración a definir'}
                                     </p>
-                                    <p className="mt-1 text-xs font-semibold text-[#64748B]">
+                                    <p className="mt-0.5 text-sm font-semibold text-[#1FB6A6]">
+                                      {service.price || 'Consultar'}
+                                    </p>
+                                    <p className="mt-0.5 text-xs font-semibold text-[#64748B]">
                                       {service.active === false ? 'Inactivo' : 'Activo'}
                                     </p>
+                                    {service.description ? (
+                                      <p className="mt-1 line-clamp-2 text-xs text-[#64748B]">
+                                        {service.description}
+                                      </p>
+                                    ) : null}
                                   </div>
-                                  <span className="text-sm font-semibold text-[#1FB6A6]">
-                                    {service.price || 'Consultar'}
-                                  </span>
                                 </div>
                                 <div className="mt-3 flex flex-wrap gap-2">
                                   <button

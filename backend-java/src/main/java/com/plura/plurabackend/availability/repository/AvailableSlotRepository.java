@@ -3,6 +3,7 @@ package com.plura.plurabackend.availability.repository;
 import com.plura.plurabackend.availability.model.AvailableSlot;
 import com.plura.plurabackend.availability.model.AvailableSlotStatus;
 import java.time.LocalDateTime;
+import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -46,5 +47,22 @@ public interface AvailableSlotRepository extends JpaRepository<AvailableSlot, Lo
         @Param("professionalId") Long professionalId,
         @Param("startAt") LocalDateTime startAt,
         @Param("status") AvailableSlotStatus status
+    );
+
+    @Query(
+        value = """
+            SELECT MIN(slot.start_at)
+            FROM available_slot slot
+            WHERE slot.professional_id = :professionalId
+              AND slot.status = 'AVAILABLE'
+              AND slot.start_at >= :from
+              AND slot.start_at < :to
+            """,
+        nativeQuery = true
+    )
+    Optional<LocalDateTime> findNextAvailableStartAt(
+        @Param("professionalId") Long professionalId,
+        @Param("from") LocalDateTime from,
+        @Param("to") LocalDateTime to
     );
 }

@@ -39,6 +39,15 @@ public class User {
     @JsonIgnore
     private String password;
 
+    @Column(length = 20)
+    private String provider;
+
+    @Column(name = "provider_id", length = 255)
+    private String providerId;
+
+    @Column(length = 500)
+    private String avatar;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private UserRole role;

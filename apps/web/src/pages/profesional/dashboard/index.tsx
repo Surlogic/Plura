@@ -327,9 +327,14 @@ export default function ProfesionalDashboardPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [monthOffset]);
 
+  const agendaReservations = useMemo(
+    () => reservations.filter((reservation) => (reservation.status ?? 'pending') !== 'cancelled'),
+    [reservations],
+  );
+
   const reservationsByDate = useMemo(() => {
     const map = new Map<string, ProfessionalReservation[]>();
-    reservations.forEach((reservation) => {
+    agendaReservations.forEach((reservation) => {
       if (!reservation.date) return;
       const list = map.get(reservation.date) ?? [];
       list.push(reservation);
@@ -343,13 +348,13 @@ export default function ProfesionalDashboardPage() {
       });
     });
     return map;
-  }, [reservations]);
+  }, [agendaReservations]);
 
-  const todayCount = reservations.filter((r) => r.date === todayKey).length;
-  const yesterdayCount = reservations.filter((r) => r.date === yesterdayKey).length;
+  const todayCount = agendaReservations.filter((r) => r.date === todayKey).length;
+  const yesterdayCount = agendaReservations.filter((r) => r.date === yesterdayKey).length;
   const todayDiff = todayCount - yesterdayCount;
 
-  const weekReservations = reservations.filter(
+  const weekReservations = agendaReservations.filter(
     (r) => r.date >= weekStartKey && r.date <= weekEndKey,
   );
   const uniqueClientsWeek = new Set(

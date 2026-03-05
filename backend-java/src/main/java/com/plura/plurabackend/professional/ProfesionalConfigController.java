@@ -1,16 +1,23 @@
 package com.plura.plurabackend.professional;
 
 import com.plura.plurabackend.booking.dto.ProfessionalBookingResponse;
+import com.plura.plurabackend.booking.dto.ProfessionalBookingCreateRequest;
 import com.plura.plurabackend.booking.dto.ProfessionalBookingUpdateRequest;
 import com.plura.plurabackend.professional.dto.ProfesionalBusinessProfileUpdateRequest;
 import com.plura.plurabackend.professional.dto.ProfesionalPublicPageResponse;
 import com.plura.plurabackend.professional.dto.ProfesionalPublicPageUpdateRequest;
 import com.plura.plurabackend.professional.schedule.dto.ProfesionalScheduleDto;
+import com.plura.plurabackend.professional.service.ServiceImageStorageService;
 import com.plura.plurabackend.professional.service.dto.ProfesionalServiceRequest;
 import com.plura.plurabackend.professional.service.dto.ProfesionalServiceResponse;
 import jakarta.validation.Valid;
 import java.util.List;
+import java.util.Map;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -21,18 +28,27 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
 @RestController
 @RequestMapping("/profesional")
 public class ProfesionalConfigController {
 
-    private final ProfesionalPublicPageService profesionalPublicPageService;
+    private static final Logger LOGGER = LoggerFactory.getLogger(ProfesionalConfigController.class);
 
-    public ProfesionalConfigController(ProfesionalPublicPageService profesionalPublicPageService) {
+    private final ProfesionalPublicPageService profesionalPublicPageService;
+    private final ServiceImageStorageService serviceImageStorageService;
+
+    public ProfesionalConfigController(
+        ProfesionalPublicPageService profesionalPublicPageService,
+        ServiceImageStorageService serviceImageStorageService
+    ) {
         this.profesionalPublicPageService = profesionalPublicPageService;
+        this.serviceImageStorageService = serviceImageStorageService;
     }
 
     @GetMapping("/public-page")
@@ -42,14 +58,14 @@ public class ProfesionalConfigController {
 
     @PutMapping("/public-page")
     public ProfesionalPublicPageResponse updatePublicPageConfig(
-        @RequestBody ProfesionalPublicPageUpdateRequest request
+        @Valid @RequestBody ProfesionalPublicPageUpdateRequest request
     ) {
         return profesionalPublicPageService.updatePublicPage(getProfesionalId(), request);
     }
 
     @PutMapping("/profile")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void updateBusinessProfile(@RequestBody ProfesionalBusinessProfileUpdateRequest request) {
+    public void updateBusinessProfile(@Valid @RequestBody ProfesionalBusinessProfileUpdateRequest request) {
         profesionalPublicPageService.updateBusinessProfile(getProfesionalId(), request);
     }
 
@@ -59,7 +75,7 @@ public class ProfesionalConfigController {
     }
 
     @PutMapping("/schedule")
-    public ProfesionalScheduleDto updateSchedule(@RequestBody ProfesionalScheduleDto request) {
+    public ProfesionalScheduleDto updateSchedule(@Valid @RequestBody ProfesionalScheduleDto request) {
         return profesionalPublicPageService.updateSchedule(getProfesionalId(), request);
     }
 
@@ -70,14 +86,20 @@ public class ProfesionalConfigController {
 
     @PostMapping("/services")
     @ResponseStatus(HttpStatus.CREATED)
-    public ProfesionalServiceResponse createService(@RequestBody ProfesionalServiceRequest request) {
+    public ProfesionalServiceResponse createService(@Valid @RequestBody ProfesionalServiceRequest request) {
         return profesionalPublicPageService.createService(getProfesionalId(), request);
+    }
+
+    @PostMapping(path = "/services/image", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public Map<String, String> uploadServiceImage(@RequestPart("file") MultipartFile file) {
+        String imageUrl = serviceImageStorageService.storeServiceImage(file);
+        return Map.of("imageUrl", imageUrl);
     }
 
     @PutMapping("/services/{id}")
     public ProfesionalServiceResponse updateService(
         @PathVariable("id") String serviceId,
-        @RequestBody ProfesionalServiceRequest request
+        @Valid @RequestBody ProfesionalServiceRequest request
     ) {
         return profesionalPublicPageService.updateService(getProfesionalId(), serviceId, request);
     }
@@ -100,6 +122,19 @@ public class ProfesionalConfigController {
             dateFrom,
             dateTo
         );
+    }
+
+    @PostMapping("/reservas")
+    @ResponseStatus(HttpStatus.CREATED)
+    public ProfessionalBookingResponse createReservation(
+        @Valid @RequestBody ProfessionalBookingCreateRequest request
+    ) {
+        try {
+            return profesionalPublicPageService.createProfessionalBooking(getProfesionalId(), request);
+        } catch (DataIntegrityViolationException exception) {
+            LOGGER.warn("Conflicto de integridad al crear reserva profesional", exception);
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "El horario ya fue reservado");
+        }
     }
 
     @PutMapping("/reservas/{id}")

@@ -1,17 +1,33 @@
 server:
   port: ${PORT:3000}
+  tomcat:
+    relaxed-query-chars: '[,],{,},|'
+    relaxed-path-chars: '[,],{,},|'
+  compression:
+    enabled: ${SERVER_COMPRESSION_ENABLED:true}
+    min-response-size: ${SERVER_COMPRESSION_MIN_RESPONSE_SIZE:1024}
+    mime-types: ${SERVER_COMPRESSION_MIME_TYPES:text/html,text/xml,text/plain,text/css,text/javascript,application/javascript,application/json,application/xml}
+  http2:
+    enabled: ${SERVER_HTTP2_ENABLED:true}
+  servlet:
+    session:
+      timeout: ${SERVER_SESSION_TIMEOUT:15m}
+  shutdown: graceful
 
 spring:
+  lifecycle:
+    timeout-per-shutdown-phase: ${SPRING_SHUTDOWN_TIMEOUT_PER_PHASE:30s}
   datasource:
     url: ${SPRING_DATASOURCE_URL}
     username: ${SPRING_DATASOURCE_USERNAME}
     password: ${SPRING_DATASOURCE_PASSWORD}
     hikari:
-      maximum-pool-size: ${HIKARI_MAX_POOL_SIZE:20}
-      minimum-idle: ${HIKARI_MIN_IDLE:5}
-      connection-timeout: 20000
-      idle-timeout: 300000
-      max-lifetime: 1200000
+      maximum-pool-size: ${HIKARI_MAX_POOL_SIZE:100}
+      minimum-idle: ${HIKARI_MIN_IDLE:10}
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+      connection-init-sql: ${HIKARI_CONNECTION_INIT_SQL:SELECT set_config('statement_timeout','5s',false), set_config('idle_in_transaction_session_timeout','30s',false), set_config('lock_timeout','2s',false)}
   jackson:
     time-zone: ${APP_TIMEZONE:America/Montevideo}
   jpa:
@@ -36,6 +52,37 @@ jwt:
   # Sin default: la app falla en startup si no está configurado.
   refresh-pepper: ${JWT_REFRESH_PEPPER}
 
+oauth:
+  google:
+    client-id: ${GOOGLE_CLIENT_ID:}
+  apple:
+    client-id: ${APPLE_CLIENT_ID:}
+
+cache:
+  enabled: ${CACHE_ENABLED:true}
+
+redis:
+  enabled: ${REDIS_ENABLED:false}
+  host: ${REDIS_HOST:localhost}
+  port: ${REDIS_PORT:6379}
+  password: ${REDIS_PASSWORD:}
+  ttl-seconds: ${REDIS_TTL_SECONDS:300}
+
+feature:
+  cache:
+    search-enabled: ${SEARCH_CACHE_ENABLED:true}
+    suggest-enabled: ${SUGGEST_CACHE_ENABLED:true}
+    profile-enabled: ${PROFILE_CACHE_ENABLED:true}
+    slots-enabled: ${SLOTS_CACHE_ENABLED:true}
+  search:
+    no-count-mode-enabled: ${SEARCH_NO_COUNT_MODE:true}
+    has-availability-today-enabled: ${HAS_AVAILABILITY_TODAY_ENABLED:false}
+    availability-source: ${SEARCH_AVAILABILITY_SOURCE:AVAILABLE_SLOT}
+  availability:
+    slot-rebuild-enabled: ${AVAILABLE_SLOT_REBUILD_ENABLED:true}
+    summary-enabled: ${SCHEDULE_SUMMARY_ENABLED:false}
+    next-available-at-enabled: ${NEXT_AVAILABLE_AT_ENABLED:false}
+
 app:
   # Zona horaria única del sistema (MVP). Slots y reservas se calculan en esta zona.
   timezone: ${APP_TIMEZONE:America/Montevideo}
@@ -43,7 +90,8 @@ app:
     token: ${MAPBOX_TOKEN:${NEXT_PUBLIC_MAPBOX_TOKEN:}}
   search:
     # Recalcula la agenda de slots disponibles diariamente.
-    slot-rebuild-cron: ${APP_SEARCH_SLOT_REBUILD_CRON:0 0 2 * * *}
+    slot-rebuild-cron: ${APP_SEARCH_SLOT_REBUILD_CRON:0 */30 2-6 * * *}
+    slot-rebuild-shards: ${APP_SEARCH_SLOT_REBUILD_SHARDS:8}
     # Días a recalcular en la corrida nocturna.
     slot-rebuild-days: ${APP_SEARCH_SLOT_REBUILD_DAYS:30}
     # Encola rebuild inicial al levantar la app sin bloquear readiness.
@@ -51,10 +99,59 @@ app:
     slot-bootstrap-days: ${APP_SEARCH_SLOT_BOOTSTRAP_DAYS:7}
   cors:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3002}
+    max-age-seconds: ${CORS_MAX_AGE_SECONDS:86400}
   auth:
-    # Producción: true. Desarrollo local (HTTP): setear AUTH_COOKIE_SECURE=false en .env
-    cookie-secure: ${AUTH_COOKIE_SECURE:true}
-    cookie-same-site: ${AUTH_COOKIE_SAMESITE:Strict}
+    # Producción: setear AUTH_COOKIE_SECURE=true y AUTH_COOKIE_SAMESITE=Strict en .env
+    cookie-secure: ${AUTH_COOKIE_SECURE:false}
+    cookie-same-site: ${AUTH_COOKIE_SAMESITE:Lax}
+  storage:
+    upload-dir: ${APP_UPLOAD_DIR:uploads}
+    provider: ${IMAGE_STORAGE_PROVIDER:${STORAGE_PROVIDER:local}}
+    public-base-url: ${STORAGE_PUBLIC_BASE_URL:/uploads}
+    local-base-dir: ${STORAGE_LOCAL_BASE_DIR:./uploads}
+    upload-url-expiration-minutes: ${IMAGE_UPLOAD_URL_EXPIRATION_MINUTES:10}
+    max-upload-bytes: ${IMAGE_MAX_UPLOAD_BYTES:5242880}
+    allowed-content-types: ${IMAGE_ALLOWED_CONTENT_TYPES:image/jpeg,image/png,image/webp,image/avif}
+    r2:
+      endpoint: ${R2_ENDPOINT:}
+      bucket: ${R2_BUCKET:plura-images}
+      region: ${R2_REGION:auto}
+      access-key-id: ${R2_ACCESS_KEY_ID:}
+      secret-access-key: ${R2_SECRET_ACCESS_KEY:}
+      public-base-url: ${R2_PUBLIC_BASE_URL:}
+
+  sqs:
+    enabled: ${SQS_ENABLED:false}
+    endpoint: ${SQS_ENDPOINT:}
+    region: ${SQS_REGION:us-east-1}
+    access-key-id: ${SQS_ACCESS_KEY_ID:}
+    secret-access-key: ${SQS_SECRET_ACCESS_KEY:}
+    queue-url: ${SQS_QUEUE_URL:}
+    dlq-url: ${SQS_DLQ_URL:}
+    wait-time-seconds: ${SQS_WAIT_TIME_SECONDS:10}
+    max-messages: ${SQS_MAX_MESSAGES:10}
+
+  search-engine:
+    enabled: ${SEARCH_ENGINE_ENABLED:true}
+    suggest-enabled: ${SEARCH_ENGINE_SUGGEST_ENABLED:true}
+    hydrate-from-db: ${SEARCH_ENGINE_HYDRATE_FROM_DB:true}
+    provider: ${SEARCH_ENGINE_PROVIDER:MEILI}
+    meili:
+      host: ${MEILI_HOST:http://localhost:7700}
+      api-key: ${MEILI_API_KEY:}
+      index-name: ${MEILI_INDEX_NAME:professional_profile}
+      timeout-millis: ${MEILI_TIMEOUT_MILLIS:2000}
+      reindex-on-startup: ${MEILI_REINDEX_ON_STARTUP:false}
+
+  availability:
+    summary-lookahead-days: ${SCHEDULE_SUMMARY_LOOKAHEAD_DAYS:14}
+    summary-cron: ${SCHEDULE_SUMMARY_CRON:0 */30 * * * *}
+
+jobs:
+  sqs:
+    thumbnail-enabled: ${THUMBNAIL_SQS_ENABLED:false}
+    schedule-summary-enabled: ${SCHEDULE_SUMMARY_SQS_ENABLED:false}
+    search-index-enabled: ${SEARCH_INDEX_SQS_ENABLED:false}
 
 springdoc:
   swagger-ui:
@@ -67,3 +164,50 @@ springdoc:
 logging:
   level:
     root: ${LOG_LEVEL_ROOT:INFO}
+
+billing:
+  enabled: ${BILLING_ENABLED:false}
+  mode: ${BILLING_MODE:sandbox}
+  provider-verification-enabled: ${BILLING_PROVIDER_VERIFICATION_ENABLED:true}
+  webhook-allowed-skew-seconds: ${BILLING_WEBHOOK_ALLOWED_SKEW_SECONDS:300}
+  webhook-base-url: ${BILLING_WEBHOOK_BASE_URL:}
+  plans:
+    plan-basic:
+      price: ${BILLING_PLAN_BASIC_PRICE:0}
+      currency: ${BILLING_PLAN_BASIC_CURRENCY:UYU}
+    plan-pro:
+      price: ${BILLING_PLAN_PRO_PRICE:0}
+      currency: ${BILLING_PLAN_PRO_CURRENCY:UYU}
+    plan-premium:
+      price: ${BILLING_PLAN_PREMIUM_PRICE:0}
+      currency: ${BILLING_PLAN_PREMIUM_CURRENCY:UYU}
+  mercadopago:
+    enabled: ${BILLING_MERCADOPAGO_ENABLED:false}
+    base-url: ${BILLING_MERCADOPAGO_BASE_URL:https://api.mercadopago.com}
+    access-token: ${BILLING_MERCADOPAGO_ACCESS_TOKEN:}
+    webhook-secret: ${BILLING_MERCADOPAGO_WEBHOOK_SECRET:}
+    checkout-path: ${BILLING_MERCADOPAGO_CHECKOUT_PATH:/checkout/preferences}
+    cancel-path: ${BILLING_MERCADOPAGO_CANCEL_PATH:/preapproval/{id}}
+    payment-status-path: ${BILLING_MERCADOPAGO_PAYMENT_STATUS_PATH:/v1/payments/{id}}
+    subscription-status-path: ${BILLING_MERCADOPAGO_SUBSCRIPTION_STATUS_PATH:/preapproval/{id}}
+    sandbox-only-body-signature-fallback: ${BILLING_MERCADOPAGO_SANDBOX_ONLY_BODY_SIGNATURE_FALLBACK:false}
+    success-url: ${BILLING_MERCADOPAGO_SUCCESS_URL:}
+    failure-url: ${BILLING_MERCADOPAGO_FAILURE_URL:}
+    pending-url: ${BILLING_MERCADOPAGO_PENDING_URL:}
+    timeout-millis: ${BILLING_MERCADOPAGO_TIMEOUT_MILLIS:5000}
+  dlocal:
+    enabled: ${BILLING_DLOCAL_ENABLED:false}
+    base-url: ${BILLING_DLOCAL_BASE_URL:https://api.dlocal.com}
+    x-login: ${BILLING_DLOCAL_X_LOGIN:}
+    x-trans-key: ${BILLING_DLOCAL_X_TRANS_KEY:}
+    webhook-secret: ${BILLING_DLOCAL_WEBHOOK_SECRET:}
+    checkout-path: ${BILLING_DLOCAL_CHECKOUT_PATH:/secure_payments}
+    cancel-path: ${BILLING_DLOCAL_CANCEL_PATH:/subscriptions/{id}/cancel}
+    payment-status-path: ${BILLING_DLOCAL_PAYMENT_STATUS_PATH:/payments/{id}}
+    subscription-status-path: ${BILLING_DLOCAL_SUBSCRIPTION_STATUS_PATH:/subscriptions/{id}}
+    signature-mode: ${BILLING_DLOCAL_SIGNATURE_MODE:STRICT_DATE_BODY}
+    sandbox-only-body-signature-fallback: ${BILLING_DLOCAL_SANDBOX_ONLY_BODY_SIGNATURE_FALLBACK:false}
+    country: ${BILLING_DLOCAL_COUNTRY:UY}
+    success-url: ${BILLING_DLOCAL_SUCCESS_URL:}
+    failure-url: ${BILLING_DLOCAL_FAILURE_URL:}
+    timeout-millis: ${BILLING_DLOCAL_TIMEOUT_MILLIS:5000}

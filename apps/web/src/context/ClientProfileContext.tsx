@@ -6,10 +6,11 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from 'react';
-import api from '@/services/api';
+import { cachedGet } from '@/services/cachedGet';
 import type { ClientProfile } from '@/types/client';
 
 type ClientProfileContextValue = {
@@ -25,8 +26,10 @@ const ClientProfileContext =
 
 export function ClientProfileProvider({
   children,
+  autoLoad = false,
 }: {
   children: ReactNode;
+  autoLoad?: boolean;
 }) {
   const [profile, setProfile] = useState<ClientProfile | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -41,7 +44,11 @@ export function ClientProfileProvider({
   const refreshProfile = useCallback(async () => {
     setIsLoading(true);
     try {
-      const response = await api.get('/auth/me/cliente');
+      const response = await cachedGet<ClientProfile>(
+        '/auth/me/cliente',
+        undefined,
+        { ttlMs: 15000 },
+      );
       setProfile(response.data);
     } catch {
       setProfile(null);
@@ -51,10 +58,16 @@ export function ClientProfileProvider({
     }
   }, []);
 
+  const refreshProfileRef = useRef(refreshProfile);
+
   useEffect(() => {
-    if (hasLoaded || isLoading) return;
-    refreshProfile();
-  }, [hasLoaded, isLoading, refreshProfile]);
+    refreshProfileRef.current = refreshProfile;
+  }, [refreshProfile]);
+
+  useEffect(() => {
+    if (!autoLoad || hasLoaded || isLoading) return;
+    void refreshProfileRef.current();
+  }, [autoLoad, hasLoaded, isLoading]);
 
   const value = useMemo(
     () => ({ profile, isLoading, hasLoaded, refreshProfile, clearProfile }),

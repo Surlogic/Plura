@@ -40,10 +40,12 @@ public class ProfesionalPublicController {
     @GetMapping
     public List<ProfesionalPublicSummaryResponse> listProfesionales(
         @RequestParam(required = false) Integer limit,
+        @RequestParam(required = false) Integer page,
+        @RequestParam(required = false) Integer size,
         @RequestParam(required = false) UUID categoryId,
         @RequestParam(required = false) String categorySlug
     ) {
-        return profesionalPublicPageService.listPublicProfessionals(limit, categoryId, categorySlug);
+        return profesionalPublicPageService.listPublicProfessionals(limit, page, size, categoryId, categorySlug);
     }
 
     @GetMapping("/{slug}")

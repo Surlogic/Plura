@@ -61,6 +61,21 @@ public class ProfessionalProfile {
     @Column(name = "logo_url")
     private String logoUrl;
 
+    @Column(name = "instagram")
+    private String instagram;
+
+    @Column(name = "facebook")
+    private String facebook;
+
+    @Column(name = "tiktok")
+    private String tiktok;
+
+    @Column(name = "website")
+    private String website;
+
+    @Column(name = "whatsapp")
+    private String whatsapp;
+
     @ElementCollection
     @CollectionTable(
         name = "professional_profile_photos",
@@ -97,6 +112,12 @@ public class ProfessionalProfile {
     @Column(name = "slot_duration_minutes", nullable = false)
     private Integer slotDurationMinutes = 15;
 
+    @Column(name = "has_availability_today", nullable = false)
+    private Boolean hasAvailabilityToday = false;
+
+    @Column(name = "next_available_at")
+    private LocalDateTime nextAvailableAt;
+
     @ManyToMany(fetch = FetchType.LAZY)
     @JoinTable(
         name = "professional_categories",
@@ -129,6 +150,9 @@ public class ProfessionalProfile {
         }
         if (this.slotDurationMinutes == null) {
             this.slotDurationMinutes = 15;
+        }
+        if (this.hasAvailabilityToday == null) {
+            this.hasAvailabilityToday = false;
         }
     }
 }

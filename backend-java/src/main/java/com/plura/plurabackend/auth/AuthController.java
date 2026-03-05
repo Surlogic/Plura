@@ -6,6 +6,7 @@ import com.plura.plurabackend.auth.dto.RegisterProfesionalRequest;
 import com.plura.plurabackend.auth.dto.RegisterRequest;
 import com.plura.plurabackend.auth.dto.RegisterResponse;
 import com.plura.plurabackend.auth.dto.UserResponse;
+import com.plura.plurabackend.auth.oauth.dto.OAuthLoginRequest;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import java.time.Duration;
@@ -87,6 +88,19 @@ public class AuthController {
         HttpServletRequest httpRequest
     ) {
         AuthService.AuthResult result = authService.loginProfesional(request, httpRequest.getHeader("User-Agent"));
+        return buildAuthResponse(result);
+    }
+
+    @PostMapping("/oauth")
+    public ResponseEntity<RegisterResponse> loginWithOAuth(
+        @Valid @RequestBody OAuthLoginRequest request,
+        HttpServletRequest httpRequest
+    ) {
+        AuthService.AuthResult result = authService.loginWithOAuth(
+            request.getProvider(),
+            request.getToken(),
+            httpRequest.getHeader("User-Agent")
+        );
         return buildAuthResponse(result);
     }
 

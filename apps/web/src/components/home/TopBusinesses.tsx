@@ -35,7 +35,7 @@ export default function TopBusinesses({ professionals }: TopBusinessesProps) {
           </div>
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {items.map((business) => {
+            {items.map((business, index) => {
               const slug = business.slug || slugify(business.name);
               return (
                 <Link
@@ -48,6 +48,7 @@ export default function TopBusinesses({ professionals }: TopBusinessesProps) {
                     category={business.category}
                     rating={business.rating}
                     imageUrl={business.imageUrl}
+                    priority={index === 0}
                   />
                 </Link>
               );

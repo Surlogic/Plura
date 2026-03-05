@@ -3,13 +3,18 @@ import { useRouter } from 'next/router';
 import { useState } from 'react';
 import type { ChangeEvent, FormEvent } from 'react';
 import AuthTopBar from '@/components/auth/AuthTopBar';
+import AppleLoginButton from '@/components/auth/AppleLoginButton';
+import GoogleLoginButton from '@/components/auth/GoogleLoginButton';
 import Footer from '@/components/shared/Footer';
+import { useClientProfileContext } from '@/context/ClientProfileContext';
 import api from '@/services/api';
+import type { OAuthLoginResult } from '@/lib/auth/oauthLogin';
 import { useProfessionalProfileContext } from '@/context/ProfessionalProfileContext';
 
 export default function ProfesionalLoginPage() {
   const router = useRouter();
   const { refreshProfile } = useProfessionalProfileContext();
+  const { refreshProfile: refreshClientProfile } = useClientProfileContext();
   const [form, setForm] = useState({ email: '', password: '' });
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -29,13 +34,29 @@ export default function ProfesionalLoginPage() {
         email: form.email.trim().toLowerCase(),
         password: form.password,
       });
-      await refreshProfile();
-      router.push('/profesional/dashboard');
+      await completeProfessionalLoginFlow();
     } catch (error) {
       setErrorMessage('Credenciales inválidas o error de servidor.');
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const completeProfessionalLoginFlow = async () => {
+    await refreshProfile();
+    router.push('/profesional/dashboard');
+  };
+
+  const handleOAuthAuthenticated = async (result: OAuthLoginResult) => {
+    setErrorMessage(null);
+
+    if (result.role === 'PROFESSIONAL') {
+      await completeProfessionalLoginFlow();
+      return;
+    }
+
+    await refreshClientProfile();
+    router.push('/cliente/inicio');
   };
 
   const inputClassName =
@@ -156,6 +177,26 @@ export default function ProfesionalLoginPage() {
                   {isSubmitting ? 'Ingresando...' : 'Iniciar sesión'}
                 </button>
               </form>
+
+              <div className="mt-5 space-y-3">
+                <div className="flex items-center gap-3">
+                  <div className="h-px flex-1 bg-[#E2E8F0]" />
+                  <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#94A3B8]">
+                    o continuar con
+                  </span>
+                  <div className="h-px flex-1 bg-[#E2E8F0]" />
+                </div>
+                <div className="space-y-2">
+                  <GoogleLoginButton
+                    onAuthenticated={handleOAuthAuthenticated}
+                    onError={setErrorMessage}
+                  />
+                  <AppleLoginButton
+                    onAuthenticated={handleOAuthAuthenticated}
+                    onError={setErrorMessage}
+                  />
+                </div>
+              </div>
 
               <p className="mt-6 text-center text-xs text-[#64748B]">
                 ¿No tenés cuenta?{' '}

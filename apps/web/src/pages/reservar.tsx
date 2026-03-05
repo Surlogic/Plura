@@ -3,6 +3,7 @@
 import { isAxiosError } from 'axios';
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/router';
+import dynamic from 'next/dynamic';
 import Navbar from '@/components/shared/Navbar';
 import Footer from '@/components/shared/Footer';
 import {
@@ -18,7 +19,13 @@ import {
   getPendingReservation,
   savePendingReservation,
 } from '@/services/pendingReservation';
+import { resolveAssetUrl } from '@/utils/assetUrl';
 import type { WorkDayKey } from '@/types/professional';
+
+const PublicProfileMap = dynamic(
+  () => import('@/components/profesional/PublicProfileMap'),
+  { ssr: false },
+);
 
 const dayLabelsShort: Record<WorkDayKey, string> = {
   mon: 'Lun',
@@ -88,6 +95,38 @@ const formatPrice = (value?: string) => {
   return `$${trimmed}`;
 };
 
+const splitLocationLines = (location: string) => {
+  const normalized = location.trim();
+  if (!normalized) {
+    return { addressLine: '', cityLine: '' };
+  }
+  const parts = normalized
+    .split(',')
+    .map((part) => part.trim())
+    .filter(Boolean);
+  if (parts.length === 0) {
+    return { addressLine: '', cityLine: '' };
+  }
+  if (parts.length === 1) {
+    return { addressLine: parts[0], cityLine: '' };
+  }
+  return {
+    addressLine: parts[0],
+    cityLine: parts.slice(1).join(', '),
+  };
+};
+
+const parseOptionalNumber = (value: unknown): number | null => {
+  if (typeof value === 'number') {
+    return Number.isFinite(value) ? value : null;
+  }
+  if (typeof value === 'string') {
+    const parsed = Number.parseFloat(value);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+  return null;
+};
+
 const extractApiMessage = (error: unknown, fallback: string) => {
   if (isAxiosError(error)) {
     if (error.code === 'ECONNABORTED') {
@@ -148,6 +187,8 @@ export default function ReservationPage() {
   const timeQuery = resolveQueryValue(router.query.time).trim();
   const resumeQuery = resolveQueryValue(router.query.resume).trim();
 
+  const todayKey = toLocalDateKey(new Date());
+
   const calendarDays = useMemo(() => {
     const result: Array<{
       date: Date;
@@ -169,7 +210,8 @@ export default function ReservationPage() {
     }
 
     return result;
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [todayKey]);
 
   useEffect(() => {
     if (!selectedDate && calendarDays.length > 0) {
@@ -427,154 +469,193 @@ export default function ReservationPage() {
     }
   };
 
+  const locationText = (professional?.location || '').trim();
+  const { addressLine, cityLine } = useMemo(
+    () => splitLocationLines(locationText),
+    [locationText],
+  );
+  const mapLatitude = parseOptionalNumber(professional?.latitude);
+  const mapLongitude = parseOptionalNumber(professional?.longitude);
+  const hasMapCoordinates = mapLatitude !== null && mapLongitude !== null;
+  const canRenderReservationMap = Boolean(addressLine) && hasMapCoordinates;
+
   return (
     <div className="min-h-screen bg-[radial-gradient(circle_at_top,#FFFFFF_0%,#EEF2F6_45%,#D3D7DC_100%)] text-[#0E2A47]">
       <Navbar />
       <main className="mx-auto w-full max-w-[1400px] px-4 pb-24 pt-10 sm:px-6 lg:px-10">
-        <section className="rounded-[28px] border border-white/70 bg-white/95 p-6 shadow-[0_28px_70px_rgba(15,23,42,0.18)]">
+        <section className="rounded-[28px] border border-white/70 bg-white/95 px-6 py-5 shadow-[0_28px_70px_rgba(15,23,42,0.18)]">
           <p className="text-[0.65rem] uppercase tracking-[0.35em] text-[#94A3B8]">Reserva</p>
           <h1 className="mt-2 text-2xl font-semibold text-[#0E2A47]">Reserva tu turno</h1>
-          <p className="mt-1 text-sm text-[#64748B]">
-            Selecciona un horario real disponible y confirma la reserva.
-          </p>
+          <div className="mt-3 flex items-start gap-4">
+            <div className="h-16 w-16 shrink-0 overflow-hidden rounded-[14px] border border-[#D9E2EC] bg-white">
+              {service?.imageUrl ? (
+                <img
+                  src={resolveAssetUrl(service.imageUrl)}
+                  alt={service?.name || 'Servicio'}
+                  className="h-full w-full object-cover"
+                />
+              ) : (
+                <div className="flex h-full w-full items-center justify-center text-[0.55rem] font-semibold uppercase tracking-[0.12em] text-[#94A3B8]">
+                  Sin foto
+                </div>
+              )}
+            </div>
+            <div className="space-y-1 text-sm text-[#64748B]">
+              <p className="font-semibold text-[#0E2A47]">
+                {service?.name || 'Servicio no seleccionado'} · {formatDuration(service?.duration)} ·{' '}
+                {formatPrice(service?.price)}
+              </p>
+              {service?.description ? (
+                <p className="text-xs text-[#64748B]">{service.description}</p>
+              ) : null}
+              <p>{professional?.fullName || 'Cargando profesional...'}</p>
+              <p>{professional?.location || 'Ubicacion a confirmar'}</p>
+            </div>
+          </div>
         </section>
 
-        <section className="mt-8 grid gap-6 lg:grid-cols-[1fr,1fr]">
-          <div className="space-y-6">
-            <div className="rounded-[24px] border border-white/70 bg-white/95 p-5 shadow-[0_16px_36px_rgba(15,23,42,0.12)]">
-              <p className="text-[0.65rem] uppercase tracking-[0.35em] text-[#94A3B8]">Profesional</p>
-              <h2 className="mt-2 text-lg font-semibold text-[#0E2A47]">
-                {professional?.fullName || 'Cargando profesional...'}
-              </h2>
-              <p className="mt-1 text-sm text-[#64748B]">
-                {professional?.location || 'Ubicacion a confirmar'}
-              </p>
-            </div>
-
-            <div className="rounded-[24px] border border-white/70 bg-white/95 p-5 shadow-[0_16px_36px_rgba(15,23,42,0.12)]">
-              <p className="text-[0.65rem] uppercase tracking-[0.35em] text-[#94A3B8]">Servicio</p>
-              <h2 className="mt-2 text-lg font-semibold text-[#0E2A47]">
-                {service?.name || 'Servicio no seleccionado'}
-              </h2>
-              <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                <div className="rounded-[18px] border border-[#E2E7EC] bg-[#F7F9FB] px-4 py-3">
-                  <p className="text-xs uppercase tracking-[0.3em] text-[#94A3B8]">Duracion</p>
-                  <p className="mt-2 text-sm font-semibold text-[#0E2A47]">
-                    {formatDuration(service?.duration)}
-                  </p>
-                </div>
-                <div className="rounded-[18px] border border-[#E2E7EC] bg-[#F7F9FB] px-4 py-3">
-                  <p className="text-xs uppercase tracking-[0.3em] text-[#94A3B8]">Precio</p>
-                  <p className="mt-2 text-sm font-semibold text-[#1FB6A6]">
-                    {formatPrice(service?.price)}
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {contextError ? (
-              <div className="rounded-[18px] border border-[#FCA5A5] bg-[#FEF2F2] px-4 py-3 text-sm font-semibold text-[#DC2626]">
-                {contextError}
-              </div>
-            ) : null}
+        {contextError ? (
+          <div className="mt-4 rounded-[18px] border border-[#FCA5A5] bg-[#FEF2F2] px-4 py-3 text-sm font-semibold text-[#DC2626]">
+            {contextError}
           </div>
+        ) : null}
 
-          <div className="space-y-6">
-            <div className="rounded-[24px] border border-white/70 bg-white/95 p-5 shadow-[0_16px_36px_rgba(15,23,42,0.12)]">
-              <p className="text-[0.65rem] uppercase tracking-[0.35em] text-[#94A3B8]">Turnos</p>
-              <h2 className="mt-2 text-lg font-semibold text-[#0E2A47]">Elegi un horario</h2>
+        <section className="mt-8 grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
+          <div className="rounded-[24px] border border-white/70 bg-white/95 p-5 shadow-[0_16px_36px_rgba(15,23,42,0.12)]">
+            <p className="text-[0.65rem] uppercase tracking-[0.35em] text-[#94A3B8]">Turnos</p>
+            <h2 className="mt-2 text-lg font-semibold text-[#0E2A47]">Elegi un horario</h2>
 
-
-              <div className="mt-4 rounded-[18px] border border-[#E2E7EC] bg-white p-4">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <p className="text-xs font-semibold uppercase tracking-[0.25em] text-[#94A3B8]">Calendario</p>
-                  <span className="text-xs font-semibold text-[#64748B]">{calendarTitle}</span>
-                </div>
-                <div className="mt-3 grid grid-cols-7 gap-2 text-center text-[0.65rem] font-semibold text-[#94A3B8]">
-                  {weekOrder.map((day) => (
-                    <div key={day}>{dayLabelsShort[day]}</div>
-                  ))}
-                </div>
-                <div className="mt-3 grid grid-cols-7 gap-2">
-                  {calendarCells.map((cell) => {
-                    if (cell.empty) {
-                      return <div key={cell.key} className="h-12" />;
-                    }
-
-                    const dayNumber = String(cell.date.getDate()).padStart(2, '0');
-                    const monthLabel = cell.date.toLocaleDateString('es-AR', {
-                      month: 'short',
-                    });
-                    const isSelected = selectedDate === cell.dateKey;
-
-                    return (
-                      <button
-                        key={cell.key}
-                        type="button"
-                        onClick={() => {
-                          setSelectedDate(cell.dateKey);
-                          setSelectedTime(null);
-                        }}
-                        className={`flex h-12 flex-col items-center justify-center rounded-[14px] border text-xs font-semibold transition ${
-                          isSelected
-                            ? 'border-[#1FB6A6] bg-[#1FB6A6]/10 text-[#0E2A47]'
-                            : 'border-[#E2E7EC] bg-[#F8FAFC] text-[#0E2A47] hover:-translate-y-0.5'
-                        }`}
-                      >
-                        <span>{dayNumber}</span>
-                        <span className="text-[0.6rem] uppercase text-[#94A3B8]">{monthLabel}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              <div className="mt-4 rounded-[18px] border border-[#E2E7EC] bg-[#F7F9FB] px-4 py-3 text-sm text-[#0E2A47]">
-                <span className="font-semibold capitalize">{selectedDateLabel}</span>
-                <span className="ml-2 text-xs text-[#64748B]">{formatDuration(service?.duration)}</span>
-              </div>
-
-              <div className="mt-4 grid gap-2 sm:grid-cols-3">
-                {isLoadingSlots ? (
-                  <div className="col-span-full rounded-[16px] border border-dashed border-[#CBD5F5] bg-white/70 px-4 py-4 text-sm text-[#64748B]">
-                    Cargando horarios disponibles...
-                  </div>
-                ) : slots.length === 0 ? (
-                  <div className="col-span-full rounded-[16px] border border-dashed border-[#CBD5F5] bg-white/70 px-4 py-4 text-sm text-[#64748B]">
-                    No hay turnos disponibles para este dia.
+            {addressLine ? (
+              <div className="mt-4 rounded-[16px] border border-[#E2E7EC] bg-[#F8FAFC] p-3">
+                <p className="text-[0.65rem] font-semibold uppercase tracking-[0.25em] text-[#94A3B8]">
+                  Ubicacion
+                </p>
+                <p className="mt-1 text-sm font-semibold text-[#0E2A47]">{addressLine}</p>
+                {cityLine ? <p className="text-xs text-[#64748B]">{cityLine}</p> : null}
+                {canRenderReservationMap ? (
+                  <div className="mt-3">
+                    <PublicProfileMap
+                      name={professional?.fullName || 'Profesional'}
+                      category={professional?.rubro || 'Servicio'}
+                      address={addressLine}
+                      city={cityLine}
+                      latitude={mapLatitude as number}
+                      longitude={mapLongitude as number}
+                      heightClassName="h-52"
+                    />
                   </div>
                 ) : (
-                  slots.map((slot) => (
+                  <p className="mt-2 text-xs text-[#94A3B8]">Mapa no disponible para esta direccion.</p>
+                )}
+              </div>
+            ) : null}
+
+            <div className="mt-4 rounded-[16px] border border-[#E2E7EC] bg-white p-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <p className="text-[0.65rem] font-semibold uppercase tracking-[0.25em] text-[#94A3B8]">
+                  Calendario
+                </p>
+                <span className="text-xs font-semibold capitalize text-[#64748B]">{calendarTitle}</span>
+              </div>
+              <div className="mt-2 grid grid-cols-7 gap-1.5 text-center text-[0.62rem] font-semibold text-[#94A3B8]">
+                {weekOrder.map((day) => (
+                  <div key={day}>{dayLabelsShort[day]}</div>
+                ))}
+              </div>
+              <div className="mt-2 grid grid-cols-7 gap-1.5">
+                {calendarCells.map((cell) => {
+                  if (cell.empty) {
+                    return <div key={cell.key} className="h-10" />;
+                  }
+
+                  const dayNumber = String(cell.date.getDate()).padStart(2, '0');
+                  const monthLabel = cell.date.toLocaleDateString('es-AR', {
+                    month: 'short',
+                  });
+                  const isSelected = selectedDate === cell.dateKey;
+
+                  return (
                     <button
-                      key={slot}
+                      key={cell.key}
                       type="button"
-                      onClick={() => setSelectedTime(slot)}
-                      className={`rounded-[14px] border px-3 py-2 text-sm font-semibold transition ${
-                        selectedTime === slot
-                          ? 'border-[#1FB6A6] bg-[#1FB6A6] text-white'
-                          : 'border-[#E2E7EC] bg-white text-[#0E2A47]'
+                      onClick={() => {
+                        setSelectedDate(cell.dateKey);
+                        setSelectedTime(null);
+                      }}
+                      className={`flex h-10 flex-col items-center justify-center rounded-[12px] border text-[0.68rem] font-semibold transition ${
+                        isSelected
+                          ? 'border-[#1FB6A6] bg-[#1FB6A6]/10 text-[#0E2A47]'
+                          : 'border-[#E2E7EC] bg-[#F8FAFC] text-[#0E2A47] hover:-translate-y-0.5'
                       }`}
                     >
-                      {slot}
+                      <span>{dayNumber}</span>
+                      <span className="text-[0.55rem] uppercase text-[#94A3B8]">{monthLabel}</span>
                     </button>
-                  ))
-                )}
+                  );
+                })}
               </div>
             </div>
 
+            <div className="mt-3 rounded-[14px] border border-[#E2E7EC] bg-[#F7F9FB] px-3 py-2 text-sm text-[#0E2A47]">
+              <span className="font-semibold capitalize">{selectedDateLabel}</span>
+              <span className="ml-2 text-xs text-[#64748B]">{formatDuration(service?.duration)}</span>
+            </div>
+
+            <div className="mt-3 grid grid-cols-3 gap-2 sm:grid-cols-4 lg:grid-cols-5">
+              {isLoadingSlots ? (
+                <div className="col-span-full rounded-[14px] border border-dashed border-[#CBD5F5] bg-white/70 px-4 py-4 text-sm text-[#64748B]">
+                  Cargando horarios disponibles...
+                </div>
+              ) : slots.length === 0 ? (
+                <div className="col-span-full rounded-[14px] border border-dashed border-[#CBD5F5] bg-white/70 px-4 py-4 text-sm text-[#64748B]">
+                  No hay turnos disponibles para este dia.
+                </div>
+              ) : (
+                slots.map((slot) => (
+                  <button
+                    key={slot}
+                    type="button"
+                    onClick={() => setSelectedTime(slot)}
+                    className={`rounded-[10px] border px-2.5 py-1.5 text-sm font-semibold transition ${
+                      selectedTime === slot
+                        ? 'border-[#1FB6A6] bg-[#1FB6A6] text-white'
+                        : 'border-[#E2E7EC] bg-white text-[#0E2A47]'
+                    }`}
+                  >
+                    {slot}
+                  </button>
+                ))
+              )}
+            </div>
+          </div>
+
+          <aside className="lg:sticky lg:top-24">
             <div className="rounded-[24px] border border-white/70 bg-white/95 p-5 shadow-[0_16px_36px_rgba(15,23,42,0.12)]">
-              <p className="text-[0.65rem] uppercase tracking-[0.35em] text-[#94A3B8]">Confirmacion</p>
-              <h2 className="mt-2 text-lg font-semibold text-[#0E2A47]">Revisa tu reserva</h2>
+              <p className="text-[0.65rem] uppercase tracking-[0.35em] text-[#94A3B8]">Tu reserva</p>
+              <h2 className="mt-2 text-lg font-semibold text-[#0E2A47]">Resumen</h2>
+              <div className="mt-3 h-28 w-full overflow-hidden rounded-[14px] border border-[#D9E2EC] bg-white">
+                {service?.imageUrl ? (
+                  <img
+                    src={resolveAssetUrl(service.imageUrl)}
+                    alt={service?.name || 'Servicio'}
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  <div className="flex h-full w-full items-center justify-center text-xs font-semibold uppercase tracking-[0.12em] text-[#94A3B8]">
+                    Servicio sin foto
+                  </div>
+                )}
+              </div>
               <div className="mt-4 space-y-2 text-sm text-[#64748B]">
+                <p>
+                  Servicio:{' '}
+                  <span className="font-semibold text-[#0E2A47]">{service?.name || 'Sin seleccionar'}</span>
+                </p>
                 <p>
                   Profesional:{' '}
                   <span className="font-semibold text-[#0E2A47]">
                     {professional?.fullName || 'Sin seleccionar'}
                   </span>
-                </p>
-                <p>
-                  Servicio:{' '}
-                  <span className="font-semibold text-[#0E2A47]">{service?.name || 'Sin seleccionar'}</span>
                 </p>
                 <p>
                   Dia:{' '}
@@ -617,9 +698,8 @@ export default function ReservationPage() {
               {saveError ? (
                 <p className="mt-3 text-xs font-semibold text-[#EF4444]">{saveError}</p>
               ) : null}
-
             </div>
-          </div>
+          </aside>
         </section>
       </main>
       <Footer />

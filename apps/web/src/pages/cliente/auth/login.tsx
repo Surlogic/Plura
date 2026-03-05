@@ -4,10 +4,14 @@ import { useState } from 'react';
 import type { ChangeEvent, FormEvent } from 'react';
 import { isAxiosError } from 'axios';
 import AuthTopBar from '@/components/auth/AuthTopBar';
+import AppleLoginButton from '@/components/auth/AppleLoginButton';
+import GoogleLoginButton from '@/components/auth/GoogleLoginButton';
 import Footer from '@/components/shared/Footer';
+import { useProfessionalProfileContext } from '@/context/ProfessionalProfileContext';
 import api from '@/services/api';
 import { useClientProfileContext } from '@/context/ClientProfileContext';
 import { createPublicReservation } from '@/services/publicBookings';
+import type { OAuthLoginResult } from '@/lib/auth/oauthLogin';
 import {
   clearPendingReservation,
   getPendingReservation,
@@ -37,6 +41,7 @@ const extractApiMessage = (error: unknown, fallback: string) => {
 export default function ClienteLoginPage() {
   const router = useRouter();
   const { refreshProfile } = useClientProfileContext();
+  const { refreshProfile: refreshProfessionalProfile } = useProfessionalProfileContext();
   const redirectIntent = resolveQueryValue(router.query.redirect).trim();
   const shouldConfirmReservationAfterLogin = redirectIntent === 'confirm-reservation';
   const registerHref = shouldConfirmReservationAfterLogin
@@ -60,48 +65,7 @@ export default function ClienteLoginPage() {
         email: form.email.trim().toLowerCase(),
         password: form.password,
       });
-      await refreshProfile();
-
-      if (shouldConfirmReservationAfterLogin) {
-        const pendingReservation = getPendingReservation();
-        if (pendingReservation) {
-          try {
-            const payload = {
-              serviceId: pendingReservation.serviceId,
-              startDateTime: `${pendingReservation.date}T${pendingReservation.time}`,
-            };
-            const created = await createPublicReservation(
-              pendingReservation.professionalSlug,
-              payload,
-            );
-            clearPendingReservation();
-            router.push({
-              pathname: '/reserva-confirmada',
-              query: {
-                id: String(created.id),
-                professional: pendingReservation.professionalName || 'Profesional',
-                service: pendingReservation.serviceName || 'Servicio',
-                date: pendingReservation.date,
-                time: pendingReservation.time,
-                status: created.status,
-              },
-            });
-            return;
-          } catch (reservationError) {
-            router.push({
-              pathname: '/reservar',
-              query: {
-                profesional: pendingReservation.professionalSlug,
-                serviceId: pendingReservation.serviceId,
-                resume: '1',
-              },
-            });
-            return;
-          }
-        }
-      }
-
-      router.push('/cliente/inicio');
+      await completeClientLoginFlow();
     } catch (error) {
       setErrorMessage(
         extractApiMessage(error, 'Credenciales inválidas o error de servidor.'),
@@ -109,6 +73,63 @@ export default function ClienteLoginPage() {
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const completeClientLoginFlow = async () => {
+    await refreshProfile();
+
+    if (shouldConfirmReservationAfterLogin) {
+      const pendingReservation = getPendingReservation();
+      if (pendingReservation) {
+        try {
+          const payload = {
+            serviceId: pendingReservation.serviceId,
+            startDateTime: `${pendingReservation.date}T${pendingReservation.time}`,
+          };
+          const created = await createPublicReservation(
+            pendingReservation.professionalSlug,
+            payload,
+          );
+          clearPendingReservation();
+          router.push({
+            pathname: '/reserva-confirmada',
+            query: {
+              id: String(created.id),
+              professional: pendingReservation.professionalName || 'Profesional',
+              service: pendingReservation.serviceName || 'Servicio',
+              date: pendingReservation.date,
+              time: pendingReservation.time,
+              status: created.status,
+            },
+          });
+          return;
+        } catch {
+          router.push({
+            pathname: '/reservar',
+            query: {
+              profesional: pendingReservation.professionalSlug,
+              serviceId: pendingReservation.serviceId,
+              resume: '1',
+            },
+          });
+          return;
+        }
+      }
+    }
+
+    router.push('/cliente/inicio');
+  };
+
+  const handleOAuthAuthenticated = async (result: OAuthLoginResult) => {
+    setErrorMessage(null);
+
+    if (result.role === 'PROFESSIONAL') {
+      await refreshProfessionalProfile();
+      router.push('/profesional/dashboard');
+      return;
+    }
+
+    await completeClientLoginFlow();
   };
 
   const inputClassName =
@@ -202,6 +223,26 @@ export default function ClienteLoginPage() {
                 {isSubmitting ? 'Ingresando...' : 'Iniciar sesión'}
               </button>
             </form>
+
+            <div className="mt-5 space-y-3">
+              <div className="flex items-center gap-3">
+                <div className="h-px flex-1 bg-[#E2E8F0]" />
+                <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#94A3B8]">
+                  o continuar con
+                </span>
+                <div className="h-px flex-1 bg-[#E2E8F0]" />
+              </div>
+              <div className="space-y-2">
+                <GoogleLoginButton
+                  onAuthenticated={handleOAuthAuthenticated}
+                  onError={setErrorMessage}
+                />
+                <AppleLoginButton
+                  onAuthenticated={handleOAuthAuthenticated}
+                  onError={setErrorMessage}
+                />
+              </div>
+            </div>
 
             <p className="mt-6 text-center text-xs text-[#64748B]">
               ¿No tenés cuenta?{' '}

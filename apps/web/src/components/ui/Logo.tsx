@@ -15,12 +15,25 @@ type LogoContentProps = {
   priority: boolean;
 };
 
+const getLogoImageSizeClass = (size: number) => {
+  if (size <= 30) return 'h-[30px] w-[30px]';
+  if (size >= 38) return 'h-[38px] w-[38px]';
+  return 'h-[36px] w-[36px]';
+};
+
+const getLogoTextSizeClass = (size: number) => {
+  if (size <= 30) return 'text-[18px]';
+  if (size >= 38) return 'text-[24px]';
+  return 'text-[22px]';
+};
+
 function LogoContent({
   size,
   textClassName,
   priority,
 }: LogoContentProps) {
-  const textSize = Math.max(18, Math.round(size * 0.62));
+  const imageSizeClass = getLogoImageSizeClass(size);
+  const textSizeClass = getLogoTextSizeClass(size);
 
   return (
     <>
@@ -29,13 +42,11 @@ function LogoContent({
         alt="Plura"
         width={size}
         height={size}
-        className="shrink-0 object-contain"
-        style={{ width: `${size}px`, height: `${size}px` }}
+        className={`shrink-0 object-contain ${imageSizeClass}`}
         priority={priority}
       />
       <span
-        className={`logo-type leading-none ${textClassName}`.trim()}
-        style={{ fontSize: `${textSize}px` }}
+        className={`logo-type leading-none ${textClassName} ${textSizeClass}`.trim()}
       >
         Plura
       </span>

@@ -1,11 +1,13 @@
 package com.plura.plurabackend.cache;
 
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
 import com.plura.plurabackend.professional.dto.ProfesionalPublicPageResponse;
 import com.plura.plurabackend.professional.dto.ProfesionalPublicSummaryResponse;
 import java.time.Duration;
 import java.util.List;
 import java.util.Optional;
-import java.util.concurrent.ConcurrentHashMap;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -14,31 +16,53 @@ public class InMemoryProfileCacheService implements ProfileCacheService {
     private static final Duration PAGE_TTL = Duration.ofMinutes(5);
     private static final Duration SUMMARIES_TTL = Duration.ofMinutes(2);
 
-    private final ConcurrentHashMap<String, CacheEntry<ProfesionalPublicPageResponse>> pageCache = new ConcurrentHashMap<>();
-    private final ConcurrentHashMap<String, CacheEntry<List<ProfesionalPublicSummaryResponse>>> summaryCache =
-        new ConcurrentHashMap<>();
+    private final Cache<String, ProfesionalPublicPageResponse> pageCache;
+    private final Cache<String, List<ProfesionalPublicSummaryResponse>> summaryCache;
+
+    public InMemoryProfileCacheService(
+        @Value("${app.cache.profile.page-max-size:10000}") long pageMaxSize,
+        @Value("${app.cache.profile.summaries-max-size:5000}") long summariesMaxSize
+    ) {
+        this.pageCache = Caffeine.newBuilder()
+            .expireAfterWrite(PAGE_TTL)
+            .maximumSize(Math.max(500L, pageMaxSize))
+            .build();
+        this.summaryCache = Caffeine.newBuilder()
+            .expireAfterWrite(SUMMARIES_TTL)
+            .maximumSize(Math.max(200L, summariesMaxSize))
+            .build();
+    }
 
     @Override
     public Optional<ProfesionalPublicPageResponse> getPublicPageBySlug(String slug) {
-        return getValue(pageCache, slug);
+        if (slug == null || slug.isBlank()) {
+            return Optional.empty();
+        }
+        return Optional.ofNullable(pageCache.getIfPresent(slug));
     }
 
     @Override
     public void putPublicPageBySlug(String slug, ProfesionalPublicPageResponse response) {
-        putValue(pageCache, slug, response, PAGE_TTL);
+        if (slug == null || slug.isBlank() || response == null) {
+            return;
+        }
+        pageCache.put(slug, response);
     }
 
     @Override
     public Optional<List<ProfesionalPublicSummaryResponse>> getPublicSummaries(String key) {
-        return getValue(summaryCache, key);
+        if (key == null || key.isBlank()) {
+            return Optional.empty();
+        }
+        return Optional.ofNullable(summaryCache.getIfPresent(key));
     }
 
     @Override
     public void putPublicSummaries(String key, List<ProfesionalPublicSummaryResponse> response) {
-        if (response == null) {
+        if (key == null || key.isBlank() || response == null) {
             return;
         }
-        putValue(summaryCache, key, List.copyOf(response), SUMMARIES_TTL);
+        summaryCache.put(key, List.copyOf(response));
     }
 
     @Override
@@ -46,40 +70,11 @@ public class InMemoryProfileCacheService implements ProfileCacheService {
         if (slug == null || slug.isBlank()) {
             return;
         }
-        pageCache.remove(slug);
+        pageCache.invalidate(slug);
     }
 
     @Override
     public void evictPublicSummaries() {
-        summaryCache.clear();
+        summaryCache.invalidateAll();
     }
-
-    private <T> Optional<T> getValue(ConcurrentHashMap<String, CacheEntry<T>> cache, String key) {
-        if (key == null || key.isBlank()) {
-            return Optional.empty();
-        }
-        CacheEntry<T> entry = cache.get(key);
-        if (entry == null) {
-            return Optional.empty();
-        }
-        if (entry.expiresAtEpochMillis < System.currentTimeMillis()) {
-            cache.remove(key, entry);
-            return Optional.empty();
-        }
-        return Optional.ofNullable(entry.value);
-    }
-
-    private <T> void putValue(
-        ConcurrentHashMap<String, CacheEntry<T>> cache,
-        String key,
-        T value,
-        Duration ttl
-    ) {
-        if (key == null || key.isBlank() || value == null) {
-            return;
-        }
-        cache.put(key, new CacheEntry<>(value, System.currentTimeMillis() + ttl.toMillis()));
-    }
-
-    private record CacheEntry<T>(T value, long expiresAtEpochMillis) {}
 }

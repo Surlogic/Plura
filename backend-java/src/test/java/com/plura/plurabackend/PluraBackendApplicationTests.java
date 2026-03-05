@@ -12,6 +12,8 @@ import org.springframework.boot.test.context.SpringBootTest;
 	"JWT_REFRESH_PEPPER=test-refresh-pepper",
 	"APP_TIMEZONE=America/Montevideo",
 	"CACHE_ENABLED=false",
+	"SPRING_FLYWAY_ENABLED=false",
+	"APP_RATE_LIMIT_ENABLED=false",
 	"HIKARI_CONNECTION_INIT_SQL=SELECT 1",
 	"SWAGGER_ENABLED=false",
 })

@@ -1,5 +1,14 @@
 import axios from 'axios';
-import type { AxiosRequestConfig } from 'axios';
+import type {
+  AxiosRequestConfig,
+  AxiosRequestHeaders,
+  InternalAxiosRequestConfig,
+} from 'axios';
+import {
+  clearAuthAccessToken,
+  getAuthAccessToken,
+  setAuthAccessToken,
+} from '@/services/session';
 
 const api = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000',
@@ -10,6 +19,14 @@ const authApi = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000',
   withCredentials: true,
 });
+
+const authTokenFromResponse = (
+  responseData: unknown,
+): string | null => {
+  if (!responseData || typeof responseData !== 'object') return null;
+  const token = (responseData as { accessToken?: unknown }).accessToken;
+  return typeof token === 'string' && token.trim() ? token.trim() : null;
+};
 
 const isAuthRoute = (url?: string) => {
   if (!url) return false;
@@ -58,8 +75,37 @@ const redirectToLogin = () => {
 // El guard typeof window evita que se comparta entre requests en SSR.
 let refreshPromise: Promise<void> | null = null;
 
+const attachAuthHeader = (
+  config: InternalAxiosRequestConfig,
+): InternalAxiosRequestConfig => {
+  const token = getAuthAccessToken();
+  if (!token) return config;
+
+  const headers = config.headers as AxiosRequestHeaders | undefined;
+  const hasAuthorizationHeader =
+    typeof (headers as Record<string, unknown> | undefined)?.Authorization === 'string' ||
+    typeof (headers as Record<string, unknown> | undefined)?.authorization === 'string';
+
+  if (!hasAuthorizationHeader) {
+    config.headers = {
+      ...headers,
+      Authorization: `Bearer ${token}`,
+    } as AxiosRequestHeaders;
+  }
+  return config;
+};
+
+api.interceptors.request.use((config) => attachAuthHeader(config));
+authApi.interceptors.request.use((config) => attachAuthHeader(config));
+
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    const token = authTokenFromResponse(response.data);
+    if (token) {
+      setAuthAccessToken(token);
+    }
+    return response;
+  },
   async (error) => {
     const originalRequest = error.config as AxiosRequestConfig & { _retry?: boolean };
     const status = error.response?.status;
@@ -78,7 +124,12 @@ api.interceptors.response.use(
       if (!refreshPromise) {
         refreshPromise = authApi
           .post('/auth/refresh')
-          .then(() => undefined)
+          .then((response) => {
+            const token = authTokenFromResponse(response.data);
+            if (token) {
+              setAuthAccessToken(token);
+            }
+          })
           .catch((refreshError) => {
             throw refreshError;
           })
@@ -91,6 +142,7 @@ api.interceptors.response.use(
         await refreshPromise;
         return api(originalRequest);
       } catch {
+        clearAuthAccessToken();
         redirectToLogin();
       }
     }

@@ -1,8 +1,19 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { isAxiosError } from 'axios';
 import type { OAuthLoginResult } from '@/lib/auth/oauthLogin';
 import { oauthLogin } from '@/lib/auth/oauthLogin';
+import {
+  GOOGLE_AUTH_URL,
+  GOOGLE_OAUTH_CHANNEL,
+  clearGoogleOAuthRequest,
+  createCodeChallenge,
+  createGoogleOAuthRequest,
+  getGoogleOAuthRequest,
+  saveGoogleOAuthRequest,
+  type GoogleOAuthResultPayload,
+} from '@/lib/auth/googleOAuth';
 
 type GoogleLoginButtonProps = {
   onAuthenticated: (result: OAuthLoginResult) => Promise<void> | void;
@@ -10,8 +21,32 @@ type GoogleLoginButtonProps = {
 };
 
 const GOOGLE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || '';
-const GOOGLE_AUTH_URL = 'https://accounts.google.com/o/oauth2/v2/auth';
-const GOOGLE_OAUTH_STORAGE_KEY = 'plura_google_oauth_result';
+
+const resolveApiErrorMessage = (error: unknown, fallback: string) => {
+  if (isAxiosError(error)) {
+    const responseData = error.response?.data;
+    if (typeof responseData === 'string' && responseData.trim()) {
+      return responseData.trim();
+    }
+    if (responseData && typeof responseData === 'object') {
+      const payload = responseData as {
+        message?: unknown;
+        detail?: unknown;
+        error?: unknown;
+      };
+      if (typeof payload.message === 'string' && payload.message.trim()) {
+        return payload.message.trim();
+      }
+      if (typeof payload.detail === 'string' && payload.detail.trim()) {
+        return payload.detail.trim();
+      }
+      if (typeof payload.error === 'string' && payload.error.trim()) {
+        return payload.error.trim();
+      }
+    }
+  }
+  return fallback;
+};
 
 export default function GoogleLoginButton({
   onAuthenticated,
@@ -20,26 +55,59 @@ export default function GoogleLoginButton({
   const [isLoading, setIsLoading] = useState(false);
   const popupRef = useRef<Window | null>(null);
   const handledResultRef = useRef(false);
+  const popupClosedIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const popupCloseGraceTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const clearPopupWatchers = useCallback(() => {
+    if (popupClosedIntervalRef.current) {
+      clearInterval(popupClosedIntervalRef.current);
+      popupClosedIntervalRef.current = null;
+    }
+    if (popupCloseGraceTimeoutRef.current) {
+      clearTimeout(popupCloseGraceTimeoutRef.current);
+      popupCloseGraceTimeoutRef.current = null;
+    }
+  }, []);
 
   useEffect(() => {
-    const handleOAuthResult = async (accessToken?: string | null, error?: string | null) => {
+    const handleOAuthResult = async (payload: GoogleOAuthResultPayload) => {
       if (handledResultRef.current) return;
       handledResultRef.current = true;
-      localStorage.removeItem(GOOGLE_OAUTH_STORAGE_KEY);
+      clearPopupWatchers();
+      popupRef.current = null;
+      const pendingRequest = getGoogleOAuthRequest();
+      clearGoogleOAuthRequest();
 
-      if (error || !accessToken) {
-        onError(error === 'access_denied'
+      if (!pendingRequest) {
+        onError('La sesión OAuth expiró o no es válida. Intentá nuevamente.');
+        setIsLoading(false);
+        return;
+      }
+
+      if (payload.error || !payload.code) {
+        onError(payload.error === 'access_denied'
           ? 'Acceso denegado por el usuario.'
-          : 'No se recibió token de Google.');
+          : 'No se recibió autorización de Google.');
+        setIsLoading(false);
+        return;
+      }
+
+      if (!payload.state || payload.state !== pendingRequest.state) {
+        onError('No se pudo validar el estado de seguridad OAuth.');
         setIsLoading(false);
         return;
       }
 
       try {
-        const result = await oauthLogin('google', accessToken);
+        const redirectUri = `${window.location.origin}/oauth/callback`;
+        const result = await oauthLogin('google', payload.code, {
+          grantType: 'authorization_code',
+          codeVerifier: pendingRequest.codeVerifier,
+          redirectUri,
+        });
         await onAuthenticated(result);
-      } catch {
-        onError('No se pudo iniciar sesion con Google.');
+      } catch (error) {
+        onError(resolveApiErrorMessage(error, 'No se pudo iniciar sesion con Google.'));
       } finally {
         setIsLoading(false);
       }
@@ -47,30 +115,36 @@ export default function GoogleLoginButton({
 
     const handleMessage = async (event: MessageEvent) => {
       if (event.origin !== window.location.origin) return;
-      if (event.data?.type !== 'GOOGLE_OAUTH_RESULT') return;
-      await handleOAuthResult(event.data?.accessToken, event.data?.error);
+      const payload = event.data as Partial<GoogleOAuthResultPayload> | undefined;
+      if (payload?.type !== 'GOOGLE_OAUTH_RESULT') return;
+      await handleOAuthResult({
+        type: 'GOOGLE_OAUTH_RESULT',
+        code: typeof payload.code === 'string' ? payload.code : null,
+        state: typeof payload.state === 'string' ? payload.state : null,
+        error: typeof payload.error === 'string' ? payload.error : null,
+        ts: typeof payload.ts === 'number' ? payload.ts : Date.now(),
+      });
     };
 
-    const handleStorage = async (event: StorageEvent) => {
-      if (event.key !== GOOGLE_OAUTH_STORAGE_KEY || !event.newValue) return;
-      try {
-        const payload = JSON.parse(event.newValue) as {
-          type?: string;
-          accessToken?: string | null;
-          error?: string | null;
-        };
-        if (payload.type !== 'GOOGLE_OAUTH_RESULT') return;
-        await handleOAuthResult(payload.accessToken, payload.error);
-      } catch {
-        // Ignore malformed storage payloads.
-      }
+    const channel =
+      typeof window.BroadcastChannel !== 'undefined'
+        ? new window.BroadcastChannel(GOOGLE_OAUTH_CHANNEL)
+        : null;
+
+    const handleChannelMessage = async (event: MessageEvent<GoogleOAuthResultPayload>) => {
+      const payload = event.data;
+      if (!payload || payload.type !== 'GOOGLE_OAUTH_RESULT') return;
+      await handleOAuthResult(payload);
     };
 
     window.addEventListener('message', handleMessage);
-    window.addEventListener('storage', handleStorage);
+    channel?.addEventListener('message', handleChannelMessage);
+
     return () => {
+      clearPopupWatchers();
       window.removeEventListener('message', handleMessage);
-      window.removeEventListener('storage', handleStorage);
+      channel?.removeEventListener('message', handleChannelMessage);
+      channel?.close();
     };
   }, [onAuthenticated, onError]);
 
@@ -86,19 +160,34 @@ export default function GoogleLoginButton({
     );
   }
 
-  const handleClick = () => {
+  const handleClick = async () => {
     setIsLoading(true);
     handledResultRef.current = false;
-    localStorage.removeItem(GOOGLE_OAUTH_STORAGE_KEY);
+    clearPopupWatchers();
+    const oauthRequest = createGoogleOAuthRequest();
+    saveGoogleOAuthRequest(oauthRequest);
+
+    let codeChallenge = '';
+    try {
+      codeChallenge = await createCodeChallenge(oauthRequest.codeVerifier);
+    } catch {
+      clearGoogleOAuthRequest();
+      onError('No se pudo preparar OAuth seguro (PKCE).');
+      setIsLoading(false);
+      return;
+    }
 
     const redirectUri = `${window.location.origin}/oauth/callback`;
     const params = new URLSearchParams({
       client_id: GOOGLE_CLIENT_ID,
       redirect_uri: redirectUri,
-      response_type: 'token',
+      response_type: 'code',
       scope: 'openid email profile',
       include_granted_scopes: 'true',
       prompt: 'select_account',
+      state: oauthRequest.state,
+      code_challenge: codeChallenge,
+      code_challenge_method: 'S256',
     });
 
     const width = 500;
@@ -113,6 +202,7 @@ export default function GoogleLoginButton({
     );
 
     if (!popup) {
+      clearGoogleOAuthRequest();
       onError('El navegador bloqueó la ventana emergente. Permití popups para este sitio.');
       setIsLoading(false);
       return;
@@ -120,13 +210,19 @@ export default function GoogleLoginButton({
 
     popupRef.current = popup;
 
-    // Reset loading if popup is closed without completing
-    const checkClosed = setInterval(() => {
+    // Reset loading if popup is closed without completing.
+    // We wait briefly before clearing state to avoid racing against callback postMessage/BroadcastChannel.
+    popupClosedIntervalRef.current = setInterval(() => {
       try {
         if (popup.closed) {
-          clearInterval(checkClosed);
+          clearPopupWatchers();
+          popupRef.current = null;
           if (!handledResultRef.current) {
-            setIsLoading(false);
+            popupCloseGraceTimeoutRef.current = setTimeout(() => {
+              if (handledResultRef.current) return;
+              clearGoogleOAuthRequest();
+              setIsLoading(false);
+            }, 1200);
           }
         }
       } catch {

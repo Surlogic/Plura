@@ -1,13 +1,15 @@
 package com.plura.plurabackend.professional.service;
 
+import java.awt.image.BufferedImage;
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
-import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.StandardCopyOption;
+import java.nio.file.StandardOpenOption;
 import java.util.Locale;
 import java.util.Set;
 import java.util.UUID;
+import javax.imageio.ImageIO;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -47,6 +49,10 @@ public class ServiceImageStorageService {
                 "Formato inválido. Solo jpg, png o webp"
             );
         }
+        byte[] imageBytes = readImageBytes(file);
+        if (!isValidImage(imageBytes)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Archivo de imagen inválido");
+        }
 
         String extension = resolveExtension(contentType);
         String fileName = "service-" + UUID.randomUUID() + extension;
@@ -58,9 +64,13 @@ public class ServiceImageStorageService {
 
         try {
             Files.createDirectories(targetDirectory);
-            try (InputStream inputStream = file.getInputStream()) {
-                Files.copy(inputStream, targetFile, StandardCopyOption.REPLACE_EXISTING);
-            }
+            Files.write(
+                targetFile,
+                imageBytes,
+                StandardOpenOption.CREATE,
+                StandardOpenOption.TRUNCATE_EXISTING,
+                StandardOpenOption.WRITE
+            );
         } catch (IOException exception) {
             throw new ResponseStatusException(
                 HttpStatus.INTERNAL_SERVER_ERROR,
@@ -78,5 +88,31 @@ public class ServiceImageStorageService {
             case "image/webp" -> ".webp";
             default -> throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Formato inválido");
         };
+    }
+
+    private byte[] readImageBytes(MultipartFile file) {
+        try {
+            byte[] bytes = file.getBytes();
+            if (bytes.length == 0 || bytes.length > MAX_FILE_SIZE_BYTES) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "La imagen supera 1MB");
+            }
+            return bytes;
+        } catch (IOException exception) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Archivo de imagen inválido");
+        }
+    }
+
+    private boolean isValidImage(byte[] imageBytes) {
+        try {
+            BufferedImage image = ImageIO.read(new ByteArrayInputStream(imageBytes));
+            if (image == null) {
+                return false;
+            }
+            int width = image.getWidth();
+            int height = image.getHeight();
+            return width > 0 && height > 0 && width <= 8000 && height <= 8000;
+        } catch (IOException exception) {
+            return false;
+        }
     }
 }

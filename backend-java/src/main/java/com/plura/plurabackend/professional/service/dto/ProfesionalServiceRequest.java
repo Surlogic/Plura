@@ -2,6 +2,7 @@ package com.plura.plurabackend.professional.service.dto;
 
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
 import java.math.BigDecimal;
@@ -22,6 +23,7 @@ public class ProfesionalServiceRequest {
     private String duration;
 
     @Size(max = 500)
+    @Pattern(regexp = "^(|https?://.+|/uploads/.+|r2://.+|r2:.+)$")
     private String imageUrl;
 
     @Min(0)

@@ -5,6 +5,7 @@ import com.auth0.jwt.JWTVerifier;
 import com.auth0.jwt.algorithms.Algorithm;
 import com.auth0.jwt.exceptions.JWTVerificationException;
 import com.auth0.jwt.interfaces.DecodedJWT;
+import jakarta.servlet.http.Cookie;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -22,6 +23,8 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 @Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
+
+    private static final String ACCESS_COOKIE = "plura_access_token";
 
     private final JWTVerifier verifier;
 
@@ -44,19 +47,15 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     ) throws ServletException, IOException {
         String token = null;
         String authHeader = request.getHeader("Authorization");
-        if (authHeader != null && authHeader.startsWith("Bearer ")) {
-            token = authHeader.substring(7);
+        if (authHeader != null) {
+            String trimmedHeader = authHeader.trim();
+            if (trimmedHeader.regionMatches(true, 0, "Bearer ", 0, 7)) {
+                token = trimmedHeader.substring(7).trim();
+            }
         }
 
         if (token == null || token.isBlank()) {
-            if (request.getCookies() != null) {
-                for (var cookie : request.getCookies()) {
-                    if ("plura_access_token".equals(cookie.getName())) {
-                        token = cookie.getValue();
-                        break;
-                    }
-                }
-            }
+            token = extractTokenFromCookie(request);
         }
 
         if (token == null || token.isBlank()) {
@@ -91,5 +90,25 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             SecurityContextHolder.clearContext();
             response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Token inválido o expirado");
         }
+    }
+
+    private String extractTokenFromCookie(HttpServletRequest request) {
+        Cookie[] cookies = request.getCookies();
+        if (cookies == null || cookies.length == 0) {
+            return null;
+        }
+        for (Cookie cookie : cookies) {
+            if (cookie == null) {
+                continue;
+            }
+            if (ACCESS_COOKIE.equals(cookie.getName())) {
+                String value = cookie.getValue();
+                if (value == null || value.isBlank()) {
+                    return null;
+                }
+                return value.trim();
+            }
+        }
+        return null;
     }
 }

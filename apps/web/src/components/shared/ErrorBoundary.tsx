@@ -20,15 +20,15 @@ export default class ErrorBoundary extends Component<Props, State> {
   render() {
     if (this.state.hasError) {
       return (
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', fontFamily: 'sans-serif', color: '#0E2A47' }}>
-          <h1 style={{ fontSize: '1.5rem', fontWeight: 600 }}>Algo salió mal</h1>
-          <p style={{ marginTop: '0.5rem', color: '#64748B' }}>
+        <div className="flex min-h-screen flex-col items-center justify-center px-4 text-[#0E2A47]">
+          <h1 className="text-2xl font-semibold">Algo salió mal</h1>
+          <p className="mt-2 text-[#64748B]">
             Ocurrió un error inesperado. Recargá la página para continuar.
           </p>
           <button
             type="button"
             onClick={() => window.location.reload()}
-            style={{ marginTop: '1rem', padding: '0.5rem 1.5rem', borderRadius: '9999px', backgroundColor: '#0E2A47', color: '#fff', border: 'none', cursor: 'pointer', fontWeight: 600 }}
+            className="mt-4 rounded-full bg-[#0E2A47] px-6 py-2 font-semibold text-white transition hover:brightness-110"
           >
             Recargar
           </button>

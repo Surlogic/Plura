@@ -38,6 +38,7 @@ import java.util.function.LongPredicate;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -135,15 +136,21 @@ public class AvailableSlotService {
         LocalDate from = LocalDate.now(appZoneId);
         LocalDate to = from.plusDays(lookaheadDays);
 
-        List<ProfessionalProfile> activeProfiles = professionalProfileRepository.findAllActiveWithRelations()
-            .stream()
-            .filter(profile -> profile != null && profile.getId() != null && includeProfile.test(profile.getId()))
-            .toList();
-        for (int i = 0; i < activeProfiles.size(); i += REBUILD_BATCH_SIZE) {
-            List<ProfessionalProfile> batch = activeProfiles.subList(
-                i, Math.min(i + REBUILD_BATCH_SIZE, activeProfiles.size())
+        int page = 0;
+        while (true) {
+            List<ProfessionalProfile> pageItems = professionalProfileRepository.findByActiveTrueOrderByCreatedAtDesc(
+                PageRequest.of(page, REBUILD_BATCH_SIZE)
             );
-            transactionTemplate.executeWithoutResult(status -> rebuildBatch(batch, from, to));
+            if (pageItems.isEmpty()) {
+                break;
+            }
+            List<ProfessionalProfile> batch = pageItems.stream()
+                .filter(profile -> profile != null && profile.getId() != null && includeProfile.test(profile.getId()))
+                .toList();
+            if (!batch.isEmpty()) {
+                transactionTemplate.executeWithoutResult(status -> rebuildBatch(batch, from, to));
+            }
+            page++;
         }
     }
 

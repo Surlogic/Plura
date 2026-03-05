@@ -17,13 +17,13 @@ import java.util.UUID;
 import org.springframework.stereotype.Service;
 
 @Service
-public class ProfesionalPublicPageService {
+public class ProfessionalPublicPageService {
 
     private final BookingService bookingService;
     private final ScheduleService scheduleService;
     private final ProfessionalProfileService professionalProfileService;
 
-    public ProfesionalPublicPageService(
+    public ProfessionalPublicPageService(
         BookingService bookingService,
         ScheduleService scheduleService,
         ProfessionalProfileService professionalProfileService

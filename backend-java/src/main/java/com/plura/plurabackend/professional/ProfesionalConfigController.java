@@ -40,54 +40,54 @@ public class ProfesionalConfigController {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ProfesionalConfigController.class);
 
-    private final ProfesionalPublicPageService profesionalPublicPageService;
+    private final ProfessionalPublicPageService professionalPublicPageService;
     private final ServiceImageStorageService serviceImageStorageService;
 
     public ProfesionalConfigController(
-        ProfesionalPublicPageService profesionalPublicPageService,
+        ProfessionalPublicPageService professionalPublicPageService,
         ServiceImageStorageService serviceImageStorageService
     ) {
-        this.profesionalPublicPageService = profesionalPublicPageService;
+        this.professionalPublicPageService = professionalPublicPageService;
         this.serviceImageStorageService = serviceImageStorageService;
     }
 
     @GetMapping("/public-page")
     public ProfesionalPublicPageResponse getPublicPageConfig() {
-        return profesionalPublicPageService.getPublicPageByProfesionalId(getProfesionalId());
+        return professionalPublicPageService.getPublicPageByProfesionalId(getProfesionalId());
     }
 
     @PutMapping("/public-page")
     public ProfesionalPublicPageResponse updatePublicPageConfig(
         @Valid @RequestBody ProfesionalPublicPageUpdateRequest request
     ) {
-        return profesionalPublicPageService.updatePublicPage(getProfesionalId(), request);
+        return professionalPublicPageService.updatePublicPage(getProfesionalId(), request);
     }
 
     @PutMapping("/profile")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void updateBusinessProfile(@Valid @RequestBody ProfesionalBusinessProfileUpdateRequest request) {
-        profesionalPublicPageService.updateBusinessProfile(getProfesionalId(), request);
+        professionalPublicPageService.updateBusinessProfile(getProfesionalId(), request);
     }
 
     @GetMapping("/schedule")
     public ProfesionalScheduleDto getSchedule() {
-        return profesionalPublicPageService.getSchedule(getProfesionalId());
+        return professionalPublicPageService.getSchedule(getProfesionalId());
     }
 
     @PutMapping("/schedule")
     public ProfesionalScheduleDto updateSchedule(@Valid @RequestBody ProfesionalScheduleDto request) {
-        return profesionalPublicPageService.updateSchedule(getProfesionalId(), request);
+        return professionalPublicPageService.updateSchedule(getProfesionalId(), request);
     }
 
     @GetMapping("/services")
     public List<ProfesionalServiceResponse> listServices() {
-        return profesionalPublicPageService.listServices(getProfesionalId());
+        return professionalPublicPageService.listServices(getProfesionalId());
     }
 
     @PostMapping("/services")
     @ResponseStatus(HttpStatus.CREATED)
     public ProfesionalServiceResponse createService(@Valid @RequestBody ProfesionalServiceRequest request) {
-        return profesionalPublicPageService.createService(getProfesionalId(), request);
+        return professionalPublicPageService.createService(getProfesionalId(), request);
     }
 
     @PostMapping(path = "/services/image", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
@@ -101,13 +101,13 @@ public class ProfesionalConfigController {
         @PathVariable("id") String serviceId,
         @Valid @RequestBody ProfesionalServiceRequest request
     ) {
-        return profesionalPublicPageService.updateService(getProfesionalId(), serviceId, request);
+        return professionalPublicPageService.updateService(getProfesionalId(), serviceId, request);
     }
 
     @DeleteMapping("/services/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void deleteService(@PathVariable("id") String serviceId) {
-        profesionalPublicPageService.deleteService(getProfesionalId(), serviceId);
+        professionalPublicPageService.deleteService(getProfesionalId(), serviceId);
     }
 
     @GetMapping("/reservas")
@@ -116,7 +116,7 @@ public class ProfesionalConfigController {
         @RequestParam(required = false) String dateFrom,
         @RequestParam(required = false) String dateTo
     ) {
-        return profesionalPublicPageService.getProfessionalBookings(
+        return professionalPublicPageService.getProfessionalBookings(
             getProfesionalId(),
             date,
             dateFrom,
@@ -130,7 +130,7 @@ public class ProfesionalConfigController {
         @Valid @RequestBody ProfessionalBookingCreateRequest request
     ) {
         try {
-            return profesionalPublicPageService.createProfessionalBooking(getProfesionalId(), request);
+            return professionalPublicPageService.createProfessionalBooking(getProfesionalId(), request);
         } catch (DataIntegrityViolationException exception) {
             LOGGER.warn("Conflicto de integridad al crear reserva profesional", exception);
             throw new ResponseStatusException(HttpStatus.CONFLICT, "El horario ya fue reservado");
@@ -142,7 +142,7 @@ public class ProfesionalConfigController {
         @PathVariable("id") Long bookingId,
         @Valid @RequestBody ProfessionalBookingUpdateRequest request
     ) {
-        return profesionalPublicPageService.updateProfessionalBooking(getProfesionalId(), bookingId, request);
+        return professionalPublicPageService.updateProfessionalBooking(getProfesionalId(), bookingId, request);
     }
 
     private String getProfesionalId() {

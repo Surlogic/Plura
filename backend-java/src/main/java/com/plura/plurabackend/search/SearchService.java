@@ -15,6 +15,7 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -45,6 +46,8 @@ public class SearchService {
     private final boolean searchEngineEnabled;
     private final boolean searchEngineSuggestEnabled;
     private final boolean searchEngineHydrateFromDb;
+    private final AtomicBoolean searchEngineSearchWarned = new AtomicBoolean(false);
+    private final AtomicBoolean searchEngineSuggestWarned = new AtomicBoolean(false);
 
     public SearchService(
         SearchNativeRepository searchNativeRepository,
@@ -222,7 +225,7 @@ public class SearchService {
                         return engineResponse;
                     }
                 } catch (RuntimeException exception) {
-                    LOGGER.warn("Search engine unavailable, fallback to SQL search", exception);
+                    logSearchEngineFallback(exception, true);
                 }
             }
 
@@ -283,7 +286,7 @@ public class SearchService {
             try {
                 return searchEngineClient.get().suggest(criteria);
             } catch (RuntimeException exception) {
-                LOGGER.warn("Search suggest engine unavailable, fallback to SQL suggest", exception);
+                logSearchEngineFallback(exception, false);
             }
         }
         return searchNativeRepository.suggest(criteria);
@@ -313,8 +316,11 @@ public class SearchService {
     }
 
     private String buildSearchCacheKey(SearchQueryCriteria criteria) {
+        String coordinates = (criteria.lat() != null && criteria.lng() != null)
+            ? formatDoubleKey(criteria.lat()) + "," + formatDoubleKey(criteria.lng())
+            : "_";
         String location = (criteria.lat() != null && criteria.lng() != null)
-            ? criteria.lat() + "," + criteria.lng()
+            ? coordinates
             : valueOf(criteria.city());
         String date = criteria.dateFrom() == null
             ? ""
@@ -322,16 +328,28 @@ public class SearchService {
                 ? ""
                 : "_" + criteria.dateTo());
         return "search:"
+            + "type=" + criteria.type().name() + ":"
             + normalizeKeySegment(criteria.query()) + ":"
             + normalizeKeySegment(location) + ":"
+            + "radius=" + formatDoubleKey(criteria.radiusKm()) + ":"
             + normalizeKeySegment(criteria.categorySlug()) + ":"
             + normalizeKeySegment(date) + ":"
+            + "availableNow=" + criteria.availableNow() + ":"
+            + "sort=" + criteria.sort().name() + ":"
             + criteria.page() + ":"
             + criteria.size();
     }
 
     private String buildSuggestCacheKey(SearchSuggestCriteria criteria) {
-        return "suggest:" + normalizeKeySegment(criteria.query());
+        String coordinates = criteria.hasCoordinates()
+            ? formatDoubleKey(criteria.lat()) + "," + formatDoubleKey(criteria.lng())
+            : "_";
+        return "suggest:"
+            + normalizeKeySegment(criteria.query()) + ":"
+            + "coords=" + normalizeKeySegment(coordinates) + ":"
+            + "city=" + normalizeKeySegment(criteria.city()) + ":"
+            + "radius=" + formatDoubleKey(criteria.radiusKm()) + ":"
+            + "limit=" + criteria.limit();
     }
 
     private String valueOf(Object value) {
@@ -344,5 +362,22 @@ public class SearchService {
             return "_";
         }
         return raw.replace(":", "_");
+    }
+
+    private String formatDoubleKey(Double value) {
+        if (value == null || !Double.isFinite(value)) {
+            return "_";
+        }
+        return String.format(Locale.ROOT, "%.5f", value);
+    }
+
+    private void logSearchEngineFallback(RuntimeException exception, boolean searchOperation) {
+        AtomicBoolean warned = searchOperation ? searchEngineSearchWarned : searchEngineSuggestWarned;
+        String operation = searchOperation ? "search" : "suggest";
+        if (warned.compareAndSet(false, true)) {
+            LOGGER.warn("Search engine unavailable in {}, fallback to SQL", operation, exception);
+            return;
+        }
+        LOGGER.debug("Search engine unavailable in {}, fallback to SQL", operation, exception);
     }
 }

@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/router';
 import api from '@/services/api';
 import Logo from '@/components/ui/Logo';
+import { clearAuthAccessToken } from '@/services/session';
 
 type ClientDashboardNavbarProps = {
   name: string;
@@ -26,6 +27,7 @@ export default function ClientDashboardNavbar({
     try {
       await api.post('/auth/logout');
     } finally {
+      clearAuthAccessToken();
       router.push('/cliente/auth/login');
     }
   };

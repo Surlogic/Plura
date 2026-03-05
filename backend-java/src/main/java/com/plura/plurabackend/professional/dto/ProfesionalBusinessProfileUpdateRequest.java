@@ -26,21 +26,26 @@ public class ProfesionalBusinessProfileUpdateRequest {
     @Pattern(regexp = "^[+0-9()\\-\\s]{3,30}$")
     private String phoneNumber;
 
-    @Pattern(regexp = "^(https?://.+|r2://.+|r2:.+)$")
+    @Pattern(regexp = "^(|https?://.+|r2://.+|r2:.+)$")
     private String logoUrl;
 
     @Size(max = 255)
+    @Pattern(regexp = "^(|https?://\\S+|[A-Za-z0-9._@-]{1,255})$")
     private String instagram;
 
     @Size(max = 255)
+    @Pattern(regexp = "^(|https?://\\S+|[A-Za-z0-9._@-]{1,255})$")
     private String facebook;
 
     @Size(max = 255)
+    @Pattern(regexp = "^(|https?://\\S+|[A-Za-z0-9._@-]{1,255})$")
     private String tiktok;
 
     @Size(max = 255)
+    @Pattern(regexp = "^(|https?://\\S+)$")
     private String website;
 
     @Size(max = 255)
+    @Pattern(regexp = "^(|https?://\\S+|[+0-9()\\-\\s]{3,30})$")
     private String whatsapp;
 }

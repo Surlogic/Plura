@@ -11,7 +11,7 @@ LANGUAGE sql
 IMMUTABLE
 PARALLEL SAFE
 AS $$
-  SELECT unaccent('unaccent', COALESCE(value, ''));
+  SELECT public.unaccent('public.unaccent'::regdictionary, COALESCE(value, ''));
 $$;
 
 CREATE INDEX IF NOT EXISTS idx_professional_profile_rubro_trgm

@@ -31,10 +31,10 @@ public class ProfesionalPublicController {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ProfesionalPublicController.class);
     private static final String BOOKING_SLOT_CONSTRAINT = "uq_professional_start";
-    private final ProfesionalPublicPageService profesionalPublicPageService;
+    private final ProfessionalPublicPageService professionalPublicPageService;
 
-    public ProfesionalPublicController(ProfesionalPublicPageService profesionalPublicPageService) {
-        this.profesionalPublicPageService = profesionalPublicPageService;
+    public ProfesionalPublicController(ProfessionalPublicPageService professionalPublicPageService) {
+        this.professionalPublicPageService = professionalPublicPageService;
     }
 
     @GetMapping
@@ -45,12 +45,12 @@ public class ProfesionalPublicController {
         @RequestParam(required = false) UUID categoryId,
         @RequestParam(required = false) String categorySlug
     ) {
-        return profesionalPublicPageService.listPublicProfessionals(limit, page, size, categoryId, categorySlug);
+        return professionalPublicPageService.listPublicProfessionals(limit, page, size, categoryId, categorySlug);
     }
 
     @GetMapping("/{slug}")
     public ProfesionalPublicPageResponse getProfesionalBySlug(@PathVariable String slug) {
-        return profesionalPublicPageService.getPublicPageBySlug(slug);
+        return professionalPublicPageService.getPublicPageBySlug(slug);
     }
 
     @GetMapping("/{slug}/slots")
@@ -59,7 +59,7 @@ public class ProfesionalPublicController {
         @RequestParam String date,
         @RequestParam String serviceId
     ) {
-        return profesionalPublicPageService.getAvailableSlots(slug, date, serviceId);
+        return professionalPublicPageService.getAvailableSlots(slug, date, serviceId);
     }
 
     @PostMapping("/{slug}/reservas")
@@ -78,7 +78,7 @@ public class ProfesionalPublicController {
         }
 
         try {
-            PublicBookingResponse response = profesionalPublicPageService.createPublicBooking(
+            PublicBookingResponse response = professionalPublicPageService.createPublicBooking(
                 slug,
                 request,
                 authentication.getPrincipal().toString()

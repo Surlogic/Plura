@@ -46,16 +46,16 @@ public class SearchCacheServiceFacade implements SearchCacheService {
         if (!isSearchCacheActive()) {
             return Optional.empty();
         }
+        Optional<SearchResponse> memoryValue = inMemory.getSearch(key);
+        if (memoryValue.isPresent()) {
+            markHit("search", "memory");
+            return memoryValue;
+        }
         Optional<SearchResponse> redisValue = redis.get(key, SearchResponse.class, "search");
         if (redisValue.isPresent()) {
             inMemory.putSearch(key, redisValue.get());
             markHit("search", "redis");
             return redisValue;
-        }
-        Optional<SearchResponse> memoryValue = inMemory.getSearch(key);
-        if (memoryValue.isPresent()) {
-            markHit("search", "memory");
-            return memoryValue;
         }
         markMiss("search");
         return Optional.empty();
@@ -75,16 +75,16 @@ public class SearchCacheServiceFacade implements SearchCacheService {
         if (!isSuggestCacheActive()) {
             return Optional.empty();
         }
+        Optional<SearchSuggestResponse> memoryValue = inMemory.getSuggest(key);
+        if (memoryValue.isPresent()) {
+            markHit("suggest", "memory");
+            return memoryValue;
+        }
         Optional<SearchSuggestResponse> redisValue = redis.get(key, SearchSuggestResponse.class, "suggest");
         if (redisValue.isPresent()) {
             inMemory.putSuggest(key, redisValue.get());
             markHit("suggest", "redis");
             return redisValue;
-        }
-        Optional<SearchSuggestResponse> memoryValue = inMemory.getSuggest(key);
-        if (memoryValue.isPresent()) {
-            markHit("suggest", "memory");
-            return memoryValue;
         }
         markMiss("suggest");
         return Optional.empty();

@@ -2,10 +2,12 @@ package com.plura.plurabackend.auth;
 
 import com.plura.plurabackend.auth.dto.LoginRequest;
 import com.plura.plurabackend.auth.dto.ProfesionalProfileResponse;
+import com.plura.plurabackend.auth.dto.RegistrationAcceptedResponse;
 import com.plura.plurabackend.auth.dto.RegisterProfesionalRequest;
 import com.plura.plurabackend.auth.dto.RegisterRequest;
 import com.plura.plurabackend.auth.dto.RegisterResponse;
 import com.plura.plurabackend.auth.dto.UserResponse;
+import com.plura.plurabackend.auth.security.AuthAbuseProtectionService;
 import com.plura.plurabackend.auth.oauth.dto.OAuthLoginRequest;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
@@ -35,42 +37,60 @@ public class AuthController {
     private static final String REFRESH_COOKIE = "plura_refresh_token";
 
     private final AuthService authService;
-
-    @Value("${jwt.expiration-minutes:30}")
-    private long accessTokenMinutes;
+    private final AuthAbuseProtectionService authAbuseProtectionService;
 
     @Value("${jwt.refresh-days:30}")
     private long refreshTokenDays;
 
-    @Value("${app.auth.cookie-secure:false}")
+    @Value("${jwt.expiration-minutes:30}")
+    private long accessTokenMinutes;
+
+    @Value("${app.auth.cookie-secure:true}")
     private boolean cookieSecure;
 
-    @Value("${app.auth.cookie-same-site:Lax}")
+    @Value("${app.auth.cookie-same-site:Strict}")
     private String cookieSameSite;
 
+    @Value("${app.auth.expose-access-token:false}")
+    private boolean exposeAccessToken;
+
     // Constructor injection to keep the controller immutable and testable.
-    public AuthController(AuthService authService) {
+    public AuthController(
+        AuthService authService,
+        AuthAbuseProtectionService authAbuseProtectionService
+    ) {
         this.authService = authService;
+        this.authAbuseProtectionService = authAbuseProtectionService;
     }
 
     // Registro de clientes (alias /register).
     @PostMapping({"/register", "/register/cliente"})
-    public ResponseEntity<RegisterResponse> registerCliente(
+    public ResponseEntity<RegistrationAcceptedResponse> registerCliente(
         @Valid @RequestBody RegisterRequest request,
         HttpServletRequest httpRequest
     ) {
-        AuthService.AuthResult result = authService.registerCliente(request, httpRequest.getHeader("User-Agent"));
-        return buildAuthResponse(result);
+        authAbuseProtectionService.enforceRegistrationAllowed(request.getEmail(), httpRequest);
+        authService.registerCliente(request);
+        return ResponseEntity.accepted()
+            .header(HttpHeaders.CACHE_CONTROL, "no-store")
+            .body(new RegistrationAcceptedResponse(
+                "Si el email no estaba registrado, la cuenta fue creada. Si ya existía, podés iniciar sesión."
+            ));
     }
 
     // Registro de profesionales con campos específicos.
     @PostMapping("/register/profesional")
-    public ResponseEntity<RegisterResponse> registerProfesional(
+    public ResponseEntity<RegistrationAcceptedResponse> registerProfesional(
         @Valid @RequestBody RegisterProfesionalRequest request,
         HttpServletRequest httpRequest
     ) {
-        AuthService.AuthResult result = authService.registerProfesional(request, httpRequest.getHeader("User-Agent"));
-        return buildAuthResponse(result);
+        authAbuseProtectionService.enforceRegistrationAllowed(request.getEmail(), httpRequest);
+        authService.registerProfesional(request);
+        return ResponseEntity.accepted()
+            .header(HttpHeaders.CACHE_CONTROL, "no-store")
+            .body(new RegistrationAcceptedResponse(
+                "Si el email no estaba registrado, la cuenta fue creada. Si ya existía, podés iniciar sesión."
+            ));
     }
 
     @PostMapping({"/login", "/login/cliente"})
@@ -78,8 +98,11 @@ public class AuthController {
         @Valid @RequestBody LoginRequest request,
         HttpServletRequest httpRequest
     ) {
-        AuthService.AuthResult result = authService.loginCliente(request, httpRequest.getHeader("User-Agent"));
-        return buildAuthResponse(result);
+        return authenticateLogin(
+            request,
+            httpRequest,
+            () -> authService.loginCliente(request, httpRequest.getHeader("User-Agent"))
+        );
     }
 
     @PostMapping("/login/profesional")
@@ -87,8 +110,11 @@ public class AuthController {
         @Valid @RequestBody LoginRequest request,
         HttpServletRequest httpRequest
     ) {
-        AuthService.AuthResult result = authService.loginProfesional(request, httpRequest.getHeader("User-Agent"));
-        return buildAuthResponse(result);
+        return authenticateLogin(
+            request,
+            httpRequest,
+            () -> authService.loginProfesional(request, httpRequest.getHeader("User-Agent"))
+        );
     }
 
     @PostMapping("/oauth")
@@ -97,8 +123,7 @@ public class AuthController {
         HttpServletRequest httpRequest
     ) {
         AuthService.AuthResult result = authService.loginWithOAuth(
-            request.getProvider(),
-            request.getToken(),
+            request,
             httpRequest.getHeader("User-Agent")
         );
         return buildAuthResponse(result);
@@ -119,6 +144,7 @@ public class AuthController {
     ) {
         authService.logout(refreshToken);
         return ResponseEntity.noContent()
+            .header(HttpHeaders.CACHE_CONTROL, "no-store")
             .header(HttpHeaders.SET_COOKIE, clearCookie(ACCESS_COOKIE, "/").toString())
             .header(HttpHeaders.SET_COOKIE, clearCookie(REFRESH_COOKIE, "/auth").toString())
             .build();
@@ -143,11 +169,15 @@ public class AuthController {
     private ResponseEntity<RegisterResponse> buildAuthResponse(AuthService.AuthResult result) {
         ResponseCookie accessCookie = buildAccessCookie(result.accessToken());
         ResponseCookie refreshCookie = buildRefreshCookie(result.refreshToken());
-        
-        // Pasamos result.accessToken() en lugar de null
-        RegisterResponse payload = new RegisterResponse(result.accessToken(), result.user());
+
+        RegisterResponse payload = new RegisterResponse(
+            exposeAccessToken ? result.accessToken() : null,
+            result.user()
+        );
 
         return ResponseEntity.ok()
+            .header(HttpHeaders.CACHE_CONTROL, "no-store, no-cache, max-age=0, must-revalidate")
+            .header("Pragma", "no-cache")
             .header(HttpHeaders.SET_COOKIE, accessCookie.toString())
             .header(HttpHeaders.SET_COOKIE, refreshCookie.toString())
             .body(payload);
@@ -183,6 +213,24 @@ public class AuthController {
             .build();
     }
 
+    private ResponseEntity<RegisterResponse> authenticateLogin(
+        LoginRequest request,
+        HttpServletRequest httpRequest,
+        LoginExecutor loginExecutor
+    ) {
+        authAbuseProtectionService.enforceLoginAllowed(request.getEmail(), httpRequest);
+        try {
+            AuthService.AuthResult result = loginExecutor.login();
+            authAbuseProtectionService.recordLoginSuccess(request.getEmail(), httpRequest);
+            return buildAuthResponse(result);
+        } catch (ResponseStatusException exception) {
+            if (exception.getStatusCode().value() == HttpStatus.UNAUTHORIZED.value()) {
+                authAbuseProtectionService.recordLoginFailure(request.getEmail(), httpRequest);
+            }
+            throw exception;
+        }
+    }
+
     private Authentication requireAuthentication() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (
@@ -202,5 +250,10 @@ public class AuthController {
         )) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Acceso denegado");
         }
+    }
+
+    @FunctionalInterface
+    private interface LoginExecutor {
+        AuthService.AuthResult login();
     }
 }

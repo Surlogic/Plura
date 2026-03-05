@@ -35,6 +35,15 @@ public class AsyncConfig implements AsyncConfigurer {
     @Value("${app.async.image.queue-capacity:300}")
     private int imageQueueCapacity;
 
+    @Value("${app.async.geocoding.core-pool-size:2}")
+    private int geocodingCorePoolSize;
+
+    @Value("${app.async.geocoding.max-pool-size:4}")
+    private int geocodingMaxPoolSize;
+
+    @Value("${app.async.geocoding.queue-capacity:500}")
+    private int geocodingQueueCapacity;
+
     @Bean(name = "availableSlotExecutor")
     public Executor availableSlotExecutor() {
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
@@ -56,6 +65,20 @@ public class AsyncConfig implements AsyncConfigurer {
         executor.setCorePoolSize(Math.max(1, imageCorePoolSize));
         executor.setMaxPoolSize(Math.max(imageCorePoolSize, imageMaxPoolSize));
         executor.setQueueCapacity(Math.max(50, imageQueueCapacity));
+        executor.setWaitForTasksToCompleteOnShutdown(true);
+        executor.setAwaitTerminationSeconds(45);
+        executor.setRejectedExecutionHandler(new ThreadPoolExecutor.CallerRunsPolicy());
+        executor.initialize();
+        return executor;
+    }
+
+    @Bean(name = "geocodingExecutor")
+    public Executor geocodingExecutor() {
+        ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+        executor.setThreadNamePrefix("geocoding-");
+        executor.setCorePoolSize(Math.max(1, geocodingCorePoolSize));
+        executor.setMaxPoolSize(Math.max(geocodingCorePoolSize, geocodingMaxPoolSize));
+        executor.setQueueCapacity(Math.max(100, geocodingQueueCapacity));
         executor.setWaitForTasksToCompleteOnShutdown(true);
         executor.setAwaitTerminationSeconds(45);
         executor.setRejectedExecutionHandler(new ThreadPoolExecutor.CallerRunsPolicy());

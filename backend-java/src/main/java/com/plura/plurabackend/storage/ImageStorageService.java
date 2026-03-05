@@ -14,7 +14,14 @@ public interface ImageStorageService {
             return urlOrStorageKey;
         }
         String trimmed = urlOrStorageKey.trim();
-        if (trimmed.startsWith("http://") || trimmed.startsWith("https://") || trimmed.startsWith("/")) {
+        if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
+            return trimmed;
+        }
+        if (trimmed.startsWith("/")) {
+            // Evita protocol-relative URLs del tipo //attacker.example.
+            if (trimmed.startsWith("//")) {
+                return "/" + trimmed.replaceFirst("^/+", "");
+            }
             return trimmed;
         }
         return generatePublicUrl(trimmed);

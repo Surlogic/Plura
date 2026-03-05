@@ -46,16 +46,16 @@ public class SlotCacheServiceFacade implements SlotCacheService {
         if (!isSlotsCacheActive()) {
             return Optional.empty();
         }
+        Optional<List<String>> memoryValue = inMemory.getSlots(key);
+        if (memoryValue.isPresent()) {
+            markHit("slots", "memory");
+            return memoryValue;
+        }
         Optional<List<String>> redisValue = redis.get(key, stringListType, "slots");
         if (redisValue.isPresent()) {
             inMemory.putSlots(key, redisValue.get());
             markHit("slots", "redis");
             return redisValue;
-        }
-        Optional<List<String>> memoryValue = inMemory.getSlots(key);
-        if (memoryValue.isPresent()) {
-            markHit("slots", "memory");
-            return memoryValue;
         }
         markMiss("slots");
         return Optional.empty();

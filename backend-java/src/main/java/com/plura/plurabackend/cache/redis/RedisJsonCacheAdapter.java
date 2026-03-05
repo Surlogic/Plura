@@ -6,15 +6,20 @@ import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Timer;
 import java.time.Duration;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
-import java.util.Set;
 import java.util.function.Supplier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.redis.connection.RedisConnection;
 import org.springframework.lang.Nullable;
-import org.springframework.stereotype.Component;
+import org.springframework.data.redis.core.Cursor;
 import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.data.redis.core.RedisCallback;
+import org.springframework.data.redis.core.ScanOptions;
+import org.springframework.stereotype.Component;
 
 @Component
 public class RedisJsonCacheAdapter {
@@ -116,10 +121,9 @@ public class RedisJsonCacheAdapter {
         }
         try {
             executeWithMetrics("evict-prefix", cacheName, () -> {
-                Set<String> keys = redisTemplate.get().keys(prefix + "*");
-                if (keys != null && !keys.isEmpty()) {
-                    redisTemplate.get().delete(keys);
-                }
+                String pattern = prefix + "*";
+                RedisCallback<Long> scanDelete = connection -> scanAndDeleteByPattern(connection, pattern);
+                redisTemplate.get().execute(scanDelete);
                 return null;
             });
         } catch (RuntimeException ignored) {
@@ -144,6 +148,50 @@ public class RedisJsonCacheAdapter {
         }
         long seconds = Math.max(1L, redisCacheProperties.getTtlSeconds());
         return Duration.ofSeconds(seconds);
+    }
+
+    private long scanAndDeleteByPattern(RedisConnection connection, String pattern) {
+        if (connection == null || pattern == null || pattern.isBlank()) {
+            return 0L;
+        }
+        long deleted = 0L;
+        final int batchSize = 500;
+        ScanOptions options = ScanOptions.scanOptions().match(pattern).count(batchSize).build();
+        List<byte[]> keysBatch = new ArrayList<>(batchSize);
+        try (Cursor<byte[]> cursor = connection.scan(options)) {
+            while (cursor.hasNext()) {
+                byte[] key = cursor.next();
+                if (key == null || key.length == 0) {
+                    continue;
+                }
+                keysBatch.add(key);
+                if (keysBatch.size() >= batchSize) {
+                    deleted += deleteBatch(connection, keysBatch);
+                    keysBatch.clear();
+                }
+            }
+            if (!keysBatch.isEmpty()) {
+                deleted += deleteBatch(connection, keysBatch);
+            }
+        }
+        return deleted;
+    }
+
+    private long deleteBatch(RedisConnection connection, List<byte[]> keysBatch) {
+        if (keysBatch.isEmpty()) {
+            return 0L;
+        }
+        byte[][] keys = keysBatch.toArray(new byte[0][]);
+        Long unlinked = null;
+        try {
+            unlinked = connection.keyCommands().unlink(keys);
+        } catch (RuntimeException ignored) {
+            // Fallback a DEL si UNLINK no está soportado por la versión de Redis.
+        }
+        if (unlinked != null) {
+            return unlinked;
+        }
+        return connection.del(keys);
     }
 
     private <T> T executeWithMetrics(String operation, String cacheName, Supplier<T> action) {

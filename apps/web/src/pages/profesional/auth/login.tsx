@@ -10,6 +10,7 @@ import { useClientProfileContext } from '@/context/ClientProfileContext';
 import api from '@/services/api';
 import type { OAuthLoginResult } from '@/lib/auth/oauthLogin';
 import { useProfessionalProfileContext } from '@/context/ProfessionalProfileContext';
+import { setAuthAccessToken } from '@/services/session';
 
 export default function ProfesionalLoginPage() {
   const router = useRouter();
@@ -30,12 +31,13 @@ export default function ProfesionalLoginPage() {
 
     try {
       setIsSubmitting(true);
-      await api.post('/auth/login/profesional', {
+      const response = await api.post<{ accessToken?: string | null }>('/auth/login/profesional', {
         email: form.email.trim().toLowerCase(),
         password: form.password,
       });
+      setAuthAccessToken(response.data?.accessToken ?? null);
       await completeProfessionalLoginFlow();
-    } catch (error) {
+    } catch {
       setErrorMessage('Credenciales inválidas o error de servidor.');
     } finally {
       setIsSubmitting(false);
@@ -43,6 +45,7 @@ export default function ProfesionalLoginPage() {
   };
 
   const completeProfessionalLoginFlow = async () => {
+    await api.get('/auth/me/profesional');
     await refreshProfile();
     router.push('/profesional/dashboard');
   };

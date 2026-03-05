@@ -2,19 +2,15 @@
   "name": "plura",
   "private": true,
   "version": "0.0.0",
-  "overrides": {
-    "react": "18.2.0",
-    "react-dom": "18.2.0"
-  },
   "engines": {
     "node": ">=20"
   },
   "scripts": {
     "predev": "bash ./scripts/predev.sh 3000 && bash ./scripts/predev.sh 3002",
-    "dev": "concurrently --kill-others-on-fail --names web,api \"pnpm -C apps/web dev\" \"cd backend-java && ./gradlew bootRun\"",
+    "dev": "concurrently --kill-others-on-fail --names web,api \"pnpm -C apps/web dev\" \"cd backend-java && SPRING_FLYWAY_VALIDATE_ON_MIGRATE=false ./gradlew bootRun\"",
     "dev:web": "pnpm -C apps/web dev",
-    "dev:backend": "cd backend-java && gradlew bootRun",
-    "dev:backend-java": "cd backend-java && gradlew bootRun",
+    "dev:backend": "cd backend-java && SPRING_FLYWAY_VALIDATE_ON_MIGRATE=false ./gradlew bootRun",
+    "dev:backend-java": "cd backend-java && SPRING_FLYWAY_VALIDATE_ON_MIGRATE=false ./gradlew bootRun",
     "build": "pnpm -r build",
     "build:backend-java": "cd backend-java && ./gradlew build",
     "lint": "pnpm -r lint"

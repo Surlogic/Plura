@@ -7,6 +7,7 @@ import com.plura.plurabackend.auth.dto.ProfesionalProfileResponse;
 import com.plura.plurabackend.auth.dto.RegisterProfesionalRequest;
 import com.plura.plurabackend.auth.dto.RegisterRequest;
 import com.plura.plurabackend.auth.dto.UserResponse;
+import com.plura.plurabackend.auth.oauth.dto.OAuthLoginRequest;
 import com.plura.plurabackend.auth.oauth.AppleEmailRequiredFirstLoginException;
 import com.plura.plurabackend.auth.oauth.OAuthService;
 import com.plura.plurabackend.auth.oauth.OAuthProviderMismatchException;
@@ -62,6 +63,7 @@ public class AuthService {
     private final long refreshTokenDays;
     private final String refreshTokenPepper;
     private final String jwtIssuer;
+    private final String dummyPasswordHash;
     private static final SecureRandom SECURE_RANDOM = new SecureRandom();
     private static final Map<String, String> LEGACY_CATEGORY_ALIASES = Map.ofEntries(
         Map.entry("peluqueria", "cabello"),
@@ -105,6 +107,7 @@ public class AuthService {
         this.refreshTokenDays = refreshTokenDays;
         this.refreshTokenPepper = refreshTokenPepper;
         this.jwtIssuer = jwtIssuer;
+        this.dummyPasswordHash = passwordEncoder.encode("plura-dummy-password");
     }
 
     public record AuthResult(
@@ -117,27 +120,33 @@ public class AuthService {
     private record RefreshTokenIssue(String rawToken, RefreshToken entity) {}
 
     @Transactional
-    public AuthResult registerCliente(RegisterRequest request, String userAgent) {
-        if (userRepository.findByEmail(request.getEmail()).isPresent()) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "No se pudo crear la cuenta");
+    public void registerCliente(RegisterRequest request) {
+        String normalizedEmail = request.getEmail().trim().toLowerCase(Locale.ROOT);
+        if (userRepository.findByEmail(normalizedEmail).isPresent()) {
+            burnPasswordWorkFactor(request.getPassword());
+            return;
         }
 
         User user = new User();
         user.setFullName(request.getFullName().trim());
-        user.setEmail(request.getEmail().trim().toLowerCase());
+        user.setEmail(normalizedEmail);
         user.setPhoneNumber(request.getPhoneNumber().trim());
         user.setPassword(passwordEncoder.encode(request.getPassword()));
         user.setRole(UserRole.USER);
 
-        User saved = userRepository.save(user);
-        UserResponse userResponse = toUserResponse(saved);
-        return issueTokens(saved, userResponse, userAgent);
+        try {
+            userRepository.save(user);
+        } catch (DataIntegrityViolationException exception) {
+            burnPasswordWorkFactor(request.getPassword());
+        }
     }
 
     @Transactional
-    public AuthResult registerProfesional(RegisterProfesionalRequest request, String userAgent) {
-        if (userRepository.findByEmail(request.getEmail()).isPresent()) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "No se pudo crear la cuenta");
+    public void registerProfesional(RegisterProfesionalRequest request) {
+        String normalizedEmail = request.getEmail().trim().toLowerCase(Locale.ROOT);
+        if (userRepository.findByEmail(normalizedEmail).isPresent()) {
+            burnPasswordWorkFactor(request.getPassword());
+            return;
         }
 
         String tipoCliente = normalizeTipoCliente(request.getTipoCliente());
@@ -165,11 +174,17 @@ public class AuthService {
 
         User user = new User();
         user.setFullName(request.getFullName().trim());
-        user.setEmail(request.getEmail().trim().toLowerCase());
+        user.setEmail(normalizedEmail);
         user.setPhoneNumber(request.getPhoneNumber().trim());
         user.setPassword(passwordEncoder.encode(request.getPassword()));
         user.setRole(UserRole.PROFESSIONAL);
-        User savedUser = userRepository.save(user);
+        User savedUser;
+        try {
+            savedUser = userRepository.save(user);
+        } catch (DataIntegrityViolationException exception) {
+            burnPasswordWorkFactor(request.getPassword());
+            return;
+        }
 
         ProfessionalProfile profile = new ProfessionalProfile();
         profile.setUser(savedUser);
@@ -191,14 +206,15 @@ public class AuthService {
         profile = professionalProfileRepository.save(profile);
         professionalProfileRepository.updateCoordinates(profile.getId(), latitude, longitude);
         searchSyncPublisher.publishProfileChanged(profile.getId());
-
-        UserResponse userResponse = toUserResponse(savedUser);
-        return issueTokens(savedUser, userResponse, userAgent);
     }
 
     public AuthResult loginProfesional(LoginRequest request, String userAgent) {
-        User user = userRepository.findByEmail(request.getEmail().trim().toLowerCase())
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Credenciales inválidas"));
+        User user = userRepository.findByEmail(request.getEmail().trim().toLowerCase(Locale.ROOT))
+            .orElse(null);
+        if (user == null) {
+            burnPasswordWorkFactor(request.getPassword());
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Credenciales inválidas");
+        }
 
         if (user.getRole() != UserRole.PROFESSIONAL) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Credenciales inválidas");
@@ -211,8 +227,12 @@ public class AuthService {
     }
 
     public AuthResult loginCliente(LoginRequest request, String userAgent) {
-        User user = userRepository.findByEmail(request.getEmail().trim().toLowerCase())
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Credenciales inválidas"));
+        User user = userRepository.findByEmail(request.getEmail().trim().toLowerCase(Locale.ROOT))
+            .orElse(null);
+        if (user == null) {
+            burnPasswordWorkFactor(request.getPassword());
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Credenciales inválidas");
+        }
 
         if (user.getRole() != UserRole.USER) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Credenciales inválidas");
@@ -225,8 +245,8 @@ public class AuthService {
     }
 
     @Transactional
-    public AuthResult loginWithOAuth(String provider, String token, String userAgent) {
-        OAuthUserInfo userInfo = oAuthService.verify(provider, token);
+    public AuthResult loginWithOAuth(OAuthLoginRequest request, String userAgent) {
+        OAuthUserInfo userInfo = oAuthService.verify(request);
         String normalizedProvider = normalizeOAuthProvider(userInfo.provider());
         String providerId = normalizeOAuthValue(userInfo.providerId());
         String email = normalizeOAuthEmail(userInfo.email());
@@ -389,6 +409,11 @@ public class AuthService {
         } catch (Exception ex) {
             throw new IllegalStateException("No se pudo hashear el refresh token", ex);
         }
+    }
+
+    private void burnPasswordWorkFactor(String rawPassword) {
+        String candidate = rawPassword == null ? "" : rawPassword;
+        passwordEncoder.matches(candidate, dummyPasswordHash);
     }
 
     private User loadUserByRawId(String rawUserId) {

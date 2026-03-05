@@ -13,6 +13,7 @@ import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.server.ResponseStatusException;
 
 @ControllerAdvice
 public class GlobalExceptionHandler {
@@ -87,6 +88,23 @@ public class GlobalExceptionHandler {
             ? "Apple did not provide email. Please complete first login from Apple flow that includes email."
             : exception.getMessage();
         return buildErrorResponse(HttpStatus.BAD_REQUEST, "APPLE_EMAIL_REQUIRED_FIRST_LOGIN", message, request);
+    }
+
+    @ExceptionHandler(ResponseStatusException.class)
+    public ResponseEntity<ApiErrorResponse> handleResponseStatus(
+        ResponseStatusException exception,
+        HttpServletRequest request
+    ) {
+        HttpStatus status = HttpStatus.resolve(exception.getStatusCode().value());
+        if (status == null) {
+            status = HttpStatus.INTERNAL_SERVER_ERROR;
+        }
+        String message = exception.getReason();
+        if (message == null || message.isBlank()) {
+            message = status.getReasonPhrase();
+        }
+        String error = status.name();
+        return buildErrorResponse(status, error, message, request);
     }
 
     private String formatFieldError(FieldError fieldError) {

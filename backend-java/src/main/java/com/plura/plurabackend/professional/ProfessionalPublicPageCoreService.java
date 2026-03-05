@@ -14,9 +14,7 @@ import com.plura.plurabackend.booking.dto.PublicBookingResponse;
 import com.plura.plurabackend.booking.model.Booking;
 import com.plura.plurabackend.booking.model.BookingStatus;
 import com.plura.plurabackend.booking.repository.BookingRepository;
-import com.plura.plurabackend.category.dto.CategoryResponse;
 import com.plura.plurabackend.category.model.Category;
-import com.plura.plurabackend.category.repository.CategoryRepository;
 import com.plura.plurabackend.common.util.SlugUtils;
 import com.plura.plurabackend.professional.dto.ProfesionalBusinessProfileUpdateRequest;
 import com.plura.plurabackend.professional.dto.ProfesionalPublicPageResponse;
@@ -29,7 +27,6 @@ import com.plura.plurabackend.professional.photo.repository.BusinessPhotoReposit
 import com.plura.plurabackend.professional.repository.ProfessionalProfileRepository;
 import com.plura.plurabackend.professional.schedule.dto.ProfesionalScheduleDayDto;
 import com.plura.plurabackend.professional.schedule.dto.ProfesionalScheduleDto;
-import com.plura.plurabackend.professional.schedule.dto.ProfesionalSchedulePauseDto;
 import com.plura.plurabackend.professional.schedule.dto.ProfesionalScheduleRangeDto;
 import com.plura.plurabackend.professional.service.dto.ProfesionalServiceRequest;
 import com.plura.plurabackend.professional.service.dto.ProfesionalServiceResponse;
@@ -62,8 +59,6 @@ import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.HashSet;
-import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
@@ -73,9 +68,12 @@ import java.util.UUID;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Executor;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -88,28 +86,10 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 import org.springframework.web.server.ResponseStatusException;
 
 @Service
-public class ProfesionalPublicPageCoreService {
+public class ProfessionalPublicPageCoreService {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(ProfesionalPublicPageCoreService.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(ProfessionalPublicPageCoreService.class);
 
-    private static final List<String> DAY_ORDER = List.of(
-        "mon",
-        "tue",
-        "wed",
-        "thu",
-        "fri",
-        "sat",
-        "sun"
-    );
-    private static final Map<String, String> DAY_ALIASES = Map.ofEntries(
-        Map.entry("monday", "mon"),
-        Map.entry("tuesday", "tue"),
-        Map.entry("wednesday", "wed"),
-        Map.entry("thursday", "thu"),
-        Map.entry("friday", "fri"),
-        Map.entry("saturday", "sat"),
-        Map.entry("sunday", "sun")
-    );
     private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("HH:mm");
     private static final int DEFAULT_SLOT_DURATION_MINUTES = 15;
     private static final HttpClient MAPBOX_HTTP_CLIENT = HttpClient.newBuilder()
@@ -129,16 +109,9 @@ public class ProfesionalPublicPageCoreService {
         55,
         60
     );
-    private static final Map<String, String> LEGACY_CATEGORY_ALIASES = Map.ofEntries(
-        Map.entry("peluqueria", "cabello"),
-        Map.entry("cejas", "pestanas-cejas"),
-        Map.entry("pestanas", "pestanas-cejas"),
-        Map.entry("faciales", "estetica-facial")
-    );
-
     private final ProfessionalProfileRepository professionalProfileRepository;
     private final BusinessPhotoRepository businessPhotoRepository;
-    private final CategoryRepository categoryRepository;
+    private final ProfessionalCategorySupport categorySupport;
     private final ProfesionalServiceRepository profesionalServiceRepository;
     private final BookingRepository bookingRepository;
     private final UserRepository userRepository;
@@ -154,12 +127,14 @@ public class ProfesionalPublicPageCoreService {
     private final MeterRegistry meterRegistry;
     private final PasswordEncoder passwordEncoder;
     private final ImageThumbnailJobService imageThumbnailJobService;
+    private final Executor geocodingExecutor;
+    private final Set<Long> geocodingInFlight = ConcurrentHashMap.newKeySet();
     private final String mapboxToken;
 
-    public ProfesionalPublicPageCoreService(
+    public ProfessionalPublicPageCoreService(
         ProfessionalProfileRepository professionalProfileRepository,
         BusinessPhotoRepository businessPhotoRepository,
-        CategoryRepository categoryRepository,
+        ProfessionalCategorySupport categorySupport,
         ProfesionalServiceRepository profesionalServiceRepository,
         BookingRepository bookingRepository,
         UserRepository userRepository,
@@ -175,11 +150,12 @@ public class ProfesionalPublicPageCoreService {
         ImageStorageService imageStorageService,
         MeterRegistry meterRegistry,
         PasswordEncoder passwordEncoder,
-        ImageThumbnailJobService imageThumbnailJobService
+        ImageThumbnailJobService imageThumbnailJobService,
+        @Qualifier("geocodingExecutor") Executor geocodingExecutor
     ) {
         this.professionalProfileRepository = professionalProfileRepository;
         this.businessPhotoRepository = businessPhotoRepository;
-        this.categoryRepository = categoryRepository;
+        this.categorySupport = categorySupport;
         this.profesionalServiceRepository = profesionalServiceRepository;
         this.bookingRepository = bookingRepository;
         this.userRepository = userRepository;
@@ -196,6 +172,7 @@ public class ProfesionalPublicPageCoreService {
         this.meterRegistry = meterRegistry;
         this.passwordEncoder = passwordEncoder;
         this.imageThumbnailJobService = imageThumbnailJobService;
+        this.geocodingExecutor = geocodingExecutor;
     }
 
     public ProfesionalPublicPageResponse getPublicPageBySlug(String slug) {
@@ -627,17 +604,18 @@ public class ProfesionalPublicPageCoreService {
         }
 
         if (request.getCategorySlugs() != null) {
-            Set<Category> categories = resolveCategoriesBySlugs(request.getCategorySlugs());
-            applyCategories(profile, categories);
+            Set<Category> categories = categorySupport.resolveCategoriesBySlugs(request.getCategorySlugs());
+            categorySupport.applyCategories(profile, categories);
         } else if (request.getRubro() != null) {
             String rubro = request.getRubro().trim();
             if (rubro.isBlank()) {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "El rubro no puede estar vacío");
             }
-            String mappedSlug = mapLegacyCategorySlug(SlugUtils.toSlug(rubro));
-            Category category = categoryRepository.findBySlug(mappedSlug)
+            String mappedSlug = SlugUtils.toSlug(rubro);
+            Category category = categorySupport.resolveCategoriesBySlugs(List.of(mappedSlug)).stream()
+                .findFirst()
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Rubro inválido"));
-            applyCategories(profile, Set.of(category));
+            categorySupport.applyCategories(profile, Set.of(category));
         }
 
         if (request.getLocation() != null) {
@@ -713,8 +691,12 @@ public class ProfesionalPublicPageCoreService {
     ) {
         ProfessionalProfile profile = loadProfessionalByUserId(rawUserId);
 
-        validateSchedule(request);
-        ProfesionalScheduleDto normalized = normalizeSchedule(request);
+        ProfessionalScheduleSupport.validateSchedule(request, this::validateSlotDuration);
+        ProfesionalScheduleDto normalized = ProfessionalScheduleSupport.normalizeSchedule(
+            request,
+            DEFAULT_SLOT_DURATION_MINUTES,
+            this::normalizeSlotDurationOrDefault
+        );
         int slotDurationMinutes = sanitizeSlotDurationMinutes(
             request.getSlotDurationMinutes(),
             profile.getSlotDurationMinutes()
@@ -1042,7 +1024,7 @@ public class ProfesionalPublicPageCoreService {
         LocalDateTime now,
         int slotDurationMinutes
     ) {
-        if (date.isBefore(now.toLocalDate()) || isDatePaused(date, schedule.getPauses())) {
+        if (date.isBefore(now.toLocalDate()) || ProfessionalScheduleSupport.isDatePaused(date, schedule.getPauses())) {
             return List.of();
         }
 
@@ -1099,241 +1081,13 @@ public class ProfesionalPublicPageCoreService {
     }
 
     private ProfesionalScheduleDto readStoredSchedule(String rawScheduleJson) {
-        if (rawScheduleJson == null || rawScheduleJson.isBlank()) {
-            return createDefaultSchedule();
-        }
-
-        try {
-            ProfesionalScheduleDto parsed = objectMapper.readValue(rawScheduleJson, ProfesionalScheduleDto.class);
-            return normalizeSchedule(parsed);
-        } catch (JsonProcessingException exception) {
-            return createDefaultSchedule();
-        }
-    }
-
-    private ProfesionalScheduleDto createDefaultSchedule() {
-        List<ProfesionalScheduleDayDto> days = new ArrayList<>();
-        DAY_ORDER.forEach(day -> days.add(new ProfesionalScheduleDayDto(day, false, false, new ArrayList<>())));
-        return new ProfesionalScheduleDto(days, new ArrayList<>(), DEFAULT_SLOT_DURATION_MINUTES);
-    }
-
-    private ProfesionalScheduleDto normalizeSchedule(ProfesionalScheduleDto source) {
-        if (source == null) {
-            return createDefaultSchedule();
-        }
-
-        List<ProfesionalScheduleDayDto> sourceDays = source.getDays() == null
-            ? new ArrayList<>()
-            : source.getDays();
-        Map<String, ProfesionalScheduleDayDto> byDay = new LinkedHashMap<>();
-        sourceDays.forEach(day -> {
-            if (day == null || day.getDay() == null) return;
-            String key = normalizeDayKey(day.getDay());
-            if (key.isBlank()) return;
-            byDay.put(key, day);
-        });
-
-        List<ProfesionalScheduleDayDto> normalizedDays = new ArrayList<>();
-        for (String dayKey : DAY_ORDER) {
-            ProfesionalScheduleDayDto sourceDay = byDay.get(dayKey);
-            boolean enabled = sourceDay != null && sourceDay.isEnabled();
-            boolean paused = sourceDay != null && sourceDay.isPaused();
-
-            List<ProfesionalScheduleRangeDto> sourceRanges = sourceDay != null && sourceDay.getRanges() != null
-                ? sourceDay.getRanges()
-                : List.of();
-
-            List<ProfesionalScheduleRangeDto> normalizedRanges = new ArrayList<>();
-            for (ProfesionalScheduleRangeDto range : sourceRanges) {
-                if (range == null) continue;
-                String start = range.getStart() == null ? "" : range.getStart().trim();
-                String end = range.getEnd() == null ? "" : range.getEnd().trim();
-                normalizedRanges.add(
-                    new ProfesionalScheduleRangeDto(
-                        range.getId() == null || range.getId().isBlank()
-                            ? "range-" + dayKey + "-" + UUID.randomUUID()
-                            : range.getId().trim(),
-                        start,
-                        end
-                    )
-                );
-            }
-
-            normalizedDays.add(new ProfesionalScheduleDayDto(dayKey, enabled, paused, normalizedRanges));
-        }
-
-        List<ProfesionalSchedulePauseDto> sourcePauses = source.getPauses() == null
-            ? List.of()
-            : source.getPauses();
-        List<ProfesionalSchedulePauseDto> normalizedPauses = new ArrayList<>();
-        for (ProfesionalSchedulePauseDto pause : sourcePauses) {
-            if (pause == null) continue;
-            String startDate = pause.getStartDate() == null ? "" : pause.getStartDate().trim();
-            if (startDate.isBlank()) continue;
-            String endDate = pause.getEndDate() == null || pause.getEndDate().isBlank()
-                ? startDate
-                : pause.getEndDate().trim();
-            normalizedPauses.add(
-                new ProfesionalSchedulePauseDto(
-                    pause.getId() == null || pause.getId().isBlank()
-                        ? "pause-" + UUID.randomUUID()
-                        : pause.getId().trim(),
-                    startDate,
-                    endDate,
-                    pause.getNote() == null ? "" : pause.getNote().trim()
-                )
-            );
-        }
-
-        return new ProfesionalScheduleDto(
-            normalizedDays,
-            normalizedPauses,
-            normalizeSlotDurationOrDefault(source.getSlotDurationMinutes())
+        return ProfessionalScheduleSupport.readStoredSchedule(
+            objectMapper,
+            rawScheduleJson,
+            DEFAULT_SLOT_DURATION_MINUTES,
+            this::normalizeSlotDurationOrDefault
         );
     }
-
-    private void validateSchedule(ProfesionalScheduleDto schedule) {
-        if (schedule == null) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Horario inválido");
-        }
-        if (schedule.getSlotDurationMinutes() != null) {
-            validateSlotDuration(schedule.getSlotDurationMinutes());
-        }
-        if (schedule.getDays() == null) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Debés enviar los días del horario");
-        }
-
-        Set<String> seenDays = new HashSet<>();
-        for (ProfesionalScheduleDayDto day : schedule.getDays()) {
-            if (day == null || day.getDay() == null) {
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Día inválido en horario");
-            }
-            String dayKey = normalizeDayKey(day.getDay());
-            if (!DAY_ORDER.contains(dayKey)) {
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Día inválido: " + day.getDay());
-            }
-            if (!seenDays.add(dayKey)) {
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Día duplicado: " + day.getDay());
-            }
-            validateDayRanges(dayKey, day.getRanges());
-        }
-
-        validatePauses(schedule.getPauses());
-    }
-
-    private String normalizeDayKey(String rawDay) {
-        if (rawDay == null) {
-            return "";
-        }
-        String normalized = rawDay.trim().toLowerCase();
-        if (normalized.isBlank()) {
-            return "";
-        }
-        return DAY_ALIASES.getOrDefault(normalized, normalized);
-    }
-
-    private void validateDayRanges(String day, List<ProfesionalScheduleRangeDto> ranges) {
-        if (ranges == null) return;
-
-        List<RangeWindow> windows = new ArrayList<>();
-        for (ProfesionalScheduleRangeDto range : ranges) {
-            if (range == null) continue;
-
-            String startRaw = range.getStart() == null ? "" : range.getStart().trim();
-            String endRaw = range.getEnd() == null ? "" : range.getEnd().trim();
-
-            if (startRaw.isBlank() || endRaw.isBlank()) {
-                throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
-                    "Cada franja debe incluir inicio y fin (" + day + ")"
-                );
-            }
-
-            LocalTime start;
-            LocalTime end;
-            try {
-                start = LocalTime.parse(startRaw);
-                end = LocalTime.parse(endRaw);
-            } catch (DateTimeParseException exception) {
-                throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
-                    "Formato de hora inválido (" + day + ")"
-                );
-            }
-
-            if (!start.isBefore(end)) {
-                throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
-                    "El horario de inicio debe ser menor al de fin (" + day + ")"
-                );
-            }
-
-            windows.add(new RangeWindow(start, end));
-        }
-
-        windows.sort(Comparator.comparing(window -> window.start));
-        for (int index = 1; index < windows.size(); index++) {
-            RangeWindow previous = windows.get(index - 1);
-            RangeWindow current = windows.get(index);
-            if (current.start.isBefore(previous.end)) {
-                throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
-                    "Hay franjas solapadas en " + day
-                );
-            }
-        }
-    }
-
-    private void validatePauses(List<ProfesionalSchedulePauseDto> pauses) {
-        if (pauses == null) return;
-
-        List<PauseWindow> windows = new ArrayList<>();
-        for (ProfesionalSchedulePauseDto pause : pauses) {
-            if (pause == null) continue;
-
-            String startRaw = pause.getStartDate() == null ? "" : pause.getStartDate().trim();
-            if (startRaw.isBlank()) {
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Cada pausa debe tener fecha de inicio");
-            }
-            String endRaw = pause.getEndDate() == null || pause.getEndDate().isBlank()
-                ? startRaw
-                : pause.getEndDate().trim();
-
-            LocalDate start;
-            LocalDate end;
-            try {
-                start = LocalDate.parse(startRaw);
-                end = LocalDate.parse(endRaw);
-            } catch (DateTimeParseException exception) {
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Formato de pausa inválido");
-            }
-
-            if (end.isBefore(start)) {
-                throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
-                    "La pausa finaliza antes de empezar"
-                );
-            }
-
-            windows.add(new PauseWindow(start, end));
-        }
-
-        windows.sort(Comparator.comparing(window -> window.start));
-        for (int index = 1; index < windows.size(); index++) {
-            PauseWindow previous = windows.get(index - 1);
-            PauseWindow current = windows.get(index);
-            if (!current.start.isAfter(previous.end)) {
-                throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
-                    "Las pausas no deben solaparse"
-                );
-            }
-        }
-    }
-
-    private record RangeWindow(LocalTime start, LocalTime end) {}
-
-    private record PauseWindow(LocalDate start, LocalDate end) {}
 
     private record BookedWindow(LocalDateTime start, LocalDateTime end) {}
 
@@ -1354,7 +1108,7 @@ public class ProfesionalPublicPageCoreService {
             profile.getSlug(),
             user.getFullName(),
             user.getFullName(),
-            resolvePrimaryRubro(profile),
+            categorySupport.resolvePrimaryRubro(profile),
             profile.getPublicAbout(),
             profile.getPublicHeadline(),
             profile.getPublicAbout(),
@@ -1373,7 +1127,7 @@ public class ProfesionalPublicPageCoreService {
             normalizeOptional(profile.getTiktok()),
             normalizeOptional(profile.getWebsite()),
             normalizeOptional(profile.getWhatsapp()),
-            mapCategories(profile.getCategories()),
+            categorySupport.mapCategories(profile.getCategories()),
             galleryPhotos,
             schedule,
             services
@@ -1462,16 +1216,23 @@ public class ProfesionalPublicPageCoreService {
 
         final String locationToGeocode = location;
         final Long profileId = profile.getId();
+        if (profileId == null || !geocodingInFlight.add(profileId)) {
+            return profile;
+        }
         CompletableFuture.runAsync(() -> {
-            Coordinates coordinates = geocodeLocation(locationToGeocode);
-            if (coordinates != null) {
-                professionalProfileRepository.updateCoordinates(
-                    profileId,
-                    coordinates.latitude(),
-                    coordinates.longitude()
-                );
+            try {
+                Coordinates coordinates = geocodeLocation(locationToGeocode);
+                if (coordinates != null) {
+                    professionalProfileRepository.updateCoordinates(
+                        profileId,
+                        coordinates.latitude(),
+                        coordinates.longitude()
+                    );
+                }
+            } finally {
+                geocodingInFlight.remove(profileId);
             }
-        });
+        }, geocodingExecutor);
         return profile;
     }
 
@@ -1607,109 +1368,11 @@ public class ProfesionalPublicPageCoreService {
             String.valueOf(profile.getId()),
             profile.getSlug(),
             user.getFullName(),
-            resolvePrimaryRubro(profile),
+            categorySupport.resolvePrimaryRubro(profile),
             profile.getLocation(),
             profile.getPublicHeadline(),
-            mapCategories(profile.getCategories())
+            categorySupport.mapCategories(profile.getCategories())
         );
-    }
-
-    private String resolvePrimaryRubro(ProfessionalProfile profile) {
-        Set<Category> categories = profile.getCategories();
-        if (categories == null || categories.isEmpty()) {
-            return profile.getRubro();
-        }
-        return categories.stream()
-            .sorted(categoryComparator())
-            .map(Category::getName)
-            .findFirst()
-            .orElse(profile.getRubro());
-    }
-
-    private List<CategoryResponse> mapCategories(Set<Category> categories) {
-        if (categories == null || categories.isEmpty()) {
-            return List.of();
-        }
-        return categories.stream()
-            .sorted(categoryComparator())
-            .map(category -> new CategoryResponse(
-                category.getId(),
-                category.getName(),
-                category.getSlug(),
-                category.getImageUrl(),
-                category.getDisplayOrder()
-            ))
-            .toList();
-    }
-
-    private boolean matchesCategoryFilter(
-        ProfessionalProfile profile,
-        UUID categoryId,
-        String categorySlug
-    ) {
-        if (categoryId == null && (categorySlug == null || categorySlug.isBlank())) {
-            return true;
-        }
-        Set<Category> categories = profile.getCategories();
-        if (categories == null || categories.isEmpty()) {
-            return false;
-        }
-        if (categoryId != null && categories.stream().noneMatch(category -> categoryId.equals(category.getId()))) {
-            return false;
-        }
-        if (categorySlug != null && !categorySlug.isBlank()) {
-            return categories.stream().anyMatch(category -> categorySlug.equalsIgnoreCase(category.getSlug()));
-        }
-        return true;
-    }
-
-    private Set<Category> resolveCategoriesBySlugs(List<String> rawSlugs) {
-        if (rawSlugs == null || rawSlugs.isEmpty()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Seleccioná al menos un rubro");
-        }
-        Set<String> slugs = rawSlugs.stream()
-            .map(slug -> slug == null ? "" : slug.trim().toLowerCase(Locale.ROOT))
-            .map(this::mapLegacyCategorySlug)
-            .filter(slug -> !slug.isBlank())
-            .collect(Collectors.toCollection(LinkedHashSet::new));
-        if (slugs.isEmpty()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Seleccioná al menos un rubro");
-        }
-        List<Category> categories = categoryRepository.findBySlugIn(slugs);
-        Set<String> found = categories.stream().map(Category::getSlug).collect(Collectors.toSet());
-        Set<String> missing = slugs.stream()
-            .filter(slug -> !found.contains(slug))
-            .collect(Collectors.toCollection(LinkedHashSet::new));
-        if (!missing.isEmpty()) {
-            throw new ResponseStatusException(
-                HttpStatus.BAD_REQUEST,
-                "Rubros inválidos: " + String.join(", ", missing)
-            );
-        }
-        return new LinkedHashSet<>(categories);
-    }
-
-    private void applyCategories(ProfessionalProfile profile, Set<Category> categories) {
-        if (categories == null || categories.isEmpty()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Seleccioná al menos un rubro");
-        }
-        profile.setCategories(new LinkedHashSet<>(categories));
-        String primary = categories.stream()
-            .sorted(categoryComparator())
-            .map(Category::getName)
-            .findFirst()
-            .orElse(profile.getRubro());
-        profile.setRubro(primary);
-    }
-
-    private String mapLegacyCategorySlug(String slug) {
-        return LEGACY_CATEGORY_ALIASES.getOrDefault(slug, slug);
-    }
-
-    private Comparator<Category> categoryComparator() {
-        return Comparator.comparingInt(
-            (Category category) -> category.getDisplayOrder() == null ? Integer.MAX_VALUE : category.getDisplayOrder()
-        ).thenComparing(Category::getName);
     }
 
     private boolean isProfessionalActive(ProfessionalProfile profile) {
@@ -1748,31 +1411,6 @@ public class ProfesionalPublicPageCoreService {
         String fullName = profile.getUser() == null ? "profesional" : profile.getUser().getFullName();
         String slug = SlugUtils.generateUniqueSlug(fullName, professionalProfileRepository::existsBySlug);
         profile.setSlug(slug);
-    }
-
-    private boolean isDatePaused(LocalDate date, List<ProfesionalSchedulePauseDto> pauses) {
-        if (pauses == null || pauses.isEmpty()) {
-            return false;
-        }
-
-        for (ProfesionalSchedulePauseDto pause : pauses) {
-            if (pause == null || pause.getStartDate() == null || pause.getStartDate().isBlank()) {
-                continue;
-            }
-            try {
-                LocalDate startDate = LocalDate.parse(pause.getStartDate().trim());
-                LocalDate endDate = pause.getEndDate() == null || pause.getEndDate().isBlank()
-                    ? startDate
-                    : LocalDate.parse(pause.getEndDate().trim());
-                if (!date.isBefore(startDate) && !date.isAfter(endDate)) {
-                    return true;
-                }
-            } catch (DateTimeParseException exception) {
-                // Si hay una pausa inválida en DB, se ignora para no romper el endpoint público.
-            }
-        }
-
-        return false;
     }
 
     private String dayKeyFromDate(LocalDate date) {

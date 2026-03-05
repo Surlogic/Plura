@@ -13,9 +13,9 @@ import org.springframework.stereotype.Service;
 @Service
 public class ProfessionalProfileService {
 
-    private final ProfesionalPublicPageCoreService coreService;
+    private final ProfessionalPublicPageCoreService coreService;
 
-    public ProfessionalProfileService(ProfesionalPublicPageCoreService coreService) {
+    public ProfessionalProfileService(ProfessionalPublicPageCoreService coreService) {
         this.coreService = coreService;
     }
 

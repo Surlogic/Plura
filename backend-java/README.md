@@ -11,7 +11,7 @@
   - enviar `startDateTime` en ISO (`YYYY-MM-DDTHH:mm` o con offset, ej. `2026-02-27T13:00:00Z`).
 
 ## Search de escala (PostGIS + trigram)
-- Script SQL: `backend-java/db/search_scale_foundation.sql`
+- Migración versionada: `backend-java/src/main/resources/db/migration/V9__search_scale_foundation.sql`
 - Extensiones: `postgis`, `pg_trgm`, `unaccent`, `pgcrypto`.
 - Crea/actualiza:
   - columnas geo y ranking en `professional_profile`;
@@ -19,7 +19,17 @@
   - tabla `geo_location_seed` para autocomplete;
   - índices GIST/GIN y de filtros.
 
-Aplicación manual:
+## Migraciones (Flyway)
+
+Flyway corre al iniciar la app (startup) y mantiene historial en `flyway_schema_history`.
+
+Variables relevantes:
+
+- `SPRING_FLYWAY_ENABLED=true`
+- `SPRING_FLYWAY_BASELINE_ON_MIGRATE=true`
+- `SPRING_FLYWAY_LOCATIONS=classpath:db/migration`
+
+Legacy/manual (solo fallback operativo):
 
 ```bash
 psql \"$SPRING_DATASOURCE_URL\" -f backend-java/db/search_scale_foundation.sql
@@ -46,8 +56,8 @@ backend-java/scripts/geocode_professional_profiles.sh 500
   - `POST /billing/cancel` (JWT `ROLE_PROFESSIONAL`)
   - `POST /webhooks/mercadopago` (público, firma obligatoria)
   - `POST /webhooks/dlocal` (público, firma obligatoria)
-- Migración SQL:
-  - `backend-java/db/billing_subscriptions.sql`
+- Migración Flyway:
+  - `backend-java/src/main/resources/db/migration/V13__billing_subscriptions.sql`
 
 Variables requeridas (ejemplo placeholders):
 
@@ -79,7 +89,7 @@ Notas de seguridad:
 - Webhooks son idempotentes por `UNIQUE(provider, provider_event_id)`.
 
 Sandbox rápido:
-1. Aplicar SQL de billing.
+1. Verificar que Flyway esté habilitado y levantar backend.
 2. Configurar `BILLING_*` en `.env` local con credenciales sandbox.
 3. Levantar backend y llamar `POST /billing/checkout`.
 4. Configurar URL pública de webhook hacia:

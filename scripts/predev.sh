@@ -2,6 +2,18 @@
 set -euo pipefail
 
 PORT="${1:-3000}"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ROOT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
+
+# Next.js dev can leave a corrupted .next folder after hard crashes/restarts.
+# On web boot (3002), clear it proactively to avoid ENOENT/MODULE_NOT_FOUND.
+if [[ "${PORT}" == "3002" ]]; then
+  NEXT_DIR="${ROOT_DIR}/apps/web/.next"
+  if [[ -d "${NEXT_DIR}" ]]; then
+    echo "[predev] Limpiando cache Next (.next)"
+    rm -rf "${NEXT_DIR}"
+  fi
+fi
 
 mapfile -t pids < <(
   ss -ltnp "sport = :${PORT}" 2>/dev/null \

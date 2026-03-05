@@ -23,13 +23,12 @@ export default function CategoriesGrid({ categories }: CategoriesGridProps) {
         {visibleCategories.length > 0 ? (
           <>
             <div className="grid grid-cols-2 gap-6 md:grid-cols-3 lg:grid-cols-4">
-              {visibleCategories.map((category, index) => (
+              {visibleCategories.map((category) => (
                 <CategoryCard
                   key={category.id}
                   title={category.name}
                   slug={category.slug}
                   imageUrl={category.imageUrl}
-                  priority={index < 2}
                 />
               ))}
             </div>

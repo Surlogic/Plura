@@ -403,14 +403,15 @@ export default function ProfesionalPublicPageBuilder() {
                     <div className="mt-4 grid gap-4 sm:grid-cols-2">
                       {photos.map((photo, index) => (
                         <div key={photo.id} className="space-y-2">
-                          <div
-                            className="h-28 rounded-[18px] border border-[#E2E7EC] bg-[#F4F6F8] bg-cover bg-center"
-                            style={{
-                              backgroundImage: photo.url
-                                ? `url("${photo.url}")`
-                                : undefined,
-                            }}
-                          />
+                          <div className="h-28 overflow-hidden rounded-[18px] border border-[#E2E7EC] bg-[#F4F6F8]">
+                            {photo.url ? (
+                              <img
+                                src={photo.url}
+                                alt={`Foto ${index + 1}`}
+                                className="h-full w-full object-cover"
+                              />
+                            ) : null}
+                          </div>
                           <input
                             className={inputClassName}
                             placeholder="Pegá la URL de la foto"
@@ -504,6 +505,8 @@ export default function ProfesionalPublicPageBuilder() {
                         ref={iframeRef}
                         title="Vista previa página pública"
                         src="/profesional/pagina/preview?preview=1"
+                        sandbox="allow-scripts allow-same-origin"
+                        referrerPolicy="no-referrer"
                         className="h-[720px] w-full"
                       />
                     </div>

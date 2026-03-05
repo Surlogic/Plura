@@ -1,45 +1,63 @@
-# Plura
+# Plura Monorepo
 
-Monorepo con pnpm workspaces preparado para escalar.
+Monorepo con frontend web (Next.js), app mobile (Expo) y backend API (Spring Boot + PostgreSQL).
 
-## Arquitectura
-- backend/ -> NestJS + TypeScript + Prisma + PostgreSQL
-- apps/web -> Next.js 14 (App Router) + TypeScript + TailwindCSS
-- apps/mobile -> placeholder para futuro
-- packages/ -> paquetes compartidos
+## Estructura
+
+- `apps/web`: Next.js 14 (Pages Router) + TypeScript.
+- `apps/mobile`: Expo + React Native.
+- `backend-java`: Spring Boot 3.5 + JPA + PostgreSQL.
+- `packages`: espacio para librerías compartidas de workspace.
 
 ## Requisitos
-- Node >= 20
-- pnpm
 
-## Instalación
-pnpm install
+- Node.js `>=20`
+- pnpm
+- Java 17
+- PostgreSQL
 
 ## Desarrollo
+
+Instalar dependencias del workspace:
+
+```bash
+pnpm install
+```
+
+Levantar web + backend:
+
+```bash
 pnpm dev
+```
 
 Comandos individuales:
-- pnpm dev:backend
-- pnpm dev:web
 
-## PostgreSQL
-1. Instala PostgreSQL localmente.
-2. Crea una base de datos llamada `plura`.
-3. Ajusta `backend/.env` con tu `DATABASE_URL`.
+```bash
+pnpm dev:web
+pnpm dev:backend-java
+```
 
-Ejemplo:
-postgresql://postgres:postgres@localhost:5432/plura?schema=public
+## Puertos por defecto
 
-## Prisma
-- pnpm -C backend prisma migrate dev --name init
-- pnpm -C backend prisma generate
+- Backend API: `3000`
+- Web: `3002`
 
-## Variables de entorno (Web)
-apps/web/.env.local:
-NEXT_PUBLIC_API_URL=http://localhost:3000
-NEXT_PUBLIC_MAPBOX_TOKEN=tu_token_publico_mapbox
+## Migraciones de base de datos
 
-## Puertos
-- Backend: 3000
-- Web: 3001
-# Plura
+El backend usa Flyway con historial de migraciones en:
+
+- `backend-java/src/main/resources/db/migration`
+
+Configuración principal:
+
+- `SPRING_FLYWAY_ENABLED` (default `true`)
+- `SPRING_FLYWAY_BASELINE_ON_MIGRATE` (default `true`)
+
+Los SQL legacy/manual se mantienen en:
+
+- `backend-java/db`
+
+## Notas
+
+- El workspace usa `pnpm` (no `npm lockfiles`).
+- `backend-java/README.md` contiene detalles funcionales de billing, search y scripts operativos.

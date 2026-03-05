@@ -1,4 +1,5 @@
 import api from '@/services/api';
+import { setAuthAccessToken } from '@/services/session';
 
 export type OAuthProvider = 'google' | 'apple';
 export type OAuthRole = 'USER' | 'PROFESSIONAL' | null;
@@ -11,13 +12,25 @@ type OAuthUser = {
 };
 
 type OAuthResponse = {
-  accessToken: string;
+  accessToken: string | null;
   user: OAuthUser;
 };
 
 export type OAuthLoginResult = OAuthResponse & {
   role: OAuthRole;
 };
+
+type OAuthAuthorizationCodeOptions = {
+  grantType: 'authorization_code';
+  codeVerifier: string;
+  redirectUri: string;
+};
+
+type OAuthTokenOptions = {
+  grantType?: 'token';
+};
+
+type OAuthLoginOptions = OAuthTokenOptions | OAuthAuthorizationCodeOptions;
 
 const decodeBase64Url = (value: string) => {
   const normalized = value.replace(/-/g, '+').replace(/_/g, '/');
@@ -29,8 +42,9 @@ const decodeBase64Url = (value: string) => {
   return Buffer.from(padded, 'base64').toString('utf8');
 };
 
-const extractRoleFromAccessToken = (accessToken: string): OAuthRole => {
+const extractRoleFromAccessToken = (accessToken: string | null | undefined): OAuthRole => {
   try {
+    if (!accessToken) return null;
     const parts = accessToken.split('.');
     if (parts.length < 2) return null;
     const payloadRaw = decodeBase64Url(parts[1]);
@@ -43,13 +57,28 @@ const extractRoleFromAccessToken = (accessToken: string): OAuthRole => {
   }
 };
 
-export async function oauthLogin(provider: OAuthProvider, token: string): Promise<OAuthLoginResult> {
-  const response = await api.post<OAuthResponse>('/auth/oauth', {
-    provider,
-    token,
-  });
+export async function oauthLogin(
+  provider: OAuthProvider,
+  tokenOrCode: string,
+  options: OAuthLoginOptions = { grantType: 'token' },
+): Promise<OAuthLoginResult> {
+  const payload =
+    options.grantType === 'authorization_code'
+      ? {
+          provider,
+          authorizationCode: tokenOrCode,
+          codeVerifier: options.codeVerifier,
+          redirectUri: options.redirectUri,
+        }
+      : {
+          provider,
+          token: tokenOrCode,
+        };
+
+  const response = await api.post<OAuthResponse>('/auth/oauth', payload);
 
   const data = response.data;
+  setAuthAccessToken(data.accessToken);
   return {
     ...data,
     role: extractRoleFromAccessToken(data.accessToken),

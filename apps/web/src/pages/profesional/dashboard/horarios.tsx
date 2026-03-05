@@ -3,10 +3,26 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Navbar from '@/components/shared/Navbar';
 import ProfesionalSidebar from '@/components/profesional/Sidebar';
+import DayScheduleCard from '@/components/profesional/schedule/DayScheduleCard';
+import SchedulePausesPanel from '@/components/profesional/schedule/SchedulePausesPanel';
 import { useProfessionalProfile } from '@/hooks/useProfessionalProfile';
 import { isAxiosError } from 'axios';
 import api from '@/services/api';
 import { useProfessionalDashboardUnsavedSection } from '@/context/ProfessionalDashboardUnsavedChangesContext';
+import {
+  buildEmptyPause,
+  createDefaultSchedule,
+  createRange,
+  createScheduleSignature,
+  dayLabels,
+  dayOptions,
+  DEFAULT_SLOT_DURATION_MINUTES,
+  type ConstructorApplyMode,
+  normalizeSchedule,
+  normalizeSlotDuration,
+  SLOT_DURATION_OPTIONS,
+  weekdayOptions,
+} from '@/lib/professionalScheduleBuilder';
 import type {
   ProfessionalSchedule,
   SchedulePauseRange,
@@ -14,161 +30,6 @@ import type {
   WorkDaySchedule,
   WorkShift,
 } from '@/types/professional';
-
-const dayLabels: Record<WorkDayKey, string> = {
-  mon: 'Lunes',
-  tue: 'Martes',
-  wed: 'Miércoles',
-  thu: 'Jueves',
-  fri: 'Viernes',
-  sat: 'Sábado',
-  sun: 'Domingo',
-};
-
-const dayOptions: WorkDayKey[] = [
-  'mon',
-  'tue',
-  'wed',
-  'thu',
-  'fri',
-  'sat',
-  'sun',
-];
-
-const weekdayOptions: WorkDayKey[] = ['mon', 'tue', 'wed', 'thu', 'fri'];
-const SLOT_DURATION_OPTIONS = [10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60] as const;
-const DEFAULT_SLOT_DURATION_MINUTES = 15;
-
-type ConstructorApplyMode = 'append' | 'replace';
-
-const buildEmptyPause = (): SchedulePauseRange => ({
-  id: `pause-${Date.now()}`,
-  startDate: '',
-  endDate: '',
-  note: '',
-});
-
-const createRange = (
-  day: WorkDayKey,
-  start = '09:00',
-  end = '18:00',
-  index = 1,
-): WorkShift => ({
-  id: `range-${day}-${Date.now()}-${index}`,
-  start,
-  end,
-});
-
-const createDefaultDays = (): WorkDaySchedule[] => [
-  {
-    day: 'mon',
-    enabled: true,
-    paused: false,
-    ranges: [createRange('mon', '09:00', '18:00')],
-  },
-  {
-    day: 'tue',
-    enabled: true,
-    paused: false,
-    ranges: [createRange('tue', '09:00', '18:00')],
-  },
-  {
-    day: 'wed',
-    enabled: true,
-    paused: false,
-    ranges: [createRange('wed', '09:00', '18:00')],
-  },
-  {
-    day: 'thu',
-    enabled: true,
-    paused: false,
-    ranges: [createRange('thu', '09:00', '18:00')],
-  },
-  {
-    day: 'fri',
-    enabled: true,
-    paused: false,
-    ranges: [createRange('fri', '09:00', '18:00')],
-  },
-  {
-    day: 'sat',
-    enabled: true,
-    paused: false,
-    ranges: [createRange('sat', '09:00', '13:00')],
-  },
-  {
-    day: 'sun',
-    enabled: false,
-    paused: false,
-    ranges: [createRange('sun', '09:00', '13:00')],
-  },
-];
-
-const createDefaultSchedule = (): ProfessionalSchedule => ({
-  days: createDefaultDays(),
-  pauses: [],
-  slotDurationMinutes: DEFAULT_SLOT_DURATION_MINUTES,
-});
-
-const normalizeSlotDuration = (value: unknown): number => {
-  if (typeof value !== 'number') return DEFAULT_SLOT_DURATION_MINUTES;
-  return SLOT_DURATION_OPTIONS.includes(value as (typeof SLOT_DURATION_OPTIONS)[number])
-    ? value
-    : DEFAULT_SLOT_DURATION_MINUTES;
-};
-
-const normalizeSchedule = (value: Partial<ProfessionalSchedule> | null | undefined): ProfessionalSchedule => {
-  const fallback = createDefaultSchedule();
-  if (!value) return fallback;
-
-  const dayMap = new Map<WorkDayKey, WorkDaySchedule>();
-  if (Array.isArray(value.days)) {
-    value.days.forEach((day) => {
-      if (!day || !day.day || !dayOptions.includes(day.day)) return;
-      dayMap.set(day.day, day);
-    });
-  }
-
-  const days = dayOptions.map((dayKey, index) => {
-    const fallbackDay = fallback.days[index];
-    const stored = dayMap.get(dayKey);
-    const ranges = Array.isArray(stored?.ranges)
-      ? stored.ranges.map((range, rangeIndex) => ({
-          id: range?.id || `range-${dayKey}-${Date.now()}-${rangeIndex}`,
-          start: range?.start || fallbackDay.ranges[0].start,
-          end: range?.end || fallbackDay.ranges[0].end,
-        }))
-      : fallbackDay.ranges.map((range, rangeIndex) => ({
-          id: range.id || `range-${dayKey}-${Date.now()}-${rangeIndex}`,
-          start: range.start,
-          end: range.end,
-        }));
-
-    return {
-      day: dayKey,
-      enabled: stored?.paused ? false : Boolean(stored?.enabled ?? fallbackDay.enabled),
-      paused: Boolean(stored?.paused),
-      ranges,
-    };
-  });
-
-  const pauses = Array.isArray(value.pauses)
-    ? value.pauses
-        .map((pause, index) => ({
-          id: pause?.id || `pause-${Date.now()}-${index}`,
-          startDate: pause?.startDate || '',
-          endDate: pause?.endDate || pause?.startDate || '',
-          note: pause?.note || '',
-        }))
-        .filter((pause) => Boolean(pause.startDate))
-    : [];
-
-  return {
-    days,
-    pauses,
-    slotDurationMinutes: normalizeSlotDuration(value.slotDurationMinutes),
-  };
-};
 
 const extractApiErrorMessage = (error: unknown, fallback: string) => {
   if (isAxiosError<{ message?: string }>(error)) {
@@ -179,28 +40,6 @@ const extractApiErrorMessage = (error: unknown, fallback: string) => {
   }
   return fallback;
 };
-
-const createScheduleSignature = (schedule: ProfessionalSchedule) =>
-  JSON.stringify({
-    slotDurationMinutes: normalizeSlotDuration(schedule.slotDurationMinutes),
-    days: dayOptions.map((dayKey) => {
-      const day = schedule.days.find((item) => item.day === dayKey);
-      return {
-        day: dayKey,
-        enabled: Boolean(day?.enabled),
-        paused: Boolean(day?.paused),
-        ranges: (day?.ranges ?? []).map((range) => ({
-          start: range.start,
-          end: range.end,
-        })),
-      };
-    }),
-    pauses: (schedule.pauses ?? []).map((pause) => ({
-      startDate: pause.startDate,
-      endDate: pause.endDate,
-      note: pause.note ?? '',
-    })),
-  });
 
 export default function ProfesionalScheduleBuilderPage() {
   const { profile, isLoading, hasLoaded } = useProfessionalProfile();
@@ -940,206 +779,26 @@ export default function ProfesionalScheduleBuilderPage() {
 
                   <div className="space-y-4">
                     {days.map((day) => (
-                      <div
+                      <DayScheduleCard
                         key={day.day}
-                        className="rounded-[22px] border border-white/70 bg-white/95 p-5 shadow-[0_16px_36px_rgba(15,23,42,0.12)]"
-                      >
-                        <div className="flex flex-wrap items-center justify-between gap-4">
-                          <div>
-                            <p className="text-[0.65rem] uppercase tracking-[0.35em] text-[#94A3B8]">
-                              Día
-                            </p>
-                            <h3 className="mt-2 text-lg font-semibold text-[#0E2A47]">
-                              {dayLabels[day.day]}
-                            </h3>
-                          </div>
-                          <div className="flex flex-wrap items-center gap-3">
-                            <label className="flex items-center gap-2 text-xs font-semibold text-[#0E2A47]">
-                              <input
-                                type="checkbox"
-                                checked={day.enabled}
-                                onChange={(event) =>
-                                  handleToggleAvailable(day.day, event.target.checked)
-                                }
-                                className="h-4 w-4 accent-[#1FB6A6]"
-                              />
-                              Disponible
-                            </label>
-                            <label className="flex items-center gap-2 text-xs font-semibold text-[#0E2A47]">
-                              <input
-                                type="checkbox"
-                                checked={day.paused}
-                                onChange={(event) =>
-                                  handleTogglePaused(day.day, event.target.checked)
-                                }
-                                className="h-4 w-4 accent-[#F59E0B]"
-                              />
-                              Pausado
-                            </label>
-                          </div>
-                        </div>
-                        <div className="mt-4 grid gap-4 sm:grid-cols-2">
-                          <div className="sm:col-span-2">
-                            <label className="text-sm font-medium text-[#0E2A47]">
-                              Franjas horarias
-                            </label>
-                            <p className="mt-1 text-xs text-[#64748B]">
-                              Podés definir varias franjas (ej: 09:00-12:00 y
-                              14:00-19:00).
-                            </p>
-                            <div className="mt-3 space-y-3">
-                              {day.ranges.length === 0 ? (
-                                <div className="rounded-[16px] border border-dashed border-[#CBD5F5] bg-white/70 px-4 py-3 text-sm text-[#64748B]">
-                                  Sin horarios definidos para este día.
-                                </div>
-                              ) : (
-                                day.ranges.map((range) => {
-                                  return (
-                                    <div
-                                      key={range.id}
-                                      id={`range-${day.day}-${range.id}`}
-                                      className="flex flex-wrap items-center justify-between gap-3 rounded-[16px] border border-[#E2E7EC] bg-[#F7F9FB] px-4 py-3 text-sm"
-                                    >
-                                      <div>
-                                        <p className="font-semibold text-[#0E2A47]">
-                                          {range.start} - {range.end}
-                                        </p>
-                                        <p className="text-xs text-[#64748B]">
-                                          Horario creado
-                                        </p>
-                                      </div>
-                                      <div className="flex items-center gap-2">
-                                        <button
-                                          type="button"
-                                          onClick={() => startEditingRange(day.day, range)}
-                                          className="rounded-full border border-[#E2E7EC] bg-white px-3 py-1 text-xs font-semibold text-[#0E2A47]"
-                                          disabled={!day.enabled || day.paused}
-                                        >
-                                          Editar
-                                        </button>
-                                        <button
-                                          type="button"
-                                          onClick={() => handleRemoveRange(day.day, range.id)}
-                                          className="rounded-full border border-[#F1B4B4] px-3 py-1 text-xs font-semibold text-[#C24141]"
-                                          disabled={!day.enabled || day.paused}
-                                        >
-                                          Eliminar
-                                        </button>
-                                      </div>
-                                    </div>
-                                  );
-                                })
-                              )}
-                            </div>
-                            <button
-                              type="button"
-                              onClick={() => handleCreateFromDay(day.day)}
-                              disabled={!day.enabled || day.paused}
-                              className={`mt-3 rounded-full border px-3 py-1 text-xs font-semibold transition ${
-                                !day.enabled || day.paused
-                                  ? 'cursor-not-allowed border-[#E2E7EC] bg-[#F4F6F8] text-[#94A3B8]'
-                                  : 'border-[#E2E7EC] bg-white text-[#0E2A47] hover:-translate-y-0.5 hover:shadow-sm'
-                              }`}
-                            >
-                              + Agregar franja horaria
-                            </button>
-                          </div>
-                        </div>
-                        {day.paused ? (
-                          <p className="mt-3 text-xs font-semibold text-[#F59E0B]">
-                            Día pausado: no se tomarán reservas.
-                          </p>
-                        ) : null}
-                      </div>
+                        day={day}
+                        onToggleAvailable={handleToggleAvailable}
+                        onTogglePaused={handleTogglePaused}
+                        onEditRange={startEditingRange}
+                        onRemoveRange={handleRemoveRange}
+                        onCreateFromDay={handleCreateFromDay}
+                      />
                     ))}
                   </div>
 
-                  <div className="rounded-[24px] border border-white/70 bg-white/95 p-5 shadow-[0_16px_36px_rgba(15,23,42,0.12)]">
-                    <p className="text-[0.65rem] uppercase tracking-[0.35em] text-[#94A3B8]">
-                      Pausas por fecha
-                    </p>
-                    <h2 className="mt-2 text-lg font-semibold text-[#0E2A47]">
-                      Pausar disponibilidad por viaje
-                    </h2>
-                    <div className="mt-4 grid gap-4 sm:grid-cols-2">
-                      <div>
-                        <label className="text-sm font-medium text-[#0E2A47]">
-                          Desde
-                        </label>
-                        <input
-                          type="date"
-                          className={inputClassName}
-                          value={pauseDraft.startDate}
-                          onChange={(event) =>
-                            handlePauseDraftChange('startDate', event.target.value)
-                          }
-                        />
-                      </div>
-                      <div>
-                        <label className="text-sm font-medium text-[#0E2A47]">
-                          Hasta
-                        </label>
-                        <input
-                          type="date"
-                          className={inputClassName}
-                          value={pauseDraft.endDate}
-                          onChange={(event) =>
-                            handlePauseDraftChange('endDate', event.target.value)
-                          }
-                        />
-                      </div>
-                      <div className="sm:col-span-2">
-                        <label className="text-sm font-medium text-[#0E2A47]">
-                          Nota (opcional)
-                        </label>
-                        <input
-                          className={inputClassName}
-                          value={pauseDraft.note ?? ''}
-                          onChange={(event) =>
-                            handlePauseDraftChange('note', event.target.value)
-                          }
-                          placeholder="Ej: Viaje a congreso"
-                        />
-                      </div>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={handleAddPause}
-                      className="mt-4 w-full rounded-full bg-[#0B1D2A] px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
-                    >
-                      Agregar pausa
-                    </button>
-                    <div className="mt-4 space-y-3">
-                      {pauses.length === 0 ? (
-                        <div className="rounded-[18px] border border-dashed border-[#CBD5F5] bg-white/70 px-4 py-4 text-sm text-[#64748B]">
-                          No hay pausas cargadas todavía.
-                        </div>
-                      ) : (
-                        pauses.map((pause) => (
-                          <div
-                            key={pause.id}
-                            className="flex flex-wrap items-center justify-between gap-4 rounded-[18px] border border-[#E2E7EC] bg-[#F7F9FB] px-4 py-3 text-sm text-[#0E2A47]"
-                          >
-                            <div>
-                              <p className="font-semibold">
-                                {pause.startDate} → {pause.endDate}
-                              </p>
-                              {pause.note ? (
-                                <p className="text-xs text-[#64748B]">{pause.note}</p>
-                              ) : null}
-                            </div>
-                            <button
-                              type="button"
-                              onClick={() => handleRemovePause(pause.id)}
-                              className="rounded-full border border-[#F1B4B4] px-3 py-1 text-xs font-semibold text-[#C24141]"
-                            >
-                              Quitar
-                            </button>
-                          </div>
-                        ))
-                      )}
-                    </div>
-                  </div>
+                  <SchedulePausesPanel
+                    inputClassName={inputClassName}
+                    pauseDraft={pauseDraft}
+                    pauses={pauses}
+                    onPauseDraftChange={handlePauseDraftChange}
+                    onAddPause={handleAddPause}
+                    onRemovePause={handleRemovePause}
+                  />
                 </div>
 
                 <div className="space-y-6">

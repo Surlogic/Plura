@@ -11,9 +11,9 @@ import org.springframework.stereotype.Service;
 @Service
 public class BookingService {
 
-    private final ProfesionalPublicPageCoreService coreService;
+    private final ProfessionalPublicPageCoreService coreService;
 
-    public BookingService(ProfesionalPublicPageCoreService coreService) {
+    public BookingService(ProfessionalPublicPageCoreService coreService) {
         this.coreService = coreService;
     }
 

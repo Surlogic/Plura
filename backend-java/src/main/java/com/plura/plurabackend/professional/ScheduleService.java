@@ -7,9 +7,9 @@ import org.springframework.stereotype.Service;
 @Service
 public class ScheduleService {
 
-    private final ProfesionalPublicPageCoreService coreService;
+    private final ProfessionalPublicPageCoreService coreService;
 
-    public ScheduleService(ProfesionalPublicPageCoreService coreService) {
+    public ScheduleService(ProfessionalPublicPageCoreService coreService) {
         this.coreService = coreService;
     }
 

@@ -6,6 +6,7 @@ import api from '@/services/api';
 import { useClientProfileContext } from '@/context/ClientProfileContext';
 import { useProfessionalProfileContext } from '@/context/ProfessionalProfileContext';
 import Logo from '@/components/ui/Logo';
+import { clearAuthAccessToken } from '@/services/session';
 
 type NavbarProps = {
   variant?: 'default' | 'dashboard';
@@ -62,6 +63,7 @@ export default function Navbar({
       .post('/auth/logout')
       .catch(() => undefined)
       .finally(() => {
+        clearAuthAccessToken();
         clearProfessionalProfile();
         clearClientProfile();
         if (role === 'PROFESSIONAL') {

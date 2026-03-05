@@ -6,14 +6,13 @@ import {
 
 export default function OAuthCallbackPage() {
   useEffect(() => {
-    const hash = window.location.hash.substring(1);
-    const params = new URLSearchParams(hash);
-    const idToken = params.get('id_token');
+    const params = new URLSearchParams(window.location.search);
+    const code = params.get('code');
     const state = params.get('state');
     const error = params.get('error');
     const payload: GoogleOAuthResultPayload = {
       type: 'GOOGLE_OAUTH_RESULT',
-      idToken,
+      code,
       state,
       error,
       ts: Date.now(),
@@ -29,12 +28,18 @@ export default function OAuthCallbackPage() {
       channel.close();
     }
 
-    // Elimina tokens del hash para reducir exposición en history/referrer.
-    if (window.location.hash) {
-      window.history.replaceState(null, '', window.location.pathname + window.location.search);
+    // Elimina parámetros OAuth de la URL para reducir exposición en history/referrer.
+    if (window.location.search) {
+      window.history.replaceState(null, '', window.location.pathname);
     }
 
-    window.close();
+    const closeTimer = window.setTimeout(() => {
+      window.close();
+    }, 120);
+
+    return () => {
+      window.clearTimeout(closeTimer);
+    };
   }, []);
 
   return (

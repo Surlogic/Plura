@@ -35,11 +35,12 @@ public class SecurityConfig {
     public SecurityFilterChain securityFilterChain(
         HttpSecurity http,
         JwtAuthenticationFilter jwtFilter,
-        RateLimitingFilter rateLimitingFilter
+        RateLimitingFilter rateLimitingFilter,
+        CookieOriginProtectionFilter cookieOriginProtectionFilter
     )
         throws Exception {
         http
-            // API stateless: no sesiones y sin CSRF para API token-based.
+            // API stateless con Bearer token: no sesiones y sin CSRF stateful.
             .csrf(csrf -> csrf.disable())
             .cors(Customizer.withDefaults())
             .httpBasic(AbstractHttpConfigurer::disable)
@@ -52,7 +53,11 @@ public class SecurityConfig {
                 .referrerPolicy(referrer -> referrer
                     .policy(ReferrerPolicyHeaderWriter.ReferrerPolicy.STRICT_ORIGIN_WHEN_CROSS_ORIGIN)
                 )
-                .addHeaderWriter(new StaticHeadersWriter("X-XSS-Protection", "1; mode=block"))
+                .httpStrictTransportSecurity(hsts -> hsts
+                    .includeSubDomains(true)
+                    .preload(true)
+                    .maxAgeInSeconds(31536000)
+                )
                 .addHeaderWriter(new StaticHeadersWriter("Permissions-Policy", "geolocation=(), microphone=(), camera=()"))
             )
             .authorizeHttpRequests(auth -> auth
@@ -93,7 +98,8 @@ public class SecurityConfig {
             )
             // Respuesta 401 si no hay autenticación.
             .exceptionHandling(ex -> ex.authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)))
-            .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)
+            .addFilterBefore(cookieOriginProtectionFilter, UsernamePasswordAuthenticationFilter.class)
+            .addFilterAfter(jwtFilter, CookieOriginProtectionFilter.class)
             .addFilterAfter(rateLimitingFilter, JwtAuthenticationFilter.class);
 
         return http.build();

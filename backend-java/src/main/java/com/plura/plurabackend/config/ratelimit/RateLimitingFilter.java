@@ -16,6 +16,7 @@ import java.util.Comparator;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.security.core.Authentication;
@@ -32,12 +33,20 @@ public class RateLimitingFilter extends OncePerRequestFilter {
     private static final int TRIM_BATCH_SIZE = 500;
 
     private final ObjectMapper objectMapper;
+    private final boolean trustForwardedHeaders;
+    private final boolean rateLimitEnabled;
     private final ConcurrentHashMap<String, Bucket> buckets = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, Long> lastAccessEpochMs = new ConcurrentHashMap<>();
     private final AtomicLong requestCount = new AtomicLong(0);
 
-    public RateLimitingFilter(ObjectMapper objectMapper) {
+    public RateLimitingFilter(
+        ObjectMapper objectMapper,
+        @Value("${app.security.trust-forwarded-headers:false}") boolean trustForwardedHeaders,
+        @Value("${app.security.rate-limit-enabled:true}") boolean rateLimitEnabled
+    ) {
         this.objectMapper = objectMapper;
+        this.trustForwardedHeaders = trustForwardedHeaders;
+        this.rateLimitEnabled = rateLimitEnabled;
     }
 
     @Override
@@ -46,6 +55,11 @@ public class RateLimitingFilter extends OncePerRequestFilter {
         HttpServletResponse response,
         FilterChain filterChain
     ) throws ServletException, IOException {
+        if (!rateLimitEnabled) {
+            filterChain.doFilter(request, response);
+            return;
+        }
+
         RateLimitTarget target = resolveTarget(request);
         if (target == null) {
             filterChain.doFilter(request, response);
@@ -93,8 +107,17 @@ public class RateLimitingFilter extends OncePerRequestFilter {
         if ("POST".equals(method) && ("/auth/login".equals(path) || path.startsWith("/auth/login/"))) {
             return new RateLimitTarget("login-ip", extractClientIp(request), 5);
         }
+        if ("POST".equals(method) && "/auth/oauth".equals(path)) {
+            return new RateLimitTarget("oauth-ip", extractClientIp(request), 5);
+        }
         if ("POST".equals(method) && ("/auth/register".equals(path) || path.startsWith("/auth/register/"))) {
             return new RateLimitTarget("register-ip", extractClientIp(request), 3);
+        }
+        if ("POST".equals(method) && "/auth/refresh".equals(path)) {
+            return new RateLimitTarget("refresh-ip", extractClientIp(request), 20);
+        }
+        if ("POST".equals(method) && "/auth/logout".equals(path)) {
+            return new RateLimitTarget("logout-ip", extractClientIp(request), 30);
         }
         if ("POST".equals(method) && path.matches("^/public/profesionales/[^/]+/reservas$")) {
             return new RateLimitTarget("booking-user", resolveUserOrIp(request), 10);
@@ -130,14 +153,16 @@ public class RateLimitingFilter extends OncePerRequestFilter {
     }
 
     private String extractClientIp(HttpServletRequest request) {
-        String forwarded = request.getHeader("X-Forwarded-For");
-        if (forwarded != null && !forwarded.isBlank()) {
-            int comma = forwarded.indexOf(',');
-            return (comma >= 0 ? forwarded.substring(0, comma) : forwarded).trim();
-        }
-        String realIp = request.getHeader("X-Real-IP");
-        if (realIp != null && !realIp.isBlank()) {
-            return realIp.trim();
+        if (trustForwardedHeaders) {
+            String forwarded = request.getHeader("X-Forwarded-For");
+            if (forwarded != null && !forwarded.isBlank()) {
+                int comma = forwarded.indexOf(',');
+                return (comma >= 0 ? forwarded.substring(0, comma) : forwarded).trim();
+            }
+            String realIp = request.getHeader("X-Real-IP");
+            if (realIp != null && !realIp.isBlank()) {
+                return realIp.trim();
+            }
         }
         return request.getRemoteAddr();
     }

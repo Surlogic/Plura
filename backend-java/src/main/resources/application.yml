@@ -43,6 +43,12 @@ spring:
         globally_quoted_identifiers_skip_column_definitions: true
         jdbc:
           time_zone: ${APP_TIMEZONE:America/Montevideo}
+  flyway:
+    enabled: ${SPRING_FLYWAY_ENABLED:true}
+    locations: ${SPRING_FLYWAY_LOCATIONS:classpath:db/migration}
+    baseline-on-migrate: ${SPRING_FLYWAY_BASELINE_ON_MIGRATE:true}
+    baseline-version: ${SPRING_FLYWAY_BASELINE_VERSION:0}
+    validate-on-migrate: ${SPRING_FLYWAY_VALIDATE_ON_MIGRATE:true}
 
 jwt:
   secret: ${JWT_SECRET}
@@ -55,11 +61,12 @@ jwt:
 oauth:
   google:
     client-id: ${GOOGLE_CLIENT_ID:}
+    client-secret: ${GOOGLE_CLIENT_SECRET:}
   apple:
     client-id: ${APPLE_CLIENT_ID:}
 
 cache:
-  enabled: ${CACHE_ENABLED:true}
+  enabled: ${CACHE_ENABLED:false}
 
 redis:
   enabled: ${REDIS_ENABLED:false}
@@ -70,12 +77,12 @@ redis:
 
 feature:
   cache:
-    search-enabled: ${SEARCH_CACHE_ENABLED:true}
-    suggest-enabled: ${SUGGEST_CACHE_ENABLED:true}
-    profile-enabled: ${PROFILE_CACHE_ENABLED:true}
-    slots-enabled: ${SLOTS_CACHE_ENABLED:true}
+    search-enabled: ${SEARCH_CACHE_ENABLED:false}
+    suggest-enabled: ${SUGGEST_CACHE_ENABLED:false}
+    profile-enabled: ${PROFILE_CACHE_ENABLED:false}
+    slots-enabled: ${SLOTS_CACHE_ENABLED:false}
   search:
-    no-count-mode-enabled: ${SEARCH_NO_COUNT_MODE:true}
+    no-count-mode-enabled: ${SEARCH_NO_COUNT_MODE:false}
     has-availability-today-enabled: ${HAS_AVAILABILITY_TODAY_ENABLED:false}
     availability-source: ${SEARCH_AVAILABILITY_SOURCE:AVAILABLE_SLOT}
   availability:
@@ -101,9 +108,17 @@ app:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3002}
     max-age-seconds: ${CORS_MAX_AGE_SECONDS:86400}
   auth:
-    # Producción: setear AUTH_COOKIE_SECURE=true y AUTH_COOKIE_SAMESITE=Strict en .env
-    cookie-secure: ${AUTH_COOKIE_SECURE:false}
-    cookie-same-site: ${AUTH_COOKIE_SAMESITE:Lax}
+    cookie-secure: ${AUTH_COOKIE_SECURE:true}
+    cookie-same-site: ${AUTH_COOKIE_SAMESITE:Strict}
+    expose-access-token: ${AUTH_EXPOSE_ACCESS_TOKEN:false}
+    oauth:
+      google:
+        allow-direct-token: ${AUTH_OAUTH_GOOGLE_ALLOW_DIRECT_TOKEN:false}
+        allowed-redirect-uris: ${AUTH_OAUTH_GOOGLE_ALLOWED_REDIRECT_URIS:}
+  security:
+    # Solo habilitar en edge/proxy confiable que sobreescriba headers.
+    trust-forwarded-headers: ${APP_TRUST_FORWARDED_HEADERS:false}
+    rate-limit-enabled: ${APP_RATE_LIMIT_ENABLED:true}
   storage:
     upload-dir: ${APP_UPLOAD_DIR:uploads}
     provider: ${IMAGE_STORAGE_PROVIDER:${STORAGE_PROVIDER:local}}
@@ -132,8 +147,8 @@ app:
     max-messages: ${SQS_MAX_MESSAGES:10}
 
   search-engine:
-    enabled: ${SEARCH_ENGINE_ENABLED:true}
-    suggest-enabled: ${SEARCH_ENGINE_SUGGEST_ENABLED:true}
+    enabled: ${SEARCH_ENGINE_ENABLED:false}
+    suggest-enabled: ${SEARCH_ENGINE_SUGGEST_ENABLED:false}
     hydrate-from-db: ${SEARCH_ENGINE_HYDRATE_FROM_DB:true}
     provider: ${SEARCH_ENGINE_PROVIDER:MEILI}
     meili:
@@ -146,6 +161,23 @@ app:
   availability:
     summary-lookahead-days: ${SCHEDULE_SUMMARY_LOOKAHEAD_DAYS:14}
     summary-cron: ${SCHEDULE_SUMMARY_CRON:0 */30 * * * *}
+
+  cache:
+    search:
+      max-size: ${APP_CACHE_SEARCH_MAX_SIZE:20000}
+    suggest:
+      max-size: ${APP_CACHE_SUGGEST_MAX_SIZE:20000}
+    slots:
+      max-size: ${APP_CACHE_SLOTS_MAX_SIZE:30000}
+    profile:
+      page-max-size: ${APP_CACHE_PROFILE_PAGE_MAX_SIZE:10000}
+      summaries-max-size: ${APP_CACHE_PROFILE_SUMMARIES_MAX_SIZE:5000}
+
+  async:
+    geocoding:
+      core-pool-size: ${APP_ASYNC_GEOCODING_CORE_POOL_SIZE:2}
+      max-pool-size: ${APP_ASYNC_GEOCODING_MAX_POOL_SIZE:4}
+      queue-capacity: ${APP_ASYNC_GEOCODING_QUEUE_CAPACITY:500}
 
 jobs:
   sqs:

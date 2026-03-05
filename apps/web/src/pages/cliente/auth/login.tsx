@@ -12,6 +12,7 @@ import api from '@/services/api';
 import { useClientProfileContext } from '@/context/ClientProfileContext';
 import { createPublicReservation } from '@/services/publicBookings';
 import type { OAuthLoginResult } from '@/lib/auth/oauthLogin';
+import { setAuthAccessToken } from '@/services/session';
 import {
   clearPendingReservation,
   getPendingReservation,
@@ -61,10 +62,11 @@ export default function ClienteLoginPage() {
     setErrorMessage(null);
     try {
       setIsSubmitting(true);
-      await api.post('/auth/login/cliente', {
+      const response = await api.post<{ accessToken?: string | null }>('/auth/login/cliente', {
         email: form.email.trim().toLowerCase(),
         password: form.password,
       });
+      setAuthAccessToken(response.data?.accessToken ?? null);
       await completeClientLoginFlow();
     } catch (error) {
       setErrorMessage(
@@ -76,6 +78,7 @@ export default function ClienteLoginPage() {
   };
 
   const completeClientLoginFlow = async () => {
+    await api.get('/auth/me/cliente');
     await refreshProfile();
 
     if (shouldConfirmReservationAfterLogin) {

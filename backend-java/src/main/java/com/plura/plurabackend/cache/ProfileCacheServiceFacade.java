@@ -53,6 +53,12 @@ public class ProfileCacheServiceFacade implements ProfileCacheService {
         if (!isProfileCacheActive()) {
             return Optional.empty();
         }
+        Optional<ProfesionalPublicPageResponse> memoryValue = inMemory.getPublicPageBySlug(slug);
+        if (memoryValue.isPresent()) {
+            markHit("profile-page", "memory");
+            return memoryValue;
+        }
+
         String key = "profile:" + normalize(slug);
         Optional<ProfesionalPublicPageResponse> redisValue = redis.get(
             key,
@@ -63,12 +69,6 @@ public class ProfileCacheServiceFacade implements ProfileCacheService {
             inMemory.putPublicPageBySlug(slug, redisValue.get());
             markHit("profile-page", "redis");
             return redisValue;
-        }
-
-        Optional<ProfesionalPublicPageResponse> memoryValue = inMemory.getPublicPageBySlug(slug);
-        if (memoryValue.isPresent()) {
-            markHit("profile-page", "memory");
-            return memoryValue;
         }
 
         markMiss("profile-page");
@@ -89,6 +89,12 @@ public class ProfileCacheServiceFacade implements ProfileCacheService {
         if (!isProfileCacheActive()) {
             return Optional.empty();
         }
+        Optional<List<ProfesionalPublicSummaryResponse>> memoryValue = inMemory.getPublicSummaries(key);
+        if (memoryValue.isPresent()) {
+            markHit("profile-summaries", "memory");
+            return memoryValue;
+        }
+
         String redisKey = SUMMARY_PREFIX + normalize(key);
         Optional<List<ProfesionalPublicSummaryResponse>> redisValue = redis.get(
             redisKey,
@@ -99,12 +105,6 @@ public class ProfileCacheServiceFacade implements ProfileCacheService {
             inMemory.putPublicSummaries(key, redisValue.get());
             markHit("profile-summaries", "redis");
             return redisValue;
-        }
-
-        Optional<List<ProfesionalPublicSummaryResponse>> memoryValue = inMemory.getPublicSummaries(key);
-        if (memoryValue.isPresent()) {
-            markHit("profile-summaries", "memory");
-            return memoryValue;
         }
 
         markMiss("profile-summaries");

@@ -11,7 +11,7 @@ LANGUAGE sql
 IMMUTABLE
 PARALLEL SAFE
 AS $$
-  SELECT unaccent('unaccent', COALESCE(value, ''));
+  SELECT public.unaccent('public.unaccent'::regdictionary, COALESCE(value, ''));
 $$;
 
 ALTER TABLE professional_profile

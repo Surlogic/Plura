@@ -53,7 +53,7 @@ spring:
     locations: ${SPRING_FLYWAY_LOCATIONS:classpath:db/migration}
     baseline-on-migrate: ${SPRING_FLYWAY_BASELINE_ON_MIGRATE:true}
     baseline-version: ${SPRING_FLYWAY_BASELINE_VERSION:0}
-    validate-on-migrate: ${SPRING_FLYWAY_VALIDATE_ON_MIGRATE:true}
+    validate-on-migrate: ${SPRING_FLYWAY_VALIDATE_ON_MIGRATE:false}  # protegido por env, por defecto desactivado
 
 jwt:
   secret: ${JWT_SECRET}

@@ -79,6 +79,19 @@ para que Render pueda cambiarlo dinámicamente.
 
 > 💡 Si el despliegue falla, revisá los **logs del servicio** en el panel de Render; suelen indicar la
 > variable faltante o el error de conexión a la BD.
+>
+> ⚠️ *Error común durante despliegues repetidos:* Flyway puede abortar el arranque si un archivo
+> de migración se modificó después de haber sido aplicado en la base de datos (checksum mismatch).
+> En ese caso verás un mensaje como **"Migration checksum mismatch for migration version 2"**.
+> Para solucionarlo podés:
+>
+> 1. Conectarte a la base de datos gestionada (´render db connect plura-db´ o vía psql) y ejecutar
+>    `flyway repair` para actualizar la fila en `flyway_schema_history`.
+> 2. Borrar la base de datos y dejar que el despliegue cree una nueva (solo si no tenés datos
+>    importantes).
+> 3. Temporalmente deshabilitar la validación con `SPRING_FLYWAY_VALIDATE_ON_MIGRATE=false` (como
+>    se configura en la plantilla `render.yaml`) y luego volver a habilitarla una vez reparada.
+>    Esto permite que el contenedor arranque mientras arreglás la historia de migraciones.
 
 ## Notas
 

@@ -93,6 +93,11 @@ para que Render pueda cambiarlo dinámicamente.
 >    se configura en la plantilla `render.yaml`) y luego volver a habilitarla una vez reparada.
 >    Esto permite que el contenedor arranque mientras arreglás la historia de migraciones.
 
+> 🔧 *Build de Next.js lento/que falla:* Si el build de la web se queda colgado en \"Generating static pages\"
+> o falla por timeout (60s por página), revisá que ESLint esté deshabilitado durante el build
+> (configurado en `next.config.js`). Si persiste, podés aumentar el timeout en Render o optimizar
+> las páginas estáticas.
+
 ## Notas
 
 - El workspace usa `pnpm` (no `npm lockfiles`).

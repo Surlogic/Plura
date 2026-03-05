@@ -32,6 +32,11 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         @Value("${jwt.secret}") String jwtSecret,
         @Value("${jwt.issuer:plura}") String jwtIssuer
     ) {
+        // jwtSecret es obligatorio; el puerto de render lo inyecta como JWT_SECRET.
+        if (jwtSecret == null || jwtSecret.isBlank()) {
+            throw new IllegalStateException("La propiedad jwt.secret no está definida. "
+                + "Configure la variable de entorno JWT_SECRET antes de iniciar la aplicación.");
+        }
         // Construye el verificador con el secreto e issuer esperado.
         Algorithm algorithm = Algorithm.HMAC256(jwtSecret);
         this.verifier = JWT.require(algorithm)

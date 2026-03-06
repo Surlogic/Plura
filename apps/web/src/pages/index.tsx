@@ -41,10 +41,17 @@ export const getStaticProps: GetStaticProps<HomePageProps> = async () => {
   const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
   let homeData: HomeResponse | null = null;
 
-  try {
-    const response = await fetch(`${apiBaseUrl}/api/home`, {
+  const fetchWithTimeout = (url: string, timeoutMs = 10000) => {
+    const controller = new AbortController();
+    const id = setTimeout(() => controller.abort(), timeoutMs);
+    return fetch(url, {
       headers: { Accept: 'application/json' },
-    });
+      signal: controller.signal,
+    }).finally(() => clearTimeout(id));
+  };
+
+  try {
+    const response = await fetchWithTimeout(`${apiBaseUrl}/api/home`);
 
     if (!response.ok) {
       throw new Error(`Home API error ${response.status}`);
@@ -58,11 +65,8 @@ export const getStaticProps: GetStaticProps<HomePageProps> = async () => {
   const hasTopProfessionals = (homeData?.topProfessionals?.length || 0) > 0;
   if (!hasTopProfessionals) {
     try {
-      const response = await fetch(
+      const response = await fetchWithTimeout(
         `${apiBaseUrl}/public/profesionales?limit=${FALLBACK_HOME_PROFESSIONALS_LIMIT}`,
-        {
-          headers: { Accept: 'application/json' },
-        },
       );
 
       if (response.ok) {

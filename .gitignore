@@ -14,10 +14,19 @@ build/
 .gradle/
 .out/
 .next/
+.next.preclean/
 .next_*/
 .next.stale-*/
 **/.next.stale-*/
 coverage/
+.expo/
+web-build/
+.vercel/
+.cache/
+.eslintcache
+*.tsbuildinfo
+tmp/
+temp/
 node_modules.stale-*/
 **/node_modules.stale-*/
 *.stale-*/
@@ -25,6 +34,8 @@ node_modules.stale-*/
 
 # Logs
 *.log
+*.pid
+*.pid.lock
 npm-debug.log*
 pnpm-debug.log*
 
@@ -32,6 +43,8 @@ pnpm-debug.log*
 .DS_Store
 .idea/
 .vscode/
+*.swp
+*.swo
 
 # Tooling
 .turbo/

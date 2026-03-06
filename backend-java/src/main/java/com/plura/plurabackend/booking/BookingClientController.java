@@ -1,6 +1,7 @@
 package com.plura.plurabackend.booking;
 
 import com.plura.plurabackend.booking.dto.ClientNextBookingResponse;
+import java.util.List;
 import java.util.Optional;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -11,13 +12,19 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
 @RestController
-@RequestMapping("/cliente/reservas")
+@RequestMapping({"/cliente/reservas", "/bookings"})
 public class BookingClientController {
 
     private final BookingClientService bookingClientService;
 
     public BookingClientController(BookingClientService bookingClientService) {
         this.bookingClientService = bookingClientService;
+    }
+
+    @GetMapping({"", "/me"})
+    public List<ClientNextBookingResponse> getBookings(Authentication authentication) {
+        String rawUserId = getClienteId(authentication);
+        return bookingClientService.getBookings(rawUserId);
     }
 
     @GetMapping("/proxima")

@@ -35,13 +35,7 @@ public class BookingClientService {
     }
 
     public Optional<ClientNextBookingResponse> getNextBooking(String rawUserId) {
-        Long userId = parseUserId(rawUserId);
-        User user = userRepository.findById(userId)
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Usuario no encontrado"));
-
-        if (user.getRole() != UserRole.USER) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Solo clientes");
-        }
+        User user = resolveClientUser(rawUserId);
 
         LocalDateTime now = ZonedDateTime.now(systemZoneId).toLocalDateTime();
         List<BookingStatus> activeStatuses = List.of(BookingStatus.PENDING, BookingStatus.CONFIRMED);
@@ -50,10 +44,18 @@ public class BookingClientService {
             user,
             activeStatuses,
             now
-        ).map(this::mapNextBooking);
+        ).map(this::mapClientBooking);
     }
 
-    private ClientNextBookingResponse mapNextBooking(Booking booking) {
+    public List<ClientNextBookingResponse> getBookings(String rawUserId) {
+        User user = resolveClientUser(rawUserId);
+        return bookingRepository.findAllByUserWithDetailsOrderByStartDateTimeAsc(user)
+            .stream()
+            .map(this::mapClientBooking)
+            .toList();
+    }
+
+    private ClientNextBookingResponse mapClientBooking(Booking booking) {
         return new ClientNextBookingResponse(
             booking.getId(),
             booking.getStatus().name(),
@@ -63,6 +65,18 @@ public class BookingClientService {
             booking.getProfessional().getSlug(),
             booking.getProfessional().getLocation()
         );
+    }
+
+    private User resolveClientUser(String rawUserId) {
+        Long userId = parseUserId(rawUserId);
+        User user = userRepository.findById(userId)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Usuario no encontrado"));
+
+        if (user.getRole() != UserRole.USER) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Solo clientes");
+        }
+
+        return user;
     }
 
     private Long parseUserId(String rawUserId) {

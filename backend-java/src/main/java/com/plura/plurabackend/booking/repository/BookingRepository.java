@@ -28,6 +28,19 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
 
     @Query(
         """
+        SELECT b
+        FROM Booking b
+        JOIN FETCH b.service s
+        JOIN FETCH b.professional p
+        JOIN FETCH p.user pu
+        WHERE b.user = :user
+        ORDER BY b.startDateTime ASC
+        """
+    )
+    List<Booking> findAllByUserWithDetailsOrderByStartDateTimeAsc(@Param("user") User user);
+
+    @Query(
+        """
         SELECT new com.plura.plurabackend.booking.dto.ProfessionalBookingResponse(
             b.id,
             u.id,

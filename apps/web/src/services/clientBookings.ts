@@ -20,6 +20,48 @@ export type ClientDashboardNextBooking = {
   status: 'CONFIRMED' | 'PENDING';
 };
 
+type ClientBookingStatus = 'PENDING' | 'CONFIRMED' | 'CANCELLED' | 'COMPLETED';
+
+type ClientBookingDto = {
+  id: number | string;
+  status?: ClientBookingStatus | string | null;
+  dateTime?: string | null;
+  startDateTime?: string | null;
+  serviceName?: string | null;
+  professionalName?: string | null;
+  professionalSlug?: string | null;
+  professionalLocation?: string | null;
+  service?: {
+    name?: string | null;
+  } | null;
+  professional?: {
+    name?: string | null;
+    fullName?: string | null;
+    location?: string | null;
+  } | null;
+};
+
+type ClientBookingsResponseDto =
+  | ClientBookingDto[]
+  | {
+      bookings?: ClientBookingDto[] | null;
+      data?: ClientBookingDto[] | null;
+      items?: ClientBookingDto[] | null;
+      content?: ClientBookingDto[] | null;
+    }
+  | null;
+
+export type ClientDashboardBooking = {
+  id: string;
+  professional: string;
+  service: string;
+  dateTime: string;
+  date: string;
+  time: string;
+  location: string;
+  status: ClientBookingStatus;
+};
+
 const formatDateLabel = (startDateTime: string) => {
   const parsed = new Date(startDateTime);
   if (Number.isNaN(parsed.getTime())) {
@@ -42,6 +84,57 @@ const formatTimeLabel = (startDateTime: string) => {
     minute: '2-digit',
     hour12: false,
   });
+};
+
+const normalizeBookingStatus = (rawStatus: unknown): ClientBookingStatus => {
+  if (typeof rawStatus !== 'string') return 'PENDING';
+  const status = rawStatus.toUpperCase().trim();
+  if (status === 'CONFIRMED') return 'CONFIRMED';
+  if (status === 'CANCELLED') return 'CANCELLED';
+  if (status === 'COMPLETED') return 'COMPLETED';
+  return 'PENDING';
+};
+
+const mapBooking = (booking: ClientBookingDto): ClientDashboardBooking | null => {
+  const dateTime = (booking.dateTime || booking.startDateTime || '').trim();
+  if (!dateTime) return null;
+
+  return {
+    id: String(booking.id),
+    professional:
+      booking.professional?.name ||
+      booking.professional?.fullName ||
+      booking.professionalName ||
+      'Profesional',
+    service: booking.service?.name || booking.serviceName || 'Servicio',
+    dateTime,
+    date: formatDateLabel(dateTime),
+    time: formatTimeLabel(dateTime),
+    location: booking.professional?.location || booking.professionalLocation || 'Ubicacion a confirmar',
+    status: normalizeBookingStatus(booking.status),
+  };
+};
+
+const resolveBookingsArray = (payload: ClientBookingsResponseDto): ClientBookingDto[] => {
+  if (Array.isArray(payload)) return payload;
+  if (!payload || typeof payload !== 'object') return [];
+  if (Array.isArray(payload.bookings)) return payload.bookings;
+  if (Array.isArray(payload.data)) return payload.data;
+  if (Array.isArray(payload.items)) return payload.items;
+  if (Array.isArray(payload.content)) return payload.content;
+  return [];
+};
+
+export const getClientBookings = async (): Promise<ClientDashboardBooking[]> => {
+  const response = await cachedGet<ClientBookingsResponseDto>(
+    '/bookings/me',
+    undefined,
+    { ttlMs: 15000, staleWhileRevalidate: true },
+  );
+
+  return resolveBookingsArray(response.data)
+    .map(mapBooking)
+    .filter((booking): booking is ClientDashboardBooking => Boolean(booking));
 };
 
 export const getClientNextBooking = async (): Promise<ClientDashboardNextBooking | null> => {

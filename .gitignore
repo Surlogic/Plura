@@ -14,7 +14,11 @@ build/
 .out/
 .next/
 .next_*/
+.next.stale-*/
+**/.next.stale-*/
 coverage/
+node_modules.stale-*/
+**/node_modules.stale-*/
 
 # Logs
 *.log

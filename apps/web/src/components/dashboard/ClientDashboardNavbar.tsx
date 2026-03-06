@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import api from '@/services/api';
+import Button from '@/components/ui/Button';
 import Logo from '@/components/ui/Logo';
 import { clearAuthAccessToken } from '@/services/session';
 
@@ -33,14 +34,15 @@ export default function ClientDashboardNavbar({
   };
 
   return (
-    <header className="sticky top-0 z-50 border-b border-[#0E2A47]/10 bg-[#F4F6F8]/95 backdrop-blur">
+    <header className="sticky top-0 z-50 border-b border-[color:var(--border-soft)] bg-[color:var(--surface)]/88 backdrop-blur-xl">
       <div className="mx-auto flex w-full max-w-[1400px] items-center justify-between gap-3 px-4 py-4 sm:px-6 lg:px-10">
         <div className="flex items-center gap-2 sm:gap-3">
           {onOpenSidebar ? (
-            <button
+            <Button
               type="button"
               onClick={onOpenSidebar}
-              className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-[#E2E7EC] bg-white text-[#0E2A47] shadow-sm transition hover:-translate-y-0.5 hover:shadow-md lg:hidden"
+              size="sm"
+              className="h-10 w-10 px-0 lg:hidden"
               aria-label="Abrir menu cliente"
             >
               <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5" aria-hidden="true">
@@ -51,28 +53,28 @@ export default function ClientDashboardNavbar({
                   strokeLinecap="round"
                 />
               </svg>
-            </button>
+            </Button>
           ) : null}
 
-          <Logo href="/cliente/inicio" size={38} priority textClassName="text-[#0E2A47]" />
+          <Logo href="/cliente/inicio" size={38} priority textClassName="text-[color:var(--ink)]" />
         </div>
 
-        <nav className="hidden items-center gap-2 text-sm font-semibold text-[#0E2A47] md:flex">
+        <nav className="hidden items-center gap-2 text-sm font-semibold text-[color:var(--ink)] md:flex">
           <Link
             href="/explorar"
-            className="rounded-full px-3 py-2 transition hover:bg-white"
+            className="rounded-full px-3 py-2 transition hover:bg-white/88"
           >
             Explorar
           </Link>
           <Link
             href="/cliente/reservas"
-            className="rounded-full px-3 py-2 transition hover:bg-white"
+            className="rounded-full px-3 py-2 transition hover:bg-white/88"
           >
             Mis reservas
           </Link>
           <Link
             href="/cliente/favoritos"
-            className="rounded-full px-3 py-2 transition hover:bg-white"
+            className="rounded-full px-3 py-2 transition hover:bg-white/88"
           >
             Favoritos
           </Link>
@@ -80,8 +82,8 @@ export default function ClientDashboardNavbar({
 
         <div className="flex items-center gap-2 sm:gap-3">
           <details className="group relative">
-            <summary className="flex h-10 cursor-pointer list-none items-center gap-2 rounded-full border border-[#E2E7EC] bg-white px-2 pr-3 text-xs font-semibold text-[#0E2A47] transition hover:bg-[#F8FAFC] [&::-webkit-details-marker]:hidden">
-              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[#E9EEF2]">
+            <summary className="flex h-10 cursor-pointer list-none items-center gap-2 rounded-full border border-[color:var(--border-soft)] bg-white/96 px-2 pr-3 text-xs font-semibold text-[color:var(--ink)] shadow-[var(--shadow-card)] transition hover:bg-white [&::-webkit-details-marker]:hidden">
+              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[color:var(--surface-soft)]">
                 {getInitials(name)}
               </span>
               <span className="hidden sm:inline">Perfil</span>
@@ -95,16 +97,16 @@ export default function ClientDashboardNavbar({
                 />
               </svg>
             </summary>
-            <div className="absolute right-0 top-[calc(100%+8px)] z-30 w-44 rounded-[14px] border border-[#DFE7EF] bg-white p-1.5 shadow-lg">
+            <div className="absolute right-0 top-[calc(100%+10px)] z-30 w-44 rounded-[18px] border border-[color:var(--border-soft)] bg-white/98 p-1.5 shadow-[var(--shadow-lift)]">
               <Link
                 href="/cliente/perfil"
-                className="block rounded-lg px-3 py-2 text-sm font-semibold text-[#0E2A47] transition hover:bg-[#F8FAFC]"
+                className="block rounded-xl px-3 py-2 text-sm font-semibold text-[color:var(--ink)] transition hover:bg-[color:var(--surface-soft)]"
               >
                 Mi perfil
               </Link>
               <Link
                 href="/cliente/configuracion"
-                className="block rounded-lg px-3 py-2 text-sm font-semibold text-[#0E2A47] transition hover:bg-[#F8FAFC]"
+                className="block rounded-xl px-3 py-2 text-sm font-semibold text-[color:var(--ink)] transition hover:bg-[color:var(--surface-soft)]"
               >
                 Configuración
               </Link>

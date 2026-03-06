@@ -5,6 +5,9 @@ import Navbar from '@/components/shared/Navbar';
 import Footer from '@/components/shared/Footer';
 import BusinessGallery from '@/components/profesional/BusinessGallery';
 import ServiceDetailModal from '@/components/profesional/ServiceDetailModal';
+import Badge from '@/components/ui/Badge';
+import Button from '@/components/ui/Button';
+import Card from '@/components/ui/Card';
 import api from '@/services/api';
 import { mapboxForwardGeocode } from '@/services/mapbox';
 import { getPublicSlots } from '@/services/publicBookings';
@@ -675,7 +678,9 @@ export default function ProfesionalDetailPage() {
   return (
     <div
       className={`min-h-screen text-[#0E2A47] ${
-        isPreview ? 'bg-transparent' : 'bg-[#BFC2C5]'
+        isPreview
+          ? 'bg-transparent'
+          : 'bg-[radial-gradient(1200px_640px_at_10%_-10%,rgba(31,182,166,0.18),transparent_55%),radial-gradient(900px_520px_at_100%_0%,rgba(242,140,56,0.14),transparent_50%),linear-gradient(180deg,#edf3f1_0%,#e4eaee_100%)]'
       }`}
     >
       {isPreview ? null : <Navbar />}
@@ -699,12 +704,12 @@ export default function ProfesionalDetailPage() {
             No hay información pública cargada para este profesional.
           </div>
         ) : null}
-        <section className="overflow-hidden rounded-[34px] border border-white/70 bg-white/95 shadow-[0_28px_70px_rgba(15,23,42,0.18)]">
+        <Card tone="glass" padding="none" className="overflow-hidden rounded-[36px] border-white/80">
           <div className="h-32 bg-[linear-gradient(120deg,#0B1D2A,#145E63,#BFEDE7)] sm:h-40 lg:h-52" />
           <div className="relative -mt-10 px-6 pb-8 sm:-mt-12 lg:-mt-14">
-            <div className="flex flex-col gap-6 rounded-[28px] border border-white/80 bg-white/95 p-6 shadow-[0_20px_60px_rgba(15,23,42,0.14)] lg:flex-row lg:items-end lg:justify-between">
+            <Card tone="glass" className="flex flex-col gap-6 rounded-[30px] border-white/80 lg:flex-row lg:items-end lg:justify-between">
               <div className="flex items-center gap-5">
-                <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-full border-2 border-[#1FB6A6] bg-white text-base font-semibold text-[#0E2A47]">
+                <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-full border-2 border-[color:var(--accent)] bg-white text-base font-semibold text-[color:var(--ink)]">
                   {(() => {
                     const safeLogoSrc = merged.logoUrl ? sanitizeImageSrc(merged.logoUrl) : undefined;
                     if (!safeLogoSrc) return initials;
@@ -718,36 +723,32 @@ export default function ProfesionalDetailPage() {
                   })()}
                 </div>
                 <div className="space-y-1">
-                  <p className="text-[0.7rem] uppercase tracking-[0.4em] text-[#94A3B8]">
+                  <p className="text-[0.7rem] uppercase tracking-[0.4em] text-[color:var(--ink-faint)]">
                     Profesional / Empresa
                   </p>
-                  <h1 className="text-3xl font-semibold text-[#0E2A47] sm:text-4xl">
+                  <h1 className="text-3xl font-semibold text-[color:var(--ink)] sm:text-4xl">
                     {merged.name}
                   </h1>
-                  <p className="text-sm text-[#64748B] sm:text-base">{merged.headline}</p>
+                  <p className="text-sm text-[color:var(--ink-muted)] sm:text-base">{merged.headline}</p>
                   <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
-                    <span className="rounded-full border border-[#E2E7EC] bg-white px-2.5 py-1 font-semibold text-[#0E2A47]">
-                      4.9 (120 reseñas)
-                    </span>
-                    <span className="rounded-full border border-[#BFEDE7] bg-[#ECFEFB] px-2.5 py-1 font-semibold text-[#0B7E7B]">
-                      Confirmación inmediata
-                    </span>
+                    <Badge variant="neutral" className="normal-case tracking-normal">4.9 (120 reseñas)</Badge>
+                    <Badge variant="accent" className="normal-case tracking-normal">Confirmación inmediata</Badge>
                   </div>
                 </div>
               </div>
 
               <div className="w-full space-y-3 lg:w-64">
                 {merged.category ? (
-                  <div className="rounded-[18px] border border-[#E2E7EC] bg-[#F7F9FB] px-4 py-3">
-                    <p className="text-[0.65rem] uppercase tracking-[0.35em] text-[#94A3B8]">
+                  <Card tone="soft" className="rounded-[20px] px-4 py-3">
+                    <p className="text-[0.65rem] uppercase tracking-[0.35em] text-[color:var(--ink-faint)]">
                       Rubro
                     </p>
-                    <p className="text-sm font-semibold text-[#0E2A47]">
+                    <p className="text-sm font-semibold text-[color:var(--ink)]">
                       {merged.category}
                     </p>
-                  </div>
+                  </Card>
                 ) : null}
-                <button
+                <Button
                   type="button"
                   onClick={() => {
                     if (selectedService) {
@@ -755,38 +756,35 @@ export default function ProfesionalDetailPage() {
                     }
                   }}
                   disabled={!selectedService}
-                  className={`w-full rounded-full px-4 py-2 text-sm font-semibold shadow-sm transition ${
-                    selectedService
-                      ? 'bg-[#0B1D2A] text-white hover:-translate-y-0.5 hover:shadow-md'
-                      : 'cursor-not-allowed bg-[#E2E8F0] text-[#94A3B8]'
-                  }`}
+                  variant="primary"
+                  className={`w-full ${!selectedService ? 'cursor-not-allowed border-[color:var(--border-soft)] bg-[color:var(--surface-soft)] text-[color:var(--ink-faint)] shadow-none' : ''}`}
                 >
                   Reservar turno
-                </button>
+                </Button>
               </div>
-            </div>
+            </Card>
           </div>
-        </section>
+        </Card>
 
-        <section className="mt-8 rounded-[30px] bg-white/95 px-6 py-7 shadow-[0_18px_40px_rgba(15,23,42,0.12)] sm:px-8">
-          <p className="text-[0.65rem] uppercase tracking-[0.35em] text-[#94A3B8]">Galeria</p>
+        <Card tone="glass" className="mt-8 px-6 py-7 sm:px-8">
+          <p className="text-[0.65rem] uppercase tracking-[0.35em] text-[color:var(--ink-faint)]">Galeria</p>
           <h2 className="mt-2 text-2xl font-semibold">Fotos del local, trabajos y servicios</h2>
           <div className="mt-5">
             <BusinessGallery photos={galleryPhotos} businessName={merged.name} />
           </div>
           {hasRealGalleryPhotos ? (
-            <p className="mt-3 text-xs text-[#94A3B8]">
+            <p className="mt-3 text-xs text-[color:var(--ink-faint)]">
               Mostrando {Math.min(galleryPhotos.length, 6)} de {galleryPhotos.length} fotos.
             </p>
           ) : null}
-        </section>
+        </Card>
 
-        <section className="mt-10 rounded-[30px] bg-white/95 px-6 py-8 shadow-[0_18px_40px_rgba(15,23,42,0.12)] sm:px-8">
+        <Card tone="glass" className="mt-10 px-6 py-8 sm:px-8">
           <section>
-            <p className="text-[0.65rem] uppercase tracking-[0.35em] text-[#94A3B8]">Servicios</p>
+            <p className="text-[0.65rem] uppercase tracking-[0.35em] text-[color:var(--ink-faint)]">Servicios</p>
             <h2 className="mt-2 text-2xl font-semibold">Seleccioná tu servicio</h2>
             {displayServices.length === 0 ? (
-              <p className="mt-4 text-sm text-[#64748B]">No hay servicios cargados todavía.</p>
+              <p className="mt-4 text-sm text-[color:var(--ink-muted)]">No hay servicios cargados todavía.</p>
             ) : (
               <div className="mt-6 divide-y divide-[#E6EBF0]">
                 {displayServices.map((service, index) => (
@@ -802,13 +800,13 @@ export default function ProfesionalDetailPage() {
                       }
                     }}
                     className={`grid w-full gap-3 py-4 text-left transition sm:grid-cols-[32px_56px_minmax(0,1fr)_140px_120px] sm:items-center ${
-                      selectedServiceIndex === index ? 'bg-[#F7FBFA]' : ''
+                      selectedServiceIndex === index ? 'bg-[color:var(--accent-soft)]/45' : ''
                     }`}
                   >
                     <span className="mt-1 flex h-5 w-5 items-center justify-center rounded-full border border-[#C7D1DB]">
                       <span
                         className={`h-2.5 w-2.5 rounded-full ${
-                          selectedServiceIndex === index ? 'bg-[#0B1D2A]' : 'bg-transparent'
+                          selectedServiceIndex === index ? 'bg-[color:var(--primary-strong)]' : 'bg-transparent'
                         }`}
                       />
                     </span>
@@ -843,14 +841,14 @@ export default function ProfesionalDetailPage() {
                         Ver info
                       </button>
                     </div>
-                    <p className="text-sm text-[#64748B]">{formatServiceDuration(service.duration)}</p>
-                    <p className="text-base font-semibold text-[#1FB6A6]">{formatServicePrice(service.price)}</p>
+                    <p className="text-sm text-[color:var(--ink-muted)]">{formatServiceDuration(service.duration)}</p>
+                    <p className="text-base font-semibold text-[color:var(--accent-strong)]">{formatServicePrice(service.price)}</p>
                   </div>
                 ))}
               </div>
             )}
             {displayServices.length > 0 ? (
-              <button
+              <Button
                 type="button"
                 onClick={() => {
                   if (selectedService) {
@@ -858,26 +856,23 @@ export default function ProfesionalDetailPage() {
                   }
                 }}
                 disabled={!selectedService}
-                className={`mt-6 rounded-full px-5 py-2.5 text-sm font-semibold shadow-sm transition ${
-                  selectedService
-                    ? 'bg-[#0B1D2A] text-white hover:-translate-y-0.5 hover:shadow-md'
-                    : 'cursor-not-allowed bg-[#E2E8F0] text-[#94A3B8]'
-                }`}
+                variant="primary"
+                className={`mt-6 ${!selectedService ? 'cursor-not-allowed border-[color:var(--border-soft)] bg-[color:var(--surface-soft)] text-[color:var(--ink-faint)] shadow-none' : ''}`}
               >
                 Continuar
-              </button>
+              </Button>
             ) : null}
           </section>
 
           <section className="mt-10 border-t border-[#E6EBF0] pt-10">
-            <p className="text-[0.65rem] uppercase tracking-[0.35em] text-[#94A3B8]">Próximos turnos</p>
+            <p className="text-[0.65rem] uppercase tracking-[0.35em] text-[color:var(--ink-faint)]">Próximos turnos</p>
             <h2 className="mt-2 text-2xl font-semibold">Próximos turnos disponibles</h2>
             {isPreview ? (
-              <p className="mt-4 text-sm text-[#64748B]">Disponible al publicar la página.</p>
+              <p className="mt-4 text-sm text-[color:var(--ink-muted)]">Disponible al publicar la página.</p>
             ) : isLoadingQuickSlots ? (
-              <p className="mt-4 text-sm text-[#64748B]">Buscando horarios...</p>
+              <p className="mt-4 text-sm text-[color:var(--ink-muted)]">Buscando horarios...</p>
             ) : quickSlotGroups.every((group) => group.slots.length === 0) ? (
-              <p className="mt-4 text-sm text-[#64748B]">No hay turnos próximos para este servicio.</p>
+              <p className="mt-4 text-sm text-[color:var(--ink-muted)]">No hay turnos próximos para este servicio.</p>
             ) : (
               <div className="mt-5 space-y-5">
                 {quickSlotGroups.map((group) => (
@@ -894,7 +889,7 @@ export default function ProfesionalDetailPage() {
                                 handleReserve(selectedService, group.dateKey, slot);
                               }
                             }}
-                            className="rounded-full border border-[#D9E3EC] bg-white px-3 py-1.5 text-sm font-semibold text-[#0E2A47] transition hover:-translate-y-0.5 hover:border-[#0B1D2A]/30 hover:shadow-sm"
+                            className="rounded-full border border-[color:var(--border-soft)] bg-white px-3 py-1.5 text-sm font-semibold text-[color:var(--ink)] transition hover:-translate-y-0.5 hover:border-[color:var(--border-strong)] hover:shadow-sm"
                           >
                             {slot}
                           </button>
@@ -911,7 +906,7 @@ export default function ProfesionalDetailPage() {
 
           {scheduleSummary.length > 0 ? (
             <section className="mt-10 border-t border-[#E6EBF0] pt-10">
-              <p className="text-[0.65rem] uppercase tracking-[0.35em] text-[#94A3B8]">Horarios</p>
+              <p className="text-[0.65rem] uppercase tracking-[0.35em] text-[color:var(--ink-faint)]">Horarios</p>
               <h2 className="mt-2 text-2xl font-semibold">Horarios de atención</h2>
               <div className="mt-5 space-y-2">
                 {scheduleSummary.map((item, index) => (
@@ -1052,7 +1047,7 @@ export default function ProfesionalDetailPage() {
               )}
             </div>
           </section>
-        </section>
+        </Card>
       </main>
       {!isPreview && selectedService ? (
         <div className="fixed inset-x-0 bottom-3 z-40 px-3 sm:px-6">

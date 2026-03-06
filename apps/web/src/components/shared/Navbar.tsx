@@ -5,6 +5,7 @@ import { useRouter } from 'next/router';
 import api from '@/services/api';
 import { useClientProfileContext } from '@/context/ClientProfileContext';
 import { useProfessionalProfileContext } from '@/context/ProfessionalProfileContext';
+import Button from '@/components/ui/Button';
 import Logo from '@/components/ui/Logo';
 import { clearAuthAccessToken } from '@/services/session';
 
@@ -76,117 +77,75 @@ export default function Navbar({
 
   const isDashboard = variant === 'dashboard';
   const headerClassName = isDashboard
-    ? 'border-b border-[#0E2A47]/10 bg-[#F4F6F8]'
-    : 'sticky top-0 z-50 border-b border-[#0E2A47]/10 bg-[#F4F6F8]/95 backdrop-blur';
-  const containerClassName = isDashboard
-    ? 'mx-auto flex w-full max-w-[1400px] items-center justify-between gap-4 px-4 py-4 sm:px-6 lg:px-10'
-    : 'mx-auto flex w-full max-w-[1400px] items-center justify-between gap-4 px-4 py-4 sm:px-6 lg:px-10';
+    ? 'border-b border-[color:var(--border-soft)] bg-[color:var(--surface)]/92 backdrop-blur'
+    : 'sticky top-0 z-50 border-b border-[color:var(--border-soft)] bg-[color:var(--surface)]/88 backdrop-blur-xl';
 
   return (
     <header className={headerClassName}>
-      <div className={containerClassName}>
+      <div className="mx-auto flex w-full max-w-[1400px] items-center justify-between gap-4 px-4 py-4 sm:px-6 lg:px-10">
         <div className="flex items-center gap-3">
           {showMenuButton ? (
-            <button
-              type="button"
-              onClick={onMenuClick}
-              className="inline-flex items-center justify-center rounded-full border border-[#0E2A47]/10 bg-white px-3 py-2 text-xs font-semibold text-[#0E2A47] shadow-sm transition hover:-translate-y-0.5 hover:shadow-md lg:hidden"
-            >
+            <Button type="button" onClick={onMenuClick} size="sm" className="lg:hidden">
               Menú
-            </button>
+            </Button>
           ) : null}
-          <Logo href="/" size={38} priority textClassName="text-[#0E2A47]" />
+          <Logo href="/" size={38} priority textClassName="text-[color:var(--ink)]" />
         </div>
         <div className="flex flex-col gap-2 text-sm sm:flex-row sm:items-center">
           {showAuthLoading ? (
-            <span className="rounded-full border border-[#0E2A47]/10 bg-white px-4 py-2 text-[#64748B] shadow-sm">
+            <span className="rounded-full border border-[color:var(--border-soft)] bg-white/90 px-4 py-2 text-[color:var(--ink-muted)] shadow-[var(--shadow-card)]">
               Cargando...
             </span>
           ) : role === 'PROFESSIONAL' ? (
             <>
-              <Link
-                href="/explorar"
-                className="rounded-full border border-[#0E2A47]/10 bg-white px-4 py-2 text-[#0E2A47] shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
-              >
+              <Button href="/explorar" size="md">
                 Explorar
-              </Link>
-              <Link
-                href="/profesional/dashboard"
-                className="rounded-full border border-[#0E2A47]/10 bg-white px-4 py-2 text-[#0E2A47] shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
-              >
+              </Button>
+              <Button href="/profesional/dashboard" size="md">
                 Mi dashboard
-              </Link>
-              <button
-                type="button"
-                onClick={handleLogout}
-                className="rounded-full bg-[#0E2A47] px-4 py-2 text-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
-              >
+              </Button>
+              <Button type="button" onClick={handleLogout} variant="primary" size="md">
                 Cerrar sesión
-              </button>
+              </Button>
             </>
           ) : role === 'CLIENT' ? (
             <>
-              <Link
-                href="/explorar"
-                className="rounded-full border border-[#0E2A47]/10 bg-white px-4 py-2 text-[#0E2A47] shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
-              >
+              <Button href="/explorar" size="md">
                 Explorar
-              </Link>
-              <Link
-                href="/cliente/reservas"
-                className="rounded-full border border-[#0E2A47]/10 bg-white px-4 py-2 text-[#0E2A47] shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
-              >
+              </Button>
+              <Button href="/cliente/reservas" size="md">
                 Mis reservas
-              </Link>
-              <Link
-                href="/cliente/favoritos"
-                className="rounded-full border border-[#0E2A47]/10 bg-white px-4 py-2 text-[#0E2A47] shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
-              >
+              </Button>
+              <Button href="/cliente/favoritos" size="md">
                 Favoritos
-              </Link>
+              </Button>
               <Link
                 href="/cliente/perfil"
-                className="inline-flex items-center gap-2 rounded-full border border-[#0E2A47]/10 bg-white px-2 py-1.5 pr-3 text-[#0E2A47] shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
+                className="inline-flex items-center gap-2 rounded-full border border-[color:var(--border-soft)] bg-white/96 px-2 py-1.5 pr-3 text-[color:var(--ink)] shadow-[var(--shadow-card)] transition hover:-translate-y-0.5 hover:border-[color:var(--border-strong)] hover:bg-white"
               >
-                <span className="flex h-7 w-7 items-center justify-center rounded-full bg-[#E9EEF2] text-xs font-semibold">
+                <span className="flex h-7 w-7 items-center justify-center rounded-full bg-[color:var(--surface-soft)] text-xs font-semibold">
                   {initials}
                 </span>
                 <span className="font-medium">Perfil</span>
               </Link>
-              <button
-                type="button"
-                onClick={handleLogout}
-                className="rounded-full bg-[#0E2A47] px-4 py-2 text-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
-              >
+              <Button type="button" onClick={handleLogout} variant="primary" size="md">
                 Cerrar sesión
-              </button>
+              </Button>
             </>
           ) : (
             <>
-              <Link
-                href="/explorar"
-                className="rounded-full border border-[#0E2A47]/10 bg-white px-4 py-2 text-[#0E2A47] shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
-              >
+              <Button href="/explorar" size="md">
                 Explorar
-              </Link>
-              <Link
-                href="/login"
-                className="rounded-full border border-[#0E2A47]/10 bg-white px-4 py-2 text-[#0E2A47] shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
-              >
+              </Button>
+              <Button href="/login" size="md">
                 Iniciar sesión
-              </Link>
-              <Link
-                href="/cliente/auth/register"
-                className="rounded-full border border-[#0E2A47]/10 bg-white px-4 py-2 text-[#0E2A47] shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
-              >
+              </Button>
+              <Button href="/cliente/auth/register" size="md">
                 Crear cuenta
-              </Link>
-              <Link
-                href="/profesional/auth/login"
-                className="rounded-full bg-[#0E2A47] px-4 py-2 text-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
-              >
+              </Button>
+              <Button href="/profesional/auth/login" variant="primary" size="md">
                 Soy profesional
-              </Link>
+              </Button>
             </>
           )}
         </div>

@@ -5,10 +5,12 @@ import type { ChangeEvent, FormEvent } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import axios from 'axios';
-import Navbar from '@/components/shared/Navbar';
+import AuthTopBar from '@/components/auth/AuthTopBar';
 import Footer from '@/components/shared/Footer';
 import GoogleLoginButton from '@/components/auth/GoogleLoginButton';
 import AppleLoginButton from '@/components/auth/AppleLoginButton';
+import Badge from '@/components/ui/Badge';
+import Card from '@/components/ui/Card';
 import api from '@/services/api';
 import { useClientProfileContext } from '@/context/ClientProfileContext';
 import { useProfessionalProfileContext } from '@/context/ProfessionalProfileContext';
@@ -25,7 +27,7 @@ export default function ClienteRegisterPage() {
     ? '/cliente/auth/login?redirect=confirm-reservation'
     : '/cliente/auth/login';
   const inputClassName =
-    'h-12 w-full rounded-[16px] border border-[#0E2A47]/10 bg-[#F4F6F8] px-4 text-sm text-[#0E2A47] placeholder:text-[#6B7280] focus:outline-none focus:ring-2 focus:ring-[#1FB6A6]/40';
+    'h-12 w-full rounded-[18px] border border-[color:var(--border-soft)] bg-white/88 px-4 text-sm text-[color:var(--ink)] placeholder:text-[color:var(--ink-muted)] focus:outline-none focus:ring-2 focus:ring-[color:var(--accent-soft)]';
   const [form, setForm] = useState({
     fullName: '',
     email: '',
@@ -197,27 +199,25 @@ export default function ClienteRegisterPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#F4F6F8] text-[#0E2A47]">
-      <Navbar />
+    <div className="min-h-screen bg-[radial-gradient(1100px_620px_at_5%_-10%,rgba(31,182,166,0.18),transparent_55%),radial-gradient(900px_700px_at_95%_0%,rgba(242,140,56,0.18),transparent_50%),linear-gradient(180deg,#f8fcfb_0%,#eef4f2_100%)] text-[color:var(--ink)]">
+      <AuthTopBar tone="client" />
       <main className="mx-auto flex w-full max-w-6xl flex-1 items-center justify-center px-4 py-16">
-        <div className="w-full max-w-md space-y-6 rounded-[24px] bg-white p-8 shadow-sm">
+        <Card tone="default" padding="lg" className="w-full max-w-md space-y-6 rounded-[32px]">
           <div className="space-y-2">
-            <p className="text-xs uppercase tracking-[0.35em] text-[#6B7280]">
-              Registro
-            </p>
-            <h1 className="text-2xl font-semibold text-[#0E2A47]">Crear cuenta</h1>
-            <p className="text-sm text-[#6B7280]">
+            <Badge variant="warm">Registro</Badge>
+            <h1 className="text-2xl font-semibold text-[color:var(--ink)]">Crear cuenta</h1>
+            <p className="text-sm text-[color:var(--ink-muted)]">
               Completá tus datos para comenzar en Plura.
             </p>
           </div>
 
           <div className="space-y-3">
             <div className="flex items-center gap-3">
-              <div className="h-px flex-1 bg-[#E2E8F0]" />
-              <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#94A3B8]">
+              <div className="h-px flex-1 bg-[color:var(--border-soft)]" />
+              <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[color:var(--ink-faint)]">
                 Registrate con
               </span>
-              <div className="h-px flex-1 bg-[#E2E8F0]" />
+              <div className="h-px flex-1 bg-[color:var(--border-soft)]" />
             </div>
             <div className="space-y-2">
               <GoogleLoginButton
@@ -232,11 +232,11 @@ export default function ClienteRegisterPage() {
           </div>
 
           <div className="flex items-center gap-3">
-            <div className="h-px flex-1 bg-[#E2E8F0]" />
-            <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#94A3B8]">
+            <div className="h-px flex-1 bg-[color:var(--border-soft)]" />
+            <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[color:var(--ink-faint)]">
               o con email
             </span>
-            <div className="h-px flex-1 bg-[#E2E8F0]" />
+            <div className="h-px flex-1 bg-[color:var(--border-soft)]" />
           </div>
 
           <form className="space-y-4" onSubmit={handleSubmit}>
@@ -372,23 +372,23 @@ export default function ClienteRegisterPage() {
 
             <button
               type="submit"
-              className="h-12 w-full rounded-full bg-[linear-gradient(135deg,#1FB6A6,#0E2A47)] text-sm font-semibold text-white shadow-sm transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-70"
+              className="h-12 w-full rounded-full border border-transparent bg-[linear-gradient(135deg,var(--warm),var(--accent))] text-sm font-semibold text-white shadow-[var(--shadow-lift)] transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-70"
               disabled={isSubmitting || !isFormValid}
             >
               {isSubmitting ? 'Creando cuenta...' : 'Crear cuenta'}
             </button>
           </form>
 
-          <p className="text-center text-xs text-[#6B7280]">
+          <p className="text-center text-xs text-[color:var(--ink-muted)]">
             ¿Ya tenés cuenta?{' '}
             <Link
               href={loginHref}
-              className="font-semibold text-[#1FB6A6]"
+              className="font-semibold text-[color:var(--accent-strong)]"
             >
               Iniciar sesión
             </Link>
           </p>
-        </div>
+        </Card>
       </main>
       <Footer />
     </div>

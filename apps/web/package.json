@@ -4,8 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "next dev -p 3002",
-    "build": "next build",
-    "analyze": "ANALYZE=true next build",
+    "build": "node ./scripts/clean-next-build.cjs && next build",
+    "analyze": "node ./scripts/clean-next-build.cjs && ANALYZE=true next build",
     "start": "next start",
     "lint": "eslint"
   },

@@ -99,8 +99,9 @@ export default function HomePage({
   const topProfessionals = homeData?.topProfessionals ?? [];
 
   return (
-    <div className="relative min-h-screen bg-[#F4F6F8] text-[#0E2A47]">
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(31,182,166,0.15),transparent_60%)]" />
+    <div className="relative min-h-screen bg-[color:var(--background)] text-[color:var(--ink)]">
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(31,182,166,0.14),transparent_58%)]" />
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-[520px] bg-[linear-gradient(180deg,rgba(255,255,255,0.46),transparent)]" />
       <div className="relative z-10">
         <Navbar />
         <main className="space-y-20 pb-24">

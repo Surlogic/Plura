@@ -1,5 +1,6 @@
 import Image from 'next/image';
 import { memo } from 'react';
+import Badge from '@/components/ui/Badge';
 
 type BusinessCardProps = {
   name: string;
@@ -36,8 +37,8 @@ export default memo(function BusinessCard({
   const displayRating = typeof rating === 'number' ? rating.toFixed(1) : rating?.trim();
   const safeImageUrl = normalizeImageUrl(imageUrl);
   return (
-    <div className="rounded-[24px] bg-white p-4 shadow-sm transition hover:-translate-y-1 hover:shadow-md">
-      <div className="relative h-40 w-full overflow-hidden rounded-[20px] bg-[#F4F6F8]">
+    <div className="group rounded-[28px] border border-[color:var(--border-soft)] bg-white/95 p-4 shadow-[var(--shadow-card)] transition hover:-translate-y-1 hover:border-[color:var(--border-strong)] hover:shadow-[var(--shadow-lift)]">
+      <div className="relative h-44 w-full overflow-hidden rounded-[22px] bg-[color:var(--surface-soft)]">
         {safeImageUrl ? (
           <Image
             src={safeImageUrl}
@@ -45,29 +46,30 @@ export default memo(function BusinessCard({
             fill
             sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
             priority={priority}
-            className="object-cover"
+            className="object-cover transition duration-500 group-hover:scale-105"
           />
-        ) : null}
+        ) : (
+          <div className="absolute inset-0 bg-[linear-gradient(140deg,rgba(31,182,166,0.2),rgba(255,255,255,0.7),rgba(242,140,56,0.18))]" />
+        )}
+        <div className="absolute inset-0 bg-[linear-gradient(180deg,transparent,rgba(13,35,58,0.32))]" />
       </div>
       <div className="mt-4 flex items-start justify-between gap-3">
         <div>
-          <h3 className="text-lg font-semibold text-[#0E2A47]">{name}</h3>
-          <p className="text-sm text-[#6B7280]">{category}</p>
+          <h3 className="text-lg font-semibold text-[color:var(--ink)]">{name}</h3>
+          <p className="text-sm text-[color:var(--ink-muted)]">{category}</p>
         </div>
         {badge ? (
-          <span className="rounded-full bg-[#1FB6A6]/10 px-3 py-1 text-xs font-semibold text-[#1FB6A6]">
-            {badge}
-          </span>
+          <Badge variant="accent" className="tracking-[0.12em]">{badge}</Badge>
         ) : null}
       </div>
-      <div className="mt-3 flex items-center gap-2 text-sm text-[#0E2A47]">
+      <div className="mt-4 flex items-center gap-2 text-sm text-[color:var(--ink)]">
         {displayRating ? (
           <>
-            <span className="text-[#1FB6A6]">★</span>
+            <span className="text-[color:var(--accent)]">★</span>
             <span>{displayRating}</span>
           </>
         ) : (
-          <span className="text-xs font-semibold text-[#94A3B8]">
+          <span className="text-xs font-semibold text-[color:var(--ink-faint)]">
             Sin reseñas
           </span>
         )}

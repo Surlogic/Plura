@@ -19,18 +19,18 @@ export default function SearchField({
   className = '',
   valueClassName = '',
 }: SearchFieldProps) {
-  const baseClassName = `flex min-h-[62px] w-full min-w-0 flex-col justify-between rounded-xl border px-3 py-2 text-left transition ${
+  const baseClassName = `flex min-h-[74px] w-full min-w-0 flex-col justify-center rounded-[22px] border px-4 py-3 text-left transition ${
     active
-      ? 'border-[#BFD3C9] bg-white shadow-[0_2px_8px_rgba(14,42,71,0.06)]'
-      : 'border-transparent bg-transparent hover:border-[#DEE8E3]'
+      ? 'border-[color:var(--border-strong)] bg-white shadow-[0_8px_24px_rgba(14,42,71,0.10)]'
+      : 'border-transparent bg-transparent hover:border-[color:var(--border-soft)] hover:bg-white/68'
   } ${className}`.trim();
 
   const content = (
     <>
-      <span className="truncate whitespace-nowrap text-[0.58rem] font-semibold uppercase tracking-[0.08em] text-[#9AA7B5]">
+      <span className="truncate whitespace-nowrap text-[0.68rem] font-semibold uppercase tracking-[0.24em] text-[color:var(--ink-faint)]">
         {label}
       </span>
-      <div className={`mt-1 min-w-0 ${valueClassName}`.trim()}>{children}</div>
+      <div className={`mt-2 min-w-0 ${valueClassName}`.trim()}>{children}</div>
     </>
   );
 
@@ -39,7 +39,7 @@ export default function SearchField({
       <button
         type="button"
         onClick={onClick}
-        className={`${baseClassName} focus:outline-none focus-visible:ring-2 focus-visible:ring-[#1B6B5C]/12`}
+        className={`${baseClassName} focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--accent-soft)]`}
       >
         {content}
       </button>
@@ -47,7 +47,7 @@ export default function SearchField({
   }
 
   return (
-    <div className={`${baseClassName} focus-within:ring-2 focus-within:ring-[#1B6B5C]/12`}>
+    <div className={`${baseClassName} focus-within:ring-2 focus-within:ring-[color:var(--accent-soft)]`}>
       {content}
     </div>
   );

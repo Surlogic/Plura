@@ -7,6 +7,8 @@ import AuthTopBar from '@/components/auth/AuthTopBar';
 import AppleLoginButton from '@/components/auth/AppleLoginButton';
 import GoogleLoginButton from '@/components/auth/GoogleLoginButton';
 import Footer from '@/components/shared/Footer';
+import Badge from '@/components/ui/Badge';
+import Card from '@/components/ui/Card';
 import { useProfessionalProfileContext } from '@/context/ProfessionalProfileContext';
 import api from '@/services/api';
 import { useClientProfileContext } from '@/context/ClientProfileContext';
@@ -136,50 +138,46 @@ export default function ClienteLoginPage() {
   };
 
   const inputClassName =
-    'h-12 w-full rounded-[16px] border border-[#0E2A47]/12 bg-[#F8FAFC] px-4 text-sm text-[#0E2A47] placeholder:text-[#64748B] transition focus:border-[#0EA5A4] focus:outline-none focus:ring-2 focus:ring-[#0EA5A4]/35';
+    'h-12 w-full rounded-[18px] border border-[color:var(--border-soft)] bg-white/88 px-4 text-sm text-[color:var(--ink)] placeholder:text-[color:var(--ink-muted)] transition focus:border-[color:var(--accent)] focus:outline-none focus:ring-2 focus:ring-[color:var(--accent-soft)]';
 
   return (
-    <div className="min-h-screen bg-[radial-gradient(1100px_620px_at_5%_-10%,rgba(14,165,164,0.16),transparent_55%),radial-gradient(900px_700px_at_95%_0%,rgba(249,115,22,0.16),transparent_50%),linear-gradient(180deg,#F8FCFB_0%,#F5F8F7_100%)] text-[#0E2A47]">
+    <div className="min-h-screen bg-[radial-gradient(1100px_620px_at_5%_-10%,rgba(31,182,166,0.18),transparent_55%),radial-gradient(900px_700px_at_95%_0%,rgba(242,140,56,0.18),transparent_50%),linear-gradient(180deg,#f8fcfb_0%,#eef4f2_100%)] text-[color:var(--ink)]">
       <AuthTopBar tone="client" />
       <main className="mx-auto flex w-full max-w-5xl items-center justify-center px-4 py-10 sm:px-6 sm:py-14">
         <div className="w-full max-w-md space-y-5">
-          <section className="relative overflow-hidden rounded-[28px] border border-[#0EA5A4]/20 bg-[linear-gradient(140deg,rgba(236,254,255,0.94)_0%,rgba(255,247,237,0.98)_100%)] p-5 shadow-[0_18px_45px_-28px_rgba(15,42,71,0.5)] sm:p-6">
-            <div className="pointer-events-none absolute -left-10 -top-12 h-28 w-28 rounded-full bg-[#0EA5A4]/20 blur-2xl" />
-            <div className="pointer-events-none absolute -bottom-12 right-0 h-28 w-28 rounded-full bg-[#F97316]/25 blur-2xl" />
+          <Card tone="glass" className="relative overflow-hidden">
+            <div className="pointer-events-none absolute -left-10 -top-12 h-28 w-28 rounded-full bg-[color:var(--accent)]/20 blur-2xl" />
+            <div className="pointer-events-none absolute -bottom-12 right-0 h-28 w-28 rounded-full bg-[color:var(--warm)]/24 blur-2xl" />
             <div className="relative space-y-4">
-              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#0E7490]">
-                Reservar y descubrir
-              </p>
-              <h2 className="text-xl font-semibold leading-tight text-[#0E2A47]">
-                Encontrá tu próximo turno en una experiencia simple.
+              <Badge variant="accent">Reservar y descubrir</Badge>
+              <h2 className="text-2xl font-semibold leading-tight text-[color:var(--ink)]">
+                Encontrá tu próximo turno con una experiencia más clara.
               </h2>
               <div className="grid gap-3 sm:grid-cols-2">
-                <div className="rounded-2xl border border-[#0EA5A4]/20 bg-white/85 p-3">
-                  <p className="text-xs uppercase tracking-[0.14em] text-[#0EA5A4]">Explorar</p>
-                  <p className="mt-1 text-sm font-semibold text-[#0E2A47]">Profesionales verificados</p>
-                </div>
-                <div className="rounded-2xl border border-[#F97316]/20 bg-white/85 p-3">
-                  <p className="text-xs uppercase tracking-[0.14em] text-[#EA580C]">Reservar</p>
-                  <p className="mt-1 text-sm font-semibold text-[#0E2A47]">Turnos en segundos</p>
-                </div>
+                <Card tone="default" className="rounded-[22px] bg-white/80 p-4">
+                  <p className="text-xs uppercase tracking-[0.14em] text-[color:var(--accent-strong)]">Explorar</p>
+                  <p className="mt-1 text-sm font-semibold text-[color:var(--ink)]">Profesionales verificados</p>
+                </Card>
+                <Card tone="default" className="rounded-[22px] bg-white/80 p-4">
+                  <p className="text-xs uppercase tracking-[0.14em] text-[color:var(--warm)]">Reservar</p>
+                  <p className="mt-1 text-sm font-semibold text-[color:var(--ink)]">Turnos en segundos</p>
+                </Card>
               </div>
             </div>
-          </section>
+          </Card>
 
-          <section className="rounded-[30px] border border-[#0E2A47]/10 bg-white p-7 shadow-[0_24px_65px_-38px_rgba(12,22,35,0.55)] sm:p-8">
+          <Card tone="default" padding="lg" className="rounded-[32px]">
             <div className="space-y-3">
-              <p className="inline-flex rounded-full border border-[#F97316]/25 bg-[#FFF7ED] px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-[#C2410C]">
-                Cuenta Cliente
-              </p>
-              <h1 className="text-3xl font-semibold leading-tight text-[#0E2A47]">
+              <Badge variant="warm">Cuenta cliente</Badge>
+              <h1 className="text-3xl font-semibold leading-tight text-[color:var(--ink)]">
                 Iniciar sesión
               </h1>
-              <p className="text-sm text-[#64748B]">
+              <p className="text-sm text-[color:var(--ink-muted)]">
                 Descubrí profesionales y reservá tu turno en segundos.
               </p>
               <Link
                 href="/profesional/auth/login"
-                className="inline-flex text-xs font-semibold text-[#0EA5A4] underline decoration-[#0EA5A4]/35 underline-offset-4 transition hover:text-[#0B7E7B] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0EA5A4]/30"
+                className="inline-flex text-xs font-semibold text-[color:var(--accent-strong)] underline decoration-[color:var(--accent-soft)] underline-offset-4 transition hover:text-[color:var(--accent)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--accent-soft)]"
               >
                 Ir a acceso profesional
               </Link>
@@ -187,7 +185,7 @@ export default function ClienteLoginPage() {
 
             <form className="mt-6 space-y-4" onSubmit={handleSubmit}>
               <div className="space-y-2">
-                <label className="text-sm font-medium text-[#0E2A47]">Gmail</label>
+                <label className="text-sm font-medium text-[color:var(--ink)]">Gmail</label>
                 <input
                   className={inputClassName}
                   placeholder="tucorreo@gmail.com"
@@ -200,7 +198,7 @@ export default function ClienteLoginPage() {
               </div>
 
               <div className="space-y-2">
-                <label className="text-sm font-medium text-[#0E2A47]">Contraseña</label>
+                <label className="text-sm font-medium text-[color:var(--ink)]">Contraseña</label>
                 <input
                   type="password"
                   className={inputClassName}
@@ -220,7 +218,7 @@ export default function ClienteLoginPage() {
 
               <button
                 type="submit"
-                className="h-12 w-full rounded-full bg-[linear-gradient(135deg,#F97316,#0EA5A4)] text-sm font-semibold text-white shadow-[0_18px_35px_-20px_rgba(249,115,22,0.7)] transition hover:-translate-y-0.5 hover:brightness-105 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#F97316]/35 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-70"
+                className="h-12 w-full rounded-full border border-transparent bg-[linear-gradient(135deg,var(--warm),var(--accent))] text-sm font-semibold text-white shadow-[var(--shadow-lift)] transition hover:-translate-y-0.5 hover:brightness-105 focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--warm-soft)] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-70"
                 disabled={isSubmitting}
               >
                 {isSubmitting ? 'Ingresando...' : 'Iniciar sesión'}
@@ -229,11 +227,11 @@ export default function ClienteLoginPage() {
 
             <div className="mt-5 space-y-3">
               <div className="flex items-center gap-3">
-                <div className="h-px flex-1 bg-[#E2E8F0]" />
-                <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#94A3B8]">
+                <div className="h-px flex-1 bg-[color:var(--border-soft)]" />
+                <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[color:var(--ink-faint)]">
                   o continuar con
                 </span>
-                <div className="h-px flex-1 bg-[#E2E8F0]" />
+                <div className="h-px flex-1 bg-[color:var(--border-soft)]" />
               </div>
               <div className="space-y-2">
                 <GoogleLoginButton
@@ -247,16 +245,16 @@ export default function ClienteLoginPage() {
               </div>
             </div>
 
-            <p className="mt-6 text-center text-xs text-[#64748B]">
+            <p className="mt-6 text-center text-xs text-[color:var(--ink-muted)]">
               ¿No tenés cuenta?{' '}
               <Link
                 href={registerHref}
-                className="font-semibold text-[#0EA5A4] underline decoration-[#0EA5A4]/30 underline-offset-4"
+                className="font-semibold text-[color:var(--accent-strong)] underline decoration-[color:var(--accent-soft)] underline-offset-4"
               >
                 Crear cuenta
               </Link>
             </p>
-          </section>
+          </Card>
         </div>
       </main>
       <Footer />

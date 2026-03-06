@@ -1,5 +1,8 @@
 import Link from 'next/link';
 import BusinessCard from './BusinessCard';
+import Button from '@/components/ui/Button';
+import Card from '@/components/ui/Card';
+import SectionHeading from '@/components/ui/SectionHeading';
 import type { HomeTopProfessional } from '@/types/home';
 
 const slugify = (value: string) =>
@@ -21,18 +24,16 @@ export default function TopBusinesses({ professionals }: TopBusinessesProps) {
   return (
     <section className="px-4">
       <div className="mx-auto w-full max-w-6xl space-y-6">
-        <div className="flex items-center justify-between">
-          <h2 className="text-2xl font-semibold text-[#0E2A47]">
-            Top locales y profesionales
-          </h2>
-          <Link href="/explorar" className="text-sm font-semibold text-[#1FB6A6]">
-            Ver todos
-          </Link>
-        </div>
+        <SectionHeading
+          kicker="Destacados"
+          title="Locales y profesionales con mejor presentación"
+          description="Una selección visible y consistente para que el primer nivel de exploración no se sienta como una lista genérica."
+          action={<Button href="/explorar">Ver todos</Button>}
+        />
         {items.length === 0 ? (
-          <div className="rounded-[20px] border border-dashed border-[#E2E7EC] bg-white px-4 py-6 text-sm text-[#64748B]">
+          <Card tone="soft" className="border-dashed text-sm text-[color:var(--ink-muted)]">
             Todavía no hay profesionales destacados.
-          </div>
+          </Card>
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {items.map((business) => {

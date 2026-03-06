@@ -39,11 +39,11 @@ export default function RubroCard({
     <Link
       href={`/explorar/${encodeURIComponent(slug)}`}
       className={[
-        'group block overflow-hidden rounded-[24px] bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-md',
+        'group block overflow-hidden rounded-[28px] border border-[color:var(--border-soft)] bg-white/95 shadow-[var(--shadow-card)] transition hover:-translate-y-1 hover:border-[color:var(--border-strong)] hover:shadow-[var(--shadow-lift)]',
         className || '',
       ].join(' ')}
     >
-      <div className="relative aspect-[16/9] overflow-hidden bg-[#E2E8F0]">
+      <div className="relative aspect-[16/9] overflow-hidden bg-[color:var(--surface-soft)]">
         {normalizedImageUrl ? (
           <Image
             src={normalizedImageUrl}
@@ -55,12 +55,12 @@ export default function RubroCard({
           />
         ) : (
           <div
-            className="absolute inset-0 bg-gradient-to-br from-[#C9D8E8] via-[#DDE8F2] to-[#EDF3F8]"
+            className="absolute inset-0 bg-[linear-gradient(140deg,rgba(31,182,166,0.24),rgba(255,255,255,0.65),rgba(242,140,56,0.2))]"
             aria-hidden="true"
           />
         )}
-        <div className="absolute inset-0 bg-black/20" aria-hidden="true" />
-        <div className="absolute inset-x-0 bottom-0 p-4">
+        <div className="absolute inset-0 bg-[linear-gradient(180deg,transparent,rgba(13,35,58,0.7))]" aria-hidden="true" />
+        <div className="absolute inset-x-0 bottom-0 p-5">
           <h3 className="text-xl font-semibold text-white">{title}</h3>
         </div>
       </div>

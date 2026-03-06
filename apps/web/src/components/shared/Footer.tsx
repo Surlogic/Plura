@@ -33,82 +33,89 @@ export default function Footer() {
     : clientProfile
       ? 'CLIENT'
       : 'PUBLIC';
+  const isProfessionalAuth = pathForCheck.startsWith('/profesional/auth');
+  const footerClassName = isProfessionalAuth
+    ? 'mt-16 border-t border-white/10 bg-[#0a1424] text-[#e8eef7]'
+    : 'mt-16 border-t border-[color:var(--border-soft)] bg-[color:var(--surface)]/82 text-[color:var(--ink)] backdrop-blur';
+  const secondaryTextClassName = isProfessionalAuth ? 'text-[#9fb1c8]' : 'text-[color:var(--ink-muted)]';
+  const strongTextClassName = isProfessionalAuth ? 'font-semibold text-white' : 'font-semibold text-[color:var(--ink)]';
+  const linkClassName = isProfessionalAuth ? 'block transition hover:text-white' : 'block transition hover:text-[color:var(--ink)]';
 
   return (
-    <footer className="mt-16 border-t border-[#0E2A47]/10 bg-[#F4F6F8] text-[#0E2A47]">
+    <footer className={footerClassName}>
       <div className="mx-auto grid w-full max-w-[1400px] gap-8 px-4 py-12 sm:grid-cols-2 lg:grid-cols-4 sm:px-6 lg:px-10">
         <div className="space-y-3">
-          <Logo href="/" size={30} textClassName="text-[#0E2A47]" />
-          <p className="text-sm text-[#6B7280]">
+          <Logo href="/" size={30} textClassName={isProfessionalAuth ? 'text-white' : 'text-[color:var(--ink)]'} />
+          <p className={`text-sm ${secondaryTextClassName}`}>
             Tu próximo turno, en segundos.
           </p>
         </div>
         {role === 'PROFESSIONAL' ? (
           <>
-            <div className="space-y-2 text-sm text-[#6B7280]">
-              <p className="font-semibold text-[#0E2A47]">Plura</p>
-              <Link href="/profesional/dashboard" className="block hover:text-[#0E2A47]">
+            <div className={`space-y-2 text-sm ${secondaryTextClassName}`}>
+              <p className={strongTextClassName}>Plura</p>
+              <Link href="/profesional/dashboard" className={linkClassName}>
                 Panel profesional
               </Link>
-              <Link href="/profesional/dashboard" className="block hover:text-[#0E2A47]">
+              <Link href="/profesional/dashboard" className={linkClassName}>
                 Agenda
               </Link>
-              <Link href="/profesional/dashboard/servicios" className="block hover:text-[#0E2A47]">
+              <Link href="/profesional/dashboard/servicios" className={linkClassName}>
                 Servicios
               </Link>
-              <Link href="/profesional/dashboard/reservas" className="block hover:text-[#0E2A47]">
+              <Link href="/profesional/dashboard/reservas" className={linkClassName}>
                 Reservas
               </Link>
             </div>
-            <div className="space-y-2 text-sm text-[#6B7280]">
-              <p className="font-semibold text-[#0E2A47]">Soporte</p>
+            <div className={`space-y-2 text-sm ${secondaryTextClassName}`}>
+              <p className={strongTextClassName}>Soporte</p>
               <p>Centro de ayuda</p>
-              <p>Contactar soporte</p>
+              <p>Soporte prioritario</p>
             </div>
           </>
         ) : role === 'CLIENT' ? (
           <>
-            <div className="space-y-2 text-sm text-[#6B7280]">
-              <p className="font-semibold text-[#0E2A47]">Plura</p>
-              <Link href="/explorar" className="block hover:text-[#0E2A47]">
+            <div className={`space-y-2 text-sm ${secondaryTextClassName}`}>
+              <p className={strongTextClassName}>Plura</p>
+              <Link href="/explorar" className={linkClassName}>
                 Explorar
               </Link>
-              <Link href="/cliente/reservas" className="block hover:text-[#0E2A47]">
+              <Link href="/cliente/reservas" className={linkClassName}>
                 Mis reservas
               </Link>
-              <Link href="/cliente/favoritos" className="block hover:text-[#0E2A47]">
+              <Link href="/cliente/favoritos" className={linkClassName}>
                 Favoritos
               </Link>
             </div>
-            <div className="space-y-2 text-sm text-[#6B7280]">
-              <p className="font-semibold text-[#0E2A47]">Soporte</p>
+            <div className={`space-y-2 text-sm ${secondaryTextClassName}`}>
+              <p className={strongTextClassName}>Soporte</p>
               <p>Centro de ayuda</p>
               <p>Contactar soporte</p>
             </div>
           </>
         ) : (
           <>
-            <div className="space-y-2 text-sm text-[#6B7280]">
-              <p className="font-semibold text-[#0E2A47]">Plataforma</p>
+            <div className={`space-y-2 text-sm ${secondaryTextClassName}`}>
+              <p className={strongTextClassName}>Plataforma</p>
               <p>Cómo funciona</p>
               <p>Planes para negocios</p>
               <p>Ayuda y soporte</p>
             </div>
-            <div className="space-y-2 text-sm text-[#6B7280]">
-              <p className="font-semibold text-[#0E2A47]">Comunidad</p>
+            <div className={`space-y-2 text-sm ${secondaryTextClassName}`}>
+              <p className={strongTextClassName}>Comunidad</p>
               <p>Profesionales destacados</p>
               <p>Reseñas reales</p>
               <p>Recomendaciones</p>
             </div>
           </>
         )}
-        <div className="space-y-2 text-sm text-[#6B7280]">
-          <p className="font-semibold text-[#0E2A47]">Contacto</p>
+        <div className={`space-y-2 text-sm ${secondaryTextClassName}`}>
+          <p className={strongTextClassName}>Contacto</p>
           <p>hola@plura.com</p>
           <p>Buenos Aires, AR</p>
         </div>
       </div>
-      <div className="border-t border-[#0E2A47]/10 px-4 py-6 text-center text-xs text-[#6B7280]">
+      <div className={`border-t px-4 py-6 text-center text-xs ${secondaryTextClassName} ${isProfessionalAuth ? 'border-white/10' : 'border-[color:var(--border-soft)]'}`}>
         © 2026 Plura. Todos los derechos reservados.
       </div>
     </footer>

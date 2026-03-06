@@ -81,9 +81,9 @@ const RECENT_CITIES_STORAGE_KEY = 'plura:search-recent-cities';
 const RECENT_SEARCHES_STORAGE_KEY = 'plura:search-recent-queries';
 
 const SURFACE_CLASSES: Record<NonNullable<UnifiedSearchBarProps['variant']>, string> = {
-  hero: 'border border-[#D6E3DE] bg-white/98 shadow-[0_8px_20px_rgba(14,42,71,0.08)]',
-  panel: 'border border-[#DCE8E3] bg-white shadow-[0_6px_16px_rgba(14,42,71,0.07)]',
-  explore: 'border border-[#D7E6DF] bg-white shadow-[0_6px_14px_rgba(14,42,71,0.06)]',
+  hero: 'border border-[color:var(--border-strong)] bg-white/96 shadow-[var(--shadow-lift)] backdrop-blur-sm',
+  panel: 'border border-[color:var(--border-strong)] bg-white shadow-[var(--shadow-card)]',
+  explore: 'border border-[color:var(--border-soft)] bg-white shadow-[var(--shadow-card)]',
 };
 
 const normalizeType = (value?: string): SearchType => {
@@ -1070,223 +1070,261 @@ export default function UnifiedSearchBar({
 
   const inputPlaceholder = values.categorySlug
     ? `Buscar en ${slugToLabel(values.categorySlug)}`
-    : 'Buscar servicio, rubro, profesional o negocio';
+    : 'Servicio, rubro o profesional';
 
   const dateSummaryBase = values.date
     ? formatDateLabel(values.date)
     : values.from && values.to
       ? `${formatDateLabel(values.from)} - ${formatDateLabel(values.to)}`
-      : 'Sin fecha';
+      : 'Elegir fecha';
   const dateSummary = values.availableNow
-    ? dateSummaryBase === 'Sin fecha'
+    ? dateSummaryBase === 'Elegir fecha'
       ? 'Disponible ahora'
       : `${dateSummaryBase} + Ahora`
     : dateSummaryBase;
 
-  const locationSummary = values.city.trim() || (hasCoordinates ? 'Cerca de mi' : 'Sin ubicacion');
+  const locationSummary = values.city.trim() || (hasCoordinates ? 'Cerca de mi' : '¿Donde?');
   const locationValueClass = getAdaptiveValueClass(locationSummary);
   const hasDateRange = Boolean(values.from && values.to);
   const isSearchActive = isSearchOpen;
   const isDateActive = isDateOpen || Boolean(values.date || hasDateRange || values.availableNow);
   const isLocationActive = isLocationOpen || Boolean(values.city.trim() || hasCoordinates);
+  const hasDateSelection = Boolean(values.date || hasDateRange || values.availableNow);
+  const hasLocationSelection = Boolean(values.city.trim() || hasCoordinates);
+  const panelSurfaceClass =
+    'w-full rounded-[28px] border border-[color:var(--border-strong)] bg-[color:var(--surface-strong)] p-3 shadow-[var(--shadow-lift)] ring-1 ring-black/5';
 
   return (
     <div ref={wrapperRef} className={`relative z-20 w-full overflow-visible ${className || ''}`}>
       <form onSubmit={handleSubmit} className="relative overflow-visible">
-        <div className={`relative overflow-visible rounded-2xl ${SURFACE_CLASSES[variant]}`}>
-          <div className="overflow-x-auto overflow-y-visible">
-            <div className="grid min-w-[740px] grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_auto] gap-1.5 p-2 sm:p-3">
-              <div className="min-w-0">
-                <SearchField label="Servicio o rubro" active={isSearchActive}>
-                  <div className="flex min-w-0 items-center gap-2">
-                    <svg
-                      viewBox="0 0 20 20"
-                      fill="none"
-                      className="h-4 w-4 shrink-0 text-[#1B6B5C]"
-                      aria-hidden="true"
-                    >
-                      <circle cx="9" cy="9" r="5.5" stroke="currentColor" strokeWidth="1.6" />
-                      <path d="M13 13l4 4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-                    </svg>
-                    <input
-                      type="text"
-                      value={searchInput}
-                      onChange={(event) => {
-                        const nextValue = event.target.value;
-                        setSearchInput(nextValue);
-                        setValues((previous) => ({
-                          ...previous,
-                          query: nextValue,
-                          type: 'SERVICIO',
-                          categorySlug: undefined,
-                        }));
-                        setIsSearchOpen(true);
-                        setIsDateOpen(false);
-                        setIsLocationOpen(false);
-                        setActiveSuggestionIndex(-1);
-                      }}
-                      onFocus={() => {
-                        setIsSearchOpen(true);
-                        setIsDateOpen(false);
-                        setIsLocationOpen(false);
-                      }}
-                      onClick={() => {
-                        setIsSearchOpen(true);
-                        setIsDateOpen(false);
-                        setIsLocationOpen(false);
-                      }}
-                      onKeyDown={handleInputKeyDown}
-                      placeholder={inputPlaceholder}
-                      className="h-7 w-full min-w-0 bg-transparent text-[0.97rem] font-semibold leading-none text-[#0E2A47] placeholder:text-[#8A98A7] focus:outline-none"
-                      aria-label="Buscar tratamiento, rubro, profesional o local"
-                      autoComplete="off"
-                    />
-                  </div>
-                </SearchField>
-              </div>
+        <div className={`relative overflow-visible rounded-[30px] ${SURFACE_CLASSES[variant]}`}>
+          <div className="grid gap-2 p-2.5 sm:p-3 lg:grid-cols-[minmax(0,1.85fr)_minmax(0,0.95fr)_minmax(0,1.05fr)_auto] lg:items-stretch">
+            <div className="relative min-w-0">
+              <SearchField label="Servicio o rubro" active={isSearchActive} className="h-full">
+                <div className="flex min-w-0 items-center gap-3">
+                  <svg
+                    viewBox="0 0 20 20"
+                    fill="none"
+                    className="h-5 w-5 shrink-0 text-[color:var(--accent-strong)]"
+                    aria-hidden="true"
+                  >
+                    <circle cx="9" cy="9" r="5.5" stroke="currentColor" strokeWidth="1.6" />
+                    <path d="M13 13l4 4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+                  </svg>
+                  <input
+                    type="text"
+                    value={searchInput}
+                    onChange={(event) => {
+                      const nextValue = event.target.value;
+                      setSearchInput(nextValue);
+                      setValues((previous) => ({
+                        ...previous,
+                        query: nextValue,
+                        type: 'SERVICIO',
+                        categorySlug: undefined,
+                      }));
+                      setIsSearchOpen(true);
+                      setIsDateOpen(false);
+                      setIsLocationOpen(false);
+                      setActiveSuggestionIndex(-1);
+                    }}
+                    onFocus={() => {
+                      setIsSearchOpen(true);
+                      setIsDateOpen(false);
+                      setIsLocationOpen(false);
+                    }}
+                    onClick={() => {
+                      setIsSearchOpen(true);
+                      setIsDateOpen(false);
+                      setIsLocationOpen(false);
+                    }}
+                    onKeyDown={handleInputKeyDown}
+                    placeholder={inputPlaceholder}
+                    className="h-8 w-full min-w-0 bg-transparent text-[1.02rem] font-semibold leading-none text-[color:var(--ink)] placeholder:font-medium placeholder:text-[color:var(--ink-faint)] focus:outline-none"
+                    aria-label="Buscar tratamiento, rubro, profesional o local"
+                    autoComplete="off"
+                  />
+                </div>
+              </SearchField>
 
-              <div className="min-w-0">
-                <SearchField
-                  label="Fecha"
-                  active={isDateActive}
-                  asButton
-                  onClick={() => {
-                    setIsDateOpen((current) => !current);
-                    setIsSearchOpen(false);
-                    setIsLocationOpen(false);
-                  }}
-                >
-                  <span className="w-full truncate text-[0.95rem] font-semibold leading-5 text-[#0E2A47]">
+              {isSearchOpen ? (
+                <div className="absolute left-0 right-0 top-[calc(100%+14px)] z-[70]">
+                  <SuggestDropdown
+                    open={isSearchOpen}
+                    loading={isSuggestLoading}
+                    groups={dropdownGroups}
+                    activeIndex={activeSuggestionIndex}
+                    onHoverIndex={setActiveSuggestionIndex}
+                    onSelect={(item) => {
+                      if (item.recentSearch) {
+                        runSearch(toUnifiedValuesFromRecent(item.recentSearch));
+                        return;
+                      }
+                      applySuggestion(item);
+                    }}
+                  />
+                </div>
+              ) : null}
+            </div>
+
+            <div className="relative min-w-0">
+              <SearchField
+                label="Fecha"
+                active={isDateActive}
+                asButton
+                className="h-full"
+                onClick={() => {
+                  setIsDateOpen((current) => !current);
+                  setIsSearchOpen(false);
+                  setIsLocationOpen(false);
+                }}
+              >
+                <div className="flex min-w-0 items-center gap-3">
+                  <svg
+                    viewBox="0 0 20 20"
+                    fill="none"
+                    className="h-4.5 w-4.5 shrink-0 text-[color:var(--ink-faint)]"
+                    aria-hidden="true"
+                  >
+                    <rect x="3" y="4.5" width="14" height="12" rx="2.5" stroke="currentColor" strokeWidth="1.5" />
+                    <path d="M6.5 3v3M13.5 3v3M3 8h14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                  </svg>
+                  <span
+                    className={`w-full truncate text-left text-[0.96rem] leading-5 ${
+                      hasDateSelection
+                        ? 'font-semibold text-[color:var(--ink)]'
+                        : 'font-medium text-[color:var(--ink-muted)]'
+                    }`}
+                  >
                     {dateSummary}
                   </span>
-                </SearchField>
-              </div>
+                </div>
+              </SearchField>
 
-              <div className="min-w-0">
-                <SearchField
-                  label="Ubicación"
-                  active={isLocationActive}
-                  asButton
-                  onClick={() => {
-                    setIsLocationOpen((current) => !current);
-                    setIsSearchOpen(false);
-                    setIsDateOpen(false);
-                  }}
-                >
-                  <span className={`w-full truncate font-semibold leading-5 text-[#0E2A47] ${locationValueClass}`}>
+              {isDateOpen ? (
+                <div className="absolute left-0 right-0 top-[calc(100%+14px)] z-[70]">
+                  <div className={panelSurfaceClass}>
+                    <DateFilter
+                      date={values.date}
+                      availableNow={values.availableNow}
+                      todayIso={todayIso}
+                      onPickAnytime={setAnytime}
+                      onPickToday={pickToday}
+                      onPickTomorrow={pickTomorrow}
+                      onPickThisWeek={pickThisWeek}
+                      onPickDate={(value) => {
+                        const nextDate = normalizeDate(value);
+                        setValues((previous) => ({
+                          ...previous,
+                          date: nextDate,
+                          from: undefined,
+                          to: undefined,
+                        }));
+                      }}
+                      onToggleAvailableNow={() =>
+                        setValues((previous) => ({
+                          ...previous,
+                          availableNow: !previous.availableNow,
+                        }))
+                      }
+                      showAvailableToggle
+                    />
+                  </div>
+                </div>
+              ) : null}
+            </div>
+
+            <div className="relative min-w-0">
+              <SearchField
+                label="Ubicacion"
+                active={isLocationActive}
+                asButton
+                className="h-full"
+                onClick={() => {
+                  setIsLocationOpen((current) => !current);
+                  setIsSearchOpen(false);
+                  setIsDateOpen(false);
+                }}
+              >
+                <div className="flex min-w-0 items-center gap-3">
+                  <svg
+                    viewBox="0 0 20 20"
+                    fill="none"
+                    className="h-4.5 w-4.5 shrink-0 text-[color:var(--ink-faint)]"
+                    aria-hidden="true"
+                  >
+                    <path d="M10 17c2.8-3.4 4.2-6 4.2-7.7A4.2 4.2 0 105.8 9.3C5.8 11 7.2 13.6 10 17z" stroke="currentColor" strokeWidth="1.6" />
+                    <circle cx="10" cy="9" r="1.6" fill="currentColor" />
+                  </svg>
+                  <span
+                    className={`w-full truncate text-left leading-5 ${locationValueClass} ${
+                      hasLocationSelection
+                        ? 'font-semibold text-[color:var(--ink)]'
+                        : 'font-medium text-[color:var(--ink-muted)]'
+                    }`}
+                  >
                     {locationSummary}
                   </span>
-                </SearchField>
-              </div>
+                </div>
+              </SearchField>
 
-              <div className="inline-flex items-center gap-2">
-                <button
-                  type="submit"
-                  className="inline-flex h-[62px] min-w-[7rem] items-center justify-center rounded-xl bg-[#0E2A47] px-6 text-base font-semibold text-white transition hover:brightness-110 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0E2A47]/30 focus-visible:ring-offset-2"
+              {isLocationOpen ? (
+                <div className="absolute left-0 right-0 top-[calc(100%+14px)] z-[70]">
+                  <div className={panelSurfaceClass}>
+                    <LocationAutocomplete
+                      locationInput={locationInput}
+                      onLocationInputChange={(value) => {
+                        setLocationInput(value);
+                        setValues((previous) => ({
+                          ...previous,
+                          city: value,
+                          lat: undefined,
+                          lng: undefined,
+                        }));
+                      }}
+                      onUseCurrentLocation={handleUseCurrentLocation}
+                      onSelectGeoItem={selectGeoItem}
+                      onSelectCity={selectCity}
+                      geoSuggestions={geoSuggestions}
+                      recentCities={mergedCitySuggestions}
+                      geoStatus={geoStatus}
+                      geoMessage={geoMessage}
+                      popularNearby={nearbyCandidates}
+                      onPickPopularNearby={(item) => {
+                        const nextValues: UnifiedSearchValues = {
+                          ...values,
+                          type: 'LOCAL',
+                          query: item.name,
+                          categorySlug: undefined,
+                        };
+                        setValues(nextValues);
+                        setSearchInput(item.name);
+                        setIsLocationOpen(false);
+                      }}
+                    />
+                  </div>
+                </div>
+              ) : null}
+            </div>
+
+            <div className="flex flex-col gap-2 sm:flex-row lg:flex-col lg:justify-stretch">
+              <button
+                type="submit"
+                className="inline-flex h-[74px] w-full min-w-[8rem] items-center justify-center rounded-[24px] bg-[color:var(--primary)] px-6 text-base font-semibold text-white shadow-[0_18px_34px_-22px_rgba(13,35,58,0.9)] transition hover:bg-[color:var(--primary-strong)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--accent-soft)] focus-visible:ring-offset-2"
                 >
-                  {submitLabel}
+                {submitLabel}
+              </button>
+              {showClearButton ? (
+                <button
+                  type="button"
+                  onClick={handleClear}
+                  className="inline-flex h-[74px] w-full items-center justify-center rounded-[22px] border border-[color:var(--border-soft)] bg-white px-4 text-sm font-semibold text-[color:var(--ink)] transition hover:bg-[color:var(--surface-soft)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--accent-soft)]"
+                >
+                  Limpiar
                 </button>
-                {showClearButton ? (
-                  <button
-                    type="button"
-                    onClick={handleClear}
-                    className="inline-flex h-[62px] items-center justify-center rounded-xl border border-[#D8E2EA] bg-white px-4 text-sm font-semibold text-[#0E2A47] transition hover:bg-[#F7FAFD] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0E2A47]/20"
-                  >
-                    Limpiar
-                  </button>
-                ) : null}
-              </div>
+              ) : null}
             </div>
           </div>
-
-          {isSearchOpen ? (
-            <div className="absolute left-0 top-[calc(100%+8px)] z-50 w-full pointer-events-auto">
-              <SuggestDropdown
-                open={isSearchOpen}
-                loading={isSuggestLoading}
-                groups={dropdownGroups}
-                activeIndex={activeSuggestionIndex}
-                onHoverIndex={setActiveSuggestionIndex}
-                onSelect={(item) => {
-                  if (item.recentSearch) {
-                    runSearch(toUnifiedValuesFromRecent(item.recentSearch));
-                    return;
-                  }
-                  applySuggestion(item);
-                }}
-              />
-            </div>
-          ) : null}
-
-          {isDateOpen ? (
-            <div className="absolute left-0 top-[calc(100%+8px)] z-50 w-full pointer-events-auto">
-              <div className="w-full rounded-xl border border-[#DCE8E3] bg-white p-2.5 shadow-[0_10px_22px_rgba(14,42,71,0.10)]">
-                <DateFilter
-                  date={values.date}
-                  availableNow={values.availableNow}
-                  todayIso={todayIso}
-                  onPickAnytime={setAnytime}
-                  onPickToday={pickToday}
-                  onPickTomorrow={pickTomorrow}
-                  onPickThisWeek={pickThisWeek}
-                  onPickDate={(value) => {
-                    const nextDate = normalizeDate(value);
-                    setValues((previous) => ({
-                      ...previous,
-                      date: nextDate,
-                      from: undefined,
-                      to: undefined,
-                    }));
-                  }}
-                  onToggleAvailableNow={() =>
-                    setValues((previous) => ({
-                      ...previous,
-                      availableNow: !previous.availableNow,
-                    }))
-                  }
-                  showAvailableToggle
-                />
-              </div>
-            </div>
-          ) : null}
-
-          {isLocationOpen ? (
-            <div className="absolute left-0 top-[calc(100%+8px)] z-50 w-full pointer-events-auto">
-              <div className="w-full rounded-xl border border-[#DCE8E3] bg-white p-2.5 shadow-[0_10px_22px_rgba(14,42,71,0.10)]">
-                <LocationAutocomplete
-                  locationInput={locationInput}
-                  onLocationInputChange={(value) => {
-                    setLocationInput(value);
-                    setValues((previous) => ({
-                      ...previous,
-                      city: value,
-                      lat: undefined,
-                      lng: undefined,
-                    }));
-                  }}
-                  onUseCurrentLocation={handleUseCurrentLocation}
-                  onSelectGeoItem={selectGeoItem}
-                  onSelectCity={selectCity}
-                  geoSuggestions={geoSuggestions}
-                  recentCities={mergedCitySuggestions}
-                  geoStatus={geoStatus}
-                  geoMessage={geoMessage}
-                  popularNearby={nearbyCandidates}
-                  onPickPopularNearby={(item) => {
-                    const nextValues: UnifiedSearchValues = {
-                      ...values,
-                      type: 'LOCAL',
-                      query: item.name,
-                      categorySlug: undefined,
-                    };
-                    setValues(nextValues);
-                    setSearchInput(item.name);
-                    setIsLocationOpen(false);
-                  }}
-                />
-              </div>
-            </div>
-          ) : null}
         </div>
       </form>
     </div>

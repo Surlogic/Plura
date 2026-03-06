@@ -24,14 +24,14 @@ export default function DateFilter({
   showAvailableToggle = true,
 }: DateFilterProps) {
   return (
-    <div className="space-y-2.5">
+    <div className="space-y-4">
       {showAvailableToggle ? (
         <button
           type="button"
           role="switch"
           aria-checked={availableNow}
           onClick={onToggleAvailableNow}
-          className="inline-flex h-8 items-center gap-2 rounded-full border border-[#D5E4DC] bg-white px-2.5 text-[0.7rem] font-semibold text-[#4E6072] transition hover:bg-[#F4FAF7] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#1B6B5C]/20"
+          className="inline-flex h-10 items-center gap-2 rounded-full border border-[color:var(--border-soft)] bg-[color:var(--surface-soft)] px-4 text-xs font-semibold text-[color:var(--ink-muted)] transition hover:bg-white focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--accent-soft)]"
         >
           <span
             className={`relative inline-flex h-3.5 w-7 rounded-full transition ${
@@ -49,44 +49,55 @@ export default function DateFilter({
         </button>
       ) : null}
 
-      <div className="flex flex-wrap gap-1.5">
+      <div className="flex flex-wrap gap-2">
         <button
           type="button"
           onClick={onPickAnytime}
-          className="rounded-full border border-[#D5E4DC] bg-white px-2.5 py-1 text-[0.68rem] font-semibold text-[#4E6072] transition hover:bg-[#F4FAF7] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#1B6B5C]/20"
+          className="rounded-full border border-[color:var(--border-soft)] bg-white px-3 py-1.5 text-[0.74rem] font-semibold text-[color:var(--ink-muted)] transition hover:bg-[color:var(--surface-soft)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--accent-soft)]"
         >
           En cualquier momento
         </button>
         <button
           type="button"
           onClick={onPickToday}
-          className="rounded-full border border-[#D5E4DC] bg-white px-2.5 py-1 text-[0.68rem] font-semibold text-[#4E6072] transition hover:bg-[#F4FAF7] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#1B6B5C]/20"
+          className="rounded-full border border-[color:var(--border-soft)] bg-white px-3 py-1.5 text-[0.74rem] font-semibold text-[color:var(--ink-muted)] transition hover:bg-[color:var(--surface-soft)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--accent-soft)]"
         >
           Hoy
         </button>
         <button
           type="button"
           onClick={onPickTomorrow}
-          className="rounded-full border border-[#D5E4DC] bg-white px-2.5 py-1 text-[0.68rem] font-semibold text-[#4E6072] transition hover:bg-[#F4FAF7] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#1B6B5C]/20"
+          className="rounded-full border border-[color:var(--border-soft)] bg-white px-3 py-1.5 text-[0.74rem] font-semibold text-[color:var(--ink-muted)] transition hover:bg-[color:var(--surface-soft)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--accent-soft)]"
         >
           Manana
         </button>
         <button
           type="button"
           onClick={onPickThisWeek}
-          className="rounded-full border border-[#D5E4DC] bg-white px-2.5 py-1 text-[0.68rem] font-semibold text-[#4E6072] transition hover:bg-[#F4FAF7] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#1B6B5C]/20"
+          className="rounded-full border border-[color:var(--border-soft)] bg-white px-3 py-1.5 text-[0.74rem] font-semibold text-[color:var(--ink-muted)] transition hover:bg-[color:var(--surface-soft)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--accent-soft)]"
         >
           Esta semana
         </button>
       </div>
 
-      <input
-        type="date"
-        value={date}
-        min={todayIso}
-        onChange={(event) => onPickDate(event.target.value)}
-        className="h-9 w-full rounded-lg border border-[#D9E6DF] bg-white px-2.5 text-sm text-[#0E2A47] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#1B6B5C]/20"
-      />
+      <div className="relative">
+        <svg
+          viewBox="0 0 20 20"
+          fill="none"
+          className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[color:var(--ink-faint)]"
+          aria-hidden="true"
+        >
+          <rect x="3" y="4.5" width="14" height="12" rx="2.5" stroke="currentColor" strokeWidth="1.5" />
+          <path d="M6.5 3v3M13.5 3v3M3 8h14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+        </svg>
+        <input
+          type="date"
+          value={date}
+          min={todayIso}
+          onChange={(event) => onPickDate(event.target.value)}
+          className="h-12 w-full rounded-[18px] border border-[color:var(--border-soft)] bg-white px-12 text-sm font-medium text-[color:var(--ink)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--accent-soft)]"
+        />
+      </div>
     </div>
   );
 }

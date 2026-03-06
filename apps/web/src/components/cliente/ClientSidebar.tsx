@@ -1,5 +1,6 @@
 import type { ReactElement } from 'react';
 import Link from 'next/link';
+import Card from '@/components/ui/Card';
 
 type IconProps = {
   className?: string;
@@ -78,10 +79,14 @@ export default function ClientSidebar({
   const isCollapsed = collapsed && !mobile;
 
   return (
-    <div className={`rounded-[20px] border border-[#E5EDF4] bg-white transition-[padding] duration-300 ${isCollapsed ? 'p-2.5' : 'p-3.5'}`}>
+    <Card
+      tone="glass"
+      padding="none"
+      className={`transition-[padding] duration-300 ${isCollapsed ? 'p-2.5' : 'p-3.5'}`}
+    >
       <div className={`mb-3 flex items-center ${isCollapsed ? 'justify-center' : 'justify-between'} gap-2 px-2`}>
         <p
-          className={`text-[0.65rem] uppercase tracking-[0.3em] text-[#94A3B8] transition-[max-width,opacity] duration-300 ${
+          className={`text-[0.65rem] uppercase tracking-[0.3em] text-[color:var(--ink-faint)] transition-[max-width,opacity] duration-300 ${
             isCollapsed ? 'max-w-0 overflow-hidden opacity-0' : 'max-w-[120px] opacity-100'
           }`}
         >
@@ -92,7 +97,7 @@ export default function ClientSidebar({
           <button
             type="button"
             onClick={onToggleCollapsed}
-            className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-[#E5EDF4] bg-white text-[#475569] transition hover:bg-[#F8FAFC]"
+            className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-[color:var(--border-soft)] bg-white text-[color:var(--ink-muted)] transition hover:bg-[color:var(--surface-soft)]"
             aria-label={isCollapsed ? 'Expandir menu' : 'Colapsar menu'}
             aria-pressed={isCollapsed}
           >
@@ -126,15 +131,17 @@ export default function ClientSidebar({
               onClick={onNavigate}
               className={`group relative flex items-center rounded-[14px] py-2 text-sm font-semibold transition ${
                 isActive
-                  ? 'bg-[#F1F5F9] text-[#0E2A47]'
-                  : 'text-[#0E2A47] hover:bg-[#F8FAFC]'
+                  ? 'bg-[color:var(--surface-soft)] text-[color:var(--ink)]'
+                  : 'text-[color:var(--ink)] hover:bg-white/82'
               } ${isCollapsed ? 'justify-center px-2' : 'justify-start px-3'}`}
               aria-current={isActive ? 'page' : undefined}
               title={isCollapsed ? item.label : undefined}
             >
               <span
                 className={`flex h-8 w-8 items-center justify-center rounded-full transition ${
-                  isActive ? 'bg-[#0E2A47]/10 text-[#0E2A47]' : 'bg-[#F8FAFC] text-[#475569]'
+                  isActive
+                    ? 'bg-[color:var(--accent-soft)] text-[color:var(--accent-strong)]'
+                    : 'bg-white text-[color:var(--ink-muted)]'
                 }`}
                 aria-hidden="true"
               >
@@ -149,16 +156,16 @@ export default function ClientSidebar({
               </span>
 
               {isCollapsed ? (
-                <span className="pointer-events-none absolute left-[calc(100%+12px)] top-1/2 z-20 -translate-y-1/2 rounded-md bg-[#0E2A47] px-2 py-1 text-xs font-semibold text-white opacity-0 shadow-md transition group-hover:opacity-100">
+                <span className="pointer-events-none absolute left-[calc(100%+12px)] top-1/2 z-20 -translate-y-1/2 rounded-md bg-[color:var(--primary-strong)] px-2 py-1 text-xs font-semibold text-white opacity-0 shadow-[var(--shadow-card)] transition group-hover:opacity-100">
                   {item.label}
                 </span>
               ) : null}
               {isCollapsed ? (
-                <span className="pointer-events-none absolute left-[calc(100%+8px)] top-1/2 z-10 h-2 w-2 -translate-y-1/2 rotate-45 bg-[#0E2A47] opacity-0 transition group-hover:opacity-100" />
+                <span className="pointer-events-none absolute left-[calc(100%+8px)] top-1/2 z-10 h-2 w-2 -translate-y-1/2 rotate-45 bg-[color:var(--primary-strong)] opacity-0 transition group-hover:opacity-100" />
               ) : null}
               <span
                 className={`absolute inset-y-2 left-0 w-1 rounded-r-full transition ${
-                  isActive ? 'bg-[#1FB6A6]' : 'bg-transparent'
+                  isActive ? 'bg-[color:var(--accent)]' : 'bg-transparent'
                 }`}
                 aria-hidden="true"
               />
@@ -166,6 +173,6 @@ export default function ClientSidebar({
           );
         })}
       </nav>
-    </div>
+    </Card>
   );
 }

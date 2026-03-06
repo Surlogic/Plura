@@ -1,4 +1,4 @@
-import Link from 'next/link';
+import Button from '@/components/ui/Button';
 import Logo from '@/components/ui/Logo';
 
 type AuthTopBarProps = {
@@ -27,12 +27,14 @@ export default function AuthTopBar({ tone }: AuthTopBarProps) {
     <header className={`sticky top-0 z-40 border-b backdrop-blur ${styles.header}`}>
       <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-4 py-4 sm:px-6">
         <Logo href="/" size={38} priority textClassName={styles.brand} />
-        <Link
+        <Button
           href="/"
-          className={`rounded-full border px-4 py-2 text-xs font-semibold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ${styles.action}`}
+          variant={tone === 'professional' ? 'contrast' : 'secondary'}
+          size="sm"
+          className={styles.action}
         >
           Volver al inicio
-        </Link>
+        </Button>
       </div>
     </header>
   );

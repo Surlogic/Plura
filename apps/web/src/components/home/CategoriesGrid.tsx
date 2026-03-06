@@ -1,5 +1,8 @@
 import { useState } from 'react';
 import CategoryCard from './CategoryCard';
+import Button from '@/components/ui/Button';
+import Card from '@/components/ui/Card';
+import SectionHeading from '@/components/ui/SectionHeading';
 import type { Category } from '@/types/category';
 
 type CategoriesGridProps = {
@@ -14,12 +17,16 @@ export default function CategoriesGrid({ categories }: CategoriesGridProps) {
   return (
     <section className="px-4 py-12 sm:py-16">
       <div className="mx-auto w-full max-w-6xl space-y-6">
-        <div className="flex items-center justify-between">
-          <h2 className="text-2xl font-semibold text-[#0E2A47]">Rubros</h2>
-          <span className="text-sm text-[#6B7280]">
-            {categories.length > 0 ? `${categories.length} categorías` : 'Sin categorías'}
-          </span>
-        </div>
+        <SectionHeading
+          kicker="Explorar"
+          title="Rubros con una navegación más clara"
+          description="Accedé más rápido a las categorías principales sin romper el lenguaje visual del resto del producto."
+          action={(
+            <span className="text-sm font-medium text-[color:var(--ink-muted)]">
+              {categories.length > 0 ? `${categories.length} categorías` : 'Sin categorías'}
+            </span>
+          )}
+        />
         {visibleCategories.length > 0 ? (
           <>
             <div className="grid grid-cols-2 gap-6 md:grid-cols-3 lg:grid-cols-4">
@@ -34,20 +41,16 @@ export default function CategoriesGrid({ categories }: CategoriesGridProps) {
             </div>
             {canToggle ? (
               <div className="flex justify-center pt-2">
-                <button
-                  type="button"
-                  onClick={() => setShowAll((prev) => !prev)}
-                  className="rounded-full border border-[#DFE7EF] bg-white px-5 py-2 text-sm font-semibold text-[#0E2A47] transition hover:bg-[#F8FAFC]"
-                >
+                <Button type="button" onClick={() => setShowAll((prev) => !prev)}>
                   {showAll ? 'Ver menos' : 'Ver todas las categorías'}
-                </button>
+                </Button>
               </div>
             ) : null}
           </>
         ) : (
-          <div className="rounded-[20px] border border-dashed border-[#E2E7EC] bg-white px-4 py-6 text-sm text-[#64748B]">
+          <Card tone="soft" className="border-dashed text-sm text-[color:var(--ink-muted)]">
             No hay rubros para mostrar por ahora.
-          </div>
+          </Card>
         )}
       </div>
     </section>

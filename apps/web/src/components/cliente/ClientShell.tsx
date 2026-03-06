@@ -38,7 +38,7 @@ export default function ClientShell({ name, active, children }: ClientShellProps
   }, [isMobileSidebarOpen]);
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] text-[#0E2A47]">
+    <div className="min-h-screen bg-[linear-gradient(180deg,rgba(255,255,255,0.34),rgba(238,244,242,0.8))] text-[color:var(--ink)]">
       <div>
         <ClientDashboardNavbar name={name} onOpenSidebar={() => setIsMobileSidebarOpen(true)} />
         <div className="mx-auto w-full max-w-[1400px] px-4 pb-16 pt-10 sm:px-6 lg:px-10">
@@ -70,16 +70,16 @@ export default function ClientShell({ name, active, children }: ClientShellProps
           <button
             type="button"
             onClick={() => setIsMobileSidebarOpen(false)}
-            className="absolute inset-0 bg-[#0E2A47]/35 backdrop-blur-[2px]"
+            className="absolute inset-0 bg-[color:var(--primary-strong)]/38 backdrop-blur-[3px]"
             aria-label="Cerrar menu cliente"
           />
-          <aside className="absolute inset-y-0 left-0 w-[280px] max-w-[85vw] border-r border-[#E2E7EC] bg-[#F8FAFC] p-4 shadow-2xl">
+          <aside className="absolute inset-y-0 left-0 w-[280px] max-w-[85vw] border-r border-[color:var(--border-soft)] bg-[color:var(--surface-strong)]/96 p-4 shadow-[var(--shadow-lift)]">
             <div className="mb-4 flex items-center justify-between">
-              <p className="text-xs uppercase tracking-[0.3em] text-[#94A3B8]">Panel cliente</p>
+              <p className="text-xs uppercase tracking-[0.3em] text-[color:var(--ink-faint)]">Panel cliente</p>
               <button
                 type="button"
                 onClick={() => setIsMobileSidebarOpen(false)}
-                className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-[#E2E7EC] bg-white text-[#0E2A47]"
+                className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-[color:var(--border-soft)] bg-white text-[color:var(--ink)]"
                 aria-label="Cerrar"
               >
                 <svg viewBox="0 0 20 20" fill="none" className="h-4 w-4" aria-hidden="true">

@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { useMemo } from 'react';
 import type { ProfessionalProfile } from '@/types/professional';
 import { useProfessionalDashboardUnsavedChanges } from '@/context/ProfessionalDashboardUnsavedChangesContext';
+import Badge from '@/components/ui/Badge';
 import Logo from '@/components/ui/Logo';
 
 type MenuItem = {
@@ -40,8 +41,8 @@ export default function ProfesionalSidebar({ profile, active }: SidebarProps) {
   const displayMeta = profile?.rubro || profile?.email || 'Cuenta profesional';
 
   return (
-    <aside className="h-full bg-[#0B1D2A] p-5 text-white">
-      <div className="border-b border-white/10 pb-4">
+    <aside className="h-full rounded-r-[28px] border-r border-white/8 bg-[linear-gradient(180deg,#081423,#0c1d34)] p-5 text-white">
+      <div className="border-b border-white/10 pb-5">
         <Logo
           href="/"
           size={30}
@@ -49,7 +50,7 @@ export default function ProfesionalSidebar({ profile, active }: SidebarProps) {
           textClassName="text-white"
         />
         <div className="flex items-center gap-3">
-          <div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-full bg-white/15 text-sm font-semibold">
+          <div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-full border border-white/10 bg-white/12 text-sm font-semibold">
             {profile?.logoUrl ? (
               <img
                 src={profile.logoUrl}
@@ -61,9 +62,9 @@ export default function ProfesionalSidebar({ profile, active }: SidebarProps) {
             )}
           </div>
           <div>
-            <p className="text-xs uppercase tracking-[0.3em] text-white/60">
+            <Badge variant="contrast" className="mb-2 px-2.5 py-1 text-[0.6rem] tracking-[0.22em] text-[#bcd2ea]">
               Profesional
-            </p>
+            </Badge>
             <p className="text-sm font-semibold">{displayName}</p>
             <p className="text-xs text-white/60">{displayMeta}</p>
           </div>
@@ -75,12 +76,12 @@ export default function ProfesionalSidebar({ profile, active }: SidebarProps) {
       <nav className="mt-3 space-y-2 text-sm font-semibold">
         {menuItems.map((item) => {
           const isActive = item.label === active;
-          const className = `block w-full rounded-lg px-3 py-3 text-left transition ${
+          const className = `block w-full rounded-[16px] px-3 py-3 text-left transition ${
             isActive
-              ? 'bg-white text-[#0B1D2A]'
+              ? 'bg-white text-[#0b1d2a] shadow-[0_10px_30px_-24px_rgba(255,255,255,0.65)]'
               : item.disabled
                 ? 'cursor-not-allowed bg-white/5 text-white/40'
-                : 'bg-white/5 text-white hover:bg-white/10'
+                : 'bg-white/6 text-white hover:bg-white/10'
           }`;
 
           if (!item.href || item.disabled) {
@@ -106,7 +107,7 @@ export default function ProfesionalSidebar({ profile, active }: SidebarProps) {
           );
         })}
       </nav>
-      <div className="mt-6 border-t border-white/10 pt-4 text-xs text-white/60">
+      <div className="mt-6 rounded-[18px] border border-white/10 bg-white/6 p-4 text-xs text-white/70">
         Tip: completá tu perfil para aparecer en las búsquedas destacadas.
       </div>
     </aside>

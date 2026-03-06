@@ -1,0 +1,242 @@
+{
+  "version": 3,
+  "pages404": true,
+  "caseSensitive": false,
+  "basePath": "",
+  "redirects": [
+    {
+      "source": "/:path+/",
+      "destination": "/:path+",
+      "internal": true,
+      "statusCode": 308,
+      "regex": "^(?:/((?:[^/]+?)(?:/(?:[^/]+?))*))/$"
+    }
+  ],
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        {
+          "key": "X-Frame-Options",
+          "value": "SAMEORIGIN"
+        },
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "Referrer-Policy",
+          "value": "strict-origin-when-cross-origin"
+        },
+        {
+          "key": "Permissions-Policy",
+          "value": "camera=(), microphone=(), geolocation=(self), payment=()"
+        },
+        {
+          "key": "Strict-Transport-Security",
+          "value": "max-age=31536000; includeSubDomains"
+        },
+        {
+          "key": "Cross-Origin-Opener-Policy",
+          "value": "same-origin-allow-popups"
+        },
+        {
+          "key": "Cross-Origin-Resource-Policy",
+          "value": "same-origin"
+        },
+        {
+          "key": "X-DNS-Prefetch-Control",
+          "value": "on"
+        }
+      ],
+      "regex": "^(?:/(.*))(?:/)?$"
+    }
+  ],
+  "rewrites": {
+    "beforeFiles": [],
+    "afterFiles": [],
+    "fallback": []
+  },
+  "dynamicRoutes": [
+    {
+      "page": "/explorar/[slug]",
+      "regex": "^/explorar/([^/]+?)(?:/)?$",
+      "routeKeys": {
+        "nxtPslug": "nxtPslug"
+      },
+      "namedRegex": "^/explorar/(?<nxtPslug>[^/]+?)(?:/)?$"
+    },
+    {
+      "page": "/profesional/pagina/[slug]",
+      "regex": "^/profesional/pagina/([^/]+?)(?:/)?$",
+      "routeKeys": {
+        "nxtPslug": "nxtPslug"
+      },
+      "namedRegex": "^/profesional/pagina/(?<nxtPslug>[^/]+?)(?:/)?$"
+    },
+    {
+      "page": "/profesional/[slug]",
+      "regex": "^/profesional/([^/]+?)(?:/)?$",
+      "routeKeys": {
+        "nxtPslug": "nxtPslug"
+      },
+      "namedRegex": "^/profesional/(?<nxtPslug>[^/]+?)(?:/)?$"
+    }
+  ],
+  "staticRoutes": [
+    {
+      "page": "/",
+      "regex": "^/(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/(?:/)?$"
+    },
+    {
+      "page": "/cliente/auth/login",
+      "regex": "^/cliente/auth/login(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/cliente/auth/login(?:/)?$"
+    },
+    {
+      "page": "/cliente/auth/register",
+      "regex": "^/cliente/auth/register(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/cliente/auth/register(?:/)?$"
+    },
+    {
+      "page": "/cliente/configuracion",
+      "regex": "^/cliente/configuracion(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/cliente/configuracion(?:/)?$"
+    },
+    {
+      "page": "/cliente/dashboard",
+      "regex": "^/cliente/dashboard(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/cliente/dashboard(?:/)?$"
+    },
+    {
+      "page": "/cliente/favoritos",
+      "regex": "^/cliente/favoritos(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/cliente/favoritos(?:/)?$"
+    },
+    {
+      "page": "/cliente/inicio",
+      "regex": "^/cliente/inicio(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/cliente/inicio(?:/)?$"
+    },
+    {
+      "page": "/cliente/perfil",
+      "regex": "^/cliente/perfil(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/cliente/perfil(?:/)?$"
+    },
+    {
+      "page": "/cliente/reservas",
+      "regex": "^/cliente/reservas(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/cliente/reservas(?:/)?$"
+    },
+    {
+      "page": "/explorar",
+      "regex": "^/explorar(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/explorar(?:/)?$"
+    },
+    {
+      "page": "/login",
+      "regex": "^/login(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/login(?:/)?$"
+    },
+    {
+      "page": "/oauth/callback",
+      "regex": "^/oauth/callback(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/oauth/callback(?:/)?$"
+    },
+    {
+      "page": "/profesional/auth/login",
+      "regex": "^/profesional/auth/login(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/profesional/auth/login(?:/)?$"
+    },
+    {
+      "page": "/profesional/auth/register",
+      "regex": "^/profesional/auth/register(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/profesional/auth/register(?:/)?$"
+    },
+    {
+      "page": "/profesional/dashboard",
+      "regex": "^/profesional/dashboard(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/profesional/dashboard(?:/)?$"
+    },
+    {
+      "page": "/profesional/dashboard/horarios",
+      "regex": "^/profesional/dashboard/horarios(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/profesional/dashboard/horarios(?:/)?$"
+    },
+    {
+      "page": "/profesional/dashboard/pagina-publica",
+      "regex": "^/profesional/dashboard/pagina\\-publica(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/profesional/dashboard/pagina\\-publica(?:/)?$"
+    },
+    {
+      "page": "/profesional/dashboard/perfil-negocio",
+      "regex": "^/profesional/dashboard/perfil\\-negocio(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/profesional/dashboard/perfil\\-negocio(?:/)?$"
+    },
+    {
+      "page": "/profesional/dashboard/reservas",
+      "regex": "^/profesional/dashboard/reservas(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/profesional/dashboard/reservas(?:/)?$"
+    },
+    {
+      "page": "/profesional/dashboard/servicios",
+      "regex": "^/profesional/dashboard/servicios(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/profesional/dashboard/servicios(?:/)?$"
+    },
+    {
+      "page": "/reserva-confirmada",
+      "regex": "^/reserva\\-confirmada(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/reserva\\-confirmada(?:/)?$"
+    },
+    {
+      "page": "/reservar",
+      "regex": "^/reservar(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/reservar(?:/)?$"
+    }
+  ],
+  "dataRoutes": [
+    {
+      "page": "/",
+      "dataRouteRegex": "^/_next/data/KYFs6paNO\\-BYSzojMQp9q/index\\.json$"
+    }
+  ],
+  "rsc": {
+    "header": "rsc",
+    "varyHeader": "rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch",
+    "prefetchHeader": "next-router-prefetch",
+    "didPostponeHeader": "x-nextjs-postponed",
+    "contentTypeHeader": "text/x-component",
+    "suffix": ".rsc",
+    "prefetchSuffix": ".prefetch.rsc",
+    "prefetchSegmentHeader": "next-router-segment-prefetch",
+    "prefetchSegmentSuffix": ".segment.rsc",
+    "prefetchSegmentDirSuffix": ".segments"
+  },
+  "rewriteHeaders": {
+    "pathHeader": "x-nextjs-rewritten-path",
+    "queryHeader": "x-nextjs-rewritten-query"
+  }
+}

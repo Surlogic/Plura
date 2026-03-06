@@ -5,10 +5,12 @@ import type { ChangeEvent, FormEvent } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import axios from 'axios';
-import Navbar from '@/components/shared/Navbar';
+import AuthTopBar from '@/components/auth/AuthTopBar';
 import Footer from '@/components/shared/Footer';
 import GoogleLoginButton from '@/components/auth/GoogleLoginButton';
 import AppleLoginButton from '@/components/auth/AppleLoginButton';
+import Badge from '@/components/ui/Badge';
+import Card from '@/components/ui/Card';
 import api from '@/services/api';
 import { useCategories } from '@/hooks/useCategories';
 import { mapboxForwardGeocode } from '@/services/mapbox';
@@ -33,7 +35,7 @@ export default function ProfesionalRegisterPage() {
   };
 
   const inputClassName =
-    'h-12 w-full rounded-[16px] border border-[#0E2A47]/10 bg-[#F4F6F8] px-4 text-sm text-[#0E2A47] placeholder:text-[#6B7280] focus:outline-none focus:ring-2 focus:ring-[#1FB6A6]/40';
+    'h-12 w-full rounded-[18px] border border-[color:var(--border-soft)] bg-white/88 px-4 text-sm text-[color:var(--ink)] placeholder:text-[color:var(--ink-muted)] focus:outline-none focus:ring-2 focus:ring-[rgba(15,118,110,0.18)]';
   const { categories, isLoading: categoriesLoading } = useCategories();
   const [form, setForm] = useState({
     fullName: '',
@@ -324,29 +326,27 @@ export default function ProfesionalRegisterPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#F4F6F8] text-[#0E2A47]">
-      <Navbar />
+    <div className="min-h-screen bg-[radial-gradient(1200px_700px_at_15%_-10%,rgba(42,165,160,0.18),transparent_55%),radial-gradient(950px_650px_at_100%_0%,rgba(16,42,75,0.32),transparent_50%),linear-gradient(180deg,#091223_0%,#0A1424_100%)] text-[#E8EEF7]">
+      <AuthTopBar tone="professional" />
       <main className="mx-auto flex w-full max-w-6xl flex-1 items-center justify-center px-4 py-16">
-        <div className="w-full max-w-md space-y-6 rounded-[24px] bg-white p-8 shadow-sm">
+        <Card tone="default" padding="lg" className="w-full max-w-md space-y-6 rounded-[32px] text-[color:var(--ink)]">
           <div className="space-y-2">
-            <p className="text-xs uppercase tracking-[0.35em] text-[#6B7280]">
-              Registro
-            </p>
-            <h1 className="text-2xl font-semibold text-[#0E2A47]">
+            <Badge variant="accent" className="border-[#0f766e]/20 bg-[#ecfdf5] text-[#0f766e]">Registro</Badge>
+            <h1 className="text-2xl font-semibold text-[color:var(--ink)]">
               Registro profesional
             </h1>
-            <p className="text-sm text-[#6B7280]">
+            <p className="text-sm text-[color:var(--ink-muted)]">
               Completá tus datos para gestionar tu negocio en Plura.
             </p>
           </div>
 
           <div className="space-y-3">
             <div className="flex items-center gap-3">
-              <div className="h-px flex-1 bg-[#E2E8F0]" />
-              <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#94A3B8]">
+              <div className="h-px flex-1 bg-[color:var(--border-soft)]" />
+              <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[color:var(--ink-faint)]">
                 Registrate con
               </span>
-              <div className="h-px flex-1 bg-[#E2E8F0]" />
+              <div className="h-px flex-1 bg-[color:var(--border-soft)]" />
             </div>
             <div className="space-y-2">
               <GoogleLoginButton
@@ -361,11 +361,11 @@ export default function ProfesionalRegisterPage() {
           </div>
 
           <div className="flex items-center gap-3">
-            <div className="h-px flex-1 bg-[#E2E8F0]" />
-            <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#94A3B8]">
+            <div className="h-px flex-1 bg-[color:var(--border-soft)]" />
+            <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[color:var(--ink-faint)]">
               o con email
             </span>
-            <div className="h-px flex-1 bg-[#E2E8F0]" />
+            <div className="h-px flex-1 bg-[color:var(--border-soft)]" />
           </div>
 
           <form className="space-y-4" onSubmit={handleSubmit}>
@@ -667,23 +667,23 @@ export default function ProfesionalRegisterPage() {
 
             <button
               type="submit"
-              className="h-12 w-full rounded-full bg-[linear-gradient(135deg,#1FB6A6,#0E2A47)] text-sm font-semibold text-white shadow-sm transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-70"
+              className="h-12 w-full rounded-full border border-transparent bg-[linear-gradient(135deg,#0f766e,#0e2a47)] text-sm font-semibold text-white shadow-[var(--shadow-lift)] transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-70"
               disabled={isSubmitting || !isFormValid}
             >
               {isSubmitting ? 'Creando cuenta...' : 'Crear cuenta'}
             </button>
           </form>
 
-          <p className="text-center text-xs text-[#6B7280]">
+          <p className="text-center text-xs text-[color:var(--ink-muted)]">
             ¿Ya tenés cuenta?{' '}
             <Link
               href="/profesional/auth/login"
-              className="font-semibold text-[#1FB6A6]"
+              className="font-semibold text-[#0f766e]"
             >
               Iniciar sesión profesional
             </Link>
           </p>
-        </div>
+        </Card>
       </main>
       <Footer />
     </div>

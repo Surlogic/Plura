@@ -1,19 +1,45 @@
-import React from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Image } from 'react-native';
+import React, { useEffect, useMemo, useState } from 'react';
+import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
+import { listPublicProfessionals, type PublicProfessionalSummary } from '../../src/services/publicBookings';
+import { getClientNextBooking, type ClientNextBooking } from '../../src/services/clientFeatures';
+import { getApiErrorMessage } from '../../src/services/errors';
 
 // Datos de prueba (los mismos de tu web)
-const categories = ['Peluquería', 'Barbería', 'Uñas', 'Cosmetología', 'Spa', 'Maquillaje'];
-const businesses = [
-  { name: 'Atelier Glow', category: 'Salón de belleza', rating: '4.9' },
-  { name: 'Barbería Sur', category: 'Barbería', rating: '4.8' },
-  { name: 'Studio Aura', category: 'Cosmetología', rating: '4.9' },
-];
+const categories = ['Peluqueria', 'Barberia', 'Unas', 'Cosmetologia', 'Spa', 'Maquillaje'];
 
 export default function HomeScreen() {
+  const [isLoading, setIsLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [businesses, setBusinesses] = useState<PublicProfessionalSummary[]>([]);
+  const [nextBooking, setNextBooking] = useState<ClientNextBooking | null>(null);
+
+  const load = async () => {
+    setIsLoading(true);
+    setErrorMessage(null);
+    try {
+      const [professionals, upcoming] = await Promise.all([
+        listPublicProfessionals(),
+        getClientNextBooking().catch(() => null),
+      ]);
+      setBusinesses(professionals);
+      setNextBooking(upcoming);
+    } catch (error) {
+      setErrorMessage(getApiErrorMessage(error, 'No pudimos cargar la pantalla de inicio.'));
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    load();
+  }, []);
+
+  const topBusinesses = useMemo(() => businesses.slice(0, 6), [businesses]);
+
   return (
     <SafeAreaView className="flex-1 bg-background">
       <ScrollView 
@@ -32,7 +58,12 @@ export default function HomeScreen() {
               </Text>
             </View>
             <View className="h-12 w-12 rounded-full bg-white items-center justify-center shadow-sm">
-              <Ionicons name="notifications-outline" size={24} color="#0E2A47" />
+              <Ionicons
+                name="notifications-outline"
+                size={24}
+                color="#0E2A47"
+                onPress={() => router.push('/(tabs)/notifications')}
+              />
             </View>
           </View>
 
@@ -86,6 +117,15 @@ export default function HomeScreen() {
 
         {/* Banner Promocional con Gradiente */}
         <View className="px-6 mt-10">
+          {errorMessage ? (
+            <View className="mb-4 rounded-2xl border border-red-200 bg-red-50 p-4">
+              <Text className="text-sm text-red-600">{errorMessage}</Text>
+              <TouchableOpacity onPress={load} className="mt-3 self-start rounded-full bg-white px-4 py-2">
+                <Text className="text-xs font-bold text-secondary">Reintentar</Text>
+              </TouchableOpacity>
+            </View>
+          ) : null}
+
           <LinearGradient
             colors={['#1FB6A6', '#0E2A47']}
             start={{ x: 0, y: 0 }}
@@ -93,13 +133,15 @@ export default function HomeScreen() {
             className="rounded-[28px] p-6 shadow-md"
           >
             <Text className="text-white text-xl font-bold mb-2">
-              Turnos disponibles hoy
+              {nextBooking ? 'Tu proximo turno' : 'Turnos disponibles hoy'}
             </Text>
             <Text className="text-white/80 text-sm mb-4">
-              Encontrá profesionales con espacios libres para las próximas horas.
+              {nextBooking
+                ? `${nextBooking.service} con ${nextBooking.professional} - ${nextBooking.date} ${nextBooking.time}`
+                : 'Encontra profesionales con espacios libres para las proximas horas.'}
             </Text>
             <TouchableOpacity className="bg-white px-5 py-2.5 rounded-full self-start">
-              <Text className="text-secondary font-bold text-sm">Ver disponibilidad</Text>
+              <Text className="text-secondary font-bold text-sm">{nextBooking ? 'Ver detalle' : 'Ver disponibilidad'}</Text>
             </TouchableOpacity>
           </LinearGradient>
         </View>
@@ -115,10 +157,17 @@ export default function HomeScreen() {
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={{ paddingHorizontal: 24, gap: 16 }}
           >
-            {businesses.map((business, index) => (
+            {isLoading ? (
+              <View className="w-64 bg-white rounded-[28px] p-4 shadow-sm border border-secondary/5 items-center justify-center">
+                <ActivityIndicator color="#1FB6A6" />
+              </View>
+            ) : null}
+
+            {!isLoading && topBusinesses.map((business, index) => (
               <TouchableOpacity 
-                key={index}
+                key={business.id || index}
                 activeOpacity={0.9}
+                onPress={() => router.push(`/profesional/${business.slug}`)}
                 className="w-64 bg-white rounded-[28px] p-4 shadow-sm border border-secondary/5"
               >
                 {/* Imagen del Local (Placeholder) */}
@@ -129,16 +178,16 @@ export default function HomeScreen() {
                 <View className="flex-row justify-between items-start">
                   <View className="flex-1 pr-2">
                     <Text className="text-lg font-bold text-secondary" numberOfLines={1}>
-                      {business.name}
+                      {business.fullName}
                     </Text>
                     <Text className="text-sm text-gray-500 mt-0.5">
-                      {business.category}
+                      {business.rubro || 'Profesional'}
                     </Text>
                   </View>
                   <View className="flex-row items-center bg-primary/10 px-2 py-1 rounded-full">
                     <Ionicons name="star" size={12} color="#1FB6A6" />
                     <Text className="text-xs font-bold text-primary ml-1">
-                      {business.rating}
+                      4.9
                     </Text>
                   </View>
                 </View>

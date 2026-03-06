@@ -1,19 +1,91 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
 import { Link, router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
+import * as AuthSession from 'expo-auth-session';
+import * as Google from 'expo-auth-session/providers/google';
+import * as WebBrowser from 'expo-web-browser';
 import api from '../../src/services/api';
 import { setProfessionalToken } from '../../src/services/session';
 import { useProfessionalProfileContext } from '../../src/context/ProfessionalProfileContext';
+import { oauthLoginWithAuthorizationCode } from '../../src/services/oauth';
+
+WebBrowser.maybeCompleteAuthSession();
 
 export default function LoginScreen() {
   const { refreshProfile } = useProfessionalProfileContext();
   const [form, setForm] = useState({ email: '', password: '' });
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isGoogleSubmitting, setIsGoogleSubmitting] = useState(false);
   
   // Agregamos un estado para el tipo de login
   const [role, setRole] = useState<'cliente' | 'profesional'>('cliente');
+
+  const googleClientId = process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID || '';
+  const redirectUri = useMemo(
+    () => AuthSession.makeRedirectUri({ scheme: 'plura' }),
+    [],
+  );
+
+  const [googleRequest, googleResponse, promptGoogleAuth] = Google.useAuthRequest({
+    androidClientId: googleClientId,
+    iosClientId: googleClientId,
+    webClientId: googleClientId,
+    scopes: ['openid', 'profile', 'email'],
+    responseType: AuthSession.ResponseType.Code,
+    redirectUri,
+  });
+
+  useEffect(() => {
+    const handleGoogleResponse = async () => {
+      if (!googleResponse) return;
+
+      if (googleResponse.type !== 'success') {
+        if (googleResponse.type !== 'dismiss' && googleResponse.type !== 'cancel') {
+          setErrorMessage('No se pudo completar el acceso con Google.');
+        }
+        setIsGoogleSubmitting(false);
+        return;
+      }
+
+      const authorizationCode = googleResponse.params?.code;
+      const codeVerifier = googleRequest?.codeVerifier;
+
+      if (!authorizationCode || !codeVerifier) {
+        setErrorMessage('No se recibió autorización válida de Google.');
+        setIsGoogleSubmitting(false);
+        return;
+      }
+
+      try {
+        const result = await oauthLoginWithAuthorizationCode(
+          'google',
+          authorizationCode,
+          codeVerifier,
+          redirectUri,
+        );
+
+        if (!result.accessToken) {
+          setErrorMessage('Google autenticó, pero el backend no devolvió token.');
+          return;
+        }
+
+        await setProfessionalToken(result.accessToken);
+        await refreshProfile();
+        router.replace('/(tabs)/dashboard');
+      } catch (error: any) {
+        const backendMessage =
+          error?.response?.data?.message ||
+          (typeof error?.response?.data === 'string' ? error.response.data : null);
+        setErrorMessage(backendMessage || 'No se pudo iniciar sesión con Google.');
+      } finally {
+        setIsGoogleSubmitting(false);
+      }
+    };
+
+    handleGoogleResponse();
+  }, [googleResponse, googleRequest, redirectUri, refreshProfile]);
 
   const handleSubmit = async () => {
     setErrorMessage(null);
@@ -24,7 +96,8 @@ export default function LoginScreen() {
 
     try {
       setIsSubmitting(true);
-      const response = await api.post('/auth/login/profesional', {
+      const endpoint = role === 'profesional' ? '/auth/login/profesional' : '/auth/login/cliente';
+      const response = await api.post(endpoint, {
         email: form.email.trim().toLowerCase(),
         password: form.password,
       });
@@ -47,6 +120,21 @@ export default function LoginScreen() {
       setErrorMessage('Credenciales inválidas o error de servidor.');
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleGoogleLogin = async () => {
+    if (!googleClientId) {
+      setErrorMessage('Falta EXPO_PUBLIC_GOOGLE_CLIENT_ID en .env');
+      return;
+    }
+
+    setErrorMessage(null);
+    setIsGoogleSubmitting(true);
+    const result = await promptGoogleAuth();
+
+    if (result.type !== 'success') {
+      setIsGoogleSubmitting(false);
     }
   };
 
@@ -120,7 +208,7 @@ export default function LoginScreen() {
               <TouchableOpacity 
                 className="mt-6 shadow-md"
                 onPress={handleSubmit}
-                disabled={isSubmitting}
+                disabled={isSubmitting || isGoogleSubmitting}
                 activeOpacity={0.8}
               >
                 <LinearGradient
@@ -135,6 +223,21 @@ export default function LoginScreen() {
                     <Text className="text-base font-semibold text-white">Iniciar sesión</Text>
                   )}
                 </LinearGradient>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                className="mt-3 h-14 w-full items-center justify-center rounded-full border border-secondary/15 bg-white"
+                onPress={handleGoogleLogin}
+                disabled={!googleRequest || isSubmitting || isGoogleSubmitting}
+                activeOpacity={0.8}
+              >
+                {isGoogleSubmitting ? (
+                  <ActivityIndicator color="#0E2A47" />
+                ) : (
+                  <Text className="text-base font-semibold text-secondary">
+                    Continuar con Google
+                  </Text>
+                )}
               </TouchableOpacity>
             </View>
 

@@ -11,6 +11,7 @@ export default function RootLayout() {
         <Stack.Screen name="index" />
         <Stack.Screen name="(auth)" options={{ headerShown: false }} />
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        <Stack.Screen name="reservar" options={{ headerShown: false }} />
       </Stack>
     </ProfessionalProfileProvider>
   );

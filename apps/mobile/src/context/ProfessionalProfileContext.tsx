@@ -2,9 +2,20 @@ import React, { createContext, useContext, useState, useEffect, ReactNode } from
 import api from '../services/api';
 import { getProfessionalToken, clearProfessionalToken } from '../services/session';
 import { ProfessionalProfile } from '../types/professional'; // Ajusta la ruta a tus tipos si es necesario
+import { logWarn } from '../services/logger';
+
+type ClientProfile = {
+  id: string;
+  fullName: string;
+  email?: string;
+  role?: string;
+};
 
 interface ContextProps {
   profile: ProfessionalProfile | null;
+  clientProfile: ClientProfile | null;
+  role: 'professional' | 'client' | null;
+  isAuthenticated: boolean;
   hasLoaded: boolean;
   refreshProfile: () => Promise<void>;
   logout: () => Promise<void>;
@@ -14,6 +25,8 @@ const ProfessionalProfileContext = createContext<ContextProps | undefined>(undef
 
 export const ProfessionalProfileProvider = ({ children }: { children: ReactNode }) => {
   const [profile, setProfile] = useState<ProfessionalProfile | null>(null);
+  const [clientProfile, setClientProfile] = useState<ClientProfile | null>(null);
+  const [role, setRole] = useState<'professional' | 'client' | null>(null);
   const [hasLoaded, setHasLoaded] = useState(false);
 
   const refreshProfile = async () => {
@@ -23,17 +36,31 @@ export const ProfessionalProfileProvider = ({ children }: { children: ReactNode 
       // Si no hay token válido, cortamos acá
       if (!token || token === "null" || token === "undefined") {
         setProfile(null);
+        setClientProfile(null);
+        setRole(null);
         setHasLoaded(true); // <- APAGA LA RUEDITA
         return;
       }
 
-      const response = await api.get('/auth/me/profesional');
-      setProfile(response.data);
+      try {
+        const professionalResponse = await api.get<ProfessionalProfile>('/auth/me/profesional');
+        setProfile(professionalResponse.data);
+        setClientProfile(null);
+        setRole('professional');
+        return;
+      } catch {
+        const clientResponse = await api.get<ClientProfile>('/auth/me/cliente');
+        setClientProfile(clientResponse.data);
+        setProfile(null);
+        setRole('client');
+      }
       
     } catch (error) {
-      console.log('Error al cargar perfil:', error);
+      logWarn('profile', 'error cargando perfil', error);
       // Si hay error (ej. timeout o token vencido), borramos el perfil
       setProfile(null); 
+      setClientProfile(null);
+      setRole(null);
     } finally {
       // ESTO ES CLAVE: Pase lo que pase, apaga la ruedita cargando
       setHasLoaded(true); 
@@ -43,6 +70,8 @@ export const ProfessionalProfileProvider = ({ children }: { children: ReactNode 
   const logout = async () => {
     await clearProfessionalToken();
     setProfile(null);
+    setClientProfile(null);
+    setRole(null);
   };
 
   // Cargar el perfil automáticamente al abrir la app
@@ -51,7 +80,17 @@ export const ProfessionalProfileProvider = ({ children }: { children: ReactNode 
   }, []);
 
   return (
-    <ProfessionalProfileContext.Provider value={{ profile, hasLoaded, refreshProfile, logout }}>
+    <ProfessionalProfileContext.Provider
+      value={{
+        profile,
+        clientProfile,
+        role,
+        isAuthenticated: Boolean(profile || clientProfile),
+        hasLoaded,
+        refreshProfile,
+        logout,
+      }}
+    >
       {children}
     </ProfessionalProfileContext.Provider>
   );

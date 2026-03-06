@@ -7,10 +7,12 @@ export default function DashboardSubLayout() {
       headerStyle: { backgroundColor: '#F4F6F8' },
       headerTintColor: '#0E2A47',
       headerTitleStyle: { fontWeight: 'bold' },
-      headerBackTitleVisible: false,
     }}>
       <Stack.Screen name="agenda" options={{ title: 'Agenda' }} />
       <Stack.Screen name="services" options={{ title: 'Mis Servicios' }} />
+      <Stack.Screen name="business-profile" options={{ title: 'Perfil del negocio' }} />
+      <Stack.Screen name="schedule" options={{ title: 'Horarios' }} />
+      <Stack.Screen name="settings" options={{ title: 'Configuracion' }} />
     </Stack>
   );
 }

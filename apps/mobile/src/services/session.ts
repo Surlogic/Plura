@@ -1,4 +1,5 @@
 import * as SecureStore from 'expo-secure-store';
+import { logError, logWarn } from './logger';
 
 const TOKEN_KEY = 'plura_professional_token';
 
@@ -13,13 +14,13 @@ export const getProfessionalToken = async (): Promise<string | null> => {
 export const setProfessionalToken = async (token: string) => {
   try {
     if (!token) {
-      console.warn('Se intentó guardar un token vacío o indefinido.');
+      logWarn('session', 'token vacio ignorado');
       return;
     }
     // String() asegura que aunque llegue un número o algo raro, se convierta a texto
     await SecureStore.setItemAsync(TOKEN_KEY, String(token));
   } catch (error) {
-    console.error('Error guardando el token', error);
+    logError('session', 'error guardando token', error);
   }
 };
 
@@ -27,6 +28,6 @@ export const clearProfessionalToken = async () => {
   try {
     await SecureStore.deleteItemAsync(TOKEN_KEY);
   } catch (error) {
-    console.error('Error borrando el token', error);
+    logError('session', 'error borrando token', error);
   }
 };

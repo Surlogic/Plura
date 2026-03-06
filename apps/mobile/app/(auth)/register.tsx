@@ -5,6 +5,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import api from '../../src/services/api';
 
 export default function RegisterScreen() {
+  const [role, setRole] = useState<'cliente' | 'profesional'>('cliente');
   const [form, setForm] = useState({
     fullName: '',
     rubro: '',
@@ -20,17 +21,18 @@ export default function RegisterScreen() {
     setErrorMessage(null);
     
     // Validación básica
-    if (!form.fullName || !form.rubro || !form.email || !form.password) {
+    const requiresBusiness = role === 'profesional';
+    if (!form.fullName || !form.email || !form.password || (requiresBusiness && !form.rubro)) {
       setErrorMessage('Completá los campos obligatorios.');
       return;
     }
 
     try {
       setIsSubmitting(true);
-      // Enviamos "LOCAL" por defecto en la app móvil, podrías añadir un picker luego si lo deseas
       const payload = { ...form, email: form.email.trim().toLowerCase(), tipoCliente: 'LOCAL' };
-      
-      await api.post('/auth/register/profesional', payload);
+      const endpoint = role === 'profesional' ? '/auth/register/profesional' : '/auth/register/cliente';
+
+      await api.post(endpoint, payload);
       
       // Una vez creado, lo mandamos al login para que inicie sesión
       router.replace('/(auth)/login');
@@ -56,8 +58,23 @@ export default function RegisterScreen() {
                 Registro
               </Text>
               <Text className="text-2xl font-semibold text-secondary">
-                Creá tu negocio
+                Crea tu cuenta
               </Text>
+            </View>
+
+            <View className="flex-row rounded-full bg-background p-1 mb-2">
+              <TouchableOpacity
+                className={`flex-1 items-center justify-center rounded-full py-2.5 ${role === 'cliente' ? 'bg-white shadow-sm' : ''}`}
+                onPress={() => setRole('cliente')}
+              >
+                <Text className={`font-bold text-sm ${role === 'cliente' ? 'text-secondary' : 'text-gray-400'}`}>Cliente</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                className={`flex-1 items-center justify-center rounded-full py-2.5 ${role === 'profesional' ? 'bg-white shadow-sm' : ''}`}
+                onPress={() => setRole('profesional')}
+              >
+                <Text className={`font-bold text-sm ${role === 'profesional' ? 'text-secondary' : 'text-gray-400'}`}>Profesional</Text>
+              </TouchableOpacity>
             </View>
 
             <View className="space-y-4">
@@ -71,15 +88,17 @@ export default function RegisterScreen() {
                 />
               </View>
 
-              <View className="mt-3">
-                <Text className="mb-1 text-xs font-medium text-secondary">Rubro</Text>
-                <TextInput
-                  className="h-12 w-full rounded-2xl border border-secondary/10 bg-background px-4 text-sm text-secondary"
-                  placeholder="Ej: Salón de belleza"
-                  value={form.rubro}
-                  onChangeText={(text) => setForm({ ...form, rubro: text })}
-                />
-              </View>
+              {role === 'profesional' ? (
+                <View className="mt-3">
+                  <Text className="mb-1 text-xs font-medium text-secondary">Rubro</Text>
+                  <TextInput
+                    className="h-12 w-full rounded-2xl border border-secondary/10 bg-background px-4 text-sm text-secondary"
+                    placeholder="Ej: Salon de belleza"
+                    value={form.rubro}
+                    onChangeText={(text) => setForm({ ...form, rubro: text })}
+                  />
+                </View>
+              ) : null}
 
               <View className="mt-3">
                 <Text className="mb-1 text-xs font-medium text-secondary">Email</Text>

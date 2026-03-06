@@ -1,18 +1,36 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, TextInput } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import api from '../../src/services/api';
 import type { ProfessionalService } from '../../src/types/professional';
+import {
+  createProfessionalService,
+  deleteProfessionalService,
+  listProfessionalServices,
+  updateProfessionalService,
+} from '../../src/services/professionalConfig';
+
+const emptyDraft = {
+  name: '',
+  description: '',
+  imageUrl: '',
+  price: '',
+  duration: '',
+  postBufferMinutes: '0',
+};
 
 export default function ServicesScreen() {
   const [services, setServices] = useState<ProfessionalService[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [draft, setDraft] = useState(emptyDraft);
+  const [message, setMessage] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchServices = async () => {
       try {
-        const response = await api.get('/profesional/services');
-        setServices(response.data);
+        const response = await listProfessionalServices();
+        setServices(response);
       } catch (error) {
         console.error("Error cargando servicios", error);
       } finally {
@@ -33,13 +51,92 @@ export default function ServicesScreen() {
   return (
     <View className="flex-1 bg-background">
       <ScrollView contentContainerStyle={{ paddingHorizontal: 24, paddingTop: 20, paddingBottom: 40 }}>
+        <View className="bg-white rounded-[20px] p-5 mb-5 shadow-sm border border-secondary/5">
+          <Text className="text-sm font-semibold text-gray-500 uppercase tracking-[2px]">
+            {editingId ? 'Editar servicio' : 'Nuevo servicio'}
+          </Text>
+
+          <TextInput
+            className="mt-3 h-11 rounded-xl border border-secondary/10 bg-background px-3 text-secondary"
+            placeholder="Nombre"
+            value={draft.name}
+            onChangeText={(text) => setDraft((prev) => ({ ...prev, name: text }))}
+          />
+          <TextInput
+            className="mt-2 h-11 rounded-xl border border-secondary/10 bg-background px-3 text-secondary"
+            placeholder="Descripcion"
+            value={draft.description}
+            onChangeText={(text) => setDraft((prev) => ({ ...prev, description: text }))}
+          />
+          <View className="mt-2 flex-row" style={{ gap: 8 }}>
+            <TextInput
+              className="flex-1 h-11 rounded-xl border border-secondary/10 bg-background px-3 text-secondary"
+              placeholder="Precio"
+              value={draft.price}
+              onChangeText={(text) => setDraft((prev) => ({ ...prev, price: text }))}
+            />
+            <TextInput
+              className="flex-1 h-11 rounded-xl border border-secondary/10 bg-background px-3 text-secondary"
+              placeholder="Duracion"
+              value={draft.duration}
+              onChangeText={(text) => setDraft((prev) => ({ ...prev, duration: text }))}
+            />
+          </View>
+
+          <TouchableOpacity
+            disabled={isSaving || !draft.name.trim() || !draft.price.trim() || !draft.duration.trim()}
+            onPress={async () => {
+              setIsSaving(true);
+              setMessage(null);
+              try {
+                const payload = {
+                  name: draft.name.trim(),
+                  description: draft.description.trim(),
+                  imageUrl: draft.imageUrl.trim(),
+                  price: draft.price.trim(),
+                  duration: draft.duration.trim(),
+                  postBufferMinutes: Number(draft.postBufferMinutes) || 0,
+                  active: true,
+                };
+
+                if (editingId) {
+                  const updated = await updateProfessionalService(editingId, payload);
+                  setServices((prev) => prev.map((service) => (service.id === editingId ? updated : service)));
+                  setMessage('Servicio actualizado.');
+                } else {
+                  const created = await createProfessionalService(payload);
+                  setServices((prev) => [created, ...prev]);
+                  setMessage('Servicio creado.');
+                }
+
+                setDraft(emptyDraft);
+                setEditingId(null);
+              } catch {
+                setMessage('No se pudo guardar el servicio.');
+              } finally {
+                setIsSaving(false);
+              }
+            }}
+            className={`mt-4 h-11 rounded-full items-center justify-center ${isSaving ? 'bg-gray-300' : 'bg-secondary'}`}
+          >
+            {isSaving ? <ActivityIndicator color="#fff" /> : <Text className="text-white font-semibold">{editingId ? 'Guardar cambios' : 'Crear servicio'}</Text>}
+          </TouchableOpacity>
+
+          {message ? <Text className="mt-2 text-xs text-secondary">{message}</Text> : null}
+        </View>
         
         <View className="flex-row justify-between items-center mb-6">
           <Text className="text-sm font-semibold text-gray-500 uppercase tracking-[2px]">
             Tus Servicios ({services.length})
           </Text>
-          <TouchableOpacity className="bg-secondary px-3 py-1.5 rounded-full">
-            <Text className="text-white text-xs font-bold">+ Nuevo</Text>
+          <TouchableOpacity
+            className="bg-secondary px-3 py-1.5 rounded-full"
+            onPress={() => {
+              setEditingId(null);
+              setDraft(emptyDraft);
+            }}
+          >
+            <Text className="text-white text-xs font-bold">Nuevo</Text>
           </TouchableOpacity>
         </View>
 
@@ -62,10 +159,33 @@ export default function ServicesScreen() {
               </View>
 
               <View className="flex-row mt-4 gap-2">
-                <TouchableOpacity className="flex-1 bg-background border border-secondary/10 py-2.5 rounded-full items-center">
+                <TouchableOpacity
+                  className="flex-1 bg-background border border-secondary/10 py-2.5 rounded-full items-center"
+                  onPress={() => {
+                    setEditingId(service.id);
+                    setDraft({
+                      name: service.name || '',
+                      description: '',
+                      imageUrl: '',
+                      price: service.price || '',
+                      duration: service.duration || '',
+                      postBufferMinutes: '0',
+                    });
+                  }}
+                >
                   <Text className="text-secondary font-bold text-sm">Editar</Text>
                 </TouchableOpacity>
-                <TouchableOpacity className="bg-red-50 border border-red-100 py-2.5 px-5 rounded-full items-center">
+                <TouchableOpacity
+                  className="bg-red-50 border border-red-100 py-2.5 px-5 rounded-full items-center"
+                  onPress={async () => {
+                    try {
+                      await deleteProfessionalService(service.id);
+                      setServices((prev) => prev.filter((item) => item.id !== service.id));
+                    } catch {
+                      setMessage('No se pudo eliminar el servicio.');
+                    }
+                  }}
+                >
                   <Ionicons name="trash-outline" size={16} color="#EF4444" />
                 </TouchableOpacity>
               </View>

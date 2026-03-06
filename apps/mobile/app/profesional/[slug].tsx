@@ -1,23 +1,54 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, Platform } from 'react-native';
+import React, { useEffect, useMemo, useState } from 'react';
+import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import api from '../../src/services/api';
-import type { PublicService } from '../../src/types/professional';
+import {
+  getPublicProfessionalBySlug,
+  getPublicSlots,
+  type PublicProfessionalService,
+} from '../../src/services/publicBookings';
+import {
+  getFavoriteProfessionalSlugs,
+  toggleFavoriteProfessionalSlug,
+} from '../../src/services/clientFeatures';
 
 export default function ProfesionalDetailScreen() {
   const { slug } = useLocalSearchParams<{ slug: string }>();
   const [data, setData] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [selectedServiceId, setSelectedServiceId] = useState<string | null>(null);
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const [slots, setSlots] = useState<string[]>([]);
+  const [slotsLoading, setSlotsLoading] = useState(false);
+  const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
+  const [reserveMessage, setReserveMessage] = useState<string | null>(null);
+  const [isFavorite, setIsFavorite] = useState(false);
+
+  const upcomingDates = useMemo(() => {
+    const dates: string[] = [];
+    const now = new Date();
+    for (let index = 0; index < 7; index += 1) {
+      const next = new Date(now);
+      next.setDate(now.getDate() + index);
+      dates.push(next.toISOString().slice(0, 10));
+    }
+    return dates;
+  }, []);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const response = await api.get(`/public/profesionales/${slug}`);
-        setData(response.data);
+        const response = await getPublicProfessionalBySlug(slug);
+        setData(response);
+        if (response.services?.[0]?.id) {
+          setSelectedServiceId(response.services[0].id);
+        }
+        if (upcomingDates[0]) {
+          setSelectedDate(upcomingDates[0]);
+        }
       } catch (err) {
         setError('No encontramos este profesional.');
       } finally {
@@ -25,7 +56,36 @@ export default function ProfesionalDetailScreen() {
       }
     };
     if (slug) fetchData();
+  }, [slug, upcomingDates]);
+
+  useEffect(() => {
+    const loadFavorite = async () => {
+      if (!slug) return;
+      const items = await getFavoriteProfessionalSlugs();
+      setIsFavorite(items.includes(slug));
+    };
+
+    loadFavorite();
   }, [slug]);
+
+  useEffect(() => {
+    const loadSlots = async () => {
+      if (!slug || !selectedServiceId || !selectedDate) return;
+      setSlotsLoading(true);
+      setReserveMessage(null);
+      setSelectedSlot(null);
+      try {
+        const response = await getPublicSlots(slug, selectedDate, selectedServiceId);
+        setSlots(response);
+      } catch {
+        setSlots([]);
+      } finally {
+        setSlotsLoading(false);
+      }
+    };
+
+    loadSlots();
+  }, [slug, selectedServiceId, selectedDate]);
 
   // Si está cargando
   if (isLoading) {
@@ -71,6 +131,17 @@ export default function ProfesionalDetailScreen() {
           >
             <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
           </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={async () => {
+              if (!slug) return;
+              const next = await toggleFavoriteProfessionalSlug(slug);
+              setIsFavorite(next.includes(slug));
+            }}
+            className="absolute right-4 top-12 h-10 w-10 bg-white/20 rounded-full items-center justify-center"
+          >
+            <Ionicons name={isFavorite ? 'heart' : 'heart-outline'} size={20} color="#FFFFFF" />
+          </TouchableOpacity>
         </LinearGradient>
 
         {/* Tarjeta de Información Principal (Solapada hacia arriba) */}
@@ -89,9 +160,9 @@ export default function ProfesionalDetailScreen() {
                 </Text>
               </View>
             </View>
-            {data.publicHeadline && (
+            {data.headline && (
               <Text className="mt-4 text-base text-gray-500 leading-relaxed">
-                {data.publicHeadline}
+                {data.headline}
               </Text>
             )}
           </View>
@@ -106,7 +177,9 @@ export default function ProfesionalDetailScreen() {
               <Text className="text-gray-500 text-center">No hay servicios cargados todavía.</Text>
             </View>
           ) : (
-            data.services.map((service: PublicService, index: number) => (
+            data.services.map((service: PublicProfessionalService, index: number) => {
+              const isSelected = selectedServiceId === service.id;
+              return (
               <View key={service.id || index} className="bg-white rounded-[20px] p-5 mb-4 shadow-sm border border-secondary/5">
                 <View className="flex-row justify-between items-start mb-3">
                   <View className="flex-1 pr-4">
@@ -120,24 +193,93 @@ export default function ProfesionalDetailScreen() {
                 
                 <TouchableOpacity 
                   activeOpacity={0.8}
-                  // Al tocar, podrías navegar a una pantalla de reservar pasando los parámetros
-                  onPress={() => alert(`Iniciando reserva para ${service.name}`)}
-                  className="bg-secondary h-12 rounded-full items-center justify-center mt-2"
+                  onPress={() => {
+                    setSelectedServiceId(service.id);
+                    setReserveMessage(null);
+                  }}
+                  className={`h-12 rounded-full items-center justify-center mt-2 ${isSelected ? 'bg-primary' : 'bg-secondary'}`}
                 >
-                  <Text className="text-white font-bold">Reservar turno</Text>
+                  <Text className="text-white font-bold">{isSelected ? 'Servicio seleccionado' : 'Elegir servicio'}</Text>
                 </TouchableOpacity>
               </View>
-            ))
+            );
+          })
           )}
         </View>
 
+        <View className="px-6 mb-10">
+          <Text className="text-xl font-bold text-secondary mb-3">Reservar turno</Text>
+
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
+            {upcomingDates.map((date) => {
+              const selected = selectedDate === date;
+              return (
+                <TouchableOpacity
+                  key={date}
+                  onPress={() => setSelectedDate(date)}
+                  className={`rounded-full px-4 py-2 ${selected ? 'bg-secondary' : 'bg-white border border-secondary/10'}`}
+                >
+                  <Text className={`font-semibold ${selected ? 'text-white' : 'text-secondary'}`}>{date.slice(5)}</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+
+          <View className="mt-4 rounded-[20px] bg-white p-4 border border-secondary/5">
+            {slotsLoading ? (
+              <View className="py-5 items-center">
+                <ActivityIndicator color="#1FB6A6" />
+              </View>
+            ) : slots.length === 0 ? (
+              <Text className="text-gray-500">No hay horarios disponibles para esta fecha.</Text>
+            ) : (
+              <View className="flex-row flex-wrap" style={{ gap: 8 }}>
+                {slots.map((slot) => {
+                  const selected = selectedSlot === slot;
+                  return (
+                    <TouchableOpacity
+                      key={slot}
+                      onPress={() => setSelectedSlot(slot)}
+                      className={`rounded-full px-4 py-2 ${selected ? 'bg-primary' : 'bg-background border border-secondary/10'}`}
+                    >
+                      <Text className={`font-semibold ${selected ? 'text-white' : 'text-secondary'}`}>{slot}</Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            )}
+
+            <TouchableOpacity
+              disabled={!selectedServiceId || !selectedDate || !selectedSlot}
+              onPress={() => {
+                if (!slug || !selectedServiceId || !selectedDate || !selectedSlot) return;
+                setReserveMessage(null);
+                router.push({
+                  pathname: '/reservar',
+                  params: {
+                    slug,
+                    serviceId: selectedServiceId,
+                    date: selectedDate,
+                    time: selectedSlot,
+                  },
+                });
+              }}
+              className="mt-4 h-12 rounded-full items-center justify-center bg-secondary"
+            >
+              <Text className="font-bold text-white">Continuar al checkout</Text>
+            </TouchableOpacity>
+
+            {reserveMessage ? <Text className="mt-3 text-sm text-secondary">{reserveMessage}</Text> : null}
+          </View>
+        </View>
+
         {/* Sección Sobre Mí */}
-        {data.publicAbout && (
+        {data.about && (
           <View className="px-6 mb-10">
             <Text className="text-xl font-bold text-secondary mb-3">Sobre el local</Text>
             <View className="bg-white rounded-[20px] p-5 shadow-sm border border-secondary/5">
               <Text className="text-gray-500 leading-relaxed text-sm">
-                {data.publicAbout}
+                {data.about}
               </Text>
             </View>
           </View>

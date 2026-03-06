@@ -11,6 +11,7 @@ node_modules/
 # Build outputs
 dist/
 build/
+.gradle/
 .out/
 .next/
 .next_*/
@@ -19,6 +20,8 @@ build/
 coverage/
 node_modules.stale-*/
 **/node_modules.stale-*/
+*.stale-*/
+**/*.stale-*/
 
 # Logs
 *.log

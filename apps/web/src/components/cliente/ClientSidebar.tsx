@@ -1,3 +1,4 @@
+import type { ReactElement } from 'react';
 import Link from 'next/link';
 
 type IconProps = {
@@ -15,7 +16,7 @@ type SidebarItem = {
   id: ClientSidebarSection;
   label: string;
   href: string;
-  icon: (props: IconProps) => JSX.Element;
+  icon: (props: IconProps) => ReactElement;
 };
 
 const HomeIcon = ({ className }: IconProps) => (

@@ -14,9 +14,9 @@
     "axios": "^1.13.5",
     "mapbox-gl": "^3.19.1",
     "next": "15.5.10",
-    "react": "18.2.0",
+    "react": "19.1.0",
     "react-apple-login": "^1.1.6",
-    "react-dom": "18.2.0",
+    "react-dom": "19.1.0",
     "react-map-gl": "^8.1.0"
   },
   "devDependencies": {
@@ -24,8 +24,8 @@
     "@next/eslint-plugin-next": "15.5.10",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
-    "@types/react": "18.2.79",
-    "@types/react-dom": "18.2.25",
+    "@types/react": "19.1.17",
+    "@types/react-dom": "19.1.9",
     "@typescript-eslint/eslint-plugin": "8.46.0",
     "@typescript-eslint/parser": "8.46.0",
     "eslint": "8.57.0",

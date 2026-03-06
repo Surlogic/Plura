@@ -3,6 +3,7 @@ import { View, Text, TextInput, TouchableOpacity, ActivityIndicator, KeyboardAvo
 import { Link, router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import api from '../../src/services/api';
+import { getApiErrorMessage } from '../../src/services/errors';
 
 export default function RegisterScreen() {
   const [role, setRole] = useState<'cliente' | 'profesional'>('cliente');
@@ -17,28 +18,62 @@ export default function RegisterScreen() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const isPhoneValid = (value: string) => /^[+0-9()\-\s]{3,30}$/.test(value);
+
   const handleSubmit = async () => {
     setErrorMessage(null);
-    
-    // Validación básica
+
+    const fullName = form.fullName.trim();
+    const rubro = form.rubro.trim();
+    const email = form.email.trim().toLowerCase();
+    const phoneNumber = form.phoneNumber.trim();
+    const location = form.location.trim();
+    const password = form.password;
+
+    // Validaciones alineadas con backend para evitar rechazos 400.
     const requiresBusiness = role === 'profesional';
-    if (!form.fullName || !form.email || !form.password || (requiresBusiness && !form.rubro)) {
-      setErrorMessage('Completá los campos obligatorios.');
+    if (!fullName || !email || !phoneNumber || !password || (requiresBusiness && !rubro)) {
+      setErrorMessage('Completá nombre, email, telefono, contrasena y rubro (si sos profesional).');
+      return;
+    }
+
+    if (password.length < 8) {
+      setErrorMessage('La contrasena debe tener al menos 8 caracteres.');
+      return;
+    }
+
+    if (!isPhoneValid(phoneNumber)) {
+      setErrorMessage('El telefono tiene un formato invalido.');
       return;
     }
 
     try {
       setIsSubmitting(true);
-      const payload = { ...form, email: form.email.trim().toLowerCase(), tipoCliente: 'LOCAL' };
       const endpoint = role === 'profesional' ? '/auth/register/profesional' : '/auth/register/cliente';
+      const payload = role === 'profesional'
+        ? {
+            fullName,
+            rubro,
+            email,
+            phoneNumber,
+            location: location || undefined,
+            password,
+            // Alta inicial sin geocodificacion; se completa luego en perfil profesional.
+            tipoCliente: 'SIN_LOCAL',
+          }
+        : {
+            fullName,
+            email,
+            phoneNumber,
+            password,
+          };
 
       await api.post(endpoint, payload);
       
       // Una vez creado, lo mandamos al login para que inicie sesión
       router.replace('/(auth)/login');
-    } catch (error: any) {
-      console.log('error', error);
-      setErrorMessage(error.response?.data?.message || 'No se pudo crear la cuenta.');
+    } catch (error: unknown) {
+      setErrorMessage(getApiErrorMessage(error, 'No se pudo crear la cuenta.'));
     } finally {
       setIsSubmitting(false);
     }

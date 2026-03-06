@@ -76,6 +76,9 @@ public class CookieOriginProtectionFilter extends OncePerRequestFilter {
             return true;
         }
         String path = request.getRequestURI();
+        if (isPublicAuthEndpoint(path)) {
+            return true;
+        }
         if (path != null && path.startsWith("/webhooks/")) {
             return true;
         }
@@ -84,6 +87,15 @@ public class CookieOriginProtectionFilter extends OncePerRequestFilter {
             return true;
         }
         return !hasAuthCookie(request);
+    }
+
+    private boolean isPublicAuthEndpoint(String path) {
+        if (path == null || path.isBlank()) {
+            return false;
+        }
+        return path.startsWith("/auth/register")
+            || path.startsWith("/auth/login")
+            || path.startsWith("/auth/oauth");
     }
 
     private boolean hasAuthCookie(HttpServletRequest request) {

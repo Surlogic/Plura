@@ -150,27 +150,13 @@ public class AuthService {
         }
 
         String tipoCliente = normalizeTipoCliente(request.getTipoCliente());
-        String location = normalizeLocation(request.getLocation());
+        String country = normalizeRequiredLocationPart(request.getCountry(), "country");
+        String city = normalizeRequiredLocationPart(request.getCity(), "city");
+        String fullAddress = normalizeRequiredLocationPart(request.getFullAddress(), "fullAddress");
+        String location = composeLocation(fullAddress, city, country);
         Double latitude = normalizeLatitude(request.getLatitude());
         Double longitude = normalizeLongitude(request.getLongitude());
         validateCoordinatesPair(latitude, longitude);
-
-        if (!"SIN_LOCAL".equals(tipoCliente) && (location == null || location.isBlank())) {
-            throw new ResponseStatusException(
-                HttpStatus.BAD_REQUEST,
-                "La ubicación es obligatoria para locales o profesionales con local propio"
-            );
-        }
-        if (!"SIN_LOCAL".equals(tipoCliente) && (latitude == null || longitude == null)) {
-            throw new ResponseStatusException(
-                HttpStatus.BAD_REQUEST,
-                "No se pudo geocodificar la ubicación"
-            );
-        }
-        if ("SIN_LOCAL".equals(tipoCliente)) {
-            latitude = null;
-            longitude = null;
-        }
 
         User user = new User();
         user.setFullName(request.getFullName().trim());
@@ -198,8 +184,11 @@ public class AuthService {
                 professionalProfileRepository::existsBySlug
             )
         );
-        profile.setLocation("SIN_LOCAL".equals(tipoCliente) ? null : location);
-        profile.setLocationText("SIN_LOCAL".equals(tipoCliente) ? null : location);
+        profile.setCountry(country);
+        profile.setCity(city);
+        profile.setFullAddress(fullAddress);
+        profile.setLocation(location);
+        profile.setLocationText(location);
         profile.setLatitude(latitude);
         profile.setLongitude(longitude);
         profile.setTipoCliente(tipoCliente);
@@ -453,6 +442,9 @@ public class AuthService {
             user.getPhoneNumber(),
             profile.getRubro(),
             profile.getLocation(),
+            profile.getCountry(),
+            profile.getCity(),
+            profile.getFullAddress(),
             profile.getLatitude(),
             profile.getLongitude(),
             profile.getTipoCliente(),
@@ -482,6 +474,9 @@ public class AuthService {
             )
         );
         profile.setTipoCliente("SIN_LOCAL");
+        profile.setCountry(null);
+        profile.setCity(null);
+        profile.setFullAddress(null);
         profile.setLocation(null);
         profile.setLocationText(null);
         profile.setLatitude(null);
@@ -563,6 +558,18 @@ public class AuthService {
         if (rawLocation == null) return null;
         String trimmed = rawLocation.trim();
         return trimmed.isBlank() ? null : trimmed;
+    }
+
+    private String normalizeRequiredLocationPart(String rawValue, String fieldName) {
+        String normalized = normalizeLocation(rawValue);
+        if (normalized == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, fieldName + " es obligatorio");
+        }
+        return normalized;
+    }
+
+    private String composeLocation(String fullAddress, String city, String country) {
+        return String.join(", ", fullAddress.trim(), city.trim(), country.trim());
     }
 
     private void validateCoordinatesPair(Double latitude, Double longitude) {

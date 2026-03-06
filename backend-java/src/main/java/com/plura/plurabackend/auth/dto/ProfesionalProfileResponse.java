@@ -16,6 +16,9 @@ public class ProfesionalProfileResponse {
     private String phoneNumber;
     private String rubro;
     private String location;
+    private String country;
+    private String city;
+    private String fullAddress;
     private Double latitude;
     private Double longitude;
     private String tipoCliente;

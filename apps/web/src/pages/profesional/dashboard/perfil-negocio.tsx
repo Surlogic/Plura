@@ -9,6 +9,7 @@ import api from '@/services/api';
 import { isAxiosError } from 'axios';
 import { useProfessionalDashboardUnsavedSection } from '@/context/ProfessionalDashboardUnsavedChangesContext';
 import { mapboxForwardGeocode } from '@/services/mapbox';
+import { getGeoLocationSuggestions, type GeoLocationSuggestion } from '@/services/geo';
 
 const slugify = (value: string) =>
   value
@@ -45,6 +46,9 @@ type BusinessProfileForm = {
   categorySlugs: string[];
   logoUrl: string;
   location: string;
+  country: string;
+  city: string;
+  fullAddress: string;
   latitude?: number;
   longitude?: number;
   email: string;
@@ -65,11 +69,17 @@ export default function ProfesionalBusinessProfilePage() {
   const [isDirty, setIsDirty] = useState(false);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
   const [saveError, setSaveError] = useState(false);
+  const [isGeoSuggesting, setIsGeoSuggesting] = useState(false);
+  const [activeGeoField, setActiveGeoField] = useState<'country' | 'city' | 'fullAddress' | null>(null);
+  const [geoSuggestions, setGeoSuggestions] = useState<GeoLocationSuggestion[]>([]);
   const [form, setForm] = useState<BusinessProfileForm>({
     businessName: '',
     categorySlugs: [] as string[],
     logoUrl: '',
     location: '',
+    country: '',
+    city: '',
+    fullAddress: '',
     latitude: undefined,
     longitude: undefined,
     email: '',
@@ -109,6 +119,9 @@ export default function ProfesionalBusinessProfilePage() {
       categorySlugs,
       logoUrl: profile.logoUrl || '',
       location: profile.location || '',
+      country: profile.country || '',
+      city: profile.city || '',
+      fullAddress: profile.fullAddress || '',
       latitude: typeof profile.latitude === 'number' ? profile.latitude : undefined,
       longitude: typeof profile.longitude === 'number' ? profile.longitude : undefined,
       email: profile.email || '',
@@ -136,7 +149,7 @@ export default function ProfesionalBusinessProfilePage() {
     setForm((prev) => ({
       ...prev,
       [name]: value,
-      ...(name === 'location'
+      ...(name === 'location' || name === 'country' || name === 'city' || name === 'fullAddress'
         ? {
             latitude: undefined,
             longitude: undefined,
@@ -145,6 +158,51 @@ export default function ProfesionalBusinessProfilePage() {
     }));
     setIsDirty(true);
     setSaveMessage(null);
+  };
+
+  const handleGeoFieldChange = async (
+    field: 'country' | 'city' | 'fullAddress',
+    value: string,
+  ) => {
+    setForm((prev) => ({
+      ...prev,
+      [field]: value,
+      latitude: undefined,
+      longitude: undefined,
+    }));
+    setActiveGeoField(field);
+    setIsDirty(true);
+    setSaveMessage(null);
+    if (value.trim().length < 2) {
+      setIsGeoSuggesting(false);
+      setGeoSuggestions([]);
+      return;
+    }
+
+    setIsGeoSuggesting(true);
+    const suggestions = await getGeoLocationSuggestions(value);
+    setGeoSuggestions(suggestions);
+    setIsGeoSuggesting(false);
+  };
+
+  const applyGeoSuggestion = (suggestion: GeoLocationSuggestion) => {
+    const country = (suggestion.country || '').trim();
+    const city = (suggestion.city || '').trim();
+    const fullAddress = (suggestion.fullAddress || '').trim();
+    const location = [fullAddress, city, country].filter(Boolean).join(', ');
+
+    setForm((prev) => ({
+      ...prev,
+      country: country || prev.country,
+      city: city || prev.city,
+      fullAddress: fullAddress || prev.fullAddress,
+      location: location || prev.location,
+      latitude: typeof suggestion.latitude === 'number' ? suggestion.latitude : prev.latitude,
+      longitude: typeof suggestion.longitude === 'number' ? suggestion.longitude : prev.longitude,
+    }));
+    setGeoSuggestions([]);
+    setActiveGeoField(null);
+    setIsDirty(true);
   };
 
   const toggleCategory = (slug: string) => {
@@ -188,7 +246,19 @@ export default function ProfesionalBusinessProfilePage() {
       }
 
       const primaryCategoryName = categoryNameBySlug.get(validCategorySlugs[0]) || '';
-      const normalizedLocation = form.location.trim();
+      const normalizedCountry = form.country.trim();
+      const normalizedCity = form.city.trim();
+      const normalizedFullAddress = form.fullAddress.trim();
+      const normalizedLocation = [normalizedFullAddress, normalizedCity, normalizedCountry]
+        .filter(Boolean)
+        .join(', ');
+
+      if (!normalizedCountry || !normalizedCity || !normalizedFullAddress) {
+        setSaveMessage('Completá país, ciudad y dirección completa para guardar.');
+        setSaveError(true);
+        setIsSaving(false);
+        return false;
+      }
 
       let latitude: number | null =
         typeof form.latitude === 'number' ? form.latitude : null;
@@ -226,6 +296,9 @@ export default function ProfesionalBusinessProfilePage() {
         categorySlugs: validCategorySlugs,
         logoUrl: form.logoUrl.trim(),
         location: normalizedLocation,
+        country: normalizedCountry,
+        city: normalizedCity,
+        fullAddress: normalizedFullAddress,
         latitude,
         longitude,
         phoneNumber: form.phone.trim(),
@@ -244,6 +317,9 @@ export default function ProfesionalBusinessProfilePage() {
         categorySlugs: normalizedPayload.categorySlugs,
         logoUrl: normalizedPayload.logoUrl,
         location: normalizedPayload.location,
+        country: normalizedPayload.country,
+        city: normalizedPayload.city,
+        fullAddress: normalizedPayload.fullAddress,
         latitude: normalizedPayload.latitude ?? undefined,
         longitude: normalizedPayload.longitude ?? undefined,
         email: form.email,
@@ -450,6 +526,91 @@ export default function ProfesionalBusinessProfilePage() {
                               </label>
                             );
                           })}
+                        </div>
+                        <div>
+                          <label className="text-sm font-medium text-[#0E2A47]">País</label>
+                          <input
+                            className={inputClassName}
+                            name="country"
+                            value={form.country}
+                            onChange={(event) => void handleGeoFieldChange('country', event.target.value)}
+                            placeholder="Ej: Argentina"
+                          />
+                          {activeGeoField === 'country' && geoSuggestions.length > 0 ? (
+                            <div className="mt-2 max-h-40 overflow-auto rounded-xl border border-[#E2E8F0] bg-white">
+                              {geoSuggestions.map((item, index) => (
+                                <button
+                                  key={`${item.placeName || item.country || 'country'}-${index}`}
+                                  type="button"
+                                  className="block w-full border-b border-[#F1F5F9] px-3 py-2 text-left text-sm text-[#0E2A47] last:border-b-0 hover:bg-[#F8FAFC]"
+                                  onMouseDown={(event) => {
+                                    event.preventDefault();
+                                    applyGeoSuggestion(item);
+                                  }}
+                                >
+                                  {(item.country || item.city || item.placeName || '').trim()}
+                                </button>
+                              ))}
+                            </div>
+                          ) : null}
+                        </div>
+                        <div>
+                          <label className="text-sm font-medium text-[#0E2A47]">Ciudad</label>
+                          <input
+                            className={inputClassName}
+                            name="city"
+                            value={form.city}
+                            onChange={(event) => void handleGeoFieldChange('city', event.target.value)}
+                            placeholder="Ej: Buenos Aires"
+                          />
+                          {activeGeoField === 'city' && geoSuggestions.length > 0 ? (
+                            <div className="mt-2 max-h-40 overflow-auto rounded-xl border border-[#E2E8F0] bg-white">
+                              {geoSuggestions.map((item, index) => (
+                                <button
+                                  key={`${item.placeName || item.city || 'city'}-${index}`}
+                                  type="button"
+                                  className="block w-full border-b border-[#F1F5F9] px-3 py-2 text-left text-sm text-[#0E2A47] last:border-b-0 hover:bg-[#F8FAFC]"
+                                  onMouseDown={(event) => {
+                                    event.preventDefault();
+                                    applyGeoSuggestion(item);
+                                  }}
+                                >
+                                  {(item.city || item.fullAddress || item.placeName || '').trim()}
+                                </button>
+                              ))}
+                            </div>
+                          ) : null}
+                        </div>
+                        <div>
+                          <label className="text-sm font-medium text-[#0E2A47]">Dirección completa</label>
+                          <input
+                            className={inputClassName}
+                            name="fullAddress"
+                            value={form.fullAddress}
+                            onChange={(event) => void handleGeoFieldChange('fullAddress', event.target.value)}
+                            placeholder="Ej: Av. Santa Fe 1234"
+                          />
+                          {activeGeoField === 'fullAddress' && (geoSuggestions.length > 0 || isGeoSuggesting) ? (
+                            <div className="mt-2 max-h-52 overflow-auto rounded-xl border border-[#E2E8F0] bg-white">
+                              {isGeoSuggesting ? (
+                                <p className="px-3 py-2 text-xs text-[#64748B]">Buscando sugerencias...</p>
+                              ) : null}
+                              {geoSuggestions.map((item, index) => (
+                                <button
+                                  key={`${item.placeName || item.fullAddress || 'address'}-${index}`}
+                                  type="button"
+                                  className="block w-full border-b border-[#F1F5F9] px-3 py-2 text-left text-sm text-[#0E2A47] last:border-b-0 hover:bg-[#F8FAFC]"
+                                  onMouseDown={(event) => {
+                                    event.preventDefault();
+                                    applyGeoSuggestion(item);
+                                  }}
+                                >
+                                  <span className="block font-medium">{(item.fullAddress || item.placeName || '').trim()}</span>
+                                  <span className="block text-xs text-[#64748B]">{[item.city, item.country].filter(Boolean).join(', ')}</span>
+                                </button>
+                              ))}
+                            </div>
+                          ) : null}
                         </div>
                       </div>
                     </div>

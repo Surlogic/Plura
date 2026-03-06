@@ -5,6 +5,9 @@ export type ProfessionalBusinessProfile = {
   fullName: string;
   rubro: string;
   location: string;
+  country: string;
+  city: string;
+  fullAddress: string;
   phoneNumber: string;
   instagram?: string;
   facebook?: string;

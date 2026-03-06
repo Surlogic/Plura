@@ -88,6 +88,15 @@ public class ProfessionalProfile {
     @Column
     private String location;
 
+    @Column(name = "country")
+    private String country;
+
+    @Column(name = "city")
+    private String city;
+
+    @Column(name = "full_address")
+    private String fullAddress;
+
     @Column(name = "location_text")
     private String locationText;
 

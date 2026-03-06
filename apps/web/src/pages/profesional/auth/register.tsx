@@ -12,6 +12,7 @@ import AppleLoginButton from '@/components/auth/AppleLoginButton';
 import api from '@/services/api';
 import { useCategories } from '@/hooks/useCategories';
 import { mapboxForwardGeocode } from '@/services/mapbox';
+import { getGeoLocationSuggestions, type GeoLocationSuggestion } from '@/services/geo';
 import { useProfessionalProfileContext } from '@/context/ProfessionalProfileContext';
 import { useClientProfileContext } from '@/context/ClientProfileContext';
 import type { OAuthLoginResult } from '@/lib/auth/oauthLogin';
@@ -41,7 +42,9 @@ export default function ProfesionalRegisterPage() {
     confirmEmail: '',
     phoneNumber: '',
     tipoCliente: 'LOCAL',
-    location: '',
+    country: '',
+    city: '',
+    fullAddress: '',
     password: '',
     confirmPassword: '',
   });
@@ -52,11 +55,16 @@ export default function ProfesionalRegisterPage() {
     confirmEmail: false,
     phoneNumber: false,
     tipoCliente: false,
-    location: false,
+    country: false,
+    city: false,
+    fullAddress: false,
     password: false,
     confirmPassword: false,
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isGeoSuggesting, setIsGeoSuggesting] = useState(false);
+  const [activeGeoField, setActiveGeoField] = useState<'country' | 'city' | 'fullAddress' | null>(null);
+  const [geoSuggestions, setGeoSuggestions] = useState<GeoLocationSuggestion[]>([]);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
@@ -81,7 +89,43 @@ export default function ProfesionalRegisterPage() {
     setTouched((prev) => ({ ...prev, [name]: true }));
   };
 
-  const requiresLocation = form.tipoCliente === 'LOCAL' || form.tipoCliente === 'PROF';
+  const handleGeoFieldChange = async (
+    field: 'country' | 'city' | 'fullAddress',
+    value: string,
+  ) => {
+    setForm((prev) => ({ ...prev, [field]: value }));
+    setActiveGeoField(field);
+    if (value.trim().length < 2) {
+      setIsGeoSuggesting(false);
+      setGeoSuggestions([]);
+      return;
+    }
+
+    setIsGeoSuggesting(true);
+    const suggestions = await getGeoLocationSuggestions(value);
+    setGeoSuggestions(suggestions);
+    setIsGeoSuggesting(false);
+  };
+
+  const applyGeoSuggestion = (suggestion: GeoLocationSuggestion) => {
+    const country = (suggestion.country || '').trim();
+    const city = (suggestion.city || '').trim();
+    const fullAddress = (suggestion.fullAddress || '').trim();
+    const composedLocation = [fullAddress, city, country].filter(Boolean).join(', ');
+    setForm((prev) => ({
+      ...prev,
+      country: country || prev.country,
+      city: city || prev.city,
+      fullAddress: fullAddress || prev.fullAddress,
+    }));
+    if (composedLocation) {
+      setForm((prev) => ({ ...prev, location: composedLocation }));
+    }
+    setGeoSuggestions([]);
+    setActiveGeoField(null);
+  };
+
+  const requiresLocation = form.tipoCliente === 'LOCAL' || form.tipoCliente === 'A_DOMICILIO';
   const emailValue = form.email.trim().toLowerCase();
   const confirmEmailValue = form.confirmEmail.trim().toLowerCase();
   const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -125,8 +169,10 @@ export default function ProfesionalRegisterPage() {
       : 'Los correos no coinciden.',
     phoneNumber: form.phoneNumber.trim().length >= 8 ? '' : 'Mínimo 8 dígitos.',
     tipoCliente: form.tipoCliente ? '' : 'Seleccioná un tipo.',
-    location: requiresLocation && form.location.trim().length === 0
-      ? 'Indicá la ubicación del local.'
+    country: requiresLocation && form.country.trim().length === 0 ? 'Indicá el país.' : '',
+    city: requiresLocation && form.city.trim().length === 0 ? 'Indicá la ciudad.' : '',
+    fullAddress: requiresLocation && form.fullAddress.trim().length === 0
+      ? 'Indicá la dirección completa.'
       : '',
     password: passwordValid ? '' : 'La contraseña no cumple los requisitos.',
     confirmPassword: form.confirmPassword.length > 0 && form.confirmPassword === form.password
@@ -182,8 +228,8 @@ export default function ProfesionalRegisterPage() {
       return;
     }
 
-    if (requiresLocation && !form.location.trim()) {
-      setErrorMessage('Indicá la ubicación del local.');
+    if (requiresLocation && (!form.country.trim() || !form.city.trim() || !form.fullAddress.trim())) {
+      setErrorMessage('Completá país, ciudad y dirección completa.');
       return;
     }
     if (form.categorySlugs.length === 0) {
@@ -195,7 +241,12 @@ export default function ProfesionalRegisterPage() {
 
     setIsSubmitting(true);
     try {
-      const normalizedLocation = requiresLocation ? form.location.trim() : '';
+      const normalizedCountry = requiresLocation ? form.country.trim() : '';
+      const normalizedCity = requiresLocation ? form.city.trim() : '';
+      const normalizedFullAddress = requiresLocation ? form.fullAddress.trim() : '';
+      const normalizedLocation = requiresLocation
+        ? `${normalizedFullAddress}, ${normalizedCity}, ${normalizedCountry}`
+        : '';
       const geocodedLocation = requiresLocation
         ? await mapboxForwardGeocode(normalizedLocation)
         : null;
@@ -210,6 +261,9 @@ export default function ProfesionalRegisterPage() {
         categorySlugs: form.categorySlugs,
         email: form.email.trim().toLowerCase(),
         phoneNumber: form.phoneNumber.trim(),
+        country: normalizedCountry,
+        city: normalizedCity,
+        fullAddress: normalizedFullAddress,
         location: requiresLocation ? normalizedLocation : null,
         latitude: geocodedLocation?.latitude ?? null,
         longitude: geocodedLocation?.longitude ?? null,
@@ -226,7 +280,9 @@ export default function ProfesionalRegisterPage() {
         confirmEmail: '',
         phoneNumber: '',
         tipoCliente: 'LOCAL',
-        location: '',
+        country: '',
+        city: '',
+        fullAddress: '',
         password: '',
         confirmPassword: '',
       });
@@ -237,7 +293,9 @@ export default function ProfesionalRegisterPage() {
         confirmEmail: false,
         phoneNumber: false,
         tipoCliente: false,
-        location: false,
+        country: false,
+        city: false,
+        fullAddress: false,
         password: false,
         confirmPassword: false,
       });
@@ -427,27 +485,120 @@ export default function ProfesionalRegisterPage() {
                 required
               >
                 <option value="LOCAL">Local</option>
-                <option value="PROF">Profesional con local</option>
+                <option value="A_DOMICILIO">A domicilio</option>
                 <option value="SIN_LOCAL">Profesional sin local</option>
               </select>
             </div>
 
             {requiresLocation ? (
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-[#0E2A47]">Ubicación</label>
-                <input
-                  className={inputClass('location')}
-                  placeholder="Dirección o zona del local"
-                  name="location"
-                  value={form.location}
-                  onChange={handleChange}
-                  onBlur={handleBlur}
-                  required={requiresLocation}
-                />
-                {touched.location && validationErrors.location ? (
-                  <p className="text-xs text-red-600">{validationErrors.location}</p>
-                ) : null}
-              </div>
+              <>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-[#0E2A47]">País</label>
+                  <input
+                    className={inputClass('country')}
+                    placeholder="Ej: Argentina"
+                    name="country"
+                    value={form.country}
+                    onChange={(event) => void handleGeoFieldChange('country', event.target.value)}
+                    onBlur={handleBlur}
+                    required={requiresLocation}
+                  />
+                  {activeGeoField === 'country' && geoSuggestions.length > 0 ? (
+                    <div className="mt-2 max-h-48 overflow-auto rounded-xl border border-[#E2E8F0] bg-white">
+                      {geoSuggestions.map((item, index) => (
+                        <button
+                          key={`${item.placeName || item.fullAddress || 'suggestion'}-${index}`}
+                          type="button"
+                          className="block w-full border-b border-[#F1F5F9] px-3 py-2 text-left text-sm text-[#0E2A47] last:border-b-0 hover:bg-[#F8FAFC]"
+                          onMouseDown={(event) => {
+                            event.preventDefault();
+                            applyGeoSuggestion(item);
+                          }}
+                        >
+                          {(item.country || item.city || item.fullAddress || item.placeName || '').trim()}
+                        </button>
+                      ))}
+                    </div>
+                  ) : null}
+                  {touched.country && validationErrors.country ? (
+                    <p className="text-xs text-red-600">{validationErrors.country}</p>
+                  ) : null}
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-[#0E2A47]">Ciudad</label>
+                  <input
+                    className={inputClass('city')}
+                    placeholder="Ej: Buenos Aires"
+                    name="city"
+                    value={form.city}
+                    onChange={(event) => void handleGeoFieldChange('city', event.target.value)}
+                    onBlur={handleBlur}
+                    required={requiresLocation}
+                  />
+                  {activeGeoField === 'city' && geoSuggestions.length > 0 ? (
+                    <div className="mt-2 max-h-48 overflow-auto rounded-xl border border-[#E2E8F0] bg-white">
+                      {geoSuggestions.map((item, index) => (
+                        <button
+                          key={`${item.placeName || item.fullAddress || 'suggestion'}-${index}`}
+                          type="button"
+                          className="block w-full border-b border-[#F1F5F9] px-3 py-2 text-left text-sm text-[#0E2A47] last:border-b-0 hover:bg-[#F8FAFC]"
+                          onMouseDown={(event) => {
+                            event.preventDefault();
+                            applyGeoSuggestion(item);
+                          }}
+                        >
+                          {(item.city || item.fullAddress || item.placeName || '').trim()}
+                        </button>
+                      ))}
+                    </div>
+                  ) : null}
+                  {touched.city && validationErrors.city ? (
+                    <p className="text-xs text-red-600">{validationErrors.city}</p>
+                  ) : null}
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-[#0E2A47]">Dirección completa</label>
+                  <input
+                    className={inputClass('fullAddress')}
+                    placeholder="Ej: Av. Santa Fe 1234"
+                    name="fullAddress"
+                    value={form.fullAddress}
+                    onChange={(event) => void handleGeoFieldChange('fullAddress', event.target.value)}
+                    onBlur={handleBlur}
+                    required={requiresLocation}
+                  />
+                  {activeGeoField === 'fullAddress' && (geoSuggestions.length > 0 || isGeoSuggesting) ? (
+                    <div className="mt-2 max-h-52 overflow-auto rounded-xl border border-[#E2E8F0] bg-white">
+                      {isGeoSuggesting ? (
+                        <p className="px-3 py-2 text-xs text-[#64748B]">Buscando sugerencias...</p>
+                      ) : null}
+                      {geoSuggestions.map((item, index) => (
+                        <button
+                          key={`${item.placeName || item.fullAddress || 'suggestion'}-${index}`}
+                          type="button"
+                          className="block w-full border-b border-[#F1F5F9] px-3 py-2 text-left text-sm text-[#0E2A47] last:border-b-0 hover:bg-[#F8FAFC]"
+                          onMouseDown={(event) => {
+                            event.preventDefault();
+                            applyGeoSuggestion(item);
+                          }}
+                        >
+                          <span className="block font-medium">
+                            {(item.fullAddress || item.placeName || '').trim() || 'Dirección sugerida'}
+                          </span>
+                          <span className="block text-xs text-[#64748B]">
+                            {[item.city, item.country].filter(Boolean).join(', ')}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  ) : null}
+                  {touched.fullAddress && validationErrors.fullAddress ? (
+                    <p className="text-xs text-red-600">{validationErrors.fullAddress}</p>
+                  ) : null}
+                </div>
+              </>
             ) : null}
 
             <div className="space-y-2">

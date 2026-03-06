@@ -19,6 +19,15 @@ public class ProfesionalBusinessProfileUpdateRequest {
     @Size(max = 255)
     private String location;
 
+    @Size(max = 80)
+    private String country;
+
+    @Size(max = 120)
+    private String city;
+
+    @Size(max = 255)
+    private String fullAddress;
+
     private Double latitude;
     private Double longitude;
 

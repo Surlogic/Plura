@@ -33,6 +33,21 @@ public class RegisterProfesionalRequest {
     @Pattern(regexp = "^[+0-9()\\-\\s]{3,30}$")
     private String phoneNumber;
 
+    // País del negocio.
+    @NotBlank
+    @Size(max = 80)
+    private String country;
+
+    // Ciudad del negocio.
+    @NotBlank
+    @Size(max = 120)
+    private String city;
+
+    // Dirección completa del negocio.
+    @NotBlank
+    @Size(max = 255)
+    private String fullAddress;
+
     // Ubicación del local (si aplica).
     @Size(max = 255)
     private String location;

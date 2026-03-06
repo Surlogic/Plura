@@ -618,25 +618,61 @@ public class ProfessionalPublicPageCoreService {
             categorySupport.applyCategories(profile, Set.of(category));
         }
 
-        if (request.getLocation() != null) {
+        String nextCountry = profile.getCountry();
+        String nextCity = profile.getCity();
+        String nextFullAddress = profile.getFullAddress();
+        Double nextLatitude = profile.getLatitude();
+        Double nextLongitude = profile.getLongitude();
+
+        if (request.getCountry() != null) {
+            nextCountry = normalizeLocationPart(request.getCountry());
+        }
+        if (request.getCity() != null) {
+            nextCity = normalizeLocationPart(request.getCity());
+        }
+        if (request.getFullAddress() != null) {
+            nextFullAddress = normalizeLocationPart(request.getFullAddress());
+        }
+
+        if (request.getLocation() != null && !hasAnyStructuredLocationInput(request)) {
+            // Backward compatibility for older clients still sending a single location string.
             String location = request.getLocation().trim();
             if (location.isBlank()) {
-                profile.setLocation(null);
-                profile.setLocationText(null);
-                profile.setLatitude(null);
-                profile.setLongitude(null);
+                nextCountry = null;
+                nextCity = null;
+                nextFullAddress = null;
             } else {
-                if (requestedLatitude == null || requestedLongitude == null) {
-                    throw new ResponseStatusException(
-                        HttpStatus.BAD_REQUEST,
-                        "No se pudo geocodificar la ubicación"
-                    );
-                }
-                profile.setLocation(location);
-                profile.setLocationText(location);
-                profile.setLatitude(requestedLatitude);
-                profile.setLongitude(requestedLongitude);
+                nextFullAddress = location;
             }
+        }
+
+        if (nextCountry == null && nextCity == null && nextFullAddress == null) {
+            profile.setCountry(null);
+            profile.setCity(null);
+            profile.setFullAddress(null);
+            profile.setLocation(null);
+            profile.setLocationText(null);
+            profile.setLatitude(null);
+            profile.setLongitude(null);
+        } else {
+            if (nextCountry == null || nextCity == null || nextFullAddress == null) {
+                throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "country, city y fullAddress deben enviarse juntos"
+                );
+            }
+            String composedLocation = composeLocation(nextFullAddress, nextCity, nextCountry);
+            profile.setCountry(nextCountry);
+            profile.setCity(nextCity);
+            profile.setFullAddress(nextFullAddress);
+            profile.setLocation(composedLocation);
+            profile.setLocationText(composedLocation);
+            if (request.getLatitude() != null || request.getLongitude() != null) {
+                nextLatitude = requestedLatitude;
+                nextLongitude = requestedLongitude;
+            }
+            profile.setLatitude(nextLatitude);
+            profile.setLongitude(nextLongitude);
         }
 
         if (request.getLogoUrl() != null) {
@@ -1113,8 +1149,11 @@ public class ProfessionalPublicPageCoreService {
             profile.getPublicHeadline(),
             profile.getPublicAbout(),
             normalizePublicPhotoUrl(profile.getLogoUrl()),
+            profile.getFullAddress() == null ? profile.getLocation() : profile.getFullAddress(),
             profile.getLocation(),
-            profile.getLocation(),
+            profile.getCountry(),
+            profile.getCity(),
+            profile.getFullAddress(),
             profile.getLatitude(),
             profile.getLongitude(),
             profile.getLatitude(),
@@ -1373,6 +1412,19 @@ public class ProfessionalPublicPageCoreService {
             profile.getPublicHeadline(),
             categorySupport.mapCategories(profile.getCategories())
         );
+    }
+
+    private boolean hasAnyStructuredLocationInput(ProfesionalBusinessProfileUpdateRequest request) {
+        return request.getCountry() != null || request.getCity() != null || request.getFullAddress() != null;
+    }
+
+    private String normalizeLocationPart(String value) {
+        String normalized = normalizeOptional(value);
+        return normalized == null ? null : normalized;
+    }
+
+    private String composeLocation(String fullAddress, String city, String country) {
+        return String.join(", ", fullAddress.trim(), city.trim(), country.trim());
     }
 
     private boolean isProfessionalActive(ProfessionalProfile profile) {

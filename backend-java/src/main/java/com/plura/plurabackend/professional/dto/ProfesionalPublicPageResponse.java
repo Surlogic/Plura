@@ -21,6 +21,9 @@ public class ProfesionalPublicPageResponse {
     private String logoUrl;
     private String address;
     private String location;
+    private String country;
+    private String city;
+    private String fullAddress;
     private Double lat;
     private Double lng;
     private Double latitude;

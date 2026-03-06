@@ -76,6 +76,8 @@ public class SecurityConfig {
                     "/api/search",
                     "/api/search/suggest",
                     "/api/geo/autocomplete",
+                    "/api/geo/geocode",
+                    "/api/geo/suggest",
                     "/categories",
                     "/api/categories",
                     "/health",

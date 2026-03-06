@@ -22,6 +22,9 @@ export type PublicProfessionalPage = {
   logoUrl?: string | null;
   address?: string | null;
   location?: string | null;
+  country?: string | null;
+  city?: string | null;
+  fullAddress?: string | null;
   lat?: number | null;
   lng?: number | null;
   latitude?: number | null;

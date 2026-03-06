@@ -6,6 +6,9 @@ export type ProfessionalProfile = {
   phoneNumber: string;
   rubro: string;
   location: string | null;
+  country?: string | null;
+  city?: string | null;
+  fullAddress?: string | null;
   tipoCliente: string;
   publicHeadline?: string | null;
   publicAbout?: string | null;

@@ -28,6 +28,8 @@ type ClientPreferenceState = {
 
 const FAVORITES_KEY = 'plura_client_favorites';
 const PREFERENCES_KEY = 'plura_client_preferences';
+type FavoritesListener = (favorites: string[]) => void;
+const favoriteListeners = new Set<FavoritesListener>();
 
 const parseDate = (dateTime: string) => {
   const parsed = new Date(dateTime);
@@ -64,11 +66,29 @@ export const getClientNextBooking = async (): Promise<ClientNextBooking | null> 
 export const getFavoriteProfessionalSlugs = async (): Promise<string[]> =>
   getJsonItem<string[]>(FAVORITES_KEY, []);
 
+const notifyFavoriteListeners = (favorites: string[]) => {
+  favoriteListeners.forEach((listener) => {
+    try {
+      listener(favorites);
+    } catch {
+      // Ignore listener failures to avoid breaking favorites persistence.
+    }
+  });
+};
+
+export const subscribeFavoriteProfessionalSlugs = (listener: FavoritesListener): (() => void) => {
+  favoriteListeners.add(listener);
+  return () => {
+    favoriteListeners.delete(listener);
+  };
+};
+
 export const toggleFavoriteProfessionalSlug = async (slug: string): Promise<string[]> => {
   const favorites = await getFavoriteProfessionalSlugs();
   const exists = favorites.includes(slug);
   const next = exists ? favorites.filter((item) => item !== slug) : [slug, ...favorites];
   await setJsonItem(FAVORITES_KEY, next);
+  notifyFavoriteListeners(next);
   return next;
 };
 

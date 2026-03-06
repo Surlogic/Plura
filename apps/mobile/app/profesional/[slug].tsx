@@ -11,6 +11,7 @@ import {
 } from '../../src/services/publicBookings';
 import {
   getFavoriteProfessionalSlugs,
+  subscribeFavoriteProfessionalSlugs,
   toggleFavoriteProfessionalSlug,
 } from '../../src/services/clientFeatures';
 
@@ -66,6 +67,14 @@ export default function ProfesionalDetailScreen() {
     };
 
     loadFavorite();
+  }, [slug]);
+
+  useEffect(() => {
+    if (!slug) return;
+    const unsubscribe = subscribeFavoriteProfessionalSlugs((next) => {
+      setIsFavorite(next.includes(slug));
+    });
+    return unsubscribe;
   }, [slug]);
 
   useEffect(() => {

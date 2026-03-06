@@ -6,6 +6,7 @@ import { router } from 'expo-router';
 import { listPublicProfessionals, type PublicProfessionalSummary } from '../../src/services/publicBookings';
 import {
   getFavoriteProfessionalSlugs,
+  subscribeFavoriteProfessionalSlugs,
   toggleFavoriteProfessionalSlug,
 } from '../../src/services/clientFeatures';
 import { searchProfessionals } from '../../src/services/search';
@@ -44,6 +45,13 @@ export default function ExploreScreen() {
     };
 
     load();
+  }, []);
+
+  useEffect(() => {
+    const unsubscribe = subscribeFavoriteProfessionalSlugs((next) => {
+      setFavoriteSlugs(next);
+    });
+    return unsubscribe;
   }, []);
 
   const filteredPlaces = useMemo(() => {

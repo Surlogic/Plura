@@ -5,6 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import {
   getFavoriteProfessionalSlugs,
+  subscribeFavoriteProfessionalSlugs,
   toggleFavoriteProfessionalSlug,
 } from '../../src/services/clientFeatures';
 import {
@@ -33,6 +34,13 @@ export default function FavoritesScreen() {
     };
 
     load();
+  }, []);
+
+  useEffect(() => {
+    const unsubscribe = subscribeFavoriteProfessionalSlugs((next) => {
+      setFavorites(next);
+    });
+    return unsubscribe;
   }, []);
 
   const favoriteItems = useMemo(

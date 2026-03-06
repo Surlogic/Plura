@@ -30,8 +30,8 @@ pnpm-debug.log*
 .turbo/
 
 #md
-AUDIT_4H_PLAN_2026-03-04.md 
-
-AUDIT_4H_REPORT_2026-03-04.md 
-
-AUDIT_SCALE_REPORT_2026-03-05.md 
+AUDIT_4H_PLAN_2026-03-04.md
+AUDIT_4H_REPORT_2026-03-04.md
+AUDIT_SCALE_REPORT_2026-03-05.md
+render-env-backend.md
+render-env-frontend.md

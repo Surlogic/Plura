@@ -37,6 +37,15 @@ public interface AvailableSlotRepository extends JpaRepository<AvailableSlot, Lo
     @Modifying
     @Query(
         """
+        DELETE FROM AvailableSlot slot
+        WHERE slot.professional.id = :professionalId
+        """
+    )
+    int deleteByProfessionalId(@Param("professionalId") Long professionalId);
+
+    @Modifying
+    @Query(
+        """
         UPDATE AvailableSlot slot
         SET slot.status = :status
         WHERE slot.professional.id = :professionalId

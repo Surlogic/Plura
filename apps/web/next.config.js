@@ -52,8 +52,11 @@ const securityHeaders = [
   { key: 'X-DNS-Prefetch-Control', value: 'on' },
 ];
 
+const distDir = process.env.NEXT_BUILD_DIR || '.next';
+
 const nextConfig = {
   poweredByHeader: false,
+  distDir,
   eslint: {
     ignoreDuringBuilds: true,  // deshabilitar ESLint durante el build para evitar errores de configuración
   },

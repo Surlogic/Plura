@@ -2,11 +2,16 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ChangeEvent } from 'react';
-import Navbar from '@/components/shared/Navbar';
 import ProfesionalSidebar from '@/components/profesional/Sidebar';
+import Button from '@/components/ui/Button';
 import { useProfessionalProfile } from '@/hooks/useProfessionalProfile';
 import { useProfessionalDashboardUnsavedSection } from '@/context/ProfessionalDashboardUnsavedChangesContext';
 import api from '@/services/api';
+import {
+  DashboardHero,
+  DashboardSectionHeading,
+  DashboardStatCard,
+} from '@/components/profesional/dashboard/DashboardUI';
 import type {
   ProfessionalSchedule,
   PublicService,
@@ -291,61 +296,67 @@ export default function ProfesionalPublicPageBuilder() {
 
   return (
     <div className="min-h-screen bg-[radial-gradient(circle_at_top,#FFFFFF_0%,#EEF2F6_45%,#D3D7DC_100%)] text-[#0E2A47]">
-      <div className="flex min-h-screen flex-col">
-        <Navbar
-          variant="dashboard"
-          showMenuButton
-          onMenuClick={handleToggleMenu}
-        />
-        <div className="flex flex-1">
+      <div className="flex min-h-screen">
           <aside className="hidden w-[260px] shrink-0 border-r border-[#0E2A47]/10 bg-[#0B1D2A] lg:block">
             <div className="sticky top-0 h-screen overflow-y-auto">
               <ProfesionalSidebar profile={profile} active="Página pública" />
             </div>
           </aside>
           <div className="flex-1">
+            <div className="px-4 pt-4 sm:px-6 lg:hidden">
+              <Button type="button" size="sm" onClick={handleToggleMenu}>
+                {isMenuOpen ? 'Cerrar menu' : 'Abrir menu'}
+              </Button>
+            </div>
             {isMenuOpen ? (
               <div className="border-b border-[#0E2A47]/10 bg-[#0B1D2A] lg:hidden">
                 <ProfesionalSidebar profile={profile} active="Página pública" />
               </div>
             ) : null}
-            <main className="mx-auto w-full max-w-[1400px] px-4 py-8 sm:px-6 lg:px-10">
+            <main className="mx-auto w-full max-w-[1400px] px-4 py-6 sm:px-6 sm:py-8 lg:px-10">
               <div className="space-y-6">
-            <div className="rounded-[28px] border border-white/70 bg-white/95 p-6 shadow-[0_28px_70px_rgba(15,23,42,0.18)]">
-              <div className="flex flex-wrap items-center justify-between gap-4">
-                <div>
-                  <p className="text-[0.65rem] uppercase tracking-[0.35em] text-[#94A3B8]">
-                    Página pública
-                  </p>
-                  <h1 className="mt-2 text-2xl font-semibold text-[#0E2A47]">
-                    Constructor de marketplace
-                  </h1>
-                  <p className="mt-1 text-sm text-[#64748B]">
-                    Configurá la información que verán los clientes.
-                  </p>
-                </div>
-                <div className="flex items-center gap-3">
+            <DashboardHero
+              eyebrow="Escaparate"
+              icon="publica"
+              accent="teal"
+              title="Página pública y preview en un solo flujo"
+              description="Ajustá el mensaje, la galería y la presentación general con foco en cómo se verá la ficha final para el cliente."
+              meta={
+                <>
+                  <span className="rounded-full border border-white/12 bg-white/8 px-3 py-1 text-xs font-semibold text-white/80">
+                    {services.length} servicios visibles
+                  </span>
+                  <span className="rounded-full border border-white/12 bg-white/8 px-3 py-1 text-xs font-semibold text-white/80">
+                    {photos.filter((photo) => photo.url).length} fotos cargadas
+                  </span>
                   {isDirty ? (
-                    <span className="rounded-full bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-600">
-                      Sin guardar
+                    <span className="rounded-full border border-white/12 bg-white/8 px-3 py-1 text-xs font-semibold text-white/80">
+                      Cambios sin guardar
                     </span>
                   ) : null}
-                  <button
-                    type="button"
-                    onClick={handleSave}
-                    className="rounded-full bg-[#0B1D2A] px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
-                    disabled={isSaving}
-                  >
-                    {isSaving ? 'Guardando...' : 'Guardar cambios'}
-                  </button>
-                </div>
-              </div>
-              {saveMessage ? (
-                <p className={`mt-3 text-sm font-medium ${saveError ? 'text-red-500' : 'text-[#1FB6A6]'}`}>
-                  {saveMessage}
-                </p>
-              ) : null}
-            </div>
+                </>
+              }
+              actions={(
+                <Button
+                  type="button"
+                  variant="contrast"
+                  onClick={handleSave}
+                  disabled={isSaving}
+                >
+                  {isSaving ? 'Guardando...' : 'Guardar cambios'}
+                </Button>
+              )}
+            />
+
+            {saveMessage ? (
+              <p className={`rounded-full border px-4 py-2 text-sm font-medium shadow-[var(--shadow-card)] ${
+                saveError
+                  ? 'border-red-200 bg-red-50 text-red-500'
+                  : 'border-[#cdeee9] bg-[#f0fffc] text-[#1FB6A6]'
+              }`}>
+                {saveMessage}
+              </p>
+            ) : null}
 
             {showSkeleton ? (
               <div className="rounded-[28px] border border-white/70 bg-white/95 p-6 shadow-[0_18px_40px_rgba(15,23,42,0.12)]">
@@ -357,15 +368,30 @@ export default function ProfesionalPublicPageBuilder() {
                 </div>
               </div>
             ) : (
-              <div className="grid gap-6 lg:grid-cols-[1.1fr,0.9fr]">
+              <div className="grid gap-6 xl:grid-cols-[0.86fr,1.14fr]">
                 <div className="space-y-6">
+                  <div className="grid gap-4 sm:grid-cols-3">
+                    <DashboardStatCard
+                      label="Slug"
+                      value={slug}
+                      detail="Identidad pública de la ficha"
+                      icon="share"
+                      tone="accent"
+                      className="sm:col-span-2"
+                    />
+                    <DashboardStatCard
+                      label="Fotos"
+                      value={`${photos.filter((photo) => photo.url).length}/${maxBusinessPhotos}`}
+                      detail="Galería del negocio"
+                      icon="publica"
+                    />
+                  </div>
+
                   <div className="rounded-[24px] border border-white/70 bg-white/95 p-5 shadow-[0_16px_36px_rgba(15,23,42,0.12)]">
-                    <h2 className="text-lg font-semibold text-[#0E2A47]">
-                      Frase principal
-                    </h2>
-                    <p className="mt-1 text-sm text-[#64748B]">
-                      La frase que aparece debajo del nombre en tu página pública.
-                    </p>
+                    <DashboardSectionHeading
+                      title="Frase principal"
+                      description="Es la promesa principal que aparece debajo del nombre en la ficha pública."
+                    />
                     <div className="mt-4">
                       <input
                         className={inputClassName}
@@ -378,15 +404,10 @@ export default function ProfesionalPublicPageBuilder() {
 
                   <div className="rounded-[24px] border border-white/70 bg-white/95 p-5 shadow-[0_16px_36px_rgba(15,23,42,0.12)]">
                     <div className="flex items-center justify-between">
-                      <div>
-                        <h2 className="text-lg font-semibold text-[#0E2A47]">
-                          Fotos del negocio o trabajos
-                        </h2>
-                        <p className="text-xs text-[#64748B]">
-                          Máximo {maxBusinessPhotos} fotos. Las fotos de servicios se
-                          suman debajo en la galería pública.
-                        </p>
-                      </div>
+                      <DashboardSectionHeading
+                        title="Fotos del negocio o trabajos"
+                        description={`Máximo ${maxBusinessPhotos} fotos. Las imágenes de servicios se suman después en la galería pública.`}
+                      />
                       <button
                         type="button"
                         onClick={addPhoto}
@@ -426,12 +447,10 @@ export default function ProfesionalPublicPageBuilder() {
                   </div>
 
                   <div className="rounded-[24px] border border-white/70 bg-white/95 p-5 shadow-[0_16px_36px_rgba(15,23,42,0.12)]">
-                    <h2 className="text-lg font-semibold text-[#0E2A47]">
-                      Sobre mí
-                    </h2>
-                    <p className="mt-1 text-sm text-[#64748B]">
-                      Contá quién sos y qué hacés.
-                    </p>
+                    <DashboardSectionHeading
+                      title="Sobre mí"
+                      description="Contá quién sos, qué hacés y qué tipo de experiencia van a encontrar tus clientes."
+                    />
                     <div className="mt-4">
                       <textarea
                         className={`${inputClassName} h-28 resize-none`}
@@ -444,13 +463,39 @@ export default function ProfesionalPublicPageBuilder() {
                 </div>
 
                 <div className="space-y-6">
+                  <div className="rounded-[28px] border border-white/70 bg-white/95 p-6 shadow-[0_18px_40px_rgba(15,23,42,0.12)] xl:sticky xl:top-6">
+                    <DashboardSectionHeading
+                      eyebrow="Vista previa"
+                      title="Página pública"
+                      description="El resultado final se actualiza a medida que ajustás textos, fotos y narrativa."
+                      action={(
+                        <a
+                          href={publicUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="rounded-full border border-[#E2E7EC] bg-white px-4 py-2 text-xs font-semibold text-[#0E2A47] transition hover:-translate-y-0.5 hover:shadow-sm"
+                        >
+                          Ir al sitio
+                        </a>
+                      )}
+                    />
+                    <div className="mt-5 overflow-hidden rounded-[22px] border border-[#E2E7EC] bg-white">
+                      <iframe
+                        ref={iframeRef}
+                        title="Vista previa página pública"
+                        src="/profesional/pagina/preview?preview=1"
+                        sandbox="allow-scripts allow-same-origin"
+                        referrerPolicy="no-referrer"
+                        className="h-[780px] w-full"
+                      />
+                    </div>
+                  </div>
+
                   <div className="rounded-[24px] border border-white/70 bg-white/95 p-5 shadow-[0_16px_36px_rgba(15,23,42,0.12)]">
-                    <h2 className="text-lg font-semibold text-[#0E2A47]">
-                      URL pública
-                    </h2>
-                    <p className="mt-1 text-sm text-[#64748B]">
-                      Usá este link o QR para compartir tu página.
-                    </p>
+                    <DashboardSectionHeading
+                      title="URL pública"
+                      description="Usá este link o QR para compartir tu ficha y atraer reservas directas."
+                    />
                     <div className="mt-4 grid gap-4">
                       <div>
                         <label className="text-sm font-medium text-[#0E2A47]">
@@ -482,35 +527,6 @@ export default function ProfesionalPublicPageBuilder() {
                       </div>
                     </div>
                   </div>
-
-                  <div className="rounded-[28px] border border-white/70 bg-white/95 p-6 shadow-[0_18px_40px_rgba(15,23,42,0.12)]">
-                    <p className="text-[0.65rem] uppercase tracking-[0.35em] text-[#94A3B8]">
-                      Vista previa
-                    </p>
-                    <div className="mt-2 flex flex-wrap items-center justify-between gap-3">
-                      <h2 className="text-lg font-semibold text-[#0E2A47]">
-                        Página pública
-                      </h2>
-                      <a
-                        href={publicUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="rounded-full border border-[#E2E7EC] bg-white px-4 py-2 text-xs font-semibold text-[#0E2A47] transition hover:-translate-y-0.5 hover:shadow-sm"
-                      >
-                        Ir al sitio
-                      </a>
-                    </div>
-                    <div className="mt-5 overflow-hidden rounded-[22px] border border-[#E2E7EC] bg-white">
-                      <iframe
-                        ref={iframeRef}
-                        title="Vista previa página pública"
-                        src="/profesional/pagina/preview?preview=1"
-                        sandbox="allow-scripts allow-same-origin"
-                        referrerPolicy="no-referrer"
-                        className="h-[720px] w-full"
-                      />
-                    </div>
-                  </div>
                 </div>
               </div>
             )}
@@ -518,7 +534,6 @@ export default function ProfesionalPublicPageBuilder() {
             </main>
           </div>
         </div>
-      </div>
     </div>
   );
 }

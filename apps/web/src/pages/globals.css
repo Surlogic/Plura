@@ -23,6 +23,9 @@
   --shadow-card: 0 16px 40px -30px rgba(12, 24, 38, 0.32);
   --shadow-lift: 0 22px 54px -34px rgba(13, 35, 58, 0.42);
   --shadow-glass: 0 26px 70px -42px rgba(12, 24, 38, 0.4);
+  --scrollbar-track: rgba(16, 38, 63, 0.06);
+  --scrollbar-thumb: rgba(22, 50, 79, 0.28);
+  --scrollbar-thumb-hover: rgba(17, 138, 125, 0.48);
 }
 
 @theme inline {
@@ -73,6 +76,9 @@
     --shadow-card: 0 18px 42px -32px rgba(0, 0, 0, 0.7);
     --shadow-lift: 0 24px 64px -36px rgba(0, 0, 0, 0.78);
     --shadow-glass: 0 28px 86px -48px rgba(0, 0, 0, 0.82);
+    --scrollbar-track: rgba(235, 242, 255, 0.08);
+    --scrollbar-thumb: rgba(168, 187, 207, 0.32);
+    --scrollbar-thumb-hover: rgba(95, 214, 203, 0.54);
   }
 }
 
@@ -82,6 +88,7 @@
 
 html {
   color-scheme: light;
+  scrollbar-gutter: stable;
 }
 
 body {
@@ -126,4 +133,36 @@ select {
 ::selection {
   background: var(--accent-soft);
   color: var(--ink);
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+}
+
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+*::-webkit-scrollbar-track {
+  background: var(--scrollbar-track);
+  border-radius: 999px;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
+  border: 2px solid transparent;
+  border-radius: 999px;
+  background-clip: padding-box;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: var(--scrollbar-thumb-hover);
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+*::-webkit-scrollbar-corner {
+  background: transparent;
 }

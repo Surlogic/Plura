@@ -1,8 +1,8 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import Navbar from '@/components/shared/Navbar';
 import ProfesionalSidebar from '@/components/profesional/Sidebar';
+import Button from '@/components/ui/Button';
 import { useProfessionalProfile } from '@/hooks/useProfessionalProfile';
 import { useCategories } from '@/hooks/useCategories';
 import api from '@/services/api';
@@ -10,6 +10,11 @@ import { isAxiosError } from 'axios';
 import { useProfessionalDashboardUnsavedSection } from '@/context/ProfessionalDashboardUnsavedChangesContext';
 import { mapboxForwardGeocode } from '@/services/mapbox';
 import { getGeoLocationSuggestions, type GeoLocationSuggestion } from '@/services/geo';
+import {
+  DashboardHero,
+  DashboardSectionHeading,
+  DashboardStatCard,
+} from '@/components/profesional/dashboard/DashboardUI';
 
 const slugify = (value: string) =>
   value
@@ -51,7 +56,6 @@ type BusinessProfileForm = {
   fullAddress: string;
   latitude?: number;
   longitude?: number;
-  email: string;
   phone: string;
   instagram: string;
   facebook: string;
@@ -82,7 +86,6 @@ export default function ProfesionalBusinessProfilePage() {
     fullAddress: '',
     latitude: undefined,
     longitude: undefined,
-    email: '',
     phone: '',
     instagram: '',
     facebook: '',
@@ -124,7 +127,6 @@ export default function ProfesionalBusinessProfilePage() {
       fullAddress: profile.fullAddress || '',
       latitude: typeof profile.latitude === 'number' ? profile.latitude : undefined,
       longitude: typeof profile.longitude === 'number' ? profile.longitude : undefined,
-      email: profile.email || '',
       phone: profile.phoneNumber || '',
       instagram: profile.instagram || '',
       facebook: profile.facebook || '',
@@ -322,7 +324,6 @@ export default function ProfesionalBusinessProfilePage() {
         fullAddress: normalizedPayload.fullAddress,
         latitude: normalizedPayload.latitude ?? undefined,
         longitude: normalizedPayload.longitude ?? undefined,
-        email: form.email,
         phone: normalizedPayload.phoneNumber,
         instagram: normalizedPayload.instagram || '',
         facebook: normalizedPayload.facebook || '',
@@ -373,58 +374,89 @@ export default function ProfesionalBusinessProfilePage() {
 
   return (
     <div className="min-h-screen bg-[radial-gradient(circle_at_top,#FFFFFF_0%,#EEF2F6_45%,#D3D7DC_100%)] text-[#0E2A47]">
-      <div className="flex min-h-screen flex-col">
-        <Navbar
-          variant="dashboard"
-          showMenuButton
-          onMenuClick={handleToggleMenu}
-        />
-        <div className="flex flex-1">
+      <div className="flex min-h-screen">
           <aside className="hidden w-[260px] shrink-0 border-r border-[#0E2A47]/10 bg-[#0B1D2A] lg:block">
             <div className="sticky top-0 h-screen overflow-y-auto">
               <ProfesionalSidebar profile={profile} active="Perfil del negocio" />
             </div>
           </aside>
           <div className="flex-1">
+            <div className="px-4 pt-4 sm:px-6 lg:hidden">
+              <Button type="button" size="sm" onClick={handleToggleMenu}>
+                {isMenuOpen ? 'Cerrar menu' : 'Abrir menu'}
+              </Button>
+            </div>
             {isMenuOpen ? (
               <div className="border-b border-[#0E2A47]/10 bg-[#0B1D2A] lg:hidden">
                 <ProfesionalSidebar profile={profile} active="Perfil del negocio" />
               </div>
             ) : null}
-            <main className="mx-auto w-full max-w-[1400px] px-4 py-8 sm:px-6 lg:px-10">
+            <main className="mx-auto w-full max-w-[1400px] px-4 py-6 sm:px-6 sm:py-8 lg:px-10">
               <div className="space-y-6">
-            <div className="rounded-[28px] border border-white/70 bg-white/95 p-6 shadow-[0_28px_70px_rgba(15,23,42,0.18)]">
-              <div className="flex flex-wrap items-center justify-between gap-4">
-                <div>
-                  <p className="text-[0.65rem] uppercase tracking-[0.35em] text-[#94A3B8]">
-                    Configuración
-                  </p>
-                  <h1 className="mt-2 text-2xl font-semibold text-[#0E2A47]">
-                    Perfil del negocio
-                  </h1>
-                  <p className="mt-1 text-sm text-[#64748B]">
-                    Datos que se muestran en tu página pública.
-                  </p>
-                </div>
+            <DashboardHero
+              eyebrow="Presencia pública"
+              icon="negocio"
+              accent="teal"
+              title="Identidad comercial, ubicación y canales de contacto"
+              description="Definí cómo se presenta tu negocio en la ficha pública y asegurate de que los clientes encuentren rápido tu propuesta, tu dirección y tus vías de contacto."
+              meta={
+                <>
+                  <span className="rounded-full border border-white/12 bg-white/8 px-3 py-1 text-xs font-semibold text-white/80">
+                    {form.categorySlugs.length} rubros
+                  </span>
+                  <span className="rounded-full border border-white/12 bg-white/8 px-3 py-1 text-xs font-semibold text-white/80">
+                    {form.city || 'Sin ciudad'}
+                  </span>
+                  {isDirty ? (
+                    <span className="rounded-full border border-white/12 bg-white/8 px-3 py-1 text-xs font-semibold text-white/80">
+                      Cambios sin guardar
+                    </span>
+                  ) : null}
+                </>
+              }
+              actions={(
                 <button
                   type="button"
                   onClick={() => void handleSave()}
                   disabled={isSaving}
-                  className="rounded-full bg-[#0B1D2A] px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
+                  className="rounded-full border border-white/14 bg-white/10 px-4 py-2 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:bg-white/14"
                 >
                   {isSaving ? 'Guardando...' : 'Guardar cambios'}
                 </button>
-              </div>
-              {saveMessage ? (
-                <p className={`mt-3 text-sm font-medium ${saveError ? 'text-red-500' : 'text-[#1FB6A6]'}`}>
-                  {saveMessage}
-                </p>
-              ) : null}
-              {isDirty && !saveMessage ? (
-                <p className="mt-3 text-xs font-medium text-amber-600">
-                  Tenés cambios sin guardar.
-                </p>
-              ) : null}
+              )}
+            />
+
+            {saveMessage ? (
+              <p className={`rounded-full border px-4 py-2 text-sm font-medium shadow-[var(--shadow-card)] ${
+                saveError
+                  ? 'border-red-200 bg-red-50 text-red-500'
+                  : 'border-[#cdeee9] bg-[#f0fffc] text-[#1FB6A6]'
+              }`}>
+                {saveMessage}
+              </p>
+            ) : null}
+
+            <div className="grid gap-4 md:grid-cols-3">
+              <DashboardStatCard
+                label="Rubros"
+                value={`${form.categorySlugs.length}`}
+                detail="Categorías activas para descubrimiento"
+                icon="spark"
+                tone="accent"
+              />
+              <DashboardStatCard
+                label="Canales"
+                value={`${[form.instagram, form.facebook, form.tiktok, form.website, form.whatsapp].filter(Boolean).length}`}
+                detail="Vías de contacto configuradas"
+                icon="share"
+              />
+              <DashboardStatCard
+                label="Ubicación"
+                value={form.city || 'Pendiente'}
+                detail={form.fullAddress || 'Sumá la dirección completa'}
+                icon="negocio"
+                tone="warm"
+              />
             </div>
 
             {showSkeleton ? (
@@ -439,9 +471,10 @@ export default function ProfesionalBusinessProfilePage() {
             ) : (
               <div className="space-y-6">
                 <div className="rounded-[24px] border border-white/70 bg-white/95 p-5 shadow-[0_16px_36px_rgba(15,23,42,0.12)]">
-                  <h2 className="text-lg font-semibold text-[#0E2A47]">
-                    Identidad
-                  </h2>
+                  <DashboardSectionHeading
+                    title="Identidad"
+                    description="Nombre comercial, logo y rubros principales."
+                  />
                   <div className="mt-4 grid gap-4">
                     <div>
                       <label className="text-sm font-medium text-[#0E2A47]">
@@ -618,55 +651,31 @@ export default function ProfesionalBusinessProfilePage() {
                 </div>
 
                 <div className="rounded-[24px] border border-white/70 bg-white/95 p-5 shadow-[0_16px_36px_rgba(15,23,42,0.12)]">
-                  <h2 className="text-lg font-semibold text-[#0E2A47]">
-                    Contacto
-                  </h2>
+                  <DashboardSectionHeading
+                    title="Contacto"
+                    description="Datos directos para que el cliente pueda escribir o llamar."
+                  />
                   <div className="mt-4 grid gap-4">
                     <div>
                       <label className="text-sm font-medium text-[#0E2A47]">
-                        Ubicación
+                        Teléfono
                       </label>
                       <input
                         className={inputClassName}
-                        name="location"
-                        value={form.location}
+                        name="phone"
+                        value={form.phone}
                         onChange={handleChange}
-                        placeholder="Ej: Palermo, Buenos Aires"
+                        placeholder="Ej: +54 11 5555 4444"
                       />
-                    </div>
-                    <div className="grid gap-4 sm:grid-cols-2">
-                      <div>
-                        <label className="text-sm font-medium text-[#0E2A47]">
-                          Email
-                        </label>
-                        <input
-                          className={`${inputClassName} bg-[#F8FAFC] text-[#64748B]`}
-                          name="email"
-                          value={form.email}
-                          readOnly
-                          placeholder="Ej: hola@plura.com"
-                        />
-                      </div>
-                      <div>
-                        <label className="text-sm font-medium text-[#0E2A47]">
-                          Teléfono
-                        </label>
-                        <input
-                          className={inputClassName}
-                          name="phone"
-                          value={form.phone}
-                          onChange={handleChange}
-                          placeholder="Ej: +54 11 5555 4444"
-                        />
-                      </div>
                     </div>
                   </div>
                 </div>
 
                 <div className="rounded-[24px] border border-white/70 bg-white/95 p-5 shadow-[0_16px_36px_rgba(15,23,42,0.12)]">
-                  <h2 className="text-lg font-semibold text-[#0E2A47]">
-                    Redes sociales
-                  </h2>
+                  <DashboardSectionHeading
+                    title="Redes sociales"
+                    description="Canales que refuerzan confianza y derivan tráfico."
+                  />
                   <div className="mt-4 grid gap-4 sm:grid-cols-2">
                     <div>
                       <label className="text-sm font-medium text-[#0E2A47]">
@@ -736,7 +745,6 @@ export default function ProfesionalBusinessProfilePage() {
             </main>
           </div>
         </div>
-      </div>
     </div>
   );
 }

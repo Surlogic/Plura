@@ -26,6 +26,18 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
         LocalDateTime startDateTime
     );
 
+    List<Booking> findByUser_IdAndStatusInAndStartDateTimeGreaterThanEqual(
+        Long userId,
+        List<BookingStatus> statuses,
+        LocalDateTime startDateTime
+    );
+
+    List<Booking> findByProfessional_IdAndStatusInAndStartDateTimeGreaterThanEqual(
+        Long professionalId,
+        List<BookingStatus> statuses,
+        LocalDateTime startDateTime
+    );
+
     @Query(
         """
         SELECT b

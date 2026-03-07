@@ -11,6 +11,7 @@ import {
   type ReactNode,
 } from 'react';
 import { cachedGet } from '@/services/cachedGet';
+import { invalidateCachedGet } from '@/services/cachedGet';
 import type { ClientProfile } from '@/types/client';
 
 type ClientProfileContextValue = {
@@ -36,6 +37,7 @@ export function ClientProfileProvider({
   const [hasLoaded, setHasLoaded] = useState(false);
 
   const clearProfile = useCallback(() => {
+    invalidateCachedGet('/auth/me/cliente');
     setProfile(null);
     setHasLoaded(true);
     setIsLoading(false);

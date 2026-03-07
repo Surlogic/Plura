@@ -6,9 +6,23 @@ import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface UserRepository extends JpaRepository<User, Long> {
-    Optional<User> findByEmail(String email);
+    Optional<User> findByEmailAndDeletedAtIsNull(String email);
 
-    Optional<User> findByProviderAndProviderId(String provider, String providerId);
+    Optional<User> findByProviderAndProviderIdAndDeletedAtIsNull(String provider, String providerId);
 
-    long countByRole(UserRole role);
+    Optional<User> findByIdAndDeletedAtIsNull(Long id);
+
+    long countByRoleAndDeletedAtIsNull(UserRole role);
+
+    default Optional<User> findByEmail(String email) {
+        return findByEmailAndDeletedAtIsNull(email);
+    }
+
+    default Optional<User> findByProviderAndProviderId(String provider, String providerId) {
+        return findByProviderAndProviderIdAndDeletedAtIsNull(provider, providerId);
+    }
+
+    default long countByRole(UserRole role) {
+        return countByRoleAndDeletedAtIsNull(role);
+    }
 }

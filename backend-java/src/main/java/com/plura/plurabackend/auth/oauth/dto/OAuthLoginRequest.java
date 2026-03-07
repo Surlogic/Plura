@@ -2,6 +2,7 @@ package com.plura.plurabackend.auth.oauth.dto;
 
 import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
 
@@ -23,6 +24,12 @@ public class OAuthLoginRequest {
 
     @Size(max = 2048)
     private String redirectUri;
+
+    @Pattern(regexp = "^(USER|PROFESSIONAL)$", message = "desiredRole inválido")
+    private String desiredRole;
+
+    @Pattern(regexp = "^(LOGIN|REGISTER)$", message = "authAction inválido")
+    private String authAction;
 
     @AssertTrue(message = "Debe enviar token o authorizationCode")
     public boolean isTokenOrCodePresent() {

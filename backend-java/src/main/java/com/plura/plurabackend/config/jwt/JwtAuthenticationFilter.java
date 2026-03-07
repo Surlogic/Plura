@@ -5,6 +5,9 @@ import com.auth0.jwt.JWTVerifier;
 import com.auth0.jwt.algorithms.Algorithm;
 import com.auth0.jwt.exceptions.JWTVerificationException;
 import com.auth0.jwt.interfaces.DecodedJWT;
+import com.plura.plurabackend.user.model.User;
+import com.plura.plurabackend.user.model.UserRole;
+import com.plura.plurabackend.user.repository.UserRepository;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -27,8 +30,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private static final String ACCESS_COOKIE = "plura_access_token";
 
     private final JWTVerifier verifier;
+    private final UserRepository userRepository;
 
     public JwtAuthenticationFilter(
+        UserRepository userRepository,
         @Value("${jwt.secret}") String jwtSecret,
         @Value("${jwt.issuer:plura}") String jwtIssuer
     ) {
@@ -42,6 +47,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         this.verifier = JWT.require(algorithm)
             .withIssuer(jwtIssuer)
             .build();
+        this.userRepository = userRepository;
     }
 
     @Override
@@ -67,17 +73,35 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             filterChain.doFilter(request, response);
             return;
         }
+        boolean allowInvalidToken = isPublicAuthPath(request);
         try {
             // Verifica firma, expiración e issuer.
             DecodedJWT jwt = verifier.verify(token);
             String subject = jwt.getSubject();
-            String role = jwt.getClaim("role").asString();
+            String tokenRole = jwt.getClaim("role").asString();
+            User user = loadActiveUser(subject, response, allowInvalidToken);
+            if (user == null) {
+                if (allowInvalidToken) {
+                    filterChain.doFilter(request, response);
+                }
+                return;
+            }
+            if (!isRoleConsistent(tokenRole, user.getRole())) {
+                if (allowInvalidToken) {
+                    SecurityContextHolder.clearContext();
+                    filterChain.doFilter(request, response);
+                    return;
+                }
+                SecurityContextHolder.clearContext();
+                response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Token inválido para el rol actual");
+                return;
+            }
             List<GrantedAuthority> authorities = new ArrayList<>();
 
-            // Mapea el role del JWT a un rol de Spring Security.
-            if ("PROFESSIONAL".equals(role)) {
+            // Mapea el rol actual persistido a authorities de Spring Security.
+            if (user.getRole() == UserRole.PROFESSIONAL) {
                 authorities.add(new SimpleGrantedAuthority("ROLE_PROFESSIONAL"));
-            } else if ("USER".equals(role)) {
+            } else if (user.getRole() == UserRole.USER) {
                 authorities.add(new SimpleGrantedAuthority("ROLE_USER"));
             } else {
                 SecurityContextHolder.clearContext();
@@ -91,10 +115,70 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             SecurityContextHolder.getContext().setAuthentication(authentication);
             filterChain.doFilter(request, response);
         } catch (JWTVerificationException ex) {
+            if (allowInvalidToken) {
+                SecurityContextHolder.clearContext();
+                filterChain.doFilter(request, response);
+                return;
+            }
             // Limpia el contexto y responde 401 si el token es inválido/expirado.
             SecurityContextHolder.clearContext();
             response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Token inválido o expirado");
         }
+    }
+
+    private User loadActiveUser(
+        String rawUserId,
+        HttpServletResponse response,
+        boolean allowInvalidToken
+    ) throws IOException {
+        Long userId;
+        try {
+            userId = Long.parseLong(rawUserId);
+        } catch (NumberFormatException exception) {
+            if (allowInvalidToken) {
+                SecurityContextHolder.clearContext();
+                return null;
+            }
+            SecurityContextHolder.clearContext();
+            response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Token inválido");
+            return null;
+        }
+
+        User user = userRepository.findByIdAndDeletedAtIsNull(userId).orElse(null);
+        if (user == null) {
+            if (allowInvalidToken) {
+                SecurityContextHolder.clearContext();
+                return null;
+            }
+            SecurityContextHolder.clearContext();
+            response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Usuario no encontrado");
+            return null;
+        }
+        return user;
+    }
+
+    private boolean isRoleConsistent(String tokenRole, UserRole persistedRole) {
+        if (tokenRole == null || tokenRole.isBlank() || persistedRole == null) {
+            return false;
+        }
+        return persistedRole.name().equals(tokenRole.trim());
+    }
+
+    private boolean isPublicAuthPath(HttpServletRequest request) {
+        String path = request.getServletPath();
+        if (path == null || path.isBlank()) {
+            path = request.getRequestURI();
+        }
+        if (path == null || path.isBlank()) {
+            return false;
+        }
+        return path.equals("/auth/login")
+            || path.startsWith("/auth/login/")
+            || path.equals("/auth/register")
+            || path.startsWith("/auth/register/")
+            || path.equals("/auth/oauth")
+            || path.equals("/auth/refresh")
+            || path.equals("/auth/logout");
     }
 
     private String extractTokenFromCookie(HttpServletRequest request) {

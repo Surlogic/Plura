@@ -15,4 +15,5 @@ public class ProfesionalPublicSummaryResponse {
     private String location;
     private String headline;
     private List<CategoryResponse> categories;
+    private String logoUrl;
 }

@@ -1,14 +1,19 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import Navbar from '@/components/shared/Navbar';
 import ProfesionalSidebar from '@/components/profesional/Sidebar';
+import Button from '@/components/ui/Button';
 import DayScheduleCard from '@/components/profesional/schedule/DayScheduleCard';
 import SchedulePausesPanel from '@/components/profesional/schedule/SchedulePausesPanel';
 import { useProfessionalProfile } from '@/hooks/useProfessionalProfile';
 import { isAxiosError } from 'axios';
 import api from '@/services/api';
 import { useProfessionalDashboardUnsavedSection } from '@/context/ProfessionalDashboardUnsavedChangesContext';
+import {
+  DashboardHero,
+  DashboardSectionHeading,
+  DashboardStatCard,
+} from '@/components/profesional/dashboard/DashboardUI';
 import {
   buildEmptyPause,
   createDefaultSchedule,
@@ -489,93 +494,84 @@ export default function ProfesionalScheduleBuilderPage() {
 
   return (
     <div className="min-h-screen bg-[radial-gradient(circle_at_top,#FFFFFF_0%,#EEF2F6_45%,#D3D7DC_100%)] text-[#0E2A47]">
-      <div className="flex min-h-screen flex-col">
-        <Navbar
-          variant="dashboard"
-          showMenuButton
-          onMenuClick={handleToggleMenu}
-        />
-        <div className="flex flex-1">
+      <div className="flex min-h-screen">
           <aside className="hidden w-[260px] shrink-0 border-r border-[#0E2A47]/10 bg-[#0B1D2A] lg:block">
             <div className="sticky top-0 h-screen overflow-y-auto">
               <ProfesionalSidebar profile={profile} active="Horarios de trabajo" />
             </div>
           </aside>
           <div className="flex-1">
+            <div className="px-4 pt-4 sm:px-6 lg:hidden">
+              <Button type="button" size="sm" onClick={handleToggleMenu}>
+                {isMenuOpen ? 'Cerrar menu' : 'Abrir menu'}
+              </Button>
+            </div>
             {isMenuOpen ? (
               <div className="border-b border-[#0E2A47]/10 bg-[#0B1D2A] lg:hidden">
                 <ProfesionalSidebar profile={profile} active="Horarios de trabajo" />
               </div>
             ) : null}
-            <main className="mx-auto w-full max-w-[1400px] px-4 py-8 sm:px-6 lg:px-10">
+            <main className="mx-auto w-full max-w-[1400px] px-4 py-6 sm:px-6 sm:py-8 lg:px-10">
               <div className="space-y-6">
-            <div className="rounded-[28px] border border-white/70 bg-white/95 p-6 shadow-[0_28px_70px_rgba(15,23,42,0.18)]">
-              <div className="flex flex-wrap items-center justify-between gap-4">
-                <div>
-                  <p className="text-[0.65rem] uppercase tracking-[0.35em] text-[#94A3B8]">
-                    Horarios
-                  </p>
-                  <h1 className="mt-2 text-2xl font-semibold text-[#0E2A47]">
-                    Constructor de horarios de trabajo
-                  </h1>
-                  <p className="mt-1 text-sm text-[#64748B]">
-                    Creá franjas para uno o varios días en una sola acción.
-                  </p>
-                </div>
-                <button
+            <DashboardHero
+              eyebrow="Disponibilidad"
+              icon="horarios"
+              accent="ink"
+              title="Horarios diseñados para operar sin fricción"
+              description="Definí la base semanal, aplicá franjas en lote y detectá rápido qué días están activos, pausados o cerrados."
+              meta={
+                <>
+                  <span className="rounded-full border border-white/12 bg-white/8 px-3 py-1 text-xs font-semibold text-white/80">
+                    {summary.activeCount} activos
+                  </span>
+                  <span className="rounded-full border border-white/12 bg-white/8 px-3 py-1 text-xs font-semibold text-white/80">
+                    {pauses.length} pausas
+                  </span>
+                </>
+              }
+              actions={(
+                <Button
                   type="button"
+                  variant="contrast"
                   onClick={() => void handleSave(undefined, 'Horarios guardados correctamente.')}
-                  className="rounded-full bg-[#0B1D2A] px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
                   disabled={isSaving}
                 >
                   {isSaving ? 'Guardando...' : 'Guardar cambios'}
-                </button>
-              </div>
-              {saveMessage ? (
-                <p className={`mt-3 text-sm font-medium ${saveError ? 'text-red-500' : 'text-[#1FB6A6]'}`}>
-                  {saveMessage}
-                </p>
-              ) : null}
-            </div>
+                </Button>
+              )}
+            />
 
-            <div className="rounded-[22px] border border-white/70 bg-white/95 px-4 py-3 shadow-[0_14px_30px_rgba(15,23,42,0.10)] sm:px-5 sm:py-4">
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-[minmax(220px,1.25fr)_repeat(3,minmax(0,1fr))]">
-                <div className="col-span-2 border-b border-[#E2E8F0] pb-2 sm:col-span-3 sm:pb-3 lg:col-span-1 lg:border-b-0 lg:border-r lg:pb-0 lg:pr-4">
-                  <p className="text-[0.62rem] uppercase tracking-[0.3em] text-[#94A3B8]">
-                    Resumen
-                  </p>
-                  <h2 className="mt-1 text-base font-semibold text-[#0E2A47]">
-                    Estado semanal
-                  </h2>
-                </div>
+            {saveMessage ? (
+              <p className={`rounded-full border px-4 py-2 text-sm font-medium shadow-[var(--shadow-card)] ${
+                saveError
+                  ? 'border-red-200 bg-red-50 text-red-500'
+                  : 'border-[#cdeee9] bg-[#f0fffc] text-[#1FB6A6]'
+              }`}>
+                {saveMessage}
+              </p>
+            ) : null}
 
-                <div className="rounded-[14px] border border-[#E2E7EC] bg-[#F7F9FB] px-3 py-2.5">
-                  <p className="text-[0.62rem] uppercase tracking-[0.16em] text-[#94A3B8]">
-                    Activos
-                  </p>
-                  <p className="mt-1 text-2xl font-semibold leading-none text-[#0E2A47]">
-                    {summary.activeCount}
-                  </p>
-                </div>
-
-                <div className="rounded-[14px] border border-[#E2E7EC] bg-[#F7F9FB] px-3 py-2.5">
-                  <p className="text-[0.62rem] uppercase tracking-[0.16em] text-[#94A3B8]">
-                    Pausados
-                  </p>
-                  <p className="mt-1 text-2xl font-semibold leading-none text-[#0E2A47]">
-                    {summary.pausedCount}
-                  </p>
-                </div>
-
-                <div className="col-span-2 rounded-[14px] border border-[#E2E7EC] bg-[#F7F9FB] px-3 py-2.5 sm:col-span-1">
-                  <p className="text-[0.62rem] uppercase tracking-[0.16em] text-[#94A3B8]">
-                    Cerrados
-                  </p>
-                  <p className="mt-1 text-2xl font-semibold leading-none text-[#0E2A47]">
-                    {summary.closedCount}
-                  </p>
-                </div>
-              </div>
+            <div className="grid gap-4 md:grid-cols-3">
+              <DashboardStatCard
+                label="Activos"
+                value={`${summary.activeCount}`}
+                detail="Días abiertos con franjas configuradas"
+                icon="check"
+                tone="accent"
+              />
+              <DashboardStatCard
+                label="Pausados"
+                value={`${summary.pausedCount}`}
+                detail="Bloqueados temporalmente"
+                icon="warning"
+                tone="warm"
+              />
+              <DashboardStatCard
+                label="Cerrados"
+                value={`${summary.closedCount}`}
+                detail="Días sin atención configurada"
+                icon="horarios"
+              />
             </div>
 
             {showSkeleton ? (
@@ -595,15 +591,11 @@ export default function ProfesionalScheduleBuilderPage() {
                     className="rounded-[24px] border border-white/70 bg-white/95 p-6 shadow-[0_16px_36px_rgba(15,23,42,0.12)]"
                   >
                     <div>
-                      <p className="text-[0.65rem] uppercase tracking-[0.35em] text-[#94A3B8]">
-                        Constructor
-                      </p>
-                      <h2 className="mt-2 text-lg font-semibold text-[#0E2A47]">
-                        Crear horarios en lote
-                      </h2>
-                      <p className="mt-1 text-sm text-[#64748B]">
-                        Seleccioná los días, definí la franja y creá todo de una.
-                      </p>
+                      <DashboardSectionHeading
+                        eyebrow="Constructor"
+                        title="Crear horarios en lote"
+                        description="Seleccioná días, definí la franja y aplicá cambios de una sola vez."
+                      />
 
                       <div className="mt-4">
                         <p className="text-sm font-medium text-[#0E2A47]">Días</p>
@@ -865,7 +857,6 @@ export default function ProfesionalScheduleBuilderPage() {
             </main>
           </div>
         </div>
-      </div>
     </div>
   );
 }

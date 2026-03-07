@@ -73,10 +73,23 @@ public class BillingProperties {
         if (plan == null) {
             throw new IllegalStateException("Plan faltante: " + name);
         }
-        if (plan.price == null || plan.price.compareTo(BigDecimal.ZERO) <= 0) {
-            throw new IllegalStateException(name + " requiere precio > 0");
+        if (plan.price == null) {
+            throw new IllegalStateException(name + " requiere precio");
+        }
+        boolean allowFreePlan = "PLAN_BASIC".equals(name);
+        if ((!allowFreePlan && plan.price.compareTo(BigDecimal.ZERO) <= 0)
+            || (allowFreePlan && plan.price.compareTo(BigDecimal.ZERO) < 0)) {
+            throw new IllegalStateException(name + " tiene precio invalido");
         }
         requirePresent(plan.currency, name + " currency");
+    }
+
+    public String resolveMercadoPagoPlanId(SubscriptionPlan plan) {
+        return switch (plan) {
+            case PLAN_BASIC -> mercadopago.planBasicId;
+            case PLAN_PRO -> mercadopago.planProId;
+            case PLAN_PREMIUM -> mercadopago.planPremiumId;
+        };
     }
 
     private void requirePresent(String value, String fieldName) {
@@ -141,14 +154,18 @@ public class BillingProperties {
         private String baseUrl = "https://api.mercadopago.com";
         private String accessToken = "";
         private String webhookSecret = "";
-        private String checkoutPath = "/checkout/preferences";
+        private String preapprovalPlanPath = "/preapproval_plan";
+        private String preapprovalPath = "/preapproval";
         private String cancelPath = "/preapproval/{id}";
-        private String paymentStatusPath = "/v1/payments/{id}";
         private String subscriptionStatusPath = "/preapproval/{id}";
         private boolean sandboxOnlyBodySignatureFallback = false;
+        private String subscriptionBackUrl = "";
         private String successUrl = "";
         private String failureUrl = "";
         private String pendingUrl = "";
+        private String planBasicId = "";
+        private String planProId = "";
+        private String planPremiumId = "";
         private int timeoutMillis = 5000;
 
         public boolean isEnabled() {
@@ -183,12 +200,20 @@ public class BillingProperties {
             this.webhookSecret = webhookSecret;
         }
 
-        public String getCheckoutPath() {
-            return checkoutPath;
+        public String getPreapprovalPlanPath() {
+            return preapprovalPlanPath;
         }
 
-        public void setCheckoutPath(String checkoutPath) {
-            this.checkoutPath = checkoutPath;
+        public void setPreapprovalPlanPath(String preapprovalPlanPath) {
+            this.preapprovalPlanPath = preapprovalPlanPath;
+        }
+
+        public String getPreapprovalPath() {
+            return preapprovalPath;
+        }
+
+        public void setPreapprovalPath(String preapprovalPath) {
+            this.preapprovalPath = preapprovalPath;
         }
 
         public String getCancelPath() {
@@ -197,14 +222,6 @@ public class BillingProperties {
 
         public void setCancelPath(String cancelPath) {
             this.cancelPath = cancelPath;
-        }
-
-        public String getPaymentStatusPath() {
-            return paymentStatusPath;
-        }
-
-        public void setPaymentStatusPath(String paymentStatusPath) {
-            this.paymentStatusPath = paymentStatusPath;
         }
 
         public String getSubscriptionStatusPath() {
@@ -221,6 +238,14 @@ public class BillingProperties {
 
         public void setSandboxOnlyBodySignatureFallback(boolean sandboxOnlyBodySignatureFallback) {
             this.sandboxOnlyBodySignatureFallback = sandboxOnlyBodySignatureFallback;
+        }
+
+        public String getSubscriptionBackUrl() {
+            return subscriptionBackUrl;
+        }
+
+        public void setSubscriptionBackUrl(String subscriptionBackUrl) {
+            this.subscriptionBackUrl = subscriptionBackUrl;
         }
 
         public String getSuccessUrl() {
@@ -245,6 +270,30 @@ public class BillingProperties {
 
         public void setPendingUrl(String pendingUrl) {
             this.pendingUrl = pendingUrl;
+        }
+
+        public String getPlanBasicId() {
+            return planBasicId;
+        }
+
+        public void setPlanBasicId(String planBasicId) {
+            this.planBasicId = planBasicId;
+        }
+
+        public String getPlanProId() {
+            return planProId;
+        }
+
+        public void setPlanProId(String planProId) {
+            this.planProId = planProId;
+        }
+
+        public String getPlanPremiumId() {
+            return planPremiumId;
+        }
+
+        public void setPlanPremiumId(String planPremiumId) {
+            this.planPremiumId = planPremiumId;
         }
 
         public int getTimeoutMillis() {

@@ -5,9 +5,11 @@ import Navbar from '@/components/shared/Navbar';
 import Footer from '@/components/shared/Footer';
 import BusinessGallery from '@/components/profesional/BusinessGallery';
 import ServiceDetailModal from '@/components/profesional/ServiceDetailModal';
+import FavoriteToggleButton from '@/components/shared/FavoriteToggleButton';
 import Badge from '@/components/ui/Badge';
 import Button from '@/components/ui/Button';
 import Card from '@/components/ui/Card';
+import { useFavoriteProfessionals } from '@/hooks/useFavoriteProfessionals';
 import api from '@/services/api';
 import { mapboxForwardGeocode } from '@/services/mapbox';
 import { getPublicSlots } from '@/services/publicBookings';
@@ -238,6 +240,7 @@ type PublicProfessional = {
 
 export default function ProfesionalDetailPage() {
   const router = useRouter();
+  const { isFavorite, toggleFavorite } = useFavoriteProfessionals();
   const slug = Array.isArray(router.query.slug)
     ? router.query.slug[0]
     : router.query.slug;
@@ -531,6 +534,7 @@ export default function ProfesionalDetailPage() {
   const hasRealGalleryPhotos = galleryPhotos.some((photo) => Boolean(photo));
 
   const professionalSlug = typeof slug === 'string' ? slug : '';
+  const isCurrentFavorite = isFavorite(professionalSlug);
 
   useEffect(() => {
     if (isPreview || !professionalSlug || !selectedService?.id) {
@@ -674,6 +678,7 @@ export default function ProfesionalDetailPage() {
   const tiktokHref = resolveSocialHref(tiktokValue, 'tiktok');
   const websiteHref = resolveSocialHref(websiteValue, 'website');
   const whatsappHref = resolveSocialHref(whatsappValue, 'whatsapp');
+  const favoriteImage = galleryPhotos[0] || merged.logoUrl || undefined;
 
   return (
     <div
@@ -748,6 +753,24 @@ export default function ProfesionalDetailPage() {
                     </p>
                   </Card>
                 ) : null}
+                <FavoriteToggleButton
+                  isActive={isCurrentFavorite}
+                  onClick={() => {
+                    if (!professionalSlug) return;
+                    void toggleFavorite({
+                      slug: professionalSlug,
+                      name: merged.name || 'Profesional',
+                      category: merged.category || 'Profesional',
+                      location: merged.location || undefined,
+                      imageUrl: favoriteImage || undefined,
+                      headline: merged.headline || undefined,
+                    });
+                  }}
+                  variant="pill"
+                  activeLabel="Guardado en favoritos"
+                  inactiveLabel="Guardar en favoritos"
+                  className="w-full justify-center"
+                />
                 <Button
                   type="button"
                   onClick={() => {

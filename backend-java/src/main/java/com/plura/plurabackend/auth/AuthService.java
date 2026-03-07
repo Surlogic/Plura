@@ -20,6 +20,8 @@ import com.plura.plurabackend.auth.repository.RefreshTokenRepository;
 import com.plura.plurabackend.common.util.SlugUtils;
 import com.plura.plurabackend.professional.model.ProfessionalProfile;
 import com.plura.plurabackend.professional.repository.ProfessionalProfileRepository;
+import com.plura.plurabackend.productplan.EffectiveProductPlan;
+import com.plura.plurabackend.productplan.EffectiveProductPlanService;
 import com.plura.plurabackend.search.engine.SearchSyncPublisher;
 import com.plura.plurabackend.user.model.User;
 import com.plura.plurabackend.user.model.UserRole;
@@ -56,6 +58,7 @@ public class AuthService {
     private final CategoryRepository categoryRepository;
     private final RefreshTokenRepository refreshTokenRepository;
     private final OAuthService oAuthService;
+    private final EffectiveProductPlanService effectiveProductPlanService;
     private final SearchSyncPublisher searchSyncPublisher;
     private final PasswordEncoder passwordEncoder;
     private final Algorithm jwtAlgorithm;
@@ -81,6 +84,7 @@ public class AuthService {
         CategoryRepository categoryRepository,
         RefreshTokenRepository refreshTokenRepository,
         OAuthService oAuthService,
+        EffectiveProductPlanService effectiveProductPlanService,
         SearchSyncPublisher searchSyncPublisher,
         PasswordEncoder passwordEncoder,
         @Value("${jwt.secret}") String jwtSecret,
@@ -100,6 +104,7 @@ public class AuthService {
         this.categoryRepository = categoryRepository;
         this.refreshTokenRepository = refreshTokenRepository;
         this.oAuthService = oAuthService;
+        this.effectiveProductPlanService = effectiveProductPlanService;
         this.searchSyncPublisher = searchSyncPublisher;
         this.passwordEncoder = passwordEncoder;
         this.jwtAlgorithm = Algorithm.HMAC256(jwtSecret);
@@ -122,7 +127,7 @@ public class AuthService {
     @Transactional
     public void registerCliente(RegisterRequest request) {
         String normalizedEmail = request.getEmail().trim().toLowerCase(Locale.ROOT);
-        if (userRepository.findByEmail(normalizedEmail).isPresent()) {
+        if (userRepository.findByEmailAndDeletedAtIsNull(normalizedEmail).isPresent()) {
             burnPasswordWorkFactor(request.getPassword());
             return;
         }
@@ -144,7 +149,7 @@ public class AuthService {
     @Transactional
     public void registerProfesional(RegisterProfesionalRequest request) {
         String normalizedEmail = request.getEmail().trim().toLowerCase(Locale.ROOT);
-        if (userRepository.findByEmail(normalizedEmail).isPresent()) {
+        if (userRepository.findByEmailAndDeletedAtIsNull(normalizedEmail).isPresent()) {
             burnPasswordWorkFactor(request.getPassword());
             return;
         }
@@ -198,7 +203,7 @@ public class AuthService {
     }
 
     public AuthResult loginProfesional(LoginRequest request, String userAgent) {
-        User user = userRepository.findByEmail(request.getEmail().trim().toLowerCase(Locale.ROOT))
+        User user = userRepository.findByEmailAndDeletedAtIsNull(request.getEmail().trim().toLowerCase(Locale.ROOT))
             .orElse(null);
         if (user == null) {
             burnPasswordWorkFactor(request.getPassword());
@@ -216,7 +221,7 @@ public class AuthService {
     }
 
     public AuthResult loginCliente(LoginRequest request, String userAgent) {
-        User user = userRepository.findByEmail(request.getEmail().trim().toLowerCase(Locale.ROOT))
+        User user = userRepository.findByEmailAndDeletedAtIsNull(request.getEmail().trim().toLowerCase(Locale.ROOT))
             .orElse(null);
         if (user == null) {
             burnPasswordWorkFactor(request.getPassword());
@@ -239,6 +244,8 @@ public class AuthService {
         String normalizedProvider = normalizeOAuthProvider(userInfo.provider());
         String providerId = normalizeOAuthValue(userInfo.providerId());
         String email = normalizeOAuthEmail(userInfo.email());
+        UserRole desiredRole = normalizeDesiredOAuthRole(request.getDesiredRole());
+        OAuthAuthAction authAction = normalizeOAuthAuthAction(request.getAuthAction());
 
         if (providerId == null) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Token OAuth sin providerId");
@@ -246,7 +253,7 @@ public class AuthService {
 
         User user = null;
         if (email != null) {
-            user = userRepository.findByEmail(email).orElse(null);
+            user = userRepository.findByEmailAndDeletedAtIsNull(email).orElse(null);
             if (user != null) {
                 String existingProvider = normalizeOAuthValue(user.getProvider());
                 if (existingProvider != null && !normalizedProvider.equals(existingProvider.toLowerCase(Locale.ROOT))) {
@@ -255,10 +262,17 @@ public class AuthService {
             }
         }
         if (user == null) {
-            user = userRepository.findByProviderAndProviderId(normalizedProvider, providerId).orElse(null);
+            user = userRepository.findByProviderAndProviderIdAndDeletedAtIsNull(normalizedProvider, providerId)
+                .orElse(null);
         }
 
         if (user == null) {
+            if (authAction == OAuthAuthAction.LOGIN) {
+                throw new ResponseStatusException(
+                    HttpStatus.UNAUTHORIZED,
+                    "No existe una cuenta asociada. Registrate primero."
+                );
+            }
             if ("apple".equals(normalizedProvider) && email == null) {
                 throw new AppleEmailRequiredFirstLoginException();
             }
@@ -266,7 +280,7 @@ public class AuthService {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "OAuth email es obligatorio");
             }
             user = new User();
-            user.setRole(UserRole.USER);
+            user.setRole(desiredRole == null ? UserRole.USER : desiredRole);
             user.setEmail(email);
             user.setPassword(passwordEncoder.encode(UUID.randomUUID().toString()));
             user.setFullName(resolveOAuthDisplayName(userInfo.name(), user.getEmail()));
@@ -274,6 +288,9 @@ public class AuthService {
             user.setProviderId(providerId);
             user.setAvatar(normalizeOAuthValue(userInfo.avatar()));
             user = userRepository.save(user);
+            if (user.getRole() == UserRole.PROFESSIONAL) {
+                ensureProfessionalProfile(user);
+            }
         } else {
             boolean changed = false;
             if ((user.getProvider() == null || user.getProvider().isBlank()) || normalizedProvider.equals(user.getProvider())) {
@@ -291,8 +308,15 @@ public class AuthService {
                 user.setAvatar(avatar);
                 changed = true;
             }
+            if (desiredRole == UserRole.PROFESSIONAL && user.getRole() != UserRole.PROFESSIONAL) {
+                user.setRole(UserRole.PROFESSIONAL);
+                changed = true;
+            }
             if (changed) {
                 user = userRepository.save(user);
+            }
+            if (desiredRole == UserRole.PROFESSIONAL) {
+                ensureProfessionalProfile(user);
             }
         }
 
@@ -321,6 +345,11 @@ public class AuthService {
         }
 
         User user = stored.getUser();
+        if (user == null || user.getDeletedAt() != null) {
+            stored.setRevokedAt(now);
+            refreshTokenRepository.save(stored);
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Usuario no encontrado");
+        }
 
         stored.setRevokedAt(now);
         refreshTokenRepository.save(stored);
@@ -413,7 +442,7 @@ public class AuthService {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Refresh token inválido");
         }
 
-        return userRepository.findById(userId)
+        return userRepository.findByIdAndDeletedAtIsNull(userId)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Usuario no encontrado"));
     }
 
@@ -433,6 +462,8 @@ public class AuthService {
             profile = professionalProfileRepository.save(profile);
             searchSyncPublisher.publishProfileChanged(profile.getId());
         }
+
+        EffectiveProductPlan effectivePlan = effectiveProductPlanService.resolveForProfessional(profile);
 
         return new ProfesionalProfileResponse(
             String.valueOf(user.getId()),
@@ -458,6 +489,8 @@ public class AuthService {
             profile.getPublicAbout(),
             profile.getPublicPhotos(),
             mapCategories(profile.getCategories()),
+            effectivePlan.code().name(),
+            effectivePlan.capabilities(),
             user.getCreatedAt()
         );
     }
@@ -529,6 +562,30 @@ public class AuthService {
         return normalized.toLowerCase(Locale.ROOT);
     }
 
+    private UserRole normalizeDesiredOAuthRole(String rawRole) {
+        String normalized = normalizeOAuthValue(rawRole);
+        if (normalized == null) {
+            return null;
+        }
+        try {
+            return UserRole.valueOf(normalized.toUpperCase(Locale.ROOT));
+        } catch (IllegalArgumentException exception) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "desiredRole inválido");
+        }
+    }
+
+    private OAuthAuthAction normalizeOAuthAuthAction(String rawAction) {
+        String normalized = normalizeOAuthValue(rawAction);
+        if (normalized == null) {
+            return OAuthAuthAction.LOGIN;
+        }
+        try {
+            return OAuthAuthAction.valueOf(normalized.toUpperCase(Locale.ROOT));
+        } catch (IllegalArgumentException exception) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "authAction inválido");
+        }
+    }
+
     private String normalizeOAuthValue(String value) {
         if (value == null) {
             return null;
@@ -547,6 +604,16 @@ public class AuthService {
             return email.substring(0, atIndex);
         }
         return "Usuario";
+    }
+
+    private ProfessionalProfile ensureProfessionalProfile(User user) {
+        return professionalProfileRepository.findByUser_Id(user.getId())
+            .orElseGet(() -> bootstrapMissingProfessionalProfile(user));
+    }
+
+    private enum OAuthAuthAction {
+        LOGIN,
+        REGISTER
     }
 
     private String normalizeTipoCliente(String rawTipoCliente) {

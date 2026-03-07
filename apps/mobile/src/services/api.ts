@@ -86,6 +86,9 @@ const refreshAccessToken = async (): Promise<string | null> => {
 
 api.interceptors.request.use(
   async (config) => {
+    if (isAuthRoute(config.url)) {
+      return config;
+    }
     const token = await getProfessionalToken();
     // Validamos que el token no sea la palabra "null" ni "undefined"
     if (token && token !== "null" && token !== "undefined") {

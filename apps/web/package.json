@@ -3,10 +3,11 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev -p 3002",
-    "build": "node ./scripts/clean-next-build.cjs && next build",
-    "analyze": "node ./scripts/clean-next-build.cjs && ANALYZE=true next build",
-    "start": "next start",
+    "clean": "node ./scripts/clean-next-build.cjs clean",
+    "dev": "bash ../../scripts/predev.sh 3002 && next dev -p 3002",
+    "build": "NEXT_BUILD_DIR=.next-build node ./scripts/clean-next-build.cjs clean && NEXT_BUILD_DIR=.next-build next build",
+    "analyze": "NEXT_BUILD_DIR=.next-build node ./scripts/clean-next-build.cjs clean && NEXT_BUILD_DIR=.next-build ANALYZE=true next build",
+    "start": "NEXT_BUILD_DIR=.next-build node ./scripts/clean-next-build.cjs ensure && NEXT_BUILD_DIR=.next-build next start",
     "lint": "eslint"
   },
   "dependencies": {

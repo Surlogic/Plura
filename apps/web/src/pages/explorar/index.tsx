@@ -14,6 +14,7 @@ import {
   SEARCH_MAX_SIZE,
 } from '@/config/search';
 import { useClientProfileContext } from '@/context/ClientProfileContext';
+import { useFavoriteProfessionals } from '@/hooks/useFavoriteProfessionals';
 import { searchProfessionals } from '@/services/search';
 import type { SearchItem, SearchSort, SearchType } from '@/types/search';
 import type { UnifiedSearchValues } from '@/components/search/UnifiedSearchBar';
@@ -113,6 +114,7 @@ const formatPriceFrom = (value?: number | null) => {
 export default function ExplorarPage() {
   const router = useRouter();
   const { profile, hasLoaded } = useClientProfileContext();
+  const { isFavorite, toggleFavorite } = useFavoriteProfessionals();
   const hasClientSession = hasLoaded && Boolean(profile);
   const displayName = profile?.fullName || 'Cliente';
 
@@ -361,6 +363,9 @@ export default function ExplorarPage() {
 
   const totalPages = Math.max(1, Math.ceil(total / size));
 
+  const getCategoryLabel = (item: SearchItem) =>
+    item.categorySlugs.length > 0 ? humanizeSlug(item.categorySlugs[0]) : 'Profesional';
+
   const replaceQuery = (nextQuery: Record<string, string>) => {
     void router.replace(
       {
@@ -553,11 +558,7 @@ export default function ExplorarPage() {
                         key={item.id}
                         id={String(item.id)}
                         name={item.name}
-                        category={
-                          item.categorySlugs.length > 0
-                            ? humanizeSlug(item.categorySlugs[0])
-                            : 'Profesional'
-                        }
+                        category={getCategoryLabel(item)}
                         rating={typeof item.rating === 'number' ? item.rating.toFixed(1) : undefined}
                         price={formatPriceFrom(item.priceFrom)}
                         city={item.locationText || undefined}
@@ -581,6 +582,18 @@ export default function ExplorarPage() {
                             return;
                           }
                           setHoveredMapItemId((current) => (current === id ? null : current));
+                        }}
+                        isFavorite={isFavorite(item.slug)}
+                        onFavoriteToggle={() => {
+                          if (!item.slug) return;
+                          void toggleFavorite({
+                            slug: item.slug,
+                            name: item.name,
+                            category: getCategoryLabel(item),
+                            location: item.locationText || undefined,
+                            imageUrl: item.coverImageUrl || undefined,
+                            headline: item.headline || undefined,
+                          });
                         }}
                       />
                     ))}
@@ -645,11 +658,7 @@ export default function ExplorarPage() {
                     <ExploreCard
                       key={item.id}
                       name={item.name}
-                      category={
-                        item.categorySlugs.length > 0
-                          ? humanizeSlug(item.categorySlugs[0])
-                          : 'Profesional'
-                      }
+                      category={getCategoryLabel(item)}
                       rating={typeof item.rating === 'number' ? item.rating.toFixed(1) : undefined}
                       price={formatPriceFrom(item.priceFrom)}
                       city={item.locationText || undefined}
@@ -662,6 +671,18 @@ export default function ExplorarPage() {
                           : undefined
                       }
                       priority={index < 4}
+                      isFavorite={isFavorite(item.slug)}
+                      onFavoriteToggle={() => {
+                        if (!item.slug) return;
+                        void toggleFavorite({
+                          slug: item.slug,
+                          name: item.name,
+                          category: getCategoryLabel(item),
+                          location: item.locationText || undefined,
+                          imageUrl: item.coverImageUrl || undefined,
+                          headline: item.headline || undefined,
+                        });
+                      }}
                     />
                   ))}
                 </div>

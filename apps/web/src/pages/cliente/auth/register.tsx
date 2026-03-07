@@ -221,10 +221,14 @@ export default function ClienteRegisterPage() {
             </div>
             <div className="space-y-2">
               <GoogleLoginButton
+                authAction="REGISTER"
+                intendedRole="USER"
                 onAuthenticated={handleOAuthAuthenticated}
                 onError={setErrorMessage}
               />
               <AppleLoginButton
+                authAction="REGISTER"
+                intendedRole="USER"
                 onAuthenticated={handleOAuthAuthenticated}
                 onError={setErrorMessage}
               />

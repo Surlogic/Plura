@@ -183,6 +183,10 @@ app:
       core-pool-size: ${APP_ASYNC_GEOCODING_CORE_POOL_SIZE:2}
       max-pool-size: ${APP_ASYNC_GEOCODING_MAX_POOL_SIZE:4}
       queue-capacity: ${APP_ASYNC_GEOCODING_QUEUE_CAPACITY:500}
+    billing-webhook:
+      core-pool-size: ${APP_ASYNC_BILLING_WEBHOOK_CORE_POOL_SIZE:2}
+      max-pool-size: ${APP_ASYNC_BILLING_WEBHOOK_MAX_POOL_SIZE:8}
+      queue-capacity: ${APP_ASYNC_BILLING_WEBHOOK_QUEUE_CAPACITY:500}
 
 jobs:
   sqs:
@@ -221,16 +225,20 @@ billing:
   mercadopago:
     enabled: ${BILLING_MERCADOPAGO_ENABLED:false}
     base-url: ${BILLING_MERCADOPAGO_BASE_URL:https://api.mercadopago.com}
-    access-token: ${BILLING_MERCADOPAGO_ACCESS_TOKEN:}
-    webhook-secret: ${BILLING_MERCADOPAGO_WEBHOOK_SECRET:}
-    checkout-path: ${BILLING_MERCADOPAGO_CHECKOUT_PATH:/checkout/preferences}
+    access-token: ${BILLING_MERCADOPAGO_ACCESS_TOKEN:${MP_ACCESS_TOKEN:}}
+    webhook-secret: ${BILLING_MERCADOPAGO_WEBHOOK_SECRET:${MP_WEBHOOK_SECRET:}}
+    preapproval-plan-path: ${BILLING_MERCADOPAGO_PREAPPROVAL_PLAN_PATH:/preapproval_plan}
+    preapproval-path: ${BILLING_MERCADOPAGO_PREAPPROVAL_PATH:/preapproval}
     cancel-path: ${BILLING_MERCADOPAGO_CANCEL_PATH:/preapproval/{id}}
-    payment-status-path: ${BILLING_MERCADOPAGO_PAYMENT_STATUS_PATH:/v1/payments/{id}}
     subscription-status-path: ${BILLING_MERCADOPAGO_SUBSCRIPTION_STATUS_PATH:/preapproval/{id}}
     sandbox-only-body-signature-fallback: ${BILLING_MERCADOPAGO_SANDBOX_ONLY_BODY_SIGNATURE_FALLBACK:false}
+    subscription-back-url: ${BILLING_MERCADOPAGO_SUBSCRIPTION_BACK_URL:}
     success-url: ${BILLING_MERCADOPAGO_SUCCESS_URL:}
     failure-url: ${BILLING_MERCADOPAGO_FAILURE_URL:}
     pending-url: ${BILLING_MERCADOPAGO_PENDING_URL:}
+    plan-basic-id: ${BILLING_MERCADOPAGO_PLAN_BASIC_ID:}
+    plan-pro-id: ${BILLING_MERCADOPAGO_PLAN_PRO_ID:}
+    plan-premium-id: ${BILLING_MERCADOPAGO_PLAN_PREMIUM_ID:}
     timeout-millis: ${BILLING_MERCADOPAGO_TIMEOUT_MILLIS:5000}
   dlocal:
     enabled: ${BILLING_DLOCAL_ENABLED:false}

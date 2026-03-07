@@ -19,18 +19,18 @@ export default function SearchField({
   className = '',
   valueClassName = '',
 }: SearchFieldProps) {
-  const baseClassName = `flex min-h-[74px] w-full min-w-0 flex-col justify-center rounded-[22px] border px-4 py-3 text-left transition ${
+  const baseClassName = `flex min-h-[70px] w-full min-w-0 flex-col justify-center rounded-[24px] border px-4 py-[0.85rem] text-left transition ${
     active
-      ? 'border-[color:var(--border-strong)] bg-white shadow-[0_8px_24px_rgba(14,42,71,0.10)]'
-      : 'border-transparent bg-transparent hover:border-[color:var(--border-soft)] hover:bg-white/68'
+      ? 'border-white/90 bg-white shadow-[0_16px_30px_-24px_rgba(14,42,71,0.42)]'
+      : 'border-transparent bg-white/18 hover:bg-white/42'
   } ${className}`.trim();
 
   const content = (
     <>
-      <span className="truncate whitespace-nowrap text-[0.68rem] font-semibold uppercase tracking-[0.24em] text-[color:var(--ink-faint)]">
+      <span className="truncate whitespace-nowrap text-[0.62rem] font-semibold uppercase tracking-[0.24em] text-[color:var(--ink-faint)]">
         {label}
       </span>
-      <div className={`mt-2 min-w-0 ${valueClassName}`.trim()}>{children}</div>
+      <div className={`mt-1.5 min-w-0 ${valueClassName}`.trim()}>{children}</div>
     </>
   );
 

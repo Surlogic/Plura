@@ -1,7 +1,6 @@
 package com.plura.plurabackend.billing.webhooks;
 
 import jakarta.servlet.http.HttpServletRequest;
-import java.util.Map;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -13,26 +12,37 @@ import org.springframework.web.bind.annotation.RestController;
 public class BillingWebhookController {
 
     private final BillingWebhookService billingWebhookService;
+    private final BillingWebhookAsyncDispatcher billingWebhookAsyncDispatcher;
 
-    public BillingWebhookController(BillingWebhookService billingWebhookService) {
+    public BillingWebhookController(
+        BillingWebhookService billingWebhookService,
+        BillingWebhookAsyncDispatcher billingWebhookAsyncDispatcher
+    ) {
         this.billingWebhookService = billingWebhookService;
+        this.billingWebhookAsyncDispatcher = billingWebhookAsyncDispatcher;
     }
 
     @PostMapping("/mercadopago")
-    public ResponseEntity<Map<String, String>> handleMercadoPago(
+    public ResponseEntity<Void> handleMercadoPago(
         HttpServletRequest request,
         @RequestBody(required = false) String payload
     ) {
-        WebhookHandleResult result = billingWebhookService.handleMercadoPago(request, payload);
-        return ResponseEntity.ok(Map.of("status", result.name()));
+        BillingWebhookService.PreparedWebhookDispatch dispatch = billingWebhookService.prepareMercadoPagoDispatch(
+            request,
+            payload
+        );
+        if (dispatch != null) {
+            billingWebhookAsyncDispatcher.dispatch(dispatch);
+        }
+        return ResponseEntity.ok().build();
     }
 
     @PostMapping("/dlocal")
-    public ResponseEntity<Map<String, String>> handleDlocal(
+    public ResponseEntity<Void> handleDlocal(
         HttpServletRequest request,
         @RequestBody(required = false) String payload
     ) {
-        WebhookHandleResult result = billingWebhookService.handleDLocal(request, payload);
-        return ResponseEntity.ok(Map.of("status", result.name()));
+        billingWebhookService.handleDLocal(request, payload);
+        return ResponseEntity.ok().build();
     }
 }

@@ -3,11 +3,18 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { isAxiosError } from 'axios';
 import Link from 'next/link';
-import Navbar from '@/components/shared/Navbar';
 import ProfesionalSidebar from '@/components/profesional/Sidebar';
+import Button from '@/components/ui/Button';
+import Card from '@/components/ui/Card';
+import { cn } from '@/components/ui/cn';
 import { useProfessionalProfile } from '@/hooks/useProfessionalProfile';
 import { useProfessionalDashboardUnsavedSection } from '@/context/ProfessionalDashboardUnsavedChangesContext';
 import api from '@/services/api';
+import {
+  DashboardHero,
+  DashboardSectionHeading,
+  DashboardStatCard,
+} from '@/components/profesional/dashboard/DashboardUI';
 import {
   getProfessionalReservationsForDates,
   updateProfessionalReservationStatus,
@@ -261,6 +268,7 @@ export default function ProfesionalDashboardPage() {
 
   const today = new Date();
   const todayKey = toLocalDateKey(today);
+  const currentMinutes = today.getHours() * 60 + today.getMinutes();
   const yesterday = new Date(today);
   yesterday.setDate(today.getDate() - 1);
   const yesterdayKey = toLocalDateKey(yesterday);
@@ -534,6 +542,51 @@ export default function ProfesionalDashboardPage() {
       detail: 'Últimos 7 días',
     },
   ];
+  const canViewAnalytics = profile?.planCapabilities?.allowAnalytics === true;
+  const nextReservation = useMemo(() => {
+    return agendaReservations
+      .filter((reservation) => {
+        if (!reservation.date) return false;
+        if (reservation.date > todayKey) return true;
+        if (reservation.date < todayKey) return false;
+        const minutes = parseTimeToMinutes(reservation.time);
+        return minutes !== null && minutes >= currentMinutes;
+      })
+      .sort((a, b) => {
+        const dateA = new Date(`${a.date}T${a.time || '00:00'}`).getTime();
+        const dateB = new Date(`${b.date}T${b.time || '00:00'}`).getTime();
+        return dateA - dateB;
+      })[0] ?? null;
+  }, [agendaReservations, currentMinutes, todayKey]);
+  const todayPendingCount = agendaReservations.filter(
+    (reservation) => reservation.date === todayKey && (reservation.status ?? 'pending') === 'pending',
+  ).length;
+  const daysWithOpenCapacity = Math.max(scheduleDays.length - daysWithReservations, 0);
+  const agendaOverviewCards = [
+    {
+      label: 'Pendientes hoy',
+      value: `${todayPendingCount}`,
+      detail: todayPendingCount > 0 ? 'Turnos por confirmar' : 'Nada por validar',
+      icon: 'warning' as const,
+      tone: 'warm' as const,
+    },
+    {
+      label: 'Próxima atención',
+      value: nextReservation?.time || '--:--',
+      detail: nextReservation
+        ? `${nextReservation.clientName || 'Cliente'} · ${nextReservation.serviceName || 'Servicio'}`
+        : 'Sin reservas próximas',
+      icon: 'agenda' as const,
+      tone: 'accent' as const,
+    },
+    {
+      label: 'Días con espacio',
+      value: `${daysWithOpenCapacity}`,
+      detail: scheduleDays.length > 0 ? 'Jornadas con margen esta semana' : 'Sin jornada configurada',
+      icon: 'spark' as const,
+      tone: 'default' as const,
+    },
+  ];
 
   const handlePrev = () => {
     if (calendarView === 'week') setWeekOffset((prev) => prev - 1);
@@ -604,87 +657,134 @@ export default function ProfesionalDashboardPage() {
 
   return (
     <div className="min-h-screen bg-[radial-gradient(circle_at_top,#FFFFFF_0%,#EEF2F6_45%,#D3D7DC_100%)] text-[#0E2A47]">
-      <div className="flex min-h-screen flex-col">
-        <Navbar
-          variant="dashboard"
-          showMenuButton
-          onMenuClick={handleToggleMenu}
-        />
-        <div className="flex flex-1">
+      <div className="flex min-h-screen">
           <aside className="hidden w-[260px] shrink-0 border-r border-[#0E2A47]/10 bg-[#0B1D2A] lg:block">
             <div className="sticky top-0 h-screen overflow-y-auto">
               <ProfesionalSidebar profile={profile} active="Agenda" />
             </div>
           </aside>
           <div className="flex-1">
+            <div className="px-4 pt-4 sm:px-6 lg:hidden">
+              <Button type="button" size="sm" onClick={handleToggleMenu}>
+                {isMenuOpen ? 'Cerrar menu' : 'Abrir menu'}
+              </Button>
+            </div>
             {isMenuOpen ? (
               <div className="border-b border-[#0E2A47]/10 bg-[#0B1D2A] lg:hidden">
                 <ProfesionalSidebar profile={profile} active="Agenda" />
               </div>
             ) : null}
-            <main className="mx-auto w-full max-w-[1400px] px-4 py-8 sm:px-6 lg:px-10">
+            <main className="mx-auto w-full max-w-[1400px] px-4 py-6 sm:px-6 sm:py-8 lg:px-10">
               <div className="space-y-10">
-                <section className="border-b border-[#E2E7EC] bg-white/90 px-4 py-6 sm:px-6 lg:px-10">
-                  <div className="flex flex-wrap items-center justify-between gap-4">
-                    <div>
-                      <p className="text-[0.65rem] uppercase tracking-[0.35em] text-[#94A3B8]">
-                        Panel profesional
-                      </p>
-                      <h1 className="mt-2 text-2xl font-semibold text-[#0E2A47]">
-                        Agenda y reservas
-                      </h1>
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      <Link
-                        href="/profesional/dashboard/reservas"
-                        className="rounded-full border border-[#E2E7EC] bg-white px-4 py-2 text-sm font-semibold text-[#0E2A47] transition hover:-translate-y-0.5 hover:shadow-md"
-                        onClick={(event) => {
-                          event.preventDefault();
-                          requestNavigation('/profesional/dashboard/reservas');
-                        }}
-                      >
-                        Ver lista de reservas
-                      </Link>
-                    </div>
-                  </div>
+                <section className="space-y-5">
+                  <DashboardHero
+                    eyebrow="Centro operativo"
+                    icon="agenda"
+                    accent="ink"
+                    title="Agenda y reservas con foco en lo urgente"
+                    description="Controlá el día, anticipá huecos disponibles y resolvé rápido pendientes, confirmaciones y cambios de agenda."
+                    meta={
+                      <>
+                        <span className="rounded-full border border-white/12 bg-white/8 px-3 py-1 text-xs font-semibold text-white/80">
+                          {todayCount} reservas hoy
+                        </span>
+                        <span className="rounded-full border border-white/12 bg-white/8 px-3 py-1 text-xs font-semibold text-white/80">
+                          {todayPendingCount} pendientes
+                        </span>
+                        {nextReservation ? (
+                          <span className="rounded-full border border-white/12 bg-white/8 px-3 py-1 text-xs font-semibold text-white/80">
+                            Próxima: {nextReservation.time}
+                          </span>
+                        ) : null}
+                      </>
+                    }
+                    actions={
+                      <>
+                        <Button
+                          type="button"
+                          variant="contrast"
+                          onClick={() => {
+                            requestNavigation('/profesional/dashboard/reservas');
+                          }}
+                        >
+                          Ver reservas
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="contrast"
+                          onClick={() => {
+                            requestNavigation('/profesional/dashboard/horarios');
+                          }}
+                        >
+                          Ajustar horarios
+                        </Button>
+                      </>
+                    }
+                  />
+
                   {statusMessage ? (
-                    <p className="mt-4 text-sm text-[#64748B]">{statusMessage}</p>
+                    <p className="rounded-full border border-[#E2E8F0] bg-white/90 px-4 py-2 text-sm text-[#64748B] shadow-[var(--shadow-card)]">
+                      {statusMessage}
+                    </p>
                   ) : null}
 
-                  <div className="mt-6 grid gap-6 sm:grid-cols-3">
-                    {stats.map((item, index) => (
-                      <div
-                        key={item.label}
-                        className={`flex flex-col gap-1 ${
-                          index > 0 ? 'sm:border-l sm:border-[#E2E7EC] sm:pl-6' : ''
-                        }`}
-                      >
-                        <p className="text-xs uppercase tracking-[0.3em] text-[#94A3B8]">
-                          {item.label}
-                        </p>
-                        <p className="text-2xl font-semibold text-[#0E2A47]">
-                          {item.value}
-                        </p>
-                        <p className="text-xs text-[#64748B]">{item.detail}</p>
-                      </div>
-                    ))}
+                  <div className="grid gap-4 lg:grid-cols-[1.2fr,0.8fr]">
+                    <div className="grid gap-4 sm:grid-cols-3">
+                      {agendaOverviewCards.map((item) => (
+                        <DashboardStatCard
+                          key={item.label}
+                          label={item.label}
+                          value={item.value}
+                          detail={item.detail}
+                          icon={item.icon}
+                          tone={item.tone}
+                        />
+                      ))}
+                    </div>
+
+                    {canViewAnalytics ? (
+                      <Card className="border-white/70 bg-white/95 p-5">
+                        <DashboardSectionHeading
+                          eyebrow="Tendencia"
+                          title="Pulso semanal"
+                          description="Una lectura rápida del ritmo de tu agenda."
+                        />
+                        <div className="mt-4 grid gap-3 sm:grid-cols-3 lg:grid-cols-1">
+                          {stats.map((item, index) => (
+                            <div
+                              key={item.label}
+                              className={cn(
+                                'rounded-[20px] border p-4',
+                                index === 0
+                                  ? 'border-[#f4dcc7] bg-[#fff5e8]'
+                                  : index === 1
+                                    ? 'border-[#cdeee9] bg-[#f0fffc]'
+                                    : 'border-[#E2E8F0] bg-[#F8FAFC]',
+                              )}
+                            >
+                              <p className="text-[0.64rem] uppercase tracking-[0.26em] text-[#94A3B8]">
+                                {item.label}
+                              </p>
+                              <p className="mt-2 text-2xl font-semibold text-[#0E2A47]">
+                                {item.value}
+                              </p>
+                              <p className="mt-1 text-xs text-[#64748B]">{item.detail}</p>
+                            </div>
+                          ))}
+                        </div>
+                      </Card>
+                    ) : null}
                   </div>
                 </section>
 
                 <section className="rounded-[28px] border border-white/70 bg-white/95 p-6 shadow-[0_18px_40px_rgba(15,23,42,0.08)]">
-                  <div className="flex flex-wrap items-center justify-between gap-4">
-                    <div>
-                      <p className="text-[0.65rem] uppercase tracking-[0.35em] text-[#94A3B8]">
-                        Agenda
-                      </p>
-                      <h2 className="mt-2 text-xl font-semibold text-[#0E2A47]">
-                        {calendarView === 'week' ? 'Semana actual' : 'Calendario mensual'}
-                      </h2>
-                      <p className="mt-1 text-sm text-[#64748B]">
-                        {calendarView === 'week' ? calendarWeekLabel : monthLabel}
-                      </p>
-                    </div>
+                  <DashboardSectionHeading
+                    eyebrow="Agenda"
+                    title={calendarView === 'week' ? 'Semana actual' : 'Calendario mensual'}
+                    description={calendarView === 'week' ? calendarWeekLabel : monthLabel}
+                  />
 
+                  <div className="mt-5 flex flex-wrap items-center justify-between gap-4">
                     <div className="flex flex-wrap items-center gap-2">
                       <div className="flex rounded-full border border-[#E2E7EC] bg-white p-0.5 shadow-sm">
                         <button
@@ -1008,7 +1108,6 @@ export default function ProfesionalDashboardPage() {
             </main>
           </div>
         </div>
-      </div>
       {selectedReservation ? (
         <div className="fixed inset-0 z-50 flex justify-end">
           <button

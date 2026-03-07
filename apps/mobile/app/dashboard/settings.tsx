@@ -1,10 +1,13 @@
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Switch, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Switch, Text, TouchableOpacity, View } from 'react-native';
+import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   getClientPreferences,
   updateClientPreferences,
 } from '../../src/services/clientFeatures';
+import api from '../../src/services/api';
+import { useProfessionalProfileContext } from '../../src/context/ProfessionalProfileContext';
 
 type Preferences = {
   emailReminders: boolean;
@@ -13,7 +16,9 @@ type Preferences = {
 };
 
 export default function SettingsScreen() {
+  const { role, logout } = useProfessionalProfileContext();
   const [isLoading, setIsLoading] = useState(true);
+  const [isDeletingAccount, setIsDeletingAccount] = useState(false);
   const [preferences, setPreferences] = useState<Preferences>({
     emailReminders: true,
     pushReminders: false,
@@ -32,6 +37,37 @@ export default function SettingsScreen() {
   const toggle = async (key: keyof Preferences) => {
     const next = await updateClientPreferences({ [key]: !preferences[key] });
     setPreferences(next);
+  };
+
+  const handleDeleteAccount = () => {
+    if (isDeletingAccount) return;
+    const description = role === 'professional'
+      ? 'Si tienes una suscripcion activa, se dara de baja antes de eliminar tu cuenta.'
+      : 'Se cancelaran tus proximas reservas antes de eliminar tu cuenta.';
+
+    Alert.alert(
+      'Eliminar cuenta',
+      `${description} Esta accion no se puede deshacer.`,
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Eliminar',
+          style: 'destructive',
+          onPress: async () => {
+            setIsDeletingAccount(true);
+            try {
+              await api.delete('/auth/me');
+              await logout();
+              router.replace('/(auth)/login');
+            } catch {
+              Alert.alert('No se pudo eliminar la cuenta', 'Intenta nuevamente en unos minutos.');
+            } finally {
+              setIsDeletingAccount(false);
+            }
+          },
+        },
+      ],
+    );
   };
 
   if (isLoading) {
@@ -72,6 +108,24 @@ export default function SettingsScreen() {
             </View>
             <Switch value={preferences.marketing} onValueChange={() => toggle('marketing')} />
           </View>
+        </View>
+
+        <View className="mt-6 rounded-[22px] border border-red-200 bg-red-50 p-5">
+          <Text className="font-semibold text-red-700">Eliminar cuenta</Text>
+          <Text className="mt-2 text-xs text-red-600">
+            {role === 'professional'
+              ? 'La cuenta profesional se despublica y la suscripcion se cancela si sigue activa.'
+              : 'Se cancelan tus proximos turnos y se cierra tu sesion en el dispositivo.'}
+          </Text>
+          <TouchableOpacity
+            onPress={handleDeleteAccount}
+            disabled={isDeletingAccount}
+            className="mt-4 h-12 items-center justify-center rounded-full border border-red-200 bg-white"
+          >
+            <Text className="font-semibold text-red-600">
+              {isDeletingAccount ? 'Eliminando...' : 'Eliminar cuenta'}
+            </Text>
+          </TouchableOpacity>
         </View>
       </View>
     </SafeAreaView>

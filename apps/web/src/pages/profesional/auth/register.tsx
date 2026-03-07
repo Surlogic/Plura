@@ -16,13 +16,11 @@ import { useCategories } from '@/hooks/useCategories';
 import { mapboxForwardGeocode } from '@/services/mapbox';
 import { getGeoLocationSuggestions, type GeoLocationSuggestion } from '@/services/geo';
 import { useProfessionalProfileContext } from '@/context/ProfessionalProfileContext';
-import { useClientProfileContext } from '@/context/ClientProfileContext';
 import type { OAuthLoginResult } from '@/lib/auth/oauthLogin';
 
 export default function ProfesionalRegisterPage() {
   const router = useRouter();
   const { refreshProfile } = useProfessionalProfileContext();
-  const { refreshProfile: refreshClientProfile } = useClientProfileContext();
 
   type RegisterResponse = {
     accessToken: string;
@@ -72,13 +70,12 @@ export default function ProfesionalRegisterPage() {
 
   const handleOAuthAuthenticated = async (result: OAuthLoginResult) => {
     setErrorMessage(null);
-    if (result.role === 'PROFESSIONAL') {
-      await refreshProfile();
-      router.push('/profesional/dashboard');
+    if (result.role !== 'PROFESSIONAL') {
+      setErrorMessage('No pudimos completar el alta profesional con esa cuenta. Intentá nuevamente desde este flujo.');
       return;
     }
-    await refreshClientProfile();
-    router.push('/cliente/inicio');
+    await refreshProfile();
+    router.push('/profesional/dashboard');
   };
 
   const handleChange = (event: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -350,10 +347,14 @@ export default function ProfesionalRegisterPage() {
             </div>
             <div className="space-y-2">
               <GoogleLoginButton
+                authAction="REGISTER"
+                intendedRole="PROFESSIONAL"
                 onAuthenticated={handleOAuthAuthenticated}
                 onError={setErrorMessage}
               />
               <AppleLoginButton
+                authAction="REGISTER"
+                intendedRole="PROFESSIONAL"
                 onAuthenticated={handleOAuthAuthenticated}
                 onError={setErrorMessage}
               />

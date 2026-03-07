@@ -70,7 +70,7 @@ public class HomeService {
             .toList();
 
         HomeStatsResponse stats = new HomeStatsResponse(
-            userRepository.countByRole(UserRole.USER),
+            userRepository.countByRoleAndDeletedAtIsNull(UserRole.USER),
             professionalProfileRepository.countByActiveTrue(),
             activeCategories.size(),
             countMonthlyBookings()

@@ -3,6 +3,8 @@ import { setAuthAccessToken } from '@/services/session';
 
 export type OAuthProvider = 'google' | 'apple';
 export type OAuthRole = 'USER' | 'PROFESSIONAL' | null;
+export type OAuthDesiredRole = Exclude<OAuthRole, null>;
+export type OAuthAuthAction = 'LOGIN' | 'REGISTER';
 
 type OAuthUser = {
   id: string;
@@ -20,13 +22,18 @@ export type OAuthLoginResult = OAuthResponse & {
   role: OAuthRole;
 };
 
-type OAuthAuthorizationCodeOptions = {
+type OAuthIntentOptions = {
+  intendedRole?: OAuthDesiredRole;
+  authAction?: OAuthAuthAction;
+};
+
+type OAuthAuthorizationCodeOptions = OAuthIntentOptions & {
   grantType: 'authorization_code';
   codeVerifier: string;
   redirectUri: string;
 };
 
-type OAuthTokenOptions = {
+type OAuthTokenOptions = OAuthIntentOptions & {
   grantType?: 'token';
 };
 
@@ -69,10 +76,14 @@ export async function oauthLogin(
           authorizationCode: tokenOrCode,
           codeVerifier: options.codeVerifier,
           redirectUri: options.redirectUri,
+          desiredRole: options.intendedRole,
+          authAction: options.authAction,
         }
       : {
           provider,
           token: tokenOrCode,
+          desiredRole: options.intendedRole,
+          authAction: options.authAction,
         };
 
   const response = await api.post<OAuthResponse>('/auth/oauth', payload);

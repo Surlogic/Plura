@@ -25,6 +25,9 @@ public interface ProfessionalProfileRepository extends JpaRepository<Professiona
     @EntityGraph(attributePaths = {"user", "categories"})
     Optional<ProfessionalProfile> findByUser_Id(Long userId);
 
+    @EntityGraph(attributePaths = {"user", "categories"})
+    Optional<ProfessionalProfile> findByUser_EmailIgnoreCase(String email);
+
     long countByActiveTrue();
 
     List<ProfessionalProfile> findByIdInAndActiveTrue(Collection<Long> ids);

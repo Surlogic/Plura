@@ -1,7 +1,7 @@
 'use client';
 
 import AppleLogin from 'react-apple-login';
-import type { OAuthLoginResult } from '@/lib/auth/oauthLogin';
+import type { OAuthAuthAction, OAuthDesiredRole, OAuthLoginResult } from '@/lib/auth/oauthLogin';
 import { oauthLogin } from '@/lib/auth/oauthLogin';
 
 type AppleAuthorization = {
@@ -16,11 +16,15 @@ type AppleLoginResponse = {
 type AppleLoginButtonProps = {
   onAuthenticated: (result: OAuthLoginResult) => Promise<void> | void;
   onError: (message: string) => void;
+  intendedRole?: OAuthDesiredRole;
+  authAction?: OAuthAuthAction;
 };
 
 export default function AppleLoginButton({
   onAuthenticated,
   onError,
+  intendedRole,
+  authAction = 'LOGIN',
 }: AppleLoginButtonProps) {
   const clientId = process.env.NEXT_PUBLIC_APPLE_CLIENT_ID;
   const redirectUri =
@@ -35,7 +39,7 @@ export default function AppleLoginButton({
     }
 
     try {
-      const result = await oauthLogin('apple', idToken);
+      const result = await oauthLogin('apple', idToken, { intendedRole, authAction });
       await onAuthenticated(result);
     } catch {
       onError('No se pudo iniciar sesion con Apple.');

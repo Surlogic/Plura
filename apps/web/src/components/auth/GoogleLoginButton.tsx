@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { isAxiosError } from 'axios';
-import type { OAuthLoginResult } from '@/lib/auth/oauthLogin';
+import type { OAuthAuthAction, OAuthDesiredRole, OAuthLoginResult } from '@/lib/auth/oauthLogin';
 import { oauthLogin } from '@/lib/auth/oauthLogin';
 import {
   GOOGLE_AUTH_URL,
@@ -18,6 +18,8 @@ import {
 type GoogleLoginButtonProps = {
   onAuthenticated: (result: OAuthLoginResult) => Promise<void> | void;
   onError: (message: string) => void;
+  intendedRole?: OAuthDesiredRole;
+  authAction?: OAuthAuthAction;
 };
 
 const GOOGLE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || '';
@@ -51,6 +53,8 @@ const resolveApiErrorMessage = (error: unknown, fallback: string) => {
 export default function GoogleLoginButton({
   onAuthenticated,
   onError,
+  intendedRole,
+  authAction = 'LOGIN',
 }: GoogleLoginButtonProps) {
   const [isLoading, setIsLoading] = useState(false);
   const popupRef = useRef<Window | null>(null);
@@ -104,6 +108,8 @@ export default function GoogleLoginButton({
           grantType: 'authorization_code',
           codeVerifier: pendingRequest.codeVerifier,
           redirectUri,
+          intendedRole,
+          authAction,
         });
         await onAuthenticated(result);
       } catch (error) {
@@ -146,7 +152,7 @@ export default function GoogleLoginButton({
       channel?.removeEventListener('message', handleChannelMessage);
       channel?.close();
     };
-  }, [onAuthenticated, onError]);
+  }, [authAction, intendedRole, onAuthenticated, onError]);
 
   if (!GOOGLE_CLIENT_ID) {
     return (

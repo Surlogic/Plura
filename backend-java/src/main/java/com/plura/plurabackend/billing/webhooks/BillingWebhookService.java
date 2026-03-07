@@ -62,8 +62,16 @@ public class BillingWebhookService {
     }
 
     public WebhookHandleResult handleMercadoPago(HttpServletRequest request, String rawPayload) {
-        if (!billingProperties.isEnabled() || !billingProperties.getMercadopago().isEnabled()) {
+        PreparedWebhookDispatch dispatch = prepareMercadoPagoDispatch(request, rawPayload);
+        if (dispatch == null) {
             return WebhookHandleResult.IGNORED;
+        }
+        return processPreparedWebhook(dispatch);
+    }
+
+    public PreparedWebhookDispatch prepareMercadoPagoDispatch(HttpServletRequest request, String rawPayload) {
+        if (!billingProperties.isEnabled() || !billingProperties.getMercadopago().isEnabled()) {
+            return null;
         }
 
         String requestId = resolveRequestId(request);
@@ -77,7 +85,11 @@ public class BillingWebhookService {
         }
 
         ParsedWebhookEvent event = parseMercadoPagoEvent(payload, request);
-        return registerAndProcess(event, requestId);
+        return new PreparedWebhookDispatch(event, requestId);
+    }
+
+    public WebhookHandleResult processPreparedWebhook(PreparedWebhookDispatch dispatch) {
+        return registerAndProcess(dispatch.event(), dispatch.requestId());
     }
 
     public WebhookHandleResult handleDLocal(HttpServletRequest request, String rawPayload) {
@@ -136,6 +148,8 @@ public class BillingWebhookService {
             throw exception;
         }
     }
+
+    public record PreparedWebhookDispatch(ParsedWebhookEvent event, String requestId) {}
 
     private ParsedWebhookEvent parseMercadoPagoEvent(String payload, HttpServletRequest request) {
         try {
@@ -290,6 +304,18 @@ public class BillingWebhookService {
         }
         if (containsAny(type, "cancel") || containsAny(paymentStatus, "cancelled", "canceled")) {
             return WebhookEventType.SUBSCRIPTION_CANCELLED;
+        }
+        if (containsAny(type, "subscription_authorized_payment")) {
+            return WebhookEventType.PAYMENT_SUCCEEDED;
+        }
+        if (containsAny(type, "subscription_preapproval", "preapproval")) {
+            if (containsAny(paymentStatus, "approved", "paid", "authorized", "success", "active")) {
+                return WebhookEventType.PAYMENT_SUCCEEDED;
+            }
+            if (containsAny(paymentStatus, "rejected", "failed", "expired", "denied", "paused")) {
+                return WebhookEventType.PAYMENT_FAILED;
+            }
+            return WebhookEventType.SUBSCRIPTION_PENDING;
         }
         if (containsAny(type, "renew") || containsAny(type, "recurring")) {
             return WebhookEventType.SUBSCRIPTION_RENEWED;

@@ -1,8 +1,6 @@
 package com.plura.plurabackend.billing.webhooks;
 
-import static org.hamcrest.Matchers.containsString;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.plura.plurabackend.billing.payments.model.PaymentProvider;
@@ -21,6 +19,7 @@ import com.plura.plurabackend.user.repository.UserRepository;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDateTime;
+import java.time.Duration;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -141,16 +140,16 @@ class BillingWebhookIdempotencyIntegrationTest {
                 .header("X-Request-Id", requestId)
                 .header("X-Signature", "ts=" + ts + ",v1=" + signature)
                 .content(payload))
-            .andExpect(status().isOk())
-            .andExpect(content().string(containsString("PROCESSED")));
+            .andExpect(status().isOk());
 
         mockMvc.perform(post("/webhooks/mercadopago")
                 .contentType("application/json")
                 .header("X-Request-Id", requestId)
                 .header("X-Signature", "ts=" + ts + ",v1=" + signature)
                 .content(payload))
-            .andExpect(status().isOk())
-            .andExpect(content().string(containsString("DUPLICATE")));
+            .andExpect(status().isOk());
+
+        waitUntilProcessed();
 
         Subscription updated = subscriptionRepository.findByProfessional_Id(professional.getId()).orElseThrow();
         org.junit.jupiter.api.Assertions.assertEquals(SubscriptionStatus.ACTIVE, updated.getStatus());
@@ -162,5 +161,25 @@ class BillingWebhookIdempotencyIntegrationTest {
             1,
             paymentTransactionRepository.countByProviderAndProviderPaymentId(PaymentProvider.MERCADOPAGO, "pay-1")
         );
+    }
+
+    private void waitUntilProcessed() throws InterruptedException {
+        Instant deadline = Instant.now().plus(Duration.ofSeconds(5));
+        while (Instant.now().isBefore(deadline)) {
+            Subscription subscription = subscriptionRepository.findByProfessional_Id(professional.getId()).orElseThrow();
+            long events = paymentEventRepository.countByProviderAndProviderEventId(PaymentProvider.MERCADOPAGO, "evt-1");
+            long transactions = paymentTransactionRepository.countByProviderAndProviderPaymentId(
+                PaymentProvider.MERCADOPAGO,
+                "pay-1"
+            );
+
+            if (subscription.getStatus() == SubscriptionStatus.ACTIVE && events == 1 && transactions == 1) {
+                return;
+            }
+
+            Thread.sleep(100);
+        }
+
+        throw new AssertionError("Webhook async processing did not finish within timeout");
     }
 }

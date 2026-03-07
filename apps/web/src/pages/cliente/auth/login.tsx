@@ -235,10 +235,12 @@ export default function ClienteLoginPage() {
               </div>
               <div className="space-y-2">
                 <GoogleLoginButton
+                  intendedRole="USER"
                   onAuthenticated={handleOAuthAuthenticated}
                   onError={setErrorMessage}
                 />
                 <AppleLoginButton
+                  intendedRole="USER"
                   onAuthenticated={handleOAuthAuthenticated}
                   onError={setErrorMessage}
                 />

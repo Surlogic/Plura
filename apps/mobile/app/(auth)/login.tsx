@@ -64,6 +64,10 @@ export default function LoginScreen() {
           authorizationCode,
           codeVerifier,
           redirectUri,
+          {
+            desiredRole: role === 'profesional' ? 'PROFESSIONAL' : 'USER',
+            authAction: 'LOGIN',
+          },
         );
 
         if (!result.accessToken) {

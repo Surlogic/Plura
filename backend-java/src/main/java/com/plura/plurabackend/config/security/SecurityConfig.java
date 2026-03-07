@@ -87,6 +87,7 @@ public class SecurityConfig {
                     "/error"
                 ).permitAll()
                 .requestMatchers("/public/**").permitAll()
+                .requestMatchers(HttpMethod.DELETE, "/auth/me").hasAnyRole("PROFESSIONAL", "USER")
                 .requestMatchers("/auth/me/profesional", "/auth/me/professional").hasRole("PROFESSIONAL")
                 .requestMatchers("/auth/me/cliente").hasRole("USER")
                 .requestMatchers("/profesional/**").hasRole("PROFESSIONAL")

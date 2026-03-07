@@ -8,11 +8,8 @@ ROOT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 # Next.js dev can leave a corrupted .next folder after hard crashes/restarts.
 # On web boot (3002), clear it proactively to avoid ENOENT/MODULE_NOT_FOUND.
 if [[ "${PORT}" == "3002" ]]; then
-  NEXT_DIR="${ROOT_DIR}/apps/web/.next"
-  if [[ -d "${NEXT_DIR}" ]]; then
-    echo "[predev] Limpiando cache Next (.next)"
-    rm -rf "${NEXT_DIR}"
-  fi
+  echo "[predev] Limpiando artefactos Next de apps/web"
+  node "${ROOT_DIR}/apps/web/scripts/clean-next-build.cjs" clean
 fi
 
 mapfile -t pids < <(

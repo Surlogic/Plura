@@ -1,5 +1,6 @@
 package com.plura.plurabackend.auth;
 
+import com.plura.plurabackend.account.AccountDeletionService;
 import com.plura.plurabackend.auth.dto.LoginRequest;
 import com.plura.plurabackend.auth.dto.ProfesionalProfileResponse;
 import com.plura.plurabackend.auth.dto.RegistrationAcceptedResponse;
@@ -9,9 +10,11 @@ import com.plura.plurabackend.auth.dto.RegisterResponse;
 import com.plura.plurabackend.auth.dto.UserResponse;
 import com.plura.plurabackend.auth.security.AuthAbuseProtectionService;
 import com.plura.plurabackend.auth.oauth.dto.OAuthLoginRequest;
+import com.plura.plurabackend.user.model.UserRole;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import java.time.Duration;
+import java.util.Set;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -37,6 +40,7 @@ public class AuthController {
     private static final String REFRESH_COOKIE = "plura_refresh_token";
 
     private final AuthService authService;
+    private final AccountDeletionService accountDeletionService;
     private final AuthAbuseProtectionService authAbuseProtectionService;
 
     @Value("${jwt.refresh-days:30}")
@@ -57,9 +61,11 @@ public class AuthController {
     // Constructor injection to keep the controller immutable and testable.
     public AuthController(
         AuthService authService,
+        AccountDeletionService accountDeletionService,
         AuthAbuseProtectionService authAbuseProtectionService
     ) {
         this.authService = authService;
+        this.accountDeletionService = accountDeletionService;
         this.authAbuseProtectionService = authAbuseProtectionService;
     }
 
@@ -143,11 +149,15 @@ public class AuthController {
         @CookieValue(name = REFRESH_COOKIE, required = false) String refreshToken
     ) {
         authService.logout(refreshToken);
-        return ResponseEntity.noContent()
-            .header(HttpHeaders.CACHE_CONTROL, "no-store")
-            .header(HttpHeaders.SET_COOKIE, clearCookie(ACCESS_COOKIE, "/").toString())
-            .header(HttpHeaders.SET_COOKIE, clearCookie(REFRESH_COOKIE, "/auth").toString())
-            .build();
+        return buildClearedSessionResponse();
+    }
+
+    @org.springframework.web.bind.annotation.DeleteMapping("/me")
+    public ResponseEntity<Void> deleteCurrentAccount(Authentication authentication) {
+        Authentication activeAuthentication = requireAuthentication();
+        UserRole role = resolveAuthenticatedRole(activeAuthentication);
+        accountDeletionService.deleteCurrentAccount(activeAuthentication.getPrincipal().toString(), role);
+        return buildClearedSessionResponse();
     }
 
     @GetMapping({"/me/profesional", "/me/professional"})
@@ -213,6 +223,14 @@ public class AuthController {
             .build();
     }
 
+    private ResponseEntity<Void> buildClearedSessionResponse() {
+        return ResponseEntity.noContent()
+            .header(HttpHeaders.CACHE_CONTROL, "no-store")
+            .header(HttpHeaders.SET_COOKIE, clearCookie(ACCESS_COOKIE, "/").toString())
+            .header(HttpHeaders.SET_COOKIE, clearCookie(REFRESH_COOKIE, "/auth").toString())
+            .build();
+    }
+
     private ResponseEntity<RegisterResponse> authenticateLogin(
         LoginRequest request,
         HttpServletRequest httpRequest,
@@ -250,6 +268,19 @@ public class AuthController {
         )) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Acceso denegado");
         }
+    }
+
+    private UserRole resolveAuthenticatedRole(Authentication authentication) {
+        Set<String> authorities = authentication.getAuthorities().stream()
+            .map(authority -> authority.getAuthority())
+            .collect(java.util.stream.Collectors.toSet());
+        if (authorities.contains("ROLE_PROFESSIONAL")) {
+            return UserRole.PROFESSIONAL;
+        }
+        if (authorities.contains("ROLE_USER")) {
+            return UserRole.USER;
+        }
+        throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Acceso denegado");
     }
 
     @FunctionalInterface

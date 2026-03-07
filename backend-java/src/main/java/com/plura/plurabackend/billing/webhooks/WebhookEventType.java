@@ -1,6 +1,7 @@
 package com.plura.plurabackend.billing.webhooks;
 
 public enum WebhookEventType {
+    SUBSCRIPTION_PENDING,
     PAYMENT_SUCCEEDED,
     PAYMENT_FAILED,
     SUBSCRIPTION_CANCELLED,

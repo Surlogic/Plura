@@ -66,9 +66,7 @@ const redirectToLogin = () => {
   }
   if (isClientProtectedPath(path)) {
     window.location.href = '/cliente/auth/login';
-    return;
   }
-  window.location.href = `/cliente/auth/login?redirect=${encodeURIComponent(path + window.location.search)}`;
 };
 
 // Variable de módulo para deduplicar refreshes concurrentes.
@@ -78,6 +76,7 @@ let refreshPromise: Promise<void> | null = null;
 const attachAuthHeader = (
   config: InternalAxiosRequestConfig,
 ): InternalAxiosRequestConfig => {
+  if (isAuthRoute(config.url)) return config;
   const token = getAuthAccessToken();
   if (!token) return config;
 

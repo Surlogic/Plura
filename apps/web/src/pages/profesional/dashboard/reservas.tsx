@@ -2,10 +2,16 @@
 
 import { isAxiosError } from 'axios';
 import { useEffect, useMemo, useState } from 'react';
-import Navbar from '@/components/shared/Navbar';
 import ProfesionalSidebar from '@/components/profesional/Sidebar';
+import Button from '@/components/ui/Button';
+import Card from '@/components/ui/Card';
 import { useProfessionalProfile } from '@/hooks/useProfessionalProfile';
 import { useProfessionalDashboardUnsavedSection } from '@/context/ProfessionalDashboardUnsavedChangesContext';
+import {
+  DashboardHero,
+  DashboardSectionHeading,
+  DashboardStatCard,
+} from '@/components/profesional/dashboard/DashboardUI';
 import {
   createProfessionalReservation,
   getProfessionalReservationsForDates,
@@ -578,53 +584,67 @@ export default function ProfesionalReservationsPage() {
     Boolean(selectedReservation?.serviceId);
   const selectedIsImmutable =
     selectedStatus === 'cancelled' || selectedStatus === 'completed';
+  const pendingTodayCount = todayReservations.filter(
+    (reservation) => (reservation.status ?? 'pending') === 'pending',
+  ).length;
 
   return (
     <div className="min-h-screen bg-[radial-gradient(circle_at_top,#FFFFFF_0%,#EEF2F6_45%,#D3D7DC_100%)] text-[#0E2A47]">
-      <div className="flex min-h-screen flex-col">
-        <Navbar variant="dashboard" showMenuButton onMenuClick={handleToggleMenu} />
-        <div className="flex flex-1">
+      <div className="flex min-h-screen">
           <aside className="hidden w-[260px] shrink-0 border-r border-[#0E2A47]/10 bg-[#0B1D2A] lg:block">
             <div className="sticky top-0 h-screen overflow-y-auto">
               <ProfesionalSidebar profile={profile} active="Reservas" />
             </div>
           </aside>
           <div className="flex-1">
+            <div className="px-4 pt-4 sm:px-6 lg:hidden">
+              <Button type="button" size="sm" onClick={handleToggleMenu}>
+                {isMenuOpen ? 'Cerrar menu' : 'Abrir menu'}
+              </Button>
+            </div>
             {isMenuOpen ? (
               <div className="border-b border-[#0E2A47]/10 bg-[#0B1D2A] lg:hidden">
                 <ProfesionalSidebar profile={profile} active="Reservas" />
               </div>
             ) : null}
-            <main className="mx-auto w-full max-w-[1400px] px-4 py-8 sm:px-6 lg:px-10">
+            <main className="mx-auto w-full max-w-[1400px] px-4 py-6 sm:px-6 sm:py-8 lg:px-10">
               <div className="space-y-6">
-                <div className="border-b border-[#E2E7EC] bg-white/90 px-4 py-6 sm:px-6 lg:px-10">
-                  <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                    <div>
-                      <p className="text-[0.65rem] uppercase tracking-[0.35em] text-[#94A3B8]">
-                        Reservas
-                      </p>
-                      <h1 className="mt-2 text-2xl font-semibold text-[#0E2A47]">
-                        Gestión de reservas
-                      </h1>
-                      <p className="mt-1 text-sm text-[#64748B]">
-                        Separá lo urgente, gestioná cambios y cargá reservas manuales.
-                      </p>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={openCreateDrawer}
-                      className="rounded-full bg-[#0B1D2A] px-5 py-2.5 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:shadow-md"
-                    >
+                <DashboardHero
+                  eyebrow="Gestión diaria"
+                  icon="reservas"
+                  accent="teal"
+                  title="Reservas priorizadas por urgencia y estado"
+                  description="Separá lo que necesita atención ahora, resolvé reprogramaciones y cargá reservas manuales sin perder contexto."
+                  meta={
+                    <>
+                      <span className="rounded-full border border-white/12 bg-white/8 px-3 py-1 text-xs font-semibold text-white/80">
+                        {todayReservations.length} para hoy
+                      </span>
+                      <span className="rounded-full border border-white/12 bg-white/8 px-3 py-1 text-xs font-semibold text-white/80">
+                        {pendingTodayCount} pendientes
+                      </span>
+                    </>
+                  }
+                  actions={(
+                    <Button type="button" variant="contrast" onClick={openCreateDrawer}>
                       Nueva reserva manual
-                    </button>
-                  </div>
+                    </Button>
+                  )}
+                />
+
+                <Card className="border-white/70 bg-white/95 p-5">
+                  <DashboardSectionHeading
+                    eyebrow="Vista general"
+                    title="Estado del pipeline de atención"
+                    description="Detectá volumen, carga futura e historial sin recorrer toda la lista."
+                  />
                   {statusMessage ? (
                     <p className="mt-3 text-sm text-[#1FB6A6]">{statusMessage}</p>
                   ) : null}
                   {fetchError ? (
                     <p className="mt-3 text-sm text-[#DC2626]">{fetchError}</p>
                   ) : null}
-                </div>
+                </Card>
 
                 {showSkeleton ? (
                   <div className="rounded-[28px] border border-white/70 bg-white/95 p-6 shadow-[0_18px_40px_rgba(15,23,42,0.12)]">
@@ -637,45 +657,40 @@ export default function ProfesionalReservationsPage() {
                   </div>
                 ) : (
                   <div className="space-y-6">
-                    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                      <div className="rounded-[18px] border border-[#E2E7EC] bg-[#F7F9FB] p-4">
-                        <p className="text-xs uppercase tracking-[0.3em] text-[#94A3B8]">
-                          Hoy
-                        </p>
-                        <p className="mt-2 text-2xl font-semibold text-[#0E2A47]">
-                          {todayReservations.length}
-                        </p>
-                      </div>
-                      <div className="rounded-[18px] border border-[#E2E7EC] bg-[#F7F9FB] p-4">
-                        <p className="text-xs uppercase tracking-[0.3em] text-[#94A3B8]">
-                          Próximas
-                        </p>
-                        <p className="mt-2 text-2xl font-semibold text-[#0E2A47]">
-                          {upcomingReservations.length}
-                        </p>
-                      </div>
-                      <div className="rounded-[18px] border border-[#E2E7EC] bg-[#F7F9FB] p-4">
-                        <p className="text-xs uppercase tracking-[0.3em] text-[#94A3B8]">
-                          Completadas
-                        </p>
-                        <p className="mt-2 text-2xl font-semibold text-[#0E2A47]">
-                          {completedReservations.length}
-                        </p>
-                      </div>
-                      <div className="rounded-[18px] border border-[#E2E7EC] bg-[#F7F9FB] p-4">
-                        <p className="text-xs uppercase tracking-[0.3em] text-[#94A3B8]">
-                          Canceladas
-                        </p>
-                        <p className="mt-2 text-2xl font-semibold text-[#0E2A47]">
-                          {cancelledReservations.length}
-                        </p>
-                      </div>
+                    <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                      <DashboardStatCard
+                        label="Hoy"
+                        value={`${todayReservations.length}`}
+                        detail={pendingTodayCount > 0 ? `${pendingTodayCount} pendientes por confirmar` : 'Agenda de hoy ordenada'}
+                        icon="agenda"
+                        tone="warm"
+                      />
+                      <DashboardStatCard
+                        label="Próximas"
+                        value={`${upcomingReservations.length}`}
+                        detail="Reservas futuras activas"
+                        icon="reservas"
+                        tone="accent"
+                      />
+                      <DashboardStatCard
+                        label="Completadas"
+                        value={`${completedReservations.length}`}
+                        detail="Historial reciente"
+                        icon="check"
+                      />
+                      <DashboardStatCard
+                        label="Canceladas"
+                        value={`${cancelledReservations.length}`}
+                        detail="Seguimiento de churn operativo"
+                        icon="warning"
+                      />
                     </div>
 
                     <div className="rounded-[24px] border border-white/70 bg-white/95 p-5 shadow-[0_16px_36px_rgba(15,23,42,0.12)]">
-                      <h2 className="text-lg font-semibold text-[#0E2A47]">
-                        Reservas de hoy
-                      </h2>
+                      <DashboardSectionHeading
+                        title="Reservas de hoy"
+                        description="Primero lo inmediato: clientes que todavía necesitan atención hoy."
+                      />
                       <div className="mt-4 space-y-3">
                         {todayReservations.length === 0 ? (
                           <div className="rounded-[18px] border border-dashed border-[#CBD5F5] bg-white/70 px-4 py-4 text-sm text-[#64748B]">
@@ -690,9 +705,10 @@ export default function ProfesionalReservationsPage() {
                     </div>
 
                     <div className="rounded-[24px] border border-white/70 bg-white/95 p-5 shadow-[0_16px_36px_rgba(15,23,42,0.12)]">
-                      <h2 className="text-lg font-semibold text-[#0E2A47]">
-                        Próximas reservas
-                      </h2>
+                      <DashboardSectionHeading
+                        title="Próximas reservas"
+                        description="Carga futura ya confirmada o pendiente para los próximos días."
+                      />
                       <div className="mt-4 space-y-3">
                         {upcomingReservations.length === 0 ? (
                           <div className="rounded-[18px] border border-dashed border-[#CBD5F5] bg-white/70 px-4 py-4 text-sm text-[#64748B]">
@@ -707,9 +723,10 @@ export default function ProfesionalReservationsPage() {
                     </div>
 
                     <div className="rounded-[24px] border border-white/70 bg-white/95 p-5 shadow-[0_16px_36px_rgba(15,23,42,0.12)]">
-                      <h2 className="text-lg font-semibold text-[#0E2A47]">
-                        Reservas completadas
-                      </h2>
+                      <DashboardSectionHeading
+                        title="Reservas completadas"
+                        description="Historial cerrado para revisar volumen y consistencia operativa."
+                      />
                       <div className="mt-4 space-y-3">
                         {completedReservations.length === 0 ? (
                           <div className="rounded-[18px] border border-dashed border-[#CBD5F5] bg-white/70 px-4 py-4 text-sm text-[#64748B]">
@@ -757,7 +774,6 @@ export default function ProfesionalReservationsPage() {
             </main>
           </div>
         </div>
-      </div>
       {selectedReservation ? (
         <div className="fixed inset-0 z-50 flex justify-end">
           <button

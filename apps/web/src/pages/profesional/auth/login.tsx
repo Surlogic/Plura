@@ -8,7 +8,6 @@ import GoogleLoginButton from '@/components/auth/GoogleLoginButton';
 import Footer from '@/components/shared/Footer';
 import Badge from '@/components/ui/Badge';
 import Card from '@/components/ui/Card';
-import { useClientProfileContext } from '@/context/ClientProfileContext';
 import api from '@/services/api';
 import type { OAuthLoginResult } from '@/lib/auth/oauthLogin';
 import { useProfessionalProfileContext } from '@/context/ProfessionalProfileContext';
@@ -17,7 +16,6 @@ import { setAuthAccessToken } from '@/services/session';
 export default function ProfesionalLoginPage() {
   const router = useRouter();
   const { refreshProfile } = useProfessionalProfileContext();
-  const { refreshProfile: refreshClientProfile } = useClientProfileContext();
   const [form, setForm] = useState({ email: '', password: '' });
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -55,13 +53,12 @@ export default function ProfesionalLoginPage() {
   const handleOAuthAuthenticated = async (result: OAuthLoginResult) => {
     setErrorMessage(null);
 
-    if (result.role === 'PROFESSIONAL') {
-      await completeProfessionalLoginFlow();
+    if (result.role !== 'PROFESSIONAL') {
+      setErrorMessage('Esta cuenta no quedó asociada como profesional. Usá acceso cliente o volvé a registrarte como profesional.');
       return;
     }
 
-    await refreshClientProfile();
-    router.push('/cliente/inicio');
+    await completeProfessionalLoginFlow();
   };
 
   const inputClassName =
@@ -189,10 +186,12 @@ export default function ProfesionalLoginPage() {
                 </div>
                 <div className="space-y-2">
                   <GoogleLoginButton
+                    intendedRole="PROFESSIONAL"
                     onAuthenticated={handleOAuthAuthenticated}
                     onError={setErrorMessage}
                   />
                   <AppleLoginButton
+                    intendedRole="PROFESSIONAL"
                     onAuthenticated={handleOAuthAuthenticated}
                     onError={setErrorMessage}
                   />

@@ -1,5 +1,6 @@
 import api from './api';
 import { getJsonItem, setJsonItem } from './storage';
+import { getProfessionalToken } from './session';
 
 export type ClientNextBooking = {
   id: string;
@@ -27,9 +28,14 @@ type ClientPreferenceState = {
 };
 
 const FAVORITES_KEY = 'plura_client_favorites';
+const FAVORITES_ENDPOINT = '/cliente/favoritos';
 const PREFERENCES_KEY = 'plura_client_preferences';
 type FavoritesListener = (favorites: string[]) => void;
 const favoriteListeners = new Set<FavoritesListener>();
+
+type FavoriteProfessionalDto = {
+  slug?: string | null;
+};
 
 const parseDate = (dateTime: string) => {
   const parsed = new Date(dateTime);
@@ -63,8 +69,25 @@ export const getClientNextBooking = async (): Promise<ClientNextBooking | null> 
   };
 };
 
-export const getFavoriteProfessionalSlugs = async (): Promise<string[]> =>
-  getJsonItem<string[]>(FAVORITES_KEY, []);
+export const getFavoriteProfessionalSlugs = async (): Promise<string[]> => {
+  const token = await getProfessionalToken();
+  if (!token) {
+    return getJsonItem<string[]>(FAVORITES_KEY, []);
+  }
+
+  try {
+    const response = await api.get<FavoriteProfessionalDto[]>(FAVORITES_ENDPOINT);
+    const next = Array.isArray(response.data)
+      ? response.data
+          .map((item) => (typeof item?.slug === 'string' ? item.slug.trim() : ''))
+          .filter(Boolean)
+      : [];
+    await setJsonItem(FAVORITES_KEY, next);
+    return next;
+  } catch {
+    return getJsonItem<string[]>(FAVORITES_KEY, []);
+  }
+};
 
 const notifyFavoriteListeners = (favorites: string[]) => {
   favoriteListeners.forEach((listener) => {
@@ -86,6 +109,20 @@ export const subscribeFavoriteProfessionalSlugs = (listener: FavoritesListener):
 export const toggleFavoriteProfessionalSlug = async (slug: string): Promise<string[]> => {
   const favorites = await getFavoriteProfessionalSlugs();
   const exists = favorites.includes(slug);
+  const token = await getProfessionalToken();
+
+  if (token) {
+    try {
+      if (exists) {
+        await api.delete(`${FAVORITES_ENDPOINT}/${encodeURIComponent(slug)}`);
+      } else {
+        await api.post(`${FAVORITES_ENDPOINT}/${encodeURIComponent(slug)}`);
+      }
+    } catch {
+      // Fall back to local persistence if backend sync is unavailable.
+    }
+  }
+
   const next = exists ? favorites.filter((item) => item !== slug) : [slug, ...favorites];
   await setJsonItem(FAVORITES_KEY, next);
   notifyFavoriteListeners(next);

@@ -3,6 +3,8 @@ import { useRouter } from 'next/router';
 import api from '@/services/api';
 import Button from '@/components/ui/Button';
 import Logo from '@/components/ui/Logo';
+import { useClientProfileContext } from '@/context/ClientProfileContext';
+import { useProfessionalProfileContext } from '@/context/ProfessionalProfileContext';
 import { clearAuthAccessToken } from '@/services/session';
 
 type ClientDashboardNavbarProps = {
@@ -23,12 +25,16 @@ export default function ClientDashboardNavbar({
   onOpenSidebar,
 }: ClientDashboardNavbarProps) {
   const router = useRouter();
+  const { clearProfile: clearClientProfile } = useClientProfileContext();
+  const { clearProfile: clearProfessionalProfile } = useProfessionalProfileContext();
 
   const handleLogout = async () => {
     try {
       await api.post('/auth/logout');
     } finally {
       clearAuthAccessToken();
+      clearProfessionalProfile();
+      clearClientProfile();
       router.push('/cliente/auth/login');
     }
   };

@@ -3,6 +3,7 @@ package com.plura.plurabackend.billing;
 import com.plura.plurabackend.billing.dto.BillingCancelRequest;
 import com.plura.plurabackend.billing.dto.BillingCheckoutRequest;
 import com.plura.plurabackend.billing.dto.BillingCheckoutResponse;
+import com.plura.plurabackend.billing.dto.BillingCreateSubscriptionRequest;
 import com.plura.plurabackend.billing.dto.BillingSubscriptionResponse;
 import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -26,6 +27,13 @@ public class BillingController {
         @Valid @RequestBody BillingCheckoutRequest request
     ) {
         return billingService.createCheckout(request);
+    }
+
+    @PostMapping("/subscription")
+    public BillingCheckoutResponse createSubscription(
+        @Valid @RequestBody BillingCreateSubscriptionRequest request
+    ) {
+        return billingService.createSubscription(request);
     }
 
     @GetMapping("/subscription")

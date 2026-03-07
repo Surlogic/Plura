@@ -44,6 +44,15 @@ public class AsyncConfig implements AsyncConfigurer {
     @Value("${app.async.geocoding.queue-capacity:500}")
     private int geocodingQueueCapacity;
 
+    @Value("${app.async.billing-webhook.core-pool-size:2}")
+    private int billingWebhookCorePoolSize;
+
+    @Value("${app.async.billing-webhook.max-pool-size:8}")
+    private int billingWebhookMaxPoolSize;
+
+    @Value("${app.async.billing-webhook.queue-capacity:500}")
+    private int billingWebhookQueueCapacity;
+
     @Bean(name = "availableSlotExecutor")
     public Executor availableSlotExecutor() {
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
@@ -79,6 +88,20 @@ public class AsyncConfig implements AsyncConfigurer {
         executor.setCorePoolSize(Math.max(1, geocodingCorePoolSize));
         executor.setMaxPoolSize(Math.max(geocodingCorePoolSize, geocodingMaxPoolSize));
         executor.setQueueCapacity(Math.max(100, geocodingQueueCapacity));
+        executor.setWaitForTasksToCompleteOnShutdown(true);
+        executor.setAwaitTerminationSeconds(45);
+        executor.setRejectedExecutionHandler(new ThreadPoolExecutor.CallerRunsPolicy());
+        executor.initialize();
+        return executor;
+    }
+
+    @Bean(name = "billingWebhookExecutor")
+    public Executor billingWebhookExecutor() {
+        ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+        executor.setThreadNamePrefix("billing-webhook-");
+        executor.setCorePoolSize(Math.max(1, billingWebhookCorePoolSize));
+        executor.setMaxPoolSize(Math.max(billingWebhookCorePoolSize, billingWebhookMaxPoolSize));
+        executor.setQueueCapacity(Math.max(100, billingWebhookQueueCapacity));
         executor.setWaitForTasksToCompleteOnShutdown(true);
         executor.setAwaitTerminationSeconds(45);
         executor.setRejectedExecutionHandler(new ThreadPoolExecutor.CallerRunsPolicy());

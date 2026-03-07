@@ -1,13 +1,18 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import Navbar from '@/components/shared/Navbar';
 import ProfesionalSidebar from '@/components/profesional/Sidebar';
+import Button from '@/components/ui/Button';
 import { useProfessionalProfile } from '@/hooks/useProfessionalProfile';
 import { useProfessionalDashboardUnsavedSection } from '@/context/ProfessionalDashboardUnsavedChangesContext';
 import api from '@/services/api';
 import { cachedGet, invalidateCachedGet } from '@/services/cachedGet';
 import { resolveAssetUrl } from '@/utils/assetUrl';
+import {
+  DashboardHero,
+  DashboardSectionHeading,
+  DashboardStatCard,
+} from '@/components/profesional/dashboard/DashboardUI';
 
 type ProfesionalServiceItem = {
   id: string;
@@ -338,6 +343,14 @@ export default function ProfesionalServicesBuilderPage() {
   };
 
   const serviceCount = useMemo(() => services.length, [services]);
+  const activeServiceCount = useMemo(
+    () => services.filter((service) => service.active !== false).length,
+    [services],
+  );
+  const servicesWithImageCount = useMemo(
+    () => services.filter((service) => Boolean(service.imageUrl)).length,
+    [services],
+  );
   const isDirty = useMemo(() => {
     const hasDifferentMode = editingId !== initialEditingId;
     const hasDifferentDraft =
@@ -370,54 +383,62 @@ export default function ProfesionalServicesBuilderPage() {
 
   return (
     <div className="min-h-screen bg-[radial-gradient(circle_at_top,#FFFFFF_0%,#EEF2F6_45%,#D3D7DC_100%)] text-[#0E2A47]">
-      <div className="flex min-h-screen flex-col">
-        <Navbar
-          variant="dashboard"
-          showMenuButton
-          onMenuClick={handleToggleMenu}
-        />
-        <div className="flex flex-1">
+      <div className="flex min-h-screen">
           <aside className="hidden w-[260px] shrink-0 border-r border-[#0E2A47]/10 bg-[#0B1D2A] lg:block">
             <div className="sticky top-0 h-screen overflow-y-auto">
               <ProfesionalSidebar profile={profile} active="Servicios" />
             </div>
           </aside>
           <div className="flex-1">
+            <div className="px-4 pt-4 sm:px-6 lg:hidden">
+              <Button type="button" size="sm" onClick={handleToggleMenu}>
+                {isMenuOpen ? 'Cerrar menu' : 'Abrir menu'}
+              </Button>
+            </div>
             {isMenuOpen ? (
               <div className="border-b border-[#0E2A47]/10 bg-[#0B1D2A] lg:hidden">
                 <ProfesionalSidebar profile={profile} active="Servicios" />
               </div>
             ) : null}
-            <main className="mx-auto w-full max-w-[1400px] px-4 py-8 sm:px-6 lg:px-10">
+            <main className="mx-auto w-full max-w-[1400px] px-4 py-6 sm:px-6 sm:py-8 lg:px-10">
               <div className="space-y-6">
-                <div className="rounded-[28px] border border-white/70 bg-white/95 p-6 shadow-[0_28px_70px_rgba(15,23,42,0.18)]">
-                  <div className="flex flex-wrap items-center justify-between gap-4">
-                    <div>
-                      <p className="text-[0.65rem] uppercase tracking-[0.35em] text-[#94A3B8]">
-                        Servicios
-                      </p>
-                      <h1 className="mt-2 text-2xl font-semibold text-[#0E2A47]">
-                        Servicios del profesional
-                      </h1>
-                      <p className="mt-1 text-sm text-[#64748B]">
-                        Alta, edición y baja con persistencia real en backend.
-                      </p>
-                    </div>
-                    <button
+                <DashboardHero
+                  eyebrow="Oferta comercial"
+                  icon="servicios"
+                  accent="warm"
+                  title="Servicios organizados para editar, activar y comparar rápido"
+                  description="Dale más peso al catálogo, detectá faltantes visuales y actualizá tu oferta sin perder de vista lo que ya está publicado."
+                  meta={
+                    <>
+                      <span className="rounded-full border border-white/12 bg-white/8 px-3 py-1 text-xs font-semibold text-white/80">
+                        {serviceCount} servicios
+                      </span>
+                      <span className="rounded-full border border-white/12 bg-white/8 px-3 py-1 text-xs font-semibold text-white/80">
+                        {activeServiceCount} activos
+                      </span>
+                    </>
+                  }
+                  actions={(
+                    <Button
                       type="button"
+                      variant="contrast"
                       onClick={() => void loadServices()}
-                      className="rounded-full bg-[#0B1D2A] px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-70"
                       disabled={isLoadingServices}
                     >
                       {isLoadingServices ? 'Actualizando...' : 'Actualizar lista'}
-                    </button>
-                  </div>
-                  {saveMessage ? (
-                    <p className={`mt-3 text-sm font-medium ${saveError ? 'text-red-500' : 'text-[#1FB6A6]'}`}>
-                      {saveMessage}
-                    </p>
-                  ) : null}
-                </div>
+                    </Button>
+                  )}
+                />
+
+                {saveMessage ? (
+                  <p className={`rounded-full border px-4 py-2 text-sm font-medium shadow-[var(--shadow-card)] ${
+                    saveError
+                      ? 'border-red-200 bg-red-50 text-red-500'
+                      : 'border-[#cdeee9] bg-[#f0fffc] text-[#1FB6A6]'
+                  }`}>
+                    {saveMessage}
+                  </p>
+                ) : null}
 
                 {showSkeleton ? (
                   <div className="rounded-[28px] border border-white/70 bg-white/95 p-6 shadow-[0_18px_40px_rgba(15,23,42,0.12)]">
@@ -430,21 +451,133 @@ export default function ProfesionalServicesBuilderPage() {
                   </div>
                 ) : (
                   <div className="space-y-6">
-                    <div className="rounded-[22px] border border-white/70 bg-white/95 px-5 py-4 shadow-[0_16px_36px_rgba(15,23,42,0.10)]">
-                      <p className="text-[0.6rem] uppercase tracking-[0.35em] text-[#94A3B8]">Total</p>
-                      <p className="mt-1 text-3xl font-semibold text-[#0E2A47]">{serviceCount}</p>
-                      <p className="text-xs text-[#64748B]">servicios en base de datos</p>
+                    <div className="grid gap-4 md:grid-cols-3">
+                      <DashboardStatCard
+                        label="Servicios"
+                        value={`${serviceCount}`}
+                        detail="Cargados en base de datos"
+                        icon="servicios"
+                        tone="warm"
+                      />
+                      <DashboardStatCard
+                        label="Activos"
+                        value={`${activeServiceCount}`}
+                        detail={`${Math.max(serviceCount - activeServiceCount, 0)} inactivos`}
+                        icon="check"
+                        tone="accent"
+                      />
+                      <DashboardStatCard
+                        label="Con imagen"
+                        value={`${servicesWithImageCount}`}
+                        detail="Piezas visuales listas para publicar"
+                        icon="publica"
+                      />
                     </div>
 
-                    <div className="grid gap-6 lg:grid-cols-[1.05fr,0.95fr]">
+                    <div className="grid gap-6 lg:grid-cols-[1.08fr,0.92fr]">
                       <div className="rounded-[24px] border border-white/70 bg-white/95 p-5 shadow-[0_16px_36px_rgba(15,23,42,0.12)]">
-                        <p className="text-[0.65rem] uppercase tracking-[0.35em] text-[#94A3B8]">
-                          {editingId ? 'Editando servicio' : 'Nuevo servicio'}
-                        </p>
-                        <h2 className="mt-2 text-lg font-semibold text-[#0E2A47]">
-                          {editingId ? 'Actualizar servicio' : 'Crear servicio'}
-                        </h2>
+                        <DashboardSectionHeading
+                          eyebrow="Catálogo"
+                          title="Listado de servicios"
+                          description="Compará cobertura visual, activación y contenido antes de editar."
+                        />
 
+                        <div className="mt-4 space-y-3">
+                          {isLoadingServices ? (
+                            <div className="rounded-[18px] border border-dashed border-[#CBD5F5] bg-white/70 px-4 py-4 text-sm text-[#64748B]">
+                              Cargando servicios...
+                            </div>
+                          ) : services.length === 0 ? (
+                            <div className="rounded-[18px] border border-dashed border-[#CBD5F5] bg-white/70 px-4 py-4 text-sm text-[#64748B]">
+                              Todavía no creaste servicios.
+                            </div>
+                          ) : (
+                            services.map((service) => (
+                              <div
+                                key={service.id}
+                                className="rounded-[20px] border border-[#E2E7EC] bg-[linear-gradient(180deg,#FFFFFF,#F7F9FB)] px-4 py-4"
+                              >
+                                <div className="flex items-start gap-3">
+                                  <div className="h-18 w-18 shrink-0 overflow-hidden rounded-[16px] border border-[#D9E2EC] bg-white">
+                                    {service.imageUrl ? (
+                                      <img
+                                        src={resolveAssetUrl(service.imageUrl)}
+                                        alt={service.name || 'Servicio'}
+                                        className="h-full w-full object-cover"
+                                      />
+                                    ) : (
+                                      <div className="flex h-full w-full items-center justify-center text-[0.6rem] font-semibold uppercase tracking-[0.15em] text-[#94A3B8]">
+                                        Sin foto
+                                      </div>
+                                    )}
+                                  </div>
+                                  <div className="min-w-0 flex-1">
+                                    <div className="flex flex-wrap items-start justify-between gap-3">
+                                      <div className="min-w-0">
+                                        <p className="truncate text-base font-semibold text-[#0E2A47]">
+                                          {service.name || 'Servicio sin nombre'}
+                                        </p>
+                                        <p className="mt-0.5 text-xs text-[#64748B]">
+                                          {normalizeDurationLabel(service.duration) || 'Duración a definir'}
+                                        </p>
+                                      </div>
+                                      <span className={`rounded-full px-3 py-1 text-[0.68rem] font-semibold ${
+                                        service.active === false
+                                          ? 'bg-amber-50 text-amber-700'
+                                          : 'bg-[#ECFDF5] text-[#0F766E]'
+                                      }`}>
+                                        {service.active === false ? 'Inactivo' : 'Activo'}
+                                      </span>
+                                    </div>
+                                    <p className="mt-2 text-sm font-semibold text-[#1FB6A6]">
+                                      {service.price || 'Consultar'}
+                                    </p>
+                                    {service.description ? (
+                                      <p className="mt-1 line-clamp-2 text-xs text-[#64748B]">
+                                        {service.description}
+                                      </p>
+                                    ) : null}
+                                  </div>
+                                </div>
+                                <div className="mt-4 flex flex-wrap gap-2">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleEditService(service)}
+                                    className="rounded-full border border-[#E2E7EC] bg-white px-3 py-1 text-xs font-semibold text-[#0E2A47] transition hover:-translate-y-0.5 hover:shadow-sm"
+                                  >
+                                    Editar
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => void handleToggleServiceActive(service)}
+                                    className={`rounded-full px-3 py-1 text-xs font-semibold transition hover:-translate-y-0.5 hover:shadow-sm ${
+                                      service.active === false
+                                        ? 'border border-[#1FB6A6]/30 bg-[#1FB6A6]/10 text-[#1FB6A6]'
+                                        : 'border border-amber-200 bg-amber-50 text-amber-600'
+                                    }`}
+                                  >
+                                    {service.active === false ? 'Activar' : 'Desactivar'}
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => void handleDeleteService(service.id)}
+                                    className="rounded-full border border-red-200 bg-red-50 px-3 py-1 text-xs font-semibold text-red-500 transition hover:-translate-y-0.5 hover:shadow-sm"
+                                  >
+                                    Eliminar
+                                  </button>
+                                </div>
+                              </div>
+                            ))
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="rounded-[24px] border border-white/70 bg-white/95 p-5 shadow-[0_16px_36px_rgba(15,23,42,0.12)]">
+                        <DashboardSectionHeading
+                          eyebrow={editingId ? 'Edición' : 'Alta'}
+                          title={editingId ? 'Actualizar servicio' : 'Crear servicio'}
+                          description="Usá esta ficha para completar precio, duración, imagen y buffer operativo."
+                        />
                         <div className="mt-4 grid gap-4">
                           <div>
                             <label className="text-sm font-medium text-[#0E2A47]">
@@ -592,96 +725,6 @@ export default function ProfesionalServicesBuilderPage() {
                           </button>
                         </div>
                       </div>
-
-                      <div className="rounded-[24px] border border-white/70 bg-white/95 p-5 shadow-[0_16px_36px_rgba(15,23,42,0.12)]">
-                        <p className="text-[0.65rem] uppercase tracking-[0.35em] text-[#94A3B8]">
-                          Servicios creados
-                        </p>
-                        <h2 className="mt-2 text-lg font-semibold text-[#0E2A47]">
-                          Listado de servicios
-                        </h2>
-                        <div className="mt-4 space-y-3">
-                          {isLoadingServices ? (
-                            <div className="rounded-[18px] border border-dashed border-[#CBD5F5] bg-white/70 px-4 py-4 text-sm text-[#64748B]">
-                              Cargando servicios...
-                            </div>
-                          ) : services.length === 0 ? (
-                            <div className="rounded-[18px] border border-dashed border-[#CBD5F5] bg-white/70 px-4 py-4 text-sm text-[#64748B]">
-                              Todavía no creaste servicios.
-                            </div>
-                          ) : (
-                            services.map((service) => (
-                              <div
-                                key={service.id}
-                                className="rounded-[18px] border border-[#E2E7EC] bg-[#F7F9FB] px-4 py-3"
-                              >
-                                <div className="flex items-start gap-3">
-                                  <div className="h-16 w-16 shrink-0 overflow-hidden rounded-[12px] border border-[#D9E2EC] bg-white">
-                                    {service.imageUrl ? (
-                                      <img
-                                        src={resolveAssetUrl(service.imageUrl)}
-                                        alt={service.name || 'Servicio'}
-                                        className="h-full w-full object-cover"
-                                      />
-                                    ) : (
-                                      <div className="flex h-full w-full items-center justify-center text-[0.6rem] font-semibold uppercase tracking-[0.15em] text-[#94A3B8]">
-                                        Sin foto
-                                      </div>
-                                    )}
-                                  </div>
-                                  <div className="min-w-0 flex-1">
-                                    <p className="truncate font-semibold text-[#0E2A47]">
-                                      {service.name || 'Servicio sin nombre'}
-                                    </p>
-                                    <p className="mt-0.5 text-xs text-[#64748B]">
-                                      {normalizeDurationLabel(service.duration) ||
-                                        'Duración a definir'}
-                                    </p>
-                                    <p className="mt-0.5 text-sm font-semibold text-[#1FB6A6]">
-                                      {service.price || 'Consultar'}
-                                    </p>
-                                    <p className="mt-0.5 text-xs font-semibold text-[#64748B]">
-                                      {service.active === false ? 'Inactivo' : 'Activo'}
-                                    </p>
-                                    {service.description ? (
-                                      <p className="mt-1 line-clamp-2 text-xs text-[#64748B]">
-                                        {service.description}
-                                      </p>
-                                    ) : null}
-                                  </div>
-                                </div>
-                                <div className="mt-3 flex flex-wrap gap-2">
-                                  <button
-                                    type="button"
-                                    onClick={() => handleEditService(service)}
-                                    className="rounded-full border border-[#E2E7EC] bg-white px-3 py-1 text-xs font-semibold text-[#0E2A47] transition hover:-translate-y-0.5 hover:shadow-sm"
-                                  >
-                                    Editar
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => void handleToggleServiceActive(service)}
-                                    className={`rounded-full px-3 py-1 text-xs font-semibold transition hover:-translate-y-0.5 hover:shadow-sm ${
-                                      service.active === false
-                                        ? 'border border-[#1FB6A6]/30 bg-[#1FB6A6]/10 text-[#1FB6A6]'
-                                        : 'border border-amber-200 bg-amber-50 text-amber-600'
-                                    }`}
-                                  >
-                                    {service.active === false ? 'Activar' : 'Desactivar'}
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => void handleDeleteService(service.id)}
-                                    className="rounded-full border border-red-200 bg-red-50 px-3 py-1 text-xs font-semibold text-red-500 transition hover:-translate-y-0.5 hover:shadow-sm"
-                                  >
-                                    Eliminar
-                                  </button>
-                                </div>
-                              </div>
-                            ))
-                          )}
-                        </div>
-                      </div>
                     </div>
                   </div>
                 )}
@@ -689,7 +732,6 @@ export default function ProfesionalServicesBuilderPage() {
             </main>
           </div>
         </div>
-      </div>
     </div>
   );
 }

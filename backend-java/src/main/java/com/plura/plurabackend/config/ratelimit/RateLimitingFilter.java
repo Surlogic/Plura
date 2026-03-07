@@ -128,7 +128,7 @@ public class RateLimitingFilter extends OncePerRequestFilter {
         if ("GET".equals(method) && "/api/search/suggest".equals(path)) {
             return new RateLimitTarget("suggest-ip", extractClientIp(request), 120);
         }
-        if ("POST".equals(method) && "/billing/checkout".equals(path)) {
+        if ("POST".equals(method) && ("/billing/checkout".equals(path) || "/billing/subscription".equals(path))) {
             return new RateLimitTarget("billing-checkout", resolveUserOrIp(request), 6);
         }
         if ("POST".equals(method) && "/billing/cancel".equals(path)) {

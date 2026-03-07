@@ -47,6 +47,7 @@ export type PublicProfessionalSummary = {
   rubro?: string;
   location?: string;
   headline?: string;
+  logoUrl?: string | null;
 };
 
 type PublicBookingRequest = {

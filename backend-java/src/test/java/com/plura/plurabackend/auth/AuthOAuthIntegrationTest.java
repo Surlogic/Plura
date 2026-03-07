@@ -10,6 +10,7 @@ import com.plura.plurabackend.auth.oauth.OAuthUserInfo;
 import com.plura.plurabackend.auth.oauth.providers.AppleTokenVerifier;
 import com.plura.plurabackend.auth.oauth.providers.GoogleTokenVerifier;
 import com.plura.plurabackend.auth.repository.RefreshTokenRepository;
+import com.plura.plurabackend.professional.repository.ProfessionalProfileRepository;
 import com.plura.plurabackend.user.model.User;
 import com.plura.plurabackend.user.model.UserRole;
 import com.plura.plurabackend.user.repository.UserRepository;
@@ -53,6 +54,9 @@ class AuthOAuthIntegrationTest {
     private RefreshTokenRepository refreshTokenRepository;
 
     @Autowired
+    private ProfessionalProfileRepository professionalProfileRepository;
+
+    @Autowired
     private PasswordEncoder passwordEncoder;
 
     @MockBean
@@ -64,6 +68,7 @@ class AuthOAuthIntegrationTest {
     @BeforeEach
     void cleanUp() {
         refreshTokenRepository.deleteAll();
+        professionalProfileRepository.deleteAll();
         userRepository.deleteAll();
     }
 
@@ -75,7 +80,7 @@ class AuthOAuthIntegrationTest {
 
         mockMvc.perform(post("/auth/oauth")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"provider\":\"google\",\"token\":\"x\"}"))
+                .content("{\"provider\":\"google\",\"token\":\"x\",\"authAction\":\"REGISTER\"}"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.accessToken").isNotEmpty())
             .andExpect(jsonPath("$.user.email").value("new@plura.com"));
@@ -83,6 +88,26 @@ class AuthOAuthIntegrationTest {
         User stored = userRepository.findByEmail("new@plura.com").orElseThrow();
         org.junit.jupiter.api.Assertions.assertEquals("google", stored.getProvider());
         org.junit.jupiter.api.Assertions.assertEquals("g123", stored.getProviderId());
+    }
+
+    @Test
+    void oauthGoogleCreatesNewProfessionalWhenDesiredRoleProfessional() throws Exception {
+        when(googleTokenVerifier.verify("pro-google")).thenReturn(
+            new OAuthUserInfo("google", "g-prof", "pro@plura.com", "Pro User", "http://img")
+        );
+
+        mockMvc.perform(post("/auth/oauth")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"provider\":\"google\",\"token\":\"pro-google\",\"desiredRole\":\"PROFESSIONAL\",\"authAction\":\"REGISTER\"}"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.accessToken").isNotEmpty())
+            .andExpect(jsonPath("$.user.email").value("pro@plura.com"));
+
+        User stored = userRepository.findByEmail("pro@plura.com").orElseThrow();
+        org.junit.jupiter.api.Assertions.assertEquals(UserRole.PROFESSIONAL, stored.getRole());
+        org.junit.jupiter.api.Assertions.assertTrue(
+            professionalProfileRepository.findByUser_Id(stored.getId()).isPresent()
+        );
     }
 
     @Test
@@ -100,7 +125,7 @@ class AuthOAuthIntegrationTest {
 
         mockMvc.perform(post("/auth/oauth")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"provider\":\"google\",\"token\":\"google-existing\"}"))
+                .content("{\"provider\":\"google\",\"token\":\"google-existing\",\"authAction\":\"LOGIN\"}"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.accessToken").isNotEmpty())
             .andExpect(jsonPath("$.user.email").value("exist@plura.com"));
@@ -109,6 +134,50 @@ class AuthOAuthIntegrationTest {
         User updated = userRepository.findByEmail("exist@plura.com").orElseThrow();
         org.junit.jupiter.api.Assertions.assertEquals("google", updated.getProvider());
         org.junit.jupiter.api.Assertions.assertEquals("g999", updated.getProviderId());
+    }
+
+    @Test
+    void oauthGooglePromotesExistingClientToProfessionalWhenDesiredRoleProfessional() throws Exception {
+        User existing = new User();
+        existing.setFullName("Existing Client");
+        existing.setEmail("upgrade@plura.com");
+        existing.setPassword(passwordEncoder.encode("secret-1234"));
+        existing.setRole(UserRole.USER);
+        userRepository.save(existing);
+
+        when(googleTokenVerifier.verify("google-upgrade")).thenReturn(
+            new OAuthUserInfo("google", "g-upgrade", "upgrade@plura.com", "Existing Client", "http://img2")
+        );
+
+        mockMvc.perform(post("/auth/oauth")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"provider\":\"google\",\"token\":\"google-upgrade\",\"desiredRole\":\"PROFESSIONAL\",\"authAction\":\"REGISTER\"}"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.accessToken").isNotEmpty())
+            .andExpect(jsonPath("$.user.email").value("upgrade@plura.com"));
+
+        User updated = userRepository.findByEmail("upgrade@plura.com").orElseThrow();
+        org.junit.jupiter.api.Assertions.assertEquals(UserRole.PROFESSIONAL, updated.getRole());
+        org.junit.jupiter.api.Assertions.assertEquals("google", updated.getProvider());
+        org.junit.jupiter.api.Assertions.assertEquals("g-upgrade", updated.getProviderId());
+        org.junit.jupiter.api.Assertions.assertTrue(
+            professionalProfileRepository.findByUser_Id(updated.getId()).isPresent()
+        );
+    }
+
+    @Test
+    void oauthGoogleLoginDoesNotCreateAccountWhenUserDoesNotExist() throws Exception {
+        when(googleTokenVerifier.verify("google-missing")).thenReturn(
+            new OAuthUserInfo("google", "g-missing", "missing@plura.com", "Missing User", "http://img")
+        );
+
+        mockMvc.perform(post("/auth/oauth")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"provider\":\"google\",\"token\":\"google-missing\",\"authAction\":\"LOGIN\"}"))
+            .andExpect(status().isUnauthorized())
+            .andExpect(jsonPath("$.message").value("No existe una cuenta asociada. Registrate primero."));
+
+        org.junit.jupiter.api.Assertions.assertEquals(0L, userRepository.count());
     }
 
     @Test
@@ -128,7 +197,7 @@ class AuthOAuthIntegrationTest {
 
         mockMvc.perform(post("/auth/oauth")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"provider\":\"apple\",\"token\":\"apple-no-email\"}"))
+                .content("{\"provider\":\"apple\",\"token\":\"apple-no-email\",\"authAction\":\"LOGIN\"}"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.accessToken").isNotEmpty())
             .andExpect(jsonPath("$.user.email").value("apple-existing@plura.com"));
@@ -155,7 +224,7 @@ class AuthOAuthIntegrationTest {
 
         mockMvc.perform(post("/auth/oauth")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"provider\":\"apple\",\"token\":\"apple-mismatch\"}"))
+                .content("{\"provider\":\"apple\",\"token\":\"apple-mismatch\",\"authAction\":\"LOGIN\"}"))
             .andExpect(status().isConflict())
             .andExpect(jsonPath("$.error").value("OAUTH_PROVIDER_MISMATCH"))
             .andExpect(jsonPath("$.message").value("Email already linked to a different provider"));
@@ -171,7 +240,7 @@ class AuthOAuthIntegrationTest {
 
         mockMvc.perform(post("/auth/oauth")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"provider\":\"apple\",\"token\":\"apple-first-without-email\"}"))
+                .content("{\"provider\":\"apple\",\"token\":\"apple-first-without-email\",\"authAction\":\"REGISTER\"}"))
             .andExpect(status().isBadRequest())
             .andExpect(jsonPath("$.error").value("APPLE_EMAIL_REQUIRED_FIRST_LOGIN"))
             .andExpect(jsonPath("$.message").value(
@@ -187,7 +256,7 @@ class AuthOAuthIntegrationTest {
 
         mockMvc.perform(post("/auth/oauth")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"provider\":\"google\",\"token\":\"invalid\"}"))
+                .content("{\"provider\":\"google\",\"token\":\"invalid\",\"authAction\":\"LOGIN\"}"))
             .andExpect(status().isBadRequest())
             .andExpect(jsonPath("$.error").value("ILLEGAL_ARGUMENT"))
             .andExpect(jsonPath("$.message").value("Token OAuth inválido"));

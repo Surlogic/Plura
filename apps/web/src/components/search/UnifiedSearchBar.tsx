@@ -81,7 +81,7 @@ const RECENT_CITIES_STORAGE_KEY = 'plura:search-recent-cities';
 const RECENT_SEARCHES_STORAGE_KEY = 'plura:search-recent-queries';
 
 const SURFACE_CLASSES: Record<NonNullable<UnifiedSearchBarProps['variant']>, string> = {
-  hero: 'border border-[color:var(--border-strong)] bg-white/96 shadow-[var(--shadow-lift)] backdrop-blur-sm',
+  hero: 'border border-white/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(248,250,252,0.94))] shadow-[0_30px_70px_-42px_rgba(13,35,58,0.5)] backdrop-blur-xl',
   panel: 'border border-[color:var(--border-strong)] bg-white shadow-[var(--shadow-card)]',
   explore: 'border border-[color:var(--border-soft)] bg-white shadow-[var(--shadow-card)]',
 };
@@ -1070,7 +1070,7 @@ export default function UnifiedSearchBar({
 
   const inputPlaceholder = values.categorySlug
     ? `Buscar en ${slugToLabel(values.categorySlug)}`
-    : 'Servicio, rubro o profesional';
+    : 'Servicio o profesional';
 
   const dateSummaryBase = values.date
     ? formatDateLabel(values.date)
@@ -1083,7 +1083,7 @@ export default function UnifiedSearchBar({
       : `${dateSummaryBase} + Ahora`
     : dateSummaryBase;
 
-  const locationSummary = values.city.trim() || (hasCoordinates ? 'Cerca de mi' : '¿Donde?');
+  const locationSummary = values.city.trim() || (hasCoordinates ? 'Cerca de mi' : 'Zona o ciudad');
   const locationValueClass = getAdaptiveValueClass(locationSummary);
   const hasDateRange = Boolean(values.from && values.to);
   const isSearchActive = isSearchOpen;
@@ -1092,20 +1092,20 @@ export default function UnifiedSearchBar({
   const hasDateSelection = Boolean(values.date || hasDateRange || values.availableNow);
   const hasLocationSelection = Boolean(values.city.trim() || hasCoordinates);
   const panelSurfaceClass =
-    'w-full rounded-[28px] border border-[color:var(--border-strong)] bg-[color:var(--surface-strong)] p-3 shadow-[var(--shadow-lift)] ring-1 ring-black/5';
+    'w-full rounded-[26px] border border-white/90 bg-[color:var(--surface-strong)] p-3.5 shadow-[0_30px_60px_-38px_rgba(13,35,58,0.42)] ring-1 ring-black/5 backdrop-blur';
 
   return (
     <div ref={wrapperRef} className={`relative z-20 w-full overflow-visible ${className || ''}`}>
       <form onSubmit={handleSubmit} className="relative overflow-visible">
-        <div className={`relative overflow-visible rounded-[30px] ${SURFACE_CLASSES[variant]}`}>
-          <div className="grid gap-2 p-2.5 sm:p-3 lg:grid-cols-[minmax(0,1.85fr)_minmax(0,0.95fr)_minmax(0,1.05fr)_auto] lg:items-stretch">
+        <div className={`relative overflow-visible rounded-[30px] p-1.5 sm:p-2 ${SURFACE_CLASSES[variant]}`}>
+          <div className="grid gap-1.5 lg:grid-cols-[minmax(0,1.85fr)_minmax(0,0.92fr)_minmax(0,1fr)_auto] lg:items-stretch">
             <div className="relative min-w-0">
               <SearchField label="Servicio o rubro" active={isSearchActive} className="h-full">
                 <div className="flex min-w-0 items-center gap-3">
                   <svg
                     viewBox="0 0 20 20"
                     fill="none"
-                    className="h-5 w-5 shrink-0 text-[color:var(--accent-strong)]"
+                    className="h-4.5 w-4.5 shrink-0 text-[color:var(--accent-strong)]"
                     aria-hidden="true"
                   >
                     <circle cx="9" cy="9" r="5.5" stroke="currentColor" strokeWidth="1.6" />
@@ -1140,7 +1140,7 @@ export default function UnifiedSearchBar({
                     }}
                     onKeyDown={handleInputKeyDown}
                     placeholder={inputPlaceholder}
-                    className="h-8 w-full min-w-0 bg-transparent text-[1.02rem] font-semibold leading-none text-[color:var(--ink)] placeholder:font-medium placeholder:text-[color:var(--ink-faint)] focus:outline-none"
+                    className="h-7 w-full min-w-0 bg-transparent text-[0.98rem] font-semibold leading-none text-[color:var(--ink)] placeholder:font-normal placeholder:text-[color:var(--ink-muted)] focus:outline-none"
                     aria-label="Buscar tratamiento, rubro, profesional o local"
                     autoComplete="off"
                   />
@@ -1148,7 +1148,7 @@ export default function UnifiedSearchBar({
               </SearchField>
 
               {isSearchOpen ? (
-                <div className="absolute left-0 right-0 top-[calc(100%+14px)] z-[70]">
+                <div className="absolute left-0 right-0 top-[calc(100%+12px)] z-[70]">
                   <SuggestDropdown
                     open={isSearchOpen}
                     loading={isSuggestLoading}
@@ -1183,14 +1183,14 @@ export default function UnifiedSearchBar({
                   <svg
                     viewBox="0 0 20 20"
                     fill="none"
-                    className="h-4.5 w-4.5 shrink-0 text-[color:var(--ink-faint)]"
+                    className="h-4 w-4 shrink-0 text-[color:var(--ink-faint)]"
                     aria-hidden="true"
                   >
                     <rect x="3" y="4.5" width="14" height="12" rx="2.5" stroke="currentColor" strokeWidth="1.5" />
                     <path d="M6.5 3v3M13.5 3v3M3 8h14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
                   </svg>
                   <span
-                    className={`w-full truncate text-left text-[0.96rem] leading-5 ${
+                    className={`w-full truncate text-left text-[0.92rem] leading-5 ${
                       hasDateSelection
                         ? 'font-semibold text-[color:var(--ink)]'
                         : 'font-medium text-[color:var(--ink-muted)]'
@@ -1202,7 +1202,7 @@ export default function UnifiedSearchBar({
               </SearchField>
 
               {isDateOpen ? (
-                <div className="absolute left-0 right-0 top-[calc(100%+14px)] z-[70]">
+                <div className="absolute left-0 right-0 top-[calc(100%+12px)] z-[70]">
                   <div className={panelSurfaceClass}>
                     <DateFilter
                       date={values.date}
@@ -1250,7 +1250,7 @@ export default function UnifiedSearchBar({
                   <svg
                     viewBox="0 0 20 20"
                     fill="none"
-                    className="h-4.5 w-4.5 shrink-0 text-[color:var(--ink-faint)]"
+                    className="h-4 w-4 shrink-0 text-[color:var(--ink-faint)]"
                     aria-hidden="true"
                   >
                     <path d="M10 17c2.8-3.4 4.2-6 4.2-7.7A4.2 4.2 0 105.8 9.3C5.8 11 7.2 13.6 10 17z" stroke="currentColor" strokeWidth="1.6" />
@@ -1269,7 +1269,7 @@ export default function UnifiedSearchBar({
               </SearchField>
 
               {isLocationOpen ? (
-                <div className="absolute left-0 right-0 top-[calc(100%+14px)] z-[70]">
+                <div className="absolute left-0 right-0 top-[calc(100%+12px)] z-[70]">
                   <div className={panelSurfaceClass}>
                     <LocationAutocomplete
                       locationInput={locationInput}
@@ -1310,7 +1310,7 @@ export default function UnifiedSearchBar({
             <div className="flex flex-col gap-2 sm:flex-row lg:flex-col lg:justify-stretch">
               <button
                 type="submit"
-                className="inline-flex h-[74px] w-full min-w-[8rem] items-center justify-center rounded-[24px] bg-[color:var(--primary)] px-6 text-base font-semibold text-white shadow-[0_18px_34px_-22px_rgba(13,35,58,0.9)] transition hover:bg-[color:var(--primary-strong)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--accent-soft)] focus-visible:ring-offset-2"
+                className="inline-flex h-[70px] w-full min-w-[7.5rem] items-center justify-center rounded-[22px] bg-[color:var(--primary)] px-5 text-[0.98rem] font-semibold text-white shadow-[0_18px_30px_-24px_rgba(13,35,58,0.72)] transition hover:-translate-y-[1px] hover:bg-[color:var(--primary-strong)] hover:shadow-[0_24px_38px_-26px_rgba(13,35,58,0.74)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--accent-soft)] focus-visible:ring-offset-2"
                 >
                 {submitLabel}
               </button>
@@ -1318,7 +1318,7 @@ export default function UnifiedSearchBar({
                 <button
                   type="button"
                   onClick={handleClear}
-                  className="inline-flex h-[74px] w-full items-center justify-center rounded-[22px] border border-[color:var(--border-soft)] bg-white px-4 text-sm font-semibold text-[color:var(--ink)] transition hover:bg-[color:var(--surface-soft)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--accent-soft)]"
+                  className="inline-flex h-[70px] w-full items-center justify-center rounded-[22px] border border-[color:var(--border-soft)] bg-white/86 px-4 text-sm font-semibold text-[color:var(--ink)] transition hover:bg-white focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--accent-soft)]"
                 >
                   Limpiar
                 </button>

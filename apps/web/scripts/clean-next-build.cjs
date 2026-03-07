@@ -1,11 +1,105 @@
 const fs = require('fs');
 const path = require('path');
 
-const nextDir = path.join(__dirname, '..', '.next');
+const appDir = path.join(__dirname, '..');
+const workspaceRoot = path.resolve(appDir, '..', '..');
+const externalRoot = path.join(workspaceRoot, '.cache', 'apps-web');
+const buildDir = process.env.NEXT_BUILD_DIR || '.next';
+const mode = process.argv[2] || 'clean';
 
-try {
-  fs.rmSync(nextDir, { recursive: true, force: true });
-} catch (error) {
-  console.error('No se pudo limpiar .next antes del build.', error);
+const managedDirs = {
+  '.next': path.join(externalRoot, 'next-dev'),
+  '.next-build': path.join(externalRoot, 'next-build'),
+};
+
+const staleMatchers = [
+  /^\.next\.preclean$/,
+  /^\.next\.stale-/,
+  /^\.next_stale_/,
+  /^\.next_/,
+];
+
+const fail = (message, error) => {
+  console.error(message, error);
   process.exit(1);
+};
+
+const removePath = (targetPath) => {
+  try {
+    fs.rmSync(targetPath, { recursive: true, force: true });
+  } catch (error) {
+    fail(`No se pudo limpiar ${targetPath}.`, error);
+  }
+};
+
+const ensureDir = (targetPath) => {
+  try {
+    fs.mkdirSync(targetPath, { recursive: true });
+  } catch (error) {
+    fail(`No se pudo crear ${targetPath}.`, error);
+  }
+};
+
+const ensureSymlink = (linkName, targetPath) => {
+  const linkPath = path.join(appDir, linkName);
+  ensureDir(path.dirname(targetPath));
+  ensureDir(targetPath);
+
+  try {
+    const stats = fs.lstatSync(linkPath);
+    if (stats.isSymbolicLink()) {
+      const currentTarget = fs.readlinkSync(linkPath);
+      const resolvedCurrent = path.resolve(appDir, currentTarget);
+      const resolvedExpected = path.resolve(targetPath);
+      if (resolvedCurrent === resolvedExpected) {
+        return;
+      }
+    }
+    removePath(linkPath);
+  } catch (error) {
+    if (error && error.code !== 'ENOENT') {
+      fail(`No se pudo inspeccionar ${linkPath}.`, error);
+    }
+  }
+
+  try {
+    fs.symlinkSync(targetPath, linkPath, 'dir');
+  } catch (error) {
+    fail(`No se pudo enlazar ${linkPath} -> ${targetPath}.`, error);
+  }
+};
+
+const clearDirectoryContents = (dirPath) => {
+  ensureDir(dirPath);
+  try {
+    for (const entry of fs.readdirSync(dirPath)) {
+      removePath(path.join(dirPath, entry));
+    }
+  } catch (error) {
+    fail(`No se pudo vaciar ${dirPath}.`, error);
+  }
+};
+
+for (const [linkName, targetPath] of Object.entries(managedDirs)) {
+  ensureSymlink(linkName, targetPath);
+}
+
+for (const entry of fs.readdirSync(appDir, { withFileTypes: true })) {
+  if (!entry.isDirectory()) {
+    continue;
+  }
+  if (!staleMatchers.some((matcher) => matcher.test(entry.name))) {
+    continue;
+  }
+  removePath(path.join(appDir, entry.name));
+}
+
+if (mode === 'clean') {
+  const targetPath = managedDirs[buildDir];
+  if (!targetPath) {
+    fail(`NEXT_BUILD_DIR no soportado: ${buildDir}`);
+  }
+  clearDirectoryContents(targetPath);
+} else if (mode !== 'ensure') {
+  fail(`Modo no soportado: ${mode}`);
 }

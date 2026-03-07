@@ -69,7 +69,7 @@ public class BookingClientService {
 
     private User resolveClientUser(String rawUserId) {
         Long userId = parseUserId(rawUserId);
-        User user = userRepository.findById(userId)
+        User user = userRepository.findByIdAndDeletedAtIsNull(userId)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Usuario no encontrado"));
 
         if (user.getRole() != UserRole.USER) {

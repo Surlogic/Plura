@@ -1,3 +1,24 @@
+export type ProductPlanCode = 'BASIC' | 'PROFESSIONAL' | 'COMPANY';
+
+export type ProductPlanCapabilities = {
+  maxProfessionals: number;
+  maxBusinessPhotos: number;
+  maxServicePhotos: number;
+  allowClientChooseProfessional: boolean;
+  allowOnlinePayments: boolean;
+  allowAnalytics: boolean;
+  allowAdvancedClientProfile: boolean;
+  allowAutomations: boolean;
+  allowLoyalty: boolean;
+  allowLastMinute: boolean;
+  allowStore: boolean;
+  allowChat: boolean;
+  allowWhatsappAutomatic: boolean;
+  allowInAppNotifications: boolean;
+  allowNewBookingNotifications: boolean;
+  allowClientReminders: boolean;
+};
+
 export type ProfessionalProfile = {
   id: string;
   slug?: string;
@@ -13,6 +34,8 @@ export type ProfessionalProfile = {
   publicHeadline?: string | null;
   publicAbout?: string | null;
   publicPhotos?: string[];
+  planCode?: ProductPlanCode;
+  planCapabilities?: ProductPlanCapabilities;
 };
 
 export type ServicePaymentType = 'full' | 'deposit' | 'on_site';

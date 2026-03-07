@@ -1,6 +1,7 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { memo } from 'react';
+import FavoriteToggleButton from '@/components/shared/FavoriteToggleButton';
 
 type ExploreCardProps = {
   id?: string;
@@ -17,6 +18,8 @@ type ExploreCardProps = {
   priority?: boolean;
   onHoverStart?: (id?: string) => void;
   onHoverEnd?: (id?: string) => void;
+  isFavorite?: boolean;
+  onFavoriteToggle?: () => void;
 };
 
 export default memo(function ExploreCard({
@@ -34,15 +37,28 @@ export default memo(function ExploreCard({
   priority = false,
   onHoverStart,
   onHoverEnd,
+  isFavorite = false,
+  onFavoriteToggle,
 }: ExploreCardProps) {
   const displayRating = rating?.trim();
   const displayPrice = price?.trim() || 'Ver perfil';
   const displayCity = city?.trim();
   const displayDistance = typeof distance === 'number' ? `${distance.toFixed(1)} km` : '';
 
-  const cardContent = (
-    <>
+  return (
+    <article
+      className={`group rounded-[24px] bg-white p-4 shadow-sm transition hover:-translate-y-1 hover:shadow-md ${
+        isHighlighted ? 'ring-2 ring-[#0E2A47]/20' : ''
+      }`}
+      onMouseEnter={() => onHoverStart?.(id)}
+      onMouseLeave={() => onHoverEnd?.(id)}
+    >
       <div className="relative h-40 w-full overflow-hidden rounded-[20px] bg-[#E9EEF2]">
+        {href ? (
+          <Link href={href} className="absolute inset-0 z-10" aria-label={`Ver perfil de ${name}`}>
+            <span className="sr-only">Ver perfil de {name}</span>
+          </Link>
+        ) : null}
         {imageUrl ? (
           <Image
             src={imageUrl}
@@ -54,10 +70,27 @@ export default memo(function ExploreCard({
           />
         ) : null}
         <div className="absolute inset-0 bg-gradient-to-t from-[#0E2A47]/45 via-transparent to-transparent" />
+        {onFavoriteToggle ? (
+          <div className="absolute right-3 top-3 z-20">
+            <FavoriteToggleButton
+              isActive={isFavorite}
+              onClick={onFavoriteToggle}
+              tone="light"
+              activeLabel={`Quitar a ${name} de favoritos`}
+              inactiveLabel={`Guardar a ${name} en favoritos`}
+            />
+          </div>
+        ) : null}
       </div>
       <div className="mt-4 flex items-start justify-between gap-3">
         <div className="space-y-1">
-          <h3 className="text-lg font-semibold text-[#0E2A47]">{name}</h3>
+          {href ? (
+            <Link href={href} className="text-lg font-semibold text-[#0E2A47] hover:underline">
+              {name}
+            </Link>
+          ) : (
+            <h3 className="text-lg font-semibold text-[#0E2A47]">{name}</h3>
+          )}
           <p className="text-sm text-[#6B7280]">{category || 'Profesional'}</p>
           {displayCity || displayDistance ? (
             <p className="text-xs text-[#94A3B8]">
@@ -89,33 +122,16 @@ export default memo(function ExploreCard({
         )}
         <span className="text-[#000000]">{displayPrice}</span>
       </div>
-    </>
-  );
-
-  if (!href) {
-    return (
-      <div
-        className={`group rounded-[24px] bg-white p-4 shadow-sm transition hover:-translate-y-1 hover:shadow-md ${
-          isHighlighted ? 'ring-2 ring-[#0E2A47]/20' : ''
-        }`}
-        onMouseEnter={() => onHoverStart?.(id)}
-        onMouseLeave={() => onHoverEnd?.(id)}
-      >
-        {cardContent}
-      </div>
-    );
-  }
-
-  return (
-    <Link
-      href={href}
-      className={`group block rounded-[24px] bg-white p-4 shadow-sm transition hover:-translate-y-1 hover:shadow-md ${
-        isHighlighted ? 'ring-2 ring-[#0E2A47]/20' : ''
-      }`}
-      onMouseEnter={() => onHoverStart?.(id)}
-      onMouseLeave={() => onHoverEnd?.(id)}
-    >
-      {cardContent}
-    </Link>
+      {href ? (
+        <div className="mt-4">
+          <Link
+            href={href}
+            className="inline-flex rounded-full border border-[#DFE7EF] bg-[#F8FAFC] px-4 py-2 text-xs font-semibold text-[#0E2A47] transition hover:bg-white"
+          >
+            Ver perfil
+          </Link>
+        </div>
+      ) : null}
+    </article>
   );
 });

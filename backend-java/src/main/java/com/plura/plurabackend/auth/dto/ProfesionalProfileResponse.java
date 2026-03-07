@@ -1,6 +1,7 @@
 package com.plura.plurabackend.auth.dto;
 
 import com.plura.plurabackend.category.dto.CategoryResponse;
+import com.plura.plurabackend.productplan.ProductPlanCapabilities;
 import java.time.LocalDateTime;
 import java.util.List;
 import lombok.AllArgsConstructor;
@@ -32,5 +33,7 @@ public class ProfesionalProfileResponse {
     private String publicAbout;
     private List<String> publicPhotos;
     private List<CategoryResponse> categories;
+    private String planCode;
+    private ProductPlanCapabilities planCapabilities;
     private LocalDateTime createdAt;
 }

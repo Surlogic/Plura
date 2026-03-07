@@ -11,6 +11,7 @@ import {
   type ReactNode,
 } from 'react';
 import { cachedGet } from '@/services/cachedGet';
+import { invalidateCachedGet } from '@/services/cachedGet';
 import type { ProfessionalProfile } from '@/types/professional';
 
 type ProfessionalProfileContextValue = {
@@ -41,6 +42,7 @@ export function ProfessionalProfileProvider({
   const [hasLoaded, setHasLoaded] = useState(false);
 
   const clearProfile = useCallback(() => {
+    PROFESSIONAL_PROFILE_ENDPOINTS.forEach((endpoint) => invalidateCachedGet(endpoint));
     setProfile(null);
     setHasLoaded(true);
     setIsLoading(false);

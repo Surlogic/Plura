@@ -32,6 +32,8 @@ import com.plura.plurabackend.professional.service.dto.ProfesionalServiceRequest
 import com.plura.plurabackend.professional.service.dto.ProfesionalServiceResponse;
 import com.plura.plurabackend.professional.service.model.ProfesionalService;
 import com.plura.plurabackend.professional.service.repository.ProfesionalServiceRepository;
+import com.plura.plurabackend.productplan.EffectiveProductPlan;
+import com.plura.plurabackend.productplan.EffectiveProductPlanService;
 import com.plura.plurabackend.search.engine.SearchSyncPublisher;
 import com.plura.plurabackend.storage.ImageStorageService;
 import com.plura.plurabackend.storage.thumbnail.ImageThumbnailJobService;
@@ -123,6 +125,7 @@ public class ProfessionalPublicPageCoreService {
     private final SlotCacheService slotCacheService;
     private final ProfileCacheService profileCacheService;
     private final SearchSyncPublisher searchSyncPublisher;
+    private final EffectiveProductPlanService effectiveProductPlanService;
     private final ImageStorageService imageStorageService;
     private final MeterRegistry meterRegistry;
     private final PasswordEncoder passwordEncoder;
@@ -147,6 +150,7 @@ public class ProfessionalPublicPageCoreService {
         SlotCacheService slotCacheService,
         ProfileCacheService profileCacheService,
         SearchSyncPublisher searchSyncPublisher,
+        EffectiveProductPlanService effectiveProductPlanService,
         ImageStorageService imageStorageService,
         MeterRegistry meterRegistry,
         PasswordEncoder passwordEncoder,
@@ -168,6 +172,7 @@ public class ProfessionalPublicPageCoreService {
         this.slotCacheService = slotCacheService;
         this.profileCacheService = profileCacheService;
         this.searchSyncPublisher = searchSyncPublisher;
+        this.effectiveProductPlanService = effectiveProductPlanService;
         this.imageStorageService = imageStorageService;
         this.meterRegistry = meterRegistry;
         this.passwordEncoder = passwordEncoder;
@@ -248,7 +253,7 @@ public class ProfessionalPublicPageCoreService {
         Timer.Sample sample = Timer.start(meterRegistry);
         try {
             Long userId = parseUserId(rawUserId);
-            User user = userRepository.findById(userId)
+            User user = userRepository.findByIdAndDeletedAtIsNull(userId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Usuario no encontrado"));
             if (user.getRole() != UserRole.USER) {
                 throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Solo clientes pueden reservar");
@@ -542,6 +547,7 @@ public class ProfessionalPublicPageCoreService {
         ProfesionalPublicPageUpdateRequest request
     ) {
         ProfessionalProfile profile = loadProfessionalByUserId(rawUserId);
+        EffectiveProductPlan effectivePlan = effectiveProductPlanService.resolveForProfessional(profile);
 
         if (request.getHeadline() != null) {
             profile.setPublicHeadline(request.getHeadline().trim());
@@ -554,6 +560,13 @@ public class ProfessionalPublicPageCoreService {
                 .map(photo -> photo == null ? "" : photo.trim())
                 .filter(photo -> !photo.isBlank())
                 .collect(Collectors.toList());
+            int maxBusinessPhotos = effectivePlan.capabilities().maxBusinessPhotos();
+            if (cleaned.size() > maxBusinessPhotos) {
+                throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Tu plan permite hasta " + maxBusinessPhotos + " fotos del negocio"
+                );
+            }
             profile.getPublicPhotos().clear();
             profile.getPublicPhotos().addAll(cleaned);
             syncLocalBusinessPhotos(profile, cleaned);
@@ -931,8 +944,12 @@ public class ProfessionalPublicPageCoreService {
 
     private ProfessionalProfile loadProfessionalByUserId(String rawUserId) {
         Long userId = parseUserId(rawUserId);
-        return professionalProfileRepository.findByUser_Id(userId)
+        ProfessionalProfile profile = professionalProfileRepository.findByUser_Id(userId)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Profesional no encontrado"));
+        if (profile.getUser() == null || profile.getUser().getDeletedAt() != null || !Boolean.TRUE.equals(profile.getActive())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Profesional inhabilitado");
+        }
+        return profile;
     }
 
     private Long parseUserId(String rawUserId) {
@@ -1410,7 +1427,8 @@ public class ProfessionalPublicPageCoreService {
             categorySupport.resolvePrimaryRubro(profile),
             profile.getLocation(),
             profile.getPublicHeadline(),
-            categorySupport.mapCategories(profile.getCategories())
+            categorySupport.mapCategories(profile.getCategories()),
+            profile.getLogoUrl()
         );
     }
 
@@ -1573,7 +1591,7 @@ public class ProfessionalPublicPageCoreService {
         String clientPhone = normalizeOptional(request.getClientPhone());
 
         if (clientEmail != null) {
-            User existing = userRepository.findByEmail(clientEmail).orElse(null);
+            User existing = userRepository.findByEmailAndDeletedAtIsNull(clientEmail).orElse(null);
             if (existing != null) {
                 if (existing.getRole() != UserRole.USER) {
                     throw new ResponseStatusException(

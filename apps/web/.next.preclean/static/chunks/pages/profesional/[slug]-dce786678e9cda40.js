@@ -1,1 +1,0 @@
-(self.webpackChunk_N_E=self.webpackChunk_N_E||[]).push([[742],{8822:(_,u,e)=>{"use strict";e.r(u),e.d(u,{default:()=>s.default});var s=e(5518)},9201:(_,u,e)=>{(window.__NEXT_P=window.__NEXT_P||[]).push(["/profesional/[slug]",function(){return e(8822)}])}},_=>{_.O(0,[910,445,518,636,593,792],()=>_(_.s=9201)),_N_E=_.O()}]);

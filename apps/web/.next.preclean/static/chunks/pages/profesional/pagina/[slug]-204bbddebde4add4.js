@@ -1,1 +1,0 @@
-(self.webpackChunk_N_E=self.webpackChunk_N_E||[]).push([[125],{185:(_,n,s)=>{(window.__NEXT_P=window.__NEXT_P||[]).push(["/profesional/pagina/[slug]",function(){return s(5518)}])}},_=>{_.O(0,[910,445,518,636,593,792],()=>_(_.s=185)),_N_E=_.O()}]);

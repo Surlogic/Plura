@@ -37,8 +37,7 @@ public class SecurityConfig {
         JwtAuthenticationFilter jwtFilter,
         RateLimitingFilter rateLimitingFilter,
         CookieOriginProtectionFilter cookieOriginProtectionFilter
-    )
-        throws Exception {
+    ) throws Exception {
         http
             // API stateless con Bearer token: no sesiones y sin CSRF stateful.
             .csrf(csrf -> csrf.disable())
@@ -138,13 +137,17 @@ public class SecurityConfig {
 
         CorsConfiguration configuration = new CorsConfiguration();
         configuration.setAllowedOrigins(allowedOrigins);
-        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of(
             "Authorization",
             "Content-Type",
             "Accept",
+            "Origin",
+            "X-Requested-With",
             "X-Plura-Client-Platform",
-            "X-Plura-Session-Transport"
+            "X-Plura-Session-Transport",
+            "Idempotency-Key",
+            "idempotency-key"
         ));
         configuration.setAllowCredentials(true);
         configuration.setMaxAge(corsMaxAgeSeconds);

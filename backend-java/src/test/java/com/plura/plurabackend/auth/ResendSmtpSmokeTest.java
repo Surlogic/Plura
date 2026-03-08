@@ -51,6 +51,9 @@ class ResendSmtpSmokeTest {
             javaMailSender,
             deliveryEnabled,
             host,
+            Boolean.parseBoolean(optionalEnv("EMAIL_SMTP_AUTH").orElse("true")),
+            requiredEnv("EMAIL_SMTP_USERNAME"),
+            requiredEnv("EMAIL_SMTP_PASSWORD"),
             fromAddress,
             fromName,
             replyTo

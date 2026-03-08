@@ -6,6 +6,7 @@ import com.plura.plurabackend.booking.actions.model.BookingSuggestedAction;
 import com.plura.plurabackend.booking.finance.BookingMoneyResolver;
 import com.plura.plurabackend.booking.model.Booking;
 import com.plura.plurabackend.booking.model.BookingOperationalStatus;
+import com.plura.plurabackend.booking.policy.BookingPolicyDefaults;
 import com.plura.plurabackend.booking.policy.BookingPolicySnapshot;
 import java.math.BigDecimal;
 import java.time.Duration;
@@ -48,6 +49,8 @@ public class BookingActionsEvaluator {
         BookingSuggestedAction suggestedAction = BookingSuggestedAction.NONE;
 
         long hoursUntilStart = Duration.between(now, booking.getStartDateTime()).toHours();
+        int currentRescheduleCount = booking.getRescheduleCount() == null ? 0 : Math.max(0, booking.getRescheduleCount());
+        int maxClientReschedules = BookingPolicyDefaults.resolveMaxClientReschedules(policy.maxClientReschedules());
         params.put("hoursUntilStart", String.valueOf(hoursUntilStart));
         if (policy.cancellationWindowHours() != null) {
             params.put("cancellationWindowHours", String.valueOf(policy.cancellationWindowHours()));
@@ -55,8 +58,8 @@ public class BookingActionsEvaluator {
         if (policy.rescheduleWindowHours() != null) {
             params.put("rescheduleWindowHours", String.valueOf(policy.rescheduleWindowHours()));
         }
-        params.put("rescheduleCount", String.valueOf(Math.max(0, booking.getRescheduleCount())));
-        params.put("maxClientReschedules", String.valueOf(policy.maxClientReschedules()));
+        params.put("rescheduleCount", String.valueOf(currentRescheduleCount));
+        params.put("maxClientReschedules", String.valueOf(maxClientReschedules));
 
         if (!activeBooking) {
             reasons.add(BookingActionReasonCode.BOOKING_NOT_ACTIVE);
@@ -108,11 +111,13 @@ public class BookingActionsEvaluator {
 
             if (!policy.allowClientReschedule()) {
                 reasons.add(BookingActionReasonCode.CLIENT_RESCHEDULE_DISABLED);
+            } else if (maxClientReschedules <= 0) {
+                reasons.add(BookingActionReasonCode.RESCHEDULE_LIMIT_REACHED);
             } else if (bookingStarted) {
                 reasons.add(BookingActionReasonCode.RESCHEDULE_WINDOW_CLOSED);
             } else if (policy.rescheduleWindowHours() != null && hoursUntilStart < policy.rescheduleWindowHours()) {
                 reasons.add(BookingActionReasonCode.RESCHEDULE_WINDOW_CLOSED);
-            } else if (booking.getRescheduleCount() != null && booking.getRescheduleCount() >= policy.maxClientReschedules()) {
+            } else if (currentRescheduleCount >= maxClientReschedules) {
                 reasons.add(BookingActionReasonCode.RESCHEDULE_LIMIT_REACHED);
             } else {
                 canReschedule = true;

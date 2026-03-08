@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.plura.plurabackend.billing.BillingProperties;
 import com.plura.plurabackend.billing.payments.model.PaymentProvider;
+import com.plura.plurabackend.billing.webhooks.signature.SignatureUtils;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.net.URI;
@@ -27,6 +28,8 @@ import org.springframework.web.server.ResponseStatusException;
 public class DLocalPaymentProviderClient implements PaymentProviderClient {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(DLocalPaymentProviderClient.class);
+    private static final String DLOCAL_API_VERSION = "2.1";
+    private static final String DLOCAL_USER_AGENT = "PluraBackend/1.0";
 
     private final BillingProperties billingProperties;
     private final ObjectMapper objectMapper;
@@ -63,12 +66,14 @@ public class DLocalPaymentProviderClient implements PaymentProviderClient {
             String body = objectMapper.writeValueAsString(payload);
 
             String requestDate = DateTimeFormatter.ISO_INSTANT.format(Instant.now());
-            HttpRequest httpRequest = HttpRequest.newBuilder(URI.create(endpoint))
+            HttpRequest httpRequest = applySignedHeaders(
+                HttpRequest.newBuilder(URI.create(endpoint)),
+                config,
+                requestDate,
+                body
+            )
                 .timeout(Duration.ofMillis(config.getTimeoutMillis()))
                 .header("Content-Type", "application/json")
-                .header("X-Login", config.getXLogin())
-                .header("X-Trans-Key", config.getXTransKey())
-                .header("X-Date", requestDate)
                 .POST(HttpRequest.BodyPublishers.ofString(body))
                 .build();
 
@@ -124,12 +129,14 @@ public class DLocalPaymentProviderClient implements PaymentProviderClient {
             String body = objectMapper.writeValueAsString(payload);
             String requestDate = DateTimeFormatter.ISO_INSTANT.format(Instant.now());
 
-            HttpRequest httpRequest = HttpRequest.newBuilder(URI.create(endpoint))
+            HttpRequest httpRequest = applySignedHeaders(
+                HttpRequest.newBuilder(URI.create(endpoint)),
+                config,
+                requestDate,
+                body
+            )
                 .timeout(Duration.ofMillis(config.getTimeoutMillis()))
                 .header("Content-Type", "application/json")
-                .header("X-Login", config.getXLogin())
-                .header("X-Trans-Key", config.getXTransKey())
-                .header("X-Date", requestDate)
                 .POST(HttpRequest.BodyPublishers.ofString(body))
                 .build();
 
@@ -187,12 +194,14 @@ public class DLocalPaymentProviderClient implements PaymentProviderClient {
             String body = objectMapper.writeValueAsString(payload);
             String requestDate = DateTimeFormatter.ISO_INSTANT.format(Instant.now());
 
-            HttpRequest request = HttpRequest.newBuilder(URI.create(endpoint))
+            HttpRequest request = applySignedHeaders(
+                HttpRequest.newBuilder(URI.create(endpoint)),
+                config,
+                requestDate,
+                body
+            )
                 .timeout(Duration.ofMillis(config.getTimeoutMillis()))
                 .header("Content-Type", "application/json")
-                .header("X-Login", config.getXLogin())
-                .header("X-Trans-Key", config.getXTransKey())
-                .header("X-Date", requestDate)
                 .POST(HttpRequest.BodyPublishers.ofString(body))
                 .build();
 
@@ -232,12 +241,14 @@ public class DLocalPaymentProviderClient implements PaymentProviderClient {
 
         try {
             String requestDate = DateTimeFormatter.ISO_INSTANT.format(Instant.now());
-            HttpRequest httpRequest = HttpRequest.newBuilder(URI.create(endpoint))
+            HttpRequest httpRequest = applySignedHeaders(
+                HttpRequest.newBuilder(URI.create(endpoint)),
+                config,
+                requestDate,
+                ""
+            )
                 .timeout(Duration.ofMillis(config.getTimeoutMillis()))
                 .header("Content-Type", "application/json")
-                .header("X-Login", config.getXLogin())
-                .header("X-Trans-Key", config.getXTransKey())
-                .header("X-Date", requestDate)
                 .GET()
                 .build();
 
@@ -314,12 +325,14 @@ public class DLocalPaymentProviderClient implements PaymentProviderClient {
             String body = objectMapper.writeValueAsString(payload);
             String requestDate = DateTimeFormatter.ISO_INSTANT.format(Instant.now());
 
-            HttpRequest httpRequest = HttpRequest.newBuilder(URI.create(endpoint))
+            HttpRequest httpRequest = applySignedHeaders(
+                HttpRequest.newBuilder(URI.create(endpoint)),
+                config,
+                requestDate,
+                body
+            )
                 .timeout(Duration.ofMillis(config.getTimeoutMillis()))
                 .header("Content-Type", "application/json")
-                .header("X-Login", config.getXLogin())
-                .header("X-Trans-Key", config.getXTransKey())
-                .header("X-Date", requestDate)
                 .POST(HttpRequest.BodyPublishers.ofString(body))
                 .build();
 
@@ -507,6 +520,31 @@ public class DLocalPaymentProviderClient implements PaymentProviderClient {
         bankAccount.put("number", request.bankAccountNumber());
         payload.put("bank_account", bankAccount);
         return payload;
+    }
+
+    private HttpRequest.Builder applySignedHeaders(
+        HttpRequest.Builder builder,
+        BillingProperties.DLocal config,
+        String requestDate,
+        String body
+    ) {
+        return builder
+            .header("X-Login", config.getXLogin())
+            .header("X-Trans-Key", config.getXTransKey())
+            .header("X-Date", requestDate)
+            .header("X-Version", DLOCAL_API_VERSION)
+            .header("User-Agent", DLOCAL_USER_AGENT)
+            .header("Authorization", buildAuthorizationHeader(config, requestDate, body));
+    }
+
+    private String buildAuthorizationHeader(
+        BillingProperties.DLocal config,
+        String requestDate,
+        String body
+    ) {
+        String payload = (requestDate == null ? "" : requestDate) + (body == null ? "" : body);
+        String signature = SignatureUtils.hmacSha256Hex(config.getWebhookSecret(), payload);
+        return "V2-HMAC-SHA256, Signature: " + signature;
     }
 
     private synchronized String getPayoutAccessToken(

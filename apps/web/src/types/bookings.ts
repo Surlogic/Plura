@@ -111,6 +111,25 @@ export type BookingPaymentSession = {
   financialStatus?: BookingFinancialStatus | null;
 };
 
+export type ProfessionalBookingPolicy = {
+  id?: string | null;
+  allowClientCancellation: boolean;
+  allowClientReschedule: boolean;
+  cancellationWindowHours?: number | null;
+  rescheduleWindowHours?: number | null;
+  maxClientReschedules?: number | null;
+  retainDepositOnLateCancellation: boolean;
+};
+
+export type ProfessionalBookingPolicyUpdateInput = {
+  allowClientCancellation?: boolean;
+  allowClientReschedule?: boolean;
+  cancellationWindowHours?: number | null;
+  rescheduleWindowHours?: number | null;
+  maxClientReschedules?: number | null;
+  retainDepositOnLateCancellation?: boolean;
+};
+
 export type BookingCommandResponse<TBooking> = {
   booking?: TBooking | null;
   decision?: BookingDecision | null;
@@ -122,4 +141,3 @@ export type BookingCommandResponse<TBooking> = {
   messageParams?: Record<string, string> | null;
   plainTextFallback?: string | null;
 };
-

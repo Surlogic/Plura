@@ -113,6 +113,7 @@ export default function ClienteReservasPage() {
   const [rescheduleDate, setRescheduleDate] = useState(toLocalDateKey(new Date()));
   const [rescheduleTime, setRescheduleTime] = useState('');
   const [slotOptions, setSlotOptions] = useState<string[]>([]);
+  const [slotError, setSlotError] = useState<string | null>(null);
   const [isLoadingSlots, setIsLoadingSlots] = useState(false);
   const [cancelReason, setCancelReason] = useState('');
 
@@ -208,16 +209,18 @@ export default function ClienteReservasPage() {
     return () => {
       cancelled = true;
     };
-  }, [selectedBooking?.id]);
+  }, [selectedBooking?.id, selectedBooking?.dateTime, selectedBooking?.status]);
 
   useEffect(() => {
     if (!selectedBooking?.professionalSlug || !selectedBooking.serviceId || !showReschedule || !rescheduleDate) {
       setSlotOptions([]);
+      setSlotError(null);
       return;
     }
 
     let cancelled = false;
     setIsLoadingSlots(true);
+    setSlotError(null);
 
     getPublicSlots(
       selectedBooking.professionalSlug,
@@ -233,6 +236,7 @@ export default function ClienteReservasPage() {
       .catch(() => {
         if (!cancelled) {
           setSlotOptions([]);
+          setSlotError('No pudimos cargar horarios disponibles para esa fecha.');
         }
       })
       .finally(() => {
@@ -245,6 +249,14 @@ export default function ClienteReservasPage() {
       cancelled = true;
     };
   }, [rescheduleDate, selectedBooking?.professionalSlug, selectedBooking?.serviceId, showReschedule]);
+
+  useEffect(() => {
+    if (actions?.canReschedule) return;
+    setShowReschedule(false);
+    setRescheduleTime('');
+    setSlotOptions([]);
+    setSlotError(null);
+  }, [actions?.canReschedule]);
 
   useEffect(() => {
     if (!selectedBooking?.financialSummary?.financialStatus) return;
@@ -287,6 +299,7 @@ export default function ClienteReservasPage() {
     setSelectedBookingId(bookingId);
     setShowReschedule(false);
     setRescheduleTime('');
+    setSlotError(null);
     setCancelReason('');
     void router.replace(
       {
@@ -633,6 +646,10 @@ export default function ClienteReservasPage() {
                           <div className="grid grid-cols-3 gap-2">
                             {isLoadingSlots ? (
                               <p className="col-span-full text-sm text-[#64748B]">Buscando horarios...</p>
+                            ) : slotError ? (
+                              <p className="col-span-full text-sm text-[#B91C1C]">
+                                {slotError}
+                              </p>
                             ) : slotOptions.length === 0 ? (
                               <p className="col-span-full text-sm text-[#64748B]">
                                 No encontramos horarios para esa fecha.
@@ -676,4 +693,3 @@ export default function ClienteReservasPage() {
     </ClientShell>
   );
 }
-

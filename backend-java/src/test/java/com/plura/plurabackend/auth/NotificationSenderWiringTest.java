@@ -3,6 +3,7 @@ package com.plura.plurabackend.auth;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import com.plura.plurabackend.auth.model.OtpChallengeChannel;
 import com.plura.plurabackend.auth.model.OtpChallengePurpose;
@@ -52,6 +53,26 @@ class NotificationSenderWiringTest {
     }
 
     @Test
+    void emailVerificationSenderFailsWhenDeliveryDoesNotSend() {
+        EmailVerificationEmailNotificationSender sender = new EmailVerificationEmailNotificationSender(
+            new FailingTransactionalEmailService(TransactionalEmailService.DeliveryStatus.FAILED),
+            new PluraEmailTemplateService("Plura", "https://plura.app"),
+            15
+        );
+
+        AuthApiException exception = assertThrows(
+            AuthApiException.class,
+            () -> sender.sendVerificationCode(new EmailVerificationNotificationSender.EmailVerificationNotification(
+                user("German", "user@plura.com"),
+                "user@plura.com",
+                "123456"
+            ))
+        );
+
+        assertEquals("EMAIL_DELIVERY_UNAVAILABLE", exception.getErrorCode());
+    }
+
+    @Test
     void otpChallengeSenderOnlyUsesEmailDeliveryForEmailChannel() {
         CapturingTransactionalEmailService delivery = new CapturingTransactionalEmailService();
         OtpChallengeEmailNotificationSender sender = new OtpChallengeEmailNotificationSender(
@@ -95,6 +116,13 @@ class NotificationSenderWiringTest {
         public DeliveryStatus send(TransactionalEmailMessage message) {
             this.lastMessage = message;
             return DeliveryStatus.SENT;
+        }
+    }
+
+    private record FailingTransactionalEmailService(DeliveryStatus status) implements TransactionalEmailService {
+        @Override
+        public DeliveryStatus send(TransactionalEmailMessage message) {
+            return status;
         }
     }
 }

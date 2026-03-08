@@ -38,6 +38,7 @@ import com.plura.plurabackend.booking.model.Booking;
 import com.plura.plurabackend.booking.model.BookingOperationalStatus;
 import com.plura.plurabackend.booking.model.ServicePaymentType;
 import com.plura.plurabackend.booking.policy.BookingPolicySnapshotService;
+import com.plura.plurabackend.booking.policy.BookingPolicyDefaults;
 import com.plura.plurabackend.booking.policy.ResolvedBookingPolicy;
 import com.plura.plurabackend.booking.policy.model.BookingPolicy;
 import com.plura.plurabackend.booking.policy.repository.BookingPolicyRepository;
@@ -2597,10 +2598,10 @@ public class ProfessionalPublicPageCoreService {
     private BookingPolicy defaultBookingPolicy(ProfessionalProfile profile) {
         BookingPolicy policy = new BookingPolicy();
         policy.setProfessional(profile);
-        policy.setAllowClientCancellation(true);
-        policy.setAllowClientReschedule(true);
-        policy.setMaxClientReschedules(0);
-        policy.setRetainDepositOnLateCancellation(false);
+        policy.setAllowClientCancellation(BookingPolicyDefaults.DEFAULT_ALLOW_CLIENT_CANCELLATION);
+        policy.setAllowClientReschedule(BookingPolicyDefaults.DEFAULT_ALLOW_CLIENT_RESCHEDULE);
+        policy.setMaxClientReschedules(BookingPolicyDefaults.DEFAULT_MAX_CLIENT_RESCHEDULES);
+        policy.setRetainDepositOnLateCancellation(BookingPolicyDefaults.DEFAULT_RETAIN_DEPOSIT_ON_LATE_CANCELLATION);
         return policy;
     }
 

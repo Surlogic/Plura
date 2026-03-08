@@ -7,6 +7,7 @@ import com.plura.plurabackend.billing.payments.model.PaymentTransactionType;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
 
 public interface PaymentTransactionRepository extends JpaRepository<PaymentTransaction, String> {
 
@@ -41,4 +42,13 @@ public interface PaymentTransactionRepository extends JpaRepository<PaymentTrans
         PaymentTransactionType transactionType,
         List<PaymentTransactionStatus> statuses
     );
+
+    @Query(
+        """
+        SELECT DISTINCT transaction.booking.id
+        FROM PaymentTransaction transaction
+        WHERE transaction.booking IS NOT NULL
+        """
+    )
+    List<Long> findDistinctBookingIds();
 }

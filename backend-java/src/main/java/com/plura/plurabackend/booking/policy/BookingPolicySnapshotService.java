@@ -27,7 +27,7 @@ public class BookingPolicySnapshotService {
         BookingPolicy policy = bookingPolicyRepository.findByProfessional_Id(professional.getId())
             .orElse(null);
 
-        return new BookingPolicySnapshot(
+        return normalizeSnapshot(new BookingPolicySnapshot(
             policy == null ? null : policy.getId(),
             policy == null ? null : policy.getVersion(),
             professional.getId(),
@@ -36,9 +36,11 @@ public class BookingPolicySnapshotService {
             policy == null || Boolean.TRUE.equals(policy.getAllowClientReschedule()),
             policy == null ? null : policy.getCancellationWindowHours(),
             policy == null ? null : policy.getRescheduleWindowHours(),
-            policy == null || policy.getMaxClientReschedules() == null ? 0 : policy.getMaxClientReschedules(),
+            policy == null
+                ? BookingPolicyDefaults.DEFAULT_MAX_CLIENT_RESCHEDULES
+                : BookingPolicyDefaults.resolveMaxClientReschedules(policy.getMaxClientReschedules()),
             policy != null && Boolean.TRUE.equals(policy.getRetainDepositOnLateCancellation())
-        );
+        ));
     }
 
     public void applySnapshot(Booking booking, BookingPolicySnapshot snapshot) {
@@ -62,7 +64,10 @@ public class BookingPolicySnapshotService {
                     booking.getPolicySnapshotJson(),
                     BookingPolicySnapshot.class
                 );
-                return new ResolvedBookingPolicy(snapshot, ResolvedBookingPolicy.PolicySnapshotSource.SNAPSHOT);
+                return new ResolvedBookingPolicy(
+                    normalizeSnapshot(snapshot),
+                    ResolvedBookingPolicy.PolicySnapshotSource.SNAPSHOT
+                );
             } catch (JsonProcessingException exception) {
                 // Caemos a policy viva para no romper reservas antiguas o snapshots dañados.
             }
@@ -71,5 +76,39 @@ public class BookingPolicySnapshotService {
         ProfessionalProfile professional = booking.getProfessional();
         BookingPolicySnapshot liveSnapshot = buildForProfessional(professional);
         return new ResolvedBookingPolicy(liveSnapshot, ResolvedBookingPolicy.PolicySnapshotSource.LIVE_FALLBACK);
+    }
+
+    private BookingPolicySnapshot normalizeSnapshot(BookingPolicySnapshot snapshot) {
+        if (snapshot == null) {
+            return null;
+        }
+
+        int normalizedMaxClientReschedules = BookingPolicyDefaults.resolveMaxClientReschedules(
+            snapshot.maxClientReschedules()
+        );
+
+        if (snapshot.sourcePolicyId() == null
+            && snapshot.allowClientReschedule()
+            && normalizedMaxClientReschedules == 0) {
+            normalizedMaxClientReschedules = BookingPolicyDefaults.DEFAULT_MAX_CLIENT_RESCHEDULES;
+        }
+
+        if (snapshot.maxClientReschedules() != null
+            && normalizedMaxClientReschedules == snapshot.maxClientReschedules()) {
+            return snapshot;
+        }
+
+        return new BookingPolicySnapshot(
+            snapshot.sourcePolicyId(),
+            snapshot.sourcePolicyVersion(),
+            snapshot.professionalId(),
+            snapshot.resolvedAt(),
+            snapshot.allowClientCancellation(),
+            snapshot.allowClientReschedule(),
+            snapshot.cancellationWindowHours(),
+            snapshot.rescheduleWindowHours(),
+            normalizedMaxClientReschedules,
+            snapshot.retainDepositOnLateCancellation()
+        );
     }
 }

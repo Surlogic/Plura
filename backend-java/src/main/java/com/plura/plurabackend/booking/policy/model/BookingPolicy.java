@@ -1,5 +1,6 @@
 package com.plura.plurabackend.booking.policy.model;
 
+import com.plura.plurabackend.booking.policy.BookingPolicyDefaults;
 import com.plura.plurabackend.professional.model.ProfessionalProfile;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -66,16 +67,16 @@ public class BookingPolicy {
             this.id = UUID.randomUUID().toString();
         }
         if (this.allowClientCancellation == null) {
-            this.allowClientCancellation = true;
+            this.allowClientCancellation = BookingPolicyDefaults.DEFAULT_ALLOW_CLIENT_CANCELLATION;
         }
         if (this.allowClientReschedule == null) {
-            this.allowClientReschedule = true;
+            this.allowClientReschedule = BookingPolicyDefaults.DEFAULT_ALLOW_CLIENT_RESCHEDULE;
         }
         if (this.maxClientReschedules == null) {
-            this.maxClientReschedules = 0;
+            this.maxClientReschedules = BookingPolicyDefaults.DEFAULT_MAX_CLIENT_RESCHEDULES;
         }
         if (this.retainDepositOnLateCancellation == null) {
-            this.retainDepositOnLateCancellation = false;
+            this.retainDepositOnLateCancellation = BookingPolicyDefaults.DEFAULT_RETAIN_DEPOSIT_ON_LATE_CANCELLATION;
         }
         if (this.createdAt == null) {
             this.createdAt = LocalDateTime.now();

@@ -1,6 +1,7 @@
 package com.plura.plurabackend.auth;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -187,6 +188,28 @@ class AuthEmailVerificationIntegrationTest {
             .andExpect(jsonPath("$.message").value("El email ya está verificado."));
 
         verify(emailVerificationNotificationSender, never()).sendVerificationCode(any());
+        org.junit.jupiter.api.Assertions.assertEquals(0L, emailVerificationChallengeRepository.count());
+    }
+
+    @Test
+    void sendEmailVerificationReturnsServiceUnavailableWhenDeliveryFails() throws Exception {
+        registerClient("delivery-failure@plura.com", "Password123");
+        JsonNode loginPayload = loginClient("delivery-failure@plura.com", "Password123");
+        String accessToken = loginPayload.path("accessToken").asText();
+
+        doThrow(new AuthApiException(
+            org.springframework.http.HttpStatus.SERVICE_UNAVAILABLE,
+            "EMAIL_DELIVERY_UNAVAILABLE",
+            "No pudimos enviar el código de verificación por email. Intentá de nuevo más tarde."
+        )).when(emailVerificationNotificationSender).sendVerificationCode(any());
+
+        mockMvc.perform(post("/auth/verify/email/send")
+                .header("Authorization", "Bearer " + accessToken)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{}"))
+            .andExpect(status().isServiceUnavailable())
+            .andExpect(jsonPath("$.error").value("EMAIL_DELIVERY_UNAVAILABLE"));
+
         org.junit.jupiter.api.Assertions.assertEquals(0L, emailVerificationChallengeRepository.count());
     }
 

@@ -1,5 +1,6 @@
 package com.plura.plurabackend.auth;
 
+import org.springframework.http.HttpStatus;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
@@ -25,7 +26,7 @@ public class EmailVerificationEmailNotificationSender implements EmailVerificati
         if (notification == null || notification.user() == null || notification.email() == null) {
             return;
         }
-        transactionalEmailService.send(
+        TransactionalEmailService.DeliveryStatus deliveryStatus = transactionalEmailService.send(
             templateService.buildEmailVerificationEmail(
                 notification.email(),
                 notification.user().getFullName(),
@@ -33,5 +34,12 @@ public class EmailVerificationEmailNotificationSender implements EmailVerificati
                 ttlMinutes
             )
         );
+        if (deliveryStatus != TransactionalEmailService.DeliveryStatus.SENT) {
+            throw new AuthApiException(
+                HttpStatus.SERVICE_UNAVAILABLE,
+                "EMAIL_DELIVERY_UNAVAILABLE",
+                "No pudimos enviar el código de verificación por email. Intentá de nuevo más tarde."
+            );
+        }
     }
 }

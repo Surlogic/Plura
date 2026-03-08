@@ -51,6 +51,32 @@ services:
         sync: false
       - key: APPLE_CLIENT_ID
         sync: false
+      - key: EMAIL_DELIVERY_ENABLED
+        sync: false
+      - key: EMAIL_FROM_ADDRESS
+        sync: false
+      - key: EMAIL_FROM_NAME
+        sync: false
+      - key: EMAIL_REPLY_TO
+        sync: false
+      - key: EMAIL_SMTP_HOST
+        sync: false
+      - key: EMAIL_SMTP_PORT
+        sync: false
+      - key: EMAIL_SMTP_USERNAME
+        sync: false
+      - key: EMAIL_SMTP_PASSWORD
+        sync: false
+      - key: EMAIL_SMTP_AUTH
+        sync: false
+      - key: EMAIL_SMTP_STARTTLS_ENABLE
+        sync: false
+      - key: EMAIL_SMTP_CONNECTION_TIMEOUT_MS
+        sync: false
+      - key: EMAIL_SMTP_TIMEOUT_MS
+        sync: false
+      - key: EMAIL_SMTP_WRITE_TIMEOUT_MS
+        sync: false
       - key: BILLING_ENABLED
         sync: false
       - key: BILLING_MODE

@@ -136,7 +136,7 @@ public class InternalBookingOpsService {
             .toList();
 
         List<InternalBookingIssueResponse> failedRefunds = distinctIssuesByBooking(
-            bookingRefundRecordRepository.findAll().stream()
+            bookingRefundRecordRepository.findByStatus(BookingRefundStatus.FAILED).stream()
                 .filter(refund -> refund.getStatus() == BookingRefundStatus.FAILED)
                 .map(this::failedRefundIssue)
                 .filter(Objects::nonNull)
@@ -144,7 +144,7 @@ public class InternalBookingOpsService {
         );
 
         List<InternalBookingIssueResponse> failedPayouts = distinctIssuesByBooking(
-            bookingPayoutRecordRepository.findAll().stream()
+            bookingPayoutRecordRepository.findByStatus(BookingPayoutStatus.FAILED).stream()
                 .filter(payout -> payout.getStatus() == BookingPayoutStatus.FAILED)
                 .map(this::failedPayoutIssue)
                 .filter(Objects::nonNull)
@@ -152,26 +152,12 @@ public class InternalBookingOpsService {
         );
 
         Set<Long> candidateBookingIds = new LinkedHashSet<>();
-        bookingFinancialSummaryRepository.findAll().stream()
-            .map(BookingFinancialSummary::getBooking)
-            .filter(Objects::nonNull)
-            .map(Booking::getId)
-            .forEach(candidateBookingIds::add);
-        paymentTransactionRepository.findAll().stream()
-            .map(PaymentTransaction::getBooking)
-            .filter(Objects::nonNull)
-            .map(Booking::getId)
-            .forEach(candidateBookingIds::add);
-        bookingRefundRecordRepository.findAll().stream()
-            .map(BookingRefundRecord::getBooking)
-            .filter(Objects::nonNull)
-            .map(Booking::getId)
-            .forEach(candidateBookingIds::add);
-        bookingPayoutRecordRepository.findAll().stream()
-            .map(BookingPayoutRecord::getBooking)
-            .filter(Objects::nonNull)
-            .map(Booking::getId)
-            .forEach(candidateBookingIds::add);
+        candidateBookingIds.addAll(
+            bookingFinancialSummaryRepository.findBookingIdsByFinancialStatusNot(BookingFinancialStatus.NOT_REQUIRED)
+        );
+        candidateBookingIds.addAll(paymentTransactionRepository.findDistinctBookingIds());
+        candidateBookingIds.addAll(bookingRefundRecordRepository.findDistinctBookingIds());
+        candidateBookingIds.addAll(bookingPayoutRecordRepository.findDistinctBookingIds());
 
         List<InternalBookingIssueResponse> inconsistentBookings = candidateBookingIds.stream()
             .map(bookingId -> bookingRepository.findDetailedById(bookingId).orElse(null))

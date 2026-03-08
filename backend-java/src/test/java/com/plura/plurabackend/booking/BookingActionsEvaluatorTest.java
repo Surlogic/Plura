@@ -6,10 +6,10 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.plura.plurabackend.booking.actions.BookingActionsEvaluation;
 import com.plura.plurabackend.booking.actions.BookingActionsEvaluator;
-import com.plura.plurabackend.booking.finance.BookingMoneyResolver;
 import com.plura.plurabackend.booking.actions.model.BookingActionActor;
 import com.plura.plurabackend.booking.actions.model.BookingActionReasonCode;
 import com.plura.plurabackend.booking.actions.model.BookingSuggestedAction;
+import com.plura.plurabackend.booking.finance.BookingMoneyResolver;
 import com.plura.plurabackend.booking.model.Booking;
 import com.plura.plurabackend.booking.model.BookingOperationalStatus;
 import com.plura.plurabackend.booking.model.ServicePaymentType;
@@ -25,7 +25,7 @@ class BookingActionsEvaluatorTest {
     @Test
     void shouldAllowFreeClientCancellationWithinWindow() {
         Booking booking = booking(ServicePaymentType.FULL_PREPAY, BigDecimal.valueOf(1200), null);
-        BookingPolicySnapshot policy = policy(24, 12, 1, true);
+        BookingPolicySnapshot policy = policy(true, 24, 12, 1, true);
 
         BookingActionsEvaluation evaluation = evaluator.evaluate(
             booking,
@@ -45,7 +45,7 @@ class BookingActionsEvaluatorTest {
     void shouldSuggestRescheduleWhenLateCancellationWouldLoseDeposit() {
         Booking booking = booking(ServicePaymentType.DEPOSIT, BigDecimal.valueOf(2500), BigDecimal.valueOf(500));
         booking.setStartDateTime(LocalDateTime.of(2026, 3, 9, 8, 0));
-        BookingPolicySnapshot policy = policy(24, 2, 2, true);
+        BookingPolicySnapshot policy = policy(true, 24, 2, 2, true);
 
         BookingActionsEvaluation evaluation = evaluator.evaluate(
             booking,
@@ -63,11 +63,111 @@ class BookingActionsEvaluatorTest {
     }
 
     @Test
+    void shouldBlockClientRescheduleWhenDisabledByPolicy() {
+        Booking booking = booking(ServicePaymentType.ON_SITE, BigDecimal.ZERO, null);
+        BookingPolicySnapshot policy = policy(false, 24, 2, 1, false);
+
+        BookingActionsEvaluation evaluation = evaluator.evaluate(
+            booking,
+            new BookingActionActor(BookingActionActor.BookingActionActorType.CLIENT, 10L, null),
+            policy,
+            LocalDateTime.of(2026, 3, 8, 12, 0)
+        );
+
+        assertFalse(evaluation.canReschedule());
+        assertTrue(evaluation.reasonCodes().contains(BookingActionReasonCode.CLIENT_RESCHEDULE_DISABLED));
+    }
+
+    @Test
+    void shouldBlockClientRescheduleWhenMaxClientReschedulesIsZero() {
+        Booking booking = booking(ServicePaymentType.ON_SITE, BigDecimal.ZERO, null);
+        BookingPolicySnapshot policy = policy(true, 24, 2, 0, false);
+
+        BookingActionsEvaluation evaluation = evaluator.evaluate(
+            booking,
+            new BookingActionActor(BookingActionActor.BookingActionActorType.CLIENT, 10L, null),
+            policy,
+            LocalDateTime.of(2026, 3, 8, 12, 0)
+        );
+
+        assertFalse(evaluation.canReschedule());
+        assertTrue(evaluation.reasonCodes().contains(BookingActionReasonCode.RESCHEDULE_LIMIT_REACHED));
+    }
+
+    @Test
+    void shouldAllowClientRescheduleWhenMaxIsOneAndCountIsZero() {
+        Booking booking = booking(ServicePaymentType.ON_SITE, BigDecimal.ZERO, null);
+        booking.setRescheduleCount(0);
+        BookingPolicySnapshot policy = policy(true, 24, 2, 1, false);
+
+        BookingActionsEvaluation evaluation = evaluator.evaluate(
+            booking,
+            new BookingActionActor(BookingActionActor.BookingActionActorType.CLIENT, 10L, null),
+            policy,
+            LocalDateTime.of(2026, 3, 8, 12, 0)
+        );
+
+        assertTrue(evaluation.canReschedule());
+        assertTrue(evaluation.reasonCodes().contains(BookingActionReasonCode.RESCHEDULE_WINDOW_OPEN));
+    }
+
+    @Test
+    void shouldBlockClientRescheduleWhenMaxIsOneAndCountIsOne() {
+        Booking booking = booking(ServicePaymentType.ON_SITE, BigDecimal.ZERO, null);
+        booking.setRescheduleCount(1);
+        BookingPolicySnapshot policy = policy(true, 24, 2, 1, false);
+
+        BookingActionsEvaluation evaluation = evaluator.evaluate(
+            booking,
+            new BookingActionActor(BookingActionActor.BookingActionActorType.CLIENT, 10L, null),
+            policy,
+            LocalDateTime.of(2026, 3, 8, 12, 0)
+        );
+
+        assertFalse(evaluation.canReschedule());
+        assertTrue(evaluation.reasonCodes().contains(BookingActionReasonCode.RESCHEDULE_LIMIT_REACHED));
+    }
+
+    @Test
+    void shouldBlockClientRescheduleWhenWindowIsClosed() {
+        Booking booking = booking(ServicePaymentType.ON_SITE, BigDecimal.ZERO, null);
+        booking.setStartDateTime(LocalDateTime.of(2026, 3, 8, 18, 0));
+        BookingPolicySnapshot policy = policy(true, 24, 8, 1, false);
+
+        BookingActionsEvaluation evaluation = evaluator.evaluate(
+            booking,
+            new BookingActionActor(BookingActionActor.BookingActionActorType.CLIENT, 10L, null),
+            policy,
+            LocalDateTime.of(2026, 3, 8, 12, 0)
+        );
+
+        assertFalse(evaluation.canReschedule());
+        assertTrue(evaluation.reasonCodes().contains(BookingActionReasonCode.RESCHEDULE_WINDOW_CLOSED));
+    }
+
+    @Test
+    void shouldBlockClientRescheduleWhenBookingIsNotActive() {
+        Booking booking = booking(ServicePaymentType.ON_SITE, BigDecimal.ZERO, null);
+        booking.setOperationalStatus(BookingOperationalStatus.CANCELLED);
+        BookingPolicySnapshot policy = policy(true, 24, 2, 1, false);
+
+        BookingActionsEvaluation evaluation = evaluator.evaluate(
+            booking,
+            new BookingActionActor(BookingActionActor.BookingActionActorType.CLIENT, 10L, null),
+            policy,
+            LocalDateTime.of(2026, 3, 8, 12, 0)
+        );
+
+        assertFalse(evaluation.canReschedule());
+        assertTrue(evaluation.reasonCodes().contains(BookingActionReasonCode.BOOKING_NOT_ACTIVE));
+    }
+
+    @Test
     void shouldAllowProfessionalNoShowOnlyAfterStart() {
         Booking booking = booking(ServicePaymentType.ON_SITE, BigDecimal.ZERO, null);
         booking.setOperationalStatus(BookingOperationalStatus.CONFIRMED);
         booking.setStartDateTime(LocalDateTime.of(2026, 3, 8, 10, 0));
-        BookingPolicySnapshot policy = policy(24, 2, 1, false);
+        BookingPolicySnapshot policy = policy(true, 24, 2, 1, false);
 
         BookingActionsEvaluation evaluation = evaluator.evaluate(
             booking,
@@ -96,6 +196,7 @@ class BookingActionsEvaluatorTest {
     }
 
     private BookingPolicySnapshot policy(
+        boolean allowClientReschedule,
         Integer cancellationWindowHours,
         Integer rescheduleWindowHours,
         Integer maxClientReschedules,
@@ -107,7 +208,7 @@ class BookingActionsEvaluatorTest {
             30L,
             LocalDateTime.of(2026, 3, 1, 0, 0),
             true,
-            true,
+            allowClientReschedule,
             cancellationWindowHours,
             rescheduleWindowHours,
             maxClientReschedules,

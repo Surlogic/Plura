@@ -22,6 +22,9 @@ class SmtpTransactionalEmailServiceTest {
             javaMailSender,
             false,
             "",
+            true,
+            "",
+            "",
             "",
             "Plura",
             ""
@@ -52,6 +55,9 @@ class SmtpTransactionalEmailServiceTest {
             javaMailSender,
             true,
             "smtp.example.com",
+            true,
+            "smtp-user",
+            "smtp-pass",
             "noreply@plura.com",
             "Plura",
             "support@plura.com"
@@ -73,5 +79,35 @@ class SmtpTransactionalEmailServiceTest {
         assertNotNull(mimeMessage.getAllRecipients());
         assertEquals("user@plura.com", mimeMessage.getAllRecipients()[0].toString());
         verify(javaMailSender).send(mimeMessage);
+    }
+
+    @Test
+    void fallbackIsUsedWhenSmtpAuthIsEnabledButCredentialsAreMissing() {
+        JavaMailSender javaMailSender = mock(JavaMailSender.class);
+        SmtpTransactionalEmailService service = new SmtpTransactionalEmailService(
+            javaMailSender,
+            true,
+            "smtp.example.com",
+            true,
+            "smtp-user",
+            "",
+            "noreply@plura.com",
+            "Plura",
+            ""
+        );
+
+        TransactionalEmailService.DeliveryStatus result = service.send(
+            new TransactionalEmailService.TransactionalEmailMessage(
+                "email_verification",
+                "user@plura.com",
+                "German",
+                "Subject",
+                "<html>Hi</html>",
+                "Hi"
+            )
+        );
+
+        assertEquals(TransactionalEmailService.DeliveryStatus.SKIPPED_FALLBACK, result);
+        verify(javaMailSender, never()).send(org.mockito.ArgumentMatchers.any(MimeMessage.class));
     }
 }

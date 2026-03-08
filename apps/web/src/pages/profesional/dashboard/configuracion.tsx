@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { isAxiosError } from 'axios';
 import Link from 'next/link';
 import EmailVerificationPanel from '@/components/auth/EmailVerificationPanel';
@@ -10,8 +10,13 @@ import { useClientProfileContext } from '@/context/ClientProfileContext';
 import { useProfessionalProfile } from '@/hooks/useProfessionalProfile';
 import { useProfessionalProfileContext } from '@/context/ProfessionalProfileContext';
 import { useProfessionalDashboardUnsavedSection } from '@/context/ProfessionalDashboardUnsavedChangesContext';
+import {
+  getProfessionalBookingPolicy,
+  updateProfessionalBookingPolicy,
+} from '@/services/professionalBookingPolicy';
 import api from '@/services/api';
 import { clearAuthAccessToken } from '@/services/session';
+import type { ProfessionalBookingPolicy } from '@/types/bookings';
 import Button from '@/components/ui/Button';
 import {
   DashboardHero,
@@ -25,6 +30,53 @@ const resolveBackendMessage = (error: unknown, fallback: string) => {
   }
   return fallback;
 };
+
+const DEFAULT_MAX_CLIENT_RESCHEDULES = 1;
+
+type BookingPolicyFormState = {
+  allowClientCancellation: boolean;
+  allowClientReschedule: boolean;
+  cancellationWindowHours: string;
+  rescheduleWindowHours: string;
+  maxClientReschedules: string;
+  retainDepositOnLateCancellation: boolean;
+};
+
+const normalizeBookingPolicy = (policy: ProfessionalBookingPolicy): ProfessionalBookingPolicy => ({
+  ...policy,
+  maxClientReschedules:
+    typeof policy.maxClientReschedules === 'number'
+      ? policy.maxClientReschedules
+      : DEFAULT_MAX_CLIENT_RESCHEDULES,
+});
+
+const toBookingPolicyForm = (policy: ProfessionalBookingPolicy): BookingPolicyFormState => ({
+  allowClientCancellation: policy.allowClientCancellation,
+  allowClientReschedule: policy.allowClientReschedule,
+  cancellationWindowHours:
+    typeof policy.cancellationWindowHours === 'number' ? String(policy.cancellationWindowHours) : '',
+  rescheduleWindowHours:
+    typeof policy.rescheduleWindowHours === 'number' ? String(policy.rescheduleWindowHours) : '',
+  maxClientReschedules:
+    typeof policy.maxClientReschedules === 'number'
+      ? String(policy.maxClientReschedules)
+      : String(DEFAULT_MAX_CLIENT_RESCHEDULES),
+  retainDepositOnLateCancellation: policy.retainDepositOnLateCancellation,
+});
+
+const createBookingPolicySignature = (form: BookingPolicyFormState | null) =>
+  form
+    ? JSON.stringify({
+        allowClientCancellation: form.allowClientCancellation,
+        allowClientReschedule: form.allowClientReschedule,
+        cancellationWindowHours: form.cancellationWindowHours.trim(),
+        rescheduleWindowHours: form.rescheduleWindowHours.trim(),
+        maxClientReschedules: form.maxClientReschedules.trim(),
+        retainDepositOnLateCancellation: form.retainDepositOnLateCancellation,
+      })
+    : '';
+
+const isDigitsOnly = (value: string) => /^\d*$/.test(value.trim());
 
 export default function ProfesionalSettingsPage() {
   const router = useRouter();
@@ -49,12 +101,56 @@ export default function ProfesionalSettingsPage() {
   const [phoneVerificationCode, setPhoneVerificationCode] = useState('');
   const [isSendingPhoneVerification, setIsSendingPhoneVerification] = useState(false);
   const [isConfirmingPhoneVerification, setIsConfirmingPhoneVerification] = useState(false);
+  const [bookingPolicy, setBookingPolicy] = useState<ProfessionalBookingPolicy | null>(null);
+  const [bookingPolicyForm, setBookingPolicyForm] = useState<BookingPolicyFormState | null>(null);
+  const [isLoadingBookingPolicy, setIsLoadingBookingPolicy] = useState(false);
+  const [isSavingBookingPolicy, setIsSavingBookingPolicy] = useState(false);
+  const [bookingPolicyMessage, setBookingPolicyMessage] = useState<string | null>(null);
+  const [isBookingPolicyError, setIsBookingPolicyError] = useState(false);
+
+  const bookingPolicyDirty =
+    bookingPolicyForm !== null
+    && bookingPolicy !== null
+    && createBookingPolicySignature(bookingPolicyForm) !== createBookingPolicySignature(toBookingPolicyForm(bookingPolicy));
 
   useProfessionalDashboardUnsavedSection({
     sectionId: 'settings-account',
     isDirty: false,
     isSaving: isLoggingOut || isDeletingAccount,
   });
+
+  useEffect(() => {
+    if (!profile?.id) return;
+
+    let cancelled = false;
+    setIsLoadingBookingPolicy(true);
+    setBookingPolicyMessage(null);
+    setIsBookingPolicyError(false);
+
+    getProfessionalBookingPolicy()
+      .then((response) => {
+        if (cancelled) return;
+        const normalized = normalizeBookingPolicy(response);
+        setBookingPolicy(normalized);
+        setBookingPolicyForm(toBookingPolicyForm(normalized));
+      })
+      .catch((error) => {
+        if (cancelled) return;
+        setBookingPolicyMessage(
+          resolveBackendMessage(error, 'No se pudo cargar la política de reagendamiento.'),
+        );
+        setIsBookingPolicyError(true);
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setIsLoadingBookingPolicy(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [profile?.id]);
 
   const handleDeleteAccount = async () => {
     if (isDeletingAccount) return;
@@ -219,6 +315,110 @@ export default function ProfesionalSettingsPage() {
       setIsConfirmingPhoneVerification(false);
     }
   };
+
+  const handleBookingPolicyFieldChange = (
+    patch: Partial<BookingPolicyFormState>,
+  ) => {
+    setBookingPolicyForm((current) => {
+      if (!current) return current;
+      const next = { ...current, ...patch };
+      if (patch.allowClientReschedule === true) {
+        const currentMax = Number.parseInt(next.maxClientReschedules.trim(), 10);
+        if (!Number.isFinite(currentMax) || currentMax < 1) {
+          next.maxClientReschedules = String(DEFAULT_MAX_CLIENT_RESCHEDULES);
+        }
+      }
+      return next;
+    });
+    setBookingPolicyMessage(null);
+    setIsBookingPolicyError(false);
+  };
+
+  const handleResetBookingPolicy = () => {
+    if (!bookingPolicy) return;
+    setBookingPolicyForm(toBookingPolicyForm(bookingPolicy));
+    setBookingPolicyMessage(null);
+    setIsBookingPolicyError(false);
+  };
+
+  const handleSaveBookingPolicy = async () => {
+    if (!bookingPolicyForm || isSavingBookingPolicy) return;
+
+    const cancellationWindowHours = bookingPolicyForm.cancellationWindowHours.trim();
+    const rescheduleWindowHours = bookingPolicyForm.rescheduleWindowHours.trim();
+    const maxClientReschedules = bookingPolicyForm.maxClientReschedules.trim();
+
+    if (!isDigitsOnly(cancellationWindowHours) || !isDigitsOnly(rescheduleWindowHours) || !isDigitsOnly(maxClientReschedules)) {
+      setBookingPolicyMessage('Usá solo números enteros en los campos de reglas.');
+      setIsBookingPolicyError(true);
+      return;
+    }
+
+    const parsedCancellationWindow = cancellationWindowHours ? Number.parseInt(cancellationWindowHours, 10) : null;
+    const parsedRescheduleWindow = rescheduleWindowHours ? Number.parseInt(rescheduleWindowHours, 10) : null;
+    const parsedMaxClientReschedules = maxClientReschedules
+      ? Number.parseInt(maxClientReschedules, 10)
+      : DEFAULT_MAX_CLIENT_RESCHEDULES;
+
+    if (parsedCancellationWindow !== null && (parsedCancellationWindow < 0 || parsedCancellationWindow > 720)) {
+      setBookingPolicyMessage('La ventana de cancelación debe estar entre 0 y 720 horas.');
+      setIsBookingPolicyError(true);
+      return;
+    }
+
+    if (parsedRescheduleWindow !== null && (parsedRescheduleWindow < 0 || parsedRescheduleWindow > 720)) {
+      setBookingPolicyMessage('La ventana de reagendamiento debe estar entre 0 y 720 horas.');
+      setIsBookingPolicyError(true);
+      return;
+    }
+
+    if (parsedMaxClientReschedules < 0 || parsedMaxClientReschedules > 20) {
+      setBookingPolicyMessage('La cantidad máxima debe estar entre 0 y 20.');
+      setIsBookingPolicyError(true);
+      return;
+    }
+
+    if (bookingPolicyForm.allowClientReschedule && parsedMaxClientReschedules < 1) {
+      setBookingPolicyMessage('Si el cliente puede reagendar, la cantidad máxima debe ser al menos 1.');
+      setIsBookingPolicyError(true);
+      return;
+    }
+
+    setIsSavingBookingPolicy(true);
+    setBookingPolicyMessage(null);
+    setIsBookingPolicyError(false);
+
+    try {
+      const response = await updateProfessionalBookingPolicy({
+        allowClientCancellation: bookingPolicyForm.allowClientCancellation,
+        allowClientReschedule: bookingPolicyForm.allowClientReschedule,
+        cancellationWindowHours: parsedCancellationWindow,
+        rescheduleWindowHours: parsedRescheduleWindow,
+        maxClientReschedules: parsedMaxClientReschedules,
+        retainDepositOnLateCancellation: bookingPolicyForm.retainDepositOnLateCancellation,
+      });
+      const normalized = normalizeBookingPolicy(response);
+      setBookingPolicy(normalized);
+      setBookingPolicyForm(toBookingPolicyForm(normalized));
+      setBookingPolicyMessage('Política de reservas guardada correctamente.');
+      setIsBookingPolicyError(false);
+    } catch (error) {
+      setBookingPolicyMessage(
+        resolveBackendMessage(error, 'No se pudo guardar la política de reservas.'),
+      );
+      setIsBookingPolicyError(true);
+    } finally {
+      setIsSavingBookingPolicy(false);
+    }
+  };
+
+  useProfessionalDashboardUnsavedSection({
+    sectionId: 'settings-booking-policy',
+    isDirty: bookingPolicyDirty,
+    isSaving: isSavingBookingPolicy,
+    onSave: handleSaveBookingPolicy,
+    onReset: handleResetBookingPolicy,
+  });
 
   const showSkeleton = !hasLoaded || (isLoading && !profile);
 
@@ -456,6 +656,194 @@ export default function ProfesionalSettingsPage() {
                             Abrir Facturación
                           </Button>
                         </div>
+                      </div>
+
+                      <div className="rounded-[24px] border border-white/70 bg-white/95 p-5 shadow-[0_16px_36px_rgba(15,23,42,0.12)]">
+                        <DashboardSectionHeading
+                          title="Política de reservas"
+                          description="Definí qué margen tiene el cliente para cancelar o reagendar sin salir del panel profesional."
+                        />
+
+                        {bookingPolicyMessage ? (
+                          <p className={`mt-4 rounded-[16px] border px-4 py-3 text-sm ${
+                            isBookingPolicyError
+                              ? 'border-red-200 bg-red-50 text-red-600'
+                              : 'border-[#cdeee9] bg-[#f0fffc] text-[#1FB6A6]'
+                          }`}>
+                            {bookingPolicyMessage}
+                          </p>
+                        ) : null}
+
+                        {isLoadingBookingPolicy || !bookingPolicyForm ? (
+                          <div className="mt-4 space-y-3">
+                            <div className="h-11 rounded-[16px] bg-[#F1F5F9]" />
+                            <div className="h-11 rounded-[16px] bg-[#F1F5F9]" />
+                            <div className="h-28 rounded-[18px] bg-[#F8FAFC]" />
+                          </div>
+                        ) : (
+                          <div className="mt-4 space-y-4">
+                            <label className="flex items-start gap-3 rounded-[18px] border border-[#E2E7EC] bg-[#F8FAFC] p-4">
+                              <input
+                                type="checkbox"
+                                checked={bookingPolicyForm.allowClientCancellation}
+                                onChange={(event) => {
+                                  handleBookingPolicyFieldChange({
+                                    allowClientCancellation: event.target.checked,
+                                  });
+                                }}
+                                className="mt-1 h-4 w-4 rounded border-[#CBD5E1] text-[#1FB6A6] focus:ring-[#1FB6A6]"
+                              />
+                              <div>
+                                <p className="text-sm font-semibold text-[#0E2A47]">
+                                  Permitir cancelación del cliente
+                                </p>
+                                <p className="mt-1 text-sm text-[#64748B]">
+                                  El cliente verá la acción según la ventana y el estado real de la reserva.
+                                </p>
+                              </div>
+                            </label>
+
+                            <label className="flex items-start gap-3 rounded-[18px] border border-[#E2E7EC] bg-[#F8FAFC] p-4">
+                              <input
+                                type="checkbox"
+                                checked={bookingPolicyForm.allowClientReschedule}
+                                onChange={(event) => {
+                                  handleBookingPolicyFieldChange({
+                                    allowClientReschedule: event.target.checked,
+                                  });
+                                }}
+                                className="mt-1 h-4 w-4 rounded border-[#CBD5E1] text-[#1FB6A6] focus:ring-[#1FB6A6]"
+                              />
+                              <div>
+                                <p className="text-sm font-semibold text-[#0E2A47]">
+                                  Permitir reagendamiento del cliente
+                                </p>
+                                <p className="mt-1 text-sm text-[#64748B]">
+                                  Si está activo, el cliente puede mover la reserva a otro horario disponible.
+                                </p>
+                              </div>
+                            </label>
+
+                            <div className={`grid gap-4 md:grid-cols-2 ${
+                              bookingPolicyForm.allowClientReschedule ? '' : 'opacity-70'
+                            }`}>
+                              <label className="block">
+                                <span className="text-xs font-semibold uppercase tracking-[0.2em] text-[#64748B]">
+                                  Máximo de reagendamientos
+                                </span>
+                                <input
+                                  type="number"
+                                  min={0}
+                                  max={20}
+                                  step={1}
+                                  disabled={!bookingPolicyForm.allowClientReschedule}
+                                  value={bookingPolicyForm.maxClientReschedules}
+                                  onChange={(event) => {
+                                    handleBookingPolicyFieldChange({
+                                      maxClientReschedules: event.target.value,
+                                    });
+                                  }}
+                                  className="mt-1.5 h-11 w-full rounded-[16px] border border-[#E2E7EC] bg-[#F8FAFC] px-4 text-sm text-[#0E2A47] focus:border-[#1FB6A6] focus:outline-none disabled:cursor-not-allowed disabled:bg-[#EEF2F6]"
+                                />
+                                <p className="mt-1 text-xs text-[#64748B]">
+                                  Recomendado para MVP: 1 cambio por reserva.
+                                </p>
+                              </label>
+
+                              <label className="block">
+                                <span className="text-xs font-semibold uppercase tracking-[0.2em] text-[#64748B]">
+                                  Ventana de reagendamiento
+                                </span>
+                                <input
+                                  type="number"
+                                  min={0}
+                                  max={720}
+                                  step={1}
+                                  disabled={!bookingPolicyForm.allowClientReschedule}
+                                  value={bookingPolicyForm.rescheduleWindowHours}
+                                  onChange={(event) => {
+                                    handleBookingPolicyFieldChange({
+                                      rescheduleWindowHours: event.target.value,
+                                    });
+                                  }}
+                                  className="mt-1.5 h-11 w-full rounded-[16px] border border-[#E2E7EC] bg-[#F8FAFC] px-4 text-sm text-[#0E2A47] focus:border-[#1FB6A6] focus:outline-none disabled:cursor-not-allowed disabled:bg-[#EEF2F6]"
+                                  placeholder="Sin límite"
+                                />
+                                <p className="mt-1 text-xs text-[#64748B]">
+                                  En horas antes del turno. Vacío = se mantiene abierto.
+                                </p>
+                              </label>
+
+                              <label className="block">
+                                <span className="text-xs font-semibold uppercase tracking-[0.2em] text-[#64748B]">
+                                  Ventana de cancelación
+                                </span>
+                                <input
+                                  type="number"
+                                  min={0}
+                                  max={720}
+                                  step={1}
+                                  value={bookingPolicyForm.cancellationWindowHours}
+                                  onChange={(event) => {
+                                    handleBookingPolicyFieldChange({
+                                      cancellationWindowHours: event.target.value,
+                                    });
+                                  }}
+                                  className="mt-1.5 h-11 w-full rounded-[16px] border border-[#E2E7EC] bg-[#F8FAFC] px-4 text-sm text-[#0E2A47] focus:border-[#1FB6A6] focus:outline-none"
+                                  placeholder="Sin límite"
+                                />
+                                <p className="mt-1 text-xs text-[#64748B]">
+                                  Define hasta cuándo la cancelación sigue siendo libre.
+                                </p>
+                              </label>
+
+                              <label className="flex items-start gap-3 rounded-[18px] border border-[#E2E7EC] bg-[#F8FAFC] p-4">
+                                <input
+                                  type="checkbox"
+                                  checked={bookingPolicyForm.retainDepositOnLateCancellation}
+                                  onChange={(event) => {
+                                    handleBookingPolicyFieldChange({
+                                      retainDepositOnLateCancellation: event.target.checked,
+                                    });
+                                  }}
+                                  className="mt-1 h-4 w-4 rounded border-[#CBD5E1] text-[#1FB6A6] focus:ring-[#1FB6A6]"
+                                />
+                                <div>
+                                  <p className="text-sm font-semibold text-[#0E2A47]">
+                                    Retener seña en cancelaciones tardías
+                                  </p>
+                                  <p className="mt-1 text-sm text-[#64748B]">
+                                    Si hay depósito, el backend sugerirá reagendar para evitar pérdida.
+                                  </p>
+                                </div>
+                              </label>
+                            </div>
+
+                            <div className="flex flex-wrap items-center justify-between gap-3">
+                              <p className="text-xs text-[#64748B]">
+                                El cliente solo verá reagendar si la policy, el estado y la disponibilidad lo permiten.
+                              </p>
+                              <div className="flex flex-wrap gap-3">
+                                <button
+                                  type="button"
+                                  onClick={handleResetBookingPolicy}
+                                  disabled={!bookingPolicyDirty || isSavingBookingPolicy}
+                                  className="rounded-full border border-[#0E2A47]/10 bg-[#F8FAFC] px-4 py-2 text-sm font-semibold text-[#0E2A47] transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-60"
+                                >
+                                  Restablecer
+                                </button>
+                                <Button
+                                  type="button"
+                                  size="md"
+                                  onClick={() => void handleSaveBookingPolicy()}
+                                  disabled={isSavingBookingPolicy}
+                                >
+                                  {isSavingBookingPolicy ? 'Guardando...' : 'Guardar política'}
+                                </Button>
+                              </div>
+                            </div>
+                          </div>
+                        )}
                       </div>
 
                       <div className="rounded-[24px] border border-white/70 bg-white/95 p-5 shadow-[0_16px_36px_rgba(15,23,42,0.12)]">

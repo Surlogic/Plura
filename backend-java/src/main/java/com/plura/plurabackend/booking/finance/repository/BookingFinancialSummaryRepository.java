@@ -24,6 +24,15 @@ public interface BookingFinancialSummaryRepository extends JpaRepository<Booking
 
     @Query(
         """
+        SELECT summary.booking.id
+        FROM BookingFinancialSummary summary
+        WHERE summary.financialStatus <> :financialStatus
+        """
+    )
+    List<Long> findBookingIdsByFinancialStatusNot(@Param("financialStatus") BookingFinancialStatus financialStatus);
+
+    @Query(
+        """
         SELECT COUNT(summary.id)
         FROM BookingFinancialSummary summary
         JOIN summary.booking booking

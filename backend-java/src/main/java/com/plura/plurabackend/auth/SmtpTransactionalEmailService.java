@@ -18,6 +18,9 @@ public class SmtpTransactionalEmailService implements TransactionalEmailService 
     private final JavaMailSender javaMailSender;
     private final boolean deliveryEnabled;
     private final String mailHost;
+    private final boolean smtpAuthEnabled;
+    private final String mailUsername;
+    private final String mailPassword;
     private final String fromAddress;
     private final String fromName;
     private final String replyTo;
@@ -26,6 +29,9 @@ public class SmtpTransactionalEmailService implements TransactionalEmailService 
         JavaMailSender javaMailSender,
         @Value("${app.email.delivery-enabled:false}") boolean deliveryEnabled,
         @Value("${spring.mail.host:}") String mailHost,
+        @Value("${spring.mail.properties.mail.smtp.auth:true}") boolean smtpAuthEnabled,
+        @Value("${spring.mail.username:}") String mailUsername,
+        @Value("${spring.mail.password:}") String mailPassword,
         @Value("${app.email.from-address:}") String fromAddress,
         @Value("${app.email.from-name:Plura}") String fromName,
         @Value("${app.email.reply-to:}") String replyTo
@@ -33,6 +39,9 @@ public class SmtpTransactionalEmailService implements TransactionalEmailService 
         this.javaMailSender = javaMailSender;
         this.deliveryEnabled = deliveryEnabled;
         this.mailHost = mailHost;
+        this.smtpAuthEnabled = smtpAuthEnabled;
+        this.mailUsername = mailUsername;
+        this.mailPassword = mailPassword;
         this.fromAddress = fromAddress;
         this.fromName = fromName;
         this.replyTo = replyTo;
@@ -76,7 +85,10 @@ public class SmtpTransactionalEmailService implements TransactionalEmailService 
     }
 
     private boolean isConfiguredForDelivery() {
-        return deliveryEnabled && !isBlank(mailHost) && !isBlank(fromAddress);
+        return deliveryEnabled
+            && !isBlank(mailHost)
+            && !isBlank(fromAddress)
+            && (!smtpAuthEnabled || (!isBlank(mailUsername) && !isBlank(mailPassword)));
     }
 
     private void logFallback(TransactionalEmailMessage message) {

@@ -542,7 +542,9 @@ public class DLocalPaymentProviderClient implements PaymentProviderClient {
         String requestDate,
         String body
     ) {
-        String payload = (requestDate == null ? "" : requestDate) + (body == null ? "" : body);
+        String payload = (config.getXLogin() == null ? "" : config.getXLogin())
+            + (requestDate == null ? "" : requestDate)
+            + (body == null ? "" : body);
         String signature = SignatureUtils.hmacSha256Hex(config.getWebhookSecret(), payload);
         return "V2-HMAC-SHA256, Signature: " + signature;
     }

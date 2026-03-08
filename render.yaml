@@ -7,25 +7,18 @@ services:
     dockerContext: ./backend-java
     healthCheckPath: /health
     envVars:
-      # el puerto lo configura automáticamente Render; aquí solo le damos
-      # un valor por defecto para que ocurra en local
       - key: PORT
         value: 3000
       - key: APP_TIMEZONE
         value: America/Montevideo
       - key: CORS_ALLOWED_ORIGINS
-        sync: false       # dominios de la web, ej. https://plura.app
-
-      # la base de datos puede venir de una DB gestionada de Render o de
-      # una instancia externa; la Url completa se pone en el dashboard
+        sync: false
       - key: SPRING_DATASOURCE_URL
         sync: false
       - key: SPRING_DATASOURCE_USERNAME
         sync: false
       - key: SPRING_DATASOURCE_PASSWORD
         sync: false
-
-      # JWT y cookies
       - key: JWT_SECRET
         sync: false
       - key: JWT_REFRESH_PEPPER
@@ -33,44 +26,65 @@ services:
       - key: AUTH_COOKIE_SECURE
         value: true
       - key: AUTH_COOKIE_SAMESITE
-        value: Lax
+        value: None
       - key: AUTH_EXPOSE_ACCESS_TOKEN
         sync: false
       - key: AUTH_OAUTH_GOOGLE_ALLOWED_REDIRECT_URIS
         sync: false
-
-      # ajustes de comportamiento
       - key: JWT_EXPIRATION_MINUTES
         value: 30
       - key: SPRING_JPA_DDL_AUTO
         value: validate
       - key: SPRING_FLYWAY_VALIDATE_ON_MIGRATE
-        value: false  # deshabilitado temporalmente; ejecutar repair en la base de datos para corregir mismatches
+        value: false
       - key: SWAGGER_ENABLED
         value: false
       - key: LOG_LEVEL_ROOT
         value: INFO
-
-      # credenciales opcionales de OAuth (pueden dejarse vacías)
       - key: GOOGLE_CLIENT_ID
         sync: false
       - key: GOOGLE_CLIENT_SECRET
         sync: false
       - key: APPLE_CLIENT_ID
         sync: false
+      - key: BILLING_ENABLED
+        sync: false
+      - key: BILLING_MODE
+        sync: false
+      - key: BILLING_PROVIDER_VERIFICATION_ENABLED
+        sync: false
+      - key: BILLING_WEBHOOK_BASE_URL
+        sync: false
+      - key: BILLING_PLAN_BASIC_PRICE
+        sync: false
+      - key: BILLING_PLAN_BASIC_CURRENCY
+        sync: false
+      - key: BILLING_PLAN_PRO_PRICE
+        sync: false
+      - key: BILLING_PLAN_PRO_CURRENCY
+        sync: false
+      - key: BILLING_PLAN_PREMIUM_PRICE
+        sync: false
+      - key: BILLING_PLAN_PREMIUM_CURRENCY
+        sync: false
+      - key: BILLING_MERCADOPAGO_ENABLED
+        sync: false
+      - key: BILLING_MERCADOPAGO_ACCESS_TOKEN
+        sync: false
+      - key: BILLING_MERCADOPAGO_WEBHOOK_SECRET
+        sync: false
+      - key: BILLING_MERCADOPAGO_SUBSCRIPTION_BACK_URL
+        sync: false
+      - key: BILLING_MERCADOPAGO_SUCCESS_URL
+        sync: false
+      - key: BILLING_MERCADOPAGO_FAILURE_URL
+        sync: false
+      - key: BILLING_MERCADOPAGO_PENDING_URL
+        sync: false
 
   - type: web
     name: plura-web
     runtime: node
-
-  # una base de datos PostgreSQL gestionada se crea aquí; Render exportará
-  # DATABASE_URL que la aplicación ya sabe cómo consumir como fallback.
-  - type: database
-    name: plura-db
-    database: postgres
-    plan: starter
-    envVars: []
-
     rootDir: .
     buildCommand: corepack enable && corepack prepare pnpm@latest --activate && pnpm install --frozen-lockfile && pnpm -C apps/web build
     startCommand: corepack enable && corepack prepare pnpm@10.23.0 --activate && NODE_ENV=production pnpm -C apps/web exec next start -p ${PORT}
@@ -81,3 +95,7 @@ services:
         sync: false
       - key: NEXT_PUBLIC_MAPBOX_TOKEN
         sync: false
+
+databases:
+  - name: plura-db
+    plan: starter

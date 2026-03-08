@@ -1,5 +1,7 @@
 package com.plura.plurabackend.professional;
 
+import com.plura.plurabackend.booking.dto.BookingPolicyResponse;
+import com.plura.plurabackend.booking.dto.BookingPolicyUpdateRequest;
 import com.plura.plurabackend.professional.dto.ProfesionalBusinessProfileUpdateRequest;
 import com.plura.plurabackend.professional.dto.ProfesionalPublicPageResponse;
 import com.plura.plurabackend.professional.dto.ProfesionalPublicPageUpdateRequest;
@@ -43,6 +45,14 @@ public class ProfessionalProfileService {
 
     public void updateBusinessProfile(String rawUserId, ProfesionalBusinessProfileUpdateRequest request) {
         coreService.updateBusinessProfile(rawUserId, request);
+    }
+
+    public BookingPolicyResponse getBookingPolicy(String rawUserId) {
+        return coreService.getBookingPolicy(rawUserId);
+    }
+
+    public BookingPolicyResponse updateBookingPolicy(String rawUserId, BookingPolicyUpdateRequest request) {
+        return coreService.updateBookingPolicy(rawUserId, request);
     }
 
     public List<ProfesionalServiceResponse> listServices(String rawUserId) {

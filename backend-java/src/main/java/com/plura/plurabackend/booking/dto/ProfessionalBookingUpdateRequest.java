@@ -1,6 +1,6 @@
 package com.plura.plurabackend.booking.dto;
 
-import com.plura.plurabackend.booking.model.BookingStatus;
+import com.plura.plurabackend.booking.model.BookingOperationalStatus;
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 
@@ -8,5 +8,5 @@ import lombok.Data;
 public class ProfessionalBookingUpdateRequest {
 
     @NotNull
-    private BookingStatus status;
+    private BookingOperationalStatus status;
 }

@@ -1,8 +1,9 @@
 package com.plura.plurabackend.booking.model;
 
-public enum BookingStatus {
+public enum BookingOperationalStatus {
     PENDING,
     CONFIRMED,
     CANCELLED,
-    COMPLETED
+    COMPLETED,
+    NO_SHOW
 }

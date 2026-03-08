@@ -1,4 +1,5 @@
 import type { Category } from '@/types/category';
+import type { BookingFinancialSummary, BookingPaymentType } from '@/types/bookings';
 
 export type ProductPlanCode = 'BASIC' | 'PROFESSIONAL' | 'COMPANY';
 
@@ -26,7 +27,9 @@ export type ProfessionalProfile = {
   slug?: string;
   fullName: string;
   email: string;
+  emailVerified: boolean;
   phoneNumber: string;
+  phoneVerified: boolean;
   rubro: string;
   location: string | null;
   country?: string | null;
@@ -60,7 +63,13 @@ export type PublicProfessionalSummary = {
   categories?: Category[];
 };
 
-export type ServicePaymentType = 'full' | 'deposit' | 'on_site';
+export type ServicePaymentType =
+  | 'full'
+  | 'deposit'
+  | 'on_site'
+  | 'FULL_PREPAY'
+  | 'DEPOSIT'
+  | 'ON_SITE';
 
 export type ServicePhoto = {
   id: string;
@@ -126,7 +135,8 @@ export type ReservationStatus =
   | 'confirmed'
   | 'pending'
   | 'completed'
-  | 'cancelled';
+  | 'cancelled'
+  | 'no_show';
 
 export type ProfessionalReservation = {
   id: string;
@@ -141,5 +151,7 @@ export type ProfessionalReservation = {
   postBufferMinutes?: number;
   effectiveDurationMinutes?: number;
   status?: ReservationStatus;
+  paymentType?: BookingPaymentType | null;
+  financialSummary?: BookingFinancialSummary | null;
   notes?: string;
 };

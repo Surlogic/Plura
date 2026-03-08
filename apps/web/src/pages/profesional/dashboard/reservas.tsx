@@ -13,22 +13,35 @@ import {
   DashboardStatCard,
 } from '@/components/profesional/dashboard/DashboardUI';
 import {
+  cancelProfessionalBooking,
+  completeProfessionalBooking,
   createProfessionalReservation,
+  getProfessionalBookingActions,
   getProfessionalReservationsForDates,
   listProfessionalServices,
-  updateProfessionalReservationStatus,
+  markProfessionalBookingNoShow,
+  rescheduleProfessionalBooking,
+  retryProfessionalBookingPayout,
 } from '@/services/professionalBookings';
-import type {
-  ProfessionalReservation,
-  ReservationStatus,
-} from '@/types/professional';
+import { getProfessionalPayoutConfig } from '@/services/professionalPayout';
+import { getPublicSlots } from '@/services/publicBookings';
+import type { ProfessionalPayoutConfig } from '@/types/payout';
+import type { ProfessionalReservation, ReservationStatus } from '@/types/professional';
+import {
+  formatBookingMoney,
+  getOperationalStatusLabel,
+  getOperationalStatusTone,
+  getPaymentTypeLabel,
+  getProfessionalFinancialStatusCopy,
+  isPrepaidBooking,
+  shouldAutoRefreshFinancialStatus,
+} from '@/utils/bookings';
+import { getPayoutStatusCopy } from '@/utils/payouts';
 
 type DashboardServiceOption = {
   id: string;
   name: string;
 };
-
-type ReservationCardVariant = 'default' | 'cancelled';
 
 type ReservationCreateForm = {
   clientName: string;
@@ -64,12 +77,6 @@ const toDefaultFutureDateTime = () => {
   };
 };
 
-const parseTimeToMinutes = (value: string) => {
-  const [hours, minutes] = value.split(':').map(Number);
-  if (!Number.isFinite(hours) || !Number.isFinite(minutes)) return null;
-  return hours * 60 + minutes;
-};
-
 const parseReservationDate = (reservation: ProfessionalReservation) => {
   const dateTime = new Date(`${reservation.date}T${reservation.time || '00:00'}`);
   if (Number.isNaN(dateTime.getTime())) {
@@ -78,33 +85,11 @@ const parseReservationDate = (reservation: ProfessionalReservation) => {
   return dateTime;
 };
 
-const statusLabel: Record<ReservationStatus, string> = {
-  confirmed: 'Confirmada',
-  pending: 'Pendiente',
-  completed: 'Completada',
-  cancelled: 'Cancelada',
-};
+const sortByDateTimeAsc = (a: ProfessionalReservation, b: ProfessionalReservation) =>
+  (parseReservationDate(a)?.getTime() ?? 0) - (parseReservationDate(b)?.getTime() ?? 0);
 
-const statusStyles: Record<ReservationStatus, string> = {
-  confirmed: 'bg-[#1FB6A6]/10 text-[#1FB6A6]',
-  pending: 'bg-[#F59E0B]/10 text-[#F59E0B]',
-  completed: 'bg-[#0B1D2A]/10 text-[#0B1D2A]',
-  cancelled: 'bg-[#EF4444]/10 text-[#EF4444]',
-};
-
-const TODAY_PRIORITY: Record<ReservationStatus, number> = {
-  pending: 0,
-  confirmed: 1,
-  completed: 2,
-  cancelled: 3,
-};
-
-const resolveBackendMessage = (error: unknown, fallback: string) => {
-  if (isAxiosError<{ message?: string }>(error)) {
-    return error.response?.data?.message || fallback;
-  }
-  return fallback;
-};
+const sortByDateTimeDesc = (a: ProfessionalReservation, b: ProfessionalReservation) =>
+  (parseReservationDate(b)?.getTime() ?? 0) - (parseReservationDate(a)?.getTime() ?? 0);
 
 const buildDateWindow = (daysPast: number, daysFuture: number) => {
   const today = new Date();
@@ -120,37 +105,48 @@ const buildDateWindow = (daysPast: number, daysFuture: number) => {
   return dates;
 };
 
-const isActiveStatus = (status: ReservationStatus) => ACTIVE_STATUSES.includes(status);
+const extractApiMessage = (error: unknown, fallback: string) => {
+  if (isAxiosError<{ message?: string }>(error)) {
+    return error.response?.data?.message || fallback;
+  }
+  if (error instanceof Error && error.message.trim()) {
+    return error.message;
+  }
+  return fallback;
+};
 
-const buildCreateReservationPayload = (form: ReservationCreateForm) => {
-  const normalizedTime = form.time.length === 5 ? `${form.time}:00` : form.time;
-  return {
-    clientName: form.clientName.trim(),
-    clientEmail: form.clientEmail.trim() || undefined,
-    clientPhone: form.clientPhone.trim() || undefined,
-    serviceId: form.serviceId,
-    startDateTime: `${form.date}T${normalizedTime}`,
-  };
+const operationalStatusLabel: Record<ReservationStatus, string> = {
+  pending: getOperationalStatusLabel('PENDING'),
+  confirmed: getOperationalStatusLabel('CONFIRMED'),
+  cancelled: getOperationalStatusLabel('CANCELLED'),
+  completed: getOperationalStatusLabel('COMPLETED'),
+  no_show: getOperationalStatusLabel('NO_SHOW'),
+};
+
+const operationalStatusTone: Record<ReservationStatus, string> = {
+  pending: getOperationalStatusTone('PENDING'),
+  confirmed: getOperationalStatusTone('CONFIRMED'),
+  cancelled: getOperationalStatusTone('CANCELLED'),
+  completed: getOperationalStatusTone('COMPLETED'),
+  no_show: getOperationalStatusTone('NO_SHOW'),
 };
 
 export default function ProfesionalReservationsPage() {
   const { profile, isLoading, hasLoaded } = useProfessionalProfile();
   const [reservations, setReservations] = useState<ProfessionalReservation[]>([]);
+  const [payoutConfig, setPayoutConfig] = useState<ProfessionalPayoutConfig | null>(null);
   const [isLoadingReservations, setIsLoadingReservations] = useState(false);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
-  const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [selectedReservation, setSelectedReservation] =
-    useState<ProfessionalReservation | null>(null);
-  const [drawerVisible, setDrawerVisible] = useState(false);
-  const [showCancelledReservations, setShowCancelledReservations] = useState(false);
+  const [selectedReservationId, setSelectedReservationId] = useState<string | null>(null);
+  const [actions, setActions] = useState<Awaited<ReturnType<typeof getProfessionalBookingActions>> | null>(null);
+  const [isLoadingActions, setIsLoadingActions] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [isSubmittingAction, setIsSubmittingAction] = useState(false);
 
   const [serviceOptions, setServiceOptions] = useState<DashboardServiceOption[]>([]);
   const [isLoadingServiceOptions, setIsLoadingServiceOptions] = useState(false);
-
-  const [isCreateDrawerOpen, setIsCreateDrawerOpen] = useState(false);
-  const [createDrawerVisible, setCreateDrawerVisible] = useState(false);
+  const [showCreateForm, setShowCreateForm] = useState(false);
   const defaultFutureDateTime = useMemo(() => toDefaultFutureDateTime(), []);
   const [createForm, setCreateForm] = useState<ReservationCreateForm>({
     clientName: '',
@@ -164,259 +160,247 @@ export default function ProfesionalReservationsPage() {
   const [isCreatingReservation, setIsCreatingReservation] = useState(false);
 
   const [showRescheduleForm, setShowRescheduleForm] = useState(false);
-  const [rescheduleDate, setRescheduleDate] = useState('');
+  const [rescheduleDate, setRescheduleDate] = useState(toLocalDateKey(new Date()));
   const [rescheduleTime, setRescheduleTime] = useState('');
-  const [isReschedulingReservation, setIsReschedulingReservation] = useState(false);
-  const [rescheduleError, setRescheduleError] = useState<string | null>(null);
+  const [slotOptions, setSlotOptions] = useState<string[]>([]);
+  const [isLoadingSlots, setIsLoadingSlots] = useState(false);
+  const [cancelReason, setCancelReason] = useState('');
 
-  const todayKey = toLocalDateKey(new Date());
-  const now = new Date();
-  const nowMinutes = now.getHours() * 60 + now.getMinutes();
+  const reservationDates = useMemo(() => buildDateWindow(30, 90), []);
 
-  const reservationDates = useMemo(() => buildDateWindow(30, 90), [todayKey]);
-
-  useEffect(() => {
+  const loadReservations = async (keepSelection = true) => {
     if (!profile?.id) return;
 
-    let isCancelled = false;
-    setIsLoadingReservations(true);
-    setFetchError(null);
-
-    getProfessionalReservationsForDates(reservationDates)
-      .then((response) => {
-        if (isCancelled) return;
-        setReservations(response);
-      })
-      .catch((error) => {
-        if (isCancelled) return;
-        setReservations([]);
-        setFetchError(
-          resolveBackendMessage(error, 'No se pudieron cargar las reservas.'),
-        );
-      })
-      .finally(() => {
-        if (!isCancelled) {
-          setIsLoadingReservations(false);
+    try {
+      if (!keepSelection) setIsLoadingReservations(true);
+      setFetchError(null);
+      const response = await getProfessionalReservationsForDates(reservationDates);
+      setReservations(response);
+      setSelectedReservationId((current) => {
+        if (keepSelection && current && response.some((reservation) => reservation.id === current)) {
+          return current;
         }
+        return response[0]?.id ?? null;
       });
+    } catch (error) {
+      setReservations([]);
+      setFetchError(extractApiMessage(error, 'No se pudieron cargar las reservas.'));
+    } finally {
+      setIsLoadingReservations(false);
+    }
+  };
 
-    return () => {
-      isCancelled = true;
-    };
+  useEffect(() => {
+    void loadReservations(false);
   }, [profile?.id, reservationDates]);
 
   useEffect(() => {
     if (!profile?.id) return;
 
-    let isCancelled = false;
+    let cancelled = false;
+
+    getProfessionalPayoutConfig()
+      .then((response) => {
+        if (!cancelled) {
+          setPayoutConfig(response);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setPayoutConfig(null);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [profile?.id]);
+
+  useEffect(() => {
+    if (!profile?.id) return;
+
+    let cancelled = false;
     setIsLoadingServiceOptions(true);
 
     listProfessionalServices()
       .then((response) => {
-        if (isCancelled) return;
+        if (cancelled) return;
         const mapped = response.map((service) => ({
           id: service.id,
           name: service.name,
         }));
         setServiceOptions(mapped);
-        setCreateForm((prev) => {
-          if (prev.serviceId || mapped.length === 0) return prev;
-          return { ...prev, serviceId: mapped[0].id };
-        });
+        setCreateForm((prev) => ({
+          ...prev,
+          serviceId: prev.serviceId || mapped[0]?.id || '',
+        }));
       })
       .catch(() => {
-        if (!isCancelled) {
-          setServiceOptions([]);
-        }
+        if (!cancelled) setServiceOptions([]);
       })
       .finally(() => {
-        if (!isCancelled) {
-          setIsLoadingServiceOptions(false);
-        }
+        if (!cancelled) setIsLoadingServiceOptions(false);
       });
 
     return () => {
-      isCancelled = true;
+      cancelled = true;
     };
   }, [profile?.id]);
+
+  const selectedReservation = useMemo(
+    () => reservations.find((reservation) => reservation.id === selectedReservationId) ?? null,
+    [reservations, selectedReservationId],
+  );
+
+  useEffect(() => {
+    if (!selectedReservation?.id) {
+      setActions(null);
+      setActionError(null);
+      return;
+    }
+
+    let cancelled = false;
+    setIsLoadingActions(true);
+    setActionError(null);
+
+    getProfessionalBookingActions(selectedReservation.id)
+      .then((response) => {
+        if (!cancelled) setActions(response);
+      })
+      .catch((error) => {
+        if (!cancelled) {
+          setActions(null);
+          setActionError(
+            extractApiMessage(error, 'No pudimos cargar las acciones de esta reserva.'),
+          );
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setIsLoadingActions(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedReservation?.id]);
+
+  useEffect(() => {
+    if (!selectedReservation?.serviceId || !profile?.slug || !showRescheduleForm || !rescheduleDate) {
+      setSlotOptions([]);
+      return;
+    }
+
+    let cancelled = false;
+    setIsLoadingSlots(true);
+
+    getPublicSlots(profile.slug, rescheduleDate, selectedReservation.serviceId)
+      .then((response) => {
+        if (!cancelled) {
+          setSlotOptions(response);
+          setRescheduleTime((current) => (current && response.includes(current) ? current : ''));
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setSlotOptions([]);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setIsLoadingSlots(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [profile?.slug, rescheduleDate, selectedReservation?.serviceId, showRescheduleForm]);
+
+  useEffect(() => {
+    if (!selectedReservation?.financialSummary?.financialStatus) return;
+    if (!shouldAutoRefreshFinancialStatus(selectedReservation.financialSummary.financialStatus)) return;
+
+    const intervalId = window.setInterval(() => {
+      void loadReservations();
+    }, 5000);
+
+    return () => {
+      window.clearInterval(intervalId);
+    };
+  }, [selectedReservation?.financialSummary?.financialStatus]);
+
+  const todayKey = toLocalDateKey(new Date());
+  const now = new Date();
 
   const {
     todayReservations,
     upcomingReservations,
-    completedReservations,
+    closedReservations,
     cancelledReservations,
   } = useMemo(() => {
     const today: ProfessionalReservation[] = [];
     const upcoming: ProfessionalReservation[] = [];
-    const completed: ProfessionalReservation[] = [];
+    const closed: ProfessionalReservation[] = [];
     const cancelled: ProfessionalReservation[] = [];
 
     reservations.forEach((reservation) => {
-      if (!reservation.date) return;
+      const reservationDate = parseReservationDate(reservation);
+      if (!reservationDate) return;
 
-      const status = reservation.status ?? 'pending';
-      if (status === 'cancelled') {
+      if (reservation.status === 'cancelled') {
         cancelled.push(reservation);
         return;
       }
 
-      const dateKey = reservation.date;
-      const reservationMinutes = reservation.time
-        ? parseTimeToMinutes(reservation.time) ?? 0
-        : 0;
-
-      const isPastDay = dateKey < todayKey;
-      const isFutureDay = dateKey > todayKey;
-      const isPastTodayTime = dateKey === todayKey && reservationMinutes < nowMinutes;
-
-      if (isActiveStatus(status)) {
-        if (dateKey === todayKey && !isPastTodayTime) {
-          today.push(reservation);
-          return;
-        }
-
-        if (isFutureDay) {
-          upcoming.push(reservation);
-          return;
-        }
-      }
-
-      if (status === 'completed' || isPastDay || isPastTodayTime || dateKey === todayKey) {
-        completed.push(reservation);
+      if (reservation.status === 'completed' || reservation.status === 'no_show') {
+        closed.push(reservation);
         return;
       }
 
-      upcoming.push(reservation);
+      if (reservation.date === todayKey && ACTIVE_STATUSES.includes(reservation.status ?? 'pending')) {
+        today.push(reservation);
+        return;
+      }
+
+      if (reservationDate > now && ACTIVE_STATUSES.includes(reservation.status ?? 'pending')) {
+        upcoming.push(reservation);
+        return;
+      }
+
+      closed.push(reservation);
     });
 
-    const sortByDateTimeAsc = (a: ProfessionalReservation, b: ProfessionalReservation) => {
-      const dateA = parseReservationDate(a)?.getTime() ?? 0;
-      const dateB = parseReservationDate(b)?.getTime() ?? 0;
-      return dateA - dateB;
-    };
-
-    const sortByDateTimeDesc = (a: ProfessionalReservation, b: ProfessionalReservation) => {
-      const dateA = parseReservationDate(a)?.getTime() ?? 0;
-      const dateB = parseReservationDate(b)?.getTime() ?? 0;
-      return dateB - dateA;
-    };
-
-    const sortToday = (a: ProfessionalReservation, b: ProfessionalReservation) => {
-      const statusA = a.status ?? 'pending';
-      const statusB = b.status ?? 'pending';
-      const byPriority = TODAY_PRIORITY[statusA] - TODAY_PRIORITY[statusB];
-      if (byPriority !== 0) return byPriority;
-      return sortByDateTimeAsc(a, b);
-    };
-
     return {
-      todayReservations: today.sort(sortToday),
+      todayReservations: today.sort(sortByDateTimeAsc),
       upcomingReservations: upcoming.sort(sortByDateTimeAsc),
-      completedReservations: completed.sort(sortByDateTimeDesc),
+      closedReservations: closed.sort(sortByDateTimeDesc),
       cancelledReservations: cancelled.sort(sortByDateTimeDesc),
     };
-  }, [reservations, todayKey, nowMinutes]);
+  }, [now, reservations, todayKey]);
 
   const showSkeleton =
     !hasLoaded ||
     (isLoading && !profile) ||
     (isLoadingReservations && reservations.length === 0);
 
-  const handleToggleMenu = () => {
-    setIsMenuOpen((prev) => !prev);
-  };
+  const selectedFinancialCopy = getProfessionalFinancialStatusCopy(
+    selectedReservation?.paymentType,
+    selectedReservation?.financialSummary,
+  );
+  const selectedDateTime = selectedReservation ? parseReservationDate(selectedReservation) : null;
+  const canComplete =
+    selectedReservation?.status === 'confirmed'
+    && Boolean(selectedDateTime)
+    && (selectedDateTime?.getTime() ?? 0) <= Date.now();
+  const canRetryPayout =
+    selectedReservation?.financialSummary?.financialStatus === 'FAILED'
+    && isPrepaidBooking(selectedReservation?.paymentType);
 
-  useEffect(() => {
-    if (selectedReservation) {
-      const frame = requestAnimationFrame(() => setDrawerVisible(true));
-      return () => cancelAnimationFrame(frame);
-    }
-    setDrawerVisible(false);
-    return undefined;
-  }, [selectedReservation]);
-
-  useEffect(() => {
-    if (isCreateDrawerOpen) {
-      const frame = requestAnimationFrame(() => setCreateDrawerVisible(true));
-      return () => cancelAnimationFrame(frame);
-    }
-    setCreateDrawerVisible(false);
-    return undefined;
-  }, [isCreateDrawerOpen]);
-
-  const closeDrawer = () => {
-    setDrawerVisible(false);
+  const handleSelectReservation = (reservationId: string) => {
+    setSelectedReservationId(reservationId);
     setShowRescheduleForm(false);
-    setRescheduleError(null);
-    window.setTimeout(() => {
-      setSelectedReservation(null);
-    }, 200);
-  };
-
-  const openCreateDrawer = () => {
-    setCreateError(null);
+    setRescheduleTime('');
+    setCancelReason('');
     setStatusMessage(null);
-    setFetchError(null);
-
-    const futureDateTime = toDefaultFutureDateTime();
-    setCreateForm((prev) => ({
-      ...prev,
-      serviceId: prev.serviceId || serviceOptions[0]?.id || '',
-      date: futureDateTime.date,
-      time: futureDateTime.time,
-    }));
-    setIsCreateDrawerOpen(true);
-  };
-
-  const closeCreateDrawer = () => {
-    setCreateDrawerVisible(false);
-    window.setTimeout(() => {
-      setIsCreateDrawerOpen(false);
-    }, 200);
-  };
-
-  const openDetailDrawer = (reservation: ProfessionalReservation) => {
-    setRescheduleDate(reservation.date || toLocalDateKey(new Date()));
-    setRescheduleTime(reservation.time || '09:00');
-    setShowRescheduleForm(false);
-    setRescheduleError(null);
-    setSelectedReservation(reservation);
-  };
-
-  const handleUpdateStatus = async (status: ReservationStatus) => {
-    if (!selectedReservation) return;
-
-    setIsUpdatingStatus(true);
-    setFetchError(null);
-    setStatusMessage(null);
-
-    try {
-      const updated = await updateProfessionalReservationStatus(
-        selectedReservation.id,
-        status,
-      );
-
-      setReservations((prev) =>
-        prev.map((reservation) =>
-          reservation.id === updated.id
-            ? { ...reservation, ...updated }
-            : reservation,
-        ),
-      );
-      setSelectedReservation((prev) =>
-        prev && prev.id === updated.id ? { ...prev, ...updated } : prev,
-      );
-      setStatusMessage('Estado de reserva actualizado.');
-    } catch (error) {
-      setFetchError(
-        resolveBackendMessage(
-          error,
-          'No se pudo actualizar el estado de la reserva.',
-        ),
-      );
-    } finally {
-      setIsUpdatingStatus(false);
-    }
+    setActionError(null);
   };
 
   const handleCreateReservation = async () => {
@@ -435,633 +419,658 @@ export default function ProfesionalReservationsPage() {
 
     setIsCreatingReservation(true);
     setCreateError(null);
-    setFetchError(null);
     setStatusMessage(null);
+    setFetchError(null);
 
     try {
-      const created = await createProfessionalReservation(
-        buildCreateReservationPayload(createForm),
-      );
-
-      setReservations((prev) => [...prev, created]);
-      setStatusMessage('Reserva creada correctamente.');
-      closeCreateDrawer();
+      const created = await createProfessionalReservation({
+        clientName: createForm.clientName.trim(),
+        clientEmail: createForm.clientEmail.trim() || undefined,
+        clientPhone: createForm.clientPhone.trim() || undefined,
+        serviceId: createForm.serviceId,
+        startDateTime: `${createForm.date}T${createForm.time}:00`,
+      });
+      setStatusMessage('Reserva manual creada correctamente.');
+      setShowCreateForm(false);
       setCreateForm((prev) => ({
         ...prev,
         clientName: '',
         clientEmail: '',
         clientPhone: '',
       }));
+      await loadReservations(false);
+      setSelectedReservationId(created.id);
     } catch (error) {
       setCreateError(
-        resolveBackendMessage(
-          error,
-          'No se pudo crear la reserva manual.',
-        ),
+        extractApiMessage(error, 'No se pudo crear la reserva manual.'),
       );
     } finally {
       setIsCreatingReservation(false);
     }
   };
 
-  const handleRescheduleReservation = async () => {
-    if (!selectedReservation) return;
-    if (!selectedReservation.serviceId) {
-      setRescheduleError('Esta reserva no tiene servicio asociado para reprogramar.');
-      return;
-    }
-    if (!rescheduleDate || !rescheduleTime) {
-      setRescheduleError('Seleccioná fecha y hora para la reprogramación.');
-      return;
-    }
-
-    setIsReschedulingReservation(true);
-    setRescheduleError(null);
-    setFetchError(null);
+  const runReservationAction = async (
+    action: () => Promise<{ plainTextFallback?: string | null }>,
+    fallbackMessage: string,
+  ) => {
+    setIsSubmittingAction(true);
     setStatusMessage(null);
+    setActionError(null);
 
     try {
-      const created = await createProfessionalReservation({
-        clientName: (selectedReservation.clientName || 'Cliente').trim(),
-        serviceId: selectedReservation.serviceId,
-        startDateTime: `${rescheduleDate}T${rescheduleTime}:00`,
-      });
-
-      setReservations((prev) => [...prev, created]);
-
-      try {
-        const cancelled = await updateProfessionalReservationStatus(
-          selectedReservation.id,
-          'cancelled',
-        );
-
-        setReservations((prev) =>
-          prev.map((reservation) =>
-            reservation.id === cancelled.id
-              ? { ...reservation, ...cancelled }
-              : reservation,
-          ),
-        );
-
-        setStatusMessage('Reserva reprogramada correctamente.');
-        closeDrawer();
-      } catch (cancelError) {
-        setStatusMessage(
-          'Se creó la nueva reserva, pero no se pudo cancelar la anterior. Revisala manualmente.',
-        );
-        setFetchError(
-          resolveBackendMessage(
-            cancelError,
-            'No se pudo cancelar la reserva anterior.',
-          ),
-        );
-      }
+      const response = await action();
+      setStatusMessage(response.plainTextFallback || fallbackMessage);
+      setShowRescheduleForm(false);
+      setRescheduleTime('');
+      setCancelReason('');
+      await loadReservations();
     } catch (error) {
-      setRescheduleError(
-        resolveBackendMessage(
-          error,
-          'No se pudo reprogramar la reserva.',
-        ),
-      );
+      setActionError(extractApiMessage(error, fallbackMessage));
     } finally {
-      setIsReschedulingReservation(false);
+      setIsSubmittingAction(false);
     }
   };
 
   useProfessionalDashboardUnsavedSection({
     sectionId: 'reservations',
     isDirty: false,
-    isSaving: isUpdatingStatus || isCreatingReservation || isReschedulingReservation,
+    isSaving: isSubmittingAction || isCreatingReservation,
   });
 
-  const renderReservationCard = (
-    reservation: ProfessionalReservation,
-    variant: ReservationCardVariant = 'default',
-  ) => {
+  const payoutStatusCopy = useMemo(
+    () => getPayoutStatusCopy(payoutConfig),
+    [payoutConfig],
+  );
+  const shouldShowPayoutNotice = Boolean(
+    payoutConfig
+    && !payoutConfig.readyToReceivePayouts
+    && payoutConfig.outstandingPaidBookingsCount > 0,
+  );
+
+  const renderReservationCard = (reservation: ProfessionalReservation) => {
+    const financialCopy = getProfessionalFinancialStatusCopy(
+      reservation.paymentType,
+      reservation.financialSummary,
+    );
     const status = reservation.status ?? 'pending';
-    const isCancelledVariant = variant === 'cancelled';
 
     return (
       <button
         key={reservation.id}
         type="button"
-        onClick={() => openDetailDrawer(reservation)}
-        className={`flex w-full items-center justify-between gap-4 rounded-[14px] border bg-white px-4 py-3 text-left text-sm text-[#0E2A47] transition ${
-          isCancelledVariant
-            ? 'border-dashed border-[#CBD5E1] opacity-65 hover:opacity-80'
-            : 'border-[#E2E7EC] hover:border-[#CBD5F5] hover:shadow-[0_6px_14px_rgba(15,23,42,0.08)]'
+        onClick={() => handleSelectReservation(reservation.id)}
+        className={`flex w-full items-center justify-between gap-4 rounded-[16px] border px-4 py-3 text-left transition ${
+          reservation.id === selectedReservationId
+            ? 'border-[#1FB6A6]/40 bg-[#F0FDFA]'
+            : 'border-[#E2E7EC] bg-white hover:border-[#CBD5E1]'
         }`}
       >
-        <div className="min-w-0 space-y-0.5">
-          <p className="text-sm font-semibold text-[#0E2A47]">{reservation.time || '--:--'}</p>
-          <p className="truncate font-semibold text-[#1E293B]">{reservation.serviceName || 'Servicio'}</p>
-          <p className="truncate text-xs text-[#64748B]">{reservation.clientName || 'Cliente sin nombre'}</p>
-        </div>
-        <div className="flex shrink-0 flex-col items-end gap-2">
-          <span className="text-xs text-[#64748B]">{reservation.date}</span>
-          <span
-            className={`rounded-full px-2.5 py-1 text-[0.7rem] font-semibold ${statusStyles[status]}`}
-          >
-            {statusLabel[status]}
-          </span>
-          {reservation.price ? (
-            <span className="text-sm font-semibold text-[#1FB6A6]">
-              {reservation.price.includes('$')
-                ? reservation.price
-                : `$${reservation.price}`}
+        <div className="min-w-0">
+          <p className="text-sm font-semibold text-[#0E2A47]">
+            {reservation.time || '--:--'} · {reservation.serviceName || 'Servicio'}
+          </p>
+          <p className="mt-1 truncate text-sm text-[#475569]">
+            {reservation.clientName || 'Cliente'}
+          </p>
+          <div className="mt-2 flex flex-wrap gap-2">
+            <span className={`rounded-full px-3 py-1 text-[0.72rem] font-semibold ${operationalStatusTone[status]}`}>
+              {operationalStatusLabel[status]}
             </span>
-          ) : null}
+            <span className="rounded-full border border-[#E2E8F0] bg-[#F8FAFC] px-3 py-1 text-[0.72rem] font-semibold text-[#475569]">
+              {getPaymentTypeLabel(reservation.paymentType)}
+            </span>
+            <span className={`rounded-full px-3 py-1 text-[0.72rem] font-semibold ${financialCopy.tone}`}>
+              {financialCopy.label}
+            </span>
+          </div>
         </div>
+        <span className="shrink-0 text-xs text-[#64748B]">{reservation.date}</span>
       </button>
     );
   };
 
-  const selectedStatus = selectedReservation?.status ?? 'pending';
-  const selectedCanConfirm = selectedStatus === 'pending';
-  const selectedCanCancel = selectedStatus === 'pending' || selectedStatus === 'confirmed';
-  const selectedCanReschedule =
-    selectedCanCancel &&
-    Boolean(selectedReservation?.serviceId);
-  const selectedIsImmutable =
-    selectedStatus === 'cancelled' || selectedStatus === 'completed';
-  const pendingTodayCount = todayReservations.filter(
-    (reservation) => (reservation.status ?? 'pending') === 'pending',
-  ).length;
-
   return (
     <div className="min-h-screen bg-[radial-gradient(circle_at_top,#FFFFFF_0%,#EEF2F6_45%,#D3D7DC_100%)] text-[#0E2A47]">
       <div className="flex min-h-screen">
-          <aside className="hidden w-[260px] shrink-0 border-r border-[#0E2A47]/10 bg-[#0B1D2A] lg:block">
-            <div className="sticky top-0 h-screen overflow-y-auto">
-              <ProfesionalSidebar profile={profile} active="Reservas" />
-            </div>
-          </aside>
-          <div className="flex-1">
-            <div className="px-4 pt-4 sm:px-6 lg:hidden">
-              <Button type="button" size="sm" onClick={handleToggleMenu}>
-                {isMenuOpen ? 'Cerrar menu' : 'Abrir menu'}
-              </Button>
-            </div>
-            {isMenuOpen ? (
-              <div className="border-b border-[#0E2A47]/10 bg-[#0B1D2A] lg:hidden">
-                <ProfesionalSidebar profile={profile} active="Reservas" />
-              </div>
-            ) : null}
-            <main className="mx-auto w-full max-w-[1400px] px-4 py-6 sm:px-6 sm:py-8 lg:px-10">
-              <div className="space-y-6">
-                <DashboardHero
-                  eyebrow="Gestión diaria"
-                  icon="reservas"
-                  accent="teal"
-                  title="Reservas priorizadas por urgencia y estado"
-                  description="Separá lo que necesita atención ahora, resolvé reprogramaciones y cargá reservas manuales sin perder contexto."
-                  meta={
-                    <>
-                      <span className="rounded-full border border-white/12 bg-white/8 px-3 py-1 text-xs font-semibold text-white/80">
-                        {todayReservations.length} para hoy
-                      </span>
-                      <span className="rounded-full border border-white/12 bg-white/8 px-3 py-1 text-xs font-semibold text-white/80">
-                        {pendingTodayCount} pendientes
-                      </span>
-                    </>
-                  }
-                  actions={(
-                    <Button type="button" variant="contrast" onClick={openCreateDrawer}>
-                      Nueva reserva manual
-                    </Button>
-                  )}
-                />
+        <aside className="hidden w-[260px] shrink-0 border-r border-[#0E2A47]/10 bg-[#0B1D2A] lg:block">
+          <div className="sticky top-0 h-screen overflow-y-auto">
+            <ProfesionalSidebar profile={profile} active="Reservas" />
+          </div>
+        </aside>
 
+        <div className="flex-1">
+          <main className="mx-auto w-full max-w-[1400px] px-4 py-6 sm:px-6 sm:py-8 lg:px-10">
+            <div className="space-y-6">
+              <DashboardHero
+                eyebrow="Bookings pagos"
+                icon="reservas"
+                accent="teal"
+                title="Reservas con estado operativo y financiero real"
+                description="El backend decide consecuencias, refunds y releases. Acá solo ves el estado actual y ejecutás acciones permitidas."
+                meta={(
+                  <>
+                    <span className="rounded-full border border-white/12 bg-white/8 px-3 py-1 text-xs font-semibold text-white/80">
+                      {todayReservations.length} para hoy
+                    </span>
+                    <span className="rounded-full border border-white/12 bg-white/8 px-3 py-1 text-xs font-semibold text-white/80">
+                      {upcomingReservations.length} próximas
+                    </span>
+                  </>
+                )}
+                actions={(
+                  <Button type="button" variant="contrast" onClick={() => setShowCreateForm((current) => !current)}>
+                    {showCreateForm ? 'Cerrar alta manual' : 'Nueva reserva manual'}
+                  </Button>
+                )}
+              />
+
+              {statusMessage ? (
+                <Card className="border-[#BFEDE7] bg-[#F0FDFA] p-4 text-sm text-[#0F766E]">
+                  {statusMessage}
+                </Card>
+              ) : null}
+              {fetchError ? (
+                <Card className="border-[#FECACA] bg-[#FEF2F2] p-4 text-sm text-[#B91C1C]">
+                  {fetchError}
+                </Card>
+              ) : null}
+
+              {shouldShowPayoutNotice ? (
+                <Card className="border-[#F3D7AC] bg-[#FFF7E8] p-5">
+                  <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                    <div>
+                      <p className="text-[0.68rem] font-semibold uppercase tracking-[0.22em] text-[#B45309]">
+                        Cobros pendientes
+                      </p>
+                      <h2 className="mt-2 text-lg font-semibold text-[#0E2A47]">
+                        {payoutStatusCopy.title}
+                      </h2>
+                      <p className="mt-2 max-w-3xl text-sm text-[#7C5A10]">
+                        Tenés {payoutConfig?.outstandingPaidBookingsCount} reservas pagas con payout pendiente. El release no podrá ejecutarse hasta completar tus datos de cobro.
+                      </p>
+                    </div>
+                    <Button href="/profesional/dashboard/billing#payout-settings">
+                      Completar datos de cobro
+                    </Button>
+                  </div>
+                </Card>
+              ) : null}
+
+              {showCreateForm ? (
                 <Card className="border-white/70 bg-white/95 p-5">
                   <DashboardSectionHeading
-                    eyebrow="Vista general"
-                    title="Estado del pipeline de atención"
-                    description="Detectá volumen, carga futura e historial sin recorrer toda la lista."
+                    title="Reserva manual"
+                    description="Sigue disponible para carga operativa, sin duplicar lógica de pagos en frontend."
                   />
-                  {statusMessage ? (
-                    <p className="mt-3 text-sm text-[#1FB6A6]">{statusMessage}</p>
-                  ) : null}
-                  {fetchError ? (
-                    <p className="mt-3 text-sm text-[#DC2626]">{fetchError}</p>
-                  ) : null}
-                </Card>
-
-                {showSkeleton ? (
-                  <div className="rounded-[28px] border border-white/70 bg-white/95 p-6 shadow-[0_18px_40px_rgba(15,23,42,0.12)]">
-                    <div className="h-5 w-40 rounded-full bg-[#E2E7EC]" />
-                    <div className="mt-4 space-y-3">
-                      <div className="h-10 w-full rounded-[14px] bg-[#F1F5F9]" />
-                      <div className="h-10 w-full rounded-[14px] bg-[#F1F5F9]" />
-                      <div className="h-10 w-full rounded-[14px] bg-[#F1F5F9]" />
-                    </div>
-                  </div>
-                ) : (
-                  <div className="space-y-6">
-                    <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-                      <DashboardStatCard
-                        label="Hoy"
-                        value={`${todayReservations.length}`}
-                        detail={pendingTodayCount > 0 ? `${pendingTodayCount} pendientes por confirmar` : 'Agenda de hoy ordenada'}
-                        icon="agenda"
-                        tone="warm"
+                  <div className="mt-4 grid gap-4 md:grid-cols-2">
+                    <label className="text-xs font-semibold uppercase tracking-[0.2em] text-[#64748B]">
+                      Cliente
+                      <input
+                        type="text"
+                        value={createForm.clientName}
+                        onChange={(event) =>
+                          setCreateForm((prev) => ({ ...prev, clientName: event.target.value }))
+                        }
+                        className="mt-1.5 w-full rounded-[12px] border border-[#D9E2EC] px-3 py-2.5 text-sm text-[#0E2A47] outline-none transition focus:border-[#1FB6A6]"
                       />
-                      <DashboardStatCard
-                        label="Próximas"
-                        value={`${upcomingReservations.length}`}
-                        detail="Reservas futuras activas"
-                        icon="reservas"
-                        tone="accent"
-                      />
-                      <DashboardStatCard
-                        label="Completadas"
-                        value={`${completedReservations.length}`}
-                        detail="Historial reciente"
-                        icon="check"
-                      />
-                      <DashboardStatCard
-                        label="Canceladas"
-                        value={`${cancelledReservations.length}`}
-                        detail="Seguimiento de churn operativo"
-                        icon="warning"
-                      />
-                    </div>
-
-                    <div className="rounded-[24px] border border-white/70 bg-white/95 p-5 shadow-[0_16px_36px_rgba(15,23,42,0.12)]">
-                      <DashboardSectionHeading
-                        title="Reservas de hoy"
-                        description="Primero lo inmediato: clientes que todavía necesitan atención hoy."
-                      />
-                      <div className="mt-4 space-y-3">
-                        {todayReservations.length === 0 ? (
-                          <div className="rounded-[18px] border border-dashed border-[#CBD5F5] bg-white/70 px-4 py-4 text-sm text-[#64748B]">
-                            No tenés reservas activas para hoy.
-                          </div>
-                        ) : (
-                          todayReservations.map((reservation) =>
-                            renderReservationCard(reservation),
-                          )
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="rounded-[24px] border border-white/70 bg-white/95 p-5 shadow-[0_16px_36px_rgba(15,23,42,0.12)]">
-                      <DashboardSectionHeading
-                        title="Próximas reservas"
-                        description="Carga futura ya confirmada o pendiente para los próximos días."
-                      />
-                      <div className="mt-4 space-y-3">
-                        {upcomingReservations.length === 0 ? (
-                          <div className="rounded-[18px] border border-dashed border-[#CBD5F5] bg-white/70 px-4 py-4 text-sm text-[#64748B]">
-                            No hay reservas futuras activas.
-                          </div>
-                        ) : (
-                          upcomingReservations.map((reservation) =>
-                            renderReservationCard(reservation),
-                          )
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="rounded-[24px] border border-white/70 bg-white/95 p-5 shadow-[0_16px_36px_rgba(15,23,42,0.12)]">
-                      <DashboardSectionHeading
-                        title="Reservas completadas"
-                        description="Historial cerrado para revisar volumen y consistencia operativa."
-                      />
-                      <div className="mt-4 space-y-3">
-                        {completedReservations.length === 0 ? (
-                          <div className="rounded-[18px] border border-dashed border-[#CBD5F5] bg-white/70 px-4 py-4 text-sm text-[#64748B]">
-                            No hay historial de completadas.
-                          </div>
-                        ) : (
-                          completedReservations.map((reservation) =>
-                            renderReservationCard(reservation),
-                          )
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="rounded-[24px] border border-white/70 bg-white/95 p-5 shadow-[0_16px_36px_rgba(15,23,42,0.12)]">
-                      <button
-                        type="button"
-                        onClick={() => setShowCancelledReservations((prev) => !prev)}
-                        className="flex w-full items-center justify-between gap-3 text-left"
+                    </label>
+                    <label className="text-xs font-semibold uppercase tracking-[0.2em] text-[#64748B]">
+                      Servicio
+                      <select
+                        value={createForm.serviceId}
+                        onChange={(event) =>
+                          setCreateForm((prev) => ({ ...prev, serviceId: event.target.value }))
+                        }
+                        className="mt-1.5 w-full rounded-[12px] border border-[#D9E2EC] px-3 py-2.5 text-sm text-[#0E2A47] outline-none transition focus:border-[#1FB6A6]"
                       >
-                        <h2 className="text-lg font-semibold text-[#0E2A47]">
-                          Canceladas ({cancelledReservations.length})
-                        </h2>
-                        <span className="rounded-full border border-[#CBD5E1] px-3 py-1 text-xs font-semibold text-[#64748B]">
-                          {showCancelledReservations ? 'Ocultar' : 'Ver'}
-                        </span>
-                      </button>
+                        <option value="">
+                          {isLoadingServiceOptions ? 'Cargando servicios...' : 'Seleccioná un servicio'}
+                        </option>
+                        {serviceOptions.map((service) => (
+                          <option key={service.id} value={service.id}>
+                            {service.name}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label className="text-xs font-semibold uppercase tracking-[0.2em] text-[#64748B]">
+                      Email
+                      <input
+                        type="email"
+                        value={createForm.clientEmail}
+                        onChange={(event) =>
+                          setCreateForm((prev) => ({ ...prev, clientEmail: event.target.value }))
+                        }
+                        className="mt-1.5 w-full rounded-[12px] border border-[#D9E2EC] px-3 py-2.5 text-sm text-[#0E2A47] outline-none transition focus:border-[#1FB6A6]"
+                      />
+                    </label>
+                    <label className="text-xs font-semibold uppercase tracking-[0.2em] text-[#64748B]">
+                      Teléfono
+                      <input
+                        type="text"
+                        value={createForm.clientPhone}
+                        onChange={(event) =>
+                          setCreateForm((prev) => ({ ...prev, clientPhone: event.target.value }))
+                        }
+                        className="mt-1.5 w-full rounded-[12px] border border-[#D9E2EC] px-3 py-2.5 text-sm text-[#0E2A47] outline-none transition focus:border-[#1FB6A6]"
+                      />
+                    </label>
+                    <label className="text-xs font-semibold uppercase tracking-[0.2em] text-[#64748B]">
+                      Fecha
+                      <input
+                        type="date"
+                        min={todayKey}
+                        value={createForm.date}
+                        onChange={(event) =>
+                          setCreateForm((prev) => ({ ...prev, date: event.target.value }))
+                        }
+                        className="mt-1.5 w-full rounded-[12px] border border-[#D9E2EC] px-3 py-2.5 text-sm text-[#0E2A47] outline-none transition focus:border-[#1FB6A6]"
+                      />
+                    </label>
+                    <label className="text-xs font-semibold uppercase tracking-[0.2em] text-[#64748B]">
+                      Hora
+                      <input
+                        type="time"
+                        value={createForm.time}
+                        onChange={(event) =>
+                          setCreateForm((prev) => ({ ...prev, time: event.target.value }))
+                        }
+                        className="mt-1.5 w-full rounded-[12px] border border-[#D9E2EC] px-3 py-2.5 text-sm text-[#0E2A47] outline-none transition focus:border-[#1FB6A6]"
+                      />
+                    </label>
+                  </div>
+                  {createError ? (
+                    <p className="mt-4 text-sm text-[#B91C1C]">{createError}</p>
+                  ) : null}
+                  <Button
+                    type="button"
+                    onClick={handleCreateReservation}
+                    className="mt-4"
+                    disabled={isCreatingReservation}
+                  >
+                    {isCreatingReservation ? 'Creando reserva...' : 'Crear reserva'}
+                  </Button>
+                </Card>
+              ) : null}
 
-                      {showCancelledReservations ? (
+              {showSkeleton ? (
+                <div className="rounded-[28px] border border-white/70 bg-white/95 p-6 shadow-[0_18px_40px_rgba(15,23,42,0.12)]">
+                  <div className="h-5 w-40 rounded-full bg-[#E2E7EC]" />
+                  <div className="mt-4 space-y-3">
+                    <div className="h-10 w-full rounded-[14px] bg-[#F1F5F9]" />
+                    <div className="h-10 w-full rounded-[14px] bg-[#F1F5F9]" />
+                    <div className="h-10 w-full rounded-[14px] bg-[#F1F5F9]" />
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                    <DashboardStatCard
+                      label="Hoy"
+                      value={`${todayReservations.length}`}
+                      detail="Reservas activas del día"
+                      icon="agenda"
+                      tone="warm"
+                    />
+                    <DashboardStatCard
+                      label="Próximas"
+                      value={`${upcomingReservations.length}`}
+                      detail="Agenda futura activa"
+                      icon="reservas"
+                      tone="accent"
+                    />
+                    <DashboardStatCard
+                      label="Cerradas"
+                      value={`${closedReservations.length}`}
+                      detail="Completadas o no-show"
+                      icon="check"
+                    />
+                    <DashboardStatCard
+                      label="Canceladas"
+                      value={`${cancelledReservations.length}`}
+                      detail="Historial de cancelación"
+                      icon="warning"
+                    />
+                  </div>
+
+                  <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_420px]">
+                    <div className="space-y-6">
+                      <Card className="border-white/70 bg-white/95 p-5">
+                        <DashboardSectionHeading
+                          title="Reservas de hoy"
+                          description="Prioridad operativa y financiera para lo inmediato."
+                        />
+                        <div className="mt-4 space-y-3">
+                          {todayReservations.length === 0 ? (
+                            <div className="rounded-[18px] border border-dashed border-[#CBD5F5] bg-white/70 px-4 py-4 text-sm text-[#64748B]">
+                              No tenés reservas activas para hoy.
+                            </div>
+                          ) : (
+                            todayReservations.map(renderReservationCard)
+                          )}
+                        </div>
+                      </Card>
+
+                      <Card className="border-white/70 bg-white/95 p-5">
+                        <DashboardSectionHeading
+                          title="Próximas reservas"
+                          description="Reservas futuras activas con su estado financiero."
+                        />
+                        <div className="mt-4 space-y-3">
+                          {upcomingReservations.length === 0 ? (
+                            <div className="rounded-[18px] border border-dashed border-[#CBD5F5] bg-white/70 px-4 py-4 text-sm text-[#64748B]">
+                              No hay reservas futuras activas.
+                            </div>
+                          ) : (
+                            upcomingReservations.map(renderReservationCard)
+                          )}
+                        </div>
+                      </Card>
+
+                      <Card className="border-white/70 bg-white/95 p-5">
+                        <DashboardSectionHeading
+                          title="Reservas cerradas"
+                          description="Completadas o marcadas como no-show."
+                        />
+                        <div className="mt-4 space-y-3">
+                          {closedReservations.length === 0 ? (
+                            <div className="rounded-[18px] border border-dashed border-[#CBD5F5] bg-white/70 px-4 py-4 text-sm text-[#64748B]">
+                              Todavía no hay reservas cerradas.
+                            </div>
+                          ) : (
+                            closedReservations.map(renderReservationCard)
+                          )}
+                        </div>
+                      </Card>
+
+                      <Card className="border-white/70 bg-white/95 p-5">
+                        <DashboardSectionHeading
+                          title="Canceladas"
+                          description="Seguimiento de cancelaciones ya cerradas."
+                        />
                         <div className="mt-4 space-y-3">
                           {cancelledReservations.length === 0 ? (
                             <div className="rounded-[18px] border border-dashed border-[#CBD5F5] bg-white/70 px-4 py-4 text-sm text-[#64748B]">
                               No hay reservas canceladas.
                             </div>
                           ) : (
-                            cancelledReservations.map((reservation) =>
-                              renderReservationCard(reservation, 'cancelled'),
-                            )
+                            cancelledReservations.map(renderReservationCard)
                           )}
                         </div>
-                      ) : null}
+                      </Card>
                     </div>
+
+                    <aside className="xl:sticky xl:top-24 xl:self-start">
+                      <Card className="border-white/70 bg-white/95 p-5">
+                        {!selectedReservation ? (
+                          <div className="rounded-[18px] border border-dashed border-[#CBD5F5] bg-white/70 px-4 py-4 text-sm text-[#64748B]">
+                            Seleccioná una reserva para ver su detalle.
+                          </div>
+                        ) : (
+                          <>
+                            <div className="flex flex-wrap items-start justify-between gap-3">
+                              <div>
+                                <p className="text-xs uppercase tracking-[0.35em] text-[#94A3B8]">
+                                  Detalle
+                                </p>
+                                <h2 className="mt-2 text-2xl font-semibold text-[#0E2A47]">
+                                  {selectedReservation.serviceName || 'Servicio'}
+                                </h2>
+                                <p className="mt-1 text-sm text-[#64748B]">
+                                  {selectedReservation.clientName || 'Cliente'}
+                                </p>
+                              </div>
+                              <span className={`rounded-full px-3 py-1 text-xs font-semibold ${operationalStatusTone[selectedReservation.status ?? 'pending']}`}>
+                                {operationalStatusLabel[selectedReservation.status ?? 'pending']}
+                              </span>
+                            </div>
+
+                            <div className="mt-4 rounded-[18px] border border-[#E2E7EC] bg-[#F8FAFC] p-4">
+                              <div className="flex flex-wrap gap-2">
+                                <span className="rounded-full border border-[#E2E8F0] bg-white px-3 py-1 text-[0.72rem] font-semibold text-[#475569]">
+                                  {getPaymentTypeLabel(selectedReservation.paymentType)}
+                                </span>
+                                <span className={`rounded-full px-3 py-1 text-[0.72rem] font-semibold ${selectedFinancialCopy.tone}`}>
+                                  {selectedFinancialCopy.label}
+                                </span>
+                              </div>
+                              <p className="mt-3 text-sm text-[#475569]">{selectedFinancialCopy.detail}</p>
+
+                              <div className="mt-4 space-y-2 text-sm text-[#64748B]">
+                                <p>
+                                  Fecha:{' '}
+                                  <span className="font-semibold text-[#0E2A47]">
+                                    {selectedReservation.date} · {selectedReservation.time}
+                                  </span>
+                                </p>
+                                {selectedReservation.financialSummary?.amountHeld ? (
+                                  <p>
+                                    Retenido:{' '}
+                                    <span className="font-semibold text-[#0E2A47]">
+                                      {formatBookingMoney(
+                                        selectedReservation.financialSummary.amountHeld,
+                                        selectedReservation.financialSummary.currency,
+                                      )}
+                                    </span>
+                                  </p>
+                                ) : null}
+                                {selectedReservation.financialSummary?.amountToRelease ? (
+                                  <p>
+                                    Pendiente de liberar:{' '}
+                                    <span className="font-semibold text-[#0E2A47]">
+                                      {formatBookingMoney(
+                                        selectedReservation.financialSummary.amountToRelease,
+                                        selectedReservation.financialSummary.currency,
+                                      )}
+                                    </span>
+                                  </p>
+                                ) : null}
+                                {selectedReservation.financialSummary?.amountReleased ? (
+                                  <p>
+                                    Liberado:{' '}
+                                    <span className="font-semibold text-[#0E2A47]">
+                                      {formatBookingMoney(
+                                        selectedReservation.financialSummary.amountReleased,
+                                        selectedReservation.financialSummary.currency,
+                                      )}
+                                    </span>
+                                  </p>
+                                ) : null}
+                              </div>
+                            </div>
+
+                            <div className="mt-4 rounded-[18px] border border-[#E2E7EC] bg-white p-4">
+                              <p className="text-xs uppercase tracking-[0.25em] text-[#94A3B8]">
+                                Consecuencias backend
+                              </p>
+                              {isLoadingActions ? (
+                                <p className="mt-3 text-sm text-[#64748B]">Cargando acciones…</p>
+                              ) : actionError ? (
+                                <p className="mt-3 text-sm text-[#B91C1C]">{actionError}</p>
+                              ) : (
+                                <>
+                                  <p className="mt-3 text-sm text-[#475569]">
+                                    {actions?.plainTextFallback || 'Sin mensajes adicionales para esta reserva.'}
+                                  </p>
+                                  <div className="mt-3 flex flex-wrap gap-2">
+                                    {typeof actions?.refundPreviewAmount === 'number' ? (
+                                      <span className="rounded-full bg-[#DBEAFE] px-3 py-1 text-[0.72rem] font-semibold text-[#1D4ED8]">
+                                        Refund preview: {formatBookingMoney(actions.refundPreviewAmount, actions.currency)}
+                                      </span>
+                                    ) : null}
+                                    {typeof actions?.retainPreviewAmount === 'number' && actions.retainPreviewAmount > 0 ? (
+                                      <span className="rounded-full bg-[#FEF3C7] px-3 py-1 text-[0.72rem] font-semibold text-[#B45309]">
+                                        Retención: {formatBookingMoney(actions.retainPreviewAmount, actions.currency)}
+                                      </span>
+                                    ) : null}
+                                  </div>
+                                </>
+                              )}
+                            </div>
+
+                            {actions?.canCancel ? (
+                              <div className="mt-4 rounded-[18px] border border-[#FDE68A] bg-[#FFFBEB] p-4">
+                                <p className="text-sm font-semibold text-[#92400E]">Cancelar reserva</p>
+                                <textarea
+                                  value={cancelReason}
+                                  onChange={(event) => setCancelReason(event.target.value)}
+                                  placeholder="Motivo opcional"
+                                  className="mt-3 min-h-24 w-full rounded-[14px] border border-[#E5E7EB] px-3 py-2 text-sm text-[#0E2A47] outline-none transition focus:border-[#F59E0B]"
+                                />
+                                <Button
+                                  type="button"
+                                  variant="secondary"
+                                  className="mt-3 w-full"
+                                  disabled={isSubmittingAction}
+                                  onClick={() =>
+                                    runReservationAction(
+                                      () => cancelProfessionalBooking(selectedReservation.id, cancelReason),
+                                      'No se pudo cancelar la reserva.',
+                                    )
+                                  }
+                                >
+                                  {isSubmittingAction ? 'Cancelando...' : 'Cancelar'}
+                                </Button>
+                              </div>
+                            ) : null}
+
+                            {actions?.canReschedule && profile?.slug && selectedReservation.serviceId ? (
+                              <div className="mt-4 rounded-[18px] border border-[#E2E7EC] bg-white p-4">
+                                <div className="flex items-center justify-between gap-3">
+                                  <p className="text-sm font-semibold text-[#0E2A47]">Reagendar</p>
+                                  <button
+                                    type="button"
+                                    onClick={() => setShowRescheduleForm((current) => !current)}
+                                    className="rounded-full border border-[#E2E7EC] px-3 py-1 text-xs font-semibold text-[#475569]"
+                                  >
+                                    {showRescheduleForm ? 'Cerrar' : 'Elegir horario'}
+                                  </button>
+                                </div>
+
+                                {showRescheduleForm ? (
+                                  <div className="mt-4 space-y-4">
+                                    <label className="block text-xs font-semibold uppercase tracking-[0.2em] text-[#64748B]">
+                                      Fecha
+                                      <input
+                                        type="date"
+                                        min={todayKey}
+                                        value={rescheduleDate}
+                                        onChange={(event) => setRescheduleDate(event.target.value)}
+                                        className="mt-1.5 w-full rounded-[12px] border border-[#D9E2EC] px-3 py-2.5 text-sm text-[#0E2A47] outline-none transition focus:border-[#1FB6A6]"
+                                      />
+                                    </label>
+
+                                    <div className="space-y-2">
+                                      <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#64748B]">
+                                        Horarios disponibles
+                                      </p>
+                                      <div className="grid grid-cols-3 gap-2">
+                                        {isLoadingSlots ? (
+                                          <p className="col-span-full text-sm text-[#64748B]">Buscando horarios...</p>
+                                        ) : slotOptions.length === 0 ? (
+                                          <p className="col-span-full text-sm text-[#64748B]">
+                                            No encontramos horarios para esa fecha.
+                                          </p>
+                                        ) : (
+                                          slotOptions.map((slot) => (
+                                            <button
+                                              key={slot}
+                                              type="button"
+                                              onClick={() => setRescheduleTime(slot)}
+                                              className={`rounded-[10px] border px-2 py-1.5 text-sm font-semibold transition ${
+                                                rescheduleTime === slot
+                                                  ? 'border-[#1FB6A6] bg-[#1FB6A6] text-white'
+                                                  : 'border-[#E2E7EC] bg-white text-[#0E2A47]'
+                                              }`}
+                                            >
+                                              {slot}
+                                            </button>
+                                          ))
+                                        )}
+                                      </div>
+                                    </div>
+
+                                    <Button
+                                      type="button"
+                                      className="w-full"
+                                      disabled={isSubmittingAction || !rescheduleTime}
+                                      onClick={() =>
+                                        runReservationAction(
+                                          () => rescheduleProfessionalBooking(
+                                            selectedReservation.id,
+                                            `${rescheduleDate}T${rescheduleTime}:00`,
+                                            Intl.DateTimeFormat().resolvedOptions().timeZone,
+                                          ),
+                                          'No se pudo reagendar la reserva.',
+                                        )
+                                      }
+                                    >
+                                      {isSubmittingAction ? 'Guardando cambio...' : 'Confirmar nuevo horario'}
+                                    </Button>
+                                  </div>
+                                ) : null}
+                              </div>
+                            ) : null}
+
+                            <div className="mt-4 grid gap-3">
+                              {canComplete ? (
+                                <Button
+                                  type="button"
+                                  disabled={isSubmittingAction}
+                                  onClick={() =>
+                                    runReservationAction(
+                                      () => completeProfessionalBooking(selectedReservation.id),
+                                      'No se pudo completar la reserva.',
+                                    )
+                                  }
+                                >
+                                  {isSubmittingAction ? 'Marcando...' : 'Marcar COMPLETE'}
+                                </Button>
+                              ) : null}
+
+                              {actions?.canMarkNoShow ? (
+                                <Button
+                                  type="button"
+                                  variant="secondary"
+                                  disabled={isSubmittingAction}
+                                  onClick={() =>
+                                    runReservationAction(
+                                      () => markProfessionalBookingNoShow(selectedReservation.id),
+                                      'No se pudo marcar no-show.',
+                                    )
+                                  }
+                                >
+                                  {isSubmittingAction ? 'Marcando...' : 'Marcar NO_SHOW'}
+                                </Button>
+                              ) : null}
+
+                              {canRetryPayout ? (
+                                <Button
+                                  type="button"
+                                  variant="secondary"
+                                  disabled={isSubmittingAction}
+                                  onClick={() =>
+                                    runReservationAction(
+                                      () => retryProfessionalBookingPayout(selectedReservation.id),
+                                      'No se pudo reintentar la liberación.',
+                                    )
+                                  }
+                                >
+                                  {isSubmittingAction ? 'Reintentando...' : 'Reintentar liberación'}
+                                </Button>
+                              ) : null}
+                            </div>
+                          </>
+                        )}
+                      </Card>
+                    </aside>
                   </div>
-                )}
-              </div>
-            </main>
-          </div>
+                </>
+              )}
+            </div>
+          </main>
         </div>
-      {selectedReservation ? (
-        <div className="fixed inset-0 z-50 flex justify-end">
-          <button
-            type="button"
-            className={`absolute inset-0 bg-[#0B1D2A]/40 backdrop-blur-sm transition-opacity duration-200 ${
-              drawerVisible ? 'opacity-100' : 'pointer-events-none opacity-0'
-            }`}
-            onClick={closeDrawer}
-            aria-label="Cerrar panel de reserva"
-          />
-          <aside
-            className={`relative flex h-full w-full max-w-[440px] flex-col overflow-y-auto bg-white p-6 shadow-[-12px_0_40px_rgba(15,23,42,0.18)] transition-transform duration-300 ${
-              drawerVisible ? 'translate-x-0' : 'translate-x-full'
-            }`}
-          >
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="text-xs uppercase tracking-[0.3em] text-[#94A3B8]">
-                  Reserva
-                </p>
-                <h2 className="mt-2 text-2xl font-semibold text-[#0E2A47]">
-                  {selectedReservation.serviceName || 'Servicio'}
-                </h2>
-              </div>
-              <button
-                type="button"
-                onClick={closeDrawer}
-                className="rounded-full border border-[#E2E7EC] px-3 py-1 text-xs font-semibold text-[#64748B] transition hover:bg-[#F8FAFC]"
-              >
-                Cerrar
-              </button>
-            </div>
-
-            <div className="mt-4 flex flex-wrap items-center gap-2">
-              <span
-                className={`rounded-full px-3 py-1 text-xs font-semibold ${
-                  statusStyles[selectedReservation.status ?? 'pending']
-                }`}
-              >
-                {statusLabel[selectedReservation.status ?? 'pending']}
-              </span>
-              <span className="text-xs text-[#64748B]">
-                {selectedReservation.date} · {selectedReservation.time}
-              </span>
-            </div>
-
-            <div className="mt-6 space-y-4 text-sm text-[#64748B]">
-              <div>
-                <p className="text-xs uppercase tracking-[0.3em] text-[#94A3B8]">
-                  Cliente
-                </p>
-                <p className="mt-1 text-base font-semibold text-[#0E2A47]">
-                  {selectedReservation.clientName || 'Cliente sin nombre'}
-                </p>
-              </div>
-              <div>
-                <p className="text-xs uppercase tracking-[0.3em] text-[#94A3B8]">
-                  Precio
-                </p>
-                <p className="mt-1 text-base font-semibold text-[#0E2A47]">
-                  {selectedReservation.price
-                    ? selectedReservation.price.includes('$')
-                      ? selectedReservation.price
-                      : `$${selectedReservation.price}`
-                    : 'A definir'}
-                </p>
-              </div>
-              <div>
-                <p className="text-xs uppercase tracking-[0.3em] text-[#94A3B8]">
-                  Nota
-                </p>
-                <p className="mt-1 text-sm text-[#64748B]">
-                  {selectedReservation.notes || 'Sin notas adicionales.'}
-                </p>
-              </div>
-            </div>
-
-            {selectedIsImmutable ? (
-              <div className="mt-8 rounded-[14px] border border-dashed border-[#E2E7EC] px-4 py-3 text-sm text-[#64748B]">
-                Esta reserva no permite acciones adicionales.
-              </div>
-            ) : (
-              <div className="mt-8 space-y-3">
-                <button
-                  type="button"
-                  onClick={() => handleUpdateStatus('confirmed')}
-                  disabled={isUpdatingStatus || !selectedCanConfirm}
-                  className="w-full rounded-full bg-[#1FB6A6] px-4 py-2 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  Confirmar
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setShowRescheduleForm((prev) => !prev)}
-                  disabled={isReschedulingReservation || !selectedCanReschedule}
-                  className="w-full rounded-full border border-[#CBD5E1] bg-white px-4 py-2 text-sm font-semibold text-[#0E2A47] transition hover:-translate-y-0.5 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  Reprogramar
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleUpdateStatus('cancelled')}
-                  disabled={isUpdatingStatus || !selectedCanCancel}
-                  className="w-full rounded-full border border-[#FCA5A5] bg-[#FEF2F2] px-4 py-2 text-sm font-semibold text-[#DC2626] transition hover:-translate-y-0.5 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  Cancelar
-                </button>
-              </div>
-            )}
-
-            {showRescheduleForm && selectedCanReschedule ? (
-              <div className="mt-6 rounded-[16px] border border-[#E2E7EC] bg-[#F8FAFC] p-4">
-                <p className="text-xs uppercase tracking-[0.25em] text-[#94A3B8]">
-                  Reprogramar reserva
-                </p>
-                <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  <label className="text-xs font-semibold uppercase tracking-[0.18em] text-[#64748B]">
-                    Fecha
-                    <input
-                      type="date"
-                      value={rescheduleDate}
-                      min={todayKey}
-                      onChange={(event) => setRescheduleDate(event.target.value)}
-                      className="mt-1 w-full rounded-[10px] border border-[#D9E2EC] bg-white px-3 py-2 text-sm text-[#0E2A47] outline-none transition focus:border-[#1FB6A6]"
-                    />
-                  </label>
-                  <label className="text-xs font-semibold uppercase tracking-[0.18em] text-[#64748B]">
-                    Hora
-                    <input
-                      type="time"
-                      value={rescheduleTime}
-                      onChange={(event) => setRescheduleTime(event.target.value)}
-                      className="mt-1 w-full rounded-[10px] border border-[#D9E2EC] bg-white px-3 py-2 text-sm text-[#0E2A47] outline-none transition focus:border-[#1FB6A6]"
-                    />
-                  </label>
-                </div>
-                {rescheduleError ? (
-                  <p className="mt-3 text-sm text-[#DC2626]">{rescheduleError}</p>
-                ) : null}
-                <button
-                  type="button"
-                  onClick={handleRescheduleReservation}
-                  disabled={isReschedulingReservation}
-                  className="mt-4 w-full rounded-full bg-[#0B1D2A] px-4 py-2 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  {isReschedulingReservation ? 'Reprogramando...' : 'Guardar reprogramación'}
-                </button>
-              </div>
-            ) : null}
-          </aside>
-        </div>
-      ) : null}
-
-      {isCreateDrawerOpen ? (
-        <div className="fixed inset-0 z-50 flex justify-end">
-          <button
-            type="button"
-            className={`absolute inset-0 bg-[#0B1D2A]/40 backdrop-blur-sm transition-opacity duration-200 ${
-              createDrawerVisible ? 'opacity-100' : 'pointer-events-none opacity-0'
-            }`}
-            onClick={closeCreateDrawer}
-            aria-label="Cerrar creación de reserva"
-          />
-          <aside
-            className={`relative flex h-full w-full max-w-[520px] flex-col overflow-y-auto bg-white p-6 shadow-[-12px_0_40px_rgba(15,23,42,0.18)] transition-transform duration-300 ${
-              createDrawerVisible ? 'translate-x-0' : 'translate-x-full'
-            }`}
-          >
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="text-xs uppercase tracking-[0.3em] text-[#94A3B8]">
-                  Reserva manual
-                </p>
-                <h2 className="mt-2 text-2xl font-semibold text-[#0E2A47]">
-                  Nueva reserva
-                </h2>
-              </div>
-              <button
-                type="button"
-                onClick={closeCreateDrawer}
-                className="rounded-full border border-[#E2E7EC] px-3 py-1 text-xs font-semibold text-[#64748B] transition hover:bg-[#F8FAFC]"
-              >
-                Cerrar
-              </button>
-            </div>
-
-            <div className="mt-6 grid gap-4">
-              <label className="text-xs font-semibold uppercase tracking-[0.2em] text-[#64748B]">
-                Cliente
-                <input
-                  type="text"
-                  value={createForm.clientName}
-                  onChange={(event) =>
-                    setCreateForm((prev) => ({ ...prev, clientName: event.target.value }))
-                  }
-                  placeholder="Nombre y apellido"
-                  className="mt-1.5 w-full rounded-[12px] border border-[#D9E2EC] bg-white px-3 py-2.5 text-sm text-[#0E2A47] outline-none transition focus:border-[#1FB6A6]"
-                />
-              </label>
-
-              <label className="text-xs font-semibold uppercase tracking-[0.2em] text-[#64748B]">
-                Email (opcional)
-                <input
-                  type="email"
-                  value={createForm.clientEmail}
-                  onChange={(event) =>
-                    setCreateForm((prev) => ({ ...prev, clientEmail: event.target.value }))
-                  }
-                  placeholder="cliente@email.com"
-                  className="mt-1.5 w-full rounded-[12px] border border-[#D9E2EC] bg-white px-3 py-2.5 text-sm text-[#0E2A47] outline-none transition focus:border-[#1FB6A6]"
-                />
-              </label>
-
-              <label className="text-xs font-semibold uppercase tracking-[0.2em] text-[#64748B]">
-                Teléfono (opcional)
-                <input
-                  type="text"
-                  value={createForm.clientPhone}
-                  onChange={(event) =>
-                    setCreateForm((prev) => ({ ...prev, clientPhone: event.target.value }))
-                  }
-                  placeholder="099 123 456"
-                  className="mt-1.5 w-full rounded-[12px] border border-[#D9E2EC] bg-white px-3 py-2.5 text-sm text-[#0E2A47] outline-none transition focus:border-[#1FB6A6]"
-                />
-              </label>
-
-              <label className="text-xs font-semibold uppercase tracking-[0.2em] text-[#64748B]">
-                Servicio
-                <select
-                  value={createForm.serviceId}
-                  onChange={(event) =>
-                    setCreateForm((prev) => ({ ...prev, serviceId: event.target.value }))
-                  }
-                  className="mt-1.5 w-full rounded-[12px] border border-[#D9E2EC] bg-white px-3 py-2.5 text-sm text-[#0E2A47] outline-none transition focus:border-[#1FB6A6]"
-                >
-                  <option value="">
-                    {isLoadingServiceOptions ? 'Cargando servicios...' : 'Seleccioná un servicio'}
-                  </option>
-                  {serviceOptions.map((service) => (
-                    <option key={service.id} value={service.id}>
-                      {service.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <label className="text-xs font-semibold uppercase tracking-[0.2em] text-[#64748B]">
-                  Fecha
-                  <input
-                    type="date"
-                    min={todayKey}
-                    value={createForm.date}
-                    onChange={(event) =>
-                      setCreateForm((prev) => ({ ...prev, date: event.target.value }))
-                    }
-                    className="mt-1.5 w-full rounded-[12px] border border-[#D9E2EC] bg-white px-3 py-2.5 text-sm text-[#0E2A47] outline-none transition focus:border-[#1FB6A6]"
-                  />
-                </label>
-                <label className="text-xs font-semibold uppercase tracking-[0.2em] text-[#64748B]">
-                  Hora
-                  <input
-                    type="time"
-                    value={createForm.time}
-                    onChange={(event) =>
-                      setCreateForm((prev) => ({ ...prev, time: event.target.value }))
-                    }
-                    className="mt-1.5 w-full rounded-[12px] border border-[#D9E2EC] bg-white px-3 py-2.5 text-sm text-[#0E2A47] outline-none transition focus:border-[#1FB6A6]"
-                  />
-                </label>
-              </div>
-            </div>
-
-            {createError ? (
-              <p className="mt-4 text-sm text-[#DC2626]">{createError}</p>
-            ) : null}
-
-            <button
-              type="button"
-              onClick={handleCreateReservation}
-              disabled={isCreatingReservation}
-              className="mt-6 w-full rounded-full bg-[#0B1D2A] px-5 py-3 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              {isCreatingReservation ? 'Creando reserva...' : 'Crear reserva'}
-            </button>
-          </aside>
-        </div>
-      ) : null}
+      </div>
     </div>
   );
 }

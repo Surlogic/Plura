@@ -1,14 +1,13 @@
-import { cachedGet } from '@/services/cachedGet';
-
-type ClientNextBookingDto = {
-  id: number;
-  status: 'PENDING' | 'CONFIRMED' | 'CANCELLED' | 'COMPLETED';
-  startDateTime: string;
-  serviceName: string;
-  professionalName: string;
-  professionalSlug?: string | null;
-  professionalLocation?: string | null;
-};
+import api from '@/services/api';
+import { cachedGet, invalidateCachedGet } from '@/services/cachedGet';
+import type {
+  BookingActions,
+  BookingCommandResponse,
+  BookingFinancialSummary,
+  BookingOperationalStatus,
+  BookingPaymentSession,
+  BookingPaymentType,
+} from '@/types/bookings';
 
 export type ClientDashboardNextBooking = {
   id: string;
@@ -18,26 +17,49 @@ export type ClientDashboardNextBooking = {
   time: string;
   location: string;
   status: 'CONFIRMED' | 'PENDING';
+  professionalSlug?: string | null;
+  serviceId?: string | null;
+  paymentType?: BookingPaymentType | null;
+  financialSummary?: BookingFinancialSummary | null;
 };
 
-type ClientBookingStatus = 'PENDING' | 'CONFIRMED' | 'CANCELLED' | 'COMPLETED';
+export type ClientDashboardBooking = {
+  id: string;
+  professional: string;
+  service: string;
+  dateTime: string;
+  date: string;
+  time: string;
+  location: string;
+  status: BookingOperationalStatus;
+  professionalSlug?: string | null;
+  serviceId?: string | null;
+  paymentType?: BookingPaymentType | null;
+  financialSummary?: BookingFinancialSummary | null;
+};
 
 type ClientBookingDto = {
   id: number | string;
-  status?: ClientBookingStatus | string | null;
+  status?: string | null;
   dateTime?: string | null;
   startDateTime?: string | null;
+  timezone?: string | null;
+  serviceId?: string | null;
   serviceName?: string | null;
+  paymentType?: BookingPaymentType | null;
+  financialSummary?: BookingFinancialSummary | null;
   professionalName?: string | null;
   professionalSlug?: string | null;
   professionalLocation?: string | null;
   service?: {
+    id?: string | null;
     name?: string | null;
   } | null;
   professional?: {
     name?: string | null;
     fullName?: string | null;
     location?: string | null;
+    slug?: string | null;
   } | null;
 };
 
@@ -50,17 +72,6 @@ type ClientBookingsResponseDto =
       content?: ClientBookingDto[] | null;
     }
   | null;
-
-export type ClientDashboardBooking = {
-  id: string;
-  professional: string;
-  service: string;
-  dateTime: string;
-  date: string;
-  time: string;
-  location: string;
-  status: ClientBookingStatus;
-};
 
 const formatDateLabel = (startDateTime: string) => {
   const parsed = new Date(startDateTime);
@@ -86,13 +97,24 @@ const formatTimeLabel = (startDateTime: string) => {
   });
 };
 
-const normalizeBookingStatus = (rawStatus: unknown): ClientBookingStatus => {
+const normalizeBookingStatus = (rawStatus: unknown): BookingOperationalStatus => {
   if (typeof rawStatus !== 'string') return 'PENDING';
   const status = rawStatus.toUpperCase().trim();
   if (status === 'CONFIRMED') return 'CONFIRMED';
   if (status === 'CANCELLED') return 'CANCELLED';
   if (status === 'COMPLETED') return 'COMPLETED';
+  if (status === 'NO_SHOW') return 'NO_SHOW';
   return 'PENDING';
+};
+
+const resolveBookingsArray = (payload: ClientBookingsResponseDto): ClientBookingDto[] => {
+  if (Array.isArray(payload)) return payload;
+  if (!payload || typeof payload !== 'object') return [];
+  if (Array.isArray(payload.bookings)) return payload.bookings;
+  if (Array.isArray(payload.data)) return payload.data;
+  if (Array.isArray(payload.items)) return payload.items;
+  if (Array.isArray(payload.content)) return payload.content;
+  return [];
 };
 
 const mapBooking = (booking: ClientBookingDto): ClientDashboardBooking | null => {
@@ -112,24 +134,28 @@ const mapBooking = (booking: ClientBookingDto): ClientDashboardBooking | null =>
     time: formatTimeLabel(dateTime),
     location: booking.professional?.location || booking.professionalLocation || 'Ubicacion a confirmar',
     status: normalizeBookingStatus(booking.status),
+    professionalSlug: booking.professional?.slug || booking.professionalSlug || null,
+    serviceId: booking.service?.id || booking.serviceId || null,
+    paymentType: booking.paymentType || null,
+    financialSummary: booking.financialSummary || null,
   };
 };
 
-const resolveBookingsArray = (payload: ClientBookingsResponseDto): ClientBookingDto[] => {
-  if (Array.isArray(payload)) return payload;
-  if (!payload || typeof payload !== 'object') return [];
-  if (Array.isArray(payload.bookings)) return payload.bookings;
-  if (Array.isArray(payload.data)) return payload.data;
-  if (Array.isArray(payload.items)) return payload.items;
-  if (Array.isArray(payload.content)) return payload.content;
-  return [];
+const buildIdempotencyKey = (prefix: string) =>
+  `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+
+const invalidateBookingCaches = () => {
+  invalidateCachedGet('/bookings/me');
+  invalidateCachedGet('/cliente/reservas');
+  invalidateCachedGet('/cliente/reservas/proxima');
+  invalidateCachedGet('/reservas/');
 };
 
 export const getClientBookings = async (): Promise<ClientDashboardBooking[]> => {
   const response = await cachedGet<ClientBookingsResponseDto>(
     '/bookings/me',
     undefined,
-    { ttlMs: 15000, staleWhileRevalidate: true },
+    { ttlMs: 8000, staleWhileRevalidate: true },
   );
 
   return resolveBookingsArray(response.data)
@@ -138,25 +164,86 @@ export const getClientBookings = async (): Promise<ClientDashboardBooking[]> => 
 };
 
 export const getClientNextBooking = async (): Promise<ClientDashboardNextBooking | null> => {
-  const response = await cachedGet<ClientNextBookingDto | ''>(
+  const response = await cachedGet<ClientBookingDto | ''>(
     '/cliente/reservas/proxima',
     undefined,
-    { ttlMs: 15000, staleWhileRevalidate: true },
+    { ttlMs: 8000, staleWhileRevalidate: true },
   );
 
   if (!response.data || typeof response.data === 'string') {
     return null;
   }
 
-  const status = response.data.status === 'CONFIRMED' ? 'CONFIRMED' : 'PENDING';
+  const mapped = mapBooking(response.data);
+  if (!mapped) return null;
 
   return {
-    id: String(response.data.id),
-    professional: response.data.professionalName,
-    service: response.data.serviceName,
-    date: formatDateLabel(response.data.startDateTime),
-    time: formatTimeLabel(response.data.startDateTime),
-    location: response.data.professionalLocation || 'Ubicacion a confirmar',
-    status,
+    id: mapped.id,
+    professional: mapped.professional,
+    service: mapped.service,
+    date: mapped.date,
+    time: mapped.time,
+    location: mapped.location,
+    status: mapped.status === 'CONFIRMED' ? 'CONFIRMED' : 'PENDING',
+    professionalSlug: mapped.professionalSlug,
+    serviceId: mapped.serviceId,
+    paymentType: mapped.paymentType,
+    financialSummary: mapped.financialSummary,
   };
 };
+
+export const getBookingActions = async (bookingId: string) => {
+  const response = await api.get<BookingActions>(`/reservas/${bookingId}/actions`);
+  return response.data;
+};
+
+export const createClientBookingPaymentSession = async (
+  bookingId: string,
+  provider?: string,
+) => {
+  const response = await api.post<BookingPaymentSession>(
+    `/cliente/reservas/${bookingId}/payment-session`,
+    provider ? { provider } : {},
+  );
+  invalidateBookingCaches();
+  return response.data;
+};
+
+export const cancelClientBooking = async (
+  bookingId: string,
+  reason?: string,
+) => {
+  const response = await api.post<BookingCommandResponse<ClientDashboardBooking>>(
+    `/cliente/reservas/${bookingId}/cancel`,
+    reason?.trim() ? { reason: reason.trim() } : {},
+    {
+      headers: {
+        'Idempotency-Key': buildIdempotencyKey(`client-cancel-${bookingId}`),
+      },
+    },
+  );
+  invalidateBookingCaches();
+  return response.data;
+};
+
+export const rescheduleClientBooking = async (
+  bookingId: string,
+  startDateTime: string,
+  timezone?: string,
+) => {
+  const response = await api.post<BookingCommandResponse<ClientDashboardBooking>>(
+    `/cliente/reservas/${bookingId}/reschedule`,
+    {
+      startDateTime,
+      timezone: timezone?.trim() || undefined,
+    },
+    {
+      headers: {
+        'Idempotency-Key': buildIdempotencyKey(`client-reschedule-${bookingId}`),
+      },
+    },
+  );
+  invalidateBookingCaches();
+  return response.data;
+};
+

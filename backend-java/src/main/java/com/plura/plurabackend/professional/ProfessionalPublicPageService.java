@@ -1,8 +1,13 @@
 package com.plura.plurabackend.professional;
 
+import com.plura.plurabackend.booking.dto.BookingCancelRequest;
+import com.plura.plurabackend.booking.dto.BookingCommandResponse;
 import com.plura.plurabackend.booking.dto.ProfessionalBookingResponse;
 import com.plura.plurabackend.booking.dto.ProfessionalBookingCreateRequest;
 import com.plura.plurabackend.booking.dto.ProfessionalBookingUpdateRequest;
+import com.plura.plurabackend.booking.dto.BookingRescheduleRequest;
+import com.plura.plurabackend.booking.dto.BookingPolicyResponse;
+import com.plura.plurabackend.booking.dto.BookingPolicyUpdateRequest;
 import com.plura.plurabackend.booking.dto.PublicBookingRequest;
 import com.plura.plurabackend.booking.dto.PublicBookingResponse;
 import com.plura.plurabackend.professional.dto.ProfesionalBusinessProfileUpdateRequest;
@@ -69,6 +74,48 @@ public class ProfessionalPublicPageService {
         return bookingService.updateProfessionalBooking(rawUserId, bookingId, request);
     }
 
+    public BookingCommandResponse cancelBookingAsProfessional(
+        String rawUserId,
+        Long bookingId,
+        BookingCancelRequest request,
+        String idempotencyKey
+    ) {
+        return bookingService.cancelBookingAsProfessional(rawUserId, bookingId, request, idempotencyKey);
+    }
+
+    public BookingCommandResponse rescheduleBookingAsProfessional(
+        String rawUserId,
+        Long bookingId,
+        BookingRescheduleRequest request,
+        String idempotencyKey
+    ) {
+        return bookingService.rescheduleBookingAsProfessional(rawUserId, bookingId, request, idempotencyKey);
+    }
+
+    public BookingCommandResponse markBookingNoShow(
+        String rawUserId,
+        Long bookingId,
+        String idempotencyKey
+    ) {
+        return bookingService.markBookingNoShow(rawUserId, bookingId, idempotencyKey);
+    }
+
+    public BookingCommandResponse completeBooking(
+        String rawUserId,
+        Long bookingId,
+        String idempotencyKey
+    ) {
+        return bookingService.completeBooking(rawUserId, bookingId, idempotencyKey);
+    }
+
+    public BookingCommandResponse retryBookingPayout(
+        String rawUserId,
+        Long bookingId,
+        String idempotencyKey
+    ) {
+        return bookingService.retryBookingPayout(rawUserId, bookingId, idempotencyKey);
+    }
+
     public List<ProfesionalPublicSummaryResponse> listPublicProfessionals(
         Integer limit,
         Integer page,
@@ -100,6 +147,14 @@ public class ProfessionalPublicPageService {
 
     public ProfesionalScheduleDto updateSchedule(String rawUserId, ProfesionalScheduleDto request) {
         return scheduleService.updateSchedule(rawUserId, request);
+    }
+
+    public BookingPolicyResponse getBookingPolicy(String rawUserId) {
+        return professionalProfileService.getBookingPolicy(rawUserId);
+    }
+
+    public BookingPolicyResponse updateBookingPolicy(String rawUserId, BookingPolicyUpdateRequest request) {
+        return professionalProfileService.updateBookingPolicy(rawUserId, request);
     }
 
     public List<ProfesionalServiceResponse> listServices(String rawUserId) {

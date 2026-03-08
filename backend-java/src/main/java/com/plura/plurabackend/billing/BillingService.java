@@ -192,6 +192,14 @@ public class BillingService {
     ) {
         Subscription subscription = subscriptionRepository.findByProfessional_Id(professional.getId())
             .orElseGet(Subscription::new);
+
+        if (subscription.getId() != null
+            && subscription.getStatus() == SubscriptionStatus.ACTIVE
+            && subscription.getCurrentPeriodEnd() != null
+            && subscription.getCurrentPeriodEnd().isAfter(LocalDateTime.now())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                "Ya tienes una suscripción activa hasta " + subscription.getCurrentPeriodEnd());
+        }
         subscription.setProfessional(professional);
         subscription.setPlan(plan);
         subscription.setStatus(SubscriptionStatus.TRIAL);

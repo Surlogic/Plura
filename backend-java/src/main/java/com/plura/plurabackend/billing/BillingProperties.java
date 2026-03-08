@@ -315,6 +315,11 @@ public class BillingProperties {
         private String webhookSecret = "";
         private String checkoutPath = "/secure_payments";
         private String cancelPath = "/subscriptions/{id}/cancel";
+        private String refundPath = "/payments/{id}/refunds";
+        private String payoutOauthPath = "/oauth/token";
+        private String payoutPath = "/payouts/v3";
+        private String payoutClientId = "";
+        private String payoutClientSecret = "";
         private String paymentStatusPath = "/payments/{id}";
         private String subscriptionStatusPath = "/subscriptions/{id}";
         private String signatureMode = STRICT_DATE_BODY;
@@ -378,6 +383,46 @@ public class BillingProperties {
 
         public void setCancelPath(String cancelPath) {
             this.cancelPath = cancelPath;
+        }
+
+        public String getRefundPath() {
+            return refundPath;
+        }
+
+        public void setRefundPath(String refundPath) {
+            this.refundPath = refundPath;
+        }
+
+        public String getPayoutOauthPath() {
+            return payoutOauthPath;
+        }
+
+        public void setPayoutOauthPath(String payoutOauthPath) {
+            this.payoutOauthPath = payoutOauthPath;
+        }
+
+        public String getPayoutPath() {
+            return payoutPath;
+        }
+
+        public void setPayoutPath(String payoutPath) {
+            this.payoutPath = payoutPath;
+        }
+
+        public String getPayoutClientId() {
+            return payoutClientId;
+        }
+
+        public void setPayoutClientId(String payoutClientId) {
+            this.payoutClientId = payoutClientId;
+        }
+
+        public String getPayoutClientSecret() {
+            return payoutClientSecret;
+        }
+
+        public void setPayoutClientSecret(String payoutClientSecret) {
+            this.payoutClientSecret = payoutClientSecret;
         }
 
         public String getPaymentStatusPath() {

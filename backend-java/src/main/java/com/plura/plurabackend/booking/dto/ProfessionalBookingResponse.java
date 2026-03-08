@@ -1,10 +1,13 @@
 package com.plura.plurabackend.booking.dto;
 
-import com.plura.plurabackend.booking.model.BookingStatus;
+import com.plura.plurabackend.booking.model.BookingOperationalStatus;
+import com.plura.plurabackend.booking.model.ServicePaymentType;
 import java.time.LocalDateTime;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
 @Data
+@NoArgsConstructor
 public class ProfessionalBookingResponse {
     private Long id;
     private String userId;
@@ -12,10 +15,14 @@ public class ProfessionalBookingResponse {
     private String serviceId;
     private String serviceName;
     private String startDateTime;
+    private String timezone;
     private String duration;
     private Integer postBufferMinutes;
     private Integer effectiveDurationMinutes;
+    private String paymentType;
+    private Integer rescheduleCount;
     private String status;
+    private BookingFinancialSummaryResponse financialSummary;
 
     public ProfessionalBookingResponse(
         Long id,
@@ -24,9 +31,12 @@ public class ProfessionalBookingResponse {
         String serviceId,
         String serviceName,
         LocalDateTime startDateTime,
+        String timezone,
         String duration,
         Integer postBufferMinutes,
-        BookingStatus status
+        ServicePaymentType paymentType,
+        Integer rescheduleCount,
+        BookingOperationalStatus status
     ) {
         this(
             id,
@@ -35,10 +45,14 @@ public class ProfessionalBookingResponse {
             serviceId,
             serviceName,
             startDateTime == null ? "" : startDateTime.toString(),
+            timezone,
             duration,
             postBufferMinutes == null ? 0 : postBufferMinutes,
             resolveEffectiveDurationMinutes(duration, postBufferMinutes),
-            status == null ? "" : status.name()
+            paymentType == null ? ServicePaymentType.ON_SITE.name() : paymentType.name(),
+            rescheduleCount == null ? 0 : Math.max(0, rescheduleCount),
+            status == null ? "" : status.name(),
+            null
         );
     }
 
@@ -86,10 +100,14 @@ public class ProfessionalBookingResponse {
         String serviceId,
         String serviceName,
         String startDateTime,
+        String timezone,
         String duration,
         Integer postBufferMinutes,
         Integer effectiveDurationMinutes,
-        String status
+        String paymentType,
+        Integer rescheduleCount,
+        String status,
+        BookingFinancialSummaryResponse financialSummary
     ) {
         this.id = id;
         this.userId = userId;
@@ -97,11 +115,15 @@ public class ProfessionalBookingResponse {
         this.serviceId = serviceId;
         this.serviceName = serviceName;
         this.startDateTime = startDateTime;
+        this.timezone = timezone;
         this.duration = duration;
         this.postBufferMinutes = postBufferMinutes == null ? 0 : Math.max(0, postBufferMinutes);
         this.effectiveDurationMinutes = effectiveDurationMinutes == null
             ? resolveEffectiveDurationMinutes(duration, this.postBufferMinutes)
             : effectiveDurationMinutes;
+        this.paymentType = paymentType;
+        this.rescheduleCount = rescheduleCount == null ? 0 : Math.max(0, rescheduleCount);
         this.status = status;
+        this.financialSummary = financialSummary;
     }
 }

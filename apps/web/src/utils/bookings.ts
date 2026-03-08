@@ -1,0 +1,244 @@
+import type {
+  BookingFinancialStatus,
+  BookingFinancialSummary,
+  BookingOperationalStatus,
+  BookingPaymentType,
+} from '@/types/bookings';
+
+const DEFAULT_CURRENCY = 'UYU';
+
+export const formatBookingMoney = (
+  amount?: number | null,
+  currency?: string | null,
+) => {
+  if (typeof amount !== 'number' || Number.isNaN(amount)) {
+    return null;
+  }
+
+  try {
+    return new Intl.NumberFormat('es-AR', {
+      style: 'currency',
+      currency: currency || DEFAULT_CURRENCY,
+      maximumFractionDigits: 2,
+    }).format(amount);
+  } catch {
+    return `${currency || DEFAULT_CURRENCY} ${amount.toFixed(2)}`;
+  }
+};
+
+export const getPaymentTypeLabel = (paymentType?: BookingPaymentType | null) => {
+  switch (paymentType) {
+    case 'DEPOSIT':
+      return 'Seña online';
+    case 'FULL_PREPAY':
+      return 'Pago total online';
+    case 'ON_SITE':
+    default:
+      return 'Pago en el lugar';
+  }
+};
+
+export const getPaymentTypeDescription = (paymentType?: BookingPaymentType | null) => {
+  switch (paymentType) {
+    case 'DEPOSIT':
+      return 'Reservás pagando una seña y el resto se resuelve según el backend.';
+    case 'FULL_PREPAY':
+      return 'Reservás pagando el total por adelantado.';
+    case 'ON_SITE':
+    default:
+      return 'No requiere checkout online para confirmar la reserva.';
+  }
+};
+
+export const getOperationalStatusLabel = (
+  status?: BookingOperationalStatus | null,
+) => {
+  switch (status) {
+    case 'CONFIRMED':
+      return 'Confirmada';
+    case 'CANCELLED':
+      return 'Cancelada';
+    case 'COMPLETED':
+      return 'Completada';
+    case 'NO_SHOW':
+      return 'No asistió';
+    case 'PENDING':
+    default:
+      return 'Pendiente';
+  }
+};
+
+export const getOperationalStatusTone = (
+  status?: BookingOperationalStatus | null,
+) => {
+  switch (status) {
+    case 'CONFIRMED':
+      return 'bg-[#1FB6A6]/10 text-[#1FB6A6]';
+    case 'CANCELLED':
+      return 'bg-[#EF4444]/10 text-[#EF4444]';
+    case 'COMPLETED':
+      return 'bg-[#0B1D2A]/10 text-[#0B1D2A]';
+    case 'NO_SHOW':
+      return 'bg-[#7C3AED]/10 text-[#7C3AED]';
+    case 'PENDING':
+    default:
+      return 'bg-[#F59E0B]/10 text-[#F59E0B]';
+  }
+};
+
+export const isPrepaidBooking = (paymentType?: BookingPaymentType | null) =>
+  paymentType === 'DEPOSIT' || paymentType === 'FULL_PREPAY';
+
+export const getClientFinancialStatusCopy = (
+  paymentType?: BookingPaymentType | null,
+  financialSummary?: BookingFinancialSummary | null,
+  operationalStatus?: BookingOperationalStatus | null,
+) => {
+  const financialStatus = financialSummary?.financialStatus;
+
+  if (!isPrepaidBooking(paymentType)) {
+    return {
+      label: 'Pago en el lugar',
+      tone: 'bg-[#E2E8F0] text-[#475569]',
+      detail: operationalStatus === 'CONFIRMED'
+        ? 'La reserva está confirmada y el pago se realiza en persona.'
+        : 'Esta reserva no requiere checkout online.',
+    };
+  }
+
+  switch (financialStatus) {
+    case 'PAYMENT_PENDING':
+      return {
+        label: 'Pago pendiente',
+        tone: 'bg-[#FEF3C7] text-[#B45309]',
+        detail: 'La reserva existe, pero falta completar el checkout.',
+      };
+    case 'HELD':
+      return {
+        label: 'Pago confirmado',
+        tone: 'bg-[#D1FAE5] text-[#047857]',
+        detail: 'El pago fue tomado y los fondos quedaron retenidos.',
+      };
+    case 'REFUND_PENDING':
+      return {
+        label: 'Devolución en proceso',
+        tone: 'bg-[#DBEAFE] text-[#1D4ED8]',
+        detail: 'La devolución fue iniciada y sigue en curso.',
+      };
+    case 'PARTIALLY_REFUNDED':
+      return {
+        label: 'Devolución parcial',
+        tone: 'bg-[#DBEAFE] text-[#1D4ED8]',
+        detail: 'Ya se devolvió parte del monto.',
+      };
+    case 'REFUNDED':
+      return {
+        label: 'Devolución completada',
+        tone: 'bg-[#DBEAFE] text-[#1D4ED8]',
+        detail: 'La devolución al cliente ya fue completada.',
+      };
+    case 'RELEASE_PENDING':
+      return {
+        label: 'Servicio realizado',
+        tone: 'bg-[#E0F2FE] text-[#0369A1]',
+        detail: 'La reserva ya se cerró y el backend está procesando el cierre financiero.',
+      };
+    case 'PARTIALLY_RELEASED':
+    case 'RELEASED':
+      return {
+        label: 'Reserva finalizada',
+        tone: 'bg-[#E0F2FE] text-[#0369A1]',
+        detail: 'La reserva terminó y el backend ya cerró el flujo financiero principal.',
+      };
+    case 'FAILED':
+      return {
+        label: 'Pago con incidencia',
+        tone: 'bg-[#FEE2E2] text-[#B91C1C]',
+        detail: 'Hubo un problema y conviene revisar el estado antes de actuar.',
+      };
+    case 'NOT_REQUIRED':
+    default:
+      return {
+        label: 'Pago pendiente',
+        tone: 'bg-[#FEF3C7] text-[#B45309]',
+        detail: 'Esperando confirmación del checkout.',
+      };
+  }
+};
+
+export const getProfessionalFinancialStatusCopy = (
+  paymentType?: BookingPaymentType | null,
+  financialSummary?: BookingFinancialSummary | null,
+) => {
+  const financialStatus = financialSummary?.financialStatus;
+
+  if (!isPrepaidBooking(paymentType)) {
+    return {
+      label: 'Sin pago online',
+      tone: 'bg-[#E2E8F0] text-[#475569]',
+      detail: 'Esta reserva no usa retención online.',
+    };
+  }
+
+  switch (financialStatus) {
+    case 'PAYMENT_PENDING':
+      return {
+        label: 'Pago pendiente',
+        tone: 'bg-[#FEF3C7] text-[#B45309]',
+        detail: 'La clienta o el cliente todavía no completó el checkout.',
+      };
+    case 'HELD':
+      return {
+        label: 'Retenido',
+        tone: 'bg-[#D1FAE5] text-[#047857]',
+        detail: 'El cobro está aprobado y los fondos quedaron retenidos.',
+      };
+    case 'REFUND_PENDING':
+      return {
+        label: 'Devolución en proceso',
+        tone: 'bg-[#DBEAFE] text-[#1D4ED8]',
+        detail: 'El backend está procesando una devolución.',
+      };
+    case 'PARTIALLY_REFUNDED':
+    case 'REFUNDED':
+      return {
+        label: 'Devuelto al cliente',
+        tone: 'bg-[#DBEAFE] text-[#1D4ED8]',
+        detail: 'El flujo financiero terminó en devolución.',
+      };
+    case 'RELEASE_PENDING':
+      return {
+        label: 'Pendiente de liberación',
+        tone: 'bg-[#E0F2FE] text-[#0369A1]',
+        detail: 'La reserva ya generó el proceso de release al profesional.',
+      };
+    case 'PARTIALLY_RELEASED':
+    case 'RELEASED':
+      return {
+        label: 'Liberado',
+        tone: 'bg-[#E0F2FE] text-[#0369A1]',
+        detail: 'El backend ya liberó fondos al profesional.',
+      };
+    case 'FAILED':
+      return {
+        label: 'Fallido',
+        tone: 'bg-[#FEE2E2] text-[#B91C1C]',
+        detail: 'Hay una incidencia financiera pendiente de revisión.',
+      };
+    case 'NOT_REQUIRED':
+    default:
+      return {
+        label: 'Pago pendiente',
+        tone: 'bg-[#FEF3C7] text-[#B45309]',
+        detail: 'Esperando confirmación del cobro.',
+      };
+  }
+};
+
+export const shouldAutoRefreshFinancialStatus = (
+  financialStatus?: BookingFinancialStatus | null,
+) =>
+  financialStatus === 'PAYMENT_PENDING'
+  || financialStatus === 'REFUND_PENDING'
+  || financialStatus === 'RELEASE_PENDING';
+

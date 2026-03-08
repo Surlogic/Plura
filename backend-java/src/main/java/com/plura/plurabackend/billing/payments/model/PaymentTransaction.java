@@ -1,5 +1,8 @@
 package com.plura.plurabackend.billing.payments.model;
 
+import com.plura.plurabackend.booking.finance.model.BookingRefundRecord;
+import com.plura.plurabackend.booking.finance.model.BookingPayoutRecord;
+import com.plura.plurabackend.booking.model.Booking;
 import com.plura.plurabackend.billing.subscriptions.model.Subscription;
 import com.plura.plurabackend.professional.model.ProfessionalProfile;
 import jakarta.persistence.Column;
@@ -52,12 +55,34 @@ public class PaymentTransaction {
     @JoinColumn(name = "subscription_id")
     private Subscription subscription;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "booking_id")
+    private Booking booking;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "refund_record_id")
+    private BookingRefundRecord refundRecord;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "payout_record_id")
+    private BookingPayoutRecord payoutRecord;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "transaction_type", nullable = false, length = 30)
+    private PaymentTransactionType transactionType;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 30)
     private PaymentProvider provider;
 
     @Column(name = "provider_payment_id", length = 200)
     private String providerPaymentId;
+
+    @Column(name = "provider_status", length = 80)
+    private String providerStatus;
+
+    @Column(name = "external_reference", length = 200)
+    private String externalReference;
 
     @Column(nullable = false, precision = 12, scale = 2)
     private BigDecimal amount;
@@ -69,8 +94,20 @@ public class PaymentTransaction {
     @Column(nullable = false, length = 30)
     private PaymentTransactionStatus status;
 
+    @Column(name = "payload_json", columnDefinition = "text")
+    private String payloadJson;
+
+    @Column(name = "approved_at")
+    private LocalDateTime approvedAt;
+
+    @Column(name = "failed_at")
+    private LocalDateTime failedAt;
+
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
+
+    @Column(name = "updated_at", nullable = false)
+    private LocalDateTime updatedAt;
 
     @PrePersist
     void onCreate() {
@@ -80,5 +117,16 @@ public class PaymentTransaction {
         if (this.createdAt == null) {
             this.createdAt = LocalDateTime.now();
         }
+        if (this.updatedAt == null) {
+            this.updatedAt = this.createdAt;
+        }
+        if (this.transactionType == null) {
+            this.transactionType = PaymentTransactionType.SUBSCRIPTION_CHARGE;
+        }
+    }
+
+    @jakarta.persistence.PreUpdate
+    void onUpdate() {
+        this.updatedAt = LocalDateTime.now();
     }
 }

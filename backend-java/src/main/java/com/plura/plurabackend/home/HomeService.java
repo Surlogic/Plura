@@ -1,6 +1,6 @@
 package com.plura.plurabackend.home;
 
-import com.plura.plurabackend.booking.model.BookingStatus;
+import com.plura.plurabackend.booking.model.BookingOperationalStatus;
 import com.plura.plurabackend.booking.repository.BookingRepository;
 import com.plura.plurabackend.category.dto.CategoryResponse;
 import com.plura.plurabackend.category.model.Category;
@@ -36,9 +36,9 @@ import org.springframework.transaction.annotation.Transactional;
 public class HomeService {
 
     private static final int TOP_PROFESSIONALS_LIMIT = 8;
-    private static final List<BookingStatus> TOP_BOOKING_STATUSES = List.of(
-        BookingStatus.CONFIRMED,
-        BookingStatus.COMPLETED
+    private static final List<BookingOperationalStatus> TOP_BOOKING_STATUSES = List.of(
+        BookingOperationalStatus.CONFIRMED,
+        BookingOperationalStatus.COMPLETED
     );
 
     private final UserRepository userRepository;
@@ -85,10 +85,10 @@ public class HomeService {
         LocalDate monthStartDate = LocalDate.now(appZoneId).withDayOfMonth(1);
         LocalDateTime monthStart = monthStartDate.atStartOfDay();
         LocalDateTime nextMonthStart = monthStartDate.plusMonths(1).atStartOfDay();
-        return bookingRepository.countByCreatedAtGreaterThanEqualAndCreatedAtLessThanAndStatusNot(
+        return bookingRepository.countByCreatedAtGreaterThanEqualAndCreatedAtLessThanAndOperationalStatusNot(
             monthStart,
             nextMonthStart,
-            BookingStatus.CANCELLED
+            BookingOperationalStatus.CANCELLED
         );
     }
 

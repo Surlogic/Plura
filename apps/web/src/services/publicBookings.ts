@@ -2,6 +2,7 @@ import api from '@/services/api';
 import { cachedGet } from '@/services/cachedGet';
 import type { ProfessionalSchedule } from '@/types/professional';
 import type { Category } from '@/types/category';
+import type { BookingPaymentType } from '@/types/bookings';
 
 export type PublicProfessionalService = {
   id: string;
@@ -9,6 +10,9 @@ export type PublicProfessionalService = {
   description?: string;
   imageUrl?: string;
   price?: string;
+  depositAmount?: number | null;
+  currency?: string | null;
+  paymentType?: BookingPaymentType;
   duration?: string;
   postBufferMinutes?: number;
 };

@@ -104,6 +104,10 @@ public interface ProfessionalProfileRepository extends JpaRepository<Professiona
     @Query("SELECT p FROM ProfessionalProfile p WHERE p.slug = :slug")
     Optional<ProfessionalProfile> findBySlugForUpdate(@Param("slug") String slug);
 
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT p FROM ProfessionalProfile p WHERE p.id = :id")
+    Optional<ProfessionalProfile> findByIdForUpdate(@Param("id") Long id);
+
     @Modifying
     @Query(
         value = """

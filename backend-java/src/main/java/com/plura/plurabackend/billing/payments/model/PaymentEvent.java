@@ -1,5 +1,8 @@
 package com.plura.plurabackend.billing.payments.model;
 
+import com.plura.plurabackend.booking.finance.model.BookingRefundRecord;
+import com.plura.plurabackend.booking.finance.model.BookingPayoutRecord;
+import com.plura.plurabackend.booking.model.Booking;
 import com.plura.plurabackend.professional.model.ProfessionalProfile;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -64,6 +67,22 @@ public class PaymentEvent {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "professional_id")
     private ProfessionalProfile professional;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "booking_id")
+    private Booking booking;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "refund_record_id")
+    private BookingRefundRecord refundRecord;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "payout_record_id")
+    private BookingPayoutRecord payoutRecord;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "payment_transaction_id")
+    private PaymentTransaction paymentTransaction;
 
     @Column(nullable = false)
     private Boolean processed;

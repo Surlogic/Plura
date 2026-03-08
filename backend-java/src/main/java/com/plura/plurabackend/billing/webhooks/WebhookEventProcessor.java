@@ -15,24 +15,31 @@ import com.plura.plurabackend.billing.subscriptions.model.Subscription;
 import com.plura.plurabackend.billing.subscriptions.model.SubscriptionPlan;
 import com.plura.plurabackend.billing.subscriptions.model.SubscriptionStatus;
 import com.plura.plurabackend.billing.subscriptions.repository.SubscriptionRepository;
+import com.plura.plurabackend.booking.finance.BookingProviderIntegrationService;
 import com.plura.plurabackend.professional.model.ProfessionalProfile;
 import com.plura.plurabackend.professional.repository.ProfessionalProfileRepository;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.EnumMap;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class WebhookEventProcessor {
 
+    private static final Logger LOGGER = LoggerFactory.getLogger(WebhookEventProcessor.class);
+
     private final PaymentEventRepository paymentEventRepository;
     private final SubscriptionRepository subscriptionRepository;
     private final ProfessionalProfileRepository professionalProfileRepository;
     private final PaymentTransactionRepository paymentTransactionRepository;
+    private final BookingProviderIntegrationService bookingProviderIntegrationService;
     private final BillingProperties billingProperties;
     private final MercadoPagoSubscriptionService mercadoPagoSubscriptionService;
     private final Map<PaymentProvider, PaymentProviderClient> providerClients;
@@ -42,6 +49,7 @@ public class WebhookEventProcessor {
         SubscriptionRepository subscriptionRepository,
         ProfessionalProfileRepository professionalProfileRepository,
         PaymentTransactionRepository paymentTransactionRepository,
+        BookingProviderIntegrationService bookingProviderIntegrationService,
         BillingProperties billingProperties,
         MercadoPagoSubscriptionService mercadoPagoSubscriptionService,
         List<PaymentProviderClient> clients
@@ -50,6 +58,7 @@ public class WebhookEventProcessor {
         this.subscriptionRepository = subscriptionRepository;
         this.professionalProfileRepository = professionalProfileRepository;
         this.paymentTransactionRepository = paymentTransactionRepository;
+        this.bookingProviderIntegrationService = bookingProviderIntegrationService;
         this.billingProperties = billingProperties;
         this.mercadoPagoSubscriptionService = mercadoPagoSubscriptionService;
         Map<PaymentProvider, PaymentProviderClient> mapped = new EnumMap<>(PaymentProvider.class);
@@ -64,13 +73,28 @@ public class WebhookEventProcessor {
         PaymentEvent paymentEvent = paymentEventRepository.findById(paymentEventId)
             .orElseThrow(() -> new IllegalStateException("Evento de pago no encontrado"));
 
-        ProfessionalProfile professional = resolveProfessional(event);
+        if (bookingProviderIntegrationService.processWebhook(paymentEvent, event)) {
+            paymentEvent.setEventType(event.eventType().name());
+            paymentEvent.setProcessed(true);
+            paymentEvent.setProcessedAt(LocalDateTime.now());
+            paymentEvent.setProcessingError(null);
+            paymentEventRepository.save(paymentEvent);
+            return;
+        }
+
+        Map<String, MercadoPagoSubscriptionService.SubscriptionSnapshot> snapshotCache = new HashMap<>();
+        ProfessionalProfile professional = resolveProfessional(event, snapshotCache);
         Subscription subscription = resolveSubscription(event, professional);
+
+        if (professional == null && event.eventType() != WebhookEventType.UNKNOWN) {
+            LOGGER.warn("Webhook event {} ({}) no pudo resolver professional. providerSubscriptionId={}",
+                paymentEventId, event.eventType(), event.providerSubscriptionId());
+        }
 
         if (event.eventType() != WebhookEventType.UNKNOWN && subscription != null) {
             validateExpectedSubscriptionData(subscription, event);
-            verifyAgainstProvider(subscription, event, professional);
-            applySubscriptionState(subscription, event);
+            verifyAgainstProvider(subscription, event, professional, snapshotCache);
+            applySubscriptionState(subscription, event, snapshotCache);
             subscription = subscriptionRepository.save(subscription);
             createOrUpdateTransaction(event, subscription, professional);
         }
@@ -83,7 +107,18 @@ public class WebhookEventProcessor {
         paymentEventRepository.save(paymentEvent);
     }
 
-    private ProfessionalProfile resolveProfessional(ParsedWebhookEvent event) {
+    private MercadoPagoSubscriptionService.SubscriptionSnapshot getCachedSnapshot(
+        String providerSubscriptionId,
+        Map<String, MercadoPagoSubscriptionService.SubscriptionSnapshot> cache
+    ) {
+        return cache.computeIfAbsent(providerSubscriptionId,
+            mercadoPagoSubscriptionService::getSubscription);
+    }
+
+    private ProfessionalProfile resolveProfessional(
+        ParsedWebhookEvent event,
+        Map<String, MercadoPagoSubscriptionService.SubscriptionSnapshot> snapshotCache
+    ) {
         if (event.professionalId() != null) {
             return professionalProfileRepository.findById(event.professionalId()).orElse(null);
         }
@@ -99,7 +134,7 @@ public class WebhookEventProcessor {
 
             if (event.provider() == PaymentProvider.MERCADOPAGO) {
                 MercadoPagoSubscriptionService.SubscriptionSnapshot snapshot =
-                    mercadoPagoSubscriptionService.getSubscription(event.providerSubscriptionId());
+                    getCachedSnapshot(event.providerSubscriptionId(), snapshotCache);
                 if (snapshot.professionalId() != null) {
                     return professionalProfileRepository.findById(snapshot.professionalId()).orElse(null);
                 }
@@ -157,7 +192,8 @@ public class WebhookEventProcessor {
     private void verifyAgainstProvider(
         Subscription subscription,
         ParsedWebhookEvent event,
-        ProfessionalProfile professional
+        ProfessionalProfile professional,
+        Map<String, MercadoPagoSubscriptionService.SubscriptionSnapshot> snapshotCache
     ) {
         if (!billingProperties.isProviderVerificationEnabled()) {
             return;
@@ -168,7 +204,7 @@ public class WebhookEventProcessor {
         }
 
         if (event.provider() == PaymentProvider.MERCADOPAGO) {
-            verifyMercadoPagoSubscription(subscription, event, professional);
+            verifyMercadoPagoSubscription(subscription, event, professional, snapshotCache);
             return;
         }
 
@@ -220,7 +256,8 @@ public class WebhookEventProcessor {
     private void verifyMercadoPagoSubscription(
         Subscription subscription,
         ParsedWebhookEvent event,
-        ProfessionalProfile professional
+        ProfessionalProfile professional,
+        Map<String, MercadoPagoSubscriptionService.SubscriptionSnapshot> snapshotCache
     ) {
         String providerSubscriptionId = event.providerSubscriptionId();
         if (providerSubscriptionId == null || providerSubscriptionId.isBlank()) {
@@ -228,7 +265,7 @@ public class WebhookEventProcessor {
         }
 
         MercadoPagoSubscriptionService.SubscriptionSnapshot snapshot =
-            mercadoPagoSubscriptionService.getSubscription(providerSubscriptionId);
+            getCachedSnapshot(providerSubscriptionId, snapshotCache);
 
         String status = snapshot.status() == null ? "" : snapshot.status().trim().toLowerCase(Locale.ROOT);
         if (!"authorized".equals(status) && !"active".equals(status)) {
@@ -272,7 +309,11 @@ public class WebhookEventProcessor {
         }
     }
 
-    private void applySubscriptionState(Subscription subscription, ParsedWebhookEvent event) {
+    private void applySubscriptionState(
+        Subscription subscription,
+        ParsedWebhookEvent event,
+        Map<String, MercadoPagoSubscriptionService.SubscriptionSnapshot> snapshotCache
+    ) {
         if (event.providerSubscriptionId() != null && !event.providerSubscriptionId().isBlank()) {
             subscription.setProviderSubscriptionId(event.providerSubscriptionId());
         }
@@ -300,7 +341,7 @@ public class WebhookEventProcessor {
                 subscription.setCancelAtPeriodEnd(false);
             }
             case PAYMENT_SUCCEEDED, SUBSCRIPTION_RENEWED -> {
-                subscription.setStatus(resolveActiveOrPastDueStatus(event));
+                subscription.setStatus(resolveActiveOrPastDueStatus(event, snapshotCache));
                 subscription.setCurrentPeriodStart(effectiveTime);
                 subscription.setCurrentPeriodEnd(effectiveTime.plusMonths(1));
                 subscription.setCancelAtPeriodEnd(false);
@@ -315,8 +356,8 @@ public class WebhookEventProcessor {
                     subscription.setCurrentPeriodEnd(effectiveTime);
                 }
             }
-            case PAYMENT_REFUNDED -> subscription.setStatus(SubscriptionStatus.PAST_DUE);
-            case UNKNOWN -> {
+            case PAYMENT_REFUNDED, REFUND_PARTIAL -> subscription.setStatus(SubscriptionStatus.PAST_DUE);
+            case REFUND_FAILED, PAYOUT_PENDING, PAYOUT_SUCCEEDED, PAYOUT_FAILED, UNKNOWN -> {
                 // Evento reconocido pero sin impacto en estado de suscripción.
             }
         }
@@ -385,17 +426,25 @@ public class WebhookEventProcessor {
             case PAYMENT_FAILED -> PaymentTransactionStatus.FAILED;
             case SUBSCRIPTION_CANCELLED -> PaymentTransactionStatus.CANCELLED;
             case PAYMENT_REFUNDED -> PaymentTransactionStatus.REFUNDED;
+            case REFUND_PARTIAL -> PaymentTransactionStatus.PARTIALLY_REFUNDED;
+            case REFUND_FAILED -> PaymentTransactionStatus.FAILED;
+            case PAYOUT_PENDING -> PaymentTransactionStatus.PENDING;
+            case PAYOUT_SUCCEEDED -> PaymentTransactionStatus.APPROVED;
+            case PAYOUT_FAILED -> PaymentTransactionStatus.FAILED;
             case UNKNOWN -> PaymentTransactionStatus.PENDING;
         };
     }
 
-    private SubscriptionStatus resolveActiveOrPastDueStatus(ParsedWebhookEvent event) {
+    private SubscriptionStatus resolveActiveOrPastDueStatus(
+        ParsedWebhookEvent event,
+        Map<String, MercadoPagoSubscriptionService.SubscriptionSnapshot> snapshotCache
+    ) {
         if (event.provider() != PaymentProvider.MERCADOPAGO || event.providerSubscriptionId() == null) {
             return SubscriptionStatus.ACTIVE;
         }
 
         MercadoPagoSubscriptionService.SubscriptionSnapshot snapshot =
-            mercadoPagoSubscriptionService.getSubscription(event.providerSubscriptionId());
+            getCachedSnapshot(event.providerSubscriptionId(), snapshotCache);
         String status = snapshot.status() == null ? "" : snapshot.status().trim().toLowerCase(Locale.ROOT);
         return switch (status) {
             case "authorized", "active" -> SubscriptionStatus.ACTIVE;

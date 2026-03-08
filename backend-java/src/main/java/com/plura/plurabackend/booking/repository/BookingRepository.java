@@ -2,39 +2,68 @@ package com.plura.plurabackend.booking.repository;
 
 import com.plura.plurabackend.booking.dto.ProfessionalBookingResponse;
 import com.plura.plurabackend.booking.model.Booking;
-import com.plura.plurabackend.booking.model.BookingStatus;
+import com.plura.plurabackend.booking.model.BookingOperationalStatus;
 import com.plura.plurabackend.professional.model.ProfessionalProfile;
 import com.plura.plurabackend.user.model.User;
+import jakarta.persistence.LockModeType;
 import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 public interface BookingRepository extends JpaRepository<Booking, Long> {
+    @Query(
+        """
+        SELECT b
+        FROM Booking b
+        JOIN FETCH b.user u
+        JOIN FETCH b.professional p
+        JOIN FETCH p.user pu
+        JOIN FETCH b.service s
+        WHERE b.id = :bookingId
+        """
+    )
+    Optional<Booking> findDetailedById(@Param("bookingId") Long bookingId);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query(
+        """
+        SELECT b
+        FROM Booking b
+        JOIN FETCH b.user u
+        JOIN FETCH b.professional p
+        JOIN FETCH p.user pu
+        JOIN FETCH b.service s
+        WHERE b.id = :bookingId
+        """
+    )
+    Optional<Booking> findDetailedByIdForUpdate(@Param("bookingId") Long bookingId);
+
     boolean existsByProfessionalAndStartDateTime(
         ProfessionalProfile professional,
         LocalDateTime startDateTime
     );
 
-    Optional<Booking> findFirstByUserAndStatusInAndStartDateTimeAfterOrderByStartDateTimeAsc(
+    Optional<Booking> findFirstByUserAndOperationalStatusInAndStartDateTimeAfterOrderByStartDateTimeAsc(
         User user,
-        List<BookingStatus> statuses,
+        List<BookingOperationalStatus> statuses,
         LocalDateTime startDateTime
     );
 
-    List<Booking> findByUser_IdAndStatusInAndStartDateTimeGreaterThanEqual(
+    List<Booking> findByUser_IdAndOperationalStatusInAndStartDateTimeGreaterThanEqual(
         Long userId,
-        List<BookingStatus> statuses,
+        List<BookingOperationalStatus> statuses,
         LocalDateTime startDateTime
     );
 
-    List<Booking> findByProfessional_IdAndStatusInAndStartDateTimeGreaterThanEqual(
+    List<Booking> findByProfessional_IdAndOperationalStatusInAndStartDateTimeGreaterThanEqual(
         Long professionalId,
-        List<BookingStatus> statuses,
+        List<BookingOperationalStatus> statuses,
         LocalDateTime startDateTime
     );
 
@@ -58,11 +87,14 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
             u.id,
             u.fullName,
             s.id,
-            s.name,
+            b.serviceNameSnapshot,
             b.startDateTime,
-            s.duration,
-            s.postBufferMinutes,
-            b.status
+            b.timezone,
+            b.serviceDurationSnapshot,
+            b.servicePostBufferMinutesSnapshot,
+            b.servicePaymentTypeSnapshot,
+            b.rescheduleCount,
+            b.operationalStatus
         )
         FROM Booking b
         JOIN b.user u
@@ -84,14 +116,14 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
         FROM Booking b
         WHERE b.professional = :professional
             AND b.startDateTime BETWEEN :start AND :end
-            AND b.status <> :excludedStatus
+            AND b.operationalStatus <> :excludedStatus
         """
     )
     List<LocalDateTime> findBookedStartDateTimes(
         @Param("professional") ProfessionalProfile professional,
         @Param("start") LocalDateTime start,
         @Param("end") LocalDateTime end,
-        @Param("excludedStatus") BookingStatus excludedStatus
+        @Param("excludedStatus") BookingOperationalStatus excludedStatus
     );
 
     @Query(
@@ -102,7 +134,7 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
         WHERE b.professional = :professional
             AND b.startDateTime >= :start
             AND b.startDateTime <= :end
-            AND b.status <> :excludedStatus
+            AND b.operationalStatus <> :excludedStatus
         ORDER BY b.startDateTime ASC
         """
     )
@@ -110,7 +142,28 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
         @Param("professional") ProfessionalProfile professional,
         @Param("start") LocalDateTime start,
         @Param("end") LocalDateTime end,
-        @Param("excludedStatus") BookingStatus excludedStatus
+        @Param("excludedStatus") BookingOperationalStatus excludedStatus
+    );
+
+    @Query(
+        """
+        SELECT b
+        FROM Booking b
+        JOIN FETCH b.service s
+        WHERE b.professional = :professional
+            AND b.startDateTime >= :start
+            AND b.startDateTime <= :end
+            AND b.operationalStatus <> :excludedStatus
+            AND b.id <> :excludedBookingId
+        ORDER BY b.startDateTime ASC
+        """
+    )
+    List<Booking> findBookedWithServiceByProfessionalAndStartDateTimeBetweenExcludingBooking(
+        @Param("professional") ProfessionalProfile professional,
+        @Param("start") LocalDateTime start,
+        @Param("end") LocalDateTime end,
+        @Param("excludedStatus") BookingOperationalStatus excludedStatus,
+        @Param("excludedBookingId") Long excludedBookingId
     );
 
     @Query(
@@ -122,7 +175,7 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
         WHERE p.id IN :professionalIds
             AND b.startDateTime >= :start
             AND b.startDateTime <= :end
-            AND b.status <> :excludedStatus
+            AND b.operationalStatus <> :excludedStatus
         ORDER BY p.id ASC, b.startDateTime ASC
         """
     )
@@ -130,26 +183,26 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
         @Param("professionalIds") Collection<Long> professionalIds,
         @Param("start") LocalDateTime start,
         @Param("end") LocalDateTime end,
-        @Param("excludedStatus") BookingStatus excludedStatus
+        @Param("excludedStatus") BookingOperationalStatus excludedStatus
     );
 
-    long countByCreatedAtGreaterThanEqualAndCreatedAtLessThanAndStatusNot(
+    long countByCreatedAtGreaterThanEqualAndCreatedAtLessThanAndOperationalStatusNot(
         LocalDateTime from,
         LocalDateTime to,
-        BookingStatus status
+        BookingOperationalStatus status
     );
 
     @Query(
         """
         SELECT b.professional.id, COUNT(b.id)
         FROM Booking b
-        WHERE b.status IN :statuses
+        WHERE b.operationalStatus IN :statuses
         GROUP BY b.professional.id
         ORDER BY COUNT(b.id) DESC
         """
     )
     List<Object[]> findTopProfessionalIdsByStatuses(
-        @Param("statuses") List<BookingStatus> statuses,
+        @Param("statuses") List<BookingOperationalStatus> statuses,
         Pageable pageable
     );
 }

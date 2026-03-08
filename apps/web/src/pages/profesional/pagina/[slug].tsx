@@ -502,6 +502,13 @@ export default function ProfesionalDetailPage() {
     return `$${trimmed}`;
   };
 
+  const formatServicePaymentType = (value?: string) => {
+    const normalized = (value || '').trim().toUpperCase();
+    if (normalized === 'DEPOSIT') return 'Seña online';
+    if (normalized === 'FULL_PREPAY' || normalized === 'FULL') return 'Pago total online';
+    return 'Pago en el lugar';
+  };
+
   const initials = useMemo(
     () =>
       merged.name
@@ -853,6 +860,9 @@ export default function ProfesionalDetailPage() {
                           {service.description}
                         </p>
                       ) : null}
+                      <p className="mt-1 text-[0.7rem] font-semibold uppercase tracking-[0.12em] text-[#64748B]">
+                        {formatServicePaymentType(service.paymentType)}
+                      </p>
                       <button
                         type="button"
                         onClick={(event) => {
@@ -1080,7 +1090,7 @@ export default function ProfesionalDetailPage() {
                 {selectedService.name}
               </p>
               <p className="text-xs text-[#64748B]">
-                {formatServicePrice(selectedService.price)} · {formatServiceDuration(selectedService.duration)} · Confirmación inmediata
+                {formatServicePrice(selectedService.price)} · {formatServiceDuration(selectedService.duration)} · {formatServicePaymentType(selectedService.paymentType)}
               </p>
             </div>
             <button

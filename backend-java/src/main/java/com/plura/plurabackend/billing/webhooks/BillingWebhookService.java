@@ -159,10 +159,6 @@ public class BillingWebhookService {
                 request.getParameter("id"),
                 buildDeterministicEventId(PaymentProvider.MERCADOPAGO, payload, request)
             );
-            String providerObjectId = firstNonBlank(
-                root.at("/data/id").asText(null),
-                root.path("data_id").asText(null)
-            );
             String action = safeLower(firstNonBlank(root.path("action").asText(null), root.path("type").asText(null)));
             String status = safeLower(firstNonBlank(
                 root.path("status").asText(null),
@@ -170,11 +166,28 @@ public class BillingWebhookService {
                 root.at("/data/status").asText(null)
             ));
             WebhookEventType eventType = resolveEventType(action, status);
+            String providerObjectId = isRefundEvent(eventType)
+                ? firstNonBlank(
+                    root.path("refund_id").asText(null),
+                    root.path("id").asText(null),
+                    root.at("/data/id").asText(null),
+                    root.path("data_id").asText(null)
+                )
+                : firstNonBlank(
+                    root.at("/data/id").asText(null),
+                    root.path("data_id").asText(null),
+                    root.path("id").asText(null)
+                );
 
-            Long professionalId = parseLong(firstNonBlank(
+            String externalReference = firstNonBlank(
                 root.path("external_reference").asText(null),
                 root.path("external_id").asText(null),
                 root.at("/metadata/professionalId").asText(null)
+            );
+            Long professionalId = parseProfessionalId(externalReference);
+            Long bookingId = parseBookingId(firstNonBlank(
+                root.at("/metadata/bookingId").asText(null),
+                externalReference
             ));
             String planCode = firstNonBlank(
                 root.at("/metadata/planCode").asText(null),
@@ -190,6 +203,12 @@ public class BillingWebhookService {
             String providerPaymentId = firstNonBlank(
                 root.path("payment_id").asText(null),
                 !isSubscriptionAction(action) ? providerObjectId : null
+            );
+            String orderReference = firstNonBlank(
+                root.path("external_id").asText(null),
+                root.path("external_reference").asText(null),
+                root.path("order_id").asText(null),
+                root.path("merchant_order_id").asText(null)
             );
 
             BigDecimal amount = parseDecimal(firstNonBlank(
@@ -212,8 +231,10 @@ public class BillingWebhookService {
                 providerObjectId,
                 eventType,
                 professionalId,
+                bookingId,
                 providerSubscriptionId,
                 providerPaymentId,
+                orderReference,
                 amount,
                 currency,
                 planCode,
@@ -230,24 +251,45 @@ public class BillingWebhookService {
     private ParsedWebhookEvent parseDlocalEvent(String payload, HttpServletRequest request) {
         try {
             JsonNode root = objectMapper.readTree(payload);
+            String externalReference = firstNonBlank(
+                root.path("external_id").asText(null),
+                root.path("external_reference").asText(null),
+                root.at("/metadata/professionalId").asText(null)
+            );
             String providerEventId = firstNonBlank(
                 root.path("event_id").asText(null),
                 root.path("id").asText(null),
                 buildDeterministicEventId(PaymentProvider.DLOCAL, payload, request)
             );
-            String providerObjectId = firstNonBlank(
-                root.path("payment_id").asText(null),
-                root.path("subscription_id").asText(null),
-                root.path("id").asText(null)
-            );
             String type = safeLower(firstNonBlank(root.path("event_type").asText(null), root.path("type").asText(null)));
             String status = safeLower(firstNonBlank(root.path("payment_status").asText(null), root.path("status").asText(null)));
-            WebhookEventType eventType = resolveEventType(type, status);
+            WebhookEventType eventType = resolveDlocalEventType(
+                type,
+                status,
+                externalReference,
+                root.path("id").asText(null)
+            );
+            String providerObjectId = isRefundEvent(eventType)
+                ? firstNonBlank(
+                    root.path("refund_id").asText(null),
+                    root.path("id").asText(null),
+                    root.path("payment_id").asText(null)
+                )
+                : isPayoutEvent(eventType)
+                    ? firstNonBlank(
+                        root.path("id").asText(null),
+                        root.path("payout_id").asText(null)
+                    )
+                : firstNonBlank(
+                    root.path("payment_id").asText(null),
+                    root.path("subscription_id").asText(null),
+                    root.path("id").asText(null)
+                );
 
-            Long professionalId = parseLong(firstNonBlank(
-                root.path("external_id").asText(null),
-                root.path("external_reference").asText(null),
-                root.at("/metadata/professionalId").asText(null)
+            Long professionalId = parseProfessionalId(externalReference);
+            Long bookingId = parseBookingId(firstNonBlank(
+                root.at("/metadata/bookingId").asText(null),
+                externalReference
             ));
             String planCode = firstNonBlank(
                 root.at("/metadata/planCode").asText(null),
@@ -262,6 +304,12 @@ public class BillingWebhookService {
             String providerPaymentId = firstNonBlank(
                 root.path("payment_id").asText(null),
                 root.path("id").asText(null)
+            );
+            String orderReference = firstNonBlank(
+                root.path("external_id").asText(null),
+                root.path("external_reference").asText(null),
+                root.path("order_id").asText(null),
+                root.path("merchant_order_id").asText(null)
             );
 
             BigDecimal amount = parseDecimal(firstNonBlank(root.path("amount").asText(null), root.path("value").asText(null)));
@@ -280,8 +328,10 @@ public class BillingWebhookService {
                 providerObjectId,
                 eventType,
                 professionalId,
+                bookingId,
                 providerSubscriptionId,
                 providerPaymentId,
+                orderReference,
                 amount,
                 currency,
                 planCode,
@@ -300,6 +350,12 @@ public class BillingWebhookService {
         String paymentStatus = status == null ? "" : status;
 
         if (containsAny(type, "refund", "chargeback") || containsAny(paymentStatus, "refund", "chargeback")) {
+            if (containsAny(type, "partial") || containsAny(paymentStatus, "partial")) {
+                return WebhookEventType.REFUND_PARTIAL;
+            }
+            if (containsAny(type, "failed", "rejected") || containsAny(paymentStatus, "failed", "rejected", "denied")) {
+                return WebhookEventType.REFUND_FAILED;
+            }
             return WebhookEventType.PAYMENT_REFUNDED;
         }
         if (containsAny(type, "cancel") || containsAny(paymentStatus, "cancelled", "canceled")) {
@@ -320,7 +376,7 @@ public class BillingWebhookService {
         if (containsAny(type, "renew") || containsAny(type, "recurring")) {
             return WebhookEventType.SUBSCRIPTION_RENEWED;
         }
-        if (containsAny(paymentStatus, "approved", "paid", "authorized", "success")) {
+        if (containsAny(paymentStatus, "approved", "paid", "authorized", "success", "settled", "completed")) {
             return WebhookEventType.PAYMENT_SUCCEEDED;
         }
         if (containsAny(paymentStatus, "rejected", "failed", "expired", "denied")) {
@@ -328,6 +384,39 @@ public class BillingWebhookService {
         }
 
         return WebhookEventType.UNKNOWN;
+    }
+
+    private WebhookEventType resolveDlocalEventType(
+        String eventType,
+        String status,
+        String externalReference,
+        String providerObjectId
+    ) {
+        boolean payoutReference = externalReference != null && externalReference.startsWith("payout:");
+        boolean payoutLikeId = providerObjectId != null && providerObjectId.startsWith("PO-");
+        if (payoutReference || payoutLikeId) {
+            String normalizedStatus = status == null ? "" : status.trim().toUpperCase(Locale.ROOT);
+            if ("PAID".equals(normalizedStatus) || "DELIVERED".equals(normalizedStatus)) {
+                return WebhookEventType.PAYOUT_SUCCEEDED;
+            }
+            if ("REJECTED".equals(normalizedStatus) || "CANCELLED".equals(normalizedStatus)) {
+                return WebhookEventType.PAYOUT_FAILED;
+            }
+            return WebhookEventType.PAYOUT_PENDING;
+        }
+        return resolveEventType(eventType, status);
+    }
+
+    private boolean isRefundEvent(WebhookEventType eventType) {
+        return eventType == WebhookEventType.PAYMENT_REFUNDED
+            || eventType == WebhookEventType.REFUND_PARTIAL
+            || eventType == WebhookEventType.REFUND_FAILED;
+    }
+
+    private boolean isPayoutEvent(WebhookEventType eventType) {
+        return eventType == WebhookEventType.PAYOUT_PENDING
+            || eventType == WebhookEventType.PAYOUT_SUCCEEDED
+            || eventType == WebhookEventType.PAYOUT_FAILED;
     }
 
     private boolean isSubscriptionAction(String action) {
@@ -359,6 +448,24 @@ public class BillingWebhookService {
         } catch (NumberFormatException exception) {
             return null;
         }
+    }
+
+    private Long parseProfessionalId(String value) {
+        if (value == null || value.isBlank() || value.trim().toLowerCase(Locale.ROOT).startsWith("booking:")) {
+            return null;
+        }
+        return parseLong(value);
+    }
+
+    private Long parseBookingId(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        String normalized = value.trim().toLowerCase(Locale.ROOT);
+        if (!normalized.startsWith("booking:")) {
+            return null;
+        }
+        return parseLong(normalized.substring("booking:".length()));
     }
 
     private BigDecimal parseDecimal(String value) {

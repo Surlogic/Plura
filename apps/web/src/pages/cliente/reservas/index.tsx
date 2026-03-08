@@ -1,25 +1,29 @@
+import { isAxiosError } from 'axios';
 import { useEffect, useMemo, useState } from 'react';
+import { useRouter } from 'next/router';
 import Link from 'next/link';
 import ClientShell from '@/components/cliente/ClientShell';
 import { useClientProfile } from '@/hooks/useClientProfile';
 import {
+  cancelClientBooking,
+  createClientBookingPaymentSession,
+  getBookingActions,
   getClientBookings,
+  rescheduleClientBooking,
   type ClientDashboardBooking,
 } from '@/services/clientBookings';
+import { getPublicSlots } from '@/services/publicBookings';
+import {
+  formatBookingMoney,
+  getClientFinancialStatusCopy,
+  getOperationalStatusLabel,
+  getOperationalStatusTone,
+  getPaymentTypeLabel,
+  isPrepaidBooking,
+  shouldAutoRefreshFinancialStatus,
+} from '@/utils/bookings';
 
-const statusLabel: Record<ClientDashboardBooking['status'], string> = {
-  CONFIRMED: 'Confirmada',
-  PENDING: 'Pendiente',
-  CANCELLED: 'Cancelada',
-  COMPLETED: 'Completada',
-};
-
-const statusStyles: Record<ClientDashboardBooking['status'], string> = {
-  CONFIRMED: 'bg-[#1FB6A6]/10 text-[#1FB6A6]',
-  PENDING: 'bg-[#F59E0B]/10 text-[#F59E0B]',
-  CANCELLED: 'bg-[#EF4444]/10 text-[#EF4444]',
-  COMPLETED: 'bg-[#3B82F6]/10 text-[#3B82F6]',
-};
+const toLocalDateKey = (date: Date) => date.toLocaleDateString('en-CA');
 
 const isUpcomingBooking = (booking: ClientDashboardBooking, now: Date): boolean => {
   if (booking.status !== 'PENDING' && booking.status !== 'CONFIRMED') return false;
@@ -34,18 +38,37 @@ const sortByDateAsc = (a: ClientDashboardBooking, b: ClientDashboardBooking): nu
 const sortByDateDesc = (a: ClientDashboardBooking, b: ClientDashboardBooking): number =>
   new Date(b.dateTime).getTime() - new Date(a.dateTime).getTime();
 
-type ReservationCardProps = {
-  booking: ClientDashboardBooking;
-  highlighted?: boolean;
+const extractApiMessage = (error: unknown, fallback: string) => {
+  if (isAxiosError<{ message?: string }>(error)) {
+    return error.response?.data?.message || fallback;
+  }
+  if (error instanceof Error && error.message.trim()) {
+    return error.message;
+  }
+  return fallback;
 };
 
-function ReservationCard({ booking, highlighted = false }: ReservationCardProps) {
+type BookingCardProps = {
+  booking: ClientDashboardBooking;
+  isSelected: boolean;
+  onSelect: (bookingId: string) => void;
+};
+
+function BookingCard({ booking, isSelected, onSelect }: BookingCardProps) {
+  const financialCopy = getClientFinancialStatusCopy(
+    booking.paymentType,
+    booking.financialSummary,
+    booking.status,
+  );
+
   return (
-    <article
-      className={`rounded-[20px] border p-4 shadow-sm ${
-        highlighted
-          ? 'border-[#F59E0B]/40 bg-[#FFFBEB]'
-          : 'border-[#E2E7EC] bg-white'
+    <button
+      type="button"
+      onClick={() => onSelect(booking.id)}
+      className={`w-full rounded-[20px] border p-4 text-left shadow-sm transition ${
+        isSelected
+          ? 'border-[#1FB6A6]/45 bg-[#F0FDFA]'
+          : 'border-[#E2E7EC] bg-white hover:border-[#CBD5E1]'
       }`}
     >
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -53,48 +76,188 @@ function ReservationCard({ booking, highlighted = false }: ReservationCardProps)
           {booking.time} · {booking.service}
         </p>
         <span
-          className={`rounded-full px-3 py-1 text-xs font-semibold ${statusStyles[booking.status]}`}
+          className={`rounded-full px-3 py-1 text-xs font-semibold ${getOperationalStatusTone(booking.status)}`}
         >
-          {statusLabel[booking.status]}
+          {getOperationalStatusLabel(booking.status)}
         </span>
       </div>
 
       <p className="mt-2 text-sm text-[#475569]">{booking.professional}</p>
       <p className="mt-1 text-xs text-[#64748B]">{booking.date}</p>
-    </article>
+      <div className="mt-3 flex flex-wrap gap-2">
+        <span className="rounded-full border border-[#E2E8F0] bg-[#F8FAFC] px-3 py-1 text-[0.72rem] font-semibold text-[#475569]">
+          {getPaymentTypeLabel(booking.paymentType)}
+        </span>
+        <span className={`rounded-full px-3 py-1 text-[0.72rem] font-semibold ${financialCopy.tone}`}>
+          {financialCopy.label}
+        </span>
+      </div>
+    </button>
   );
 }
 
 export default function ClienteReservasPage() {
+  const router = useRouter();
   const { profile } = useClientProfile();
   const displayName = profile?.fullName || 'Cliente';
   const [bookings, setBookings] = useState<ClientDashboardBooking[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [selectedBookingId, setSelectedBookingId] = useState<string | null>(null);
+  const [actions, setActions] = useState<Awaited<ReturnType<typeof getBookingActions>> | null>(null);
+  const [isLoadingActions, setIsLoadingActions] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [statusMessage, setStatusMessage] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showReschedule, setShowReschedule] = useState(false);
+  const [rescheduleDate, setRescheduleDate] = useState(toLocalDateKey(new Date()));
+  const [rescheduleTime, setRescheduleTime] = useState('');
+  const [slotOptions, setSlotOptions] = useState<string[]>([]);
+  const [isLoadingSlots, setIsLoadingSlots] = useState(false);
+  const [cancelReason, setCancelReason] = useState('');
+
+  const queryBookingId = useMemo(() => {
+    const value = router.query.bookingId;
+    return Array.isArray(value) ? value[0] ?? null : value ?? null;
+  }, [router.query.bookingId]);
+
+  const queryMode = useMemo(() => {
+    const checkout = Array.isArray(router.query.checkout)
+      ? router.query.checkout[0]
+      : router.query.checkout;
+    const created = Array.isArray(router.query.created)
+      ? router.query.created[0]
+      : router.query.created;
+    return { checkout, created };
+  }, [router.query.checkout, router.query.created]);
+
+  const loadBookings = async (keepSelection = true) => {
+    try {
+      if (!keepSelection) setIsLoading(true);
+      setError(null);
+      const response = await getClientBookings();
+      setBookings(response);
+      setSelectedBookingId((current) => {
+        if (queryBookingId && response.some((booking) => booking.id === queryBookingId)) {
+          return queryBookingId;
+        }
+        if (keepSelection && current && response.some((booking) => booking.id === current)) {
+          return current;
+        }
+        return response[0]?.id ?? null;
+      });
+    } catch (loadError) {
+      setBookings([]);
+      setError('No pudimos cargar tus reservas en este momento.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   useEffect(() => {
-    let isCancelled = false;
-    setIsLoading(true);
-    setError(null);
+    void loadBookings(false);
+  }, []);
 
-    getClientBookings()
+  useEffect(() => {
+    if (!router.isReady) return;
+    if (queryMode.checkout === 'started') {
+      setStatusMessage('Checkout abierto. Cuando termines, esta vista se actualiza con el estado real del backend.');
+    } else if (queryMode.checkout === 'synced') {
+      setStatusMessage('La reserva volvió con estado financiero actualizado desde backend.');
+    } else if (queryMode.created === '1') {
+      setStatusMessage('Reserva creada correctamente.');
+    }
+  }, [queryMode.checkout, queryMode.created, router.isReady]);
+
+  const selectedBooking = useMemo(
+    () => bookings.find((booking) => booking.id === selectedBookingId) ?? null,
+    [bookings, selectedBookingId],
+  );
+
+  useEffect(() => {
+    if (!selectedBooking?.id) {
+      setActions(null);
+      setActionError(null);
+      return;
+    }
+
+    let cancelled = false;
+    setIsLoadingActions(true);
+    setActionError(null);
+
+    getBookingActions(selectedBooking.id)
       .then((response) => {
-        if (isCancelled) return;
-        setBookings(response);
+        if (!cancelled) {
+          setActions(response);
+        }
       })
-      .catch(() => {
-        if (isCancelled) return;
-        setBookings([]);
-        setError('No pudimos cargar tus reservas en este momento.');
+      .catch((loadError) => {
+        if (!cancelled) {
+          setActions(null);
+          setActionError(
+            extractApiMessage(loadError, 'No pudimos cargar las acciones de esta reserva.'),
+          );
+        }
       })
       .finally(() => {
-        if (!isCancelled) setIsLoading(false);
+        if (!cancelled) {
+          setIsLoadingActions(false);
+        }
       });
 
     return () => {
-      isCancelled = true;
+      cancelled = true;
     };
-  }, []);
+  }, [selectedBooking?.id]);
+
+  useEffect(() => {
+    if (!selectedBooking?.professionalSlug || !selectedBooking.serviceId || !showReschedule || !rescheduleDate) {
+      setSlotOptions([]);
+      return;
+    }
+
+    let cancelled = false;
+    setIsLoadingSlots(true);
+
+    getPublicSlots(
+      selectedBooking.professionalSlug,
+      rescheduleDate,
+      selectedBooking.serviceId,
+    )
+      .then((response) => {
+        if (!cancelled) {
+          setSlotOptions(response);
+          setRescheduleTime((current) => (current && response.includes(current) ? current : ''));
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setSlotOptions([]);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setIsLoadingSlots(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [rescheduleDate, selectedBooking?.professionalSlug, selectedBooking?.serviceId, showReschedule]);
+
+  useEffect(() => {
+    if (!selectedBooking?.financialSummary?.financialStatus) return;
+    if (!shouldAutoRefreshFinancialStatus(selectedBooking.financialSummary.financialStatus)) return;
+
+    const intervalId = window.setInterval(() => {
+      void loadBookings();
+    }, 5000);
+
+    return () => {
+      window.clearInterval(intervalId);
+    };
+  }, [selectedBooking?.financialSummary?.financialStatus]);
 
   const upcomingBookings = useMemo(() => {
     const now = new Date();
@@ -103,13 +266,6 @@ export default function ClienteReservasPage() {
       .sort(sortByDateAsc);
   }, [bookings]);
 
-  const nextBooking = useMemo(() => upcomingBookings[0] ?? null, [upcomingBookings]);
-
-  const additionalUpcomingBookings = useMemo(
-    () => upcomingBookings.slice(1),
-    [upcomingBookings],
-  );
-
   const pastBookings = useMemo(() => {
     const upcomingIds = new Set(upcomingBookings.map((booking) => booking.id));
     return bookings
@@ -117,77 +273,407 @@ export default function ClienteReservasPage() {
       .sort(sortByDateDesc);
   }, [bookings, upcomingBookings]);
 
+  const financialCopy = getClientFinancialStatusCopy(
+    selectedBooking?.paymentType,
+    selectedBooking?.financialSummary,
+    selectedBooking?.status,
+  );
+  const canResumeCheckout =
+    Boolean(selectedBooking)
+    && isPrepaidBooking(selectedBooking?.paymentType)
+    && selectedBooking?.financialSummary?.financialStatus === 'PAYMENT_PENDING';
+
+  const handleSelectBooking = (bookingId: string) => {
+    setSelectedBookingId(bookingId);
+    setShowReschedule(false);
+    setRescheduleTime('');
+    setCancelReason('');
+    void router.replace(
+      {
+        pathname: router.pathname,
+        query: { ...router.query, bookingId },
+      },
+      undefined,
+      { shallow: true },
+    );
+  };
+
+  const handleStartCheckout = async () => {
+    if (!selectedBooking) return;
+
+    const checkoutWindow = typeof window !== 'undefined'
+      ? window.open('', '_blank', 'noopener,noreferrer')
+      : null;
+
+    if (checkoutWindow) {
+      checkoutWindow.document.write(
+        '<p style="font-family:sans-serif;padding:24px">Preparando checkout seguro...</p>',
+      );
+    }
+
+    setIsSubmitting(true);
+    setActionError(null);
+    setStatusMessage(null);
+
+    try {
+      const session = await createClientBookingPaymentSession(selectedBooking.id);
+      if (session.checkoutUrl) {
+        if (checkoutWindow) {
+          checkoutWindow.location.href = session.checkoutUrl;
+        } else if (typeof window !== 'undefined') {
+          window.open(session.checkoutUrl, '_blank', 'noopener,noreferrer');
+        }
+        setStatusMessage('Checkout abierto. Esta vista seguirá mostrando el estado real de la reserva.');
+      } else {
+        if (checkoutWindow) checkoutWindow.close();
+        setStatusMessage('El backend devolvió la reserva sin abrir un checkout nuevo.');
+      }
+      await loadBookings();
+    } catch (submitError) {
+      if (checkoutWindow) checkoutWindow.close();
+      setActionError(
+        extractApiMessage(submitError, 'No se pudo iniciar el checkout en este momento.'),
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleCancelBooking = async () => {
+    if (!selectedBooking) return;
+    setIsSubmitting(true);
+    setActionError(null);
+    setStatusMessage(null);
+
+    try {
+      const response = await cancelClientBooking(selectedBooking.id, cancelReason);
+      setStatusMessage(response.plainTextFallback || 'Reserva cancelada correctamente.');
+      setCancelReason('');
+      setShowReschedule(false);
+      await loadBookings();
+    } catch (submitError) {
+      setActionError(
+        extractApiMessage(submitError, 'No se pudo cancelar la reserva.'),
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleRescheduleBooking = async () => {
+    if (!selectedBooking || !rescheduleDate || !rescheduleTime) {
+      setActionError('Elegí nueva fecha y hora para reagendar.');
+      return;
+    }
+
+    setIsSubmitting(true);
+    setActionError(null);
+    setStatusMessage(null);
+
+    try {
+      const response = await rescheduleClientBooking(
+        selectedBooking.id,
+        `${rescheduleDate}T${rescheduleTime}:00`,
+        Intl.DateTimeFormat().resolvedOptions().timeZone,
+      );
+      setStatusMessage(response.plainTextFallback || 'Reserva reagendada correctamente.');
+      setShowReschedule(false);
+      setRescheduleTime('');
+      await loadBookings();
+    } catch (submitError) {
+      setActionError(
+        extractApiMessage(submitError, 'No se pudo reagendar la reserva.'),
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   return (
     <ClientShell name={displayName} active="reservas">
       <section className="space-y-2 rounded-[28px] border border-white/70 bg-white/95 p-6 shadow-[0_20px_50px_rgba(15,23,42,0.1)]">
         <p className="text-xs uppercase tracking-[0.35em] text-[#94A3B8]">Reservas</p>
         <h1 className="text-3xl font-semibold text-[#0E2A47]">Mis reservas</h1>
         <p className="text-sm text-[#64748B]">
-          Revisa tu próxima reserva y el estado de todos tus turnos.
+          Consultá el estado real de tu reserva, su pago y las acciones permitidas por backend.
         </p>
       </section>
 
-      <section className="space-y-4 rounded-[24px] border border-[#E2E7EC] bg-white p-5 shadow-sm">
-        <div className="mb-4 flex items-center justify-between gap-3">
-          <h2 className="text-lg font-semibold text-[#0E2A47]">Próxima reserva</h2>
-          <Link
-            href="/explorar"
-            className="rounded-full border border-[#E2E7EC] bg-white px-4 py-2 text-xs font-semibold text-[#0E2A47] transition hover:-translate-y-0.5 hover:shadow-sm"
-          >
-            Explorar más
-          </Link>
+      {statusMessage ? (
+        <div className="rounded-[18px] border border-[#BFEDE7] bg-[#F0FDFA] px-4 py-3 text-sm text-[#0F766E]">
+          {statusMessage}
+        </div>
+      ) : null}
+
+      {error ? (
+        <div className="rounded-[18px] border border-[#FECACA] bg-[#FEF2F2] px-4 py-3 text-sm text-[#B91C1C]">
+          {error}
+        </div>
+      ) : null}
+
+      <section className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_420px]">
+        <div className="space-y-6">
+          <div className="space-y-3 rounded-[24px] border border-[#E2E7EC] bg-white p-5 shadow-sm">
+            <div className="flex items-center justify-between gap-3">
+              <h2 className="text-lg font-semibold text-[#0E2A47]">Próximas reservas</h2>
+              <Link
+                href="/explorar"
+                className="rounded-full border border-[#E2E7EC] bg-white px-4 py-2 text-xs font-semibold text-[#0E2A47] transition hover:-translate-y-0.5 hover:shadow-sm"
+              >
+                Explorar más
+              </Link>
+            </div>
+
+            {isLoading ? (
+              <p className="text-sm text-[#64748B]">Cargando reservas...</p>
+            ) : upcomingBookings.length === 0 ? (
+              <div className="rounded-[18px] border border-dashed border-[#E2E7EC] bg-[#F8FAFC] px-4 py-6 text-sm text-[#64748B]">
+                No tenés reservas próximas.
+              </div>
+            ) : (
+              upcomingBookings.map((booking) => (
+                <BookingCard
+                  key={booking.id}
+                  booking={booking}
+                  isSelected={booking.id === selectedBookingId}
+                  onSelect={handleSelectBooking}
+                />
+              ))
+            )}
+          </div>
+
+          <div className="space-y-3 rounded-[24px] border border-[#E2E7EC] bg-white p-5 shadow-sm">
+            <h2 className="text-lg font-semibold text-[#0E2A47]">Historial</h2>
+            {isLoading ? (
+              <p className="text-sm text-[#64748B]">Cargando historial...</p>
+            ) : pastBookings.length === 0 ? (
+              <div className="rounded-[18px] border border-dashed border-[#E2E7EC] bg-[#F8FAFC] px-4 py-6 text-sm text-[#64748B]">
+                Todavía no hay reservas pasadas.
+              </div>
+            ) : (
+              pastBookings.map((booking) => (
+                <BookingCard
+                  key={booking.id}
+                  booking={booking}
+                  isSelected={booking.id === selectedBookingId}
+                  onSelect={handleSelectBooking}
+                />
+              ))
+            )}
+          </div>
         </div>
 
-        {isLoading ? (
-          <p className="text-sm text-[#64748B]">Cargando reservas...</p>
-        ) : error ? (
-          <p className="rounded-[18px] border border-[#FECACA] bg-[#FEF2F2] px-4 py-3 text-sm text-[#B91C1C]">
-            {error}
-          </p>
-        ) : (
-          <div className="space-y-6">
-            <div className="space-y-3">
-              {nextBooking ? (
-                <ReservationCard booking={nextBooking} highlighted />
-              ) : (
-                <div className="rounded-[18px] border border-dashed border-[#E2E7EC] bg-[#F8FAFC] px-4 py-6 text-sm text-[#64748B]">
-                  No tienes reservas próximas.
+        <aside className="space-y-4 xl:sticky xl:top-24 xl:self-start">
+          <div className="rounded-[24px] border border-[#E2E7EC] bg-white p-5 shadow-sm">
+            {!selectedBooking ? (
+              <div className="rounded-[18px] border border-dashed border-[#E2E7EC] bg-[#F8FAFC] px-4 py-6 text-sm text-[#64748B]">
+                Seleccioná una reserva para ver su estado completo.
+              </div>
+            ) : (
+              <>
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <p className="text-xs uppercase tracking-[0.35em] text-[#94A3B8]">
+                      Estado de reserva
+                    </p>
+                    <h2 className="mt-2 text-2xl font-semibold text-[#0E2A47]">
+                      {selectedBooking.service}
+                    </h2>
+                    <p className="mt-1 text-sm text-[#64748B]">{selectedBooking.professional}</p>
+                  </div>
+                  <span
+                    className={`rounded-full px-3 py-1 text-xs font-semibold ${getOperationalStatusTone(selectedBooking.status)}`}
+                  >
+                    {getOperationalStatusLabel(selectedBooking.status)}
+                  </span>
                 </div>
-              )}
-            </div>
 
-            <div className="space-y-3">
-              <h3 className="text-sm font-semibold uppercase tracking-[0.18em] text-[#64748B]">
-                Próximas reservas
-              </h3>
-              {additionalUpcomingBookings.length === 0 ? (
-                <p className="rounded-[16px] border border-dashed border-[#E2E7EC] bg-[#F8FAFC] px-4 py-5 text-sm text-[#64748B]">
-                  No hay más reservas próximas.
-                </p>
-              ) : (
-                additionalUpcomingBookings.map((booking) => (
-                  <ReservationCard key={booking.id} booking={booking} />
-                ))
-              )}
-            </div>
+                <div className="mt-4 rounded-[18px] border border-[#E2E7EC] bg-[#F8FAFC] p-4">
+                  <div className="flex flex-wrap gap-2">
+                    <span className="rounded-full border border-[#E2E8F0] bg-white px-3 py-1 text-[0.72rem] font-semibold text-[#475569]">
+                      {getPaymentTypeLabel(selectedBooking.paymentType)}
+                    </span>
+                    <span className={`rounded-full px-3 py-1 text-[0.72rem] font-semibold ${financialCopy.tone}`}>
+                      {financialCopy.label}
+                    </span>
+                  </div>
+                  <p className="mt-3 text-sm text-[#475569]">{financialCopy.detail}</p>
 
-            <div className="space-y-3">
-              <h3 className="text-sm font-semibold uppercase tracking-[0.18em] text-[#64748B]">
-                Historial
-              </h3>
-              {pastBookings.length === 0 ? (
-                <p className="rounded-[16px] border border-dashed border-[#E2E7EC] bg-[#F8FAFC] px-4 py-5 text-sm text-[#64748B]">
-                  Todavía no hay reservas pasadas.
-                </p>
-              ) : (
-                pastBookings.map((booking) => (
-                  <ReservationCard key={booking.id} booking={booking} />
-                ))
-              )}
-            </div>
+                  <div className="mt-4 space-y-2 text-sm text-[#64748B]">
+                    <p>
+                      Fecha:{' '}
+                      <span className="font-semibold text-[#0E2A47]">
+                        {selectedBooking.date} · {selectedBooking.time}
+                      </span>
+                    </p>
+                    <p>
+                      Ubicación:{' '}
+                      <span className="font-semibold text-[#0E2A47]">{selectedBooking.location}</span>
+                    </p>
+                    {selectedBooking.financialSummary?.amountHeld ? (
+                      <p>
+                        Fondos retenidos:{' '}
+                        <span className="font-semibold text-[#0E2A47]">
+                          {formatBookingMoney(
+                            selectedBooking.financialSummary.amountHeld,
+                            selectedBooking.financialSummary.currency,
+                          )}
+                        </span>
+                      </p>
+                    ) : null}
+                    {selectedBooking.financialSummary?.amountRefunded ? (
+                      <p>
+                        Devuelto:{' '}
+                        <span className="font-semibold text-[#0E2A47]">
+                          {formatBookingMoney(
+                            selectedBooking.financialSummary.amountRefunded,
+                            selectedBooking.financialSummary.currency,
+                          )}
+                        </span>
+                      </p>
+                    ) : null}
+                  </div>
+                </div>
+
+                <div className="mt-4 rounded-[18px] border border-[#E2E7EC] bg-white p-4">
+                  <p className="text-xs uppercase tracking-[0.25em] text-[#94A3B8]">
+                    Lo que podés hacer ahora
+                  </p>
+                  {isLoadingActions ? (
+                    <p className="mt-3 text-sm text-[#64748B]">Cargando acciones…</p>
+                  ) : actionError ? (
+                    <p className="mt-3 text-sm text-[#B91C1C]">{actionError}</p>
+                  ) : (
+                    <>
+                      <p className="mt-3 text-sm text-[#475569]">
+                        {actions?.plainTextFallback || 'No hay mensajes adicionales para esta reserva.'}
+                      </p>
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        {actions?.suggestedAction && actions.suggestedAction !== 'NONE' ? (
+                          <span className="rounded-full bg-[#FEF3C7] px-3 py-1 text-[0.72rem] font-semibold text-[#B45309]">
+                            Sugerido: reagendar
+                          </span>
+                        ) : null}
+                        {typeof actions?.refundPreviewAmount === 'number' ? (
+                          <span className="rounded-full bg-[#DBEAFE] px-3 py-1 text-[0.72rem] font-semibold text-[#1D4ED8]">
+                            Preview devolución: {formatBookingMoney(actions.refundPreviewAmount, actions.currency)}
+                          </span>
+                        ) : null}
+                        {typeof actions?.retainPreviewAmount === 'number' && actions.retainPreviewAmount > 0 ? (
+                          <span className="rounded-full bg-[#FEE2E2] px-3 py-1 text-[0.72rem] font-semibold text-[#B91C1C]">
+                            Retención preview: {formatBookingMoney(actions.retainPreviewAmount, actions.currency)}
+                          </span>
+                        ) : null}
+                      </div>
+                    </>
+                  )}
+                </div>
+
+                {canResumeCheckout ? (
+                  <button
+                    type="button"
+                    onClick={handleStartCheckout}
+                    disabled={isSubmitting}
+                    className="mt-4 w-full rounded-full bg-[#0B1D2A] px-4 py-3 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {isSubmitting ? 'Abriendo checkout...' : 'Completar pago'}
+                  </button>
+                ) : null}
+
+                {actions?.canCancel ? (
+                  <div className="mt-4 space-y-3 rounded-[18px] border border-[#FDE68A] bg-[#FFFBEB] p-4">
+                    <p className="text-sm font-semibold text-[#92400E]">Cancelar reserva</p>
+                    <textarea
+                      value={cancelReason}
+                      onChange={(event) => setCancelReason(event.target.value)}
+                      placeholder="Motivo opcional"
+                      className="min-h-24 w-full rounded-[14px] border border-[#E5E7EB] px-3 py-2 text-sm text-[#0E2A47] outline-none transition focus:border-[#F59E0B]"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleCancelBooking}
+                      disabled={isSubmitting}
+                      className="w-full rounded-full border border-[#FCA5A5] bg-[#FEF2F2] px-4 py-2 text-sm font-semibold text-[#DC2626] transition hover:-translate-y-0.5 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      {isSubmitting ? 'Cancelando...' : 'Cancelar reserva'}
+                    </button>
+                  </div>
+                ) : null}
+
+                {actions?.canReschedule && selectedBooking.professionalSlug && selectedBooking.serviceId ? (
+                  <div className="mt-4 rounded-[18px] border border-[#E2E7EC] bg-white p-4">
+                    <div className="flex items-center justify-between gap-3">
+                      <p className="text-sm font-semibold text-[#0E2A47]">Reagendar</p>
+                      <button
+                        type="button"
+                        onClick={() => setShowReschedule((current) => !current)}
+                        className="rounded-full border border-[#E2E7EC] px-3 py-1 text-xs font-semibold text-[#475569]"
+                      >
+                        {showReschedule ? 'Cerrar' : 'Elegir horario'}
+                      </button>
+                    </div>
+
+                    {showReschedule ? (
+                      <div className="mt-4 space-y-4">
+                        <label className="block text-xs font-semibold uppercase tracking-[0.2em] text-[#64748B]">
+                          Fecha
+                          <input
+                            type="date"
+                            min={toLocalDateKey(new Date())}
+                            value={rescheduleDate}
+                            onChange={(event) => setRescheduleDate(event.target.value)}
+                            className="mt-1.5 w-full rounded-[12px] border border-[#D9E2EC] bg-white px-3 py-2.5 text-sm text-[#0E2A47] outline-none transition focus:border-[#1FB6A6]"
+                          />
+                        </label>
+
+                        <div className="space-y-2">
+                          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#64748B]">
+                            Horarios disponibles
+                          </p>
+                          <div className="grid grid-cols-3 gap-2">
+                            {isLoadingSlots ? (
+                              <p className="col-span-full text-sm text-[#64748B]">Buscando horarios...</p>
+                            ) : slotOptions.length === 0 ? (
+                              <p className="col-span-full text-sm text-[#64748B]">
+                                No encontramos horarios para esa fecha.
+                              </p>
+                            ) : (
+                              slotOptions.map((slot) => (
+                                <button
+                                  key={slot}
+                                  type="button"
+                                  onClick={() => setRescheduleTime(slot)}
+                                  className={`rounded-[10px] border px-2 py-1.5 text-sm font-semibold transition ${
+                                    rescheduleTime === slot
+                                      ? 'border-[#1FB6A6] bg-[#1FB6A6] text-white'
+                                      : 'border-[#E2E7EC] bg-white text-[#0E2A47]'
+                                  }`}
+                                >
+                                  {slot}
+                                </button>
+                              ))
+                            )}
+                          </div>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={handleRescheduleBooking}
+                          disabled={isSubmitting || !rescheduleTime}
+                          className="w-full rounded-full bg-[#0B1D2A] px-4 py-2 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                          {isSubmitting ? 'Guardando cambio...' : 'Confirmar nuevo horario'}
+                        </button>
+                      </div>
+                    ) : null}
+                  </div>
+                ) : null}
+              </>
+            )}
           </div>
-        )}
+        </aside>
       </section>
     </ClientShell>
   );
 }
+

@@ -4,15 +4,43 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.plura.plurabackend.availability.AvailableSlotAsyncDispatcher;
 import com.plura.plurabackend.availability.AvailableSlotService;
+import com.plura.plurabackend.availability.ScheduleSummaryService;
 import com.plura.plurabackend.cache.ProfileCacheService;
 import com.plura.plurabackend.cache.SlotCacheService;
+import com.plura.plurabackend.booking.actions.BookingActionsEvaluation;
+import com.plura.plurabackend.booking.actions.BookingActionsEvaluator;
+import com.plura.plurabackend.booking.actions.model.BookingActionActor;
+import com.plura.plurabackend.booking.actions.model.BookingActionReasonCode;
+import com.plura.plurabackend.booking.dto.BookingPolicyResponse;
+import com.plura.plurabackend.booking.dto.BookingPolicyUpdateRequest;
+import com.plura.plurabackend.booking.dto.BookingCancelRequest;
+import com.plura.plurabackend.booking.dto.BookingCommandResponse;
+import com.plura.plurabackend.booking.dto.BookingRescheduleRequest;
+import com.plura.plurabackend.booking.dto.BookingFinancialSummaryResponse;
 import com.plura.plurabackend.booking.dto.ProfessionalBookingResponse;
 import com.plura.plurabackend.booking.dto.ProfessionalBookingCreateRequest;
 import com.plura.plurabackend.booking.dto.ProfessionalBookingUpdateRequest;
 import com.plura.plurabackend.booking.dto.PublicBookingRequest;
 import com.plura.plurabackend.booking.dto.PublicBookingResponse;
+import com.plura.plurabackend.booking.decision.BookingActionDecisionService;
+import com.plura.plurabackend.booking.decision.model.BookingActionDecision;
+import com.plura.plurabackend.booking.decision.model.BookingActionType;
+import com.plura.plurabackend.booking.event.BookingEventService;
+import com.plura.plurabackend.booking.event.model.BookingActorType;
+import com.plura.plurabackend.booking.event.model.BookingEventType;
+import com.plura.plurabackend.booking.finance.BookingFinanceService;
+import com.plura.plurabackend.booking.finance.BookingFinanceUpdateResult;
+import com.plura.plurabackend.booking.finance.BookingProviderIntegrationService;
+import com.plura.plurabackend.booking.finance.model.BookingFinancialSummary;
+import com.plura.plurabackend.booking.finance.model.BookingPayoutRecord;
+import com.plura.plurabackend.booking.finance.model.BookingPayoutStatus;
 import com.plura.plurabackend.booking.model.Booking;
-import com.plura.plurabackend.booking.model.BookingStatus;
+import com.plura.plurabackend.booking.model.BookingOperationalStatus;
+import com.plura.plurabackend.booking.model.ServicePaymentType;
+import com.plura.plurabackend.booking.policy.BookingPolicySnapshotService;
+import com.plura.plurabackend.booking.policy.ResolvedBookingPolicy;
+import com.plura.plurabackend.booking.policy.model.BookingPolicy;
+import com.plura.plurabackend.booking.policy.repository.BookingPolicyRepository;
 import com.plura.plurabackend.booking.repository.BookingRepository;
 import com.plura.plurabackend.category.model.Category;
 import com.plura.plurabackend.common.util.SlugUtils;
@@ -37,12 +65,12 @@ import com.plura.plurabackend.productplan.EffectiveProductPlanService;
 import com.plura.plurabackend.search.engine.SearchSyncPublisher;
 import com.plura.plurabackend.storage.ImageStorageService;
 import com.plura.plurabackend.storage.thumbnail.ImageThumbnailJobService;
-import com.plura.plurabackend.availability.ScheduleSummaryService;
 import com.plura.plurabackend.user.model.User;
 import com.plura.plurabackend.user.model.UserRole;
 import com.plura.plurabackend.user.repository.UserRepository;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Timer;
+import java.math.BigDecimal;
 import java.time.DayOfWeek;
 import java.time.Duration;
 import java.time.LocalDate;
@@ -61,11 +89,14 @@ import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
+import java.util.LinkedHashMap;
 import java.util.UUID;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -116,6 +147,13 @@ public class ProfessionalPublicPageCoreService {
     private final ProfessionalCategorySupport categorySupport;
     private final ProfesionalServiceRepository profesionalServiceRepository;
     private final BookingRepository bookingRepository;
+    private final BookingPolicyRepository bookingPolicyRepository;
+    private final BookingPolicySnapshotService bookingPolicySnapshotService;
+    private final BookingActionsEvaluator bookingActionsEvaluator;
+    private final BookingActionDecisionService bookingActionDecisionService;
+    private final BookingFinanceService bookingFinanceService;
+    private final BookingProviderIntegrationService bookingProviderIntegrationService;
+    private final BookingEventService bookingEventService;
     private final UserRepository userRepository;
     private final ObjectMapper objectMapper;
     private final ZoneId systemZoneId;
@@ -140,6 +178,13 @@ public class ProfessionalPublicPageCoreService {
         ProfessionalCategorySupport categorySupport,
         ProfesionalServiceRepository profesionalServiceRepository,
         BookingRepository bookingRepository,
+        BookingPolicyRepository bookingPolicyRepository,
+        BookingPolicySnapshotService bookingPolicySnapshotService,
+        BookingActionsEvaluator bookingActionsEvaluator,
+        BookingActionDecisionService bookingActionDecisionService,
+        BookingFinanceService bookingFinanceService,
+        BookingProviderIntegrationService bookingProviderIntegrationService,
+        BookingEventService bookingEventService,
         UserRepository userRepository,
         @Value("${app.timezone:America/Montevideo}") String appTimezone,
         @Value("${app.mapbox.token:}") String mapboxToken,
@@ -162,6 +207,13 @@ public class ProfessionalPublicPageCoreService {
         this.categorySupport = categorySupport;
         this.profesionalServiceRepository = profesionalServiceRepository;
         this.bookingRepository = bookingRepository;
+        this.bookingPolicyRepository = bookingPolicyRepository;
+        this.bookingPolicySnapshotService = bookingPolicySnapshotService;
+        this.bookingActionsEvaluator = bookingActionsEvaluator;
+        this.bookingActionDecisionService = bookingActionDecisionService;
+        this.bookingFinanceService = bookingFinanceService;
+        this.bookingProviderIntegrationService = bookingProviderIntegrationService;
+        this.bookingEventService = bookingEventService;
         this.userRepository = userRepository;
         this.objectMapper = objectMapper;
         this.systemZoneId = ZoneId.of(appTimezone);
@@ -302,9 +354,27 @@ public class ProfessionalPublicPageCoreService {
             booking.setProfessional(profile);
             booking.setService(service);
             booking.setStartDateTime(startDateTime);
-            booking.setStatus(BookingStatus.PENDING);
+            booking.setTimezone(systemZoneId.getId());
+            booking.applyOperationalStatus(BookingOperationalStatus.PENDING, now);
             booking.setCreatedAt(now);
+            captureServiceSnapshot(booking, service);
+            bookingPolicySnapshotService.applySnapshot(
+                booking,
+                bookingPolicySnapshotService.buildForProfessional(profile)
+            );
             Booking saved = bookingRepository.saveAndFlush(booking);
+            bookingFinanceService.ensureInitialized(saved);
+            bookingEventService.record(
+                saved,
+                BookingEventType.BOOKING_CREATED,
+                BookingActorType.CLIENT,
+                user.getId(),
+                Map.of(
+                    "operationalStatus", saved.getOperationalStatus().name(),
+                    "timezone", saved.getTimezone(),
+                    "servicePaymentType", saved.getServicePaymentTypeSnapshot().name()
+                )
+            );
             requestAvailabilityRebuildDay(profile.getId(), bookingDate);
             searchSyncPublisher.publishProfileChanged(profile.getId());
             evictSlotCacheForProfessional(profile.getId());
@@ -313,8 +383,9 @@ public class ProfessionalPublicPageCoreService {
 
             return new PublicBookingResponse(
                 saved.getId(),
-                saved.getStatus().name(),
+                saved.getOperationalStatus().name(),
                 saved.getStartDateTime().toString(),
+                saved.getTimezone(),
                 saved.getService().getId(),
                 String.valueOf(saved.getProfessional().getId()),
                 String.valueOf(saved.getUser().getId())
@@ -368,11 +439,19 @@ public class ProfessionalPublicPageCoreService {
         ProfessionalProfile profile = loadProfessionalByUserId(rawUserId);
         LocalDateTime start = dateFrom.atStartOfDay();
         LocalDateTime end = dateTo.atTime(LocalTime.MAX);
-        return bookingRepository.findProfessionalBookingResponsesByProfessionalAndStartDateTimeBetween(
+        List<ProfessionalBookingResponse> bookings = bookingRepository.findProfessionalBookingResponsesByProfessionalAndStartDateTimeBetween(
             profile,
             start,
             end
         );
+        Map<Long, BookingFinancialSummaryResponse> summaries = bookingFinanceService.findResponseMapByBookingIds(
+            bookings.stream()
+                .map(ProfessionalBookingResponse::getId)
+                .filter(Objects::nonNull)
+                .toList()
+        );
+        bookings.forEach(booking -> booking.setFinancialSummary(summaries.get(booking.getId())));
+        return bookings;
     }
 
     @Transactional
@@ -405,9 +484,16 @@ public class ProfessionalPublicPageCoreService {
         Booking booking = bookingRepository.findById(created.getId())
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Reserva no encontrada"));
 
-        if (booking.getStatus() == BookingStatus.PENDING) {
-            booking.setStatus(BookingStatus.CONFIRMED);
+        if (booking.getOperationalStatus() == BookingOperationalStatus.PENDING) {
+            booking.applyOperationalStatus(BookingOperationalStatus.CONFIRMED, nowInSystemZone());
             booking = bookingRepository.save(booking);
+            bookingEventService.record(
+                booking,
+                BookingEventType.BOOKING_CONFIRMED,
+                BookingActorType.PROFESSIONAL,
+                profile.getUser().getId(),
+                Map.of("source", "manual_professional_booking")
+            );
         }
 
         return mapProfessionalBooking(booking);
@@ -415,6 +501,358 @@ public class ProfessionalPublicPageCoreService {
 
     @Transactional
     public ProfessionalBookingResponse updateProfessionalBooking(
+        String rawUserId,
+        Long bookingId,
+        ProfessionalBookingUpdateRequest request
+    ) {
+        if (request != null && request.getStatus() != null) {
+            return switch (request.getStatus()) {
+                case CANCELLED -> cancelBookingAsProfessional(rawUserId, bookingId, null).getBooking();
+                case NO_SHOW -> markBookingNoShow(rawUserId, bookingId).getBooking();
+                case COMPLETED -> completeBooking(rawUserId, bookingId).getBooking();
+                case PENDING, CONFIRMED -> updateBookingStatusAsProfessional(rawUserId, bookingId, request);
+            };
+        }
+        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Payload inválido");
+    }
+
+    @Transactional
+    public BookingCommandResponse cancelBookingAsClient(
+        String rawUserId,
+        Long bookingId,
+        BookingCancelRequest request
+    ) {
+        User client = loadClientByUserId(rawUserId);
+        LocalDateTime now = nowInSystemZone();
+        Booking booking = bookingRepository.findDetailedByIdForUpdate(bookingId)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Reserva no encontrada"));
+        ensureClientOwnsBooking(client.getId(), booking);
+
+        BookingActionActor actor = new BookingActionActor(
+            BookingActionActor.BookingActionActorType.CLIENT,
+            client.getId(),
+            null
+        );
+        EvaluatedBookingAction evaluated = evaluateBookingAction(booking, actor, now);
+        requireAllowedAction(evaluated.evaluation().canCancel(), evaluated.evaluation());
+
+        BookingOperationalStatus previousStatus = booking.getOperationalStatus();
+        booking.applyOperationalStatus(BookingOperationalStatus.CANCELLED, now);
+        Booking saved = bookingRepository.saveAndFlush(booking);
+
+        BookingActionDecision decision = bookingActionDecisionService.record(
+            saved,
+            BookingActionType.CANCEL,
+            BookingActorType.CLIENT,
+            client.getId(),
+            previousStatus,
+            saved.getOperationalStatus(),
+            evaluated.evaluation(),
+            buildCancellationDecisionSnapshot(saved, evaluated.resolvedPolicy(), request)
+        );
+        BookingFinanceUpdateResult financeResult = bookingProviderIntegrationService.processPostDecision(
+            saved,
+            bookingFinanceService.applyDecision(saved, decision)
+        );
+
+        bookingEventService.record(
+            saved,
+            BookingEventType.BOOKING_CANCELLED,
+            BookingActorType.CLIENT,
+            client.getId(),
+            buildCancellationEventPayload(saved, previousStatus, decision, request)
+        );
+
+        refreshBookingAvailabilityAndCaches(saved.getProfessional(), Set.of(saved.getStartDateTime().toLocalDate()));
+        return toBookingCommandResponse(saved, decision, financeResult);
+    }
+
+    @Transactional
+    public BookingCommandResponse cancelBookingAsProfessional(
+        String rawUserId,
+        Long bookingId,
+        BookingCancelRequest request
+    ) {
+        ProfessionalProfile profile = loadProfessionalByUserId(rawUserId);
+        LocalDateTime now = nowInSystemZone();
+        Booking booking = bookingRepository.findDetailedByIdForUpdate(bookingId)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Reserva no encontrada"));
+        ensureProfessionalOwnsBooking(profile.getId(), booking);
+
+        BookingActionActor actor = new BookingActionActor(
+            BookingActionActor.BookingActionActorType.PROFESSIONAL,
+            profile.getUser().getId(),
+            profile.getId()
+        );
+        EvaluatedBookingAction evaluated = evaluateBookingAction(booking, actor, now);
+        requireAllowedAction(evaluated.evaluation().canCancel(), evaluated.evaluation());
+
+        BookingOperationalStatus previousStatus = booking.getOperationalStatus();
+        booking.applyOperationalStatus(BookingOperationalStatus.CANCELLED, now);
+        Booking saved = bookingRepository.saveAndFlush(booking);
+
+        BookingActionDecision decision = bookingActionDecisionService.record(
+            saved,
+            BookingActionType.CANCEL,
+            BookingActorType.PROFESSIONAL,
+            profile.getUser().getId(),
+            previousStatus,
+            saved.getOperationalStatus(),
+            evaluated.evaluation(),
+            buildCancellationDecisionSnapshot(saved, evaluated.resolvedPolicy(), request)
+        );
+        BookingFinanceUpdateResult financeResult = bookingProviderIntegrationService.processPostDecision(
+            saved,
+            bookingFinanceService.applyDecision(saved, decision)
+        );
+
+        bookingEventService.record(
+            saved,
+            BookingEventType.BOOKING_CANCELLED,
+            BookingActorType.PROFESSIONAL,
+            profile.getUser().getId(),
+            buildCancellationEventPayload(saved, previousStatus, decision, request)
+        );
+
+        refreshBookingAvailabilityAndCaches(saved.getProfessional(), Set.of(saved.getStartDateTime().toLocalDate()));
+        return toBookingCommandResponse(saved, decision, financeResult);
+    }
+
+    @Transactional
+    public BookingCommandResponse rescheduleBookingAsClient(
+        String rawUserId,
+        Long bookingId,
+        BookingRescheduleRequest request
+    ) {
+        User client = loadClientByUserId(rawUserId);
+        LocalDateTime now = nowInSystemZone();
+        Booking booking = bookingRepository.findDetailedByIdForUpdate(bookingId)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Reserva no encontrada"));
+        ensureClientOwnsBooking(client.getId(), booking);
+
+        BookingActionActor actor = new BookingActionActor(
+            BookingActionActor.BookingActionActorType.CLIENT,
+            client.getId(),
+            null
+        );
+        EvaluatedBookingAction evaluated = evaluateBookingAction(booking, actor, now);
+        requireAllowedAction(evaluated.evaluation().canReschedule(), evaluated.evaluation());
+
+        return performReschedule(
+            booking,
+            request,
+            now,
+            BookingActorType.CLIENT,
+            client.getId(),
+            evaluated
+        );
+    }
+
+    @Transactional
+    public BookingCommandResponse rescheduleBookingAsProfessional(
+        String rawUserId,
+        Long bookingId,
+        BookingRescheduleRequest request
+    ) {
+        ProfessionalProfile profile = loadProfessionalByUserId(rawUserId);
+        LocalDateTime now = nowInSystemZone();
+        Booking booking = bookingRepository.findDetailedByIdForUpdate(bookingId)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Reserva no encontrada"));
+        ensureProfessionalOwnsBooking(profile.getId(), booking);
+
+        BookingActionActor actor = new BookingActionActor(
+            BookingActionActor.BookingActionActorType.PROFESSIONAL,
+            profile.getUser().getId(),
+            profile.getId()
+        );
+        EvaluatedBookingAction evaluated = evaluateBookingAction(booking, actor, now);
+        requireAllowedAction(evaluated.evaluation().canReschedule(), evaluated.evaluation());
+
+        return performReschedule(
+            booking,
+            request,
+            now,
+            BookingActorType.PROFESSIONAL,
+            profile.getUser().getId(),
+            evaluated
+        );
+    }
+
+    @Transactional
+    public BookingCommandResponse markBookingNoShow(
+        String rawUserId,
+        Long bookingId
+    ) {
+        ProfessionalProfile profile = loadProfessionalByUserId(rawUserId);
+        LocalDateTime now = nowInSystemZone();
+        Booking booking = bookingRepository.findDetailedByIdForUpdate(bookingId)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Reserva no encontrada"));
+        ensureProfessionalOwnsBooking(profile.getId(), booking);
+
+        BookingActionActor actor = new BookingActionActor(
+            BookingActionActor.BookingActionActorType.PROFESSIONAL,
+            profile.getUser().getId(),
+            profile.getId()
+        );
+        EvaluatedBookingAction evaluated = evaluateBookingAction(booking, actor, now);
+        if (!evaluated.evaluation().canMarkNoShow()) {
+            throw new ResponseStatusException(
+                HttpStatus.CONFLICT,
+                evaluated.evaluation().plainTextFallback()
+            );
+        }
+
+        BookingOperationalStatus previousStatus = booking.getOperationalStatus();
+        booking.applyOperationalStatus(BookingOperationalStatus.NO_SHOW, now);
+        Booking saved = bookingRepository.saveAndFlush(booking);
+
+        BookingActionDecision decision = bookingActionDecisionService.recordManual(
+            saved,
+            BookingActionType.NO_SHOW,
+            BookingActorType.PROFESSIONAL,
+            profile.getUser().getId(),
+            previousStatus,
+            saved.getOperationalStatus(),
+            evaluated.evaluation().refundPreviewAmount(),
+            evaluated.evaluation().retainPreviewAmount(),
+            evaluated.evaluation().currency(),
+            List.of(BookingActionReasonCode.NO_SHOW_MARKED_MANUALLY.name()),
+            "booking.actions.no_show_marked",
+            Map.of("bookingId", String.valueOf(saved.getId())),
+            "La reserva fue marcada manualmente como no-show.",
+            evaluated.evaluation().retainPreviewAmount() != null
+                && evaluated.evaluation().retainPreviewAmount().signum() > 0
+                    ? "RETENTION_RECORDED"
+                    : "NO_FINANCIAL_ACTION",
+            Map.of(
+                "policySource", evaluated.resolvedPolicy().source().name(),
+                "markedAt", now.toString()
+            )
+        );
+        BookingFinanceUpdateResult financeResult = bookingProviderIntegrationService.processPostDecision(
+            saved,
+            bookingFinanceService.applyDecision(saved, decision)
+        );
+
+        bookingEventService.record(
+            saved,
+            BookingEventType.BOOKING_NO_SHOW_MARKED,
+            BookingActorType.PROFESSIONAL,
+            profile.getUser().getId(),
+            Map.of(
+                "previousStatus", previousStatus.name(),
+                "nextStatus", saved.getOperationalStatus().name(),
+                "decisionId", decision.getId()
+            )
+        );
+
+        return toBookingCommandResponse(saved, decision, financeResult);
+    }
+
+    @Transactional
+    public BookingCommandResponse completeBooking(
+        String rawUserId,
+        Long bookingId
+    ) {
+        ProfessionalProfile profile = loadProfessionalByUserId(rawUserId);
+        LocalDateTime now = nowInSystemZone();
+
+        Booking booking = bookingRepository.findDetailedByIdForUpdate(bookingId)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Reserva no encontrada"));
+        ensureProfessionalOwnsBooking(profile.getId(), booking);
+
+        if (booking.getOperationalStatus() != BookingOperationalStatus.CONFIRMED) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "La reserva no puede completarse en su estado actual");
+        }
+        if (booking.getStartDateTime().isAfter(now)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "La reserva solo puede completarse después de su inicio");
+        }
+
+        BookingOperationalStatus previousStatus = booking.getOperationalStatus();
+        booking.applyOperationalStatus(BookingOperationalStatus.COMPLETED, now);
+        Booking saved = bookingRepository.saveAndFlush(booking);
+
+        BookingActionDecision decision = bookingActionDecisionService.recordManual(
+            saved,
+            BookingActionType.COMPLETE,
+            BookingActorType.PROFESSIONAL,
+            profile.getUser().getId(),
+            previousStatus,
+            saved.getOperationalStatus(),
+            BigDecimal.ZERO,
+            BigDecimal.ZERO,
+            "UYU",
+            List.of(BookingActionReasonCode.BOOKING_COMPLETED_MANUALLY.name()),
+            "booking.actions.booking_completed",
+            Map.of("bookingId", String.valueOf(saved.getId())),
+            "La reserva fue marcada como completada.",
+            "NO_FINANCIAL_ACTION",
+            Map.of("completedAt", now.toString())
+        );
+        BookingFinanceUpdateResult financeResult = bookingProviderIntegrationService.processPostDecision(
+            saved,
+            bookingFinanceService.applyDecision(saved, decision)
+        );
+
+        bookingEventService.record(
+            saved,
+            BookingEventType.BOOKING_COMPLETED,
+            BookingActorType.PROFESSIONAL,
+            profile.getUser().getId(),
+            Map.of(
+                "previousStatus", previousStatus.name(),
+                "nextStatus", saved.getOperationalStatus().name(),
+                "decisionId", decision.getId()
+            )
+        );
+
+        return toBookingCommandResponse(saved, decision, financeResult);
+    }
+
+    @Transactional
+    public BookingCommandResponse retryBookingPayout(
+        String rawUserId,
+        Long bookingId
+    ) {
+        ProfessionalProfile profile = loadProfessionalByUserId(rawUserId);
+        Booking booking = bookingRepository.findDetailedByIdForUpdate(bookingId)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Reserva no encontrada"));
+        ensureProfessionalOwnsBooking(profile.getId(), booking);
+
+        BookingPayoutRecord payoutRecord = bookingFinanceService.findLatestPayoutRecord(booking.getId());
+        if (payoutRecord == null) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "La reserva no tiene payout para reintentar");
+        }
+        if (payoutRecord.getStatus() == null || payoutRecord.getStatus() == BookingPayoutStatus.COMPLETED) {
+            BookingFinancialSummary summary = bookingFinanceService.ensureInitializedWithEvidence(booking);
+            return new BookingCommandResponse(
+                mapProfessionalBooking(booking),
+                null,
+                booking.getOperationalStatus().name(),
+                bookingFinanceService.toResponse(summary),
+                null,
+                bookingFinanceService.toResponse(payoutRecord),
+                "booking.payout.already_completed",
+                Map.of("bookingId", String.valueOf(booking.getId())),
+                "El payout ya fue completado."
+            );
+        }
+
+        BookingFinanceUpdateResult financeResult = bookingProviderIntegrationService.retryPayout(booking, payoutRecord);
+        return new BookingCommandResponse(
+            mapProfessionalBooking(booking),
+            null,
+            booking.getOperationalStatus().name(),
+            financeResult == null ? null : bookingFinanceService.toResponse(financeResult.summary()),
+            financeResult == null ? null : bookingFinanceService.toResponse(financeResult.refundRecord()),
+            financeResult == null ? null : bookingFinanceService.toResponse(financeResult.payoutRecord()),
+            "booking.payout.retry_processed",
+            Map.of("bookingId", String.valueOf(booking.getId())),
+            "El retry de payout fue procesado."
+        );
+    }
+
+    private ProfessionalBookingResponse updateBookingStatusAsProfessional(
         String rawUserId,
         Long bookingId,
         ProfessionalBookingUpdateRequest request
@@ -428,9 +866,11 @@ public class ProfessionalPublicPageCoreService {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "No autorizado");
         }
 
-        validateBookingStatusTransition(booking.getStatus(), request.getStatus());
-        booking.setStatus(request.getStatus());
+        BookingOperationalStatus previousStatus = booking.getOperationalStatus();
+        validateBookingStatusTransition(previousStatus, request.getStatus());
+        booking.applyOperationalStatus(request.getStatus(), nowInSystemZone());
         Booking saved = bookingRepository.save(booking);
+        recordOperationalStatusEvent(saved, previousStatus, profile.getUser().getId());
         requestAvailabilityRebuildDay(profile.getId(), saved.getStartDateTime().toLocalDate());
         searchSyncPublisher.publishProfileChanged(profile.getId());
         if (profile.getSlug() != null && !profile.getSlug().isBlank()) {
@@ -613,6 +1053,9 @@ public class ProfessionalPublicPageCoreService {
             if (phone.isBlank()) {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "El teléfono no puede estar vacío");
             }
+            if (user.getPhoneNumber() == null || !user.getPhoneNumber().trim().equals(phone)) {
+                user.setPhoneVerifiedAt(null);
+            }
             user.setPhoneNumber(phone);
         }
 
@@ -773,6 +1216,48 @@ public class ProfessionalPublicPageCoreService {
         return normalized;
     }
 
+    public BookingPolicyResponse getBookingPolicy(String rawUserId) {
+        ProfessionalProfile profile = loadProfessionalByUserId(rawUserId);
+        return toBookingPolicyResponse(
+            bookingPolicyRepository.findByProfessional_Id(profile.getId())
+                .orElseGet(() -> defaultBookingPolicy(profile))
+        );
+    }
+
+    @Transactional
+    public BookingPolicyResponse updateBookingPolicy(
+        String rawUserId,
+        BookingPolicyUpdateRequest request
+    ) {
+        if (request == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Payload inválido");
+        }
+
+        ProfessionalProfile profile = loadProfessionalByUserId(rawUserId);
+        BookingPolicy policy = resolveOrCreateBookingPolicy(profile);
+
+        if (request.getAllowClientCancellation() != null) {
+            policy.setAllowClientCancellation(request.getAllowClientCancellation());
+        }
+        if (request.getAllowClientReschedule() != null) {
+            policy.setAllowClientReschedule(request.getAllowClientReschedule());
+        }
+        if (request.getCancellationWindowHours() != null) {
+            policy.setCancellationWindowHours(request.getCancellationWindowHours());
+        }
+        if (request.getRescheduleWindowHours() != null) {
+            policy.setRescheduleWindowHours(request.getRescheduleWindowHours());
+        }
+        if (request.getMaxClientReschedules() != null) {
+            policy.setMaxClientReschedules(request.getMaxClientReschedules());
+        }
+        if (request.getRetainDepositOnLateCancellation() != null) {
+            policy.setRetainDepositOnLateCancellation(request.getRetainDepositOnLateCancellation());
+        }
+
+        return toBookingPolicyResponse(bookingPolicyRepository.save(policy));
+    }
+
     public List<ProfesionalServiceResponse> listServices(String rawUserId) {
         ProfessionalProfile profile = loadProfessionalByUserId(rawUserId);
         return profesionalServiceRepository.findByProfessional_IdOrderByCreatedAtDesc(profile.getId())
@@ -789,9 +1274,12 @@ public class ProfessionalPublicPageCoreService {
         service.setName(request.getName() == null ? null : request.getName().trim());
         service.setDescription(normalizeOptional(request.getDescription()));
         service.setPrice(request.getPrice() == null ? null : request.getPrice().toPlainString());
+        service.setDepositAmount(request.getDepositAmount());
         service.setDuration(request.getDuration() == null ? null : request.getDuration().trim());
         service.setImageUrl(normalizeOptional(request.getImageUrl()));
         service.setPostBufferMinutes(sanitizePostBufferMinutes(request.getPostBufferMinutes()));
+        service.setPaymentType(resolveServicePaymentType(request.getPaymentType()));
+        service.setCurrency(resolveServiceCurrency(request.getCurrency()));
         service.setActive(request.getActive() == null ? true : request.getActive());
 
         ProfesionalService saved = profesionalServiceRepository.save(service);
@@ -828,6 +1316,9 @@ public class ProfessionalPublicPageCoreService {
         if (request.getPrice() != null) {
             service.setPrice(request.getPrice().toPlainString());
         }
+        if (request.getDepositAmount() != null) {
+            service.setDepositAmount(request.getDepositAmount());
+        }
         if (request.getDuration() != null) {
             service.setDuration(request.getDuration().trim());
         }
@@ -836,6 +1327,12 @@ public class ProfessionalPublicPageCoreService {
         }
         if (request.getPostBufferMinutes() != null) {
             service.setPostBufferMinutes(sanitizePostBufferMinutes(request.getPostBufferMinutes()));
+        }
+        if (request.getPaymentType() != null) {
+            service.setPaymentType(resolveServicePaymentType(request.getPaymentType()));
+        }
+        if (request.getCurrency() != null) {
+            service.setCurrency(resolveServiceCurrency(request.getCurrency()));
         }
         if (request.getActive() != null) {
             service.setActive(request.getActive());
@@ -940,6 +1437,278 @@ public class ProfessionalPublicPageCoreService {
                 exception
             );
         }
+    }
+
+    private BookingCommandResponse performReschedule(
+        Booking booking,
+        BookingRescheduleRequest request,
+        LocalDateTime now,
+        BookingActorType actorType,
+        Long actorUserId,
+        EvaluatedBookingAction evaluated
+    ) {
+        if (request == null || request.getStartDateTime() == null || request.getStartDateTime().isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "El nuevo horario es obligatorio");
+        }
+
+        ProfessionalProfile lockedProfessional = professionalProfileRepository.findByIdForUpdate(booking.getProfessional().getId())
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Profesional no encontrado"));
+
+        LocalDateTime nextStartDateTime = parseClientDateTimeToSystemZone(request.getStartDateTime());
+        if (nextStartDateTime.equals(booking.getStartDateTime())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "El nuevo horario debe ser distinto al actual");
+        }
+        if (!nextStartDateTime.isAfter(now)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "La nueva fecha debe ser futura");
+        }
+
+        String nextTimezone = resolveBookingTimezoneForReschedule(booking, request);
+        LocalDate previousDate = booking.getStartDateTime().toLocalDate();
+        LocalDate nextDate = nextStartDateTime.toLocalDate();
+        String nextSlotTime = nextStartDateTime.toLocalTime().format(TIME_FORMATTER);
+
+        ProfesionalScheduleDto schedule = readStoredSchedule(lockedProfessional.getScheduleJson());
+        List<BookedWindow> bookedWindows = loadBookedWindows(lockedProfessional, nextDate, booking.getId());
+        List<String> availableSlots = calculateAvailableSlots(
+            nextDate,
+            booking.getService(),
+            schedule,
+            bookedWindows,
+            now,
+            resolveSlotDurationMinutes(lockedProfessional.getSlotDurationMinutes())
+        );
+        if (!availableSlots.contains(nextSlotTime)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "El nuevo horario ya no está disponible");
+        }
+
+        BookingOperationalStatus previousStatus = booking.getOperationalStatus();
+        LocalDateTime previousStartDateTime = booking.getStartDateTime();
+        String previousTimezone = booking.getTimezone();
+        Integer previousRescheduleCount = booking.getRescheduleCount() == null ? 0 : booking.getRescheduleCount();
+
+        booking.setStartDateTime(nextStartDateTime);
+        booking.setTimezone(nextTimezone);
+        booking.setRescheduleCount(previousRescheduleCount + 1);
+        Booking saved = bookingRepository.saveAndFlush(booking);
+
+        BookingActionDecision decision = bookingActionDecisionService.record(
+            saved,
+            BookingActionType.RESCHEDULE,
+            actorType,
+            actorUserId,
+            previousStatus,
+            saved.getOperationalStatus(),
+            evaluated.evaluation(),
+            buildRescheduleDecisionSnapshot(
+                evaluated.resolvedPolicy(),
+                previousStartDateTime,
+                nextStartDateTime,
+                previousTimezone,
+                nextTimezone,
+                previousRescheduleCount,
+                saved.getRescheduleCount()
+            )
+        );
+        BookingFinanceUpdateResult financeResult = bookingProviderIntegrationService.processPostDecision(
+            saved,
+            bookingFinanceService.applyDecision(saved, decision)
+        );
+
+        bookingEventService.record(
+            saved,
+            BookingEventType.BOOKING_RESCHEDULED,
+            actorType,
+            actorUserId,
+            Map.of(
+                "previousStartDateTime", previousStartDateTime.toString(),
+                "nextStartDateTime", nextStartDateTime.toString(),
+                "previousTimezone", previousTimezone,
+                "nextTimezone", nextTimezone,
+                "rescheduleCountBefore", previousRescheduleCount,
+                "rescheduleCountAfter", saved.getRescheduleCount(),
+                "decisionId", decision.getId()
+            )
+        );
+
+        refreshBookingAvailabilityAndCaches(lockedProfessional, buildAffectedDates(previousDate, nextDate));
+        return toBookingCommandResponse(saved, decision, financeResult);
+    }
+
+    private EvaluatedBookingAction evaluateBookingAction(
+        Booking booking,
+        BookingActionActor actor,
+        LocalDateTime now
+    ) {
+        ResolvedBookingPolicy resolvedPolicy = bookingPolicySnapshotService.resolveForBooking(booking);
+        BookingActionsEvaluation rawEvaluation = bookingActionsEvaluator.evaluate(
+            booking,
+            actor,
+            resolvedPolicy.snapshot(),
+            now
+        );
+
+        if (resolvedPolicy.source() != ResolvedBookingPolicy.PolicySnapshotSource.LIVE_FALLBACK
+            || rawEvaluation.reasonCodes().contains(BookingActionReasonCode.POLICY_SNAPSHOT_FALLBACK)) {
+            return new EvaluatedBookingAction(resolvedPolicy, rawEvaluation);
+        }
+
+        List<BookingActionReasonCode> reasonCodes = new ArrayList<>(rawEvaluation.reasonCodes());
+        reasonCodes.add(BookingActionReasonCode.POLICY_SNAPSHOT_FALLBACK);
+        BookingActionsEvaluation evaluation = new BookingActionsEvaluation(
+            rawEvaluation.canCancel(),
+            rawEvaluation.canReschedule(),
+            rawEvaluation.canMarkNoShow(),
+            rawEvaluation.refundPreviewAmount(),
+            rawEvaluation.retainPreviewAmount(),
+            rawEvaluation.currency(),
+            rawEvaluation.suggestedAction(),
+            List.copyOf(reasonCodes),
+            rawEvaluation.messageCode(),
+            rawEvaluation.messageParams(),
+            rawEvaluation.plainTextFallback()
+        );
+        return new EvaluatedBookingAction(resolvedPolicy, evaluation);
+    }
+
+    private void requireAllowedAction(boolean allowed, BookingActionsEvaluation evaluation) {
+        if (allowed) {
+            return;
+        }
+        throw new ResponseStatusException(
+            HttpStatus.CONFLICT,
+            evaluation == null || evaluation.plainTextFallback() == null || evaluation.plainTextFallback().isBlank()
+                ? "La acción no está permitida para esta reserva"
+                : evaluation.plainTextFallback()
+        );
+    }
+
+    private void ensureClientOwnsBooking(Long clientUserId, Booking booking) {
+        if (booking.getUser() == null || !clientUserId.equals(booking.getUser().getId())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "No autorizado");
+        }
+    }
+
+    private void ensureProfessionalOwnsBooking(Long professionalId, Booking booking) {
+        if (booking.getProfessional() == null || !professionalId.equals(booking.getProfessional().getId())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "No autorizado");
+        }
+    }
+
+    private User loadClientByUserId(String rawUserId) {
+        Long userId = parseUserId(rawUserId);
+        User user = userRepository.findByIdAndDeletedAtIsNull(userId)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Cliente no encontrado"));
+        if (user.getRole() != UserRole.USER) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Solo clientes");
+        }
+        return user;
+    }
+
+    private BookingCommandResponse toBookingCommandResponse(
+        Booking booking,
+        BookingActionDecision decision,
+        BookingFinanceUpdateResult financeResult
+    ) {
+        var decisionResponse = bookingActionDecisionService.toResponse(decision);
+        return new BookingCommandResponse(
+            mapProfessionalBooking(booking),
+            decisionResponse,
+            booking.getOperationalStatus().name(),
+            financeResult == null ? null : bookingFinanceService.toResponse(financeResult.summary()),
+            financeResult == null ? null : bookingFinanceService.toResponse(financeResult.refundRecord()),
+            financeResult == null ? null : bookingFinanceService.toResponse(financeResult.payoutRecord()),
+            decisionResponse == null ? null : decisionResponse.getMessageCode(),
+            decisionResponse == null ? Map.of() : decisionResponse.getMessageParams(),
+            decisionResponse == null ? null : decisionResponse.getPlainTextFallback()
+        );
+    }
+
+    private Map<String, Object> buildCancellationDecisionSnapshot(
+        Booking booking,
+        ResolvedBookingPolicy resolvedPolicy,
+        BookingCancelRequest request
+    ) {
+        Map<String, Object> snapshot = new LinkedHashMap<>();
+        snapshot.put("policySource", resolvedPolicy.source().name());
+        snapshot.put("bookingStartDateTime", booking.getStartDateTime().toString());
+        snapshot.put("bookingTimezone", booking.getTimezone());
+        if (request != null && request.getReason() != null && !request.getReason().isBlank()) {
+            snapshot.put("requestReason", request.getReason().trim());
+        }
+        return snapshot;
+    }
+
+    private Map<String, Object> buildCancellationEventPayload(
+        Booking booking,
+        BookingOperationalStatus previousStatus,
+        BookingActionDecision decision,
+        BookingCancelRequest request
+    ) {
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("previousStatus", previousStatus.name());
+        payload.put("nextStatus", booking.getOperationalStatus().name());
+        payload.put("timezone", booking.getTimezone());
+        payload.put("decisionId", decision.getId());
+        payload.put("financialOutcomeCode", decision.getFinancialOutcomeCode());
+        if (request != null && request.getReason() != null && !request.getReason().isBlank()) {
+            payload.put("requestReason", request.getReason().trim());
+        }
+        return payload;
+    }
+
+    private Map<String, Object> buildRescheduleDecisionSnapshot(
+        ResolvedBookingPolicy resolvedPolicy,
+        LocalDateTime previousStartDateTime,
+        LocalDateTime nextStartDateTime,
+        String previousTimezone,
+        String nextTimezone,
+        Integer previousRescheduleCount,
+        Integer nextRescheduleCount
+    ) {
+        Map<String, Object> snapshot = new LinkedHashMap<>();
+        snapshot.put("policySource", resolvedPolicy.source().name());
+        snapshot.put("previousStartDateTime", previousStartDateTime.toString());
+        snapshot.put("nextStartDateTime", nextStartDateTime.toString());
+        snapshot.put("previousTimezone", previousTimezone);
+        snapshot.put("nextTimezone", nextTimezone);
+        snapshot.put("rescheduleCountBefore", previousRescheduleCount);
+        snapshot.put("rescheduleCountAfter", nextRescheduleCount);
+        return snapshot;
+    }
+
+    private Set<LocalDate> buildAffectedDates(LocalDate previousDate, LocalDate nextDate) {
+        Set<LocalDate> affectedDates = new LinkedHashSet<>();
+        affectedDates.add(previousDate);
+        affectedDates.add(nextDate);
+        return affectedDates;
+    }
+
+    private void refreshBookingAvailabilityAndCaches(
+        ProfessionalProfile profile,
+        Set<LocalDate> affectedDates
+    ) {
+        if (profile == null || profile.getId() == null) {
+            return;
+        }
+        affectedDates.stream()
+            .filter(date -> date != null)
+            .forEach(date -> requestAvailabilityRebuildDay(profile.getId(), date));
+        searchSyncPublisher.publishProfileChanged(profile.getId());
+        if (profile.getSlug() != null && !profile.getSlug().isBlank()) {
+            evictSlotCacheForProfessional(profile.getId());
+            profileCacheService.evictPublicPageBySlug(profile.getSlug());
+        }
+        profileCacheService.evictPublicSummaries();
+    }
+
+    private String resolveBookingTimezoneForReschedule(Booking booking, BookingRescheduleRequest request) {
+        if (request != null && request.getTimezone() != null && !request.getTimezone().isBlank()) {
+            return request.getTimezone().trim();
+        }
+        if (booking.getTimezone() != null && !booking.getTimezone().isBlank()) {
+            return booking.getTimezone();
+        }
+        return systemZoneId.getId();
     }
 
     private ProfessionalProfile loadProfessionalByUserId(String rawUserId) {
@@ -1058,7 +1827,33 @@ public class ProfessionalPublicPageCoreService {
                 profile,
                 dayStart,
                 dayEnd,
-                BookingStatus.CANCELLED
+                BookingOperationalStatus.CANCELLED
+            )
+            .stream()
+            .map(booking -> {
+                LocalDateTime start = booking.getStartDateTime();
+                int effectiveDurationMinutes = resolveEffectiveDurationMinutes(booking.getService());
+                return new BookedWindow(start, start.plusMinutes(effectiveDurationMinutes));
+            })
+            .toList();
+    }
+
+    private List<BookedWindow> loadBookedWindows(
+        ProfessionalProfile profile,
+        LocalDate date,
+        Long excludedBookingId
+    ) {
+        if (excludedBookingId == null) {
+            return loadBookedWindows(profile, date);
+        }
+        LocalDateTime dayStart = date.atStartOfDay();
+        LocalDateTime dayEnd = date.atTime(LocalTime.MAX);
+        return bookingRepository.findBookedWithServiceByProfessionalAndStartDateTimeBetweenExcludingBooking(
+                profile,
+                dayStart,
+                dayEnd,
+                BookingOperationalStatus.CANCELLED,
+                excludedBookingId
             )
             .stream()
             .map(booking -> {
@@ -1143,6 +1938,11 @@ public class ProfessionalPublicPageCoreService {
     }
 
     private record BookedWindow(LocalDateTime start, LocalDateTime end) {}
+
+    private record EvaluatedBookingAction(
+        ResolvedBookingPolicy resolvedPolicy,
+        BookingActionsEvaluation evaluation
+    ) {}
 
     private ProfesionalPublicPageResponse mapToPublicPage(ProfessionalProfile profile) {
         User user = profile.getUser();
@@ -1382,9 +2182,12 @@ public class ProfessionalPublicPageCoreService {
             service.getName(),
             service.getDescription(),
             service.getPrice(),
+            service.getDepositAmount(),
+            resolveServiceCurrency(service.getCurrency()),
             service.getDuration(),
             normalizePublicPhotoUrl(service.getImageUrl()),
             resolvePostBufferMinutes(service),
+            resolveServicePaymentType(service.getPaymentType()),
             service.getActive()
         );
     }
@@ -1395,26 +2198,41 @@ public class ProfessionalPublicPageCoreService {
             service.getName(),
             service.getDescription(),
             service.getPrice(),
+            service.getDepositAmount(),
+            resolveServiceCurrency(service.getCurrency()),
             service.getDuration(),
             normalizePublicPhotoUrl(service.getImageUrl()),
             null,
+            resolveServicePaymentType(service.getPaymentType()),
             service.getActive()
         );
     }
 
     private ProfessionalBookingResponse mapProfessionalBooking(Booking booking) {
-        int postBufferMinutes = resolvePostBufferMinutes(booking.getService());
+        int postBufferMinutes = booking.getServicePostBufferMinutesSnapshot() == null
+            ? resolvePostBufferMinutes(booking.getService())
+            : booking.getServicePostBufferMinutesSnapshot();
+        String duration = booking.getServiceDurationSnapshot() == null
+            ? booking.getService().getDuration()
+            : booking.getServiceDurationSnapshot();
+        String serviceName = booking.getServiceNameSnapshot() == null
+            ? booking.getService().getName()
+            : booking.getServiceNameSnapshot();
         return new ProfessionalBookingResponse(
             booking.getId(),
             String.valueOf(booking.getUser().getId()),
             booking.getUser().getFullName(),
             booking.getService().getId(),
-            booking.getService().getName(),
+            serviceName,
             booking.getStartDateTime().toString(),
-            booking.getService().getDuration(),
+            booking.getTimezone(),
+            duration,
             postBufferMinutes,
-            parseDurationToMinutes(booking.getService().getDuration()) + postBufferMinutes,
-            booking.getStatus().name()
+            parseDurationToMinutes(duration) + postBufferMinutes,
+            resolveServicePaymentType(booking.getServicePaymentTypeSnapshot()).name(),
+            booking.getRescheduleCount(),
+            booking.getOperationalStatus().name(),
+            null
         );
     }
 
@@ -1708,7 +2526,7 @@ public class ProfessionalPublicPageCoreService {
         return false;
     }
 
-    private void validateBookingStatusTransition(BookingStatus current, BookingStatus next) {
+    private void validateBookingStatusTransition(BookingOperationalStatus current, BookingOperationalStatus next) {
         if (current == null || next == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Estado de reserva inválido");
         }
@@ -1717,9 +2535,12 @@ public class ProfessionalPublicPageCoreService {
         }
 
         boolean allowed = switch (current) {
-            case PENDING -> next == BookingStatus.CONFIRMED || next == BookingStatus.CANCELLED;
-            case CONFIRMED -> next == BookingStatus.COMPLETED || next == BookingStatus.CANCELLED;
-            case CANCELLED, COMPLETED -> false;
+            case PENDING -> next == BookingOperationalStatus.CONFIRMED
+                || next == BookingOperationalStatus.CANCELLED;
+            case CONFIRMED -> next == BookingOperationalStatus.COMPLETED
+                || next == BookingOperationalStatus.CANCELLED
+                || next == BookingOperationalStatus.NO_SHOW;
+            case CANCELLED, COMPLETED, NO_SHOW -> false;
         };
 
         if (!allowed) {
@@ -1728,5 +2549,97 @@ public class ProfessionalPublicPageCoreService {
                 "Transición de estado inválida"
             );
         }
+    }
+
+    private void captureServiceSnapshot(Booking booking, ProfesionalService service) {
+        if (booking == null || service == null) {
+            return;
+        }
+        booking.setServiceNameSnapshot(service.getName());
+        booking.setServiceDurationSnapshot(service.getDuration());
+        booking.setServicePostBufferMinutesSnapshot(resolvePostBufferMinutes(service));
+        booking.setServicePaymentTypeSnapshot(resolveServicePaymentType(service.getPaymentType()));
+        booking.setServicePriceSnapshot(parsePriceSnapshot(service.getPrice()));
+        booking.setServiceDepositAmountSnapshot(service.getDepositAmount());
+        booking.setServiceCurrencySnapshot(resolveServiceCurrency(service.getCurrency()));
+    }
+
+    private ServicePaymentType resolveServicePaymentType(ServicePaymentType paymentType) {
+        return paymentType == null ? ServicePaymentType.ON_SITE : paymentType;
+    }
+
+    private String resolveServiceCurrency(String currency) {
+        if (currency == null || currency.isBlank()) {
+            return "UYU";
+        }
+        return currency.trim().toUpperCase(Locale.ROOT);
+    }
+
+    private BigDecimal parsePriceSnapshot(String price) {
+        if (price == null || price.isBlank()) {
+            return null;
+        }
+        try {
+            return new BigDecimal(price.trim());
+        } catch (NumberFormatException exception) {
+            return null;
+        }
+    }
+
+    private BookingPolicy resolveOrCreateBookingPolicy(ProfessionalProfile profile) {
+        return bookingPolicyRepository.findByProfessional_Id(profile.getId())
+            .orElseGet(() -> {
+                BookingPolicy created = defaultBookingPolicy(profile);
+                return bookingPolicyRepository.save(created);
+            });
+    }
+
+    private BookingPolicy defaultBookingPolicy(ProfessionalProfile profile) {
+        BookingPolicy policy = new BookingPolicy();
+        policy.setProfessional(profile);
+        policy.setAllowClientCancellation(true);
+        policy.setAllowClientReschedule(true);
+        policy.setMaxClientReschedules(0);
+        policy.setRetainDepositOnLateCancellation(false);
+        return policy;
+    }
+
+    private BookingPolicyResponse toBookingPolicyResponse(BookingPolicy policy) {
+        return new BookingPolicyResponse(
+            policy.getId(),
+            Boolean.TRUE.equals(policy.getAllowClientCancellation()),
+            Boolean.TRUE.equals(policy.getAllowClientReschedule()),
+            policy.getCancellationWindowHours(),
+            policy.getRescheduleWindowHours(),
+            policy.getMaxClientReschedules(),
+            Boolean.TRUE.equals(policy.getRetainDepositOnLateCancellation())
+        );
+    }
+
+    private void recordOperationalStatusEvent(
+        Booking booking,
+        BookingOperationalStatus previousStatus,
+        Long actorUserId
+    ) {
+        BookingEventType eventType = switch (booking.getOperationalStatus()) {
+            case CONFIRMED -> BookingEventType.BOOKING_CONFIRMED;
+            case CANCELLED -> BookingEventType.BOOKING_CANCELLED;
+            case COMPLETED -> BookingEventType.BOOKING_COMPLETED;
+            case NO_SHOW -> BookingEventType.BOOKING_NO_SHOW_MARKED;
+            case PENDING -> BookingEventType.BOOKING_CREATED;
+        };
+
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("previousStatus", previousStatus == null ? null : previousStatus.name());
+        payload.put("nextStatus", booking.getOperationalStatus().name());
+        payload.put("timezone", booking.getTimezone());
+
+        bookingEventService.record(
+            booking,
+            eventType,
+            BookingActorType.PROFESSIONAL,
+            actorUserId,
+            payload
+        );
     }
 }

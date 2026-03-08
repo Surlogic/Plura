@@ -34,6 +34,13 @@ const formatServicePrice = (value?: string) => {
   return `$${trimmed}`;
 };
 
+const formatPaymentType = (value?: string) => {
+  const normalized = (value || '').trim().toUpperCase();
+  if (normalized === 'DEPOSIT') return 'Seña online';
+  if (normalized === 'FULL_PREPAY' || normalized === 'FULL') return 'Pago total online';
+  return 'Pago en el lugar';
+};
+
 const normalizeImageSrc = (value?: string) => {
   if (!value) return '';
   const resolved = resolveAssetUrl(value);
@@ -131,6 +138,15 @@ export default function ServiceDetailModal({
               {formatServicePrice(service.price)}
             </p>
           </div>
+        </div>
+
+        <div className="mt-3 rounded-[14px] border border-[#E2E7EC] bg-[#F8FAFC] px-4 py-3">
+          <p className="text-[0.62rem] uppercase tracking-[0.28em] text-[#94A3B8]">
+            Modalidad de pago
+          </p>
+          <p className="mt-1 text-sm font-semibold text-[#0E2A47]">
+            {formatPaymentType(service.paymentType)}
+          </p>
         </div>
 
         <div className="mt-4 rounded-[14px] border border-[#E2E7EC] bg-white px-4 py-3">

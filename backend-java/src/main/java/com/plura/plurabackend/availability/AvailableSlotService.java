@@ -6,7 +6,7 @@ import com.plura.plurabackend.availability.model.AvailableSlot;
 import com.plura.plurabackend.availability.model.AvailableSlotStatus;
 import com.plura.plurabackend.availability.repository.AvailableSlotRepository;
 import com.plura.plurabackend.booking.model.Booking;
-import com.plura.plurabackend.booking.model.BookingStatus;
+import com.plura.plurabackend.booking.model.BookingOperationalStatus;
 import com.plura.plurabackend.booking.repository.BookingRepository;
 import com.plura.plurabackend.professional.model.ProfessionalProfile;
 import com.plura.plurabackend.professional.repository.ProfessionalProfileRepository;
@@ -272,7 +272,7 @@ public class AvailableSlotService {
                         profile,
                         fromDateTime,
                         toDateTime,
-                        BookingStatus.CANCELLED
+                        BookingOperationalStatus.CANCELLED
                     ).stream()
                         .map(this::toBookedWindow)
                         .toList()
@@ -611,7 +611,7 @@ public class AvailableSlotService {
             profileIds,
             from,
             to,
-            BookingStatus.CANCELLED
+            BookingOperationalStatus.CANCELLED
         );
         for (Booking booking : bookings) {
             if (booking == null || booking.getProfessional() == null || booking.getProfessional().getId() == null) {

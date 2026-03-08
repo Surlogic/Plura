@@ -3,6 +3,10 @@ package com.plura.plurabackend.professional;
 import com.plura.plurabackend.booking.dto.ProfessionalBookingResponse;
 import com.plura.plurabackend.booking.dto.ProfessionalBookingCreateRequest;
 import com.plura.plurabackend.booking.dto.ProfessionalBookingUpdateRequest;
+import com.plura.plurabackend.booking.dto.BookingPolicyResponse;
+import com.plura.plurabackend.booking.dto.BookingPolicyUpdateRequest;
+import com.plura.plurabackend.professional.dto.ProfessionalPayoutConfigResponse;
+import com.plura.plurabackend.professional.dto.ProfessionalPayoutConfigUpdateRequest;
 import com.plura.plurabackend.professional.dto.ProfesionalBusinessProfileUpdateRequest;
 import com.plura.plurabackend.professional.dto.ProfesionalPublicPageResponse;
 import com.plura.plurabackend.professional.dto.ProfesionalPublicPageUpdateRequest;
@@ -41,13 +45,16 @@ public class ProfesionalConfigController {
     private static final Logger LOGGER = LoggerFactory.getLogger(ProfesionalConfigController.class);
 
     private final ProfessionalPublicPageService professionalPublicPageService;
+    private final ProfessionalPayoutConfigService professionalPayoutConfigService;
     private final ServiceImageStorageService serviceImageStorageService;
 
     public ProfesionalConfigController(
         ProfessionalPublicPageService professionalPublicPageService,
+        ProfessionalPayoutConfigService professionalPayoutConfigService,
         ServiceImageStorageService serviceImageStorageService
     ) {
         this.professionalPublicPageService = professionalPublicPageService;
+        this.professionalPayoutConfigService = professionalPayoutConfigService;
         this.serviceImageStorageService = serviceImageStorageService;
     }
 
@@ -69,9 +76,31 @@ public class ProfesionalConfigController {
         professionalPublicPageService.updateBusinessProfile(getProfesionalId(), request);
     }
 
+    @GetMapping("/payout-config")
+    public ProfessionalPayoutConfigResponse getPayoutConfig() {
+        return professionalPayoutConfigService.getConfig(getProfesionalId());
+    }
+
+    @PutMapping("/payout-config")
+    public ProfessionalPayoutConfigResponse updatePayoutConfig(
+        @Valid @RequestBody ProfessionalPayoutConfigUpdateRequest request
+    ) {
+        return professionalPayoutConfigService.updateConfig(getProfesionalId(), request);
+    }
+
     @GetMapping("/schedule")
     public ProfesionalScheduleDto getSchedule() {
         return professionalPublicPageService.getSchedule(getProfesionalId());
+    }
+
+    @GetMapping("/booking-policy")
+    public BookingPolicyResponse getBookingPolicy() {
+        return professionalPublicPageService.getBookingPolicy(getProfesionalId());
+    }
+
+    @PutMapping("/booking-policy")
+    public BookingPolicyResponse updateBookingPolicy(@Valid @RequestBody BookingPolicyUpdateRequest request) {
+        return professionalPublicPageService.updateBookingPolicy(getProfesionalId(), request);
     }
 
     @PutMapping("/schedule")

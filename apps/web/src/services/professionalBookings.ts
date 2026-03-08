@@ -1,8 +1,14 @@
 import api from '@/services/api';
 import { cachedGet, invalidateCachedGet } from '@/services/cachedGet';
+import type {
+  BookingActions,
+  BookingCommandResponse,
+  BookingFinancialSummary,
+  BookingPaymentType,
+} from '@/types/bookings';
 import type { ProfessionalReservation, ReservationStatus } from '@/types/professional';
 
-type ApiReservationStatus = 'PENDING' | 'CONFIRMED' | 'CANCELLED' | 'COMPLETED';
+type ApiReservationStatus = 'PENDING' | 'CONFIRMED' | 'CANCELLED' | 'COMPLETED' | 'NO_SHOW';
 
 type ProfessionalBookingDto = {
   id: number;
@@ -11,9 +17,13 @@ type ProfessionalBookingDto = {
   serviceId: string;
   serviceName: string;
   startDateTime: string;
+  timezone?: string | null;
   duration?: string;
   postBufferMinutes?: number;
   effectiveDurationMinutes?: number;
+  paymentType?: BookingPaymentType | null;
+  rescheduleCount?: number;
+  financialSummary?: BookingFinancialSummary | null;
   status: ApiReservationStatus;
 };
 
@@ -41,6 +51,8 @@ const toFrontendStatus = (status: ApiReservationStatus): ReservationStatus => {
       return 'cancelled';
     case 'COMPLETED':
       return 'completed';
+    case 'NO_SHOW':
+      return 'no_show';
     default:
       return 'pending';
   }
@@ -56,6 +68,8 @@ const toApiStatus = (status: ReservationStatus): ApiReservationStatus => {
       return 'CANCELLED';
     case 'completed':
       return 'COMPLETED';
+    case 'no_show':
+      return 'NO_SHOW';
     default:
       return 'PENDING';
   }
@@ -75,7 +89,27 @@ const mapBooking = (booking: ProfessionalBookingDto): ProfessionalReservation =>
     status: toFrontendStatus(booking.status),
     serviceId: booking.serviceId,
     userId: booking.userId,
+    paymentType: booking.paymentType || null,
+    financialSummary: booking.financialSummary || null,
   };
+};
+
+const mapCommandResponse = (
+  response: BookingCommandResponse<ProfessionalBookingDto>,
+) => {
+  const booking = response.booking ? mapBooking(response.booking) : null;
+  return {
+    ...response,
+    booking,
+  };
+};
+
+const buildIdempotencyKey = (prefix: string) =>
+  `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+
+const invalidateProfessionalBookingCaches = () => {
+  invalidateCachedGet('/profesional/reservas');
+  invalidateCachedGet('/reservas/');
 };
 
 export const getProfessionalReservationsByDate = async (
@@ -101,7 +135,9 @@ export const getProfessionalReservationsByRange = async (
   return response.data.map(mapBooking);
 };
 
-export const getProfessionalReservationsForDates = async (dates: string[]): Promise<ProfessionalReservation[]> => {
+export const getProfessionalReservationsForDates = async (
+  dates: string[],
+): Promise<ProfessionalReservation[]> => {
   const uniqueDates = Array.from(new Set(dates.filter(Boolean))).sort();
   if (uniqueDates.length === 0) return [];
   const dateFrom = uniqueDates[0];
@@ -117,7 +153,7 @@ export const updateProfessionalReservationStatus = async (
     `/profesional/reservas/${id}`,
     { status: toApiStatus(status) },
   );
-  invalidateCachedGet('/profesional/reservas');
+  invalidateProfessionalBookingCaches();
   return mapBooking(response.data);
 };
 
@@ -125,8 +161,93 @@ export const createProfessionalReservation = async (
   payload: ProfessionalBookingCreatePayload,
 ): Promise<ProfessionalReservation> => {
   const response = await api.post<ProfessionalBookingDto>('/profesional/reservas', payload);
-  invalidateCachedGet('/profesional/reservas');
+  invalidateProfessionalBookingCaches();
   return mapBooking(response.data);
+};
+
+export const getProfessionalBookingActions = async (bookingId: string) => {
+  const response = await api.get<BookingActions>(`/reservas/${bookingId}/actions`);
+  return response.data;
+};
+
+export const cancelProfessionalBooking = async (
+  bookingId: string,
+  reason?: string,
+) => {
+  const response = await api.post<BookingCommandResponse<ProfessionalBookingDto>>(
+    `/profesional/reservas/${bookingId}/cancel`,
+    reason?.trim() ? { reason: reason.trim() } : {},
+    {
+      headers: {
+        'Idempotency-Key': buildIdempotencyKey(`professional-cancel-${bookingId}`),
+      },
+    },
+  );
+  invalidateProfessionalBookingCaches();
+  return mapCommandResponse(response.data);
+};
+
+export const rescheduleProfessionalBooking = async (
+  bookingId: string,
+  startDateTime: string,
+  timezone?: string,
+) => {
+  const response = await api.post<BookingCommandResponse<ProfessionalBookingDto>>(
+    `/profesional/reservas/${bookingId}/reschedule`,
+    {
+      startDateTime,
+      timezone: timezone?.trim() || undefined,
+    },
+    {
+      headers: {
+        'Idempotency-Key': buildIdempotencyKey(`professional-reschedule-${bookingId}`),
+      },
+    },
+  );
+  invalidateProfessionalBookingCaches();
+  return mapCommandResponse(response.data);
+};
+
+export const markProfessionalBookingNoShow = async (bookingId: string) => {
+  const response = await api.post<BookingCommandResponse<ProfessionalBookingDto>>(
+    `/profesional/reservas/${bookingId}/no-show`,
+    {},
+    {
+      headers: {
+        'Idempotency-Key': buildIdempotencyKey(`professional-no-show-${bookingId}`),
+      },
+    },
+  );
+  invalidateProfessionalBookingCaches();
+  return mapCommandResponse(response.data);
+};
+
+export const completeProfessionalBooking = async (bookingId: string) => {
+  const response = await api.post<BookingCommandResponse<ProfessionalBookingDto>>(
+    `/profesional/reservas/${bookingId}/complete`,
+    {},
+    {
+      headers: {
+        'Idempotency-Key': buildIdempotencyKey(`professional-complete-${bookingId}`),
+      },
+    },
+  );
+  invalidateProfessionalBookingCaches();
+  return mapCommandResponse(response.data);
+};
+
+export const retryProfessionalBookingPayout = async (bookingId: string) => {
+  const response = await api.post<BookingCommandResponse<ProfessionalBookingDto>>(
+    `/profesional/reservas/${bookingId}/payout/retry`,
+    {},
+    {
+      headers: {
+        'Idempotency-Key': buildIdempotencyKey(`professional-retry-payout-${bookingId}`),
+      },
+    },
+  );
+  invalidateProfessionalBookingCaches();
+  return mapCommandResponse(response.data);
 };
 
 export const listProfessionalServices = async (): Promise<ProfessionalServiceDto[]> => {
@@ -141,3 +262,4 @@ export const listProfessionalServices = async (): Promise<ProfessionalServiceDto
   const services = Array.isArray(response.data) ? response.data : [];
   return services.filter((service) => service?.active !== false);
 };
+

@@ -16,9 +16,10 @@ const slugify = (value: string) =>
 
 type TopBusinessesProps = {
   professionals: HomeTopProfessional[];
+  isLoading?: boolean;
 };
 
-export default function TopBusinesses({ professionals }: TopBusinessesProps) {
+export default function TopBusinesses({ professionals, isLoading = false }: TopBusinessesProps) {
   const items = professionals.slice(0, 3);
 
   return (
@@ -30,7 +31,11 @@ export default function TopBusinesses({ professionals }: TopBusinessesProps) {
           description="Una selección visible y consistente para que el primer nivel de exploración no se sienta como una lista genérica."
           action={<Button href="/explorar">Ver todos</Button>}
         />
-        {items.length === 0 ? (
+        {isLoading ? (
+          <Card tone="soft" className="border-dashed text-sm text-[color:var(--ink-muted)]">
+            Cargando profesionales destacados...
+          </Card>
+        ) : items.length === 0 ? (
           <Card tone="soft" className="border-dashed text-sm text-[color:var(--ink-muted)]">
             Todavía no hay profesionales destacados.
           </Card>

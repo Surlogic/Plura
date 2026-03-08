@@ -17,6 +17,20 @@ server:
 spring:
   lifecycle:
     timeout-per-shutdown-phase: ${SPRING_SHUTDOWN_TIMEOUT_PER_PHASE:30s}
+  mail:
+    host: ${EMAIL_SMTP_HOST:}
+    port: ${EMAIL_SMTP_PORT:587}
+    username: ${EMAIL_SMTP_USERNAME:}
+    password: ${EMAIL_SMTP_PASSWORD:}
+    properties:
+      mail:
+        smtp:
+          auth: ${EMAIL_SMTP_AUTH:true}
+          starttls:
+            enable: ${EMAIL_SMTP_STARTTLS_ENABLE:true}
+          connectiontimeout: ${EMAIL_SMTP_CONNECTION_TIMEOUT_MS:5000}
+          timeout: ${EMAIL_SMTP_TIMEOUT_MS:10000}
+          writetimeout: ${EMAIL_SMTP_WRITE_TIMEOUT_MS:10000}
   datasource:
     # En producción se inyecta SPRING_DATASOURCE_URL desde Render o desde
     # el .env local. Si no se encuentra, Spring intenta usar la variable
@@ -98,6 +112,15 @@ feature:
 app:
   # Zona horaria única del sistema (MVP). Slots y reservas se calculan en esta zona.
   timezone: ${APP_TIMEZONE:America/Montevideo}
+  email:
+    delivery-enabled: ${EMAIL_DELIVERY_ENABLED:false}
+    from-address: ${EMAIL_FROM_ADDRESS:}
+    from-name: ${EMAIL_FROM_NAME:Plura}
+    reply-to: ${EMAIL_REPLY_TO:}
+    public-web-url: ${APP_PUBLIC_WEB_URL:http://localhost:3002}
+    brand-name: ${APP_BRAND_NAME:Plura}
+  ops:
+    internal-token: ${OPS_INTERNAL_TOKEN:}
   mapbox:
     token: ${MAPBOX_TOKEN:${NEXT_PUBLIC_MAPBOX_TOKEN:}}
   search:
@@ -116,6 +139,73 @@ app:
     cookie-secure: ${AUTH_COOKIE_SECURE:true}
     cookie-same-site: ${AUTH_COOKIE_SAMESITE:Strict}
     expose-access-token: ${AUTH_EXPOSE_ACCESS_TOKEN:false}
+    # Compatibilidad transitoria para access tokens emitidos antes de sid/sv.
+    # Desactivar cuando haya pasado al menos el TTL máximo de access tokens legacy.
+    allow-legacy-jwt: ${AUTH_ALLOW_LEGACY_JWT:true}
+    # Compatibilidad transitoria para refresh tokens persistidos en auth_refresh_token.
+    # Desactivar cuando ya no quede riesgo real de sesiones previas al deploy.
+    allow-legacy-refresh-fallback: ${AUTH_ALLOW_LEGACY_REFRESH_FALLBACK:true}
+    password-reset:
+      ttl-minutes: ${AUTH_PASSWORD_RESET_TTL_MINUTES:30}
+      public-base-url: ${AUTH_PASSWORD_RESET_PUBLIC_BASE_URL:http://localhost:3002}
+      pepper: ${AUTH_PASSWORD_RESET_PEPPER:${JWT_REFRESH_PEPPER}}
+    email-verification:
+      ttl-minutes: ${AUTH_EMAIL_VERIFICATION_TTL_MINUTES:15}
+      cooldown-seconds: ${AUTH_EMAIL_VERIFICATION_COOLDOWN_SECONDS:60}
+      max-attempts: ${AUTH_EMAIL_VERIFICATION_MAX_ATTEMPTS:5}
+      pepper: ${AUTH_EMAIL_VERIFICATION_PEPPER:${JWT_REFRESH_PEPPER}}
+    phone-verification:
+      ttl-minutes: ${AUTH_PHONE_VERIFICATION_TTL_MINUTES:10}
+      cooldown-seconds: ${AUTH_PHONE_VERIFICATION_COOLDOWN_SECONDS:60}
+      max-attempts: ${AUTH_PHONE_VERIFICATION_MAX_ATTEMPTS:5}
+      pepper: ${AUTH_PHONE_VERIFICATION_PEPPER:${JWT_REFRESH_PEPPER}}
+    otp-challenge:
+      ttl-minutes: ${AUTH_OTP_CHALLENGE_TTL_MINUTES:10}
+      cooldown-seconds: ${AUTH_OTP_CHALLENGE_COOLDOWN_SECONDS:60}
+      max-attempts: ${AUTH_OTP_CHALLENGE_MAX_ATTEMPTS:5}
+      pepper: ${AUTH_OTP_CHALLENGE_PEPPER:${JWT_REFRESH_PEPPER}}
+    abuse:
+      login:
+        window-seconds: ${AUTH_ABUSE_LOGIN_WINDOW_SECONDS:900}
+        max-failures: ${AUTH_ABUSE_LOGIN_MAX_FAILURES:5}
+        base-block-seconds: ${AUTH_ABUSE_LOGIN_BASE_BLOCK_SECONDS:30}
+        max-block-seconds: ${AUTH_ABUSE_LOGIN_MAX_BLOCK_SECONDS:900}
+      register:
+        window-seconds: ${AUTH_ABUSE_REGISTER_WINDOW_SECONDS:1800}
+        max-per-email: ${AUTH_ABUSE_REGISTER_MAX_PER_EMAIL:8}
+        max-per-email-ip: ${AUTH_ABUSE_REGISTER_MAX_PER_EMAIL_IP:5}
+      password-reset:
+        window-seconds: ${AUTH_ABUSE_PASSWORD_RESET_WINDOW_SECONDS:1800}
+        max-per-email: ${AUTH_ABUSE_PASSWORD_RESET_MAX_PER_EMAIL:6}
+        max-per-email-ip: ${AUTH_ABUSE_PASSWORD_RESET_MAX_PER_EMAIL_IP:4}
+      verify-email-send:
+        window-seconds: ${AUTH_ABUSE_VERIFY_EMAIL_SEND_WINDOW_SECONDS:900}
+        max-per-user: ${AUTH_ABUSE_VERIFY_EMAIL_SEND_MAX_PER_USER:6}
+        max-per-user-ip: ${AUTH_ABUSE_VERIFY_EMAIL_SEND_MAX_PER_USER_IP:4}
+      verify-email-confirm:
+        window-seconds: ${AUTH_ABUSE_VERIFY_EMAIL_CONFIRM_WINDOW_SECONDS:900}
+        max-per-user: ${AUTH_ABUSE_VERIFY_EMAIL_CONFIRM_MAX_PER_USER:10}
+        max-per-user-ip: ${AUTH_ABUSE_VERIFY_EMAIL_CONFIRM_MAX_PER_USER_IP:6}
+      verify-phone-send:
+        window-seconds: ${AUTH_ABUSE_VERIFY_PHONE_SEND_WINDOW_SECONDS:900}
+        max-per-user: ${AUTH_ABUSE_VERIFY_PHONE_SEND_MAX_PER_USER:5}
+        max-per-user-ip: ${AUTH_ABUSE_VERIFY_PHONE_SEND_MAX_PER_USER_IP:3}
+      verify-phone-confirm:
+        window-seconds: ${AUTH_ABUSE_VERIFY_PHONE_CONFIRM_WINDOW_SECONDS:900}
+        max-per-user: ${AUTH_ABUSE_VERIFY_PHONE_CONFIRM_MAX_PER_USER:10}
+        max-per-user-ip: ${AUTH_ABUSE_VERIFY_PHONE_CONFIRM_MAX_PER_USER_IP:6}
+      challenge-send:
+        window-seconds: ${AUTH_ABUSE_CHALLENGE_SEND_WINDOW_SECONDS:900}
+        max-per-user: ${AUTH_ABUSE_CHALLENGE_SEND_MAX_PER_USER:5}
+        max-per-user-ip: ${AUTH_ABUSE_CHALLENGE_SEND_MAX_PER_USER_IP:3}
+      challenge-verify:
+        window-seconds: ${AUTH_ABUSE_CHALLENGE_VERIFY_WINDOW_SECONDS:900}
+        max-per-user: ${AUTH_ABUSE_CHALLENGE_VERIFY_MAX_PER_USER:10}
+        max-per-user-ip: ${AUTH_ABUSE_CHALLENGE_VERIFY_MAX_PER_USER_IP:6}
+      refresh:
+        window-seconds: ${AUTH_ABUSE_REFRESH_WINDOW_SECONDS:300}
+        max-per-user: ${AUTH_ABUSE_REFRESH_MAX_PER_USER:30}
+        max-per-ip: ${AUTH_ABUSE_REFRESH_MAX_PER_IP:60}
     oauth:
       google:
         allow-direct-token: ${AUTH_OAUTH_GOOGLE_ALLOW_DIRECT_TOKEN:false}
@@ -248,6 +338,10 @@ billing:
     webhook-secret: ${BILLING_DLOCAL_WEBHOOK_SECRET:}
     checkout-path: ${BILLING_DLOCAL_CHECKOUT_PATH:/secure_payments}
     cancel-path: ${BILLING_DLOCAL_CANCEL_PATH:/subscriptions/{id}/cancel}
+    payout-oauth-path: ${BILLING_DLOCAL_PAYOUT_OAUTH_PATH:/oauth/token}
+    payout-path: ${BILLING_DLOCAL_PAYOUT_PATH:/payouts/v3}
+    payout-client-id: ${BILLING_DLOCAL_PAYOUT_CLIENT_ID:}
+    payout-client-secret: ${BILLING_DLOCAL_PAYOUT_CLIENT_SECRET:}
     payment-status-path: ${BILLING_DLOCAL_PAYMENT_STATUS_PATH:/payments/{id}}
     subscription-status-path: ${BILLING_DLOCAL_SUBSCRIPTION_STATUS_PATH:/subscriptions/{id}}
     signature-mode: ${BILLING_DLOCAL_SIGNATURE_MODE:STRICT_DATE_BODY}

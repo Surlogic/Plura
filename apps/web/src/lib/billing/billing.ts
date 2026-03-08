@@ -106,6 +106,26 @@ export const fetchCurrentSubscription = async (): Promise<BillingSubscription | 
   }
 };
 
+const ALLOWED_CHECKOUT_DOMAINS = [
+  'https://www.mercadopago.com',
+  'https://www.mercadopago.com.uy',
+  'https://www.mercadopago.com.ar',
+  'https://sandbox.mercadopago.com',
+  'https://sandbox.mercadopago.com.uy',
+  'https://sandbox.mercadopago.com.ar',
+];
+
+const isAllowedCheckoutUrl = (url: string): boolean => {
+  try {
+    const parsed = new URL(url);
+    return ALLOWED_CHECKOUT_DOMAINS.some(
+      (domain) => parsed.origin === new URL(domain).origin,
+    );
+  } catch {
+    return false;
+  }
+};
+
 export const createBillingCheckout = async (
   planId: PaidBillingUiPlanId,
 ): Promise<BillingCheckoutResponse> => {
@@ -113,6 +133,11 @@ export const createBillingCheckout = async (
   const response = await api.post<BillingCheckoutResponse>('/billing/subscription', {
     planCode: plan.backendPlanCode,
   });
+
+  if (!isAllowedCheckoutUrl(response.data.checkoutUrl)) {
+    throw new Error('URL de checkout no permitida');
+  }
+
   return response.data;
 };
 
@@ -134,7 +159,7 @@ export const resolveCurrentBillingPlanId = ({
     const subscriptionPlan = resolveBillingPlanFromBackendPlanCode(subscription.planCode);
     if (
       subscriptionPlan &&
-      (subscription.status === 'ACTIVE' || Boolean(subscription.cancelAtPeriodEnd))
+      (subscription.status === 'ACTIVE' || subscription.status === 'TRIAL' || Boolean(subscription.cancelAtPeriodEnd))
     ) {
       return subscriptionPlan;
     }

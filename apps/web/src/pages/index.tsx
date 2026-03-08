@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import type { GetStaticProps, InferGetStaticPropsType } from 'next';
 import Navbar from '@/components/shared/Navbar';
 import Footer from '@/components/shared/Footer';
@@ -15,6 +16,7 @@ type HomePageProps = {
 };
 
 const FALLBACK_HOME_PROFESSIONALS_LIMIT = 8;
+const HOME_FETCH_TIMEOUT_MS = 10000;
 
 const emptyStats: HomeResponse['stats'] = {
   activeUsers: 0,
@@ -37,18 +39,27 @@ const mapPublicToHomeProfessional = (
   };
 };
 
-export const getStaticProps: GetStaticProps<HomePageProps> = async () => {
-  const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
-  let homeData: HomeResponse | null = null;
+const fetchWithTimeout = (url: string, timeoutMs = HOME_FETCH_TIMEOUT_MS) => {
+  const controller = new AbortController();
+  const id = setTimeout(() => controller.abort(), timeoutMs);
+  return fetch(url, {
+    headers: { Accept: 'application/json' },
+    signal: controller.signal,
+  }).finally(() => clearTimeout(id));
+};
 
-  const fetchWithTimeout = (url: string, timeoutMs = 10000) => {
-    const controller = new AbortController();
-    const id = setTimeout(() => controller.abort(), timeoutMs);
-    return fetch(url, {
-      headers: { Accept: 'application/json' },
-      signal: controller.signal,
-    }).finally(() => clearTimeout(id));
-  };
+const hasRenderableHomeData = (homeData: HomeResponse | null) => {
+  if (!homeData) return false;
+  if ((homeData.categories?.length ?? 0) > 0) return true;
+  if ((homeData.topProfessionals?.length ?? 0) > 0) return true;
+  return Object.values(homeData.stats ?? emptyStats).some((value) => value > 0);
+};
+
+const fetchHomeData = async (
+  apiBaseUrl: string,
+  options?: { logErrors?: boolean },
+): Promise<HomeResponse | null> => {
+  let homeData: HomeResponse | null = null;
 
   try {
     const response = await fetchWithTimeout(`${apiBaseUrl}/api/home`);
@@ -59,7 +70,9 @@ export const getStaticProps: GetStaticProps<HomePageProps> = async () => {
 
     homeData = (await response.json()) as HomeResponse;
   } catch (error) {
-    console.error('[HOME] Error fetching /api/home:', error instanceof Error ? error.message : error);
+    if (options?.logErrors) {
+      console.error('[HOME] Error fetching /api/home:', error instanceof Error ? error.message : error);
+    }
   }
 
   const hasTopProfessionals = (homeData?.topProfessionals?.length || 0) > 0;
@@ -84,9 +97,20 @@ export const getStaticProps: GetStaticProps<HomePageProps> = async () => {
         }
       }
     } catch (error) {
-      console.error('[HOME] Error fetching /public/profesionales:', error instanceof Error ? error.message : error);
+      if (options?.logErrors) {
+        console.error('[HOME] Error fetching /public/profesionales:', error instanceof Error ? error.message : error);
+      }
     }
   }
+
+  return homeData;
+};
+
+export const getStaticProps: GetStaticProps<HomePageProps> = async () => {
+  const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+  const homeData = process.env.SKIP_HOME_SSG_FETCH === 'true'
+    ? null
+    : await fetchHomeData(apiBaseUrl, { logErrors: true });
 
   return { props: { homeData }, revalidate: 300 };
 };
@@ -94,9 +118,43 @@ export const getStaticProps: GetStaticProps<HomePageProps> = async () => {
 export default function HomePage({
   homeData,
 }: InferGetStaticPropsType<typeof getStaticProps>) {
-  const stats = homeData?.stats ?? emptyStats;
-  const categories: Category[] = homeData?.categories ?? [];
-  const topProfessionals = homeData?.topProfessionals ?? [];
+  const [resolvedHomeData, setResolvedHomeData] = useState(homeData);
+  const [isLoadingHomeData, setIsLoadingHomeData] = useState(!hasRenderableHomeData(homeData));
+
+  useEffect(() => {
+    if (hasRenderableHomeData(homeData)) {
+      setResolvedHomeData(homeData);
+      setIsLoadingHomeData(false);
+      return;
+    }
+
+    let cancelled = false;
+
+    const loadHomeData = async () => {
+      try {
+        const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+        const nextHomeData = await fetchHomeData(apiBaseUrl);
+        if (!cancelled && nextHomeData) {
+          setResolvedHomeData(nextHomeData);
+        }
+      } finally {
+        if (!cancelled) {
+          setIsLoadingHomeData(false);
+        }
+      }
+    };
+
+    void loadHomeData();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [homeData]);
+
+  const stats = resolvedHomeData?.stats ?? emptyStats;
+  const categories: Category[] = resolvedHomeData?.categories ?? [];
+  const topProfessionals = resolvedHomeData?.topProfessionals ?? [];
+  const isInitialHomeLoading = isLoadingHomeData && !hasRenderableHomeData(resolvedHomeData);
 
   return (
     <div className="relative min-h-screen bg-[color:var(--background)] text-[color:var(--ink)]">
@@ -105,9 +163,9 @@ export default function HomePage({
       <div className="relative z-10">
         <Navbar />
         <main className="space-y-20 pb-24">
-          <Hero stats={stats} />
-          <CategoriesGrid categories={categories} />
-          <TopBusinesses professionals={topProfessionals} />
+          <Hero stats={stats} isLoading={isInitialHomeLoading} />
+          <CategoriesGrid categories={categories} isLoading={isInitialHomeLoading} />
+          <TopBusinesses professionals={topProfessionals} isLoading={isInitialHomeLoading} />
           <ReviewsSection />
           <FAQSection />
         </main>

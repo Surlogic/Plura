@@ -11,6 +11,8 @@ services:
         value: 3000
       - key: APP_TIMEZONE
         value: America/Montevideo
+      - key: APP_TRUST_FORWARDED_HEADERS
+        value: true
       - key: CORS_ALLOWED_ORIGINS
         sync: false
       - key: SPRING_DATASOURCE_URL
@@ -30,6 +32,8 @@ services:
       - key: AUTH_EXPOSE_ACCESS_TOKEN
         sync: false
       - key: AUTH_OAUTH_GOOGLE_ALLOWED_REDIRECT_URIS
+        sync: false
+      - key: AUTH_PASSWORD_RESET_PUBLIC_BASE_URL
         sync: false
       - key: JWT_EXPIRATION_MINUTES
         value: 30
@@ -86,12 +90,18 @@ services:
     name: plura-web
     runtime: node
     rootDir: .
-    buildCommand: corepack enable && corepack prepare pnpm@latest --activate && pnpm install --frozen-lockfile && pnpm -C apps/web build
-    startCommand: corepack enable && corepack prepare pnpm@10.23.0 --activate && NODE_ENV=production pnpm -C apps/web exec next start -p ${PORT}
+    buildCommand: corepack enable && corepack prepare pnpm@latest --activate && pnpm install --frozen-lockfile && SKIP_HOME_SSG_FETCH=true pnpm -C apps/web build
+    startCommand: corepack enable && corepack prepare pnpm@10.23.0 --activate && NODE_ENV=production NEXT_BUILD_DIR=.next-build pnpm -C apps/web exec next start -p ${PORT}
     envVars:
       - key: NODE_VERSION
         value: 20
       - key: NEXT_PUBLIC_API_URL
+        sync: false
+      - key: NEXT_PUBLIC_GOOGLE_CLIENT_ID
+        sync: false
+      - key: NEXT_PUBLIC_APPLE_CLIENT_ID
+        sync: false
+      - key: NEXT_PUBLIC_APPLE_REDIRECT_URI
         sync: false
       - key: NEXT_PUBLIC_MAPBOX_TOKEN
         sync: false

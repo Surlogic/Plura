@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { isAxiosError } from 'axios';
 import Link from 'next/link';
+import EmailVerificationPanel from '@/components/auth/EmailVerificationPanel';
 import ProfesionalSidebar from '@/components/profesional/Sidebar';
 import Button from '@/components/ui/Button';
 import Card from '@/components/ui/Card';
@@ -217,7 +218,7 @@ const buildDayLayouts = (items: ProfessionalReservation[]) => {
 };
 
 export default function ProfesionalDashboardPage() {
-  const { profile } = useProfessionalProfile();
+  const { profile, refreshProfile } = useProfessionalProfile();
   const [reservations, setReservations] = useState<ProfessionalReservation[]>([]);
   const [schedule, setSchedule] = useState<ProfessionalSchedule | null>(null);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
@@ -721,6 +722,18 @@ export default function ProfesionalDashboardPage() {
                       </>
                     }
                   />
+
+                  {profile && !profile.emailVerified ? (
+                    <EmailVerificationPanel
+                      email={profile.email}
+                      emailVerified={profile.emailVerified}
+                      onStatusChanged={refreshProfile}
+                      tone="professional"
+                      variant="banner"
+                      title="Tu email profesional todavía está pendiente"
+                      description="Verificalo desde el dashboard para reforzar la identidad de la cuenta y asegurarte de recibir recuperaciones y comunicaciones críticas sin tener que recargar la página."
+                    />
+                  ) : null}
 
                   {statusMessage ? (
                     <p className="rounded-full border border-[#E2E8F0] bg-white/90 px-4 py-2 text-sm text-[#64748B] shadow-[var(--shadow-card)]">

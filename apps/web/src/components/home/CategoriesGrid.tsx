@@ -7,9 +7,10 @@ import type { Category } from '@/types/category';
 
 type CategoriesGridProps = {
   categories: Category[];
+  isLoading?: boolean;
 };
 
-export default function CategoriesGrid({ categories }: CategoriesGridProps) {
+export default function CategoriesGrid({ categories, isLoading = false }: CategoriesGridProps) {
   const [showAll, setShowAll] = useState(false);
   const visibleCategories = showAll ? categories : categories.slice(0, 8);
   const canToggle = categories.length > 8;
@@ -27,7 +28,11 @@ export default function CategoriesGrid({ categories }: CategoriesGridProps) {
             </span>
           )}
         />
-        {visibleCategories.length > 0 ? (
+        {isLoading ? (
+          <Card tone="soft" className="border-dashed text-sm text-[color:var(--ink-muted)]">
+            Cargando rubros...
+          </Card>
+        ) : visibleCategories.length > 0 ? (
           <>
             <div className="grid grid-cols-2 gap-6 md:grid-cols-3 lg:grid-cols-4">
               {visibleCategories.map((category) => (

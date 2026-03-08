@@ -4,20 +4,21 @@ import type { HomeStats } from '@/types/home';
 
 type HeroProps = {
   stats: HomeStats;
+  isLoading?: boolean;
 };
 
 const formatStat = (value: number) => value.toLocaleString('es-UY');
 
-export default function Hero({ stats }: HeroProps) {
+export default function Hero({ stats, isLoading = false }: HeroProps) {
   const trustPoints = [
     'Profesionales verificados',
     'Disponibilidad actualizada',
     'Reserva online simple',
   ];
   const statItems = [
-    { label: 'Reservas en el mes', value: formatStat(stats.monthlyBookings) },
-    { label: 'Profesionales activos', value: formatStat(stats.professionals) },
-    { label: 'Categorias disponibles', value: formatStat(stats.categories) },
+    { label: 'Reservas en el mes', value: isLoading ? '...' : formatStat(stats.monthlyBookings) },
+    { label: 'Profesionales activos', value: isLoading ? '...' : formatStat(stats.professionals) },
+    { label: 'Categorias disponibles', value: isLoading ? '...' : formatStat(stats.categories) },
   ];
 
   return (

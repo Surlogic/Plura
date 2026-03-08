@@ -37,8 +37,8 @@ export const billingPlans: BillingPlanDefinition[] = [
     label: 'PRO',
     backendPlanCode: 'PLAN_PRO',
     profilePlanCode: 'PROFESSIONAL',
-    priceMonthly: 100,
-    priceLabel: '$100 UYU / mes',
+    priceMonthly: 590,
+    priceLabel: '$590 UYU / mes',
     benefits: [
       'Pagos online',
       'Analytics',
@@ -53,8 +53,8 @@ export const billingPlans: BillingPlanDefinition[] = [
     label: 'PREMIUM',
     backendPlanCode: 'PLAN_PREMIUM',
     profilePlanCode: 'COMPANY',
-    priceMonthly: 100,
-    priceLabel: '$100 UYU / mes',
+    priceMonthly: 1290,
+    priceLabel: '$1.290 UYU / mes',
     benefits: [
       'Todo lo de PRO',
       'Tienda',

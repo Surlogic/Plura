@@ -48,9 +48,9 @@ const featureLabels: Array<{ key: string; label: string }> = [
   { key: 'allowClientChooseProfessional', label: 'Eleccion de profesional' },
 ];
 
-const INTENSIVE_POLL_INTERVAL_MS = 2500;
+const INTENSIVE_POLL_INTERVAL_MS = 5000;
 const INTENSIVE_POLL_DURATION_MS = 30000;
-const SOFT_POLL_INTERVAL_MS = 10000;
+const SOFT_POLL_INTERVAL_MS = 15000;
 const MAX_PENDING_CHECKOUT_AGE_MS = 5 * 60 * 1000;
 
 const refreshProfessionalCaches = async (refreshProfile: () => Promise<void>) => {
@@ -87,6 +87,8 @@ export function useProfessionalBilling({
   const pollIntervalRef = useRef<number | null>(null);
   const pollPhaseTimeoutRef = useRef<number | null>(null);
   const isCheckingStatusRef = useRef(false);
+  const pendingRetryRef = useRef<BillingStatusCheckSource | null>(null);
+  const [pollRestartTrigger, setPollRestartTrigger] = useState(0);
 
   const loadSubscription = useCallback(async () => {
     if (!profile?.id) return;
@@ -204,22 +206,37 @@ export function useProfessionalBilling({
 
     if (nextSubscription?.status === 'TRIAL') {
       if (source === 'checkout-return') {
-        clearPendingCheckout();
-        stopPollingCheckout();
+        // Webhook hasn't confirmed the payment yet. Keep pendingCheckout and
+        // trigger the polling effect to restart (return flag was already cleared).
+        setPollRestartTrigger((n) => n + 1);
+        setBanner(buildTrialBanner(true));
+        return;
       }
-      setBanner(buildTrialBanner(source !== 'checkout-return' && pendingCheckout !== null));
+      setBanner(buildTrialBanner(pendingCheckout !== null));
       return;
     }
 
     if (!nextSubscription) {
       if (source === 'checkout-return') {
-        clearPendingCheckout();
-        stopPollingCheckout();
-        setBanner({
-          tone: 'info',
-          title: 'Checkout sin confirmar',
-          description: 'No vimos un pago confirmado. Puedes seguir navegando o iniciar otro checkout.',
-        });
+        // Backend might still be processing (cold start, latency).
+        // Keep pendingCheckout and trigger polling to wait for webhook.
+        const ageMs = pendingCheckout ? Date.now() - pendingCheckout.createdAt : 0;
+        if (ageMs < MAX_PENDING_CHECKOUT_AGE_MS) {
+          setPollRestartTrigger((n) => n + 1);
+          setBanner({
+            tone: 'loading',
+            title: 'Procesando pago...',
+            description: 'Estamos esperando la confirmacion de Mercado Pago.',
+          });
+        } else {
+          clearPendingCheckout();
+          stopPollingCheckout();
+          setBanner({
+            tone: 'info',
+            title: 'Checkout sin confirmar',
+            description: 'No vimos un pago confirmado. Puedes seguir navegando o iniciar otro checkout.',
+          });
+        }
         return;
       }
 
@@ -256,9 +273,13 @@ export function useProfessionalBilling({
   }, [clearPendingCheckout, pendingCheckout, refreshProfile, stopPollingCheckout]);
 
   const runStatusCheck = useCallback(async (source: BillingStatusCheckSource) => {
-    if (isCheckingStatusRef.current) return;
+    if (isCheckingStatusRef.current) {
+      pendingRetryRef.current = source;
+      return;
+    }
 
     isCheckingStatusRef.current = true;
+    pendingRetryRef.current = null;
     if (source === 'manual') {
       setIsRefreshingSubscriptionStatus(true);
     }
@@ -293,6 +314,12 @@ export function useProfessionalBilling({
         setIsRefreshingSubscriptionStatus(false);
       }
       isCheckingStatusRef.current = false;
+
+      const retrySource = pendingRetryRef.current;
+      if (retrySource) {
+        pendingRetryRef.current = null;
+        void runStatusCheck(retrySource);
+      }
     }
   }, [handleObservedSubscription, stopPollingCheckout]);
 
@@ -399,6 +426,7 @@ export function useProfessionalBilling({
     };
   }, [
     pendingCheckout,
+    pollRestartTrigger,
     profile?.id,
     runStatusCheck,
     startIntensivePolling,
@@ -437,9 +465,11 @@ export function useProfessionalBilling({
     if (planId === 'BASIC') {
       if (!subscription || currentPlanId === 'BASIC' || subscription.cancelAtPeriodEnd) return;
 
-      const confirmed = window.confirm(
-        'Tu suscripcion seguira activa hasta el fin del periodo actual y luego volvera a BASIC.',
-      );
+      const isMercadoPago = subscription.provider?.toUpperCase() === 'MERCADOPAGO';
+      const confirmMessage = isMercadoPago
+        ? 'La suscripcion se cancelara de inmediato y volveras a BASIC. ¿Deseas continuar?'
+        : 'Tu suscripcion seguira activa hasta el fin del periodo actual y luego volvera a BASIC.';
+      const confirmed = window.confirm(confirmMessage);
       if (!confirmed) return;
 
       setIsCancelling(true);
@@ -451,10 +481,12 @@ export function useProfessionalBilling({
         await refreshProfessionalCaches(refreshProfile);
         setBanner({
           tone: 'success',
-          title: 'Cambio a BASIC programado',
-          description: nextSubscription.currentPeriodEnd
-            ? `Tu plan superior seguira activo hasta ${formatBillingDate(nextSubscription.currentPeriodEnd)}.`
-            : 'La suscripcion quedo marcada para volver a BASIC al final del periodo.',
+          title: isMercadoPago ? 'Suscripcion cancelada' : 'Cambio a BASIC programado',
+          description: isMercadoPago
+            ? 'Tu suscripcion fue cancelada y ahora estas en el plan BASIC.'
+            : nextSubscription.currentPeriodEnd
+              ? `Tu plan superior seguira activo hasta ${formatBillingDate(nextSubscription.currentPeriodEnd)}.`
+              : 'La suscripcion quedo marcada para volver a BASIC al final del periodo.',
         });
       } catch (error) {
         setBanner({

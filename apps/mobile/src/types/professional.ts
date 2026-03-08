@@ -24,7 +24,9 @@ export type ProfessionalProfile = {
   slug?: string;
   fullName: string;
   email: string;
+  emailVerified: boolean;
   phoneNumber: string;
+  phoneVerified: boolean;
   rubro: string;
   location: string | null;
   country?: string | null;

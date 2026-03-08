@@ -10,6 +10,10 @@ import lombok.Data;
 public class RegisterResponse {
     // JWT de acceso (opcional si se usa cookie HttpOnly).
     private String accessToken;
+    // Refresh token expuesto solo para clientes body-first como mobile.
+    private String refreshToken;
     // Datos públicos del usuario creado.
     private UserResponse user;
+    // Sesión actual emitida por el backend.
+    private AuthSessionResponse session;
 }

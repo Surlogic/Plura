@@ -7,8 +7,9 @@ import axios, {
 import { Platform } from 'react-native';
 import {
   clearProfessionalToken,
+  getProfessionalRefreshToken,
   getProfessionalToken,
-  setProfessionalToken,
+  setProfessionalSession,
 } from './session';
 import { isRetryableNetworkError } from './errors';
 import { logWarn } from './logger';
@@ -20,6 +21,8 @@ type RetryableConfig = {
 
 const MAX_RETRY_ATTEMPTS = 1;
 const MAX_AUTH_RETRY_ATTEMPTS = 1;
+const CLIENT_PLATFORM_HEADER = 'X-Plura-Client-Platform';
+const SESSION_TRANSPORT_HEADER = 'X-Plura-Session-Transport';
 
 const getBaseUrl = () => {
   if (process.env.EXPO_PUBLIC_API_URL) return process.env.EXPO_PUBLIC_API_URL;
@@ -65,17 +68,67 @@ const tokenFromAuthResponse = (data: unknown): string | null => {
   return typeof value === 'string' && value.trim() ? value.trim() : null;
 };
 
+const refreshTokenFromAuthResponse = (data: unknown): string | null => {
+  if (!data || typeof data !== 'object') return null;
+  const value = (data as { refreshToken?: unknown }).refreshToken;
+  return typeof value === 'string' && value.trim() ? value.trim() : null;
+};
+
+const persistSessionFromAuthResponse = async (data: unknown): Promise<string | null> => {
+  const accessToken = tokenFromAuthResponse(data);
+  const refreshToken = refreshTokenFromAuthResponse(data);
+  if (accessToken || refreshToken) {
+    await setProfessionalSession({ accessToken, refreshToken });
+  }
+  return accessToken;
+};
+
+const setHeaderValue = (
+  config: InternalAxiosRequestConfig,
+  name: string,
+  value: string,
+) => {
+  if (!config.headers) {
+    config.headers = new AxiosHeaders();
+  }
+  if (config.headers instanceof AxiosHeaders) {
+    config.headers.set(name, value);
+  } else {
+    (config.headers as Record<string, unknown>)[name] = value;
+  }
+};
+
+const applyClientHeaders = (
+  config: InternalAxiosRequestConfig,
+): InternalAxiosRequestConfig => {
+  setHeaderValue(config, CLIENT_PLATFORM_HEADER, 'MOBILE');
+  if (isAuthRoute(config.url)) {
+    setHeaderValue(config, SESSION_TRANSPORT_HEADER, 'BODY');
+  }
+  return config;
+};
+
+const attachAuthorizationHeader = async (
+  config: InternalAxiosRequestConfig,
+): Promise<InternalAxiosRequestConfig> => {
+  applyClientHeaders(config);
+  const token = await getProfessionalToken();
+  if (token && token !== 'null' && token !== 'undefined') {
+    setHeaderValue(config, 'Authorization', `Bearer ${token}`);
+  }
+  return config;
+};
+
 const refreshAccessToken = async (): Promise<string | null> => {
   if (!refreshPromise) {
+    const refreshToken = await getProfessionalRefreshToken();
+    if (!refreshToken) {
+      return null;
+    }
     refreshPromise = authApi
-      .post('/auth/refresh')
+      .post('/auth/refresh', { refreshToken })
       .then(async (response: AxiosResponse<unknown>) => {
-        const token = tokenFromAuthResponse(response.data);
-        if (token) {
-          await setProfessionalToken(token);
-          return token;
-        }
-        return null;
+        return persistSessionFromAuthResponse(response.data);
       })
       .finally(() => {
         refreshPromise = null;
@@ -87,22 +140,27 @@ const refreshAccessToken = async (): Promise<string | null> => {
 api.interceptors.request.use(
   async (config) => {
     if (isAuthRoute(config.url)) {
-      return config;
+      return applyClientHeaders(config);
     }
-    const token = await getProfessionalToken();
-    // Validamos que el token no sea la palabra "null" ni "undefined"
-    if (token && token !== "null" && token !== "undefined") {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
-    return config;
+    return attachAuthorizationHeader(config);
   },
   (error) => {
     return Promise.reject(error);
   }
 );
 
+authApi.interceptors.request.use(
+  async (config) => attachAuthorizationHeader(config),
+  (error) => Promise.reject(error),
+);
+
 api.interceptors.response.use(
-  (response) => response,
+  async (response) => {
+    if (isAuthRoute(response.config.url)) {
+      await persistSessionFromAuthResponse(response.data);
+    }
+    return response;
+  },
   async (error) => {
     const config = error.config as (InternalAxiosRequestConfig & RetryableConfig & Record<string, unknown>) | undefined;
 

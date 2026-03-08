@@ -7,6 +7,11 @@ import com.plura.plurabackend.auth.dto.ProfesionalProfileResponse;
 import com.plura.plurabackend.auth.dto.RegisterProfesionalRequest;
 import com.plura.plurabackend.auth.dto.RegisterRequest;
 import com.plura.plurabackend.auth.dto.UserResponse;
+import com.plura.plurabackend.auth.dto.AuthSessionResponse;
+import com.plura.plurabackend.auth.model.AuthAuditEventType;
+import com.plura.plurabackend.auth.model.AuthAuditStatus;
+import com.plura.plurabackend.auth.model.AuthSession;
+import com.plura.plurabackend.auth.model.AuthSessionType;
 import com.plura.plurabackend.auth.oauth.dto.OAuthLoginRequest;
 import com.plura.plurabackend.auth.oauth.AppleEmailRequiredFirstLoginException;
 import com.plura.plurabackend.auth.oauth.OAuthService;
@@ -58,6 +63,8 @@ public class AuthService {
     private final CategoryRepository categoryRepository;
     private final RefreshTokenRepository refreshTokenRepository;
     private final OAuthService oAuthService;
+    private final SessionService sessionService;
+    private final AuthAuditService authAuditService;
     private final EffectiveProductPlanService effectiveProductPlanService;
     private final SearchSyncPublisher searchSyncPublisher;
     private final PasswordEncoder passwordEncoder;
@@ -67,6 +74,7 @@ public class AuthService {
     private final String refreshTokenPepper;
     private final String jwtIssuer;
     private final String dummyPasswordHash;
+    private final boolean allowLegacyRefreshFallback;
     private static final SecureRandom SECURE_RANDOM = new SecureRandom();
     private static final Map<String, String> LEGACY_CATEGORY_ALIASES = Map.ofEntries(
         Map.entry("peluqueria", "cabello"),
@@ -84,6 +92,8 @@ public class AuthService {
         CategoryRepository categoryRepository,
         RefreshTokenRepository refreshTokenRepository,
         OAuthService oAuthService,
+        SessionService sessionService,
+        AuthAuditService authAuditService,
         EffectiveProductPlanService effectiveProductPlanService,
         SearchSyncPublisher searchSyncPublisher,
         PasswordEncoder passwordEncoder,
@@ -91,7 +101,8 @@ public class AuthService {
         @Value("${jwt.expiration-minutes:30}") long jwtExpirationMinutes,
         @Value("${jwt.refresh-days:30}") long refreshTokenDays,
         @Value("${jwt.refresh-pepper}") String refreshTokenPepper,
-        @Value("${jwt.issuer:plura}") String jwtIssuer
+        @Value("${jwt.issuer:plura}") String jwtIssuer,
+        @Value("${app.auth.allow-legacy-refresh-fallback:true}") boolean allowLegacyRefreshFallback
     ) {
         if (jwtSecret == null || jwtSecret.isBlank()) {
             throw new IllegalStateException("JWT_SECRET no está configurado");
@@ -104,6 +115,8 @@ public class AuthService {
         this.categoryRepository = categoryRepository;
         this.refreshTokenRepository = refreshTokenRepository;
         this.oAuthService = oAuthService;
+        this.sessionService = sessionService;
+        this.authAuditService = authAuditService;
         this.effectiveProductPlanService = effectiveProductPlanService;
         this.searchSyncPublisher = searchSyncPublisher;
         this.passwordEncoder = passwordEncoder;
@@ -112,6 +125,7 @@ public class AuthService {
         this.refreshTokenDays = refreshTokenDays;
         this.refreshTokenPepper = refreshTokenPepper;
         this.jwtIssuer = jwtIssuer;
+        this.allowLegacyRefreshFallback = allowLegacyRefreshFallback;
         this.dummyPasswordHash = passwordEncoder.encode("plura-dummy-password");
     }
 
@@ -119,10 +133,17 @@ public class AuthService {
         String accessToken,
         String refreshToken,
         UserResponse user,
-        UserRole role
+        UserRole role,
+        AuthSessionResponse session
     ) {}
 
     private record RefreshTokenIssue(String rawToken, RefreshToken entity) {}
+    private record SessionTokenIssue(String rawToken, AuthSession session) {}
+    public record SessionContext(
+        AuthSessionType sessionType,
+        String userAgent,
+        String ipAddress
+    ) {}
 
     @Transactional
     public void registerCliente(RegisterRequest request) {
@@ -202,7 +223,8 @@ public class AuthService {
         searchSyncPublisher.publishProfileChanged(profile.getId());
     }
 
-    public AuthResult loginProfesional(LoginRequest request, String userAgent) {
+    @Transactional
+    public AuthResult loginProfesional(LoginRequest request, SessionContext sessionContext) {
         User user = userRepository.findByEmailAndDeletedAtIsNull(request.getEmail().trim().toLowerCase(Locale.ROOT))
             .orElse(null);
         if (user == null) {
@@ -217,10 +239,11 @@ public class AuthService {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Credenciales inválidas");
         }
 
-        return issueTokens(user, toUserResponse(user), userAgent);
+        return issueTokens(user, toUserResponse(user), sessionContext);
     }
 
-    public AuthResult loginCliente(LoginRequest request, String userAgent) {
+    @Transactional
+    public AuthResult loginCliente(LoginRequest request, SessionContext sessionContext) {
         User user = userRepository.findByEmailAndDeletedAtIsNull(request.getEmail().trim().toLowerCase(Locale.ROOT))
             .orElse(null);
         if (user == null) {
@@ -235,11 +258,11 @@ public class AuthService {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Credenciales inválidas");
         }
 
-        return issueTokens(user, toUserResponse(user), userAgent);
+        return issueTokens(user, toUserResponse(user), sessionContext);
     }
 
     @Transactional
-    public AuthResult loginWithOAuth(OAuthLoginRequest request, String userAgent) {
+    public AuthResult loginWithOAuth(OAuthLoginRequest request, SessionContext sessionContext) {
         OAuthUserInfo userInfo = oAuthService.verify(request);
         String normalizedProvider = normalizeOAuthProvider(userInfo.provider());
         String providerId = normalizeOAuthValue(userInfo.providerId());
@@ -287,6 +310,7 @@ public class AuthService {
             user.setProvider(normalizedProvider);
             user.setProviderId(providerId);
             user.setAvatar(normalizeOAuthValue(userInfo.avatar()));
+            applyTrustedEmailVerification(user, normalizedProvider);
             user = userRepository.save(user);
             if (user.getRole() == UserRole.PROFESSIONAL) {
                 ensureProfessionalProfile(user);
@@ -308,6 +332,9 @@ public class AuthService {
                 user.setAvatar(avatar);
                 changed = true;
             }
+            if (applyTrustedEmailVerification(user, normalizedProvider)) {
+                changed = true;
+            }
             if (desiredRole == UserRole.PROFESSIONAL && user.getRole() != UserRole.PROFESSIONAL) {
                 user.setRole(UserRole.PROFESSIONAL);
                 changed = true;
@@ -320,82 +347,288 @@ public class AuthService {
             }
         }
 
-        return issueTokens(user, toUserResponse(user), userAgent);
+        return issueTokens(user, toUserResponse(user), sessionContext);
     }
 
-    @Transactional
-    public AuthResult refreshSession(String refreshToken, String userAgent) {
+    @Transactional(noRollbackFor = AuthApiException.class)
+    public AuthResult refreshSession(String refreshToken, SessionContext sessionContext) {
         if (refreshToken == null || refreshToken.isBlank()) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Refresh token faltante");
+            auditRefreshFailure(null, null, sessionContext, "missing_refresh_token");
+            throw new AuthApiException(HttpStatus.UNAUTHORIZED, "REFRESH_TOKEN_INVALID", "Refresh token faltante.");
         }
 
         String tokenHash = hashToken(refreshToken);
-        RefreshToken stored = refreshTokenRepository.findByToken(tokenHash)
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Refresh token inválido"));
+        LocalDateTime now = LocalDateTime.now();
 
-        if (stored.getRevokedAt() != null) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Refresh token revocado");
+        SessionService.TrackedRefreshTokenMatch trackedMatch = sessionService.findTrackedRefreshTokenMatch(tokenHash)
+            .orElse(null);
+        if (trackedMatch != null) {
+            return refreshTrackedSession(trackedMatch, sessionContext, now);
         }
 
-        LocalDateTime now = LocalDateTime.now();
+        RefreshToken stored = refreshTokenRepository.findByToken(tokenHash).orElse(null);
+        if (stored != null) {
+            if (!allowLegacyRefreshFallback) {
+                Long userId = stored.getUser() == null ? null : stored.getUser().getId();
+                authAuditService.log(
+                    AuthAuditEventType.LEGACY_TOKEN_REJECTED,
+                    AuthAuditStatus.FAILURE,
+                    userId,
+                    null,
+                    sessionContext == null ? null : sessionContext.ipAddress(),
+                    sessionContext == null ? null : sessionContext.userAgent(),
+                    Map.of("type", "legacy_refresh")
+                );
+                auditRefreshFailure(userId, null, sessionContext, "legacy_refresh_rejected");
+                throw new AuthApiException(
+                    HttpStatus.UNAUTHORIZED,
+                    "LEGACY_TOKEN_REJECTED",
+                    "La sesión requiere volver a iniciar sesión."
+                );
+            }
+            return migrateLegacyRefreshToken(stored, sessionContext, now);
+        }
+
+        auditRefreshFailure(null, null, sessionContext, "refresh_token_invalid");
+        throw new AuthApiException(HttpStatus.UNAUTHORIZED, "REFRESH_TOKEN_INVALID", "Refresh token inválido.");
+    }
+
+    @Transactional(readOnly = true)
+    public String resolveRefreshOwnerId(String refreshToken) {
+        if (refreshToken == null || refreshToken.isBlank()) {
+            return null;
+        }
+        String tokenHash = hashToken(refreshToken);
+        SessionService.TrackedRefreshTokenMatch trackedMatch = sessionService.findTrackedRefreshTokenMatch(tokenHash)
+            .orElse(null);
+        if (trackedMatch != null && trackedMatch.session().getUser() != null) {
+            return String.valueOf(trackedMatch.session().getUser().getId());
+        }
+        if (!allowLegacyRefreshFallback) {
+            return null;
+        }
+        RefreshToken stored = refreshTokenRepository.findByToken(tokenHash).orElse(null);
+        if (stored == null || stored.getUser() == null) {
+            return null;
+        }
+        return String.valueOf(stored.getUser().getId());
+    }
+
+    @Transactional
+    public void logout(String refreshToken, String rawUserId, String currentSessionId) {
+        if (refreshToken != null && !refreshToken.isBlank()) {
+            String tokenHash = hashToken(refreshToken);
+            if (sessionService.findSessionByRefreshTokenHash(tokenHash).isPresent()) {
+                sessionService.revokeSessionByRefreshToken(tokenHash, sessionService.revokeReasonLogout());
+                return;
+            }
+            refreshTokenRepository.findByToken(tokenHash).ifPresent(stored -> {
+                if (stored.getRevokedAt() == null) {
+                    stored.setRevokedAt(LocalDateTime.now());
+                    refreshTokenRepository.save(stored);
+                }
+            });
+            return;
+        }
+
+        if (rawUserId != null && currentSessionId != null) {
+            sessionService.revokeSessionByIdForUser(parseUserId(rawUserId), currentSessionId, sessionService.revokeReasonLogout());
+        }
+    }
+
+    @Transactional
+    public void logoutAllSessions(String rawUserId) {
+        Long userId = parseUserId(rawUserId);
+        sessionService.incrementSessionVersion(userId);
+        sessionService.revokeAllSessionsForUser(userId, sessionService.revokeReasonLogoutAll());
+    }
+
+    @Transactional(readOnly = true)
+    public List<AuthSessionResponse> listSessions(String rawUserId, String currentSessionId) {
+        return sessionService.listSessions(parseUserId(rawUserId), currentSessionId);
+    }
+
+    @Transactional
+    public void revokeSession(String rawUserId, String sessionId) {
+        sessionService.revokeSessionByIdForUser(
+            parseUserId(rawUserId),
+            sessionId,
+            sessionService.revokeReasonSessionRevoked()
+        );
+    }
+
+    private AuthResult issueTokens(User user, UserResponse userResponse, SessionContext sessionContext) {
+        String userId = String.valueOf(user.getId());
+        user.setLastLoginAt(LocalDateTime.now());
+        user.setLastLoginIp(normalizeIpAddress(sessionContext == null ? null : sessionContext.ipAddress()));
+        if (user.getSessionVersion() == null || user.getSessionVersion() < 1) {
+            user.setSessionVersion(1);
+        }
+        User savedUser = userRepository.save(user);
+        SessionTokenIssue sessionToken = createSessionToken(savedUser, sessionContext);
+        String accessToken = createAccessToken(
+            userId,
+            savedUser.getEmail(),
+            savedUser.getRole(),
+            sessionToken.session().getId(),
+            savedUser.getSessionVersion()
+        );
+        authAuditService.log(
+            AuthAuditEventType.LOGIN_SUCCESS,
+            AuthAuditStatus.SUCCESS,
+            savedUser.getId(),
+            sessionToken.session().getId(),
+            sessionContext == null ? null : sessionContext.ipAddress(),
+            sessionContext == null ? null : sessionContext.userAgent(),
+            Map.of(
+                "role", savedUser.getRole().name(),
+                "sessionType", sessionToken.session().getSessionType().name()
+            )
+        );
+        return new AuthResult(
+            accessToken,
+            sessionToken.rawToken(),
+            userResponse,
+            savedUser.getRole(),
+            toAuthSessionResponse(sessionToken.session(), true)
+        );
+    }
+
+    private String createAccessToken(String userId, String email, UserRole role, String sessionId, Integer sessionVersion) {
+        Date now = new Date();
+        Date expiresAt = Date.from(Instant.now().plus(jwtExpirationMinutes, ChronoUnit.MINUTES));
+        com.auth0.jwt.JWTCreator.Builder builder = JWT.create()
+            .withSubject(userId)
+            .withClaim("email", email)
+            .withClaim("role", role.name())
+            .withIssuer(jwtIssuer)
+            .withIssuedAt(now)
+            .withExpiresAt(expiresAt);
+        if (sessionId != null && !sessionId.isBlank()) {
+            builder.withClaim("sid", sessionId);
+        }
+        if (sessionVersion != null) {
+            builder.withClaim("sv", sessionVersion);
+        }
+        return builder.sign(jwtAlgorithm);
+    }
+
+    private AuthResult refreshTrackedSession(
+        SessionService.TrackedRefreshTokenMatch trackedMatch,
+        SessionContext sessionContext,
+        LocalDateTime now
+    ) {
+        AuthSession session = trackedMatch.session();
+        if (session.getRevokedAt() != null) {
+            auditRefreshFailure(sessionUserId(session), session.getId(), sessionContext, "session_revoked");
+            throw new AuthApiException(HttpStatus.UNAUTHORIZED, "SESSION_REVOKED", "La sesión ya no es válida.");
+        }
+        if (session.getExpiresAt().isBefore(now)) {
+            sessionService.revokeSession(session, "EXPIRED");
+            auditRefreshFailure(sessionUserId(session), session.getId(), sessionContext, "session_expired");
+            throw new AuthApiException(HttpStatus.UNAUTHORIZED, "SESSION_EXPIRED", "La sesión expiró.");
+        }
+
+        User user = session.getUser();
+        if (user == null || user.getDeletedAt() != null) {
+            sessionService.revokeSession(session, "USER_NOT_FOUND");
+            auditRefreshFailure(sessionUserId(session), session.getId(), sessionContext, "user_not_found");
+            throw new AuthApiException(HttpStatus.UNAUTHORIZED, "SESSION_INVALID", "La sesión ya no es válida.");
+        }
+
+        if (trackedMatch.matchType() == SessionService.RefreshTokenMatchType.PREVIOUS) {
+            handleRefreshTokenReuse(session, sessionContext);
+            throw new AuthApiException(
+                HttpStatus.UNAUTHORIZED,
+                "SESSION_COMPROMISED",
+                "Detectamos reutilización del refresh token. Iniciá sesión nuevamente."
+            );
+        }
+
+        if (user.getSessionVersion() == null || user.getSessionVersion() < 1) {
+            user.setSessionVersion(1);
+            userRepository.save(user);
+        }
+
+        String rawRefreshToken = generateRefreshToken();
+        LocalDateTime newExpiry = now.plusDays(refreshTokenDays);
+        AuthSession rotated = sessionService.rotateSession(
+            session,
+            hashToken(rawRefreshToken),
+            sessionContext == null ? null : sessionContext.userAgent(),
+            sessionContext == null ? null : sessionContext.ipAddress(),
+            newExpiry
+        );
+        String accessToken = createAccessToken(
+            String.valueOf(user.getId()),
+            user.getEmail(),
+            user.getRole(),
+            rotated.getId(),
+            user.getSessionVersion()
+        );
+        AuthResult result = new AuthResult(
+            accessToken,
+            rawRefreshToken,
+            toUserResponse(user),
+            user.getRole(),
+            toAuthSessionResponse(rotated, true)
+        );
+        auditRefreshSuccess(user.getId(), rotated.getId(), sessionContext, "session_refresh");
+        return result;
+    }
+
+    private AuthResult migrateLegacyRefreshToken(RefreshToken stored, SessionContext sessionContext, LocalDateTime now) {
+        if (stored.getRevokedAt() != null) {
+            Long userId = stored.getUser() == null ? null : stored.getUser().getId();
+            auditRefreshFailure(userId, null, sessionContext, "legacy_refresh_revoked");
+            throw new AuthApiException(HttpStatus.UNAUTHORIZED, "SESSION_REVOKED", "La sesión ya no es válida.");
+        }
         if (stored.getExpiryDate().isBefore(now)) {
             stored.setRevokedAt(now);
             refreshTokenRepository.save(stored);
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Refresh token expirado");
+            Long userId = stored.getUser() == null ? null : stored.getUser().getId();
+            auditRefreshFailure(userId, null, sessionContext, "legacy_refresh_expired");
+            throw new AuthApiException(HttpStatus.UNAUTHORIZED, "SESSION_EXPIRED", "La sesión expiró.");
         }
 
         User user = stored.getUser();
         if (user == null || user.getDeletedAt() != null) {
             stored.setRevokedAt(now);
             refreshTokenRepository.save(stored);
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Usuario no encontrado");
+            auditRefreshFailure(null, null, sessionContext, "legacy_user_not_found");
+            throw new AuthApiException(HttpStatus.UNAUTHORIZED, "SESSION_INVALID", "La sesión ya no es válida.");
         }
 
-        stored.setRevokedAt(now);
-        refreshTokenRepository.save(stored);
-        RefreshTokenIssue replacement = createRefreshToken(user);
+        if (user.getSessionVersion() == null || user.getSessionVersion() < 1) {
+            user.setSessionVersion(1);
+            userRepository.save(user);
+        }
 
+        String rawRefreshToken = generateRefreshToken();
+        SessionService.LegacyRefreshMigrationResult migration = sessionService.migrateLegacyRefreshToken(
+            stored,
+            hashToken(rawRefreshToken),
+            resolveSessionType(sessionContext),
+            sessionContext == null ? null : sessionContext.userAgent(),
+            sessionContext == null ? null : sessionContext.ipAddress(),
+            now.plusDays(refreshTokenDays)
+        );
         String accessToken = createAccessToken(
             String.valueOf(user.getId()),
             user.getEmail(),
-            user.getRole()
+            user.getRole(),
+            migration.session().getId(),
+            user.getSessionVersion()
         );
-
-        return new AuthResult(accessToken, replacement.rawToken(), toUserResponse(user), user.getRole());
-    }
-
-    @Transactional
-    public void logout(String refreshToken) {
-        if (refreshToken == null || refreshToken.isBlank()) {
-            return;
-        }
-        String tokenHash = hashToken(refreshToken);
-        refreshTokenRepository.findByToken(tokenHash).ifPresent(stored -> {
-            if (stored.getRevokedAt() == null) {
-                stored.setRevokedAt(LocalDateTime.now());
-                refreshTokenRepository.save(stored);
-            }
-        });
-    }
-
-    private AuthResult issueTokens(User user, UserResponse userResponse, String userAgent) {
-        String userId = String.valueOf(user.getId());
-        String accessToken = createAccessToken(userId, user.getEmail(), user.getRole());
-        RefreshTokenIssue refreshToken = createRefreshToken(user);
-        return new AuthResult(accessToken, refreshToken.rawToken(), userResponse, user.getRole());
-    }
-
-    private String createAccessToken(String userId, String email, UserRole role) {
-        Date now = new Date();
-        Date expiresAt = Date.from(Instant.now().plus(jwtExpirationMinutes, ChronoUnit.MINUTES));
-        return JWT.create()
-            .withSubject(userId)
-            .withClaim("email", email)
-            .withClaim("role", role.name())
-            .withIssuer(jwtIssuer)
-            .withIssuedAt(now)
-            .withExpiresAt(expiresAt)
-            .sign(jwtAlgorithm);
+        AuthResult result = new AuthResult(
+            accessToken,
+            rawRefreshToken,
+            toUserResponse(user),
+            user.getRole(),
+            toAuthSessionResponse(migration.session(), true)
+        );
+        auditRefreshSuccess(user.getId(), migration.session().getId(), sessionContext, "legacy_refresh_migration");
+        return result;
     }
 
     private RefreshTokenIssue createRefreshToken(User user) {
@@ -406,6 +639,20 @@ public class AuthService {
         refreshToken.setExpiryDate(LocalDateTime.now().plusDays(refreshTokenDays));
         RefreshToken saved = refreshTokenRepository.save(refreshToken);
         return new RefreshTokenIssue(rawToken, saved);
+    }
+
+    private SessionTokenIssue createSessionToken(User user, SessionContext sessionContext) {
+        String rawToken = generateRefreshToken();
+        AuthSession session = sessionService.createSession(
+            user,
+            resolveSessionType(sessionContext),
+            hashToken(rawToken),
+            null,
+            sessionContext == null ? null : sessionContext.userAgent(),
+            sessionContext == null ? null : sessionContext.ipAddress(),
+            LocalDateTime.now().plusDays(refreshTokenDays)
+        );
+        return new SessionTokenIssue(rawToken, session);
     }
 
     private String generateRefreshToken() {
@@ -435,15 +682,115 @@ public class AuthService {
     }
 
     private User loadUserByRawId(String rawUserId) {
-        Long userId;
-        try {
-            userId = Long.valueOf(rawUserId);
-        } catch (NumberFormatException ex) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Refresh token inválido");
-        }
-
+        Long userId = parseUserId(rawUserId);
         return userRepository.findByIdAndDeletedAtIsNull(userId)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Usuario no encontrado"));
+    }
+
+    private Long parseUserId(String rawUserId) {
+        try {
+            return Long.valueOf(rawUserId);
+        } catch (NumberFormatException ex) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Token inválido");
+        }
+    }
+
+
+    private AuthSessionType resolveSessionType(SessionContext sessionContext) {
+        if (sessionContext == null || sessionContext.sessionType() == null) {
+            return AuthSessionType.WEB;
+        }
+        return sessionContext.sessionType();
+    }
+
+    private AuthSessionResponse toAuthSessionResponse(AuthSession session, boolean current) {
+        return new AuthSessionResponse(
+            session.getId(),
+            session.getSessionType().name(),
+            session.getDeviceLabel(),
+            session.getUserAgent(),
+            session.getIpAddress(),
+            session.getCreatedAt(),
+            session.getLastSeenAt(),
+            session.getExpiresAt(),
+            session.getRevokedAt(),
+            session.getRevokeReason(),
+            current
+        );
+    }
+
+    private String normalizeIpAddress(String ipAddress) {
+        if (ipAddress == null) {
+            return null;
+        }
+        String trimmed = ipAddress.trim();
+        if (trimmed.isBlank()) {
+            return null;
+        }
+        return trimmed.length() <= 64 ? trimmed : trimmed.substring(0, 64);
+    }
+
+    private void handleRefreshTokenReuse(AuthSession session, SessionContext sessionContext) {
+        AuthSession compromisedSession = sessionService.markSessionCompromised(
+            session,
+            sessionService.revokeReasonRefreshReuse()
+        );
+        Long userId = sessionUserId(compromisedSession);
+        String sessionId = compromisedSession.getId();
+        Map<String, String> metadata = Map.of(
+            "sessionId", sessionId,
+            "reason", sessionService.revokeReasonRefreshReuse()
+        );
+        authAuditService.log(
+            AuthAuditEventType.REFRESH_TOKEN_REUSE_DETECTED,
+            AuthAuditStatus.FAILURE,
+            userId,
+            sessionId,
+            sessionContext == null ? null : sessionContext.ipAddress(),
+            sessionContext == null ? null : sessionContext.userAgent(),
+            metadata
+        );
+        authAuditService.log(
+            AuthAuditEventType.SESSION_REVOKED_COMPROMISED,
+            AuthAuditStatus.FAILURE,
+            userId,
+            sessionId,
+            sessionContext == null ? null : sessionContext.ipAddress(),
+            sessionContext == null ? null : sessionContext.userAgent(),
+            metadata
+        );
+        auditRefreshFailure(userId, sessionId, sessionContext, "refresh_token_reuse_detected");
+    }
+
+    private void auditRefreshSuccess(Long userId, String sessionId, SessionContext sessionContext, String mode) {
+        authAuditService.log(
+            AuthAuditEventType.REFRESH_SUCCESS,
+            AuthAuditStatus.SUCCESS,
+            userId,
+            sessionId,
+            sessionContext == null ? null : sessionContext.ipAddress(),
+            sessionContext == null ? null : sessionContext.userAgent(),
+            Map.of("mode", mode)
+        );
+    }
+
+    private void auditRefreshFailure(Long userId, String sessionId, SessionContext sessionContext, String reason) {
+        authAuditService.log(
+            AuthAuditEventType.REFRESH_FAILURE,
+            AuthAuditStatus.FAILURE,
+            userId,
+            sessionId,
+            sessionContext == null ? null : sessionContext.ipAddress(),
+            sessionContext == null ? null : sessionContext.userAgent(),
+            Map.of("reason", reason)
+        );
+    }
+
+    private Long sessionUserId(AuthSession session) {
+        if (session == null || session.getUser() == null) {
+            return null;
+        }
+        return session.getUser().getId();
     }
 
     public ProfesionalProfileResponse getProfesionalProfile(String rawUserId) {
@@ -470,7 +817,9 @@ public class AuthService {
             profile.getSlug(),
             user.getFullName(),
             user.getEmail(),
+            user.getEmailVerifiedAt() != null,
             user.getPhoneNumber(),
+            user.getPhoneVerifiedAt() != null,
             profile.getRubro(),
             profile.getLocation(),
             profile.getCountry(),
@@ -542,8 +891,22 @@ public class AuthService {
             String.valueOf(user.getId()),
             user.getEmail(),
             user.getFullName(),
+            user.getEmailVerifiedAt() != null,
+            user.getPhoneNumber(),
+            user.getPhoneVerifiedAt() != null,
             user.getCreatedAt()
         );
+    }
+
+    private boolean applyTrustedEmailVerification(User user, String normalizedProvider) {
+        if (user == null || normalizedProvider == null) {
+            return false;
+        }
+        if (!"google".equals(normalizedProvider) || user.getEmailVerifiedAt() != null) {
+            return false;
+        }
+        user.setEmailVerifiedAt(LocalDateTime.now());
+        return true;
     }
 
     private String normalizeOAuthEmail(String email) {

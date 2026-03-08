@@ -1,12 +1,15 @@
 package com.plura.plurabackend.account;
 
-import com.plura.plurabackend.auth.repository.RefreshTokenRepository;
+import com.plura.plurabackend.auth.SessionService;
 import com.plura.plurabackend.availability.AvailableSlotAsyncDispatcher;
 import com.plura.plurabackend.availability.ScheduleSummaryService;
 import com.plura.plurabackend.availability.repository.AvailableSlotRepository;
 import com.plura.plurabackend.billing.BillingService;
+import com.plura.plurabackend.booking.event.BookingEventService;
+import com.plura.plurabackend.booking.event.model.BookingActorType;
+import com.plura.plurabackend.booking.event.model.BookingEventType;
 import com.plura.plurabackend.booking.model.Booking;
-import com.plura.plurabackend.booking.model.BookingStatus;
+import com.plura.plurabackend.booking.model.BookingOperationalStatus;
 import com.plura.plurabackend.booking.repository.BookingRepository;
 import com.plura.plurabackend.cache.ProfileCacheService;
 import com.plura.plurabackend.cache.SlotCacheService;
@@ -38,15 +41,15 @@ import org.springframework.web.server.ResponseStatusException;
 @Service
 public class AccountDeletionService {
 
-    private static final List<BookingStatus> ACTIVE_BOOKING_STATUSES = List.of(
-        BookingStatus.PENDING,
-        BookingStatus.CONFIRMED
+    private static final List<BookingOperationalStatus> ACTIVE_BOOKING_STATUSES = List.of(
+        BookingOperationalStatus.PENDING,
+        BookingOperationalStatus.CONFIRMED
     );
 
     private final UserRepository userRepository;
     private final ProfessionalProfileRepository professionalProfileRepository;
     private final BookingRepository bookingRepository;
-    private final RefreshTokenRepository refreshTokenRepository;
+    private final SessionService sessionService;
     private final BillingService billingService;
     private final AvailableSlotRepository availableSlotRepository;
     private final AvailableSlotAsyncDispatcher availableSlotAsyncDispatcher;
@@ -56,13 +59,14 @@ public class AccountDeletionService {
     private final SlotCacheService slotCacheService;
     private final SearchSyncPublisher searchSyncPublisher;
     private final PasswordEncoder passwordEncoder;
+    private final BookingEventService bookingEventService;
     private final ZoneId appZoneId;
 
     public AccountDeletionService(
         UserRepository userRepository,
         ProfessionalProfileRepository professionalProfileRepository,
         BookingRepository bookingRepository,
-        RefreshTokenRepository refreshTokenRepository,
+        SessionService sessionService,
         BillingService billingService,
         AvailableSlotRepository availableSlotRepository,
         AvailableSlotAsyncDispatcher availableSlotAsyncDispatcher,
@@ -72,12 +76,13 @@ public class AccountDeletionService {
         SlotCacheService slotCacheService,
         SearchSyncPublisher searchSyncPublisher,
         PasswordEncoder passwordEncoder,
+        BookingEventService bookingEventService,
         @Value("${app.timezone:America/Montevideo}") String appTimezone
     ) {
         this.userRepository = userRepository;
         this.professionalProfileRepository = professionalProfileRepository;
         this.bookingRepository = bookingRepository;
-        this.refreshTokenRepository = refreshTokenRepository;
+        this.sessionService = sessionService;
         this.billingService = billingService;
         this.availableSlotRepository = availableSlotRepository;
         this.availableSlotAsyncDispatcher = availableSlotAsyncDispatcher;
@@ -87,6 +92,7 @@ public class AccountDeletionService {
         this.slotCacheService = slotCacheService;
         this.searchSyncPublisher = searchSyncPublisher;
         this.passwordEncoder = passwordEncoder;
+        this.bookingEventService = bookingEventService;
         this.appZoneId = ZoneId.of(appTimezone);
     }
 
@@ -114,7 +120,7 @@ public class AccountDeletionService {
         cancelFutureBookingsForClient(user.getId(), now);
         anonymizeUser(user, now);
         userRepository.save(user);
-        refreshTokenRepository.revokeActiveTokensByUserId(user.getId(), now);
+        sessionService.revokeAllSessionsForUser(user, sessionService.revokeReasonAccountDeletion());
     }
 
     private void deleteProfessionalAccount(User user, LocalDateTime now) {
@@ -140,11 +146,11 @@ public class AccountDeletionService {
 
         anonymizeUser(user, now);
         userRepository.save(user);
-        refreshTokenRepository.revokeActiveTokensByUserId(user.getId(), now);
+        sessionService.revokeAllSessionsForUser(user, sessionService.revokeReasonAccountDeletion());
     }
 
     private void cancelFutureBookingsForClient(Long userId, LocalDateTime now) {
-        List<Booking> bookings = bookingRepository.findByUser_IdAndStatusInAndStartDateTimeGreaterThanEqual(
+        List<Booking> bookings = bookingRepository.findByUser_IdAndOperationalStatusInAndStartDateTimeGreaterThanEqual(
             userId,
             ACTIVE_BOOKING_STATUSES,
             now
@@ -153,7 +159,7 @@ public class AccountDeletionService {
     }
 
     private void cancelFutureBookingsForProfessional(Long professionalId, LocalDateTime now) {
-        List<Booking> bookings = bookingRepository.findByProfessional_IdAndStatusInAndStartDateTimeGreaterThanEqual(
+        List<Booking> bookings = bookingRepository.findByProfessional_IdAndOperationalStatusInAndStartDateTimeGreaterThanEqual(
             professionalId,
             ACTIVE_BOOKING_STATUSES,
             now
@@ -163,7 +169,14 @@ public class AccountDeletionService {
         }
 
         for (Booking booking : bookings) {
-            booking.setStatus(BookingStatus.CANCELLED);
+            booking.applyOperationalStatus(BookingOperationalStatus.CANCELLED, now);
+            bookingEventService.record(
+                booking,
+                BookingEventType.BOOKING_CANCELLED,
+                BookingActorType.SYSTEM,
+                null,
+                Map.of("reason", "professional_account_deletion")
+            );
         }
         bookingRepository.saveAll(bookings);
     }
@@ -176,7 +189,14 @@ public class AccountDeletionService {
         Map<Long, Set<LocalDate>> datesByProfessionalId = new HashMap<>();
         Map<Long, String> slugByProfessionalId = new HashMap<>();
         for (Booking booking : bookings) {
-            booking.setStatus(BookingStatus.CANCELLED);
+            booking.applyOperationalStatus(BookingOperationalStatus.CANCELLED, LocalDateTime.now(appZoneId));
+            bookingEventService.record(
+                booking,
+                BookingEventType.BOOKING_CANCELLED,
+                BookingActorType.SYSTEM,
+                null,
+                Map.of("reason", "client_account_deletion")
+            );
             ProfessionalProfile professional = booking.getProfessional();
             if (professional == null || professional.getId() == null) {
                 continue;

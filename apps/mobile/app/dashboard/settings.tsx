@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Switch, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, Switch, Text, TouchableOpacity, View, TextInput } from 'react-native';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
@@ -7,7 +7,9 @@ import {
   updateClientPreferences,
 } from '../../src/services/clientFeatures';
 import api from '../../src/services/api';
+import EmailVerificationCard from '../../src/components/auth/EmailVerificationCard';
 import { useProfessionalProfileContext } from '../../src/context/ProfessionalProfileContext';
+import { getApiErrorMessage } from '../../src/services/errors';
 
 type Preferences = {
   emailReminders: boolean;
@@ -16,14 +18,41 @@ type Preferences = {
 };
 
 export default function SettingsScreen() {
-  const { role, logout } = useProfessionalProfileContext();
+  const { role, profile, clientProfile, refreshProfile, logout } = useProfessionalProfileContext();
   const [isLoading, setIsLoading] = useState(true);
   const [isDeletingAccount, setIsDeletingAccount] = useState(false);
+  const [isSendingDeleteChallenge, setIsSendingDeleteChallenge] = useState(false);
+  const [deleteChallengeId, setDeleteChallengeId] = useState<string | null>(null);
+  const [deleteChallengeCode, setDeleteChallengeCode] = useState('');
+  const [deleteChallengeMessage, setDeleteChallengeMessage] = useState<string | null>(null);
+  const [deleteChallengeError, setDeleteChallengeError] = useState<string | null>(null);
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
+  const [passwordMessage, setPasswordMessage] = useState<string | null>(null);
+  const [passwordError, setPasswordError] = useState<string | null>(null);
+  const [passwordForm, setPasswordForm] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: '',
+  });
+  const [phoneVerificationCode, setPhoneVerificationCode] = useState('');
+  const [phoneVerificationMessage, setPhoneVerificationMessage] = useState<string | null>(null);
+  const [phoneVerificationError, setPhoneVerificationError] = useState<string | null>(null);
+  const [isSendingPhoneVerification, setIsSendingPhoneVerification] = useState(false);
+  const [isConfirmingPhoneVerification, setIsConfirmingPhoneVerification] = useState(false);
   const [preferences, setPreferences] = useState<Preferences>({
     emailReminders: true,
     pushReminders: false,
     marketing: false,
   });
+
+  const currentEmail = role === 'professional' ? profile?.email : clientProfile?.email;
+  const emailVerified = role === 'professional'
+    ? Boolean(profile?.emailVerified)
+    : Boolean(clientProfile?.emailVerified);
+  const currentPhone = role === 'professional' ? profile?.phoneNumber : clientProfile?.phoneNumber;
+  const phoneVerified = role === 'professional'
+    ? Boolean(profile?.phoneVerified)
+    : Boolean(clientProfile?.phoneVerified);
 
   useEffect(() => {
     const load = async () => {
@@ -41,6 +70,10 @@ export default function SettingsScreen() {
 
   const handleDeleteAccount = () => {
     if (isDeletingAccount) return;
+    if (!deleteChallengeId || !deleteChallengeCode.trim()) {
+      setDeleteChallengeError('Primero solicitá el challenge e ingresá el código recibido.');
+      return;
+    }
     const description = role === 'professional'
       ? 'Si tienes una suscripcion activa, se dara de baja antes de eliminar tu cuenta.'
       : 'Se cancelaran tus proximas reservas antes de eliminar tu cuenta.';
@@ -56,11 +89,19 @@ export default function SettingsScreen() {
           onPress: async () => {
             setIsDeletingAccount(true);
             try {
-              await api.delete('/auth/me');
+              await api.delete('/auth/me', {
+                data: {
+                  challengeId: deleteChallengeId,
+                  code: deleteChallengeCode.trim(),
+                },
+              });
               await logout();
               router.replace('/(auth)/login');
-            } catch {
-              Alert.alert('No se pudo eliminar la cuenta', 'Intenta nuevamente en unos minutos.');
+            } catch (error) {
+              Alert.alert(
+                'No se pudo eliminar la cuenta',
+                getApiErrorMessage(error, 'Intenta nuevamente en unos minutos.'),
+              );
             } finally {
               setIsDeletingAccount(false);
             }
@@ -68,6 +109,106 @@ export default function SettingsScreen() {
         },
       ],
     );
+  };
+
+  const handleSendDeleteChallenge = async (channel: 'EMAIL' | 'SMS') => {
+    if (isSendingDeleteChallenge) return;
+    setDeleteChallengeMessage(null);
+    setDeleteChallengeError(null);
+
+    try {
+      setIsSendingDeleteChallenge(true);
+      const response = await api.post<{ challengeId: string; expiresAt: string; maskedDestination: string }>(
+        '/auth/challenge/send',
+        {
+          purpose: 'ACCOUNT_DELETION',
+          channel,
+        },
+      );
+      setDeleteChallengeId(response.data.challengeId);
+      setDeleteChallengeMessage(
+        `Código enviado por ${channel === 'EMAIL' ? 'email' : 'SMS'} a ${response.data.maskedDestination}.`,
+      );
+    } catch (error) {
+      setDeleteChallengeError(
+        getApiErrorMessage(error, 'No se pudo enviar el challenge de eliminación.'),
+      );
+    } finally {
+      setIsSendingDeleteChallenge(false);
+    }
+  };
+
+  const handleChangePassword = async () => {
+    if (isChangingPassword) return;
+    setPasswordMessage(null);
+    setPasswordError(null);
+
+    if (passwordForm.newPassword.length < 8) {
+      setPasswordError('La contraseña debe tener al menos 8 caracteres.');
+      return;
+    }
+    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+      setPasswordError('Las contraseñas no coinciden.');
+      return;
+    }
+
+    try {
+      setIsChangingPassword(true);
+      await api.post('/auth/password/change', {
+        currentPassword: passwordForm.currentPassword,
+        newPassword: passwordForm.newPassword,
+      });
+      setPasswordMessage('Contraseña actualizada. Inicia sesión nuevamente.');
+      await logout();
+      router.replace('/(auth)/login');
+    } catch (error) {
+      setPasswordError(getApiErrorMessage(error, 'No se pudo actualizar la contraseña.'));
+    } finally {
+      setIsChangingPassword(false);
+    }
+  };
+
+  const handleSendPhoneVerification = async () => {
+    if (isSendingPhoneVerification || !currentPhone) return;
+    setPhoneVerificationMessage(null);
+    setPhoneVerificationError(null);
+
+    try {
+      setIsSendingPhoneVerification(true);
+      const response = await api.post<{ message: string; cooldownSeconds?: number | null }>(
+        '/auth/verify/phone/send',
+        {},
+      );
+      const suffix = response.data.cooldownSeconds && response.data.cooldownSeconds > 0
+        ? ` Podés reenviar en ${response.data.cooldownSeconds}s.`
+        : '';
+      setPhoneVerificationMessage(`${response.data.message}${suffix}`);
+      await refreshProfile();
+    } catch (error) {
+      setPhoneVerificationError(getApiErrorMessage(error, 'No se pudo enviar el OTP.'));
+    } finally {
+      setIsSendingPhoneVerification(false);
+    }
+  };
+
+  const handleConfirmPhoneVerification = async () => {
+    if (isConfirmingPhoneVerification || !currentPhone) return;
+    setPhoneVerificationMessage(null);
+    setPhoneVerificationError(null);
+
+    try {
+      setIsConfirmingPhoneVerification(true);
+      await api.post('/auth/verify/phone/confirm', {
+        code: phoneVerificationCode.trim(),
+      });
+      setPhoneVerificationCode('');
+      setPhoneVerificationMessage('Teléfono verificado correctamente.');
+      await refreshProfile();
+    } catch (error) {
+      setPhoneVerificationError(getApiErrorMessage(error, 'No se pudo verificar el OTP.'));
+    } finally {
+      setIsConfirmingPhoneVerification(false);
+    }
   };
 
   if (isLoading) {
@@ -110,6 +251,135 @@ export default function SettingsScreen() {
           </View>
         </View>
 
+        <View className="mt-6">
+          <EmailVerificationCard
+            email={currentEmail}
+            emailVerified={emailVerified}
+            onStatusChanged={refreshProfile}
+            variant="section"
+          />
+        </View>
+
+        <View className="mt-6 rounded-[22px] bg-white p-5 border border-secondary/10">
+          <Text className="font-semibold text-secondary">Verificación de teléfono</Text>
+          <Text className="mt-1 text-xs text-gray-500">
+            Estado actual del teléfono principal de la cuenta.
+          </Text>
+
+          <View className="mt-4 flex-row items-center justify-between">
+            <View className="flex-1 pr-3">
+              <Text className="font-semibold text-secondary">{currentPhone || 'Sin teléfono cargado'}</Text>
+              <Text className="mt-1 text-xs text-gray-500">
+                {phoneVerified ? 'Estado: verificado.' : 'Estado: pendiente de verificación.'}
+              </Text>
+            </View>
+            <View className={`rounded-full px-3 py-1 ${phoneVerified ? 'bg-emerald-50' : 'bg-amber-50'}`}>
+              <Text className={`text-xs font-semibold ${phoneVerified ? 'text-emerald-700' : 'text-amber-700'}`}>
+                {phoneVerified ? 'Verificado' : 'Pendiente'}
+              </Text>
+            </View>
+          </View>
+
+          {!phoneVerified ? (
+            <>
+              <TouchableOpacity
+                onPress={() => {
+                  void handleSendPhoneVerification();
+                }}
+                disabled={isSendingPhoneVerification}
+                className="mt-4 h-12 items-center justify-center rounded-full border border-secondary/10 bg-background"
+              >
+                <Text className="font-semibold text-secondary">
+                  {isSendingPhoneVerification ? 'Enviando...' : 'Enviar OTP'}
+                </Text>
+              </TouchableOpacity>
+
+              <TextInput
+                className="mt-3 h-12 rounded-[16px] border border-secondary/10 bg-background px-4 text-secondary"
+                placeholder="OTP de 6 dígitos"
+                placeholderTextColor="#9CA3AF"
+                keyboardType="number-pad"
+                value={phoneVerificationCode}
+                onChangeText={setPhoneVerificationCode}
+              />
+
+              <TouchableOpacity
+                onPress={() => {
+                  void handleConfirmPhoneVerification();
+                }}
+                disabled={isConfirmingPhoneVerification}
+                className="mt-3 h-12 items-center justify-center rounded-full bg-secondary"
+              >
+                <Text className="font-semibold text-white">
+                  {isConfirmingPhoneVerification ? 'Verificando...' : 'Confirmar OTP'}
+                </Text>
+              </TouchableOpacity>
+            </>
+          ) : null}
+
+          {phoneVerificationMessage ? (
+            <Text className="mt-3 text-xs font-semibold text-emerald-700">{phoneVerificationMessage}</Text>
+          ) : null}
+          {phoneVerificationError ? (
+            <Text className="mt-3 text-xs font-semibold text-red-600">{phoneVerificationError}</Text>
+          ) : null}
+        </View>
+
+        <View className="mt-6 rounded-[22px] bg-white p-5 border border-secondary/10">
+          <Text className="font-semibold text-secondary">Cambiar contraseña</Text>
+          <Text className="mt-1 text-xs text-gray-500">
+            Por seguridad se cerrarán todas las sesiones activas.
+          </Text>
+
+          <TextInput
+            className="mt-4 h-12 rounded-[16px] border border-secondary/10 bg-background px-4 text-secondary"
+            placeholder="Contraseña actual"
+            placeholderTextColor="#9CA3AF"
+            secureTextEntry
+            value={passwordForm.currentPassword}
+            onChangeText={(text) => setPasswordForm((prev) => ({ ...prev, currentPassword: text }))}
+          />
+          <TextInput
+            className="mt-3 h-12 rounded-[16px] border border-secondary/10 bg-background px-4 text-secondary"
+            placeholder="Nueva contraseña"
+            placeholderTextColor="#9CA3AF"
+            secureTextEntry
+            value={passwordForm.newPassword}
+            onChangeText={(text) => setPasswordForm((prev) => ({ ...prev, newPassword: text }))}
+          />
+          <TextInput
+            className="mt-3 h-12 rounded-[16px] border border-secondary/10 bg-background px-4 text-secondary"
+            placeholder="Confirmar nueva contraseña"
+            placeholderTextColor="#9CA3AF"
+            secureTextEntry
+            value={passwordForm.confirmPassword}
+            onChangeText={(text) => setPasswordForm((prev) => ({ ...prev, confirmPassword: text }))}
+          />
+
+          {passwordMessage ? (
+            <Text className="mt-3 text-xs font-semibold text-emerald-700">{passwordMessage}</Text>
+          ) : null}
+          {passwordError ? (
+            <Text className="mt-3 text-xs font-semibold text-red-600">{passwordError}</Text>
+          ) : null}
+
+          <TouchableOpacity
+            onPress={() => {
+              void handleChangePassword();
+            }}
+            disabled={isChangingPassword}
+            className="mt-4 h-12 items-center justify-center rounded-full bg-secondary"
+          >
+            <Text className="font-semibold text-white">
+              {isChangingPassword ? 'Actualizando...' : 'Actualizar contraseña'}
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity onPress={() => router.push('/(auth)/forgot-password')} className="mt-3">
+            <Text className="text-center text-xs font-semibold text-secondary">Olvidé mi contraseña</Text>
+          </TouchableOpacity>
+        </View>
+
         <View className="mt-6 rounded-[22px] border border-red-200 bg-red-50 p-5">
           <Text className="font-semibold text-red-700">Eliminar cuenta</Text>
           <Text className="mt-2 text-xs text-red-600">
@@ -117,6 +387,44 @@ export default function SettingsScreen() {
               ? 'La cuenta profesional se despublica y la suscripcion se cancela si sigue activa.'
               : 'Se cancelan tus proximos turnos y se cierra tu sesion en el dispositivo.'}
           </Text>
+          <TouchableOpacity
+            onPress={() => {
+              void handleSendDeleteChallenge('EMAIL');
+            }}
+            disabled={isSendingDeleteChallenge}
+            className="mt-4 h-12 items-center justify-center rounded-full border border-red-200 bg-white"
+          >
+            <Text className="font-semibold text-red-600">
+              {isSendingDeleteChallenge ? 'Enviando...' : 'Enviar código por email'}
+            </Text>
+          </TouchableOpacity>
+          {currentPhone ? (
+            <TouchableOpacity
+              onPress={() => {
+                void handleSendDeleteChallenge('SMS');
+              }}
+              disabled={isSendingDeleteChallenge}
+              className="mt-3 h-12 items-center justify-center rounded-full border border-red-200 bg-white"
+            >
+              <Text className="font-semibold text-red-600">
+                {isSendingDeleteChallenge ? 'Enviando...' : 'Enviar código por SMS'}
+              </Text>
+            </TouchableOpacity>
+          ) : null}
+          <TextInput
+            className="mt-3 h-12 rounded-[16px] border border-red-200 bg-white px-4 text-secondary"
+            placeholder="Código OTP de 6 dígitos"
+            placeholderTextColor="#9CA3AF"
+            keyboardType="number-pad"
+            value={deleteChallengeCode}
+            onChangeText={setDeleteChallengeCode}
+          />
+          {deleteChallengeMessage ? (
+            <Text className="mt-3 text-xs font-semibold text-red-600">{deleteChallengeMessage}</Text>
+          ) : null}
+          {deleteChallengeError ? (
+            <Text className="mt-3 text-xs font-semibold text-red-600">{deleteChallengeError}</Text>
+          ) : null}
           <TouchableOpacity
             onPress={handleDeleteAccount}
             disabled={isDeletingAccount}

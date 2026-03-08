@@ -9,6 +9,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.plura.plurabackend.auth.oauth.OAuthUserInfo;
 import com.plura.plurabackend.auth.oauth.providers.AppleTokenVerifier;
 import com.plura.plurabackend.auth.oauth.providers.GoogleTokenVerifier;
+import com.plura.plurabackend.auth.repository.AuthSessionRepository;
 import com.plura.plurabackend.auth.repository.RefreshTokenRepository;
 import com.plura.plurabackend.professional.repository.ProfessionalProfileRepository;
 import com.plura.plurabackend.user.model.User;
@@ -54,6 +55,9 @@ class AuthOAuthIntegrationTest {
     private RefreshTokenRepository refreshTokenRepository;
 
     @Autowired
+    private AuthSessionRepository authSessionRepository;
+
+    @Autowired
     private ProfessionalProfileRepository professionalProfileRepository;
 
     @Autowired
@@ -67,6 +71,7 @@ class AuthOAuthIntegrationTest {
 
     @BeforeEach
     void cleanUp() {
+        authSessionRepository.deleteAll();
         refreshTokenRepository.deleteAll();
         professionalProfileRepository.deleteAll();
         userRepository.deleteAll();
@@ -88,6 +93,7 @@ class AuthOAuthIntegrationTest {
         User stored = userRepository.findByEmail("new@plura.com").orElseThrow();
         org.junit.jupiter.api.Assertions.assertEquals("google", stored.getProvider());
         org.junit.jupiter.api.Assertions.assertEquals("g123", stored.getProviderId());
+        org.junit.jupiter.api.Assertions.assertNotNull(stored.getEmailVerifiedAt());
     }
 
     @Test
@@ -205,6 +211,7 @@ class AuthOAuthIntegrationTest {
         org.junit.jupiter.api.Assertions.assertEquals(1L, userRepository.count());
         User updated = userRepository.findByProviderAndProviderId("apple", "a123").orElseThrow();
         org.junit.jupiter.api.Assertions.assertEquals("apple-existing@plura.com", updated.getEmail());
+        org.junit.jupiter.api.Assertions.assertNull(updated.getEmailVerifiedAt());
     }
 
     @Test

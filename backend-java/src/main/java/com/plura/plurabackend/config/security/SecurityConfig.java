@@ -70,6 +70,8 @@ public class SecurityConfig {
                     "/auth/login/**",
                     "/auth/register",
                     "/auth/register/**",
+                    "/auth/password/forgot",
+                    "/auth/password/reset",
                     "/auth/refresh",
                     "/auth/logout",
                     "/api/home",
@@ -86,10 +88,15 @@ public class SecurityConfig {
                     "/uploads/**",
                     "/error"
                 ).permitAll()
+                .requestMatchers("/internal/ops/**").permitAll()
                 .requestMatchers("/public/**").permitAll()
                 .requestMatchers(HttpMethod.DELETE, "/auth/me").hasAnyRole("PROFESSIONAL", "USER")
+                .requestMatchers(HttpMethod.POST, "/auth/password/change").hasAnyRole("PROFESSIONAL", "USER")
+                .requestMatchers("/auth/challenge/**").hasAnyRole("PROFESSIONAL", "USER")
+                .requestMatchers("/auth/verify/**").hasAnyRole("PROFESSIONAL", "USER")
                 .requestMatchers("/auth/me/profesional", "/auth/me/professional").hasRole("PROFESSIONAL")
                 .requestMatchers("/auth/me/cliente").hasRole("USER")
+                .requestMatchers("/auth/sessions", "/auth/sessions/**", "/auth/logout-all", "/auth/audit").hasAnyRole("PROFESSIONAL", "USER")
                 .requestMatchers("/profesional/**").hasRole("PROFESSIONAL")
                 .requestMatchers("/billing/**").hasRole("PROFESSIONAL")
                 .requestMatchers("/cliente/**").hasRole("USER")
@@ -132,7 +139,13 @@ public class SecurityConfig {
         CorsConfiguration configuration = new CorsConfiguration();
         configuration.setAllowedOrigins(allowedOrigins);
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
-        configuration.setAllowedHeaders(List.of("Authorization", "Content-Type", "Accept"));
+        configuration.setAllowedHeaders(List.of(
+            "Authorization",
+            "Content-Type",
+            "Accept",
+            "X-Plura-Client-Platform",
+            "X-Plura-Session-Transport"
+        ));
         configuration.setAllowCredentials(true);
         configuration.setMaxAge(corsMaxAgeSeconds);
 

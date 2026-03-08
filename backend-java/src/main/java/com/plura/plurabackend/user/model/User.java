@@ -55,6 +55,24 @@ public class User {
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
 
+    @Column(name = "session_version", nullable = false)
+    private Integer sessionVersion;
+
+    @Column(name = "last_login_at")
+    private LocalDateTime lastLoginAt;
+
+    @Column(name = "last_login_ip", length = 64)
+    private String lastLoginIp;
+
+    @Column(name = "password_changed_at")
+    private LocalDateTime passwordChangedAt;
+
+    @Column(name = "email_verified_at")
+    private LocalDateTime emailVerifiedAt;
+
+    @Column(name = "phone_verified_at")
+    private LocalDateTime phoneVerifiedAt;
+
     @Column(name = "deleted_at")
     private LocalDateTime deletedAt;
 
@@ -62,6 +80,9 @@ public class User {
     void onCreate() {
         if (this.createdAt == null) {
             this.createdAt = LocalDateTime.now();
+        }
+        if (this.sessionVersion == null || this.sessionVersion < 1) {
+            this.sessionVersion = 1;
         }
     }
 }

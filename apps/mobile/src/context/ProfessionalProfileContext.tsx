@@ -1,6 +1,10 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import api from '../services/api';
-import { getProfessionalToken, clearProfessionalToken } from '../services/session';
+import {
+  getProfessionalRefreshToken,
+  getProfessionalToken,
+  clearProfessionalToken,
+} from '../services/session';
 import { ProfessionalProfile } from '../types/professional'; // Ajusta la ruta a tus tipos si es necesario
 import { logWarn } from '../services/logger';
 
@@ -8,6 +12,9 @@ type ClientProfile = {
   id: string;
   fullName: string;
   email?: string;
+  emailVerified?: boolean;
+  phoneNumber?: string | null;
+  phoneVerified?: boolean;
   role?: string;
 };
 
@@ -68,10 +75,18 @@ export const ProfessionalProfileProvider = ({ children }: { children: ReactNode 
   };
 
   const logout = async () => {
-    await clearProfessionalToken();
-    setProfile(null);
-    setClientProfile(null);
-    setRole(null);
+    const refreshToken = await getProfessionalRefreshToken();
+
+    try {
+      await api.post('/auth/logout', refreshToken ? { refreshToken } : {});
+    } catch (error) {
+      logWarn('profile', 'error cerrando sesion en backend', error);
+    } finally {
+      await clearProfessionalToken();
+      setProfile(null);
+      setClientProfile(null);
+      setRole(null);
+    }
   };
 
   // Cargar el perfil automáticamente al abrir la app

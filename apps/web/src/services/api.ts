@@ -4,6 +4,7 @@ import type {
   AxiosRequestHeaders,
   InternalAxiosRequestConfig,
 } from 'axios';
+import { AxiosHeaders } from 'axios';
 import {
   clearAuthAccessToken,
   getAuthAccessToken,
@@ -20,6 +21,9 @@ const authApi = axios.create({
   withCredentials: true,
 });
 
+const CLIENT_PLATFORM_HEADER = 'X-Plura-Client-Platform';
+const SESSION_TRANSPORT_HEADER = 'X-Plura-Session-Transport';
+
 const authTokenFromResponse = (
   responseData: unknown,
 ): string | null => {
@@ -33,6 +37,16 @@ const isAuthRoute = (url?: string) => {
   return (
     url.includes('/auth/login') ||
     url.includes('/auth/register') ||
+    url.includes('/auth/oauth') ||
+    url.includes('/auth/refresh') ||
+    url.includes('/auth/logout')
+  );
+};
+
+const isSessionMutatingAuthRoute = (url?: string) => {
+  if (!url) return false;
+  return (
+    url.includes('/auth/login') ||
     url.includes('/auth/oauth') ||
     url.includes('/auth/refresh') ||
     url.includes('/auth/logout')
@@ -76,6 +90,21 @@ let refreshPromise: Promise<void> | null = null;
 const attachAuthHeader = (
   config: InternalAxiosRequestConfig,
 ): InternalAxiosRequestConfig => {
+  if (!config.headers) {
+    config.headers = new AxiosHeaders();
+  }
+  if (config.headers instanceof AxiosHeaders) {
+    config.headers.set(CLIENT_PLATFORM_HEADER, 'WEB');
+    if (isAuthRoute(config.url)) {
+      config.headers.set(SESSION_TRANSPORT_HEADER, 'COOKIE');
+    }
+  } else {
+    config.headers = AxiosHeaders.from({
+      ...(config.headers as AxiosRequestHeaders | undefined),
+      [CLIENT_PLATFORM_HEADER]: 'WEB',
+      ...(isAuthRoute(config.url) ? { [SESSION_TRANSPORT_HEADER]: 'COOKIE' } : {}),
+    });
+  }
   if (isAuthRoute(config.url)) return config;
   const token = getAuthAccessToken();
   if (!token) return config;
@@ -102,6 +131,10 @@ api.interceptors.response.use(
     const token = authTokenFromResponse(response.data);
     if (token) {
       setAuthAccessToken(token);
+    } else if (isSessionMutatingAuthRoute(response.config.url)) {
+      // El token en storage es solo fallback. Si una respuesta de sesion no trae token,
+      // limpiamos ese fallback para no seguir enviando un Bearer obsoleto en paralelo a cookies nuevas.
+      clearAuthAccessToken();
     }
     return response;
   },

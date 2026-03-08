@@ -148,18 +148,26 @@ export default function ProfesionalLoginPage() {
                   />
                 </div>
 
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-[color:var(--ink)]">Contraseña</label>
-                  <input
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-[color:var(--ink)]">Contraseña</label>
+                <input
                     type="password"
                     className={inputClassName}
                     placeholder="••••••••"
                     name="password"
                     value={form.password}
                     onChange={handleChange}
-                    required
-                  />
+                  required
+                />
+                <div className="flex justify-end">
+                  <Link
+                    href="/auth/forgot-password"
+                    className="text-xs font-semibold text-[#0f766e] underline underline-offset-4"
+                  >
+                    Olvidé mi contraseña
+                  </Link>
                 </div>
+              </div>
 
                 {errorMessage ? (
                   <p className="rounded-[12px] border border-red-100 bg-red-50 px-3 py-2 text-xs text-red-600">

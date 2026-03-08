@@ -2,12 +2,13 @@ import React from 'react';
 import { View, Text, TouchableOpacity, ActivityIndicator, ScrollView } from 'react-native';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import EmailVerificationCard from '../../src/components/auth/EmailVerificationCard';
 import { useProfessionalProfileContext } from '../../src/context/ProfessionalProfileContext';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 
 export default function DashboardTab() {
-  const { profile, clientProfile, role, hasLoaded, logout } = useProfessionalProfileContext();
+  const { profile, clientProfile, role, hasLoaded, logout, refreshProfile } = useProfessionalProfileContext();
 
   if (!hasLoaded) {
     return (
@@ -35,6 +36,17 @@ export default function DashboardTab() {
                 Gestiona tus reservas, notificaciones y preferencias en mobile.
               </Text>
             </LinearGradient>
+
+            {!clientProfile.emailVerified ? (
+              <View className="mt-6">
+                <EmailVerificationCard
+                  email={clientProfile.email}
+                  emailVerified={clientProfile.emailVerified}
+                  onStatusChanged={refreshProfile}
+                  variant="banner"
+                />
+              </View>
+            ) : null}
 
             <TouchableOpacity
               onPress={() => router.push('/(tabs)/favorites')}
@@ -121,6 +133,17 @@ export default function DashboardTab() {
         <Text className="mt-2 text-3xl font-bold text-white">Mi Panel</Text>
         <Text className="text-base text-white/80">Hola, {profile.fullName}</Text>
       </LinearGradient>
+
+      {!profile.emailVerified ? (
+        <View className="mt-6">
+          <EmailVerificationCard
+            email={profile.email}
+            emailVerified={profile.emailVerified}
+            onStatusChanged={refreshProfile}
+            variant="banner"
+          />
+        </View>
+      ) : null}
 
       <View className="space-y-3 mt-6">
         <TouchableOpacity

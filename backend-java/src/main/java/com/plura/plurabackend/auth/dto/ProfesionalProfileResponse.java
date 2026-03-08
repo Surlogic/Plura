@@ -14,7 +14,9 @@ public class ProfesionalProfileResponse {
     private String slug;
     private String fullName;
     private String email;
+    private boolean emailVerified;
     private String phoneNumber;
+    private boolean phoneVerified;
     private String rubro;
     private String location;
     private String country;

@@ -1,5 +1,6 @@
 package com.plura.plurabackend.config.error;
 
+import com.plura.plurabackend.auth.AuthApiException;
 import com.plura.plurabackend.auth.oauth.AppleEmailRequiredFirstLoginException;
 import com.plura.plurabackend.auth.oauth.OAuthProviderMismatchException;
 import jakarta.persistence.EntityNotFoundException;
@@ -88,6 +89,14 @@ public class GlobalExceptionHandler {
             ? "Apple did not provide email. Please complete first login from Apple flow that includes email."
             : exception.getMessage();
         return buildErrorResponse(HttpStatus.BAD_REQUEST, "APPLE_EMAIL_REQUIRED_FIRST_LOGIN", message, request);
+    }
+
+    @ExceptionHandler(AuthApiException.class)
+    public ResponseEntity<ApiErrorResponse> handleAuthApiException(
+        AuthApiException exception,
+        HttpServletRequest request
+    ) {
+        return buildErrorResponse(exception.getStatus(), exception.getErrorCode(), exception.getMessage(), request);
     }
 
     @ExceptionHandler(ResponseStatusException.class)

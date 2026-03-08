@@ -21,6 +21,7 @@ type OAuthTokenPayload = {
 
 type OAuthResponse = {
   accessToken: string | null;
+  refreshToken?: string | null;
   user: {
     id: string;
     email: string;

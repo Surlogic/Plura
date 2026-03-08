@@ -105,19 +105,43 @@ public class RateLimitingFilter extends OncePerRequestFilter {
         String path = request.getRequestURI();
 
         if ("POST".equals(method) && ("/auth/login".equals(path) || path.startsWith("/auth/login/"))) {
-            return new RateLimitTarget("login-ip", extractClientIp(request), 5);
+            return new RateLimitTarget("login-ip", extractClientIp(request), 30);
         }
         if ("POST".equals(method) && "/auth/oauth".equals(path)) {
-            return new RateLimitTarget("oauth-ip", extractClientIp(request), 5);
+            return new RateLimitTarget("oauth-ip", extractClientIp(request), 20);
         }
         if ("POST".equals(method) && ("/auth/register".equals(path) || path.startsWith("/auth/register/"))) {
-            return new RateLimitTarget("register-ip", extractClientIp(request), 3);
+            return new RateLimitTarget("register-ip", extractClientIp(request), 20);
         }
         if ("POST".equals(method) && "/auth/refresh".equals(path)) {
-            return new RateLimitTarget("refresh-ip", extractClientIp(request), 20);
+            return new RateLimitTarget("refresh-ip", extractClientIp(request), 120);
         }
         if ("POST".equals(method) && "/auth/logout".equals(path)) {
             return new RateLimitTarget("logout-ip", extractClientIp(request), 30);
+        }
+        if ("POST".equals(method) && "/auth/password/forgot".equals(path)) {
+            return new RateLimitTarget("forgot-pwd-ip", extractClientIp(request), 20);
+        }
+        if ("POST".equals(method) && "/auth/password/reset".equals(path)) {
+            return new RateLimitTarget("reset-pwd-ip", extractClientIp(request), 20);
+        }
+        if ("POST".equals(method) && "/auth/verify/email/send".equals(path)) {
+            return new RateLimitTarget("verify-email-send", resolveUserOrIp(request), 30);
+        }
+        if ("POST".equals(method) && "/auth/verify/email/confirm".equals(path)) {
+            return new RateLimitTarget("verify-email-confirm", resolveUserOrIp(request), 50);
+        }
+        if ("POST".equals(method) && "/auth/verify/phone/send".equals(path)) {
+            return new RateLimitTarget("verify-phone-send", resolveUserOrIp(request), 30);
+        }
+        if ("POST".equals(method) && "/auth/verify/phone/confirm".equals(path)) {
+            return new RateLimitTarget("verify-phone-confirm", resolveUserOrIp(request), 50);
+        }
+        if ("POST".equals(method) && "/auth/challenge/send".equals(path)) {
+            return new RateLimitTarget("challenge-send", resolveUserOrIp(request), 30);
+        }
+        if ("POST".equals(method) && "/auth/challenge/verify".equals(path)) {
+            return new RateLimitTarget("challenge-verify", resolveUserOrIp(request), 50);
         }
         if ("POST".equals(method) && path.matches("^/public/profesionales/[^/]+/reservas$")) {
             return new RateLimitTarget("booking-user", resolveUserOrIp(request), 10);
@@ -127,6 +151,9 @@ public class RateLimitingFilter extends OncePerRequestFilter {
         }
         if ("GET".equals(method) && "/api/search/suggest".equals(path)) {
             return new RateLimitTarget("suggest-ip", extractClientIp(request), 120);
+        }
+        if ("GET".equals(method) && "/billing/subscription".equals(path)) {
+            return new RateLimitTarget("billing-subscription-read", resolveUserOrIp(request), 30);
         }
         if ("POST".equals(method) && ("/billing/checkout".equals(path) || "/billing/subscription".equals(path))) {
             return new RateLimitTarget("billing-checkout", resolveUserOrIp(request), 6);

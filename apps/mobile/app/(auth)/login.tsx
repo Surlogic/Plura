@@ -6,7 +6,7 @@ import * as AuthSession from 'expo-auth-session';
 import * as Google from 'expo-auth-session/providers/google';
 import * as WebBrowser from 'expo-web-browser';
 import api from '../../src/services/api';
-import { setProfessionalToken } from '../../src/services/session';
+import { setProfessionalSession } from '../../src/services/session';
 import { useProfessionalProfileContext } from '../../src/context/ProfessionalProfileContext';
 import { oauthLoginWithAuthorizationCode } from '../../src/services/oauth';
 
@@ -70,12 +70,15 @@ export default function LoginScreen() {
           },
         );
 
-        if (!result.accessToken) {
-          setErrorMessage('Google autenticó, pero el backend no devolvió token.');
+        if (!result.accessToken || !result.refreshToken) {
+          setErrorMessage('Google autenticó, pero el backend no devolvió sesion completa.');
           return;
         }
 
-        await setProfessionalToken(result.accessToken);
+        await setProfessionalSession({
+          accessToken: result.accessToken,
+          refreshToken: result.refreshToken,
+        });
         await refreshProfile();
         router.replace('/(tabs)/dashboard');
       } catch (error: any) {
@@ -108,15 +111,19 @@ export default function LoginScreen() {
       
       // Intentamos capturar 'token' o 'accessToken'
       const tokenRecibido = response.data.accessToken || response.data.token;
+      const refreshTokenRecibido = response.data.refreshToken;
 
-      if (!tokenRecibido) {
+      if (!tokenRecibido || !refreshTokenRecibido) {
         // Si entra acá, es porque el backend está mandando el token con otro nombre
         console.log("Respuesta del backend:", response.data);
-        setErrorMessage('Error: El servidor no devolvió un token válido.');
+        setErrorMessage('Error: El servidor no devolvió una sesion valida.');
         return;
       }
 
-      await setProfessionalToken(tokenRecibido);
+      await setProfessionalSession({
+        accessToken: tokenRecibido,
+        refreshToken: refreshTokenRecibido,
+      });
       await refreshProfile();
       router.replace('/(tabs)/dashboard');
     } catch (error) {
@@ -201,6 +208,11 @@ export default function LoginScreen() {
                   value={form.password}
                   onChangeText={(text) => setForm({ ...form, password: text })}
                 />
+                <Link href="/(auth)/forgot-password" asChild>
+                  <TouchableOpacity className="mt-3 self-end">
+                    <Text className="text-xs font-semibold text-secondary">Olvidé mi contraseña</Text>
+                  </TouchableOpacity>
+                </Link>
               </View>
 
               {errorMessage && (

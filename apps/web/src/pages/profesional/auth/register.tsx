@@ -135,23 +135,8 @@ export default function ProfesionalRegisterPage() {
   }> = [
     {
       id: 'length',
-      label: 'Minimo 10 caracteres.',
-      test: (value: string) => value.length >= 10,
-    },
-    {
-      id: 'uppercase',
-      label: 'Al menos 1 mayuscula.',
-      test: (value: string) => /[A-Z]/.test(value),
-    },
-    {
-      id: 'lowercase',
-      label: 'Al menos 1 minuscula.',
-      test: (value: string) => /[a-z]/.test(value),
-    },
-    {
-      id: 'number',
-      label: 'Al menos 1 numero.',
-      test: (value: string) => /[0-9]/.test(value),
+      label: 'Minimo 8 caracteres.',
+      test: (value: string) => value.length >= 8,
     },
   ];
   const passwordChecks = passwordRules.map((rule) => ({
@@ -217,8 +202,8 @@ export default function ProfesionalRegisterPage() {
       return;
     }
 
-    if (form.password.length < 10) {
-      setErrorMessage('La contraseña debe tener al menos 10 caracteres.');
+    if (form.password.length < 8) {
+      setErrorMessage('La contraseña debe tener al menos 8 caracteres.');
       return;
     }
 
@@ -271,7 +256,9 @@ export default function ProfesionalRegisterPage() {
       };
 
       await api.post<RegisterResponse>('/auth/register/profesional', payload);
-      setSuccessMessage('Cuenta profesional creada. Ya podés iniciar sesión.');
+      setSuccessMessage(
+        'Si el email no estaba registrado, la cuenta fue creada. Si ya existía, podés iniciar sesión. Una vez dentro del dashboard vas a poder verificar el email con un código.',
+      );
       setForm({
         fullName: '',
         categorySlugs: [],
@@ -304,9 +291,7 @@ export default function ProfesionalRegisterPage() {
           setErrorMessage('No se pudo conectar con el servidor.');
         } else {
           const status = error.response.status;
-          if (status === 409) {
-            setErrorMessage('Ya existe una cuenta registrada con ese email.');
-          } else if (status === 400) {
+          if (status === 400) {
             setErrorMessage('Los datos ingresados no son válidos. Verificá el formulario.');
           } else if (status >= 500) {
             setErrorMessage('Error del servidor. Intentá de nuevo más tarde.');
@@ -613,7 +598,7 @@ export default function ProfesionalRegisterPage() {
                 onChange={handleChange}
                 onBlur={handleBlur}
                 required
-                minLength={10}
+                minLength={8}
               />
               <ul className="space-y-1 text-xs">
                 {passwordChecks.map((rule) => (
@@ -648,7 +633,7 @@ export default function ProfesionalRegisterPage() {
                 onChange={handleChange}
                 onBlur={handleBlur}
                 required
-                minLength={10}
+                minLength={8}
               />
               {touched.confirmPassword && validationErrors.confirmPassword ? (
                 <p className="text-xs text-red-600">{validationErrors.confirmPassword}</p>

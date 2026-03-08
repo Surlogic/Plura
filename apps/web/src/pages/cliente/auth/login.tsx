@@ -12,11 +12,9 @@ import Card from '@/components/ui/Card';
 import { useProfessionalProfileContext } from '@/context/ProfessionalProfileContext';
 import api from '@/services/api';
 import { useClientProfileContext } from '@/context/ClientProfileContext';
-import { createPublicReservation } from '@/services/publicBookings';
 import type { OAuthLoginResult } from '@/lib/auth/oauthLogin';
 import { setAuthAccessToken } from '@/services/session';
 import {
-  clearPendingReservation,
   getPendingReservation,
 } from '@/services/pendingReservation';
 
@@ -86,39 +84,15 @@ export default function ClienteLoginPage() {
     if (shouldConfirmReservationAfterLogin) {
       const pendingReservation = getPendingReservation();
       if (pendingReservation) {
-        try {
-          const payload = {
+        router.push({
+          pathname: '/reservar',
+          query: {
+            profesional: pendingReservation.professionalSlug,
             serviceId: pendingReservation.serviceId,
-            startDateTime: `${pendingReservation.date}T${pendingReservation.time}`,
-          };
-          const created = await createPublicReservation(
-            pendingReservation.professionalSlug,
-            payload,
-          );
-          clearPendingReservation();
-          router.push({
-            pathname: '/reserva-confirmada',
-            query: {
-              id: String(created.id),
-              professional: pendingReservation.professionalName || 'Profesional',
-              service: pendingReservation.serviceName || 'Servicio',
-              date: pendingReservation.date,
-              time: pendingReservation.time,
-              status: created.status,
-            },
-          });
-          return;
-        } catch {
-          router.push({
-            pathname: '/reservar',
-            query: {
-              profesional: pendingReservation.professionalSlug,
-              serviceId: pendingReservation.serviceId,
-              resume: '1',
-            },
-          });
-          return;
-        }
+            resume: '1',
+          },
+        });
+        return;
       }
     }
 
@@ -208,6 +182,14 @@ export default function ClienteLoginPage() {
                   onChange={handleChange}
                   required
                 />
+                <div className="flex justify-end">
+                  <Link
+                    href="/auth/forgot-password"
+                    className="text-xs font-semibold text-[color:var(--accent-strong)] underline underline-offset-4"
+                  >
+                    Olvidé mi contraseña
+                  </Link>
+                </div>
               </div>
 
               {errorMessage ? (

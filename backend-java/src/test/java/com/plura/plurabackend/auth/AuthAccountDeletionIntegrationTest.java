@@ -5,16 +5,23 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.atLeastOnce;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.plura.plurabackend.auth.repository.AuthAuditLogRepository;
+import com.plura.plurabackend.auth.repository.AuthOtpChallengeRepository;
+import com.plura.plurabackend.auth.repository.AuthSessionRepository;
 import com.plura.plurabackend.auth.repository.RefreshTokenRepository;
 import com.plura.plurabackend.user.model.User;
 import com.plura.plurabackend.user.repository.UserRepository;
+import org.mockito.ArgumentCaptor;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
@@ -49,8 +56,23 @@ class AuthAccountDeletionIntegrationTest {
     @Autowired
     private RefreshTokenRepository refreshTokenRepository;
 
+    @Autowired
+    private AuthSessionRepository authSessionRepository;
+
+    @Autowired
+    private AuthOtpChallengeRepository authOtpChallengeRepository;
+
+    @Autowired
+    private AuthAuditLogRepository authAuditLogRepository;
+
+    @MockBean
+    private OtpChallengeNotificationSender otpChallengeNotificationSender;
+
     @BeforeEach
     void cleanUp() {
+        authAuditLogRepository.deleteAll();
+        authOtpChallengeRepository.deleteAll();
+        authSessionRepository.deleteAll();
         refreshTokenRepository.deleteAll();
         userRepository.deleteAll();
     }
@@ -85,8 +107,17 @@ class AuthAccountDeletionIntegrationTest {
             .path("accessToken")
             .asText();
 
+        String deletionCode = requestDeletionChallenge(accessToken, "EMAIL");
+
         mockMvc.perform(delete("/auth/me")
-                .header("Authorization", "Bearer " + accessToken))
+                .header("Authorization", "Bearer " + accessToken)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "challengeId": "%s",
+                      "code": "%s"
+                    }
+                    """.formatted(latestChallengeId(), deletionCode)))
             .andExpect(status().isNoContent());
 
         mockMvc.perform(get("/auth/me/cliente")
@@ -131,8 +162,17 @@ class AuthAccountDeletionIntegrationTest {
             .path("accessToken")
             .asText();
 
+        String deletionCode = requestDeletionChallenge(accessToken, "EMAIL");
+
         mockMvc.perform(delete("/auth/me")
-                .header("Authorization", "Bearer " + accessToken))
+                .header("Authorization", "Bearer " + accessToken)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "challengeId": "%s",
+                      "code": "%s"
+                    }
+                    """.formatted(latestChallengeId(), deletionCode)))
             .andExpect(status().isNoContent());
 
         mockMvc.perform(post("/auth/register/cliente")
@@ -160,5 +200,30 @@ class AuthAccountDeletionIntegrationTest {
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.accessToken").isNotEmpty())
             .andExpect(jsonPath("$.user.email").value("cliente-to-pro@plura.com"));
+    }
+
+    private String requestDeletionChallenge(String accessToken, String channel) throws Exception {
+        mockMvc.perform(post("/auth/challenge/send")
+                .header("Authorization", "Bearer " + accessToken)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "purpose": "ACCOUNT_DELETION",
+                      "channel": "%s"
+                    }
+                    """.formatted(channel)))
+            .andExpect(status().isOk());
+
+        ArgumentCaptor<OtpChallengeNotificationSender.OtpChallengeNotification> captor =
+            ArgumentCaptor.forClass(OtpChallengeNotificationSender.OtpChallengeNotification.class);
+        verify(otpChallengeNotificationSender, atLeastOnce()).sendChallenge(captor.capture());
+        return captor.getAllValues().get(captor.getAllValues().size() - 1).code();
+    }
+
+    private String latestChallengeId() {
+        return authOtpChallengeRepository.findAll().stream()
+            .map(challenge -> challenge.getId())
+            .findFirst()
+            .orElseThrow();
     }
 }

@@ -10,13 +10,14 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import com.plura.plurabackend.auth.repository.RefreshTokenRepository;
+import com.plura.plurabackend.auth.SessionService;
 import com.plura.plurabackend.availability.AvailableSlotAsyncDispatcher;
 import com.plura.plurabackend.availability.ScheduleSummaryService;
 import com.plura.plurabackend.availability.repository.AvailableSlotRepository;
 import com.plura.plurabackend.billing.BillingService;
+import com.plura.plurabackend.booking.event.BookingEventService;
 import com.plura.plurabackend.booking.model.Booking;
-import com.plura.plurabackend.booking.model.BookingStatus;
+import com.plura.plurabackend.booking.model.BookingOperationalStatus;
 import com.plura.plurabackend.booking.repository.BookingRepository;
 import com.plura.plurabackend.cache.ProfileCacheService;
 import com.plura.plurabackend.cache.SlotCacheService;
@@ -38,7 +39,7 @@ class AccountDeletionServiceTest {
     private final UserRepository userRepository = mock(UserRepository.class);
     private final ProfessionalProfileRepository professionalProfileRepository = mock(ProfessionalProfileRepository.class);
     private final BookingRepository bookingRepository = mock(BookingRepository.class);
-    private final RefreshTokenRepository refreshTokenRepository = mock(RefreshTokenRepository.class);
+    private final SessionService sessionService = mock(SessionService.class);
     private final BillingService billingService = mock(BillingService.class);
     private final AvailableSlotRepository availableSlotRepository = mock(AvailableSlotRepository.class);
     private final AvailableSlotAsyncDispatcher availableSlotAsyncDispatcher = mock(AvailableSlotAsyncDispatcher.class);
@@ -48,12 +49,13 @@ class AccountDeletionServiceTest {
     private final SlotCacheService slotCacheService = mock(SlotCacheService.class);
     private final SearchSyncPublisher searchSyncPublisher = mock(SearchSyncPublisher.class);
     private final PasswordEncoder passwordEncoder = mock(PasswordEncoder.class);
+    private final BookingEventService bookingEventService = mock(BookingEventService.class);
 
     private final AccountDeletionService service = new AccountDeletionService(
         userRepository,
         professionalProfileRepository,
         bookingRepository,
-        refreshTokenRepository,
+        sessionService,
         billingService,
         availableSlotRepository,
         availableSlotAsyncDispatcher,
@@ -63,6 +65,7 @@ class AccountDeletionServiceTest {
         slotCacheService,
         searchSyncPublisher,
         passwordEncoder,
+        bookingEventService,
         "America/Montevideo"
     );
 
@@ -73,16 +76,17 @@ class AccountDeletionServiceTest {
         Booking booking = booking(100L, user, professional, LocalDateTime.now().plusDays(2));
 
         when(userRepository.findByIdAndDeletedAtIsNull(10L)).thenReturn(Optional.of(user));
-        when(bookingRepository.findByUser_IdAndStatusInAndStartDateTimeGreaterThanEqual(
+        when(bookingRepository.findByUser_IdAndOperationalStatusInAndStartDateTimeGreaterThanEqual(
             eq(10L),
             any(),
             any()
         )).thenReturn(List.of(booking));
+        when(sessionService.revokeReasonAccountDeletion()).thenReturn("ACCOUNT_DELETION");
         when(passwordEncoder.encode(any())).thenReturn("hashed-password");
 
         service.deleteCurrentAccount("10", UserRole.USER);
 
-        assertEquals(BookingStatus.CANCELLED, booking.getStatus());
+        assertEquals(BookingOperationalStatus.CANCELLED, booking.getOperationalStatus());
         assertEquals("Cuenta eliminada", user.getFullName());
         assertNotNull(user.getDeletedAt());
         assertFalse(user.getEmail().contains("cliente@plura.com"));
@@ -90,7 +94,7 @@ class AccountDeletionServiceTest {
         verify(bookingRepository).saveAll(List.of(booking));
         verify(availableSlotAsyncDispatcher).rebuildProfessionalDay(eq(20L), eq(booking.getStartDateTime().toLocalDate()));
         verify(scheduleSummaryService).requestRebuild(20L);
-        verify(refreshTokenRepository).revokeActiveTokensByUserId(eq(10L), any());
+        verify(sessionService).revokeAllSessionsForUser(eq(user), eq("ACCOUNT_DELETION"));
         verify(searchSyncPublisher).publishProfilesChanged(List.of(20L));
         verify(billingService, never()).cancelSubscriptionForProfessional(any(), eq(true));
     }
@@ -104,16 +108,17 @@ class AccountDeletionServiceTest {
 
         when(userRepository.findByIdAndDeletedAtIsNull(30L)).thenReturn(Optional.of(user));
         when(professionalProfileRepository.findByUser_Id(30L)).thenReturn(Optional.of(profile));
-        when(bookingRepository.findByProfessional_IdAndStatusInAndStartDateTimeGreaterThanEqual(
+        when(bookingRepository.findByProfessional_IdAndOperationalStatusInAndStartDateTimeGreaterThanEqual(
             eq(40L),
             any(),
             any()
         )).thenReturn(List.of(booking));
+        when(sessionService.revokeReasonAccountDeletion()).thenReturn("ACCOUNT_DELETION");
         when(passwordEncoder.encode(any())).thenReturn("hashed-password");
 
         service.deleteCurrentAccount("30", UserRole.PROFESSIONAL);
 
-        assertEquals(BookingStatus.CANCELLED, booking.getStatus());
+        assertEquals(BookingOperationalStatus.CANCELLED, booking.getOperationalStatus());
         assertEquals("Cuenta eliminada", user.getFullName());
         assertNotNull(user.getDeletedAt());
         assertFalse(profile.getActive());
@@ -125,7 +130,7 @@ class AccountDeletionServiceTest {
         verify(availableSlotRepository).deleteByProfessionalId(40L);
         verify(profesionalServiceRepository).deactivateByProfessionalId(40L);
         verify(searchSyncPublisher).publishProfileChanged(40L);
-        verify(refreshTokenRepository).revokeActiveTokensByUserId(eq(30L), any());
+        verify(sessionService).revokeAllSessionsForUser(eq(user), eq("ACCOUNT_DELETION"));
         verify(bookingRepository).saveAll(List.of(booking));
         verify(profileCacheService).evictPublicPageBySlug("pro-slug");
         verify(slotCacheService).evictByPrefix("slots:40:");
@@ -167,7 +172,7 @@ class AccountDeletionServiceTest {
         booking.setUser(user);
         booking.setProfessional(professional);
         booking.setStartDateTime(startDateTime);
-        booking.setStatus(BookingStatus.PENDING);
+        booking.setOperationalStatus(BookingOperationalStatus.PENDING);
         return booking;
     }
 }

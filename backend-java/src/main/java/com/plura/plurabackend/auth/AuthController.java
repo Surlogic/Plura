@@ -59,13 +59,34 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
+/**
+ * Controlador REST principal de autenticación y autorización.
+ * Maneja todos los endpoints bajo /auth:
+ * - Registro de clientes y profesionales
+ * - Login (email/password y OAuth)
+ * - Refresh de tokens y logout
+ * - Verificación de email y teléfono
+ * - Desafíos OTP (one-time password)
+ * - Cambio y recuperación de contraseña
+ * - Gestión de sesiones activas
+ * - Eliminación de cuenta
+ * - Consulta de log de auditoría
+ *
+ * Los tokens se envían como cookies HttpOnly por defecto (más seguro),
+ * pero el cliente puede solicitar que se envíen en el body usando
+ * el header X-Plura-Session-Transport: BODY (para apps móviles).
+ */
 @RestController
 @RequestMapping("/auth")
 public class AuthController {
 
+    /** Nombre de la cookie que almacena el token de acceso JWT */
     private static final String ACCESS_COOKIE = "plura_access_token";
+    /** Nombre de la cookie que almacena el refresh token */
     private static final String REFRESH_COOKIE = "plura_refresh_token";
+    /** Header para indicar la plataforma del cliente (WEB o MOBILE) */
     private static final String CLIENT_PLATFORM_HEADER = "X-Plura-Client-Platform";
+    /** Header para indicar si los tokens se envían por cookie o en el body de la respuesta */
     private static final String SESSION_TRANSPORT_HEADER = "X-Plura-Session-Transport";
 
     private final AuthService authService;
@@ -113,7 +134,11 @@ public class AuthController {
         this.authAbuseProtectionService = authAbuseProtectionService;
     }
 
-    // Registro de clientes (alias /register).
+    /**
+     * Registra un nuevo cliente. Acepta POST en /auth/register y /auth/register/cliente.
+     * Siempre retorna 202 Accepted para no revelar si el email ya existe (seguridad).
+     * Aplica protección contra abuso (rate limiting) antes de procesar.
+     */
     @PostMapping({"/register", "/register/cliente"})
     public ResponseEntity<RegistrationAcceptedResponse> registerCliente(
         @Valid @RequestBody RegisterRequest request,
@@ -128,7 +153,10 @@ public class AuthController {
             ));
     }
 
-    // Registro de profesionales con campos específicos.
+    /**
+     * Registra un nuevo profesional con datos adicionales (categoría, ubicación, etc.).
+     * Misma lógica de seguridad que registerCliente: retorna 202 sin revelar existencia.
+     */
     @PostMapping("/register/profesional")
     public ResponseEntity<RegistrationAcceptedResponse> registerProfesional(
         @Valid @RequestBody RegisterProfesionalRequest request,
@@ -143,6 +171,11 @@ public class AuthController {
             ));
     }
 
+    /**
+     * Login de clientes con email y contraseña.
+     * Aplica rate limiting, registra auditoría de intentos fallidos,
+     * y devuelve tokens de acceso + refresh en cookies o body.
+     */
     @PostMapping({"/login", "/login/cliente"})
     public ResponseEntity<RegisterResponse> loginCliente(
         @Valid @RequestBody LoginRequest request,

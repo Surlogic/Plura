@@ -8,6 +8,12 @@ import java.util.Locale;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Component;
 
+/**
+ * Propiedades de configuración del módulo de facturación.
+ * Se cargan desde el prefijo "billing" en application.properties/yml.
+ * Contiene la configuración de planes, proveedores de pago (MercadoPago y dLocal),
+ * modo de operación (sandbox/production) y parámetros de seguridad para webhooks.
+ */
 @Component
 @ConfigurationProperties(prefix = "billing")
 public class BillingProperties {
@@ -21,6 +27,11 @@ public class BillingProperties {
     private MercadoPago mercadopago = new MercadoPago();
     private DLocal dlocal = new DLocal();
 
+    /**
+     * Valida la configuración al iniciar la aplicación.
+     * Verifica que los planes, proveedores y credenciales estén correctamente configurados.
+     * Solo se ejecuta si billing está habilitado.
+     */
     @PostConstruct
     void validate() {
         if (!enabled) {
@@ -50,6 +61,12 @@ public class BillingProperties {
         }
     }
 
+    /**
+     * Verifica si un proveedor de pagos específico está habilitado.
+     *
+     * @param provider el proveedor a verificar (MERCADOPAGO o DLOCAL)
+     * @return true si el proveedor está habilitado
+     */
     public boolean isProviderEnabled(PaymentProvider provider) {
         return switch (provider) {
             case MERCADOPAGO -> mercadopago.enabled;
@@ -57,6 +74,12 @@ public class BillingProperties {
         };
     }
 
+    /**
+     * Resuelve la configuración de un plan de suscripción.
+     *
+     * @param plan el plan a resolver (BASIC, PRO o PREMIUM)
+     * @return la configuración del plan con precio y moneda
+     */
     public PlanConfig resolvePlan(SubscriptionPlan plan) {
         return switch (plan) {
             case PLAN_BASIC -> plans.planBasic;
@@ -65,10 +88,20 @@ public class BillingProperties {
         };
     }
 
+    /**
+     * Indica si el sistema está en modo producción.
+     *
+     * @return true si el modo es "production"
+     */
     public boolean isProductionMode() {
         return "production".equalsIgnoreCase(mode);
     }
 
+    /**
+     * Valida la configuración de un plan individual.
+     * Verifica que tenga precio válido y moneda configurada.
+     * El PLAN_BASIC puede tener precio cero; los demás deben tener precio mayor a cero.
+     */
     private void validatePlan(String name, PlanConfig plan) {
         if (plan == null) {
             throw new IllegalStateException("Plan faltante: " + name);
@@ -84,6 +117,12 @@ public class BillingProperties {
         requirePresent(plan.currency, name + " currency");
     }
 
+    /**
+     * Resuelve el ID del plan en MercadoPago según el plan de suscripción interno.
+     *
+     * @param plan el plan de suscripción
+     * @return el ID del plan configurado en MercadoPago
+     */
     public String resolveMercadoPagoPlanId(SubscriptionPlan plan) {
         return switch (plan) {
             case PLAN_BASIC -> mercadopago.planBasicId;
@@ -98,6 +137,9 @@ public class BillingProperties {
         }
     }
 
+    /**
+     * Contenedor de la configuración de los tres planes de suscripción disponibles.
+     */
     public static class Plans {
         private PlanConfig planBasic = new PlanConfig();
         private PlanConfig planPro = new PlanConfig();
@@ -128,6 +170,10 @@ public class BillingProperties {
         }
     }
 
+    /**
+     * Configuración individual de un plan de suscripción.
+     * Define el precio y la moneda del plan.
+     */
     public static class PlanConfig {
         private BigDecimal price = BigDecimal.ZERO;
         private String currency = "UYU";
@@ -149,6 +195,11 @@ public class BillingProperties {
         }
     }
 
+    /**
+     * Configuración específica del proveedor MercadoPago.
+     * Incluye credenciales, URLs de la API, rutas de endpoints,
+     * IDs de planes y configuración de sandbox.
+     */
     public static class MercadoPago {
         private boolean enabled = false;
         private String baseUrl = "https://api.mercadopago.com";
@@ -305,6 +356,11 @@ public class BillingProperties {
         }
     }
 
+    /**
+     * Configuración específica del proveedor dLocal.
+     * Incluye credenciales, URLs de la API, rutas de endpoints,
+     * configuración de firma de webhooks, país y configuración de payouts.
+     */
     public static class DLocal {
         public static final String STRICT_DATE_BODY = "STRICT_DATE_BODY";
 

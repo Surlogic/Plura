@@ -7,11 +7,22 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.scheduling.annotation.EnableAsync;
 import org.springframework.scheduling.annotation.EnableScheduling;
 
+/**
+ * Punto de entrada principal de la aplicación Plura Backend.
+ * Configura Spring Boot con tareas programadas (@EnableScheduling)
+ * y procesamiento asíncrono (@EnableAsync).
+ * Antes de arrancar, carga variables de entorno desde un archivo .env
+ * y aplica compatibilidad con configuraciones legacy de billing (DLocal).
+ */
 @SpringBootApplication
 @EnableScheduling
 @EnableAsync
 public class PluraBackendApplication {
 
+	/**
+	 * Método principal que arranca la aplicación Spring Boot.
+	 * Carga variables desde .env (si existe) y las inyecta como propiedades del sistema.
+	 */
 	public static void main(String[] args) {
 		// Carga variables desde .env para entornos locales.
 		Dotenv dotenv = Dotenv.configure().ignoreIfMissing().load();
@@ -20,6 +31,12 @@ public class PluraBackendApplication {
 		SpringApplication.run(PluraBackendApplication.class, args);
 	}
 
+	/**
+	 * Migra las variables de entorno legacy de DLocal (DLOCAL_API_KEY, etc.)
+	 * al nuevo formato con prefijo BILLING_DLOCAL_*.
+	 * Esto permite mantener compatibilidad con despliegues anteriores
+	 * sin necesidad de actualizar las variables de entorno manualmente.
+	 */
 	private static void applyLegacyBillingCompatibility(Dotenv dotenv) {
 		Map<String, String> legacyValues = dotenv.entries().stream()
 			.collect(java.util.stream.Collectors.toMap(
@@ -61,16 +78,23 @@ public class PluraBackendApplication {
 		);
 	}
 
+	/**
+	 * Aplica un valor de respaldo para una propiedad del sistema si no está definida.
+	 * @param targetKey clave destino de la propiedad del sistema
+	 * @param fallbackValue valor legacy a usar si la clave destino está vacía
+	 */
 	private static void applyLegacyFallback(String targetKey, String fallbackValue) {
 		if (isBlank(System.getProperty(targetKey)) && !isBlank(fallbackValue)) {
 			System.setProperty(targetKey, fallbackValue);
 		}
 	}
 
+	/** Verifica si un string es nulo o vacío. */
 	private static boolean isBlank(String value) {
 		return value == null || value.isBlank();
 	}
 
+	/** Retorna el primer valor no vacío de la lista, o null si todos son vacíos. */
 	private static String firstNonBlank(String... values) {
 		for (String value : values) {
 			if (!isBlank(value)) {

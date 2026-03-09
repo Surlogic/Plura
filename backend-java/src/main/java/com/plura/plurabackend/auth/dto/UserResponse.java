@@ -4,21 +4,25 @@ import java.time.LocalDateTime;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 
+/**
+ * DTO de respuesta con los datos publicos del usuario autenticado.
+ * Contiene la informacion basica del perfil visible para el propio usuario.
+ */
 @Data
 @AllArgsConstructor
 public class UserResponse {
-    // Identificador único del usuario.
+    /** Identificador unico del usuario. */
     private String id;
-    // Email público del usuario.
+    /** Email registrado del usuario. */
     private String email;
-    // Nombre para mostrar.
+    /** Nombre completo para mostrar. */
     private String fullName;
-    // Estado de verificación first-party del email.
+    /** Indica si el email ha sido verificado por el usuario. */
     private boolean emailVerified;
-    // Teléfono principal de la cuenta.
+    /** Numero de telefono principal de la cuenta. */
     private String phoneNumber;
-    // Estado de verificación first-party del teléfono.
+    /** Indica si el telefono ha sido verificado por el usuario. */
     private boolean phoneVerified;
-    // Fecha de creación de la cuenta.
+    /** Fecha y hora de creacion de la cuenta. */
     private LocalDateTime createdAt;
 }

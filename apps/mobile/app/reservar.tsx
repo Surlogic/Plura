@@ -4,12 +4,18 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { isAxiosError } from 'axios';
 import {
   createPublicReservation,
   getPublicProfessionalBySlug,
   type PublicProfessionalService,
 } from '../src/services/publicBookings';
 import { getApiErrorMessage } from '../src/services/errors';
+import {
+  clearPendingReservation,
+  savePendingReservation,
+} from '../src/services/pendingReservation';
+import { useProfessionalProfileContext } from '../src/context/ProfessionalProfileContext';
 
 type Params = {
   slug?: string;
@@ -39,8 +45,21 @@ const formatPrice = (value?: string) => {
   return value.includes('$') ? value : `$${value}`;
 };
 
+const buildStartDateTime = (date?: string, time?: string): string | null => {
+  if (!date || !time) return null;
+  const normalizedTime = time.trim();
+  if (/^\d{2}:\d{2}$/.test(normalizedTime)) {
+    return `${date}T${normalizedTime}:00`;
+  }
+  if (/^\d{2}:\d{2}:\d{2}$/.test(normalizedTime)) {
+    return `${date}T${normalizedTime}`;
+  }
+  return null;
+};
+
 export default function ReservationCheckoutScreen() {
   const { slug, serviceId, date, time } = useLocalSearchParams<Params>();
+  const { hasLoaded, isAuthenticated, role } = useProfessionalProfileContext();
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -142,18 +161,66 @@ export default function ReservationCheckoutScreen() {
                 disabled={!canConfirm}
                 onPress={async () => {
                   if (!slug || !serviceId || !date || !time) return;
+
+                  if (hasLoaded && !isAuthenticated) {
+                    await savePendingReservation({
+                      professionalSlug: slug,
+                      serviceId,
+                      date,
+                      time,
+                    });
+                    setMessage('Necesitas iniciar sesion para confirmar. Redirigiendo...');
+                    setTimeout(() => {
+                      router.replace('/(auth)/login');
+                    }, 500);
+                    return;
+                  }
+
+                  if (role === 'professional') {
+                    setMessage('Las reservas publicas solo pueden hacerse desde una cuenta cliente.');
+                    return;
+                  }
+
+                  const startDateTime = buildStartDateTime(date, time);
+                  if (!startDateTime) {
+                    setMessage('El formato de hora seleccionado no es valido. Elegi otro horario.');
+                    return;
+                  }
+
                   setIsSaving(true);
                   setMessage(null);
                   try {
                     await createPublicReservation(slug, {
                       serviceId,
-                      startDateTime: `${date}T${time}:00`,
+                      startDateTime,
                     });
+                    await clearPendingReservation();
                     setMessage('Reserva confirmada. Te enviamos la notificacion en breve.');
                     setTimeout(() => {
                       router.replace('/(tabs)/dashboard');
                     }, 900);
-                  } catch (error: any) {
+                  } catch (error: unknown) {
+                    if (isAxiosError(error) && error.response?.status === 401) {
+                      await savePendingReservation({
+                        professionalSlug: slug,
+                        serviceId,
+                        date,
+                        time,
+                      });
+                      setMessage('Necesitas iniciar sesion para confirmar. Redirigiendo...');
+                      setTimeout(() => {
+                        router.replace('/(auth)/login');
+                      }, 500);
+                      return;
+                    }
+                    if (isAxiosError(error) && error.response?.status === 403) {
+                      setMessage('Las reservas publicas solo pueden hacerse desde una cuenta cliente.');
+                      return;
+                    }
+                    if (isAxiosError(error) && error.response?.status === 409) {
+                      setMessage(getApiErrorMessage(error, 'Ese horario ya no esta disponible. Elegi otro.'));
+                      return;
+                    }
                     setMessage(getApiErrorMessage(error, 'No pudimos confirmar la reserva. Intenta nuevamente.'));
                   } finally {
                     setIsSaving(false);

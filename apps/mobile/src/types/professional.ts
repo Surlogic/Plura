@@ -99,7 +99,8 @@ export type ReservationStatus =
   | 'confirmed'
   | 'pending'
   | 'completed'
-  | 'cancelled';
+  | 'cancelled'
+  | 'no_show';
 
 export type ProfessionalReservation = {
   id: string;
@@ -109,6 +110,26 @@ export type ProfessionalReservation = {
   time: string;
   price?: string;
   duration?: string;
+  postBufferMinutes?: number;
+  effectiveDurationMinutes?: number;
   status?: ReservationStatus;
+  serviceId?: string;
+  userId?: string;
+  paymentType?: 'ON_SITE' | 'DEPOSIT' | 'FULL_PREPAY' | null;
+  financialSummary?: {
+    financialStatus?:
+      | 'NOT_REQUIRED'
+      | 'PAYMENT_PENDING'
+      | 'HELD'
+      | 'REFUND_PENDING'
+      | 'PARTIALLY_REFUNDED'
+      | 'REFUNDED'
+      | 'RELEASE_PENDING'
+      | 'PARTIALLY_RELEASED'
+      | 'RELEASED'
+      | 'FAILED'
+      | null;
+    currency?: string | null;
+  } | null;
   notes?: string;
 };

@@ -11,6 +11,7 @@ export default function DashboardSubLayout() {
       <Stack.Screen name="agenda" options={{ title: 'Agenda' }} />
       <Stack.Screen name="services" options={{ title: 'Mis Servicios' }} />
       <Stack.Screen name="business-profile" options={{ title: 'Perfil del negocio' }} />
+      <Stack.Screen name="billing" options={{ title: 'Facturacion' }} />
       <Stack.Screen name="schedule" options={{ title: 'Horarios' }} />
       <Stack.Screen name="settings" options={{ title: 'Configuracion' }} />
     </Stack>

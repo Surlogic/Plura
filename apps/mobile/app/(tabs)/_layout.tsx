@@ -57,6 +57,15 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen
+        name="bookings"
+        options={{
+          title: 'Reservas',
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons name={focused ? 'calendar' : 'calendar-outline'} size={24} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
         name="notifications"
         options={{
           title: 'Alertas',

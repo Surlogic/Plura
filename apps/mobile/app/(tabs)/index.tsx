@@ -140,8 +140,11 @@ export default function HomeScreen() {
                 ? `${nextBooking.service} con ${nextBooking.professional} - ${nextBooking.date} ${nextBooking.time}`
                 : 'Encontra profesionales con espacios libres para las proximas horas.'}
             </Text>
-            <TouchableOpacity className="bg-white px-5 py-2.5 rounded-full self-start">
-              <Text className="text-secondary font-bold text-sm">{nextBooking ? 'Ver detalle' : 'Ver disponibilidad'}</Text>
+            <TouchableOpacity
+              className="bg-white px-5 py-2.5 rounded-full self-start"
+              onPress={() => router.push(nextBooking ? '/(tabs)/bookings' : '/(tabs)/explore')}
+            >
+              <Text className="text-secondary font-bold text-sm">{nextBooking ? 'Ver reservas' : 'Ver disponibilidad'}</Text>
             </TouchableOpacity>
           </LinearGradient>
         </View>

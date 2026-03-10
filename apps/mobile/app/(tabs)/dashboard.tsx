@@ -220,6 +220,24 @@ export default function DashboardTab() {
 
         <TouchableOpacity
           className="w-full rounded-[22px] bg-white border border-secondary/10 p-5 shadow-sm"
+          onPress={() => router.push('/dashboard/billing')}
+        >
+          <View className="flex-row items-center justify-between w-full">
+            <View className="flex-row items-center">
+              <View className="h-10 w-10 rounded-full bg-secondary/10 items-center justify-center">
+                <Ionicons name="card-outline" size={18} color="#0E2A47" />
+              </View>
+              <View className="ml-3">
+                <Text className="text-secondary font-bold text-base">Facturacion</Text>
+                <Text className="text-xs text-gray-500">Plan y datos de cobro</Text>
+              </View>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color="#94A3B8" />
+          </View>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          className="w-full rounded-[22px] bg-white border border-secondary/10 p-5 shadow-sm"
           onPress={() => router.push('/dashboard/settings')}
         >
           <View className="flex-row items-center justify-between w-full">

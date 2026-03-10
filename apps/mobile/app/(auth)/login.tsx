@@ -5,10 +5,15 @@ import { LinearGradient } from 'expo-linear-gradient';
 import * as AuthSession from 'expo-auth-session';
 import * as Google from 'expo-auth-session/providers/google';
 import * as WebBrowser from 'expo-web-browser';
+import Constants from 'expo-constants';
 import api from '../../src/services/api';
 import { setProfessionalSession } from '../../src/services/session';
 import { useProfessionalProfileContext } from '../../src/context/ProfessionalProfileContext';
 import { oauthLoginWithAuthorizationCode } from '../../src/services/oauth';
+import {
+  clearPendingReservation,
+  getPendingReservation,
+} from '../../src/services/pendingReservation';
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -22,16 +27,45 @@ export default function LoginScreen() {
   // Agregamos un estado para el tipo de login
   const [role, setRole] = useState<'cliente' | 'profesional'>('cliente');
 
-  const googleClientId = process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID || '';
+  const continueAfterLogin = async () => {
+    if (role === 'cliente') {
+      const pending = await getPendingReservation();
+      if (pending) {
+        router.replace({
+          pathname: '/reservar',
+          params: {
+            slug: pending.professionalSlug,
+            serviceId: pending.serviceId,
+            date: pending.date,
+            time: pending.time,
+          },
+        });
+        await clearPendingReservation();
+        return;
+      }
+    }
+
+    router.replace('/(tabs)/dashboard');
+  };
+
+  const isExpoGo = Constants.appOwnership === 'expo';
+  const expoClientId = process.env.EXPO_PUBLIC_GOOGLE_EXPO_CLIENT_ID || process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID || '';
+  const androidClientId = process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID || '';
+  const iosClientId = process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID || '';
+  const webClientId = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID || process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID || '';
+
   const redirectUri = useMemo(
-    () => AuthSession.makeRedirectUri({ scheme: 'plura' }),
+    () => AuthSession.makeRedirectUri({
+      scheme: 'plura',
+    }),
     [],
   );
 
   const [googleRequest, googleResponse, promptGoogleAuth] = Google.useAuthRequest({
-    androidClientId: googleClientId,
-    iosClientId: googleClientId,
-    webClientId: googleClientId,
+    clientId: expoClientId,
+    androidClientId,
+    iosClientId,
+    webClientId,
     scopes: ['openid', 'profile', 'email'],
     responseType: AuthSession.ResponseType.Code,
     redirectUri,
@@ -80,7 +114,7 @@ export default function LoginScreen() {
           refreshToken: result.refreshToken,
         });
         await refreshProfile();
-        router.replace('/(tabs)/dashboard');
+        await continueAfterLogin();
       } catch (error: any) {
         const backendMessage =
           error?.response?.data?.message ||
@@ -125,7 +159,7 @@ export default function LoginScreen() {
         refreshToken: refreshTokenRecibido,
       });
       await refreshProfile();
-      router.replace('/(tabs)/dashboard');
+      await continueAfterLogin();
     } catch (error) {
       console.error("Error en login:", error);
       setErrorMessage('Credenciales inválidas o error de servidor.');
@@ -135,14 +169,21 @@ export default function LoginScreen() {
   };
 
   const handleGoogleLogin = async () => {
-    if (!googleClientId) {
-      setErrorMessage('Falta EXPO_PUBLIC_GOOGLE_CLIENT_ID en .env');
+    const hasExpoGoConfig = isExpoGo && Boolean(expoClientId);
+    const hasNativeConfig = !isExpoGo && Boolean(androidClientId || iosClientId);
+
+    if (!hasExpoGoConfig && !hasNativeConfig) {
+      setErrorMessage(
+        isExpoGo
+          ? 'Falta EXPO_PUBLIC_GOOGLE_EXPO_CLIENT_ID para Expo Go.'
+          : 'Falta EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID / EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID para build nativa.',
+      );
       return;
     }
 
     setErrorMessage(null);
     setIsGoogleSubmitting(true);
-    const result = await promptGoogleAuth();
+    const result = await promptGoogleAuth({ showInRecents: true });
 
     if (result.type !== 'success') {
       setIsGoogleSubmitting(false);

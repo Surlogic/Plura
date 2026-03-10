@@ -27,7 +27,7 @@ export default function ClienteRegisterPage() {
     ? '/cliente/auth/login?redirect=confirm-reservation'
     : '/cliente/auth/login';
   const inputClassName =
-    'h-12 w-full rounded-[18px] border border-[color:var(--border-soft)] bg-white/88 px-4 text-sm text-[color:var(--ink)] placeholder:text-[color:var(--ink-muted)] focus:outline-none focus:ring-2 focus:ring-[color:var(--accent-soft)]';
+    'h-12 w-full rounded-[18px] border border-[color:var(--border-soft)] bg-white/90 px-4 text-sm text-[color:var(--ink)] placeholder:text-[color:var(--ink-faint)] focus:outline-none focus:ring-4 focus:ring-[color:var(--focus-ring)]';
   const [form, setForm] = useState({
     fullName: '',
     email: '',
@@ -184,7 +184,7 @@ export default function ClienteRegisterPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[radial-gradient(1100px_620px_at_5%_-10%,rgba(31,182,166,0.18),transparent_55%),radial-gradient(900px_700px_at_95%_0%,rgba(242,140,56,0.18),transparent_50%),linear-gradient(180deg,#f8fcfb_0%,#eef4f2_100%)] text-[color:var(--ink)]">
+    <div className="app-shell min-h-screen bg-[color:var(--background)] text-[color:var(--ink)]">
       <AuthTopBar tone="client" />
       <main className="mx-auto flex w-full max-w-6xl flex-1 items-center justify-center px-4 py-16">
         <Card tone="default" padding="lg" className="w-full max-w-md space-y-6 rounded-[32px]">
@@ -230,7 +230,7 @@ export default function ClienteRegisterPage() {
 
           <form className="space-y-4" onSubmit={handleSubmit}>
             <div className="space-y-2">
-              <label className="text-sm font-medium text-[#0E2A47]">Nombre completo</label>
+              <label className="text-sm font-medium text-[color:var(--ink)]">Nombre completo</label>
               <input
                 className={inputClass('fullName')}
                 placeholder="Tu nombre y apellido"
@@ -247,7 +247,7 @@ export default function ClienteRegisterPage() {
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-medium text-[#0E2A47]">Gmail</label>
+              <label className="text-sm font-medium text-[color:var(--ink)]">Gmail</label>
               <input
                 className={inputClass('email')}
                 placeholder="tucorreo@gmail.com"
@@ -264,7 +264,7 @@ export default function ClienteRegisterPage() {
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-medium text-[#0E2A47]">Confirmar Gmail</label>
+              <label className="text-sm font-medium text-[color:var(--ink)]">Confirmar Gmail</label>
               <input
                 className={inputClass('confirmEmail')}
                 placeholder="tucorreo@gmail.com"
@@ -281,7 +281,7 @@ export default function ClienteRegisterPage() {
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-medium text-[#0E2A47]">Celular</label>
+              <label className="text-sm font-medium text-[color:var(--ink)]">Celular</label>
               <input
                 className={inputClass('phoneNumber')}
                 placeholder="Tu número de celular"
@@ -298,7 +298,7 @@ export default function ClienteRegisterPage() {
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-medium text-[#0E2A47]">Contraseña</label>
+              <label className="text-sm font-medium text-[color:var(--ink)]">Contraseña</label>
               <input
                 type="password"
                 className={inputClass('password')}
@@ -314,11 +314,11 @@ export default function ClienteRegisterPage() {
                 {passwordChecks.map((rule) => (
                   <li
                     key={rule.id}
-                    className={rule.valid ? 'text-emerald-600' : 'text-[#94A3B8]'}
+                    className={rule.valid ? 'text-[color:var(--primary)]' : 'text-[color:var(--ink-faint)]'}
                   >
                     <span
                       className={`mr-2 inline-block h-2 w-2 rounded-full ${
-                        rule.valid ? 'bg-emerald-500' : 'bg-[#CBD5E1]'
+                        rule.valid ? 'bg-[color:var(--primary)]' : 'bg-[color:var(--border-strong)]'
                       }`}
                     />
                     {rule.label}
@@ -331,7 +331,7 @@ export default function ClienteRegisterPage() {
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-medium text-[#0E2A47]">Confirmar contraseña</label>
+              <label className="text-sm font-medium text-[color:var(--ink)]">Confirmar contraseña</label>
               <input
                 type="password"
                 className={inputClass('confirmPassword')}
@@ -349,19 +349,19 @@ export default function ClienteRegisterPage() {
             </div>
 
             {errorMessage ? (
-              <p className="rounded-[12px] bg-red-50 px-3 py-2 text-xs text-red-600">
+              <p className="rounded-[12px] border border-[color:var(--error-soft)] bg-[color:var(--error-soft)] px-3 py-2 text-xs text-[color:var(--error)]">
                 {errorMessage}
               </p>
             ) : null}
             {successMessage ? (
-              <p className="rounded-[12px] bg-emerald-50 px-3 py-2 text-xs text-emerald-700">
+              <p className="rounded-[12px] border border-[color:var(--success-soft)] bg-[color:var(--success-soft)] px-3 py-2 text-xs text-[color:var(--primary)]">
                 {successMessage}
               </p>
             ) : null}
 
             <button
               type="submit"
-              className="h-12 w-full rounded-full border border-transparent bg-[linear-gradient(135deg,var(--warm),var(--accent))] text-sm font-semibold text-white shadow-[var(--shadow-lift)] transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-70"
+              className="h-12 w-full rounded-full border border-transparent bg-[image:var(--brand-gradient)] text-sm font-semibold text-white shadow-[var(--shadow-lift)] transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-70"
               disabled={isSubmitting || !isFormValid}
             >
               {isSubmitting ? 'Creando cuenta...' : 'Crear cuenta'}

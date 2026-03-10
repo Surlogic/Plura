@@ -56,7 +56,7 @@ public class BillingProperties {
 
         if (dlocal.enabled) {
             requirePresent(dlocal.xLogin, "BILLING_DLOCAL_X_LOGIN");
-            requirePresent(dlocal.xTransKey, "BILLING_DLOCAL_X_TRANS_KEY");
+            requirePresent(dlocal.secretKey, "BILLING_DLOCAL_SECRET_KEY");
             requirePresent(dlocal.webhookSecret, "BILLING_DLOCAL_WEBHOOK_SECRET");
         }
     }
@@ -368,15 +368,17 @@ public class BillingProperties {
         private String baseUrl = "https://api.dlocal.com";
         private String xLogin = "";
         private String xTransKey = "";
+        private String secretKey = "";
         private String webhookSecret = "";
         private String checkoutPath = "/secure_payments";
+        private String bookingCheckoutPath = "/v1/payments";
         private String cancelPath = "/subscriptions/{id}/cancel";
-        private String refundPath = "/payments/{id}/refunds";
+        private String refundPath = "/v1/refunds";
         private String payoutOauthPath = "/oauth/token";
         private String payoutPath = "/payouts/v3";
         private String payoutClientId = "";
         private String payoutClientSecret = "";
-        private String paymentStatusPath = "/payments/{id}";
+        private String paymentStatusPath = "/v1/payments/{id}";
         private String subscriptionStatusPath = "/subscriptions/{id}";
         private String signatureMode = STRICT_DATE_BODY;
         private boolean sandboxOnlyBodySignatureFallback = false;
@@ -417,6 +419,14 @@ public class BillingProperties {
             this.xTransKey = xTransKey;
         }
 
+        public String getSecretKey() {
+            return secretKey;
+        }
+
+        public void setSecretKey(String secretKey) {
+            this.secretKey = secretKey;
+        }
+
         public String getWebhookSecret() {
             return webhookSecret;
         }
@@ -431,6 +441,14 @@ public class BillingProperties {
 
         public void setCheckoutPath(String checkoutPath) {
             this.checkoutPath = checkoutPath;
+        }
+
+        public String getBookingCheckoutPath() {
+            return bookingCheckoutPath;
+        }
+
+        public void setBookingCheckoutPath(String bookingCheckoutPath) {
+            this.bookingCheckoutPath = bookingCheckoutPath;
         }
 
         public String getCancelPath() {

@@ -3,11 +3,18 @@ import { cachedGet, invalidateCachedGet } from '@/services/cachedGet';
 import type {
   BookingActions,
   BookingCommandResponse,
+  BookingFinancialStatus,
   BookingFinancialSummary,
   BookingOperationalStatus,
   BookingPaymentSession,
   BookingPaymentType,
+  BookingPolicySnapshot,
+  BookingPayoutRecord,
+  BookingPayoutStatus,
+  BookingRefundRecord,
+  BookingRefundStatus,
 } from '@/types/bookings';
+import { formatBookingDateLabel, formatBookingTimeLabel } from '@/utils/bookings';
 
 export type ClientDashboardNextBooking = {
   id: string;
@@ -21,6 +28,14 @@ export type ClientDashboardNextBooking = {
   serviceId?: string | null;
   paymentType?: BookingPaymentType | null;
   financialSummary?: BookingFinancialSummary | null;
+  timezone?: string | null;
+  startDateTimeUtc?: string | null;
+  paymentStatus?: BookingFinancialStatus | null;
+  refundStatus?: BookingRefundStatus | null;
+  payoutStatus?: BookingPayoutStatus | null;
+  latestRefund?: BookingRefundRecord | null;
+  latestPayout?: BookingPayoutRecord | null;
+  policySnapshot?: BookingPolicySnapshot | null;
 };
 
 export type ClientDashboardBooking = {
@@ -36,6 +51,14 @@ export type ClientDashboardBooking = {
   serviceId?: string | null;
   paymentType?: BookingPaymentType | null;
   financialSummary?: BookingFinancialSummary | null;
+  timezone?: string | null;
+  startDateTimeUtc?: string | null;
+  paymentStatus?: BookingFinancialStatus | null;
+  refundStatus?: BookingRefundStatus | null;
+  payoutStatus?: BookingPayoutStatus | null;
+  latestRefund?: BookingRefundRecord | null;
+  latestPayout?: BookingPayoutRecord | null;
+  policySnapshot?: BookingPolicySnapshot | null;
 };
 
 type ClientBookingDto = {
@@ -43,11 +66,18 @@ type ClientBookingDto = {
   status?: string | null;
   dateTime?: string | null;
   startDateTime?: string | null;
+  startDateTimeUtc?: string | null;
   timezone?: string | null;
   serviceId?: string | null;
   serviceName?: string | null;
   paymentType?: BookingPaymentType | null;
+  paymentStatus?: BookingFinancialStatus | null;
+  refundStatus?: BookingRefundStatus | null;
+  payoutStatus?: BookingPayoutStatus | null;
   financialSummary?: BookingFinancialSummary | null;
+  latestRefund?: BookingRefundRecord | null;
+  latestPayout?: BookingPayoutRecord | null;
+  policySnapshot?: BookingPolicySnapshot | null;
   professionalName?: string | null;
   professionalSlug?: string | null;
   professionalLocation?: string | null;
@@ -73,30 +103,6 @@ type ClientBookingsResponseDto =
     }
   | null;
 
-const formatDateLabel = (startDateTime: string) => {
-  const parsed = new Date(startDateTime);
-  if (Number.isNaN(parsed.getTime())) {
-    return startDateTime.split('T')[0] ?? '';
-  }
-  return parsed.toLocaleDateString('es-AR', {
-    weekday: 'short',
-    day: '2-digit',
-    month: 'short',
-  });
-};
-
-const formatTimeLabel = (startDateTime: string) => {
-  const parsed = new Date(startDateTime);
-  if (Number.isNaN(parsed.getTime())) {
-    return startDateTime.split('T')[1]?.slice(0, 5) ?? '';
-  }
-  return parsed.toLocaleTimeString('es-AR', {
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false,
-  });
-};
-
 const normalizeBookingStatus = (rawStatus: unknown): BookingOperationalStatus => {
   if (typeof rawStatus !== 'string') return 'PENDING';
   const status = rawStatus.toUpperCase().trim();
@@ -119,6 +125,8 @@ const resolveBookingsArray = (payload: ClientBookingsResponseDto): ClientBooking
 
 const mapBooking = (booking: ClientBookingDto): ClientDashboardBooking | null => {
   const dateTime = (booking.dateTime || booking.startDateTime || '').trim();
+  const timezone = booking.timezone || null;
+  const startDateTimeUtc = booking.startDateTimeUtc || null;
   if (!dateTime) return null;
 
   return {
@@ -130,14 +138,22 @@ const mapBooking = (booking: ClientBookingDto): ClientDashboardBooking | null =>
       'Profesional',
     service: booking.service?.name || booking.serviceName || 'Servicio',
     dateTime,
-    date: formatDateLabel(dateTime),
-    time: formatTimeLabel(dateTime),
+    date: formatBookingDateLabel(dateTime, timezone, startDateTimeUtc),
+    time: formatBookingTimeLabel(dateTime, timezone, startDateTimeUtc),
     location: booking.professional?.location || booking.professionalLocation || 'Ubicacion a confirmar',
     status: normalizeBookingStatus(booking.status),
     professionalSlug: booking.professional?.slug || booking.professionalSlug || null,
     serviceId: booking.service?.id || booking.serviceId || null,
     paymentType: booking.paymentType || null,
     financialSummary: booking.financialSummary || null,
+    timezone,
+    startDateTimeUtc,
+    paymentStatus: booking.paymentStatus || booking.financialSummary?.financialStatus || null,
+    refundStatus: booking.refundStatus || 'NONE',
+    payoutStatus: booking.payoutStatus || 'NONE',
+    latestRefund: booking.latestRefund || null,
+    latestPayout: booking.latestPayout || null,
+    policySnapshot: booking.policySnapshot || null,
   };
 };
 
@@ -189,6 +205,14 @@ export const getClientNextBooking = async (): Promise<ClientDashboardNextBooking
     serviceId: mapped.serviceId,
     paymentType: mapped.paymentType,
     financialSummary: mapped.financialSummary,
+    timezone: mapped.timezone,
+    startDateTimeUtc: mapped.startDateTimeUtc,
+    paymentStatus: mapped.paymentStatus,
+    refundStatus: mapped.refundStatus,
+    payoutStatus: mapped.payoutStatus,
+    latestRefund: mapped.latestRefund,
+    latestPayout: mapped.latestPayout,
+    policySnapshot: mapped.policySnapshot,
   };
 };
 
@@ -246,4 +270,3 @@ export const rescheduleClientBooking = async (
   invalidateBookingCaches();
   return response.data;
 };
-

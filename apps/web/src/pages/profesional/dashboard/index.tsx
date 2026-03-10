@@ -657,9 +657,9 @@ export default function ProfesionalDashboardPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[radial-gradient(circle_at_top,#FFFFFF_0%,#EEF2F6_45%,#D3D7DC_100%)] text-[#0E2A47]">
+    <div className="app-shell min-h-screen bg-[color:var(--background)] text-[color:var(--ink)]">
       <div className="flex min-h-screen">
-          <aside className="hidden w-[260px] shrink-0 border-r border-[#0E2A47]/10 bg-[#0B1D2A] lg:block">
+          <aside className="hidden w-[260px] shrink-0 border-r border-[color:var(--border-soft)] bg-[color:var(--sidebar-surface)] lg:block">
             <div className="sticky top-0 h-screen overflow-y-auto">
               <ProfesionalSidebar profile={profile} active="Agenda" />
             </div>
@@ -671,7 +671,7 @@ export default function ProfesionalDashboardPage() {
               </Button>
             </div>
             {isMenuOpen ? (
-              <div className="border-b border-[#0E2A47]/10 bg-[#0B1D2A] lg:hidden">
+              <div className="border-b border-[color:var(--border-soft)] bg-[color:var(--surface)]/92 backdrop-blur-xl lg:hidden">
                 <ProfesionalSidebar profile={profile} active="Agenda" />
               </div>
             ) : null}
@@ -686,14 +686,14 @@ export default function ProfesionalDashboardPage() {
                     description="Controlá el día, anticipá huecos disponibles y resolvé rápido pendientes, confirmaciones y cambios de agenda."
                     meta={
                       <>
-                        <span className="rounded-full border border-white/12 bg-white/8 px-3 py-1 text-xs font-semibold text-white/80">
+                        <span className="rounded-full border border-white/18 bg-white/10 px-3 py-1 text-xs font-semibold text-[color:var(--text-on-dark-secondary)] backdrop-blur-sm">
                           {todayCount} reservas hoy
                         </span>
-                        <span className="rounded-full border border-white/12 bg-white/8 px-3 py-1 text-xs font-semibold text-white/80">
+                        <span className="rounded-full border border-white/18 bg-white/10 px-3 py-1 text-xs font-semibold text-[color:var(--text-on-dark-secondary)] backdrop-blur-sm">
                           {todayPendingCount} pendientes
                         </span>
                         {nextReservation ? (
-                          <span className="rounded-full border border-white/12 bg-white/8 px-3 py-1 text-xs font-semibold text-white/80">
+                          <span className="rounded-full border border-white/18 bg-white/10 px-3 py-1 text-xs font-semibold text-[color:var(--text-on-dark-secondary)] backdrop-blur-sm">
                             Próxima: {nextReservation.time}
                           </span>
                         ) : null}
@@ -799,46 +799,46 @@ export default function ProfesionalDashboardPage() {
 
                   <div className="mt-5 flex flex-wrap items-center justify-between gap-4">
                     <div className="flex flex-wrap items-center gap-2">
-                      <div className="flex rounded-full border border-[#E2E7EC] bg-white p-0.5 shadow-sm">
+                      <div className="flex rounded-full border border-[color:var(--border-soft)] bg-white p-0.5 shadow-[var(--shadow-card)]">
                         <button
                           type="button"
-                          onClick={() => handleSetView('week')}
-                          className={`rounded-full px-4 py-1.5 text-xs font-semibold transition ${
-                            calendarView === 'week'
-                              ? 'bg-[#0B1D2A] text-white'
-                              : 'text-[#94A3B8] hover:text-[#64748B]'
-                          }`}
+                            onClick={() => handleSetView('week')}
+                            className={`rounded-full px-4 py-1.5 text-xs font-semibold transition ${
+                              calendarView === 'week'
+                              ? 'bg-[color:var(--primary)] text-white'
+                              : 'text-[color:var(--ink-faint)] hover:text-[color:var(--ink-muted)]'
+                            }`}
                         >
                           Semanal
                         </button>
                         <button
                           type="button"
-                          onClick={() => handleSetView('month')}
-                          className={`rounded-full px-4 py-1.5 text-xs font-semibold transition ${
-                            calendarView === 'month'
-                              ? 'bg-[#0B1D2A] text-white'
-                              : 'text-[#94A3B8] hover:text-[#64748B]'
-                          }`}
+                            onClick={() => handleSetView('month')}
+                            className={`rounded-full px-4 py-1.5 text-xs font-semibold transition ${
+                              calendarView === 'month'
+                              ? 'bg-[color:var(--primary)] text-white'
+                              : 'text-[color:var(--ink-faint)] hover:text-[color:var(--ink-muted)]'
+                            }`}
                         >
                           Mensual
                         </button>
                       </div>
 
-                      <div className="flex items-center gap-0.5 rounded-full border border-[#E2E7EC] bg-white px-1 py-1 shadow-sm">
+                      <div className="flex items-center gap-0.5 rounded-full border border-[color:var(--border-soft)] bg-white px-1 py-1 shadow-[var(--shadow-card)]">
                         <button
                           type="button"
                           onClick={handlePrev}
-                          className="rounded-full px-2 py-1 text-sm text-[#64748B] transition hover:bg-[#F7F9FB] hover:text-[#0E2A47]"
+                          className="rounded-full px-2 py-1 text-sm text-[color:var(--ink-muted)] transition hover:bg-[color:var(--surface-soft)] hover:text-[color:var(--ink)]"
                         >
                           ‹
                         </button>
-                        <span className="min-w-[120px] text-center text-xs font-medium text-[#64748B]">
+                        <span className="min-w-[120px] text-center text-xs font-medium text-[color:var(--ink-muted)]">
                           {calendarView === 'week' ? calendarWeekLabel : monthLabel}
                         </span>
                         <button
                           type="button"
                           onClick={handleNext}
-                          className="rounded-full px-2 py-1 text-sm text-[#64748B] transition hover:bg-[#F7F9FB] hover:text-[#0E2A47]"
+                          className="rounded-full px-2 py-1 text-sm text-[color:var(--ink-muted)] transition hover:bg-[color:var(--surface-soft)] hover:text-[color:var(--ink)]"
                         >
                           ›
                         </button>
@@ -1064,10 +1064,10 @@ export default function ProfesionalDashboardPage() {
                               key={day.dateKey}
                               className={`min-h-[96px] rounded-[16px] p-2 text-xs transition ${
                                 day.isToday
-                                  ? 'bg-[#0B1D2A] text-white shadow-[0_10px_24px_rgba(11,29,42,0.18)]'
+                                  ? 'bg-[color:var(--primary)] text-white shadow-[var(--shadow-card)]'
                                   : day.isCurrentMonth
-                                    ? 'bg-[#FCFDFE] text-[#0E2A47]'
-                                    : 'bg-transparent text-[#CBD5E1]'
+                                    ? 'bg-[color:var(--surface-muted)] text-[color:var(--ink)]'
+                                    : 'bg-transparent text-[color:var(--border-strong)]'
                               }`}
                             >
                               <div className="flex items-start justify-between gap-2">
@@ -1079,7 +1079,7 @@ export default function ProfesionalDashboardPage() {
                                     className={`rounded-full px-1.5 py-0.5 text-[0.58rem] font-semibold ${
                                       day.isToday
                                         ? 'bg-white/20 text-white'
-                                        : 'bg-[#1FB6A6]/10 text-[#1FB6A6]'
+                                        : 'bg-[color:var(--primary-soft)] text-[color:var(--primary)]'
                                     }`}
                                   >
                                     {count}
@@ -1094,14 +1094,14 @@ export default function ProfesionalDashboardPage() {
                                       className={`truncate rounded-md px-2 py-1 text-[0.62rem] font-medium ${
                                         day.isToday
                                           ? 'bg-white/12 text-white'
-                                          : 'bg-[#F3F7FA] text-[#486173]'
+                                          : 'bg-white text-[color:var(--ink-muted)]'
                                       }`}
                                     >
                                       {reservation.time} · {reservation.serviceName}
                                     </div>
                                   ))}
                                   {count > 2 ? (
-                                    <p className={`text-[0.58rem] ${day.isToday ? 'text-white/70' : 'text-[#94A3B8]'}`}>
+                                    <p className={`text-[0.58rem] ${day.isToday ? 'text-white/70' : 'text-[color:var(--ink-faint)]'}`}>
                                       +{count - 2} más
                                     </p>
                                   ) : null}
@@ -1111,7 +1111,7 @@ export default function ProfesionalDashboardPage() {
                           );
                         })}
                       </div>
-                      <p className="border-t border-[#E2E7EC] py-3 text-center text-xs uppercase tracking-[0.4em] text-[#94A3B8]">
+                      <p className="border-t border-[color:var(--border-soft)] py-3 text-center text-xs uppercase tracking-[0.4em] text-[color:var(--ink-faint)]">
                         {monthLabel}
                       </p>
                     </div>
@@ -1125,7 +1125,7 @@ export default function ProfesionalDashboardPage() {
         <div className="fixed inset-0 z-50 flex justify-end">
           <button
             type="button"
-            className={`absolute inset-0 bg-[#0B1D2A]/40 backdrop-blur-sm transition-opacity duration-200 ${
+            className={`absolute inset-0 bg-[rgba(18,49,38,0.32)] backdrop-blur-sm transition-opacity duration-200 ${
               drawerVisible ? 'opacity-100' : 'pointer-events-none opacity-0'
             }`}
             onClick={handleCloseReservation}
@@ -1138,17 +1138,17 @@ export default function ProfesionalDashboardPage() {
           >
             <div className="flex items-start justify-between gap-3">
               <div>
-                <p className="text-xs uppercase tracking-[0.3em] text-[#94A3B8]">
+                <p className="text-xs uppercase tracking-[0.3em] text-[color:var(--ink-faint)]">
                   Reserva
                 </p>
-                <h3 className="mt-2 text-2xl font-semibold text-[#0E2A47]">
+                <h3 className="mt-2 text-2xl font-semibold text-[color:var(--ink)]">
                   {selectedReservation.serviceName || 'Servicio'}
                 </h3>
               </div>
               <button
                 type="button"
                 onClick={handleCloseReservation}
-                className="rounded-full border border-[#E2E7EC] px-3 py-1 text-xs font-semibold text-[#64748B] transition hover:bg-[#F8FAFC]"
+                className="rounded-full border border-[color:var(--border-soft)] px-3 py-1 text-xs font-semibold text-[color:var(--ink-muted)] transition hover:bg-[color:var(--surface-soft)]"
               >
                 Cerrar
               </button>
@@ -1166,7 +1166,7 @@ export default function ProfesionalDashboardPage() {
                   (selectedReservation.status ?? 'confirmed') as keyof typeof reservationStatusLabel
                 ] ?? reservationStatusLabel.confirmed}
               </span>
-              <span className="text-xs text-[#64748B]">
+              <span className="text-xs text-[color:var(--ink-muted)]">
                 {selectedReservation.time
                   ? `${selectedReservation.time} – ${formatMinutesLabel(
                       parseTimeToMinutes(selectedReservation.time) ?? 0 +
@@ -1178,20 +1178,20 @@ export default function ProfesionalDashboardPage() {
               </span>
             </div>
 
-            <div className="mt-6 space-y-4 text-sm text-[#64748B]">
+            <div className="mt-6 space-y-4 text-sm text-[color:var(--ink-muted)]">
               <div>
-                <p className="text-xs uppercase tracking-[0.3em] text-[#94A3B8]">
+                <p className="text-xs uppercase tracking-[0.3em] text-[color:var(--ink-faint)]">
                   Cliente
                 </p>
-                <p className="mt-1 text-base font-semibold text-[#0E2A47]">
+                <p className="mt-1 text-base font-semibold text-[color:var(--ink)]">
                   {selectedReservation.clientName || 'Cliente sin nombre'}
                 </p>
               </div>
               <div>
-                <p className="text-xs uppercase tracking-[0.3em] text-[#94A3B8]">
+                <p className="text-xs uppercase tracking-[0.3em] text-[color:var(--ink-faint)]">
                   Precio
                 </p>
-                <p className="mt-1 text-base font-semibold text-[#0E2A47]">
+                <p className="mt-1 text-base font-semibold text-[color:var(--ink)]">
                   {selectedReservation.price
                     ? selectedReservation.price.includes('$')
                       ? selectedReservation.price
@@ -1200,10 +1200,10 @@ export default function ProfesionalDashboardPage() {
                 </p>
               </div>
               <div>
-                <p className="text-xs uppercase tracking-[0.3em] text-[#94A3B8]">
+                <p className="text-xs uppercase tracking-[0.3em] text-[color:var(--ink-faint)]">
                   Notas
                 </p>
-                <p className="mt-1 text-sm text-[#64748B]">
+                <p className="mt-1 text-sm text-[color:var(--ink-muted)]">
                   {selectedReservation.notes || 'Sin notas adicionales.'}
                 </p>
               </div>
@@ -1214,7 +1214,7 @@ export default function ProfesionalDashboardPage() {
                 type="button"
                 onClick={() => handleUpdateReservationStatus('confirmed')}
                 disabled={isUpdatingStatus}
-                className="rounded-full bg-[#1FB6A6] px-4 py-2 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:shadow-md"
+                className="rounded-full bg-[color:var(--primary)] px-4 py-2 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:bg-[color:var(--primary-strong)] hover:shadow-[var(--shadow-card)]"
               >
                 Confirmar
               </button>
@@ -1222,7 +1222,7 @@ export default function ProfesionalDashboardPage() {
                 type="button"
                 onClick={() => handleUpdateReservationStatus('completed')}
                 disabled={isUpdatingStatus}
-                className="rounded-full border border-[#0B1D2A] bg-[#0B1D2A]/10 px-4 py-2 text-sm font-semibold text-[#0B1D2A] transition hover:-translate-y-0.5 hover:shadow-md"
+                className="rounded-full border border-[color:var(--primary-soft)] bg-[color:var(--primary-soft)] px-4 py-2 text-sm font-semibold text-[color:var(--primary-strong)] transition hover:-translate-y-0.5 hover:shadow-[var(--shadow-card)]"
               >
                 Completar
               </button>
@@ -1236,7 +1236,7 @@ export default function ProfesionalDashboardPage() {
               </button>
               <Link
                 href="/profesional/dashboard/reservas"
-                className="rounded-full border border-[#E2E7EC] bg-[#F8FAFC] px-4 py-2 text-center text-sm font-semibold text-[#0E2A47] transition hover:-translate-y-0.5 hover:shadow-md"
+                className="rounded-full border border-[color:var(--border-soft)] bg-[color:var(--surface-soft)] px-4 py-2 text-center text-sm font-semibold text-[color:var(--ink)] transition hover:-translate-y-0.5 hover:shadow-[var(--shadow-card)]"
                 onClick={(event) => {
                   event.preventDefault();
                   requestNavigation('/profesional/dashboard/reservas');

@@ -1,16 +1,17 @@
 import type { AppProps } from 'next/app';
-import { Sora } from 'next/font/google';
+import { Instrument_Sans } from 'next/font/google';
 import { useRouter } from 'next/router';
 import '@/pages/globals.css';
 import { ProfessionalProfileProvider } from '@/context/ProfessionalProfileContext';
 import { ClientProfileProvider } from '@/context/ClientProfileContext';
 import { ProfessionalDashboardUnsavedChangesProvider } from '@/context/ProfessionalDashboardUnsavedChangesContext';
 import ErrorBoundary from '@/components/shared/ErrorBoundary';
+import { ThemeProvider } from '@/components/theme/ThemeProvider';
 
-const sora = Sora({
-  variable: '--font-sora',
+const instrumentSans = Instrument_Sans({
+  variable: '--font-instrument-sans',
   subsets: ['latin'],
-  weight: ['300', '400', '500', '600', '700'],
+  weight: ['400', '500', '600', '700'],
   display: 'swap',
 });
 
@@ -35,17 +36,19 @@ export default function App({ Component, pageProps }: AppProps) {
 
   return (
     <ErrorBoundary>
-      <ProfessionalDashboardUnsavedChangesProvider>
-        <ProfessionalProfileProvider autoLoad={shouldAutoLoadProfessionalProfile}>
-          <ClientProfileProvider autoLoad={shouldAutoLoadClientProfile}>
-            <div
-              className={`${sora.variable} ${sora.className} font-sans antialiased`}
-            >
-              <Component {...pageProps} />
-            </div>
-          </ClientProfileProvider>
-        </ProfessionalProfileProvider>
-      </ProfessionalDashboardUnsavedChangesProvider>
+      <ThemeProvider>
+        <ProfessionalDashboardUnsavedChangesProvider>
+          <ProfessionalProfileProvider autoLoad={shouldAutoLoadProfessionalProfile}>
+            <ClientProfileProvider autoLoad={shouldAutoLoadClientProfile}>
+              <div
+                className={`${instrumentSans.variable} ${instrumentSans.className} font-sans antialiased`}
+              >
+                <Component {...pageProps} />
+              </div>
+            </ClientProfileProvider>
+          </ProfessionalProfileProvider>
+        </ProfessionalDashboardUnsavedChangesProvider>
+      </ThemeProvider>
     </ErrorBoundary>
   );
 }

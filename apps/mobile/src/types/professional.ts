@@ -40,7 +40,13 @@ export type ProfessionalProfile = {
   planCapabilities?: ProductPlanCapabilities;
 };
 
-export type ServicePaymentType = 'full' | 'deposit' | 'on_site';
+export type ServicePaymentType =
+  | 'full'
+  | 'deposit'
+  | 'on_site'
+  | 'FULL_PREPAY'
+  | 'DEPOSIT'
+  | 'ON_SITE';
 
 export type ServicePhoto = {
   id: string;
@@ -50,19 +56,30 @@ export type ServicePhoto = {
 export type ProfessionalService = {
   id: string;
   name: string;
+  description?: string;
+  imageUrl?: string;
   price: string;
+  depositAmount?: number | null;
+  currency?: string | null;
   duration: string;
+  postBufferMinutes?: number;
   bufferTime: string;
   paymentType: ServicePaymentType;
   photos: ServicePhoto[];
+  active?: boolean;
   paused?: boolean;
 };
 
 export type PublicService = {
   id?: string;
   name: string;
+  description?: string;
+  imageUrl?: string;
   price: string;
+  depositAmount?: number | null;
+  currency?: string | null;
   duration: string;
+  postBufferMinutes?: number;
   bufferTime?: string;
   paymentType?: ServicePaymentType;
   photos?: string[];

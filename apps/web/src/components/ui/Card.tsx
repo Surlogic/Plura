@@ -12,13 +12,13 @@ type CardProps = HTMLAttributes<HTMLDivElement> & {
 
 const toneClassNames: Record<CardTone, string> = {
   default:
-    'border-[color:var(--border-soft)] bg-white/96 shadow-[var(--shadow-card)]',
+    'border-[color:var(--border-soft)] bg-[color:var(--surface)] shadow-[var(--shadow-card)]',
   soft:
     'border-[color:var(--border-soft)] bg-[color:var(--surface-soft)] shadow-[var(--shadow-card)]',
   glass:
-    'border-white/70 bg-white/88 shadow-[var(--shadow-glass)] backdrop-blur',
+    'border-[color:var(--border-soft)] bg-[color:var(--surface)] shadow-[var(--shadow-glass)] backdrop-blur-xl',
   dark:
-    'border-white/10 bg-[#0c1d34]/92 text-white shadow-[var(--shadow-lift)]',
+    'border-white/10 bg-[linear-gradient(160deg,var(--brand-navy)_0%,var(--brand-navy-soft)_58%,var(--brand-navy-elevated)_100%)] text-[color:var(--text-on-dark)] shadow-[var(--shadow-lift)]',
 };
 
 const paddingClassNames: Record<CardPadding, string> = {

@@ -63,4 +63,21 @@ class DLocalWebhookSignatureVerifierTest {
 
         assertFalse(verifier.verify("{\"payment_id\":\"pay-1\"}", request));
     }
+
+    @Test
+    void shouldValidateGoStyleApiKeyPlusBodySignature() {
+        BillingProperties properties = new BillingProperties();
+        properties.getDlocal().setWebhookSecret("dl-secret");
+        properties.getDlocal().setXLogin("dl-api-key");
+
+        DLocalWebhookSignatureVerifier verifier = new DLocalWebhookSignatureVerifier(properties);
+
+        String payload = "{\"id\":\"DP-1\",\"status\":\"PAID\"}";
+        String signature = SignatureUtils.hmacSha256Hex("dl-secret", "dl-api-key" + payload);
+
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.addHeader("X-Dlocal-Signature", "v1=" + signature);
+
+        assertTrue(verifier.verify(payload, request));
+    }
 }

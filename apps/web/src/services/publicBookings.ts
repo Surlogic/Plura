@@ -2,7 +2,7 @@ import api from '@/services/api';
 import { cachedGet } from '@/services/cachedGet';
 import type { ProfessionalSchedule } from '@/types/professional';
 import type { Category } from '@/types/category';
-import type { BookingPaymentType } from '@/types/bookings';
+import type { BookingPaymentType, BookingPolicySnapshot } from '@/types/bookings';
 
 export type PublicProfessionalService = {
   id: string;
@@ -45,6 +45,7 @@ export type PublicProfessionalPage = {
   whatsapp?: string | null;
   schedule?: ProfessionalSchedule;
   services: PublicProfessionalService[];
+  bookingPolicy?: BookingPolicySnapshot | null;
 };
 
 export type PublicBookingStatus =
@@ -62,6 +63,8 @@ type PublicBookingResponse = {
   id: number;
   status: PublicBookingStatus;
   startDateTime: string;
+  startDateTimeUtc?: string | null;
+  timezone?: string | null;
   serviceId: string;
   professionalId: string;
   userId: string;

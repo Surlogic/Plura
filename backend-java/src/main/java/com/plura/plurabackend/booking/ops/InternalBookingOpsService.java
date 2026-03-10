@@ -19,6 +19,7 @@ import com.plura.plurabackend.booking.event.model.BookingEvent;
 import com.plura.plurabackend.booking.event.model.BookingEventType;
 import com.plura.plurabackend.booking.event.repository.BookingEventRepository;
 import com.plura.plurabackend.booking.finance.BookingFinancialEvidenceSnapshot;
+import com.plura.plurabackend.booking.finance.BookingFinanceDispatchPlan;
 import com.plura.plurabackend.booking.finance.BookingFinanceService;
 import com.plura.plurabackend.booking.finance.BookingFinanceUpdateResult;
 import com.plura.plurabackend.booking.finance.BookingMoneyResolver;
@@ -196,7 +197,8 @@ public class InternalBookingOpsService {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "El refund actual no admite retry manual");
         }
 
-        BookingFinanceUpdateResult result = bookingProviderIntegrationService.retryRefund(booking, refundRecord);
+        BookingFinanceDispatchPlan plan = bookingProviderIntegrationService.retryRefund(booking, refundRecord);
+        BookingFinanceUpdateResult result = plan.localResult();
         bookingEventService.record(
             booking,
             BookingEventType.BOOKING_REFUND_RETRY_REQUESTED,
@@ -228,7 +230,8 @@ public class InternalBookingOpsService {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "El payout actual no admite retry manual");
         }
 
-        BookingFinanceUpdateResult result = bookingProviderIntegrationService.retryPayout(booking, payoutRecord);
+        BookingFinanceDispatchPlan plan = bookingProviderIntegrationService.retryPayout(booking, payoutRecord);
+        BookingFinanceUpdateResult result = plan.localResult();
         bookingEventService.record(
             booking,
             BookingEventType.BOOKING_PAYOUT_RETRY_REQUESTED,
@@ -359,6 +362,7 @@ public class InternalBookingOpsService {
             booking.getService() == null ? null : booking.getService().getId(),
             serviceName,
             booking.getStartDateTime() == null ? null : booking.getStartDateTime().toString(),
+            booking.getStartDateTimeUtc() == null ? null : booking.getStartDateTimeUtc().toString(),
             booking.getTimezone(),
             duration,
             postBufferMinutes,
@@ -366,6 +370,9 @@ public class InternalBookingOpsService {
             booking.getServicePaymentTypeSnapshot() == null ? null : booking.getServicePaymentTypeSnapshot().name(),
             booking.getRescheduleCount(),
             booking.getOperationalStatus() == null ? null : booking.getOperationalStatus().name(),
+            null,
+            null,
+            null,
             null
         );
     }

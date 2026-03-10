@@ -6,7 +6,8 @@ import api from '@/services/api';
 import { useClientProfileContext } from '@/context/ClientProfileContext';
 import { useProfessionalProfileContext } from '@/context/ProfessionalProfileContext';
 import Button from '@/components/ui/Button';
-import Logo from '@/components/ui/Logo';
+import BrandLogo from '@/components/ui/BrandLogo';
+import ThemeSwitcher from '@/components/theme/ThemeSwitcher';
 import { clearAuthAccessToken } from '@/services/session';
 
 type NavbarProps = {
@@ -77,8 +78,8 @@ export default function Navbar({
 
   const isDashboard = variant === 'dashboard';
   const headerClassName = isDashboard
-    ? 'border-b border-[color:var(--border-soft)] bg-[color:var(--surface)]/92 backdrop-blur'
-    : 'sticky top-0 z-50 border-b border-[color:var(--border-soft)] bg-[color:var(--surface)]/88 backdrop-blur-xl';
+    ? 'border-b border-[color:var(--border-soft)] bg-[color:var(--surface)]/88 backdrop-blur-xl'
+    : 'sticky top-0 z-50 border-b border-[color:var(--border-soft)] bg-[color:var(--surface)]/84 backdrop-blur-xl';
 
   return (
     <header className={headerClassName}>
@@ -89,11 +90,12 @@ export default function Navbar({
               Menú
             </Button>
           ) : null}
-          <Logo href="/" size={38} priority textClassName="text-[color:var(--ink)]" />
+          <BrandLogo href="/" variant="navbar" priority />
         </div>
         <div className="flex flex-col gap-2 text-sm sm:flex-row sm:items-center">
+          <ThemeSwitcher variant="compact" showLabel={false} className="self-start sm:self-auto" />
           {showAuthLoading ? (
-            <span className="rounded-full border border-[color:var(--border-soft)] bg-white/90 px-4 py-2 text-[color:var(--ink-muted)] shadow-[var(--shadow-card)]">
+            <span className="rounded-full border border-[color:var(--border-soft)] bg-[color:var(--surface-strong)] px-4 py-2 text-[color:var(--ink-muted)] shadow-[var(--shadow-card)]">
               Cargando...
             </span>
           ) : role === 'PROFESSIONAL' ? (
@@ -121,9 +123,9 @@ export default function Navbar({
               </Button>
               <Link
                 href="/cliente/perfil"
-                className="inline-flex items-center gap-2 rounded-full border border-[color:var(--border-soft)] bg-white/96 px-2 py-1.5 pr-3 text-[color:var(--ink)] shadow-[var(--shadow-card)] transition hover:-translate-y-0.5 hover:border-[color:var(--border-strong)] hover:bg-white"
+                className="inline-flex items-center gap-2 rounded-full border border-[color:var(--border-soft)] bg-[color:var(--surface-strong)] px-2 py-1.5 pr-3 text-[color:var(--ink)] shadow-[var(--shadow-card)] transition hover:-translate-y-0.5 hover:border-[color:var(--border-strong)] hover:bg-[color:var(--surface-hover)]"
               >
-                <span className="flex h-7 w-7 items-center justify-center rounded-full bg-[color:var(--surface-soft)] text-xs font-semibold">
+                <span className="flex h-7 w-7 items-center justify-center rounded-full bg-[color:var(--primary-soft)] text-xs font-semibold text-[color:var(--primary)]">
                   {initials}
                 </span>
                 <span className="font-medium">Perfil</span>

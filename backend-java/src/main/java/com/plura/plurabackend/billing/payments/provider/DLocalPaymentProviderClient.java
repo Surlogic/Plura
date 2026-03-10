@@ -20,6 +20,7 @@ import java.util.Map;
 import java.util.Base64;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 import org.springframework.web.server.ResponseStatusException;
@@ -33,15 +34,18 @@ public class DLocalPaymentProviderClient implements PaymentProviderClient {
 
     private final BillingProperties billingProperties;
     private final ObjectMapper objectMapper;
+    private final String publicWebUrl;
     private volatile String payoutAccessToken;
     private volatile Instant payoutAccessTokenExpiresAt;
 
     public DLocalPaymentProviderClient(
         BillingProperties billingProperties,
-        ObjectMapper objectMapper
+        ObjectMapper objectMapper,
+        @Value("${app.email.public-web-url:http://localhost:3002}") String publicWebUrl
     ) {
         this.billingProperties = billingProperties;
         this.objectMapper = objectMapper;
+        this.publicWebUrl = publicWebUrl == null ? "http://localhost:3002" : publicWebUrl.trim();
     }
 
     @Override
@@ -56,7 +60,7 @@ public class DLocalPaymentProviderClient implements PaymentProviderClient {
             throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "dLocal deshabilitado");
         }
 
-        String endpoint = config.getBaseUrl() + config.getCheckoutPath();
+        String endpoint = resolveLegacyBaseUrl(config) + config.getCheckoutPath();
         HttpClient httpClient = HttpClient.newBuilder()
             .connectTimeout(Duration.ofMillis(config.getTimeoutMillis()))
             .build();
@@ -79,7 +83,13 @@ public class DLocalPaymentProviderClient implements PaymentProviderClient {
 
             HttpResponse<String> response = httpClient.send(httpRequest, HttpResponse.BodyHandlers.ofString());
             if (response.statusCode() < 200 || response.statusCode() >= 300) {
-                LOGGER.warn("dLocal checkout rejected status={} subscriptionId={}", response.statusCode(), request.subscriptionId());
+                LOGGER.warn(
+                    "dLocal checkout rejected status={} subscriptionId={} endpoint={} body={}",
+                    response.statusCode(),
+                    request.subscriptionId(),
+                    endpoint,
+                    truncateForLogs(response.body())
+                );
                 throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "No se pudo crear checkout en dLocal");
             }
 
@@ -119,7 +129,7 @@ public class DLocalPaymentProviderClient implements PaymentProviderClient {
             throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "dLocal deshabilitado");
         }
 
-        String endpoint = config.getBaseUrl() + config.getCheckoutPath();
+        String endpoint = resolveGoBaseUrl(config) + config.getBookingCheckoutPath();
         HttpClient httpClient = HttpClient.newBuilder()
             .connectTimeout(Duration.ofMillis(config.getTimeoutMillis()))
             .build();
@@ -127,13 +137,9 @@ public class DLocalPaymentProviderClient implements PaymentProviderClient {
         try {
             Map<String, Object> payload = buildBookingCheckoutPayload(request, config);
             String body = objectMapper.writeValueAsString(payload);
-            String requestDate = DateTimeFormatter.ISO_INSTANT.format(Instant.now());
-
-            HttpRequest httpRequest = applySignedHeaders(
+            HttpRequest httpRequest = applyGoAuthHeaders(
                 HttpRequest.newBuilder(URI.create(endpoint)),
-                config,
-                requestDate,
-                body
+                config
             )
                 .timeout(Duration.ofMillis(config.getTimeoutMillis()))
                 .header("Content-Type", "application/json")
@@ -142,7 +148,13 @@ public class DLocalPaymentProviderClient implements PaymentProviderClient {
 
             HttpResponse<String> response = httpClient.send(httpRequest, HttpResponse.BodyHandlers.ofString());
             if (response.statusCode() < 200 || response.statusCode() >= 300) {
-                LOGGER.warn("dLocal booking checkout rejected status={} bookingId={}", response.statusCode(), request.bookingId());
+                LOGGER.warn(
+                    "dLocal booking checkout rejected status={} bookingId={} endpoint={} body={}",
+                    response.statusCode(),
+                    request.bookingId(),
+                    endpoint,
+                    truncateForLogs(response.body())
+                );
                 throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "No se pudo crear checkout de reserva en dLocal");
             }
 
@@ -183,7 +195,7 @@ public class DLocalPaymentProviderClient implements PaymentProviderClient {
         }
 
         String path = config.getCancelPath().replace("{id}", providerSubscriptionId);
-        String endpoint = config.getBaseUrl() + path;
+        String endpoint = resolveLegacyBaseUrl(config) + path;
         HttpClient httpClient = HttpClient.newBuilder()
             .connectTimeout(Duration.ofMillis(config.getTimeoutMillis()))
             .build();
@@ -207,7 +219,13 @@ public class DLocalPaymentProviderClient implements PaymentProviderClient {
 
             HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
             if (response.statusCode() < 200 || response.statusCode() >= 300) {
-                LOGGER.warn("dLocal cancel rejected status={} providerSubscriptionId={}", response.statusCode(), providerSubscriptionId);
+                LOGGER.warn(
+                    "dLocal cancel rejected status={} providerSubscriptionId={} endpoint={} body={}",
+                    response.statusCode(),
+                    providerSubscriptionId,
+                    endpoint,
+                    truncateForLogs(response.body())
+                );
                 throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "No se pudo cancelar la suscripción en dLocal");
             }
         } catch (IOException | InterruptedException exception) {
@@ -233,19 +251,17 @@ public class DLocalPaymentProviderClient implements PaymentProviderClient {
 
         boolean paymentLookup = request.providerPaymentId() != null && !request.providerPaymentId().isBlank();
         String pathTemplate = paymentLookup ? config.getPaymentStatusPath() : config.getSubscriptionStatusPath();
-        String endpoint = config.getBaseUrl() + pathTemplate.replace("{id}", objectId);
+        String endpoint = (paymentLookup ? resolveGoBaseUrl(config) : resolveLegacyBaseUrl(config))
+            + pathTemplate.replace("{id}", objectId);
 
         HttpClient httpClient = HttpClient.newBuilder()
             .connectTimeout(Duration.ofMillis(config.getTimeoutMillis()))
             .build();
 
         try {
-            String requestDate = DateTimeFormatter.ISO_INSTANT.format(Instant.now());
-            HttpRequest httpRequest = applySignedHeaders(
-                HttpRequest.newBuilder(URI.create(endpoint)),
-                config,
-                requestDate,
-                ""
+            HttpRequest httpRequest = (paymentLookup
+                ? applyGoAuthHeaders(HttpRequest.newBuilder(URI.create(endpoint)), config)
+                : applySignedHeaders(HttpRequest.newBuilder(URI.create(endpoint)), config, DateTimeFormatter.ISO_INSTANT.format(Instant.now()), "")
             )
                 .timeout(Duration.ofMillis(config.getTimeoutMillis()))
                 .header("Content-Type", "application/json")
@@ -254,7 +270,13 @@ public class DLocalPaymentProviderClient implements PaymentProviderClient {
 
             HttpResponse<String> response = httpClient.send(httpRequest, HttpResponse.BodyHandlers.ofString());
             if (response.statusCode() < 200 || response.statusCode() >= 300) {
-                LOGGER.warn("dLocal verify rejected status={} objectId={}", response.statusCode(), objectId);
+                LOGGER.warn(
+                    "dLocal verify rejected status={} objectId={} endpoint={} body={}",
+                    response.statusCode(),
+                    objectId,
+                    endpoint,
+                    truncateForLogs(response.body())
+                );
                 throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "No se pudo verificar pago en dLocal");
             }
 
@@ -308,7 +330,10 @@ public class DLocalPaymentProviderClient implements PaymentProviderClient {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "providerPaymentId es obligatorio para refund");
         }
 
-        String endpoint = config.getBaseUrl() + config.getRefundPath().replace("{id}", request.providerPaymentId());
+        String refundPath = config.getRefundPath().contains("{id}")
+            ? config.getRefundPath().replace("{id}", request.providerPaymentId())
+            : config.getRefundPath();
+        String endpoint = resolveGoBaseUrl(config) + refundPath;
         HttpClient httpClient = HttpClient.newBuilder()
             .connectTimeout(Duration.ofMillis(config.getTimeoutMillis()))
             .build();
@@ -318,18 +343,15 @@ public class DLocalPaymentProviderClient implements PaymentProviderClient {
             payload.put("amount", request.amount());
             payload.put("currency", request.currency());
             payload.put("reason", request.reason());
+            payload.put("payment_id", request.providerPaymentId());
             payload.put("external_id", request.refundReference());
             if (request.webhookUrl() != null && !request.webhookUrl().isBlank()) {
                 payload.put("notification_url", request.webhookUrl());
             }
             String body = objectMapper.writeValueAsString(payload);
-            String requestDate = DateTimeFormatter.ISO_INSTANT.format(Instant.now());
-
-            HttpRequest httpRequest = applySignedHeaders(
+            HttpRequest httpRequest = applyGoAuthHeaders(
                 HttpRequest.newBuilder(URI.create(endpoint)),
-                config,
-                requestDate,
-                body
+                config
             )
                 .timeout(Duration.ofMillis(config.getTimeoutMillis()))
                 .header("Content-Type", "application/json")
@@ -338,7 +360,13 @@ public class DLocalPaymentProviderClient implements PaymentProviderClient {
 
             HttpResponse<String> response = httpClient.send(httpRequest, HttpResponse.BodyHandlers.ofString());
             if (response.statusCode() < 200 || response.statusCode() >= 300) {
-                LOGGER.warn("dLocal refund rejected status={} providerPaymentId={}", response.statusCode(), request.providerPaymentId());
+                LOGGER.warn(
+                    "dLocal refund rejected status={} providerPaymentId={} endpoint={} body={}",
+                    response.statusCode(),
+                    request.providerPaymentId(),
+                    endpoint,
+                    truncateForLogs(response.body())
+                );
                 throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "No se pudo crear refund en dLocal");
             }
 
@@ -378,7 +406,7 @@ public class DLocalPaymentProviderClient implements PaymentProviderClient {
             throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "dLocal payouts OAuth no configurado");
         }
 
-        String endpoint = config.getBaseUrl() + config.getPayoutPath();
+        String endpoint = resolveLegacyBaseUrl(config) + config.getPayoutPath();
         HttpClient httpClient = HttpClient.newBuilder()
             .connectTimeout(Duration.ofMillis(config.getTimeoutMillis()))
             .build();
@@ -397,7 +425,13 @@ public class DLocalPaymentProviderClient implements PaymentProviderClient {
 
             HttpResponse<String> response = httpClient.send(httpRequest, HttpResponse.BodyHandlers.ofString());
             if (response.statusCode() < 200 || response.statusCode() >= 300) {
-                LOGGER.warn("dLocal payout rejected status={} payoutRecordId={}", response.statusCode(), request.payoutRecordId());
+                LOGGER.warn(
+                    "dLocal payout rejected status={} payoutRecordId={} endpoint={} body={}",
+                    response.statusCode(),
+                    request.payoutRecordId(),
+                    endpoint,
+                    truncateForLogs(response.body())
+                );
                 throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "No se pudo iniciar payout en dLocal");
             }
 
@@ -466,6 +500,10 @@ public class DLocalPaymentProviderClient implements PaymentProviderClient {
         payload.put("order_id", request.transactionId());
         payload.put("description", request.description());
         payload.put("external_id", "booking:" + request.bookingId());
+        payload.put("payment_method_flow", "REDIRECT");
+        if (request.splitCode() != null && !request.splitCode().isBlank()) {
+            payload.put("split_code", request.splitCode());
+        }
 
         if (request.customerEmail() != null && !request.customerEmail().isBlank()) {
             Map<String, Object> payer = new HashMap<>();
@@ -479,12 +517,8 @@ public class DLocalPaymentProviderClient implements PaymentProviderClient {
         if (request.webhookUrl() != null && !request.webhookUrl().isBlank()) {
             payload.put("notification_url", request.webhookUrl());
         }
-        if (config.getSuccessUrl() != null && !config.getSuccessUrl().isBlank()) {
-            payload.put("success_url", config.getSuccessUrl());
-        }
-        if (config.getFailureUrl() != null && !config.getFailureUrl().isBlank()) {
-            payload.put("back_url", config.getFailureUrl());
-        }
+        payload.put("success_url", resolveBookingSuccessUrl(config, request.bookingId()));
+        payload.put("back_url", resolveBookingFailureUrl(config, request.bookingId()));
 
         Map<String, Object> metadata = new HashMap<>();
         metadata.put("bookingId", request.bookingId());
@@ -537,6 +571,16 @@ public class DLocalPaymentProviderClient implements PaymentProviderClient {
             .header("Authorization", buildAuthorizationHeader(config, requestDate, body));
     }
 
+    private HttpRequest.Builder applyGoAuthHeaders(
+        HttpRequest.Builder builder,
+        BillingProperties.DLocal config
+    ) {
+        return builder
+            .header("Authorization", buildGoAuthorizationHeader(config))
+            .header("Accept", "application/json")
+            .header("User-Agent", DLOCAL_USER_AGENT);
+    }
+
     private String buildAuthorizationHeader(
         BillingProperties.DLocal config,
         String requestDate,
@@ -545,8 +589,12 @@ public class DLocalPaymentProviderClient implements PaymentProviderClient {
         String payload = (config.getXLogin() == null ? "" : config.getXLogin())
             + (requestDate == null ? "" : requestDate)
             + (body == null ? "" : body);
-        String signature = SignatureUtils.hmacSha256Hex(config.getWebhookSecret(), payload);
+        String signature = SignatureUtils.hmacSha256Hex(config.getSecretKey(), payload);
         return "V2-HMAC-SHA256, Signature: " + signature;
+    }
+
+    private String buildGoAuthorizationHeader(BillingProperties.DLocal config) {
+        return "Bearer " + config.getXLogin() + ":" + config.getSecretKey();
     }
 
     private synchronized String getPayoutAccessToken(
@@ -558,7 +606,7 @@ public class DLocalPaymentProviderClient implements PaymentProviderClient {
             return payoutAccessToken;
         }
 
-        String endpoint = config.getBaseUrl() + config.getPayoutOauthPath();
+        String endpoint = resolveLegacyBaseUrl(config) + config.getPayoutOauthPath();
         String credentials = Base64.getEncoder().encodeToString(
             (config.getPayoutClientId() + ":" + config.getPayoutClientSecret()).getBytes(java.nio.charset.StandardCharsets.UTF_8)
         );
@@ -571,7 +619,12 @@ public class DLocalPaymentProviderClient implements PaymentProviderClient {
 
         HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
         if (response.statusCode() < 200 || response.statusCode() >= 300) {
-            LOGGER.warn("dLocal payout oauth rejected status={}", response.statusCode());
+            LOGGER.warn(
+                "dLocal payout oauth rejected status={} endpoint={} body={}",
+                response.statusCode(),
+                endpoint,
+                truncateForLogs(response.body())
+            );
             throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "No se pudo autenticar payouts en dLocal");
         }
 
@@ -584,6 +637,49 @@ public class DLocalPaymentProviderClient implements PaymentProviderClient {
         payoutAccessToken = accessToken;
         payoutAccessTokenExpiresAt = Instant.now().plusSeconds(Math.max(60L, expiresIn));
         return payoutAccessToken;
+    }
+
+    private String resolveGoBaseUrl(BillingProperties.DLocal config) {
+        if (config.getBaseUrl() != null && !config.getBaseUrl().isBlank()) {
+            return config.getBaseUrl();
+        }
+        return billingProperties.isProductionMode()
+            ? "https://api.dlocalgo.com"
+            : "https://api-sbx.dlocalgo.com";
+    }
+
+    private String resolveLegacyBaseUrl(BillingProperties.DLocal config) {
+        if (config.getBaseUrl() != null && !config.getBaseUrl().isBlank()) {
+            return config.getBaseUrl();
+        }
+        return billingProperties.isProductionMode()
+            ? "https://api.dlocal.com"
+            : "https://sandbox.dlocal.com";
+    }
+
+    private String resolveBookingSuccessUrl(BillingProperties.DLocal config, Long bookingId) {
+        if (config.getSuccessUrl() != null && !config.getSuccessUrl().isBlank()) {
+            return config.getSuccessUrl();
+        }
+        return publicWebUrl.replaceAll("/+$", "") + "/cliente/reservas?bookingId=" + bookingId + "&checkout=started";
+    }
+
+    private String resolveBookingFailureUrl(BillingProperties.DLocal config, Long bookingId) {
+        if (config.getFailureUrl() != null && !config.getFailureUrl().isBlank()) {
+            return config.getFailureUrl();
+        }
+        return publicWebUrl.replaceAll("/+$", "") + "/cliente/reservas?bookingId=" + bookingId + "&checkout=failed";
+    }
+
+    private String truncateForLogs(String value) {
+        if (value == null) {
+            return "";
+        }
+        String normalized = value.replaceAll("\\s+", " ").trim();
+        if (normalized.length() <= 300) {
+            return normalized;
+        }
+        return normalized.substring(0, 300) + "...";
     }
 
     private String firstNonBlank(String... values) {

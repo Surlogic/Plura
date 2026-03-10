@@ -13,6 +13,7 @@ public class BookingActionsResponse {
     private String actorType;
     private String operationalStatus;
     private String policySource;
+    private BookingPolicySnapshotResponse policySnapshot;
     private boolean canCancel;
     private boolean canReschedule;
     private boolean canMarkNoShow;

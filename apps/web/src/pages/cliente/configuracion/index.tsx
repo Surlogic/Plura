@@ -3,6 +3,7 @@ import { isAxiosError } from 'axios';
 import { useRouter } from 'next/router';
 import EmailVerificationPanel from '@/components/auth/EmailVerificationPanel';
 import ClientShell from '@/components/cliente/ClientShell';
+import ThemeSwitcher from '@/components/theme/ThemeSwitcher';
 import { useClientProfile } from '@/hooks/useClientProfile';
 import { useClientProfileContext } from '@/context/ClientProfileContext';
 import api from '@/services/api';
@@ -32,6 +33,18 @@ export default function ClienteConfiguracionPage() {
   const [phoneVerificationError, setPhoneVerificationError] = useState<string | null>(null);
   const [isSendingPhoneVerification, setIsSendingPhoneVerification] = useState(false);
   const [isConfirmingPhoneVerification, setIsConfirmingPhoneVerification] = useState(false);
+  const panelClassName =
+    'rounded-[24px] border border-[color:var(--border-soft)] bg-[color:var(--surface)] p-5 shadow-[var(--shadow-card)]';
+  const fieldClassName =
+    'h-11 rounded-[16px] border border-[color:var(--border-soft)] bg-[color:var(--surface-soft)] px-4 text-sm text-[color:var(--ink)] focus:border-[color:var(--accent)] focus:outline-none focus:ring-4 focus:ring-[color:var(--focus-ring)]';
+  const secondaryButtonClassName =
+    'rounded-full border border-[color:var(--border-soft)] bg-[color:var(--surface-soft)] px-4 py-2 text-sm font-semibold text-[color:var(--ink)] transition hover:bg-[color:var(--surface-hover)] disabled:cursor-not-allowed disabled:opacity-60';
+  const primaryButtonClassName =
+    'rounded-full bg-[color:var(--primary)] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[color:var(--primary-strong)] disabled:cursor-not-allowed disabled:opacity-60';
+  const dangerPanelClassName =
+    'rounded-[24px] border border-[color:var(--error-soft)] bg-[color:var(--surface)] p-5 shadow-[var(--shadow-card)]';
+  const dangerButtonClassName =
+    'rounded-full border border-[color:var(--error-soft)] bg-transparent px-4 py-2 text-sm font-semibold text-[color:var(--error)] transition hover:bg-[color:var(--error-soft)] disabled:cursor-not-allowed disabled:opacity-60';
 
   const resolveBackendMessage = (error: unknown, fallback: string) => {
     if (isAxiosError<{ message?: string }>(error)) {
@@ -172,33 +185,42 @@ export default function ClienteConfiguracionPage() {
 
   return (
     <ClientShell name={displayName} active="configuracion">
-      <section className="space-y-2 rounded-[28px] border border-white/70 bg-white/95 p-6 shadow-[0_20px_50px_rgba(15,23,42,0.1)]">
-        <p className="text-xs uppercase tracking-[0.35em] text-[#94A3B8]">Configuracion</p>
-        <h1 className="text-3xl font-semibold text-[#0E2A47]">Preferencias de cuenta</h1>
-        <p className="text-sm text-[#64748B]">
+      <section className="space-y-2 rounded-[28px] border border-[color:var(--border-soft)] bg-[color:var(--surface)] p-6 shadow-[var(--shadow-lift)]">
+        <p className="text-xs uppercase tracking-[0.35em] text-[color:var(--ink-faint)]">Configuracion</p>
+        <h1 className="text-3xl font-semibold text-[color:var(--ink)]">Preferencias de cuenta</h1>
+        <p className="text-sm text-[color:var(--ink-muted)]">
           Ajustes basicos del panel cliente para la etapa beta.
         </p>
       </section>
 
       <section className="space-y-4">
-        <article className="rounded-[24px] border border-[#E2E7EC] bg-white p-5 shadow-sm">
+        <article className={panelClassName}>
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div>
+              <p className="text-sm font-semibold text-[color:var(--ink)]">Apariencia</p>
+              <p className="text-xs text-[color:var(--ink-muted)]">Elegí light, dark o seguir el sistema.</p>
+            </div>
+            <ThemeSwitcher />
+          </div>
+        </article>
+        <article className={panelClassName}>
           <div className="flex items-center justify-between gap-3">
             <div>
-              <p className="text-sm font-semibold text-[#0E2A47]">Recordatorios por email</p>
-              <p className="text-xs text-[#64748B]">Recibe avisos antes de cada turno.</p>
+              <p className="text-sm font-semibold text-[color:var(--ink)]">Recordatorios por email</p>
+              <p className="text-xs text-[color:var(--ink-muted)]">Recibe avisos antes de cada turno.</p>
             </div>
-            <span className="rounded-full bg-[#1FB6A6]/10 px-3 py-1 text-xs font-semibold text-[#1FB6A6]">
+            <span className="rounded-full bg-[color:var(--success-soft)] px-3 py-1 text-xs font-semibold text-[color:var(--success)]">
               Activo
             </span>
           </div>
         </article>
-        <article className="rounded-[24px] border border-[#E2E7EC] bg-white p-5 shadow-sm">
+        <article className={panelClassName}>
           <div className="flex items-center justify-between gap-3">
             <div>
-              <p className="text-sm font-semibold text-[#0E2A47]">Recordatorios push</p>
-              <p className="text-xs text-[#64748B]">Proximamente en version movil.</p>
+              <p className="text-sm font-semibold text-[color:var(--ink)]">Recordatorios push</p>
+              <p className="text-xs text-[color:var(--ink-muted)]">Proximamente en version movil.</p>
             </div>
-            <span className="rounded-full bg-[#F8FAFC] px-3 py-1 text-xs font-semibold text-[#64748B]">
+            <span className="rounded-full bg-[color:var(--surface-soft)] px-3 py-1 text-xs font-semibold text-[color:var(--ink-muted)]">
               Proximamente
             </span>
           </div>
@@ -212,23 +234,23 @@ export default function ClienteConfiguracionPage() {
           title="Verificación de email"
           description="Estado actual del email principal de tu cuenta. Podés enviar, confirmar y reenviar el código desde acá sin recargar la página."
         />
-        <article className="rounded-[24px] border border-[#E2E7EC] bg-white p-5 shadow-sm">
+        <article className={panelClassName}>
           <div className="space-y-4">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
-                <p className="text-sm font-semibold text-[#0E2A47]">Verificación de teléfono</p>
-                <p className="text-xs text-[#64748B]">Estado actual del teléfono principal de tu cuenta.</p>
+                <p className="text-sm font-semibold text-[color:var(--ink)]">Verificación de teléfono</p>
+                <p className="text-xs text-[color:var(--ink-muted)]">Estado actual del teléfono principal de tu cuenta.</p>
               </div>
               <span className={`rounded-full px-3 py-1 text-xs font-semibold ${
                 profile?.phoneVerified
-                  ? 'bg-[#1FB6A6]/10 text-[#1FB6A6]'
-                  : 'bg-[#FFF7ED] text-[#B45309]'
+                  ? 'bg-[color:var(--success-soft)] text-[color:var(--success)]'
+                  : 'bg-[color:var(--warning-soft)] text-[color:var(--warning)]'
               }`}>
                 {profile?.phoneVerified ? 'Verificado' : 'Pendiente'}
               </span>
             </div>
 
-            <p className="text-sm text-[#0E2A47]">{profile?.phoneNumber || 'Sin teléfono cargado'}</p>
+            <p className="text-sm text-[color:var(--ink)]">{profile?.phoneNumber || 'Sin teléfono cargado'}</p>
 
             {!profile?.phoneVerified ? (
               <>
@@ -239,7 +261,7 @@ export default function ClienteConfiguracionPage() {
                       void handleSendPhoneVerification();
                     }}
                     disabled={isSendingPhoneVerification}
-                    className="rounded-full border border-[#0E2A47]/10 bg-[#F8FAFC] px-4 py-2 text-sm font-semibold text-[#0E2A47] transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-60"
+                    className={secondaryButtonClassName}
                   >
                     {isSendingPhoneVerification ? 'Enviando...' : 'Enviar OTP'}
                   </button>
@@ -253,7 +275,7 @@ export default function ClienteConfiguracionPage() {
                     value={phoneVerificationCode}
                     onChange={(event) => setPhoneVerificationCode(event.target.value)}
                     placeholder="OTP de 6 dígitos"
-                    className="h-11 min-w-[220px] rounded-[16px] border border-[#E2E7EC] bg-[#F8FAFC] px-4 text-sm text-[#0E2A47] focus:border-[#1FB6A6] focus:outline-none"
+                    className={`min-w-[220px] ${fieldClassName}`}
                   />
                   <button
                     type="button"
@@ -261,7 +283,7 @@ export default function ClienteConfiguracionPage() {
                       void handleConfirmPhoneVerification();
                     }}
                     disabled={isConfirmingPhoneVerification}
-                    className="rounded-full bg-[#0E2A47] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#12385f] disabled:cursor-not-allowed disabled:opacity-60"
+                    className={primaryButtonClassName}
                   >
                     {isConfirmingPhoneVerification ? 'Verificando...' : 'Confirmar OTP'}
                   </button>
@@ -270,18 +292,18 @@ export default function ClienteConfiguracionPage() {
             ) : null}
 
             {phoneVerificationMessage ? (
-              <p className="text-xs font-semibold text-[#1FB6A6]">{phoneVerificationMessage}</p>
+              <p className="text-xs font-semibold text-[color:var(--success)]">{phoneVerificationMessage}</p>
             ) : null}
             {phoneVerificationError ? (
-              <p className="text-xs font-semibold text-[#B91C1C]">{phoneVerificationError}</p>
+              <p className="text-xs font-semibold text-[color:var(--error)]">{phoneVerificationError}</p>
             ) : null}
           </div>
         </article>
-        <article className="rounded-[24px] border border-[#E2E7EC] bg-white p-5 shadow-sm">
+        <article className={panelClassName}>
           <div className="space-y-4">
             <div>
-              <p className="text-sm font-semibold text-[#0E2A47]">Cambiar contraseña</p>
-              <p className="text-xs text-[#64748B]">Por seguridad se cerrarán todas tus sesiones.</p>
+              <p className="text-sm font-semibold text-[color:var(--ink)]">Cambiar contraseña</p>
+              <p className="text-xs text-[color:var(--ink-muted)]">Por seguridad se cerrarán todas tus sesiones.</p>
             </div>
 
             <div className="grid gap-3 md:grid-cols-3">
@@ -290,56 +312,56 @@ export default function ClienteConfiguracionPage() {
                 value={passwordForm.currentPassword}
                 onChange={(event) => setPasswordForm((prev) => ({ ...prev, currentPassword: event.target.value }))}
                 placeholder="Contraseña actual"
-                className="h-11 rounded-[16px] border border-[#E2E7EC] bg-[#F8FAFC] px-4 text-sm text-[#0E2A47] focus:border-[#1FB6A6] focus:outline-none"
+                className={fieldClassName}
               />
               <input
                 type="password"
                 value={passwordForm.newPassword}
                 onChange={(event) => setPasswordForm((prev) => ({ ...prev, newPassword: event.target.value }))}
                 placeholder="Nueva contraseña"
-                className="h-11 rounded-[16px] border border-[#E2E7EC] bg-[#F8FAFC] px-4 text-sm text-[#0E2A47] focus:border-[#1FB6A6] focus:outline-none"
+                className={fieldClassName}
               />
               <input
                 type="password"
                 value={passwordForm.confirmPassword}
                 onChange={(event) => setPasswordForm((prev) => ({ ...prev, confirmPassword: event.target.value }))}
                 placeholder="Confirmar contraseña"
-                className="h-11 rounded-[16px] border border-[#E2E7EC] bg-[#F8FAFC] px-4 text-sm text-[#0E2A47] focus:border-[#1FB6A6] focus:outline-none"
+                className={fieldClassName}
               />
             </div>
 
             {passwordMessage ? (
-              <p className="text-xs font-semibold text-[#1FB6A6]">{passwordMessage}</p>
+              <p className="text-xs font-semibold text-[color:var(--success)]">{passwordMessage}</p>
             ) : null}
             {passwordError ? (
-              <p className="text-xs font-semibold text-[#B91C1C]">{passwordError}</p>
+              <p className="text-xs font-semibold text-[color:var(--error)]">{passwordError}</p>
             ) : null}
 
             <div className="flex flex-wrap items-center justify-between gap-3">
               <a
                 href="/auth/forgot-password"
-                className="text-xs font-semibold text-[#1FB6A6] underline underline-offset-4"
+                className="text-xs font-semibold text-[color:var(--primary)] underline underline-offset-4"
               >
                 ¿Olvidaste tu contraseña?
               </a>
               <button
                 type="button"
                 onClick={() => {
-                  void handleChangePassword();
-                }}
-                disabled={isChangingPassword}
-                className="rounded-full bg-[#0E2A47] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#12385f] disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                {isChangingPassword ? 'Actualizando...' : 'Actualizar contraseña'}
-              </button>
-            </div>
+                    void handleChangePassword();
+                  }}
+                  disabled={isChangingPassword}
+                  className={primaryButtonClassName}
+                >
+                  {isChangingPassword ? 'Actualizando...' : 'Actualizar contraseña'}
+                </button>
+              </div>
           </div>
         </article>
-        <article className="rounded-[24px] border border-[#FECACA] bg-[#FFF5F5] p-5 shadow-sm">
+        <article className={dangerPanelClassName}>
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div className="max-w-xl">
-              <p className="text-sm font-semibold text-[#991B1B]">Eliminar cuenta</p>
-              <p className="mt-1 text-xs text-[#B45309]">
+              <p className="text-sm font-semibold text-[color:var(--error)]">Eliminar cuenta</p>
+              <p className="mt-1 text-xs text-[color:var(--ink-muted)]">
                 Se cancelarán tus próximas reservas y cerraremos tu sesión en todos los dispositivos.
               </p>
               <div className="mt-4 flex flex-wrap gap-2">
@@ -349,7 +371,7 @@ export default function ClienteConfiguracionPage() {
                     void handleSendDeleteChallenge('EMAIL');
                   }}
                   disabled={isSendingDeleteChallenge}
-                  className="rounded-full border border-[#FCA5A5] bg-white px-3 py-2 text-xs font-semibold text-[#B91C1C] transition hover:bg-[#FEE2E2] disabled:cursor-not-allowed disabled:opacity-60"
+                  className={dangerButtonClassName}
                 >
                   {isSendingDeleteChallenge ? 'Enviando...' : 'Enviar código por email'}
                 </button>
@@ -360,7 +382,7 @@ export default function ClienteConfiguracionPage() {
                       void handleSendDeleteChallenge('SMS');
                     }}
                     disabled={isSendingDeleteChallenge}
-                    className="rounded-full border border-[#FCA5A5] bg-white px-3 py-2 text-xs font-semibold text-[#B91C1C] transition hover:bg-[#FEE2E2] disabled:cursor-not-allowed disabled:opacity-60"
+                    className={dangerButtonClassName}
                   >
                     {isSendingDeleteChallenge ? 'Enviando...' : 'Enviar código por SMS'}
                   </button>
@@ -373,13 +395,13 @@ export default function ClienteConfiguracionPage() {
                 value={deleteChallengeCode}
                 onChange={(event) => setDeleteChallengeCode(event.target.value)}
                 placeholder="Código OTP para eliminar la cuenta"
-                className="mt-3 h-11 w-full max-w-sm rounded-[16px] border border-[#FECACA] bg-white px-4 text-sm text-[#7F1D1D] focus:border-[#F87171] focus:outline-none"
+                className="mt-3 h-11 w-full max-w-sm rounded-[16px] border border-[color:var(--error-soft)] bg-[color:var(--surface-strong)] px-4 text-sm text-[color:var(--ink)] focus:border-[color:var(--error)] focus:outline-none focus:ring-4 focus:ring-[color:var(--error-soft)]"
               />
               {deleteChallengeMessage ? (
-                <p className="mt-3 text-xs font-semibold text-[#B45309]">{deleteChallengeMessage}</p>
+                <p className="mt-3 text-xs font-semibold text-[color:var(--warning)]">{deleteChallengeMessage}</p>
               ) : null}
               {deleteError ? (
-                <p className="mt-3 text-xs font-semibold text-[#B91C1C]">{deleteError}</p>
+                <p className="mt-3 text-xs font-semibold text-[color:var(--error)]">{deleteError}</p>
               ) : null}
             </div>
             <button
@@ -388,7 +410,7 @@ export default function ClienteConfiguracionPage() {
                 void handleDeleteAccount();
               }}
               disabled={isDeletingAccount}
-              className="rounded-full border border-[#FCA5A5] bg-white px-4 py-2 text-sm font-semibold text-[#B91C1C] transition hover:bg-[#FEE2E2] disabled:cursor-not-allowed disabled:opacity-60"
+              className={dangerButtonClassName}
             >
               {isDeletingAccount ? 'Eliminando...' : 'Eliminar cuenta'}
             </button>

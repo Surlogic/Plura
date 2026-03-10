@@ -33,7 +33,7 @@ export default function ProfesionalRegisterPage() {
   };
 
   const inputClassName =
-    'h-12 w-full rounded-[18px] border border-[color:var(--border-soft)] bg-white/88 px-4 text-sm text-[color:var(--ink)] placeholder:text-[color:var(--ink-muted)] focus:outline-none focus:ring-2 focus:ring-[rgba(15,118,110,0.18)]';
+    'h-12 w-full rounded-[18px] border border-[color:var(--border-soft)] bg-white/90 px-4 text-sm text-[color:var(--ink)] placeholder:text-[color:var(--ink-faint)] focus:outline-none focus:ring-4 focus:ring-[color:var(--focus-ring)]';
   const { categories, isLoading: categoriesLoading } = useCategories();
   const [form, setForm] = useState({
     fullName: '',
@@ -308,12 +308,12 @@ export default function ProfesionalRegisterPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[radial-gradient(1200px_700px_at_15%_-10%,rgba(42,165,160,0.18),transparent_55%),radial-gradient(950px_650px_at_100%_0%,rgba(16,42,75,0.32),transparent_50%),linear-gradient(180deg,#091223_0%,#0A1424_100%)] text-[#E8EEF7]">
+    <div className="app-shell min-h-screen bg-[color:var(--background)] text-[color:var(--ink)]">
       <AuthTopBar tone="professional" />
       <main className="mx-auto flex w-full max-w-6xl flex-1 items-center justify-center px-4 py-16">
         <Card tone="default" padding="lg" className="w-full max-w-md space-y-6 rounded-[32px] text-[color:var(--ink)]">
           <div className="space-y-2">
-            <Badge variant="accent" className="border-[#0f766e]/20 bg-[#ecfdf5] text-[#0f766e]">Registro</Badge>
+            <Badge variant="success">Registro</Badge>
             <h1 className="text-2xl font-semibold text-[color:var(--ink)]">
               Registro profesional
             </h1>
@@ -356,7 +356,7 @@ export default function ProfesionalRegisterPage() {
 
           <form className="space-y-4" onSubmit={handleSubmit}>
             <div className="space-y-2">
-              <label className="text-sm font-medium text-[#0E2A47]">
+              <label className="text-sm font-medium text-[color:var(--ink)]">
                 Nombre o empresa
               </label>
               <input
@@ -375,7 +375,7 @@ export default function ProfesionalRegisterPage() {
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-medium text-[#0E2A47]">Rubros</label>
+              <label className="text-sm font-medium text-[color:var(--ink)]">Rubros</label>
               <div className="grid gap-2 sm:grid-cols-2">
                 {categories.map((category) => {
                   const checked = form.categorySlugs.includes(category.slug);
@@ -384,13 +384,13 @@ export default function ProfesionalRegisterPage() {
                       key={category.id}
                       className={`flex cursor-pointer items-center gap-2 rounded-[12px] border px-3 py-2 text-sm transition ${
                         checked
-                          ? 'border-[#1FB6A6] bg-[#1FB6A6]/10 text-[#0E2A47]'
-                          : 'border-[#E2E7EC] bg-white text-[#334155] hover:bg-[#F8FAFC]'
+                          ? 'border-[color:var(--primary)] bg-[color:var(--primary-soft)] text-[color:var(--primary-strong)]'
+                          : 'border-[color:var(--border-soft)] bg-white text-[color:var(--ink-muted)] hover:bg-[color:var(--surface-soft)]'
                       }`}
                     >
                       <input
                         type="checkbox"
-                        className="h-4 w-4 rounded border-[#CBD5E1] text-[#1FB6A6] focus:ring-[#1FB6A6]/40"
+                        className="h-4 w-4 rounded border-[color:var(--border-strong)] text-[color:var(--primary)] focus:ring-[color:var(--focus-ring)]"
                         checked={checked}
                         onChange={() => toggleCategory(category.slug)}
                       />
@@ -400,7 +400,7 @@ export default function ProfesionalRegisterPage() {
                 })}
               </div>
               {categoriesLoading ? (
-                <p className="text-xs text-[#6B7280]">Cargando rubros...</p>
+                <p className="text-xs text-[color:var(--ink-muted)]">Cargando rubros...</p>
               ) : null}
               {touched.categorySlugs && validationErrors.categorySlugs ? (
                 <p className="text-xs text-red-600">{validationErrors.categorySlugs}</p>
@@ -408,7 +408,7 @@ export default function ProfesionalRegisterPage() {
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-medium text-[#0E2A47]">Gmail</label>
+              <label className="text-sm font-medium text-[color:var(--ink)]">Gmail</label>
               <input
                 className={inputClass('email')}
                 placeholder="tucorreo@gmail.com"
@@ -425,7 +425,7 @@ export default function ProfesionalRegisterPage() {
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-medium text-[#0E2A47]">Confirmar Gmail</label>
+              <label className="text-sm font-medium text-[color:var(--ink)]">Confirmar Gmail</label>
               <input
                 className={inputClass('confirmEmail')}
                 placeholder="tucorreo@gmail.com"
@@ -442,7 +442,7 @@ export default function ProfesionalRegisterPage() {
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-medium text-[#0E2A47]">Número</label>
+              <label className="text-sm font-medium text-[color:var(--ink)]">Número</label>
               <input
                 className={inputClass('phoneNumber')}
                 placeholder="Tu número de celular"
@@ -459,7 +459,7 @@ export default function ProfesionalRegisterPage() {
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-medium text-[#0E2A47]">
+              <label className="text-sm font-medium text-[color:var(--ink)]">
                 Tipo de cliente
               </label>
               <select
@@ -479,7 +479,7 @@ export default function ProfesionalRegisterPage() {
             {requiresLocation ? (
               <>
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-[#0E2A47]">País</label>
+                  <label className="text-sm font-medium text-[color:var(--ink)]">País</label>
                   <input
                     className={inputClass('country')}
                     placeholder="Ej: Argentina"
@@ -490,12 +490,12 @@ export default function ProfesionalRegisterPage() {
                     required={requiresLocation}
                   />
                   {activeGeoField === 'country' && geoSuggestions.length > 0 ? (
-                    <div className="mt-2 max-h-48 overflow-auto rounded-xl border border-[#E2E8F0] bg-white">
+                    <div className="mt-2 max-h-48 overflow-auto rounded-xl border border-[color:var(--border-soft)] bg-white">
                       {geoSuggestions.map((item, index) => (
                         <button
                           key={`${item.placeName || item.fullAddress || 'suggestion'}-${index}`}
                           type="button"
-                          className="block w-full border-b border-[#F1F5F9] px-3 py-2 text-left text-sm text-[#0E2A47] last:border-b-0 hover:bg-[#F8FAFC]"
+                          className="block w-full border-b border-[color:var(--border-soft)] px-3 py-2 text-left text-sm text-[color:var(--ink)] last:border-b-0 hover:bg-[color:var(--surface-soft)]"
                           onMouseDown={(event) => {
                             event.preventDefault();
                             applyGeoSuggestion(item);
@@ -512,7 +512,7 @@ export default function ProfesionalRegisterPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-[#0E2A47]">Ciudad</label>
+                  <label className="text-sm font-medium text-[color:var(--ink)]">Ciudad</label>
                   <input
                     className={inputClass('city')}
                     placeholder="Ej: Buenos Aires"
@@ -523,12 +523,12 @@ export default function ProfesionalRegisterPage() {
                     required={requiresLocation}
                   />
                   {activeGeoField === 'city' && geoSuggestions.length > 0 ? (
-                    <div className="mt-2 max-h-48 overflow-auto rounded-xl border border-[#E2E8F0] bg-white">
+                    <div className="mt-2 max-h-48 overflow-auto rounded-xl border border-[color:var(--border-soft)] bg-white">
                       {geoSuggestions.map((item, index) => (
                         <button
                           key={`${item.placeName || item.fullAddress || 'suggestion'}-${index}`}
                           type="button"
-                          className="block w-full border-b border-[#F1F5F9] px-3 py-2 text-left text-sm text-[#0E2A47] last:border-b-0 hover:bg-[#F8FAFC]"
+                          className="block w-full border-b border-[color:var(--border-soft)] px-3 py-2 text-left text-sm text-[color:var(--ink)] last:border-b-0 hover:bg-[color:var(--surface-soft)]"
                           onMouseDown={(event) => {
                             event.preventDefault();
                             applyGeoSuggestion(item);
@@ -545,7 +545,7 @@ export default function ProfesionalRegisterPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-[#0E2A47]">Dirección completa</label>
+                  <label className="text-sm font-medium text-[color:var(--ink)]">Dirección completa</label>
                   <input
                     className={inputClass('fullAddress')}
                     placeholder="Ej: Av. Santa Fe 1234"
@@ -556,15 +556,15 @@ export default function ProfesionalRegisterPage() {
                     required={requiresLocation}
                   />
                   {activeGeoField === 'fullAddress' && (geoSuggestions.length > 0 || isGeoSuggesting) ? (
-                    <div className="mt-2 max-h-52 overflow-auto rounded-xl border border-[#E2E8F0] bg-white">
+                    <div className="mt-2 max-h-52 overflow-auto rounded-xl border border-[color:var(--border-soft)] bg-white">
                       {isGeoSuggesting ? (
-                        <p className="px-3 py-2 text-xs text-[#64748B]">Buscando sugerencias...</p>
+                        <p className="px-3 py-2 text-xs text-[color:var(--ink-muted)]">Buscando sugerencias...</p>
                       ) : null}
                       {geoSuggestions.map((item, index) => (
                         <button
                           key={`${item.placeName || item.fullAddress || 'suggestion'}-${index}`}
                           type="button"
-                          className="block w-full border-b border-[#F1F5F9] px-3 py-2 text-left text-sm text-[#0E2A47] last:border-b-0 hover:bg-[#F8FAFC]"
+                          className="block w-full border-b border-[color:var(--border-soft)] px-3 py-2 text-left text-sm text-[color:var(--ink)] last:border-b-0 hover:bg-[color:var(--surface-soft)]"
                           onMouseDown={(event) => {
                             event.preventDefault();
                             applyGeoSuggestion(item);
@@ -573,7 +573,7 @@ export default function ProfesionalRegisterPage() {
                           <span className="block font-medium">
                             {(item.fullAddress || item.placeName || '').trim() || 'Dirección sugerida'}
                           </span>
-                          <span className="block text-xs text-[#64748B]">
+                          <span className="block text-xs text-[color:var(--ink-muted)]">
                             {[item.city, item.country].filter(Boolean).join(', ')}
                           </span>
                         </button>
@@ -588,7 +588,7 @@ export default function ProfesionalRegisterPage() {
             ) : null}
 
             <div className="space-y-2">
-              <label className="text-sm font-medium text-[#0E2A47]">Contraseña</label>
+              <label className="text-sm font-medium text-[color:var(--ink)]">Contraseña</label>
               <input
                 type="password"
                 className={inputClass('password')}
@@ -604,11 +604,11 @@ export default function ProfesionalRegisterPage() {
                 {passwordChecks.map((rule) => (
                   <li
                     key={rule.id}
-                    className={rule.valid ? 'text-emerald-600' : 'text-[#94A3B8]'}
+                    className={rule.valid ? 'text-[color:var(--primary)]' : 'text-[color:var(--ink-faint)]'}
                   >
                     <span
                       className={`mr-2 inline-block h-2 w-2 rounded-full ${
-                        rule.valid ? 'bg-emerald-500' : 'bg-[#CBD5E1]'
+                        rule.valid ? 'bg-[color:var(--primary)]' : 'bg-[color:var(--border-strong)]'
                       }`}
                     />
                     {rule.label}
@@ -621,7 +621,7 @@ export default function ProfesionalRegisterPage() {
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-medium text-[#0E2A47]">
+              <label className="text-sm font-medium text-[color:var(--ink)]">
                 Confirmar contraseña
               </label>
               <input
@@ -641,19 +641,19 @@ export default function ProfesionalRegisterPage() {
             </div>
 
             {errorMessage ? (
-              <p className="rounded-[12px] bg-red-50 px-3 py-2 text-xs text-red-600">
+              <p className="rounded-[12px] border border-[color:var(--error-soft)] bg-[color:var(--error-soft)] px-3 py-2 text-xs text-[color:var(--error)]">
                 {errorMessage}
               </p>
             ) : null}
             {successMessage ? (
-              <p className="rounded-[12px] bg-emerald-50 px-3 py-2 text-xs text-emerald-700">
+              <p className="rounded-[12px] border border-[color:var(--success-soft)] bg-[color:var(--success-soft)] px-3 py-2 text-xs text-[color:var(--primary)]">
                 {successMessage}
               </p>
             ) : null}
 
             <button
               type="submit"
-              className="h-12 w-full rounded-full border border-transparent bg-[linear-gradient(135deg,#0f766e,#0e2a47)] text-sm font-semibold text-white shadow-[var(--shadow-lift)] transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-70"
+              className="h-12 w-full rounded-full border border-transparent bg-[image:var(--brand-gradient)] text-sm font-semibold text-white shadow-[var(--shadow-lift)] transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-70"
               disabled={isSubmitting || !isFormValid}
             >
               {isSubmitting ? 'Creando cuenta...' : 'Crear cuenta'}
@@ -664,7 +664,7 @@ export default function ProfesionalRegisterPage() {
             ¿Ya tenés cuenta?{' '}
             <Link
               href="/profesional/auth/login"
-              className="font-semibold text-[#0f766e]"
+              className="font-semibold text-[color:var(--primary)]"
             >
               Iniciar sesión profesional
             </Link>

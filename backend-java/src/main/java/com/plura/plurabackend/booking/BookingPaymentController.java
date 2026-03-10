@@ -1,8 +1,8 @@
 package com.plura.plurabackend.booking;
 
+import com.plura.plurabackend.booking.application.BookingPaymentsGateway;
 import com.plura.plurabackend.booking.dto.BookingPaymentSessionRequest;
 import com.plura.plurabackend.booking.dto.BookingPaymentSessionResponse;
-import com.plura.plurabackend.booking.finance.BookingProviderIntegrationService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
@@ -18,10 +18,10 @@ import org.springframework.web.server.ResponseStatusException;
 @RequestMapping("/cliente/reservas")
 public class BookingPaymentController {
 
-    private final BookingProviderIntegrationService bookingProviderIntegrationService;
+    private final BookingPaymentsGateway bookingPaymentsGateway;
 
-    public BookingPaymentController(BookingProviderIntegrationService bookingProviderIntegrationService) {
-        this.bookingProviderIntegrationService = bookingProviderIntegrationService;
+    public BookingPaymentController(BookingPaymentsGateway bookingPaymentsGateway) {
+        this.bookingPaymentsGateway = bookingPaymentsGateway;
     }
 
     @PostMapping("/{id}/payment-session")
@@ -31,7 +31,7 @@ public class BookingPaymentController {
         @Valid @RequestBody(required = false) BookingPaymentSessionRequest request,
         Authentication authentication
     ) {
-        return bookingProviderIntegrationService.createPaymentSessionForClient(
+        return bookingPaymentsGateway.createPaymentSessionForClient(
             getClienteId(authentication),
             bookingId,
             request

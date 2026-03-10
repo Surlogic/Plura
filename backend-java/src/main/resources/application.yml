@@ -332,17 +332,20 @@ billing:
     timeout-millis: ${BILLING_MERCADOPAGO_TIMEOUT_MILLIS:5000}
   dlocal:
     enabled: ${BILLING_DLOCAL_ENABLED:false}
-    base-url: ${BILLING_DLOCAL_BASE_URL:https://api.dlocal.com}
+    base-url: ${BILLING_DLOCAL_BASE_URL:}
     x-login: ${BILLING_DLOCAL_X_LOGIN:}
     x-trans-key: ${BILLING_DLOCAL_X_TRANS_KEY:}
+    secret-key: ${BILLING_DLOCAL_SECRET_KEY:}
     webhook-secret: ${BILLING_DLOCAL_WEBHOOK_SECRET:}
     checkout-path: ${BILLING_DLOCAL_CHECKOUT_PATH:/secure_payments}
+    booking-checkout-path: ${BILLING_DLOCAL_BOOKING_CHECKOUT_PATH:/v1/payments}
     cancel-path: ${BILLING_DLOCAL_CANCEL_PATH:/subscriptions/{id}/cancel}
+    refund-path: ${BILLING_DLOCAL_REFUND_PATH:/v1/refunds}
     payout-oauth-path: ${BILLING_DLOCAL_PAYOUT_OAUTH_PATH:/oauth/token}
     payout-path: ${BILLING_DLOCAL_PAYOUT_PATH:/payouts/v3}
     payout-client-id: ${BILLING_DLOCAL_PAYOUT_CLIENT_ID:}
     payout-client-secret: ${BILLING_DLOCAL_PAYOUT_CLIENT_SECRET:}
-    payment-status-path: ${BILLING_DLOCAL_PAYMENT_STATUS_PATH:/payments/{id}}
+    payment-status-path: ${BILLING_DLOCAL_PAYMENT_STATUS_PATH:/v1/payments/{id}}
     subscription-status-path: ${BILLING_DLOCAL_SUBSCRIPTION_STATUS_PATH:/subscriptions/{id}}
     signature-mode: ${BILLING_DLOCAL_SIGNATURE_MODE:STRICT_DATE_BODY}
     sandbox-only-body-signature-fallback: ${BILLING_DLOCAL_SANDBOX_ONLY_BODY_SIGNATURE_FALLBACK:false}

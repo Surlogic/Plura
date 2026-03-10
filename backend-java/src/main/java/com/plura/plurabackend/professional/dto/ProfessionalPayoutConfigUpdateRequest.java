@@ -46,4 +46,8 @@ public class ProfessionalPayoutConfigUpdateRequest {
     @Size(max = 20)
     @Pattern(regexp = "^(|[A-Za-z0-9._\\-/\\s]{2,20})$")
     private String branch;
+
+    @Size(max = 120)
+    @Pattern(regexp = "^(|[A-Za-z0-9._:\\-]{3,120})$")
+    private String splitCode;
 }

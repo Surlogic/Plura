@@ -1,11 +1,17 @@
 package com.plura.plurabackend.booking;
 
+import com.plura.plurabackend.booking.application.BookingPaymentsGateway;
 import com.plura.plurabackend.booking.dto.BookingFinancialSummaryResponse;
 import com.plura.plurabackend.booking.dto.ClientNextBookingResponse;
 import com.plura.plurabackend.booking.finance.BookingFinanceService;
+import com.plura.plurabackend.booking.finance.model.BookingPayoutRecord;
+import com.plura.plurabackend.booking.finance.model.BookingRefundRecord;
 import com.plura.plurabackend.booking.model.Booking;
 import com.plura.plurabackend.booking.model.BookingOperationalStatus;
+import com.plura.plurabackend.booking.model.ServicePaymentType;
+import com.plura.plurabackend.booking.policy.BookingPolicySnapshotService;
 import com.plura.plurabackend.booking.repository.BookingRepository;
+import com.plura.plurabackend.booking.time.BookingDateTimeService;
 import com.plura.plurabackend.user.model.User;
 import com.plura.plurabackend.user.model.UserRole;
 import com.plura.plurabackend.user.repository.UserRepository;
@@ -26,17 +32,26 @@ public class BookingClientService {
     private final BookingRepository bookingRepository;
     private final UserRepository userRepository;
     private final BookingFinanceService bookingFinanceService;
+    private final BookingPaymentsGateway bookingPaymentsGateway;
+    private final BookingPolicySnapshotService bookingPolicySnapshotService;
+    private final BookingDateTimeService bookingDateTimeService;
     private final ZoneId systemZoneId;
 
     public BookingClientService(
         BookingRepository bookingRepository,
         UserRepository userRepository,
         BookingFinanceService bookingFinanceService,
+        BookingPaymentsGateway bookingPaymentsGateway,
+        BookingPolicySnapshotService bookingPolicySnapshotService,
+        BookingDateTimeService bookingDateTimeService,
         @Value("${app.timezone:America/Montevideo}") String appTimezone
     ) {
         this.bookingRepository = bookingRepository;
         this.userRepository = userRepository;
         this.bookingFinanceService = bookingFinanceService;
+        this.bookingPaymentsGateway = bookingPaymentsGateway;
+        this.bookingPolicySnapshotService = bookingPolicySnapshotService;
+        this.bookingDateTimeService = bookingDateTimeService;
         this.systemZoneId = ZoneId.of(appTimezone);
     }
 
@@ -53,15 +68,31 @@ public class BookingClientService {
             user,
             activeStatuses,
             now
-        ).map(booking -> mapClientBooking(
-            booking,
-            bookingFinanceService.findResponseMapByBookingIds(List.of(booking.getId()))
-        ));
+        ).map(booking -> {
+            Booking currentBooking = booking;
+            if (shouldSyncPendingPayment(booking)) {
+                bookingPaymentsGateway.syncPendingChargeStatus(booking.getId());
+                currentBooking = bookingRepository.findDetailedById(booking.getId()).orElse(booking);
+            }
+            return mapClientBooking(
+                currentBooking,
+                bookingFinanceService.findResponseMapByBookingIds(List.of(currentBooking.getId()))
+            );
+        });
     }
 
     public List<ClientNextBookingResponse> getBookings(String rawUserId) {
         User user = resolveClientUser(rawUserId);
         List<Booking> bookings = bookingRepository.findAllByUserWithDetailsOrderByStartDateTimeAsc(user);
+        boolean syncedAny = false;
+        for (Booking booking : bookings) {
+            if (shouldSyncPendingPayment(booking)) {
+                syncedAny = bookingPaymentsGateway.syncPendingChargeStatus(booking.getId()) || syncedAny;
+            }
+        }
+        if (syncedAny) {
+            bookings = bookingRepository.findAllByUserWithDetailsOrderByStartDateTimeAsc(user);
+        }
         Map<Long, BookingFinancialSummaryResponse> summaries = bookingFinanceService.findResponseMapByBookingIds(
             bookings.stream().map(Booking::getId).toList()
         );
@@ -75,15 +106,25 @@ public class BookingClientService {
         Booking booking,
         Map<Long, BookingFinancialSummaryResponse> financialSummaries
     ) {
+        BookingRefundRecord latestRefund = bookingFinanceService.findLatestRefundRecord(booking.getId());
+        BookingPayoutRecord latestPayout = bookingFinanceService.findLatestPayoutRecord(booking.getId());
+        BookingFinancialSummaryResponse financialSummary = financialSummaries.get(booking.getId());
         return new ClientNextBookingResponse(
             booking.getId(),
             booking.getOperationalStatus().name(),
             booking.getStartDateTime().toString(),
+            bookingDateTimeService.toUtcString(booking),
             booking.getTimezone(),
             booking.getService() == null ? null : booking.getService().getId(),
             booking.getServiceNameSnapshot(),
             booking.getServicePaymentTypeSnapshot() == null ? null : booking.getServicePaymentTypeSnapshot().name(),
-            financialSummaries.get(booking.getId()),
+            financialSummary == null ? null : financialSummary.getFinancialStatus(),
+            bookingFinanceService.resolveRefundStatus(latestRefund),
+            bookingFinanceService.resolvePayoutStatus(latestPayout),
+            financialSummary,
+            bookingFinanceService.toResponse(latestRefund),
+            bookingFinanceService.toResponse(latestPayout),
+            bookingPolicySnapshotService.toResponse(bookingPolicySnapshotService.resolveForBooking(booking)),
             booking.getProfessional().getUser().getFullName(),
             booking.getProfessional().getSlug(),
             booking.getProfessional().getLocation()
@@ -111,5 +152,16 @@ public class BookingClientService {
         } catch (NumberFormatException exception) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Token invalido");
         }
+    }
+
+    private boolean shouldSyncPendingPayment(Booking booking) {
+        if (booking == null || booking.getId() == null) {
+            return false;
+        }
+        if (booking.getServicePaymentTypeSnapshot() == null || booking.getServicePaymentTypeSnapshot() == ServicePaymentType.ON_SITE) {
+            return false;
+        }
+        return booking.getOperationalStatus() == BookingOperationalStatus.PENDING
+            || booking.getOperationalStatus() == BookingOperationalStatus.CONFIRMED;
     }
 }

@@ -1,6 +1,7 @@
 package com.plura.plurabackend.booking.finance;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.plura.plurabackend.billing.BillingProperties;
 import com.plura.plurabackend.billing.payments.model.PaymentEvent;
@@ -15,11 +16,21 @@ import com.plura.plurabackend.billing.payments.provider.ProviderPayoutRequest;
 import com.plura.plurabackend.billing.payments.provider.ProviderPayoutResult;
 import com.plura.plurabackend.billing.payments.provider.ProviderRefundRequest;
 import com.plura.plurabackend.billing.payments.provider.ProviderRefundResult;
+import com.plura.plurabackend.billing.payments.provider.ProviderVerificationRequest;
+import com.plura.plurabackend.billing.payments.provider.ProviderVerificationResult;
 import com.plura.plurabackend.billing.payments.repository.PaymentTransactionRepository;
+import com.plura.plurabackend.billing.providerops.ProviderOperationService;
+import com.plura.plurabackend.billing.providerops.ProviderOperationWorker;
+import com.plura.plurabackend.billing.providerops.model.ProviderOperation;
+import com.plura.plurabackend.billing.providerops.model.ProviderOperationStatus;
+import com.plura.plurabackend.billing.providerops.model.ProviderOperationType;
 import com.plura.plurabackend.billing.webhooks.ParsedWebhookEvent;
 import com.plura.plurabackend.billing.webhooks.WebhookEventType;
 import com.plura.plurabackend.booking.dto.BookingPaymentSessionRequest;
 import com.plura.plurabackend.booking.dto.BookingPaymentSessionResponse;
+import com.plura.plurabackend.booking.event.BookingEventService;
+import com.plura.plurabackend.booking.event.model.BookingActorType;
+import com.plura.plurabackend.booking.event.model.BookingEventType;
 import com.plura.plurabackend.booking.finance.model.BookingFinancialSummary;
 import com.plura.plurabackend.booking.finance.model.BookingPayoutRecord;
 import com.plura.plurabackend.booking.finance.model.BookingPayoutStatus;
@@ -34,16 +45,25 @@ import com.plura.plurabackend.user.model.User;
 import com.plura.plurabackend.user.model.UserRole;
 import com.plura.plurabackend.user.repository.UserRepository;
 import java.math.BigDecimal;
+import java.time.Duration;
 import java.time.LocalDateTime;
+import java.util.Comparator;
 import java.util.EnumMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.annotation.Lazy;
+import org.springframework.dao.ConcurrencyFailureException;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.server.ResponseStatusException;
 
 @Service
@@ -55,17 +75,25 @@ public class BookingProviderIntegrationService {
     private final UserRepository userRepository;
     private final PaymentTransactionRepository paymentTransactionRepository;
     private final BookingFinanceService bookingFinanceService;
+    private final BookingEventService bookingEventService;
     private final BookingMoneyResolver bookingMoneyResolver;
+    private final ProviderOperationService providerOperationService;
+    private final ProviderOperationWorker providerOperationWorker;
     private final BillingProperties billingProperties;
     private final ObjectMapper objectMapper;
     private final Map<PaymentProvider, PaymentProviderClient> providerClients;
+    private final TransactionTemplate requiresNewTransaction;
 
     public BookingProviderIntegrationService(
         BookingRepository bookingRepository,
         UserRepository userRepository,
         PaymentTransactionRepository paymentTransactionRepository,
         BookingFinanceService bookingFinanceService,
+        BookingEventService bookingEventService,
         BookingMoneyResolver bookingMoneyResolver,
+        ProviderOperationService providerOperationService,
+        @Lazy ProviderOperationWorker providerOperationWorker,
+        PlatformTransactionManager transactionManager,
         BillingProperties billingProperties,
         ObjectMapper objectMapper,
         List<PaymentProviderClient> clients
@@ -74,9 +102,14 @@ public class BookingProviderIntegrationService {
         this.userRepository = userRepository;
         this.paymentTransactionRepository = paymentTransactionRepository;
         this.bookingFinanceService = bookingFinanceService;
+        this.bookingEventService = bookingEventService;
         this.bookingMoneyResolver = bookingMoneyResolver;
+        this.providerOperationService = providerOperationService;
+        this.providerOperationWorker = providerOperationWorker;
         this.billingProperties = billingProperties;
         this.objectMapper = objectMapper;
+        this.requiresNewTransaction = new TransactionTemplate(transactionManager);
+        this.requiresNewTransaction.setPropagationBehavior(org.springframework.transaction.TransactionDefinition.PROPAGATION_REQUIRES_NEW);
         Map<PaymentProvider, PaymentProviderClient> mapped = new EnumMap<>(PaymentProvider.class);
         for (PaymentProviderClient client : clients) {
             mapped.put(client.provider(), client);
@@ -106,15 +139,18 @@ public class BookingProviderIntegrationService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "La reserva no requiere pago anticipado");
         }
 
-        PaymentTransaction existingApproved = paymentTransactionRepository.findByBooking_IdAndTransactionTypeAndStatusIn(
+        syncPendingChargeStatus(booking);
+
+        PaymentTransaction existingApproved = findLatestBookingTransaction(
             bookingId,
             PaymentTransactionType.BOOKING_CHARGE,
             List.of(
                 PaymentTransactionStatus.APPROVED,
                 PaymentTransactionStatus.PARTIALLY_REFUNDED,
                 PaymentTransactionStatus.REFUNDED
-            )
-        ).stream().findFirst().orElse(null);
+            ),
+            "existing_approved_charge_lookup"
+        );
         if (existingApproved != null) {
             BookingFinancialSummary summary = bookingFinanceService.ensureInitializedWithEvidence(booking);
             return new BookingPaymentSessionResponse(
@@ -128,8 +164,40 @@ public class BookingProviderIntegrationService {
             );
         }
 
+        PaymentTransaction existingPending = findLatestBookingTransaction(
+            bookingId,
+            PaymentTransactionType.BOOKING_CHARGE,
+            List.of(PaymentTransactionStatus.PENDING),
+            "existing_pending_charge_lookup"
+        );
+        if (existingPending != null) {
+            String checkoutUrl = extractCheckoutUrl(existingPending);
+            if (checkoutUrl == null || checkoutUrl.isBlank()) {
+                ProviderCheckoutSession session = recreatePendingCheckout(existingPending, booking, user);
+                BookingFinancialSummary summary = bookingFinanceService.ensureInitializedWithEvidence(booking);
+                return new BookingPaymentSessionResponse(
+                    booking.getId(),
+                    existingPending.getId(),
+                    existingPending.getProvider() == null ? null : existingPending.getProvider().name(),
+                    session.checkoutUrl(),
+                    existingPending.getAmount(),
+                    existingPending.getCurrency(),
+                    summary.getFinancialStatus().name()
+                );
+            }
+            BookingFinancialSummary summary = bookingFinanceService.ensureInitializedWithEvidence(booking);
+            return new BookingPaymentSessionResponse(
+                booking.getId(),
+                existingPending.getId(),
+                existingPending.getProvider() == null ? null : existingPending.getProvider().name(),
+                checkoutUrl,
+                existingPending.getAmount(),
+                existingPending.getCurrency(),
+                summary.getFinancialStatus().name()
+            );
+        }
+
         PaymentProvider provider = resolveProvider(request == null ? null : request.getProvider());
-        PaymentProviderClient client = resolveProviderClient(provider);
 
         PaymentTransaction transaction = new PaymentTransaction();
         transaction.setProfessional(booking.getProfessional());
@@ -142,76 +210,108 @@ public class BookingProviderIntegrationService {
         transaction.setExternalReference("booking:" + booking.getId());
         transaction = paymentTransactionRepository.saveAndFlush(transaction);
 
-        ProviderCheckoutSession session = client.createBookingCheckout(
-            new BookingProviderCheckoutRequest(
-                transaction.getId(),
-                booking.getId(),
-                booking.getProfessional().getId(),
-                amount,
-                transaction.getCurrency(),
-                user.getEmail(),
-                user.getFullName(),
-                buildBookingDescription(booking),
-                resolveWebhookUrl(provider),
-                provider
-            )
+        ProviderOperation operation = providerOperationService.createOrReuseOperation(
+            ProviderOperationType.BOOKING_CHECKOUT,
+            provider,
+            booking.getId(),
+            transaction.getId(),
+            null,
+            null,
+            transaction.getExternalReference(),
+            writeJson(Map.of(
+                "bookingId", booking.getId(),
+                "transactionId", transaction.getId(),
+                "provider", provider.name(),
+                "amount", amount,
+                "currency", transaction.getCurrency()
+            ))
         );
-
-        transaction.setProviderPaymentId(session.providerSubscriptionId());
-        transaction.setPayloadJson(writeJson(session));
-        transaction = paymentTransactionRepository.save(transaction);
-
-        BookingFinancialSummary summary = bookingFinanceService.applyExternalPaymentEvidence(booking, transaction);
-        return new BookingPaymentSessionResponse(
+        BookingFinancialSummary summary = bookingFinanceService.ensureInitializedWithEvidence(booking);
+        BookingPaymentSessionResponse response = new BookingPaymentSessionResponse(
             booking.getId(),
             transaction.getId(),
             provider.name(),
-            session.checkoutUrl(),
+            null,
             amount,
             transaction.getCurrency(),
             summary.getFinancialStatus().name()
         );
+        registerAfterCommit(
+            () -> {
+                try {
+                    providerOperationWorker.kickOperationAsync(operation.getId());
+                    ProviderOperation latestOperation = providerOperationWorker.awaitOperationState(
+                        operation.getId(),
+                        Duration.ofSeconds(8)
+                    );
+                    applyCheckoutDispatchResult(response, loadProviderOperationResult(latestOperation));
+                    if (response.getCheckoutUrl() == null || response.getCheckoutUrl().isBlank()) {
+                        LOGGER.warn(
+                            "Checkout operation did not produce a usable url within synchronous wait operationId={} status={} externalReference={} attemptCount={} lastError={}",
+                            latestOperation.getId(),
+                            latestOperation.getStatus(),
+                            latestOperation.getExternalReference(),
+                            latestOperation.getAttemptCount(),
+                            latestOperation.getLastError()
+                        );
+                        throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "No se pudo iniciar checkout de reserva");
+                    }
+                } catch (Exception exception) {
+                    throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "No se pudo iniciar checkout de reserva", exception);
+                }
+            },
+            true
+        );
+        return response;
     }
 
     @Transactional
-    public BookingFinanceUpdateResult processPostDecision(
+    public BookingFinanceDispatchPlan processPostDecision(
         Booking booking,
         BookingFinanceUpdateResult financeResult
     ) {
         if (financeResult == null) {
-            return financeResult;
+            return new BookingFinanceDispatchPlan(null, List.of());
         }
 
-        if (financeResult.payoutRecord() != null) {
-            return initiateBookingPayout(booking, financeResult.payoutRecord(), financeResult.refundRecord(), false);
+        BookingFinanceUpdateResult current = financeResult;
+        java.util.List<String> operationIds = new java.util.ArrayList<>();
+        if (current.refundRecord() != null) {
+            BookingFinanceDispatchPlan refundPlan = initiateBookingRefund(booking, current.refundRecord(), current.payoutRecord(), false);
+            current = refundPlan.localResult();
+            operationIds.addAll(refundPlan.providerOperationIds());
         }
-
-        if (financeResult.refundRecord() == null) {
-            return financeResult;
+        if (current.payoutRecord() != null && isRefundSettled(current.refundRecord())) {
+            BookingFinanceDispatchPlan payoutPlan = initiateBookingPayout(booking, current.payoutRecord(), current.refundRecord(), false);
+            current = payoutPlan.localResult();
+            operationIds.addAll(payoutPlan.providerOperationIds());
         }
-
-        return initiateBookingRefund(booking, financeResult.refundRecord(), financeResult.payoutRecord(), false);
+        return new BookingFinanceDispatchPlan(current, operationIds);
     }
 
     @Transactional
-    public BookingFinanceUpdateResult retryRefund(
+    public BookingFinanceDispatchPlan retryRefund(
         Booking booking,
         BookingRefundRecord refundRecord
     ) {
         if (refundRecord == null) {
             BookingFinancialSummary summary = bookingFinanceService.ensureInitializedWithEvidence(booking);
-            return new BookingFinanceUpdateResult(summary, null, null);
+            return new BookingFinanceDispatchPlan(new BookingFinanceUpdateResult(summary, null, null), List.of());
+        }
+        if (!isRefundSettled(refundRecord) && refundRecord.getStatus() != BookingRefundStatus.FAILED) {
+            BookingFinancialSummary summary = bookingFinanceService.applyRefundEvidence(booking, refundRecord);
+            return new BookingFinanceDispatchPlan(new BookingFinanceUpdateResult(summary, refundRecord, null), List.of());
         }
         if (refundRecord.getStatus() != BookingRefundStatus.PENDING_MANUAL) {
             if (refundRecord.getStatus() != BookingRefundStatus.FAILED) {
                 BookingFinancialSummary summary = bookingFinanceService.applyRefundEvidence(booking, refundRecord);
-                return new BookingFinanceUpdateResult(summary, refundRecord, null);
+                return new BookingFinanceDispatchPlan(new BookingFinanceUpdateResult(summary, refundRecord, null), List.of());
             }
         }
         return initiateBookingRefund(booking, refundRecord, null, true);
     }
 
-    private BookingFinanceUpdateResult initiateBookingRefund(
+    private BookingFinanceDispatchPlan initiateBookingRefund(
         Booking booking,
         BookingRefundRecord refundRecord,
         BookingPayoutRecord payoutRecord,
@@ -219,38 +319,38 @@ public class BookingProviderIntegrationService {
     ) {
         if (refundRecord == null) {
             BookingFinancialSummary summary = bookingFinanceService.ensureInitializedWithEvidence(booking);
-            return new BookingFinanceUpdateResult(summary, null, payoutRecord);
+            return new BookingFinanceDispatchPlan(new BookingFinanceUpdateResult(summary, null, payoutRecord), List.of());
         }
         if (!manualRetry && refundRecord.getStatus() != BookingRefundStatus.PENDING_MANUAL) {
             BookingFinancialSummary summary = bookingFinanceService.applyRefundEvidence(booking, refundRecord);
-            return new BookingFinanceUpdateResult(summary, refundRecord, payoutRecord);
+            return new BookingFinanceDispatchPlan(new BookingFinanceUpdateResult(summary, refundRecord, payoutRecord), List.of());
         }
-        PaymentTransaction chargeTransaction = paymentTransactionRepository.findByBooking_IdAndTransactionTypeAndStatusIn(
+        PaymentTransaction chargeTransaction = findLatestBookingTransaction(
             booking.getId(),
             PaymentTransactionType.BOOKING_CHARGE,
             List.of(
                 PaymentTransactionStatus.APPROVED,
                 PaymentTransactionStatus.PARTIALLY_REFUNDED,
                 PaymentTransactionStatus.REFUNDED
-            )
-        ).stream().findFirst().orElse(null);
+            ),
+            "refund_charge_lookup"
+        );
         if (chargeTransaction == null || chargeTransaction.getProvider() == null
             || chargeTransaction.getProviderPaymentId() == null || chargeTransaction.getProviderPaymentId().isBlank()) {
             BookingFinancialSummary summary = bookingFinanceService.applyRefundEvidence(booking, refundRecord);
-            return new BookingFinanceUpdateResult(summary, refundRecord, payoutRecord);
+            return new BookingFinanceDispatchPlan(new BookingFinanceUpdateResult(summary, refundRecord, payoutRecord), List.of());
         }
 
-        PaymentProviderClient client = providerClients.get(chargeTransaction.getProvider());
-        if (client == null) {
+        if (providerClients.get(chargeTransaction.getProvider()) == null) {
             BookingFinancialSummary summary = bookingFinanceService.applyRefundEvidence(booking, refundRecord);
-            return new BookingFinanceUpdateResult(summary, refundRecord, payoutRecord);
+            return new BookingFinanceDispatchPlan(new BookingFinanceUpdateResult(summary, refundRecord, payoutRecord), List.of());
         }
 
         PaymentTransaction existingRefundTx = paymentTransactionRepository.findTopByRefundRecord_IdOrderByCreatedAtDesc(refundRecord.getId())
             .orElse(null);
         if (existingRefundTx != null && !manualRetry) {
             BookingFinancialSummary summary = bookingFinanceService.applyRefundEvidence(booking, refundRecord);
-            return new BookingFinanceUpdateResult(summary, refundRecord, payoutRecord);
+            return new BookingFinanceDispatchPlan(new BookingFinanceUpdateResult(summary, refundRecord, payoutRecord), List.of());
         }
         if (existingRefundTx != null && manualRetry
             && (existingRefundTx.getStatus() == PaymentTransactionStatus.PENDING
@@ -258,56 +358,530 @@ public class BookingProviderIntegrationService {
                 || existingRefundTx.getStatus() == PaymentTransactionStatus.PARTIALLY_REFUNDED
                 || existingRefundTx.getStatus() == PaymentTransactionStatus.REFUNDED)) {
             BookingFinancialSummary summary = bookingFinanceService.applyRefundEvidence(booking, refundRecord);
-            return new BookingFinanceUpdateResult(summary, refundRecord, payoutRecord);
+            return new BookingFinanceDispatchPlan(new BookingFinanceUpdateResult(summary, refundRecord, payoutRecord), List.of());
         }
 
-        ProviderRefundResult providerRefund = client.createRefund(
-            new ProviderRefundRequest(
-                chargeTransaction.getProviderPaymentId(),
-                refundRecord.getId(),
-                refundRecord.getTargetAmount(),
-                refundRecord.getCurrency(),
-                refundRecord.getReasonCode().name(),
-                resolveWebhookUrl(chargeTransaction.getProvider())
-            )
-        );
-
-        PaymentTransaction refundTx = new PaymentTransaction();
+        PaymentTransaction refundTx = existingRefundTx == null ? new PaymentTransaction() : existingRefundTx;
         refundTx.setProfessional(booking.getProfessional());
         refundTx.setBooking(booking);
         refundTx.setRefundRecord(refundRecord);
         refundTx.setProvider(chargeTransaction.getProvider());
         refundTx.setTransactionType(PaymentTransactionType.BOOKING_REFUND);
-        refundTx.setProviderPaymentId(providerRefund.providerRefundId());
-        refundTx.setProviderStatus(providerRefund.status());
         refundTx.setExternalReference("refund:" + refundRecord.getId());
-        refundTx.setAmount(providerRefund.amount() == null ? refundRecord.getTargetAmount() : providerRefund.amount());
-        refundTx.setCurrency(providerRefund.currency() == null ? refundRecord.getCurrency() : providerRefund.currency());
+        refundTx.setAmount(refundRecord.getTargetAmount());
+        refundTx.setCurrency(refundRecord.getCurrency());
         refundTx.setStatus(PaymentTransactionStatus.PENDING);
-        refundTx.setPayloadJson(providerRefund.rawResponseJson());
-        paymentTransactionRepository.save(refundTx);
+        refundTx.setFailedAt(null);
+        refundTx.setApprovedAt(null);
+        refundTx.setPayloadJson(writeJson(Map.of(
+            "source", manualRetry ? "refund_retry_intent" : "refund_intent",
+            "bookingId", booking.getId(),
+            "refundRecordId", refundRecord.getId(),
+            "chargeProviderPaymentId", chargeTransaction.getProviderPaymentId()
+        )));
+        refundTx = paymentTransactionRepository.saveAndFlush(refundTx);
 
-        BookingRefundRecord updatedRefund = bookingFinanceService.markRefundRecordPendingProvider(
+        ProviderOperation operation = providerOperationService.createOrReuseOperation(
+            ProviderOperationType.BOOKING_REFUND,
+            chargeTransaction.getProvider(),
+            booking.getId(),
+            refundTx.getId(),
             refundRecord.getId(),
-            providerRefund.providerRefundId()
+            null,
+            refundTx.getExternalReference(),
+            writeJson(Map.of(
+                "bookingId", booking.getId(),
+                "refundRecordId", refundRecord.getId(),
+                "transactionId", refundTx.getId(),
+                "manualRetry", manualRetry
+            ))
         );
+
+        BookingRefundRecord updatedRefund = bookingFinanceService.markRefundRecordPendingProvider(refundRecord.getId(), refundTx.getProviderPaymentId());
         BookingFinancialSummary summary = bookingFinanceService.applyRefundEvidence(booking, updatedRefund);
-        return new BookingFinanceUpdateResult(summary, updatedRefund, payoutRecord);
+        return new BookingFinanceDispatchPlan(
+            new BookingFinanceUpdateResult(summary, updatedRefund, payoutRecord),
+            List.of(operation.getId())
+        );
     }
 
     @Transactional
-    public BookingFinanceUpdateResult retryPayout(
+    public BookingFinanceDispatchPlan retryPayout(
         Booking booking,
         BookingPayoutRecord payoutRecord
     ) {
         if (payoutRecord == null) {
             BookingFinancialSummary summary = bookingFinanceService.ensureInitializedWithEvidence(booking);
-            return new BookingFinanceUpdateResult(summary, null, null);
+            return new BookingFinanceDispatchPlan(new BookingFinanceUpdateResult(summary, null, null), List.of());
+        }
+        BookingRefundRecord latestRefundRecord = bookingFinanceService.findLatestRefundRecord(booking.getId());
+        if (!isRefundSettled(latestRefundRecord)) {
+            BookingFinancialSummary summary = bookingFinanceService.ensureInitializedWithEvidence(booking);
+            return new BookingFinanceDispatchPlan(new BookingFinanceUpdateResult(summary, latestRefundRecord, payoutRecord), List.of());
         }
         return initiateBookingPayout(booking, payoutRecord, null, true);
     }
 
-    private BookingFinanceUpdateResult initiateBookingPayout(
+    @Transactional
+    public boolean syncPendingChargeStatus(Long bookingId) {
+        Booking booking = bookingRepository.findDetailedById(bookingId).orElse(null);
+        if (booking == null) {
+            return false;
+        }
+        try {
+            return syncPendingChargeStatus(booking);
+        } catch (ConcurrencyFailureException exception) {
+            LOGGER.warn("Booking charge sync skipped due to concurrent update bookingId={}", bookingId, exception);
+            return false;
+        }
+    }
+
+    public BookingFinanceUpdateResult dispatchPlannedOperations(
+        Booking booking,
+        BookingFinanceDispatchPlan plan
+    ) {
+        if (plan == null) {
+            return null;
+        }
+        if (plan.providerOperationIds() != null) {
+            for (String operationId : plan.providerOperationIds()) {
+                dispatchProviderOperation(operationId);
+            }
+        }
+        return loadCurrentFinanceUpdateResult(booking.getId());
+    }
+
+    private ProviderOperationDispatchResult dispatchProviderOperation(String operationId) {
+        ProviderOperation claimed = providerOperationService.claimOperation(
+            operationId,
+            "manual-dispatch",
+            LocalDateTime.now().plusMinutes(2)
+        );
+        if (claimed == null) {
+            return loadProviderOperationResult(providerOperationService.getRequired(operationId));
+        }
+        return processClaimedProviderOperation(operationId);
+    }
+
+    public ProviderOperationDispatchResult processClaimedProviderOperation(String operationId) {
+        ProviderOperation operation = providerOperationService.getRequired(operationId);
+        if (operation.getStatus() != ProviderOperationStatus.PROCESSING) {
+            return loadProviderOperationResult(operation);
+        }
+        if (resolveClaimedOperationWithoutCallingProvider(operation)) {
+            return loadProviderOperationResult(providerOperationService.getRequired(operationId));
+        }
+        return switch (operation.getOperationType()) {
+            case BOOKING_CHECKOUT -> dispatchCheckoutOperation(operation);
+            case BOOKING_REFUND -> dispatchRefundOperation(operation);
+            case BOOKING_PAYOUT -> dispatchPayoutOperation(operation);
+        };
+    }
+
+    private ProviderOperationDispatchResult dispatchCheckoutOperation(ProviderOperation operation) {
+        ProviderOperation activeOperation = refreshActiveProcessingOperation(operation);
+        if (activeOperation == null) {
+            return loadProviderOperationResult(providerOperationService.getRequired(operation.getId()));
+        }
+        PaymentTransaction transaction = paymentTransactionRepository.findById(operation.getPaymentTransactionId())
+            .orElseThrow(() -> new IllegalStateException("Charge transaction no encontrada"));
+        Booking booking = bookingRepository.findDetailedById(operation.getBookingId())
+            .orElseThrow(() -> new IllegalStateException("Booking checkout no encontrada"));
+        User user = booking.getUser();
+        PaymentProviderClient client = resolveProviderClient(activeOperation.getProvider());
+
+        try {
+            ProviderCheckoutSession session = client.createBookingCheckout(
+                new BookingProviderCheckoutRequest(
+                    transaction.getId(),
+                    booking.getId(),
+                    booking.getProfessional().getId(),
+                    transaction.getAmount(),
+                    transaction.getCurrency(),
+                    user == null ? null : user.getEmail(),
+                    user == null ? null : user.getFullName(),
+                    buildBookingDescription(booking),
+                    normalizeSplitCode(booking.getProfessional()),
+                    resolveWebhookUrl(activeOperation.getProvider()),
+                    activeOperation.getProvider()
+                )
+            );
+            requiresNewTransaction.executeWithoutResult(status -> {
+                PaymentTransaction managedTransaction = paymentTransactionRepository.findById(transaction.getId())
+                    .orElseThrow(() -> new IllegalStateException("Charge transaction no encontrada"));
+                Booking managedBooking = bookingRepository.findDetailedById(booking.getId())
+                    .orElseThrow(() -> new IllegalStateException("Booking checkout no encontrada"));
+                managedTransaction.setProviderPaymentId(session.providerSubscriptionId());
+                managedTransaction.setProviderStatus("CHECKOUT_CREATED");
+                managedTransaction.setPayloadJson(writeCheckoutPayload(managedTransaction, session, managedBooking, null));
+                paymentTransactionRepository.save(managedTransaction);
+                bookingFinanceService.applyExternalPaymentEvidence(managedBooking, managedTransaction);
+            });
+            providerOperationService.markSucceeded(activeOperation.getId(), session.providerSubscriptionId(), writeJson(session));
+            return new ProviderOperationDispatchResult(
+                activeOperation.getId(),
+                activeOperation.getOperationType(),
+                session.checkoutUrl()
+            );
+        } catch (RuntimeException exception) {
+            recordDispatchFailure(activeOperation, transaction.getProviderPaymentId(), transaction.getPayloadJson(), exception);
+            throw exception;
+        }
+    }
+
+    private ProviderOperationDispatchResult dispatchRefundOperation(ProviderOperation operation) {
+        ProviderOperation activeOperation = refreshActiveProcessingOperation(operation);
+        if (activeOperation == null) {
+            return loadProviderOperationResult(providerOperationService.getRequired(operation.getId()));
+        }
+        PaymentTransaction refundTx = paymentTransactionRepository.findById(operation.getPaymentTransactionId())
+            .orElseThrow(() -> new IllegalStateException("Refund transaction no encontrada"));
+        Booking booking = bookingRepository.findDetailedById(operation.getBookingId())
+            .orElseThrow(() -> new IllegalStateException("Booking refund no encontrada"));
+        BookingRefundRecord refundRecord = bookingFinanceService.findById(operation.getRefundRecordId());
+        if (refundRecord == null) {
+            throw new IllegalStateException("Refund record no encontrado");
+        }
+        PaymentTransaction chargeTransaction = findLatestBookingTransaction(
+            booking.getId(),
+            PaymentTransactionType.BOOKING_CHARGE,
+            List.of(
+                PaymentTransactionStatus.APPROVED,
+                PaymentTransactionStatus.PARTIALLY_REFUNDED,
+                PaymentTransactionStatus.REFUNDED
+            ),
+            "dispatch_refund_charge_lookup"
+        );
+        if (chargeTransaction == null || chargeTransaction.getProviderPaymentId() == null || chargeTransaction.getProviderPaymentId().isBlank()) {
+            throw new IllegalStateException("Charge provider payment id no disponible para refund");
+        }
+        PaymentProviderClient client = resolveProviderClient(activeOperation.getProvider());
+        try {
+            ProviderRefundResult providerRefund = client.createRefund(
+                new ProviderRefundRequest(
+                    chargeTransaction.getProviderPaymentId(),
+                    refundRecord.getId(),
+                    refundRecord.getTargetAmount(),
+                    refundRecord.getCurrency(),
+                    refundRecord.getReasonCode().name(),
+                    resolveWebhookUrl(activeOperation.getProvider())
+                )
+            );
+            finalizeRefundDispatch(activeOperation, booking.getId(), refundTx.getId(), refundRecord.getId(), providerRefund);
+            return new ProviderOperationDispatchResult(activeOperation.getId(), activeOperation.getOperationType(), null);
+        } catch (RuntimeException exception) {
+            recordDispatchFailure(activeOperation, refundTx.getProviderPaymentId(), refundTx.getPayloadJson(), exception);
+            return new ProviderOperationDispatchResult(activeOperation.getId(), activeOperation.getOperationType(), null);
+        }
+    }
+
+    private ProviderOperationDispatchResult dispatchPayoutOperation(ProviderOperation operation) {
+        ProviderOperation activeOperation = refreshActiveProcessingOperation(operation);
+        if (activeOperation == null) {
+            return loadProviderOperationResult(providerOperationService.getRequired(operation.getId()));
+        }
+        PaymentTransaction payoutTx = paymentTransactionRepository.findById(operation.getPaymentTransactionId())
+            .orElseThrow(() -> new IllegalStateException("Payout transaction no encontrada"));
+        Booking booking = bookingRepository.findDetailedById(operation.getBookingId())
+            .orElseThrow(() -> new IllegalStateException("Booking payout no encontrada"));
+        BookingPayoutRecord payoutRecord = bookingFinanceService.findPayoutById(operation.getPayoutRecordId());
+        if (payoutRecord == null) {
+            throw new IllegalStateException("Payout record no encontrado");
+        }
+        PaymentProviderClient client = resolveProviderClient(activeOperation.getProvider());
+        try {
+            ProviderPayoutResult payoutResult = client.createPayout(buildPayoutRequest(booking, payoutRecord, payoutTx.getId()));
+            finalizePayoutDispatch(activeOperation, booking.getId(), payoutTx.getId(), payoutRecord.getId(), payoutResult);
+            return new ProviderOperationDispatchResult(activeOperation.getId(), activeOperation.getOperationType(), null);
+        } catch (RuntimeException exception) {
+            recordDispatchFailure(activeOperation, payoutTx.getProviderPaymentId(), payoutTx.getPayloadJson(), exception);
+            return new ProviderOperationDispatchResult(activeOperation.getId(), activeOperation.getOperationType(), null);
+        }
+    }
+
+    private boolean resolveClaimedOperationWithoutCallingProvider(ProviderOperation operation) {
+        if (operation == null) {
+            return true;
+        }
+        return switch (operation.getOperationType()) {
+            case BOOKING_CHECKOUT -> reconcileCheckoutOperation(operation);
+            case BOOKING_REFUND -> reconcileRefundOperation(operation);
+            case BOOKING_PAYOUT -> reconcilePayoutOperation(operation);
+        };
+    }
+
+    private boolean reconcileCheckoutOperation(ProviderOperation operation) {
+        PaymentTransaction transaction = operation.getPaymentTransactionId() == null
+            ? null
+            : paymentTransactionRepository.findById(operation.getPaymentTransactionId()).orElse(null);
+        if (transaction == null) {
+            providerOperationService.markFailed(operation.getId(), operation.getProviderReference(), operation.getResponsePayloadJson(), "missing_charge_transaction");
+            return true;
+        }
+        if (transaction.getStatus() == PaymentTransactionStatus.APPROVED
+            || transaction.getStatus() == PaymentTransactionStatus.PARTIALLY_REFUNDED
+            || transaction.getStatus() == PaymentTransactionStatus.REFUNDED) {
+            providerOperationService.markSucceeded(operation.getId(), firstNonBlank(transaction.getProviderPaymentId(), operation.getProviderReference()), transaction.getPayloadJson());
+            return true;
+        }
+        if (transaction.getStatus() == PaymentTransactionStatus.FAILED) {
+            providerOperationService.markFailed(operation.getId(), firstNonBlank(transaction.getProviderPaymentId(), operation.getProviderReference()), transaction.getPayloadJson(), transaction.getProviderStatus());
+            return true;
+        }
+        if (transaction.getProviderPaymentId() != null && !transaction.getProviderPaymentId().isBlank()) {
+            syncPendingChargeStatus(operation.getBookingId());
+            PaymentTransaction refreshed = paymentTransactionRepository.findById(transaction.getId()).orElse(transaction);
+            if (refreshed.getStatus() == PaymentTransactionStatus.APPROVED
+                || refreshed.getStatus() == PaymentTransactionStatus.PARTIALLY_REFUNDED
+                || refreshed.getStatus() == PaymentTransactionStatus.REFUNDED) {
+                providerOperationService.markSucceeded(operation.getId(), refreshed.getProviderPaymentId(), refreshed.getPayloadJson());
+                return true;
+            }
+            if (refreshed.getStatus() == PaymentTransactionStatus.FAILED) {
+                providerOperationService.markFailed(operation.getId(), refreshed.getProviderPaymentId(), refreshed.getPayloadJson(), refreshed.getProviderStatus());
+                return true;
+            }
+            if (operation.getProviderReference() != null && !operation.getProviderReference().isBlank()) {
+                providerOperationService.markUncertain(
+                    operation.getId(),
+                    operation.getProviderReference(),
+                    refreshed.getPayloadJson(),
+                    "awaiting_checkout_confirmation",
+                    LocalDateTime.now().plusMinutes(15)
+                );
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean reconcileRefundOperation(ProviderOperation operation) {
+        PaymentTransaction refundTx = operation.getPaymentTransactionId() == null
+            ? null
+            : paymentTransactionRepository.findById(operation.getPaymentTransactionId()).orElse(null);
+        BookingRefundRecord refundRecord = bookingFinanceService.findById(operation.getRefundRecordId());
+        if (refundTx == null || refundRecord == null) {
+            providerOperationService.markFailed(operation.getId(), operation.getProviderReference(), operation.getResponsePayloadJson(), "missing_refund_evidence");
+            return true;
+        }
+        if (refundTx.getStatus() == PaymentTransactionStatus.APPROVED || refundTx.getStatus() == PaymentTransactionStatus.PARTIALLY_REFUNDED
+            || refundRecord.getStatus() == BookingRefundStatus.COMPLETED) {
+            providerOperationService.markSucceeded(operation.getId(), firstNonBlank(refundTx.getProviderPaymentId(), refundRecord.getProviderReference(), operation.getProviderReference()), refundTx.getPayloadJson());
+            return true;
+        }
+        if (refundTx.getStatus() == PaymentTransactionStatus.FAILED || refundRecord.getStatus() == BookingRefundStatus.FAILED) {
+            providerOperationService.markFailed(operation.getId(), firstNonBlank(refundTx.getProviderPaymentId(), refundRecord.getProviderReference(), operation.getProviderReference()), refundTx.getPayloadJson(), refundTx.getProviderStatus());
+            return true;
+        }
+        if (operation.getProviderReference() != null && !operation.getProviderReference().isBlank()) {
+            providerOperationService.markUncertain(
+                operation.getId(),
+                operation.getProviderReference(),
+                refundTx.getPayloadJson(),
+                "awaiting_refund_webhook",
+                LocalDateTime.now().plusMinutes(15)
+            );
+            return true;
+        }
+        return false;
+    }
+
+    private boolean reconcilePayoutOperation(ProviderOperation operation) {
+        PaymentTransaction payoutTx = operation.getPaymentTransactionId() == null
+            ? null
+            : paymentTransactionRepository.findById(operation.getPaymentTransactionId()).orElse(null);
+        BookingPayoutRecord payoutRecord = bookingFinanceService.findPayoutById(operation.getPayoutRecordId());
+        if (payoutTx == null || payoutRecord == null) {
+            providerOperationService.markFailed(operation.getId(), operation.getProviderReference(), operation.getResponsePayloadJson(), "missing_payout_evidence");
+            return true;
+        }
+        if (payoutTx.getStatus() == PaymentTransactionStatus.APPROVED
+            || payoutTx.getStatus() == PaymentTransactionStatus.PARTIALLY_RELEASED
+            || payoutRecord.getStatus() == BookingPayoutStatus.COMPLETED) {
+            providerOperationService.markSucceeded(operation.getId(), firstNonBlank(payoutTx.getProviderPaymentId(), payoutRecord.getProviderReference(), operation.getProviderReference()), payoutTx.getPayloadJson());
+            return true;
+        }
+        if (payoutTx.getStatus() == PaymentTransactionStatus.FAILED || payoutRecord.getStatus() == BookingPayoutStatus.FAILED) {
+            providerOperationService.markFailed(operation.getId(), firstNonBlank(payoutTx.getProviderPaymentId(), payoutRecord.getProviderReference(), operation.getProviderReference()), payoutTx.getPayloadJson(), payoutTx.getProviderStatus());
+            return true;
+        }
+        if (operation.getProviderReference() != null && !operation.getProviderReference().isBlank()) {
+            providerOperationService.markUncertain(
+                operation.getId(),
+                operation.getProviderReference(),
+                payoutTx.getPayloadJson(),
+                "awaiting_payout_webhook",
+                LocalDateTime.now().plusMinutes(15)
+            );
+            return true;
+        }
+        return false;
+    }
+
+    private ProviderOperationDispatchResult loadProviderOperationResult(ProviderOperation operation) {
+        if (operation.getOperationType() == ProviderOperationType.BOOKING_CHECKOUT
+            && operation.getPaymentTransactionId() != null) {
+            PaymentTransaction transaction = paymentTransactionRepository.findById(operation.getPaymentTransactionId()).orElse(null);
+            return new ProviderOperationDispatchResult(
+                operation.getId(),
+                operation.getOperationType(),
+                extractCheckoutUrl(transaction)
+            );
+        }
+        return new ProviderOperationDispatchResult(operation.getId(), operation.getOperationType(), null);
+    }
+
+    private void applyCheckoutDispatchResult(
+        BookingPaymentSessionResponse response,
+        ProviderOperationDispatchResult dispatchResult
+    ) {
+        if (response == null || dispatchResult == null) {
+            return;
+        }
+        PaymentTransaction transaction = paymentTransactionRepository.findById(response.getTransactionId()).orElse(null);
+        Booking booking = response.getBookingId() == null
+            ? null
+            : bookingRepository.findDetailedById(response.getBookingId()).orElse(null);
+        BookingFinancialSummary summary = booking == null
+            ? null
+            : bookingFinanceService.ensureInitializedWithEvidence(booking);
+        if (transaction != null) {
+            response.setProvider(transaction.getProvider() == null ? response.getProvider() : transaction.getProvider().name());
+        }
+        response.setCheckoutUrl(dispatchResult.checkoutUrl());
+        if (summary != null && summary.getFinancialStatus() != null) {
+            response.setFinancialStatus(summary.getFinancialStatus().name());
+        }
+    }
+
+    private void finalizeRefundDispatch(
+        ProviderOperation operation,
+        Long bookingId,
+        String refundTransactionId,
+        String refundRecordId,
+        ProviderRefundResult providerRefund
+    ) {
+        try {
+            requiresNewTransaction.executeWithoutResult(status -> {
+                PaymentTransaction refundTx = paymentTransactionRepository.findById(refundTransactionId)
+                    .orElseThrow(() -> new IllegalStateException("Refund transaction no encontrada"));
+                Booking booking = bookingRepository.findDetailedById(bookingId)
+                    .orElseThrow(() -> new IllegalStateException("Booking refund no encontrada"));
+                refundTx.setProviderPaymentId(providerRefund.providerRefundId());
+                refundTx.setProviderStatus(providerRefund.status());
+                refundTx.setAmount(providerRefund.amount() == null ? refundTx.getAmount() : providerRefund.amount());
+                refundTx.setCurrency(providerRefund.currency() == null ? refundTx.getCurrency() : providerRefund.currency());
+                refundTx.setPayloadJson(providerRefund.rawResponseJson());
+                BookingRefundRecord updatedRefund;
+                if (isRefundFinalSuccess(providerRefund.status())) {
+                    refundTx.setStatus(resolveRefundTransactionStatus(bookingFinanceService.findById(refundRecordId), providerRefund.amount()));
+                    refundTx.setApprovedAt(LocalDateTime.now());
+                    updatedRefund = bookingFinanceService.markRefundRecordCompleted(refundRecordId, providerRefund.providerRefundId());
+                    providerOperationService.markSucceeded(operation.getId(), providerRefund.providerRefundId(), providerRefund.rawResponseJson());
+                } else if (isRefundFailure(providerRefund.status())) {
+                    refundTx.setStatus(PaymentTransactionStatus.FAILED);
+                    refundTx.setFailedAt(LocalDateTime.now());
+                    updatedRefund = bookingFinanceService.markRefundRecordFailed(refundRecordId, providerRefund.providerRefundId());
+                    providerOperationService.markFailed(operation.getId(), providerRefund.providerRefundId(), providerRefund.rawResponseJson(), providerRefund.status());
+                } else {
+                    refundTx.setStatus(PaymentTransactionStatus.PENDING);
+                    updatedRefund = bookingFinanceService.markRefundRecordPendingProvider(refundRecordId, providerRefund.providerRefundId());
+                    providerOperationService.markSucceeded(operation.getId(), providerRefund.providerRefundId(), providerRefund.rawResponseJson());
+                }
+                paymentTransactionRepository.save(refundTx);
+                bookingFinanceService.applyRefundEvidence(booking, updatedRefund);
+            });
+        } catch (RuntimeException exception) {
+            providerOperationService.markUncertain(
+                operation.getId(),
+                providerRefund.providerRefundId(),
+                providerRefund.rawResponseJson(),
+                exception.getMessage(),
+                LocalDateTime.now().plusMinutes(15)
+            );
+            throw exception;
+        }
+    }
+
+    private void finalizePayoutDispatch(
+        ProviderOperation operation,
+        Long bookingId,
+        String payoutTransactionId,
+        String payoutRecordId,
+        ProviderPayoutResult payoutResult
+    ) {
+        try {
+            requiresNewTransaction.executeWithoutResult(status -> {
+                PaymentTransaction payoutTx = paymentTransactionRepository.findById(payoutTransactionId)
+                    .orElseThrow(() -> new IllegalStateException("Payout transaction no encontrada"));
+                Booking booking = bookingRepository.findDetailedById(bookingId)
+                    .orElseThrow(() -> new IllegalStateException("Booking payout no encontrada"));
+                BookingPayoutRecord payoutRecord = bookingFinanceService.findPayoutById(payoutRecordId);
+                payoutTx.setProviderPaymentId(payoutResult.providerPayoutId());
+                payoutTx.setProviderStatus(payoutResult.status());
+                payoutTx.setPayloadJson(payoutResult.rawResponseJson());
+
+                BookingPayoutRecord updatedRecord;
+                if (isPayoutFinalSuccess(payoutResult.status())) {
+                    payoutTx.setStatus(resolvePayoutTransactionStatus(payoutRecord, payoutResult.amount()));
+                    payoutTx.setApprovedAt(LocalDateTime.now());
+                    updatedRecord = bookingFinanceService.markPayoutRecordCompleted(
+                        payoutRecordId,
+                        operation.getProvider(),
+                        payoutResult.providerPayoutId(),
+                        payoutResult.amount(),
+                        payoutResult.rawResponseJson(),
+                        LocalDateTime.now()
+                    );
+                    providerOperationService.markSucceeded(operation.getId(), payoutResult.providerPayoutId(), payoutResult.rawResponseJson());
+                } else if (isPayoutFailure(payoutResult.status())) {
+                    payoutTx.setStatus(PaymentTransactionStatus.FAILED);
+                    payoutTx.setFailedAt(LocalDateTime.now());
+                    updatedRecord = bookingFinanceService.markPayoutRecordFailed(
+                        payoutRecordId,
+                        operation.getProvider(),
+                        payoutResult.providerPayoutId(),
+                        payoutResult.rawResponseJson(),
+                        LocalDateTime.now()
+                    );
+                    providerOperationService.markFailed(operation.getId(), payoutResult.providerPayoutId(), payoutResult.rawResponseJson(), payoutResult.status());
+                } else {
+                    payoutTx.setStatus(PaymentTransactionStatus.PENDING);
+                    updatedRecord = bookingFinanceService.markPayoutRecordPendingProvider(
+                        payoutRecordId,
+                        operation.getProvider(),
+                        payoutResult.providerPayoutId(),
+                        payoutResult.rawResponseJson()
+                    );
+                    providerOperationService.markSucceeded(operation.getId(), payoutResult.providerPayoutId(), payoutResult.rawResponseJson());
+                }
+                paymentTransactionRepository.save(payoutTx);
+                bookingFinanceService.applyPayoutEvidence(booking, updatedRecord);
+            });
+        } catch (RuntimeException exception) {
+            providerOperationService.markUncertain(
+                operation.getId(),
+                payoutResult.providerPayoutId(),
+                payoutResult.rawResponseJson(),
+                exception.getMessage(),
+                LocalDateTime.now().plusMinutes(15)
+            );
+            throw exception;
+        }
+    }
+
+    private BookingFinanceUpdateResult loadCurrentFinanceUpdateResult(Long bookingId) {
+        Booking booking = bookingRepository.findDetailedById(bookingId)
+            .orElseThrow(() -> new IllegalStateException("Reserva no encontrada"));
+        BookingFinancialSummary summary = bookingFinanceService.ensureInitializedWithEvidence(booking);
+        return new BookingFinanceUpdateResult(
+            summary,
+            bookingFinanceService.findLatestRefundRecord(bookingId),
+            bookingFinanceService.findLatestPayoutRecord(bookingId)
+        );
+    }
+
+    private BookingFinanceDispatchPlan initiateBookingPayout(
         Booking booking,
         BookingPayoutRecord payoutRecord,
         BookingRefundRecord refundRecord,
@@ -315,7 +889,7 @@ public class BookingProviderIntegrationService {
     ) {
         if (payoutRecord.getStatus() == BookingPayoutStatus.COMPLETED) {
             BookingFinancialSummary summary = bookingFinanceService.applyPayoutEvidence(booking, payoutRecord);
-            return new BookingFinanceUpdateResult(summary, refundRecord, payoutRecord);
+            return new BookingFinanceDispatchPlan(new BookingFinanceUpdateResult(summary, refundRecord, payoutRecord), List.of());
         }
 
         PaymentTransaction existingPayoutTx = paymentTransactionRepository.findTopByPayoutRecord_IdOrderByCreatedAtDesc(payoutRecord.getId())
@@ -325,19 +899,21 @@ public class BookingProviderIntegrationService {
                 || existingPayoutTx.getStatus() == PaymentTransactionStatus.APPROVED
                 || existingPayoutTx.getStatus() == PaymentTransactionStatus.PARTIALLY_RELEASED)) {
             BookingFinancialSummary summary = bookingFinanceService.applyPayoutEvidence(booking, payoutRecord);
-            return new BookingFinanceUpdateResult(summary, refundRecord, payoutRecord);
+            return new BookingFinanceDispatchPlan(new BookingFinanceUpdateResult(summary, refundRecord, payoutRecord), List.of());
         }
         if (manualRetry && existingPayoutTx != null
             && (existingPayoutTx.getStatus() == PaymentTransactionStatus.PENDING
                 || existingPayoutTx.getStatus() == PaymentTransactionStatus.APPROVED
                 || existingPayoutTx.getStatus() == PaymentTransactionStatus.PARTIALLY_RELEASED)) {
             BookingFinancialSummary summary = bookingFinanceService.applyPayoutEvidence(booking, payoutRecord);
-            return new BookingFinanceUpdateResult(summary, refundRecord, payoutRecord);
+            return new BookingFinanceDispatchPlan(new BookingFinanceUpdateResult(summary, refundRecord, payoutRecord), List.of());
+        }
+        if (usesSplitPayments(booking)) {
+            return completeSplitPayout(booking, payoutRecord, refundRecord, existingPayoutTx);
         }
 
         PaymentProvider provider = PaymentProvider.DLOCAL;
-        PaymentProviderClient client = providerClients.get(provider);
-        if (client == null) {
+        if (providerClients.get(provider) == null) {
             BookingPayoutRecord failed = bookingFinanceService.markPayoutRecordFailed(
                 payoutRecord.getId(),
                 provider,
@@ -346,10 +922,10 @@ public class BookingProviderIntegrationService {
                 LocalDateTime.now()
             );
             BookingFinancialSummary summary = bookingFinanceService.applyPayoutEvidence(booking, failed);
-            return new BookingFinanceUpdateResult(summary, refundRecord, failed);
+            return new BookingFinanceDispatchPlan(new BookingFinanceUpdateResult(summary, refundRecord, failed), List.of());
         }
 
-        PaymentTransaction payoutTx = new PaymentTransaction();
+        PaymentTransaction payoutTx = existingPayoutTx == null ? new PaymentTransaction() : existingPayoutTx;
         payoutTx.setProfessional(booking.getProfessional());
         payoutTx.setBooking(booking);
         payoutTx.setPayoutRecord(payoutRecord);
@@ -359,68 +935,164 @@ public class BookingProviderIntegrationService {
         payoutTx.setCurrency(payoutRecord.getCurrency());
         payoutTx.setStatus(PaymentTransactionStatus.PENDING);
         payoutTx.setExternalReference("payout:" + payoutRecord.getId());
+        payoutTx.setFailedAt(null);
+        payoutTx.setApprovedAt(null);
+        payoutTx.setPayloadJson(writeJson(Map.of(
+            "source", manualRetry ? "payout_retry_intent" : "payout_intent",
+            "bookingId", booking.getId(),
+            "payoutRecordId", payoutRecord.getId()
+        )));
         payoutTx = paymentTransactionRepository.saveAndFlush(payoutTx);
 
-        try {
-            ProviderPayoutRequest payoutRequest = buildPayoutRequest(booking, payoutRecord, payoutTx.getId());
-            ProviderPayoutResult payoutResult = client.createPayout(payoutRequest);
-            payoutTx.setProviderPaymentId(payoutResult.providerPayoutId());
-            payoutTx.setProviderStatus(payoutResult.status());
-            payoutTx.setPayloadJson(payoutResult.rawResponseJson());
-
-            BookingPayoutRecord updatedRecord;
-            if (isPayoutFinalSuccess(payoutResult.status())) {
-                payoutTx.setStatus(resolvePayoutTransactionStatus(payoutRecord, payoutResult.amount()));
-                payoutTx.setApprovedAt(LocalDateTime.now());
-                updatedRecord = bookingFinanceService.markPayoutRecordCompleted(
-                    payoutRecord.getId(),
-                    provider,
-                    payoutResult.providerPayoutId(),
-                    payoutResult.amount(),
-                    payoutResult.rawResponseJson(),
-                    LocalDateTime.now()
-                );
-            } else if (isPayoutFailure(payoutResult.status())) {
-                payoutTx.setStatus(PaymentTransactionStatus.FAILED);
-                payoutTx.setFailedAt(LocalDateTime.now());
-                updatedRecord = bookingFinanceService.markPayoutRecordFailed(
-                    payoutRecord.getId(),
-                    provider,
-                    payoutResult.providerPayoutId(),
-                    payoutResult.rawResponseJson(),
-                    LocalDateTime.now()
-                );
-            } else {
-                payoutTx.setStatus(PaymentTransactionStatus.PENDING);
-                updatedRecord = bookingFinanceService.markPayoutRecordPendingProvider(
-                    payoutRecord.getId(),
-                    provider,
-                    payoutResult.providerPayoutId(),
-                    payoutResult.rawResponseJson()
-                );
-            }
-            paymentTransactionRepository.save(payoutTx);
-            BookingFinancialSummary summary = bookingFinanceService.applyPayoutEvidence(booking, updatedRecord);
-            return new BookingFinanceUpdateResult(summary, refundRecord, updatedRecord);
-        } catch (RuntimeException exception) {
-            LOGGER.error("Booking payout initiation failed bookingId={} payoutRecordId={}", booking.getId(), payoutRecord.getId(), exception);
-            payoutTx.setStatus(PaymentTransactionStatus.FAILED);
-            payoutTx.setFailedAt(LocalDateTime.now());
-            payoutTx.setPayloadJson(writeJson(Map.of(
-                "error", exception.getMessage(),
+        ProviderOperation operation = providerOperationService.createOrReuseOperation(
+            ProviderOperationType.BOOKING_PAYOUT,
+            provider,
+            booking.getId(),
+            payoutTx.getId(),
+            null,
+            payoutRecord.getId(),
+            payoutTx.getExternalReference(),
+            writeJson(Map.of(
+                "bookingId", booking.getId(),
+                "payoutRecordId", payoutRecord.getId(),
+                "transactionId", payoutTx.getId(),
                 "manualRetry", manualRetry
-            )));
-            paymentTransactionRepository.save(payoutTx);
-            BookingPayoutRecord failed = bookingFinanceService.markPayoutRecordFailed(
-                payoutRecord.getId(),
-                provider,
-                payoutTx.getProviderPaymentId(),
-                payoutTx.getPayloadJson(),
-                LocalDateTime.now()
-            );
-            BookingFinancialSummary summary = bookingFinanceService.applyPayoutEvidence(booking, failed);
-            return new BookingFinanceUpdateResult(summary, refundRecord, failed);
+            ))
+        );
+
+        BookingPayoutRecord updatedRecord = bookingFinanceService.markPayoutRecordPendingProvider(
+            payoutRecord.getId(),
+            provider,
+            payoutTx.getProviderPaymentId(),
+            payoutTx.getPayloadJson()
+        );
+        BookingFinancialSummary summary = bookingFinanceService.applyPayoutEvidence(booking, updatedRecord);
+        return new BookingFinanceDispatchPlan(
+            new BookingFinanceUpdateResult(summary, refundRecord, updatedRecord),
+            List.of(operation.getId())
+        );
+    }
+
+    private boolean syncPendingChargeStatus(Booking booking) {
+        if (booking == null || booking.getId() == null) {
+            return false;
         }
+
+        PaymentTransaction pendingCharge = findLatestBookingTransaction(
+            booking.getId(),
+            PaymentTransactionType.BOOKING_CHARGE,
+            List.of(PaymentTransactionStatus.PENDING),
+            "pending_charge_sync"
+        );
+        if (pendingCharge == null || pendingCharge.getProvider() == null
+            || pendingCharge.getProviderPaymentId() == null || pendingCharge.getProviderPaymentId().isBlank()) {
+            return false;
+        }
+
+        PaymentProviderClient client = providerClients.get(pendingCharge.getProvider());
+        if (client == null) {
+            return false;
+        }
+
+        ProviderVerificationResult verification;
+        try {
+            verification = client.verifyPayment(
+                new ProviderVerificationRequest(
+                    pendingCharge.getProviderPaymentId(),
+                    null,
+                    pendingCharge.getAmount(),
+                    pendingCharge.getCurrency(),
+                    booking.getProfessional() == null ? null : booking.getProfessional().getId()
+                )
+            );
+        } catch (RuntimeException exception) {
+            LOGGER.warn(
+                "Booking charge sync failed bookingId={} transactionId={} providerPaymentId={}",
+                booking.getId(),
+                pendingCharge.getId(),
+                pendingCharge.getProviderPaymentId(),
+                exception
+            );
+            return false;
+        }
+
+        pendingCharge.setProviderStatus(verification.status());
+        Map<String, Object> verificationPayload = buildVerificationPayload(pendingCharge, verification);
+        pendingCharge.setPayloadJson(writeJson(verificationPayload));
+
+        if (verification.finalApproved()) {
+            ParsedWebhookEvent event = buildVerificationEvent(booking, pendingCharge, verification, WebhookEventType.PAYMENT_SUCCEEDED);
+            applyChargeApproved(pendingCharge, event);
+            PaymentTransaction saved = paymentTransactionRepository.save(pendingCharge);
+            bookingFinanceService.applyExternalPaymentEvidence(booking, saved);
+            maybeConfirmBookingAfterSuccessfulCharge(booking, saved, event);
+            return true;
+        }
+
+        if (isFailedVerificationStatus(verification.status())) {
+            ParsedWebhookEvent event = buildVerificationEvent(booking, pendingCharge, verification, WebhookEventType.PAYMENT_FAILED);
+            applyChargeFailed(pendingCharge, event);
+            paymentTransactionRepository.save(pendingCharge);
+            bookingFinanceService.applyExternalPaymentEvidence(booking, pendingCharge);
+            return true;
+        }
+
+        paymentTransactionRepository.save(pendingCharge);
+        return false;
+    }
+
+    private ProviderCheckoutSession recreatePendingCheckout(
+        PaymentTransaction pendingCharge,
+        Booking booking,
+        User user
+    ) {
+        PaymentProvider provider = pendingCharge.getProvider() == null
+            ? resolveProvider(null)
+            : pendingCharge.getProvider();
+        PaymentProviderClient client = resolveProviderClient(provider);
+        String previousProviderPaymentId = pendingCharge.getProviderPaymentId();
+        ProviderCheckoutSession session = client.createBookingCheckout(
+            new BookingProviderCheckoutRequest(
+                pendingCharge.getId(),
+                booking.getId(),
+                booking.getProfessional().getId(),
+                pendingCharge.getAmount(),
+                pendingCharge.getCurrency(),
+                user.getEmail(),
+                user.getFullName(),
+                buildBookingDescription(booking),
+                normalizeSplitCode(booking.getProfessional()),
+                resolveWebhookUrl(provider),
+                provider
+            )
+        );
+        pendingCharge.setProvider(provider);
+        pendingCharge.setProviderPaymentId(session.providerSubscriptionId());
+        pendingCharge.setPayloadJson(writeCheckoutPayload(pendingCharge, session, booking, previousProviderPaymentId));
+        paymentTransactionRepository.save(pendingCharge);
+        return session;
+    }
+
+    private Map<String, Object> buildVerificationPayload(
+        PaymentTransaction pendingCharge,
+        ProviderVerificationResult verification
+    ) {
+        Map<String, Object> verificationPayload = new java.util.LinkedHashMap<>();
+        verificationPayload.put("source", "provider_verification");
+        verificationPayload.put("providerPaymentId", pendingCharge.getProviderPaymentId());
+        verificationPayload.put("status", verification.status());
+        verificationPayload.put("amount", verification.amount());
+        verificationPayload.put("currency", verification.currency());
+        String checkoutUrl = extractCheckoutUrl(pendingCharge);
+        if (checkoutUrl != null && !checkoutUrl.isBlank()) {
+            verificationPayload.put("checkoutUrl", checkoutUrl);
+        }
+        String splitCode = extractSplitCode(pendingCharge);
+        if (splitCode != null && !splitCode.isBlank()) {
+            verificationPayload.put("splitCode", splitCode);
+            verificationPayload.put("splitPayment", true);
+        }
+        return verificationPayload;
     }
 
     @Transactional
@@ -479,14 +1151,25 @@ public class BookingProviderIntegrationService {
 
         PaymentTransaction saved = paymentTransactionRepository.save(transaction);
         BookingFinancialSummary summary = bookingFinanceService.applyExternalPaymentEvidence(booking, saved);
+        markOperationSucceededFromTransaction(saved, event);
+        maybeConfirmBookingAfterSuccessfulCharge(booking, saved, event);
         BookingRefundRecord refundRecord = maybeResolveRefundRecord(saved, event);
         BookingPayoutRecord payoutRecord = maybeResolvePayoutRecord(saved, event);
         if (refundRecord != null) {
             bookingFinanceService.applyRefundEvidence(booking, refundRecord);
-            if ((event.eventType() == WebhookEventType.PAYMENT_SUCCEEDED || event.eventType() == WebhookEventType.SUBSCRIPTION_RENEWED)
-                && refundRecord.getStatus() == BookingRefundStatus.PENDING_MANUAL) {
-                processPostDecision(booking, new BookingFinanceUpdateResult(summary, refundRecord, null));
-                refundRecord = bookingFinanceService.findLatestRefundRecord(booking.getId());
+            if (isRefundSuccessEvent(event.eventType())) {
+                BookingPayoutRecord pendingPayout = bookingFinanceService.findLatestPayoutRecord(booking.getId());
+                if (pendingPayout != null && pendingPayout.getStatus() == BookingPayoutStatus.PENDING_MANUAL) {
+                    BookingFinanceDispatchPlan financePlan = processPostDecision(
+                        booking,
+                        new BookingFinanceUpdateResult(summary, refundRecord, pendingPayout)
+                    );
+                    Booking bookingForDispatch = booking;
+                    BookingFinanceDispatchPlan planForDispatch = financePlan;
+                    registerAfterCommit(() -> providerOperationWorker.kickOperationsAsync(planForDispatch.providerOperationIds()), false);
+                    refundRecord = bookingFinanceService.findLatestRefundRecord(booking.getId());
+                    payoutRecord = bookingFinanceService.findLatestPayoutRecord(booking.getId());
+                }
             }
         }
         if (payoutRecord != null) {
@@ -536,6 +1219,12 @@ public class BookingProviderIntegrationService {
             }
         }
         if (event.orderReference() != null && !event.orderReference().isBlank()) {
+            PaymentTransaction transaction = paymentTransactionRepository.findTopByExternalReferenceOrderByCreatedAtDesc(
+                event.orderReference()
+            ).orElse(null);
+            if (transaction != null) {
+                return transaction;
+            }
             return paymentTransactionRepository.findById(event.orderReference()).orElse(null);
         }
         return null;
@@ -614,7 +1303,7 @@ public class BookingProviderIntegrationService {
         }
         transaction.setStatus(PaymentTransactionStatus.APPROVED);
         transaction.setApprovedAt(event.eventTime() == null ? LocalDateTime.now() : event.eventTime());
-        transaction.setPayloadJson(event.payloadJson());
+        transaction.setPayloadJson(mergeChargePayload(transaction, event.payloadJson()));
     }
 
     private void applyChargeFailed(PaymentTransaction transaction, ParsedWebhookEvent event) {
@@ -623,7 +1312,7 @@ public class BookingProviderIntegrationService {
         transaction.setProviderStatus(event.eventType().name());
         transaction.setStatus(PaymentTransactionStatus.FAILED);
         transaction.setFailedAt(event.eventTime() == null ? LocalDateTime.now() : event.eventTime());
-        transaction.setPayloadJson(event.payloadJson());
+        transaction.setPayloadJson(mergeChargePayload(transaction, event.payloadJson()));
     }
 
     private void applyRefundEvent(PaymentTransaction transaction, Booking booking, ParsedWebhookEvent event) {
@@ -779,6 +1468,56 @@ public class BookingProviderIntegrationService {
         return null;
     }
 
+    private void maybeConfirmBookingAfterSuccessfulCharge(
+        Booking booking,
+        PaymentTransaction transaction,
+        ParsedWebhookEvent event
+    ) {
+        if (booking == null || transaction == null || event == null) {
+            return;
+        }
+        if (transaction.getTransactionType() != PaymentTransactionType.BOOKING_CHARGE) {
+            return;
+        }
+        if (event.eventType() != WebhookEventType.PAYMENT_SUCCEEDED
+            && event.eventType() != WebhookEventType.SUBSCRIPTION_RENEWED) {
+            return;
+        }
+        if (booking.getOperationalStatus() != BookingOperationalStatus.PENDING) {
+            return;
+        }
+        if (booking.getServicePaymentTypeSnapshot() == null
+            || booking.getServicePaymentTypeSnapshot() == ServicePaymentType.ON_SITE) {
+            return;
+        }
+
+        LocalDateTime confirmedAt = event.eventTime() == null ? LocalDateTime.now() : event.eventTime();
+        booking.applyOperationalStatus(BookingOperationalStatus.CONFIRMED, confirmedAt);
+        bookingRepository.save(booking);
+        bookingEventService.record(
+            booking,
+            BookingEventType.BOOKING_CONFIRMED,
+            BookingActorType.SYSTEM,
+            null,
+            Map.of(
+                "source", "payment_webhook",
+                "paymentTransactionId", transaction.getId(),
+                "provider", event.provider().name(),
+                "providerPaymentId", firstNonBlank(transaction.getProviderPaymentId(), event.providerPaymentId(), event.providerObjectId())
+            )
+        );
+    }
+
+    private boolean isRefundSettled(BookingRefundRecord refundRecord) {
+        return refundRecord == null
+            || refundRecord.getStatus() == BookingRefundStatus.COMPLETED
+            || refundRecord.getStatus() == BookingRefundStatus.CANCELLED;
+    }
+
+    private boolean isRefundSuccessEvent(WebhookEventType eventType) {
+        return eventType == WebhookEventType.REFUND_PARTIAL || eventType == WebhookEventType.PAYMENT_REFUNDED;
+    }
+
     private Long parseBookingReference(String rawReference) {
         if (rawReference == null || rawReference.isBlank() || !rawReference.startsWith("booking:")) {
             return null;
@@ -861,6 +1600,83 @@ public class BookingProviderIntegrationService {
             : PaymentTransactionStatus.APPROVED;
     }
 
+    private BookingFinanceDispatchPlan completeSplitPayout(
+        Booking booking,
+        BookingPayoutRecord payoutRecord,
+        BookingRefundRecord refundRecord,
+        PaymentTransaction existingPayoutTx
+    ) {
+        PaymentTransaction chargeTx = paymentTransactionRepository.findTopByBooking_IdAndTransactionTypeOrderByCreatedAtDesc(
+            booking.getId(),
+            PaymentTransactionType.BOOKING_CHARGE
+        ).orElse(null);
+        if (chargeTx == null || !usesSplitPayments(chargeTx)) {
+            BookingFinancialSummary summary = bookingFinanceService.applyPayoutEvidence(booking, payoutRecord);
+            return new BookingFinanceDispatchPlan(new BookingFinanceUpdateResult(summary, refundRecord, payoutRecord), List.of());
+        }
+
+        PaymentTransaction payoutTx = existingPayoutTx;
+        LocalDateTime settledAt = LocalDateTime.now();
+        if (payoutTx == null) {
+            payoutTx = new PaymentTransaction();
+            payoutTx.setProfessional(booking.getProfessional());
+            payoutTx.setBooking(booking);
+            payoutTx.setPayoutRecord(payoutRecord);
+            payoutTx.setProvider(PaymentProvider.DLOCAL);
+            payoutTx.setTransactionType(PaymentTransactionType.BOOKING_PAYOUT);
+            payoutTx.setAmount(payoutRecord.getTargetAmount());
+            payoutTx.setCurrency(payoutRecord.getCurrency());
+            payoutTx.setExternalReference("split:" + payoutRecord.getId());
+        }
+
+        payoutTx.setStatus(resolvePayoutTransactionStatus(payoutRecord, payoutRecord.getTargetAmount()));
+        payoutTx.setProviderStatus("SPLIT_RELEASED");
+        payoutTx.setApprovedAt(settledAt);
+        payoutTx.setPayloadJson(writeJson(buildSplitPayoutPayload(booking, payoutRecord, chargeTx)));
+        paymentTransactionRepository.save(payoutTx);
+
+        BookingPayoutRecord updatedRecord = bookingFinanceService.markPayoutRecordCompleted(
+            payoutRecord.getId(),
+            PaymentProvider.DLOCAL,
+            "split:" + chargeTx.getId(),
+            payoutRecord.getTargetAmount(),
+            payoutTx.getPayloadJson(),
+            settledAt
+        );
+        BookingFinancialSummary summary = bookingFinanceService.applyPayoutEvidence(booking, updatedRecord);
+        return new BookingFinanceDispatchPlan(new BookingFinanceUpdateResult(summary, refundRecord, updatedRecord), List.of());
+    }
+
+    private PaymentTransactionStatus resolveRefundTransactionStatus(
+        BookingRefundRecord refundRecord,
+        BigDecimal refundedAmount
+    ) {
+        BigDecimal normalizedRefunded = bookingMoneyResolver.normalizeAmount(
+            refundedAmount == null ? refundRecord.getTargetAmount() : refundedAmount
+        );
+        return normalizedRefunded.compareTo(refundRecord.getTargetAmount()) < 0
+            ? PaymentTransactionStatus.PARTIALLY_REFUNDED
+            : PaymentTransactionStatus.APPROVED;
+    }
+
+    private boolean isRefundFinalSuccess(String status) {
+        String normalized = status == null ? "" : status.trim().toUpperCase(Locale.ROOT);
+        return "PAID".equals(normalized)
+            || "APPROVED".equals(normalized)
+            || "SUCCESS".equals(normalized)
+            || "COMPLETED".equals(normalized)
+            || "REFUNDED".equals(normalized);
+    }
+
+    private boolean isRefundFailure(String status) {
+        String normalized = status == null ? "" : status.trim().toUpperCase(Locale.ROOT);
+        return "REJECTED".equals(normalized)
+            || "FAILED".equals(normalized)
+            || "CANCELLED".equals(normalized)
+            || "CANCELED".equals(normalized)
+            || "DENIED".equals(normalized);
+    }
+
     private boolean isPayoutFinalSuccess(String status) {
         String normalized = status == null ? "" : status.trim().toUpperCase(Locale.ROOT);
         return "PAID".equals(normalized) || "DELIVERED".equals(normalized);
@@ -914,6 +1730,126 @@ public class BookingProviderIntegrationService {
         return "Plura booking " + booking.getId() + " - " + booking.getServiceNameSnapshot();
     }
 
+    private String writeCheckoutPayload(
+        PaymentTransaction transaction,
+        ProviderCheckoutSession session,
+        Booking booking,
+        String previousProviderPaymentId
+    ) {
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("source", "booking_checkout");
+        payload.put("transactionId", transaction == null ? null : transaction.getId());
+        payload.put("bookingId", booking == null ? null : booking.getId());
+        payload.put("externalReference", transaction == null ? null : transaction.getExternalReference());
+        payload.put("provider", transaction == null || transaction.getProvider() == null ? null : transaction.getProvider().name());
+        payload.put("checkoutUrl", session.checkoutUrl());
+        payload.put("providerPaymentId", session.providerSubscriptionId());
+        if (previousProviderPaymentId != null && !previousProviderPaymentId.isBlank()
+            && !previousProviderPaymentId.equals(session.providerSubscriptionId())) {
+            payload.put("previousProviderPaymentId", previousProviderPaymentId);
+        }
+        String splitCode = normalizeSplitCode(booking.getProfessional());
+        if (splitCode != null && !splitCode.isBlank()) {
+            payload.put("splitCode", splitCode);
+            payload.put("splitPayment", true);
+        }
+        return writeJson(payload);
+    }
+
+    private PaymentTransaction findLatestBookingTransaction(
+        Long bookingId,
+        PaymentTransactionType transactionType,
+        List<PaymentTransactionStatus> statuses,
+        String lookupContext
+    ) {
+        List<PaymentTransaction> transactions = paymentTransactionRepository.findByBooking_IdAndTransactionTypeAndStatusIn(
+            bookingId,
+            transactionType,
+            statuses
+        );
+        if (transactions.size() > 1) {
+            LOGGER.warn(
+                "Multiple booking transactions found bookingId={} transactionType={} statuses={} count={} context={}",
+                bookingId,
+                transactionType,
+                statuses,
+                transactions.size(),
+                lookupContext
+            );
+        }
+        return transactions.stream()
+            .max(Comparator
+                .comparing(PaymentTransaction::getCreatedAt, Comparator.nullsLast(Comparator.naturalOrder()))
+                .thenComparing(PaymentTransaction::getUpdatedAt, Comparator.nullsLast(Comparator.naturalOrder())))
+            .orElse(null);
+    }
+
+    private String extractCheckoutUrl(PaymentTransaction transaction) {
+        if (transaction == null || transaction.getPayloadJson() == null || transaction.getPayloadJson().isBlank()) {
+            return null;
+        }
+        try {
+            ProviderCheckoutSession session = objectMapper.readValue(transaction.getPayloadJson(), ProviderCheckoutSession.class);
+            if (session.checkoutUrl() != null && !session.checkoutUrl().isBlank()) {
+                return session.checkoutUrl();
+            }
+        } catch (JsonProcessingException ignored) {
+            // Fallback a JSON tree para payloads legacy o parciales.
+        }
+
+        try {
+            JsonNode payload = objectMapper.readTree(transaction.getPayloadJson());
+            return firstNonBlank(
+                payload.path("checkoutUrl").asText(null),
+                payload.path("checkout_url").asText(null),
+                payload.path("redirect_url").asText(null),
+                payload.path("url").asText(null)
+            );
+        } catch (JsonProcessingException ignored) {
+            return null;
+        }
+    }
+
+    private String extractSplitCode(PaymentTransaction transaction) {
+        if (transaction == null || transaction.getPayloadJson() == null || transaction.getPayloadJson().isBlank()) {
+            return null;
+        }
+        try {
+            JsonNode payload = objectMapper.readTree(transaction.getPayloadJson());
+            return firstNonBlank(
+                payload.path("splitCode").asText(null),
+                payload.path("split_code").asText(null)
+            );
+        } catch (JsonProcessingException ignored) {
+            return null;
+        }
+    }
+
+    private String mergeChargePayload(PaymentTransaction transaction, String nextPayloadJson) {
+        Map<String, Object> payload = new LinkedHashMap<>();
+        if (nextPayloadJson != null && !nextPayloadJson.isBlank()) {
+            try {
+                JsonNode node = objectMapper.readTree(nextPayloadJson);
+                if (node.isObject()) {
+                    node.fields().forEachRemaining(entry -> payload.put(entry.getKey(), entry.getValue()));
+                }
+            } catch (JsonProcessingException exception) {
+                payload.put("rawPayload", nextPayloadJson);
+            }
+        }
+
+        String checkoutUrl = extractCheckoutUrl(transaction);
+        if (checkoutUrl != null && !checkoutUrl.isBlank()) {
+            payload.putIfAbsent("checkoutUrl", checkoutUrl);
+        }
+        String splitCode = extractSplitCode(transaction);
+        if (splitCode != null && !splitCode.isBlank()) {
+            payload.put("splitCode", splitCode);
+            payload.put("splitPayment", true);
+        }
+        return writeJson(payload);
+    }
+
     private User loadClient(String rawUserId) {
         Long userId;
         try {
@@ -937,6 +1873,203 @@ public class BookingProviderIntegrationService {
         }
     }
 
+    private Map<String, Object> buildSplitPayoutPayload(
+        Booking booking,
+        BookingPayoutRecord payoutRecord,
+        PaymentTransaction chargeTx
+    ) {
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("source", "dlocal_go_split_payment");
+        payload.put("bookingId", booking.getId());
+        payload.put("payoutRecordId", payoutRecord.getId());
+        payload.put("chargeTransactionId", chargeTx.getId());
+        payload.put("providerPaymentId", chargeTx.getProviderPaymentId());
+        payload.put("splitCode", extractSplitCode(chargeTx));
+        payload.put("amount", payoutRecord.getTargetAmount());
+        payload.put("currency", payoutRecord.getCurrency());
+        return payload;
+    }
+
+    private ParsedWebhookEvent buildVerificationEvent(
+        Booking booking,
+        PaymentTransaction transaction,
+        ProviderVerificationResult verification,
+        WebhookEventType eventType
+    ) {
+        return new ParsedWebhookEvent(
+            transaction.getProvider(),
+            "sync:" + transaction.getProviderPaymentId() + ":" + eventType.name().toLowerCase(Locale.ROOT),
+            firstNonBlank(verification.providerObjectId(), transaction.getProviderPaymentId()),
+            eventType,
+            booking.getProfessional() == null ? null : booking.getProfessional().getId(),
+            booking.getId(),
+            null,
+            firstNonBlank(transaction.getProviderPaymentId(), verification.providerObjectId()),
+            transaction.getExternalReference(),
+            verification.amount(),
+            verification.currency(),
+            null,
+            false,
+            LocalDateTime.now(),
+            "provider_verification",
+            transaction.getPayloadJson()
+        );
+    }
+
+    private boolean isFailedVerificationStatus(String status) {
+        if (status == null || status.isBlank()) {
+            return false;
+        }
+        String normalized = status.trim().toUpperCase(Locale.ROOT);
+        return normalized.equals("REJECTED")
+            || normalized.equals("FAILED")
+            || normalized.equals("CANCELLED")
+            || normalized.equals("CANCELED")
+            || normalized.equals("EXPIRED")
+            || normalized.equals("DENIED");
+    }
+
+    private boolean usesSplitPayments(Booking booking) {
+        PaymentTransaction chargeTx = paymentTransactionRepository.findTopByBooking_IdAndTransactionTypeOrderByCreatedAtDesc(
+            booking.getId(),
+            PaymentTransactionType.BOOKING_CHARGE
+        ).orElse(null);
+        return usesSplitPayments(chargeTx);
+    }
+
+    private boolean usesSplitPayments(PaymentTransaction chargeTx) {
+        return extractSplitCode(chargeTx) != null;
+    }
+
+    private String normalizeSplitCode(ProfessionalProfile professional) {
+        if (professional == null || professional.getDlocalSplitCode() == null) {
+            return null;
+        }
+        String splitCode = professional.getDlocalSplitCode().trim();
+        return splitCode.isBlank() ? null : splitCode;
+    }
+
+    private void registerAfterCommit(Runnable action, boolean propagateFailures) {
+        Runnable guarded = () -> {
+            try {
+                action.run();
+            } catch (RuntimeException exception) {
+                if (propagateFailures) {
+                    throw exception;
+                }
+                LOGGER.warn("Provider afterCommit dispatch failed", exception);
+            }
+        };
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    guarded.run();
+                }
+            });
+            return;
+        }
+        guarded.run();
+    }
+
+    private void markOperationSucceededFromTransaction(PaymentTransaction transaction, ParsedWebhookEvent event) {
+        if (transaction == null || transaction.getExternalReference() == null || transaction.getExternalReference().isBlank()) {
+            return;
+        }
+        ProviderOperationType operationType = switch (transaction.getTransactionType()) {
+            case BOOKING_CHARGE -> ProviderOperationType.BOOKING_CHECKOUT;
+            case BOOKING_REFUND -> ProviderOperationType.BOOKING_REFUND;
+            case BOOKING_PAYOUT -> ProviderOperationType.BOOKING_PAYOUT;
+            default -> null;
+        };
+        if (operationType == null) {
+            return;
+        }
+        providerOperationService.markSucceededByReference(
+            operationType,
+            transaction.getExternalReference(),
+            firstNonBlank(transaction.getProviderPaymentId(), event.providerPaymentId(), event.providerObjectId()),
+            event.payloadJson()
+        );
+    }
+
+    private ProviderOperation refreshActiveProcessingOperation(ProviderOperation operation) {
+        ProviderOperation latest = providerOperationService.getRequired(operation.getId());
+        if (latest.getStatus() != ProviderOperationStatus.PROCESSING) {
+            LOGGER.info(
+                "Skipping provider call because operation state changed operationId={} type={} status={} externalReference={} attemptCount={} workerId={}",
+                latest.getId(),
+                latest.getOperationType(),
+                latest.getStatus(),
+                latest.getExternalReference(),
+                latest.getAttemptCount(),
+                latest.getLockedBy()
+            );
+            return null;
+        }
+        if (operation.getLockedBy() != null
+            && latest.getLockedBy() != null
+            && !operation.getLockedBy().equals(latest.getLockedBy())) {
+            LOGGER.info(
+                "Skipping provider call because operation lease changed owner operationId={} type={} externalReference={} workerId={} newWorkerId={}",
+                latest.getId(),
+                latest.getOperationType(),
+                latest.getExternalReference(),
+                operation.getLockedBy(),
+                latest.getLockedBy()
+            );
+            return null;
+        }
+        return latest;
+    }
+
+    private void recordDispatchFailure(
+        ProviderOperation operation,
+        String providerReference,
+        String responsePayloadJson,
+        RuntimeException exception
+    ) {
+        if (isRetryableProviderException(exception)) {
+            providerOperationService.markRetryable(
+                operation.getId(),
+                providerReference,
+                responsePayloadJson,
+                exception.getMessage(),
+                nextRetryAt(operation.getAttemptCount())
+            );
+            return;
+        }
+        providerOperationService.markFailed(
+            operation.getId(),
+            providerReference,
+            responsePayloadJson,
+            exception.getMessage()
+        );
+    }
+
+    private boolean isRetryableProviderException(RuntimeException exception) {
+        if (exception instanceof ResponseStatusException responseStatusException) {
+            int statusCode = responseStatusException.getStatusCode().value();
+            if (statusCode == 408 || statusCode == 429) {
+                return true;
+            }
+            return !responseStatusException.getStatusCode().is4xxClientError();
+        }
+        return !(exception instanceof IllegalArgumentException || exception instanceof IllegalStateException);
+    }
+
+    private LocalDateTime nextRetryAt(Integer attemptCount) {
+        int attempt = attemptCount == null ? 1 : Math.max(1, attemptCount);
+        long delayMinutes = switch (attempt) {
+            case 1 -> 1L;
+            case 2 -> 5L;
+            case 3 -> 15L;
+            case 4 -> 30L;
+            default -> 60L;
+        };
+        return LocalDateTime.now().plusMinutes(delayMinutes);
+    }
+
     private String firstNonBlank(String... values) {
         for (String value : values) {
             if (value != null && !value.isBlank()) {
@@ -945,4 +2078,10 @@ public class BookingProviderIntegrationService {
         }
         return null;
     }
+
+    private record ProviderOperationDispatchResult(
+        String operationId,
+        ProviderOperationType operationType,
+        String checkoutUrl
+    ) {}
 }

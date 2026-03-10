@@ -16,6 +16,8 @@ public interface BookingRefundRecordRepository extends JpaRepository<BookingRefu
 
     Optional<BookingRefundRecord> findByRelatedDecisionId(String relatedDecisionId);
 
+    List<BookingRefundRecord> findByBooking_IdInOrderByBooking_IdAscCreatedAtDesc(List<Long> bookingIds);
+
     List<BookingRefundRecord> findByStatus(BookingRefundStatus status);
 
     @Query(

@@ -178,6 +178,123 @@ class BookingFinanceServiceTest {
         assertEquals(BookingPayoutReasonCode.BOOKING_COMPLETED, result.payoutRecord().getReasonCode());
     }
 
+    @Test
+    void shouldCreateRefundAndPayoutWhenLateCancellationIsPartial() {
+        Booking booking = booking(ServicePaymentType.FULL_PREPAY, BigDecimal.valueOf(1000), null);
+        booking.setOperationalStatus(BookingOperationalStatus.CANCELLED);
+        BookingFinancialSummary existingSummary = new BookingFinancialSummary();
+        existingSummary.setBooking(booking);
+        existingSummary.setAmountCharged(BigDecimal.valueOf(1000));
+        existingSummary.setAmountHeld(BigDecimal.valueOf(1000));
+        existingSummary.setAmountToRefund(BigDecimal.ZERO);
+        existingSummary.setAmountRefunded(BigDecimal.ZERO);
+        existingSummary.setAmountToRelease(BigDecimal.ZERO);
+        existingSummary.setAmountReleased(BigDecimal.ZERO);
+        existingSummary.setCurrency("UYU");
+        existingSummary.setFinancialStatus(BookingFinancialStatus.HELD);
+
+        BookingActionDecision decision = new BookingActionDecision();
+        decision.setId("decision-partial-cancel");
+        decision.setBooking(booking);
+        decision.setActionType(BookingActionType.CANCEL);
+        decision.setActorType(BookingActorType.CLIENT);
+        decision.setActorUserId(44L);
+        decision.setRefundPreviewAmount(BigDecimal.valueOf(500));
+        decision.setRetainPreviewAmount(BigDecimal.valueOf(500));
+        decision.setCurrency("UYU");
+
+        when(summaryRepository.findByBooking_Id(booking.getId())).thenReturn(Optional.of(existingSummary));
+        when(summaryRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+        when(refundRecordRepository.findByRelatedDecisionId(decision.getId())).thenReturn(Optional.empty());
+        when(payoutRecordRepository.findByRelatedDecisionId(decision.getId())).thenReturn(Optional.empty());
+        AtomicReference<com.plura.plurabackend.booking.finance.model.BookingRefundRecord> savedRefundRecord = new AtomicReference<>();
+        AtomicReference<com.plura.plurabackend.booking.finance.model.BookingPayoutRecord> savedPayoutRecord = new AtomicReference<>();
+        when(refundRecordRepository.save(any())).thenAnswer(invocation -> {
+            var saved = (com.plura.plurabackend.booking.finance.model.BookingRefundRecord) invocation.getArgument(0);
+            savedRefundRecord.set(saved);
+            return saved;
+        });
+        when(payoutRecordRepository.save(any())).thenAnswer(invocation -> {
+            var saved = (com.plura.plurabackend.booking.finance.model.BookingPayoutRecord) invocation.getArgument(0);
+            savedPayoutRecord.set(saved);
+            return saved;
+        });
+        when(paymentTransactionRepository.findByBooking_IdAndTransactionTypeOrderByCreatedAtAsc(booking.getId(), PaymentTransactionType.BOOKING_CHARGE))
+            .thenReturn(List.of(approvedCharge(booking, BigDecimal.valueOf(1000))));
+        when(paymentTransactionRepository.findByBooking_IdAndTransactionTypeOrderByCreatedAtAsc(booking.getId(), PaymentTransactionType.BOOKING_REFUND))
+            .thenReturn(List.of());
+        when(paymentTransactionRepository.findByBooking_IdAndTransactionTypeOrderByCreatedAtAsc(booking.getId(), PaymentTransactionType.BOOKING_PAYOUT))
+            .thenReturn(List.of());
+        when(refundRecordRepository.findByBooking_IdOrderByCreatedAtDesc(booking.getId())).thenAnswer(invocation ->
+            savedRefundRecord.get() == null ? List.of() : List.of(savedRefundRecord.get())
+        );
+        when(payoutRecordRepository.findByBooking_IdOrderByCreatedAtDesc(booking.getId())).thenAnswer(invocation ->
+            savedPayoutRecord.get() == null ? List.of() : List.of(savedPayoutRecord.get())
+        );
+
+        BookingFinanceUpdateResult result = bookingFinanceService.applyDecision(booking, decision);
+
+        assertNotNull(result.refundRecord());
+        assertNotNull(result.payoutRecord());
+        assertEquals(BigDecimal.valueOf(500), result.refundRecord().getTargetAmount());
+        assertEquals(BigDecimal.valueOf(500), result.payoutRecord().getTargetAmount());
+        assertEquals(BookingFinancialStatus.REFUND_PENDING, result.summary().getFinancialStatus());
+    }
+
+    @Test
+    void shouldCreatePayoutRecordForPrepaidNoShow() {
+        Booking booking = booking(ServicePaymentType.DEPOSIT, BigDecimal.valueOf(2500), BigDecimal.valueOf(500));
+        booking.setOperationalStatus(BookingOperationalStatus.NO_SHOW);
+        BookingFinancialSummary existingSummary = new BookingFinancialSummary();
+        existingSummary.setBooking(booking);
+        existingSummary.setAmountCharged(BigDecimal.valueOf(500));
+        existingSummary.setAmountHeld(BigDecimal.valueOf(500));
+        existingSummary.setAmountToRefund(BigDecimal.ZERO);
+        existingSummary.setAmountRefunded(BigDecimal.ZERO);
+        existingSummary.setAmountToRelease(BigDecimal.ZERO);
+        existingSummary.setAmountReleased(BigDecimal.ZERO);
+        existingSummary.setCurrency("UYU");
+        existingSummary.setFinancialStatus(BookingFinancialStatus.HELD);
+
+        BookingActionDecision decision = new BookingActionDecision();
+        decision.setId("decision-no-show");
+        decision.setBooking(booking);
+        decision.setActionType(BookingActionType.NO_SHOW);
+        decision.setActorType(BookingActorType.PROFESSIONAL);
+        decision.setActorUserId(99L);
+        decision.setRefundPreviewAmount(BigDecimal.ZERO);
+        decision.setRetainPreviewAmount(BigDecimal.valueOf(500));
+        decision.setCurrency("UYU");
+
+        when(summaryRepository.findByBooking_Id(booking.getId())).thenReturn(Optional.of(existingSummary));
+        when(summaryRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+        when(refundRecordRepository.findByRelatedDecisionId(decision.getId())).thenReturn(Optional.empty());
+        when(payoutRecordRepository.findByRelatedDecisionId(decision.getId())).thenReturn(Optional.empty());
+        AtomicReference<com.plura.plurabackend.booking.finance.model.BookingPayoutRecord> savedPayoutRecord = new AtomicReference<>();
+        when(payoutRecordRepository.save(any())).thenAnswer(invocation -> {
+            var saved = (com.plura.plurabackend.booking.finance.model.BookingPayoutRecord) invocation.getArgument(0);
+            savedPayoutRecord.set(saved);
+            return saved;
+        });
+        when(paymentTransactionRepository.findByBooking_IdAndTransactionTypeOrderByCreatedAtAsc(booking.getId(), PaymentTransactionType.BOOKING_CHARGE))
+            .thenReturn(List.of(approvedCharge(booking, BigDecimal.valueOf(500))));
+        when(paymentTransactionRepository.findByBooking_IdAndTransactionTypeOrderByCreatedAtAsc(booking.getId(), PaymentTransactionType.BOOKING_REFUND))
+            .thenReturn(List.of());
+        when(paymentTransactionRepository.findByBooking_IdAndTransactionTypeOrderByCreatedAtAsc(booking.getId(), PaymentTransactionType.BOOKING_PAYOUT))
+            .thenReturn(List.of());
+        when(refundRecordRepository.findByBooking_IdOrderByCreatedAtDesc(booking.getId())).thenReturn(List.of());
+        when(payoutRecordRepository.findByBooking_IdOrderByCreatedAtDesc(booking.getId())).thenAnswer(invocation ->
+            savedPayoutRecord.get() == null ? List.of() : List.of(savedPayoutRecord.get())
+        );
+
+        BookingFinanceUpdateResult result = bookingFinanceService.applyDecision(booking, decision);
+
+        assertNotNull(result.payoutRecord());
+        assertEquals(BookingPayoutReasonCode.CLIENT_NO_SHOW, result.payoutRecord().getReasonCode());
+        assertEquals(BigDecimal.valueOf(500), result.payoutRecord().getTargetAmount());
+        assertEquals(BookingFinancialStatus.RELEASE_PENDING, result.summary().getFinancialStatus());
+    }
+
     private Booking booking(ServicePaymentType paymentType, BigDecimal price, BigDecimal depositAmount) {
         Booking booking = new Booking();
         booking.setId(10L);

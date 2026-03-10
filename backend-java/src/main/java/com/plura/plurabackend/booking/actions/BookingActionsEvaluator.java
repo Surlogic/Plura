@@ -8,7 +8,10 @@ import com.plura.plurabackend.booking.model.Booking;
 import com.plura.plurabackend.booking.model.BookingOperationalStatus;
 import com.plura.plurabackend.booking.policy.BookingPolicyDefaults;
 import com.plura.plurabackend.booking.policy.BookingPolicySnapshot;
+import com.plura.plurabackend.booking.policy.model.LateCancellationRefundMode;
+import com.plura.plurabackend.booking.time.BookingDateTimeService;
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -21,9 +24,14 @@ import org.springframework.stereotype.Service;
 public class BookingActionsEvaluator {
 
     private final BookingMoneyResolver bookingMoneyResolver;
+    private final BookingDateTimeService bookingDateTimeService;
 
-    public BookingActionsEvaluator(BookingMoneyResolver bookingMoneyResolver) {
+    public BookingActionsEvaluator(
+        BookingMoneyResolver bookingMoneyResolver,
+        BookingDateTimeService bookingDateTimeService
+    ) {
         this.bookingMoneyResolver = bookingMoneyResolver;
+        this.bookingDateTimeService = bookingDateTimeService;
     }
 
     public BookingActionsEvaluation evaluate(
@@ -37,7 +45,9 @@ public class BookingActionsEvaluator {
 
         boolean activeBooking = booking.getOperationalStatus() == BookingOperationalStatus.PENDING
             || booking.getOperationalStatus() == BookingOperationalStatus.CONFIRMED;
-        boolean bookingStarted = !booking.getStartDateTime().isAfter(now);
+        java.time.Instant bookingInstant = bookingDateTimeService.resolveStartInstant(booking);
+        java.time.Instant nowInstant = now.atZone(bookingDateTimeService.resolveZoneId(booking.getTimezone())).toInstant();
+        boolean bookingStarted = bookingInstant != null ? !bookingInstant.isAfter(nowInstant) : !booking.getStartDateTime().isAfter(now);
 
         BigDecimal prepaidAmount = bookingMoneyResolver.resolvePrepaidAmount(booking);
         BigDecimal refundPreview = BigDecimal.ZERO;
@@ -48,7 +58,9 @@ public class BookingActionsEvaluator {
         boolean canMarkNoShow = false;
         BookingSuggestedAction suggestedAction = BookingSuggestedAction.NONE;
 
-        long hoursUntilStart = Duration.between(now, booking.getStartDateTime()).toHours();
+        long hoursUntilStart = bookingInstant == null
+            ? Duration.between(now, booking.getStartDateTime()).toHours()
+            : Duration.between(nowInstant, bookingInstant).toHours();
         int currentRescheduleCount = booking.getRescheduleCount() == null ? 0 : Math.max(0, booking.getRescheduleCount());
         int maxClientReschedules = BookingPolicyDefaults.resolveMaxClientReschedules(policy.maxClientReschedules());
         params.put("hoursUntilStart", String.valueOf(hoursUntilStart));
@@ -88,21 +100,19 @@ public class BookingActionsEvaluator {
                 canCancel = true;
                 boolean freeCancellation = policy.cancellationWindowHours() == null
                     || hoursUntilStart >= policy.cancellationWindowHours();
-                boolean penaltyApplies = !freeCancellation
-                    && policy.retainDepositOnLateCancellation()
-                    && prepaidAmount.compareTo(BigDecimal.ZERO) > 0;
 
                 if (freeCancellation) {
                     reasons.add(BookingActionReasonCode.FREE_CANCELLATION_WINDOW_OPEN);
                     refundPreview = prepaidAmount;
                     retainPreview = BigDecimal.ZERO;
-                } else if (penaltyApplies) {
-                    reasons.add(BookingActionReasonCode.LATE_CANCELLATION_PENALTY_APPLIES);
-                    refundPreview = BigDecimal.ZERO;
-                    retainPreview = prepaidAmount;
                 } else {
-                    refundPreview = prepaidAmount;
-                    retainPreview = BigDecimal.ZERO;
+                    refundPreview = resolveLateCancellationRefund(prepaidAmount, policy);
+                    retainPreview = prepaidAmount.subtract(refundPreview).max(BigDecimal.ZERO);
+                    if (retainPreview.signum() > 0) {
+                        reasons.add(BookingActionReasonCode.LATE_CANCELLATION_PENALTY_APPLIES);
+                    } else {
+                        reasons.add(BookingActionReasonCode.LATE_CANCELLATION_POLICY_APPLIES);
+                    }
                     if (prepaidAmount.compareTo(BigDecimal.ZERO) <= 0) {
                         reasons.add(BookingActionReasonCode.NO_PREPAID_AMOUNT);
                     }
@@ -181,6 +191,8 @@ public class BookingActionsEvaluator {
 
         canMarkNoShow = booking.getOperationalStatus() == BookingOperationalStatus.CONFIRMED && bookingStarted;
         if (canMarkNoShow) {
+            retainPreview = prepaidAmount;
+            refundPreview = BigDecimal.ZERO;
             reasons.add(BookingActionReasonCode.PROFESSIONAL_CAN_MARK_NO_SHOW);
         } else {
             reasons.add(BookingActionReasonCode.NO_SHOW_ONLY_AFTER_START);
@@ -240,5 +252,30 @@ public class BookingActionsEvaluator {
             Map.copyOf(params),
             fallback
         );
+    }
+
+    private BigDecimal resolveLateCancellationRefund(
+        BigDecimal prepaidAmount,
+        BookingPolicySnapshot policy
+    ) {
+        if (prepaidAmount == null || prepaidAmount.signum() <= 0 || policy == null) {
+            return BigDecimal.ZERO;
+        }
+        LateCancellationRefundMode mode = policy.lateCancellationRefundMode() == null
+            ? BookingPolicyDefaults.DEFAULT_LATE_CANCELLATION_REFUND_MODE
+            : policy.lateCancellationRefundMode();
+        return switch (mode) {
+            case NONE -> BigDecimal.ZERO;
+            case FULL -> prepaidAmount;
+            case PERCENTAGE -> {
+                BigDecimal percentage = policy.lateCancellationRefundValue() == null
+                    ? BookingPolicyDefaults.DEFAULT_LATE_CANCELLATION_REFUND_VALUE
+                    : policy.lateCancellationRefundValue().max(BigDecimal.ZERO).min(BigDecimal.valueOf(100));
+                yield prepaidAmount.multiply(percentage)
+                    .divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP)
+                    .min(prepaidAmount)
+                    .max(BigDecimal.ZERO);
+            }
+        };
     }
 }

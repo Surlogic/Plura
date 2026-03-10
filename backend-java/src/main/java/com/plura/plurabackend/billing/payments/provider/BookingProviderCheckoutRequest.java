@@ -12,6 +12,7 @@ public record BookingProviderCheckoutRequest(
     String customerEmail,
     String customerName,
     String description,
+    String splitCode,
     String webhookUrl,
     PaymentProvider provider
 ) {}

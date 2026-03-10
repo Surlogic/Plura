@@ -35,6 +35,8 @@ public interface PaymentTransactionRepository extends JpaRepository<PaymentTrans
 
     Optional<PaymentTransaction> findTopByPayoutRecord_IdOrderByCreatedAtDesc(String payoutRecordId);
 
+    Optional<PaymentTransaction> findTopByExternalReferenceOrderByCreatedAtDesc(String externalReference);
+
     List<PaymentTransaction> findByBooking_IdOrderByCreatedAtDesc(Long bookingId);
 
     List<PaymentTransaction> findByBooking_IdAndTransactionTypeAndStatusIn(

@@ -144,7 +144,7 @@ export default function ProfesionalBusinessProfilePage() {
   const showSkeleton = !hasLoaded || (isLoading && !profile);
 
   const inputClassName =
-    'h-11 w-full rounded-[14px] border border-[#E2E7EC] bg-white px-3 text-sm text-[#0E2A47] placeholder:text-[#94A3B8] focus:outline-none focus:ring-2 focus:ring-[#1FB6A6]/30';
+    'h-11 w-full rounded-[16px] border border-[color:var(--border-soft)] bg-white/92 px-3 text-sm text-[color:var(--ink)] placeholder:text-[color:var(--ink-faint)] focus:border-[color:var(--accent)] focus:outline-none focus:ring-4 focus:ring-[color:var(--focus-ring)]';
 
   const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = event.target;
@@ -373,9 +373,9 @@ export default function ProfesionalBusinessProfilePage() {
   };
 
   return (
-    <div className="min-h-screen bg-[radial-gradient(circle_at_top,#FFFFFF_0%,#EEF2F6_45%,#D3D7DC_100%)] text-[#0E2A47]">
+    <div className="app-shell min-h-screen bg-[color:var(--background)] text-[color:var(--ink)]">
       <div className="flex min-h-screen">
-          <aside className="hidden w-[260px] shrink-0 border-r border-[#0E2A47]/10 bg-[#0B1D2A] lg:block">
+          <aside className="hidden w-[260px] shrink-0 border-r border-[color:var(--border-soft)] bg-[color:var(--sidebar-surface)] lg:block">
             <div className="sticky top-0 h-screen overflow-y-auto">
               <ProfesionalSidebar profile={profile} active="Perfil del negocio" />
             </div>
@@ -387,7 +387,7 @@ export default function ProfesionalBusinessProfilePage() {
               </Button>
             </div>
             {isMenuOpen ? (
-              <div className="border-b border-[#0E2A47]/10 bg-[#0B1D2A] lg:hidden">
+              <div className="border-b border-[color:var(--border-soft)] bg-[color:var(--surface)]/92 backdrop-blur-xl lg:hidden">
                 <ProfesionalSidebar profile={profile} active="Perfil del negocio" />
               </div>
             ) : null}
@@ -401,14 +401,14 @@ export default function ProfesionalBusinessProfilePage() {
               description="Definí cómo se presenta tu negocio en la ficha pública y asegurate de que los clientes encuentren rápido tu propuesta, tu dirección y tus vías de contacto."
               meta={
                 <>
-                  <span className="rounded-full border border-white/12 bg-white/8 px-3 py-1 text-xs font-semibold text-white/80">
+                  <span className="rounded-full border border-white/18 bg-white/10 px-3 py-1 text-xs font-semibold text-[color:var(--text-on-dark-secondary)] backdrop-blur-sm">
                     {form.categorySlugs.length} rubros
                   </span>
-                  <span className="rounded-full border border-white/12 bg-white/8 px-3 py-1 text-xs font-semibold text-white/80">
+                  <span className="rounded-full border border-white/18 bg-white/10 px-3 py-1 text-xs font-semibold text-[color:var(--text-on-dark-secondary)] backdrop-blur-sm">
                     {form.city || 'Sin ciudad'}
                   </span>
                   {isDirty ? (
-                    <span className="rounded-full border border-white/12 bg-white/8 px-3 py-1 text-xs font-semibold text-white/80">
+                    <span className="rounded-full border border-white/18 bg-white/10 px-3 py-1 text-xs font-semibold text-[color:var(--text-on-dark-secondary)] backdrop-blur-sm">
                       Cambios sin guardar
                     </span>
                   ) : null}
@@ -419,7 +419,7 @@ export default function ProfesionalBusinessProfilePage() {
                   type="button"
                   onClick={() => void handleSave()}
                   disabled={isSaving}
-                  className="rounded-full border border-white/14 bg-white/10 px-4 py-2 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:bg-white/14"
+                  className="rounded-full border border-white/22 bg-white/10 px-4 py-2 text-sm font-semibold text-[color:var(--text-on-dark)] shadow-[var(--shadow-card)] backdrop-blur-sm transition hover:-translate-y-0.5 hover:border-white/34 hover:bg-white/18"
                 >
                   {isSaving ? 'Guardando...' : 'Guardar cambios'}
                 </button>

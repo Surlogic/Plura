@@ -1,5 +1,6 @@
 package com.plura.plurabackend.booking.dto;
 
+import java.math.BigDecimal;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 
@@ -12,5 +13,6 @@ public class BookingPolicyResponse {
     private Integer cancellationWindowHours;
     private Integer rescheduleWindowHours;
     private Integer maxClientReschedules;
-    private boolean retainDepositOnLateCancellation;
+    private String lateCancellationRefundMode;
+    private BigDecimal lateCancellationRefundValue;
 }

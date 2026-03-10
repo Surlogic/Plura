@@ -4,8 +4,11 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.plura.plurabackend.booking.model.Booking;
 import com.plura.plurabackend.booking.policy.model.BookingPolicy;
+import com.plura.plurabackend.booking.policy.model.LateCancellationRefundMode;
+import com.plura.plurabackend.booking.dto.BookingPolicySnapshotResponse;
 import com.plura.plurabackend.booking.policy.repository.BookingPolicyRepository;
 import com.plura.plurabackend.professional.model.ProfessionalProfile;
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import org.springframework.stereotype.Service;
 
@@ -39,7 +42,8 @@ public class BookingPolicySnapshotService {
             policy == null
                 ? BookingPolicyDefaults.DEFAULT_MAX_CLIENT_RESCHEDULES
                 : BookingPolicyDefaults.resolveMaxClientReschedules(policy.getMaxClientReschedules()),
-            policy != null && Boolean.TRUE.equals(policy.getRetainDepositOnLateCancellation())
+            resolveLateCancellationRefundMode(policy),
+            resolveLateCancellationRefundValue(policy)
         ));
     }
 
@@ -78,6 +82,17 @@ public class BookingPolicySnapshotService {
         return new ResolvedBookingPolicy(liveSnapshot, ResolvedBookingPolicy.PolicySnapshotSource.LIVE_FALLBACK);
     }
 
+    public BookingPolicySnapshotResponse toResponse(ResolvedBookingPolicy resolvedPolicy) {
+        if (resolvedPolicy == null || resolvedPolicy.snapshot() == null) {
+            return null;
+        }
+        return toResponse(resolvedPolicy.snapshot(), resolvedPolicy.source().name());
+    }
+
+    public BookingPolicySnapshotResponse toResponse(BookingPolicySnapshot snapshot) {
+        return toResponse(snapshot, null);
+    }
+
     private BookingPolicySnapshot normalizeSnapshot(BookingPolicySnapshot snapshot) {
         if (snapshot == null) {
             return null;
@@ -108,7 +123,74 @@ public class BookingPolicySnapshotService {
             snapshot.cancellationWindowHours(),
             snapshot.rescheduleWindowHours(),
             normalizedMaxClientReschedules,
-            snapshot.retainDepositOnLateCancellation()
+            normalizeRefundMode(snapshot.lateCancellationRefundMode()),
+            normalizeRefundValue(
+                normalizeRefundMode(snapshot.lateCancellationRefundMode()),
+                snapshot.lateCancellationRefundValue()
+            )
         );
+    }
+
+    private BookingPolicySnapshotResponse toResponse(BookingPolicySnapshot snapshot, String policySource) {
+        if (snapshot == null) {
+            return null;
+        }
+        LateCancellationRefundMode mode = normalizeRefundMode(snapshot.lateCancellationRefundMode());
+        return new BookingPolicySnapshotResponse(
+            snapshot.sourcePolicyId(),
+            snapshot.sourcePolicyVersion(),
+            snapshot.professionalId(),
+            snapshot.resolvedAt(),
+            policySource,
+            snapshot.allowClientCancellation(),
+            snapshot.allowClientReschedule(),
+            snapshot.cancellationWindowHours(),
+            snapshot.rescheduleWindowHours(),
+            BookingPolicyDefaults.resolveMaxClientReschedules(snapshot.maxClientReschedules()),
+            mode == null ? null : mode.name(),
+            normalizeRefundValue(mode, snapshot.lateCancellationRefundValue())
+        );
+    }
+
+    private LateCancellationRefundMode resolveLateCancellationRefundMode(BookingPolicy policy) {
+        if (policy == null || policy.getLateCancellationRefundMode() == null) {
+            return policy != null && Boolean.TRUE.equals(policy.getRetainDepositOnLateCancellation())
+                ? LateCancellationRefundMode.NONE
+                : BookingPolicyDefaults.DEFAULT_LATE_CANCELLATION_REFUND_MODE;
+        }
+        return policy.getLateCancellationRefundMode();
+    }
+
+    private BigDecimal resolveLateCancellationRefundValue(BookingPolicy policy) {
+        if (policy == null) {
+            return BookingPolicyDefaults.DEFAULT_LATE_CANCELLATION_REFUND_VALUE;
+        }
+        return normalizeRefundValue(
+            resolveLateCancellationRefundMode(policy),
+            policy.getLateCancellationRefundValue()
+        );
+    }
+
+    private LateCancellationRefundMode normalizeRefundMode(LateCancellationRefundMode mode) {
+        return mode == null ? BookingPolicyDefaults.DEFAULT_LATE_CANCELLATION_REFUND_MODE : mode;
+    }
+
+    private BigDecimal normalizeRefundValue(LateCancellationRefundMode mode, BigDecimal value) {
+        if (mode == null) {
+            mode = BookingPolicyDefaults.DEFAULT_LATE_CANCELLATION_REFUND_MODE;
+        }
+        if (mode == LateCancellationRefundMode.NONE) {
+            return BigDecimal.ZERO;
+        }
+        if (mode == LateCancellationRefundMode.FULL) {
+            return BookingPolicyDefaults.DEFAULT_LATE_CANCELLATION_REFUND_VALUE;
+        }
+        if (value == null) {
+            return BookingPolicyDefaults.DEFAULT_LATE_CANCELLATION_REFUND_VALUE;
+        }
+        if (value.signum() < 0) {
+            return BigDecimal.ZERO;
+        }
+        return value.min(BigDecimal.valueOf(100));
     }
 }

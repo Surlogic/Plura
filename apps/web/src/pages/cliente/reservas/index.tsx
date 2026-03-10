@@ -14,29 +14,38 @@ import {
 } from '@/services/clientBookings';
 import { getPublicSlots } from '@/services/publicBookings';
 import {
+  describeBookingPolicy,
   formatBookingMoney,
   getClientFinancialStatusCopy,
   getOperationalStatusLabel,
   getOperationalStatusTone,
   getPaymentTypeLabel,
+  getPayoutStatusCopy,
+  getRefundStatusCopy,
   isPrepaidBooking,
   shouldAutoRefreshFinancialStatus,
 } from '@/utils/bookings';
+import {
+  closeCheckoutWindow,
+  openCheckoutUrl,
+  openCheckoutWindow,
+  redirectCheckoutWindow,
+} from '@/utils/checkoutWindow';
 
 const toLocalDateKey = (date: Date) => date.toLocaleDateString('en-CA');
 
 const isUpcomingBooking = (booking: ClientDashboardBooking, now: Date): boolean => {
   if (booking.status !== 'PENDING' && booking.status !== 'CONFIRMED') return false;
-  const bookingDate = new Date(booking.dateTime);
+  const bookingDate = new Date(booking.startDateTimeUtc || booking.dateTime);
   if (Number.isNaN(bookingDate.getTime())) return false;
   return bookingDate > now;
 };
 
 const sortByDateAsc = (a: ClientDashboardBooking, b: ClientDashboardBooking): number =>
-  new Date(a.dateTime).getTime() - new Date(b.dateTime).getTime();
+  new Date(a.startDateTimeUtc || a.dateTime).getTime() - new Date(b.startDateTimeUtc || b.dateTime).getTime();
 
 const sortByDateDesc = (a: ClientDashboardBooking, b: ClientDashboardBooking): number =>
-  new Date(b.dateTime).getTime() - new Date(a.dateTime).getTime();
+  new Date(b.startDateTimeUtc || b.dateTime).getTime() - new Date(a.startDateTimeUtc || a.dateTime).getTime();
 
 const extractApiMessage = (error: unknown, fallback: string) => {
   if (isAxiosError<{ message?: string }>(error)) {
@@ -163,6 +172,8 @@ export default function ClienteReservasPage() {
     if (!router.isReady) return;
     if (queryMode.checkout === 'started') {
       setStatusMessage('Checkout abierto. Cuando termines, esta vista se actualiza con el estado real del backend.');
+    } else if (queryMode.checkout === 'failed') {
+      setStatusMessage('La reserva fue creada, pero no pudimos abrir el checkout. Puedes reintentarlo desde esta vista.');
     } else if (queryMode.checkout === 'synced') {
       setStatusMessage('La reserva volvió con estado financiero actualizado desde backend.');
     } else if (queryMode.created === '1') {
@@ -314,15 +325,7 @@ export default function ClienteReservasPage() {
   const handleStartCheckout = async () => {
     if (!selectedBooking) return;
 
-    const checkoutWindow = typeof window !== 'undefined'
-      ? window.open('', '_blank', 'noopener,noreferrer')
-      : null;
-
-    if (checkoutWindow) {
-      checkoutWindow.document.write(
-        '<p style="font-family:sans-serif;padding:24px">Preparando checkout seguro...</p>',
-      );
-    }
+    const checkoutWindow = openCheckoutWindow();
 
     setIsSubmitting(true);
     setActionError(null);
@@ -331,19 +334,18 @@ export default function ClienteReservasPage() {
     try {
       const session = await createClientBookingPaymentSession(selectedBooking.id);
       if (session.checkoutUrl) {
-        if (checkoutWindow) {
-          checkoutWindow.location.href = session.checkoutUrl;
-        } else if (typeof window !== 'undefined') {
-          window.open(session.checkoutUrl, '_blank', 'noopener,noreferrer');
+        const redirected = redirectCheckoutWindow(checkoutWindow, session.checkoutUrl);
+        if (!redirected) {
+          openCheckoutUrl(session.checkoutUrl);
         }
         setStatusMessage('Checkout abierto. Esta vista seguirá mostrando el estado real de la reserva.');
       } else {
-        if (checkoutWindow) checkoutWindow.close();
+        closeCheckoutWindow(checkoutWindow);
         setStatusMessage('El backend devolvió la reserva sin abrir un checkout nuevo.');
       }
       await loadBookings();
     } catch (submitError) {
-      if (checkoutWindow) checkoutWindow.close();
+      closeCheckoutWindow(checkoutWindow);
       setActionError(
         extractApiMessage(submitError, 'No se pudo iniciar el checkout en este momento.'),
       );
@@ -387,7 +389,7 @@ export default function ClienteReservasPage() {
       const response = await rescheduleClientBooking(
         selectedBooking.id,
         `${rescheduleDate}T${rescheduleTime}:00`,
-        Intl.DateTimeFormat().resolvedOptions().timeZone,
+        selectedBooking.timezone || undefined,
       );
       setStatusMessage(response.plainTextFallback || 'Reserva reagendada correctamente.');
       setShowReschedule(false);
@@ -545,6 +547,24 @@ export default function ClienteReservasPage() {
                         </span>
                       </p>
                     ) : null}
+                    <p>
+                      Refund:{' '}
+                      <span className="font-semibold text-[#0E2A47]">
+                        {getRefundStatusCopy(selectedBooking.refundStatus)}
+                      </span>
+                    </p>
+                    <p>
+                      Liberación:{' '}
+                      <span className="font-semibold text-[#0E2A47]">
+                        {getPayoutStatusCopy(selectedBooking.payoutStatus)}
+                      </span>
+                    </p>
+                    <p>
+                      Política:{' '}
+                      <span className="font-semibold text-[#0E2A47]">
+                        {describeBookingPolicy(selectedBooking.policySnapshot)}
+                      </span>
+                    </p>
                   </div>
                 </div>
 

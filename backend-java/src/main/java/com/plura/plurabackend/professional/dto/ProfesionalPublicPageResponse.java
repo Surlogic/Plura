@@ -1,6 +1,7 @@
 package com.plura.plurabackend.professional.dto;
 
 import com.plura.plurabackend.category.dto.CategoryResponse;
+import com.plura.plurabackend.booking.dto.BookingPolicySnapshotResponse;
 import com.plura.plurabackend.professional.schedule.dto.ProfesionalScheduleDto;
 import com.plura.plurabackend.professional.service.dto.ProfesionalServiceResponse;
 import java.util.List;
@@ -40,4 +41,5 @@ public class ProfesionalPublicPageResponse {
     private List<String> photos;
     private ProfesionalScheduleDto schedule;
     private List<ProfesionalServiceResponse> services;
+    private BookingPolicySnapshotResponse bookingPolicy;
 }

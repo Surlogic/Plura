@@ -4,6 +4,8 @@ export type ProfessionalPayoutConfig = {
   status: ProfessionalPayoutStatus;
   readyToReceivePayouts: boolean;
   payoutEnabled: boolean;
+  splitCode?: string | null;
+  splitPaymentsEnabled: boolean;
   firstName?: string | null;
   lastName?: string | null;
   country?: string | null;
@@ -23,6 +25,7 @@ export type ProfessionalPayoutConfig = {
 };
 
 export type ProfessionalPayoutConfigUpdateInput = {
+  splitCode: string;
   firstName: string;
   lastName: string;
   country: string;

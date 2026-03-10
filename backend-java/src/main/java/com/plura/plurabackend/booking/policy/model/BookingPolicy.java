@@ -4,6 +4,8 @@ import com.plura.plurabackend.booking.policy.BookingPolicyDefaults;
 import com.plura.plurabackend.professional.model.ProfessionalProfile;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
@@ -12,6 +14,7 @@ import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.UUID;
 import lombok.AllArgsConstructor;
@@ -48,8 +51,16 @@ public class BookingPolicy {
     @Column(name = "max_client_reschedules")
     private Integer maxClientReschedules;
 
+    @Deprecated
     @Column(name = "retain_deposit_on_late_cancellation", nullable = false)
     private Boolean retainDepositOnLateCancellation;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "late_cancellation_refund_mode", nullable = false, length = 20)
+    private LateCancellationRefundMode lateCancellationRefundMode;
+
+    @Column(name = "late_cancellation_refund_value", precision = 5, scale = 2)
+    private BigDecimal lateCancellationRefundValue;
 
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
@@ -75,8 +86,14 @@ public class BookingPolicy {
         if (this.maxClientReschedules == null) {
             this.maxClientReschedules = BookingPolicyDefaults.DEFAULT_MAX_CLIENT_RESCHEDULES;
         }
+        if (this.lateCancellationRefundMode == null) {
+            this.lateCancellationRefundMode = legacyLateCancellationMode();
+        }
+        if (this.lateCancellationRefundValue == null) {
+            this.lateCancellationRefundValue = defaultLateCancellationValue(this.lateCancellationRefundMode);
+        }
         if (this.retainDepositOnLateCancellation == null) {
-            this.retainDepositOnLateCancellation = BookingPolicyDefaults.DEFAULT_RETAIN_DEPOSIT_ON_LATE_CANCELLATION;
+            this.retainDepositOnLateCancellation = this.lateCancellationRefundMode == LateCancellationRefundMode.NONE;
         }
         if (this.createdAt == null) {
             this.createdAt = LocalDateTime.now();
@@ -91,6 +108,29 @@ public class BookingPolicy {
 
     @PreUpdate
     void onUpdate() {
+        if (this.lateCancellationRefundMode == null) {
+            this.lateCancellationRefundMode = legacyLateCancellationMode();
+        }
+        if (this.lateCancellationRefundValue == null) {
+            this.lateCancellationRefundValue = defaultLateCancellationValue(this.lateCancellationRefundMode);
+        }
+        this.retainDepositOnLateCancellation = this.lateCancellationRefundMode == LateCancellationRefundMode.NONE;
         this.updatedAt = LocalDateTime.now();
+    }
+
+    private LateCancellationRefundMode legacyLateCancellationMode() {
+        return Boolean.TRUE.equals(this.retainDepositOnLateCancellation)
+            ? LateCancellationRefundMode.NONE
+            : BookingPolicyDefaults.DEFAULT_LATE_CANCELLATION_REFUND_MODE;
+    }
+
+    private BigDecimal defaultLateCancellationValue(LateCancellationRefundMode mode) {
+        if (mode == LateCancellationRefundMode.NONE) {
+            return BigDecimal.ZERO;
+        }
+        if (mode == LateCancellationRefundMode.PERCENTAGE) {
+            return BookingPolicyDefaults.DEFAULT_LATE_CANCELLATION_REFUND_VALUE;
+        }
+        return BookingPolicyDefaults.DEFAULT_LATE_CANCELLATION_REFUND_VALUE;
     }
 }

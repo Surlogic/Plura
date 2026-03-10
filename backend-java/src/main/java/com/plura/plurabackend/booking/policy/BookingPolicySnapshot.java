@@ -1,5 +1,7 @@
 package com.plura.plurabackend.booking.policy;
 
+import com.plura.plurabackend.booking.policy.model.LateCancellationRefundMode;
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 public record BookingPolicySnapshot(
@@ -12,5 +14,6 @@ public record BookingPolicySnapshot(
     Integer cancellationWindowHours,
     Integer rescheduleWindowHours,
     Integer maxClientReschedules,
-    boolean retainDepositOnLateCancellation
+    LateCancellationRefundMode lateCancellationRefundMode,
+    BigDecimal lateCancellationRefundValue
 ) {}

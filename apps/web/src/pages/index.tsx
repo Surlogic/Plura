@@ -158,8 +158,8 @@ export default function HomePage({
 
   return (
     <div className="relative min-h-screen bg-[color:var(--background)] text-[color:var(--ink)]">
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(31,182,166,0.14),transparent_58%)]" />
-      <div className="pointer-events-none absolute inset-x-0 top-0 h-[520px] bg-[linear-gradient(180deg,rgba(255,255,255,0.46),transparent)]" />
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(54,200,244,0.1),transparent_58%)]" />
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-[520px] bg-[linear-gradient(180deg,rgba(15,23,42,0.03),transparent)]" />
       <div className="relative z-10">
         <Navbar />
         <main className="space-y-20 pb-24">

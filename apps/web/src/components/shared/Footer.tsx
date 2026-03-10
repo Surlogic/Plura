@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/router';
-import Logo from '@/components/ui/Logo';
+import BrandLogo from '@/components/ui/BrandLogo';
 import { useClientProfileContext } from '@/context/ClientProfileContext';
 import { useProfessionalProfileContext } from '@/context/ProfessionalProfileContext';
 
@@ -35,17 +35,21 @@ export default function Footer() {
       : 'PUBLIC';
   const isProfessionalAuth = pathForCheck.startsWith('/profesional/auth');
   const footerClassName = isProfessionalAuth
-    ? 'mt-16 border-t border-white/10 bg-[#0a1424] text-[#e8eef7]'
+    ? 'mt-16 border-t border-white/12 bg-[linear-gradient(145deg,var(--brand-navy)_0%,var(--brand-navy-soft)_52%,var(--brand-navy-elevated)_100%)] text-[color:var(--text-on-dark)]'
     : 'mt-16 border-t border-[color:var(--border-soft)] bg-[color:var(--surface)]/82 text-[color:var(--ink)] backdrop-blur';
-  const secondaryTextClassName = isProfessionalAuth ? 'text-[#9fb1c8]' : 'text-[color:var(--ink-muted)]';
-  const strongTextClassName = isProfessionalAuth ? 'font-semibold text-white' : 'font-semibold text-[color:var(--ink)]';
-  const linkClassName = isProfessionalAuth ? 'block transition hover:text-white' : 'block transition hover:text-[color:var(--ink)]';
+  const secondaryTextClassName = isProfessionalAuth ? 'text-[color:var(--text-on-dark-secondary)]' : 'text-[color:var(--ink-muted)]';
+  const strongTextClassName = isProfessionalAuth ? 'font-semibold text-[color:var(--text-on-dark)]' : 'font-semibold text-[color:var(--ink)]';
+  const linkClassName = isProfessionalAuth ? 'block transition hover:text-[color:var(--text-on-dark)]' : 'block transition hover:text-[color:var(--ink)]';
 
   return (
     <footer className={footerClassName}>
       <div className="mx-auto grid w-full max-w-[1400px] gap-8 px-4 py-12 sm:grid-cols-2 lg:grid-cols-4 sm:px-6 lg:px-10">
         <div className="space-y-3">
-          <Logo href="/" size={30} textClassName={isProfessionalAuth ? 'text-white' : 'text-[color:var(--ink)]'} />
+          <BrandLogo
+            href="/"
+            variant="footer"
+            logoVariant={isProfessionalAuth ? 'dark' : 'default'}
+          />
           <p className={`text-sm ${secondaryTextClassName}`}>
             Tu próximo turno, en segundos.
           </p>

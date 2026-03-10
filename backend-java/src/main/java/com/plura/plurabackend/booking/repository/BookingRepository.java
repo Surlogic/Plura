@@ -44,6 +44,8 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
     )
     Optional<Booking> findDetailedByIdForUpdate(@Param("bookingId") Long bookingId);
 
+    List<Booking> findByIdIn(Collection<Long> bookingIds);
+
     boolean existsByProfessionalAndStartDateTime(
         ProfessionalProfile professional,
         LocalDateTime startDateTime

@@ -14,6 +14,15 @@ import com.plura.plurabackend.availability.ScheduleSummaryService;
 import com.plura.plurabackend.booking.actions.BookingActionsEvaluation;
 import com.plura.plurabackend.booking.actions.BookingActionsEvaluator;
 import com.plura.plurabackend.booking.actions.model.BookingSuggestedAction;
+import com.plura.plurabackend.booking.application.BookingCommandApplicationService;
+import com.plura.plurabackend.booking.application.BookingCommandResponseAssembler;
+import com.plura.plurabackend.booking.application.BookingCommandStateSupport;
+import com.plura.plurabackend.booking.application.BookingFinancialCommandSupport;
+import com.plura.plurabackend.booking.application.BookingPaymentsGateway;
+import com.plura.plurabackend.booking.application.BookingQueryApplicationService;
+import com.plura.plurabackend.booking.application.BookingSchedulingAvailabilityGateway;
+import com.plura.plurabackend.billing.application.BookingPayoutApplicationService;
+import com.plura.plurabackend.billing.providerops.ProviderOperationWorker;
 import com.plura.plurabackend.booking.decision.BookingActionDecisionService;
 import com.plura.plurabackend.booking.decision.model.BookingActionDecision;
 import com.plura.plurabackend.booking.decision.model.BookingActionType;
@@ -21,15 +30,18 @@ import com.plura.plurabackend.booking.dto.BookingCommandResponse;
 import com.plura.plurabackend.booking.dto.BookingRescheduleRequest;
 import com.plura.plurabackend.booking.event.BookingEventService;
 import com.plura.plurabackend.booking.finance.BookingFinanceService;
-import com.plura.plurabackend.booking.finance.BookingProviderIntegrationService;
+import com.plura.plurabackend.booking.finance.model.BookingFinancialStatus;
+import com.plura.plurabackend.booking.finance.model.BookingFinancialSummary;
 import com.plura.plurabackend.booking.model.Booking;
 import com.plura.plurabackend.booking.model.BookingOperationalStatus;
 import com.plura.plurabackend.booking.model.ServicePaymentType;
 import com.plura.plurabackend.booking.policy.BookingPolicySnapshot;
 import com.plura.plurabackend.booking.policy.BookingPolicySnapshotService;
 import com.plura.plurabackend.booking.policy.ResolvedBookingPolicy;
+import com.plura.plurabackend.booking.policy.model.LateCancellationRefundMode;
 import com.plura.plurabackend.booking.policy.repository.BookingPolicyRepository;
 import com.plura.plurabackend.booking.repository.BookingRepository;
+import com.plura.plurabackend.booking.time.BookingDateTimeService;
 import com.plura.plurabackend.cache.ProfileCacheService;
 import com.plura.plurabackend.cache.SlotCacheService;
 import com.plura.plurabackend.professional.model.ProfessionalProfile;
@@ -41,7 +53,11 @@ import com.plura.plurabackend.professional.schedule.dto.ProfesionalScheduleRange
 import com.plura.plurabackend.professional.service.model.ProfesionalService;
 import com.plura.plurabackend.professional.service.repository.ProfesionalServiceRepository;
 import com.plura.plurabackend.productplan.EffectiveProductPlanService;
+import com.plura.plurabackend.professional.application.ProfessionalAccessSupport;
+import com.plura.plurabackend.professional.application.ProfessionalSideEffectCoordinator;
+import com.plura.plurabackend.professional.application.ProfileApplicationService;
 import com.plura.plurabackend.search.engine.SearchSyncPublisher;
+import com.plura.plurabackend.scheduling.application.ScheduleApplicationService;
 import com.plura.plurabackend.storage.ImageStorageService;
 import com.plura.plurabackend.storage.thumbnail.ImageThumbnailJobService;
 import com.plura.plurabackend.user.model.User;
@@ -71,7 +87,10 @@ class ProfessionalPublicPageCoreServiceRescheduleTest {
     private final BookingActionsEvaluator bookingActionsEvaluator = mock(BookingActionsEvaluator.class);
     private final BookingActionDecisionService bookingActionDecisionService = mock(BookingActionDecisionService.class);
     private final BookingFinanceService bookingFinanceService = mock(BookingFinanceService.class);
-    private final BookingProviderIntegrationService bookingProviderIntegrationService = mock(BookingProviderIntegrationService.class);
+    private final BookingPaymentsGateway bookingPaymentsGateway = mock(BookingPaymentsGateway.class);
+    private final BookingSchedulingAvailabilityGateway bookingSchedulingAvailabilityGateway = mock(
+        BookingSchedulingAvailabilityGateway.class
+    );
     private final BookingEventService bookingEventService = mock(BookingEventService.class);
     private final UserRepository userRepository = mock(UserRepository.class);
     private final AvailableSlotService availableSlotService = mock(AvailableSlotService.class);
@@ -87,36 +106,63 @@ class ProfessionalPublicPageCoreServiceRescheduleTest {
     private final ImageThumbnailJobService imageThumbnailJobService = mock(ImageThumbnailJobService.class);
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final Executor geocodingExecutor = Runnable::run;
-
-    private final ProfessionalPublicPageCoreService service = new ProfessionalPublicPageCoreService(
+    private final BookingDateTimeService bookingDateTimeService = new BookingDateTimeService("America/Montevideo");
+    private final ProfessionalAccessSupport professionalAccessSupport = new ProfessionalAccessSupport(
         professionalProfileRepository,
-        businessPhotoRepository,
-        categorySupport,
+        userRepository
+    );
+    private final ProfessionalSideEffectCoordinator sideEffectCoordinator = mock(ProfessionalSideEffectCoordinator.class);
+    private final ProviderOperationWorker providerOperationWorker = mock(ProviderOperationWorker.class);
+    private final BookingCommandStateSupport bookingCommandStateSupport = new BookingCommandStateSupport(
+        bookingDateTimeService
+    );
+    private final BookingFinancialCommandSupport bookingFinancialCommandSupport = new BookingFinancialCommandSupport(
+        bookingFinanceService,
+        bookingPaymentsGateway,
+        providerOperationWorker
+    );
+    private final BookingCommandResponseAssembler bookingCommandResponseAssembler = new BookingCommandResponseAssembler(
+        bookingFinanceService,
+        bookingPolicySnapshotService,
+        bookingActionDecisionService,
+        bookingDateTimeService
+    );
+    private final BookingPayoutApplicationService bookingPayoutApplicationService = new BookingPayoutApplicationService(
+        bookingRepository,
+        bookingFinanceService,
+        professionalAccessSupport,
+        bookingCommandStateSupport,
+        bookingFinancialCommandSupport,
+        bookingCommandResponseAssembler
+    );
+    private final BookingCommandApplicationService bookingCommandApplicationService = new BookingCommandApplicationService(
+        professionalProfileRepository,
         profesionalServiceRepository,
         bookingRepository,
-        bookingPolicyRepository,
         bookingPolicySnapshotService,
         bookingActionsEvaluator,
         bookingActionDecisionService,
         bookingFinanceService,
-        bookingProviderIntegrationService,
+        bookingSchedulingAvailabilityGateway,
         bookingEventService,
         userRepository,
-        "America/Montevideo",
-        "",
-        objectMapper,
-        availableSlotService,
-        availableSlotAsyncDispatcher,
-        scheduleSummaryService,
-        slotCacheService,
-        profileCacheService,
-        searchSyncPublisher,
-        effectiveProductPlanService,
-        imageStorageService,
+        bookingDateTimeService,
+        professionalAccessSupport,
+        sideEffectCoordinator,
+        bookingFinancialCommandSupport,
+        bookingCommandResponseAssembler,
+        bookingCommandStateSupport,
+        bookingPayoutApplicationService,
         meterRegistry,
         passwordEncoder,
-        imageThumbnailJobService,
-        geocodingExecutor
+        "America/Montevideo"
+    );
+
+    private final ProfessionalPublicPageCoreService service = new ProfessionalPublicPageCoreService(
+        mock(ProfileApplicationService.class),
+        mock(ScheduleApplicationService.class),
+        bookingCommandApplicationService,
+        mock(BookingQueryApplicationService.class)
     );
 
     @Test
@@ -152,6 +198,7 @@ class ProfessionalPublicPageCoreServiceRescheduleTest {
         booking.setService(professionalService);
         booking.setTimezone("America/Montevideo");
         booking.setStartDateTime(originalStart);
+        booking.setStartDateTimeUtc(originalStart.atZone(java.time.ZoneId.of("America/Montevideo")).toInstant());
         booking.setOperationalStatus(BookingOperationalStatus.CONFIRMED);
         booking.setRescheduleCount(0);
         booking.setServiceNameSnapshot("Corte");
@@ -170,7 +217,8 @@ class ProfessionalPublicPageCoreServiceRescheduleTest {
             null,
             null,
             1,
-            false
+            LateCancellationRefundMode.FULL,
+            BigDecimal.valueOf(100)
         );
         BookingActionsEvaluation evaluation = new BookingActionsEvaluation(
             true,
@@ -202,17 +250,24 @@ class ProfessionalPublicPageCoreServiceRescheduleTest {
             new ResolvedBookingPolicy(policy, ResolvedBookingPolicy.PolicySnapshotSource.SNAPSHOT)
         );
         when(bookingActionsEvaluator.evaluate(any(), any(), any(), any())).thenReturn(evaluation);
-        when(bookingRepository.findBookedWithServiceByProfessionalAndStartDateTimeBetweenExcludingBooking(
-            any(),
-            any(),
-            any(),
-            any(),
-            anyLong()
-        )).thenReturn(List.of());
+        when(bookingSchedulingAvailabilityGateway.isSlotAvailable(anyLong(), any(), any(), anyLong())).thenReturn(true);
         when(bookingRepository.saveAndFlush(any())).thenAnswer(invocation -> invocation.getArgument(0));
         when(bookingActionDecisionService.record(any(), any(), any(), anyLong(), any(), any(), any(), any()))
             .thenReturn(decision);
-        when(bookingProviderIntegrationService.processPostDecision(any(), any())).thenReturn(null);
+        when(bookingPaymentsGateway.processPostDecision(any(), any())).thenReturn(null);
+        when(bookingFinanceService.ensureInitializedWithEvidence(any())).thenAnswer(invocation -> {
+            BookingFinancialSummary summary = new BookingFinancialSummary();
+            summary.setBooking(invocation.getArgument(0));
+            summary.setCurrency("UYU");
+            summary.setFinancialStatus(BookingFinancialStatus.NOT_REQUIRED);
+            summary.setAmountCharged(BigDecimal.ZERO);
+            summary.setAmountHeld(BigDecimal.ZERO);
+            summary.setAmountToRefund(BigDecimal.ZERO);
+            summary.setAmountRefunded(BigDecimal.ZERO);
+            summary.setAmountToRelease(BigDecimal.ZERO);
+            summary.setAmountReleased(BigDecimal.ZERO);
+            return summary;
+        });
 
         BookingCommandResponse response = service.rescheduleBookingAsClient(
             String.valueOf(client.getId()),
@@ -222,6 +277,7 @@ class ProfessionalPublicPageCoreServiceRescheduleTest {
 
         assertEquals(nextStart, booking.getStartDateTime());
         assertEquals("America/Montevideo", booking.getTimezone());
+        assertEquals(nextStart.atZone(java.time.ZoneId.of("America/Montevideo")).toInstant(), booking.getStartDateTimeUtc());
         assertEquals(1, booking.getRescheduleCount());
         assertNotNull(response.getBooking());
         assertEquals(nextStart.toString(), response.getBooking().getStartDateTime());

@@ -60,6 +60,7 @@ class ProfessionalPayoutConfigServiceTest {
         assertEquals("INCOMPLETE", response.getStatus());
         assertFalse(response.isReadyToReceivePayouts());
         assertEquals("UY", response.getCountry());
+        assertFalse(response.isSplitPaymentsEnabled());
         assertTrue(response.getMissingFields().contains("firstName"));
         assertTrue(response.getMissingFields().contains("branch"));
         assertTrue(response.getMissingFields().contains("phone"));
@@ -111,12 +112,15 @@ class ProfessionalPayoutConfigServiceTest {
         request.setAccountNumber("00123456789");
         request.setAccountType("caja");
         request.setBranch("001");
+        request.setSplitCode("seller-contract-001");
 
         ProfessionalPayoutConfigResponse response = service.updateConfig(String.valueOf(user.getId()), request);
 
         assertEquals("READY", response.getStatus());
         assertTrue(response.isReadyToReceivePayouts());
+        assertTrue(response.isSplitPaymentsEnabled());
         assertTrue(profile.getDlocalPayoutEnabled());
+        assertEquals("seller-contract-001", profile.getDlocalSplitCode());
         assertEquals("UY", profile.getDlocalPayoutCountry());
         assertEquals("CI", profile.getDlocalBeneficiaryDocumentType());
         assertEquals("BROU", profile.getDlocalBankCode());

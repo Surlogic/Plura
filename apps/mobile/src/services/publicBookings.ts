@@ -1,4 +1,5 @@
 import api from './api';
+import type { ServicePaymentType } from '../types/professional';
 
 export type PublicProfessionalService = {
   id: string;
@@ -6,8 +7,11 @@ export type PublicProfessionalService = {
   description?: string;
   imageUrl?: string;
   price?: string;
+  depositAmount?: number | null;
+  currency?: string | null;
   duration?: string;
   postBufferMinutes?: number;
+  paymentType?: ServicePaymentType;
 };
 
 export type PublicProfessionalPage = {

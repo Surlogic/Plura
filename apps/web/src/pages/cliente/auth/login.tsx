@@ -112,18 +112,18 @@ export default function ClienteLoginPage() {
   };
 
   const inputClassName =
-    'h-12 w-full rounded-[18px] border border-[color:var(--border-soft)] bg-white/88 px-4 text-sm text-[color:var(--ink)] placeholder:text-[color:var(--ink-muted)] transition focus:border-[color:var(--accent)] focus:outline-none focus:ring-2 focus:ring-[color:var(--accent-soft)]';
+    'h-12 w-full rounded-[18px] border border-[color:var(--border-soft)] bg-white/90 px-4 text-sm text-[color:var(--ink)] placeholder:text-[color:var(--ink-faint)] transition focus:border-[color:var(--accent)] focus:outline-none focus:ring-4 focus:ring-[color:var(--focus-ring)]';
 
   return (
-    <div className="min-h-screen bg-[radial-gradient(1100px_620px_at_5%_-10%,rgba(31,182,166,0.18),transparent_55%),radial-gradient(900px_700px_at_95%_0%,rgba(242,140,56,0.18),transparent_50%),linear-gradient(180deg,#f8fcfb_0%,#eef4f2_100%)] text-[color:var(--ink)]">
+    <div className="app-shell min-h-screen bg-[color:var(--background)] text-[color:var(--ink)]">
       <AuthTopBar tone="client" />
       <main className="mx-auto flex w-full max-w-5xl items-center justify-center px-4 py-10 sm:px-6 sm:py-14">
         <div className="w-full max-w-md space-y-5">
           <Card tone="glass" className="relative overflow-hidden">
             <div className="pointer-events-none absolute -left-10 -top-12 h-28 w-28 rounded-full bg-[color:var(--accent)]/20 blur-2xl" />
-            <div className="pointer-events-none absolute -bottom-12 right-0 h-28 w-28 rounded-full bg-[color:var(--warm)]/24 blur-2xl" />
+            <div className="pointer-events-none absolute -bottom-12 right-0 h-28 w-28 rounded-full bg-[color:var(--premium)]/24 blur-2xl" />
             <div className="relative space-y-4">
-              <Badge variant="accent">Reservar y descubrir</Badge>
+              <Badge variant="info">Reservar y descubrir</Badge>
               <h2 className="text-2xl font-semibold leading-tight text-[color:var(--ink)]">
                 Encontrá tu próximo turno con una experiencia más clara.
               </h2>
@@ -133,7 +133,7 @@ export default function ClienteLoginPage() {
                   <p className="mt-1 text-sm font-semibold text-[color:var(--ink)]">Profesionales verificados</p>
                 </Card>
                 <Card tone="default" className="rounded-[22px] bg-white/80 p-4">
-                  <p className="text-xs uppercase tracking-[0.14em] text-[color:var(--warm)]">Reservar</p>
+                  <p className="text-xs uppercase tracking-[0.14em] text-[color:var(--premium-strong)]">Reservar</p>
                   <p className="mt-1 text-sm font-semibold text-[color:var(--ink)]">Turnos en segundos</p>
                 </Card>
               </div>
@@ -193,14 +193,14 @@ export default function ClienteLoginPage() {
               </div>
 
               {errorMessage ? (
-                <p className="rounded-[12px] border border-red-100 bg-red-50 px-3 py-2 text-xs text-red-600">
+                <p className="rounded-[12px] border border-[color:var(--error-soft)] bg-[color:var(--error-soft)] px-3 py-2 text-xs text-[color:var(--error)]">
                   {errorMessage}
                 </p>
               ) : null}
 
               <button
                 type="submit"
-                className="h-12 w-full rounded-full border border-transparent bg-[linear-gradient(135deg,var(--warm),var(--accent))] text-sm font-semibold text-white shadow-[var(--shadow-lift)] transition hover:-translate-y-0.5 hover:brightness-105 focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--warm-soft)] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-70"
+                className="h-12 w-full rounded-full border border-transparent bg-[image:var(--brand-gradient)] text-sm font-semibold text-white shadow-[var(--shadow-lift)] transition hover:-translate-y-0.5 hover:brightness-105 focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--focus-ring)] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-70"
                 disabled={isSubmitting}
               >
                 {isSubmitting ? 'Ingresando...' : 'Iniciar sesión'}

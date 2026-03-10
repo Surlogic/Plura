@@ -53,6 +53,10 @@ public class PluraBackendApplication {
 			System.getProperty("DLOCAL_SECRET_KEY"),
 			legacyValues.get("DLOCAL_SECRET_KEY")
 		);
+		String legacyXTransKey = firstNonBlank(
+			System.getProperty("DLOCAL_X_TRANS_KEY"),
+			legacyValues.get("DLOCAL_X_TRANS_KEY")
+		);
 		String legacyEnv = firstNonBlank(
 			System.getProperty("DLOCAL_ENV"),
 			legacyValues.get("DLOCAL_ENV")
@@ -66,7 +70,8 @@ public class PluraBackendApplication {
 		}
 
 		applyLegacyFallback("BILLING_DLOCAL_X_LOGIN", legacyApiKey);
-		applyLegacyFallback("BILLING_DLOCAL_X_TRANS_KEY", legacySecretKey);
+		applyLegacyFallback("BILLING_DLOCAL_X_TRANS_KEY", firstNonBlank(legacyXTransKey, legacySecretKey));
+		applyLegacyFallback("BILLING_DLOCAL_SECRET_KEY", legacySecretKey);
 		applyLegacyFallback("BILLING_DLOCAL_WEBHOOK_SECRET", legacySecretKey);
 		applyLegacyFallback(
 			"BILLING_DLOCAL_PAYOUT_CLIENT_ID",

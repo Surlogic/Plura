@@ -23,8 +23,10 @@ export type ServicePayload = {
   description: string;
   imageUrl: string;
   price: string;
+  depositAmount?: string | null;
   duration: string;
   postBufferMinutes: number;
+  paymentType: 'ON_SITE' | 'DEPOSIT' | 'FULL_PREPAY';
   active: boolean;
 };
 

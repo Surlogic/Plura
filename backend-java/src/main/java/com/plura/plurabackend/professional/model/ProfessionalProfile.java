@@ -146,6 +146,9 @@ public class ProfessionalProfile {
     @Column(name = "dlocal_payout_country", length = 2)
     private String dlocalPayoutCountry;
 
+    @Column(name = "dlocal_split_code", length = 120)
+    private String dlocalSplitCode;
+
     @Column(name = "dlocal_beneficiary_first_name", length = 120)
     private String dlocalBeneficiaryFirstName;
 

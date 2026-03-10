@@ -51,7 +51,7 @@ export default function AppleLoginButton({
       <button
         type="button"
         disabled
-        className="h-11 w-full rounded-full border border-[#CBD5E1] bg-[#F8FAFC] px-4 text-sm font-medium text-[#64748B]"
+        className="h-11 w-full rounded-full border border-[color:var(--border-soft)] bg-[color:var(--surface-soft)] px-4 text-sm font-medium text-[color:var(--ink-muted)]"
       >
         Apple no configurado
       </button>
@@ -71,7 +71,7 @@ export default function AppleLoginButton({
         <button
           type="button"
           onClick={props.onClick}
-          className="h-11 w-full rounded-full border border-[#0E2A47]/20 bg-[#0E2A47] px-4 text-sm font-semibold text-white transition hover:brightness-110 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0E2A47]/40 focus-visible:ring-offset-2"
+          className="h-11 w-full rounded-full border border-[color:var(--primary)] bg-[color:var(--primary)] px-4 text-sm font-semibold text-white transition hover:bg-[color:var(--primary-strong)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--focus-ring)] focus-visible:ring-offset-2"
         >
           Continuar con Apple
         </button>

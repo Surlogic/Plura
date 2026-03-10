@@ -82,30 +82,30 @@ export default function ServiceDetailModal({
     <div className="fixed inset-0 z-[90] flex items-center justify-center px-4 py-6">
       <button
         type="button"
-        className="absolute inset-0 bg-[#0B1D2A]/45 backdrop-blur-[1px]"
+        className="absolute inset-0 bg-[rgba(18,49,38,0.36)] backdrop-blur-[3px]"
         onClick={onClose}
         aria-label="Cerrar detalle del servicio"
       />
-      <div className="relative w-full max-w-[600px] rounded-[24px] border border-white/70 bg-white p-5 shadow-[0_24px_64px_rgba(15,23,42,0.22)] sm:p-6">
+      <div className="relative w-full max-w-[600px] rounded-[24px] border border-[color:var(--border-soft)] bg-white p-5 shadow-[var(--shadow-lift)] sm:p-6">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <p className="text-[0.62rem] uppercase tracking-[0.35em] text-[#94A3B8]">
+            <p className="text-[0.62rem] uppercase tracking-[0.35em] text-[color:var(--ink-faint)]">
               Servicio
             </p>
-            <h3 className="mt-1 text-2xl font-semibold text-[#0E2A47]">
+            <h3 className="mt-1 text-2xl font-semibold text-[color:var(--ink)]">
               {service.name || 'Servicio'}
             </h3>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="rounded-full border border-[#E2E7EC] px-3 py-1 text-xs font-semibold text-[#64748B] transition hover:bg-[#F8FAFC]"
+            className="rounded-full border border-[color:var(--border-soft)] px-3 py-1 text-xs font-semibold text-[color:var(--ink-muted)] transition hover:bg-[color:var(--surface-soft)]"
           >
             Cerrar
           </button>
         </div>
 
-        <div className="relative mt-4 h-52 w-full overflow-hidden rounded-[16px] border border-[#D9E2EC] bg-[#F8FAFC]">
+        <div className="relative mt-4 h-52 w-full overflow-hidden rounded-[16px] border border-[color:var(--border-soft)] bg-[color:var(--surface-soft)]">
           {imageSrc ? (
             <Image
               src={imageSrc}
@@ -115,45 +115,45 @@ export default function ServiceDetailModal({
               className="h-full w-full object-cover"
             />
           ) : (
-            <div className="flex h-full w-full items-center justify-center text-sm font-semibold uppercase tracking-[0.16em] text-[#94A3B8]">
+            <div className="flex h-full w-full items-center justify-center text-sm font-semibold uppercase tracking-[0.16em] text-[color:var(--ink-faint)]">
               Sin imagen
             </div>
           )}
         </div>
 
         <div className="mt-4 grid gap-3 sm:grid-cols-2">
-          <div className="rounded-[14px] border border-[#E2E7EC] bg-[#F8FAFC] px-4 py-3">
-            <p className="text-[0.62rem] uppercase tracking-[0.28em] text-[#94A3B8]">
+          <div className="rounded-[14px] border border-[color:var(--border-soft)] bg-[color:var(--surface-soft)] px-4 py-3">
+            <p className="text-[0.62rem] uppercase tracking-[0.28em] text-[color:var(--ink-faint)]">
               Duracion
             </p>
-            <p className="mt-1 text-sm font-semibold text-[#0E2A47]">
+            <p className="mt-1 text-sm font-semibold text-[color:var(--ink)]">
               {formatServiceDuration(service.duration)}
             </p>
           </div>
-          <div className="rounded-[14px] border border-[#E2E7EC] bg-[#F8FAFC] px-4 py-3">
-            <p className="text-[0.62rem] uppercase tracking-[0.28em] text-[#94A3B8]">
+          <div className="rounded-[14px] border border-[color:var(--border-soft)] bg-[color:var(--surface-soft)] px-4 py-3">
+            <p className="text-[0.62rem] uppercase tracking-[0.28em] text-[color:var(--ink-faint)]">
               Precio
             </p>
-            <p className="mt-1 text-sm font-semibold text-[#1FB6A6]">
+            <p className="mt-1 text-sm font-semibold text-[color:var(--primary)]">
               {formatServicePrice(service.price)}
             </p>
           </div>
         </div>
 
-        <div className="mt-3 rounded-[14px] border border-[#E2E7EC] bg-[#F8FAFC] px-4 py-3">
-          <p className="text-[0.62rem] uppercase tracking-[0.28em] text-[#94A3B8]">
+        <div className="mt-3 rounded-[14px] border border-[color:var(--border-soft)] bg-[color:var(--surface-soft)] px-4 py-3">
+          <p className="text-[0.62rem] uppercase tracking-[0.28em] text-[color:var(--ink-faint)]">
             Modalidad de pago
           </p>
-          <p className="mt-1 text-sm font-semibold text-[#0E2A47]">
+          <p className="mt-1 text-sm font-semibold text-[color:var(--ink)]">
             {formatPaymentType(service.paymentType)}
           </p>
         </div>
 
-        <div className="mt-4 rounded-[14px] border border-[#E2E7EC] bg-white px-4 py-3">
-          <p className="text-[0.62rem] uppercase tracking-[0.28em] text-[#94A3B8]">
+        <div className="mt-4 rounded-[14px] border border-[color:var(--border-soft)] bg-white px-4 py-3">
+          <p className="text-[0.62rem] uppercase tracking-[0.28em] text-[color:var(--ink-faint)]">
             Descripcion
           </p>
-          <p className="mt-1 text-sm text-[#64748B]">
+          <p className="mt-1 text-sm text-[color:var(--ink-muted)]">
             {service.description?.trim() || 'Sin descripcion cargada.'}
           </p>
         </div>
@@ -161,7 +161,7 @@ export default function ServiceDetailModal({
         <button
           type="button"
           onClick={onSelectService}
-          className="mt-5 w-full rounded-full bg-[#0B1D2A] px-5 py-2.5 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:shadow-md"
+          className="mt-5 w-full rounded-full bg-[color:var(--primary)] px-5 py-2.5 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:bg-[color:var(--primary-strong)] hover:shadow-[var(--shadow-card)]"
         >
           Seleccionar servicio
         </button>

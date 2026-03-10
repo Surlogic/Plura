@@ -16,8 +16,9 @@ import {
 } from '@/services/professionalBookingPolicy';
 import api from '@/services/api';
 import { clearAuthAccessToken } from '@/services/session';
-import type { ProfessionalBookingPolicy } from '@/types/bookings';
+import type { LateCancellationRefundMode, ProfessionalBookingPolicy } from '@/types/bookings';
 import Button from '@/components/ui/Button';
+import ThemeSwitcher from '@/components/theme/ThemeSwitcher';
 import {
   DashboardHero,
   DashboardSectionHeading,
@@ -39,7 +40,8 @@ type BookingPolicyFormState = {
   cancellationWindowHours: string;
   rescheduleWindowHours: string;
   maxClientReschedules: string;
-  retainDepositOnLateCancellation: boolean;
+  lateCancellationRefundMode: LateCancellationRefundMode;
+  lateCancellationRefundValue: string;
 };
 
 const normalizeBookingPolicy = (policy: ProfessionalBookingPolicy): ProfessionalBookingPolicy => ({
@@ -48,6 +50,13 @@ const normalizeBookingPolicy = (policy: ProfessionalBookingPolicy): Professional
     typeof policy.maxClientReschedules === 'number'
       ? policy.maxClientReschedules
       : DEFAULT_MAX_CLIENT_RESCHEDULES,
+  lateCancellationRefundMode: policy.lateCancellationRefundMode || 'FULL',
+  lateCancellationRefundValue:
+    typeof policy.lateCancellationRefundValue === 'number'
+      ? policy.lateCancellationRefundValue
+      : policy.lateCancellationRefundMode === 'NONE'
+        ? 0
+        : 100,
 });
 
 const toBookingPolicyForm = (policy: ProfessionalBookingPolicy): BookingPolicyFormState => ({
@@ -61,7 +70,13 @@ const toBookingPolicyForm = (policy: ProfessionalBookingPolicy): BookingPolicyFo
     typeof policy.maxClientReschedules === 'number'
       ? String(policy.maxClientReschedules)
       : String(DEFAULT_MAX_CLIENT_RESCHEDULES),
-  retainDepositOnLateCancellation: policy.retainDepositOnLateCancellation,
+  lateCancellationRefundMode: policy.lateCancellationRefundMode || 'FULL',
+  lateCancellationRefundValue:
+    typeof policy.lateCancellationRefundValue === 'number'
+      ? String(policy.lateCancellationRefundValue)
+      : policy.lateCancellationRefundMode === 'NONE'
+        ? '0'
+        : '100',
 });
 
 const createBookingPolicySignature = (form: BookingPolicyFormState | null) =>
@@ -72,7 +87,8 @@ const createBookingPolicySignature = (form: BookingPolicyFormState | null) =>
         cancellationWindowHours: form.cancellationWindowHours.trim(),
         rescheduleWindowHours: form.rescheduleWindowHours.trim(),
         maxClientReschedules: form.maxClientReschedules.trim(),
-        retainDepositOnLateCancellation: form.retainDepositOnLateCancellation,
+        lateCancellationRefundMode: form.lateCancellationRefundMode,
+        lateCancellationRefundValue: form.lateCancellationRefundValue.trim(),
       })
     : '';
 
@@ -347,9 +363,19 @@ export default function ProfesionalSettingsPage() {
     const cancellationWindowHours = bookingPolicyForm.cancellationWindowHours.trim();
     const rescheduleWindowHours = bookingPolicyForm.rescheduleWindowHours.trim();
     const maxClientReschedules = bookingPolicyForm.maxClientReschedules.trim();
+    const lateCancellationRefundValue = bookingPolicyForm.lateCancellationRefundValue.trim();
 
-    if (!isDigitsOnly(cancellationWindowHours) || !isDigitsOnly(rescheduleWindowHours) || !isDigitsOnly(maxClientReschedules)) {
+    if (
+      !isDigitsOnly(cancellationWindowHours)
+      || !isDigitsOnly(rescheduleWindowHours)
+      || !isDigitsOnly(maxClientReschedules)
+    ) {
       setBookingPolicyMessage('Usá solo números enteros en los campos de reglas.');
+      setIsBookingPolicyError(true);
+      return;
+    }
+    if (bookingPolicyForm.lateCancellationRefundMode === 'PERCENTAGE' && !/^\d+(\.\d{1,2})?$/.test(lateCancellationRefundValue)) {
+      setBookingPolicyMessage('El porcentaje de devolución debe ser un número entre 0 y 100.');
       setIsBookingPolicyError(true);
       return;
     }
@@ -359,6 +385,11 @@ export default function ProfesionalSettingsPage() {
     const parsedMaxClientReschedules = maxClientReschedules
       ? Number.parseInt(maxClientReschedules, 10)
       : DEFAULT_MAX_CLIENT_RESCHEDULES;
+    const parsedLateCancellationRefundValue = bookingPolicyForm.lateCancellationRefundMode === 'NONE'
+      ? 0
+      : bookingPolicyForm.lateCancellationRefundMode === 'FULL'
+        ? 100
+        : Number.parseFloat(lateCancellationRefundValue || '0');
 
     if (parsedCancellationWindow !== null && (parsedCancellationWindow < 0 || parsedCancellationWindow > 720)) {
       setBookingPolicyMessage('La ventana de cancelación debe estar entre 0 y 720 horas.');
@@ -383,6 +414,11 @@ export default function ProfesionalSettingsPage() {
       setIsBookingPolicyError(true);
       return;
     }
+    if (parsedLateCancellationRefundValue < 0 || parsedLateCancellationRefundValue > 100) {
+      setBookingPolicyMessage('La devolución dentro de ventana debe estar entre 0 y 100.');
+      setIsBookingPolicyError(true);
+      return;
+    }
 
     setIsSavingBookingPolicy(true);
     setBookingPolicyMessage(null);
@@ -395,7 +431,8 @@ export default function ProfesionalSettingsPage() {
         cancellationWindowHours: parsedCancellationWindow,
         rescheduleWindowHours: parsedRescheduleWindow,
         maxClientReschedules: parsedMaxClientReschedules,
-        retainDepositOnLateCancellation: bookingPolicyForm.retainDepositOnLateCancellation,
+        lateCancellationRefundMode: bookingPolicyForm.lateCancellationRefundMode,
+        lateCancellationRefundValue: parsedLateCancellationRefundValue,
       });
       const normalized = normalizeBookingPolicy(response);
       setBookingPolicy(normalized);
@@ -421,11 +458,19 @@ export default function ProfesionalSettingsPage() {
   });
 
   const showSkeleton = !hasLoaded || (isLoading && !profile);
+  const sectionCardClassName =
+    'rounded-[24px] border border-[color:var(--border-soft)] bg-[color:var(--surface)] p-5 shadow-[var(--shadow-card)]';
+  const fieldClassName =
+    'h-11 rounded-[16px] border border-[color:var(--border-soft)] bg-[color:var(--surface-soft)] px-4 text-sm text-[color:var(--ink)] focus:border-[color:var(--accent)] focus:outline-none focus:ring-4 focus:ring-[color:var(--focus-ring)]';
+  const secondaryButtonClassName =
+    'rounded-full border border-[color:var(--border-soft)] bg-[color:var(--surface-soft)] px-4 py-2 text-sm font-semibold text-[color:var(--ink)] transition hover:bg-[color:var(--surface-hover)] disabled:cursor-not-allowed disabled:opacity-60';
+  const primaryButtonClassName =
+    'rounded-full bg-[color:var(--primary)] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[color:var(--primary-strong)] disabled:cursor-not-allowed disabled:opacity-60';
 
   return (
-    <div className="min-h-screen bg-[radial-gradient(circle_at_top,#FFFFFF_0%,#EEF2F6_45%,#D3D7DC_100%)] text-[#0E2A47]">
+    <div className="app-shell min-h-screen bg-[color:var(--background)] text-[color:var(--ink)]">
       <div className="flex min-h-screen">
-        <aside className="hidden w-[260px] shrink-0 border-r border-[#0E2A47]/10 bg-[#0B1D2A] lg:block">
+        <aside className="hidden w-[260px] shrink-0 border-r border-[color:var(--border-soft)] bg-[color:var(--sidebar-surface)] lg:block">
           <div className="sticky top-0 h-screen overflow-y-auto">
             <ProfesionalSidebar profile={profile} active="Configuración" />
           </div>
@@ -439,7 +484,7 @@ export default function ProfesionalSettingsPage() {
           </div>
 
           {isMenuOpen ? (
-            <div className="border-b border-[#0E2A47]/10 bg-[#0B1D2A] lg:hidden">
+            <div className="border-b border-[color:var(--border-soft)] bg-[color:var(--surface)]/92 backdrop-blur-xl lg:hidden">
               <ProfesionalSidebar profile={profile} active="Configuración" />
             </div>
           ) : null}
@@ -453,14 +498,14 @@ export default function ProfesionalSettingsPage() {
                 title="Acceso, sesion y acciones sensibles en un mismo lugar"
                 description="La gestion comercial del plan ahora vive en Facturacion. Desde aqui mantene la cuenta, revisa accesos y administra decisiones sensibles."
                 meta={
-                  <span className="rounded-full border border-white/12 bg-white/8 px-3 py-1 text-xs font-semibold text-white/80">
+                  <span className="rounded-full border border-white/18 bg-white/10 px-3 py-1 text-xs font-semibold text-[color:var(--text-on-dark-secondary)] backdrop-blur-sm">
                     Dashboard profesional
                   </span>
                 }
                 actions={
                   <Link
                     href="/profesional/dashboard/billing"
-                    className="inline-flex h-11 items-center justify-center rounded-full border border-white/18 bg-white/8 px-4 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:bg-white/12"
+                    className="inline-flex h-11 items-center justify-center rounded-full border border-white/22 bg-white/10 px-4 text-sm font-semibold text-[color:var(--text-on-dark)] shadow-[var(--shadow-card)] backdrop-blur-sm transition hover:-translate-y-0.5 hover:border-white/34 hover:bg-white/18"
                   >
                     Ir a Facturación
                   </Link>
@@ -517,6 +562,17 @@ export default function ProfesionalSettingsPage() {
                     />
                   </div>
 
+                  <div className={sectionCardClassName}>
+                    <DashboardSectionHeading
+                      eyebrow="Apariencia"
+                      title="Light, dark o sistema"
+                      description="La preferencia se guarda en este navegador y se aplica sin flicker al recargar."
+                    />
+                    <div className="mt-4">
+                      <ThemeSwitcher />
+                    </div>
+                  </div>
+
                   <EmailVerificationPanel
                     email={profile?.email}
                     emailVerified={profile?.emailVerified}
@@ -536,8 +592,8 @@ export default function ProfesionalSettingsPage() {
 
                     <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
                       <div>
-                        <p className="text-sm font-semibold text-[#0E2A47]">{profile?.phoneNumber || 'Sin teléfono cargado'}</p>
-                        <p className="mt-1 text-xs text-[#64748B]">
+                        <p className="text-sm font-semibold text-[color:var(--ink)]">{profile?.phoneNumber || 'Sin teléfono cargado'}</p>
+                        <p className="mt-1 text-xs text-[color:var(--ink-muted)]">
                           {profile?.phoneVerified
                             ? 'Estado actual: verificado.'
                             : 'Estado actual: pendiente de verificación.'}
@@ -545,8 +601,8 @@ export default function ProfesionalSettingsPage() {
                       </div>
                       <span className={`rounded-full px-3 py-1 text-xs font-semibold ${
                         profile?.phoneVerified
-                          ? 'bg-[#1FB6A6]/10 text-[#1FB6A6]'
-                          : 'bg-[#FFF7ED] text-[#B45309]'
+                          ? 'bg-[color:var(--success-soft)] text-[color:var(--success)]'
+                          : 'bg-[color:var(--warning-soft)] text-[color:var(--warning)]'
                       }`}>
                         {profile?.phoneVerified ? 'Verificado' : 'Pendiente'}
                       </span>
@@ -561,7 +617,7 @@ export default function ProfesionalSettingsPage() {
                               void handleSendPhoneVerification();
                             }}
                             disabled={isSendingPhoneVerification}
-                            className="rounded-full border border-[#0E2A47]/10 bg-[#F8FAFC] px-4 py-2 text-sm font-semibold text-[#0E2A47] transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-60"
+                            className={secondaryButtonClassName}
                           >
                             {isSendingPhoneVerification ? 'Enviando...' : 'Enviar OTP'}
                           </button>
@@ -575,7 +631,7 @@ export default function ProfesionalSettingsPage() {
                             value={phoneVerificationCode}
                             onChange={(event) => setPhoneVerificationCode(event.target.value)}
                             placeholder="OTP de 6 dígitos"
-                            className="h-11 min-w-[220px] rounded-[16px] border border-[#E2E7EC] bg-[#F8FAFC] px-4 text-sm text-[#0E2A47] focus:border-[#1FB6A6] focus:outline-none"
+                            className={`min-w-[220px] ${fieldClassName}`}
                           />
                           <button
                             type="button"
@@ -583,7 +639,7 @@ export default function ProfesionalSettingsPage() {
                               void handleConfirmPhoneVerification();
                             }}
                             disabled={isConfirmingPhoneVerification}
-                            className="rounded-full bg-[#0E2A47] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#12385f] disabled:cursor-not-allowed disabled:opacity-60"
+                            className={primaryButtonClassName}
                           >
                             {isConfirmingPhoneVerification ? 'Verificando...' : 'Confirmar OTP'}
                           </button>
@@ -594,33 +650,33 @@ export default function ProfesionalSettingsPage() {
 
                   <div className="grid gap-6 lg:grid-cols-[0.95fr,1.05fr]">
                     <div className="space-y-6">
-                      <div className="rounded-[24px] border border-white/70 bg-white/95 p-5 shadow-[0_16px_36px_rgba(15,23,42,0.12)]">
+                      <div className={sectionCardClassName}>
                         <DashboardSectionHeading
                           title="Acceso"
                           description="Datos base del profesional y referencias de identidad publica."
                         />
                         <div className="mt-4 grid gap-4">
                           <div>
-                            <p className="text-xs uppercase tracking-[0.3em] text-[#94A3B8]">
+                            <p className="text-xs uppercase tracking-[0.3em] text-[color:var(--ink-faint)]">
                               Email
                             </p>
-                            <p className="mt-1 text-base font-semibold text-[#0E2A47]">
+                            <p className="mt-1 text-base font-semibold text-[color:var(--ink)]">
                               {profile?.email || 'No disponible'}
                             </p>
                           </div>
                           <div>
-                            <p className="text-xs uppercase tracking-[0.3em] text-[#94A3B8]">
+                            <p className="text-xs uppercase tracking-[0.3em] text-[color:var(--ink-faint)]">
                               Slug publico
                             </p>
-                            <p className="mt-1 text-base font-semibold text-[#0E2A47]">
+                            <p className="mt-1 text-base font-semibold text-[color:var(--ink)]">
                               {profile?.slug || 'No disponible'}
                             </p>
                           </div>
-                          <div className="rounded-[18px] border border-[#E2E7EC] bg-[#F8FAFC] p-4">
-                            <p className="text-sm font-semibold text-[#0E2A47]">
+                          <div className="rounded-[18px] border border-[color:var(--border-soft)] bg-[color:var(--surface-soft)] p-4">
+                            <p className="text-sm font-semibold text-[color:var(--ink)]">
                               Sesion actual
                             </p>
-                            <p className="mt-1 text-sm text-[#64748B]">
+                            <p className="mt-1 text-sm text-[color:var(--ink-muted)]">
                               Cerra sesion desde aca si queres salir del dashboard profesional.
                             </p>
                             <Button
@@ -636,16 +692,16 @@ export default function ProfesionalSettingsPage() {
                         </div>
                       </div>
 
-                      <div className="rounded-[24px] border border-white/70 bg-white/95 p-5 shadow-[0_16px_36px_rgba(15,23,42,0.12)]">
+                      <div className={sectionCardClassName}>
                         <DashboardSectionHeading
                           title="Facturación"
                           description="Plan, suscripcion, cambios de nivel y seguimiento del webhook ahora viven en una seccion dedicada."
                         />
-                        <div className="mt-4 rounded-[18px] border border-[#D8EBE7] bg-[#F7FBFA] p-4">
-                          <p className="text-sm font-semibold text-[#0E2A47]">
+                        <div className="mt-4 rounded-[18px] border border-[color:var(--border-soft)] bg-[color:var(--surface-soft)] p-4">
+                          <p className="text-sm font-semibold text-[color:var(--ink)]">
                             Gestion comercial separada del resto de la cuenta
                           </p>
-                          <p className="mt-1 text-sm text-[#64748B]">
+                          <p className="mt-1 text-sm text-[color:var(--ink-muted)]">
                             Usa Facturacion para cambiar a BASIC, abrir checkout de PRO o PREMIUM y seguir la activacion del pago.
                           </p>
                           <Button
@@ -658,7 +714,7 @@ export default function ProfesionalSettingsPage() {
                         </div>
                       </div>
 
-                      <div className="rounded-[24px] border border-white/70 bg-white/95 p-5 shadow-[0_16px_36px_rgba(15,23,42,0.12)]">
+                      <div className={sectionCardClassName}>
                         <DashboardSectionHeading
                           title="Política de reservas"
                           description="Definí qué margen tiene el cliente para cancelar o reagendar sin salir del panel profesional."
@@ -667,8 +723,8 @@ export default function ProfesionalSettingsPage() {
                         {bookingPolicyMessage ? (
                           <p className={`mt-4 rounded-[16px] border px-4 py-3 text-sm ${
                             isBookingPolicyError
-                              ? 'border-red-200 bg-red-50 text-red-600'
-                              : 'border-[#cdeee9] bg-[#f0fffc] text-[#1FB6A6]'
+                              ? 'border-[color:var(--error-soft)] bg-[color:var(--error-soft)] text-[color:var(--error)]'
+                              : 'border-[color:var(--success-soft)] bg-[color:var(--success-soft)] text-[color:var(--success)]'
                           }`}>
                             {bookingPolicyMessage}
                           </p>
@@ -676,13 +732,13 @@ export default function ProfesionalSettingsPage() {
 
                         {isLoadingBookingPolicy || !bookingPolicyForm ? (
                           <div className="mt-4 space-y-3">
-                            <div className="h-11 rounded-[16px] bg-[#F1F5F9]" />
-                            <div className="h-11 rounded-[16px] bg-[#F1F5F9]" />
-                            <div className="h-28 rounded-[18px] bg-[#F8FAFC]" />
+                            <div className="h-11 rounded-[16px] bg-[color:var(--surface-soft)]" />
+                            <div className="h-11 rounded-[16px] bg-[color:var(--surface-soft)]" />
+                            <div className="h-28 rounded-[18px] bg-[color:var(--surface-hover)]" />
                           </div>
                         ) : (
                           <div className="mt-4 space-y-4">
-                            <label className="flex items-start gap-3 rounded-[18px] border border-[#E2E7EC] bg-[#F8FAFC] p-4">
+                            <label className="flex items-start gap-3 rounded-[18px] border border-[color:var(--border-soft)] bg-[color:var(--surface-soft)] p-4">
                               <input
                                 type="checkbox"
                                 checked={bookingPolicyForm.allowClientCancellation}
@@ -691,19 +747,19 @@ export default function ProfesionalSettingsPage() {
                                     allowClientCancellation: event.target.checked,
                                   });
                                 }}
-                                className="mt-1 h-4 w-4 rounded border-[#CBD5E1] text-[#1FB6A6] focus:ring-[#1FB6A6]"
+                                className="mt-1 h-4 w-4 rounded border-[color:var(--border-strong)] text-[color:var(--primary)] focus:ring-[color:var(--focus-ring)]"
                               />
                               <div>
-                                <p className="text-sm font-semibold text-[#0E2A47]">
+                                <p className="text-sm font-semibold text-[color:var(--ink)]">
                                   Permitir cancelación del cliente
                                 </p>
-                                <p className="mt-1 text-sm text-[#64748B]">
+                                <p className="mt-1 text-sm text-[color:var(--ink-muted)]">
                                   El cliente verá la acción según la ventana y el estado real de la reserva.
                                 </p>
                               </div>
                             </label>
 
-                            <label className="flex items-start gap-3 rounded-[18px] border border-[#E2E7EC] bg-[#F8FAFC] p-4">
+                            <label className="flex items-start gap-3 rounded-[18px] border border-[color:var(--border-soft)] bg-[color:var(--surface-soft)] p-4">
                               <input
                                 type="checkbox"
                                 checked={bookingPolicyForm.allowClientReschedule}
@@ -712,13 +768,13 @@ export default function ProfesionalSettingsPage() {
                                     allowClientReschedule: event.target.checked,
                                   });
                                 }}
-                                className="mt-1 h-4 w-4 rounded border-[#CBD5E1] text-[#1FB6A6] focus:ring-[#1FB6A6]"
+                                className="mt-1 h-4 w-4 rounded border-[color:var(--border-strong)] text-[color:var(--primary)] focus:ring-[color:var(--focus-ring)]"
                               />
                               <div>
-                                <p className="text-sm font-semibold text-[#0E2A47]">
+                                <p className="text-sm font-semibold text-[color:var(--ink)]">
                                   Permitir reagendamiento del cliente
                                 </p>
-                                <p className="mt-1 text-sm text-[#64748B]">
+                                <p className="mt-1 text-sm text-[color:var(--ink-muted)]">
                                   Si está activo, el cliente puede mover la reserva a otro horario disponible.
                                 </p>
                               </div>
@@ -797,25 +853,52 @@ export default function ProfesionalSettingsPage() {
                                 </p>
                               </label>
 
-                              <label className="flex items-start gap-3 rounded-[18px] border border-[#E2E7EC] bg-[#F8FAFC] p-4">
-                                <input
-                                  type="checkbox"
-                                  checked={bookingPolicyForm.retainDepositOnLateCancellation}
+                              <label className="block">
+                                <span className="text-xs font-semibold uppercase tracking-[0.2em] text-[#64748B]">
+                                  Regla dentro de ventana
+                                </span>
+                                <select
+                                  value={bookingPolicyForm.lateCancellationRefundMode}
                                   onChange={(event) => {
+                                    const nextMode = event.target.value as LateCancellationRefundMode;
                                     handleBookingPolicyFieldChange({
-                                      retainDepositOnLateCancellation: event.target.checked,
+                                      lateCancellationRefundMode: nextMode,
+                                      lateCancellationRefundValue:
+                                        nextMode === 'NONE' ? '0' : nextMode === 'FULL' ? '100' : bookingPolicyForm.lateCancellationRefundValue,
                                     });
                                   }}
-                                  className="mt-1 h-4 w-4 rounded border-[#CBD5E1] text-[#1FB6A6] focus:ring-[#1FB6A6]"
+                                  className="mt-1.5 h-11 w-full rounded-[16px] border border-[#E2E7EC] bg-[#F8FAFC] px-4 text-sm text-[#0E2A47] focus:border-[#1FB6A6] focus:outline-none"
+                                >
+                                  <option value="FULL">Devolver 100%</option>
+                                  <option value="NONE">No devolver</option>
+                                  <option value="PERCENTAGE">Devolver porcentaje</option>
+                                </select>
+                                <p className="mt-1 text-xs text-[#64748B]">
+                                  Define qué pasa si el cliente cancela dentro de la ventana límite.
+                                </p>
+                              </label>
+
+                              <label className={`block ${bookingPolicyForm.lateCancellationRefundMode === 'PERCENTAGE' ? '' : 'opacity-70'}`}>
+                                <span className="text-xs font-semibold uppercase tracking-[0.2em] text-[#64748B]">
+                                  % de devolución tardía
+                                </span>
+                                <input
+                                  type="number"
+                                  min={0}
+                                  max={100}
+                                  step={0.01}
+                                  disabled={bookingPolicyForm.lateCancellationRefundMode !== 'PERCENTAGE'}
+                                  value={bookingPolicyForm.lateCancellationRefundValue}
+                                  onChange={(event) => {
+                                    handleBookingPolicyFieldChange({
+                                      lateCancellationRefundValue: event.target.value,
+                                    });
+                                  }}
+                                  className="mt-1.5 h-11 w-full rounded-[16px] border border-[#E2E7EC] bg-[#F8FAFC] px-4 text-sm text-[#0E2A47] focus:border-[#1FB6A6] focus:outline-none disabled:cursor-not-allowed disabled:bg-[#EEF2F6]"
                                 />
-                                <div>
-                                  <p className="text-sm font-semibold text-[#0E2A47]">
-                                    Retener seña en cancelaciones tardías
-                                  </p>
-                                  <p className="mt-1 text-sm text-[#64748B]">
-                                    Si hay depósito, el backend sugerirá reagendar para evitar pérdida.
-                                  </p>
-                                </div>
+                                <p className="mt-1 text-xs text-[#64748B]">
+                                  Solo aplica cuando la regla es “Devolver porcentaje”.
+                                </p>
                               </label>
                             </div>
 

@@ -21,7 +21,18 @@ import {
   savePendingReservation,
 } from '@/services/pendingReservation';
 import { resolveAssetUrl } from '@/utils/assetUrl';
-import { getPaymentTypeDescription, getPaymentTypeLabel, isPrepaidBooking } from '@/utils/bookings';
+import {
+  describeBookingPolicy,
+  getPaymentTypeDescription,
+  getPaymentTypeLabel,
+  isPrepaidBooking,
+} from '@/utils/bookings';
+import {
+  closeCheckoutWindow,
+  openCheckoutUrl,
+  openCheckoutWindow,
+  redirectCheckoutWindow,
+} from '@/utils/checkoutWindow';
 import type { WorkDayKey } from '@/types/professional';
 
 const PublicProfileMap = dynamic(
@@ -423,15 +434,9 @@ export default function ReservationPage() {
     setSaveMessage(null);
 
     const requiresCheckout = isPrepaidBooking(service.paymentType);
-    const checkoutWindow = requiresCheckout && typeof window !== 'undefined'
-      ? window.open('', '_blank', 'noopener,noreferrer')
-      : null;
+    const checkoutWindow = requiresCheckout ? openCheckoutWindow() : null;
 
-    if (checkoutWindow) {
-      checkoutWindow.document.write(
-        '<p style="font-family:sans-serif;padding:24px">Preparando checkout seguro...</p>',
-      );
-    }
+    let createdBookingId: number | null = null;
 
     try {
       const payload = {
@@ -443,18 +448,20 @@ export default function ReservationPage() {
       if (!created || typeof created.id !== 'number') {
         throw new Error(RESERVATION_ERROR_FALLBACK);
       }
+      createdBookingId = created.id;
 
       clearPendingReservation();
       if (requiresCheckout) {
         const paymentSession = await createClientBookingPaymentSession(String(created.id));
         const hasCheckoutUrl = Boolean(paymentSession.checkoutUrl);
 
-        if (checkoutWindow && paymentSession.checkoutUrl) {
-          checkoutWindow.location.href = paymentSession.checkoutUrl;
-        } else if (paymentSession.checkoutUrl && typeof window !== 'undefined') {
-          window.open(paymentSession.checkoutUrl, '_blank', 'noopener,noreferrer');
+        if (paymentSession.checkoutUrl) {
+          const redirected = redirectCheckoutWindow(checkoutWindow, paymentSession.checkoutUrl);
+          if (!redirected) {
+            openCheckoutUrl(paymentSession.checkoutUrl);
+          }
         } else if (checkoutWindow) {
-          checkoutWindow.close();
+          closeCheckoutWindow(checkoutWindow);
         }
 
         setSaveMessage(
@@ -473,7 +480,7 @@ export default function ReservationPage() {
       }
 
       if (checkoutWindow) {
-        checkoutWindow.close();
+        closeCheckoutWindow(checkoutWindow);
       }
       setSaveMessage('Reserva creada. Te llevamos al estado de la reserva.');
       router.push({
@@ -485,7 +492,17 @@ export default function ReservationPage() {
       });
     } catch (error) {
       if (checkoutWindow) {
-        checkoutWindow.close();
+        closeCheckoutWindow(checkoutWindow);
+      }
+      if (createdBookingId !== null) {
+        router.push({
+          pathname: '/cliente/reservas',
+          query: {
+            bookingId: String(createdBookingId),
+            checkout: 'failed',
+          },
+        });
+        return;
       }
       if (isReservationTimeoutError(error)) {
         setSaveError(RESERVATION_TIMEOUT_ERROR);
@@ -559,6 +576,14 @@ export default function ReservationPage() {
                 </p>
                 <p className="mt-1 text-xs text-[#64748B]">
                   {getPaymentTypeDescription(service?.paymentType)}
+                </p>
+              </div>
+              <div className="rounded-[14px] border border-[#E2E7EC] bg-[#F8FAFC] px-3 py-2">
+                <p className="text-[0.65rem] font-semibold uppercase tracking-[0.25em] text-[#94A3B8]">
+                  Cancelación
+                </p>
+                <p className="mt-1 text-xs text-[#64748B]">
+                  {describeBookingPolicy(professional?.bookingPolicy)}
                 </p>
               </div>
               <p>{professional?.fullName || 'Cargando profesional...'}</p>
@@ -730,6 +755,10 @@ export default function ReservationPage() {
                 {isPrepaidBooking(service?.paymentType)
                   ? 'El backend define el monto del checkout y el estado final de confirmación. Plura solo muestra ese resultado.'
                   : 'Esta reserva no abre checkout. El backend mantiene el estado operativo de la reserva.'}
+              </div>
+
+              <div className="mt-3 rounded-[14px] border border-[#E2E7EC] bg-white px-4 py-3 text-xs text-[#475569]">
+                {describeBookingPolicy(professional?.bookingPolicy)}
               </div>
 
               <button

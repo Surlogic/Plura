@@ -20,16 +20,16 @@ export default function SchedulePausesPanel({
   onRemovePause,
 }: SchedulePausesPanelProps) {
   return (
-    <div className="rounded-[24px] border border-white/70 bg-white/95 p-5 shadow-[0_16px_36px_rgba(15,23,42,0.12)]">
-      <p className="text-[0.65rem] uppercase tracking-[0.35em] text-[#94A3B8]">
+    <div className="rounded-[24px] border border-[color:var(--border-soft)] bg-white/95 p-5 shadow-[var(--shadow-card)]">
+      <p className="text-[0.65rem] uppercase tracking-[0.35em] text-[color:var(--ink-faint)]">
         Pausas por fecha
       </p>
-      <h2 className="mt-2 text-lg font-semibold text-[#0E2A47]">
+      <h2 className="mt-2 text-lg font-semibold text-[color:var(--ink)]">
         Pausar disponibilidad por viaje
       </h2>
       <div className="mt-4 grid gap-4 sm:grid-cols-2">
         <div>
-          <label className="text-sm font-medium text-[#0E2A47]">
+          <label className="text-sm font-medium text-[color:var(--ink)]">
             Desde
           </label>
           <input
@@ -40,7 +40,7 @@ export default function SchedulePausesPanel({
           />
         </div>
         <div>
-          <label className="text-sm font-medium text-[#0E2A47]">
+          <label className="text-sm font-medium text-[color:var(--ink)]">
             Hasta
           </label>
           <input
@@ -51,7 +51,7 @@ export default function SchedulePausesPanel({
           />
         </div>
         <div className="sm:col-span-2">
-          <label className="text-sm font-medium text-[#0E2A47]">
+          <label className="text-sm font-medium text-[color:var(--ink)]">
             Nota (opcional)
           </label>
           <input
@@ -65,33 +65,33 @@ export default function SchedulePausesPanel({
       <button
         type="button"
         onClick={onAddPause}
-        className="mt-4 w-full rounded-full bg-[#0B1D2A] px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
+        className="mt-4 w-full rounded-full bg-[color:var(--primary)] px-4 py-2 text-sm font-semibold text-white shadow-[var(--shadow-card)] transition hover:-translate-y-0.5 hover:bg-[color:var(--primary-strong)]"
       >
         Agregar pausa
       </button>
       <div className="mt-4 space-y-3">
         {pauses.length === 0 ? (
-          <div className="rounded-[18px] border border-dashed border-[#CBD5F5] bg-white/70 px-4 py-4 text-sm text-[#64748B]">
+          <div className="rounded-[18px] border border-dashed border-[color:var(--border-strong)] bg-white/70 px-4 py-4 text-sm text-[color:var(--ink-muted)]">
             No hay pausas cargadas todavía.
           </div>
         ) : (
           pauses.map((pause) => (
             <div
               key={pause.id}
-              className="flex flex-wrap items-center justify-between gap-4 rounded-[18px] border border-[#E2E7EC] bg-[#F7F9FB] px-4 py-3 text-sm text-[#0E2A47]"
+              className="flex flex-wrap items-center justify-between gap-4 rounded-[18px] border border-[color:var(--border-soft)] bg-[color:var(--surface-soft)] px-4 py-3 text-sm text-[color:var(--ink)]"
             >
               <div>
                 <p className="font-semibold">
                   {pause.startDate} → {pause.endDate}
                 </p>
                 {pause.note ? (
-                  <p className="text-xs text-[#64748B]">{pause.note}</p>
+                  <p className="text-xs text-[color:var(--ink-muted)]">{pause.note}</p>
                 ) : null}
               </div>
               <button
                 type="button"
                 onClick={() => onRemovePause(pause.id)}
-                className="rounded-full border border-[#F1B4B4] px-3 py-1 text-xs font-semibold text-[#C24141]"
+                className="rounded-full border border-[color:var(--error-soft)] px-3 py-1 text-xs font-semibold text-[color:var(--error)]"
               >
                 Quitar
               </button>

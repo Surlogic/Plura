@@ -428,16 +428,16 @@ export default function ExplorarPage() {
   const activeMapItemId = hoveredMapItemId || selectedMapItemId;
 
   return (
-    <div className="min-h-screen bg-[#F4F6F8] text-[#0E2A47]">
+    <div className="min-h-screen bg-[color:var(--bg-soft)] text-[color:var(--ink)]">
       {hasClientSession ? <ClientDashboardNavbar name={displayName} /> : <Navbar />}
       <main className="mx-auto w-full max-w-6xl space-y-10 px-4 pb-24 pt-12">
         <header className="space-y-4">
           <div className="space-y-2">
-            <p className="text-xs uppercase tracking-[0.35em] text-[#6B7280]">Explorar</p>
-            <h1 className="text-3xl font-semibold text-[#0E2A47] sm:text-4xl">
+            <p className="text-xs uppercase tracking-[0.35em] text-[color:var(--ink-faint)]">Explorar</p>
+            <h1 className="text-3xl font-semibold text-[color:var(--ink)] sm:text-4xl">
               Profesionales y locales
             </h1>
-            <p className="max-w-2xl text-sm text-[#6B7280] sm:text-base">
+            <p className="max-w-2xl text-sm text-[color:var(--ink-muted)] sm:text-base">
               Buscá por tipo, ubicación, fecha o disponibilidad inmediata.
             </p>
           </div>
@@ -446,7 +446,7 @@ export default function ExplorarPage() {
             {activeFilters.map((filter) => (
               <span
                 key={filter}
-                className="inline-flex rounded-full bg-[#E8EEF5] px-3 py-1 text-xs font-semibold text-[#0E2A47]"
+                className="inline-flex rounded-full border border-[color:var(--border-soft)] bg-[color:var(--surface-soft)] px-3 py-1 text-xs font-semibold text-[color:var(--ink)]"
               >
                 {filter}
               </span>
@@ -454,12 +454,14 @@ export default function ExplorarPage() {
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
-            <div className="inline-flex rounded-full border border-[#E2E7EC] bg-white p-1">
+            <div className="inline-flex rounded-full border border-[color:var(--border-soft)] bg-[color:var(--surface-strong)] p-1 shadow-[var(--shadow-card)]">
               <button
                 type="button"
                 onClick={() => handleViewChange(false)}
                 className={`rounded-full px-4 py-2 text-sm font-semibold transition ${
-                  !isMapView ? 'bg-[#0E2A47] text-white' : 'text-[#0E2A47] hover:bg-[#F8FAFC]'
+                  !isMapView
+                    ? 'bg-[color:var(--surface-dark)] text-[color:var(--text-on-dark)]'
+                    : 'text-[color:var(--ink)] hover:bg-[color:var(--surface-soft)]'
                 }`}
                 aria-pressed={!isMapView}
               >
@@ -469,7 +471,9 @@ export default function ExplorarPage() {
                 type="button"
                 onClick={() => handleViewChange(true)}
                 className={`rounded-full px-4 py-2 text-sm font-semibold transition ${
-                  isMapView ? 'bg-[#0E2A47] text-white' : 'text-[#0E2A47] hover:bg-[#F8FAFC]'
+                  isMapView
+                    ? 'bg-[color:var(--surface-dark)] text-[color:var(--text-on-dark)]'
+                    : 'text-[color:var(--ink)] hover:bg-[color:var(--surface-soft)]'
                 }`}
                 aria-pressed={isMapView}
               >
@@ -477,14 +481,14 @@ export default function ExplorarPage() {
               </button>
             </div>
 
-            <div className="inline-flex items-center gap-2 rounded-full border border-[#E2E7EC] bg-white px-3 py-1.5">
-              <span className="text-xs font-semibold uppercase tracking-[0.15em] text-[#94A3B8]">
+            <div className="inline-flex items-center gap-2 rounded-full border border-[color:var(--border-soft)] bg-[color:var(--surface-strong)] px-3 py-1.5 shadow-[var(--shadow-card)]">
+              <span className="text-xs font-semibold uppercase tracking-[0.15em] text-[color:var(--ink-faint)]">
                 Orden
               </span>
               <select
                 value={sort}
                 onChange={(event) => handleSortChange(event.target.value as SearchSort)}
-                className="rounded-full bg-transparent text-sm font-semibold text-[#0E2A47] focus:outline-none"
+                className="rounded-full bg-transparent text-sm font-semibold text-[color:var(--ink)] focus:outline-none"
               >
                 {SORT_OPTIONS.map((option) => (
                   <option key={option.value} value={option.value}>
@@ -494,14 +498,14 @@ export default function ExplorarPage() {
               </select>
             </div>
 
-            <div className="inline-flex items-center gap-2 rounded-full border border-[#E2E7EC] bg-white px-3 py-1.5">
-              <span className="text-xs font-semibold uppercase tracking-[0.15em] text-[#94A3B8]">
+            <div className="inline-flex items-center gap-2 rounded-full border border-[color:var(--border-soft)] bg-[color:var(--surface-strong)] px-3 py-1.5 shadow-[var(--shadow-card)]">
+              <span className="text-xs font-semibold uppercase tracking-[0.15em] text-[color:var(--ink-faint)]">
                 Radio
               </span>
               <select
                 value={String(selectedRadiusOption)}
                 onChange={(event) => handleRadiusChange(Number(event.target.value))}
-                className="rounded-full bg-transparent text-sm font-semibold text-[#0E2A47] focus:outline-none"
+                className="rounded-full bg-transparent text-sm font-semibold text-[color:var(--ink)] focus:outline-none"
               >
                 {RADIUS_OPTIONS.map((value) => (
                   <option key={value} value={value}>

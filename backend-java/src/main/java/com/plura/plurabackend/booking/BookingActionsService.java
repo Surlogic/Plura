@@ -4,16 +4,16 @@ import com.plura.plurabackend.booking.actions.BookingActionsEvaluation;
 import com.plura.plurabackend.booking.actions.BookingActionsEvaluator;
 import com.plura.plurabackend.booking.actions.model.BookingActionActor;
 import com.plura.plurabackend.booking.actions.model.BookingActionReasonCode;
+import com.plura.plurabackend.booking.dto.BookingPolicySnapshotResponse;
 import com.plura.plurabackend.booking.dto.BookingActionsResponse;
 import com.plura.plurabackend.booking.model.Booking;
 import com.plura.plurabackend.booking.policy.BookingPolicySnapshotService;
 import com.plura.plurabackend.booking.policy.ResolvedBookingPolicy;
 import com.plura.plurabackend.booking.repository.BookingRepository;
+import com.plura.plurabackend.booking.time.BookingDateTimeService;
 import com.plura.plurabackend.professional.repository.ProfessionalProfileRepository;
 import java.time.LocalDateTime;
-import java.time.ZoneId;
 import java.util.List;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
@@ -26,20 +26,20 @@ public class BookingActionsService {
     private final ProfessionalProfileRepository professionalProfileRepository;
     private final BookingPolicySnapshotService bookingPolicySnapshotService;
     private final BookingActionsEvaluator bookingActionsEvaluator;
-    private final ZoneId appZoneId;
+    private final BookingDateTimeService bookingDateTimeService;
 
     public BookingActionsService(
         BookingRepository bookingRepository,
         ProfessionalProfileRepository professionalProfileRepository,
         BookingPolicySnapshotService bookingPolicySnapshotService,
         BookingActionsEvaluator bookingActionsEvaluator,
-        @Value("${app.timezone:America/Montevideo}") String appTimezone
+        BookingDateTimeService bookingDateTimeService
     ) {
         this.bookingRepository = bookingRepository;
         this.professionalProfileRepository = professionalProfileRepository;
         this.bookingPolicySnapshotService = bookingPolicySnapshotService;
         this.bookingActionsEvaluator = bookingActionsEvaluator;
-        this.appZoneId = ZoneId.of(appTimezone);
+        this.bookingDateTimeService = bookingDateTimeService;
     }
 
     public BookingActionsResponse getActions(Long bookingId, Authentication authentication) {
@@ -53,7 +53,7 @@ public class BookingActionsService {
             booking,
             actor,
             resolvedPolicy.snapshot(),
-            LocalDateTime.now(appZoneId)
+            LocalDateTime.now(bookingDateTimeService.resolveZoneId(booking.getTimezone()))
         );
 
         List<String> reasonCodes = evaluation.reasonCodes().stream()
@@ -65,12 +65,14 @@ public class BookingActionsService {
             reasonCodes = new java.util.ArrayList<>(reasonCodes);
             reasonCodes.add(BookingActionReasonCode.POLICY_SNAPSHOT_FALLBACK.name());
         }
+        BookingPolicySnapshotResponse policySnapshot = bookingPolicySnapshotService.toResponse(resolvedPolicy);
 
         return new BookingActionsResponse(
             booking.getId(),
             actor.actorType().name(),
             booking.getOperationalStatus().name(),
             resolvedPolicy.source().name(),
+            policySnapshot,
             evaluation.canCancel(),
             evaluation.canReschedule(),
             evaluation.canMarkNoShow(),

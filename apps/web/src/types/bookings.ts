@@ -19,6 +19,24 @@ export type BookingFinancialStatus =
   | 'RELEASED'
   | 'FAILED';
 
+export type BookingRefundStatus =
+  | 'NONE'
+  | 'PENDING_MANUAL'
+  | 'PENDING_PROVIDER'
+  | 'COMPLETED'
+  | 'FAILED'
+  | 'CANCELLED';
+
+export type BookingPayoutStatus =
+  | 'NONE'
+  | 'PENDING_MANUAL'
+  | 'PENDING_PROVIDER'
+  | 'COMPLETED'
+  | 'FAILED'
+  | 'CANCELLED';
+
+export type LateCancellationRefundMode = 'FULL' | 'NONE' | 'PERCENTAGE';
+
 export type BookingFinancialSummary = {
   amountCharged?: number | null;
   amountHeld?: number | null;
@@ -32,6 +50,21 @@ export type BookingFinancialSummary = {
   updatedAt?: string | null;
 };
 
+export type BookingPolicySnapshot = {
+  sourcePolicyId?: string | null;
+  sourcePolicyVersion?: number | null;
+  professionalId?: number | null;
+  resolvedAt?: string | null;
+  policySource?: string | null;
+  allowClientCancellation: boolean;
+  allowClientReschedule: boolean;
+  cancellationWindowHours?: number | null;
+  rescheduleWindowHours?: number | null;
+  maxClientReschedules?: number | null;
+  lateCancellationRefundMode?: LateCancellationRefundMode | null;
+  lateCancellationRefundValue?: number | null;
+};
+
 export type BookingSuggestedAction = 'NONE' | 'RESCHEDULE';
 
 export type BookingActions = {
@@ -39,6 +72,7 @@ export type BookingActions = {
   actorType?: string | null;
   operationalStatus?: BookingOperationalStatus | null;
   policySource?: string | null;
+  policySnapshot?: BookingPolicySnapshot | null;
   canCancel: boolean;
   canReschedule: boolean;
   canMarkNoShow: boolean;
@@ -118,7 +152,8 @@ export type ProfessionalBookingPolicy = {
   cancellationWindowHours?: number | null;
   rescheduleWindowHours?: number | null;
   maxClientReschedules?: number | null;
-  retainDepositOnLateCancellation: boolean;
+  lateCancellationRefundMode?: LateCancellationRefundMode | null;
+  lateCancellationRefundValue?: number | null;
 };
 
 export type ProfessionalBookingPolicyUpdateInput = {
@@ -127,7 +162,8 @@ export type ProfessionalBookingPolicyUpdateInput = {
   cancellationWindowHours?: number | null;
   rescheduleWindowHours?: number | null;
   maxClientReschedules?: number | null;
-  retainDepositOnLateCancellation?: boolean;
+  lateCancellationRefundMode?: LateCancellationRefundMode | null;
+  lateCancellationRefundValue?: number | null;
 };
 
 export type BookingCommandResponse<TBooking> = {

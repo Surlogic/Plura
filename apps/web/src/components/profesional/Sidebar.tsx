@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef } from 'react';
 import type { ProfessionalProfile } from '@/types/professional';
 import { useProfessionalDashboardUnsavedChanges } from '@/context/ProfessionalDashboardUnsavedChangesContext';
 import Badge from '@/components/ui/Badge';
-import Logo from '@/components/ui/Logo';
+import BrandLogo from '@/components/ui/BrandLogo';
 import { cn } from '@/components/ui/cn';
 import {
   DashboardIcon,
@@ -116,20 +116,15 @@ export default function ProfesionalSidebar({ profile, active }: SidebarProps) {
   return (
     <aside
       ref={rootRef}
-      className="relative min-h-full overflow-x-hidden rounded-r-[24px] border-r border-white/8 bg-[#0b1d34] px-5 py-6 text-white"
+      className="relative min-h-full overflow-x-hidden rounded-r-[28px] border-r border-[color:var(--border-soft)] bg-[color:var(--sidebar-surface)] px-5 py-6 text-[color:var(--ink)]"
     >
-      <div className="border-b border-white/8 pb-5">
+      <div className="border-b border-[color:var(--border-soft)] pb-5">
         <div className="flex justify-center">
-          <Logo
-            href="/"
-            size={28}
-            className="justify-center"
-            textClassName="text-white"
-          />
+          <BrandLogo href="/" variant="mobile" className="justify-center" />
         </div>
 
         <div className="mt-6 flex flex-col items-center text-center">
-          <div className="flex h-14 w-14 items-center justify-center overflow-hidden rounded-[18px] border border-white/10 bg-white/10 text-base font-semibold">
+          <div className="flex h-14 w-14 items-center justify-center overflow-hidden rounded-[18px] border border-[color:var(--border-soft)] bg-white text-base font-semibold text-[color:var(--primary)] shadow-[var(--shadow-card)]">
             {profile?.logoUrl ? (
               <img
                 src={profile.logoUrl}
@@ -141,16 +136,16 @@ export default function ProfesionalSidebar({ profile, active }: SidebarProps) {
             )}
           </div>
           <div className="mt-3 flex flex-wrap justify-center gap-2">
-            <Badge variant="contrast" className="px-2 py-1 text-[0.56rem] tracking-[0.14em] text-[#c8d6e8]">
+            <Badge variant="success" className="px-2 py-1 text-[0.56rem] tracking-[0.14em]">
               Profesional
             </Badge>
-            <span className="rounded-full border border-white/8 bg-white/6 px-2 py-1 text-[0.56rem] font-semibold uppercase tracking-[0.1em] text-white/68">
+            <span className="rounded-full border border-[color:var(--premium-soft)] bg-[color:var(--premium-soft)] px-2 py-1 text-[0.56rem] font-semibold uppercase tracking-[0.1em] text-[color:var(--premium-strong)]">
               {planLabel}
             </span>
           </div>
           <div className="mt-3 min-w-0 max-w-full">
             <p className="truncate text-[1rem] font-semibold">{displayName}</p>
-            <p className="mt-1 text-sm text-white/60">{displayMeta}</p>
+            <p className="mt-1 text-sm text-[color:var(--ink-muted)]">{displayMeta}</p>
           </div>
         </div>
       </div>
@@ -158,7 +153,7 @@ export default function ProfesionalSidebar({ profile, active }: SidebarProps) {
       <div className="relative mt-5 space-y-5">
         {menuSections.map((section) => (
           <div key={section.label}>
-            <p className="px-1 text-[0.6rem] uppercase tracking-[0.22em] text-white/38">
+            <p className="px-1 text-[0.6rem] font-semibold uppercase tracking-[0.22em] text-[color:var(--ink-muted)]">
               {section.label}
             </p>
             <nav className="mt-2.5 space-y-1.5">
@@ -167,10 +162,10 @@ export default function ProfesionalSidebar({ profile, active }: SidebarProps) {
                 const className = cn(
                   'group flex w-full items-center gap-3 rounded-[14px] border px-3 py-2.5 text-left transition',
                   isActive
-                    ? 'border-white/12 bg-white text-[#0b1d2a]'
+                    ? 'border-[color:var(--primary-soft)] bg-[color:var(--primary-soft)] text-[color:var(--primary-strong)] shadow-[var(--shadow-card)]'
                     : item.disabled
-                      ? 'cursor-not-allowed border-white/6 bg-white/4 text-white/36'
-                      : 'border-transparent bg-transparent text-white/84 hover:border-white/6 hover:bg-white/[0.05]',
+                      ? 'cursor-not-allowed border-[color:var(--border-soft)] bg-white/60 text-[color:var(--ink-faint)]'
+                      : 'border-transparent bg-transparent text-[color:var(--ink)] hover:border-[color:var(--border-soft)] hover:bg-white',
                 );
 
                 const content = (
@@ -179,8 +174,8 @@ export default function ProfesionalSidebar({ profile, active }: SidebarProps) {
                       className={cn(
                         'inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-[12px] border',
                         isActive
-                          ? 'border-[#d5dde7] bg-[#f3f6f9] text-[#0b1d2a]'
-                          : 'border-white/8 bg-white/[0.04] text-white/72',
+                          ? 'border-white bg-white text-[color:var(--primary)]'
+                          : 'border-[color:var(--border-soft)] bg-[color:var(--surface-soft)] text-[color:var(--ink)]',
                       )}
                     >
                       <DashboardIcon name={item.icon} className="h-4 w-4" />

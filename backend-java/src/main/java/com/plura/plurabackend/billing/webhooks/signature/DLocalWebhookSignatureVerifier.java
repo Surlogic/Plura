@@ -58,6 +58,14 @@ public class DLocalWebhookSignatureVerifier {
             return true;
         }
 
+        String apiBodyExpected = SignatureUtils.hmacSha256Hex(
+            secret,
+            (config.getXLogin() == null ? "" : config.getXLogin()) + body
+        );
+        if (SignatureUtils.constantTimeEquals(apiBodyExpected, signatureOnly)) {
+            return true;
+        }
+
         if (billingProperties.isProductionMode() || !config.isSandboxOnlyBodySignatureFallback()) {
             return false;
         }

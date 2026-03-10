@@ -1,5 +1,14 @@
 import type { Category } from '@/types/category';
-import type { BookingFinancialSummary, BookingPaymentType } from '@/types/bookings';
+import type {
+  BookingFinancialStatus,
+  BookingFinancialSummary,
+  BookingPaymentType,
+  BookingPolicySnapshot,
+  BookingPayoutRecord,
+  BookingPayoutStatus,
+  BookingRefundRecord,
+  BookingRefundStatus,
+} from '@/types/bookings';
 
 export type ProductPlanCode = 'BASIC' | 'PROFESSIONAL' | 'COMPANY';
 
@@ -82,6 +91,8 @@ export type ProfessionalService = {
   description?: string;
   imageUrl?: string;
   price: string;
+  depositAmount?: number | null;
+  currency?: string | null;
   duration: string;
   postBufferMinutes?: number;
   bufferTime: string;
@@ -96,6 +107,8 @@ export type PublicService = {
   description?: string;
   imageUrl?: string;
   price: string;
+  depositAmount?: number | null;
+  currency?: string | null;
   duration: string;
   postBufferMinutes?: number;
   bufferTime?: string;
@@ -153,5 +166,13 @@ export type ProfessionalReservation = {
   status?: ReservationStatus;
   paymentType?: BookingPaymentType | null;
   financialSummary?: BookingFinancialSummary | null;
+  paymentStatus?: BookingFinancialStatus | null;
+  refundStatus?: BookingRefundStatus | null;
+  payoutStatus?: BookingPayoutStatus | null;
+  latestRefund?: BookingRefundRecord | null;
+  latestPayout?: BookingPayoutRecord | null;
+  policySnapshot?: BookingPolicySnapshot | null;
+  timezone?: string | null;
+  startDateTimeUtc?: string | null;
   notes?: string;
 };

@@ -1,7 +1,14 @@
 import type { HTMLAttributes, ReactNode } from 'react';
 import { cn } from '@/components/ui/cn';
 
-type BadgeVariant = 'neutral' | 'accent' | 'warm' | 'contrast';
+type BadgeVariant =
+  | 'neutral'
+  | 'accent'
+  | 'warm'
+  | 'contrast'
+  | 'success'
+  | 'info'
+  | 'premium';
 
 type BadgeProps = HTMLAttributes<HTMLSpanElement> & {
   children: ReactNode;
@@ -9,12 +16,20 @@ type BadgeProps = HTMLAttributes<HTMLSpanElement> & {
 };
 
 const variantClassNames: Record<BadgeVariant, string> = {
-  neutral: 'border-[color:var(--border-soft)] bg-white/78 text-[color:var(--ink)]',
+  neutral:
+    'border-[color:var(--border-soft)] bg-[color:var(--surface-soft)] text-[color:var(--text-secondary)]',
   accent:
     'border-[color:var(--accent-soft)] bg-[color:var(--accent-soft)] text-[color:var(--accent-strong)]',
   warm:
-    'border-[color:var(--warm-soft)] bg-[color:var(--warm-soft)] text-[color:var(--warm)]',
-  contrast: 'border-white/14 bg-white/8 text-white',
+    'border-[color:var(--premium-soft)] bg-[color:var(--premium-soft)] text-[color:var(--premium-strong)]',
+  contrast:
+    'border-white/12 bg-white/8 text-[color:var(--text-on-dark-secondary)]',
+  success:
+    'border-[color:var(--success-soft)] bg-[color:var(--success-soft)] text-[color:var(--success)]',
+  info:
+    'border-[color:var(--info-soft)] bg-[color:var(--info-soft)] text-[color:var(--accent-strong)]',
+  premium:
+    'border-[color:var(--premium-soft)] bg-[color:var(--premium-soft)] text-[color:var(--premium-strong)]',
 };
 
 export default function Badge({
@@ -27,7 +42,7 @@ export default function Badge({
     <span
       {...props}
       className={cn(
-        'inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold tracking-[0.12em] uppercase',
+        'inline-flex items-center rounded-full border px-3 py-1 text-[0.68rem] font-semibold tracking-[0.14em] uppercase',
         variantClassNames[variant],
         className,
       )}

@@ -34,6 +34,7 @@ public class ProfessionalPayoutConfigService {
     private static final Pattern ACCOUNT_NUMBER_PATTERN = Pattern.compile("^[A-Za-z0-9\\-\\s]{4,64}$");
     private static final Pattern ACCOUNT_TYPE_PATTERN = Pattern.compile("^[A-Za-z0-9_\\-\\s]{2,20}$");
     private static final Pattern EMAIL_PATTERN = Pattern.compile("^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$");
+    private static final Pattern SPLIT_CODE_PATTERN = Pattern.compile("^[A-Za-z0-9._:\\-]{3,120}$");
 
     private static final List<String> BASE_REQUIRED_FIELDS = List.of(
         "firstName",
@@ -100,6 +101,7 @@ public class ProfessionalPayoutConfigService {
         profile.setDlocalBankAccountNumber(normalizeValue(request.getAccountNumber()));
         profile.setDlocalBankAccountType(normalizeUppercase(request.getAccountType()));
         profile.setDlocalBankBranch(normalizeUppercase(request.getBranch()));
+        profile.setDlocalSplitCode(normalizeSplitCode(request.getSplitCode()));
 
         String nextPhone = normalizeValue(request.getPhone());
         if (!sameValue(user.getPhoneNumber(), nextPhone)) {
@@ -135,6 +137,8 @@ public class ProfessionalPayoutConfigService {
         );
 
         boolean payoutEnabled = Boolean.TRUE.equals(profile.getDlocalPayoutEnabled());
+        String splitCode = normalizeSplitCode(profile.getDlocalSplitCode());
+        boolean splitPaymentsEnabled = splitCode != null && SPLIT_CODE_PATTERN.matcher(splitCode).matches();
         boolean readyToReceivePayouts = assessment.fieldsComplete() && payoutEnabled;
         String status = resolveStatus(assessment, payoutEnabled);
 
@@ -157,7 +161,9 @@ public class ProfessionalPayoutConfigService {
             assessment.missingFields(),
             assessment.invalidFields(),
             outstandingPaidBookingsCount > 0,
-            outstandingPaidBookingsCount
+            outstandingPaidBookingsCount,
+            splitCode,
+            splitPaymentsEnabled
         );
     }
 
@@ -285,6 +291,10 @@ public class ProfessionalPayoutConfigService {
     private String normalizeUppercase(String value) {
         String normalized = normalizeValue(value);
         return normalized == null ? null : normalized.toUpperCase(Locale.ROOT);
+    }
+
+    private String normalizeSplitCode(String value) {
+        return normalizeValue(value);
     }
 
     private String normalizeValue(String value) {

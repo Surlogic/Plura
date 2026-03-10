@@ -49,9 +49,9 @@ export default memo(function BusinessCard({
             className="object-cover transition duration-500 group-hover:scale-105"
           />
         ) : (
-          <div className="absolute inset-0 bg-[linear-gradient(140deg,rgba(31,182,166,0.2),rgba(255,255,255,0.7),rgba(242,140,56,0.18))]" />
+          <div className="absolute inset-0 bg-[linear-gradient(145deg,var(--brand-navy)_0%,var(--brand-navy-soft)_62%,rgba(54,200,244,0.18)_100%)]" />
         )}
-        <div className="absolute inset-0 bg-[linear-gradient(180deg,transparent,rgba(13,35,58,0.32))]" />
+        <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(15,23,42,0.04),rgba(15,23,42,0.22))]" />
       </div>
       <div className="mt-4 flex items-start justify-between gap-3">
         <div>

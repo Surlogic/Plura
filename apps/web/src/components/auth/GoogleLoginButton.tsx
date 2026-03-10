@@ -178,7 +178,7 @@ export default function GoogleLoginButton({
       <button
         type="button"
         disabled
-        className="h-11 w-full rounded-full border border-[#CBD5E1] bg-[#F8FAFC] px-4 text-sm font-medium text-[#64748B]"
+        className="h-11 w-full rounded-full border border-[color:var(--border-soft)] bg-[color:var(--surface-soft)] px-4 text-sm font-medium text-[color:var(--ink-muted)]"
       >
         Google no configurado
       </button>
@@ -260,7 +260,7 @@ export default function GoogleLoginButton({
       type="button"
       onClick={handleClick}
       disabled={isLoading}
-      className="flex h-11 w-full items-center justify-center gap-3 rounded-full border border-[#CBD5E1] bg-white px-4 text-sm font-medium text-[#3C4043] shadow-sm transition hover:bg-[#F8FAFC] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#4285F4]/35 disabled:cursor-not-allowed disabled:opacity-70"
+      className="flex h-11 w-full items-center justify-center gap-3 rounded-full border border-[color:var(--border-soft)] bg-white px-4 text-sm font-medium text-[color:var(--ink)] shadow-[var(--shadow-card)] transition hover:bg-[color:var(--surface-soft)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--focus-ring)] disabled:cursor-not-allowed disabled:opacity-70"
       aria-busy={isLoading}
     >
       <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true">

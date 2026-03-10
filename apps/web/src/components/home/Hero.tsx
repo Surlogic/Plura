@@ -26,7 +26,7 @@ export default function Hero({ stats, isLoading = false }: HeroProps) {
       <div className="mx-auto max-w-6xl">
         <div className="mx-auto max-w-[50rem]">
           <div className="space-y-4 text-center">
-            <Badge variant="neutral" className="border-[color:var(--accent-soft)] bg-white/84 text-[color:var(--accent-strong)]">
+            <Badge variant="neutral" className="border-[color:var(--accent-soft)] bg-[color:var(--surface-strong)] text-[color:var(--accent-strong)]">
               Marketplace de reservas
             </Badge>
             <div className="space-y-2.5">
@@ -41,7 +41,7 @@ export default function Hero({ stats, isLoading = false }: HeroProps) {
               {trustPoints.map((item) => (
                 <span
                   key={item}
-                  className="rounded-full border border-[color:var(--border-soft)] bg-white/78 px-3.5 py-1.5 text-[0.84rem] font-medium text-[color:var(--ink-muted)]"
+                  className="rounded-full border border-[color:var(--border-soft)] bg-[color:var(--surface-strong)] px-3.5 py-1.5 text-[0.84rem] font-medium text-[color:var(--ink-muted)] shadow-[var(--shadow-card)]"
                 >
                   {item}
                 </span>

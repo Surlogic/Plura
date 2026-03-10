@@ -62,55 +62,65 @@ export default function ProfesionalLoginPage() {
   };
 
   const inputClassName =
-    'h-12 w-full rounded-[18px] border border-[color:var(--border-soft)] bg-white/90 px-4 text-sm text-[color:var(--ink)] placeholder:text-[color:var(--ink-muted)] transition focus:border-[#0f766e] focus:outline-none focus:ring-2 focus:ring-[rgba(15,118,110,0.18)]';
+    'h-12 w-full rounded-[18px] border border-[color:var(--border-soft)] bg-[color:var(--surface-strong)] px-4 text-sm text-[color:var(--ink)] placeholder:text-[color:var(--ink-faint)] transition focus:border-[color:var(--accent)] focus:outline-none focus:ring-4 focus:ring-[color:var(--focus-ring)]';
 
   return (
-    <div className="min-h-screen bg-[radial-gradient(1200px_700px_at_15%_-10%,rgba(42,165,160,0.18),transparent_55%),radial-gradient(950px_650px_at_100%_0%,rgba(16,42,75,0.32),transparent_50%),linear-gradient(180deg,#091223_0%,#0A1424_100%)] text-[#E8EEF7]">
+    <div className="app-shell min-h-screen bg-[color:var(--background)] text-[color:var(--ink)]">
       <AuthTopBar tone="professional" />
       <main className="mx-auto w-full max-w-6xl px-4 py-10 sm:px-6 sm:py-14">
         <div className="grid gap-6 lg:grid-cols-[1.08fr_0.92fr] lg:gap-8">
-          <Card tone="dark" padding="lg" className="relative overflow-hidden rounded-[34px] border-white/10 bg-[linear-gradient(140deg,rgba(14,42,71,0.98)_0%,rgba(10,24,42,0.98)_55%,rgba(13,42,57,0.95)_100%)]">
-            <div className="pointer-events-none absolute -right-14 top-8 h-36 w-36 rounded-full bg-[#2AA5A0]/20 blur-2xl" />
-            <div className="pointer-events-none absolute -left-16 bottom-6 h-40 w-40 rounded-full bg-[#0E2A47]/50 blur-3xl" />
+          <Card
+            tone="soft"
+            padding="lg"
+            className="relative overflow-hidden rounded-[34px] border-[color:var(--border-soft)] bg-[linear-gradient(155deg,var(--surface-soft)_0%,var(--surface-strong)_62%,rgba(54,200,244,0.08)_100%)]"
+          >
+            <div className="pointer-events-none absolute -right-12 top-8 h-32 w-32 rounded-full bg-[color:var(--accent-soft)] blur-2xl" />
+            <div className="pointer-events-none absolute -left-14 bottom-8 h-36 w-36 rounded-full bg-[color:var(--primary-soft)] blur-3xl" />
             <div className="relative space-y-8">
               <div className="space-y-4">
-                <Badge variant="contrast" className="border-[#2aa5a0]/35 bg-[#2aa5a0]/14 text-[#9ef7f0]">Agenda y gestión</Badge>
-                <h2 className="max-w-sm text-2xl font-semibold leading-tight text-white sm:text-[2rem]">
+                <Badge variant="neutral" className="text-[color:var(--primary-strong)]">
+                  Agenda y gestion
+                </Badge>
+                <h2 className="max-w-sm text-2xl font-semibold leading-tight text-[color:var(--ink)] sm:text-[2rem]">
                   Centralizá tu operación diaria sin cambiar de contexto.
                 </h2>
-                <p className="max-w-md text-sm text-[#B9C8DC]">
+                <p className="max-w-md text-sm text-[color:var(--ink-muted)]">
                   Seguimiento de reservas, control de servicios y una agenda con mejor jerarquía visual para tu negocio.
                 </p>
               </div>
 
               <div className="grid gap-3 sm:grid-cols-3">
-                <Card tone="dark" padding="sm" className="rounded-[22px] border-white/12 bg-white/6">
-                  <p className="text-xs uppercase tracking-[0.16em] text-[#9FB1C8]">Agenda</p>
-                  <p className="mt-2 text-xl font-semibold text-white">Hoy</p>
-                  <p className="text-sm text-[#8AF0E8]">12 turnos activos</p>
+                <Card tone="default" padding="sm" className="rounded-[22px] border-[color:var(--border-soft)] bg-[color:var(--surface)]">
+                  <p className="text-xs uppercase tracking-[0.16em] text-[color:var(--ink-faint)]">Agenda</p>
+                  <p className="mt-2 text-xl font-semibold text-[color:var(--ink)]">Hoy</p>
+                  <p className="text-sm text-[color:var(--ink-muted)]">12 turnos activos</p>
                 </Card>
-                <Card tone="dark" padding="sm" className="rounded-[22px] border-white/12 bg-white/6">
-                  <p className="text-xs uppercase tracking-[0.16em] text-[#9FB1C8]">Reservas</p>
-                  <p className="mt-2 text-xl font-semibold text-white">+6</p>
-                  <p className="text-sm text-[#8AF0E8]">Nuevas en 24h</p>
+                <Card tone="default" padding="sm" className="rounded-[22px] border-[color:var(--border-soft)] bg-[color:var(--surface)]">
+                  <p className="text-xs uppercase tracking-[0.16em] text-[color:var(--ink-faint)]">Reservas</p>
+                  <p className="mt-2 text-xl font-semibold text-[color:var(--ink)]">+6</p>
+                  <p className="text-sm text-[color:var(--ink-muted)]">Nuevas en 24h</p>
                 </Card>
-                <Card tone="dark" padding="sm" className="rounded-[22px] border-white/12 bg-white/6">
-                  <p className="text-xs uppercase tracking-[0.16em] text-[#9FB1C8]">Servicios</p>
-                  <p className="mt-2 text-xl font-semibold text-white">18</p>
-                  <p className="text-sm text-[#8AF0E8]">Publicados</p>
+                <Card tone="default" padding="sm" className="rounded-[22px] border-[color:var(--border-soft)] bg-[color:var(--surface)]">
+                  <p className="text-xs uppercase tracking-[0.16em] text-[color:var(--ink-faint)]">Servicios</p>
+                  <p className="mt-2 text-xl font-semibold text-[color:var(--ink)]">18</p>
+                  <p className="text-sm text-[color:var(--ink-muted)]">Publicados</p>
                 </Card>
               </div>
 
-              <Card tone="dark" padding="sm" className="rounded-[22px] border-white/12 bg-[#0c1d34]/88">
-                <div className="flex items-center justify-between text-xs uppercase tracking-[0.14em] text-[#9FB1C8]">
+              <Card tone="soft" padding="sm" className="rounded-[22px] border-[color:var(--border-soft)] bg-[color:var(--surface-soft)]">
+                <div className="flex items-center justify-between text-xs uppercase tracking-[0.14em] text-[color:var(--ink-faint)]">
                   <span>Panel Profesional</span>
-                  <span className="text-[#8AF0E8]">En línea</span>
+                  <span className="text-[color:var(--primary)]">En linea</span>
                 </div>
-                <div className="mt-4 flex items-center gap-2">
-                  <span className="h-2.5 w-2.5 rounded-full bg-[#8AF0E8]" />
-                  <span className="h-2.5 w-2.5 rounded-full bg-[#5FD6CF]" />
-                  <span className="h-2.5 w-2.5 rounded-full bg-[#2AA5A0]" />
-                  <div className="h-1.5 flex-1 rounded-full bg-gradient-to-r from-[#2AA5A0] via-[#6EDFD6] to-[#9EF7F0]" />
+                <div className="mt-4 flex items-center gap-3">
+                  <span className="h-2.5 w-2.5 rounded-full bg-[color:var(--brand-primary-light)]" />
+                  <span className="h-2.5 w-2.5 rounded-full bg-[color:var(--accent)]" />
+                  <span className="h-2.5 w-2.5 rounded-full bg-[color:var(--premium-soft)]" />
+                  <div className="flex flex-1 gap-1">
+                    <span className="h-1.5 flex-[1.4] rounded-full bg-[color:var(--primary-soft)]" />
+                    <span className="h-1.5 flex-1 rounded-full bg-[color:var(--accent-soft)]" />
+                    <span className="h-1.5 w-10 rounded-full bg-[color:var(--premium-soft)]" />
+                  </div>
                 </div>
               </Card>
             </div>
@@ -119,7 +129,9 @@ export default function ProfesionalLoginPage() {
           <section className="flex items-center">
             <Card tone="default" padding="lg" className="w-full rounded-[32px] text-[color:var(--ink)]">
               <div className="space-y-3">
-                <Badge variant="accent" className="border-[#0f766e]/20 bg-[#ecfdf5] text-[#0f766e]">Panel profesional</Badge>
+                <Badge variant="neutral" className="text-[color:var(--primary-strong)]">
+                  Panel profesional
+                </Badge>
                 <h1 className="text-3xl font-semibold leading-tight text-[color:var(--ink)]">
                   Iniciar sesión
                 </h1>
@@ -128,7 +140,7 @@ export default function ProfesionalLoginPage() {
                 </p>
                 <Link
                   href="/cliente/auth/login"
-                  className="inline-flex text-xs font-semibold text-[#0f766e] underline decoration-[#0f766e]/30 underline-offset-4 transition hover:text-[#0a5d57] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0f766e]/20"
+                  className="inline-flex text-xs font-semibold text-[color:var(--accent-strong)] underline decoration-[color:var(--accent-soft)] underline-offset-4 transition hover:text-[color:var(--accent)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--focus-ring)]"
                 >
                   Ir a acceso de cliente
                 </Link>
@@ -148,36 +160,36 @@ export default function ProfesionalLoginPage() {
                   />
                 </div>
 
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-[color:var(--ink)]">Contraseña</label>
-                <input
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-[color:var(--ink)]">Contraseña</label>
+                  <input
                     type="password"
                     className={inputClassName}
                     placeholder="••••••••"
                     name="password"
                     value={form.password}
                     onChange={handleChange}
-                  required
-                />
-                <div className="flex justify-end">
-                  <Link
-                    href="/auth/forgot-password"
-                    className="text-xs font-semibold text-[#0f766e] underline underline-offset-4"
-                  >
-                    Olvidé mi contraseña
-                  </Link>
+                    required
+                  />
+                  <div className="flex justify-end">
+                    <Link
+                      href="/auth/forgot-password"
+                      className="text-xs font-semibold text-[color:var(--accent-strong)] underline decoration-[color:var(--accent-soft)] underline-offset-4 transition hover:text-[color:var(--accent)]"
+                    >
+                      Olvidé mi contraseña
+                    </Link>
+                  </div>
                 </div>
-              </div>
 
                 {errorMessage ? (
-                  <p className="rounded-[12px] border border-red-100 bg-red-50 px-3 py-2 text-xs text-red-600">
+                  <p className="rounded-[12px] border border-[color:var(--error-soft)] bg-[color:var(--error-soft)] px-3 py-2 text-xs text-[color:var(--error)]">
                     {errorMessage}
                   </p>
                 ) : null}
 
                 <button
                   type="submit"
-                  className="h-12 w-full rounded-full border border-transparent bg-[linear-gradient(135deg,#0f766e,#0e2a47)] text-sm font-semibold text-white shadow-[var(--shadow-lift)] transition hover:-translate-y-0.5 hover:brightness-105 focus:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(15,118,110,0.18)] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-70"
+                  className="h-12 w-full rounded-full border border-[color:var(--primary)] bg-[color:var(--primary)] text-sm font-semibold text-white shadow-[var(--shadow-card)] transition hover:-translate-y-0.5 hover:border-[color:var(--primary-strong)] hover:bg-[color:var(--primary-strong)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--focus-ring)] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-70"
                   disabled={isSubmitting}
                 >
                   {isSubmitting ? 'Ingresando...' : 'Iniciar sesión'}
@@ -210,7 +222,7 @@ export default function ProfesionalLoginPage() {
                 ¿No tenés cuenta?{' '}
                 <Link
                   href="/profesional/auth/register"
-                  className="font-semibold text-[#0f766e] underline decoration-[#0f766e]/30 underline-offset-4"
+                  className="font-semibold text-[color:var(--primary)] underline decoration-[color:var(--primary-soft)] underline-offset-4"
                 >
                   Crear cuenta profesional
                 </Link>

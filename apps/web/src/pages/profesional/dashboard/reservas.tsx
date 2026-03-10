@@ -28,15 +28,18 @@ import { getPublicSlots } from '@/services/publicBookings';
 import type { ProfessionalPayoutConfig } from '@/types/payout';
 import type { ProfessionalReservation, ReservationStatus } from '@/types/professional';
 import {
+  describeBookingPolicy,
   formatBookingMoney,
   getOperationalStatusLabel,
   getOperationalStatusTone,
   getPaymentTypeLabel,
+  getPayoutStatusCopy as getBookingPayoutStatusCopy,
+  getRefundStatusCopy,
   getProfessionalFinancialStatusCopy,
   isPrepaidBooking,
   shouldAutoRefreshFinancialStatus,
 } from '@/utils/bookings';
-import { getPayoutStatusCopy } from '@/utils/payouts';
+import { getPayoutStatusCopy as getPayoutConfigStatusCopy } from '@/utils/payouts';
 
 type DashboardServiceOption = {
   id: string;
@@ -78,7 +81,7 @@ const toDefaultFutureDateTime = () => {
 };
 
 const parseReservationDate = (reservation: ProfessionalReservation) => {
-  const dateTime = new Date(`${reservation.date}T${reservation.time || '00:00'}`);
+  const dateTime = new Date(reservation.startDateTimeUtc || `${reservation.date}T${reservation.time || '00:00'}`);
   if (Number.isNaN(dateTime.getTime())) {
     return null;
   }
@@ -478,7 +481,7 @@ export default function ProfesionalReservationsPage() {
   });
 
   const payoutStatusCopy = useMemo(
-    () => getPayoutStatusCopy(payoutConfig),
+    () => getPayoutConfigStatusCopy(payoutConfig),
     [payoutConfig],
   );
   const shouldShowPayoutNotice = Boolean(
@@ -530,9 +533,9 @@ export default function ProfesionalReservationsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[radial-gradient(circle_at_top,#FFFFFF_0%,#EEF2F6_45%,#D3D7DC_100%)] text-[#0E2A47]">
+    <div className="app-shell min-h-screen bg-[color:var(--background)] text-[color:var(--ink)]">
       <div className="flex min-h-screen">
-        <aside className="hidden w-[260px] shrink-0 border-r border-[#0E2A47]/10 bg-[#0B1D2A] lg:block">
+        <aside className="hidden w-[260px] shrink-0 border-r border-[color:var(--border-soft)] bg-[color:var(--sidebar-surface)] lg:block">
           <div className="sticky top-0 h-screen overflow-y-auto">
             <ProfesionalSidebar profile={profile} active="Reservas" />
           </div>
@@ -549,10 +552,10 @@ export default function ProfesionalReservationsPage() {
                 description="El backend decide consecuencias, refunds y releases. Acá solo ves el estado actual y ejecutás acciones permitidas."
                 meta={(
                   <>
-                    <span className="rounded-full border border-white/12 bg-white/8 px-3 py-1 text-xs font-semibold text-white/80">
+                    <span className="rounded-full border border-white/18 bg-white/10 px-3 py-1 text-xs font-semibold text-[color:var(--text-on-dark-secondary)] backdrop-blur-sm">
                       {todayReservations.length} para hoy
                     </span>
-                    <span className="rounded-full border border-white/12 bg-white/8 px-3 py-1 text-xs font-semibold text-white/80">
+                    <span className="rounded-full border border-white/18 bg-white/10 px-3 py-1 text-xs font-semibold text-[color:var(--text-on-dark-secondary)] backdrop-blur-sm">
                       {upcomingReservations.length} próximas
                     </span>
                   </>
@@ -876,6 +879,24 @@ export default function ProfesionalReservationsPage() {
                                     </span>
                                   </p>
                                 ) : null}
+                                <p>
+                                  Refund:{' '}
+                                  <span className="font-semibold text-[#0E2A47]">
+                                    {getRefundStatusCopy(selectedReservation.refundStatus)}
+                                  </span>
+                                </p>
+                                <p>
+                                  Payout:{' '}
+                                  <span className="font-semibold text-[#0E2A47]">
+                                    {getBookingPayoutStatusCopy(selectedReservation.payoutStatus)}
+                                  </span>
+                                </p>
+                                <p>
+                                  Política:{' '}
+                                  <span className="font-semibold text-[#0E2A47]">
+                                    {describeBookingPolicy(selectedReservation.policySnapshot)}
+                                  </span>
+                                </p>
                               </div>
                             </div>
 
@@ -999,7 +1020,7 @@ export default function ProfesionalReservationsPage() {
                                           () => rescheduleProfessionalBooking(
                                             selectedReservation.id,
                                             `${rescheduleDate}T${rescheduleTime}:00`,
-                                            Intl.DateTimeFormat().resolvedOptions().timeZone,
+                                            selectedReservation.timezone || undefined,
                                           ),
                                           'No se pudo reagendar la reserva.',
                                         )

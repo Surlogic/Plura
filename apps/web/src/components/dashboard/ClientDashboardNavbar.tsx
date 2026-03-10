@@ -2,7 +2,8 @@ import Link from 'next/link';
 import { useRouter } from 'next/router';
 import api from '@/services/api';
 import Button from '@/components/ui/Button';
-import Logo from '@/components/ui/Logo';
+import BrandLogo from '@/components/ui/BrandLogo';
+import ThemeSwitcher from '@/components/theme/ThemeSwitcher';
 import { useClientProfileContext } from '@/context/ClientProfileContext';
 import { useProfessionalProfileContext } from '@/context/ProfessionalProfileContext';
 import { clearAuthAccessToken } from '@/services/session';
@@ -61,35 +62,35 @@ export default function ClientDashboardNavbar({
               </svg>
             </Button>
           ) : null}
-
-          <Logo href="/cliente/inicio" size={38} priority textClassName="text-[color:var(--ink)]" />
+          <BrandLogo href="/cliente/inicio" variant="navbar" priority />
         </div>
 
         <nav className="hidden items-center gap-2 text-sm font-semibold text-[color:var(--ink)] md:flex">
           <Link
             href="/explorar"
-            className="rounded-full px-3 py-2 transition hover:bg-white/88"
+            className="rounded-full px-3 py-2 transition hover:bg-[color:var(--surface-soft)]"
           >
             Explorar
           </Link>
           <Link
             href="/cliente/reservas"
-            className="rounded-full px-3 py-2 transition hover:bg-white/88"
+            className="rounded-full px-3 py-2 transition hover:bg-[color:var(--surface-soft)]"
           >
             Mis reservas
           </Link>
           <Link
             href="/cliente/favoritos"
-            className="rounded-full px-3 py-2 transition hover:bg-white/88"
+            className="rounded-full px-3 py-2 transition hover:bg-[color:var(--surface-soft)]"
           >
             Favoritos
           </Link>
         </nav>
 
         <div className="flex items-center gap-2 sm:gap-3">
+          <ThemeSwitcher variant="compact" showLabel={false} className="hidden md:flex" />
           <details className="group relative">
-            <summary className="flex h-10 cursor-pointer list-none items-center gap-2 rounded-full border border-[color:var(--border-soft)] bg-white/96 px-2 pr-3 text-xs font-semibold text-[color:var(--ink)] shadow-[var(--shadow-card)] transition hover:bg-white [&::-webkit-details-marker]:hidden">
-              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[color:var(--surface-soft)]">
+            <summary className="flex h-10 cursor-pointer list-none items-center gap-2 rounded-full border border-[color:var(--border-soft)] bg-[color:var(--surface-strong)] px-2 pr-3 text-xs font-semibold text-[color:var(--ink)] shadow-[var(--shadow-card)] transition hover:bg-[color:var(--surface-hover)] [&::-webkit-details-marker]:hidden">
+              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[color:var(--primary-soft)] text-[color:var(--primary)]">
                 {getInitials(name)}
               </span>
               <span className="hidden sm:inline">Perfil</span>
@@ -103,7 +104,7 @@ export default function ClientDashboardNavbar({
                 />
               </svg>
             </summary>
-            <div className="absolute right-0 top-[calc(100%+10px)] z-30 w-44 rounded-[18px] border border-[color:var(--border-soft)] bg-white/98 p-1.5 shadow-[var(--shadow-lift)]">
+            <div className="absolute right-0 top-[calc(100%+10px)] z-30 w-44 rounded-[18px] border border-[color:var(--border-soft)] bg-[color:var(--surface-strong)] p-1.5 shadow-[var(--shadow-lift)]">
               <Link
                 href="/cliente/perfil"
                 className="block rounded-xl px-3 py-2 text-sm font-semibold text-[color:var(--ink)] transition hover:bg-[color:var(--surface-soft)]"
@@ -119,7 +120,7 @@ export default function ClientDashboardNavbar({
               <button
                 type="button"
                 onClick={handleLogout}
-                className="mt-1 block w-full rounded-lg px-3 py-2 text-left text-sm font-semibold text-[#B91C1C] transition hover:bg-[#FEF2F2]"
+                className="mt-1 block w-full rounded-lg px-3 py-2 text-left text-sm font-semibold text-[color:var(--error)] transition hover:bg-[color:var(--error-soft)]"
               >
                 Cerrar sesión
               </button>

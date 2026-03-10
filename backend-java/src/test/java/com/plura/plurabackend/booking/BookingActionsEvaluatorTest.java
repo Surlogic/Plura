@@ -14,18 +14,30 @@ import com.plura.plurabackend.booking.model.Booking;
 import com.plura.plurabackend.booking.model.BookingOperationalStatus;
 import com.plura.plurabackend.booking.model.ServicePaymentType;
 import com.plura.plurabackend.booking.policy.BookingPolicySnapshot;
+import com.plura.plurabackend.booking.policy.model.LateCancellationRefundMode;
+import com.plura.plurabackend.booking.time.BookingDateTimeService;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import org.junit.jupiter.api.Test;
 
 class BookingActionsEvaluatorTest {
 
-    private final BookingActionsEvaluator evaluator = new BookingActionsEvaluator(new BookingMoneyResolver());
+    private final BookingActionsEvaluator evaluator = new BookingActionsEvaluator(
+        new BookingMoneyResolver(),
+        new BookingDateTimeService("America/Montevideo")
+    );
 
     @Test
     void shouldAllowFreeClientCancellationWithinWindow() {
         Booking booking = booking(ServicePaymentType.FULL_PREPAY, BigDecimal.valueOf(1200), null);
-        BookingPolicySnapshot policy = policy(true, 24, 12, 1, true);
+        BookingPolicySnapshot policy = policy(
+            true,
+            24,
+            12,
+            1,
+            LateCancellationRefundMode.NONE,
+            BigDecimal.ZERO
+        );
 
         BookingActionsEvaluation evaluation = evaluator.evaluate(
             booking,
@@ -45,7 +57,14 @@ class BookingActionsEvaluatorTest {
     void shouldSuggestRescheduleWhenLateCancellationWouldLoseDeposit() {
         Booking booking = booking(ServicePaymentType.DEPOSIT, BigDecimal.valueOf(2500), BigDecimal.valueOf(500));
         booking.setStartDateTime(LocalDateTime.of(2026, 3, 9, 8, 0));
-        BookingPolicySnapshot policy = policy(true, 24, 2, 2, true);
+        BookingPolicySnapshot policy = policy(
+            true,
+            24,
+            2,
+            2,
+            LateCancellationRefundMode.NONE,
+            BigDecimal.ZERO
+        );
 
         BookingActionsEvaluation evaluation = evaluator.evaluate(
             booking,
@@ -63,9 +82,42 @@ class BookingActionsEvaluatorTest {
     }
 
     @Test
+    void shouldApplyPartialRefundInsideCancellationWindow() {
+        Booking booking = booking(ServicePaymentType.FULL_PREPAY, BigDecimal.valueOf(1000), null);
+        booking.setStartDateTime(LocalDateTime.of(2026, 3, 9, 8, 0));
+        BookingPolicySnapshot policy = policy(
+            true,
+            24,
+            2,
+            2,
+            LateCancellationRefundMode.PERCENTAGE,
+            BigDecimal.valueOf(50)
+        );
+
+        BookingActionsEvaluation evaluation = evaluator.evaluate(
+            booking,
+            new BookingActionActor(BookingActionActor.BookingActionActorType.CLIENT, 10L, null),
+            policy,
+            LocalDateTime.of(2026, 3, 8, 12, 0)
+        );
+
+        assertTrue(evaluation.canCancel());
+        assertEquals(BigDecimal.valueOf(500.00).setScale(2), evaluation.refundPreviewAmount());
+        assertEquals(BigDecimal.valueOf(500.00).setScale(2), evaluation.retainPreviewAmount());
+        assertTrue(evaluation.reasonCodes().contains(BookingActionReasonCode.LATE_CANCELLATION_PENALTY_APPLIES));
+    }
+
+    @Test
     void shouldBlockClientRescheduleWhenDisabledByPolicy() {
         Booking booking = booking(ServicePaymentType.ON_SITE, BigDecimal.ZERO, null);
-        BookingPolicySnapshot policy = policy(false, 24, 2, 1, false);
+        BookingPolicySnapshot policy = policy(
+            false,
+            24,
+            2,
+            1,
+            LateCancellationRefundMode.FULL,
+            BigDecimal.valueOf(100)
+        );
 
         BookingActionsEvaluation evaluation = evaluator.evaluate(
             booking,
@@ -81,7 +133,14 @@ class BookingActionsEvaluatorTest {
     @Test
     void shouldBlockClientRescheduleWhenMaxClientReschedulesIsZero() {
         Booking booking = booking(ServicePaymentType.ON_SITE, BigDecimal.ZERO, null);
-        BookingPolicySnapshot policy = policy(true, 24, 2, 0, false);
+        BookingPolicySnapshot policy = policy(
+            true,
+            24,
+            2,
+            0,
+            LateCancellationRefundMode.FULL,
+            BigDecimal.valueOf(100)
+        );
 
         BookingActionsEvaluation evaluation = evaluator.evaluate(
             booking,
@@ -98,7 +157,14 @@ class BookingActionsEvaluatorTest {
     void shouldAllowClientRescheduleWhenMaxIsOneAndCountIsZero() {
         Booking booking = booking(ServicePaymentType.ON_SITE, BigDecimal.ZERO, null);
         booking.setRescheduleCount(0);
-        BookingPolicySnapshot policy = policy(true, 24, 2, 1, false);
+        BookingPolicySnapshot policy = policy(
+            true,
+            24,
+            2,
+            1,
+            LateCancellationRefundMode.FULL,
+            BigDecimal.valueOf(100)
+        );
 
         BookingActionsEvaluation evaluation = evaluator.evaluate(
             booking,
@@ -115,7 +181,14 @@ class BookingActionsEvaluatorTest {
     void shouldBlockClientRescheduleWhenMaxIsOneAndCountIsOne() {
         Booking booking = booking(ServicePaymentType.ON_SITE, BigDecimal.ZERO, null);
         booking.setRescheduleCount(1);
-        BookingPolicySnapshot policy = policy(true, 24, 2, 1, false);
+        BookingPolicySnapshot policy = policy(
+            true,
+            24,
+            2,
+            1,
+            LateCancellationRefundMode.FULL,
+            BigDecimal.valueOf(100)
+        );
 
         BookingActionsEvaluation evaluation = evaluator.evaluate(
             booking,
@@ -132,7 +205,14 @@ class BookingActionsEvaluatorTest {
     void shouldBlockClientRescheduleWhenWindowIsClosed() {
         Booking booking = booking(ServicePaymentType.ON_SITE, BigDecimal.ZERO, null);
         booking.setStartDateTime(LocalDateTime.of(2026, 3, 8, 18, 0));
-        BookingPolicySnapshot policy = policy(true, 24, 8, 1, false);
+        BookingPolicySnapshot policy = policy(
+            true,
+            24,
+            8,
+            1,
+            LateCancellationRefundMode.FULL,
+            BigDecimal.valueOf(100)
+        );
 
         BookingActionsEvaluation evaluation = evaluator.evaluate(
             booking,
@@ -149,7 +229,14 @@ class BookingActionsEvaluatorTest {
     void shouldBlockClientRescheduleWhenBookingIsNotActive() {
         Booking booking = booking(ServicePaymentType.ON_SITE, BigDecimal.ZERO, null);
         booking.setOperationalStatus(BookingOperationalStatus.CANCELLED);
-        BookingPolicySnapshot policy = policy(true, 24, 2, 1, false);
+        BookingPolicySnapshot policy = policy(
+            true,
+            24,
+            2,
+            1,
+            LateCancellationRefundMode.FULL,
+            BigDecimal.valueOf(100)
+        );
 
         BookingActionsEvaluation evaluation = evaluator.evaluate(
             booking,
@@ -164,10 +251,10 @@ class BookingActionsEvaluatorTest {
 
     @Test
     void shouldAllowProfessionalNoShowOnlyAfterStart() {
-        Booking booking = booking(ServicePaymentType.ON_SITE, BigDecimal.ZERO, null);
+        Booking booking = booking(ServicePaymentType.DEPOSIT, BigDecimal.valueOf(2500), BigDecimal.valueOf(500));
         booking.setOperationalStatus(BookingOperationalStatus.CONFIRMED);
         booking.setStartDateTime(LocalDateTime.of(2026, 3, 8, 10, 0));
-        BookingPolicySnapshot policy = policy(true, 24, 2, 1, false);
+        BookingPolicySnapshot policy = policy(true, 24, 2, 1, LateCancellationRefundMode.FULL, BigDecimal.valueOf(100));
 
         BookingActionsEvaluation evaluation = evaluator.evaluate(
             booking,
@@ -179,6 +266,8 @@ class BookingActionsEvaluatorTest {
         assertFalse(evaluation.canCancel());
         assertFalse(evaluation.canReschedule());
         assertTrue(evaluation.canMarkNoShow());
+        assertEquals(BigDecimal.ZERO, evaluation.refundPreviewAmount());
+        assertEquals(BigDecimal.valueOf(500), evaluation.retainPreviewAmount());
         assertTrue(evaluation.reasonCodes().contains(BookingActionReasonCode.PROFESSIONAL_CAN_MARK_NO_SHOW));
     }
 
@@ -200,7 +289,8 @@ class BookingActionsEvaluatorTest {
         Integer cancellationWindowHours,
         Integer rescheduleWindowHours,
         Integer maxClientReschedules,
-        boolean retainDepositOnLateCancellation
+        LateCancellationRefundMode lateCancellationRefundMode,
+        BigDecimal lateCancellationRefundValue
     ) {
         return new BookingPolicySnapshot(
             "policy-1",
@@ -212,7 +302,8 @@ class BookingActionsEvaluatorTest {
             cancellationWindowHours,
             rescheduleWindowHours,
             maxClientReschedules,
-            retainDepositOnLateCancellation
+            lateCancellationRefundMode,
+            lateCancellationRefundValue
         );
     }
 }

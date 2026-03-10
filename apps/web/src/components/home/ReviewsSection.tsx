@@ -20,21 +20,21 @@ export default function ReviewsSection() {
   return (
     <section className="px-4">
       <div className="mx-auto w-full max-w-6xl space-y-6">
-        <h2 className="text-2xl font-semibold text-[#0E2A47]">Nuestras reseñas</h2>
+        <h2 className="text-2xl font-semibold text-[color:var(--ink)]">Nuestras reseñas</h2>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {reviews.map((review) => (
             <div
               key={review.name}
-              className="rounded-[24px] bg-white p-5 shadow-sm"
+              className="rounded-[24px] border border-[color:var(--border-soft)] bg-[color:var(--surface-strong)] p-5 shadow-[var(--shadow-card)]"
             >
               <div className="flex items-center gap-3">
-                <div className="h-12 w-12 rounded-full bg-[linear-gradient(135deg,#1FB6A6,#0E2A47)]" />
+                <div className="h-12 w-12 rounded-full bg-[linear-gradient(135deg,var(--brand-cyan),var(--brand-navy))]" />
                 <div>
-                  <p className="font-semibold text-[#0E2A47]">{review.name}</p>
-                  <p className="text-sm text-[#6B7280]">★ {review.rating}</p>
+                  <p className="font-semibold text-[color:var(--ink)]">{review.name}</p>
+                  <p className="text-sm text-[color:var(--ink-muted)]">★ {review.rating}</p>
                 </div>
               </div>
-              <p className="mt-4 text-sm text-[#6B7280]">{review.text}</p>
+              <p className="mt-4 text-sm text-[color:var(--ink-muted)]">{review.text}</p>
             </div>
           ))}
         </div>

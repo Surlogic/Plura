@@ -3,6 +3,10 @@ import type {
   BookingFinancialSummary,
   BookingOperationalStatus,
   BookingPaymentType,
+  BookingPolicySnapshot,
+  BookingPayoutStatus,
+  BookingRefundStatus,
+  LateCancellationRefundMode,
 } from '@/types/bookings';
 
 const DEFAULT_CURRENCY = 'UYU';
@@ -88,6 +92,111 @@ export const getOperationalStatusTone = (
 
 export const isPrepaidBooking = (paymentType?: BookingPaymentType | null) =>
   paymentType === 'DEPOSIT' || paymentType === 'FULL_PREPAY';
+
+const resolveBookingDate = (
+  startDateTime?: string | null,
+  startDateTimeUtc?: string | null,
+) => {
+  const candidate = startDateTimeUtc || startDateTime;
+  if (!candidate) return null;
+  const parsed = new Date(candidate);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+};
+
+export const formatBookingDateLabel = (
+  startDateTime?: string | null,
+  timezone?: string | null,
+  startDateTimeUtc?: string | null,
+) => {
+  const parsed = resolveBookingDate(startDateTime, startDateTimeUtc);
+  if (!parsed) {
+    return (startDateTime || '').split('T')[0] ?? '';
+  }
+  return parsed.toLocaleDateString('es-AR', {
+    weekday: 'short',
+    day: '2-digit',
+    month: 'short',
+    timeZone: timezone || undefined,
+  });
+};
+
+export const formatBookingTimeLabel = (
+  startDateTime?: string | null,
+  timezone?: string | null,
+  startDateTimeUtc?: string | null,
+) => {
+  const parsed = resolveBookingDate(startDateTime, startDateTimeUtc);
+  if (!parsed) {
+    return (startDateTime || '').split('T')[1]?.slice(0, 5) ?? '';
+  }
+  return parsed.toLocaleTimeString('es-AR', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+    timeZone: timezone || undefined,
+  });
+};
+
+export const getRefundStatusCopy = (status?: BookingRefundStatus | string | null) => {
+  switch (status) {
+    case 'PENDING_MANUAL':
+      return 'Devolución pendiente de revisión';
+    case 'PENDING_PROVIDER':
+      return 'Devolución enviada al proveedor';
+    case 'COMPLETED':
+      return 'Devolución completada';
+    case 'FAILED':
+      return 'Devolución fallida';
+    case 'CANCELLED':
+      return 'Devolución cancelada';
+    case 'NONE':
+    default:
+      return 'Sin devolución';
+  }
+};
+
+export const getPayoutStatusCopy = (status?: BookingPayoutStatus | string | null) => {
+  switch (status) {
+    case 'PENDING_MANUAL':
+      return 'Liberación pendiente';
+    case 'PENDING_PROVIDER':
+      return 'Liberación enviada al proveedor';
+    case 'COMPLETED':
+      return 'Liberación completada';
+    case 'FAILED':
+      return 'Liberación fallida';
+    case 'CANCELLED':
+      return 'Liberación cancelada';
+    case 'NONE':
+    default:
+      return 'Sin liberación';
+  }
+};
+
+const formatRefundRule = (
+  mode?: LateCancellationRefundMode | null,
+  value?: number | null,
+) => {
+  switch (mode) {
+    case 'NONE':
+      return 'Dentro de la ventana no hay devolución.';
+    case 'PERCENTAGE':
+      return `Dentro de la ventana se devuelve ${value ?? 0}% del monto prepagado.`;
+    case 'FULL':
+    default:
+      return 'Dentro de la ventana la devolución sigue siendo total.';
+  }
+};
+
+export const describeBookingPolicy = (policy?: BookingPolicySnapshot | null) => {
+  if (!policy) {
+    return 'La política de cancelación se informa desde backend.';
+  }
+  const windowCopy = typeof policy.cancellationWindowHours === 'number'
+    ? `Hasta ${policy.cancellationWindowHours}h antes del turno: devolución total.`
+    : 'Sin ventana de penalización configurada: devolución total mientras la reserva siga activa.';
+  return `${windowCopy} ${formatRefundRule(policy.lateCancellationRefundMode, policy.lateCancellationRefundValue)}`;
+};
 
 export const getClientFinancialStatusCopy = (
   paymentType?: BookingPaymentType | null,
@@ -241,4 +350,3 @@ export const shouldAutoRefreshFinancialStatus = (
   financialStatus === 'PAYMENT_PENDING'
   || financialStatus === 'REFUND_PENDING'
   || financialStatus === 'RELEASE_PENDING';
-

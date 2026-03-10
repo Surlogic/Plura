@@ -47,13 +47,13 @@ export default memo(function ExploreCard({
 
   return (
     <article
-      className={`group rounded-[24px] bg-white p-4 shadow-sm transition hover:-translate-y-1 hover:shadow-md ${
-        isHighlighted ? 'ring-2 ring-[#0E2A47]/20' : ''
+      className={`group rounded-[24px] border border-[color:var(--border-soft)] bg-[color:var(--surface-strong)] p-4 shadow-[var(--shadow-card)] transition hover:-translate-y-1 hover:border-[color:var(--border-strong)] hover:shadow-[var(--shadow-lift)] ${
+        isHighlighted ? 'ring-2 ring-[color:var(--accent-soft)]' : ''
       }`}
       onMouseEnter={() => onHoverStart?.(id)}
       onMouseLeave={() => onHoverEnd?.(id)}
     >
-      <div className="relative h-40 w-full overflow-hidden rounded-[20px] bg-[#E9EEF2]">
+      <div className="relative h-40 w-full overflow-hidden rounded-[20px] bg-[color:var(--surface-soft)]">
         {href ? (
           <Link href={href} className="absolute inset-0 z-10" aria-label={`Ver perfil de ${name}`}>
             <span className="sr-only">Ver perfil de {name}</span>
@@ -69,7 +69,7 @@ export default memo(function ExploreCard({
             className="object-cover transition duration-500 group-hover:scale-105"
           />
         ) : null}
-        <div className="absolute inset-0 bg-gradient-to-t from-[#0E2A47]/45 via-transparent to-transparent" />
+        <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(15,23,42,0.02),rgba(15,23,42,0.5))]" />
         {onFavoriteToggle ? (
           <div className="absolute right-3 top-3 z-20">
             <FavoriteToggleButton
@@ -85,30 +85,30 @@ export default memo(function ExploreCard({
       <div className="mt-4 flex items-start justify-between gap-3">
         <div className="space-y-1">
           {href ? (
-            <Link href={href} className="text-lg font-semibold text-[#0E2A47] hover:underline">
+            <Link href={href} className="text-lg font-semibold text-[color:var(--ink)] hover:text-[color:var(--accent-strong)]">
               {name}
             </Link>
           ) : (
-            <h3 className="text-lg font-semibold text-[#0E2A47]">{name}</h3>
+            <h3 className="text-lg font-semibold text-[color:var(--ink)]">{name}</h3>
           )}
-          <p className="text-sm text-[#6B7280]">{category || 'Profesional'}</p>
+          <p className="text-sm text-[color:var(--ink-muted)]">{category || 'Profesional'}</p>
           {displayCity || displayDistance ? (
-            <p className="text-xs text-[#94A3B8]">
+            <p className="text-xs text-[color:var(--ink-faint)]">
               {[displayCity, displayDistance].filter(Boolean).join(' · ')}
             </p>
           ) : null}
         </div>
         {available ? (
-          <span className="rounded-full bg-[#1FB6A6]/10 px-3 py-1 text-xs font-semibold text-[#1FB6A6]">
+          <span className="rounded-full border border-[color:var(--success-soft)] bg-[color:var(--success-soft)] px-3 py-1 text-xs font-semibold text-[color:var(--success)]">
             Disponible ahora
           </span>
         ) : null}
       </div>
       <div className="mt-3 flex items-center justify-between text-sm">
         {displayRating ? (
-          <div className="flex items-center gap-2 text-[#0E2A47]">
+          <div className="flex items-center gap-2 text-[color:var(--ink)]">
             <svg
-              className="h-4 w-4 text-[#1FB6A6]"
+              className="h-4 w-4 text-[color:var(--accent)]"
               viewBox="0 0 20 20"
               fill="currentColor"
               aria-hidden="true"
@@ -118,15 +118,15 @@ export default memo(function ExploreCard({
             <span>{displayRating}</span>
           </div>
         ) : (
-          <span className="text-xs font-semibold text-[#94A3B8]">Sin reseñas</span>
+          <span className="text-xs font-semibold text-[color:var(--ink-faint)]">Sin reseñas</span>
         )}
-        <span className="text-[#000000]">{displayPrice}</span>
+        <span className="text-[color:var(--ink)]">{displayPrice}</span>
       </div>
       {href ? (
         <div className="mt-4">
           <Link
             href={href}
-            className="inline-flex rounded-full border border-[#DFE7EF] bg-[#F8FAFC] px-4 py-2 text-xs font-semibold text-[#0E2A47] transition hover:bg-white"
+            className="inline-flex rounded-full border border-[color:var(--border-soft)] bg-[color:var(--surface-soft)] px-4 py-2 text-xs font-semibold text-[color:var(--ink)] transition hover:border-[color:var(--border-strong)] hover:bg-[color:var(--surface-strong)]"
           >
             Ver perfil
           </Link>

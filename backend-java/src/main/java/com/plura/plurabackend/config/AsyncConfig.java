@@ -53,6 +53,15 @@ public class AsyncConfig implements AsyncConfigurer {
     @Value("${app.async.billing-webhook.queue-capacity:500}")
     private int billingWebhookQueueCapacity;
 
+    @Value("${app.async.billing-provider-operation.core-pool-size:2}")
+    private int billingProviderOperationCorePoolSize;
+
+    @Value("${app.async.billing-provider-operation.max-pool-size:8}")
+    private int billingProviderOperationMaxPoolSize;
+
+    @Value("${app.async.billing-provider-operation.queue-capacity:500}")
+    private int billingProviderOperationQueueCapacity;
+
     @Bean(name = "availableSlotExecutor")
     public Executor availableSlotExecutor() {
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
@@ -102,6 +111,20 @@ public class AsyncConfig implements AsyncConfigurer {
         executor.setCorePoolSize(Math.max(1, billingWebhookCorePoolSize));
         executor.setMaxPoolSize(Math.max(billingWebhookCorePoolSize, billingWebhookMaxPoolSize));
         executor.setQueueCapacity(Math.max(100, billingWebhookQueueCapacity));
+        executor.setWaitForTasksToCompleteOnShutdown(true);
+        executor.setAwaitTerminationSeconds(45);
+        executor.setRejectedExecutionHandler(new ThreadPoolExecutor.CallerRunsPolicy());
+        executor.initialize();
+        return executor;
+    }
+
+    @Bean(name = "billingProviderOperationExecutor")
+    public Executor billingProviderOperationExecutor() {
+        ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+        executor.setThreadNamePrefix("billing-provider-op-");
+        executor.setCorePoolSize(Math.max(1, billingProviderOperationCorePoolSize));
+        executor.setMaxPoolSize(Math.max(billingProviderOperationCorePoolSize, billingProviderOperationMaxPoolSize));
+        executor.setQueueCapacity(Math.max(100, billingProviderOperationQueueCapacity));
         executor.setWaitForTasksToCompleteOnShutdown(true);
         executor.setAwaitTerminationSeconds(45);
         executor.setRejectedExecutionHandler(new ThreadPoolExecutor.CallerRunsPolicy());

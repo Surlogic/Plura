@@ -38,7 +38,7 @@ export default function ClientShell({ name, active, children }: ClientShellProps
   }, [isMobileSidebarOpen]);
 
   return (
-    <div className="min-h-screen bg-[linear-gradient(180deg,rgba(255,255,255,0.34),rgba(238,244,242,0.8))] text-[color:var(--ink)]">
+    <div className="app-shell min-h-screen bg-[color:var(--background)] text-[color:var(--ink)]">
       <div>
         <ClientDashboardNavbar name={name} onOpenSidebar={() => setIsMobileSidebarOpen(true)} />
         <div className="mx-auto w-full max-w-[1400px] px-4 pb-16 pt-10 sm:px-6 lg:px-10">
@@ -70,7 +70,7 @@ export default function ClientShell({ name, active, children }: ClientShellProps
           <button
             type="button"
             onClick={() => setIsMobileSidebarOpen(false)}
-            className="absolute inset-0 bg-[color:var(--primary-strong)]/38 backdrop-blur-[3px]"
+            className="absolute inset-0 bg-[rgba(18,49,38,0.24)] backdrop-blur-[4px]"
             aria-label="Cerrar menu cliente"
           />
           <aside className="absolute inset-y-0 left-0 w-[280px] max-w-[85vw] border-r border-[color:var(--border-soft)] bg-[color:var(--surface-strong)]/96 p-4 shadow-[var(--shadow-lift)]">

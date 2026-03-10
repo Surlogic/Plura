@@ -15,6 +15,7 @@ public class ProfessionalBookingResponse {
     private String serviceId;
     private String serviceName;
     private String startDateTime;
+    private String startDateTimeUtc;
     private String timezone;
     private String duration;
     private Integer postBufferMinutes;
@@ -22,7 +23,13 @@ public class ProfessionalBookingResponse {
     private String paymentType;
     private Integer rescheduleCount;
     private String status;
+    private String paymentStatus;
+    private String refundStatus;
+    private String payoutStatus;
     private BookingFinancialSummaryResponse financialSummary;
+    private BookingRefundRecordResponse latestRefund;
+    private BookingPayoutRecordResponse latestPayout;
+    private BookingPolicySnapshotResponse policySnapshot;
 
     public ProfessionalBookingResponse(
         Long id,
@@ -45,6 +52,7 @@ public class ProfessionalBookingResponse {
             serviceId,
             serviceName,
             startDateTime == null ? "" : startDateTime.toString(),
+            null,
             timezone,
             duration,
             postBufferMinutes == null ? 0 : postBufferMinutes,
@@ -52,6 +60,9 @@ public class ProfessionalBookingResponse {
             paymentType == null ? ServicePaymentType.ON_SITE.name() : paymentType.name(),
             rescheduleCount == null ? 0 : Math.max(0, rescheduleCount),
             status == null ? "" : status.name(),
+            null,
+            null,
+            null,
             null
         );
     }
@@ -100,6 +111,7 @@ public class ProfessionalBookingResponse {
         String serviceId,
         String serviceName,
         String startDateTime,
+        String startDateTimeUtc,
         String timezone,
         String duration,
         Integer postBufferMinutes,
@@ -107,6 +119,9 @@ public class ProfessionalBookingResponse {
         String paymentType,
         Integer rescheduleCount,
         String status,
+        String paymentStatus,
+        String refundStatus,
+        String payoutStatus,
         BookingFinancialSummaryResponse financialSummary
     ) {
         this.id = id;
@@ -115,6 +130,7 @@ public class ProfessionalBookingResponse {
         this.serviceId = serviceId;
         this.serviceName = serviceName;
         this.startDateTime = startDateTime;
+        this.startDateTimeUtc = startDateTimeUtc;
         this.timezone = timezone;
         this.duration = duration;
         this.postBufferMinutes = postBufferMinutes == null ? 0 : Math.max(0, postBufferMinutes);
@@ -124,6 +140,9 @@ public class ProfessionalBookingResponse {
         this.paymentType = paymentType;
         this.rescheduleCount = rescheduleCount == null ? 0 : Math.max(0, rescheduleCount);
         this.status = status;
+        this.paymentStatus = paymentStatus;
+        this.refundStatus = refundStatus;
+        this.payoutStatus = payoutStatus;
         this.financialSummary = financialSummary;
     }
 }

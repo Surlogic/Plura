@@ -159,7 +159,7 @@ export default function BusinessGallery({ photos, businessName }: BusinessGaller
               type="button"
               onClick={() => scrollByViewport(-1)}
               disabled={!canScrollLeft}
-              className="absolute left-2 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full border border-[#D9E2EC] bg-white/95 text-base text-[#0E2A47] shadow-sm transition disabled:cursor-not-allowed disabled:opacity-45"
+              className="absolute left-2 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full border border-[color:var(--border-soft)] bg-white/95 text-base text-[color:var(--ink)] shadow-[var(--shadow-card)] transition disabled:cursor-not-allowed disabled:opacity-45"
               aria-label="Ver fotos anteriores"
             >
               {'<'}
@@ -168,7 +168,7 @@ export default function BusinessGallery({ photos, businessName }: BusinessGaller
               type="button"
               onClick={() => scrollByViewport(1)}
               disabled={!canScrollRight}
-              className="absolute right-2 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full border border-[#D9E2EC] bg-white/95 text-base text-[#0E2A47] shadow-sm transition disabled:cursor-not-allowed disabled:opacity-45"
+              className="absolute right-2 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full border border-[color:var(--border-soft)] bg-white/95 text-base text-[color:var(--ink)] shadow-[var(--shadow-card)] transition disabled:cursor-not-allowed disabled:opacity-45"
               aria-label="Ver fotos siguientes"
             >
               {'>'}
@@ -181,7 +181,7 @@ export default function BusinessGallery({ photos, businessName }: BusinessGaller
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-8">
           <button
             type="button"
-            className="absolute inset-0 bg-[#0B1D2A]/90"
+            className="absolute inset-0 bg-[rgba(18,49,38,0.82)]"
             onClick={() => setActiveIndex(null)}
             aria-label="Cerrar galeria"
           />

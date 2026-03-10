@@ -3,10 +3,17 @@ import { cachedGet, invalidateCachedGet } from '@/services/cachedGet';
 import type {
   BookingActions,
   BookingCommandResponse,
+  BookingFinancialStatus,
   BookingFinancialSummary,
   BookingPaymentType,
+  BookingPolicySnapshot,
+  BookingPayoutRecord,
+  BookingPayoutStatus,
+  BookingRefundRecord,
+  BookingRefundStatus,
 } from '@/types/bookings';
 import type { ProfessionalReservation, ReservationStatus } from '@/types/professional';
+import { formatBookingDateLabel, formatBookingTimeLabel } from '@/utils/bookings';
 
 type ApiReservationStatus = 'PENDING' | 'CONFIRMED' | 'CANCELLED' | 'COMPLETED' | 'NO_SHOW';
 
@@ -17,13 +24,20 @@ type ProfessionalBookingDto = {
   serviceId: string;
   serviceName: string;
   startDateTime: string;
+  startDateTimeUtc?: string | null;
   timezone?: string | null;
   duration?: string;
   postBufferMinutes?: number;
   effectiveDurationMinutes?: number;
   paymentType?: BookingPaymentType | null;
   rescheduleCount?: number;
+  paymentStatus?: BookingFinancialStatus | null;
+  refundStatus?: BookingRefundStatus | null;
+  payoutStatus?: BookingPayoutStatus | null;
   financialSummary?: BookingFinancialSummary | null;
+  latestRefund?: BookingRefundRecord | null;
+  latestPayout?: BookingPayoutRecord | null;
+  policySnapshot?: BookingPolicySnapshot | null;
   status: ApiReservationStatus;
 };
 
@@ -76,13 +90,14 @@ const toApiStatus = (status: ReservationStatus): ApiReservationStatus => {
 };
 
 const mapBooking = (booking: ProfessionalBookingDto): ProfessionalReservation => {
-  const [datePart, timePart = ''] = booking.startDateTime.split('T');
+  const timezone = booking.timezone || null;
+  const startDateTimeUtc = booking.startDateTimeUtc || null;
   return {
     id: String(booking.id),
     serviceName: booking.serviceName,
     clientName: booking.clientName,
-    date: datePart ?? '',
-    time: timePart.slice(0, 5),
+    date: formatBookingDateLabel(booking.startDateTime, timezone, startDateTimeUtc),
+    time: formatBookingTimeLabel(booking.startDateTime, timezone, startDateTimeUtc),
     duration: booking.duration,
     postBufferMinutes: booking.postBufferMinutes ?? 0,
     effectiveDurationMinutes: booking.effectiveDurationMinutes,
@@ -91,6 +106,14 @@ const mapBooking = (booking: ProfessionalBookingDto): ProfessionalReservation =>
     userId: booking.userId,
     paymentType: booking.paymentType || null,
     financialSummary: booking.financialSummary || null,
+    paymentStatus: booking.paymentStatus || booking.financialSummary?.financialStatus || null,
+    refundStatus: booking.refundStatus || 'NONE',
+    payoutStatus: booking.payoutStatus || 'NONE',
+    latestRefund: booking.latestRefund || null,
+    latestPayout: booking.latestPayout || null,
+    policySnapshot: booking.policySnapshot || null,
+    timezone,
+    startDateTimeUtc,
   };
 };
 
@@ -262,4 +285,3 @@ export const listProfessionalServices = async (): Promise<ProfessionalServiceDto
   const services = Array.isArray(response.data) ? response.data : [];
   return services.filter((service) => service?.active !== false);
 };
-

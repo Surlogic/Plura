@@ -144,6 +144,12 @@ public class BookingActionDecisionService {
     }
 
     private String resolveFinancialOutcomeCode(BookingActionsEvaluation evaluation) {
+        if (evaluation.refundPreviewAmount() != null
+            && evaluation.refundPreviewAmount().signum() > 0
+            && evaluation.retainPreviewAmount() != null
+            && evaluation.retainPreviewAmount().signum() > 0) {
+            return "PARTIAL_REFUND_AND_RELEASE_PENDING";
+        }
         if (evaluation.refundPreviewAmount() != null && evaluation.refundPreviewAmount().signum() > 0) {
             return "PENDING_REFUND_REVIEW";
         }

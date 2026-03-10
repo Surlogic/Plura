@@ -146,11 +146,11 @@ type DashboardHeroProps = {
 
 const heroToneClassNames = {
   teal:
-    'bg-[#10263f] text-white',
+    'bg-[linear-gradient(145deg,var(--brand-navy)_0%,var(--brand-navy-soft)_52%,var(--brand-navy-elevated)_100%)] text-[color:var(--text-on-dark)]',
   warm:
-    'bg-[#3b2c29] text-white',
+    'bg-[linear-gradient(145deg,var(--brand-navy)_0%,#2b2435_56%,#4a3524_100%)] text-[color:var(--text-on-dark)]',
   ink:
-    'bg-[#0f2136] text-white',
+    'bg-[linear-gradient(145deg,var(--brand-navy)_0%,var(--brand-navy-soft)_58%,var(--brand-navy-elevated)_100%)] text-[color:var(--text-on-dark)]',
 };
 
 export function DashboardHero({
@@ -166,32 +166,49 @@ export function DashboardHero({
     <Card
       tone="dark"
       className={cn(
-        'relative overflow-hidden border-white/8 p-6 shadow-[0_22px_52px_-38px_rgba(5,10,18,0.72)]',
+        'relative isolate overflow-hidden border-white/12 p-6 shadow-[var(--shadow-lift)]',
         heroToneClassNames[accent],
       )}
     >
-      <div className="pointer-events-none absolute inset-0">
-        <div className="absolute inset-x-0 top-0 h-px bg-white/10" />
+      <div className="pointer-events-none absolute inset-0 z-0">
+        <div className="absolute inset-0 bg-[linear-gradient(160deg,rgba(15,23,42,0.16)_0%,rgba(15,23,42,0.3)_44%,rgba(15,23,42,0.5)_100%)]" />
+        <div className="absolute inset-x-0 top-0 h-px bg-white/16" />
+        <div className="absolute -left-12 top-8 h-36 w-36 rounded-full bg-[color:var(--brand-primary)]/8 blur-3xl" />
+        <div className="absolute right-0 top-0 h-48 w-48 rounded-full bg-[color:var(--accent)]/12 blur-3xl" />
       </div>
-      <div className="relative flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+      <div className="relative z-10 flex flex-col gap-5 opacity-100 lg:flex-row lg:items-end lg:justify-between">
         <div className="max-w-3xl">
-          <div className="inline-flex items-center gap-3 rounded-full border border-white/10 bg-white/6 px-3 py-2">
-            <span className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-white/6 text-white">
+          <div className="inline-flex items-center gap-3 rounded-full border border-white/[0.32] bg-white/[0.04] px-3 py-2 backdrop-blur-sm">
+            <span className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/[0.24] bg-white/[0.04] text-[#F4F8FB]">
               <DashboardIcon name={icon} className="h-[18px] w-[18px]" />
             </span>
-            <span className="text-[0.68rem] font-semibold uppercase tracking-[0.26em] text-white/68">
+            <span className="text-[0.68rem] font-semibold uppercase tracking-[0.26em] text-[#EAF2F7]">
               {eyebrow}
             </span>
           </div>
-          <h1 className="mt-4 max-w-2xl text-[2rem] font-semibold tracking-[-0.03em] text-white sm:text-[2.15rem]">
+          <h1
+            className="mt-4 max-w-2xl text-[2rem] font-semibold tracking-[-0.03em] !text-[#F4F8FB] opacity-100 sm:text-[2.15rem]"
+            style={{ color: '#F4F8FB' }}
+          >
             {title}
           </h1>
-          <p className="mt-3 max-w-2xl text-sm text-white/72 sm:text-[0.95rem]">
+          <p
+            className="mt-3 max-w-2xl text-sm !text-[#D6E2EA] opacity-100 sm:text-[0.95rem]"
+            style={{ color: '#D6E2EA' }}
+          >
             {description}
           </p>
-          {meta ? <div className="mt-5 flex flex-wrap gap-2">{meta}</div> : null}
+          {meta ? (
+            <div className="mt-5 flex flex-wrap gap-2 text-[#EAF2F7] [&_span]:border-white/[0.32] [&_span]:bg-white/[0.04] [&_span]:!text-[#EAF2F7]">
+              {meta}
+            </div>
+          ) : null}
         </div>
-        {actions ? <div className="relative z-10 flex flex-wrap gap-3">{actions}</div> : null}
+        {actions ? (
+          <div className="relative z-10 flex flex-wrap gap-3 [&_a]:border-white/[0.42] [&_a]:bg-white/[0.02] [&_a]:!text-[#F4F8FB] [&_a:hover]:bg-white/[0.06] [&_button]:border-white/[0.42] [&_button]:bg-white/[0.02] [&_button]:!text-[#F4F8FB] [&_button:hover]:bg-white/[0.06]">
+            {actions}
+          </div>
+        ) : null}
       </div>
     </Card>
   );
@@ -210,11 +227,11 @@ const statToneClassNames = {
   default:
     'border-[color:var(--border-soft)] bg-white/96 text-[color:var(--ink)]',
   accent:
-    'border-[#d8ebe7] bg-[#f7fbfa] text-[color:var(--ink)]',
+    'border-[color:var(--border-soft)] bg-[color:var(--surface-soft)] text-[color:var(--ink)]',
   warm:
-    'border-[#ecd9c7] bg-[#fcf8f3] text-[color:var(--ink)]',
+    'border-[color:var(--premium-soft)] bg-[rgba(200,138,243,0.08)] text-[color:var(--ink)]',
   dark:
-    'border-white/12 bg-[#10263f] text-white',
+    'border-white/12 bg-[linear-gradient(160deg,var(--brand-navy)_0%,var(--brand-navy-soft)_54%,var(--brand-navy-elevated)_100%)] text-[color:var(--text-on-dark)]',
 };
 
 export function DashboardStatCard({
@@ -236,18 +253,21 @@ export function DashboardStatCard({
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className={cn(
-            'text-[0.68rem] uppercase tracking-[0.28em]',
-            tone === 'dark' ? 'text-white/58' : 'text-[color:var(--ink-faint)]',
+          'text-[0.68rem] font-semibold uppercase tracking-[0.28em]',
+          tone === 'dark' ? 'text-[color:var(--text-on-dark-secondary)]' : 'text-[color:var(--ink-muted)]',
           )}>
             {label}
           </p>
-          <p className="mt-3 text-[1.9rem] font-semibold tracking-[-0.04em]">
+          <p className={cn(
+            'mt-3 text-[2rem] font-semibold tracking-[-0.04em]',
+            tone === 'dark' ? 'text-[color:var(--text-on-dark)]' : 'text-[color:var(--ink)]',
+          )}>
             {value}
           </p>
           {detail ? (
             <p className={cn(
-              'mt-2 text-xs',
-              tone === 'dark' ? 'text-white/66' : 'text-[color:var(--ink-muted)]',
+              'mt-2 text-sm',
+              tone === 'dark' ? 'text-[color:var(--text-on-dark-secondary)]' : 'text-[color:var(--ink-muted)]',
             )}>
               {detail}
             </p>
@@ -255,7 +275,7 @@ export function DashboardStatCard({
         </div>
         <span className={cn(
           'inline-flex h-11 w-11 items-center justify-center rounded-2xl',
-          tone === 'dark' ? 'bg-white/10 text-white' : 'bg-[color:var(--surface-soft)] text-[color:var(--ink)]',
+          tone === 'dark' ? 'border border-white/14 bg-white/10 text-[color:var(--text-on-dark)]' : 'border border-[color:var(--border-soft)] bg-[color:var(--surface-soft)] text-[color:var(--primary)]',
         )}>
           <DashboardIcon name={icon} />
         </span>

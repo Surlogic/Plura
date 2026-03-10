@@ -18,6 +18,7 @@ import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 import jakarta.persistence.Version;
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.time.LocalDateTime;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -56,6 +57,9 @@ public class Booking {
 
     @Column(name = "start_date_time", nullable = false)
     private LocalDateTime startDateTime;
+
+    @Column(name = "start_date_time_utc")
+    private Instant startDateTimeUtc;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 20)
@@ -118,6 +122,14 @@ public class Booking {
         }
         if (this.timezone == null || this.timezone.isBlank()) {
             this.timezone = "America/Montevideo";
+        }
+        if (this.startDateTimeUtc == null && this.startDateTime != null) {
+            try {
+                this.startDateTimeUtc = this.startDateTime.atZone(java.time.ZoneId.of(this.timezone)).toInstant();
+            } catch (Exception ignored) {
+                this.timezone = "America/Montevideo";
+                this.startDateTimeUtc = this.startDateTime.atZone(java.time.ZoneId.of(this.timezone)).toInstant();
+            }
         }
         if (this.rescheduleCount == null) {
             this.rescheduleCount = 0;

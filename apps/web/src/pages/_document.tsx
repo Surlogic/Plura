@@ -6,6 +6,7 @@ import Document, {
   type DocumentContext,
   type DocumentInitialProps,
 } from 'next/document';
+import { getThemeInitScript } from '@/lib/theme';
 
 type DocumentProps = DocumentInitialProps & {
   nonce?: string;
@@ -25,8 +26,13 @@ export default class MyDocument extends Document<DocumentProps> {
   render() {
     const { nonce } = this.props;
     return (
-      <Html lang="es">
-        <Head nonce={nonce} />
+      <Html lang="es" suppressHydrationWarning>
+        <Head nonce={nonce}>
+          <script
+            nonce={nonce}
+            dangerouslySetInnerHTML={{ __html: getThemeInitScript() }}
+          />
+        </Head>
         <body>
           <Main />
           <NextScript nonce={nonce} />

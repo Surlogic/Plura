@@ -28,4 +28,6 @@ public class ProfessionalPayoutConfigResponse {
     private List<String> invalidFields;
     private boolean hasOutstandingPaidBookings;
     private long outstandingPaidBookingsCount;
+    private String splitCode;
+    private boolean splitPaymentsEnabled;
 }

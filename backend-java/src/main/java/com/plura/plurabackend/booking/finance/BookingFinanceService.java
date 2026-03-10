@@ -291,6 +291,42 @@ public class BookingFinanceService {
             ));
     }
 
+    public Map<Long, BookingRefundRecordResponse> findLatestRefundResponseMapByBookingIds(Collection<Long> bookingIds) {
+        if (bookingIds == null || bookingIds.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        return bookingRefundRecordRepository.findByBooking_IdInOrderByBooking_IdAscCreatedAtDesc(List.copyOf(bookingIds)).stream()
+            .filter(refund -> refund.getBooking() != null && refund.getBooking().getId() != null)
+            .collect(Collectors.toMap(
+                refund -> refund.getBooking().getId(),
+                this::toResponse,
+                (first, ignored) -> first,
+                LinkedHashMap::new
+            ));
+    }
+
+    public Map<Long, BookingPayoutRecordResponse> findLatestPayoutResponseMapByBookingIds(Collection<Long> bookingIds) {
+        if (bookingIds == null || bookingIds.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        return bookingPayoutRecordRepository.findByBooking_IdInOrderByBooking_IdAscCreatedAtDesc(List.copyOf(bookingIds)).stream()
+            .filter(payout -> payout.getBooking() != null && payout.getBooking().getId() != null)
+            .collect(Collectors.toMap(
+                payout -> payout.getBooking().getId(),
+                this::toResponse,
+                (first, ignored) -> first,
+                LinkedHashMap::new
+            ));
+    }
+
+    public String resolveRefundStatus(BookingRefundRecord refundRecord) {
+        return refundRecord == null || refundRecord.getStatus() == null ? "NONE" : refundRecord.getStatus().name();
+    }
+
+    public String resolvePayoutStatus(BookingPayoutRecord payoutRecord) {
+        return payoutRecord == null || payoutRecord.getStatus() == null ? "NONE" : payoutRecord.getStatus().name();
+    }
+
     public BookingRefundRecordResponse toResponse(BookingRefundRecord refundRecord) {
         if (refundRecord == null) {
             return null;
@@ -522,17 +558,28 @@ public class BookingFinanceService {
         if (currentlyHeld.signum() <= 0) {
             return BigDecimal.ZERO;
         }
-        if (refundTarget.signum() > 0) {
-            return BigDecimal.ZERO;
-        }
         return switch (decision.getActionType()) {
-            case CANCEL -> retainTarget.signum() > 0 ? retainTarget.min(currentlyHeld) : BigDecimal.ZERO;
+            case CANCEL -> resolveCancellationReleaseTarget(currentlyHeld, refundTarget, retainTarget);
             case NO_SHOW -> retainTarget.signum() > 0 ? retainTarget.min(currentlyHeld) : BigDecimal.ZERO;
             case COMPLETE -> booking.getOperationalStatus() == BookingOperationalStatus.COMPLETED
                 ? currentlyHeld
                 : BigDecimal.ZERO;
             case RESCHEDULE, RETRY_PAYOUT -> BigDecimal.ZERO;
         };
+    }
+
+    private BigDecimal resolveCancellationReleaseTarget(
+        BigDecimal currentlyHeld,
+        BigDecimal refundTarget,
+        BigDecimal retainTarget
+    ) {
+        if (retainTarget.signum() > 0) {
+            return retainTarget.min(currentlyHeld);
+        }
+        if (refundTarget.signum() <= 0) {
+            return BigDecimal.ZERO;
+        }
+        return currentlyHeld.subtract(refundTarget).max(BigDecimal.ZERO);
     }
 
     private String writeMetadataJson(Booking booking, BookingActionDecision decision) {

@@ -57,6 +57,9 @@ const buildStartDateTime = (date?: string, time?: string): string | null => {
   return null;
 };
 
+const isPrepaidService = (paymentType?: string) =>
+  paymentType === 'DEPOSIT' || paymentType === 'FULL_PREPAY';
+
 export default function ReservationCheckoutScreen() {
   const { slug, serviceId, date, time } = useLocalSearchParams<Params>();
   const { hasLoaded, isAuthenticated, role } = useProfessionalProfileContext();
@@ -94,7 +97,7 @@ export default function ReservationCheckoutScreen() {
   }, [serviceId, slug]);
 
   const canConfirm = useMemo(
-    () => Boolean(slug && serviceId && date && time && service) && !isSaving,
+    () => Boolean(slug && serviceId && date && time && service) && !isSaving && !isPrepaidService(service?.paymentType),
     [date, isSaving, service, serviceId, slug, time],
   );
 
@@ -149,11 +152,25 @@ export default function ReservationCheckoutScreen() {
                   <Text className="text-sm text-gray-500">Precio</Text>
                   <Text className="text-sm font-semibold text-primary">{formatPrice(service?.price)}</Text>
                 </View>
+                <View className="mt-3 flex-row items-center justify-between">
+                  <Text className="text-sm text-gray-500">Pago</Text>
+                  <Text className="text-sm font-semibold text-secondary">
+                    {isPrepaidService(service?.paymentType) ? 'Requiere checkout' : 'En el lugar'}
+                  </Text>
+                </View>
               </View>
 
               {message ? (
                 <View className="mt-4 rounded-xl bg-secondary/5 p-3">
                   <Text className="text-xs text-secondary">{message}</Text>
+                </View>
+              ) : null}
+
+              {isPrepaidService(service?.paymentType) ? (
+                <View className="mt-4 rounded-xl bg-secondary/5 p-3">
+                  <Text className="text-xs text-secondary">
+                    Este servicio requiere checkout online. La app mobile todavía no implementa ese flujo de pago de forma segura.
+                  </Text>
                 </View>
               ) : null}
 

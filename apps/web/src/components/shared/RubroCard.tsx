@@ -55,13 +55,14 @@ export default function RubroCard({
           />
         ) : (
           <div
-            className="absolute inset-0 bg-[linear-gradient(140deg,rgba(31,182,166,0.24),rgba(255,255,255,0.65),rgba(242,140,56,0.2))]"
+            className="absolute inset-0 bg-[linear-gradient(145deg,var(--brand-navy)_0%,var(--brand-navy-soft)_62%,rgba(54,200,244,0.22)_100%)]"
             aria-hidden="true"
           />
         )}
-        <div className="absolute inset-0 bg-[linear-gradient(180deg,transparent,rgba(13,35,58,0.7))]" aria-hidden="true" />
+        <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(15,23,42,0.06)_0%,rgba(15,23,42,0.22)_42%,rgba(15,23,42,0.84)_100%)]" aria-hidden="true" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(54,200,244,0.14),transparent_36%)]" aria-hidden="true" />
         <div className="absolute inset-x-0 bottom-0 p-5">
-          <h3 className="text-xl font-semibold text-white">{title}</h3>
+          <h3 className="text-xl font-semibold text-[color:var(--text-on-dark)]">{title}</h3>
         </div>
       </div>
     </Link>

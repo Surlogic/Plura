@@ -9,13 +9,35 @@ import {
   updateProfessionalService,
 } from '../../src/services/professionalConfig';
 
+type ServicePaymentMode = 'ON_SITE' | 'DEPOSIT' | 'FULL_PREPAY';
+
 const emptyDraft = {
   name: '',
   description: '',
   imageUrl: '',
   price: '',
+  depositAmount: '',
   duration: '',
   postBufferMinutes: '0',
+  paymentType: 'ON_SITE' as ServicePaymentMode,
+};
+
+const PAYMENT_OPTIONS: Array<{ value: ServicePaymentMode; label: string }> = [
+  { value: 'ON_SITE', label: 'Pago en el local' },
+  { value: 'DEPOSIT', label: 'Seña online' },
+  { value: 'FULL_PREPAY', label: 'Pago total online' },
+];
+
+const normalizePaymentType = (value?: string | null): ServicePaymentMode => {
+  const normalized = (value || '').trim().toUpperCase();
+  if (normalized === 'DEPOSIT') return 'DEPOSIT';
+  if (normalized === 'FULL_PREPAY' || normalized === 'FULL') return 'FULL_PREPAY';
+  return 'ON_SITE';
+};
+
+const getPaymentTypeLabel = (value?: string | null) => {
+  const option = PAYMENT_OPTIONS.find((item) => item.value === normalizePaymentType(value));
+  return option?.label ?? 'Pago en el local';
 };
 
 export default function ServicesScreen() {
@@ -83,19 +105,60 @@ export default function ServicesScreen() {
             />
           </View>
 
+          <View className="mt-3" style={{ gap: 8 }}>
+            <Text className="text-sm font-semibold text-gray-500 uppercase tracking-[2px]">
+              Modalidad de pago
+            </Text>
+            <View style={{ gap: 8 }}>
+              {PAYMENT_OPTIONS.map((option) => {
+                const isSelected = draft.paymentType === option.value;
+                return (
+                  <TouchableOpacity
+                    key={option.value}
+                    className={`rounded-2xl border px-4 py-3 ${
+                      isSelected ? 'border-secondary bg-secondary/10' : 'border-secondary/10 bg-background'
+                    }`}
+                    onPress={() => setDraft((prev) => ({ ...prev, paymentType: option.value }))}
+                  >
+                    <Text className={`font-semibold ${isSelected ? 'text-secondary' : 'text-gray-700'}`}>
+                      {option.label}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </View>
+
+          {draft.paymentType === 'DEPOSIT' ? (
+            <TextInput
+              className="mt-2 h-11 rounded-xl border border-secondary/10 bg-background px-3 text-secondary"
+              placeholder="Monto de la seña"
+              value={draft.depositAmount}
+              onChangeText={(text) => setDraft((prev) => ({ ...prev, depositAmount: text }))}
+            />
+          ) : null}
+
           <TouchableOpacity
             disabled={isSaving || !draft.name.trim() || !draft.price.trim() || !draft.duration.trim()}
             onPress={async () => {
               setIsSaving(true);
               setMessage(null);
               try {
+                if (draft.paymentType === 'DEPOSIT' && (!draft.depositAmount.trim() || Number(draft.depositAmount) <= 0)) {
+                  setMessage('Ingresá una seña válida.');
+                  setIsSaving(false);
+                  return;
+                }
+
                 const payload = {
                   name: draft.name.trim(),
                   description: draft.description.trim(),
                   imageUrl: draft.imageUrl.trim(),
                   price: draft.price.trim(),
+                  depositAmount: draft.paymentType === 'DEPOSIT' ? draft.depositAmount.trim() : null,
                   duration: draft.duration.trim(),
                   postBufferMinutes: Number(draft.postBufferMinutes) || 0,
+                  paymentType: draft.paymentType,
                   active: true,
                 };
 
@@ -152,6 +215,7 @@ export default function ServicesScreen() {
                 <View className="flex-1">
                   <Text className="text-lg font-bold text-secondary mb-1">{service.name}</Text>
                   <Text className="text-sm text-gray-500">Duración: {service.duration || 'A definir'}</Text>
+                  <Text className="text-sm text-gray-500 mt-1">{getPaymentTypeLabel(service.paymentType)}</Text>
                 </View>
                 <Text className="text-base font-bold text-primary">
                   {service.price ? `$${service.price}` : 'Consultar'}
@@ -165,11 +229,13 @@ export default function ServicesScreen() {
                     setEditingId(service.id);
                     setDraft({
                       name: service.name || '',
-                      description: '',
-                      imageUrl: '',
+                      description: service.description || '',
+                      imageUrl: service.imageUrl || '',
                       price: service.price || '',
+                      depositAmount: service.depositAmount != null ? String(service.depositAmount) : '',
                       duration: service.duration || '',
-                      postBufferMinutes: '0',
+                      postBufferMinutes: service.postBufferMinutes != null ? String(service.postBufferMinutes) : '0',
+                      paymentType: normalizePaymentType(service.paymentType),
                     });
                   }}
                 >

@@ -27,6 +27,7 @@ import type {
 import { formatPayoutFieldList, getPayoutStatusCopy } from '@/utils/payouts';
 
 const emptyPayoutForm: ProfessionalPayoutConfigUpdateInput = {
+  splitCode: '',
   firstName: '',
   lastName: '',
   country: '',
@@ -40,7 +41,7 @@ const emptyPayoutForm: ProfessionalPayoutConfigUpdateInput = {
 };
 
 const fieldClassName =
-  'mt-2 h-11 w-full rounded-[14px] border border-[#D7DEE7] bg-white px-3 text-sm text-[#0E2A47] outline-none transition focus:border-[#1FB6A6] focus:ring-2 focus:ring-[#1FB6A6]/20 disabled:bg-[#F8FAFC] disabled:text-[#64748B]';
+  'mt-2 h-11 w-full rounded-[16px] border border-[color:var(--border-soft)] bg-white/92 px-3 text-sm text-[color:var(--ink)] outline-none transition focus:border-[color:var(--accent)] focus:ring-4 focus:ring-[color:var(--focus-ring)] disabled:bg-[color:var(--surface-soft)] disabled:text-[color:var(--ink-faint)]';
 
 const resolveBackendMessage = (error: unknown, fallback: string) => {
   if (isAxiosError<{ message?: string }>(error)) {
@@ -52,6 +53,7 @@ const resolveBackendMessage = (error: unknown, fallback: string) => {
 const buildPayoutForm = (
   config?: ProfessionalPayoutConfig | null,
 ): ProfessionalPayoutConfigUpdateInput => ({
+  splitCode: config?.splitCode || '',
   firstName: config?.firstName || '',
   lastName: config?.lastName || '',
   country: config?.country || '',
@@ -186,7 +188,7 @@ export default function ProfesionalBillingPage() {
   const branchRequired = payoutConfig?.requiredFields?.includes('branch') ?? true;
   const canSavePayout = Boolean(payoutConfig)
     && !isSavingPayout
-    && (isPayoutDirty || payoutConfig?.status !== 'READY');
+    && (isPayoutDirty || payoutConfig?.status !== 'READY' || !payoutConfig?.splitPaymentsEnabled);
 
   const scrollToPlans = () => {
     plansRef.current?.scrollIntoView({
@@ -196,9 +198,9 @@ export default function ProfesionalBillingPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[radial-gradient(circle_at_top,#FFFFFF_0%,#EEF2F6_45%,#D3D7DC_100%)] text-[#0E2A47]">
+    <div className="app-shell min-h-screen bg-[color:var(--background)] text-[color:var(--ink)]">
       <div className="flex min-h-screen">
-        <aside className="hidden w-[260px] shrink-0 border-r border-[#0E2A47]/10 bg-[#0B1D2A] lg:block">
+        <aside className="hidden w-[260px] shrink-0 border-r border-[color:var(--border-soft)] bg-[color:var(--sidebar-surface)] lg:block">
           <div className="sticky top-0 h-screen overflow-y-auto">
             <ProfesionalSidebar profile={profile} active="Facturación" />
           </div>
@@ -212,7 +214,7 @@ export default function ProfesionalBillingPage() {
           </div>
 
           {isMenuOpen ? (
-            <div className="border-b border-[#0E2A47]/10 bg-[#0B1D2A] lg:hidden">
+            <div className="border-b border-[color:var(--border-soft)] bg-[color:var(--surface)]/92 backdrop-blur-xl lg:hidden">
               <ProfesionalSidebar profile={profile} active="Facturación" />
             </div>
           ) : null}
@@ -227,10 +229,10 @@ export default function ProfesionalBillingPage() {
                 description="Desde acá podés dejar tu cuenta lista para cobrar en el piloto y seguir el estado comercial de tu suscripción."
                 meta={
                   <>
-                    <span className="rounded-full border border-white/12 bg-white/8 px-3 py-1 text-xs font-semibold text-white/80">
+                    <span className="rounded-full border border-white/18 bg-white/10 px-3 py-1 text-xs font-semibold text-[color:var(--text-on-dark-secondary)] backdrop-blur-sm">
                       Plan {currentPlan.label}
                     </span>
-                    <span className="rounded-full border border-white/12 bg-white/8 px-3 py-1 text-xs font-semibold text-white/80">
+                    <span className="rounded-full border border-white/18 bg-white/10 px-3 py-1 text-xs font-semibold text-[color:var(--text-on-dark-secondary)] backdrop-blur-sm">
                       {enabledCapabilities.length} capacidades activas
                     </span>
                   </>
@@ -385,9 +387,25 @@ export default function ProfesionalBillingPage() {
 
                           <Card className="border-[#E6ECF2] bg-[#FAFCFE]">
                             <p className="text-[0.68rem] font-semibold uppercase tracking-[0.24em] text-[#64748B]">
-                              Datos base usados para cobrar
+                              Split de reservas prepagas
                             </p>
                             <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                              <div>
+                                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#64748B]">
+                                  Estado split
+                                </p>
+                                <p className="mt-2 text-sm text-[#0E2A47]">
+                                  {payoutConfig.splitPaymentsEnabled ? 'Activo' : 'Pendiente'}
+                                </p>
+                              </div>
+                              <div>
+                                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#64748B]">
+                                  Código
+                                </p>
+                                <p className="mt-2 text-sm text-[#0E2A47]">
+                                  {payoutConfig.splitCode || 'Sin definir'}
+                                </p>
+                              </div>
                               <div>
                                 <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#64748B]">
                                   Email de la cuenta
@@ -398,33 +416,37 @@ export default function ProfesionalBillingPage() {
                               </div>
                               <div>
                                 <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#64748B]">
-                                  Teléfono
-                                </p>
-                                <p className="mt-2 text-sm text-[#0E2A47]">
-                                  {payoutConfig.phone || 'Sin definir'}
-                                </p>
-                              </div>
-                              <div>
-                                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#64748B]">
-                                  País
-                                </p>
-                                <p className="mt-2 text-sm text-[#0E2A47]">
-                                  {payoutConfig.country || 'Sin definir'}
-                                </p>
-                              </div>
-                              <div>
-                                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#64748B]">
-                                  Faltantes
+                                  Faltantes payout legacy
                                 </p>
                                 <p className="mt-2 text-sm text-[#0E2A47]">
                                   {payoutMissingCount}
                                 </p>
                               </div>
                             </div>
+                            <div className="mt-4 rounded-[18px] border border-[#DDE7F0] bg-white px-4 py-3 text-sm text-[#516072]">
+                              Si cargás el código split de dLocal Go, las reservas prepagas se liquidan al profesional desde el propio checkout. Los datos bancarios de abajo siguen siendo sólo para el flujo legacy/manual.
+                            </div>
                           </Card>
                         </div>
 
                         <div className="mt-6 grid gap-4 lg:grid-cols-2">
+                          <label className="block text-sm font-medium text-[#0E2A47] lg:col-span-2">
+                            Código split dLocal Go
+                            <input
+                              className={fieldClassName}
+                              value={payoutForm.splitCode}
+                              onChange={(event) => setPayoutForm((current) => ({
+                                ...current,
+                                splitCode: event.target.value.trim(),
+                              }))}
+                              placeholder="Integrator Code del contrato split"
+                              maxLength={120}
+                            />
+                            <span className="mt-2 block text-xs text-[#64748B]">
+                              Se usa para que las reservas online pagadas se repartan directo al profesional vía dLocal Go.
+                            </span>
+                          </label>
+
                           <label className="block text-sm font-medium text-[#0E2A47]">
                             Nombre
                             <input

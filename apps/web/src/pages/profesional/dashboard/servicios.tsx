@@ -7,6 +7,7 @@ import { useProfessionalProfile } from '@/hooks/useProfessionalProfile';
 import { useProfessionalDashboardUnsavedSection } from '@/context/ProfessionalDashboardUnsavedChangesContext';
 import api from '@/services/api';
 import { cachedGet, invalidateCachedGet } from '@/services/cachedGet';
+import type { ServicePaymentType } from '@/types/professional';
 import { resolveAssetUrl } from '@/utils/assetUrl';
 import {
   DashboardHero,
@@ -20,18 +21,25 @@ type ProfesionalServiceItem = {
   description?: string | null;
   imageUrl?: string | null;
   price: string;
+  depositAmount?: number | null;
+  currency?: string | null;
   duration: string;
   postBufferMinutes?: number | null;
+  paymentType?: ServicePaymentType | null;
   active?: boolean;
 };
+
+type ServicePaymentMode = 'ON_SITE' | 'DEPOSIT' | 'FULL_PREPAY';
 
 type ServiceDraft = {
   name: string;
   description: string;
   imageUrl: string;
   price: string;
+  depositAmount: string;
   duration: string;
   postBufferMinutes: string;
+  paymentType: ServicePaymentMode;
   active: boolean;
 };
 
@@ -40,13 +48,36 @@ const createEmptyDraft = (): ServiceDraft => ({
   description: '',
   imageUrl: '',
   price: '',
+  depositAmount: '',
   duration: '',
   postBufferMinutes: '',
+  paymentType: 'ON_SITE',
   active: true,
 });
 
 const MAX_SERVICE_IMAGE_SIZE = 1024 * 1024;
 const ALLOWED_IMAGE_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+const SERVICE_PAYMENT_OPTIONS: Array<{
+  value: ServicePaymentMode;
+  label: string;
+  description: string;
+}> = [
+  {
+    value: 'ON_SITE',
+    label: 'Pago en el local',
+    description: 'El cliente reserva y paga presencialmente.',
+  },
+  {
+    value: 'DEPOSIT',
+    label: 'Seña online',
+    description: 'El cliente paga una parte online y el resto se resuelve luego.',
+  },
+  {
+    value: 'FULL_PREPAY',
+    label: 'Pago total online',
+    description: 'El cliente completa el pago antes del turno.',
+  },
+];
 
 const normalizeDurationLabel = (value: string) => {
   const trimmed = value.trim();
@@ -59,6 +90,28 @@ const normalizeDurationLabel = (value: string) => {
   const remaining = Math.round(minutes % 60);
   if (remaining === 0) return `${hours} h`;
   return `${hours} h ${remaining} min`;
+};
+
+const normalizePaymentType = (value?: ServicePaymentType | null): ServicePaymentMode => {
+  const normalized = (value || '').trim().toUpperCase();
+  if (normalized === 'DEPOSIT') return 'DEPOSIT';
+  if (normalized === 'FULL_PREPAY' || normalized === 'FULL') return 'FULL_PREPAY';
+  return 'ON_SITE';
+};
+
+const formatPaymentTypeLabel = (value?: ServicePaymentType | null) => {
+  const normalized = normalizePaymentType(value);
+  const option = SERVICE_PAYMENT_OPTIONS.find((item) => item.value === normalized);
+  return option?.label ?? 'Pago en el local';
+};
+
+const formatDepositAmount = (value?: number | null) => {
+  if (value == null || !Number.isFinite(value)) return '';
+  return new Intl.NumberFormat('es-UY', {
+    style: 'currency',
+    currency: 'UYU',
+    maximumFractionDigits: 2,
+  }).format(value);
 };
 
 export default function ProfesionalServicesBuilderPage() {
@@ -79,7 +132,7 @@ export default function ProfesionalServicesBuilderPage() {
   const showSkeleton = !hasLoaded || (isLoading && !profile);
 
   const inputClassName =
-    'h-11 w-full rounded-[14px] border border-[#E2E7EC] bg-white px-3 text-sm text-[#0E2A47] placeholder:text-[#94A3B8] focus:outline-none focus:ring-2 focus:ring-[#1FB6A6]/30';
+    'h-11 w-full rounded-[16px] border border-[color:var(--border-soft)] bg-white/92 px-3 text-sm text-[color:var(--ink)] placeholder:text-[color:var(--ink-faint)] focus:border-[color:var(--accent)] focus:outline-none focus:ring-4 focus:ring-[color:var(--focus-ring)]';
 
   const loadServices = useCallback(async () => {
     if (!profile?.id) return;
@@ -149,11 +202,13 @@ export default function ProfesionalServicesBuilderPage() {
       description: service.description ?? '',
       imageUrl: service.imageUrl ?? '',
       price: service.price,
+      depositAmount: service.depositAmount != null ? String(service.depositAmount) : '',
       duration: service.duration,
       postBufferMinutes:
         service.postBufferMinutes && service.postBufferMinutes > 0
           ? String(service.postBufferMinutes)
           : '',
+      paymentType: normalizePaymentType(service.paymentType),
       active: service.active !== false,
     };
     setDraft(editDraft);
@@ -232,6 +287,20 @@ export default function ProfesionalServicesBuilderPage() {
       return false;
     }
 
+    const normalizedDepositRaw = draft.depositAmount.trim();
+    const normalizedDeposit = normalizedDepositRaw === '' ? null : Number(normalizedDepositRaw);
+    if (draft.paymentType === 'DEPOSIT') {
+      if (normalizedDeposit == null || !Number.isFinite(normalizedDeposit) || normalizedDeposit <= 0) {
+        setSaveMessage('Ingresá una seña válida mayor a 0.');
+        setSaveError(true);
+        return false;
+      }
+    } else if (normalizedDeposit != null && (!Number.isFinite(normalizedDeposit) || normalizedDeposit < 0)) {
+      setSaveMessage('La seña debe ser un número mayor o igual a 0.');
+      setSaveError(true);
+      return false;
+    }
+
     setIsSubmitting(true);
     setSaveMessage(null);
     setSaveError(false);
@@ -256,9 +325,23 @@ export default function ProfesionalServicesBuilderPage() {
         description: draft.description.trim(),
         imageUrl: resolvedImageUrl,
         price: draft.price.trim(),
+        depositAmount: draft.paymentType === 'DEPOSIT' ? normalizedDepositRaw : null,
         duration: draft.duration.trim(),
         postBufferMinutes: normalizedBuffer,
+        paymentType: draft.paymentType,
         active: draft.active,
+      };
+      const optimisticService: ProfesionalServiceItem = {
+        id: editingId ?? `temp-${Date.now()}`,
+        name: payload.name,
+        description: payload.description,
+        imageUrl: payload.imageUrl,
+        price: payload.price,
+        depositAmount: draft.paymentType === 'DEPOSIT' ? normalizedDeposit : null,
+        duration: payload.duration,
+        postBufferMinutes: payload.postBufferMinutes,
+        paymentType: payload.paymentType,
+        active: payload.active,
       };
 
       if (editingId) {
@@ -269,7 +352,7 @@ export default function ProfesionalServicesBuilderPage() {
         invalidateCachedGet('/profesional/services');
         const updatedService = response.data?.id
           ? response.data
-          : { id: editingId, ...payload };
+          : optimisticService;
         setServices((prev) =>
           prev.map((item) =>
             item.id === editingId ? { ...item, ...updatedService } : item,
@@ -284,10 +367,7 @@ export default function ProfesionalServicesBuilderPage() {
         invalidateCachedGet('/profesional/services');
         const createdService = response.data?.id
           ? response.data
-          : {
-              id: `temp-${Date.now()}`,
-              ...payload,
-            };
+          : optimisticService;
         setServices((prev) => [createdService, ...prev]);
         setSaveMessage('Servicio creado correctamente.');
       }
@@ -316,12 +396,6 @@ export default function ProfesionalServicesBuilderPage() {
     try {
       const nextActive = !(service.active !== false);
       const response = await api.put<ProfesionalServiceItem>(`/profesional/services/${service.id}`, {
-        name: service.name,
-        description: service.description ?? '',
-        imageUrl: service.imageUrl ?? '',
-        price: service.price,
-        duration: service.duration,
-        postBufferMinutes: service.postBufferMinutes ?? 0,
         active: nextActive,
       });
       const updatedService = response.data?.id
@@ -358,8 +432,10 @@ export default function ProfesionalServicesBuilderPage() {
       draft.description !== initialDraft.description ||
       draft.imageUrl !== initialDraft.imageUrl ||
       draft.price !== initialDraft.price ||
+      draft.depositAmount !== initialDraft.depositAmount ||
       draft.duration !== initialDraft.duration ||
       draft.postBufferMinutes !== initialDraft.postBufferMinutes ||
+      draft.paymentType !== initialDraft.paymentType ||
       draft.active !== initialDraft.active;
     return hasDifferentMode || hasDifferentDraft || Boolean(selectedImageFile);
   }, [draft, editingId, initialDraft, initialEditingId, selectedImageFile]);
@@ -382,9 +458,9 @@ export default function ProfesionalServicesBuilderPage() {
   });
 
   return (
-    <div className="min-h-screen bg-[radial-gradient(circle_at_top,#FFFFFF_0%,#EEF2F6_45%,#D3D7DC_100%)] text-[#0E2A47]">
+    <div className="app-shell min-h-screen bg-[color:var(--background)] text-[color:var(--ink)]">
       <div className="flex min-h-screen">
-          <aside className="hidden w-[260px] shrink-0 border-r border-[#0E2A47]/10 bg-[#0B1D2A] lg:block">
+          <aside className="hidden w-[260px] shrink-0 border-r border-[color:var(--border-soft)] bg-[color:var(--sidebar-surface)] lg:block">
             <div className="sticky top-0 h-screen overflow-y-auto">
               <ProfesionalSidebar profile={profile} active="Servicios" />
             </div>
@@ -396,7 +472,7 @@ export default function ProfesionalServicesBuilderPage() {
               </Button>
             </div>
             {isMenuOpen ? (
-              <div className="border-b border-[#0E2A47]/10 bg-[#0B1D2A] lg:hidden">
+              <div className="border-b border-[color:var(--border-soft)] bg-[color:var(--surface)]/92 backdrop-blur-xl lg:hidden">
                 <ProfesionalSidebar profile={profile} active="Servicios" />
               </div>
             ) : null}
@@ -410,10 +486,10 @@ export default function ProfesionalServicesBuilderPage() {
                   description="Dale más peso al catálogo, detectá faltantes visuales y actualizá tu oferta sin perder de vista lo que ya está publicado."
                   meta={
                     <>
-                      <span className="rounded-full border border-white/12 bg-white/8 px-3 py-1 text-xs font-semibold text-white/80">
+                      <span className="rounded-full border border-white/18 bg-white/10 px-3 py-1 text-xs font-semibold text-[color:var(--text-on-dark-secondary)] backdrop-blur-sm">
                         {serviceCount} servicios
                       </span>
-                      <span className="rounded-full border border-white/12 bg-white/8 px-3 py-1 text-xs font-semibold text-white/80">
+                      <span className="rounded-full border border-white/18 bg-white/10 px-3 py-1 text-xs font-semibold text-[color:var(--text-on-dark-secondary)] backdrop-blur-sm">
                         {activeServiceCount} activos
                       </span>
                     </>
@@ -531,6 +607,12 @@ export default function ProfesionalServicesBuilderPage() {
                                     </div>
                                     <p className="mt-2 text-sm font-semibold text-[#1FB6A6]">
                                       {service.price || 'Consultar'}
+                                    </p>
+                                    <p className="mt-1 text-[0.7rem] font-semibold uppercase tracking-[0.12em] text-[#64748B]">
+                                      {formatPaymentTypeLabel(service.paymentType)}
+                                      {normalizePaymentType(service.paymentType) === 'DEPOSIT' && service.depositAmount != null
+                                        ? ` · Seña ${formatDepositAmount(service.depositAmount)}`
+                                        : ''}
                                     </p>
                                     {service.description ? (
                                       <p className="mt-1 line-clamp-2 text-xs text-[#64748B]">
@@ -668,6 +750,53 @@ export default function ProfesionalServicesBuilderPage() {
                               placeholder="Ej: $9.500"
                             />
                           </div>
+                          <div>
+                            <label className="text-sm font-medium text-[#0E2A47]">
+                              Modalidad de pago
+                            </label>
+                            <div className="mt-2 grid gap-2">
+                              {SERVICE_PAYMENT_OPTIONS.map((option) => {
+                                const isSelected = draft.paymentType === option.value;
+                                return (
+                                  <button
+                                    key={option.value}
+                                    type="button"
+                                    onClick={() => setDraft((prev) => ({ ...prev, paymentType: option.value }))}
+                                    className={`rounded-[16px] border px-4 py-3 text-left transition ${
+                                      isSelected
+                                        ? 'border-[#1FB6A6] bg-[#F0FFFC] shadow-[0_10px_24px_rgba(31,182,166,0.12)]'
+                                        : 'border-[#E2E7EC] bg-white hover:-translate-y-0.5 hover:shadow-sm'
+                                    }`}
+                                  >
+                                    <p className="text-sm font-semibold text-[#0E2A47]">
+                                      {option.label}
+                                    </p>
+                                    <p className="mt-1 text-xs text-[#64748B]">
+                                      {option.description}
+                                    </p>
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+                          {draft.paymentType === 'DEPOSIT' ? (
+                            <div>
+                              <label className="text-sm font-medium text-[#0E2A47]">
+                                Monto de la seña
+                              </label>
+                              <input
+                                className={inputClassName}
+                                value={draft.depositAmount}
+                                onChange={(event) =>
+                                  handleDraftChange('depositAmount', event.target.value)
+                                }
+                                placeholder="Ej: 2500"
+                              />
+                              <p className="mt-1 text-xs text-[#64748B]">
+                                Este monto se cobra online para confirmar la reserva.
+                              </p>
+                            </div>
+                          ) : null}
                           <div>
                             <label className="text-sm font-medium text-[#0E2A47]">
                               Duración

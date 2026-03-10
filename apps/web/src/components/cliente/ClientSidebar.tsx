@@ -131,7 +131,7 @@ export default function ClientSidebar({
               onClick={onNavigate}
               className={`group relative flex items-center rounded-[14px] py-2 text-sm font-semibold transition ${
                 isActive
-                  ? 'bg-[color:var(--surface-soft)] text-[color:var(--ink)]'
+                  ? 'bg-[color:var(--primary-soft)] text-[color:var(--primary-strong)]'
                   : 'text-[color:var(--ink)] hover:bg-white/82'
               } ${isCollapsed ? 'justify-center px-2' : 'justify-start px-3'}`}
               aria-current={isActive ? 'page' : undefined}
@@ -140,7 +140,7 @@ export default function ClientSidebar({
               <span
                 className={`flex h-8 w-8 items-center justify-center rounded-full transition ${
                   isActive
-                    ? 'bg-[color:var(--accent-soft)] text-[color:var(--accent-strong)]'
+                    ? 'bg-white text-[color:var(--primary)]'
                     : 'bg-white text-[color:var(--ink-muted)]'
                 }`}
                 aria-hidden="true"
@@ -156,16 +156,16 @@ export default function ClientSidebar({
               </span>
 
               {isCollapsed ? (
-                <span className="pointer-events-none absolute left-[calc(100%+12px)] top-1/2 z-20 -translate-y-1/2 rounded-md bg-[color:var(--primary-strong)] px-2 py-1 text-xs font-semibold text-white opacity-0 shadow-[var(--shadow-card)] transition group-hover:opacity-100">
+                <span className="pointer-events-none absolute left-[calc(100%+12px)] top-1/2 z-20 -translate-y-1/2 rounded-md bg-[color:var(--primary)] px-2 py-1 text-xs font-semibold text-white opacity-0 shadow-[var(--shadow-card)] transition group-hover:opacity-100">
                   {item.label}
                 </span>
               ) : null}
               {isCollapsed ? (
-                <span className="pointer-events-none absolute left-[calc(100%+8px)] top-1/2 z-10 h-2 w-2 -translate-y-1/2 rotate-45 bg-[color:var(--primary-strong)] opacity-0 transition group-hover:opacity-100" />
+                <span className="pointer-events-none absolute left-[calc(100%+8px)] top-1/2 z-10 h-2 w-2 -translate-y-1/2 rotate-45 bg-[color:var(--primary)] opacity-0 transition group-hover:opacity-100" />
               ) : null}
               <span
                 className={`absolute inset-y-2 left-0 w-1 rounded-r-full transition ${
-                  isActive ? 'bg-[color:var(--accent)]' : 'bg-transparent'
+                  isActive ? 'bg-[color:var(--primary)]' : 'bg-transparent'
                 }`}
                 aria-hidden="true"
               />

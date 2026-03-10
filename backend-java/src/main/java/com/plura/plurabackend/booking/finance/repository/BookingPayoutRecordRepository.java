@@ -16,6 +16,8 @@ public interface BookingPayoutRecordRepository extends JpaRepository<BookingPayo
 
     Optional<BookingPayoutRecord> findByRelatedDecisionId(String relatedDecisionId);
 
+    List<BookingPayoutRecord> findByBooking_IdInOrderByBooking_IdAscCreatedAtDesc(List<Long> bookingIds);
+
     List<BookingPayoutRecord> findByStatus(BookingPayoutStatus status);
 
     @Query(

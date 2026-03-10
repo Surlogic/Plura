@@ -110,6 +110,11 @@ public class ProfesionalPublicController {
         if (rootCause == null || rootCause.getMessage() == null) {
             return false;
         }
-        return rootCause.getMessage().contains(BOOKING_SLOT_CONSTRAINT);
+        String message = rootCause.getMessage();
+        String lower = message.toLowerCase();
+        return message.contains(BOOKING_SLOT_CONSTRAINT)
+            || (lower.contains("duplicate key")
+                && lower.contains("professional_id")
+                && (lower.contains("start_date_time") || lower.contains("startdatetime")));
     }
 }

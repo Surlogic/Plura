@@ -2287,10 +2287,23 @@ public class ProfessionalPublicPageCoreService {
     }
 
     private void ensureServiceReservable(ProfesionalService service) {
-        if (isServiceActive(service)) {
-            return;
+        if (!isServiceActive(service)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "El servicio está inactivo.");
         }
-        throw new ResponseStatusException(HttpStatus.CONFLICT, "El servicio está inactivo.");
+
+        // Evita errores 500 por violaciones NOT NULL al capturar snapshot en booking.
+        if (service.getName() == null || service.getName().isBlank()) {
+            throw new ResponseStatusException(
+                HttpStatus.BAD_REQUEST,
+                "El servicio no tiene nombre configurado."
+            );
+        }
+        if (service.getDuration() == null || service.getDuration().isBlank()) {
+            throw new ResponseStatusException(
+                HttpStatus.BAD_REQUEST,
+                "El servicio no tiene duración configurada."
+            );
+        }
     }
 
     private void ensureSlug(ProfessionalProfile profile) {

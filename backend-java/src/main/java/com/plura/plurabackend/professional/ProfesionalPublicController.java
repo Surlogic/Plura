@@ -5,6 +5,7 @@ import com.plura.plurabackend.booking.dto.PublicBookingResponse;
 import jakarta.validation.Valid;
 import com.plura.plurabackend.professional.dto.ProfesionalPublicPageResponse;
 import com.plura.plurabackend.professional.dto.ProfesionalPublicSummaryResponse;
+import java.sql.SQLException;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -88,8 +89,8 @@ public class ProfesionalPublicController {
             if (!isBookingSlotConflict(exception)) {
                 LOGGER.error("Error de integridad inesperado al crear reserva pública para slug {}", slug, exception);
                 throw new ResponseStatusException(
-                    HttpStatus.INTERNAL_SERVER_ERROR,
-                    "No se pudo crear la reserva"
+                    HttpStatus.BAD_REQUEST,
+                    resolveIntegrityErrorMessage(exception)
                 );
             }
             return ResponseEntity.status(HttpStatus.CONFLICT)
@@ -106,6 +107,10 @@ public class ProfesionalPublicController {
     }
 
     private boolean isBookingSlotConflict(DataIntegrityViolationException exception) {
+        if (hasUniqueViolationSqlState(exception)) {
+            return true;
+        }
+
         Throwable rootCause = NestedExceptionUtils.getMostSpecificCause(exception);
         if (rootCause == null || rootCause.getMessage() == null) {
             return false;
@@ -116,5 +121,38 @@ public class ProfesionalPublicController {
             || (lower.contains("duplicate key")
                 && lower.contains("professional_id")
                 && (lower.contains("start_date_time") || lower.contains("startdatetime")));
+    }
+
+    private boolean hasUniqueViolationSqlState(Throwable throwable) {
+        Throwable current = throwable;
+        while (current != null) {
+            if (current instanceof SQLException sqlException && "23505".equals(sqlException.getSQLState())) {
+                return true;
+            }
+            current = current.getCause();
+        }
+        return false;
+    }
+
+    private String resolveIntegrityErrorMessage(DataIntegrityViolationException exception) {
+        Throwable rootCause = NestedExceptionUtils.getMostSpecificCause(exception);
+        if (rootCause == null || rootCause.getMessage() == null || rootCause.getMessage().isBlank()) {
+            return "No se pudo crear la reserva por una validación de datos en la base";
+        }
+
+        String message = rootCause.getMessage();
+        String lower = message.toLowerCase();
+
+        if (lower.contains("not-null") || lower.contains("null value in column")) {
+            return "No se pudo crear la reserva: faltan datos obligatorios en el servicio o la reserva";
+        }
+        if (lower.contains("foreign key")) {
+            return "No se pudo crear la reserva: referencia inválida de servicio, usuario o profesional";
+        }
+        if (lower.contains("value too long") || lower.contains("too long for type")) {
+            return "No se pudo crear la reserva: hay campos con longitud mayor a la permitida";
+        }
+
+        return "No se pudo crear la reserva por una validación de datos en la base";
     }
 }

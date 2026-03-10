@@ -2298,10 +2298,22 @@ public class ProfessionalPublicPageCoreService {
                 "El servicio no tiene nombre configurado."
             );
         }
+        if (service.getName().trim().length() > 120) {
+            throw new ResponseStatusException(
+                HttpStatus.BAD_REQUEST,
+                "El nombre del servicio supera el máximo permitido."
+            );
+        }
         if (service.getDuration() == null || service.getDuration().isBlank()) {
             throw new ResponseStatusException(
                 HttpStatus.BAD_REQUEST,
                 "El servicio no tiene duración configurada."
+            );
+        }
+        if (service.getDuration().trim().length() > 40) {
+            throw new ResponseStatusException(
+                HttpStatus.BAD_REQUEST,
+                "La duración del servicio supera el máximo permitido."
             );
         }
     }

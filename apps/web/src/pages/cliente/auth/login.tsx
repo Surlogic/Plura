@@ -5,6 +5,7 @@ import type { ChangeEvent, FormEvent } from 'react';
 import { isAxiosError } from 'axios';
 import AuthTopBar from '@/components/auth/AuthTopBar';
 import AppleLoginButton from '@/components/auth/AppleLoginButton';
+import AuthLoadingOverlay from '@/components/auth/AuthLoadingOverlay';
 import GoogleLoginButton from '@/components/auth/GoogleLoginButton';
 import Footer from '@/components/shared/Footer';
 import Badge from '@/components/ui/Badge';
@@ -51,6 +52,7 @@ export default function ClienteLoginPage() {
   const [form, setForm] = useState({ email: '', password: '' });
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
 
   const handleChange = (event: ChangeEvent<HTMLInputElement>) => {
     const { name, value } = event.target;
@@ -113,6 +115,7 @@ export default function ClienteLoginPage() {
 
   const inputClassName =
     'h-12 w-full rounded-[18px] border border-[color:var(--border-soft)] bg-white/90 px-4 text-sm text-[color:var(--ink)] placeholder:text-[color:var(--ink-faint)] transition focus:border-[color:var(--accent)] focus:outline-none focus:ring-4 focus:ring-[color:var(--focus-ring)]';
+  const isBusy = isSubmitting || isGoogleLoading;
 
   return (
     <div className="app-shell min-h-screen bg-[color:var(--background)] text-[color:var(--ink)]">
@@ -220,6 +223,9 @@ export default function ClienteLoginPage() {
                   intendedRole="USER"
                   onAuthenticated={handleOAuthAuthenticated}
                   onError={setErrorMessage}
+                  buttonLabel="Continuar con Google"
+                  loadingLabel="Iniciando..."
+                  onLoadingChange={setIsGoogleLoading}
                 />
                 <AppleLoginButton
                   intendedRole="USER"
@@ -241,6 +247,15 @@ export default function ClienteLoginPage() {
           </Card>
         </div>
       </main>
+      <AuthLoadingOverlay
+        visible={isBusy}
+        title="Iniciando sesión"
+        description={
+          isGoogleLoading
+            ? 'Conectando tu cuenta de Google como cliente.'
+            : 'Validando tus credenciales de cliente.'
+        }
+      />
       <Footer />
     </div>
   );

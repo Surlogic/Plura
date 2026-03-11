@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/router';
 import axios from 'axios';
 import AuthTopBar from '@/components/auth/AuthTopBar';
+import AuthLoadingOverlay from '@/components/auth/AuthLoadingOverlay';
 import Footer from '@/components/shared/Footer';
 import GoogleLoginButton from '@/components/auth/GoogleLoginButton';
 import AppleLoginButton from '@/components/auth/AppleLoginButton';
@@ -62,11 +63,13 @@ export default function ProfesionalRegisterPage() {
     confirmPassword: false,
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [isGeoSuggesting, setIsGeoSuggesting] = useState(false);
   const [activeGeoField, setActiveGeoField] = useState<'country' | 'city' | 'fullAddress' | null>(null);
   const [geoSuggestions, setGeoSuggestions] = useState<GeoLocationSuggestion[]>([]);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const isBusy = isSubmitting || isGoogleLoading;
 
   const handleOAuthAuthenticated = async (result: OAuthLoginResult) => {
     setErrorMessage(null);
@@ -336,6 +339,9 @@ export default function ProfesionalRegisterPage() {
                 intendedRole="PROFESSIONAL"
                 onAuthenticated={handleOAuthAuthenticated}
                 onError={setErrorMessage}
+                buttonLabel="Continuar con Google"
+                loadingLabel="Registrando..."
+                onLoadingChange={setIsGoogleLoading}
               />
               <AppleLoginButton
                 authAction="REGISTER"
@@ -671,6 +677,15 @@ export default function ProfesionalRegisterPage() {
           </p>
         </Card>
       </main>
+      <AuthLoadingOverlay
+        visible={isBusy}
+        title="Registrando cuenta"
+        description={
+          isGoogleLoading
+            ? 'Creando tu cuenta profesional con Google.'
+            : 'Guardando tus datos y preparando tu perfil profesional.'
+        }
+      />
       <Footer />
     </div>
   );

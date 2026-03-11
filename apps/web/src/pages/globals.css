@@ -314,6 +314,23 @@ a:hover {
   color: transparent;
 }
 
+@keyframes logo-breathe {
+  0% {
+    transform: scale(0.9);
+  }
+  50% {
+    transform: scale(1.08);
+  }
+  100% {
+    transform: scale(0.9);
+  }
+}
+
+.logo-breathe {
+  animation: logo-breathe 2.6s ease-in-out infinite;
+  will-change: transform;
+}
+
 .panel-surface {
   border: 1px solid var(--border-soft);
   background: var(--surface);

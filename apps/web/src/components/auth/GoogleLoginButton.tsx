@@ -24,6 +24,9 @@ type GoogleLoginButtonProps = {
   onError: (message: string) => void;
   intendedRole?: OAuthDesiredRole;
   authAction?: OAuthAuthAction;
+  buttonLabel?: string;
+  loadingLabel?: string;
+  onLoadingChange?: (isLoading: boolean) => void;
 };
 
 const GOOGLE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || '';
@@ -64,6 +67,9 @@ export default function GoogleLoginButton({
   onError,
   intendedRole,
   authAction = 'LOGIN',
+  buttonLabel,
+  loadingLabel,
+  onLoadingChange,
 }: GoogleLoginButtonProps) {
   const [isLoading, setIsLoading] = useState(false);
 
@@ -83,6 +89,10 @@ export default function GoogleLoginButton({
     popupRef.current = null;
     setIsLoading(false);
   }, [clearResultTimeout]);
+
+  useEffect(() => {
+    onLoadingChange?.(isLoading);
+  }, [isLoading, onLoadingChange]);
 
   useEffect(() => {
     const handleOAuthResult = async (payload: GoogleOAuthResultPayload) => {
@@ -219,10 +229,10 @@ export default function GoogleLoginButton({
       code_challenge_method: 'S256',
     });
 
-    const width = 500;
-    const height = 600;
-    const left = window.screenX + Math.max(0, (window.outerWidth - width) / 2);
-    const top = window.screenY + Math.max(0, (window.outerHeight - height) / 2);
+    const width = Math.max(960, Math.floor(window.screen.availWidth * 0.92));
+    const height = Math.max(720, Math.floor(window.screen.availHeight * 0.9));
+    const left = window.screenX + Math.max(0, Math.floor((window.outerWidth - width) / 2));
+    const top = window.screenY + Math.max(0, Math.floor((window.outerHeight - height) / 2));
 
     const popup = window.open(
       `${GOOGLE_AUTH_URL}?${params.toString()}`,
@@ -281,7 +291,7 @@ export default function GoogleLoginButton({
           d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"
         />
       </svg>
-      {isLoading ? 'Conectando...' : 'Iniciar sesión con Google'}
+      {isLoading ? (loadingLabel || 'Conectando...') : (buttonLabel || 'Iniciar sesión con Google')}
     </button>
   );
 }

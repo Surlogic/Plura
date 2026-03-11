@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/router';
 import axios from 'axios';
 import AuthTopBar from '@/components/auth/AuthTopBar';
+import AuthLoadingOverlay from '@/components/auth/AuthLoadingOverlay';
 import Footer from '@/components/shared/Footer';
 import GoogleLoginButton from '@/components/auth/GoogleLoginButton';
 import AppleLoginButton from '@/components/auth/AppleLoginButton';
@@ -45,8 +46,10 @@ export default function ClienteRegisterPage() {
     confirmPassword: false,
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const isBusy = isSubmitting || isGoogleLoading;
 
   const handleOAuthAuthenticated = async (result: OAuthLoginResult) => {
     setErrorMessage(null);
@@ -210,6 +213,9 @@ export default function ClienteRegisterPage() {
                 intendedRole="USER"
                 onAuthenticated={handleOAuthAuthenticated}
                 onError={setErrorMessage}
+                buttonLabel="Continuar con Google"
+                loadingLabel="Registrando..."
+                onLoadingChange={setIsGoogleLoading}
               />
               <AppleLoginButton
                 authAction="REGISTER"
@@ -379,6 +385,15 @@ export default function ClienteRegisterPage() {
           </p>
         </Card>
       </main>
+      <AuthLoadingOverlay
+        visible={isBusy}
+        title="Registrando cuenta"
+        description={
+          isGoogleLoading
+            ? 'Creando tu cuenta de cliente con Google.'
+            : 'Guardando tus datos para crear tu cuenta de cliente.'
+        }
+      />
       <Footer />
     </div>
   );

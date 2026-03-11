@@ -1,22 +1,14 @@
-export type SearchType = 'RUBRO' | 'PROFESIONAL' | 'LOCAL' | 'SERVICIO';
+import type {
+  SearchQueryParamsBase,
+  SearchSort,
+  SearchType,
+} from '../../../../packages/shared/src/types/search';
 
-export type SearchSort = 'RELEVANCE' | 'DISTANCE' | 'RATING';
+export type { SearchSort, SearchType };
 
-export type SearchQueryParams = {
-  query?: string;
-  type?: SearchType;
-  categorySlug?: string;
-  city?: string;
-  lat?: number;
-  lng?: number;
-  radiusKm?: number;
-  date?: string;
+export type SearchQueryParams = SearchQueryParamsBase & {
   from?: string;
   to?: string;
-  availableNow?: boolean;
-  page?: number;
-  size?: number;
-  sort?: SearchSort;
 };
 
 export type SearchItem = {

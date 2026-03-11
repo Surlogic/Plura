@@ -13,6 +13,12 @@ import type {
   SearchQueryParams,
   SearchResponse,
 } from '@/types/search';
+import {
+  buildSearchRequestParams,
+  buildSearchSuggestRequestParams,
+  normalizeSearchResponse,
+  normalizeSearchSuggestResponse,
+} from '../../../../packages/shared/src/search/service';
 
 const sanitizeSearchParams = (params: SearchQueryParams): SearchQueryParams => {
   const query = params.query?.trim() || undefined;
@@ -39,22 +45,7 @@ export const searchProfessionals = async (
     '/api/search',
     {
       signal,
-      params: {
-        ...(sanitized.query ? { query: sanitized.query } : {}),
-        ...(sanitized.type ? { type: sanitized.type } : {}),
-        ...(sanitized.categorySlug ? { categorySlug: sanitized.categorySlug } : {}),
-        ...(sanitized.city ? { city: sanitized.city } : {}),
-        ...(typeof sanitized.lat === 'number' ? { lat: sanitized.lat } : {}),
-        ...(typeof sanitized.lng === 'number' ? { lng: sanitized.lng } : {}),
-        ...(typeof sanitized.radiusKm === 'number' ? { radiusKm: sanitized.radiusKm } : {}),
-        ...(sanitized.date ? { date: sanitized.date } : {}),
-        ...(sanitized.from ? { from: sanitized.from } : {}),
-        ...(sanitized.to ? { to: sanitized.to } : {}),
-        ...(sanitized.availableNow ? { availableNow: true } : {}),
-        ...(typeof sanitized.page === 'number' ? { page: sanitized.page } : {}),
-        ...(typeof sanitized.size === 'number' ? { size: sanitized.size } : {}),
-        ...(sanitized.sort ? { sort: sanitized.sort } : {}),
-      },
+      params: buildSearchRequestParams(sanitized),
     },
     {
       ttlMs: 20000,
@@ -62,13 +53,10 @@ export const searchProfessionals = async (
     },
   );
 
-  const payload = response.data;
-  return {
-    page: typeof payload?.page === 'number' ? payload.page : SEARCH_DEFAULT_PAGE,
-    size: typeof payload?.size === 'number' ? payload.size : SEARCH_DEFAULT_SIZE,
-    total: typeof payload?.total === 'number' ? payload.total : 0,
-    items: Array.isArray(payload?.items) ? payload.items : [],
-  };
+  return normalizeSearchResponse(response.data, {
+    page: SEARCH_DEFAULT_PAGE,
+    size: SEARCH_DEFAULT_SIZE,
+  });
 };
 
 export const autocompleteGeo = async (
@@ -113,14 +101,7 @@ export const searchSuggestions = async (
     '/api/search/suggest',
     {
       signal,
-      params: {
-        ...(params.q?.trim() ? { q: params.q.trim() } : {}),
-        ...(typeof params.lat === 'number' ? { lat: params.lat } : {}),
-        ...(typeof params.lng === 'number' ? { lng: params.lng } : {}),
-        ...(params.city?.trim() ? { city: params.city.trim() } : {}),
-        ...(typeof params.radiusKm === 'number' ? { radiusKm: params.radiusKm } : {}),
-        ...(typeof params.limit === 'number' ? { limit: params.limit } : {}),
-      },
+      params: buildSearchSuggestRequestParams(params),
     },
     {
       ttlMs: 15000,
@@ -128,12 +109,5 @@ export const searchSuggestions = async (
     },
   );
 
-  const payload = response.data;
-  return {
-    categories: Array.isArray(payload?.categories) ? payload.categories : [],
-    services: Array.isArray(payload?.services) ? payload.services : [],
-    professionals: Array.isArray(payload?.professionals) ? payload.professionals : [],
-    locals: Array.isArray(payload?.locals) ? payload.locals : [],
-    popularNearby: Array.isArray(payload?.popularNearby) ? payload.popularNearby : [],
-  };
+  return normalizeSearchSuggestResponse(response.data);
 };

@@ -29,6 +29,8 @@ import com.plura.plurabackend.booking.decision.model.BookingActionType;
 import com.plura.plurabackend.booking.dto.BookingCommandResponse;
 import com.plura.plurabackend.booking.dto.BookingRescheduleRequest;
 import com.plura.plurabackend.booking.event.BookingEventService;
+import com.plura.plurabackend.booking.finance.BookingFinanceDispatchPlan;
+import com.plura.plurabackend.booking.finance.BookingFinanceUpdateResult;
 import com.plura.plurabackend.booking.finance.BookingFinanceService;
 import com.plura.plurabackend.booking.finance.model.BookingFinancialStatus;
 import com.plura.plurabackend.booking.finance.model.BookingFinancialSummary;
@@ -254,20 +256,22 @@ class ProfessionalPublicPageCoreServiceRescheduleTest {
         when(bookingRepository.saveAndFlush(any())).thenAnswer(invocation -> invocation.getArgument(0));
         when(bookingActionDecisionService.record(any(), any(), any(), anyLong(), any(), any(), any(), any()))
             .thenReturn(decision);
-        when(bookingPaymentsGateway.processPostDecision(any(), any())).thenReturn(null);
-        when(bookingFinanceService.ensureInitializedWithEvidence(any())).thenAnswer(invocation -> {
-            BookingFinancialSummary summary = new BookingFinancialSummary();
-            summary.setBooking(invocation.getArgument(0));
-            summary.setCurrency("UYU");
-            summary.setFinancialStatus(BookingFinancialStatus.NOT_REQUIRED);
-            summary.setAmountCharged(BigDecimal.ZERO);
-            summary.setAmountHeld(BigDecimal.ZERO);
-            summary.setAmountToRefund(BigDecimal.ZERO);
-            summary.setAmountRefunded(BigDecimal.ZERO);
-            summary.setAmountToRelease(BigDecimal.ZERO);
-            summary.setAmountReleased(BigDecimal.ZERO);
-            return summary;
-        });
+        BookingFinancialSummary summary = new BookingFinancialSummary();
+        summary.setBooking(booking);
+        summary.setCurrency("UYU");
+        summary.setFinancialStatus(BookingFinancialStatus.NOT_REQUIRED);
+        summary.setAmountCharged(BigDecimal.ZERO);
+        summary.setAmountHeld(BigDecimal.ZERO);
+        summary.setAmountToRefund(BigDecimal.ZERO);
+        summary.setAmountRefunded(BigDecimal.ZERO);
+        summary.setAmountToRelease(BigDecimal.ZERO);
+        summary.setAmountReleased(BigDecimal.ZERO);
+
+        BookingFinanceUpdateResult financeResult = new BookingFinanceUpdateResult(summary, null, null);
+        when(bookingFinanceService.applyDecision(any(), any())).thenReturn(financeResult);
+        when(bookingPaymentsGateway.processPostDecision(any(), any()))
+            .thenReturn(new BookingFinanceDispatchPlan(financeResult, List.of()));
+        when(bookingFinanceService.ensureInitializedWithEvidence(any())).thenReturn(summary);
 
         BookingCommandResponse response = service.rescheduleBookingAsClient(
             String.valueOf(client.getId()),

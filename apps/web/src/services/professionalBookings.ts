@@ -14,32 +14,26 @@ import type {
 } from '@/types/bookings';
 import type { ProfessionalReservation, ReservationStatus } from '@/types/professional';
 import { formatBookingDateLabel, formatBookingTimeLabel } from '@/utils/bookings';
+import { buildIdempotencyKey } from '../../../../packages/shared/src/bookings/idempotency';
+import {
+  type ProfessionalBookingDtoBase,
+  filterActiveItems,
+  mapBookingCommandResponse,
+  mapProfessionalBookingBase,
+  normalizeArrayPayload,
+  toApiReservationStatus,
+} from '../../../../packages/shared/src/bookings/mappers';
 
-type ApiReservationStatus = 'PENDING' | 'CONFIRMED' | 'CANCELLED' | 'COMPLETED' | 'NO_SHOW';
-
-type ProfessionalBookingDto = {
-  id: number;
-  userId: string;
-  clientName: string;
-  serviceId: string;
-  serviceName: string;
-  startDateTime: string;
-  startDateTimeUtc?: string | null;
-  timezone?: string | null;
-  duration?: string;
-  postBufferMinutes?: number;
-  effectiveDurationMinutes?: number;
-  paymentType?: BookingPaymentType | null;
-  rescheduleCount?: number;
-  paymentStatus?: BookingFinancialStatus | null;
-  refundStatus?: BookingRefundStatus | null;
-  payoutStatus?: BookingPayoutStatus | null;
-  financialSummary?: BookingFinancialSummary | null;
-  latestRefund?: BookingRefundRecord | null;
-  latestPayout?: BookingPayoutRecord | null;
-  policySnapshot?: BookingPolicySnapshot | null;
-  status: ApiReservationStatus;
-};
+type ProfessionalBookingDto = ProfessionalBookingDtoBase<
+  BookingPaymentType,
+  BookingFinancialSummary,
+  BookingFinancialStatus,
+  BookingRefundStatus,
+  BookingPayoutStatus,
+  BookingRefundRecord,
+  BookingPayoutRecord,
+  BookingPolicySnapshot
+>;
 
 type ProfessionalBookingCreatePayload = {
   clientName: string;
@@ -55,80 +49,18 @@ type ProfessionalServiceDto = {
   active?: boolean;
 };
 
-const toFrontendStatus = (status: ApiReservationStatus): ReservationStatus => {
-  switch (status) {
-    case 'PENDING':
-      return 'pending';
-    case 'CONFIRMED':
-      return 'confirmed';
-    case 'CANCELLED':
-      return 'cancelled';
-    case 'COMPLETED':
-      return 'completed';
-    case 'NO_SHOW':
-      return 'no_show';
-    default:
-      return 'pending';
-  }
-};
-
-const toApiStatus = (status: ReservationStatus): ApiReservationStatus => {
-  switch (status) {
-    case 'pending':
-      return 'PENDING';
-    case 'confirmed':
-      return 'CONFIRMED';
-    case 'cancelled':
-      return 'CANCELLED';
-    case 'completed':
-      return 'COMPLETED';
-    case 'no_show':
-      return 'NO_SHOW';
-    default:
-      return 'PENDING';
-  }
-};
-
 const mapBooking = (booking: ProfessionalBookingDto): ProfessionalReservation => {
-  const timezone = booking.timezone || null;
-  const startDateTimeUtc = booking.startDateTimeUtc || null;
-  return {
-    id: String(booking.id),
-    serviceName: booking.serviceName,
-    clientName: booking.clientName,
-    date: formatBookingDateLabel(booking.startDateTime, timezone, startDateTimeUtc),
-    time: formatBookingTimeLabel(booking.startDateTime, timezone, startDateTimeUtc),
-    duration: booking.duration,
-    postBufferMinutes: booking.postBufferMinutes ?? 0,
-    effectiveDurationMinutes: booking.effectiveDurationMinutes,
-    status: toFrontendStatus(booking.status),
-    serviceId: booking.serviceId,
-    userId: booking.userId,
-    paymentType: booking.paymentType || null,
-    financialSummary: booking.financialSummary || null,
-    paymentStatus: booking.paymentStatus || booking.financialSummary?.financialStatus || null,
-    refundStatus: booking.refundStatus || 'NONE',
-    payoutStatus: booking.payoutStatus || 'NONE',
-    latestRefund: booking.latestRefund || null,
-    latestPayout: booking.latestPayout || null,
-    policySnapshot: booking.policySnapshot || null,
-    timezone,
-    startDateTimeUtc,
-  };
+  return mapProfessionalBookingBase(booking, ({ startDateTime, timezone, startDateTimeUtc }) => ({
+    date: formatBookingDateLabel(startDateTime, timezone, startDateTimeUtc),
+    time: formatBookingTimeLabel(startDateTime, timezone, startDateTimeUtc),
+  }));
 };
 
 const mapCommandResponse = (
   response: BookingCommandResponse<ProfessionalBookingDto>,
 ) => {
-  const booking = response.booking ? mapBooking(response.booking) : null;
-  return {
-    ...response,
-    booking,
-  };
+  return mapBookingCommandResponse(response, mapBooking);
 };
-
-const buildIdempotencyKey = (prefix: string) =>
-  `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 
 const invalidateProfessionalBookingCaches = () => {
   invalidateCachedGet('/profesional/reservas');
@@ -155,7 +87,7 @@ export const getProfessionalReservationsByRange = async (
       staleWhileRevalidate: true,
     },
   );
-  return response.data.map(mapBooking);
+  return normalizeArrayPayload<ProfessionalBookingDto>(response.data).map(mapBooking);
 };
 
 export const getProfessionalReservationsForDates = async (
@@ -174,7 +106,7 @@ export const updateProfessionalReservationStatus = async (
 ): Promise<ProfessionalReservation> => {
   const response = await api.put<ProfessionalBookingDto>(
     `/profesional/reservas/${id}`,
-    { status: toApiStatus(status) },
+    { status: toApiReservationStatus(status as ReservationStatus) },
   );
   invalidateProfessionalBookingCaches();
   return mapBooking(response.data);
@@ -282,6 +214,5 @@ export const listProfessionalServices = async (): Promise<ProfessionalServiceDto
       staleWhileRevalidate: true,
     },
   );
-  const services = Array.isArray(response.data) ? response.data : [];
-  return services.filter((service) => service?.active !== false);
+  return filterActiveItems<ProfessionalServiceDto>(response.data);
 };

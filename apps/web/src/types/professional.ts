@@ -9,27 +9,12 @@ import type {
   BookingRefundRecord,
   BookingRefundStatus,
 } from '@/types/bookings';
+import type {
+  ProductPlanCapabilities,
+  ProductPlanCode,
+} from '../../../../packages/shared/src/types/professional';
 
-export type ProductPlanCode = 'BASIC' | 'PROFESSIONAL' | 'COMPANY';
-
-export type ProductPlanCapabilities = {
-  maxProfessionals: number;
-  maxBusinessPhotos: number;
-  maxServicePhotos: number;
-  allowClientChooseProfessional: boolean;
-  allowOnlinePayments: boolean;
-  allowAnalytics: boolean;
-  allowAdvancedClientProfile: boolean;
-  allowAutomations: boolean;
-  allowLoyalty: boolean;
-  allowLastMinute: boolean;
-  allowStore: boolean;
-  allowChat: boolean;
-  allowWhatsappAutomatic: boolean;
-  allowInAppNotifications: boolean;
-  allowNewBookingNotifications: boolean;
-  allowClientReminders: boolean;
-};
+export type { ProductPlanCapabilities, ProductPlanCode };
 
 export type ProfessionalProfile = {
   id: string;

@@ -15,6 +15,13 @@ import type {
   BookingRefundStatus,
 } from '@/types/bookings';
 import { formatBookingDateLabel, formatBookingTimeLabel } from '@/utils/bookings';
+import { buildIdempotencyKey } from '../../../../packages/shared/src/bookings/idempotency';
+import {
+  type ClientBookingDtoBase,
+  type ClientBookingsResponseDto,
+  mapClientBookingBase,
+  resolveClientBookingsArray,
+} from '../../../../packages/shared/src/bookings/mappers';
 
 export type ClientDashboardNextBooking = {
   id: string;
@@ -61,104 +68,25 @@ export type ClientDashboardBooking = {
   policySnapshot?: BookingPolicySnapshot | null;
 };
 
-type ClientBookingDto = {
-  id: number | string;
-  status?: string | null;
-  dateTime?: string | null;
-  startDateTime?: string | null;
-  startDateTimeUtc?: string | null;
-  timezone?: string | null;
-  serviceId?: string | null;
-  serviceName?: string | null;
-  paymentType?: BookingPaymentType | null;
-  paymentStatus?: BookingFinancialStatus | null;
-  refundStatus?: BookingRefundStatus | null;
-  payoutStatus?: BookingPayoutStatus | null;
-  financialSummary?: BookingFinancialSummary | null;
-  latestRefund?: BookingRefundRecord | null;
-  latestPayout?: BookingPayoutRecord | null;
-  policySnapshot?: BookingPolicySnapshot | null;
-  professionalName?: string | null;
-  professionalSlug?: string | null;
-  professionalLocation?: string | null;
-  service?: {
-    id?: string | null;
-    name?: string | null;
-  } | null;
-  professional?: {
-    name?: string | null;
-    fullName?: string | null;
-    location?: string | null;
-    slug?: string | null;
-  } | null;
-};
+type ClientBookingDto = ClientBookingDtoBase<
+  BookingPaymentType,
+  BookingFinancialSummary,
+  BookingFinancialStatus,
+  BookingRefundStatus,
+  BookingPayoutStatus,
+  BookingRefundRecord,
+  BookingPayoutRecord,
+  BookingPolicySnapshot
+>;
 
-type ClientBookingsResponseDto =
-  | ClientBookingDto[]
-  | {
-      bookings?: ClientBookingDto[] | null;
-      data?: ClientBookingDto[] | null;
-      items?: ClientBookingDto[] | null;
-      content?: ClientBookingDto[] | null;
-    }
-  | null;
-
-const normalizeBookingStatus = (rawStatus: unknown): BookingOperationalStatus => {
-  if (typeof rawStatus !== 'string') return 'PENDING';
-  const status = rawStatus.toUpperCase().trim();
-  if (status === 'CONFIRMED') return 'CONFIRMED';
-  if (status === 'CANCELLED') return 'CANCELLED';
-  if (status === 'COMPLETED') return 'COMPLETED';
-  if (status === 'NO_SHOW') return 'NO_SHOW';
-  return 'PENDING';
-};
-
-const resolveBookingsArray = (payload: ClientBookingsResponseDto): ClientBookingDto[] => {
-  if (Array.isArray(payload)) return payload;
-  if (!payload || typeof payload !== 'object') return [];
-  if (Array.isArray(payload.bookings)) return payload.bookings;
-  if (Array.isArray(payload.data)) return payload.data;
-  if (Array.isArray(payload.items)) return payload.items;
-  if (Array.isArray(payload.content)) return payload.content;
-  return [];
-};
+type ClientBookingsPayload = ClientBookingsResponseDto<ClientBookingDto>;
 
 const mapBooking = (booking: ClientBookingDto): ClientDashboardBooking | null => {
-  const dateTime = (booking.dateTime || booking.startDateTime || '').trim();
-  const timezone = booking.timezone || null;
-  const startDateTimeUtc = booking.startDateTimeUtc || null;
-  if (!dateTime) return null;
-
-  return {
-    id: String(booking.id),
-    professional:
-      booking.professional?.name ||
-      booking.professional?.fullName ||
-      booking.professionalName ||
-      'Profesional',
-    service: booking.service?.name || booking.serviceName || 'Servicio',
-    dateTime,
-    date: formatBookingDateLabel(dateTime, timezone, startDateTimeUtc),
-    time: formatBookingTimeLabel(dateTime, timezone, startDateTimeUtc),
-    location: booking.professional?.location || booking.professionalLocation || 'Ubicacion a confirmar',
-    status: normalizeBookingStatus(booking.status),
-    professionalSlug: booking.professional?.slug || booking.professionalSlug || null,
-    serviceId: booking.service?.id || booking.serviceId || null,
-    paymentType: booking.paymentType || null,
-    financialSummary: booking.financialSummary || null,
-    timezone,
-    startDateTimeUtc,
-    paymentStatus: booking.paymentStatus || booking.financialSummary?.financialStatus || null,
-    refundStatus: booking.refundStatus || 'NONE',
-    payoutStatus: booking.payoutStatus || 'NONE',
-    latestRefund: booking.latestRefund || null,
-    latestPayout: booking.latestPayout || null,
-    policySnapshot: booking.policySnapshot || null,
-  };
+  return mapClientBookingBase(booking, ({ startDateTime, timezone, startDateTimeUtc }) => ({
+    date: formatBookingDateLabel(startDateTime, timezone, startDateTimeUtc),
+    time: formatBookingTimeLabel(startDateTime, timezone, startDateTimeUtc),
+  }));
 };
-
-const buildIdempotencyKey = (prefix: string) =>
-  `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 
 const invalidateBookingCaches = () => {
   invalidateCachedGet('/bookings/me');
@@ -168,13 +96,13 @@ const invalidateBookingCaches = () => {
 };
 
 export const getClientBookings = async (): Promise<ClientDashboardBooking[]> => {
-  const response = await cachedGet<ClientBookingsResponseDto>(
+  const response = await cachedGet<ClientBookingsPayload>(
     '/bookings/me',
     undefined,
     { ttlMs: 8000, staleWhileRevalidate: true },
   );
 
-  return resolveBookingsArray(response.data)
+  return resolveClientBookingsArray(response.data)
     .map(mapBooking)
     .filter((booking): booking is ClientDashboardBooking => Boolean(booking));
 };

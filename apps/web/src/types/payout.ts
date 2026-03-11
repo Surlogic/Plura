@@ -1,39 +1,16 @@
-export type ProfessionalPayoutStatus = 'INCOMPLETE' | 'READY' | 'ERROR';
+import type {
+  ProfessionalPayoutConfigBase,
+  ProfessionalPayoutConfigUpdateInputBase,
+  ProfessionalPayoutStatus,
+} from '../../../../packages/shared/src/types/payout';
 
-export type ProfessionalPayoutConfig = {
-  status: ProfessionalPayoutStatus;
-  readyToReceivePayouts: boolean;
-  payoutEnabled: boolean;
+export type { ProfessionalPayoutStatus };
+
+export type ProfessionalPayoutConfig = ProfessionalPayoutConfigBase & {
   splitCode?: string | null;
   splitPaymentsEnabled: boolean;
-  firstName?: string | null;
-  lastName?: string | null;
-  country?: string | null;
-  documentType?: string | null;
-  documentNumber?: string | null;
-  email?: string | null;
-  phone?: string | null;
-  bank?: string | null;
-  accountNumber?: string | null;
-  accountType?: string | null;
-  branch?: string | null;
-  requiredFields?: string[] | null;
-  missingFields?: string[] | null;
-  invalidFields?: string[] | null;
-  hasOutstandingPaidBookings: boolean;
-  outstandingPaidBookingsCount: number;
 };
 
-export type ProfessionalPayoutConfigUpdateInput = {
+export type ProfessionalPayoutConfigUpdateInput = ProfessionalPayoutConfigUpdateInputBase & {
   splitCode: string;
-  firstName: string;
-  lastName: string;
-  country: string;
-  documentType: string;
-  documentNumber: string;
-  phone: string;
-  bank: string;
-  accountNumber: string;
-  accountType: string;
-  branch: string;
 };

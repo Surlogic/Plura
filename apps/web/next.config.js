@@ -57,6 +57,9 @@ const distDir = process.env.NEXT_BUILD_DIR || '.next';
 const nextConfig = {
   poweredByHeader: false,
   distDir,
+  experimental: {
+    externalDir: true,
+  },
   eslint: {
     ignoreDuringBuilds: true,  // deshabilitar ESLint durante el build para evitar errores de configuración
   },

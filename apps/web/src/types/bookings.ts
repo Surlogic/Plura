@@ -1,23 +1,22 @@
-export type BookingOperationalStatus =
-  | 'PENDING'
-  | 'CONFIRMED'
-  | 'CANCELLED'
-  | 'COMPLETED'
-  | 'NO_SHOW';
+import type {
+  BookingActionsBase,
+  BookingCommandResponseBase,
+  BookingFinancialStatus,
+  BookingFinancialSummary,
+  BookingOperationalStatus,
+  BookingPaymentSession,
+  BookingPaymentType,
+  ProfessionalBookingPolicyBase,
+  ProfessionalBookingPolicyUpdateInputBase,
+} from '../../../../packages/shared/src/types/bookings';
 
-export type BookingPaymentType = 'ON_SITE' | 'DEPOSIT' | 'FULL_PREPAY';
-
-export type BookingFinancialStatus =
-  | 'NOT_REQUIRED'
-  | 'PAYMENT_PENDING'
-  | 'HELD'
-  | 'REFUND_PENDING'
-  | 'PARTIALLY_REFUNDED'
-  | 'REFUNDED'
-  | 'RELEASE_PENDING'
-  | 'PARTIALLY_RELEASED'
-  | 'RELEASED'
-  | 'FAILED';
+export type {
+  BookingFinancialStatus,
+  BookingFinancialSummary,
+  BookingOperationalStatus,
+  BookingPaymentSession,
+  BookingPaymentType,
+};
 
 export type BookingRefundStatus =
   | 'NONE'
@@ -37,19 +36,6 @@ export type BookingPayoutStatus =
 
 export type LateCancellationRefundMode = 'FULL' | 'NONE' | 'PERCENTAGE';
 
-export type BookingFinancialSummary = {
-  amountCharged?: number | null;
-  amountHeld?: number | null;
-  amountToRefund?: number | null;
-  amountRefunded?: number | null;
-  amountToRelease?: number | null;
-  amountReleased?: number | null;
-  currency?: string | null;
-  financialStatus?: BookingFinancialStatus | null;
-  lastDecisionId?: string | null;
-  updatedAt?: string | null;
-};
-
 export type BookingPolicySnapshot = {
   sourcePolicyId?: string | null;
   sourcePolicyVersion?: number | null;
@@ -67,23 +53,15 @@ export type BookingPolicySnapshot = {
 
 export type BookingSuggestedAction = 'NONE' | 'RESCHEDULE';
 
-export type BookingActions = {
-  bookingId: number;
+export type BookingActions = BookingActionsBase & {
   actorType?: string | null;
   operationalStatus?: BookingOperationalStatus | null;
   policySource?: string | null;
   policySnapshot?: BookingPolicySnapshot | null;
-  canCancel: boolean;
-  canReschedule: boolean;
-  canMarkNoShow: boolean;
-  refundPreviewAmount?: number | null;
-  retainPreviewAmount?: number | null;
-  currency?: string | null;
   suggestedAction?: BookingSuggestedAction | null;
   reasonCodes?: string[] | null;
   messageCode?: string | null;
   messageParams?: Record<string, string> | null;
-  plainTextFallback?: string | null;
 };
 
 export type BookingDecision = {
@@ -135,45 +113,20 @@ export type BookingPayoutRecord = {
   failedAt?: string | null;
 };
 
-export type BookingPaymentSession = {
-  bookingId: number;
-  transactionId?: string | null;
-  provider?: string | null;
-  checkoutUrl?: string | null;
-  amount?: number | null;
-  currency?: string | null;
-  financialStatus?: BookingFinancialStatus | null;
-};
-
-export type ProfessionalBookingPolicy = {
-  id?: string | null;
-  allowClientCancellation: boolean;
-  allowClientReschedule: boolean;
-  cancellationWindowHours?: number | null;
-  rescheduleWindowHours?: number | null;
-  maxClientReschedules?: number | null;
+export type ProfessionalBookingPolicy = ProfessionalBookingPolicyBase & {
   lateCancellationRefundMode?: LateCancellationRefundMode | null;
   lateCancellationRefundValue?: number | null;
 };
 
-export type ProfessionalBookingPolicyUpdateInput = {
-  allowClientCancellation?: boolean;
-  allowClientReschedule?: boolean;
-  cancellationWindowHours?: number | null;
-  rescheduleWindowHours?: number | null;
-  maxClientReschedules?: number | null;
+export type ProfessionalBookingPolicyUpdateInput = ProfessionalBookingPolicyUpdateInputBase & {
   lateCancellationRefundMode?: LateCancellationRefundMode | null;
   lateCancellationRefundValue?: number | null;
 };
 
-export type BookingCommandResponse<TBooking> = {
-  booking?: TBooking | null;
+export type BookingCommandResponse<TBooking> = BookingCommandResponseBase<TBooking> & {
   decision?: BookingDecision | null;
-  operationalStatus?: BookingOperationalStatus | null;
-  financialSummary?: BookingFinancialSummary | null;
   refundRecord?: BookingRefundRecord | null;
   payoutRecord?: BookingPayoutRecord | null;
   messageCode?: string | null;
   messageParams?: Record<string, string> | null;
-  plainTextFallback?: string | null;
 };

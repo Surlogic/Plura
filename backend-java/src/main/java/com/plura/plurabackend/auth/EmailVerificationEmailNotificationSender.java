@@ -64,8 +64,8 @@ public class EmailVerificationEmailNotificationSender implements EmailVerificati
                 ttlMinutes
             )
         );
-        // Si el estado de entrega no es SENT, se lanza excepcion indicando que el servicio no esta disponible
-        if (deliveryStatus != TransactionalEmailService.DeliveryStatus.SENT) {
+        // Con SMTP deshabilitado permitimos fallback local; solo fallas reales deben cortar el flujo.
+        if (deliveryStatus == TransactionalEmailService.DeliveryStatus.FAILED) {
             throw new AuthApiException(
                 HttpStatus.SERVICE_UNAVAILABLE,
                 "EMAIL_DELIVERY_UNAVAILABLE",

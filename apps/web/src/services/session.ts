@@ -32,23 +32,3 @@ export const clearAuthAccessToken = () => {
   if (typeof window === 'undefined') return;
   window.localStorage.removeItem(ACCESS_TOKEN_STORAGE_KEY);
 };
-
-export const getProfessionalToken = (): string | null => getAuthAccessToken();
-
-export const setProfessionalToken = (token: string) => {
-  setAuthAccessToken(token);
-};
-
-export const clearProfessionalToken = () => {
-  clearAuthAccessToken();
-};
-
-export const getClientToken = (): string | null => getAuthAccessToken();
-
-export const setClientToken = (token: string) => {
-  setAuthAccessToken(token);
-};
-
-export const clearClientToken = () => {
-  clearAuthAccessToken();
-};

@@ -51,11 +51,13 @@ backend-java/scripts/geocode_professional_profiles.sh 500
 
 ## Billing de suscripciones (profesionales)
 - Endpoints:
-  - `POST /billing/checkout` (JWT `ROLE_PROFESSIONAL`)
+  - `POST /billing/subscription` (JWT `ROLE_PROFESSIONAL`)
   - `GET /billing/subscription` (JWT `ROLE_PROFESSIONAL`)
   - `POST /billing/cancel` (JWT `ROLE_PROFESSIONAL`)
   - `POST /webhooks/mercadopago` (público, firma obligatoria)
   - `POST /webhooks/dlocal` (público, firma obligatoria)
+- Alias legacy:
+  - `POST /billing/checkout` sigue disponible solo por compatibilidad y redirige internamente a `createSubscription`.
 - Migración Flyway:
   - `backend-java/src/main/resources/db/migration/V13__billing_subscriptions.sql`
 
@@ -91,7 +93,7 @@ Notas de seguridad:
 Sandbox rápido:
 1. Verificar que Flyway esté habilitado y levantar backend.
 2. Configurar `BILLING_*` en `.env` local con credenciales sandbox.
-3. Levantar backend y llamar `POST /billing/checkout`.
+3. Levantar backend y llamar `POST /billing/subscription`.
 4. Configurar URL pública de webhook hacia:
    - `/webhooks/mercadopago`
    - `/webhooks/dlocal`

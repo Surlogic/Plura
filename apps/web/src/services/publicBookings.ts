@@ -3,72 +3,28 @@ import { cachedGet } from '@/services/cachedGet';
 import type { ProfessionalSchedule } from '@/types/professional';
 import type { Category } from '@/types/category';
 import type { BookingPaymentType, BookingPolicySnapshot } from '@/types/bookings';
+import {
+  type PublicBookingRequest,
+  type PublicBookingResponseBase,
+  type PublicBookingStatus,
+  type PublicProfessionalPageBase,
+  type PublicProfessionalServiceBase,
+  normalizePublicProfessionalPage,
+  normalizePublicSlots,
+} from '../../../../packages/shared/src/publicBookings/contracts';
 
-export type PublicProfessionalService = {
-  id: string;
-  name: string;
-  description?: string;
-  imageUrl?: string;
-  price?: string;
-  depositAmount?: number | null;
-  currency?: string | null;
-  paymentType?: BookingPaymentType;
-  duration?: string;
-  postBufferMinutes?: number;
-};
+export type PublicProfessionalService = PublicProfessionalServiceBase<BookingPaymentType>;
 
-export type PublicProfessionalPage = {
-  id: string;
-  slug: string;
-  name?: string;
-  fullName: string;
-  rubro?: string;
-  description?: string | null;
-  logoUrl?: string | null;
-  categories?: Category[];
-  address?: string | null;
-  location?: string | null;
-  country?: string | null;
-  city?: string | null;
-  fullAddress?: string | null;
-  lat?: number | null;
-  lng?: number | null;
-  latitude?: number | null;
-  longitude?: number | null;
-  email?: string | null;
-  phone?: string | null;
-  phoneNumber?: string | null;
-  instagram?: string | null;
-  facebook?: string | null;
-  tiktok?: string | null;
-  website?: string | null;
-  whatsapp?: string | null;
-  schedule?: ProfessionalSchedule;
-  services: PublicProfessionalService[];
-  bookingPolicy?: BookingPolicySnapshot | null;
-};
+export type PublicProfessionalPage = PublicProfessionalPageBase<
+  BookingPaymentType,
+  Category,
+  ProfessionalSchedule,
+  BookingPolicySnapshot
+>;
 
-export type PublicBookingStatus =
-  | 'PENDING'
-  | 'CONFIRMED'
-  | 'CANCELLED'
-  | 'COMPLETED';
+export type { PublicBookingStatus, PublicBookingRequest };
 
-type PublicBookingRequest = {
-  serviceId: string;
-  startDateTime: string;
-};
-
-type PublicBookingResponse = {
-  id: number;
-  status: PublicBookingStatus;
-  startDateTime: string;
-  startDateTimeUtc?: string | null;
-  timezone?: string | null;
-  serviceId: string;
-  professionalId: string;
-  userId: string;
-};
+type PublicBookingResponse = PublicBookingResponseBase;
 
 const PUBLIC_PROFILE_TIMEOUT_MS = 10000;
 const PUBLIC_SLOTS_TIMEOUT_MS = 10000;
@@ -87,10 +43,7 @@ export const getPublicProfessionalBySlug = async (
       staleWhileRevalidate: true,
     },
   );
-  return {
-    ...response.data,
-    services: Array.isArray(response.data.services) ? response.data.services : [],
-  };
+  return normalizePublicProfessionalPage(response.data);
 };
 
 export const getPublicSlots = async (
@@ -108,7 +61,7 @@ export const getPublicSlots = async (
       ttlMs: 10000,
     },
   );
-  return Array.isArray(response.data) ? response.data : [];
+  return normalizePublicSlots(response.data);
 };
 
 export const createPublicReservation = async (

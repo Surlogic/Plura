@@ -7,6 +7,13 @@ import type {
   BookingPaymentSession,
   BookingPaymentType,
 } from '../types/bookings';
+import { buildIdempotencyKey } from '../../../../packages/shared/src/bookings/idempotency';
+import {
+  type ClientBookingDtoBase,
+  type ClientBookingsResponseDto,
+  mapClientBookingBase,
+  resolveClientBookingsArray,
+} from '../../../../packages/shared/src/bookings/mappers';
 
 export type ClientDashboardBooking = {
   id: string;
@@ -23,40 +30,12 @@ export type ClientDashboardBooking = {
   financialSummary?: BookingFinancialSummary | null;
 };
 
-type ClientBookingDto = {
-  id: number | string;
-  status?: string | null;
-  dateTime?: string | null;
-  startDateTime?: string | null;
-  timezone?: string | null;
-  serviceId?: string | null;
-  serviceName?: string | null;
-  paymentType?: BookingPaymentType | null;
-  financialSummary?: BookingFinancialSummary | null;
-  professionalName?: string | null;
-  professionalSlug?: string | null;
-  professionalLocation?: string | null;
-  service?: {
-    id?: string | null;
-    name?: string | null;
-  } | null;
-  professional?: {
-    name?: string | null;
-    fullName?: string | null;
-    location?: string | null;
-    slug?: string | null;
-  } | null;
-};
+type ClientBookingDto = ClientBookingDtoBase<
+  BookingPaymentType,
+  BookingFinancialSummary
+>;
 
-type ClientBookingsResponseDto =
-  | ClientBookingDto[]
-  | {
-      bookings?: ClientBookingDto[] | null;
-      data?: ClientBookingDto[] | null;
-      items?: ClientBookingDto[] | null;
-      content?: ClientBookingDto[] | null;
-    }
-  | null;
+type ClientBookingsPayload = ClientBookingsResponseDto<ClientBookingDto>;
 
 const formatDateLabel = (startDateTime: string) => {
   const parsed = new Date(startDateTime);
@@ -82,57 +61,17 @@ const formatTimeLabel = (startDateTime: string) => {
   });
 };
 
-const normalizeBookingStatus = (rawStatus: unknown): BookingOperationalStatus => {
-  if (typeof rawStatus !== 'string') return 'PENDING';
-  const status = rawStatus.toUpperCase().trim();
-  if (status === 'CONFIRMED') return 'CONFIRMED';
-  if (status === 'CANCELLED') return 'CANCELLED';
-  if (status === 'COMPLETED') return 'COMPLETED';
-  if (status === 'NO_SHOW') return 'NO_SHOW';
-  return 'PENDING';
-};
-
-const resolveBookingsArray = (payload: ClientBookingsResponseDto): ClientBookingDto[] => {
-  if (Array.isArray(payload)) return payload;
-  if (!payload || typeof payload !== 'object') return [];
-  if (Array.isArray(payload.bookings)) return payload.bookings;
-  if (Array.isArray(payload.data)) return payload.data;
-  if (Array.isArray(payload.items)) return payload.items;
-  if (Array.isArray(payload.content)) return payload.content;
-  return [];
-};
-
 const mapBooking = (booking: ClientBookingDto): ClientDashboardBooking | null => {
-  const dateTime = (booking.dateTime || booking.startDateTime || '').trim();
-  if (!dateTime) return null;
-
-  return {
-    id: String(booking.id),
-    professional:
-      booking.professional?.name
-      || booking.professional?.fullName
-      || booking.professionalName
-      || 'Profesional',
-    service: booking.service?.name || booking.serviceName || 'Servicio',
-    dateTime,
-    date: formatDateLabel(dateTime),
-    time: formatTimeLabel(dateTime),
-    location: booking.professional?.location || booking.professionalLocation || 'Ubicacion a confirmar',
-    status: normalizeBookingStatus(booking.status),
-    professionalSlug: booking.professional?.slug || booking.professionalSlug || null,
-    serviceId: booking.service?.id || booking.serviceId || null,
-    paymentType: booking.paymentType || null,
-    financialSummary: booking.financialSummary || null,
-  };
+  return mapClientBookingBase(booking, ({ startDateTime }) => ({
+    date: formatDateLabel(startDateTime),
+    time: formatTimeLabel(startDateTime),
+  }));
 };
-
-const buildIdempotencyKey = (prefix: string) =>
-  `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 
 export const getClientBookings = async (): Promise<ClientDashboardBooking[]> => {
-  const response = await api.get<ClientBookingsResponseDto>('/bookings/me');
+  const response = await api.get<ClientBookingsPayload>('/bookings/me');
 
-  return resolveBookingsArray(response.data)
+  return resolveClientBookingsArray(response.data)
     .map(mapBooking)
     .filter((booking): booking is ClientDashboardBooking => Boolean(booking));
 };

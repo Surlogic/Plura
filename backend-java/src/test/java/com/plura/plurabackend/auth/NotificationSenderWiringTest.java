@@ -73,6 +73,21 @@ class NotificationSenderWiringTest {
     }
 
     @Test
+    void emailVerificationSenderAllowsSkippedFallbackWhenSmtpIsDisabled() {
+        EmailVerificationEmailNotificationSender sender = new EmailVerificationEmailNotificationSender(
+            new FailingTransactionalEmailService(TransactionalEmailService.DeliveryStatus.SKIPPED_FALLBACK),
+            new PluraEmailTemplateService("Plura", "https://plura.app"),
+            15
+        );
+
+        sender.sendVerificationCode(new EmailVerificationNotificationSender.EmailVerificationNotification(
+            user("German", "user@plura.com"),
+            "user@plura.com",
+            "123456"
+        ));
+    }
+
+    @Test
     void otpChallengeSenderOnlyUsesEmailDeliveryForEmailChannel() {
         CapturingTransactionalEmailService delivery = new CapturingTransactionalEmailService();
         OtpChallengeEmailNotificationSender sender = new OtpChallengeEmailNotificationSender(

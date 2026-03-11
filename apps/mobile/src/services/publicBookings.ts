@@ -1,91 +1,42 @@
 import api from './api';
 import type { ServicePaymentType } from '../types/professional';
+import {
+  type PublicBookingRequest,
+  type PublicBookingResponseBase,
+  type PublicBookingStatus,
+  type PublicProfessionalPageBase,
+  type PublicProfessionalServiceBase,
+  type PublicProfessionalSummary,
+  normalizePublicProfessionalPage,
+  normalizePublicProfessionalSummaries,
+  normalizePublicSlots,
+} from '../../../../packages/shared/src/publicBookings/contracts';
 
-export type PublicProfessionalService = {
-  id: string;
-  name: string;
-  description?: string;
-  imageUrl?: string;
-  price?: string;
-  depositAmount?: number | null;
-  currency?: string | null;
-  duration?: string;
-  postBufferMinutes?: number;
-  paymentType?: ServicePaymentType;
+export type PublicProfessionalService = PublicProfessionalServiceBase<ServicePaymentType>;
+
+export type PublicProfessionalPage = PublicProfessionalPageBase<ServicePaymentType>;
+
+export type {
+  PublicBookingStatus,
+  PublicBookingRequest,
+  PublicProfessionalSummary,
 };
 
-export type PublicProfessionalPage = {
-  id: string;
-  slug: string;
-  name?: string;
-  fullName: string;
-  rubro?: string;
-  description?: string | null;
-  headline?: string | null;
-  about?: string | null;
-  logoUrl?: string | null;
-  address?: string | null;
-  location?: string | null;
-  country?: string | null;
-  city?: string | null;
-  fullAddress?: string | null;
-  lat?: number | null;
-  lng?: number | null;
-  latitude?: number | null;
-  longitude?: number | null;
-  email?: string | null;
-  phone?: string | null;
-  phoneNumber?: string | null;
-  instagram?: string | null;
-  facebook?: string | null;
-  tiktok?: string | null;
-  website?: string | null;
-  whatsapp?: string | null;
-  services: PublicProfessionalService[];
-};
-
-export type PublicProfessionalSummary = {
-  id: string;
-  slug: string;
-  fullName: string;
-  rubro?: string;
-  location?: string;
-  headline?: string;
-  logoUrl?: string | null;
-};
-
-type PublicBookingRequest = {
-  serviceId: string;
-  startDateTime: string;
-};
-
-type PublicBookingStatus = 'PENDING' | 'CONFIRMED' | 'CANCELLED' | 'COMPLETED';
-
-export type PublicBookingResponse = {
-  id: number;
-  status: PublicBookingStatus;
-  startDateTime: string;
-  serviceId: string;
-  professionalId: string;
-  userId: string;
-};
+export type PublicBookingResponse = PublicBookingResponseBase;
 
 export const listPublicProfessionals = async (): Promise<PublicProfessionalSummary[]> => {
   const response = await api.get<PublicProfessionalSummary[]>('/public/profesionales', {
     params: { size: 50 },
   });
 
-  return Array.isArray(response.data) ? response.data : [];
+  return normalizePublicProfessionalSummaries(response.data);
 };
 
 export const getPublicProfessionalBySlug = async (
   slug: string,
 ): Promise<PublicProfessionalPage> => {
   const response = await api.get<PublicProfessionalPage>(`/public/profesionales/${slug}`);
-  return {
-    ...response.data,
-    services: Array.isArray(response.data.services) ? response.data.services : [],
-  };
+  return normalizePublicProfessionalPage(response.data);
 };
 
 export const getPublicSlots = async (
@@ -97,7 +48,7 @@ export const getPublicSlots = async (
     params: { date, serviceId },
   });
 
-  return Array.isArray(response.data) ? response.data : [];
+  return normalizePublicSlots(response.data);
 };
 
 export const createPublicReservation = async (

@@ -1,4 +1,4 @@
-package com.plura.plurabackend.auth.oauth.providers;
+package com.plura.plurabackend.core.auth.oauth.providers;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -6,7 +6,7 @@ import com.google.api.client.googleapis.auth.oauth2.GoogleIdToken;
 import com.google.api.client.googleapis.auth.oauth2.GoogleIdTokenVerifier;
 import com.google.api.client.http.javanet.NetHttpTransport;
 import com.google.api.client.json.gson.GsonFactory;
-import com.plura.plurabackend.auth.oauth.OAuthUserInfo;
+import com.plura.plurabackend.core.auth.oauth.OAuthUserInfo;
 import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpClient;

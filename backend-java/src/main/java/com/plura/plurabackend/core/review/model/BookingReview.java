@@ -1,8 +1,8 @@
-package com.plura.plurabackend.review.model;
+package com.plura.plurabackend.core.review.model;
 
-import com.plura.plurabackend.booking.model.Booking;
+import com.plura.plurabackend.core.booking.model.Booking;
 import com.plura.plurabackend.professional.model.ProfessionalProfile;
-import com.plura.plurabackend.user.model.User;
+import com.plura.plurabackend.core.user.model.User;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;

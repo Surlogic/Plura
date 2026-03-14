@@ -1,6 +1,6 @@
-package com.plura.plurabackend.review.repository;
+package com.plura.plurabackend.core.review.repository;
 
-import com.plura.plurabackend.review.model.BookingReview;
+import com.plura.plurabackend.core.review.model.BookingReview;
 import java.util.Optional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;

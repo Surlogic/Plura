@@ -1,4 +1,4 @@
-package com.plura.plurabackend.review.dto;
+package com.plura.plurabackend.core.review.dto;
 
 import java.time.LocalDateTime;
 import lombok.AllArgsConstructor;

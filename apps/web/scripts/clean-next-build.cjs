@@ -4,6 +4,8 @@ const path = require('path');
 const appDir = path.join(__dirname, '..');
 const workspaceRoot = path.resolve(appDir, '..', '..');
 const externalRoot = path.join(workspaceRoot, '.cache', 'apps-web');
+const externalNodeModulesLink = path.join(externalRoot, 'node_modules');
+const appNodeModulesPath = path.join(appDir, 'node_modules');
 const buildDir = process.env.NEXT_BUILD_DIR || '.next';
 const mode = process.argv[2] || 'clean';
 
@@ -18,6 +20,8 @@ const staleMatchers = [
   /^\.next_stale_/,
   /^\.next_/,
 ];
+const retryableRemoveErrors = new Set(['EBUSY', 'ENOTEMPTY', 'EPERM']);
+const sleepBuffer = new Int32Array(new SharedArrayBuffer(4));
 
 const fail = (message, error) => {
   console.error(message, error);
@@ -25,10 +29,17 @@ const fail = (message, error) => {
 };
 
 const removePath = (targetPath) => {
-  try {
-    fs.rmSync(targetPath, { recursive: true, force: true });
-  } catch (error) {
-    fail(`No se pudo limpiar ${targetPath}.`, error);
+  for (let attempt = 0; attempt < 8; attempt += 1) {
+    try {
+      fs.rmSync(targetPath, { recursive: true, force: true });
+      return;
+    } catch (error) {
+      if (!error || !retryableRemoveErrors.has(error.code) || attempt === 7) {
+        fail(`No se pudo limpiar ${targetPath}.`, error);
+      }
+
+      Atomics.wait(sleepBuffer, 0, 0, 120 * (attempt + 1));
+    }
   }
 };
 
@@ -69,6 +80,37 @@ const ensureSymlink = (linkName, targetPath) => {
   }
 };
 
+const ensureExternalNodeModulesLink = () => {
+  ensureDir(externalRoot);
+
+  try {
+    const stats = fs.lstatSync(externalNodeModulesLink);
+    if (stats.isSymbolicLink() || stats.isDirectory()) {
+      const currentTarget = fs.readlinkSync(externalNodeModulesLink);
+      const resolvedCurrent = path.resolve(externalRoot, currentTarget);
+      const resolvedExpected = path.resolve(appNodeModulesPath);
+      if (resolvedCurrent === resolvedExpected) {
+        return;
+      }
+    }
+    removePath(externalNodeModulesLink);
+  } catch (error) {
+    if (error && error.code !== 'ENOENT' && error.code !== 'EINVAL') {
+      fail(`No se pudo inspeccionar ${externalNodeModulesLink}.`, error);
+    }
+
+    if (error && error.code === 'EINVAL') {
+      removePath(externalNodeModulesLink);
+    }
+  }
+
+  try {
+    fs.symlinkSync(appNodeModulesPath, externalNodeModulesLink, 'junction');
+  } catch (error) {
+    fail(`No se pudo enlazar ${externalNodeModulesLink} -> ${appNodeModulesPath}.`, error);
+  }
+};
+
 const clearDirectoryContents = (dirPath) => {
   ensureDir(dirPath);
   try {
@@ -83,6 +125,8 @@ const clearDirectoryContents = (dirPath) => {
 for (const [linkName, targetPath] of Object.entries(managedDirs)) {
   ensureSymlink(linkName, targetPath);
 }
+
+ensureExternalNodeModulesLink();
 
 for (const entry of fs.readdirSync(appDir, { withFileTypes: true })) {
   if (!entry.isDirectory()) {

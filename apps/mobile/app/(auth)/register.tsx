@@ -233,7 +233,7 @@ export default function RegisterScreen() {
                   <TouchableOpacity
                     className="h-14 w-full items-center justify-center rounded-full border border-secondary/15 bg-white"
                     onPress={handleGoogleAuth}
-                    disabled={!googleRequest || isSubmitting || isGoogleSubmitting}
+                    disabled={isSubmitting || isGoogleSubmitting}
                     activeOpacity={0.8}
                   >
                     {isGoogleSubmitting ? (

@@ -5,7 +5,6 @@ import '@/pages/globals.css';
 import { ProfessionalProfileProvider } from '@/context/ProfessionalProfileContext';
 import { ClientProfileProvider } from '@/context/ClientProfileContext';
 import { ProfessionalDashboardUnsavedChangesProvider } from '@/context/ProfessionalDashboardUnsavedChangesContext';
-import ErrorBoundary from '@/components/shared/ErrorBoundary';
 import { ThemeProvider } from '@/components/theme/ThemeProvider';
 
 const instrumentSans = Instrument_Sans({
@@ -35,20 +34,18 @@ export default function App({ Component, pageProps }: AppProps) {
   );
 
   return (
-    <ErrorBoundary>
-      <ThemeProvider>
-        <ProfessionalDashboardUnsavedChangesProvider>
-          <ProfessionalProfileProvider autoLoad={shouldAutoLoadProfessionalProfile}>
-            <ClientProfileProvider autoLoad={shouldAutoLoadClientProfile}>
-              <div
-                className={`${instrumentSans.variable} ${instrumentSans.className} font-sans antialiased`}
-              >
-                <Component {...pageProps} />
-              </div>
-            </ClientProfileProvider>
-          </ProfessionalProfileProvider>
-        </ProfessionalDashboardUnsavedChangesProvider>
-      </ThemeProvider>
-    </ErrorBoundary>
+    <ThemeProvider>
+      <ProfessionalDashboardUnsavedChangesProvider>
+        <ProfessionalProfileProvider autoLoad={shouldAutoLoadProfessionalProfile}>
+          <ClientProfileProvider autoLoad={shouldAutoLoadClientProfile}>
+            <div
+              className={`${instrumentSans.variable} ${instrumentSans.className} font-sans antialiased`}
+            >
+              <Component {...pageProps} />
+            </div>
+          </ClientProfileProvider>
+        </ProfessionalProfileProvider>
+      </ProfessionalDashboardUnsavedChangesProvider>
+    </ThemeProvider>
   );
 }

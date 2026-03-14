@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "clean": "node ./scripts/clean-next-build.cjs clean",
-    "dev": "bash ../../scripts/predev.sh 3002 && next dev -p 3002",
+    "dev": "node ../../scripts/predev.cjs 3002 && next dev --webpack -p 3002",
     "build": "NEXT_BUILD_DIR=.next-build node ./scripts/clean-next-build.cjs clean && NEXT_BUILD_DIR=.next-build next build",
     "analyze": "NEXT_BUILD_DIR=.next-build node ./scripts/clean-next-build.cjs clean && NEXT_BUILD_DIR=.next-build ANALYZE=true next build",
     "start": "NEXT_BUILD_DIR=.next-build node ./scripts/clean-next-build.cjs ensure && NEXT_BUILD_DIR=.next-build next start",
@@ -14,10 +14,10 @@
     "@react-oauth/google": "^0.12.2",
     "axios": "^1.13.5",
     "mapbox-gl": "^3.19.1",
-    "next": "15.5.10",
-    "react": "19.1.0",
+    "next": "16.1.6",
+    "react": "19.2.0",
     "react-apple-login": "^1.1.6",
-    "react-dom": "19.1.0",
+    "react-dom": "19.2.0",
     "react-map-gl": "^8.1.0"
   },
   "devDependencies": {
@@ -25,8 +25,8 @@
     "@next/eslint-plugin-next": "15.5.10",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
-    "@types/react": "19.1.17",
-    "@types/react-dom": "19.1.9",
+    "@types/react": "19.2.2",
+    "@types/react-dom": "19.2.2",
     "@typescript-eslint/eslint-plugin": "8.46.0",
     "@typescript-eslint/parser": "8.46.0",
     "eslint": "8.57.0",

@@ -6,17 +6,20 @@
     "node": ">=20"
   },
   "scripts": {
-    "predev": "bash ./scripts/predev.sh 3000 && bash ./scripts/predev.sh 3002",
-    "dev": "concurrently --kill-others-on-fail --names web,api \"pnpm -C apps/web dev\" \"cd backend-java && SPRING_FLYWAY_VALIDATE_ON_MIGRATE=false ./gradlew bootRun\"",
+    "predev": "node ./scripts/predev.cjs 3000 && node ./scripts/predev.cjs 3002",
+    "dev": "concurrently --kill-others-on-fail --names web,api \"pnpm -C apps/web dev\" \"pnpm dev:backend-java\"",
     "dev:web": "pnpm -C apps/web dev",
-    "dev:backend": "cd backend-java && SPRING_FLYWAY_VALIDATE_ON_MIGRATE=false ./gradlew bootRun",
-    "dev:backend-java": "cd backend-java && SPRING_FLYWAY_VALIDATE_ON_MIGRATE=false ./gradlew bootRun",
+    "dev:mobile": "pnpm -C apps/mobile start",
+    "android:mobile": "pnpm -C apps/mobile android",
+    "dev:backend": "pnpm dev:backend-java",
+    "dev:backend-java": "cross-env-shell SPRING_FLYWAY_VALIDATE_ON_MIGRATE=false \"cd backend-java && (./gradlew bootRun || gradlew.bat bootRun)\"",
     "dev:backend:remote": "cd backend-java && SPRING_FLYWAY_VALIDATE_ON_MIGRATE=false ./gradlew bootRun",
     "build": "pnpm -r build",
     "build:backend-java": "cd backend-java && ./gradlew build",
     "lint": "pnpm -r lint"
   },
   "devDependencies": {
-    "concurrently": "^9.0.0"
+    "concurrently": "^9.0.0",
+    "cross-env": "^7.0.3"
   }
 }

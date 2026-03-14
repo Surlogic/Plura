@@ -1,5 +1,3 @@
-'use client';
-
 import { cn } from '@/components/ui/cn';
 import { THEME_PREFERENCES, type ThemePreference } from '@/lib/theme';
 import { useTheme } from '@/components/theme/ThemeProvider';

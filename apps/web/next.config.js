@@ -6,17 +6,9 @@ const withBundleAnalyzer = require('@next/bundle-analyzer')({
 
 const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
 
-const resolvePackagePath = (packageName) => {
-  try {
-    return path.dirname(require.resolve(`${packageName}/package.json`, { paths: [__dirname] }));
-  } catch {
-    return path.resolve(__dirname, `node_modules/${packageName}`);
-  }
-};
-
-const reactPath = resolvePackagePath('react');
-const reactDomPath = resolvePackagePath('react-dom');
-const styledJsxPath = resolvePackagePath('styled-jsx');
+const nextPackagePath = path.dirname(require.resolve('next/package.json', { paths: [__dirname] }));
+const nextReactPath = path.dirname(require.resolve('react/package.json', { paths: [nextPackagePath] }));
+const nextReactDomPath = path.dirname(require.resolve('react-dom/package.json', { paths: [nextPackagePath] }));
 
 const apiImageRemotePattern = (() => {
   try {
@@ -84,11 +76,10 @@ const nextConfig = {
   webpack: (config) => {
     config.resolve.alias = {
       ...(config.resolve.alias || {}),
-      react: reactPath,
-      'react/jsx-runtime': path.join(reactPath, 'jsx-runtime.js'),
-      'react/jsx-dev-runtime': path.join(reactPath, 'jsx-dev-runtime.js'),
-      'react-dom': reactDomPath,
-      'styled-jsx': styledJsxPath,
+      react: nextReactPath,
+      'react/jsx-runtime': path.join(nextReactPath, 'jsx-runtime.js'),
+      'react/jsx-dev-runtime': path.join(nextReactPath, 'jsx-dev-runtime.js'),
+      'react-dom': nextReactDomPath,
     };
     return config;
   },

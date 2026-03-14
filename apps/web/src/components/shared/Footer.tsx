@@ -1,5 +1,3 @@
-'use client';
-
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import BrandLogo from '@/components/ui/BrandLogo';

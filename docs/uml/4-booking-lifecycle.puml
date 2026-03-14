@@ -1,0 +1,223 @@
+@startuml "Plura - Booking Lifecycle"
+
+!theme plain
+skinparam defaultFontSize 11
+
+title Plura Backend — Booking Lifecycle & State Machine
+
+' ════════════════════════════════
+' STATE DIAGRAM
+' ════════════════════════════════
+
+state "Booking States" as BS {
+
+  [*] --> PENDING : Client creates booking
+
+  PENDING : Entry: Slot marked BOOKED
+  PENDING : Entry: Service snapshot captured
+  PENDING : Entry: Policy snapshot saved
+  PENDING : Entry: Payment initiated (if ONLINE/DEPOSIT)
+
+  PENDING --> CONFIRMED : Professional confirms
+  PENDING --> CANCELLED : Client or Professional cancels
+
+  CONFIRMED : Professional accepted the booking
+  CONFIRMED : Payment may be captured
+
+  CONFIRMED --> COMPLETED : Professional marks complete
+  CONFIRMED --> CANCELLED : Client or Professional cancels
+  CONFIRMED --> NO_SHOW : Professional marks no-show
+
+  COMPLETED : Service was provided
+  COMPLETED : Payment settled
+  COMPLETED --> [*]
+
+  CANCELLED : Booking was cancelled
+  CANCELLED : Slot freed → AVAILABLE
+  CANCELLED : Refund processed (per policy)
+  CANCELLED --> [*]
+
+  NO_SHOW : Client didn't show up
+  NO_SHOW : Deposit may be kept
+  NO_SHOW --> [*]
+}
+
+' ════════════════════════════════
+' SEQUENCE: Create Booking
+' ════════════════════════════════
+
+newpage
+
+title Plura Backend — Booking Creation Flow
+
+actor "Client" as C
+participant "BookingClientController\n/cliente/booking" as Ctrl
+participant "BookingClientService" as Svc
+participant "BookingActionDecisionService" as Decision
+participant "BookingDateTimeService" as DT
+participant "AvailableSlotService" as Slots
+participant "BookingProviderIntegrationService" as Pay
+participant "BookingEventService" as Events
+database "PostgreSQL" as DB
+
+C -> Ctrl : POST /cliente/booking\n{professionalId, serviceId,\nstartDateTime}
+activate Ctrl
+
+Ctrl -> Svc : createBooking(request)
+activate Svc
+
+Svc -> DB : findProfessional(professionalId)
+Svc -> DB : findService(serviceId)
+
+Svc -> DT : resolveTimezone(professional)
+DT --> Svc : timezone
+
+Svc -> DT : toUtc(startDateTime, timezone)
+DT --> Svc : startDateTimeUtc
+
+Svc -> Slots : checkAvailability(\nprofessional, startDateTime, duration)
+activate Slots
+Slots -> DB : findSlot(professional, startDateTime)
+
+alt Slot not AVAILABLE
+  Slots --> Svc : throw SlotNotAvailableException
+  Svc --> Ctrl : 409 Conflict
+  Ctrl --> C : "Time slot not available"
+end
+
+Slots -> DB : markSlot(BOOKED)
+Slots --> Svc : slot confirmed
+deactivate Slots
+
+Svc -> Svc : captureSnapshots()
+note right
+  Immutable record:
+  • serviceNameSnapshot
+  • servicePriceSnapshot
+  • serviceDepositAmountSnapshot
+  • serviceCurrencySnapshot
+  • serviceDurationSnapshot
+  • servicePostBufferMinutesSnapshot
+  • servicePaymentTypeSnapshot
+  • policySnapshotJson
+end note
+
+Svc -> DB : save(Booking{status=PENDING})
+
+alt paymentType == ONLINE or DEPOSIT_ONLY
+  Svc -> Pay : initiatePayment(booking)
+  activate Pay
+  Pay -> Pay : selectProvider\n(MercadoPago or dLocal)
+  Pay -> DB : save(PaymentTransaction)
+  Pay --> Svc : paymentUrl / paymentId
+  deactivate Pay
+end
+
+Svc -> Events : recordEvent(BOOKING_CREATED)
+
+Svc --> Ctrl : BookingResponse
+deactivate Svc
+
+Ctrl --> C : 201 Created\n{bookingId, paymentUrl?}
+deactivate Ctrl
+
+' ════════════════════════════════
+' SEQUENCE: Reschedule
+' ════════════════════════════════
+
+newpage
+
+title Plura Backend — Booking Reschedule & Cancel Flows
+
+actor "Client" as C2
+participant "BookingActionsController\n/cliente/booking/{id}/actions" as ActCtrl
+participant "BookingActionsService" as ActSvc
+participant "BookingActionDecisionService" as Dec
+participant "AvailableSlotService" as Sl
+participant "BookingFinanceService" as Fin
+database "PostgreSQL" as DB2
+
+== Reschedule ==
+
+C2 -> ActCtrl : POST /actions/reschedule\n{newStartDateTime}
+activate ActCtrl
+
+ActCtrl -> ActSvc : reschedule(bookingId, newDateTime)
+activate ActSvc
+
+ActSvc -> DB2 : findBooking(id)
+ActSvc -> Dec : canReschedule(booking)
+
+alt Cannot reschedule
+  Dec --> ActSvc : throw BusinessRuleException
+  ActSvc --> ActCtrl : 422 Unprocessable
+end
+
+ActSvc -> Sl : freeOldSlot(booking)
+Sl -> DB2 : markSlot(AVAILABLE)
+
+ActSvc -> Sl : reserveNewSlot(newDateTime)
+Sl -> DB2 : markSlot(BOOKED)
+
+ActSvc -> DB2 : update booking\n(new dateTime, rescheduleCount++)
+ActSvc -> DB2 : save (optimistic lock via version)
+
+ActSvc --> ActCtrl : updated Booking
+deactivate ActSvc
+
+ActCtrl --> C2 : 200 OK
+deactivate ActCtrl
+
+== Cancel (Client) ==
+
+C2 -> ActCtrl : POST /actions/cancel
+activate ActCtrl
+
+ActCtrl -> ActSvc : cancel(bookingId)
+activate ActSvc
+
+ActSvc -> DB2 : findBooking(id)
+ActSvc -> Dec : canCancel(booking)
+ActSvc -> Sl : freeSlot(booking)
+
+ActSvc -> DB2 : update booking\n(status=CANCELLED, cancelledAt=now)
+
+ActSvc -> Fin : processRefund(booking)
+activate Fin
+note right of Fin
+  Refund logic uses
+  policySnapshotJson to
+  determine refund amount
+end note
+Fin -> DB2 : save(PaymentTransaction{REFUND})
+Fin --> ActSvc : refundResult
+deactivate Fin
+
+ActSvc --> ActCtrl : cancelled Booking
+deactivate ActSvc
+
+ActCtrl --> C2 : 200 OK
+deactivate ActCtrl
+
+== Professional Actions ==
+
+actor "Professional" as P
+participant "ProfessionalBookingCommandController\n/profesional/booking" as PCtrl
+
+P -> PCtrl : POST /{id}/actions/confirm
+PCtrl -> ActSvc : confirm(bookingId)
+ActSvc -> DB2 : update(status=CONFIRMED)
+PCtrl --> P : 200 OK
+
+P -> PCtrl : POST /{id}/actions/complete
+PCtrl -> ActSvc : complete(bookingId)
+ActSvc -> DB2 : update(status=COMPLETED,\ncompletedAt=now)
+ActSvc -> Fin : settlePayment(booking)
+PCtrl --> P : 200 OK
+
+P -> PCtrl : POST /{id}/actions/no-show
+PCtrl -> ActSvc : markNoShow(bookingId)
+ActSvc -> DB2 : update(status=NO_SHOW,\nnoShowMarkedAt=now)
+PCtrl --> P : 200 OK
+
+@enduml

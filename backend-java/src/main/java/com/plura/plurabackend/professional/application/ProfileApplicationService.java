@@ -1,10 +1,10 @@
 package com.plura.plurabackend.professional.application;
 
-import com.plura.plurabackend.cache.ProfileCacheService;
-import com.plura.plurabackend.booking.dto.BookingPolicyResponse;
-import com.plura.plurabackend.booking.dto.BookingPolicyUpdateRequest;
-import com.plura.plurabackend.category.model.Category;
-import com.plura.plurabackend.professional.ProfessionalCategorySupport;
+import com.plura.plurabackend.core.cache.ProfileCacheService;
+import com.plura.plurabackend.core.booking.dto.BookingPolicyResponse;
+import com.plura.plurabackend.core.booking.dto.BookingPolicyUpdateRequest;
+import com.plura.plurabackend.core.category.model.Category;
+import com.plura.plurabackend.professional.profile.ProfessionalCategorySupport;
 import com.plura.plurabackend.professional.dto.ProfesionalBusinessProfileUpdateRequest;
 import com.plura.plurabackend.professional.dto.ProfesionalPublicPageResponse;
 import com.plura.plurabackend.professional.dto.ProfesionalPublicPageUpdateRequest;
@@ -13,14 +13,15 @@ import com.plura.plurabackend.professional.model.ProfessionalProfile;
 import com.plura.plurabackend.professional.photo.model.BusinessPhoto;
 import com.plura.plurabackend.professional.photo.model.BusinessPhotoType;
 import com.plura.plurabackend.professional.photo.repository.BusinessPhotoRepository;
+import com.plura.plurabackend.professional.plan.EffectiveProfessionalPlan;
+import com.plura.plurabackend.professional.plan.PlanGuardService;
+import com.plura.plurabackend.professional.plan.PublicProfileTier;
 import com.plura.plurabackend.professional.repository.ProfessionalProfileRepository;
 import com.plura.plurabackend.professional.service.dto.ProfesionalServiceRequest;
 import com.plura.plurabackend.professional.service.dto.ProfesionalServiceResponse;
-import com.plura.plurabackend.productplan.EffectiveProductPlan;
-import com.plura.plurabackend.productplan.EffectiveProductPlanService;
-import com.plura.plurabackend.storage.thumbnail.ImageThumbnailJobService;
-import com.plura.plurabackend.user.model.User;
-import com.plura.plurabackend.user.repository.UserRepository;
+import com.plura.plurabackend.core.storage.thumbnail.ImageThumbnailJobService;
+import com.plura.plurabackend.core.user.model.User;
+import com.plura.plurabackend.core.user.repository.UserRepository;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -42,7 +43,7 @@ public class ProfileApplicationService {
     private final BusinessPhotoRepository businessPhotoRepository;
     private final ProfessionalCategorySupport categorySupport;
     private final UserRepository userRepository;
-    private final EffectiveProductPlanService effectiveProductPlanService;
+    private final PlanGuardService planGuardService;
     private final ImageThumbnailJobService imageThumbnailJobService;
     private final ProfileCacheService profileCacheService;
     private final ProfessionalAccessSupport professionalAccessSupport;
@@ -57,7 +58,7 @@ public class ProfileApplicationService {
         BusinessPhotoRepository businessPhotoRepository,
         ProfessionalCategorySupport categorySupport,
         UserRepository userRepository,
-        EffectiveProductPlanService effectiveProductPlanService,
+        PlanGuardService planGuardService,
         ImageThumbnailJobService imageThumbnailJobService,
         ProfileCacheService profileCacheService,
         ProfessionalAccessSupport professionalAccessSupport,
@@ -71,7 +72,7 @@ public class ProfileApplicationService {
         this.businessPhotoRepository = businessPhotoRepository;
         this.categorySupport = categorySupport;
         this.userRepository = userRepository;
-        this.effectiveProductPlanService = effectiveProductPlanService;
+        this.planGuardService = planGuardService;
         this.imageThumbnailJobService = imageThumbnailJobService;
         this.profileCacheService = profileCacheService;
         this.professionalAccessSupport = professionalAccessSupport;
@@ -196,7 +197,11 @@ public class ProfileApplicationService {
         ProfesionalPublicPageUpdateRequest request
     ) {
         ProfessionalProfile profile = professionalAccessSupport.loadProfessionalByUserId(rawUserId);
-        EffectiveProductPlan effectivePlan = effectiveProductPlanService.resolveForProfessional(profile);
+        EffectiveProfessionalPlan effectivePlan = planGuardService.effectivePlanForProfessionalUserId(rawUserId);
+
+        if (hasEnhancedPublicPageContent(request)) {
+            planGuardService.requirePublicProfileTier(rawUserId, PublicProfileTier.ENHANCED);
+        }
 
         if (request.getHeadline() != null) {
             profile.setPublicHeadline(request.getHeadline().trim());
@@ -209,7 +214,7 @@ public class ProfileApplicationService {
                 .map(photo -> photo == null ? "" : photo.trim())
                 .filter(photo -> !photo.isBlank())
                 .toList();
-            int maxBusinessPhotos = effectivePlan.capabilities().maxBusinessPhotos();
+            int maxBusinessPhotos = effectivePlan.entitlements().maxBusinessPhotos();
             if (cleaned.size() > maxBusinessPhotos) {
                 throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
@@ -242,6 +247,10 @@ public class ProfileApplicationService {
         ProfessionalProfile profile = professionalAccessSupport.loadProfessionalByUserId(rawUserId);
         User user = profile.getUser();
 
+        if (hasEnhancedBusinessProfileContent(request)) {
+            planGuardService.requirePublicProfileTier(rawUserId, PublicProfileTier.ENHANCED);
+        }
+
         if (request.getFullName() != null) {
             String fullName = request.getFullName().trim();
             if (fullName.isBlank()) {
@@ -269,7 +278,7 @@ public class ProfileApplicationService {
             if (rubro.isBlank()) {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "El rubro no puede estar vacío");
             }
-            String mappedSlug = com.plura.plurabackend.common.util.SlugUtils.toSlug(rubro);
+            String mappedSlug = com.plura.plurabackend.core.common.util.SlugUtils.toSlug(rubro);
             Category category = categorySupport.resolveCategoriesBySlugs(List.of(mappedSlug)).stream()
                 .findFirst()
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Rubro inválido"));
@@ -379,7 +388,7 @@ public class ProfileApplicationService {
     @Transactional
     public ProfesionalServiceResponse createService(String rawUserId, ProfesionalServiceRequest request) {
         ProfessionalProfile profile = professionalAccessSupport.loadProfessionalByUserId(rawUserId);
-        return profileServiceCatalogSupport.createService(profile, request);
+        return profileServiceCatalogSupport.createService(rawUserId, profile, request);
     }
 
     @Transactional
@@ -389,7 +398,7 @@ public class ProfileApplicationService {
         ProfesionalServiceRequest request
     ) {
         ProfessionalProfile profile = professionalAccessSupport.loadProfessionalByUserId(rawUserId);
-        return profileServiceCatalogSupport.updateService(profile, serviceId, request);
+        return profileServiceCatalogSupport.updateService(rawUserId, profile, serviceId, request);
     }
 
     @Transactional
@@ -463,5 +472,27 @@ public class ProfileApplicationService {
         }
         String normalized = value.trim();
         return normalized.isBlank() ? null : normalized;
+    }
+
+    private boolean hasEnhancedPublicPageContent(ProfesionalPublicPageUpdateRequest request) {
+        return request != null && (
+            isNonBlank(request.getHeadline())
+                || isNonBlank(request.getAbout())
+        );
+    }
+
+    private boolean hasEnhancedBusinessProfileContent(ProfesionalBusinessProfileUpdateRequest request) {
+        return request != null && (
+            request.getLogoUrl() != null
+                || request.getInstagram() != null
+                || request.getFacebook() != null
+                || request.getTiktok() != null
+                || request.getWebsite() != null
+                || request.getWhatsapp() != null
+        );
+    }
+
+    private boolean isNonBlank(String value) {
+        return value != null && !value.trim().isBlank();
     }
 }

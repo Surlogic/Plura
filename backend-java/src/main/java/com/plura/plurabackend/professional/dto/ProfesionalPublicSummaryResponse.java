@@ -1,6 +1,6 @@
 package com.plura.plurabackend.professional.dto;
 
-import com.plura.plurabackend.category.dto.CategoryResponse;
+import com.plura.plurabackend.core.category.dto.CategoryResponse;
 import java.util.List;
 import lombok.AllArgsConstructor;
 import lombok.Data;

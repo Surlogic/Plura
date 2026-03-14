@@ -1,10 +1,10 @@
 package com.plura.plurabackend.professional.application;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.plura.plurabackend.booking.dto.BookingPolicySnapshotResponse;
-import com.plura.plurabackend.booking.policy.BookingPolicySnapshotService;
-import com.plura.plurabackend.professional.ProfessionalCategorySupport;
-import com.plura.plurabackend.professional.ProfessionalScheduleSupport;
+import com.plura.plurabackend.core.booking.dto.BookingPolicySnapshotResponse;
+import com.plura.plurabackend.core.booking.policy.BookingPolicySnapshotService;
+import com.plura.plurabackend.professional.profile.ProfessionalCategorySupport;
+import com.plura.plurabackend.professional.schedule.ProfessionalScheduleSupport;
 import com.plura.plurabackend.professional.dto.ProfesionalPublicPageResponse;
 import com.plura.plurabackend.professional.dto.ProfesionalPublicSummaryResponse;
 import com.plura.plurabackend.professional.model.ProfessionalProfile;
@@ -15,8 +15,8 @@ import com.plura.plurabackend.professional.schedule.dto.ProfesionalScheduleDto;
 import com.plura.plurabackend.professional.service.dto.ProfesionalServiceResponse;
 import com.plura.plurabackend.professional.service.model.ProfesionalService;
 import com.plura.plurabackend.professional.service.repository.ProfesionalServiceRepository;
-import com.plura.plurabackend.storage.ImageStorageService;
-import com.plura.plurabackend.user.model.User;
+import com.plura.plurabackend.core.storage.ImageStorageService;
+import com.plura.plurabackend.core.user.model.User;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
@@ -62,7 +62,7 @@ public class ProfilePublicPageAssembler {
             .map(this::toPublicServiceResponse)
             .toList();
         BookingPolicySnapshotResponse publicBookingPolicy = bookingPolicySnapshotService.toResponse(
-            bookingPolicySnapshotService.buildForProfessional(profile)
+            bookingPolicySnapshotService.buildForProfessionalId(profile.getId())
         );
 
         return new ProfesionalPublicPageResponse(
@@ -215,10 +215,10 @@ public class ProfilePublicPageAssembler {
         return service.getPostBufferMinutes();
     }
 
-    private com.plura.plurabackend.booking.model.ServicePaymentType resolveServicePaymentType(
-        com.plura.plurabackend.booking.model.ServicePaymentType paymentType
+    private com.plura.plurabackend.core.booking.model.ServicePaymentType resolveServicePaymentType(
+        com.plura.plurabackend.core.booking.model.ServicePaymentType paymentType
     ) {
-        return paymentType == null ? com.plura.plurabackend.booking.model.ServicePaymentType.ON_SITE : paymentType;
+        return paymentType == null ? com.plura.plurabackend.core.booking.model.ServicePaymentType.ON_SITE : paymentType;
     }
 
     private String resolveServiceCurrency(String currency) {

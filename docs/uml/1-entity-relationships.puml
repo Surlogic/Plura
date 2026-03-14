@@ -1,0 +1,303 @@
+@startuml "Plura - Entity Relationships"
+
+!theme plain
+skinparam linetype ortho
+skinparam classAttributeIconSize 0
+skinparam defaultFontSize 11
+
+title Plura Backend — Entity Relationship Diagram
+
+' ─── USER ───
+package "User Domain" #E8F5E9 {
+  entity User {
+    **id** : Long <<PK>>
+    --
+    email : String <<unique>>
+    password : String (hashed)
+    role : Enum {USER, PROFESSIONAL}
+    fullName : String
+    phoneNumber : String
+    avatar : String
+    provider : Enum {GOOGLE, APPLE}
+    providerId : String
+    sessionVersion : Integer
+    emailVerifiedAt : Instant
+    phoneVerifiedAt : Instant
+    passwordChangedAt : Instant
+    lastLoginAt : Instant
+    deletedAt : Instant
+  }
+}
+
+' ─── AUTH ───
+package "Auth Domain" #FFF3E0 {
+  entity AuthSession {
+    **id** : UUID <<PK>>
+    --
+    user_id : Long <<FK>>
+    sessionType : Enum {MANUAL, GOOGLE, APPLE}
+    refreshTokenHash : String <<unique>>
+    previousRefreshTokenHash : String
+    deviceLabel : String
+    userAgent : String
+    ipAddress : String
+    createdAt : Instant
+    lastSeenAt : Instant
+    expiresAt : Instant
+    revokedAt : Instant
+    revokeReason : String
+    replacedBySessionId : String
+    refreshRotatedAt : Instant
+    compromiseDetectedAt : Instant
+  }
+
+  entity AuthAuditLog {
+    **id** : Long <<PK>>
+    --
+    user_id : Long <<FK>>
+    action : String
+    ipAddress : String
+    userAgent : String
+    createdAt : Instant
+  }
+
+  entity PasswordResetToken {
+    **id** : Long <<PK>>
+    --
+    user_id : Long <<FK>>
+    tokenHash : String
+    expiresAt : Instant
+    usedAt : Instant
+  }
+
+  entity EmailVerificationChallenge {
+    **id** : Long <<PK>>
+    --
+    user_id : Long <<FK>>
+    otpHash : String
+    expiresAt : Instant
+    verifiedAt : Instant
+  }
+
+  entity PhoneVerificationChallenge {
+    **id** : Long <<PK>>
+    --
+    user_id : Long <<FK>>
+    otpHash : String
+    expiresAt : Instant
+    verifiedAt : Instant
+  }
+
+  entity AuthOtpChallenge {
+    **id** : Long <<PK>>
+    --
+    user_id : Long <<FK>>
+    purpose : String
+    otpHash : String
+    expiresAt : Instant
+    verifiedAt : Instant
+  }
+}
+
+' ─── PROFESSIONAL ───
+package "Professional Domain" #E3F2FD {
+  entity ProfessionalProfile {
+    **id** : Long <<PK>>
+    --
+    user_id : Long <<FK, unique>>
+    rubro : String
+    displayName : String
+    slug : String <<unique>>
+    publicHeadline : String
+    publicAbout : String
+    logoUrl : String
+    publicPhotos : List<String>
+    instagram, facebook, tiktok : String
+    website, whatsapp : String
+    country, city : String
+    fullAddress : String
+    latitude, longitude : Double
+    locationText : String
+    rating : Double (default 0)
+    reviewsCount : Integer (default 0)
+    scheduleJson : JSON
+    slotDurationMinutes : Integer (default 15)
+    hasAvailabilityToday : Boolean
+    nextAvailableAt : Instant
+    active : Boolean
+    -- dLocal Payout --
+    dlocalPayoutEnabled : Boolean
+    dlocalPayoutCountry : String
+    dlocalSplitCode : String
+  }
+
+  entity ProfesionalService {
+    **id** : UUID <<PK>>
+    --
+    professional_id : Long <<FK>>
+    category_id : UUID <<FK>>
+    name : String
+    description : String
+    price : BigDecimal
+    currency : String (default "UYU")
+    duration : Integer
+    imageUrl : String
+    postBufferMinutes : Integer
+    depositAmount : BigDecimal
+    paymentType : Enum {ON_SITE, ONLINE, DEPOSIT_ONLY}
+    active : Boolean
+  }
+}
+
+' ─── CATEGORY ───
+package "Category Domain" #F3E5F5 {
+  entity Category {
+    **id** : UUID <<PK>>
+    --
+    name : String <<unique>>
+    slug : String <<unique>>
+    imageUrl : String
+    displayOrder : Integer
+    active : Boolean
+  }
+
+  entity "professional_profile_categories\n(join table)" as PPC {
+    professional_id : Long <<FK>>
+    category_id : UUID <<FK>>
+  }
+}
+
+' ─── AVAILABILITY ───
+package "Availability Domain" #FFF9C4 {
+  entity AvailableSlot {
+    **id** : Long <<PK>>
+    --
+    professional_id : Long <<FK>>
+    startAt : LocalDateTime
+    endAt : LocalDateTime
+    status : Enum {AVAILABLE, BOOKED, UNAVAILABLE}
+    ..
+    <<unique(professional_id, start_at)>>
+  }
+}
+
+' ─── BOOKING ───
+package "Booking Domain" #FFEBEE {
+  entity Booking {
+    **id** : Long <<PK>>
+    --
+    user_id : Long <<FK>>
+    professional_id : Long <<FK>>
+    service_id : UUID <<FK>>
+    startDateTime : LocalDateTime
+    startDateTimeUtc : Instant
+    operationalStatus : Enum {PENDING, CONFIRMED,
+      CANCELLED, COMPLETED, NO_SHOW}
+    timezone : String
+    rescheduleCount : Integer (default 0)
+    cancelledAt : Instant
+    completedAt : Instant
+    noShowMarkedAt : Instant
+    -- Service Snapshot --
+    serviceNameSnapshot : String
+    servicePriceSnapshot : BigDecimal
+    serviceDepositAmountSnapshot : BigDecimal
+    serviceCurrencySnapshot : String
+    serviceDurationSnapshot : Integer
+    servicePostBufferMinutesSnapshot : Integer
+    servicePaymentTypeSnapshot : String
+    policySnapshotJson : JSON
+    version : Long (optimistic lock)
+    ..
+    <<unique(professional_id, start_date_time)>>
+  }
+}
+
+' ─── BILLING ───
+package "Billing Domain" #E0F7FA {
+  entity Subscription {
+    **subscription_id** : Long <<PK>>
+    --
+    user_id : Long <<FK>>
+    plan : Enum {BASIC, PRO, PREMIUM}
+    status : String
+    currentPeriodStart : Instant
+    currentPeriodEnd : Instant
+    providerIds : String
+    createdAt : Instant
+  }
+
+  entity PaymentTransaction {
+    **id** : Long <<PK>>
+    --
+    booking_id : Long <<FK>>
+    provider : Enum {MERCADOPAGO, DLOCAL}
+    amount : BigDecimal
+    currency : String
+    status : String
+    externalId : String
+    createdAt : Instant
+  }
+
+  entity PaymentEvent {
+    **id** : Long <<PK>>
+    --
+    provider : String
+    eventType : String
+    payload : JSON
+    processedAt : Instant
+  }
+
+  entity ProviderOperation {
+    **id** : Long <<PK>>
+    --
+    operationType : String
+    provider : String
+    status : String
+    payload : JSON
+    createdAt : Instant
+    processedAt : Instant
+  }
+}
+
+' ─── CLIENT FAVORITES ───
+package "Favorites Domain" #FCE4EC {
+  entity ClientFavorite {
+    **id** : Long <<PK>>
+    --
+    user_id : Long <<FK>>
+    professional_id : Long <<FK>>
+    createdAt : Instant
+  }
+}
+
+' ════════════════════════════════
+' RELATIONSHIPS
+' ════════════════════════════════
+
+User "1" -- "0..*" AuthSession : has sessions >
+User "1" -- "0..*" AuthAuditLog : audit trail >
+User "1" -- "0..*" PasswordResetToken : resets >
+User "1" -- "0..*" EmailVerificationChallenge : verifies email >
+User "1" -- "0..*" PhoneVerificationChallenge : verifies phone >
+User "1" -- "0..*" AuthOtpChallenge : OTP >
+
+User "1" -- "0..1" ProfessionalProfile : is professional >
+User "1" -- "0..*" Booking : books as client >
+User "1" -- "0..1" Subscription : subscribes >
+User "1" -- "0..*" ClientFavorite : favorites >
+
+ProfessionalProfile "1" -- "0..*" ProfesionalService : offers >
+ProfessionalProfile "1" -- "0..*" AvailableSlot : has slots >
+ProfessionalProfile "1" -- "0..*" Booking : receives bookings >
+ProfessionalProfile "1" -- "0..*" ClientFavorite : favorited by >
+
+ProfessionalProfile "0..*" -- "0..*" Category
+(ProfessionalProfile, Category) .. PPC
+
+ProfesionalService "0..*" -- "0..1" Category : belongs to >
+ProfesionalService "1" -- "0..*" Booking : booked for >
+
+Booking "1" -- "0..*" PaymentTransaction : payments >
+
+@enduml

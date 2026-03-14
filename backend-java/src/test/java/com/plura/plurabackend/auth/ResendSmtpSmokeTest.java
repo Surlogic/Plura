@@ -1,4 +1,4 @@
-package com.plura.plurabackend.auth;
+package com.plura.plurabackend.core.auth;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;

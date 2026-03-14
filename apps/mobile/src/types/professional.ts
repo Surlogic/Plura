@@ -1,9 +1,9 @@
 import type {
-  ProductPlanCapabilities,
-  ProductPlanCode,
+  ProfessionalPlanCode,
+  ProfessionalPlanEntitlements,
 } from '../../../../packages/shared/src/types/professional';
 
-export type { ProductPlanCapabilities, ProductPlanCode };
+export type { ProfessionalPlanCode, ProfessionalPlanEntitlements };
 
 export type ServiceCategoryOption = {
   id: string;
@@ -28,8 +28,8 @@ export type ProfessionalProfile = {
   publicHeadline?: string | null;
   publicAbout?: string | null;
   publicPhotos?: string[];
-  planCode?: ProductPlanCode;
-  planCapabilities?: ProductPlanCapabilities;
+  professionalPlan?: ProfessionalPlanCode;
+  professionalEntitlements?: ProfessionalPlanEntitlements;
 };
 
 export type ServicePaymentType =

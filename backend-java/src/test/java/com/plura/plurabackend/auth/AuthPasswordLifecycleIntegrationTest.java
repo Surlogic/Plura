@@ -1,4 +1,4 @@
-package com.plura.plurabackend.auth;
+package com.plura.plurabackend.core.auth;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.times;
@@ -11,12 +11,12 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.plura.plurabackend.auth.repository.AuthSessionRepository;
-import com.plura.plurabackend.auth.repository.PasswordResetTokenRepository;
-import com.plura.plurabackend.auth.repository.RefreshTokenRepository;
-import com.plura.plurabackend.user.model.User;
-import com.plura.plurabackend.user.model.UserRole;
-import com.plura.plurabackend.user.repository.UserRepository;
+import com.plura.plurabackend.core.auth.repository.AuthSessionRepository;
+import com.plura.plurabackend.core.auth.repository.PasswordResetTokenRepository;
+import com.plura.plurabackend.core.auth.repository.RefreshTokenRepository;
+import com.plura.plurabackend.core.user.model.User;
+import com.plura.plurabackend.core.user.model.UserRole;
+import com.plura.plurabackend.core.user.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;

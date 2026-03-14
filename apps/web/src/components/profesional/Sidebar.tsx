@@ -70,12 +70,12 @@ export default function ProfesionalSidebar({ profile, active }: SidebarProps) {
   const displayName = profile?.fullName || 'Profesional';
   const displayMeta = profile?.rubro || 'Cuenta profesional';
 
-  const planLabel = profile?.planCode
+  const planLabel = profile?.professionalPlan
     ? {
         BASIC: 'Basic',
-        PROFESSIONAL: 'Professional',
-        COMPANY: 'Company',
-      }[profile.planCode]
+        PROFESIONAL: 'Profesional',
+        ENTERPRISE: 'Enterprise',
+      }[profile.professionalPlan]
     : 'Beta';
 
   useEffect(() => {

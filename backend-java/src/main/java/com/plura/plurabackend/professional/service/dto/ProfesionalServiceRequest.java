@@ -1,6 +1,6 @@
 package com.plura.plurabackend.professional.service.dto;
 
-import com.plura.plurabackend.booking.model.ServicePaymentType;
+import com.plura.plurabackend.core.booking.model.ServicePaymentType;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Pattern;

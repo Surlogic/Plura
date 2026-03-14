@@ -1,12 +1,12 @@
 package com.plura.plurabackend.professional.application;
 
-import com.plura.plurabackend.common.util.SlugUtils;
+import com.plura.plurabackend.core.common.util.SlugUtils;
 import com.plura.plurabackend.professional.model.ProfessionalProfile;
 import com.plura.plurabackend.professional.repository.ProfessionalProfileRepository;
 import com.plura.plurabackend.professional.service.model.ProfesionalService;
-import com.plura.plurabackend.user.model.User;
-import com.plura.plurabackend.user.model.UserRole;
-import com.plura.plurabackend.user.repository.UserRepository;
+import com.plura.plurabackend.core.user.model.User;
+import com.plura.plurabackend.core.user.model.UserRole;
+import com.plura.plurabackend.core.user.repository.UserRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 import org.springframework.web.server.ResponseStatusException;

@@ -1,4 +1,4 @@
-package com.plura.plurabackend.search;
+package com.plura.plurabackend.core.search;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
@@ -7,11 +7,11 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import com.plura.plurabackend.cache.SearchCacheService;
-import com.plura.plurabackend.search.dto.SearchItemResponse;
-import com.plura.plurabackend.search.dto.SearchResponse;
-import com.plura.plurabackend.search.engine.SearchEngineClient;
-import com.plura.plurabackend.storage.ImageStorageService;
+import com.plura.plurabackend.core.cache.SearchCacheService;
+import com.plura.plurabackend.core.search.dto.SearchItemResponse;
+import com.plura.plurabackend.core.search.dto.SearchResponse;
+import com.plura.plurabackend.core.search.engine.SearchEngineClient;
+import com.plura.plurabackend.core.storage.ImageStorageService;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import java.util.List;
 import java.util.Optional;

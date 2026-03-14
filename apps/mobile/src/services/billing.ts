@@ -7,7 +7,7 @@ import {
   type BillingUiPlanId,
   type PaidBillingUiPlanId,
 } from '../config/billingPlans';
-import type { ProductPlanCode } from '../types/professional';
+import type { ProfessionalPlanCode } from '../types/professional';
 import type {
   ProfessionalPayoutConfig,
   ProfessionalPayoutConfigUpdateInput,
@@ -122,7 +122,7 @@ export const resolveCurrentBillingPlanId = ({
   profilePlanCode,
   subscription,
 }: {
-  profilePlanCode?: ProductPlanCode | null;
+  profilePlanCode?: ProfessionalPlanCode | null;
   subscription: BillingSubscription | null;
 }): BillingUiPlanId => {
   if (subscription) {

@@ -1,4 +1,4 @@
-package com.plura.plurabackend.auth;
+package com.plura.plurabackend.core.auth;
 
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
@@ -6,15 +6,15 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import com.plura.plurabackend.auth.oauth.OAuthUserInfo;
-import com.plura.plurabackend.auth.oauth.providers.AppleTokenVerifier;
-import com.plura.plurabackend.auth.oauth.providers.GoogleTokenVerifier;
-import com.plura.plurabackend.auth.repository.AuthSessionRepository;
-import com.plura.plurabackend.auth.repository.RefreshTokenRepository;
+import com.plura.plurabackend.core.auth.oauth.OAuthUserInfo;
+import com.plura.plurabackend.core.auth.oauth.providers.AppleTokenVerifier;
+import com.plura.plurabackend.core.auth.oauth.providers.GoogleTokenVerifier;
+import com.plura.plurabackend.core.auth.repository.AuthSessionRepository;
+import com.plura.plurabackend.core.auth.repository.RefreshTokenRepository;
 import com.plura.plurabackend.professional.repository.ProfessionalProfileRepository;
-import com.plura.plurabackend.user.model.User;
-import com.plura.plurabackend.user.model.UserRole;
-import com.plura.plurabackend.user.repository.UserRepository;
+import com.plura.plurabackend.core.user.model.User;
+import com.plura.plurabackend.core.user.model.UserRole;
+import com.plura.plurabackend.core.user.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;

@@ -1,7 +1,7 @@
 package com.plura.plurabackend.professional.service.model;
 
-import com.plura.plurabackend.booking.model.ServicePaymentType;
-import com.plura.plurabackend.category.model.Category;
+import com.plura.plurabackend.core.booking.model.ServicePaymentType;
+import com.plura.plurabackend.core.category.model.Category;
 import com.plura.plurabackend.professional.model.ProfessionalProfile;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;

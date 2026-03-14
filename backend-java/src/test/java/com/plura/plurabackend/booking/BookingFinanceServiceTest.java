@@ -7,29 +7,29 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.plura.plurabackend.billing.payments.repository.PaymentTransactionRepository;
-import com.plura.plurabackend.billing.payments.model.PaymentTransaction;
-import com.plura.plurabackend.billing.payments.model.PaymentTransactionStatus;
-import com.plura.plurabackend.billing.payments.model.PaymentTransactionType;
-import com.plura.plurabackend.booking.decision.model.BookingActionDecision;
-import com.plura.plurabackend.booking.decision.model.BookingActionType;
-import com.plura.plurabackend.booking.decision.repository.BookingActionDecisionRepository;
-import com.plura.plurabackend.booking.event.model.BookingActorType;
-import com.plura.plurabackend.booking.finance.BookingFinanceService;
-import com.plura.plurabackend.booking.finance.BookingFinanceUpdateResult;
-import com.plura.plurabackend.booking.finance.BookingMoneyResolver;
-import com.plura.plurabackend.booking.finance.model.BookingFinancialStatus;
-import com.plura.plurabackend.booking.finance.model.BookingFinancialSummary;
-import com.plura.plurabackend.booking.finance.model.BookingPayoutReasonCode;
-import com.plura.plurabackend.booking.finance.model.BookingPayoutStatus;
-import com.plura.plurabackend.booking.finance.model.BookingRefundReasonCode;
-import com.plura.plurabackend.booking.finance.model.BookingRefundStatus;
-import com.plura.plurabackend.booking.finance.repository.BookingFinancialSummaryRepository;
-import com.plura.plurabackend.booking.finance.repository.BookingPayoutRecordRepository;
-import com.plura.plurabackend.booking.finance.repository.BookingRefundRecordRepository;
-import com.plura.plurabackend.booking.model.Booking;
-import com.plura.plurabackend.booking.model.BookingOperationalStatus;
-import com.plura.plurabackend.booking.model.ServicePaymentType;
+import com.plura.plurabackend.core.billing.payments.repository.PaymentTransactionRepository;
+import com.plura.plurabackend.core.billing.payments.model.PaymentTransaction;
+import com.plura.plurabackend.core.billing.payments.model.PaymentTransactionStatus;
+import com.plura.plurabackend.core.billing.payments.model.PaymentTransactionType;
+import com.plura.plurabackend.core.booking.decision.model.BookingActionDecision;
+import com.plura.plurabackend.core.booking.decision.model.BookingActionType;
+import com.plura.plurabackend.core.booking.decision.repository.BookingActionDecisionRepository;
+import com.plura.plurabackend.core.booking.event.model.BookingActorType;
+import com.plura.plurabackend.core.booking.finance.BookingFinanceService;
+import com.plura.plurabackend.core.booking.finance.BookingFinanceUpdateResult;
+import com.plura.plurabackend.core.booking.finance.BookingMoneyResolver;
+import com.plura.plurabackend.core.booking.finance.model.BookingFinancialStatus;
+import com.plura.plurabackend.core.booking.finance.model.BookingFinancialSummary;
+import com.plura.plurabackend.core.booking.finance.model.BookingPayoutReasonCode;
+import com.plura.plurabackend.core.booking.finance.model.BookingPayoutStatus;
+import com.plura.plurabackend.core.booking.finance.model.BookingRefundReasonCode;
+import com.plura.plurabackend.core.booking.finance.model.BookingRefundStatus;
+import com.plura.plurabackend.core.booking.finance.repository.BookingFinancialSummaryRepository;
+import com.plura.plurabackend.core.booking.finance.repository.BookingPayoutRecordRepository;
+import com.plura.plurabackend.core.booking.finance.repository.BookingRefundRecordRepository;
+import com.plura.plurabackend.core.booking.model.Booking;
+import com.plura.plurabackend.core.booking.model.BookingOperationalStatus;
+import com.plura.plurabackend.core.booking.model.ServicePaymentType;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
@@ -109,7 +109,7 @@ class BookingFinanceServiceTest {
         when(paymentTransactionRepository.findByBooking_IdAndTransactionTypeOrderByCreatedAtAsc(booking.getId(), PaymentTransactionType.BOOKING_PAYOUT))
             .thenReturn(List.of());
         when(refundRecordRepository.findByBooking_IdOrderByCreatedAtDesc(booking.getId())).thenAnswer(invocation ->
-            savedRefundRecord.get() == null ? List.of() : List.of((com.plura.plurabackend.booking.finance.model.BookingRefundRecord) savedRefundRecord.get())
+            savedRefundRecord.get() == null ? List.of() : List.of((com.plura.plurabackend.core.booking.finance.model.BookingRefundRecord) savedRefundRecord.get())
         );
         when(payoutRecordRepository.findByBooking_IdOrderByCreatedAtDesc(booking.getId())).thenReturn(List.of());
 
@@ -166,7 +166,7 @@ class BookingFinanceServiceTest {
             .thenReturn(List.of());
         when(refundRecordRepository.findByBooking_IdOrderByCreatedAtDesc(booking.getId())).thenReturn(List.of());
         when(payoutRecordRepository.findByBooking_IdOrderByCreatedAtDesc(booking.getId())).thenAnswer(invocation ->
-            savedPayoutRecord.get() == null ? List.of() : List.of((com.plura.plurabackend.booking.finance.model.BookingPayoutRecord) savedPayoutRecord.get())
+            savedPayoutRecord.get() == null ? List.of() : List.of((com.plura.plurabackend.core.booking.finance.model.BookingPayoutRecord) savedPayoutRecord.get())
         );
 
         BookingFinanceUpdateResult result = bookingFinanceService.applyDecision(booking, decision);
@@ -207,15 +207,15 @@ class BookingFinanceServiceTest {
         when(summaryRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
         when(refundRecordRepository.findByRelatedDecisionId(decision.getId())).thenReturn(Optional.empty());
         when(payoutRecordRepository.findByRelatedDecisionId(decision.getId())).thenReturn(Optional.empty());
-        AtomicReference<com.plura.plurabackend.booking.finance.model.BookingRefundRecord> savedRefundRecord = new AtomicReference<>();
-        AtomicReference<com.plura.plurabackend.booking.finance.model.BookingPayoutRecord> savedPayoutRecord = new AtomicReference<>();
+        AtomicReference<com.plura.plurabackend.core.booking.finance.model.BookingRefundRecord> savedRefundRecord = new AtomicReference<>();
+        AtomicReference<com.plura.plurabackend.core.booking.finance.model.BookingPayoutRecord> savedPayoutRecord = new AtomicReference<>();
         when(refundRecordRepository.save(any())).thenAnswer(invocation -> {
-            var saved = (com.plura.plurabackend.booking.finance.model.BookingRefundRecord) invocation.getArgument(0);
+            var saved = (com.plura.plurabackend.core.booking.finance.model.BookingRefundRecord) invocation.getArgument(0);
             savedRefundRecord.set(saved);
             return saved;
         });
         when(payoutRecordRepository.save(any())).thenAnswer(invocation -> {
-            var saved = (com.plura.plurabackend.booking.finance.model.BookingPayoutRecord) invocation.getArgument(0);
+            var saved = (com.plura.plurabackend.core.booking.finance.model.BookingPayoutRecord) invocation.getArgument(0);
             savedPayoutRecord.set(saved);
             return saved;
         });
@@ -270,9 +270,9 @@ class BookingFinanceServiceTest {
         when(summaryRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
         when(refundRecordRepository.findByRelatedDecisionId(decision.getId())).thenReturn(Optional.empty());
         when(payoutRecordRepository.findByRelatedDecisionId(decision.getId())).thenReturn(Optional.empty());
-        AtomicReference<com.plura.plurabackend.booking.finance.model.BookingPayoutRecord> savedPayoutRecord = new AtomicReference<>();
+        AtomicReference<com.plura.plurabackend.core.booking.finance.model.BookingPayoutRecord> savedPayoutRecord = new AtomicReference<>();
         when(payoutRecordRepository.save(any())).thenAnswer(invocation -> {
-            var saved = (com.plura.plurabackend.booking.finance.model.BookingPayoutRecord) invocation.getArgument(0);
+            var saved = (com.plura.plurabackend.core.booking.finance.model.BookingPayoutRecord) invocation.getArgument(0);
             savedPayoutRecord.set(saved);
             return saved;
         });

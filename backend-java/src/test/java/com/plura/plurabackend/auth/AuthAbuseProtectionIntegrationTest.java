@@ -1,4 +1,4 @@
-package com.plura.plurabackend.auth;
+package com.plura.plurabackend.core.auth;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -11,16 +11,16 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.plura.plurabackend.auth.model.AuthAuditEventType;
-import com.plura.plurabackend.auth.model.AuthAuditLog;
-import com.plura.plurabackend.auth.repository.AuthAuditLogRepository;
-import com.plura.plurabackend.auth.repository.AuthOtpChallengeRepository;
-import com.plura.plurabackend.auth.repository.AuthSessionRepository;
-import com.plura.plurabackend.auth.repository.EmailVerificationChallengeRepository;
-import com.plura.plurabackend.auth.repository.PasswordResetTokenRepository;
-import com.plura.plurabackend.auth.repository.PhoneVerificationChallengeRepository;
-import com.plura.plurabackend.auth.repository.RefreshTokenRepository;
-import com.plura.plurabackend.user.repository.UserRepository;
+import com.plura.plurabackend.core.auth.model.AuthAuditEventType;
+import com.plura.plurabackend.core.auth.model.AuthAuditLog;
+import com.plura.plurabackend.core.auth.repository.AuthAuditLogRepository;
+import com.plura.plurabackend.core.auth.repository.AuthOtpChallengeRepository;
+import com.plura.plurabackend.core.auth.repository.AuthSessionRepository;
+import com.plura.plurabackend.core.auth.repository.EmailVerificationChallengeRepository;
+import com.plura.plurabackend.core.auth.repository.PasswordResetTokenRepository;
+import com.plura.plurabackend.core.auth.repository.PhoneVerificationChallengeRepository;
+import com.plura.plurabackend.core.auth.repository.RefreshTokenRepository;
+import com.plura.plurabackend.core.user.repository.UserRepository;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

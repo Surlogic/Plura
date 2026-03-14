@@ -22,17 +22,17 @@ export type BillingPlanDefinition = SharedBillingPlanDefinition & {
 export const billingPlans: BillingPlanDefinition[] = sharedBillingPlans.map((plan) => ({
   ...plan,
   accent:
-    plan.id === 'PRO'
+    plan.id === 'PROFESIONAL'
       ? 'accent'
-      : plan.id === 'PREMIUM'
+      : plan.id === 'ENTERPRISE'
         ? 'warm'
         : 'default',
 }));
 
 export const billingPlanById: Record<keyof typeof sharedBillingPlanById, BillingPlanDefinition> = {
   BASIC: billingPlans[0],
-  PRO: billingPlans[1],
-  PREMIUM: billingPlans[2],
+  PROFESIONAL: billingPlans[1],
+  ENTERPRISE: billingPlans[2],
 };
 
 export { resolveBillingPlanFromBackendPlanCode, resolveBillingPlanFromProfilePlanCode };

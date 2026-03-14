@@ -1,11 +1,11 @@
 package com.plura.plurabackend.professional.application;
 
-import com.plura.plurabackend.booking.dto.BookingPolicyResponse;
-import com.plura.plurabackend.booking.dto.BookingPolicyUpdateRequest;
-import com.plura.plurabackend.booking.policy.BookingPolicyDefaults;
-import com.plura.plurabackend.booking.policy.model.BookingPolicy;
-import com.plura.plurabackend.booking.policy.model.LateCancellationRefundMode;
-import com.plura.plurabackend.booking.policy.repository.BookingPolicyRepository;
+import com.plura.plurabackend.core.booking.dto.BookingPolicyResponse;
+import com.plura.plurabackend.core.booking.dto.BookingPolicyUpdateRequest;
+import com.plura.plurabackend.core.booking.policy.BookingPolicyDefaults;
+import com.plura.plurabackend.core.booking.policy.model.BookingPolicy;
+import com.plura.plurabackend.core.booking.policy.model.LateCancellationRefundMode;
+import com.plura.plurabackend.core.booking.policy.repository.BookingPolicyRepository;
 import com.plura.plurabackend.professional.model.ProfessionalProfile;
 import java.math.BigDecimal;
 import java.util.Locale;
@@ -24,7 +24,7 @@ public class ProfileBookingPolicySupport {
 
     public BookingPolicyResponse getPolicy(ProfessionalProfile profile) {
         return toBookingPolicyResponse(
-            bookingPolicyRepository.findByProfessional_Id(profile.getId())
+            bookingPolicyRepository.findByProfessionalId(profile.getId())
                 .orElseGet(() -> defaultBookingPolicy(profile))
         );
     }
@@ -78,13 +78,13 @@ public class ProfileBookingPolicySupport {
     }
 
     private BookingPolicy resolveOrCreateBookingPolicy(ProfessionalProfile profile) {
-        return bookingPolicyRepository.findByProfessional_Id(profile.getId())
+        return bookingPolicyRepository.findByProfessionalId(profile.getId())
             .orElseGet(() -> bookingPolicyRepository.save(defaultBookingPolicy(profile)));
     }
 
     private BookingPolicy defaultBookingPolicy(ProfessionalProfile profile) {
         BookingPolicy policy = new BookingPolicy();
-        policy.setProfessional(profile);
+        policy.setProfessionalId(profile.getId());
         policy.setAllowClientCancellation(BookingPolicyDefaults.DEFAULT_ALLOW_CLIENT_CANCELLATION);
         policy.setAllowClientReschedule(BookingPolicyDefaults.DEFAULT_ALLOW_CLIENT_RESCHEDULE);
         policy.setMaxClientReschedules(BookingPolicyDefaults.DEFAULT_MAX_CLIENT_RESCHEDULES);

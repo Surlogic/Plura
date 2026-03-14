@@ -1,0 +1,215 @@
+@startuml "Plura - Authentication Flow"
+
+!theme plain
+skinparam defaultFontSize 11
+
+title Plura Backend — Authentication & Security Flow
+
+' ════════════════════════════════
+' SEQUENCE: Login Flow
+' ════════════════════════════════
+
+actor "Client\n(Browser/App)" as Client
+participant "Security Filters" as Filters
+participant "AuthController" as AuthCtrl
+participant "AuthService" as AuthSvc
+participant "SessionService" as SessSvc
+participant "AuthAuditService" as AuditSvc
+database "PostgreSQL" as DB
+participant "JwtUtil" as JWT
+
+== Email/Password Login ==
+
+Client -> Filters : POST /auth/login\n{email, password}
+activate Filters
+
+Filters -> Filters : CookieOriginProtectionFilter\n(validate origin)
+Filters -> Filters : RateLimitingFilter\n(check rate limit)
+
+note right of Filters
+  Login throttling:
+  • Max 5 failures in 15 min
+  • Progressive blocking (30s → 15min)
+end note
+
+Filters -> AuthCtrl : pass request
+deactivate Filters
+activate AuthCtrl
+
+AuthCtrl -> AuthSvc : login(email, password)
+activate AuthSvc
+
+AuthSvc -> DB : findByEmail(email)
+DB --> AuthSvc : User
+
+AuthSvc -> AuthSvc : verifyPassword(hash)
+
+alt Invalid credentials
+  AuthSvc -> AuditSvc : log(LOGIN_FAILED)
+  AuthSvc --> AuthCtrl : throw UnauthorizedException
+  AuthCtrl --> Client : 401 Unauthorized
+end
+
+AuthSvc -> SessSvc : createSession(user, device)
+activate SessSvc
+SessSvc -> DB : save(AuthSession)
+SessSvc --> AuthSvc : AuthSession
+deactivate SessSvc
+
+AuthSvc -> JWT : generateAccessToken(user, session)
+activate JWT
+note right of JWT
+  JWT Claims:
+  • sub = userId
+  • role = USER/PROFESSIONAL
+  • sid = sessionId
+  • sv = sessionVersion
+  • exp = 30 min
+end note
+JWT --> AuthSvc : accessToken
+deactivate JWT
+
+AuthSvc -> JWT : generateRefreshToken(session)
+JWT --> AuthSvc : refreshToken
+
+AuthSvc -> AuditSvc : log(LOGIN_SUCCESS)
+
+AuthSvc --> AuthCtrl : {accessToken, refreshToken}
+deactivate AuthSvc
+
+AuthCtrl --> Client : 200 OK\nSet-Cookie: plura_access_token\nSet-Cookie: plura_refresh_token
+deactivate AuthCtrl
+
+== OAuth Login (Google/Apple) ==
+
+Client -> AuthCtrl : POST /auth/oauth\n{provider, token}
+activate AuthCtrl
+
+AuthCtrl -> AuthSvc : oauthLogin(provider, token)
+activate AuthSvc
+
+AuthSvc -> AuthSvc : validateOAuthToken(provider, token)
+note right
+  Validates with:
+  • Google: Token verification API
+  • Apple: JWT verification
+end note
+
+AuthSvc -> DB : findByProviderAndProviderId()
+
+alt User doesn't exist
+  AuthSvc -> DB : save(new User)
+end
+
+AuthSvc -> SessSvc : createSession(user, GOOGLE/APPLE)
+AuthSvc -> JWT : generateTokens()
+
+AuthSvc --> AuthCtrl : {accessToken, refreshToken}
+deactivate AuthSvc
+
+AuthCtrl --> Client : 200 OK + Cookies
+deactivate AuthCtrl
+
+== Token Refresh ==
+
+Client -> Filters : POST /auth/refresh\n{refreshToken}
+Filters -> AuthCtrl : pass request
+activate AuthCtrl
+
+AuthCtrl -> AuthSvc : refresh(refreshToken)
+activate AuthSvc
+
+AuthSvc -> SessSvc : findByRefreshTokenHash()
+activate SessSvc
+SessSvc -> DB : query AuthSession
+
+alt Token reuse detected
+  SessSvc -> SessSvc : compromiseDetected!
+  SessSvc -> DB : revoke ALL sessions\nfor this user
+  SessSvc --> AuthSvc : throw CompromiseException
+  AuthSvc --> AuthCtrl : 401 + force re-login
+end
+
+SessSvc -> DB : rotateRefreshToken()\n(old → previousHash)
+SessSvc --> AuthSvc : updated session
+deactivate SessSvc
+
+AuthSvc -> JWT : generateNewAccessToken()
+AuthSvc -> JWT : generateNewRefreshToken()
+
+AuthSvc --> AuthCtrl : {newAccessToken, newRefreshToken}
+deactivate AuthSvc
+
+AuthCtrl --> Client : 200 OK + new Cookies
+deactivate AuthCtrl
+
+== Authenticated Request ==
+
+Client -> Filters : GET /cliente/booking\nAuthorization: Bearer <token>
+activate Filters
+
+Filters -> Filters : 1. InternalOpsAccessFilter\n(skip - not /internal/)
+
+Filters -> Filters : 2. CookieOriginProtectionFilter\n(validate if cookie-based)
+
+Filters -> Filters : 3. JwtAuthenticationFilter
+activate Filters #LightBlue
+
+Filters -> JWT : extractToken(header or cookie)
+Filters -> JWT : validateToken(token)
+
+alt Token expired
+  Filters --> Client : 401 Token Expired
+end
+
+Filters -> DB : loadUser(userId from JWT)
+Filters -> Filters : check sessionVersion matches sv claim
+
+alt Session invalidated
+  Filters --> Client : 401 Session Invalid
+end
+
+Filters -> Filters : setSecurityContext(user, role)
+deactivate Filters
+
+Filters -> Filters : 4. RateLimitingFilter\n(Bucket4j check)
+Filters --> Client : Forward to Controller
+deactivate Filters
+
+== Email Verification ==
+
+Client -> AuthCtrl : POST /auth/verify/email/send
+AuthCtrl -> AuthSvc : sendEmailVerification()
+AuthSvc -> DB : save(EmailVerificationChallenge\nwith OTP hash, expiry)
+AuthSvc -> AuthSvc : sendEmail(OTP code)
+AuthSvc --> Client : 200 OK
+
+Client -> AuthCtrl : POST /auth/verify/email/confirm\n{otp}
+AuthCtrl -> AuthSvc : verifyEmail(otp)
+AuthSvc -> DB : findChallenge, verify OTP
+AuthSvc -> DB : update user.emailVerifiedAt
+AuthSvc --> Client : 200 OK
+
+== Password Reset ==
+
+Client -> AuthCtrl : POST /auth/password/forgot\n{email}
+AuthCtrl -> AuthSvc : forgotPassword(email)
+
+note right
+  Throttling:
+  • Max 6 resets / email / 30 min
+  • Max 4 resets / email+IP / 30 min
+end note
+
+AuthSvc -> DB : save(PasswordResetToken)
+AuthSvc -> AuthSvc : sendResetEmail(token)
+AuthSvc --> Client : 200 OK (always, even if email not found)
+
+Client -> AuthCtrl : POST /auth/password/reset\n{token, newPassword}
+AuthCtrl -> AuthSvc : resetPassword(token, newPassword)
+AuthSvc -> DB : validateToken, update password
+AuthSvc -> DB : increment sessionVersion\n(invalidates all JWTs)
+AuthSvc -> DB : revoke all sessions
+AuthSvc --> Client : 200 OK
+
+@enduml

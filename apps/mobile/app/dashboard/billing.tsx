@@ -78,8 +78,8 @@ export default function BillingScreen() {
   }, []);
 
   const currentPlanId = useMemo(
-    () => resolveCurrentBillingPlanId({ profilePlanCode: profile?.planCode, subscription }),
-    [profile?.planCode, subscription],
+    () => resolveCurrentBillingPlanId({ profilePlanCode: profile?.professionalPlan, subscription }),
+    [profile?.professionalPlan, subscription],
   );
   const currentStatus = useMemo(() => resolveCurrentBillingStatus(subscription), [subscription]);
 

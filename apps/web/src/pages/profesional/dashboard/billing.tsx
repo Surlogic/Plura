@@ -670,7 +670,7 @@ export default function ProfesionalBillingPage() {
                   >
                     <DashboardSectionHeading
                       title="Planes disponibles"
-                      description="BASIC funciona como base gratuita. PRO y PREMIUM abren checkout en Mercado Pago y la activacion final depende del webhook."
+                      description="BASIC funciona como base gratuita. PROFESIONAL y ENTERPRISE abren checkout en Mercado Pago y la activacion final depende del webhook."
                       action={isLoadingBilling ? (
                         <span className="text-xs font-semibold text-[#94A3B8]">
                           Cargando...

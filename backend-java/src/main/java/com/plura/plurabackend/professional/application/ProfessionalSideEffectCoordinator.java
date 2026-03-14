@@ -1,11 +1,11 @@
 package com.plura.plurabackend.professional.application;
 
-import com.plura.plurabackend.availability.AvailableSlotAsyncDispatcher;
-import com.plura.plurabackend.availability.ScheduleSummaryService;
-import com.plura.plurabackend.cache.ProfileCacheService;
-import com.plura.plurabackend.cache.SlotCacheService;
+import com.plura.plurabackend.core.availability.AvailableSlotAsyncDispatcher;
+import com.plura.plurabackend.core.availability.ScheduleSummaryService;
+import com.plura.plurabackend.core.cache.ProfileCacheService;
+import com.plura.plurabackend.core.cache.SlotCacheService;
 import com.plura.plurabackend.professional.model.ProfessionalProfile;
-import com.plura.plurabackend.search.engine.SearchSyncPublisher;
+import com.plura.plurabackend.core.search.engine.SearchSyncPublisher;
 import java.time.LocalDate;
 import java.util.Set;
 import org.slf4j.Logger;

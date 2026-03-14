@@ -1,21 +1,21 @@
-package com.plura.plurabackend.billing.webhooks;
+package com.plura.plurabackend.core.billing.webhooks;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import com.plura.plurabackend.billing.payments.model.PaymentProvider;
-import com.plura.plurabackend.billing.payments.repository.PaymentEventRepository;
-import com.plura.plurabackend.billing.payments.repository.PaymentTransactionRepository;
-import com.plura.plurabackend.billing.subscriptions.model.Subscription;
-import com.plura.plurabackend.billing.subscriptions.model.SubscriptionPlan;
-import com.plura.plurabackend.billing.subscriptions.model.SubscriptionStatus;
-import com.plura.plurabackend.billing.subscriptions.repository.SubscriptionRepository;
-import com.plura.plurabackend.billing.webhooks.signature.SignatureUtils;
+import com.plura.plurabackend.core.billing.payments.model.PaymentProvider;
+import com.plura.plurabackend.core.billing.payments.repository.PaymentEventRepository;
+import com.plura.plurabackend.core.billing.payments.repository.PaymentTransactionRepository;
+import com.plura.plurabackend.core.billing.subscriptions.model.Subscription;
+import com.plura.plurabackend.core.billing.subscriptions.model.SubscriptionPlanCode;
+import com.plura.plurabackend.core.billing.subscriptions.model.SubscriptionStatus;
+import com.plura.plurabackend.core.billing.subscriptions.repository.SubscriptionRepository;
+import com.plura.plurabackend.core.billing.webhooks.signature.SignatureUtils;
 import com.plura.plurabackend.professional.model.ProfessionalProfile;
 import com.plura.plurabackend.professional.repository.ProfessionalProfileRepository;
-import com.plura.plurabackend.user.model.User;
-import com.plura.plurabackend.user.model.UserRole;
-import com.plura.plurabackend.user.repository.UserRepository;
+import com.plura.plurabackend.core.user.model.User;
+import com.plura.plurabackend.core.user.model.UserRole;
+import com.plura.plurabackend.core.user.repository.UserRepository;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDateTime;
@@ -46,10 +46,10 @@ import org.springframework.test.web.servlet.MockMvc;
     "BILLING_WEBHOOK_BASE_URL=http://localhost:3000",
     "BILLING_PLAN_BASIC_PRICE=990",
     "BILLING_PLAN_BASIC_CURRENCY=UYU",
-    "BILLING_PLAN_PRO_PRICE=1990",
-    "BILLING_PLAN_PRO_CURRENCY=UYU",
-    "BILLING_PLAN_PREMIUM_PRICE=2990",
-    "BILLING_PLAN_PREMIUM_CURRENCY=UYU",
+    "BILLING_PLAN_PROFESIONAL_PRICE=1990",
+    "BILLING_PLAN_PROFESIONAL_CURRENCY=UYU",
+    "BILLING_PLAN_ENTERPRISE_PRICE=2990",
+    "BILLING_PLAN_ENTERPRISE_CURRENCY=UYU",
     "BILLING_MERCADOPAGO_ENABLED=true",
     "BILLING_MERCADOPAGO_ACCESS_TOKEN=mp-test-token",
     "BILLING_MERCADOPAGO_WEBHOOK_SECRET=mp-webhook-secret",
@@ -103,8 +103,8 @@ class BillingWebhookIdempotencyIntegrationTest {
         professional = professionalProfileRepository.save(professional);
 
         Subscription subscription = new Subscription();
-        subscription.setProfessional(professional);
-        subscription.setPlan(SubscriptionPlan.PLAN_PRO);
+        subscription.setProfessionalId(professional.getId());
+        subscription.setPlan(SubscriptionPlanCode.PLAN_PROFESIONAL);
         subscription.setStatus(SubscriptionStatus.TRIAL);
         subscription.setProvider(PaymentProvider.MERCADOPAGO);
         subscription.setProviderSubscriptionId("sub-1");
@@ -124,7 +124,7 @@ class BillingWebhookIdempotencyIntegrationTest {
               "action":"payment.updated",
               "status":"approved",
               "external_reference":"%d",
-              "metadata":{"planCode":"PLAN_PRO"},
+              "metadata":{"planCode":"PLAN_PROFESIONAL"},
               "data":{"id":"pay-1"},
               "date_created":"2026-03-05T12:00:00Z"
             }
@@ -151,7 +151,7 @@ class BillingWebhookIdempotencyIntegrationTest {
 
         waitUntilProcessed();
 
-        Subscription updated = subscriptionRepository.findByProfessional_Id(professional.getId()).orElseThrow();
+        Subscription updated = subscriptionRepository.findByProfessionalId(professional.getId()).orElseThrow();
         org.junit.jupiter.api.Assertions.assertEquals(SubscriptionStatus.ACTIVE, updated.getStatus());
         org.junit.jupiter.api.Assertions.assertEquals(
             1,
@@ -166,7 +166,7 @@ class BillingWebhookIdempotencyIntegrationTest {
     private void waitUntilProcessed() throws InterruptedException {
         Instant deadline = Instant.now().plus(Duration.ofSeconds(5));
         while (Instant.now().isBefore(deadline)) {
-            Subscription subscription = subscriptionRepository.findByProfessional_Id(professional.getId()).orElseThrow();
+            Subscription subscription = subscriptionRepository.findByProfessionalId(professional.getId()).orElseThrow();
             long events = paymentEventRepository.countByProviderAndProviderEventId(PaymentProvider.MERCADOPAGO, "evt-1");
             long transactions = paymentTransactionRepository.countByProviderAndProviderPaymentId(
                 PaymentProvider.MERCADOPAGO,

@@ -7,7 +7,7 @@ import {
   resolveBillingPlanFromBackendPlanCode,
   resolveBillingPlanFromProfilePlanCode,
 } from '@/config/billingPlans';
-import type { ProductPlanCode } from '@/types/professional';
+import type { ProfessionalPlanCode } from '@/types/professional';
 
 export type BillingSubscriptionStatus = 'ACTIVE' | 'PAST_DUE' | 'CANCELLED' | 'TRIAL';
 export type BillingUiStatus = BillingSubscriptionStatus | 'NONE';
@@ -152,7 +152,7 @@ export const resolveCurrentBillingPlanId = ({
   profilePlanCode,
   subscription,
 }: {
-  profilePlanCode?: ProductPlanCode | null;
+  profilePlanCode?: ProfessionalPlanCode | null;
   subscription: BillingSubscription | null;
 }): BillingUiPlanId => {
   if (subscription) {
@@ -188,7 +188,7 @@ export const getPendingCheckoutState = (): PendingCheckoutState | null => {
   try {
     const parsed = JSON.parse(raw) as Partial<PendingCheckoutState>;
     if (
-      (parsed.planId === 'PRO' || parsed.planId === 'PREMIUM')
+      (parsed.planId === 'PROFESIONAL' || parsed.planId === 'ENTERPRISE')
       && typeof parsed.createdAt === 'number'
     ) {
       return {

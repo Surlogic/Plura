@@ -35,17 +35,15 @@ export type BillingBannerState = {
 };
 
 const featureLabels: Array<{ key: string; label: string }> = [
-  { key: 'allowAnalytics', label: 'Analytics' },
+  { key: 'analyticsTier', label: 'Analytics' },
   { key: 'allowOnlinePayments', label: 'Pagos online' },
   { key: 'allowAutomations', label: 'Automatizaciones' },
   { key: 'allowLoyalty', label: 'Fidelizacion' },
   { key: 'allowStore', label: 'Tienda' },
-  { key: 'allowChat', label: 'Chat' },
-  { key: 'allowWhatsappAutomatic', label: 'WhatsApp automatico' },
-  { key: 'allowClientReminders', label: 'Recordatorios a clientes' },
-  { key: 'allowInAppNotifications', label: 'Notificaciones in-app' },
-  { key: 'allowNewBookingNotifications', label: 'Avisos de nuevas reservas' },
-  { key: 'allowClientChooseProfessional', label: 'Eleccion de profesional' },
+  { key: 'allowInternalChat', label: 'Chat' },
+  { key: 'allowClientProfile', label: 'Ficha de cliente' },
+  { key: 'allowVisitHistory', label: 'Historial de visitas' },
+  { key: 'allowPortfolio', label: 'Portfolio visual' },
 ];
 
 const INTENSIVE_POLL_INTERVAL_MS = 5000;
@@ -140,10 +138,10 @@ export function useProfessionalBilling({
   const currentPlanId = useMemo(
     () =>
       resolveCurrentBillingPlanId({
-        profilePlanCode: profile?.planCode,
+        profilePlanCode: profile?.professionalPlan,
         subscription,
       }),
-    [profile?.planCode, subscription],
+    [profile?.professionalPlan, subscription],
   );
 
   const currentPlan = useMemo(
@@ -177,16 +175,17 @@ export function useProfessionalBilling({
   }, [currentPlan, currentPlanId, subscription]);
 
   const enabledCapabilities = useMemo(() => {
-    if (!profile?.planCapabilities) return [];
-    return featureLabels.filter(
-      (feature) =>
-        Boolean(
-          profile.planCapabilities?.[
-            feature.key as keyof typeof profile.planCapabilities
-          ],
-        ),
-    );
-  }, [profile?.planCapabilities]);
+    const entitlements = profile?.professionalEntitlements;
+    if (!entitlements) return [];
+    return featureLabels.filter((feature) => {
+      if (feature.key === 'analyticsTier') {
+        return entitlements.analyticsTier !== 'NONE';
+      }
+      return Boolean(
+        entitlements[feature.key as keyof typeof entitlements],
+      );
+    });
+  }, [profile?.professionalEntitlements]);
 
   const handleObservedSubscription = useCallback(async (
     nextSubscription: BillingSubscription | null,

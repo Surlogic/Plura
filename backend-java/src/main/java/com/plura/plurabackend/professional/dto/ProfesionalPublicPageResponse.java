@@ -1,7 +1,7 @@
 package com.plura.plurabackend.professional.dto;
 
-import com.plura.plurabackend.category.dto.CategoryResponse;
-import com.plura.plurabackend.booking.dto.BookingPolicySnapshotResponse;
+import com.plura.plurabackend.core.category.dto.CategoryResponse;
+import com.plura.plurabackend.core.booking.dto.BookingPolicySnapshotResponse;
 import com.plura.plurabackend.professional.schedule.dto.ProfesionalScheduleDto;
 import com.plura.plurabackend.professional.service.dto.ProfesionalServiceResponse;
 import java.util.List;

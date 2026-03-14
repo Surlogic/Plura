@@ -1,4 +1,4 @@
-package com.plura.plurabackend.auth;
+package com.plura.plurabackend.core.auth;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -9,12 +9,12 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.atLeastOnce;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.plura.plurabackend.auth.repository.AuthAuditLogRepository;
-import com.plura.plurabackend.auth.repository.AuthOtpChallengeRepository;
-import com.plura.plurabackend.auth.repository.AuthSessionRepository;
-import com.plura.plurabackend.auth.repository.RefreshTokenRepository;
-import com.plura.plurabackend.user.model.User;
-import com.plura.plurabackend.user.repository.UserRepository;
+import com.plura.plurabackend.core.auth.repository.AuthAuditLogRepository;
+import com.plura.plurabackend.core.auth.repository.AuthOtpChallengeRepository;
+import com.plura.plurabackend.core.auth.repository.AuthSessionRepository;
+import com.plura.plurabackend.core.auth.repository.RefreshTokenRepository;
+import com.plura.plurabackend.core.user.model.User;
+import com.plura.plurabackend.core.user.repository.UserRepository;
 import org.mockito.ArgumentCaptor;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

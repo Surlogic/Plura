@@ -1,13 +1,13 @@
-package com.plura.plurabackend.billing.payments;
+package com.plura.plurabackend.core.billing.payments;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
-import com.plura.plurabackend.billing.payments.model.PaymentProvider;
-import com.plura.plurabackend.billing.payments.repository.PaymentEventRepository;
-import com.plura.plurabackend.billing.webhooks.ParsedWebhookEvent;
-import com.plura.plurabackend.billing.webhooks.WebhookEventType;
+import com.plura.plurabackend.core.billing.payments.model.PaymentProvider;
+import com.plura.plurabackend.core.billing.payments.repository.PaymentEventRepository;
+import com.plura.plurabackend.core.billing.webhooks.ParsedWebhookEvent;
+import com.plura.plurabackend.core.billing.webhooks.WebhookEventType;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.Optional;
@@ -34,7 +34,7 @@ class PaymentEventLedgerServiceTest {
             null,
             BigDecimal.TEN,
             "UYU",
-            "PLAN_PRO",
+            "PLAN_PROFESIONAL",
             false,
             LocalDateTime.now(),
             "abc",

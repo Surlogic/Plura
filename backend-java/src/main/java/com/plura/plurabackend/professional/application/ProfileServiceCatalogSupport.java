@@ -1,9 +1,11 @@
 package com.plura.plurabackend.professional.application;
 
-import com.plura.plurabackend.booking.model.ServicePaymentType;
-import com.plura.plurabackend.category.model.Category;
-import com.plura.plurabackend.category.repository.CategoryRepository;
+import com.plura.plurabackend.core.booking.model.ServicePaymentType;
+import com.plura.plurabackend.core.category.model.Category;
+import com.plura.plurabackend.core.category.repository.CategoryRepository;
 import com.plura.plurabackend.professional.model.ProfessionalProfile;
+import com.plura.plurabackend.professional.plan.BooleanCapability;
+import com.plura.plurabackend.professional.plan.PlanGuardService;
 import com.plura.plurabackend.professional.service.dto.ProfesionalServiceRequest;
 import com.plura.plurabackend.professional.service.dto.ProfesionalServiceResponse;
 import com.plura.plurabackend.professional.service.model.ProfesionalService;
@@ -22,17 +24,20 @@ public class ProfileServiceCatalogSupport {
     private final ProfilePublicPageAssembler profilePublicPageAssembler;
     private final ProfessionalSideEffectCoordinator sideEffectCoordinator;
     private final CategoryRepository categoryRepository;
+    private final PlanGuardService planGuardService;
 
     public ProfileServiceCatalogSupport(
         ProfesionalServiceRepository profesionalServiceRepository,
         ProfilePublicPageAssembler profilePublicPageAssembler,
         ProfessionalSideEffectCoordinator sideEffectCoordinator,
-        CategoryRepository categoryRepository
+        CategoryRepository categoryRepository,
+        PlanGuardService planGuardService
     ) {
         this.profesionalServiceRepository = profesionalServiceRepository;
         this.profilePublicPageAssembler = profilePublicPageAssembler;
         this.sideEffectCoordinator = sideEffectCoordinator;
         this.categoryRepository = categoryRepository;
+        this.planGuardService = planGuardService;
     }
 
     public List<ProfesionalServiceResponse> listServices(ProfessionalProfile profile) {
@@ -42,8 +47,13 @@ public class ProfileServiceCatalogSupport {
             .toList();
     }
 
-    public ProfesionalServiceResponse createService(ProfessionalProfile profile, ProfesionalServiceRequest request) {
+    public ProfesionalServiceResponse createService(
+        String rawUserId,
+        ProfessionalProfile profile,
+        ProfesionalServiceRequest request
+    ) {
         ServicePaymentType paymentType = resolveServicePaymentType(request.getPaymentType());
+        ensurePaymentTypeAllowed(rawUserId, paymentType);
         BigDecimal price = request.getPrice();
         BigDecimal depositAmount = resolveServiceDepositAmount(paymentType, request.getDepositAmount(), null, price);
 
@@ -67,6 +77,7 @@ public class ProfileServiceCatalogSupport {
     }
 
     public ProfesionalServiceResponse updateService(
+        String rawUserId,
         ProfessionalProfile profile,
         String serviceId,
         ProfesionalServiceRequest request
@@ -78,6 +89,7 @@ public class ProfileServiceCatalogSupport {
         ServicePaymentType nextPaymentType = request.getPaymentType() != null
             ? resolveServicePaymentType(request.getPaymentType())
             : resolveServicePaymentType(service.getPaymentType());
+        ensurePaymentTypeAllowed(rawUserId, nextPaymentType);
         BigDecimal nextPrice = request.getPrice() != null ? request.getPrice() : parsePriceSnapshot(service.getPrice());
         BigDecimal nextDepositAmount = resolveServiceDepositAmount(
             nextPaymentType,
@@ -146,6 +158,13 @@ public class ProfileServiceCatalogSupport {
 
     private ServicePaymentType resolveServicePaymentType(ServicePaymentType paymentType) {
         return paymentType == null ? ServicePaymentType.ON_SITE : paymentType;
+    }
+
+    private void ensurePaymentTypeAllowed(String rawUserId, ServicePaymentType paymentType) {
+        if (paymentType == null || paymentType == ServicePaymentType.ON_SITE) {
+            return;
+        }
+        planGuardService.requireBooleanCapability(rawUserId, BooleanCapability.ONLINE_PAYMENTS);
     }
 
     private BigDecimal resolveServiceDepositAmount(

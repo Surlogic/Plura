@@ -1,9 +1,9 @@
-package com.plura.plurabackend.billing.webhooks.signature;
+package com.plura.plurabackend.core.billing.webhooks.signature;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import com.plura.plurabackend.billing.BillingProperties;
+import com.plura.plurabackend.core.billing.BillingProperties;
 import java.time.Instant;
 import org.junit.jupiter.api.Test;
 import org.springframework.mock.web.MockHttpServletRequest;

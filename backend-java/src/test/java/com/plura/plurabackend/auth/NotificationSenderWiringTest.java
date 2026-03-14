@@ -1,13 +1,13 @@
-package com.plura.plurabackend.auth;
+package com.plura.plurabackend.core.auth;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-import com.plura.plurabackend.auth.model.OtpChallengeChannel;
-import com.plura.plurabackend.auth.model.OtpChallengePurpose;
-import com.plura.plurabackend.user.model.User;
+import com.plura.plurabackend.core.auth.model.OtpChallengeChannel;
+import com.plura.plurabackend.core.auth.model.OtpChallengePurpose;
+import com.plura.plurabackend.core.user.model.User;
 import org.junit.jupiter.api.Test;
 
 class NotificationSenderWiringTest {

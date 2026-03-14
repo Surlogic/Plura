@@ -702,7 +702,7 @@ export default function ProfesionalSettingsPage() {
                             Gestion comercial separada del resto de la cuenta
                           </p>
                           <p className="mt-1 text-sm text-[color:var(--ink-muted)]">
-                            Usa Facturacion para cambiar a BASIC, abrir checkout de PRO o PREMIUM y seguir la activacion del pago.
+                            Usa Facturacion para cambiar a BASIC, abrir checkout de PROFESIONAL o ENTERPRISE y seguir la activacion del pago.
                           </p>
                           <Button
                             href="/profesional/dashboard/billing"

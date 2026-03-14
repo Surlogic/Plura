@@ -1,20 +1,31 @@
-export type ProductPlanCode = 'BASIC' | 'PROFESSIONAL' | 'COMPANY';
+export type ProfessionalPlanCode = 'BASIC' | 'PROFESIONAL' | 'ENTERPRISE';
 
-export type ProductPlanCapabilities = {
+export type PublicProfileTier = 'BASIC' | 'ENHANCED';
+export type ScheduleTier = 'DAILY' | 'WEEKLY' | 'MASTER';
+export type AnalyticsTier = 'NONE' | 'BASIC' | 'ADVANCED';
+
+export type ProfessionalPlanEntitlements = {
   maxProfessionals: number;
+  maxLocations: number;
   maxBusinessPhotos: number;
-  maxServicePhotos: number;
-  allowClientChooseProfessional: boolean;
+  maxServiceImagesPerService: number;
+  publicProfileTier: PublicProfileTier;
+  scheduleTier: ScheduleTier;
+  analyticsTier: AnalyticsTier;
   allowOnlinePayments: boolean;
-  allowAnalytics: boolean;
-  allowAdvancedClientProfile: boolean;
+  allowClientProfile: boolean;
+  allowInternalClientNotes: boolean;
+  allowVisitHistory: boolean;
+  allowPostServiceFollowup: boolean;
   allowAutomations: boolean;
+  allowInternalChat: boolean;
   allowLoyalty: boolean;
-  allowLastMinute: boolean;
+  allowLastMinutePromotions: boolean;
+  allowPackages: boolean;
+  allowGiftCards: boolean;
   allowStore: boolean;
-  allowChat: boolean;
-  allowWhatsappAutomatic: boolean;
-  allowInAppNotifications: boolean;
-  allowNewBookingNotifications: boolean;
-  allowClientReminders: boolean;
+  allowShipping: boolean;
+  allowFeaturedReviews: boolean;
+  allowVerifiedBadge: boolean;
+  allowPortfolio: boolean;
 };

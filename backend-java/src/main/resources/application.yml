@@ -334,12 +334,12 @@ billing:
     plan-basic:
       price: ${BILLING_PLAN_BASIC_PRICE:0}
       currency: ${BILLING_PLAN_BASIC_CURRENCY:UYU}
-    plan-pro:
-      price: ${BILLING_PLAN_PRO_PRICE:0}
-      currency: ${BILLING_PLAN_PRO_CURRENCY:UYU}
-    plan-premium:
-      price: ${BILLING_PLAN_PREMIUM_PRICE:0}
-      currency: ${BILLING_PLAN_PREMIUM_CURRENCY:UYU}
+    plan-profesional:
+      price: ${BILLING_PLAN_PROFESIONAL_PRICE:0}
+      currency: ${BILLING_PLAN_PROFESIONAL_CURRENCY:UYU}
+    plan-enterprise:
+      price: ${BILLING_PLAN_ENTERPRISE_PRICE:0}
+      currency: ${BILLING_PLAN_ENTERPRISE_CURRENCY:UYU}
   mercadopago:
     enabled: ${BILLING_MERCADOPAGO_ENABLED:false}
     base-url: ${BILLING_MERCADOPAGO_BASE_URL:https://api.mercadopago.com}
@@ -355,8 +355,8 @@ billing:
     failure-url: ${BILLING_MERCADOPAGO_FAILURE_URL:}
     pending-url: ${BILLING_MERCADOPAGO_PENDING_URL:}
     plan-basic-id: ${BILLING_MERCADOPAGO_PLAN_BASIC_ID:}
-    plan-pro-id: ${BILLING_MERCADOPAGO_PLAN_PRO_ID:}
-    plan-premium-id: ${BILLING_MERCADOPAGO_PLAN_PREMIUM_ID:}
+    plan-profesional-id: ${BILLING_MERCADOPAGO_PLAN_PROFESIONAL_ID:}
+    plan-enterprise-id: ${BILLING_MERCADOPAGO_PLAN_ENTERPRISE_ID:}
     timeout-millis: ${BILLING_MERCADOPAGO_TIMEOUT_MILLIS:5000}
   dlocal:
     enabled: ${BILLING_DLOCAL_ENABLED:false}

@@ -1,7 +1,7 @@
 package com.plura.plurabackend.professional.model;
 
-import com.plura.plurabackend.category.model.Category;
-import com.plura.plurabackend.user.model.User;
+import com.plura.plurabackend.core.category.model.Category;
+import com.plura.plurabackend.core.user.model.User;
 import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
 import jakarta.persistence.ElementCollection;

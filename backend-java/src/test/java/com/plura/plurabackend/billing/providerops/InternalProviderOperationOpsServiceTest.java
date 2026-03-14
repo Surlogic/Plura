@@ -1,4 +1,4 @@
-package com.plura.plurabackend.billing.providerops;
+package com.plura.plurabackend.core.billing.providerops;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -8,11 +8,11 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import com.plura.plurabackend.billing.providerops.dto.InternalProviderOperationAlertsResponse;
-import com.plura.plurabackend.billing.providerops.model.ProviderOperation;
-import com.plura.plurabackend.billing.providerops.model.ProviderOperationStatus;
-import com.plura.plurabackend.billing.providerops.model.ProviderOperationType;
-import com.plura.plurabackend.billing.providerops.repository.ProviderOperationRepository;
+import com.plura.plurabackend.core.billing.providerops.dto.InternalProviderOperationAlertsResponse;
+import com.plura.plurabackend.core.billing.providerops.model.ProviderOperation;
+import com.plura.plurabackend.core.billing.providerops.model.ProviderOperationStatus;
+import com.plura.plurabackend.core.billing.providerops.model.ProviderOperationType;
+import com.plura.plurabackend.core.billing.providerops.repository.ProviderOperationRepository;
 import java.time.LocalDateTime;
 import java.util.List;
 import org.junit.jupiter.api.Test;

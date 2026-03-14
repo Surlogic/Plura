@@ -20,6 +20,7 @@ import {
   getProfessionalReservationsForDates,
   updateProfessionalReservationStatus,
 } from '@/services/professionalBookings';
+import { getProfessionalAnalyticsSummary, type ProfessionalAnalyticsSummary } from '@/services/professionalAnalytics';
 import type {
   ProfessionalReservation,
   ProfessionalSchedule,
@@ -221,6 +222,7 @@ export default function ProfesionalDashboardPage() {
   const { profile, refreshProfile } = useProfessionalProfile();
   const [reservations, setReservations] = useState<ProfessionalReservation[]>([]);
   const [schedule, setSchedule] = useState<ProfessionalSchedule | null>(null);
+  const [analyticsSummary, setAnalyticsSummary] = useState<ProfessionalAnalyticsSummary | null>(null);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
   const [calendarView, setCalendarView] = useState<'week' | 'month'>('week');
@@ -280,6 +282,9 @@ export default function ProfesionalDashboardPage() {
   currentWeekEnd.setDate(currentWeekStart.getDate() + 6);
   const weekStartKey = toLocalDateKey(currentWeekStart);
   const weekEndKey = toLocalDateKey(currentWeekEnd);
+  const scheduleTier = profile?.professionalEntitlements?.scheduleTier ?? 'DAILY';
+  const canUseMonthlyCalendar = scheduleTier === 'MASTER';
+  const canNavigateCalendar = scheduleTier !== 'DAILY';
 
   // Navigated week — used for calendar display
   const weekDays = useMemo(() => {
@@ -383,12 +388,18 @@ export default function ProfesionalDashboardPage() {
   }, []);
 
   const requiredReservationDates = useMemo(() => {
-    const dateKeys = new Set<string>([todayKey, yesterdayKey]);
+    const dateKeys = new Set<string>([todayKey]);
+    if (scheduleTier === 'DAILY') {
+      return Array.from(dateKeys);
+    }
     currentWeekDays.forEach((day) => dateKeys.add(day.dateKey));
-    weekDays.forEach((day) => dateKeys.add(day.dateKey));
-    monthGridDays.forEach((day) => dateKeys.add(day.dateKey));
+    if (calendarView === 'month' && canUseMonthlyCalendar) {
+      monthGridDays.forEach((day) => dateKeys.add(day.dateKey));
+    } else {
+      weekDays.forEach((day) => dateKeys.add(day.dateKey));
+    }
     return Array.from(dateKeys).sort();
-  }, [todayKey, yesterdayKey, currentWeekDays, weekDays, monthGridDays]);
+  }, [todayKey, scheduleTier, currentWeekDays, calendarView, canUseMonthlyCalendar, monthGridDays, weekDays]);
 
   useEffect(() => {
     if (!profile?.id) return;
@@ -415,6 +426,46 @@ export default function ProfesionalDashboardPage() {
       isCancelled = true;
     };
   }, [profile?.id, requiredReservationDates]);
+
+  const canViewAnalytics = profile?.professionalEntitlements?.analyticsTier !== 'NONE';
+
+  useEffect(() => {
+    if (!profile?.id || !canViewAnalytics) {
+      setAnalyticsSummary(null);
+      return;
+    }
+
+    let isCancelled = false;
+    const loadAnalytics = async () => {
+      try {
+        const summary = await getProfessionalAnalyticsSummary(
+          profile?.professionalEntitlements?.analyticsTier === 'ADVANCED' ? 'ADVANCED' : 'BASIC',
+        );
+        if (!isCancelled) {
+          setAnalyticsSummary(summary);
+        }
+      } catch (error) {
+        if (!isCancelled) {
+          setAnalyticsSummary(null);
+          setStatusMessage(
+            resolveBackendMessage(error, 'No se pudieron cargar los analytics del panel.'),
+          );
+        }
+      }
+    };
+
+    loadAnalytics();
+    return () => {
+      isCancelled = true;
+    };
+  }, [canViewAnalytics, profile?.id, profile?.professionalEntitlements?.analyticsTier]);
+
+  useEffect(() => {
+    if (!canUseMonthlyCalendar && calendarView === 'month') {
+      setCalendarView('week');
+      setMonthOffset(0);
+    }
+  }, [calendarView, canUseMonthlyCalendar]);
 
   const daysWithReservations = currentWeekDays.filter((day) => {
     if (!scheduleDaySet.has(day.dayKey)) return false;
@@ -526,24 +577,25 @@ export default function ProfesionalDashboardPage() {
   const stats = [
     {
       label: 'Reservas hoy',
-      value: `${todayCount}`,
+      value: `${analyticsSummary?.todayBookings ?? todayCount}`,
       detail:
-        todayDiff === 0
+        (analyticsSummary?.todayDelta ?? todayDiff) === 0
           ? 'Igual que ayer'
-          : `${todayDiff > 0 ? '+' : ''}${todayDiff} vs ayer`,
+          : `${(analyticsSummary?.todayDelta ?? todayDiff) > 0 ? '+' : ''}${analyticsSummary?.todayDelta ?? todayDiff} vs ayer`,
     },
     {
       label: 'Ocupación semanal',
-      value: occupancyValue,
-      detail: occupancyDetail,
+      value: analyticsSummary ? `${analyticsSummary.weeklyOccupancyRate}%` : occupancyValue,
+      detail: analyticsSummary
+        ? `Días con reservas: ${analyticsSummary.weeklyDaysWithReservations}/${analyticsSummary.weeklyScheduledDays}`
+        : occupancyDetail,
     },
     {
       label: 'Clientes nuevos',
-      value: `${uniqueClientsWeek}`,
+      value: `${analyticsSummary?.weeklyUniqueClients ?? uniqueClientsWeek}`,
       detail: 'Últimos 7 días',
     },
   ];
-  const canViewAnalytics = profile?.planCapabilities?.allowAnalytics === true;
   const nextReservation = useMemo(() => {
     return agendaReservations
       .filter((reservation) => {
@@ -562,7 +614,9 @@ export default function ProfesionalDashboardPage() {
   const todayPendingCount = agendaReservations.filter(
     (reservation) => reservation.date === todayKey && (reservation.status ?? 'pending') === 'pending',
   ).length;
-  const daysWithOpenCapacity = Math.max(scheduleDays.length - daysWithReservations, 0);
+  const daysWithOpenCapacity = analyticsSummary
+    ? Math.max(analyticsSummary.weeklyScheduledDays - analyticsSummary.weeklyDaysWithReservations, 0)
+    : Math.max(scheduleDays.length - daysWithReservations, 0);
   const agendaOverviewCards = [
     {
       label: 'Pendientes hoy',
@@ -590,10 +644,12 @@ export default function ProfesionalDashboardPage() {
   ];
 
   const handlePrev = () => {
+    if (!canNavigateCalendar) return;
     if (calendarView === 'week') setWeekOffset((prev) => prev - 1);
     else setMonthOffset((prev) => prev - 1);
   };
   const handleNext = () => {
+    if (!canNavigateCalendar) return;
     if (calendarView === 'week') setWeekOffset((prev) => prev + 1);
     else setMonthOffset((prev) => prev + 1);
   };
@@ -602,6 +658,7 @@ export default function ProfesionalDashboardPage() {
     setMonthOffset(0);
   };
   const handleSetView = (view: 'week' | 'month') => {
+    if (view === 'month' && !canUseMonthlyCalendar) return;
     setCalendarView(view);
     setWeekOffset(0);
     setMonthOffset(0);
@@ -813,12 +870,13 @@ export default function ProfesionalDashboardPage() {
                         </button>
                         <button
                           type="button"
-                            onClick={() => handleSetView('month')}
-                            className={`rounded-full px-4 py-1.5 text-xs font-semibold transition ${
-                              calendarView === 'month'
+                          onClick={() => handleSetView('month')}
+                          disabled={!canUseMonthlyCalendar}
+                          className={`rounded-full px-4 py-1.5 text-xs font-semibold transition ${
+                            calendarView === 'month'
                               ? 'bg-[color:var(--primary)] text-white'
                               : 'text-[color:var(--ink-faint)] hover:text-[color:var(--ink-muted)]'
-                            }`}
+                          } ${!canUseMonthlyCalendar ? 'cursor-not-allowed opacity-45' : ''}`}
                         >
                           Mensual
                         </button>
@@ -828,7 +886,12 @@ export default function ProfesionalDashboardPage() {
                         <button
                           type="button"
                           onClick={handlePrev}
-                          className="rounded-full px-2 py-1 text-sm text-[color:var(--ink-muted)] transition hover:bg-[color:var(--surface-soft)] hover:text-[color:var(--ink)]"
+                          disabled={!canNavigateCalendar}
+                          className={`rounded-full px-2 py-1 text-sm transition ${
+                            canNavigateCalendar
+                              ? 'text-[color:var(--ink-muted)] hover:bg-[color:var(--surface-soft)] hover:text-[color:var(--ink)]'
+                              : 'cursor-not-allowed text-[color:var(--ink-faint)] opacity-45'
+                          }`}
                         >
                           ‹
                         </button>
@@ -838,7 +901,12 @@ export default function ProfesionalDashboardPage() {
                         <button
                           type="button"
                           onClick={handleNext}
-                          className="rounded-full px-2 py-1 text-sm text-[color:var(--ink-muted)] transition hover:bg-[color:var(--surface-soft)] hover:text-[color:var(--ink)]"
+                          disabled={!canNavigateCalendar}
+                          className={`rounded-full px-2 py-1 text-sm transition ${
+                            canNavigateCalendar
+                              ? 'text-[color:var(--ink-muted)] hover:bg-[color:var(--surface-soft)] hover:text-[color:var(--ink)]'
+                              : 'cursor-not-allowed text-[color:var(--ink-faint)] opacity-45'
+                          }`}
                         >
                           ›
                         </button>

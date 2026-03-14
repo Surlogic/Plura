@@ -1,8 +1,8 @@
 package com.plura.plurabackend.config.error;
 
-import com.plura.plurabackend.auth.AuthApiException;
-import com.plura.plurabackend.auth.oauth.AppleEmailRequiredFirstLoginException;
-import com.plura.plurabackend.auth.oauth.OAuthProviderMismatchException;
+import com.plura.plurabackend.core.auth.AuthApiException;
+import com.plura.plurabackend.core.auth.oauth.AppleEmailRequiredFirstLoginException;
+import com.plura.plurabackend.core.auth.oauth.OAuthProviderMismatchException;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolationException;

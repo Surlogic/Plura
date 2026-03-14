@@ -1,14 +1,14 @@
-import type { ProductPlanCode } from '../types/professional';
+import type { ProfessionalPlanCode } from '../types/professional';
 
-export type BillingUiPlanId = 'BASIC' | 'PRO' | 'PREMIUM';
-export type BillingBackendPlanCode = 'PLAN_BASIC' | 'PLAN_PRO' | 'PLAN_PREMIUM';
+export type BillingUiPlanId = 'BASIC' | 'PROFESIONAL' | 'ENTERPRISE';
+export type BillingBackendPlanCode = 'PLAN_BASIC' | 'PLAN_PROFESIONAL' | 'PLAN_ENTERPRISE';
 export type PaidBillingUiPlanId = Exclude<BillingUiPlanId, 'BASIC'>;
 
 export type SharedBillingPlanDefinition = {
   id: BillingUiPlanId;
   label: string;
   backendPlanCode: BillingBackendPlanCode;
-  profilePlanCode: ProductPlanCode;
+  profilePlanCode: ProfessionalPlanCode;
   priceMonthly: number;
   priceLabel: string;
   benefits: string[];
@@ -26,23 +26,23 @@ export const sharedBillingPlans: SharedBillingPlanDefinition[] = [
     benefits: ['Perfil publico', 'Agenda basica', 'Reservas manuales'],
   },
   {
-    id: 'PRO',
-    label: 'PRO',
-    backendPlanCode: 'PLAN_PRO',
-    profilePlanCode: 'PROFESSIONAL',
+    id: 'PROFESIONAL',
+    label: 'PROFESIONAL',
+    backendPlanCode: 'PLAN_PROFESIONAL',
+    profilePlanCode: 'PROFESIONAL',
     priceMonthly: 590,
     priceLabel: '$590 UYU / mes',
-    benefits: ['Pagos online', 'Analytics', 'Automatizaciones', 'WhatsApp automatico'],
+    benefits: ['Pagos online', 'Analytics basicos', 'Automatizaciones', 'Perfil mejorado'],
     recommended: true,
   },
   {
-    id: 'PREMIUM',
-    label: 'PREMIUM',
-    backendPlanCode: 'PLAN_PREMIUM',
-    profilePlanCode: 'COMPANY',
+    id: 'ENTERPRISE',
+    label: 'ENTERPRISE',
+    backendPlanCode: 'PLAN_ENTERPRISE',
+    profilePlanCode: 'ENTERPRISE',
     priceMonthly: 1290,
     priceLabel: '$1.290 UYU / mes',
-    benefits: ['Todo lo de PRO', 'Tienda', 'Chat', 'Mayor capacidad operativa'],
+    benefits: ['Todo lo de PROFESIONAL', 'Tienda', 'Chat interno', 'Mayor capacidad operativa'],
   },
 ];
 
@@ -53,19 +53,19 @@ export const sharedBillingPlanById = sharedBillingPlans.reduce<Record<BillingUiP
   },
   {
     BASIC: sharedBillingPlans[0],
-    PRO: sharedBillingPlans[1],
-    PREMIUM: sharedBillingPlans[2],
+    PROFESIONAL: sharedBillingPlans[1],
+    ENTERPRISE: sharedBillingPlans[2],
   },
 );
 
 export const resolveBillingPlanFromProfilePlanCode = (
-  planCode?: ProductPlanCode | null,
+  planCode?: ProfessionalPlanCode | string | null,
 ): BillingUiPlanId => {
-  switch (planCode) {
-    case 'PROFESSIONAL':
-      return 'PRO';
-    case 'COMPANY':
-      return 'PREMIUM';
+  switch (planCode?.toUpperCase()) {
+    case 'PROFESIONAL':
+      return 'PROFESIONAL';
+    case 'ENTERPRISE':
+      return 'ENTERPRISE';
     case 'BASIC':
     default:
       return 'BASIC';
@@ -77,16 +77,11 @@ export const resolveBillingPlanFromBackendPlanCode = (
 ): BillingUiPlanId | null => {
   switch (planCode?.toUpperCase()) {
     case 'PLAN_BASIC':
-    case 'BASIC':
       return 'BASIC';
-    case 'PLAN_PRO':
-    case 'PRO':
-    case 'PROFESSIONAL':
-      return 'PRO';
-    case 'PLAN_PREMIUM':
-    case 'PREMIUM':
-    case 'COMPANY':
-      return 'PREMIUM';
+    case 'PLAN_PROFESIONAL':
+      return 'PROFESIONAL';
+    case 'PLAN_ENTERPRISE':
+      return 'ENTERPRISE';
     default:
       return null;
   }

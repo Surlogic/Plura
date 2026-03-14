@@ -1,4 +1,4 @@
-package com.plura.plurabackend.auth;
+package com.plura.plurabackend.core.auth;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -7,14 +7,14 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.auth0.jwt.JWT;
 import com.auth0.jwt.algorithms.Algorithm;
-import com.plura.plurabackend.auth.model.AuthAuditEventType;
-import com.plura.plurabackend.auth.model.RefreshToken;
-import com.plura.plurabackend.auth.repository.AuthAuditLogRepository;
-import com.plura.plurabackend.auth.repository.AuthSessionRepository;
-import com.plura.plurabackend.auth.repository.RefreshTokenRepository;
-import com.plura.plurabackend.user.model.User;
-import com.plura.plurabackend.user.model.UserRole;
-import com.plura.plurabackend.user.repository.UserRepository;
+import com.plura.plurabackend.core.auth.model.AuthAuditEventType;
+import com.plura.plurabackend.core.auth.model.RefreshToken;
+import com.plura.plurabackend.core.auth.repository.AuthAuditLogRepository;
+import com.plura.plurabackend.core.auth.repository.AuthSessionRepository;
+import com.plura.plurabackend.core.auth.repository.RefreshTokenRepository;
+import com.plura.plurabackend.core.user.model.User;
+import com.plura.plurabackend.core.user.model.UserRole;
+import com.plura.plurabackend.core.user.repository.UserRepository;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.time.Instant;

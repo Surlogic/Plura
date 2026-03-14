@@ -2,7 +2,7 @@ package com.plura.plurabackend.booking;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-import com.plura.plurabackend.booking.time.BookingDateTimeService;
+import com.plura.plurabackend.core.booking.time.BookingDateTimeService;
 import org.junit.jupiter.api.Test;
 
 class BookingDateTimeServiceTest {

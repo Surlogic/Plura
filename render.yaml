@@ -21,6 +21,18 @@ services:
         sync: false
       - key: SPRING_DATASOURCE_PASSWORD
         sync: false
+      - key: DATABASE_URL
+        fromDatabase:
+          name: plura-db
+          property: connectionString
+      - key: DATABASE_USERNAME
+        fromDatabase:
+          name: plura-db
+          property: user
+      - key: DATABASE_PASSWORD
+        fromDatabase:
+          name: plura-db
+          property: password
       - key: JWT_SECRET
         sync: false
       - key: JWT_REFRESH_PEPPER
@@ -89,13 +101,13 @@ services:
         sync: false
       - key: BILLING_PLAN_BASIC_CURRENCY
         sync: false
-      - key: BILLING_PLAN_PRO_PRICE
+      - key: BILLING_PLAN_PROFESIONAL_PRICE
         sync: false
-      - key: BILLING_PLAN_PRO_CURRENCY
+      - key: BILLING_PLAN_PROFESIONAL_CURRENCY
         sync: false
-      - key: BILLING_PLAN_PREMIUM_PRICE
+      - key: BILLING_PLAN_ENTERPRISE_PRICE
         sync: false
-      - key: BILLING_PLAN_PREMIUM_CURRENCY
+      - key: BILLING_PLAN_ENTERPRISE_CURRENCY
         sync: false
       - key: BILLING_MERCADOPAGO_ENABLED
         sync: false

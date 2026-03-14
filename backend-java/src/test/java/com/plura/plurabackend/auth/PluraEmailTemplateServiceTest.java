@@ -1,8 +1,8 @@
-package com.plura.plurabackend.auth;
+package com.plura.plurabackend.core.auth;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import com.plura.plurabackend.auth.model.OtpChallengePurpose;
+import com.plura.plurabackend.core.auth.model.OtpChallengePurpose;
 import org.junit.jupiter.api.Test;
 
 class PluraEmailTemplateServiceTest {

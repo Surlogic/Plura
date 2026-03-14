@@ -56,7 +56,7 @@ export default function ProfesionalPublicPageBuilder() {
     about: '',
   });
   const [initialForm, setInitialForm] = useState<PublicPageForm | null>(null);
-  const maxBusinessPhotos = 5;
+  const maxBusinessPhotos = profile?.professionalEntitlements?.maxBusinessPhotos ?? 5;
   const [photos, setPhotos] = useState<PhotoItem[]>([
     { id: 'photo-1', url: '' },
     { id: 'photo-2', url: '' },

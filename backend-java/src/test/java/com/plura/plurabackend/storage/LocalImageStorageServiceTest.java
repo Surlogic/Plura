@@ -1,4 +1,4 @@
-package com.plura.plurabackend.storage;
+package com.plura.plurabackend.core.storage;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 

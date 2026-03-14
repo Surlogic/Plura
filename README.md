@@ -79,14 +79,23 @@ asegurate de rellenarlas en el dashboard o mediante `render env set`.
 La configuración de Spring Boot está preparada para:
 
 1. leer `SPRING_DATASOURCE_URL`.*
-2. si no existe usar `DATABASE_URL` (Render provee esto cuando enlazas un servicio de base de datos)
-3. si sigue ausente caer en una H2 en memoria para que el contenedor arranque y el healthcheck pase.
+2. si no existe usar `DATABASE_URL` y convertir automáticamente `postgres://` / `postgresql://` a JDBC
+3. extraer `DATABASE_USERNAME` / `DATABASE_PASSWORD` o las credenciales embebidas en `DATABASE_URL`
+4. si sigue ausente caer en una H2 en memoria para que el contenedor arranque y el healthcheck pase.
+
+El `render.yaml` enlaza `DATABASE_URL`, `DATABASE_USERNAME` y `DATABASE_PASSWORD` desde `plura-db`
+mediante `fromDatabase`, así que no hace falta cargar manualmente una URL JDBC si usás la base
+gestionada del blueprint.
 
 Las cookies JWT se marcan como `Secure` y el puerto público se asigna con `-Dserver.port=${PORT}`
 para que Render pueda cambiarlo dinámicamente.
 
 > 💡 Si el despliegue falla, revisá los **logs del servicio** en el panel de Render; suelen indicar la
 > variable faltante o el error de conexión a la BD.
+>
+> Si ves `PSQLException: The connection attempt failed` junto con `EOFException` durante Flyway,
+> el problema real suele ser la conexión PostgreSQL (URL incorrecta, credenciales erróneas, SSL
+> requerido o base no accesible), no `userRepository` ni JPA.
 >
 > ⚠️ *Error común durante despliegues repetidos:* Flyway puede abortar el arranque si un archivo
 > de migración se modificó después de haber sido aplicado en la base de datos (checksum mismatch).

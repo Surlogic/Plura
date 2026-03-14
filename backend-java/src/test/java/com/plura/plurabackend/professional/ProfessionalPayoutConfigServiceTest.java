@@ -10,16 +10,17 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-import com.plura.plurabackend.billing.BillingProperties;
-import com.plura.plurabackend.booking.finance.repository.BookingFinancialSummaryRepository;
-import com.plura.plurabackend.booking.model.ServicePaymentType;
+import com.plura.plurabackend.core.billing.BillingProperties;
+import com.plura.plurabackend.core.booking.finance.repository.BookingFinancialSummaryRepository;
+import com.plura.plurabackend.core.booking.model.ServicePaymentType;
 import com.plura.plurabackend.professional.dto.ProfessionalPayoutConfigResponse;
 import com.plura.plurabackend.professional.dto.ProfessionalPayoutConfigUpdateRequest;
 import com.plura.plurabackend.professional.model.ProfessionalProfile;
+import com.plura.plurabackend.professional.payout.ProfessionalPayoutConfigService;
 import com.plura.plurabackend.professional.repository.ProfessionalProfileRepository;
-import com.plura.plurabackend.user.model.User;
-import com.plura.plurabackend.user.model.UserRole;
-import com.plura.plurabackend.user.repository.UserRepository;
+import com.plura.plurabackend.core.user.model.User;
+import com.plura.plurabackend.core.user.model.UserRole;
+import com.plura.plurabackend.core.user.repository.UserRepository;
 import java.time.LocalDateTime;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
@@ -52,7 +53,7 @@ class ProfessionalPayoutConfigServiceTest {
 
         when(userRepository.findByIdAndDeletedAtIsNull(user.getId())).thenReturn(Optional.of(user));
         when(professionalProfileRepository.findByUser_Id(user.getId())).thenReturn(Optional.of(profile));
-        when(bookingFinancialSummaryRepository.countOutstandingPaidBookingsForProfessional(eq(profile), anyCollection(), eq(ServicePaymentType.ON_SITE)))
+        when(bookingFinancialSummaryRepository.countOutstandingPaidBookingsForProfessional(eq(profile.getId()), anyCollection(), eq(ServicePaymentType.ON_SITE)))
             .thenReturn(2L);
 
         ProfessionalPayoutConfigResponse response = service.getConfig(String.valueOf(user.getId()));
@@ -76,7 +77,7 @@ class ProfessionalPayoutConfigServiceTest {
 
         when(userRepository.findByIdAndDeletedAtIsNull(user.getId())).thenReturn(Optional.of(user));
         when(professionalProfileRepository.findByUser_Id(user.getId())).thenReturn(Optional.of(profile));
-        when(bookingFinancialSummaryRepository.countOutstandingPaidBookingsForProfessional(eq(profile), anyCollection(), eq(ServicePaymentType.ON_SITE)))
+        when(bookingFinancialSummaryRepository.countOutstandingPaidBookingsForProfessional(eq(profile.getId()), anyCollection(), eq(ServicePaymentType.ON_SITE)))
             .thenReturn(0L);
 
         ProfessionalPayoutConfigResponse response = service.getConfig(String.valueOf(user.getId()));
@@ -98,7 +99,7 @@ class ProfessionalPayoutConfigServiceTest {
         when(professionalProfileRepository.findByUser_Id(user.getId())).thenReturn(Optional.of(profile));
         when(professionalProfileRepository.save(any(ProfessionalProfile.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(userRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
-        when(bookingFinancialSummaryRepository.countOutstandingPaidBookingsForProfessional(eq(profile), anyCollection(), eq(ServicePaymentType.ON_SITE)))
+        when(bookingFinancialSummaryRepository.countOutstandingPaidBookingsForProfessional(eq(profile.getId()), anyCollection(), eq(ServicePaymentType.ON_SITE)))
             .thenReturn(0L);
 
         ProfessionalPayoutConfigUpdateRequest request = new ProfessionalPayoutConfigUpdateRequest();

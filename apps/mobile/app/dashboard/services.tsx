@@ -1,11 +1,15 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, TextInput } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import type { ProfessionalService } from '../../src/types/professional';
+import type {
+  ProfessionalService,
+  ServiceCategoryOption,
+} from '../../src/types/professional';
 import {
   createProfessionalService,
   deleteProfessionalService,
   listProfessionalServices,
+  listServiceCategories,
   updateProfessionalService,
 } from '../../src/services/professionalConfig';
 
@@ -14,6 +18,7 @@ type ServicePaymentMode = 'ON_SITE' | 'DEPOSIT' | 'FULL_PREPAY';
 const emptyDraft = {
   name: '',
   description: '',
+  categorySlug: '',
   imageUrl: '',
   price: '',
   depositAmount: '',
@@ -42,11 +47,21 @@ const getPaymentTypeLabel = (value?: string | null) => {
 
 export default function ServicesScreen() {
   const [services, setServices] = useState<ProfessionalService[]>([]);
+  const [categories, setCategories] = useState<ServiceCategoryOption[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingCategories, setIsLoadingCategories] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draft, setDraft] = useState(emptyDraft);
   const [message, setMessage] = useState<string | null>(null);
+
+  const resolveCategoryLabel = (service: ProfessionalService) => {
+    const categoryName = service.categoryName?.trim();
+    if (categoryName) {
+      return categoryName;
+    }
+    return categories.find((category) => category.slug === service.categorySlug)?.name ?? '';
+  };
 
   useEffect(() => {
     const fetchServices = async () => {
@@ -60,6 +75,20 @@ export default function ServicesScreen() {
       }
     };
     fetchServices();
+  }, []);
+
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const response = await listServiceCategories();
+        setCategories(response);
+      } catch (error) {
+        console.error('Error cargando categorias de servicios', error);
+      } finally {
+        setIsLoadingCategories(false);
+      }
+    };
+    fetchCategories();
   }, []);
 
   if (isLoading) {
@@ -90,6 +119,46 @@ export default function ServicesScreen() {
             value={draft.description}
             onChangeText={(text) => setDraft((prev) => ({ ...prev, description: text }))}
           />
+          <View className="mt-3" style={{ gap: 8 }}>
+            <Text className="text-sm font-semibold text-gray-500 uppercase tracking-[2px]">
+              Categoría del servicio
+            </Text>
+            <View className="flex-row flex-wrap" style={{ gap: 8 }}>
+              <TouchableOpacity
+                className={`rounded-2xl border px-4 py-3 ${
+                  draft.categorySlug === ''
+                    ? 'border-secondary bg-secondary/10'
+                    : 'border-secondary/10 bg-background'
+                }`}
+                onPress={() => setDraft((prev) => ({ ...prev, categorySlug: '' }))}
+              >
+                <Text className={`font-semibold ${draft.categorySlug === '' ? 'text-secondary' : 'text-gray-700'}`}>
+                  Sin categoría específica
+                </Text>
+              </TouchableOpacity>
+              {categories.map((category) => {
+                const isSelected = draft.categorySlug === category.slug;
+                return (
+                  <TouchableOpacity
+                    key={category.id}
+                    className={`rounded-2xl border px-4 py-3 ${
+                      isSelected ? 'border-secondary bg-secondary/10' : 'border-secondary/10 bg-background'
+                    }`}
+                    onPress={() => setDraft((prev) => ({ ...prev, categorySlug: category.slug }))}
+                  >
+                    <Text className={`font-semibold ${isSelected ? 'text-secondary' : 'text-gray-700'}`}>
+                      {category.name}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+            <Text className="text-xs text-gray-500">
+              {isLoadingCategories
+                ? 'Cargando categorías...'
+                : 'Si no elegís una categoría, el servicio seguirá usando el rubro del perfil como fallback.'}
+            </Text>
+          </View>
           <View className="mt-2 flex-row" style={{ gap: 8 }}>
             <TextInput
               className="flex-1 h-11 rounded-xl border border-secondary/10 bg-background px-3 text-secondary"
@@ -153,6 +222,7 @@ export default function ServicesScreen() {
                 const payload = {
                   name: draft.name.trim(),
                   description: draft.description.trim(),
+                  categorySlug: draft.categorySlug.trim(),
                   imageUrl: draft.imageUrl.trim(),
                   price: draft.price.trim(),
                   depositAmount: draft.paymentType === 'DEPOSIT' ? draft.depositAmount.trim() : null,
@@ -215,6 +285,9 @@ export default function ServicesScreen() {
                 <View className="flex-1">
                   <Text className="text-lg font-bold text-secondary mb-1">{service.name}</Text>
                   <Text className="text-sm text-gray-500">Duración: {service.duration || 'A definir'}</Text>
+                  {resolveCategoryLabel(service) ? (
+                    <Text className="text-sm text-gray-500 mt-1">{resolveCategoryLabel(service)}</Text>
+                  ) : null}
                   <Text className="text-sm text-gray-500 mt-1">{getPaymentTypeLabel(service.paymentType)}</Text>
                 </View>
                 <Text className="text-base font-bold text-primary">
@@ -230,6 +303,7 @@ export default function ServicesScreen() {
                     setDraft({
                       name: service.name || '',
                       description: service.description || '',
+                      categorySlug: service.categorySlug || '',
                       imageUrl: service.imageUrl || '',
                       price: service.price || '',
                       depositAmount: service.depositAmount != null ? String(service.depositAmount) : '',

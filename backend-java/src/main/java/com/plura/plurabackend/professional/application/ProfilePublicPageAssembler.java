@@ -118,6 +118,8 @@ public class ProfilePublicPageAssembler {
             service.getId(),
             service.getName(),
             service.getDescription(),
+            resolveServiceCategorySlug(service),
+            resolveServiceCategoryName(service),
             service.getPrice(),
             service.getDepositAmount(),
             resolveServiceCurrency(service.getCurrency()),
@@ -134,6 +136,8 @@ public class ProfilePublicPageAssembler {
             service.getId(),
             service.getName(),
             service.getDescription(),
+            resolveServiceCategorySlug(service),
+            resolveServiceCategoryName(service),
             service.getPrice(),
             service.getDepositAmount(),
             resolveServiceCurrency(service.getCurrency()),
@@ -230,5 +234,19 @@ public class ProfilePublicPageAssembler {
         }
         String normalized = value.trim();
         return normalized.isBlank() ? null : normalized;
+    }
+
+    private String resolveServiceCategorySlug(ProfesionalService service) {
+        if (service == null || service.getCategory() == null) {
+            return null;
+        }
+        return normalizeOptional(service.getCategory().getSlug());
+    }
+
+    private String resolveServiceCategoryName(ProfesionalService service) {
+        if (service == null || service.getCategory() == null) {
+            return null;
+        }
+        return normalizeOptional(service.getCategory().getName());
     }
 }

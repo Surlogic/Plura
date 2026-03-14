@@ -1,6 +1,7 @@
 package com.plura.plurabackend.professional.service.model;
 
 import com.plura.plurabackend.booking.model.ServicePaymentType;
+import com.plura.plurabackend.category.model.Category;
 import com.plura.plurabackend.professional.model.ProfessionalProfile;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -32,6 +33,10 @@ public class ProfesionalService {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "professional_id", nullable = false)
     private ProfessionalProfile professional;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "category_id")
+    private Category category;
 
     @Column(nullable = false)
     private String name;

@@ -26,6 +26,10 @@ public class ProfesionalServiceRequest {
     @Size(max = 40)
     private String duration;
 
+    @Size(max = 120)
+    @Pattern(regexp = "^(|[A-Za-z0-9]+(?:-[A-Za-z0-9]+)*)$")
+    private String categorySlug;
+
     @Size(max = 500)
     @Pattern(regexp = "^(|https?://.+|/uploads/.+|r2://.+|r2:.+)$")
     private String imageUrl;

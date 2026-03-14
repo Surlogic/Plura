@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import ProfesionalSidebar from '@/components/profesional/Sidebar';
 import Button from '@/components/ui/Button';
+import { useCategories } from '@/hooks/useCategories';
 import { useProfessionalProfile } from '@/hooks/useProfessionalProfile';
 import { useProfessionalDashboardUnsavedSection } from '@/context/ProfessionalDashboardUnsavedChangesContext';
 import api from '@/services/api';
@@ -19,6 +20,8 @@ type ProfesionalServiceItem = {
   id: string;
   name: string;
   description?: string | null;
+  categorySlug?: string | null;
+  categoryName?: string | null;
   imageUrl?: string | null;
   price: string;
   depositAmount?: number | null;
@@ -34,6 +37,7 @@ type ServicePaymentMode = 'ON_SITE' | 'DEPOSIT' | 'FULL_PREPAY';
 type ServiceDraft = {
   name: string;
   description: string;
+  categorySlug: string;
   imageUrl: string;
   price: string;
   depositAmount: string;
@@ -46,6 +50,7 @@ type ServiceDraft = {
 const createEmptyDraft = (): ServiceDraft => ({
   name: '',
   description: '',
+  categorySlug: '',
   imageUrl: '',
   price: '',
   depositAmount: '',
@@ -116,6 +121,7 @@ const formatDepositAmount = (value?: number | null) => {
 
 export default function ProfesionalServicesBuilderPage() {
   const { profile, isLoading, hasLoaded } = useProfessionalProfile();
+  const { categories, isLoading: isLoadingCategories, error: categoriesError } = useCategories();
   const [services, setServices] = useState<ProfesionalServiceItem[]>([]);
   const [draft, setDraft] = useState<ServiceDraft>(createEmptyDraft());
   const [initialDraft, setInitialDraft] = useState<ServiceDraft>(createEmptyDraft());
@@ -200,6 +206,7 @@ export default function ProfesionalServicesBuilderPage() {
     const editDraft = {
       name: service.name,
       description: service.description ?? '',
+      categorySlug: service.categorySlug ?? '',
       imageUrl: service.imageUrl ?? '',
       price: service.price,
       depositAmount: service.depositAmount != null ? String(service.depositAmount) : '',
@@ -323,6 +330,7 @@ export default function ProfesionalServicesBuilderPage() {
       const payload = {
         name: draft.name.trim(),
         description: draft.description.trim(),
+        categorySlug: draft.categorySlug.trim(),
         imageUrl: resolvedImageUrl,
         price: draft.price.trim(),
         depositAmount: draft.paymentType === 'DEPOSIT' ? normalizedDepositRaw : null,
@@ -335,6 +343,9 @@ export default function ProfesionalServicesBuilderPage() {
         id: editingId ?? `temp-${Date.now()}`,
         name: payload.name,
         description: payload.description,
+        categorySlug: payload.categorySlug || null,
+        categoryName:
+          categories.find((category) => category.slug === payload.categorySlug)?.name ?? null,
         imageUrl: payload.imageUrl,
         price: payload.price,
         depositAmount: draft.paymentType === 'DEPOSIT' ? normalizedDeposit : null,
@@ -430,6 +441,7 @@ export default function ProfesionalServicesBuilderPage() {
     const hasDifferentDraft =
       draft.name !== initialDraft.name ||
       draft.description !== initialDraft.description ||
+      draft.categorySlug !== initialDraft.categorySlug ||
       draft.imageUrl !== initialDraft.imageUrl ||
       draft.price !== initialDraft.price ||
       draft.depositAmount !== initialDraft.depositAmount ||
@@ -448,6 +460,26 @@ export default function ProfesionalServicesBuilderPage() {
     setSaveMessage(null);
     setSaveError(false);
   }, [clearImageSelection, initialDraft, initialEditingId]);
+
+  const fallbackServiceCategoryName = useMemo(() => {
+    const profileCategoryName = profile?.categories?.[0]?.name?.trim();
+    if (profileCategoryName) {
+      return profileCategoryName;
+    }
+    return profile?.rubro?.trim() || '';
+  }, [profile?.categories, profile?.rubro]);
+
+  const resolveServiceCategoryLabel = useCallback((service: ProfesionalServiceItem) => {
+    const categoryName = service.categoryName?.trim();
+    if (categoryName) {
+      return categoryName;
+    }
+    const categoryFromCatalog = categories.find((category) => category.slug === service.categorySlug)?.name?.trim();
+    if (categoryFromCatalog) {
+      return categoryFromCatalog;
+    }
+    return fallbackServiceCategoryName;
+  }, [categories, fallbackServiceCategoryName]);
 
   useProfessionalDashboardUnsavedSection({
     sectionId: 'services-builder',
@@ -596,6 +628,11 @@ export default function ProfesionalServicesBuilderPage() {
                                         <p className="mt-0.5 text-xs text-[#64748B]">
                                           {normalizeDurationLabel(service.duration) || 'Duración a definir'}
                                         </p>
+                                        {resolveServiceCategoryLabel(service) ? (
+                                          <p className="mt-1 text-[0.7rem] font-semibold uppercase tracking-[0.12em] text-[#64748B]">
+                                            {resolveServiceCategoryLabel(service)}
+                                          </p>
+                                        ) : null}
                                       </div>
                                       <span className={`rounded-full px-3 py-1 text-[0.68rem] font-semibold ${
                                         service.active === false
@@ -689,6 +726,35 @@ export default function ProfesionalServicesBuilderPage() {
                             />
                             <p className="mt-1 text-xs text-[#64748B]">
                               {draft.description.length}/200
+                            </p>
+                          </div>
+                          <div>
+                            <label className="text-sm font-medium text-[#0E2A47]">
+                              Categoría del servicio
+                            </label>
+                            <select
+                              className={inputClassName}
+                              value={draft.categorySlug}
+                              onChange={(event) =>
+                                handleDraftChange('categorySlug', event.target.value)
+                              }
+                              disabled={isLoadingCategories}
+                            >
+                              <option value="">
+                                Sin categoría específica
+                              </option>
+                              {categories.map((category) => (
+                                <option key={category.id} value={category.slug}>
+                                  {category.name}
+                                </option>
+                              ))}
+                            </select>
+                            <p className="mt-1 text-xs text-[#64748B]">
+                              {isLoadingCategories
+                                ? 'Cargando categorías...'
+                                : categoriesError
+                                  ? categoriesError
+                                  : 'Si no la definís, la app seguirá mostrando el rubro del perfil como fallback.'}
                             </p>
                           </div>
                           <div>

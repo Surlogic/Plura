@@ -1,5 +1,9 @@
 import api from './api';
-import type { ProfessionalSchedule, ProfessionalService } from '../types/professional';
+import type {
+  ProfessionalSchedule,
+  ProfessionalService,
+  ServiceCategoryOption,
+} from '../types/professional';
 
 export type ProfessionalBusinessProfile = {
   fullName: string;
@@ -21,6 +25,7 @@ export type ProfessionalBusinessProfile = {
 export type ServicePayload = {
   name: string;
   description: string;
+  categorySlug?: string | null;
   imageUrl: string;
   price: string;
   depositAmount?: string | null;
@@ -50,6 +55,11 @@ export const updateProfessionalSchedule = async (
 
 export const listProfessionalServices = async (): Promise<ProfessionalService[]> => {
   const response = await api.get<ProfessionalService[]>('/profesional/services');
+  return Array.isArray(response.data) ? response.data : [];
+};
+
+export const listServiceCategories = async (): Promise<ServiceCategoryOption[]> => {
+  const response = await api.get<ServiceCategoryOption[]>('/categories');
   return Array.isArray(response.data) ? response.data : [];
 };
 

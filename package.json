@@ -7,10 +7,11 @@
   },
   "scripts": {
     "predev": "bash ./scripts/predev.sh 3000 && bash ./scripts/predev.sh 3002",
-    "dev": "concurrently --kill-others-on-fail --names web,api \"pnpm -C apps/web dev\" \"cd backend-java && SPRING_FLYWAY_VALIDATE_ON_MIGRATE=false ./gradlew bootRun\"",
+    "dev": "concurrently --kill-others-on-fail --names web,api \"pnpm -C apps/web dev\" \"bash ./scripts/dev-backend-java.sh\"",
     "dev:web": "pnpm -C apps/web dev",
-    "dev:backend": "cd backend-java && SPRING_FLYWAY_VALIDATE_ON_MIGRATE=false ./gradlew bootRun",
-    "dev:backend-java": "cd backend-java && SPRING_FLYWAY_VALIDATE_ON_MIGRATE=false ./gradlew bootRun",
+    "dev:backend": "bash ./scripts/dev-backend-java.sh",
+    "dev:backend-java": "bash ./scripts/dev-backend-java.sh",
+    "dev:backend:remote": "PLURA_DEV_DB_MODE=remote bash ./scripts/dev-backend-java.sh",
     "build": "pnpm -r build",
     "build:backend-java": "cd backend-java && ./gradlew build",
     "lint": "pnpm -r lint"

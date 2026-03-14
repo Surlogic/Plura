@@ -509,6 +509,12 @@ export default function ProfesionalDetailPage() {
     return 'Pago en el lugar';
   };
 
+  const resolveServiceCategoryLabel = (service?: PublicService | null) => {
+    const serviceCategory = service?.categoryName?.trim();
+    if (serviceCategory) return serviceCategory;
+    return merged.category.trim();
+  };
+
   const initials = useMemo(
     () =>
       merged.name
@@ -860,6 +866,11 @@ export default function ProfesionalDetailPage() {
                           {service.description}
                         </p>
                       ) : null}
+                      {resolveServiceCategoryLabel(service) ? (
+                        <p className="mt-1 text-[0.7rem] font-semibold uppercase tracking-[0.12em] text-[#64748B]">
+                          {resolveServiceCategoryLabel(service)}
+                        </p>
+                      ) : null}
                       <p className="mt-1 text-[0.7rem] font-semibold uppercase tracking-[0.12em] text-[#64748B]">
                         {formatServicePaymentType(service.paymentType)}
                       </p>
@@ -1107,6 +1118,7 @@ export default function ProfesionalDetailPage() {
       <ServiceDetailModal
         isOpen={serviceDetailIndex !== null}
         service={serviceDetail}
+        fallbackCategoryName={merged.category}
         onClose={closeServiceDetail}
         onSelectService={handleSelectServiceFromDetail}
       />

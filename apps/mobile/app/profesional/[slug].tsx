@@ -15,6 +15,17 @@ import {
   toggleFavoriteProfessionalSlug,
 } from '../../src/services/clientFeatures';
 
+const resolveServiceCategoryLabel = (
+  service: PublicProfessionalService,
+  fallbackCategory?: string | null,
+) => {
+  const categoryName = service.categoryName?.trim();
+  if (categoryName) {
+    return categoryName;
+  }
+  return fallbackCategory?.trim() || '';
+};
+
 export default function ProfesionalDetailScreen() {
   const { slug } = useLocalSearchParams<{ slug: string }>();
   const [data, setData] = useState<any>(null);
@@ -194,6 +205,11 @@ export default function ProfesionalDetailScreen() {
                   <View className="flex-1 pr-4">
                     <Text className="text-base font-bold text-secondary">{service.name}</Text>
                     <Text className="text-xs text-gray-500 mt-1">{service.duration || 'Duración a definir'}</Text>
+                    {resolveServiceCategoryLabel(service, data.rubro) ? (
+                      <Text className="text-xs text-gray-500 mt-1">
+                        {resolveServiceCategoryLabel(service, data.rubro)}
+                      </Text>
+                    ) : null}
                   </View>
                   <Text className="text-lg font-bold text-primary">
                     {service.price ? (service.price.includes('$') ? service.price : `$${service.price}`) : 'Consultar'}

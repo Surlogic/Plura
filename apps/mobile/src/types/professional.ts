@@ -5,6 +5,12 @@ import type {
 
 export type { ProductPlanCapabilities, ProductPlanCode };
 
+export type ServiceCategoryOption = {
+  id: string;
+  name: string;
+  slug: string;
+};
+
 export type ProfessionalProfile = {
   id: string;
   slug?: string;
@@ -43,6 +49,8 @@ export type ProfessionalService = {
   id: string;
   name: string;
   description?: string;
+  categorySlug?: string | null;
+  categoryName?: string | null;
   imageUrl?: string;
   price: string;
   depositAmount?: number | null;
@@ -60,6 +68,8 @@ export type PublicService = {
   id?: string;
   name: string;
   description?: string;
+  categorySlug?: string | null;
+  categoryName?: string | null;
   imageUrl?: string;
   price: string;
   depositAmount?: number | null;

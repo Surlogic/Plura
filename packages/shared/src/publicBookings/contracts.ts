@@ -24,6 +24,8 @@ export type PublicProfessionalServiceBase<TPaymentType = string> = {
   id: string;
   name: string;
   description?: string;
+  categorySlug?: string | null;
+  categoryName?: string | null;
   imageUrl?: string;
   price?: string;
   depositAmount?: number | null;

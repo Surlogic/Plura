@@ -1,0 +1,38 @@
+groups:
+  - name: plura-provider-operation
+    rules:
+      - alert: PluraProviderOperationExpiredLeases
+        expr: plura_provider_operation_alert_triggered{alert="expired_leases"} > 0
+        for: 2m
+        labels:
+          severity: critical
+          service: plura-backend
+        annotations:
+          summary: Provider operations con lease vencido
+          description: |
+            Hay operaciones en PROCESSING con lease vencido.
+            count={{ $value }}
+
+      - alert: PluraProviderOperationStaleUncertain
+        expr: plura_provider_operation_alert_triggered{alert="stale_uncertain"} > 0
+        for: 5m
+        labels:
+          severity: critical
+          service: plura-backend
+        annotations:
+          summary: Provider operations UNCERTAIN viejas
+          description: |
+            Hay operaciones UNCERTAIN sin cambios recientes.
+            count={{ $value }}
+
+      - alert: PluraProviderOperationExcessiveRetryable
+        expr: plura_provider_operation_alert_triggered{alert="excessive_retryable"} > 0
+        for: 10m
+        labels:
+          severity: warning
+          service: plura-backend
+        annotations:
+          summary: Backlog RETRYABLE por encima del umbral
+          description: |
+            La cantidad de operaciones RETRYABLE superó el umbral configurado.
+            count={{ $value }}

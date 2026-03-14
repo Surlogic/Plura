@@ -30,6 +30,14 @@ Levantar web + backend:
 pnpm dev
 ```
 
+Por defecto, `pnpm dev` arranca una base PostgreSQL local con PostGIS en `127.0.0.1:5433`
+para el backend Java. Si necesitás usar una base remota definida en `backend-java/.env`,
+ejecutá:
+
+```bash
+pnpm dev:backend:remote
+```
+
 Comandos individuales:
 
 ```bash

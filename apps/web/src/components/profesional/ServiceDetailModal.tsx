@@ -8,6 +8,7 @@ import type { PublicService } from '@/types/professional';
 type ServiceDetailModalProps = {
   isOpen: boolean;
   service: PublicService | null;
+  fallbackCategoryName?: string | null;
   onClose: () => void;
   onSelectService: () => void;
 };
@@ -56,6 +57,7 @@ const normalizeImageSrc = (value?: string) => {
 export default function ServiceDetailModal({
   isOpen,
   service,
+  fallbackCategoryName,
   onClose,
   onSelectService,
 }: ServiceDetailModalProps) {
@@ -77,6 +79,7 @@ export default function ServiceDetailModal({
   }
 
   const imageSrc = normalizeImageSrc(service.imageUrl);
+  const serviceCategory = service.categoryName?.trim() || fallbackCategoryName?.trim() || '';
 
   return (
     <div className="fixed inset-0 z-[90] flex items-center justify-center px-4 py-6">
@@ -139,6 +142,17 @@ export default function ServiceDetailModal({
             </p>
           </div>
         </div>
+
+        {serviceCategory ? (
+          <div className="mt-3 rounded-[14px] border border-[color:var(--border-soft)] bg-[color:var(--surface-soft)] px-4 py-3">
+            <p className="text-[0.62rem] uppercase tracking-[0.28em] text-[color:var(--ink-faint)]">
+              Categoría
+            </p>
+            <p className="mt-1 text-sm font-semibold text-[color:var(--ink)]">
+              {serviceCategory}
+            </p>
+          </div>
+        ) : null}
 
         <div className="mt-3 rounded-[14px] border border-[color:var(--border-soft)] bg-[color:var(--surface-soft)] px-4 py-3">
           <p className="text-[0.62rem] uppercase tracking-[0.28em] text-[color:var(--ink-faint)]">

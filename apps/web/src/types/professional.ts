@@ -74,6 +74,8 @@ export type ProfessionalService = {
   id: string;
   name: string;
   description?: string;
+  categorySlug?: string | null;
+  categoryName?: string | null;
   imageUrl?: string;
   price: string;
   depositAmount?: number | null;
@@ -90,6 +92,8 @@ export type PublicService = {
   id?: string;
   name: string;
   description?: string;
+  categorySlug?: string | null;
+  categoryName?: string | null;
   imageUrl?: string;
   price: string;
   depositAmount?: number | null;

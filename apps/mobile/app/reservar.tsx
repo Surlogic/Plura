@@ -60,6 +60,17 @@ const buildStartDateTime = (date?: string, time?: string): string | null => {
 const isPrepaidService = (paymentType?: string) =>
   paymentType === 'DEPOSIT' || paymentType === 'FULL_PREPAY';
 
+const resolveServiceCategoryLabel = (
+  service: PublicProfessionalService | null,
+  fallbackCategory?: string | null,
+) => {
+  const categoryName = service?.categoryName?.trim();
+  if (categoryName) {
+    return categoryName;
+  }
+  return fallbackCategory?.trim() || '';
+};
+
 export default function ReservationCheckoutScreen() {
   const { slug, serviceId, date, time } = useLocalSearchParams<Params>();
   const { hasLoaded, isAuthenticated, role } = useProfessionalProfileContext();
@@ -68,6 +79,7 @@ export default function ReservationCheckoutScreen() {
   const [message, setMessage] = useState<string | null>(null);
   const [service, setService] = useState<PublicProfessionalService | null>(null);
   const [professionalName, setProfessionalName] = useState('Profesional');
+  const [professionalCategory, setProfessionalCategory] = useState('Profesional');
 
   useEffect(() => {
     const load = async () => {
@@ -81,6 +93,7 @@ export default function ReservationCheckoutScreen() {
       try {
         const professional = await getPublicProfessionalBySlug(slug);
         setProfessionalName(professional.fullName || 'Profesional');
+        setProfessionalCategory(professional.rubro || 'Profesional');
         const selected = professional.services.find((item) => item.id === serviceId) || null;
         setService(selected);
         if (!selected) {
@@ -133,6 +146,11 @@ export default function ReservationCheckoutScreen() {
             <View className="rounded-[28px] bg-white p-6 shadow-md border border-secondary/5">
               <Text className="text-xs uppercase tracking-[2px] text-gray-500">Resumen</Text>
               <Text className="mt-3 text-xl font-bold text-secondary">{service?.name || 'Servicio'}</Text>
+              {resolveServiceCategoryLabel(service, professionalCategory) ? (
+                <Text className="mt-1 text-sm text-gray-500">
+                  {resolveServiceCategoryLabel(service, professionalCategory)}
+                </Text>
+              ) : null}
               <Text className="mt-1 text-sm text-gray-500">con {professionalName}</Text>
 
               <View className="mt-5 rounded-[18px] bg-background p-4">

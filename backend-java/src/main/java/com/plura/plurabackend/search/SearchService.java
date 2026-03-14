@@ -218,7 +218,7 @@ public class SearchService {
     private SearchResponse searchWithBestEffort(SearchQueryCriteria criteria) {
         Timer.Sample querySample = Timer.start(meterRegistry);
         try {
-            if (searchEngineEnabled && searchEngineClient.isPresent()) {
+            if (searchEngineEnabled && searchEngineClient.isPresent() && !shouldForceSqlSearch(criteria)) {
                 try {
                     SearchResponse engineResponse = searchUsingSearchEngine(criteria, searchEngineClient.get());
                     if (engineResponse != null) {
@@ -379,5 +379,15 @@ public class SearchService {
             return;
         }
         LOGGER.debug("Search engine unavailable in {}, fallback to SQL", operation, exception);
+    }
+
+    private boolean shouldForceSqlSearch(SearchQueryCriteria criteria) {
+        if (criteria == null) {
+            return false;
+        }
+        if (criteria.categorySlug() != null && !criteria.categorySlug().isBlank()) {
+            return true;
+        }
+        return criteria.type() == SearchType.RUBRO || criteria.type() == SearchType.SERVICIO;
     }
 }

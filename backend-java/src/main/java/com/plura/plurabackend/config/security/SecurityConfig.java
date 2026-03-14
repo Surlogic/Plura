@@ -36,7 +36,8 @@ public class SecurityConfig {
         HttpSecurity http,
         JwtAuthenticationFilter jwtFilter,
         RateLimitingFilter rateLimitingFilter,
-        CookieOriginProtectionFilter cookieOriginProtectionFilter
+        CookieOriginProtectionFilter cookieOriginProtectionFilter,
+        InternalOpsActuatorAccessFilter internalOpsActuatorAccessFilter
     ) throws Exception {
         http
             // API stateless con Bearer token: no sesiones y sin CSRF stateful.
@@ -107,6 +108,7 @@ public class SecurityConfig {
             )
             // Respuesta 401 si no hay autenticación.
             .exceptionHandling(ex -> ex.authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)))
+            .addFilterBefore(internalOpsActuatorAccessFilter, UsernamePasswordAuthenticationFilter.class)
             .addFilterBefore(cookieOriginProtectionFilter, UsernamePasswordAuthenticationFilter.class)
             .addFilterAfter(jwtFilter, CookieOriginProtectionFilter.class)
             .addFilterAfter(rateLimitingFilter, JwtAuthenticationFilter.class);

@@ -11,6 +11,8 @@ public class ProfesionalServiceResponse {
     private String id;
     private String name;
     private String description;
+    private String categorySlug;
+    private String categoryName;
     private String price;
     private BigDecimal depositAmount;
     private String currency;

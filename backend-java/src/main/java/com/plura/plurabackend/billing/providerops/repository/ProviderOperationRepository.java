@@ -100,4 +100,46 @@ public interface ProviderOperationRepository extends JpaRepository<ProviderOpera
         @Param("updatedBefore") LocalDateTime updatedBefore,
         Pageable pageable
     );
+
+    long countByStatus(ProviderOperationStatus status);
+
+    long countByStatusAndUpdatedAtBefore(ProviderOperationStatus status, LocalDateTime updatedBefore);
+
+    List<ProviderOperation> findByStatusOrderByUpdatedAtAsc(ProviderOperationStatus status, Pageable pageable);
+
+    List<ProviderOperation> findByStatusAndUpdatedAtBeforeOrderByUpdatedAtAsc(
+        ProviderOperationStatus status,
+        LocalDateTime updatedBefore,
+        Pageable pageable
+    );
+
+    @Query(
+        """
+        SELECT COUNT(operation)
+        FROM ProviderOperation operation
+        WHERE operation.status = :processingStatus
+          AND operation.leaseUntil IS NOT NULL
+          AND operation.leaseUntil < :leaseBefore
+        """
+    )
+    long countExpiredLeases(
+        @Param("processingStatus") ProviderOperationStatus processingStatus,
+        @Param("leaseBefore") LocalDateTime leaseBefore
+    );
+
+    @Query(
+        """
+        SELECT operation
+        FROM ProviderOperation operation
+        WHERE operation.status = :processingStatus
+          AND operation.leaseUntil IS NOT NULL
+          AND operation.leaseUntil < :leaseBefore
+        ORDER BY operation.leaseUntil ASC, operation.updatedAt ASC
+        """
+    )
+    List<ProviderOperation> findExpiredLeases(
+        @Param("processingStatus") ProviderOperationStatus processingStatus,
+        @Param("leaseBefore") LocalDateTime leaseBefore,
+        Pageable pageable
+    );
 }

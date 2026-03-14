@@ -26,7 +26,7 @@ public class PluraBackendApplication {
 	public static void main(String[] args) {
 		// Carga variables desde .env para entornos locales.
 		Dotenv dotenv = Dotenv.configure().ignoreIfMissing().load();
-		dotenv.entries().forEach(entry -> System.setProperty(entry.getKey(), entry.getValue()));
+		dotenv.entries().forEach(entry -> applyDotenvFallback(entry.getKey(), entry.getValue()));
 		applyLegacyBillingCompatibility(dotenv);
 		SpringApplication.run(PluraBackendApplication.class, args);
 	}
@@ -46,23 +46,23 @@ public class PluraBackendApplication {
 			));
 
 		String legacyApiKey = firstNonBlank(
-			System.getProperty("DLOCAL_API_KEY"),
+			currentValue("DLOCAL_API_KEY"),
 			legacyValues.get("DLOCAL_API_KEY")
 		);
 		String legacySecretKey = firstNonBlank(
-			System.getProperty("DLOCAL_SECRET_KEY"),
+			currentValue("DLOCAL_SECRET_KEY"),
 			legacyValues.get("DLOCAL_SECRET_KEY")
 		);
 		String legacyXTransKey = firstNonBlank(
-			System.getProperty("DLOCAL_X_TRANS_KEY"),
+			currentValue("DLOCAL_X_TRANS_KEY"),
 			legacyValues.get("DLOCAL_X_TRANS_KEY")
 		);
 		String legacyEnv = firstNonBlank(
-			System.getProperty("DLOCAL_ENV"),
+			currentValue("DLOCAL_ENV"),
 			legacyValues.get("DLOCAL_ENV")
 		);
 
-		if (isBlank(System.getProperty("BILLING_DLOCAL_ENABLED"))
+		if (isBlank(currentValue("BILLING_DLOCAL_ENABLED"))
 			&& !isBlank(legacyEnv)
 			&& !isBlank(legacyApiKey)
 			&& !isBlank(legacySecretKey)) {
@@ -75,12 +75,18 @@ public class PluraBackendApplication {
 		applyLegacyFallback("BILLING_DLOCAL_WEBHOOK_SECRET", legacySecretKey);
 		applyLegacyFallback(
 			"BILLING_DLOCAL_PAYOUT_CLIENT_ID",
-			firstNonBlank(System.getProperty("DLOCAL_PAYOUT_CLIENT_ID"), legacyValues.get("DLOCAL_PAYOUT_CLIENT_ID"))
+			firstNonBlank(currentValue("DLOCAL_PAYOUT_CLIENT_ID"), legacyValues.get("DLOCAL_PAYOUT_CLIENT_ID"))
 		);
 		applyLegacyFallback(
 			"BILLING_DLOCAL_PAYOUT_CLIENT_SECRET",
-			firstNonBlank(System.getProperty("DLOCAL_PAYOUT_CLIENT_SECRET"), legacyValues.get("DLOCAL_PAYOUT_CLIENT_SECRET"))
+			firstNonBlank(currentValue("DLOCAL_PAYOUT_CLIENT_SECRET"), legacyValues.get("DLOCAL_PAYOUT_CLIENT_SECRET"))
 		);
+	}
+
+	private static void applyDotenvFallback(String key, String value) {
+		if (isBlank(currentValue(key)) && !isBlank(value)) {
+			System.setProperty(key, value);
+		}
 	}
 
 	/**
@@ -89,9 +95,13 @@ public class PluraBackendApplication {
 	 * @param fallbackValue valor legacy a usar si la clave destino está vacía
 	 */
 	private static void applyLegacyFallback(String targetKey, String fallbackValue) {
-		if (isBlank(System.getProperty(targetKey)) && !isBlank(fallbackValue)) {
+		if (isBlank(currentValue(targetKey)) && !isBlank(fallbackValue)) {
 			System.setProperty(targetKey, fallbackValue);
 		}
+	}
+
+	private static String currentValue(String key) {
+		return firstNonBlank(System.getProperty(key), System.getenv(key));
 	}
 
 	/** Verifica si un string es nulo o vacío. */

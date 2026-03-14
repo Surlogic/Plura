@@ -1,6 +1,8 @@
 package com.plura.plurabackend.professional.application;
 
 import com.plura.plurabackend.booking.model.ServicePaymentType;
+import com.plura.plurabackend.category.model.Category;
+import com.plura.plurabackend.category.repository.CategoryRepository;
 import com.plura.plurabackend.professional.model.ProfessionalProfile;
 import com.plura.plurabackend.professional.service.dto.ProfesionalServiceRequest;
 import com.plura.plurabackend.professional.service.dto.ProfesionalServiceResponse;
@@ -19,15 +21,18 @@ public class ProfileServiceCatalogSupport {
     private final ProfesionalServiceRepository profesionalServiceRepository;
     private final ProfilePublicPageAssembler profilePublicPageAssembler;
     private final ProfessionalSideEffectCoordinator sideEffectCoordinator;
+    private final CategoryRepository categoryRepository;
 
     public ProfileServiceCatalogSupport(
         ProfesionalServiceRepository profesionalServiceRepository,
         ProfilePublicPageAssembler profilePublicPageAssembler,
-        ProfessionalSideEffectCoordinator sideEffectCoordinator
+        ProfessionalSideEffectCoordinator sideEffectCoordinator,
+        CategoryRepository categoryRepository
     ) {
         this.profesionalServiceRepository = profesionalServiceRepository;
         this.profilePublicPageAssembler = profilePublicPageAssembler;
         this.sideEffectCoordinator = sideEffectCoordinator;
+        this.categoryRepository = categoryRepository;
     }
 
     public List<ProfesionalServiceResponse> listServices(ProfessionalProfile profile) {
@@ -49,6 +54,7 @@ public class ProfileServiceCatalogSupport {
         service.setPrice(price == null ? null : price.toPlainString());
         service.setDepositAmount(depositAmount);
         service.setDuration(request.getDuration() == null ? null : request.getDuration().trim());
+        service.setCategory(resolveRequestedCategory(request.getCategorySlug()));
         service.setImageUrl(normalizeOptional(request.getImageUrl()));
         service.setPostBufferMinutes(sanitizePostBufferMinutes(request.getPostBufferMinutes()));
         service.setPaymentType(paymentType);
@@ -92,6 +98,9 @@ public class ProfileServiceCatalogSupport {
         service.setDepositAmount(nextDepositAmount);
         if (request.getDuration() != null) {
             service.setDuration(request.getDuration().trim());
+        }
+        if (request.getCategorySlug() != null) {
+            service.setCategory(resolveRequestedCategory(request.getCategorySlug()));
         }
         if (request.getImageUrl() != null) {
             service.setImageUrl(normalizeOptional(request.getImageUrl()));
@@ -185,5 +194,14 @@ public class ProfileServiceCatalogSupport {
         }
         String normalized = value.trim();
         return normalized.isBlank() ? null : normalized;
+    }
+
+    private Category resolveRequestedCategory(String rawSlug) {
+        String slug = normalizeOptional(rawSlug);
+        if (slug == null) {
+            return null;
+        }
+        return categoryRepository.findBySlugIgnoreCaseAndActiveTrue(slug)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Categoría de servicio inválida"));
     }
 }

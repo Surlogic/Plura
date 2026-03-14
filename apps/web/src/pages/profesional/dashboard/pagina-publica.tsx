@@ -80,6 +80,8 @@ export default function ProfesionalPublicPageBuilder() {
         id: service.id,
         name: service.name || 'Servicio',
         description: service.description || '',
+        categorySlug: service.categorySlug || null,
+        categoryName: service.categoryName || null,
         imageUrl: service.imageUrl || '',
         price: service.price || 'Consultar',
         duration: service.duration || '',

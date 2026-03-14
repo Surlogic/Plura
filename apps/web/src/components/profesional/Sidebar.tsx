@@ -1,6 +1,8 @@
 import Link from 'next/link';
 import { useEffect, useMemo, useRef } from 'react';
 import type { ProfessionalProfile } from '@/types/professional';
+import type { ProfessionalPlanCode } from '../../../../../packages/shared/src/types/professional';
+import { hasPlanAccess, PLAN_LABELS } from '../../../../../packages/shared/src/billing/planAccess';
 import { useProfessionalDashboardUnsavedChanges } from '@/context/ProfessionalDashboardUnsavedChangesContext';
 import Badge from '@/components/ui/Badge';
 import BrandLogo from '@/components/ui/BrandLogo';
@@ -15,6 +17,7 @@ type MenuItem = {
   href: string;
   icon: DashboardIconName;
   disabled?: boolean;
+  requiredPlan?: ProfessionalPlanCode;
 };
 
 type MenuSection = {
@@ -159,11 +162,15 @@ export default function ProfesionalSidebar({ profile, active }: SidebarProps) {
             <nav className="mt-2.5 space-y-1.5">
               {section.items.map((item) => {
                 const isActive = item.label === active;
-                const className = cn(
+                const isLocked = item.requiredPlan
+                  ? !hasPlanAccess(profile?.professionalPlan, item.requiredPlan)
+                  : false;
+                const isDisabled = item.disabled || isLocked;
+                const itemClassName = cn(
                   'group flex w-full items-center gap-3 rounded-[14px] border px-3 py-2.5 text-left transition',
-                  isActive
+                  isActive && !isLocked
                     ? 'border-[color:var(--primary-soft)] bg-[color:var(--primary-soft)] text-[color:var(--primary-strong)] shadow-[var(--shadow-card)]'
-                    : item.disabled
+                    : isDisabled
                       ? 'cursor-not-allowed border-[color:var(--border-soft)] bg-white/60 text-[color:var(--ink-faint)]'
                       : 'border-transparent bg-transparent text-[color:var(--ink)] hover:border-[color:var(--border-soft)] hover:bg-white',
                 );
@@ -173,24 +180,38 @@ export default function ProfesionalSidebar({ profile, active }: SidebarProps) {
                     <span
                       className={cn(
                         'inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-[12px] border',
-                        isActive
+                        isActive && !isLocked
                           ? 'border-white bg-white text-[color:var(--primary)]'
-                          : 'border-[color:var(--border-soft)] bg-[color:var(--surface-soft)] text-[color:var(--ink)]',
+                          : isLocked
+                            ? 'border-[color:var(--border-soft)] bg-[color:var(--surface-soft)] text-[color:var(--ink-faint)]'
+                            : 'border-[color:var(--border-soft)] bg-[color:var(--surface-soft)] text-[color:var(--ink)]',
                       )}
                     >
                       <DashboardIcon name={item.icon} className="h-4 w-4" />
                     </span>
-                    <span className="min-w-0 flex-1 truncate text-sm font-semibold">
+                    <span className={cn('min-w-0 flex-1 truncate text-sm font-semibold', isLocked && 'opacity-60')}>
                       {item.label}
                     </span>
+                    {isLocked && item.requiredPlan && (
+                      <span
+                        className="inline-flex items-center gap-1 rounded-full border border-[color:var(--premium-soft)] bg-[color:var(--premium-soft)] px-2 py-0.5 text-[0.5rem] font-semibold uppercase tracking-[0.1em] text-[color:var(--premium-strong)]"
+                        title={`Disponible en el plan ${PLAN_LABELS[item.requiredPlan]}`}
+                      >
+                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                          <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                          <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                        </svg>
+                        {PLAN_LABELS[item.requiredPlan]}
+                      </span>
+                    )}
                   </>
                 );
 
-                if (!item.href || item.disabled) {
+                if (!item.href || isDisabled) {
                   return (
                     <div
                       key={item.label}
-                      className={className}
+                      className={itemClassName}
                       data-sidebar-active={isActive ? 'true' : 'false'}
                     >
                       {content}
@@ -202,7 +223,7 @@ export default function ProfesionalSidebar({ profile, active }: SidebarProps) {
                   <Link
                     key={item.label}
                     href={item.href}
-                    className={className}
+                    className={itemClassName}
                     data-sidebar-active={isActive ? 'true' : 'false'}
                     onClick={(event) => {
                       event.preventDefault();

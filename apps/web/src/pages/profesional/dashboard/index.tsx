@@ -16,6 +16,7 @@ import {
   DashboardSectionHeading,
   DashboardStatCard,
 } from '@/components/profesional/dashboard/DashboardUI';
+import LockedFeature from '@/components/ui/LockedFeature';
 import {
   getProfessionalReservationsForDates,
   updateProfessionalReservationStatus,
@@ -812,7 +813,7 @@ export default function ProfesionalDashboardPage() {
                       ))}
                     </div>
 
-                    {canViewAnalytics ? (
+                    <LockedFeature requiredPlan="PROFESIONAL" currentPlan={profile?.professionalPlan}>
                       <Card className="border-white/70 bg-white/95 p-5">
                         <DashboardSectionHeading
                           eyebrow="Tendencia"
@@ -820,7 +821,11 @@ export default function ProfesionalDashboardPage() {
                           description="Una lectura rápida del ritmo de tu agenda."
                         />
                         <div className="mt-4 grid gap-3 sm:grid-cols-3 lg:grid-cols-1">
-                          {stats.map((item, index) => (
+                          {(canViewAnalytics ? stats : [
+                            { label: 'Reservas esta semana', value: '—', detail: 'Sin datos' },
+                            { label: 'Clientes únicos', value: '—', detail: 'Sin datos' },
+                            { label: 'Ocupación', value: '—', detail: 'Sin datos' },
+                          ]).map((item, index) => (
                             <div
                               key={item.label}
                               className={cn(
@@ -843,7 +848,7 @@ export default function ProfesionalDashboardPage() {
                           ))}
                         </div>
                       </Card>
-                    ) : null}
+                    </LockedFeature>
                   </div>
                 </section>
 
@@ -872,17 +877,25 @@ export default function ProfesionalDashboardPage() {
                           type="button"
                           onClick={() => handleSetView('month')}
                           disabled={!canUseMonthlyCalendar}
-                          className={`rounded-full px-4 py-1.5 text-xs font-semibold transition ${
+                          className={`relative rounded-full px-4 py-1.5 text-xs font-semibold transition ${
                             calendarView === 'month'
                               ? 'bg-[color:var(--primary)] text-white'
                               : 'text-[color:var(--ink-faint)] hover:text-[color:var(--ink-muted)]'
                           } ${!canUseMonthlyCalendar ? 'cursor-not-allowed opacity-45' : ''}`}
                         >
                           Mensual
+                          {!canUseMonthlyCalendar && (
+                            <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-[color:var(--premium-soft)] text-[color:var(--premium-strong)]">
+                              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                                <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                              </svg>
+                            </span>
+                          )}
                         </button>
                       </div>
 
-                      <div className="flex items-center gap-0.5 rounded-full border border-[color:var(--border-soft)] bg-white px-1 py-1 shadow-[var(--shadow-card)]">
+                      <div className="relative flex items-center gap-0.5 rounded-full border border-[color:var(--border-soft)] bg-white px-1 py-1 shadow-[var(--shadow-card)]">
                         <button
                           type="button"
                           onClick={handlePrev}
@@ -910,6 +923,14 @@ export default function ProfesionalDashboardPage() {
                         >
                           ›
                         </button>
+                        {!canNavigateCalendar && (
+                          <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-[color:var(--premium-soft)] text-[color:var(--premium-strong)]">
+                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                              <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                              <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                            </svg>
+                          </span>
+                        )}
                       </div>
 
                       <button

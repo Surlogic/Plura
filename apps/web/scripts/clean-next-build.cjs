@@ -16,6 +16,7 @@ const managedDirs = {
 
 const staleMatchers = [
   /^\.next\.preclean$/,
+  /^\.next-build-/,
   /^\.next\.stale-/,
   /^\.next_stale_/,
   /^\.next_/,
@@ -53,6 +54,7 @@ const ensureDir = (targetPath) => {
 
 const ensureSymlink = (linkName, targetPath) => {
   const linkPath = path.join(appDir, linkName);
+  const linkType = process.platform === 'win32' ? 'junction' : 'dir';
   ensureDir(path.dirname(targetPath));
   ensureDir(targetPath);
 
@@ -62,7 +64,7 @@ const ensureSymlink = (linkName, targetPath) => {
       const currentTarget = fs.readlinkSync(linkPath);
       const resolvedCurrent = path.resolve(appDir, currentTarget);
       const resolvedExpected = path.resolve(targetPath);
-      if (resolvedCurrent === resolvedExpected) {
+      if (process.platform !== 'win32' && resolvedCurrent === resolvedExpected) {
         return;
       }
     }
@@ -74,7 +76,7 @@ const ensureSymlink = (linkName, targetPath) => {
   }
 
   try {
-    fs.symlinkSync(targetPath, linkPath, 'dir');
+    fs.symlinkSync(targetPath, linkPath, linkType);
   } catch (error) {
     fail(`No se pudo enlazar ${linkPath} -> ${targetPath}.`, error);
   }

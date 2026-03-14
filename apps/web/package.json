@@ -5,9 +5,9 @@
   "scripts": {
     "clean": "node ./scripts/clean-next-build.cjs clean",
     "dev": "node ../../scripts/predev.cjs 3002 && next dev --webpack -p 3002",
-    "build": "NEXT_BUILD_DIR=.next-build node ./scripts/clean-next-build.cjs clean && NEXT_BUILD_DIR=.next-build next build",
-    "analyze": "NEXT_BUILD_DIR=.next-build node ./scripts/clean-next-build.cjs clean && NEXT_BUILD_DIR=.next-build ANALYZE=true next build",
-    "start": "NEXT_BUILD_DIR=.next-build node ./scripts/clean-next-build.cjs ensure && NEXT_BUILD_DIR=.next-build next start",
+    "build": "node ./scripts/run-next-command.cjs build --webpack",
+    "analyze": "node ./scripts/run-next-command.cjs build --webpack --analyze",
+    "start": "node ./scripts/run-next-command.cjs start",
     "lint": "eslint"
   },
   "dependencies": {

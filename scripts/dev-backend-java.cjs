@@ -4,8 +4,9 @@ const { spawn } = require("node:child_process");
 const backendDir = path.resolve(__dirname, "..", "backend-java");
 const isWindows = process.platform === "win32";
 const command = isWindows ? "gradlew.bat" : "./gradlew";
+const gradleArgs = process.argv.slice(2);
 
-const child = spawn(command, ["bootRun"], {
+const child = spawn(command, gradleArgs.length > 0 ? gradleArgs : ["bootRun"], {
   cwd: backendDir,
   stdio: "inherit",
   env: {

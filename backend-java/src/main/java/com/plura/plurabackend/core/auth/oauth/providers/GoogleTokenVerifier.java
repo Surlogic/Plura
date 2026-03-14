@@ -1,4 +1,4 @@
-package com.plura.plurabackend.core.auth.oauth.providers;
+package com.plura.plurabackend.auth.oauth.providers;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -6,7 +6,7 @@ import com.google.api.client.googleapis.auth.oauth2.GoogleIdToken;
 import com.google.api.client.googleapis.auth.oauth2.GoogleIdTokenVerifier;
 import com.google.api.client.http.javanet.NetHttpTransport;
 import com.google.api.client.json.gson.GsonFactory;
-import com.plura.plurabackend.core.auth.oauth.OAuthUserInfo;
+import com.plura.plurabackend.auth.oauth.OAuthUserInfo;
 import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -37,6 +37,7 @@ public class GoogleTokenVerifier {
 
     private final String googleClientId;
     private final String googleClientSecret;
+    private final Set<String> acceptedAudiences;
     private final Set<String> allowedRedirectUris;
     private final GoogleIdTokenVerifier verifier;
     private final ObjectMapper objectMapper;
@@ -44,15 +45,22 @@ public class GoogleTokenVerifier {
 
     public GoogleTokenVerifier(
         @Value("${oauth.google.client-id:}") String googleClientId,
+        @Value("${oauth.google.android-client-id:}") String googleAndroidClientId,
+        @Value("${oauth.google.ios-client-id:}") String googleIosClientId,
         @Value("${oauth.google.client-secret:}") String googleClientSecret,
         @Value("${app.auth.oauth.google.allowed-redirect-uris:}") String allowedRedirectUris,
         ObjectMapper objectMapper
     ) {
         this.googleClientId = googleClientId == null ? "" : googleClientId.trim();
         this.googleClientSecret = googleClientSecret == null ? "" : googleClientSecret.trim();
+        this.acceptedAudiences = parseAcceptedAudiences(
+            this.googleClientId,
+            googleAndroidClientId,
+            googleIosClientId
+        );
         this.allowedRedirectUris = parseAllowedRedirectUris(allowedRedirectUris);
         this.verifier = new GoogleIdTokenVerifier.Builder(new NetHttpTransport(), GsonFactory.getDefaultInstance())
-            .setAudience(List.of(this.googleClientId))
+            .setAudience(List.copyOf(this.acceptedAudiences.isEmpty() ? Set.of("__missing_google_client_id__") : this.acceptedAudiences))
             .setIssuers(VALID_ISSUERS)
             .build();
         this.objectMapper = objectMapper;
@@ -62,7 +70,7 @@ public class GoogleTokenVerifier {
     }
 
     public OAuthUserInfo verify(String token) {
-        requireConfigured();
+        requireTokenVerificationConfigured();
 
         if (token == null || token.isBlank()) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Token OAuth inválido");
@@ -87,7 +95,7 @@ public class GoogleTokenVerifier {
         String codeVerifier,
         String redirectUri
     ) {
-        requireConfigured();
+        requireAuthorizationCodeConfigured();
         if (authorizationCode == null || authorizationCode.isBlank()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "authorizationCode OAuth faltante");
         }
@@ -291,7 +299,16 @@ public class GoogleTokenVerifier {
         }
     }
 
-    private void requireConfigured() {
+    private void requireTokenVerificationConfigured() {
+        if (acceptedAudiences.isEmpty()) {
+            throw new ResponseStatusException(
+                HttpStatus.SERVICE_UNAVAILABLE,
+                "OAuth Google no configurado (GOOGLE_CLIENT_ID / GOOGLE_ANDROID_CLIENT_ID / GOOGLE_IOS_CLIENT_ID)"
+            );
+        }
+    }
+
+    private void requireAuthorizationCodeConfigured() {
         if (googleClientId.isBlank()) {
             throw new ResponseStatusException(
                 HttpStatus.SERVICE_UNAVAILABLE,
@@ -337,8 +354,21 @@ public class GoogleTokenVerifier {
         return Set.copyOf(parsed);
     }
 
+    private Set<String> parseAcceptedAudiences(String... clientIds) {
+        Set<String> parsed = new HashSet<>();
+        for (String clientId : clientIds) {
+            String normalized = normalize(clientId);
+            if (normalized != null) {
+                parsed.add(normalized);
+            }
+        }
+        return Set.copyOf(parsed);
+    }
+
     private boolean isAllowedAudience(String aud, String issuedTo, String azp) {
-        return googleClientId.equals(aud) || googleClientId.equals(issuedTo) || googleClientId.equals(azp);
+        return acceptedAudiences.contains(aud)
+            || acceptedAudiences.contains(issuedTo)
+            || acceptedAudiences.contains(azp);
     }
 
     private String normalize(String value) {

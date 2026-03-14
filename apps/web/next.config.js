@@ -70,6 +70,7 @@ const nextConfig = {
       ...extraImageRemoteHosts,
     ],
   },
+  turbopack: {},
   webpack: (config) => {
     config.resolve.alias = {
       ...(config.resolve.alias || {}),

@@ -1,4 +1,4 @@
-CREATE TABLE provider_operation (
+CREATE TABLE IF NOT EXISTS provider_operation (
     id VARCHAR(36) PRIMARY KEY,
     operation_type VARCHAR(40) NOT NULL,
     status VARCHAR(30) NOT NULL,
@@ -24,14 +24,14 @@ CREATE TABLE provider_operation (
     CONSTRAINT uq_provider_operation_type_reference UNIQUE (operation_type, external_reference)
 );
 
-CREATE INDEX idx_provider_operation_status_next_attempt
+CREATE INDEX IF NOT EXISTS idx_provider_operation_status_next_attempt
     ON provider_operation (status, next_attempt_at);
 
-CREATE INDEX idx_provider_operation_booking
+CREATE INDEX IF NOT EXISTS idx_provider_operation_booking
     ON provider_operation (booking_id);
 
-CREATE INDEX idx_provider_operation_transaction
+CREATE INDEX IF NOT EXISTS idx_provider_operation_transaction
     ON provider_operation (payment_transaction_id);
 
-CREATE INDEX idx_provider_operation_lease
+CREATE INDEX IF NOT EXISTS idx_provider_operation_lease
     ON provider_operation (lease_until);

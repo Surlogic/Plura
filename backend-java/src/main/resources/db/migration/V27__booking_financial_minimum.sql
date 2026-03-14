@@ -13,6 +13,10 @@ CREATE TABLE IF NOT EXISTS booking_financial_summary (
     version BIGINT NOT NULL DEFAULT 0
 );
 
+ALTER TABLE booking_financial_summary
+    ADD COLUMN IF NOT EXISTS amount_paid NUMERIC(12,2) NOT NULL DEFAULT 0,
+    ADD COLUMN IF NOT EXISTS amount_retained NUMERIC(12,2) NOT NULL DEFAULT 0;
+
 CREATE INDEX IF NOT EXISTS idx_booking_financial_summary_status
     ON booking_financial_summary(financial_status);
 

@@ -43,6 +43,7 @@ public class SearchNativeRepository {
         String availabilitySource,
         boolean nextAvailableAtEnabled
     ) {
+        boolean shouldAttemptFirstPageCountBypass = !searchNoCountModeEnabled && criteria.page() == 0;
         MapSqlParameterSource params = buildParams(criteria);
         params.addValue("nextAvailableAtEnabled", nextAvailableAtEnabled);
 
@@ -113,11 +114,21 @@ public class SearchNativeRepository {
                 + " ) cat_img ON true"
                 + baseWhereClause
                 + buildSortClause(criteria)
-                + (searchNoCountModeEnabled ? " LIMIT :limitPlusOne OFFSET :offset" : " LIMIT :limit OFFSET :offset");
+                + (
+                    searchNoCountModeEnabled || shouldAttemptFirstPageCountBypass
+                        ? " LIMIT :limitPlusOne OFFSET :offset"
+                        : " LIMIT :limit OFFSET :offset"
+                );
 
         if (!searchNoCountModeEnabled) {
-            Long total = jdbcTemplate.queryForObject(countSql, params, Long.class);
             List<SearchItemResponse> items = jdbcTemplate.query(selectSql, params, SEARCH_ROW_MAPPER);
+            if (shouldAttemptFirstPageCountBypass) {
+                if (items.size() <= criteria.size()) {
+                    return new SearchPageResult((long) items.size(), items, false);
+                }
+                items = items.subList(0, criteria.size());
+            }
+            Long total = jdbcTemplate.queryForObject(countSql, params, Long.class);
             return new SearchPageResult(total == null ? 0L : total, items, false);
         }
 
@@ -672,7 +683,7 @@ public class SearchNativeRepository {
         params.addValue("radiusMeters", Math.max(criteria.radiusKm(), 1d) * 1000d);
         params.addValue("radiusKm", Math.max(criteria.radiusKm(), 1d));
         params.addValue("limit", normalizedLimit);
-        params.addValue("profilePoolLimit", Math.max(normalizedLimit * 8, 80));
+        params.addValue("profilePoolLimit", Math.max(normalizedLimit * 4, 24));
         params.addValue("categoryLimit", MAX_CATEGORY_SUGGESTIONS);
         params.addValue("popularLimit", MAX_POPULAR_NEARBY);
         return params;

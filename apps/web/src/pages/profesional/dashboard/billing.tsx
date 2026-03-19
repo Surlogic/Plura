@@ -11,6 +11,7 @@ import {
   DashboardStatCard,
 } from '@/components/profesional/dashboard/DashboardUI';
 import BillingCurrentPlanCard from '@/components/billing/BillingCurrentPlanCard';
+import BillingFeatureComparison from '@/components/billing/BillingFeatureComparison';
 import BillingPlansGrid from '@/components/billing/BillingPlansGrid';
 import BillingStatusBanner from '@/components/billing/BillingStatusBanner';
 import { useProfessionalProfile } from '@/hooks/useProfessionalProfile';
@@ -662,6 +663,8 @@ export default function ProfesionalBillingPage() {
                       void refreshSubscriptionStatus();
                     }}
                   />
+
+                  <BillingFeatureComparison currentPlanId={currentPlanId} />
 
                   <section
                     id="billing-plans"

@@ -172,23 +172,6 @@ public class BookingService implements BookingCommandWorkflowService {
         );
     }
 
-    public BookingCommandResponse retryBookingPayout(
-        String rawUserId,
-        Long bookingId,
-        String idempotencyKey
-    ) {
-        Long actorUserId = parseUserId(rawUserId);
-        return bookingCommandIdempotencyService.execute(
-            BookingActionType.RETRY_PAYOUT,
-            BookingActorType.PROFESSIONAL,
-            actorUserId,
-            bookingId,
-            idempotencyKey,
-            null,
-            () -> bookingCommandApplicationService.retryBookingPayout(rawUserId, bookingId)
-        );
-    }
-
     private Long parseUserId(String rawUserId) {
         try {
             return Long.valueOf(rawUserId);

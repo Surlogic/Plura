@@ -301,6 +301,8 @@ const GLOBAL_SEARCH_OPTION: SuggestDropdownItem = {
 };
 
 const POPULAR_CATEGORY_PATTERNS = ['barber', 'unas', 'depil', 'spa', 'cosmet'];
+const LOCATION_AUTOCOMPLETE_DEBOUNCE_MS = 300;
+const SEARCH_SUGGEST_DEBOUNCE_MS = 350;
 
 const interleaveSuggestionItems = (
   sources: SuggestDropdownItem[][],
@@ -449,7 +451,7 @@ export default function UnifiedSearchBar({
           if ((error as { code?: string; name?: string }).name === 'CanceledError') return;
           setGeoSuggestions([]);
         });
-    }, 250);
+    }, LOCATION_AUTOCOMPLETE_DEBOUNCE_MS);
 
     return () => {
       controller.abort();
@@ -484,7 +486,7 @@ export default function UnifiedSearchBar({
         .finally(() => {
           setIsSuggestLoading(false);
         });
-    }, 250);
+    }, SEARCH_SUGGEST_DEBOUNCE_MS);
 
     return () => {
       controller.abort();

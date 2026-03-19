@@ -25,6 +25,7 @@ import com.plura.plurabackend.core.billing.providerops.model.ProviderOperation;
 import com.plura.plurabackend.core.billing.providerops.model.ProviderOperationStatus;
 import com.plura.plurabackend.core.billing.providerops.model.ProviderOperationType;
 import com.plura.plurabackend.core.billing.webhooks.ParsedWebhookEvent;
+import com.plura.plurabackend.core.billing.webhooks.WebhookEventDomain;
 import com.plura.plurabackend.core.billing.webhooks.WebhookEventType;
 import com.plura.plurabackend.core.booking.bridge.BookingProfessionalPlanGateway;
 import com.plura.plurabackend.core.booking.dto.BookingPaymentSessionRequest;
@@ -40,12 +41,12 @@ import com.plura.plurabackend.core.booking.finance.model.BookingRefundStatus;
 import com.plura.plurabackend.core.booking.model.Booking;
 import com.plura.plurabackend.core.booking.model.BookingOperationalStatus;
 import com.plura.plurabackend.core.booking.model.ServicePaymentType;
+import com.plura.plurabackend.core.notification.integration.billing.BillingNotificationIntegrationService;
+import com.plura.plurabackend.core.notification.integration.booking.BookingNotificationIntegrationService;
 import com.plura.plurabackend.core.booking.repository.BookingRepository;
-import com.plura.plurabackend.core.professional.ProfessionalBillingSubjectGateway;
 import com.plura.plurabackend.core.user.model.User;
 import com.plura.plurabackend.core.user.model.UserRole;
 import com.plura.plurabackend.core.user.repository.UserRepository;
-import com.plura.plurabackend.professional.model.ProfessionalProfile;
 import java.math.BigDecimal;
 import java.time.Duration;
 import java.time.LocalDateTime;
@@ -85,7 +86,8 @@ public class BookingProviderIntegrationService {
     private final BillingProperties billingProperties;
     private final ObjectMapper objectMapper;
     private final BookingProfessionalPlanGateway bookingProfessionalPlanGateway;
-    private final ProfessionalBillingSubjectGateway professionalBillingSubjectGateway;
+    private final BillingNotificationIntegrationService billingNotificationIntegrationService;
+    private final BookingNotificationIntegrationService bookingNotificationIntegrationService;
     private final Map<PaymentProvider, PaymentProviderClient> providerClients;
     private final TransactionTemplate requiresNewTransaction;
 
@@ -103,7 +105,8 @@ public class BookingProviderIntegrationService {
         BillingProperties billingProperties,
         ObjectMapper objectMapper,
         BookingProfessionalPlanGateway bookingProfessionalPlanGateway,
-        ProfessionalBillingSubjectGateway professionalBillingSubjectGateway,
+        BillingNotificationIntegrationService billingNotificationIntegrationService,
+        BookingNotificationIntegrationService bookingNotificationIntegrationService,
         List<PaymentProviderClient> clients
     ) {
         this.bookingRepository = bookingRepository;
@@ -117,7 +120,8 @@ public class BookingProviderIntegrationService {
         this.billingProperties = billingProperties;
         this.objectMapper = objectMapper;
         this.bookingProfessionalPlanGateway = bookingProfessionalPlanGateway;
-        this.professionalBillingSubjectGateway = professionalBillingSubjectGateway;
+        this.billingNotificationIntegrationService = billingNotificationIntegrationService;
+        this.bookingNotificationIntegrationService = bookingNotificationIntegrationService;
         this.requiresNewTransaction = new TransactionTemplate(transactionManager);
         this.requiresNewTransaction.setPropagationBehavior(org.springframework.transaction.TransactionDefinition.PROPAGATION_REQUIRES_NEW);
         Map<PaymentProvider, PaymentProviderClient> mapped = new EnumMap<>(PaymentProvider.class);
@@ -125,53 +129,6 @@ public class BookingProviderIntegrationService {
             mapped.put(client.provider(), client);
         }
         this.providerClients = mapped;
-    }
-
-    public BookingProviderIntegrationService(
-        BookingRepository bookingRepository,
-        UserRepository userRepository,
-        PaymentTransactionRepository paymentTransactionRepository,
-        BookingFinanceService bookingFinanceService,
-        BookingEventService bookingEventService,
-        BookingMoneyResolver bookingMoneyResolver,
-        ProviderOperationService providerOperationService,
-        @Lazy ProviderOperationWorker providerOperationWorker,
-        PlatformTransactionManager transactionManager,
-        BillingProperties billingProperties,
-        ObjectMapper objectMapper,
-        List<PaymentProviderClient> clients
-    ) {
-        this(
-            bookingRepository,
-            userRepository,
-            paymentTransactionRepository,
-            bookingFinanceService,
-            bookingEventService,
-            bookingMoneyResolver,
-            providerOperationService,
-            providerOperationWorker,
-            transactionManager,
-            billingProperties,
-            objectMapper,
-            professionalId -> true,
-            new ProfessionalBillingSubjectGateway() {
-                @Override
-                public ProfessionalProfile loadEnabledProfessionalByUserId(Long userId) {
-                    throw new IllegalStateException("ProfessionalBillingSubjectGateway no configurado");
-                }
-
-                @Override
-                public java.util.Optional<ProfessionalProfile> findById(Long professionalId) {
-                    return java.util.Optional.empty();
-                }
-
-                @Override
-                public java.util.Optional<ProfessionalProfile> findByEmailIgnoreCase(String email) {
-                    return java.util.Optional.empty();
-                }
-            },
-            clients
-        );
     }
 
     @Transactional
@@ -565,7 +522,7 @@ public class BookingProviderIntegrationService {
                     user == null ? null : user.getEmail(),
                     user == null ? null : user.getFullName(),
                     buildBookingDescription(booking),
-                    normalizeSplitCode(booking),
+                    null,
                     resolveWebhookUrl(activeOperation.getProvider()),
                     activeOperation.getProvider()
                 )
@@ -575,7 +532,7 @@ public class BookingProviderIntegrationService {
                     .orElseThrow(() -> new IllegalStateException("Charge transaction no encontrada"));
                 Booking managedBooking = bookingRepository.findDetailedById(booking.getId())
                     .orElseThrow(() -> new IllegalStateException("Booking checkout no encontrada"));
-                managedTransaction.setProviderPaymentId(session.providerSubscriptionId());
+                managedTransaction.setProviderPaymentId(null);
                 managedTransaction.setProviderStatus("CHECKOUT_CREATED");
                 managedTransaction.setPayloadJson(writeCheckoutPayload(managedTransaction, session, managedBooking, null));
                 paymentTransactionRepository.save(managedTransaction);
@@ -972,22 +929,14 @@ public class BookingProviderIntegrationService {
             BookingFinancialSummary summary = bookingFinanceService.applyPayoutEvidence(booking, payoutRecord);
             return new BookingFinanceDispatchPlan(new BookingFinanceUpdateResult(summary, refundRecord, payoutRecord), List.of());
         }
-        if (usesSplitPayments(booking)) {
-            return completeSplitPayout(booking, payoutRecord, refundRecord, existingPayoutTx);
-        }
-
-        PaymentProvider provider = PaymentProvider.DLOCAL;
-        if (providerClients.get(provider) == null) {
-            BookingPayoutRecord failed = bookingFinanceService.markPayoutRecordFailed(
-                payoutRecord.getId(),
-                provider,
-                payoutRecord.getProviderReference(),
-                "{\"reason\":\"provider_not_configured\"}",
-                LocalDateTime.now()
-            );
-            BookingFinancialSummary summary = bookingFinanceService.applyPayoutEvidence(booking, failed);
-            return new BookingFinanceDispatchPlan(new BookingFinanceUpdateResult(summary, refundRecord, failed), List.of());
-        }
+        PaymentTransaction chargeTx = paymentTransactionRepository.findTopByBooking_IdAndTransactionTypeOrderByCreatedAtDesc(
+            booking.getId(),
+            PaymentTransactionType.BOOKING_CHARGE
+        ).orElse(null);
+        PaymentProvider provider = chargeTx == null || chargeTx.getProvider() == null
+            ? PaymentProvider.MERCADOPAGO
+            : chargeTx.getProvider();
+        LocalDateTime settledAt = LocalDateTime.now();
 
         PaymentTransaction payoutTx = existingPayoutTx == null ? new PaymentTransaction() : existingPayoutTx;
         payoutTx.setProfessionalId(booking.getProfessionalId());
@@ -997,43 +946,34 @@ public class BookingProviderIntegrationService {
         payoutTx.setTransactionType(PaymentTransactionType.BOOKING_PAYOUT);
         payoutTx.setAmount(payoutRecord.getTargetAmount());
         payoutTx.setCurrency(payoutRecord.getCurrency());
-        payoutTx.setStatus(PaymentTransactionStatus.PENDING);
+        payoutTx.setStatus(resolvePayoutTransactionStatus(payoutRecord, payoutRecord.getTargetAmount()));
         payoutTx.setExternalReference("payout:" + payoutRecord.getId());
         payoutTx.setFailedAt(null);
-        payoutTx.setApprovedAt(null);
+        payoutTx.setApprovedAt(settledAt);
+        payoutTx.setProviderStatus("MARKETPLACE_SETTLED");
+        payoutTx.setProviderPaymentId(chargeTx == null ? null : chargeTx.getProviderPaymentId());
         payoutTx.setPayloadJson(writeJson(Map.of(
-            "source", manualRetry ? "payout_retry_intent" : "payout_intent",
+            "source", manualRetry ? "marketplace_settlement_retry" : "marketplace_settlement",
             "bookingId", booking.getId(),
-            "payoutRecordId", payoutRecord.getId()
+            "payoutRecordId", payoutRecord.getId(),
+            "chargeTransactionId", chargeTx == null ? null : chargeTx.getId(),
+            "chargeProviderPaymentId", chargeTx == null ? null : chargeTx.getProviderPaymentId(),
+            "provider", provider.name()
         )));
-        payoutTx = paymentTransactionRepository.saveAndFlush(payoutTx);
+        paymentTransactionRepository.saveAndFlush(payoutTx);
 
-        ProviderOperation operation = providerOperationService.createOrReuseOperation(
-            ProviderOperationType.BOOKING_PAYOUT,
-            provider,
-            booking.getId(),
-            payoutTx.getId(),
-            null,
-            payoutRecord.getId(),
-            payoutTx.getExternalReference(),
-            writeJson(Map.of(
-                "bookingId", booking.getId(),
-                "payoutRecordId", payoutRecord.getId(),
-                "transactionId", payoutTx.getId(),
-                "manualRetry", manualRetry
-            ))
-        );
-
-        BookingPayoutRecord updatedRecord = bookingFinanceService.markPayoutRecordPendingProvider(
+        BookingPayoutRecord updatedRecord = bookingFinanceService.markPayoutRecordCompleted(
             payoutRecord.getId(),
             provider,
-            payoutTx.getProviderPaymentId(),
-            payoutTx.getPayloadJson()
+            chargeTx == null ? payoutRecord.getProviderReference() : chargeTx.getProviderPaymentId(),
+            payoutRecord.getTargetAmount(),
+            payoutTx.getPayloadJson(),
+            settledAt
         );
         BookingFinancialSummary summary = bookingFinanceService.applyPayoutEvidence(booking, updatedRecord);
         return new BookingFinanceDispatchPlan(
             new BookingFinanceUpdateResult(summary, refundRecord, updatedRecord),
-            List.of(operation.getId())
+            List.of()
         );
     }
 
@@ -1048,8 +988,7 @@ public class BookingProviderIntegrationService {
             List.of(PaymentTransactionStatus.PENDING),
             "pending_charge_sync"
         );
-        if (pendingCharge == null || pendingCharge.getProvider() == null
-            || pendingCharge.getProviderPaymentId() == null || pendingCharge.getProviderPaymentId().isBlank()) {
+        if (pendingCharge == null || pendingCharge.getProvider() == null) {
             return false;
         }
 
@@ -1064,6 +1003,7 @@ public class BookingProviderIntegrationService {
                 new ProviderVerificationRequest(
                     pendingCharge.getProviderPaymentId(),
                     null,
+                    pendingCharge.getExternalReference(),
                     pendingCharge.getAmount(),
                     pendingCharge.getCurrency(),
                     booking.getProfessionalId()
@@ -1089,6 +1029,12 @@ public class BookingProviderIntegrationService {
             applyChargeApproved(pendingCharge, event);
             PaymentTransaction saved = paymentTransactionRepository.save(pendingCharge);
             bookingFinanceService.applyExternalPaymentEvidence(booking, saved);
+            billingNotificationIntegrationService.recordPaymentApproved(
+                booking,
+                saved,
+                event,
+                "payment_status_sync"
+            );
             maybeConfirmBookingAfterSuccessfulCharge(booking, saved, event);
             return true;
         }
@@ -1096,8 +1042,14 @@ public class BookingProviderIntegrationService {
         if (isFailedVerificationStatus(verification.status())) {
             ParsedWebhookEvent event = buildVerificationEvent(booking, pendingCharge, verification, WebhookEventType.PAYMENT_FAILED);
             applyChargeFailed(pendingCharge, event);
-            paymentTransactionRepository.save(pendingCharge);
-            bookingFinanceService.applyExternalPaymentEvidence(booking, pendingCharge);
+            PaymentTransaction saved = paymentTransactionRepository.save(pendingCharge);
+            bookingFinanceService.applyExternalPaymentEvidence(booking, saved);
+            billingNotificationIntegrationService.recordPaymentFailed(
+                booking,
+                saved,
+                event,
+                "payment_status_sync"
+            );
             return true;
         }
 
@@ -1125,13 +1077,13 @@ public class BookingProviderIntegrationService {
                 user.getEmail(),
                 user.getFullName(),
                 buildBookingDescription(booking),
-                normalizeSplitCode(booking),
+                null,
                 resolveWebhookUrl(provider),
                 provider
             )
         );
         pendingCharge.setProvider(provider);
-        pendingCharge.setProviderPaymentId(session.providerSubscriptionId());
+        pendingCharge.setProviderPaymentId(null);
         pendingCharge.setPayloadJson(writeCheckoutPayload(pendingCharge, session, booking, previousProviderPaymentId));
         paymentTransactionRepository.save(pendingCharge);
         return session;
@@ -1150,11 +1102,6 @@ public class BookingProviderIntegrationService {
         String checkoutUrl = extractCheckoutUrl(pendingCharge);
         if (checkoutUrl != null && !checkoutUrl.isBlank()) {
             verificationPayload.put("checkoutUrl", checkoutUrl);
-        }
-        String splitCode = extractSplitCode(pendingCharge);
-        if (splitCode != null && !splitCode.isBlank()) {
-            verificationPayload.put("splitCode", splitCode);
-            verificationPayload.put("splitPayment", true);
         }
         return verificationPayload;
     }
@@ -1215,6 +1162,7 @@ public class BookingProviderIntegrationService {
 
         PaymentTransaction saved = paymentTransactionRepository.save(transaction);
         BookingFinancialSummary summary = bookingFinanceService.applyExternalPaymentEvidence(booking, saved);
+        emitFinancialNotification(booking, saved, event);
         markOperationSucceededFromTransaction(saved, event);
         maybeConfirmBookingAfterSuccessfulCharge(booking, saved, event);
         BookingRefundRecord refundRecord = maybeResolveRefundRecord(saved, event);
@@ -1570,6 +1518,45 @@ public class BookingProviderIntegrationService {
                 "providerPaymentId", firstNonBlank(transaction.getProviderPaymentId(), event.providerPaymentId(), event.providerObjectId())
             )
         );
+        bookingNotificationIntegrationService.recordBookingConfirmed(
+            booking,
+            BookingActorType.SYSTEM,
+            null,
+            "payment_webhook_auto_confirm"
+        );
+    }
+
+    private void emitFinancialNotification(
+        Booking booking,
+        PaymentTransaction transaction,
+        ParsedWebhookEvent event
+    ) {
+        if (booking == null || transaction == null || event == null) {
+            return;
+        }
+        switch (event.eventType()) {
+            case PAYMENT_SUCCEEDED, SUBSCRIPTION_RENEWED -> billingNotificationIntegrationService.recordPaymentApproved(
+                booking,
+                transaction,
+                event,
+                "payment_webhook"
+            );
+            case PAYMENT_FAILED -> billingNotificationIntegrationService.recordPaymentFailed(
+                booking,
+                transaction,
+                event,
+                "payment_webhook"
+            );
+            case PAYMENT_REFUNDED, REFUND_PARTIAL -> billingNotificationIntegrationService.recordPaymentRefunded(
+                booking,
+                transaction,
+                event,
+                "payment_webhook"
+            );
+            case REFUND_FAILED, PAYOUT_PENDING, PAYOUT_SUCCEEDED, PAYOUT_FAILED,
+                SUBSCRIPTION_PENDING, SUBSCRIPTION_CANCELLED, UNKNOWN -> {
+            }
+        }
     }
 
     private boolean isRefundSettled(BookingRefundRecord refundRecord) {
@@ -1614,41 +1601,9 @@ public class BookingProviderIntegrationService {
         BookingPayoutRecord payoutRecord,
         String idempotencyKey
     ) {
-        var professional = loadProfessional(booking);
-        if (professional == null || Boolean.FALSE.equals(professional.getDlocalPayoutEnabled())) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "El profesional no tiene payouts dLocal habilitados");
-        }
-        requirePayoutField(professional.getDlocalBeneficiaryFirstName(), "dlocal_beneficiary_first_name");
-        requirePayoutField(professional.getDlocalBeneficiaryLastName(), "dlocal_beneficiary_last_name");
-        requirePayoutField(professional.getDlocalBeneficiaryDocumentType(), "dlocal_beneficiary_document_type");
-        requirePayoutField(professional.getDlocalBeneficiaryDocumentNumber(), "dlocal_beneficiary_document_number");
-        requirePayoutField(professional.getDlocalBankCode(), "dlocal_bank_code");
-        requirePayoutField(professional.getDlocalBankBranch(), "dlocal_bank_branch");
-        requirePayoutField(professional.getDlocalBankAccountNumber(), "dlocal_bank_account_number");
-        requirePayoutField(professional.getDlocalBankAccountType(), "dlocal_bank_account_type");
-
-        String country = professional.getDlocalPayoutCountry();
-        if (country == null || country.isBlank()) {
-            country = billingProperties.getDlocal().getCountry();
-        }
-        return new ProviderPayoutRequest(
-            payoutRecord.getId(),
-            booking.getId(),
-            professional.getId(),
-            payoutRecord.getTargetAmount(),
-            payoutRecord.getCurrency(),
-            country,
-            professional.getDlocalBeneficiaryFirstName().trim(),
-            professional.getDlocalBeneficiaryLastName().trim(),
-            professional.getDlocalBeneficiaryDocumentType().trim(),
-            professional.getDlocalBeneficiaryDocumentNumber().trim(),
-            professional.getDlocalBankCode().trim(),
-            professional.getDlocalBankBranch().trim(),
-            professional.getDlocalBankAccountNumber().trim(),
-            professional.getDlocalBankAccountType().trim(),
-            "OTHER_SERVICES",
-            resolveWebhookUrl(PaymentProvider.DLOCAL),
-            idempotencyKey
+        throw new ResponseStatusException(
+            HttpStatus.CONFLICT,
+            "Los payouts externos ya no se usan en reservas Mercado Pago only"
         );
     }
 
@@ -1670,45 +1625,8 @@ public class BookingProviderIntegrationService {
         BookingRefundRecord refundRecord,
         PaymentTransaction existingPayoutTx
     ) {
-        PaymentTransaction chargeTx = paymentTransactionRepository.findTopByBooking_IdAndTransactionTypeOrderByCreatedAtDesc(
-            booking.getId(),
-            PaymentTransactionType.BOOKING_CHARGE
-        ).orElse(null);
-        if (chargeTx == null || !usesSplitPayments(chargeTx)) {
-            BookingFinancialSummary summary = bookingFinanceService.applyPayoutEvidence(booking, payoutRecord);
-            return new BookingFinanceDispatchPlan(new BookingFinanceUpdateResult(summary, refundRecord, payoutRecord), List.of());
-        }
-
-        PaymentTransaction payoutTx = existingPayoutTx;
-        LocalDateTime settledAt = LocalDateTime.now();
-        if (payoutTx == null) {
-            payoutTx = new PaymentTransaction();
-            payoutTx.setProfessionalId(booking.getProfessionalId());
-            payoutTx.setBooking(booking);
-            payoutTx.setPayoutRecord(payoutRecord);
-            payoutTx.setProvider(PaymentProvider.DLOCAL);
-            payoutTx.setTransactionType(PaymentTransactionType.BOOKING_PAYOUT);
-            payoutTx.setAmount(payoutRecord.getTargetAmount());
-            payoutTx.setCurrency(payoutRecord.getCurrency());
-            payoutTx.setExternalReference("split:" + payoutRecord.getId());
-        }
-
-        payoutTx.setStatus(resolvePayoutTransactionStatus(payoutRecord, payoutRecord.getTargetAmount()));
-        payoutTx.setProviderStatus("SPLIT_RELEASED");
-        payoutTx.setApprovedAt(settledAt);
-        payoutTx.setPayloadJson(writeJson(buildSplitPayoutPayload(booking, payoutRecord, chargeTx)));
-        paymentTransactionRepository.save(payoutTx);
-
-        BookingPayoutRecord updatedRecord = bookingFinanceService.markPayoutRecordCompleted(
-            payoutRecord.getId(),
-            PaymentProvider.DLOCAL,
-            "split:" + chargeTx.getId(),
-            payoutRecord.getTargetAmount(),
-            payoutTx.getPayloadJson(),
-            settledAt
-        );
-        BookingFinancialSummary summary = bookingFinanceService.applyPayoutEvidence(booking, updatedRecord);
-        return new BookingFinanceDispatchPlan(new BookingFinanceUpdateResult(summary, refundRecord, updatedRecord), List.of());
+        BookingFinancialSummary summary = bookingFinanceService.applyPayoutEvidence(booking, payoutRecord);
+        return new BookingFinanceDispatchPlan(new BookingFinanceUpdateResult(summary, refundRecord, payoutRecord), List.of());
     }
 
     private PaymentTransactionStatus resolveRefundTransactionStatus(
@@ -1751,24 +1669,15 @@ public class BookingProviderIntegrationService {
         return "REJECTED".equals(normalized) || "CANCELLED".equals(normalized);
     }
 
-    private void requirePayoutField(String value, String fieldName) {
-        if (value == null || value.isBlank()) {
-            throw new ResponseStatusException(
-                HttpStatus.CONFLICT,
-                "Falta configuración de payout dLocal para el profesional: " + fieldName
-            );
-        }
-    }
-
     private PaymentProvider resolveProvider(String rawProvider) {
         if (rawProvider == null || rawProvider.isBlank()) {
-            return PaymentProvider.DLOCAL;
+            return PaymentProvider.MERCADOPAGO;
         }
         PaymentProvider provider = PaymentProvider.fromCode(rawProvider);
-        if (provider != PaymentProvider.DLOCAL) {
+        if (provider != PaymentProvider.MERCADOPAGO) {
             throw new ResponseStatusException(
                 HttpStatus.BAD_REQUEST,
-                "Por ahora las reservas solo soportan provider DLOCAL para checkout/refund real"
+                "Las reservas solo soportan provider MERCADOPAGO"
             );
         }
         return provider;
@@ -1807,15 +1716,10 @@ public class BookingProviderIntegrationService {
         payload.put("externalReference", transaction == null ? null : transaction.getExternalReference());
         payload.put("provider", transaction == null || transaction.getProvider() == null ? null : transaction.getProvider().name());
         payload.put("checkoutUrl", session.checkoutUrl());
-        payload.put("providerPaymentId", session.providerSubscriptionId());
+        payload.put("providerCheckoutReference", session.providerSubscriptionId());
         if (previousProviderPaymentId != null && !previousProviderPaymentId.isBlank()
             && !previousProviderPaymentId.equals(session.providerSubscriptionId())) {
             payload.put("previousProviderPaymentId", previousProviderPaymentId);
-        }
-        String splitCode = normalizeSplitCode(booking);
-        if (splitCode != null && !splitCode.isBlank()) {
-            payload.put("splitCode", splitCode);
-            payload.put("splitPayment", true);
         }
         return writeJson(payload);
     }
@@ -1875,18 +1779,7 @@ public class BookingProviderIntegrationService {
     }
 
     private String extractSplitCode(PaymentTransaction transaction) {
-        if (transaction == null || transaction.getPayloadJson() == null || transaction.getPayloadJson().isBlank()) {
-            return null;
-        }
-        try {
-            JsonNode payload = objectMapper.readTree(transaction.getPayloadJson());
-            return firstNonBlank(
-                payload.path("splitCode").asText(null),
-                payload.path("split_code").asText(null)
-            );
-        } catch (JsonProcessingException ignored) {
-            return null;
-        }
+        return null;
     }
 
     private String mergeChargePayload(PaymentTransaction transaction, String nextPayloadJson) {
@@ -1905,11 +1798,6 @@ public class BookingProviderIntegrationService {
         String checkoutUrl = extractCheckoutUrl(transaction);
         if (checkoutUrl != null && !checkoutUrl.isBlank()) {
             payload.putIfAbsent("checkoutUrl", checkoutUrl);
-        }
-        String splitCode = extractSplitCode(transaction);
-        if (splitCode != null && !splitCode.isBlank()) {
-            payload.put("splitCode", splitCode);
-            payload.put("splitPayment", true);
         }
         return writeJson(payload);
     }
@@ -1941,23 +1829,6 @@ public class BookingProviderIntegrationService {
         }
     }
 
-    private Map<String, Object> buildSplitPayoutPayload(
-        Booking booking,
-        BookingPayoutRecord payoutRecord,
-        PaymentTransaction chargeTx
-    ) {
-        Map<String, Object> payload = new LinkedHashMap<>();
-        payload.put("source", "dlocal_go_split_payment");
-        payload.put("bookingId", booking.getId());
-        payload.put("payoutRecordId", payoutRecord.getId());
-        payload.put("chargeTransactionId", chargeTx.getId());
-        payload.put("providerPaymentId", chargeTx.getProviderPaymentId());
-        payload.put("splitCode", extractSplitCode(chargeTx));
-        payload.put("amount", payoutRecord.getTargetAmount());
-        payload.put("currency", payoutRecord.getCurrency());
-        return payload;
-    }
-
     private ParsedWebhookEvent buildVerificationEvent(
         Booking booking,
         PaymentTransaction transaction,
@@ -1966,6 +1837,7 @@ public class BookingProviderIntegrationService {
     ) {
         return new ParsedWebhookEvent(
             transaction.getProvider(),
+            WebhookEventDomain.RESERVATION,
             "sync:" + transaction.getProviderPaymentId() + ":" + eventType.name().toLowerCase(Locale.ROOT),
             firstNonBlank(verification.providerObjectId(), transaction.getProviderPaymentId()),
             eventType,
@@ -1995,37 +1867,6 @@ public class BookingProviderIntegrationService {
             || normalized.equals("CANCELED")
             || normalized.equals("EXPIRED")
             || normalized.equals("DENIED");
-    }
-
-    private boolean usesSplitPayments(Booking booking) {
-        PaymentTransaction chargeTx = paymentTransactionRepository.findTopByBooking_IdAndTransactionTypeOrderByCreatedAtDesc(
-            booking.getId(),
-            PaymentTransactionType.BOOKING_CHARGE
-        ).orElse(null);
-        return usesSplitPayments(chargeTx);
-    }
-
-    private boolean usesSplitPayments(PaymentTransaction chargeTx) {
-        return extractSplitCode(chargeTx) != null;
-    }
-
-    private String normalizeSplitCode(Booking booking) {
-        if (booking == null) {
-            return null;
-        }
-        var professional = loadProfessional(booking);
-        if (professional == null || professional.getDlocalSplitCode() == null) {
-            return null;
-        }
-        String splitCode = professional.getDlocalSplitCode().trim();
-        return splitCode.isBlank() ? null : splitCode;
-    }
-
-    private ProfessionalProfile loadProfessional(Booking booking) {
-        if (booking == null || booking.getProfessionalId() == null) {
-            return null;
-        }
-        return professionalBillingSubjectGateway.findById(booking.getProfessionalId()).orElse(null);
     }
 
     private void registerAfterCommit(Runnable action, boolean propagateFailures) {
@@ -2058,7 +1899,7 @@ public class BookingProviderIntegrationService {
         ProviderOperationType operationType = switch (transaction.getTransactionType()) {
             case BOOKING_CHARGE -> ProviderOperationType.BOOKING_CHECKOUT;
             case BOOKING_REFUND -> ProviderOperationType.BOOKING_REFUND;
-            case BOOKING_PAYOUT -> ProviderOperationType.BOOKING_PAYOUT;
+            case BOOKING_PAYOUT -> null;
             default -> null;
         };
         if (operationType == null) {

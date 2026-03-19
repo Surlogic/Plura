@@ -20,6 +20,15 @@ public interface ProfessionalProfileRepository extends JpaRepository<Professiona
     @EntityGraph(attributePaths = {"user", "categories"})
     Optional<ProfessionalProfile> findBySlug(String slug);
 
+    @Query(
+        """
+        SELECT p
+        FROM ProfessionalProfile p
+        WHERE p.slug = :slug
+        """
+    )
+    Optional<ProfessionalProfile> findSchedulingProfileBySlug(@Param("slug") String slug);
+
     boolean existsBySlug(String slug);
 
     @EntityGraph(attributePaths = {"user", "categories"})

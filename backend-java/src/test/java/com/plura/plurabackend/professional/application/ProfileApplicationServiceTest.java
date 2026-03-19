@@ -20,6 +20,7 @@ import com.plura.plurabackend.professional.repository.ProfessionalProfileReposit
 import com.plura.plurabackend.core.storage.thumbnail.ImageThumbnailJobService;
 import com.plura.plurabackend.core.user.model.User;
 import com.plura.plurabackend.core.user.repository.UserRepository;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
@@ -56,7 +57,8 @@ class ProfileApplicationServiceTest {
             mock(ProfilePublicPageAssembler.class),
             mock(ProfileBookingPolicySupport.class),
             mock(ProfileServiceCatalogSupport.class),
-            mock(ProfileGeocodingSupport.class)
+            mock(ProfileGeocodingSupport.class),
+            new SimpleMeterRegistry()
         );
 
         ProfesionalPublicPageUpdateRequest request = new ProfesionalPublicPageUpdateRequest();
@@ -109,7 +111,8 @@ class ProfileApplicationServiceTest {
             mock(ProfilePublicPageAssembler.class),
             mock(ProfileBookingPolicySupport.class),
             mock(ProfileServiceCatalogSupport.class),
-            mock(ProfileGeocodingSupport.class)
+            mock(ProfileGeocodingSupport.class),
+            new SimpleMeterRegistry()
         );
 
         ProfesionalPublicPageUpdateRequest request = new ProfesionalPublicPageUpdateRequest();
@@ -151,7 +154,8 @@ class ProfileApplicationServiceTest {
             mock(ProfilePublicPageAssembler.class),
             mock(ProfileBookingPolicySupport.class),
             mock(ProfileServiceCatalogSupport.class),
-            mock(ProfileGeocodingSupport.class)
+            mock(ProfileGeocodingSupport.class),
+            new SimpleMeterRegistry()
         );
 
         org.mockito.Mockito.doThrow(new ResponseStatusException(HttpStatus.FORBIDDEN, "blocked"))
@@ -201,7 +205,8 @@ class ProfileApplicationServiceTest {
             mock(ProfilePublicPageAssembler.class),
             mock(ProfileBookingPolicySupport.class),
             mock(ProfileServiceCatalogSupport.class),
-            mock(ProfileGeocodingSupport.class)
+            mock(ProfileGeocodingSupport.class),
+            new SimpleMeterRegistry()
         );
 
         ProfesionalBusinessProfileUpdateRequest request = new ProfesionalBusinessProfileUpdateRequest();

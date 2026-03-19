@@ -47,7 +47,7 @@ public class MercadoPagoSubscriptionService {
                     command.payerEmail(),
                     backUrl,
                     "pending",
-                    String.valueOf(command.professionalId()),
+                    "subscription:" + command.professionalId(),
                     "Plura " + command.plan().name(),
                     notificationUrl
                 )

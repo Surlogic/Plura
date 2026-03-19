@@ -1,0 +1,19 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "outDir": "./.test-build",
+    "module": "commonjs",
+    "moduleResolution": "node",
+    "target": "ES2020",
+    "isolatedModules": false,
+    "incremental": false,
+    "verbatimModuleSyntax": false,
+    "plugins": []
+  },
+  "include": [
+    "src/lib/billing/featureGuards.ts",
+    "src/lib/billing/featureGuards.test.ts",
+    "src/lib/bookings/professionalReservationActions.test.ts"
+  ]
+}

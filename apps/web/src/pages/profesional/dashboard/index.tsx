@@ -8,6 +8,7 @@ import ProfesionalSidebar from '@/components/profesional/Sidebar';
 import Button from '@/components/ui/Button';
 import Card from '@/components/ui/Card';
 import { cn } from '@/components/ui/cn';
+import { resolveProfessionalFeatureAccess } from '@/lib/billing/featureGuards';
 import { useProfessionalProfile } from '@/hooks/useProfessionalProfile';
 import { useProfessionalDashboardUnsavedSection } from '@/context/ProfessionalDashboardUnsavedChangesContext';
 import api from '@/services/api';
@@ -221,6 +222,7 @@ const buildDayLayouts = (items: ProfessionalReservation[]) => {
 
 export default function ProfesionalDashboardPage() {
   const { profile, refreshProfile } = useProfessionalProfile();
+  const featureAccess = resolveProfessionalFeatureAccess(profile);
   const [reservations, setReservations] = useState<ProfessionalReservation[]>([]);
   const [schedule, setSchedule] = useState<ProfessionalSchedule | null>(null);
   const [analyticsSummary, setAnalyticsSummary] = useState<ProfessionalAnalyticsSummary | null>(null);
@@ -284,8 +286,8 @@ export default function ProfesionalDashboardPage() {
   const weekStartKey = toLocalDateKey(currentWeekStart);
   const weekEndKey = toLocalDateKey(currentWeekEnd);
   const scheduleTier = profile?.professionalEntitlements?.scheduleTier ?? 'DAILY';
-  const canUseMonthlyCalendar = scheduleTier === 'MASTER';
-  const canNavigateCalendar = scheduleTier !== 'DAILY';
+  const canUseMonthlyCalendar = featureAccess.monthlyCalendar;
+  const canNavigateCalendar = featureAccess.weeklyCalendarNavigation;
 
   // Navigated week — used for calendar display
   const weekDays = useMemo(() => {
@@ -428,7 +430,7 @@ export default function ProfesionalDashboardPage() {
     };
   }, [profile?.id, requiredReservationDates]);
 
-  const canViewAnalytics = profile?.professionalEntitlements?.analyticsTier !== 'NONE';
+  const canViewAnalytics = featureAccess.basicAnalytics;
 
   useEffect(() => {
     if (!profile?.id || !canViewAnalytics) {
@@ -440,7 +442,7 @@ export default function ProfesionalDashboardPage() {
     const loadAnalytics = async () => {
       try {
         const summary = await getProfessionalAnalyticsSummary(
-          profile?.professionalEntitlements?.analyticsTier === 'ADVANCED' ? 'ADVANCED' : 'BASIC',
+          featureAccess.advancedAnalytics ? 'ADVANCED' : 'BASIC',
         );
         if (!isCancelled) {
           setAnalyticsSummary(summary);
@@ -459,7 +461,7 @@ export default function ProfesionalDashboardPage() {
     return () => {
       isCancelled = true;
     };
-  }, [canViewAnalytics, profile?.id, profile?.professionalEntitlements?.analyticsTier]);
+  }, [canViewAnalytics, featureAccess.advancedAnalytics, profile?.id]);
 
   useEffect(() => {
     if (!canUseMonthlyCalendar && calendarView === 'month') {
@@ -820,6 +822,11 @@ export default function ProfesionalDashboardPage() {
                           title="Pulso semanal"
                           description="Una lectura rápida del ritmo de tu agenda."
                         />
+                        {canViewAnalytics && !featureAccess.advancedAnalytics ? (
+                          <p className="mt-3 rounded-[16px] border border-[color:var(--premium-soft)] bg-[color:var(--premium-soft)] px-3 py-2 text-xs text-[color:var(--premium-strong)]">
+                            Estás viendo analytics básicos. El nivel avanzado se habilita en Enterprise.
+                          </p>
+                        ) : null}
                         <div className="mt-4 grid gap-3 sm:grid-cols-3 lg:grid-cols-1">
                           {(canViewAnalytics ? stats : [
                             { label: 'Reservas esta semana', value: '—', detail: 'Sin datos' },
@@ -895,6 +902,12 @@ export default function ProfesionalDashboardPage() {
                         </button>
                       </div>
 
+                      {!canUseMonthlyCalendar ? (
+                        <p className="text-xs text-[color:var(--ink-muted)]">
+                          La vista mensual queda disponible en Enterprise.
+                        </p>
+                      ) : null}
+
                       <div className="relative flex items-center gap-0.5 rounded-full border border-[color:var(--border-soft)] bg-white px-1 py-1 shadow-[var(--shadow-card)]">
                         <button
                           type="button"
@@ -932,6 +945,12 @@ export default function ProfesionalDashboardPage() {
                           </span>
                         )}
                       </div>
+
+                      {!canNavigateCalendar ? (
+                        <p className="text-xs text-[color:var(--ink-muted)]">
+                          La navegación por semanas se habilita desde Profesional.
+                        </p>
+                      ) : null}
 
                       <button
                         type="button"

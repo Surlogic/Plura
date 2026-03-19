@@ -219,39 +219,6 @@ public class InternalBookingOpsService {
     }
 
     @Transactional
-    public InternalBookingOpsActionResponse retryPayout(Long bookingId) {
-        Booking booking = loadBooking(bookingId, true);
-        BookingPayoutRecord payoutRecord = bookingFinanceService.findLatestPayoutRecord(bookingId);
-        if (payoutRecord == null) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "La reserva no tiene payout record");
-        }
-        if (payoutRecord.getStatus() != BookingPayoutStatus.FAILED
-            && payoutRecord.getStatus() != BookingPayoutStatus.PENDING_MANUAL) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "El payout actual no admite retry manual");
-        }
-
-        BookingFinanceDispatchPlan plan = bookingProviderIntegrationService.retryPayout(booking, payoutRecord);
-        BookingFinanceUpdateResult result = plan.localResult();
-        bookingEventService.record(
-            booking,
-            BookingEventType.BOOKING_PAYOUT_RETRY_REQUESTED,
-            BookingActorType.SYSTEM,
-            null,
-            Map.of(
-                "payoutRecordId", payoutRecord.getId(),
-                "resultStatus", result.payoutRecord() == null ? "UNKNOWN" : result.payoutRecord().getStatus().name()
-            )
-        );
-
-        return new InternalBookingOpsActionResponse(
-            "RETRY_PAYOUT",
-            result.payoutRecord() == null ? "NOOP" : result.payoutRecord().getStatus().name(),
-            "Retry manual de payout ejecutado sobre la evidencia actual",
-            buildDetail(booking)
-        );
-    }
-
-    @Transactional
     public InternalBookingOpsActionResponse recomputeFinancialSummary(Long bookingId) {
         Booking booking = loadBooking(bookingId, true);
         BookingFinancialSummary summary = bookingFinanceService.ensureInitializedWithEvidence(booking);

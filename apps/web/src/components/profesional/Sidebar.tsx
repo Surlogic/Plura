@@ -3,6 +3,11 @@ import { useEffect, useMemo, useRef } from 'react';
 import type { ProfessionalProfile } from '@/types/professional';
 import type { ProfessionalPlanCode } from '../../../../../packages/shared/src/types/professional';
 import { hasPlanAccess, PLAN_LABELS } from '../../../../../packages/shared/src/billing/planAccess';
+import {
+  canAccessProfessionalFeature,
+  requiredPlanForFeature,
+  type ProfessionalFeatureKey,
+} from '@/lib/billing/featureGuards';
 import { useProfessionalDashboardUnsavedChanges } from '@/context/ProfessionalDashboardUnsavedChangesContext';
 import Badge from '@/components/ui/Badge';
 import BrandLogo from '@/components/ui/BrandLogo';
@@ -11,6 +16,7 @@ import {
   DashboardIcon,
   type DashboardIconName,
 } from '@/components/profesional/dashboard/DashboardUI';
+import ProfessionalNotificationBell from '@/components/profesional/notifications/ProfessionalNotificationBell';
 
 type MenuItem = {
   label: string;
@@ -18,6 +24,7 @@ type MenuItem = {
   icon: DashboardIconName;
   disabled?: boolean;
   requiredPlan?: ProfessionalPlanCode;
+  featureKey?: ProfessionalFeatureKey;
 };
 
 type MenuSection = {
@@ -31,15 +38,31 @@ const menuSections: MenuSection[] = [
     items: [
       { label: 'Agenda', href: '/profesional/dashboard', icon: 'agenda' },
       { label: 'Reservas', href: '/profesional/dashboard/reservas', icon: 'reservas' },
+      { label: 'Notificaciones', href: '/profesional/notificaciones', icon: 'notificaciones' },
       { label: 'Horarios de trabajo', href: '/profesional/dashboard/horarios', icon: 'horarios' },
-      { label: 'Servicios', href: '/profesional/dashboard/servicios', icon: 'servicios' },
+      {
+        label: 'Servicios',
+        href: '/profesional/dashboard/servicios',
+        icon: 'servicios',
+        featureKey: 'onlinePayments',
+      },
     ],
   },
   {
     label: 'Presencia pública',
     items: [
-      { label: 'Perfil del negocio', href: '/profesional/dashboard/perfil-negocio', icon: 'negocio' },
-      { label: 'Página pública', href: '/profesional/dashboard/pagina-publica', icon: 'publica' },
+      {
+        label: 'Perfil del negocio',
+        href: '/profesional/dashboard/perfil-negocio',
+        icon: 'negocio',
+        featureKey: 'enhancedPublicProfile',
+      },
+      {
+        label: 'Página pública',
+        href: '/profesional/dashboard/pagina-publica',
+        icon: 'publica',
+        featureKey: 'enhancedPublicProfile',
+      },
     ],
   },
   {
@@ -151,6 +174,8 @@ export default function ProfesionalSidebar({ profile, active }: SidebarProps) {
             <p className="mt-1 text-sm text-[color:var(--ink-muted)]">{displayMeta}</p>
           </div>
         </div>
+
+        <ProfessionalNotificationBell onNavigate={requestNavigation} />
       </div>
 
       <div className="relative mt-5 space-y-5">
@@ -162,6 +187,10 @@ export default function ProfesionalSidebar({ profile, active }: SidebarProps) {
             <nav className="mt-2.5 space-y-1.5">
               {section.items.map((item) => {
                 const isActive = item.label === active;
+                const hintedPlan = item.featureKey ? requiredPlanForFeature(item.featureKey) : null;
+                const showsFeatureHint = item.featureKey
+                  ? !canAccessProfessionalFeature(profile, item.featureKey)
+                  : false;
                 const isLocked = item.requiredPlan
                   ? !hasPlanAccess(profile?.professionalPlan, item.requiredPlan)
                   : false;
@@ -192,18 +221,18 @@ export default function ProfesionalSidebar({ profile, active }: SidebarProps) {
                     <span className={cn('min-w-0 flex-1 truncate text-sm font-semibold', isLocked && 'opacity-60')}>
                       {item.label}
                     </span>
-                    {isLocked && item.requiredPlan && (
+                    {(isLocked && item.requiredPlan) || (showsFeatureHint && hintedPlan) ? (
                       <span
                         className="inline-flex items-center gap-1 rounded-full border border-[color:var(--premium-soft)] bg-[color:var(--premium-soft)] px-2 py-0.5 text-[0.5rem] font-semibold uppercase tracking-[0.1em] text-[color:var(--premium-strong)]"
-                        title={`Disponible en el plan ${PLAN_LABELS[item.requiredPlan]}`}
+                        title={`Disponible en el plan ${PLAN_LABELS[(item.requiredPlan || hintedPlan)!]}`}
                       >
                         <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                           <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
                           <path d="M7 11V7a5 5 0 0 1 10 0v4" />
                         </svg>
-                        {PLAN_LABELS[item.requiredPlan]}
+                        {PLAN_LABELS[(item.requiredPlan || hintedPlan)!]}
                       </span>
-                    )}
+                    ) : null}
                   </>
                 );
 

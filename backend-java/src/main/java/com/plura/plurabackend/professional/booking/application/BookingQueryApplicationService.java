@@ -11,10 +11,8 @@ import com.plura.plurabackend.core.booking.repository.BookingRepository;
 import com.plura.plurabackend.core.booking.time.BookingDateTimeService;
 import com.plura.plurabackend.professional.application.ProfessionalAccessSupport;
 import com.plura.plurabackend.professional.model.ProfessionalProfile;
-import com.plura.plurabackend.professional.plan.PlanGuardService;
 import java.time.LocalDate;
 import java.time.LocalTime;
-import java.time.temporal.ChronoUnit;
 import java.time.format.DateTimeParseException;
 import java.util.List;
 import java.util.Map;
@@ -33,22 +31,19 @@ public class BookingQueryApplicationService {
     private final BookingPolicySnapshotService bookingPolicySnapshotService;
     private final BookingDateTimeService bookingDateTimeService;
     private final ProfessionalAccessSupport professionalAccessSupport;
-    private final PlanGuardService planGuardService;
 
     public BookingQueryApplicationService(
         BookingRepository bookingRepository,
         BookingFinanceService bookingFinanceService,
         BookingPolicySnapshotService bookingPolicySnapshotService,
         BookingDateTimeService bookingDateTimeService,
-        ProfessionalAccessSupport professionalAccessSupport,
-        PlanGuardService planGuardService
+        ProfessionalAccessSupport professionalAccessSupport
     ) {
         this.bookingRepository = bookingRepository;
         this.bookingFinanceService = bookingFinanceService;
         this.bookingPolicySnapshotService = bookingPolicySnapshotService;
         this.bookingDateTimeService = bookingDateTimeService;
         this.professionalAccessSupport = professionalAccessSupport;
-        this.planGuardService = planGuardService;
     }
 
     @Transactional(readOnly = true)
@@ -76,9 +71,7 @@ public class BookingQueryApplicationService {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "dateTo debe ser mayor o igual a dateFrom");
             }
         }
-        long requestedDays = ChronoUnit.DAYS.between(dateFrom, dateTo) + 1;
-        planGuardService.requireScheduleRange(rawUserId, requestedDays);
-
+        // Reservas es un listado operativo; el gating de agenda diaria/semanal vive aparte.
         ProfessionalProfile profile = professionalAccessSupport.loadProfessionalByUserId(rawUserId);
         List<ProfessionalBookingResponse> bookings = bookingRepository.findProfessionalBookingResponsesByProfessionalIdAndStartDateTimeBetween(
             profile.getId(),

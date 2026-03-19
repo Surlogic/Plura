@@ -2,7 +2,9 @@
 
 import { isAxiosError } from 'axios';
 import { useEffect, useMemo, useState } from 'react';
+import { useRouter } from 'next/router';
 import ProfesionalSidebar from '@/components/profesional/Sidebar';
+import ProfessionalBookingTimeline from '@/components/profesional/reservations/ProfessionalBookingTimeline';
 import Button from '@/components/ui/Button';
 import Card from '@/components/ui/Card';
 import { useProfessionalProfile } from '@/hooks/useProfessionalProfile';
@@ -22,6 +24,7 @@ import {
   markProfessionalBookingNoShow,
   rescheduleProfessionalBooking,
   retryProfessionalBookingPayout,
+  updateProfessionalReservationStatus,
 } from '@/services/professionalBookings';
 import { getProfessionalPayoutConfig } from '@/services/professionalPayout';
 import { getPublicSlots } from '@/services/publicBookings';
@@ -40,6 +43,7 @@ import {
   shouldAutoRefreshFinancialStatus,
 } from '@/utils/bookings';
 import { getPayoutStatusCopy as getPayoutConfigStatusCopy } from '@/utils/payouts';
+import { canProfessionalConfirmReservation } from '../../../../../../packages/shared/src/bookings/professionalReservationActions';
 
 type DashboardServiceOption = {
   id: string;
@@ -108,6 +112,8 @@ const buildDateWindow = (daysPast: number, daysFuture: number) => {
   return dates;
 };
 
+const getFinancialRefreshDelayMs = (attempt: number) => Math.min(30000, 5000 * (attempt + 1));
+
 const extractApiMessage = (error: unknown, fallback: string) => {
   if (isAxiosError<{ message?: string }>(error)) {
     return error.response?.data?.message || fallback;
@@ -135,6 +141,7 @@ const operationalStatusTone: Record<ReservationStatus, string> = {
 };
 
 export default function ProfesionalReservationsPage() {
+  const router = useRouter();
   const { profile, isLoading, hasLoaded } = useProfessionalProfile();
   const [reservations, setReservations] = useState<ProfessionalReservation[]>([]);
   const [payoutConfig, setPayoutConfig] = useState<ProfessionalPayoutConfig | null>(null);
@@ -168,8 +175,13 @@ export default function ProfesionalReservationsPage() {
   const [slotOptions, setSlotOptions] = useState<string[]>([]);
   const [isLoadingSlots, setIsLoadingSlots] = useState(false);
   const [cancelReason, setCancelReason] = useState('');
+  const [timelineRefreshToken, setTimelineRefreshToken] = useState(0);
 
   const reservationDates = useMemo(() => buildDateWindow(30, 90), []);
+  const queryBookingId = useMemo(() => {
+    const value = router.query.bookingId;
+    return Array.isArray(value) ? value[0] ?? null : value ?? null;
+  }, [router.query.bookingId]);
 
   const loadReservations = async (keepSelection = true) => {
     if (!profile?.id) return;
@@ -180,6 +192,9 @@ export default function ProfesionalReservationsPage() {
       const response = await getProfessionalReservationsForDates(reservationDates);
       setReservations(response);
       setSelectedReservationId((current) => {
+        if (queryBookingId && response.some((reservation) => reservation.id === queryBookingId)) {
+          return queryBookingId;
+        }
         if (keepSelection && current && response.some((reservation) => reservation.id === current)) {
           return current;
         }
@@ -195,7 +210,7 @@ export default function ProfesionalReservationsPage() {
 
   useEffect(() => {
     void loadReservations(false);
-  }, [profile?.id, reservationDates]);
+  }, [profile?.id, queryBookingId, reservationDates]);
 
   useEffect(() => {
     if (!profile?.id) return;
@@ -321,12 +336,49 @@ export default function ProfesionalReservationsPage() {
     if (!selectedReservation?.financialSummary?.financialStatus) return;
     if (!shouldAutoRefreshFinancialStatus(selectedReservation.financialSummary.financialStatus)) return;
 
-    const intervalId = window.setInterval(() => {
-      void loadReservations();
-    }, 5000);
+    let timeoutId: number | null = null;
+    let attempt = 0;
+
+    const clearScheduledRefresh = () => {
+      if (timeoutId !== null) {
+        window.clearTimeout(timeoutId);
+        timeoutId = null;
+      }
+    };
+
+    const scheduleRefresh = () => {
+      if (typeof document !== 'undefined' && document.hidden) {
+        return;
+      }
+      if (timeoutId !== null) {
+        return;
+      }
+
+      timeoutId = window.setTimeout(async () => {
+        timeoutId = null;
+        if (typeof document !== 'undefined' && document.hidden) {
+          return;
+        }
+        await loadReservations();
+        attempt += 1;
+        scheduleRefresh();
+      }, getFinancialRefreshDelayMs(attempt));
+    };
+
+    const handleVisibilityChange = () => {
+      if (typeof document !== 'undefined' && document.hidden) {
+        clearScheduledRefresh();
+        return;
+      }
+      scheduleRefresh();
+    };
+
+    scheduleRefresh();
+    document.addEventListener('visibilitychange', handleVisibilityChange);
 
     return () => {
-      window.clearInterval(intervalId);
+      clearScheduledRefresh();
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, [selectedReservation?.financialSummary?.financialStatus]);
 
@@ -393,6 +445,7 @@ export default function ProfesionalReservationsPage() {
     selectedReservation?.status === 'confirmed'
     && Boolean(selectedDateTime)
     && (selectedDateTime?.getTime() ?? 0) <= Date.now();
+  const canConfirm = canProfessionalConfirmReservation(selectedReservation?.status);
   const canRetryPayout =
     selectedReservation?.financialSummary?.financialStatus === 'FAILED'
     && isPrepaidBooking(selectedReservation?.paymentType);
@@ -404,6 +457,15 @@ export default function ProfesionalReservationsPage() {
     setCancelReason('');
     setStatusMessage(null);
     setActionError(null);
+    setTimelineRefreshToken(0);
+    void router.replace(
+      {
+        pathname: router.pathname,
+        query: { ...router.query, bookingId: reservationId },
+      },
+      undefined,
+      { shallow: true },
+    );
   };
 
   const handleCreateReservation = async () => {
@@ -453,7 +515,7 @@ export default function ProfesionalReservationsPage() {
   };
 
   const runReservationAction = async (
-    action: () => Promise<{ plainTextFallback?: string | null }>,
+    action: () => Promise<unknown>,
     fallbackMessage: string,
   ) => {
     setIsSubmittingAction(true);
@@ -462,11 +524,16 @@ export default function ProfesionalReservationsPage() {
 
     try {
       const response = await action();
-      setStatusMessage(response.plainTextFallback || fallbackMessage);
+      const plainTextFallback =
+        response && typeof response === 'object' && 'plainTextFallback' in response
+          ? (response as { plainTextFallback?: string | null }).plainTextFallback
+          : null;
+      setStatusMessage(plainTextFallback || fallbackMessage);
       setShowRescheduleForm(false);
       setRescheduleTime('');
       setCancelReason('');
       await loadReservations();
+      setTimelineRefreshToken((current) => current + 1);
     } catch (error) {
       setActionError(extractApiMessage(error, fallbackMessage));
     } finally {
@@ -929,6 +996,11 @@ export default function ProfesionalReservationsPage() {
                               )}
                             </div>
 
+                            <ProfessionalBookingTimeline
+                              bookingId={selectedReservation.id}
+                              refreshToken={timelineRefreshToken}
+                            />
+
                             {actions?.canCancel ? (
                               <div className="mt-4 rounded-[18px] border border-[#FDE68A] bg-[#FFFBEB] p-4">
                                 <p className="text-sm font-semibold text-[#92400E]">Cancelar reserva</p>
@@ -1034,6 +1106,21 @@ export default function ProfesionalReservationsPage() {
                             ) : null}
 
                             <div className="mt-4 grid gap-3">
+                              {canConfirm ? (
+                                <Button
+                                  type="button"
+                                  disabled={isSubmittingAction}
+                                  onClick={() =>
+                                    runReservationAction(
+                                      () => updateProfessionalReservationStatus(selectedReservation.id, 'confirmed'),
+                                      'No se pudo confirmar la reserva.',
+                                    )
+                                  }
+                                >
+                                  {isSubmittingAction ? 'Confirmando...' : 'Confirmar reserva'}
+                                </Button>
+                              ) : null}
+
                               {canComplete ? (
                                 <Button
                                   type="button"

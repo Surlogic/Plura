@@ -2,6 +2,38 @@
 
 Base de codigo: `backend-java/src/main/java/com/plura/plurabackend`
 
+Este documento describe el backend desde dos capas:
+
+- endpoints y dominios disponibles hoy
+- lectura de producto segun `core`, `Usuario`, `Free`, `Pro` y `Premium`
+
+## Lectura ejecutiva
+
+El backend ya cubre gran parte del nucleo operativo del MVP:
+
+- auth y sesiones
+- perfiles
+- servicios
+- agenda y disponibilidad
+- reservas
+- busqueda
+- geolocalizacion
+- billing y pagos
+
+Tambien hay senales de una base mas amplia que el MVP:
+
+- OTP y auditoria auth
+- payouts y provider operations
+- cache, storage y jobs
+
+Todavia no se ve como superficie publica madura todo el set de:
+
+- notificaciones cliente en frontend web
+- reseñas y respuestas
+- analytics de producto
+- fidelizacion y ultima hora
+- multi-profesional avanzado
+
 ## Endpoints principales
 
 ### Salud y home
@@ -10,6 +42,11 @@ Base de codigo: `backend-java/src/main/java/com/plura/plurabackend`
 - `GET /api/home`
 - `GET /categories`
 - `GET /api/categories`
+
+Lectura de producto:
+
+- base para home, categorias y marketplace
+- relevante para `Usuario` y para la visibilidad del plan `Free`
 
 ### Auth y sesiones
 
@@ -53,6 +90,12 @@ El dominio `auth` incluye:
 - OAuth Google y Apple
 - proteccion anti abuso
 
+Lectura de producto:
+
+- cubre el bloque `CORE` de autenticacion y seguridad
+- soporta registro directo del profesional en `Free`
+- ya da base para login social y gestion de sesiones
+
 ### Busqueda y geolocalizacion
 
 - `GET /api/search`
@@ -64,9 +107,17 @@ El dominio `auth` incluye:
 El backend soporta:
 
 - busqueda desde DB
-- cache de search/suggest
+- cache de search y suggest
 - engine externo opcional via Meilisearch
 - indexacion y reindexado
+- timers Micrometer para `search`
+- atajo conservador en primera pagina para evitar `COUNT(*)` cuando el resultado completo entra en una sola pagina sin romper el total exacto
+- suggest con menor sobrelectura antes del ordenado final para bajar costo del typeahead sin cambiar contrato
+
+Lectura de producto:
+
+- cubre marketplace, buscador y filtros
+- tambien cubre ubicacion, direccion y mapa
 
 ### Profesionales publicos
 
@@ -77,6 +128,14 @@ Prefijo: `/public/profesionales`
 - `GET /public/profesionales/{slug}/slots`
 - `POST /public/profesionales/{slug}/reservas`
 
+Lectura de producto:
+
+- circuito publico central del MVP
+- soporta perfil publico, disponibilidad real y reserva sin pasar por panel privado
+- es la base de `Usuario` y del valor visible de `Free`
+- `GET /public/profesionales/{slug}` mantiene cache de perfil publico y ahora registra timing tecnico
+- `GET /public/profesionales/{slug}/slots` mantiene el mismo calculo funcional de disponibilidad, pero usa un finder liviano del profesional y registra timing tecnico
+
 ### Configuracion del profesional
 
 Prefijo: `/profesional`
@@ -84,8 +143,6 @@ Prefijo: `/profesional`
 - `GET /profesional/public-page`
 - `PUT /profesional/public-page`
 - `PUT /profesional/profile`
-- `GET /profesional/payout-config`
-- `PUT /profesional/payout-config`
 - `GET /profesional/schedule`
 - `GET /profesional/booking-policy`
 - `PUT /profesional/booking-policy`
@@ -95,23 +152,88 @@ Prefijo: `/profesional`
 - `POST /profesional/services/image`
 - `PUT /profesional/services/{id}`
 - `DELETE /profesional/services/{id}`
+- `GET /profesional/payment-providers/mercadopago/connection`
+- `POST /profesional/payment-providers/mercadopago/oauth/start`
+- `GET /profesional/payment-providers/mercadopago/oauth/callback`
+- `DELETE /profesional/payment-providers/mercadopago/connection`
 - `GET /profesional/reservas`
 - `POST /profesional/reservas`
 - `PUT /profesional/reservas/{id}`
+
+Lectura de producto:
+
+- cubre perfil editable del negocio o profesional
+- cubre constructor de servicios, imagen principal, duracion y precio
+- cubre horarios de trabajo y politicas de reserva
+- cubre carga manual de turnos desde panel
+- `GET /profesional/reservas` sostiene gestion operativa de reservas para `Free/BASIC` y no debe confundirse con gating de agenda semanal o mensual
+
+Notas:
+
+- `POST /profesional/services/image` confirma que el repo ya integra carga de imagenes en servicios
+- la capa de categorias existe en el sistema, pero el nivel exacto de etiquetas y reglas por servicio requiere revisar dominio y UI puntual
 
 ### Reservas del cliente
 
 - `GET /cliente/reservas`
 - `GET /cliente/reservas/me`
 - `GET /cliente/reservas/proxima`
+- `GET /cliente/reservas/{bookingId}/timeline`
 - `POST /cliente/reservas/{id}/cancel`
 - `POST /cliente/reservas/{id}/reschedule`
 - `POST /cliente/reservas/{id}/payment-session`
+
+Lectura de producto:
+
+- cubre historial y gestion de reservas del plan `Usuario`
+- soporta cancelacion y reagendamiento segun politica
+- `payment-session` es la base para reserva con pago online
+- `timeline` ya expone historial operativo de eventos de notification por reserva para el cliente autenticado
+- `GET /cliente/reservas/me` conserva el mismo response shape, pero ahora batch-ea summary/refund/payout latest por booking ids y queda mejor cubierto por un indice Flyway `booking(user_id, start_date_time)`
+
+### Notificaciones del cliente
+
+Prefijo: `/cliente`
+
+- `GET /cliente/notificaciones`
+- `GET /cliente/notificaciones/unread-count`
+- `GET /cliente/notificaciones/{id}`
+- `PATCH /cliente/notificaciones/{id}/read`
+- `PATCH /cliente/notificaciones/read-all`
+
+Lectura de producto:
+
+- ya existe inbox in-app y lectura para cliente a nivel backend
+- la ownership queda scopeada por `recipientType=CLIENT` y `recipientId=userId autenticado`
+- reutiliza el mismo modulo `core.notification` que profesional
+- inbox y unread count registran timing tecnico para no seguir ciegos sobre latencia real
+
+### Notificaciones del profesional
+
+Prefijo: `/profesional`
+
+- `GET /profesional/notificaciones`
+- `GET /profesional/notificaciones/unread-count`
+- `GET /profesional/notificaciones/{id}`
+- `PATCH /profesional/notificaciones/{id}/read`
+- `PATCH /profesional/notificaciones/read-all`
+- `GET /profesional/reservas/{bookingId}/timeline`
+
+Lectura de producto:
+
+- el backend ya expone inbox, contador y timeline operativo para el profesional
+- el ownership usa `recipientType=PROFESSIONAL` y `recipientId=professionalProfileId`
+- inbox y unread count registran timing tecnico para observabilidad basica
 
 ### Acciones sobre reservas
 
 - `GET /reservas/{id}/actions`
 - `GET /bookings/{id}/actions`
+
+Lectura de producto:
+
+- importante para mostrar que puede hacer cada actor segun estado y politica
+- conecta con el modelo de estados: pendiente, confirmado, cancelado, completado y no-show
 
 ### Acciones del profesional sobre reservas
 
@@ -121,7 +243,12 @@ Prefijo: `/profesional/reservas`
 - `POST /profesional/reservas/{id}/reschedule`
 - `POST /profesional/reservas/{id}/no-show`
 - `POST /profesional/reservas/{id}/complete`
-- `POST /profesional/reservas/{id}/payout/retry`
+
+Lectura de producto:
+
+- confirma que el backend ya contempla estados operativos clave
+- cubre buena parte de agenda diaria y gestion de reservas de `Free`
+- `no-show` y `complete` son base para analytics y seguimiento posteriores
 
 ### Favoritos
 
@@ -130,6 +257,11 @@ Prefijo: `/cliente/favoritos`
 - `GET /cliente/favoritos`
 - `POST /cliente/favoritos/{slug}`
 - `DELETE /cliente/favoritos/{slug}`
+
+Lectura de producto:
+
+- feature del plan `Usuario`
+- entra fuerte en fase de retencion
 
 ### Billing
 
@@ -143,7 +275,6 @@ Prefijo: `/billing`
 Webhooks:
 
 - `POST /webhooks/mercadopago`
-- `POST /webhooks/dlocal`
 
 El dominio `billing` tambien incluye:
 
@@ -156,15 +287,39 @@ El dominio `billing` tambien incluye:
 - verificacion de operaciones
 - alertas y worker de provider ops
 
+Estado real detectado en codigo:
+
+- suscripciones de plataforma: `Mercado Pago`
+- conexion OAuth del profesional a Mercado Pago: ya existe en `/profesional/payment-providers/mercadopago/*`
+- `POST /billing/*` hoy resuelve billing mensual del profesional y no checkout de reservas
+- pagos reales de reservas y refunds: `Mercado Pago` via `booking` + `providerops`
+- `/webhooks/mercadopago` procesa suscripciones y reservas con routing interno por dominio
+- `/cliente/reservas/{id}/payment-session` sigue siendo la entrada real para checkout de reservas
+
+Lectura de producto:
+
+- cubre el modelo comercial sin comision por reserva
+- soporta suscripcion mensual del profesional
+- soporta pagos online configurables del negocio
+
+Nota de naming:
+
+- el codigo actual usa `PLAN_BASIC`, `PLAN_PROFESIONAL` y `PLAN_ENTERPRISE`
+- a nivel de producto la lectura objetivo es `Free`, `Pro` y `Premium`
+
 ### Endpoints internos de operaciones
 
 - `GET /internal/ops/provider-operations/alerts`
 - `GET /internal/ops/bookings/alerts`
 - `GET /internal/ops/bookings/{id}/detail`
 - `POST /internal/ops/bookings/{id}/refund/retry`
-- `POST /internal/ops/bookings/{id}/payout/retry`
 - `POST /internal/ops/bookings/{id}/financial/recompute`
 - `POST /internal/ops/bookings/{id}/reconcile`
+
+Lectura de producto:
+
+- esto no es visible al usuario final, pero si es importante para operar pagos y reservas con confiabilidad
+- refuerza la tesis de "infraestructura de confianza" mas alla del simple booking flow
 
 ## Paquetes backend mas importantes
 
@@ -177,6 +332,49 @@ El dominio `billing` tambien incluye:
 - `cache`: cache in-memory y Redis.
 - `storage`: upload de imagenes y thumbnails.
 - `jobs`: integracion opcional con SQS.
+
+## Lectura por fase de roadmap
+
+### Fase 1 - MVP
+
+Capacidad ya muy visible en backend:
+
+- auth
+- perfiles
+- servicios
+- agenda
+- slots
+- reservas
+- marketplace publico
+- favoritos
+
+### Fase 2 - Operacion Pro
+
+Capacidad ya visible o encaminada:
+
+- billing y pagos
+- politicas y acciones de reserva
+- historial y operacion mas detallada
+- payout config
+
+Capacidad aun no consolidada como superficie clara:
+
+- ficha de cliente
+- analytics basicos
+- automatizaciones transaccionales mas completas
+- chat interno
+
+### Fase 3 y 4 - Retencion / Premium
+
+Capacidad que no aparece aun como dominio publico consolidado:
+
+- reseñas fuertes y respuestas
+- loyalty
+- ultima hora
+- portfolio visual
+- gift cards y paquetes
+- tienda y envios
+- multi-profesional avanzado
 
 ## Persistencia
 

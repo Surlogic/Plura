@@ -4,6 +4,7 @@ import api from '@/services/api';
 import Button from '@/components/ui/Button';
 import BrandLogo from '@/components/ui/BrandLogo';
 import ThemeSwitcher from '@/components/theme/ThemeSwitcher';
+import ClientNotificationBell from '@/components/cliente/notifications/ClientNotificationBell';
 import { useClientProfileContext } from '@/context/ClientProfileContext';
 import { useProfessionalProfileContext } from '@/context/ProfessionalProfileContext';
 import { clearAuthAccessToken } from '@/services/session';
@@ -88,6 +89,11 @@ export default function ClientDashboardNavbar({
 
         <div className="flex items-center gap-2 sm:gap-3">
           <ThemeSwitcher variant="compact" showLabel={false} className="hidden md:flex" />
+          <ClientNotificationBell
+            onNavigate={(href) => {
+              void router.push(href);
+            }}
+          />
           <details className="group relative">
             <summary className="flex h-10 cursor-pointer list-none items-center gap-2 rounded-full border border-[color:var(--border-soft)] bg-[color:var(--surface-strong)] px-2 pr-3 text-xs font-semibold text-[color:var(--ink)] shadow-[var(--shadow-card)] transition hover:bg-[color:var(--surface-hover)] [&::-webkit-details-marker]:hidden">
               <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[color:var(--primary-soft)] text-[color:var(--primary)]">

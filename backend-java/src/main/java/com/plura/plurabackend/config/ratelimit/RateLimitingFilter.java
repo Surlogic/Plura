@@ -161,7 +161,7 @@ public class RateLimitingFilter extends OncePerRequestFilter {
         if ("POST".equals(method) && "/billing/cancel".equals(path)) {
             return new RateLimitTarget("billing-cancel", resolveUserOrIp(request), 6);
         }
-        if ("POST".equals(method) && ("/webhooks/mercadopago".equals(path) || "/webhooks/dlocal".equals(path))) {
+        if ("POST".equals(method) && "/webhooks/mercadopago".equals(path)) {
             return new RateLimitTarget("billing-webhook-ip", extractClientIp(request), 600);
         }
         return null;

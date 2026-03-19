@@ -1,5 +1,5 @@
 import { isAxiosError } from 'axios';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/router';
 import dynamic from 'next/dynamic';
 import Navbar from '@/components/shared/Navbar';
@@ -366,6 +366,34 @@ export default function ExplorarPage() {
   const getCategoryLabel = (item: SearchItem) =>
     item.categorySlugs.length > 0 ? humanizeSlug(item.categorySlugs[0]) : 'Profesional';
 
+  const favoritePayloadById = useMemo(() => {
+    const payloadById = new Map<
+      string,
+      {
+        slug: string;
+        name: string;
+        category: string;
+        location?: string;
+        imageUrl?: string;
+        headline?: string;
+      }
+    >();
+
+    items.forEach((item) => {
+      if (!item.slug) return;
+      payloadById.set(String(item.id), {
+        slug: item.slug,
+        name: item.name,
+        category: getCategoryLabel(item),
+        location: item.locationText || undefined,
+        imageUrl: item.coverImageUrl || undefined,
+        headline: item.headline || undefined,
+      });
+    });
+
+    return payloadById;
+  }, [items]);
+
   const replaceQuery = (nextQuery: Record<string, string>) => {
     void router.replace(
       {
@@ -416,10 +444,37 @@ export default function ExplorarPage() {
     replaceQuery(nextQuery);
   };
 
-  const mapUserLocation =
-    hasCoordinates && typeof lat === 'number' && typeof lng === 'number'
-      ? { latitude: lat, longitude: lng }
-      : undefined;
+  const mapUserLocation = useMemo(
+    () => (
+      hasCoordinates && typeof lat === 'number' && typeof lng === 'number'
+        ? { latitude: lat, longitude: lng }
+        : undefined
+    ),
+    [hasCoordinates, lat, lng],
+  );
+
+  const handleMapItemHoverStart = useCallback((id?: string) => {
+    if (!id) return;
+    setHoveredMapItemId(id);
+  }, []);
+
+  const handleMapItemHoverEnd = useCallback((id?: string) => {
+    if (!id) {
+      setHoveredMapItemId(null);
+      return;
+    }
+    setHoveredMapItemId((current) => (current === id ? null : current));
+  }, []);
+
+  const handleFavoriteToggle = useCallback(
+    async (itemId?: string) => {
+      if (!itemId) return;
+      const favorite = favoritePayloadById.get(itemId);
+      if (!favorite) return;
+      await toggleFavorite(favorite);
+    },
+    [favoritePayloadById, toggleFavorite],
+  );
 
   const selectedRadiusOption = useMemo(() => {
     const rounded = Math.round(radiusKm);
@@ -576,29 +631,10 @@ export default function ExplorarPage() {
                         }
                         isHighlighted={activeMapItemId === String(item.id)}
                         priority={index < 2}
-                        onHoverStart={(id) => {
-                          if (!id) return;
-                          setHoveredMapItemId(id);
-                        }}
-                        onHoverEnd={(id) => {
-                          if (!id) {
-                            setHoveredMapItemId(null);
-                            return;
-                          }
-                          setHoveredMapItemId((current) => (current === id ? null : current));
-                        }}
+                        onHoverStart={handleMapItemHoverStart}
+                        onHoverEnd={handleMapItemHoverEnd}
                         isFavorite={isFavorite(item.slug)}
-                        onFavoriteToggle={() => {
-                          if (!item.slug) return;
-                          void toggleFavorite({
-                            slug: item.slug,
-                            name: item.name,
-                            category: getCategoryLabel(item),
-                            location: item.locationText || undefined,
-                            imageUrl: item.coverImageUrl || undefined,
-                            headline: item.headline || undefined,
-                          });
-                        }}
+                        onFavoriteToggle={handleFavoriteToggle}
                       />
                     ))}
                   </div>
@@ -676,17 +712,8 @@ export default function ExplorarPage() {
                       }
                       priority={index < 4}
                       isFavorite={isFavorite(item.slug)}
-                      onFavoriteToggle={() => {
-                        if (!item.slug) return;
-                        void toggleFavorite({
-                          slug: item.slug,
-                          name: item.name,
-                          category: getCategoryLabel(item),
-                          location: item.locationText || undefined,
-                          imageUrl: item.coverImageUrl || undefined,
-                          headline: item.headline || undefined,
-                        });
-                      }}
+                      id={String(item.id)}
+                      onFavoriteToggle={handleFavoriteToggle}
                     />
                   ))}
                 </div>

@@ -140,39 +140,6 @@ public class ProfessionalProfile {
     @Column(name = "active", nullable = false)
     private Boolean active = true;
 
-    @Column(name = "dlocal_payout_enabled", nullable = false)
-    private Boolean dlocalPayoutEnabled = false;
-
-    @Column(name = "dlocal_payout_country", length = 2)
-    private String dlocalPayoutCountry;
-
-    @Column(name = "dlocal_split_code", length = 120)
-    private String dlocalSplitCode;
-
-    @Column(name = "dlocal_beneficiary_first_name", length = 120)
-    private String dlocalBeneficiaryFirstName;
-
-    @Column(name = "dlocal_beneficiary_last_name", length = 120)
-    private String dlocalBeneficiaryLastName;
-
-    @Column(name = "dlocal_beneficiary_document_type", length = 30)
-    private String dlocalBeneficiaryDocumentType;
-
-    @Column(name = "dlocal_beneficiary_document_number", length = 64)
-    private String dlocalBeneficiaryDocumentNumber;
-
-    @Column(name = "dlocal_bank_code", length = 20)
-    private String dlocalBankCode;
-
-    @Column(name = "dlocal_bank_branch", length = 20)
-    private String dlocalBankBranch;
-
-    @Column(name = "dlocal_bank_account_number", length = 64)
-    private String dlocalBankAccountNumber;
-
-    @Column(name = "dlocal_bank_account_type", length = 20)
-    private String dlocalBankAccountType;
-
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
 
@@ -195,9 +162,6 @@ public class ProfessionalProfile {
         }
         if (this.hasAvailabilityToday == null) {
             this.hasAvailabilityToday = false;
-        }
-        if (this.dlocalPayoutEnabled == null) {
-            this.dlocalPayoutEnabled = false;
         }
     }
 }

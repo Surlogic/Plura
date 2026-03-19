@@ -3,6 +3,8 @@ package com.plura.plurabackend.professional.profile;
 import com.plura.plurabackend.core.common.util.SlugUtils;
 import com.plura.plurabackend.core.professional.ProfessionalAccountProfileGateway;
 import com.plura.plurabackend.core.professional.ProfessionalBillingSubjectGateway;
+import com.plura.plurabackend.core.professional.ProfessionalNotificationRecipient;
+import com.plura.plurabackend.core.professional.ProfessionalNotificationRecipientGateway;
 import com.plura.plurabackend.core.professional.ProfessionalProfileRegistrationCommand;
 import com.plura.plurabackend.core.professional.ProfessionalPublicReadFacade;
 import com.plura.plurabackend.core.professional.ProfessionalPublicSummary;
@@ -25,7 +27,8 @@ import org.springframework.web.server.ResponseStatusException;
 public class ProfessionalProfileGatewayService implements
     ProfessionalPublicReadFacade,
     ProfessionalAccountProfileGateway,
-    ProfessionalBillingSubjectGateway {
+    ProfessionalBillingSubjectGateway,
+    ProfessionalNotificationRecipientGateway {
 
     private final ProfessionalProfileRepository professionalProfileRepository;
     private final ProfessionalCategorySupport professionalCategorySupport;
@@ -127,6 +130,19 @@ public class ProfessionalProfileGatewayService implements
             return Optional.empty();
         }
         return professionalProfileRepository.findByUser_EmailIgnoreCase(email.trim());
+    }
+
+    @Override
+    public Optional<ProfessionalNotificationRecipient> findNotificationRecipientByProfessionalId(Long professionalId) {
+        if (professionalId == null) {
+            return Optional.empty();
+        }
+        return professionalProfileRepository.findById(professionalId)
+            .map(profile -> new ProfessionalNotificationRecipient(
+                profile.getId(),
+                profile.getUser() == null ? null : profile.getUser().getEmail(),
+                profile.getUser() == null ? profile.getDisplayName() : profile.getUser().getFullName()
+            ));
     }
 
     private ProfessionalPublicSummary toSummary(ProfessionalProfile profile) {

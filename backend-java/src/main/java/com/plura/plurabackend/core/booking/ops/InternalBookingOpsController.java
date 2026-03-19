@@ -54,15 +54,6 @@ public class InternalBookingOpsController {
         return internalBookingOpsService.retryRefund(bookingId);
     }
 
-    @PostMapping("/{id}/payout/retry")
-    public InternalBookingOpsActionResponse retryPayout(
-        @RequestHeader("X-Internal-Token") String internalToken,
-        @PathVariable("id") Long bookingId
-    ) {
-        internalOpsAccessService.requireAuthorized(internalToken);
-        return internalBookingOpsService.retryPayout(bookingId);
-    }
-
     @PostMapping("/{id}/financial/recompute")
     public InternalBookingOpsActionResponse recomputeFinancialSummary(
         @RequestHeader("X-Internal-Token") String internalToken,

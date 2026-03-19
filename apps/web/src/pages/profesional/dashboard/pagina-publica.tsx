@@ -4,15 +4,17 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ChangeEvent } from 'react';
 import ProfesionalSidebar from '@/components/profesional/Sidebar';
 import Button from '@/components/ui/Button';
+import LockedFeature from '@/components/ui/LockedFeature';
 import { useProfessionalProfile } from '@/hooks/useProfessionalProfile';
 import { useProfessionalDashboardUnsavedSection } from '@/context/ProfessionalDashboardUnsavedChangesContext';
+import { resolveProfessionalFeatureAccess } from '@/lib/billing/featureGuards';
 import api from '@/services/api';
 import {
   DashboardHero,
   DashboardSectionHeading,
   DashboardStatCard,
 } from '@/components/profesional/dashboard/DashboardUI';
-import { hasPlanAccess, nextPlanFor, PLAN_LABELS } from '../../../../../../packages/shared/src/billing/planAccess';
+import { nextPlanFor, PLAN_LABELS } from '../../../../../../packages/shared/src/billing/planAccess';
 import type {
   ProfessionalSchedule,
   PublicService,
@@ -41,6 +43,7 @@ const slugify = (value: string) =>
 
 export default function ProfesionalPublicPageBuilder() {
   const { profile, isLoading, hasLoaded } = useProfessionalProfile();
+  const featureAccess = resolveProfessionalFeatureAccess(profile);
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
   const [iframeReady, setIframeReady] = useState(false);
   const [origin, setOrigin] = useState('https://plura.com');
@@ -90,6 +93,7 @@ export default function ProfesionalPublicPageBuilder() {
     [services],
   );
   const canAddPhoto = photos.length < maxBusinessPhotos;
+  const canManageEnhancedContent = featureAccess.enhancedPublicProfile;
   const previewPayload = useMemo(
     () => ({
       type: 'plura-preview',
@@ -247,13 +251,15 @@ export default function ProfesionalPublicPageBuilder() {
     try {
       const persistedPhotos = photos.map((photo) => photo.url).filter(Boolean);
       await api.put('/profesional/public-page', {
-        headline: form.headline,
-        about: form.about,
+        ...(canManageEnhancedContent ? {
+          headline: form.headline,
+          about: form.about,
+        } : {}),
         photos: persistedPhotos,
       });
       const nextForm: PublicPageForm = {
-        headline: form.headline,
-        about: form.about,
+        headline: canManageEnhancedContent ? form.headline : (initialForm?.headline ?? form.headline),
+        about: canManageEnhancedContent ? form.about : (initialForm?.about ?? form.about),
       };
       const nextPhotos = photos.map((photo, index) => ({
         id: photo.id || `photo-${index + 1}`,
@@ -267,14 +273,14 @@ export default function ProfesionalPublicPageBuilder() {
       setSaveError(false);
       setIsDirty(false);
       return true;
-    } catch (error) {
+    } catch {
       setSaveMessage('No se pudo guardar. Intentá de nuevo.');
       setSaveError(true);
       return false;
     } finally {
       setIsSaving(false);
     }
-  }, [form, isSaving, photos]);
+  }, [canManageEnhancedContent, form, initialForm, isSaving, photos]);
 
   const handleReset = useCallback(() => {
     if (!initialForm || !initialPhotos) return;
@@ -351,15 +357,21 @@ export default function ProfesionalPublicPageBuilder() {
               )}
             />
 
-            {saveMessage ? (
-              <p className={`rounded-full border px-4 py-2 text-sm font-medium shadow-[var(--shadow-card)] ${
+                {saveMessage ? (
+                  <p className={`rounded-full border px-4 py-2 text-sm font-medium shadow-[var(--shadow-card)] ${
                 saveError
                   ? 'border-red-200 bg-red-50 text-red-500'
                   : 'border-[#cdeee9] bg-[#f0fffc] text-[#1FB6A6]'
               }`}>
                 {saveMessage}
-              </p>
-            ) : null}
+                  </p>
+                ) : null}
+
+                {!canManageEnhancedContent ? (
+                  <p className="rounded-[20px] border border-[color:var(--premium-soft)] bg-[color:var(--premium-soft)] px-4 py-3 text-sm text-[color:var(--premium-strong)] shadow-[var(--shadow-card)]">
+                    La frase principal y el texto “Sobre mí” se editan desde el plan {PLAN_LABELS.PROFESIONAL}. En BASIC podés seguir actualizando fotos y compartir tu ficha pública.
+                  </p>
+                ) : null}
 
             {showSkeleton ? (
               <div className="rounded-[28px] border border-white/70 bg-white/95 p-6 shadow-[0_18px_40px_rgba(15,23,42,0.12)]">
@@ -390,20 +402,25 @@ export default function ProfesionalPublicPageBuilder() {
                     />
                   </div>
 
-                  <div className="rounded-[24px] border border-white/70 bg-white/95 p-5 shadow-[0_16px_36px_rgba(15,23,42,0.12)]">
-                    <DashboardSectionHeading
-                      title="Frase principal"
-                      description="Es la promesa principal que aparece debajo del nombre en la ficha pública."
-                    />
-                    <div className="mt-4">
-                      <input
-                        className={inputClassName}
-                        name="headline"
-                        value={form.headline}
-                        onChange={handleChange}
+                  <LockedFeature
+                    requiredPlan="PROFESIONAL"
+                    currentPlan={profile?.professionalPlan}
+                  >
+                    <div className="rounded-[24px] border border-white/70 bg-white/95 p-5 shadow-[0_16px_36px_rgba(15,23,42,0.12)]">
+                      <DashboardSectionHeading
+                        title="Frase principal"
+                        description="Es la promesa principal que aparece debajo del nombre en la ficha pública."
                       />
+                      <div className="mt-4">
+                        <input
+                          className={inputClassName}
+                          name="headline"
+                          value={form.headline}
+                          onChange={handleChange}
+                        />
+                      </div>
                     </div>
-                  </div>
+                  </LockedFeature>
 
                   <div className="rounded-[24px] border border-white/70 bg-white/95 p-5 shadow-[0_16px_36px_rgba(15,23,42,0.12)]">
                     <div className="flex items-center justify-between">
@@ -453,20 +470,25 @@ export default function ProfesionalPublicPageBuilder() {
                     </div>
                   </div>
 
-                  <div className="rounded-[24px] border border-white/70 bg-white/95 p-5 shadow-[0_16px_36px_rgba(15,23,42,0.12)]">
-                    <DashboardSectionHeading
-                      title="Sobre mí"
-                      description="Contá quién sos, qué hacés y qué tipo de experiencia van a encontrar tus clientes."
-                    />
-                    <div className="mt-4">
-                      <textarea
-                        className={`${inputClassName} h-28 resize-none`}
-                        name="about"
-                        value={form.about}
-                        onChange={handleChange}
+                  <LockedFeature
+                    requiredPlan="PROFESIONAL"
+                    currentPlan={profile?.professionalPlan}
+                  >
+                    <div className="rounded-[24px] border border-white/70 bg-white/95 p-5 shadow-[0_16px_36px_rgba(15,23,42,0.12)]">
+                      <DashboardSectionHeading
+                        title="Sobre mí"
+                        description="Contá quién sos, qué hacés y qué tipo de experiencia van a encontrar tus clientes."
                       />
+                      <div className="mt-4">
+                        <textarea
+                          className={`${inputClassName} h-28 resize-none`}
+                          name="about"
+                          value={form.about}
+                          onChange={handleChange}
+                        />
+                      </div>
                     </div>
-                  </div>
+                  </LockedFeature>
                 </div>
 
                 <div className="space-y-6">

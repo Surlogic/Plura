@@ -110,14 +110,6 @@ public class ProfessionalPublicPageService {
         return bookingService.completeBooking(rawUserId, bookingId, idempotencyKey);
     }
 
-    public BookingCommandResponse retryBookingPayout(
-        String rawUserId,
-        Long bookingId,
-        String idempotencyKey
-    ) {
-        return bookingService.retryBookingPayout(rawUserId, bookingId, idempotencyKey);
-    }
-
     public List<ProfesionalPublicSummaryResponse> listPublicProfessionals(
         Integer limit,
         Integer page,

@@ -4,20 +4,14 @@ import { useClientProfileContext } from '@/context/ClientProfileContext';
 
 export const useClientProfile = () => {
   const router = useRouter();
-  const { profile, isLoading, hasLoaded, refreshProfile, clearProfile } =
-    useClientProfileContext();
+  const { profile, isLoading, hasLoaded, clearProfile } = useClientProfileContext();
 
   useEffect(() => {
-    if (!hasLoaded && !isLoading) {
-      refreshProfile();
-      return;
-    }
-
     if (hasLoaded && !isLoading && !profile) {
       clearProfile();
       router.push('/cliente/auth/login');
     }
-  }, [router, hasLoaded, isLoading, profile, refreshProfile, clearProfile]);
+  }, [router, hasLoaded, isLoading, profile, clearProfile]);
 
   return { profile, isLoading, hasLoaded };
 };

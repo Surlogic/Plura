@@ -14,8 +14,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
  * Punto de entrada principal de la aplicación Plura Backend.
  * Configura Spring Boot con tareas programadas (@EnableScheduling)
  * y procesamiento asíncrono (@EnableAsync).
- * Antes de arrancar, carga variables de entorno desde un archivo .env
- * y aplica compatibilidad con configuraciones legacy de billing (DLocal).
+ * Antes de arrancar, carga variables de entorno desde un archivo .env.
  */
 @SpringBootApplication
 @EnableScheduling
@@ -31,7 +30,6 @@ public class PluraBackendApplication {
 		Dotenv dotenv = Dotenv.configure().ignoreIfMissing().load();
 		dotenv.entries().forEach(entry -> applyDotenvFallback(entry.getKey(), entry.getValue()));
 		applyDatasourceCompatibility(dotenv);
-		applyLegacyBillingCompatibility(dotenv);
 		SpringApplication.run(PluraBackendApplication.class, args);
 	}
 
@@ -72,72 +70,9 @@ public class PluraBackendApplication {
 		}
 	}
 
-	/**
-	 * Migra las variables de entorno legacy de DLocal (DLOCAL_API_KEY, etc.)
-	 * al nuevo formato con prefijo BILLING_DLOCAL_*.
-	 * Esto permite mantener compatibilidad con despliegues anteriores
-	 * sin necesidad de actualizar las variables de entorno manualmente.
-	 */
-	private static void applyLegacyBillingCompatibility(Dotenv dotenv) {
-		Map<String, String> legacyValues = dotenv.entries().stream()
-			.collect(java.util.stream.Collectors.toMap(
-				io.github.cdimascio.dotenv.DotenvEntry::getKey,
-				io.github.cdimascio.dotenv.DotenvEntry::getValue,
-				(first, second) -> first
-			));
-
-		String legacyApiKey = firstNonBlank(
-			currentValue("DLOCAL_API_KEY"),
-			legacyValues.get("DLOCAL_API_KEY")
-		);
-		String legacySecretKey = firstNonBlank(
-			currentValue("DLOCAL_SECRET_KEY"),
-			legacyValues.get("DLOCAL_SECRET_KEY")
-		);
-		String legacyXTransKey = firstNonBlank(
-			currentValue("DLOCAL_X_TRANS_KEY"),
-			legacyValues.get("DLOCAL_X_TRANS_KEY")
-		);
-		String legacyEnv = firstNonBlank(
-			currentValue("DLOCAL_ENV"),
-			legacyValues.get("DLOCAL_ENV")
-		);
-
-		if (isBlank(currentValue("BILLING_DLOCAL_ENABLED"))
-			&& !isBlank(legacyEnv)
-			&& !isBlank(legacyApiKey)
-			&& !isBlank(legacySecretKey)) {
-			System.setProperty("BILLING_DLOCAL_ENABLED", "true");
-		}
-
-		applyLegacyFallback("BILLING_DLOCAL_X_LOGIN", legacyApiKey);
-		applyLegacyFallback("BILLING_DLOCAL_X_TRANS_KEY", firstNonBlank(legacyXTransKey, legacySecretKey));
-		applyLegacyFallback("BILLING_DLOCAL_SECRET_KEY", legacySecretKey);
-		applyLegacyFallback("BILLING_DLOCAL_WEBHOOK_SECRET", legacySecretKey);
-		applyLegacyFallback(
-			"BILLING_DLOCAL_PAYOUT_CLIENT_ID",
-			firstNonBlank(currentValue("DLOCAL_PAYOUT_CLIENT_ID"), legacyValues.get("DLOCAL_PAYOUT_CLIENT_ID"))
-		);
-		applyLegacyFallback(
-			"BILLING_DLOCAL_PAYOUT_CLIENT_SECRET",
-			firstNonBlank(currentValue("DLOCAL_PAYOUT_CLIENT_SECRET"), legacyValues.get("DLOCAL_PAYOUT_CLIENT_SECRET"))
-		);
-	}
-
 	private static void applyDotenvFallback(String key, String value) {
 		if (isBlank(currentValue(key)) && !isBlank(value)) {
 			System.setProperty(key, value);
-		}
-	}
-
-	/**
-	 * Aplica un valor de respaldo para una propiedad del sistema si no está definida.
-	 * @param targetKey clave destino de la propiedad del sistema
-	 * @param fallbackValue valor legacy a usar si la clave destino está vacía
-	 */
-	private static void applyLegacyFallback(String targetKey, String fallbackValue) {
-		if (isBlank(currentValue(targetKey)) && !isBlank(fallbackValue)) {
-			System.setProperty(targetKey, fallbackValue);
 		}
 	}
 

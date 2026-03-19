@@ -8,7 +8,8 @@
     "build": "NEXT_BUILD_DIR=.next-build node ./scripts/clean-next-build.cjs clean && NEXT_BUILD_DIR=.next-build next build",
     "analyze": "NEXT_BUILD_DIR=.next-build node ./scripts/clean-next-build.cjs clean && NEXT_BUILD_DIR=.next-build ANALYZE=true next build",
     "start": "NEXT_BUILD_DIR=.next-build node ./scripts/clean-next-build.cjs ensure && NEXT_BUILD_DIR=.next-build next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test:unit": "node ./scripts/run-unit-tests.cjs"
   },
   "dependencies": {
     "@react-oauth/google": "^0.12.2",

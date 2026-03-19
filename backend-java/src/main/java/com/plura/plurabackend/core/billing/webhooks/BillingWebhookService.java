@@ -6,7 +6,6 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.plura.plurabackend.core.billing.BillingProperties;
 import com.plura.plurabackend.core.billing.payments.PaymentEventLedgerService;
 import com.plura.plurabackend.core.billing.payments.model.PaymentProvider;
-import com.plura.plurabackend.core.billing.webhooks.signature.DLocalWebhookSignatureVerifier;
 import com.plura.plurabackend.core.billing.webhooks.signature.MercadoPagoWebhookSignatureVerifier;
 import com.plura.plurabackend.core.billing.webhooks.signature.SignatureUtils;
 import io.micrometer.core.instrument.MeterRegistry;
@@ -34,7 +33,6 @@ public class BillingWebhookService {
 
     private final BillingProperties billingProperties;
     private final MercadoPagoWebhookSignatureVerifier mercadoPagoSignatureVerifier;
-    private final DLocalWebhookSignatureVerifier dlocalSignatureVerifier;
     private final PaymentEventLedgerService paymentEventLedgerService;
     private final WebhookEventProcessor webhookEventProcessor;
     private final MeterRegistry meterRegistry;
@@ -44,7 +42,6 @@ public class BillingWebhookService {
     public BillingWebhookService(
         BillingProperties billingProperties,
         MercadoPagoWebhookSignatureVerifier mercadoPagoSignatureVerifier,
-        DLocalWebhookSignatureVerifier dlocalSignatureVerifier,
         PaymentEventLedgerService paymentEventLedgerService,
         WebhookEventProcessor webhookEventProcessor,
         MeterRegistry meterRegistry,
@@ -53,7 +50,6 @@ public class BillingWebhookService {
     ) {
         this.billingProperties = billingProperties;
         this.mercadoPagoSignatureVerifier = mercadoPagoSignatureVerifier;
-        this.dlocalSignatureVerifier = dlocalSignatureVerifier;
         this.paymentEventLedgerService = paymentEventLedgerService;
         this.webhookEventProcessor = webhookEventProcessor;
         this.meterRegistry = meterRegistry;
@@ -90,25 +86,6 @@ public class BillingWebhookService {
 
     public WebhookHandleResult processPreparedWebhook(PreparedWebhookDispatch dispatch) {
         return registerAndProcess(dispatch.event(), dispatch.requestId());
-    }
-
-    public WebhookHandleResult handleDLocal(HttpServletRequest request, String rawPayload) {
-        if (!billingProperties.isEnabled() || !billingProperties.getDlocal().isEnabled()) {
-            return WebhookHandleResult.IGNORED;
-        }
-
-        String requestId = resolveRequestId(request);
-        LOGGER.info("Webhook recibido provider={} requestId={}", PaymentProvider.DLOCAL, requestId);
-        increment("received", PaymentProvider.DLOCAL);
-        String payload = rawPayload == null ? "{}" : rawPayload;
-
-        if (!dlocalSignatureVerifier.verify(payload, request)) {
-            increment("invalid_signature", PaymentProvider.DLOCAL);
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Firma de dLocal inválida");
-        }
-
-        ParsedWebhookEvent event = parseDlocalEvent(payload, request);
-        return registerAndProcess(event, requestId);
     }
 
     private WebhookHandleResult registerAndProcess(ParsedWebhookEvent event, String requestId) {
@@ -227,6 +204,7 @@ public class BillingWebhookService {
 
             return new ParsedWebhookEvent(
                 PaymentProvider.MERCADOPAGO,
+                resolveMercadoPagoDomain(root, externalReference, providerSubscriptionId, bookingId),
                 providerEventId,
                 providerObjectId,
                 eventType,
@@ -245,103 +223,6 @@ public class BillingWebhookService {
             );
         } catch (Exception exception) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Payload de Mercado Pago inválido");
-        }
-    }
-
-    private ParsedWebhookEvent parseDlocalEvent(String payload, HttpServletRequest request) {
-        try {
-            JsonNode root = objectMapper.readTree(payload);
-            String externalReference = firstNonBlank(
-                root.path("external_id").asText(null),
-                root.path("external_reference").asText(null),
-                root.at("/metadata/professionalId").asText(null)
-            );
-            String providerEventId = firstNonBlank(
-                root.path("event_id").asText(null),
-                root.path("id").asText(null),
-                buildDeterministicEventId(PaymentProvider.DLOCAL, payload, request)
-            );
-            String type = safeLower(firstNonBlank(root.path("event_type").asText(null), root.path("type").asText(null)));
-            String status = safeLower(firstNonBlank(root.path("payment_status").asText(null), root.path("status").asText(null)));
-            WebhookEventType eventType = resolveDlocalEventType(
-                type,
-                status,
-                externalReference,
-                root.path("id").asText(null)
-            );
-            String providerObjectId = isRefundEvent(eventType)
-                ? firstNonBlank(
-                    root.path("refund_id").asText(null),
-                    root.path("id").asText(null),
-                    root.path("payment_id").asText(null)
-                )
-                : isPayoutEvent(eventType)
-                    ? firstNonBlank(
-                        root.path("id").asText(null),
-                        root.path("payout_id").asText(null)
-                    )
-                : firstNonBlank(
-                    root.path("payment_id").asText(null),
-                    root.path("subscription_id").asText(null),
-                    root.path("id").asText(null)
-                );
-
-            Long professionalId = parseProfessionalId(externalReference);
-            Long bookingId = parseBookingId(firstNonBlank(
-                root.at("/metadata/bookingId").asText(null),
-                externalReference
-            ));
-            String planCode = firstNonBlank(
-                root.at("/metadata/planCode").asText(null),
-                root.path("plan_code").asText(null),
-                root.path("plan").asText(null)
-            );
-
-            String providerSubscriptionId = firstNonBlank(
-                root.path("subscription_id").asText(null),
-                root.path("recurring_id").asText(null)
-            );
-            String providerPaymentId = firstNonBlank(
-                root.path("payment_id").asText(null),
-                root.path("id").asText(null)
-            );
-            String orderReference = firstNonBlank(
-                root.path("external_id").asText(null),
-                root.path("external_reference").asText(null),
-                root.path("order_id").asText(null),
-                root.path("merchant_order_id").asText(null)
-            );
-
-            BigDecimal amount = parseDecimal(firstNonBlank(root.path("amount").asText(null), root.path("value").asText(null)));
-            String currency = firstNonBlank(root.path("currency").asText(null), root.path("currency_id").asText(null));
-            LocalDateTime eventTime = parseDateTime(firstNonBlank(
-                root.path("created_at").asText(null),
-                root.path("event_date").asText(null),
-                root.path("date").asText(null)
-            ));
-
-            boolean cancelAtPeriodEnd = root.path("cancel_at_period_end").asBoolean(false);
-
-            return new ParsedWebhookEvent(
-                PaymentProvider.DLOCAL,
-                providerEventId,
-                providerObjectId,
-                eventType,
-                professionalId,
-                bookingId,
-                providerSubscriptionId,
-                providerPaymentId,
-                orderReference,
-                amount,
-                currency,
-                planCode,
-                cancelAtPeriodEnd,
-                eventTime,
-                SignatureUtils.sha256Hex(payload),
-                buildSafePayload(root)
-            );
-        } catch (Exception exception) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Payload de dLocal inválido");
         }
     }
 
@@ -386,37 +267,45 @@ public class BillingWebhookService {
         return WebhookEventType.UNKNOWN;
     }
 
-    private WebhookEventType resolveDlocalEventType(
-        String eventType,
-        String status,
-        String externalReference,
-        String providerObjectId
-    ) {
-        boolean payoutReference = externalReference != null && externalReference.startsWith("payout:");
-        boolean payoutLikeId = providerObjectId != null && providerObjectId.startsWith("PO-");
-        if (payoutReference || payoutLikeId) {
-            String normalizedStatus = status == null ? "" : status.trim().toUpperCase(Locale.ROOT);
-            if ("PAID".equals(normalizedStatus) || "DELIVERED".equals(normalizedStatus)) {
-                return WebhookEventType.PAYOUT_SUCCEEDED;
-            }
-            if ("REJECTED".equals(normalizedStatus) || "CANCELLED".equals(normalizedStatus)) {
-                return WebhookEventType.PAYOUT_FAILED;
-            }
-            return WebhookEventType.PAYOUT_PENDING;
-        }
-        return resolveEventType(eventType, status);
-    }
-
     private boolean isRefundEvent(WebhookEventType eventType) {
         return eventType == WebhookEventType.PAYMENT_REFUNDED
             || eventType == WebhookEventType.REFUND_PARTIAL
             || eventType == WebhookEventType.REFUND_FAILED;
     }
 
-    private boolean isPayoutEvent(WebhookEventType eventType) {
-        return eventType == WebhookEventType.PAYOUT_PENDING
-            || eventType == WebhookEventType.PAYOUT_SUCCEEDED
-            || eventType == WebhookEventType.PAYOUT_FAILED;
+    private WebhookEventDomain resolveMercadoPagoDomain(
+        JsonNode root,
+        String externalReference,
+        String providerSubscriptionId,
+        Long bookingId
+    ) {
+        String metadataDomain = safeLower(firstNonBlank(
+            root.at("/metadata/pluraDomain").asText(null),
+            root.at("/metadata/domain").asText(null)
+        ));
+        if ("reservation".equals(metadataDomain)) {
+            return WebhookEventDomain.RESERVATION;
+        }
+        if ("subscription".equals(metadataDomain)) {
+            return WebhookEventDomain.SUBSCRIPTION;
+        }
+        if (bookingId != null) {
+            return WebhookEventDomain.RESERVATION;
+        }
+        if (externalReference != null) {
+            if (externalReference.startsWith("booking:")
+                || externalReference.startsWith("refund:")
+                || externalReference.startsWith("payout:")) {
+                return WebhookEventDomain.RESERVATION;
+            }
+            if (externalReference.startsWith("subscription:")) {
+                return WebhookEventDomain.SUBSCRIPTION;
+            }
+        }
+        if (providerSubscriptionId != null && !providerSubscriptionId.isBlank()) {
+            return WebhookEventDomain.SUBSCRIPTION;
+        }
+        return WebhookEventDomain.UNKNOWN;
     }
 
     private boolean isSubscriptionAction(String action) {
@@ -451,8 +340,17 @@ public class BillingWebhookService {
     }
 
     private Long parseProfessionalId(String value) {
-        if (value == null || value.isBlank() || value.trim().toLowerCase(Locale.ROOT).startsWith("booking:")) {
+        if (value == null || value.isBlank()) {
             return null;
+        }
+        String normalized = value.trim().toLowerCase(Locale.ROOT);
+        if (normalized.startsWith("booking:")
+            || normalized.startsWith("refund:")
+            || normalized.startsWith("payout:")) {
+            return null;
+        }
+        if (normalized.startsWith("subscription:")) {
+            return parseLong(normalized.substring("subscription:".length()));
         }
         return parseLong(value);
     }

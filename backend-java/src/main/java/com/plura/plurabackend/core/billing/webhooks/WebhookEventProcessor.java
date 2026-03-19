@@ -73,13 +73,17 @@ public class WebhookEventProcessor {
         PaymentEvent paymentEvent = paymentEventRepository.findById(paymentEventId)
             .orElseThrow(() -> new IllegalStateException("Evento de pago no encontrado"));
 
-        if (bookingProviderIntegrationService.processWebhook(paymentEvent, event)) {
+        if (event.domain() != WebhookEventDomain.SUBSCRIPTION
+            && bookingProviderIntegrationService.processWebhook(paymentEvent, event)) {
             paymentEvent.setEventType(event.eventType().name());
             paymentEvent.setProcessed(true);
             paymentEvent.setProcessedAt(LocalDateTime.now());
             paymentEvent.setProcessingError(null);
             paymentEventRepository.save(paymentEvent);
             return;
+        }
+        if (event.domain() == WebhookEventDomain.RESERVATION) {
+            throw new IllegalStateException("No se pudo resolver el webhook de reserva con la metadata recibida");
         }
 
         Map<String, MercadoPagoSubscriptionService.SubscriptionSnapshot> snapshotCache = new HashMap<>();
@@ -218,6 +222,7 @@ public class WebhookEventProcessor {
             new ProviderVerificationRequest(
                 event.providerPaymentId(),
                 event.providerSubscriptionId(),
+                event.orderReference(),
                 subscription.getExpectedAmount(),
                 subscription.getExpectedCurrency(),
                 expectedProfessionalId

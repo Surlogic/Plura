@@ -21,7 +21,6 @@ import com.plura.plurabackend.core.booking.BookingFinancialCommandSupport;
 import com.plura.plurabackend.core.booking.BookingPaymentsGateway;
 import com.plura.plurabackend.professional.booking.application.BookingQueryApplicationService;
 import com.plura.plurabackend.core.booking.BookingSchedulingAvailabilityGateway;
-import com.plura.plurabackend.core.billing.application.BookingPayoutApplicationService;
 import com.plura.plurabackend.core.billing.providerops.ProviderOperationWorker;
 import com.plura.plurabackend.core.booking.decision.BookingActionDecisionService;
 import com.plura.plurabackend.core.booking.decision.model.BookingActionDecision;
@@ -37,6 +36,7 @@ import com.plura.plurabackend.core.booking.finance.model.BookingFinancialSummary
 import com.plura.plurabackend.core.booking.model.Booking;
 import com.plura.plurabackend.core.booking.model.BookingOperationalStatus;
 import com.plura.plurabackend.core.booking.model.ServicePaymentType;
+import com.plura.plurabackend.core.notification.integration.booking.BookingNotificationIntegrationService;
 import com.plura.plurabackend.core.booking.policy.BookingPolicySnapshot;
 import com.plura.plurabackend.core.booking.policy.BookingPolicySnapshotService;
 import com.plura.plurabackend.core.booking.policy.ResolvedBookingPolicy;
@@ -126,14 +126,8 @@ class BookingCommandApplicationServiceRescheduleTest {
         bookingActionDecisionService,
         bookingDateTimeService
     );
-    private final BookingPayoutApplicationService bookingPayoutApplicationService = new BookingPayoutApplicationService(
-        bookingRepository,
-        bookingFinanceService,
-        professionalAccessSupport,
-        bookingCommandStateSupport,
-        bookingFinancialCommandSupport,
-        bookingCommandResponseAssembler
-    );
+    private final BookingNotificationIntegrationService bookingNotificationIntegrationService =
+        mock(BookingNotificationIntegrationService.class);
     private final BookingCommandApplicationService bookingCommandApplicationService = new BookingCommandApplicationService(
         professionalProfileRepository,
         profesionalServiceRepository,
@@ -151,7 +145,7 @@ class BookingCommandApplicationServiceRescheduleTest {
         bookingFinancialCommandSupport,
         bookingCommandResponseAssembler,
         bookingCommandStateSupport,
-        bookingPayoutApplicationService,
+        bookingNotificationIntegrationService,
         meterRegistry,
         passwordEncoder,
         "America/Montevideo"

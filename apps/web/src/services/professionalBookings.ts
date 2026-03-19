@@ -12,6 +12,7 @@ import type {
   BookingRefundRecord,
   BookingRefundStatus,
 } from '@/types/bookings';
+import type { ProfessionalBookingTimelineResponse } from '@/types/professionalBookingTimeline';
 import type { ProfessionalReservation, ReservationStatus } from '@/types/professional';
 import { formatBookingDateLabel, formatBookingTimeLabel } from '@/utils/bookings';
 import { buildIdempotencyKey } from '../../../../packages/shared/src/bookings/idempotency';
@@ -122,6 +123,13 @@ export const createProfessionalReservation = async (
 
 export const getProfessionalBookingActions = async (bookingId: string) => {
   const response = await api.get<BookingActions>(`/reservas/${bookingId}/actions`);
+  return response.data;
+};
+
+export const getProfessionalBookingTimeline = async (bookingId: string) => {
+  const response = await api.get<ProfessionalBookingTimelineResponse>(
+    `/profesional/reservas/${bookingId}/timeline`,
+  );
   return response.data;
 };
 

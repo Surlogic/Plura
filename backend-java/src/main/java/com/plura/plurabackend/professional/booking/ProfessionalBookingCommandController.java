@@ -73,14 +73,6 @@ public class ProfessionalBookingCommandController {
         return professionalPublicPageService.completeBooking(getProfesionalId(), bookingId, idempotencyKey);
     }
 
-    @PostMapping("/{id}/payout/retry")
-    public BookingCommandResponse retryPayout(
-        @PathVariable("id") Long bookingId,
-        @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey
-    ) {
-        return professionalPublicPageService.retryBookingPayout(getProfesionalId(), bookingId, idempotencyKey);
-    }
-
     private String getProfesionalId() {
         return String.valueOf(roleGuard.requireProfessional());
     }

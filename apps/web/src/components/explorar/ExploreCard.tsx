@@ -19,7 +19,7 @@ type ExploreCardProps = {
   onHoverStart?: (id?: string) => void;
   onHoverEnd?: (id?: string) => void;
   isFavorite?: boolean;
-  onFavoriteToggle?: () => void;
+  onFavoriteToggle?: (id?: string) => void;
 };
 
 export default memo(function ExploreCard({
@@ -74,7 +74,7 @@ export default memo(function ExploreCard({
           <div className="absolute right-3 top-3 z-20">
             <FavoriteToggleButton
               isActive={isFavorite}
-              onClick={onFavoriteToggle}
+              onClick={() => onFavoriteToggle(id)}
               tone="light"
               activeLabel={`Quitar a ${name} de favoritos`}
               inactiveLabel={`Guardar a ${name} en favoritos`}

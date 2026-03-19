@@ -4,7 +4,9 @@ import { useRouter } from 'next/router';
 import '@/pages/globals.css';
 import { ProfessionalProfileProvider } from '@/context/ProfessionalProfileContext';
 import { ClientProfileProvider } from '@/context/ClientProfileContext';
+import { ClientNotificationsProvider } from '@/context/ClientNotificationsContext';
 import { ProfessionalDashboardUnsavedChangesProvider } from '@/context/ProfessionalDashboardUnsavedChangesContext';
+import { ProfessionalNotificationsProvider } from '@/context/ProfessionalNotificationsContext';
 import { ThemeProvider } from '@/components/theme/ThemeProvider';
 
 const instrumentSans = Instrument_Sans({
@@ -31,21 +33,25 @@ export default function App({ Component, pageProps }: AppProps) {
   const shouldAutoLoadProfessionalProfile = isRouteOrChild(
     pathname,
     '/profesional/dashboard',
-  );
+  ) || isRouteOrChild(pathname, '/profesional/notificaciones');
 
   return (
     <ThemeProvider>
-      <ProfessionalDashboardUnsavedChangesProvider>
-        <ProfessionalProfileProvider autoLoad={shouldAutoLoadProfessionalProfile}>
-          <ClientProfileProvider autoLoad={shouldAutoLoadClientProfile}>
-            <div
-              className={`${instrumentSans.variable} ${instrumentSans.className} font-sans antialiased`}
-            >
-              <Component {...pageProps} />
-            </div>
-          </ClientProfileProvider>
-        </ProfessionalProfileProvider>
-      </ProfessionalDashboardUnsavedChangesProvider>
+      <ProfessionalNotificationsProvider>
+        <ProfessionalDashboardUnsavedChangesProvider>
+          <ProfessionalProfileProvider autoLoad={shouldAutoLoadProfessionalProfile}>
+            <ClientNotificationsProvider>
+              <ClientProfileProvider autoLoad={shouldAutoLoadClientProfile}>
+                <div
+                  className={`${instrumentSans.variable} ${instrumentSans.className} font-sans antialiased`}
+                >
+                  <Component {...pageProps} />
+                </div>
+              </ClientProfileProvider>
+            </ClientNotificationsProvider>
+          </ProfessionalProfileProvider>
+        </ProfessionalDashboardUnsavedChangesProvider>
+      </ProfessionalNotificationsProvider>
     </ThemeProvider>
   );
 }

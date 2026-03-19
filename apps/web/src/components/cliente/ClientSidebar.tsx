@@ -9,6 +9,7 @@ type IconProps = {
 export type ClientSidebarSection =
   | 'inicio'
   | 'reservas'
+  | 'notificaciones'
   | 'favoritos'
   | 'perfil'
   | 'configuracion';
@@ -39,6 +40,13 @@ const HeartIcon = ({ className }: IconProps) => (
   </svg>
 );
 
+const BellIcon = ({ className }: IconProps) => (
+  <svg viewBox="0 0 24 24" fill="none" className={className} aria-hidden="true">
+    <path d="M12 5a4 4 0 0 0-4 4v2.1c0 .7-.18 1.39-.53 2l-1.12 1.9a1 1 0 0 0 .86 1.5h9.58a1 1 0 0 0 .86-1.5l-1.12-1.9a4 4 0 0 1-.53-2V9a4 4 0 0 0-4-4Z" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+    <path d="M10 18.3a2.1 2.1 0 0 0 4 0" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+  </svg>
+);
+
 const UserIcon = ({ className }: IconProps) => (
   <svg viewBox="0 0 24 24" fill="none" className={className} aria-hidden="true">
     <circle cx="12" cy="8" r="3.5" stroke="currentColor" strokeWidth="1.8" />
@@ -56,6 +64,7 @@ const SettingsIcon = ({ className }: IconProps) => (
 const sidebarItems: SidebarItem[] = [
   { id: 'inicio', label: 'Inicio', href: '/cliente/inicio', icon: HomeIcon },
   { id: 'reservas', label: 'Mis reservas', href: '/cliente/reservas', icon: CalendarIcon },
+  { id: 'notificaciones', label: 'Notificaciones', href: '/cliente/notificaciones', icon: BellIcon },
   { id: 'favoritos', label: 'Favoritos', href: '/cliente/favoritos', icon: HeartIcon },
   { id: 'perfil', label: 'Mi perfil', href: '/cliente/perfil', icon: UserIcon },
   { id: 'configuracion', label: 'Configuracion', href: '/cliente/configuracion', icon: SettingsIcon },

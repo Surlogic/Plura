@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
 import ClientShell from '@/components/cliente/ClientShell';
+import ClientBookingTimeline from '@/components/cliente/reservations/ClientBookingTimeline';
 import { useClientProfile } from '@/hooks/useClientProfile';
 import {
   cancelClientBooking,
@@ -46,6 +47,8 @@ const sortByDateAsc = (a: ClientDashboardBooking, b: ClientDashboardBooking): nu
 
 const sortByDateDesc = (a: ClientDashboardBooking, b: ClientDashboardBooking): number =>
   new Date(b.startDateTimeUtc || b.dateTime).getTime() - new Date(a.startDateTimeUtc || a.dateTime).getTime();
+
+const getFinancialRefreshDelayMs = (attempt: number) => Math.min(30000, 5000 * (attempt + 1));
 
 const extractApiMessage = (error: unknown, fallback: string) => {
   if (isAxiosError<{ message?: string }>(error)) {
@@ -125,6 +128,7 @@ export default function ClienteReservasPage() {
   const [slotError, setSlotError] = useState<string | null>(null);
   const [isLoadingSlots, setIsLoadingSlots] = useState(false);
   const [cancelReason, setCancelReason] = useState('');
+  const [timelineRefreshToken, setTimelineRefreshToken] = useState(0);
 
   const queryBookingId = useMemo(() => {
     const value = router.query.bookingId;
@@ -273,12 +277,49 @@ export default function ClienteReservasPage() {
     if (!selectedBooking?.financialSummary?.financialStatus) return;
     if (!shouldAutoRefreshFinancialStatus(selectedBooking.financialSummary.financialStatus)) return;
 
-    const intervalId = window.setInterval(() => {
-      void loadBookings();
-    }, 5000);
+    let timeoutId: number | null = null;
+    let attempt = 0;
+
+    const clearScheduledRefresh = () => {
+      if (timeoutId !== null) {
+        window.clearTimeout(timeoutId);
+        timeoutId = null;
+      }
+    };
+
+    const scheduleRefresh = () => {
+      if (typeof document !== 'undefined' && document.hidden) {
+        return;
+      }
+      if (timeoutId !== null) {
+        return;
+      }
+
+      timeoutId = window.setTimeout(async () => {
+        timeoutId = null;
+        if (typeof document !== 'undefined' && document.hidden) {
+          return;
+        }
+        await loadBookings();
+        attempt += 1;
+        scheduleRefresh();
+      }, getFinancialRefreshDelayMs(attempt));
+    };
+
+    const handleVisibilityChange = () => {
+      if (typeof document !== 'undefined' && document.hidden) {
+        clearScheduledRefresh();
+        return;
+      }
+      scheduleRefresh();
+    };
+
+    scheduleRefresh();
+    document.addEventListener('visibilitychange', handleVisibilityChange);
 
     return () => {
-      window.clearInterval(intervalId);
+      clearScheduledRefresh();
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, [selectedBooking?.financialSummary?.financialStatus]);
 
@@ -322,6 +363,10 @@ export default function ClienteReservasPage() {
     );
   };
 
+  const refreshTimeline = () => {
+    setTimelineRefreshToken((current) => current + 1);
+  };
+
   const handleStartCheckout = async () => {
     if (!selectedBooking) return;
 
@@ -344,6 +389,7 @@ export default function ClienteReservasPage() {
         setStatusMessage('El backend devolvió la reserva sin abrir un checkout nuevo.');
       }
       await loadBookings();
+      refreshTimeline();
     } catch (submitError) {
       closeCheckoutWindow(checkoutWindow);
       setActionError(
@@ -366,6 +412,7 @@ export default function ClienteReservasPage() {
       setCancelReason('');
       setShowReschedule(false);
       await loadBookings();
+      refreshTimeline();
     } catch (submitError) {
       setActionError(
         extractApiMessage(submitError, 'No se pudo cancelar la reserva.'),
@@ -395,6 +442,7 @@ export default function ClienteReservasPage() {
       setShowReschedule(false);
       setRescheduleTime('');
       await loadBookings();
+      refreshTimeline();
     } catch (submitError) {
       setActionError(
         extractApiMessage(submitError, 'No se pudo reagendar la reserva.'),
@@ -567,6 +615,11 @@ export default function ClienteReservasPage() {
                     </p>
                   </div>
                 </div>
+
+                <ClientBookingTimeline
+                  bookingId={selectedBooking.id}
+                  refreshToken={timelineRefreshToken}
+                />
 
                 <div className="mt-4 rounded-[18px] border border-[#E2E7EC] bg-white p-4">
                   <p className="text-xs uppercase tracking-[0.25em] text-[#94A3B8]">

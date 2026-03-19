@@ -1,6 +1,5 @@
 package com.plura.plurabackend.professional.booking.application;
 
-import com.plura.plurabackend.core.billing.application.BookingPayoutApplicationService;
 import com.plura.plurabackend.core.booking.actions.BookingActionsEvaluation;
 import com.plura.plurabackend.core.booking.actions.BookingActionsEvaluator;
 import com.plura.plurabackend.core.booking.actions.model.BookingActionActor;
@@ -29,6 +28,7 @@ import com.plura.plurabackend.core.booking.finance.BookingFinanceUpdateResult;
 import com.plura.plurabackend.core.booking.model.Booking;
 import com.plura.plurabackend.core.booking.model.BookingOperationalStatus;
 import com.plura.plurabackend.core.booking.model.ServicePaymentType;
+import com.plura.plurabackend.core.notification.integration.booking.BookingNotificationIntegrationService;
 import com.plura.plurabackend.core.booking.policy.BookingPolicySnapshotService;
 import com.plura.plurabackend.core.booking.policy.ResolvedBookingPolicy;
 import com.plura.plurabackend.core.booking.repository.BookingRepository;
@@ -81,7 +81,7 @@ public class BookingCommandApplicationService {
     private final BookingFinancialCommandSupport bookingFinancialCommandSupport;
     private final BookingCommandResponseAssembler bookingCommandResponseAssembler;
     private final BookingCommandStateSupport bookingCommandStateSupport;
-    private final BookingPayoutApplicationService bookingPayoutApplicationService;
+    private final BookingNotificationIntegrationService bookingNotificationIntegrationService;
     private final MeterRegistry meterRegistry;
     private final PasswordEncoder passwordEncoder;
     private final ZoneId systemZoneId;
@@ -103,7 +103,7 @@ public class BookingCommandApplicationService {
         BookingFinancialCommandSupport bookingFinancialCommandSupport,
         BookingCommandResponseAssembler bookingCommandResponseAssembler,
         BookingCommandStateSupport bookingCommandStateSupport,
-        BookingPayoutApplicationService bookingPayoutApplicationService,
+        BookingNotificationIntegrationService bookingNotificationIntegrationService,
         MeterRegistry meterRegistry,
         PasswordEncoder passwordEncoder,
         @Value("${app.timezone:America/Montevideo}") String appTimezone
@@ -124,7 +124,7 @@ public class BookingCommandApplicationService {
         this.bookingFinancialCommandSupport = bookingFinancialCommandSupport;
         this.bookingCommandResponseAssembler = bookingCommandResponseAssembler;
         this.bookingCommandStateSupport = bookingCommandStateSupport;
-        this.bookingPayoutApplicationService = bookingPayoutApplicationService;
+        this.bookingNotificationIntegrationService = bookingNotificationIntegrationService;
         this.meterRegistry = meterRegistry;
         this.passwordEncoder = passwordEncoder;
         this.systemZoneId = ZoneId.of(appTimezone);
@@ -194,6 +194,12 @@ public class BookingCommandApplicationService {
                     "servicePaymentType", saved.getServicePaymentTypeSnapshot().name()
                 )
             );
+            bookingNotificationIntegrationService.recordBookingCreated(
+                saved,
+                BookingActorType.CLIENT,
+                user.getId(),
+                "create_public_booking"
+            );
             sideEffectCoordinator.onBookingChanged(profile, Set.of(startDateTime.toLocalDate()));
 
             return new PublicBookingResponse(
@@ -244,6 +250,12 @@ public class BookingCommandApplicationService {
                 BookingActorType.PROFESSIONAL,
                 profile.getUser().getId(),
                 Map.of("source", "manual_professional_booking")
+            );
+            bookingNotificationIntegrationService.recordBookingConfirmed(
+                booking,
+                BookingActorType.PROFESSIONAL,
+                profile.getUser().getId(),
+                "create_professional_booking"
             );
         }
 
@@ -310,6 +322,12 @@ public class BookingCommandApplicationService {
             client.getId(),
             buildCancellationEventPayload(saved, previousStatus, decision, request)
         );
+        bookingNotificationIntegrationService.recordBookingCancelled(
+            saved,
+            BookingActorType.CLIENT,
+            client.getId(),
+            "cancel_booking_as_client"
+        );
 
         sideEffectCoordinator.onBookingChanged(loadProfessionalForBooking(saved), Set.of(saved.getStartDateTime().toLocalDate()));
         BookingCommandResponse response = bookingCommandResponseAssembler.toCommandResponse(saved, decision, financePlan.localResult());
@@ -359,6 +377,12 @@ public class BookingCommandApplicationService {
             BookingActorType.PROFESSIONAL,
             profile.getUser().getId(),
             buildCancellationEventPayload(saved, previousStatus, decision, request)
+        );
+        bookingNotificationIntegrationService.recordBookingCancelled(
+            saved,
+            BookingActorType.PROFESSIONAL,
+            profile.getUser().getId(),
+            "cancel_booking_as_professional"
         );
 
         sideEffectCoordinator.onBookingChanged(profile, Set.of(saved.getStartDateTime().toLocalDate()));
@@ -471,6 +495,12 @@ public class BookingCommandApplicationService {
                 "decisionId", decision.getId()
             )
         );
+        bookingNotificationIntegrationService.recordBookingNoShow(
+            saved,
+            BookingActorType.PROFESSIONAL,
+            profile.getUser().getId(),
+            "mark_booking_no_show"
+        );
 
         BookingCommandResponse response = bookingCommandResponseAssembler.toCommandResponse(saved, decision, financePlan.localResult());
         bookingFinancialCommandSupport.dispatchPlannedOperationsAfterCommit(saved, financePlan);
@@ -526,14 +556,16 @@ public class BookingCommandApplicationService {
                 "decisionId", decision.getId()
             )
         );
+        bookingNotificationIntegrationService.recordBookingCompleted(
+            saved,
+            BookingActorType.PROFESSIONAL,
+            profile.getUser().getId(),
+            "complete_booking"
+        );
 
         BookingCommandResponse response = bookingCommandResponseAssembler.toCommandResponse(saved, decision, financePlan.localResult());
         bookingFinancialCommandSupport.dispatchPlannedOperationsAfterCommit(saved, financePlan);
         return response;
-    }
-
-    public BookingCommandResponse retryBookingPayout(String rawUserId, Long bookingId) {
-        return bookingPayoutApplicationService.retryPayoutForProfessional(rawUserId, bookingId);
     }
 
     private ProfessionalBookingResponse updateBookingStatusAsProfessional(
@@ -641,6 +673,12 @@ public class BookingCommandApplicationService {
                 "rescheduleCountAfter", saved.getRescheduleCount(),
                 "decisionId", decision.getId()
             )
+        );
+        bookingNotificationIntegrationService.recordBookingRescheduled(
+            saved,
+            actorType,
+            actorUserId,
+            "reschedule_booking"
         );
 
         sideEffectCoordinator.onBookingChanged(
@@ -882,6 +920,41 @@ public class BookingCommandApplicationService {
                 "timezone", booking.getTimezone()
             )
         );
+        switch (eventType) {
+            case BOOKING_CREATED -> bookingNotificationIntegrationService.recordBookingCreated(
+                booking,
+                BookingActorType.PROFESSIONAL,
+                actorUserId,
+                "update_booking_status_as_professional"
+            );
+            case BOOKING_CONFIRMED -> bookingNotificationIntegrationService.recordBookingConfirmed(
+                booking,
+                BookingActorType.PROFESSIONAL,
+                actorUserId,
+                "update_booking_status_as_professional"
+            );
+            case BOOKING_CANCELLED -> bookingNotificationIntegrationService.recordBookingCancelled(
+                booking,
+                BookingActorType.PROFESSIONAL,
+                actorUserId,
+                "update_booking_status_as_professional"
+            );
+            case BOOKING_COMPLETED -> bookingNotificationIntegrationService.recordBookingCompleted(
+                booking,
+                BookingActorType.PROFESSIONAL,
+                actorUserId,
+                "update_booking_status_as_professional"
+            );
+            case BOOKING_NO_SHOW_MARKED -> bookingNotificationIntegrationService.recordBookingNoShow(
+                booking,
+                BookingActorType.PROFESSIONAL,
+                actorUserId,
+                "update_booking_status_as_professional"
+            );
+            case BOOKING_RESCHEDULED, BOOKING_FINANCIAL_RECOMPUTED, BOOKING_FINANCIAL_RECONCILED,
+                BOOKING_REFUND_RETRY_REQUESTED, BOOKING_PAYOUT_RETRY_REQUESTED -> {
+            }
+        }
     }
 
     private record EvaluatedBookingAction(

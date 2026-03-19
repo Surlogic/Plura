@@ -1,0 +1,191 @@
+import Card from '@/components/ui/Card';
+import { cn } from '@/components/ui/cn';
+import type { ClientNotificationItem } from '@/types/clientNotification';
+import {
+  clientNotificationSeverityBadgeClassName,
+  clientNotificationSeverityDotClassName,
+  formatClientNotificationTimestamp,
+  getClientNotificationActionLabel,
+  getClientNotificationActionLink,
+  getClientNotificationCategoryLabel,
+  getClientNotificationDropdownEmptyCopy,
+  getClientNotificationDropdownErrorCopy,
+  getClientNotificationTypeLabel,
+} from '@/utils/clientNotifications';
+
+type ClientNotificationDropdownProps = {
+  items: ClientNotificationItem[];
+  total: number;
+  unreadCount: number;
+  isLoading: boolean;
+  error: Error | null;
+  onViewAll: () => void;
+  onNavigateToItem: (href: string) => void;
+};
+
+const LoadingState = () => (
+  <div className="space-y-2.5">
+    {Array.from({ length: 3 }).map((_, index) => (
+      <div
+        key={index}
+        className="rounded-[20px] border border-[#E2E7EC] bg-[#F8FAFC] px-3.5 py-3.5"
+      >
+        <div className="h-3 w-24 animate-pulse rounded-full bg-[#E2E8F0]" />
+        <div className="mt-3 h-3 w-full animate-pulse rounded-full bg-[#E2E8F0]" />
+        <div className="mt-2 h-3 w-4/5 animate-pulse rounded-full bg-[#E2E8F0]" />
+      </div>
+    ))}
+  </div>
+);
+
+export default function ClientNotificationDropdown({
+  items,
+  total,
+  unreadCount,
+  isLoading,
+  error,
+  onViewAll,
+  onNavigateToItem,
+}: ClientNotificationDropdownProps) {
+  const emptyCopy = getClientNotificationDropdownEmptyCopy();
+  const errorCopy = getClientNotificationDropdownErrorCopy();
+
+  return (
+    <Card
+      tone="glass"
+      padding="none"
+      className="absolute right-0 top-[calc(100%+12px)] z-40 w-[min(92vw,380px)] overflow-hidden rounded-[26px] border-white/70 bg-white/96 shadow-[0_28px_60px_rgba(14,42,71,0.18)] backdrop-blur-xl"
+    >
+      <div className="flex items-center justify-between border-b border-[#E2E7EC] px-4 py-3.5">
+        <div>
+          <p className="text-sm font-semibold text-[#0E2A47]">Actividad reciente</p>
+          <p className="mt-0.5 text-xs text-[#64748B]">
+            {unreadCount > 0 ? `${unreadCount} sin leer` : 'Sin pendientes por revisar'}
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={onViewAll}
+          className="rounded-full px-2 py-1 text-xs font-semibold text-[#0E7490] transition hover:bg-[#F0FDFA] hover:text-[#115E59] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#1FB6A6]"
+        >
+          Ver inbox
+        </button>
+      </div>
+
+      <div className="max-h-[420px] overflow-y-auto px-3 py-3">
+        {isLoading ? <LoadingState /> : null}
+
+        {!isLoading && error ? (
+          <div className="rounded-[18px] border border-[#FECACA] bg-[#FEF2F2] px-4 py-4 text-sm text-[#B91C1C]">
+            <p className="font-semibold">{errorCopy.title}</p>
+            <p className="mt-1 leading-5">{errorCopy.description}</p>
+          </div>
+        ) : null}
+
+        {!isLoading && !error && items.length === 0 ? (
+          <div className="rounded-[20px] border border-dashed border-[#E2E7EC] bg-[#F8FAFC] px-4 py-6 text-center">
+            <p className="text-sm font-semibold text-[#0E2A47]">{emptyCopy.title}</p>
+            <p className="mt-1 text-xs leading-5 text-[#64748B]">{emptyCopy.description}</p>
+          </div>
+        ) : null}
+
+        {!isLoading && !error && items.length > 0 ? (
+          <div className="space-y-2.5">
+            {items.map((item) => {
+              const actionLink = getClientNotificationActionLink(item.actionUrl);
+              const actionLabel = getClientNotificationActionLabel(item);
+              const categoryLabel = getClientNotificationCategoryLabel(item.category);
+              const severityDot =
+                clientNotificationSeverityDotClassName[item.severity] ||
+                clientNotificationSeverityDotClassName.INFO;
+              const severityBadge =
+                clientNotificationSeverityBadgeClassName[item.severity] ||
+                clientNotificationSeverityBadgeClassName.INFO;
+              const isUnread = !item.readAt;
+
+              return (
+                <article
+                  key={item.id}
+                  className={cn(
+                    'rounded-[20px] border px-3.5 py-3.5 transition',
+                    isUnread
+                      ? 'border-[#BFEDE7] bg-[#F0FDFA]'
+                      : 'border-[#E2E7EC] bg-white',
+                  )}
+                >
+                  <div className="flex items-start gap-3">
+                    <span className={cn('mt-1 h-2.5 w-2.5 shrink-0 rounded-full', severityDot)} />
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-start justify-between gap-3">
+                        <p className="line-clamp-2 text-sm font-semibold leading-5 text-[#0E2A47]">
+                          {item.title}
+                        </p>
+                        {isUnread ? (
+                          <span className="mt-0.5 inline-flex h-2.5 w-2.5 shrink-0 rounded-full bg-[#1FB6A6]" />
+                        ) : null}
+                      </div>
+
+                      <p className="mt-1 line-clamp-2 text-xs leading-5 text-[#64748B]">
+                        {item.body}
+                      </p>
+
+                      <div className="mt-2 flex flex-wrap items-center gap-2 text-[0.7rem] font-medium text-[#64748B]">
+                        <span>{formatClientNotificationTimestamp(item.createdAt)}</span>
+                        <span className={cn('rounded-full border px-2 py-0.5', severityBadge)}>
+                          {getClientNotificationTypeLabel(item.type)}
+                        </span>
+                        {categoryLabel ? (
+                          <span className="rounded-full border border-[#E2E8F0] bg-white px-2 py-0.5 text-[#475569]">
+                            {categoryLabel}
+                          </span>
+                        ) : null}
+                      </div>
+
+                      {actionLink ? (
+                        <div className="mt-3 flex justify-end">
+                          {actionLink.external ? (
+                            <a
+                              href={actionLink.href}
+                              target="_blank"
+                              rel="noreferrer noopener"
+                              className="rounded-full border border-[#DCE4EC] bg-white px-3 py-1.5 text-[0.72rem] font-semibold text-[#0E2A47] transition hover:-translate-y-0.5 hover:shadow-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-[#1FB6A6]"
+                            >
+                              {actionLabel}
+                            </a>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => onNavigateToItem(actionLink.href)}
+                              className="rounded-full border border-[#DCE4EC] bg-white px-3 py-1.5 text-[0.72rem] font-semibold text-[#0E2A47] transition hover:-translate-y-0.5 hover:shadow-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-[#1FB6A6]"
+                            >
+                              {actionLabel}
+                            </button>
+                          )}
+                        </div>
+                      ) : null}
+                    </div>
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+        ) : null}
+      </div>
+
+      <div className="flex items-center justify-between border-t border-[#E2E7EC] bg-[#F8FAFC] px-4 py-3">
+        <p className="text-xs text-[#64748B]">
+          {total > items.length
+            ? `Mostrando ${items.length} de ${total}`
+            : `${items.length} notificaciones recientes`}
+        </p>
+        <button
+          type="button"
+          onClick={onViewAll}
+          className="rounded-full bg-[#0E2A47] px-3.5 py-2 text-xs font-semibold text-white transition hover:-translate-y-0.5 hover:shadow-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-[#1FB6A6]"
+        >
+          Ver inbox
+        </button>
+      </div>
+    </Card>
+  );
+}

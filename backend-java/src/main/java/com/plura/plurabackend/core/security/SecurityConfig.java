@@ -84,7 +84,6 @@ public class SecurityConfig {
                     "/api/categories",
                     "/health",
                     "/webhooks/mercadopago",
-                    "/webhooks/dlocal",
                     "/uploads/**",
                     "/error"
                 ).permitAll()

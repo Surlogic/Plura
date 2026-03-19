@@ -1,185 +1,107 @@
 @startuml "Plura - Infrastructure"
 
 !theme plain
+left to right direction
 skinparam defaultFontSize 11
 skinparam componentStyle rectangle
 
-title Plura Backend — Infrastructure & External Services
+title Plura Monorepo - Infrastructure & External Services
 
-' ════════════════════════════════
-' COMPONENTS
-' ════════════════════════════════
-
-package "Spring Boot Application" as App #E8F5E9 {
-
-  package "Cache Layer" #FFF3E0 {
-    component "SearchCacheService" as SCS
-    component "ProfileCacheService" as PCS
-    component "SlotCacheService" as SlCS
-    component "CacheServiceFacade\n(async invalidation)" as CSF
+package "Monorepo" as Repo #E8F5E9 {
+  package "apps/web" #FFF3E0 {
+    component "Next.js 15\npages + hooks + services" as Web
   }
 
-  package "Search Engine" #E3F2FD {
-    component "SearchService" as SS
-    component "SearchIndexService" as SIS
-    component "SearchIndexWorker\n(async indexing)" as SIW
+  package "apps/mobile" #E3F2FD {
+    component "Expo 54 / React Native\nexpo-router app" as Mobile
   }
 
-  package "Job Queue" #F3E5F5 {
-    component "SqsJobQueueService" as SQSSvc
-    component "JobIdempotencyService" as JIS
-    component "ImageThumbnailJobService" as ITJS
+  package "packages/shared" #F3E5F5 {
+    component "shared billing, contracts,\nsearch helpers and types" as Shared
   }
 
-  package "Storage" #FFEBEE {
-    component "ImageStorageService\n<<interface>>" as ISS
-    component "CloudflareR2ImageStorageService" as R2S
-    component "LocalImageStorageService" as LS
-    ISS <|.. R2S
-    ISS <|.. LS
-  }
-
-  package "Payment Providers" #E0F7FA {
-    component "PaymentProviderClient\n<<interface>>" as PPC
-    component "MercadoPagoPaymentProviderClient" as MPC
-    component "DLocalPaymentProviderClient" as DLC
-    PPC <|.. MPC
-    PPC <|.. DLC
-
-    component "BillingWebhookService" as BWS
-    component "PaymentEventLedgerService" as PELS
-  }
-
-  package "Scheduled Tasks" #FFF9C4 {
-    component "AvailableSlotScheduler\n(cron: every 30 min, 2-6 AM)" as ASS
-    component "ScheduleSummaryScheduler\n(cron: every 30 min)" as SSS
-    component "AvailableSlotBootstrap\n(on startup)" as ASB
-  }
-
-  package "Geo Services" #DCEDC8 {
-    component "GeoService\n(autocomplete, geocode)" as GS
-  }
-
-  package "Email/SMS" #FCE4EC {
-    component "Spring Mail\n(SMTP)" as Mail
+  package "backend-java" #E1F5FE {
+    component "Spring Boot 3.5 API" as Api
+    component "Security filters\nJWT + origin + rate limit" as Security
+    component "Scheduled workers\nslots, SQS, provider ops,\nnotification email metrics" as Workers
+    component "Cache adapters\nRedis / in-memory" as Cache
+    component "Storage adapters\nlocal / Cloudflare R2" as Storage
+    component "Billing + OAuth adapters\nMercado Pago /\nGoogle / Apple" as Integrations
   }
 }
 
-' ════════════════════════════════
-' EXTERNAL SERVICES
-' ════════════════════════════════
-
-cloud "External Services" {
-  database "PostgreSQL\n(primary store)" as PG #B3E5FC
-  database "Redis\n(optional cache)" as Redis #FFCDD2
-  queue "AWS SQS\n+ Dead Letter Queue" as SQS #E1BEE7
-  component "MeiliSearch\n(search engine)" as Meili #BBDEFB
-  storage "Cloudflare R2\n(image storage)" as R2 #B2DFDB
-  component "MercadoPago API\n(subscriptions)" as MP #FFE0B2
-  component "dLocal API\n(payments/payouts)" as DL #FFE0B2
-  component "SMTP Server\n(email)" as SMTP #F8BBD0
-  storage "Local Filesystem\n(dev fallback)" as LFS #ECEFF1
+cloud "Runtime & Deploy" {
+  node "Render: plura-web" as RenderWeb
+  node "Render: plura-api" as RenderApi
+  database "Render PostgreSQL" as PG
+  database "Redis (optional)" as Redis
+  component "Meilisearch (optional)" as Meili
+  queue "AWS SQS (optional)" as SQS
+  storage "Cloudflare R2 (optional)" as R2
+  component "Mapbox" as Mapbox
+  component "Google OAuth" as Google
+  component "Apple OAuth" as Apple
+  component "Mercado Pago" as MP
+  component "SMTP provider" as SMTP
 }
 
-' ════════════════════════════════
-' CONNECTIONS
-' ════════════════════════════════
+Web --> Shared
+Mobile --> Shared
 
-' Cache connections
-SCS --> Redis : cache search results\n(TTL: 300s)
-PCS --> Redis : cache profiles\n(TTL: 300s)
-SlCS --> Redis : cache available slots\n(TTL: 300s)
+Web --> Api : REST + JWT / cookies
+Mobile --> Api : REST + bearer tokens
+Web --> Mapbox
+Mobile --> Mapbox
 
-note right of Redis
-  Fallback: Caffeine in-memory
-  • Search: 20,000 entries
-  • Profiles: 10,000 entries
-  • Slots: 30,000 entries
+Api --> Security
+Api --> Cache
+Api --> Storage
+Api --> Integrations
+Api --> Workers
+
+Api --> PG : JPA / Flyway
+Cache --> Redis : optional
+Api --> Meili : optional search engine
+Workers --> SQS : optional jobs
+Storage --> R2 : optional object storage
+
+Integrations --> Google : OAuth verification
+Integrations --> Apple : OAuth verification
+Integrations --> MP : subscriptions,\nprofessional OAuth,\nwebhooks
+Api --> SMTP : transactional email
+
+RenderWeb --> Web
+RenderApi --> Api
+RenderApi --> PG
+
+note right of Api
+  Main config source:
+  - backend-java/src/main/resources/application.yml
+
+  Core modules wired here:
+  - auth / sessions / abuse protection
+  - public marketplace + professional config
+  - booking command/query + finance
+  - in-app notifications + email dispatch
+  - billing subscriptions + provider connections
 end note
 
-' Search connections
-SIS --> Meili : index/query\nHTTP API
-SIW --> SQS : consume SEARCH_INDEX jobs
-
-' Job queue
-SQSSvc --> SQS : send/receive messages
-ITJS --> SQS : consume THUMBNAIL_IMAGE jobs
-
-note right of SQS
-  Job Types:
-  • THUMBNAIL_IMAGE
-  • SCHEDULE_SUMMARY
-  • SEARCH_INDEX
-
-  DLQ for failed jobs
+note bottom of Workers
+  Scheduled jobs detected today:
+  - AvailableSlotBootstrap
+  - AvailableSlotScheduler
+  - ScheduleSummaryScheduler
+  - SqsJobWorker
+  - NotificationEmailWorker
+  - ProviderOperationWorker
 end note
 
-' Storage
-R2S --> R2 : upload/download\nS3-compatible API
-LS --> LFS : upload/download\n(dev only)
-
-note right of R2
-  Max upload: 5 MB
-  Allowed: JPEG, PNG,
-  WebP, AVIF
-  Pre-signed URLs: 10 min
-end note
-
-' Payments
-MPC --> MP : create subscriptions\ncancel, get status
-DLC --> DL : payments, payouts\nrefunds, splits
-BWS --> MP : receive webhooks
-BWS --> DL : receive webhooks
-
-note bottom of MP
-  Webhook: /webhooks/mercadopago
-  Signature verification
-end note
-
-note bottom of DL
-  Webhook: /webhooks/dlocal
-  HMAC signature verification
-  Payout OAuth flow
-end note
-
-' Database
-App --> PG : JPA/Hibernate\nHikariCP pool\n(max: 100 connections)
-
-note right of PG
-  Flyway migrations: V1 → V40
-  Connection pool:
-  • Max: 100
-  • Min idle: 10
-  • Timeout: 30s
-end note
-
-' Email
-Mail --> SMTP : send verification,\nreset, notifications
-
-' Scheduled tasks
-ASS --> PG : rebuild slots\n(30 days ahead)
-SSS --> PG : compute summaries\n(14 days ahead)
-ASB --> PG : bootstrap slots\n(7 days, on startup)
-
-' ════════════════════════════════
-' DEPLOYMENT NOTES
-' ════════════════════════════════
-
-note as N1
-  **Rate Limiting (Bucket4j)**
-  Applied per endpoint/user
-  via RateLimitingFilter
-
-  **Security Headers**
-  • HSTS: 1 year + preload
-  • X-Content-Type-Options: nosniff
-  • X-Frame-Options: sameorigin
-  • Referrer-Policy: strict-origin
-
-  **Monitoring**
-  • Spring Actuator
-  • Prometheus metrics
-  • /internal/ops/** (token-protected)
+note bottom of Security
+  Active HTTP filters:
+  - InternalOpsActuatorAccessFilter
+  - CookieOriginProtectionFilter
+  - JwtAuthenticationFilter
+  - RateLimitingFilter
 end note
 
 @enduml

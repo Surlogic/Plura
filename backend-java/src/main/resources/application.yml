@@ -349,6 +349,10 @@ billing:
     preapproval-path: ${BILLING_MERCADOPAGO_PREAPPROVAL_PATH:/preapproval}
     cancel-path: ${BILLING_MERCADOPAGO_CANCEL_PATH:/preapproval/{id}}
     subscription-status-path: ${BILLING_MERCADOPAGO_SUBSCRIPTION_STATUS_PATH:/preapproval/{id}}
+    reservation-preference-path: ${BILLING_MERCADOPAGO_RESERVATION_PREFERENCE_PATH:/checkout/preferences}
+    reservation-payment-status-path: ${BILLING_MERCADOPAGO_RESERVATION_PAYMENT_STATUS_PATH:/v1/payments/{id}}
+    reservation-payment-search-path: ${BILLING_MERCADOPAGO_RESERVATION_PAYMENT_SEARCH_PATH:/v1/payments/search}
+    reservation-refund-path: ${BILLING_MERCADOPAGO_RESERVATION_REFUND_PATH:/v1/payments/{id}/refunds}
     sandbox-only-body-signature-fallback: ${BILLING_MERCADOPAGO_SANDBOX_ONLY_BODY_SIGNATURE_FALLBACK:false}
     subscription-back-url: ${BILLING_MERCADOPAGO_SUBSCRIPTION_BACK_URL:}
     success-url: ${BILLING_MERCADOPAGO_SUCCESS_URL:}
@@ -358,26 +362,10 @@ billing:
     plan-profesional-id: ${BILLING_MERCADOPAGO_PLAN_PROFESIONAL_ID:}
     plan-enterprise-id: ${BILLING_MERCADOPAGO_PLAN_ENTERPRISE_ID:}
     timeout-millis: ${BILLING_MERCADOPAGO_TIMEOUT_MILLIS:5000}
-  dlocal:
-    enabled: ${BILLING_DLOCAL_ENABLED:false}
-    base-url: ${BILLING_DLOCAL_BASE_URL:}
-    x-login: ${BILLING_DLOCAL_X_LOGIN:}
-    x-trans-key: ${BILLING_DLOCAL_X_TRANS_KEY:}
-    secret-key: ${BILLING_DLOCAL_SECRET_KEY:}
-    webhook-secret: ${BILLING_DLOCAL_WEBHOOK_SECRET:}
-    checkout-path: ${BILLING_DLOCAL_CHECKOUT_PATH:/secure_payments}
-    booking-checkout-path: ${BILLING_DLOCAL_BOOKING_CHECKOUT_PATH:/v1/payments}
-    cancel-path: ${BILLING_DLOCAL_CANCEL_PATH:/subscriptions/{id}/cancel}
-    refund-path: ${BILLING_DLOCAL_REFUND_PATH:/v1/refunds}
-    payout-oauth-path: ${BILLING_DLOCAL_PAYOUT_OAUTH_PATH:/oauth/token}
-    payout-path: ${BILLING_DLOCAL_PAYOUT_PATH:/payouts/v3}
-    payout-client-id: ${BILLING_DLOCAL_PAYOUT_CLIENT_ID:}
-    payout-client-secret: ${BILLING_DLOCAL_PAYOUT_CLIENT_SECRET:}
-    payment-status-path: ${BILLING_DLOCAL_PAYMENT_STATUS_PATH:/v1/payments/{id}}
-    subscription-status-path: ${BILLING_DLOCAL_SUBSCRIPTION_STATUS_PATH:/subscriptions/{id}}
-    signature-mode: ${BILLING_DLOCAL_SIGNATURE_MODE:STRICT_DATE_BODY}
-    sandbox-only-body-signature-fallback: ${BILLING_DLOCAL_SANDBOX_ONLY_BODY_SIGNATURE_FALLBACK:false}
-    country: ${BILLING_DLOCAL_COUNTRY:UY}
-    success-url: ${BILLING_DLOCAL_SUCCESS_URL:}
-    failure-url: ${BILLING_DLOCAL_FAILURE_URL:}
-    timeout-millis: ${BILLING_DLOCAL_TIMEOUT_MILLIS:5000}
+    oauth:
+      client-id: ${BILLING_MERCADOPAGO_OAUTH_CLIENT_ID:}
+      client-secret: ${BILLING_MERCADOPAGO_OAUTH_CLIENT_SECRET:}
+      redirect-uri: ${BILLING_MERCADOPAGO_OAUTH_REDIRECT_URI:}
+      authorization-url: ${BILLING_MERCADOPAGO_OAUTH_AUTHORIZATION_URL:https://auth.mercadopago.com/authorization}
+      token-url: ${BILLING_MERCADOPAGO_OAUTH_TOKEN_URL:https://api.mercadopago.com/oauth/token}
+      token-encryption-key: ${BILLING_MERCADOPAGO_OAUTH_TOKEN_ENCRYPTION_KEY:}

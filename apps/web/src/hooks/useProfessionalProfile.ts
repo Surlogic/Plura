@@ -8,16 +8,11 @@ export const useProfessionalProfile = () => {
     useProfessionalProfileContext();
 
   useEffect(() => {
-    if (!hasLoaded && !isLoading) {
-      refreshProfile();
-      return;
-    }
-
     if (hasLoaded && !isLoading && !profile) {
       clearProfile();
       router.push('/profesional/auth/login');
     }
-  }, [router, hasLoaded, isLoading, profile, refreshProfile, clearProfile]);
+  }, [router, hasLoaded, isLoading, profile, clearProfile]);
 
   return { profile, isLoading, hasLoaded, refreshProfile };
 };

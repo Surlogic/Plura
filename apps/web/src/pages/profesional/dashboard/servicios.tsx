@@ -6,6 +6,7 @@ import Button from '@/components/ui/Button';
 import { useCategories } from '@/hooks/useCategories';
 import { useProfessionalProfile } from '@/hooks/useProfessionalProfile';
 import { useProfessionalDashboardUnsavedSection } from '@/context/ProfessionalDashboardUnsavedChangesContext';
+import { resolveProfessionalFeatureAccess } from '@/lib/billing/featureGuards';
 import api from '@/services/api';
 import { cachedGet, invalidateCachedGet } from '@/services/cachedGet';
 import type { ServicePaymentType } from '@/types/professional';
@@ -121,6 +122,7 @@ const formatDepositAmount = (value?: number | null) => {
 
 export default function ProfesionalServicesBuilderPage() {
   const { profile, isLoading, hasLoaded } = useProfessionalProfile();
+  const featureAccess = resolveProfessionalFeatureAccess(profile);
   const { categories, isLoading: isLoadingCategories, error: categoriesError } = useCategories();
   const [services, setServices] = useState<ProfesionalServiceItem[]>([]);
   const [draft, setDraft] = useState<ServiceDraft>(createEmptyDraft());
@@ -134,6 +136,7 @@ export default function ProfesionalServicesBuilderPage() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [selectedImageFile, setSelectedImageFile] = useState<File | null>(null);
   const [selectedImagePreview, setSelectedImagePreview] = useState<string>('');
+  const canUseOnlinePayments = featureAccess.onlinePayments;
 
   const showSkeleton = !hasLoaded || (isLoading && !profile);
 
@@ -278,6 +281,14 @@ export default function ProfesionalServicesBuilderPage() {
     if (isSubmitting) return false;
     if (!draft.name.trim() || !draft.price.trim() || !draft.duration.trim()) {
       setSaveMessage('Completá nombre, precio y duración.');
+      setSaveError(true);
+      return false;
+    }
+
+    if (!canUseOnlinePayments && draft.paymentType !== 'ON_SITE') {
+      setSaveMessage(
+        'Tu plan actual no permite seña online ni pago total online. Cambiá la modalidad a pago en el local o actualizá tu plan.',
+      );
       setSaveError(true);
       return false;
     }
@@ -823,20 +834,47 @@ export default function ProfesionalServicesBuilderPage() {
                             <div className="mt-2 grid gap-2">
                               {SERVICE_PAYMENT_OPTIONS.map((option) => {
                                 const isSelected = draft.paymentType === option.value;
+                                const isLockedOption =
+                                  !canUseOnlinePayments && option.value !== 'ON_SITE';
                                 return (
                                   <button
                                     key={option.value}
                                     type="button"
-                                    onClick={() => setDraft((prev) => ({ ...prev, paymentType: option.value }))}
+                                    onClick={() => {
+                                      if (isLockedOption) {
+                                        setSaveMessage(
+                                          'Los pagos online se habilitan desde el plan Profesional.',
+                                        );
+                                        setSaveError(true);
+                                        return;
+                                      }
+                                      setDraft((prev) => ({ ...prev, paymentType: option.value }));
+                                    }}
+                                    disabled={isLockedOption}
                                     className={`rounded-[16px] border px-4 py-3 text-left transition ${
                                       isSelected
                                         ? 'border-[#1FB6A6] bg-[#F0FFFC] shadow-[0_10px_24px_rgba(31,182,166,0.12)]'
-                                        : 'border-[#E2E7EC] bg-white hover:-translate-y-0.5 hover:shadow-sm'
+                                        : isLockedOption
+                                          ? 'cursor-not-allowed border-[#E2E7EC] bg-[#F8FAFC] text-[#94A3B8] opacity-70'
+                                          : 'border-[#E2E7EC] bg-white hover:-translate-y-0.5 hover:shadow-sm'
                                     }`}
                                   >
-                                    <p className="text-sm font-semibold text-[#0E2A47]">
-                                      {option.label}
-                                    </p>
+                                    <div className="flex items-center justify-between gap-3">
+                                      <p className={`text-sm font-semibold ${
+                                        isLockedOption ? 'text-[#64748B]' : 'text-[#0E2A47]'
+                                      }`}>
+                                        {option.label}
+                                      </p>
+                                      {isLockedOption ? (
+                                        <span className="inline-flex items-center gap-1 rounded-full border border-[color:var(--premium-soft)] bg-[color:var(--premium-soft)] px-2 py-0.5 text-[0.55rem] font-semibold uppercase tracking-[0.1em] text-[color:var(--premium-strong)]">
+                                          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                            <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                                            <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                                          </svg>
+                                          Pro
+                                        </span>
+                                      ) : null}
+                                    </div>
                                     <p className="mt-1 text-xs text-[#64748B]">
                                       {option.description}
                                     </p>
@@ -844,6 +882,11 @@ export default function ProfesionalServicesBuilderPage() {
                                 );
                               })}
                             </div>
+                            {!canUseOnlinePayments ? (
+                              <p className="mt-3 rounded-[16px] border border-[color:var(--premium-soft)] bg-[color:var(--premium-soft)] px-3 py-2 text-xs text-[color:var(--premium-strong)]">
+                                La seña online y el prepago total se habilitan en el plan Profesional.
+                              </p>
+                            ) : null}
                           </div>
                           {draft.paymentType === 'DEPOSIT' ? (
                             <div>

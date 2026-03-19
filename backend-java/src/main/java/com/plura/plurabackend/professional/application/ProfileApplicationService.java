@@ -22,6 +22,8 @@ import com.plura.plurabackend.professional.service.dto.ProfesionalServiceRespons
 import com.plura.plurabackend.core.storage.thumbnail.ImageThumbnailJobService;
 import com.plura.plurabackend.core.user.model.User;
 import com.plura.plurabackend.core.user.repository.UserRepository;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Timer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -52,6 +54,7 @@ public class ProfileApplicationService {
     private final ProfileBookingPolicySupport profileBookingPolicySupport;
     private final ProfileServiceCatalogSupport profileServiceCatalogSupport;
     private final ProfileGeocodingSupport profileGeocodingSupport;
+    private final MeterRegistry meterRegistry;
 
     public ProfileApplicationService(
         ProfessionalProfileRepository professionalProfileRepository,
@@ -66,7 +69,8 @@ public class ProfileApplicationService {
         ProfilePublicPageAssembler profilePublicPageAssembler,
         ProfileBookingPolicySupport profileBookingPolicySupport,
         ProfileServiceCatalogSupport profileServiceCatalogSupport,
-        ProfileGeocodingSupport profileGeocodingSupport
+        ProfileGeocodingSupport profileGeocodingSupport,
+        MeterRegistry meterRegistry
     ) {
         this.professionalProfileRepository = professionalProfileRepository;
         this.businessPhotoRepository = businessPhotoRepository;
@@ -81,24 +85,36 @@ public class ProfileApplicationService {
         this.profileBookingPolicySupport = profileBookingPolicySupport;
         this.profileServiceCatalogSupport = profileServiceCatalogSupport;
         this.profileGeocodingSupport = profileGeocodingSupport;
+        this.meterRegistry = meterRegistry;
     }
 
     public ProfesionalPublicPageResponse getPublicPageBySlug(String slug) {
-        var profileCached = profileCacheService.getPublicPageBySlug(slug);
-        if (profileCached.isPresent()) {
-            ProfesionalPublicPageResponse cachedResponse = profileCached.get();
-            if (cachedResponse.getName() != null && !cachedResponse.getName().isBlank()) {
-                return cachedResponse;
+        Timer.Sample sample = Timer.start(meterRegistry);
+        try {
+            var profileCached = profileCacheService.getPublicPageBySlug(slug);
+            if (profileCached.isPresent()) {
+                ProfesionalPublicPageResponse cachedResponse = profileCached.get();
+                if (cachedResponse.getName() != null && !cachedResponse.getName().isBlank()) {
+                    return cachedResponse;
+                }
+                profileCacheService.evictPublicPageBySlug(slug);
             }
-            profileCacheService.evictPublicPageBySlug(slug);
+
+            ProfessionalProfile profile = professionalProfileRepository.findBySlug(slug)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Profesional no encontrado"));
+            professionalAccessSupport.ensurePublicProfessionalIsActive(profile);
+            profile = profileGeocodingSupport.ensurePublicCoordinates(profile);
+            ProfesionalPublicPageResponse response = profilePublicPageAssembler.toPublicPage(profile);
+            profileCacheService.putPublicPageBySlug(slug, response);
+            return response;
+        } finally {
+            sample.stop(
+                Timer.builder("plura.public_profile.duration")
+                    .description("Public professional profile response duration")
+                    .publishPercentileHistogram()
+                    .register(meterRegistry)
+            );
         }
-        ProfessionalProfile profile = professionalProfileRepository.findBySlug(slug)
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Profesional no encontrado"));
-        professionalAccessSupport.ensurePublicProfessionalIsActive(profile);
-        profile = profileGeocodingSupport.ensurePublicCoordinates(profile);
-        ProfesionalPublicPageResponse response = profilePublicPageAssembler.toPublicPage(profile);
-        profileCacheService.putPublicPageBySlug(slug, response);
-        return response;
     }
 
     public List<ProfesionalPublicSummaryResponse> listPublicProfessionals(

@@ -62,6 +62,15 @@ public class AsyncConfig implements AsyncConfigurer {
     @Value("${app.async.billing-provider-operation.queue-capacity:500}")
     private int billingProviderOperationQueueCapacity;
 
+    @Value("${app.async.notification-email.core-pool-size:2}")
+    private int notificationEmailCorePoolSize;
+
+    @Value("${app.async.notification-email.max-pool-size:6}")
+    private int notificationEmailMaxPoolSize;
+
+    @Value("${app.async.notification-email.queue-capacity:500}")
+    private int notificationEmailQueueCapacity;
+
     @Bean(name = "availableSlotExecutor")
     public Executor availableSlotExecutor() {
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
@@ -125,6 +134,20 @@ public class AsyncConfig implements AsyncConfigurer {
         executor.setCorePoolSize(Math.max(1, billingProviderOperationCorePoolSize));
         executor.setMaxPoolSize(Math.max(billingProviderOperationCorePoolSize, billingProviderOperationMaxPoolSize));
         executor.setQueueCapacity(Math.max(100, billingProviderOperationQueueCapacity));
+        executor.setWaitForTasksToCompleteOnShutdown(true);
+        executor.setAwaitTerminationSeconds(45);
+        executor.setRejectedExecutionHandler(new ThreadPoolExecutor.CallerRunsPolicy());
+        executor.initialize();
+        return executor;
+    }
+
+    @Bean(name = "notificationEmailExecutor")
+    public Executor notificationEmailExecutor() {
+        ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+        executor.setThreadNamePrefix("notification-email-");
+        executor.setCorePoolSize(Math.max(1, notificationEmailCorePoolSize));
+        executor.setMaxPoolSize(Math.max(notificationEmailCorePoolSize, notificationEmailMaxPoolSize));
+        executor.setQueueCapacity(Math.max(100, notificationEmailQueueCapacity));
         executor.setWaitForTasksToCompleteOnShutdown(true);
         executor.setAwaitTerminationSeconds(45);
         executor.setRejectedExecutionHandler(new ThreadPoolExecutor.CallerRunsPolicy());

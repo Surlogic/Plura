@@ -4,10 +4,10 @@ import com.plura.plurabackend.core.booking.BookingPaymentsGateway;
 import com.plura.plurabackend.core.booking.bridge.BookingClientProfessionalView;
 import com.plura.plurabackend.core.booking.bridge.BookingClientProfessionalViewGateway;
 import com.plura.plurabackend.core.booking.dto.BookingFinancialSummaryResponse;
+import com.plura.plurabackend.core.booking.dto.BookingPayoutRecordResponse;
+import com.plura.plurabackend.core.booking.dto.BookingRefundRecordResponse;
 import com.plura.plurabackend.core.booking.dto.ClientNextBookingResponse;
 import com.plura.plurabackend.core.booking.finance.BookingFinanceService;
-import com.plura.plurabackend.core.booking.finance.model.BookingPayoutRecord;
-import com.plura.plurabackend.core.booking.finance.model.BookingRefundRecord;
 import com.plura.plurabackend.core.booking.model.Booking;
 import com.plura.plurabackend.core.booking.model.BookingOperationalStatus;
 import com.plura.plurabackend.core.booking.model.ServicePaymentType;
@@ -17,6 +17,8 @@ import com.plura.plurabackend.core.booking.time.BookingDateTimeService;
 import com.plura.plurabackend.core.user.model.User;
 import com.plura.plurabackend.core.user.model.UserRole;
 import com.plura.plurabackend.core.user.repository.UserRepository;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Timer;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
@@ -39,6 +41,7 @@ public class BookingClientService {
     private final BookingDateTimeService bookingDateTimeService;
     private final BookingClientProfessionalViewGateway bookingClientProfessionalViewGateway;
     private final ZoneId systemZoneId;
+    private final MeterRegistry meterRegistry;
 
     public BookingClientService(
         BookingRepository bookingRepository,
@@ -48,6 +51,7 @@ public class BookingClientService {
         BookingPolicySnapshotService bookingPolicySnapshotService,
         BookingDateTimeService bookingDateTimeService,
         BookingClientProfessionalViewGateway bookingClientProfessionalViewGateway,
+        MeterRegistry meterRegistry,
         @Value("${app.timezone:America/Montevideo}") String appTimezone
     ) {
         this.bookingRepository = bookingRepository;
@@ -57,6 +61,7 @@ public class BookingClientService {
         this.bookingPolicySnapshotService = bookingPolicySnapshotService;
         this.bookingDateTimeService = bookingDateTimeService;
         this.bookingClientProfessionalViewGateway = bookingClientProfessionalViewGateway;
+        this.meterRegistry = meterRegistry;
         this.systemZoneId = ZoneId.of(appTimezone);
     }
 
@@ -79,42 +84,67 @@ public class BookingClientService {
                 bookingPaymentsGateway.syncPendingChargeStatus(booking.getId());
                 currentBooking = bookingRepository.findDetailedById(booking.getId()).orElse(booking);
             }
+            Map<Long, BookingFinancialSummaryResponse> summaries = bookingFinanceService.findResponseMapByBookingIds(
+                List.of(currentBooking.getId())
+            );
+            Map<Long, BookingRefundRecordResponse> latestRefunds =
+                bookingFinanceService.findLatestRefundResponseMapByBookingIds(List.of(currentBooking.getId()));
+            Map<Long, BookingPayoutRecordResponse> latestPayouts =
+                bookingFinanceService.findLatestPayoutResponseMapByBookingIds(List.of(currentBooking.getId()));
             return mapClientBooking(
                 currentBooking,
-                bookingFinanceService.findResponseMapByBookingIds(List.of(currentBooking.getId()))
+                summaries,
+                latestRefunds,
+                latestPayouts
             );
         });
     }
 
     public List<ClientNextBookingResponse> getBookings(String rawUserId) {
-        User user = resolveClientUser(rawUserId);
-        List<Booking> bookings = bookingRepository.findAllByUserWithDetailsOrderByStartDateTimeAsc(user);
-        boolean syncedAny = false;
-        for (Booking booking : bookings) {
-            if (shouldSyncPendingPayment(booking)) {
-                syncedAny = bookingPaymentsGateway.syncPendingChargeStatus(booking.getId()) || syncedAny;
+        Timer.Sample sample = Timer.start(meterRegistry);
+        try {
+            User user = resolveClientUser(rawUserId);
+            List<Booking> bookings = bookingRepository.findAllByUserWithDetailsOrderByStartDateTimeAsc(user);
+            boolean syncedAny = false;
+            for (Booking booking : bookings) {
+                if (shouldSyncPendingPayment(booking)) {
+                    syncedAny = bookingPaymentsGateway.syncPendingChargeStatus(booking.getId()) || syncedAny;
+                }
             }
+            if (syncedAny) {
+                bookings = bookingRepository.findAllByUserWithDetailsOrderByStartDateTimeAsc(user);
+            }
+            Map<Long, BookingFinancialSummaryResponse> summaries = bookingFinanceService.findResponseMapByBookingIds(
+                bookings.stream().map(Booking::getId).toList()
+            );
+            Map<Long, BookingRefundRecordResponse> latestRefunds =
+                bookingFinanceService.findLatestRefundResponseMapByBookingIds(bookings.stream().map(Booking::getId).toList());
+            Map<Long, BookingPayoutRecordResponse> latestPayouts =
+                bookingFinanceService.findLatestPayoutResponseMapByBookingIds(bookings.stream().map(Booking::getId).toList());
+            return bookings
+                .stream()
+                .map(booking -> mapClientBooking(booking, summaries, latestRefunds, latestPayouts))
+                .toList();
+        } finally {
+            sample.stop(
+                Timer.builder("plura.client_bookings.duration")
+                    .description("Client bookings response duration")
+                    .publishPercentileHistogram()
+                    .register(meterRegistry)
+            );
         }
-        if (syncedAny) {
-            bookings = bookingRepository.findAllByUserWithDetailsOrderByStartDateTimeAsc(user);
-        }
-        Map<Long, BookingFinancialSummaryResponse> summaries = bookingFinanceService.findResponseMapByBookingIds(
-            bookings.stream().map(Booking::getId).toList()
-        );
-        return bookings
-            .stream()
-            .map(booking -> mapClientBooking(booking, summaries))
-            .toList();
     }
 
     private ClientNextBookingResponse mapClientBooking(
         Booking booking,
-        Map<Long, BookingFinancialSummaryResponse> financialSummaries
+        Map<Long, BookingFinancialSummaryResponse> financialSummaries,
+        Map<Long, BookingRefundRecordResponse> latestRefunds,
+        Map<Long, BookingPayoutRecordResponse> latestPayouts
     ) {
         BookingClientProfessionalView professionalView = bookingClientProfessionalViewGateway.resolveView(booking);
-        BookingRefundRecord latestRefund = bookingFinanceService.findLatestRefundRecord(booking.getId());
-        BookingPayoutRecord latestPayout = bookingFinanceService.findLatestPayoutRecord(booking.getId());
         BookingFinancialSummaryResponse financialSummary = financialSummaries.get(booking.getId());
+        BookingRefundRecordResponse latestRefund = latestRefunds.get(booking.getId());
+        BookingPayoutRecordResponse latestPayout = latestPayouts.get(booking.getId());
         return new ClientNextBookingResponse(
             booking.getId(),
             booking.getOperationalStatus().name(),
@@ -125,11 +155,11 @@ public class BookingClientService {
             booking.getServiceNameSnapshot(),
             booking.getServicePaymentTypeSnapshot() == null ? null : booking.getServicePaymentTypeSnapshot().name(),
             financialSummary == null ? null : financialSummary.getFinancialStatus(),
-            bookingFinanceService.resolveRefundStatus(latestRefund),
-            bookingFinanceService.resolvePayoutStatus(latestPayout),
+            latestRefund == null ? "NONE" : latestRefund.getStatus(),
+            latestPayout == null ? "NONE" : latestPayout.getStatus(),
             financialSummary,
-            bookingFinanceService.toResponse(latestRefund),
-            bookingFinanceService.toResponse(latestPayout),
+            latestRefund,
+            latestPayout,
             bookingPolicySnapshotService.toResponse(bookingPolicySnapshotService.resolveForBooking(booking)),
             professionalView.professionalDisplayName(),
             professionalView.professionalSlug(),

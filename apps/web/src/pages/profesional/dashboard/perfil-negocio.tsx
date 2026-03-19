@@ -3,8 +3,10 @@
 import { useCallback, useEffect, useState } from 'react';
 import ProfesionalSidebar from '@/components/profesional/Sidebar';
 import Button from '@/components/ui/Button';
+import LockedFeature from '@/components/ui/LockedFeature';
 import { useProfessionalProfile } from '@/hooks/useProfessionalProfile';
 import { useCategories } from '@/hooks/useCategories';
+import { resolveProfessionalFeatureAccess } from '@/lib/billing/featureGuards';
 import api from '@/services/api';
 import { isAxiosError } from 'axios';
 import { useProfessionalDashboardUnsavedSection } from '@/context/ProfessionalDashboardUnsavedChangesContext';
@@ -66,6 +68,7 @@ type BusinessProfileForm = {
 
 export default function ProfesionalBusinessProfilePage() {
   const { profile, isLoading, hasLoaded, refreshProfile } = useProfessionalProfile();
+  const featureAccess = resolveProfessionalFeatureAccess(profile);
   const { categories, isLoading: isLoadingCategories } = useCategories();
   const [hasInitialized, setHasInitialized] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -94,6 +97,7 @@ export default function ProfesionalBusinessProfilePage() {
     whatsapp: '',
   });
   const [initialForm, setInitialForm] = useState<BusinessProfileForm | null>(null);
+  const canManageEnhancedPublicProfile = featureAccess.enhancedPublicProfile;
 
   useEffect(() => {
     if (!profile || hasInitialized) return;
@@ -296,7 +300,6 @@ export default function ProfesionalBusinessProfilePage() {
         fullName: form.businessName.trim(),
         rubro: primaryCategoryName,
         categorySlugs: validCategorySlugs,
-        logoUrl: form.logoUrl.trim(),
         location: normalizedLocation,
         country: normalizedCountry,
         city: normalizedCity,
@@ -304,11 +307,14 @@ export default function ProfesionalBusinessProfilePage() {
         latitude,
         longitude,
         phoneNumber: form.phone.trim(),
-        instagram: form.instagram.trim(),
-        facebook: form.facebook.trim(),
-        tiktok: form.tiktok.trim(),
-        website: form.website.trim(),
-        whatsapp: form.whatsapp.trim(),
+        ...(canManageEnhancedPublicProfile ? {
+          logoUrl: form.logoUrl.trim(),
+          instagram: form.instagram.trim(),
+          facebook: form.facebook.trim(),
+          tiktok: form.tiktok.trim(),
+          website: form.website.trim(),
+          whatsapp: form.whatsapp.trim(),
+        } : {}),
       };
       await api.put('/profesional/profile', {
         ...normalizedPayload,
@@ -317,7 +323,6 @@ export default function ProfesionalBusinessProfilePage() {
       const persistedForm: BusinessProfileForm = {
         businessName: normalizedPayload.fullName,
         categorySlugs: normalizedPayload.categorySlugs,
-        logoUrl: normalizedPayload.logoUrl,
         location: normalizedPayload.location,
         country: normalizedPayload.country,
         city: normalizedPayload.city,
@@ -325,11 +330,12 @@ export default function ProfesionalBusinessProfilePage() {
         latitude: normalizedPayload.latitude ?? undefined,
         longitude: normalizedPayload.longitude ?? undefined,
         phone: normalizedPayload.phoneNumber,
-        instagram: normalizedPayload.instagram || '',
-        facebook: normalizedPayload.facebook || '',
-        tiktok: normalizedPayload.tiktok || '',
-        website: normalizedPayload.website || '',
-        whatsapp: normalizedPayload.whatsapp || '',
+        logoUrl: canManageEnhancedPublicProfile ? form.logoUrl.trim() : form.logoUrl,
+        instagram: canManageEnhancedPublicProfile ? form.instagram.trim() : form.instagram,
+        facebook: canManageEnhancedPublicProfile ? form.facebook.trim() : form.facebook,
+        tiktok: canManageEnhancedPublicProfile ? form.tiktok.trim() : form.tiktok,
+        website: canManageEnhancedPublicProfile ? form.website.trim() : form.website,
+        whatsapp: canManageEnhancedPublicProfile ? form.whatsapp.trim() : form.whatsapp,
       };
       setForm(persistedForm);
       setInitialForm(persistedForm);
@@ -351,7 +357,7 @@ export default function ProfesionalBusinessProfilePage() {
     } finally {
       setIsSaving(false);
     }
-  }, [categories, form, initialForm, isSaving, refreshProfile]);
+  }, [canManageEnhancedPublicProfile, categories, form, initialForm, isSaving, refreshProfile]);
 
   const handleReset = useCallback(() => {
     if (!initialForm) return;
@@ -436,6 +442,12 @@ export default function ProfesionalBusinessProfilePage() {
               </p>
             ) : null}
 
+            {!canManageEnhancedPublicProfile ? (
+              <p className="rounded-[20px] border border-[color:var(--premium-soft)] bg-[color:var(--premium-soft)] px-4 py-3 text-sm text-[color:var(--premium-strong)] shadow-[var(--shadow-card)]">
+                El logo del negocio y los canales externos se administran desde el plan Profesional. En BASIC podés seguir editando nombre, rubros, ubicación y teléfono.
+              </p>
+            ) : null}
+
             <div className="grid gap-4 md:grid-cols-3">
               <DashboardStatCard
                 label="Rubros"
@@ -492,26 +504,32 @@ export default function ProfesionalBusinessProfilePage() {
                       <label className="text-sm font-medium text-[#0E2A47]">
                         Logo (URL)
                       </label>
-                      <div className="mt-2 flex items-center gap-3">
-                        <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full border border-[#E2E7EC] bg-[#F8FAFC] text-xs font-semibold text-[#94A3B8]">
-                          {form.logoUrl.trim() ? (
-                            <img
-                              src={form.logoUrl.trim()}
-                              alt="Logo del negocio"
-                              className="h-full w-full object-cover"
-                            />
-                          ) : (
-                            'LOGO'
-                          )}
+                      <LockedFeature
+                        requiredPlan="PROFESIONAL"
+                        currentPlan={profile?.professionalPlan}
+                        className="mt-2"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full border border-[#E2E7EC] bg-[#F8FAFC] text-xs font-semibold text-[#94A3B8]">
+                            {form.logoUrl.trim() ? (
+                              <img
+                                src={form.logoUrl.trim()}
+                                alt="Logo del negocio"
+                                className="h-full w-full object-cover"
+                              />
+                            ) : (
+                              'LOGO'
+                            )}
+                          </div>
+                          <input
+                            className={inputClassName}
+                            name="logoUrl"
+                            value={form.logoUrl}
+                            onChange={handleChange}
+                            placeholder="https://..."
+                          />
                         </div>
-                        <input
-                          className={inputClassName}
-                          name="logoUrl"
-                          value={form.logoUrl}
-                          onChange={handleChange}
-                          placeholder="https://..."
-                        />
-                      </div>
+                      </LockedFeature>
                     </div>
                     <div>
                       <label className="text-sm font-medium text-[#0E2A47]">
@@ -671,74 +689,79 @@ export default function ProfesionalBusinessProfilePage() {
                   </div>
                 </div>
 
-                <div className="rounded-[24px] border border-white/70 bg-white/95 p-5 shadow-[0_16px_36px_rgba(15,23,42,0.12)]">
-                  <DashboardSectionHeading
-                    title="Redes sociales"
-                    description="Canales que refuerzan confianza y derivan tráfico."
-                  />
-                  <div className="mt-4 grid gap-4 sm:grid-cols-2">
-                    <div>
-                      <label className="text-sm font-medium text-[#0E2A47]">
-                        Instagram
-                      </label>
-                      <input
-                        className={inputClassName}
-                        name="instagram"
-                        value={form.instagram}
-                        onChange={handleChange}
-                        placeholder="https://instagram.com/usuario"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium text-[#0E2A47]">
-                        Facebook
-                      </label>
-                      <input
-                        className={inputClassName}
-                        name="facebook"
-                        value={form.facebook}
-                        onChange={handleChange}
-                        placeholder="https://facebook.com/pagina"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium text-[#0E2A47]">
-                        TikTok
-                      </label>
-                      <input
-                        className={inputClassName}
-                        name="tiktok"
-                        value={form.tiktok}
-                        onChange={handleChange}
-                        placeholder="https://tiktok.com/@usuario"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium text-[#0E2A47]">
-                        Sitio web
-                      </label>
-                      <input
-                        className={inputClassName}
-                        name="website"
-                        value={form.website}
-                        onChange={handleChange}
-                        placeholder="https://miweb.com"
-                      />
-                    </div>
-                    <div className="sm:col-span-2">
-                      <label className="text-sm font-medium text-[#0E2A47]">
-                        WhatsApp
-                      </label>
-                      <input
-                        className={inputClassName}
-                        name="whatsapp"
-                        value={form.whatsapp}
-                        onChange={handleChange}
-                        placeholder="https://wa.me/598XXXXXXXX"
-                      />
+                <LockedFeature
+                  requiredPlan="PROFESIONAL"
+                  currentPlan={profile?.professionalPlan}
+                >
+                  <div className="rounded-[24px] border border-white/70 bg-white/95 p-5 shadow-[0_16px_36px_rgba(15,23,42,0.12)]">
+                    <DashboardSectionHeading
+                      title="Redes sociales"
+                      description="Canales que refuerzan confianza y derivan tráfico."
+                    />
+                    <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                      <div>
+                        <label className="text-sm font-medium text-[#0E2A47]">
+                          Instagram
+                        </label>
+                        <input
+                          className={inputClassName}
+                          name="instagram"
+                          value={form.instagram}
+                          onChange={handleChange}
+                          placeholder="https://instagram.com/usuario"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-sm font-medium text-[#0E2A47]">
+                          Facebook
+                        </label>
+                        <input
+                          className={inputClassName}
+                          name="facebook"
+                          value={form.facebook}
+                          onChange={handleChange}
+                          placeholder="https://facebook.com/pagina"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-sm font-medium text-[#0E2A47]">
+                          TikTok
+                        </label>
+                        <input
+                          className={inputClassName}
+                          name="tiktok"
+                          value={form.tiktok}
+                          onChange={handleChange}
+                          placeholder="https://tiktok.com/@usuario"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-sm font-medium text-[#0E2A47]">
+                          Sitio web
+                        </label>
+                        <input
+                          className={inputClassName}
+                          name="website"
+                          value={form.website}
+                          onChange={handleChange}
+                          placeholder="https://miweb.com"
+                        />
+                      </div>
+                      <div className="sm:col-span-2">
+                        <label className="text-sm font-medium text-[#0E2A47]">
+                          WhatsApp
+                        </label>
+                        <input
+                          className={inputClassName}
+                          name="whatsapp"
+                          value={form.whatsapp}
+                          onChange={handleChange}
+                          placeholder="https://wa.me/598XXXXXXXX"
+                        />
+                      </div>
                     </div>
                   </div>
-                </div>
+                </LockedFeature>
               </div>
             )}
               </div>

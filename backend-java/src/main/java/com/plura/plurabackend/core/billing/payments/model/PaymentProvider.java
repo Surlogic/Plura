@@ -3,8 +3,7 @@ package com.plura.plurabackend.core.billing.payments.model;
 import java.util.Locale;
 
 public enum PaymentProvider {
-    MERCADOPAGO,
-    DLOCAL;
+    MERCADOPAGO;
 
     public static PaymentProvider fromCode(String value) {
         if (value == null || value.isBlank()) {

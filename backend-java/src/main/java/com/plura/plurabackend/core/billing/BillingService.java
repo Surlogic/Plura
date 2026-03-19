@@ -30,8 +30,8 @@ import org.springframework.web.server.ResponseStatusException;
 /**
  * Servicio principal de facturación.
  * Gestiona la creación de suscripciones, checkouts, consultas y cancelaciones
- * para los profesionales de la plataforma. Coordina con los proveedores de pago
- * (MercadoPago, dLocal) y el repositorio de suscripciones.
+ * para los profesionales de la plataforma. Coordina con Mercado Pago y el
+ * repositorio de suscripciones.
  */
 @Service
 public class BillingService {

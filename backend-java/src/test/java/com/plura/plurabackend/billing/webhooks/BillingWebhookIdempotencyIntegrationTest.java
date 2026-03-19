@@ -52,8 +52,7 @@ import org.springframework.test.web.servlet.MockMvc;
     "BILLING_PLAN_ENTERPRISE_CURRENCY=UYU",
     "BILLING_MERCADOPAGO_ENABLED=true",
     "BILLING_MERCADOPAGO_ACCESS_TOKEN=mp-test-token",
-    "BILLING_MERCADOPAGO_WEBHOOK_SECRET=mp-webhook-secret",
-    "BILLING_DLOCAL_ENABLED=false"
+    "BILLING_MERCADOPAGO_WEBHOOK_SECRET=mp-webhook-secret"
 })
 @AutoConfigureMockMvc
 class BillingWebhookIdempotencyIntegrationTest {
@@ -123,7 +122,7 @@ class BillingWebhookIdempotencyIntegrationTest {
               "type":"payment",
               "action":"payment.updated",
               "status":"approved",
-              "external_reference":"%d",
+              "external_reference":"subscription:%d",
               "metadata":{"planCode":"PLAN_PROFESIONAL"},
               "data":{"id":"pay-1"},
               "date_created":"2026-03-05T12:00:00Z"

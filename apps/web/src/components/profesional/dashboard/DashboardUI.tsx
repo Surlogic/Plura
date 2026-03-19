@@ -5,6 +5,7 @@ import { cn } from '@/components/ui/cn';
 export type DashboardIconName =
   | 'agenda'
   | 'reservas'
+  | 'notificaciones'
   | 'horarios'
   | 'servicios'
   | 'negocio'
@@ -35,6 +36,14 @@ const iconPathByName: Record<DashboardIconName, ReactNode> = {
       <path d="M16 11a3 3 0 1 0 0-6" />
       <path d="M3.5 19c1.2-2.4 3.4-4 6.5-4s5.3 1.6 6.5 4" />
       <path d="M15.5 15c2 0 3.8 1.1 5 3" />
+    </>
+  ),
+  notificaciones: (
+    <>
+      <path d="M6.5 16.5h11" />
+      <path d="M8 16.5V10a4 4 0 1 1 8 0v6.5" />
+      <path d="M5 16.5h14" />
+      <path d="M10 19a2.25 2.25 0 0 0 4 0" />
     </>
   ),
   horarios: (

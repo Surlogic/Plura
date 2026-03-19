@@ -1,0 +1,16 @@
+package com.plura.plurabackend.core.notification.model;
+
+public enum NotificationEventType {
+    BOOKING_CREATED,
+    BOOKING_CONFIRMED,
+    BOOKING_CANCELLED,
+    BOOKING_RESCHEDULED,
+    BOOKING_COMPLETED,
+    BOOKING_NO_SHOW,
+    PAYMENT_APPROVED,
+    PAYMENT_FAILED,
+    PAYMENT_REFUNDED,
+    REVIEW_RECEIVED,
+    POLICY_UPDATED,
+    SCHEDULE_UPDATED
+}

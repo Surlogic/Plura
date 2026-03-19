@@ -1,5 +1,6 @@
 import api from '@/services/api';
 import { cachedGet, invalidateCachedGet } from '@/services/cachedGet';
+import type { ClientBookingTimelineResponse } from '@/types/clientBookingTimeline';
 import type {
   BookingActions,
   BookingCommandResponse,
@@ -146,6 +147,13 @@ export const getClientNextBooking = async (): Promise<ClientDashboardNextBooking
 
 export const getBookingActions = async (bookingId: string) => {
   const response = await api.get<BookingActions>(`/reservas/${bookingId}/actions`);
+  return response.data;
+};
+
+export const getClientBookingTimeline = async (bookingId: string) => {
+  const response = await api.get<ClientBookingTimelineResponse>(
+    `/cliente/reservas/${bookingId}/timeline`,
+  );
   return response.data;
 };
 

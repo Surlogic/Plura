@@ -57,7 +57,8 @@ const isRouteOrChild = (path: string, route: string) =>
   path === route || path.startsWith(`${route}/`);
 
 const isProfessionalProtectedPath = (path: string) =>
-  isRouteOrChild(path, '/profesional/dashboard');
+  isRouteOrChild(path, '/profesional/dashboard') ||
+  isRouteOrChild(path, '/profesional/notificaciones');
 
 const clientProtectedRoutes = [
   '/cliente/dashboard',

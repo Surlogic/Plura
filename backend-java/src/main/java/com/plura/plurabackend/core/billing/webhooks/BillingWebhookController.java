@@ -36,13 +36,4 @@ public class BillingWebhookController {
         }
         return ResponseEntity.ok().build();
     }
-
-    @PostMapping("/dlocal")
-    public ResponseEntity<Void> handleDlocal(
-        HttpServletRequest request,
-        @RequestBody(required = false) String payload
-    ) {
-        billingWebhookService.handleDLocal(request, payload);
-        return ResponseEntity.ok().build();
-    }
 }

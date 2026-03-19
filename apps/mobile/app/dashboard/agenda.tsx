@@ -21,11 +21,13 @@ import {
   markProfessionalBookingNoShow,
   rescheduleProfessionalBooking,
   retryProfessionalBookingPayout,
+  updateProfessionalReservationStatus,
 } from '../../src/services/professionalBookings';
 import type { ProfessionalReservation } from '../../src/types/professional';
 import { getApiErrorMessage } from '../../src/services/errors';
 import { getPublicSlots } from '../../src/services/publicBookings';
 import { useProfessionalProfileContext } from '../../src/context/ProfessionalProfileContext';
+import { canProfessionalConfirmReservation } from '../../../../packages/shared/src/bookings/professionalReservationActions';
 
 const toIsoDate = (value: Date) => value.toISOString().slice(0, 10);
 const today = new Date();
@@ -258,7 +260,7 @@ export default function AgendaScreen() {
   }, [actions?.canReschedule, profile?.slug, rescheduleDate, selectedReservation?.serviceId]);
 
   const handleAction = async (
-    type: 'cancel' | 'complete' | 'no_show' | 'retry_payout' | 'reschedule',
+    type: 'cancel' | 'complete' | 'confirm' | 'no_show' | 'retry_payout' | 'reschedule',
   ) => {
     if (!selectedReservation) return;
 
@@ -267,6 +269,8 @@ export default function AgendaScreen() {
     try {
       if (type === 'cancel') {
         await cancelProfessionalBooking(selectedReservation.id, cancelReason);
+      } else if (type === 'confirm') {
+        await updateProfessionalReservationStatus(selectedReservation.id, 'confirmed');
       } else if (type === 'complete') {
         await completeProfessionalBooking(selectedReservation.id);
       } else if (type === 'no_show') {
@@ -423,7 +427,6 @@ export default function AgendaScreen() {
       </View>
     </View>
   );
-
   return (
     <SafeAreaView className="flex-1 bg-background" edges={['top']}>
       <ScrollView contentContainerStyle={{ paddingBottom: 40 }}>
@@ -649,7 +652,13 @@ export default function AgendaScreen() {
                       </>
                     ) : null}
 
-                    {(selectedReservation.status === 'pending' || selectedReservation.status === 'confirmed') ? (
+                    {canProfessionalConfirmReservation(selectedReservation.status) ? (
+                      <TouchableOpacity disabled={isSubmittingAction} onPress={() => void handleAction('confirm')} className="mt-3 h-12 items-center justify-center rounded-full bg-secondary">
+                        <Text className="font-bold text-white">Confirmar reserva</Text>
+                      </TouchableOpacity>
+                    ) : null}
+
+                    {selectedReservation.status === 'confirmed' ? (
                       <TouchableOpacity disabled={isSubmittingAction} onPress={() => void handleAction('complete')} className="mt-3 h-12 items-center justify-center rounded-full bg-secondary">
                         <Text className="font-bold text-white">Marcar completada</Text>
                       </TouchableOpacity>

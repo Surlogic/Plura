@@ -11,7 +11,7 @@ import org.springframework.stereotype.Component;
 /**
  * Propiedades de configuración del módulo de facturación.
  * Se cargan desde el prefijo "billing" en application.properties/yml.
- * Contiene la configuración de planes, proveedores de pago (MercadoPago y dLocal),
+ * Contiene la configuración de planes y del proveedor Mercado Pago,
  * modo de operación (sandbox/production) y parámetros de seguridad para webhooks.
  */
 @Component
@@ -25,7 +25,6 @@ public class BillingProperties {
     private String webhookBaseUrl = "";
     private Plans plans = new Plans();
     private MercadoPago mercadopago = new MercadoPago();
-    private DLocal dlocal = new DLocal();
 
     /**
      * Valida la configuración al iniciar la aplicación.
@@ -45,33 +44,20 @@ public class BillingProperties {
         validatePlan("PLAN_PROFESIONAL", plans.planProfesional);
         validatePlan("PLAN_ENTERPRISE", plans.planEnterprise);
 
-        if (!mercadopago.enabled && !dlocal.enabled) {
-            throw new IllegalStateException("BILLING_ENABLED=true requiere al menos un proveedor activo");
-        }
-
         if (mercadopago.enabled) {
             requirePresent(mercadopago.accessToken, "BILLING_MERCADOPAGO_ACCESS_TOKEN");
             requirePresent(mercadopago.webhookSecret, "BILLING_MERCADOPAGO_WEBHOOK_SECRET");
-        }
-
-        if (dlocal.enabled) {
-            requirePresent(dlocal.xLogin, "BILLING_DLOCAL_X_LOGIN");
-            requirePresent(dlocal.secretKey, "BILLING_DLOCAL_SECRET_KEY");
-            requirePresent(dlocal.webhookSecret, "BILLING_DLOCAL_WEBHOOK_SECRET");
         }
     }
 
     /**
      * Verifica si un proveedor de pagos específico está habilitado.
      *
-     * @param provider el proveedor a verificar (MERCADOPAGO o DLOCAL)
+     * @param provider el proveedor a verificar
      * @return true si el proveedor está habilitado
      */
     public boolean isProviderEnabled(PaymentProvider provider) {
-        return switch (provider) {
-            case MERCADOPAGO -> mercadopago.enabled;
-            case DLOCAL -> dlocal.enabled;
-        };
+        return provider == PaymentProvider.MERCADOPAGO && mercadopago.enabled;
     }
 
     /**
@@ -209,6 +195,10 @@ public class BillingProperties {
         private String preapprovalPath = "/preapproval";
         private String cancelPath = "/preapproval/{id}";
         private String subscriptionStatusPath = "/preapproval/{id}";
+        private String reservationPreferencePath = "/checkout/preferences";
+        private String reservationPaymentStatusPath = "/v1/payments/{id}";
+        private String reservationPaymentSearchPath = "/v1/payments/search";
+        private String reservationRefundPath = "/v1/payments/{id}/refunds";
         private boolean sandboxOnlyBodySignatureFallback = false;
         private String subscriptionBackUrl = "";
         private String successUrl = "";
@@ -218,6 +208,7 @@ public class BillingProperties {
         private String planProfesionalId = "";
         private String planEnterpriseId = "";
         private int timeoutMillis = 5000;
+        private OAuth oauth = new OAuth();
 
         public boolean isEnabled() {
             return enabled;
@@ -281,6 +272,38 @@ public class BillingProperties {
 
         public void setSubscriptionStatusPath(String subscriptionStatusPath) {
             this.subscriptionStatusPath = subscriptionStatusPath;
+        }
+
+        public String getReservationPreferencePath() {
+            return reservationPreferencePath;
+        }
+
+        public void setReservationPreferencePath(String reservationPreferencePath) {
+            this.reservationPreferencePath = reservationPreferencePath;
+        }
+
+        public String getReservationPaymentStatusPath() {
+            return reservationPaymentStatusPath;
+        }
+
+        public void setReservationPaymentStatusPath(String reservationPaymentStatusPath) {
+            this.reservationPaymentStatusPath = reservationPaymentStatusPath;
+        }
+
+        public String getReservationPaymentSearchPath() {
+            return reservationPaymentSearchPath;
+        }
+
+        public void setReservationPaymentSearchPath(String reservationPaymentSearchPath) {
+            this.reservationPaymentSearchPath = reservationPaymentSearchPath;
+        }
+
+        public String getReservationRefundPath() {
+            return reservationRefundPath;
+        }
+
+        public void setReservationRefundPath(String reservationRefundPath) {
+            this.reservationRefundPath = reservationRefundPath;
         }
 
         public boolean isSandboxOnlyBodySignatureFallback() {
@@ -354,213 +377,70 @@ public class BillingProperties {
         public void setTimeoutMillis(int timeoutMillis) {
             this.timeoutMillis = timeoutMillis;
         }
-    }
 
-    /**
-     * Configuración específica del proveedor dLocal.
-     * Incluye credenciales, URLs de la API, rutas de endpoints,
-     * configuración de firma de webhooks, país y configuración de payouts.
-     */
-    public static class DLocal {
-        public static final String STRICT_DATE_BODY = "STRICT_DATE_BODY";
-
-        private boolean enabled = false;
-        private String baseUrl = "https://api.dlocal.com";
-        private String xLogin = "";
-        private String xTransKey = "";
-        private String secretKey = "";
-        private String webhookSecret = "";
-        private String checkoutPath = "/secure_payments";
-        private String bookingCheckoutPath = "/v1/payments";
-        private String cancelPath = "/subscriptions/{id}/cancel";
-        private String refundPath = "/v1/refunds";
-        private String payoutOauthPath = "/oauth/token";
-        private String payoutPath = "/payouts/v3";
-        private String payoutClientId = "";
-        private String payoutClientSecret = "";
-        private String paymentStatusPath = "/v1/payments/{id}";
-        private String subscriptionStatusPath = "/subscriptions/{id}";
-        private String signatureMode = STRICT_DATE_BODY;
-        private boolean sandboxOnlyBodySignatureFallback = false;
-        private String country = "UY";
-        private String successUrl = "";
-        private String failureUrl = "";
-        private int timeoutMillis = 5000;
-
-        public boolean isEnabled() {
-            return enabled;
+        public OAuth getOauth() {
+            return oauth;
         }
 
-        public void setEnabled(boolean enabled) {
-            this.enabled = enabled;
+        public void setOauth(OAuth oauth) {
+            this.oauth = oauth == null ? new OAuth() : oauth;
         }
 
-        public String getBaseUrl() {
-            return baseUrl;
-        }
+        public static class OAuth {
+            private String clientId = "";
+            private String clientSecret = "";
+            private String redirectUri = "";
+            private String authorizationUrl = "https://auth.mercadopago.com/authorization";
+            private String tokenUrl = "https://api.mercadopago.com/oauth/token";
+            private String tokenEncryptionKey = "";
 
-        public void setBaseUrl(String baseUrl) {
-            this.baseUrl = baseUrl;
-        }
+            public String getClientId() {
+                return clientId;
+            }
 
-        public String getXLogin() {
-            return xLogin;
-        }
+            public void setClientId(String clientId) {
+                this.clientId = clientId;
+            }
 
-        public void setXLogin(String xLogin) {
-            this.xLogin = xLogin;
-        }
+            public String getClientSecret() {
+                return clientSecret;
+            }
 
-        public String getXTransKey() {
-            return xTransKey;
-        }
+            public void setClientSecret(String clientSecret) {
+                this.clientSecret = clientSecret;
+            }
 
-        public void setXTransKey(String xTransKey) {
-            this.xTransKey = xTransKey;
-        }
+            public String getRedirectUri() {
+                return redirectUri;
+            }
 
-        public String getSecretKey() {
-            return secretKey;
-        }
+            public void setRedirectUri(String redirectUri) {
+                this.redirectUri = redirectUri;
+            }
 
-        public void setSecretKey(String secretKey) {
-            this.secretKey = secretKey;
-        }
+            public String getAuthorizationUrl() {
+                return authorizationUrl;
+            }
 
-        public String getWebhookSecret() {
-            return webhookSecret;
-        }
+            public void setAuthorizationUrl(String authorizationUrl) {
+                this.authorizationUrl = authorizationUrl;
+            }
 
-        public void setWebhookSecret(String webhookSecret) {
-            this.webhookSecret = webhookSecret;
-        }
+            public String getTokenUrl() {
+                return tokenUrl;
+            }
 
-        public String getCheckoutPath() {
-            return checkoutPath;
-        }
+            public void setTokenUrl(String tokenUrl) {
+                this.tokenUrl = tokenUrl;
+            }
 
-        public void setCheckoutPath(String checkoutPath) {
-            this.checkoutPath = checkoutPath;
-        }
+            public String getTokenEncryptionKey() {
+                return tokenEncryptionKey;
+            }
 
-        public String getBookingCheckoutPath() {
-            return bookingCheckoutPath;
-        }
-
-        public void setBookingCheckoutPath(String bookingCheckoutPath) {
-            this.bookingCheckoutPath = bookingCheckoutPath;
-        }
-
-        public String getCancelPath() {
-            return cancelPath;
-        }
-
-        public void setCancelPath(String cancelPath) {
-            this.cancelPath = cancelPath;
-        }
-
-        public String getRefundPath() {
-            return refundPath;
-        }
-
-        public void setRefundPath(String refundPath) {
-            this.refundPath = refundPath;
-        }
-
-        public String getPayoutOauthPath() {
-            return payoutOauthPath;
-        }
-
-        public void setPayoutOauthPath(String payoutOauthPath) {
-            this.payoutOauthPath = payoutOauthPath;
-        }
-
-        public String getPayoutPath() {
-            return payoutPath;
-        }
-
-        public void setPayoutPath(String payoutPath) {
-            this.payoutPath = payoutPath;
-        }
-
-        public String getPayoutClientId() {
-            return payoutClientId;
-        }
-
-        public void setPayoutClientId(String payoutClientId) {
-            this.payoutClientId = payoutClientId;
-        }
-
-        public String getPayoutClientSecret() {
-            return payoutClientSecret;
-        }
-
-        public void setPayoutClientSecret(String payoutClientSecret) {
-            this.payoutClientSecret = payoutClientSecret;
-        }
-
-        public String getPaymentStatusPath() {
-            return paymentStatusPath;
-        }
-
-        public void setPaymentStatusPath(String paymentStatusPath) {
-            this.paymentStatusPath = paymentStatusPath;
-        }
-
-        public String getSubscriptionStatusPath() {
-            return subscriptionStatusPath;
-        }
-
-        public void setSubscriptionStatusPath(String subscriptionStatusPath) {
-            this.subscriptionStatusPath = subscriptionStatusPath;
-        }
-
-        public String getSignatureMode() {
-            return signatureMode;
-        }
-
-        public void setSignatureMode(String signatureMode) {
-            this.signatureMode = signatureMode;
-        }
-
-        public boolean isSandboxOnlyBodySignatureFallback() {
-            return sandboxOnlyBodySignatureFallback;
-        }
-
-        public void setSandboxOnlyBodySignatureFallback(boolean sandboxOnlyBodySignatureFallback) {
-            this.sandboxOnlyBodySignatureFallback = sandboxOnlyBodySignatureFallback;
-        }
-
-        public String getCountry() {
-            return country;
-        }
-
-        public void setCountry(String country) {
-            this.country = country;
-        }
-
-        public String getSuccessUrl() {
-            return successUrl;
-        }
-
-        public void setSuccessUrl(String successUrl) {
-            this.successUrl = successUrl;
-        }
-
-        public String getFailureUrl() {
-            return failureUrl;
-        }
-
-        public void setFailureUrl(String failureUrl) {
-            this.failureUrl = failureUrl;
-        }
-
-        public int getTimeoutMillis() {
-            return timeoutMillis;
-        }
-
-        public void setTimeoutMillis(int timeoutMillis) {
-            this.timeoutMillis = timeoutMillis;
+            public void setTokenEncryptionKey(String tokenEncryptionKey) {
+                this.tokenEncryptionKey = tokenEncryptionKey;
+            }
         }
     }
 
@@ -618,13 +498,5 @@ public class BillingProperties {
 
     public void setMercadopago(MercadoPago mercadopago) {
         this.mercadopago = mercadopago;
-    }
-
-    public DLocal getDlocal() {
-        return dlocal;
-    }
-
-    public void setDlocal(DLocal dlocal) {
-        this.dlocal = dlocal;
     }
 }

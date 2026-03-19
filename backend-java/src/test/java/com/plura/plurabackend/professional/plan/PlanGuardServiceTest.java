@@ -60,6 +60,28 @@ class PlanGuardServiceTest {
         assertEquals("Tu plan permite hasta 5 fotos del negocio", exception.getReason());
     }
 
+    @Test
+    void keepsDailyScheduleRangeBlockedForBasic() {
+        ProfessionalProfile profile = currentProfile(34L);
+        stubPlan(profile, ProfessionalPlanCode.BASIC);
+
+        ResponseStatusException exception = assertThrows(
+            ResponseStatusException.class,
+            () -> service.requireScheduleRange("34", 2)
+        );
+
+        assertEquals(HttpStatus.FORBIDDEN, exception.getStatusCode());
+        assertEquals("Tu plan actual solo permite consultar agenda diaria", exception.getReason());
+    }
+
+    @Test
+    void allowsWeeklyScheduleRangeForProfesionalPlan() {
+        ProfessionalProfile profile = currentProfile(35L);
+        stubPlan(profile, ProfessionalPlanCode.PROFESIONAL);
+
+        assertDoesNotThrow(() -> service.requireScheduleRange("35", 7));
+    }
+
     private ProfessionalProfile currentProfile(Long userId) {
         ProfessionalProfile profile = new ProfessionalProfile();
         profile.setId(userId);

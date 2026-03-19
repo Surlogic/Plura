@@ -6,9 +6,6 @@ import com.plura.plurabackend.core.booking.dto.ProfessionalBookingUpdateRequest;
 import com.plura.plurabackend.core.booking.dto.BookingPolicyResponse;
 import com.plura.plurabackend.core.booking.dto.BookingPolicyUpdateRequest;
 import com.plura.plurabackend.core.security.RoleGuard;
-import com.plura.plurabackend.professional.payout.ProfessionalPayoutConfigService;
-import com.plura.plurabackend.professional.dto.ProfessionalPayoutConfigResponse;
-import com.plura.plurabackend.professional.dto.ProfessionalPayoutConfigUpdateRequest;
 import com.plura.plurabackend.professional.dto.ProfesionalBusinessProfileUpdateRequest;
 import com.plura.plurabackend.professional.dto.ProfesionalPublicPageResponse;
 import com.plura.plurabackend.professional.dto.ProfesionalPublicPageUpdateRequest;
@@ -45,18 +42,15 @@ public class ProfesionalConfigController {
     private static final Logger LOGGER = LoggerFactory.getLogger(ProfesionalConfigController.class);
 
     private final ProfessionalPublicPageService professionalPublicPageService;
-    private final ProfessionalPayoutConfigService professionalPayoutConfigService;
     private final ServiceImageStorageService serviceImageStorageService;
     private final RoleGuard roleGuard;
 
     public ProfesionalConfigController(
         ProfessionalPublicPageService professionalPublicPageService,
-        ProfessionalPayoutConfigService professionalPayoutConfigService,
         ServiceImageStorageService serviceImageStorageService,
         RoleGuard roleGuard
     ) {
         this.professionalPublicPageService = professionalPublicPageService;
-        this.professionalPayoutConfigService = professionalPayoutConfigService;
         this.serviceImageStorageService = serviceImageStorageService;
         this.roleGuard = roleGuard;
     }
@@ -77,18 +71,6 @@ public class ProfesionalConfigController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void updateBusinessProfile(@Valid @RequestBody ProfesionalBusinessProfileUpdateRequest request) {
         professionalPublicPageService.updateBusinessProfile(getProfesionalId(), request);
-    }
-
-    @GetMapping("/payout-config")
-    public ProfessionalPayoutConfigResponse getPayoutConfig() {
-        return professionalPayoutConfigService.getConfig(getProfesionalId());
-    }
-
-    @PutMapping("/payout-config")
-    public ProfessionalPayoutConfigResponse updatePayoutConfig(
-        @Valid @RequestBody ProfessionalPayoutConfigUpdateRequest request
-    ) {
-        return professionalPayoutConfigService.updateConfig(getProfesionalId(), request);
     }
 
     @GetMapping("/schedule")

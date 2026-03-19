@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/router';
 import dynamic from 'next/dynamic';
 import Navbar from '@/components/shared/Navbar';
@@ -10,9 +10,11 @@ import Badge from '@/components/ui/Badge';
 import Button from '@/components/ui/Button';
 import Card from '@/components/ui/Card';
 import { useFavoriteProfessionals } from '@/hooks/useFavoriteProfessionals';
-import api from '@/services/api';
 import { mapboxForwardGeocode } from '@/services/mapbox';
-import { getPublicSlots } from '@/services/publicBookings';
+import {
+  getPublicProfessionalBySlug,
+  getPublicSlots,
+} from '@/services/publicBookings';
 import { resolveAssetUrl } from '@/utils/assetUrl';
 import type {
   ProfessionalSchedule,
@@ -259,6 +261,9 @@ export default function ProfesionalDetailPage() {
   const [serviceDetailIndex, setServiceDetailIndex] = useState<number | null>(null);
   const [quickSlotGroups, setQuickSlotGroups] = useState<QuickSlotGroup[]>([]);
   const [isLoadingQuickSlots, setIsLoadingQuickSlots] = useState(false);
+  const [hasInteractedWithServices, setHasInteractedWithServices] = useState(false);
+  const [isMapSectionVisible, setIsMapSectionVisible] = useState(false);
+  const mapSectionRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
     if (isPreview) return;
@@ -271,11 +276,9 @@ export default function ProfesionalDetailPage() {
     setIsLoading(true);
     setErrorMessage(null);
 
-    api
-      .get(`/public/profesionales/${slug}`)
-      .then((response) => {
-        const professional = response.data as PublicProfessional;
-        setData(professional);
+    getPublicProfessionalBySlug(slug)
+      .then((professional) => {
+        setData(professional as PublicProfessional);
       })
       .catch(() => {
         setErrorMessage('No encontramos este profesional.');
@@ -550,7 +553,11 @@ export default function ProfesionalDetailPage() {
   const isCurrentFavorite = isFavorite(professionalSlug);
 
   useEffect(() => {
-    if (isPreview || !professionalSlug || !selectedService?.id) {
+    setHasInteractedWithServices(false);
+  }, [professionalSlug]);
+
+  useEffect(() => {
+    if (isPreview || !hasInteractedWithServices || !professionalSlug || !selectedService?.id) {
       setQuickSlotGroups([]);
       setIsLoadingQuickSlots(false);
       return;
@@ -581,7 +588,7 @@ export default function ProfesionalDetailPage() {
     return () => {
       cancelled = true;
     };
-  }, [isPreview, professionalSlug, selectedService?.id]);
+  }, [hasInteractedWithServices, isPreview, professionalSlug, selectedService?.id]);
 
   const handleReserve = (service: PublicService, date?: string, time?: string) => {
     const params = new URLSearchParams();
@@ -604,7 +611,7 @@ export default function ProfesionalDetailPage() {
 
   const handleSelectServiceFromDetail = () => {
     if (serviceDetailIndex === null) return;
-    setSelectedServiceIndex(serviceDetailIndex);
+    handleSelectService(serviceDetailIndex);
     setServiceDetailIndex(null);
   };
 
@@ -628,7 +635,7 @@ export default function ProfesionalDetailPage() {
     typeof merged.longitude === 'number' &&
     Number.isFinite(merged.longitude);
   useEffect(() => {
-    if (hasCoordinates || isPreview) {
+    if (hasCoordinates || isPreview || !isMapSectionVisible) {
       setFallbackCoordinates(null);
       return;
     }
@@ -660,7 +667,33 @@ export default function ProfesionalDetailPage() {
     return () => {
       cancelled = true;
     };
-  }, [hasCoordinates, isPreview, merged.location]);
+  }, [hasCoordinates, isMapSectionVisible, isPreview, merged.location]);
+
+  useEffect(() => {
+    const section = mapSectionRef.current;
+    if (!section || typeof IntersectionObserver === 'undefined') {
+      setIsMapSectionVisible(true);
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) {
+          setIsMapSectionVisible(true);
+          observer.disconnect();
+        }
+      },
+      { rootMargin: '200px 0px' },
+    );
+
+    observer.observe(section);
+    return () => observer.disconnect();
+  }, []);
+
+  const handleSelectService = (index: number) => {
+    setHasInteractedWithServices(true);
+    setSelectedServiceIndex(index);
+  };
 
   const mapLatitude = hasCoordinates ? merged.latitude : fallbackCoordinates?.latitude;
   const mapLongitude = hasCoordinates ? merged.longitude : fallbackCoordinates?.longitude;
@@ -828,11 +861,11 @@ export default function ProfesionalDetailPage() {
                     key={service.id ?? service.name ?? `service-${index}`}
                     role="button"
                     tabIndex={0}
-                    onClick={() => setSelectedServiceIndex(index)}
+                    onClick={() => handleSelectService(index)}
                     onKeyDown={(event) => {
                       if (event.key === 'Enter' || event.key === ' ') {
                         event.preventDefault();
-                        setSelectedServiceIndex(index);
+                        handleSelectService(index);
                       }
                     }}
                     className={`grid w-full gap-3 py-4 text-left transition sm:grid-cols-[32px_56px_minmax(0,1fr)_140px_120px] sm:items-center ${
@@ -913,6 +946,10 @@ export default function ProfesionalDetailPage() {
             <h2 className="mt-2 text-2xl font-semibold">Próximos turnos disponibles</h2>
             {isPreview ? (
               <p className="mt-4 text-sm text-[color:var(--ink-muted)]">Disponible al publicar la página.</p>
+            ) : !hasInteractedWithServices ? (
+              <p className="mt-4 text-sm text-[color:var(--ink-muted)]">
+                Seleccioná un servicio para consultar próximos turnos sin salir de la página.
+              </p>
             ) : isLoadingQuickSlots ? (
               <p className="mt-4 text-sm text-[color:var(--ink-muted)]">Buscando horarios...</p>
             ) : quickSlotGroups.every((group) => group.slots.length === 0) ? (
@@ -966,7 +1003,7 @@ export default function ProfesionalDetailPage() {
             </section>
           ) : null}
 
-          <section className="mt-10 border-t border-[#E6EBF0] pt-10">
+          <section ref={mapSectionRef} className="mt-10 border-t border-[#E6EBF0] pt-10">
             <p className="text-[0.65rem] uppercase tracking-[0.35em] text-[#94A3B8]">Sobre</p>
             <h2 className="mt-2 text-2xl font-semibold">Sobre el local o profesional</h2>
             {merged.about ? (

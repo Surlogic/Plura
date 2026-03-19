@@ -249,8 +249,12 @@ public class MercadoPagoClient {
         if (rawValue == null || rawValue.isBlank()) {
             return null;
         }
+        String normalized = rawValue.trim();
+        if (normalized.startsWith("subscription:")) {
+            normalized = normalized.substring("subscription:".length()).trim();
+        }
         try {
-            return Long.valueOf(rawValue.trim());
+            return Long.valueOf(normalized);
         } catch (NumberFormatException exception) {
             return null;
         }

@@ -17,6 +17,8 @@ import com.plura.plurabackend.professional.schedule.dto.ProfesionalScheduleDto;
 import com.plura.plurabackend.professional.schedule.dto.ProfesionalScheduleRangeDto;
 import com.plura.plurabackend.professional.service.model.ProfesionalService;
 import com.plura.plurabackend.professional.service.repository.ProfesionalServiceRepository;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Timer;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -51,6 +53,7 @@ public class ScheduleApplicationService implements BookingSchedulingAvailability
     private final ProfessionalAccessSupport professionalAccessSupport;
     private final ProfessionalSideEffectCoordinator sideEffectCoordinator;
     private final ZoneId systemZoneId;
+    private final MeterRegistry meterRegistry;
 
     public ScheduleApplicationService(
         ProfessionalProfileRepository professionalProfileRepository,
@@ -60,6 +63,7 @@ public class ScheduleApplicationService implements BookingSchedulingAvailability
         ObjectMapper objectMapper,
         ProfessionalAccessSupport professionalAccessSupport,
         ProfessionalSideEffectCoordinator sideEffectCoordinator,
+        MeterRegistry meterRegistry,
         @Value("${app.timezone:America/Montevideo}") String appTimezone
     ) {
         this.professionalProfileRepository = professionalProfileRepository;
@@ -69,33 +73,44 @@ public class ScheduleApplicationService implements BookingSchedulingAvailability
         this.objectMapper = objectMapper;
         this.professionalAccessSupport = professionalAccessSupport;
         this.sideEffectCoordinator = sideEffectCoordinator;
+        this.meterRegistry = meterRegistry;
         this.systemZoneId = ZoneId.of(appTimezone);
     }
 
     @Override
     @Transactional(readOnly = true)
     public List<String> getAvailableSlots(String slug, String rawDate, String serviceId) {
-        if (rawDate == null || rawDate.isBlank()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "La fecha es obligatoria");
-        }
-        if (serviceId == null || serviceId.isBlank()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "El servicio es obligatorio");
-        }
+        Timer.Sample sample = Timer.start(meterRegistry);
+        try {
+            if (rawDate == null || rawDate.isBlank()) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "La fecha es obligatoria");
+            }
+            if (serviceId == null || serviceId.isBlank()) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "El servicio es obligatorio");
+            }
 
-        LocalDate date = parseDate(rawDate, "Formato de fecha inválido");
-        ProfessionalProfile profile = professionalProfileRepository.findBySlug(slug)
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Profesional no encontrado"));
-        professionalAccessSupport.ensureProfessionalReservable(profile);
+            LocalDate date = parseDate(rawDate, "Formato de fecha inválido");
+            ProfessionalProfile profile = professionalProfileRepository.findSchedulingProfileBySlug(slug)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Profesional no encontrado"));
+            professionalAccessSupport.ensureProfessionalReservable(profile);
 
-        String slotCacheKey = buildSlotCacheKey(profile.getId(), rawDate.trim(), serviceId.trim());
-        var cachedSlots = slotCacheService.getSlots(slotCacheKey);
-        if (cachedSlots.isPresent()) {
-            return cachedSlots.get();
+            String slotCacheKey = buildSlotCacheKey(profile.getId(), rawDate.trim(), serviceId.trim());
+            var cachedSlots = slotCacheService.getSlots(slotCacheKey);
+            if (cachedSlots.isPresent()) {
+                return cachedSlots.get();
+            }
+
+            List<String> slots = calculateSlots(profile, serviceId.trim(), date, null, nowInSystemZone());
+            slotCacheService.putSlots(slotCacheKey, slots);
+            return slots;
+        } finally {
+            sample.stop(
+                Timer.builder("plura.public_slots.duration")
+                    .description("Public slots response duration")
+                    .publishPercentileHistogram()
+                    .register(meterRegistry)
+            );
         }
-
-        List<String> slots = calculateSlots(profile, serviceId.trim(), date, null, nowInSystemZone());
-        slotCacheService.putSlots(slotCacheKey, slots);
-        return slots;
     }
 
     @Override

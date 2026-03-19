@@ -1,233 +1,157 @@
 @startuml "Plura - Layered Architecture"
 
 !theme plain
+left to right direction
 skinparam defaultFontSize 11
 skinparam packageStyle rectangle
 
-title Plura Backend — Layered Architecture Diagram
+title Plura Monorepo - Runtime Architecture
 
-' ════════════════════════════════
-' PRESENTATION LAYER (Controllers)
-' ════════════════════════════════
-package "Presentation Layer (Controllers)" #E8F5E9 {
-
-  package "Public API" #C8E6C9 {
-    [ProfessionalPublicController\n/public/profesional] as PubProf
-    [SearchController\n/api/search] as Search
-    [CategoryController\n/api/categories] as CatCtrl
-    [HomeController\n/api/home] as Home
-    [GeoController\n/api/geo] as Geo
-    [HealthController\n/health] as Health
-  }
-
-  package "Auth API" #DCEDC8 {
-    [AuthController\n/auth/**] as Auth
-  }
-
-  package "Client API" #C5E1A5 {
-    [BookingClientController\n/cliente/booking] as BookClient
-    [BookingActionsController\n/cliente/booking/{id}/actions] as BookActions
-    [ClientFavoriteController\n/cliente/favorite] as Fav
-  }
-
-  package "Professional API" #AED581 {
-    [ProfessionalBookingCommandController\n/profesional/booking] as ProfBook
-    [ProfesionalConfigController\n/profesional/config] as ProfConfig
-  }
-
-  package "Billing API" #F0F4C3 {
-    [BillingController\n/billing] as Billing
-    [BillingWebhookController\n/webhooks] as Webhooks
-    [BookingPaymentController\n/booking/payment] as BookPay
-  }
-
-  package "Internal Ops API" #FFF9C4 {
-    [InternalBookingOpsController\n/internal/ops/booking] as IntBook
-    [InternalProviderOperationOpsController\n/internal/ops/billing] as IntBill
-  }
+package "apps/web" #E8F5E9 {
+  [Next.js pages\nmarketplace + cliente + profesional] as WebPages
+  [contexts + hooks\nnotifications / profiles / billing] as WebState
+  [services/*.ts\napi, search, bookings, notifications] as WebServices
 }
 
-' ════════════════════════════════
-' SECURITY / MIDDLEWARE LAYER
-' ════════════════════════════════
-package "Security & Middleware" #FFF3E0 {
-  [InternalOpsActuatorAccessFilter] as OpsFilter
-  [CookieOriginProtectionFilter] as CookieFilter
-  [JwtAuthenticationFilter] as JwtFilter
-  [RateLimitingFilter] as RateFilter
-  [GlobalExceptionHandler] as ErrHandler
+package "apps/mobile" #E3F2FD {
+  [Expo Router app\n(tabs), auth, dashboard] as MobileRoutes
+  [services/*.ts\napi, session, search, bookings, billing] as MobileServices
+  [ProfessionalProfileProvider] as MobileState
 }
 
-' ════════════════════════════════
-' SERVICE LAYER
-' ════════════════════════════════
-package "Service Layer (Business Logic)" #E3F2FD {
-
-  package "Auth Services" #BBDEFB {
-    [AuthService] as AuthSvc
-    [SessionService] as SessSvc
-    [PasswordLifecycleService] as PwdSvc
-    [EmailVerificationService] as EmailSvc
-    [PhoneVerificationService] as PhoneSvc
-    [OtpChallengeService] as OtpSvc
-    [AuthAuditService] as AuditSvc
-    [AccountDeletionService] as DelSvc
-  }
-
-  package "Booking Services" #90CAF9 {
-    [BookingClientService] as BookCSvc
-    [BookingActionsService] as BookASvc
-    [BookingEventService] as BookEvSvc
-    [BookingFinanceService] as BookFinSvc
-    [BookingProviderIntegrationService] as BookProvSvc
-    [BookingDateTimeService] as BookDTSvc
-    [BookingActionDecisionService] as BookDecSvc
-  }
-
-  package "Billing Services" #64B5F6 {
-    [BillingService] as BillSvc
-    [MercadoPagoSubscriptionService] as MPSvc
-    [BillingWebhookService] as WHSvc
-    [PaymentEventLedgerService] as LedgerSvc
-  }
-
-  package "Professional Services" #42A5F5 {
-    [ProfessionalProfileService] as ProfSvc
-    [ScheduleService] as SchedSvc
-    [CategoryService] as CatSvc
-  }
-
-  package "Availability Services" #1E88E5 {
-    [AvailableSlotService] as SlotSvc
-    [ScheduleSummaryService] as SumSvc
-  }
-
-  package "Search Services" #1565C0 {
-    [SearchService] as SearchSvc
-    [SearchIndexService] as IdxSvc
-    [SearchIndexWorker] as IdxWorker
-  }
-
-  package "Storage Services" #0D47A1 {
-    [ImageStorageService] as ImgSvc
-    [CloudflareR2ImageStorageService] as R2Svc
-    [LocalImageStorageService] as LocalSvc
-  }
+package "packages/shared" #F3E5F5 {
+  [billing/plans.ts\nbilling/planAccess.ts] as SharedPlans
+  [publicBookings/contracts.ts\nsearch/service.ts\ntypes/*] as SharedContracts
 }
 
-' ════════════════════════════════
-' CACHE LAYER
-' ════════════════════════════════
-package "Cache Layer" #F3E5F5 {
-  [SearchCacheService] as SCache
-  [ProfileCacheService] as PCache
-  [SlotCacheService] as SlCache
+package "backend-java / Presentation" #FFF3E0 {
+  [AuthController\n/auth/**] as AuthCtrl
+  [SearchController / HomeController /\nCategoryController / GeoController] as PublicCtrl
+  [ProfesionalPublicController\n/public/profesionales/**] as PublicProfessionalCtrl
+  [BookingClientController /\nClientBookingCommandController /\nBookingPaymentController] as ClientBookingCtrl
+  [ClientFavoriteController /\nClientNotificationController] as ClientCtrl
+  [ProfesionalConfigController /\nProfessionalBookingCommandController /\nProfessionalNotificationController /\nProfessionalAnalyticsController] as ProfessionalCtrl
+  [ProfessionalMercadoPagoConnectionController] as ProviderConnectionCtrl
+  [BillingController /\nBillingWebhookController] as BillingCtrl
+  [BookingActionsController /\nInternalBookingOpsController /\nInternalProviderOperationOpsController] as OpsCtrl
 }
 
-' ════════════════════════════════
-' PERSISTENCE LAYER
-' ════════════════════════════════
-package "Persistence Layer (Repositories)" #FFEBEE {
-  [UserRepository] as UserRepo
-  [AuthSessionRepository] as SessRepo
-  [ProfessionalProfileRepository] as ProfRepo
-  [ProfesionalServiceRepository] as SvcRepo
-  [BookingRepository] as BookRepo
-  [AvailableSlotRepository] as SlotRepo
-  [CategoryRepository] as CatRepo
-  [SubscriptionRepository] as SubRepo
-  [PaymentTransactionRepository] as PayRepo
-  [ClientFavoriteRepository] as FavRepo
+package "backend-java / Application & Domain" #E1F5FE {
+  [AuthService + SessionService + OAuthService] as AuthApp
+  [ProfessionalPublicPageService] as PublicPageApp
+  [BookingService] as BookingFacade
+  [BookingCommandApplicationService] as BookingCommandApp
+  [BookingQueryApplicationService +\nBookingClientService] as BookingQueryApp
+  [BookingActionsService] as BookingActionsApp
+  [ProfessionalProfileService +\nScheduleService +\nProfessionalPaymentProviderConnectionService] as ProfessionalApp
+  [ProfessionalNotificationService +\nClientNotificationService] as NotificationApiApp
+  [NotificationService + NotificationEventService +\nNotificationQueryService + NotificationReadService +\nBookingNotificationTimelineQueryService] as NotificationCoreApp
+  [BillingService + BookingPaymentApplicationService +\nProfessionalPaymentProviderConnectionService] as BillingApp
+  [SearchService + HomeService + CategoryService +\nGeoForwardGeocodeService + AvailableSlotService] as DiscoveryApp
 }
 
-' ════════════════════════════════
-' INFRASTRUCTURE
-' ════════════════════════════════
-package "Infrastructure" #ECEFF1 {
-  database "PostgreSQL" as DB
-  database "Redis" as Redis
-  queue "AWS SQS" as SQS
-  cloud "MeiliSearch" as Meili
-  cloud "Cloudflare R2" as R2
-  cloud "MercadoPago API" as MP
-  cloud "dLocal API" as DL
+package "backend-java / Persistence & Adapters" #FFEBEE {
+  [JPA repositories\nuser, auth, booking, finance,\nnotification, billing, profile] as Repos
+  [Profile/Search/Slot cache\nRedis or in-memory] as CacheAdapters
+  [ImageStorageService\nLocal / Cloudflare R2] as StorageAdapters
+  [MercadoPago clients\nOAuth + checkout + webhooks] as PaymentAdapters
+  [GoogleTokenVerifier /\nAppleTokenVerifier] as OAuthAdapters
+  [SqsJobQueueService + workers\nSearchIndexWorker / image thumbnails] as AsyncAdapters
 }
 
-' ────── FLOWS ──────
+cloud "Runtime dependencies" {
+  database "PostgreSQL" as PG
+  database "Redis (optional)" as Redis
+  component "Meilisearch (optional)" as Meili
+  queue "AWS SQS (optional)" as SQS
+  storage "Cloudflare R2 (optional)" as R2
+  component "Google OAuth" as Google
+  component "Apple OAuth" as Apple
+  component "Mapbox" as Mapbox
+  component "Mercado Pago" as MP
+  component "SMTP" as SMTP
+}
 
-' Controllers → Services
-Auth --> AuthSvc
-Auth --> SessSvc
-Auth --> PwdSvc
-Auth --> EmailSvc
-Auth --> PhoneSvc
+WebPages --> WebState
+WebState --> WebServices
+WebPages --> SharedPlans
+WebPages --> SharedContracts
+WebServices --> AuthCtrl
+WebServices --> PublicCtrl
+WebServices --> PublicProfessionalCtrl
+WebServices --> ClientBookingCtrl
+WebServices --> ClientCtrl
+WebServices --> ProfessionalCtrl
+WebServices --> ProviderConnectionCtrl
+WebServices --> BillingCtrl
 
-BookClient --> BookCSvc
-BookActions --> BookASvc
-ProfBook --> BookASvc
-BookPay --> BookFinSvc
+MobileRoutes --> MobileState
+MobileRoutes --> MobileServices
+MobileRoutes --> SharedPlans
+MobileRoutes --> SharedContracts
+MobileServices --> AuthCtrl
+MobileServices --> PublicCtrl
+MobileServices --> PublicProfessionalCtrl
+MobileServices --> ClientBookingCtrl
+MobileServices --> ProfessionalCtrl
+MobileServices --> BillingCtrl
 
-Billing --> BillSvc
-Webhooks --> WHSvc
+AuthCtrl --> AuthApp
+PublicCtrl --> DiscoveryApp
+PublicProfessionalCtrl --> PublicPageApp
+ClientBookingCtrl --> BookingFacade
+ClientBookingCtrl --> BookingActionsApp
+ClientBookingCtrl --> BillingApp
+ClientCtrl --> NotificationApiApp
+ProfessionalCtrl --> PublicPageApp
+ProfessionalCtrl --> ProfessionalApp
+ProfessionalCtrl --> BookingFacade
+ProfessionalCtrl --> NotificationApiApp
+ProfessionalCtrl --> BillingApp
+ProviderConnectionCtrl --> BillingApp
+BillingCtrl --> BillingApp
+OpsCtrl --> BookingActionsApp
+OpsCtrl --> BillingApp
 
-ProfConfig --> ProfSvc
-ProfConfig --> SchedSvc
-PubProf --> ProfSvc
+PublicPageApp --> BookingFacade
+PublicPageApp --> ProfessionalApp
+BookingFacade --> BookingCommandApp
+BookingFacade --> BookingQueryApp
+BookingFacade --> BookingActionsApp
+BookingCommandApp --> BillingApp
+BookingCommandApp --> NotificationCoreApp
+NotificationApiApp --> NotificationCoreApp
 
-Search --> SearchSvc
-CatCtrl --> CatSvc
-Home --> ProfSvc
-Geo --> ProfSvc
-Fav --> ProfSvc
+AuthApp --> Repos
+AuthApp --> OAuthAdapters
+BookingCommandApp --> Repos
+BookingQueryApp --> Repos
+BookingActionsApp --> Repos
+ProfessionalApp --> Repos
+NotificationCoreApp --> Repos
+BillingApp --> Repos
+DiscoveryApp --> Repos
 
-' Services → Cache
-SearchSvc --> SCache
-ProfSvc --> PCache
-SlotSvc --> SlCache
+DiscoveryApp --> CacheAdapters
+ProfessionalApp --> CacheAdapters
+BookingQueryApp --> CacheAdapters
 
-' Services → Repos
-AuthSvc --> UserRepo
-AuthSvc --> SessRepo
-BookCSvc --> BookRepo
-BookASvc --> BookRepo
-ProfSvc --> ProfRepo
-ProfSvc --> SvcRepo
-SlotSvc --> SlotRepo
-CatSvc --> CatRepo
-BillSvc --> SubRepo
-BookFinSvc --> PayRepo
-ProfSvc --> FavRepo
+ProfessionalApp --> StorageAdapters
+BillingApp --> PaymentAdapters
+BillingApp --> AsyncAdapters
+DiscoveryApp --> AsyncAdapters
+NotificationCoreApp --> AsyncAdapters
 
-' Repos → DB
-UserRepo --> DB
-SessRepo --> DB
-ProfRepo --> DB
-SvcRepo --> DB
-BookRepo --> DB
-SlotRepo --> DB
-CatRepo --> DB
-SubRepo --> DB
-PayRepo --> DB
-FavRepo --> DB
-
-' Cache → Redis
-SCache --> Redis
-PCache --> Redis
-SlCache --> Redis
-
-' External
-BillSvc --> MPSvc
-MPSvc --> MP
-BookProvSvc --> DL
-WHSvc --> DL
-
-IdxSvc --> Meili
-IdxWorker --> SQS
-R2Svc --> R2
-
-' Middleware
-OpsFilter -[hidden]-> CookieFilter
-CookieFilter -[hidden]-> JwtFilter
-JwtFilter -[hidden]-> RateFilter
+Repos --> PG
+CacheAdapters --> Redis
+DiscoveryApp --> Meili
+AsyncAdapters --> SQS
+StorageAdapters --> R2
+OAuthAdapters --> Google
+OAuthAdapters --> Apple
+WebPages --> Mapbox
+MobileRoutes --> Mapbox
+PaymentAdapters --> MP
+NotificationCoreApp --> SMTP
 
 @enduml

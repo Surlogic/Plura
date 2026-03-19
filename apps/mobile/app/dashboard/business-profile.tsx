@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { ActivityIndicator, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { router } from 'expo-router';
 import { useProfessionalProfileContext } from '../../src/context/ProfessionalProfileContext';
 import { updateProfessionalBusinessProfile } from '../../src/services/professionalConfig';
 import { getGeoLocationSuggestions, type GeoLocationSuggestion } from '../../src/services/geo';
@@ -93,6 +94,22 @@ export default function BusinessProfileScreen() {
       <ScrollView contentContainerStyle={{ padding: 24, paddingBottom: 60 }}>
         <Text className="text-3xl font-bold text-secondary">Perfil del negocio</Text>
         <Text className="mt-2 text-sm text-gray-500">Estos datos se usan en tu pagina publica y resultados.</Text>
+
+        {profile.slug ? (
+          <View className="mt-6 rounded-[24px] border border-primary/15 bg-primary/5 p-5">
+            <Text className="text-xs font-semibold uppercase tracking-[2px] text-primary">Pagina publica</Text>
+            <Text className="mt-2 text-base font-bold text-secondary">@{profile.slug}</Text>
+            <Text className="mt-1 text-sm leading-6 text-gray-500">
+              Revisa como se muestra tu perfil al cliente desde la app mobile.
+            </Text>
+            <TouchableOpacity
+              onPress={() => router.push(`/profesional/${profile.slug}`)}
+              className="mt-4 h-12 items-center justify-center rounded-full bg-secondary"
+            >
+              <Text className="font-bold text-white">Ver pagina publica</Text>
+            </TouchableOpacity>
+          </View>
+        ) : null}
 
         <View className="mt-6 rounded-[24px] bg-white p-5 border border-secondary/10">
           <Text className="text-xs font-semibold uppercase tracking-[2px] text-gray-500">Datos base</Text>

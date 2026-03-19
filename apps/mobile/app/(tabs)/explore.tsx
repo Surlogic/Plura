@@ -1,8 +1,16 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { View, Text, TextInput, ScrollView, TouchableOpacity, ActivityIndicator, Switch } from 'react-native';
+import {
+  ActivityIndicator,
+  ScrollView,
+  Switch,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { listPublicProfessionals, type PublicProfessionalSummary } from '../../src/services/publicBookings';
 import {
   getFavoriteProfessionalSlugs,
@@ -11,20 +19,33 @@ import {
 } from '../../src/services/clientFeatures';
 import { searchProfessionals } from '../../src/services/search';
 import type { SearchSort, SearchType } from '../../src/types/search';
+import { useProfessionalProfileContext } from '../../src/context/ProfessionalProfileContext';
+import AgendaScreen from '../dashboard/agenda';
+import { listCategories } from '../../src/services/categories';
+import type { ServiceCategoryOption } from '../../src/types/professional';
 
-const filters = ['Todos', 'Peluquería', 'Barbería', 'Uñas', 'Cosmetología', 'Spa'];
 const sortOptions: Array<{ value: SearchSort; label: string }> = [
   { value: 'RELEVANCE', label: 'Relevancia' },
   { value: 'DISTANCE', label: 'Distancia' },
   { value: 'RATING', label: 'Mejor valorados' },
 ];
 
+const resolveQueryParam = (value: string | string[] | undefined) =>
+  Array.isArray(value) ? value[0] ?? '' : value ?? '';
+
 export default function ExploreScreen() {
-  const [activeFilter, setActiveFilter] = useState('Todos');
-  const [search, setSearch] = useState('');
+  const { role, profile } = useProfessionalProfileContext();
+  const params = useLocalSearchParams<{ category?: string; categoryLabel?: string; q?: string }>();
+  const initialCategorySlug = resolveQueryParam(params.category).trim();
+  const initialCategoryLabel = resolveQueryParam(params.categoryLabel).trim();
+  const initialQuery = resolveQueryParam(params.q).trim();
+
+  const [activeFilter, setActiveFilter] = useState(initialCategorySlug || 'all');
+  const [search, setSearch] = useState(initialQuery);
   const [isLoading, setIsLoading] = useState(true);
   const [places, setPlaces] = useState<PublicProfessionalSummary[]>([]);
   const [favoriteSlugs, setFavoriteSlugs] = useState<string[]>([]);
+  const [categories, setCategories] = useState<ServiceCategoryOption[]>([]);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [availableNow, setAvailableNow] = useState(false);
   const [radiusKm, setRadiusKm] = useState<'3' | '5' | '10' | '20'>('10');
@@ -33,41 +54,84 @@ export default function ExploreScreen() {
   const [searchDate, setSearchDate] = useState('');
 
   useEffect(() => {
+    setActiveFilter(initialCategorySlug || 'all');
+  }, [initialCategorySlug]);
+
+  useEffect(() => {
+    setSearch(initialQuery);
+  }, [initialQuery]);
+
+  useEffect(() => {
+    if (role === 'professional') {
+      setIsLoading(false);
+      return;
+    }
+
+    let isCancelled = false;
+
     const load = async () => {
       setIsLoading(true);
       try {
-        const [response, favorites] = await Promise.all([listPublicProfessionals(), getFavoriteProfessionalSlugs()]);
+        const [response, favorites, categoryItems] = await Promise.all([
+          listPublicProfessionals(),
+          getFavoriteProfessionalSlugs(),
+          listCategories().catch(() => []),
+        ]);
+
+        if (isCancelled) return;
         setPlaces(response);
         setFavoriteSlugs(favorites);
+        setCategories(categoryItems);
       } finally {
-        setIsLoading(false);
+        if (!isCancelled) {
+          setIsLoading(false);
+        }
       }
     };
 
-    load();
-  }, []);
+    void load();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [role]);
 
   useEffect(() => {
+    if (role === 'professional') return undefined;
     const unsubscribe = subscribeFavoriteProfessionalSlugs((next) => {
       setFavoriteSlugs(next);
     });
     return unsubscribe;
-  }, []);
+  }, [role]);
+
+  const filterOptions = useMemo(
+    () => [
+      { slug: 'all', name: 'Todos' },
+      ...categories.map((category) => ({ slug: category.slug, name: category.name })),
+    ],
+    [categories],
+  );
+
+  const activeFilterLabel = useMemo(() => {
+    if (activeFilter === 'all') return 'Todos';
+    return filterOptions.find((item) => item.slug === activeFilter)?.name || initialCategoryLabel || 'Categoria';
+  }, [activeFilter, filterOptions, initialCategoryLabel]);
 
   const filteredPlaces = useMemo(() => {
     const query = search.trim().toLowerCase();
     return places.filter((place) => {
       const matchesText =
-        !query ||
-        place.fullName.toLowerCase().includes(query) ||
-        (place.rubro || '').toLowerCase().includes(query) ||
-        (place.location || '').toLowerCase().includes(query);
+        !query
+        || place.fullName.toLowerCase().includes(query)
+        || (place.rubro || '').toLowerCase().includes(query)
+        || (place.location || '').toLowerCase().includes(query);
 
       if (!matchesText) return false;
-      if (activeFilter === 'Todos') return true;
-      return (place.rubro || '').toLowerCase().includes(activeFilter.toLowerCase());
+      if (activeFilter === 'all') return true;
+
+      return (place.rubro || '').toLowerCase().includes(activeFilterLabel.toLowerCase());
     });
-  }, [places, search, activeFilter]);
+  }, [activeFilter, activeFilterLabel, places, search]);
 
   const runAdvancedSearch = async () => {
     setIsLoading(true);
@@ -75,7 +139,7 @@ export default function ExploreScreen() {
       const response = await searchProfessionals({
         query: search || undefined,
         type: searchType,
-        categorySlug: activeFilter === 'Todos' ? undefined : activeFilter.toLowerCase(),
+        categorySlug: activeFilter === 'all' ? undefined : activeFilter,
         availableNow,
         radiusKm: Number(radiusKm),
         sort: sortBy,
@@ -101,27 +165,31 @@ export default function ExploreScreen() {
     }
   };
 
+  if (role === 'professional' && profile) {
+    return <AgendaScreen />;
+  }
+
   return (
     <SafeAreaView className="flex-1 bg-background" edges={['top']}>
-      {/* Cabecera y Buscador Fijo */}
-      <View className="bg-white px-6 pb-4 pt-2 shadow-sm z-10">
-        <Text className="text-2xl font-bold text-secondary mb-4">Explorar locales</Text>
-        
-        <View className="flex-row items-center bg-background h-12 rounded-[16px] px-4 border border-secondary/10">
+      <View className="z-10 bg-white px-6 pb-4 pt-2 shadow-sm">
+        <Text className="mb-1 text-xs font-semibold uppercase tracking-[2px] text-gray-500">Explorar</Text>
+        <Text className="mb-4 text-2xl font-bold text-secondary">Profesionales y rubros</Text>
+
+        <View className="h-12 flex-row items-center rounded-[16px] border border-secondary/10 bg-background px-4">
           <Ionicons name="search" size={20} color="#9CA3AF" />
           <TextInput
-            className="flex-1 ml-2 text-base text-secondary"
+            className="ml-2 flex-1 text-base text-secondary"
             placeholder="Buscar servicios o profesionales..."
             placeholderTextColor="#9CA3AF"
             value={search}
             onChangeText={setSearch}
             returnKeyType="search"
           />
-          {search.length > 0 && (
+          {search.length > 0 ? (
             <TouchableOpacity onPress={() => setSearch('')}>
               <Ionicons name="close-circle" size={20} color="#9CA3AF" />
             </TouchableOpacity>
-          )}
+          ) : null}
         </View>
 
         <TouchableOpacity
@@ -140,7 +208,7 @@ export default function ExploreScreen() {
                 <TouchableOpacity
                   key={type}
                   onPress={() => setSearchType(type)}
-                  className={`rounded-full px-3 py-2 ${searchType === type ? 'bg-secondary' : 'bg-white border border-secondary/10'}`}
+                  className={`rounded-full px-3 py-2 ${searchType === type ? 'bg-secondary' : 'border border-secondary/10 bg-white'}`}
                 >
                   <Text className={`text-xs font-semibold ${searchType === type ? 'text-white' : 'text-secondary'}`}>{type}</Text>
                 </TouchableOpacity>
@@ -153,7 +221,7 @@ export default function ExploreScreen() {
                 <TouchableOpacity
                   key={option.value}
                   onPress={() => setSortBy(option.value)}
-                  className={`rounded-full px-3 py-2 ${sortBy === option.value ? 'bg-secondary' : 'bg-white border border-secondary/10'}`}
+                  className={`rounded-full px-3 py-2 ${sortBy === option.value ? 'bg-secondary' : 'border border-secondary/10 bg-white'}`}
                 >
                   <Text className={`text-xs font-semibold ${sortBy === option.value ? 'text-white' : 'text-secondary'}`}>{option.label}</Text>
                 </TouchableOpacity>
@@ -170,7 +238,7 @@ export default function ExploreScreen() {
                 <TouchableOpacity
                   key={radius}
                   onPress={() => setRadiusKm(radius)}
-                  className={`rounded-full px-3 py-2 ${radiusKm === radius ? 'bg-primary' : 'bg-white border border-secondary/10'}`}
+                  className={`rounded-full px-3 py-2 ${radiusKm === radius ? 'bg-primary' : 'border border-secondary/10 bg-white'}`}
                 >
                   <Text className={`text-xs font-semibold ${radiusKm === radius ? 'text-white' : 'text-secondary'}`}>{radius} km</Text>
                 </TouchableOpacity>
@@ -195,22 +263,20 @@ export default function ExploreScreen() {
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
-        
-        {/* Filtros Horizontales (Chips) */}
         <View className="py-4">
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 24, gap: 8 }}>
-            {filters.map((filter) => {
-              const isActive = activeFilter === filter;
+            {filterOptions.map((filter) => {
+              const isActive = activeFilter === filter.slug;
               return (
                 <TouchableOpacity
-                  key={filter}
-                  onPress={() => setActiveFilter(filter)}
-                  className={`px-4 py-2 rounded-full border ${
-                    isActive ? 'bg-secondary border-secondary' : 'bg-white border-secondary/10'
+                  key={filter.slug}
+                  onPress={() => setActiveFilter(filter.slug)}
+                  className={`rounded-full border px-4 py-2 ${
+                    isActive ? 'border-secondary bg-secondary' : 'border-secondary/10 bg-white'
                   }`}
                 >
                   <Text className={`text-sm font-semibold ${isActive ? 'text-white' : 'text-secondary'}`}>
-                    {filter}
+                    {filter.name}
                   </Text>
                 </TouchableOpacity>
               );
@@ -218,35 +284,47 @@ export default function ExploreScreen() {
           </ScrollView>
         </View>
 
-        {/* Lista de Resultados */}
-        <View className="px-6 space-y-4 mt-2">
-          <View className="flex-row justify-between items-center mb-2">
-            <Text className="text-sm font-semibold text-gray-500 uppercase tracking-[2px]">
+        <View className="mt-2 px-6">
+          <View className="mb-2 flex-row items-center justify-between">
+            <Text className="text-sm font-semibold uppercase tracking-[2px] text-gray-500">
               Resultados ({filteredPlaces.length})
             </Text>
+            {activeFilter !== 'all' ? (
+              <Text className="text-xs font-semibold text-primary">{activeFilterLabel}</Text>
+            ) : null}
           </View>
 
           {isLoading ? (
-            <View className="py-10 items-center">
+            <View className="items-center py-10">
               <ActivityIndicator color="#1FB6A6" />
             </View>
           ) : null}
 
-          {!isLoading && filteredPlaces.map((place, index) => (
+          {!isLoading && filteredPlaces.length === 0 ? (
+            <View className="rounded-[24px] border border-dashed border-secondary/15 bg-white p-6">
+              <Text className="text-center text-sm text-gray-500">
+                No encontramos resultados con esos filtros. Prueba cambiando rubro o texto de busqueda.
+              </Text>
+            </View>
+          ) : null}
+
+          {!isLoading && filteredPlaces.map((place) => (
             <TouchableOpacity
-              key={place.id || index}
+              key={place.id}
               activeOpacity={0.9}
               onPress={() => router.push(`/profesional/${place.slug}`)}
-              className="bg-white rounded-[24px] p-4 shadow-sm border border-secondary/5 mb-4"
+              className="mb-4 rounded-[24px] border border-secondary/5 bg-white p-4 shadow-sm"
             >
-              <View className="h-40 w-full bg-[#E9EEF2] rounded-[20px] mb-4 items-center justify-center">
+              <View className="mb-4 h-40 w-full items-center justify-center rounded-[20px] bg-[#E9EEF2]">
                 <Ionicons name="image-outline" size={40} color="#9CA3AF" />
               </View>
-              
-              <View className="flex-row justify-between items-start">
-                <View>
+
+              <View className="flex-row items-start justify-between">
+                <View className="flex-1 pr-3">
                   <Text className="text-lg font-bold text-secondary">{place.fullName}</Text>
-                  <Text className="text-sm text-gray-500">{place.rubro || 'Profesional'}</Text>
+                  <Text className="mt-1 text-sm text-gray-500">
+                    {place.rubro || 'Profesional'}
+                  </Text>
                 </View>
                 <TouchableOpacity
                   onPress={async () => setFavoriteSlugs(await toggleFavoriteProfessionalSlug(place.slug))}
@@ -260,10 +338,10 @@ export default function ExploreScreen() {
                 </TouchableOpacity>
               </View>
 
-              <View className="flex-row justify-between items-center mt-3">
+              <View className="mt-3 flex-row items-center justify-between">
                 <View className="flex-row items-center">
                   <Ionicons name="location-outline" size={14} color="#1FB6A6" />
-                  <Text className="text-sm font-bold text-secondary ml-1">{place.location || 'Sin ubicación'}</Text>
+                  <Text className="ml-1 text-sm font-bold text-secondary">{place.location || 'Sin ubicacion'}</Text>
                 </View>
                 <Text className="text-sm text-gray-500">{place.headline || 'Agenda disponible'}</Text>
               </View>

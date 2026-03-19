@@ -12,10 +12,10 @@
     "dev:mobile": "pnpm -C apps/mobile start",
     "android:mobile": "pnpm -C apps/mobile android",
     "dev:backend": "pnpm dev:backend-java",
-    "dev:backend-java": "cross-env-shell SPRING_FLYWAY_VALIDATE_ON_MIGRATE=false \"cd backend-java && (./gradlew bootRun || gradlew.bat bootRun)\"",
+    "dev:backend-java": "node ./scripts/dev-backend-java.cjs",
     "dev:backend:remote": "cd backend-java && SPRING_FLYWAY_VALIDATE_ON_MIGRATE=false ./gradlew bootRun",
     "build": "pnpm -r build",
-    "build:backend-java": "cd backend-java && ./gradlew build",
+    "build:backend-java": "node ./scripts/dev-backend-java.cjs build",
     "lint": "pnpm -r lint"
   },
   "devDependencies": {

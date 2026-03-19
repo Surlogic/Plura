@@ -6,28 +6,60 @@ import {
   buildClientNotifications,
   type MobileNotification,
 } from '../../src/services/clientFeatures';
+import { useProfessionalProfileContext } from '../../src/context/ProfessionalProfileContext';
 
 export default function NotificationsScreen() {
+  const { role, profile } = useProfessionalProfileContext();
   const [isLoading, setIsLoading] = useState(true);
   const [items, setItems] = useState<MobileNotification[]>([]);
 
   useEffect(() => {
     const load = async () => {
       setIsLoading(true);
-      const notifications = await buildClientNotifications();
+      const notifications = role === 'professional'
+        ? [
+            {
+              id: 'professional-panel',
+              title: 'Panel profesional activo',
+              body: 'Tus accesos mobile ahora quedaron separados del flujo cliente.',
+              type: 'system' as const,
+              createdAt: new Date().toISOString(),
+            },
+            {
+              id: 'professional-email',
+              title: profile?.emailVerified ? 'Email verificado' : 'Verifica tu email',
+              body: profile?.emailVerified
+                ? 'Tu cuenta ya esta lista para notificaciones y recuperacion.'
+                : 'Confirma tu email desde Cuenta para mejorar seguridad y recuperacion.',
+              type: 'system' as const,
+              createdAt: new Date().toISOString(),
+            },
+            {
+              id: 'professional-plan',
+              title: `Plan ${profile?.professionalPlan || 'BASIC'}`,
+              body: 'Revisa Facturacion para gestionar tu plan y los datos de cobro.',
+              type: 'system' as const,
+              createdAt: new Date().toISOString(),
+            },
+          ]
+        : await buildClientNotifications();
       setItems(notifications);
       setIsLoading(false);
     };
 
-    load();
-  }, []);
+    void load();
+  }, [profile?.emailVerified, profile?.professionalPlan, role]);
 
   return (
     <SafeAreaView className="flex-1 bg-background" edges={['top']}>
       <ScrollView contentContainerStyle={{ padding: 24, paddingBottom: 120 }}>
         <Text className="text-xs font-bold uppercase tracking-[2px] text-gray-500">Actividad</Text>
         <Text className="mt-2 text-3xl font-bold text-secondary">Notificaciones</Text>
-        <Text className="mt-2 text-sm text-gray-500">Recordatorios y novedades de tu cuenta.</Text>
+        <Text className="mt-2 text-sm text-gray-500">
+          {role === 'professional'
+            ? 'Alertas del panel profesional y estado de la cuenta.'
+            : 'Recordatorios y novedades de tu cuenta.'}
+        </Text>
 
         {isLoading ? (
           <View className="py-16 items-center">

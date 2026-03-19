@@ -101,7 +101,7 @@ export default function DashboardTab() {
           Tu Perfil
         </Text>
         <Text className="text-base text-gray-500 mb-8 text-center">
-          Iniciá sesión para ver tus reservas, guardar favoritos y gestionar tu cuenta.
+          Inicia sesion para entrar como cliente o profesional y gestionar tu espacio correspondiente.
         </Text>
         <TouchableOpacity
           className="w-full h-14 bg-[#1FB6A6] rounded-full items-center justify-center mb-3"
@@ -129,9 +129,17 @@ export default function DashboardTab() {
         end={{ x: 1, y: 1 }}
         className="rounded-[26px] p-6"
       >
-        <Text className="text-xs font-bold uppercase tracking-[2px] text-white/80">Panel profesional</Text>
-        <Text className="mt-2 text-3xl font-bold text-white">Mi Panel</Text>
+        <Text className="text-xs font-bold uppercase tracking-[2px] text-white/80">Cuenta profesional</Text>
+        <Text className="mt-2 text-3xl font-bold text-white">Centro de gestion</Text>
         <Text className="text-base text-white/80">Hola, {profile.fullName}</Text>
+        <View className="mt-5 flex-row flex-wrap" style={{ gap: 10 }}>
+          <View className="rounded-full bg-white/15 px-4 py-2">
+            <Text className="text-xs font-semibold text-white">Plan {profile.professionalPlan || 'BASIC'}</Text>
+          </View>
+          <View className="rounded-full bg-white/15 px-4 py-2">
+            <Text className="text-xs font-semibold text-white">{profile.rubro || 'Profesional'}</Text>
+          </View>
+        </View>
       </LinearGradient>
 
       {!profile.emailVerified ? (
@@ -143,7 +151,45 @@ export default function DashboardTab() {
             variant="banner"
           />
         </View>
-      ) : null}
+        ) : null}
+
+      <View className="mt-6 rounded-[24px] bg-white border border-secondary/10 p-5 shadow-sm">
+        <Text className="text-xs font-bold uppercase tracking-[2px] text-gray-500">Estado del negocio</Text>
+        <View className="mt-4 flex-row flex-wrap justify-between">
+          <View className="mb-4 w-[48%] rounded-[20px] bg-background p-4">
+            <Text className="text-[11px] font-bold uppercase tracking-[1px] text-gray-500">Email</Text>
+            <Text className="mt-2 text-base font-bold text-secondary">
+              {profile.emailVerified ? 'Verificado' : 'Pendiente'}
+            </Text>
+          </View>
+          <View className="mb-4 w-[48%] rounded-[20px] bg-background p-4">
+            <Text className="text-[11px] font-bold uppercase tracking-[1px] text-gray-500">Pagina publica</Text>
+            <Text className="mt-2 text-base font-bold text-secondary">
+              {profile.slug ? 'Activa' : 'Sin slug'}
+            </Text>
+          </View>
+          <View className="w-[48%] rounded-[20px] bg-background p-4">
+            <Text className="text-[11px] font-bold uppercase tracking-[1px] text-gray-500">Ubicacion</Text>
+            <Text className="mt-2 text-base font-bold text-secondary">
+              {profile.city || profile.location || 'Sin definir'}
+            </Text>
+          </View>
+          <View className="w-[48%] rounded-[20px] bg-background p-4">
+            <Text className="text-[11px] font-bold uppercase tracking-[1px] text-gray-500">Tipo</Text>
+            <Text className="mt-2 text-base font-bold text-secondary">
+              {profile.tipoCliente || 'Profesional'}
+            </Text>
+          </View>
+        </View>
+        {profile.slug ? (
+          <TouchableOpacity
+            onPress={() => router.push(`/profesional/${profile.slug}`)}
+            className="mt-1 h-12 items-center justify-center rounded-full bg-secondary"
+          >
+            <Text className="font-bold text-white">Ver pagina publica</Text>
+          </TouchableOpacity>
+        ) : null}
+      </View>
 
       <View className="space-y-3 mt-6">
         <TouchableOpacity
@@ -246,8 +292,8 @@ export default function DashboardTab() {
                 <Ionicons name="settings-outline" size={18} color="#0E2A47" />
               </View>
               <View className="ml-3">
-                <Text className="text-secondary font-bold text-base">Configuracion</Text>
-                <Text className="text-xs text-gray-500">Preferencias de la cuenta</Text>
+                <Text className="text-secondary font-bold text-base">Cuenta y seguridad</Text>
+                <Text className="text-xs text-gray-500">Preferencias, verificacion y acceso</Text>
               </View>
             </View>
             <Ionicons name="chevron-forward" size={18} color="#94A3B8" />

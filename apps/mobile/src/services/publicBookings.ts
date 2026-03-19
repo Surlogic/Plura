@@ -1,5 +1,6 @@
 import api from './api';
 import type { ServicePaymentType } from '../types/professional';
+import type { ProfessionalSchedule } from '../types/professional';
 import {
   type PublicBookingRequest,
   type PublicBookingResponseBase,
@@ -14,7 +15,11 @@ import {
 
 export type PublicProfessionalService = PublicProfessionalServiceBase<ServicePaymentType>;
 
-export type PublicProfessionalPage = PublicProfessionalPageBase<ServicePaymentType>;
+export type PublicProfessionalPage = PublicProfessionalPageBase<
+  ServicePaymentType,
+  unknown,
+  ProfessionalSchedule
+>;
 
 export type {
   PublicBookingStatus,

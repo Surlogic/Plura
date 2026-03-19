@@ -2,8 +2,12 @@ import React from 'react';
 import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Platform } from 'react-native';
+import { useProfessionalProfileContext } from '../../src/context/ProfessionalProfileContext';
 
 export default function TabsLayout() {
+  const { role } = useProfessionalProfileContext();
+  const isProfessional = role === 'professional';
+
   return (
     <Tabs
       screenOptions={{
@@ -32,36 +36,60 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Inicio',
+          title: isProfessional ? 'Panel' : 'Inicio',
           tabBarIcon: ({ color, focused }) => (
-            <Ionicons name={focused ? 'home' : 'home-outline'} size={24} color={color} />
+            <Ionicons
+              name={isProfessional
+                ? focused ? 'grid' : 'grid-outline'
+                : focused ? 'home' : 'home-outline'}
+              size={24}
+              color={color}
+            />
           ),
         }}
       />
       <Tabs.Screen
         name="explore"
         options={{
-          title: 'Explorar',
+          title: isProfessional ? 'Agenda' : 'Explorar',
           tabBarIcon: ({ color, focused }) => (
-            <Ionicons name={focused ? 'search' : 'search-outline'} size={26} color={color} />
+            <Ionicons
+              name={isProfessional
+                ? focused ? 'calendar' : 'calendar-outline'
+                : focused ? 'search' : 'search-outline'}
+              size={26}
+              color={color}
+            />
           ),
         }}
       />
       <Tabs.Screen
         name="favorites"
         options={{
-          title: 'Favoritos',
+          title: isProfessional ? 'Servicios' : 'Favoritos',
           tabBarIcon: ({ color, focused }) => (
-            <Ionicons name={focused ? 'heart' : 'heart-outline'} size={24} color={color} />
+            <Ionicons
+              name={isProfessional
+                ? focused ? 'cut' : 'cut-outline'
+                : focused ? 'heart' : 'heart-outline'}
+              size={24}
+              color={color}
+            />
           ),
         }}
       />
       <Tabs.Screen
         name="bookings"
         options={{
-          title: 'Reservas',
+          title: isProfessional ? 'Negocio' : 'Reservas',
           tabBarIcon: ({ color, focused }) => (
-            <Ionicons name={focused ? 'calendar' : 'calendar-outline'} size={24} color={color} />
+            <Ionicons
+              name={isProfessional
+                ? focused ? 'storefront' : 'storefront-outline'
+                : focused ? 'calendar' : 'calendar-outline'}
+              size={24}
+              color={color}
+            />
           ),
         }}
       />
@@ -77,7 +105,7 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="dashboard"
         options={{
-          title: 'Perfil',
+          title: isProfessional ? 'Cuenta' : 'Perfil',
           tabBarIcon: ({ color, focused }) => (
             <Ionicons name={focused ? 'person' : 'person-outline'} size={24} color={color} />
           ),

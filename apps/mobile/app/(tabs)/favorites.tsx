@@ -3,6 +3,7 @@ import { ActivityIndicator, ScrollView, Text, TouchableOpacity, View } from 'rea
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
+import { LinearGradient } from 'expo-linear-gradient';
 import {
   getFavoriteProfessionalSlugs,
   subscribeFavoriteProfessionalSlugs,
@@ -12,13 +13,24 @@ import {
   listPublicProfessionals,
   type PublicProfessionalSummary,
 } from '../../src/services/publicBookings';
+import { useProfessionalProfileContext } from '../../src/context/ProfessionalProfileContext';
+import ServicesScreen from '../dashboard/services';
+import { getCategoryAccent } from '../../src/features/client/categoryUi';
 
 export default function FavoritesScreen() {
+  const { role, profile, clientProfile } = useProfessionalProfileContext();
   const [loading, setLoading] = useState(true);
   const [favorites, setFavorites] = useState<string[]>([]);
   const [professionals, setProfessionals] = useState<PublicProfessionalSummary[]>([]);
 
   useEffect(() => {
+    if (role === 'professional') {
+      setLoading(false);
+      return;
+    }
+
+    let isCancelled = false;
+
     const load = async () => {
       setLoading(true);
       try {
@@ -26,48 +38,69 @@ export default function FavoritesScreen() {
           getFavoriteProfessionalSlugs(),
           listPublicProfessionals(),
         ]);
+        if (isCancelled) return;
         setFavorites(saved);
         setProfessionals(items);
       } finally {
-        setLoading(false);
+        if (!isCancelled) {
+          setLoading(false);
+        }
       }
     };
 
-    load();
-  }, []);
+    void load();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [role]);
 
   useEffect(() => {
+    if (role === 'professional') return undefined;
     const unsubscribe = subscribeFavoriteProfessionalSlugs((next) => {
       setFavorites(next);
     });
     return unsubscribe;
-  }, []);
+  }, [role]);
 
   const favoriteItems = useMemo(
     () => professionals.filter((item) => favorites.includes(item.slug)),
     [favorites, professionals],
   );
 
+  if (role === 'professional' && profile) {
+    return <ServicesScreen />;
+  }
+
   return (
     <SafeAreaView className="flex-1 bg-background" edges={['top']}>
       <ScrollView contentContainerStyle={{ padding: 24, paddingBottom: 120 }}>
-        <Text className="text-xs font-bold uppercase tracking-[2px] text-gray-500">Coleccion</Text>
-        <Text className="mt-2 text-3xl font-bold text-secondary">Tus favoritos</Text>
-        <Text className="mt-2 text-sm text-gray-500">
-          Guarda profesionales para reservar en segundos desde mobile.
-        </Text>
+        <LinearGradient
+          colors={['#0E2A47', '#155E75', '#1FB6A6']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          className="rounded-[28px] p-6"
+        >
+          <Text className="text-xs font-bold uppercase tracking-[2px] text-white/75">Favoritos</Text>
+          <Text className="mt-2 text-3xl font-bold text-white">
+            {clientProfile?.fullName ? `${clientProfile.fullName}, tus favoritos` : 'Tus favoritos'}
+          </Text>
+          <Text className="mt-2 text-sm text-white/80">
+            Guarda profesionales para volver mas rapido a reservar desde mobile.
+          </Text>
+        </LinearGradient>
 
         {loading ? (
-          <View className="py-16 items-center">
+          <View className="items-center py-16">
             <ActivityIndicator color="#1FB6A6" />
           </View>
         ) : null}
 
         {!loading && favoriteItems.length === 0 ? (
-          <View className="mt-8 rounded-[24px] border border-dashed border-secondary/20 bg-white p-6 items-center">
+          <View className="mt-8 items-center rounded-[24px] border border-dashed border-secondary/20 bg-white p-6">
             <Ionicons name="heart-outline" size={32} color="#94A3B8" />
             <Text className="mt-3 text-center text-sm text-gray-500">
-              Todavia no agregaste favoritos. Explora y guarda tus locales preferidos.
+              Todavia no agregaste favoritos. Explora y guarda tus profesionales preferidos.
             </Text>
             <TouchableOpacity
               onPress={() => router.push('/(tabs)/explore')}
@@ -78,28 +111,65 @@ export default function FavoritesScreen() {
           </View>
         ) : null}
 
-        {!loading && favoriteItems.map((item) => (
-          <TouchableOpacity
-            key={item.slug}
-            onPress={() => router.push(`/profesional/${item.slug}`)}
-            className="mt-4 rounded-[22px] bg-white p-5 shadow-sm border border-secondary/5"
-            activeOpacity={0.9}
-          >
-            <View className="flex-row items-start justify-between">
-              <View className="flex-1 pr-3">
-                <Text className="text-lg font-bold text-secondary">{item.fullName}</Text>
-                <Text className="mt-1 text-sm text-gray-500">{item.rubro || 'Profesional'}</Text>
-                <Text className="mt-1 text-xs text-gray-400">{item.location || 'Sin ubicacion'}</Text>
-              </View>
-              <TouchableOpacity
-                onPress={async () => setFavorites(await toggleFavoriteProfessionalSlug(item.slug))}
-                className="h-10 w-10 items-center justify-center rounded-full bg-red-50"
+        {!loading && favoriteItems.map((item) => {
+          const categoryName = item.rubro || 'Profesional';
+          const accent = getCategoryAccent(categoryName);
+
+          return (
+            <TouchableOpacity
+              key={item.slug}
+              onPress={() => router.push(`/profesional/${item.slug}`)}
+              className="mt-5 overflow-hidden rounded-[26px] border border-secondary/5 bg-white shadow-sm"
+              activeOpacity={0.92}
+            >
+              <LinearGradient
+                colors={[accent.colors[0], accent.colors[1]]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                className="p-5"
               >
-                <Ionicons name="heart" size={18} color="#EF4444" />
-              </TouchableOpacity>
-            </View>
-          </TouchableOpacity>
-        ))}
+                <View className="flex-row items-start justify-between">
+                  <View className="flex-1 pr-3">
+                    <Text className="text-xs font-bold uppercase tracking-[2px] text-white/75">
+                      {categoryName}
+                    </Text>
+                    <Text className="mt-2 text-2xl font-bold text-white">{item.fullName}</Text>
+                    <Text className="mt-2 text-sm text-white/80">
+                      {item.location || 'Ubicacion a confirmar'}
+                    </Text>
+                  </View>
+                  <TouchableOpacity
+                    onPress={async () => setFavorites(await toggleFavoriteProfessionalSlug(item.slug))}
+                    className="h-10 w-10 items-center justify-center rounded-full bg-white/15"
+                  >
+                    <Ionicons name="heart" size={18} color="#FFFFFF" />
+                  </TouchableOpacity>
+                </View>
+              </LinearGradient>
+
+              <View className="p-5">
+                <Text className="text-sm leading-5 text-gray-500">
+                  {item.headline || 'Guardado para volver a reservar mas rapido cuando lo necesites.'}
+                </Text>
+
+                <View className="mt-4 flex-row" style={{ gap: 10 }}>
+                  <TouchableOpacity
+                    onPress={() => router.push(`/profesional/${item.slug}`)}
+                    className="rounded-full bg-secondary px-4 py-2.5"
+                  >
+                    <Text className="text-sm font-semibold text-white">Ver perfil</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={async () => setFavorites(await toggleFavoriteProfessionalSlug(item.slug))}
+                    className="rounded-full border border-secondary/10 bg-background px-4 py-2.5"
+                  >
+                    <Text className="text-sm font-semibold text-secondary">Quitar</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </TouchableOpacity>
+          );
+        })}
       </ScrollView>
     </SafeAreaView>
   );

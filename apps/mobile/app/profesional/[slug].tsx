@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { ActivityIndicator, Linking, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -7,6 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   getPublicProfessionalBySlug,
   getPublicSlots,
+  type PublicProfessionalPage,
   type PublicProfessionalService,
 } from '../../src/services/publicBookings';
 import {
@@ -14,21 +15,105 @@ import {
   subscribeFavoriteProfessionalSlugs,
   toggleFavoriteProfessionalSlug,
 } from '../../src/services/clientFeatures';
+import { useProfessionalProfileContext } from '../../src/context/ProfessionalProfileContext';
+import type { WorkDayKey } from '../../src/types/professional';
 
-const resolveServiceCategoryLabel = (
-  service: PublicProfessionalService,
-  fallbackCategory?: string | null,
-) => {
-  const categoryName = service.categoryName?.trim();
-  if (categoryName) {
-    return categoryName;
+type QuickSlotGroup = { label: 'Hoy' | 'Manana'; dateKey: string; slots: string[] };
+
+const dayLabels: Record<WorkDayKey, string> = {
+  mon: 'Lunes',
+  tue: 'Martes',
+  wed: 'Miercoles',
+  thu: 'Jueves',
+  fri: 'Viernes',
+  sat: 'Sabado',
+  sun: 'Domingo',
+};
+
+const buildDateKey = (offset = 0) => {
+  const d = new Date();
+  d.setHours(0, 0, 0, 0);
+  d.setDate(d.getDate() + offset);
+  return `${d.getFullYear()}-${`${d.getMonth() + 1}`.padStart(2, '0')}-${`${d.getDate()}`.padStart(2, '0')}`;
+};
+
+const formatDateLong = (value: string) => {
+  const parsed = new Date(`${value}T00:00:00`);
+  return Number.isNaN(parsed.getTime())
+    ? value
+    : parsed.toLocaleDateString('es-AR', { weekday: 'long', day: '2-digit', month: 'long' });
+};
+
+const formatDateShort = (value: string) => {
+  const parsed = new Date(`${value}T00:00:00`);
+  return Number.isNaN(parsed.getTime())
+    ? value
+    : parsed.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit' });
+};
+
+const formatDuration = (value?: string) => {
+  if (!value) return 'Duracion a definir';
+  const trimmed = value.trim();
+  if (!trimmed) return 'Duracion a definir';
+  if (/[^0-9]/.test(trimmed)) return trimmed;
+  const minutes = Number(trimmed);
+  if (!Number.isFinite(minutes)) return trimmed;
+  if (minutes < 60) return `${minutes} min`;
+  const hours = Math.floor(minutes / 60);
+  const remaining = Math.round(minutes % 60);
+  return remaining === 0 ? `${hours} h` : `${hours} h ${remaining} min`;
+};
+
+const formatPrice = (value?: string) => {
+  if (!value?.trim()) return 'Consultar';
+  return value.includes('$') ? value : `$${value}`;
+};
+
+const formatPaymentType = (value?: string) => {
+  const normalized = (value || '').trim().toUpperCase();
+  if (normalized === 'DEPOSIT') return 'Senia online';
+  if (normalized === 'FULL_PREPAY' || normalized === 'FULL') return 'Pago total online';
+  return 'Pago en el lugar';
+};
+
+const resolveServiceCategoryLabel = (service?: PublicProfessionalService | null, fallback?: string | null) => {
+  return service?.categoryName?.trim() || fallback?.trim() || '';
+};
+
+const resolveLocationLabel = (data: PublicProfessionalPage | null) => {
+  if (!data) return '';
+  return [data.fullAddress?.trim(), data.city?.trim(), data.country?.trim()].filter(Boolean).join(', ')
+    || data.location?.trim()
+    || '';
+};
+
+const resolveSocialHref = (value: string | null | undefined, platform: 'instagram' | 'facebook' | 'tiktok' | 'website' | 'whatsapp') => {
+  const trimmed = value?.trim() || '';
+  if (!trimmed) return '';
+  if (/^https?:\/\//i.test(trimmed)) return trimmed;
+  if (platform === 'website') return `https://${trimmed.replace(/^\/+/, '')}`;
+  if (platform === 'whatsapp') {
+    const digits = trimmed.replace(/[^\d]/g, '');
+    return digits.length >= 8 ? `https://wa.me/${digits}` : '';
   }
-  return fallbackCategory?.trim() || '';
+  const handle = trimmed.replace(/^@/, '');
+  if (!handle) return '';
+  if (platform === 'instagram') return `https://instagram.com/${handle}`;
+  if (platform === 'facebook') return `https://facebook.com/${handle}`;
+  return `https://tiktok.com/@${handle}`;
+};
+
+const openExternalUrl = async (value: string) => {
+  if (!value) return;
+  try {
+    await Linking.openURL(value);
+  } catch {}
 };
 
 export default function ProfesionalDetailScreen() {
   const { slug } = useLocalSearchParams<{ slug: string }>();
-  const [data, setData] = useState<any>(null);
+  const { role, profile } = useProfessionalProfileContext();
+  const [data, setData] = useState<PublicProfessionalPage | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedServiceId, setSelectedServiceId] = useState<string | null>(null);
@@ -36,280 +121,401 @@ export default function ProfesionalDetailScreen() {
   const [slots, setSlots] = useState<string[]>([]);
   const [slotsLoading, setSlotsLoading] = useState(false);
   const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
-  const [reserveMessage, setReserveMessage] = useState<string | null>(null);
   const [isFavorite, setIsFavorite] = useState(false);
+  const [quickSlotGroups, setQuickSlotGroups] = useState<QuickSlotGroup[]>([]);
+  const [isLoadingQuickSlots, setIsLoadingQuickSlots] = useState(false);
 
-  const upcomingDates = useMemo(() => {
-    const dates: string[] = [];
-    const now = new Date();
-    for (let index = 0; index < 7; index += 1) {
-      const next = new Date(now);
-      next.setDate(now.getDate() + index);
-      dates.push(next.toISOString().slice(0, 10));
-    }
-    return dates;
-  }, []);
+  const upcomingDates = useMemo(() => Array.from({ length: 7 }, (_, index) => buildDateKey(index)), []);
+  const isOwnProfessionalPage = role === 'professional' && Boolean(profile?.slug && profile.slug === slug);
+  const selectedService = useMemo(
+    () => data?.services.find((service) => service.id === selectedServiceId) ?? null,
+    [data?.services, selectedServiceId],
+  );
+  const locationLabel = useMemo(() => resolveLocationLabel(data), [data]);
+  const phoneValue = data?.phoneNumber?.trim() || data?.phone?.trim() || '';
+  const emailValue = data?.email?.trim() || '';
+
+  const scheduleSummary = useMemo(
+    () => (data?.schedule?.days ?? [])
+      .filter((day) => day.enabled && !day.paused && (day.ranges ?? []).length > 0)
+      .map((day) => ({
+        label: dayLabels[day.day],
+        ranges: (day.ranges ?? []).map((range) => `${range.start} - ${range.end}`).join(' | '),
+      })),
+    [data?.schedule?.days],
+  );
 
   useEffect(() => {
-    const fetchData = async () => {
+    const load = async () => {
+      if (!slug) {
+        setError('No encontramos este profesional.');
+        setIsLoading(false);
+        return;
+      }
+      setIsLoading(true);
+      setError(null);
       try {
         const response = await getPublicProfessionalBySlug(slug);
         setData(response);
-        if (response.services?.[0]?.id) {
-          setSelectedServiceId(response.services[0].id);
-        }
-        if (upcomingDates[0]) {
-          setSelectedDate(upcomingDates[0]);
-        }
-      } catch (err) {
+        setSelectedServiceId(response.services[0]?.id ?? null);
+        setSelectedDate(upcomingDates[0] ?? null);
+      } catch {
         setError('No encontramos este profesional.');
       } finally {
         setIsLoading(false);
       }
     };
-    if (slug) fetchData();
+    void load();
   }, [slug, upcomingDates]);
 
   useEffect(() => {
     const loadFavorite = async () => {
-      if (!slug) return;
+      if (!slug || role === 'professional') return;
       const items = await getFavoriteProfessionalSlugs();
       setIsFavorite(items.includes(slug));
     };
-
-    loadFavorite();
-  }, [slug]);
+    void loadFavorite();
+  }, [role, slug]);
 
   useEffect(() => {
-    if (!slug) return;
-    const unsubscribe = subscribeFavoriteProfessionalSlugs((next) => {
-      setIsFavorite(next.includes(slug));
-    });
-    return unsubscribe;
-  }, [slug]);
+    if (!slug || role === 'professional') return undefined;
+    return subscribeFavoriteProfessionalSlugs((next) => setIsFavorite(next.includes(slug)));
+  }, [role, slug]);
 
   useEffect(() => {
     const loadSlots = async () => {
       if (!slug || !selectedServiceId || !selectedDate) return;
       setSlotsLoading(true);
-      setReserveMessage(null);
       setSelectedSlot(null);
       try {
-        const response = await getPublicSlots(slug, selectedDate, selectedServiceId);
-        setSlots(response);
+        setSlots(await getPublicSlots(slug, selectedDate, selectedServiceId));
       } catch {
         setSlots([]);
       } finally {
         setSlotsLoading(false);
       }
     };
+    void loadSlots();
+  }, [selectedDate, selectedServiceId, slug]);
 
-    loadSlots();
-  }, [slug, selectedServiceId, selectedDate]);
+  useEffect(() => {
+    const loadQuickSlots = async () => {
+      if (!slug || !selectedServiceId || isOwnProfessionalPage) {
+        setQuickSlotGroups([]);
+        return;
+      }
+      setIsLoadingQuickSlots(true);
+      const todayKey = buildDateKey(0);
+      const tomorrowKey = buildDateKey(1);
+      try {
+        const [todaySlots, tomorrowSlots] = await Promise.all([
+          getPublicSlots(slug, todayKey, selectedServiceId).catch(() => []),
+          getPublicSlots(slug, tomorrowKey, selectedServiceId).catch(() => []),
+        ]);
+        setQuickSlotGroups([
+          { label: 'Hoy', dateKey: todayKey, slots: todaySlots.slice(0, 4) },
+          { label: 'Manana', dateKey: tomorrowKey, slots: tomorrowSlots.slice(0, 4) },
+        ]);
+      } finally {
+        setIsLoadingQuickSlots(false);
+      }
+    };
+    void loadQuickSlots();
+  }, [isOwnProfessionalPage, selectedServiceId, slug]);
 
-  // Si está cargando
   if (isLoading) {
-    return (
-      <View className="flex-1 bg-background justify-center items-center">
-        <ActivityIndicator size="large" color="#1FB6A6" />
-      </View>
-    );
+    return <View className="flex-1 items-center justify-center bg-background"><ActivityIndicator size="large" color="#1FB6A6" /></View>;
   }
 
-  // Si hay error o no hay data
   if (error || !data) {
     return (
-      <SafeAreaView className="flex-1 bg-background justify-center items-center px-6">
+      <SafeAreaView className="flex-1 items-center justify-center bg-background px-6">
         <Ionicons name="alert-circle-outline" size={60} color="#EF4444" />
-        <Text className="text-lg font-bold text-secondary mt-4 text-center">{error || 'Ocurrió un error'}</Text>
-        <TouchableOpacity onPress={() => router.back()} className="mt-6 px-6 py-3 bg-secondary rounded-full">
-          <Text className="text-white font-bold">Volver atrás</Text>
+        <Text className="mt-4 text-center text-lg font-bold text-secondary">{error || 'Ocurrio un error'}</Text>
+        <TouchableOpacity onPress={() => router.back()} className="mt-6 rounded-full bg-secondary px-6 py-3">
+          <Text className="font-bold text-white">Volver atras</Text>
         </TouchableOpacity>
       </SafeAreaView>
     );
   }
 
-  const initials = data.fullName
-    ? data.fullName.split(' ').map((n: string) => n[0]).join('').substring(0, 2).toUpperCase()
-    : 'PR';
+  const initials = (data.fullName || data.name || 'PR').split(' ').map((part) => part[0]).join('').slice(0, 2).toUpperCase();
+  const socialLinks = [
+    { key: 'instagram', label: 'Instagram', icon: 'logo-instagram' as const, href: resolveSocialHref(data.instagram, 'instagram') },
+    { key: 'facebook', label: 'Facebook', icon: 'logo-facebook' as const, href: resolveSocialHref(data.facebook, 'facebook') },
+    { key: 'tiktok', label: 'TikTok', icon: 'musical-notes-outline' as const, href: resolveSocialHref(data.tiktok, 'tiktok') },
+    { key: 'website', label: 'Sitio web', icon: 'globe-outline' as const, href: resolveSocialHref(data.website, 'website') },
+    { key: 'whatsapp', label: 'WhatsApp', icon: 'logo-whatsapp' as const, href: resolveSocialHref(data.whatsapp || phoneValue, 'whatsapp') },
+  ].filter((item) => Boolean(item.href));
 
   return (
     <View className="flex-1 bg-background">
       <ScrollView showsVerticalScrollIndicator={false} bounces={false}>
-        
-        {/* Cabecera con Gradiente tipo Web */}
-        <LinearGradient
-          colors={['#0B1D2A', '#145E63', '#1FB6A6']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          className="h-48 pt-12 px-4 justify-start"
-        >
-          {/* Botón flotante para volver */}
-          <TouchableOpacity 
-            onPress={() => router.back()}
-            className="h-10 w-10 bg-white/20 rounded-full items-center justify-center backdrop-blur-md"
-          >
-            <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            onPress={async () => {
-              if (!slug) return;
-              const next = await toggleFavoriteProfessionalSlug(slug);
-              setIsFavorite(next.includes(slug));
-            }}
-            className="absolute right-4 top-12 h-10 w-10 bg-white/20 rounded-full items-center justify-center"
-          >
-            <Ionicons name={isFavorite ? 'heart' : 'heart-outline'} size={20} color="#FFFFFF" />
-          </TouchableOpacity>
-        </LinearGradient>
-
-        {/* Tarjeta de Información Principal (Solapada hacia arriba) */}
-        <View className="px-6 -mt-12 mb-6">
-          <View className="bg-white rounded-[28px] p-6 shadow-md border border-secondary/5">
-            <View className="flex-row items-center gap-4">
-              <View className="h-16 w-16 rounded-full border-2 border-primary bg-background items-center justify-center">
-                <Text className="text-xl font-bold text-secondary">{initials}</Text>
-              </View>
-              <View className="flex-1">
-                <Text className="text-xs font-bold uppercase tracking-[2px] text-gray-400">
-                  {data.rubro || 'Profesional'}
-                </Text>
-                <Text className="text-2xl font-bold text-secondary mt-0.5" numberOfLines={2}>
-                  {data.fullName}
-                </Text>
-              </View>
-            </View>
-            {data.headline && (
-              <Text className="mt-4 text-base text-gray-500 leading-relaxed">
-                {data.headline}
-              </Text>
+        <LinearGradient colors={['#071826', '#0E3A57', '#1FB6A6']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} className="px-6 pb-14 pt-12">
+          <View className="flex-row items-center justify-between">
+            <TouchableOpacity onPress={() => router.back()} className="h-10 w-10 items-center justify-center rounded-full bg-white/20">
+              <Ionicons name="arrow-back" size={22} color="#FFFFFF" />
+            </TouchableOpacity>
+            {role !== 'professional' ? (
+              <TouchableOpacity
+                onPress={async () => {
+                  if (!slug) return;
+                  const next = await toggleFavoriteProfessionalSlug(slug);
+                  setIsFavorite(next.includes(slug));
+                }}
+                className="h-10 w-10 items-center justify-center rounded-full bg-white/20"
+              >
+                <Ionicons name={isFavorite ? 'heart' : 'heart-outline'} size={20} color="#FFFFFF" />
+              </TouchableOpacity>
+            ) : (
+              <View className="rounded-full bg-white/15 px-3 py-2"><Text className="text-[11px] font-semibold uppercase tracking-[1px] text-white/85">Vista publica</Text></View>
             )}
           </View>
-        </View>
 
-        {/* Lista de Servicios */}
-        <View className="px-6 mb-10">
-          <Text className="text-xl font-bold text-secondary mb-4">Servicios destacados</Text>
-          
-          {(!data.services || data.services.length === 0) ? (
-            <View className="bg-white rounded-[20px] p-6 items-center border border-dashed border-gray-300">
-              <Text className="text-gray-500 text-center">No hay servicios cargados todavía.</Text>
+          <View className="mt-8 flex-row items-center">
+            <View className="h-20 w-20 items-center justify-center rounded-[26px] border border-white/15 bg-white/10">
+              <Text className="text-2xl font-bold text-white">{initials}</Text>
             </View>
-          ) : (
-            data.services.map((service: PublicProfessionalService, index: number) => {
-              const isSelected = selectedServiceId === service.id;
-              return (
-              <View key={service.id || index} className="bg-white rounded-[20px] p-5 mb-4 shadow-sm border border-secondary/5">
-                <View className="flex-row justify-between items-start mb-3">
-                  <View className="flex-1 pr-4">
-                    <Text className="text-base font-bold text-secondary">{service.name}</Text>
-                    <Text className="text-xs text-gray-500 mt-1">{service.duration || 'Duración a definir'}</Text>
-                    {resolveServiceCategoryLabel(service, data.rubro) ? (
-                      <Text className="text-xs text-gray-500 mt-1">
-                        {resolveServiceCategoryLabel(service, data.rubro)}
-                      </Text>
-                    ) : null}
-                  </View>
-                  <Text className="text-lg font-bold text-primary">
-                    {service.price ? (service.price.includes('$') ? service.price : `$${service.price}`) : 'Consultar'}
-                  </Text>
-                </View>
-                
-                <TouchableOpacity 
-                  activeOpacity={0.8}
-                  onPress={() => {
-                    setSelectedServiceId(service.id);
-                    setReserveMessage(null);
-                  }}
-                  className={`h-12 rounded-full items-center justify-center mt-2 ${isSelected ? 'bg-primary' : 'bg-secondary'}`}
-                >
-                  <Text className="text-white font-bold">{isSelected ? 'Servicio seleccionado' : 'Elegir servicio'}</Text>
-                </TouchableOpacity>
+            <View className="ml-4 flex-1">
+              <Text className="text-xs font-bold uppercase tracking-[2px] text-white/70">{data.rubro || 'Profesional'}</Text>
+              <Text className="mt-1 text-3xl font-bold text-white">{data.fullName}</Text>
+              {data.headline ? <Text className="mt-2 text-sm leading-5 text-white/80">{data.headline}</Text> : null}
+            </View>
+          </View>
+
+          <View className="mt-6 flex-row flex-wrap" style={{ gap: 10 }}>
+            {locationLabel ? <View className="rounded-full bg-white/12 px-4 py-2"><Text className="text-xs font-semibold text-white">{locationLabel}</Text></View> : null}
+            <View className="rounded-full bg-white/12 px-4 py-2"><Text className="text-xs font-semibold text-white">{data.services.length} servicio{data.services.length === 1 ? '' : 's'}</Text></View>
+            {scheduleSummary.length > 0 ? <View className="rounded-full bg-white/12 px-4 py-2"><Text className="text-xs font-semibold text-white">Agenda activa</Text></View> : null}
+          </View>
+        </LinearGradient>
+
+        <View className="px-6 pb-12">
+          {isOwnProfessionalPage ? (
+            <View className="-mt-8 rounded-[24px] border border-primary/15 bg-primary/5 p-5">
+              <Text className="text-xs font-bold uppercase tracking-[2px] text-primary">Tu pagina publica</Text>
+              <Text className="mt-2 text-base font-bold text-secondary">Este es el perfil que ven tus clientes desde mobile.</Text>
+              <View className="mt-4 flex-row" style={{ gap: 10 }}>
+                <TouchableOpacity onPress={() => router.push('/dashboard/business-profile')} className="flex-1 rounded-full bg-secondary px-4 py-3"><Text className="text-center font-bold text-white">Editar negocio</Text></TouchableOpacity>
+                <TouchableOpacity onPress={() => router.push('/dashboard/services')} className="flex-1 rounded-full border border-secondary/10 bg-white px-4 py-3"><Text className="text-center font-bold text-secondary">Servicios</Text></TouchableOpacity>
               </View>
-            );
-          })
-          )}
-        </View>
+            </View>
+          ) : null}
 
-        <View className="px-6 mb-10">
-          <Text className="text-xl font-bold text-secondary mb-3">Reservar turno</Text>
-
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
-            {upcomingDates.map((date) => {
-              const selected = selectedDate === date;
-              return (
-                <TouchableOpacity
-                  key={date}
-                  onPress={() => setSelectedDate(date)}
-                  className={`rounded-full px-4 py-2 ${selected ? 'bg-secondary' : 'bg-white border border-secondary/10'}`}
-                >
-                  <Text className={`font-semibold ${selected ? 'text-white' : 'text-secondary'}`}>{date.slice(5)}</Text>
-                </TouchableOpacity>
-              );
-            })}
-          </ScrollView>
-
-          <View className="mt-4 rounded-[20px] bg-white p-4 border border-secondary/5">
-            {slotsLoading ? (
-              <View className="py-5 items-center">
-                <ActivityIndicator color="#1FB6A6" />
+          {selectedService ? (
+            <View className="mt-6 rounded-[28px] border border-secondary/5 bg-white p-6 shadow-sm">
+              <Text className="text-xs font-bold uppercase tracking-[2px] text-gray-500">Servicio seleccionado</Text>
+              <Text className="mt-2 text-2xl font-bold text-secondary">{selectedService.name}</Text>
+              {selectedService.description ? <Text className="mt-2 text-sm leading-6 text-gray-500">{selectedService.description}</Text> : null}
+              <View className="mt-4 flex-row flex-wrap" style={{ gap: 10 }}>
+                <View className="rounded-full bg-background px-4 py-2"><Text className="text-xs font-semibold text-secondary">{formatDuration(selectedService.duration)}</Text></View>
+                <View className="rounded-full bg-background px-4 py-2"><Text className="text-xs font-semibold text-primary">{formatPrice(selectedService.price)}</Text></View>
+                <View className="rounded-full bg-background px-4 py-2"><Text className="text-xs font-semibold text-secondary">{formatPaymentType(selectedService.paymentType)}</Text></View>
               </View>
-            ) : slots.length === 0 ? (
-              <Text className="text-gray-500">No hay horarios disponibles para esta fecha.</Text>
+            </View>
+          ) : null}
+
+          <View className="mt-6 rounded-[28px] border border-secondary/5 bg-white p-6 shadow-sm">
+            <Text className="text-xs font-bold uppercase tracking-[2px] text-gray-500">Servicios</Text>
+            <Text className="mt-2 text-2xl font-bold text-secondary">Elige como reservar</Text>
+            {data.services.length === 0 ? (
+              <View className="mt-5 rounded-[20px] border border-dashed border-secondary/20 bg-background p-5"><Text className="text-center text-sm text-gray-500">Este perfil todavia no tiene servicios publicados.</Text></View>
             ) : (
-              <View className="flex-row flex-wrap" style={{ gap: 8 }}>
-                {slots.map((slot) => {
-                  const selected = selectedSlot === slot;
+              <View className="mt-5" style={{ gap: 12 }}>
+                {data.services.map((service) => {
+                  const isSelected = selectedServiceId === service.id;
                   return (
-                    <TouchableOpacity
-                      key={slot}
-                      onPress={() => setSelectedSlot(slot)}
-                      className={`rounded-full px-4 py-2 ${selected ? 'bg-primary' : 'bg-background border border-secondary/10'}`}
-                    >
-                      <Text className={`font-semibold ${selected ? 'text-white' : 'text-secondary'}`}>{slot}</Text>
+                    <TouchableOpacity key={service.id} activeOpacity={0.9} onPress={() => setSelectedServiceId(service.id)} className={`rounded-[24px] border p-5 ${isSelected ? 'border-primary/25 bg-primary/5' : 'border-secondary/8 bg-background'}`}>
+                      <View className="flex-row items-start justify-between">
+                        <View className="flex-1 pr-4">
+                          <Text className="text-base font-bold text-secondary">{service.name}</Text>
+                          {resolveServiceCategoryLabel(service, data.rubro) ? <Text className="mt-1 text-xs font-semibold uppercase tracking-[1px] text-gray-500">{resolveServiceCategoryLabel(service, data.rubro)}</Text> : null}
+                          {service.description ? <Text className="mt-2 text-sm leading-5 text-gray-500">{service.description}</Text> : null}
+                        </View>
+                        <View className="items-end">
+                          <Text className="text-base font-bold text-primary">{formatPrice(service.price)}</Text>
+                          <Text className="mt-1 text-xs text-gray-500">{formatDuration(service.duration)}</Text>
+                        </View>
+                      </View>
+                      <View className="mt-4 flex-row items-center justify-between">
+                        <Text className="text-xs font-semibold text-secondary">{formatPaymentType(service.paymentType)}</Text>
+                        <View className={`rounded-full px-3 py-1 ${isSelected ? 'bg-primary' : 'bg-secondary'}`}><Text className="text-xs font-bold text-white">{isSelected ? 'Seleccionado' : 'Elegir servicio'}</Text></View>
+                      </View>
                     </TouchableOpacity>
                   );
                 })}
               </View>
             )}
+          </View>
+
+          {!isOwnProfessionalPage ? (
+            <View className="mt-6 rounded-[28px] border border-secondary/5 bg-white p-6 shadow-sm">
+              <Text className="text-xs font-bold uppercase tracking-[2px] text-gray-500">Turnos rapidos</Text>
+              <Text className="mt-2 text-2xl font-bold text-secondary">Primeros horarios disponibles</Text>
+              {isLoadingQuickSlots ? (
+                <View className="py-8 items-center"><ActivityIndicator color="#1FB6A6" /></View>
+              ) : quickSlotGroups.every((group) => group.slots.length === 0) ? (
+                <Text className="mt-4 text-sm leading-6 text-gray-500">No hay horarios inmediatos para este servicio. Puedes revisar otros dias mas abajo.</Text>
+              ) : (
+                <View className="mt-5" style={{ gap: 14 }}>
+                  {quickSlotGroups.map((group) => (
+                    <View key={group.dateKey} className="rounded-[22px] bg-background p-4">
+                      <View className="flex-row items-center justify-between">
+                        <Text className="text-sm font-bold text-secondary">{group.label}</Text>
+                        <Text className="text-xs font-semibold text-gray-500">{formatDateLong(group.dateKey)}</Text>
+                      </View>
+                      <View className="mt-3 flex-row flex-wrap" style={{ gap: 8 }}>
+                        {group.slots.length > 0 ? (
+                          group.slots.map((slot) => (
+                            <TouchableOpacity
+                              key={`${group.dateKey}-${slot}`}
+                              onPress={() => {
+                                if (!slug || !selectedServiceId) return;
+                                router.push({ pathname: '/reservar', params: { slug, serviceId: selectedServiceId, date: group.dateKey, time: slot } });
+                              }}
+                              className="rounded-full border border-secondary/10 bg-white px-4 py-2"
+                            >
+                              <Text className="text-xs font-bold text-secondary">{slot}</Text>
+                            </TouchableOpacity>
+                          ))
+                        ) : (
+                          <Text className="text-sm text-gray-500">Sin turnos para este dia.</Text>
+                        )}
+                      </View>
+                    </View>
+                  ))}
+                </View>
+              )}
+            </View>
+          ) : null}
+
+          <View className="mt-6 rounded-[28px] border border-secondary/5 bg-white p-6 shadow-sm">
+            <Text className="text-xs font-bold uppercase tracking-[2px] text-gray-500">Elegir fecha</Text>
+            <Text className="mt-2 text-2xl font-bold text-secondary">Reserva desde la agenda publica</Text>
+
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mt-5" contentContainerStyle={{ gap: 10 }}>
+              {upcomingDates.map((date) => {
+                const isSelected = selectedDate === date;
+                const title = date === buildDateKey(0) ? 'Hoy' : date === buildDateKey(1) ? 'Manana' : formatDateShort(date);
+                return (
+                  <TouchableOpacity
+                    key={date}
+                    onPress={() => setSelectedDate(date)}
+                    className={`min-w-[88px] rounded-[20px] px-4 py-3 ${isSelected ? 'bg-secondary' : 'border border-secondary/10 bg-background'}`}
+                  >
+                    <Text className={`text-center text-xs font-bold uppercase tracking-[1px] ${isSelected ? 'text-white/80' : 'text-gray-500'}`}>{title}</Text>
+                    <Text className={`mt-1 text-center text-sm font-bold ${isSelected ? 'text-white' : 'text-secondary'}`}>{formatDateShort(date)}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+
+            <View className="mt-5 rounded-[22px] bg-background p-4">
+              {slotsLoading ? (
+                <View className="py-6 items-center"><ActivityIndicator color="#1FB6A6" /></View>
+              ) : slots.length === 0 ? (
+                <Text className="text-sm leading-6 text-gray-500">No hay horarios disponibles para la fecha seleccionada.</Text>
+              ) : (
+                <View className="flex-row flex-wrap" style={{ gap: 8 }}>
+                  {slots.map((slot) => {
+                    const isSelected = selectedSlot === slot;
+                    return (
+                      <TouchableOpacity
+                        key={slot}
+                        onPress={() => setSelectedSlot(slot)}
+                        className={`rounded-full px-4 py-2 ${isSelected ? 'bg-primary' : 'border border-secondary/10 bg-white'}`}
+                      >
+                        <Text className={`text-sm font-bold ${isSelected ? 'text-white' : 'text-secondary'}`}>{slot}</Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              )}
+            </View>
 
             <TouchableOpacity
-              disabled={!selectedServiceId || !selectedDate || !selectedSlot}
               onPress={() => {
+                if (isOwnProfessionalPage) {
+                  router.push('/dashboard/business-profile');
+                  return;
+                }
                 if (!slug || !selectedServiceId || !selectedDate || !selectedSlot) return;
-                setReserveMessage(null);
-                router.push({
-                  pathname: '/reservar',
-                  params: {
-                    slug,
-                    serviceId: selectedServiceId,
-                    date: selectedDate,
-                    time: selectedSlot,
-                  },
-                });
+                router.push({ pathname: '/reservar', params: { slug, serviceId: selectedServiceId, date: selectedDate, time: selectedSlot } });
               }}
-              className="mt-4 h-12 rounded-full items-center justify-center bg-secondary"
+              disabled={isOwnProfessionalPage ? false : !selectedServiceId || !selectedDate || !selectedSlot}
+              className={`mt-5 h-14 items-center justify-center rounded-full ${isOwnProfessionalPage || (selectedServiceId && selectedDate && selectedSlot) ? 'bg-secondary' : 'bg-gray-300'}`}
             >
-              <Text className="font-bold text-white">Continuar al checkout</Text>
+              <Text className="text-base font-bold text-white">{isOwnProfessionalPage ? 'Editar tu negocio' : 'Continuar al checkout'}</Text>
             </TouchableOpacity>
-
-            {reserveMessage ? <Text className="mt-3 text-sm text-secondary">{reserveMessage}</Text> : null}
           </View>
-        </View>
 
-        {/* Sección Sobre Mí */}
-        {data.about && (
-          <View className="px-6 mb-10">
-            <Text className="text-xl font-bold text-secondary mb-3">Sobre el local</Text>
-            <View className="bg-white rounded-[20px] p-5 shadow-sm border border-secondary/5">
-              <Text className="text-gray-500 leading-relaxed text-sm">
-                {data.about}
-              </Text>
+          {scheduleSummary.length > 0 ? (
+            <View className="mt-6 rounded-[28px] border border-secondary/5 bg-white p-6 shadow-sm">
+              <Text className="text-xs font-bold uppercase tracking-[2px] text-gray-500">Horarios</Text>
+              <Text className="mt-2 text-2xl font-bold text-secondary">Horarios de atencion</Text>
+              <View className="mt-5" style={{ gap: 12 }}>
+                {scheduleSummary.map((item) => (
+                  <View key={`${item.label}-${item.ranges}`} className="flex-row items-center justify-between rounded-[18px] bg-background px-4 py-3">
+                    <Text className="text-sm font-semibold text-secondary">{item.label}</Text>
+                    <Text className="text-xs font-semibold text-primary">{item.ranges}</Text>
+                  </View>
+                ))}
+              </View>
             </View>
-          </View>
-        )}
+          ) : null}
 
+          {data.about ? (
+            <View className="mt-6 rounded-[28px] border border-secondary/5 bg-white p-6 shadow-sm">
+              <Text className="text-xs font-bold uppercase tracking-[2px] text-gray-500">Sobre</Text>
+              <Text className="mt-2 text-2xl font-bold text-secondary">Sobre el profesional o local</Text>
+              <Text className="mt-4 text-sm leading-7 text-gray-500">{data.about}</Text>
+            </View>
+          ) : null}
+
+          {(locationLabel || phoneValue || emailValue || socialLinks.length > 0) ? (
+            <View className="mt-6 rounded-[28px] border border-secondary/5 bg-white p-6 shadow-sm">
+              <Text className="text-xs font-bold uppercase tracking-[2px] text-gray-500">Contacto</Text>
+              <Text className="mt-2 text-2xl font-bold text-secondary">Datos y canales del negocio</Text>
+
+              <View className="mt-5" style={{ gap: 12 }}>
+                {locationLabel ? (
+                  <TouchableOpacity onPress={() => void openExternalUrl(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(locationLabel)}`)} className="rounded-[22px] bg-background p-4">
+                    <View className="flex-row items-start">
+                      <View className="mt-0.5 h-10 w-10 items-center justify-center rounded-full bg-white"><Ionicons name="location-outline" size={18} color="#0E2A47" /></View>
+                      <View className="ml-3 flex-1"><Text className="text-xs font-bold uppercase tracking-[1px] text-gray-500">Ubicacion</Text><Text className="mt-1 text-sm leading-6 text-secondary">{locationLabel}</Text></View>
+                    </View>
+                  </TouchableOpacity>
+                ) : null}
+                {phoneValue ? (
+                  <TouchableOpacity onPress={() => void openExternalUrl(`tel:${phoneValue}`)} className="rounded-[22px] bg-background p-4">
+                    <View className="flex-row items-start">
+                      <View className="mt-0.5 h-10 w-10 items-center justify-center rounded-full bg-white"><Ionicons name="call-outline" size={18} color="#0E2A47" /></View>
+                      <View className="ml-3 flex-1"><Text className="text-xs font-bold uppercase tracking-[1px] text-gray-500">Telefono</Text><Text className="mt-1 text-sm leading-6 text-secondary">{phoneValue}</Text></View>
+                    </View>
+                  </TouchableOpacity>
+                ) : null}
+                {emailValue ? (
+                  <TouchableOpacity onPress={() => void openExternalUrl(`mailto:${emailValue}`)} className="rounded-[22px] bg-background p-4">
+                    <View className="flex-row items-start">
+                      <View className="mt-0.5 h-10 w-10 items-center justify-center rounded-full bg-white"><Ionicons name="mail-outline" size={18} color="#0E2A47" /></View>
+                      <View className="ml-3 flex-1"><Text className="text-xs font-bold uppercase tracking-[1px] text-gray-500">Email</Text><Text className="mt-1 text-sm leading-6 text-secondary">{emailValue}</Text></View>
+                    </View>
+                  </TouchableOpacity>
+                ) : null}
+              </View>
+
+              {socialLinks.length > 0 ? (
+                <View className="mt-5 flex-row flex-wrap" style={{ gap: 10 }}>
+                  {socialLinks.map((item) => (
+                    <TouchableOpacity key={item.key} onPress={() => void openExternalUrl(item.href)} className="rounded-full border border-secondary/10 bg-background px-4 py-3">
+                      <View className="flex-row items-center"><Ionicons name={item.icon} size={16} color="#0E2A47" /><Text className="ml-2 text-xs font-bold text-secondary">{item.label}</Text></View>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              ) : null}
+            </View>
+          ) : null}
+        </View>
       </ScrollView>
     </View>
   );

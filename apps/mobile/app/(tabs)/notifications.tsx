@@ -63,7 +63,7 @@ export default function NotificationsScreen() {
 
         {isLoading ? (
           <View className="py-16 items-center">
-            <ActivityIndicator color="#1FB6A6" />
+            <ActivityIndicator color="#0A7A43" />
           </View>
         ) : null}
 
@@ -78,7 +78,7 @@ export default function NotificationsScreen() {
                   <Ionicons
                     name={item.type === 'booking' ? 'calendar-outline' : 'sparkles-outline'}
                     size={18}
-                    color={item.type === 'booking' ? '#1FB6A6' : '#0E2A47'}
+                    color={item.type === 'booking' ? '#0A7A43' : '#0F172A'}
                   />
                 </View>
                 <Text className="ml-3 text-sm font-bold text-secondary">{item.title}</Text>

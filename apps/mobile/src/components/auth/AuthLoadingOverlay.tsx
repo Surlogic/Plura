@@ -1,6 +1,7 @@
 import React from 'react';
 import { Animated, Easing, Image, Modal, Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { theme } from '../../theme';
 
 type AuthLoadingOverlayProps = {
   visible: boolean;
@@ -55,7 +56,7 @@ export default function AuthLoadingOverlay({
       visible={visible}
     >
       <LinearGradient
-        colors={['#081B2F', '#0E2A47', '#1FB6A6']}
+        colors={theme.gradients.heroElevated}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         className="flex-1"
@@ -81,6 +82,15 @@ export default function AuthLoadingOverlay({
               {description}
             </Text>
           ) : null}
+
+          <View
+            className="mt-6 rounded-full px-4 py-2"
+            style={{ backgroundColor: 'rgba(255, 255, 255, 0.12)' }}
+          >
+            <Text style={{ color: theme.colors.primaryLight, fontWeight: '700', fontSize: 12 }}>
+              Plura sincronizando tu acceso
+            </Text>
+          </View>
         </View>
       </LinearGradient>
     </Modal>

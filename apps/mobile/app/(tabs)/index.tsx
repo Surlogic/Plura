@@ -12,6 +12,8 @@ import { ProfessionalHomeTab } from '../../src/features/professional/Professiona
 import { listCategories } from '../../src/services/categories';
 import type { ServiceCategoryOption } from '../../src/types/professional';
 import { getCategoryAccent } from '../../src/features/client/categoryUi';
+import { AppScreen } from '../../src/components/ui/AppScreen';
+import { theme } from '../../src/theme';
 
 export default function HomeScreen() {
   const { role, profile, clientProfile } = useProfessionalProfileContext();
@@ -68,29 +70,25 @@ export default function HomeScreen() {
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-background">
-      <ScrollView
-        contentContainerStyle={{ paddingBottom: 40 }}
-        showsVerticalScrollIndicator={false}
-      >
+    <AppScreen scroll contentContainerStyle={{ paddingBottom: 40 }}>
         <View className="px-6 pt-6 pb-4">
           <View className="mb-6 flex-row items-center justify-between">
             <View className="flex-1 pr-4">
-              <Text className="text-sm font-semibold uppercase tracking-[2px] text-gray-500">
+              <Text className="text-sm font-semibold uppercase tracking-[2px] text-faint">
                 Inicio cliente
               </Text>
               <Text className="mt-1 text-2xl font-bold text-secondary">
                 Hola, {displayName}
               </Text>
-              <Text className="mt-2 text-sm text-gray-500">
+              <Text className="mt-2 text-sm leading-6 text-muted">
                 Descubre rubros, retoma tu proxima reserva y encuentra profesionales activos.
               </Text>
             </View>
             <TouchableOpacity
-              className="h-12 w-12 items-center justify-center rounded-full bg-white shadow-sm"
+              className="h-12 w-12 items-center justify-center rounded-full bg-backgroundSoft shadow-sm"
               onPress={() => router.push('/(tabs)/notifications')}
             >
-              <Ionicons name="notifications-outline" size={24} color="#0E2A47" />
+              <Ionicons name="notifications-outline" size={24} color={theme.colors.ink} />
             </TouchableOpacity>
           </View>
 
@@ -99,8 +97,8 @@ export default function HomeScreen() {
             onPress={() => router.push('/(tabs)/explore')}
             className="h-14 flex-row items-center rounded-full border border-secondary/5 bg-white px-5 shadow-sm"
           >
-            <Ionicons name="search" size={20} color="#9CA3AF" />
-            <Text className="ml-3 flex-1 text-base text-gray-400">
+            <Ionicons name="search" size={20} color={theme.colors.inkFaint} />
+            <Text className="ml-3 flex-1 text-base text-faint">
               Buscar servicios, rubros, locales...
             </Text>
             <View className="rounded-full bg-primary/10 px-3 py-1.5">
@@ -112,7 +110,7 @@ export default function HomeScreen() {
         <View className="mt-4">
           <View className="mb-4 flex-row items-end justify-between px-6">
             <View>
-              <Text className="text-xs font-semibold uppercase tracking-[2px] text-gray-500">
+              <Text className="text-xs font-semibold uppercase tracking-[2px] text-faint">
                 Rubros
               </Text>
               <Text className="mt-1 text-xl font-bold text-secondary">Rubros populares</Text>
@@ -129,7 +127,7 @@ export default function HomeScreen() {
           >
             {categories.length === 0 && !isLoading ? (
               <View className="w-56 rounded-[22px] border border-dashed border-secondary/15 bg-white p-4">
-                <Text className="text-sm text-gray-500">No hay rubros disponibles por ahora.</Text>
+                <Text className="text-sm text-muted">No hay rubros disponibles por ahora.</Text>
               </View>
             ) : null}
 
@@ -174,7 +172,7 @@ export default function HomeScreen() {
           ) : null}
 
           <LinearGradient
-            colors={['#1FB6A6', '#0E2A47']}
+            colors={theme.gradients.hero}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             className="rounded-[28px] p-6 shadow-md"
@@ -221,7 +219,7 @@ export default function HomeScreen() {
           >
             {isLoading ? (
               <View className="w-64 items-center justify-center rounded-[28px] border border-secondary/5 bg-white p-4 shadow-sm">
-                <ActivityIndicator color="#1FB6A6" />
+                <ActivityIndicator color={theme.colors.primary} />
               </View>
             ) : null}
 
@@ -259,7 +257,7 @@ export default function HomeScreen() {
                       <Text className="text-sm font-bold text-secondary">
                         {business.headline || 'Agenda disponible'}
                       </Text>
-                      <Text className="mt-2 text-xs text-gray-500">
+                      <Text className="mt-2 text-xs text-muted">
                         {business.location || 'Ubicacion a confirmar'}
                       </Text>
                     </View>
@@ -272,7 +270,6 @@ export default function HomeScreen() {
             })}
           </ScrollView>
         </View>
-      </ScrollView>
-    </SafeAreaView>
+    </AppScreen>
   );
 }

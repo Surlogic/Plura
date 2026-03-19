@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Text, TextInput, TouchableOpacity, View } from 'react-native';
 import api from '../../services/api';
 import { getApiErrorMessage } from '../../services/errors';
+import { theme } from '../../theme';
 
 type EmailVerificationCardProps = {
   email?: string | null;
@@ -46,12 +47,12 @@ export default function EmailVerificationCard({
       setCooldownSeconds(nextCooldown);
       setMessage(
         nextCooldown > 0
-          ? `${response.data.message} Podés reenviar en ${nextCooldown}s.`
+          ? `${response.data.message} Podes reenviar en ${nextCooldown}s.`
           : response.data.message,
       );
       await onStatusChanged?.();
     } catch (requestError) {
-      setError(getApiErrorMessage(requestError, 'No se pudo enviar el código.'));
+      setError(getApiErrorMessage(requestError, 'No se pudo enviar el codigo.'));
     } finally {
       setIsSending(false);
     }
@@ -72,7 +73,7 @@ export default function EmailVerificationCard({
       setMessage('Email verificado correctamente.');
       await onStatusChanged?.();
     } catch (requestError) {
-      setError(getApiErrorMessage(requestError, 'No se pudo verificar el código.'));
+      setError(getApiErrorMessage(requestError, 'No se pudo verificar el codigo.'));
     } finally {
       setIsConfirming(false);
     }
@@ -81,15 +82,18 @@ export default function EmailVerificationCard({
   const isBanner = variant === 'banner';
 
   return (
-    <View className={`rounded-[24px] border bg-white p-5 shadow-sm ${isBanner ? 'border-amber-200' : 'border-secondary/10'}`}>
+    <View
+      className={`rounded-[24px] border p-5 shadow-sm ${isBanner ? 'border-amber-200' : 'border-secondary/10'}`}
+      style={{ backgroundColor: theme.colors.surface }}
+    >
       <View className="flex-row items-start justify-between">
         <View className="flex-1 pr-3">
-          <Text className="text-[11px] font-bold uppercase tracking-[2px] text-gray-500">Verificación</Text>
-          <Text className="mt-1 text-lg font-bold text-secondary">Verificá tu email</Text>
-          <Text className="mt-1 text-xs text-gray-500">
+          <Text className="text-[11px] font-bold uppercase tracking-[2px] text-faint">Verificacion</Text>
+          <Text className="mt-1 text-lg font-bold text-secondary">Verifica tu email</Text>
+          <Text className="mt-1 text-xs text-muted">
             {emailVerified
-              ? 'Tu email principal ya está verificado.'
-              : 'Confirmá tu email principal con un código de 6 dígitos para reforzar la seguridad de tu cuenta.'}
+              ? 'Tu email principal ya esta verificado.'
+              : 'Confirma tu email principal con un codigo de 6 digitos para reforzar la seguridad de tu cuenta.'}
           </Text>
         </View>
         <View className={`rounded-full px-3 py-1 ${emailVerified ? 'bg-emerald-50' : 'bg-amber-50'}`}>
@@ -110,21 +114,21 @@ export default function EmailVerificationCard({
               void handleSend();
             }}
             disabled={isSending || cooldownSeconds > 0}
-            className="rounded-full border border-secondary/10 bg-background px-4 py-3 items-center"
+            className="items-center rounded-full border border-secondary/10 bg-backgroundSoft px-4 py-3"
           >
             <Text className="text-sm font-semibold text-secondary">
               {isSending
                 ? 'Enviando...'
                 : cooldownSeconds > 0
                   ? `Reenviar en ${cooldownSeconds}s`
-                  : 'Enviar código'}
+                  : 'Enviar codigo'}
             </Text>
           </TouchableOpacity>
 
           <View className="mt-3 flex-row items-center gap-3">
             <TextInput
-              className="flex-1 h-12 rounded-2xl border border-secondary/10 bg-background px-4 text-sm text-secondary"
-              placeholder="Código de 6 dígitos"
+              className="h-12 flex-1 rounded-2xl border border-secondary/10 bg-backgroundSoft px-4 text-sm text-secondary"
+              placeholder="Codigo de 6 digitos"
               keyboardType="number-pad"
               value={verificationCode}
               onChangeText={(text) => setVerificationCode(text.replace(/\D/g, '').slice(0, 6))}

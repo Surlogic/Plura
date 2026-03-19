@@ -1,13 +1,18 @@
 import { Stack } from 'expo-router';
+import { theme } from '../../src/theme';
 
 export default function DashboardSubLayout() {
   return (
-    <Stack screenOptions={{
-      headerShadowVisible: false,
-      headerStyle: { backgroundColor: '#F4F6F8' },
-      headerTintColor: '#0E2A47',
-      headerTitleStyle: { fontWeight: 'bold' },
-    }}>
+    <Stack
+      screenOptions={{
+        headerShadowVisible: false,
+        contentStyle: { backgroundColor: theme.colors.background },
+        headerStyle: { backgroundColor: theme.colors.background },
+        headerTintColor: theme.colors.ink,
+        headerTitleStyle: { fontWeight: '700' },
+        headerBackButtonDisplayMode: 'minimal',
+      }}
+    >
       <Stack.Screen name="agenda" options={{ title: 'Agenda' }} />
       <Stack.Screen name="services" options={{ title: 'Mis Servicios' }} />
       <Stack.Screen name="business-profile" options={{ title: 'Perfil del negocio' }} />

@@ -13,7 +13,7 @@ export default function DashboardTab() {
   if (!hasLoaded) {
     return (
       <View className="flex-1 bg-background justify-center items-center">
-        <ActivityIndicator size="large" color="#1FB6A6" />
+        <ActivityIndicator size="large" color="#0A7A43" />
       </View>
     );
   }
@@ -25,7 +25,7 @@ export default function DashboardTab() {
         <SafeAreaView className="flex-1 bg-background">
           <ScrollView contentContainerStyle={{ padding: 24, paddingBottom: 120 }}>
             <LinearGradient
-              colors={['#0E2A47', '#1FB6A6']}
+              colors={['#0F172A', '#0A7A43']}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
               className="rounded-[26px] p-5"
@@ -62,7 +62,7 @@ export default function DashboardTab() {
                     <Text className="text-xs text-gray-500">Tu lista guardada</Text>
                   </View>
                 </View>
-                <Ionicons name="chevron-forward" size={18} color="#94A3B8" />
+                <Ionicons name="chevron-forward" size={18} color="#7D8DA1" />
               </View>
             </TouchableOpacity>
 
@@ -73,14 +73,14 @@ export default function DashboardTab() {
               <View className="flex-row items-center justify-between">
                 <View className="flex-row items-center">
                   <View className="h-10 w-10 rounded-full bg-secondary/10 items-center justify-center">
-                    <Ionicons name="settings-outline" size={18} color="#0E2A47" />
+                    <Ionicons name="settings-outline" size={18} color="#0F172A" />
                   </View>
                   <View className="ml-3">
                     <Text className="font-bold text-secondary">Configuracion</Text>
                     <Text className="text-xs text-gray-500">Preferencias de cuenta</Text>
                   </View>
                 </View>
-                <Ionicons name="chevron-forward" size={18} color="#94A3B8" />
+                <Ionicons name="chevron-forward" size={18} color="#7D8DA1" />
               </View>
             </TouchableOpacity>
 
@@ -104,7 +104,7 @@ export default function DashboardTab() {
           Inicia sesion para entrar como cliente o profesional y gestionar tu espacio correspondiente.
         </Text>
         <TouchableOpacity
-          className="w-full h-14 bg-[#1FB6A6] rounded-full items-center justify-center mb-3"
+          className="w-full h-14 bg-[#0A7A43] rounded-full items-center justify-center mb-3"
           onPress={() => router.push('/(auth)/login')}
         >
           <Text className="text-white font-bold text-base">Iniciar Sesión</Text>
@@ -124,7 +124,7 @@ export default function DashboardTab() {
     <SafeAreaView className="flex-1 bg-background">
       <ScrollView contentContainerStyle={{ padding: 24, paddingBottom: 120 }}>
       <LinearGradient
-        colors={['#0E2A47', '#103E5F', '#1FB6A6']}
+        colors={['#0F172A', '#162033', '#0A7A43']}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         className="rounded-[26px] p-6"
@@ -199,14 +199,14 @@ export default function DashboardTab() {
           <View className="flex-row items-center justify-between w-full">
             <View className="flex-row items-center">
               <View className="h-10 w-10 rounded-full bg-primary/15 items-center justify-center">
-                <Ionicons name="calendar-outline" size={18} color="#1FB6A6" />
+                <Ionicons name="calendar-outline" size={18} color="#0A7A43" />
               </View>
               <View className="ml-3">
                 <Text className="text-secondary font-bold text-base">Agenda</Text>
                 <Text className="text-xs text-gray-500">Turnos y estados del dia</Text>
               </View>
             </View>
-            <Ionicons name="chevron-forward" size={18} color="#94A3B8" />
+            <Ionicons name="chevron-forward" size={18} color="#7D8DA1" />
           </View>
         </TouchableOpacity>
         
@@ -217,14 +217,14 @@ export default function DashboardTab() {
           <View className="flex-row items-center justify-between w-full">
             <View className="flex-row items-center">
               <View className="h-10 w-10 rounded-full bg-secondary/10 items-center justify-center">
-                <Ionicons name="cut-outline" size={18} color="#0E2A47" />
+                <Ionicons name="cut-outline" size={18} color="#0F172A" />
               </View>
               <View className="ml-3">
                 <Text className="text-secondary font-bold text-base">Mis Servicios</Text>
                 <Text className="text-xs text-gray-500">Alta, edicion y disponibilidad</Text>
               </View>
             </View>
-            <Ionicons name="chevron-forward" size={18} color="#94A3B8" />
+            <Ionicons name="chevron-forward" size={18} color="#7D8DA1" />
           </View>
         </TouchableOpacity>
 
@@ -235,14 +235,14 @@ export default function DashboardTab() {
           <View className="flex-row items-center justify-between w-full">
             <View className="flex-row items-center">
               <View className="h-10 w-10 rounded-full bg-secondary/10 items-center justify-center">
-                <Ionicons name="storefront-outline" size={18} color="#0E2A47" />
+                <Ionicons name="storefront-outline" size={18} color="#0F172A" />
               </View>
               <View className="ml-3">
                 <Text className="text-secondary font-bold text-base">Perfil del negocio</Text>
                 <Text className="text-xs text-gray-500">Info publica y redes</Text>
               </View>
             </View>
-            <Ionicons name="chevron-forward" size={18} color="#94A3B8" />
+            <Ionicons name="chevron-forward" size={18} color="#7D8DA1" />
           </View>
         </TouchableOpacity>
 
@@ -253,14 +253,14 @@ export default function DashboardTab() {
           <View className="flex-row items-center justify-between w-full">
             <View className="flex-row items-center">
               <View className="h-10 w-10 rounded-full bg-secondary/10 items-center justify-center">
-                <Ionicons name="time-outline" size={18} color="#0E2A47" />
+                <Ionicons name="time-outline" size={18} color="#0F172A" />
               </View>
               <View className="ml-3">
                 <Text className="text-secondary font-bold text-base">Horarios</Text>
                 <Text className="text-xs text-gray-500">Disponibilidad semanal</Text>
               </View>
             </View>
-            <Ionicons name="chevron-forward" size={18} color="#94A3B8" />
+            <Ionicons name="chevron-forward" size={18} color="#7D8DA1" />
           </View>
         </TouchableOpacity>
 
@@ -271,14 +271,14 @@ export default function DashboardTab() {
           <View className="flex-row items-center justify-between w-full">
             <View className="flex-row items-center">
               <View className="h-10 w-10 rounded-full bg-secondary/10 items-center justify-center">
-                <Ionicons name="card-outline" size={18} color="#0E2A47" />
+                <Ionicons name="card-outline" size={18} color="#0F172A" />
               </View>
               <View className="ml-3">
                 <Text className="text-secondary font-bold text-base">Facturacion</Text>
                 <Text className="text-xs text-gray-500">Plan y datos de cobro</Text>
               </View>
             </View>
-            <Ionicons name="chevron-forward" size={18} color="#94A3B8" />
+            <Ionicons name="chevron-forward" size={18} color="#7D8DA1" />
           </View>
         </TouchableOpacity>
 
@@ -289,14 +289,14 @@ export default function DashboardTab() {
           <View className="flex-row items-center justify-between w-full">
             <View className="flex-row items-center">
               <View className="h-10 w-10 rounded-full bg-secondary/10 items-center justify-center">
-                <Ionicons name="settings-outline" size={18} color="#0E2A47" />
+                <Ionicons name="settings-outline" size={18} color="#0F172A" />
               </View>
               <View className="ml-3">
                 <Text className="text-secondary font-bold text-base">Cuenta y seguridad</Text>
                 <Text className="text-xs text-gray-500">Preferencias, verificacion y acceso</Text>
               </View>
             </View>
-            <Ionicons name="chevron-forward" size={18} color="#94A3B8" />
+            <Ionicons name="chevron-forward" size={18} color="#7D8DA1" />
           </View>
         </TouchableOpacity>
 

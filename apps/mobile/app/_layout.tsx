@@ -2,13 +2,19 @@ import 'expo-dev-client';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { ProfessionalProfileProvider } from '../src/context/ProfessionalProfileContext';
+import { theme } from '../src/theme';
 
 export default function RootLayout() {
   return (
     <ProfessionalProfileProvider>
-      <StatusBar style="dark" />
-      <Stack screenOptions={{ headerShown: false }}>
-        {/* Aquí definiremos las rutas en las siguientes partes */}
+      <StatusBar style="dark" backgroundColor={theme.colors.background} />
+      <Stack
+        screenOptions={{
+          headerShown: false,
+          contentStyle: { backgroundColor: theme.colors.background },
+          animation: 'fade',
+        }}
+      >
         <Stack.Screen name="index" />
         <Stack.Screen name="(auth)" options={{ headerShown: false }} />
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />

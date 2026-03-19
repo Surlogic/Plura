@@ -118,7 +118,7 @@ export default function ReservationCheckoutScreen() {
     <SafeAreaView className="flex-1 bg-background">
       <ScrollView contentContainerStyle={{ paddingBottom: 50 }}>
         <LinearGradient
-          colors={['#0B1D2A', '#145E63', '#1FB6A6']}
+          colors={['#0F172A', '#36C8F4', '#0A7A43']}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           className="px-6 pt-12 pb-10"
@@ -139,7 +139,7 @@ export default function ReservationCheckoutScreen() {
 
         {isLoading ? (
           <View className="py-16 items-center">
-            <ActivityIndicator color="#1FB6A6" />
+            <ActivityIndicator color="#0A7A43" />
           </View>
         ) : (
           <View className="px-6 -mt-6">

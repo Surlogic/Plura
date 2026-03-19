@@ -1,39 +1,41 @@
+import { theme } from '../../theme';
+
 export const getCategoryAccent = (value: string) => {
   const normalized = value.toLowerCase();
 
   if (normalized.includes('pelu')) {
     return {
       icon: 'sparkles-outline' as const,
-      colors: ['#0EA5A4', '#155E75'] as const,
+      colors: [theme.colors.primaryLight, theme.colors.accent] as const,
     };
   }
   if (normalized.includes('barb')) {
     return {
       icon: 'flame-outline' as const,
-      colors: ['#334155', '#0F172A'] as const,
+      colors: [theme.colors.secondarySoft, theme.colors.secondary] as const,
     };
   }
   if (normalized.includes('u') || normalized.includes('mani')) {
     return {
       icon: 'color-palette-outline' as const,
-      colors: ['#EC4899', '#BE185D'] as const,
+      colors: [theme.colors.premium, theme.colors.premiumStrong] as const,
     };
   }
   if (normalized.includes('spa')) {
     return {
       icon: 'leaf-outline' as const,
-      colors: ['#14B8A6', '#0F766E'] as const,
+      colors: [theme.colors.primary, theme.colors.accent] as const,
     };
   }
   if (normalized.includes('cosme') || normalized.includes('facial')) {
     return {
       icon: 'flower-outline' as const,
-      colors: ['#F59E0B', '#B45309'] as const,
+      colors: [theme.colors.accent, theme.colors.premium] as const,
     };
   }
 
   return {
     icon: 'briefcase-outline' as const,
-    colors: ['#1F3C88', '#0E2A47'] as const,
+    colors: [theme.colors.secondary, theme.colors.accentStrong] as const,
   };
 };

@@ -3,7 +3,6 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
-  ScrollView,
   Text,
   TextInput,
   TouchableOpacity,
@@ -24,6 +23,8 @@ import { listServiceCategories } from '../../services/professionalConfig';
 import api from '../../services/api';
 import type { ServiceCategoryOption } from '../../types/professional';
 import { authRoleCopy, continueAfterAuth, type AuthRole } from './config';
+import { AppScreen, surfaceStyles } from '../../components/ui/AppScreen';
+import { theme } from '../../theme';
 
 type RoleRegisterScreenProps = {
   role: AuthRole;
@@ -323,17 +324,37 @@ export function RoleRegisterScreen({ role }: RoleRegisterScreenProps) {
     <>
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        className="flex-1 bg-background"
+        style={{ flex: 1 }}
       >
-        <ScrollView
-          contentContainerStyle={{ flexGrow: 1, paddingVertical: 32 }}
-          keyboardShouldPersistTaps="handled"
+        <AppScreen
+          scroll
+          contentContainerStyle={{ paddingVertical: 32 }}
+          scrollProps={{ keyboardShouldPersistTaps: 'handled' }}
         >
           <View className="px-6">
-            <View className="rounded-[32px] bg-white p-8 shadow-sm">
+            <LinearGradient
+              colors={role === 'cliente' ? theme.gradients.brand : theme.gradients.heroElevated}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              className="rounded-[28px] px-6 py-6"
+            >
+              <Text className={`text-xs font-bold uppercase tracking-[2px] ${role === 'cliente' ? 'text-secondary/70' : 'text-white/70'}`}>
+                Registro
+              </Text>
+              <Text className={`mt-3 text-3xl font-semibold ${role === 'cliente' ? 'text-secondary' : 'text-white'}`}>
+                {role === 'cliente' ? 'Crear cuenta cliente' : 'Crear cuenta profesional'}
+              </Text>
+              <Text className={`mt-2 text-sm leading-6 ${role === 'cliente' ? 'text-secondary/80' : 'text-white/80'}`}>
+                {role === 'cliente'
+                  ? 'Completa tus datos para reservar y seguir tus locales favoritos.'
+                  : 'Completa tus datos para publicar servicios y gestionar tu negocio.'}
+              </Text>
+            </LinearGradient>
+
+            <View className="mt-4 rounded-[32px] p-8" style={surfaceStyles.card}>
               <View className="flex-row items-center justify-between">
                 <View>
-                  <Text className="text-xs font-bold uppercase tracking-[2px] text-gray-500">
+                  <Text className="text-xs font-bold uppercase tracking-[2px] text-faint">
                     Registro
                   </Text>
                   <Text className="mt-2 text-2xl font-semibold text-secondary">
@@ -347,7 +368,7 @@ export function RoleRegisterScreen({ role }: RoleRegisterScreenProps) {
                 </Link>
               </View>
 
-              <Text className="mt-3 text-sm text-gray-500">
+              <Text className="mt-3 text-sm leading-6 text-muted">
                 {role === 'cliente'
                   ? 'Completa tus datos para reservar y seguir tus locales favoritos.'
                   : 'Completa tus datos para publicar servicios y gestionar tu negocio.'}
@@ -356,20 +377,20 @@ export function RoleRegisterScreen({ role }: RoleRegisterScreenProps) {
               <View className="mt-6">
                 <View className="flex-row items-center gap-3">
                   <View className="h-px flex-1 bg-secondary/10" />
-                  <Text className="text-[11px] font-semibold uppercase tracking-[2px] text-gray-400">
+                  <Text className="text-[11px] font-semibold uppercase tracking-[2px] text-faint">
                     Registrate con
                   </Text>
                   <View className="h-px flex-1 bg-secondary/10" />
                 </View>
 
                 <TouchableOpacity
-                  className="mt-3 h-14 items-center justify-center rounded-full border border-secondary/15 bg-white"
+                  className="mt-3 h-14 items-center justify-center rounded-full border border-secondary/15 bg-backgroundSoft"
                   onPress={handleGoogleAuth}
                   disabled={isSubmitting || isGoogleSubmitting}
                   activeOpacity={0.85}
                 >
                   {isGoogleSubmitting ? (
-                    <ActivityIndicator color="#0E2A47" />
+                    <ActivityIndicator color={theme.colors.ink} />
                   ) : (
                     <Text className="text-base font-semibold text-secondary">Continuar con Google</Text>
                   )}
@@ -377,7 +398,7 @@ export function RoleRegisterScreen({ role }: RoleRegisterScreenProps) {
 
                 <View className="mt-4 flex-row items-center gap-3">
                   <View className="h-px flex-1 bg-secondary/10" />
-                  <Text className="text-[11px] font-semibold uppercase tracking-[2px] text-gray-400">
+                  <Text className="text-[11px] font-semibold uppercase tracking-[2px] text-faint">
                     o con email
                   </Text>
                   <View className="h-px flex-1 bg-secondary/10" />
@@ -389,7 +410,7 @@ export function RoleRegisterScreen({ role }: RoleRegisterScreenProps) {
                   {role === 'cliente' ? 'Nombre completo' : 'Nombre o empresa'}
                 </Text>
                 <TextInput
-                  className="h-12 rounded-2xl border border-secondary/10 bg-background px-4 text-sm text-secondary"
+                  className="h-12 rounded-2xl border border-secondary/10 bg-backgroundSoft px-4 text-sm text-secondary"
                   placeholder={role === 'cliente' ? 'Tu nombre y apellido' : 'Nombre del negocio'}
                   value={role === 'cliente' ? clientForm.fullName : professionalForm.fullName}
                   onChangeText={(value) => {
@@ -407,7 +428,7 @@ export function RoleRegisterScreen({ role }: RoleRegisterScreenProps) {
                   <Text className="mb-2 text-xs font-medium text-secondary">Rubros</Text>
                   <View className="flex-row flex-wrap" style={{ gap: 8 }}>
                     {isLoadingCategories ? (
-                      <ActivityIndicator color="#1FB6A6" />
+                      <ActivityIndicator color={theme.colors.primary} />
                     ) : (
                       categories.map((category) => {
                         const isSelected = professionalForm.categorySlugs.includes(category.slug);
@@ -416,7 +437,7 @@ export function RoleRegisterScreen({ role }: RoleRegisterScreenProps) {
                             key={category.id}
                             onPress={() => toggleCategory(category.slug)}
                             className={`rounded-full px-4 py-2 ${
-                              isSelected ? 'bg-secondary' : 'border border-secondary/10 bg-background'
+                              isSelected ? 'bg-secondary' : 'border border-secondary/10 bg-backgroundSoft'
                             }`}
                           >
                             <Text className={`text-xs font-semibold ${isSelected ? 'text-white' : 'text-secondary'}`}>
@@ -433,7 +454,7 @@ export function RoleRegisterScreen({ role }: RoleRegisterScreenProps) {
               <View className="mt-4">
                 <Text className="mb-1 text-xs font-medium text-secondary">Email</Text>
                 <TextInput
-                  className="h-12 rounded-2xl border border-secondary/10 bg-background px-4 text-sm text-secondary"
+                  className="h-12 rounded-2xl border border-secondary/10 bg-backgroundSoft px-4 text-sm text-secondary"
                   placeholder="tucorreo@gmail.com"
                   keyboardType="email-address"
                   autoCapitalize="none"
@@ -451,7 +472,7 @@ export function RoleRegisterScreen({ role }: RoleRegisterScreenProps) {
               <View className="mt-4">
                 <Text className="mb-1 text-xs font-medium text-secondary">Confirmar email</Text>
                 <TextInput
-                  className="h-12 rounded-2xl border border-secondary/10 bg-background px-4 text-sm text-secondary"
+                  className="h-12 rounded-2xl border border-secondary/10 bg-backgroundSoft px-4 text-sm text-secondary"
                   placeholder="tucorreo@gmail.com"
                   keyboardType="email-address"
                   autoCapitalize="none"
@@ -469,7 +490,7 @@ export function RoleRegisterScreen({ role }: RoleRegisterScreenProps) {
               <View className="mt-4">
                 <Text className="mb-1 text-xs font-medium text-secondary">Telefono</Text>
                 <TextInput
-                  className="h-12 rounded-2xl border border-secondary/10 bg-background px-4 text-sm text-secondary"
+                  className="h-12 rounded-2xl border border-secondary/10 bg-backgroundSoft px-4 text-sm text-secondary"
                   placeholder="Ej: +54 11 1234 5678"
                   keyboardType="phone-pad"
                   value={role === 'cliente' ? clientForm.phoneNumber : professionalForm.phoneNumber}
@@ -495,7 +516,7 @@ export function RoleRegisterScreen({ role }: RoleRegisterScreenProps) {
                             key={value}
                             onPress={() => setProfessionalForm((prev) => ({ ...prev, tipoCliente: value }))}
                             className={`rounded-full px-4 py-2 ${
-                              isSelected ? 'bg-secondary' : 'border border-secondary/10 bg-background'
+                              isSelected ? 'bg-secondary' : 'border border-secondary/10 bg-backgroundSoft'
                             }`}
                           >
                             <Text className={`text-xs font-semibold ${isSelected ? 'text-white' : 'text-secondary'}`}>
@@ -512,7 +533,7 @@ export function RoleRegisterScreen({ role }: RoleRegisterScreenProps) {
                       <View className="mt-4">
                         <Text className="mb-1 text-xs font-medium text-secondary">Pais</Text>
                         <TextInput
-                          className="h-12 rounded-2xl border border-secondary/10 bg-background px-4 text-sm text-secondary"
+                          className="h-12 rounded-2xl border border-secondary/10 bg-backgroundSoft px-4 text-sm text-secondary"
                           placeholder="Ej: Argentina"
                           value={professionalForm.country}
                           onChangeText={(value) => {
@@ -540,7 +561,7 @@ export function RoleRegisterScreen({ role }: RoleRegisterScreenProps) {
                       <View className="mt-4">
                         <Text className="mb-1 text-xs font-medium text-secondary">Ciudad</Text>
                         <TextInput
-                          className="h-12 rounded-2xl border border-secondary/10 bg-background px-4 text-sm text-secondary"
+                          className="h-12 rounded-2xl border border-secondary/10 bg-backgroundSoft px-4 text-sm text-secondary"
                           placeholder="Ej: Buenos Aires"
                           value={professionalForm.city}
                           onChangeText={(value) => {
@@ -568,7 +589,7 @@ export function RoleRegisterScreen({ role }: RoleRegisterScreenProps) {
                       <View className="mt-4">
                         <Text className="mb-1 text-xs font-medium text-secondary">Direccion completa</Text>
                         <TextInput
-                          className="h-12 rounded-2xl border border-secondary/10 bg-background px-4 text-sm text-secondary"
+                          className="h-12 rounded-2xl border border-secondary/10 bg-backgroundSoft px-4 text-sm text-secondary"
                           placeholder="Ej: Av. Santa Fe 1234"
                           value={professionalForm.fullAddress}
                           onChangeText={(value) => {
@@ -606,7 +627,7 @@ export function RoleRegisterScreen({ role }: RoleRegisterScreenProps) {
               <View className="mt-4">
                 <Text className="mb-1 text-xs font-medium text-secondary">Contrasena</Text>
                 <TextInput
-                  className="h-12 rounded-2xl border border-secondary/10 bg-background px-4 text-sm text-secondary"
+                  className="h-12 rounded-2xl border border-secondary/10 bg-backgroundSoft px-4 text-sm text-secondary"
                   placeholder="••••••••"
                   secureTextEntry
                   value={role === 'cliente' ? clientForm.password : professionalForm.password}
@@ -623,7 +644,7 @@ export function RoleRegisterScreen({ role }: RoleRegisterScreenProps) {
               <View className="mt-4">
                 <Text className="mb-1 text-xs font-medium text-secondary">Confirmar contrasena</Text>
                 <TextInput
-                  className="h-12 rounded-2xl border border-secondary/10 bg-background px-4 text-sm text-secondary"
+                  className="h-12 rounded-2xl border border-secondary/10 bg-backgroundSoft px-4 text-sm text-secondary"
                   placeholder="••••••••"
                   secureTextEntry
                   value={role === 'cliente' ? clientForm.confirmPassword : professionalForm.confirmPassword}
@@ -656,7 +677,7 @@ export function RoleRegisterScreen({ role }: RoleRegisterScreenProps) {
                 activeOpacity={0.85}
               >
                 <LinearGradient
-                  colors={['#1FB6A6', '#0E2A47']}
+                  colors={role === 'cliente' ? theme.gradients.brand : theme.gradients.hero}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 1 }}
                   className="h-14 flex-row items-center justify-center rounded-full"
@@ -670,7 +691,7 @@ export function RoleRegisterScreen({ role }: RoleRegisterScreenProps) {
               </TouchableOpacity>
 
               <View className="mt-6 flex-row justify-center">
-                <Text className="text-sm text-gray-500">Ya tienes cuenta </Text>
+                <Text className="text-sm text-muted">Ya tienes cuenta </Text>
                 <Link href={copy.loginRoute} asChild>
                   <TouchableOpacity>
                     <Text className="text-sm font-bold text-primary">{copy.loginLinkLabel}</Text>
@@ -679,7 +700,7 @@ export function RoleRegisterScreen({ role }: RoleRegisterScreenProps) {
               </View>
             </View>
           </View>
-        </ScrollView>
+        </AppScreen>
       </KeyboardAvoidingView>
 
       <AuthLoadingOverlay

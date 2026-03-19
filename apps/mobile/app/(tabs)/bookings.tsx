@@ -24,6 +24,7 @@ import { getPublicSlots } from '../../src/services/publicBookings';
 import { getApiErrorMessage } from '../../src/services/errors';
 import { useProfessionalProfileContext } from '../../src/context/ProfessionalProfileContext';
 import BusinessProfileScreen from '../dashboard/business-profile';
+import { theme } from '../../src/theme';
 
 const toLocalDateKey = (date: Date) => date.toLocaleDateString('en-CA');
 
@@ -342,7 +343,7 @@ export default function ClientBookingsScreen() {
     <SafeAreaView className="flex-1 bg-background" edges={['top']}>
       <ScrollView contentContainerStyle={{ padding: 24, paddingBottom: 120 }}>
         <LinearGradient
-          colors={['#0E2A47', '#155E75', '#1FB6A6']}
+          colors={theme.gradients.heroElevated}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           className="rounded-[28px] p-6"
@@ -376,7 +377,7 @@ export default function ClientBookingsScreen() {
 
         {isLoading ? (
           <View className="py-16 items-center">
-            <ActivityIndicator color="#1FB6A6" />
+            <ActivityIndicator color={theme.colors.primary} />
           </View>
         ) : null}
 
@@ -510,7 +511,7 @@ export default function ClientBookingsScreen() {
 
               {isLoadingActions ? (
                 <View className="mt-4 items-center">
-                  <ActivityIndicator color="#1FB6A6" />
+                  <ActivityIndicator color="#0A7A43" />
                 </View>
               ) : (
                 <>
@@ -567,7 +568,7 @@ export default function ClientBookingsScreen() {
 
                   {isLoadingSlots ? (
                     <View className="mt-3 items-center">
-                      <ActivityIndicator color="#1FB6A6" />
+                      <ActivityIndicator color={theme.colors.primary} />
                     </View>
                   ) : (
                     <View className="mt-3 flex-row flex-wrap" style={{ gap: 8 }}>

@@ -1,6 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, ScrollView, Text, TouchableOpacity, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { ActivityIndicator, Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -16,6 +15,8 @@ import {
 import { useProfessionalProfileContext } from '../../src/context/ProfessionalProfileContext';
 import ServicesScreen from '../dashboard/services';
 import { getCategoryAccent } from '../../src/features/client/categoryUi';
+import { AppScreen } from '../../src/components/ui/AppScreen';
+import { theme } from '../../src/theme';
 
 export default function FavoritesScreen() {
   const { role, profile, clientProfile } = useProfessionalProfileContext();
@@ -73,10 +74,9 @@ export default function FavoritesScreen() {
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-background" edges={['top']}>
-      <ScrollView contentContainerStyle={{ padding: 24, paddingBottom: 120 }}>
+    <AppScreen scroll edges={['top']} contentContainerStyle={{ padding: 24, paddingBottom: 120 }}>
         <LinearGradient
-          colors={['#0E2A47', '#155E75', '#1FB6A6']}
+          colors={theme.gradients.heroElevated}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           className="rounded-[28px] p-6"
@@ -92,14 +92,14 @@ export default function FavoritesScreen() {
 
         {loading ? (
           <View className="items-center py-16">
-            <ActivityIndicator color="#1FB6A6" />
+            <ActivityIndicator color={theme.colors.primary} />
           </View>
         ) : null}
 
         {!loading && favoriteItems.length === 0 ? (
           <View className="mt-8 items-center rounded-[24px] border border-dashed border-secondary/20 bg-white p-6">
-            <Ionicons name="heart-outline" size={32} color="#94A3B8" />
-            <Text className="mt-3 text-center text-sm text-gray-500">
+            <Ionicons name="heart-outline" size={32} color={theme.colors.inkFaint} />
+            <Text className="mt-3 text-center text-sm text-muted">
               Todavia no agregaste favoritos. Explora y guarda tus profesionales preferidos.
             </Text>
             <TouchableOpacity
@@ -148,7 +148,7 @@ export default function FavoritesScreen() {
               </LinearGradient>
 
               <View className="p-5">
-                <Text className="text-sm leading-5 text-gray-500">
+                <Text className="text-sm leading-5 text-muted">
                   {item.headline || 'Guardado para volver a reservar mas rapido cuando lo necesites.'}
                 </Text>
 
@@ -170,7 +170,6 @@ export default function FavoritesScreen() {
             </TouchableOpacity>
           );
         })}
-      </ScrollView>
-    </SafeAreaView>
+    </AppScreen>
   );
 }

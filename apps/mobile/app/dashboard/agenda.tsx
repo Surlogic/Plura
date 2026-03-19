@@ -337,7 +337,7 @@ export default function AgendaScreen() {
       value: `${todayPendingCount}`,
       detail: todayPendingCount > 0 ? 'Por confirmar hoy' : 'Nada urgente por validar',
       tone: 'bg-primary/10',
-      textTone: '#1FB6A6',
+      textTone: '#0A7A43',
       icon: 'warning-outline' as const,
     },
     {
@@ -345,7 +345,7 @@ export default function AgendaScreen() {
       value: nextReservation?.time || '--:--',
       detail: nextReservation ? `${nextReservation.clientName} · ${nextReservation.serviceName}` : 'Sin reservas futuras',
       tone: 'bg-secondary/10',
-      textTone: '#0E2A47',
+      textTone: '#0F172A',
       icon: 'alarm-outline' as const,
     },
     {
@@ -428,7 +428,7 @@ export default function AgendaScreen() {
     <SafeAreaView className="flex-1 bg-background" edges={['top']}>
       <ScrollView contentContainerStyle={{ paddingBottom: 40 }}>
         <LinearGradient
-          colors={['#0E2A47', '#103E5F', '#1FB6A6']}
+          colors={['#0F172A', '#162033', '#0A7A43']}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           className="px-6 pb-8 pt-6"
@@ -506,7 +506,7 @@ export default function AgendaScreen() {
                 </View>
                 <View className="mt-3 flex-row flex-wrap" style={{ gap: 8 }}>
                   {isLoadingServiceOptions ? (
-                    <ActivityIndicator color="#1FB6A6" />
+                    <ActivityIndicator color="#0A7A43" />
                   ) : (
                     serviceOptions.map((service) => (
                       <TouchableOpacity key={service.id} onPress={() => setCreateForm((prev) => ({ ...prev, serviceId: service.id }))} className={`rounded-full px-3 py-2 ${createForm.serviceId === service.id ? 'bg-secondary' : 'border border-secondary/10 bg-background'}`}>
@@ -524,7 +524,7 @@ export default function AgendaScreen() {
 
           {isLoading ? (
             <View className="py-16 items-center">
-              <ActivityIndicator color="#1FB6A6" />
+              <ActivityIndicator color="#0A7A43" />
             </View>
           ) : (
             <>
@@ -599,7 +599,7 @@ export default function AgendaScreen() {
 
                     {isLoadingActions ? (
                       <View className="mt-5 items-center">
-                        <ActivityIndicator color="#1FB6A6" />
+                        <ActivityIndicator color="#0A7A43" />
                       </View>
                     ) : null}
 
@@ -632,7 +632,7 @@ export default function AgendaScreen() {
                         <TextInput className="mt-3 h-12 rounded-2xl border border-secondary/10 bg-background px-4 text-secondary" placeholder="Nueva fecha YYYY-MM-DD" value={rescheduleDate} onChangeText={setRescheduleDate} />
                         {isLoadingRescheduleSlots ? (
                           <View className="mt-3 items-center">
-                            <ActivityIndicator color="#1FB6A6" />
+                            <ActivityIndicator color="#0A7A43" />
                           </View>
                         ) : (
                           <View className="mt-3 flex-row flex-wrap" style={{ gap: 8 }}>

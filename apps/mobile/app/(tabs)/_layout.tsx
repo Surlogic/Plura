@@ -3,6 +3,7 @@ import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Platform } from 'react-native';
 import { useProfessionalProfileContext } from '../../src/context/ProfessionalProfileContext';
+import { theme } from '../../src/theme';
 
 export default function TabsLayout() {
   const { role } = useProfessionalProfileContext();
@@ -12,16 +13,17 @@ export default function TabsLayout() {
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: '#1FB6A6', // Tu color primario (Esmeralda)
-        tabBarInactiveTintColor: '#94A3B8', // Gris suave
+        tabBarActiveTintColor: theme.colors.primary,
+        tabBarInactiveTintColor: theme.colors.inkFaint,
         tabBarStyle: {
-          backgroundColor: '#FFFFFF',
+          backgroundColor: theme.colors.surface,
           borderTopWidth: 1,
-          borderTopColor: '#F4F6F8', // Fondo de tu app
-          elevation: 10,
-          shadowColor: '#0E2A47',
-          shadowOpacity: 0.05,
-          shadowRadius: 10,
+          borderTopColor: theme.colors.border,
+          elevation: 16,
+          shadowColor: theme.colors.ink,
+          shadowOpacity: 0.08,
+          shadowRadius: 18,
+          shadowOffset: { width: 0, height: -4 },
           height: Platform.OS === 'ios' ? 85 : 65,
           paddingBottom: Platform.OS === 'ios' ? 25 : 10,
           paddingTop: 10,
@@ -30,6 +32,9 @@ export default function TabsLayout() {
           fontSize: 11,
           fontWeight: '600',
           marginTop: 2,
+        },
+        tabBarItemStyle: {
+          paddingTop: 2,
         },
       }}
     >

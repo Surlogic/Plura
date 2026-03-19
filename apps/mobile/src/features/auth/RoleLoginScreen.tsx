@@ -3,7 +3,6 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
-  ScrollView,
   Text,
   TextInput,
   TouchableOpacity,
@@ -17,6 +16,8 @@ import { useProfessionalProfileContext } from '../../context/ProfessionalProfile
 import { useGoogleOAuth } from '../../hooks/useGoogleOAuth';
 import { setProfessionalSession } from '../../services/session';
 import { authRoleCopy, continueAfterAuth, type AuthRole } from './config';
+import { AppScreen, surfaceStyles } from '../../components/ui/AppScreen';
+import { theme } from '../../theme';
 
 type RoleLoginScreenProps = {
   role: AuthRole;
@@ -74,21 +75,42 @@ export function RoleLoginScreen({ role }: RoleLoginScreenProps) {
     }
   };
 
+  const heroColors = role === 'cliente' ? theme.gradients.brand : theme.gradients.heroElevated;
+  const submitColors = role === 'cliente' ? theme.gradients.brand : theme.gradients.hero;
+
   return (
     <>
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        className="flex-1 bg-background"
+        style={{ flex: 1 }}
       >
-        <ScrollView
-          contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', paddingVertical: 32 }}
-          keyboardShouldPersistTaps="handled"
+        <AppScreen
+          scroll
+          contentContainerStyle={{ justifyContent: 'center', paddingVertical: 32 }}
+          scrollProps={{ keyboardShouldPersistTaps: 'handled' }}
         >
           <View className="px-6">
-            <View className="rounded-[32px] bg-white p-8 shadow-sm">
+            <LinearGradient
+              colors={heroColors}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              className="rounded-[30px] px-6 py-6"
+            >
+              <Text className={`text-xs font-bold uppercase tracking-[2px] ${role === 'cliente' ? 'text-secondary/70' : 'text-white/70'}`}>
+                {copy.badge}
+              </Text>
+              <Text className={`mt-3 text-3xl font-semibold ${role === 'cliente' ? 'text-secondary' : 'text-white'}`}>
+                {copy.title}
+              </Text>
+              <Text className={`mt-2 text-sm leading-6 ${role === 'cliente' ? 'text-secondary/80' : 'text-white/80'}`}>
+                {copy.description}
+              </Text>
+            </LinearGradient>
+
+            <View className="mt-4 rounded-[32px] p-8" style={surfaceStyles.card}>
               <View className="flex-row items-center justify-between">
                 <View>
-                  <Text className="text-xs font-bold uppercase tracking-[2px] text-gray-500">
+                  <Text className="text-xs font-bold uppercase tracking-[2px] text-faint">
                     {copy.badge}
                   </Text>
                   <Text className="mt-2 text-3xl font-semibold text-secondary">
@@ -96,13 +118,13 @@ export function RoleLoginScreen({ role }: RoleLoginScreenProps) {
                   </Text>
                 </View>
                 <Link href="/(auth)/login" asChild>
-                  <TouchableOpacity className="rounded-full border border-secondary/10 px-4 py-2">
+                  <TouchableOpacity className="rounded-full border border-secondary/10 bg-backgroundSoft px-4 py-2">
                     <Text className="text-xs font-semibold text-secondary">Cambiar acceso</Text>
                   </TouchableOpacity>
                 </Link>
               </View>
 
-              <Text className="mt-3 text-sm text-gray-500">
+              <Text className="mt-3 text-sm leading-6 text-muted">
                 {copy.description}
               </Text>
 
@@ -117,9 +139,9 @@ export function RoleLoginScreen({ role }: RoleLoginScreenProps) {
               <View className="mt-6">
                 <Text className="mb-2 text-sm font-medium text-secondary">Email</Text>
                 <TextInput
-                  className="h-14 rounded-[16px] border border-secondary/10 bg-background px-5 text-base text-secondary"
+                  className="h-14 rounded-[16px] border border-secondary/10 bg-backgroundSoft px-5 text-base text-secondary"
                   placeholder="tucorreo@gmail.com"
-                  placeholderTextColor="#9CA3AF"
+                  placeholderTextColor={theme.colors.inkFaint}
                   keyboardType="email-address"
                   autoCapitalize="none"
                   value={form.email}
@@ -130,9 +152,9 @@ export function RoleLoginScreen({ role }: RoleLoginScreenProps) {
               <View className="mt-4">
                 <Text className="mb-2 text-sm font-medium text-secondary">Contrasena</Text>
                 <TextInput
-                  className="h-14 rounded-[16px] border border-secondary/10 bg-background px-5 text-base text-secondary"
-                  placeholder="••••••••"
-                  placeholderTextColor="#9CA3AF"
+                  className="h-14 rounded-[16px] border border-secondary/10 bg-backgroundSoft px-5 text-base text-secondary"
+                  placeholder="********"
+                  placeholderTextColor={theme.colors.inkFaint}
                   secureTextEntry
                   value={form.password}
                   onChangeText={(password) => setForm((prev) => ({ ...prev, password }))}
@@ -145,7 +167,7 @@ export function RoleLoginScreen({ role }: RoleLoginScreenProps) {
               </View>
 
               {errorMessage ? (
-                <View className="mt-4 rounded-xl bg-red-50 p-3">
+                <View className="mt-4 rounded-2xl border border-red-200 bg-red-50 p-3">
                   <Text className="text-center text-xs text-red-600">{errorMessage}</Text>
                 </View>
               ) : null}
@@ -157,7 +179,7 @@ export function RoleLoginScreen({ role }: RoleLoginScreenProps) {
                 activeOpacity={0.85}
               >
                 <LinearGradient
-                  colors={['#1FB6A6', '#0E2A47']}
+                  colors={submitColors}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 1 }}
                   className="h-14 flex-row items-center justify-center rounded-full"
@@ -171,20 +193,20 @@ export function RoleLoginScreen({ role }: RoleLoginScreenProps) {
               </TouchableOpacity>
 
               <TouchableOpacity
-                className="mt-3 h-14 items-center justify-center rounded-full border border-secondary/15 bg-white"
+                className="mt-3 h-14 items-center justify-center rounded-full border border-secondary/15 bg-backgroundSoft"
                 onPress={handleGoogleAuth}
                 disabled={isSubmitting || isGoogleSubmitting}
                 activeOpacity={0.85}
               >
                 {isGoogleSubmitting ? (
-                  <ActivityIndicator color="#0E2A47" />
+                  <ActivityIndicator color={theme.colors.ink} />
                 ) : (
                   <Text className="text-base font-semibold text-secondary">Continuar con Google</Text>
                 )}
               </TouchableOpacity>
 
               <View className="mt-8 flex-row justify-center">
-                <Text className="text-sm text-gray-500">No tienes cuenta </Text>
+                <Text className="text-sm text-muted">No tienes cuenta </Text>
                 <Link href={copy.registerRoute} asChild>
                   <TouchableOpacity>
                     <Text className="text-sm font-bold text-primary">{copy.registerLinkLabel}</Text>
@@ -193,7 +215,7 @@ export function RoleLoginScreen({ role }: RoleLoginScreenProps) {
               </View>
             </View>
           </View>
-        </ScrollView>
+        </AppScreen>
       </KeyboardAvoidingView>
 
       <AuthLoadingOverlay

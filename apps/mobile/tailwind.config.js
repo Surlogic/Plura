@@ -4,13 +4,21 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        primary: '#1FB6A6',
-        secondary: '#0E2A47',
-        background: '#F5F8F7',
+        primary: '#0A7A43',
+        primaryStrong: '#086537',
+        primaryLight: '#8EDB63',
+        secondary: '#0F172A',
+        secondarySoft: '#162033',
+        background: '#F6FAFB',
+        backgroundSoft: '#EEF5F8',
         surface: '#FFFFFF',
-        ink: '#171717',
-        muted: '#64748B',
-        glow: 'rgba(31, 182, 166, 0.2)',
+        ink: '#0F172A',
+        muted: '#516072',
+        faint: '#7D8DA1',
+        border: '#D9E6E8',
+        accent: '#36C8F4',
+        premium: '#C88AF3',
+        glow: 'rgba(54, 200, 244, 0.18)',
       }
     },
   },

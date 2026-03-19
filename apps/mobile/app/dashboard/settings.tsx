@@ -240,7 +240,7 @@ export default function SettingsScreen() {
   if (isLoading) {
     return (
       <View className="flex-1 bg-background items-center justify-center">
-        <ActivityIndicator color="#1FB6A6" />
+        <ActivityIndicator color="#0A7A43" />
       </View>
     );
   }
@@ -415,7 +415,7 @@ export default function SettingsScreen() {
 
             {isLoadingBookingPolicy ? (
               <View className="mt-4 items-center">
-                <ActivityIndicator color="#1FB6A6" />
+                <ActivityIndicator color="#0A7A43" />
               </View>
             ) : null}
 

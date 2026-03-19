@@ -224,7 +224,7 @@ export default function ProfesionalDetailScreen() {
   }, [isOwnProfessionalPage, selectedServiceId, slug]);
 
   if (isLoading) {
-    return <View className="flex-1 items-center justify-center bg-background"><ActivityIndicator size="large" color="#1FB6A6" /></View>;
+    return <View className="flex-1 items-center justify-center bg-background"><ActivityIndicator size="large" color="#0A7A43" /></View>;
   }
 
   if (error || !data) {
@@ -251,7 +251,7 @@ export default function ProfesionalDetailScreen() {
   return (
     <View className="flex-1 bg-background">
       <ScrollView showsVerticalScrollIndicator={false} bounces={false}>
-        <LinearGradient colors={['#071826', '#0E3A57', '#1FB6A6']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} className="px-6 pb-14 pt-12">
+        <LinearGradient colors={['#0F172A', '#36C8F4', '#0A7A43']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} className="px-6 pb-14 pt-12">
           <View className="flex-row items-center justify-between">
             <TouchableOpacity onPress={() => router.back()} className="h-10 w-10 items-center justify-center rounded-full bg-white/20">
               <Ionicons name="arrow-back" size={22} color="#FFFFFF" />
@@ -353,7 +353,7 @@ export default function ProfesionalDetailScreen() {
               <Text className="text-xs font-bold uppercase tracking-[2px] text-gray-500">Turnos rapidos</Text>
               <Text className="mt-2 text-2xl font-bold text-secondary">Primeros horarios disponibles</Text>
               {isLoadingQuickSlots ? (
-                <View className="py-8 items-center"><ActivityIndicator color="#1FB6A6" /></View>
+                <View className="py-8 items-center"><ActivityIndicator color="#0A7A43" /></View>
               ) : quickSlotGroups.every((group) => group.slots.length === 0) ? (
                 <Text className="mt-4 text-sm leading-6 text-gray-500">No hay horarios inmediatos para este servicio. Puedes revisar otros dias mas abajo.</Text>
               ) : (
@@ -412,7 +412,7 @@ export default function ProfesionalDetailScreen() {
 
             <View className="mt-5 rounded-[22px] bg-background p-4">
               {slotsLoading ? (
-                <View className="py-6 items-center"><ActivityIndicator color="#1FB6A6" /></View>
+                <View className="py-6 items-center"><ActivityIndicator color="#0A7A43" /></View>
               ) : slots.length === 0 ? (
                 <Text className="text-sm leading-6 text-gray-500">No hay horarios disponibles para la fecha seleccionada.</Text>
               ) : (
@@ -481,7 +481,7 @@ export default function ProfesionalDetailScreen() {
                 {locationLabel ? (
                   <TouchableOpacity onPress={() => void openExternalUrl(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(locationLabel)}`)} className="rounded-[22px] bg-background p-4">
                     <View className="flex-row items-start">
-                      <View className="mt-0.5 h-10 w-10 items-center justify-center rounded-full bg-white"><Ionicons name="location-outline" size={18} color="#0E2A47" /></View>
+                      <View className="mt-0.5 h-10 w-10 items-center justify-center rounded-full bg-white"><Ionicons name="location-outline" size={18} color="#0F172A" /></View>
                       <View className="ml-3 flex-1"><Text className="text-xs font-bold uppercase tracking-[1px] text-gray-500">Ubicacion</Text><Text className="mt-1 text-sm leading-6 text-secondary">{locationLabel}</Text></View>
                     </View>
                   </TouchableOpacity>
@@ -489,7 +489,7 @@ export default function ProfesionalDetailScreen() {
                 {phoneValue ? (
                   <TouchableOpacity onPress={() => void openExternalUrl(`tel:${phoneValue}`)} className="rounded-[22px] bg-background p-4">
                     <View className="flex-row items-start">
-                      <View className="mt-0.5 h-10 w-10 items-center justify-center rounded-full bg-white"><Ionicons name="call-outline" size={18} color="#0E2A47" /></View>
+                      <View className="mt-0.5 h-10 w-10 items-center justify-center rounded-full bg-white"><Ionicons name="call-outline" size={18} color="#0F172A" /></View>
                       <View className="ml-3 flex-1"><Text className="text-xs font-bold uppercase tracking-[1px] text-gray-500">Telefono</Text><Text className="mt-1 text-sm leading-6 text-secondary">{phoneValue}</Text></View>
                     </View>
                   </TouchableOpacity>
@@ -497,7 +497,7 @@ export default function ProfesionalDetailScreen() {
                 {emailValue ? (
                   <TouchableOpacity onPress={() => void openExternalUrl(`mailto:${emailValue}`)} className="rounded-[22px] bg-background p-4">
                     <View className="flex-row items-start">
-                      <View className="mt-0.5 h-10 w-10 items-center justify-center rounded-full bg-white"><Ionicons name="mail-outline" size={18} color="#0E2A47" /></View>
+                      <View className="mt-0.5 h-10 w-10 items-center justify-center rounded-full bg-white"><Ionicons name="mail-outline" size={18} color="#0F172A" /></View>
                       <View className="ml-3 flex-1"><Text className="text-xs font-bold uppercase tracking-[1px] text-gray-500">Email</Text><Text className="mt-1 text-sm leading-6 text-secondary">{emailValue}</Text></View>
                     </View>
                   </TouchableOpacity>
@@ -508,7 +508,7 @@ export default function ProfesionalDetailScreen() {
                 <View className="mt-5 flex-row flex-wrap" style={{ gap: 10 }}>
                   {socialLinks.map((item) => (
                     <TouchableOpacity key={item.key} onPress={() => void openExternalUrl(item.href)} className="rounded-full border border-secondary/10 bg-background px-4 py-3">
-                      <View className="flex-row items-center"><Ionicons name={item.icon} size={16} color="#0E2A47" /><Text className="ml-2 text-xs font-bold text-secondary">{item.label}</Text></View>
+                      <View className="flex-row items-center"><Ionicons name={item.icon} size={16} color="#0F172A" /><Text className="ml-2 text-xs font-bold text-secondary">{item.label}</Text></View>
                     </TouchableOpacity>
                   ))}
                 </View>

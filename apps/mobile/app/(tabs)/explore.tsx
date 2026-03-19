@@ -197,7 +197,7 @@ export default function ExploreScreen() {
           className="mt-3 flex-row items-center justify-between rounded-2xl border border-secondary/10 px-4 py-3"
         >
           <Text className="text-sm font-semibold text-secondary">Filtros avanzados</Text>
-          <Ionicons name={showAdvanced ? 'chevron-up' : 'chevron-down'} size={16} color="#0E2A47" />
+          <Ionicons name={showAdvanced ? 'chevron-up' : 'chevron-down'} size={16} color="#0F172A" />
         </TouchableOpacity>
 
         {showAdvanced ? (
@@ -296,7 +296,7 @@ export default function ExploreScreen() {
 
           {isLoading ? (
             <View className="items-center py-10">
-              <ActivityIndicator color="#1FB6A6" />
+              <ActivityIndicator color="#0A7A43" />
             </View>
           ) : null}
 
@@ -340,7 +340,7 @@ export default function ExploreScreen() {
 
               <View className="mt-3 flex-row items-center justify-between">
                 <View className="flex-row items-center">
-                  <Ionicons name="location-outline" size={14} color="#1FB6A6" />
+                  <Ionicons name="location-outline" size={14} color="#0A7A43" />
                   <Text className="ml-1 text-sm font-bold text-secondary">{place.location || 'Sin ubicacion'}</Text>
                 </View>
                 <Text className="text-sm text-gray-500">{place.headline || 'Agenda disponible'}</Text>

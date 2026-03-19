@@ -6,14 +6,15 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import EmailVerificationCard from '../../components/auth/EmailVerificationCard';
 import { useProfessionalProfileContext } from '../../context/ProfessionalProfileContext';
+import { theme } from '../../theme';
 
 const quickLinks = [
-  { key: 'agenda', title: 'Agenda', subtitle: 'Turnos del dia y acciones rapidas', icon: 'calendar-outline' as const, color: '#1FB6A6', route: '/dashboard/agenda' },
-  { key: 'services', title: 'Servicios', subtitle: 'Alta, edicion y categorias', icon: 'cut-outline' as const, color: '#0E2A47', route: '/dashboard/services' },
-  { key: 'business', title: 'Negocio', subtitle: 'Perfil publico y datos base', icon: 'storefront-outline' as const, color: '#0E2A47', route: '/dashboard/business-profile' },
-  { key: 'schedule', title: 'Horarios', subtitle: 'Disponibilidad semanal', icon: 'time-outline' as const, color: '#0E2A47', route: '/dashboard/schedule' },
-  { key: 'billing', title: 'Facturacion', subtitle: 'Plan y datos de cobro', icon: 'card-outline' as const, color: '#0E2A47', route: '/dashboard/billing' },
-  { key: 'settings', title: 'Cuenta', subtitle: 'Seguridad y preferencias', icon: 'settings-outline' as const, color: '#0E2A47', route: '/dashboard/settings' },
+  { key: 'agenda', title: 'Agenda', subtitle: 'Turnos del dia y acciones rapidas', icon: 'calendar-outline' as const, color: theme.colors.primary, route: '/dashboard/agenda' },
+  { key: 'services', title: 'Servicios', subtitle: 'Alta, edicion y categorias', icon: 'cut-outline' as const, color: theme.colors.ink, route: '/dashboard/services' },
+  { key: 'business', title: 'Negocio', subtitle: 'Perfil publico y datos base', icon: 'storefront-outline' as const, color: theme.colors.ink, route: '/dashboard/business-profile' },
+  { key: 'schedule', title: 'Horarios', subtitle: 'Disponibilidad semanal', icon: 'time-outline' as const, color: theme.colors.ink, route: '/dashboard/schedule' },
+  { key: 'billing', title: 'Facturacion', subtitle: 'Plan y datos de cobro', icon: 'card-outline' as const, color: theme.colors.ink, route: '/dashboard/billing' },
+  { key: 'settings', title: 'Cuenta', subtitle: 'Seguridad y preferencias', icon: 'settings-outline' as const, color: theme.colors.ink, route: '/dashboard/settings' },
 ];
 
 export function ProfessionalHomeTab() {
@@ -32,7 +33,7 @@ export function ProfessionalHomeTab() {
   return (
     <SafeAreaView className="flex-1 bg-background">
       <ScrollView contentContainerStyle={{ padding: 24, paddingBottom: 120 }}>
-        <LinearGradient colors={['#0E2A47', '#103E5F', '#1FB6A6']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} className="rounded-[30px] p-6">
+        <LinearGradient colors={theme.gradients.heroElevated} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} className="rounded-[30px] p-6">
           <Text className="text-xs font-bold uppercase tracking-[2px] text-white/75">Panel profesional</Text>
           <Text className="mt-2 text-3xl font-bold text-white">Hola, {profile.fullName}</Text>
           <Text className="mt-2 text-sm leading-6 text-white/80">

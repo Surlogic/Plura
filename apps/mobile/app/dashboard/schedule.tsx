@@ -55,7 +55,7 @@ export default function ScheduleScreen() {
   if (isLoading) {
     return (
       <View className="flex-1 bg-background items-center justify-center">
-        <ActivityIndicator color="#1FB6A6" />
+        <ActivityIndicator color="#0A7A43" />
       </View>
     );
   }

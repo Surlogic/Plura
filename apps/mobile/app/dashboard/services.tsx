@@ -94,7 +94,7 @@ export default function ServicesScreen() {
   if (isLoading) {
     return (
       <View className="flex-1 bg-background justify-center items-center">
-        <ActivityIndicator size="large" color="#1FB6A6" />
+        <ActivityIndicator size="large" color="#0A7A43" />
       </View>
     );
   }

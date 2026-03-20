@@ -4,12 +4,14 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.isNull;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.plura.plurabackend.core.billing.payments.model.PaymentProvider;
+import com.plura.plurabackend.core.billing.providerconnection.ProfessionalPaymentProviderConnectionErrorRecorder;
 import com.plura.plurabackend.core.billing.providerconnection.ProfessionalPaymentProviderConnectionService;
 import com.plura.plurabackend.core.billing.providerconnection.mercadopago.MercadoPagoOAuthClient;
 import com.plura.plurabackend.core.billing.providerconnection.mercadopago.MercadoPagoOAuthStateService;
@@ -36,6 +38,8 @@ class ProfessionalPaymentProviderConnectionServiceTest {
     private final MercadoPagoOAuthClient mercadoPagoOAuthClient = mock(MercadoPagoOAuthClient.class);
     private final MercadoPagoOAuthTokenCipher mercadoPagoOAuthTokenCipher = mock(MercadoPagoOAuthTokenCipher.class);
     private final PlanGuardService planGuardService = mock(PlanGuardService.class);
+    private final ProfessionalPaymentProviderConnectionErrorRecorder errorRecorder =
+        mock(ProfessionalPaymentProviderConnectionErrorRecorder.class);
     private final ProfessionalPaymentProviderConnectionService service = new ProfessionalPaymentProviderConnectionService(
         professionalBillingSubjectGateway,
         repository,
@@ -43,7 +47,8 @@ class ProfessionalPaymentProviderConnectionServiceTest {
         mercadoPagoOAuthClient,
         mercadoPagoOAuthTokenCipher,
         new ObjectMapper(),
-        planGuardService
+        planGuardService,
+        errorRecorder
     );
 
     @Test
@@ -217,6 +222,7 @@ class ProfessionalPaymentProviderConnectionServiceTest {
     void shouldPropagateTokenExchangeErrorAndPersistConnectionError() {
         ProfessionalProfile professional = professional();
         ProfessionalPaymentProviderConnection connection = new ProfessionalPaymentProviderConnection();
+        connection.setId("conn-1");
         connection.setProfessionalId(professional.getId());
         connection.setProvider(PaymentProvider.MERCADOPAGO);
         connection.setStatus(ProfessionalPaymentProviderConnectionStatus.PENDING_AUTHORIZATION);
@@ -244,6 +250,7 @@ class ProfessionalPaymentProviderConnectionServiceTest {
         assertEquals("No se pudo completar OAuth con Mercado Pago: invalid_grant", exception.getReason());
         assertEquals(ProfessionalPaymentProviderConnectionStatus.ERROR, connection.getStatus());
         assertTrue(connection.getLastError().contains("token_exchange_failed"));
+        verify(errorRecorder).recordOAuthError("conn-1", connection.getLastError(), false);
     }
 
     @Test

@@ -40,6 +40,7 @@ public class ProfessionalPaymentProviderConnectionService {
     private final MercadoPagoOAuthTokenCipher mercadoPagoOAuthTokenCipher;
     private final ObjectMapper objectMapper;
     private final PlanGuardService planGuardService;
+    private final ProfessionalPaymentProviderConnectionErrorRecorder errorRecorder;
 
     public ProfessionalPaymentProviderConnectionService(
         ProfessionalBillingSubjectGateway professionalBillingSubjectGateway,
@@ -48,7 +49,8 @@ public class ProfessionalPaymentProviderConnectionService {
         MercadoPagoOAuthClient mercadoPagoOAuthClient,
         MercadoPagoOAuthTokenCipher mercadoPagoOAuthTokenCipher,
         ObjectMapper objectMapper,
-        PlanGuardService planGuardService
+        PlanGuardService planGuardService,
+        ProfessionalPaymentProviderConnectionErrorRecorder errorRecorder
     ) {
         this.professionalBillingSubjectGateway = professionalBillingSubjectGateway;
         this.repository = repository;
@@ -57,6 +59,7 @@ public class ProfessionalPaymentProviderConnectionService {
         this.mercadoPagoOAuthTokenCipher = mercadoPagoOAuthTokenCipher;
         this.objectMapper = objectMapper;
         this.planGuardService = planGuardService;
+        this.errorRecorder = errorRecorder;
     }
 
     @Transactional(readOnly = true)
@@ -307,20 +310,23 @@ public class ProfessionalPaymentProviderConnectionService {
         String message,
         boolean preserveConnectedStatus
     ) {
+        String errorMessage = buildErrorMessage(code, message);
         LOGGER.warn(
-            "Persisting Mercado Pago OAuth error professionalId={} provider={} code={} preserveConnectedStatus={}",
+            "Persisting Mercado Pago OAuth error professionalId={} provider={} code={} preserveConnectedStatus={} detail={}",
             connection.getProfessionalId(),
             MERCADO_PAGO_PROVIDER,
             safeForLogs(code),
-            preserveConnectedStatus
+            preserveConnectedStatus,
+            safeForLogs(errorMessage)
         );
-        connection.setLastError(buildErrorMessage(code, message));
+        connection.setLastError(errorMessage);
         connection.setLastSyncAt(LocalDateTime.now());
         clearPendingAuthorizationAttempt(connection);
         if (!preserveConnectedStatus) {
             connection.setStatus(ProfessionalPaymentProviderConnectionStatus.ERROR);
         }
         repository.save(connection);
+        errorRecorder.recordOAuthError(connection.getId(), errorMessage, preserveConnectedStatus);
     }
 
     private ProfessionalPaymentProviderConnection refreshIfNeeded(ProfessionalPaymentProviderConnection connection) {

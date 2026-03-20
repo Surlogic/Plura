@@ -179,6 +179,7 @@ Lectura de producto:
 - si el `state` es valido pero pertenece a otro profesional respecto del intento pendiente, el backend rechaza el callback
 - la misma cuenta Mercado Pago no puede quedar conectada simultaneamente a dos profesionales distintos; el backend rechaza esa reconexion con `409`
 - si el navegador reintenta el callback despues de una conexion ya exitosa y Mercado Pago responde `invalid_grant` por reutilizacion del `code`, el backend conserva la conexion existente y trata ese replay como idempotente
+- si el callback falla durante el token exchange u otra validacion posterior, el backend intenta persistir `last_error` y limpiar el onboarding pendiente en una transaccion separada para no perder el motivo real del fallo
 - las credenciales globales de Mercado Pago ya no son un bloque unico: suscripciones usa `billing.mercadopago.subscriptions.*` y reservas/OAuth profesional usa `billing.mercadopago.reservations.*`
 
 Notas:

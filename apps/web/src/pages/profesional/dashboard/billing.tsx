@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/router';
 import ProfesionalSidebar from '@/components/profesional/Sidebar';
 import Button from '@/components/ui/Button';
@@ -30,8 +30,19 @@ export default function ProfesionalBillingPage() {
   const { profile, isLoading, hasLoaded, refreshProfile } = useProfessionalProfile();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const plansRef = useRef<HTMLDivElement | null>(null);
+  const planDetailsRef = useRef<HTMLDivElement | null>(null);
+  const paymentsSectionRef = useRef<HTMLElement | null>(null);
+  const [showDeferredPlanDetails, setShowDeferredPlanDetails] = useState(false);
+  const [showPaymentsSection, setShowPaymentsSection] = useState(false);
   const featureAccess = resolveProfessionalFeatureAccess(profile);
   const canUseOnlinePayments = featureAccess.onlinePayments;
+  const hasMercadoPagoOAuthAttempt =
+    canUseOnlinePayments && hasMercadoPagoConnectionAttempt();
+  const shouldLoadMercadoPagoConnection =
+    Boolean(profile?.id)
+    && canUseOnlinePayments
+    && !hasMercadoPagoOAuthAttempt
+    && showPaymentsSection;
 
   const {
     subscription,
@@ -68,7 +79,9 @@ export default function ProfesionalBillingPage() {
     disconnect,
     reloadConnection,
     dismissBanner: dismissConnectionBanner,
-  } = useProfessionalMercadoPagoConnection(Boolean(profile?.id) && canUseOnlinePayments);
+  } = useProfessionalMercadoPagoConnection(
+    shouldLoadMercadoPagoConnection,
+  );
 
   const connectionCopy = getMercadoPagoConnectionStatusCopy(connection);
   const mercadoPagoBadge = canUseOnlinePayments ? connectionCopy.badge : 'Disponible desde PROFESIONAL';
@@ -81,29 +94,106 @@ export default function ProfesionalBillingPage() {
   useEffect(() => {
     if (!router.isReady) return;
     if (!canUseOnlinePayments) {
-      if (hasMercadoPagoConnectionAttempt()) {
+      if (hasMercadoPagoOAuthAttempt) {
         clearMercadoPagoConnectionAttempt();
       }
       return;
     }
-    if (!hasMercadoPagoConnectionAttempt()) return;
+    if (!hasMercadoPagoOAuthAttempt) return;
     void router.replace('/oauth/mercadopago/callback');
-  }, [canUseOnlinePayments, router, router.isReady]);
+  }, [canUseOnlinePayments, hasMercadoPagoOAuthAttempt, router, router.isReady]);
 
-  const scrollToPlans = () => {
+  useEffect(() => {
+    if (showDeferredPlanDetails) return undefined;
+    if (typeof window === 'undefined') return undefined;
+
+    let timeoutId: number | null = null;
+    let idleId: number | null = null;
+
+    const reveal = () => setShowDeferredPlanDetails(true);
+
+    if (typeof window.requestIdleCallback === 'function') {
+      idleId = window.requestIdleCallback(() => reveal(), { timeout: 300 });
+    } else {
+      timeoutId = window.setTimeout(reveal, 180);
+    }
+
+    return () => {
+      if (idleId !== null && typeof window.cancelIdleCallback === 'function') {
+        window.cancelIdleCallback(idleId);
+      }
+      if (timeoutId !== null) {
+        window.clearTimeout(timeoutId);
+      }
+    };
+  }, [showDeferredPlanDetails]);
+
+  useEffect(() => {
+    if (showPaymentsSection || !canUseOnlinePayments) {
+      if (!canUseOnlinePayments) {
+        setShowPaymentsSection(true);
+      }
+      return undefined;
+    }
+
+    const section = paymentsSectionRef.current;
+    if (!section || typeof IntersectionObserver === 'undefined') {
+      setShowPaymentsSection(true);
+      return undefined;
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) {
+          setShowPaymentsSection(true);
+          observer.disconnect();
+        }
+      },
+      { rootMargin: '240px 0px' },
+    );
+
+    observer.observe(section);
+    return () => observer.disconnect();
+  }, [canUseOnlinePayments, showPaymentsSection]);
+
+  const scrollToPlans = useCallback(() => {
     plansRef.current?.scrollIntoView({
       behavior: 'smooth',
       block: 'start',
     });
-  };
+  }, []);
 
-  const handleDisconnectMercadoPago = async () => {
+  const handleDisconnectMercadoPago = useCallback(async () => {
     const confirmed = window.confirm(
       'Vas a desconectar tu cuenta de Mercado Pago para cobros de reservas. ¿Querés continuar?',
     );
     if (!confirmed) return;
     await disconnect();
-  };
+  }, [disconnect]);
+
+  const handleCancelPlan = useCallback(() => {
+    void handleSelectPlan('BASIC');
+  }, [handleSelectPlan]);
+
+  const handleVerifyBillingStatus = useCallback(() => {
+    void refreshSubscriptionStatus();
+  }, [refreshSubscriptionStatus]);
+
+  const handleSelectBillingPlan = useCallback((planId: typeof currentPlanId) => {
+    void handleSelectPlan(planId);
+  }, [handleSelectPlan]);
+
+  const handleStartMercadoPagoOAuth = useCallback(() => {
+    void startOAuth();
+  }, [startOAuth]);
+
+  const handleRefreshMercadoPagoConnection = useCallback(() => {
+    void reloadConnection();
+  }, [reloadConnection]);
+
+  const handleDisconnectMercadoPagoConnection = useCallback(() => {
+    void handleDisconnectMercadoPago();
+  }, [handleDisconnectMercadoPago]);
 
   return (
     <div className="app-shell min-h-screen bg-[color:var(--background)] text-[color:var(--ink)]">
@@ -225,7 +315,7 @@ export default function ProfesionalBillingPage() {
                     />
                   </div>
 
-                  <section className="space-y-4">
+                  <section ref={planDetailsRef} className="space-y-4">
                     <DashboardSectionHeading
                       title="Mi plan de Plura"
                       description="Esta sección representa tu suscripción a Plura. No mezcla la cuenta que usás para cobrar reservas."
@@ -249,48 +339,54 @@ export default function ProfesionalBillingPage() {
                       capabilities={enabledCapabilities.map((feature) => feature.label)}
                       showVerifyStatusButton={hasPendingCheckout}
                       isVerifyingStatus={isRefreshingSubscriptionStatus}
-                      onCancel={() => {
-                        void handleSelectPlan('BASIC');
-                      }}
+                      onCancel={handleCancelPlan}
                       onBrowsePlans={scrollToPlans}
-                      onVerifyStatus={() => {
-                        void refreshSubscriptionStatus();
-                      }}
+                      onVerifyStatus={handleVerifyBillingStatus}
                     />
 
-                    <BillingFeatureComparison currentPlanId={currentPlanId} />
+                    {showDeferredPlanDetails ? (
+                      <>
+                        <BillingFeatureComparison currentPlanId={currentPlanId} />
 
-                    <section
-                      id="billing-plans"
-                      ref={plansRef}
-                      className="rounded-[28px] border border-white/70 bg-white/95 p-5 shadow-[0_18px_40px_rgba(15,23,42,0.12)]"
-                    >
-                      <DashboardSectionHeading
-                        title="Planes disponibles"
-                        description="BASIC funciona como base gratuita. PROFESIONAL y ENTERPRISE abren checkout en Mercado Pago para la suscripción de Plura."
-                        action={isLoadingBilling ? (
-                          <span className="text-xs font-semibold text-[#94A3B8]">
-                            Cargando...
-                          </span>
-                        ) : null}
-                      />
+                        <section
+                          id="billing-plans"
+                          ref={plansRef}
+                          className="rounded-[28px] border border-white/70 bg-white/95 p-5 shadow-[0_18px_40px_rgba(15,23,42,0.12)]"
+                        >
+                          <DashboardSectionHeading
+                            title="Planes disponibles"
+                            description="BASIC funciona como base gratuita. PROFESIONAL y ENTERPRISE abren checkout en Mercado Pago para la suscripción de Plura."
+                            action={isLoadingBilling ? (
+                              <span className="text-xs font-semibold text-[#94A3B8]">
+                                Cargando...
+                              </span>
+                            ) : null}
+                          />
 
-                      <div className="mt-5">
-                        <BillingPlansGrid
-                          plans={plans}
-                          currentPlanId={currentPlanId}
-                          currentSubscriptionStatus={currentStatus}
-                          cancelAtPeriodEnd={Boolean(subscription?.cancelAtPeriodEnd)}
-                          isBusy={isCancelling || isRedirectingToCheckout}
-                          onSelectPlan={(planId) => {
-                            void handleSelectPlan(planId);
-                          }}
-                        />
+                          <div className="mt-5">
+                            <BillingPlansGrid
+                              plans={plans}
+                              currentPlanId={currentPlanId}
+                              currentSubscriptionStatus={currentStatus}
+                              cancelAtPeriodEnd={Boolean(subscription?.cancelAtPeriodEnd)}
+                              isBusy={isCancelling || isRedirectingToCheckout}
+                              onSelectPlan={handleSelectBillingPlan}
+                            />
+                          </div>
+                        </section>
+                      </>
+                    ) : (
+                      <div className="rounded-[28px] border border-white/70 bg-white/95 p-5 shadow-[0_18px_40px_rgba(15,23,42,0.12)]">
+                        <div className="h-5 w-40 rounded-full bg-[#E2E7EC]" />
+                        <div className="mt-4 space-y-3">
+                          <div className="h-24 rounded-[20px] bg-[#F1F5F9]" />
+                          <div className="h-40 rounded-[20px] bg-[#F1F5F9]" />
+                        </div>
                       </div>
-                    </section>
+                    )}
                   </section>
 
-                  <section className="space-y-4">
+                  <section ref={paymentsSectionRef} className="space-y-4">
                     <DashboardSectionHeading
                       title="Cobros de reservas con Mercado Pago"
                       description={canUseOnlinePayments
@@ -299,21 +395,26 @@ export default function ProfesionalBillingPage() {
                     />
 
                     {canUseOnlinePayments ? (
+                      showPaymentsSection ? (
                       <MercadoPagoConnectionCard
                         connection={connection}
                         isLoading={isLoadingConnection}
                         isStartingOAuth={isStartingOAuth}
                         isDisconnecting={isDisconnecting}
-                        onConnect={() => {
-                          void startOAuth();
-                        }}
-                        onDisconnect={() => {
-                          void handleDisconnectMercadoPago();
-                        }}
-                        onRefresh={() => {
-                          void reloadConnection();
-                        }}
+                        onConnect={handleStartMercadoPagoOAuth}
+                        onDisconnect={handleDisconnectMercadoPagoConnection}
+                        onRefresh={handleRefreshMercadoPagoConnection}
                       />
+                      ) : (
+                        <div className="rounded-[28px] border border-white/70 bg-white/95 p-6 shadow-[0_18px_40px_rgba(15,23,42,0.12)]">
+                          <div className="h-5 w-56 rounded-full bg-[#E2E7EC]" />
+                          <div className="mt-4 grid gap-4 sm:grid-cols-3">
+                            <div className="h-24 rounded-[20px] bg-[#F1F5F9]" />
+                            <div className="h-24 rounded-[20px] bg-[#F1F5F9]" />
+                            <div className="h-24 rounded-[20px] bg-[#F1F5F9]" />
+                          </div>
+                        </div>
+                      )
                     ) : (
                       <MercadoPagoUpgradeCard
                         currentPlanLabel={currentPlan.label}

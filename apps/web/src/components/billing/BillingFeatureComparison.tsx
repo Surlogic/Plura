@@ -1,4 +1,4 @@
-import { Fragment } from 'react';
+import { Fragment, memo } from 'react';
 import Card from '@/components/ui/Card';
 import type { BillingUiPlanId } from '@/config/billingPlans';
 import { billingPlanById } from '@/config/billingPlans';
@@ -89,7 +89,7 @@ const renderValue = (value: boolean | string) => {
   );
 };
 
-export default function BillingFeatureComparison({
+function BillingFeatureComparison({
   currentPlanId,
 }: BillingFeatureComparisonProps) {
   return (
@@ -173,3 +173,5 @@ export default function BillingFeatureComparison({
     </Card>
   );
 }
+
+export default memo(BillingFeatureComparison);

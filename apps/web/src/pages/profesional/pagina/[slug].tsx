@@ -26,7 +26,14 @@ import type {
 
 const PublicProfileMap = dynamic(
   () => import('@/components/profesional/PublicProfileMap'),
-  { ssr: false },
+  {
+    ssr: false,
+    loading: () => (
+      <div className="flex h-80 items-center justify-center rounded-2xl border border-[#E2E7EC] bg-[#F3F6F9] px-4 text-center text-sm text-[#64748B]">
+        Cargando mapa...
+      </div>
+    ),
+  },
 );
 
 const dayLabels: Record<WorkDayKey, string> = {
@@ -174,6 +181,16 @@ const splitLocationLines = (location: string) => {
     cityLine: parts.slice(1).join(', '),
   };
 };
+
+const MapSectionPlaceholder = ({
+  message,
+}: {
+  message: string;
+}) => (
+  <div className="flex h-80 items-center justify-center rounded-2xl border border-[#E2E7EC] bg-[#F3F6F9] px-4 text-center text-sm text-[#64748B]">
+    {message}
+  </div>
+);
 
 type SocialPlatform = 'instagram' | 'facebook' | 'tiktok' | 'website' | 'whatsapp';
 
@@ -714,6 +731,7 @@ export default function ProfesionalDetailPage({
     typeof mapLongitude === 'number' &&
     Number.isFinite(mapLongitude);
   const canShowMap = Boolean(addressLine) && hasRenderableCoordinates;
+  const shouldRenderMap = canShowMap && isMapSectionVisible;
   const profile = merged;
   const addressValue = [addressLine, cityLine].filter(Boolean).join(', ');
   const phoneValue = profile.phoneNumber?.trim() || '';
@@ -1123,7 +1141,7 @@ export default function ProfesionalDetailPage({
                   </>
                 ) : null}
               </div>
-              {canShowMap ? (
+              {shouldRenderMap ? (
                 <PublicProfileMap
                   name={merged.name}
                   category={merged.category}
@@ -1132,10 +1150,10 @@ export default function ProfesionalDetailPage({
                   latitude={mapLatitude as number}
                   longitude={mapLongitude as number}
                 />
+              ) : canShowMap ? (
+                <MapSectionPlaceholder message="Acercate para cargar el mapa." />
               ) : (
-                <div className="flex h-80 items-center justify-center rounded-2xl bg-[#E7EDF2] px-4 text-center text-sm text-[#64748B]">
-                  Ubicación no disponible
-                </div>
+                <MapSectionPlaceholder message="Ubicación no disponible" />
               )}
             </div>
           </section>

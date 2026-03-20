@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import Button from '@/components/ui/Button';
 import Card from '@/components/ui/Card';
 import {
@@ -31,7 +32,7 @@ const toneClassNames = {
   },
 };
 
-export default function MercadoPagoConnectionCard({
+function MercadoPagoConnectionCard({
   connection,
   isLoading,
   isStartingOAuth,
@@ -149,3 +150,5 @@ export default function MercadoPagoConnectionCard({
     </Card>
   );
 }
+
+export default memo(MercadoPagoConnectionCard);

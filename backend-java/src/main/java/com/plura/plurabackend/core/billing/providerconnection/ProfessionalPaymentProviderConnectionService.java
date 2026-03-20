@@ -11,6 +11,8 @@ import com.plura.plurabackend.core.billing.providerconnection.repository.Profess
 import com.plura.plurabackend.core.billing.providerconnection.security.MercadoPagoOAuthTokenCipher;
 import com.plura.plurabackend.core.professional.ProfessionalBillingSubjectGateway;
 import com.plura.plurabackend.professional.model.ProfessionalProfile;
+import com.plura.plurabackend.professional.plan.BooleanCapability;
+import com.plura.plurabackend.professional.plan.PlanGuardService;
 import com.plura.plurabackend.professional.paymentprovider.dto.MercadoPagoOAuthStartResponse;
 import com.plura.plurabackend.professional.paymentprovider.dto.ProfessionalPaymentProviderConnectionResponse;
 import java.time.LocalDateTime;
@@ -33,6 +35,7 @@ public class ProfessionalPaymentProviderConnectionService {
     private final MercadoPagoOAuthClient mercadoPagoOAuthClient;
     private final MercadoPagoOAuthTokenCipher mercadoPagoOAuthTokenCipher;
     private final ObjectMapper objectMapper;
+    private final PlanGuardService planGuardService;
 
     public ProfessionalPaymentProviderConnectionService(
         ProfessionalBillingSubjectGateway professionalBillingSubjectGateway,
@@ -40,7 +43,8 @@ public class ProfessionalPaymentProviderConnectionService {
         MercadoPagoOAuthStateService mercadoPagoOAuthStateService,
         MercadoPagoOAuthClient mercadoPagoOAuthClient,
         MercadoPagoOAuthTokenCipher mercadoPagoOAuthTokenCipher,
-        ObjectMapper objectMapper
+        ObjectMapper objectMapper,
+        PlanGuardService planGuardService
     ) {
         this.professionalBillingSubjectGateway = professionalBillingSubjectGateway;
         this.repository = repository;
@@ -48,6 +52,7 @@ public class ProfessionalPaymentProviderConnectionService {
         this.mercadoPagoOAuthClient = mercadoPagoOAuthClient;
         this.mercadoPagoOAuthTokenCipher = mercadoPagoOAuthTokenCipher;
         this.objectMapper = objectMapper;
+        this.planGuardService = planGuardService;
     }
 
     @Transactional(readOnly = true)
@@ -59,6 +64,10 @@ public class ProfessionalPaymentProviderConnectionService {
     @Transactional
     public MercadoPagoOAuthStartResponse startMercadoPagoOAuth(Long professionalUserId) {
         ProfessionalProfile professional = loadProfessional(professionalUserId);
+        ensureOnlinePaymentsEnabledForUser(professionalUserId);
+        MercadoPagoOAuthStateService.GeneratedState state =
+            mercadoPagoOAuthStateService.generateState(professional.getId());
+        String authorizationUrl = mercadoPagoOAuthClient.buildAuthorizationUrl(state.value());
         Optional<ProfessionalPaymentProviderConnection> existing = findConnection(professional.getId());
         if (existing.isPresent()
             && existing.get().getStatus() != ProfessionalPaymentProviderConnectionStatus.CONNECTED) {
@@ -74,11 +83,9 @@ public class ProfessionalPaymentProviderConnectionService {
             repository.save(connection);
         }
 
-        MercadoPagoOAuthStateService.GeneratedState state =
-            mercadoPagoOAuthStateService.generateState(professional.getId());
         return new MercadoPagoOAuthStartResponse(
             MERCADO_PAGO_PROVIDER.name(),
-            mercadoPagoOAuthClient.buildAuthorizationUrl(state.value()),
+            authorizationUrl,
             state.value(),
             state.expiresAt()
         );
@@ -93,6 +100,7 @@ public class ProfessionalPaymentProviderConnectionService {
         String errorDescription
     ) {
         ProfessionalProfile professional = loadProfessional(professionalUserId);
+        ensureOnlinePaymentsEnabledForUser(professionalUserId);
         mercadoPagoOAuthStateService.validateState(state, professional.getId());
 
         ProfessionalPaymentProviderConnection connection = findConnection(professional.getId())
@@ -159,6 +167,7 @@ public class ProfessionalPaymentProviderConnectionService {
         if (professionalId == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "professionalId es obligatorio");
         }
+        ensureOnlinePaymentsEnabledForProfessionalId(professionalId);
         ProfessionalPaymentProviderConnection connection = findConnection(professionalId)
             .orElseThrow(() -> new ResponseStatusException(
                 HttpStatus.CONFLICT,
@@ -261,6 +270,22 @@ public class ProfessionalPaymentProviderConnectionService {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Sesion profesional invalida");
         }
         return professionalBillingSubjectGateway.loadEnabledProfessionalByUserId(professionalUserId);
+    }
+
+    private void ensureOnlinePaymentsEnabledForUser(Long professionalUserId) {
+        planGuardService.requireBooleanCapability(
+            String.valueOf(professionalUserId),
+            BooleanCapability.ONLINE_PAYMENTS
+        );
+    }
+
+    private void ensureOnlinePaymentsEnabledForProfessionalId(Long professionalId) {
+        ProfessionalProfile professional = professionalBillingSubjectGateway.findById(professionalId)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Profesional no encontrado"));
+        if (professional.getUser() == null || professional.getUser().getId() == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "El profesional no tiene usuario asociado");
+        }
+        ensureOnlinePaymentsEnabledForUser(professional.getUser().getId());
     }
 
     private Optional<ProfessionalPaymentProviderConnection> findConnection(Long professionalId) {

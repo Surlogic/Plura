@@ -17,6 +17,7 @@ import com.plura.plurabackend.core.billing.providerconnection.repository.Profess
 import com.plura.plurabackend.core.billing.providerconnection.security.MercadoPagoOAuthTokenCipher;
 import com.plura.plurabackend.core.professional.ProfessionalBillingSubjectGateway;
 import com.plura.plurabackend.professional.model.ProfessionalProfile;
+import com.plura.plurabackend.professional.plan.PlanGuardService;
 import com.plura.plurabackend.core.user.model.User;
 import java.time.LocalDateTime;
 import java.util.Optional;
@@ -29,13 +30,15 @@ class ProfessionalPaymentProviderConnectionServiceTest {
     private final MercadoPagoOAuthStateService mercadoPagoOAuthStateService = mock(MercadoPagoOAuthStateService.class);
     private final MercadoPagoOAuthClient mercadoPagoOAuthClient = mock(MercadoPagoOAuthClient.class);
     private final MercadoPagoOAuthTokenCipher mercadoPagoOAuthTokenCipher = mock(MercadoPagoOAuthTokenCipher.class);
+    private final PlanGuardService planGuardService = mock(PlanGuardService.class);
     private final ProfessionalPaymentProviderConnectionService service = new ProfessionalPaymentProviderConnectionService(
         professionalBillingSubjectGateway,
         repository,
         mercadoPagoOAuthStateService,
         mercadoPagoOAuthClient,
         mercadoPagoOAuthTokenCipher,
-        new ObjectMapper()
+        new ObjectMapper(),
+        planGuardService
     );
 
     @Test

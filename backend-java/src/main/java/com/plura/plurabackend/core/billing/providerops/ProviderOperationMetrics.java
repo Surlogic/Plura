@@ -1,6 +1,5 @@
 package com.plura.plurabackend.core.billing.providerops;
 
-import com.plura.plurabackend.core.billing.providerops.model.ProviderOperation;
 import com.plura.plurabackend.core.billing.providerops.model.ProviderOperationStatus;
 import com.plura.plurabackend.core.billing.providerops.repository.ProviderOperationRepository;
 import io.micrometer.core.instrument.Counter;
@@ -9,12 +8,10 @@ import io.micrometer.core.instrument.MeterRegistry;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.EnumMap;
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -137,14 +134,11 @@ public class ProviderOperationMetrics {
     }
 
     private long resolveOldestAgeSeconds(ProviderOperationStatus status, LocalDateTime now) {
-        List<ProviderOperation> operations = providerOperationRepository.findByStatusOrderByUpdatedAtAsc(
-            status,
-            PageRequest.of(0, 1)
-        );
-        if (operations.isEmpty() || operations.get(0).getUpdatedAt() == null) {
+        LocalDateTime oldestUpdatedAt = providerOperationRepository.findOldestUpdatedAtByStatus(status);
+        if (oldestUpdatedAt == null) {
             return 0L;
         }
-        long ageSeconds = Duration.between(operations.get(0).getUpdatedAt(), now).getSeconds();
+        long ageSeconds = Duration.between(oldestUpdatedAt, now).getSeconds();
         return Math.max(0L, ageSeconds);
     }
 }

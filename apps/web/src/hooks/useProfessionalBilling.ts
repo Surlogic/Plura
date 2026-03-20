@@ -1,7 +1,13 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { billingPlans, type BillingUiPlanId, type PaidBillingUiPlanId } from '@/config/billingPlans';
+import {
+  billingPlans,
+  resolveBillingPlanFromBackendPlanCode,
+  resolveBillingPlanFromProfilePlanCode,
+  type BillingUiPlanId,
+  type PaidBillingUiPlanId,
+} from '@/config/billingPlans';
 import {
   armPendingCheckoutReturnState,
   billingStatusClassNames,
@@ -46,9 +52,11 @@ const featureLabels: Array<{ key: string; label: string }> = [
   { key: 'allowPortfolio', label: 'Portfolio visual' },
 ];
 
-const INTENSIVE_POLL_INTERVAL_MS = 5000;
+const INTENSIVE_POLL_BASE_MS = 5000;
+const INTENSIVE_POLL_MAX_MS = 15000;
 const INTENSIVE_POLL_DURATION_MS = 30000;
-const SOFT_POLL_INTERVAL_MS = 15000;
+const SOFT_POLL_BASE_MS = 15000;
+const SOFT_POLL_MAX_MS = 45000;
 const MAX_PENDING_CHECKOUT_AGE_MS = 5 * 60 * 1000;
 
 const refreshProfessionalCaches = async (refreshProfile: () => Promise<void>) => {
@@ -82,11 +90,13 @@ export function useProfessionalBilling({
   const [isPollingCheckout, setIsPollingCheckout] = useState(false);
   const [isRefreshingSubscriptionStatus, setIsRefreshingSubscriptionStatus] = useState(false);
   const [banner, setBanner] = useState<BillingBannerState | null>(null);
-  const pollIntervalRef = useRef<number | null>(null);
+  const pollTimeoutRef = useRef<number | null>(null);
   const pollPhaseTimeoutRef = useRef<number | null>(null);
   const isCheckingStatusRef = useRef(false);
+  const pollAttemptRef = useRef(0);
   const pendingRetryRef = useRef<BillingStatusCheckSource | null>(null);
   const [pollRestartTrigger, setPollRestartTrigger] = useState(0);
+  const profileSyncSignatureRef = useRef<string | null>(null);
 
   const loadSubscription = useCallback(async () => {
     if (!profile?.id) return;
@@ -110,14 +120,15 @@ export function useProfessionalBilling({
   }, [profile?.id]);
 
   const stopPolling = useCallback(() => {
-    if (pollIntervalRef.current !== null) {
-      window.clearInterval(pollIntervalRef.current);
-      pollIntervalRef.current = null;
+    if (pollTimeoutRef.current !== null) {
+      window.clearTimeout(pollTimeoutRef.current);
+      pollTimeoutRef.current = null;
     }
     if (pollPhaseTimeoutRef.current !== null) {
       window.clearTimeout(pollPhaseTimeoutRef.current);
       pollPhaseTimeoutRef.current = null;
     }
+    pollAttemptRef.current = 0;
   }, []);
 
   const stopPollingCheckout = useCallback(() => {
@@ -134,6 +145,38 @@ export function useProfessionalBilling({
     if (!profile?.id) return;
     void loadSubscription();
   }, [loadSubscription, profile?.id]);
+
+  useEffect(() => {
+    if (!profile?.id || !subscription || subscription.status !== 'ACTIVE') {
+      profileSyncSignatureRef.current = null;
+      return;
+    }
+
+    const subscriptionPlanId = resolveBillingPlanFromBackendPlanCode(subscription.planCode);
+    const profilePlanId = resolveBillingPlanFromProfilePlanCode(profile?.professionalPlan);
+    const missingOnlinePaymentsEntitlement =
+      subscriptionPlanId !== null
+      && subscriptionPlanId !== 'BASIC'
+      && !profile?.professionalEntitlements?.allowOnlinePayments;
+
+    if (subscriptionPlanId === null || (subscriptionPlanId === profilePlanId && !missingOnlinePaymentsEntitlement)) {
+      profileSyncSignatureRef.current = null;
+      return;
+    }
+
+    const signature = `${profile.id}:${subscription.subscriptionId}:${subscription.status}:${subscription.planCode}`;
+    if (profileSyncSignatureRef.current === signature) {
+      return;
+    }
+    profileSyncSignatureRef.current = signature;
+    void refreshProfessionalCaches(refreshProfile);
+  }, [
+    profile?.id,
+    profile?.professionalEntitlements?.allowOnlinePayments,
+    profile?.professionalPlan,
+    refreshProfile,
+    subscription,
+  ]);
 
   const currentPlanId = useMemo(
     () =>
@@ -322,6 +365,19 @@ export function useProfessionalBilling({
     }
   }, [handleObservedSubscription, stopPollingCheckout]);
 
+  const schedulePollWithBackoff = useCallback((
+    baseMs: number,
+    maxMs: number,
+  ) => {
+    const delay = Math.min(maxMs, baseMs * Math.pow(1.5, pollAttemptRef.current));
+    pollAttemptRef.current += 1;
+    pollTimeoutRef.current = window.setTimeout(() => {
+      pollTimeoutRef.current = null;
+      void runStatusCheck('polling');
+      schedulePollWithBackoff(baseMs, maxMs);
+    }, delay);
+  }, [runStatusCheck]);
+
   const startSoftPolling = useCallback((remainingMs: number) => {
     stopPolling();
 
@@ -342,9 +398,7 @@ export function useProfessionalBilling({
       description: 'El webhook puede tardar un poco mas.',
     });
 
-    pollIntervalRef.current = window.setInterval(() => {
-      void runStatusCheck('polling');
-    }, SOFT_POLL_INTERVAL_MS);
+    schedulePollWithBackoff(SOFT_POLL_BASE_MS, SOFT_POLL_MAX_MS);
 
     pollPhaseTimeoutRef.current = window.setTimeout(() => {
       stopPollingCheckout();
@@ -354,7 +408,7 @@ export function useProfessionalBilling({
         description: 'Puedes volver a revisar en unos minutos.',
       });
     }, remainingMs);
-  }, [runStatusCheck, stopPolling, stopPollingCheckout]);
+  }, [schedulePollWithBackoff, stopPolling, stopPollingCheckout]);
 
   const startIntensivePolling = useCallback((remainingMs: number) => {
     stopPolling();
@@ -373,9 +427,7 @@ export function useProfessionalBilling({
       description: 'Estamos esperando la confirmacion de Mercado Pago.',
     });
 
-    pollIntervalRef.current = window.setInterval(() => {
-      void runStatusCheck('polling');
-    }, INTENSIVE_POLL_INTERVAL_MS);
+    schedulePollWithBackoff(INTENSIVE_POLL_BASE_MS, INTENSIVE_POLL_MAX_MS);
 
     pollPhaseTimeoutRef.current = window.setTimeout(() => {
       stopPolling();
@@ -383,7 +435,7 @@ export function useProfessionalBilling({
       const ageMs = latestPending ? Date.now() - latestPending.createdAt : MAX_PENDING_CHECKOUT_AGE_MS;
       startSoftPolling(Math.max(0, MAX_PENDING_CHECKOUT_AGE_MS - ageMs));
     }, remainingMs);
-  }, [runStatusCheck, startSoftPolling, stopPolling]);
+  }, [schedulePollWithBackoff, startSoftPolling, stopPolling]);
 
   useEffect(() => {
     if (!profile?.id || !pendingCheckout) {

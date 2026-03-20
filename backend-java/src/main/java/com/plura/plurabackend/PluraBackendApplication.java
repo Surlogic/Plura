@@ -4,6 +4,9 @@ import io.github.cdimascio.dotenv.Dotenv;
 import java.net.URI;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Path;
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -27,20 +30,14 @@ public class PluraBackendApplication {
 	 */
 	public static void main(String[] args) {
 		// Carga variables desde .env para entornos locales.
-		Dotenv dotenv = Dotenv.configure().ignoreIfMissing().load();
-		dotenv.entries().forEach(entry -> applyDotenvFallback(entry.getKey(), entry.getValue()));
-		applyDatasourceCompatibility(dotenv);
+		// Soporta tanto ejecucion desde backend-java/ como desde la raiz del monorepo.
+		Map<String, String> dotenvValues = loadDotenvValues();
+		dotenvValues.forEach(PluraBackendApplication::applyDotenvFallback);
+		applyDatasourceCompatibility(dotenvValues);
 		SpringApplication.run(PluraBackendApplication.class, args);
 	}
 
-	private static void applyDatasourceCompatibility(Dotenv dotenv) {
-		Map<String, String> dotenvValues = dotenv.entries().stream()
-			.collect(java.util.stream.Collectors.toMap(
-				io.github.cdimascio.dotenv.DotenvEntry::getKey,
-				io.github.cdimascio.dotenv.DotenvEntry::getValue,
-				(first, second) -> first
-			));
-
+	private static void applyDatasourceCompatibility(Map<String, String> dotenvValues) {
 		String configuredUrl = firstNonBlank(
 			currentValue("SPRING_DATASOURCE_URL"),
 			currentValue("DATABASE_URL"),
@@ -68,6 +65,25 @@ public class PluraBackendApplication {
 			&& !isBlank(parsedDatasource.password())) {
 			System.setProperty("SPRING_DATASOURCE_PASSWORD", parsedDatasource.password());
 		}
+	}
+
+	private static Map<String, String> loadDotenvValues() {
+		Path cwd = Path.of("").toAbsolutePath().normalize();
+		List<Path> candidates = List.of(
+			cwd.resolve(".env"),
+			cwd.resolve("backend-java").resolve(".env")
+		);
+
+		Map<String, String> values = new LinkedHashMap<>();
+		for (Path candidate : candidates) {
+			Dotenv dotenv = Dotenv.configure()
+				.directory(candidate.getParent().toString())
+				.filename(candidate.getFileName().toString())
+				.ignoreIfMissing()
+				.load();
+			dotenv.entries().forEach(entry -> values.putIfAbsent(entry.getKey(), entry.getValue()));
+		}
+		return values;
 	}
 
 	private static void applyDotenvFallback(String key, String value) {

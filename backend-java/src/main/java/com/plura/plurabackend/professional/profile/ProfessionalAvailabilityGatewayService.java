@@ -14,8 +14,10 @@ import java.util.Map;
 import java.util.Optional;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
+@Transactional(readOnly = true)
 public class ProfessionalAvailabilityGatewayService implements ProfessionalAvailabilityGateway {
 
     private final ProfessionalProfileRepository professionalProfileRepository;
@@ -31,11 +33,23 @@ public class ProfessionalAvailabilityGatewayService implements ProfessionalAvail
 
     @Override
     public List<Long> findActiveProfessionalIdsPage(int page, int size) {
-        return professionalProfileRepository.findByActiveTrueOrderByCreatedAtDesc(
-                PageRequest.of(Math.max(0, page), Math.max(1, size))
-            ).stream()
-            .map(profile -> profile == null ? null : profile.getId())
-            .filter(id -> id != null && id > 0)
+        return professionalProfileRepository.findActiveIdsPaged(
+            PageRequest.of(Math.max(0, page), Math.max(1, size))
+        );
+    }
+
+    @Override
+    public List<ProfessionalAvailabilityProfileView> findActiveProfessionalsByIds(Collection<Long> professionalIds) {
+        if (professionalIds == null || professionalIds.isEmpty()) {
+            return List.of();
+        }
+        return professionalProfileRepository.findByIdInAndActiveTrue(professionalIds).stream()
+            .map(profile -> new ProfessionalAvailabilityProfileView(
+                profile.getId(),
+                true,
+                profile.getScheduleJson(),
+                profile.getSlotDurationMinutes()
+            ))
             .toList();
     }
 
@@ -94,6 +108,7 @@ public class ProfessionalAvailabilityGatewayService implements ProfessionalAvail
     }
 
     @Override
+    @Transactional
     public void updateAvailabilitySummary(Long professionalId, boolean hasAvailabilityToday, LocalDateTime nextAvailableAt) {
         if (professionalId == null) {
             return;
@@ -102,6 +117,7 @@ public class ProfessionalAvailabilityGatewayService implements ProfessionalAvail
     }
 
     @Override
+    @Transactional
     public void updateHasAvailabilityToday(Long professionalId, boolean hasAvailabilityToday) {
         if (professionalId == null) {
             return;

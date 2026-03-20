@@ -192,6 +192,19 @@ public class BookingProviderIntegrationService {
             "existing_pending_charge_lookup"
         );
         if (existingPending != null) {
+            if (isLegacyReadOnlyProvider(existingPending.getProvider())) {
+                ProviderCheckoutSession session = recreatePendingCheckout(existingPending, booking, user);
+                BookingFinancialSummary summary = bookingFinanceService.ensureInitializedWithEvidence(booking);
+                return new BookingPaymentSessionResponse(
+                    booking.getId(),
+                    existingPending.getId(),
+                    existingPending.getProvider() == null ? null : existingPending.getProvider().name(),
+                    session.checkoutUrl(),
+                    existingPending.getAmount(),
+                    existingPending.getCurrency(),
+                    summary.getFinancialStatus().name()
+                );
+            }
             String checkoutUrl = extractCheckoutUrl(existingPending);
             if (checkoutUrl == null || checkoutUrl.isBlank()) {
                 ProviderCheckoutSession session = recreatePendingCheckout(existingPending, booking, user);
@@ -488,6 +501,15 @@ public class BookingProviderIntegrationService {
         ProviderOperation operation = providerOperationService.getRequired(operationId);
         if (operation.getStatus() != ProviderOperationStatus.PROCESSING) {
             return loadProviderOperationResult(operation);
+        }
+        if (isLegacyReadOnlyProvider(operation.getProvider())) {
+            providerOperationService.markFailed(
+                operation.getId(),
+                operation.getProviderReference(),
+                operation.getResponsePayloadJson(),
+                "legacy_provider_retired"
+            );
+            return loadProviderOperationResult(providerOperationService.getRequired(operationId));
         }
         if (resolveClaimedOperationWithoutCallingProvider(operation)) {
             return loadProviderOperationResult(providerOperationService.getRequired(operationId));
@@ -1062,7 +1084,7 @@ public class BookingProviderIntegrationService {
         Booking booking,
         User user
     ) {
-        PaymentProvider provider = pendingCharge.getProvider() == null
+        PaymentProvider provider = pendingCharge.getProvider() == null || isLegacyReadOnlyProvider(pendingCharge.getProvider())
             ? resolveProvider(null)
             : pendingCharge.getProvider();
         PaymentProviderClient client = resolveProviderClient(provider);
@@ -1684,11 +1706,21 @@ public class BookingProviderIntegrationService {
     }
 
     private PaymentProviderClient resolveProviderClient(PaymentProvider provider) {
+        if (isLegacyReadOnlyProvider(provider)) {
+            throw new ResponseStatusException(
+                HttpStatus.SERVICE_UNAVAILABLE,
+                "El provider solicitado fue retirado del runtime activo"
+            );
+        }
         PaymentProviderClient client = providerClients.get(provider);
         if (client == null) {
             throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "Provider no configurado");
         }
         return client;
+    }
+
+    private boolean isLegacyReadOnlyProvider(PaymentProvider provider) {
+        return provider != null && provider.isLegacyReadOnly();
     }
 
     private String resolveWebhookUrl(PaymentProvider provider) {

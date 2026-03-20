@@ -69,6 +69,7 @@ Base: `apps/web/src/pages`
 - `/reserva-confirmada`: confirmacion post reserva o pago.
 - `/login`: acceso general.
 - `/oauth/callback`: callback de OAuth.
+- `/oauth/mercadopago/callback`: retorno dedicado para conexion OAuth de Mercado Pago del profesional.
 - `/auth/forgot-password`
 - `/auth/reset-password`
 
@@ -76,6 +77,7 @@ Lectura de producto:
 
 - estas rutas soportan el nucleo de `Usuario` y el `MVP`
 - `/explorar`, `/profesional/[slug]` y `/reservar` son parte del loop principal marketplace -> perfil -> reserva
+- `/explorar` y `/profesional/pagina/[slug]` ya no fuerzan auth refresh ni favoritos en 401 cuando el cliente no tiene una sesion conocida; las features auth-only se habilitan recien con hint de sesion valida
 
 ### Rutas del cliente
 
@@ -101,6 +103,7 @@ Modulos relevantes:
 - `hooks/useClientNotificationInbox.ts`: filtros por estado y evento, carga incremental y acciones `mark read` / `read all` del inbox cliente.
 - `hooks/useFavoriteProfessionals.ts`: favoritos del cliente.
 - `services/clientBookings.ts`: reservas y pago del cliente.
+- `services/clientBookings.ts`: reservas y pago del cliente; ahora cachea `actions` y `timeline` por booking y permite prefetch conservador del detalle para bajar waterfalls al entrar o cambiar de seleccion.
 - `types/clientBookingTimeline.ts` y `utils/clientBookingTimeline.ts`: contrato y formateo del historial operativo de reservas cliente.
 - `services/clientNotifications.ts`: unread count, preview y acciones de lectura del inbox cliente.
 
@@ -118,6 +121,7 @@ Lectura de producto:
 - la web cliente ya tiene campana, unread badge, dropdown preview e inbox real en `/cliente/notificaciones`
 - `/cliente/reservas` ya usa su panel lateral de detalle como experiencia real de reserva e incluye timeline de actividad por `bookingId`
 - `/cliente/reservas` mantiene el refresco de estados pendientes, pero el polling ya no corre en background y usa backoff conservador para bajar presion de red
+- `/cliente/reservas` ahora prefetch-ea `actions + timeline` de la reserva seleccionada apenas entra el listado para reducir espera perceptible sin cambiar contratos
 - todavia faltan piezas visibles para reseñas, beneficios y settings de notificaciones
 
 ### Rutas del profesional
@@ -145,6 +149,7 @@ Modulos relevantes:
 - `hooks/useProfessionalNotificationUnreadCount.ts` y `hooks/useProfessionalNotificationPreview.ts`: mantienen contador y preview de FE-1 en sync con acciones del inbox.
 - `hooks/useProfessionalBookingTimeline.ts`: carga `GET /profesional/reservas/{bookingId}/timeline` con estados `loading / empty / error`.
 - `services/professionalBookings.ts`
+- `services/professionalBookings.ts`: cachea `actions` y `timeline` por booking y expone prefetch del detalle para bajar waterfalls en el dashboard operativo.
 - `services/professionalNotifications.ts`
 - `services/professionalBookingPolicy.ts`
 - `hooks/useProfessionalBilling.ts`
@@ -154,11 +159,15 @@ Lectura de producto:
 - esta area concentra el valor de `Free` y buena parte de `Pro`
 - `servicios`, `horarios`, `reservas`, `perfil-negocio` y `notificaciones` son el corazon operativo
 - `billing` ya existe, pero el naming de codigo sigue siendo `BASIC / PROFESIONAL / ENTERPRISE`
-- en backend, `billing` ya quedo alineado a Mercado Pago only: suscripciones de plataforma por un lado y conexion OAuth del profesional por otro
+- `/profesional/dashboard/billing` ya separa dos bloques: `Mi plan de Plura` y `Cobros de reservas con Mercado Pago`
+- la web profesional ya consume `GET/POST/DELETE /profesional/payment-providers/mercadopago/*` y no usa `payout-config`
+- el retorno OAuth de Mercado Pago ya tiene pantalla propia en `/oauth/mercadopago/callback` y luego vuelve a `/profesional/dashboard/billing`
+- en `/profesional/dashboard/billing`, `BASIC` ya no intenta conectar Mercado Pago: muestra un bloque de upgrade y reserva la conexion OAuth solo para `PROFESIONAL / ENTERPRISE`
 - `/profesional/notificaciones` ya funciona como centro real de inbox: lista paginada con `cargar mas`, filtros basicos y navegacion contextual por `actionUrl`
 - la navegacion contextual de notificaciones profesional apunta a la UX real de reservas en `/profesional/dashboard/reservas?bookingId={id}` y el panel selecciona la reserva desde query string
 - `/profesional/dashboard/reservas` ya usa su panel lateral de detalle como experiencia real de reserva e incluye timeline de actividad e historial por `bookingId`
 - `/profesional/dashboard/reservas` mantiene auto-refresh para estados pendientes, pero ahora pausa polling con la pestaña oculta y aplica backoff para reducir trafico redundante
+- `/profesional/dashboard/reservas` ahora paraleliza reservas y servicios al entrar, y prefetch-ea `actions + timeline` de la seleccion activa para acortar la cascada inicial
 - `/profesional/dashboard/reservas` debe seguir disponible para `Free/BASIC` como modulo operativo de reservas; el gating por `scheduleTier` aplica a navegacion de agenda en dashboard, no al listado operativo de bookings
 
 Huecos relevantes contra el objetivo:
@@ -176,6 +185,7 @@ Huecos relevantes contra el objetivo:
 - `services/search.ts`: integra search y suggest.
 - `services/geo.ts`: geocoding y autocomplete.
 - `services/api.ts`: auth, refresh y headers de plataforma `WEB`.
+- `services/session.ts`: mantiene fallback token y un `known session hint` en storage para no disparar refresh/autofetch en rutas publicas cuando no hay sesion confirmada.
 - `middleware.ts`: CSP y headers de seguridad.
 - `pages/profesional/pagina/[slug].tsx`: reutiliza fetch cacheado del perfil publico, difiere quick slots hasta interaccion real con servicios y posterga geocoding fallback hasta que el bloque del mapa entra en viewport.
 
@@ -234,6 +244,7 @@ Lectura de producto:
 
 - reproduce parte del panel profesional en mobile
 - responde bien al objetivo `Free` y `Pro` de operar una agenda desde el telefono
+- `dashboard/billing` ya no usa `payout-config`; muestra el plan de Plura y el estado de conexion OAuth de `Mercado Pago` como unico provider vigente para cobros
 - no expone aun el set completo de capacidades `Premium`
 
 ### Otras pantallas mobile

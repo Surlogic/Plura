@@ -8,6 +8,7 @@ import { ClientNotificationsProvider } from '@/context/ClientNotificationsContex
 import { ProfessionalDashboardUnsavedChangesProvider } from '@/context/ProfessionalDashboardUnsavedChangesContext';
 import { ProfessionalNotificationsProvider } from '@/context/ProfessionalNotificationsContext';
 import { ThemeProvider } from '@/components/theme/ThemeProvider';
+import { hasKnownAuthSession } from '@/services/session';
 
 const instrumentSans = Instrument_Sans({
   variable: '--font-instrument-sans',
@@ -24,10 +25,11 @@ export default function App({ Component, pageProps }: AppProps) {
   const pathname = router.pathname || '';
   const isClientArea = isRouteOrChild(pathname, '/cliente');
   const isClientAuthArea = isRouteOrChild(pathname, '/cliente/auth');
+  const hasKnownClientSession = hasKnownAuthSession();
 
   const shouldAutoLoadClientProfile =
     (isClientArea && !isClientAuthArea) ||
-    isRouteOrChild(pathname, '/explorar') ||
+    (isRouteOrChild(pathname, '/explorar') && hasKnownClientSession) ||
     isRouteOrChild(pathname, '/reservar');
 
   const shouldAutoLoadProfessionalProfile = isRouteOrChild(

@@ -29,6 +29,8 @@ import lombok.NoArgsConstructor;
     },
     indexes = {
         @Index(name = "idx_provider_operation_status_next_attempt", columnList = "status,next_attempt_at"),
+        @Index(name = "idx_provider_operation_status_updated_at", columnList = "status,updated_at"),
+        @Index(name = "idx_provider_operation_status_lease_until", columnList = "status,lease_until"),
         @Index(name = "idx_provider_operation_booking", columnList = "booking_id"),
         @Index(name = "idx_provider_operation_transaction", columnList = "payment_transaction_id")
     }

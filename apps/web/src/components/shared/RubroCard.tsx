@@ -1,5 +1,6 @@
 import Image from 'next/image';
 import Link from 'next/link';
+import { memo } from 'react';
 
 type RubroCardProps = {
   title: string;
@@ -25,7 +26,7 @@ const normalizeImageUrl = (value?: string | null) => {
   }
 };
 
-export default function RubroCard({
+export default memo(function RubroCard({
   title,
   slug,
   imageUrl,
@@ -67,4 +68,4 @@ export default function RubroCard({
       </div>
     </Link>
   );
-}
+});

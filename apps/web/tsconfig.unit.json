@@ -14,6 +14,8 @@
   "include": [
     "src/lib/billing/featureGuards.ts",
     "src/lib/billing/featureGuards.test.ts",
+    "src/lib/bookings/paymentSession.ts",
+    "src/lib/bookings/paymentSession.test.ts",
     "src/lib/bookings/professionalReservationActions.test.ts"
   ]
 }

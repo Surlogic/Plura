@@ -75,8 +75,10 @@ export function ProfessionalDashboardUnsavedChangesProvider({
 
   const currentPath = parsePath(router.asPath || '');
   const isDashboardRoute = isDashboardPath(currentPath);
-  const isSaving =
-    isInternalSaving || Object.values(savingBySection).some((value) => value);
+  const isSaving = useMemo(
+    () => isInternalSaving || Object.values(savingBySection).some((value) => value),
+    [isInternalSaving, savingBySection],
+  );
 
   useEffect(() => {
     dirtyRef.current = isDirty;

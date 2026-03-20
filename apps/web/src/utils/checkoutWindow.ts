@@ -51,10 +51,10 @@ export const closeCheckoutWindow = (checkoutWindow: Window | null) => {
   checkoutWindow.close();
 };
 
-export const openCheckoutUrl = (checkoutUrl: string) => {
+export const openCheckoutUrl = (checkoutUrl: string): boolean => {
   if (typeof window === 'undefined') {
-    return;
+    return false;
   }
 
-  window.open(checkoutUrl, '_blank', 'noopener,noreferrer');
+  return Boolean(window.open(checkoutUrl, '_blank', 'noopener,noreferrer'));
 };

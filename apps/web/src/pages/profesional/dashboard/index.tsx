@@ -59,6 +59,12 @@ const monthNamesShort = [
   'jul', 'ago', 'sep', 'oct', 'nov', 'dic',
 ];
 
+const STATS_FALLBACK = [
+  { label: 'Reservas esta semana', value: '—', detail: 'Sin datos' },
+  { label: 'Clientes únicos', value: '—', detail: 'Sin datos' },
+  { label: 'Ocupación', value: '—', detail: 'Sin datos' },
+];
+
 const toLocalDateKey = (date: Date) => {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -272,19 +278,25 @@ export default function ProfesionalDashboardPage() {
     return undefined;
   }, [selectedReservation]);
 
-  const today = new Date();
-  const todayKey = toLocalDateKey(today);
-  const currentMinutes = today.getHours() * 60 + today.getMinutes();
-  const yesterday = new Date(today);
-  yesterday.setDate(today.getDate() - 1);
-  const yesterdayKey = toLocalDateKey(yesterday);
-
-  // Fixed current week — used for stats only
-  const currentWeekStart = startOfWeek(today);
-  const currentWeekEnd = new Date(currentWeekStart);
-  currentWeekEnd.setDate(currentWeekStart.getDate() + 6);
-  const weekStartKey = toLocalDateKey(currentWeekStart);
-  const weekEndKey = toLocalDateKey(currentWeekEnd);
+  const { today, todayKey, currentMinutes, yesterdayKey, currentWeekStart, weekStartKey, weekEndKey } = useMemo(() => {
+    const t = new Date();
+    const tKey = toLocalDateKey(t);
+    const y = new Date(t);
+    y.setDate(t.getDate() - 1);
+    const wStart = startOfWeek(t);
+    const wEnd = new Date(wStart);
+    wEnd.setDate(wStart.getDate() + 6);
+    return {
+      today: t,
+      todayKey: tKey,
+      currentMinutes: t.getHours() * 60 + t.getMinutes(),
+      yesterdayKey: toLocalDateKey(y),
+      currentWeekStart: wStart,
+      weekStartKey: toLocalDateKey(wStart),
+      weekEndKey: toLocalDateKey(wEnd),
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const scheduleTier = profile?.professionalEntitlements?.scheduleTier ?? 'DAILY';
   const canUseMonthlyCalendar = featureAccess.monthlyCalendar;
   const canNavigateCalendar = featureAccess.weeklyCalendarNavigation;
@@ -560,6 +572,14 @@ export default function ProfesionalDashboardPage() {
     };
   }, [reservationsByDate, schedule?.days, weekDays]);
 
+  const dayLayoutsByDate = useMemo(() => {
+    const map = new Map<string, ReservationLayout[]>();
+    reservationsByDate.forEach((dayReservations, dateKey) => {
+      map.set(dateKey, buildDayLayouts(dayReservations));
+    });
+    return map;
+  }, [reservationsByDate]);
+
   const currentTimeIndicator = useMemo(() => {
     if (calendarView !== 'week' || weekOffset !== 0) return null;
     const now = new Date();
@@ -577,7 +597,7 @@ export default function ProfesionalDashboardPage() {
     };
   }, [calendarView, visibleCalendarRange, weekOffset]);
 
-  const stats = [
+  const stats = useMemo(() => [
     {
       label: 'Reservas hoy',
       value: `${analyticsSummary?.todayBookings ?? todayCount}`,
@@ -598,7 +618,7 @@ export default function ProfesionalDashboardPage() {
       value: `${analyticsSummary?.weeklyUniqueClients ?? uniqueClientsWeek}`,
       detail: 'Últimos 7 días',
     },
-  ];
+  ], [analyticsSummary, todayCount, todayDiff, occupancyValue, occupancyDetail, uniqueClientsWeek]);
   const nextReservation = useMemo(() => {
     return agendaReservations
       .filter((reservation) => {
@@ -620,7 +640,7 @@ export default function ProfesionalDashboardPage() {
   const daysWithOpenCapacity = analyticsSummary
     ? Math.max(analyticsSummary.weeklyScheduledDays - analyticsSummary.weeklyDaysWithReservations, 0)
     : Math.max(scheduleDays.length - daysWithReservations, 0);
-  const agendaOverviewCards = [
+  const agendaOverviewCards = useMemo(() => [
     {
       label: 'Pendientes hoy',
       value: `${todayPendingCount}`,
@@ -644,7 +664,7 @@ export default function ProfesionalDashboardPage() {
       icon: 'spark' as const,
       tone: 'default' as const,
     },
-  ];
+  ], [todayPendingCount, nextReservation, daysWithOpenCapacity, scheduleDays.length]);
 
   const handlePrev = () => {
     if (!canNavigateCalendar) return;
@@ -828,11 +848,7 @@ export default function ProfesionalDashboardPage() {
                           </p>
                         ) : null}
                         <div className="mt-4 grid gap-3 sm:grid-cols-3 lg:grid-cols-1">
-                          {(canViewAnalytics ? stats : [
-                            { label: 'Reservas esta semana', value: '—', detail: 'Sin datos' },
-                            { label: 'Clientes únicos', value: '—', detail: 'Sin datos' },
-                            { label: 'Ocupación', value: '—', detail: 'Sin datos' },
-                          ]).map((item, index) => (
+                          {(canViewAnalytics ? stats : STATS_FALLBACK).map((item, index) => (
                             <div
                               key={item.label}
                               className={cn(
@@ -1030,8 +1046,7 @@ export default function ProfesionalDashboardPage() {
 
                           <div className="grid flex-1 grid-cols-7">
                             {weekDays.map((day, index) => {
-                              const dayReservations = reservationsByDate.get(day.dateKey) ?? [];
-                              const dayLayouts = buildDayLayouts(dayReservations);
+                              const dayLayouts = dayLayoutsByDate.get(day.dateKey) ?? [];
                               const isToday = day.dateKey === todayKey;
                               const baseBackground = index % 2 === 0 ? 'bg-white' : 'bg-[#FBFCFD]';
                               return (

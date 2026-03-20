@@ -1,7 +1,6 @@
 package com.plura.plurabackend.booking;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -22,6 +21,9 @@ import com.plura.plurabackend.core.billing.payments.provider.PaymentProviderClie
 import com.plura.plurabackend.core.billing.payments.provider.ProviderCheckoutSession;
 import com.plura.plurabackend.core.billing.payments.provider.ProviderVerificationResult;
 import com.plura.plurabackend.core.billing.payments.repository.PaymentTransactionRepository;
+import com.plura.plurabackend.core.billing.providerops.model.ProviderOperation;
+import com.plura.plurabackend.core.billing.providerops.model.ProviderOperationStatus;
+import com.plura.plurabackend.core.billing.providerops.model.ProviderOperationType;
 import com.plura.plurabackend.core.billing.providerops.ProviderOperationService;
 import com.plura.plurabackend.core.billing.providerops.ProviderOperationWorker;
 import com.plura.plurabackend.core.booking.bridge.BookingProfessionalPlanGateway;
@@ -151,6 +153,62 @@ class BookingProviderIntegrationServiceTest {
         assertEquals("https://mp.test/checkout-1", response.getCheckoutUrl());
         assertEquals("MERCADOPAGO", response.getProvider());
         verify(providerClient, never()).createBookingCheckout(any());
+    }
+
+    @Test
+    void shouldRotateLegacyPendingCheckoutToMercadoPagoRuntime() throws Exception {
+        BookingProviderIntegrationService service = buildService();
+        User user = clientUser();
+        Booking booking = prepaidBooking();
+        PaymentTransaction pendingCharge = new PaymentTransaction();
+        pendingCharge.setId("tx-legacy-pending");
+        pendingCharge.setBooking(booking);
+        pendingCharge.setProfessionalId(booking.getProfessionalId());
+        pendingCharge.setProvider(PaymentProvider.DLOCAL);
+        pendingCharge.setTransactionType(PaymentTransactionType.BOOKING_CHARGE);
+        pendingCharge.setStatus(PaymentTransactionStatus.PENDING);
+        pendingCharge.setAmount(BigDecimal.valueOf(500));
+        pendingCharge.setCurrency("UYU");
+        pendingCharge.setExternalReference("booking:" + booking.getId());
+        pendingCharge.setProviderPaymentId("legacy-pref");
+        pendingCharge.setPayloadJson("{\"checkoutUrl\":\"https://checkout.dlocal.test/legacy\"}");
+
+        when(userRepository.findByIdAndDeletedAtIsNull(user.getId())).thenReturn(Optional.of(user));
+        when(bookingRepository.findDetailedByIdForUpdate(booking.getId())).thenReturn(Optional.of(booking));
+        when(paymentTransactionRepository.findByBooking_IdAndTransactionTypeAndStatusIn(
+            booking.getId(),
+            PaymentTransactionType.BOOKING_CHARGE,
+            List.of(
+                PaymentTransactionStatus.APPROVED,
+                PaymentTransactionStatus.PARTIALLY_REFUNDED,
+                PaymentTransactionStatus.REFUNDED
+            )
+        )).thenReturn(List.of());
+        when(paymentTransactionRepository.findByBooking_IdAndTransactionTypeAndStatusIn(
+            booking.getId(),
+            PaymentTransactionType.BOOKING_CHARGE,
+            List.of(PaymentTransactionStatus.PENDING)
+        )).thenReturn(List.of(pendingCharge));
+        when(paymentTransactionRepository.save(any(PaymentTransaction.class)))
+            .thenAnswer(invocation -> invocation.getArgument(0));
+        when(providerClient.createBookingCheckout(any())).thenReturn(
+            new ProviderCheckoutSession("https://mp.test/checkout-rotated", "pref-mp-1", null)
+        );
+        when(bookingProfessionalPlanGateway.allowsOnlinePayments(booking.getProfessionalId())).thenReturn(true);
+        when(bookingFinanceService.ensureInitializedWithEvidence(booking))
+            .thenReturn(financialSummaryEntity(booking, BookingFinancialStatus.PAYMENT_PENDING));
+
+        BookingPaymentSessionResponse response = service.createPaymentSessionForClient(
+            String.valueOf(user.getId()),
+            booking.getId(),
+            null
+        );
+
+        assertEquals("tx-legacy-pending", response.getTransactionId());
+        assertEquals("https://mp.test/checkout-rotated", response.getCheckoutUrl());
+        assertEquals("MERCADOPAGO", response.getProvider());
+        assertEquals(PaymentProvider.MERCADOPAGO, pendingCharge.getProvider());
+        verify(providerClient).createBookingCheckout(any());
     }
 
     @Test
@@ -321,6 +379,23 @@ class BookingProviderIntegrationServiceTest {
         assertTrue(processed);
         assertEquals(PaymentTransactionStatus.APPROVED, refundTx.getStatus());
         verify(bookingFinanceService).markRefundRecordCompleted(refundRecord.getId(), "rf-1");
+    }
+
+    @Test
+    void shouldFailLegacyProviderOperationWithoutCallingRuntimeProvider() {
+        BookingProviderIntegrationService service = buildService();
+        ProviderOperation operation = new ProviderOperation();
+        operation.setId("op-legacy");
+        operation.setOperationType(ProviderOperationType.BOOKING_REFUND);
+        operation.setStatus(ProviderOperationStatus.PROCESSING);
+        operation.setProvider(PaymentProvider.DLOCAL);
+
+        when(providerOperationService.getRequired("op-legacy")).thenReturn(operation, operation);
+
+        service.processClaimedProviderOperation("op-legacy");
+
+        verify(providerOperationService).markFailed("op-legacy", null, null, "legacy_provider_retired");
+        verify(providerClient, never()).createBookingCheckout(any());
     }
 
     private BookingProviderIntegrationService buildService() {

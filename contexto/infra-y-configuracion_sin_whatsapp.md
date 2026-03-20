@@ -32,6 +32,11 @@ Infra actual detectada:
 - rate limiting
 - auditoria auth
 
+Lectura operativa actual:
+
+- `auth_session` es la ruta principal de sesiones persistidas
+- `auth_refresh_token` queda como compatibilidad legacy del modelo anterior, pero el fallback por default ya no viene habilitado en `application.yml`
+
 ### Marketplace, ubicacion y mapa
 
 Necesario para:
@@ -44,6 +49,7 @@ Necesario para:
 Infra actual detectada:
 
 - search propio con cache
+- materialized views PostgreSQL para search y suggest
 - Meilisearch opcional
 - geocoding y suggest
 - Mapbox en frontend
@@ -108,6 +114,9 @@ Lectura real del backend hoy:
 - `Mercado Pago` tambien esta conectado al checkout real de reservas y refunds usando OAuth del profesional
 - ya existe storage de OAuth para cuentas Mercado Pago de profesionales en `professional_payment_provider_connection`
 - `payment_event`, `payment_transaction` y `provider_operation` ya funcionan como base de auditoria y conciliacion compartida
+- el enum `PaymentProvider` mantiene compatibilidad con filas legacy `DLOCAL` solo para que lecturas historicas no rompan reservas ni mediciones
+- el runtime operativo ya no acepta `DLOCAL` como input nuevo; cualquier operacion pendiente legacy se degrada a compatibilidad o se marca como provider retirado
+- la semantica valida de pagos online actuales sigue centrada en `Mercado Pago`
 
 Variables nuevas de backend para Mercado Pago OAuth:
 
@@ -116,7 +125,15 @@ Variables nuevas de backend para Mercado Pago OAuth:
 - `BILLING_MERCADOPAGO_OAUTH_REDIRECT_URI`
 - `BILLING_MERCADOPAGO_OAUTH_AUTHORIZATION_URL`
 - `BILLING_MERCADOPAGO_OAUTH_TOKEN_URL`
+- `BILLING_MERCADOPAGO_OAUTH_STATE_SIGNING_SECRET`
 - `BILLING_MERCADOPAGO_OAUTH_TOKEN_ENCRYPTION_KEY`
+
+Notas reales de binding local:
+
+- el backend no depende solo del `.env` del cwd: ahora intenta leer `./.env` y tambien `./backend-java/.env`
+- si se ejecuta el backend desde la raiz del monorepo, `backend-java/.env` sigue siendo tomado como fallback
+- para OAuth de Mercado Pago el error de `state` ya no implica adivinar secretos: el backend espera primero `BILLING_MERCADOPAGO_OAUTH_STATE_SIGNING_SECRET`, y si no existe hace fallback a la clave de cifrado o al client secret
+- en local, tener solo `BILLING_MERCADOPAGO_ACCESS_TOKEN` no alcanza para OAuth: siguen siendo obligatorios `CLIENT_ID`, `CLIENT_SECRET` y `REDIRECT_URI`
 
 Variables nuevas de backend para reservas y refunds Mercado Pago:
 
@@ -221,6 +238,7 @@ Areas de configuracion principales en `application.yml`:
 - mail SMTP
 - cache y Redis
 - feature flags de search, profile y slots
+- refresh de materialized views de search
 - CORS
 - auth cookies y password reset
 - rate limiting
@@ -237,11 +255,28 @@ Variables criticas sin las que el backend puede fallar o degradarse:
 - credenciales DB productivas
 - credenciales OAuth si se usa login social
 - variables de billing si se habilitan pagos reales
+- variables OAuth de Mercado Pago si se quiere conectar la cuenta del profesional desde billing
 
 Notas operativas de performance hoy:
 
 - `GET /cliente/reservas/me` queda mejor cubierto con el indice Flyway `idx_booking_user_start` sobre `booking(user_id, start_date_time)`
 - search, perfil publico, slots, inbox y unread ya tienen timings tecnicos listos para enganchar a dashboards
+- `QUERY_COUNT_HEADER_ENABLED=true` expone `X-Plura-Sql-Query-Count` para requests HTTP y cuenta sentencias Hibernate/JPA por request; no cubre consultas JDBC directas como search o el nuevo inbox read path
+- `V50__scale_hardening_indexes.sql` limpia indices sin uso claro en `email_dispatch`, `provider_operation` y `booking`, y agrega cobertura para lecturas por `provider_operation(status, updated_at|lease_until)` y `payment_transaction(external_reference, created_at)`
+- `provider_operation.findDueOperations()` ahora evita leer operaciones con `lease_until` todavia activo, para bajar churn del worker bajo concurrencia
+- los defaults del backend quedaron mas conservadores para scale-out:
+  - `HIKARI_MIN_IDLE` default `2`
+  - `AUTH_ALLOW_LEGACY_REFRESH_FALLBACK` default `false`
+  - `APP_SEARCH_SLOT_BOOTSTRAP_ENABLED` default `false`
+  - `SEARCH_MV_REFRESH_ON_STARTUP` default `false`
+- el script `backend-java/scripts/loadtests/perf_phase3_rollout.js` ahora acepta `SCENARIO_DURATION` y VUs por escenario via env para poder correr smoke/perf sin editar el archivo
+
+Variables nuevas relevantes de performance:
+
+- `SEARCH_MV_REFRESH_ENABLED`
+- `SEARCH_MV_REFRESH_ON_STARTUP`
+- `SEARCH_MV_REFRESH_CRON`
+- `QUERY_COUNT_HEADER_ENABLED`
 
 ## Desarrollo local
 
@@ -266,6 +301,19 @@ El script `scripts/predev.sh`:
 - `plura-api`: backend Docker
 - `plura-web`: app Next.js
 - `plura-db`: base PostgreSQL gestionada
+
+Notas reales de deploy en Render:
+
+- `plura-api` debe declarar tambien `APP_PUBLIC_WEB_URL` para links/callbacks absolutos
+- para OAuth Mercado Pago del profesional el servicio backend necesita exponer en Render:
+  - `BILLING_MERCADOPAGO_OAUTH_CLIENT_ID`
+  - `BILLING_MERCADOPAGO_OAUTH_CLIENT_SECRET`
+  - `BILLING_MERCADOPAGO_OAUTH_REDIRECT_URI`
+  - `BILLING_MERCADOPAGO_OAUTH_AUTHORIZATION_URL`
+  - `BILLING_MERCADOPAGO_OAUTH_TOKEN_URL`
+  - `BILLING_MERCADOPAGO_OAUTH_STATE_SIGNING_SECRET`
+  - `BILLING_MERCADOPAGO_OAUTH_TOKEN_ENCRYPTION_KEY`
+- el backend compila para Render con Java 17; cualquier uso de APIs de virtual threads de Java 21 rompe el `bootJar` del deploy
 
 ## Integraciones externas detectadas
 

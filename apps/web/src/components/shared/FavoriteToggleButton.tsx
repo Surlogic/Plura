@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { cn } from '@/components/ui/cn';
 
 type FavoriteToggleButtonProps = {
@@ -25,7 +26,7 @@ const HeartIcon = ({ isActive }: { isActive: boolean }) => (
   </svg>
 );
 
-export default function FavoriteToggleButton({
+export default memo(function FavoriteToggleButton({
   isActive,
   onClick,
   className,
@@ -57,4 +58,4 @@ export default function FavoriteToggleButton({
       {variant === 'pill' ? <span>{isActive ? activeLabel : inactiveLabel}</span> : null}
     </button>
   );
-}
+});

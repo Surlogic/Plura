@@ -392,6 +392,7 @@ public class BillingProperties {
             private String redirectUri = "";
             private String authorizationUrl = "https://auth.mercadopago.com/authorization";
             private String tokenUrl = "https://api.mercadopago.com/oauth/token";
+            private String stateSigningSecret = "";
             private String tokenEncryptionKey = "";
 
             public String getClientId() {
@@ -432,6 +433,14 @@ public class BillingProperties {
 
             public void setTokenUrl(String tokenUrl) {
                 this.tokenUrl = tokenUrl;
+            }
+
+            public String getStateSigningSecret() {
+                return stateSigningSecret;
+            }
+
+            public void setStateSigningSecret(String stateSigningSecret) {
+                this.stateSigningSecret = stateSigningSecret;
             }
 
             public String getTokenEncryptionKey() {

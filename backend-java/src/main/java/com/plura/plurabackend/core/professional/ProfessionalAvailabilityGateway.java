@@ -12,6 +12,8 @@ public interface ProfessionalAvailabilityGateway {
 
     Optional<ProfessionalAvailabilityProfileView> findActiveProfessionalById(Long professionalId);
 
+    List<ProfessionalAvailabilityProfileView> findActiveProfessionalsByIds(Collection<Long> professionalIds);
+
     List<ProfessionalServiceAvailabilityView> findActiveServicesByProfessionalId(Long professionalId);
 
     Map<Long, List<ProfessionalServiceAvailabilityView>> findActiveServicesByProfessionalIds(Collection<Long> professionalIds);

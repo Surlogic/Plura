@@ -28,6 +28,7 @@ import java.util.Optional;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 @Service
@@ -42,6 +43,7 @@ public class BookingClientService {
     private final BookingClientProfessionalViewGateway bookingClientProfessionalViewGateway;
     private final ZoneId systemZoneId;
     private final MeterRegistry meterRegistry;
+    private final Timer clientBookingsTimer;
 
     public BookingClientService(
         BookingRepository bookingRepository,
@@ -63,8 +65,13 @@ public class BookingClientService {
         this.bookingClientProfessionalViewGateway = bookingClientProfessionalViewGateway;
         this.meterRegistry = meterRegistry;
         this.systemZoneId = ZoneId.of(appTimezone);
+        this.clientBookingsTimer = Timer.builder("plura.client_bookings.duration")
+            .description("Client bookings response duration")
+            .publishPercentileHistogram()
+            .register(meterRegistry);
     }
 
+    @Transactional(readOnly = true)
     public Optional<ClientNextBookingResponse> getNextBooking(String rawUserId) {
         User user = resolveClientUser(rawUserId);
 
@@ -100,38 +107,24 @@ public class BookingClientService {
         });
     }
 
+    @Transactional(readOnly = true)
     public List<ClientNextBookingResponse> getBookings(String rawUserId) {
         Timer.Sample sample = Timer.start(meterRegistry);
         try {
             User user = resolveClientUser(rawUserId);
             List<Booking> bookings = bookingRepository.findAllByUserWithDetailsOrderByStartDateTimeAsc(user);
-            boolean syncedAny = false;
-            for (Booking booking : bookings) {
-                if (shouldSyncPendingPayment(booking)) {
-                    syncedAny = bookingPaymentsGateway.syncPendingChargeStatus(booking.getId()) || syncedAny;
-                }
-            }
-            if (syncedAny) {
-                bookings = bookingRepository.findAllByUserWithDetailsOrderByStartDateTimeAsc(user);
-            }
-            Map<Long, BookingFinancialSummaryResponse> summaries = bookingFinanceService.findResponseMapByBookingIds(
-                bookings.stream().map(Booking::getId).toList()
-            );
+            List<Long> bookingIds = bookings.stream().map(Booking::getId).toList();
+            Map<Long, BookingFinancialSummaryResponse> summaries = bookingFinanceService.findResponseMapByBookingIds(bookingIds);
             Map<Long, BookingRefundRecordResponse> latestRefunds =
-                bookingFinanceService.findLatestRefundResponseMapByBookingIds(bookings.stream().map(Booking::getId).toList());
+                bookingFinanceService.findLatestRefundResponseMapByBookingIds(bookingIds);
             Map<Long, BookingPayoutRecordResponse> latestPayouts =
-                bookingFinanceService.findLatestPayoutResponseMapByBookingIds(bookings.stream().map(Booking::getId).toList());
+                bookingFinanceService.findLatestPayoutResponseMapByBookingIds(bookingIds);
             return bookings
                 .stream()
                 .map(booking -> mapClientBooking(booking, summaries, latestRefunds, latestPayouts))
                 .toList();
         } finally {
-            sample.stop(
-                Timer.builder("plura.client_bookings.duration")
-                    .description("Client bookings response duration")
-                    .publishPercentileHistogram()
-                    .register(meterRegistry)
-            );
+            sample.stop(clientBookingsTimer);
         }
     }
 

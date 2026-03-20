@@ -233,11 +233,7 @@ textarea,
 select {
   transition:
     color 180ms ease,
-    background-color 180ms ease,
-    border-color 180ms ease,
-    box-shadow 180ms ease,
-    transform 180ms ease,
-    opacity 180ms ease;
+    background-color 180ms ease;
 }
 
 a {
@@ -294,13 +290,7 @@ a:hover {
 }
 
 .app-shell::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  background:
-    radial-gradient(720px 420px at 14% 0%, rgba(54, 200, 244, 0.06), transparent 62%),
-    radial-gradient(640px 420px at 86% 2%, rgba(15, 23, 42, 0.05), transparent 60%);
+  display: none;
 }
 
 .brand-gradient-bg {

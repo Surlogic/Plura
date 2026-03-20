@@ -1,5 +1,5 @@
 import { isAxiosError } from 'axios';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/router';
 import dynamic from 'next/dynamic';
 import Navbar from '@/components/shared/Navbar';
@@ -15,6 +15,7 @@ import {
 } from '@/config/search';
 import { useClientProfileContext } from '@/context/ClientProfileContext';
 import { useFavoriteProfessionals } from '@/hooks/useFavoriteProfessionals';
+import { hasKnownAuthSession } from '@/services/session';
 import { searchProfessionals } from '@/services/search';
 import type { SearchItem, SearchSort, SearchType } from '@/types/search';
 import type { UnifiedSearchValues } from '@/components/search/UnifiedSearchBar';
@@ -114,7 +115,10 @@ const formatPriceFrom = (value?: number | null) => {
 export default function ExplorarPage() {
   const router = useRouter();
   const { profile, hasLoaded } = useClientProfileContext();
-  const { isFavorite, toggleFavorite } = useFavoriteProfessionals();
+  const canResolveClientFeatures = hasKnownAuthSession();
+  const { isFavorite, toggleFavorite } = useFavoriteProfessionals({
+    enabled: canResolveClientFeatures,
+  });
   const hasClientSession = hasLoaded && Boolean(profile);
   const displayName = profile?.fullName || 'Cliente';
 
@@ -190,6 +194,7 @@ export default function ExplorarPage() {
   const [error, setError] = useState<string | null>(null);
   const [selectedMapItemId, setSelectedMapItemId] = useState<string | null>(null);
   const [hoveredMapItemId, setHoveredMapItemId] = useState<string | null>(null);
+  const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     if (!router.isReady) return;
@@ -199,6 +204,10 @@ export default function ExplorarPage() {
 
     setIsLoading(true);
     setError(null);
+
+    // Debounce search requests to batch rapid query param changes
+    if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
+    searchDebounceRef.current = setTimeout(() => {
 
     const requestParams = {
       query: query || undefined,
@@ -217,41 +226,43 @@ export default function ExplorarPage() {
       sort,
     };
 
-    searchProfessionals(requestParams, controller.signal)
-      .then((response) => {
-        if (!isMounted) return;
-        setItems(Array.isArray(response.items) ? response.items : []);
-        setTotal(response.total || 0);
-      })
-      .catch((err) => {
-        if (!isMounted) return;
-        if (
-          (err as { name?: string; code?: string }).name === 'CanceledError' ||
-          (err as { name?: string; code?: string }).code === 'ERR_CANCELED'
-        ) {
-          return;
-        }
-        setItems([]);
-        setTotal(0);
-        if (isAxiosError(err) && !err.response) {
-          setError(
-            'No pudimos conectar con el backend de búsqueda. Verificá que el API esté corriendo en localhost:3000.',
-          );
-          return;
-        }
-        if (isAxiosError(err) && err.response?.status && err.response.status >= 500) {
-          setError('El backend devolvió un error interno al buscar resultados.');
-          return;
-        }
-        setError('No se pudieron cargar los resultados de búsqueda.');
-      })
-      .finally(() => {
-        if (isMounted) setIsLoading(false);
-      });
+      searchProfessionals(requestParams, controller.signal)
+        .then((response) => {
+          if (!isMounted) return;
+          setItems(Array.isArray(response.items) ? response.items : []);
+          setTotal(response.total || 0);
+        })
+        .catch((err) => {
+          if (!isMounted) return;
+          if (
+            (err as { name?: string; code?: string }).name === 'CanceledError' ||
+            (err as { name?: string; code?: string }).code === 'ERR_CANCELED'
+          ) {
+            return;
+          }
+          setItems([]);
+          setTotal(0);
+          if (isAxiosError(err) && !err.response) {
+            setError(
+              'No pudimos conectar con el backend de búsqueda. Verificá que el API esté corriendo en localhost:3000.',
+            );
+            return;
+          }
+          if (isAxiosError(err) && err.response?.status && err.response.status >= 500) {
+            setError('El backend devolvió un error interno al buscar resultados.');
+            return;
+          }
+          setError('No se pudieron cargar los resultados de búsqueda.');
+        })
+        .finally(() => {
+          if (isMounted) setIsLoading(false);
+        });
+    }, 300);
 
     return () => {
       isMounted = false;
       controller.abort();
+      if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
     };
   }, [
     router.isReady,
@@ -480,6 +491,13 @@ export default function ExplorarPage() {
     const rounded = Math.round(radiusKm);
     return RADIUS_OPTIONS.includes(rounded) ? rounded : SEARCH_DEFAULT_RADIUS_KM;
   }, [radiusKm]);
+  const fixedQuery = useMemo(() => ({
+    ...(isMapView ? { vista: 'mapa' as const } : {}),
+    sort,
+    size: String(size),
+    radiusKm: String(radiusKm),
+  }), [isMapView, sort, size, radiusKm]);
+
   const activeMapItemId = hoveredMapItemId || selectedMapItemId;
 
   return (
@@ -574,12 +592,7 @@ export default function ExplorarPage() {
 
         <ExploreFilters
           initialValues={filterValues}
-          fixedQuery={{
-            ...(isMapView ? { vista: 'mapa' } : {}),
-            sort,
-            size: String(size),
-            radiusKm: String(radiusKm),
-          }}
+          fixedQuery={fixedQuery}
           citySuggestions={citySuggestions}
         />
 

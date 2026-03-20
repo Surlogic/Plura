@@ -19,7 +19,7 @@ export const getGeoLocationSuggestions = async (
   try {
     const response = await api.get<GeoLocationSuggestion[]>('/api/geo/suggest', {
       params: { q: normalized, limit },
-      timeout: 6000,
+      timeout: 5000,
     });
     return Array.isArray(response.data) ? response.data : [];
   } catch {

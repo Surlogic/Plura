@@ -174,7 +174,7 @@ export const useProfessionalNotificationInbox = () => {
 
   const markAsRead = useCallback(
     async (notificationId: string) => {
-      const notification = items.find((item) => item.id === notificationId);
+      const notification = itemsRef.current.find((item) => item.id === notificationId);
       if (!notification || notification.readAt) {
         return;
       }
@@ -183,14 +183,28 @@ export const useProfessionalNotificationInbox = () => {
       setActionMessage(null);
       setMarkingNotificationId(notificationId);
 
+      // Optimistic update: mark as read locally before the API call
+      const previousReadAt = notification.readAt;
+      const nowIso = new Date().toISOString();
+      setItems((current) =>
+        current.map((item) =>
+          item.id === notificationId ? { ...item, readAt: nowIso } : item,
+        ),
+      );
+
       try {
         await markProfessionalNotificationAsRead(notificationId);
         publishChange();
-        await loadNotifications();
         if (!mountedRef.current) return;
         setActionMessage('Notificacion marcada como leida.');
       } catch (requestError) {
         if (!mountedRef.current) return;
+        // Revert optimistic update on failure
+        setItems((current) =>
+          current.map((item) =>
+            item.id === notificationId ? { ...item, readAt: previousReadAt } : item,
+          ),
+        );
         setActionError(
           extractApiMessage(requestError, 'No se pudo marcar la notificacion como leida.'),
         );
@@ -200,7 +214,7 @@ export const useProfessionalNotificationInbox = () => {
         }
       }
     },
-    [items, loadNotifications, publishChange],
+    [publishChange],
   );
 
   const markAllAsRead = useCallback(async () => {
@@ -210,14 +224,22 @@ export const useProfessionalNotificationInbox = () => {
     setActionMessage(null);
     setIsMarkingAll(true);
 
+    // Optimistic update: mark all as read locally
+    const nowIso = new Date().toISOString();
+    const previousItems = itemsRef.current;
+    setItems((current) =>
+      current.map((item) => (item.readAt ? item : { ...item, readAt: nowIso })),
+    );
+
     try {
       await markAllProfessionalNotificationsAsRead();
       publishChange();
-      await loadNotifications();
       if (!mountedRef.current) return;
       setActionMessage('Todas las notificaciones quedaron marcadas como leidas.');
     } catch (requestError) {
       if (!mountedRef.current) return;
+      // Revert optimistic update on failure
+      setItems(previousItems);
       setActionError(
         extractApiMessage(requestError, 'No se pudieron marcar todas las notificaciones.'),
       );
@@ -226,7 +248,7 @@ export const useProfessionalNotificationInbox = () => {
         setIsMarkingAll(false);
       }
     }
-  }, [isMarkingAll, loadNotifications, publishChange]);
+  }, [isMarkingAll, publishChange]);
 
   const unreadOnPage = useMemo(
     () => items.reduce((count, item) => count + (item.readAt ? 0 : 1), 0),

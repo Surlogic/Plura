@@ -14,6 +14,7 @@ import com.plura.plurabackend.core.billing.subscriptions.model.SubscriptionStatu
 import com.plura.plurabackend.core.billing.subscriptions.repository.SubscriptionRepository;
 import com.plura.plurabackend.core.professional.ProfessionalBillingSubjectGateway;
 import com.plura.plurabackend.core.security.RoleGuard;
+import com.plura.plurabackend.core.user.model.User;
 import com.plura.plurabackend.professional.model.ProfessionalProfile;
 import java.time.LocalDateTime;
 import java.util.EnumMap;
@@ -111,7 +112,23 @@ public class BillingService {
         Long userId = resolveAuthenticatedProfessionalUserId();
         ProfessionalProfile professional = loadEnabledProfessional(userId);
         SubscriptionPlanCode plan = SubscriptionPlanCode.fromCode(request.getPlanCode());
-        return createMercadoPagoSubscription(professional, plan);
+        try {
+            return createMercadoPagoSubscription(professional, plan);
+        } catch (ResponseStatusException exception) {
+            throw exception;
+        } catch (RuntimeException exception) {
+            LOGGER.error(
+                "Unexpected billing subscription error professionalUserId={} professionalId={} plan={}",
+                userId,
+                professional == null ? null : professional.getId(),
+                plan,
+                exception
+            );
+            throw new ResponseStatusException(
+                HttpStatus.INTERNAL_SERVER_ERROR,
+                "No se pudo iniciar la suscripcion. Revisá que el profesional tenga email valido y que la configuracion de Mercado Pago este completa."
+            );
+        }
     }
 
     /**
@@ -175,18 +192,27 @@ public class BillingService {
         boolean alreadyCancelled = subscription.getStatus() == SubscriptionStatus.CANCELLED;
         boolean hasRemoteSubscription = subscription.getProviderSubscriptionId() != null
             && !subscription.getProviderSubscriptionId().isBlank();
+        PaymentProvider provider = subscription.getProvider();
+        boolean runtimeSupportedProvider = provider != null && provider.isRuntimeSupported();
 
         if (!alreadyCancelled && hasRemoteSubscription) {
             ensureBillingEnabled();
-            if (subscription.getProvider() == PaymentProvider.MERCADOPAGO) {
+            if (provider == PaymentProvider.MERCADOPAGO) {
                 mercadoPagoSubscriptionService.cancelSubscription(subscription.getProviderSubscriptionId());
-            } else {
-                PaymentProviderClient client = resolveProviderClient(subscription.getProvider());
+            } else if (runtimeSupportedProvider) {
+                PaymentProviderClient client = resolveProviderClient(provider);
                 client.cancelSubscription(subscription.getProviderSubscriptionId(), immediate);
+            } else {
+                LOGGER.warn(
+                    "Se omitio cancelacion remota para subscription legacy provider={} professionalId={} subscriptionId={}",
+                    provider,
+                    professional.getId(),
+                    subscription.getId()
+                );
             }
         }
 
-        if (subscription.getProvider() == PaymentProvider.MERCADOPAGO || immediate) {
+        if (!runtimeSupportedProvider || provider == PaymentProvider.MERCADOPAGO || immediate) {
             subscription.setStatus(SubscriptionStatus.CANCELLED);
             subscription.setCurrentPeriodEnd(LocalDateTime.now());
             subscription.setCancelAtPeriodEnd(false);
@@ -229,13 +255,14 @@ public class BillingService {
             PaymentProvider.MERCADOPAGO,
             planConfig
         );
+        String payerEmail = resolveProfessionalPayerEmail(professional);
 
         MercadoPagoSubscriptionService.SubscriptionCheckoutSession session =
             mercadoPagoSubscriptionService.createSubscription(
                 new MercadoPagoSubscriptionService.CreateSubscriptionCommand(
                     subscription.getId(),
                     professional.getId(),
-                    professional.getUser().getEmail(),
+                    payerEmail,
                     plan,
                     planConfig.getPrice(),
                     planConfig.getCurrency()
@@ -243,7 +270,7 @@ public class BillingService {
             );
 
         subscription.setProviderSubscriptionId(session.providerSubscriptionId());
-        subscriptionRepository.save(subscription);
+        subscriptionRepository.saveAndFlush(subscription);
 
         return new BillingCheckoutResponse(
             subscription.getId(),
@@ -289,7 +316,7 @@ public class BillingService {
             subscription.setProviderSubscriptionId(null);
         }
         subscription.setProviderCustomerId(null);
-        return subscriptionRepository.save(subscription);
+        return subscriptionRepository.saveAndFlush(subscription);
     }
 
     /** Verifica que el módulo de facturación esté habilitado. Lanza excepción si no lo está. */
@@ -326,6 +353,15 @@ public class BillingService {
      * Calcula si la suscripción premium está habilitada (activa y dentro del período vigente).
      */
     private BillingSubscriptionResponse toSubscriptionResponse(Subscription subscription) {
+        if (subscription == null) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "No hay suscripción activa");
+        }
+        if (subscription.getPlan() == null || subscription.getStatus() == null || subscription.getProvider() == null) {
+            throw new ResponseStatusException(
+                HttpStatus.CONFLICT,
+                "La suscripcion tiene datos incompletos. Volvé a crear el checkout o revisá el estado desde soporte."
+            );
+        }
         LocalDateTime now = LocalDateTime.now();
         boolean premiumEnabled = subscription.getStatus() == SubscriptionStatus.ACTIVE
             && subscription.getCurrentPeriodEnd() != null
@@ -343,5 +379,26 @@ public class BillingService {
             subscription.getCancelAtPeriodEnd(),
             premiumEnabled
         );
+    }
+
+    private String resolveProfessionalPayerEmail(ProfessionalProfile professional) {
+        if (professional == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Profesional invalido para iniciar la suscripcion");
+        }
+        User user = professional.getUser();
+        if (user == null) {
+            throw new ResponseStatusException(
+                HttpStatus.CONFLICT,
+                "El profesional no tiene usuario asociado para iniciar la suscripcion"
+            );
+        }
+        String email = user.getEmail();
+        if (email == null || email.isBlank()) {
+            throw new ResponseStatusException(
+                HttpStatus.CONFLICT,
+                "El profesional necesita un email valido para iniciar la suscripcion"
+            );
+        }
+        return email.trim();
     }
 }

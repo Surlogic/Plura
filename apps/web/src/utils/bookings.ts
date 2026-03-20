@@ -158,18 +158,18 @@ export const getRefundStatusCopy = (status?: BookingRefundStatus | string | null
 export const getPayoutStatusCopy = (status?: BookingPayoutStatus | string | null) => {
   switch (status) {
     case 'PENDING_MANUAL':
-      return 'Liberación pendiente';
+      return 'Liquidación pendiente';
     case 'PENDING_PROVIDER':
-      return 'Liberación enviada al proveedor';
+      return 'Liquidación en proceso';
     case 'COMPLETED':
-      return 'Liberación completada';
+      return 'Liquidación completada';
     case 'FAILED':
-      return 'Liberación fallida';
+      return 'Liquidación pendiente de revisión';
     case 'CANCELLED':
-      return 'Liberación cancelada';
+      return 'Liquidación cancelada';
     case 'NONE':
     default:
-      return 'Sin liberación';
+      return 'Sin liquidación';
   }
 };
 
@@ -317,16 +317,16 @@ export const getProfessionalFinancialStatusCopy = (
       };
     case 'RELEASE_PENDING':
       return {
-        label: 'Pendiente de liberación',
+        label: 'Liquidación en curso',
         tone: 'bg-[#E0F2FE] text-[#0369A1]',
-        detail: 'La reserva ya generó el proceso de release al profesional.',
+        detail: 'La reserva ya inició la liquidación hacia la cuenta del profesional.',
       };
     case 'PARTIALLY_RELEASED':
     case 'RELEASED':
       return {
-        label: 'Liberado',
+        label: 'Liquidado',
         tone: 'bg-[#E0F2FE] text-[#0369A1]',
-        detail: 'El backend ya liberó fondos al profesional.',
+        detail: 'La reserva ya quedó liquidada para el profesional.',
       };
     case 'FAILED':
       return {

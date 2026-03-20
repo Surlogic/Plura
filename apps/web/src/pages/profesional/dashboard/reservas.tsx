@@ -1,7 +1,7 @@
 'use client';
 
 import { isAxiosError } from 'axios';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/router';
 import ProfesionalSidebar from '@/components/profesional/Sidebar';
 import ProfessionalBookingTimeline from '@/components/profesional/reservations/ProfessionalBookingTimeline';
@@ -22,13 +22,11 @@ import {
   getProfessionalReservationsForDates,
   listProfessionalServices,
   markProfessionalBookingNoShow,
+  prefetchProfessionalBookingDetail,
   rescheduleProfessionalBooking,
-  retryProfessionalBookingPayout,
   updateProfessionalReservationStatus,
 } from '@/services/professionalBookings';
-import { getProfessionalPayoutConfig } from '@/services/professionalPayout';
 import { getPublicSlots } from '@/services/publicBookings';
-import type { ProfessionalPayoutConfig } from '@/types/payout';
 import type { ProfessionalReservation, ReservationStatus } from '@/types/professional';
 import {
   describeBookingPolicy,
@@ -39,10 +37,8 @@ import {
   getPayoutStatusCopy as getBookingPayoutStatusCopy,
   getRefundStatusCopy,
   getProfessionalFinancialStatusCopy,
-  isPrepaidBooking,
   shouldAutoRefreshFinancialStatus,
 } from '@/utils/bookings';
-import { getPayoutStatusCopy as getPayoutConfigStatusCopy } from '@/utils/payouts';
 import { canProfessionalConfirmReservation } from '../../../../../../packages/shared/src/bookings/professionalReservationActions';
 
 type DashboardServiceOption = {
@@ -112,7 +108,7 @@ const buildDateWindow = (daysPast: number, daysFuture: number) => {
   return dates;
 };
 
-const getFinancialRefreshDelayMs = (attempt: number) => Math.min(30000, 5000 * (attempt + 1));
+const getFinancialRefreshDelayMs = (attempt: number) => Math.min(60000, 15000 * (attempt + 1));
 
 const extractApiMessage = (error: unknown, fallback: string) => {
   if (isAxiosError<{ message?: string }>(error)) {
@@ -144,7 +140,6 @@ export default function ProfesionalReservationsPage() {
   const router = useRouter();
   const { profile, isLoading, hasLoaded } = useProfessionalProfile();
   const [reservations, setReservations] = useState<ProfessionalReservation[]>([]);
-  const [payoutConfig, setPayoutConfig] = useState<ProfessionalPayoutConfig | null>(null);
   const [isLoadingReservations, setIsLoadingReservations] = useState(false);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
@@ -183,87 +178,69 @@ export default function ProfesionalReservationsPage() {
     return Array.isArray(value) ? value[0] ?? null : value ?? null;
   }, [router.query.bookingId]);
 
-  const loadReservations = async (keepSelection = true) => {
-    if (!profile?.id) return;
-
+  const loadReservations = useCallback(async (keepSelection = true) => {
     try {
       if (!keepSelection) setIsLoadingReservations(true);
       setFetchError(null);
       const response = await getProfessionalReservationsForDates(reservationDates);
       setReservations(response);
+      let nextSelectedReservationId: string | null = null;
       setSelectedReservationId((current) => {
         if (queryBookingId && response.some((reservation) => reservation.id === queryBookingId)) {
+          nextSelectedReservationId = queryBookingId;
           return queryBookingId;
         }
         if (keepSelection && current && response.some((reservation) => reservation.id === current)) {
+          nextSelectedReservationId = current;
           return current;
         }
-        return response[0]?.id ?? null;
+        nextSelectedReservationId = response[0]?.id ?? null;
+        return nextSelectedReservationId;
       });
+      if (nextSelectedReservationId) {
+        void prefetchProfessionalBookingDetail(nextSelectedReservationId);
+      }
     } catch (error) {
       setReservations([]);
       setFetchError(extractApiMessage(error, 'No se pudieron cargar las reservas.'));
     } finally {
       setIsLoadingReservations(false);
     }
-  };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [reservationDates, queryBookingId]);
 
   useEffect(() => {
-    void loadReservations(false);
-  }, [profile?.id, queryBookingId, reservationDates]);
-
-  useEffect(() => {
-    if (!profile?.id) return;
-
-    let cancelled = false;
-
-    getProfessionalPayoutConfig()
-      .then((response) => {
-        if (!cancelled) {
-          setPayoutConfig(response);
-        }
-      })
-      .catch(() => {
-        if (!cancelled) {
-          setPayoutConfig(null);
-        }
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [profile?.id]);
-
-  useEffect(() => {
-    if (!profile?.id) return;
-
     let cancelled = false;
     setIsLoadingServiceOptions(true);
 
-    listProfessionalServices()
-      .then((response) => {
-        if (cancelled) return;
-        const mapped = response.map((service) => ({
-          id: service.id,
-          name: service.name,
-        }));
-        setServiceOptions(mapped);
-        setCreateForm((prev) => ({
-          ...prev,
-          serviceId: prev.serviceId || mapped[0]?.id || '',
-        }));
-      })
-      .catch(() => {
-        if (!cancelled) setServiceOptions([]);
-      })
-      .finally(() => {
-        if (!cancelled) setIsLoadingServiceOptions(false);
-      });
+    void Promise.allSettled([
+      loadReservations(false),
+      listProfessionalServices()
+        .then((response) => {
+          if (cancelled) return;
+          const mapped = response.map((service) => ({
+            id: service.id,
+            name: service.name,
+          }));
+          setServiceOptions(mapped);
+          setCreateForm((prev) => ({
+            ...prev,
+            serviceId: prev.serviceId || mapped[0]?.id || '',
+          }));
+        })
+        .catch(() => {
+          if (!cancelled) setServiceOptions([]);
+        }),
+    ]).finally(() => {
+      if (!cancelled) {
+        setIsLoadingServiceOptions(false);
+      }
+    });
 
     return () => {
       cancelled = true;
     };
-  }, [profile?.id]);
+  }, [queryBookingId, reservationDates]);
 
   const selectedReservation = useMemo(
     () => reservations.find((reservation) => reservation.id === selectedReservationId) ?? null,
@@ -382,8 +359,11 @@ export default function ProfesionalReservationsPage() {
     };
   }, [selectedReservation?.financialSummary?.financialStatus]);
 
-  const todayKey = toLocalDateKey(new Date());
-  const now = new Date();
+  const { todayKey, now } = useMemo(() => {
+    const n = new Date();
+    return { todayKey: toLocalDateKey(n), now: n };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const {
     todayReservations,
@@ -446,11 +426,8 @@ export default function ProfesionalReservationsPage() {
     && Boolean(selectedDateTime)
     && (selectedDateTime?.getTime() ?? 0) <= Date.now();
   const canConfirm = canProfessionalConfirmReservation(selectedReservation?.status);
-  const canRetryPayout =
-    selectedReservation?.financialSummary?.financialStatus === 'FAILED'
-    && isPrepaidBooking(selectedReservation?.paymentType);
-
   const handleSelectReservation = (reservationId: string) => {
+    void prefetchProfessionalBookingDetail(reservationId);
     setSelectedReservationId(reservationId);
     setShowRescheduleForm(false);
     setRescheduleTime('');
@@ -547,16 +524,6 @@ export default function ProfesionalReservationsPage() {
     isSaving: isSubmittingAction || isCreatingReservation,
   });
 
-  const payoutStatusCopy = useMemo(
-    () => getPayoutConfigStatusCopy(payoutConfig),
-    [payoutConfig],
-  );
-  const shouldShowPayoutNotice = Boolean(
-    payoutConfig
-    && !payoutConfig.readyToReceivePayouts
-    && payoutConfig.outstandingPaidBookingsCount > 0,
-  );
-
   const renderReservationCard = (reservation: ProfessionalReservation) => {
     const financialCopy = getProfessionalFinancialStatusCopy(
       reservation.paymentType,
@@ -612,11 +579,11 @@ export default function ProfesionalReservationsPage() {
           <main className="mx-auto w-full max-w-[1400px] px-4 py-6 sm:px-6 sm:py-8 lg:px-10">
             <div className="space-y-6">
               <DashboardHero
-                eyebrow="Bookings pagos"
+                eyebrow="Reservas"
                 icon="reservas"
                 accent="teal"
                 title="Reservas con estado operativo y financiero real"
-                description="El backend decide consecuencias, refunds y releases. Acá solo ves el estado actual y ejecutás acciones permitidas."
+                description="Revisá el estado actual de cada reserva, sus pagos y las acciones disponibles sin mezclar configuraciones de cobro."
                 meta={(
                   <>
                     <span className="rounded-full border border-white/18 bg-white/10 px-3 py-1 text-xs font-semibold text-[color:var(--text-on-dark-secondary)] backdrop-blur-sm">
@@ -642,27 +609,6 @@ export default function ProfesionalReservationsPage() {
               {fetchError ? (
                 <Card className="border-[#FECACA] bg-[#FEF2F2] p-4 text-sm text-[#B91C1C]">
                   {fetchError}
-                </Card>
-              ) : null}
-
-              {shouldShowPayoutNotice ? (
-                <Card className="border-[#F3D7AC] bg-[#FFF7E8] p-5">
-                  <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                    <div>
-                      <p className="text-[0.68rem] font-semibold uppercase tracking-[0.22em] text-[#B45309]">
-                        Cobros pendientes
-                      </p>
-                      <h2 className="mt-2 text-lg font-semibold text-[#0E2A47]">
-                        {payoutStatusCopy.title}
-                      </h2>
-                      <p className="mt-2 max-w-3xl text-sm text-[#7C5A10]">
-                        Tenés {payoutConfig?.outstandingPaidBookingsCount} reservas pagas con payout pendiente. El release no podrá ejecutarse hasta completar tus datos de cobro.
-                      </p>
-                    </div>
-                    <Button href="/profesional/dashboard/billing#payout-settings">
-                      Completar datos de cobro
-                    </Button>
-                  </div>
                 </Card>
               ) : null}
 
@@ -953,7 +899,7 @@ export default function ProfesionalReservationsPage() {
                                   </span>
                                 </p>
                                 <p>
-                                  Payout:{' '}
+                                  Liquidación:{' '}
                                   <span className="font-semibold text-[#0E2A47]">
                                     {getBookingPayoutStatusCopy(selectedReservation.payoutStatus)}
                                   </span>
@@ -983,7 +929,7 @@ export default function ProfesionalReservationsPage() {
                                   <div className="mt-3 flex flex-wrap gap-2">
                                     {typeof actions?.refundPreviewAmount === 'number' ? (
                                       <span className="rounded-full bg-[#DBEAFE] px-3 py-1 text-[0.72rem] font-semibold text-[#1D4ED8]">
-                                        Refund preview: {formatBookingMoney(actions.refundPreviewAmount, actions.currency)}
+                                        Vista previa devolución: {formatBookingMoney(actions.refundPreviewAmount, actions.currency)}
                                       </span>
                                     ) : null}
                                     {typeof actions?.retainPreviewAmount === 'number' && actions.retainPreviewAmount > 0 ? (
@@ -1149,22 +1095,6 @@ export default function ProfesionalReservationsPage() {
                                   }
                                 >
                                   {isSubmittingAction ? 'Marcando...' : 'Marcar NO_SHOW'}
-                                </Button>
-                              ) : null}
-
-                              {canRetryPayout ? (
-                                <Button
-                                  type="button"
-                                  variant="secondary"
-                                  disabled={isSubmittingAction}
-                                  onClick={() =>
-                                    runReservationAction(
-                                      () => retryProfessionalBookingPayout(selectedReservation.id),
-                                      'No se pudo reintentar la liberación.',
-                                    )
-                                  }
-                                >
-                                  {isSubmittingAction ? 'Reintentando...' : 'Reintentar liberación'}
                                 </Button>
                               ) : null}
                             </div>

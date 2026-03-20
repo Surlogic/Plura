@@ -94,6 +94,7 @@ const invalidateBookingCaches = () => {
   invalidateCachedGet('/cliente/reservas');
   invalidateCachedGet('/cliente/reservas/proxima');
   invalidateCachedGet('/reservas/');
+  invalidateCachedGet('/cliente/reservas/');
 };
 
 export const getClientBookings = async (): Promise<ClientDashboardBooking[]> => {
@@ -146,24 +147,36 @@ export const getClientNextBooking = async (): Promise<ClientDashboardNextBooking
 };
 
 export const getBookingActions = async (bookingId: string) => {
-  const response = await api.get<BookingActions>(`/reservas/${bookingId}/actions`);
-  return response.data;
-};
-
-export const getClientBookingTimeline = async (bookingId: string) => {
-  const response = await api.get<ClientBookingTimelineResponse>(
-    `/cliente/reservas/${bookingId}/timeline`,
+  const response = await cachedGet<BookingActions>(
+    `/reservas/${bookingId}/actions`,
+    undefined,
+    { ttlMs: 10000, staleWhileRevalidate: true },
   );
   return response.data;
 };
 
+export const getClientBookingTimeline = async (bookingId: string) => {
+  const response = await cachedGet<ClientBookingTimelineResponse>(
+    `/cliente/reservas/${bookingId}/timeline`,
+    undefined,
+    { ttlMs: 10000, staleWhileRevalidate: true },
+  );
+  return response.data;
+};
+
+export const prefetchClientBookingDetail = async (bookingId: string) => {
+  await Promise.allSettled([
+    getBookingActions(bookingId),
+    getClientBookingTimeline(bookingId),
+  ]);
+};
+
 export const createClientBookingPaymentSession = async (
   bookingId: string,
-  provider?: string,
 ) => {
   const response = await api.post<BookingPaymentSession>(
     `/cliente/reservas/${bookingId}/payment-session`,
-    provider ? { provider } : {},
+    {},
   );
   invalidateBookingCaches();
   return response.data;

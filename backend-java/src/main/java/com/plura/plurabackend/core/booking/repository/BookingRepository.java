@@ -184,12 +184,14 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
         SELECT b.professionalId, COUNT(b.id)
         FROM Booking b
         WHERE b.operationalStatus IN :statuses
+          AND b.createdAt >= :since
         GROUP BY b.professionalId
         ORDER BY COUNT(b.id) DESC
         """
     )
     List<Object[]> findTopProfessionalIdsByStatuses(
         @Param("statuses") List<BookingOperationalStatus> statuses,
+        @Param("since") LocalDateTime since,
         Pageable pageable
     );
 }

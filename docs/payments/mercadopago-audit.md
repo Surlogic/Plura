@@ -24,7 +24,9 @@ Estado real confirmado en codigo:
 3. Los refunds de reservas ya usan Mercado Pago.
 4. Las suscripciones de plataforma siguen separadas en su propio flujo Mercado Pago.
 5. `/webhooks/dlocal` fue eliminado; queda un unico ingreso `POST /webhooks/mercadopago`.
-6. La deuda tecnica principal ya no es el provider sino la concentracion de logica en `BookingProviderIntegrationService`.
+6. `PaymentProvider.DLOCAL` quedo solo como compatibilidad de lectura; el runtime rechaza ingresos nuevos `DLOCAL` y corta operaciones pendientes legacy como provider retirado.
+7. Mobile ya no consume `/profesional/payout-config`; la superficie activa de cobros tambien quedo alineada al flujo `Mercado Pago only`.
+8. La deuda tecnica principal ya no es el provider sino la concentracion de logica en `BookingProviderIntegrationService`.
 
 ## Estado Actual Por Dominio
 
@@ -234,7 +236,7 @@ Eso hoy se usa como evidencia contable de liquidacion marketplace, no como integ
 
 ### 4. Queda deuda de naming en UI y contexto viejo
 
-El backend ya no expone `/profesional/payout-config`, pero cualquier UI o doc que todavia lo mencione quedo obsoleta.
+El backend ya no expone `/profesional/payout-config`; web y mobile ya quedaron alineados al flujo `Mercado Pago only`, pero cualquier doc residual que lo mencione queda obsoleta.
 
 ## Elementos dLocal Eliminados En Esta Fase
 
@@ -257,6 +259,7 @@ El backend ya no expone `/profesional/payout-config`, pero cualquier UI o doc qu
 
 - `backend-java/src/main/java/com/plura/plurabackend/professional/dto/ProfessionalPayoutConfigResponse.java`
 - `backend-java/src/main/java/com/plura/plurabackend/professional/dto/ProfessionalPayoutConfigUpdateRequest.java`
+- `apps/mobile/src/types/payout.ts`
 
 ### Configuracion y compatibilidad
 
@@ -287,6 +290,12 @@ La regla es:
 - no reusar esas migraciones
 - no documentarlas como capacidad vigente
 - mantenerlas solo porque Flyway ya las versiona
+
+## Inventario Final De dLocal
+
+- runtime activo: eliminado; no existe webhook `dlocal`, no hay adapter ni verifier activos y el runtime rechaza ingresos nuevos `DLOCAL`
+- compatibilidad legacy: `PaymentProvider.DLOCAL` queda solo para leer filas historicas y para reconducir pendientes viejos sin reactivar dLocal
+- historia de schema: `V34__dlocal_booking_payout_pilot.sql`, `V37__dlocal_go_split_code.sql` y `V47__remove_dlocal_legacy.sql` se preservan solo por historia Flyway
 
 ## Arquitectura Objetivo Minima Que Queda Preparada
 

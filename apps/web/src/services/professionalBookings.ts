@@ -66,6 +66,7 @@ const mapCommandResponse = (
 const invalidateProfessionalBookingCaches = () => {
   invalidateCachedGet('/profesional/reservas');
   invalidateCachedGet('/reservas/');
+  invalidateCachedGet('/profesional/reservas/');
 };
 
 export const getProfessionalReservationsByDate = async (
@@ -122,15 +123,28 @@ export const createProfessionalReservation = async (
 };
 
 export const getProfessionalBookingActions = async (bookingId: string) => {
-  const response = await api.get<BookingActions>(`/reservas/${bookingId}/actions`);
+  const response = await cachedGet<BookingActions>(
+    `/reservas/${bookingId}/actions`,
+    undefined,
+    { ttlMs: 10000, staleWhileRevalidate: true },
+  );
   return response.data;
 };
 
 export const getProfessionalBookingTimeline = async (bookingId: string) => {
-  const response = await api.get<ProfessionalBookingTimelineResponse>(
+  const response = await cachedGet<ProfessionalBookingTimelineResponse>(
     `/profesional/reservas/${bookingId}/timeline`,
+    undefined,
+    { ttlMs: 10000, staleWhileRevalidate: true },
   );
   return response.data;
+};
+
+export const prefetchProfessionalBookingDetail = async (bookingId: string) => {
+  await Promise.allSettled([
+    getProfessionalBookingActions(bookingId),
+    getProfessionalBookingTimeline(bookingId),
+  ]);
 };
 
 export const cancelProfessionalBooking = async (
@@ -192,20 +206,6 @@ export const completeProfessionalBooking = async (bookingId: string) => {
     {
       headers: {
         'Idempotency-Key': buildIdempotencyKey(`professional-complete-${bookingId}`),
-      },
-    },
-  );
-  invalidateProfessionalBookingCaches();
-  return mapCommandResponse(response.data);
-};
-
-export const retryProfessionalBookingPayout = async (bookingId: string) => {
-  const response = await api.post<BookingCommandResponse<ProfessionalBookingDto>>(
-    `/profesional/reservas/${bookingId}/payout/retry`,
-    {},
-    {
-      headers: {
-        'Idempotency-Key': buildIdempotencyKey(`professional-retry-payout-${bookingId}`),
       },
     },
   );

@@ -1,3 +1,4 @@
+import type { GetServerSideProps, InferGetServerSidePropsType } from 'next';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/router';
 import dynamic from 'next/dynamic';
@@ -15,6 +16,7 @@ import {
   getPublicProfessionalBySlug,
   getPublicSlots,
 } from '@/services/publicBookings';
+import { hasKnownAuthSession } from '@/services/session';
 import { resolveAssetUrl } from '@/utils/assetUrl';
 import type {
   ProfessionalSchedule,
@@ -240,9 +242,14 @@ type PublicProfessional = {
   schedule?: ProfessionalSchedule;
 };
 
-export default function ProfesionalDetailPage() {
+export default function ProfesionalDetailPage({
+  initialData,
+}: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const router = useRouter();
-  const { isFavorite, toggleFavorite } = useFavoriteProfessionals();
+  const canResolveClientFeatures = hasKnownAuthSession();
+  const { isFavorite, toggleFavorite } = useFavoriteProfessionals({
+    enabled: canResolveClientFeatures,
+  });
   const slug = Array.isArray(router.query.slug)
     ? router.query.slug[0]
     : router.query.slug;
@@ -250,7 +257,9 @@ export default function ProfesionalDetailPage() {
     ? router.query.preview[0] === '1'
     : router.query.preview === '1';
   const [preview, setPreview] = useState<PreviewPayload | null>(null);
-  const [data, setData] = useState<PublicProfessional | null>(null);
+  const [data, setData] = useState<PublicProfessional | null>(
+    (initialData as PublicProfessional | null) ?? null,
+  );
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [fallbackCoordinates, setFallbackCoordinates] = useState<{
@@ -273,6 +282,8 @@ export default function ProfesionalDetailPage() {
 
   useEffect(() => {
     if (!slug || isPreview) return;
+    // Skip fetch if we already have server-rendered data for this slug
+    if (data && (data as PublicProfessional).slug === slug) return;
     setIsLoading(true);
     setErrorMessage(null);
 
@@ -1162,3 +1173,26 @@ export default function ProfesionalDetailPage() {
     </div>
   );
 }
+
+export const getServerSideProps: GetServerSideProps = async (context) => {
+  const slug = Array.isArray(context.params?.slug)
+    ? context.params.slug[0]
+    : context.params?.slug;
+
+  if (!slug || context.query.preview === '1') {
+    return { props: { initialData: null } };
+  }
+
+  // Cache public profiles at the CDN/browser level (60s fresh, stale-while-revalidate for 5min)
+  context.res.setHeader(
+    'Cache-Control',
+    'public, s-maxage=60, stale-while-revalidate=300',
+  );
+
+  try {
+    const professional = await getPublicProfessionalBySlug(slug);
+    return { props: { initialData: JSON.parse(JSON.stringify(professional)) } };
+  } catch {
+    return { props: { initialData: null } };
+  }
+};

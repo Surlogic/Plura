@@ -5,8 +5,8 @@ const planAccess_1 = require("../../../../../packages/shared/src/billing/planAcc
 const FEATURE_REQUIRED_PLAN = {
     enhancedPublicProfile: 'PROFESIONAL',
     onlinePayments: 'PROFESIONAL',
-    weeklyCalendarNavigation: 'PROFESIONAL',
-    monthlyCalendar: 'ENTERPRISE',
+    weeklyCalendarNavigation: 'BASIC',
+    monthlyCalendar: 'BASIC',
     basicAnalytics: 'PROFESIONAL',
     advancedAnalytics: 'ENTERPRISE',
 };
@@ -21,12 +21,8 @@ const resolveProfessionalFeatureAccess = (profile) => {
         onlinePayments: entitlements
             ? entitlements.allowOnlinePayments
             : (0, planAccess_1.hasPlanAccess)(currentPlan, 'PROFESIONAL'),
-        weeklyCalendarNavigation: entitlements
-            ? entitlements.scheduleTier !== 'DAILY'
-            : (0, planAccess_1.hasPlanAccess)(currentPlan, 'PROFESIONAL'),
-        monthlyCalendar: entitlements
-            ? entitlements.scheduleTier === 'MASTER'
-            : (0, planAccess_1.hasPlanAccess)(currentPlan, 'ENTERPRISE'),
+        weeklyCalendarNavigation: true,
+        monthlyCalendar: true,
         basicAnalytics: entitlements
             ? entitlements.analyticsTier !== 'NONE'
             : (0, planAccess_1.hasPlanAccess)(currentPlan, 'PROFESIONAL'),

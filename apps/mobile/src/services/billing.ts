@@ -153,7 +153,7 @@ export const resolveCurrentBillingPlanId = ({
     const subscriptionPlan = resolveBillingPlanFromBackendPlanCode(subscription.planCode);
     if (
       subscriptionPlan
-      && (subscription.status === 'ACTIVE' || subscription.status === 'TRIAL' || Boolean(subscription.cancelAtPeriodEnd))
+      && (subscription.status === 'ACTIVE' || Boolean(subscription.cancelAtPeriodEnd))
     ) {
       return subscriptionPlan;
     }

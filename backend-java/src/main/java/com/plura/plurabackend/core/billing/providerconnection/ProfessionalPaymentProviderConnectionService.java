@@ -19,6 +19,8 @@ import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Optional;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -28,6 +30,7 @@ import org.springframework.web.server.ResponseStatusException;
 public class ProfessionalPaymentProviderConnectionService {
 
     private static final PaymentProvider MERCADO_PAGO_PROVIDER = PaymentProvider.MERCADOPAGO;
+    private static final Logger LOGGER = LoggerFactory.getLogger(ProfessionalPaymentProviderConnectionService.class);
 
     private final ProfessionalBillingSubjectGateway professionalBillingSubjectGateway;
     private final ProfessionalPaymentProviderConnectionRepository repository;
@@ -65,6 +68,12 @@ public class ProfessionalPaymentProviderConnectionService {
     public MercadoPagoOAuthStartResponse startMercadoPagoOAuth(Long professionalUserId) {
         ProfessionalProfile professional = loadProfessional(professionalUserId);
         ensureOnlinePaymentsEnabledForUser(professionalUserId);
+        LOGGER.info(
+            "Starting Mercado Pago OAuth onboarding professionalUserId={} professionalId={} provider={}",
+            professionalUserId,
+            professional.getId(),
+            MERCADO_PAGO_PROVIDER
+        );
         MercadoPagoOAuthStateService.GeneratedState state =
             mercadoPagoOAuthStateService.generateState(professional.getId());
         String authorizationUrl = mercadoPagoOAuthClient.buildAuthorizationUrl(state.value());
@@ -101,6 +110,14 @@ public class ProfessionalPaymentProviderConnectionService {
     ) {
         ProfessionalProfile professional = loadProfessional(professionalUserId);
         ensureOnlinePaymentsEnabledForUser(professionalUserId);
+        LOGGER.info(
+            "Received Mercado Pago OAuth callback professionalUserId={} professionalId={} provider={} hasCode={} hasError={}",
+            professionalUserId,
+            professional.getId(),
+            MERCADO_PAGO_PROVIDER,
+            code != null && !code.isBlank(),
+            error != null && !error.isBlank()
+        );
         mercadoPagoOAuthStateService.validateState(state, professional.getId());
 
         ProfessionalPaymentProviderConnection connection = findConnection(professional.getId())
@@ -109,6 +126,12 @@ public class ProfessionalPaymentProviderConnectionService {
 
         if (error != null && !error.isBlank()) {
             persistOAuthError(connection, error, errorDescription, preserveConnectedStatus);
+            LOGGER.warn(
+                "Mercado Pago OAuth callback returned provider error professionalId={} provider={} error={}",
+                professional.getId(),
+                MERCADO_PAGO_PROVIDER,
+                safeForLogs(error)
+            );
             throw new ResponseStatusException(
                 HttpStatus.BAD_REQUEST,
                 "Mercado Pago devolvio error OAuth: " + error +
@@ -117,16 +140,25 @@ public class ProfessionalPaymentProviderConnectionService {
         }
         if (code == null || code.isBlank()) {
             persistOAuthError(connection, "missing_code", "Mercado Pago no devolvio code OAuth", preserveConnectedStatus);
+            LOGGER.warn(
+                "Mercado Pago OAuth callback missing code professionalId={} provider={}",
+                professional.getId(),
+                MERCADO_PAGO_PROVIDER
+            );
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Mercado Pago no devolvio code OAuth");
         }
 
         try {
             MercadoPagoOAuthClient.TokenResponse tokenResponse =
                 mercadoPagoOAuthClient.exchangeAuthorizationCode(code);
+            String resolvedProviderUserId = tokenResponse.userId() == null
+                ? connection.getProviderUserId()
+                : String.valueOf(tokenResponse.userId());
+            ensureProviderUserAvailableForProfessional(professional.getId(), resolvedProviderUserId);
             connection.setProvider(MERCADO_PAGO_PROVIDER);
             connection.setStatus(ProfessionalPaymentProviderConnectionStatus.CONNECTED);
-            connection.setProviderUserId(tokenResponse.userId() == null ? null : String.valueOf(tokenResponse.userId()));
-            connection.setProviderAccountId(connection.getProviderUserId());
+            connection.setProviderUserId(resolvedProviderUserId);
+            connection.setProviderAccountId(resolvedProviderUserId);
             connection.setAccessTokenEncrypted(
                 mercadoPagoOAuthTokenCipher.encrypt(tokenResponse.accessToken())
             );
@@ -140,8 +172,25 @@ public class ProfessionalPaymentProviderConnectionService {
             connection.setLastSyncAt(LocalDateTime.now());
             connection.setLastError(null);
             connection.setMetadataJson(writeMetadata(tokenResponse));
-            return toResponse(repository.save(connection));
+            ProfessionalPaymentProviderConnection persistedConnection = repository.save(connection);
+            LOGGER.info(
+                "Mercado Pago OAuth connection persisted professionalId={} provider={} providerUserId={} status={}",
+                professional.getId(),
+                MERCADO_PAGO_PROVIDER,
+                safeForLogs(persistedConnection.getProviderUserId()),
+                persistedConnection.getStatus()
+            );
+            return toResponse(persistedConnection);
         } catch (ResponseStatusException exception) {
+            if (preserveConnectedStatus && isOAuthReplayAfterSuccessfulConnection(exception)) {
+                LOGGER.info(
+                    "Ignoring repeated Mercado Pago OAuth callback after successful connection professionalId={} provider={} reason={}",
+                    professional.getId(),
+                    MERCADO_PAGO_PROVIDER,
+                    safeForLogs(exception.getReason())
+                );
+                return toResponse(connection);
+            }
             persistOAuthError(connection, "token_exchange_failed", exception.getReason(), preserveConnectedStatus);
             throw exception;
         }
@@ -152,6 +201,13 @@ public class ProfessionalPaymentProviderConnectionService {
         ProfessionalProfile professional = loadProfessional(professionalUserId);
         ProfessionalPaymentProviderConnection connection = findConnection(professional.getId())
             .orElseGet(() -> initializeConnection(professional.getId()));
+        LOGGER.info(
+            "Disconnecting Mercado Pago OAuth connection professionalUserId={} professionalId={} provider={} providerUserId={}",
+            professionalUserId,
+            professional.getId(),
+            MERCADO_PAGO_PROVIDER,
+            safeForLogs(connection.getProviderUserId())
+        );
         connection.setStatus(ProfessionalPaymentProviderConnectionStatus.DISCONNECTED);
         connection.setAccessTokenEncrypted(null);
         connection.setRefreshTokenEncrypted(null);
@@ -201,6 +257,13 @@ public class ProfessionalPaymentProviderConnectionService {
         String message,
         boolean preserveConnectedStatus
     ) {
+        LOGGER.warn(
+            "Persisting Mercado Pago OAuth error professionalId={} provider={} code={} preserveConnectedStatus={}",
+            connection.getProfessionalId(),
+            MERCADO_PAGO_PROVIDER,
+            safeForLogs(code),
+            preserveConnectedStatus
+        );
         connection.setLastError(buildErrorMessage(code, message));
         connection.setLastSyncAt(LocalDateTime.now());
         if (!preserveConnectedStatus) {
@@ -224,9 +287,13 @@ public class ProfessionalPaymentProviderConnectionService {
             MercadoPagoOAuthClient.TokenResponse tokenResponse = mercadoPagoOAuthClient.refreshAccessToken(
                 mercadoPagoOAuthTokenCipher.decrypt(connection.getRefreshTokenEncrypted())
             );
+            String resolvedProviderUserId = tokenResponse.userId() == null
+                ? connection.getProviderUserId()
+                : String.valueOf(tokenResponse.userId());
+            ensureProviderUserAvailableForProfessional(connection.getProfessionalId(), resolvedProviderUserId);
             connection.setStatus(ProfessionalPaymentProviderConnectionStatus.CONNECTED);
-            connection.setProviderUserId(tokenResponse.userId() == null ? connection.getProviderUserId() : String.valueOf(tokenResponse.userId()));
-            connection.setProviderAccountId(connection.getProviderUserId());
+            connection.setProviderUserId(resolvedProviderUserId);
+            connection.setProviderAccountId(resolvedProviderUserId);
             connection.setAccessTokenEncrypted(mercadoPagoOAuthTokenCipher.encrypt(tokenResponse.accessToken()));
             connection.setRefreshTokenEncrypted(
                 tokenResponse.refreshToken() == null || tokenResponse.refreshToken().isBlank()
@@ -240,12 +307,61 @@ public class ProfessionalPaymentProviderConnectionService {
             connection.setMetadataJson(writeMetadata(tokenResponse));
             return repository.save(connection);
         } catch (ResponseStatusException exception) {
+            LOGGER.warn(
+                "Mercado Pago OAuth token refresh failed professionalId={} provider={} reason={}",
+                connection.getProfessionalId(),
+                MERCADO_PAGO_PROVIDER,
+                safeForLogs(exception.getReason())
+            );
             connection.setStatus(ProfessionalPaymentProviderConnectionStatus.ERROR);
             connection.setLastError(buildErrorMessage("refresh_failed", exception.getReason()));
             connection.setLastSyncAt(LocalDateTime.now());
             repository.save(connection);
             throw exception;
         }
+    }
+
+    private void ensureProviderUserAvailableForProfessional(Long professionalId, String providerUserId) {
+        if (providerUserId == null || providerUserId.isBlank()) {
+            return;
+        }
+        Optional<ProfessionalPaymentProviderConnection> existingConnection =
+            repository.findByProviderAndProviderUserId(MERCADO_PAGO_PROVIDER, providerUserId.trim());
+        if (existingConnection.isEmpty()) {
+            return;
+        }
+        ProfessionalPaymentProviderConnection otherConnection = existingConnection.get();
+        if (professionalId.equals(otherConnection.getProfessionalId()) || !isActiveConnection(otherConnection)) {
+            return;
+        }
+        LOGGER.warn(
+            "Mercado Pago account already linked to another professional provider={} providerUserId={} currentProfessionalId={} ownerProfessionalId={}",
+            MERCADO_PAGO_PROVIDER,
+            safeForLogs(providerUserId),
+            professionalId,
+            otherConnection.getProfessionalId()
+        );
+        throw new ResponseStatusException(
+            HttpStatus.CONFLICT,
+            "La cuenta de Mercado Pago ya esta vinculada a otro profesional"
+        );
+    }
+
+    private boolean isActiveConnection(ProfessionalPaymentProviderConnection connection) {
+        return connection != null
+            && connection.getStatus() != ProfessionalPaymentProviderConnectionStatus.DISCONNECTED
+            && connection.getAccessTokenEncrypted() != null
+            && !connection.getAccessTokenEncrypted().isBlank();
+    }
+
+    private boolean isOAuthReplayAfterSuccessfulConnection(ResponseStatusException exception) {
+        if (exception == null || exception.getReason() == null) {
+            return false;
+        }
+        String normalizedReason = exception.getReason().trim().toLowerCase();
+        return normalizedReason.contains("invalid_grant")
+            || normalizedReason.contains("invalid code")
+            || normalizedReason.contains("code already used");
     }
 
     private String buildErrorMessage(String code, String message) {
@@ -333,12 +449,24 @@ public class ProfessionalPaymentProviderConnectionService {
         metadata.put("scope", tokenResponse.scope());
         metadata.put("userId", tokenResponse.userId());
         metadata.put("connectedVia", "mercadopago_oauth");
-        metadata.put("tokenResponse", tokenResponse.rawResponseJson());
+        metadata.put("hasRefreshToken", tokenResponse.refreshToken() != null && !tokenResponse.refreshToken().isBlank());
+        metadata.put("rawResponseStored", false);
         try {
             return objectMapper.writeValueAsString(metadata);
         } catch (JsonProcessingException exception) {
             return "{\"serializationError\":true}";
         }
+    }
+
+    private String safeForLogs(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        String trimmed = value.trim();
+        if (trimmed.length() <= 10) {
+            return trimmed;
+        }
+        return trimmed.substring(0, 4) + "..." + trimmed.substring(trimmed.length() - 4);
     }
 
     public record MercadoPagoConnectionAccess(

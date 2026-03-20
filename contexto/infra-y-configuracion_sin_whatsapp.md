@@ -36,6 +36,7 @@ Lectura operativa actual:
 
 - `auth_session` es la ruta principal de sesiones persistidas
 - `auth_refresh_token` queda como compatibilidad legacy del modelo anterior, pero el fallback por default ya no viene habilitado en `application.yml`
+- en web, el interceptor de refresh y los providers de perfil ya no degradan cualquier error a logout: solo `401/403` invalidan la sesion; errores de red, timeout o `5xx` quedan como fallas transitorias sin limpiar credenciales locales
 
 ### Marketplace, ubicacion y mapa
 
@@ -133,7 +134,9 @@ Notas reales de binding local:
 - el backend no depende solo del `.env` del cwd: ahora intenta leer `./.env` y tambien `./backend-java/.env`
 - si se ejecuta el backend desde la raiz del monorepo, `backend-java/.env` sigue siendo tomado como fallback
 - para OAuth de Mercado Pago el error de `state` ya no implica adivinar secretos: el backend espera primero `BILLING_MERCADOPAGO_OAUTH_STATE_SIGNING_SECRET`, y si no existe hace fallback a la clave de cifrado o al client secret
-- en local, tener solo `BILLING_MERCADOPAGO_ACCESS_TOKEN` no alcanza para OAuth: siguen siendo obligatorios `CLIENT_ID`, `CLIENT_SECRET` y `REDIRECT_URI`
+- en local, tener solo `BILLING_MERCADOPAGO_ACCESS_TOKEN` no alcanza para OAuth: para abrir el onboarding siguen siendo obligatorios `CLIENT_ID` y `REDIRECT_URI`; para completar el callback y persistir la conexion del profesional tambien se vuelve obligatorio `CLIENT_SECRET`
+- el storage de credenciales para miles de profesionales ya esta separado en dos capas: las credenciales globales de la app OAuth (`CLIENT_ID` / `CLIENT_SECRET`) viven en variables de entorno del backend y los tokens por profesional se guardan cifrados en `professional_payment_provider_connection`
+- `metadata_json` de la conexion OAuth no debe guardar la respuesta cruda del provider ni tokens en claro; solo metadata minima util como `scope`, `userId`, `publicKey` y flags operativos
 
 Variables nuevas de backend para reservas y refunds Mercado Pago:
 
@@ -313,6 +316,9 @@ Notas reales de deploy en Render:
   - `BILLING_MERCADOPAGO_OAUTH_TOKEN_URL`
   - `BILLING_MERCADOPAGO_OAUTH_STATE_SIGNING_SECRET`
   - `BILLING_MERCADOPAGO_OAUTH_TOKEN_ENCRYPTION_KEY`
+- `BILLING_MERCADOPAGO_OAUTH_REDIRECT_URI` debe apuntar exactamente a la pagina web que procesa el retorno del profesional:
+  - local: `http://localhost:3002/oauth/mercadopago/callback`
+  - deploy web actual: `https://plura-web.onrender.com/oauth/mercadopago/callback`
 - el backend compila para Render con Java 17; cualquier uso de APIs de virtual threads de Java 21 rompe el `bootJar` del deploy
 
 ## Integraciones externas detectadas
@@ -351,3 +357,5 @@ Notas reales de deploy en Render:
 - el backend contempla H2 como fallback de arranque, pero la app real esta pensada para PostgreSQL.
 - el naming de planes en codigo sigue siendo `BASIC / PROFESIONAL / ENTERPRISE`; el contexto de producto actualizado usa `Free / Pro / Premium`.
 - Flyway conserva migraciones historicas de dLocal (`V34`, `V37`) solo por continuidad de schema; el runtime vigente ya es Mercado Pago only y `V47` elimina los campos legacy del dominio profesional.
+- billing de suscripciones requiere que el schema de `subscription` acepte `PLAN_BASIC`, `PLAN_PROFESIONAL` y `PLAN_ENTERPRISE`; `V51` alinea el constraint legacy que todavia admitia `PLAN_PRO` y `PLAN_PREMIUM`
+- en local, `backend-java/.env` usa como retorno de suscripcion Mercado Pago una URL publica HTTPS de Render en vez de `localhost`, porque `preapproval` no acepta `localhost` y `plura.com` no estaba resolviendo un TLS util para el retorno

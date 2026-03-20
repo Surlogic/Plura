@@ -12,6 +12,7 @@ import {
   setKnownAuthSession,
   setAuthAccessToken,
 } from '@/services/session';
+import { isAuthSessionError } from '@/lib/auth/sessionErrors';
 
 const api = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000',
@@ -193,9 +194,12 @@ api.interceptors.response.use(
       try {
         await refreshPromise;
         return api(originalRequest);
-      } catch {
-        clearAuthAccessToken();
-        redirectToLogin();
+      } catch (refreshError) {
+        if (isAuthSessionError(refreshError)) {
+          clearAuthAccessToken();
+          redirectToLogin();
+        }
+        return Promise.reject(refreshError ?? error);
       }
     }
 

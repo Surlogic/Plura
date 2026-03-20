@@ -48,6 +48,11 @@ const resolveApiMessage = (error: unknown, fallback: string) => {
   return fallback;
 };
 
+const isConfigurationError = (error: unknown) =>
+  isAxiosError<{ message?: string }>(error)
+  && error.response?.status === 503
+  && Boolean(error.response?.data?.message?.toLowerCase().includes('falta configurar'));
+
 export default function MercadoPagoOAuthCallbackPage() {
   const router = useRouter();
   const [returnState, setReturnState] = useState<ReturnState>('loading');
@@ -141,7 +146,11 @@ export default function MercadoPagoOAuthCallbackPage() {
       } catch (error) {
         clearMercadoPagoConnectionAttempt();
         setReturnState('error');
-        setTitle('No pudimos completar la conexión');
+        setTitle(
+          isConfigurationError(error)
+            ? 'Mercado Pago no está configurado todavía'
+            : 'No pudimos completar la conexión',
+        );
         setDescription(resolveApiMessage(
           error,
           resolveProviderReturnMessage(queryValues),

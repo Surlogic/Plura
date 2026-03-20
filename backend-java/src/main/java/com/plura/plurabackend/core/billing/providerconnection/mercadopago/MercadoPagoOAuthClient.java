@@ -43,7 +43,7 @@ public class MercadoPagoOAuthClient {
     }
 
     public String buildAuthorizationUrl(String state) {
-        BillingProperties.MercadoPago.OAuth oauth = requireConfiguredOAuth();
+        BillingProperties.MercadoPago.OAuth oauth = requireConfiguredAuthorization();
         return UriComponentsBuilder.fromUriString(oauth.getAuthorizationUrl())
             .queryParam("client_id", oauth.getClientId())
             .queryParam("response_type", "code")
@@ -58,7 +58,7 @@ public class MercadoPagoOAuthClient {
         if (code == null || code.isBlank()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "code OAuth es obligatorio");
         }
-        BillingProperties.MercadoPago.OAuth oauth = requireConfiguredOAuth();
+        BillingProperties.MercadoPago.OAuth oauth = requireConfiguredTokenExchange();
         return exchangeToken(formEncode(Map.of(
             "client_id", oauth.getClientId(),
             "client_secret", oauth.getClientSecret(),
@@ -72,7 +72,7 @@ public class MercadoPagoOAuthClient {
         if (refreshToken == null || refreshToken.isBlank()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "refresh_token OAuth es obligatorio");
         }
-        BillingProperties.MercadoPago.OAuth oauth = requireConfiguredOAuth();
+        BillingProperties.MercadoPago.OAuth oauth = requireConfiguredTokenExchange();
         return exchangeToken(formEncode(Map.of(
             "client_id", oauth.getClientId(),
             "client_secret", oauth.getClientSecret(),
@@ -82,7 +82,7 @@ public class MercadoPagoOAuthClient {
     }
 
     private TokenResponse exchangeToken(String body) {
-        BillingProperties.MercadoPago.OAuth oauth = requireConfiguredOAuth();
+        BillingProperties.MercadoPago.OAuth oauth = requireConfiguredTokenExchange();
 
         HttpRequest request = HttpRequest.newBuilder(URI.create(oauth.getTokenUrl()))
             .timeout(Duration.ofMillis(billingProperties.getMercadopago().getTimeoutMillis()))
@@ -152,7 +152,7 @@ public class MercadoPagoOAuthClient {
         }
     }
 
-    private BillingProperties.MercadoPago.OAuth requireConfiguredOAuth() {
+    private BillingProperties.MercadoPago.OAuth requireConfiguredAuthorization() {
         if (!billingProperties.isEnabled() || !billingProperties.getMercadopago().isEnabled()) {
             throw new ResponseStatusException(
                 HttpStatus.SERVICE_UNAVAILABLE,
@@ -161,9 +161,14 @@ public class MercadoPagoOAuthClient {
         }
         BillingProperties.MercadoPago.OAuth oauth = billingProperties.getMercadopago().getOauth();
         requirePresent(oauth.getClientId(), "billing.mercadopago.oauth.client-id");
-        requirePresent(oauth.getClientSecret(), "billing.mercadopago.oauth.client-secret");
         requirePresent(oauth.getRedirectUri(), "billing.mercadopago.oauth.redirect-uri");
         requirePresent(oauth.getAuthorizationUrl(), "billing.mercadopago.oauth.authorization-url");
+        return oauth;
+    }
+
+    private BillingProperties.MercadoPago.OAuth requireConfiguredTokenExchange() {
+        BillingProperties.MercadoPago.OAuth oauth = requireConfiguredAuthorization();
+        requirePresent(oauth.getClientSecret(), "billing.mercadopago.oauth.client-secret");
         requirePresent(oauth.getTokenUrl(), "billing.mercadopago.oauth.token-url");
         return oauth;
     }

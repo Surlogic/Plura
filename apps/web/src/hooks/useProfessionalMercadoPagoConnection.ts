@@ -21,6 +21,11 @@ export type MercadoPagoConnectionBanner = {
   description: string;
 };
 
+const isConfigurationError = (error: unknown) =>
+  isAxiosError<{ message?: string }>(error)
+  && error.response?.status === 503
+  && Boolean(error.response?.data?.message?.toLowerCase().includes('falta configurar'));
+
 const resolveApiMessage = (error: unknown, fallback: string) => {
   if (isAxiosError<{ message?: string }>(error)) {
     return error.response?.data?.message || fallback;
@@ -171,7 +176,9 @@ export function useProfessionalMercadoPagoConnection(enabled: boolean) {
     } catch (error) {
       setBanner({
         tone: 'error',
-        title: 'No pudimos iniciar la conexión',
+        title: isConfigurationError(error)
+          ? 'Mercado Pago no está configurado todavía'
+          : 'No pudimos iniciar la conexión',
         description: resolveApiMessage(
           error,
           'Intentá nuevamente en unos segundos.',

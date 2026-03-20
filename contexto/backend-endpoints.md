@@ -170,6 +170,11 @@ Lectura de producto:
 - cubre carga manual de turnos desde panel
 - `GET /profesional/reservas` sostiene gestion operativa de reservas para `Free/BASIC` y no debe confundirse con gating de agenda semanal o mensual
 - `POST /profesional/payment-providers/mercadopago/oauth/start` y `GET /profesional/payment-providers/mercadopago/oauth/callback` ahora exigen capacidad `ONLINE_PAYMENTS`; `BASIC` no puede iniciar ni completar la conexion OAuth
+- `POST /profesional/payment-providers/mercadopago/oauth/start` solo necesita la configuracion minima para abrir Mercado Pago: `client-id`, `redirect-uri` y `authorization-url`
+- `GET /profesional/payment-providers/mercadopago/oauth/callback` sigue requiriendo `client-secret` y `token-url`, porque ahi recien se canjea el `code` y se guardan los tokens OAuth del profesional
+- el callback valida `state` firmado contra el profesional autenticado; si el `state` pertenece a otro profesional, responde `403`
+- la misma cuenta Mercado Pago no puede quedar conectada simultaneamente a dos profesionales distintos; el backend rechaza esa reconexion con `409`
+- si el navegador reintenta el callback despues de una conexion ya exitosa y Mercado Pago responde `invalid_grant` por reutilizacion del `code`, el backend conserva la conexion existente y trata ese replay como idempotente
 
 Notas:
 
@@ -301,6 +306,7 @@ Estado real detectado en codigo:
 - pagos reales de reservas y refunds: `Mercado Pago` via `booking` + `providerops`
 - `/webhooks/mercadopago` procesa suscripciones y reservas con routing interno por dominio
 - `/cliente/reservas/{id}/payment-session` sigue siendo la entrada real para checkout de reservas
+- si `Mercado Pago` responde `card_token_id is required` al crear el `preapproval`, el backend hace fallback al checkout hosted del `preapproval_plan` y devuelve igual una `checkoutUrl`
 
 Lectura de producto:
 

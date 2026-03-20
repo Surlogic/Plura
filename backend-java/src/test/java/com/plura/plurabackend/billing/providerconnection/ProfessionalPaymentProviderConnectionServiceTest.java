@@ -3,7 +3,9 @@ package com.plura.plurabackend.billing.providerconnection;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.when;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -22,6 +24,8 @@ import com.plura.plurabackend.core.user.model.User;
 import java.time.LocalDateTime;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 
 class ProfessionalPaymentProviderConnectionServiceTest {
 
@@ -71,6 +75,8 @@ class ProfessionalPaymentProviderConnectionServiceTest {
         when(professionalBillingSubjectGateway.loadEnabledProfessionalByUserId(20L)).thenReturn(professional);
         when(repository.findByProfessionalIdAndProvider(professional.getId(), PaymentProvider.MERCADOPAGO))
             .thenReturn(Optional.of(connection));
+        when(repository.findByProviderAndProviderUserId(PaymentProvider.MERCADOPAGO, "998877"))
+            .thenReturn(Optional.of(connection));
         when(repository.save(any(ProfessionalPaymentProviderConnection.class)))
             .thenAnswer(invocation -> invocation.getArgument(0));
         when(mercadoPagoOAuthClient.exchangeAuthorizationCode("code-1"))
@@ -92,6 +98,103 @@ class ProfessionalPaymentProviderConnectionServiceTest {
         assertTrue(response.connected());
         assertEquals("CONNECTED", response.status());
         assertEquals("998877", response.providerUserId());
+    }
+
+    @Test
+    void shouldRejectOAuthCallbackWithoutState() {
+        ProfessionalProfile professional = professional();
+        when(professionalBillingSubjectGateway.loadEnabledProfessionalByUserId(20L)).thenReturn(professional);
+        doThrow(new ResponseStatusException(HttpStatus.BAD_REQUEST, "state OAuth es obligatorio"))
+            .when(mercadoPagoOAuthStateService)
+            .validateState(isNull(), org.mockito.ArgumentMatchers.eq(professional.getId()));
+
+        ResponseStatusException exception = org.junit.jupiter.api.Assertions.assertThrows(
+            ResponseStatusException.class,
+            () -> service.handleMercadoPagoOAuthCallback(20L, "code-1", null, null, null)
+        );
+
+        assertEquals(HttpStatus.BAD_REQUEST, exception.getStatusCode());
+        assertEquals("state OAuth es obligatorio", exception.getReason());
+    }
+
+    @Test
+    void shouldRejectOAuthCallbackWhenMercadoPagoAccountBelongsToAnotherProfessional() {
+        ProfessionalProfile professional = professional();
+        ProfessionalPaymentProviderConnection currentConnection = new ProfessionalPaymentProviderConnection();
+        currentConnection.setProfessionalId(professional.getId());
+        currentConnection.setProvider(PaymentProvider.MERCADOPAGO);
+        currentConnection.setStatus(ProfessionalPaymentProviderConnectionStatus.PENDING_AUTHORIZATION);
+
+        ProfessionalPaymentProviderConnection otherProfessionalConnection = new ProfessionalPaymentProviderConnection();
+        otherProfessionalConnection.setProfessionalId(999L);
+        otherProfessionalConnection.setProvider(PaymentProvider.MERCADOPAGO);
+        otherProfessionalConnection.setStatus(ProfessionalPaymentProviderConnectionStatus.CONNECTED);
+        otherProfessionalConnection.setAccessTokenEncrypted("enc-access-other");
+
+        when(professionalBillingSubjectGateway.loadEnabledProfessionalByUserId(20L)).thenReturn(professional);
+        when(repository.findByProfessionalIdAndProvider(professional.getId(), PaymentProvider.MERCADOPAGO))
+            .thenReturn(Optional.of(currentConnection));
+        when(repository.findByProviderAndProviderUserId(PaymentProvider.MERCADOPAGO, "998877"))
+            .thenReturn(Optional.of(otherProfessionalConnection));
+        when(repository.save(any(ProfessionalPaymentProviderConnection.class)))
+            .thenAnswer(invocation -> invocation.getArgument(0));
+        when(mercadoPagoOAuthClient.exchangeAuthorizationCode("code-1"))
+            .thenReturn(new MercadoPagoOAuthClient.TokenResponse(
+                "access-1",
+                "refresh-1",
+                998877L,
+                "offline_access",
+                LocalDateTime.now().plusHours(1),
+                "bearer",
+                "public-key",
+                "{\"user_id\":998877}"
+            ));
+
+        ResponseStatusException exception = org.junit.jupiter.api.Assertions.assertThrows(
+            ResponseStatusException.class,
+            () -> service.handleMercadoPagoOAuthCallback(20L, "code-1", "state-1", null, null)
+        );
+
+        assertEquals(HttpStatus.CONFLICT, exception.getStatusCode());
+        assertEquals("La cuenta de Mercado Pago ya esta vinculada a otro profesional", exception.getReason());
+    }
+
+    @Test
+    void shouldTreatRepeatedOAuthCallbackAsIdempotentWhenConnectionIsAlreadyConnected() {
+        ProfessionalProfile professional = professional();
+        ProfessionalPaymentProviderConnection connection = new ProfessionalPaymentProviderConnection();
+        connection.setProfessionalId(professional.getId());
+        connection.setProvider(PaymentProvider.MERCADOPAGO);
+        connection.setStatus(ProfessionalPaymentProviderConnectionStatus.CONNECTED);
+        connection.setProviderUserId("998877");
+        connection.setProviderAccountId("998877");
+        connection.setAccessTokenEncrypted("enc-access-1");
+
+        when(professionalBillingSubjectGateway.loadEnabledProfessionalByUserId(20L)).thenReturn(professional);
+        when(repository.findByProfessionalIdAndProvider(professional.getId(), PaymentProvider.MERCADOPAGO))
+            .thenReturn(Optional.of(connection));
+        when(mercadoPagoOAuthClient.exchangeAuthorizationCode("code-1"))
+            .thenThrow(new ResponseStatusException(
+                HttpStatus.BAD_GATEWAY,
+                "No se pudo completar OAuth con Mercado Pago: invalid_grant"
+            ));
+
+        var response = service.handleMercadoPagoOAuthCallback(20L, "code-1", "state-1", null, null);
+
+        assertTrue(response.connected());
+        assertEquals("CONNECTED", response.status());
+        assertEquals("998877", response.providerUserId());
+    }
+
+    @Test
+    void shouldRejectStartOAuthWithoutProfessionalSession() {
+        ResponseStatusException exception = org.junit.jupiter.api.Assertions.assertThrows(
+            ResponseStatusException.class,
+            () -> service.startMercadoPagoOAuth(null)
+        );
+
+        assertEquals(HttpStatus.UNAUTHORIZED, exception.getStatusCode());
+        assertEquals("Sesion profesional invalida", exception.getReason());
     }
 
     private ProfessionalProfile professional() {

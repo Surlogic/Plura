@@ -13,14 +13,12 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import {
   cancelProfessionalBooking,
-  completeProfessionalBooking,
   createProfessionalReservation,
   getProfessionalBookingActions,
   getProfessionalReservationsByRange,
   listProfessionalServices,
   markProfessionalBookingNoShow,
   rescheduleProfessionalBooking,
-  retryProfessionalBookingPayout,
   updateProfessionalReservationStatus,
 } from '../../src/services/professionalBookings';
 import type { ProfessionalReservation } from '../../src/types/professional';
@@ -260,7 +258,7 @@ export default function AgendaScreen() {
   }, [actions?.canReschedule, profile?.slug, rescheduleDate, selectedReservation?.serviceId]);
 
   const handleAction = async (
-    type: 'cancel' | 'complete' | 'confirm' | 'no_show' | 'retry_payout' | 'reschedule',
+    type: 'cancel' | 'confirm' | 'no_show' | 'reschedule',
   ) => {
     if (!selectedReservation) return;
 
@@ -271,8 +269,6 @@ export default function AgendaScreen() {
         await cancelProfessionalBooking(selectedReservation.id, cancelReason);
       } else if (type === 'confirm') {
         await updateProfessionalReservationStatus(selectedReservation.id, 'confirmed');
-      } else if (type === 'complete') {
-        await completeProfessionalBooking(selectedReservation.id);
       } else if (type === 'no_show') {
         await markProfessionalBookingNoShow(selectedReservation.id);
       } else if (type === 'reschedule') {
@@ -281,8 +277,6 @@ export default function AgendaScreen() {
           return;
         }
         await rescheduleProfessionalBooking(selectedReservation.id, `${rescheduleDate}T${rescheduleTime}:00`);
-      } else {
-        await retryProfessionalBookingPayout(selectedReservation.id);
       }
 
       setMessage('Accion aplicada correctamente.');
@@ -658,15 +652,6 @@ export default function AgendaScreen() {
                       </TouchableOpacity>
                     ) : null}
 
-                    {selectedReservation.status === 'confirmed' ? (
-                      <TouchableOpacity disabled={isSubmittingAction} onPress={() => void handleAction('complete')} className="mt-3 h-12 items-center justify-center rounded-full bg-secondary">
-                        <Text className="font-bold text-white">Marcar completada</Text>
-                      </TouchableOpacity>
-                    ) : null}
-
-                    <TouchableOpacity disabled={isSubmittingAction} onPress={() => void handleAction('retry_payout')} className="mt-3 h-12 items-center justify-center rounded-full border border-secondary/15 bg-background">
-                      <Text className="font-bold text-secondary">Reintentar payout</Text>
-                    </TouchableOpacity>
                   </>
                 )}
               </View>

@@ -259,6 +259,10 @@ Lectura de producto:
 - reproduce parte del panel profesional en mobile
 - responde bien al objetivo `Free` y `Pro` de operar una agenda desde el telefono
 - `dashboard/billing` ya no usa `payout-config`; muestra el plan de Plura y el estado de conexion OAuth de `Mercado Pago` como unico provider vigente para cobros
+- `dashboard/billing` en mobile ya respeta el gating principal de web: si el perfil no tiene `allowOnlinePayments`, no intenta conectar `Mercado Pago` y deja la conexion reservada para `PROFESIONAL / ENTERPRISE`
+- `dashboard/billing` refresca perfil + suscripcion al volver a foreground para bajar desfasajes despues del checkout del plan o del flujo OAuth
+- `dashboard/services` en mobile ya bloquea `DEPOSIT` y `FULL_PREPAY` cuando el perfil no tiene `allowOnlinePayments`, alineando la configuracion de servicios con web
+- `dashboard/agenda` en mobile ya no expone las acciones manuales `completar` ni `retry payout`; queda alineado con la UX operativa web basada en confirmacion, cancelacion, no-show y reagendamiento
 - no expone aun el set completo de capacidades `Premium`
 
 ### Otras pantallas mobile
@@ -279,6 +283,7 @@ Lectura de producto:
 Lectura de producto:
 
 - mobile cubre reserva, cuenta y operacion basica
+- `/reservar` en mobile ya puede continuar reservas con pago online: crea la reserva, abre `Mercado Pago` cuando el servicio requiere checkout y luego deriva a `/(tabs)/bookings` para seguir el estado de la reserva
 - todavia no se ve una capa madura para notificaciones transaccionales, reseñas, fidelizacion o chat
 
 ## Shared

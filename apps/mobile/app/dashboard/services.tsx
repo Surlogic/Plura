@@ -12,6 +12,7 @@ import {
   listServiceCategories,
   updateProfessionalService,
 } from '../../src/services/professionalConfig';
+import { useProfessionalProfileContext } from '../../src/context/ProfessionalProfileContext';
 
 type ServicePaymentMode = 'ON_SITE' | 'DEPOSIT' | 'FULL_PREPAY';
 
@@ -46,6 +47,7 @@ const getPaymentTypeLabel = (value?: string | null) => {
 };
 
 export default function ServicesScreen() {
+  const { profile } = useProfessionalProfileContext();
   const [services, setServices] = useState<ProfessionalService[]>([]);
   const [categories, setCategories] = useState<ServiceCategoryOption[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -54,6 +56,7 @@ export default function ServicesScreen() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draft, setDraft] = useState(emptyDraft);
   const [message, setMessage] = useState<string | null>(null);
+  const canUseOnlinePayments = Boolean(profile?.professionalEntitlements?.allowOnlinePayments);
 
   const resolveCategoryLabel = (service: ProfessionalService) => {
     const categoryName = service.categoryName?.trim();
@@ -181,21 +184,33 @@ export default function ServicesScreen() {
             <View style={{ gap: 8 }}>
               {PAYMENT_OPTIONS.map((option) => {
                 const isSelected = draft.paymentType === option.value;
+                const isLockedOption = !canUseOnlinePayments && option.value !== 'ON_SITE';
                 return (
                   <TouchableOpacity
                     key={option.value}
                     className={`rounded-2xl border px-4 py-3 ${
                       isSelected ? 'border-secondary bg-secondary/10' : 'border-secondary/10 bg-background'
                     }`}
-                    onPress={() => setDraft((prev) => ({ ...prev, paymentType: option.value }))}
+                    onPress={() => {
+                      if (isLockedOption) {
+                        setMessage('Los pagos online se habilitan desde el plan Profesional.');
+                        return;
+                      }
+                      setDraft((prev) => ({ ...prev, paymentType: option.value }));
+                    }}
                   >
-                    <Text className={`font-semibold ${isSelected ? 'text-secondary' : 'text-gray-700'}`}>
+                    <Text className={`font-semibold ${isLockedOption ? 'text-gray-400' : isSelected ? 'text-secondary' : 'text-gray-700'}`}>
                       {option.label}
                     </Text>
                   </TouchableOpacity>
                 );
               })}
             </View>
+            {!canUseOnlinePayments ? (
+              <Text className="text-xs text-gray-500">
+                La seña online y el prepago total se habilitan en el plan Profesional.
+              </Text>
+            ) : null}
           </View>
 
           {draft.paymentType === 'DEPOSIT' ? (
@@ -213,6 +228,12 @@ export default function ServicesScreen() {
               setIsSaving(true);
               setMessage(null);
               try {
+                if (!canUseOnlinePayments && draft.paymentType !== 'ON_SITE') {
+                  setMessage('Tu plan actual no permite seña online ni pago total online.');
+                  setIsSaving(false);
+                  return;
+                }
+
                 if (draft.paymentType === 'DEPOSIT' && (!draft.depositAmount.trim() || Number(draft.depositAmount) <= 0)) {
                   setMessage('Ingresá una seña válida.');
                   setIsSaving(false);

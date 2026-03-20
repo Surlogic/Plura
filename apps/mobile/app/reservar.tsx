@@ -1,10 +1,11 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Linking, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { isAxiosError } from 'axios';
+import { createClientBookingPaymentSession } from '../src/services/clientBookings';
 import {
   createPublicReservation,
   getPublicProfessionalBySlug,
@@ -110,7 +111,7 @@ export default function ReservationCheckoutScreen() {
   }, [serviceId, slug]);
 
   const canConfirm = useMemo(
-    () => Boolean(slug && serviceId && date && time && service) && !isSaving && !isPrepaidService(service?.paymentType),
+    () => Boolean(slug && serviceId && date && time && service) && !isSaving,
     [date, isSaving, service, serviceId, slug, time],
   );
 
@@ -184,13 +185,13 @@ export default function ReservationCheckoutScreen() {
                 </View>
               ) : null}
 
-              {isPrepaidService(service?.paymentType) ? (
-                <View className="mt-4 rounded-xl bg-secondary/5 p-3">
-                  <Text className="text-xs text-secondary">
-                    Este servicio requiere checkout online. La app mobile todavía no implementa ese flujo de pago de forma segura.
-                  </Text>
-                </View>
-              ) : null}
+              <View className="mt-4 rounded-xl bg-secondary/5 p-3">
+                <Text className="text-xs text-secondary">
+                  {isPrepaidService(service?.paymentType)
+                    ? 'Si confirmas este turno, vamos a crear la reserva y abrir Mercado Pago para completar el checkout.'
+                    : 'Si confirmas este turno, la reserva quedara registrada y podras seguirla desde Mis turnos.'}
+                </Text>
+              </View>
 
               <TouchableOpacity
                 disabled={!canConfirm}
@@ -225,14 +226,34 @@ export default function ReservationCheckoutScreen() {
                   setIsSaving(true);
                   setMessage(null);
                   try {
-                    await createPublicReservation(slug, {
+                    const created = await createPublicReservation(slug, {
                       serviceId,
                       startDateTime,
                     });
                     await clearPendingReservation();
-                    setMessage('Reserva confirmada. Te enviamos la notificacion en breve.');
+
+                    if (isPrepaidService(service?.paymentType)) {
+                      try {
+                        const paymentSession = await createClientBookingPaymentSession(String(created.id));
+                        if (paymentSession.checkoutUrl) {
+                          setMessage('Reserva creada. Abriendo Mercado Pago...');
+                          await Linking.openURL(paymentSession.checkoutUrl);
+                        } else {
+                          setMessage('Reserva creada. Revisa el estado del pago en Mis turnos.');
+                        }
+                      } catch (paymentError) {
+                        setMessage(getApiErrorMessage(paymentError, 'Reserva creada, pero no pudimos abrir el checkout.'));
+                      } finally {
+                        setTimeout(() => {
+                          router.replace('/(tabs)/bookings');
+                        }, 700);
+                      }
+                      return;
+                    }
+
+                    setMessage('Reserva confirmada. Te llevamos a Mis turnos.');
                     setTimeout(() => {
-                      router.replace('/(tabs)/dashboard');
+                      router.replace('/(tabs)/bookings');
                     }, 900);
                   } catch (error: unknown) {
                     if (isAxiosError(error) && error.response?.status === 401) {
@@ -266,7 +287,9 @@ export default function ReservationCheckoutScreen() {
                 {isSaving ? (
                   <ActivityIndicator color="#fff" />
                 ) : (
-                  <Text className="text-base font-bold text-white">Confirmar turno</Text>
+                  <Text className="text-base font-bold text-white">
+                    {isPrepaidService(service?.paymentType) ? 'Reservar y abrir checkout' : 'Confirmar turno'}
+                  </Text>
                 )}
               </TouchableOpacity>
             </View>

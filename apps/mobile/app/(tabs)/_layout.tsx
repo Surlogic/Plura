@@ -2,12 +2,18 @@ import React from 'react';
 import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Platform } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useProfessionalProfileContext } from '../../src/context/ProfessionalProfileContext';
 import { theme } from '../../src/theme';
 
 export default function TabsLayout() {
   const { role } = useProfessionalProfileContext();
   const isProfessional = role === 'professional';
+  const insets = useSafeAreaInsets();
+  const baseTabBarHeight = Platform.OS === 'ios' ? 60 : 58;
+  const bottomPadding = Platform.OS === 'ios'
+    ? Math.max(insets.bottom, 14)
+    : Math.max(insets.bottom, 12);
 
   return (
     <Tabs
@@ -24,8 +30,8 @@ export default function TabsLayout() {
           shadowOpacity: 0.08,
           shadowRadius: 18,
           shadowOffset: { width: 0, height: -4 },
-          height: Platform.OS === 'ios' ? 85 : 65,
-          paddingBottom: Platform.OS === 'ios' ? 25 : 10,
+          height: baseTabBarHeight + bottomPadding,
+          paddingBottom: bottomPadding,
           paddingTop: 10,
         },
         tabBarLabelStyle: {

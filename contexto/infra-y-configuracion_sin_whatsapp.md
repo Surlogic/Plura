@@ -228,6 +228,7 @@ Lectura de producto:
 
 - cubre API, mapa y login social en web
 - el repo ya trae `pnpm -C apps/web analyze` para abrir el analisis de chunks sin agregar tooling nuevo
+- para probar localmente OAuth profesional de Mercado Pago end-to-end, `.env.frontend` debe apuntar al backend local (`NEXT_PUBLIC_API_URL=http://localhost:3000`); si la web local apunta a Render, el onboarding usa el backend remoto aunque la UI corra en `localhost:3002`
 
 ### Mobile
 

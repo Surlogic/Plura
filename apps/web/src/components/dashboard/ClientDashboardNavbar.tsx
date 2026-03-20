@@ -7,6 +7,7 @@ import ThemeSwitcher from '@/components/theme/ThemeSwitcher';
 import ClientNotificationBell from '@/components/cliente/notifications/ClientNotificationBell';
 import { useClientProfileContext } from '@/context/ClientProfileContext';
 import { useProfessionalProfileContext } from '@/context/ProfessionalProfileContext';
+import { clearFavoriteProfessionals } from '@/services/clientFeatures';
 import { clearAuthAccessToken } from '@/services/session';
 
 type ClientDashboardNavbarProps = {
@@ -35,6 +36,7 @@ export default function ClientDashboardNavbar({
       await api.post('/auth/logout');
     } finally {
       clearAuthAccessToken();
+      clearFavoriteProfessionals();
       clearProfessionalProfile();
       clearClientProfile();
       router.push('/cliente/auth/login');

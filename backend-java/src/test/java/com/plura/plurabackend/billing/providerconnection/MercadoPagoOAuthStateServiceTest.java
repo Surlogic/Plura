@@ -39,6 +39,16 @@ class MercadoPagoOAuthStateServiceTest {
     }
 
     @Test
+    void shouldResolveProfessionalIdFromValidState() {
+        BillingProperties properties = configuredProperties(false);
+        MercadoPagoOAuthStateService service = new MercadoPagoOAuthStateService(properties);
+
+        MercadoPagoOAuthStateService.GeneratedState generatedState = service.generateState(30L);
+
+        assertEquals(30L, service.resolveProfessionalId(generatedState.value()));
+    }
+
+    @Test
     void shouldRejectInvalidState() {
         BillingProperties properties = configuredProperties(false);
         MercadoPagoOAuthStateService service = new MercadoPagoOAuthStateService(properties);

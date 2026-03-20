@@ -118,9 +118,32 @@ public class ProfessionalPaymentProviderConnectionService {
     ) {
         ProfessionalProfile professional = loadProfessional(professionalUserId);
         ensureOnlinePaymentsEnabledForUser(professionalUserId);
+        return handleMercadoPagoOAuthCallbackInternal(professional, code, state, error, errorDescription);
+    }
+
+    @Transactional
+    public ProfessionalPaymentProviderConnectionResponse handleMercadoPagoOAuthCallbackForProfessionalId(
+        Long professionalId,
+        String code,
+        String state,
+        String error,
+        String errorDescription
+    ) {
+        ProfessionalProfile professional = loadProfessionalById(professionalId);
+        ensureOnlinePaymentsEnabledForProfessionalId(professionalId);
+        return handleMercadoPagoOAuthCallbackInternal(professional, code, state, error, errorDescription);
+    }
+
+    private ProfessionalPaymentProviderConnectionResponse handleMercadoPagoOAuthCallbackInternal(
+        ProfessionalProfile professional,
+        String code,
+        String state,
+        String error,
+        String errorDescription
+    ) {
         LOGGER.info(
             "Received Mercado Pago OAuth callback professionalUserId={} professionalId={} provider={} hasCode={} hasError={}",
-            professionalUserId,
+            professional.getUser() == null ? null : professional.getUser().getId(),
             professional.getId(),
             MERCADO_PAGO_PROVIDER,
             code != null && !code.isBlank(),
@@ -495,6 +518,14 @@ public class ProfessionalPaymentProviderConnectionService {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Sesion profesional invalida");
         }
         return professionalBillingSubjectGateway.loadEnabledProfessionalByUserId(professionalUserId);
+    }
+
+    private ProfessionalProfile loadProfessionalById(Long professionalId) {
+        if (professionalId == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "professionalId es obligatorio");
+        }
+        return professionalBillingSubjectGateway.findById(professionalId)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Profesional no encontrado"));
     }
 
     private void ensureOnlinePaymentsEnabledForUser(Long professionalUserId) {

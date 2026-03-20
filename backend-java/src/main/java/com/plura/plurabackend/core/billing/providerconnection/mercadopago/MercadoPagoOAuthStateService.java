@@ -44,11 +44,22 @@ public class MercadoPagoOAuthStateService {
     }
 
     public void validateState(String rawState, Long expectedProfessionalId) {
-        if (rawState == null || rawState.isBlank()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "state OAuth es obligatorio");
-        }
+        ParsedState parsedState = parseAndValidateState(rawState);
         if (expectedProfessionalId == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "professionalId esperado es obligatorio");
+        }
+        if (!expectedProfessionalId.equals(parsedState.professionalId())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "state OAuth no pertenece al profesional autenticado");
+        }
+    }
+
+    public Long resolveProfessionalId(String rawState) {
+        return parseAndValidateState(rawState).professionalId();
+    }
+
+    private ParsedState parseAndValidateState(String rawState) {
+        if (rawState == null || rawState.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "state OAuth es obligatorio");
         }
         int separatorIndex = rawState.lastIndexOf('.');
         if (separatorIndex <= 0 || separatorIndex >= rawState.length() - 1) {
@@ -84,13 +95,11 @@ public class MercadoPagoOAuthStateService {
         } catch (NumberFormatException exception) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "state OAuth invalido");
         }
-        if (!expectedProfessionalId.equals(professionalId)) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "state OAuth no pertenece al profesional autenticado");
-        }
         long nowEpoch = Instant.now().getEpochSecond();
         if (issuedAtEpoch <= 0 || nowEpoch - issuedAtEpoch > STATE_TTL_SECONDS) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "state OAuth expirado");
         }
+        return new ParsedState(professionalId, issuedAtEpoch);
     }
 
     private String randomNonce() {
@@ -143,4 +152,6 @@ public class MercadoPagoOAuthStateService {
     public record GeneratedState(String value, LocalDateTime expiresAt, PkceChallenge pkceChallenge) {}
 
     public record PkceChallenge(String codeVerifier, String codeChallenge, String codeChallengeMethod) {}
+
+    private record ParsedState(Long professionalId, long issuedAtEpoch) {}
 }

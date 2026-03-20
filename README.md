@@ -73,8 +73,10 @@ El proyecto ya cuenta con un **render.yaml** en la raíz que define los dos serv
 - `plura-web`: frontend Next.js construido con pnpm.
 
 Render ofrece variables de entorno sensibles y una base de datos PostgreSQL gestionada. El `render.yaml`
-incluye todas las variables necesarias (algunas marcadas `sync: false` para que no se suban al repo);
-asegurate de rellenarlas en el dashboard o mediante `render env set`.
+deja el backend apuntando al `Dockerfile` relativo de `backend-java` y expone las variables sensibles
+necesarias para auth, correo y billing Mercado Pago. Asegurate de completar en el dashboard, como
+mínimo, las credenciales de suscripciones y reservas (`BILLING_MERCADOPAGO_SUBSCRIPTIONS_*`,
+`BILLING_MERCADOPAGO_RESERVATIONS_*`) además de JWT, BD y URLs públicas.
 
 La configuración de Spring Boot está preparada para:
 
@@ -118,4 +120,6 @@ para que Render pueda cambiarlo dinámicamente.
 ## Notas
 
 - El workspace usa `pnpm` (no `npm lockfiles`).
-- `backend-java/README.md` contiene detalles funcionales de billing, search y scripts operativos.
+- `docker-compose.yml` quedó alineado con el monorepo actual y levanta `backend-java` + `apps/web`
+  usando `.env.backend`, `backend-java/.env` y `.env.frontend`.
+- La documentación operativa viva está en `contexto/`.

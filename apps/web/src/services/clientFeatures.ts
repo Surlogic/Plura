@@ -12,11 +12,13 @@ export type ClientFavoriteProfessional = {
 
 const FAVORITES_KEY = 'plura_client_favorite_professionals';
 const FAVORITES_ENDPOINT = '/cliente/favoritos';
+const FAVORITES_SERVER_SYNC_TTL_MS = 15000;
 
 type FavoritesListener = (favorites: ClientFavoriteProfessional[]) => void;
 
 const favoriteListeners = new Set<FavoritesListener>();
 let hasStorageListener = false;
+let lastServerFavoritesSyncAt = 0;
 
 type FavoriteProfessionalDto = {
   slug?: string | null;
@@ -122,8 +124,27 @@ const fetchServerFavorites = async (): Promise<ClientFavoriteProfessional[]> => 
         .filter((item): item is ClientFavoriteProfessional => Boolean(item))
     : [];
 
+  lastServerFavoritesSyncAt = Date.now();
   writeFavorites(favorites);
   return favorites;
+};
+
+const shouldRefreshServerFavorites = () =>
+  Date.now() - lastServerFavoritesSyncAt > FAVORITES_SERVER_SYNC_TTL_MS;
+
+const syncFavoritesFromServerIfPossible = async (): Promise<ClientFavoriteProfessional[] | null> => {
+  if (typeof window === 'undefined') {
+    return null;
+  }
+
+  try {
+    return await fetchServerFavorites();
+  } catch (error) {
+    if (isAxiosError(error) && [401, 403].includes(error.response?.status ?? 0)) {
+      return null;
+    }
+    throw error;
+  }
 };
 
 const ensureStorageListener = () => {
@@ -165,7 +186,13 @@ export const toggleFavoriteProfessional = async (
   const sanitized = sanitizeFavorite(favorite);
   if (!sanitized) return readFavorites();
 
-  const favorites = readFavorites();
+  let favorites = readFavorites();
+  if (shouldRefreshServerFavorites()) {
+    const syncedFavorites = await syncFavoritesFromServerIfPossible();
+    if (syncedFavorites) {
+      favorites = syncedFavorites;
+    }
+  }
   const exists = favorites.some((item) => item.slug === sanitized.slug);
 
   if (typeof window !== 'undefined') {
@@ -199,7 +226,13 @@ export const removeFavoriteProfessional = async (
   const normalizedSlug = normalizeText(slug);
   if (!normalizedSlug) return readFavorites();
 
-  const favorites = readFavorites();
+  let favorites = readFavorites();
+  if (shouldRefreshServerFavorites()) {
+    const syncedFavorites = await syncFavoritesFromServerIfPossible();
+    if (syncedFavorites) {
+      favorites = syncedFavorites;
+    }
+  }
 
   if (typeof window !== 'undefined') {
     try {
@@ -213,4 +246,12 @@ export const removeFavoriteProfessional = async (
 
   const next = favorites.filter((item) => item.slug !== normalizedSlug);
   return writeFavorites(next);
+};
+
+export const clearFavoriteProfessionals = () => {
+  lastServerFavoritesSyncAt = 0;
+  if (typeof window !== 'undefined') {
+    window.localStorage.removeItem(FAVORITES_KEY);
+  }
+  notifyFavoriteListeners([]);
 };

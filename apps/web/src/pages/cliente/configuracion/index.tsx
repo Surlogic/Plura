@@ -1,11 +1,13 @@
 import { useState } from 'react';
 import { isAxiosError } from 'axios';
+import Link from 'next/link';
 import { useRouter } from 'next/router';
 import EmailVerificationPanel from '@/components/auth/EmailVerificationPanel';
 import ClientShell from '@/components/cliente/ClientShell';
 import ThemeSwitcher from '@/components/theme/ThemeSwitcher';
 import { useClientProfile } from '@/hooks/useClientProfile';
 import { useClientProfileContext } from '@/context/ClientProfileContext';
+import { clearFavoriteProfessionals } from '@/services/clientFeatures';
 import api from '@/services/api';
 import { clearAuthAccessToken } from '@/services/session';
 
@@ -74,6 +76,7 @@ export default function ClienteConfiguracionPage() {
         newPassword: passwordForm.newPassword,
       });
       clearAuthAccessToken();
+      clearFavoriteProfessionals();
       clearProfile();
       await router.replace('/cliente/auth/login');
     } catch (error) {
@@ -106,6 +109,7 @@ export default function ClienteConfiguracionPage() {
         },
       });
       clearAuthAccessToken();
+      clearFavoriteProfessionals();
       clearProfile();
       await router.replace('/cliente/auth/login');
     } catch {
@@ -338,12 +342,12 @@ export default function ClienteConfiguracionPage() {
             ) : null}
 
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <a
+              <Link
                 href="/auth/forgot-password"
                 className="text-xs font-semibold text-[color:var(--primary)] underline underline-offset-4"
               >
                 ¿Olvidaste tu contraseña?
-              </a>
+              </Link>
               <button
                 type="button"
                 onClick={() => {

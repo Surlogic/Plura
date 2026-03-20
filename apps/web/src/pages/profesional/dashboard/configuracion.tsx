@@ -15,6 +15,7 @@ import {
   updateProfessionalBookingPolicy,
 } from '@/services/professionalBookingPolicy';
 import api from '@/services/api';
+import { clearFavoriteProfessionals } from '@/services/clientFeatures';
 import { clearAuthAccessToken } from '@/services/session';
 import type { LateCancellationRefundMode, ProfessionalBookingPolicy } from '@/types/bookings';
 import Button from '@/components/ui/Button';
@@ -192,6 +193,7 @@ export default function ProfesionalSettingsPage() {
         },
       });
       clearAuthAccessToken();
+      clearFavoriteProfessionals();
       clearProfile();
       await router.replace('/profesional/auth/login');
     } catch (error) {
@@ -243,6 +245,7 @@ export default function ProfesionalSettingsPage() {
       // We still clear the local session if the backend logout call fails.
     } finally {
       clearAuthAccessToken();
+      clearFavoriteProfessionals();
       clearProfile();
       clearClientProfile();
       await router.replace('/profesional/auth/login');
@@ -274,6 +277,7 @@ export default function ProfesionalSettingsPage() {
         newPassword: passwordForm.newPassword,
       });
       clearAuthAccessToken();
+      clearFavoriteProfessionals();
       clearProfile();
       clearClientProfile();
       await router.replace('/profesional/auth/login');

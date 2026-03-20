@@ -89,6 +89,7 @@ public class SecurityConfig {
                 ).permitAll()
                 .requestMatchers("/internal/ops/**").permitAll()
                 .requestMatchers("/public/**").permitAll()
+                .requestMatchers(HttpMethod.GET, "/profesional/payment-providers/mercadopago/oauth/callback").permitAll()
                 .requestMatchers(HttpMethod.DELETE, "/auth/me").hasAnyRole("PROFESSIONAL", "USER")
                 .requestMatchers(HttpMethod.POST, "/auth/password/change").hasAnyRole("PROFESSIONAL", "USER")
                 .requestMatchers("/auth/challenge/**").hasAnyRole("PROFESSIONAL", "USER")

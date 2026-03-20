@@ -2,6 +2,7 @@ package com.plura.plurabackend.professional.paymentprovider;
 
 import com.plura.plurabackend.core.billing.BillingProperties;
 import com.plura.plurabackend.core.billing.providerconnection.ProfessionalPaymentProviderConnectionService;
+import com.plura.plurabackend.core.billing.providerconnection.mercadopago.MercadoPagoOAuthStateService;
 import com.plura.plurabackend.core.security.RoleGuard;
 import com.plura.plurabackend.professional.paymentprovider.dto.MercadoPagoOAuthStartResponse;
 import com.plura.plurabackend.professional.paymentprovider.dto.ProfessionalPaymentProviderConnectionResponse;
@@ -27,17 +28,20 @@ public class ProfessionalMercadoPagoConnectionController {
     private static final Logger LOGGER = LoggerFactory.getLogger(ProfessionalMercadoPagoConnectionController.class);
 
     private final ProfessionalPaymentProviderConnectionService connectionService;
+    private final MercadoPagoOAuthStateService mercadoPagoOAuthStateService;
     private final RoleGuard roleGuard;
     private final BillingProperties billingProperties;
     private final String publicWebUrl;
 
     public ProfessionalMercadoPagoConnectionController(
         ProfessionalPaymentProviderConnectionService connectionService,
+        MercadoPagoOAuthStateService mercadoPagoOAuthStateService,
         RoleGuard roleGuard,
         BillingProperties billingProperties,
         @Value("${app.email.public-web-url:http://localhost:3002}") String publicWebUrl
     ) {
         this.connectionService = connectionService;
+        this.mercadoPagoOAuthStateService = mercadoPagoOAuthStateService;
         this.roleGuard = roleGuard;
         this.billingProperties = billingProperties;
         this.publicWebUrl = publicWebUrl;
@@ -60,22 +64,22 @@ public class ProfessionalMercadoPagoConnectionController {
         @RequestParam(value = "error", required = false) String error,
         @RequestParam(value = "error_description", required = false) String errorDescription
     ) {
-        Long professionalUserId;
+        Long professionalId;
         try {
-            professionalUserId = roleGuard.requireProfessional();
+            professionalId = mercadoPagoOAuthStateService.resolveProfessionalId(state);
         } catch (ResponseStatusException exception) {
             LOGGER.warn(
                 "Mercado Pago OAuth callback rejected before processing status={} reason={}",
                 exception.getStatusCode().value(),
                 safeForLogs(exception.getReason())
             );
-            return redirectFrontend("error", "auth_required");
+            return redirectFrontend(resolveResult(error, exception), resolveReason(error, exception));
         }
 
         try {
             ProfessionalPaymentProviderConnectionResponse response =
-                connectionService.handleMercadoPagoOAuthCallback(
-                    professionalUserId,
+                connectionService.handleMercadoPagoOAuthCallbackForProfessionalId(
+                    professionalId,
                     code,
                     state,
                     error,
@@ -87,12 +91,19 @@ public class ProfessionalMercadoPagoConnectionController {
             );
         } catch (ResponseStatusException exception) {
             LOGGER.warn(
-                "Mercado Pago OAuth callback failed for redirect professionalUserId={} status={} reason={}",
-                professionalUserId,
+                "Mercado Pago OAuth callback failed for redirect professionalId={} status={} reason={}",
+                professionalId,
                 exception.getStatusCode().value(),
                 safeForLogs(exception.getReason())
             );
             return redirectFrontend(resolveResult(error, exception), resolveReason(error, exception));
+        } catch (Exception exception) {
+            LOGGER.error(
+                "Mercado Pago OAuth callback crashed for redirect professionalId={}",
+                professionalId,
+                exception
+            );
+            return redirectFrontend("error", "oauth_failed");
         }
     }
 
@@ -157,6 +168,15 @@ public class ProfessionalMercadoPagoConnectionController {
         if (normalized.contains("token exchange") || normalized.contains("invalid_grant")
             || normalized.contains("oauth con mercado pago")) {
             return "token_exchange_failed";
+        }
+        if (normalized.contains("code_verifier")) {
+            return "token_exchange_failed";
+        }
+        if (normalized.contains("vinculada a otro profesional")) {
+            return "oauth_failed";
+        }
+        if (normalized.contains("autorizacion oauth pendiente")) {
+            return "state_invalid";
         }
         if (normalized.contains("solo profesionales") || normalized.contains("sin sesión")
             || normalized.contains("sin sesion") || normalized.contains("token inválido")

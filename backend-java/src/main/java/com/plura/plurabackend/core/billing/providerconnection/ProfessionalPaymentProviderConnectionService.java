@@ -15,6 +15,7 @@ import com.plura.plurabackend.professional.plan.BooleanCapability;
 import com.plura.plurabackend.professional.plan.PlanGuardService;
 import com.plura.plurabackend.professional.paymentprovider.dto.MercadoPagoOAuthStartResponse;
 import com.plura.plurabackend.professional.paymentprovider.dto.ProfessionalPaymentProviderConnectionResponse;
+import java.time.ZoneOffset;
 import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -39,6 +40,7 @@ public class ProfessionalPaymentProviderConnectionService {
     private final MercadoPagoOAuthTokenCipher mercadoPagoOAuthTokenCipher;
     private final ObjectMapper objectMapper;
     private final PlanGuardService planGuardService;
+    private final ProfessionalPaymentProviderConnectionErrorRecorder errorRecorder;
 
     public ProfessionalPaymentProviderConnectionService(
         ProfessionalBillingSubjectGateway professionalBillingSubjectGateway,
@@ -47,7 +49,8 @@ public class ProfessionalPaymentProviderConnectionService {
         MercadoPagoOAuthClient mercadoPagoOAuthClient,
         MercadoPagoOAuthTokenCipher mercadoPagoOAuthTokenCipher,
         ObjectMapper objectMapper,
-        PlanGuardService planGuardService
+        PlanGuardService planGuardService,
+        ProfessionalPaymentProviderConnectionErrorRecorder errorRecorder
     ) {
         this.professionalBillingSubjectGateway = professionalBillingSubjectGateway;
         this.repository = repository;
@@ -56,6 +59,7 @@ public class ProfessionalPaymentProviderConnectionService {
         this.mercadoPagoOAuthTokenCipher = mercadoPagoOAuthTokenCipher;
         this.objectMapper = objectMapper;
         this.planGuardService = planGuardService;
+        this.errorRecorder = errorRecorder;
     }
 
     @Transactional(readOnly = true)
@@ -69,26 +73,33 @@ public class ProfessionalPaymentProviderConnectionService {
         ProfessionalProfile professional = loadProfessional(professionalUserId);
         ensureOnlinePaymentsEnabledForUser(professionalUserId);
         LOGGER.info(
-            "Starting Mercado Pago OAuth onboarding professionalUserId={} professionalId={} provider={}",
+            "Starting Mercado Pago OAuth onboarding professionalUserId={} professionalId={} provider={} pkceEnabled={}",
             professionalUserId,
             professional.getId(),
-            MERCADO_PAGO_PROVIDER
+            MERCADO_PAGO_PROVIDER,
+            mercadoPagoOAuthStateService.isPkceEnabled()
         );
         MercadoPagoOAuthStateService.GeneratedState state =
             mercadoPagoOAuthStateService.generateState(professional.getId());
-        String authorizationUrl = mercadoPagoOAuthClient.buildAuthorizationUrl(state.value());
+        String authorizationUrl = mercadoPagoOAuthClient.buildAuthorizationUrl(state.value(), state.pkceChallenge());
         Optional<ProfessionalPaymentProviderConnection> existing = findConnection(professional.getId());
         if (existing.isPresent()
             && existing.get().getStatus() != ProfessionalPaymentProviderConnectionStatus.CONNECTED) {
             ProfessionalPaymentProviderConnection connection = existing.get();
             connection.setStatus(ProfessionalPaymentProviderConnectionStatus.PENDING_AUTHORIZATION);
             connection.setLastError(null);
+            storePendingAuthorizationAttempt(connection, state);
             repository.save(connection);
         } else if (existing.isEmpty()) {
             ProfessionalPaymentProviderConnection connection = new ProfessionalPaymentProviderConnection();
             connection.setProfessionalId(professional.getId());
             connection.setProvider(MERCADO_PAGO_PROVIDER);
             connection.setStatus(ProfessionalPaymentProviderConnectionStatus.PENDING_AUTHORIZATION);
+            storePendingAuthorizationAttempt(connection, state);
+            repository.save(connection);
+        } else {
+            ProfessionalPaymentProviderConnection connection = existing.get();
+            storePendingAuthorizationAttempt(connection, state);
             repository.save(connection);
         }
 
@@ -110,47 +121,85 @@ public class ProfessionalPaymentProviderConnectionService {
     ) {
         ProfessionalProfile professional = loadProfessional(professionalUserId);
         ensureOnlinePaymentsEnabledForUser(professionalUserId);
+        return handleMercadoPagoOAuthCallbackInternal(professional, code, state, error, errorDescription);
+    }
+
+    @Transactional
+    public ProfessionalPaymentProviderConnectionResponse handleMercadoPagoOAuthCallbackForProfessionalId(
+        Long professionalId,
+        String code,
+        String state,
+        String error,
+        String errorDescription
+    ) {
+        ProfessionalProfile professional = loadProfessionalById(professionalId);
+        ensureOnlinePaymentsEnabledForProfessionalId(professionalId);
+        return handleMercadoPagoOAuthCallbackInternal(professional, code, state, error, errorDescription);
+    }
+
+    private ProfessionalPaymentProviderConnectionResponse handleMercadoPagoOAuthCallbackInternal(
+        ProfessionalProfile professional,
+        String code,
+        String state,
+        String error,
+        String errorDescription
+    ) {
         LOGGER.info(
             "Received Mercado Pago OAuth callback professionalUserId={} professionalId={} provider={} hasCode={} hasError={}",
-            professionalUserId,
+            professional.getUser() == null ? null : professional.getUser().getId(),
             professional.getId(),
             MERCADO_PAGO_PROVIDER,
             code != null && !code.isBlank(),
             error != null && !error.isBlank()
         );
-        mercadoPagoOAuthStateService.validateState(state, professional.getId());
-
         ProfessionalPaymentProviderConnection connection = findConnection(professional.getId())
             .orElseGet(() -> initializeConnection(professional.getId()));
         boolean preserveConnectedStatus = connection.getStatus() == ProfessionalPaymentProviderConnectionStatus.CONNECTED;
-
         if (error != null && !error.isBlank()) {
-            persistOAuthError(connection, error, errorDescription, preserveConnectedStatus);
             LOGGER.warn(
                 "Mercado Pago OAuth callback returned provider error professionalId={} provider={} error={}",
                 professional.getId(),
                 MERCADO_PAGO_PROVIDER,
                 safeForLogs(error)
             );
-            throw new ResponseStatusException(
-                HttpStatus.BAD_REQUEST,
-                "Mercado Pago devolvio error OAuth: " + error +
-                    ((errorDescription == null || errorDescription.isBlank()) ? "" : " - " + errorDescription)
-            );
-        }
-        if (code == null || code.isBlank()) {
-            persistOAuthError(connection, "missing_code", "Mercado Pago no devolvio code OAuth", preserveConnectedStatus);
-            LOGGER.warn(
-                "Mercado Pago OAuth callback missing code professionalId={} provider={}",
-                professional.getId(),
-                MERCADO_PAGO_PROVIDER
-            );
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Mercado Pago no devolvio code OAuth");
         }
 
         try {
+            mercadoPagoOAuthStateService.validateState(state, professional.getId());
+            boolean hasPendingVerifier = connection.getPendingOauthCodeVerifierEncrypted() != null
+                && !connection.getPendingOauthCodeVerifierEncrypted().isBlank();
+            LOGGER.info(
+                "Validated Mercado Pago OAuth callback professionalId={} provider={} pkceEnabled={} hasPendingVerifier={}",
+                professional.getId(),
+                MERCADO_PAGO_PROVIDER,
+                mercadoPagoOAuthStateService.isPkceEnabled(),
+                hasPendingVerifier
+            );
+            ensurePendingAuthorizationMatches(connection, state, preserveConnectedStatus);
+            if (error != null && !error.isBlank()) {
+                throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Mercado Pago devolvio error OAuth: " + error +
+                        ((errorDescription == null || errorDescription.isBlank()) ? "" : " - " + errorDescription)
+                );
+            }
+            if (code == null || code.isBlank()) {
+                LOGGER.warn(
+                    "Mercado Pago OAuth callback missing code professionalId={} provider={}",
+                    professional.getId(),
+                    MERCADO_PAGO_PROVIDER
+                );
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Mercado Pago no devolvio code OAuth");
+            }
+            String codeVerifier = resolveCodeVerifierForCallback(connection, state, preserveConnectedStatus);
+            if (mercadoPagoOAuthStateService.isPkceEnabled()
+                && codeVerifier == null
+                && preserveConnectedStatus
+                && connection.getStatus() == ProfessionalPaymentProviderConnectionStatus.CONNECTED) {
+                return toResponse(connection);
+            }
             MercadoPagoOAuthClient.TokenResponse tokenResponse =
-                mercadoPagoOAuthClient.exchangeAuthorizationCode(code);
+                mercadoPagoOAuthClient.exchangeAuthorizationCode(code, codeVerifier);
             String resolvedProviderUserId = tokenResponse.userId() == null
                 ? connection.getProviderUserId()
                 : String.valueOf(tokenResponse.userId());
@@ -172,6 +221,7 @@ public class ProfessionalPaymentProviderConnectionService {
             connection.setLastSyncAt(LocalDateTime.now());
             connection.setLastError(null);
             connection.setMetadataJson(writeMetadata(tokenResponse));
+            markPendingAuthorizationVerifierConsumed(connection, state);
             ProfessionalPaymentProviderConnection persistedConnection = repository.save(connection);
             LOGGER.info(
                 "Mercado Pago OAuth connection persisted professionalId={} provider={} providerUserId={} status={}",
@@ -191,8 +241,30 @@ public class ProfessionalPaymentProviderConnectionService {
                 );
                 return toResponse(connection);
             }
-            persistOAuthError(connection, "token_exchange_failed", exception.getReason(), preserveConnectedStatus);
+            persistOAuthError(
+                connection,
+                classifyOAuthFailureCode(error, code, exception),
+                exception.getReason(),
+                preserveConnectedStatus
+            );
             throw exception;
+        } catch (Exception exception) {
+            LOGGER.error(
+                "Unexpected Mercado Pago OAuth callback failure professionalId={} provider={}",
+                professional.getId(),
+                MERCADO_PAGO_PROVIDER,
+                exception
+            );
+            persistOAuthError(
+                connection,
+                "unexpected_callback_error",
+                exception.getMessage(),
+                preserveConnectedStatus
+            );
+            throw new ResponseStatusException(
+                HttpStatus.BAD_GATEWAY,
+                "No se pudo completar OAuth con Mercado Pago"
+            );
         }
     }
 
@@ -215,6 +287,7 @@ public class ProfessionalPaymentProviderConnectionService {
         connection.setDisconnectedAt(LocalDateTime.now());
         connection.setLastError(null);
         connection.setLastSyncAt(LocalDateTime.now());
+        clearPendingAuthorizationAttempt(connection);
         return toResponse(repository.save(connection));
     }
 
@@ -257,19 +330,23 @@ public class ProfessionalPaymentProviderConnectionService {
         String message,
         boolean preserveConnectedStatus
     ) {
+        String errorMessage = buildErrorMessage(code, message);
         LOGGER.warn(
-            "Persisting Mercado Pago OAuth error professionalId={} provider={} code={} preserveConnectedStatus={}",
+            "Persisting Mercado Pago OAuth error professionalId={} provider={} code={} preserveConnectedStatus={} detail={}",
             connection.getProfessionalId(),
             MERCADO_PAGO_PROVIDER,
             safeForLogs(code),
-            preserveConnectedStatus
+            preserveConnectedStatus,
+            safeForLogs(errorMessage)
         );
-        connection.setLastError(buildErrorMessage(code, message));
+        connection.setLastError(errorMessage);
         connection.setLastSyncAt(LocalDateTime.now());
+        clearPendingAuthorizationAttempt(connection);
         if (!preserveConnectedStatus) {
             connection.setStatus(ProfessionalPaymentProviderConnectionStatus.ERROR);
         }
         repository.save(connection);
+        errorRecorder.recordOAuthError(connection.getId(), errorMessage, preserveConnectedStatus);
     }
 
     private ProfessionalPaymentProviderConnection refreshIfNeeded(ProfessionalPaymentProviderConnection connection) {
@@ -364,6 +441,42 @@ public class ProfessionalPaymentProviderConnectionService {
             || normalizedReason.contains("code already used");
     }
 
+    private String classifyOAuthFailureCode(
+        String providerError,
+        String code,
+        ResponseStatusException exception
+    ) {
+        if (providerError != null && !providerError.isBlank()) {
+            return providerError.trim();
+        }
+        if (code == null || code.isBlank()) {
+            return "missing_code";
+        }
+        if (exception == null || exception.getReason() == null || exception.getReason().isBlank()) {
+            return "token_exchange_failed";
+        }
+        String normalizedReason = exception.getReason().trim().toLowerCase();
+        if (normalizedReason.contains("state oauth")) {
+            return "state_invalid";
+        }
+        if (normalizedReason.contains("autorizacion oauth pendiente")) {
+            return "state_invalid";
+        }
+        if (normalizedReason.contains("code_verifier")) {
+            return "missing_code_verifier";
+        }
+        if (normalizedReason.contains("vinculada a otro profesional")) {
+            return "provider_account_conflict";
+        }
+        if (normalizedReason.contains("invalid_grant")) {
+            return "token_exchange_failed";
+        }
+        if (normalizedReason.contains("oauth con mercado pago")) {
+            return "token_exchange_failed";
+        }
+        return "callback_processing_failed";
+    }
+
     private String buildErrorMessage(String code, String message) {
         String normalizedCode = code == null || code.isBlank() ? "oauth_error" : code.trim();
         String normalizedMessage = message == null || message.isBlank() ? "Sin detalle" : message.trim();
@@ -381,11 +494,100 @@ public class ProfessionalPaymentProviderConnectionService {
         return connection;
     }
 
+    private void storePendingAuthorizationAttempt(
+        ProfessionalPaymentProviderConnection connection,
+        MercadoPagoOAuthStateService.GeneratedState state
+    ) {
+        connection.setPendingOauthState(state.value());
+        connection.setPendingOauthStateExpiresAt(state.expiresAt());
+        if (state.pkceChallenge() != null && state.pkceChallenge().codeVerifier() != null) {
+            connection.setPendingOauthCodeVerifierEncrypted(
+                mercadoPagoOAuthTokenCipher.encrypt(state.pkceChallenge().codeVerifier())
+            );
+        } else {
+            connection.setPendingOauthCodeVerifierEncrypted(null);
+        }
+    }
+
+    private void clearPendingAuthorizationAttempt(ProfessionalPaymentProviderConnection connection) {
+        connection.setPendingOauthState(null);
+        connection.setPendingOauthStateExpiresAt(null);
+        connection.setPendingOauthCodeVerifierEncrypted(null);
+    }
+
+    private void markPendingAuthorizationVerifierConsumed(
+        ProfessionalPaymentProviderConnection connection,
+        String rawState
+    ) {
+        connection.setPendingOauthState(rawState);
+        if (connection.getPendingOauthStateExpiresAt() == null) {
+            connection.setPendingOauthStateExpiresAt(utcNow().plusMinutes(15));
+        }
+        connection.setPendingOauthCodeVerifierEncrypted(null);
+    }
+
+    private void ensurePendingAuthorizationMatches(
+        ProfessionalPaymentProviderConnection connection,
+        String rawState,
+        boolean preserveConnectedStatus
+    ) {
+        String storedState = connection.getPendingOauthState();
+        if (storedState == null || storedState.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "No encontramos una autorizacion OAuth pendiente");
+        }
+        if (!storedState.equals(rawState)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "state OAuth no coincide con el onboarding pendiente");
+        }
+        LocalDateTime expiresAt = connection.getPendingOauthStateExpiresAt();
+        if (expiresAt != null && expiresAt.isBefore(utcNow())) {
+            clearPendingAuthorizationAttempt(connection);
+            repository.save(connection);
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "state OAuth expirado");
+        }
+    }
+
+    private String resolveCodeVerifierForCallback(
+        ProfessionalPaymentProviderConnection connection,
+        String rawState,
+        boolean preserveConnectedStatus
+    ) {
+        if (!mercadoPagoOAuthStateService.isPkceEnabled()) {
+            return null;
+        }
+        if (connection.getPendingOauthCodeVerifierEncrypted() == null
+            || connection.getPendingOauthCodeVerifierEncrypted().isBlank()) {
+            if (preserveConnectedStatus
+                && connection.getPendingOauthState() != null
+                && connection.getPendingOauthState().equals(rawState)) {
+                LOGGER.info(
+                    "Treating Mercado Pago OAuth callback as replay after verifier consumption professionalId={} provider={}",
+                    connection.getProfessionalId(),
+                    MERCADO_PAGO_PROVIDER
+                );
+                return null;
+            }
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "No encontramos un code_verifier pendiente para Mercado Pago");
+        }
+        return mercadoPagoOAuthTokenCipher.decrypt(connection.getPendingOauthCodeVerifierEncrypted());
+    }
+
+    private LocalDateTime utcNow() {
+        return LocalDateTime.now(ZoneOffset.UTC);
+    }
+
     private ProfessionalProfile loadProfessional(Long professionalUserId) {
         if (professionalUserId == null) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Sesion profesional invalida");
         }
         return professionalBillingSubjectGateway.loadEnabledProfessionalByUserId(professionalUserId);
+    }
+
+    private ProfessionalProfile loadProfessionalById(Long professionalId) {
+        if (professionalId == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "professionalId es obligatorio");
+        }
+        return professionalBillingSubjectGateway.findById(professionalId)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Profesional no encontrado"));
     }
 
     private void ensureOnlinePaymentsEnabledForUser(Long professionalUserId) {

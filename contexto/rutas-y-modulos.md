@@ -78,6 +78,8 @@ Lectura de producto:
 - estas rutas soportan el nucleo de `Usuario` y el `MVP`
 - `/explorar`, `/profesional/[slug]` y `/reservar` son parte del loop principal marketplace -> perfil -> reserva
 - `/explorar` y `/profesional/pagina/[slug]` ya no fuerzan auth refresh ni favoritos en 401 cuando el cliente no tiene una sesion conocida; las features auth-only se habilitan recien con hint de sesion valida
+- cuando existe sesion conocida del cliente, `/explorar`, `/profesional/[slug]` y `/profesional/pagina/[slug]` tambien hidratan el perfil cliente para mantener navbar y favoritos coherentes en la navegacion publica
+- aunque no haya sync reciente en memoria, el toggle de favoritos en web revalida contra backend en la primera interaccion util para evitar dobles clicks o estados viejos del cache local
 
 ### Rutas del cliente
 
@@ -162,6 +164,8 @@ Lectura de producto:
 - `/profesional/dashboard/billing` ya separa dos bloques: `Mi plan de Plura` y `Cobros de reservas con Mercado Pago`
 - la web profesional ya consume `GET/POST/DELETE /profesional/payment-providers/mercadopago/*` y no usa `payout-config`
 - el retorno OAuth de Mercado Pago mantiene pantalla propia en `/oauth/mercadopago/callback`, pero ya no procesa `code/state` en frontend: Mercado Pago vuelve al callback backend y este redirige a la web con un resultado final
+- el frontend del billing profesional no implementa PKCE ni almacena `code_verifier`; todo el flujo PKCE de Mercado Pago queda resuelto en backend y la web solo inicia el onboarding y muestra el resultado final
+- el callback OAuth backend tampoco depende ya de la sesion web del profesional para cerrar la vinculacion; esto evita `401` al volver desde Mercado Pago por dominios externos o tuneles tipo `ngrok`
 - en `/profesional/dashboard/billing`, `BASIC` ya no intenta conectar Mercado Pago: muestra un bloque de upgrade y reserva la conexion OAuth solo para `PROFESIONAL / ENTERPRISE`
 - `/profesional/dashboard/billing` no promociona visualmente `PROFESIONAL / ENTERPRISE` mientras la suscripcion siga en `TRIAL`; el plan visible solo cambia cuando el backend ya la ve `ACTIVE`, es decir, despues de la confirmacion via webhook
 - `/profesional/dashboard/billing` evita cargar el estado de conexion de Mercado Pago cuando la pantalla ya va a redirigir al callback OAuth, difiere el montaje inicial de comparativa/planes y carga la conexion de cobros recien al acercarse a esa seccion para bajar trabajo al entrar; sus bloques principales de plan/comparativa/cobros quedan aislados para no rerenderizar toda la superficie ante banners o estados transitorios de billing

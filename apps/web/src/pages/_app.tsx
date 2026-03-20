@@ -32,6 +32,8 @@ export default function App({ Component, pageProps }: AppProps) {
   const shouldAutoLoadClientProfile =
     (isClientArea && !isClientAuthArea) ||
     (isRouteOrChild(pathname, '/explorar') && hasKnownClientSession) ||
+    (isRouteOrChild(pathname, '/profesional/pagina') && hasKnownClientSession) ||
+    (pathname === '/profesional/[slug]' && hasKnownClientSession) ||
     isRouteOrChild(pathname, '/reservar');
 
   const shouldAutoLoadProfessionalProfile =

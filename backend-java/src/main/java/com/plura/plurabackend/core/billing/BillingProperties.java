@@ -432,6 +432,7 @@ public class BillingProperties {
             public void setOauth(OAuth oauth) {
                 this.oauth = oauth == null ? new OAuth() : oauth;
             }
+
         }
 
         public static class OAuth {
@@ -443,6 +444,7 @@ public class BillingProperties {
             private String tokenUrl = "https://api.mercadopago.com/oauth/token";
             private String stateSigningSecret = "";
             private String tokenEncryptionKey = "";
+            private boolean pkceEnabled = false;
 
             public String getClientId() {
                 return clientId;
@@ -506,6 +508,14 @@ public class BillingProperties {
 
             public void setTokenEncryptionKey(String tokenEncryptionKey) {
                 this.tokenEncryptionKey = tokenEncryptionKey;
+            }
+
+            public boolean isPkceEnabled() {
+                return pkceEnabled;
+            }
+
+            public void setPkceEnabled(boolean pkceEnabled) {
+                this.pkceEnabled = pkceEnabled;
             }
         }
     }

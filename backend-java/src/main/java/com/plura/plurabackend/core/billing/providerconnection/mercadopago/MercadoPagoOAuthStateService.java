@@ -4,6 +4,7 @@ import com.plura.plurabackend.core.billing.BillingProperties;
 import com.plura.plurabackend.core.billing.webhooks.signature.SignatureUtils;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.time.Instant;
 import java.time.LocalDateTime;
@@ -37,16 +38,28 @@ public class MercadoPagoOAuthStateService {
         String signature = SignatureUtils.hmacSha256Hex(resolveSigningSecret(), encodedPayload);
         return new GeneratedState(
             encodedPayload + "." + signature,
-            LocalDateTime.ofInstant(Instant.ofEpochSecond(issuedAt + STATE_TTL_SECONDS), ZoneOffset.UTC)
+            LocalDateTime.ofInstant(Instant.ofEpochSecond(issuedAt + STATE_TTL_SECONDS), ZoneOffset.UTC),
+            buildPkceChallenge()
         );
     }
 
     public void validateState(String rawState, Long expectedProfessionalId) {
-        if (rawState == null || rawState.isBlank()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "state OAuth es obligatorio");
-        }
+        ParsedState parsedState = parseAndValidateState(rawState);
         if (expectedProfessionalId == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "professionalId esperado es obligatorio");
+        }
+        if (!expectedProfessionalId.equals(parsedState.professionalId())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "state OAuth no pertenece al profesional autenticado");
+        }
+    }
+
+    public Long resolveProfessionalId(String rawState) {
+        return parseAndValidateState(rawState).professionalId();
+    }
+
+    private ParsedState parseAndValidateState(String rawState) {
+        if (rawState == null || rawState.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "state OAuth es obligatorio");
         }
         int separatorIndex = rawState.lastIndexOf('.');
         if (separatorIndex <= 0 || separatorIndex >= rawState.length() - 1) {
@@ -82,19 +95,41 @@ public class MercadoPagoOAuthStateService {
         } catch (NumberFormatException exception) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "state OAuth invalido");
         }
-        if (!expectedProfessionalId.equals(professionalId)) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "state OAuth no pertenece al profesional autenticado");
-        }
         long nowEpoch = Instant.now().getEpochSecond();
         if (issuedAtEpoch <= 0 || nowEpoch - issuedAtEpoch > STATE_TTL_SECONDS) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "state OAuth expirado");
         }
+        return new ParsedState(professionalId, issuedAtEpoch);
     }
 
     private String randomNonce() {
         byte[] randomBytes = new byte[18];
         secureRandom.nextBytes(randomBytes);
         return Base64.getUrlEncoder().withoutPadding().encodeToString(randomBytes);
+    }
+
+    private PkceChallenge buildPkceChallenge() {
+        if (!isPkceEnabled()) {
+            return null;
+        }
+        byte[] randomBytes = new byte[64];
+        secureRandom.nextBytes(randomBytes);
+        String verifier = Base64.getUrlEncoder().withoutPadding().encodeToString(randomBytes);
+        try {
+            byte[] challengeBytes = MessageDigest.getInstance("SHA-256")
+                .digest(verifier.getBytes(StandardCharsets.US_ASCII));
+            String challenge = Base64.getUrlEncoder().withoutPadding().encodeToString(challengeBytes);
+            return new PkceChallenge(verifier, challenge, "S256");
+        } catch (NoSuchAlgorithmException exception) {
+            throw new ResponseStatusException(
+                HttpStatus.INTERNAL_SERVER_ERROR,
+                "No se pudo inicializar PKCE para Mercado Pago OAuth"
+            );
+        }
+    }
+
+    public boolean isPkceEnabled() {
+        return billingProperties.getMercadopago().getReservations().getOauth().isPkceEnabled();
     }
 
     private String resolveSigningSecret() {
@@ -114,5 +149,9 @@ public class MercadoPagoOAuthStateService {
         );
     }
 
-    public record GeneratedState(String value, LocalDateTime expiresAt) {}
+    public record GeneratedState(String value, LocalDateTime expiresAt, PkceChallenge pkceChallenge) {}
+
+    public record PkceChallenge(String codeVerifier, String codeChallenge, String codeChallengeMethod) {}
+
+    private record ParsedState(Long professionalId, long issuedAtEpoch) {}
 }

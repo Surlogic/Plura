@@ -6,6 +6,7 @@ import { useProfessionalProfileContext } from '@/context/ProfessionalProfileCont
 import Button from '@/components/ui/Button';
 import BrandLogo from '@/components/ui/BrandLogo';
 import ThemeSwitcher from '@/components/theme/ThemeSwitcher';
+import { clearFavoriteProfessionals } from '@/services/clientFeatures';
 import { clearAuthAccessToken } from '@/services/session';
 
 type NavbarProps = {
@@ -64,6 +65,7 @@ export default function Navbar({
       .catch(() => undefined)
       .finally(() => {
         clearAuthAccessToken();
+        clearFavoriteProfessionals();
         clearProfessionalProfile();
         clearClientProfile();
         if (role === 'PROFESSIONAL') {

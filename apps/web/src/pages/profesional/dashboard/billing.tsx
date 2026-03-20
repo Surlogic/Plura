@@ -377,15 +377,15 @@ export default function ProfesionalBillingPage() {
 
                     {canUseOnlinePayments ? (
                       showPaymentsSection ? (
-                      <MercadoPagoConnectionCard
-                        connection={connection}
-                        isLoading={isLoadingConnection}
-                        isStartingOAuth={isStartingOAuth}
-                        isDisconnecting={isDisconnecting}
-                        onConnect={handleStartMercadoPagoOAuth}
-                        onDisconnect={handleDisconnectMercadoPagoConnection}
-                        onRefresh={handleRefreshMercadoPagoConnection}
-                      />
+                        <MercadoPagoConnectionCard
+                          connection={connection}
+                          isLoading={isLoadingConnection}
+                          isStartingOAuth={isStartingOAuth}
+                          isDisconnecting={isDisconnecting}
+                          onConnect={handleStartMercadoPagoOAuth}
+                          onDisconnect={handleDisconnectMercadoPagoConnection}
+                          onRefresh={handleRefreshMercadoPagoConnection}
+                        />
                       ) : (
                         <div className="rounded-[28px] border border-white/70 bg-white/95 p-6 shadow-[0_18px_40px_rgba(15,23,42,0.12)]">
                           <div className="h-5 w-56 rounded-full bg-[#E2E7EC]" />

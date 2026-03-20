@@ -136,6 +136,7 @@ Variables de backend para Mercado Pago de reservas y OAuth profesional:
 - `BILLING_MERCADOPAGO_RESERVATIONS_OAUTH_TOKEN_URL`
 - `BILLING_MERCADOPAGO_RESERVATIONS_OAUTH_STATE_SIGNING_SECRET`
 - `BILLING_MERCADOPAGO_RESERVATIONS_OAUTH_TOKEN_ENCRYPTION_KEY`
+- `BILLING_MERCADOPAGO_RESERVATIONS_OAUTH_PKCE_ENABLED`
 
 Notas reales de binding local:
 
@@ -144,12 +145,14 @@ Notas reales de binding local:
 - el backend mantiene fallback a los nombres legacy `BILLING_MERCADOPAGO_ACCESS_TOKEN`, `BILLING_MERCADOPAGO_WEBHOOK_SECRET` y `BILLING_MERCADOPAGO_OAUTH_*`, pero el naming operativo recomendado ya es explicito por dominio: `SUBSCRIPTIONS_*` para planes y `RESERVATIONS_*` para cobros/OAuth profesional
 - para OAuth de Mercado Pago el error de `state` ya no implica adivinar secretos: el backend espera primero `BILLING_MERCADOPAGO_RESERVATIONS_OAUTH_STATE_SIGNING_SECRET`, y si no existe hace fallback a la clave de cifrado o al client secret
 - en local, tener solo `BILLING_MERCADOPAGO_RESERVATIONS_PLATFORM_ACCESS_TOKEN` no alcanza para OAuth: para abrir el onboarding siguen siendo obligatorios `CLIENT_ID` y `REDIRECT_URI`; para completar el callback y persistir la conexion del profesional tambien se vuelve obligatorio `CLIENT_SECRET`
+- con `BILLING_MERCADOPAGO_RESERVATIONS_OAUTH_PKCE_ENABLED=true`, el backend genera `code_verifier` y `code_challenge` con `S256`, persiste temporalmente el `verifier` cifrado en `professional_payment_provider_connection`, y en el token exchange manda `code_verifier` sin exponerlo al frontend
 - `BILLING_MERCADOPAGO_RESERVATIONS_OAUTH_REDIRECT_URI` debe coincidir exactamente con el callback backend registrado en la app OAuth de Mercado Pago; ejemplos:
   `http://localhost:3000/profesional/payment-providers/mercadopago/oauth/callback`
   `https://plura-ir62.onrender.com/profesional/payment-providers/mercadopago/oauth/callback`
 - `BILLING_MERCADOPAGO_RESERVATIONS_OAUTH_FRONTEND_REDIRECT_URL` es la pantalla web final de resultado y no debe registrarse en Mercado Pago como Redirect URL OAuth
 - el storage de credenciales para miles de profesionales ya esta separado en tres capas: credenciales globales de suscripciones, credenciales globales de reservas/OAuth profesional y tokens por profesional cifrados en `professional_payment_provider_connection`
 - `metadata_json` de la conexion OAuth no debe guardar la respuesta cruda del provider ni tokens en claro; solo metadata minima util como `scope`, `userId`, `publicKey` y flags operativos
+- la misma fila `professional_payment_provider_connection` guarda ahora tambien el intento OAuth pendiente (`pending_oauth_state`, `pending_oauth_state_expires_at`, `pending_oauth_code_verifier_encrypted`) para resolver PKCE y correlacionar callbacks sin depender de memoria de proceso
 
 Variable web nueva para Mercado Pago reservas:
 
@@ -225,6 +228,7 @@ Lectura de producto:
 
 - cubre API, mapa y login social en web
 - el repo ya trae `pnpm -C apps/web analyze` para abrir el analisis de chunks sin agregar tooling nuevo
+- para probar localmente OAuth profesional de Mercado Pago end-to-end, `.env.frontend` debe apuntar al backend local (`NEXT_PUBLIC_API_URL=http://localhost:3000`); si la web local apunta a Render, el onboarding usa el backend remoto aunque la UI corra en `localhost:3002`
 
 ### Mobile
 
@@ -377,7 +381,7 @@ Notas reales de deploy en Render:
 
 ## Observaciones de mantenimiento
 
-- `docker-compose.yml` de raiz parece de una estructura anterior y no coincide con `backend-java`.
+- `docker-compose.yml` de raiz ya quedo alineado con el monorepo actual: levanta `backend-java` con Gradle y `apps/web` con `pnpm`, usando `.env.backend`, `backend-java/.env` y `.env.frontend`
 - `packages/shared` no esta empaquetado como workspace package consumible.
 - `apps/web/next.config.js` habilita `externalDir` para poder importar desde `packages/shared/src`.
 - el backend contempla H2 como fallback de arranque, pero la app real esta pensada para PostgreSQL.
@@ -385,3 +389,5 @@ Notas reales de deploy en Render:
 - Flyway conserva migraciones historicas de dLocal (`V34`, `V37`) solo por continuidad de schema; el runtime vigente ya es Mercado Pago only y `V47` elimina los campos legacy del dominio profesional.
 - billing de suscripciones requiere que el schema de `subscription` acepte `PLAN_BASIC`, `PLAN_PROFESIONAL` y `PLAN_ENTERPRISE`; `V51` alinea el constraint legacy que todavia admitia `PLAN_PRO` y `PLAN_PREMIUM`
 - en local, `backend-java/.env` usa como retorno de suscripcion Mercado Pago una URL publica HTTPS de Render en vez de `localhost`, porque `preapproval` no acepta `localhost` y `plura.com` no estaba resolviendo un TLS util para el retorno
+- en `render.yaml`, el servicio `plura-api` usa `rootDir=backend-java`, por lo que `dockerfilePath` y `dockerContext` deben mantenerse relativos a esa carpeta; hoy quedaron alineados a `./Dockerfile` y `.`
+- el blueprint de Render ya expone tanto variables legacy de Mercado Pago como el naming explicito por dominio `SUBSCRIPTIONS_*` y `RESERVATIONS_*`, incluido el flag `BILLING_MERCADOPAGO_RESERVATIONS_OAUTH_PKCE_ENABLED`

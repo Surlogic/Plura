@@ -171,11 +171,16 @@ Lectura de producto:
 - `GET /profesional/reservas` sostiene gestion operativa de reservas para `Free/BASIC` y no debe confundirse con gating de agenda semanal o mensual
 - `POST /profesional/payment-providers/mercadopago/oauth/start` y `GET /profesional/payment-providers/mercadopago/oauth/callback` ahora exigen capacidad `ONLINE_PAYMENTS`; `BASIC` no puede iniciar ni completar la conexion OAuth
 - `POST /profesional/payment-providers/mercadopago/oauth/start` solo necesita la configuracion minima para abrir Mercado Pago: `client-id`, `redirect-uri` y `authorization-url`
+- si `billing.mercadopago.reservations.oauth.pkce-enabled=true`, `POST /profesional/payment-providers/mercadopago/oauth/start` genera ademas `code_verifier`, `code_challenge` y `code_challenge_method=S256`; el `verifier` queda almacenado temporalmente en backend y nunca pasa por frontend
 - `billing.mercadopago.reservations.oauth.redirect-uri` debe apuntar al callback backend exacto `/profesional/payment-providers/mercadopago/oauth/callback`; el frontend ya no recibe `code/state` crudos de Mercado Pago
-- `GET /profesional/payment-providers/mercadopago/oauth/callback` sigue requiriendo `client-secret` y `token-url`, porque ahi recien se canjea el `code` y se guardan los tokens OAuth del profesional; despues redirige al frontend con un resultado resumido `connected / cancelled / error`
-- el callback valida `state` firmado contra el profesional autenticado; si el `state` pertenece a otro profesional, responde `403`
+- `GET /profesional/payment-providers/mercadopago/oauth/callback` sigue requiriendo `client-secret` y `token-url`, porque ahi recien se canjea el `code` y se guardan los tokens OAuth del profesional; con PKCE activo tambien exige recuperar el `code_verifier` pendiente desde backend antes del token exchange
+- el callback backend ya no depende de la sesion/cookie del profesional para completarse; resuelve el `professionalId` desde el `state` firmado y luego exige que ese `state` coincida con el onboarding pendiente guardado en `professional_payment_provider_connection`
+- por eso `GET /profesional/payment-providers/mercadopago/oauth/callback` queda expuesto como `permitAll` en Spring Security; la seguridad del cierre OAuth ya no depende de JWT sino de `state` firmado + correlacion backend
+- si el `state` es valido pero pertenece a otro profesional respecto del intento pendiente, el backend rechaza el callback
 - la misma cuenta Mercado Pago no puede quedar conectada simultaneamente a dos profesionales distintos; el backend rechaza esa reconexion con `409`
 - si el navegador reintenta el callback despues de una conexion ya exitosa y Mercado Pago responde `invalid_grant` por reutilizacion del `code`, el backend conserva la conexion existente y trata ese replay como idempotente
+- si el callback falla durante el token exchange u otra validacion posterior, el backend intenta persistir `last_error` y limpiar el onboarding pendiente en una transaccion separada para no perder el motivo real del fallo
+- el callback tambien cubre errores inesperados fuera de `ResponseStatusException` para no perderlos como `500` mudos: los persiste como `unexpected_callback_error` y redirige frontend con `oauth_failed`
 - las credenciales globales de Mercado Pago ya no son un bloque unico: suscripciones usa `billing.mercadopago.subscriptions.*` y reservas/OAuth profesional usa `billing.mercadopago.reservations.*`
 
 Notas:

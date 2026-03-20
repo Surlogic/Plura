@@ -61,7 +61,6 @@ const MAX_PENDING_CHECKOUT_AGE_MS = 5 * 60 * 1000;
 
 const refreshProfessionalCaches = async (refreshProfile: () => Promise<void>) => {
   invalidateCachedGet('/auth/me/profesional');
-  invalidateCachedGet('/auth/me/professional');
   await refreshProfile();
 };
 
@@ -97,6 +96,8 @@ export function useProfessionalBilling({
   const pendingRetryRef = useRef<BillingStatusCheckSource | null>(null);
   const [pollRestartTrigger, setPollRestartTrigger] = useState(0);
   const profileSyncSignatureRef = useRef<string | null>(null);
+  const refreshProfileRef = useRef(refreshProfile);
+  refreshProfileRef.current = refreshProfile;
 
   const loadSubscription = useCallback(async () => {
     if (!profile?.id) return;
@@ -169,12 +170,11 @@ export function useProfessionalBilling({
       return;
     }
     profileSyncSignatureRef.current = signature;
-    void refreshProfessionalCaches(refreshProfile);
+    void refreshProfessionalCaches(refreshProfileRef.current);
   }, [
     profile?.id,
     profile?.professionalEntitlements?.allowOnlinePayments,
     profile?.professionalPlan,
-    refreshProfile,
     subscription,
   ]);
 
@@ -230,6 +230,15 @@ export function useProfessionalBilling({
     });
   }, [profile?.professionalEntitlements]);
 
+  // --- Ref-stabilised polling callbacks ---
+  // By reading the latest function from a ref inside timers, we avoid
+  // including the callbacks themselves in useEffect dependency arrays.
+  // This prevents the polling effect from restarting every time a
+  // callback identity changes.
+
+  const pendingCheckoutRef = useRef(pendingCheckout);
+  pendingCheckoutRef.current = pendingCheckout;
+
   const handleObservedSubscription = useCallback(async (
     nextSubscription: BillingSubscription | null,
     source: BillingStatusCheckSource,
@@ -242,27 +251,23 @@ export function useProfessionalBilling({
         title: 'Suscripcion activada',
         description: 'Tu plan ya esta disponible en el dashboard.',
       });
-      await refreshProfessionalCaches(refreshProfile);
+      await refreshProfessionalCaches(refreshProfileRef.current);
       return;
     }
 
     if (nextSubscription?.status === 'TRIAL') {
       if (source === 'checkout-return') {
-        // Webhook hasn't confirmed the payment yet. Keep pendingCheckout and
-        // trigger the polling effect to restart (return flag was already cleared).
         setPollRestartTrigger((n) => n + 1);
         setBanner(buildTrialBanner(true));
         return;
       }
-      setBanner(buildTrialBanner(pendingCheckout !== null));
+      setBanner(buildTrialBanner(pendingCheckoutRef.current !== null));
       return;
     }
 
     if (!nextSubscription) {
       if (source === 'checkout-return') {
-        // Backend might still be processing (cold start, latency).
-        // Keep pendingCheckout and trigger polling to wait for webhook.
-        const ageMs = pendingCheckout ? Date.now() - pendingCheckout.createdAt : 0;
+        const ageMs = pendingCheckoutRef.current ? Date.now() - pendingCheckoutRef.current.createdAt : 0;
         if (ageMs < MAX_PENDING_CHECKOUT_AGE_MS) {
           setPollRestartTrigger((n) => n + 1);
           setBanner({
@@ -312,7 +317,10 @@ export function useProfessionalBilling({
         description: 'La suscripcion fue cancelada. Puedes seguir navegando o iniciar un nuevo checkout.',
       });
     }
-  }, [clearPendingCheckout, pendingCheckout, refreshProfile, stopPollingCheckout]);
+  }, [clearPendingCheckout, stopPollingCheckout]);
+
+  const handleObservedSubscriptionRef = useRef(handleObservedSubscription);
+  handleObservedSubscriptionRef.current = handleObservedSubscription;
 
   const runStatusCheck = useCallback(async (source: BillingStatusCheckSource) => {
     if (isCheckingStatusRef.current) {
@@ -329,7 +337,7 @@ export function useProfessionalBilling({
     try {
       const nextSubscription = await fetchCurrentSubscription();
       setSubscription(nextSubscription);
-      await handleObservedSubscription(nextSubscription, source);
+      await handleObservedSubscriptionRef.current(nextSubscription, source);
     } catch (error) {
       if (source === 'manual') {
         setBanner({
@@ -363,7 +371,10 @@ export function useProfessionalBilling({
         void runStatusCheck(retrySource);
       }
     }
-  }, [handleObservedSubscription, stopPollingCheckout]);
+  }, [stopPollingCheckout]);
+
+  const runStatusCheckRef = useRef(runStatusCheck);
+  runStatusCheckRef.current = runStatusCheck;
 
   const schedulePollWithBackoff = useCallback((
     baseMs: number,
@@ -373,10 +384,10 @@ export function useProfessionalBilling({
     pollAttemptRef.current += 1;
     pollTimeoutRef.current = window.setTimeout(() => {
       pollTimeoutRef.current = null;
-      void runStatusCheck('polling');
+      void runStatusCheckRef.current('polling');
       schedulePollWithBackoff(baseMs, maxMs);
     }, delay);
-  }, [runStatusCheck]);
+  }, []);
 
   const startSoftPolling = useCallback((remainingMs: number) => {
     stopPolling();
@@ -410,13 +421,16 @@ export function useProfessionalBilling({
     }, remainingMs);
   }, [schedulePollWithBackoff, stopPolling, stopPollingCheckout]);
 
+  const startSoftPollingRef = useRef(startSoftPolling);
+  startSoftPollingRef.current = startSoftPolling;
+
   const startIntensivePolling = useCallback((remainingMs: number) => {
     stopPolling();
 
     if (remainingMs <= 0) {
       const latestPending = getPendingCheckoutState();
       const ageMs = latestPending ? Date.now() - latestPending.createdAt : MAX_PENDING_CHECKOUT_AGE_MS;
-      startSoftPolling(Math.max(0, MAX_PENDING_CHECKOUT_AGE_MS - ageMs));
+      startSoftPollingRef.current(Math.max(0, MAX_PENDING_CHECKOUT_AGE_MS - ageMs));
       return;
     }
 
@@ -433,9 +447,12 @@ export function useProfessionalBilling({
       stopPolling();
       const latestPending = getPendingCheckoutState();
       const ageMs = latestPending ? Date.now() - latestPending.createdAt : MAX_PENDING_CHECKOUT_AGE_MS;
-      startSoftPolling(Math.max(0, MAX_PENDING_CHECKOUT_AGE_MS - ageMs));
+      startSoftPollingRef.current(Math.max(0, MAX_PENDING_CHECKOUT_AGE_MS - ageMs));
     }, remainingMs);
-  }, [schedulePollWithBackoff, startSoftPolling, stopPolling]);
+  }, [schedulePollWithBackoff, stopPolling]);
+
+  const startIntensivePollingRef = useRef(startIntensivePolling);
+  startIntensivePollingRef.current = startIntensivePolling;
 
   useEffect(() => {
     if (!profile?.id || !pendingCheckout) {
@@ -461,16 +478,16 @@ export function useProfessionalBilling({
     }
 
     if (ageMs < INTENSIVE_POLL_DURATION_MS) {
-      startIntensivePolling(INTENSIVE_POLL_DURATION_MS - ageMs);
-      void runStatusCheck('resume');
+      startIntensivePollingRef.current(INTENSIVE_POLL_DURATION_MS - ageMs);
+      void runStatusCheckRef.current('resume');
 
       return () => {
         stopPolling();
       };
     }
 
-    startSoftPolling(MAX_PENDING_CHECKOUT_AGE_MS - ageMs);
-    void runStatusCheck('resume');
+    startSoftPollingRef.current(MAX_PENDING_CHECKOUT_AGE_MS - ageMs);
+    void runStatusCheckRef.current('resume');
 
     return () => {
       stopPolling();
@@ -479,19 +496,16 @@ export function useProfessionalBilling({
     pendingCheckout,
     pollRestartTrigger,
     profile?.id,
-    runStatusCheck,
-    startIntensivePolling,
-    startSoftPolling,
     stopPolling,
     stopPollingCheckout,
   ]);
 
   const handleCheckoutReturn = useCallback(async () => {
-    if (!profile?.id || !pendingCheckout || !hasPendingCheckoutReturnState()) return;
+    if (!profile?.id || !pendingCheckoutRef.current || !hasPendingCheckoutReturnState()) return;
 
     clearPendingCheckoutReturnState();
-    await runStatusCheck('checkout-return');
-  }, [pendingCheckout, profile?.id, runStatusCheck]);
+    await runStatusCheckRef.current('checkout-return');
+  }, [profile?.id]);
 
   useEffect(() => {
     if (!profile?.id || !pendingCheckout) return;
@@ -509,8 +523,8 @@ export function useProfessionalBilling({
   }, [handleCheckoutReturn, pendingCheckout, profile?.id]);
 
   const refreshSubscriptionStatus = useCallback(async () => {
-    await runStatusCheck('manual');
-  }, [runStatusCheck]);
+    await runStatusCheckRef.current('manual');
+  }, []);
 
   const handleSelectPlan = useCallback(async (planId: BillingUiPlanId) => {
     if (planId === 'BASIC') {
@@ -529,7 +543,7 @@ export function useProfessionalBilling({
       try {
         const nextSubscription = await cancelBillingSubscription();
         setSubscription(nextSubscription);
-        await refreshProfessionalCaches(refreshProfile);
+        await refreshProfessionalCaches(refreshProfileRef.current);
         setBanner({
           tone: 'success',
           title: isMercadoPago ? 'Suscripcion cancelada' : 'Cambio a BASIC programado',
@@ -582,7 +596,7 @@ export function useProfessionalBilling({
       });
       setIsRedirectingToCheckout(false);
     }
-  }, [currentPlanId, refreshProfile, subscription]);
+  }, [currentPlanId, subscription]);
 
   const dismissBanner = useCallback(() => {
     setBanner(null);

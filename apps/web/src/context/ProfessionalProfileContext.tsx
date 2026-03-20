@@ -23,10 +23,7 @@ type ProfessionalProfileContextValue = {
 const ProfessionalProfileContext =
   createContext<ProfessionalProfileContextValue | null>(null);
 
-const PROFESSIONAL_PROFILE_ENDPOINTS = [
-  '/auth/me/profesional',
-  '/auth/me/professional',
-];
+const PROFESSIONAL_PROFILE_ENDPOINT = '/auth/me/profesional';
 
 export function ProfessionalProfileProvider({
   children,
@@ -40,7 +37,7 @@ export function ProfessionalProfileProvider({
   const [hasLoaded, setHasLoaded] = useState(false);
 
   const clearProfile = useCallback(() => {
-    PROFESSIONAL_PROFILE_ENDPOINTS.forEach((endpoint) => invalidateCachedGet(endpoint));
+    invalidateCachedGet(PROFESSIONAL_PROFILE_ENDPOINT);
     setProfile(null);
     setHasLoaded(true);
     setIsLoading(false);
@@ -49,30 +46,12 @@ export function ProfessionalProfileProvider({
   const refreshProfile = useCallback(async () => {
     setIsLoading(true);
     try {
-      let loadedProfile: ProfessionalProfile | null = null;
-
-      for (let index = 0; index < PROFESSIONAL_PROFILE_ENDPOINTS.length; index += 1) {
-        const endpoint = PROFESSIONAL_PROFILE_ENDPOINTS[index];
-        try {
-          const response = await cachedGet<ProfessionalProfile>(endpoint, undefined, {
-            ttlMs: 15000,
-          });
-          loadedProfile = response.data;
-          break;
-        } catch (error) {
-          const status = (error as { response?: { status?: number } }).response?.status;
-          const isLastEndpoint = index === PROFESSIONAL_PROFILE_ENDPOINTS.length - 1;
-          if (status === 401 || status === 403) {
-            loadedProfile = null;
-            break;
-          }
-          if (status !== 404 || isLastEndpoint) {
-            throw error;
-          }
-        }
-      }
-
-      setProfile(loadedProfile);
+      const response = await cachedGet<ProfessionalProfile>(
+        PROFESSIONAL_PROFILE_ENDPOINT,
+        undefined,
+        { ttlMs: 15000 },
+      );
+      setProfile(response.data);
     } catch {
       setProfile(null);
     } finally {

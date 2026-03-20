@@ -240,9 +240,10 @@ export function ProfessionalDashboardUnsavedChangesProvider({
   }, [router, router.events]);
 
   useEffect(() => {
-    if (!isDashboardRoute || !isDirty) return;
+    if (!isDashboardRoute) return;
 
     const onBeforeUnload = (event: BeforeUnloadEvent) => {
+      if (!dirtyRef.current) return;
       event.preventDefault();
       event.returnValue = '';
     };
@@ -250,7 +251,7 @@ export function ProfessionalDashboardUnsavedChangesProvider({
     return () => {
       window.removeEventListener('beforeunload', onBeforeUnload);
     };
-  }, [isDashboardRoute, isDirty]);
+  }, [isDashboardRoute]);
 
   useEffect(() => {
     if (!isDashboardRoute || !isSaving) {

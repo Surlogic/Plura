@@ -171,7 +171,8 @@ Lectura de producto:
 - `GET /profesional/reservas` sostiene gestion operativa de reservas para `Free/BASIC` y no debe confundirse con gating de agenda semanal o mensual
 - `POST /profesional/payment-providers/mercadopago/oauth/start` y `GET /profesional/payment-providers/mercadopago/oauth/callback` ahora exigen capacidad `ONLINE_PAYMENTS`; `BASIC` no puede iniciar ni completar la conexion OAuth
 - `POST /profesional/payment-providers/mercadopago/oauth/start` solo necesita la configuracion minima para abrir Mercado Pago: `client-id`, `redirect-uri` y `authorization-url`
-- `GET /profesional/payment-providers/mercadopago/oauth/callback` sigue requiriendo `client-secret` y `token-url`, porque ahi recien se canjea el `code` y se guardan los tokens OAuth del profesional
+- `billing.mercadopago.oauth.redirect-uri` debe apuntar al callback backend exacto `/profesional/payment-providers/mercadopago/oauth/callback`; el frontend ya no recibe `code/state` crudos de Mercado Pago
+- `GET /profesional/payment-providers/mercadopago/oauth/callback` sigue requiriendo `client-secret` y `token-url`, porque ahi recien se canjea el `code` y se guardan los tokens OAuth del profesional; despues redirige al frontend con un resultado resumido `connected / cancelled / error`
 - el callback valida `state` firmado contra el profesional autenticado; si el `state` pertenece a otro profesional, responde `403`
 - la misma cuenta Mercado Pago no puede quedar conectada simultaneamente a dos profesionales distintos; el backend rechaza esa reconexion con `409`
 - si el navegador reintenta el callback despues de una conexion ya exitosa y Mercado Pago responde `invalid_grant` por reutilizacion del `code`, el backend conserva la conexion existente y trata ese replay como idempotente

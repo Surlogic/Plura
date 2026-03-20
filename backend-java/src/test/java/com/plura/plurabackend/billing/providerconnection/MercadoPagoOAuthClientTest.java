@@ -19,7 +19,7 @@ class MercadoPagoOAuthClientTest {
         String authorizationUrl = client.buildAuthorizationUrl("state-123");
 
         assertEquals(
-            "https://auth.mercadopago.com/authorization?client_id=1234567890&response_type=code&platform_id=mp&state=state-123&redirect_uri=http://localhost:3002/oauth/mercadopago/callback",
+            "https://auth.mercadopago.com/authorization?client_id=1234567890&response_type=code&platform_id=mp&state=state-123&redirect_uri=http://localhost:3000/profesional/payment-providers/mercadopago/oauth/callback",
             authorizationUrl
         );
     }
@@ -67,6 +67,24 @@ class MercadoPagoOAuthClientTest {
         assertEquals("Falta configurar billing.mercadopago.oauth.redirect-uri", exception.getReason());
     }
 
+    @Test
+    void shouldRejectFrontendRedirectUriForAuthorizationUrl() {
+        BillingProperties properties = configuredProperties();
+        properties.getMercadopago().getOauth().setRedirectUri("http://localhost:3002/oauth/mercadopago/callback");
+        MercadoPagoOAuthClient client = new MercadoPagoOAuthClient(properties, new ObjectMapper());
+
+        ResponseStatusException exception = assertThrows(
+            ResponseStatusException.class,
+            () -> client.buildAuthorizationUrl("state-123")
+        );
+
+        assertEquals(HttpStatus.SERVICE_UNAVAILABLE, exception.getStatusCode());
+        assertEquals(
+            "billing.mercadopago.oauth.redirect-uri debe apuntar al callback backend /profesional/payment-providers/mercadopago/oauth/callback",
+            exception.getReason()
+        );
+    }
+
     private BillingProperties configuredProperties() {
         BillingProperties properties = new BillingProperties();
         properties.setEnabled(true);
@@ -74,7 +92,7 @@ class MercadoPagoOAuthClientTest {
         BillingProperties.MercadoPago mercadoPago = properties.getMercadopago();
         mercadoPago.setEnabled(true);
         mercadoPago.getOauth().setClientId("1234567890");
-        mercadoPago.getOauth().setRedirectUri("http://localhost:3002/oauth/mercadopago/callback");
+        mercadoPago.getOauth().setRedirectUri("http://localhost:3000/profesional/payment-providers/mercadopago/oauth/callback");
         mercadoPago.getOauth().setAuthorizationUrl("https://auth.mercadopago.com/authorization");
         mercadoPago.getOauth().setTokenUrl("https://api.mercadopago.com/oauth/token");
 

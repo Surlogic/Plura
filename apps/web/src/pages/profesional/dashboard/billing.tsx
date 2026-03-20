@@ -15,10 +15,6 @@ import BillingPlansGrid from '@/components/billing/BillingPlansGrid';
 import BillingStatusBanner from '@/components/billing/BillingStatusBanner';
 import MercadoPagoConnectionCard from '@/components/billing/MercadoPagoConnectionCard';
 import MercadoPagoUpgradeCard from '@/components/billing/MercadoPagoUpgradeCard';
-import {
-  clearMercadoPagoConnectionAttempt,
-  hasMercadoPagoConnectionAttempt,
-} from '@/lib/billing/mercadoPagoConnectionAttempt';
 import { resolveProfessionalFeatureAccess } from '@/lib/billing/featureGuards';
 import { getMercadoPagoConnectionStatusCopy } from '@/lib/billing/professionalMercadoPagoConnection';
 import { useProfessionalMercadoPagoConnection } from '@/hooks/useProfessionalMercadoPagoConnection';
@@ -36,12 +32,9 @@ export default function ProfesionalBillingPage() {
   const [showPaymentsSection, setShowPaymentsSection] = useState(false);
   const featureAccess = resolveProfessionalFeatureAccess(profile);
   const canUseOnlinePayments = featureAccess.onlinePayments;
-  const hasMercadoPagoOAuthAttempt =
-    canUseOnlinePayments && hasMercadoPagoConnectionAttempt();
   const shouldLoadMercadoPagoConnection =
     Boolean(profile?.id)
     && canUseOnlinePayments
-    && !hasMercadoPagoOAuthAttempt
     && showPaymentsSection;
 
   const {
@@ -90,18 +83,6 @@ export default function ProfesionalBillingPage() {
     : 'Tu plan actual no habilita cobros online';
 
   const showSkeleton = !hasLoaded || (isLoading && !profile);
-
-  useEffect(() => {
-    if (!router.isReady) return;
-    if (!canUseOnlinePayments) {
-      if (hasMercadoPagoOAuthAttempt) {
-        clearMercadoPagoConnectionAttempt();
-      }
-      return;
-    }
-    if (!hasMercadoPagoOAuthAttempt) return;
-    void router.replace('/oauth/mercadopago/callback');
-  }, [canUseOnlinePayments, hasMercadoPagoOAuthAttempt, router, router.isReady]);
 
   useEffect(() => {
     if (showDeferredPlanDetails) return undefined;

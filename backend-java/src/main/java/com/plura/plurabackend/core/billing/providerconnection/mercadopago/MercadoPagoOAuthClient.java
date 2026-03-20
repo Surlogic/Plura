@@ -25,6 +25,9 @@ import org.springframework.web.util.UriComponentsBuilder;
 @Service
 public class MercadoPagoOAuthClient {
 
+    public static final String BACKEND_CALLBACK_PATH =
+        "/profesional/payment-providers/mercadopago/oauth/callback";
+
     private static final Logger LOGGER = LoggerFactory.getLogger(MercadoPagoOAuthClient.class);
 
     private final BillingProperties billingProperties;
@@ -44,7 +47,7 @@ public class MercadoPagoOAuthClient {
 
     public String buildAuthorizationUrl(String state) {
         BillingProperties.MercadoPago.OAuth oauth = requireConfiguredAuthorization();
-        return UriComponentsBuilder.fromUriString(oauth.getAuthorizationUrl())
+        String authorizationUrl = UriComponentsBuilder.fromUriString(oauth.getAuthorizationUrl())
             .queryParam("client_id", oauth.getClientId())
             .queryParam("response_type", "code")
             .queryParam("platform_id", "mp")
@@ -52,6 +55,13 @@ public class MercadoPagoOAuthClient {
             .queryParam("redirect_uri", oauth.getRedirectUri())
             .build(true)
             .toUriString();
+        LOGGER.info(
+            "Built Mercado Pago OAuth authorization URL authorizationBase={} redirectUri={} clientId={}",
+            safeForLogs(oauth.getAuthorizationUrl()),
+            safeForLogs(oauth.getRedirectUri()),
+            safeForLogs(oauth.getClientId())
+        );
+        return authorizationUrl;
     }
 
     public TokenResponse exchangeAuthorizationCode(String code) {
@@ -163,6 +173,7 @@ public class MercadoPagoOAuthClient {
         requirePresent(oauth.getClientId(), "billing.mercadopago.oauth.client-id");
         requirePresent(oauth.getRedirectUri(), "billing.mercadopago.oauth.redirect-uri");
         requirePresent(oauth.getAuthorizationUrl(), "billing.mercadopago.oauth.authorization-url");
+        requireBackendCallbackRedirectUri(oauth.getRedirectUri());
         return oauth;
     }
 
@@ -178,6 +189,25 @@ public class MercadoPagoOAuthClient {
             throw new ResponseStatusException(
                 HttpStatus.SERVICE_UNAVAILABLE,
                 "Falta configurar " + configKey
+            );
+        }
+    }
+
+    private void requireBackendCallbackRedirectUri(String redirectUri) {
+        try {
+            URI uri = URI.create(redirectUri.trim());
+            String path = uri.getPath();
+            if (path == null || !path.equals(BACKEND_CALLBACK_PATH)) {
+                throw new ResponseStatusException(
+                    HttpStatus.SERVICE_UNAVAILABLE,
+                    "billing.mercadopago.oauth.redirect-uri debe apuntar al callback backend "
+                        + BACKEND_CALLBACK_PATH
+                );
+            }
+        } catch (IllegalArgumentException exception) {
+            throw new ResponseStatusException(
+                HttpStatus.SERVICE_UNAVAILABLE,
+                "billing.mercadopago.oauth.redirect-uri no es una URL valida"
             );
         }
     }
@@ -254,6 +284,17 @@ public class MercadoPagoOAuthClient {
         } catch (NumberFormatException exception) {
             return null;
         }
+    }
+
+    private String safeForLogs(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        String trimmed = value.trim();
+        if (trimmed.length() <= 16) {
+            return trimmed;
+        }
+        return trimmed.substring(0, 8) + "..." + trimmed.substring(trimmed.length() - 4);
     }
 
     public record TokenResponse(

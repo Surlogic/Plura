@@ -376,6 +376,7 @@ billing:
       client-id: ${BILLING_MERCADOPAGO_OAUTH_CLIENT_ID:}
       client-secret: ${BILLING_MERCADOPAGO_OAUTH_CLIENT_SECRET:}
       redirect-uri: ${BILLING_MERCADOPAGO_OAUTH_REDIRECT_URI:}
+      frontend-redirect-url: ${BILLING_MERCADOPAGO_OAUTH_FRONTEND_REDIRECT_URL:}
       authorization-url: ${BILLING_MERCADOPAGO_OAUTH_AUTHORIZATION_URL:https://auth.mercadopago.com/authorization}
       token-url: ${BILLING_MERCADOPAGO_OAUTH_TOKEN_URL:https://api.mercadopago.com/oauth/token}
       state-signing-secret: ${BILLING_MERCADOPAGO_OAUTH_STATE_SIGNING_SECRET:}

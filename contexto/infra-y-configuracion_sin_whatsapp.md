@@ -124,6 +124,7 @@ Variables nuevas de backend para Mercado Pago OAuth:
 - `BILLING_MERCADOPAGO_OAUTH_CLIENT_ID`
 - `BILLING_MERCADOPAGO_OAUTH_CLIENT_SECRET`
 - `BILLING_MERCADOPAGO_OAUTH_REDIRECT_URI`
+- `BILLING_MERCADOPAGO_OAUTH_FRONTEND_REDIRECT_URL`
 - `BILLING_MERCADOPAGO_OAUTH_AUTHORIZATION_URL`
 - `BILLING_MERCADOPAGO_OAUTH_TOKEN_URL`
 - `BILLING_MERCADOPAGO_OAUTH_STATE_SIGNING_SECRET`
@@ -135,6 +136,10 @@ Notas reales de binding local:
 - si se ejecuta el backend desde la raiz del monorepo, `backend-java/.env` sigue siendo tomado como fallback
 - para OAuth de Mercado Pago el error de `state` ya no implica adivinar secretos: el backend espera primero `BILLING_MERCADOPAGO_OAUTH_STATE_SIGNING_SECRET`, y si no existe hace fallback a la clave de cifrado o al client secret
 - en local, tener solo `BILLING_MERCADOPAGO_ACCESS_TOKEN` no alcanza para OAuth: para abrir el onboarding siguen siendo obligatorios `CLIENT_ID` y `REDIRECT_URI`; para completar el callback y persistir la conexion del profesional tambien se vuelve obligatorio `CLIENT_SECRET`
+- `BILLING_MERCADOPAGO_OAUTH_REDIRECT_URI` debe coincidir exactamente con el callback backend registrado en la app OAuth de Mercado Pago; ejemplos:
+  `http://localhost:3000/profesional/payment-providers/mercadopago/oauth/callback`
+  `https://plura-ir62.onrender.com/profesional/payment-providers/mercadopago/oauth/callback`
+- `BILLING_MERCADOPAGO_OAUTH_FRONTEND_REDIRECT_URL` es la pantalla web final de resultado y no debe registrarse en Mercado Pago como Redirect URL OAuth
 - el storage de credenciales para miles de profesionales ya esta separado en dos capas: las credenciales globales de la app OAuth (`CLIENT_ID` / `CLIENT_SECRET`) viven en variables de entorno del backend y los tokens por profesional se guardan cifrados en `professional_payment_provider_connection`
 - `metadata_json` de la conexion OAuth no debe guardar la respuesta cruda del provider ni tokens en claro; solo metadata minima util como `scope`, `userId`, `publicKey` y flags operativos
 

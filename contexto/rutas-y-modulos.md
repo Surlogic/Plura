@@ -161,7 +161,7 @@ Lectura de producto:
 - `billing` ya existe, pero el naming de codigo sigue siendo `BASIC / PROFESIONAL / ENTERPRISE`
 - `/profesional/dashboard/billing` ya separa dos bloques: `Mi plan de Plura` y `Cobros de reservas con Mercado Pago`
 - la web profesional ya consume `GET/POST/DELETE /profesional/payment-providers/mercadopago/*` y no usa `payout-config`
-- el retorno OAuth de Mercado Pago ya tiene pantalla propia en `/oauth/mercadopago/callback` y luego vuelve a `/profesional/dashboard/billing`
+- el retorno OAuth de Mercado Pago mantiene pantalla propia en `/oauth/mercadopago/callback`, pero ya no procesa `code/state` en frontend: Mercado Pago vuelve al callback backend y este redirige a la web con un resultado final
 - en `/profesional/dashboard/billing`, `BASIC` ya no intenta conectar Mercado Pago: muestra un bloque de upgrade y reserva la conexion OAuth solo para `PROFESIONAL / ENTERPRISE`
 - `/profesional/dashboard/billing` no promociona visualmente `PROFESIONAL / ENTERPRISE` mientras la suscripcion siga en `TRIAL`; el plan visible solo cambia cuando el backend ya la ve `ACTIVE`, es decir, despues de la confirmacion via webhook
 - `/profesional/dashboard/billing` evita cargar el estado de conexion de Mercado Pago cuando la pantalla ya va a redirigir al callback OAuth, difiere el montaje inicial de comparativa/planes y carga la conexion de cobros recien al acercarse a esa seccion para bajar trabajo al entrar; sus bloques principales de plan/comparativa/cobros quedan aislados para no rerenderizar toda la superficie ante banners o estados transitorios de billing
@@ -199,6 +199,7 @@ Huecos relevantes contra el objetivo:
 - `services/session.ts`: mantiene fallback token y un `known session hint` en storage para no disparar refresh/autofetch en rutas publicas cuando no hay sesion confirmada.
 - `lib/auth/sessionErrors.ts`: clasifica `401/403` de auth aparte de errores transitorios para que la web no fuerce logout por fallas de red o `5xx`.
 - `middleware.ts`: CSP y headers de seguridad.
+- `/oauth/mercadopago/callback`: ahora interpreta `result/reason` devueltos por el backend y consulta el estado real de conexion; ya no intenta llamar al callback backend con `code/state`.
 - `pages/profesional/pagina/[slug].tsx`: reutiliza fetch cacheado del perfil publico, difiere quick slots hasta interaccion real con servicios y posterga tanto el geocoding fallback como la carga del mapa hasta que el bloque entra en viewport para bajar costo inicial en la pagina publica.
 
 Lectura de producto:

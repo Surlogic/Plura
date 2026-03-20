@@ -5,7 +5,6 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { getMercadoPagoConnectionStatusCopy } from '@/lib/billing/professionalMercadoPagoConnection';
 import {
   clearMercadoPagoConnectionAttempt,
-  readMercadoPagoConnectionAttempt,
   writeMercadoPagoConnectionAttempt,
 } from '@/lib/billing/mercadoPagoConnectionAttempt';
 import {
@@ -48,7 +47,6 @@ export function useProfessionalMercadoPagoConnection(enabled: boolean) {
 
   useEffect(() => {
     if (enabled) return;
-    clearMercadoPagoConnectionAttempt();
     loadRequestIdRef.current += 1;
     isStartingOAuthRef.current = false;
     isDisconnectingRef.current = false;
@@ -130,29 +128,6 @@ export function useProfessionalMercadoPagoConnection(enabled: boolean) {
     void loadConnection();
   }, [enabled, loadConnection]);
 
-  useEffect(() => {
-    if (!enabled || !readMercadoPagoConnectionAttempt()) return undefined;
-
-    const handleResume = () => {
-      if (typeof document !== 'undefined' && document.hidden) {
-        return;
-      }
-      void loadConnection({ silent: true, fromOAuthAttempt: true });
-    };
-
-    void loadConnection({ silent: true, fromOAuthAttempt: true });
-
-    window.addEventListener('focus', handleResume);
-    window.addEventListener('pageshow', handleResume);
-    document.addEventListener('visibilitychange', handleResume);
-
-    return () => {
-      window.removeEventListener('focus', handleResume);
-      window.removeEventListener('pageshow', handleResume);
-      document.removeEventListener('visibilitychange', handleResume);
-    };
-  }, [enabled, loadConnection]);
-
   const startOAuth = useCallback(async () => {
     if (isStartingOAuthRef.current || isDisconnectingRef.current) {
       return;
@@ -201,7 +176,6 @@ export function useProfessionalMercadoPagoConnection(enabled: boolean) {
 
     try {
       const nextConnection = await disconnectProfessionalMercadoPagoConnection();
-      clearMercadoPagoConnectionAttempt();
       setConnection(nextConnection);
       setBanner({
         tone: 'success',

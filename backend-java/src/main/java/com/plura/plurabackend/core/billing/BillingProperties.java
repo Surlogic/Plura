@@ -390,6 +390,7 @@ public class BillingProperties {
             private String clientId = "";
             private String clientSecret = "";
             private String redirectUri = "";
+            private String frontendRedirectUrl = "";
             private String authorizationUrl = "https://auth.mercadopago.com/authorization";
             private String tokenUrl = "https://api.mercadopago.com/oauth/token";
             private String stateSigningSecret = "";
@@ -417,6 +418,14 @@ public class BillingProperties {
 
             public void setRedirectUri(String redirectUri) {
                 this.redirectUri = redirectUri;
+            }
+
+            public String getFrontendRedirectUrl() {
+                return frontendRedirectUrl;
+            }
+
+            public void setFrontendRedirectUrl(String frontendRedirectUrl) {
+                this.frontendRedirectUrl = frontendRedirectUrl;
             }
 
             public String getAuthorizationUrl() {

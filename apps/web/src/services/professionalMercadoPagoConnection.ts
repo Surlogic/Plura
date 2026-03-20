@@ -16,23 +16,6 @@ export const startProfessionalMercadoPagoOAuth = async (): Promise<MercadoPagoOA
   return response.data;
 };
 
-export const completeProfessionalMercadoPagoOAuthCallback = async (params: {
-  code?: string | null;
-  state?: string | null;
-  error?: string | null;
-  errorDescription?: string | null;
-}): Promise<ProfessionalMercadoPagoConnection> => {
-  const response = await api.get<ProfessionalMercadoPagoConnection>(`${BASE_PATH}/oauth/callback`, {
-    params: {
-      code: params.code || undefined,
-      state: params.state || undefined,
-      error: params.error || undefined,
-      error_description: params.errorDescription || undefined,
-    },
-  });
-  return response.data;
-};
-
 export const disconnectProfessionalMercadoPagoConnection = async (): Promise<ProfessionalMercadoPagoConnection> => {
   const response = await api.delete<ProfessionalMercadoPagoConnection>(`${BASE_PATH}/connection`);
   return response.data;

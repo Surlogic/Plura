@@ -5,13 +5,8 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/router';
 import Button from '@/components/ui/Button';
 import Card from '@/components/ui/Card';
-import {
-  clearMercadoPagoConnectionAttempt,
-  hasMercadoPagoConnectionAttempt,
-} from '@/lib/billing/mercadoPagoConnectionAttempt';
 import { getMercadoPagoConnectionStatusCopy } from '@/lib/billing/professionalMercadoPagoConnection';
 import {
-  completeProfessionalMercadoPagoOAuthCallback,
   getProfessionalMercadoPagoConnection,
 } from '@/services/professionalMercadoPagoConnection';
 import type { ProfessionalMercadoPagoConnection } from '@/types/professionalPaymentProviderConnection';
@@ -19,24 +14,6 @@ import type { ProfessionalMercadoPagoConnection } from '@/types/professionalPaym
 type ReturnState = 'loading' | 'success' | 'info' | 'error';
 
 const BILLING_DASHBOARD_PATH = '/profesional/dashboard/billing';
-
-const resolveProviderReturnMessage = (params: {
-  error?: string | null;
-  errorDescription?: string | null;
-}) => {
-  const providerError = params.error?.trim().toLowerCase();
-  const providerDescription = params.errorDescription?.trim();
-
-  if (providerError === 'access_denied') {
-    return providerDescription || 'Cancelaste la autorización en Mercado Pago antes de terminar la conexión.';
-  }
-
-  if (providerError === 'invalid_request') {
-    return providerDescription || 'Mercado Pago devolvió una respuesta incompleta. Volvé a intentar la conexión.';
-  }
-
-  return providerDescription || 'Mercado Pago no confirmó la conexión. Volvé al dashboard para intentar otra vez.';
-};
 
 const resolveApiMessage = (error: unknown, fallback: string) => {
   if (isAxiosError<{ message?: string }>(error)) {
@@ -53,6 +30,59 @@ const isConfigurationError = (error: unknown) =>
   && error.response?.status === 503
   && Boolean(error.response?.data?.message?.toLowerCase().includes('falta configurar'));
 
+const resolveReasonCopy = (reason?: string | null) => {
+  switch ((reason || '').trim().toLowerCase()) {
+    case 'connected':
+      return {
+        title: 'Cuenta conectada correctamente',
+        description: 'Tu cuenta de Mercado Pago ya quedó vinculada y lista para cobrar reservas.',
+        tone: 'success' as const,
+      };
+    case 'access_denied':
+      return {
+        title: 'Autorización cancelada',
+        description: 'Cancelaste la autorización en Mercado Pago antes de terminar la conexión.',
+        tone: 'info' as const,
+      };
+    case 'configuration_error':
+      return {
+        title: 'Mercado Pago no está configurado todavía',
+        description: 'La configuración OAuth del backend o de la app de Mercado Pago no está alineada todavía.',
+        tone: 'error' as const,
+      };
+    case 'state_invalid':
+      return {
+        title: 'La autorización ya no es válida',
+        description: 'El state OAuth es inválido o expiró. Iniciá nuevamente la conexión desde billing.',
+        tone: 'error' as const,
+      };
+    case 'missing_code':
+      return {
+        title: 'Mercado Pago no devolvió el código de autorización',
+        description: 'La autorización volvió incompleta. Volvé a intentar la conexión.',
+        tone: 'error' as const,
+      };
+    case 'auth_required':
+      return {
+        title: 'Necesitás volver a iniciar sesión',
+        description: 'La autorización volvió al backend sin una sesión profesional válida. Iniciá sesión y reintentá.',
+        tone: 'error' as const,
+      };
+    case 'token_exchange_failed':
+      return {
+        title: 'No pudimos completar la vinculación',
+        description: 'Mercado Pago devolvió un error al canjear el código OAuth. Revisá la app OAuth y volvé a intentar.',
+        tone: 'error' as const,
+      };
+    default:
+      return {
+        title: 'No pudimos completar la conexión',
+        description: 'Mercado Pago no confirmó la conexión. Volvé al dashboard para intentar otra vez.',
+        tone: 'error' as const,
+      };
+  }
+};
+
 export default function MercadoPagoOAuthCallbackPage() {
   const router = useRouter();
   const [returnState, setReturnState] = useState<ReturnState>('loading');
@@ -62,13 +92,9 @@ export default function MercadoPagoOAuthCallbackPage() {
   const processedSignatureRef = useRef<string | null>(null);
 
   const queryValues = useMemo(() => ({
-    code: Array.isArray(router.query.code) ? router.query.code[0] : router.query.code,
-    state: Array.isArray(router.query.state) ? router.query.state[0] : router.query.state,
-    error: Array.isArray(router.query.error) ? router.query.error[0] : router.query.error,
-    errorDescription: Array.isArray(router.query.error_description)
-      ? router.query.error_description[0]
-      : router.query.error_description,
-  }), [router.query.code, router.query.error, router.query.error_description, router.query.state]);
+    result: Array.isArray(router.query.result) ? router.query.result[0] : router.query.result,
+    reason: Array.isArray(router.query.reason) ? router.query.reason[0] : router.query.reason,
+  }), [router.query.reason, router.query.result]);
 
   useEffect(() => {
     if (!router.isReady) return;
@@ -93,67 +119,58 @@ export default function MercadoPagoOAuthCallbackPage() {
       setDescription('Estamos validando la conexión de tu cuenta. Esto puede tardar unos segundos.');
       setConnection(null);
 
-      const hasProviderParams = Boolean(
-        queryValues.code || queryValues.state || queryValues.error || queryValues.errorDescription,
-      );
+      const normalizedResult = (queryValues.result || '').trim().toLowerCase();
+      const hasCallbackResult = normalizedResult.length > 0;
 
       try {
-        if (!hasProviderParams && hasMercadoPagoConnectionAttempt()) {
-          setDescription('Volviste del flujo externo. Estamos revisando si la conexión ya quedó confirmada.');
+        if (!hasCallbackResult) {
+          setReturnState('error');
+          setTitle('No encontramos una conexión en curso');
+          setDescription('Este retorno OAuth no tiene resultado para procesar. Volvé al dashboard y reiniciá la conexión con Mercado Pago.');
+          return;
         }
 
-        const nextConnection = hasProviderParams
-          ? await completeProfessionalMercadoPagoOAuthCallback(queryValues)
-          : hasMercadoPagoConnectionAttempt()
-            ? await getProfessionalMercadoPagoConnection()
-            : null;
+        const nextConnection = await getProfessionalMercadoPagoConnection();
 
         if (window.location.search) {
           window.history.replaceState(null, '', window.location.pathname);
         }
 
-        if (!nextConnection) {
-          clearMercadoPagoConnectionAttempt();
-          setReturnState('error');
-          setTitle('No encontramos una conexión en curso');
-          setDescription('No detectamos una autorización pendiente. Volvé al dashboard para iniciar nuevamente la conexión con Mercado Pago.');
-          return;
-        }
-
         setConnection(nextConnection);
-        const statusCopy = getMercadoPagoConnectionStatusCopy(nextConnection);
-        setTitle(statusCopy.title);
-        setDescription(statusCopy.description);
 
         if (nextConnection.connected || nextConnection.status?.toUpperCase() === 'CONNECTED') {
-          clearMercadoPagoConnectionAttempt();
+          const statusCopy = getMercadoPagoConnectionStatusCopy(nextConnection);
           setReturnState('success');
+          setTitle(statusCopy.title);
+          setDescription(statusCopy.description);
           finalizeAndRedirect(1800);
           return;
         }
 
-        if (nextConnection.status?.toUpperCase() === 'ERROR') {
-          clearMercadoPagoConnectionAttempt();
-          setReturnState('error');
-          setDescription(nextConnection.lastError?.trim() || statusCopy.description);
-          return;
+        const fallbackCopy = resolveReasonCopy(queryValues.reason);
+        setReturnState(
+          fallbackCopy.tone === 'success'
+            ? 'success'
+            : fallbackCopy.tone === 'info'
+              ? 'info'
+              : 'error',
+        );
+        setTitle(fallbackCopy.title);
+        setDescription(nextConnection.lastError?.trim() || fallbackCopy.description);
+        if (fallbackCopy.tone === 'info') {
+          finalizeAndRedirect(2200);
         }
-
-        clearMercadoPagoConnectionAttempt();
-        setReturnState('info');
-        setDescription('Volviste del flujo de Mercado Pago. Revisamos tu cuenta y ahora te devolvemos al dashboard para que continúes desde ahí.');
-        finalizeAndRedirect(2200);
       } catch (error) {
-        clearMercadoPagoConnectionAttempt();
+        const fallbackCopy = resolveReasonCopy(queryValues.reason);
         setReturnState('error');
         setTitle(
           isConfigurationError(error)
             ? 'Mercado Pago no está configurado todavía'
-            : 'No pudimos completar la conexión',
+            : fallbackCopy.title,
         );
         setDescription(resolveApiMessage(
           error,
-          resolveProviderReturnMessage(queryValues),
+          fallbackCopy.description,
         ));
       }
     };

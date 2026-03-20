@@ -2,65 +2,43 @@ name: plura-dev
 
 services:
   backend:
-    build:
-      context: .
-      dockerfile: backend/Dockerfile
-    working_dir: /app
+    image: eclipse-temurin:17-jdk-jammy
+    working_dir: /workspace/backend-java
     env_file:
-      - backend/.env
-    environment:
-      CHOKIDAR_USEPOLLING: "true"
+      - .env.backend
+      - backend-java/.env
     volumes:
-      - ./:/app
-      - backend_root_node_modules:/app/node_modules
-      - backend_node_modules:/app/backend/node_modules
-      - pnpm_store:/pnpm-store
+      - ./:/workspace
+      - gradle_cache:/root/.gradle
     ports:
-      - "3004:3000"
+      - "3000:3000"
     command: >
-      sh -c "pnpm install --filter backend... && cd backend && pnpm prisma generate && pnpm dev"
+      sh -lc "chmod +x ./gradlew && SPRING_FLYWAY_VALIDATE_ON_MIGRATE=false ./gradlew bootRun"
 
   web:
-    build:
-      context: .
-      dockerfile: apps/web/Dockerfile
-    working_dir: /app
+    image: node:20-bookworm-slim
+    working_dir: /workspace
     depends_on:
       - backend
+    env_file:
+      - .env.frontend
     environment:
-      NEXT_PUBLIC_API_URL: http://localhost:3004
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:3000}
       CHOKIDAR_USEPOLLING: "true"
       WATCHPACK_POLLING: "true"
+      PNPM_STORE_PATH: /pnpm-store
     volumes:
-      - ./:/app
-      - web_root_node_modules:/app/node_modules
-      - web_node_modules:/app/apps/web/node_modules
+      - ./:/workspace
       - pnpm_store:/pnpm-store
+      - root_node_modules:/workspace/node_modules
+      - web_node_modules:/workspace/apps/web/node_modules
     ports:
-      - "3003:3002"
+      - "3002:3002"
     command: >
-      sh -c "pnpm install --filter web... && pnpm -C apps/web dev"
-
-  mobile:
-    build:
-      context: .
-      dockerfile: apps/mobile/Dockerfile
-    working_dir: /app
-    environment:
-      CHOKIDAR_USEPOLLING: "true"
-    volumes:
-      - ./:/app
-      - mobile_root_node_modules:/app/node_modules
-      - mobile_node_modules:/app/apps/mobile/node_modules
-      - pnpm_store:/pnpm-store
-    command: >
-      sh -c "pnpm install --filter mobile... && pnpm -C apps/mobile dev"
+      sh -lc "corepack enable && corepack prepare pnpm@10.23.0 --activate && pnpm install --frozen-lockfile && pnpm -C apps/web dev"
 
 volumes:
+  gradle_cache:
   pnpm_store:
-  backend_root_node_modules:
-  backend_node_modules:
-  web_root_node_modules:
+  root_node_modules:
   web_node_modules:
-  mobile_root_node_modules:
-  mobile_node_modules:

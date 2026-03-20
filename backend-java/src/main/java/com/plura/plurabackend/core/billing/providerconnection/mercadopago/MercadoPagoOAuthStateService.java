@@ -4,6 +4,7 @@ import com.plura.plurabackend.core.billing.BillingProperties;
 import com.plura.plurabackend.core.billing.webhooks.signature.SignatureUtils;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.time.Instant;
 import java.time.LocalDateTime;
@@ -37,7 +38,8 @@ public class MercadoPagoOAuthStateService {
         String signature = SignatureUtils.hmacSha256Hex(resolveSigningSecret(), encodedPayload);
         return new GeneratedState(
             encodedPayload + "." + signature,
-            LocalDateTime.ofInstant(Instant.ofEpochSecond(issuedAt + STATE_TTL_SECONDS), ZoneOffset.UTC)
+            LocalDateTime.ofInstant(Instant.ofEpochSecond(issuedAt + STATE_TTL_SECONDS), ZoneOffset.UTC),
+            buildPkceChallenge()
         );
     }
 
@@ -97,6 +99,30 @@ public class MercadoPagoOAuthStateService {
         return Base64.getUrlEncoder().withoutPadding().encodeToString(randomBytes);
     }
 
+    private PkceChallenge buildPkceChallenge() {
+        if (!isPkceEnabled()) {
+            return null;
+        }
+        byte[] randomBytes = new byte[64];
+        secureRandom.nextBytes(randomBytes);
+        String verifier = Base64.getUrlEncoder().withoutPadding().encodeToString(randomBytes);
+        try {
+            byte[] challengeBytes = MessageDigest.getInstance("SHA-256")
+                .digest(verifier.getBytes(StandardCharsets.US_ASCII));
+            String challenge = Base64.getUrlEncoder().withoutPadding().encodeToString(challengeBytes);
+            return new PkceChallenge(verifier, challenge, "S256");
+        } catch (NoSuchAlgorithmException exception) {
+            throw new ResponseStatusException(
+                HttpStatus.INTERNAL_SERVER_ERROR,
+                "No se pudo inicializar PKCE para Mercado Pago OAuth"
+            );
+        }
+    }
+
+    public boolean isPkceEnabled() {
+        return billingProperties.getMercadopago().getReservations().getOauth().isPkceEnabled();
+    }
+
     private String resolveSigningSecret() {
         BillingProperties.MercadoPago.OAuth oauth = billingProperties.getMercadopago().getReservations().getOauth();
         if (oauth.getStateSigningSecret() != null && !oauth.getStateSigningSecret().isBlank()) {
@@ -114,5 +140,7 @@ public class MercadoPagoOAuthStateService {
         );
     }
 
-    public record GeneratedState(String value, LocalDateTime expiresAt) {}
+    public record GeneratedState(String value, LocalDateTime expiresAt, PkceChallenge pkceChallenge) {}
+
+    public record PkceChallenge(String codeVerifier, String codeChallenge, String codeChallengeMethod) {}
 }

@@ -90,6 +90,15 @@ public class ProfessionalPaymentProviderConnection {
     @Column(name = "metadata_json", columnDefinition = "text")
     private String metadataJson;
 
+    @Column(name = "pending_oauth_state", length = 1024)
+    private String pendingOauthState;
+
+    @Column(name = "pending_oauth_state_expires_at")
+    private LocalDateTime pendingOauthStateExpiresAt;
+
+    @Column(name = "pending_oauth_code_verifier_encrypted", columnDefinition = "text")
+    private String pendingOauthCodeVerifierEncrypted;
+
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
 

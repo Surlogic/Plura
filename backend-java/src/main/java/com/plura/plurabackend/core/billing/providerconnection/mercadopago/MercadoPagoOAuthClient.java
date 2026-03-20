@@ -49,39 +49,59 @@ public class MercadoPagoOAuthClient {
     }
 
     public String buildAuthorizationUrl(String state) {
+        return buildAuthorizationUrl(state, null);
+    }
+
+    public String buildAuthorizationUrl(String state, MercadoPagoOAuthStateService.PkceChallenge pkceChallenge) {
         BillingProperties.MercadoPago.OAuth oauth = requireConfiguredAuthorization();
-        String authorizationUrl = UriComponentsBuilder.fromUriString(oauth.getAuthorizationUrl())
+        UriComponentsBuilder builder = UriComponentsBuilder.fromUriString(oauth.getAuthorizationUrl())
             .queryParam("client_id", oauth.getClientId())
             .queryParam("response_type", "code")
             .queryParam("platform_id", "mp")
             .queryParam("state", state)
-            .queryParam("redirect_uri", oauth.getRedirectUri())
-            .build(true)
-            .toUriString();
+            .queryParam("redirect_uri", oauth.getRedirectUri());
+        if (pkceChallenge != null) {
+            builder.queryParam("code_challenge", pkceChallenge.codeChallenge())
+                .queryParam("code_challenge_method", pkceChallenge.codeChallengeMethod());
+        }
+        String authorizationUrl = builder.build(true).toUriString();
         boolean hasRedirectUriQueryParam = parseQueryParams(authorizationUrl).containsKey("redirect_uri");
+        boolean hasCodeChallenge = parseQueryParams(authorizationUrl).containsKey("code_challenge");
         LOGGER.info(
-            "Built Mercado Pago OAuth authorization URL authorizationBase={} redirectUri={} clientId={} hasRedirectUriQueryParam={} authorizationUrl={}",
+            "Built Mercado Pago OAuth authorization URL authorizationBase={} redirectUri={} clientId={} pkceEnabled={} hasRedirectUriQueryParam={} hasCodeChallenge={} authorizationUrl={}",
             safeForLogs(oauth.getAuthorizationUrl()),
             safeForLogs(oauth.getRedirectUri()),
             safeForLogs(oauth.getClientId()),
+            pkceChallenge != null,
             hasRedirectUriQueryParam,
+            hasCodeChallenge,
             sanitizeAuthorizationUrlForLogs(authorizationUrl)
         );
         return authorizationUrl;
     }
 
     public TokenResponse exchangeAuthorizationCode(String code) {
+        return exchangeAuthorizationCode(code, null);
+    }
+
+    public TokenResponse exchangeAuthorizationCode(String code, String codeVerifier) {
         if (code == null || code.isBlank()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "code OAuth es obligatorio");
         }
         BillingProperties.MercadoPago.OAuth oauth = requireConfiguredTokenExchange();
-        return exchangeToken(formEncode(Map.of(
-            "client_id", oauth.getClientId(),
-            "client_secret", oauth.getClientSecret(),
-            "grant_type", "authorization_code",
-            "code", code.trim(),
-            "redirect_uri", oauth.getRedirectUri()
-        )));
+        Map<String, String> payload = new LinkedHashMap<>();
+        payload.put("client_id", oauth.getClientId());
+        payload.put("client_secret", oauth.getClientSecret());
+        payload.put("grant_type", "authorization_code");
+        payload.put("code", code.trim());
+        payload.put("redirect_uri", oauth.getRedirectUri());
+        if (oauth.isPkceEnabled()) {
+            if (codeVerifier == null || codeVerifier.isBlank()) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "code_verifier OAuth es obligatorio");
+            }
+            payload.put("code_verifier", codeVerifier.trim());
+        }
+        return exchangeToken(formEncode(payload));
     }
 
     public TokenResponse refreshAccessToken(String refreshToken) {
@@ -307,22 +327,29 @@ public class MercadoPagoOAuthClient {
         if (authorizationUrl == null || authorizationUrl.isBlank()) {
             return authorizationUrl;
         }
-        Map<String, List<String>> queryParams = parseQueryParams(authorizationUrl);
-        if (!queryParams.containsKey("state")) {
-            return authorizationUrl;
+        String sanitized = authorizationUrl;
+        if (parseQueryParams(sanitized).containsKey("state")) {
+            sanitized = maskQueryParamValue(sanitized, "state");
         }
-        int stateIndex = authorizationUrl.indexOf("state=");
-        if (stateIndex < 0) {
-            return authorizationUrl;
+        if (parseQueryParams(sanitized).containsKey("code_challenge")) {
+            sanitized = maskQueryParamValue(sanitized, "code_challenge");
         }
-        int stateValueStart = stateIndex + "state=".length();
-        int nextAmpersand = authorizationUrl.indexOf('&', stateValueStart);
+        return sanitized;
+    }
+
+    private String maskQueryParamValue(String url, String paramName) {
+        int index = url.indexOf(paramName + "=");
+        if (index < 0) {
+            return url;
+        }
+        int valueStart = index + paramName.length() + 1;
+        int nextAmpersand = url.indexOf('&', valueStart);
         if (nextAmpersand < 0) {
-            return authorizationUrl.substring(0, stateValueStart) + "[masked]";
+            return url.substring(0, valueStart) + "[masked]";
         }
-        return authorizationUrl.substring(0, stateValueStart)
+        return url.substring(0, valueStart)
             + "[masked]"
-            + authorizationUrl.substring(nextAmpersand);
+            + url.substring(nextAmpersand);
     }
 
     private Map<String, List<String>> parseQueryParams(String url) {

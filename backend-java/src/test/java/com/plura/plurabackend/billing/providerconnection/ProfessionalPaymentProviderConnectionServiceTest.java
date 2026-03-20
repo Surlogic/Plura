@@ -22,6 +22,7 @@ import com.plura.plurabackend.professional.model.ProfessionalProfile;
 import com.plura.plurabackend.professional.plan.PlanGuardService;
 import com.plura.plurabackend.core.user.model.User;
 import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
@@ -54,8 +55,8 @@ class ProfessionalPaymentProviderConnectionServiceTest {
         when(repository.save(any(ProfessionalPaymentProviderConnection.class)))
             .thenAnswer(invocation -> invocation.getArgument(0));
         when(mercadoPagoOAuthStateService.generateState(professional.getId()))
-            .thenReturn(new MercadoPagoOAuthStateService.GeneratedState("state-1", LocalDateTime.now().plusMinutes(10)));
-        when(mercadoPagoOAuthClient.buildAuthorizationUrl("state-1")).thenReturn("https://auth.test/mp?state=1");
+            .thenReturn(new MercadoPagoOAuthStateService.GeneratedState("state-1", utcNow().plusMinutes(10), null));
+        when(mercadoPagoOAuthClient.buildAuthorizationUrl("state-1", null)).thenReturn("https://auth.test/mp?state=1");
 
         var response = service.startMercadoPagoOAuth(20L);
 
@@ -71,6 +72,8 @@ class ProfessionalPaymentProviderConnectionServiceTest {
         connection.setProfessionalId(professional.getId());
         connection.setProvider(PaymentProvider.MERCADOPAGO);
         connection.setStatus(ProfessionalPaymentProviderConnectionStatus.PENDING_AUTHORIZATION);
+        connection.setPendingOauthState("state-1");
+        connection.setPendingOauthStateExpiresAt(utcNow().plusMinutes(10));
 
         when(professionalBillingSubjectGateway.loadEnabledProfessionalByUserId(20L)).thenReturn(professional);
         when(repository.findByProfessionalIdAndProvider(professional.getId(), PaymentProvider.MERCADOPAGO))
@@ -79,7 +82,8 @@ class ProfessionalPaymentProviderConnectionServiceTest {
             .thenReturn(Optional.of(connection));
         when(repository.save(any(ProfessionalPaymentProviderConnection.class)))
             .thenAnswer(invocation -> invocation.getArgument(0));
-        when(mercadoPagoOAuthClient.exchangeAuthorizationCode("code-1"))
+        when(mercadoPagoOAuthStateService.isPkceEnabled()).thenReturn(false);
+        when(mercadoPagoOAuthClient.exchangeAuthorizationCode("code-1", null))
             .thenReturn(new MercadoPagoOAuthClient.TokenResponse(
                 "access-1",
                 "refresh-1",
@@ -141,6 +145,8 @@ class ProfessionalPaymentProviderConnectionServiceTest {
         currentConnection.setProfessionalId(professional.getId());
         currentConnection.setProvider(PaymentProvider.MERCADOPAGO);
         currentConnection.setStatus(ProfessionalPaymentProviderConnectionStatus.PENDING_AUTHORIZATION);
+        currentConnection.setPendingOauthState("state-1");
+        currentConnection.setPendingOauthStateExpiresAt(utcNow().plusMinutes(10));
 
         ProfessionalPaymentProviderConnection otherProfessionalConnection = new ProfessionalPaymentProviderConnection();
         otherProfessionalConnection.setProfessionalId(999L);
@@ -155,7 +161,8 @@ class ProfessionalPaymentProviderConnectionServiceTest {
             .thenReturn(Optional.of(otherProfessionalConnection));
         when(repository.save(any(ProfessionalPaymentProviderConnection.class)))
             .thenAnswer(invocation -> invocation.getArgument(0));
-        when(mercadoPagoOAuthClient.exchangeAuthorizationCode("code-1"))
+        when(mercadoPagoOAuthStateService.isPkceEnabled()).thenReturn(false);
+        when(mercadoPagoOAuthClient.exchangeAuthorizationCode("code-1", null))
             .thenReturn(new MercadoPagoOAuthClient.TokenResponse(
                 "access-1",
                 "refresh-1",
@@ -186,11 +193,14 @@ class ProfessionalPaymentProviderConnectionServiceTest {
         connection.setProviderUserId("998877");
         connection.setProviderAccountId("998877");
         connection.setAccessTokenEncrypted("enc-access-1");
+        connection.setPendingOauthState("state-1");
+        connection.setPendingOauthStateExpiresAt(utcNow().plusMinutes(10));
 
         when(professionalBillingSubjectGateway.loadEnabledProfessionalByUserId(20L)).thenReturn(professional);
         when(repository.findByProfessionalIdAndProvider(professional.getId(), PaymentProvider.MERCADOPAGO))
             .thenReturn(Optional.of(connection));
-        when(mercadoPagoOAuthClient.exchangeAuthorizationCode("code-1"))
+        when(mercadoPagoOAuthStateService.isPkceEnabled()).thenReturn(false);
+        when(mercadoPagoOAuthClient.exchangeAuthorizationCode("code-1", null))
             .thenThrow(new ResponseStatusException(
                 HttpStatus.BAD_GATEWAY,
                 "No se pudo completar OAuth con Mercado Pago: invalid_grant"
@@ -210,13 +220,16 @@ class ProfessionalPaymentProviderConnectionServiceTest {
         connection.setProfessionalId(professional.getId());
         connection.setProvider(PaymentProvider.MERCADOPAGO);
         connection.setStatus(ProfessionalPaymentProviderConnectionStatus.PENDING_AUTHORIZATION);
+        connection.setPendingOauthState("state-1");
+        connection.setPendingOauthStateExpiresAt(utcNow().plusMinutes(10));
 
         when(professionalBillingSubjectGateway.loadEnabledProfessionalByUserId(20L)).thenReturn(professional);
         when(repository.findByProfessionalIdAndProvider(professional.getId(), PaymentProvider.MERCADOPAGO))
             .thenReturn(Optional.of(connection));
         when(repository.save(any(ProfessionalPaymentProviderConnection.class)))
             .thenAnswer(invocation -> invocation.getArgument(0));
-        when(mercadoPagoOAuthClient.exchangeAuthorizationCode("code-1"))
+        when(mercadoPagoOAuthStateService.isPkceEnabled()).thenReturn(false);
+        when(mercadoPagoOAuthClient.exchangeAuthorizationCode("code-1", null))
             .thenThrow(new ResponseStatusException(
                 HttpStatus.BAD_GATEWAY,
                 "No se pudo completar OAuth con Mercado Pago: invalid_grant"
@@ -231,6 +244,75 @@ class ProfessionalPaymentProviderConnectionServiceTest {
         assertEquals("No se pudo completar OAuth con Mercado Pago: invalid_grant", exception.getReason());
         assertEquals(ProfessionalPaymentProviderConnectionStatus.ERROR, connection.getStatus());
         assertTrue(connection.getLastError().contains("token_exchange_failed"));
+    }
+
+    @Test
+    void shouldExchangeAuthorizationCodeWithPkceVerifierWhenEnabled() {
+        ProfessionalProfile professional = professional();
+        ProfessionalPaymentProviderConnection connection = new ProfessionalPaymentProviderConnection();
+        connection.setProfessionalId(professional.getId());
+        connection.setProvider(PaymentProvider.MERCADOPAGO);
+        connection.setStatus(ProfessionalPaymentProviderConnectionStatus.PENDING_AUTHORIZATION);
+        connection.setPendingOauthState("state-1");
+        connection.setPendingOauthStateExpiresAt(utcNow().plusMinutes(10));
+        connection.setPendingOauthCodeVerifierEncrypted("enc-verifier-1");
+
+        when(professionalBillingSubjectGateway.loadEnabledProfessionalByUserId(20L)).thenReturn(professional);
+        when(repository.findByProfessionalIdAndProvider(professional.getId(), PaymentProvider.MERCADOPAGO))
+            .thenReturn(Optional.of(connection));
+        when(repository.findByProviderAndProviderUserId(PaymentProvider.MERCADOPAGO, "998877"))
+            .thenReturn(Optional.of(connection));
+        when(repository.save(any(ProfessionalPaymentProviderConnection.class)))
+            .thenAnswer(invocation -> invocation.getArgument(0));
+        when(mercadoPagoOAuthStateService.isPkceEnabled()).thenReturn(true);
+        when(mercadoPagoOAuthTokenCipher.decrypt("enc-verifier-1")).thenReturn("verifier-1");
+        when(mercadoPagoOAuthClient.exchangeAuthorizationCode("code-1", "verifier-1"))
+            .thenReturn(new MercadoPagoOAuthClient.TokenResponse(
+                "access-1",
+                "refresh-1",
+                998877L,
+                "offline_access",
+                LocalDateTime.now().plusHours(1),
+                "bearer",
+                "public-key",
+                "{\"access_token\":\"access-1\"}"
+            ));
+        when(mercadoPagoOAuthTokenCipher.encrypt("access-1")).thenReturn("enc-access-1");
+        when(mercadoPagoOAuthTokenCipher.encrypt("refresh-1")).thenReturn("enc-refresh-1");
+
+        var response = service.handleMercadoPagoOAuthCallback(20L, "code-1", "state-1", null, null);
+
+        assertTrue(response.connected());
+        assertEquals("CONNECTED", response.status());
+        assertEquals("998877", response.providerUserId());
+        assertEquals("state-1", connection.getPendingOauthState());
+        assertEquals(null, connection.getPendingOauthCodeVerifierEncrypted());
+    }
+
+    @Test
+    void shouldRejectOAuthCallbackWithoutPkceVerifierWhenEnabled() {
+        ProfessionalProfile professional = professional();
+        ProfessionalPaymentProviderConnection connection = new ProfessionalPaymentProviderConnection();
+        connection.setProfessionalId(professional.getId());
+        connection.setProvider(PaymentProvider.MERCADOPAGO);
+        connection.setStatus(ProfessionalPaymentProviderConnectionStatus.PENDING_AUTHORIZATION);
+        connection.setPendingOauthState("state-1");
+        connection.setPendingOauthStateExpiresAt(utcNow().plusMinutes(10));
+
+        when(professionalBillingSubjectGateway.loadEnabledProfessionalByUserId(20L)).thenReturn(professional);
+        when(repository.findByProfessionalIdAndProvider(professional.getId(), PaymentProvider.MERCADOPAGO))
+            .thenReturn(Optional.of(connection));
+        when(repository.save(any(ProfessionalPaymentProviderConnection.class)))
+            .thenAnswer(invocation -> invocation.getArgument(0));
+        when(mercadoPagoOAuthStateService.isPkceEnabled()).thenReturn(true);
+
+        ResponseStatusException exception = org.junit.jupiter.api.Assertions.assertThrows(
+            ResponseStatusException.class,
+            () -> service.handleMercadoPagoOAuthCallback(20L, "code-1", "state-1", null, null)
+        );
+
+        assertEquals(HttpStatus.BAD_REQUEST, exception.getStatusCode());
+        assertEquals("No encontramos un code_verifier pendiente para Mercado Pago", exception.getReason());
     }
 
     @Test
@@ -256,5 +338,9 @@ class ProfessionalPaymentProviderConnectionServiceTest {
         professional.setSlug("pro-test");
         professional.setDisplayName("Pro Test");
         return professional;
+    }
+
+    private LocalDateTime utcNow() {
+        return LocalDateTime.now(ZoneOffset.UTC);
     }
 }

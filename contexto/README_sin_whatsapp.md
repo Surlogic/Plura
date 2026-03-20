@@ -420,12 +420,12 @@ Puertos locales principales:
 ## Observaciones importantes del estado actual
 
 - `packages/shared` se consume por imports relativos directos desde web y mobile; hoy no tiene `package.json` ni `tsconfig` propio.
-- el `docker-compose.yml` de la raiz parece legado o desactualizado: referencia `backend/`, pero el backend real del repo es `backend-java/`.
-- el `README.md` raiz menciona `backend-java/README.md`, pero ese archivo hoy no existe.
+- el `docker-compose.yml` de la raiz ya quedo alineado con el repo real: levanta `backend-java` y `apps/web` con sus env files actuales.
+- el `README.md` raiz ya remite a `contexto/` como documentacion operativa viva en lugar de apuntar a un `backend-java/README.md` inexistente.
 - el backend tiene soporte operativo mas amplio que el README raiz: sesiones, auditoria auth, OTP, payouts, provider ops y endpoints internos.
 
 ## Documentos de esta carpeta
 
 - `rutas-y-modulos.md`: mapa de rutas, modulos y lectura por rol o plan.
 - `backend-endpoints.md`: resumen de endpoints y dominios del backend leidos desde producto.
-- `infra-y-configuracion.md`: variables, integraciones y notas operativas cruzadas con roadmap.
+- `infra-y-configuracion_sin_whatsapp.md`: variables, integraciones y notas operativas cruzadas con roadmap.

@@ -3,8 +3,8 @@ services:
     name: plura-api
     runtime: docker
     rootDir: backend-java
-    dockerfilePath: ./backend-java/Dockerfile
-    dockerContext: ./backend-java
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
     healthCheckPath: /health
     envVars:
       - key: PORT
@@ -112,6 +112,32 @@ services:
       - key: BILLING_PLAN_ENTERPRISE_CURRENCY
         sync: false
       - key: BILLING_MERCADOPAGO_ENABLED
+        sync: false
+      - key: BILLING_MERCADOPAGO_SUBSCRIPTIONS_ACCESS_TOKEN
+        sync: false
+      - key: BILLING_MERCADOPAGO_SUBSCRIPTIONS_WEBHOOK_SECRET
+        sync: false
+      - key: BILLING_MERCADOPAGO_RESERVATIONS_PLATFORM_ACCESS_TOKEN
+        sync: false
+      - key: BILLING_MERCADOPAGO_RESERVATIONS_WEBHOOK_SECRET
+        sync: false
+      - key: BILLING_MERCADOPAGO_RESERVATIONS_OAUTH_CLIENT_ID
+        sync: false
+      - key: BILLING_MERCADOPAGO_RESERVATIONS_OAUTH_CLIENT_SECRET
+        sync: false
+      - key: BILLING_MERCADOPAGO_RESERVATIONS_OAUTH_REDIRECT_URI
+        sync: false
+      - key: BILLING_MERCADOPAGO_RESERVATIONS_OAUTH_FRONTEND_REDIRECT_URL
+        sync: false
+      - key: BILLING_MERCADOPAGO_RESERVATIONS_OAUTH_AUTHORIZATION_URL
+        sync: false
+      - key: BILLING_MERCADOPAGO_RESERVATIONS_OAUTH_TOKEN_URL
+        sync: false
+      - key: BILLING_MERCADOPAGO_RESERVATIONS_OAUTH_STATE_SIGNING_SECRET
+        sync: false
+      - key: BILLING_MERCADOPAGO_RESERVATIONS_OAUTH_TOKEN_ENCRYPTION_KEY
+        sync: false
+      - key: BILLING_MERCADOPAGO_RESERVATIONS_OAUTH_PKCE_ENABLED
         sync: false
       - key: BILLING_MERCADOPAGO_ACCESS_TOKEN
         sync: false

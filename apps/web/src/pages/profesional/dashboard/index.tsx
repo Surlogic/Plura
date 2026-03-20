@@ -1,6 +1,6 @@
 'use client';
 
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState, type RefObject } from 'react';
 import { isAxiosError } from 'axios';
 import Link from 'next/link';
 import EmailVerificationPanel from '@/components/auth/EmailVerificationPanel';
@@ -59,12 +59,6 @@ const monthNamesShort = [
   'jul', 'ago', 'sep', 'oct', 'nov', 'dic',
 ];
 
-const STATS_FALLBACK = [
-  { label: 'Reservas esta semana', value: '—', detail: 'Sin datos' },
-  { label: 'Clientes únicos', value: '—', detail: 'Sin datos' },
-  { label: 'Ocupación', value: '—', detail: 'Sin datos' },
-];
-
 const toLocalDateKey = (date: Date) => {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -102,13 +96,15 @@ const parseDurationToMinutes = (value?: string) => {
   return minutes > 0 ? minutes : null;
 };
 
-const defaultCalendarStartHour = 8;
-const defaultCalendarEndHour = 20;
-const minCalendarHour = 6;
-const maxCalendarHour = 23;
-const minCalendarSpanHours = 8;
-const hourRowHeight = 76;
-const formatHourLabel = (hour: number) => `${String(hour).padStart(2, '0')}:00`;
+const fullDayStartMinutes = 0;
+const fullDayEndMinutes = 24 * 60;
+const defaultCalendarStartMinutes = 9 * 60;
+const defaultCalendarEndMinutes = 18 * 60;
+const calendarStepMinutes = 30;
+const calendarLabelStepMinutes = 60;
+const calendarMarginMinutes = 30;
+const minCalendarSpanMinutes = 3 * 60;
+const hourRowHeight = 56;
 const formatMinutesLabel = (minutes: number) => {
   const safeMinutes = Math.max(0, Math.round(minutes));
   const hours = Math.floor(safeMinutes / 60) % 24;
@@ -116,6 +112,8 @@ const formatMinutesLabel = (minutes: number) => {
   return `${String(hours).padStart(2, '0')}:${String(mins).padStart(2, '0')}`;
 };
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
+const roundDownToStep = (value: number, step: number) => Math.floor(value / step) * step;
+const roundUpToStep = (value: number, step: number) => Math.ceil(value / step) * step;
 
 const resolveReservationDurationMinutes = (reservation: ProfessionalReservation) =>
   reservation.effectiveDurationMinutes
@@ -135,6 +133,9 @@ const reservationStatusPalette = {
   completed: {
     badge: 'bg-[#E2E8F0] text-[#334155]',
   },
+  no_show: {
+    badge: 'bg-[#EDE9FE] text-[#6D28D9]',
+  },
 };
 
 const reservationStatusLabel = {
@@ -142,6 +143,7 @@ const reservationStatusLabel = {
   pending: 'Pendiente',
   cancelled: 'Cancelada',
   completed: 'Completada',
+  no_show: 'No asistió',
 };
 
 const reservationCardAccentClassName = 'bg-[#FF7A00]';
@@ -180,9 +182,10 @@ type MonthCalendarDay = {
 };
 
 type VisibleCalendarRange = {
-  startHour: number;
-  endHour: number;
-  hourSlots: number[];
+  startMinutes: number;
+  endMinutes: number;
+  lineMarkers: number[];
+  labelMarkers: number[];
   calendarHeight: number;
   calendarTotalMinutes: number;
 };
@@ -191,6 +194,77 @@ type CurrentTimeIndicator = {
   dateKey: string;
   top: number;
   label: string;
+};
+
+type CalendarFocusWindow = {
+  startMinutes: number;
+  endMinutes: number;
+  isFallback: boolean;
+};
+
+const buildWeekFocusWindow = (
+  weekDays: WeekCalendarDay[],
+  schedule: ProfessionalSchedule | null,
+  reservationsByDate: Map<string, ProfessionalReservation[]>,
+) => {
+  const relevantMinutes: number[] = [];
+
+  weekDays.forEach((day) => {
+    const scheduleForDay = schedule?.days.find((item) => item.day === day.dayKey);
+    if (scheduleForDay?.enabled && !scheduleForDay.paused) {
+      scheduleForDay.ranges?.forEach((range) => {
+        const startMinutes = parseTimeToMinutes(range.start);
+        const endMinutes = parseTimeToMinutes(range.end);
+        if (startMinutes !== null) relevantMinutes.push(startMinutes);
+        if (endMinutes !== null) relevantMinutes.push(endMinutes);
+      });
+    }
+
+    const reservationsForDay = reservationsByDate.get(day.dateKey) ?? [];
+    reservationsForDay.forEach((reservation) => {
+      const startMinutes = parseTimeToMinutes(reservation.time);
+      if (startMinutes === null) return;
+      relevantMinutes.push(startMinutes);
+      relevantMinutes.push(startMinutes + resolveReservationDurationMinutes(reservation));
+    });
+  });
+
+  if (relevantMinutes.length === 0) {
+    return {
+      startMinutes: defaultCalendarStartMinutes,
+      endMinutes: defaultCalendarEndMinutes,
+      isFallback: true,
+    } satisfies CalendarFocusWindow;
+  }
+
+  let startMinutes = roundDownToStep(
+    Math.max(Math.min(...relevantMinutes) - calendarMarginMinutes, fullDayStartMinutes),
+    calendarStepMinutes,
+  );
+  let endMinutes = roundUpToStep(
+    Math.min(Math.max(...relevantMinutes) + calendarMarginMinutes, fullDayEndMinutes),
+    calendarStepMinutes,
+  );
+
+  if (endMinutes - startMinutes < minCalendarSpanMinutes) {
+    const missingMinutes = minCalendarSpanMinutes - (endMinutes - startMinutes);
+    const extendBefore = Math.floor(missingMinutes / 2);
+    const extendAfter = missingMinutes - extendBefore;
+    startMinutes = roundDownToStep(
+      Math.max(startMinutes - extendBefore, fullDayStartMinutes),
+      calendarStepMinutes,
+    );
+    endMinutes = roundUpToStep(
+      Math.min(endMinutes + extendAfter, fullDayEndMinutes),
+      calendarStepMinutes,
+    );
+  }
+
+  return {
+    startMinutes,
+    endMinutes,
+    isFallback: false,
+  } satisfies CalendarFocusWindow;
 };
 
 const buildDayLayouts = (items: ProfessionalReservation[]) => {
@@ -263,6 +337,7 @@ const WeekCalendarBoard = memo(function WeekCalendarBoard({
   visibleCalendarRange,
   dayLayoutsByDate,
   currentTimeIndicator,
+  scrollContainerRef,
   onReservationOpen,
 }: {
   weekDays: WeekCalendarDay[];
@@ -271,11 +346,12 @@ const WeekCalendarBoard = memo(function WeekCalendarBoard({
   visibleCalendarRange: VisibleCalendarRange;
   dayLayoutsByDate: Map<string, ReservationLayout[]>;
   currentTimeIndicator: CurrentTimeIndicator | null;
+  scrollContainerRef: RefObject<HTMLDivElement | null>;
   onReservationOpen: (reservation: ProfessionalReservation) => void;
 }) {
   return (
-    <div className="mt-6 overflow-x-auto">
-      <div className="min-w-[980px] overflow-hidden rounded-[24px] border border-[#E2E7EC] bg-white shadow-[0_20px_45px_rgba(15,23,42,0.08)]">
+    <div className="mt-3 min-h-[540px] overflow-x-auto lg:mt-2 lg:h-full">
+      <div className="min-h-[540px] min-w-[980px] overflow-hidden rounded-[24px] border border-[#E2E7EC] bg-white shadow-[0_20px_45px_rgba(15,23,42,0.08)] lg:flex lg:h-full lg:flex-col">
         <div className="flex border-b border-[#E2E7EC] bg-[linear-gradient(180deg,#FAFCFE_0%,#F4F8FB_100%)]">
           <div className="sticky left-0 z-20 w-20 shrink-0 bg-[linear-gradient(180deg,#FAFCFE_0%,#F4F8FB_100%)] px-4 py-3 text-[0.6rem] uppercase tracking-[0.3em] text-[#94A3B8]">
             Hora
@@ -319,21 +395,27 @@ const WeekCalendarBoard = memo(function WeekCalendarBoard({
           </div>
         </div>
 
-        <div className="flex">
+        <div
+          ref={scrollContainerRef}
+          className="flex overflow-y-auto overscroll-contain scroll-smooth lg:min-h-0 lg:flex-1"
+          style={{ height: '100%' }}
+        >
           <div className="sticky left-0 z-10 w-20 shrink-0 border-r border-[#E2E7EC] bg-white shadow-[4px_0_12px_rgba(15,23,42,0.06)]">
             <div className="relative" style={{ height: visibleCalendarRange.calendarHeight }}>
-              {visibleCalendarRange.hourSlots.map((hour, index) => {
+              {visibleCalendarRange.labelMarkers.map((markerMinutes) => {
                 const top = Math.min(
-                  index * hourRowHeight,
+                  ((markerMinutes - visibleCalendarRange.startMinutes)
+                    / visibleCalendarRange.calendarTotalMinutes)
+                    * visibleCalendarRange.calendarHeight,
                   visibleCalendarRange.calendarHeight - 14,
                 );
                 return (
                   <div
-                    key={`hour-${hour}`}
+                    key={`hour-${markerMinutes}`}
                     className="absolute right-3 text-[0.65rem] font-medium text-[#94A3B8]"
                     style={{ top }}
                   >
-                    {formatHourLabel(hour)}
+                    {formatMinutesLabel(markerMinutes)}
                   </div>
                 );
               })}
@@ -354,11 +436,19 @@ const WeekCalendarBoard = memo(function WeekCalendarBoard({
                   style={{ height: visibleCalendarRange.calendarHeight }}
                 >
                   <div className="pointer-events-none absolute inset-0">
-                    {visibleCalendarRange.hourSlots.slice(0, -1).map((hour, lineIndex) => (
+                    {visibleCalendarRange.lineMarkers.slice(0, -1).map((markerMinutes) => (
                       <div
-                        key={`${day.dateKey}-${hour}`}
-                        className="absolute left-0 right-0 border-b border-dashed border-[#E9EEF4]"
-                        style={{ top: lineIndex * hourRowHeight }}
+                        key={`${day.dateKey}-${markerMinutes}`}
+                        className={`absolute left-0 right-0 border-b ${
+                          markerMinutes % calendarLabelStepMinutes === 0
+                            ? 'border-[#D7E3EE]'
+                            : 'border-dashed border-[#EEF2F6]'
+                        }`}
+                        style={{
+                          top: ((markerMinutes - visibleCalendarRange.startMinutes)
+                            / visibleCalendarRange.calendarTotalMinutes)
+                            * visibleCalendarRange.calendarHeight,
+                        }}
                       />
                     ))}
                     {currentTimeIndicator && currentTimeIndicator.dateKey === day.dateKey ? (
@@ -380,8 +470,8 @@ const WeekCalendarBoard = memo(function WeekCalendarBoard({
                   ) : null}
 
                   {dayLayouts.map((layout) => {
-                    const dayStartMinutes = visibleCalendarRange.startHour * 60;
-                    const dayEndMinutes = visibleCalendarRange.endHour * 60;
+                    const dayStartMinutes = visibleCalendarRange.startMinutes;
+                    const dayEndMinutes = visibleCalendarRange.endMinutes;
                     const clampedStart = Math.max(layout.startMinutes, dayStartMinutes);
                     const clampedEnd = Math.min(layout.endMinutes, dayEndMinutes);
                     if (clampedEnd <= dayStartMinutes || clampedStart >= dayEndMinutes) {
@@ -565,6 +655,8 @@ export default function ProfesionalDashboardPage() {
     useState<ProfessionalReservation | null>(null);
   const [drawerVisible, setDrawerVisible] = useState(false);
   const closeTimeoutRef = useRef<number | null>(null);
+  const weekCalendarScrollRef = useRef<HTMLDivElement | null>(null);
+  const lastAutoFocusKeyRef = useRef<string | null>(null);
 
   const { requestNavigation } = useProfessionalDashboardUnsavedSection({
     sectionId: 'agenda-dashboard',
@@ -603,7 +695,6 @@ export default function ProfesionalDashboardPage() {
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-  const scheduleTier = profile?.professionalEntitlements?.scheduleTier ?? 'DAILY';
   const canUseMonthlyCalendar = featureAccess.monthlyCalendar;
   const canNavigateCalendar = featureAccess.weeklyCalendarNavigation;
 
@@ -684,14 +775,14 @@ export default function ProfesionalDashboardPage() {
     return map;
   }, [agendaReservations]);
 
-  const { todayCount, yesterdayCount, todayDiff, uniqueClientsWeek } = useMemo(() => {
+  const { todayCount, todayDiff, uniqueClientsWeek } = useMemo(() => {
     const tc = agendaReservations.filter((r) => r.date === todayKey).length;
     const yc = agendaReservations.filter((r) => r.date === yesterdayKey).length;
     const weekRes = agendaReservations.filter(
       (r) => r.date >= weekStartKey && r.date <= weekEndKey,
     );
     const ucw = new Set(weekRes.map((r) => r.clientName).filter(Boolean)).size;
-    return { todayCount: tc, yesterdayCount: yc, todayDiff: tc - yc, uniqueClientsWeek: ucw };
+    return { todayCount: tc, todayDiff: tc - yc, uniqueClientsWeek: ucw };
   }, [agendaReservations, todayKey, yesterdayKey, weekStartKey, weekEndKey]);
 
   const { scheduleDays, scheduleDaySet } = useMemo(() => {
@@ -712,9 +803,6 @@ export default function ProfesionalDashboardPage() {
 
   const requiredReservationDates = useMemo(() => {
     const dateKeys = new Set<string>([todayKey]);
-    if (scheduleTier === 'DAILY') {
-      return Array.from(dateKeys);
-    }
     currentWeekDays.forEach((day) => dateKeys.add(day.dateKey));
     if (calendarView === 'month' && canUseMonthlyCalendar) {
       monthGridDays.forEach((day) => dateKeys.add(day.dateKey));
@@ -722,7 +810,7 @@ export default function ProfesionalDashboardPage() {
       weekDays.forEach((day) => dateKeys.add(day.dateKey));
     }
     return Array.from(dateKeys).sort();
-  }, [todayKey, scheduleTier, currentWeekDays, calendarView, canUseMonthlyCalendar, monthGridDays, weekDays]);
+  }, [todayKey, currentWeekDays, calendarView, canUseMonthlyCalendar, monthGridDays, weekDays]);
 
   const canViewAnalytics = featureAccess.basicAnalytics;
 
@@ -811,81 +899,55 @@ export default function ProfesionalDashboardPage() {
       ? `Días con reservas: ${daysWithReservations}/${scheduleDays.length}`
       : 'Configurá horarios';
 
+  const weekFocusWindow = useMemo(
+    () => buildWeekFocusWindow(weekDays, schedule, reservationsByDate),
+    [reservationsByDate, schedule, weekDays],
+  );
+
   const visibleCalendarRange = useMemo(() => {
-    const relevantMinutes: number[] = [];
-
-    weekDays.forEach((day) => {
-      const scheduleForDay = schedule?.days.find((item) => item.day === day.dayKey);
-      scheduleForDay?.ranges?.forEach((range) => {
-        const startMinutes = parseTimeToMinutes(range.start);
-        const endMinutes = parseTimeToMinutes(range.end);
-        if (startMinutes !== null) relevantMinutes.push(startMinutes);
-        if (endMinutes !== null) relevantMinutes.push(endMinutes);
-      });
-
-      const reservationsForDay = reservationsByDate.get(day.dateKey) ?? [];
-      reservationsForDay.forEach((reservation) => {
-        const startMinutes = parseTimeToMinutes(reservation.time);
-        if (startMinutes === null) return;
-        relevantMinutes.push(startMinutes);
-        relevantMinutes.push(startMinutes + resolveReservationDurationMinutes(reservation));
-      });
-    });
-
-    if (relevantMinutes.length === 0) {
-      const hourSlots = Array.from(
-        { length: defaultCalendarEndHour - defaultCalendarStartHour + 1 },
-        (_, index) => defaultCalendarStartHour + index,
+    const buildCalendarRange = (startMinutes: number, endMinutes: number) => {
+      const boundedStartMinutes = clamp(startMinutes, fullDayStartMinutes, fullDayEndMinutes - calendarStepMinutes);
+      const boundedEndMinutes = clamp(
+        endMinutes,
+        boundedStartMinutes + calendarStepMinutes,
+        fullDayEndMinutes,
       );
-      return {
-        startHour: defaultCalendarStartHour,
-        endHour: defaultCalendarEndHour,
-        hourSlots,
-        calendarHeight: (defaultCalendarEndHour - defaultCalendarStartHour) * hourRowHeight,
-        calendarTotalMinutes:
-          (defaultCalendarEndHour - defaultCalendarStartHour) * 60,
-      };
-    }
 
-    const earliestMinutes = Math.min(...relevantMinutes);
-    const latestMinutes = Math.max(...relevantMinutes);
-    let startHour = clamp(
-      Math.floor(earliestMinutes / 60),
-      minCalendarHour,
-      maxCalendarHour - 1,
-    );
-    let endHour = clamp(
-      Math.ceil(latestMinutes / 60),
-      startHour + 1,
-      maxCalendarHour + 1,
-    );
+      const lineMarkers = Array.from(
+        {
+          length: Math.floor((boundedEndMinutes - boundedStartMinutes) / calendarStepMinutes) + 1,
+        },
+        (_, index) => boundedStartMinutes + (index * calendarStepMinutes),
+      );
 
-    if (endHour - startHour < minCalendarSpanHours) {
-      const desiredEnd = startHour + minCalendarSpanHours;
-      if (desiredEnd <= maxCalendarHour + 1) {
-        endHour = desiredEnd;
-      } else {
-        startHour = clamp(
-          endHour - minCalendarSpanHours,
-          minCalendarHour,
-          maxCalendarHour + 1 - minCalendarSpanHours,
-        );
+      const labelMarkers: number[] = [];
+      if (boundedStartMinutes % calendarLabelStepMinutes !== 0) {
+        labelMarkers.push(boundedStartMinutes);
       }
-    }
+      const firstAlignedLabel = roundUpToStep(boundedStartMinutes, calendarLabelStepMinutes);
+      for (let marker = firstAlignedLabel; marker < boundedEndMinutes; marker += calendarLabelStepMinutes) {
+        labelMarkers.push(marker);
+      }
+      if (
+        boundedEndMinutes !== fullDayEndMinutes
+        && !labelMarkers.includes(boundedEndMinutes)
+        && boundedEndMinutes - labelMarkers[labelMarkers.length - 1] >= calendarLabelStepMinutes / 2
+      ) {
+        labelMarkers.push(boundedEndMinutes);
+      }
 
-    const hourSlots = Array.from(
-      { length: endHour - startHour + 1 },
-      (_, index) => startHour + index,
-    );
-
-    return {
-      startHour,
-      endHour,
-      hourSlots,
-      calendarHeight: (endHour - startHour) * hourRowHeight,
-      calendarTotalMinutes: (endHour - startHour) * 60,
+      return {
+        startMinutes: boundedStartMinutes,
+        endMinutes: boundedEndMinutes,
+        lineMarkers,
+        labelMarkers,
+        calendarHeight: ((boundedEndMinutes - boundedStartMinutes) / 60) * hourRowHeight,
+        calendarTotalMinutes: boundedEndMinutes - boundedStartMinutes,
+      };
     };
-  }, [reservationsByDate, schedule?.days, weekDays]);
+
+    return buildCalendarRange(fullDayStartMinutes, fullDayEndMinutes);
+  }, []);
 
   const dayLayoutsByDate = useMemo(() => {
     const map = new Map<string, ReservationLayout[]>();
@@ -899,8 +961,8 @@ export default function ProfesionalDashboardPage() {
     if (calendarView !== 'week' || weekOffset !== 0) return null;
     const now = new Date();
     const nowKey = toLocalDateKey(now);
-    const startMinutes = visibleCalendarRange.startHour * 60;
-    const endMinutes = visibleCalendarRange.endHour * 60;
+    const startMinutes = visibleCalendarRange.startMinutes;
+    const endMinutes = visibleCalendarRange.endMinutes;
     const minutes = now.getHours() * 60 + now.getMinutes();
     if (minutes < startMinutes || minutes > endMinutes) return null;
 
@@ -911,6 +973,56 @@ export default function ProfesionalDashboardPage() {
       label: formatMinutesLabel(minutes),
     };
   }, [calendarView, visibleCalendarRange, weekOffset]);
+
+  const scrollWeekCalendarToMinute = useCallback((
+    targetMinutes: number,
+    options?: { behavior?: ScrollBehavior; align?: 'start' | 'center' },
+  ) => {
+    const container = weekCalendarScrollRef.current;
+    if (!container) return;
+
+    const align = options?.align ?? 'start';
+    const boundedMinutes = clamp(targetMinutes, visibleCalendarRange.startMinutes, visibleCalendarRange.endMinutes);
+    const minuteOffset = boundedMinutes - visibleCalendarRange.startMinutes;
+    const top = (minuteOffset / visibleCalendarRange.calendarTotalMinutes) * visibleCalendarRange.calendarHeight;
+    const nextScrollTop = align === 'center'
+      ? top - (container.clientHeight / 2)
+      : top;
+
+    const maxScrollTop = Math.max(visibleCalendarRange.calendarHeight - container.clientHeight, 0);
+    container.scrollTo({
+      top: clamp(nextScrollTop, 0, maxScrollTop),
+      behavior: options?.behavior ?? 'smooth',
+    });
+  }, [visibleCalendarRange]);
+
+  useEffect(() => {
+    if (calendarView !== 'week') return;
+
+    const focusKey = `${weekOffset}:${weekDays.map((day) => day.dateKey).join('|')}:${weekFocusWindow.startMinutes}:${weekFocusWindow.endMinutes}`;
+    if (lastAutoFocusKeyRef.current === focusKey) return;
+
+    const container = weekCalendarScrollRef.current;
+    if (!container) return;
+
+    lastAutoFocusKeyRef.current = focusKey;
+    const frame = requestAnimationFrame(() => {
+      const visibleMinutes = (container.clientHeight / visibleCalendarRange.calendarHeight)
+        * visibleCalendarRange.calendarTotalMinutes;
+      const focusCenter = (weekFocusWindow.startMinutes + weekFocusWindow.endMinutes) / 2;
+      const targetMinute = clamp(
+        focusCenter - (visibleMinutes / 2),
+        visibleCalendarRange.startMinutes,
+        Math.max(visibleCalendarRange.endMinutes - visibleMinutes, visibleCalendarRange.startMinutes),
+      );
+      scrollWeekCalendarToMinute(targetMinute, {
+        behavior: 'auto',
+        align: 'start',
+      });
+    });
+
+    return () => cancelAnimationFrame(frame);
+  }, [calendarView, scrollWeekCalendarToMinute, visibleCalendarRange, weekDays, weekFocusWindow, weekOffset]);
 
   const stats = useMemo(() => [
     {
@@ -1001,6 +1113,24 @@ export default function ProfesionalDashboardPage() {
     setWeekOffset(0);
     setMonthOffset(0);
   };
+  const handleJumpToDaySegment = useCallback((segment: 'lateNight' | 'morning' | 'afternoon' | 'evening' | 'now') => {
+    if (calendarView !== 'week') return;
+
+    const targetMinutes = segment === 'lateNight'
+      ? 0
+      : segment === 'morning'
+        ? 6 * 60
+        : segment === 'afternoon'
+          ? 12 * 60
+          : segment === 'evening'
+            ? 18 * 60
+            : new Date().getHours() * 60 + new Date().getMinutes();
+
+    scrollWeekCalendarToMinute(targetMinutes, {
+      behavior: 'smooth',
+      align: segment === 'now' ? 'center' : 'start',
+    });
+  }, [calendarView, scrollWeekCalendarToMinute]);
   const handleToggleMenu = () => {
     setIsMenuOpen((prev) => !prev);
   };
@@ -1059,7 +1189,7 @@ export default function ProfesionalDashboardPage() {
               <ProfesionalSidebar profile={profile} active="Agenda" />
             </div>
           </aside>
-          <div className="flex-1">
+          <div className="flex flex-1 flex-col">
             <div className="px-4 pt-4 sm:px-6 lg:hidden">
               <Button type="button" size="sm" onClick={handleToggleMenu}>
                 {isMenuOpen ? 'Cerrar menu' : 'Abrir menu'}
@@ -1070,13 +1200,14 @@ export default function ProfesionalDashboardPage() {
                 <ProfesionalSidebar profile={profile} active="Agenda" />
               </div>
             ) : null}
-            <main className="mx-auto w-full max-w-[1400px] px-4 py-6 sm:px-6 sm:py-8 lg:px-10">
-              <div className="space-y-10">
-                <section className="space-y-5">
+            <main className="mx-auto flex w-full max-w-[1400px] flex-1 flex-col px-4 py-4 sm:px-6 sm:py-6 lg:px-7 lg:py-4">
+              <div className="flex flex-col gap-4">
+                <section className="space-y-3 lg:shrink-0">
                   <DashboardHero
                     eyebrow="Centro operativo"
                     icon="agenda"
                     accent="ink"
+                    size="compact"
                     title="Agenda y reservas con foco en lo urgente"
                     description="Controlá el día, anticipá huecos disponibles y resolvé rápido pendientes, confirmaciones y cambios de agenda."
                     meta={
@@ -1136,8 +1267,8 @@ export default function ProfesionalDashboardPage() {
                     </p>
                   ) : null}
 
-                  <div className="grid gap-4 lg:grid-cols-[1.2fr,0.8fr]">
-                    <div className="grid gap-4 sm:grid-cols-3">
+                  <div className="grid gap-2.5 lg:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)]">
+                    <div className="grid gap-2.5 sm:grid-cols-3">
                       {agendaOverviewCards.map((item) => (
                         <DashboardStatCard
                           key={item.label}
@@ -1151,53 +1282,67 @@ export default function ProfesionalDashboardPage() {
                     </div>
 
                     <LockedFeature requiredPlan="PROFESIONAL" currentPlan={profile?.professionalPlan}>
-                      <Card className="border-white/70 bg-white/95 p-5">
-                        <DashboardSectionHeading
-                          eyebrow="Tendencia"
-                          title="Pulso semanal"
-                          description="Una lectura rápida del ritmo de tu agenda."
-                        />
-                        {canViewAnalytics && !featureAccess.advancedAnalytics ? (
-                          <p className="mt-3 rounded-[16px] border border-[color:var(--premium-soft)] bg-[color:var(--premium-soft)] px-3 py-2 text-xs text-[color:var(--premium-strong)]">
-                            Estás viendo analytics básicos. El nivel avanzado se habilita en Enterprise.
-                          </p>
-                        ) : null}
-                        <div className="mt-4 grid gap-3 sm:grid-cols-3 lg:grid-cols-1">
-                          {(canViewAnalytics ? stats : STATS_FALLBACK).map((item, index) => (
-                            <div
-                              key={item.label}
-                              className={cn(
-                                'rounded-[20px] border p-4',
-                                index === 0
-                                  ? 'border-[#f4dcc7] bg-[#fff5e8]'
-                                  : index === 1
-                                    ? 'border-[#cdeee9] bg-[#f0fffc]'
-                                    : 'border-[#E2E8F0] bg-[#F8FAFC]',
-                              )}
-                            >
-                              <p className="text-[0.64rem] uppercase tracking-[0.26em] text-[#94A3B8]">
-                                {item.label}
-                              </p>
-                              <p className="mt-2 text-2xl font-semibold text-[#0E2A47]">
-                                {item.value}
-                              </p>
-                              <p className="mt-1 text-xs text-[#64748B]">{item.detail}</p>
-                            </div>
-                          ))}
+                      <Card className="border-white/70 bg-white/95 p-4">
+                        <div className="flex flex-wrap items-start justify-between gap-2">
+                          <div>
+                            <p className="text-[0.62rem] uppercase tracking-[0.3em] text-[#94A3B8]">
+                              Tendencia
+                            </p>
+                            <h3 className="mt-1 text-base font-semibold tracking-[-0.02em] text-[#0E2A47]">
+                              Pulso semanal
+                            </h3>
+                          </div>
+                          {canViewAnalytics && !featureAccess.advancedAnalytics ? (
+                            <span className="rounded-full border border-[color:var(--premium-soft)] bg-[color:var(--premium-soft)] px-2.5 py-1 text-[0.65rem] font-semibold text-[color:var(--premium-strong)]">
+                              Analytics básicos
+                            </span>
+                          ) : null}
                         </div>
+
+                        {canViewAnalytics ? (
+                          <div className="mt-3 grid gap-2 sm:grid-cols-3">
+                            {stats.map((item, index) => (
+                              <div
+                                key={item.label}
+                                className={cn(
+                                  'rounded-[18px] border px-3 py-2.5',
+                                  index === 0
+                                    ? 'border-[#f4dcc7] bg-[#fff5e8]'
+                                    : index === 1
+                                      ? 'border-[#cdeee9] bg-[#f0fffc]'
+                                      : 'border-[#E2E8F0] bg-[#F8FAFC]',
+                                )}
+                              >
+                                <p className="text-[0.58rem] uppercase tracking-[0.24em] text-[#94A3B8]">
+                                  {item.label}
+                                </p>
+                                <p className="mt-1.5 text-lg font-semibold leading-none text-[#0E2A47] sm:text-xl">
+                                  {item.value}
+                                </p>
+                                <p className="mt-1 text-[0.72rem] leading-snug text-[#64748B]">
+                                  {item.detail}
+                                </p>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="mt-3 rounded-[16px] border border-dashed border-[#D9E2EC] bg-[#F8FAFC] px-3 py-2.5 text-xs text-[#64748B]">
+                            Analytics todavía no activos para este plan. La agenda sigue mostrando los turnos reales del rango visible.
+                          </div>
+                        )}
                       </Card>
                     </LockedFeature>
                   </div>
                 </section>
 
-                <section className="rounded-[28px] border border-white/70 bg-white/95 p-6 shadow-[0_18px_40px_rgba(15,23,42,0.08)]">
+                <section className="flex flex-col rounded-[28px] border border-white/70 bg-white/95 p-4 shadow-[0_18px_40px_rgba(15,23,42,0.08)] sm:p-5">
                   <DashboardSectionHeading
                     eyebrow="Agenda"
                     title={calendarView === 'week' ? 'Semana actual' : 'Calendario mensual'}
                     description={calendarView === 'week' ? calendarWeekLabel : monthLabel}
                   />
 
-                  <div className="mt-5 flex flex-wrap items-center justify-between gap-4">
+                  <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
                     <div className="flex flex-wrap items-center gap-2">
                       <div className="flex rounded-full border border-[color:var(--border-soft)] bg-white p-0.5 shadow-[var(--shadow-card)]">
                         <button
@@ -1294,21 +1439,53 @@ export default function ProfesionalDashboardPage() {
                   </div>
 
                   {calendarView === 'week' ? (
-                    <WeekCalendarBoard
-                      weekDays={weekDays}
-                      todayKey={todayKey}
-                      reservationsByDate={reservationsByDate}
-                      visibleCalendarRange={visibleCalendarRange}
-                      dayLayoutsByDate={dayLayoutsByDate}
-                      currentTimeIndicator={currentTimeIndicator}
-                      onReservationOpen={handleOpenReservation}
-                    />
+                    <div className="mt-2.5 flex flex-wrap items-center justify-between gap-3 rounded-[18px] border border-[#E2E8F0] bg-[#F8FAFC] px-3 py-2.5">
+                      <div className="flex flex-wrap gap-2">
+                        {[
+                          { label: 'Madrugada', value: 'lateNight' as const },
+                          { label: 'Mañana', value: 'morning' as const },
+                          { label: 'Tarde', value: 'afternoon' as const },
+                          { label: 'Noche', value: 'evening' as const },
+                          { label: 'Ahora', value: 'now' as const },
+                        ].map((segment) => (
+                          <button
+                            key={segment.value}
+                            type="button"
+                            onClick={() => handleJumpToDaySegment(segment.value)}
+                            className="rounded-full border border-[#D9E2EC] bg-white px-3 py-1.5 text-[0.72rem] font-semibold text-[#475569] transition hover:border-[#BFD3E4] hover:bg-[#FDFEFF]"
+                          >
+                            {segment.label}
+                          </button>
+                        ))}
+                      </div>
+                      <p className="text-[0.72rem] text-[#64748B]">
+                        Base 24h con foco inicial
+                        {weekFocusWindow.isFallback ? ' por fallback' : ' según horarios y reservas'}
+                      </p>
+                    </div>
+                  ) : null}
+
+                  {calendarView === 'week' ? (
+                    <div className="min-h-[540px] lg:h-[min(72vh,860px)]">
+                      <WeekCalendarBoard
+                        weekDays={weekDays}
+                        todayKey={todayKey}
+                        reservationsByDate={reservationsByDate}
+                        visibleCalendarRange={visibleCalendarRange}
+                        dayLayoutsByDate={dayLayoutsByDate}
+                        currentTimeIndicator={currentTimeIndicator}
+                        scrollContainerRef={weekCalendarScrollRef}
+                        onReservationOpen={handleOpenReservation}
+                      />
+                    </div>
                   ) : (
-                    <MonthCalendarBoard
-                      monthGridDays={monthGridDays}
-                      reservationsByDate={reservationsByDate}
-                      monthLabel={monthLabel}
-                    />
+                    <div className="min-h-[540px] lg:max-h-[min(72vh,860px)] lg:overflow-auto">
+                      <MonthCalendarBoard
+                        monthGridDays={monthGridDays}
+                        reservationsByDate={reservationsByDate}
+                        monthLabel={monthLabel}
+                      />
+                    </div>
                   )}
                 </section>
               </div>
@@ -1411,14 +1588,6 @@ export default function ProfesionalDashboardPage() {
                 className="rounded-full bg-[color:var(--primary)] px-4 py-2 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:bg-[color:var(--primary-strong)] hover:shadow-[var(--shadow-card)]"
               >
                 Confirmar
-              </button>
-              <button
-                type="button"
-                onClick={() => handleUpdateReservationStatus('completed')}
-                disabled={isUpdatingStatus}
-                className="rounded-full border border-[color:var(--primary-soft)] bg-[color:var(--primary-soft)] px-4 py-2 text-sm font-semibold text-[color:var(--primary-strong)] transition hover:-translate-y-0.5 hover:shadow-[var(--shadow-card)]"
-              >
-                Completar
               </button>
               <button
                 type="button"

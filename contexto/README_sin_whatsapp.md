@@ -71,7 +71,7 @@ Plan de entrada para validar valor real sin regalar toda la operacion.
 - perfil publico basico
 - hasta `5` fotos
 - servicios con nombre, duracion, precio y foto principal
-- agenda diaria
+- agenda completa en dashboard web
 - bloqueo de horarios
 - confirmacion y cancelacion desde panel
 - carga manual de turnos
@@ -81,8 +81,11 @@ Plan de entrada para validar valor real sin regalar toda la operacion.
 
 Lectura operativa actual:
 
-- `agenda diaria` limita navegacion de agenda, no la gestion base de reservas
+- `Free/BASIC` ya puede usar la agenda del dashboard sin bloqueos de vista semanal o mensual
 - `Free/BASIC` debe poder entrar a `/profesional/dashboard/reservas`, ver reservas operativas y ejecutar acciones base desde panel segun estado y politica
+- en `/profesional/dashboard`, incluso con `scheduleTier=DAILY`, la semana visible debe cargar y mostrar todas las reservas no canceladas del rango visible para no marcar huecos falsos ni permitir lectura engañosa de disponibilidad
+- la agenda semanal del dashboard usa base completa de `24h` con scroll vertical interno, pero el viewport visible muestra aproximadamente `12h`; el foco inicial inteligente usa horario laboral y reservas visibles, y el fallback solo define a que franja abrir si faltan datos
+- en desktop, `/profesional/dashboard` prioriza layout estable y agenda visible: mantiene scroll de pagina normal para la pantalla completa y reserva el scroll interno al cuerpo de la agenda semanal, evitando truncar la grilla por un shell full-height demasiado estricto
 
 Bloqueos esperados en producto:
 
@@ -90,7 +93,6 @@ Bloqueos esperados en producto:
 - sin ficha de cliente
 - sin analytics
 - sin chat interno
-- sin agenda semanal
 - sin multiequipo
 - sin automatizaciones avanzadas
 - sin portfolio, puntos, ultima hora, paquetes, tienda ni badge verificado
@@ -102,7 +104,6 @@ Plan para ahorrar tiempo y profesionalizar una sola agenda activa. Precio objeti
 - todo lo de `Free`
 - perfil mejorado con portada, logo, descripcion larga, mapa y metodos de pago
 - pagos online configurables y cobro en local o al reservar
-- agenda diaria y semanal
 - historial completo y reprogramacion mas completa
 - ficha del cliente, notas, historial de visitas y seguimiento basico
 - analytics basicos

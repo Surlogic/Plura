@@ -16,7 +16,6 @@ import {
 } from '@/components/profesional/dashboard/DashboardUI';
 import {
   cancelProfessionalBooking,
-  completeProfessionalBooking,
   createProfessionalReservation,
   getProfessionalBookingActions,
   getProfessionalReservationsForDates,
@@ -30,7 +29,9 @@ import { getPublicSlots } from '@/services/publicBookings';
 import type { ProfessionalReservation, ReservationStatus } from '@/types/professional';
 import {
   describeBookingPolicy,
+  formatBookingDateLabel,
   formatBookingMoney,
+  formatBookingTimeLabel,
   getOperationalStatusLabel,
   getOperationalStatusTone,
   getPaymentTypeLabel,
@@ -119,6 +120,20 @@ const extractApiMessage = (error: unknown, fallback: string) => {
   }
   return fallback;
 };
+
+const getReservationDisplayDate = (reservation: ProfessionalReservation) =>
+  formatBookingDateLabel(
+    `${reservation.date}T${reservation.time || '00:00'}`,
+    reservation.timezone,
+    reservation.startDateTimeUtc,
+  ) || reservation.date;
+
+const getReservationDisplayTime = (reservation: ProfessionalReservation) =>
+  formatBookingTimeLabel(
+    `${reservation.date}T${reservation.time || '00:00'}`,
+    reservation.timezone,
+    reservation.startDateTimeUtc,
+  ) || reservation.time;
 
 const operationalStatusLabel: Record<ReservationStatus, string> = {
   pending: getOperationalStatusLabel('PENDING'),
@@ -420,11 +435,12 @@ export default function ProfesionalReservationsPage() {
     selectedReservation?.paymentType,
     selectedReservation?.financialSummary,
   );
-  const selectedDateTime = selectedReservation ? parseReservationDate(selectedReservation) : null;
-  const canComplete =
-    selectedReservation?.status === 'confirmed'
-    && Boolean(selectedDateTime)
-    && (selectedDateTime?.getTime() ?? 0) <= Date.now();
+  const selectedReservationDateLabel = selectedReservation
+    ? getReservationDisplayDate(selectedReservation)
+    : '';
+  const selectedReservationTimeLabel = selectedReservation
+    ? getReservationDisplayTime(selectedReservation)
+    : '';
   const canConfirm = canProfessionalConfirmReservation(selectedReservation?.status);
   const handleSelectReservation = (reservationId: string) => {
     void prefetchProfessionalBookingDetail(reservationId);
@@ -530,6 +546,7 @@ export default function ProfesionalReservationsPage() {
       reservation.financialSummary,
     );
     const status = reservation.status ?? 'pending';
+    const reservationDateLabel = getReservationDisplayDate(reservation);
 
     return (
       <button
@@ -561,7 +578,7 @@ export default function ProfesionalReservationsPage() {
             </span>
           </div>
         </div>
-        <span className="shrink-0 text-xs text-[#64748B]">{reservation.date}</span>
+        <span className="shrink-0 text-xs text-[#64748B]">{reservationDateLabel}</span>
       </button>
     );
   };
@@ -856,7 +873,7 @@ export default function ProfesionalReservationsPage() {
                                 <p>
                                   Fecha:{' '}
                                   <span className="font-semibold text-[#0E2A47]">
-                                    {selectedReservation.date} · {selectedReservation.time}
+                                    {selectedReservationDateLabel} · {selectedReservationTimeLabel}
                                   </span>
                                 </p>
                                 {selectedReservation.financialSummary?.amountHeld ? (
@@ -1064,21 +1081,6 @@ export default function ProfesionalReservationsPage() {
                                   }
                                 >
                                   {isSubmittingAction ? 'Confirmando...' : 'Confirmar reserva'}
-                                </Button>
-                              ) : null}
-
-                              {canComplete ? (
-                                <Button
-                                  type="button"
-                                  disabled={isSubmittingAction}
-                                  onClick={() =>
-                                    runReservationAction(
-                                      () => completeProfessionalBooking(selectedReservation.id),
-                                      'No se pudo completar la reserva.',
-                                    )
-                                  }
-                                >
-                                  {isSubmittingAction ? 'Marcando...' : 'Marcar COMPLETE'}
                                 </Button>
                               ) : null}
 

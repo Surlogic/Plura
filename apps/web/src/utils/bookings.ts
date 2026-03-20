@@ -103,6 +103,52 @@ const resolveBookingDate = (
   return Number.isNaN(parsed.getTime()) ? null : parsed;
 };
 
+const getDatePart = (
+  parsed: Date,
+  type: 'year' | 'month' | 'day',
+  timeZone?: string | null,
+) => new Intl.DateTimeFormat('en-CA', {
+  timeZone: timeZone || undefined,
+  [type]: '2-digit',
+}).format(parsed);
+
+export const formatBookingDateKey = (
+  startDateTime?: string | null,
+  timezone?: string | null,
+  startDateTimeUtc?: string | null,
+) => {
+  const parsed = resolveBookingDate(startDateTime, startDateTimeUtc);
+  if (!parsed) {
+    return (startDateTime || '').split('T')[0] ?? '';
+  }
+
+  const year = new Intl.DateTimeFormat('en-CA', {
+    timeZone: timezone || undefined,
+    year: 'numeric',
+  }).format(parsed);
+  const month = getDatePart(parsed, 'month', timezone);
+  const day = getDatePart(parsed, 'day', timezone);
+  return `${year}-${month}-${day}`;
+};
+
+export const formatBookingTimeKey = (
+  startDateTime?: string | null,
+  timezone?: string | null,
+  startDateTimeUtc?: string | null,
+) => {
+  const parsed = resolveBookingDate(startDateTime, startDateTimeUtc);
+  if (!parsed) {
+    return (startDateTime || '').split('T')[1]?.slice(0, 5) ?? '';
+  }
+
+  return parsed.toLocaleTimeString('en-GB', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+    timeZone: timezone || undefined,
+  });
+};
+
 export const formatBookingDateLabel = (
   startDateTime?: string | null,
   timezone?: string | null,

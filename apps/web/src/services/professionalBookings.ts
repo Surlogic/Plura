@@ -14,7 +14,10 @@ import type {
 } from '@/types/bookings';
 import type { ProfessionalBookingTimelineResponse } from '@/types/professionalBookingTimeline';
 import type { ProfessionalReservation, ReservationStatus } from '@/types/professional';
-import { formatBookingDateLabel, formatBookingTimeLabel } from '@/utils/bookings';
+import {
+  formatBookingDateKey,
+  formatBookingTimeKey,
+} from '@/utils/bookings';
 import { buildIdempotencyKey } from '../../../../packages/shared/src/bookings/idempotency';
 import {
   type ProfessionalBookingDtoBase,
@@ -52,8 +55,8 @@ type ProfessionalServiceDto = {
 
 const mapBooking = (booking: ProfessionalBookingDto): ProfessionalReservation => {
   return mapProfessionalBookingBase(booking, ({ startDateTime, timezone, startDateTimeUtc }) => ({
-    date: formatBookingDateLabel(startDateTime, timezone, startDateTimeUtc),
-    time: formatBookingTimeLabel(startDateTime, timezone, startDateTimeUtc),
+    date: formatBookingDateKey(startDateTime, timezone, startDateTimeUtc),
+    time: formatBookingTimeKey(startDateTime, timezone, startDateTimeUtc),
   }));
 };
 
@@ -240,20 +243,6 @@ export const markProfessionalBookingNoShow = async (bookingId: string) => {
     {
       headers: {
         'Idempotency-Key': buildIdempotencyKey(`professional-no-show-${bookingId}`),
-      },
-    },
-  );
-  invalidateProfessionalBookingCaches();
-  return mapCommandResponse(response.data);
-};
-
-export const completeProfessionalBooking = async (bookingId: string) => {
-  const response = await api.post<BookingCommandResponse<ProfessionalBookingDto>>(
-    `/profesional/reservas/${bookingId}/complete`,
-    {},
-    {
-      headers: {
-        'Idempotency-Key': buildIdempotencyKey(`professional-complete-${bookingId}`),
       },
     },
   );

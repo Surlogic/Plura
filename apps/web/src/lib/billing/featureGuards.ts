@@ -14,8 +14,8 @@ export type ProfessionalFeatureKey =
 const FEATURE_REQUIRED_PLAN: Record<ProfessionalFeatureKey, ProfessionalPlanCode> = {
   enhancedPublicProfile: 'PROFESIONAL',
   onlinePayments: 'PROFESIONAL',
-  weeklyCalendarNavigation: 'PROFESIONAL',
-  monthlyCalendar: 'ENTERPRISE',
+  weeklyCalendarNavigation: 'BASIC',
+  monthlyCalendar: 'BASIC',
   basicAnalytics: 'PROFESIONAL',
   advancedAnalytics: 'ENTERPRISE',
 };
@@ -33,12 +33,8 @@ export const resolveProfessionalFeatureAccess = (profile?: ProfessionalProfile |
     onlinePayments: entitlements
       ? entitlements.allowOnlinePayments
       : hasPlanAccess(currentPlan, 'PROFESIONAL'),
-    weeklyCalendarNavigation: entitlements
-      ? entitlements.scheduleTier !== 'DAILY'
-      : hasPlanAccess(currentPlan, 'PROFESIONAL'),
-    monthlyCalendar: entitlements
-      ? entitlements.scheduleTier === 'MASTER'
-      : hasPlanAccess(currentPlan, 'ENTERPRISE'),
+    weeklyCalendarNavigation: true,
+    monthlyCalendar: true,
     basicAnalytics: entitlements
       ? entitlements.analyticsTier !== 'NONE'
       : hasPlanAccess(currentPlan, 'PROFESIONAL'),

@@ -254,6 +254,38 @@ class ProfessionalPaymentProviderConnectionServiceTest {
     }
 
     @Test
+    void shouldPersistUnexpectedCallbackErrors() {
+        ProfessionalProfile professional = professional();
+        ProfessionalPaymentProviderConnection connection = new ProfessionalPaymentProviderConnection();
+        connection.setId("conn-2");
+        connection.setProfessionalId(professional.getId());
+        connection.setProvider(PaymentProvider.MERCADOPAGO);
+        connection.setStatus(ProfessionalPaymentProviderConnectionStatus.PENDING_AUTHORIZATION);
+        connection.setPendingOauthState("state-1");
+        connection.setPendingOauthStateExpiresAt(utcNow().plusMinutes(10));
+        connection.setPendingOauthCodeVerifierEncrypted("enc-verifier-1");
+
+        when(professionalBillingSubjectGateway.loadEnabledProfessionalByUserId(20L)).thenReturn(professional);
+        when(repository.findByProfessionalIdAndProvider(professional.getId(), PaymentProvider.MERCADOPAGO))
+            .thenReturn(Optional.of(connection));
+        when(repository.save(any(ProfessionalPaymentProviderConnection.class)))
+            .thenAnswer(invocation -> invocation.getArgument(0));
+        when(mercadoPagoOAuthStateService.isPkceEnabled()).thenReturn(true);
+        when(mercadoPagoOAuthTokenCipher.decrypt("enc-verifier-1"))
+            .thenThrow(new IllegalStateException("cipher failed"));
+
+        ResponseStatusException exception = org.junit.jupiter.api.Assertions.assertThrows(
+            ResponseStatusException.class,
+            () -> service.handleMercadoPagoOAuthCallback(20L, "code-1", "state-1", null, null)
+        );
+
+        assertEquals(HttpStatus.BAD_GATEWAY, exception.getStatusCode());
+        assertEquals("No se pudo completar OAuth con Mercado Pago", exception.getReason());
+        assertTrue(connection.getLastError().contains("unexpected_callback_error"));
+        verify(errorRecorder).recordOAuthError("conn-2", connection.getLastError(), false);
+    }
+
+    @Test
     void shouldExchangeAuthorizationCodeWithPkceVerifierWhenEnabled() {
         ProfessionalProfile professional = professional();
         ProfessionalPaymentProviderConnection connection = new ProfessionalPaymentProviderConnection();

@@ -99,6 +99,22 @@ class ProfessionalMercadoPagoConnectionControllerTest {
         );
     }
 
+    @Test
+    void shouldRedirectFrontendWhenCallbackCrashesUnexpectedly() {
+        ProfessionalMercadoPagoConnectionController controller = controller("http://localhost:3002");
+        when(mercadoPagoOAuthStateService.resolveProfessionalId("state-1")).thenReturn(30L);
+        when(connectionService.handleMercadoPagoOAuthCallbackForProfessionalId(30L, "code-1", "state-1", null, null))
+            .thenThrow(new IllegalStateException("boom"));
+
+        ResponseEntity<Void> response = controller.handleOAuthCallback("code-1", "state-1", null, null);
+
+        assertEquals(HttpStatus.FOUND, response.getStatusCode());
+        assertEquals(
+            "http://localhost:3002/oauth/mercadopago/callback?result=error&reason=oauth_failed",
+            response.getHeaders().getFirst(HttpHeaders.LOCATION)
+        );
+    }
+
     private ProfessionalMercadoPagoConnectionController controller(String publicWebUrl) {
         return new ProfessionalMercadoPagoConnectionController(
             connectionService,

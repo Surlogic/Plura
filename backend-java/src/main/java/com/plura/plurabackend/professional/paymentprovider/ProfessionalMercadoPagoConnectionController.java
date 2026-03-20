@@ -97,6 +97,13 @@ public class ProfessionalMercadoPagoConnectionController {
                 safeForLogs(exception.getReason())
             );
             return redirectFrontend(resolveResult(error, exception), resolveReason(error, exception));
+        } catch (Exception exception) {
+            LOGGER.error(
+                "Mercado Pago OAuth callback crashed for redirect professionalId={}",
+                professionalId,
+                exception
+            );
+            return redirectFrontend("error", "oauth_failed");
         }
     }
 
@@ -161,6 +168,12 @@ public class ProfessionalMercadoPagoConnectionController {
         if (normalized.contains("token exchange") || normalized.contains("invalid_grant")
             || normalized.contains("oauth con mercado pago")) {
             return "token_exchange_failed";
+        }
+        if (normalized.contains("code_verifier")) {
+            return "token_exchange_failed";
+        }
+        if (normalized.contains("vinculada a otro profesional")) {
+            return "oauth_failed";
         }
         if (normalized.contains("autorizacion oauth pendiente")) {
             return "state_invalid";

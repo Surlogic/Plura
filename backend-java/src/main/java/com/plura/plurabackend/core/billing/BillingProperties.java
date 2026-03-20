@@ -45,8 +45,14 @@ public class BillingProperties {
         validatePlan("PLAN_ENTERPRISE", plans.planEnterprise);
 
         if (mercadopago.enabled) {
-            requirePresent(mercadopago.accessToken, "BILLING_MERCADOPAGO_ACCESS_TOKEN");
-            requirePresent(mercadopago.webhookSecret, "BILLING_MERCADOPAGO_WEBHOOK_SECRET");
+            requirePresent(
+                mercadopago.getSubscriptions().getAccessToken(),
+                "BILLING_MERCADOPAGO_SUBSCRIPTIONS_ACCESS_TOKEN"
+            );
+            requirePresent(
+                mercadopago.getSubscriptions().getWebhookSecret(),
+                "BILLING_MERCADOPAGO_SUBSCRIPTIONS_WEBHOOK_SECRET"
+            );
         }
     }
 
@@ -189,8 +195,6 @@ public class BillingProperties {
     public static class MercadoPago {
         private boolean enabled = false;
         private String baseUrl = "https://api.mercadopago.com";
-        private String accessToken = "";
-        private String webhookSecret = "";
         private String preapprovalPlanPath = "/preapproval_plan";
         private String preapprovalPath = "/preapproval";
         private String cancelPath = "/preapproval/{id}";
@@ -208,7 +212,8 @@ public class BillingProperties {
         private String planProfesionalId = "";
         private String planEnterpriseId = "";
         private int timeoutMillis = 5000;
-        private OAuth oauth = new OAuth();
+        private SubscriptionCredentials subscriptions = new SubscriptionCredentials();
+        private Reservations reservations = new Reservations();
 
         public boolean isEnabled() {
             return enabled;
@@ -226,20 +231,20 @@ public class BillingProperties {
             this.baseUrl = baseUrl;
         }
 
-        public String getAccessToken() {
-            return accessToken;
+        public SubscriptionCredentials getSubscriptions() {
+            return subscriptions;
         }
 
-        public void setAccessToken(String accessToken) {
-            this.accessToken = accessToken;
+        public void setSubscriptions(SubscriptionCredentials subscriptions) {
+            this.subscriptions = subscriptions == null ? new SubscriptionCredentials() : subscriptions;
         }
 
-        public String getWebhookSecret() {
-            return webhookSecret;
+        public Reservations getReservations() {
+            return reservations;
         }
 
-        public void setWebhookSecret(String webhookSecret) {
-            this.webhookSecret = webhookSecret;
+        public void setReservations(Reservations reservations) {
+            this.reservations = reservations == null ? new Reservations() : reservations;
         }
 
         public String getPreapprovalPlanPath() {
@@ -378,12 +383,55 @@ public class BillingProperties {
             this.timeoutMillis = timeoutMillis;
         }
 
-        public OAuth getOauth() {
-            return oauth;
+        public static class SubscriptionCredentials {
+            private String accessToken = "";
+            private String webhookSecret = "";
+
+            public String getAccessToken() {
+                return accessToken;
+            }
+
+            public void setAccessToken(String accessToken) {
+                this.accessToken = accessToken;
+            }
+
+            public String getWebhookSecret() {
+                return webhookSecret;
+            }
+
+            public void setWebhookSecret(String webhookSecret) {
+                this.webhookSecret = webhookSecret;
+            }
         }
 
-        public void setOauth(OAuth oauth) {
-            this.oauth = oauth == null ? new OAuth() : oauth;
+        public static class Reservations {
+            private String platformAccessToken = "";
+            private String webhookSecret = "";
+            private OAuth oauth = new OAuth();
+
+            public String getPlatformAccessToken() {
+                return platformAccessToken;
+            }
+
+            public void setPlatformAccessToken(String platformAccessToken) {
+                this.platformAccessToken = platformAccessToken;
+            }
+
+            public String getWebhookSecret() {
+                return webhookSecret;
+            }
+
+            public void setWebhookSecret(String webhookSecret) {
+                this.webhookSecret = webhookSecret;
+            }
+
+            public OAuth getOauth() {
+                return oauth;
+            }
+
+            public void setOauth(OAuth oauth) {
+                this.oauth = oauth == null ? new OAuth() : oauth;
+            }
         }
 
         public static class OAuth {

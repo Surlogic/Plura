@@ -6,6 +6,7 @@ import com.plura.plurabackend.core.billing.BillingProperties;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.net.URI;
+import java.net.URLDecoder;
 import java.net.URLEncoder;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -13,7 +14,9 @@ import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -55,11 +58,14 @@ public class MercadoPagoOAuthClient {
             .queryParam("redirect_uri", oauth.getRedirectUri())
             .build(true)
             .toUriString();
+        boolean hasRedirectUriQueryParam = parseQueryParams(authorizationUrl).containsKey("redirect_uri");
         LOGGER.info(
-            "Built Mercado Pago OAuth authorization URL authorizationBase={} redirectUri={} clientId={}",
+            "Built Mercado Pago OAuth authorization URL authorizationBase={} redirectUri={} clientId={} hasRedirectUriQueryParam={} authorizationUrl={}",
             safeForLogs(oauth.getAuthorizationUrl()),
             safeForLogs(oauth.getRedirectUri()),
-            safeForLogs(oauth.getClientId())
+            safeForLogs(oauth.getClientId()),
+            hasRedirectUriQueryParam,
+            sanitizeAuthorizationUrlForLogs(authorizationUrl)
         );
         return authorizationUrl;
     }
@@ -169,18 +175,18 @@ public class MercadoPagoOAuthClient {
                 "Mercado Pago no esta habilitado"
             );
         }
-        BillingProperties.MercadoPago.OAuth oauth = billingProperties.getMercadopago().getOauth();
-        requirePresent(oauth.getClientId(), "billing.mercadopago.oauth.client-id");
-        requirePresent(oauth.getRedirectUri(), "billing.mercadopago.oauth.redirect-uri");
-        requirePresent(oauth.getAuthorizationUrl(), "billing.mercadopago.oauth.authorization-url");
+        BillingProperties.MercadoPago.OAuth oauth = billingProperties.getMercadopago().getReservations().getOauth();
+        requirePresent(oauth.getClientId(), "billing.mercadopago.reservations.oauth.client-id");
+        requirePresent(oauth.getRedirectUri(), "billing.mercadopago.reservations.oauth.redirect-uri");
+        requirePresent(oauth.getAuthorizationUrl(), "billing.mercadopago.reservations.oauth.authorization-url");
         requireBackendCallbackRedirectUri(oauth.getRedirectUri());
         return oauth;
     }
 
     private BillingProperties.MercadoPago.OAuth requireConfiguredTokenExchange() {
         BillingProperties.MercadoPago.OAuth oauth = requireConfiguredAuthorization();
-        requirePresent(oauth.getClientSecret(), "billing.mercadopago.oauth.client-secret");
-        requirePresent(oauth.getTokenUrl(), "billing.mercadopago.oauth.token-url");
+        requirePresent(oauth.getClientSecret(), "billing.mercadopago.reservations.oauth.client-secret");
+        requirePresent(oauth.getTokenUrl(), "billing.mercadopago.reservations.oauth.token-url");
         return oauth;
     }
 
@@ -200,14 +206,14 @@ public class MercadoPagoOAuthClient {
             if (path == null || !path.equals(BACKEND_CALLBACK_PATH)) {
                 throw new ResponseStatusException(
                     HttpStatus.SERVICE_UNAVAILABLE,
-                    "billing.mercadopago.oauth.redirect-uri debe apuntar al callback backend "
+                    "billing.mercadopago.reservations.oauth.redirect-uri debe apuntar al callback backend "
                         + BACKEND_CALLBACK_PATH
                 );
             }
         } catch (IllegalArgumentException exception) {
             throw new ResponseStatusException(
                 HttpStatus.SERVICE_UNAVAILABLE,
-                "billing.mercadopago.oauth.redirect-uri no es una URL valida"
+                "billing.mercadopago.reservations.oauth.redirect-uri no es una URL valida"
             );
         }
     }
@@ -295,6 +301,51 @@ public class MercadoPagoOAuthClient {
             return trimmed;
         }
         return trimmed.substring(0, 8) + "..." + trimmed.substring(trimmed.length() - 4);
+    }
+
+    private String sanitizeAuthorizationUrlForLogs(String authorizationUrl) {
+        if (authorizationUrl == null || authorizationUrl.isBlank()) {
+            return authorizationUrl;
+        }
+        Map<String, List<String>> queryParams = parseQueryParams(authorizationUrl);
+        if (!queryParams.containsKey("state")) {
+            return authorizationUrl;
+        }
+        int stateIndex = authorizationUrl.indexOf("state=");
+        if (stateIndex < 0) {
+            return authorizationUrl;
+        }
+        int stateValueStart = stateIndex + "state=".length();
+        int nextAmpersand = authorizationUrl.indexOf('&', stateValueStart);
+        if (nextAmpersand < 0) {
+            return authorizationUrl.substring(0, stateValueStart) + "[masked]";
+        }
+        return authorizationUrl.substring(0, stateValueStart)
+            + "[masked]"
+            + authorizationUrl.substring(nextAmpersand);
+    }
+
+    private Map<String, List<String>> parseQueryParams(String url) {
+        Map<String, List<String>> queryParams = new LinkedHashMap<>();
+        if (url == null || url.isBlank()) {
+            return queryParams;
+        }
+        String rawQuery = URI.create(url).getRawQuery();
+        if (rawQuery == null || rawQuery.isBlank()) {
+            return queryParams;
+        }
+        for (String pair : rawQuery.split("&")) {
+            if (pair == null || pair.isBlank()) {
+                continue;
+            }
+            int separatorIndex = pair.indexOf('=');
+            String rawKey = separatorIndex >= 0 ? pair.substring(0, separatorIndex) : pair;
+            String rawValue = separatorIndex >= 0 ? pair.substring(separatorIndex + 1) : "";
+            String key = URLDecoder.decode(rawKey, StandardCharsets.UTF_8);
+            String value = URLDecoder.decode(rawValue, StandardCharsets.UTF_8);
+            queryParams.computeIfAbsent(key, ignored -> new ArrayList<>()).add(value);
+        }
+        return queryParams;
     }
 
     public record TokenResponse(

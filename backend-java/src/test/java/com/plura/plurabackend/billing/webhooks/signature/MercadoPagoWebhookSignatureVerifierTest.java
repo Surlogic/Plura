@@ -14,7 +14,7 @@ class MercadoPagoWebhookSignatureVerifierTest {
     @Test
     void shouldValidateOfficialManifestSignature() {
         BillingProperties properties = new BillingProperties();
-        properties.getMercadopago().setWebhookSecret("mp-secret");
+        properties.getMercadopago().getSubscriptions().setWebhookSecret("mp-secret");
 
         MercadoPagoWebhookSignatureVerifier verifier = new MercadoPagoWebhookSignatureVerifier(
             properties,
@@ -37,7 +37,7 @@ class MercadoPagoWebhookSignatureVerifierTest {
     @Test
     void shouldRejectInvalidSignature() {
         BillingProperties properties = new BillingProperties();
-        properties.getMercadopago().setWebhookSecret("mp-secret");
+        properties.getMercadopago().getSubscriptions().setWebhookSecret("mp-secret");
 
         MercadoPagoWebhookSignatureVerifier verifier = new MercadoPagoWebhookSignatureVerifier(
             properties,
@@ -54,7 +54,7 @@ class MercadoPagoWebhookSignatureVerifierTest {
     @Test
     void shouldRejectExpiredTimestampOutsideReplayWindow() {
         BillingProperties properties = new BillingProperties();
-        properties.getMercadopago().setWebhookSecret("mp-secret");
+        properties.getMercadopago().getSubscriptions().setWebhookSecret("mp-secret");
         properties.setWebhookAllowedSkewSeconds(300);
 
         MercadoPagoWebhookSignatureVerifier verifier = new MercadoPagoWebhookSignatureVerifier(
@@ -71,5 +71,28 @@ class MercadoPagoWebhookSignatureVerifierTest {
         request.addHeader("X-Signature", "ts=" + oldTs + ",v1=" + signature);
 
         assertFalse(verifier.verify("{\"data\":{\"id\":\"pay-123\"}}", request));
+    }
+
+    @Test
+    void shouldValidateManifestSignatureWithReservationWebhookSecret() {
+        BillingProperties properties = new BillingProperties();
+        properties.getMercadopago().getReservations().setWebhookSecret("mp-reservation-secret");
+
+        MercadoPagoWebhookSignatureVerifier verifier = new MercadoPagoWebhookSignatureVerifier(
+            properties,
+            new ObjectMapper()
+        );
+
+        String payload = "{\"data\":{\"id\":\"pay-123\"}}";
+        String ts = String.valueOf(Instant.now().getEpochSecond());
+        String requestId = "req-1";
+        String manifest = "id:pay-123;request-id:req-1;ts:" + ts + ";";
+        String signature = SignatureUtils.hmacSha256Hex("mp-reservation-secret", manifest);
+
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.addHeader("X-Request-Id", requestId);
+        request.addHeader("X-Signature", "ts=" + ts + ",v1=" + signature);
+
+        assertTrue(verifier.verify(payload, request));
     }
 }

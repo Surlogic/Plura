@@ -89,7 +89,7 @@ public class MercadoPagoOAuthTokenCipher {
     }
 
     private String resolveKeyMaterial() {
-        BillingProperties.MercadoPago.OAuth oauth = billingProperties.getMercadopago().getOauth();
+        BillingProperties.MercadoPago.OAuth oauth = billingProperties.getMercadopago().getReservations().getOauth();
         String explicitKey = oauth.getTokenEncryptionKey();
         if (explicitKey != null && !explicitKey.isBlank()) {
             return explicitKey;

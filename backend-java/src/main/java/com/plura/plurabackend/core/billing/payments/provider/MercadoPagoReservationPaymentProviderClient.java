@@ -219,7 +219,7 @@ public class MercadoPagoReservationPaymentProviderClient implements PaymentProvi
         String failureMessage
     ) {
         JsonNode payment = sendRequest(
-            billingProperties.getMercadopago().getAccessToken(),
+            billingProperties.getMercadopago().getReservations().getPlatformAccessToken(),
             HttpMethod.GET,
             billingProperties.getMercadopago().getReservationPaymentStatusPath().replace("{id}", providerPaymentId),
             null,

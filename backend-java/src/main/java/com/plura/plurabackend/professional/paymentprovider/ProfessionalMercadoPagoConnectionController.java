@@ -114,7 +114,7 @@ public class ProfessionalMercadoPagoConnectionController {
     }
 
     private String resolveFrontendRedirectUrl() {
-        BillingProperties.MercadoPago.OAuth oauth = billingProperties.getMercadopago().getOauth();
+        BillingProperties.MercadoPago.OAuth oauth = billingProperties.getMercadopago().getReservations().getOauth();
         String configured = oauth.getFrontendRedirectUrl();
         if (configured != null && !configured.isBlank()) {
             return configured.trim();

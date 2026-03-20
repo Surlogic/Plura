@@ -5,9 +5,12 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.plura.plurabackend.core.billing.BillingProperties;
 import jakarta.servlet.http.HttpServletRequest;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Enumeration;
+import java.util.LinkedHashSet;
 import java.util.Locale;
+import java.util.Set;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -26,8 +29,8 @@ public class MercadoPagoWebhookSignatureVerifier {
 
     public boolean verify(String rawPayload, HttpServletRequest request) {
         BillingProperties.MercadoPago config = billingProperties.getMercadopago();
-        String secret = config.getWebhookSecret();
-        if (secret == null || secret.isBlank()) {
+        Set<String> secrets = resolveWebhookSecrets(config);
+        if (secrets.isEmpty()) {
             return false;
         }
 
@@ -50,9 +53,11 @@ public class MercadoPagoWebhookSignatureVerifier {
 
         if (requestId != null && ts != null && v1 != null && dataId != null) {
             String manifest = "id:" + dataId + ";request-id:" + requestId + ";ts:" + ts + ";";
-            String expected = SignatureUtils.hmacSha256Hex(secret, manifest);
-            if (SignatureUtils.constantTimeEquals(expected, v1)) {
-                return true;
+            for (String secret : secrets) {
+                String expected = SignatureUtils.hmacSha256Hex(secret, manifest);
+                if (SignatureUtils.constantTimeEquals(expected, v1)) {
+                    return true;
+                }
             }
         }
 
@@ -61,8 +66,26 @@ public class MercadoPagoWebhookSignatureVerifier {
         }
 
         String candidate = v1 != null ? v1 : signatureHeader;
-        String expectedBodySignature = SignatureUtils.hmacSha256Hex(secret, rawPayload == null ? "" : rawPayload);
-        return SignatureUtils.constantTimeEquals(expectedBodySignature, candidate);
+        for (String secret : secrets) {
+            String expectedBodySignature = SignatureUtils.hmacSha256Hex(secret, rawPayload == null ? "" : rawPayload);
+            if (SignatureUtils.constantTimeEquals(expectedBodySignature, candidate)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private Set<String> resolveWebhookSecrets(BillingProperties.MercadoPago config) {
+        Set<String> secrets = new LinkedHashSet<>(new ArrayList<>(2));
+        String subscriptionSecret = config.getSubscriptions().getWebhookSecret();
+        if (subscriptionSecret != null && !subscriptionSecret.isBlank()) {
+            secrets.add(subscriptionSecret.trim());
+        }
+        String reservationSecret = config.getReservations().getWebhookSecret();
+        if (reservationSecret != null && !reservationSecret.isBlank()) {
+            secrets.add(reservationSecret.trim());
+        }
+        return secrets;
     }
 
     private boolean isWithinReplayWindow(String ts) {

@@ -81,7 +81,8 @@ class ProfessionalMercadoPagoConnectionControllerTest {
 
     @Test
     void shouldUseConfiguredFrontendRedirectUrlWhenPresent() {
-        billingProperties.getMercadopago().getOauth().setFrontendRedirectUrl("https://plura-web.onrender.com/oauth/mercadopago/callback");
+        billingProperties.getMercadopago().getReservations().getOauth()
+            .setFrontendRedirectUrl("https://plura-web.onrender.com/oauth/mercadopago/callback");
         ProfessionalMercadoPagoConnectionController controller = controller("http://localhost:3002");
         when(roleGuard.requireProfessional()).thenThrow(new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Sin sesión activa"));
 

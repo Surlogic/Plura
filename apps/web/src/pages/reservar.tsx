@@ -29,10 +29,8 @@ import {
   isPrepaidBooking,
 } from '@/utils/bookings';
 import {
-  closeCheckoutWindow,
+  type CheckoutOpenResult,
   openCheckoutUrl,
-  openCheckoutWindow,
-  redirectCheckoutWindow,
 } from '@/utils/checkoutWindow';
 import type { WorkDayKey } from '@/types/professional';
 
@@ -190,6 +188,7 @@ export default function ReservationPage() {
   const [contextError, setContextError] = useState<string | null>(null);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [createdCheckoutBookingId, setCreatedCheckoutBookingId] = useState<string | null>(null);
   const [hasAppliedPendingSelection, setHasAppliedPendingSelection] = useState(false);
 
   const professionalSlug = resolveQueryValue(router.query.profesional).trim();
@@ -404,6 +403,10 @@ export default function ReservationPage() {
     setHasAppliedPendingSelection(true);
   }, [calendarDays, hasAppliedPendingSelection, professionalSlug, service?.id]);
 
+  useEffect(() => {
+    setCreatedCheckoutBookingId(null);
+  }, [professionalSlug, selectedDate, selectedTime, service?.id]);
+
   const handleConfirm = async () => {
     if (!professionalSlug || !service?.id || !selectedDate || !selectedTime) {
       setSaveMessage(null);
@@ -433,9 +436,9 @@ export default function ReservationPage() {
     setIsSaving(true);
     setSaveError(null);
     setSaveMessage(null);
+    setCreatedCheckoutBookingId(null);
 
     const requiresCheckout = isPrepaidBooking(service.paymentType);
-    const checkoutWindow = requiresCheckout ? openCheckoutWindow() : null;
 
     let createdBookingId: number | null = null;
 
@@ -456,34 +459,34 @@ export default function ReservationPage() {
         const paymentSession = await createClientBookingPaymentSession(String(created.id));
         const hasCheckoutUrl = Boolean(paymentSession.checkoutUrl);
         let checkoutMode: 'started' | 'failed' | 'synced' = hasCheckoutUrl ? 'started' : 'synced';
+        let checkoutOpenResult: CheckoutOpenResult = 'blocked';
+        setCreatedCheckoutBookingId(String(created.id));
 
         if (paymentSession.checkoutUrl) {
-          const redirected = redirectCheckoutWindow(checkoutWindow, paymentSession.checkoutUrl);
-          if (!redirected) {
-            closeCheckoutWindow(checkoutWindow);
-          }
-          const openedFallback = redirected ? true : openCheckoutUrl(paymentSession.checkoutUrl);
-          if (!redirected && !openedFallback) {
+          checkoutOpenResult = openCheckoutUrl(paymentSession.checkoutUrl);
+          if (checkoutOpenResult === 'blocked') {
             checkoutMode = 'failed';
           }
-        } else if (checkoutWindow) {
-          closeCheckoutWindow(checkoutWindow);
         }
 
         setSaveMessage(getBookingPaymentSessionMessage(paymentSession));
-        router.push({
+        const redirectToBookings = () => router.push({
           pathname: '/cliente/reservas',
           query: {
             bookingId: String(created.id),
             checkout: checkoutMode,
           },
         });
+        if (checkoutMode === 'started') {
+          if (checkoutOpenResult === 'current-tab') {
+            return;
+          }
+          return;
+        }
+        void redirectToBookings();
         return;
       }
 
-      if (checkoutWindow) {
-        closeCheckoutWindow(checkoutWindow);
-      }
       setSaveMessage('Reserva creada. Te llevamos al estado de la reserva.');
       router.push({
         pathname: '/cliente/reservas',
@@ -493,9 +496,6 @@ export default function ReservationPage() {
         },
       });
     } catch (error) {
-      if (checkoutWindow) {
-        closeCheckoutWindow(checkoutWindow);
-      }
       if (createdBookingId !== null) {
         router.push({
           pathname: '/cliente/reservas',
@@ -772,7 +772,8 @@ export default function ReservationPage() {
                   isLoadingContext ||
                   !service?.id ||
                   clientLoading ||
-                  !clientHasLoaded
+                  !clientHasLoaded ||
+                  Boolean(createdCheckoutBookingId)
                 }
                 className={`mt-4 w-full rounded-full px-4 py-2 text-sm font-semibold shadow-sm transition ${
                   selectedTime &&
@@ -780,7 +781,8 @@ export default function ReservationPage() {
                   !isLoadingContext &&
                   service?.id &&
                   !clientLoading &&
-                  clientHasLoaded
+                  clientHasLoaded &&
+                  !createdCheckoutBookingId
                     ? 'bg-[#0B1D2A] text-white hover:-translate-y-0.5 hover:shadow-md'
                     : 'cursor-not-allowed bg-[#E2E8F0] text-[#94A3B8]'
                 }`}
@@ -797,6 +799,20 @@ export default function ReservationPage() {
               ) : null}
               {saveError ? (
                 <p className="mt-3 text-xs font-semibold text-[#EF4444]">{saveError}</p>
+              ) : null}
+              {createdCheckoutBookingId ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    void router.push({
+                      pathname: '/cliente/reservas',
+                      query: { bookingId: createdCheckoutBookingId },
+                    });
+                  }}
+                  className="mt-3 w-full rounded-full border border-[#0E2A47]/15 bg-white px-4 py-2 text-sm font-semibold text-[#0E2A47] shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
+                >
+                  Ver estado de la reserva
+                </button>
               ) : null}
             </div>
           </aside>

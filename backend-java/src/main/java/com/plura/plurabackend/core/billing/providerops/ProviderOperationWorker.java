@@ -100,6 +100,11 @@ public class ProviderOperationWorker {
         return CompletableFuture.completedFuture(claimAndProcess(operationId));
     }
 
+    public ProviderOperation processOperationNow(String operationId) {
+        claimAndProcess(operationId);
+        return providerOperationService.getRequired(operationId);
+    }
+
     @Async("billingProviderOperationExecutor")
     public void kickOperationsAsync(List<String> operationIds) {
         if (operationIds == null) {

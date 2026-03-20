@@ -31,10 +31,8 @@ import {
   shouldAutoRefreshFinancialStatus,
 } from '@/utils/bookings';
 import {
-  closeCheckoutWindow,
+  type CheckoutOpenResult,
   openCheckoutUrl,
-  openCheckoutWindow,
-  redirectCheckoutWindow,
 } from '@/utils/checkoutWindow';
 
 const toLocalDateKey = (date: Date) => date.toLocaleDateString('en-CA');
@@ -421,9 +419,6 @@ export default function ClienteReservasPage() {
   const handleStartCheckout = async () => {
     if (!selectedBooking || isSubmitting) return;
 
-    const checkoutWindow = openCheckoutWindow();
-    const hadPreparedWindow = Boolean(checkoutWindow);
-
     setIsSubmitting(true);
     setActionError(null);
     setStatusBanner({
@@ -435,35 +430,25 @@ export default function ClienteReservasPage() {
     try {
       const session = await createClientBookingPaymentSession(selectedBooking.id);
       const feedback = getBookingPaymentSessionFeedback(session);
+      let checkoutOpenResult: CheckoutOpenResult = 'blocked';
 
       if (session.checkoutUrl) {
-        const redirected = redirectCheckoutWindow(checkoutWindow, session.checkoutUrl);
-        if (!redirected) {
-          closeCheckoutWindow(checkoutWindow);
-        }
-        const openedFallback = redirected ? true : openCheckoutUrl(session.checkoutUrl);
+        checkoutOpenResult = openCheckoutUrl(session.checkoutUrl);
 
-        if (!redirected && !openedFallback) {
+        if (checkoutOpenResult === 'blocked') {
           setStatusBanner(null);
           setActionError(
-            'No pudimos abrir Mercado Pago en una nueva ventana. Revisá el bloqueo de ventanas emergentes y volvé a intentar.',
+            'No pudimos abrir Mercado Pago en esta pestaña. Volvé a intentar.',
           );
-        } else {
-          setStatusBanner({
-            ...feedback,
-            description: hadPreparedWindow
-              ? feedback.description
-              : `${feedback.description} Si no ves la pestaña de Mercado Pago, revisá el bloqueo de ventanas emergentes.`,
-          });
+        } else if (checkoutOpenResult === 'current-tab') {
+          return;
         }
       } else {
-        closeCheckoutWindow(checkoutWindow);
         setStatusBanner(feedback);
       }
       await loadBookings();
       refreshTimeline();
     } catch (submitError) {
-      closeCheckoutWindow(checkoutWindow);
       setActionError(
             extractApiMessage(submitError, 'No pudimos iniciar el pago de tu reserva en este momento.'),
       );

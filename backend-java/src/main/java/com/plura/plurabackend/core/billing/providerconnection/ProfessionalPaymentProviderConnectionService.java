@@ -281,12 +281,17 @@ public class ProfessionalPaymentProviderConnectionService {
             safeForLogs(connection.getProviderUserId())
         );
         connection.setStatus(ProfessionalPaymentProviderConnectionStatus.DISCONNECTED);
+        connection.setProviderAccountId(null);
+        connection.setProviderUserId(null);
         connection.setAccessTokenEncrypted(null);
         connection.setRefreshTokenEncrypted(null);
         connection.setTokenExpiresAt(null);
+        connection.setScope(null);
+        connection.setConnectedAt(null);
         connection.setDisconnectedAt(LocalDateTime.now());
         connection.setLastError(null);
         connection.setLastSyncAt(LocalDateTime.now());
+        connection.setMetadataJson(null);
         clearPendingAuthorizationAttempt(connection);
         return toResponse(repository.save(connection));
     }

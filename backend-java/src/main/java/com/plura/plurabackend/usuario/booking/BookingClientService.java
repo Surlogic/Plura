@@ -112,7 +112,9 @@ public class BookingClientService {
         Timer.Sample sample = Timer.start(meterRegistry);
         try {
             User user = resolveClientUser(rawUserId);
-            List<Booking> bookings = bookingRepository.findAllByUserWithDetailsOrderByStartDateTimeAsc(user);
+            List<Booking> bookings = refreshBookingsAfterPendingPaymentSync(
+                bookingRepository.findAllByUserWithDetailsOrderByStartDateTimeAsc(user)
+            );
             List<Long> bookingIds = bookings.stream().map(Booking::getId).toList();
             Map<Long, BookingFinancialSummaryResponse> summaries = bookingFinanceService.findResponseMapByBookingIds(bookingIds);
             Map<Long, BookingRefundRecordResponse> latestRefunds =
@@ -184,6 +186,21 @@ public class BookingClientService {
         } catch (NumberFormatException exception) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Token invalido");
         }
+    }
+
+    private List<Booking> refreshBookingsAfterPendingPaymentSync(List<Booking> bookings) {
+        if (bookings == null || bookings.isEmpty()) {
+            return List.of();
+        }
+        return bookings.stream()
+            .map(booking -> {
+                if (!shouldSyncPendingPayment(booking)) {
+                    return booking;
+                }
+                bookingPaymentsGateway.syncPendingChargeStatus(booking.getId());
+                return bookingRepository.findDetailedById(booking.getId()).orElse(booking);
+            })
+            .toList();
     }
 
     private boolean shouldSyncPendingPayment(Booking booking) {

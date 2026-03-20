@@ -4,8 +4,11 @@ import com.plura.plurabackend.core.booking.dto.BookingFinancialSummaryResponse;
 import com.plura.plurabackend.core.booking.dto.BookingPayoutRecordResponse;
 import com.plura.plurabackend.core.booking.dto.BookingRefundRecordResponse;
 import com.plura.plurabackend.core.booking.dto.ProfessionalBookingResponse;
+import com.plura.plurabackend.core.booking.BookingPaymentsGateway;
 import com.plura.plurabackend.core.booking.finance.BookingFinanceService;
 import com.plura.plurabackend.core.booking.model.Booking;
+import com.plura.plurabackend.core.booking.model.BookingOperationalStatus;
+import com.plura.plurabackend.core.booking.model.ServicePaymentType;
 import com.plura.plurabackend.core.booking.policy.BookingPolicySnapshotService;
 import com.plura.plurabackend.core.booking.repository.BookingRepository;
 import com.plura.plurabackend.core.booking.time.BookingDateTimeService;
@@ -28,6 +31,7 @@ public class BookingQueryApplicationService {
 
     private final BookingRepository bookingRepository;
     private final BookingFinanceService bookingFinanceService;
+    private final BookingPaymentsGateway bookingPaymentsGateway;
     private final BookingPolicySnapshotService bookingPolicySnapshotService;
     private final BookingDateTimeService bookingDateTimeService;
     private final ProfessionalAccessSupport professionalAccessSupport;
@@ -35,12 +39,14 @@ public class BookingQueryApplicationService {
     public BookingQueryApplicationService(
         BookingRepository bookingRepository,
         BookingFinanceService bookingFinanceService,
+        BookingPaymentsGateway bookingPaymentsGateway,
         BookingPolicySnapshotService bookingPolicySnapshotService,
         BookingDateTimeService bookingDateTimeService,
         ProfessionalAccessSupport professionalAccessSupport
     ) {
         this.bookingRepository = bookingRepository;
         this.bookingFinanceService = bookingFinanceService;
+        this.bookingPaymentsGateway = bookingPaymentsGateway;
         this.bookingPolicySnapshotService = bookingPolicySnapshotService;
         this.bookingDateTimeService = bookingDateTimeService;
         this.professionalAccessSupport = professionalAccessSupport;
@@ -83,11 +89,18 @@ public class BookingQueryApplicationService {
             .map(ProfessionalBookingResponse::getId)
             .filter(Objects::nonNull)
             .toList();
+        Map<Long, Booking> bookingEntities = bookingRepository.findByIdIn(bookingIds).stream()
+            .collect(Collectors.toMap(Booking::getId, booking -> booking));
+        bookingEntities.values().stream()
+            .filter(this::shouldSyncPendingPayment)
+            .map(Booking::getId)
+            .forEach(bookingPaymentsGateway::syncPendingChargeStatus);
+        bookingEntities = bookingRepository.findByIdIn(bookingIds).stream()
+            .collect(Collectors.toMap(Booking::getId, booking -> booking));
+        final Map<Long, Booking> resolvedBookingEntities = bookingEntities;
         Map<Long, BookingFinancialSummaryResponse> summaries = bookingFinanceService.findResponseMapByBookingIds(bookingIds);
         Map<Long, BookingRefundRecordResponse> latestRefunds = bookingFinanceService.findLatestRefundResponseMapByBookingIds(bookingIds);
         Map<Long, BookingPayoutRecordResponse> latestPayouts = bookingFinanceService.findLatestPayoutResponseMapByBookingIds(bookingIds);
-        Map<Long, Booking> bookingEntities = bookingRepository.findByIdIn(bookingIds).stream()
-            .collect(Collectors.toMap(Booking::getId, booking -> booking));
 
         bookings.forEach(booking -> {
             BookingFinancialSummaryResponse summary = summaries.get(booking.getId());
@@ -100,8 +113,9 @@ public class BookingQueryApplicationService {
             booking.setLatestRefund(latestRefund);
             booking.setLatestPayout(latestPayout);
 
-            Booking bookingEntity = bookingEntities.get(booking.getId());
+            Booking bookingEntity = resolvedBookingEntities.get(booking.getId());
             if (bookingEntity != null) {
+                booking.setStatus(bookingEntity.getOperationalStatus().name());
                 booking.setStartDateTimeUtc(bookingDateTimeService.toUtcString(bookingEntity));
                 booking.setPolicySnapshot(
                     bookingPolicySnapshotService.toResponse(bookingPolicySnapshotService.resolveForBooking(bookingEntity))
@@ -118,5 +132,16 @@ public class BookingQueryApplicationService {
         } catch (DateTimeParseException exception) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, errorMessage);
         }
+    }
+
+    private boolean shouldSyncPendingPayment(Booking booking) {
+        if (booking == null || booking.getId() == null) {
+            return false;
+        }
+        if (booking.getServicePaymentTypeSnapshot() == null || booking.getServicePaymentTypeSnapshot() == ServicePaymentType.ON_SITE) {
+            return false;
+        }
+        return booking.getOperationalStatus() == BookingOperationalStatus.PENDING
+            || booking.getOperationalStatus() == BookingOperationalStatus.CONFIRMED;
     }
 }

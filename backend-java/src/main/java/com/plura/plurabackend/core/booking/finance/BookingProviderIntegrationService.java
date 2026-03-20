@@ -48,7 +48,6 @@ import com.plura.plurabackend.core.user.model.User;
 import com.plura.plurabackend.core.user.model.UserRole;
 import com.plura.plurabackend.core.user.repository.UserRepository;
 import java.math.BigDecimal;
-import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.Comparator;
 import java.util.EnumMap;
@@ -273,15 +272,11 @@ public class BookingProviderIntegrationService {
         registerAfterCommit(
             () -> {
                 try {
-                    providerOperationWorker.kickOperationAsync(operation.getId());
-                    ProviderOperation latestOperation = providerOperationWorker.awaitOperationState(
-                        operation.getId(),
-                        Duration.ofSeconds(8)
-                    );
+                    ProviderOperation latestOperation = providerOperationWorker.processOperationNow(operation.getId());
                     applyCheckoutDispatchResult(response, loadProviderOperationResult(latestOperation));
                     if (response.getCheckoutUrl() == null || response.getCheckoutUrl().isBlank()) {
                         LOGGER.warn(
-                            "Checkout operation did not produce a usable url within synchronous wait operationId={} status={} externalReference={} attemptCount={} lastError={}",
+                            "Checkout operation did not produce a usable url after synchronous processing operationId={} status={} externalReference={} attemptCount={} lastError={}",
                             latestOperation.getId(),
                             latestOperation.getStatus(),
                             latestOperation.getExternalReference(),
@@ -290,6 +285,8 @@ public class BookingProviderIntegrationService {
                         );
                         throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "No se pudo iniciar checkout de reserva");
                     }
+                } catch (ResponseStatusException exception) {
+                    throw exception;
                 } catch (Exception exception) {
                     throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "No se pudo iniciar checkout de reserva", exception);
                 }

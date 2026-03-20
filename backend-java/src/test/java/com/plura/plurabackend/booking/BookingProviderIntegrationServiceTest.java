@@ -1,6 +1,7 @@
 package com.plura.plurabackend.booking;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -57,6 +58,8 @@ import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.TransactionStatus;
@@ -209,6 +212,156 @@ class BookingProviderIntegrationServiceTest {
         assertEquals("MERCADOPAGO", response.getProvider());
         assertEquals(PaymentProvider.MERCADOPAGO, pendingCharge.getProvider());
         verify(providerClient).createBookingCheckout(any());
+    }
+
+    @Test
+    void shouldProcessNewCheckoutSynchronouslyAfterCommit() throws Exception {
+        BookingProviderIntegrationService service = buildService();
+        User user = clientUser();
+        Booking booking = prepaidBooking();
+        PaymentTransaction createdCharge = new PaymentTransaction();
+        createdCharge.setId("tx-new");
+        createdCharge.setBooking(booking);
+        createdCharge.setProfessionalId(booking.getProfessionalId());
+        createdCharge.setProvider(PaymentProvider.MERCADOPAGO);
+        createdCharge.setTransactionType(PaymentTransactionType.BOOKING_CHARGE);
+        createdCharge.setStatus(PaymentTransactionStatus.PENDING);
+        createdCharge.setAmount(BigDecimal.valueOf(500));
+        createdCharge.setCurrency("UYU");
+        createdCharge.setExternalReference("booking:" + booking.getId());
+
+        ProviderOperation operation = new ProviderOperation();
+        operation.setId("op-new");
+        operation.setOperationType(ProviderOperationType.BOOKING_CHECKOUT);
+        operation.setStatus(ProviderOperationStatus.SUCCEEDED);
+        operation.setProvider(PaymentProvider.MERCADOPAGO);
+        operation.setBookingId(booking.getId());
+        operation.setPaymentTransactionId(createdCharge.getId());
+        operation.setExternalReference(createdCharge.getExternalReference());
+
+        createdCharge.setPayloadJson(objectMapper.writeValueAsString(
+            new ProviderCheckoutSession("https://mp.test/checkout-new", "pref-new", null)
+        ));
+
+        when(userRepository.findByIdAndDeletedAtIsNull(user.getId())).thenReturn(Optional.of(user));
+        when(bookingRepository.findDetailedByIdForUpdate(booking.getId())).thenReturn(Optional.of(booking));
+        when(paymentTransactionRepository.findByBooking_IdAndTransactionTypeAndStatusIn(
+            booking.getId(),
+            PaymentTransactionType.BOOKING_CHARGE,
+            List.of(
+                PaymentTransactionStatus.APPROVED,
+                PaymentTransactionStatus.PARTIALLY_REFUNDED,
+                PaymentTransactionStatus.REFUNDED
+            )
+        )).thenReturn(List.of());
+        when(paymentTransactionRepository.findByBooking_IdAndTransactionTypeAndStatusIn(
+            booking.getId(),
+            PaymentTransactionType.BOOKING_CHARGE,
+            List.of(PaymentTransactionStatus.PENDING)
+        )).thenReturn(List.of());
+        when(paymentTransactionRepository.saveAndFlush(any(PaymentTransaction.class))).thenReturn(createdCharge);
+        when(paymentTransactionRepository.findById(createdCharge.getId())).thenReturn(Optional.of(createdCharge));
+        when(bookingRepository.findDetailedById(booking.getId())).thenReturn(Optional.of(booking));
+        when(providerOperationService.createOrReuseOperation(
+            eq(ProviderOperationType.BOOKING_CHECKOUT),
+            eq(PaymentProvider.MERCADOPAGO),
+            eq(booking.getId()),
+            eq(createdCharge.getId()),
+            isNull(),
+            isNull(),
+            eq(createdCharge.getExternalReference()),
+            any()
+        )).thenReturn(operation);
+        when(providerOperationWorker.processOperationNow(operation.getId())).thenReturn(operation);
+        when(bookingProfessionalPlanGateway.allowsOnlinePayments(booking.getProfessionalId())).thenReturn(true);
+        when(bookingFinanceService.ensureInitializedWithEvidence(booking))
+            .thenReturn(financialSummaryEntity(booking, BookingFinancialStatus.PAYMENT_PENDING));
+
+        BookingPaymentSessionResponse response = service.createPaymentSessionForClient(
+            String.valueOf(user.getId()),
+            booking.getId(),
+            null
+        );
+
+        assertEquals("tx-new", response.getTransactionId());
+        assertEquals("https://mp.test/checkout-new", response.getCheckoutUrl());
+        assertEquals("MERCADOPAGO", response.getProvider());
+        verify(providerOperationWorker).processOperationNow(operation.getId());
+        verify(providerOperationWorker, never()).kickOperationAsync(any());
+    }
+
+    @Test
+    void shouldPreserveConcreteCheckoutFailureReason() {
+        BookingProviderIntegrationService service = buildService();
+        User user = clientUser();
+        Booking booking = prepaidBooking();
+        PaymentTransaction createdCharge = new PaymentTransaction();
+        createdCharge.setId("tx-fail");
+        createdCharge.setBooking(booking);
+        createdCharge.setProfessionalId(booking.getProfessionalId());
+        createdCharge.setProvider(PaymentProvider.MERCADOPAGO);
+        createdCharge.setTransactionType(PaymentTransactionType.BOOKING_CHARGE);
+        createdCharge.setStatus(PaymentTransactionStatus.PENDING);
+        createdCharge.setAmount(BigDecimal.valueOf(500));
+        createdCharge.setCurrency("UYU");
+        createdCharge.setExternalReference("booking:" + booking.getId());
+
+        ProviderOperation operation = new ProviderOperation();
+        operation.setId("op-fail");
+        operation.setOperationType(ProviderOperationType.BOOKING_CHECKOUT);
+        operation.setStatus(ProviderOperationStatus.FAILED);
+        operation.setProvider(PaymentProvider.MERCADOPAGO);
+        operation.setBookingId(booking.getId());
+        operation.setPaymentTransactionId(createdCharge.getId());
+        operation.setExternalReference(createdCharge.getExternalReference());
+
+        when(userRepository.findByIdAndDeletedAtIsNull(user.getId())).thenReturn(Optional.of(user));
+        when(bookingRepository.findDetailedByIdForUpdate(booking.getId())).thenReturn(Optional.of(booking));
+        when(paymentTransactionRepository.findByBooking_IdAndTransactionTypeAndStatusIn(
+            booking.getId(),
+            PaymentTransactionType.BOOKING_CHARGE,
+            List.of(
+                PaymentTransactionStatus.APPROVED,
+                PaymentTransactionStatus.PARTIALLY_REFUNDED,
+                PaymentTransactionStatus.REFUNDED
+            )
+        )).thenReturn(List.of());
+        when(paymentTransactionRepository.findByBooking_IdAndTransactionTypeAndStatusIn(
+            booking.getId(),
+            PaymentTransactionType.BOOKING_CHARGE,
+            List.of(PaymentTransactionStatus.PENDING)
+        )).thenReturn(List.of());
+        when(paymentTransactionRepository.saveAndFlush(any(PaymentTransaction.class))).thenReturn(createdCharge);
+        when(providerOperationService.createOrReuseOperation(
+            eq(ProviderOperationType.BOOKING_CHECKOUT),
+            eq(PaymentProvider.MERCADOPAGO),
+            eq(booking.getId()),
+            eq(createdCharge.getId()),
+            isNull(),
+            isNull(),
+            eq(createdCharge.getExternalReference()),
+            any()
+        )).thenReturn(operation);
+        when(providerOperationWorker.processOperationNow(operation.getId())).thenThrow(
+            new ResponseStatusException(
+                HttpStatus.CONFLICT,
+                "La conexion Mercado Pago del profesional no esta lista para cobrar reservas"
+            )
+        );
+        when(bookingProfessionalPlanGateway.allowsOnlinePayments(booking.getProfessionalId())).thenReturn(true);
+        when(bookingFinanceService.ensureInitializedWithEvidence(booking))
+            .thenReturn(financialSummaryEntity(booking, BookingFinancialStatus.PAYMENT_PENDING));
+
+        ResponseStatusException exception = assertThrows(
+            ResponseStatusException.class,
+            () -> service.createPaymentSessionForClient(String.valueOf(user.getId()), booking.getId(), null)
+        );
+
+        assertEquals(HttpStatus.CONFLICT, exception.getStatusCode());
+        assertEquals(
+            "La conexion Mercado Pago del profesional no esta lista para cobrar reservas",
+            exception.getReason()
+        );
     }
 
     @Test

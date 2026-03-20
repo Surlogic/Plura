@@ -178,6 +178,7 @@ Lectura de producto:
 - por eso `GET /profesional/payment-providers/mercadopago/oauth/callback` queda expuesto como `permitAll` en Spring Security; la seguridad del cierre OAuth ya no depende de JWT sino de `state` firmado + correlacion backend
 - si el `state` es valido pero pertenece a otro profesional respecto del intento pendiente, el backend rechaza el callback
 - la misma cuenta Mercado Pago no puede quedar conectada simultaneamente a dos profesionales distintos; el backend rechaza esa reconexion con `409`
+- `DELETE /profesional/payment-providers/mercadopago/connection` ahora limpia no solo los tokens OAuth sino tambien `provider_user_id`, `provider_account_id`, `scope`, metadata y el onboarding pendiente para dejar la conexion realmente desvinculada
 - si el navegador reintenta el callback despues de una conexion ya exitosa y Mercado Pago responde `invalid_grant` por reutilizacion del `code`, el backend conserva la conexion existente y trata ese replay como idempotente
 - si el callback falla durante el token exchange u otra validacion posterior, el backend intenta persistir `last_error` y limpiar el onboarding pendiente en una transaccion separada para no perder el motivo real del fallo
 - el callback tambien cubre errores inesperados fuera de `ResponseStatusException` para no perderlos como `500` mudos: los persiste como `unexpected_callback_error` y redirige frontend con `oauth_failed`
@@ -204,6 +205,8 @@ Lectura de producto:
 - soporta cancelacion y reagendamiento segun politica
 - `payment-session` es la base para reserva con pago online
 - `payment-session` solo admite `MERCADOPAGO`; si existe una transaccion pendiente legacy `DLOCAL`, la sesion se reabre con Mercado Pago para no romper el checkout vigente
+- en el alta inicial del checkout, `POST /cliente/reservas/{id}/payment-session` ya no dispara `worker async + polling` interno para obtener la URL: procesa la `provider_operation` de checkout en linea despues del commit para recortar espera perceptible antes de abrir Mercado Pago
+- si esa resolucion en linea falla, `POST /cliente/reservas/{id}/payment-session` conserva el `status/reason` concreto del fallo upstream en vez de taparlo siempre con un `502` generico
 - `timeline` ya expone historial operativo de eventos de notification por reserva para el cliente autenticado
 - `GET /cliente/reservas/me` conserva el mismo response shape, pero ahora batch-ea summary/refund/payout latest por booking ids y queda mejor cubierto por un indice Flyway `booking(user_id, start_date_time)`
 

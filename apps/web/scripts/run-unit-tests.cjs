@@ -27,7 +27,7 @@ const collectTests = (dir) => {
   });
 };
 
-const testsRoot = path.join(outDir, 'apps', 'web', 'src', 'lib');
+const testsRoot = path.join(outDir, 'apps', 'web', 'src');
 const testFiles = collectTests(testsRoot);
 
 if (testFiles.length === 0) {

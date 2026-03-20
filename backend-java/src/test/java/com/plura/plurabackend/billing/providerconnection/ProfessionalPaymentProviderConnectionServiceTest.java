@@ -1,6 +1,7 @@
 package com.plura.plurabackend.billing.providerconnection;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.isNull;
@@ -363,6 +364,73 @@ class ProfessionalPaymentProviderConnectionServiceTest {
 
         assertEquals(HttpStatus.UNAUTHORIZED, exception.getStatusCode());
         assertEquals("Sesion profesional invalida", exception.getReason());
+    }
+
+    @Test
+    void shouldDisconnectMercadoPagoConnectionAndClearLinkedAccountData() {
+        ProfessionalProfile professional = professional();
+        ProfessionalPaymentProviderConnection connection = new ProfessionalPaymentProviderConnection();
+        connection.setProfessionalId(professional.getId());
+        connection.setProvider(PaymentProvider.MERCADOPAGO);
+        connection.setStatus(ProfessionalPaymentProviderConnectionStatus.CONNECTED);
+        connection.setProviderUserId("998877");
+        connection.setProviderAccountId("998877");
+        connection.setAccessTokenEncrypted("enc-access-1");
+        connection.setRefreshTokenEncrypted("enc-refresh-1");
+        connection.setTokenExpiresAt(LocalDateTime.now().plusHours(1));
+        connection.setScope("read write offline_access");
+        connection.setConnectedAt(LocalDateTime.now().minusMinutes(5));
+        connection.setMetadataJson("{\"userId\":998877}");
+        connection.setPendingOauthState("state-1");
+        connection.setPendingOauthStateExpiresAt(utcNow().plusMinutes(10));
+        connection.setPendingOauthCodeVerifierEncrypted("enc-verifier-1");
+        connection.setLastError("old-error");
+
+        when(professionalBillingSubjectGateway.loadEnabledProfessionalByUserId(20L)).thenReturn(professional);
+        when(repository.findByProfessionalIdAndProvider(professional.getId(), PaymentProvider.MERCADOPAGO))
+            .thenReturn(Optional.of(connection));
+        when(repository.save(any(ProfessionalPaymentProviderConnection.class)))
+            .thenAnswer(invocation -> invocation.getArgument(0));
+
+        var response = service.disconnectMercadoPagoConnection(20L);
+
+        assertEquals("DISCONNECTED", response.status());
+        assertFalse(response.connected());
+        assertEquals(null, response.providerUserId());
+        assertEquals(null, response.providerAccountId());
+        assertEquals(null, response.scope());
+        assertEquals(null, response.tokenExpiresAt());
+        assertEquals(null, response.connectedAt());
+        assertEquals(null, response.lastError());
+        assertTrue(response.disconnectedAt() != null);
+        assertTrue(response.lastSyncAt() != null);
+        assertEquals(null, connection.getAccessTokenEncrypted());
+        assertEquals(null, connection.getRefreshTokenEncrypted());
+        assertEquals(null, connection.getMetadataJson());
+        assertEquals(null, connection.getPendingOauthState());
+        assertEquals(null, connection.getPendingOauthStateExpiresAt());
+        assertEquals(null, connection.getPendingOauthCodeVerifierEncrypted());
+    }
+
+    @Test
+    void shouldRejectResolveAccessAfterDisconnect() {
+        ProfessionalProfile professional = professional();
+        ProfessionalPaymentProviderConnection connection = new ProfessionalPaymentProviderConnection();
+        connection.setProfessionalId(professional.getId());
+        connection.setProvider(PaymentProvider.MERCADOPAGO);
+        connection.setStatus(ProfessionalPaymentProviderConnectionStatus.DISCONNECTED);
+
+        when(professionalBillingSubjectGateway.findById(professional.getId())).thenReturn(Optional.of(professional));
+        when(repository.findByProfessionalIdAndProvider(professional.getId(), PaymentProvider.MERCADOPAGO))
+            .thenReturn(Optional.of(connection));
+
+        ResponseStatusException exception = org.junit.jupiter.api.Assertions.assertThrows(
+            ResponseStatusException.class,
+            () -> service.resolveMercadoPagoAccessForProfessional(professional.getId())
+        );
+
+        assertEquals(HttpStatus.CONFLICT, exception.getStatusCode());
+        assertEquals("La conexion Mercado Pago del profesional no esta lista para cobrar reservas", exception.getReason());
     }
 
     private ProfessionalProfile professional() {

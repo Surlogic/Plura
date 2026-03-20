@@ -14,6 +14,7 @@ import {
   mapClientBookingBase,
   resolveClientBookingsArray,
 } from '../../../../packages/shared/src/bookings/mappers';
+import { isAllowedMercadoPagoUrl } from './mercadoPagoBrowser';
 
 export type ClientDashboardBooking = {
   id: string;
@@ -89,6 +90,11 @@ export const createClientBookingPaymentSession = async (
     `/cliente/reservas/${bookingId}/payment-session`,
     provider ? { provider } : {},
   );
+
+  if (response.data.checkoutUrl && !isAllowedMercadoPagoUrl(response.data.checkoutUrl)) {
+    throw new Error('URL de checkout no permitida');
+  }
+
   return response.data;
 };
 

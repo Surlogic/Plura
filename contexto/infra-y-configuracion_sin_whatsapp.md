@@ -235,6 +235,7 @@ Lectura de producto:
 Variables detectadas en uso:
 
 - `EXPO_PUBLIC_API_URL`
+- `EXPO_PUBLIC_MAPBOX_TOKEN`
 - `MAPBOX_TOKEN`
 - `EXPO_PUBLIC_GOOGLE_EXPO_CLIENT_ID`
 - `EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID`
@@ -249,6 +250,8 @@ Archivo ejemplo:
 Lectura de producto:
 
 - mobile ya tiene base para API, mapa y login Google
+- para el mapa del perfil publico mobile, la variable operativa recomendada pasa a ser `EXPO_PUBLIC_MAPBOX_TOKEN`; `MAPBOX_TOKEN` queda como fallback legacy local
+- mobile usa `expo-web-browser` para abrir checkout de reservas, checkout de plan y OAuth de `Mercado Pago` dentro de la app sin sacar al usuario a un navegador externo completo
 
 ### Backend
 

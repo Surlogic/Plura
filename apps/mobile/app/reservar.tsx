@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Linking, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -17,6 +17,7 @@ import {
   savePendingReservation,
 } from '../src/services/pendingReservation';
 import { useProfessionalProfileContext } from '../src/context/ProfessionalProfileContext';
+import { openMercadoPagoInAppBrowser } from '../src/services/mercadoPagoBrowser';
 
 type Params = {
   slug?: string;
@@ -236,17 +237,15 @@ export default function ReservationCheckoutScreen() {
                       try {
                         const paymentSession = await createClientBookingPaymentSession(String(created.id));
                         if (paymentSession.checkoutUrl) {
-                          setMessage('Reserva creada. Abriendo Mercado Pago...');
-                          await Linking.openURL(paymentSession.checkoutUrl);
+                          await openMercadoPagoInAppBrowser(paymentSession.checkoutUrl);
+                          setMessage('Reserva creada. Revisaremos el estado del pago en Mis turnos.');
                         } else {
                           setMessage('Reserva creada. Revisa el estado del pago en Mis turnos.');
                         }
                       } catch (paymentError) {
                         setMessage(getApiErrorMessage(paymentError, 'Reserva creada, pero no pudimos abrir el checkout.'));
                       } finally {
-                        setTimeout(() => {
-                          router.replace('/(tabs)/bookings');
-                        }, 700);
+                        router.replace('/(tabs)/bookings');
                       }
                       return;
                     }

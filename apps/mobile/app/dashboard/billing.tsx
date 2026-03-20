@@ -2,7 +2,6 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   ActivityIndicator,
   AppState,
-  Linking,
   ScrollView,
   Text,
   TouchableOpacity,
@@ -26,6 +25,7 @@ import {
   type ProfessionalMercadoPagoConnection,
 } from '../../src/services/billing';
 import { useProfessionalProfileContext } from '../../src/context/ProfessionalProfileContext';
+import { openMercadoPagoInAppBrowser } from '../../src/services/mercadoPagoBrowser';
 
 export default function BillingScreen() {
   const { profile, refreshProfile } = useProfessionalProfileContext();
@@ -173,8 +173,10 @@ export default function BillingScreen() {
                     setMessage(null);
                     try {
                       const checkout = await createBillingCheckout(plan.id as PaidBillingUiPlanId);
-                      await Linking.openURL(checkout.checkoutUrl);
-                      setMessage('Checkout abierto. Cuando vuelvas a la app vamos a refrescar el estado.');
+                      await openMercadoPagoInAppBrowser(checkout.checkoutUrl);
+                      await refreshProfile();
+                      await loadBilling();
+                      setMessage('Checkout cerrado. Refrescamos el estado de tu plan.');
                     } catch (error) {
                       setMessage(resolveBackendMessage(error, 'No se pudo iniciar checkout.'));
                     } finally {
@@ -244,8 +246,10 @@ export default function BillingScreen() {
                       if (!oauth.authorizationUrl) {
                         throw new Error('No se recibio URL de autorizacion.');
                       }
-                      await Linking.openURL(oauth.authorizationUrl);
-                      setMessage('Se abrio Mercado Pago para completar la autorizacion.');
+                      await openMercadoPagoInAppBrowser(oauth.authorizationUrl);
+                      await refreshProfile();
+                      await loadBilling();
+                      setMessage('Volviste de Mercado Pago. Refrescamos el estado de la conexion.');
                     } catch (error) {
                       setMessage(resolveBackendMessage(error, 'No se pudo iniciar la conexion con Mercado Pago.'));
                     } finally {

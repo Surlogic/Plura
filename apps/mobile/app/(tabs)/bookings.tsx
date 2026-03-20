@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
-  Linking,
+  AppState,
   ScrollView,
   Text,
   TextInput,
@@ -25,6 +25,7 @@ import { getApiErrorMessage } from '../../src/services/errors';
 import { useProfessionalProfileContext } from '../../src/context/ProfessionalProfileContext';
 import BusinessProfileScreen from '../dashboard/business-profile';
 import { theme } from '../../src/theme';
+import { openMercadoPagoInAppBrowser } from '../../src/services/mercadoPagoBrowser';
 
 const toLocalDateKey = (date: Date) => date.toLocaleDateString('en-CA');
 
@@ -196,6 +197,17 @@ export default function ClientBookingsScreen() {
     void loadBookings();
   }, [role]);
 
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (nextState) => {
+      if (nextState !== 'active' || role === 'professional') return;
+      void loadBookings();
+    });
+
+    return () => {
+      subscription.remove();
+    };
+  }, [role]);
+
   const selectedBooking = useMemo(
     () => bookings.find((booking) => booking.id === selectedBookingId) ?? null,
     [bookings, selectedBookingId],
@@ -327,8 +339,9 @@ export default function ClientBookingsScreen() {
     try {
       const session = await createClientBookingPaymentSession(selectedBooking.id);
       if (session.checkoutUrl) {
-        await Linking.openURL(session.checkoutUrl);
-        setMessage('Checkout abierto en tu navegador.');
+        await openMercadoPagoInAppBrowser(session.checkoutUrl);
+        await loadBookings();
+        setMessage('Mercado Pago se abrio dentro de la app y actualizamos tu reserva al volver.');
       } else {
         setMessage('El backend no devolvio URL de checkout para esta reserva.');
       }

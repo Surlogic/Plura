@@ -8,6 +8,7 @@ import {
   type PaidBillingUiPlanId,
 } from '../config/billingPlans';
 import type { ProfessionalPlanCode } from '../types/professional';
+import { isAllowedMercadoPagoUrl } from './mercadoPagoBrowser';
 
 export type BillingSubscriptionStatus = 'ACTIVE' | 'PAST_DUE' | 'CANCELLED' | 'TRIAL';
 export type BillingUiStatus = BillingSubscriptionStatus | 'NONE';
@@ -100,26 +101,6 @@ export const fetchCurrentSubscription = async (): Promise<BillingSubscription | 
   }
 };
 
-const ALLOWED_CHECKOUT_DOMAINS = [
-  'https://www.mercadopago.com',
-  'https://www.mercadopago.com.uy',
-  'https://www.mercadopago.com.ar',
-  'https://sandbox.mercadopago.com',
-  'https://sandbox.mercadopago.com.uy',
-  'https://sandbox.mercadopago.com.ar',
-];
-
-const isAllowedCheckoutUrl = (url: string): boolean => {
-  try {
-    const parsed = new URL(url);
-    return ALLOWED_CHECKOUT_DOMAINS.some(
-      (domain) => parsed.origin === new URL(domain).origin,
-    );
-  } catch {
-    return false;
-  }
-};
-
 export const createBillingCheckout = async (
   planId: PaidBillingUiPlanId,
 ): Promise<BillingCheckoutResponse> => {
@@ -128,7 +109,7 @@ export const createBillingCheckout = async (
     planCode: plan.backendPlanCode,
   });
 
-  if (!isAllowedCheckoutUrl(response.data.checkoutUrl)) {
+  if (!isAllowedMercadoPagoUrl(response.data.checkoutUrl)) {
     throw new Error('URL de checkout no permitida');
   }
 
@@ -179,6 +160,14 @@ export const startProfessionalMercadoPagoOAuth = async (): Promise<MercadoPagoOA
   const response = await api.post<MercadoPagoOAuthStartResponse>(
     `${MERCADO_PAGO_CONNECTION_BASE_PATH}/oauth/start`,
   );
+
+  if (
+    response.data.authorizationUrl
+    && !isAllowedMercadoPagoUrl(response.data.authorizationUrl)
+  ) {
+    throw new Error('URL de autorizacion no permitida');
+  }
+
   return response.data;
 };
 

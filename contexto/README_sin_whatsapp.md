@@ -316,6 +316,7 @@ Capacidades ya visibles en codigo:
 - detalle de reserva profesional con timeline operativo e historial por reserva
 - busqueda, favoritos, geolocalizacion y mapa
 - billing, suscripciones, checkout de reservas y webhooks con Mercado Pago
+- mobile ya muestra mapa en el perfil publico del profesional y abre los flujos de `Mercado Pago` dentro de la app con browser embebido
 - storage de imagenes
 
 Capacidades de producto definidas pero no necesariamente cerradas en UI o API publica:

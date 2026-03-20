@@ -265,6 +265,7 @@ Lectura de producto:
 - `dashboard/billing` ya no usa `payout-config`; muestra el plan de Plura y el estado de conexion OAuth de `Mercado Pago` como unico provider vigente para cobros
 - `dashboard/billing` en mobile ya respeta el gating principal de web: si el perfil no tiene `allowOnlinePayments`, no intenta conectar `Mercado Pago` y deja la conexion reservada para `PROFESIONAL / ENTERPRISE`
 - `dashboard/billing` refresca perfil + suscripcion al volver a foreground para bajar desfasajes despues del checkout del plan o del flujo OAuth
+- `dashboard/billing` ahora abre el checkout del plan y la autorizacion OAuth de `Mercado Pago` dentro de un browser embebido de Expo; al cerrar esa vista vuelve a refrescar perfil + billing
 - `dashboard/services` en mobile ya bloquea `DEPOSIT` y `FULL_PREPAY` cuando el perfil no tiene `allowOnlinePayments`, alineando la configuracion de servicios con web
 - `dashboard/agenda` en mobile ya no expone las acciones manuales `completar` ni `retry payout`; queda alineado con la UX operativa web basada en confirmacion, cancelacion, no-show y reagendamiento
 - no expone aun el set completo de capacidades `Premium`
@@ -287,7 +288,9 @@ Lectura de producto:
 Lectura de producto:
 
 - mobile cubre reserva, cuenta y operacion basica
-- `/reservar` en mobile ya puede continuar reservas con pago online: crea la reserva, abre `Mercado Pago` cuando el servicio requiere checkout y luego deriva a `/(tabs)/bookings` para seguir el estado de la reserva
+- `/profesional/[slug]` en mobile ya muestra una seccion visual de ubicacion con mapa de `Mapbox`, usando coordenadas publicas cuando existen y geocoding fallback cuando faltan
+- `/reservar` en mobile ya puede continuar reservas con pago online: crea la reserva, abre `Mercado Pago` dentro de la app con browser embebido y luego deriva a `/(tabs)/bookings` para seguir el estado de la reserva
+- `/(tabs)/bookings` ahora tambien reabre pagos pendientes de `Mercado Pago` dentro de la app y refresca reservas al volver
 - todavia no se ve una capa madura para notificaciones transaccionales, reseñas, fidelizacion o chat
 
 ## Shared

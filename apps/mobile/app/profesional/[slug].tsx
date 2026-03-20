@@ -1,5 +1,13 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Linking, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Linking,
+  Platform,
+  ScrollView,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -17,6 +25,12 @@ import {
 } from '../../src/services/clientFeatures';
 import { useProfessionalProfileContext } from '../../src/context/ProfessionalProfileContext';
 import type { WorkDayKey } from '../../src/types/professional';
+import {
+  buildMapboxStaticMapUrl,
+  hasMobileMapboxToken,
+  mapboxForwardGeocode,
+} from '../../src/services/mapbox';
+import PublicProfileMapCard from '../../src/components/map/PublicProfileMapCard';
 
 type QuickSlotGroup = { label: 'Hoy' | 'Manana'; dateKey: string; slots: string[] };
 
@@ -110,6 +124,33 @@ const openExternalUrl = async (value: string) => {
   } catch {}
 };
 
+const parseOptionalNumber = (value: unknown): number | null => {
+  if (typeof value === 'number') {
+    return Number.isFinite(value) ? value : null;
+  }
+  if (typeof value === 'string') {
+    const parsed = Number.parseFloat(value);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+  return null;
+};
+
+const buildMapsUrl = ({
+  latitude,
+  longitude,
+  label,
+}: {
+  latitude: number;
+  longitude: number;
+  label: string;
+}) => {
+  const encodedLabel = encodeURIComponent(label || 'Plura');
+  if (Platform.OS === 'ios') {
+    return `http://maps.apple.com/?ll=${latitude},${longitude}&q=${encodedLabel}`;
+  }
+  return `https://www.google.com/maps/search/?api=1&query=${latitude},${longitude}`;
+};
+
 export default function ProfesionalDetailScreen() {
   const { slug } = useLocalSearchParams<{ slug: string }>();
   const { role, profile } = useProfessionalProfileContext();
@@ -124,6 +165,8 @@ export default function ProfesionalDetailScreen() {
   const [isFavorite, setIsFavorite] = useState(false);
   const [quickSlotGroups, setQuickSlotGroups] = useState<QuickSlotGroup[]>([]);
   const [isLoadingQuickSlots, setIsLoadingQuickSlots] = useState(false);
+  const [fallbackCoordinates, setFallbackCoordinates] = useState<{ latitude: number; longitude: number } | null>(null);
+  const [isResolvingMap, setIsResolvingMap] = useState(false);
 
   const upcomingDates = useMemo(() => Array.from({ length: 7 }, (_, index) => buildDateKey(index)), []);
   const isOwnProfessionalPage = role === 'professional' && Boolean(profile?.slug && profile.slug === slug);
@@ -132,6 +175,24 @@ export default function ProfesionalDetailScreen() {
     [data?.services, selectedServiceId],
   );
   const locationLabel = useMemo(() => resolveLocationLabel(data), [data]);
+  const mapCoordinates = useMemo(() => {
+    const latitude = parseOptionalNumber(data?.latitude ?? data?.lat);
+    const longitude = parseOptionalNumber(data?.longitude ?? data?.lng);
+    if (latitude !== null && longitude !== null) {
+      return { latitude, longitude };
+    }
+    return fallbackCoordinates;
+  }, [data?.lat, data?.latitude, data?.lng, data?.longitude, fallbackCoordinates]);
+  const mapImageUrl = useMemo(
+    () =>
+      mapCoordinates
+        ? buildMapboxStaticMapUrl({
+            latitude: mapCoordinates.latitude,
+            longitude: mapCoordinates.longitude,
+          })
+        : null,
+    [mapCoordinates],
+  );
   const phoneValue = data?.phoneNumber?.trim() || data?.phone?.trim() || '';
   const emailValue = data?.email?.trim() || '';
 
@@ -222,6 +283,50 @@ export default function ProfesionalDetailScreen() {
     };
     void loadQuickSlots();
   }, [isOwnProfessionalPage, selectedServiceId, slug]);
+
+  useEffect(() => {
+    const existingLatitude = parseOptionalNumber(data?.latitude ?? data?.lat);
+    const existingLongitude = parseOptionalNumber(data?.longitude ?? data?.lng);
+
+    if (existingLatitude !== null && existingLongitude !== null) {
+      setFallbackCoordinates(null);
+      setIsResolvingMap(false);
+      return;
+    }
+
+    if (!locationLabel || !hasMobileMapboxToken) {
+      setFallbackCoordinates(null);
+      setIsResolvingMap(false);
+      return;
+    }
+
+    const controller = new AbortController();
+    setIsResolvingMap(true);
+
+    mapboxForwardGeocode(locationLabel, controller.signal)
+      .then((result) => {
+        if (!result) {
+          setFallbackCoordinates(null);
+          return;
+        }
+        setFallbackCoordinates({
+          latitude: result.latitude,
+          longitude: result.longitude,
+        });
+      })
+      .catch(() => {
+        setFallbackCoordinates(null);
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) {
+          setIsResolvingMap(false);
+        }
+      });
+
+    return () => {
+      controller.abort();
+    };
+  }, [data?.lat, data?.latitude, data?.lng, data?.longitude, locationLabel]);
 
   if (isLoading) {
     return <View className="flex-1 items-center justify-center bg-background"><ActivityIndicator size="large" color="#0A7A43" /></View>;
@@ -472,6 +577,76 @@ export default function ProfesionalDetailScreen() {
             </View>
           ) : null}
 
+          {locationLabel ? (
+            <View className="mt-6 rounded-[28px] border border-secondary/5 bg-white p-6 shadow-sm">
+              <Text className="text-xs font-bold uppercase tracking-[2px] text-gray-500">Ubicacion</Text>
+              <Text className="mt-2 text-2xl font-bold text-secondary">Donde queda y como llegar</Text>
+              <Text className="mt-2 text-sm leading-6 text-gray-500">
+                Mapa y direccion del negocio para que puedas ubicarlo rapido desde la app.
+              </Text>
+
+              <View className="mt-5">
+                <PublicProfileMapCard
+                  title={data.fullName || data.name || 'Profesional'}
+                  subtitle={locationLabel}
+                  mapImageUrl={mapImageUrl}
+                  isLoading={isResolvingMap}
+                  onPress={() => {
+                    if (!mapCoordinates) return;
+                    void openExternalUrl(
+                      buildMapsUrl({
+                        latitude: mapCoordinates.latitude,
+                        longitude: mapCoordinates.longitude,
+                        label: data.fullName || data.name || locationLabel,
+                      }),
+                    );
+                  }}
+                  disabled={!mapCoordinates}
+                  actionLabel="Ver ruta"
+                  fallbackMessage={
+                    hasMobileMapboxToken
+                      ? 'Aun no tenemos coordenadas exactas para este perfil.'
+                      : 'Falta configurar el token de Mapbox para mostrar el mapa.'
+                  }
+                />
+              </View>
+
+              <View className="mt-4 flex-row flex-wrap" style={{ gap: 10 }}>
+                <View className="rounded-full bg-background px-4 py-2">
+                  <Text className="text-xs font-semibold text-secondary">
+                    {mapCoordinates ? 'Mapa listo' : 'Sin coordenadas exactas'}
+                  </Text>
+                </View>
+                <View className="rounded-full bg-background px-4 py-2">
+                  <Text className="text-xs font-semibold text-primary">
+                    {hasMobileMapboxToken ? 'Mapbox activo' : 'Mapbox pendiente'}
+                  </Text>
+                </View>
+              </View>
+
+              <TouchableOpacity
+                disabled={!mapCoordinates}
+                onPress={() => {
+                  if (!mapCoordinates) return;
+                  void openExternalUrl(
+                    buildMapsUrl({
+                      latitude: mapCoordinates.latitude,
+                      longitude: mapCoordinates.longitude,
+                      label: data.fullName || data.name || locationLabel,
+                    }),
+                  );
+                }}
+                className={`mt-5 h-12 items-center justify-center rounded-full ${
+                  mapCoordinates ? 'bg-secondary' : 'bg-gray-300'
+                }`}
+              >
+                <Text className="text-sm font-bold text-white">
+                  {mapCoordinates ? 'Abrir indicaciones' : 'Ubicacion no disponible'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          ) : null}
+
           {(locationLabel || phoneValue || emailValue || socialLinks.length > 0) ? (
             <View className="mt-6 rounded-[28px] border border-secondary/5 bg-white p-6 shadow-sm">
               <Text className="text-xs font-bold uppercase tracking-[2px] text-gray-500">Contacto</Text>
@@ -479,10 +654,25 @@ export default function ProfesionalDetailScreen() {
 
               <View className="mt-5" style={{ gap: 12 }}>
                 {locationLabel ? (
-                  <TouchableOpacity onPress={() => void openExternalUrl(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(locationLabel)}`)} className="rounded-[22px] bg-background p-4">
+                  <TouchableOpacity
+                    onPress={() => {
+                      if (mapCoordinates) {
+                        void openExternalUrl(
+                          buildMapsUrl({
+                            latitude: mapCoordinates.latitude,
+                            longitude: mapCoordinates.longitude,
+                            label: data.fullName || data.name || locationLabel,
+                          }),
+                        );
+                        return;
+                      }
+                      void openExternalUrl(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(locationLabel)}`);
+                    }}
+                    className="rounded-[22px] bg-background p-4"
+                  >
                     <View className="flex-row items-start">
                       <View className="mt-0.5 h-10 w-10 items-center justify-center rounded-full bg-white"><Ionicons name="location-outline" size={18} color="#0F172A" /></View>
-                      <View className="ml-3 flex-1"><Text className="text-xs font-bold uppercase tracking-[1px] text-gray-500">Ubicacion</Text><Text className="mt-1 text-sm leading-6 text-secondary">{locationLabel}</Text></View>
+                      <View className="ml-3 flex-1"><Text className="text-xs font-bold uppercase tracking-[1px] text-gray-500">Ubicacion</Text><Text className="mt-1 text-sm leading-6 text-secondary">{locationLabel}</Text><Text className="mt-2 text-xs font-semibold text-primary">{mapCoordinates ? 'Abrir en mapas' : 'Buscar direccion'}</Text></View>
                     </View>
                   </TouchableOpacity>
                 ) : null}

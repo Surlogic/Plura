@@ -9,6 +9,8 @@ export type ServiceCategoryOption = {
   id: string;
   name: string;
   slug: string;
+  imageUrl?: string | null;
+  displayOrder?: number | null;
 };
 
 export type ProfessionalProfile = {
@@ -24,10 +26,19 @@ export type ProfessionalProfile = {
   country?: string | null;
   city?: string | null;
   fullAddress?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
   tipoCliente: string;
+  logoUrl?: string | null;
+  instagram?: string | null;
+  facebook?: string | null;
+  tiktok?: string | null;
+  website?: string | null;
+  whatsapp?: string | null;
   publicHeadline?: string | null;
   publicAbout?: string | null;
   publicPhotos?: string[];
+  categories?: ServiceCategoryOption[];
   professionalPlan?: ProfessionalPlanCode;
   professionalEntitlements?: ProfessionalPlanEntitlements;
 };

@@ -8,16 +8,23 @@ import type {
 export type ProfessionalBusinessProfile = {
   fullName: string;
   rubro: string;
+  categorySlugs: string[];
   location: string;
   country: string;
   city: string;
   fullAddress: string;
+  latitude?: number | null;
+  longitude?: number | null;
   phoneNumber: string;
+  logoUrl?: string;
   instagram?: string;
   facebook?: string;
   tiktok?: string;
   website?: string;
   whatsapp?: string;
+};
+
+export type ProfessionalPublicPagePayload = {
   headline?: string;
   about?: string;
 };
@@ -39,6 +46,12 @@ export const updateProfessionalBusinessProfile = async (
   payload: ProfessionalBusinessProfile,
 ): Promise<void> => {
   await api.put('/profesional/profile', payload);
+};
+
+export const updateProfessionalPublicPage = async (
+  payload: ProfessionalPublicPagePayload,
+): Promise<void> => {
+  await api.put('/profesional/public-page', payload);
 };
 
 export const getProfessionalSchedule = async (): Promise<ProfessionalSchedule> => {

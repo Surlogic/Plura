@@ -1,54 +1,183 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { useProfessionalProfileContext } from '../../src/context/ProfessionalProfileContext';
-import { updateProfessionalBusinessProfile } from '../../src/services/professionalConfig';
-import { getGeoLocationSuggestions, type GeoLocationSuggestion } from '../../src/services/geo';
+import {
+  listServiceCategories,
+  updateProfessionalBusinessProfile,
+  updateProfessionalPublicPage,
+} from '../../src/services/professionalConfig';
+import {
+  geocodeAddress,
+  getGeoLocationSuggestions,
+  type GeoLocationSuggestion,
+} from '../../src/services/geo';
+import { getApiErrorMessage } from '../../src/services/errors';
+import type { ServiceCategoryOption } from '../../src/types/professional';
+
+const slugify = (value: string) => (
+  value
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9\s-]/g, '')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-+|-+$/g, '')
+);
+
+const LEGACY_CATEGORY_ALIASES: Record<string, string> = {
+  peluqueria: 'cabello',
+  cejas: 'pestanas-cejas',
+  pestanas: 'pestanas-cejas',
+  faciales: 'estetica-facial',
+  'tratamientos-corporales': 'tratamientos-corporales',
+  'medicina-estetica': 'medicina-estetica',
+  'bienestar-holistico': 'bienestar-holistico',
+};
+
+const dedupeSlugs = (slugs: string[]) => Array.from(new Set(slugs.map((slug) => slug.trim()).filter(Boolean)));
+
+const resolveInitialCategorySlugs = (
+  profileCategories: ServiceCategoryOption[] | undefined,
+  rubro: string | null | undefined,
+  categories: ServiceCategoryOption[],
+) => {
+  if (Array.isArray(profileCategories) && profileCategories.length > 0) {
+    return dedupeSlugs(profileCategories.map((category) => category.slug));
+  }
+
+  const fallbackRubroSlug = rubro ? slugify(rubro) : '';
+  const mappedFallbackSlug = LEGACY_CATEGORY_ALIASES[fallbackRubroSlug] || fallbackRubroSlug;
+  const fallbackCategory = categories.find((category) => (
+    category.slug === mappedFallbackSlug || slugify(category.name) === mappedFallbackSlug
+  ));
+
+  return fallbackCategory ? [fallbackCategory.slug] : [];
+};
+
+const emptyForm = {
+  fullName: '',
+  categorySlugs: [] as string[],
+  country: '',
+  city: '',
+  fullAddress: '',
+  latitude: undefined as number | undefined,
+  longitude: undefined as number | undefined,
+  phoneNumber: '',
+  instagram: '',
+  facebook: '',
+  tiktok: '',
+  website: '',
+  whatsapp: '',
+  headline: '',
+  about: '',
+};
 
 export default function BusinessProfileScreen() {
   const { profile, refreshProfile } = useProfessionalProfileContext();
+  const [categories, setCategories] = useState<ServiceCategoryOption[]>([]);
+  const [isLoadingCategories, setIsLoadingCategories] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [isGeoSuggesting, setIsGeoSuggesting] = useState(false);
   const [activeGeoField, setActiveGeoField] = useState<'country' | 'city' | 'fullAddress' | null>(null);
   const [geoSuggestions, setGeoSuggestions] = useState<GeoLocationSuggestion[]>([]);
+  const [form, setForm] = useState(emptyForm);
+  const [hasInitialized, setHasInitialized] = useState(false);
 
-  const [form, setForm] = useState({
-    fullName: profile?.fullName || '',
-    rubro: profile?.rubro || '',
-    location: profile?.location || '',
-    country: profile?.country || '',
-    city: profile?.city || '',
-    fullAddress: profile?.fullAddress || '',
-    phoneNumber: profile?.phoneNumber || '',
-    instagram: '',
-    facebook: '',
-    tiktok: '',
-    website: '',
-    whatsapp: '',
-    headline: profile?.publicHeadline || '',
-    about: profile?.publicAbout || '',
-  });
+  const canManageEnhancedPublicProfile = profile?.professionalEntitlements?.publicProfileTier === 'ENHANCED';
+
+  useEffect(() => {
+    let isCancelled = false;
+
+    const loadCategories = async () => {
+      setIsLoadingCategories(true);
+      try {
+        const response = await listServiceCategories();
+        if (!isCancelled) {
+          setCategories(response);
+        }
+      } catch {
+        if (!isCancelled) {
+          setCategories([]);
+        }
+      } finally {
+        if (!isCancelled) {
+          setIsLoadingCategories(false);
+        }
+      }
+    };
+
+    void loadCategories();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!profile || hasInitialized) return;
+    const hasProfileCategories = Array.isArray(profile.categories) && profile.categories.length > 0;
+    if (!hasProfileCategories && isLoadingCategories) return;
+
+    setForm({
+      fullName: profile.fullName || '',
+      categorySlugs: resolveInitialCategorySlugs(profile.categories, profile.rubro, categories),
+      country: profile.country || '',
+      city: profile.city || '',
+      fullAddress: profile.fullAddress || '',
+      latitude: typeof profile.latitude === 'number' ? profile.latitude : undefined,
+      longitude: typeof profile.longitude === 'number' ? profile.longitude : undefined,
+      phoneNumber: profile.phoneNumber || '',
+      instagram: profile.instagram || '',
+      facebook: profile.facebook || '',
+      tiktok: profile.tiktok || '',
+      website: profile.website || '',
+      whatsapp: profile.whatsapp || '',
+      headline: profile.publicHeadline || '',
+      about: profile.publicAbout || '',
+    });
+    setHasInitialized(true);
+  }, [categories, hasInitialized, isLoadingCategories, profile]);
 
   const isDisabled = useMemo(
     () => (
       isSaving
       || !form.fullName.trim()
-      || !form.rubro.trim()
+      || form.categorySlugs.length === 0
       || !form.phoneNumber.trim()
       || !form.country.trim()
       || !form.city.trim()
       || !form.fullAddress.trim()
     ),
-    [form.city, form.country, form.fullAddress, form.fullName, form.phoneNumber, form.rubro, isSaving],
+    [form.categorySlugs.length, form.city, form.country, form.fullAddress, form.fullName, form.phoneNumber, isSaving],
+  );
+
+  const selectedCategoryNames = useMemo(
+    () => categories
+      .filter((category) => form.categorySlugs.includes(category.slug))
+      .map((category) => category.name),
+    [categories, form.categorySlugs],
+  );
+
+  const selectedPrimaryCategory = useMemo(
+    () => categories.find((category) => category.slug === form.categorySlugs[0]) ?? null,
+    [categories, form.categorySlugs],
   );
 
   const handleGeoFieldChange = async (
     field: 'country' | 'city' | 'fullAddress',
     value: string,
   ) => {
-    setForm((prev) => ({ ...prev, [field]: value }));
+    setForm((prev) => ({
+      ...prev,
+      [field]: value,
+      latitude: undefined,
+      longitude: undefined,
+    }));
     setActiveGeoField(field);
 
     const query = value.trim();
@@ -68,17 +197,26 @@ export default function BusinessProfileScreen() {
     const country = (suggestion.country || '').trim();
     const city = (suggestion.city || '').trim();
     const fullAddress = (suggestion.fullAddress || '').trim();
-    const composedLocation = [fullAddress, city, country].filter(Boolean).join(', ');
 
     setForm((prev) => ({
       ...prev,
       country: country || prev.country,
       city: city || prev.city,
       fullAddress: fullAddress || prev.fullAddress,
-      location: composedLocation || prev.location,
+      latitude: typeof suggestion.latitude === 'number' ? suggestion.latitude : prev.latitude,
+      longitude: typeof suggestion.longitude === 'number' ? suggestion.longitude : prev.longitude,
     }));
     setGeoSuggestions([]);
     setActiveGeoField(null);
+  };
+
+  const toggleCategory = (slug: string) => {
+    setForm((prev) => ({
+      ...prev,
+      categorySlugs: prev.categorySlugs.includes(slug)
+        ? prev.categorySlugs.filter((value) => value !== slug)
+        : [...prev.categorySlugs, slug],
+    }));
   };
 
   if (!profile) {
@@ -121,19 +259,36 @@ export default function BusinessProfileScreen() {
             onChangeText={(text) => setForm((prev) => ({ ...prev, fullName: text }))}
           />
 
-          <TextInput
-            className="mt-3 h-12 rounded-2xl border border-secondary/10 bg-background px-4 text-secondary"
-            placeholder="Rubro"
-            value={form.rubro}
-            onChangeText={(text) => setForm((prev) => ({ ...prev, rubro: text }))}
-          />
-
-          <TextInput
-            className="mt-3 h-12 rounded-2xl border border-secondary/10 bg-background px-4 text-secondary"
-            placeholder="Ubicacion"
-            value={form.location}
-            onChangeText={(text) => setForm((prev) => ({ ...prev, location: text }))}
-          />
+          <View className="mt-4" style={{ gap: 8 }}>
+            <Text className="text-xs font-semibold uppercase tracking-[2px] text-gray-500">Rubros</Text>
+            <View className="flex-row flex-wrap" style={{ gap: 8 }}>
+              {isLoadingCategories ? (
+                <View className="py-3">
+                  <ActivityIndicator color="#0A7A43" />
+                </View>
+              ) : (
+                categories.map((category) => {
+                  const isSelected = form.categorySlugs.includes(category.slug);
+                  return (
+                    <TouchableOpacity
+                      key={category.id}
+                      className={`rounded-full px-4 py-2 ${isSelected ? 'bg-secondary' : 'border border-secondary/10 bg-background'}`}
+                      onPress={() => toggleCategory(category.slug)}
+                    >
+                      <Text className={`text-xs font-semibold ${isSelected ? 'text-white' : 'text-secondary'}`}>
+                        {category.name}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })
+              )}
+            </View>
+            <Text className="text-xs text-gray-500">
+              {selectedCategoryNames.length > 0
+                ? `Seleccionados: ${selectedCategoryNames.join(', ')}`
+                : 'Selecciona al menos un rubro para guardar.'}
+            </Text>
+          </View>
 
           <TextInput
             className="mt-3 h-12 rounded-2xl border border-secondary/10 bg-background px-4 text-secondary"
@@ -205,37 +360,52 @@ export default function BusinessProfileScreen() {
             value={form.phoneNumber}
             onChangeText={(text) => setForm((prev) => ({ ...prev, phoneNumber: text }))}
           />
-
-          <TextInput
-            className="mt-3 h-12 rounded-2xl border border-secondary/10 bg-background px-4 text-secondary"
-            placeholder="Headline publico"
-            value={form.headline}
-            onChangeText={(text) => setForm((prev) => ({ ...prev, headline: text }))}
-          />
-
-          <TextInput
-            className="mt-3 min-h-[90px] rounded-2xl border border-secondary/10 bg-background px-4 py-3 text-secondary"
-            multiline
-            textAlignVertical="top"
-            placeholder="Sobre tu negocio"
-            value={form.about}
-            onChangeText={(text) => setForm((prev) => ({ ...prev, about: text }))}
-          />
         </View>
 
-        <View className="mt-5 rounded-[24px] bg-white p-5 border border-secondary/10">
-          <Text className="text-xs font-semibold uppercase tracking-[2px] text-gray-500">Redes</Text>
+        {canManageEnhancedPublicProfile ? (
+          <>
+            <View className="mt-5 rounded-[24px] bg-white p-5 border border-secondary/10">
+              <Text className="text-xs font-semibold uppercase tracking-[2px] text-gray-500">Pagina publica</Text>
 
-          {(['instagram', 'facebook', 'tiktok', 'website', 'whatsapp'] as const).map((key) => (
-            <TextInput
-              key={key}
-              className="mt-3 h-12 rounded-2xl border border-secondary/10 bg-background px-4 text-secondary"
-              placeholder={key}
-              value={form[key]}
-              onChangeText={(text) => setForm((prev) => ({ ...prev, [key]: text }))}
-            />
-          ))}
-        </View>
+              <TextInput
+                className="mt-3 h-12 rounded-2xl border border-secondary/10 bg-background px-4 text-secondary"
+                placeholder="Headline publico"
+                value={form.headline}
+                onChangeText={(text) => setForm((prev) => ({ ...prev, headline: text }))}
+              />
+
+              <TextInput
+                className="mt-3 min-h-[90px] rounded-2xl border border-secondary/10 bg-background px-4 py-3 text-secondary"
+                multiline
+                textAlignVertical="top"
+                placeholder="Sobre tu negocio"
+                value={form.about}
+                onChangeText={(text) => setForm((prev) => ({ ...prev, about: text }))}
+              />
+            </View>
+
+            <View className="mt-5 rounded-[24px] bg-white p-5 border border-secondary/10">
+              <Text className="text-xs font-semibold uppercase tracking-[2px] text-gray-500">Redes</Text>
+
+              {(['instagram', 'facebook', 'tiktok', 'website', 'whatsapp'] as const).map((key) => (
+                <TextInput
+                  key={key}
+                  className="mt-3 h-12 rounded-2xl border border-secondary/10 bg-background px-4 text-secondary"
+                  placeholder={key}
+                  value={form[key]}
+                  onChangeText={(text) => setForm((prev) => ({ ...prev, [key]: text }))}
+                />
+              ))}
+            </View>
+          </>
+        ) : (
+          <View className="mt-5 rounded-[24px] border border-primary/15 bg-primary/5 p-5">
+            <Text className="text-xs font-semibold uppercase tracking-[2px] text-primary">Plan actual</Text>
+            <Text className="mt-2 text-sm leading-6 text-secondary">
+              En este plan puedes editar nombre, rubros, direccion y telefono. El contenido avanzado de pagina publica y redes se gestiona desde un plan superior.
+            </Text>
+          </View>
+        )}
 
         {message ? <Text className="mt-4 text-sm text-secondary">{message}</Text> : null}
 
@@ -245,26 +415,61 @@ export default function BusinessProfileScreen() {
             setIsSaving(true);
             setMessage(null);
             try {
-              await updateProfessionalBusinessProfile({
+              const country = form.country.trim();
+              const city = form.city.trim();
+              const fullAddress = form.fullAddress.trim();
+              const location = [fullAddress, city, country].filter(Boolean).join(', ');
+
+              const geocoded = await geocodeAddress(location);
+              if (!geocoded) {
+                setMessage('No pudimos validar esa direccion. Revisala antes de guardar.');
+                return;
+              }
+
+              const normalizedBusinessPayload = {
                 fullName: form.fullName.trim(),
-                rubro: form.rubro.trim(),
-                location: form.location.trim() || `${form.fullAddress.trim()}, ${form.city.trim()}, ${form.country.trim()}`,
-                country: form.country.trim(),
-                city: form.city.trim(),
-                fullAddress: form.fullAddress.trim(),
+                rubro: selectedPrimaryCategory?.name || profile.rubro || 'Profesional',
+                categorySlugs: dedupeSlugs(form.categorySlugs),
+                location,
+                country,
+                city,
+                fullAddress,
+                latitude: geocoded.latitude,
+                longitude: geocoded.longitude,
                 phoneNumber: form.phoneNumber.trim(),
-                instagram: form.instagram.trim(),
-                facebook: form.facebook.trim(),
-                tiktok: form.tiktok.trim(),
-                website: form.website.trim(),
-                whatsapp: form.whatsapp.trim(),
-                headline: form.headline.trim(),
-                about: form.about.trim(),
+                ...(canManageEnhancedPublicProfile ? {
+                  instagram: form.instagram.trim(),
+                  facebook: form.facebook.trim(),
+                  tiktok: form.tiktok.trim(),
+                  website: form.website.trim(),
+                  whatsapp: form.whatsapp.trim(),
+                } : {}),
+              };
+
+              await updateProfessionalBusinessProfile({
+                ...normalizedBusinessPayload,
               });
+
+              if (canManageEnhancedPublicProfile) {
+                await updateProfessionalPublicPage({
+                  headline: form.headline.trim(),
+                  about: form.about.trim(),
+                });
+              }
+
               await refreshProfile();
+              setForm((prev) => ({
+                ...prev,
+                categorySlugs: normalizedBusinessPayload.categorySlugs,
+                country: normalizedBusinessPayload.country,
+                city: normalizedBusinessPayload.city,
+                fullAddress: normalizedBusinessPayload.fullAddress,
+                latitude: normalizedBusinessPayload.latitude ?? undefined,
+                longitude: normalizedBusinessPayload.longitude ?? undefined,
+              }));
               setMessage('Perfil actualizado correctamente.');
-            } catch {
-              setMessage('No se pudo guardar el perfil.');
+            } catch (error) {
+              setMessage(getApiErrorMessage(error, 'No se pudo guardar el perfil.'));
             } finally {
               setIsSaving(false);
             }

@@ -137,7 +137,7 @@ public class MercadoPagoClient {
         try {
             HttpRequest.Builder builder = HttpRequest.newBuilder(URI.create(endpoint))
                 .timeout(Duration.ofMillis(config.getTimeoutMillis()))
-                .header("Authorization", "Bearer " + config.getAccessToken())
+                .header("Authorization", "Bearer " + config.getSubscriptions().getAccessToken())
                 .header("Content-Type", "application/json");
 
             if (method == HttpMethod.GET) {

@@ -50,8 +50,8 @@ const buildProfile = (overrides = {}) => ({
     strict_1.default.deepEqual(access, {
         enhancedPublicProfile: false,
         onlinePayments: false,
-        weeklyCalendarNavigation: false,
-        monthlyCalendar: false,
+        weeklyCalendarNavigation: true,
+        monthlyCalendar: true,
         basicAnalytics: false,
         advancedAnalytics: false,
     });
@@ -64,7 +64,7 @@ const buildProfile = (overrides = {}) => ({
         enhancedPublicProfile: true,
         onlinePayments: true,
         weeklyCalendarNavigation: true,
-        monthlyCalendar: false,
+        monthlyCalendar: true,
         basicAnalytics: true,
         advancedAnalytics: false,
     });
@@ -95,14 +95,16 @@ const buildProfile = (overrides = {}) => ({
     strict_1.default.equal(access.enhancedPublicProfile, false);
     strict_1.default.equal(access.onlinePayments, false);
     strict_1.default.equal(access.weeklyCalendarNavigation, true);
-    strict_1.default.equal(access.monthlyCalendar, false);
+    strict_1.default.equal(access.monthlyCalendar, true);
     strict_1.default.equal(access.basicAnalytics, true);
     strict_1.default.equal(access.advancedAnalytics, false);
 });
 (0, node_test_1.default)('planIncludesProfessionalFeature matches the expected paywall boundaries', () => {
     strict_1.default.equal((0, featureGuards_1.planIncludesProfessionalFeature)('BASIC', 'onlinePayments'), false);
     strict_1.default.equal((0, featureGuards_1.planIncludesProfessionalFeature)('PROFESIONAL', 'onlinePayments'), true);
-    strict_1.default.equal((0, featureGuards_1.planIncludesProfessionalFeature)('PROFESIONAL', 'monthlyCalendar'), false);
+    strict_1.default.equal((0, featureGuards_1.planIncludesProfessionalFeature)('BASIC', 'weeklyCalendarNavigation'), true);
+    strict_1.default.equal((0, featureGuards_1.planIncludesProfessionalFeature)('BASIC', 'monthlyCalendar'), true);
+    strict_1.default.equal((0, featureGuards_1.planIncludesProfessionalFeature)('PROFESIONAL', 'monthlyCalendar'), true);
     strict_1.default.equal((0, featureGuards_1.planIncludesProfessionalFeature)('ENTERPRISE', 'monthlyCalendar'), true);
 });
 (0, node_test_1.default)('requiredPlanForFeature exposes the correct minimum plan', () => {

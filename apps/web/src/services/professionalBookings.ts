@@ -14,7 +14,10 @@ import type {
 } from '@/types/bookings';
 import type { ProfessionalBookingTimelineResponse } from '@/types/professionalBookingTimeline';
 import type { ProfessionalReservation, ReservationStatus } from '@/types/professional';
-import { formatBookingDateLabel, formatBookingTimeLabel } from '@/utils/bookings';
+import {
+  formatBookingDateKey,
+  formatBookingTimeKey,
+} from '@/utils/bookings';
 import { buildIdempotencyKey } from '../../../../packages/shared/src/bookings/idempotency';
 import {
   type ProfessionalBookingDtoBase,
@@ -52,8 +55,8 @@ type ProfessionalServiceDto = {
 
 const mapBooking = (booking: ProfessionalBookingDto): ProfessionalReservation => {
   return mapProfessionalBookingBase(booking, ({ startDateTime, timezone, startDateTimeUtc }) => ({
-    date: formatBookingDateLabel(startDateTime, timezone, startDateTimeUtc),
-    time: formatBookingTimeLabel(startDateTime, timezone, startDateTimeUtc),
+    date: formatBookingDateKey(startDateTime, timezone, startDateTimeUtc),
+    time: formatBookingTimeKey(startDateTime, timezone, startDateTimeUtc),
   }));
 };
 
@@ -66,6 +69,47 @@ const mapCommandResponse = (
 const invalidateProfessionalBookingCaches = () => {
   invalidateCachedGet('/profesional/reservas');
   invalidateCachedGet('/reservas/');
+  invalidateCachedGet('/profesional/reservas/');
+};
+
+const DAY_IN_MS = 24 * 60 * 60 * 1000;
+
+const parseDateKeyUtc = (value: string) => {
+  const [year, month, day] = value.split('-').map(Number);
+  if (!Number.isFinite(year) || !Number.isFinite(month) || !Number.isFinite(day)) {
+    return null;
+  }
+  return Date.UTC(year, month - 1, day);
+};
+
+const buildContiguousDateRanges = (dates: string[]) => {
+  const uniqueDates = Array.from(new Set(dates.filter(Boolean))).sort();
+  if (uniqueDates.length === 0) return [];
+
+  const ranges: Array<{ dateFrom: string; dateTo: string }> = [];
+  let rangeStart = uniqueDates[0];
+  let previousDate = uniqueDates[0];
+  let previousTimestamp = parseDateKeyUtc(previousDate);
+
+  for (let index = 1; index < uniqueDates.length; index += 1) {
+    const currentDate = uniqueDates[index];
+    const currentTimestamp = parseDateKeyUtc(currentDate);
+    const isContiguous =
+      previousTimestamp !== null &&
+      currentTimestamp !== null &&
+      currentTimestamp - previousTimestamp === DAY_IN_MS;
+
+    if (!isContiguous) {
+      ranges.push({ dateFrom: rangeStart, dateTo: previousDate });
+      rangeStart = currentDate;
+    }
+
+    previousDate = currentDate;
+    previousTimestamp = currentTimestamp;
+  }
+
+  ranges.push({ dateFrom: rangeStart, dateTo: previousDate });
+  return ranges;
 };
 
 export const getProfessionalReservationsByDate = async (
@@ -94,11 +138,19 @@ export const getProfessionalReservationsByRange = async (
 export const getProfessionalReservationsForDates = async (
   dates: string[],
 ): Promise<ProfessionalReservation[]> => {
-  const uniqueDates = Array.from(new Set(dates.filter(Boolean))).sort();
-  if (uniqueDates.length === 0) return [];
-  const dateFrom = uniqueDates[0];
-  const dateTo = uniqueDates[uniqueDates.length - 1];
-  return getProfessionalReservationsByRange(dateFrom, dateTo);
+  const ranges = buildContiguousDateRanges(dates);
+  if (ranges.length === 0) return [];
+
+  const responses = await Promise.all(
+    ranges.map(({ dateFrom, dateTo }) => getProfessionalReservationsByRange(dateFrom, dateTo)),
+  );
+
+  const deduped = new Map<string, ProfessionalReservation>();
+  responses.flat().forEach((reservation) => {
+    deduped.set(reservation.id, reservation);
+  });
+
+  return Array.from(deduped.values());
 };
 
 export const updateProfessionalReservationStatus = async (
@@ -122,15 +174,28 @@ export const createProfessionalReservation = async (
 };
 
 export const getProfessionalBookingActions = async (bookingId: string) => {
-  const response = await api.get<BookingActions>(`/reservas/${bookingId}/actions`);
+  const response = await cachedGet<BookingActions>(
+    `/reservas/${bookingId}/actions`,
+    undefined,
+    { ttlMs: 10000, staleWhileRevalidate: true },
+  );
   return response.data;
 };
 
 export const getProfessionalBookingTimeline = async (bookingId: string) => {
-  const response = await api.get<ProfessionalBookingTimelineResponse>(
+  const response = await cachedGet<ProfessionalBookingTimelineResponse>(
     `/profesional/reservas/${bookingId}/timeline`,
+    undefined,
+    { ttlMs: 10000, staleWhileRevalidate: true },
   );
   return response.data;
+};
+
+export const prefetchProfessionalBookingDetail = async (bookingId: string) => {
+  await Promise.allSettled([
+    getProfessionalBookingActions(bookingId),
+    getProfessionalBookingTimeline(bookingId),
+  ]);
 };
 
 export const cancelProfessionalBooking = async (
@@ -178,34 +243,6 @@ export const markProfessionalBookingNoShow = async (bookingId: string) => {
     {
       headers: {
         'Idempotency-Key': buildIdempotencyKey(`professional-no-show-${bookingId}`),
-      },
-    },
-  );
-  invalidateProfessionalBookingCaches();
-  return mapCommandResponse(response.data);
-};
-
-export const completeProfessionalBooking = async (bookingId: string) => {
-  const response = await api.post<BookingCommandResponse<ProfessionalBookingDto>>(
-    `/profesional/reservas/${bookingId}/complete`,
-    {},
-    {
-      headers: {
-        'Idempotency-Key': buildIdempotencyKey(`professional-complete-${bookingId}`),
-      },
-    },
-  );
-  invalidateProfessionalBookingCaches();
-  return mapCommandResponse(response.data);
-};
-
-export const retryProfessionalBookingPayout = async (bookingId: string) => {
-  const response = await api.post<BookingCommandResponse<ProfessionalBookingDto>>(
-    `/profesional/reservas/${bookingId}/payout/retry`,
-    {},
-    {
-      headers: {
-        'Idempotency-Key': buildIdempotencyKey(`professional-retry-payout-${bookingId}`),
       },
     },
   );

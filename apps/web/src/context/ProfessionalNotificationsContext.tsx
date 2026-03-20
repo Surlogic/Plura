@@ -80,11 +80,12 @@ export function ProfessionalNotificationsProvider({
     }),
     [
       refreshToken,
-      publishChange,
       unreadCount,
       unreadCountError,
       isUnreadCountLoading,
       hasUnreadCountLoaded,
+      // publishChange and refreshUnreadCount are stable (empty deps)
+      publishChange,
       refreshUnreadCount,
     ],
   );

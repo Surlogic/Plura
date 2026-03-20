@@ -64,8 +64,8 @@ test('resolveProfessionalFeatureAccess falls back to BASIC plan defaults', () =>
   assert.deepEqual(access, {
     enhancedPublicProfile: false,
     onlinePayments: false,
-    weeklyCalendarNavigation: false,
-    monthlyCalendar: false,
+    weeklyCalendarNavigation: true,
+    monthlyCalendar: true,
     basicAnalytics: false,
     advancedAnalytics: false,
   });
@@ -80,7 +80,7 @@ test('resolveProfessionalFeatureAccess falls back to PROFESSIONAL plan defaults'
     enhancedPublicProfile: true,
     onlinePayments: true,
     weeklyCalendarNavigation: true,
-    monthlyCalendar: false,
+    monthlyCalendar: true,
     basicAnalytics: true,
     advancedAnalytics: false,
   });
@@ -115,7 +115,7 @@ test('resolveProfessionalFeatureAccess prefers entitlements over plan code when 
   assert.equal(access.enhancedPublicProfile, false);
   assert.equal(access.onlinePayments, false);
   assert.equal(access.weeklyCalendarNavigation, true);
-  assert.equal(access.monthlyCalendar, false);
+  assert.equal(access.monthlyCalendar, true);
   assert.equal(access.basicAnalytics, true);
   assert.equal(access.advancedAnalytics, false);
 });
@@ -123,7 +123,9 @@ test('resolveProfessionalFeatureAccess prefers entitlements over plan code when 
 test('planIncludesProfessionalFeature matches the expected paywall boundaries', () => {
   assert.equal(planIncludesProfessionalFeature('BASIC', 'onlinePayments'), false);
   assert.equal(planIncludesProfessionalFeature('PROFESIONAL', 'onlinePayments'), true);
-  assert.equal(planIncludesProfessionalFeature('PROFESIONAL', 'monthlyCalendar'), false);
+  assert.equal(planIncludesProfessionalFeature('BASIC', 'weeklyCalendarNavigation'), true);
+  assert.equal(planIncludesProfessionalFeature('BASIC', 'monthlyCalendar'), true);
+  assert.equal(planIncludesProfessionalFeature('PROFESIONAL', 'monthlyCalendar'), true);
   assert.equal(planIncludesProfessionalFeature('ENTERPRISE', 'monthlyCalendar'), true);
 });
 

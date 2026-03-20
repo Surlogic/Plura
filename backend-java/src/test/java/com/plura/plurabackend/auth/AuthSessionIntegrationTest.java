@@ -42,6 +42,7 @@ import org.springframework.test.web.servlet.MvcResult;
     "SPRING_FLYWAY_ENABLED=false",
     "APP_RATE_LIMIT_ENABLED=false",
     "AUTH_EXPOSE_ACCESS_TOKEN=true",
+    "AUTH_ALLOW_LEGACY_REFRESH_FALLBACK=true",
     "SWAGGER_ENABLED=false",
     "SQS_ENABLED=false",
 })

@@ -4,7 +4,6 @@ import {
   Linking,
   ScrollView,
   Text,
-  TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
@@ -13,29 +12,19 @@ import { billingPlans, type PaidBillingUiPlanId } from '../../src/config/billing
 import {
   cancelBillingSubscription,
   createBillingCheckout,
+  disconnectProfessionalMercadoPagoConnection,
   fetchCurrentSubscription,
+  formatMercadoPagoConnectionDate,
   formatBillingAmount,
-  getProfessionalPayoutConfig,
+  getMercadoPagoConnectionStatusCopy,
+  getProfessionalMercadoPagoConnection,
   resolveBackendMessage,
   resolveCurrentBillingPlanId,
   resolveCurrentBillingStatus,
-  updateProfessionalPayoutConfig,
+  startProfessionalMercadoPagoOAuth,
+  type ProfessionalMercadoPagoConnection,
 } from '../../src/services/billing';
 import { useProfessionalProfileContext } from '../../src/context/ProfessionalProfileContext';
-import type { ProfessionalPayoutConfigUpdateInput } from '../../src/types/payout';
-
-const emptyPayoutForm: ProfessionalPayoutConfigUpdateInput = {
-  firstName: '',
-  lastName: '',
-  country: '',
-  documentType: '',
-  documentNumber: '',
-  phone: '',
-  bank: '',
-  accountNumber: '',
-  accountType: '',
-  branch: '',
-};
 
 export default function BillingScreen() {
   const { profile, refreshProfile } = useProfessionalProfileContext();
@@ -43,29 +32,18 @@ export default function BillingScreen() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [subscription, setSubscription] = useState<Awaited<ReturnType<typeof fetchCurrentSubscription>>>(null);
-  const [payoutForm, setPayoutForm] = useState<ProfessionalPayoutConfigUpdateInput>(emptyPayoutForm);
+  const [connection, setConnection] = useState<ProfessionalMercadoPagoConnection | null>(null);
 
   const loadBilling = async () => {
     setIsLoading(true);
     setMessage(null);
     try {
-      const [nextSubscription, payoutConfig] = await Promise.all([
+      const [nextSubscription, nextConnection] = await Promise.all([
         fetchCurrentSubscription(),
-        getProfessionalPayoutConfig(),
+        getProfessionalMercadoPagoConnection(),
       ]);
       setSubscription(nextSubscription);
-      setPayoutForm({
-        firstName: payoutConfig.firstName || '',
-        lastName: payoutConfig.lastName || '',
-        country: payoutConfig.country || '',
-        documentType: payoutConfig.documentType || '',
-        documentNumber: payoutConfig.documentNumber || '',
-        phone: payoutConfig.phone || '',
-        bank: payoutConfig.bank || '',
-        accountNumber: payoutConfig.accountNumber || '',
-        accountType: payoutConfig.accountType || '',
-        branch: payoutConfig.branch || '',
-      });
+      setConnection(nextConnection);
     } catch (error) {
       setMessage(resolveBackendMessage(error, 'No se pudo cargar la facturacion.'));
     } finally {
@@ -82,6 +60,10 @@ export default function BillingScreen() {
     [profile?.professionalPlan, subscription],
   );
   const currentStatus = useMemo(() => resolveCurrentBillingStatus(subscription), [subscription]);
+  const connectionCopy = useMemo(
+    () => getMercadoPagoConnectionStatusCopy(connection),
+    [connection],
+  );
 
   if (isLoading) {
     return (
@@ -167,59 +149,72 @@ export default function BillingScreen() {
         </View>
 
         <View className="mt-5 rounded-[22px] border border-secondary/10 bg-white p-5">
-          <Text className="text-xs font-semibold uppercase tracking-[2px] text-gray-500">Cobros (Payout)</Text>
+          <Text className="text-xs font-semibold uppercase tracking-[2px] text-gray-500">
+            Cobros de reservas con Mercado Pago
+          </Text>
+          <Text className="mt-2 text-lg font-bold text-secondary">{connectionCopy.badge}</Text>
+          <Text className="mt-1 text-sm text-gray-500">{connectionCopy.title}</Text>
+          <Text className="mt-2 text-sm text-gray-500">{connectionCopy.description}</Text>
+          <Text className="mt-3 text-xs text-gray-500">
+            Ultima sincronizacion: {formatMercadoPagoConnectionDate(connection?.lastSyncAt)}
+          </Text>
+          <Text className="mt-1 text-xs text-gray-500">
+            Conectado desde: {formatMercadoPagoConnectionDate(connection?.connectedAt)}
+          </Text>
 
-          {(
-            [
-              ['firstName', 'Nombre'],
-              ['lastName', 'Apellido'],
-              ['country', 'Pais'],
-              ['documentType', 'Tipo documento'],
-              ['documentNumber', 'Numero documento'],
-              ['phone', 'Telefono'],
-              ['bank', 'Banco'],
-              ['accountNumber', 'Numero cuenta'],
-              ['accountType', 'Tipo cuenta'],
-              ['branch', 'Sucursal'],
-            ] as Array<[keyof ProfessionalPayoutConfigUpdateInput, string]>
-          ).map(([key, label]) => (
-            <TextInput
-              key={key}
-              className="mt-3 h-11 rounded-xl border border-secondary/10 bg-background px-3 text-secondary"
-              placeholder={label}
-              value={payoutForm[key]}
-              onChangeText={(value) =>
-                setPayoutForm((prev) => ({
-                  ...prev,
-                  [key]: value,
-                }))
-              }
-            />
-          ))}
-
-          <TouchableOpacity
-            disabled={isSubmitting}
-            onPress={async () => {
-              setIsSubmitting(true);
-              setMessage(null);
-              try {
-                await updateProfessionalPayoutConfig(payoutForm);
-                setMessage('Configuracion de cobro guardada.');
-                await refreshProfile();
-              } catch (error) {
-                setMessage(resolveBackendMessage(error, 'No se pudo guardar payout config.'));
-              } finally {
-                setIsSubmitting(false);
-              }
-            }}
-            className="mt-4 h-11 items-center justify-center rounded-full bg-secondary"
-          >
-            {isSubmitting ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <Text className="font-bold text-white">Guardar datos de cobro</Text>
-            )}
-          </TouchableOpacity>
+          {!connection?.connected ? (
+            <TouchableOpacity
+              disabled={isSubmitting}
+              onPress={async () => {
+                setIsSubmitting(true);
+                setMessage(null);
+                try {
+                  const oauth = await startProfessionalMercadoPagoOAuth();
+                  if (!oauth.authorizationUrl) {
+                    throw new Error('No se recibio URL de autorizacion.');
+                  }
+                  await Linking.openURL(oauth.authorizationUrl);
+                  setMessage('Se abrio Mercado Pago para completar la autorizacion.');
+                } catch (error) {
+                  setMessage(resolveBackendMessage(error, 'No se pudo iniciar la conexion con Mercado Pago.'));
+                } finally {
+                  setIsSubmitting(false);
+                }
+              }}
+              className="mt-4 h-11 items-center justify-center rounded-full bg-secondary"
+            >
+              {isSubmitting ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text className="font-bold text-white">Conectar Mercado Pago</Text>
+              )}
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity
+              disabled={isSubmitting}
+              onPress={async () => {
+                setIsSubmitting(true);
+                setMessage(null);
+                try {
+                  const nextConnection = await disconnectProfessionalMercadoPagoConnection();
+                  setConnection(nextConnection);
+                  setMessage('Cuenta de Mercado Pago desconectada.');
+                  await refreshProfile();
+                } catch (error) {
+                  setMessage(resolveBackendMessage(error, 'No se pudo desconectar Mercado Pago.'));
+                } finally {
+                  setIsSubmitting(false);
+                }
+              }}
+              className="mt-4 h-11 items-center justify-center rounded-full border border-red-200 bg-red-50"
+            >
+              {isSubmitting ? (
+                <ActivityIndicator color="#DC2626" />
+              ) : (
+                <Text className="font-bold text-red-600">Desconectar cuenta</Text>
+              )}
+            </TouchableOpacity>
+          )}
         </View>
 
         {message ? (

@@ -7,6 +7,16 @@ const PUBLIC_SLUG = __ENV.PUBLIC_SLUG || 'demo-slug';
 const SERVICE_ID = __ENV.SERVICE_ID || 'demo-service-id';
 const BOOKING_TOKEN = __ENV.BOOKING_BEARER_TOKEN || '';
 const BOOKING_DATE = __ENV.BOOKING_DATE || new Date(Date.now() + 86400000).toISOString().slice(0, 10);
+const SCENARIO_DURATION = __ENV.SCENARIO_DURATION || '10m';
+
+function envPositiveInt(name, fallback) {
+  const raw = __ENV[name];
+  if (!raw) {
+    return fallback;
+  }
+  const parsed = Number.parseInt(raw, 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+}
 
 const searchTrend = new Trend('endpoint_search_duration');
 const suggestTrend = new Trend('endpoint_suggest_duration');
@@ -29,32 +39,32 @@ export const options = {
   scenarios: {
     suggest_typeahead: {
       executor: 'constant-vus',
-      vus: 50,
-      duration: '10m',
+      vus: envPositiveInt('SUGGEST_VUS', 50),
+      duration: SCENARIO_DURATION,
       exec: 'suggestScenario',
     },
     search_results: {
       executor: 'constant-vus',
-      vus: 30,
-      duration: '10m',
+      vus: envPositiveInt('SEARCH_VUS', 30),
+      duration: SCENARIO_DURATION,
       exec: 'searchScenario',
     },
     public_profile: {
       executor: 'constant-vus',
-      vus: 20,
-      duration: '10m',
+      vus: envPositiveInt('PROFILE_VUS', 20),
+      duration: SCENARIO_DURATION,
       exec: 'profileScenario',
     },
     public_slots: {
       executor: 'constant-vus',
-      vus: 20,
-      duration: '10m',
+      vus: envPositiveInt('SLOTS_VUS', 20),
+      duration: SCENARIO_DURATION,
       exec: 'slotsScenario',
     },
     booking_create: {
       executor: 'constant-vus',
-      vus: 5,
-      duration: '10m',
+      vus: envPositiveInt('BOOKING_VUS', 5),
+      duration: SCENARIO_DURATION,
       exec: 'bookingScenario',
     },
   },

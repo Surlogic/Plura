@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import type { BillingPlanDefinition, BillingUiPlanId } from '@/config/billingPlans';
 import BillingPlanCard from '@/components/billing/BillingPlanCard';
 
@@ -36,7 +37,7 @@ const resolveButtonLabel = ({
   return `Cambiar a ${planId}`;
 };
 
-export default function BillingPlansGrid({
+function BillingPlansGrid({
   plans,
   currentPlanId,
   currentSubscriptionStatus,
@@ -78,3 +79,5 @@ export default function BillingPlansGrid({
     </div>
   );
 }
+
+export default memo(BillingPlansGrid);

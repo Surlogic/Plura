@@ -69,6 +69,7 @@ Base: `apps/web/src/pages`
 - `/reserva-confirmada`: confirmacion post reserva o pago.
 - `/login`: acceso general.
 - `/oauth/callback`: callback de OAuth.
+- `/oauth/mercadopago/callback`: retorno dedicado para conexion OAuth de Mercado Pago del profesional.
 - `/auth/forgot-password`
 - `/auth/reset-password`
 
@@ -76,6 +77,7 @@ Lectura de producto:
 
 - estas rutas soportan el nucleo de `Usuario` y el `MVP`
 - `/explorar`, `/profesional/[slug]` y `/reservar` son parte del loop principal marketplace -> perfil -> reserva
+- `/explorar` y `/profesional/pagina/[slug]` ya no fuerzan auth refresh ni favoritos en 401 cuando el cliente no tiene una sesion conocida; las features auth-only se habilitan recien con hint de sesion valida
 
 ### Rutas del cliente
 
@@ -101,6 +103,7 @@ Modulos relevantes:
 - `hooks/useClientNotificationInbox.ts`: filtros por estado y evento, carga incremental y acciones `mark read` / `read all` del inbox cliente.
 - `hooks/useFavoriteProfessionals.ts`: favoritos del cliente.
 - `services/clientBookings.ts`: reservas y pago del cliente.
+- `services/clientBookings.ts`: reservas y pago del cliente; ahora cachea `actions` y `timeline` por booking y permite prefetch conservador del detalle para bajar waterfalls al entrar o cambiar de seleccion.
 - `types/clientBookingTimeline.ts` y `utils/clientBookingTimeline.ts`: contrato y formateo del historial operativo de reservas cliente.
 - `services/clientNotifications.ts`: unread count, preview y acciones de lectura del inbox cliente.
 
@@ -118,6 +121,7 @@ Lectura de producto:
 - la web cliente ya tiene campana, unread badge, dropdown preview e inbox real en `/cliente/notificaciones`
 - `/cliente/reservas` ya usa su panel lateral de detalle como experiencia real de reserva e incluye timeline de actividad por `bookingId`
 - `/cliente/reservas` mantiene el refresco de estados pendientes, pero el polling ya no corre en background y usa backoff conservador para bajar presion de red
+- `/cliente/reservas` ahora prefetch-ea `actions + timeline` de la reserva seleccionada apenas entra el listado para reducir espera perceptible sin cambiar contratos
 - todavia faltan piezas visibles para reseñas, beneficios y settings de notificaciones
 
 ### Rutas del profesional
@@ -145,6 +149,7 @@ Modulos relevantes:
 - `hooks/useProfessionalNotificationUnreadCount.ts` y `hooks/useProfessionalNotificationPreview.ts`: mantienen contador y preview de FE-1 en sync con acciones del inbox.
 - `hooks/useProfessionalBookingTimeline.ts`: carga `GET /profesional/reservas/{bookingId}/timeline` con estados `loading / empty / error`.
 - `services/professionalBookings.ts`
+- `services/professionalBookings.ts`: cachea `actions` y `timeline` por booking y expone prefetch del detalle para bajar waterfalls en el dashboard operativo.
 - `services/professionalNotifications.ts`
 - `services/professionalBookingPolicy.ts`
 - `hooks/useProfessionalBilling.ts`
@@ -154,12 +159,27 @@ Lectura de producto:
 - esta area concentra el valor de `Free` y buena parte de `Pro`
 - `servicios`, `horarios`, `reservas`, `perfil-negocio` y `notificaciones` son el corazon operativo
 - `billing` ya existe, pero el naming de codigo sigue siendo `BASIC / PROFESIONAL / ENTERPRISE`
-- en backend, `billing` ya quedo alineado a Mercado Pago only: suscripciones de plataforma por un lado y conexion OAuth del profesional por otro
+- `/profesional/dashboard/billing` ya separa dos bloques: `Mi plan de Plura` y `Cobros de reservas con Mercado Pago`
+- la web profesional ya consume `GET/POST/DELETE /profesional/payment-providers/mercadopago/*` y no usa `payout-config`
+- el retorno OAuth de Mercado Pago mantiene pantalla propia en `/oauth/mercadopago/callback`, pero ya no procesa `code/state` en frontend: Mercado Pago vuelve al callback backend y este redirige a la web con un resultado final
+- en `/profesional/dashboard/billing`, `BASIC` ya no intenta conectar Mercado Pago: muestra un bloque de upgrade y reserva la conexion OAuth solo para `PROFESIONAL / ENTERPRISE`
+- `/profesional/dashboard/billing` no promociona visualmente `PROFESIONAL / ENTERPRISE` mientras la suscripcion siga en `TRIAL`; el plan visible solo cambia cuando el backend ya la ve `ACTIVE`, es decir, despues de la confirmacion via webhook
+- `/profesional/dashboard/billing` evita cargar el estado de conexion de Mercado Pago cuando la pantalla ya va a redirigir al callback OAuth, difiere el montaje inicial de comparativa/planes y carga la conexion de cobros recien al acercarse a esa seccion para bajar trabajo al entrar; sus bloques principales de plan/comparativa/cobros quedan aislados para no rerenderizar toda la superficie ante banners o estados transitorios de billing
 - `/profesional/notificaciones` ya funciona como centro real de inbox: lista paginada con `cargar mas`, filtros basicos y navegacion contextual por `actionUrl`
 - la navegacion contextual de notificaciones profesional apunta a la UX real de reservas en `/profesional/dashboard/reservas?bookingId={id}` y el panel selecciona la reserva desde query string
 - `/profesional/dashboard/reservas` ya usa su panel lateral de detalle como experiencia real de reserva e incluye timeline de actividad e historial por `bookingId`
 - `/profesional/dashboard/reservas` mantiene auto-refresh para estados pendientes, pero ahora pausa polling con la pestaña oculta y aplica backoff para reducir trafico redundante
-- `/profesional/dashboard/reservas` debe seguir disponible para `Free/BASIC` como modulo operativo de reservas; el gating por `scheduleTier` aplica a navegacion de agenda en dashboard, no al listado operativo de bookings
+- `/profesional/dashboard/reservas` ahora paraleliza reservas y servicios al entrar, y prefetch-ea `actions + timeline` de la seleccion activa para acortar la cascada inicial
+- `/profesional/dashboard/reservas` debe seguir disponible para `Free/BASIC` como modulo operativo de reservas
+- la web profesional ya no expone la accion manual `completar` para reservas; en la UX operativa quedaron confirmacion, cancelacion, no-show, reagendamiento y lectura de timeline
+- `/profesional/dashboard` recorta trabajo de agenda en cliente: la grilla semanal y mensual quedaron separadas para evitar rerenders pesados al abrir el drawer, y la carga de reservas ya no expande fechas dispersas a un unico rango continuo cuando el dashboard combina semana actual con una semana o mes navegados
+- `/profesional/dashboard` debe mostrar en agenda todas las reservas no canceladas del rango visible, incluyendo `pending`, `confirmed`, `completed` y `no_show`; `cancelled` queda fuera para no bloquear visualmente huecos liberados
+- `/profesional/dashboard` ya no limita la carga de bookings a `today` cuando el plan es `DAILY/BASIC`; la agenda semanal y mensual queda visible tambien en `Free/BASIC` y usa los bookings reales del rango visible para evitar huecos falsos
+- `services/professionalBookings.ts` ahora mapea `date/time` de reservas profesionales a claves operativas `YYYY-MM-DD` y `HH:mm`, no a labels humanizados; la presentacion visible de fechas queda en la UI para no romper la grilla de agenda
+- `/profesional/dashboard` compacta el bloque de `Pulso semanal` para no empujar la agenda; cuando no hay analytics muestra una nota breve en lugar de tarjetas altas vacias
+- `/profesional/dashboard` en vista semanal usa una base completa de `24h` con scroll vertical interno; el viewport visible muestra aproximadamente `12h`, el foco inicial se calcula en frontend con horarios configurados y reservas visibles de la semana, agrega margen corto y solo cae a fallback `09:00-18:00` para posicionamiento inicial si no hay datos suficientes; el eje horario visible marca horas de una en una y deja subdivisiones de `30m` como referencia sutil
+- `/profesional/dashboard` agrega una toolbar compacta para saltar dentro del dia a `Madrugada`, `Mañana`, `Tarde`, `Noche` y `Ahora` sin romper navegacion semanal ni render de reservas
+- `/profesional/dashboard` en desktop prioriza visibilidad y estabilidad de agenda sobre un shell full-height estricto: la pagina puede seguir scrolleando normalmente, mientras la vista semanal mantiene scroll interno solo en el cuerpo del calendario y una altura explicita para que la grilla no colapse ni quede truncada
 
 Huecos relevantes contra el objetivo:
 
@@ -176,14 +196,18 @@ Huecos relevantes contra el objetivo:
 - `services/search.ts`: integra search y suggest.
 - `services/geo.ts`: geocoding y autocomplete.
 - `services/api.ts`: auth, refresh y headers de plataforma `WEB`.
+- `services/session.ts`: mantiene fallback token y un `known session hint` en storage para no disparar refresh/autofetch en rutas publicas cuando no hay sesion confirmada.
+- `lib/auth/sessionErrors.ts`: clasifica `401/403` de auth aparte de errores transitorios para que la web no fuerce logout por fallas de red o `5xx`.
 - `middleware.ts`: CSP y headers de seguridad.
-- `pages/profesional/pagina/[slug].tsx`: reutiliza fetch cacheado del perfil publico, difiere quick slots hasta interaccion real con servicios y posterga geocoding fallback hasta que el bloque del mapa entra en viewport.
+- `/oauth/mercadopago/callback`: ahora interpreta `result/reason` devueltos por el backend y consulta el estado real de conexion; ya no intenta llamar al callback backend con `code/state`.
+- `pages/profesional/pagina/[slug].tsx`: reutiliza fetch cacheado del perfil publico, difiere quick slots hasta interaccion real con servicios y posterga tanto el geocoding fallback como la carga del mapa hasta que el bloque entra en viewport para bajar costo inicial en la pagina publica.
 
 Lectura de producto:
 
 - search + mapa sostienen marketplace y descubrimiento
 - `middleware.ts` y `services/api.ts` sostienen parte del bloque core de autenticacion y seguridad
-- `_app.tsx` tambien monta providers de perfil, cambios sin guardar y sincronizacion de notificaciones del profesional; los hooks de perfil ya no fuerzan un refetch extra cuando el provider aun no termino su carga inicial
+- en rutas protegidas web, un fallo transitorio al refrescar sesion o cargar `/auth/me/*` ya no limpia la sesion local ni redirige a login; la redireccion queda reservada a `401/403` reales
+- `_app.tsx` mantiene globales los providers de perfil, pero ahora monta por ruta los providers de notificaciones y del shell profesional con cambios sin guardar solo en dashboard/notificaciones para bajar costo base fuera de esas superficies; ademas las campanas de notificaciones del shell difieren la primera carga del unread count hasta interaccion o idle en vez de pedirlo apenas monta la vista; los hooks de perfil ya no fuerzan un refetch extra cuando el provider aun no termino su carga inicial
 
 ## Mobile
 
@@ -234,6 +258,7 @@ Lectura de producto:
 
 - reproduce parte del panel profesional en mobile
 - responde bien al objetivo `Free` y `Pro` de operar una agenda desde el telefono
+- `dashboard/billing` ya no usa `payout-config`; muestra el plan de Plura y el estado de conexion OAuth de `Mercado Pago` como unico provider vigente para cobros
 - no expone aun el set completo de capacidades `Premium`
 
 ### Otras pantallas mobile

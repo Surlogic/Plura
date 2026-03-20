@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState, type RefObject } from 'react';
 import { isAxiosError } from 'axios';
 import Link from 'next/link';
 import EmailVerificationPanel from '@/components/auth/EmailVerificationPanel';
@@ -96,13 +96,15 @@ const parseDurationToMinutes = (value?: string) => {
   return minutes > 0 ? minutes : null;
 };
 
-const defaultCalendarStartHour = 8;
-const defaultCalendarEndHour = 20;
-const minCalendarHour = 6;
-const maxCalendarHour = 23;
-const minCalendarSpanHours = 8;
-const hourRowHeight = 76;
-const formatHourLabel = (hour: number) => `${String(hour).padStart(2, '0')}:00`;
+const fullDayStartMinutes = 0;
+const fullDayEndMinutes = 24 * 60;
+const defaultCalendarStartMinutes = 9 * 60;
+const defaultCalendarEndMinutes = 18 * 60;
+const calendarStepMinutes = 30;
+const calendarLabelStepMinutes = 60;
+const calendarMarginMinutes = 30;
+const minCalendarSpanMinutes = 3 * 60;
+const hourRowHeight = 56;
 const formatMinutesLabel = (minutes: number) => {
   const safeMinutes = Math.max(0, Math.round(minutes));
   const hours = Math.floor(safeMinutes / 60) % 24;
@@ -110,6 +112,8 @@ const formatMinutesLabel = (minutes: number) => {
   return `${String(hours).padStart(2, '0')}:${String(mins).padStart(2, '0')}`;
 };
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
+const roundDownToStep = (value: number, step: number) => Math.floor(value / step) * step;
+const roundUpToStep = (value: number, step: number) => Math.ceil(value / step) * step;
 
 const resolveReservationDurationMinutes = (reservation: ProfessionalReservation) =>
   reservation.effectiveDurationMinutes
@@ -129,6 +133,9 @@ const reservationStatusPalette = {
   completed: {
     badge: 'bg-[#E2E8F0] text-[#334155]',
   },
+  no_show: {
+    badge: 'bg-[#EDE9FE] text-[#6D28D9]',
+  },
 };
 
 const reservationStatusLabel = {
@@ -136,6 +143,7 @@ const reservationStatusLabel = {
   pending: 'Pendiente',
   cancelled: 'Cancelada',
   completed: 'Completada',
+  no_show: 'No asistió',
 };
 
 const reservationCardAccentClassName = 'bg-[#FF7A00]';
@@ -155,6 +163,108 @@ type ReservationLayout = {
   endMinutes: number;
   column: number;
   columns: number;
+};
+
+type WeekCalendarDay = {
+  dayKey: WorkDayKey;
+  dateKey: string;
+  label: string;
+  dayNumber: number;
+  monthLabel: string;
+};
+
+type MonthCalendarDay = {
+  dayKey: WorkDayKey;
+  dateKey: string;
+  day: number;
+  isCurrentMonth: boolean;
+  isToday: boolean;
+};
+
+type VisibleCalendarRange = {
+  startMinutes: number;
+  endMinutes: number;
+  lineMarkers: number[];
+  labelMarkers: number[];
+  calendarHeight: number;
+  calendarTotalMinutes: number;
+};
+
+type CurrentTimeIndicator = {
+  dateKey: string;
+  top: number;
+  label: string;
+};
+
+type CalendarFocusWindow = {
+  startMinutes: number;
+  endMinutes: number;
+  isFallback: boolean;
+};
+
+const buildWeekFocusWindow = (
+  weekDays: WeekCalendarDay[],
+  schedule: ProfessionalSchedule | null,
+  reservationsByDate: Map<string, ProfessionalReservation[]>,
+) => {
+  const relevantMinutes: number[] = [];
+
+  weekDays.forEach((day) => {
+    const scheduleForDay = schedule?.days.find((item) => item.day === day.dayKey);
+    if (scheduleForDay?.enabled && !scheduleForDay.paused) {
+      scheduleForDay.ranges?.forEach((range) => {
+        const startMinutes = parseTimeToMinutes(range.start);
+        const endMinutes = parseTimeToMinutes(range.end);
+        if (startMinutes !== null) relevantMinutes.push(startMinutes);
+        if (endMinutes !== null) relevantMinutes.push(endMinutes);
+      });
+    }
+
+    const reservationsForDay = reservationsByDate.get(day.dateKey) ?? [];
+    reservationsForDay.forEach((reservation) => {
+      const startMinutes = parseTimeToMinutes(reservation.time);
+      if (startMinutes === null) return;
+      relevantMinutes.push(startMinutes);
+      relevantMinutes.push(startMinutes + resolveReservationDurationMinutes(reservation));
+    });
+  });
+
+  if (relevantMinutes.length === 0) {
+    return {
+      startMinutes: defaultCalendarStartMinutes,
+      endMinutes: defaultCalendarEndMinutes,
+      isFallback: true,
+    } satisfies CalendarFocusWindow;
+  }
+
+  let startMinutes = roundDownToStep(
+    Math.max(Math.min(...relevantMinutes) - calendarMarginMinutes, fullDayStartMinutes),
+    calendarStepMinutes,
+  );
+  let endMinutes = roundUpToStep(
+    Math.min(Math.max(...relevantMinutes) + calendarMarginMinutes, fullDayEndMinutes),
+    calendarStepMinutes,
+  );
+
+  if (endMinutes - startMinutes < minCalendarSpanMinutes) {
+    const missingMinutes = minCalendarSpanMinutes - (endMinutes - startMinutes);
+    const extendBefore = Math.floor(missingMinutes / 2);
+    const extendAfter = missingMinutes - extendBefore;
+    startMinutes = roundDownToStep(
+      Math.max(startMinutes - extendBefore, fullDayStartMinutes),
+      calendarStepMinutes,
+    );
+    endMinutes = roundUpToStep(
+      Math.min(endMinutes + extendAfter, fullDayEndMinutes),
+      calendarStepMinutes,
+    );
+  }
+
+  return {
+    startMinutes,
+    endMinutes,
+    isFallback: false,
+  } satisfies CalendarFocusWindow;
 };
 
 const buildDayLayouts = (items: ProfessionalReservation[]) => {
@@ -220,6 +330,315 @@ const buildDayLayouts = (items: ProfessionalReservation[]) => {
   return layouts;
 };
 
+const WeekCalendarBoard = memo(function WeekCalendarBoard({
+  weekDays,
+  todayKey,
+  reservationsByDate,
+  visibleCalendarRange,
+  dayLayoutsByDate,
+  currentTimeIndicator,
+  scrollContainerRef,
+  onReservationOpen,
+}: {
+  weekDays: WeekCalendarDay[];
+  todayKey: string;
+  reservationsByDate: Map<string, ProfessionalReservation[]>;
+  visibleCalendarRange: VisibleCalendarRange;
+  dayLayoutsByDate: Map<string, ReservationLayout[]>;
+  currentTimeIndicator: CurrentTimeIndicator | null;
+  scrollContainerRef: RefObject<HTMLDivElement | null>;
+  onReservationOpen: (reservation: ProfessionalReservation) => void;
+}) {
+  return (
+    <div className="mt-3 min-h-[540px] overflow-x-auto lg:mt-2 lg:h-full">
+      <div className="min-h-[540px] min-w-[980px] overflow-hidden rounded-[24px] border border-[#E2E7EC] bg-white shadow-[0_20px_45px_rgba(15,23,42,0.08)] lg:flex lg:h-full lg:flex-col">
+        <div className="flex border-b border-[#E2E7EC] bg-[linear-gradient(180deg,#FAFCFE_0%,#F4F8FB_100%)]">
+          <div className="sticky left-0 z-20 w-20 shrink-0 bg-[linear-gradient(180deg,#FAFCFE_0%,#F4F8FB_100%)] px-4 py-3 text-[0.6rem] uppercase tracking-[0.3em] text-[#94A3B8]">
+            Hora
+          </div>
+          <div className="grid flex-1 grid-cols-7">
+            {weekDays.map((day, index) => {
+              const isToday = day.dateKey === todayKey;
+              const reservationCount = reservationsByDate.get(day.dateKey)?.length ?? 0;
+              return (
+                <div
+                  key={day.dateKey}
+                  className={`px-4 py-3 text-xs ${
+                    index < weekDays.length - 1 ? 'border-r border-[#E2E7EC]' : ''
+                  } ${isToday ? 'bg-[#F2FFFB]' : ''}`}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="text-[0.6rem] uppercase tracking-[0.3em] text-[#94A3B8]">
+                        {dayLabelsShort[day.dayKey]}
+                      </p>
+                      <p className="mt-1 text-sm font-semibold text-[#0E2A47]">
+                        {day.dayNumber}
+                        <span className="ml-1 text-[0.6rem] uppercase text-[#94A3B8]">
+                          {day.monthLabel}
+                        </span>
+                      </p>
+                    </div>
+                    <span
+                      className={`rounded-full px-2 py-1 text-[0.62rem] font-semibold ${
+                        reservationCount > 0
+                          ? 'bg-[#1FB6A6]/10 text-[#1FB6A6]'
+                          : 'bg-[#F3F6F9] text-[#94A3B8]'
+                      }`}
+                    >
+                      {reservationCount > 0 ? `${reservationCount} res.` : 'Libre'}
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        <div
+          ref={scrollContainerRef}
+          className="flex overflow-y-auto overscroll-contain scroll-smooth lg:min-h-0 lg:flex-1"
+          style={{ height: '100%' }}
+        >
+          <div className="sticky left-0 z-10 w-20 shrink-0 border-r border-[#E2E7EC] bg-white shadow-[4px_0_12px_rgba(15,23,42,0.06)]">
+            <div className="relative" style={{ height: visibleCalendarRange.calendarHeight }}>
+              {visibleCalendarRange.labelMarkers.map((markerMinutes) => {
+                const top = Math.min(
+                  ((markerMinutes - visibleCalendarRange.startMinutes)
+                    / visibleCalendarRange.calendarTotalMinutes)
+                    * visibleCalendarRange.calendarHeight,
+                  visibleCalendarRange.calendarHeight - 14,
+                );
+                return (
+                  <div
+                    key={`hour-${markerMinutes}`}
+                    className="absolute right-3 text-[0.65rem] font-medium text-[#94A3B8]"
+                    style={{ top }}
+                  >
+                    {formatMinutesLabel(markerMinutes)}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="grid flex-1 grid-cols-7">
+            {weekDays.map((day, index) => {
+              const dayLayouts = dayLayoutsByDate.get(day.dateKey) ?? [];
+              const isToday = day.dateKey === todayKey;
+              const baseBackground = index % 2 === 0 ? 'bg-white' : 'bg-[#FBFCFD]';
+              return (
+                <div
+                  key={day.dateKey}
+                  className={`relative ${
+                    index < weekDays.length - 1 ? 'border-r border-[#E2E7EC]' : ''
+                  } ${isToday ? 'bg-[#F2FFFB]' : baseBackground}`}
+                  style={{ height: visibleCalendarRange.calendarHeight }}
+                >
+                  <div className="pointer-events-none absolute inset-0">
+                    {visibleCalendarRange.lineMarkers.slice(0, -1).map((markerMinutes) => (
+                      <div
+                        key={`${day.dateKey}-${markerMinutes}`}
+                        className={`absolute left-0 right-0 border-b ${
+                          markerMinutes % calendarLabelStepMinutes === 0
+                            ? 'border-[#D7E3EE]'
+                            : 'border-dashed border-[#EEF2F6]'
+                        }`}
+                        style={{
+                          top: ((markerMinutes - visibleCalendarRange.startMinutes)
+                            / visibleCalendarRange.calendarTotalMinutes)
+                            * visibleCalendarRange.calendarHeight,
+                        }}
+                      />
+                    ))}
+                    {currentTimeIndicator && currentTimeIndicator.dateKey === day.dateKey ? (
+                      <div
+                        className="absolute left-0 right-0 z-[1] border-t border-[#F97316]"
+                        style={{ top: currentTimeIndicator.top }}
+                      >
+                        <span className="absolute -left-1.5 -top-1.5 h-3 w-3 rounded-full border-2 border-white bg-[#F97316] shadow-sm" />
+                      </div>
+                    ) : null}
+                  </div>
+
+                  {dayLayouts.length === 0 ? (
+                    isToday ? (
+                      <div className="absolute left-3 top-3 rounded-full border border-dashed border-[#D7E6DF] bg-white/92 px-3 py-1 text-[0.65rem] text-[#94A3B8]">
+                        Sin reservas
+                      </div>
+                    ) : null
+                  ) : null}
+
+                  {dayLayouts.map((layout) => {
+                    const dayStartMinutes = visibleCalendarRange.startMinutes;
+                    const dayEndMinutes = visibleCalendarRange.endMinutes;
+                    const clampedStart = Math.max(layout.startMinutes, dayStartMinutes);
+                    const clampedEnd = Math.min(layout.endMinutes, dayEndMinutes);
+                    if (clampedEnd <= dayStartMinutes || clampedStart >= dayEndMinutes) {
+                      return null;
+                    }
+
+                    const offsetMinutes = clampedStart - dayStartMinutes;
+                    const clampedMinutes = clampedEnd - clampedStart;
+                    const timeRangeLabel = `${formatMinutesLabel(layout.startMinutes)} – ${formatMinutesLabel(layout.endMinutes)}`;
+                    const top = (offsetMinutes / visibleCalendarRange.calendarTotalMinutes) *
+                      visibleCalendarRange.calendarHeight;
+                    const height = Math.max(
+                      (clampedMinutes / visibleCalendarRange.calendarTotalMinutes) *
+                        visibleCalendarRange.calendarHeight,
+                      44,
+                    );
+                    const showClient = height >= 56;
+                    const showStatus = height >= 90;
+                    const isCompact = height < 56;
+                    const gap = 8;
+                    const columns = Math.max(layout.columns, 1);
+                    const width = `calc((100% - ${(columns - 1) * gap}px) / ${columns})`;
+                    const left = `calc(${layout.column} * ((100% - ${(columns - 1) * gap}px) / ${columns} + ${gap}px))`;
+                    const statusKey = layout.reservation.status ?? 'confirmed';
+                    const palette =
+                      reservationStatusPalette[
+                        statusKey as keyof typeof reservationStatusPalette
+                      ] ?? reservationStatusPalette.confirmed;
+                    const statusText =
+                      reservationStatusLabel[
+                        statusKey as keyof typeof reservationStatusLabel
+                      ] ?? reservationStatusLabel.confirmed;
+
+                    return (
+                      <button
+                        type="button"
+                        key={layout.reservation.id}
+                        className="absolute z-[2] cursor-pointer text-left"
+                        style={{ top, height, width, left }}
+                        onClick={() => onReservationOpen(layout.reservation)}
+                      >
+                        <div
+                          className={`group relative flex h-full min-h-[44px] flex-col overflow-hidden rounded-[10px] border px-2.5 py-2 text-left shadow-[0_6px_18px_rgba(15,23,42,0.10)] transition hover:-translate-y-0.5 hover:shadow-[0_12px_24px_rgba(15,23,42,0.14)] ${reservationCardClassName} ${
+                            isToday ? 'ring-1 ring-[#FFD9B0]' : ''
+                          }`}
+                        >
+                          <span
+                            className={`absolute left-0 top-0 h-full w-1 rounded-l-[10px] ${reservationCardAccentClassName}`}
+                          />
+                          <div className="flex items-start justify-between gap-2 pl-1.5">
+                            <span className="text-[12px] font-medium leading-none text-[#475569]">
+                              {timeRangeLabel}
+                            </span>
+                            {showStatus ? (
+                              <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${palette.badge}`}>
+                                {statusText}
+                              </span>
+                            ) : (
+                              <span
+                                className="mt-0.5 h-2.5 w-2.5 shrink-0 rounded-full bg-[#FF7A00]"
+                                aria-hidden="true"
+                              />
+                            )}
+                          </div>
+                          <p className={`mt-1 pl-1.5 font-semibold text-[#0F172A] ${isCompact ? 'text-[13px] leading-tight' : 'text-[14px] leading-snug'}`}>
+                            {layout.reservation.serviceName || 'Servicio'}
+                          </p>
+                          {showClient && layout.reservation.clientName ? (
+                            <p className="mt-1 line-clamp-2 pl-1.5 text-[12px] leading-snug text-[#334155]">
+                              {layout.reservation.clientName}
+                            </p>
+                          ) : null}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+});
+
+const MonthCalendarBoard = memo(function MonthCalendarBoard({
+  monthGridDays,
+  reservationsByDate,
+  monthLabel,
+}: {
+  monthGridDays: MonthCalendarDay[];
+  reservationsByDate: Map<string, ProfessionalReservation[]>;
+  monthLabel: string;
+}) {
+  return (
+    <div className="mt-6 overflow-hidden rounded-[24px] border border-[#E2E7EC] bg-white shadow-[0_16px_36px_rgba(15,23,42,0.06)]">
+      <div className="grid grid-cols-7 gap-1 border-b border-[#E2E7EC] bg-[#F8FAFC] px-2 text-center">
+        {['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'].map((dayLabel) => (
+          <div key={dayLabel} className="py-2 text-xs font-semibold text-[#94A3B8]">
+            {dayLabel}
+          </div>
+        ))}
+      </div>
+      <div className="grid grid-cols-7 gap-1 p-2">
+        {monthGridDays.map((day) => {
+          const dayReservations = reservationsByDate.get(day.dateKey) ?? [];
+          const count = dayReservations.length;
+          return (
+            <div
+              key={day.dateKey}
+              className={`min-h-[96px] rounded-[16px] p-2 text-xs transition ${
+                day.isToday
+                  ? 'bg-[color:var(--primary)] text-white shadow-[var(--shadow-card)]'
+                  : day.isCurrentMonth
+                    ? 'bg-[color:var(--surface-muted)] text-[color:var(--ink)]'
+                    : 'bg-transparent text-[color:var(--border-strong)]'
+              }`}
+            >
+              <div className="flex items-start justify-between gap-2">
+                <p className={`font-semibold ${day.isToday ? 'text-white' : ''}`}>
+                  {day.day}
+                </p>
+                {count > 0 ? (
+                  <span
+                    className={`rounded-full px-1.5 py-0.5 text-[0.58rem] font-semibold ${
+                      day.isToday
+                        ? 'bg-white/20 text-white'
+                        : 'bg-[color:var(--primary-soft)] text-[color:var(--primary)]'
+                    }`}
+                  >
+                    {count}
+                  </span>
+                ) : null}
+              </div>
+              {count > 0 ? (
+                <div className="mt-2 space-y-1">
+                  {dayReservations.slice(0, 2).map((reservation) => (
+                    <div
+                      key={reservation.id}
+                      className={`truncate rounded-md px-2 py-1 text-[0.62rem] font-medium ${
+                        day.isToday
+                          ? 'bg-white/12 text-white'
+                          : 'bg-white text-[color:var(--ink-muted)]'
+                      }`}
+                    >
+                      {reservation.time} · {reservation.serviceName}
+                    </div>
+                  ))}
+                  {count > 2 ? (
+                    <p className={`text-[0.58rem] ${day.isToday ? 'text-white/70' : 'text-[color:var(--ink-faint)]'}`}>
+                      +{count - 2} más
+                    </p>
+                  ) : null}
+                </div>
+              ) : null}
+            </div>
+          );
+        })}
+      </div>
+      <p className="border-t border-[color:var(--border-soft)] py-3 text-center text-xs uppercase tracking-[0.4em] text-[color:var(--ink-faint)]">
+        {monthLabel}
+      </p>
+    </div>
+  );
+});
+
 export default function ProfesionalDashboardPage() {
   const { profile, refreshProfile } = useProfessionalProfile();
   const featureAccess = resolveProfessionalFeatureAccess(profile);
@@ -236,6 +655,8 @@ export default function ProfesionalDashboardPage() {
     useState<ProfessionalReservation | null>(null);
   const [drawerVisible, setDrawerVisible] = useState(false);
   const closeTimeoutRef = useRef<number | null>(null);
+  const weekCalendarScrollRef = useRef<HTMLDivElement | null>(null);
+  const lastAutoFocusKeyRef = useRef<string | null>(null);
 
   const { requestNavigation } = useProfessionalDashboardUnsavedSection({
     sectionId: 'agenda-dashboard',
@@ -243,25 +664,8 @@ export default function ProfesionalDashboardPage() {
     isSaving: isUpdatingStatus,
   });
 
-  useEffect(() => {
-    if (!profile?.id) return;
-    api
-      .get<ProfessionalSchedule>('/profesional/schedule')
-      .then((response) => {
-        const data = response.data;
-        if (!data || !Array.isArray(data.days)) {
-          setSchedule(null);
-          return;
-        }
-        setSchedule({
-          days: data.days,
-          pauses: Array.isArray(data.pauses) ? data.pauses : [],
-        });
-      })
-      .catch(() => {
-        setSchedule(null);
-      });
-  }, [profile?.id]);
+  // Schedule is loaded once as part of the parallel initial fetch below.
+  const scheduleLoadedRef = useRef(false);
 
   useEffect(() => {
     if (selectedReservation) {
@@ -272,20 +676,25 @@ export default function ProfesionalDashboardPage() {
     return undefined;
   }, [selectedReservation]);
 
-  const today = new Date();
-  const todayKey = toLocalDateKey(today);
-  const currentMinutes = today.getHours() * 60 + today.getMinutes();
-  const yesterday = new Date(today);
-  yesterday.setDate(today.getDate() - 1);
-  const yesterdayKey = toLocalDateKey(yesterday);
-
-  // Fixed current week — used for stats only
-  const currentWeekStart = startOfWeek(today);
-  const currentWeekEnd = new Date(currentWeekStart);
-  currentWeekEnd.setDate(currentWeekStart.getDate() + 6);
-  const weekStartKey = toLocalDateKey(currentWeekStart);
-  const weekEndKey = toLocalDateKey(currentWeekEnd);
-  const scheduleTier = profile?.professionalEntitlements?.scheduleTier ?? 'DAILY';
+  const { today, todayKey, currentMinutes, yesterdayKey, currentWeekStart, weekStartKey, weekEndKey } = useMemo(() => {
+    const t = new Date();
+    const tKey = toLocalDateKey(t);
+    const y = new Date(t);
+    y.setDate(t.getDate() - 1);
+    const wStart = startOfWeek(t);
+    const wEnd = new Date(wStart);
+    wEnd.setDate(wStart.getDate() + 6);
+    return {
+      today: t,
+      todayKey: tKey,
+      currentMinutes: t.getHours() * 60 + t.getMinutes(),
+      yesterdayKey: toLocalDateKey(y),
+      currentWeekStart: wStart,
+      weekStartKey: toLocalDateKey(wStart),
+      weekEndKey: toLocalDateKey(wEnd),
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const canUseMonthlyCalendar = featureAccess.monthlyCalendar;
   const canNavigateCalendar = featureAccess.weeklyCalendarNavigation;
 
@@ -366,19 +775,21 @@ export default function ProfesionalDashboardPage() {
     return map;
   }, [agendaReservations]);
 
-  const todayCount = agendaReservations.filter((r) => r.date === todayKey).length;
-  const yesterdayCount = agendaReservations.filter((r) => r.date === yesterdayKey).length;
-  const todayDiff = todayCount - yesterdayCount;
+  const { todayCount, todayDiff, uniqueClientsWeek } = useMemo(() => {
+    const tc = agendaReservations.filter((r) => r.date === todayKey).length;
+    const yc = agendaReservations.filter((r) => r.date === yesterdayKey).length;
+    const weekRes = agendaReservations.filter(
+      (r) => r.date >= weekStartKey && r.date <= weekEndKey,
+    );
+    const ucw = new Set(weekRes.map((r) => r.clientName).filter(Boolean)).size;
+    return { todayCount: tc, todayDiff: tc - yc, uniqueClientsWeek: ucw };
+  }, [agendaReservations, todayKey, yesterdayKey, weekStartKey, weekEndKey]);
 
-  const weekReservations = agendaReservations.filter(
-    (r) => r.date >= weekStartKey && r.date <= weekEndKey,
-  );
-  const uniqueClientsWeek = new Set(
-    weekReservations.map((r) => r.clientName).filter(Boolean),
-  ).size;
-
-  const scheduleDays = schedule?.days.filter((day) => day.enabled && !day.paused) ?? [];
-  const scheduleDaySet = new Set(scheduleDays.map((day) => day.day));
+  const { scheduleDays, scheduleDaySet } = useMemo(() => {
+    const days = schedule?.days.filter((day) => day.enabled && !day.paused) ?? [];
+    const daySet = new Set(days.map((day) => day.day));
+    return { scheduleDays: days, scheduleDaySet: daySet };
+  }, [schedule?.days]);
 
   const currentWeekDays = useMemo(() => {
     return Array.from({ length: 7 }).map((_, index) => {
@@ -392,9 +803,6 @@ export default function ProfesionalDashboardPage() {
 
   const requiredReservationDates = useMemo(() => {
     const dateKeys = new Set<string>([todayKey]);
-    if (scheduleTier === 'DAILY') {
-      return Array.from(dateKeys);
-    }
     currentWeekDays.forEach((day) => dateKeys.add(day.dateKey));
     if (calendarView === 'month' && canUseMonthlyCalendar) {
       monthGridDays.forEach((day) => dateKeys.add(day.dateKey));
@@ -402,12 +810,36 @@ export default function ProfesionalDashboardPage() {
       weekDays.forEach((day) => dateKeys.add(day.dateKey));
     }
     return Array.from(dateKeys).sort();
-  }, [todayKey, scheduleTier, currentWeekDays, calendarView, canUseMonthlyCalendar, monthGridDays, weekDays]);
+  }, [todayKey, currentWeekDays, calendarView, canUseMonthlyCalendar, monthGridDays, weekDays]);
 
+  const canViewAnalytics = featureAccess.basicAnalytics;
+
+  // Parallel fetch: schedule (once) + reservations + analytics
   useEffect(() => {
     if (!profile?.id) return;
 
     let isCancelled = false;
+
+    const loadSchedule = async () => {
+      if (scheduleLoadedRef.current) return;
+      try {
+        const response = await api.get<ProfessionalSchedule>('/profesional/schedule');
+        if (isCancelled) return;
+        const data = response.data;
+        if (!data || !Array.isArray(data.days)) {
+          setSchedule(null);
+        } else {
+          setSchedule({
+            days: data.days,
+            pauses: Array.isArray(data.pauses) ? data.pauses : [],
+          });
+        }
+        scheduleLoadedRef.current = true;
+      } catch {
+        if (!isCancelled) setSchedule(null);
+      }
+    };
+
     const loadReservations = async () => {
       try {
         const allReservations = await getProfessionalReservationsForDates(requiredReservationDates);
@@ -424,44 +856,27 @@ export default function ProfesionalDashboardPage() {
       }
     };
 
-    loadReservations();
-    return () => {
-      isCancelled = true;
-    };
-  }, [profile?.id, requiredReservationDates]);
-
-  const canViewAnalytics = featureAccess.basicAnalytics;
-
-  useEffect(() => {
-    if (!profile?.id || !canViewAnalytics) {
-      setAnalyticsSummary(null);
-      return;
-    }
-
-    let isCancelled = false;
     const loadAnalytics = async () => {
+      if (!canViewAnalytics) {
+        if (!isCancelled) setAnalyticsSummary(null);
+        return;
+      }
       try {
         const summary = await getProfessionalAnalyticsSummary(
           featureAccess.advancedAnalytics ? 'ADVANCED' : 'BASIC',
         );
-        if (!isCancelled) {
-          setAnalyticsSummary(summary);
-        }
-      } catch (error) {
-        if (!isCancelled) {
-          setAnalyticsSummary(null);
-          setStatusMessage(
-            resolveBackendMessage(error, 'No se pudieron cargar los analytics del panel.'),
-          );
-        }
+        if (!isCancelled) setAnalyticsSummary(summary);
+      } catch {
+        if (!isCancelled) setAnalyticsSummary(null);
       }
     };
 
-    loadAnalytics();
+    void Promise.all([loadSchedule(), loadReservations(), loadAnalytics()]);
+
     return () => {
       isCancelled = true;
     };
-  }, [canViewAnalytics, featureAccess.advancedAnalytics, profile?.id]);
+  }, [profile?.id, requiredReservationDates, canViewAnalytics, featureAccess.advancedAnalytics]);
 
   useEffect(() => {
     if (!canUseMonthlyCalendar && calendarView === 'month') {
@@ -484,88 +899,70 @@ export default function ProfesionalDashboardPage() {
       ? `Días con reservas: ${daysWithReservations}/${scheduleDays.length}`
       : 'Configurá horarios';
 
+  const weekFocusWindow = useMemo(
+    () => buildWeekFocusWindow(weekDays, schedule, reservationsByDate),
+    [reservationsByDate, schedule, weekDays],
+  );
+
   const visibleCalendarRange = useMemo(() => {
-    const relevantMinutes: number[] = [];
-
-    weekDays.forEach((day) => {
-      const scheduleForDay = schedule?.days.find((item) => item.day === day.dayKey);
-      scheduleForDay?.ranges?.forEach((range) => {
-        const startMinutes = parseTimeToMinutes(range.start);
-        const endMinutes = parseTimeToMinutes(range.end);
-        if (startMinutes !== null) relevantMinutes.push(startMinutes);
-        if (endMinutes !== null) relevantMinutes.push(endMinutes);
-      });
-
-      const reservationsForDay = reservationsByDate.get(day.dateKey) ?? [];
-      reservationsForDay.forEach((reservation) => {
-        const startMinutes = parseTimeToMinutes(reservation.time);
-        if (startMinutes === null) return;
-        relevantMinutes.push(startMinutes);
-        relevantMinutes.push(startMinutes + resolveReservationDurationMinutes(reservation));
-      });
-    });
-
-    if (relevantMinutes.length === 0) {
-      const hourSlots = Array.from(
-        { length: defaultCalendarEndHour - defaultCalendarStartHour + 1 },
-        (_, index) => defaultCalendarStartHour + index,
+    const buildCalendarRange = (startMinutes: number, endMinutes: number) => {
+      const boundedStartMinutes = clamp(startMinutes, fullDayStartMinutes, fullDayEndMinutes - calendarStepMinutes);
+      const boundedEndMinutes = clamp(
+        endMinutes,
+        boundedStartMinutes + calendarStepMinutes,
+        fullDayEndMinutes,
       );
-      return {
-        startHour: defaultCalendarStartHour,
-        endHour: defaultCalendarEndHour,
-        hourSlots,
-        calendarHeight: (defaultCalendarEndHour - defaultCalendarStartHour) * hourRowHeight,
-        calendarTotalMinutes:
-          (defaultCalendarEndHour - defaultCalendarStartHour) * 60,
-      };
-    }
 
-    const earliestMinutes = Math.min(...relevantMinutes);
-    const latestMinutes = Math.max(...relevantMinutes);
-    let startHour = clamp(
-      Math.floor(earliestMinutes / 60),
-      minCalendarHour,
-      maxCalendarHour - 1,
-    );
-    let endHour = clamp(
-      Math.ceil(latestMinutes / 60),
-      startHour + 1,
-      maxCalendarHour + 1,
-    );
+      const lineMarkers = Array.from(
+        {
+          length: Math.floor((boundedEndMinutes - boundedStartMinutes) / calendarStepMinutes) + 1,
+        },
+        (_, index) => boundedStartMinutes + (index * calendarStepMinutes),
+      );
 
-    if (endHour - startHour < minCalendarSpanHours) {
-      const desiredEnd = startHour + minCalendarSpanHours;
-      if (desiredEnd <= maxCalendarHour + 1) {
-        endHour = desiredEnd;
-      } else {
-        startHour = clamp(
-          endHour - minCalendarSpanHours,
-          minCalendarHour,
-          maxCalendarHour + 1 - minCalendarSpanHours,
-        );
+      const labelMarkers: number[] = [];
+      if (boundedStartMinutes % calendarLabelStepMinutes !== 0) {
+        labelMarkers.push(boundedStartMinutes);
       }
-    }
+      const firstAlignedLabel = roundUpToStep(boundedStartMinutes, calendarLabelStepMinutes);
+      for (let marker = firstAlignedLabel; marker < boundedEndMinutes; marker += calendarLabelStepMinutes) {
+        labelMarkers.push(marker);
+      }
+      if (
+        boundedEndMinutes !== fullDayEndMinutes
+        && !labelMarkers.includes(boundedEndMinutes)
+        && boundedEndMinutes - labelMarkers[labelMarkers.length - 1] >= calendarLabelStepMinutes / 2
+      ) {
+        labelMarkers.push(boundedEndMinutes);
+      }
 
-    const hourSlots = Array.from(
-      { length: endHour - startHour + 1 },
-      (_, index) => startHour + index,
-    );
-
-    return {
-      startHour,
-      endHour,
-      hourSlots,
-      calendarHeight: (endHour - startHour) * hourRowHeight,
-      calendarTotalMinutes: (endHour - startHour) * 60,
+      return {
+        startMinutes: boundedStartMinutes,
+        endMinutes: boundedEndMinutes,
+        lineMarkers,
+        labelMarkers,
+        calendarHeight: ((boundedEndMinutes - boundedStartMinutes) / 60) * hourRowHeight,
+        calendarTotalMinutes: boundedEndMinutes - boundedStartMinutes,
+      };
     };
-  }, [reservationsByDate, schedule?.days, weekDays]);
+
+    return buildCalendarRange(fullDayStartMinutes, fullDayEndMinutes);
+  }, []);
+
+  const dayLayoutsByDate = useMemo(() => {
+    const map = new Map<string, ReservationLayout[]>();
+    reservationsByDate.forEach((dayReservations, dateKey) => {
+      map.set(dateKey, buildDayLayouts(dayReservations));
+    });
+    return map;
+  }, [reservationsByDate]);
 
   const currentTimeIndicator = useMemo(() => {
     if (calendarView !== 'week' || weekOffset !== 0) return null;
     const now = new Date();
     const nowKey = toLocalDateKey(now);
-    const startMinutes = visibleCalendarRange.startHour * 60;
-    const endMinutes = visibleCalendarRange.endHour * 60;
+    const startMinutes = visibleCalendarRange.startMinutes;
+    const endMinutes = visibleCalendarRange.endMinutes;
     const minutes = now.getHours() * 60 + now.getMinutes();
     if (minutes < startMinutes || minutes > endMinutes) return null;
 
@@ -577,7 +974,57 @@ export default function ProfesionalDashboardPage() {
     };
   }, [calendarView, visibleCalendarRange, weekOffset]);
 
-  const stats = [
+  const scrollWeekCalendarToMinute = useCallback((
+    targetMinutes: number,
+    options?: { behavior?: ScrollBehavior; align?: 'start' | 'center' },
+  ) => {
+    const container = weekCalendarScrollRef.current;
+    if (!container) return;
+
+    const align = options?.align ?? 'start';
+    const boundedMinutes = clamp(targetMinutes, visibleCalendarRange.startMinutes, visibleCalendarRange.endMinutes);
+    const minuteOffset = boundedMinutes - visibleCalendarRange.startMinutes;
+    const top = (minuteOffset / visibleCalendarRange.calendarTotalMinutes) * visibleCalendarRange.calendarHeight;
+    const nextScrollTop = align === 'center'
+      ? top - (container.clientHeight / 2)
+      : top;
+
+    const maxScrollTop = Math.max(visibleCalendarRange.calendarHeight - container.clientHeight, 0);
+    container.scrollTo({
+      top: clamp(nextScrollTop, 0, maxScrollTop),
+      behavior: options?.behavior ?? 'smooth',
+    });
+  }, [visibleCalendarRange]);
+
+  useEffect(() => {
+    if (calendarView !== 'week') return;
+
+    const focusKey = `${weekOffset}:${weekDays.map((day) => day.dateKey).join('|')}:${weekFocusWindow.startMinutes}:${weekFocusWindow.endMinutes}`;
+    if (lastAutoFocusKeyRef.current === focusKey) return;
+
+    const container = weekCalendarScrollRef.current;
+    if (!container) return;
+
+    lastAutoFocusKeyRef.current = focusKey;
+    const frame = requestAnimationFrame(() => {
+      const visibleMinutes = (container.clientHeight / visibleCalendarRange.calendarHeight)
+        * visibleCalendarRange.calendarTotalMinutes;
+      const focusCenter = (weekFocusWindow.startMinutes + weekFocusWindow.endMinutes) / 2;
+      const targetMinute = clamp(
+        focusCenter - (visibleMinutes / 2),
+        visibleCalendarRange.startMinutes,
+        Math.max(visibleCalendarRange.endMinutes - visibleMinutes, visibleCalendarRange.startMinutes),
+      );
+      scrollWeekCalendarToMinute(targetMinute, {
+        behavior: 'auto',
+        align: 'start',
+      });
+    });
+
+    return () => cancelAnimationFrame(frame);
+  }, [calendarView, scrollWeekCalendarToMinute, visibleCalendarRange, weekDays, weekFocusWindow, weekOffset]);
+
+  const stats = useMemo(() => [
     {
       label: 'Reservas hoy',
       value: `${analyticsSummary?.todayBookings ?? todayCount}`,
@@ -598,7 +1045,7 @@ export default function ProfesionalDashboardPage() {
       value: `${analyticsSummary?.weeklyUniqueClients ?? uniqueClientsWeek}`,
       detail: 'Últimos 7 días',
     },
-  ];
+  ], [analyticsSummary, todayCount, todayDiff, occupancyValue, occupancyDetail, uniqueClientsWeek]);
   const nextReservation = useMemo(() => {
     return agendaReservations
       .filter((reservation) => {
@@ -620,7 +1067,7 @@ export default function ProfesionalDashboardPage() {
   const daysWithOpenCapacity = analyticsSummary
     ? Math.max(analyticsSummary.weeklyScheduledDays - analyticsSummary.weeklyDaysWithReservations, 0)
     : Math.max(scheduleDays.length - daysWithReservations, 0);
-  const agendaOverviewCards = [
+  const agendaOverviewCards = useMemo(() => [
     {
       label: 'Pendientes hoy',
       value: `${todayPendingCount}`,
@@ -644,7 +1091,7 @@ export default function ProfesionalDashboardPage() {
       icon: 'spark' as const,
       tone: 'default' as const,
     },
-  ];
+  ], [todayPendingCount, nextReservation, daysWithOpenCapacity, scheduleDays.length]);
 
   const handlePrev = () => {
     if (!canNavigateCalendar) return;
@@ -666,13 +1113,31 @@ export default function ProfesionalDashboardPage() {
     setWeekOffset(0);
     setMonthOffset(0);
   };
+  const handleJumpToDaySegment = useCallback((segment: 'lateNight' | 'morning' | 'afternoon' | 'evening' | 'now') => {
+    if (calendarView !== 'week') return;
+
+    const targetMinutes = segment === 'lateNight'
+      ? 0
+      : segment === 'morning'
+        ? 6 * 60
+        : segment === 'afternoon'
+          ? 12 * 60
+          : segment === 'evening'
+            ? 18 * 60
+            : new Date().getHours() * 60 + new Date().getMinutes();
+
+    scrollWeekCalendarToMinute(targetMinutes, {
+      behavior: 'smooth',
+      align: segment === 'now' ? 'center' : 'start',
+    });
+  }, [calendarView, scrollWeekCalendarToMinute]);
   const handleToggleMenu = () => {
     setIsMenuOpen((prev) => !prev);
   };
 
-  const handleOpenReservation = (reservation: ProfessionalReservation) => {
+  const handleOpenReservation = useCallback((reservation: ProfessionalReservation) => {
     setSelectedReservation(reservation);
-  };
+  }, []);
 
   const handleCloseReservation = () => {
     setDrawerVisible(false);
@@ -724,7 +1189,7 @@ export default function ProfesionalDashboardPage() {
               <ProfesionalSidebar profile={profile} active="Agenda" />
             </div>
           </aside>
-          <div className="flex-1">
+          <div className="flex flex-1 flex-col">
             <div className="px-4 pt-4 sm:px-6 lg:hidden">
               <Button type="button" size="sm" onClick={handleToggleMenu}>
                 {isMenuOpen ? 'Cerrar menu' : 'Abrir menu'}
@@ -735,13 +1200,14 @@ export default function ProfesionalDashboardPage() {
                 <ProfesionalSidebar profile={profile} active="Agenda" />
               </div>
             ) : null}
-            <main className="mx-auto w-full max-w-[1400px] px-4 py-6 sm:px-6 sm:py-8 lg:px-10">
-              <div className="space-y-10">
-                <section className="space-y-5">
+            <main className="mx-auto flex w-full max-w-[1400px] flex-1 flex-col px-4 py-4 sm:px-6 sm:py-6 lg:px-7 lg:py-4">
+              <div className="flex flex-col gap-4">
+                <section className="space-y-3 lg:shrink-0">
                   <DashboardHero
                     eyebrow="Centro operativo"
                     icon="agenda"
                     accent="ink"
+                    size="compact"
                     title="Agenda y reservas con foco en lo urgente"
                     description="Controlá el día, anticipá huecos disponibles y resolvé rápido pendientes, confirmaciones y cambios de agenda."
                     meta={
@@ -801,8 +1267,8 @@ export default function ProfesionalDashboardPage() {
                     </p>
                   ) : null}
 
-                  <div className="grid gap-4 lg:grid-cols-[1.2fr,0.8fr]">
-                    <div className="grid gap-4 sm:grid-cols-3">
+                  <div className="grid gap-2.5 lg:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)]">
+                    <div className="grid gap-2.5 sm:grid-cols-3">
                       {agendaOverviewCards.map((item) => (
                         <DashboardStatCard
                           key={item.label}
@@ -816,57 +1282,67 @@ export default function ProfesionalDashboardPage() {
                     </div>
 
                     <LockedFeature requiredPlan="PROFESIONAL" currentPlan={profile?.professionalPlan}>
-                      <Card className="border-white/70 bg-white/95 p-5">
-                        <DashboardSectionHeading
-                          eyebrow="Tendencia"
-                          title="Pulso semanal"
-                          description="Una lectura rápida del ritmo de tu agenda."
-                        />
-                        {canViewAnalytics && !featureAccess.advancedAnalytics ? (
-                          <p className="mt-3 rounded-[16px] border border-[color:var(--premium-soft)] bg-[color:var(--premium-soft)] px-3 py-2 text-xs text-[color:var(--premium-strong)]">
-                            Estás viendo analytics básicos. El nivel avanzado se habilita en Enterprise.
-                          </p>
-                        ) : null}
-                        <div className="mt-4 grid gap-3 sm:grid-cols-3 lg:grid-cols-1">
-                          {(canViewAnalytics ? stats : [
-                            { label: 'Reservas esta semana', value: '—', detail: 'Sin datos' },
-                            { label: 'Clientes únicos', value: '—', detail: 'Sin datos' },
-                            { label: 'Ocupación', value: '—', detail: 'Sin datos' },
-                          ]).map((item, index) => (
-                            <div
-                              key={item.label}
-                              className={cn(
-                                'rounded-[20px] border p-4',
-                                index === 0
-                                  ? 'border-[#f4dcc7] bg-[#fff5e8]'
-                                  : index === 1
-                                    ? 'border-[#cdeee9] bg-[#f0fffc]'
-                                    : 'border-[#E2E8F0] bg-[#F8FAFC]',
-                              )}
-                            >
-                              <p className="text-[0.64rem] uppercase tracking-[0.26em] text-[#94A3B8]">
-                                {item.label}
-                              </p>
-                              <p className="mt-2 text-2xl font-semibold text-[#0E2A47]">
-                                {item.value}
-                              </p>
-                              <p className="mt-1 text-xs text-[#64748B]">{item.detail}</p>
-                            </div>
-                          ))}
+                      <Card className="border-white/70 bg-white/95 p-4">
+                        <div className="flex flex-wrap items-start justify-between gap-2">
+                          <div>
+                            <p className="text-[0.62rem] uppercase tracking-[0.3em] text-[#94A3B8]">
+                              Tendencia
+                            </p>
+                            <h3 className="mt-1 text-base font-semibold tracking-[-0.02em] text-[#0E2A47]">
+                              Pulso semanal
+                            </h3>
+                          </div>
+                          {canViewAnalytics && !featureAccess.advancedAnalytics ? (
+                            <span className="rounded-full border border-[color:var(--premium-soft)] bg-[color:var(--premium-soft)] px-2.5 py-1 text-[0.65rem] font-semibold text-[color:var(--premium-strong)]">
+                              Analytics básicos
+                            </span>
+                          ) : null}
                         </div>
+
+                        {canViewAnalytics ? (
+                          <div className="mt-3 grid gap-2 sm:grid-cols-3">
+                            {stats.map((item, index) => (
+                              <div
+                                key={item.label}
+                                className={cn(
+                                  'rounded-[18px] border px-3 py-2.5',
+                                  index === 0
+                                    ? 'border-[#f4dcc7] bg-[#fff5e8]'
+                                    : index === 1
+                                      ? 'border-[#cdeee9] bg-[#f0fffc]'
+                                      : 'border-[#E2E8F0] bg-[#F8FAFC]',
+                                )}
+                              >
+                                <p className="text-[0.58rem] uppercase tracking-[0.24em] text-[#94A3B8]">
+                                  {item.label}
+                                </p>
+                                <p className="mt-1.5 text-lg font-semibold leading-none text-[#0E2A47] sm:text-xl">
+                                  {item.value}
+                                </p>
+                                <p className="mt-1 text-[0.72rem] leading-snug text-[#64748B]">
+                                  {item.detail}
+                                </p>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="mt-3 rounded-[16px] border border-dashed border-[#D9E2EC] bg-[#F8FAFC] px-3 py-2.5 text-xs text-[#64748B]">
+                            Analytics todavía no activos para este plan. La agenda sigue mostrando los turnos reales del rango visible.
+                          </div>
+                        )}
                       </Card>
                     </LockedFeature>
                   </div>
                 </section>
 
-                <section className="rounded-[28px] border border-white/70 bg-white/95 p-6 shadow-[0_18px_40px_rgba(15,23,42,0.08)]">
+                <section className="flex flex-col rounded-[28px] border border-white/70 bg-white/95 p-4 shadow-[0_18px_40px_rgba(15,23,42,0.08)] sm:p-5">
                   <DashboardSectionHeading
                     eyebrow="Agenda"
                     title={calendarView === 'week' ? 'Semana actual' : 'Calendario mensual'}
                     description={calendarView === 'week' ? calendarWeekLabel : monthLabel}
                   />
 
-                  <div className="mt-5 flex flex-wrap items-center justify-between gap-4">
+                  <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
                     <div className="flex flex-wrap items-center gap-2">
                       <div className="flex rounded-full border border-[color:var(--border-soft)] bg-white p-0.5 shadow-[var(--shadow-card)]">
                         <button
@@ -963,265 +1439,52 @@ export default function ProfesionalDashboardPage() {
                   </div>
 
                   {calendarView === 'week' ? (
-                    <div className="mt-6 overflow-x-auto">
-                      <div className="min-w-[980px] overflow-hidden rounded-[24px] border border-[#E2E7EC] bg-white shadow-[0_20px_45px_rgba(15,23,42,0.08)]">
-                        <div className="flex border-b border-[#E2E7EC] bg-[linear-gradient(180deg,#FAFCFE_0%,#F4F8FB_100%)]">
-                          <div className="sticky left-0 z-20 w-20 shrink-0 bg-[linear-gradient(180deg,#FAFCFE_0%,#F4F8FB_100%)] px-4 py-3 text-[0.6rem] uppercase tracking-[0.3em] text-[#94A3B8]">
-                            Hora
-                          </div>
-                          <div className="grid flex-1 grid-cols-7">
-                            {weekDays.map((day, index) => {
-                              const isToday = day.dateKey === todayKey;
-                              const reservationCount =
-                                reservationsByDate.get(day.dateKey)?.length ?? 0;
-                              return (
-                                <div
-                                  key={day.dateKey}
-                                  className={`px-4 py-3 text-xs ${
-                                    index < weekDays.length - 1 ? 'border-r border-[#E2E7EC]' : ''
-                                  } ${isToday ? 'bg-[#F2FFFB]' : ''}`}
-                                >
-                                  <div className="flex items-start justify-between gap-3">
-                                    <div>
-                                      <p className="text-[0.6rem] uppercase tracking-[0.3em] text-[#94A3B8]">
-                                        {dayLabelsShort[day.dayKey]}
-                                      </p>
-                                      <p className="mt-1 text-sm font-semibold text-[#0E2A47]">
-                                        {day.dayNumber}
-                                        <span className="ml-1 text-[0.6rem] uppercase text-[#94A3B8]">
-                                          {day.monthLabel}
-                                        </span>
-                                      </p>
-                                    </div>
-                                    <span className={`rounded-full px-2 py-1 text-[0.62rem] font-semibold ${
-                                      reservationCount > 0
-                                        ? 'bg-[#1FB6A6]/10 text-[#1FB6A6]'
-                                        : 'bg-[#F3F6F9] text-[#94A3B8]'
-                                    }`}>
-                                      {reservationCount > 0 ? `${reservationCount} res.` : 'Libre'}
-                                    </span>
-                                  </div>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        </div>
-
-                        <div className="flex">
-                          <div className="sticky left-0 z-10 w-20 shrink-0 border-r border-[#E2E7EC] bg-white shadow-[4px_0_12px_rgba(15,23,42,0.06)]">
-                            <div className="relative" style={{ height: visibleCalendarRange.calendarHeight }}>
-                              {visibleCalendarRange.hourSlots.map((hour, index) => {
-                                const top = Math.min(
-                                  index * hourRowHeight,
-                                  visibleCalendarRange.calendarHeight - 14,
-                                );
-                                return (
-                                  <div
-                                    key={`hour-${hour}`}
-                                    className="absolute right-3 text-[0.65rem] font-medium text-[#94A3B8]"
-                                    style={{ top }}
-                                  >
-                                    {formatHourLabel(hour)}
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          </div>
-
-                          <div className="grid flex-1 grid-cols-7">
-                            {weekDays.map((day, index) => {
-                              const dayReservations = reservationsByDate.get(day.dateKey) ?? [];
-                              const dayLayouts = buildDayLayouts(dayReservations);
-                              const isToday = day.dateKey === todayKey;
-                              const baseBackground = index % 2 === 0 ? 'bg-white' : 'bg-[#FBFCFD]';
-                              return (
-                                <div
-                                  key={day.dateKey}
-                                  className={`relative ${
-                                    index < weekDays.length - 1 ? 'border-r border-[#E2E7EC]' : ''
-                                  } ${isToday ? 'bg-[#F2FFFB]' : baseBackground}`}
-                                  style={{ height: visibleCalendarRange.calendarHeight }}
-                                >
-                                  <div className="pointer-events-none absolute inset-0">
-                                    {visibleCalendarRange.hourSlots.slice(0, -1).map((hour, lineIndex) => (
-                                      <div
-                                        key={`${day.dateKey}-${hour}`}
-                                        className="absolute left-0 right-0 border-b border-dashed border-[#E9EEF4]"
-                                        style={{
-                                          top: lineIndex * hourRowHeight,
-                                        }}
-                                      />
-                                    ))}
-                                    {currentTimeIndicator && currentTimeIndicator.dateKey === day.dateKey ? (
-                                      <div
-                                        className="absolute left-0 right-0 z-[1] border-t border-[#F97316]"
-                                        style={{ top: currentTimeIndicator.top }}
-                                      >
-                                        <span className="absolute -left-1.5 -top-1.5 h-3 w-3 rounded-full border-2 border-white bg-[#F97316] shadow-sm" />
-                                      </div>
-                                    ) : null}
-                                  </div>
-
-                                  {dayLayouts.length === 0 ? (
-                                    isToday ? (
-                                      <div className="absolute left-3 top-3 rounded-full border border-dashed border-[#D7E6DF] bg-white/92 px-3 py-1 text-[0.65rem] text-[#94A3B8]">
-                                        Sin reservas
-                                      </div>
-                                    ) : null
-                                  ) : null}
-
-                                  {dayLayouts.map((layout) => {
-                                    const dayStartMinutes = visibleCalendarRange.startHour * 60;
-                                    const dayEndMinutes = visibleCalendarRange.endHour * 60;
-                                    const clampedStart = Math.max(layout.startMinutes, dayStartMinutes);
-                                    const clampedEnd = Math.min(layout.endMinutes, dayEndMinutes);
-                                    if (clampedEnd <= dayStartMinutes || clampedStart >= dayEndMinutes) {
-                                      return null;
-                                    }
-
-                                    const offsetMinutes = clampedStart - dayStartMinutes;
-                                    const clampedMinutes = clampedEnd - clampedStart;
-                                    const timeRangeLabel = `${formatMinutesLabel(layout.startMinutes)} – ${formatMinutesLabel(layout.endMinutes)}`;
-                                    const top = (offsetMinutes / visibleCalendarRange.calendarTotalMinutes) *
-                                      visibleCalendarRange.calendarHeight;
-                                    const height = Math.max(
-                                      (clampedMinutes / visibleCalendarRange.calendarTotalMinutes) *
-                                        visibleCalendarRange.calendarHeight,
-                                      44,
-                                    );
-                                    const showClient = height >= 56;
-                                    const showStatus = height >= 90;
-                                    const isCompact = height < 56;
-                                    const gap = 8;
-                                    const columns = Math.max(layout.columns, 1);
-                                    const width = `calc((100% - ${(columns - 1) * gap}px) / ${columns})`;
-                                    const left = `calc(${layout.column} * ((100% - ${(columns - 1) * gap}px) / ${columns} + ${gap}px))`;
-                                    const statusKey = layout.reservation.status ?? 'confirmed';
-                                    const palette =
-                                      reservationStatusPalette[
-                                        statusKey as keyof typeof reservationStatusPalette
-                                      ] ?? reservationStatusPalette.confirmed;
-                                    const statusText =
-                                      reservationStatusLabel[
-                                        statusKey as keyof typeof reservationStatusLabel
-                                      ] ?? reservationStatusLabel.confirmed;
-
-                                    return (
-                                      <button
-                                        type="button"
-                                        key={layout.reservation.id}
-                                        className="absolute z-[2] cursor-pointer text-left"
-                                        style={{ top, height, width, left }}
-                                        onClick={() => handleOpenReservation(layout.reservation)}
-                                      >
-                                        <div className={`group relative flex h-full min-h-[44px] flex-col overflow-hidden rounded-[10px] border px-2.5 py-2 text-left shadow-[0_6px_18px_rgba(15,23,42,0.10)] transition hover:-translate-y-0.5 hover:shadow-[0_12px_24px_rgba(15,23,42,0.14)] ${reservationCardClassName} ${
-                                          isToday ? 'ring-1 ring-[#FFD9B0]' : ''
-                                        }`}>
-                                          <span
-                                            className={`absolute left-0 top-0 h-full w-1 rounded-l-[10px] ${reservationCardAccentClassName}`}
-                                          />
-                                          <div className="flex items-start justify-between gap-2 pl-1.5">
-                                            <span className="text-[12px] font-medium leading-none text-[#475569]">
-                                              {timeRangeLabel}
-                                            </span>
-                                            {showStatus ? (
-                                              <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${palette.badge}`}>
-                                                {statusText}
-                                              </span>
-                                            ) : (
-                                              <span
-                                                className="mt-0.5 h-2.5 w-2.5 shrink-0 rounded-full bg-[#FF7A00]"
-                                                aria-hidden="true"
-                                              />
-                                            )}
-                                          </div>
-                                          <p className={`mt-1 pl-1.5 font-semibold text-[#0F172A] ${isCompact ? 'text-[13px] leading-tight' : 'text-[14px] leading-snug'}`}>
-                                            {layout.reservation.serviceName || 'Servicio'}
-                                          </p>
-                                          {showClient && layout.reservation.clientName ? (
-                                            <p className="mt-1 line-clamp-2 pl-1.5 text-[12px] leading-snug text-[#334155]">
-                                              {layout.reservation.clientName}
-                                            </p>
-                                          ) : null}
-                                        </div>
-                                      </button>
-                                    );
-                                  })}
-                                </div>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="mt-6 overflow-hidden rounded-[24px] border border-[#E2E7EC] bg-white shadow-[0_16px_36px_rgba(15,23,42,0.06)]">
-                      <div className="grid grid-cols-7 gap-1 border-b border-[#E2E7EC] bg-[#F8FAFC] px-2 text-center">
-                        {['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'].map((d) => (
-                          <div key={d} className="py-2 text-xs font-semibold text-[#94A3B8]">
-                            {d}
-                          </div>
+                    <div className="mt-2.5 flex flex-wrap items-center justify-between gap-3 rounded-[18px] border border-[#E2E8F0] bg-[#F8FAFC] px-3 py-2.5">
+                      <div className="flex flex-wrap gap-2">
+                        {[
+                          { label: 'Madrugada', value: 'lateNight' as const },
+                          { label: 'Mañana', value: 'morning' as const },
+                          { label: 'Tarde', value: 'afternoon' as const },
+                          { label: 'Noche', value: 'evening' as const },
+                          { label: 'Ahora', value: 'now' as const },
+                        ].map((segment) => (
+                          <button
+                            key={segment.value}
+                            type="button"
+                            onClick={() => handleJumpToDaySegment(segment.value)}
+                            className="rounded-full border border-[#D9E2EC] bg-white px-3 py-1.5 text-[0.72rem] font-semibold text-[#475569] transition hover:border-[#BFD3E4] hover:bg-[#FDFEFF]"
+                          >
+                            {segment.label}
+                          </button>
                         ))}
                       </div>
-                      <div className="grid grid-cols-7 gap-1 p-2">
-                        {monthGridDays.map((day) => {
-                          const dayReservations = reservationsByDate.get(day.dateKey) ?? [];
-                          const count = dayReservations.length;
-                          return (
-                            <div
-                              key={day.dateKey}
-                              className={`min-h-[96px] rounded-[16px] p-2 text-xs transition ${
-                                day.isToday
-                                  ? 'bg-[color:var(--primary)] text-white shadow-[var(--shadow-card)]'
-                                  : day.isCurrentMonth
-                                    ? 'bg-[color:var(--surface-muted)] text-[color:var(--ink)]'
-                                    : 'bg-transparent text-[color:var(--border-strong)]'
-                              }`}
-                            >
-                              <div className="flex items-start justify-between gap-2">
-                                <p className={`font-semibold ${day.isToday ? 'text-white' : ''}`}>
-                                  {day.day}
-                                </p>
-                                {count > 0 ? (
-                                  <span
-                                    className={`rounded-full px-1.5 py-0.5 text-[0.58rem] font-semibold ${
-                                      day.isToday
-                                        ? 'bg-white/20 text-white'
-                                        : 'bg-[color:var(--primary-soft)] text-[color:var(--primary)]'
-                                    }`}
-                                  >
-                                    {count}
-                                  </span>
-                                ) : null}
-                              </div>
-                              {count > 0 ? (
-                                <div className="mt-2 space-y-1">
-                                  {dayReservations.slice(0, 2).map((reservation) => (
-                                    <div
-                                      key={reservation.id}
-                                      className={`truncate rounded-md px-2 py-1 text-[0.62rem] font-medium ${
-                                        day.isToday
-                                          ? 'bg-white/12 text-white'
-                                          : 'bg-white text-[color:var(--ink-muted)]'
-                                      }`}
-                                    >
-                                      {reservation.time} · {reservation.serviceName}
-                                    </div>
-                                  ))}
-                                  {count > 2 ? (
-                                    <p className={`text-[0.58rem] ${day.isToday ? 'text-white/70' : 'text-[color:var(--ink-faint)]'}`}>
-                                      +{count - 2} más
-                                    </p>
-                                  ) : null}
-                                </div>
-                              ) : null}
-                            </div>
-                          );
-                        })}
-                      </div>
-                      <p className="border-t border-[color:var(--border-soft)] py-3 text-center text-xs uppercase tracking-[0.4em] text-[color:var(--ink-faint)]">
-                        {monthLabel}
+                      <p className="text-[0.72rem] text-[#64748B]">
+                        Base 24h con foco inicial
+                        {weekFocusWindow.isFallback ? ' por fallback' : ' según horarios y reservas'}
                       </p>
+                    </div>
+                  ) : null}
+
+                  {calendarView === 'week' ? (
+                    <div className="min-h-[540px] lg:h-[min(72vh,860px)]">
+                      <WeekCalendarBoard
+                        weekDays={weekDays}
+                        todayKey={todayKey}
+                        reservationsByDate={reservationsByDate}
+                        visibleCalendarRange={visibleCalendarRange}
+                        dayLayoutsByDate={dayLayoutsByDate}
+                        currentTimeIndicator={currentTimeIndicator}
+                        scrollContainerRef={weekCalendarScrollRef}
+                        onReservationOpen={handleOpenReservation}
+                      />
+                    </div>
+                  ) : (
+                    <div className="min-h-[540px] lg:max-h-[min(72vh,860px)] lg:overflow-auto">
+                      <MonthCalendarBoard
+                        monthGridDays={monthGridDays}
+                        reservationsByDate={reservationsByDate}
+                        monthLabel={monthLabel}
+                      />
                     </div>
                   )}
                 </section>
@@ -1325,14 +1588,6 @@ export default function ProfesionalDashboardPage() {
                 className="rounded-full bg-[color:var(--primary)] px-4 py-2 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:bg-[color:var(--primary-strong)] hover:shadow-[var(--shadow-card)]"
               >
                 Confirmar
-              </button>
-              <button
-                type="button"
-                onClick={() => handleUpdateReservationStatus('completed')}
-                disabled={isUpdatingStatus}
-                className="rounded-full border border-[color:var(--primary-soft)] bg-[color:var(--primary-soft)] px-4 py-2 text-sm font-semibold text-[color:var(--primary-strong)] transition hover:-translate-y-0.5 hover:shadow-[var(--shadow-card)]"
-              >
-                Completar
               </button>
               <button
                 type="button"

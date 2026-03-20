@@ -12,8 +12,14 @@
     "plugins": []
   },
   "include": [
+    "src/lib/billing/billingPlanState.ts",
+    "src/lib/billing/billingPlanState.test.ts",
     "src/lib/billing/featureGuards.ts",
     "src/lib/billing/featureGuards.test.ts",
+    "src/lib/auth/sessionErrors.ts",
+    "src/lib/auth/sessionErrors.test.ts",
+    "src/lib/bookings/paymentSession.ts",
+    "src/lib/bookings/paymentSession.test.ts",
     "src/lib/bookings/professionalReservationActions.test.ts"
   ]
 }

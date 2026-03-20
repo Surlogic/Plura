@@ -8,10 +8,6 @@ import {
   type PaidBillingUiPlanId,
 } from '../config/billingPlans';
 import type { ProfessionalPlanCode } from '../types/professional';
-import type {
-  ProfessionalPayoutConfig,
-  ProfessionalPayoutConfigUpdateInput,
-} from '../types/payout';
 
 export type BillingSubscriptionStatus = 'ACTIVE' | 'PAST_DUE' | 'CANCELLED' | 'TRIAL';
 export type BillingUiStatus = BillingSubscriptionStatus | 'NONE';
@@ -34,6 +30,34 @@ type BillingCheckoutResponse = {
   checkoutUrl: string;
   provider: string;
   planCode: string;
+};
+
+export type ProfessionalMercadoPagoConnectionStatus =
+  | 'PENDING_AUTHORIZATION'
+  | 'CONNECTED'
+  | 'DISCONNECTED'
+  | 'ERROR'
+  | string;
+
+export type ProfessionalMercadoPagoConnection = {
+  provider?: string | null;
+  status?: ProfessionalMercadoPagoConnectionStatus | null;
+  connected: boolean;
+  providerAccountId?: string | null;
+  providerUserId?: string | null;
+  scope?: string | null;
+  tokenExpiresAt?: string | null;
+  connectedAt?: string | null;
+  disconnectedAt?: string | null;
+  lastSyncAt?: string | null;
+  lastError?: string | null;
+};
+
+type MercadoPagoOAuthStartResponse = {
+  provider?: string | null;
+  authorizationUrl?: string | null;
+  state?: string | null;
+  stateExpiresAt?: string | null;
 };
 
 export const resolveBackendMessage = (error: unknown, fallback: string) => {
@@ -129,7 +153,7 @@ export const resolveCurrentBillingPlanId = ({
     const subscriptionPlan = resolveBillingPlanFromBackendPlanCode(subscription.planCode);
     if (
       subscriptionPlan
-      && (subscription.status === 'ACTIVE' || subscription.status === 'TRIAL' || Boolean(subscription.cancelAtPeriodEnd))
+      && (subscription.status === 'ACTIVE' || Boolean(subscription.cancelAtPeriodEnd))
     ) {
       return subscriptionPlan;
     }
@@ -142,14 +166,79 @@ export const resolveCurrentBillingStatus = (
   subscription: BillingSubscription | null,
 ): BillingUiStatus => subscription?.status || 'NONE';
 
-export const getProfessionalPayoutConfig = async (): Promise<ProfessionalPayoutConfig> => {
-  const response = await api.get<ProfessionalPayoutConfig>('/profesional/payout-config');
+const MERCADO_PAGO_CONNECTION_BASE_PATH = '/profesional/payment-providers/mercadopago';
+
+export const getProfessionalMercadoPagoConnection = async (): Promise<ProfessionalMercadoPagoConnection> => {
+  const response = await api.get<ProfessionalMercadoPagoConnection>(
+    `${MERCADO_PAGO_CONNECTION_BASE_PATH}/connection`,
+  );
   return response.data;
 };
 
-export const updateProfessionalPayoutConfig = async (
-  payload: ProfessionalPayoutConfigUpdateInput,
-): Promise<ProfessionalPayoutConfig> => {
-  const response = await api.put<ProfessionalPayoutConfig>('/profesional/payout-config', payload);
+export const startProfessionalMercadoPagoOAuth = async (): Promise<MercadoPagoOAuthStartResponse> => {
+  const response = await api.post<MercadoPagoOAuthStartResponse>(
+    `${MERCADO_PAGO_CONNECTION_BASE_PATH}/oauth/start`,
+  );
   return response.data;
+};
+
+export const disconnectProfessionalMercadoPagoConnection = async (): Promise<ProfessionalMercadoPagoConnection> => {
+  const response = await api.delete<ProfessionalMercadoPagoConnection>(
+    `${MERCADO_PAGO_CONNECTION_BASE_PATH}/connection`,
+  );
+  return response.data;
+};
+
+export const getMercadoPagoConnectionStatusCopy = (
+  connection?: ProfessionalMercadoPagoConnection | null,
+) => {
+  const status = connection?.status?.toUpperCase();
+
+  if (connection?.connected || status === 'CONNECTED') {
+    return {
+      badge: 'Conectado',
+      title: 'Tu cuenta esta lista para cobrar reservas',
+      description:
+        'Tus clientes podran pagar reservas online y el cobro se procesara con tu cuenta conectada.',
+    };
+  }
+
+  if (status === 'ERROR') {
+    return {
+      badge: 'Revisar conexion',
+      title: 'Hay un problema con tu cuenta de Mercado Pago',
+      description:
+        connection?.lastError?.trim()
+        || 'Necesitas volver a conectar tu cuenta para seguir cobrando reservas online.',
+    };
+  }
+
+  if (status === 'PENDING_AUTHORIZATION') {
+    return {
+      badge: 'Autorizacion pendiente',
+      title: 'Termina la conexion en Mercado Pago',
+      description: 'Cuando completes la autorizacion, vamos a actualizar este estado automaticamente.',
+    };
+  }
+
+  return {
+    badge: 'No conectado',
+    title: 'Conecta tu cuenta para cobrar reservas online',
+    description:
+      'Vincula tu cuenta de Mercado Pago para aceptar pagos de reservas sin mezclarlo con tu plan de Plura.',
+  };
+};
+
+export const formatMercadoPagoConnectionDate = (value?: string | null) => {
+  if (!value) return 'Sin dato';
+
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    return value;
+  }
+
+  return parsed.toLocaleString('es-AR', {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  });
 };

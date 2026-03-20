@@ -4,15 +4,22 @@ import { useProfessionalProfileContext } from '@/context/ProfessionalProfileCont
 
 export const useProfessionalProfile = () => {
   const router = useRouter();
-  const { profile, isLoading, hasLoaded, refreshProfile, clearProfile } =
+  const {
+    profile,
+    isLoading,
+    hasLoaded,
+    authStatus,
+    refreshProfile,
+    clearProfile,
+  } =
     useProfessionalProfileContext();
 
   useEffect(() => {
-    if (hasLoaded && !isLoading && !profile) {
+    if (hasLoaded && !isLoading && !profile && authStatus === 'unauthenticated') {
       clearProfile();
       router.push('/profesional/auth/login');
     }
-  }, [router, hasLoaded, isLoading, profile, clearProfile]);
+  }, [router, hasLoaded, isLoading, profile, authStatus, clearProfile]);
 
   return { profile, isLoading, hasLoaded, refreshProfile };
 };

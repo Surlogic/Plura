@@ -24,8 +24,7 @@ import lombok.NoArgsConstructor;
 @Table(
     name = "email_dispatch",
     indexes = {
-        @Index(name = "idx_email_dispatch_status_next_attempt", columnList = "status, next_attempt_at"),
-        @Index(name = "idx_email_dispatch_recipient_created", columnList = "recipient_email, created_at")
+        @Index(name = "idx_email_dispatch_status_due", columnList = "status, next_attempt_at, lease_until")
     }
 )
 public class EmailDispatch {

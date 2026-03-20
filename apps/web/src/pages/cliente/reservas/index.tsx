@@ -1,15 +1,20 @@
 import { isAxiosError } from 'axios';
-import { useEffect, useMemo, useState } from 'react';
+import { memo, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
 import ClientShell from '@/components/cliente/ClientShell';
 import ClientBookingTimeline from '@/components/cliente/reservations/ClientBookingTimeline';
 import { useClientProfile } from '@/hooks/useClientProfile';
 import {
+  getBookingPaymentSessionFeedback,
+  type BookingPaymentSessionFeedback,
+} from '@/lib/bookings/paymentSession';
+import {
   cancelClientBooking,
   createClientBookingPaymentSession,
   getBookingActions,
   getClientBookings,
+  prefetchClientBookingDetail,
   rescheduleClientBooking,
   type ClientDashboardBooking,
 } from '@/services/clientBookings';
@@ -21,7 +26,6 @@ import {
   getOperationalStatusLabel,
   getOperationalStatusTone,
   getPaymentTypeLabel,
-  getPayoutStatusCopy,
   getRefundStatusCopy,
   isPrepaidBooking,
   shouldAutoRefreshFinancialStatus,
@@ -48,7 +52,7 @@ const sortByDateAsc = (a: ClientDashboardBooking, b: ClientDashboardBooking): nu
 const sortByDateDesc = (a: ClientDashboardBooking, b: ClientDashboardBooking): number =>
   new Date(b.startDateTimeUtc || b.dateTime).getTime() - new Date(a.startDateTimeUtc || a.dateTime).getTime();
 
-const getFinancialRefreshDelayMs = (attempt: number) => Math.min(30000, 5000 * (attempt + 1));
+const getFinancialRefreshDelayMs = (attempt: number) => Math.min(60000, 15000 * (attempt + 1));
 
 const extractApiMessage = (error: unknown, fallback: string) => {
   if (isAxiosError<{ message?: string }>(error)) {
@@ -66,7 +70,9 @@ type BookingCardProps = {
   onSelect: (bookingId: string) => void;
 };
 
-function BookingCard({ booking, isSelected, onSelect }: BookingCardProps) {
+type PageBanner = BookingPaymentSessionFeedback;
+
+const BookingCard = memo(function BookingCard({ booking, isSelected, onSelect }: BookingCardProps) {
   const financialCopy = getClientFinancialStatusCopy(
     booking.paymentType,
     booking.financialSummary,
@@ -106,7 +112,7 @@ function BookingCard({ booking, isSelected, onSelect }: BookingCardProps) {
       </div>
     </button>
   );
-}
+});
 
 export default function ClienteReservasPage() {
   const router = useRouter();
@@ -119,7 +125,7 @@ export default function ClienteReservasPage() {
   const [actions, setActions] = useState<Awaited<ReturnType<typeof getBookingActions>> | null>(null);
   const [isLoadingActions, setIsLoadingActions] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
-  const [statusMessage, setStatusMessage] = useState<string | null>(null);
+  const [statusBanner, setStatusBanner] = useState<PageBanner | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showReschedule, setShowReschedule] = useState(false);
   const [rescheduleDate, setRescheduleDate] = useState(toLocalDateKey(new Date()));
@@ -151,15 +157,22 @@ export default function ClienteReservasPage() {
       setError(null);
       const response = await getClientBookings();
       setBookings(response);
+      let nextSelectedBookingId: string | null = null;
       setSelectedBookingId((current) => {
         if (queryBookingId && response.some((booking) => booking.id === queryBookingId)) {
+          nextSelectedBookingId = queryBookingId;
           return queryBookingId;
         }
         if (keepSelection && current && response.some((booking) => booking.id === current)) {
+          nextSelectedBookingId = current;
           return current;
         }
-        return response[0]?.id ?? null;
+        nextSelectedBookingId = response[0]?.id ?? null;
+        return nextSelectedBookingId;
       });
+      if (nextSelectedBookingId) {
+        void prefetchClientBookingDetail(nextSelectedBookingId);
+      }
     } catch (loadError) {
       setBookings([]);
       setError('No pudimos cargar tus reservas en este momento.');
@@ -174,15 +187,52 @@ export default function ClienteReservasPage() {
 
   useEffect(() => {
     if (!router.isReady) return;
+
+    let nextBanner: PageBanner | null = null;
+
     if (queryMode.checkout === 'started') {
-      setStatusMessage('Checkout abierto. Cuando termines, esta vista se actualiza con el estado real del backend.');
+      nextBanner = {
+        tone: 'info',
+        title: 'Seguís el pago en Mercado Pago',
+        description: 'Te enviamos a Mercado Pago. Cuando vuelvas, esta vista mostrará el estado actualizado de tu reserva.',
+      };
     } else if (queryMode.checkout === 'failed') {
-      setStatusMessage('La reserva fue creada, pero no pudimos abrir el checkout. Puedes reintentarlo desde esta vista.');
+      nextBanner = {
+        tone: 'error',
+        title: 'No pudimos abrir Mercado Pago',
+        description: 'La reserva quedó creada, pero no pudimos abrir Mercado Pago. Revisá el bloqueo de ventanas emergentes o reintentá el pago desde esta vista.',
+      };
     } else if (queryMode.checkout === 'synced') {
-      setStatusMessage('La reserva volvió con estado financiero actualizado desde backend.');
+      nextBanner = {
+        tone: 'success',
+        title: 'Reserva actualizada',
+        description: 'La reserva quedó actualizada con el estado más reciente del pago.',
+      };
     } else if (queryMode.created === '1') {
-      setStatusMessage('Reserva creada correctamente.');
+      nextBanner = {
+        tone: 'success',
+        title: 'Reserva creada',
+        description: 'Reserva creada correctamente.',
+      };
     }
+
+    if (!nextBanner) {
+      return;
+    }
+
+    setStatusBanner(nextBanner);
+
+    const nextQuery = { ...router.query };
+    delete nextQuery.checkout;
+    delete nextQuery.created;
+    void router.replace(
+      {
+        pathname: router.pathname,
+        query: nextQuery,
+      },
+      undefined,
+      { shallow: true },
+    );
   }, [queryMode.checkout, queryMode.created, router.isReady]);
 
   const selectedBooking = useMemo(
@@ -348,6 +398,7 @@ export default function ClienteReservasPage() {
     && selectedBooking?.financialSummary?.financialStatus === 'PAYMENT_PENDING';
 
   const handleSelectBooking = (bookingId: string) => {
+    void prefetchClientBookingDetail(bookingId);
     setSelectedBookingId(bookingId);
     setShowReschedule(false);
     setRescheduleTime('');
@@ -368,33 +419,55 @@ export default function ClienteReservasPage() {
   };
 
   const handleStartCheckout = async () => {
-    if (!selectedBooking) return;
+    if (!selectedBooking || isSubmitting) return;
 
     const checkoutWindow = openCheckoutWindow();
+    const hadPreparedWindow = Boolean(checkoutWindow);
 
     setIsSubmitting(true);
     setActionError(null);
-    setStatusMessage(null);
+    setStatusBanner({
+      tone: 'info',
+      title: 'Preparando pago',
+      description: 'Estamos generando tu sesión de pago segura en Mercado Pago.',
+    });
 
     try {
       const session = await createClientBookingPaymentSession(selectedBooking.id);
+      const feedback = getBookingPaymentSessionFeedback(session);
+
       if (session.checkoutUrl) {
         const redirected = redirectCheckoutWindow(checkoutWindow, session.checkoutUrl);
         if (!redirected) {
-          openCheckoutUrl(session.checkoutUrl);
+          closeCheckoutWindow(checkoutWindow);
         }
-        setStatusMessage('Checkout abierto. Esta vista seguirá mostrando el estado real de la reserva.');
+        const openedFallback = redirected ? true : openCheckoutUrl(session.checkoutUrl);
+
+        if (!redirected && !openedFallback) {
+          setStatusBanner(null);
+          setActionError(
+            'No pudimos abrir Mercado Pago en una nueva ventana. Revisá el bloqueo de ventanas emergentes y volvé a intentar.',
+          );
+        } else {
+          setStatusBanner({
+            ...feedback,
+            description: hadPreparedWindow
+              ? feedback.description
+              : `${feedback.description} Si no ves la pestaña de Mercado Pago, revisá el bloqueo de ventanas emergentes.`,
+          });
+        }
       } else {
         closeCheckoutWindow(checkoutWindow);
-        setStatusMessage('El backend devolvió la reserva sin abrir un checkout nuevo.');
+        setStatusBanner(feedback);
       }
       await loadBookings();
       refreshTimeline();
     } catch (submitError) {
       closeCheckoutWindow(checkoutWindow);
       setActionError(
-        extractApiMessage(submitError, 'No se pudo iniciar el checkout en este momento.'),
+            extractApiMessage(submitError, 'No pudimos iniciar el pago de tu reserva en este momento.'),
       );
+      setStatusBanner(null);
     } finally {
       setIsSubmitting(false);
     }
@@ -404,11 +477,15 @@ export default function ClienteReservasPage() {
     if (!selectedBooking) return;
     setIsSubmitting(true);
     setActionError(null);
-    setStatusMessage(null);
+    setStatusBanner(null);
 
     try {
       const response = await cancelClientBooking(selectedBooking.id, cancelReason);
-      setStatusMessage(response.plainTextFallback || 'Reserva cancelada correctamente.');
+      setStatusBanner({
+        tone: 'success',
+        title: 'Reserva cancelada',
+        description: response.plainTextFallback || 'Reserva cancelada correctamente.',
+      });
       setCancelReason('');
       setShowReschedule(false);
       await loadBookings();
@@ -430,7 +507,7 @@ export default function ClienteReservasPage() {
 
     setIsSubmitting(true);
     setActionError(null);
-    setStatusMessage(null);
+    setStatusBanner(null);
 
     try {
       const response = await rescheduleClientBooking(
@@ -438,7 +515,11 @@ export default function ClienteReservasPage() {
         `${rescheduleDate}T${rescheduleTime}:00`,
         selectedBooking.timezone || undefined,
       );
-      setStatusMessage(response.plainTextFallback || 'Reserva reagendada correctamente.');
+      setStatusBanner({
+        tone: 'success',
+        title: 'Reserva reagendada',
+        description: response.plainTextFallback || 'Reserva reagendada correctamente.',
+      });
       setShowReschedule(false);
       setRescheduleTime('');
       await loadBookings();
@@ -458,13 +539,22 @@ export default function ClienteReservasPage() {
         <p className="text-xs uppercase tracking-[0.35em] text-[#94A3B8]">Reservas</p>
         <h1 className="text-3xl font-semibold text-[#0E2A47]">Mis reservas</h1>
         <p className="text-sm text-[#64748B]">
-          Consultá el estado real de tu reserva, su pago y las acciones permitidas por backend.
+          Revisá el estado de cada reserva, su pago y las acciones disponibles en este momento.
         </p>
       </section>
 
-      {statusMessage ? (
-        <div className="rounded-[18px] border border-[#BFEDE7] bg-[#F0FDFA] px-4 py-3 text-sm text-[#0F766E]">
-          {statusMessage}
+      {statusBanner ? (
+        <div
+          className={`rounded-[18px] border px-4 py-3 text-sm ${
+            statusBanner.tone === 'error'
+              ? 'border-[#FECACA] bg-[#FEF2F2] text-[#B91C1C]'
+              : statusBanner.tone === 'info'
+                ? 'border-[#D9E6F2] bg-[#F8FBFF] text-[#1D4ED8]'
+                : 'border-[#BFEDE7] bg-[#F0FDFA] text-[#0F766E]'
+          }`}
+        >
+          <p className="font-semibold">{statusBanner.title}</p>
+          <p className="mt-1">{statusBanner.description}</p>
         </div>
       ) : null}
 
@@ -602,12 +692,6 @@ export default function ClienteReservasPage() {
                       </span>
                     </p>
                     <p>
-                      Liberación:{' '}
-                      <span className="font-semibold text-[#0E2A47]">
-                        {getPayoutStatusCopy(selectedBooking.payoutStatus)}
-                      </span>
-                    </p>
-                    <p>
                       Política:{' '}
                       <span className="font-semibold text-[#0E2A47]">
                         {describeBookingPolicy(selectedBooking.policySnapshot)}
@@ -662,7 +746,7 @@ export default function ClienteReservasPage() {
                     disabled={isSubmitting}
                     className="mt-4 w-full rounded-full bg-[#0B1D2A] px-4 py-3 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-60"
                   >
-                    {isSubmitting ? 'Abriendo checkout...' : 'Completar pago'}
+                    {isSubmitting ? 'Abriendo Mercado Pago...' : 'Pagar reserva'}
                   </button>
                 ) : null}
 

@@ -22,12 +22,15 @@ export default function ProfessionalNotificationBell({
 }: ProfessionalNotificationBellProps) {
   const rootRef = useRef<HTMLDivElement | null>(null);
   const [isOpen, setIsOpen] = useState(false);
+  const [shouldLoadCount, setShouldLoadCount] = useState(false);
   const {
     count,
     isLoading: isCountLoading,
     error: countError,
     refresh: refreshCount,
-  } = useProfessionalNotificationUnreadCount();
+  } = useProfessionalNotificationUnreadCount({
+    enabled: shouldLoadCount,
+  });
   const {
     items,
     total,
@@ -37,6 +40,31 @@ export default function ProfessionalNotificationBell({
     enabled: isOpen,
     size: 6,
   });
+
+  useEffect(() => {
+    if (shouldLoadCount) return undefined;
+    if (typeof window === 'undefined') return undefined;
+
+    let timeoutId: number | null = null;
+    let idleId: number | null = null;
+
+    const reveal = () => setShouldLoadCount(true);
+
+    if (typeof window.requestIdleCallback === 'function') {
+      idleId = window.requestIdleCallback(() => reveal(), { timeout: 1200 });
+    } else {
+      timeoutId = window.setTimeout(reveal, 900);
+    }
+
+    return () => {
+      if (idleId !== null && typeof window.cancelIdleCallback === 'function') {
+        window.cancelIdleCallback(idleId);
+      }
+      if (timeoutId !== null) {
+        window.clearTimeout(timeoutId);
+      }
+    };
+  }, [shouldLoadCount]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -56,6 +84,7 @@ export default function ProfessionalNotificationBell({
   const openPanel = async () => {
     setIsOpen((previous) => !previous);
     if (!isOpen) {
+      setShouldLoadCount(true);
       await refreshCount();
     }
   };
@@ -75,6 +104,8 @@ export default function ProfessionalNotificationBell({
       <button
         type="button"
         onClick={() => void openPanel()}
+        onPointerEnter={() => setShouldLoadCount(true)}
+        onFocus={() => setShouldLoadCount(true)}
         className={cn(
           'group flex w-full items-center justify-between rounded-[18px] border px-3.5 py-3 text-left transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--focus-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-[color:var(--focus-ring-offset)]',
           isOpen

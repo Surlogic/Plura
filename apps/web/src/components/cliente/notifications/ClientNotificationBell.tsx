@@ -21,12 +21,15 @@ export default function ClientNotificationBell({
 }: ClientNotificationBellProps) {
   const rootRef = useRef<HTMLDivElement | null>(null);
   const [isOpen, setIsOpen] = useState(false);
+  const [shouldLoadCount, setShouldLoadCount] = useState(false);
   const {
     count,
     isLoading: isCountLoading,
     error: countError,
     refresh: refreshCount,
-  } = useClientNotificationUnreadCount();
+  } = useClientNotificationUnreadCount({
+    enabled: shouldLoadCount,
+  });
   const {
     items,
     total,
@@ -36,6 +39,31 @@ export default function ClientNotificationBell({
     enabled: isOpen,
     size: 5,
   });
+
+  useEffect(() => {
+    if (shouldLoadCount) return undefined;
+    if (typeof window === 'undefined') return undefined;
+
+    let timeoutId: number | null = null;
+    let idleId: number | null = null;
+
+    const reveal = () => setShouldLoadCount(true);
+
+    if (typeof window.requestIdleCallback === 'function') {
+      idleId = window.requestIdleCallback(() => reveal(), { timeout: 1200 });
+    } else {
+      timeoutId = window.setTimeout(reveal, 900);
+    }
+
+    return () => {
+      if (idleId !== null && typeof window.cancelIdleCallback === 'function') {
+        window.cancelIdleCallback(idleId);
+      }
+      if (timeoutId !== null) {
+        window.clearTimeout(timeoutId);
+      }
+    };
+  }, [shouldLoadCount]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -64,6 +92,7 @@ export default function ClientNotificationBell({
     const nextOpen = !isOpen;
     setIsOpen(nextOpen);
     if (nextOpen) {
+      setShouldLoadCount(true);
       await refreshCount();
     }
   };
@@ -83,6 +112,8 @@ export default function ClientNotificationBell({
       <button
         type="button"
         onClick={() => void togglePanel()}
+        onPointerEnter={() => setShouldLoadCount(true)}
+        onFocus={() => setShouldLoadCount(true)}
         className={cn(
           'relative inline-flex h-10 items-center justify-center rounded-full border px-3 text-sm font-semibold text-[#0E2A47] shadow-sm transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[#1FB6A6]',
           isOpen

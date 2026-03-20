@@ -98,7 +98,10 @@ public class MercadoPagoOAuthStateService {
     }
 
     private String resolveSigningSecret() {
-        BillingProperties.MercadoPago.OAuth oauth = billingProperties.getMercadopago().getOauth();
+        BillingProperties.MercadoPago.OAuth oauth = billingProperties.getMercadopago().getReservations().getOauth();
+        if (oauth.getStateSigningSecret() != null && !oauth.getStateSigningSecret().isBlank()) {
+            return oauth.getStateSigningSecret();
+        }
         if (oauth.getTokenEncryptionKey() != null && !oauth.getTokenEncryptionKey().isBlank()) {
             return oauth.getTokenEncryptionKey();
         }
@@ -107,7 +110,7 @@ public class MercadoPagoOAuthStateService {
         }
         throw new ResponseStatusException(
             HttpStatus.SERVICE_UNAVAILABLE,
-            "Falta configurar secreto para validar state OAuth de Mercado Pago"
+            "Falta configurar BILLING_MERCADOPAGO_RESERVATIONS_OAUTH_STATE_SIGNING_SECRET o una clave OAuth equivalente para validar state"
         );
     }
 

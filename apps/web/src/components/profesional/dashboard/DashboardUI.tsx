@@ -149,6 +149,7 @@ type DashboardHeroProps = {
   description: string;
   icon: DashboardIconName;
   accent?: 'teal' | 'warm' | 'ink';
+  size?: 'default' | 'compact';
   actions?: ReactNode;
   meta?: ReactNode;
 };
@@ -168,6 +169,7 @@ export function DashboardHero({
   description,
   icon,
   accent = 'teal',
+  size = 'default',
   actions,
   meta,
 }: DashboardHeroProps) {
@@ -175,7 +177,8 @@ export function DashboardHero({
     <Card
       tone="dark"
       className={cn(
-        'relative isolate overflow-hidden border-white/12 p-6 shadow-[var(--shadow-lift)]',
+        'relative isolate overflow-hidden border-white/12 shadow-[var(--shadow-lift)]',
+        size === 'compact' ? 'p-5' : 'p-6',
         heroToneClassNames[accent],
       )}
     >
@@ -185,36 +188,76 @@ export function DashboardHero({
         <div className="absolute -left-12 top-8 h-36 w-36 rounded-full bg-[color:var(--brand-primary)]/8 blur-3xl" />
         <div className="absolute right-0 top-0 h-48 w-48 rounded-full bg-[color:var(--accent)]/12 blur-3xl" />
       </div>
-      <div className="relative z-10 flex flex-col gap-5 opacity-100 lg:flex-row lg:items-end lg:justify-between">
+      <div
+        className={cn(
+          'relative z-10 flex flex-col opacity-100 lg:flex-row lg:items-end lg:justify-between',
+          size === 'compact' ? 'gap-4' : 'gap-5',
+        )}
+      >
         <div className="max-w-3xl">
-          <div className="inline-flex items-center gap-3 rounded-full border border-white/[0.32] bg-white/[0.04] px-3 py-2 backdrop-blur-sm">
-            <span className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/[0.24] bg-white/[0.04] text-[#F4F8FB]">
+          <div
+            className={cn(
+              'inline-flex items-center gap-3 rounded-full border border-white/[0.32] bg-white/[0.04] backdrop-blur-sm',
+              size === 'compact' ? 'px-3 py-1.5' : 'px-3 py-2',
+            )}
+          >
+            <span
+              className={cn(
+                'inline-flex items-center justify-center rounded-full border border-white/[0.24] bg-white/[0.04] text-[#F4F8FB]',
+                size === 'compact' ? 'h-8 w-8' : 'h-9 w-9',
+              )}
+            >
               <DashboardIcon name={icon} className="h-[18px] w-[18px]" />
             </span>
-            <span className="text-[0.68rem] font-semibold uppercase tracking-[0.26em] text-[#EAF2F7]">
+            <span
+              className={cn(
+                'font-semibold uppercase tracking-[0.26em] text-[#EAF2F7]',
+                size === 'compact' ? 'text-[0.62rem]' : 'text-[0.68rem]',
+              )}
+            >
               {eyebrow}
             </span>
           </div>
           <h1
-            className="mt-4 max-w-2xl text-[2rem] font-semibold tracking-[-0.03em] !text-[#F4F8FB] opacity-100 sm:text-[2.15rem]"
+            className={cn(
+              'max-w-2xl font-semibold tracking-[-0.03em] !text-[#F4F8FB] opacity-100',
+              size === 'compact'
+                ? 'mt-3 text-[1.72rem] sm:text-[1.9rem]'
+                : 'mt-4 text-[2rem] sm:text-[2.15rem]',
+            )}
             style={{ color: '#F4F8FB' }}
           >
             {title}
           </h1>
           <p
-            className="mt-3 max-w-2xl text-sm !text-[#D6E2EA] opacity-100 sm:text-[0.95rem]"
+            className={cn(
+              'max-w-2xl !text-[#D6E2EA] opacity-100',
+              size === 'compact'
+                ? 'mt-2 text-[0.88rem] sm:text-[0.92rem]'
+                : 'mt-3 text-sm sm:text-[0.95rem]',
+            )}
             style={{ color: '#D6E2EA' }}
           >
             {description}
           </p>
           {meta ? (
-            <div className="mt-5 flex flex-wrap gap-2 text-[#EAF2F7] [&_span]:border-white/[0.32] [&_span]:bg-white/[0.04] [&_span]:!text-[#EAF2F7]">
+            <div
+              className={cn(
+                'flex flex-wrap gap-2 text-[#EAF2F7] [&_span]:border-white/[0.32] [&_span]:bg-white/[0.04] [&_span]:!text-[#EAF2F7]',
+                size === 'compact' ? 'mt-4' : 'mt-5',
+              )}
+            >
               {meta}
             </div>
           ) : null}
         </div>
         {actions ? (
-          <div className="relative z-10 flex flex-wrap gap-3 [&_a]:border-white/[0.42] [&_a]:bg-white/[0.02] [&_a]:!text-[#F4F8FB] [&_a:hover]:bg-white/[0.06] [&_button]:border-white/[0.42] [&_button]:bg-white/[0.02] [&_button]:!text-[#F4F8FB] [&_button:hover]:bg-white/[0.06]">
+          <div
+            className={cn(
+              'relative z-10 flex flex-wrap [&_a]:border-white/[0.42] [&_a]:bg-white/[0.02] [&_a]:!text-[#F4F8FB] [&_a:hover]:bg-white/[0.06] [&_button]:border-white/[0.42] [&_button]:bg-white/[0.02] [&_button]:!text-[#F4F8FB] [&_button:hover]:bg-white/[0.06]',
+              size === 'compact' ? 'gap-2.5' : 'gap-3',
+            )}
+          >
             {actions}
           </div>
         ) : null}

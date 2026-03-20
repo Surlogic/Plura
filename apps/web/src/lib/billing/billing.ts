@@ -2,12 +2,11 @@ import { isAxiosError } from 'axios';
 import api from '@/services/api';
 import {
   billingPlanById,
-  type BillingUiPlanId,
   type PaidBillingUiPlanId,
-  resolveBillingPlanFromBackendPlanCode,
-  resolveBillingPlanFromProfilePlanCode,
+  type BillingUiPlanId,
 } from '@/config/billingPlans';
 import type { ProfessionalPlanCode } from '@/types/professional';
+import { resolveCurrentBillingPlanStateId } from './billingPlanState';
 
 export type BillingSubscriptionStatus = 'ACTIVE' | 'PAST_DUE' | 'CANCELLED' | 'TRIAL';
 export type BillingUiStatus = BillingSubscriptionStatus | 'NONE';
@@ -154,19 +153,11 @@ export const resolveCurrentBillingPlanId = ({
 }: {
   profilePlanCode?: ProfessionalPlanCode | null;
   subscription: BillingSubscription | null;
-}): BillingUiPlanId => {
-  if (subscription) {
-    const subscriptionPlan = resolveBillingPlanFromBackendPlanCode(subscription.planCode);
-    if (
-      subscriptionPlan &&
-      (subscription.status === 'ACTIVE' || subscription.status === 'TRIAL' || Boolean(subscription.cancelAtPeriodEnd))
-    ) {
-      return subscriptionPlan;
-    }
-  }
-
-  return resolveBillingPlanFromProfilePlanCode(profilePlanCode);
-};
+}): BillingUiPlanId =>
+  resolveCurrentBillingPlanStateId({
+    profilePlanCode,
+    subscription,
+  });
 
 export const resolveCurrentBillingStatus = (
   subscription: BillingSubscription | null,

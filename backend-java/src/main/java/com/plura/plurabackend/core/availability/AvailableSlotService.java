@@ -82,6 +82,7 @@ public class AvailableSlotService {
     private final Map<Long, ReentrantLock> profileRebuildLocks = new ConcurrentHashMap<>();
     private final TransactionTemplate transactionTemplate;
     private final MeterRegistry meterRegistry;
+    private final Timer slotsGenerationTimer;
     private final boolean nextAvailableAtEnabled;
 
     private record BookedWindow(LocalDateTime start, LocalDateTime end) {}
@@ -105,6 +106,9 @@ public class AvailableSlotService {
         this.appZoneId = ZoneId.of(appTimezone);
         this.transactionTemplate = new TransactionTemplate(transactionManager);
         this.meterRegistry = meterRegistry;
+        this.slotsGenerationTimer = Timer.builder("plura.slots.generation.time")
+            .description("Available slots generation time")
+            .register(meterRegistry);
         this.nextAvailableAtEnabled = nextAvailableAtEnabled;
     }
 
@@ -142,11 +146,10 @@ public class AvailableSlotService {
             if (pageItems.isEmpty()) {
                 break;
             }
-            List<ProfessionalAvailabilityProfileView> batch = pageItems.stream()
+            List<Long> filteredIds = pageItems.stream()
                 .filter(id -> id != null && includeProfile.test(id))
-                .map(professionalAvailabilityGateway::findActiveProfessionalById)
-                .flatMap(java.util.Optional::stream)
                 .toList();
+            List<ProfessionalAvailabilityProfileView> batch = professionalAvailabilityGateway.findActiveProfessionalsByIds(filteredIds);
             if (!batch.isEmpty()) {
                 transactionTemplate.executeWithoutResult(status -> rebuildBatch(batch, from, to));
             }
@@ -348,11 +351,7 @@ public class AvailableSlotService {
             }
             updateAvailabilitySummary(profile.professionalId(), hasAvailabilityToday, nextAvailableAt);
         } finally {
-            sample.stop(
-                Timer.builder("plura.slots.generation.time")
-                    .description("Available slots generation time")
-                    .register(meterRegistry)
-            );
+            sample.stop(slotsGenerationTimer);
         }
     }
 

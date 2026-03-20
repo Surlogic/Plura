@@ -111,6 +111,8 @@ El backend soporta:
 - engine externo opcional via Meilisearch
 - indexacion y reindexado
 - timers Micrometer para `search`
+- materialized views denormalizadas `search_professional_document_mv` y `search_service_document_mv` para bajar joins por request sin cambiar `/api/search` ni `/api/search/suggest`
+- refresh concurrente al startup y por cron de las materialized views de search
 - atajo conservador en primera pagina para evitar `COUNT(*)` cuando el resultado completo entra en una sola pagina sin romper el total exacto
 - suggest con menor sobrelectura antes del ordenado final para bajar costo del typeahead sin cambiar contrato
 
@@ -167,6 +169,14 @@ Lectura de producto:
 - cubre horarios de trabajo y politicas de reserva
 - cubre carga manual de turnos desde panel
 - `GET /profesional/reservas` sostiene gestion operativa de reservas para `Free/BASIC` y no debe confundirse con gating de agenda semanal o mensual
+- `POST /profesional/payment-providers/mercadopago/oauth/start` y `GET /profesional/payment-providers/mercadopago/oauth/callback` ahora exigen capacidad `ONLINE_PAYMENTS`; `BASIC` no puede iniciar ni completar la conexion OAuth
+- `POST /profesional/payment-providers/mercadopago/oauth/start` solo necesita la configuracion minima para abrir Mercado Pago: `client-id`, `redirect-uri` y `authorization-url`
+- `billing.mercadopago.reservations.oauth.redirect-uri` debe apuntar al callback backend exacto `/profesional/payment-providers/mercadopago/oauth/callback`; el frontend ya no recibe `code/state` crudos de Mercado Pago
+- `GET /profesional/payment-providers/mercadopago/oauth/callback` sigue requiriendo `client-secret` y `token-url`, porque ahi recien se canjea el `code` y se guardan los tokens OAuth del profesional; despues redirige al frontend con un resultado resumido `connected / cancelled / error`
+- el callback valida `state` firmado contra el profesional autenticado; si el `state` pertenece a otro profesional, responde `403`
+- la misma cuenta Mercado Pago no puede quedar conectada simultaneamente a dos profesionales distintos; el backend rechaza esa reconexion con `409`
+- si el navegador reintenta el callback despues de una conexion ya exitosa y Mercado Pago responde `invalid_grant` por reutilizacion del `code`, el backend conserva la conexion existente y trata ese replay como idempotente
+- las credenciales globales de Mercado Pago ya no son un bloque unico: suscripciones usa `billing.mercadopago.subscriptions.*` y reservas/OAuth profesional usa `billing.mercadopago.reservations.*`
 
 Notas:
 
@@ -188,6 +198,7 @@ Lectura de producto:
 - cubre historial y gestion de reservas del plan `Usuario`
 - soporta cancelacion y reagendamiento segun politica
 - `payment-session` es la base para reserva con pago online
+- `payment-session` solo admite `MERCADOPAGO`; si existe una transaccion pendiente legacy `DLOCAL`, la sesion se reabre con Mercado Pago para no romper el checkout vigente
 - `timeline` ya expone historial operativo de eventos de notification por reserva para el cliente autenticado
 - `GET /cliente/reservas/me` conserva el mismo response shape, pero ahora batch-ea summary/refund/payout latest por booking ids y queda mejor cubierto por un indice Flyway `booking(user_id, start_date_time)`
 
@@ -207,6 +218,7 @@ Lectura de producto:
 - la ownership queda scopeada por `recipientType=CLIENT` y `recipientId=userId autenticado`
 - reutiliza el mismo modulo `core.notification` que profesional
 - inbox y unread count registran timing tecnico para no seguir ciegos sobre latencia real
+- el inbox paginado ahora sale por una ruta JDBC directa sobre `app_notification` + `notification_event` para evitar hidratacion JPA y parsing repetido del assembler en el listado
 
 ### Notificaciones del profesional
 
@@ -224,6 +236,7 @@ Lectura de producto:
 - el backend ya expone inbox, contador y timeline operativo para el profesional
 - el ownership usa `recipientType=PROFESSIONAL` y `recipientId=professionalProfileId`
 - inbox y unread count registran timing tecnico para observabilidad basica
+- el inbox profesional comparte la misma ruta JDBC directa del inbox cliente para bajar costo del listado paginado
 
 ### Acciones sobre reservas
 
@@ -295,6 +308,7 @@ Estado real detectado en codigo:
 - pagos reales de reservas y refunds: `Mercado Pago` via `booking` + `providerops`
 - `/webhooks/mercadopago` procesa suscripciones y reservas con routing interno por dominio
 - `/cliente/reservas/{id}/payment-session` sigue siendo la entrada real para checkout de reservas
+- si `Mercado Pago` responde `card_token_id is required` al crear el `preapproval`, el backend hace fallback al checkout hosted del `preapproval_plan` y devuelve igual una `checkoutUrl`
 
 Lectura de producto:
 

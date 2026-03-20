@@ -10,12 +10,14 @@ import {
 } from 'react';
 import { cachedGet } from '@/services/cachedGet';
 import { invalidateCachedGet } from '@/services/cachedGet';
+import { isAuthSessionError } from '@/lib/auth/sessionErrors';
 import type { ClientProfile } from '@/types/client';
 
 type ClientProfileContextValue = {
   profile: ClientProfile | null;
   isLoading: boolean;
   hasLoaded: boolean;
+  authStatus: 'unknown' | 'authenticated' | 'unauthenticated' | 'error';
   refreshProfile: () => Promise<void>;
   clearProfile: () => void;
 };
@@ -33,12 +35,16 @@ export function ClientProfileProvider({
   const [profile, setProfile] = useState<ClientProfile | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [hasLoaded, setHasLoaded] = useState(false);
+  const [authStatus, setAuthStatus] = useState<
+    'unknown' | 'authenticated' | 'unauthenticated' | 'error'
+  >('unknown');
 
   const clearProfile = useCallback(() => {
     invalidateCachedGet('/auth/me/cliente');
     setProfile(null);
     setHasLoaded(true);
     setIsLoading(false);
+    setAuthStatus('unauthenticated');
   }, []);
 
   const refreshProfile = useCallback(async () => {
@@ -50,13 +56,19 @@ export function ClientProfileProvider({
         { ttlMs: 15000 },
       );
       setProfile(response.data);
-    } catch {
-      setProfile(null);
+      setAuthStatus('authenticated');
+    } catch (error) {
+      if (isAuthSessionError(error)) {
+        setProfile(null);
+        setAuthStatus('unauthenticated');
+      } else {
+        setAuthStatus(profile ? 'authenticated' : 'error');
+      }
     } finally {
       setIsLoading(false);
       setHasLoaded(true);
     }
-  }, []);
+  }, [profile]);
 
   const refreshProfileRef = useRef(refreshProfile);
 
@@ -70,8 +82,15 @@ export function ClientProfileProvider({
   }, [autoLoad, hasLoaded, isLoading]);
 
   const value = useMemo(
-    () => ({ profile, isLoading, hasLoaded, refreshProfile, clearProfile }),
-    [profile, isLoading, hasLoaded, refreshProfile, clearProfile],
+    () => ({
+      profile,
+      isLoading,
+      hasLoaded,
+      authStatus,
+      refreshProfile,
+      clearProfile,
+    }),
+    [profile, isLoading, hasLoaded, authStatus, refreshProfile, clearProfile],
   );
 
   return (

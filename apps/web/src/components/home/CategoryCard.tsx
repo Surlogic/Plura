@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import RubroCard from '@/components/shared/RubroCard';
 
 type CategoryCardProps = {
@@ -7,7 +8,7 @@ type CategoryCardProps = {
   priority?: boolean;
 };
 
-export default function CategoryCard({
+export default memo(function CategoryCard({
   title,
   imageUrl,
   slug,
@@ -16,4 +17,4 @@ export default function CategoryCard({
   return (
     <RubroCard title={title} imageUrl={imageUrl} slug={slug} priority={priority} />
   );
-}
+});

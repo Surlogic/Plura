@@ -10,12 +10,14 @@ import {
 } from 'react';
 import { cachedGet } from '@/services/cachedGet';
 import { invalidateCachedGet } from '@/services/cachedGet';
+import { isAuthSessionError } from '@/lib/auth/sessionErrors';
 import type { ProfessionalProfile } from '@/types/professional';
 
 type ProfessionalProfileContextValue = {
   profile: ProfessionalProfile | null;
   isLoading: boolean;
   hasLoaded: boolean;
+  authStatus: 'unknown' | 'authenticated' | 'unauthenticated' | 'error';
   refreshProfile: () => Promise<void>;
   clearProfile: () => void;
 };
@@ -23,10 +25,7 @@ type ProfessionalProfileContextValue = {
 const ProfessionalProfileContext =
   createContext<ProfessionalProfileContextValue | null>(null);
 
-const PROFESSIONAL_PROFILE_ENDPOINTS = [
-  '/auth/me/profesional',
-  '/auth/me/professional',
-];
+const PROFESSIONAL_PROFILE_ENDPOINT = '/auth/me/profesional';
 
 export function ProfessionalProfileProvider({
   children,
@@ -38,48 +37,40 @@ export function ProfessionalProfileProvider({
   const [profile, setProfile] = useState<ProfessionalProfile | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [hasLoaded, setHasLoaded] = useState(false);
+  const [authStatus, setAuthStatus] = useState<
+    'unknown' | 'authenticated' | 'unauthenticated' | 'error'
+  >('unknown');
 
   const clearProfile = useCallback(() => {
-    PROFESSIONAL_PROFILE_ENDPOINTS.forEach((endpoint) => invalidateCachedGet(endpoint));
+    invalidateCachedGet(PROFESSIONAL_PROFILE_ENDPOINT);
     setProfile(null);
     setHasLoaded(true);
     setIsLoading(false);
+    setAuthStatus('unauthenticated');
   }, []);
 
   const refreshProfile = useCallback(async () => {
     setIsLoading(true);
     try {
-      let loadedProfile: ProfessionalProfile | null = null;
-
-      for (let index = 0; index < PROFESSIONAL_PROFILE_ENDPOINTS.length; index += 1) {
-        const endpoint = PROFESSIONAL_PROFILE_ENDPOINTS[index];
-        try {
-          const response = await cachedGet<ProfessionalProfile>(endpoint, undefined, {
-            ttlMs: 15000,
-          });
-          loadedProfile = response.data;
-          break;
-        } catch (error) {
-          const status = (error as { response?: { status?: number } }).response?.status;
-          const isLastEndpoint = index === PROFESSIONAL_PROFILE_ENDPOINTS.length - 1;
-          if (status === 401 || status === 403) {
-            loadedProfile = null;
-            break;
-          }
-          if (status !== 404 || isLastEndpoint) {
-            throw error;
-          }
-        }
+      const response = await cachedGet<ProfessionalProfile>(
+        PROFESSIONAL_PROFILE_ENDPOINT,
+        undefined,
+        { ttlMs: 15000 },
+      );
+      setProfile(response.data);
+      setAuthStatus('authenticated');
+    } catch (error) {
+      if (isAuthSessionError(error)) {
+        setProfile(null);
+        setAuthStatus('unauthenticated');
+      } else {
+        setAuthStatus(profile ? 'authenticated' : 'error');
       }
-
-      setProfile(loadedProfile);
-    } catch {
-      setProfile(null);
     } finally {
       setIsLoading(false);
       setHasLoaded(true);
     }
-  }, []);
+  }, [profile]);
 
   const refreshProfileRef = useRef(refreshProfile);
 
@@ -93,8 +84,15 @@ export function ProfessionalProfileProvider({
   }, [autoLoad, hasLoaded, isLoading]);
 
   const value = useMemo(
-    () => ({ profile, isLoading, hasLoaded, refreshProfile, clearProfile }),
-    [profile, isLoading, hasLoaded, refreshProfile, clearProfile],
+    () => ({
+      profile,
+      isLoading,
+      hasLoaded,
+      authStatus,
+      refreshProfile,
+      clearProfile,
+    }),
+    [profile, isLoading, hasLoaded, authStatus, refreshProfile, clearProfile],
   );
 
   return (

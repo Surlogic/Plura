@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   getFavoriteProfessionals,
   removeFavoriteProfessional,
@@ -7,11 +7,31 @@ import {
   type ClientFavoriteProfessional,
 } from '@/services/clientFeatures';
 
-export const useFavoriteProfessionals = () => {
+export const useFavoriteProfessionals = ({
+  enabled = true,
+}: {
+  enabled?: boolean;
+} = {}) => {
+  return useFavoriteProfessionalsState({ enabled });
+};
+
+export const useFavoriteProfessionalsState = ({
+  enabled = true,
+}: {
+  enabled?: boolean;
+} = {}) => {
   const [favorites, setFavorites] = useState<ClientFavoriteProfessional[]>([]);
   const [hasHydrated, setHasHydrated] = useState(false);
+  const favoritesRef = useRef(favorites);
+  favoritesRef.current = favorites;
 
   useEffect(() => {
+    if (!enabled) {
+      setFavorites([]);
+      setHasHydrated(true);
+      return () => undefined;
+    }
+
     let isMounted = true;
 
     getFavoriteProfessionals()
@@ -35,7 +55,7 @@ export const useFavoriteProfessionals = () => {
       isMounted = false;
       unsubscribe();
     };
-  }, []);
+  }, [enabled]);
 
   const favoriteSlugs = useMemo(
     () => new Set(favorites.map((item) => item.slug)),
@@ -58,10 +78,10 @@ export const useFavoriteProfessionals = () => {
         setHasHydrated(true);
         return next;
       } catch {
-        return favorites;
+        return favoritesRef.current;
       }
     },
-    [favorites],
+    [],
   );
 
   const removeFavorite = useCallback(async (slug: string) => {
@@ -71,9 +91,9 @@ export const useFavoriteProfessionals = () => {
       setHasHydrated(true);
       return next;
     } catch {
-      return favorites;
+      return favoritesRef.current;
     }
-  }, [favorites]);
+  }, []);
 
   return {
     favorites,

@@ -17,6 +17,8 @@ build/
 **/.next/
 **/.next-build
 **/.next-build/
+**/.test-build
+**/.test-build/
 **/.next.preclean/
 **/.next_*/
 **/.next.stale-*/

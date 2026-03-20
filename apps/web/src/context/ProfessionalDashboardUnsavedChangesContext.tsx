@@ -75,8 +75,10 @@ export function ProfessionalDashboardUnsavedChangesProvider({
 
   const currentPath = parsePath(router.asPath || '');
   const isDashboardRoute = isDashboardPath(currentPath);
-  const isSaving =
-    isInternalSaving || Object.values(savingBySection).some((value) => value);
+  const isSaving = useMemo(
+    () => isInternalSaving || Object.values(savingBySection).some((value) => value),
+    [isInternalSaving, savingBySection],
+  );
 
   useEffect(() => {
     dirtyRef.current = isDirty;
@@ -238,9 +240,10 @@ export function ProfessionalDashboardUnsavedChangesProvider({
   }, [router, router.events]);
 
   useEffect(() => {
-    if (!isDashboardRoute || !isDirty) return;
+    if (!isDashboardRoute) return;
 
     const onBeforeUnload = (event: BeforeUnloadEvent) => {
+      if (!dirtyRef.current) return;
       event.preventDefault();
       event.returnValue = '';
     };
@@ -248,7 +251,7 @@ export function ProfessionalDashboardUnsavedChangesProvider({
     return () => {
       window.removeEventListener('beforeunload', onBeforeUnload);
     };
-  }, [isDashboardRoute, isDirty]);
+  }, [isDashboardRoute]);
 
   useEffect(() => {
     if (!isDashboardRoute || !isSaving) {

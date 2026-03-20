@@ -46,7 +46,9 @@ public class AppleTokenVerifier {
         @Value("${oauth.apple.client-id:}") String appleClientId,
         ObjectMapper objectMapper
     ) {
-        this.httpClient = HttpClient.newHttpClient();
+        this.httpClient = HttpClient.newBuilder()
+            .connectTimeout(Duration.ofSeconds(5))
+            .build();
         this.objectMapper = objectMapper;
         this.appleClientId = appleClientId == null ? "" : appleClientId.trim();
         this.cachedKeys = new CachedKeys(Map.of(), Instant.EPOCH);

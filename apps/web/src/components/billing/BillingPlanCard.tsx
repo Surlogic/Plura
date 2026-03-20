@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
 import { cn } from '@/components/ui/cn';
@@ -18,7 +19,7 @@ const accentClassNames = {
   warm: 'border-[#F4D4B0] bg-[#FFF8F0]',
 };
 
-export default function BillingPlanCard({
+function BillingPlanCard({
   plan,
   buttonLabel,
   isCurrent,
@@ -78,3 +79,5 @@ export default function BillingPlanCard({
     </Card>
   );
 }
+
+export default memo(BillingPlanCard);

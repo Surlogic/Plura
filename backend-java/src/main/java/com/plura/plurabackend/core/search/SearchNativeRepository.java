@@ -6,12 +6,11 @@ import com.plura.plurabackend.core.search.dto.SearchSort;
 import com.plura.plurabackend.core.search.dto.SearchSuggestCategoryResponse;
 import com.plura.plurabackend.core.search.dto.SearchSuggestItemResponse;
 import com.plura.plurabackend.core.search.dto.SearchSuggestResponse;
-import com.plura.plurabackend.core.search.dto.SearchType;
 import java.sql.Array;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.ArrayList;
 import java.text.Normalizer;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -30,6 +29,8 @@ public class SearchNativeRepository {
     private static final double QUERY_SIMILARITY_THRESHOLD = 0.08d;
     private static final int MAX_CATEGORY_SUGGESTIONS = 15;
     private static final int MAX_POPULAR_NEARBY = 6;
+    private static final String PROFESSIONAL_DOCUMENT_VIEW = "search_professional_document_mv";
+    private static final String SERVICE_DOCUMENT_VIEW = "search_service_document_mv";
 
     private final NamedParameterJdbcTemplate jdbcTemplate;
 
@@ -45,73 +46,41 @@ public class SearchNativeRepository {
     ) {
         boolean shouldAttemptFirstPageCountBypass = !searchNoCountModeEnabled && criteria.page() == 0;
         MapSqlParameterSource params = buildParams(criteria);
-        params.addValue("nextAvailableAtEnabled", nextAvailableAtEnabled);
-
-        String baseFromClause = buildBaseFromClause();
-        String dateMatchExpression = buildDateMatchExpression(availabilitySource, nextAvailableAtEnabled);
-        String availableNowMatchExpression = buildAvailableNowMatchExpression(availabilitySource);
-        String baseWhereClause = buildBaseWhereClause(availableNowMatchExpression);
-        String countSql = "SELECT COUNT(*) " + baseFromClause + baseWhereClause;
+        String dateMatchExpression = buildDateMatchExpression("doc", availabilitySource, nextAvailableAtEnabled);
+        String availableNowMatchExpression = buildAvailableNowMatchExpression("doc", availabilitySource);
+        String baseWhereClause = buildSearchWhereClause(dateMatchExpression, availableNowMatchExpression);
+        String countSql = "SELECT COUNT(*) FROM " + PROFESSIONAL_DOCUMENT_VIEW + " doc " + baseWhereClause;
 
         String selectSql =
             "SELECT "
-                + "p.id::text AS id, "
-                + "COALESCE(NULLIF(p.slug, ''), regexp_replace(immutable_unaccent(lower(COALESCE(u.full_name, 'profesional'))), '[^a-z0-9]+', '-', 'g')) AS slug, "
-                + "COALESCE(u.full_name, 'Profesional') AS name, "
-                + "COALESCE(p.public_headline, '') AS headline, "
-                + "COALESCE(p.rating, 0)::double precision AS rating, "
-                + "COALESCE(p.reviews_count, 0)::integer AS reviews_count, "
-                + "COALESCE(p.location_text, p.location, '') AS location_text, "
-                + "COALESCE(p.latitude, CASE WHEN p.geom IS NOT NULL THEN ST_Y(p.geom::geometry) END)::double precision AS latitude, "
-                + "COALESCE(p.longitude, CASE WHEN p.geom IS NOT NULL THEN ST_X(p.geom::geometry) END)::double precision AS longitude, "
-                + "svc_agg.price_from, "
-                + "COALESCE(cat_slugs.category_slugs, ARRAY[]::text[]) AS category_slugs, "
-                + "COALESCE(photo_agg.url, cat_img.image_url) AS cover_image_url, "
-                + "CASE "
-                + "  WHEN :hasCoords = true AND p.geom IS NOT NULL THEN ROUND((ST_Distance(p.geom, ST_SetSRID(ST_MakePoint(:lng, :lat), 4326)::geography) / 1000.0)::numeric, 2)::double precision "
-                + "  WHEN :hasCoords = true AND p.latitude IS NOT NULL AND p.longitude IS NOT NULL THEN ROUND((6371.0 * acos(least(1.0, greatest(-1.0, "
-                + "    cos(radians(:lat)) * cos(radians(p.latitude)) * cos(radians(p.longitude) - radians(:lng)) "
-                + "    + sin(radians(:lat)) * sin(radians(p.latitude)) "
-                + "  ))))::numeric, 2)::double precision "
-                + "  ELSE NULL "
-                + "END AS distance_km, "
-                + "CASE "
-                + "  WHEN :dateFilter = true AND " + dateMatchExpression + " THEN 1 ELSE 0 "
-                + "END AS date_match, "
-                + "CASE "
-                + "  WHEN :availableNow = true AND " + availableNowMatchExpression + " THEN 1 ELSE 0 "
-                + "END AS available_now_match, "
+                + "doc.professional_id::text AS id, "
+                + "doc.slug AS slug, "
+                + "doc.display_name AS name, "
+                + "doc.public_headline AS headline, "
+                + "doc.rating AS rating, "
+                + "doc.reviews_count AS reviews_count, "
+                + "doc.location_text AS location_text, "
+                + "doc.latitude AS latitude, "
+                + "doc.longitude AS longitude, "
+                + "doc.price_from AS price_from, "
+                + "COALESCE(doc.category_slugs, ARRAY[]::text[]) AS category_slugs, "
+                + "doc.cover_image_url AS cover_image_url, "
+                + buildDistanceExpression("doc") + " AS distance_km, "
+                + "CASE WHEN :dateFilter = true AND " + dateMatchExpression + " THEN 1 ELSE 0 END AS date_match, "
+                + "CASE WHEN :availableNow = true AND " + availableNowMatchExpression + " THEN 1 ELSE 0 END AS available_now_match, "
                 + "CASE "
                 + "  WHEN :queryBlank = true THEN 0.0 "
                 + "  ELSE GREATEST("
-                + "    similarity(immutable_unaccent(lower(COALESCE(u.full_name, ''))), :queryNormalized), "
-                + "    similarity(immutable_unaccent(lower(COALESCE(p.public_headline, ''))), :queryNormalized), "
-                + "    similarity(immutable_unaccent(lower(COALESCE(p.rubro, ''))), :queryNormalized), "
-                + "    COALESCE(svc_agg.max_name_sim, 0.0), "
-                + "    COALESCE(cat_agg.max_name_sim, 0.0), "
-                + "    COALESCE(svc_cat_agg.max_name_sim, 0.0)"
+                + "    similarity(doc.name_normalized, :queryNormalized), "
+                + "    similarity(doc.headline_normalized, :queryNormalized), "
+                + "    similarity(doc.rubro_normalized, :queryNormalized), "
+                + "    similarity(doc.category_names_normalized, :queryNormalized), "
+                + "    similarity(doc.service_names_normalized, :queryNormalized), "
+                + "    similarity(doc.service_category_names_normalized, :queryNormalized), "
+                + "    COALESCE(ts_rank_cd(doc.search_vector, plainto_tsquery('simple', :queryTs)), 0.0)"
                 + "  ) "
                 + "END AS relevance "
-                + baseFromClause
-                + " LEFT JOIN LATERAL ("
-                + "   SELECT array_agg(c.slug ORDER BY COALESCE(c.display_order, 9999), c.name) AS category_slugs "
-                + "   FROM professional_categories pc "
-                + "   JOIN categories c ON c.id = pc.category_id "
-                + "   WHERE pc.professional_id = p.id AND c.active = true"
-                + " ) cat_slugs ON true"
-                + " LEFT JOIN LATERAL ("
-                + "   SELECT photo.url "
-                + "   FROM professional_profile_photos photo "
-                + "   WHERE photo.professional_id = p.id "
-                + "   ORDER BY photo.position ASC LIMIT 1"
-                + " ) photo_agg ON true"
-                + " LEFT JOIN LATERAL ("
-                + "   SELECT c.image_url "
-                + "   FROM professional_categories pc "
-                + "   JOIN categories c ON c.id = pc.category_id "
-                + "   WHERE pc.professional_id = p.id AND c.active = true "
-                + "   ORDER BY COALESCE(c.display_order, 9999), c.name LIMIT 1"
-                + " ) cat_img ON true"
+                + "FROM " + PROFESSIONAL_DOCUMENT_VIEW + " doc "
                 + baseWhereClause
                 + buildSortClause(criteria)
                 + (
@@ -134,9 +103,7 @@ public class SearchNativeRepository {
 
         List<SearchItemResponse> rows = jdbcTemplate.query(selectSql, params, SEARCH_ROW_MAPPER);
         boolean hasNext = rows.size() > criteria.size();
-        List<SearchItemResponse> items = hasNext
-            ? rows.subList(0, criteria.size())
-            : rows;
+        List<SearchItemResponse> items = hasNext ? rows.subList(0, criteria.size()) : rows;
         long totalEstimate = hasNext
             ? criteria.offset() + items.size() + 1L
             : criteria.offset() + items.size();
@@ -145,7 +112,8 @@ public class SearchNativeRepository {
 
     public SearchSuggestResponse suggest(SearchSuggestCriteria criteria) {
         MapSqlParameterSource params = buildSuggestParams(criteria);
-        String locationClause = buildSuggestLocationClause();
+        String professionalLocationClause = buildLocationClause("doc");
+        String serviceLocationClause = buildLocationClause("svc");
 
         String categoriesSql =
             "SELECT c.name, c.slug "
@@ -166,50 +134,55 @@ public class SearchNativeRepository {
                 + "LIMIT :categoryLimit";
 
         String servicesSql =
-            "SELECT NULL::text AS id, s.name AS name "
-                + "FROM professional_service s "
-                + "JOIN professional_profile p ON p.id = s.professional_id "
-                + "WHERE s.active = true "
-                + "AND p.active = true "
-                + locationClause
+            "SELECT NULL::text AS id, svc.service_name AS name "
+                + "FROM " + SERVICE_DOCUMENT_VIEW + " svc "
+                + "WHERE 1 = 1 "
+                + serviceLocationClause
                 + "AND (:queryBlank = true OR ("
-                + "  immutable_unaccent(lower(s.name)) % :queryNormalized "
-                + "  OR immutable_unaccent(lower(s.name)) LIKE :queryLike"
+                + "  svc.service_name_normalized % :queryNormalized "
+                + "  OR svc.service_name_normalized LIKE :queryLike "
+                + "  OR svc.search_vector @@ plainto_tsquery('simple', :queryTs)"
                 + ")) "
-                + "GROUP BY s.name "
+                + "GROUP BY svc.service_name "
                 + "ORDER BY "
-                + "CASE WHEN :queryBlank = false THEN MAX(similarity(immutable_unaccent(lower(s.name)), :queryNormalized)) ELSE NULL END DESC NULLS LAST, "
-                + "COUNT(*) DESC, s.name ASC "
+                + "CASE WHEN :queryBlank = false THEN MAX(GREATEST("
+                + "  similarity(svc.service_name_normalized, :queryNormalized), "
+                + "  COALESCE(ts_rank_cd(svc.search_vector, plainto_tsquery('simple', :queryTs)), 0.0)"
+                + ")) ELSE NULL END DESC NULLS LAST, "
+                + "COUNT(*) DESC, svc.service_name ASC "
                 + "LIMIT :limit";
 
         String profilesSql =
-            "SELECT p.id::text AS id, "
-                + "COALESCE(u.full_name, 'Profesional') AS full_name, "
-                + "COALESCE(NULLIF(p.public_headline, ''), COALESCE(u.full_name, 'Profesional')) AS local_name, "
-                + "COALESCE(p.rating, 0)::double precision AS rating, "
-                + "COALESCE(p.reviews_count, 0)::integer AS reviews_count, "
+            "SELECT "
+                + "doc.professional_id::text AS id, "
+                + "doc.display_name AS full_name, "
+                + "COALESCE(NULLIF(doc.public_headline, ''), doc.display_name) AS local_name, "
+                + "doc.rating AS rating, "
+                + "doc.reviews_count AS reviews_count, "
                 + "GREATEST("
-                + "  similarity(immutable_unaccent(lower(COALESCE(u.full_name, ''))), :queryNormalized), "
-                + "  similarity(immutable_unaccent(lower(COALESCE(p.public_headline, ''))), :queryNormalized)"
+                + "  similarity(doc.name_normalized, :queryNormalized), "
+                + "  similarity(doc.headline_normalized, :queryNormalized), "
+                + "  COALESCE(ts_rank_cd(doc.search_vector, plainto_tsquery('simple', :queryTs)), 0.0)"
                 + ") AS professional_score, "
                 + "GREATEST("
-                + "  similarity(immutable_unaccent(lower(COALESCE(p.public_headline, ''))), :queryNormalized), "
-                + "  similarity(immutable_unaccent(lower(COALESCE(u.full_name, ''))), :queryNormalized), "
-                + "  similarity(immutable_unaccent(lower(COALESCE(p.location_text, p.location, ''))), :queryNormalized)"
+                + "  similarity(doc.headline_normalized, :queryNormalized), "
+                + "  similarity(doc.name_normalized, :queryNormalized), "
+                + "  similarity(doc.location_text_normalized, :queryNormalized), "
+                + "  COALESCE(ts_rank_cd(doc.search_vector, plainto_tsquery('simple', :queryTs)), 0.0)"
                 + ") AS local_score "
-                + "FROM professional_profile p "
-                + "JOIN app_user u ON u.id = p.user_id "
-                + "WHERE p.active = true "
-                + locationClause
+                + "FROM " + PROFESSIONAL_DOCUMENT_VIEW + " doc "
+                + "WHERE 1 = 1 "
+                + professionalLocationClause
                 + "AND (:queryBlank = true OR ("
-                + "  immutable_unaccent(lower(COALESCE(u.full_name, ''))) % :queryNormalized "
-                + "  OR immutable_unaccent(lower(COALESCE(p.public_headline, ''))) % :queryNormalized "
-                + "  OR immutable_unaccent(lower(COALESCE(p.location_text, p.location, ''))) % :queryNormalized "
-                + "  OR immutable_unaccent(lower(COALESCE(u.full_name, ''))) LIKE :queryLike"
-                + "  OR immutable_unaccent(lower(COALESCE(p.public_headline, ''))) LIKE :queryLike"
-                + "  OR immutable_unaccent(lower(COALESCE(p.location_text, p.location, ''))) LIKE :queryLike"
+                + "  doc.name_normalized % :queryNormalized "
+                + "  OR doc.headline_normalized % :queryNormalized "
+                + "  OR doc.location_text_normalized % :queryNormalized "
+                + "  OR doc.name_normalized LIKE :queryLike "
+                + "  OR doc.headline_normalized LIKE :queryLike "
+                + "  OR doc.location_text_normalized LIKE :queryLike "
+                + "  OR doc.search_vector @@ plainto_tsquery('simple', :queryTs)"
                 + ")) "
-                + "ORDER BY COALESCE(p.rating, 0) DESC, COALESCE(p.reviews_count, 0) DESC, full_name ASC "
+                + "ORDER BY doc.rating DESC, doc.reviews_count DESC, full_name ASC "
                 + "LIMIT :profilePoolLimit";
 
         int limit = Math.max(1, Math.min(criteria.limit(), 10));
@@ -291,54 +264,21 @@ public class SearchNativeRepository {
 
         String sql =
             "SELECT "
-                + "p.id::text AS id, "
-                + "COALESCE(NULLIF(p.slug, ''), regexp_replace(immutable_unaccent(lower(COALESCE(u.full_name, 'profesional'))), '[^a-z0-9]+', '-', 'g')) AS slug, "
-                + "COALESCE(u.full_name, 'Profesional') AS name, "
-                + "COALESCE(p.public_headline, '') AS headline, "
-                + "COALESCE(p.rating, 0)::double precision AS rating, "
-                + "COALESCE(p.reviews_count, 0)::integer AS reviews_count, "
-                + "COALESCE(cat_agg.category_slugs, ARRAY[]::text[]) AS category_slugs, "
-                + "CASE "
-                + "  WHEN :hasCoords = true AND p.geom IS NOT NULL THEN ROUND((ST_Distance(p.geom, ST_SetSRID(ST_MakePoint(:lng, :lat), 4326)::geography) / 1000.0)::numeric, 2)::double precision "
-                + "  WHEN :hasCoords = true AND p.latitude IS NOT NULL AND p.longitude IS NOT NULL THEN ROUND((6371.0 * acos(least(1.0, greatest(-1.0, "
-                + "    cos(radians(:lat)) * cos(radians(p.latitude)) * cos(radians(p.longitude) - radians(:lng)) "
-                + "    + sin(radians(:lat)) * sin(radians(p.latitude)) "
-                + "  ))))::numeric, 2)::double precision "
-                + "  ELSE NULL "
-                + "END AS distance_km, "
-                + "COALESCE(p.latitude, CASE WHEN p.geom IS NOT NULL THEN ST_Y(p.geom::geometry) END)::double precision AS latitude, "
-                + "COALESCE(p.longitude, CASE WHEN p.geom IS NOT NULL THEN ST_X(p.geom::geometry) END)::double precision AS longitude, "
-                + "svc_agg.price_from, "
-                + "COALESCE(photo_agg.url, cat_img.image_url) AS cover_image_url, "
-                + "COALESCE(p.location_text, p.location, '') AS location_text "
-                + "FROM professional_profile p "
-                + "JOIN app_user u ON u.id = p.user_id "
-                + "LEFT JOIN LATERAL ("
-                + "   SELECT MIN(NULLIF(regexp_replace(s.price, '[^0-9]', '', 'g'), '')::double precision) AS price_from "
-                + "   FROM professional_service s "
-                + "   WHERE s.professional_id = p.id AND s.active = true"
-                + ") svc_agg ON true "
-                + "LEFT JOIN LATERAL ("
-                + "   SELECT array_agg(c.slug ORDER BY COALESCE(c.display_order, 9999), c.name) AS category_slugs "
-                + "   FROM professional_categories pc "
-                + "   JOIN categories c ON c.id = pc.category_id "
-                + "   WHERE pc.professional_id = p.id AND c.active = true"
-                + ") cat_agg ON true "
-                + "LEFT JOIN LATERAL ("
-                + "   SELECT photo.url "
-                + "   FROM professional_profile_photos photo "
-                + "   WHERE photo.professional_id = p.id "
-                + "   ORDER BY photo.position ASC LIMIT 1"
-                + ") photo_agg ON true "
-                + "LEFT JOIN LATERAL ("
-                + "   SELECT c.image_url "
-                + "   FROM professional_categories pc "
-                + "   JOIN categories c ON c.id = pc.category_id "
-                + "   WHERE pc.professional_id = p.id AND c.active = true "
-                + "   ORDER BY COALESCE(c.display_order, 9999), c.name LIMIT 1"
-                + ") cat_img ON true "
-                + "WHERE p.active = true "
-                + "AND p.id IN (:ids)";
+                + "doc.professional_id::text AS id, "
+                + "doc.slug AS slug, "
+                + "doc.display_name AS name, "
+                + "doc.public_headline AS headline, "
+                + "doc.rating AS rating, "
+                + "doc.reviews_count AS reviews_count, "
+                + "COALESCE(doc.category_slugs, ARRAY[]::text[]) AS category_slugs, "
+                + buildDistanceExpression("doc") + " AS distance_km, "
+                + "doc.latitude AS latitude, "
+                + "doc.longitude AS longitude, "
+                + "doc.price_from AS price_from, "
+                + "doc.cover_image_url AS cover_image_url, "
+                + "doc.location_text AS location_text "
+                + "FROM " + PROFESSIONAL_DOCUMENT_VIEW + " doc "
+                + "WHERE doc.professional_id IN (:ids)";
 
         List<SearchItemResponse> rawItems = jdbcTemplate.query(sql, params, SEARCH_ROW_MAPPER);
         Map<Long, SearchItemResponse> byId = new HashMap<>();
@@ -346,7 +286,7 @@ public class SearchNativeRepository {
             try {
                 byId.put(Long.valueOf(item.getId()), item);
             } catch (NumberFormatException ignored) {
-                // No-op, keeps robustness if malformed ID appears.
+                // Mantiene tolerancia ante datos legacy malformados.
             }
         }
 
@@ -360,174 +300,68 @@ public class SearchNativeRepository {
         return ordered;
     }
 
-    private String buildBaseFromClause() {
-        return " FROM professional_profile p "
-            + " JOIN app_user u ON u.id = p.user_id "
-            + " LEFT JOIN LATERAL ("
-            + "   SELECT MIN(NULLIF(regexp_replace(s.price, '[^0-9]', '', 'g'), '')::double precision) AS price_from, "
-            + "          MAX(CASE WHEN :queryBlank = true THEN 0.0 ELSE similarity(immutable_unaccent(lower(COALESCE(s.name, ''))), :queryNormalized) END) AS max_name_sim "
-            + "   FROM professional_service s "
-            + "   WHERE s.professional_id = p.id AND s.active = true"
-            + " ) svc_agg ON true "
-            + " LEFT JOIN LATERAL ("
-            + "   SELECT MAX(CASE WHEN :queryBlank = true THEN 0.0 ELSE similarity(immutable_unaccent(lower(COALESCE(c.name, ''))), :queryNormalized) END) AS max_name_sim "
-            + "   FROM professional_categories pc "
-            + "   JOIN categories c ON c.id = pc.category_id "
-            + "   WHERE pc.professional_id = p.id AND c.active = true"
-            + " ) cat_agg ON true "
-            + " LEFT JOIN LATERAL ("
-            + "   SELECT MAX(CASE WHEN :queryBlank = true THEN 0.0 ELSE similarity(immutable_unaccent(lower(COALESCE(c.name, ''))), :queryNormalized) END) AS max_name_sim, "
-            + "          BOOL_OR(CASE WHEN :categorySlug = '' THEN false ELSE c.slug = :categorySlug END) AS has_filter_category, "
-            + "          BOOL_OR(CASE WHEN :queryBlank = true THEN false ELSE c.slug = :querySlug END) AS has_query_slug_match, "
-            + "          BOOL_OR(CASE WHEN :queryBlank = true THEN false ELSE immutable_unaccent(lower(COALESCE(c.name, ''))) LIKE :queryLike END) AS has_query_like_match "
-            + "   FROM professional_service s "
-            + "   JOIN categories c ON c.id = s.category_id "
-            + "   WHERE s.professional_id = p.id AND s.active = true AND c.active = true"
-            + " ) svc_cat_agg ON true ";
-    }
-
-    private String buildBaseWhereClause(String availableNowMatchExpression) {
-        return " WHERE p.active = true "
-            + " AND (:categorySlug = '' OR ("
-            + "   COALESCE(svc_cat_agg.has_filter_category, false) = true "
-            + "   OR "
-            + "   EXISTS ("
-            + "     SELECT 1 FROM professional_categories pc "
-            + "     JOIN categories c ON c.id = pc.category_id "
-            + "     WHERE pc.professional_id = p.id "
-            + "     AND c.active = true "
-            + "     AND c.slug = :categorySlug"
-            + "   ) "
-            + "   OR regexp_replace(regexp_replace(immutable_unaccent(lower(COALESCE(p.rubro, ''))), '[^a-z0-9]+', '-', 'g'), '(^-+|-+$)', '', 'g') = :categorySlug"
-            + " )) "
-            + " AND ("
-            + "   :city = '' "
-            + "   OR immutable_unaccent(lower(COALESCE(p.location_text, p.location, ''))) LIKE :cityLike "
-            + "   OR NOT EXISTS ("
-            + "     SELECT 1 FROM professional_profile p_city "
-            + "     WHERE p_city.active = true "
-            + "     AND immutable_unaccent(lower(COALESCE(p_city.location_text, p_city.location, ''))) LIKE :cityLike"
-            + "   )"
-            + " ) "
-            + " AND ("
-            + "   :hasCoords = false "
-            + "   OR ("
-            + "     (p.geom IS NOT NULL AND ST_DWithin(p.geom, ST_SetSRID(ST_MakePoint(:lng, :lat), 4326)::geography, :radiusMeters)) "
-            + "     OR ("
-            + "       p.latitude IS NOT NULL "
-            + "       AND p.longitude IS NOT NULL "
-            + "       AND (6371.0 * acos(least(1.0, greatest(-1.0, "
-            + "         cos(radians(:lat)) * cos(radians(p.latitude)) * cos(radians(p.longitude) - radians(:lng)) "
-            + "         + sin(radians(:lat)) * sin(radians(p.latitude)) "
-            + "       )))) <= :radiusKm"
-            + "     )"
-            + "   )"
-            + " ) "
+    private String buildSearchWhereClause(String dateMatchExpression, String availableNowMatchExpression) {
+        return " WHERE 1 = 1 "
+            + " AND (:categorySlug = '' OR doc.category_slugs::text[] @> ARRAY[:categorySlug]::text[] OR doc.rubro_slug = :categorySlug) "
+            + buildLocationClause("doc")
             + " AND (:availableNow = false OR " + availableNowMatchExpression + ") "
             + " AND (:queryBlank = true OR ("
             + "   (:type = 'RUBRO' AND ("
-            + "     immutable_unaccent(lower(COALESCE(p.rubro, ''))) % :queryNormalized "
-            + "     OR immutable_unaccent(lower(COALESCE(p.rubro, ''))) LIKE :queryLike "
-            + "     OR regexp_replace(regexp_replace(immutable_unaccent(lower(COALESCE(p.rubro, ''))), '[^a-z0-9]+', '-', 'g'), '(^-+|-+$)', '', 'g') = :querySlug "
-            + "     OR COALESCE(svc_cat_agg.max_name_sim, 0.0) >= :similarityThreshold "
-            + "     OR COALESCE(svc_cat_agg.has_query_slug_match, false) = true "
-            + "     OR COALESCE(svc_cat_agg.has_query_like_match, false) = true "
-            + "     OR EXISTS ("
-            + "       SELECT 1 FROM professional_categories pc "
-            + "       JOIN categories c ON c.id = pc.category_id "
-            + "       WHERE pc.professional_id = p.id "
-            + "       AND c.active = true "
-            + "       AND ("
-            + "         c.slug = :querySlug "
-            + "         OR immutable_unaccent(lower(c.name)) % :queryNormalized "
-            + "         OR immutable_unaccent(lower(c.name)) LIKE :queryLike"
-            + "       )"
-            + "     )"
+            + "     doc.rubro_normalized % :queryNormalized "
+            + "     OR doc.rubro_normalized LIKE :queryLike "
+            + "     OR doc.rubro_slug = :querySlug "
+            + "     OR doc.category_names_normalized LIKE :queryLike "
+            + "     OR doc.service_category_names_normalized LIKE :queryLike "
+            + "     OR doc.category_slugs::text[] @> ARRAY[:querySlug]::text[]"
             + "   )) "
             + "   OR (:type = 'PROFESIONAL' AND ("
-            + "     immutable_unaccent(lower(COALESCE(u.full_name, ''))) % :queryNormalized "
-            + "     OR immutable_unaccent(lower(COALESCE(p.public_headline, ''))) % :queryNormalized "
-            + "     OR immutable_unaccent(lower(COALESCE(u.full_name, ''))) LIKE :queryLike "
-            + "     OR immutable_unaccent(lower(COALESCE(p.public_headline, ''))) LIKE :queryLike"
+            + "     doc.name_normalized % :queryNormalized "
+            + "     OR doc.headline_normalized % :queryNormalized "
+            + "     OR doc.name_normalized LIKE :queryLike "
+            + "     OR doc.headline_normalized LIKE :queryLike "
+            + "     OR doc.search_vector @@ plainto_tsquery('simple', :queryTs)"
             + "   )) "
             + "   OR (:type = 'LOCAL' AND ("
-            + "     immutable_unaccent(lower(COALESCE(u.full_name, ''))) % :queryNormalized "
-            + "     OR immutable_unaccent(lower(COALESCE(p.public_headline, ''))) % :queryNormalized "
-            + "     OR immutable_unaccent(lower(COALESCE(p.location_text, p.location, ''))) % :queryNormalized "
-            + "     OR immutable_unaccent(lower(COALESCE(u.full_name, ''))) LIKE :queryLike "
-            + "     OR immutable_unaccent(lower(COALESCE(p.public_headline, ''))) LIKE :queryLike "
-            + "     OR immutable_unaccent(lower(COALESCE(p.location_text, p.location, ''))) LIKE :queryLike"
+            + "     doc.name_normalized % :queryNormalized "
+            + "     OR doc.headline_normalized % :queryNormalized "
+            + "     OR doc.location_text_normalized % :queryNormalized "
+            + "     OR doc.name_normalized LIKE :queryLike "
+            + "     OR doc.headline_normalized LIKE :queryLike "
+            + "     OR doc.location_text_normalized LIKE :queryLike "
+            + "     OR doc.search_vector @@ plainto_tsquery('simple', :queryTs)"
             + "   )) "
             + "   OR (:type = 'SERVICIO' AND ("
-            + "     EXISTS ("
-            + "       SELECT 1 FROM professional_service s "
-            + "       WHERE s.professional_id = p.id "
-            + "       AND s.active = true "
-            + "       AND ("
-            + "         immutable_unaccent(lower(COALESCE(s.name, ''))) % :queryNormalized "
-            + "         OR immutable_unaccent(lower(COALESCE(s.name, ''))) LIKE :queryLike"
-            + "       )"
-            + "     )"
-            + "     OR immutable_unaccent(lower(COALESCE(u.full_name, ''))) % :queryNormalized "
-            + "     OR immutable_unaccent(lower(COALESCE(p.rubro, ''))) % :queryNormalized "
-            + "     OR immutable_unaccent(lower(COALESCE(u.full_name, ''))) LIKE :queryLike "
-            + "     OR immutable_unaccent(lower(COALESCE(p.rubro, ''))) LIKE :queryLike"
-            + "     OR COALESCE(svc_cat_agg.max_name_sim, 0.0) >= :similarityThreshold "
-            + "     OR COALESCE(svc_cat_agg.has_query_slug_match, false) = true "
-            + "     OR COALESCE(svc_cat_agg.has_query_like_match, false) = true "
+            + "     doc.service_names_normalized % :queryNormalized "
+            + "     OR doc.service_names_normalized LIKE :queryLike "
+            + "     OR doc.name_normalized % :queryNormalized "
+            + "     OR doc.rubro_normalized % :queryNormalized "
+            + "     OR doc.name_normalized LIKE :queryLike "
+            + "     OR doc.rubro_normalized LIKE :queryLike "
+            + "     OR doc.service_category_names_normalized LIKE :queryLike "
+            + "     OR doc.search_vector @@ plainto_tsquery('simple', :queryTs)"
             + "   )) "
             + "   OR ("
-            + "     immutable_unaccent(lower(COALESCE(u.full_name, ''))) LIKE :queryLike "
-            + "     OR immutable_unaccent(lower(COALESCE(p.public_headline, ''))) LIKE :queryLike "
-            + "     OR immutable_unaccent(lower(COALESCE(p.rubro, ''))) LIKE :queryLike "
-            + "     OR regexp_replace(regexp_replace(immutable_unaccent(lower(COALESCE(p.rubro, ''))), '[^a-z0-9]+', '-', 'g'), '(^-+|-+$)', '', 'g') = :querySlug "
-            + "     OR COALESCE(svc_cat_agg.max_name_sim, 0.0) >= :similarityThreshold "
-            + "     OR COALESCE(svc_cat_agg.has_query_slug_match, false) = true "
-            + "     OR COALESCE(svc_cat_agg.has_query_like_match, false) = true "
-            + "     OR EXISTS ("
-            + "       SELECT 1 FROM professional_service s "
-            + "       WHERE s.professional_id = p.id "
-            + "       AND s.active = true "
-            + "       AND immutable_unaccent(lower(COALESCE(s.name, ''))) LIKE :queryLike"
-            + "     ) "
-            + "     OR EXISTS ("
-            + "       SELECT 1 FROM professional_categories pc "
-            + "       JOIN categories c ON c.id = pc.category_id "
-            + "       WHERE pc.professional_id = p.id "
-            + "       AND c.active = true "
-            + "       AND (c.slug = :querySlug OR immutable_unaccent(lower(c.name)) LIKE :queryLike)"
-            + "     )"
-            + "   ) "
+            + "     doc.search_document_normalized LIKE :queryLike "
+            + "     OR doc.rubro_slug = :querySlug "
+            + "     OR doc.category_slugs::text[] @> ARRAY[:querySlug]::text[] "
+            + "     OR doc.search_vector @@ plainto_tsquery('simple', :queryTs)"
+            + "   )"
             + " )) "
             + " AND (:queryBlank = true OR ("
             + "   GREATEST("
-            + "     similarity(immutable_unaccent(lower(COALESCE(u.full_name, ''))), :queryNormalized), "
-            + "     similarity(immutable_unaccent(lower(COALESCE(p.public_headline, ''))), :queryNormalized), "
-            + "     similarity(immutable_unaccent(lower(COALESCE(p.rubro, ''))), :queryNormalized), "
-            + "     COALESCE(svc_agg.max_name_sim, 0.0), "
-            + "     COALESCE(cat_agg.max_name_sim, 0.0), "
-            + "     COALESCE(svc_cat_agg.max_name_sim, 0.0)"
-            + "   ) >= :similarityThreshold"
-            + "   OR immutable_unaccent(lower(COALESCE(u.full_name, ''))) LIKE :queryLike "
-            + "   OR immutable_unaccent(lower(COALESCE(p.public_headline, ''))) LIKE :queryLike "
-            + "   OR immutable_unaccent(lower(COALESCE(p.rubro, ''))) LIKE :queryLike "
-            + "   OR regexp_replace(regexp_replace(immutable_unaccent(lower(COALESCE(p.rubro, ''))), '[^a-z0-9]+', '-', 'g'), '(^-+|-+$)', '', 'g') = :querySlug "
-            + "   OR COALESCE(svc_cat_agg.has_query_slug_match, false) = true "
-            + "   OR COALESCE(svc_cat_agg.has_query_like_match, false) = true "
-            + "   OR EXISTS ("
-            + "     SELECT 1 FROM professional_service s "
-            + "     WHERE s.professional_id = p.id "
-            + "     AND s.active = true "
-            + "     AND immutable_unaccent(lower(COALESCE(s.name, ''))) LIKE :queryLike"
-            + "   ) "
-            + "   OR EXISTS ("
-            + "     SELECT 1 FROM professional_categories pc "
-            + "     JOIN categories c ON c.id = pc.category_id "
-            + "     WHERE pc.professional_id = p.id "
-            + "     AND c.active = true "
-            + "     AND (c.slug = :querySlug OR immutable_unaccent(lower(c.name)) LIKE :queryLike)"
-            + "   )"
-            + "  ))";
+            + "     similarity(doc.name_normalized, :queryNormalized), "
+            + "     similarity(doc.headline_normalized, :queryNormalized), "
+            + "     similarity(doc.rubro_normalized, :queryNormalized), "
+            + "     similarity(doc.category_names_normalized, :queryNormalized), "
+            + "     similarity(doc.service_names_normalized, :queryNormalized), "
+            + "     similarity(doc.service_category_names_normalized, :queryNormalized), "
+            + "     COALESCE(ts_rank_cd(doc.search_vector, plainto_tsquery('simple', :queryTs)), 0.0)"
+            + "   ) >= :similarityThreshold "
+            + "   OR doc.search_document_normalized LIKE :queryLike "
+            + "   OR doc.rubro_slug = :querySlug "
+            + "   OR doc.category_slugs::text[] @> ARRAY[:querySlug]::text[] "
+            + "   OR doc.search_vector @@ plainto_tsquery('simple', :queryTs)"
+            + " ))";
     }
 
     private String buildSortClause(SearchQueryCriteria criteria) {
@@ -564,66 +398,63 @@ public class SearchNativeRepository {
         return sortPrefix.toString();
     }
 
-    private String buildDateMatchExpression(String availabilitySource, boolean nextAvailableAtEnabled) {
+    private String buildDateMatchExpression(String alias, String availabilitySource, boolean nextAvailableAtEnabled) {
         if ("FLAG".equalsIgnoreCase(availabilitySource)) {
             if (nextAvailableAtEnabled) {
                 return "("
-                    + "COALESCE(p.has_availability_today, false) = true "
+                    + "COALESCE(" + alias + ".has_availability_today, false) = true "
                     + "OR ("
-                    + "  p.next_available_at IS NOT NULL "
-                    + "  AND p.next_available_at >= :dateStart "
-                    + "  AND p.next_available_at < :dateEnd"
-                    + ")"
-                    + ")";
+                    + alias + ".next_available_at IS NOT NULL "
+                    + "AND " + alias + ".next_available_at >= :dateStart "
+                    + "AND " + alias + ".next_available_at < :dateEnd"
+                    + "))";
             }
-            return "COALESCE(p.has_availability_today, false) = true";
+            return "COALESCE(" + alias + ".has_availability_today, false) = true";
         }
         return "EXISTS ("
             + "SELECT 1 FROM available_slot a "
-            + "WHERE a.professional_id = p.id "
+            + "WHERE a.professional_id = " + alias + ".professional_id "
             + "AND a.status = 'AVAILABLE' "
             + "AND a.start_at >= :dateStart "
             + "AND a.start_at < :dateEnd"
             + ")";
     }
 
-    private String buildAvailableNowMatchExpression(String availabilitySource) {
+    private String buildAvailableNowMatchExpression(String alias, String availabilitySource) {
         if ("FLAG".equalsIgnoreCase(availabilitySource)) {
-            return "COALESCE(p.has_availability_today, false) = true";
+            return "COALESCE(" + alias + ".has_availability_today, false) = true";
         }
         return "EXISTS ("
             + "SELECT 1 FROM available_slot a "
-            + "WHERE a.professional_id = p.id "
+            + "WHERE a.professional_id = " + alias + ".professional_id "
             + "AND a.status = 'AVAILABLE' "
             + "AND CURRENT_TIMESTAMP >= a.start_at "
             + "AND CURRENT_TIMESTAMP < a.end_at"
             + ")";
     }
 
-    private String buildSuggestLocationClause() {
+    private String buildLocationClause(String alias) {
         return " AND ("
             + "   :city = '' "
-            + "   OR immutable_unaccent(lower(COALESCE(p.location_text, p.location, ''))) LIKE :cityLike "
-            + "   OR NOT EXISTS ("
-            + "     SELECT 1 FROM professional_profile p_city "
-            + "     WHERE p_city.active = true "
-            + "     AND immutable_unaccent(lower(COALESCE(p_city.location_text, p_city.location, ''))) LIKE :cityLike"
-            + "   )"
+            + "   OR " + alias + ".location_text_normalized LIKE :cityLike "
             + " ) "
             + " AND ("
             + "   :hasCoords = false "
             + "   OR ("
-            + "     (p.geom IS NOT NULL AND ST_DWithin(p.geom, ST_SetSRID(ST_MakePoint(:lng, :lat), 4326)::geography, :radiusMeters)) "
-            + "     OR ("
-            + "       p.latitude IS NOT NULL "
-            + "       AND p.longitude IS NOT NULL "
-            + "       AND (6371.0 * acos(least(1.0, greatest(-1.0, "
-            + "         cos(radians(:lat)) * cos(radians(p.latitude)) * cos(radians(p.longitude) - radians(:lng)) "
-            + "         + sin(radians(:lat)) * sin(radians(p.latitude)) "
-            + "       )))) <= :radiusKm"
-            + "     )"
+            + "     " + alias + ".geom IS NOT NULL AND ST_DWithin(" + alias + ".geom, ST_SetSRID(ST_MakePoint(:lng, :lat), 4326)::geography, :radiusMeters)"
             + "   )"
             + " ) ";
+    }
+
+    private String buildDistanceExpression(String alias) {
+        return "CASE "
+            + "  WHEN :hasCoords = true AND " + alias + ".geom IS NOT NULL THEN ROUND((ST_Distance(" + alias + ".geom, ST_SetSRID(ST_MakePoint(:lng, :lat), 4326)::geography) / 1000.0)::numeric, 2)::double precision "
+            + "  WHEN :hasCoords = true AND " + alias + ".latitude IS NOT NULL AND " + alias + ".longitude IS NOT NULL THEN ROUND((6371.0 * acos(least(1.0, greatest(-1.0, "
+            + "    cos(radians(:lat)) * cos(radians(" + alias + ".latitude)) * cos(radians(" + alias + ".longitude) - radians(:lng)) "
+            + "    + sin(radians(:lat)) * sin(radians(" + alias + ".latitude)) "
+            + "  ))))::numeric, 2)::double precision "
+            + "  ELSE NULL "
+            + "END";
     }
 
     private MapSqlParameterSource buildParams(SearchQueryCriteria criteria) {
@@ -637,27 +468,19 @@ public class SearchNativeRepository {
         params.addValue("queryBlank", query.isBlank());
         params.addValue("queryLike", "%" + query + "%");
         params.addValue("querySlug", SlugUtils.toSlug(criteria.query()));
+        params.addValue("queryTs", query.isBlank() ? "plura" : query);
         params.addValue("city", city);
         params.addValue("cityLike", "%" + city + "%");
         params.addValue("categorySlug", categorySlug);
-
         params.addValue("hasCoords", criteria.hasCoordinates());
         params.addValue("lat", criteria.lat());
         params.addValue("lng", criteria.lng());
         params.addValue("radiusMeters", Math.max(criteria.radiusKm(), 1d) * 1000d);
         params.addValue("radiusKm", Math.max(criteria.radiusKm(), 1d));
-
         params.addValue("dateFilter", criteria.dateFrom() != null && criteria.dateTo() != null);
-        params.addValue(
-            "dateStart",
-            criteria.dateFrom() == null ? null : criteria.dateFrom().atStartOfDay()
-        );
-        params.addValue(
-            "dateEnd",
-            criteria.dateTo() == null ? null : criteria.dateTo().plusDays(1).atStartOfDay()
-        );
+        params.addValue("dateStart", criteria.dateFrom() == null ? null : criteria.dateFrom().atStartOfDay());
+        params.addValue("dateEnd", criteria.dateTo() == null ? null : criteria.dateTo().plusDays(1).atStartOfDay());
         params.addValue("availableNow", criteria.availableNow());
-
         params.addValue("similarityThreshold", QUERY_SIMILARITY_THRESHOLD);
         params.addValue("limit", criteria.size());
         params.addValue("limitPlusOne", criteria.size() + 1);
@@ -675,6 +498,7 @@ public class SearchNativeRepository {
         params.addValue("queryBlank", query.isBlank());
         params.addValue("queryLike", "%" + query + "%");
         params.addValue("querySlug", SlugUtils.toSlug(criteria.query()));
+        params.addValue("queryTs", query.isBlank() ? "plura" : query);
         params.addValue("city", city);
         params.addValue("cityLike", "%" + city + "%");
         params.addValue("hasCoords", criteria.hasCoordinates());

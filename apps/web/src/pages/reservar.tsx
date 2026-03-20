@@ -6,6 +6,7 @@ import { useRouter } from 'next/router';
 import dynamic from 'next/dynamic';
 import Navbar from '@/components/shared/Navbar';
 import Footer from '@/components/shared/Footer';
+import { getBookingPaymentSessionMessage } from '@/lib/bookings/paymentSession';
 import {
   createPublicReservation,
   getPublicProfessionalBySlug,
@@ -454,26 +455,27 @@ export default function ReservationPage() {
       if (requiresCheckout) {
         const paymentSession = await createClientBookingPaymentSession(String(created.id));
         const hasCheckoutUrl = Boolean(paymentSession.checkoutUrl);
+        let checkoutMode: 'started' | 'failed' | 'synced' = hasCheckoutUrl ? 'started' : 'synced';
 
         if (paymentSession.checkoutUrl) {
           const redirected = redirectCheckoutWindow(checkoutWindow, paymentSession.checkoutUrl);
           if (!redirected) {
-            openCheckoutUrl(paymentSession.checkoutUrl);
+            closeCheckoutWindow(checkoutWindow);
+          }
+          const openedFallback = redirected ? true : openCheckoutUrl(paymentSession.checkoutUrl);
+          if (!redirected && !openedFallback) {
+            checkoutMode = 'failed';
           }
         } else if (checkoutWindow) {
           closeCheckoutWindow(checkoutWindow);
         }
 
-        setSaveMessage(
-          hasCheckoutUrl
-            ? 'Reserva creada. Abrimos el checkout y te dejamos en el estado de la reserva.'
-            : 'Reserva creada. El backend ya devolvió el estado actualizado de pago.',
-        );
+        setSaveMessage(getBookingPaymentSessionMessage(paymentSession));
         router.push({
           pathname: '/cliente/reservas',
           query: {
             bookingId: String(created.id),
-            checkout: hasCheckoutUrl ? 'started' : 'synced',
+            checkout: checkoutMode,
           },
         });
         return;

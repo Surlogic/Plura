@@ -101,7 +101,8 @@ public class HomeService {
 
     private List<ProfessionalHomeProfileView> loadTopProfiles() {
         Pageable limit = PageRequest.of(0, TOP_PROFESSIONALS_LIMIT);
-        List<Object[]> rankedRows = bookingRepository.findTopProfessionalIdsByStatuses(TOP_BOOKING_STATUSES, limit);
+        LocalDateTime since = LocalDate.now(appZoneId).minusMonths(3).atStartOfDay();
+        List<Object[]> rankedRows = bookingRepository.findTopProfessionalIdsByStatuses(TOP_BOOKING_STATUSES, since, limit);
 
         if (rankedRows.isEmpty()) {
             return professionalHomeGateway.findRecentActiveProfiles(0, TOP_PROFESSIONALS_LIMIT);

@@ -54,6 +54,9 @@ public interface ProfessionalProfileRepository extends JpaRepository<Professiona
 
     List<ProfessionalProfile> findByActiveTrueOrderByCreatedAtDesc(Pageable pageable);
 
+    @Query("SELECT p.id FROM ProfessionalProfile p WHERE p.active = true ORDER BY p.createdAt DESC")
+    List<Long> findActiveIdsPaged(Pageable pageable);
+
     @Query(
         """
         SELECT DISTINCT p

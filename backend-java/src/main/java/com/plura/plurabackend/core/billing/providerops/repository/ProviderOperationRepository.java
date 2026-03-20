@@ -26,6 +26,7 @@ public interface ProviderOperationRepository extends JpaRepository<ProviderOpera
         FROM ProviderOperation operation
         WHERE operation.status IN :statuses
           AND (operation.nextAttemptAt IS NULL OR operation.nextAttemptAt <= :now)
+          AND (operation.leaseUntil IS NULL OR operation.leaseUntil <= :now)
         ORDER BY operation.nextAttemptAt ASC, operation.createdAt ASC
         """
     )
@@ -104,6 +105,15 @@ public interface ProviderOperationRepository extends JpaRepository<ProviderOpera
     long countByStatus(ProviderOperationStatus status);
 
     long countByStatusAndUpdatedAtBefore(ProviderOperationStatus status, LocalDateTime updatedBefore);
+
+    @Query(
+        """
+        SELECT MIN(operation.updatedAt)
+        FROM ProviderOperation operation
+        WHERE operation.status = :status
+        """
+    )
+    LocalDateTime findOldestUpdatedAtByStatus(@Param("status") ProviderOperationStatus status);
 
     List<ProviderOperation> findByStatusOrderByUpdatedAtAsc(ProviderOperationStatus status, Pageable pageable);
 

@@ -8,8 +8,11 @@ import { AxiosHeaders } from 'axios';
 import {
   clearAuthAccessToken,
   getAuthAccessToken,
+  hasKnownAuthSession,
+  setKnownAuthSession,
   setAuthAccessToken,
 } from '@/services/session';
+import { isAuthSessionError } from '@/lib/auth/sessionErrors';
 
 const api = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000',
@@ -51,6 +54,11 @@ const isSessionMutatingAuthRoute = (url?: string) => {
     url.includes('/auth/refresh') ||
     url.includes('/auth/logout')
   );
+};
+
+const isLogoutRoute = (url?: string) => {
+  if (!url) return false;
+  return url.includes('/auth/logout');
 };
 
 const isRouteOrChild = (path: string, route: string) =>
@@ -133,9 +141,15 @@ api.interceptors.response.use(
     if (token) {
       setAuthAccessToken(token);
     } else if (isSessionMutatingAuthRoute(response.config.url)) {
-      // El token en storage es solo fallback. Si una respuesta de sesion no trae token,
-      // limpiamos ese fallback para no seguir enviando un Bearer obsoleto en paralelo a cookies nuevas.
-      clearAuthAccessToken();
+      if (isLogoutRoute(response.config.url)) {
+        clearAuthAccessToken();
+      } else {
+        setKnownAuthSession(true);
+        const currentToken = getAuthAccessToken();
+        if (currentToken) {
+          setAuthAccessToken(currentToken);
+        }
+      }
     }
     return response;
   },
@@ -154,6 +168,10 @@ api.interceptors.response.use(
         return Promise.reject(error);
       }
 
+      if (!hasKnownAuthSession()) {
+        return Promise.reject(error);
+      }
+
       if (!refreshPromise) {
         refreshPromise = authApi
           .post('/auth/refresh')
@@ -161,6 +179,8 @@ api.interceptors.response.use(
             const token = authTokenFromResponse(response.data);
             if (token) {
               setAuthAccessToken(token);
+            } else {
+              setKnownAuthSession(true);
             }
           })
           .catch((refreshError) => {
@@ -174,9 +194,12 @@ api.interceptors.response.use(
       try {
         await refreshPromise;
         return api(originalRequest);
-      } catch {
-        clearAuthAccessToken();
-        redirectToLogin();
+      } catch (refreshError) {
+        if (isAuthSessionError(refreshError)) {
+          clearAuthAccessToken();
+          redirectToLogin();
+        }
+        return Promise.reject(refreshError ?? error);
       }
     }
 

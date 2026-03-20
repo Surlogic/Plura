@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
 import type { BillingPlanDefinition } from '@/config/billingPlans';
@@ -20,7 +21,7 @@ type BillingCurrentPlanCardProps = {
   onVerifyStatus: () => void;
 };
 
-export default function BillingCurrentPlanCard({
+function BillingCurrentPlanCard({
   plan,
   amountLabel,
   statusLabel,
@@ -138,3 +139,5 @@ export default function BillingCurrentPlanCard({
     </Card>
   );
 }
+
+export default memo(BillingCurrentPlanCard);

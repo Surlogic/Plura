@@ -9,8 +9,8 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
 import {
   listPublicProfessionals,
@@ -28,6 +28,16 @@ import AgendaScreen from '../dashboard/agenda';
 import { listCategories } from '../../src/services/categories';
 import type { ServiceCategoryOption } from '../../src/types/professional';
 import { useUserLocation } from '../../src/hooks/useUserLocation';
+import { AppScreen } from '../../src/components/ui/AppScreen';
+import {
+  ActionButton,
+  EmptyState,
+  ScreenHero,
+  SectionCard,
+  SectionHeader,
+  StatusPill,
+} from '../../src/components/ui/MobileSurface';
+import { theme } from '../../src/theme';
 
 const sortOptions: Array<{ value: SearchSort; label: string }> = [
   { value: 'RELEVANCE', label: 'Relevancia' },
@@ -392,35 +402,45 @@ export default function ExploreScreen() {
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-background" edges={['top']}>
-      <View className="z-10 bg-white px-6 pb-4 pt-2 shadow-sm">
-        <Text className="mb-1 text-xs font-semibold uppercase tracking-[2px] text-gray-500">Explorar</Text>
-        <Text className="mb-4 text-2xl font-bold text-secondary">Profesionales y rubros</Text>
+    <AppScreen scroll edges={['top']} contentContainerStyle={{ paddingBottom: 120 }}>
+      <View className="px-6 pt-4">
+        <ScreenHero
+          eyebrow="Explorar"
+          title="Profesionales y rubros"
+          description="Busca por servicio, cercania o categoria con un panel mas limpio y facil de leer."
+          icon="compass-outline"
+          badges={[
+            { label: useMyLocation ? locationLabel : 'Busqueda general', tone: 'light' },
+            { label: `${filteredPlaces.length} resultados`, tone: 'light' },
+          ]}
+        />
 
-        <View className="h-12 flex-row items-center rounded-[16px] border border-secondary/10 bg-background px-4">
-          <Ionicons name="search" size={20} color="#9CA3AF" />
-          <TextInput
-            className="ml-2 flex-1 text-base text-secondary"
-            placeholder="Buscar servicios o profesionales..."
-            placeholderTextColor="#9CA3AF"
-            value={search}
-            onChangeText={setSearch}
-            returnKeyType="search"
-          />
-          {search.length > 0 ? (
-            <TouchableOpacity onPress={() => setSearch('')}>
-              <Ionicons name="close-circle" size={20} color="#9CA3AF" />
-            </TouchableOpacity>
-          ) : null}
-        </View>
+        <SectionCard style={{ marginTop: 16, paddingVertical: 16 }}>
+          <View className="flex-row items-center rounded-[18px] border border-secondary/10 bg-background px-4 py-1">
+            <Ionicons name="search" size={20} color={theme.colors.inkFaint} />
+            <TextInput
+              className="ml-2 flex-1 text-base text-secondary"
+              placeholder="Buscar servicios o profesionales..."
+              placeholderTextColor={theme.colors.inkFaint}
+              value={search}
+              onChangeText={setSearch}
+              returnKeyType="search"
+            />
+            {search.length > 0 ? (
+              <TouchableOpacity onPress={() => setSearch('')}>
+                <Ionicons name="close-circle" size={20} color={theme.colors.inkFaint} />
+              </TouchableOpacity>
+            ) : null}
+          </View>
+        </SectionCard>
 
-        <View className="mt-3 rounded-2xl border border-secondary/10 bg-background p-4">
+        <SectionCard style={{ marginTop: 16 }}>
           <View className="flex-row items-start">
             <View className="h-11 w-11 items-center justify-center rounded-full bg-primary/12">
               <Ionicons
                 name={hasCoordinates ? 'locate' : 'location-outline'}
                 size={20}
-                color="#0A7A43"
+                color={theme.colors.primary}
               />
             </View>
             <View className="ml-3 flex-1">
@@ -436,37 +456,39 @@ export default function ExploreScreen() {
           </View>
 
           <View className="mt-4 flex-row" style={{ gap: 10 }}>
-            <TouchableOpacity
+            <ActionButton
+              label="Buscar cercanos"
               onPress={() => void runAdvancedSearch({ nearby: true, nextSort: 'DISTANCE' })}
-              className="flex-1 items-center justify-center rounded-full bg-secondary px-4 py-3"
-            >
-              <Text className="text-sm font-bold text-white">Buscar cercanos</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              onPress={() => void (hasCoordinates ? refreshLocation() : requestLocationAccess())}
-              className="flex-1 items-center justify-center rounded-full border border-secondary/10 bg-white px-4 py-3"
-            >
-              <Text className="text-sm font-bold text-secondary">
-                {isRefreshingLocation
+              style={{ flex: 1 }}
+            />
+            <ActionButton
+              label={
+                isRefreshingLocation
                   ? 'Actualizando...'
                   : hasCoordinates
                     ? 'Actualizar'
-                    : 'Activar'}
-              </Text>
-            </TouchableOpacity>
+                    : 'Activar'
+              }
+              onPress={() => void (hasCoordinates ? refreshLocation() : requestLocationAccess())}
+              tone="soft"
+              style={{ flex: 1 }}
+            />
           </View>
-        </View>
+        </SectionCard>
 
         <TouchableOpacity
           onPress={() => setShowAdvanced((prev) => !prev)}
-          className="mt-3 flex-row items-center justify-between rounded-2xl border border-secondary/10 px-4 py-3"
+          className="mt-3 flex-row items-center justify-between rounded-[22px] border border-secondary/10 bg-white px-5 py-4"
         >
-          <Text className="text-sm font-semibold text-secondary">Filtros avanzados</Text>
-          <Ionicons name={showAdvanced ? 'chevron-up' : 'chevron-down'} size={16} color="#0F172A" />
+          <View>
+            <Text className="text-[11px] font-bold uppercase tracking-[2px] text-faint">Filtros</Text>
+            <Text className="mt-1 text-sm font-semibold text-secondary">Filtros avanzados</Text>
+          </View>
+          <Ionicons name={showAdvanced ? 'chevron-up' : 'chevron-down'} size={16} color={theme.colors.secondary} />
         </TouchableOpacity>
 
         {showAdvanced ? (
-          <View className="mt-3 rounded-2xl border border-secondary/10 bg-background p-4">
+          <SectionCard style={{ marginTop: 12 }}>
             <Text className="text-xs uppercase tracking-[2px] text-gray-500">Tipo</Text>
             <View className="mt-2 flex-row" style={{ gap: 8 }}>
               {(['SERVICIO', 'PROFESIONAL', 'RUBRO'] as SearchType[]).map((type) => (
@@ -525,126 +547,127 @@ export default function ExploreScreen() {
             <TextInput
               className="mt-4 h-11 rounded-xl border border-secondary/10 bg-white px-3 text-secondary"
               placeholder="Fecha YYYY-MM-DD (opcional)"
+              placeholderTextColor={theme.colors.inkFaint}
               value={searchDate}
               onChangeText={setSearchDate}
             />
 
-            <TouchableOpacity
+            <ActionButton
+              label="Aplicar filtros"
               onPress={() => void runAdvancedSearch()}
-              className="mt-4 h-11 items-center justify-center rounded-full bg-secondary"
-            >
-              <Text className="text-sm font-bold text-white">Aplicar filtros</Text>
-            </TouchableOpacity>
-          </View>
+              style={{ marginTop: 16 }}
+            />
+          </SectionCard>
         ) : null}
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
-        <View className="py-4">
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 24, gap: 8 }}>
-            {filterOptions.map((filter) => {
-              const isActive = activeFilter === filter.slug;
-              return (
-                <TouchableOpacity
-                  key={filter.slug}
-                  onPress={() => setActiveFilter(filter.slug)}
-                  className={`rounded-full border px-4 py-2 ${
-                    isActive ? 'border-secondary bg-secondary' : 'border-secondary/10 bg-white'
-                  }`}
-                >
-                  <Text className={`text-sm font-semibold ${isActive ? 'text-white' : 'text-secondary'}`}>
-                    {filter.name}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-          </ScrollView>
+      <View className="mt-6 px-6">
+        <SectionHeader eyebrow="Resultados" title={`${filteredPlaces.length} resultados`} />
+        <View className="mt-3 flex-row items-center justify-between">
+          {useMyLocation ? (
+            <StatusPill label={locationLabel} tone="primary" />
+          ) : activeFilter !== 'all' ? (
+            <StatusPill label={activeFilterLabel} tone="neutral" />
+          ) : (
+            <View />
+          )}
         </View>
+      </View>
 
-        <View className="mt-2 px-6">
-          <View className="mb-2 flex-row items-center justify-between">
-            <Text className="text-sm font-semibold uppercase tracking-[2px] text-gray-500">
-              Resultados ({filteredPlaces.length})
-            </Text>
-            {useMyLocation ? (
-              <View className="rounded-full bg-primary/10 px-3 py-1">
-                <Text className="text-[11px] font-bold text-primary">{locationLabel}</Text>
-              </View>
-            ) : activeFilter !== 'all' ? (
-              <Text className="text-xs font-semibold text-primary">{activeFilterLabel}</Text>
-            ) : null}
-          </View>
-
-          {isLoading ? (
-            <View className="items-center py-10">
-              <ActivityIndicator color="#0A7A43" />
-            </View>
-          ) : null}
-
-          {!isLoading && filteredPlaces.length === 0 ? (
-            <View className="rounded-[24px] border border-dashed border-secondary/15 bg-white p-6">
-              <Text className="text-center text-sm text-gray-500">
-                No encontramos resultados con esos filtros. Prueba ampliando el radio, cambiando rubro o texto de busqueda.
-              </Text>
-            </View>
-          ) : null}
-
-          {!isLoading && filteredPlaces.map((place) => {
-            const distanceLabel = formatDistance(place.distanceKm);
-
+      <View className="mt-4">
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 24, gap: 8 }}>
+          {filterOptions.map((filter) => {
+            const isActive = activeFilter === filter.slug;
             return (
               <TouchableOpacity
-                key={place.id}
-                activeOpacity={0.9}
-                onPress={() => router.push(`/profesional/${place.slug}`)}
-                className="mb-4 rounded-[24px] border border-secondary/5 bg-white p-4 shadow-sm"
+                key={filter.slug}
+                onPress={() => setActiveFilter(filter.slug)}
+                className={`rounded-full border px-4 py-2 ${
+                  isActive ? 'border-secondary bg-secondary' : 'border-secondary/10 bg-white'
+                }`}
               >
-                <View className="mb-4 h-40 w-full items-center justify-center rounded-[20px] bg-[#E9EEF2]">
-                  <Ionicons name="image-outline" size={40} color="#9CA3AF" />
-                </View>
-
-                <View className="flex-row items-start justify-between">
-                  <View className="flex-1 pr-3">
-                    <Text className="text-lg font-bold text-secondary">{place.fullName}</Text>
-                    <Text className="mt-1 text-sm text-gray-500">
-                      {place.rubro || 'Profesional'}
-                    </Text>
-                  </View>
-                  <TouchableOpacity
-                    onPress={async () => setFavoriteSlugs(await toggleFavoriteProfessionalSlug(place.slug))}
-                    className="h-8 w-8 items-center justify-center rounded-full bg-red-50"
-                  >
-                    <Ionicons
-                      name={favoriteSlugs.includes(place.slug) ? 'heart' : 'heart-outline'}
-                      size={15}
-                      color="#EF4444"
-                    />
-                  </TouchableOpacity>
-                </View>
-
-                <View className="mt-3 flex-row items-center justify-between">
-                  <View className="flex-1 pr-3">
-                    <View className="flex-row items-center">
-                      <Ionicons name="location-outline" size={14} color="#0A7A43" />
-                      <Text className="ml-1 text-sm font-bold text-secondary">
-                        {place.location || 'Sin ubicacion'}
-                      </Text>
-                    </View>
-                    <Text className="mt-2 text-sm text-gray-500">
-                      {place.headline || 'Agenda disponible'}
-                    </Text>
-                  </View>
-                  {distanceLabel ? (
-                    <View className="rounded-full bg-primary/10 px-3 py-1">
-                      <Text className="text-[11px] font-bold text-primary">{distanceLabel}</Text>
-                    </View>
-                  ) : null}
-                </View>
+                <Text className={`text-sm font-semibold ${isActive ? 'text-white' : 'text-secondary'}`}>
+                  {filter.name}
+                </Text>
               </TouchableOpacity>
             );
           })}
-        </View>
-      </ScrollView>
-    </SafeAreaView>
+        </ScrollView>
+      </View>
+
+      <View className="mt-4 px-6">
+        {isLoading ? (
+          <View className="items-center py-10">
+            <ActivityIndicator color={theme.colors.primary} />
+          </View>
+        ) : null}
+
+        {!isLoading && filteredPlaces.length === 0 ? (
+          <EmptyState
+            title="No encontramos resultados"
+            description="Prueba ampliando el radio, cambiando rubro o ajustando el texto de busqueda."
+            icon="search-outline"
+          />
+        ) : null}
+
+        {!isLoading && filteredPlaces.map((place) => {
+          const distanceLabel = formatDistance(place.distanceKm);
+
+          return (
+            <TouchableOpacity
+              key={place.id}
+              activeOpacity={0.9}
+              onPress={() => router.push(`/profesional/${place.slug}`)}
+              className="mb-4 rounded-[24px] border border-secondary/5 bg-white p-4 shadow-sm"
+            >
+              <LinearGradient
+                colors={theme.gradients.hero}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                className="mb-4 h-40 w-full items-center justify-center rounded-[20px]"
+              >
+                <Ionicons name="sparkles-outline" size={32} color="#FFFFFF" />
+              </LinearGradient>
+
+              <View className="flex-row items-start justify-between">
+                <View className="flex-1 pr-3">
+                  <Text className="text-lg font-bold text-secondary">{place.fullName}</Text>
+                  <Text className="mt-1 text-sm text-gray-500">
+                    {place.rubro || 'Profesional'}
+                  </Text>
+                </View>
+                <TouchableOpacity
+                  onPress={async () => setFavoriteSlugs(await toggleFavoriteProfessionalSlug(place.slug))}
+                  className="h-9 w-9 items-center justify-center rounded-full bg-red-50"
+                >
+                  <Ionicons
+                    name={favoriteSlugs.includes(place.slug) ? 'heart' : 'heart-outline'}
+                    size={16}
+                    color="#EF4444"
+                  />
+                </TouchableOpacity>
+              </View>
+
+              <View className="mt-3 flex-row items-center justify-between">
+                <View className="flex-1 pr-3">
+                  <View className="flex-row items-center">
+                    <Ionicons name="location-outline" size={14} color={theme.colors.primary} />
+                    <Text className="ml-1 text-sm font-bold text-secondary">
+                      {place.location || 'Sin ubicacion'}
+                    </Text>
+                  </View>
+                  <Text className="mt-2 text-sm text-gray-500">
+                    {place.headline || 'Agenda disponible'}
+                  </Text>
+                </View>
+                {distanceLabel ? (
+                  <StatusPill label={distanceLabel} tone="primary" />
+                ) : null}
+              </View>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+    </AppScreen>
   );
 }

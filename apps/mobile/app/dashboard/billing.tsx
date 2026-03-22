@@ -2,12 +2,10 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   ActivityIndicator,
   AppState,
-  ScrollView,
   Text,
   TouchableOpacity,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { billingPlans, type PaidBillingUiPlanId } from '../../src/config/billingPlans';
 import {
   cancelBillingSubscription,
@@ -26,6 +24,8 @@ import {
 } from '../../src/services/billing';
 import { useProfessionalProfileContext } from '../../src/context/ProfessionalProfileContext';
 import { openMercadoPagoInAppBrowser } from '../../src/services/mercadoPagoBrowser';
+import { AppScreen } from '../../src/components/ui/AppScreen';
+import { MessageCard, ScreenHero, SectionCard } from '../../src/components/ui/MobileSurface';
 
 export default function BillingScreen() {
   const { profile, refreshProfile } = useProfessionalProfileContext();
@@ -137,21 +137,28 @@ export default function BillingScreen() {
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-background" edges={['top']}>
-      <ScrollView contentContainerStyle={{ padding: 24, paddingBottom: 60 }}>
-        <Text className="text-3xl font-bold text-secondary">Facturacion</Text>
-        <Text className="mt-2 text-sm text-gray-500">Plan profesional y configuracion de cobros.</Text>
+    <AppScreen scroll edges={['top']} contentContainerStyle={{ padding: 24, paddingBottom: 60 }}>
+        <ScreenHero
+          eyebrow="Facturacion"
+          title="Plan y cobros"
+          description="Gestiona tu suscripcion y la conexion con Mercado Pago desde una vista mas clara."
+          icon="card-outline"
+          badges={[
+            { label: currentPlan.label, tone: 'light' },
+            { label: currentStatusLabel, tone: 'light' },
+          ]}
+        />
 
-        <View className="mt-5 rounded-[22px] border border-secondary/10 bg-white p-5">
+        <SectionCard style={{ marginTop: 20 }}>
           <Text className="text-xs font-semibold uppercase tracking-[2px] text-gray-500">Estado</Text>
           <Text className="mt-2 text-lg font-bold text-secondary">Plan actual: {currentPlan.label}</Text>
           <Text className="mt-1 text-sm text-gray-500">Estado: {currentStatusLabel}</Text>
           <Text className="mt-1 text-sm text-gray-500">
             Monto: {currentAmountLabel}
           </Text>
-        </View>
+        </SectionCard>
 
-        <View className="mt-5 rounded-[22px] border border-secondary/10 bg-white p-5">
+        <SectionCard style={{ marginTop: 20 }}>
           <Text className="text-xs font-semibold uppercase tracking-[2px] text-gray-500">Planes</Text>
 
           {billingPlans.map((plan) => (
@@ -217,9 +224,9 @@ export default function BillingScreen() {
               <Text className="font-bold text-red-600">Cancelar suscripcion</Text>
             </TouchableOpacity>
           ) : null}
-        </View>
+        </SectionCard>
 
-        <View className="mt-5 rounded-[22px] border border-secondary/10 bg-white p-5">
+        <SectionCard style={{ marginTop: 20 }}>
           <Text className="text-xs font-semibold uppercase tracking-[2px] text-gray-500">
             Cobros de reservas con Mercado Pago
           </Text>
@@ -300,14 +307,11 @@ export default function BillingScreen() {
               </Text>
             </>
           )}
-        </View>
+        </SectionCard>
 
         {message ? (
-          <View className="mt-4 rounded-xl border border-secondary/10 bg-white p-3">
-            <Text className="text-xs text-secondary">{message}</Text>
-          </View>
+          <MessageCard message={message} tone="primary" style={{ marginTop: 16 }} />
         ) : null}
-      </ScrollView>
-    </SafeAreaView>
+    </AppScreen>
   );
 }

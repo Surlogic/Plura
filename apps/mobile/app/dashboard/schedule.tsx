@@ -1,11 +1,12 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, ScrollView, Switch, Text, TextInput, TouchableOpacity, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { ActivityIndicator, Switch, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import {
   getProfessionalSchedule,
   updateProfessionalSchedule,
 } from '../../src/services/professionalConfig';
 import type { WorkDayKey, WorkDaySchedule, ProfessionalSchedule } from '../../src/types/professional';
+import { AppScreen } from '../../src/components/ui/AppScreen';
+import { MessageCard, ScreenHero, SectionCard } from '../../src/components/ui/MobileSurface';
 
 const DAY_LABELS: Record<WorkDayKey, string> = {
   mon: 'Lunes',
@@ -61,13 +62,17 @@ export default function ScheduleScreen() {
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-background" edges={['top']}>
-      <ScrollView contentContainerStyle={{ padding: 24, paddingBottom: 60 }}>
-        <Text className="text-3xl font-bold text-secondary">Horarios</Text>
-        <Text className="mt-2 text-sm text-gray-500">Define disponibilidad semanal de tu agenda.</Text>
+    <AppScreen scroll edges={['top']} contentContainerStyle={{ padding: 24, paddingBottom: 60 }}>
+        <ScreenHero
+          eyebrow="Horarios"
+          title="Disponibilidad semanal"
+          description="Define la agenda semanal con una lectura mas ordenada y facil de ajustar."
+          icon="time-outline"
+          badges={[{ label: `${days.filter((day) => day.enabled).length} dias activos`, tone: 'light' }]}
+        />
 
         {days.map((day, index) => (
-          <View key={day.day} className="mt-4 rounded-[22px] bg-white p-5 border border-secondary/10">
+          <SectionCard key={day.day} style={{ marginTop: 16 }}>
             <View className="flex-row items-center justify-between">
               <Text className="text-base font-bold text-secondary">{DAY_LABELS[day.day]}</Text>
               <Switch
@@ -118,10 +123,10 @@ export default function ScheduleScreen() {
                 }}
               />
             </View>
-          </View>
+          </SectionCard>
         ))}
 
-        {message ? <Text className="mt-4 text-sm text-secondary">{message}</Text> : null}
+        {message ? <MessageCard message={message} tone={message.includes('correctamente') ? 'success' : 'primary'} style={{ marginTop: 16 }} /> : null}
 
         <TouchableOpacity
           disabled={!canSave}
@@ -145,7 +150,6 @@ export default function ScheduleScreen() {
         >
           {isSaving ? <ActivityIndicator color="#fff" /> : <Text className="font-bold text-white">Guardar agenda</Text>}
         </TouchableOpacity>
-      </ScrollView>
-    </SafeAreaView>
+    </AppScreen>
   );
 }

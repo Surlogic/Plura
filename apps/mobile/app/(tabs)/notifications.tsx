@@ -8,6 +8,14 @@ import {
 } from '../../src/services/clientFeatures';
 import { useProfessionalProfileContext } from '../../src/context/ProfessionalProfileContext';
 import { usePushNotifications } from '../../src/hooks/usePushNotifications';
+import { AppScreen } from '../../src/components/ui/AppScreen';
+import {
+  ActionButton,
+  ScreenHero,
+  SectionCard,
+  StatusPill,
+} from '../../src/components/ui/MobileSurface';
+import { theme } from '../../src/theme';
 
 export default function NotificationsScreen() {
   const { role, profile } = useProfessionalProfileContext();
@@ -74,17 +82,20 @@ export default function NotificationsScreen() {
       : 'Pendientes';
 
   return (
-    <SafeAreaView className="flex-1 bg-background" edges={['top']}>
-      <ScrollView contentContainerStyle={{ padding: 24, paddingBottom: 120 }}>
-        <Text className="text-xs font-bold uppercase tracking-[2px] text-gray-500">Actividad</Text>
-        <Text className="mt-2 text-3xl font-bold text-secondary">Notificaciones</Text>
-        <Text className="mt-2 text-sm text-gray-500">
-          {role === 'professional'
-            ? 'Alertas del panel profesional y estado de la cuenta.'
-            : 'Recordatorios y novedades de tu cuenta.'}
-        </Text>
+    <AppScreen scroll edges={['top']} contentContainerStyle={{ padding: 24, paddingBottom: 120 }}>
+        <ScreenHero
+          eyebrow="Actividad"
+          title="Notificaciones"
+          description={
+            role === 'professional'
+              ? 'Alertas del panel profesional y estado de la cuenta.'
+              : 'Recordatorios y novedades de tu cuenta.'
+          }
+          icon="notifications-outline"
+          badges={[{ label: `${items.length} items`, tone: 'light' }]}
+        />
 
-        <View className="mt-6 rounded-[24px] border border-secondary/10 bg-white p-5 shadow-sm">
+        <SectionCard style={{ marginTop: 24 }}>
           <View className="flex-row items-start justify-between">
             <View className="flex-1 pr-3">
               <Text className="text-xs font-bold uppercase tracking-[2px] text-gray-500">
@@ -97,66 +108,54 @@ export default function NotificationsScreen() {
                 Cuando esten activas podremos usar este canal para reservas confirmadas, cancelaciones, recordatorios y promos.
               </Text>
             </View>
-            <View className={`rounded-full px-3 py-1 ${
-              arePushNotificationsEnabled
-                ? 'bg-emerald-50'
-                : pushSettings.permissionStatus === 'denied'
-                  ? 'bg-amber-50'
-                  : 'bg-slate-100'
-            }`}>
-              <Text className={`text-xs font-bold ${
+            <StatusPill
+              label={pushStatusLabel}
+              tone={
                 arePushNotificationsEnabled
-                  ? 'text-emerald-700'
+                  ? 'success'
                   : pushSettings.permissionStatus === 'denied'
-                    ? 'text-amber-700'
-                    : 'text-slate-700'
-              }`}>
-                {pushStatusLabel}
-              </Text>
-            </View>
+                    ? 'warning'
+                    : 'neutral'
+              }
+            />
           </View>
 
           {isLoadingPushState ? (
             <View className="mt-4 items-center">
-              <ActivityIndicator color="#0A7A43" />
+              <ActivityIndicator color={theme.colors.primary} />
             </View>
           ) : (
             <View className="mt-4 flex-row" style={{ gap: 10 }}>
               {arePushNotificationsEnabled ? (
-                <TouchableOpacity
+                <ActionButton
                   onPress={() => void disablePush()}
-                  className="flex-1 items-center justify-center rounded-full border border-secondary/10 bg-background px-4 py-3"
-                >
-                  <Text className="text-sm font-bold text-secondary">
-                    {isRefreshingPushState ? 'Guardando...' : 'Silenciar en app'}
-                  </Text>
-                </TouchableOpacity>
+                  label={isRefreshingPushState ? 'Guardando...' : 'Silenciar en app'}
+                  tone="soft"
+                  style={{ flex: 1 }}
+                />
               ) : (
-                <TouchableOpacity
+                <ActionButton
                   onPress={() => void requestPushPermission()}
-                  className="flex-1 items-center justify-center rounded-full bg-secondary px-4 py-3"
-                >
-                  <Text className="text-sm font-bold text-white">
-                    {isRefreshingPushState ? 'Activando...' : 'Activar notificaciones'}
-                  </Text>
-                </TouchableOpacity>
+                  label={isRefreshingPushState ? 'Activando...' : 'Activar notificaciones'}
+                  style={{ flex: 1 }}
+                />
               )}
 
               {pushSettings.permissionStatus === 'denied' && !pushSettings.canAskAgain ? (
-                <TouchableOpacity
+                <ActionButton
                   onPress={() => void openDeviceSettings()}
-                  className="flex-1 items-center justify-center rounded-full border border-secondary/10 bg-white px-4 py-3"
-                >
-                  <Text className="text-sm font-bold text-secondary">Abrir ajustes</Text>
-                </TouchableOpacity>
+                  label="Abrir ajustes"
+                  tone="secondary"
+                  style={{ flex: 1 }}
+                />
               ) : null}
             </View>
           )}
-        </View>
+        </SectionCard>
 
         {isLoading ? (
           <View className="py-16 items-center">
-            <ActivityIndicator color="#0A7A43" />
+            <ActivityIndicator color={theme.colors.primary} />
           </View>
         ) : null}
 
@@ -180,7 +179,6 @@ export default function NotificationsScreen() {
             <Text className="mt-3 text-sm text-gray-500 leading-5">{item.body}</Text>
           </View>
         ))}
-      </ScrollView>
-    </SafeAreaView>
+    </AppScreen>
   );
 }

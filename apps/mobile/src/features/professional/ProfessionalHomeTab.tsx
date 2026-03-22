@@ -7,6 +7,13 @@ import { router } from 'expo-router';
 import EmailVerificationCard from '../../components/auth/EmailVerificationCard';
 import { useProfessionalProfileContext } from '../../context/ProfessionalProfileContext';
 import { theme } from '../../theme';
+import { AppScreen } from '../../components/ui/AppScreen';
+import {
+  ActionButton,
+  ScreenHero,
+  SectionCard,
+  StatusPill,
+} from '../../components/ui/MobileSurface';
 
 const quickLinks = [
   { key: 'agenda', title: 'Agenda', subtitle: 'Turnos del dia y acciones rapidas', icon: 'calendar-outline' as const, color: theme.colors.primary, route: '/dashboard/agenda' },
@@ -31,32 +38,28 @@ export function ProfessionalHomeTab() {
   ];
 
   return (
-    <SafeAreaView className="flex-1 bg-background">
-      <ScrollView contentContainerStyle={{ padding: 24, paddingBottom: 120 }}>
-        <LinearGradient colors={theme.gradients.heroElevated} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} className="rounded-[30px] p-6">
-          <Text className="text-xs font-bold uppercase tracking-[2px] text-white/75">Panel profesional</Text>
-          <Text className="mt-2 text-3xl font-bold text-white">Hola, {profile.fullName}</Text>
-          <Text className="mt-2 text-sm leading-6 text-white/80">
-            Desde aqui gestionas el negocio y tambien puedes revisar como se ve tu pagina publica en mobile.
-          </Text>
-
-          <View className="mt-5 flex-row flex-wrap" style={{ gap: 10 }}>
-            <View className="rounded-full bg-white/15 px-4 py-2"><Text className="text-xs font-semibold text-white">Plan {profile.professionalPlan || 'BASIC'}</Text></View>
-            <View className="rounded-full bg-white/15 px-4 py-2"><Text className="text-xs font-semibold text-white">{profile.rubro || 'Profesional'}</Text></View>
-            {profile.slug ? <View className="rounded-full bg-white/15 px-4 py-2"><Text className="text-xs font-semibold text-white">@{profile.slug}</Text></View> : null}
-          </View>
-
-          <View className="mt-5 flex-row" style={{ gap: 10 }}>
-            {publicPageRoute ? (
-              <TouchableOpacity onPress={() => router.push(publicPageRoute as never)} className="flex-1 rounded-full bg-white px-4 py-3">
-                <Text className="text-center font-bold text-secondary">Ver pagina publica</Text>
-              </TouchableOpacity>
-            ) : null}
-            <TouchableOpacity onPress={() => router.push('/dashboard/business-profile')} className="flex-1 rounded-full border border-white/20 bg-white/10 px-4 py-3">
-              <Text className="text-center font-bold text-white">Editar negocio</Text>
-            </TouchableOpacity>
-          </View>
-        </LinearGradient>
+    <AppScreen scroll edges={['top']} contentContainerStyle={{ padding: 24, paddingBottom: 120 }}>
+        <ScreenHero
+          eyebrow="Panel profesional"
+          title={`Hola, ${profile.fullName}`}
+          description="Desde aqui gestionas el negocio y tambien puedes revisar como se ve tu pagina publica en mobile."
+          icon="briefcase-outline"
+          badges={[
+            { label: `Plan ${profile.professionalPlan || 'BASIC'}`, tone: 'light' },
+            { label: profile.rubro || 'Profesional', tone: 'light' },
+            ...(profile.slug ? [{ label: `@${profile.slug}`, tone: 'light' as const }] : []),
+          ]}
+          primaryAction={publicPageRoute ? {
+            label: 'Ver pagina publica',
+            onPress: () => router.push(publicPageRoute as never),
+            tone: 'secondary',
+          } : undefined}
+          secondaryAction={{
+            label: 'Editar negocio',
+            onPress: () => router.push('/dashboard/business-profile'),
+            tone: 'light',
+          }}
+        />
 
         {!profile.emailVerified ? (
           <View className="mt-6">
@@ -64,22 +67,24 @@ export function ProfessionalHomeTab() {
           </View>
         ) : null}
 
-        <View className="mt-6 rounded-[28px] border border-secondary/8 bg-white p-5 shadow-sm">
+        <SectionCard style={{ marginTop: 24 }}>
           <Text className="text-xs font-bold uppercase tracking-[2px] text-gray-500">Resumen del negocio</Text>
           <View className="mt-4 flex-row flex-wrap justify-between">
             {spotlightItems.map((item) => (
               <View key={item.key} className="mb-4 w-[48%] rounded-[22px] bg-background p-4">
                 <Text className="text-[11px] font-bold uppercase tracking-[1px] text-gray-500">{item.label}</Text>
                 <Text className="mt-2 text-base font-bold text-secondary">{item.value}</Text>
-                <View className={`mt-3 self-start rounded-full px-3 py-1 ${item.tone}`}>
-                  <Text className="text-[11px] font-semibold">{item.key === 'page' && publicPageRoute ? 'Activa' : item.key === 'page' ? 'Pendiente' : 'Visible'}</Text>
-                </View>
+                <StatusPill
+                  label={item.key === 'page' && publicPageRoute ? 'Activa' : item.key === 'page' ? 'Pendiente' : 'Visible'}
+                  tone={item.key === 'page' && !publicPageRoute ? 'warning' : item.key === 'page' ? 'primary' : 'neutral'}
+                  style={{ marginTop: 12 }}
+                />
               </View>
             ))}
           </View>
-        </View>
+        </SectionCard>
 
-        <View className="mt-6 rounded-[28px] border border-secondary/8 bg-white p-5 shadow-sm">
+        <SectionCard style={{ marginTop: 24 }}>
           <Text className="text-xs font-bold uppercase tracking-[2px] text-gray-500">Gestion</Text>
           <Text className="mt-2 text-2xl font-bold text-secondary">Accesos del profesional</Text>
           <View className="mt-5 flex-row flex-wrap justify-between">
@@ -93,8 +98,7 @@ export function ProfessionalHomeTab() {
               </TouchableOpacity>
             ))}
           </View>
-        </View>
-      </ScrollView>
-    </SafeAreaView>
+        </SectionCard>
+    </AppScreen>
   );
 }

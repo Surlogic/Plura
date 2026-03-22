@@ -16,6 +16,15 @@ import { AppScreen } from '../../src/components/ui/AppScreen';
 import { theme } from '../../src/theme';
 import { useUserLocation } from '../../src/hooks/useUserLocation';
 import { usePushNotifications } from '../../src/hooks/usePushNotifications';
+import {
+  ActionButton,
+  EmptyState,
+  MessageCard,
+  ScreenHero,
+  SectionCard,
+  SectionHeader,
+  StatusPill,
+} from '../../src/components/ui/MobileSurface';
 
 export default function HomeScreen() {
   const { role, profile, clientProfile } = useProfessionalProfileContext();
@@ -118,41 +127,49 @@ export default function HomeScreen() {
   return (
     <AppScreen scroll contentContainerStyle={{ paddingBottom: 40 }}>
         <View className="px-6 pt-6 pb-4">
-          <View className="mb-6 flex-row items-center justify-between">
-            <View className="flex-1 pr-4">
-              <Text className="text-sm font-semibold uppercase tracking-[2px] text-faint">
-                Inicio cliente
-              </Text>
-              <Text className="mt-1 text-2xl font-bold text-secondary">
-                Hola, {displayName}
-              </Text>
-              <Text className="mt-2 text-sm leading-6 text-muted">
-                Descubre rubros, retoma tu proxima reserva y encuentra profesionales activos.
-              </Text>
-            </View>
+          <ScreenHero
+            eyebrow="Inicio cliente"
+            title={`Hola, ${displayName}`}
+            description="Descubre rubros, retoma tu proxima reserva y encuentra profesionales activos con una interfaz mucho mas clara."
+            icon="sparkles-outline"
+            badges={[
+              { label: hasCoordinates ? locationLabel : 'Ubicacion pendiente', tone: hasCoordinates ? 'light' : 'warning' },
+              { label: arePushNotificationsEnabled ? 'Alertas activas' : 'Alertas pendientes', tone: 'light' },
+            ]}
+            primaryAction={{
+              label: 'Explorar',
+              onPress: () => router.push('/(tabs)/explore'),
+              tone: 'secondary',
+            }}
+            secondaryAction={{
+              label: 'Alertas',
+              onPress: () => router.push('/(tabs)/notifications'),
+              tone: 'light',
+            }}
+          />
+
+          <SectionCard style={{ marginTop: 16, paddingVertical: 16 }}>
             <TouchableOpacity
-              className="h-12 w-12 items-center justify-center rounded-full bg-backgroundSoft shadow-sm"
-              onPress={() => router.push('/(tabs)/notifications')}
+              activeOpacity={0.9}
+              onPress={() => router.push('/(tabs)/explore')}
+              className="flex-row items-center"
             >
-              <Ionicons name="notifications-outline" size={24} color={theme.colors.ink} />
+              <View className="h-11 w-11 items-center justify-center rounded-full bg-backgroundSoft">
+                <Ionicons name="search" size={20} color={theme.colors.secondary} />
+              </View>
+              <View className="ml-3 flex-1">
+                <Text className="text-[11px] font-bold uppercase tracking-[2px] text-faint">
+                  Busqueda rapida
+                </Text>
+                <Text className="mt-1 text-base font-semibold text-secondary">
+                  Buscar servicios, rubros o locales
+                </Text>
+              </View>
+              <StatusPill label="Explorar" tone="primary" />
             </TouchableOpacity>
-          </View>
+          </SectionCard>
 
-          <TouchableOpacity
-            activeOpacity={0.9}
-            onPress={() => router.push('/(tabs)/explore')}
-            className="h-14 flex-row items-center rounded-full border border-secondary/5 bg-white px-5 shadow-sm"
-          >
-            <Ionicons name="search" size={20} color={theme.colors.inkFaint} />
-            <Text className="ml-3 flex-1 text-base text-faint">
-              Buscar servicios, rubros, locales...
-            </Text>
-            <View className="rounded-full bg-primary/10 px-3 py-1.5">
-              <Text className="text-xs font-bold text-primary">Explorar</Text>
-            </View>
-          </TouchableOpacity>
-
-          <View className="mt-4 rounded-[24px] border border-secondary/10 bg-white p-4 shadow-sm">
+          <SectionCard style={{ marginTop: 16 }}>
             <View className="flex-row items-start">
               <View className="h-11 w-11 items-center justify-center rounded-full bg-primary/12">
                 <Ionicons name={hasCoordinates ? 'locate' : 'location-outline'} size={20} color={theme.colors.primary} />
@@ -170,72 +187,60 @@ export default function HomeScreen() {
             </View>
 
             <View className="mt-4 flex-row" style={{ gap: 10 }}>
-              <TouchableOpacity
+              <ActionButton
+                label="Ver cercanos"
                 onPress={() => void handleOpenNearby()}
-                className="flex-1 items-center justify-center rounded-full bg-secondary px-4 py-3"
-              >
-                <Text className="text-sm font-bold text-white">Ver cercanos</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={() => void (hasCoordinates ? refreshLocation() : requestLocationAccess())}
-                className="flex-1 items-center justify-center rounded-full border border-secondary/10 bg-background px-4 py-3"
-              >
-                <Text className="text-sm font-bold text-secondary">
-                  {isRefreshingLocation
+                style={{ flex: 1 }}
+              />
+              <ActionButton
+                label={
+                  isRefreshingLocation
                     ? 'Actualizando...'
                     : hasCoordinates
                       ? 'Actualizar'
-                      : 'Usar mi ubicacion'}
-                </Text>
-              </TouchableOpacity>
+                      : 'Usar mi ubicacion'
+                }
+                onPress={() => void (hasCoordinates ? refreshLocation() : requestLocationAccess())}
+                tone="soft"
+                style={{ flex: 1 }}
+              />
             </View>
-          </View>
+          </SectionCard>
 
           {shouldShowPushPrompt ? (
-            <View className="mt-4 rounded-[24px] bg-secondary p-4 shadow-sm">
-              <Text className="text-xs font-bold uppercase tracking-[2px] text-white/75">
-                Notificaciones
-              </Text>
-              <Text className="mt-2 text-lg font-bold text-white">
-                Activa avisos de reservas y promociones
-              </Text>
-              <Text className="mt-2 text-sm leading-6 text-white/80">
-                Asi podemos avisarte cuando una reserva se confirma, cambia, se cancela o aparece una promo.
-              </Text>
-
-              <TouchableOpacity
-                onPress={() => void requestPushPermission()}
-                className="mt-4 self-start rounded-full bg-white px-5 py-2.5"
-              >
-                <Text className="text-sm font-bold text-secondary">
-                  {isRefreshingPush ? 'Activando...' : 'Activar notificaciones'}
-                </Text>
-              </TouchableOpacity>
-            </View>
+            <ScreenHero
+              eyebrow="Notificaciones"
+              title="Activa avisos de reservas y promos"
+              description="Asi podemos avisarte cuando una reserva se confirma, cambia, se cancela o aparece una promo."
+              icon="notifications-outline"
+              style={{ marginTop: 16 }}
+              gradientColors={theme.gradients.hero}
+              primaryAction={{
+                label: isRefreshingPush ? 'Activando...' : 'Activar notificaciones',
+                onPress: () => void requestPushPermission(),
+                tone: 'secondary',
+              }}
+            />
           ) : null}
         </View>
 
         <View className="mt-4">
-          <View className="mb-4 flex-row items-end justify-between px-6">
-            <View>
-              <Text className="text-xs font-semibold uppercase tracking-[2px] text-faint">
-                Rubros
-              </Text>
-              <Text className="mt-1 text-xl font-bold text-secondary">Rubros populares</Text>
-            </View>
-            <TouchableOpacity onPress={() => router.push('/(tabs)/explore')}>
-              <Text className="text-sm font-bold text-primary">Ver todos</Text>
-            </TouchableOpacity>
+          <View className="px-6">
+            <SectionHeader eyebrow="Rubros" title="Rubros populares" actionLabel="Ver todos" onActionPress={() => router.push('/(tabs)/explore')} />
           </View>
 
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
-            contentContainerStyle={{ paddingHorizontal: 24, gap: 12 }}
+            contentContainerStyle={{ paddingHorizontal: 24, gap: 12, paddingTop: 16 }}
           >
             {categories.length === 0 && !isLoading ? (
-              <View className="w-56 rounded-[22px] border border-dashed border-secondary/15 bg-white p-4">
-                <Text className="text-sm text-muted">No hay rubros disponibles por ahora.</Text>
+              <View style={{ width: 240 }}>
+                <EmptyState
+                  title="Sin rubros por ahora"
+                  description="Todavia no hay rubros listados para mostrar en esta seccion."
+                  icon="grid-outline"
+                />
               </View>
             ) : null}
 
@@ -274,9 +279,7 @@ export default function HomeScreen() {
 
         <View className="mt-10 px-6">
           {errorMessage ? (
-            <View className="mb-4 rounded-2xl border border-red-200 bg-red-50 p-4">
-              <Text className="text-sm text-red-600">{errorMessage}</Text>
-            </View>
+            <MessageCard message={errorMessage} tone="danger" style={{ marginBottom: 16 }} />
           ) : null}
 
           <LinearGradient
@@ -308,22 +311,14 @@ export default function HomeScreen() {
         </View>
 
         <View className="mt-10">
-          <View className="mb-4 flex-row items-end justify-between px-6">
-            <View>
-              <Text className="text-xs font-semibold uppercase tracking-[2px] text-gray-500">
-                Profesionales
-              </Text>
-              <Text className="mt-1 text-xl font-bold text-secondary">Recomendados para vos</Text>
-            </View>
-            <TouchableOpacity onPress={() => router.push('/(tabs)/explore')}>
-              <Text className="text-sm font-bold text-primary">Ver todos</Text>
-            </TouchableOpacity>
+          <View className="px-6">
+            <SectionHeader eyebrow="Profesionales" title="Recomendados para vos" actionLabel="Ver todos" onActionPress={() => router.push('/(tabs)/explore')} />
           </View>
 
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
-            contentContainerStyle={{ paddingHorizontal: 24, gap: 16 }}
+            contentContainerStyle={{ paddingHorizontal: 24, gap: 16, paddingTop: 16 }}
           >
             {isLoading ? (
               <View className="w-64 items-center justify-center rounded-[28px] border border-secondary/5 bg-white p-4 shadow-sm">

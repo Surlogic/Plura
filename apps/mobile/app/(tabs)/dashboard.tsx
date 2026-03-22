@@ -6,6 +6,13 @@ import EmailVerificationCard from '../../src/components/auth/EmailVerificationCa
 import { useProfessionalProfileContext } from '../../src/context/ProfessionalProfileContext';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { AppScreen } from '../../src/components/ui/AppScreen';
+import {
+  ActionButton,
+  ScreenHero,
+  SectionCard,
+  StatusPill,
+} from '../../src/components/ui/MobileSurface';
 
 export default function DashboardTab() {
   const { profile, clientProfile, role, hasLoaded, logout, refreshProfile } = useProfessionalProfileContext();
@@ -22,20 +29,13 @@ export default function DashboardTab() {
   if (!profile) {
     if (clientProfile && role === 'client') {
       return (
-        <SafeAreaView className="flex-1 bg-background">
-          <ScrollView contentContainerStyle={{ padding: 24, paddingBottom: 120 }}>
-            <LinearGradient
-              colors={['#0F172A', '#0A7A43']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              className="rounded-[26px] p-5"
-            >
-              <Text className="text-xs font-bold uppercase tracking-[2px] text-white/80">Panel cliente</Text>
-              <Text className="mt-2 text-3xl font-bold text-white">Hola, {clientProfile.fullName}</Text>
-              <Text className="mt-2 text-sm text-white/80">
-                Gestiona tus reservas, notificaciones y preferencias en mobile.
-              </Text>
-            </LinearGradient>
+        <AppScreen scroll edges={['top']} contentContainerStyle={{ padding: 24, paddingBottom: 120 }}>
+            <ScreenHero
+              eyebrow="Panel cliente"
+              title={`Hola, ${clientProfile.fullName}`}
+              description="Gestiona tus reservas, notificaciones y preferencias en mobile con una vista mas clara."
+              icon="person-outline"
+            />
 
             {!clientProfile.emailVerified ? (
               <View className="mt-6">
@@ -48,11 +48,11 @@ export default function DashboardTab() {
               </View>
             ) : null}
 
-            <TouchableOpacity
-              onPress={() => router.push('/(tabs)/favorites')}
-              className="mt-6 rounded-[24px] bg-white p-5 border border-secondary/10 shadow-sm"
-            >
-              <View className="flex-row items-center justify-between">
+            <SectionCard style={{ marginTop: 24, paddingVertical: 18 }}>
+              <TouchableOpacity
+                onPress={() => router.push('/(tabs)/favorites')}
+                className="flex-row items-center justify-between"
+              >
                 <View className="flex-row items-center">
                   <View className="h-10 w-10 rounded-full bg-red-50 items-center justify-center">
                     <Ionicons name="heart" size={18} color="#EF4444" />
@@ -63,13 +63,10 @@ export default function DashboardTab() {
                   </View>
                 </View>
                 <Ionicons name="chevron-forward" size={18} color="#7D8DA1" />
-              </View>
-            </TouchableOpacity>
+              </TouchableOpacity>
+            </SectionCard>
 
-            <TouchableOpacity
-              onPress={() => router.push('/dashboard/settings')}
-              className="mt-4 rounded-[24px] bg-white p-5 border border-secondary/10 shadow-sm"
-            >
+            <SectionCard style={{ marginTop: 16, paddingVertical: 18 }}>
               <View className="flex-row items-center justify-between">
                 <View className="flex-row items-center">
                   <View className="h-10 w-10 rounded-full bg-secondary/10 items-center justify-center">
@@ -82,16 +79,15 @@ export default function DashboardTab() {
                 </View>
                 <Ionicons name="chevron-forward" size={18} color="#7D8DA1" />
               </View>
-            </TouchableOpacity>
+            </SectionCard>
 
-            <TouchableOpacity
+            <ActionButton
               onPress={logout}
-              className="mt-8 rounded-full border border-red-200 bg-red-50 h-12 items-center justify-center"
-            >
-              <Text className="font-semibold text-red-600">Cerrar sesion</Text>
-            </TouchableOpacity>
-          </ScrollView>
-        </SafeAreaView>
+              label="Cerrar sesion"
+              tone="danger"
+              style={{ marginTop: 32 }}
+            />
+        </AppScreen>
       );
     }
 
@@ -121,26 +117,17 @@ export default function DashboardTab() {
 
   // Si es un profesional logueado
   return (
-    <SafeAreaView className="flex-1 bg-background">
-      <ScrollView contentContainerStyle={{ padding: 24, paddingBottom: 120 }}>
-      <LinearGradient
-        colors={['#0F172A', '#162033', '#0A7A43']}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        className="rounded-[26px] p-6"
-      >
-        <Text className="text-xs font-bold uppercase tracking-[2px] text-white/80">Cuenta profesional</Text>
-        <Text className="mt-2 text-3xl font-bold text-white">Centro de gestion</Text>
-        <Text className="text-base text-white/80">Hola, {profile.fullName}</Text>
-        <View className="mt-5 flex-row flex-wrap" style={{ gap: 10 }}>
-          <View className="rounded-full bg-white/15 px-4 py-2">
-            <Text className="text-xs font-semibold text-white">Plan {profile.professionalPlan || 'BASIC'}</Text>
-          </View>
-          <View className="rounded-full bg-white/15 px-4 py-2">
-            <Text className="text-xs font-semibold text-white">{profile.rubro || 'Profesional'}</Text>
-          </View>
-        </View>
-      </LinearGradient>
+    <AppScreen scroll edges={['top']} contentContainerStyle={{ padding: 24, paddingBottom: 120 }}>
+      <ScreenHero
+        eyebrow="Cuenta profesional"
+        title="Centro de gestion"
+        description={`Hola, ${profile.fullName}. Revisa tu estado, accesos clave y configuracion del negocio.`}
+        icon="briefcase-outline"
+        badges={[
+          { label: `Plan ${profile.professionalPlan || 'BASIC'}`, tone: 'light' },
+          { label: profile.rubro || 'Profesional', tone: 'light' },
+        ]}
+      />
 
       {!profile.emailVerified ? (
         <View className="mt-6">
@@ -153,7 +140,7 @@ export default function DashboardTab() {
         </View>
         ) : null}
 
-      <View className="mt-6 rounded-[24px] bg-white border border-secondary/10 p-5 shadow-sm">
+      <SectionCard style={{ marginTop: 24 }}>
         <Text className="text-xs font-bold uppercase tracking-[2px] text-gray-500">Estado del negocio</Text>
         <View className="mt-4 flex-row flex-wrap justify-between">
           <View className="mb-4 w-[48%] rounded-[20px] bg-background p-4">
@@ -182,14 +169,13 @@ export default function DashboardTab() {
           </View>
         </View>
         {profile.slug ? (
-          <TouchableOpacity
+          <ActionButton
             onPress={() => router.push(`/profesional/${profile.slug}`)}
-            className="mt-1 h-12 items-center justify-center rounded-full bg-secondary"
-          >
-            <Text className="font-bold text-white">Ver pagina publica</Text>
-          </TouchableOpacity>
+            label="Ver pagina publica"
+            style={{ marginTop: 4 }}
+          />
         ) : null}
-      </View>
+      </SectionCard>
 
       <View className="space-y-3 mt-6">
         <TouchableOpacity
@@ -300,14 +286,8 @@ export default function DashboardTab() {
           </View>
         </TouchableOpacity>
 
-        <TouchableOpacity
-          onPress={logout}
-          className="w-full h-14 bg-red-50 border border-red-200 rounded-full items-center justify-center"
-        >
-          <Text className="text-red-600 font-bold text-base">Cerrar sesion</Text>
-        </TouchableOpacity>
+        <ActionButton onPress={logout} label="Cerrar sesion" tone="danger" />
       </View>
-      </ScrollView>
-    </SafeAreaView>
+    </AppScreen>
   );
 }

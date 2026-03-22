@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, Linking, Switch, Text, TouchableOpacity, View, TextInput } from 'react-native';
 import { router } from 'expo-router';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   getClientPreferences,
   updateClientPreferences,
@@ -16,6 +15,8 @@ import {
 } from '../../src/services/bookingPolicy';
 import type { ProfessionalBookingPolicy } from '../../src/types/bookings';
 import { usePushNotifications } from '../../src/hooks/usePushNotifications';
+import { AppScreen } from '../../src/components/ui/AppScreen';
+import { ScreenHero } from '../../src/components/ui/MobileSurface';
 
 type Preferences = {
   emailReminders: boolean;
@@ -296,10 +297,17 @@ export default function SettingsScreen() {
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-background" edges={['top']}>
-      <View className="px-6 pt-6">
-        <Text className="text-3xl font-bold text-secondary">Configuracion</Text>
-        <Text className="mt-2 text-sm text-gray-500">Preferencias de cuenta para mobile.</Text>
+    <AppScreen scroll edges={['top']} contentContainerStyle={{ padding: 24, paddingBottom: 60 }}>
+        <ScreenHero
+          eyebrow="Configuracion"
+          title="Cuenta y seguridad"
+          description="Ajusta recordatorios, verificaciones y politicas con una interfaz mas clara."
+          icon="settings-outline"
+          badges={[
+            { label: role === 'professional' ? 'Perfil profesional' : 'Perfil cliente', tone: 'light' },
+            { label: pushSettings.pushReminders ? 'Push activo' : 'Push pendiente', tone: 'light' },
+          ]}
+        />
 
         <View className="mt-8 rounded-[22px] bg-white p-5 border border-secondary/10">
           <View className="flex-row items-center justify-between py-2">
@@ -639,7 +647,6 @@ export default function SettingsScreen() {
             </Text>
           </TouchableOpacity>
         </View>
-      </View>
-    </SafeAreaView>
+    </AppScreen>
   );
 }

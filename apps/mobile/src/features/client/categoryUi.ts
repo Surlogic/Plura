@@ -6,7 +6,7 @@ export const getCategoryAccent = (value: string) => {
   if (normalized.includes('pelu')) {
     return {
       icon: 'sparkles-outline' as const,
-      colors: [theme.colors.primaryLight, theme.colors.accent] as const,
+      colors: [theme.colors.primaryStrong, '#137C88'] as const,
     };
   }
   if (normalized.includes('barb')) {
@@ -18,19 +18,19 @@ export const getCategoryAccent = (value: string) => {
   if (normalized.includes('u') || normalized.includes('mani')) {
     return {
       icon: 'color-palette-outline' as const,
-      colors: [theme.colors.premium, theme.colors.premiumStrong] as const,
+      colors: ['#8541A6', theme.colors.premiumStrong] as const,
     };
   }
   if (normalized.includes('spa')) {
     return {
       icon: 'leaf-outline' as const,
-      colors: [theme.colors.primary, theme.colors.accent] as const,
+      colors: [theme.colors.primaryStrong, theme.colors.accentStrong] as const,
     };
   }
   if (normalized.includes('cosme') || normalized.includes('facial')) {
     return {
       icon: 'flower-outline' as const,
-      colors: [theme.colors.accent, theme.colors.premium] as const,
+      colors: ['#2C5EA8', theme.colors.premiumStrong] as const,
     };
   }
 

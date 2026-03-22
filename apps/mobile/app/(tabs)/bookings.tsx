@@ -3,13 +3,11 @@ import {
   ActivityIndicator,
   Alert,
   AppState,
-  ScrollView,
   Text,
   TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import {
@@ -26,6 +24,14 @@ import { useProfessionalProfileContext } from '../../src/context/ProfessionalPro
 import BusinessProfileScreen from '../dashboard/business-profile';
 import { theme } from '../../src/theme';
 import { openMercadoPagoInAppBrowser } from '../../src/services/mercadoPagoBrowser';
+import { AppScreen } from '../../src/components/ui/AppScreen';
+import {
+  EmptyState,
+  MessageCard,
+  ScreenHero,
+  SectionHeader,
+  StatusPill,
+} from '../../src/components/ui/MobileSurface';
 
 const toLocalDateKey = (date: Date) => date.toLocaleDateString('en-CA');
 
@@ -133,9 +139,18 @@ function BookingListCard({ booking, isSelected, onPress }: BookingListCardProps)
           <Text className="mt-1 text-sm text-gray-500">{booking.professional}</Text>
           <Text className="mt-2 text-xs text-gray-500">{booking.date} - {booking.time}</Text>
         </View>
-        <View className={`rounded-full px-3 py-1 ${statusTone(booking.status)}`}>
-          <Text className="text-[11px] font-bold">{statusLabel(booking.status)}</Text>
-        </View>
+        <StatusPill
+          label={statusLabel(booking.status)}
+          tone={
+            booking.status === 'CONFIRMED'
+              ? 'success'
+              : booking.status === 'CANCELLED'
+                ? 'danger'
+                : booking.status === 'COMPLETED'
+                  ? 'neutral'
+                  : 'warning'
+          }
+        />
       </View>
 
       <View className="mt-3 flex-row flex-wrap" style={{ gap: 8 }}>
@@ -353,40 +368,18 @@ export default function ClientBookingsScreen() {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-background" edges={['top']}>
-      <ScrollView contentContainerStyle={{ padding: 24, paddingBottom: 120 }}>
-        <LinearGradient
-          colors={theme.gradients.heroElevated}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          className="rounded-[28px] p-6"
-        >
-          <Text className="text-xs font-bold uppercase tracking-[2px] text-white/75">Reservas</Text>
-          <Text className="mt-2 text-3xl font-bold text-white">
-            {clientProfile?.fullName ? `${clientProfile.fullName}, tus turnos` : 'Mis turnos'}
-          </Text>
-          <Text className="mt-2 text-sm text-white/80">
-            Consulta el estado real de tu reserva, su pago y las acciones habilitadas.
-          </Text>
-
-          <View className="mt-6 flex-row flex-wrap" style={{ gap: 10 }}>
-            <View className="rounded-full bg-white/15 px-4 py-2">
-              <Text className="text-xs font-semibold text-white">
-                Proximas {bookingStats.upcoming}
-              </Text>
-            </View>
-            <View className="rounded-full bg-white/15 px-4 py-2">
-              <Text className="text-xs font-semibold text-white">
-                Completadas {bookingStats.completed}
-              </Text>
-            </View>
-            <View className="rounded-full bg-white/15 px-4 py-2">
-              <Text className="text-xs font-semibold text-white">
-                Pago pendiente {bookingStats.pendingPayment}
-              </Text>
-            </View>
-          </View>
-        </LinearGradient>
+    <AppScreen scroll edges={['top']} contentContainerStyle={{ padding: 24, paddingBottom: 120 }}>
+        <ScreenHero
+          eyebrow="Reservas"
+          title={clientProfile?.fullName ? `${clientProfile.fullName}, tus turnos` : 'Mis turnos'}
+          description="Consulta el estado real de tu reserva, su pago y las acciones habilitadas."
+          icon="calendar-outline"
+          badges={[
+            { label: `Proximas ${bookingStats.upcoming}`, tone: 'light' },
+            { label: `Completadas ${bookingStats.completed}`, tone: 'light' },
+            { label: `Pago pendiente ${bookingStats.pendingPayment}`, tone: 'light' },
+          ]}
+        />
 
         {isLoading ? (
           <View className="py-16 items-center">
@@ -395,32 +388,27 @@ export default function ClientBookingsScreen() {
         ) : null}
 
         {error ? (
-          <View className="mt-5 rounded-xl border border-red-200 bg-red-50 p-3">
-            <Text className="text-xs text-red-600">{error}</Text>
-          </View>
+          <MessageCard message={error} tone="danger" style={{ marginTop: 20 }} />
         ) : null}
 
         {message ? (
-          <View className="mt-5 rounded-xl border border-secondary/10 bg-white p-3">
-            <Text className="text-xs text-secondary">{message}</Text>
-          </View>
+          <MessageCard message={message} tone="primary" style={{ marginTop: 20 }} />
         ) : null}
 
         {!isLoading && upcomingBookings.length === 0 && pastBookings.length === 0 ? (
-          <View className="mt-6 rounded-[24px] border border-dashed border-secondary/15 bg-white p-6">
-            <Text className="text-center text-sm text-gray-500">
-              Todavia no tienes reservas. Cuando hagas la primera, aparecera aqui con su estado y acciones.
-            </Text>
+          <View className="mt-6">
+            <EmptyState
+              title="Todavia no tienes reservas"
+              description="Cuando hagas la primera, aparecera aqui con su estado y acciones disponibles."
+              icon="calendar-clear-outline"
+            />
           </View>
         ) : null}
 
         {upcomingBookings.length > 0 ? (
           <View className="mt-6">
             <View className="flex-row items-end justify-between">
-              <View>
-                <Text className="text-xs font-bold uppercase tracking-[2px] text-gray-500">Proximas</Text>
-                <Text className="mt-1 text-xl font-bold text-secondary">Tus proximos turnos</Text>
-              </View>
+              <SectionHeader eyebrow="Proximas" title="Tus proximos turnos" />
               <Text className="text-sm font-semibold text-primary">{upcomingBookings.length}</Text>
             </View>
 
@@ -438,10 +426,7 @@ export default function ClientBookingsScreen() {
         {pastBookings.length > 0 ? (
           <View className="mt-8">
             <View className="flex-row items-end justify-between">
-              <View>
-                <Text className="text-xs font-bold uppercase tracking-[2px] text-gray-500">Historial</Text>
-                <Text className="mt-1 text-xl font-bold text-secondary">Reservas pasadas</Text>
-              </View>
+              <SectionHeader eyebrow="Historial" title="Reservas pasadas" />
               <Text className="text-sm font-semibold text-gray-500">{pastBookings.length}</Text>
             </View>
 
@@ -627,7 +612,6 @@ export default function ClientBookingsScreen() {
             </View>
           </View>
         ) : null}
-      </ScrollView>
-    </SafeAreaView>
+    </AppScreen>
   );
 }

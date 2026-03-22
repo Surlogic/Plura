@@ -15,6 +15,8 @@ import {
 } from '../../src/services/geo';
 import { getApiErrorMessage } from '../../src/services/errors';
 import type { ServiceCategoryOption } from '../../src/types/professional';
+import { AppScreen } from '../../src/components/ui/AppScreen';
+import { MessageCard, ScreenHero, SectionCard } from '../../src/components/ui/MobileSurface';
 
 const slugify = (value: string) => (
   value
@@ -228,13 +230,20 @@ export default function BusinessProfileScreen() {
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-background" edges={['top']}>
-      <ScrollView contentContainerStyle={{ padding: 24, paddingBottom: 60 }}>
-        <Text className="text-3xl font-bold text-secondary">Perfil del negocio</Text>
-        <Text className="mt-2 text-sm text-gray-500">Estos datos se usan en tu pagina publica y resultados.</Text>
+    <AppScreen scroll edges={['top']} contentContainerStyle={{ padding: 24, paddingBottom: 60 }}>
+        <ScreenHero
+          eyebrow="Perfil del negocio"
+          title="Identidad publica"
+          description="Estos datos se usan en tu pagina publica y resultados para que el perfil se vea mucho mas prolijo."
+          icon="storefront-outline"
+          badges={[
+            { label: profile.slug ? `@${profile.slug}` : 'Sin slug publico', tone: 'light' },
+            { label: selectedCategoryNames.length > 0 ? `${selectedCategoryNames.length} rubros` : 'Rubros pendientes', tone: 'light' },
+          ]}
+        />
 
         {profile.slug ? (
-          <View className="mt-6 rounded-[24px] border border-primary/15 bg-primary/5 p-5">
+          <SectionCard style={{ marginTop: 24 }} soft>
             <Text className="text-xs font-semibold uppercase tracking-[2px] text-primary">Pagina publica</Text>
             <Text className="mt-2 text-base font-bold text-secondary">@{profile.slug}</Text>
             <Text className="mt-1 text-sm leading-6 text-gray-500">
@@ -246,10 +255,10 @@ export default function BusinessProfileScreen() {
             >
               <Text className="font-bold text-white">Ver pagina publica</Text>
             </TouchableOpacity>
-          </View>
+          </SectionCard>
         ) : null}
 
-        <View className="mt-6 rounded-[24px] bg-white p-5 border border-secondary/10">
+        <SectionCard style={{ marginTop: 24 }}>
           <Text className="text-xs font-semibold uppercase tracking-[2px] text-gray-500">Datos base</Text>
 
           <TextInput
@@ -360,11 +369,11 @@ export default function BusinessProfileScreen() {
             value={form.phoneNumber}
             onChangeText={(text) => setForm((prev) => ({ ...prev, phoneNumber: text }))}
           />
-        </View>
+        </SectionCard>
 
         {canManageEnhancedPublicProfile ? (
           <>
-            <View className="mt-5 rounded-[24px] bg-white p-5 border border-secondary/10">
+            <SectionCard style={{ marginTop: 20 }}>
               <Text className="text-xs font-semibold uppercase tracking-[2px] text-gray-500">Pagina publica</Text>
 
               <TextInput
@@ -382,9 +391,9 @@ export default function BusinessProfileScreen() {
                 value={form.about}
                 onChangeText={(text) => setForm((prev) => ({ ...prev, about: text }))}
               />
-            </View>
+            </SectionCard>
 
-            <View className="mt-5 rounded-[24px] bg-white p-5 border border-secondary/10">
+            <SectionCard style={{ marginTop: 20 }}>
               <Text className="text-xs font-semibold uppercase tracking-[2px] text-gray-500">Redes</Text>
 
               {(['instagram', 'facebook', 'tiktok', 'website', 'whatsapp'] as const).map((key) => (
@@ -396,18 +405,18 @@ export default function BusinessProfileScreen() {
                   onChangeText={(text) => setForm((prev) => ({ ...prev, [key]: text }))}
                 />
               ))}
-            </View>
+            </SectionCard>
           </>
         ) : (
-          <View className="mt-5 rounded-[24px] border border-primary/15 bg-primary/5 p-5">
+          <SectionCard style={{ marginTop: 20 }} soft>
             <Text className="text-xs font-semibold uppercase tracking-[2px] text-primary">Plan actual</Text>
             <Text className="mt-2 text-sm leading-6 text-secondary">
               En este plan puedes editar nombre, rubros, direccion y telefono. El contenido avanzado de pagina publica y redes se gestiona desde un plan superior.
             </Text>
-          </View>
+          </SectionCard>
         )}
 
-        {message ? <Text className="mt-4 text-sm text-secondary">{message}</Text> : null}
+        {message ? <MessageCard message={message} tone={message.includes('correctamente') ? 'success' : 'primary'} style={{ marginTop: 16 }} /> : null}
 
         <TouchableOpacity
           disabled={isDisabled}
@@ -478,7 +487,6 @@ export default function BusinessProfileScreen() {
         >
           {isSaving ? <ActivityIndicator color="#fff" /> : <Text className="font-bold text-white">Guardar cambios</Text>}
         </TouchableOpacity>
-      </ScrollView>
-    </SafeAreaView>
+    </AppScreen>
   );
 }

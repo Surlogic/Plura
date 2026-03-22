@@ -2,13 +2,11 @@ import React, { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
-  ScrollView,
   Text,
   TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import {
@@ -26,6 +24,8 @@ import { getApiErrorMessage } from '../../src/services/errors';
 import { getPublicSlots } from '../../src/services/publicBookings';
 import { useProfessionalProfileContext } from '../../src/context/ProfessionalProfileContext';
 import { canProfessionalConfirmReservation } from '../../../../packages/shared/src/bookings/professionalReservationActions';
+import { AppScreen } from '../../src/components/ui/AppScreen';
+import { MessageCard, ScreenHero, StatusPill } from '../../src/components/ui/MobileSurface';
 
 const toIsoDate = (value: Date) => value.toISOString().slice(0, 10);
 const today = new Date();
@@ -371,9 +371,18 @@ export default function AgendaScreen() {
             <Text className="text-base font-bold text-secondary">{reservation.serviceName}</Text>
             <Text className="mt-1 text-sm text-gray-500">{reservation.clientName}</Text>
           </View>
-          <View className={`rounded-full px-3 py-1 ${reservationStatusTone(reservation.status)}`}>
-            <Text className="text-xs font-bold">{formatReservationStatusLabel(reservation.status)}</Text>
-          </View>
+          <StatusPill
+            label={formatReservationStatusLabel(reservation.status)}
+            tone={
+              reservation.status === 'confirmed'
+                ? 'success'
+                : reservation.status === 'cancelled'
+                  ? 'danger'
+                  : reservation.status === 'completed'
+                    ? 'neutral'
+                    : 'warning'
+            }
+          />
         </View>
 
         <View className="mt-4 flex-row flex-wrap" style={{ gap: 10 }}>
@@ -422,40 +431,30 @@ export default function AgendaScreen() {
     </View>
   );
   return (
-    <SafeAreaView className="flex-1 bg-background" edges={['top']}>
-      <ScrollView contentContainerStyle={{ paddingBottom: 40 }}>
-        <LinearGradient
-          colors={['#0F172A', '#162033', '#0A7A43']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          className="px-6 pb-8 pt-6"
-        >
-          <Text className="text-xs font-bold uppercase tracking-[2px] text-white/75">Agenda profesional</Text>
-          <Text className="mt-2 text-3xl font-bold text-white">Turnos y reservas</Text>
-          <Text className="mt-2 text-sm leading-6 text-white/80">
-            Prioriza lo urgente, revisa pendientes del dia y gestiona cambios sin salir del panel.
-          </Text>
+    <AppScreen scroll edges={['top']} contentContainerStyle={{ paddingBottom: 40 }}>
+        <View className="px-6 pt-6">
+          <ScreenHero
+            eyebrow="Agenda profesional"
+            title="Turnos y reservas"
+            description="Prioriza lo urgente, revisa pendientes del dia y gestiona cambios sin salir del panel."
+            icon="calendar-outline"
+            badges={[
+              { label: profile?.rubro || 'Profesional', tone: 'light' },
+              { label: filter === 'hoy' ? 'Vista del dia' : 'Proximos 30 dias', tone: 'light' },
+            ]}
+          />
 
-          <View className="mt-5 flex-row flex-wrap" style={{ gap: 10 }}>
-            <View className="rounded-full bg-white/15 px-4 py-2">
-              <Text className="text-xs font-semibold text-white">{profile?.rubro || 'Profesional'}</Text>
-            </View>
-            <View className="rounded-full bg-white/15 px-4 py-2">
-              <Text className="text-xs font-semibold text-white">{filter === 'hoy' ? 'Vista del dia' : 'Proximos 30 dias'}</Text>
-            </View>
-          </View>
-
-          <View className="mt-5 flex-row" style={{ gap: 10 }}>
-            <TouchableOpacity onPress={() => setFilter('hoy')} className={`rounded-full px-5 py-3 ${filter === 'hoy' ? 'bg-white' : 'bg-white/15'}`}>
-              <Text className={`font-bold ${filter === 'hoy' ? 'text-secondary' : 'text-white'}`}>Hoy</Text>
+          <View className="mt-4 flex-row" style={{ gap: 10 }}>
+            <TouchableOpacity onPress={() => setFilter('hoy')} className={`rounded-full px-5 py-3 ${filter === 'hoy' ? 'bg-secondary' : 'border border-secondary/10 bg-white'}`}>
+              <Text className={`font-bold ${filter === 'hoy' ? 'text-white' : 'text-secondary'}`}>Hoy</Text>
             </TouchableOpacity>
-            <TouchableOpacity onPress={() => setFilter('proximas')} className={`rounded-full px-5 py-3 ${filter === 'proximas' ? 'bg-white' : 'bg-white/15'}`}>
-              <Text className={`font-bold ${filter === 'proximas' ? 'text-secondary' : 'text-white'}`}>Proximas</Text>
+            <TouchableOpacity onPress={() => setFilter('proximas')} className={`rounded-full px-5 py-3 ${filter === 'proximas' ? 'bg-secondary' : 'border border-secondary/10 bg-white'}`}>
+              <Text className={`font-bold ${filter === 'proximas' ? 'text-white' : 'text-secondary'}`}>Proximas</Text>
             </TouchableOpacity>
           </View>
-        </LinearGradient>
+        </View>
 
-        <View className="px-6 -mt-4">
+        <View className="px-6 mt-6">
           <View className="flex-row flex-wrap justify-between">
             {stats.map((item) => (
               <View key={item.label} className="mb-4 w-[48%] rounded-[24px] border border-secondary/8 bg-white p-4 shadow-sm">
@@ -470,15 +469,11 @@ export default function AgendaScreen() {
           </View>
 
           {message ? (
-            <View className="mb-4 rounded-[20px] border border-secondary/10 bg-white p-4">
-              <Text className="text-sm text-secondary">{message}</Text>
-            </View>
+            <MessageCard message={message} tone="primary" style={{ marginBottom: 16 }} />
           ) : null}
 
           {error ? (
-            <View className="mb-4 rounded-[20px] border border-red-200 bg-red-50 p-4">
-              <Text className="text-sm text-red-600">{error}</Text>
-            </View>
+            <MessageCard message={error} tone="danger" style={{ marginBottom: 16 }} />
           ) : null}
 
           <View className="rounded-[28px] border border-secondary/8 bg-white p-5 shadow-sm">
@@ -658,7 +653,6 @@ export default function AgendaScreen() {
             </>
           )}
         </View>
-      </ScrollView>
-    </SafeAreaView>
+    </AppScreen>
   );
 }

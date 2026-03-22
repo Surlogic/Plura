@@ -17,6 +17,13 @@ import ServicesScreen from '../dashboard/services';
 import { getCategoryAccent } from '../../src/features/client/categoryUi';
 import { AppScreen } from '../../src/components/ui/AppScreen';
 import { theme } from '../../src/theme';
+import {
+  ActionButton,
+  EmptyState,
+  ScreenHero,
+  SectionHeader,
+  StatusPill,
+} from '../../src/components/ui/MobileSurface';
 
 export default function FavoritesScreen() {
   const { role, profile, clientProfile } = useProfessionalProfileContext();
@@ -75,20 +82,15 @@ export default function FavoritesScreen() {
 
   return (
     <AppScreen scroll edges={['top']} contentContainerStyle={{ padding: 24, paddingBottom: 120 }}>
-        <LinearGradient
-          colors={theme.gradients.heroElevated}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          className="rounded-[28px] p-6"
-        >
-          <Text className="text-xs font-bold uppercase tracking-[2px] text-white/75">Favoritos</Text>
-          <Text className="mt-2 text-3xl font-bold text-white">
-            {clientProfile?.fullName ? `${clientProfile.fullName}, tus favoritos` : 'Tus favoritos'}
-          </Text>
-          <Text className="mt-2 text-sm text-white/80">
-            Guarda profesionales para volver mas rapido a reservar desde mobile.
-          </Text>
-        </LinearGradient>
+        <ScreenHero
+          eyebrow="Favoritos"
+          title={clientProfile?.fullName ? `${clientProfile.fullName}, tus favoritos` : 'Tus favoritos'}
+          description="Guarda profesionales para volver mas rapido a reservar desde mobile y mantener una lista mas ordenada."
+          icon="heart-outline"
+          badges={[
+            { label: `${favoriteItems.length} guardados`, tone: 'light' },
+          ]}
+        />
 
         {loading ? (
           <View className="items-center py-16">
@@ -97,17 +99,20 @@ export default function FavoritesScreen() {
         ) : null}
 
         {!loading && favoriteItems.length === 0 ? (
-          <View className="mt-8 items-center rounded-[24px] border border-dashed border-secondary/20 bg-white p-6">
-            <Ionicons name="heart-outline" size={32} color={theme.colors.inkFaint} />
-            <Text className="mt-3 text-center text-sm text-muted">
-              Todavia no agregaste favoritos. Explora y guarda tus profesionales preferidos.
-            </Text>
-            <TouchableOpacity
-              onPress={() => router.push('/(tabs)/explore')}
-              className="mt-4 rounded-full bg-secondary px-5 py-3"
-            >
-              <Text className="font-semibold text-white">Ir a explorar</Text>
-            </TouchableOpacity>
+          <View className="mt-8">
+            <EmptyState
+              title="Todavia no agregaste favoritos"
+              description="Explora y guarda tus profesionales preferidos para volver a reservar mas rapido."
+              icon="heart-outline"
+              actionLabel="Ir a explorar"
+              onActionPress={() => router.push('/(tabs)/explore')}
+            />
+          </View>
+        ) : null}
+
+        {!loading && favoriteItems.length > 0 ? (
+          <View className="mt-8">
+            <SectionHeader eyebrow="Guardados" title="Tu seleccion personal" />
           </View>
         ) : null}
 
@@ -152,19 +157,20 @@ export default function FavoritesScreen() {
                   {item.headline || 'Guardado para volver a reservar mas rapido cuando lo necesites.'}
                 </Text>
 
-                <View className="mt-4 flex-row" style={{ gap: 10 }}>
-                  <TouchableOpacity
-                    onPress={() => router.push(`/profesional/${item.slug}`)}
-                    className="rounded-full bg-secondary px-4 py-2.5"
-                  >
-                    <Text className="text-sm font-semibold text-white">Ver perfil</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    onPress={async () => setFavorites(await toggleFavoriteProfessionalSlug(item.slug))}
-                    className="rounded-full border border-secondary/10 bg-background px-4 py-2.5"
-                  >
-                    <Text className="text-sm font-semibold text-secondary">Quitar</Text>
-                  </TouchableOpacity>
+                <View className="mt-4 flex-row items-center justify-between">
+                  <StatusPill label="Guardado" tone="primary" />
+                  <View className="flex-row" style={{ gap: 10 }}>
+                    <ActionButton
+                      label="Ver perfil"
+                      onPress={() => router.push(`/profesional/${item.slug}`)}
+                      tone="primary"
+                    />
+                    <ActionButton
+                      label="Quitar"
+                      onPress={async () => setFavorites(await toggleFavoriteProfessionalSlug(item.slug))}
+                      tone="soft"
+                    />
+                  </View>
                 </View>
               </View>
             </TouchableOpacity>

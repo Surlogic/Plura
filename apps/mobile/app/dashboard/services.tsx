@@ -13,6 +13,8 @@ import {
   updateProfessionalService,
 } from '../../src/services/professionalConfig';
 import { useProfessionalProfileContext } from '../../src/context/ProfessionalProfileContext';
+import { AppScreen } from '../../src/components/ui/AppScreen';
+import { MessageCard, ScreenHero, SectionCard } from '../../src/components/ui/MobileSurface';
 
 type ServicePaymentMode = 'ON_SITE' | 'DEPOSIT' | 'FULL_PREPAY';
 
@@ -103,9 +105,19 @@ export default function ServicesScreen() {
   }
 
   return (
-    <View className="flex-1 bg-background">
-      <ScrollView contentContainerStyle={{ paddingHorizontal: 24, paddingTop: 20, paddingBottom: 40 }}>
-        <View className="bg-white rounded-[20px] p-5 mb-5 shadow-sm border border-secondary/5">
+    <AppScreen scroll edges={['top']} contentContainerStyle={{ paddingHorizontal: 24, paddingTop: 20, paddingBottom: 40 }}>
+        <ScreenHero
+          eyebrow="Servicios"
+          title="Catalogo profesional"
+          description="Crea, edita y ordena tus servicios con una configuracion mas clara."
+          icon="cut-outline"
+          badges={[
+            { label: `${services.length} servicios`, tone: 'light' },
+            { label: canUseOnlinePayments ? 'Cobros online activos' : 'Cobros en local', tone: 'light' },
+          ]}
+        />
+
+        <SectionCard style={{ marginTop: 20 }}>
           <Text className="text-sm font-semibold text-gray-500 uppercase tracking-[2px]">
             {editingId ? 'Editar servicio' : 'Nuevo servicio'}
           </Text>
@@ -276,8 +288,8 @@ export default function ServicesScreen() {
             {isSaving ? <ActivityIndicator color="#fff" /> : <Text className="text-white font-semibold">{editingId ? 'Guardar cambios' : 'Crear servicio'}</Text>}
           </TouchableOpacity>
 
-          {message ? <Text className="mt-2 text-xs text-secondary">{message}</Text> : null}
-        </View>
+          {message ? <MessageCard message={message} tone="primary" style={{ marginTop: 12 }} /> : null}
+        </SectionCard>
         
         <View className="flex-row justify-between items-center mb-6">
           <Text className="text-sm font-semibold text-gray-500 uppercase tracking-[2px]">
@@ -354,7 +366,6 @@ export default function ServicesScreen() {
           ))
         )}
 
-      </ScrollView>
-    </View>
+    </AppScreen>
   );
 }

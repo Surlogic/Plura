@@ -1,6 +1,7 @@
-import { useEffect, useRef, useState } from 'react';
-import { useClientNotificationsContext } from '@/context/ClientNotificationsContext';
+import { useCallback } from 'react';
+import { useClientNotificationsRefresh } from '@/context/ClientNotificationsContext';
 import { listClientNotifications } from '@/services/clientNotifications';
+import { useNotificationPreview } from '@/hooks/useNotificationPreview';
 import type { ClientNotificationItem } from '@/types/clientNotification';
 
 type UseClientNotificationPreviewOptions = {
@@ -12,55 +13,17 @@ export const useClientNotificationPreview = ({
   enabled = false,
   size = 5,
 }: UseClientNotificationPreviewOptions = {}) => {
-  const { refreshToken } = useClientNotificationsContext();
-  const mountedRef = useRef(true);
-  const [items, setItems] = useState<ClientNotificationItem[]>([]);
-  const [total, setTotal] = useState(0);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<Error | null>(null);
+  const { refreshToken } = useClientNotificationsRefresh();
 
-  useEffect(() => {
-    mountedRef.current = true;
-    return () => {
-      mountedRef.current = false;
-    };
-  }, []);
+  const fetchFn = useCallback(
+    (params: { page: number; size: number }) => listClientNotifications(params),
+    [],
+  );
 
-  const refresh = async () => {
-    try {
-      setIsLoading(true);
-      setError(null);
-      const response = await listClientNotifications({
-        page: 0,
-        size,
-      });
-      if (!mountedRef.current) return;
-      setItems(response.items);
-      setTotal(response.total);
-    } catch (unknownError) {
-      if (!mountedRef.current) return;
-      setError(
-        unknownError instanceof Error
-          ? unknownError
-          : new Error('No se pudieron cargar las notificaciones recientes.'),
-      );
-    } finally {
-      if (mountedRef.current) {
-        setIsLoading(false);
-      }
-    }
-  };
-
-  useEffect(() => {
-    if (!enabled) return;
-    void refresh();
-  }, [enabled, size, refreshToken]);
-
-  return {
-    items,
-    total,
-    isLoading,
-    error,
-    refresh,
-  };
+  return useNotificationPreview<ClientNotificationItem>({
+    enabled,
+    size,
+    refreshToken,
+    fetchFn,
+  });
 };

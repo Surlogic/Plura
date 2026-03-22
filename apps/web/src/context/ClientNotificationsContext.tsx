@@ -1,5 +1,3 @@
-'use client';
-
 import {
   createContext,
   useCallback,
@@ -11,9 +9,12 @@ import {
 } from 'react';
 import { getClientNotificationUnreadCount } from '@/services/clientNotifications';
 
-type ClientNotificationsContextValue = {
+type ClientNotificationsRefreshContextValue = {
   refreshToken: number;
   publishChange: () => void;
+};
+
+type ClientNotificationsDataContextValue = {
   unreadCount: number;
   unreadCountError: Error | null;
   isUnreadCountLoading: boolean;
@@ -21,8 +22,11 @@ type ClientNotificationsContextValue = {
   refreshUnreadCount: () => Promise<void>;
 };
 
-const ClientNotificationsContext =
-  createContext<ClientNotificationsContextValue | null>(null);
+const ClientNotificationsRefreshContext =
+  createContext<ClientNotificationsRefreshContextValue | null>(null);
+
+const ClientNotificationsDataContext =
+  createContext<ClientNotificationsDataContextValue | null>(null);
 
 export function ClientNotificationsProvider({
   children,
@@ -68,41 +72,53 @@ export function ClientNotificationsProvider({
     return request;
   }, []);
 
-  const value = useMemo(
+  const refreshValue = useMemo(
+    () => ({ refreshToken, publishChange }),
+    [refreshToken, publishChange],
+  );
+
+  const dataValue = useMemo(
     () => ({
-      refreshToken,
-      publishChange,
       unreadCount,
       unreadCountError,
       isUnreadCountLoading,
       hasUnreadCountLoaded,
       refreshUnreadCount,
     }),
-    [
-      refreshToken,
-      unreadCount,
-      unreadCountError,
-      isUnreadCountLoading,
-      hasUnreadCountLoaded,
-      // publishChange and refreshUnreadCount are stable (empty deps)
-      publishChange,
-      refreshUnreadCount,
-    ],
+    [unreadCount, unreadCountError, isUnreadCountLoading, hasUnreadCountLoaded, refreshUnreadCount],
   );
 
   return (
-    <ClientNotificationsContext.Provider value={value}>
-      {children}
-    </ClientNotificationsContext.Provider>
+    <ClientNotificationsRefreshContext.Provider value={refreshValue}>
+      <ClientNotificationsDataContext.Provider value={dataValue}>
+        {children}
+      </ClientNotificationsDataContext.Provider>
+    </ClientNotificationsRefreshContext.Provider>
   );
 }
 
-export const useClientNotificationsContext = () => {
-  const context = useContext(ClientNotificationsContext);
+export const useClientNotificationsRefresh = () => {
+  const context = useContext(ClientNotificationsRefreshContext);
   if (!context) {
     throw new Error(
-      'useClientNotificationsContext must be used within ClientNotificationsProvider',
+      'useClientNotificationsRefresh must be used within ClientNotificationsProvider',
     );
   }
   return context;
+};
+
+export const useClientNotificationsData = () => {
+  const context = useContext(ClientNotificationsDataContext);
+  if (!context) {
+    throw new Error(
+      'useClientNotificationsData must be used within ClientNotificationsProvider',
+    );
+  }
+  return context;
+};
+
+export const useClientNotificationsContext = () => {
+  const refresh = useClientNotificationsRefresh();
+  const data = useClientNotificationsData();
+  return { ...refresh, ...data };
 };

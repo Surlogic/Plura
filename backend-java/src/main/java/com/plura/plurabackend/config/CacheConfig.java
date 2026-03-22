@@ -13,7 +13,7 @@ import org.springframework.context.annotation.Configuration;
 @EnableCaching
 public class CacheConfig {
 
-    @Value("${APP_CACHE_TTL_MINUTES:5}")
+    @Value("${APP_CACHE_TTL_MINUTES:10}")
     private long cacheTtlMinutes;
 
     @Value("${APP_CACHE_MAX_SIZE:1000}")

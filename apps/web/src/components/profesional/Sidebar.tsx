@@ -1,5 +1,6 @@
 import Link from 'next/link';
-import { useEffect, useMemo, useRef } from 'react';
+import Image from 'next/image';
+import { memo, useEffect, useMemo, useRef } from 'react';
 import type { ProfessionalProfile } from '@/types/professional';
 import type { ProfessionalPlanCode } from '../../../../../packages/shared/src/types/professional';
 import { hasPlanAccess, PLAN_LABELS } from '../../../../../packages/shared/src/billing/planAccess';
@@ -79,7 +80,7 @@ type SidebarProps = {
   active: string;
 };
 
-export default function ProfesionalSidebar({ profile, active }: SidebarProps) {
+function ProfesionalSidebar({ profile, active }: SidebarProps) {
   const { requestNavigation } = useProfessionalDashboardUnsavedChanges();
   const rootRef = useRef<HTMLElement | null>(null);
 
@@ -150,12 +151,14 @@ export default function ProfesionalSidebar({ profile, active }: SidebarProps) {
         </div>
 
         <div className="mt-6 flex flex-col items-center text-center">
-          <div className="flex h-14 w-14 items-center justify-center overflow-hidden rounded-[18px] border border-[color:var(--border-soft)] bg-white text-base font-semibold text-[color:var(--primary)] shadow-[var(--shadow-card)]">
+          <div className="relative flex h-14 w-14 items-center justify-center overflow-hidden rounded-[18px] border border-[color:var(--border-soft)] bg-white text-base font-semibold text-[color:var(--primary)] shadow-[var(--shadow-card)]">
             {profile?.logoUrl ? (
-              <img
+              <Image
                 src={profile.logoUrl}
                 alt={`Logo de ${displayName}`}
-                className="h-full w-full object-cover"
+                fill
+                sizes="56px"
+                className="object-cover"
               />
             ) : (
               initials
@@ -270,3 +273,5 @@ export default function ProfesionalSidebar({ profile, active }: SidebarProps) {
     </aside>
   );
 }
+
+export default memo(ProfesionalSidebar);

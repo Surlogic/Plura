@@ -63,6 +63,7 @@ import org.springframework.dao.ConcurrencyFailureException;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
@@ -260,40 +261,60 @@ public class BookingProviderIntegrationService {
             ))
         );
         BookingFinancialSummary summary = bookingFinanceService.ensureInitializedWithEvidence(booking);
-        BookingPaymentSessionResponse response = new BookingPaymentSessionResponse(
+
+        ProviderCheckoutSession checkoutSession;
+        try {
+            PaymentProviderClient client = resolveProviderClient(provider);
+            checkoutSession = client.createBookingCheckout(
+                new BookingProviderCheckoutRequest(
+                    transaction.getId(),
+                    booking.getId(),
+                    booking.getProfessionalId(),
+                    transaction.getAmount(),
+                    transaction.getCurrency(),
+                    user == null ? null : user.getEmail(),
+                    user == null ? null : user.getFullName(),
+                    buildBookingDescription(booking),
+                    null,
+                    resolveWebhookUrl(provider),
+                    provider
+                )
+            );
+        } catch (RuntimeException exception) {
+            LOGGER.warn(
+                "Checkout creation failed for new booking payment session bookingId={} transactionId={} operationId={} provider={}",
+                booking.getId(),
+                transaction.getId(),
+                operation.getId(),
+                provider,
+                exception
+            );
+            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "No se pudo iniciar checkout de reserva", exception);
+        }
+        transaction.setProviderPaymentId(null);
+        transaction.setProviderStatus("CHECKOUT_CREATED");
+        transaction.setPayloadJson(writeCheckoutPayload(transaction, checkoutSession, booking, null));
+        paymentTransactionRepository.save(transaction);
+        bookingFinanceService.applyExternalPaymentEvidence(booking, transaction);
+        operation.setStatus(ProviderOperationStatus.SUCCEEDED);
+        operation.setProviderReference(checkoutSession.providerSubscriptionId());
+        operation.setResponsePayloadJson(writeJson(checkoutSession));
+        operation.setCompletedAt(LocalDateTime.now());
+        operation.setNextAttemptAt(null);
+        operation.setLastError(null);
+        operation.setLockedBy(null);
+        operation.setLockedAt(null);
+        operation.setLeaseUntil(null);
+
+        return new BookingPaymentSessionResponse(
             booking.getId(),
             transaction.getId(),
             provider.name(),
-            null,
+            checkoutSession.checkoutUrl(),
             amount,
             transaction.getCurrency(),
             summary.getFinancialStatus().name()
         );
-        registerAfterCommit(
-            () -> {
-                try {
-                    ProviderOperation latestOperation = providerOperationWorker.processOperationNow(operation.getId());
-                    applyCheckoutDispatchResult(response, loadProviderOperationResult(latestOperation));
-                    if (response.getCheckoutUrl() == null || response.getCheckoutUrl().isBlank()) {
-                        LOGGER.warn(
-                            "Checkout operation did not produce a usable url after synchronous processing operationId={} status={} externalReference={} attemptCount={} lastError={}",
-                            latestOperation.getId(),
-                            latestOperation.getStatus(),
-                            latestOperation.getExternalReference(),
-                            latestOperation.getAttemptCount(),
-                            latestOperation.getLastError()
-                        );
-                        throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "No se pudo iniciar checkout de reserva");
-                    }
-                } catch (ResponseStatusException exception) {
-                    throw exception;
-                } catch (Exception exception) {
-                    throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "No se pudo iniciar checkout de reserva", exception);
-                }
-            },
-            true
-        );
-        return response;
     }
 
     @Transactional
@@ -453,7 +474,7 @@ public class BookingProviderIntegrationService {
         return initiateBookingPayout(booking, payoutRecord, null, true);
     }
 
-    @Transactional
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public boolean syncPendingChargeStatus(Long bookingId) {
         Booking booking = bookingRepository.findDetailedById(bookingId).orElse(null);
         if (booking == null) {
@@ -1545,6 +1566,24 @@ public class BookingProviderIntegrationService {
         );
     }
 
+    private boolean willConfirmBooking(
+        Booking booking,
+        PaymentTransaction transaction,
+        ParsedWebhookEvent event
+    ) {
+        if (booking == null || transaction == null || event == null) {
+            return false;
+        }
+        if (transaction.getTransactionType() != PaymentTransactionType.BOOKING_CHARGE) {
+            return false;
+        }
+        if (booking.getOperationalStatus() != BookingOperationalStatus.PENDING) {
+            return false;
+        }
+        return booking.getServicePaymentTypeSnapshot() != null
+            && booking.getServicePaymentTypeSnapshot() != ServicePaymentType.ON_SITE;
+    }
+
     private void emitFinancialNotification(
         Booking booking,
         PaymentTransaction transaction,
@@ -1554,12 +1593,16 @@ public class BookingProviderIntegrationService {
             return;
         }
         switch (event.eventType()) {
-            case PAYMENT_SUCCEEDED, SUBSCRIPTION_RENEWED -> billingNotificationIntegrationService.recordPaymentApproved(
-                booking,
-                transaction,
-                event,
-                "payment_webhook"
-            );
+            case PAYMENT_SUCCEEDED, SUBSCRIPTION_RENEWED -> {
+                if (!willConfirmBooking(booking, transaction, event)) {
+                    billingNotificationIntegrationService.recordPaymentApproved(
+                        booking,
+                        transaction,
+                        event,
+                        "payment_webhook"
+                    );
+                }
+            }
             case PAYMENT_FAILED -> billingNotificationIntegrationService.recordPaymentFailed(
                 booking,
                 transaction,

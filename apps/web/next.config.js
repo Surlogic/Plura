@@ -71,7 +71,7 @@ const nextConfig = {
     ],
   },
   turbopack: {},
-  webpack: (config) => {
+  webpack: (config, { isServer }) => {
     config.resolve.alias = {
       ...(config.resolve.alias || {}),
       react: nextReactPath,
@@ -79,6 +79,16 @@ const nextConfig = {
       'react/jsx-dev-runtime': path.join(nextReactPath, 'jsx-dev-runtime.js'),
       'react-dom': nextReactDomPath,
     };
+
+    // Performance budget: warn at 250 KB, error at 400 KB per chunk (client only).
+    if (!isServer) {
+      config.performance = {
+        hints: 'warning',
+        maxAssetSize: 400_000,
+        maxEntrypointSize: 400_000,
+      };
+    }
+
     return config;
   },
   async headers() {

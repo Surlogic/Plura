@@ -385,9 +385,6 @@ public class SearchService {
         if (criteria == null) {
             return false;
         }
-        if (criteria.categorySlug() != null && !criteria.categorySlug().isBlank()) {
-            return true;
-        }
-        return criteria.type() == SearchType.RUBRO || criteria.type() == SearchType.SERVICIO;
+        return criteria.categorySlug() != null && !criteria.categorySlug().isBlank();
     }
 }

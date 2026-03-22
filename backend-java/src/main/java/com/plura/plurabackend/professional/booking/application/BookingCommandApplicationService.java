@@ -194,12 +194,14 @@ public class BookingCommandApplicationService {
                     "servicePaymentType", saved.getServicePaymentTypeSnapshot().name()
                 )
             );
-            bookingNotificationIntegrationService.recordBookingCreated(
-                saved,
-                BookingActorType.CLIENT,
-                user.getId(),
-                "create_public_booking"
-            );
+            if (saved.getServicePaymentTypeSnapshot() == ServicePaymentType.ON_SITE) {
+                bookingNotificationIntegrationService.recordBookingCreated(
+                    saved,
+                    BookingActorType.CLIENT,
+                    user.getId(),
+                    "create_public_booking"
+                );
+            }
             sideEffectCoordinator.onBookingChanged(profile, Set.of(startDateTime.toLocalDate()));
 
             return new PublicBookingResponse(

@@ -207,6 +207,7 @@ Lectura de producto:
 - `payment-session` solo admite `MERCADOPAGO`; si existe una transaccion pendiente legacy `DLOCAL`, la sesion se reabre con Mercado Pago para no romper el checkout vigente
 - en el alta inicial del checkout, `POST /cliente/reservas/{id}/payment-session` ya no dispara `worker async + polling` interno para obtener la URL: procesa la `provider_operation` de checkout en linea despues del commit para recortar espera perceptible antes de abrir Mercado Pago
 - si esa resolucion en linea falla, `POST /cliente/reservas/{id}/payment-session` conserva el `status/reason` concreto del fallo upstream en vez de taparlo siempre con un `502` generico
+- `GET /cliente/reservas` y `GET /cliente/reservas/proxima` siguen intentando sincronizar cobros pendientes antes de responder, pero esa sync ahora corre en transaccion aislada y si falla de forma transitoria no tumba el listado: el endpoint responde con el snapshot actual de la reserva
 - `timeline` ya expone historial operativo de eventos de notification por reserva para el cliente autenticado
 - `GET /cliente/reservas/me` conserva el mismo response shape, pero ahora batch-ea summary/refund/payout latest por booking ids y queda mejor cubierto por un indice Flyway `booking(user_id, start_date_time)`
 

@@ -2,10 +2,8 @@ package com.plura.plurabackend.usuario.booking;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import com.plura.plurabackend.core.booking.BookingPaymentsGateway;
 import com.plura.plurabackend.core.booking.bridge.BookingClientProfessionalView;
 import com.plura.plurabackend.core.booking.bridge.BookingClientProfessionalViewGateway;
 import com.plura.plurabackend.core.booking.dto.BookingFinancialSummaryResponse;
@@ -32,11 +30,10 @@ import org.junit.jupiter.api.Test;
 class BookingClientServiceTest {
 
     @Test
-    void syncsPendingPrepaidBookingsBeforeReturningClientList() {
+    void returnsClientBookingsWithoutSyncingPayments() {
         BookingRepository bookingRepository = mock(BookingRepository.class);
         UserRepository userRepository = mock(UserRepository.class);
         BookingFinanceService bookingFinanceService = mock(BookingFinanceService.class);
-        BookingPaymentsGateway bookingPaymentsGateway = mock(BookingPaymentsGateway.class);
         BookingPolicySnapshotService bookingPolicySnapshotService = mock(BookingPolicySnapshotService.class);
         BookingDateTimeService bookingDateTimeService = mock(BookingDateTimeService.class);
         BookingClientProfessionalViewGateway bookingClientProfessionalViewGateway = mock(BookingClientProfessionalViewGateway.class);
@@ -45,7 +42,6 @@ class BookingClientServiceTest {
             bookingRepository,
             userRepository,
             bookingFinanceService,
-            bookingPaymentsGateway,
             bookingPolicySnapshotService,
             bookingDateTimeService,
             bookingClientProfessionalViewGateway,
@@ -68,7 +64,6 @@ class BookingClientServiceTest {
 
         when(userRepository.findByIdAndDeletedAtIsNull(7L)).thenReturn(Optional.of(user));
         when(bookingRepository.findAllByUserWithDetailsOrderByStartDateTimeAsc(user)).thenReturn(List.of(booking));
-        when(bookingRepository.findDetailedById(44L)).thenReturn(Optional.of(booking));
         when(bookingFinanceService.findResponseMapByBookingIds(List.of(44L)))
             .thenReturn(Map.<Long, BookingFinancialSummaryResponse>of());
         when(bookingFinanceService.findLatestRefundResponseMapByBookingIds(List.of(44L)))
@@ -84,6 +79,5 @@ class BookingClientServiceTest {
         List<?> result = service.getBookings("7");
 
         assertEquals(1, result.size());
-        verify(bookingPaymentsGateway).syncPendingChargeStatus(44L);
     }
 }

@@ -13,8 +13,8 @@ import org.springframework.stereotype.Service;
 @Service
 public class InMemoryProfileCacheService implements ProfileCacheService {
 
-    private static final Duration PAGE_TTL = Duration.ofMinutes(5);
-    private static final Duration SUMMARIES_TTL = Duration.ofMinutes(2);
+    private static final Duration PAGE_TTL = Duration.ofMinutes(10);
+    private static final Duration SUMMARIES_TTL = Duration.ofMinutes(10);
 
     private final Cache<String, ProfesionalPublicPageResponse> pageCache;
     private final Cache<String, List<ProfesionalPublicSummaryResponse>> summaryCache;

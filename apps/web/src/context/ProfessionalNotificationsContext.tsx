@@ -1,5 +1,3 @@
-'use client';
-
 import {
   createContext,
   useCallback,
@@ -11,9 +9,12 @@ import {
 } from 'react';
 import { getProfessionalNotificationUnreadCount } from '@/services/professionalNotifications';
 
-type ProfessionalNotificationsContextValue = {
+type ProfessionalNotificationsRefreshContextValue = {
   refreshToken: number;
   publishChange: () => void;
+};
+
+type ProfessionalNotificationsDataContextValue = {
   unreadCount: number;
   unreadCountError: Error | null;
   isUnreadCountLoading: boolean;
@@ -21,8 +22,11 @@ type ProfessionalNotificationsContextValue = {
   refreshUnreadCount: () => Promise<void>;
 };
 
-const ProfessionalNotificationsContext =
-  createContext<ProfessionalNotificationsContextValue | null>(null);
+const ProfessionalNotificationsRefreshContext =
+  createContext<ProfessionalNotificationsRefreshContextValue | null>(null);
+
+const ProfessionalNotificationsDataContext =
+  createContext<ProfessionalNotificationsDataContextValue | null>(null);
 
 export function ProfessionalNotificationsProvider({
   children,
@@ -68,41 +72,53 @@ export function ProfessionalNotificationsProvider({
     return request;
   }, []);
 
-  const value = useMemo(
+  const refreshValue = useMemo(
+    () => ({ refreshToken, publishChange }),
+    [refreshToken, publishChange],
+  );
+
+  const dataValue = useMemo(
     () => ({
-      refreshToken,
-      publishChange,
       unreadCount,
       unreadCountError,
       isUnreadCountLoading,
       hasUnreadCountLoaded,
       refreshUnreadCount,
     }),
-    [
-      refreshToken,
-      unreadCount,
-      unreadCountError,
-      isUnreadCountLoading,
-      hasUnreadCountLoaded,
-      // publishChange and refreshUnreadCount are stable (empty deps)
-      publishChange,
-      refreshUnreadCount,
-    ],
+    [unreadCount, unreadCountError, isUnreadCountLoading, hasUnreadCountLoaded, refreshUnreadCount],
   );
 
   return (
-    <ProfessionalNotificationsContext.Provider value={value}>
-      {children}
-    </ProfessionalNotificationsContext.Provider>
+    <ProfessionalNotificationsRefreshContext.Provider value={refreshValue}>
+      <ProfessionalNotificationsDataContext.Provider value={dataValue}>
+        {children}
+      </ProfessionalNotificationsDataContext.Provider>
+    </ProfessionalNotificationsRefreshContext.Provider>
   );
 }
 
-export const useProfessionalNotificationsContext = () => {
-  const context = useContext(ProfessionalNotificationsContext);
+export const useProfessionalNotificationsRefresh = () => {
+  const context = useContext(ProfessionalNotificationsRefreshContext);
   if (!context) {
     throw new Error(
-      'useProfessionalNotificationsContext must be used within ProfessionalNotificationsProvider',
+      'useProfessionalNotificationsRefresh must be used within ProfessionalNotificationsProvider',
     );
   }
   return context;
+};
+
+export const useProfessionalNotificationsData = () => {
+  const context = useContext(ProfessionalNotificationsDataContext);
+  if (!context) {
+    throw new Error(
+      'useProfessionalNotificationsData must be used within ProfessionalNotificationsProvider',
+    );
+  }
+  return context;
+};
+
+export const useProfessionalNotificationsContext = () => {
+  const refresh = useProfessionalNotificationsRefresh();
+  const data = useProfessionalNotificationsData();
+  return { ...refresh, ...data };
 };

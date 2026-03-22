@@ -21,6 +21,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -28,6 +30,8 @@ import org.springframework.web.server.ResponseStatusException;
 
 @Service
 public class BookingQueryApplicationService {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(BookingQueryApplicationService.class);
 
     private final BookingRepository bookingRepository;
     private final BookingFinanceService bookingFinanceService;
@@ -91,12 +95,15 @@ public class BookingQueryApplicationService {
             .toList();
         Map<Long, Booking> bookingEntities = bookingRepository.findByIdIn(bookingIds).stream()
             .collect(Collectors.toMap(Booking::getId, booking -> booking));
-        bookingEntities.values().stream()
+        List<Long> pendingSyncIds = bookingEntities.values().stream()
             .filter(this::shouldSyncPendingPayment)
             .map(Booking::getId)
-            .forEach(bookingPaymentsGateway::syncPendingChargeStatus);
-        bookingEntities = bookingRepository.findByIdIn(bookingIds).stream()
-            .collect(Collectors.toMap(Booking::getId, booking -> booking));
+            .toList();
+        pendingSyncIds.forEach(this::syncPendingPaymentSafely);
+        if (!pendingSyncIds.isEmpty()) {
+            bookingEntities = bookingRepository.findByIdIn(bookingIds).stream()
+                .collect(Collectors.toMap(Booking::getId, booking -> booking));
+        }
         final Map<Long, Booking> resolvedBookingEntities = bookingEntities;
         Map<Long, BookingFinancialSummaryResponse> summaries = bookingFinanceService.findResponseMapByBookingIds(bookingIds);
         Map<Long, BookingRefundRecordResponse> latestRefunds = bookingFinanceService.findLatestRefundResponseMapByBookingIds(bookingIds);
@@ -143,5 +150,17 @@ public class BookingQueryApplicationService {
         }
         return booking.getOperationalStatus() == BookingOperationalStatus.PENDING
             || booking.getOperationalStatus() == BookingOperationalStatus.CONFIRMED;
+    }
+
+    private void syncPendingPaymentSafely(Long bookingId) {
+        try {
+            bookingPaymentsGateway.syncPendingChargeStatus(bookingId);
+        } catch (Exception exception) {
+            LOGGER.warn(
+                "Professional booking payment sync failed; keeping current booking snapshot bookingId={}",
+                bookingId,
+                exception
+            );
+        }
     }
 }

@@ -1,5 +1,4 @@
-'use client';
-
+import { memo } from 'react';
 import Button from '@/components/ui/Button';
 import Card from '@/components/ui/Card';
 import type {
@@ -46,7 +45,7 @@ const LoadingState = () => (
   </div>
 );
 
-export default function ProfessionalNotificationsList({
+function ProfessionalNotificationsList({
   items,
   total,
   status,
@@ -158,3 +157,5 @@ export default function ProfessionalNotificationsList({
     </div>
   );
 }
+
+export default memo(ProfessionalNotificationsList);

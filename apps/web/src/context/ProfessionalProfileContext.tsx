@@ -64,13 +64,13 @@ export function ProfessionalProfileProvider({
         setProfile(null);
         setAuthStatus('unauthenticated');
       } else {
-        setAuthStatus(profile ? 'authenticated' : 'error');
+        setAuthStatus((prev) => (prev === 'authenticated' ? 'authenticated' : 'error'));
       }
     } finally {
       setIsLoading(false);
       setHasLoaded(true);
     }
-  }, [profile]);
+  }, []);
 
   const refreshProfileRef = useRef(refreshProfile);
 

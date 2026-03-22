@@ -14,7 +14,8 @@ import org.springframework.data.repository.query.Param;
 public interface BookingFinancialSummaryRepository extends JpaRepository<BookingFinancialSummary, Long> {
     Optional<BookingFinancialSummary> findByBooking_Id(Long bookingId);
 
-    List<BookingFinancialSummary> findByBooking_IdIn(Collection<Long> bookingIds);
+    @Query("SELECT s FROM BookingFinancialSummary s JOIN FETCH s.booking WHERE s.booking.id IN :bookingIds")
+    List<BookingFinancialSummary> findByBooking_IdIn(@Param("bookingIds") Collection<Long> bookingIds);
 
     List<BookingFinancialSummary> findByFinancialStatusAndUpdatedAtBefore(
         BookingFinancialStatus financialStatus,

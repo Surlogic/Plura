@@ -1,5 +1,4 @@
-'use client';
-
+import { memo } from 'react';
 import Button from '@/components/ui/Button';
 import { useClientBookingTimeline } from '@/hooks/useClientBookingTimeline';
 import {
@@ -33,7 +32,7 @@ const LoadingState = () => (
   </div>
 );
 
-export default function ClientBookingTimeline({
+function ClientBookingTimeline({
   bookingId,
   refreshToken = 0,
 }: ClientBookingTimelineProps) {
@@ -149,3 +148,5 @@ export default function ClientBookingTimeline({
     </div>
   );
 }
+
+export default memo(ClientBookingTimeline);

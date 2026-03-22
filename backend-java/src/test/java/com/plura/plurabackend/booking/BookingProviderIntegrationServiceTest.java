@@ -215,7 +215,7 @@ class BookingProviderIntegrationServiceTest {
     }
 
     @Test
-    void shouldProcessNewCheckoutSynchronouslyAfterCommit() throws Exception {
+    void shouldCreateCheckoutDirectlyWithoutAfterCommit() throws Exception {
         BookingProviderIntegrationService service = buildService();
         User user = clientUser();
         Booking booking = prepaidBooking();
@@ -233,15 +233,11 @@ class BookingProviderIntegrationServiceTest {
         ProviderOperation operation = new ProviderOperation();
         operation.setId("op-new");
         operation.setOperationType(ProviderOperationType.BOOKING_CHECKOUT);
-        operation.setStatus(ProviderOperationStatus.SUCCEEDED);
+        operation.setStatus(ProviderOperationStatus.PENDING);
         operation.setProvider(PaymentProvider.MERCADOPAGO);
         operation.setBookingId(booking.getId());
         operation.setPaymentTransactionId(createdCharge.getId());
         operation.setExternalReference(createdCharge.getExternalReference());
-
-        createdCharge.setPayloadJson(objectMapper.writeValueAsString(
-            new ProviderCheckoutSession("https://mp.test/checkout-new", "pref-new", null)
-        ));
 
         when(userRepository.findByIdAndDeletedAtIsNull(user.getId())).thenReturn(Optional.of(user));
         when(bookingRepository.findDetailedByIdForUpdate(booking.getId())).thenReturn(Optional.of(booking));
@@ -260,8 +256,6 @@ class BookingProviderIntegrationServiceTest {
             List.of(PaymentTransactionStatus.PENDING)
         )).thenReturn(List.of());
         when(paymentTransactionRepository.saveAndFlush(any(PaymentTransaction.class))).thenReturn(createdCharge);
-        when(paymentTransactionRepository.findById(createdCharge.getId())).thenReturn(Optional.of(createdCharge));
-        when(bookingRepository.findDetailedById(booking.getId())).thenReturn(Optional.of(booking));
         when(providerOperationService.createOrReuseOperation(
             eq(ProviderOperationType.BOOKING_CHECKOUT),
             eq(PaymentProvider.MERCADOPAGO),
@@ -272,7 +266,9 @@ class BookingProviderIntegrationServiceTest {
             eq(createdCharge.getExternalReference()),
             any()
         )).thenReturn(operation);
-        when(providerOperationWorker.processOperationNow(operation.getId())).thenReturn(operation);
+        when(providerClient.createBookingCheckout(any())).thenReturn(
+            new ProviderCheckoutSession("https://mp.test/checkout-new", "pref-new", null)
+        );
         when(bookingProfessionalPlanGateway.allowsOnlinePayments(booking.getProfessionalId())).thenReturn(true);
         when(bookingFinanceService.ensureInitializedWithEvidence(booking))
             .thenReturn(financialSummaryEntity(booking, BookingFinancialStatus.PAYMENT_PENDING));
@@ -286,8 +282,9 @@ class BookingProviderIntegrationServiceTest {
         assertEquals("tx-new", response.getTransactionId());
         assertEquals("https://mp.test/checkout-new", response.getCheckoutUrl());
         assertEquals("MERCADOPAGO", response.getProvider());
-        verify(providerOperationWorker).processOperationNow(operation.getId());
-        verify(providerOperationWorker, never()).kickOperationAsync(any());
+        verify(providerClient).createBookingCheckout(any());
+        verify(providerOperationWorker, never()).processOperationNow(any());
+        assertEquals(ProviderOperationStatus.SUCCEEDED, operation.getStatus());
     }
 
     @Test
@@ -309,7 +306,7 @@ class BookingProviderIntegrationServiceTest {
         ProviderOperation operation = new ProviderOperation();
         operation.setId("op-fail");
         operation.setOperationType(ProviderOperationType.BOOKING_CHECKOUT);
-        operation.setStatus(ProviderOperationStatus.FAILED);
+        operation.setStatus(ProviderOperationStatus.PENDING);
         operation.setProvider(PaymentProvider.MERCADOPAGO);
         operation.setBookingId(booking.getId());
         operation.setPaymentTransactionId(createdCharge.getId());
@@ -342,7 +339,7 @@ class BookingProviderIntegrationServiceTest {
             eq(createdCharge.getExternalReference()),
             any()
         )).thenReturn(operation);
-        when(providerOperationWorker.processOperationNow(operation.getId())).thenThrow(
+        when(providerClient.createBookingCheckout(any())).thenThrow(
             new ResponseStatusException(
                 HttpStatus.CONFLICT,
                 "La conexion Mercado Pago del profesional no esta lista para cobrar reservas"
@@ -357,11 +354,8 @@ class BookingProviderIntegrationServiceTest {
             () -> service.createPaymentSessionForClient(String.valueOf(user.getId()), booking.getId(), null)
         );
 
-        assertEquals(HttpStatus.CONFLICT, exception.getStatusCode());
-        assertEquals(
-            "La conexion Mercado Pago del profesional no esta lista para cobrar reservas",
-            exception.getReason()
-        );
+        assertEquals(HttpStatus.BAD_GATEWAY, exception.getStatusCode());
+        assertTrue(exception.getReason().contains("No se pudo iniciar checkout de reserva"));
     }
 
     @Test

@@ -12,8 +12,8 @@ import org.springframework.stereotype.Service;
 @Service
 public class InMemorySearchCacheService implements SearchCacheService {
 
-    private static final Duration SEARCH_TTL = Duration.ofSeconds(30);
-    private static final Duration SUGGEST_TTL = Duration.ofSeconds(60);
+    private static final Duration SEARCH_TTL = Duration.ofMinutes(5);
+    private static final Duration SUGGEST_TTL = Duration.ofMinutes(5);
 
     private final Cache<String, SearchResponse> searchCache;
     private final Cache<String, SearchSuggestResponse> suggestCache;

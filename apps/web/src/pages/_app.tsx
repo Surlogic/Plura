@@ -9,6 +9,46 @@ import { ProfessionalDashboardUnsavedChangesProvider } from '@/context/Professio
 import { ProfessionalNotificationsProvider } from '@/context/ProfessionalNotificationsContext';
 import { ThemeProvider } from '@/components/theme/ThemeProvider';
 import { hasKnownAuthSession } from '@/services/session';
+import UnsavedChangesOverlay from '@/components/profesional/dashboard/UnsavedChangesOverlay';
+export function reportWebVitals(metric: {
+  id: string;
+  name: string;
+  value: number;
+  rating?: 'good' | 'needs-improvement' | 'poor';
+  delta: number;
+  navigationType?: string;
+}) {
+  const endpoint = process.env.NEXT_PUBLIC_WEB_VITALS_ENDPOINT;
+  if (process.env.NODE_ENV === 'development') {
+    console.log(`[Web Vital] ${metric.name}:`, {
+      value: Math.round(metric.value * 100) / 100,
+      rating: metric.rating,
+      delta: Math.round(metric.delta * 100) / 100,
+      id: metric.id,
+    });
+    return;
+  }
+  if (!endpoint) return;
+  const body = JSON.stringify({
+    name: metric.name,
+    value: metric.value,
+    rating: metric.rating,
+    delta: metric.delta,
+    id: metric.id,
+    page: window.location.pathname,
+    timestamp: Date.now(),
+  });
+  if (typeof navigator.sendBeacon === 'function') {
+    navigator.sendBeacon(endpoint, body);
+  } else {
+    fetch(endpoint, {
+      method: 'POST',
+      body,
+      headers: { 'Content-Type': 'application/json' },
+      keepalive: true,
+    }).catch(() => {});
+  }
+}
 
 const instrumentSans = Instrument_Sans({
   variable: '--font-instrument-sans',
@@ -74,6 +114,7 @@ export default function App({ Component, pageProps }: AppProps) {
     content = (
       <ProfessionalDashboardUnsavedChangesProvider>
         {content}
+        <UnsavedChangesOverlay isDashboardRoute={isProfessionalDashboardArea} />
       </ProfessionalDashboardUnsavedChangesProvider>
     );
   }

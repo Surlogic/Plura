@@ -41,12 +41,12 @@ spring:
     username: ${SPRING_DATASOURCE_USERNAME:${DATABASE_USERNAME:sa}}
     password: ${SPRING_DATASOURCE_PASSWORD:${DATABASE_PASSWORD:}}
     hikari:
-      maximum-pool-size: ${HIKARI_MAX_POOL_SIZE:20}
-      minimum-idle: ${HIKARI_MIN_IDLE:2}
+      maximum-pool-size: ${HIKARI_MAX_POOL_SIZE:30}
+      minimum-idle: ${HIKARI_MIN_IDLE:5}
       connection-timeout: 30000
       idle-timeout: 600000
       max-lifetime: 1800000
-      connection-init-sql: ${HIKARI_CONNECTION_INIT_SQL:SELECT set_config('statement_timeout','5s',false), set_config('idle_in_transaction_session_timeout','30s',false), set_config('lock_timeout','2s',false)}
+      connection-init-sql: ${HIKARI_CONNECTION_INIT_SQL:SELECT set_config('statement_timeout','10s',false), set_config('idle_in_transaction_session_timeout','30s',false), set_config('lock_timeout','2s',false)}
   jackson:
     time-zone: ${APP_TIMEZONE:America/Montevideo}
   jpa:
@@ -108,7 +108,7 @@ feature:
   search:
     no-count-mode-enabled: ${SEARCH_NO_COUNT_MODE:true}
     has-availability-today-enabled: ${HAS_AVAILABILITY_TODAY_ENABLED:false}
-    availability-source: ${SEARCH_AVAILABILITY_SOURCE:AVAILABLE_SLOT}
+    availability-source: ${SEARCH_AVAILABILITY_SOURCE:FLAG}
   availability:
     slot-rebuild-enabled: ${AVAILABLE_SLOT_REBUILD_ENABLED:true}
     summary-enabled: ${SCHEDULE_SUMMARY_ENABLED:false}
@@ -294,8 +294,8 @@ app:
       max-pool-size: ${APP_ASYNC_GEOCODING_MAX_POOL_SIZE:4}
       queue-capacity: ${APP_ASYNC_GEOCODING_QUEUE_CAPACITY:500}
     billing-webhook:
-      core-pool-size: ${APP_ASYNC_BILLING_WEBHOOK_CORE_POOL_SIZE:2}
-      max-pool-size: ${APP_ASYNC_BILLING_WEBHOOK_MAX_POOL_SIZE:8}
+      core-pool-size: ${APP_ASYNC_BILLING_WEBHOOK_CORE_POOL_SIZE:4}
+      max-pool-size: ${APP_ASYNC_BILLING_WEBHOOK_MAX_POOL_SIZE:16}
       queue-capacity: ${APP_ASYNC_BILLING_WEBHOOK_QUEUE_CAPACITY:500}
 
 jobs:

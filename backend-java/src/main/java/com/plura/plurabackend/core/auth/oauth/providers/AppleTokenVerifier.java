@@ -25,6 +25,8 @@ import java.util.Base64;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.ReentrantLock;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
@@ -41,6 +43,7 @@ public class AppleTokenVerifier {
     private final ObjectMapper objectMapper;
     private final String appleClientId;
     private volatile CachedKeys cachedKeys;
+    private final ReentrantLock refreshLock = new ReentrantLock();
 
     public AppleTokenVerifier(
         @Value("${oauth.apple.client-id:}") String appleClientId,
@@ -126,8 +129,36 @@ public class AppleTokenVerifier {
         return cachedKeys.byKid().get(keyId);
     }
 
-    private synchronized void refreshKeys(boolean force) {
+    private void refreshKeys(boolean force) {
         CachedKeys current = this.cachedKeys;
+        if (!force && !current.isExpired()) {
+            return;
+        }
+
+        boolean acquired;
+        try {
+            acquired = refreshLock.tryLock(6, TimeUnit.SECONDS);
+        } catch (InterruptedException ex) {
+            Thread.currentThread().interrupt();
+            throw new ResponseStatusException(
+                HttpStatus.SERVICE_UNAVAILABLE,
+                "No se pudo consultar claves públicas de Apple"
+            );
+        }
+        if (!acquired) {
+            // Another thread is refreshing; re-check if cache was updated while waiting
+            if (!force && !this.cachedKeys.isExpired()) {
+                return;
+            }
+            throw new ResponseStatusException(
+                HttpStatus.SERVICE_UNAVAILABLE,
+                "No se pudo obtener claves públicas de Apple (timeout)"
+            );
+        }
+
+        try {
+        // Double-check after acquiring lock
+        current = this.cachedKeys;
         if (!force && !current.isExpired()) {
             return;
         }
@@ -194,6 +225,9 @@ public class AppleTokenVerifier {
                 HttpStatus.SERVICE_UNAVAILABLE,
                 "No se pudieron procesar claves públicas de Apple"
             );
+        }
+        } finally {
+            refreshLock.unlock();
         }
     }
 

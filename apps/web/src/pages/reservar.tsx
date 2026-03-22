@@ -1,8 +1,6 @@
-'use client';
-
-import { isAxiosError } from 'axios';
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/router';
+import { isAxiosError } from 'axios';
 import dynamic from 'next/dynamic';
 import Navbar from '@/components/shared/Navbar';
 import Footer from '@/components/shared/Footer';
@@ -32,146 +30,29 @@ import {
   type CheckoutOpenResult,
   openCheckoutUrl,
 } from '@/utils/checkoutWindow';
-import type { WorkDayKey } from '@/types/professional';
+import {
+  type WorkDayKey,
+  dayLabelsShort,
+  dayKeyByIndex,
+  weekOrder,
+  DAYS_AHEAD,
+  RESERVATION_ERROR_FALLBACK,
+  RESERVATION_TIMEOUT_ERROR,
+  RESERVATION_LOGIN_REDIRECT,
+  toLocalDateKey,
+  resolveQueryValue,
+  formatDuration,
+  formatPrice,
+  splitLocationLines,
+  parseOptionalNumber,
+  extractApiMessage,
+  isReservationTimeoutError,
+} from '@/utils/reservarHelpers';
 
 const PublicProfileMap = dynamic(
   () => import('@/components/profesional/PublicProfileMap'),
   { ssr: false },
 );
-
-const dayLabelsShort: Record<WorkDayKey, string> = {
-  mon: 'Lun',
-  tue: 'Mar',
-  wed: 'Mie',
-  thu: 'Jue',
-  fri: 'Vie',
-  sat: 'Sab',
-  sun: 'Dom',
-};
-
-const dayKeyByIndex: Record<number, WorkDayKey> = {
-  0: 'sun',
-  1: 'mon',
-  2: 'tue',
-  3: 'wed',
-  4: 'thu',
-  5: 'fri',
-  6: 'sat',
-};
-
-const weekOrder: WorkDayKey[] = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
-const DAYS_AHEAD = 28;
-
-const RESERVATION_ERROR_FALLBACK = 'No se pudo crear la reserva. Intenta nuevamente.';
-const RESERVATION_TIMEOUT_ERROR =
-  'La solicitud tardó demasiado. Intenta nuevamente.';
-const RESERVATION_LOGIN_REDIRECT = '/login?redirect=confirm-reservation';
-
-const toLocalDateKey = (date: Date) => date.toLocaleDateString('en-CA');
-
-const resolveQueryValue = (value: string | string[] | undefined) => {
-  if (Array.isArray(value)) return value[0] ?? '';
-  return value ?? '';
-};
-
-const parseDurationToMinutes = (value?: string) => {
-  if (!value) return null;
-  const trimmed = value.trim().toLowerCase();
-  if (!trimmed) return null;
-  if (/^\d+$/.test(trimmed)) return Number(trimmed);
-  const numbers = trimmed.match(/\d+/g)?.map(Number) ?? [];
-  if (numbers.length === 0) return null;
-  if (trimmed.includes('h')) {
-    const hours = numbers[0] ?? 0;
-    const minutes = numbers.length > 1 ? numbers[1] : 0;
-    return hours * 60 + minutes;
-  }
-  return numbers[0];
-};
-
-const formatDuration = (value?: string) => {
-  const minutes = parseDurationToMinutes(value);
-  if (!minutes) return 'Duracion estimada 45 min';
-  if (minutes < 60) return `${minutes} min`;
-  const hours = Math.floor(minutes / 60);
-  const remaining = minutes % 60;
-  if (remaining === 0) return `${hours} h`;
-  return `${hours} h ${remaining} min`;
-};
-
-const formatPrice = (value?: string) => {
-  if (!value) return 'A confirmar';
-  const trimmed = value.trim();
-  if (!trimmed) return 'A confirmar';
-  if (trimmed.includes('$')) return trimmed;
-  return `$${trimmed}`;
-};
-
-const splitLocationLines = (location: string) => {
-  const normalized = location.trim();
-  if (!normalized) {
-    return { addressLine: '', cityLine: '' };
-  }
-  const parts = normalized
-    .split(',')
-    .map((part) => part.trim())
-    .filter(Boolean);
-  if (parts.length === 0) {
-    return { addressLine: '', cityLine: '' };
-  }
-  if (parts.length === 1) {
-    return { addressLine: parts[0], cityLine: '' };
-  }
-  return {
-    addressLine: parts[0],
-    cityLine: parts.slice(1).join(', '),
-  };
-};
-
-const parseOptionalNumber = (value: unknown): number | null => {
-  if (typeof value === 'number') {
-    return Number.isFinite(value) ? value : null;
-  }
-  if (typeof value === 'string') {
-    const parsed = Number.parseFloat(value);
-    return Number.isFinite(parsed) ? parsed : null;
-  }
-  return null;
-};
-
-const extractApiMessage = (error: unknown, fallback: string) => {
-  if (isAxiosError(error)) {
-    if (error.code === 'ECONNABORTED') {
-      return fallback;
-    }
-    const responseData = error.response?.data;
-    if (typeof responseData === 'string' && responseData.trim()) {
-      return responseData.trim();
-    }
-    if (responseData && typeof responseData === 'object') {
-      const message = (responseData as { message?: unknown }).message;
-      if (typeof message === 'string' && message.trim()) {
-        return message.trim();
-      }
-      const errorMessage = (responseData as { error?: unknown }).error;
-      if (typeof errorMessage === 'string' && errorMessage.trim()) {
-        return errorMessage.trim();
-      }
-    }
-  }
-
-  if (error instanceof Error && error.message.trim()) {
-    return error.message.trim();
-  }
-  return fallback;
-};
-
-const isReservationTimeoutError = (error: unknown) => {
-  if (!isAxiosError(error)) return false;
-  if (error.code === 'ECONNABORTED') return true;
-  const message = typeof error.message === 'string' ? error.message.toLowerCase() : '';
-  return message.includes('timeout') || message.includes('timed out');
-};
 
 export default function ReservationPage() {
   const router = useRouter();

@@ -433,6 +433,37 @@ Puertos locales principales:
 - el `README.md` raiz ya remite a `contexto/` como documentacion operativa viva en lugar de apuntar a un `backend-java/README.md` inexistente.
 - el backend tiene soporte operativo mas amplio que el README raiz: sesiones, auditoria auth, OTP, payouts, provider ops y endpoints internos.
 
+## Reglas de performance obligatorias
+
+Este sistema debe funcionar como producto profesional real con usuarios concurrentes. Todo codigo nuevo o modificado debe respetar estas reglas sin excepcion:
+
+### Backend (Java / Spring Boot)
+
+- **Prohibido N+1**: nunca hacer llamadas a base de datos o APIs externas dentro de un loop o stream. Siempre usar batch queries (`findByIdIn`, `IN` clauses) y procesar en memoria.
+- **JOIN FETCH obligatorio**: toda query JPA que acceda a relaciones (`getBooking()`, `getUser()`, etc.) en el resultado debe incluir `JOIN FETCH` en la query para evitar lazy loading individual.
+- **No sincronizar APIs externas en el flujo de lectura**: si un endpoint necesita sincronizar estado con un proveedor externo (ej. Mercado Pago), hacerlo asincrono o en background. No bloquear la respuesta al usuario esperando APIs de terceros.
+- **Paginacion**: toda query que retorne listas potencialmente grandes debe aceptar paginacion. Nunca retornar `List<Entity>` sin limite desde la base de datos.
+- **No usar `synchronized` con llamadas HTTP**: usar `ReentrantLock` con `tryLock` y timeout si se necesita exclusion mutua alrededor de I/O.
+- **Pool sizing**: los defaults de pools de conexiones y threads deben ser suficientes para concurrencia real. Hikari min idle >= 5, billing/webhook core pool >= 4.
+- **Statement timeout**: las queries deben completar en tiempo razonable. El timeout de statements debe ser >= 10s para tolerar queries legitimas pero cortando las que se escapan.
+- **Query redundante**: no recargar datos de la DB si ya los tenes en memoria y no cambiaron. Solo re-fetchar despues de una escritura real.
+
+### Frontend (React / Next.js)
+
+- **No incluir state en dependency arrays de useCallback/useMemo si causa ciclos**: si un callback necesita leer state actual, usar `useRef` o functional state updates (`setState(prev => ...)`) en lugar de meter el state como dependencia.
+- **Contextos con useMemo**: todo context value debe estar envuelto en `useMemo` con las dependencias correctas. Los callbacks estables (deps vacias) no necesitan estar en el array de dependencias del `useMemo`.
+- **Polling con limite**: todo polling o retry recursivo debe tener un `MAX_ATTEMPTS` o un timeout total. Nunca hacer polling infinito.
+- **Debounce en inputs de busqueda**: todo input que dispare API calls debe tener debounce >= 300ms.
+- **AbortController en useEffect**: toda API call disparada desde un `useEffect` debe usar `AbortController` y cancelar en el cleanup.
+- **React.memo para listas**: componentes que se renderizan dentro de loops (cards, items, rows) deben usar `React.memo` y los callbacks que reciben deben estar memoizados con `useCallback`.
+- **No disparar multiples API calls redundantes al navegar**: usar guards (`hasLoaded`, `isLoading`) para evitar re-fetches innecesarios en contextos y hooks.
+
+### General
+
+- Ante la duda entre "mas rapido de escribir" y "mas eficiente en runtime", siempre elegir lo mas eficiente.
+- El objetivo es que cada request use el minimo de recursos posible: menos queries, menos re-renders, menos llamadas a APIs externas.
+- Si un cambio puede causar N+1, bloqueo de threads o re-renders en cascada, es un bug de performance y debe corregirse antes de mergearse.
+
 ## Documentos de esta carpeta
 
 - `rutas-y-modulos.md`: mapa de rutas, modulos y lectura por rol o plan.

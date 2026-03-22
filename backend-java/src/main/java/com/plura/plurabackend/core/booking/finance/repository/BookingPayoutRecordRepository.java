@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 public interface BookingPayoutRecordRepository extends JpaRepository<BookingPayoutRecord, String> {
     List<BookingPayoutRecord> findByBooking_IdOrderByCreatedAtDesc(Long bookingId);
@@ -16,7 +17,8 @@ public interface BookingPayoutRecordRepository extends JpaRepository<BookingPayo
 
     Optional<BookingPayoutRecord> findByRelatedDecisionId(String relatedDecisionId);
 
-    List<BookingPayoutRecord> findByBooking_IdInOrderByBooking_IdAscCreatedAtDesc(List<Long> bookingIds);
+    @Query("SELECT p FROM BookingPayoutRecord p JOIN FETCH p.booking WHERE p.booking.id IN :bookingIds ORDER BY p.booking.id ASC, p.createdAt DESC")
+    List<BookingPayoutRecord> findByBooking_IdInOrderByBooking_IdAscCreatedAtDesc(@Param("bookingIds") List<Long> bookingIds);
 
     List<BookingPayoutRecord> findByStatus(BookingPayoutStatus status);
 

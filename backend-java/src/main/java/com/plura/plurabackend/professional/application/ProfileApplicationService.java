@@ -135,42 +135,14 @@ public class ProfileApplicationService {
         int requestedSize = size == null ? 60 : Math.max(1, Math.min(size, 200));
         int effectiveLimit = (limit != null && limit > 0) ? Math.min(limit, 200) : requestedSize;
         int pageSize = Math.min(requestedSize, effectiveLimit);
-        int currentPage = requestedPage;
         List<ProfessionalProfile> profiles = new ArrayList<>();
 
-        while (profiles.size() < effectiveLimit && page == null && size == null) {
-            Page<Long> idsPage = professionalProfileRepository.findActiveIdsForPublicListing(
-                categoryId,
-                normalizedCategorySlug,
-                PageRequest.of(currentPage, pageSize)
-            );
-            if (idsPage.isEmpty()) {
-                break;
-            }
-            var fetchedProfiles = professionalProfileRepository.findByIdInAndActiveTrueWithRelations(idsPage.getContent());
-            Map<Long, ProfessionalProfile> byId = fetchedProfiles.stream()
-                .collect(Collectors.toMap(ProfessionalProfile::getId, profile -> profile));
-            for (Long id : idsPage.getContent()) {
-                ProfessionalProfile profile = byId.get(id);
-                if (profile != null) {
-                    profiles.add(profile);
-                }
-                if (profiles.size() >= effectiveLimit) {
-                    break;
-                }
-            }
-            if (!idsPage.hasNext()) {
-                break;
-            }
-            currentPage++;
-        }
-
-        if (page != null || size != null) {
-            Page<Long> idsPage = professionalProfileRepository.findActiveIdsForPublicListing(
-                categoryId,
-                normalizedCategorySlug,
-                PageRequest.of(requestedPage, pageSize)
-            );
+        Page<Long> idsPage = professionalProfileRepository.findActiveIdsForPublicListing(
+            categoryId,
+            normalizedCategorySlug,
+            PageRequest.of(requestedPage, pageSize)
+        );
+        if (!idsPage.isEmpty()) {
             var fetchedProfiles = professionalProfileRepository.findByIdInAndActiveTrueWithRelations(idsPage.getContent());
             Map<Long, ProfessionalProfile> byId = fetchedProfiles.stream()
                 .collect(Collectors.toMap(ProfessionalProfile::getId, profile -> profile));

@@ -37,17 +37,28 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
     )
     Optional<Booking> findDetailedByIdForUpdate(@Param("bookingId") Long bookingId);
 
-    List<Booking> findByIdIn(Collection<Long> bookingIds);
+    @Query("SELECT b FROM Booking b JOIN FETCH b.user WHERE b.id IN :bookingIds")
+    List<Booking> findByIdIn(@Param("bookingIds") Collection<Long> bookingIds);
 
     boolean existsByProfessionalIdAndStartDateTime(
         Long professionalId,
         LocalDateTime startDateTime
     );
 
-    Optional<Booking> findFirstByUserAndOperationalStatusInAndStartDateTimeAfterOrderByStartDateTimeAsc(
-        User user,
-        List<BookingOperationalStatus> statuses,
-        LocalDateTime startDateTime
+    @Query(
+        """
+        SELECT b FROM Booking b JOIN FETCH b.user u
+        WHERE b.user = :user
+          AND b.operationalStatus IN :statuses
+          AND b.startDateTime > :startDateTime
+        ORDER BY b.startDateTime ASC
+        LIMIT 1
+        """
+    )
+    Optional<Booking> findNextBookingForUser(
+        @Param("user") User user,
+        @Param("statuses") List<BookingOperationalStatus> statuses,
+        @Param("startDateTime") LocalDateTime startDateTime
     );
 
     List<Booking> findByUser_IdAndOperationalStatusInAndStartDateTimeGreaterThanEqual(
@@ -66,6 +77,7 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
         """
         SELECT b
         FROM Booking b
+        JOIN FETCH b.user u
         WHERE b.user = :user
         ORDER BY b.startDateTime ASC
         """

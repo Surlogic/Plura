@@ -1,5 +1,4 @@
-'use client';
-
+import { memo } from 'react';
 import Card from '@/components/ui/Card';
 import type {
   ClientNotificationEventType,
@@ -45,7 +44,7 @@ const LoadingState = () => (
   </div>
 );
 
-export default function ClientNotificationsList({
+function ClientNotificationsList({
   items,
   total,
   status,
@@ -160,3 +159,5 @@ export default function ClientNotificationsList({
     </div>
   );
 }
+
+export default memo(ClientNotificationsList);

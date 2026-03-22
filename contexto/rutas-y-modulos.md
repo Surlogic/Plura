@@ -238,6 +238,9 @@ Lectura de producto:
 - la tab bar esta centrada en cliente
 - `explore`, `favorites`, `bookings` y `notifications` reflejan el nucleo del plan `Usuario`
 - `dashboard` mezcla acceso de cliente y profesional, lo que puede servir al MVP pero puede requerir separacion mas adelante
+- `/(tabs)/index` ya muestra un bloque de ubicacion del cliente para abrir exploracion ordenada por cercania y un CTA para activar permisos de notificaciones del dispositivo
+- `/(tabs)/explore` ya puede reutilizar la ubicacion actual del cliente para pedir `/api/search` con `lat/lng`, `radiusKm` y `sort=DISTANCE`, mostrando tambien la zona actual y distancia aproximada por resultado cuando backend la devuelve
+- `/(tabs)/notifications` ya refleja el permiso push del sistema y permite activarlo o derivar a ajustes del dispositivo; todavia no registra tokens push en backend
 
 ### Grupo `(auth)`
 
@@ -286,6 +289,8 @@ Lectura de producto:
 - `src/services/clientBookings.ts`
 - `src/services/professionalBookings.ts`
 - `src/hooks/useGoogleOAuth.ts`
+- `src/services/location.ts` y `src/hooks/useUserLocation.ts`
+- `src/services/pushNotifications.ts` y `src/hooks/usePushNotifications.ts`
 
 Lectura de producto:
 
@@ -293,6 +298,8 @@ Lectura de producto:
 - `/profesional/[slug]` en mobile ya muestra una seccion visual de ubicacion con mapa de `Mapbox`, usando coordenadas publicas cuando existen y geocoding fallback cuando faltan
 - `/reservar` en mobile ya puede continuar reservas con pago online: crea la reserva, abre `Mercado Pago` dentro de la app con browser embebido y luego deriva a `/(tabs)/bookings` para seguir el estado de la reserva
 - `/(tabs)/bookings` ahora tambien reabre pagos pendientes de `Mercado Pago` dentro de la app y refresca reservas al volver
+- mobile cliente ya puede usar ubicacion real para experiencias de cercania dentro de `home` y `explore`
+- la parte push mobile queda en estado intermedio: permiso del dispositivo y UX listos, pero el envio push server-side todavia no esta cableado en el repo
 - todavia no se ve una capa madura para notificaciones transaccionales, reseñas, fidelizacion o chat
 
 ## Shared

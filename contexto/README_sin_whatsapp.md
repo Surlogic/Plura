@@ -180,6 +180,12 @@ Se mantiene la separacion entre:
 - timeline de actividad por booking
 - email transaccional
 
+En mobile cliente hoy hay una base adicional de permisos del dispositivo:
+
+- `/(tabs)/index`, `/(tabs)/notifications` y `/dashboard/settings` ya pueden solicitar al sistema activar notificaciones
+- el estado del permiso y la preferencia local de `pushReminders` queda persistido en storage seguro del dispositivo
+- todavia no existe en el repo una ruta backend para registrar `push token` o despachar push nativas; el alcance actual sigue siendo permiso + UX preparada + inbox/in-app existente
+
 Pendiente visible despues de estas fases:
 
 - settings y preferencias de notificaciones
@@ -317,6 +323,8 @@ Capacidades ya visibles en codigo:
 - busqueda, favoritos, geolocalizacion y mapa
 - billing, suscripciones, checkout de reservas y webhooks con Mercado Pago
 - mobile ya muestra mapa en el perfil publico del profesional y abre los flujos de `Mercado Pago` dentro de la app con browser embebido
+- mobile ya puede pedir permiso de ubicacion del dispositivo para mostrar la zona actual del cliente y lanzar exploracion ordenada por cercania real con `lat/lng`
+- mobile ya puede pedir permiso de notificaciones del sistema y persistir ese estado local en `home`, `notificaciones` y `configuracion`; todavia no registra device tokens en backend ni envia push server-side desde el repo actual
 - storage de imagenes
 
 Capacidades de producto definidas pero no necesariamente cerradas en UI o API publica:

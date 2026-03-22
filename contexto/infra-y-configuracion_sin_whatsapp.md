@@ -179,12 +179,14 @@ Infra actual detectada:
 
 - email SMTP
 - jobs opcionales con SQS
+- mobile cliente ya puede pedir permiso de notificaciones del dispositivo y conservar el estado local del permiso/preferencia
 
 Capacidad pendiente o no claramente documentada:
 
-- centro de notificaciones persistente
+- registro backend de `push token` por dispositivo
+- despacho push nativo desde eventos transaccionales de reserva
 - motor de eventos de producto mas visible
-- integracion operativa por email e in-app
+- extensiones de preferencias de notificaciones mas finas por canal o evento
 
 ### Analytics y eventos del producto
 
@@ -252,6 +254,9 @@ Lectura de producto:
 - mobile ya tiene base para API, mapa y login Google
 - para el mapa del perfil publico mobile, la variable operativa recomendada pasa a ser `EXPO_PUBLIC_MAPBOX_TOKEN`; `MAPBOX_TOKEN` queda como fallback legacy local
 - mobile usa `expo-web-browser` para abrir checkout de reservas, checkout de plan y OAuth de `Mercado Pago` dentro de la app sin sacar al usuario a un navegador externo completo
+- mobile ahora tambien depende de `expo-location` y `expo-notifications` para pedir permisos nativos de ubicacion y notificaciones
+- `app.json` ya declara el plugin `expo-location` con texto de permiso foreground y habilita `expo-notifications` para el permiso del sistema en runtime
+- el estado local de permiso push se persiste hoy junto con preferencias del cliente en storage seguro; aun no existe variable/env ni endpoint backend adicional para registrar device tokens
 
 ### Backend
 

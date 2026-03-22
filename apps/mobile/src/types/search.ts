@@ -9,12 +9,17 @@ export type { SearchSort, SearchType };
 export type SearchItem = {
   id: string;
   slug: string;
-  fullName: string;
-  rubro?: string;
-  locationText?: string;
-  headline?: string;
-  minPrice?: number | null;
+  name: string;
+  headline?: string | null;
   rating?: number | null;
+  reviewsCount?: number | null;
+  categorySlugs: string[];
+  distanceKm?: number | null;
+  latitude?: number | null;
+  longitude?: number | null;
+  priceFrom?: number | null;
+  coverImageUrl?: string | null;
+  locationText?: string | null;
 };
 
 export type SearchQueryParams = SearchQueryParamsBase;

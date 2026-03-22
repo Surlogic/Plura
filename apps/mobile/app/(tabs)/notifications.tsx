@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, ScrollView, Text, View } from 'react-native';
+import { ActivityIndicator, Linking, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import {
@@ -7,11 +7,20 @@ import {
   type MobileNotification,
 } from '../../src/services/clientFeatures';
 import { useProfessionalProfileContext } from '../../src/context/ProfessionalProfileContext';
+import { usePushNotifications } from '../../src/hooks/usePushNotifications';
 
 export default function NotificationsScreen() {
   const { role, profile } = useProfessionalProfileContext();
   const [isLoading, setIsLoading] = useState(true);
   const [items, setItems] = useState<MobileNotification[]>([]);
+  const {
+    settings: pushSettings,
+    isLoading: isLoadingPushState,
+    isRefreshing: isRefreshingPushState,
+    isEnabled: arePushNotificationsEnabled,
+    requestPermission: requestPushPermission,
+    disablePush,
+  } = usePushNotifications();
 
   useEffect(() => {
     const load = async () => {
@@ -50,6 +59,20 @@ export default function NotificationsScreen() {
     void load();
   }, [profile?.emailVerified, profile?.professionalPlan, role]);
 
+  const openDeviceSettings = async () => {
+    try {
+      await Linking.openSettings();
+    } catch {
+      // Ignore settings handoff failures on unsupported platforms.
+    }
+  };
+
+  const pushStatusLabel = arePushNotificationsEnabled
+    ? 'Activas'
+    : pushSettings.permissionStatus === 'denied'
+      ? 'Bloqueadas'
+      : 'Pendientes';
+
   return (
     <SafeAreaView className="flex-1 bg-background" edges={['top']}>
       <ScrollView contentContainerStyle={{ padding: 24, paddingBottom: 120 }}>
@@ -60,6 +83,76 @@ export default function NotificationsScreen() {
             ? 'Alertas del panel profesional y estado de la cuenta.'
             : 'Recordatorios y novedades de tu cuenta.'}
         </Text>
+
+        <View className="mt-6 rounded-[24px] border border-secondary/10 bg-white p-5 shadow-sm">
+          <View className="flex-row items-start justify-between">
+            <View className="flex-1 pr-3">
+              <Text className="text-xs font-bold uppercase tracking-[2px] text-gray-500">
+                Permiso del dispositivo
+              </Text>
+              <Text className="mt-2 text-xl font-bold text-secondary">
+                Notificaciones {pushStatusLabel.toLowerCase()}
+              </Text>
+              <Text className="mt-2 text-sm leading-6 text-gray-500">
+                Cuando esten activas podremos usar este canal para reservas confirmadas, cancelaciones, recordatorios y promos.
+              </Text>
+            </View>
+            <View className={`rounded-full px-3 py-1 ${
+              arePushNotificationsEnabled
+                ? 'bg-emerald-50'
+                : pushSettings.permissionStatus === 'denied'
+                  ? 'bg-amber-50'
+                  : 'bg-slate-100'
+            }`}>
+              <Text className={`text-xs font-bold ${
+                arePushNotificationsEnabled
+                  ? 'text-emerald-700'
+                  : pushSettings.permissionStatus === 'denied'
+                    ? 'text-amber-700'
+                    : 'text-slate-700'
+              }`}>
+                {pushStatusLabel}
+              </Text>
+            </View>
+          </View>
+
+          {isLoadingPushState ? (
+            <View className="mt-4 items-center">
+              <ActivityIndicator color="#0A7A43" />
+            </View>
+          ) : (
+            <View className="mt-4 flex-row" style={{ gap: 10 }}>
+              {arePushNotificationsEnabled ? (
+                <TouchableOpacity
+                  onPress={() => void disablePush()}
+                  className="flex-1 items-center justify-center rounded-full border border-secondary/10 bg-background px-4 py-3"
+                >
+                  <Text className="text-sm font-bold text-secondary">
+                    {isRefreshingPushState ? 'Guardando...' : 'Silenciar en app'}
+                  </Text>
+                </TouchableOpacity>
+              ) : (
+                <TouchableOpacity
+                  onPress={() => void requestPushPermission()}
+                  className="flex-1 items-center justify-center rounded-full bg-secondary px-4 py-3"
+                >
+                  <Text className="text-sm font-bold text-white">
+                    {isRefreshingPushState ? 'Activando...' : 'Activar notificaciones'}
+                  </Text>
+                </TouchableOpacity>
+              )}
+
+              {pushSettings.permissionStatus === 'denied' && !pushSettings.canAskAgain ? (
+                <TouchableOpacity
+                  onPress={() => void openDeviceSettings()}
+                  className="flex-1 items-center justify-center rounded-full border border-secondary/10 bg-white px-4 py-3"
+                >
+                  <Text className="text-sm font-bold text-secondary">Abrir ajustes</Text>
+                </TouchableOpacity>
+              ) : null}
+            </View>
+          )}
+        </View>
 
         {isLoading ? (
           <View className="py-16 items-center">

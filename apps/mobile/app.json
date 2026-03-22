@@ -32,6 +32,13 @@
     "plugins": [
       "expo-dev-client",
       "expo-web-browser",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Plura usa tu ubicacion para mostrar profesionales cercanos y ordenar resultados por distancia."
+        }
+      ],
+      "expo-notifications",
       "@react-native-google-signin/google-signin"
     ],
     "extra": {

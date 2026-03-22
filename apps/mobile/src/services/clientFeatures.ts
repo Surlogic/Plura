@@ -21,10 +21,16 @@ type ClientNextBookingDto = {
   professionalLocation?: string | null;
 };
 
-type ClientPreferenceState = {
+export type PushPermissionStatus = 'granted' | 'denied' | 'undetermined';
+
+export type ClientPreferenceState = {
   emailReminders: boolean;
   pushReminders: boolean;
   marketing: boolean;
+  pushPermissionStatus?: PushPermissionStatus;
+  pushPermissionCanAskAgain?: boolean;
+  pushPermissionUpdatedAt?: string | null;
+  pushToken?: string | null;
 };
 
 const FAVORITES_KEY = 'plura_client_favorites';
@@ -134,6 +140,10 @@ export const getClientPreferences = async (): Promise<ClientPreferenceState> =>
     emailReminders: true,
     pushReminders: false,
     marketing: false,
+    pushPermissionStatus: 'undetermined',
+    pushPermissionCanAskAgain: true,
+    pushPermissionUpdatedAt: null,
+    pushToken: null,
   });
 
 export const updateClientPreferences = async (

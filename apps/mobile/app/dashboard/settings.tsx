@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Switch, Text, TouchableOpacity, View, TextInput } from 'react-native';
+import { ActivityIndicator, Alert, Linking, Switch, Text, TouchableOpacity, View, TextInput } from 'react-native';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
@@ -15,6 +15,7 @@ import {
   updateProfessionalBookingPolicy,
 } from '../../src/services/bookingPolicy';
 import type { ProfessionalBookingPolicy } from '../../src/types/bookings';
+import { usePushNotifications } from '../../src/hooks/usePushNotifications';
 
 type Preferences = {
   emailReminders: boolean;
@@ -53,6 +54,11 @@ export default function SettingsScreen() {
     pushReminders: false,
     marketing: false,
   });
+  const {
+    settings: pushSettings,
+    requestPermission: requestPushPermission,
+    disablePush,
+  } = usePushNotifications();
 
   const currentEmail = role === 'professional' ? profile?.email : clientProfile?.email;
   const emailVerified = role === 'professional'
@@ -73,6 +79,13 @@ export default function SettingsScreen() {
   }, []);
 
   useEffect(() => {
+    setPreferences((current) => ({
+      ...current,
+      pushReminders: pushSettings.pushReminders,
+    }));
+  }, [pushSettings.pushReminders]);
+
+  useEffect(() => {
     const loadPolicy = async () => {
       if (role !== 'professional') return;
       setIsLoadingBookingPolicy(true);
@@ -90,6 +103,43 @@ export default function SettingsScreen() {
   }, [role]);
 
   const toggle = async (key: keyof Preferences) => {
+    if (key === 'pushReminders') {
+      if (preferences.pushReminders) {
+        const next = await disablePush();
+        setPreferences((current) => ({ ...current, pushReminders: next.pushReminders }));
+        return;
+      }
+
+      const next = await requestPushPermission();
+      setPreferences((current) => ({ ...current, pushReminders: next.pushReminders }));
+
+      if (!next.pushReminders) {
+        if (next.permissionStatus === 'denied' && !next.canAskAgain) {
+          Alert.alert(
+            'Notificaciones bloqueadas',
+            'Activalas desde los ajustes del dispositivo para recibir avisos de reservas y promos.',
+            [
+              { text: 'Ahora no', style: 'cancel' },
+              {
+                text: 'Abrir ajustes',
+                onPress: () => {
+                  void Linking.openSettings();
+                },
+              },
+            ],
+          );
+          return;
+        }
+
+        Alert.alert(
+          'Permiso pendiente',
+          'Necesitamos permiso del sistema para enviarte avisos de reservas y notificaciones importantes.',
+        );
+      }
+
+      return;
+    }
+
     const next = await updateClientPreferences({ [key]: !preferences[key] });
     setPreferences(next);
   };

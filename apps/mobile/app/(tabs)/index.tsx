@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
@@ -14,6 +14,8 @@ import type { ServiceCategoryOption } from '../../src/types/professional';
 import { getCategoryAccent } from '../../src/features/client/categoryUi';
 import { AppScreen } from '../../src/components/ui/AppScreen';
 import { theme } from '../../src/theme';
+import { useUserLocation } from '../../src/hooks/useUserLocation';
+import { usePushNotifications } from '../../src/hooks/usePushNotifications';
 
 export default function HomeScreen() {
   const { role, profile, clientProfile } = useProfessionalProfileContext();
@@ -22,6 +24,18 @@ export default function HomeScreen() {
   const [businesses, setBusinesses] = useState<PublicProfessionalSummary[]>([]);
   const [nextBooking, setNextBooking] = useState<ClientNextBooking | null>(null);
   const [categories, setCategories] = useState<ServiceCategoryOption[]>([]);
+  const {
+    location,
+    hasCoordinates,
+    isRefreshing: isRefreshingLocation,
+    requestAccess: requestLocationAccess,
+    refreshLocation,
+  } = useUserLocation();
+  const {
+    isEnabled: arePushNotificationsEnabled,
+    isRefreshing: isRefreshingPush,
+    requestPermission: requestPushPermission,
+  } = usePushNotifications();
 
   useEffect(() => {
     if (role === 'professional') {
@@ -64,6 +78,38 @@ export default function HomeScreen() {
 
   const topBusinesses = useMemo(() => businesses.slice(0, 6), [businesses]);
   const displayName = clientProfile?.fullName?.trim() || 'Cliente';
+  const locationLabel = location.label || 'tu zona';
+  const shouldShowPushPrompt =
+    role !== 'professional' && !arePushNotificationsEnabled;
+
+  const handleOpenNearby = async () => {
+    const nextLocation = hasCoordinates
+      ? location
+      : await requestLocationAccess();
+
+    if (
+      typeof nextLocation.latitude !== 'number'
+      || typeof nextLocation.longitude !== 'number'
+    ) {
+      Alert.alert(
+        'Ubicacion requerida',
+        nextLocation.permissionStatus === 'denied' && !nextLocation.canAskAgain
+          ? 'Activa la ubicacion desde los ajustes del dispositivo para mostrar resultados cercanos.'
+          : 'Necesitamos tu ubicacion para abrir profesionales ordenados por cercania.',
+      );
+      return;
+    }
+
+    router.push({
+      pathname: '/(tabs)/explore',
+      params: {
+        lat: String(nextLocation.latitude),
+        lng: String(nextLocation.longitude),
+        radiusKm: '10',
+        sort: 'DISTANCE',
+      },
+    });
+  };
 
   if (role === 'professional' && profile) {
     return <ProfessionalHomeTab />;
@@ -105,6 +151,68 @@ export default function HomeScreen() {
               <Text className="text-xs font-bold text-primary">Explorar</Text>
             </View>
           </TouchableOpacity>
+
+          <View className="mt-4 rounded-[24px] border border-secondary/10 bg-white p-4 shadow-sm">
+            <View className="flex-row items-start">
+              <View className="h-11 w-11 items-center justify-center rounded-full bg-primary/12">
+                <Ionicons name={hasCoordinates ? 'locate' : 'location-outline'} size={20} color={theme.colors.primary} />
+              </View>
+              <View className="ml-3 flex-1">
+                <Text className="text-sm font-bold text-secondary">
+                  {hasCoordinates ? `Tu ubicacion: ${locationLabel}` : 'Activa tu ubicacion'}
+                </Text>
+                <Text className="mt-1 text-xs leading-5 text-muted">
+                  {hasCoordinates
+                    ? 'Ya puedes ordenar resultados por cercania real y abrir un listado cerca de ti.'
+                    : 'Plura puede mostrar profesionales cercanos y mejorar los filtros de exploracion desde mobile.'}
+                </Text>
+              </View>
+            </View>
+
+            <View className="mt-4 flex-row" style={{ gap: 10 }}>
+              <TouchableOpacity
+                onPress={() => void handleOpenNearby()}
+                className="flex-1 items-center justify-center rounded-full bg-secondary px-4 py-3"
+              >
+                <Text className="text-sm font-bold text-white">Ver cercanos</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => void (hasCoordinates ? refreshLocation() : requestLocationAccess())}
+                className="flex-1 items-center justify-center rounded-full border border-secondary/10 bg-background px-4 py-3"
+              >
+                <Text className="text-sm font-bold text-secondary">
+                  {isRefreshingLocation
+                    ? 'Actualizando...'
+                    : hasCoordinates
+                      ? 'Actualizar'
+                      : 'Usar mi ubicacion'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          {shouldShowPushPrompt ? (
+            <View className="mt-4 rounded-[24px] bg-secondary p-4 shadow-sm">
+              <Text className="text-xs font-bold uppercase tracking-[2px] text-white/75">
+                Notificaciones
+              </Text>
+              <Text className="mt-2 text-lg font-bold text-white">
+                Activa avisos de reservas y promociones
+              </Text>
+              <Text className="mt-2 text-sm leading-6 text-white/80">
+                Asi podemos avisarte cuando una reserva se confirma, cambia, se cancela o aparece una promo.
+              </Text>
+
+              <TouchableOpacity
+                onPress={() => void requestPushPermission()}
+                className="mt-4 self-start rounded-full bg-white px-5 py-2.5"
+              >
+                <Text className="text-sm font-bold text-secondary">
+                  {isRefreshingPush ? 'Activando...' : 'Activar notificaciones'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          ) : null}
         </View>
 
         <View className="mt-4">

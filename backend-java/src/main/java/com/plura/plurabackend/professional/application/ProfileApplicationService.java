@@ -335,6 +335,13 @@ public class ProfileApplicationService {
                 imageThumbnailJobService.generateThumbnailsAsync(extractStorageObjectKey(logoUrl));
             }
         }
+        if (request.getBannerUrl() != null) {
+            String bannerUrl = request.getBannerUrl().trim();
+            profile.setBannerUrl(bannerUrl.isBlank() ? null : bannerUrl);
+            if (!bannerUrl.isBlank()) {
+                imageThumbnailJobService.generateThumbnailsAsync(extractStorageObjectKey(bannerUrl));
+            }
+        }
         if (request.getInstagram() != null) {
             profile.setInstagram(normalizeOptional(request.getInstagram()));
         }
@@ -472,6 +479,7 @@ public class ProfileApplicationService {
     private boolean hasEnhancedBusinessProfileContent(ProfesionalBusinessProfileUpdateRequest request) {
         return request != null && (
             request.getLogoUrl() != null
+                || request.getBannerUrl() != null
                 || request.getInstagram() != null
                 || request.getFacebook() != null
                 || request.getTiktok() != null

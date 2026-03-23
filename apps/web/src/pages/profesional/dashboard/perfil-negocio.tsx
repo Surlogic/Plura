@@ -12,8 +12,7 @@ import { isAxiosError } from 'axios';
 import { useProfessionalDashboardUnsavedSection } from '@/context/ProfessionalDashboardUnsavedChangesContext';
 import { mapboxForwardGeocode } from '@/services/mapbox';
 import { getGeoLocationSuggestions, type GeoLocationSuggestion } from '@/services/geo';
-import { uploadProfessionalImage } from '@/services/professionalImageUpload';
-import { resolveAssetUrl } from '@/utils/assetUrl';
+import ImageUploader from '@/components/profesional/dashboard/ImageUploader';
 import {
   DashboardHero,
   DashboardSectionHeading,
@@ -54,6 +53,7 @@ type BusinessProfileForm = {
   businessName: string;
   categorySlugs: string[];
   logoUrl: string;
+  bannerUrl: string;
   location: string;
   country: string;
   city: string;
@@ -78,7 +78,6 @@ export default function ProfesionalBusinessProfilePage() {
   const [isDirty, setIsDirty] = useState(false);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
   const [saveError, setSaveError] = useState(false);
-  const [isUploadingLogo, setIsUploadingLogo] = useState(false);
   const [isGeoSuggesting, setIsGeoSuggesting] = useState(false);
   const [activeGeoField, setActiveGeoField] = useState<'country' | 'city' | 'fullAddress' | null>(null);
   const [geoSuggestions, setGeoSuggestions] = useState<GeoLocationSuggestion[]>([]);
@@ -86,6 +85,7 @@ export default function ProfesionalBusinessProfilePage() {
     businessName: '',
     categorySlugs: [] as string[],
     logoUrl: '',
+    bannerUrl: '',
     location: '',
     country: '',
     city: '',
@@ -128,6 +128,7 @@ export default function ProfesionalBusinessProfilePage() {
       businessName: profile.fullName || '',
       categorySlugs,
       logoUrl: profile.logoUrl || '',
+      bannerUrl: profile.bannerUrl || '',
       location: profile.location || '',
       country: profile.country || '',
       city: profile.city || '',
@@ -167,43 +168,6 @@ export default function ProfesionalBusinessProfilePage() {
     }));
     setIsDirty(true);
     setSaveMessage(null);
-  };
-
-  const handleLogoFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    event.target.value = '';
-    if (!file) return;
-    setSaveMessage(null);
-    setSaveError(false);
-
-    const normalizedType = (file.type || '').trim().toLowerCase();
-    if (!['image/jpeg', 'image/png', 'image/webp'].includes(normalizedType)) {
-      setSaveMessage('Formato inválido. Solo jpg, png o webp.');
-      setSaveError(true);
-      return;
-    }
-    if (file.size > 1024 * 1024) {
-      setSaveMessage('La imagen supera 1MB.');
-      setSaveError(true);
-      return;
-    }
-
-    setIsUploadingLogo(true);
-    try {
-      const imageUrl = await uploadProfessionalImage(file, 'logo');
-      if (!imageUrl) {
-        throw new Error('empty_image_url');
-      }
-      setForm((prev) => ({ ...prev, logoUrl: imageUrl }));
-      setIsDirty(true);
-      setSaveMessage('Logo cargado. Falta guardar los cambios del perfil.');
-      setSaveError(false);
-    } catch {
-      setSaveMessage('No se pudo subir el logo.');
-      setSaveError(true);
-    } finally {
-      setIsUploadingLogo(false);
-    }
   };
 
   const handleGeoFieldChange = async (
@@ -349,6 +313,7 @@ export default function ProfesionalBusinessProfilePage() {
         phoneNumber: form.phone.trim(),
         ...(canManageEnhancedPublicProfile ? {
           logoUrl: form.logoUrl.trim(),
+          bannerUrl: form.bannerUrl.trim(),
           instagram: form.instagram.trim(),
           facebook: form.facebook.trim(),
           tiktok: form.tiktok.trim(),
@@ -371,6 +336,7 @@ export default function ProfesionalBusinessProfilePage() {
         longitude: normalizedPayload.longitude ?? undefined,
         phone: normalizedPayload.phoneNumber,
         logoUrl: canManageEnhancedPublicProfile ? form.logoUrl.trim() : form.logoUrl,
+        bannerUrl: canManageEnhancedPublicProfile ? form.bannerUrl.trim() : form.bannerUrl,
         instagram: canManageEnhancedPublicProfile ? form.instagram.trim() : form.instagram,
         facebook: canManageEnhancedPublicProfile ? form.facebook.trim() : form.facebook,
         tiktok: canManageEnhancedPublicProfile ? form.tiktok.trim() : form.tiktok,
@@ -540,54 +506,37 @@ export default function ProfesionalBusinessProfilePage() {
                         placeholder="Ej: Atelier Glow"
                       />
                     </div>
-                    <div>
-                      <label className="text-sm font-medium text-[#0E2A47]">
-                        Logo
-                      </label>
-                      <LockedFeature
-                        requiredPlan="PROFESIONAL"
-                        currentPlan={profile?.professionalPlan}
-                        className="mt-2"
-                      >
-                        <div className="space-y-3">
-                          <div className="flex items-center gap-3">
-                            <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full border border-[#E2E7EC] bg-[#F8FAFC] text-xs font-semibold text-[#94A3B8]">
-                              {form.logoUrl.trim() ? (
-                                <img
-                                  src={resolveAssetUrl(form.logoUrl.trim())}
-                                  alt="Logo del negocio"
-                                  className="h-full w-full object-cover"
-                                />
-                              ) : (
-                                'LOGO'
-                              )}
-                            </div>
-                            <input
-                              className={inputClassName}
-                              name="logoUrl"
-                              value={form.logoUrl}
-                              onChange={handleChange}
-                              placeholder="/uploads/... o https://..."
-                            />
-                          </div>
-                          <div className="flex flex-wrap items-center gap-3">
-                            <label className="inline-flex cursor-pointer items-center rounded-full border border-[#D7DEE8] bg-white px-3 py-2 text-xs font-semibold text-[#0E2A47] transition hover:-translate-y-0.5 hover:shadow-sm">
-                              <input
-                                type="file"
-                                accept="image/jpeg,image/png,image/webp"
-                                className="hidden"
-                                onChange={(event) => void handleLogoFileChange(event)}
-                                disabled={isUploadingLogo}
-                              />
-                              {isUploadingLogo ? 'Subiendo logo...' : 'Subir logo'}
-                            </label>
-                            <p className="text-xs text-[#64748B]">
-                              Formatos: jpg, png, webp. Máximo 1MB.
-                            </p>
-                          </div>
-                        </div>
-                      </LockedFeature>
-                    </div>
+                    <LockedFeature
+                      requiredPlan="PROFESIONAL"
+                      currentPlan={profile?.professionalPlan}
+                    >
+                      <ImageUploader
+                        label="Logo"
+                        value={form.logoUrl}
+                        onChange={(url) => {
+                          setForm((prev) => ({ ...prev, logoUrl: url }));
+                          setIsDirty(true);
+                        }}
+                        kind="logo"
+                        variant="circle"
+                      />
+                    </LockedFeature>
+                    <LockedFeature
+                      requiredPlan="PROFESIONAL"
+                      currentPlan={profile?.professionalPlan}
+                    >
+                      <ImageUploader
+                        label="Banner"
+                        value={form.bannerUrl}
+                        onChange={(url) => {
+                          setForm((prev) => ({ ...prev, bannerUrl: url }));
+                          setIsDirty(true);
+                        }}
+                        kind="logo"
+                        variant="banner"
+                        hint="Imagen de portada. jpg, png, webp. Máximo 1MB."
+                      />
+                    </LockedFeature>
                     <div>
                       <label className="text-sm font-medium text-[#0E2A47]">
                         Rubro

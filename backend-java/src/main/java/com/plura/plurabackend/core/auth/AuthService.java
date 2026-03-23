@@ -806,6 +806,7 @@ public class AuthService {
             profile.getLongitude(),
             profile.getTipoCliente(),
             profile.getLogoUrl(),
+            profile.getBannerUrl(),
             profile.getInstagram(),
             profile.getFacebook(),
             profile.getTiktok(),

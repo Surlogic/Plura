@@ -61,6 +61,9 @@ public class ProfessionalProfile {
     @Column(name = "logo_url")
     private String logoUrl;
 
+    @Column(name = "banner_url", length = 500)
+    private String bannerUrl;
+
     @Column(name = "instagram")
     private String instagram;
 

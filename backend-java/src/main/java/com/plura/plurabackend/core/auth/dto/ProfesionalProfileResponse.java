@@ -46,6 +46,8 @@ public class ProfesionalProfileResponse {
     private String tipoCliente;
     /** URL del logotipo del profesional/empresa. */
     private String logoUrl;
+    /** URL del banner del profesional/empresa. */
+    private String bannerUrl;
     /** Enlace al perfil de Instagram. */
     private String instagram;
     /** Enlace al perfil de Facebook. */

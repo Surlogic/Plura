@@ -33,6 +33,7 @@ export type ProfessionalProfile = {
   longitude?: number | null;
   tipoCliente: string;
   logoUrl?: string | null;
+  bannerUrl?: string | null;
   instagram?: string | null;
   facebook?: string | null;
   tiktok?: string | null;

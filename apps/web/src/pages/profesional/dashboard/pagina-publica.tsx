@@ -9,7 +9,7 @@ import { useProfessionalProfile } from '@/hooks/useProfessionalProfile';
 import { useProfessionalDashboardUnsavedSection } from '@/context/ProfessionalDashboardUnsavedChangesContext';
 import { resolveProfessionalFeatureAccess } from '@/lib/billing/featureGuards';
 import api from '@/services/api';
-import { uploadProfessionalImage } from '@/services/professionalImageUpload';
+import ImageUploader from '@/components/profesional/dashboard/ImageUploader';
 import { resolveAssetUrl } from '@/utils/assetUrl';
 import {
   DashboardHero,
@@ -70,7 +70,6 @@ export default function ProfesionalPublicPageBuilder() {
     { id: 'photo-4', url: '' },
   ]);
   const [initialPhotos, setInitialPhotos] = useState<PhotoItem[] | null>(null);
-  const [uploadingPhotoIndex, setUploadingPhotoIndex] = useState<number | null>(null);
 
   const displayName = profile?.fullName || '';
   const displayCategory = profile?.rubro || '';
@@ -228,57 +227,18 @@ export default function ProfesionalPublicPageBuilder() {
     setIsDirty(true);
   };
 
-  const handlePhotoChange = (index: number, value: string) => {
+  const handlePhotoUrlChange = (index: number, url: string) => {
     setPhotos((prev) =>
       prev.map((photo, photoIndex) =>
-        photoIndex === index ? { ...photo, url: value } : photo,
+        photoIndex === index ? { ...photo, url } : photo,
       ),
     );
     setIsDirty(true);
   };
 
-  const handlePhotoFileSelected = async (
-    index: number,
-    event: ChangeEvent<HTMLInputElement>,
-  ) => {
-    const file = event.target.files?.[0];
-    event.target.value = '';
-    if (!file) return;
-
-    const normalizedType = (file.type || '').trim().toLowerCase();
-    if (!['image/jpeg', 'image/png', 'image/webp'].includes(normalizedType)) {
-      setSaveMessage('Formato inválido. Solo jpg, png o webp.');
-      setSaveError(true);
-      return;
-    }
-    if (file.size > 1024 * 1024) {
-      setSaveMessage('La imagen supera 1MB.');
-      setSaveError(true);
-      return;
-    }
-
-    setUploadingPhotoIndex(index);
-    setSaveMessage(null);
-    setSaveError(false);
-    try {
-      const imageUrl = await uploadProfessionalImage(file, 'gallery');
-      if (!imageUrl) {
-        throw new Error('empty_image_url');
-      }
-      setPhotos((prev) =>
-        prev.map((photo, photoIndex) =>
-          photoIndex === index ? { ...photo, url: imageUrl } : photo,
-        ),
-      );
-      setIsDirty(true);
-      setSaveMessage('Foto cargada. Falta guardar los cambios de la página pública.');
-      setSaveError(false);
-    } catch {
-      setSaveMessage('No se pudo subir la foto.');
-      setSaveError(true);
-    } finally {
-      setUploadingPhotoIndex(null);
-    }
+  const removePhoto = (index: number) => {
+    setPhotos((prev) => prev.filter((_, photoIndex) => photoIndex !== index));
+    setIsDirty(true);
   };
 
   const addPhoto = () => {
@@ -494,24 +454,23 @@ export default function ProfesionalPublicPageBuilder() {
                     </div>
                     <div className="mt-4 grid gap-4 sm:grid-cols-2">
                       {photos.map((photo, index) => (
-                        <div key={photo.id} className="space-y-2">
-                          <div className="h-28 overflow-hidden rounded-[18px] border border-[#E2E7EC] bg-[#F4F6F8]">
-                            {photo.url ? (
-                              <img
-                                src={resolveAssetUrl(photo.url)}
-                                alt={`Foto ${index + 1}`}
-                                className="h-full w-full object-cover"
-                              />
-                            ) : null}
-                          </div>
-                          <input
-                            className={inputClassName}
-                            placeholder="Pegá la URL de la foto"
+                        <div key={photo.id}>
+                          <ImageUploader
                             value={photo.url}
-                            onChange={(event) =>
-                              handlePhotoChange(index, event.target.value)
-                            }
+                            onChange={(url) => handlePhotoUrlChange(index, url)}
+                            kind="gallery"
+                            variant="square"
+                            label={`Foto ${index + 1}`}
                           />
+                          {photo.url ? (
+                            <button
+                              type="button"
+                              onClick={() => removePhoto(index)}
+                              className="mt-2 rounded-full border border-red-200 bg-red-50 px-3 py-1 text-xs font-semibold text-red-500 transition hover:-translate-y-0.5 hover:shadow-sm"
+                            >
+                              Eliminar foto
+                            </button>
+                          ) : null}
                         </div>
                       ))}
                     </div>

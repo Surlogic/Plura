@@ -38,6 +38,10 @@ public class ProfesionalBusinessProfileUpdateRequest {
     @Pattern(regexp = "^(|https?://.+|/uploads/.+|r2://.+|r2:.+)$")
     private String logoUrl;
 
+    @Size(max = 500)
+    @Pattern(regexp = "^(|https?://.+|/uploads/.+|r2://.+|r2:.+)$")
+    private String bannerUrl;
+
     @Size(max = 255)
     @Pattern(regexp = "^(|https?://\\S+|[A-Za-z0-9._@-]{1,255})$")
     private String instagram;

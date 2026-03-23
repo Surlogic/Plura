@@ -1,18 +1,6 @@
 import api from '@/services/api';
 import type { AppFeedbackResponse, CreateAppFeedbackRequest, AppFeedbackPage } from '@/types/appFeedback';
 
-export type PublicAppFeedbackItem = {
-  id: number;
-  rating: number;
-  text: string | null;
-  category: string | null;
-  contextSource: string | null;
-  createdAt: string;
-  authorRole: 'CLIENT' | 'PROFESSIONAL' | string | null;
-  authorDisplayName: string | null;
-  publicVisible: boolean;
-};
-
 export const createClientAppFeedback = async (
   request: CreateAppFeedbackRequest,
 ): Promise<AppFeedbackResponse> => {
@@ -45,13 +33,4 @@ export const getProfessionalAppFeedbackMine = async (
     params: { page, size },
   });
   return response.data;
-};
-
-export const getPublicAppFeedback = async (
-  limit = 6,
-): Promise<PublicAppFeedbackItem[]> => {
-  const response = await api.get<PublicAppFeedbackItem[]>('/public/app-feedback', {
-    params: { limit },
-  });
-  return Array.isArray(response.data) ? response.data : [];
 };

@@ -1,17 +1,21 @@
 import { useEffect, useState } from 'react';
-import type { GetServerSideProps, InferGetServerSidePropsType } from 'next';
+import type { GetStaticProps, InferGetStaticPropsType } from 'next';
 import Navbar from '@/components/shared/Navbar';
 import Footer from '@/components/shared/Footer';
 import Hero from '@/components/home/Hero';
 import CategoriesGrid from '@/components/home/CategoriesGrid';
 import TopBusinesses from '@/components/home/TopBusinesses';
-import type { HomeResponse } from '@/types/home';
+import ReviewsSection from '@/components/home/ReviewsSection';
+import FAQSection from '@/components/home/FAQSection';
+import type { HomeResponse, HomeTopProfessional } from '@/types/home';
 import type { Category } from '@/types/category';
+import type { PublicProfessionalSummary } from '@/types/professional';
 
 type HomePageProps = {
   homeData: HomeResponse | null;
 };
 
+const FALLBACK_HOME_PROFESSIONALS_LIMIT = 8;
 const HOME_FETCH_TIMEOUT_MS = 10000;
 
 const emptyStats: HomeResponse['stats'] = {
@@ -19,6 +23,21 @@ const emptyStats: HomeResponse['stats'] = {
   professionals: 0,
   categories: 0,
   monthlyBookings: 0,
+};
+
+const mapPublicToHomeProfessional = (
+  professional: PublicProfessionalSummary,
+): HomeTopProfessional => {
+  const primaryCategory = professional.categories?.[0]?.name?.trim();
+  return {
+    id: professional.id,
+    slug: professional.slug,
+    name: professional.fullName?.trim() || 'Profesional',
+    category: primaryCategory || professional.rubro?.trim() || 'Profesional',
+    rating: professional.rating ?? null,
+    reviewsCount: professional.reviewsCount ?? null,
+    imageUrl: professional.logoUrl ?? null,
+  };
 };
 
 const fetchWithTimeout = (url: string, timeoutMs = HOME_FETCH_TIMEOUT_MS) => {
@@ -41,6 +60,8 @@ const fetchHomeData = async (
   apiBaseUrl: string,
   options?: { logErrors?: boolean },
 ): Promise<HomeResponse | null> => {
+  let homeData: HomeResponse | null = null;
+
   try {
     const response = await fetchWithTimeout(`${apiBaseUrl}/api/home`);
 
@@ -48,29 +69,56 @@ const fetchHomeData = async (
       throw new Error(`Home API error ${response.status}`);
     }
 
-    return (await response.json()) as HomeResponse;
+    homeData = (await response.json()) as HomeResponse;
   } catch (error) {
     if (options?.logErrors) {
       console.error('[HOME] Error fetching /api/home:', error instanceof Error ? error.message : error);
     }
-    return null;
   }
+
+  const hasTopProfessionals = (homeData?.topProfessionals?.length || 0) > 0;
+  if (!hasTopProfessionals) {
+    try {
+      const response = await fetchWithTimeout(
+        `${apiBaseUrl}/public/profesionales?limit=${FALLBACK_HOME_PROFESSIONALS_LIMIT}`,
+      );
+
+      if (response.ok) {
+        const publicProfessionals = (await response.json()) as PublicProfessionalSummary[];
+        const fallbackProfessionals = Array.isArray(publicProfessionals)
+          ? publicProfessionals.map(mapPublicToHomeProfessional)
+          : [];
+
+        if (fallbackProfessionals.length > 0) {
+          homeData = {
+            stats: homeData?.stats ?? emptyStats,
+            categories: homeData?.categories ?? [],
+            topProfessionals: fallbackProfessionals,
+          };
+        }
+      }
+    } catch (error) {
+      if (options?.logErrors) {
+        console.error('[HOME] Error fetching /public/profesionales:', error instanceof Error ? error.message : error);
+      }
+    }
+  }
+
+  return homeData;
 };
 
-export const getServerSideProps: GetServerSideProps<HomePageProps> = async () => {
+export const getStaticProps: GetStaticProps<HomePageProps> = async () => {
   const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
-  const homeData = await fetchHomeData(apiBaseUrl, { logErrors: true });
+  const homeData = process.env.SKIP_HOME_SSG_FETCH === 'true'
+    ? null
+    : await fetchHomeData(apiBaseUrl, { logErrors: true });
 
-  return {
-    props: {
-      homeData,
-    },
-  };
+  return { props: { homeData }, revalidate: 300 };
 };
 
 export default function HomePage({
   homeData,
-}: InferGetServerSidePropsType<typeof getServerSideProps>) {
+}: InferGetStaticPropsType<typeof getStaticProps>) {
   const [resolvedHomeData, setResolvedHomeData] = useState(homeData);
   const [isLoadingHomeData, setIsLoadingHomeData] = useState(!hasRenderableHomeData(homeData));
 
@@ -119,6 +167,8 @@ export default function HomePage({
           <Hero stats={stats} isLoading={isInitialHomeLoading} />
           <CategoriesGrid categories={categories} isLoading={isInitialHomeLoading} />
           <TopBusinesses professionals={topProfessionals} isLoading={isInitialHomeLoading} />
+          <ReviewsSection />
+          <FAQSection />
         </main>
         <Footer />
       </div>

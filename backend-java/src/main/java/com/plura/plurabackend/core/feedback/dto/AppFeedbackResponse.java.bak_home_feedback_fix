@@ -12,7 +12,4 @@ public class AppFeedbackResponse {
     private String category;
     private String contextSource;
     private String createdAt;
-    private String authorRole;
-    private String authorDisplayName;
-    private Boolean publicVisible;
 }

@@ -65,28 +65,6 @@ public interface AppFeedbackRepository extends JpaRepository<AppFeedback, Long> 
         Pageable pageable
     );
 
-    @Query(
-        value = """
-            SELECT f
-            FROM AppFeedback f
-            JOIN FETCH f.author
-            WHERE f.status = com.plura.plurabackend.core.feedback.model.FeedbackStatus.ACTIVE
-              AND f.publicVisible = TRUE
-              AND f.text IS NOT NULL
-              AND TRIM(f.text) <> ''
-            ORDER BY f.createdAt DESC, f.id DESC
-            """,
-        countQuery = """
-            SELECT COUNT(f)
-            FROM AppFeedback f
-            WHERE f.status = com.plura.plurabackend.core.feedback.model.FeedbackStatus.ACTIVE
-              AND f.publicVisible = TRUE
-              AND f.text IS NOT NULL
-              AND TRIM(f.text) <> ''
-            """
-    )
-    Page<AppFeedback> findPublicVisible(Pageable pageable);
-
     @Query("SELECT COUNT(f) FROM AppFeedback f WHERE (:from IS NULL OR f.createdAt >= :from) AND (:to IS NULL OR f.createdAt <= :to)")
     long countFiltered(@Param("from") LocalDateTime from, @Param("to") LocalDateTime to);
 

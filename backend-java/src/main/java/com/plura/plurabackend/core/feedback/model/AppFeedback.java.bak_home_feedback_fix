@@ -28,8 +28,7 @@ import lombok.NoArgsConstructor;
     name = "app_feedback",
     indexes = {
         @Index(name = "idx_app_feedback_author", columnList = "author_user_id, created_at DESC"),
-        @Index(name = "idx_app_feedback_status", columnList = "status, created_at DESC"),
-        @Index(name = "idx_app_feedback_public", columnList = "public_visible, created_at DESC")
+        @Index(name = "idx_app_feedback_status", columnList = "status, created_at DESC")
     }
 )
 public class AppFeedback {
@@ -63,9 +62,6 @@ public class AppFeedback {
     @Column(name = "status", nullable = false, length = 20)
     private FeedbackStatus status = FeedbackStatus.ACTIVE;
 
-    @Column(name = "public_visible", nullable = false)
-    private Boolean publicVisible = false;
-
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
 
@@ -82,9 +78,6 @@ public class AppFeedback {
         }
         if (this.status == null) {
             this.status = FeedbackStatus.ACTIVE;
-        }
-        if (this.publicVisible == null) {
-            this.publicVisible = false;
         }
     }
 

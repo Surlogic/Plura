@@ -14,5 +14,5 @@ public class ProfesionalPublicPageUpdateRequest {
     private String about;
 
     @Size(max = 10)
-    private List<@Pattern(regexp = "^(https?://.+|/uploads/.+|r2://.+|r2:.+)$") String> photos;
+    private List<@Pattern(regexp = "^(https?://.+|r2://.+|r2:.+)$") String> photos;
 }

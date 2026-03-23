@@ -1,10 +1,9 @@
 package com.plura.plurabackend.core.storage;
 
-import io.micrometer.core.instrument.MeterRegistry;
-import io.micrometer.core.instrument.Timer;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.StandardOpenOption;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Timer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -85,50 +84,11 @@ public class LocalImageStorageService implements ImageStorageService {
         }
     }
 
-    @Override
-    public String storeImage(byte[] bytes, String objectKey, String contentType) {
-        Timer.Sample sample = Timer.start(meterRegistry);
-        try {
-            if (bytes == null || bytes.length == 0) {
-                throw new IllegalArgumentException("Image bytes are required");
-            }
-            String normalizedKey = sanitizeKey(objectKey);
-            Path targetFile = localBaseDir.resolve(normalizedKey).normalize();
-            if (!targetFile.startsWith(localBaseDir)) {
-                throw new IllegalArgumentException("Ruta de imagen inválida");
-            }
-            Path parent = targetFile.getParent();
-            if (parent != null) {
-                Files.createDirectories(parent);
-            }
-            Files.write(
-                targetFile,
-                bytes,
-                StandardOpenOption.CREATE,
-                StandardOpenOption.TRUNCATE_EXISTING,
-                StandardOpenOption.WRITE
-            );
-            return this.publicBaseUrl + "/" + normalizedKey;
-        } catch (Exception exception) {
-            throw new IllegalStateException("No se pudo guardar la imagen local", exception);
-        } finally {
-            sample.stop(
-                Timer.builder("plura.image.store.latency")
-                    .description("Image storage latency")
-                    .tag("provider", "local")
-                    .register(meterRegistry)
-            );
-        }
-    }
-
     private String sanitizeKey(String objectKey) {
         if (objectKey == null || objectKey.isBlank()) {
             return "missing";
         }
-        return objectKey.trim()
-            .replace("..", "")
-            .replace('\\', '/')
-            .replaceFirst("^/+", "");
+        return objectKey.trim().replace("..", "").replace('\\', '/');
     }
 
     private String normalizeBase(String baseUrl) {

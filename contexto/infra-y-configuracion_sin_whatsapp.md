@@ -223,7 +223,6 @@ Variables detectadas en uso:
 - `NEXT_IMAGE_REMOTE_HOSTS`
 - `NEXT_BUILD_DIR`
 - `ANALYZE`
-- `SKIP_HOME_SSG_FETCH`
 - `ANALYZE`
 
 Lectura de producto:
@@ -396,6 +395,7 @@ Notas reales de deploy en Render:
 - el naming de planes en codigo sigue siendo `BASIC / PROFESIONAL / ENTERPRISE`; el contexto de producto actualizado usa `Free / Pro / Premium`.
 - Flyway conserva migraciones historicas de dLocal (`V34`, `V37`) solo por continuidad de schema; el runtime vigente ya es Mercado Pago only y `V47` elimina los campos legacy del dominio profesional.
 - billing de suscripciones requiere que el schema de `subscription` acepte `PLAN_BASIC`, `PLAN_PROFESIONAL` y `PLAN_ENTERPRISE`; `V51` alinea el constraint legacy que todavia admitia `PLAN_PRO` y `PLAN_PREMIUM`
+- `V57` agrega columna `public_visible` (boolean, default false) a `app_feedback` con indice `idx_app_feedback_public` sobre `(public_visible, created_at DESC)`; backfill a `true` para feedback ACTIVE con texto existente
 - en local, `backend-java/.env` usa como retorno de suscripcion Mercado Pago una URL publica HTTPS de Render en vez de `localhost`, porque `preapproval` no acepta `localhost` y `plura.com` no estaba resolviendo un TLS util para el retorno
 - en `render.yaml`, el servicio `plura-api` usa `rootDir=backend-java`, por lo que `dockerfilePath` y `dockerContext` deben mantenerse relativos a esa carpeta; hoy quedaron alineados a `./Dockerfile` y `.`
 - el blueprint de Render ya expone tanto variables legacy de Mercado Pago como el naming explicito por dominio `SUBSCRIPTIONS_*` y `RESERVATIONS_*`, incluido el flag `BILLING_MERCADOPAGO_RESERVATIONS_OAUTH_PKCE_ENABLED`

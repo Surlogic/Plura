@@ -116,13 +116,13 @@ export default function ClienteConfiguracionPage() {
       clearProfile();
       await router.replace('/cliente/auth/login');
     } catch {
-      setDeleteError('No se pudo eliminar la cuenta. Verificá el código e intentá nuevamente.');
+      setDeleteError('No se pudo eliminar la cuenta. Intenta nuevamente.');
     } finally {
       setIsDeletingAccount(false);
     }
   };
 
-  const handleSendDeleteChallenge = async () => {
+  const handleSendDeleteChallenge = async (channel: 'EMAIL' | 'SMS') => {
     if (isSendingDeleteChallenge) return;
     setDeleteError(null);
     setDeleteChallengeMessage(null);
@@ -133,15 +133,15 @@ export default function ClienteConfiguracionPage() {
         '/auth/challenge/send',
         {
           purpose: 'ACCOUNT_DELETION',
-          channel: 'EMAIL',
+          channel,
         },
       );
       setDeleteChallengeId(response.data.challengeId);
       setDeleteChallengeMessage(
-        `Te enviamos un código por email a ${response.data.maskedDestination}. Puede demorar hasta 1 o 2 minutos. Revisá también spam o promociones. El código vence en 10 minutos.`,
+        `Código enviado por ${channel === 'EMAIL' ? 'email' : 'SMS'} a ${response.data.maskedDestination}.`,
       );
     } catch (error) {
-      setDeleteError(resolveBackendMessage(error, 'No se pudo enviar el código por email.'));
+      setDeleteError(resolveBackendMessage(error, 'No se pudo enviar el challenge.'));
     } finally {
       setIsSendingDeleteChallenge(false);
     }
@@ -389,20 +389,29 @@ export default function ClienteConfiguracionPage() {
               <p className="mt-1 text-xs text-[color:var(--ink-muted)]">
                 Se cancelarán tus próximas reservas y cerraremos tu sesión en todos los dispositivos.
               </p>
-              <p className="mt-2 text-xs text-[color:var(--ink-muted)]">
-                Por seguridad, este paso se valida solo por email. El código puede demorar hasta 1 o 2 minutos. Revisá también spam o promociones.
-              </p>
               <div className="mt-4 flex flex-wrap gap-2">
                 <button
                   type="button"
                   onClick={() => {
-                    void handleSendDeleteChallenge();
+                    void handleSendDeleteChallenge('EMAIL');
                   }}
                   disabled={isSendingDeleteChallenge}
                   className={dangerButtonClassName}
                 >
                   {isSendingDeleteChallenge ? 'Enviando...' : 'Enviar código por email'}
                 </button>
+                {profile?.phoneNumber ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      void handleSendDeleteChallenge('SMS');
+                    }}
+                    disabled={isSendingDeleteChallenge}
+                    className={dangerButtonClassName}
+                  >
+                    {isSendingDeleteChallenge ? 'Enviando...' : 'Enviar código por SMS'}
+                  </button>
+                ) : null}
               </div>
               <input
                 type="text"
@@ -436,4 +445,3 @@ export default function ClienteConfiguracionPage() {
     </ClientShell>
   );
 }
-

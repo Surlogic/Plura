@@ -1,16 +1,13 @@
 package com.plura.plurabackend.professional.service;
 
+import com.plura.plurabackend.core.storage.ImageStorageService;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.StandardOpenOption;
 import java.util.Locale;
 import java.util.Set;
 import java.util.UUID;
 import javax.imageio.ImageIO;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -26,13 +23,17 @@ public class ServiceImageStorageService {
         "image/webp"
     );
 
-    private final Path uploadRootPath;
+    private final ImageStorageService imageStorageService;
 
-    public ServiceImageStorageService(@Value("${app.storage.upload-dir:uploads}") String uploadDir) {
-        this.uploadRootPath = Path.of(uploadDir).toAbsolutePath().normalize();
+    public ServiceImageStorageService(ImageStorageService imageStorageService) {
+        this.imageStorageService = imageStorageService;
     }
 
     public String storeServiceImage(MultipartFile file) {
+        return storeProfessionalImage(file, "services", null);
+    }
+
+    public String storeProfessionalImage(MultipartFile file, String kind, String professionalId) {
         if (file == null || file.isEmpty()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "La imagen es obligatoria");
         }
@@ -49,70 +50,68 @@ public class ServiceImageStorageService {
                 "Formato inválido. Solo jpg, png o webp"
             );
         }
+
         byte[] imageBytes = readImageBytes(file);
         if (!isValidImage(imageBytes)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Archivo de imagen inválido");
         }
 
+        String safeKind = sanitizeKind(kind);
+        String safeProfessionalId = sanitizeProfessionalId(professionalId);
         String extension = resolveExtension(contentType);
-        String fileName = "service-" + UUID.randomUUID() + extension;
-        Path targetDirectory = uploadRootPath.resolve("services").normalize();
-        Path targetFile = targetDirectory.resolve(fileName).normalize();
-        if (!targetFile.startsWith(targetDirectory)) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Ruta de archivo inválida");
-        }
+        String objectKey = safeProfessionalId.isBlank()
+            ? safeKind + "/" + UUID.randomUUID() + extension
+            : "professionals/" + safeProfessionalId + "/" + safeKind + "/" + UUID.randomUUID() + extension;
 
         try {
-            Files.createDirectories(targetDirectory);
-            Files.write(
-                targetFile,
-                imageBytes,
-                StandardOpenOption.CREATE,
-                StandardOpenOption.TRUNCATE_EXISTING,
-                StandardOpenOption.WRITE
-            );
-        } catch (IOException exception) {
-            throw new ResponseStatusException(
-                HttpStatus.INTERNAL_SERVER_ERROR,
-                "No se pudo guardar la imagen"
-            );
+            return imageStorageService.storeImage(imageBytes, objectKey, contentType);
+        } catch (IllegalArgumentException exception) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "No se pudo guardar la imagen");
+        } catch (RuntimeException exception) {
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "No se pudo guardar la imagen");
         }
-
-        return "/uploads/services/" + fileName;
-    }
-
-    private String resolveExtension(String contentType) {
-        return switch (contentType) {
-            case "image/jpeg" -> ".jpg";
-            case "image/png" -> ".png";
-            case "image/webp" -> ".webp";
-            default -> throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Formato inválido");
-        };
     }
 
     private byte[] readImageBytes(MultipartFile file) {
         try {
-            byte[] bytes = file.getBytes();
-            if (bytes.length == 0 || bytes.length > MAX_FILE_SIZE_BYTES) {
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "La imagen supera 1MB");
-            }
-            return bytes;
+            return file.getBytes();
         } catch (IOException exception) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Archivo de imagen inválido");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "No se pudo leer la imagen");
         }
     }
 
     private boolean isValidImage(byte[] imageBytes) {
-        try {
-            BufferedImage image = ImageIO.read(new ByteArrayInputStream(imageBytes));
-            if (image == null) {
-                return false;
-            }
-            int width = image.getWidth();
-            int height = image.getHeight();
-            return width > 0 && height > 0 && width <= 8000 && height <= 8000;
+        try (ByteArrayInputStream inputStream = new ByteArrayInputStream(imageBytes)) {
+            BufferedImage image = ImageIO.read(inputStream);
+            return image != null;
         } catch (IOException exception) {
             return false;
         }
+    }
+
+    private String resolveExtension(String contentType) {
+        return switch (contentType) {
+            case "image/png" -> ".png";
+            case "image/webp" -> ".webp";
+            default -> ".jpg";
+        };
+    }
+
+    private String sanitizeKind(String kind) {
+        if (kind == null || kind.isBlank()) {
+            return "misc";
+        }
+        return kind.trim().toLowerCase(Locale.ROOT)
+            .replaceAll("[^a-z0-9/_-]", "")
+            .replace("..", "")
+            .replaceAll("^/+", "")
+            .replaceAll("/+", "/");
+    }
+
+    private String sanitizeProfessionalId(String professionalId) {
+        if (professionalId == null || professionalId.isBlank()) {
+            return "";
+        }
+        return professionalId.trim().replaceAll("[^0-9]", "");
     }
 }

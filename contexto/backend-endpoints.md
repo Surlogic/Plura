@@ -28,8 +28,7 @@ Tambien hay senales de una base mas amplia que el MVP:
 
 Todavia no se ve como superficie publica madura todo el set de:
 
-- notificaciones cliente en frontend web
-- respuestas publicas del negocio a reseñas (las reseñas base ya estan implementadas)
+- respuestas publicas del negocio a reseñas (reseñas ya cerradas con moderacion, ocultamiento por profesional e internal ops, analytics y notificacion)
 - analytics de producto
 - fidelizacion y ultima hora
 - multi-profesional avanzado
@@ -47,6 +46,7 @@ Lectura de producto:
 
 - base para home, categorias y marketplace
 - relevante para `Usuario` y para la visibilidad del plan `Free`
+- `GET /api/home` ahora se consume via SSR (`getServerSideProps`); devuelve categorias, stats (usuarios, profesionales, categorias, reservas mensuales) y top professionals rankeados por volumen de reservas confirmadas/completadas de los ultimos 3 meses
 
 ### Auth y sesiones
 
@@ -73,7 +73,7 @@ Prefijo: `/auth`
 - `POST /auth/challenge/verify`
 - `GET /auth/sessions`
 - `DELETE /auth/sessions/{sessionId}`
-- `DELETE /auth/me`
+- `DELETE /auth/me` — ahora requiere `challengeId` + `code` OTP en el body; el challenge se obtiene previamente con `POST /auth/challenge/send` (purpose `ACCOUNT_DELETION`, channel `EMAIL`)
 - `GET /auth/audit`
 - `GET /auth/me/profesional`
 - `GET /auth/me/professional`
@@ -129,7 +129,18 @@ Prefijo: `/public/profesionales`
 - `GET /public/profesionales/{slug}`
 - `GET /public/profesionales/{slug}/slots`
 - `POST /public/profesionales/{slug}/reservas`
-- `GET /public/profesionales/{slug}/reviews` — listado paginado de reseñas publicas (text null si oculto por profesional)
+- `GET /public/profesionales/{slug}/reviews` — listado paginado de reseñas publicas (text null si oculto por profesional o internal ops)
+
+### Feedback publico de app
+
+- `GET /public/app-feedback?limit=6` — listado publico de feedback de app con `publicVisible=true` y texto no vacio; sin autenticacion; incluye `authorRole`, `authorDisplayName` (abreviado por privacidad), rating, text, category y fecha
+
+Lectura de producto:
+
+- permite mostrar testimonios reales de clientes y profesionales en superficies publicas como el home
+- separado de reseñas entre clientes y profesionales (`core.review`); esto es feedback hacia la plataforma (`core.feedback`)
+
+### Profesionales publicos
 
 Lectura de producto:
 
@@ -162,9 +173,12 @@ Prefijo: `/profesional`
 - `GET /profesional/reservas`
 - `POST /profesional/reservas`
 - `PUT /profesional/reservas/{id}`
-- `GET /profesional/reviews` — listado paginado de reseñas recibidas (texto completo visible para moderacion)
+- `GET /profesional/reviews` — listado paginado de reseñas recibidas (texto completo siempre visible para el profesional, aunque este oculto publicamente)
 - `PATCH /profesional/reviews/{reviewId}/hide-text` — oculta texto de la reseña publicamente (el rating sigue visible y cuenta en el promedio)
 - `PATCH /profesional/reviews/{reviewId}/show-text` — restaura visibilidad del texto de la reseña
+- el backend ahora distingue tres variantes de respuesta de reseña: publica (respeta ocultamiento por profesional e internal ops), profesional (siempre ve texto), cliente (ve su propia reseña)
+- al crear una reseña se notifica automaticamente al profesional via `ReviewNotificationIntegrationService`
+- existe `recomputeAllAggregates()` para batch-update de rating y reviewsCount de todos los profesionales en una sola query nativa
 
 Lectura de producto:
 
@@ -392,6 +406,9 @@ Lectura de producto:
 - protegido por `X-Internal-Token`, no por sesion de usuario
 - separado completamente de `core.review` (reseñas publicas entre clientes y profesionales)
 - analytics permiten rango de fechas opcional
+- feedback analytics ahora incluyen conteos por `authorRole`, `category` y `rating`, y evolucion diaria
+
+Nota: el repositorio de reseñas (`BookingReviewRepository`) ahora tambien expone queries de analytics para internal ops: `findAllFiltered`, `countFiltered`, `averageRatingFiltered`, `countByRating`, `countWithText/WithoutText/TextHidden`, `topProfessionalsByVolume/ByRating` y `dailyStats`; estas queries estan disponibles a nivel de servicio pero no necesariamente expuestas aun como endpoints REST dedicados
 
 ## Paquetes backend mas importantes
 
@@ -403,7 +420,7 @@ Lectura de producto:
 - `search`: busqueda, suggest, indexacion y sync.
 - `cache`: cache in-memory y Redis.
 - `storage`: upload de imagenes y thumbnails.
-- `feedback`: feedback interno de producto desde clientes y profesionales.
+- `feedback`: feedback interno de producto desde clientes y profesionales; ahora con visibilidad publica opcional (`publicVisible`) y endpoint publico para testimonios.
 - `jobs`: integracion opcional con SQS.
 
 ## Lectura por fase de roadmap
@@ -441,7 +458,7 @@ Capacidad aun no consolidada como superficie clara:
 
 Capacidad que no aparece aun como dominio publico consolidado:
 
-- respuestas publicas del negocio a reseñas (las reseñas base Fase 1 ya estan)
+- respuestas publicas del negocio a reseñas (reseñas ya cerradas con moderacion, ocultamiento, analytics y notificacion)
 - loyalty
 - ultima hora
 - portfolio visual
@@ -452,7 +469,7 @@ Capacidad que no aparece aun como dominio publico consolidado:
 ## Persistencia
 
 - Flyway usa `backend-java/src/main/resources/db/migration`
-- hay `55` migraciones versionadas
+- hay `57` migraciones versionadas
 - los nombres muestran evolucion fuerte en:
   - billing
   - booking

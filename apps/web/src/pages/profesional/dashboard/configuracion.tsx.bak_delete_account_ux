@@ -209,7 +209,7 @@ export default function ProfesionalSettingsPage() {
     }
   };
 
-  const handleSendDeleteChallenge = async () => {
+  const handleSendDeleteChallenge = async (channel: 'EMAIL' | 'SMS') => {
     if (isSendingDeleteChallenge) return;
     setSettingsMessage(null);
     setIsSettingsError(false);
@@ -221,16 +221,16 @@ export default function ProfesionalSettingsPage() {
         '/auth/challenge/send',
         {
           purpose: 'ACCOUNT_DELETION',
-          channel: 'EMAIL',
+          channel,
         },
       );
       setDeleteChallengeId(response.data.challengeId);
       setDeleteChallengeMessage(
-        `Te enviamos un código por email a ${response.data.maskedDestination}. Puede demorar hasta 1 o 2 minutos. Revisá también spam o promociones. El código vence en 10 minutos.`,
+        `Código enviado por ${channel === 'EMAIL' ? 'email' : 'SMS'} a ${response.data.maskedDestination}.`,
       );
     } catch (error) {
       setSettingsMessage(
-        resolveBackendMessage(error, 'No se pudo enviar el código de eliminación por email.'),
+        resolveBackendMessage(error, 'No se pudo enviar el challenge de eliminación.'),
       );
       setIsSettingsError(true);
     } finally {
@@ -1016,22 +1016,32 @@ export default function ProfesionalSettingsPage() {
                         <p className="mt-2 text-sm text-[#9F1239]">
                           Se intentara cancelar la suscripcion activa, se daran de baja las proximas reservas y tu perfil dejara de estar disponible.
                         </p>
-                        <p className="mt-2 text-sm text-[#9F1239]">
-                          Por seguridad, este paso se valida solo por email. El código puede demorar hasta 1 o 2 minutos. Revisá también spam o promociones.
-                        </p>
                         <div className="mt-4 grid gap-3">
                           <div className="flex flex-wrap gap-3">
                             <Button
                               type="button"
                               size="md"
                               onClick={() => {
-                                void handleSendDeleteChallenge();
+                                void handleSendDeleteChallenge('EMAIL');
                               }}
                               disabled={isSendingDeleteChallenge}
                               className="border-[#FCA5A5] bg-white text-[#B91C1C] hover:bg-[#FEE2E2]"
                             >
                               {isSendingDeleteChallenge ? 'Enviando...' : 'Enviar código por email'}
                             </Button>
+                            {profile?.phoneNumber ? (
+                              <Button
+                                type="button"
+                                size="md"
+                                onClick={() => {
+                                  void handleSendDeleteChallenge('SMS');
+                                }}
+                                disabled={isSendingDeleteChallenge}
+                                className="border-[#FCA5A5] bg-white text-[#B91C1C] hover:bg-[#FEE2E2]"
+                              >
+                                {isSendingDeleteChallenge ? 'Enviando...' : 'Enviar código por SMS'}
+                              </Button>
+                            ) : null}
                           </div>
                           <input
                             type="text"
@@ -1070,4 +1080,3 @@ export default function ProfesionalSettingsPage() {
     </div>
   );
 }
-

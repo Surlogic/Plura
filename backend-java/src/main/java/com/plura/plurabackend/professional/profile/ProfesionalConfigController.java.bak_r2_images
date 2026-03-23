@@ -106,22 +106,7 @@ public class ProfesionalConfigController {
 
     @PostMapping(path = "/services/image", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public Map<String, String> uploadServiceImage(@RequestPart("file") MultipartFile file) {
-        String imageUrl = serviceImageStorageService.storeProfessionalImage(file, "services", getProfesionalId());
-        return Map.of("imageUrl", imageUrl);
-    }
-
-    @PostMapping(path = "/images/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public Map<String, String> uploadProfessionalImage(
-        @RequestPart("file") MultipartFile file,
-        @RequestParam(name = "kind", defaultValue = "misc") String kind
-    ) {
-        String normalizedKind = switch (kind == null ? "" : kind.trim().toLowerCase()) {
-            case "logo" -> "logos";
-            case "gallery", "public-gallery", "public_photo", "public-photo" -> "gallery";
-            case "service", "services" -> "services";
-            default -> "misc";
-        };
-        String imageUrl = serviceImageStorageService.storeProfessionalImage(file, normalizedKind, getProfesionalId());
+        String imageUrl = serviceImageStorageService.storeServiceImage(file);
         return Map.of("imageUrl", imageUrl);
     }
 

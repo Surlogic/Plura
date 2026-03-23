@@ -14,9 +14,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
 import org.springframework.stereotype.Service;
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
-import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.regions.Region;
-import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.S3Configuration;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
@@ -37,7 +35,6 @@ public class CloudflareR2ImageStorageService implements ImageStorageService {
     private final Set<String> allowedContentTypes;
     private final MeterRegistry meterRegistry;
     private final S3Presigner presigner;
-    private final S3Client s3Client;
 
     public CloudflareR2ImageStorageService(
         @Value("${app.storage.r2.endpoint:}") String endpoint,
@@ -66,26 +63,15 @@ public class CloudflareR2ImageStorageService implements ImageStorageService {
             throw new IllegalStateException("R2 provider requires endpoint and credentials");
         }
 
-        StaticCredentialsProvider credentialsProvider = StaticCredentialsProvider.create(
-            AwsBasicCredentials.create(accessKey.trim(), secretKey.trim())
-        );
-        Region resolvedRegion = Region.of(region == null || region.isBlank() ? "auto" : region.trim());
-        S3Configuration s3Configuration = S3Configuration.builder()
-            .pathStyleAccessEnabled(true)
-            .build();
-
         this.presigner = S3Presigner.builder()
             .endpointOverride(URI.create(this.endpoint))
-            .region(resolvedRegion)
-            .credentialsProvider(credentialsProvider)
-            .serviceConfiguration(s3Configuration)
-            .build();
-
-        this.s3Client = S3Client.builder()
-            .endpointOverride(URI.create(this.endpoint))
-            .region(resolvedRegion)
-            .credentialsProvider(credentialsProvider)
-            .serviceConfiguration(s3Configuration)
+            .region(Region.of(region == null || region.isBlank() ? "auto" : region.trim()))
+            .credentialsProvider(
+                StaticCredentialsProvider.create(
+                    AwsBasicCredentials.create(accessKey.trim(), secretKey.trim())
+                )
+            )
+            .serviceConfiguration(S3Configuration.builder().pathStyleAccessEnabled(true).build())
             .build();
     }
 
@@ -153,39 +139,6 @@ public class CloudflareR2ImageStorageService implements ImageStorageService {
         }
     }
 
-    @Override
-    public String storeImage(byte[] bytes, String objectKey, String contentType) {
-        Timer.Sample sample = Timer.start(meterRegistry);
-        try {
-            if (bytes == null || bytes.length == 0) {
-                throw new IllegalArgumentException("Image bytes are required");
-            }
-            String normalizedKey = normalizeObjectKey(objectKey);
-            String normalizedContentType = normalizeContentType(contentType);
-            validateUploadRequest(normalizedContentType, bytes.length);
-
-            PutObjectRequest putObjectRequest = PutObjectRequest.builder()
-                .bucket(bucket)
-                .key(normalizedKey)
-                .contentType(normalizedContentType)
-                .contentLength((long) bytes.length)
-                .build();
-
-            s3Client.putObject(putObjectRequest, RequestBody.fromBytes(bytes));
-            return "r2://" + bucket + "/" + normalizedKey;
-        } catch (RuntimeException exception) {
-            markR2Error("store_image");
-            throw exception;
-        } finally {
-            sample.stop(
-                Timer.builder("plura.image.store.latency")
-                    .description("Image storage latency")
-                    .tag("provider", "r2")
-                    .register(meterRegistry)
-            );
-        }
-    }
-
     private void validateUploadRequest(String contentType, long contentLength) {
         if (contentLength <= 0L || contentLength > maxUploadBytes) {
             throw new IllegalArgumentException("Invalid upload size");
@@ -199,7 +152,7 @@ public class CloudflareR2ImageStorageService implements ImageStorageService {
     }
 
     private String buildPublicUrl(String objectKey) {
-        String key = normalizeObjectKey(objectKey);
+        String key = objectKey == null || objectKey.isBlank() ? "missing" : objectKey;
         if (!publicBaseUrl.isBlank()) {
             return publicBaseUrl + "/" + key;
         }

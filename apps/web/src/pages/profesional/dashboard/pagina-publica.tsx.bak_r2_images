@@ -9,8 +9,6 @@ import { useProfessionalProfile } from '@/hooks/useProfessionalProfile';
 import { useProfessionalDashboardUnsavedSection } from '@/context/ProfessionalDashboardUnsavedChangesContext';
 import { resolveProfessionalFeatureAccess } from '@/lib/billing/featureGuards';
 import api from '@/services/api';
-import { uploadProfessionalImage } from '@/services/professionalImageUpload';
-import { resolveAssetUrl } from '@/utils/assetUrl';
 import {
   DashboardHero,
   DashboardSectionHeading,
@@ -70,7 +68,6 @@ export default function ProfesionalPublicPageBuilder() {
     { id: 'photo-4', url: '' },
   ]);
   const [initialPhotos, setInitialPhotos] = useState<PhotoItem[] | null>(null);
-  const [uploadingPhotoIndex, setUploadingPhotoIndex] = useState<number | null>(null);
 
   const displayName = profile?.fullName || '';
   const displayCategory = profile?.rubro || '';
@@ -103,7 +100,7 @@ export default function ProfesionalPublicPageBuilder() {
       payload: {
         name: displayName,
         category: displayCategory,
-        logoUrl: resolveAssetUrl(profile?.logoUrl || ''),
+        logoUrl: profile?.logoUrl || '',
         headline: form.headline,
         about: form.about,
         photos: photos.map((photo) => photo.url).filter(Boolean),
@@ -235,50 +232,6 @@ export default function ProfesionalPublicPageBuilder() {
       ),
     );
     setIsDirty(true);
-  };
-
-  const handlePhotoFileSelected = async (
-    index: number,
-    event: ChangeEvent<HTMLInputElement>,
-  ) => {
-    const file = event.target.files?.[0];
-    event.target.value = '';
-    if (!file) return;
-
-    const normalizedType = (file.type || '').trim().toLowerCase();
-    if (!['image/jpeg', 'image/png', 'image/webp'].includes(normalizedType)) {
-      setSaveMessage('Formato inválido. Solo jpg, png o webp.');
-      setSaveError(true);
-      return;
-    }
-    if (file.size > 1024 * 1024) {
-      setSaveMessage('La imagen supera 1MB.');
-      setSaveError(true);
-      return;
-    }
-
-    setUploadingPhotoIndex(index);
-    setSaveMessage(null);
-    setSaveError(false);
-    try {
-      const imageUrl = await uploadProfessionalImage(file, 'gallery');
-      if (!imageUrl) {
-        throw new Error('empty_image_url');
-      }
-      setPhotos((prev) =>
-        prev.map((photo, photoIndex) =>
-          photoIndex === index ? { ...photo, url: imageUrl } : photo,
-        ),
-      );
-      setIsDirty(true);
-      setSaveMessage('Foto cargada. Falta guardar los cambios de la página pública.');
-      setSaveError(false);
-    } catch {
-      setSaveMessage('No se pudo subir la foto.');
-      setSaveError(true);
-    } finally {
-      setUploadingPhotoIndex(null);
-    }
   };
 
   const addPhoto = () => {
@@ -498,7 +451,7 @@ export default function ProfesionalPublicPageBuilder() {
                           <div className="h-28 overflow-hidden rounded-[18px] border border-[#E2E7EC] bg-[#F4F6F8]">
                             {photo.url ? (
                               <img
-                                src={resolveAssetUrl(photo.url)}
+                                src={photo.url}
                                 alt={`Foto ${index + 1}`}
                                 className="h-full w-full object-cover"
                               />

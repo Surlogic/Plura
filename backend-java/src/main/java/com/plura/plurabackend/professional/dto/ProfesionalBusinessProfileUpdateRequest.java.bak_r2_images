@@ -35,7 +35,7 @@ public class ProfesionalBusinessProfileUpdateRequest {
     @Pattern(regexp = "^[+0-9()\\-\\s]{3,30}$")
     private String phoneNumber;
 
-    @Pattern(regexp = "^(|https?://.+|/uploads/.+|r2://.+|r2:.+)$")
+    @Pattern(regexp = "^(|https?://.+|r2://.+|r2:.+)$")
     private String logoUrl;
 
     @Size(max = 255)

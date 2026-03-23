@@ -27,7 +27,7 @@ Cobertura actual visible:
 
 Huecos o maduracion pendiente:
 
-- respuestas publicas del negocio a reseñas (las reseñas base Fase 1 ya estan: crear, listar, moderar texto)
+- respuestas publicas del negocio a reseñas (reseñas ya cerradas con moderacion, ocultamiento, analytics y notificacion)
 - beneficios tipo puntos, gift cards o ultima hora
 - settings y preferencias visibles para cliente
 
@@ -60,7 +60,7 @@ Base: `apps/web/src/pages`
 
 ### Rutas publicas
 
-- `/`: home con hero, categorias, top professionals y FAQ.
+- `/`: home SSR con hero, categorias y top businesses; ya no incluye ReviewsSection ni FAQ; usa `getServerSideProps` con retry client-side si SSR falla.
 - `/explorar`: buscador principal con filtros, lista y mapa.
 - `/explorar/[slug]`: vista detallada de exploracion por slug.
 - `/profesional/[slug]`: pagina publica del profesional.
@@ -126,8 +126,10 @@ Lectura de producto:
 - `/cliente/reservas` ya usa su panel lateral de detalle como experiencia real de reserva e incluye timeline de actividad por `bookingId`
 - `/cliente/reservas` mantiene el refresco de estados pendientes, pero el polling ya no corre en background y usa backoff conservador para bajar presion de red
 - `/cliente/reservas` ahora prefetch-ea `actions + timeline` de la reserva seleccionada apenas entra el listado para reducir espera perceptible sin cambiar contratos
-- reseñas Fase 1 implementadas: CTA en sidebar de reserva COMPLETED, formulario con rating 1-5 y texto opcional, review existente visible
+- reseñas implementadas: CTA en sidebar de reserva COMPLETED, formulario con rating 1-5 y texto opcional, review existente visible; proteccion contra race conditions con patron `isActive`
 - feedback de app integrado en `/cliente/configuracion` con formulario de rating, categoria opcional y texto libre; incluye historial paginado de feedback propio
+- `/cliente/configuracion` ahora requiere challenge OTP por email para eliminar cuenta; muestra codigo enmascarado y advierte sobre cancelacion de reservas e irreversibilidad
+- `ClientNotificationsContext` ya no rompe fuera del provider; devuelve defaults seguros (unreadCount=0, noop callbacks) para degradar sin crash en rutas publicas
 - todavia faltan piezas visibles para beneficios y settings de notificaciones
 
 ### Rutas del profesional
@@ -139,6 +141,7 @@ Lectura de producto:
 - `/profesional/dashboard/horarios`
 - `/profesional/dashboard/reservas`
 - `/profesional/dashboard/configuracion`
+- `/profesional/dashboard/resenas`
 - `/profesional/dashboard/pagina-publica`
 - `/profesional/dashboard/perfil-negocio`
 - `/profesional/dashboard/billing`
@@ -192,6 +195,9 @@ Lectura de producto:
 Notas recientes:
 
 - feedback de app integrado en `/profesional/dashboard/configuracion` con formulario de rating, categoria opcional y texto libre; incluye historial paginado de feedback propio; modulo backend separado `core.feedback`
+- `/profesional/dashboard/resenas` es la pagina de gestion de reseñas del profesional: muestra stats agregados (rating, total), lista paginada de reseñas recibidas con toggle de hide/show del texto publico; el texto oculto sigue visible para el profesional con indicador visual amarillo
+- `/profesional/dashboard/configuracion` ahora requiere challenge OTP por email para eliminar cuenta; advierte sobre cancelacion de suscripcion y reservas pendientes
+- `PublicReviewsList` muestra reseñas paginadas en el perfil publico del profesional: avatar con inicial, nombre, rating, fecha y texto; respeta ocultamiento mostrando mensaje explicativo
 
 Huecos relevantes contra el objetivo:
 
@@ -219,6 +225,7 @@ Modulos relevantes:
 - `services/api.ts`: auth, refresh y headers de plataforma `WEB`.
 - `services/session.ts`: mantiene fallback token y un `known session hint` en storage para no disparar refresh/autofetch en rutas publicas cuando no hay sesion confirmada.
 - `lib/auth/sessionErrors.ts`: clasifica `401/403` de auth aparte de errores transitorios para que la web no fuerce logout por fallas de red o `5xx`.
+- `services/appFeedback.ts`: feedback de app del cliente y profesional; ahora incluye `getPublicAppFeedback(limit)` para testimonios publicos via `GET /public/app-feedback`.
 - `middleware.ts`: CSP y headers de seguridad.
 - `/oauth/mercadopago/callback`: ahora interpreta `result/reason` devueltos por el backend y consulta el estado real de conexion; ya no intenta llamar al callback backend con `code/state`.
 - `pages/profesional/pagina/[slug].tsx`: reutiliza fetch cacheado del perfil publico, difiere quick slots hasta interaccion real con servicios y posterga tanto el geocoding fallback como la carga del mapa hasta que el bloque entra en viewport para bajar costo inicial en la pagina publica.

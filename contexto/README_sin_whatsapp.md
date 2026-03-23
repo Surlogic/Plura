@@ -135,7 +135,7 @@ Plan para crecimiento, reputacion visual y operacion multiequipo. Precio objetiv
 
 Base transversal que ordena el producto y la arquitectura:
 
-- autenticacion y seguridad: registro, login, recuperacion, sesiones, OAuth Google y Apple
+- autenticacion y seguridad: registro, login, recuperacion, sesiones, OAuth Google y Apple; eliminacion de cuenta requiere challenge OTP por email (`/auth/challenge/send` con purpose `ACCOUNT_DELETION`) antes de ejecutar `DELETE /auth/me` con `challengeId + code`
 - onboarding inicial del negocio o profesional cuando este listo
 - roles y permisos
 - perfil editable del negocio o profesional
@@ -149,8 +149,8 @@ Base transversal que ordena el producto y la arquitectura:
 - detalle completo de reserva y carga manual desde panel
 - centro de notificaciones e historial
 - notificaciones in-app, email y motor de eventos transaccionales
-- reseñas base implementadas (crear, listar publico, moderar texto); rating y reviewsCount propagados a todas las superficies publicas (home, explorar, mapa, favoritos, marketplace); respuesta publica del negocio pendiente
-- feedback interno de app implementado (cliente y profesional pueden enviar rating + texto + categoria opcional hacia la plataforma; modulo separado `core.feedback`; historial paginado propio en configuracion; backoffice interno con listado, filtros, archive/unarchive y analytics basicos bajo `/internal/ops/app-feedback` protegido por `X-Internal-Token`)
+- reseñas implementadas con tres variantes de respuesta: publica (respeta ocultamiento por profesional e internal ops), profesional (ve todo su texto), cliente (ve su propia reseña); rating y reviewsCount propagados a todas las superficies publicas (home, explorar, mapa, favoritos, marketplace); notificacion automatica al profesional al recibir reseña; recomputo batch de agregados; analytics de reseñas para internal ops; respuesta publica del negocio pendiente
+- feedback interno de app implementado (cliente y profesional pueden enviar rating + texto + categoria opcional hacia la plataforma; modulo separado `core.feedback`; historial paginado propio en configuracion; backoffice interno con listado, filtros, archive/unarchive y analytics basicos bajo `/internal/ops/app-feedback` protegido por `X-Internal-Token`); feedback con texto se marca automaticamente `publicVisible=true` y queda expuesto via `GET /public/app-feedback` sin auth para testimonios publicos en la web; el nombre del autor se muestra abreviado ("Nombre I.") por privacidad
 - panel administrativo y configuracion general
 - pagos online configurables y metodos de pago visibles
 - base de analytics y eventos del producto
@@ -162,6 +162,8 @@ Notas operativas recientes:
 - los reloads de web ya no deben cerrar sesion por un `5xx` o una falla transitoria de refresh/auth me; la sesion solo cae automaticamente ante `401/403` reales
 - el inbox de notificaciones se apoya en una ruta de lectura mas liviana para bajar latencia de lista sin cambiar la UX ni los contratos
 - pagos online en runtime quedaron `Mercado Pago only`; `DLOCAL` se conserva solo como compatibilidad de lectura para datos historicos y como historia de migraciones Flyway
+- el home web ahora usa SSR (`getServerSideProps`) en vez de ISR/static; la pagina se simplifica a hero, categorias y top businesses; el ranking de top professionals prioriza volumen de reservas confirmadas/completadas de los ultimos 3 meses
+- `ClientNotificationsContext` ya no rompe si se renderiza fuera del provider; devuelve defaults seguros para degradar sin crash en rutas publicas o SSR
 
 ## Estado operativo actual de notificaciones
 
@@ -304,7 +306,7 @@ Nota: el input original mencionaba `31/04/2026`, fecha invalida; en este context
 
 - `apps/web`: app web con `Pages Router`, `34` pages y `60` componentes.
 - `apps/mobile`: app Expo con `23` pantallas y `16` servicios cliente.
-- `backend-java`: API principal con `395` archivos Java y `55` migraciones SQL.
+- `backend-java`: API principal con `395` archivos Java y `57` migraciones SQL.
 - `packages/shared`: utilidades, contratos y definiciones de billing compartidas.
 - `scripts`: helpers de desarrollo del workspace.
 
@@ -332,7 +334,7 @@ Capacidades de producto definidas pero no necesariamente cerradas en UI o API pu
 
 - onboarding inicial del negocio
 - timeline cliente dentro del detalle de reserva
-- respuesta publica del negocio a reseñas (reseñas base Fase 1 ya cerradas en backend + web)
+- respuesta publica del negocio a reseñas (reseñas ya cerradas con moderacion, ocultamiento y analytics en backend + web)
 - analytics de producto y reporting orientado a plan
 - bloqueo visible de features por plan dentro de toda la experiencia
 - funciones Premium como multi-profesional, fidelizacion, ultima hora, portfolio y tienda

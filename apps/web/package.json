@@ -5,9 +5,9 @@
   "scripts": {
     "clean": "node ./scripts/clean-next-build.cjs clean",
     "dev": "node ../../scripts/predev.cjs 3002 && next dev -p 3002",
-    "build": "NEXT_BUILD_DIR=.next-build node ./scripts/clean-next-build.cjs clean && NEXT_BUILD_DIR=.next-build next build",
-    "analyze": "NEXT_BUILD_DIR=.next-build node ./scripts/clean-next-build.cjs clean && NEXT_BUILD_DIR=.next-build ANALYZE=true next build",
-    "start": "NEXT_BUILD_DIR=.next-build node ./scripts/clean-next-build.cjs ensure && NEXT_BUILD_DIR=.next-build next start",
+    "build": "node ./scripts/clean-next-build.cjs clean && next build",
+    "analyze": "ANALYZE=true node ./scripts/clean-next-build.cjs clean && ANALYZE=true next build",
+    "start": "node ./scripts/clean-next-build.cjs ensure && next start",
     "lint": "eslint",
     "test:unit": "node ./scripts/run-unit-tests.cjs",
     "perf:budget": "node ./scripts/check-bundle-budget.cjs"

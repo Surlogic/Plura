@@ -42,6 +42,19 @@ const initialUnreadState: UnreadCountState = {
   hasLoaded: false,
 };
 
+const defaultRefreshContextValue: ClientNotificationsRefreshContextValue = {
+  refreshToken: 0,
+  publishChange: () => {},
+};
+
+const defaultDataContextValue: ClientNotificationsDataContextValue = {
+  unreadCount: 0,
+  unreadCountError: null,
+  isUnreadCountLoading: false,
+  hasUnreadCountLoaded: false,
+  refreshUnreadCount: async () => {},
+};
+
 export function ClientNotificationsProvider({
   children,
 }: {
@@ -68,9 +81,10 @@ export function ClientNotificationsProvider({
       } catch (error) {
         setUnreadState((prev) => ({
           ...prev,
-          error: error instanceof Error
-            ? error
-            : new Error('No se pudo cargar el contador de notificaciones.'),
+          error:
+            error instanceof Error
+              ? error
+              : new Error('No se pudo cargar el contador de notificaciones.'),
           isLoading: false,
           hasLoaded: true,
         }));
@@ -109,23 +123,11 @@ export function ClientNotificationsProvider({
 }
 
 export const useClientNotificationsRefresh = () => {
-  const context = useContext(ClientNotificationsRefreshContext);
-  if (!context) {
-    throw new Error(
-      'useClientNotificationsRefresh must be used within ClientNotificationsProvider',
-    );
-  }
-  return context;
+  return useContext(ClientNotificationsRefreshContext) ?? defaultRefreshContextValue;
 };
 
 export const useClientNotificationsData = () => {
-  const context = useContext(ClientNotificationsDataContext);
-  if (!context) {
-    throw new Error(
-      'useClientNotificationsData must be used within ClientNotificationsProvider',
-    );
-  }
-  return context;
+  return useContext(ClientNotificationsDataContext) ?? defaultDataContextValue;
 };
 
 export const useClientNotificationsContext = () => {

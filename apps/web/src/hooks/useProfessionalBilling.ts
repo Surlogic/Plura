@@ -431,6 +431,7 @@ export function useProfessionalBilling({
   runStatusCheckRef.current = runStatusCheck;
 
   const schedulePollWithBackoff = useCallback((baseMs: number, maxMs: number) => {
+    if (pollTimeoutRef.current !== null) return;
     if (pollAttemptRef.current >= MAX_POLL_ATTEMPTS) {
       dispatch({
         type: 'STOP_POLLING_WITH_BANNER',
@@ -440,9 +441,9 @@ export function useProfessionalBilling({
     }
     const delay = Math.min(maxMs, baseMs * Math.pow(1.5, pollAttemptRef.current));
     pollAttemptRef.current += 1;
-    pollTimeoutRef.current = window.setTimeout(() => {
+    pollTimeoutRef.current = window.setTimeout(async () => {
       pollTimeoutRef.current = null;
-      void runStatusCheckRef.current('polling');
+      await runStatusCheckRef.current('polling');
       schedulePollWithBackoff(baseMs, maxMs);
     }, delay);
   }, []);

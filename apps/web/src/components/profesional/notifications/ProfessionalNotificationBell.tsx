@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useProfessionalNotificationPreview } from '@/hooks/useProfessionalNotificationPreview';
 import { useProfessionalNotificationUnreadCount } from '@/hooks/useProfessionalNotificationUnreadCount';
 import { DashboardIcon } from '@/components/profesional/dashboard/DashboardUI';
@@ -81,13 +81,13 @@ export default function ProfessionalNotificationBell({
     };
   }, [isOpen]);
 
-  const openPanel = async () => {
+  const openPanel = useCallback(async () => {
     setIsOpen((previous) => !previous);
     if (!isOpen) {
       setShouldLoadCount(true);
       await refreshCount();
     }
-  };
+  }, [isOpen, refreshCount]);
 
   const handleViewAll = () => {
     setIsOpen(false);

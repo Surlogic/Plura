@@ -13,6 +13,7 @@ export type HomeTopProfessional = {
   name: string;
   category: string;
   rating?: number | null;
+  reviewsCount?: number | null;
   imageUrl?: string | null;
 };
 

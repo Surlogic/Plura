@@ -1,4 +1,4 @@
-import type { ReactNode, SVGProps } from 'react';
+import { memo, type ReactNode, type SVGProps } from 'react';
 import Card from '@/components/ui/Card';
 import { cn } from '@/components/ui/cn';
 
@@ -17,7 +17,8 @@ export type DashboardIconName =
   | 'spark'
   | 'share'
   | 'plan'
-  | 'danger';
+  | 'danger'
+  | 'resenas';
 
 type IconProps = SVGProps<SVGSVGElement> & {
   name: DashboardIconName;
@@ -123,9 +124,14 @@ const iconPathByName: Record<DashboardIconName, ReactNode> = {
       <path d="m9 7 .5 12h5L15 7" />
     </>
   ),
+  resenas: (
+    <>
+      <path d="m12 3 2.5 5.1L20 9l-4 3.9.9 5.6L12 15.8l-4.9 2.7.9-5.6L4 9l5.5-.9L12 3Z" />
+    </>
+  ),
 };
 
-export function DashboardIcon({ name, className, ...props }: IconProps) {
+export const DashboardIcon = memo(function DashboardIcon({ name, className, ...props }: IconProps) {
   return (
     <svg
       viewBox="0 0 24 24"
@@ -141,7 +147,7 @@ export function DashboardIcon({ name, className, ...props }: IconProps) {
       {iconPathByName[name]}
     </svg>
   );
-}
+});
 
 type DashboardHeroProps = {
   eyebrow: string;
@@ -163,7 +169,7 @@ const heroToneClassNames = {
     'bg-[linear-gradient(145deg,var(--brand-navy)_0%,var(--brand-navy-soft)_58%,var(--brand-navy-elevated)_100%)] text-[color:var(--text-on-dark)]',
 };
 
-export function DashboardHero({
+export const DashboardHero = memo(function DashboardHero({
   eyebrow,
   title,
   description,
@@ -264,7 +270,7 @@ export function DashboardHero({
       </div>
     </Card>
   );
-}
+});
 
 type DashboardStatCardProps = {
   label: string;
@@ -286,7 +292,7 @@ const statToneClassNames = {
     'border-white/12 bg-[linear-gradient(160deg,var(--brand-navy)_0%,var(--brand-navy-soft)_54%,var(--brand-navy-elevated)_100%)] text-[color:var(--text-on-dark)]',
 };
 
-export function DashboardStatCard({
+export const DashboardStatCard = memo(function DashboardStatCard({
   label,
   value,
   detail,
@@ -334,7 +340,7 @@ export function DashboardStatCard({
       </div>
     </div>
   );
-}
+});
 
 type DashboardSectionHeadingProps = {
   eyebrow?: string;
@@ -344,7 +350,7 @@ type DashboardSectionHeadingProps = {
   className?: string;
 };
 
-export function DashboardSectionHeading({
+export const DashboardSectionHeading = memo(function DashboardSectionHeading({
   eyebrow,
   title,
   description,
@@ -371,4 +377,4 @@ export function DashboardSectionHeading({
       {action ? <div className="flex flex-wrap gap-3">{action}</div> : null}
     </div>
   );
-}
+});

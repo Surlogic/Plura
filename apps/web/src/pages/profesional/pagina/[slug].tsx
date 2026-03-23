@@ -7,6 +7,7 @@ import Footer from '@/components/shared/Footer';
 import BusinessGallery from '@/components/profesional/BusinessGallery';
 import ServiceDetailModal from '@/components/profesional/ServiceDetailModal';
 import FavoriteToggleButton from '@/components/shared/FavoriteToggleButton';
+import PublicReviewsList from '@/components/profesional/PublicReviewsList';
 import Badge from '@/components/ui/Badge';
 import Button from '@/components/ui/Button';
 import Card from '@/components/ui/Card';
@@ -44,6 +45,35 @@ const dayLabels: Record<WorkDayKey, string> = {
   fri: 'Viernes',
   sat: 'Sábado',
   sun: 'Domingo',
+};
+
+const formatServiceDuration = (value?: string) => {
+  if (!value) return 'Duración a definir';
+  const trimmed = value.trim();
+  if (!trimmed) return 'Duración a definir';
+  if (/[a-zA-Z]/.test(trimmed)) return trimmed;
+  const minutes = Number(trimmed);
+  if (!Number.isFinite(minutes)) return trimmed;
+  if (minutes < 60) return `${minutes} min`;
+  const hours = Math.floor(minutes / 60);
+  const remaining = Math.round(minutes % 60);
+  if (remaining === 0) return `${hours} h`;
+  return `${hours} h ${remaining} min`;
+};
+
+const formatServicePrice = (value?: string) => {
+  if (!value) return 'Consultar';
+  const trimmed = value.trim();
+  if (!trimmed) return 'Consultar';
+  if (trimmed.includes('$')) return trimmed;
+  return `$${trimmed}`;
+};
+
+const formatServicePaymentType = (value?: string) => {
+  const normalized = (value || '').trim().toUpperCase();
+  if (normalized === 'DEPOSIT') return 'Seña online';
+  if (normalized === 'FULL_PREPAY' || normalized === 'FULL') return 'Pago total online';
+  return 'Pago en el lugar';
 };
 
 type PreviewPayload = {
@@ -257,6 +287,8 @@ type PublicProfessional = {
   photos?: string[];
   services?: PublicService[];
   schedule?: ProfessionalSchedule;
+  rating?: number | null;
+  reviewsCount?: number | null;
 };
 
 export default function ProfesionalDetailPage({
@@ -396,13 +428,13 @@ export default function ProfesionalDetailPage({
     };
   }, [resolved, preview]);
 
-  const displayServices = preview
+  const displayServices = useMemo(() => preview
     ? Array.isArray(preview.services)
       ? preview.services
       : []
     : Array.isArray(data?.services)
       ? data.services
-      : [];
+      : [], [preview, data?.services]);
   const selectedService = displayServices[selectedServiceIndex] ?? null;
   const serviceDetail = serviceDetailIndex !== null
     ? displayServices[serviceDetailIndex] ?? null
@@ -510,35 +542,6 @@ export default function ProfesionalDetailPage({
 
     return group;
   }, [displaySchedule, scheduleDays]);
-
-  const formatServiceDuration = (value?: string) => {
-    if (!value) return 'Duración a definir';
-    const trimmed = value.trim();
-    if (!trimmed) return 'Duración a definir';
-    if (/[a-zA-Z]/.test(trimmed)) return trimmed;
-    const minutes = Number(trimmed);
-    if (!Number.isFinite(minutes)) return trimmed;
-    if (minutes < 60) return `${minutes} min`;
-    const hours = Math.floor(minutes / 60);
-    const remaining = Math.round(minutes % 60);
-    if (remaining === 0) return `${hours} h`;
-    return `${hours} h ${remaining} min`;
-  };
-
-  const formatServicePrice = (value?: string) => {
-    if (!value) return 'Consultar';
-    const trimmed = value.trim();
-    if (!trimmed) return 'Consultar';
-    if (trimmed.includes('$')) return trimmed;
-    return `$${trimmed}`;
-  };
-
-  const formatServicePaymentType = (value?: string) => {
-    const normalized = (value || '').trim().toUpperCase();
-    if (normalized === 'DEPOSIT') return 'Seña online';
-    if (normalized === 'FULL_PREPAY' || normalized === 'FULL') return 'Pago total online';
-    return 'Pago en el lugar';
-  };
 
   const resolveServiceCategoryLabel = (service?: PublicService | null) => {
     const serviceCategory = service?.categoryName?.trim();
@@ -811,7 +814,13 @@ export default function ProfesionalDetailPage({
                   </h1>
                   <p className="text-sm text-[color:var(--ink-muted)] sm:text-base">{merged.headline}</p>
                   <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
-                    <Badge variant="neutral" className="normal-case tracking-normal">4.9 (120 reseñas)</Badge>
+                    {data?.reviewsCount != null && data.reviewsCount > 0 && data.rating != null ? (
+                      <Badge variant="neutral" className="normal-case tracking-normal">
+                        ★ {data.rating.toFixed(1)} ({data.reviewsCount} {data.reviewsCount === 1 ? 'reseña' : 'reseñas'})
+                      </Badge>
+                    ) : (
+                      <Badge variant="neutral" className="normal-case tracking-normal">Sin reseñas aún</Badge>
+                    )}
                     <Badge variant="accent" className="normal-case tracking-normal">Confirmación inmediata</Badge>
                   </div>
                 </div>
@@ -1041,6 +1050,8 @@ export default function ProfesionalDetailPage({
               <p className="mt-4 text-sm text-[#64748B]">Sin descripción cargada.</p>
             )}
           </section>
+
+          {professionalSlug ? <PublicReviewsList slug={professionalSlug} /> : null}
 
           <section className="mt-10 border-t border-[#E6EBF0] pt-10">
             <p className="text-[0.65rem] uppercase tracking-[0.35em] text-[#94A3B8]">Ubicación</p>

@@ -25,20 +25,22 @@ const EVICTION_INTERVAL_MS = 60000;
 const responseCache = new Map<string, CacheEntry>();
 const inflightRequests = new Map<string, Promise<AxiosResponse<unknown>>>();
 
-let evictionTimer: ReturnType<typeof setInterval> | null = null;
+let evictionTimer: ReturnType<typeof setTimeout> | null = null;
 
 const startEvictionIfNeeded = () => {
   if (evictionTimer || typeof window === 'undefined') return;
-  evictionTimer = setInterval(() => {
+  const runEviction = () => {
     const now = Date.now();
     responseCache.forEach((entry, key) => {
       if (entry.expiresAt <= now) responseCache.delete(key);
     });
     if (responseCache.size === 0 && inflightRequests.size === 0) {
-      clearInterval(evictionTimer!);
       evictionTimer = null;
+      return;
     }
-  }, EVICTION_INTERVAL_MS);
+    evictionTimer = setTimeout(runEviction, EVICTION_INTERVAL_MS);
+  };
+  evictionTimer = setTimeout(runEviction, EVICTION_INTERVAL_MS);
 };
 
 const stableSerialize = (value: unknown): string => {

@@ -16,36 +16,30 @@ export function useNotificationPreview<T extends NotificationPreviewItem>({
   refreshToken,
   fetchFn,
 }: UseNotificationPreviewOptions<T>) {
-  const mountedRef = useRef(true);
   const [items, setItems] = useState<T[]>([]);
   const [total, setTotal] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
-
-  useEffect(() => {
-    mountedRef.current = true;
-    return () => {
-      mountedRef.current = false;
-    };
-  }, []);
+  const activeRequestRef = useRef(0);
 
   const refresh = useCallback(async () => {
+    const requestId = ++activeRequestRef.current;
     try {
       setIsLoading(true);
       setError(null);
       const response = await fetchFn({ page: 0, size });
-      if (!mountedRef.current) return;
+      if (activeRequestRef.current !== requestId) return;
       setItems(response.items);
       setTotal(response.total);
     } catch (unknownError) {
-      if (!mountedRef.current) return;
+      if (activeRequestRef.current !== requestId) return;
       setError(
         unknownError instanceof Error
           ? unknownError
           : new Error('No se pudieron cargar las notificaciones recientes.'),
       );
     } finally {
-      if (mountedRef.current) {
+      if (activeRequestRef.current === requestId) {
         setIsLoading(false);
       }
     }
@@ -54,6 +48,9 @@ export function useNotificationPreview<T extends NotificationPreviewItem>({
   useEffect(() => {
     if (!enabled) return;
     void refresh();
+    return () => {
+      activeRequestRef.current += 1;
+    };
   }, [enabled, refresh, refreshToken]);
 
   return { items, total, isLoading, error, refresh };

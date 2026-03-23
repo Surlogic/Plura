@@ -351,11 +351,21 @@ export default function ExplorarPage() {
   ]);
 
   const citySuggestions = useMemo(() => {
-    const dynamicCities = items
-      .map((item) => item.locationText?.trim() || '')
-      .filter(Boolean);
-
-    return Array.from(new Set([city, ...dynamicCities].filter(Boolean))).slice(0, 10);
+    const seen = new Set<string>();
+    const result: string[] = [];
+    if (city) {
+      seen.add(city);
+      result.push(city);
+    }
+    for (const item of items) {
+      if (result.length >= 10) break;
+      const text = item.locationText?.trim();
+      if (text && !seen.has(text)) {
+        seen.add(text);
+        result.push(text);
+      }
+    }
+    return result;
   }, [items, city]);
 
   const activeFilters = useMemo(() => {
@@ -374,8 +384,8 @@ export default function ExplorarPage() {
 
   const totalPages = Math.max(1, Math.ceil(total / size));
 
-  const getCategoryLabel = (item: SearchItem) =>
-    item.categorySlugs.length > 0 ? humanizeSlug(item.categorySlugs[0]) : 'Profesional';
+  const getCategoryLabel = useCallback((item: SearchItem) =>
+    item.categorySlugs.length > 0 ? humanizeSlug(item.categorySlugs[0]) : 'Profesional', []);
 
   const favoritePayloadById = useMemo(() => {
     const payloadById = new Map<
@@ -405,7 +415,7 @@ export default function ExplorarPage() {
     return payloadById;
   }, [items]);
 
-  const replaceQuery = (nextQuery: Record<string, string>) => {
+  const replaceQuery = useCallback((nextQuery: Record<string, string>) => {
     void router.replace(
       {
         pathname: '/explorar',
@@ -414,15 +424,15 @@ export default function ExplorarPage() {
       undefined,
       { shallow: true },
     );
-  };
+  }, [router]);
 
-  const handleViewChange = (nextIsMapView: boolean) => {
+  const handleViewChange = useCallback((nextIsMapView: boolean) => {
     const nextQuery: Record<string, string> = { ...baseExploreQuery };
     if (nextIsMapView) nextQuery.vista = 'mapa';
     replaceQuery(nextQuery);
-  };
+  }, [baseExploreQuery, replaceQuery]);
 
-  const handleSortChange = (nextSort: SearchSort) => {
+  const handleSortChange = useCallback((nextSort: SearchSort) => {
     const nextQuery: Record<string, string> = {
       ...baseExploreQuery,
       sort: nextSort,
@@ -430,9 +440,9 @@ export default function ExplorarPage() {
     };
     if (isMapView) nextQuery.vista = 'mapa';
     replaceQuery(nextQuery);
-  };
+  }, [baseExploreQuery, isMapView, replaceQuery]);
 
-  const handleRadiusChange = (nextRadiusKm: number) => {
+  const handleRadiusChange = useCallback((nextRadiusKm: number) => {
     const sanitizedRadius = Number.isFinite(nextRadiusKm)
       ? Math.max(1, Math.min(100, Math.round(nextRadiusKm)))
       : SEARCH_DEFAULT_RADIUS_KM;
@@ -443,9 +453,9 @@ export default function ExplorarPage() {
     };
     if (isMapView) nextQuery.vista = 'mapa';
     replaceQuery(nextQuery);
-  };
+  }, [baseExploreQuery, isMapView, replaceQuery]);
 
-  const handlePageChange = (nextPage: number) => {
+  const handlePageChange = useCallback((nextPage: number) => {
     const normalizedPage = Math.max(0, Math.min(nextPage, totalPages - 1));
     const nextQuery: Record<string, string> = {
       ...baseExploreQuery,
@@ -453,7 +463,7 @@ export default function ExplorarPage() {
     };
     if (isMapView) nextQuery.vista = 'mapa';
     replaceQuery(nextQuery);
-  };
+  }, [baseExploreQuery, isMapView, replaceQuery, totalPages]);
 
   const mapUserLocation = useMemo(
     () => (
@@ -632,6 +642,7 @@ export default function ExplorarPage() {
                         name={item.name}
                         category={getCategoryLabel(item)}
                         rating={typeof item.rating === 'number' ? item.rating.toFixed(1) : undefined}
+                        reviewsCount={item.reviewsCount}
                         price={formatPriceFrom(item.priceFrom)}
                         city={item.locationText || undefined}
                         distance={item.distanceKm}

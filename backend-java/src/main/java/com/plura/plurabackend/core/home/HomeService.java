@@ -168,6 +168,7 @@ public class HomeService {
             fullName,
             profile.primaryCategoryName(),
             profile.rating(),
+            profile.reviewsCount(),
             profile.imageUrl()
         );
     }

@@ -1,3 +1,4 @@
+import { memo, useMemo } from 'react';
 import SearchBar from './SearchBar';
 import Badge from '@/components/ui/Badge';
 import type { HomeStats } from '@/types/home';
@@ -9,17 +10,18 @@ type HeroProps = {
 
 const formatStat = (value: number) => value.toLocaleString('es-UY');
 
-export default function Hero({ stats, isLoading = false }: HeroProps) {
-  const trustPoints = [
-    'Profesionales verificados',
-    'Disponibilidad actualizada',
-    'Reserva online simple',
-  ];
-  const statItems = [
+const TRUST_POINTS = [
+  'Profesionales verificados',
+  'Disponibilidad actualizada',
+  'Reserva online simple',
+];
+
+export default memo(function Hero({ stats, isLoading = false }: HeroProps) {
+  const statItems = useMemo(() => [
     { label: 'Reservas en el mes', value: isLoading ? '...' : formatStat(stats.monthlyBookings) },
     { label: 'Profesionales activos', value: isLoading ? '...' : formatStat(stats.professionals) },
     { label: 'Categorias disponibles', value: isLoading ? '...' : formatStat(stats.categories) },
-  ];
+  ], [isLoading, stats.monthlyBookings, stats.professionals, stats.categories]);
 
   return (
     <section className="px-4 pb-16 pt-10 sm:pb-18 sm:pt-14">
@@ -38,7 +40,7 @@ export default function Hero({ stats, isLoading = false }: HeroProps) {
               </p>
             </div>
             <div className="flex flex-wrap justify-center gap-2">
-              {trustPoints.map((item) => (
+              {TRUST_POINTS.map((item) => (
                 <span
                   key={item}
                   className="rounded-full border border-[color:var(--border-soft)] bg-[color:var(--surface-strong)] px-3.5 py-1.5 text-[0.84rem] font-medium text-[color:var(--ink-muted)] shadow-[var(--shadow-card)]"
@@ -74,4 +76,4 @@ export default function Hero({ stats, isLoading = false }: HeroProps) {
       </div>
     </section>
   );
-}
+});

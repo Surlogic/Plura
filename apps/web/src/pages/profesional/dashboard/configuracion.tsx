@@ -18,8 +18,11 @@ import api from '@/services/api';
 import { clearFavoriteProfessionals } from '@/services/clientFeatures';
 import { clearAuthAccessToken } from '@/services/session';
 import type { LateCancellationRefundMode, ProfessionalBookingPolicy } from '@/types/bookings';
+import AppFeedbackForm from '@/components/shared/AppFeedbackForm';
 import Button from '@/components/ui/Button';
 import ThemeSwitcher from '@/components/theme/ThemeSwitcher';
+import { createProfessionalAppFeedback, getProfessionalAppFeedbackMine } from '@/services/appFeedback';
+import AppFeedbackHistory from '@/components/shared/AppFeedbackHistory';
 import {
   DashboardHero,
   DashboardSectionHeading,
@@ -981,6 +984,15 @@ export default function ProfesionalSettingsPage() {
                     </div>
 
                     <div className="space-y-6">
+                      <DashboardSectionHeading title="Feedback" subtitle="Contanos como es tu experiencia usando Plura." />
+                      <div className="rounded-[24px] border border-[#E2E7EC] bg-white p-5 shadow-[0_16px_36px_rgba(14,42,71,0.04)]">
+                        <AppFeedbackForm onSubmit={createProfessionalAppFeedback} contextSource="profesional/configuracion" />
+                        <div className="mt-6 border-t border-[#E2E7EC] pt-4">
+                          <p className="mb-3 text-xs font-semibold uppercase tracking-[0.2em] text-[#94A3B8]">Tu historial</p>
+                          <AppFeedbackHistory fetchFeedback={getProfessionalAppFeedbackMine} />
+                        </div>
+                      </div>
+
                       <div className="rounded-[24px] border border-[#FECACA] bg-[#FFF5F5] p-5 shadow-[0_16px_36px_rgba(185,28,28,0.10)]">
                         <p className="text-xs uppercase tracking-[0.3em] text-[#B91C1C]">
                           Zona sensible

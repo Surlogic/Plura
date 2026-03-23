@@ -11,5 +11,7 @@ public record ProfessionalPublicSummary(
     String location,
     String publicHeadline,
     List<CategoryResponse> categories,
-    String logoUrl
+    String logoUrl,
+    Double rating,
+    Integer reviewsCount
 ) {}

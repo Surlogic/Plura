@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { memo, useCallback } from 'react';
 import { useRouter } from 'next/router';
 import api from '@/services/api';
 import { useClientProfileContext } from '@/context/ClientProfileContext';
@@ -24,7 +25,7 @@ const getInitials = (name: string) =>
     .join('')
     .toUpperCase();
 
-export default function Navbar({
+export default memo(function Navbar({
   variant = 'default',
   showMenuButton = false,
   onMenuClick,
@@ -59,7 +60,7 @@ export default function Navbar({
   const displayName = professionalProfile?.fullName || clientProfile?.fullName || '';
   const initials = getInitials(displayName || 'Perfil');
 
-  const handleLogout = () => {
+  const handleLogout = useCallback(() => {
     api
       .post('/auth/logout')
       .catch(() => undefined)
@@ -74,7 +75,7 @@ export default function Navbar({
         }
         router.push('/cliente/auth/login');
       });
-  };
+  }, [clearClientProfile, clearProfessionalProfile, role, router]);
 
   const isDashboard = variant === 'dashboard';
   const headerClassName = isDashboard
@@ -154,4 +155,4 @@ export default function Navbar({
       </div>
     </header>
   );
-}
+});

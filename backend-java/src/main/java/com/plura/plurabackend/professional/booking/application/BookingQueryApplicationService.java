@@ -99,8 +99,14 @@ public class BookingQueryApplicationService {
             .filter(this::shouldSyncPendingPayment)
             .map(Booking::getId)
             .toList();
-        pendingSyncIds.forEach(this::syncPendingPaymentSafely);
-        if (!pendingSyncIds.isEmpty()) {
+        // Sync at most 3 inline to keep response fast; log the rest for background.
+        int maxInlineSync = Math.min(pendingSyncIds.size(), 3);
+        pendingSyncIds.subList(0, maxInlineSync).forEach(this::syncPendingPaymentSafely);
+        if (pendingSyncIds.size() > maxInlineSync) {
+            LOGGER.info("Skipped inline sync for {} bookings (total pending={})",
+                pendingSyncIds.size() - maxInlineSync, pendingSyncIds.size());
+        }
+        if (maxInlineSync > 0) {
             bookingEntities = bookingRepository.findByIdIn(bookingIds).stream()
                 .collect(Collectors.toMap(Booking::getId, booking -> booking));
         }

@@ -64,7 +64,9 @@ class ClientFavoriteControllerTest {
             "Montevideo",
             "Color y corte",
             List.of(new CategoryResponse(UUID.randomUUID(), "Cabello", "cabello", null, 1)),
-            "https://cdn.plura.test/ana.jpg"
+            "https://cdn.plura.test/ana.jpg",
+            4.5,
+            12
         );
     }
 }

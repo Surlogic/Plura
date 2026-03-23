@@ -6,6 +6,7 @@ type BusinessCardProps = {
   name: string;
   category: string;
   rating?: number | string | null;
+  reviewsCount?: number | null;
   badge?: string;
   imageUrl?: string | null;
   priority?: boolean;
@@ -30,6 +31,7 @@ export default memo(function BusinessCard({
   name,
   category,
   rating,
+  reviewsCount,
   badge,
   imageUrl,
   priority = false,
@@ -67,6 +69,9 @@ export default memo(function BusinessCard({
           <>
             <span className="text-[color:var(--accent)]">★</span>
             <span>{displayRating}</span>
+            {reviewsCount != null && reviewsCount > 0 ? (
+              <span className="text-[color:var(--ink-muted)]">({reviewsCount})</span>
+            ) : null}
           </>
         ) : (
           <span className="text-xs font-semibold text-[color:var(--ink-faint)]">

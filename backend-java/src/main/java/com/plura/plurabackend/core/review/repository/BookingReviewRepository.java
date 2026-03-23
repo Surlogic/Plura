@@ -1,10 +1,13 @@
 package com.plura.plurabackend.core.review.repository;
 
 import com.plura.plurabackend.core.review.model.BookingReview;
+import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -37,4 +40,170 @@ public interface BookingReviewRepository extends JpaRepository<BookingReview, Lo
     Object[] findRatingAggregateByProfessionalId(@Param("professionalId") Long professionalId);
 
     Page<BookingReview> findByProfessional_IdOrderByCreatedAtDesc(Long professionalId, Pageable pageable);
+
+    @Query(
+        value = """
+            SELECT r
+            FROM BookingReview r
+            JOIN FETCH r.booking b
+            JOIN FETCH r.professional p
+            JOIN FETCH r.user u
+            WHERE r.professional.id = :professionalId
+            ORDER BY r.createdAt DESC, r.id DESC
+            """,
+        countQuery = """
+            SELECT COUNT(r)
+            FROM BookingReview r
+            WHERE r.professional.id = :professionalId
+            """
+    )
+    Page<BookingReview> findPublicByProfessionalId(@Param("professionalId") Long professionalId, Pageable pageable);
+
+    @Query(
+        value = """
+            SELECT r
+            FROM BookingReview r
+            JOIN FETCH r.booking b
+            JOIN FETCH r.professional p
+            JOIN FETCH r.user u
+            WHERE r.professional.id = :professionalId
+            ORDER BY r.createdAt DESC, r.id DESC
+            """,
+        countQuery = """
+            SELECT COUNT(r)
+            FROM BookingReview r
+            WHERE r.professional.id = :professionalId
+            """
+    )
+    Page<BookingReview> findProfessionalDashboardReviews(@Param("professionalId") Long professionalId, Pageable pageable);
+
+    @Query("SELECT DISTINCT r.professional.id FROM BookingReview r")
+    List<Long> findDistinctProfessionalIds();
+
+    @Query(
+        value = """
+            SELECT r
+            FROM BookingReview r
+            JOIN FETCH r.booking b
+            JOIN FETCH r.professional p
+            JOIN FETCH p.user pu
+            JOIN FETCH r.user u
+            WHERE (:professionalId IS NULL OR r.professional.id = :professionalId)
+              AND (:rating IS NULL OR r.rating = :rating)
+              AND (:hasText IS NULL
+                   OR (:hasText = TRUE AND r.reviewText IS NOT NULL)
+                   OR (:hasText = FALSE AND r.reviewText IS NULL))
+              AND (:textHidden IS NULL
+                   OR (:textHidden = TRUE AND (r.textHiddenByProfessional = TRUE OR r.textHiddenByInternalOps = TRUE))
+                   OR (:textHidden = FALSE AND (r.textHiddenByProfessional = FALSE OR r.textHiddenByProfessional IS NULL) AND (r.textHiddenByInternalOps = FALSE OR r.textHiddenByInternalOps IS NULL)))
+              AND (:from IS NULL OR r.createdAt >= :from)
+              AND (:to IS NULL OR r.createdAt < :to)
+            ORDER BY r.createdAt DESC, r.id DESC
+            """,
+        countQuery = """
+            SELECT COUNT(r)
+            FROM BookingReview r
+            WHERE (:professionalId IS NULL OR r.professional.id = :professionalId)
+              AND (:rating IS NULL OR r.rating = :rating)
+              AND (:hasText IS NULL
+                   OR (:hasText = TRUE AND r.reviewText IS NOT NULL)
+                   OR (:hasText = FALSE AND r.reviewText IS NULL))
+              AND (:textHidden IS NULL
+                   OR (:textHidden = TRUE AND (r.textHiddenByProfessional = TRUE OR r.textHiddenByInternalOps = TRUE))
+                   OR (:textHidden = FALSE AND (r.textHiddenByProfessional = FALSE OR r.textHiddenByProfessional IS NULL) AND (r.textHiddenByInternalOps = FALSE OR r.textHiddenByInternalOps IS NULL)))
+              AND (:from IS NULL OR r.createdAt >= :from)
+              AND (:to IS NULL OR r.createdAt < :to)
+            """
+    )
+    Page<BookingReview> findAllFiltered(
+        @Param("professionalId") Long professionalId,
+        @Param("rating") Integer rating,
+        @Param("hasText") Boolean hasText,
+        @Param("textHidden") Boolean textHidden,
+        @Param("from") LocalDateTime from,
+        @Param("to") LocalDateTime to,
+        Pageable pageable
+    );
+
+    @Query("SELECT COUNT(r) FROM BookingReview r WHERE (:from IS NULL OR r.createdAt >= :from) AND (:to IS NULL OR r.createdAt < :to)")
+    long countFiltered(@Param("from") LocalDateTime from, @Param("to") LocalDateTime to);
+
+    @Query("SELECT AVG(r.rating) FROM BookingReview r WHERE (:from IS NULL OR r.createdAt >= :from) AND (:to IS NULL OR r.createdAt < :to)")
+    Double averageRatingFiltered(@Param("from") LocalDateTime from, @Param("to") LocalDateTime to);
+
+    @Query("SELECT r.rating, COUNT(r) FROM BookingReview r WHERE (:from IS NULL OR r.createdAt >= :from) AND (:to IS NULL OR r.createdAt < :to) GROUP BY r.rating")
+    List<Object[]> countByRating(@Param("from") LocalDateTime from, @Param("to") LocalDateTime to);
+
+    @Query("SELECT COUNT(r) FROM BookingReview r WHERE r.reviewText IS NOT NULL AND (:from IS NULL OR r.createdAt >= :from) AND (:to IS NULL OR r.createdAt < :to)")
+    long countWithText(@Param("from") LocalDateTime from, @Param("to") LocalDateTime to);
+
+    @Query("SELECT COUNT(r) FROM BookingReview r WHERE r.reviewText IS NULL AND (:from IS NULL OR r.createdAt >= :from) AND (:to IS NULL OR r.createdAt < :to)")
+    long countWithoutText(@Param("from") LocalDateTime from, @Param("to") LocalDateTime to);
+
+    @Query("SELECT COUNT(r) FROM BookingReview r WHERE (r.textHiddenByProfessional = TRUE OR r.textHiddenByInternalOps = TRUE) AND (:from IS NULL OR r.createdAt >= :from) AND (:to IS NULL OR r.createdAt < :to)")
+    long countTextHidden(@Param("from") LocalDateTime from, @Param("to") LocalDateTime to);
+
+    @Query(
+        value = """
+            SELECT r.professional.id, p.user.fullName, p.slug, COUNT(r), AVG(r.rating)
+            FROM BookingReview r
+            JOIN r.professional p
+            JOIN p.user
+            WHERE (:from IS NULL OR r.createdAt >= :from)
+              AND (:to IS NULL OR r.createdAt < :to)
+            GROUP BY r.professional.id, p.user.fullName, p.slug
+            ORDER BY COUNT(r) DESC
+            """
+    )
+    List<Object[]> topProfessionalsByVolume(@Param("from") LocalDateTime from, @Param("to") LocalDateTime to, Pageable pageable);
+
+    @Query(
+        value = """
+            SELECT r.professional.id, p.user.fullName, p.slug, COUNT(r), AVG(r.rating)
+            FROM BookingReview r
+            JOIN r.professional p
+            JOIN p.user
+            WHERE (:from IS NULL OR r.createdAt >= :from)
+              AND (:to IS NULL OR r.createdAt < :to)
+            GROUP BY r.professional.id, p.user.fullName, p.slug
+            HAVING COUNT(r) >= 3
+            ORDER BY AVG(r.rating) DESC
+            """
+    )
+    List<Object[]> topProfessionalsByRating(@Param("from") LocalDateTime from, @Param("to") LocalDateTime to, Pageable pageable);
+
+    @Query(
+        value = """
+            SELECT CAST(r.createdAt AS DATE), COUNT(r), AVG(r.rating)
+            FROM BookingReview r
+            WHERE (:from IS NULL OR r.createdAt >= :from)
+              AND (:to IS NULL OR r.createdAt < :to)
+            GROUP BY CAST(r.createdAt AS DATE)
+            ORDER BY CAST(r.createdAt AS DATE)
+            """
+    )
+    List<Object[]> dailyStats(@Param("from") LocalDateTime from, @Param("to") LocalDateTime to);
+
+    /**
+     * Batch-updates rating and reviewsCount for all professionals that have reviews,
+     * in a single SQL statement instead of N separate queries.
+     */
+    @Modifying
+    @Query(
+        value = """
+            UPDATE professional_profile pp
+            SET rating = agg.avg_rating,
+                reviews_count = agg.review_count
+            FROM (
+                SELECT r.professional_id,
+                       COALESCE(AVG(r.rating), 0) AS avg_rating,
+                       COUNT(r.id) AS review_count
+                FROM booking_review r
+                GROUP BY r.professional_id
+            ) agg
+            WHERE pp.id = agg.professional_id
+            """,
+        nativeQuery = true
+    )
+    int batchUpdateAllAggregates();
 }

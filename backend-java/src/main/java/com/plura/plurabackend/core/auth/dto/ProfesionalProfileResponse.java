@@ -70,4 +70,8 @@ public class ProfesionalProfileResponse {
     private ProfessionalPlanEntitlements professionalEntitlements;
     /** Fecha y hora de creacion del perfil profesional. */
     private LocalDateTime createdAt;
+    /** Calificacion promedio del profesional basada en reseñas de clientes. */
+    private Double rating;
+    /** Cantidad total de reseñas recibidas. */
+    private Integer reviewsCount;
 }

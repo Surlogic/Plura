@@ -11,5 +11,6 @@ public class HomeTopProfessionalResponse {
     private String name;
     private String category;
     private Double rating;
+    private Integer reviewsCount;
     private String imageUrl;
 }

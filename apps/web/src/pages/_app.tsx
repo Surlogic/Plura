@@ -1,4 +1,5 @@
 import type { AppProps } from 'next/app';
+import { useMemo } from 'react';
 import { Instrument_Sans } from 'next/font/google';
 import { useRouter } from 'next/router';
 import '@/pages/globals.css';
@@ -63,24 +64,41 @@ const isRouteOrChild = (path: string, route: string) =>
 export default function App({ Component, pageProps }: AppProps) {
   const router = useRouter();
   const pathname = router.pathname || '';
-  const isClientArea = isRouteOrChild(pathname, '/cliente');
-  const isClientAuthArea = isRouteOrChild(pathname, '/cliente/auth');
-  const isProfessionalDashboardArea = isRouteOrChild(pathname, '/profesional/dashboard');
-  const isProfessionalNotificationsArea = isRouteOrChild(pathname, '/profesional/notificaciones');
-  const hasKnownClientSession = hasKnownAuthSession();
 
-  const shouldAutoLoadClientProfile =
-    (isClientArea && !isClientAuthArea) ||
-    (isRouteOrChild(pathname, '/explorar') && hasKnownClientSession) ||
-    (isRouteOrChild(pathname, '/profesional/pagina') && hasKnownClientSession) ||
-    (pathname === '/profesional/[slug]' && hasKnownClientSession) ||
-    isRouteOrChild(pathname, '/reservar');
+  const routeFlags = useMemo(() => {
+    const isClientArea = isRouteOrChild(pathname, '/cliente');
+    const isClientAuthArea = isRouteOrChild(pathname, '/cliente/auth');
+    const isProfessionalDashboardArea = isRouteOrChild(pathname, '/profesional/dashboard');
+    const isProfessionalNotificationsArea = isRouteOrChild(pathname, '/profesional/notificaciones');
+    const hasKnownClientSession = hasKnownAuthSession();
 
-  const shouldAutoLoadProfessionalProfile =
-    isProfessionalDashboardArea || isProfessionalNotificationsArea;
-  const shouldMountClientNotifications = isClientArea && !isClientAuthArea;
-  const shouldMountProfessionalNotifications =
-    isProfessionalDashboardArea || isProfessionalNotificationsArea;
+    return {
+      isClientArea,
+      isClientAuthArea,
+      isProfessionalDashboardArea,
+      isProfessionalNotificationsArea,
+      shouldAutoLoadClientProfile:
+        (isClientArea && !isClientAuthArea) ||
+        (isRouteOrChild(pathname, '/explorar') && hasKnownClientSession) ||
+        (isRouteOrChild(pathname, '/profesional/pagina') && hasKnownClientSession) ||
+        (pathname === '/profesional/[slug]' && hasKnownClientSession) ||
+        isRouteOrChild(pathname, '/reservar'),
+      shouldAutoLoadProfessionalProfile:
+        isProfessionalDashboardArea || isProfessionalNotificationsArea,
+      shouldMountClientNotifications: isClientArea && !isClientAuthArea,
+      shouldMountProfessionalNotifications:
+        isProfessionalDashboardArea || isProfessionalNotificationsArea,
+    };
+  }, [pathname]);
+
+  const {
+    isProfessionalDashboardArea,
+    isProfessionalNotificationsArea,
+    shouldAutoLoadClientProfile,
+    shouldAutoLoadProfessionalProfile,
+    shouldMountClientNotifications,
+    shouldMountProfessionalNotifications,
+  } = routeFlags;
 
   let content = (
     <div

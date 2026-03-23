@@ -1,9 +1,10 @@
 import { isAxiosError } from 'axios';
-import { memo, useEffect, useMemo, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
 import ClientShell from '@/components/cliente/ClientShell';
 import ClientBookingTimeline from '@/components/cliente/reservations/ClientBookingTimeline';
+import ClientBookingReviewSection from '@/components/cliente/reservations/ClientBookingReviewSection';
 import { useClientProfile } from '@/hooks/useClientProfile';
 import {
   getBookingPaymentSessionFeedback,
@@ -50,6 +51,7 @@ const sortByDateAsc = (a: ClientDashboardBooking, b: ClientDashboardBooking): nu
 const sortByDateDesc = (a: ClientDashboardBooking, b: ClientDashboardBooking): number =>
   new Date(b.startDateTimeUtc || b.dateTime).getTime() - new Date(a.startDateTimeUtc || a.dateTime).getTime();
 
+const MAX_FINANCIAL_REFRESH_ATTEMPTS = 8;
 const getFinancialRefreshDelayMs = (attempt: number) => Math.min(60000, 15000 * (attempt + 1));
 
 const extractApiMessage = (error: unknown, fallback: string) => {
@@ -149,7 +151,7 @@ export default function ClienteReservasPage() {
     return { checkout, created };
   }, [router.query.checkout, router.query.created]);
 
-  const loadBookings = async (keepSelection = true) => {
+  const loadBookings = useCallback(async (keepSelection = true) => {
     try {
       if (!keepSelection) setIsLoading(true);
       setError(null);
@@ -177,7 +179,26 @@ export default function ClienteReservasPage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [queryBookingId]);
+
+  const bookingsSnapshotRef = useRef('');
+
+  const refreshBookingsIfChanged = useCallback(async () => {
+    try {
+      const response = await getClientBookings();
+      const snapshot = JSON.stringify(response.map((b) => ({
+        id: b.id,
+        status: b.status,
+        fs: b.financialSummary?.financialStatus,
+        ps: b.paymentStatus,
+      })));
+      if (snapshot === bookingsSnapshotRef.current) return;
+      bookingsSnapshotRef.current = snapshot;
+      setBookings(response);
+    } catch {
+      // Silently ignore polling errors
+    }
+  }, []);
 
   useEffect(() => {
     void loadBookings(false);
@@ -326,6 +347,7 @@ export default function ClienteReservasPage() {
     if (!shouldAutoRefreshFinancialStatus(selectedBooking.financialSummary.financialStatus)) return;
 
     let timeoutId: number | null = null;
+    let cancelled = false;
     let attempt = 0;
 
     const clearScheduledRefresh = () => {
@@ -336,19 +358,16 @@ export default function ClienteReservasPage() {
     };
 
     const scheduleRefresh = () => {
-      if (typeof document !== 'undefined' && document.hidden) {
-        return;
-      }
-      if (timeoutId !== null) {
-        return;
-      }
+      if (cancelled) return;
+      if (attempt >= MAX_FINANCIAL_REFRESH_ATTEMPTS) return;
+      if (typeof document !== 'undefined' && document.hidden) return;
+      if (timeoutId !== null) return;
 
       timeoutId = window.setTimeout(async () => {
         timeoutId = null;
-        if (typeof document !== 'undefined' && document.hidden) {
-          return;
-        }
-        await loadBookings();
+        if (cancelled) return;
+        if (typeof document !== 'undefined' && document.hidden) return;
+        await refreshBookingsIfChanged();
         attempt += 1;
         scheduleRefresh();
       }, getFinancialRefreshDelayMs(attempt));
@@ -366,6 +385,7 @@ export default function ClienteReservasPage() {
     document.addEventListener('visibilitychange', handleVisibilityChange);
 
     return () => {
+      cancelled = true;
       clearScheduledRefresh();
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
@@ -689,6 +709,10 @@ export default function ClienteReservasPage() {
                   bookingId={selectedBooking.id}
                   refreshToken={timelineRefreshToken}
                 />
+
+                {selectedBooking.status === 'COMPLETED' ? (
+                  <ClientBookingReviewSection bookingId={selectedBooking.id} />
+                ) : null}
 
                 <div className="mt-4 rounded-[18px] border border-[#E2E7EC] bg-white p-4">
                   <p className="text-xs uppercase tracking-[0.25em] text-[#94A3B8]">

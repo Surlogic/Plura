@@ -78,7 +78,9 @@ public class ClientFavoriteService {
             summary.location(),
             summary.publicHeadline(),
             summary.categories(),
-            summary.logoUrl()
+            summary.logoUrl(),
+            summary.rating(),
+            summary.reviewsCount()
         );
     }
 

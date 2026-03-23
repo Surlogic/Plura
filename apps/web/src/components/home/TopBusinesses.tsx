@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { memo } from 'react';
 import BusinessCard from './BusinessCard';
 import Button from '@/components/ui/Button';
 import Card from '@/components/ui/Card';
@@ -19,7 +20,7 @@ type TopBusinessesProps = {
   isLoading?: boolean;
 };
 
-export default function TopBusinesses({ professionals, isLoading = false }: TopBusinessesProps) {
+export default memo(function TopBusinesses({ professionals, isLoading = false }: TopBusinessesProps) {
   const items = professionals.slice(0, 3);
 
   return (
@@ -53,6 +54,7 @@ export default function TopBusinesses({ professionals, isLoading = false }: TopB
                     name={business.name}
                     category={business.category}
                     rating={business.rating}
+                    reviewsCount={business.reviewsCount}
                     imageUrl={business.imageUrl}
                   />
                 </Link>
@@ -63,4 +65,4 @@ export default function TopBusinesses({ professionals, isLoading = false }: TopB
       </div>
     </section>
   );
-}
+});

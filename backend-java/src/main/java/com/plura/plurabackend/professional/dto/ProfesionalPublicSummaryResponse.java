@@ -16,4 +16,6 @@ public class ProfesionalPublicSummaryResponse {
     private String headline;
     private List<CategoryResponse> categories;
     private String logoUrl;
+    private Double rating;
+    private Integer reviewsCount;
 }

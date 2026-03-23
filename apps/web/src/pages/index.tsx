@@ -34,8 +34,9 @@ const mapPublicToHomeProfessional = (
     slug: professional.slug,
     name: professional.fullName?.trim() || 'Profesional',
     category: primaryCategory || professional.rubro?.trim() || 'Profesional',
-    rating: null,
-    imageUrl: null,
+    rating: professional.rating ?? null,
+    reviewsCount: professional.reviewsCount ?? null,
+    imageUrl: professional.logoUrl ?? null,
   };
 };
 

@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo } from 'react';
+import Head from 'next/head';
 import { Marker } from 'react-map-gl/mapbox';
 import MapView from '@/components/map/MapView';
 
@@ -37,6 +38,13 @@ export default function PublicProfileMap({
   );
 
   return (
+    <>
+    <Head>
+      <link
+        rel="stylesheet"
+        href="https://api.mapbox.com/mapbox-gl-js/v3.19.1/mapbox-gl.css"
+      />
+    </Head>
     <MapView
       containerClassName={`${heightClassName} overflow-hidden rounded-2xl border border-[#E2E7EC]`}
       fallbackClassName={`${heightClassName} rounded-2xl border border-[#E2E7EC] bg-[#F3F6F9]`}
@@ -59,5 +67,6 @@ export default function PublicProfileMap({
         />
       </Marker>
     </MapView>
+    </>
   );
 }

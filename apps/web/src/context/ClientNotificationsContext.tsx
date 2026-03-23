@@ -14,6 +14,13 @@ type ClientNotificationsRefreshContextValue = {
   publishChange: () => void;
 };
 
+type UnreadCountState = {
+  count: number;
+  error: Error | null;
+  isLoading: boolean;
+  hasLoaded: boolean;
+};
+
 type ClientNotificationsDataContextValue = {
   unreadCount: number;
   unreadCountError: Error | null;
@@ -28,16 +35,20 @@ const ClientNotificationsRefreshContext =
 const ClientNotificationsDataContext =
   createContext<ClientNotificationsDataContextValue | null>(null);
 
+const initialUnreadState: UnreadCountState = {
+  count: 0,
+  error: null,
+  isLoading: false,
+  hasLoaded: false,
+};
+
 export function ClientNotificationsProvider({
   children,
 }: {
   children: ReactNode;
 }) {
   const [refreshToken, setRefreshToken] = useState(0);
-  const [unreadCount, setUnreadCount] = useState(0);
-  const [unreadCountError, setUnreadCountError] = useState<Error | null>(null);
-  const [isUnreadCountLoading, setIsUnreadCountLoading] = useState(false);
-  const [hasUnreadCountLoaded, setHasUnreadCountLoaded] = useState(false);
+  const [unreadState, setUnreadState] = useState<UnreadCountState>(initialUnreadState);
   const unreadCountRequestRef = useRef<Promise<void> | null>(null);
 
   const publishChange = useCallback(() => {
@@ -50,20 +61,20 @@ export function ClientNotificationsProvider({
     }
 
     const request = (async () => {
-      setIsUnreadCountLoading(true);
-      setUnreadCountError(null);
+      setUnreadState((prev) => ({ ...prev, isLoading: true, error: null }));
       try {
         const response = await getClientNotificationUnreadCount();
-        setUnreadCount(response.count);
+        setUnreadState({ count: response.count, error: null, isLoading: false, hasLoaded: true });
       } catch (error) {
-        setUnreadCountError(
-          error instanceof Error
+        setUnreadState((prev) => ({
+          ...prev,
+          error: error instanceof Error
             ? error
             : new Error('No se pudo cargar el contador de notificaciones.'),
-        );
+          isLoading: false,
+          hasLoaded: true,
+        }));
       } finally {
-        setHasUnreadCountLoaded(true);
-        setIsUnreadCountLoading(false);
         unreadCountRequestRef.current = null;
       }
     })();
@@ -79,13 +90,13 @@ export function ClientNotificationsProvider({
 
   const dataValue = useMemo(
     () => ({
-      unreadCount,
-      unreadCountError,
-      isUnreadCountLoading,
-      hasUnreadCountLoaded,
+      unreadCount: unreadState.count,
+      unreadCountError: unreadState.error,
+      isUnreadCountLoading: unreadState.isLoading,
+      hasUnreadCountLoaded: unreadState.hasLoaded,
       refreshUnreadCount,
     }),
-    [unreadCount, unreadCountError, isUnreadCountLoading, hasUnreadCountLoaded, refreshUnreadCount],
+    [unreadState, refreshUnreadCount],
   );
 
   return (

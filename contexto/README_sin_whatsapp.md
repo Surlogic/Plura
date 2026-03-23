@@ -149,7 +149,8 @@ Base transversal que ordena el producto y la arquitectura:
 - detalle completo de reserva y carga manual desde panel
 - centro de notificaciones e historial
 - notificaciones in-app, email y motor de eventos transaccionales
-- reseñas base y respuesta del negocio
+- reseñas base implementadas (crear, listar publico, moderar texto); rating y reviewsCount propagados a todas las superficies publicas (home, explorar, mapa, favoritos, marketplace); respuesta publica del negocio pendiente
+- feedback interno de app implementado (cliente y profesional pueden enviar rating + texto + categoria opcional hacia la plataforma; modulo separado `core.feedback`; historial paginado propio en configuracion; backoffice interno con listado, filtros, archive/unarchive y analytics basicos bajo `/internal/ops/app-feedback` protegido por `X-Internal-Token`)
 - panel administrativo y configuracion general
 - pagos online configurables y metodos de pago visibles
 - base de analytics y eventos del producto
@@ -301,9 +302,9 @@ Nota: el input original mencionaba `31/04/2026`, fecha invalida; en este context
 
 ## Foto rapida del repo
 
-- `apps/web`: app web con `Pages Router`, `32` pages y `57` componentes.
+- `apps/web`: app web con `Pages Router`, `34` pages y `60` componentes.
 - `apps/mobile`: app Expo con `23` pantallas y `16` servicios cliente.
-- `backend-java`: API principal con `382` archivos Java y `40` migraciones SQL.
+- `backend-java`: API principal con `395` archivos Java y `55` migraciones SQL.
 - `packages/shared`: utilidades, contratos y definiciones de billing compartidas.
 - `scripts`: helpers de desarrollo del workspace.
 
@@ -331,7 +332,7 @@ Capacidades de producto definidas pero no necesariamente cerradas en UI o API pu
 
 - onboarding inicial del negocio
 - timeline cliente dentro del detalle de reserva
-- reseñas y respuesta del negocio
+- respuesta publica del negocio a reseñas (reseñas base Fase 1 ya cerradas en backend + web)
 - analytics de producto y reporting orientado a plan
 - bloqueo visible de features por plan dentro de toda la experiencia
 - funciones Premium como multi-profesional, fidelizacion, ultima hora, portfolio y tienda
@@ -385,6 +386,7 @@ El backend expone la logica de negocio y datos. Los paquetes mas importantes son
 - `category`
 - `geo`
 - `cache`
+- `feedback`
 - `storage`
 
 La configuracion principal vive en `backend-java/src/main/resources/application.yml`.

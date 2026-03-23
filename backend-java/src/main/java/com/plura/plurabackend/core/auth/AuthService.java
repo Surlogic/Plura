@@ -817,7 +817,9 @@ public class AuthService {
             mapCategories(profile.getCategories()),
             effectivePlan.code().name(),
             effectivePlan.entitlements(),
-            user.getCreatedAt()
+            user.getCreatedAt(),
+            profile.getRating(),
+            profile.getReviewsCount()
         );
     }
 

@@ -41,6 +41,7 @@ public class MeiliSearchEngineClient implements SearchEngineClient {
     private final ObjectMapper objectMapper;
     private final MeterRegistry meterRegistry;
     private final HttpClient httpClient;
+    private final Duration requestTimeout;
     private final AtomicBoolean ensuredIndex = new AtomicBoolean(false);
 
     public MeiliSearchEngineClient(
@@ -56,8 +57,10 @@ public class MeiliSearchEngineClient implements SearchEngineClient {
         this.indexName = indexName == null || indexName.isBlank() ? "professional_profile" : indexName.trim();
         this.objectMapper = objectMapper;
         this.meterRegistry = meterRegistry;
+        long effectiveTimeout = Math.max(500L, timeoutMillis);
+        this.requestTimeout = Duration.ofMillis(effectiveTimeout);
         this.httpClient = HttpClient.newBuilder()
-            .connectTimeout(Duration.ofMillis(Math.max(500L, timeoutMillis)))
+            .connectTimeout(this.requestTimeout)
             .build();
     }
 
@@ -193,7 +196,7 @@ public class MeiliSearchEngineClient implements SearchEngineClient {
             String body = objectMapper.writeValueAsString(payload);
             HttpRequest.Builder requestBuilder = HttpRequest.newBuilder()
                 .uri(URI.create(host + path))
-                .timeout(Duration.ofSeconds(5))
+                .timeout(requestTimeout)
                 .header("Content-Type", "application/json")
                 .POST(HttpRequest.BodyPublishers.ofString(body));
 

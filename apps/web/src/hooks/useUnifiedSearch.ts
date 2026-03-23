@@ -65,6 +65,30 @@ const EMPTY_SUGGESTIONS: SearchSuggestResponse = {
 const RECENT_CITIES_STORAGE_KEY = 'plura:search-recent-cities';
 const RECENT_SEARCHES_STORAGE_KEY = 'plura:search-recent-queries';
 
+function readRecentCities(): string[] {
+  if (typeof window === 'undefined') return [];
+  try {
+    const raw = window.localStorage.getItem(RECENT_CITIES_STORAGE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw) as unknown;
+    if (!Array.isArray(parsed)) return [];
+    return parsed.map((item: unknown) => String(item)).filter((s: string) => s.trim()).slice(0, SEARCH_RECENT_ITEMS_LIMIT);
+  } catch {
+    return [];
+  }
+}
+
+function readRecentSearches(): RecentSearchEntry[] {
+  if (typeof window === 'undefined') return [];
+  try {
+    const raw = window.localStorage.getItem(RECENT_SEARCHES_STORAGE_KEY);
+    if (!raw) return [];
+    return normalizeRecentSearches(JSON.parse(raw) as unknown);
+  } catch {
+    return [];
+  }
+}
+
 export const normalizeType = (value?: string): SearchType => {
   const maybeType = value?.trim().toUpperCase();
   return maybeType === 'RUBRO' ||
@@ -327,8 +351,8 @@ export function useUnifiedSearch({
 
   const [geoStatus, setGeoStatus] = useState<'idle' | 'loading' | 'active' | 'error'>('idle');
   const [geoMessage, setGeoMessage] = useState('');
-  const [recentCities, setRecentCities] = useState<string[]>([]);
-  const [recentSearches, setRecentSearches] = useState<RecentSearchEntry[]>([]);
+  const [recentCities, setRecentCities] = useState<string[]>(readRecentCities);
+  const [recentSearches, setRecentSearches] = useState<RecentSearchEntry[]>(readRecentSearches);
 
   const [suggestions, setSuggestions] = useState<SearchSuggestResponse>(EMPTY_SUGGESTIONS);
   const [isSuggestLoading, setIsSuggestLoading] = useState(false);
@@ -354,29 +378,6 @@ export function useUnifiedSearch({
     initialValues?.availableNow,
   ]);
 
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    try {
-      const rawCities = window.localStorage.getItem(RECENT_CITIES_STORAGE_KEY);
-      if (rawCities) {
-        const parsed = JSON.parse(rawCities) as unknown;
-        if (Array.isArray(parsed)) {
-          setRecentCities(
-            uniqueNonEmpty(parsed.map((item) => String(item))).slice(0, SEARCH_RECENT_ITEMS_LIMIT),
-          );
-        }
-      }
-
-      const rawSearches = window.localStorage.getItem(RECENT_SEARCHES_STORAGE_KEY);
-      if (rawSearches) {
-        const parsedSearches = JSON.parse(rawSearches) as unknown;
-        setRecentSearches(normalizeRecentSearches(parsedSearches));
-      }
-    } catch {
-      setRecentCities([]);
-      setRecentSearches([]);
-    }
-  }, []);
 
   useEffect(() => {
     if (!isLocationOpen) return;
@@ -930,7 +931,18 @@ export function useUnifiedSearch({
     [citySuggestions, recentCities],
   );
 
-  const todayIso = useMemo(() => new Date().toISOString().slice(0, 10), []);
+  const [todayIso, setTodayIso] = useState(() => new Date().toISOString().slice(0, 10));
+  useEffect(() => {
+    const msUntilMidnight = () => {
+      const now = new Date();
+      return new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1).getTime() - now.getTime() + 500;
+    };
+    let id = setTimeout(function tick() {
+      setTodayIso(new Date().toISOString().slice(0, 10));
+      id = setTimeout(tick, msUntilMidnight());
+    }, msUntilMidnight());
+    return () => clearTimeout(id);
+  }, []);
 
   return {
     values,

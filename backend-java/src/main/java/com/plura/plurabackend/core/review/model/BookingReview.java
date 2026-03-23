@@ -59,8 +59,20 @@ public class BookingReview {
     @Column(name = "rating", nullable = false)
     private Integer rating;
 
-    @Column(name = "review_text", nullable = false, columnDefinition = "text")
+    @Column(name = "review_text", columnDefinition = "text")
     private String reviewText;
+
+    @Column(name = "text_hidden_by_professional", nullable = false)
+    private Boolean textHiddenByProfessional = false;
+
+    @Column(name = "text_hidden_at")
+    private LocalDateTime textHiddenAt;
+
+    @Column(name = "text_hidden_by_internal_ops", nullable = false)
+    private Boolean textHiddenByInternalOps = false;
+
+    @Column(name = "internal_moderation_note", columnDefinition = "text")
+    private String internalModerationNote;
 
     @Column(name = "business_reply_text", columnDefinition = "text")
     private String businessReplyText;

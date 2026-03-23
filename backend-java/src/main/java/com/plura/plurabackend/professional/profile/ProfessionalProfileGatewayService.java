@@ -155,7 +155,9 @@ public class ProfessionalProfileGatewayService implements
             response.getLocation(),
             response.getHeadline(),
             response.getCategories(),
-            response.getLogoUrl()
+            response.getLogoUrl(),
+            response.getRating(),
+            response.getReviewsCount()
         );
     }
 

@@ -44,6 +44,8 @@ export type ProfessionalProfile = {
   categories?: Category[];
   professionalPlan?: ProfessionalPlanCode;
   professionalEntitlements?: ProfessionalPlanEntitlements;
+  rating?: number | null;
+  reviewsCount?: number | null;
 };
 
 export type PublicProfessionalSummary = {
@@ -55,6 +57,8 @@ export type PublicProfessionalSummary = {
   location?: string | null;
   headline?: string | null;
   categories?: Category[];
+  rating?: number | null;
+  reviewsCount?: number | null;
 };
 
 export type ServicePaymentType =

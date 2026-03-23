@@ -13,8 +13,7 @@ public class BookingReviewResponse {
     private Integer rating;
     private String text;
     private String authorDisplayName;
+    private boolean textHiddenByProfessional;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
-    private String businessReplyText;
-    private LocalDateTime businessRepliedAt;
 }

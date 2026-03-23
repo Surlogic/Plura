@@ -64,6 +64,11 @@ const menuSections: MenuSection[] = [
         icon: 'publica',
         featureKey: 'enhancedPublicProfile',
       },
+      {
+        label: 'Reseñas',
+        href: '/profesional/dashboard/resenas',
+        icon: 'resenas',
+      },
     ],
   },
   {
@@ -106,38 +111,13 @@ function ProfesionalSidebar({ profile, active }: SidebarProps) {
     : 'Beta';
 
   useEffect(() => {
-    const root = rootRef.current;
-    if (!root) return;
-
-    const activeItem = root.querySelector<HTMLElement>('[data-sidebar-active="true"]');
-    if (!activeItem) return;
-
-    const findScrollableAncestor = () => {
-      let current = activeItem.parentElement;
-      while (current) {
-        const styles = window.getComputedStyle(current);
-        const overflowY = styles.overflowY;
-        const canScroll = (overflowY === 'auto' || overflowY === 'scroll') && current.scrollHeight > current.clientHeight;
-        if (canScroll) {
-          return current;
-        }
-        current = current.parentElement;
+    const id = requestAnimationFrame(() => {
+      const activeItem = rootRef.current?.querySelector<HTMLElement>('[data-sidebar-active="true"]');
+      if (activeItem) {
+        activeItem.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
       }
-      return null;
-    };
-
-    const scrollContainer = findScrollableAncestor();
-    if (!scrollContainer) return;
-
-    const containerRect = scrollContainer.getBoundingClientRect();
-    const itemRect = activeItem.getBoundingClientRect();
-    const itemCenter = itemRect.top - containerRect.top + scrollContainer.scrollTop + (itemRect.height / 2);
-    const targetScrollTop = itemCenter - (scrollContainer.clientHeight / 2);
-
-    scrollContainer.scrollTo({
-      top: Math.max(0, targetScrollTop),
-      behavior: 'smooth',
     });
+    return () => cancelAnimationFrame(id);
   }, [active]);
 
   return (

@@ -69,6 +69,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   }, [themePreference]);
 
   useEffect(() => {
+    if (typeof window === 'undefined') return;
     const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
 
     const handleSystemThemeChange = () => {
@@ -79,13 +80,8 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 
     handleSystemThemeChange();
 
-    if (typeof mediaQuery.addEventListener === 'function') {
-      mediaQuery.addEventListener('change', handleSystemThemeChange);
-      return () => mediaQuery.removeEventListener('change', handleSystemThemeChange);
-    }
-
-    mediaQuery.addListener(handleSystemThemeChange);
-    return () => mediaQuery.removeListener(handleSystemThemeChange);
+    mediaQuery.addEventListener('change', handleSystemThemeChange);
+    return () => mediaQuery.removeEventListener('change', handleSystemThemeChange);
   }, [themePreference]);
 
   const value = useMemo<ThemeContextValue>(

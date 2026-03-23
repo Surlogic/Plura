@@ -1,6 +1,6 @@
 import Image from 'next/image';
 import Link from 'next/link';
-import { memo } from 'react';
+import { memo, useCallback } from 'react';
 import FavoriteToggleButton from '@/components/shared/FavoriteToggleButton';
 
 type ExploreCardProps = {
@@ -10,6 +10,7 @@ type ExploreCardProps = {
   city?: string;
   distance?: number | null;
   rating?: string;
+  reviewsCount?: number | null;
   price?: string;
   available?: boolean;
   imageUrl?: string | null;
@@ -29,6 +30,7 @@ export default memo(function ExploreCard({
   city,
   distance,
   rating,
+  reviewsCount,
   price,
   available,
   imageUrl,
@@ -44,14 +46,16 @@ export default memo(function ExploreCard({
   const displayPrice = price?.trim() || 'Ver perfil';
   const displayCity = city?.trim();
   const displayDistance = typeof distance === 'number' ? `${distance.toFixed(1)} km` : '';
+  const handleMouseEnter = useCallback(() => onHoverStart?.(id), [onHoverStart, id]);
+  const handleMouseLeave = useCallback(() => onHoverEnd?.(id), [onHoverEnd, id]);
 
   return (
     <article
       className={`group rounded-[24px] border border-[color:var(--border-soft)] bg-[color:var(--surface-strong)] p-4 shadow-[var(--shadow-card)] transition hover:-translate-y-1 hover:border-[color:var(--border-strong)] hover:shadow-[var(--shadow-lift)] ${
         isHighlighted ? 'ring-2 ring-[color:var(--accent-soft)]' : ''
       }`}
-      onMouseEnter={() => onHoverStart?.(id)}
-      onMouseLeave={() => onHoverEnd?.(id)}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
     >
       <div className="relative h-40 w-full overflow-hidden rounded-[20px] bg-[color:var(--surface-soft)]">
         {href ? (
@@ -116,6 +120,9 @@ export default memo(function ExploreCard({
               <path d="M10 1.5l2.35 4.76 5.25.76-3.8 3.7.9 5.23L10 13.9l-4.7 2.45.9-5.23-3.8-3.7 5.25-.76L10 1.5z" />
             </svg>
             <span>{displayRating}</span>
+            {reviewsCount != null && reviewsCount > 0 ? (
+              <span className="text-[color:var(--ink-muted)]">({reviewsCount})</span>
+            ) : null}
           </div>
         ) : (
           <span className="text-xs font-semibold text-[color:var(--ink-faint)]">Sin reseñas</span>

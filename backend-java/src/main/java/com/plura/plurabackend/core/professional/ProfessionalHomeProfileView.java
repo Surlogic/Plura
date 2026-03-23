@@ -6,5 +6,6 @@ public record ProfessionalHomeProfileView(
     String displayName,
     String primaryCategoryName,
     Double rating,
+    Integer reviewsCount,
     String imageUrl
 ) {}

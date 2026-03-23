@@ -29,7 +29,7 @@ Tambien hay senales de una base mas amplia que el MVP:
 Todavia no se ve como superficie publica madura todo el set de:
 
 - notificaciones cliente en frontend web
-- reseñas y respuestas
+- respuestas publicas del negocio a reseñas (las reseñas base ya estan implementadas)
 - analytics de producto
 - fidelizacion y ultima hora
 - multi-profesional avanzado
@@ -129,13 +129,14 @@ Prefijo: `/public/profesionales`
 - `GET /public/profesionales/{slug}`
 - `GET /public/profesionales/{slug}/slots`
 - `POST /public/profesionales/{slug}/reservas`
+- `GET /public/profesionales/{slug}/reviews` — listado paginado de reseñas publicas (text null si oculto por profesional)
 
 Lectura de producto:
 
 - circuito publico central del MVP
 - soporta perfil publico, disponibilidad real y reserva sin pasar por panel privado
 - es la base de `Usuario` y del valor visible de `Free`
-- `GET /public/profesionales/{slug}` mantiene cache de perfil publico y ahora registra timing tecnico
+- `GET /public/profesionales/{slug}` mantiene cache de perfil publico y ahora registra timing tecnico. Devuelve `rating` y `reviewsCount` reales
 - `GET /public/profesionales/{slug}/slots` mantiene el mismo calculo funcional de disponibilidad, pero usa un finder liviano del profesional y registra timing tecnico
 
 ### Configuracion del profesional
@@ -161,6 +162,9 @@ Prefijo: `/profesional`
 - `GET /profesional/reservas`
 - `POST /profesional/reservas`
 - `PUT /profesional/reservas/{id}`
+- `GET /profesional/reviews` — listado paginado de reseñas recibidas (texto completo visible para moderacion)
+- `PATCH /profesional/reviews/{reviewId}/hide-text` — oculta texto de la reseña publicamente (el rating sigue visible y cuenta en el promedio)
+- `PATCH /profesional/reviews/{reviewId}/show-text` — restaura visibilidad del texto de la reseña
 
 Lectura de producto:
 
@@ -198,6 +202,9 @@ Notas:
 - `POST /cliente/reservas/{id}/cancel`
 - `POST /cliente/reservas/{id}/reschedule`
 - `POST /cliente/reservas/{id}/payment-session`
+- `GET /cliente/reservas/{bookingId}/review-eligibility` — chequea si el cliente puede dejar reseña
+- `POST /cliente/reservas/{bookingId}/review` — crea reseña (rating obligatorio 1-5, text opcional max 2000 chars)
+- `GET /cliente/reservas/{bookingId}/review` — obtiene la reseña existente del cliente
 
 Lectura de producto:
 
@@ -246,6 +253,31 @@ Lectura de producto:
 - el ownership usa `recipientType=PROFESSIONAL` y `recipientId=professionalProfileId`
 - inbox y unread count registran timing tecnico para observabilidad basica
 - el inbox profesional comparte la misma ruta JDBC directa del inbox cliente para bajar costo del listado paginado
+
+### Feedback de app del cliente
+
+Prefijo: `/cliente/app-feedback`
+
+- `POST /cliente/app-feedback` — crea feedback interno hacia la plataforma (rating 1-5, text opcional, category opcional, contextSource opcional)
+- `GET /cliente/app-feedback/mine` — historial paginado de feedback propio del cliente
+
+Lectura de producto:
+
+- feedback interno de producto, no publico
+- no impacta search, rating ni perfil publico del profesional
+- modulo separado `core.feedback`, sin dependencia de `core.review`
+
+### Feedback de app del profesional
+
+Prefijo: `/profesional/app-feedback`
+
+- `POST /profesional/app-feedback` — crea feedback interno hacia la plataforma (rating 1-5, text opcional, category opcional, contextSource opcional)
+- `GET /profesional/app-feedback/mine` — historial paginado de feedback propio del profesional
+
+Lectura de producto:
+
+- misma mecanica que feedback de cliente, scopeado por rol `PROFESSIONAL`
+- categorias disponibles: `BUG`, `UX`, `PAYMENTS`, `BOOKING`, `DISCOVERY`, `OTHER`
 
 ### Acciones sobre reservas
 
@@ -344,6 +376,23 @@ Lectura de producto:
 - esto no es visible al usuario final, pero si es importante para operar pagos y reservas con confiabilidad
 - refuerza la tesis de "infraestructura de confianza" mas alla del simple booking flow
 
+### Endpoints internos de feedback de app
+
+Prefijo: `/internal/ops/app-feedback`
+
+- `GET /internal/ops/app-feedback` — listado paginado con filtros (authorRole, category, rating, status, from, to)
+- `GET /internal/ops/app-feedback/{id}` — detalle completo de un feedback
+- `PATCH /internal/ops/app-feedback/{id}/archive` — archiva un feedback
+- `PATCH /internal/ops/app-feedback/{id}/unarchive` — desarchiva un feedback
+- `GET /internal/ops/app-feedback/analytics` — totales, promedios, conteos por rol/categoria/rating y evolucion diaria
+
+Lectura de producto:
+
+- backoffice minimo para operar feedback interno de producto
+- protegido por `X-Internal-Token`, no por sesion de usuario
+- separado completamente de `core.review` (reseñas publicas entre clientes y profesionales)
+- analytics permiten rango de fechas opcional
+
 ## Paquetes backend mas importantes
 
 - `auth`: autenticacion, sesiones, auditoria, OAuth y verificaciones.
@@ -354,6 +403,7 @@ Lectura de producto:
 - `search`: busqueda, suggest, indexacion y sync.
 - `cache`: cache in-memory y Redis.
 - `storage`: upload de imagenes y thumbnails.
+- `feedback`: feedback interno de producto desde clientes y profesionales.
 - `jobs`: integracion opcional con SQS.
 
 ## Lectura por fase de roadmap
@@ -391,7 +441,7 @@ Capacidad aun no consolidada como superficie clara:
 
 Capacidad que no aparece aun como dominio publico consolidado:
 
-- reseñas fuertes y respuestas
+- respuestas publicas del negocio a reseñas (las reseñas base Fase 1 ya estan)
 - loyalty
 - ultima hora
 - portfolio visual
@@ -402,7 +452,7 @@ Capacidad que no aparece aun como dominio publico consolidado:
 ## Persistencia
 
 - Flyway usa `backend-java/src/main/resources/db/migration`
-- hay `40` migraciones versionadas
+- hay `55` migraciones versionadas
 - los nombres muestran evolucion fuerte en:
   - billing
   - booking

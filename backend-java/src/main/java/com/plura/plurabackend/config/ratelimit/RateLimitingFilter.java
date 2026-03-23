@@ -12,7 +12,8 @@ import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.time.Duration;
 import java.time.Instant;
-import java.util.Comparator;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
@@ -164,6 +165,11 @@ public class RateLimitingFilter extends OncePerRequestFilter {
         if ("POST".equals(method) && "/webhooks/mercadopago".equals(path)) {
             return new RateLimitTarget("billing-webhook-ip", extractClientIp(request), 600);
         }
+        if ("POST".equals(method) && (
+            "/cliente/app-feedback".equals(path) || "/profesional/app-feedback".equals(path)
+        )) {
+            return new RateLimitTarget("app-feedback-create", resolveUserOrIp(request), 10);
+        }
         return null;
     }
 
@@ -214,19 +220,39 @@ public class RateLimitingFilter extends OncePerRequestFilter {
             return;
         }
         int toRemove = Math.max(TRIM_BATCH_SIZE, overflow);
-        lastAccessEpochMs.entrySet().stream()
-            .sorted(Comparator.comparingLong(entry -> entry.getValue() == null ? Long.MIN_VALUE : entry.getValue()))
-            .limit(toRemove)
-            .forEach(entry -> {
-                String key = entry.getKey();
-                Long timestamp = entry.getValue();
-                if (key == null || timestamp == null) {
-                    return;
+        // Use a threshold-based scan (O(n)) instead of sorting all entries (O(n log n)).
+        // Find a timestamp cutoff such that ~toRemove entries fall below it.
+        long now = System.currentTimeMillis();
+        long ageCutoff = now - EVICTION_AGE.toMillis();
+        List<Map.Entry<String, Long>> candidates = new ArrayList<>(toRemove);
+        for (Map.Entry<String, Long> entry : lastAccessEpochMs.entrySet()) {
+            if (entry.getValue() == null || entry.getValue() < ageCutoff) {
+                candidates.add(entry);
+                if (candidates.size() >= toRemove) {
+                    break;
                 }
-                if (lastAccessEpochMs.remove(key, timestamp)) {
-                    buckets.remove(key);
+            }
+        }
+        // If not enough old entries, collect the oldest ones up to toRemove.
+        if (candidates.size() < toRemove) {
+            long maxTimestamp = candidates.isEmpty() ? Long.MAX_VALUE
+                : candidates.stream().mapToLong(Map.Entry::getValue).max().orElse(Long.MAX_VALUE);
+            for (Map.Entry<String, Long> entry : lastAccessEpochMs.entrySet()) {
+                if (entry.getValue() != null && entry.getValue() >= ageCutoff && entry.getValue() <= maxTimestamp) {
+                    candidates.add(entry);
+                    if (candidates.size() >= toRemove) {
+                        break;
+                    }
                 }
-            });
+            }
+        }
+        for (Map.Entry<String, Long> entry : candidates) {
+            String key = entry.getKey();
+            Long timestamp = entry.getValue();
+            if (key != null && timestamp != null && lastAccessEpochMs.remove(key, timestamp)) {
+                buckets.remove(key);
+            }
+        }
     }
 
     private record RateLimitTarget(String keyPrefix, String identifier, long capacityPerMinute) {}

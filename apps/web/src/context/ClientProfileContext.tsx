@@ -4,8 +4,7 @@ import {
   useContext,
   useEffect,
   useMemo,
-  useRef,
-  useState,
+  useReducer,
   type ReactNode,
 } from 'react';
 import { cachedGet } from '@/services/cachedGet';
@@ -13,14 +12,61 @@ import { invalidateCachedGet } from '@/services/cachedGet';
 import { isAuthSessionError } from '@/lib/auth/sessionErrors';
 import type { ClientProfile } from '@/types/client';
 
+type AuthStatus = 'unknown' | 'authenticated' | 'unauthenticated' | 'error';
+
 type ClientProfileContextValue = {
   profile: ClientProfile | null;
   isLoading: boolean;
   hasLoaded: boolean;
-  authStatus: 'unknown' | 'authenticated' | 'unauthenticated' | 'error';
+  authStatus: AuthStatus;
   refreshProfile: () => Promise<void>;
   clearProfile: () => void;
 };
+
+type ProfileState = {
+  profile: ClientProfile | null;
+  isLoading: boolean;
+  hasLoaded: boolean;
+  authStatus: AuthStatus;
+};
+
+type ProfileAction =
+  | { type: 'LOAD_START' }
+  | { type: 'LOAD_SUCCESS'; profile: ClientProfile }
+  | { type: 'LOAD_AUTH_ERROR' }
+  | { type: 'LOAD_NETWORK_ERROR' }
+  | { type: 'CLEAR' };
+
+const initialState: ProfileState = {
+  profile: null,
+  isLoading: false,
+  hasLoaded: false,
+  authStatus: 'unknown',
+};
+
+function profileReducer(state: ProfileState, action: ProfileAction): ProfileState {
+  switch (action.type) {
+    case 'LOAD_START':
+      return state.isLoading ? state : { ...state, isLoading: true };
+    case 'LOAD_SUCCESS':
+      return { profile: action.profile, isLoading: false, hasLoaded: true, authStatus: 'authenticated' };
+    case 'LOAD_AUTH_ERROR':
+      return { profile: null, isLoading: false, hasLoaded: true, authStatus: 'unauthenticated' };
+    case 'LOAD_NETWORK_ERROR':
+      return {
+        ...state,
+        isLoading: false,
+        hasLoaded: true,
+        authStatus: state.authStatus === 'authenticated' ? 'authenticated' : 'error',
+      };
+    case 'CLEAR':
+      return { profile: null, isLoading: false, hasLoaded: true, authStatus: 'unauthenticated' };
+    default:
+      return state;
+  }
+}
+
+const CLIENT_PROFILE_ENDPOINT = '/auth/me/cliente';
 
 const ClientProfileContext =
   createContext<ClientProfileContextValue | null>(null);
@@ -32,65 +78,46 @@ export function ClientProfileProvider({
   children: ReactNode;
   autoLoad?: boolean;
 }) {
-  const [profile, setProfile] = useState<ClientProfile | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [hasLoaded, setHasLoaded] = useState(false);
-  const [authStatus, setAuthStatus] = useState<
-    'unknown' | 'authenticated' | 'unauthenticated' | 'error'
-  >('unknown');
+  const [state, dispatch] = useReducer(profileReducer, initialState);
 
   const clearProfile = useCallback(() => {
-    invalidateCachedGet('/auth/me/cliente');
-    setProfile(null);
-    setHasLoaded(true);
-    setIsLoading(false);
-    setAuthStatus('unauthenticated');
+    invalidateCachedGet(CLIENT_PROFILE_ENDPOINT);
+    dispatch({ type: 'CLEAR' });
   }, []);
 
   const refreshProfile = useCallback(async () => {
-    setIsLoading(true);
+    dispatch({ type: 'LOAD_START' });
     try {
       const response = await cachedGet<ClientProfile>(
-        '/auth/me/cliente',
+        CLIENT_PROFILE_ENDPOINT,
         undefined,
         { ttlMs: 15000 },
       );
-      setProfile(response.data);
-      setAuthStatus('authenticated');
+      dispatch({ type: 'LOAD_SUCCESS', profile: response.data });
     } catch (error) {
       if (isAuthSessionError(error)) {
-        setProfile(null);
-        setAuthStatus('unauthenticated');
+        dispatch({ type: 'LOAD_AUTH_ERROR' });
       } else {
-        setAuthStatus((prev) => (prev === 'authenticated' ? 'authenticated' : 'error'));
+        dispatch({ type: 'LOAD_NETWORK_ERROR' });
       }
-    } finally {
-      setIsLoading(false);
-      setHasLoaded(true);
     }
   }, []);
 
-  const refreshProfileRef = useRef(refreshProfile);
-
   useEffect(() => {
-    refreshProfileRef.current = refreshProfile;
-  }, [refreshProfile]);
-
-  useEffect(() => {
-    if (!autoLoad || hasLoaded || isLoading) return;
-    void refreshProfileRef.current();
-  }, [autoLoad, hasLoaded, isLoading]);
+    if (!autoLoad || state.hasLoaded || state.isLoading) return;
+    void refreshProfile();
+  }, [autoLoad, state.hasLoaded, state.isLoading, refreshProfile]);
 
   const value = useMemo(
     () => ({
-      profile,
-      isLoading,
-      hasLoaded,
-      authStatus,
+      profile: state.profile,
+      isLoading: state.isLoading,
+      hasLoaded: state.hasLoaded,
+      authStatus: state.authStatus,
       refreshProfile,
       clearProfile,
     }),
-    [profile, isLoading, hasLoaded, authStatus, refreshProfile, clearProfile],
+    [state, refreshProfile, clearProfile],
   );
 
   return (

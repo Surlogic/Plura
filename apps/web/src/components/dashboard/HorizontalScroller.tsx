@@ -36,12 +36,22 @@ export default function HorizontalScroller({
     const track = trackRef.current;
     if (!track) return;
 
-    track.addEventListener('scroll', updateScrollState, { passive: true });
-    window.addEventListener('resize', updateScrollState);
+    let rafId: number | null = null;
+    const throttledUpdate = () => {
+      if (rafId !== null) return;
+      rafId = requestAnimationFrame(() => {
+        rafId = null;
+        updateScrollState();
+      });
+    };
+
+    track.addEventListener('scroll', throttledUpdate, { passive: true });
+    window.addEventListener('resize', throttledUpdate);
 
     return () => {
-      track.removeEventListener('scroll', updateScrollState);
-      window.removeEventListener('resize', updateScrollState);
+      track.removeEventListener('scroll', throttledUpdate);
+      window.removeEventListener('resize', throttledUpdate);
+      if (rafId !== null) cancelAnimationFrame(rafId);
     };
   }, [updateScrollState]);
 

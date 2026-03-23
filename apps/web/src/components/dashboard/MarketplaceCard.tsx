@@ -1,9 +1,11 @@
 import Link from 'next/link';
+import { memo } from 'react';
 
 type MarketplaceCardProps = {
   name: string;
   category: string;
   rating?: string;
+  reviewsCount?: number | null;
   price?: string;
   nextSlot?: string;
   location?: string;
@@ -17,10 +19,11 @@ const badgeStyles: Record<NonNullable<MarketplaceCardProps['badgeTone']>, string
   success: 'bg-[#1FB6A6]/10 text-[#1FB6A6]',
 };
 
-export default function MarketplaceCard({
+export default memo(function MarketplaceCard({
   name,
   category,
   rating,
+  reviewsCount,
   price,
   nextSlot,
   location,
@@ -66,6 +69,9 @@ export default function MarketplaceCard({
             <div className="flex items-center gap-1 rounded-full bg-[#F8FAFC] px-2 py-1 text-xs font-semibold text-[#0E2A47]">
               <span className="text-[#F59E0B]">★</span>
               {displayRating}
+              {reviewsCount != null && reviewsCount > 0 ? (
+                <span className="text-[#94A3B8]">({reviewsCount})</span>
+              ) : null}
             </div>
           ) : (
             <span className="text-xs font-semibold text-[#94A3B8]">
@@ -99,4 +105,4 @@ export default function MarketplaceCard({
       </div>
     </article>
   );
-}
+});

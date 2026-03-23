@@ -96,7 +96,9 @@ public class ProfilePublicPageAssembler {
             resolvePublicGalleryPhotos(profile, services),
             schedule,
             services,
-            publicBookingPolicy
+            publicBookingPolicy,
+            profile.getRating(),
+            profile.getReviewsCount()
         );
     }
 
@@ -109,7 +111,9 @@ public class ProfilePublicPageAssembler {
             profile.getLocation(),
             profile.getPublicHeadline(),
             categorySupport.mapCategories(profile.getCategories()),
-            profile.getLogoUrl()
+            profile.getLogoUrl(),
+            profile.getRating(),
+            profile.getReviewsCount()
         );
     }
 

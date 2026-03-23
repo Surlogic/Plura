@@ -4,9 +4,12 @@ import Link from 'next/link';
 import { useRouter } from 'next/router';
 import EmailVerificationPanel from '@/components/auth/EmailVerificationPanel';
 import ClientShell from '@/components/cliente/ClientShell';
+import AppFeedbackForm from '@/components/shared/AppFeedbackForm';
 import ThemeSwitcher from '@/components/theme/ThemeSwitcher';
 import { useClientProfile } from '@/hooks/useClientProfile';
 import { useClientProfileContext } from '@/context/ClientProfileContext';
+import { createClientAppFeedback, getClientAppFeedbackMine } from '@/services/appFeedback';
+import AppFeedbackHistory from '@/components/shared/AppFeedbackHistory';
 import { clearFavoriteProfessionals } from '@/services/clientFeatures';
 import api from '@/services/api';
 import { clearAuthAccessToken } from '@/services/session';
@@ -359,6 +362,19 @@ export default function ClienteConfiguracionPage() {
                   {isChangingPassword ? 'Actualizando...' : 'Actualizar contraseña'}
                 </button>
               </div>
+          </div>
+        </article>
+        <article className={panelClassName}>
+          <div className="space-y-4">
+            <div>
+              <p className="text-sm font-semibold text-[color:var(--ink)]">Feedback sobre Plura</p>
+              <p className="text-xs text-[color:var(--ink-muted)]">Contanos como es tu experiencia usando la plataforma.</p>
+            </div>
+            <AppFeedbackForm onSubmit={createClientAppFeedback} contextSource="cliente/configuracion" />
+            <div className="mt-6 border-t border-[color:var(--border-soft)] pt-4">
+              <p className="mb-3 text-xs font-semibold uppercase tracking-[0.2em] text-[color:var(--ink-faint)]">Tu historial</p>
+              <AppFeedbackHistory fetchFeedback={getClientAppFeedbackMine} />
+            </div>
           </div>
         </article>
         <article className={dangerPanelClassName}>

@@ -42,4 +42,6 @@ public class ProfesionalPublicPageResponse {
     private ProfesionalScheduleDto schedule;
     private List<ProfesionalServiceResponse> services;
     private BookingPolicySnapshotResponse bookingPolicy;
+    private Double rating;
+    private Integer reviewsCount;
 }

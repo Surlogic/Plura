@@ -100,17 +100,6 @@ public interface ProfessionalProfileRepository extends JpaRepository<Professiona
         Pageable pageable
     );
 
-    @Query(
-        """
-        SELECT DISTINCT p
-        FROM ProfessionalProfile p
-        LEFT JOIN FETCH p.user
-        LEFT JOIN FETCH p.categories
-        WHERE p.active = true
-        """
-    )
-    List<ProfessionalProfile> findAllActiveWithRelations();
-
     /** Lock pesimista para serializar creaciones de reservas sobre el mismo profesional. */
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT p FROM ProfessionalProfile p WHERE p.slug = :slug")

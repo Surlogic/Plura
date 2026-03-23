@@ -27,7 +27,7 @@ Cobertura actual visible:
 
 Huecos o maduracion pendiente:
 
-- reseñas completas y respuestas del negocio
+- respuestas publicas del negocio a reseñas (las reseñas base Fase 1 ya estan: crear, listar, moderar texto)
 - beneficios tipo puntos, gift cards o ultima hora
 - settings y preferencias visibles para cliente
 
@@ -126,7 +126,9 @@ Lectura de producto:
 - `/cliente/reservas` ya usa su panel lateral de detalle como experiencia real de reserva e incluye timeline de actividad por `bookingId`
 - `/cliente/reservas` mantiene el refresco de estados pendientes, pero el polling ya no corre en background y usa backoff conservador para bajar presion de red
 - `/cliente/reservas` ahora prefetch-ea `actions + timeline` de la reserva seleccionada apenas entra el listado para reducir espera perceptible sin cambiar contratos
-- todavia faltan piezas visibles para reseñas, beneficios y settings de notificaciones
+- reseñas Fase 1 implementadas: CTA en sidebar de reserva COMPLETED, formulario con rating 1-5 y texto opcional, review existente visible
+- feedback de app integrado en `/cliente/configuracion` con formulario de rating, categoria opcional y texto libre; incluye historial paginado de feedback propio
+- todavia faltan piezas visibles para beneficios y settings de notificaciones
 
 ### Rutas del profesional
 
@@ -187,6 +189,10 @@ Lectura de producto:
 - `/profesional/dashboard` agrega una toolbar compacta para saltar dentro del dia a `Madrugada`, `Mañana`, `Tarde`, `Noche` y `Ahora` sin romper navegacion semanal ni render de reservas
 - `/profesional/dashboard` en desktop prioriza visibilidad y estabilidad de agenda sobre un shell full-height estricto: la pagina puede seguir scrolleando normalmente, mientras la vista semanal mantiene scroll interno solo en el cuerpo del calendario y una altura explicita para que la grilla no colapse ni quede truncada
 
+Notas recientes:
+
+- feedback de app integrado en `/profesional/dashboard/configuracion` con formulario de rating, categoria opcional y texto libre; incluye historial paginado de feedback propio; modulo backend separado `core.feedback`
+
 Huecos relevantes contra el objetivo:
 
 - onboarding inicial del negocio
@@ -194,6 +200,15 @@ Huecos relevantes contra el objetivo:
 - analytics mas visibles
 - chat interno
 - soporte multiequipo propio de `Premium`
+
+### Rutas internas de operaciones
+
+- `/internal/feedback`: panel operativo de feedback interno de app con listado filtrable, analytics y archivo/desarchivo; protegido por token interno configurable desde localStorage, no por sesion de usuario; `<meta name="robots" content="noindex,nofollow" />`
+
+Modulos relevantes:
+
+- `services/internalOps.ts`: cliente HTTP con `X-Internal-Token` y URL base configurables desde localStorage
+- `pages/internal/feedback.tsx`: pagina completa con configuracion, analytics, filtros y tabla de feedback
 
 ### Modulos transversales web
 
@@ -300,7 +315,7 @@ Lectura de producto:
 - `/(tabs)/bookings` ahora tambien reabre pagos pendientes de `Mercado Pago` dentro de la app y refresca reservas al volver
 - mobile cliente ya puede usar ubicacion real para experiencias de cercania dentro de `home` y `explore`
 - la parte push mobile queda en estado intermedio: permiso del dispositivo y UX listos, pero el envio push server-side todavia no esta cableado en el repo
-- todavia no se ve una capa madura para notificaciones transaccionales, reseñas, fidelizacion o chat
+- todavia no se ve una capa madura para notificaciones transaccionales, fidelizacion o chat (reseñas base ya estan en backend y web, pendiente UI mobile)
 
 ## Shared
 

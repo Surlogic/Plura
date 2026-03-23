@@ -1,4 +1,7 @@
 import {
+  memo,
+  useCallback,
+  useEffect,
   useRef,
   type FormEvent,
   type KeyboardEvent as ReactKeyboardEvent,
@@ -35,7 +38,7 @@ const SURFACE_CLASSES: Record<NonNullable<UnifiedSearchBarProps['variant']>, str
   explore: 'border border-[color:var(--border-soft)] bg-white shadow-[var(--shadow-card)]',
 };
 
-export default function UnifiedSearchBar({
+export default memo(function UnifiedSearchBar({
   initialValues,
   fixedQuery,
   variant = 'panel',
@@ -86,23 +89,25 @@ export default function UnifiedSearchBar({
   } = search;
 
   // Close dropdowns on outside click / escape
-  const handleClickOutside = (event: MouseEvent) => {
-    if (!wrapperRef.current) return;
-    if (!wrapperRef.current.contains(event.target as Node)) {
-      closeAllDropdowns();
-    }
-  };
+  const stableCloseAllDropdowns = useCallback(() => closeAllDropdowns(), [closeAllDropdowns]);
 
-  const handleEscape = (event: KeyboardEvent) => {
-    if (event.key === 'Escape') {
-      closeAllDropdowns();
-    }
-  };
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (wrapperRef.current && !wrapperRef.current.contains(event.target as Node)) {
+        stableCloseAllDropdowns();
+      }
+    };
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') stableCloseAllDropdowns();
+    };
 
-  // Attach/detach listeners
-  if (typeof window !== 'undefined') {
-    // This is handled via the hook's useEffect for dropdown state
-  }
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('keydown', handleEscape);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleEscape);
+    };
+  }, [stableCloseAllDropdowns]);
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -423,4 +428,4 @@ export default function UnifiedSearchBar({
       </form>
     </div>
   );
-}
+});

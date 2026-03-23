@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { memo, useState } from 'react';
 import CategoryCard from './CategoryCard';
 import Button from '@/components/ui/Button';
 import Card from '@/components/ui/Card';
@@ -10,7 +10,7 @@ type CategoriesGridProps = {
   isLoading?: boolean;
 };
 
-export default function CategoriesGrid({ categories, isLoading = false }: CategoriesGridProps) {
+export default memo(function CategoriesGrid({ categories, isLoading = false }: CategoriesGridProps) {
   const [showAll, setShowAll] = useState(false);
   const visibleCategories = showAll ? categories : categories.slice(0, 8);
   const canToggle = categories.length > 8;
@@ -60,4 +60,4 @@ export default function CategoriesGrid({ categories, isLoading = false }: Catego
       </div>
     </section>
   );
-}
+});

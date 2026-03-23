@@ -132,6 +132,7 @@ public class ProfessionalCoreReadGatewayService implements
             displayName,
             resolvePrimaryCategoryName(profile),
             profile.getRating(),
+            profile.getReviewsCount(),
             resolveImageUrl(profile)
         );
     }

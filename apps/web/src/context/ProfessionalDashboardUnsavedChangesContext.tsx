@@ -4,8 +4,8 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useReducer,
   useRef,
-  useState,
 } from 'react';
 import type { ReactNode } from 'react';
 import { useRouter } from 'next/router';
@@ -59,19 +59,113 @@ const parsePath = (value: string) => {
   return withoutHash.split('?')[0] || withoutHash;
 };
 
+type UnsavedState = {
+  isDirty: boolean;
+  isInternalSaving: boolean;
+  savingBySection: Record<string, boolean>;
+  saveError: string | null;
+  pendingHref: string | null;
+  showConfirmModal: boolean;
+  showSavingOverlay: boolean;
+};
+
+type UnsavedAction =
+  | { type: 'SET_DIRTY'; value: boolean }
+  | { type: 'SET_INTERNAL_SAVING'; value: boolean }
+  | { type: 'SET_SECTION_SAVING'; sectionId: string; saving: boolean }
+  | { type: 'SET_SAVE_ERROR'; error: string | null }
+  | { type: 'SET_PENDING_HREF'; href: string | null }
+  | { type: 'SET_CONFIRM_MODAL'; value: boolean }
+  | { type: 'SET_SAVING_OVERLAY'; value: boolean }
+  | { type: 'SAVE_START' }
+  | { type: 'SAVE_SUCCESS' }
+  | { type: 'SAVE_FAIL'; error: string }
+  | { type: 'SAVE_END' }
+  | { type: 'DISCARD' }
+  | { type: 'DISMISS_MODAL' }
+  | { type: 'REQUEST_NAV'; href: string }
+  | { type: 'BYPASS_NAV' }
+  | { type: 'LEAVE_DASHBOARD' };
+
+const initialUnsavedState: UnsavedState = {
+  isDirty: false,
+  isInternalSaving: false,
+  savingBySection: {},
+  saveError: null,
+  pendingHref: null,
+  showConfirmModal: false,
+  showSavingOverlay: false,
+};
+
+function unsavedReducer(state: UnsavedState, action: UnsavedAction): UnsavedState {
+  switch (action.type) {
+    case 'SET_DIRTY':
+      if (state.isDirty === action.value) return state;
+      return {
+        ...state,
+        isDirty: action.value,
+        saveError: action.value ? state.saveError : null,
+      };
+    case 'SET_INTERNAL_SAVING':
+      if (state.isInternalSaving === action.value) return state;
+      return { ...state, isInternalSaving: action.value };
+    case 'SET_SECTION_SAVING': {
+      const wasSaving = Boolean(state.savingBySection[action.sectionId]);
+      if (wasSaving === action.saving) return state;
+      const next = { ...state.savingBySection };
+      if (action.saving) {
+        next[action.sectionId] = true;
+      } else {
+        delete next[action.sectionId];
+      }
+      return { ...state, savingBySection: next };
+    }
+    case 'SET_SAVE_ERROR':
+      return { ...state, saveError: action.error };
+    case 'SET_PENDING_HREF':
+      return { ...state, pendingHref: action.href };
+    case 'SET_CONFIRM_MODAL':
+      return { ...state, showConfirmModal: action.value };
+    case 'SET_SAVING_OVERLAY':
+      if (state.showSavingOverlay === action.value) return state;
+      return { ...state, showSavingOverlay: action.value };
+    case 'SAVE_START':
+      return { ...state, isInternalSaving: true, saveError: null };
+    case 'SAVE_SUCCESS':
+      return { ...state, isDirty: false };
+    case 'SAVE_FAIL':
+      return { ...state, saveError: action.error };
+    case 'SAVE_END':
+      return { ...state, isInternalSaving: false };
+    case 'DISCARD':
+      return { ...state, isDirty: false, saveError: null };
+    case 'DISMISS_MODAL':
+      return { ...state, showConfirmModal: false, pendingHref: null };
+    case 'REQUEST_NAV':
+      return { ...state, pendingHref: action.href, showConfirmModal: true };
+    case 'BYPASS_NAV':
+      return { ...state, pendingHref: null, showConfirmModal: false };
+    case 'LEAVE_DASHBOARD':
+      return {
+        ...state,
+        isDirty: false,
+        isInternalSaving: false,
+        saveError: null,
+        pendingHref: null,
+        showConfirmModal: false,
+      };
+    default:
+      return state;
+  }
+}
+
 export function ProfessionalDashboardUnsavedChangesProvider({
   children,
 }: {
   children: ReactNode;
 }) {
   const router = useRouter();
-  const [isDirty, setIsDirty] = useState(false);
-  const [isInternalSaving, setIsInternalSaving] = useState(false);
-  const [savingBySection, setSavingBySection] = useState<Record<string, boolean>>({});
-  const [saveError, setSaveError] = useState<string | null>(null);
-  const [pendingHref, setPendingHref] = useState<string | null>(null);
-  const [showConfirmModal, setShowConfirmModal] = useState(false);
-  const [showSavingOverlay, setShowSavingOverlay] = useState(false);
+  const [state, dispatch] = useReducer(unsavedReducer, initialUnsavedState);
 
   const activeSectionIdRef = useRef<string | null>(null);
   const saveHandlerRef = useRef<SaveHandler | undefined>(undefined);
@@ -82,39 +176,24 @@ export function ProfessionalDashboardUnsavedChangesProvider({
   const currentPath = parsePath(router.asPath || '');
   const isDashboardRoute = isDashboardPath(currentPath);
   const isSaving = useMemo(
-    () => isInternalSaving || Object.values(savingBySection).some((value) => value),
-    [isInternalSaving, savingBySection],
+    () => state.isInternalSaving || Object.values(state.savingBySection).some((value) => value),
+    [state.isInternalSaving, state.savingBySection],
   );
 
   useEffect(() => {
-    dirtyRef.current = isDirty;
-  }, [isDirty]);
+    dirtyRef.current = state.isDirty;
+  }, [state.isDirty]);
 
   const setDirty = useCallback((value: boolean) => {
-    setIsDirty(value);
-    if (!value) {
-      setSaveError(null);
-    }
+    dispatch({ type: 'SET_DIRTY', value });
   }, []);
 
   const clearSaveError = useCallback(() => {
-    setSaveError(null);
+    dispatch({ type: 'SET_SAVE_ERROR', error: null });
   }, []);
 
   const setSectionSaving = useCallback((sectionId: string, saving: boolean) => {
-    setSavingBySection((prev) => {
-      const wasSaving = Boolean(prev[sectionId]);
-      if (wasSaving === saving) {
-        return prev;
-      }
-      const next = { ...prev };
-      if (saving) {
-        next[sectionId] = true;
-      } else {
-        delete next[sectionId];
-      }
-      return next;
-    });
+    dispatch({ type: 'SET_SECTION_SAVING', sectionId, saving });
   }, []);
 
   const setSectionHandlers = useCallback((handlers: SectionHandlers) => {
@@ -138,31 +217,29 @@ export function ProfessionalDashboardUnsavedChangesProvider({
   const saveCurrentSection = useCallback(async (): Promise<boolean> => {
     const save = saveHandlerRef.current;
     if (!save) {
-      setIsDirty(false);
-      setSaveError(null);
+      dispatch({ type: 'DISCARD' });
       return true;
     }
 
-    setIsInternalSaving(true);
-    setSaveError(null);
+    dispatch({ type: 'SAVE_START' });
 
     try {
       const result = await save();
       if (result === false) {
-        setSaveError('No se pudieron guardar los cambios.');
+        dispatch({ type: 'SAVE_FAIL', error: 'No se pudieron guardar los cambios.' });
         return false;
       }
-      setIsDirty(false);
+      dispatch({ type: 'SAVE_SUCCESS' });
       return true;
     } catch (error) {
       const message =
         error instanceof Error && error.message
           ? error.message
           : 'No se pudieron guardar los cambios.';
-      setSaveError(message);
+      dispatch({ type: 'SAVE_FAIL', error: message });
       return false;
     } finally {
-      setIsInternalSaving(false);
+      dispatch({ type: 'SAVE_END' });
     }
   }, []);
 
@@ -171,15 +248,13 @@ export function ProfessionalDashboardUnsavedChangesProvider({
     if (reset) {
       await reset();
     }
-    setIsDirty(false);
-    setSaveError(null);
+    dispatch({ type: 'DISCARD' });
   }, []);
 
   const pushWithBypass = useCallback(
     (href: string) => {
       allowNavigationRef.current = true;
-      setPendingHref(null);
-      setShowConfirmModal(false);
+      dispatch({ type: 'BYPASS_NAV' });
       void router.push(href);
     },
     [router],
@@ -191,33 +266,31 @@ export function ProfessionalDashboardUnsavedChangesProvider({
         void router.push(href);
         return;
       }
-      setPendingHref(href);
-      setShowConfirmModal(true);
+      dispatch({ type: 'REQUEST_NAV', href });
     },
     [isDashboardRoute, router],
   );
 
   const handleSaveAndExit = useCallback(async () => {
-    const target = pendingHref;
+    const target = state.pendingHref;
     if (!target) return;
     const didSave = await saveCurrentSection();
     if (!didSave) return;
     pushWithBypass(target);
-  }, [pendingHref, pushWithBypass, saveCurrentSection]);
+  }, [state.pendingHref, pushWithBypass, saveCurrentSection]);
 
   const handleDiscardAndExit = useCallback(async () => {
-    const target = pendingHref;
+    const target = state.pendingHref;
     await discardCurrentChanges();
     if (!target) {
-      setShowConfirmModal(false);
+      dispatch({ type: 'SET_CONFIRM_MODAL', value: false });
       return;
     }
     pushWithBypass(target);
-  }, [discardCurrentChanges, pendingHref, pushWithBypass]);
+  }, [discardCurrentChanges, state.pendingHref, pushWithBypass]);
 
   const dismissConfirmModal = useCallback(() => {
-    setShowConfirmModal(false);
-    setPendingHref(null);
+    dispatch({ type: 'DISMISS_MODAL' });
   }, []);
 
   useEffect(() => {
@@ -238,8 +311,7 @@ export function ProfessionalDashboardUnsavedChangesProvider({
       if (!dirtyRef.current) return;
       if (!isDashboardPath(parsePath(router.asPath || ''))) return;
       if (nextUrl === router.asPath) return;
-      setPendingHref(nextUrl);
-      setShowConfirmModal(true);
+      dispatch({ type: 'REQUEST_NAV', href: nextUrl });
       router.events.emit('routeChangeError');
       throw 'PLURA_UNSAVED_CHANGES_ABORTED';
     };
@@ -266,32 +338,28 @@ export function ProfessionalDashboardUnsavedChangesProvider({
 
   useEffect(() => {
     if (!isDashboardRoute || !isSaving) {
-      setShowSavingOverlay(false);
+      dispatch({ type: 'SET_SAVING_OVERLAY', value: false });
       return;
     }
     const timeoutId = window.setTimeout(() => {
-      setShowSavingOverlay(true);
+      dispatch({ type: 'SET_SAVING_OVERLAY', value: true });
     }, 180);
     return () => {
       window.clearTimeout(timeoutId);
-      setShowSavingOverlay(false);
+      dispatch({ type: 'SET_SAVING_OVERLAY', value: false });
     };
   }, [isDashboardRoute, isSaving]);
 
   useEffect(() => {
     if (isDashboardRoute) return;
-    setIsDirty(false);
-    setIsInternalSaving(false);
-    setSaveError(null);
-    setPendingHref(null);
-    setShowConfirmModal(false);
+    dispatch({ type: 'LEAVE_DASHBOARD' });
   }, [isDashboardRoute]);
 
   const contextValue = useMemo<ProfessionalDashboardUnsavedChangesContextValue>(
     () => ({
-      isDirty,
+      isDirty: state.isDirty,
       isSaving,
-      saveError,
+      saveError: state.saveError,
       setDirty,
       clearSaveError,
       setSectionSaving,
@@ -300,9 +368,9 @@ export function ProfessionalDashboardUnsavedChangesProvider({
       saveCurrentSection,
       discardCurrentChanges,
       requestNavigation,
-      showSavingOverlay,
-      showConfirmModal,
-      pendingHref,
+      showSavingOverlay: state.showSavingOverlay,
+      showConfirmModal: state.showConfirmModal,
+      pendingHref: state.pendingHref,
       handleSaveAndExit,
       handleDiscardAndExit,
       dismissConfirmModal,
@@ -314,17 +382,17 @@ export function ProfessionalDashboardUnsavedChangesProvider({
       dismissConfirmModal,
       handleDiscardAndExit,
       handleSaveAndExit,
-      isDirty,
       isSaving,
-      pendingHref,
       requestNavigation,
       saveCurrentSection,
-      saveError,
       setDirty,
       setSectionHandlers,
       setSectionSaving,
-      showConfirmModal,
-      showSavingOverlay,
+      state.isDirty,
+      state.pendingHref,
+      state.saveError,
+      state.showConfirmModal,
+      state.showSavingOverlay,
     ],
   );
 

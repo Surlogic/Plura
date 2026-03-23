@@ -650,6 +650,7 @@ export default function ProfesionalDashboardPage() {
   const [calendarView, setCalendarView] = useState<'week' | 'month'>('week');
   const [weekOffset, setWeekOffset] = useState(0);
   const [monthOffset, setMonthOffset] = useState(0);
+  const [clockNow, setClockNow] = useState(() => new Date());
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [selectedReservation, setSelectedReservation] =
     useState<ProfessionalReservation | null>(null);
@@ -776,13 +777,17 @@ export default function ProfesionalDashboardPage() {
   }, [agendaReservations]);
 
   const { todayCount, todayDiff, uniqueClientsWeek } = useMemo(() => {
-    const tc = agendaReservations.filter((r) => r.date === todayKey).length;
-    const yc = agendaReservations.filter((r) => r.date === yesterdayKey).length;
-    const weekRes = agendaReservations.filter(
-      (r) => r.date >= weekStartKey && r.date <= weekEndKey,
-    );
-    const ucw = new Set(weekRes.map((r) => r.clientName).filter(Boolean)).size;
-    return { todayCount: tc, todayDiff: tc - yc, uniqueClientsWeek: ucw };
+    let tc = 0;
+    let yc = 0;
+    const weekClients = new Set<string>();
+    for (const r of agendaReservations) {
+      if (r.date === todayKey) tc++;
+      if (r.date === yesterdayKey) yc++;
+      if (r.date >= weekStartKey && r.date <= weekEndKey && r.clientName) {
+        weekClients.add(r.clientName);
+      }
+    }
+    return { todayCount: tc, todayDiff: tc - yc, uniqueClientsWeek: weekClients.size };
   }, [agendaReservations, todayKey, yesterdayKey, weekStartKey, weekEndKey]);
 
   const { scheduleDays, scheduleDaySet } = useMemo(() => {
@@ -801,6 +806,7 @@ export default function ProfesionalDashboardPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const requiredReservationDatesRef = useRef<string[]>([]);
   const requiredReservationDates = useMemo(() => {
     const dateKeys = new Set<string>([todayKey]);
     currentWeekDays.forEach((day) => dateKeys.add(day.dateKey));
@@ -809,7 +815,11 @@ export default function ProfesionalDashboardPage() {
     } else {
       weekDays.forEach((day) => dateKeys.add(day.dateKey));
     }
-    return Array.from(dateKeys).sort();
+    const next = Array.from(dateKeys).sort();
+    const prev = requiredReservationDatesRef.current;
+    if (prev.length === next.length && prev.every((d, i) => d === next[i])) return prev;
+    requiredReservationDatesRef.current = next;
+    return next;
   }, [todayKey, currentWeekDays, calendarView, canUseMonthlyCalendar, monthGridDays, weekDays]);
 
   const canViewAnalytics = featureAccess.basicAnalytics;
@@ -885,19 +895,22 @@ export default function ProfesionalDashboardPage() {
     }
   }, [calendarView, canUseMonthlyCalendar]);
 
-  const daysWithReservations = currentWeekDays.filter((day) => {
-    if (!scheduleDaySet.has(day.dayKey)) return false;
-    return (reservationsByDate.get(day.dateKey)?.length ?? 0) > 0;
-  }).length;
+  const { daysWithReservations, occupancyValue, occupancyDetail } = useMemo(() => {
+    const daysWithRes = currentWeekDays.filter((day) => {
+      if (!scheduleDaySet.has(day.dayKey)) return false;
+      return (reservationsByDate.get(day.dateKey)?.length ?? 0) > 0;
+    }).length;
 
-  const occupancyValue =
-    scheduleDays.length > 0
-      ? `${Math.round((daysWithReservations / scheduleDays.length) * 100)}%`
-      : 'Sin horario';
-  const occupancyDetail =
-    scheduleDays.length > 0
-      ? `Días con reservas: ${daysWithReservations}/${scheduleDays.length}`
-      : 'Configurá horarios';
+    return {
+      daysWithReservations: daysWithRes,
+      occupancyValue: scheduleDays.length > 0
+        ? `${Math.round((daysWithRes / scheduleDays.length) * 100)}%`
+        : 'Sin horario',
+      occupancyDetail: scheduleDays.length > 0
+        ? `Días con reservas: ${daysWithRes}/${scheduleDays.length}`
+        : 'Configurá horarios',
+    };
+  }, [currentWeekDays, scheduleDaySet, scheduleDays.length, reservationsByDate]);
 
   const weekFocusWindow = useMemo(
     () => buildWeekFocusWindow(weekDays, schedule, reservationsByDate),
@@ -957,13 +970,17 @@ export default function ProfesionalDashboardPage() {
     return map;
   }, [reservationsByDate]);
 
+  useEffect(() => {
+    const id = window.setInterval(() => setClockNow(new Date()), 60_000);
+    return () => window.clearInterval(id);
+  }, []);
+
   const currentTimeIndicator = useMemo(() => {
     if (calendarView !== 'week' || weekOffset !== 0) return null;
-    const now = new Date();
-    const nowKey = toLocalDateKey(now);
+    const nowKey = toLocalDateKey(clockNow);
     const startMinutes = visibleCalendarRange.startMinutes;
     const endMinutes = visibleCalendarRange.endMinutes;
-    const minutes = now.getHours() * 60 + now.getMinutes();
+    const minutes = clockNow.getHours() * 60 + clockNow.getMinutes();
     if (minutes < startMinutes || minutes > endMinutes) return null;
 
     return {
@@ -972,7 +989,7 @@ export default function ProfesionalDashboardPage() {
         visibleCalendarRange.calendarHeight,
       label: formatMinutesLabel(minutes),
     };
-  }, [calendarView, visibleCalendarRange, weekOffset]);
+  }, [calendarView, clockNow, visibleCalendarRange, weekOffset]);
 
   const scrollWeekCalendarToMinute = useCallback((
     targetMinutes: number,
@@ -1047,23 +1064,29 @@ export default function ProfesionalDashboardPage() {
     },
   ], [analyticsSummary, todayCount, todayDiff, occupancyValue, occupancyDetail, uniqueClientsWeek]);
   const nextReservation = useMemo(() => {
-    return agendaReservations
-      .filter((reservation) => {
-        if (!reservation.date) return false;
-        if (reservation.date > todayKey) return true;
-        if (reservation.date < todayKey) return false;
+    let best: (typeof agendaReservations)[number] | null = null;
+    let bestKey = '';
+    for (const reservation of agendaReservations) {
+      if (!reservation.date) continue;
+      if (reservation.date < todayKey) continue;
+      if (reservation.date === todayKey) {
         const minutes = parseTimeToMinutes(reservation.time);
-        return minutes !== null && minutes >= currentMinutes;
-      })
-      .sort((a, b) => {
-        const dateA = new Date(`${a.date}T${a.time || '00:00'}`).getTime();
-        const dateB = new Date(`${b.date}T${b.time || '00:00'}`).getTime();
-        return dateA - dateB;
-      })[0] ?? null;
+        if (minutes === null || minutes < currentMinutes) continue;
+      }
+      const sortKey = `${reservation.date}T${reservation.time || '00:00'}`;
+      if (!best || sortKey < bestKey) {
+        best = reservation;
+        bestKey = sortKey;
+      }
+    }
+    return best;
   }, [agendaReservations, currentMinutes, todayKey]);
-  const todayPendingCount = agendaReservations.filter(
-    (reservation) => reservation.date === todayKey && (reservation.status ?? 'pending') === 'pending',
-  ).length;
+  const todayPendingCount = useMemo(
+    () => agendaReservations.filter(
+      (reservation) => reservation.date === todayKey && (reservation.status ?? 'pending') === 'pending',
+    ).length,
+    [agendaReservations, todayKey],
+  );
   const daysWithOpenCapacity = analyticsSummary
     ? Math.max(analyticsSummary.weeklyScheduledDays - analyticsSummary.weeklyDaysWithReservations, 0)
     : Math.max(scheduleDays.length - daysWithReservations, 0);

@@ -1,5 +1,6 @@
 package com.plura.plurabackend.core.availability;
 
+import com.plura.plurabackend.config.DistributedLockService;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import org.springframework.beans.factory.annotation.Value;
@@ -9,7 +10,10 @@ import org.springframework.stereotype.Component;
 @Component
 public class AvailableSlotScheduler {
 
+    private static final int LOCK_ID = 100_003;
+
     private final AvailableSlotAsyncDispatcher availableSlotAsyncDispatcher;
+    private final DistributedLockService distributedLockService;
     private final int lookaheadDays;
     private final int slotRebuildShards;
     private final ZoneId appZoneId;
@@ -17,12 +21,14 @@ public class AvailableSlotScheduler {
 
     public AvailableSlotScheduler(
         AvailableSlotAsyncDispatcher availableSlotAsyncDispatcher,
+        DistributedLockService distributedLockService,
         @Value("${app.search.slot-rebuild-days:30}") int lookaheadDays,
         @Value("${app.search.slot-rebuild-shards:8}") int slotRebuildShards,
         @Value("${app.timezone:America/Montevideo}") String appTimezone,
         @Value("${feature.availability.slot-rebuild-enabled:true}") boolean slotRebuildEnabled
     ) {
         this.availableSlotAsyncDispatcher = availableSlotAsyncDispatcher;
+        this.distributedLockService = distributedLockService;
         this.lookaheadDays = lookaheadDays;
         this.slotRebuildShards = slotRebuildShards;
         this.appZoneId = ZoneId.of(appTimezone);
@@ -34,6 +40,10 @@ public class AvailableSlotScheduler {
         if (!slotRebuildEnabled) {
             return;
         }
+        distributedLockService.runWithLock(LOCK_ID, "slot-rebuild", this::doRebuild);
+    }
+
+    private void doRebuild() {
         int normalizedDays = Math.max(1, lookaheadDays);
         int normalizedShards = Math.max(1, slotRebuildShards);
         if (normalizedShards == 1) {

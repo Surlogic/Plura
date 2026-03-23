@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import Head from 'next/head';
 import Link from 'next/link';
 import type { SearchItem } from '@/types/search';
 import {
@@ -20,6 +21,7 @@ type ExploreMapItem = {
   name: string;
   category: string;
   rating?: number | null;
+  reviewsCount?: number | null;
   priceFrom?: number | null;
   latitude: number;
   longitude: number;
@@ -150,7 +152,7 @@ const parseOptionalNumber = (value: unknown): number | null => {
   return null;
 };
 
-export default function ExploreMap({
+function ExploreMap({
   results,
   userLocation,
   activeResultId = null,
@@ -179,6 +181,7 @@ export default function ExploreMap({
               ? humanizeSlug(item.categorySlugs[0])
               : 'Profesional',
           rating: parseOptionalNumber(item.rating),
+          reviewsCount: typeof item.reviewsCount === 'number' ? item.reviewsCount : null,
           priceFrom: parseOptionalNumber(item.priceFrom),
           latitude,
           longitude,
@@ -271,7 +274,7 @@ export default function ExploreMap({
     }
   }, [activeResultId]);
 
-  const hideVisualNoiseLayers = () => {
+  const hideVisualNoiseLayers = useCallback(() => {
     const map = mapRef.current?.getMap();
     if (!map) return;
 
@@ -286,14 +289,14 @@ export default function ExploreMap({
         // Ignore layers that are not mutable in this style.
       }
     });
-  };
+  }, []);
 
-  const handleMapLoad = () => {
+  const handleMapLoad = useCallback(() => {
     setMapReady(true);
     hideVisualNoiseLayers();
-  };
+  }, [hideVisualNoiseLayers]);
 
-  const handleMapClick = (event: MapMouseEvent) => {
+  const handleMapClick = useCallback((event: MapMouseEvent) => {
     const features = (event as MapMouseEvent & { features?: mapboxgl.MapboxGeoJSONFeature[] })
       .features;
     const feature = features?.[0];
@@ -332,9 +335,9 @@ export default function ExploreMap({
       setSelectedResultId(clickedId);
       onActiveResultChange?.(clickedId);
     }
-  };
+  }, [onActiveResultChange]);
 
-  const handleMapMouseMove = (event: MapMouseEvent) => {
+  const handleMapMouseMove = useCallback((event: MapMouseEvent) => {
     const features = (event as MapMouseEvent & { features?: mapboxgl.MapboxGeoJSONFeature[] })
       .features;
     const hasInteractiveFeature = features?.some(
@@ -344,7 +347,17 @@ export default function ExploreMap({
         item.layer?.id === CLUSTER_LAYER_ID,
     );
     setCursor(hasInteractiveFeature ? 'pointer' : 'default');
-  };
+  }, []);
+
+  const handleMapMouseLeave = useCallback(() => {
+    setCursor('default');
+  }, []);
+
+  const handlePopupClose = useCallback(() => {
+    setSelectedResultId(null);
+    onActiveResultChange?.(null);
+  }, [onActiveResultChange]);
+
   const initialViewState = useMemo(
     () => ({
       latitude: userLocation?.latitude ?? DEFAULT_CENTER.latitude,
@@ -356,15 +369,20 @@ export default function ExploreMap({
 
   return (
     <div className="relative h-[420px]">
+      <Head>
+        <link
+          rel="stylesheet"
+          href="https://api.mapbox.com/mapbox-gl-js/v3.19.1/mapbox-gl.css"
+          key="mapbox-gl-stylesheet"
+        />
+      </Head>
       <MapView
         mapRef={mapRef}
         initialViewState={initialViewState}
         onLoad={handleMapLoad}
         onClick={handleMapClick}
         onMouseMove={handleMapMouseMove}
-        onMouseLeave={() => {
-          setCursor('default');
-        }}
+        onMouseLeave={handleMapMouseLeave}
         interactiveLayerIds={INTERACTIVE_LAYER_IDS}
         cursor={cursor}
         dragRotate={false}
@@ -400,10 +418,7 @@ export default function ExploreMap({
             latitude={selectedItem.latitude}
             anchor="top"
             closeOnClick={false}
-            onClose={() => {
-              setSelectedResultId(null);
-              onActiveResultChange?.(null);
-            }}
+            onClose={handlePopupClose}
             offset={14}
           >
             <div className="min-w-[220px] space-y-1.5">
@@ -415,7 +430,7 @@ export default function ExploreMap({
               <div className="flex items-center justify-between text-xs text-[#334155]">
                 <span>
                   {typeof selectedItem.rating === 'number'
-                    ? `★ ${selectedItem.rating.toFixed(1)}`
+                    ? `★ ${selectedItem.rating.toFixed(1)}${selectedItem.reviewsCount ? ` (${selectedItem.reviewsCount})` : ''}`
                     : 'Sin reseñas'}
                 </span>
                 <span className="text-[#000000]">{formatPriceFrom(selectedItem.priceFrom)}</span>
@@ -440,3 +455,5 @@ export default function ExploreMap({
     </div>
   );
 }
+
+export default memo(ExploreMap);

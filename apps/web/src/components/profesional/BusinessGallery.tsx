@@ -1,7 +1,7 @@
 'use client';
 
 import Image from 'next/image';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { resolveAssetUrl } from '@/utils/assetUrl';
 
 type BusinessGalleryProps = {
@@ -23,7 +23,7 @@ const sanitizeImageSrc = (value: string): string | null => {
   }
 };
 
-export default function BusinessGallery({ photos, businessName }: BusinessGalleryProps) {
+export default memo(function BusinessGallery({ photos, businessName }: BusinessGalleryProps) {
   const trackRef = useRef<HTMLDivElement | null>(null);
   const rafRef = useRef<number | null>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
@@ -243,4 +243,4 @@ export default function BusinessGallery({ photos, businessName }: BusinessGaller
       ) : null}
     </>
   );
-}
+});

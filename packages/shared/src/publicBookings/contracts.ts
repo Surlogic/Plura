@@ -71,6 +71,8 @@ export type PublicProfessionalPageBase<
   schedule?: TSchedule;
   services: PublicProfessionalServiceBase<TPaymentType>[];
   bookingPolicy?: TBookingPolicy | null;
+  rating?: number | null;
+  reviewsCount?: number | null;
 };
 
 export type PublicProfessionalSummary = {

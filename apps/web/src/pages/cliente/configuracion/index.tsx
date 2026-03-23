@@ -370,7 +370,12 @@ export default function ClienteConfiguracionPage() {
               <p className="text-sm font-semibold text-[color:var(--ink)]">Feedback sobre Plura</p>
               <p className="text-xs text-[color:var(--ink-muted)]">Contanos como es tu experiencia usando la plataforma.</p>
             </div>
-            <AppFeedbackForm onSubmit={createClientAppFeedback} contextSource="cliente/configuracion" />
+            <AppFeedbackForm
+                onSubmit={async (request) => {
+                  await createClientAppFeedback(request);
+                }}
+                contextSource="cliente/configuracion"
+              />
             <div className="mt-6 border-t border-[color:var(--border-soft)] pt-4">
               <p className="mb-3 text-xs font-semibold uppercase tracking-[0.2em] text-[color:var(--ink-faint)]">Tu historial</p>
               <AppFeedbackHistory fetchFeedback={getClientAppFeedbackMine} />

@@ -984,11 +984,24 @@ export default function ProfesionalSettingsPage() {
                     </div>
 
                     <div className="space-y-6">
-                      <DashboardSectionHeading title="Feedback" subtitle="Contanos como es tu experiencia usando Plura." />
+                      <div className="space-y-2">
+                        <DashboardSectionHeading title="Feedback" />
+                        <p className="text-sm text-[color:var(--ink-muted)]">
+                          Contanos como es tu experiencia usando Plura.
+                        </p>
+                      </div>
+
                       <div className="rounded-[24px] border border-[#E2E7EC] bg-white p-5 shadow-[0_16px_36px_rgba(14,42,71,0.04)]">
-                        <AppFeedbackForm onSubmit={createProfessionalAppFeedback} contextSource="profesional/configuracion" />
+                        <AppFeedbackForm
+                          onSubmit={async (request) => {
+                            await createProfessionalAppFeedback(request);
+                          }}
+                          contextSource="profesional/configuracion"
+                        />
                         <div className="mt-6 border-t border-[#E2E7EC] pt-4">
-                          <p className="mb-3 text-xs font-semibold uppercase tracking-[0.2em] text-[#94A3B8]">Tu historial</p>
+                          <p className="mb-3 text-xs font-semibold uppercase tracking-[0.2em] text-[#94A3B8]">
+                            Tu historial
+                          </p>
                           <AppFeedbackHistory fetchFeedback={getProfessionalAppFeedbackMine} />
                         </div>
                       </div>

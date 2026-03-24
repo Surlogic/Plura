@@ -183,13 +183,12 @@ public class AuthService {
         }
 
         String tipoCliente = normalizeTipoCliente(request.getTipoCliente());
-        boolean requiresLocation = requiresProfessionalLocation(tipoCliente);
-        String country = normalizeLocationPart(request.getCountry(), requiresLocation, "country");
-        String city = normalizeLocationPart(request.getCity(), requiresLocation, "city");
-        String fullAddress = normalizeLocationPart(request.getFullAddress(), requiresLocation, "fullAddress");
-        String location = requiresLocation ? composeLocation(fullAddress, city, country) : null;
-        Double latitude = requiresLocation ? normalizeLatitude(request.getLatitude()) : null;
-        Double longitude = requiresLocation ? normalizeLongitude(request.getLongitude()) : null;
+        String country = normalizeRequiredLocationPart(request.getCountry(), "country");
+        String city = normalizeRequiredLocationPart(request.getCity(), "city");
+        String fullAddress = normalizeRequiredLocationPart(request.getFullAddress(), "fullAddress");
+        String location = composeLocation(fullAddress, city, country);
+        Double latitude = normalizeLatitude(request.getLatitude());
+        Double longitude = normalizeLongitude(request.getLongitude());
         validateCoordinatesPair(latitude, longitude);
 
         User user = new User();
@@ -974,24 +973,19 @@ public class AuthService {
         return rawTipoCliente.trim().toUpperCase();
     }
 
-    private boolean requiresProfessionalLocation(String tipoCliente) {
-        return "LOCAL".equals(tipoCliente);
-    }
-
     private String normalizeLocation(String rawLocation) {
         if (rawLocation == null) return null;
         String trimmed = rawLocation.trim();
         return trimmed.isBlank() ? null : trimmed;
     }
 
-    private String normalizeLocationPart(String rawValue, boolean required, String fieldName) {
+    private String normalizeRequiredLocationPart(String rawValue, String fieldName) {
         String normalized = normalizeLocation(rawValue);
-        if (normalized == null && required) {
+        if (normalized == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, fieldName + " es obligatorio");
         }
         return normalized;
     }
-
 
     private String composeLocation(String fullAddress, String city, String country) {
         return String.join(", ", fullAddress.trim(), city.trim(), country.trim());

@@ -159,7 +159,7 @@ export default function ProfesionalRegisterPage() {
     setActiveGeoField(null);
   };
 
-  const requiresLocation = form.tipoCliente === 'LOCAL';
+  const requiresLocation = form.tipoCliente === 'LOCAL' || form.tipoCliente === 'A_DOMICILIO';
   const emailValue = form.email.trim().toLowerCase();
   const confirmEmailValue = form.confirmEmail.trim().toLowerCase();
   const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -187,7 +187,7 @@ export default function ProfesionalRegisterPage() {
       ? ''
       : 'Los correos no coinciden.',
     phoneNumber: form.phoneNumber.trim().length >= 8 ? '' : 'Mínimo 8 dígitos.',
-    tipoCliente: form.tipoCliente ? '' : 'Seleccioná una modalidad.',
+    tipoCliente: form.tipoCliente ? '' : 'Seleccioná un tipo.',
     country: requiresLocation && form.country.trim().length === 0 ? 'Indicá el país.' : '',
     city: requiresLocation && form.city.trim().length === 0 ? 'Indicá la ciudad.' : '',
     fullAddress: requiresLocation && form.fullAddress.trim().length === 0
@@ -466,7 +466,7 @@ export default function ProfesionalRegisterPage() {
 
             <div className="space-y-2">
               <label className="text-sm font-medium text-[color:var(--ink)]">
-                Modalidad de atención
+                Tipo de cliente
               </label>
               <select
                 className={inputClass('tipoCliente')}
@@ -476,13 +476,10 @@ export default function ProfesionalRegisterPage() {
                 onBlur={handleBlur}
                 required
               >
-                <option value="LOCAL">Con local</option>
+                <option value="LOCAL">Local</option>
                 <option value="A_DOMICILIO">A domicilio</option>
-                <option value="SIN_LOCAL">Sin local físico</option>
+                <option value="SIN_LOCAL">Profesional sin local</option>
               </select>
-              <p className="text-xs text-[color:var(--ink-muted)]">
-                Elegí cómo atendés. Solo se pide ubicación si trabajás con local.
-              </p>
             </div>
 
             {requiresLocation ? (

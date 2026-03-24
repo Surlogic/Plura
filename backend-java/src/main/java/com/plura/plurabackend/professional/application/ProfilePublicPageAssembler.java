@@ -75,6 +75,7 @@ public class ProfilePublicPageAssembler {
             profile.getPublicHeadline(),
             profile.getPublicAbout(),
             normalizePublicPhotoUrl(profile.getLogoUrl()),
+            normalizePublicPhotoUrl(profile.getBannerUrl()),
             profile.getFullAddress() == null ? profile.getLocation() : profile.getFullAddress(),
             profile.getLocation(),
             profile.getCountry(),
@@ -111,7 +112,7 @@ public class ProfilePublicPageAssembler {
             profile.getLocation(),
             profile.getPublicHeadline(),
             categorySupport.mapCategories(profile.getCategories()),
-            profile.getLogoUrl(),
+            normalizePublicPhotoUrl(profile.getLogoUrl()),
             profile.getRating(),
             profile.getReviewsCount()
         );

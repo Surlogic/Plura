@@ -117,6 +117,7 @@ public class ProfesionalConfigController {
     ) {
         String normalizedKind = switch (kind == null ? "" : kind.trim().toLowerCase()) {
             case "logo" -> "logos";
+            case "banner" -> "banners";
             case "gallery", "public-gallery", "public_photo", "public-photo" -> "gallery";
             case "service", "services" -> "services";
             default -> "misc";

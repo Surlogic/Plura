@@ -80,6 +80,7 @@ type PreviewPayload = {
   name?: string;
   category?: string;
   logoUrl?: string;
+  bannerUrl?: string;
   headline?: string;
   about?: string;
   photos?: string[];
@@ -107,6 +108,7 @@ const isValidPreviewPayload = (value: unknown): value is PreviewPayload => {
   if ('name' in obj && obj.name !== undefined && typeof obj.name !== 'string') return false;
   if ('category' in obj && obj.category !== undefined && typeof obj.category !== 'string') return false;
   if ('logoUrl' in obj && obj.logoUrl !== undefined && typeof obj.logoUrl !== 'string') return false;
+  if ('bannerUrl' in obj && obj.bannerUrl !== undefined && typeof obj.bannerUrl !== 'string') return false;
   if ('headline' in obj && obj.headline !== undefined && typeof obj.headline !== 'string') return false;
   if ('about' in obj && obj.about !== undefined && typeof obj.about !== 'string') return false;
   if ('photos' in obj && obj.photos !== undefined && (!Array.isArray(obj.photos) || !obj.photos.every((item) => typeof item === 'string'))) return false;
@@ -268,6 +270,7 @@ type PublicProfessional = {
   rubro: string;
   description?: string | null;
   logoUrl?: string | null;
+  bannerUrl?: string | null;
   headline?: string | null;
   about?: string | null;
   address?: string | null;
@@ -370,6 +373,7 @@ export default function ProfesionalDetailPage({
       name: '',
       category: '',
       logoUrl: '',
+      bannerUrl: '',
       location: '',
       headline: '',
       about: '',
@@ -396,6 +400,7 @@ export default function ProfesionalDetailPage({
       name: data.fullName || data.name || fallback.name,
       category: data.rubro || fallback.category,
       logoUrl: data.logoUrl || fallback.logoUrl,
+      bannerUrl: data.bannerUrl || fallback.bannerUrl,
       headline: data.headline || fallback.headline,
       about: data.about || data.description || fallback.about,
       location: data.location || data.address || fallback.location,
@@ -421,6 +426,7 @@ export default function ProfesionalDetailPage({
       name: preview.name ?? resolved.name,
       category: preview.category ?? resolved.category,
       logoUrl: preview.logoUrl ?? resolved.logoUrl,
+      bannerUrl: preview.bannerUrl ?? resolved.bannerUrl,
       headline: preview.headline ?? resolved.headline,
       about: preview.about ?? resolved.about,
       photos: preview.photos ?? resolved.photos,
@@ -788,7 +794,21 @@ export default function ProfesionalDetailPage({
           </div>
         ) : null}
         <Card tone="glass" padding="none" className="overflow-hidden rounded-[36px] border-white/80">
-          <div className="h-32 bg-[linear-gradient(120deg,#0B1D2A,#145E63,#BFEDE7)] sm:h-40 lg:h-52" />
+          {(() => {
+            const safeBannerSrc = merged.bannerUrl ? sanitizeImageSrc(merged.bannerUrl) : undefined;
+            if (safeBannerSrc) {
+              return (
+                <div className="relative h-32 sm:h-40 lg:h-52">
+                  <img
+                    src={safeBannerSrc}
+                    alt="Banner"
+                    className="h-full w-full object-cover"
+                  />
+                </div>
+              );
+            }
+            return <div className="h-32 bg-[linear-gradient(120deg,#0B1D2A,#145E63,#BFEDE7)] sm:h-40 lg:h-52" />;
+          })()}
           <div className="relative -mt-10 px-6 pb-8 sm:-mt-12 lg:-mt-14">
             <Card tone="glass" className="flex flex-col gap-6 rounded-[30px] border-white/80 lg:flex-row lg:items-end lg:justify-between">
               <div className="flex items-center gap-5">

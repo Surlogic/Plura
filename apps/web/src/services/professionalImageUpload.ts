@@ -1,6 +1,6 @@
 import api from '@/services/api';
 
-export type ProfessionalImageKind = 'logo' | 'gallery' | 'service';
+export type ProfessionalImageKind = 'logo' | 'banner' | 'gallery' | 'service';
 
 export const uploadProfessionalImage = async (
   file: File,

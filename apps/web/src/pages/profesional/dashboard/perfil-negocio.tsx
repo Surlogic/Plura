@@ -532,7 +532,7 @@ export default function ProfesionalBusinessProfilePage() {
                           setForm((prev) => ({ ...prev, bannerUrl: url }));
                           setIsDirty(true);
                         }}
-                        kind="logo"
+                        kind="banner"
                         variant="banner"
                         hint="Imagen de portada. jpg, png, webp. Máximo 1MB."
                       />

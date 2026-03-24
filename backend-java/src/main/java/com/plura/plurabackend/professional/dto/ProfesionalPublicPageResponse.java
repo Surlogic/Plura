@@ -20,6 +20,7 @@ public class ProfesionalPublicPageResponse {
     private String headline;
     private String about;
     private String logoUrl;
+    private String bannerUrl;
     private String address;
     private String location;
     private String country;

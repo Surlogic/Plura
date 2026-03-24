@@ -18,7 +18,6 @@ import {
   type DashboardIconName,
 } from '@/components/profesional/dashboard/DashboardUI';
 import ProfessionalNotificationBell from '@/components/profesional/notifications/ProfessionalNotificationBell';
-import { resolveAssetUrl } from '@/utils/assetUrl';
 
 type MenuItem = {
   label: string;
@@ -102,7 +101,6 @@ function ProfesionalSidebar({ profile, active }: SidebarProps) {
 
   const displayName = profile?.fullName || 'Profesional';
   const displayMeta = profile?.rubro || 'Cuenta profesional';
-  const resolvedLogoUrl = resolveAssetUrl(profile?.logoUrl);
 
   const planLabel = profile?.professionalPlan
     ? {
@@ -134,9 +132,9 @@ function ProfesionalSidebar({ profile, active }: SidebarProps) {
 
         <div className="mt-6 flex flex-col items-center text-center">
           <div className="relative flex h-14 w-14 items-center justify-center overflow-hidden rounded-[18px] border border-[color:var(--border-soft)] bg-white text-base font-semibold text-[color:var(--primary)] shadow-[var(--shadow-card)]">
-            {resolvedLogoUrl ? (
+            {profile?.logoUrl ? (
               <Image
-                src={resolvedLogoUrl}
+                src={profile.logoUrl}
                 alt={`Logo de ${displayName}`}
                 fill
                 sizes="56px"

@@ -324,7 +324,7 @@ export default function ProfesionalBusinessProfilePage() {
       await api.put('/profesional/profile', {
         ...normalizedPayload,
       });
-      await refreshProfile();
+      void refreshProfile();
       const persistedForm: BusinessProfileForm = {
         businessName: normalizedPayload.fullName,
         categorySlugs: normalizedPayload.categorySlugs,

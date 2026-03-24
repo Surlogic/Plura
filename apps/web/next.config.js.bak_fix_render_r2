@@ -5,15 +5,14 @@ const withBundleAnalyzer = require('@next/bundle-analyzer')({
 });
 
 const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
-const imageCdnUrl = process.env.NEXT_PUBLIC_IMAGE_CDN_BASE_URL || 'https://img.surlogicuy.com';
 
 const nextPackagePath = path.dirname(require.resolve('next/package.json', { paths: [__dirname] }));
 const nextReactPath = path.dirname(require.resolve('react/package.json', { paths: [nextPackagePath] }));
 const nextReactDomPath = path.dirname(require.resolve('react-dom/package.json', { paths: [nextPackagePath] }));
 
-const toRemotePattern = (rawUrl) => {
+const apiImageRemotePattern = (() => {
   try {
-    const parsed = new URL(rawUrl);
+    const parsed = new URL(apiUrl);
     return {
       protocol: parsed.protocol.replace(':', ''),
       hostname: parsed.hostname,
@@ -22,10 +21,7 @@ const toRemotePattern = (rawUrl) => {
   } catch {
     return null;
   }
-};
-
-const apiImageRemotePattern = toRemotePattern(apiUrl);
-const imageCdnRemotePattern = toRemotePattern(imageCdnUrl);
+})();
 
 const extraImageRemoteHosts = (process.env.NEXT_IMAGE_REMOTE_HOSTS || '')
   .split(',')
@@ -59,7 +55,6 @@ const nextConfig = {
   images: {
     remotePatterns: [
       ...(apiImageRemotePattern ? [apiImageRemotePattern] : []),
-      ...(imageCdnRemotePattern ? [imageCdnRemotePattern] : []),
       {
         protocol: 'https',
         hostname: 'images.unsplash.com',

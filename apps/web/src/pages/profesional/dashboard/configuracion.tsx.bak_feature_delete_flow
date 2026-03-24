@@ -108,14 +108,10 @@ export default function ProfesionalSettingsPage() {
   const [isSettingsError, setIsSettingsError] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [isDeletingAccount, setIsDeletingAccount] = useState(false);
-  const [isDeleteFlowOpen, setIsDeleteFlowOpen] = useState(false);
   const [deleteChallengeId, setDeleteChallengeId] = useState<string | null>(null);
   const [deleteChallengeCode, setDeleteChallengeCode] = useState('');
   const [deleteChallengeMessage, setDeleteChallengeMessage] = useState<string | null>(null);
-  const [deleteSuccessMessage, setDeleteSuccessMessage] = useState<string | null>(null);
   const [isSendingDeleteChallenge, setIsSendingDeleteChallenge] = useState(false);
-  const [isVerifyingDeleteChallenge, setIsVerifyingDeleteChallenge] = useState(false);
-  const [isDeleteChallengeVerified, setIsDeleteChallengeVerified] = useState(false);
   const [passwordForm, setPasswordForm] = useState({
     currentPassword: '',
     newPassword: '',
@@ -176,23 +172,10 @@ export default function ProfesionalSettingsPage() {
     };
   }, [profile?.id]);
 
-  const resetDeleteFlowState = () => {
-    setDeleteChallengeId(null);
-    setDeleteChallengeCode('');
-    setDeleteChallengeMessage(null);
-    setDeleteSuccessMessage(null);
-    setIsDeleteChallengeVerified(false);
-  };
-
   const handleDeleteAccount = async () => {
     if (isDeletingAccount) return;
     if (!deleteChallengeId || !deleteChallengeCode.trim()) {
-      setSettingsMessage('Primero enviá y validá el código recibido por email.');
-      setIsSettingsError(true);
-      return;
-    }
-    if (!isDeleteChallengeVerified) {
-      setSettingsMessage('Primero validá el código antes de eliminar la cuenta.');
+      setSettingsMessage('Primero solicitá el challenge e ingresá el código recibido.');
       setIsSettingsError(true);
       return;
     }
@@ -204,7 +187,6 @@ export default function ProfesionalSettingsPage() {
     setIsDeletingAccount(true);
     setSettingsMessage(null);
     setIsSettingsError(false);
-    setDeleteSuccessMessage(null);
 
     try {
       await api.delete('/auth/me', {
@@ -232,8 +214,6 @@ export default function ProfesionalSettingsPage() {
     setSettingsMessage(null);
     setIsSettingsError(false);
     setDeleteChallengeMessage(null);
-    setDeleteSuccessMessage(null);
-    setIsDeleteChallengeVerified(false);
 
     try {
       setIsSendingDeleteChallenge(true);
@@ -245,7 +225,6 @@ export default function ProfesionalSettingsPage() {
         },
       );
       setDeleteChallengeId(response.data.challengeId);
-      setDeleteChallengeCode('');
       setDeleteChallengeMessage(
         `Te enviamos un código por email a ${response.data.maskedDestination}. Puede demorar hasta 1 o 2 minutos. Revisá también spam o promociones. El código vence en 10 minutos.`,
       );
@@ -259,43 +238,6 @@ export default function ProfesionalSettingsPage() {
     }
   };
 
-  const handleVerifyDeleteChallenge = async () => {
-    if (isVerifyingDeleteChallenge) return;
-    if (!deleteChallengeId) {
-      setSettingsMessage('Primero enviá el código por email.');
-      setIsSettingsError(true);
-      return;
-    }
-    if (!deleteChallengeCode.trim()) {
-      setSettingsMessage('Ingresá el código recibido para validarlo.');
-      setIsSettingsError(true);
-      return;
-    }
-
-    setSettingsMessage(null);
-    setIsSettingsError(false);
-    setDeleteSuccessMessage(null);
-
-    try {
-      setIsVerifyingDeleteChallenge(true);
-      await api.post('/auth/challenge/verify', {
-        challengeId: deleteChallengeId,
-        code: deleteChallengeCode.trim(),
-      });
-      setIsDeleteChallengeVerified(true);
-      setDeleteSuccessMessage('Código validado correctamente. Ya podés eliminar la cuenta.');
-    } catch (error) {
-      setIsDeleteChallengeVerified(false);
-      setSettingsMessage(
-        resolveBackendMessage(error, 'No se pudo validar el código.'),
-      );
-      setIsSettingsError(true);
-    } finally {
-      setIsVerifyingDeleteChallenge(false);
-    }
-  };
-
-  const handleLogout = async () => {
   const handleLogout = async () => {
     if (isLoggingOut) return;
 
@@ -1065,147 +1007,57 @@ export default function ProfesionalSettingsPage() {
                       </div>
 
                       <div className="rounded-[24px] border border-[#FECACA] bg-[#FFF5F5] p-5 shadow-[0_16px_36px_rgba(185,28,28,0.10)]">
-                        <div className="flex flex-wrap items-start justify-between gap-4">
-                          <div>
-                            <p className="text-xs uppercase tracking-[0.3em] text-[#B91C1C]">
-                              Zona sensible
-                            </p>
-                            <h2 className="mt-2 text-lg font-semibold text-[#7F1D1D]">
-                              Eliminar cuenta profesional
-                            </h2>
-                            <p className="mt-2 text-sm text-[#9F1239]">
-                              Se intentara cancelar la suscripcion activa, se daran de baja las proximas reservas y tu perfil dejara de estar disponible.
-                            </p>
+                        <p className="text-xs uppercase tracking-[0.3em] text-[#B91C1C]">
+                          Zona sensible
+                        </p>
+                        <h2 className="mt-2 text-lg font-semibold text-[#7F1D1D]">
+                          Eliminar cuenta profesional
+                        </h2>
+                        <p className="mt-2 text-sm text-[#9F1239]">
+                          Se intentara cancelar la suscripcion activa, se daran de baja las proximas reservas y tu perfil dejara de estar disponible.
+                        </p>
+                        <p className="mt-2 text-sm text-[#9F1239]">
+                          Por seguridad, este paso se valida solo por email. El código puede demorar hasta 1 o 2 minutos. Revisá también spam o promociones.
+                        </p>
+                        <div className="mt-4 grid gap-3">
+                          <div className="flex flex-wrap gap-3">
+                            <Button
+                              type="button"
+                              size="md"
+                              onClick={() => {
+                                void handleSendDeleteChallenge();
+                              }}
+                              disabled={isSendingDeleteChallenge}
+                              className="border-[#FCA5A5] bg-white text-[#B91C1C] hover:bg-[#FEE2E2]"
+                            >
+                              {isSendingDeleteChallenge ? 'Enviando...' : 'Enviar código por email'}
+                            </Button>
                           </div>
-                          <Button
-                            type="button"
-                            size="md"
-                            onClick={() => {
-                              if (isDeleteFlowOpen) {
-                                setIsDeleteFlowOpen(false);
-                                resetDeleteFlowState();
-                                return;
-                              }
-                              setIsDeleteFlowOpen(true);
-                              setSettingsMessage(null);
-                              setIsSettingsError(false);
-                              setDeleteSuccessMessage(null);
-                            }}
-                            disabled={isDeletingAccount || isSendingDeleteChallenge || isVerifyingDeleteChallenge}
-                            className="border-[#FCA5A5] bg-white text-[#B91C1C] hover:bg-[#FEE2E2]"
-                          >
-                            {isDeleteFlowOpen ? 'Cancelar' : 'Eliminar cuenta'}
-                          </Button>
+                          <input
+                            type="text"
+                            inputMode="numeric"
+                            value={deleteChallengeCode}
+                            onChange={(event) => setDeleteChallengeCode(event.target.value)}
+                            placeholder="Código OTP de 6 dígitos"
+                            className="h-11 rounded-[16px] border border-[#FECACA] bg-white px-4 text-sm text-[#7F1D1D] focus:border-[#EF4444] focus:outline-none"
+                          />
+                          {deleteChallengeMessage ? (
+                            <p className="text-xs font-semibold text-[#B91C1C]">
+                              {deleteChallengeMessage}
+                            </p>
+                          ) : null}
                         </div>
-
-                        {isDeleteFlowOpen ? (
-                          <div className="mt-5 space-y-4">
-                            <p className="text-sm text-[#9F1239]">
-                              Por seguridad, el flujo tiene 3 pasos: enviar código, validarlo y recién después confirmar la eliminación.
-                            </p>
-
-                            <div className="grid gap-3 md:grid-cols-3">
-                              <div className="rounded-[18px] border border-[#FECACA] bg-white p-4">
-                                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#B91C1C]">
-                                  Paso 1
-                                </p>
-                                <p className="mt-1 text-sm font-semibold text-[#7F1D1D]">
-                                  Enviar código
-                                </p>
-                                <p className="mt-1 text-xs text-[#9F1239]">
-                                  Te mandamos el OTP al email principal de la cuenta.
-                                </p>
-                                <Button
-                                  type="button"
-                                  size="md"
-                                  onClick={() => {
-                                    void handleSendDeleteChallenge();
-                                  }}
-                                  disabled={isSendingDeleteChallenge}
-                                  className="mt-4 border-[#FCA5A5] bg-white text-[#B91C1C] hover:bg-[#FEE2E2]"
-                                >
-                                  {isSendingDeleteChallenge ? 'Enviando...' : deleteChallengeId ? 'Reenviar código' : 'Enviar código por email'}
-                                </Button>
-                              </div>
-
-                              <div className="rounded-[18px] border border-[#FECACA] bg-white p-4">
-                                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#B91C1C]">
-                                  Paso 2
-                                </p>
-                                <p className="mt-1 text-sm font-semibold text-[#7F1D1D]">
-                                  Validar código
-                                </p>
-                                <input
-                                  type="text"
-                                  inputMode="numeric"
-                                  value={deleteChallengeCode}
-                                  onChange={(event) => {
-                                    setDeleteChallengeCode(event.target.value.replace(/\D/g, '').slice(0, 6));
-                                    if (isDeleteChallengeVerified) {
-                                      setIsDeleteChallengeVerified(false);
-                                      setDeleteSuccessMessage(null);
-                                    }
-                                  }}
-                                  placeholder="Código OTP de 6 dígitos"
-                                  disabled={!deleteChallengeId || isDeleteChallengeVerified}
-                                  className="mt-3 h-11 w-full rounded-[16px] border border-[#FECACA] bg-white px-4 text-sm text-[#7F1D1D] focus:border-[#EF4444] focus:outline-none disabled:cursor-not-allowed disabled:opacity-60"
-                                />
-                                <Button
-                                  type="button"
-                                  size="md"
-                                  onClick={() => {
-                                    void handleVerifyDeleteChallenge();
-                                  }}
-                                  disabled={!deleteChallengeId || isVerifyingDeleteChallenge || isDeleteChallengeVerified}
-                                  className="mt-4 border-[#FCA5A5] bg-white text-[#B91C1C] hover:bg-[#FEE2E2]"
-                                >
-                                  {isDeleteChallengeVerified
-                                    ? 'Código validado'
-                                    : isVerifyingDeleteChallenge
-                                      ? 'Validando...'
-                                      : 'Validar código'}
-                                </Button>
-                              </div>
-
-                              <div className="rounded-[18px] border border-[#FECACA] bg-white p-4">
-                                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#B91C1C]">
-                                  Paso 3
-                                </p>
-                                <p className="mt-1 text-sm font-semibold text-[#7F1D1D]">
-                                  Confirmar eliminación
-                                </p>
-                                <p className="mt-1 text-xs text-[#9F1239]">
-                                  Este paso da de baja reservas, intenta cancelar la suscripción y no se puede deshacer.
-                                </p>
-                                <Button
-                                  type="button"
-                                  size="md"
-                                  onClick={() => {
-                                    void handleDeleteAccount();
-                                  }}
-                                  disabled={!isDeleteChallengeVerified || isDeletingAccount}
-                                  className="mt-4 border-[#FCA5A5] bg-white text-[#B91C1C] hover:bg-[#FEE2E2]"
-                                >
-                                  {isDeletingAccount ? 'Eliminando...' : 'Eliminar cuenta ahora'}
-                                </Button>
-                              </div>
-                            </div>
-
-                            {deleteChallengeMessage ? (
-                              <p className="text-xs font-semibold text-[#B91C1C]">
-                                {deleteChallengeMessage}
-                              </p>
-                            ) : null}
-                            {deleteSuccessMessage ? (
-                              <p className="text-xs font-semibold text-[#047857]">
-                                {deleteSuccessMessage}
-                              </p>
-                            ) : null}
-                          </div>
-                        ) : null}
-                      </div>
-                    </div>
-                  </div>
+                        <Button
+                          type="button"
+                          size="md"
+                          onClick={() => {
+                            void handleDeleteAccount();
+                          }}
+                          disabled={isDeletingAccount}
+                          className="mt-4 border-[#FCA5A5] bg-white text-[#B91C1C] hover:bg-[#FEE2E2]"
+                        >
+                          {isDeletingAccount ? 'Eliminando...' : 'Eliminar cuenta'}
+                        </Button>
                       </div>
                     </div>
                   </div>

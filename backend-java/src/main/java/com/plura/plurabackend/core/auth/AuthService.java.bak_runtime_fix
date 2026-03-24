@@ -324,18 +324,10 @@ public class AuthService {
                 ensureProfessionalProfile(user);
             }
         } else {
-            boolean promoteExistingClientToProfessional =
-                authAction == OAuthAuthAction.REGISTER
-                    && desiredRole == UserRole.PROFESSIONAL
-                    && isClientUser(user)
-                    && !isProfessionalUser(user);
-
-            boolean changed = false;
-            if (promoteExistingClientToProfessional) {
-                user.setRole(UserRole.PROFESSIONAL);
-                changed = true;
-                ensureProfessionalProfile(user);
-            } else if (authAction == OAuthAuthAction.REGISTER) {
+            if (authAction == OAuthAuthAction.REGISTER) {
+                if (desiredRole == UserRole.PROFESSIONAL && !isProfessionalUser(user)) {
+                    throw new ResponseStatusException(HttpStatus.CONFLICT, CLIENT_ACCOUNT_EXISTS_FOR_PROFESSIONAL_MESSAGE);
+                }
                 if (desiredRole == UserRole.USER && !isClientUser(user)) {
                     throw new ResponseStatusException(HttpStatus.CONFLICT, PROFESSIONAL_ACCOUNT_EXISTS_MESSAGE);
                 }
@@ -348,6 +340,7 @@ public class AuthService {
             if (desiredRole == UserRole.PROFESSIONAL && !isProfessionalUser(user)) {
                 throw new ResponseStatusException(HttpStatus.CONFLICT, CLIENT_ACCOUNT_EXISTS_FOR_PROFESSIONAL_MESSAGE);
             }
+            boolean changed = false;
             if ((user.getProvider() == null || user.getProvider().isBlank()) || normalizedProvider.equals(user.getProvider())) {
                 if (!normalizedProvider.equals(user.getProvider())) {
                     user.setProvider(normalizedProvider);

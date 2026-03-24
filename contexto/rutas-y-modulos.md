@@ -142,8 +142,8 @@ Lectura de producto:
 - `/profesional/dashboard/reservas`
 - `/profesional/dashboard/configuracion`
 - `/profesional/dashboard/resenas`
-- `/profesional/dashboard/pagina-publica`
-- `/profesional/dashboard/perfil-negocio`
+- `/profesional/dashboard/pagina-publica` — ahora incluye galería de fotos del negocio con upload vía `ImageUploader` (kind="gallery"), máximo según `maxBusinessPhotos` del plan, preview en iframe; headline y about bloqueados para BASIC
+- `/profesional/dashboard/perfil-negocio` — ahora soporta upload de logo (kind="logo", variant="circle") y banner (kind="banner", variant="banner"), ambos bloqueados para BASIC; usa `ImageUploader` component
 - `/profesional/dashboard/billing`
 - `/profesional/notificaciones`
 
@@ -159,6 +159,7 @@ Modulos relevantes:
 - `hooks/useProfessionalBookingTimeline.ts`: carga `GET /profesional/reservas/{bookingId}/timeline` con estados `loading / empty / error`.
 - `services/professionalBookings.ts`
 - `services/professionalBookings.ts`: cachea `actions` y `timeline` por booking y expone prefetch del detalle para bajar waterfalls en el dashboard operativo.
+- `services/professionalImageUpload.ts`: servicio de subida de imágenes profesional; usa `POST /profesional/images/upload?kind={kind}` con tipos `logo`, `banner`, `gallery`, `service`; retorna URL pública de la imagen subida.
 - `services/professionalNotifications.ts`
 - `services/professionalBookingPolicy.ts`
 - `hooks/useProfessionalBilling.ts`
@@ -228,7 +229,9 @@ Modulos relevantes:
 - `services/appFeedback.ts`: feedback de app del cliente y profesional; ahora incluye `getPublicAppFeedback(limit)` para testimonios publicos via `GET /public/app-feedback`.
 - `middleware.ts`: CSP y headers de seguridad.
 - `/oauth/mercadopago/callback`: ahora interpreta `result/reason` devueltos por el backend y consulta el estado real de conexion; ya no intenta llamar al callback backend con `code/state`.
-- `pages/profesional/pagina/[slug].tsx`: reutiliza fetch cacheado del perfil publico, difiere quick slots hasta interaccion real con servicios y posterga tanto el geocoding fallback como la carga del mapa hasta que el bloque entra en viewport para bajar costo inicial en la pagina publica.
+- `pages/profesional/pagina/[slug].tsx`: reutiliza fetch cacheado del perfil publico, difiere quick slots hasta interaccion real con servicios y posterga tanto el geocoding fallback como la carga del mapa hasta que el bloque entra en viewport para bajar costo inicial en la pagina publica; ahora muestra galería de fotos del negocio (`BusinessGallery`), logo, banner, headline y about del perfil.
+- `components/profesional/ImageUploader.tsx`: componente reutilizable de subida de imágenes con variantes `square`, `circle` y `banner`; valida MIME (jpeg, png, webp) y tamaño (1MB); muestra preview blob inmediato y sube vía `professionalImageUpload` service.
+- `utils/assetUrl.ts`: incluye `resolveR2Url()` para convertir URLs R2 (`r2://bucket/path`) a URLs CDN públicas usando `NEXT_PUBLIC_IMAGE_CDN_BASE_URL`.
 
 Lectura de producto:
 

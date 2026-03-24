@@ -1,18 +1,14 @@
 package com.plura.plurabackend.professional.dto;
 
-import com.plura.plurabackend.core.booking.dto.BookingPolicySnapshotResponse;
 import com.plura.plurabackend.core.category.dto.CategoryResponse;
+import com.plura.plurabackend.core.booking.dto.BookingPolicySnapshotResponse;
 import com.plura.plurabackend.professional.schedule.dto.ProfesionalScheduleDto;
 import com.plura.plurabackend.professional.service.dto.ProfesionalServiceResponse;
 import java.util.List;
 import lombok.AllArgsConstructor;
-import lombok.Builder;
 import lombok.Data;
-import lombok.NoArgsConstructor;
 
 @Data
-@Builder(toBuilder = true)
-@NoArgsConstructor
 @AllArgsConstructor
 public class ProfesionalPublicPageResponse {
     private String id;

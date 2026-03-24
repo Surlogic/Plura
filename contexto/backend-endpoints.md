@@ -164,6 +164,7 @@ Prefijo: `/profesional`
 - `GET /profesional/services`
 - `POST /profesional/services`
 - `POST /profesional/services/image`
+- `POST /profesional/images/upload?kind={kind}` — endpoint genérico de subida de imágenes; acepta `kind` como query param: `logo` → `logos/`, `banner` → `banners/`, `gallery`/`public-gallery`/`public_photo` → `gallery/`, `service` → `services/`, default → `misc/`; almacena en R2 o local según `IMAGE_STORAGE_PROVIDER`; retorna `{ imageUrl }` con la URL pública o R2 del archivo subido
 - `PUT /profesional/services/{id}`
 - `DELETE /profesional/services/{id}`
 - `GET /profesional/payment-providers/mercadopago/connection`
@@ -205,6 +206,9 @@ Lectura de producto:
 Notas:
 
 - `POST /profesional/services/image` confirma que el repo ya integra carga de imagenes en servicios
+- `POST /profesional/images/upload` es el endpoint genérico recomendado para subir logos, banners, galería y fotos de servicio; organiza los archivos por `professionals/{professionalId}/{kind}/` en R2 o filesystem local
+- `GET /profesional/public-page` y `PUT /profesional/public-page` ahora incluyen campo `photos` (lista de URLs de galería, máximo 10); la resolución de fotos combina `business_photo` (tipos LOCAL, WORK, SERVICE), `publicPhotos` del perfil y fotos de servicios, deduplicando y ordenando por fecha de creación
+- `PUT /profesional/profile` ahora soporta `bannerUrl` para imagen de portada del negocio
 - la capa de categorias existe en el sistema, pero el nivel exacto de etiquetas y reglas por servicio requiere revisar dominio y UI puntual
 
 ### Reservas del cliente
@@ -419,7 +423,7 @@ Nota: el repositorio de reseñas (`BookingReviewRepository`) ahora tambien expon
 - `availability`: slots disponibles y resumenes de agenda.
 - `search`: busqueda, suggest, indexacion y sync.
 - `cache`: cache in-memory y Redis.
-- `storage`: upload de imagenes y thumbnails.
+- `storage`: upload de imagenes y thumbnails; ahora incluye `CloudflareR2ImageStorageService` como provider real de storage con presigned URLs, validación de content type (jpeg, png, webp, avif) y límite configurable de 5MB; las imágenes se organizan por `professionals/{professionalId}/{kind}/` en R2.
 - `feedback`: feedback interno de producto desde clientes y profesionales; ahora con visibilidad publica opcional (`publicVisible`) y endpoint publico para testimonios.
 - `jobs`: integracion opcional con SQS.
 
@@ -469,7 +473,7 @@ Capacidad que no aparece aun como dominio publico consolidado:
 ## Persistencia
 
 - Flyway usa `backend-java/src/main/resources/db/migration`
-- hay `57` migraciones versionadas
+- hay `58` migraciones versionadas
 - los nombres muestran evolucion fuerte en:
   - billing
   - booking
@@ -477,3 +481,4 @@ Capacidad que no aparece aun como dominio publico consolidado:
   - search hardening
   - availability
   - service categories
+  - galería de fotos del negocio (`business_photo`) y banner del perfil (`V58`)

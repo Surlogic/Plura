@@ -83,14 +83,20 @@ Necesario para:
 
 Infra actual detectada:
 
-- storage local o Cloudflare R2
-- modulo `storage`
-- endpoint de imagen para servicios
+- storage local o Cloudflare R2 según `IMAGE_STORAGE_PROVIDER` (default: `local`)
+- modulo `storage` con `CloudflareR2ImageStorageService` como provider principal para producción
+- endpoint genérico `POST /profesional/images/upload?kind=` para logo, banner, galería y servicios
+- endpoint legacy `POST /profesional/services/image` para imágenes de servicio
+- validación server-side de content type (jpeg, png, webp, avif) y tamaño máximo 5MB
+- organización en R2 por `professionals/{professionalId}/{kind}/UUID.ext`
+- tabla `business_photo` para galería del negocio con tipos LOCAL, SERVICE y WORK
+- columna `banner_url` en `professional_profile` (V58)
+- frontend resuelve URLs R2 (`r2://bucket/path`) a CDN público vía `NEXT_PUBLIC_IMAGE_CDN_BASE_URL`
 
 Nota:
 
-- el texto de producto habla de "conectar con bd de imagenes", pero en el repo la decision visible hoy es `object storage`, no una base de datos de imagenes dedicada
-- si se piensa en portfolio, looks o tienda, conviene mantener storage de objetos + metadata en PostgreSQL
+- el storage de objetos está operativo con Cloudflare R2 + CDN; metadata de galería persiste en PostgreSQL (`business_photo`)
+- si se piensa en portfolio, looks o tienda, la base actual de R2 + metadata en PostgreSQL ya da soporte
 
 ### Pagos, suscripciones y cobros
 
@@ -222,7 +228,7 @@ Variables detectadas en uso:
 - `NEXT_PUBLIC_SEARCH_DEFAULT_CITY_SUGGESTIONS`
 - `NEXT_IMAGE_REMOTE_HOSTS`
 - `NEXT_BUILD_DIR`
-- `ANALYZE`
+- `NEXT_PUBLIC_IMAGE_CDN_BASE_URL` — dominio CDN para imágenes R2 (default: `https://img.surlogicuy.com`)
 - `ANALYZE`
 
 Lectura de producto:
@@ -301,6 +307,18 @@ Notas operativas de performance hoy:
   - `APP_SEARCH_SLOT_BOOTSTRAP_ENABLED` default `false`
   - `SEARCH_MV_REFRESH_ON_STARTUP` default `false`
 - el script `backend-java/scripts/loadtests/perf_phase3_rollout.js` ahora acepta `SCENARIO_DURATION` y VUs por escenario via env para poder correr smoke/perf sin editar el archivo
+
+Variables de backend para storage de imágenes y Cloudflare R2:
+
+- `IMAGE_STORAGE_PROVIDER` (o `STORAGE_PROVIDER`) — `local` o `r2` (default: `local`)
+- `R2_ENDPOINT` — URL del endpoint Cloudflare R2
+- `R2_BUCKET` — nombre del bucket (default: `plura-images`)
+- `R2_REGION` — región R2 (default: `auto`)
+- `R2_ACCESS_KEY_ID`
+- `R2_SECRET_ACCESS_KEY`
+- `R2_PUBLIC_BASE_URL` — URL pública del bucket R2
+- `IMAGE_UPLOAD_URL_EXPIRATION_MINUTES` — expiración de presigned URLs (default: `10`)
+- `STORAGE_PUBLIC_BASE_URL` — base URL pública para resolver imágenes (default: `/uploads`)
 
 Variables nuevas relevantes de performance:
 
@@ -399,3 +417,5 @@ Notas reales de deploy en Render:
 - en local, `backend-java/.env` usa como retorno de suscripcion Mercado Pago una URL publica HTTPS de Render en vez de `localhost`, porque `preapproval` no acepta `localhost` y `plura.com` no estaba resolviendo un TLS util para el retorno
 - en `render.yaml`, el servicio `plura-api` usa `rootDir=backend-java`, por lo que `dockerfilePath` y `dockerContext` deben mantenerse relativos a esa carpeta; hoy quedaron alineados a `./Dockerfile` y `.`
 - el blueprint de Render ya expone tanto variables legacy de Mercado Pago como el naming explicito por dominio `SUBSCRIPTIONS_*` y `RESERVATIONS_*`, incluido el flag `BILLING_MERCADOPAGO_RESERVATIONS_OAUTH_PKCE_ENABLED`
+- para storage de imágenes en producción, el servicio backend debe exponer las variables `IMAGE_STORAGE_PROVIDER=r2`, `R2_ENDPOINT`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY` y opcionalmente `R2_BUCKET` y `R2_PUBLIC_BASE_URL`
+- la web en Render necesita `NEXT_PUBLIC_IMAGE_CDN_BASE_URL` apuntando al dominio CDN de R2 para resolver URLs de imágenes

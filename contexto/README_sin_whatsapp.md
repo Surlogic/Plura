@@ -95,7 +95,7 @@ Bloqueos esperados en producto:
 - sin chat interno
 - sin multiequipo
 - sin automatizaciones avanzadas
-- sin portfolio, puntos, ultima hora, paquetes, tienda ni badge verificado
+- sin portfolio avanzado (galería básica ya existe), puntos, ultima hora, paquetes, tienda ni badge verificado
 
 ### Pro
 
@@ -140,7 +140,7 @@ Base transversal que ordena el producto y la arquitectura:
 - roles y permisos
 - perfil editable del negocio o profesional
 - ubicacion, direccion y mapa
-- almacenamiento y gestion de imagenes
+- almacenamiento y gestion de imagenes con Cloudflare R2 como storage principal en producción; endpoint genérico `POST /profesional/images/upload` para logo, banner, galería y servicios; galería del negocio con tabla `business_photo` (tipos LOCAL, SERVICE, WORK); banner de perfil; resolución de URLs R2 a CDN público en frontend
 - constructor de servicios con categorias, etiquetas, duracion, precio y buffers
 - horarios de trabajo y bloqueos manuales
 - motor de disponibilidad y generacion de slots
@@ -306,7 +306,7 @@ Nota: el input original mencionaba `31/04/2026`, fecha invalida; en este context
 
 - `apps/web`: app web con `Pages Router`, `34` pages y `60` componentes.
 - `apps/mobile`: app Expo con `23` pantallas y `16` servicios cliente.
-- `backend-java`: API principal con `395` archivos Java y `57` migraciones SQL.
+- `backend-java`: API principal con `395` archivos Java y `58` migraciones SQL.
 - `packages/shared`: utilidades, contratos y definiciones de billing compartidas.
 - `scripts`: helpers de desarrollo del workspace.
 
@@ -328,7 +328,7 @@ Capacidades ya visibles en codigo:
 - mobile ya muestra mapa en el perfil publico del profesional y abre los flujos de `Mercado Pago` dentro de la app con browser embebido
 - mobile ya puede pedir permiso de ubicacion del dispositivo para mostrar la zona actual del cliente y lanzar exploracion ordenada por cercania real con `lat/lng`
 - mobile ya puede pedir permiso de notificaciones del sistema y persistir ese estado local en `home`, `notificaciones` y `configuracion`; todavia no registra device tokens en backend ni envia push server-side desde el repo actual
-- storage de imagenes
+- storage de imagenes con Cloudflare R2, CDN público, galería de fotos del negocio y banner de perfil
 
 Capacidades de producto definidas pero no necesariamente cerradas en UI o API publica:
 
@@ -428,7 +428,7 @@ Puertos locales principales:
 - cache opcional: Redis
 - search engine opcional: Meilisearch
 - jobs opcionales: SQS
-- storage de imagenes: local o Cloudflare R2
+- storage de imagenes: Cloudflare R2 en producción (con CDN público), local como fallback de desarrollo
 
 ## Observaciones importantes del estado actual
 

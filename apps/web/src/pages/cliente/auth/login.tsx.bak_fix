@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { useRouter } from 'next/router';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import type { ChangeEvent, FormEvent } from 'react';
 import { isAxiosError } from 'axios';
 import AuthTopBar from '@/components/auth/AuthTopBar';
@@ -45,8 +45,6 @@ export default function ClienteLoginPage() {
   const { refreshProfile } = useClientProfileContext();
   const { refreshProfile: refreshProfessionalProfile } = useProfessionalProfileContext();
   const redirectIntent = resolveQueryValue(router.query.redirect).trim();
-  const justRegistered = resolveQueryValue(router.query.registered).trim() === '1';
-  const registeredEmail = resolveQueryValue(router.query.email).trim().toLowerCase();
   const shouldConfirmReservationAfterLogin = redirectIntent === 'confirm-reservation';
   const registerHref = shouldConfirmReservationAfterLogin
     ? '/cliente/auth/register?redirect=confirm-reservation'
@@ -55,15 +53,6 @@ export default function ClienteLoginPage() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
-
-  useEffect(() => {
-    if (!registeredEmail) return;
-    setForm((prev) => (
-      prev.email.trim().toLowerCase() === registeredEmail
-        ? prev
-        : { ...prev, email: registeredEmail }
-    ));
-  }, [registeredEmail]);
 
   const handleChange = (event: ChangeEvent<HTMLInputElement>) => {
     const { name, value } = event.target;
@@ -205,12 +194,6 @@ export default function ClienteLoginPage() {
                   </Link>
                 </div>
               </div>
-
-              {justRegistered ? (
-                <p className="rounded-[12px] border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-700">
-                  Cuenta creada correctamente. Iniciá sesión para continuar.
-                </p>
-              ) : null}
 
               {errorMessage ? (
                 <p className="rounded-[12px] border border-[color:var(--error-soft)] bg-[color:var(--error-soft)] px-3 py-2 text-xs text-[color:var(--error)]">

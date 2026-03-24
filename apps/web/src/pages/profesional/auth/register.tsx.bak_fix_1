@@ -290,14 +290,33 @@ export default function ProfesionalRegisterPage() {
       };
 
       await api.post<RegisterResponse>('/auth/register/profesional', payload);
-      await router.push({
-        pathname: '/profesional/auth/login',
-        query: {
-          registered: '1',
-          email: payload.email,
-        },
+      setSuccessMessage('Cuenta profesional creada correctamente. Ahora podés iniciar sesión.');
+      setForm({
+        fullName: '',
+        categorySlugs: [],
+        email: '',
+        confirmEmail: '',
+        phoneNumber: '',
+        tipoCliente: 'LOCAL',
+        country: '',
+        city: '',
+        fullAddress: '',
+        password: '',
+        confirmPassword: '',
       });
-      return;
+      setTouched({
+        fullName: false,
+        categorySlugs: false,
+        email: false,
+        confirmEmail: false,
+        phoneNumber: false,
+        tipoCliente: false,
+        country: false,
+        city: false,
+        fullAddress: false,
+        password: false,
+        confirmPassword: false,
+      });
     } catch (error) {
       if (axios.isAxiosError(error) && !error.response) {
         setErrorMessage('No se pudo conectar con el servidor.');

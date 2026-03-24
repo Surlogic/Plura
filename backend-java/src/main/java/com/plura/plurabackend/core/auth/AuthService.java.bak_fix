@@ -84,12 +84,6 @@ public class AuthService {
         Map.entry("medicina-estetica", "medicina-estetica"),
         Map.entry("bienestar-holistico", "bienestar-holistico")
     );
-    private static final String CLIENT_ACCOUNT_EXISTS_FOR_PROFESSIONAL_MESSAGE =
-        "Existe una cuenta como cliente con este email. Creá una nueva para profesional o eliminá la cuenta de cliente antes de continuar.";
-    private static final String CLIENT_ACCOUNT_EXISTS_MESSAGE =
-        "Ya existe una cuenta cliente con este email. Iniciá sesión o recuperá tu contraseña si la olvidaste.";
-    private static final String PROFESSIONAL_ACCOUNT_EXISTS_MESSAGE =
-        "Ya existe una cuenta profesional con este email. Iniciá sesión o recuperá tu contraseña si la olvidaste.";
 
     public AuthService(
         UserRepository userRepository,
@@ -319,19 +313,6 @@ public class AuthService {
                 ensureProfessionalProfile(user);
             }
         } else {
-            if (authAction == OAuthAuthAction.REGISTER) {
-                if (desiredRole == UserRole.PROFESSIONAL && !isProfessionalUser(user)) {
-                    throw new ResponseStatusException(HttpStatus.CONFLICT, CLIENT_ACCOUNT_EXISTS_FOR_PROFESSIONAL_MESSAGE);
-                }
-                if (desiredRole == UserRole.USER && !isClientUser(user)) {
-                    throw new ResponseStatusException(HttpStatus.CONFLICT, PROFESSIONAL_ACCOUNT_EXISTS_MESSAGE);
-                }
-                if (isProfessionalUser(user)) {
-                    throw new ResponseStatusException(HttpStatus.CONFLICT, PROFESSIONAL_ACCOUNT_EXISTS_MESSAGE);
-                }
-                throw new ResponseStatusException(HttpStatus.CONFLICT, CLIENT_ACCOUNT_EXISTS_MESSAGE);
-            }
-
             if (desiredRole == UserRole.PROFESSIONAL && !isProfessionalUser(user)) {
                 throw new ResponseStatusException(HttpStatus.CONFLICT, CLIENT_ACCOUNT_EXISTS_FOR_PROFESSIONAL_MESSAGE);
             }

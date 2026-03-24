@@ -140,7 +140,7 @@ export default function GoogleLoginButton({
 
         await onAuthenticated(result);
       } catch (error) {
-        onError(resolveApiErrorMessage(error, authAction === 'REGISTER' ? 'No se pudo completar el registro con Google.' : 'No se pudo iniciar sesión con Google.'));
+        onError(resolveApiErrorMessage(error, 'No se pudo iniciar sesión con Google.'));
       } finally {
         setIsLoading(false);
       }

@@ -26,7 +26,7 @@ export default function AuthWall({
             borderRadius: 28,
             alignItems: 'center',
             justifyContent: 'center',
-            backgroundColor: theme.colors.primarySoft,
+            backgroundColor: theme.colors.backgroundSoft,
           }}
         >
           <Ionicons name={icon} size={24} color={theme.colors.primaryStrong} />

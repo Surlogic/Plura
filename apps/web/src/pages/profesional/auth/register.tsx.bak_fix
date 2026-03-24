@@ -19,37 +19,6 @@ import { getGeoLocationSuggestions, type GeoLocationSuggestion } from '@/service
 import { useProfessionalProfileContext } from '@/context/ProfessionalProfileContext';
 import type { OAuthLoginResult } from '@/lib/auth/oauthLogin';
 
-
-const extractApiMessage = (error: unknown, fallback: string) => {
-  if (axios.isAxiosError(error)) {
-    const responseData = error.response?.data;
-
-    if (typeof responseData === 'string' && responseData.trim()) {
-      return responseData.trim();
-    }
-
-    if (responseData && typeof responseData === 'object') {
-      const payload = responseData as {
-        message?: unknown;
-        detail?: unknown;
-        error?: unknown;
-      };
-
-      if (typeof payload.message === 'string' && payload.message.trim()) {
-        return payload.message.trim();
-      }
-      if (typeof payload.detail === 'string' && payload.detail.trim()) {
-        return payload.detail.trim();
-      }
-      if (typeof payload.error === 'string' && payload.error.trim()) {
-        return payload.error.trim();
-      }
-    }
-  }
-
-  return fallback;
-};
-
 export default function ProfesionalRegisterPage() {
   const router = useRouter();
   const { refreshProfile } = useProfessionalProfileContext();
@@ -290,7 +259,9 @@ export default function ProfesionalRegisterPage() {
       };
 
       await api.post<RegisterResponse>('/auth/register/profesional', payload);
-      setSuccessMessage('Cuenta profesional creada correctamente. Ahora podés iniciar sesión.');
+      setSuccessMessage(
+        'Si el email no estaba registrado, la cuenta fue creada. Si ya existía, podés iniciar sesión. Una vez dentro del dashboard vas a poder verificar el email con un código.',
+      );
       setForm({
         fullName: '',
         categorySlugs: [],
@@ -318,10 +289,21 @@ export default function ProfesionalRegisterPage() {
         confirmPassword: false,
       });
     } catch (error) {
-      if (axios.isAxiosError(error) && !error.response) {
-        setErrorMessage('No se pudo conectar con el servidor.');
+      if (axios.isAxiosError(error)) {
+        if (!error.response) {
+          setErrorMessage('No se pudo conectar con el servidor.');
+        } else {
+          const status = error.response.status;
+          if (status === 400) {
+            setErrorMessage('Los datos ingresados no son válidos. Verificá el formulario.');
+          } else if (status >= 500) {
+            setErrorMessage('Error del servidor. Intentá de nuevo más tarde.');
+          } else {
+            setErrorMessage('No se pudo crear la cuenta. Verificá los datos e intentá de nuevo.');
+          }
+        }
       } else {
-        setErrorMessage(extractApiMessage(error, 'No se pudo crear la cuenta profesional.'));
+        setErrorMessage('No se pudo crear la cuenta. Verificá los datos e intentá de nuevo.');
       }
     } finally {
       setIsSubmitting(false);
@@ -708,4 +690,3 @@ export default function ProfesionalRegisterPage() {
     </div>
   );
 }
-

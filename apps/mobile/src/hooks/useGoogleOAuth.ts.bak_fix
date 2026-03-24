@@ -175,12 +175,9 @@ export function useGoogleOAuth({
         await refreshProfileRef.current();
         await onSuccessRef.current();
       } catch (error: any) {
-        const responseData = error?.response?.data;
         const backendMessage =
-          responseData?.message
-          || responseData?.detail
-          || responseData?.error
-          || (typeof responseData === 'string' ? responseData : null);
+          error?.response?.data?.message ||
+          (typeof error?.response?.data === 'string' ? error.response.data : null);
 
         onErrorRef.current(
           backendMessage
@@ -301,4 +298,3 @@ export function useGoogleOAuth({
     handleGoogleAuth,
   };
 }
-

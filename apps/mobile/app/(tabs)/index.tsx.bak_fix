@@ -1,12 +1,12 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Alert, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Redirect, router } from 'expo-router';
+import { router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { listPublicProfessionals, type PublicProfessionalSummary } from '../../src/services/publicBookings';
 import { getClientNextBooking, type ClientNextBooking } from '../../src/services/clientFeatures';
 import { getApiErrorMessage } from '../../src/services/errors';
-import { useProfessionalProfileContext } from '../../src/context/ProfessionalProfileContext';
+import { useAuthSession } from '../../src/context/ProfessionalProfileContext';
 import { listCategories } from '../../src/services/categories';
 import type { ServiceCategoryOption } from '../../src/types/professional';
 import { getCategoryAccent } from '../../src/features/client/categoryUi';
@@ -25,7 +25,7 @@ import {
 } from '../../src/components/ui/MobileSurface';
 
 export default function HomeScreen() {
-  const { role, clientProfile, isAuthenticated } = useProfessionalProfileContext();
+  const { clientProfile, isAuthenticated } = useAuthSession();
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [businesses, setBusinesses] = useState<PublicProfessionalSummary[]>([]);
@@ -45,11 +45,6 @@ export default function HomeScreen() {
   } = usePushNotifications();
 
   useEffect(() => {
-    if (role === 'professional') {
-      setIsLoading(false);
-      return;
-    }
-
     let isCancelled = false;
 
     const load = async () => {
@@ -117,10 +112,6 @@ export default function HomeScreen() {
       },
     });
   };
-
-  if (role === 'professional') {
-    return <Redirect href="/dashboard" />;
-  }
 
   return (
     <AppScreen scroll contentContainerStyle={{ paddingBottom: 40 }}>

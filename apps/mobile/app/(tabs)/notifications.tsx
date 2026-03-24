@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Linking, Text, TouchableOpacity, View } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
 import {
   buildClientNotifications,
   type MobileNotification,
@@ -16,6 +15,20 @@ import {
 } from '../../src/components/ui/MobileSurface';
 import { theme } from '../../src/theme';
 import AuthWall from '../../src/components/auth/AuthWall';
+
+const getNotificationBadge = (type: MobileNotification['type']) => {
+  if (type === 'booking') {
+    return {
+      label: 'Reserva',
+      tone: 'success' as const,
+    };
+  }
+
+  return {
+    label: 'Info',
+    tone: 'neutral' as const,
+  };
+};
 
 export default function NotificationsScreen() {
   const { isAuthenticated } = useAuthSession();
@@ -53,13 +66,13 @@ export default function NotificationsScreen() {
         <ScreenHero
           eyebrow="Notificaciones"
           title="Tus alertas van en tu cuenta"
-          description="Puedes explorar sin iniciar sesion, pero las alertas de reservas, promos y recordatorios requieren una cuenta activa."
+          description="Puedes explorar sin iniciar sesion, pero las alertas de reservas y recordatorios requieren una cuenta activa."
           icon="notifications-outline"
           badges={[{ label: 'Acceso privado', tone: 'warning' }]}
         />
         <AuthWall
           title="Inicia sesion para ver alertas"
-          description="Asi podremos mostrarte recordatorios de reservas, cambios importantes y promociones relevantes para tu cuenta."
+          description="Asi podremos mostrarte recordatorios de reservas, cambios importantes y avisos relevantes para tu cuenta."
           icon="notifications-outline"
         />
       </AppScreen>
@@ -85,7 +98,7 @@ export default function NotificationsScreen() {
       <ScreenHero
         eyebrow="Notificaciones"
         title="Tus alertas como cliente"
-        description="Revisa recordatorios de reservas, promociones y novedades relevantes para tu cuenta."
+        description="Revisa recordatorios de reservas y novedades relevantes para tu cuenta."
         icon="notifications-outline"
         badges={[
           { label: `Push ${pushStatusLabel}`, tone: arePushNotificationsEnabled ? 'success' : 'warning' },
@@ -141,27 +154,28 @@ export default function NotificationsScreen() {
           <SectionCard>
             <Text className="text-base font-bold text-secondary">Todavia no tienes alertas</Text>
             <Text className="mt-2 text-sm text-gray-500">
-              Cuando confirmes una reserva o aparezca una promo relevante, la veras aqui.
+              Cuando confirmes una reserva o exista una novedad importante, la veras aqui.
             </Text>
           </SectionCard>
         ) : (
-          items.map((item) => (
-            <SectionCard key={item.id}>
-              <View className="flex-row items-start justify-between">
-                <View className="flex-1 pr-4">
-                  <Text className="text-base font-bold text-secondary">{item.title}</Text>
-                  <Text className="mt-2 text-sm text-gray-600">{item.body}</Text>
-                  <Text className="mt-3 text-xs text-gray-400">
-                    {new Date(item.createdAt).toLocaleString()}
-                  </Text>
+          items.map((item) => {
+            const badge = getNotificationBadge(item.type);
+
+            return (
+              <SectionCard key={item.id}>
+                <View className="flex-row items-start justify-between">
+                  <View className="flex-1 pr-4">
+                    <Text className="text-base font-bold text-secondary">{item.title}</Text>
+                    <Text className="mt-2 text-sm text-gray-600">{item.body}</Text>
+                    <Text className="mt-3 text-xs text-gray-400">
+                      {new Date(item.createdAt).toLocaleString()}
+                    </Text>
+                  </View>
+                  <StatusPill label={badge.label} tone={badge.tone} />
                 </View>
-                <StatusPill
-                  label={item.type === 'promo' ? 'Promo' : item.type === 'booking' ? 'Reserva' : 'Info'}
-                  tone={item.type === 'promo' ? 'primary' : item.type === 'booking' ? 'success' : 'neutral'}
-                />
-              </View>
-            </SectionCard>
-          ))
+              </SectionCard>
+            );
+          })
         )}
       </View>
     </AppScreen>

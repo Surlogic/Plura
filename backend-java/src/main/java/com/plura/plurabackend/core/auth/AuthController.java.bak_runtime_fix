@@ -527,7 +527,7 @@ public class AuthController {
                 "Necesitás verificar un challenge OTP para eliminar la cuenta."
             );
         }
-        otpChallengeService.verifyChallengeOrAllowPreviouslyVerified(
+        otpChallengeService.verifyChallenge(
             activeAuthentication.getPrincipal().toString(),
             resolveAuthenticatedSessionId(activeAuthentication),
             request.getChallengeId(),

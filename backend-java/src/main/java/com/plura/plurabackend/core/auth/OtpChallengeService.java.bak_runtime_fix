@@ -216,57 +216,6 @@ public class OtpChallengeService {
         );
     }
 
-
-    @Transactional(noRollbackFor = AuthApiException.class)
-    public void verifyChallengeOrAllowPreviouslyVerified(
-        String rawUserId,
-        String currentSessionId,
-        String rawChallengeId,
-        String rawCode,
-        OtpChallengePurpose expectedPurpose,
-        String ipAddress,
-        String userAgent
-    ) {
-        User user = loadActiveUser(rawUserId);
-        String challengeId = normalizeChallengeId(rawChallengeId);
-        String normalizedCode = normalizeSubmittedCode(rawCode);
-        LocalDateTime now = LocalDateTime.now();
-
-        AuthOtpChallenge challenge = authOtpChallengeRepository.findByIdAndUser_Id(challengeId, user.getId())
-            .orElseThrow(() -> auditFailure(
-                user,
-                currentSessionId,
-                ipAddress,
-                userAgent,
-                HttpStatus.BAD_REQUEST,
-                "CHALLENGE_INVALID",
-                "Challenge inválido."
-            ));
-
-        if (expectedPurpose != null && challenge.getPurpose() != expectedPurpose) {
-            throw auditFailure(user, currentSessionId, ipAddress, userAgent, HttpStatus.BAD_REQUEST, "CHALLENGE_INVALID", "Challenge inválido.");
-        }
-        if (challenge.getSessionId() != null && !challenge.getSessionId().isBlank()
-            && (currentSessionId == null || !challenge.getSessionId().equals(currentSessionId))) {
-            throw auditFailure(user, currentSessionId, ipAddress, userAgent, HttpStatus.BAD_REQUEST, "CHALLENGE_INVALID", "Challenge inválido.");
-        }
-
-        if (challenge.getConsumedAt() == null) {
-            verifyChallenge(rawUserId, currentSessionId, rawChallengeId, rawCode, expectedPurpose, ipAddress, userAgent);
-            return;
-        }
-
-        if (hasAttemptsExceeded(challenge)) {
-            throw auditFailure(user, currentSessionId, ipAddress, userAgent, HttpStatus.BAD_REQUEST, "ATTEMPTS_EXCEEDED", "Superaste la cantidad máxima de intentos. Solicitá un nuevo código.");
-        }
-        if (challenge.getExpiresAt().isBefore(now)) {
-            throw auditFailure(user, currentSessionId, ipAddress, userAgent, HttpStatus.BAD_REQUEST, "CHALLENGE_EXPIRED", "Challenge expirado.");
-        }
-        if (!hashCode(normalizedCode).equals(challenge.getCodeHash())) {
-            throw auditFailure(user, currentSessionId, ipAddress, userAgent, HttpStatus.BAD_REQUEST, "CHALLENGE_INVALID", "Challenge inválido.");
-        }
-    }
-
     private User loadActiveUser(String rawUserId) {
         Long userId;
         try {

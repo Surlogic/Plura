@@ -16,11 +16,7 @@ export const useClientNotificationPreview = ({
   const { refreshToken } = useClientNotificationsRefresh();
 
   const fetchFn = useCallback(
-    (params: { page: number; size: number }) =>
-      listClientNotifications({
-        ...params,
-        status: 'UNREAD',
-      }),
+    (params: { page: number; size: number }) => listClientNotifications(params),
     [],
   );
 

@@ -16,11 +16,7 @@ export const useProfessionalNotificationPreview = ({
   const { refreshToken } = useProfessionalNotificationsRefresh();
 
   const fetchFn = useCallback(
-    (params: { page: number; size: number }) =>
-      listProfessionalNotifications({
-        ...params,
-        status: 'UNREAD',
-      }),
+    (params: { page: number; size: number }) => listProfessionalNotifications(params),
     [],
   );
 

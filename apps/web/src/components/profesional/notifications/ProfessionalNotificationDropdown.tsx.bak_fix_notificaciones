@@ -59,9 +59,11 @@ export default function ProfessionalNotificationDropdown({
     >
       <div className="flex items-center justify-between border-b border-[color:var(--border-soft)] px-4 py-3.5">
         <div>
-          <p className="text-sm font-semibold text-[color:var(--ink)]">Notificaciones sin leer</p>
+          <p className="text-sm font-semibold text-[color:var(--ink)]">Notificaciones</p>
           <p className="mt-0.5 text-xs text-[color:var(--ink-muted)]">
-            {unreadCount > 0 ? `${unreadCount} sin leer` : 'Sin pendientes por revisar'}
+            {unreadCount > 0
+              ? `${unreadCount} sin leer`
+              : 'Sin pendientes por revisar'}
           </p>
         </div>
         <button
@@ -182,9 +184,9 @@ export default function ProfessionalNotificationDropdown({
 
       <div className="flex items-center justify-between border-t border-[color:var(--border-soft)] bg-[color:var(--surface-soft)]/75 px-4 py-3">
         <p className="text-xs text-[color:var(--ink-muted)]">
-          {total > 0
-            ? `Mostrando hasta ${items.length} notificaciones sin leer.`
-            : 'No hay notificaciones sin leer en este momento.'}
+          {total > items.length
+            ? `Mostrando ${items.length} de ${total} eventos`
+            : `${items.length} eventos recientes`}
         </p>
         <Button type="button" size="sm" variant="secondary" onClick={onViewAll}>
           Ver inbox

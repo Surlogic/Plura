@@ -104,6 +104,7 @@ const attachAuthHeader = (
   }
   if (config.headers instanceof AxiosHeaders) {
     config.headers.set(CLIENT_PLATFORM_HEADER, 'WEB');
+    config.headers.set('ngrok-skip-browser-warning', '1');
     if (isAuthRoute(config.url)) {
       config.headers.set(SESSION_TRANSPORT_HEADER, 'COOKIE');
     }
@@ -111,6 +112,7 @@ const attachAuthHeader = (
     config.headers = AxiosHeaders.from({
       ...(config.headers as AxiosRequestHeaders | undefined),
       [CLIENT_PLATFORM_HEADER]: 'WEB',
+      'ngrok-skip-browser-warning': '1',
       ...(isAuthRoute(config.url) ? { [SESSION_TRANSPORT_HEADER]: 'COOKIE' } : {}),
     });
   }

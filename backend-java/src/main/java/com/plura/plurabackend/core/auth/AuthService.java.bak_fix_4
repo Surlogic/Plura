@@ -86,10 +86,6 @@ public class AuthService {
     );
     private static final String CLIENT_ACCOUNT_EXISTS_FOR_PROFESSIONAL_MESSAGE =
         "Existe una cuenta como cliente con este email. Creá una nueva para profesional o eliminá la cuenta de cliente antes de continuar.";
-    private static final String CLIENT_ACCOUNT_LOGIN_MISMATCH_MESSAGE =
-        "Esta cuenta es de cliente. Iniciá sesión desde el acceso de clientes.";
-    private static final String PROFESSIONAL_ACCOUNT_LOGIN_MISMATCH_MESSAGE =
-        "Esta cuenta es profesional. Iniciá sesión desde el acceso profesional.";
     private static final String CLIENT_ACCOUNT_EXISTS_MESSAGE =
         "Ya existe una cuenta cliente con este email. Iniciá sesión o recuperá tu contraseña si la olvidaste.";
     private static final String PROFESSIONAL_ACCOUNT_EXISTS_MESSAGE =
@@ -241,7 +237,7 @@ public class AuthService {
         }
 
         if (!isProfessionalUser(user)) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, CLIENT_ACCOUNT_LOGIN_MISMATCH_MESSAGE);
+            throw new ResponseStatusException(HttpStatus.CONFLICT, CLIENT_ACCOUNT_EXISTS_FOR_PROFESSIONAL_MESSAGE);
         }
         if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Credenciales inválidas");
@@ -260,7 +256,7 @@ public class AuthService {
         }
 
         if (!isClientUser(user)) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, PROFESSIONAL_ACCOUNT_LOGIN_MISMATCH_MESSAGE);
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Credenciales inválidas");
         }
         if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Credenciales inválidas");
@@ -1109,3 +1105,4 @@ public class AuthService {
         ).thenComparing(Category::getName);
     }
 }
+

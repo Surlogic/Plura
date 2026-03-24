@@ -334,9 +334,7 @@ export default function ProfesionalDetailPage({
 
   useEffect(() => {
     if (!slug || isPreview) return;
-    // Skip fetch if we already have server-rendered data for this slug
-    if (data && (data as PublicProfessional).slug === slug) return;
-    setIsLoading(true);
+    if (!data) setIsLoading(true);
     setErrorMessage(null);
 
     getPublicProfessionalBySlug(slug)
@@ -1232,11 +1230,7 @@ export const getServerSideProps: GetServerSideProps = async (context) => {
     return { props: { initialData: null } };
   }
 
-  // Cache public profiles at the CDN/browser level (60s fresh, stale-while-revalidate for 5min)
-  context.res.setHeader(
-    'Cache-Control',
-    'public, s-maxage=60, stale-while-revalidate=300',
-  );
+  context.res.setHeader('Cache-Control', 'no-store');
 
   try {
     const professional = await getPublicProfessionalBySlug(slug);

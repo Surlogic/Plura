@@ -1,5 +1,6 @@
 package com.plura.plurabackend.professional.application;
 
+import com.plura.plurabackend.core.storage.ImageCleanupService;
 import com.plura.plurabackend.core.booking.model.ServicePaymentType;
 import com.plura.plurabackend.core.category.model.Category;
 import com.plura.plurabackend.core.category.repository.CategoryRepository;
@@ -25,19 +26,22 @@ public class ProfileServiceCatalogSupport {
     private final ProfessionalSideEffectCoordinator sideEffectCoordinator;
     private final CategoryRepository categoryRepository;
     private final PlanGuardService planGuardService;
+    private final ImageCleanupService imageCleanupService;
 
     public ProfileServiceCatalogSupport(
         ProfesionalServiceRepository profesionalServiceRepository,
         ProfilePublicPageAssembler profilePublicPageAssembler,
         ProfessionalSideEffectCoordinator sideEffectCoordinator,
         CategoryRepository categoryRepository,
-        PlanGuardService planGuardService
+        PlanGuardService planGuardService,
+        ImageCleanupService imageCleanupService
     ) {
         this.profesionalServiceRepository = profesionalServiceRepository;
         this.profilePublicPageAssembler = profilePublicPageAssembler;
         this.sideEffectCoordinator = sideEffectCoordinator;
         this.categoryRepository = categoryRepository;
         this.planGuardService = planGuardService;
+        this.imageCleanupService = imageCleanupService;
     }
 
     public List<ProfesionalServiceResponse> listServices(ProfessionalProfile profile) {
@@ -114,6 +118,7 @@ public class ProfileServiceCatalogSupport {
         if (request.getCategorySlug() != null) {
             service.setCategory(resolveRequestedCategory(request.getCategorySlug()));
         }
+        String oldImageUrl = service.getImageUrl();
         if (request.getImageUrl() != null) {
             service.setImageUrl(normalizeOptional(request.getImageUrl()));
         }
@@ -130,6 +135,11 @@ public class ProfileServiceCatalogSupport {
 
         ProfesionalService saved = profesionalServiceRepository.save(service);
         sideEffectCoordinator.onServiceCatalogChanged(profile, 30);
+
+        if (request.getImageUrl() != null) {
+            imageCleanupService.deleteIfChanged(oldImageUrl, saved.getImageUrl());
+        }
+
         return profilePublicPageAssembler.toServiceResponse(saved);
     }
 
@@ -138,8 +148,11 @@ public class ProfileServiceCatalogSupport {
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Servicio no encontrado"));
         ensureOwnedBy(profile, service);
 
+        String imageUrl = service.getImageUrl();
         profesionalServiceRepository.delete(service);
         sideEffectCoordinator.onServiceCatalogChanged(profile, 30);
+
+        imageCleanupService.deleteIfRemoved(imageUrl);
     }
 
     private void ensureOwnedBy(ProfessionalProfile profile, ProfesionalService service) {

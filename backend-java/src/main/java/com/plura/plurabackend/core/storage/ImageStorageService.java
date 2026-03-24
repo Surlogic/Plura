@@ -11,6 +11,10 @@ public interface ImageStorageService {
         return generateUploadUrl(objectKey);
     }
 
+    default boolean deleteImage(String objectKeyOrUrl) {
+        return false;
+    }
+
     default String resolvePublicUrl(String urlOrStorageKey) {
         if (urlOrStorageKey == null || urlOrStorageKey.isBlank()) {
             return urlOrStorageKey;

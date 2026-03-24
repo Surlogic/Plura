@@ -9,6 +9,7 @@ import java.util.Arrays;
 import java.util.Locale;
 import java.util.Set;
 import java.util.stream.Collectors;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
 import org.springframework.stereotype.Service;
@@ -18,6 +19,7 @@ import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.S3Configuration;
+import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 import software.amazon.awssdk.services.s3.presigner.model.PresignedPutObjectRequest;
@@ -184,6 +186,55 @@ public class CloudflareR2ImageStorageService implements ImageStorageService {
                     .register(meterRegistry)
             );
         }
+    }
+
+    @Override
+    public boolean deleteImage(String objectKeyOrUrl) {
+        if (objectKeyOrUrl == null || objectKeyOrUrl.isBlank()) {
+            return false;
+        }
+        try {
+            String key = extractDeletableKey(objectKeyOrUrl);
+            if (key.isBlank() || key.equals("missing")) {
+                return false;
+            }
+            DeleteObjectRequest deleteRequest = DeleteObjectRequest.builder()
+                .bucket(bucket)
+                .key(key)
+                .build();
+            s3Client.deleteObject(deleteRequest);
+            return true;
+        } catch (RuntimeException exception) {
+            markR2Error("delete_image");
+            LoggerFactory.getLogger(getClass()).warn("No se pudo eliminar imagen R2: {}", objectKeyOrUrl, exception);
+            return false;
+        }
+    }
+
+    private String extractDeletableKey(String urlOrKey) {
+        String value = urlOrKey.trim();
+        if (value.startsWith("r2://")) {
+            String withoutScheme = value.substring("r2://".length()).replaceFirst("^/+", "");
+            int slash = withoutScheme.indexOf('/');
+            if (slash > 0 && withoutScheme.substring(0, slash).equals(bucket)) {
+                return normalizeObjectKey(withoutScheme.substring(slash + 1));
+            }
+            return normalizeObjectKey(withoutScheme);
+        }
+        if (value.startsWith("r2:")) {
+            return normalizeObjectKey(value.substring("r2:".length()).replaceFirst("^/+", ""));
+        }
+        if (value.startsWith("http://") || value.startsWith("https://")) {
+            String baseToCheck = !publicBaseUrl.isBlank() ? publicBaseUrl : endpoint + "/" + bucket;
+            if (value.startsWith(baseToCheck + "/")) {
+                return normalizeObjectKey(value.substring(baseToCheck.length() + 1));
+            }
+            return "";
+        }
+        if (value.startsWith("/")) {
+            return "";
+        }
+        return normalizeObjectKey(value);
     }
 
     private void validateUploadRequest(String contentType, long contentLength) {

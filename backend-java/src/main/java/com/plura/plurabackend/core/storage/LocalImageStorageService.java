@@ -121,6 +121,61 @@ public class LocalImageStorageService implements ImageStorageService {
         }
     }
 
+    @Override
+    public boolean deleteImage(String objectKeyOrUrl) {
+        if (objectKeyOrUrl == null || objectKeyOrUrl.isBlank()) {
+            return false;
+        }
+        try {
+            String key = extractStorageKey(objectKeyOrUrl);
+            if (key.isBlank() || key.equals("missing")) {
+                return false;
+            }
+            Path targetFile = localBaseDir.resolve(key).normalize();
+            if (!targetFile.startsWith(localBaseDir)) {
+                LOGGER.warn("Intento de borrar ruta fuera del directorio base: {}", objectKeyOrUrl);
+                return false;
+            }
+            boolean deleted = Files.deleteIfExists(targetFile);
+            if (deleted) {
+                LOGGER.info("Imagen local eliminada: {}", key);
+            }
+            return deleted;
+        } catch (Exception exception) {
+            LOGGER.warn("No se pudo eliminar imagen local: {}", objectKeyOrUrl, exception);
+            return false;
+        }
+    }
+
+    private String extractStorageKey(String urlOrKey) {
+        String value = urlOrKey.trim();
+        if (value.startsWith("r2://")) {
+            String withoutScheme = value.substring("r2://".length()).replaceFirst("^/+", "");
+            int slash = withoutScheme.indexOf('/');
+            return slash >= 0 ? sanitizeKey(withoutScheme.substring(slash + 1)) : sanitizeKey(withoutScheme);
+        }
+        if (value.startsWith("r2:")) {
+            return sanitizeKey(value.substring("r2:".length()).replaceFirst("^/+", ""));
+        }
+        if (value.startsWith(publicBaseUrl + "/")) {
+            return sanitizeKey(value.substring(publicBaseUrl.length() + 1));
+        }
+        if (value.startsWith("/uploads/")) {
+            return sanitizeKey(value.substring("/uploads/".length()));
+        }
+        if (value.startsWith("http://") || value.startsWith("https://")) {
+            int pathStart = value.indexOf('/', value.indexOf("://") + 3);
+            if (pathStart >= 0) {
+                String path = value.substring(pathStart + 1);
+                if (path.startsWith("uploads/")) {
+                    return sanitizeKey(path.substring("uploads/".length()));
+                }
+            }
+            return "";
+        }
+        return sanitizeKey(value);
+    }
+
     private String sanitizeKey(String objectKey) {
         if (objectKey == null || objectKey.isBlank()) {
             return "missing";

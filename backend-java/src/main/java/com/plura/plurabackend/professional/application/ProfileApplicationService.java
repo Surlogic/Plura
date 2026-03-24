@@ -1,5 +1,6 @@
 package com.plura.plurabackend.professional.application;
 
+import com.plura.plurabackend.core.storage.ImageCleanupService;
 import com.plura.plurabackend.core.cache.ProfileCacheService;
 import com.plura.plurabackend.core.booking.dto.BookingPolicyResponse;
 import com.plura.plurabackend.core.booking.dto.BookingPolicyUpdateRequest;
@@ -47,6 +48,7 @@ public class ProfileApplicationService {
     private final UserRepository userRepository;
     private final PlanGuardService planGuardService;
     private final ImageThumbnailJobService imageThumbnailJobService;
+    private final ImageCleanupService imageCleanupService;
     private final ProfileCacheService profileCacheService;
     private final ProfessionalAccessSupport professionalAccessSupport;
     private final ProfessionalSideEffectCoordinator sideEffectCoordinator;
@@ -63,6 +65,7 @@ public class ProfileApplicationService {
         UserRepository userRepository,
         PlanGuardService planGuardService,
         ImageThumbnailJobService imageThumbnailJobService,
+        ImageCleanupService imageCleanupService,
         ProfileCacheService profileCacheService,
         ProfessionalAccessSupport professionalAccessSupport,
         ProfessionalSideEffectCoordinator sideEffectCoordinator,
@@ -78,6 +81,7 @@ public class ProfileApplicationService {
         this.userRepository = userRepository;
         this.planGuardService = planGuardService;
         this.imageThumbnailJobService = imageThumbnailJobService;
+        this.imageCleanupService = imageCleanupService;
         this.profileCacheService = profileCacheService;
         this.professionalAccessSupport = professionalAccessSupport;
         this.sideEffectCoordinator = sideEffectCoordinator;
@@ -197,7 +201,9 @@ public class ProfileApplicationService {
         if (request.getAbout() != null) {
             profile.setPublicAbout(request.getAbout().trim());
         }
+        List<String> oldPhotos = null;
         if (request.getPhotos() != null) {
+            oldPhotos = new ArrayList<>(profile.getPublicPhotos());
             List<String> cleaned = request.getPhotos().stream()
                 .map(photo -> photo == null ? "" : photo.trim())
                 .filter(photo -> !photo.isBlank())
@@ -220,6 +226,12 @@ public class ProfileApplicationService {
         professionalAccessSupport.ensureSlug(profile);
         profile = professionalProfileRepository.save(profile);
         sideEffectCoordinator.onProfileChanged(profile);
+
+        if (oldPhotos != null) {
+            List<String> finalPhotos = new ArrayList<>(profile.getPublicPhotos());
+            imageCleanupService.deleteRemovedFromList(oldPhotos, finalPhotos);
+        }
+
         return profilePublicPageAssembler.toPublicPage(profile);
     }
 
@@ -328,6 +340,9 @@ public class ProfileApplicationService {
             profile.setLongitude(nextLongitude);
         }
 
+        String oldLogoUrl = profile.getLogoUrl();
+        String oldBannerUrl = profile.getBannerUrl();
+
         if (request.getLogoUrl() != null) {
             String logoUrl = request.getLogoUrl().trim();
             profile.setLogoUrl(logoUrl.isBlank() ? null : logoUrl);
@@ -362,6 +377,13 @@ public class ProfileApplicationService {
         profile = professionalProfileRepository.save(profile);
         professionalProfileRepository.updateCoordinates(profile.getId(), profile.getLatitude(), profile.getLongitude());
         sideEffectCoordinator.onProfileChanged(profile);
+
+        if (request.getLogoUrl() != null) {
+            imageCleanupService.deleteIfChanged(oldLogoUrl, profile.getLogoUrl());
+        }
+        if (request.getBannerUrl() != null) {
+            imageCleanupService.deleteIfChanged(oldBannerUrl, profile.getBannerUrl());
+        }
     }
 
     public BookingPolicyResponse getBookingPolicy(String rawUserId) {

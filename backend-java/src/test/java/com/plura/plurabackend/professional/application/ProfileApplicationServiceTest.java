@@ -6,6 +6,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 
+import com.plura.plurabackend.core.storage.ImageCleanupService;
 import com.plura.plurabackend.core.cache.ProfileCacheService;
 import com.plura.plurabackend.professional.profile.ProfessionalCategorySupport;
 import com.plura.plurabackend.professional.dto.ProfesionalBusinessProfileUpdateRequest;
@@ -51,6 +52,7 @@ class ProfileApplicationServiceTest {
             mock(UserRepository.class),
             planGuardService,
             mock(ImageThumbnailJobService.class),
+            mock(ImageCleanupService.class),
             mock(ProfileCacheService.class),
             professionalAccessSupport,
             mock(ProfessionalSideEffectCoordinator.class),
@@ -105,6 +107,7 @@ class ProfileApplicationServiceTest {
             mock(UserRepository.class),
             planGuardService,
             mock(ImageThumbnailJobService.class),
+            mock(ImageCleanupService.class),
             mock(ProfileCacheService.class),
             professionalAccessSupport,
             mock(ProfessionalSideEffectCoordinator.class),
@@ -148,6 +151,7 @@ class ProfileApplicationServiceTest {
             mock(UserRepository.class),
             planGuardService,
             mock(ImageThumbnailJobService.class),
+            mock(ImageCleanupService.class),
             mock(ProfileCacheService.class),
             professionalAccessSupport,
             mock(ProfessionalSideEffectCoordinator.class),
@@ -199,6 +203,7 @@ class ProfileApplicationServiceTest {
             userRepository,
             planGuardService,
             mock(ImageThumbnailJobService.class),
+            mock(ImageCleanupService.class),
             mock(ProfileCacheService.class),
             professionalAccessSupport,
             mock(ProfessionalSideEffectCoordinator.class),

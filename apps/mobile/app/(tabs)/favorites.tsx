@@ -16,6 +16,7 @@ import { useProfessionalProfileContext } from '../../src/context/ProfessionalPro
 import { getCategoryAccent } from '../../src/features/client/categoryUi';
 import { AppScreen } from '../../src/components/ui/AppScreen';
 import { theme } from '../../src/theme';
+import AuthWall from '../../src/components/auth/AuthWall';
 import {
   ActionButton,
   EmptyState,
@@ -25,13 +26,15 @@ import {
 } from '../../src/components/ui/MobileSurface';
 
 export default function FavoritesScreen() {
-  const { role, clientProfile } = useProfessionalProfileContext();
+  const { role, clientProfile, isAuthenticated } = useProfessionalProfileContext();
   const [loading, setLoading] = useState(true);
   const [favorites, setFavorites] = useState<string[]>([]);
   const [professionals, setProfessionals] = useState<PublicProfessionalSummary[]>([]);
 
   useEffect(() => {
-    if (role === 'professional') {
+    if (role === 'professional' || !isAuthenticated) {
+      setFavorites([]);
+      setProfessionals([]);
       setLoading(false);
       return;
     }
@@ -60,15 +63,15 @@ export default function FavoritesScreen() {
     return () => {
       isCancelled = true;
     };
-  }, [role]);
+  }, [role, isAuthenticated]);
 
   useEffect(() => {
-    if (role === 'professional') return undefined;
+    if (role === 'professional' || !isAuthenticated) return undefined;
     const unsubscribe = subscribeFavoriteProfessionalSlugs((next) => {
       setFavorites(next);
     });
     return unsubscribe;
-  }, [role]);
+  }, [role, isAuthenticated]);
 
   const favoriteItems = useMemo(
     () => professionals.filter((item) => favorites.includes(item.slug)),
@@ -77,6 +80,24 @@ export default function FavoritesScreen() {
 
   if (role === 'professional') {
     return <Redirect href="/dashboard/services" />;
+  }
+
+  if (!isAuthenticated) {
+    return (
+      <AppScreen scroll edges={['top']} contentContainerStyle={{ padding: 24, paddingBottom: 120 }}>
+        <ScreenHero
+          eyebrow="Favoritos"
+          title="Guarda tus profesionales preferidos"
+          description="Tus favoritos viven en tu cuenta. Inicia sesion para guardar perfiles y volver mas rapido cuando quieras reservar."
+          icon="heart-outline"
+        />
+        <AuthWall
+          title="Necesitas iniciar sesion"
+          description="Guarda tus profesionales preferidos, sincroniza tu lista entre dispositivos y entra mas rapido a los perfiles que mas usas."
+          icon="heart-outline"
+        />
+      </AppScreen>
+    );
   }
 
   return (

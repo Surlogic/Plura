@@ -9,6 +9,7 @@ import {
   View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { Redirect } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import {
   cancelClientBooking,
@@ -21,8 +22,8 @@ import {
 import { getPublicSlots } from '../../src/services/publicBookings';
 import { getApiErrorMessage } from '../../src/services/errors';
 import { useProfessionalProfileContext } from '../../src/context/ProfessionalProfileContext';
-import BusinessProfileScreen from '../dashboard/business-profile';
 import { theme } from '../../src/theme';
+import AuthWall from '../../src/components/auth/AuthWall';
 import { openMercadoPagoInAppBrowser } from '../../src/services/mercadoPagoBrowser';
 import { AppScreen } from '../../src/components/ui/AppScreen';
 import {
@@ -170,7 +171,7 @@ function BookingListCard({ booking, isSelected, onPress }: BookingListCardProps)
 }
 
 export default function ClientBookingsScreen() {
-  const { role, profile, clientProfile } = useProfessionalProfileContext();
+  const { role, clientProfile, isAuthenticated } = useProfessionalProfileContext();
   const [bookings, setBookings] = useState<ClientDashboardBooking[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -186,7 +187,9 @@ export default function ClientBookingsScreen() {
   const [cancelReason, setCancelReason] = useState('');
 
   const loadBookings = async () => {
-    if (role === 'professional') {
+    if (role === 'professional' || !isAuthenticated) {
+      setBookings([]);
+      setSelectedBookingId(null);
       setIsLoading(false);
       return;
     }
@@ -210,18 +213,18 @@ export default function ClientBookingsScreen() {
 
   useEffect(() => {
     void loadBookings();
-  }, [role]);
+  }, [role, isAuthenticated]);
 
   useEffect(() => {
     const subscription = AppState.addEventListener('change', (nextState) => {
-      if (nextState !== 'active' || role === 'professional') return;
+      if (nextState !== 'active' || role === 'professional' || !isAuthenticated) return;
       void loadBookings();
     });
 
     return () => {
       subscription.remove();
     };
-  }, [role]);
+  }, [role, isAuthenticated]);
 
   const selectedBooking = useMemo(
     () => bookings.find((booking) => booking.id === selectedBookingId) ?? null,
@@ -297,8 +300,27 @@ export default function ClientBookingsScreen() {
     ).length,
   }), [bookings, upcomingBookings.length]);
 
-  if (role === 'professional' && profile) {
-    return <BusinessProfileScreen />;
+  if (role === 'professional') {
+    return <Redirect href="/dashboard/business-profile" />;
+  }
+
+  if (!isAuthenticated) {
+    return (
+      <AppScreen scroll edges={['top']} contentContainerStyle={{ paddingTop: 24, paddingBottom: 120 }}>
+        <ScreenHero
+          eyebrow="Reservas"
+          title="Tus reservas viven en tu cuenta"
+          description="Puedes explorar profesionales sin iniciar sesion, pero para ver tus reservas, pagos y cambios necesitas acceder con tu cuenta."
+          icon="calendar-outline"
+          badges={[{ label: 'Acceso privado', tone: 'warning' }]}
+        />
+        <AuthWall
+          title="Inicia sesion para revisar tus reservas"
+          description="Desde aqui podras ver proximos turnos, pagos pendientes, cancelaciones y reagendamientos asociados a tu cuenta."
+          icon="calendar-outline"
+        />
+      </AppScreen>
+    );
   }
 
   const handleCancel = async () => {

@@ -1,14 +1,12 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Alert, ScrollView, Text, TouchableOpacity, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { router } from 'expo-router';
+import { Redirect, router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { listPublicProfessionals, type PublicProfessionalSummary } from '../../src/services/publicBookings';
 import { getClientNextBooking, type ClientNextBooking } from '../../src/services/clientFeatures';
 import { getApiErrorMessage } from '../../src/services/errors';
 import { useProfessionalProfileContext } from '../../src/context/ProfessionalProfileContext';
-import { ProfessionalHomeTab } from '../../src/features/professional/ProfessionalHomeTab';
 import { listCategories } from '../../src/services/categories';
 import type { ServiceCategoryOption } from '../../src/types/professional';
 import { getCategoryAccent } from '../../src/features/client/categoryUi';
@@ -27,7 +25,7 @@ import {
 } from '../../src/components/ui/MobileSurface';
 
 export default function HomeScreen() {
-  const { role, profile, clientProfile } = useProfessionalProfileContext();
+  const { role, clientProfile, isAuthenticated } = useProfessionalProfileContext();
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [businesses, setBusinesses] = useState<PublicProfessionalSummary[]>([]);
@@ -60,7 +58,7 @@ export default function HomeScreen() {
       try {
         const [professionals, upcoming, categoryItems] = await Promise.all([
           listPublicProfessionals(),
-          getClientNextBooking().catch(() => null),
+          isAuthenticated ? getClientNextBooking().catch(() => null) : Promise.resolve(null),
           listCategories().catch(() => []),
         ]);
 
@@ -83,13 +81,13 @@ export default function HomeScreen() {
     return () => {
       isCancelled = true;
     };
-  }, [role]);
+  }, [role, isAuthenticated]);
 
   const topBusinesses = useMemo(() => businesses.slice(0, 6), [businesses]);
-  const displayName = clientProfile?.fullName?.trim() || 'Cliente';
+  const displayName = clientProfile?.fullName?.trim() || 'Explora Plura';
   const locationLabel = location.label || 'tu zona';
   const shouldShowPushPrompt =
-    role !== 'professional' && !arePushNotificationsEnabled;
+    isAuthenticated && role !== 'professional' && !arePushNotificationsEnabled;
 
   const handleOpenNearby = async () => {
     const nextLocation = hasCoordinates
@@ -120,21 +118,23 @@ export default function HomeScreen() {
     });
   };
 
-  if (role === 'professional' && profile) {
-    return <ProfessionalHomeTab />;
+  if (role === 'professional') {
+    return <Redirect href="/dashboard" />;
   }
 
   return (
     <AppScreen scroll contentContainerStyle={{ paddingBottom: 40 }}>
         <View className="px-6 pt-6 pb-4">
           <ScreenHero
-            eyebrow="Inicio cliente"
-            title={`Hola, ${displayName}`}
-            description="Descubre rubros, retoma tu proxima reserva y encuentra profesionales activos con una interfaz mucho mas clara."
+            eyebrow={isAuthenticated ? 'Inicio cliente' : 'Explorar en mobile'}
+            title={isAuthenticated ? `Hola, ${displayName}` : 'Encuentra servicios y profesionales'}
+            description={isAuthenticated
+              ? 'Descubre rubros, retoma tu proxima reserva y encuentra profesionales activos con una interfaz mucho mas clara.'
+              : 'Explora rubros, perfiles publicos y disponibilidad antes de iniciar sesion. Cuando quieras guardar favoritos o ver tus reservas, te pediremos acceso.'}
             icon="sparkles-outline"
             badges={[
               { label: hasCoordinates ? locationLabel : 'Ubicacion pendiente', tone: hasCoordinates ? 'light' : 'warning' },
-              { label: arePushNotificationsEnabled ? 'Alertas activas' : 'Alertas pendientes', tone: 'light' },
+              { label: isAuthenticated ? (arePushNotificationsEnabled ? 'Alertas activas' : 'Alertas pendientes') : 'Acceso publico', tone: 'light' },
             ]}
             primaryAction={{
               label: 'Explorar',
@@ -142,8 +142,8 @@ export default function HomeScreen() {
               tone: 'secondary',
             }}
             secondaryAction={{
-              label: 'Alertas',
-              onPress: () => router.push('/(tabs)/notifications'),
+              label: isAuthenticated ? 'Alertas' : 'Ingresar',
+              onPress: () => router.push(isAuthenticated ? '/(tabs)/notifications' : '/(auth)/login'),
               tone: 'light',
             }}
           />
@@ -292,19 +292,23 @@ export default function HomeScreen() {
               Proxima reserva
             </Text>
             <Text className="mt-2 text-2xl font-bold text-white">
-              {nextBooking ? 'Tu proximo turno' : 'Todavia no tienes una reserva activa'}
+              {isAuthenticated
+                ? (nextBooking ? 'Tu proximo turno' : 'Todavia no tienes una reserva activa')
+                : 'Explora antes de ingresar'}
             </Text>
             <Text className="mt-2 text-sm text-white/80">
-              {nextBooking
-                ? `${nextBooking.service} con ${nextBooking.professional} - ${nextBooking.date} ${nextBooking.time}`
-                : 'Explora rubros y encuentra profesionales disponibles para reservar desde mobile.'}
+              {isAuthenticated
+                ? (nextBooking
+                    ? `${nextBooking.service} con ${nextBooking.professional} - ${nextBooking.date} ${nextBooking.time}`
+                    : 'Explora rubros y encuentra profesionales disponibles para reservar desde mobile.')
+                : 'Puedes buscar profesionales, ver perfiles publicos y luego iniciar sesion para guardar favoritos, revisar reservas y recibir alertas.'}
             </Text>
             <TouchableOpacity
               className="mt-4 self-start rounded-full bg-white px-5 py-2.5"
-              onPress={() => router.push(nextBooking ? '/(tabs)/bookings' : '/(tabs)/explore')}
+              onPress={() => router.push(isAuthenticated ? (nextBooking ? '/(tabs)/bookings' : '/(tabs)/explore') : '/(tabs)/explore')}
             >
               <Text className="text-sm font-bold text-secondary">
-                {nextBooking ? 'Ver reservas' : 'Explorar ahora'}
+                {isAuthenticated ? (nextBooking ? 'Ver reservas' : 'Explorar ahora') : 'Explorar ahora'}
               </Text>
             </TouchableOpacity>
           </LinearGradient>

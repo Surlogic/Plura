@@ -47,14 +47,6 @@ export const getProfessionalAppFeedbackMine = async (
   return response.data;
 };
 
-export const deleteClientAppFeedback = async (feedbackId: number): Promise<void> => {
-  await api.delete(`/cliente/app-feedback/${feedbackId}`);
-};
-
-export const deleteProfessionalAppFeedback = async (feedbackId: number): Promise<void> => {
-  await api.delete(`/profesional/app-feedback/${feedbackId}`);
-};
-
 export const getPublicAppFeedback = async (
   limit = 6,
 ): Promise<PublicAppFeedbackItem[]> => {

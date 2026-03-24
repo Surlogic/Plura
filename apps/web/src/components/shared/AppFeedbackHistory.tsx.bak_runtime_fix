@@ -88,9 +88,9 @@ export default function AppFeedbackHistory({ fetchFeedback }: Props) {
         if (!prev) return prev;
 
         const nextContent = prev.content.filter((item: AppFeedbackResponse) => item.id !== feedbackId);
-        const nextTotalElements = Math.max(0, (prev.totalElements ?? prev.content.length) - 1);
-        const nextTotalPages =
-          nextTotalElements === 0 ? 0 : Math.ceil(nextTotalElements / PAGE_SIZE);
+        const nextTotalElements = Math.max(0, (prev.totalElements ?? nextContent.length) - 1);
+        const size = prev.size || PAGE_SIZE;
+        const nextTotalPages = nextTotalElements === 0 ? 0 : Math.ceil(nextTotalElements / size);
 
         return {
           ...prev,

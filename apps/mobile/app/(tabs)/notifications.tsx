@@ -16,9 +16,10 @@ import {
   StatusPill,
 } from '../../src/components/ui/MobileSurface';
 import { theme } from '../../src/theme';
+import AuthWall from '../../src/components/auth/AuthWall';
 
 export default function NotificationsScreen() {
-  const { role } = useProfessionalProfileContext();
+  const { role, isAuthenticated } = useProfessionalProfileContext();
   const [isLoading, setIsLoading] = useState(true);
   const [items, setItems] = useState<MobileNotification[]>([]);
   const {
@@ -31,6 +32,12 @@ export default function NotificationsScreen() {
   } = usePushNotifications();
 
   useEffect(() => {
+    if (!isAuthenticated) {
+      setItems([]);
+      setIsLoading(false);
+      return;
+    }
+
     const load = async () => {
       setIsLoading(true);
       const notifications = await buildClientNotifications();
@@ -39,10 +46,29 @@ export default function NotificationsScreen() {
     };
 
     void load();
-  }, []);
+  }, [isAuthenticated]);
 
   if (role === 'professional') {
     return <Redirect href="/dashboard/notifications" />;
+  }
+
+  if (!isAuthenticated) {
+    return (
+      <AppScreen scroll edges={['top']} contentContainerStyle={{ paddingTop: 24, paddingBottom: 120 }}>
+        <ScreenHero
+          eyebrow="Notificaciones"
+          title="Tus alertas van en tu cuenta"
+          description="Puedes explorar sin iniciar sesion, pero las alertas de reservas, promos y recordatorios requieren una cuenta activa."
+          icon="notifications-outline"
+          badges={[{ label: 'Acceso privado', tone: 'warning' }]}
+        />
+        <AuthWall
+          title="Inicia sesion para ver alertas"
+          description="Asi podremos mostrarte recordatorios de reservas, cambios importantes y promociones relevantes para tu cuenta."
+          icon="notifications-outline"
+        />
+      </AppScreen>
+    );
   }
 
   const openDeviceSettings = async () => {

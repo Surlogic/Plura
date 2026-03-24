@@ -13,6 +13,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -44,14 +45,15 @@ public class AppFeedbackService {
         String text = normalizeText(request.getText());
         feedback.setText(text);
 
-        String contextSource = normalizeNullable(request.getContextSource());
+        String contextSource = normalizeText(request.getContextSource());
         feedback.setContextSource(contextSource);
 
-        if (request.getCategory() != null && !request.getCategory().isBlank()) {
+        if (request.getCategory() != null) {
             try {
                 feedback.setCategory(FeedbackCategory.valueOf(request.getCategory().trim().toUpperCase()));
-            } catch (IllegalArgumentException ex) {
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Categoria invalida: " + request.getCategory());
+            } catch (IllegalArgumentException e) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Categoría inválida. Valores permitidos: BUG, UX, PAYMENTS, BOOKING, DISCOVERY, OTHER");
             }
         }
 
@@ -60,43 +62,26 @@ public class AppFeedbackService {
         feedback = appFeedbackRepository.save(feedback);
         LOGGER.info("App feedback created: id={} role={} rating={} publicVisible={}",
             feedback.getId(), authorRole, request.getRating(), feedback.getPublicVisible());
-
         return toResponse(feedback);
     }
 
     @Transactional(readOnly = true)
     public Page<AppFeedbackResponse> listMine(Long userId, int page, int size) {
+        int safePage = Math.max(page, 0);
         int safeSize = Math.min(Math.max(size, 1), 50);
         Page<AppFeedback> feedbackPage = appFeedbackRepository.findByAuthorIdOrderByCreatedAtDescIdDesc(
-            userId,
-            PageRequest.of(Math.max(page, 0), safeSize)
+            userId, PageRequest.of(safePage, safeSize)
         );
         return feedbackPage.map(this::toResponse);
     }
 
-    @Transactional
-    public void deleteMine(Long feedbackId, Long userId) {
-        AppFeedback feedback = appFeedbackRepository.findById(feedbackId)
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Feedback no encontrado"));
-
-        if (feedback.getAuthor() == null || !userId.equals(feedback.getAuthor().getId())) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "No autorizado");
-        }
-
-        appFeedbackRepository.delete(feedback);
-        appFeedbackRepository.flush();
-
-        LOGGER.info("App feedback deleted by author: id={} userId={}", feedbackId, userId);
-    }
-
     @Transactional(readOnly = true)
     public List<AppFeedbackResponse> listPublic(int limit) {
-        int safeLimit = Math.min(Math.max(limit, 1), 20);
-        return appFeedbackRepository.findPublicVisible(PageRequest.of(0, safeLimit))
-            .getContent()
-            .stream()
+        int safeLimit = Math.min(Math.max(limit, 1), 12);
+        Pageable pageable = PageRequest.of(0, safeLimit);
+        return appFeedbackRepository.findPublicVisible(pageable)
             .map(this::toResponse)
-            .toList();
+            .getContent();
     }
 
     private AppFeedbackResponse toResponse(AppFeedback feedback) {
@@ -113,21 +98,6 @@ public class AppFeedbackService {
         );
     }
 
-    private String buildPublicAuthorDisplayName(String fullName) {
-        if (fullName == null || fullName.isBlank()) {
-            return null;
-        }
-
-        String[] parts = fullName.trim().split("\\s+");
-        if (parts.length == 1) {
-            return parts[0];
-        }
-
-        String firstName = parts[0];
-        String lastInitial = parts[parts.length - 1].substring(0, 1).toUpperCase();
-        return firstName + " " + lastInitial + ".";
-    }
-
     private String normalizeText(String text) {
         if (text == null) {
             return null;
@@ -136,11 +106,20 @@ public class AppFeedbackService {
         return trimmed.isEmpty() ? null : trimmed;
     }
 
-    private String normalizeNullable(String value) {
-        if (value == null) {
-            return null;
+    private String buildPublicAuthorDisplayName(String fullName) {
+        if (fullName == null) {
+            return "Usuario Plura";
         }
-        String trimmed = value.trim();
-        return trimmed.isEmpty() ? null : trimmed;
+        String trimmed = fullName.trim().replaceAll("\\s+", " ");
+        if (trimmed.isEmpty()) {
+            return "Usuario Plura";
+        }
+        String[] parts = trimmed.split(" ");
+        if (parts.length == 1) {
+            return parts[0];
+        }
+        String firstName = parts[0];
+        String lastInitial = parts[parts.length - 1].substring(0, 1).toUpperCase();
+        return firstName + " " + lastInitial + ".";
     }
 }

@@ -6,10 +6,10 @@ import axios, {
 } from 'axios';
 import { Platform } from 'react-native';
 import {
-  clearSession,
-  getAccessToken,
-  getRefreshToken,
-  setSession,
+  clearProfessionalToken,
+  getProfessionalRefreshToken,
+  getProfessionalToken,
+  setProfessionalSession,
 } from './session';
 import { isRetryableNetworkError } from './errors';
 import { logWarn } from './logger';
@@ -26,10 +26,10 @@ const SESSION_TRANSPORT_HEADER = 'X-Plura-Session-Transport';
 
 const getBaseUrl = () => {
   if (process.env.EXPO_PUBLIC_API_URL) return process.env.EXPO_PUBLIC_API_URL;
-  if (Platform.OS === 'web') return 'http://localhost:3000';
-  if (Platform.OS === 'android') return 'http://10.0.2.2:3000';
-  return 'http://localhost:3000';
-};
+  if (Platform.OS === 'web') return 'http://localhost:3000'; // <-- Para probar en Web en tu PC
+  if (Platform.OS === 'android') return 'http://10.0.2.2:3000'; // <-- Para probar en el Emulador Android
+  return 'http://localhost:3000'; 
+}; // <-- Asegurate de que sea tu IP real
 
 const api = axios.create({
   baseURL: getBaseUrl(),
@@ -78,7 +78,7 @@ const persistSessionFromAuthResponse = async (data: unknown): Promise<string | n
   const accessToken = tokenFromAuthResponse(data);
   const refreshToken = refreshTokenFromAuthResponse(data);
   if (accessToken || refreshToken) {
-    await setSession({ accessToken, refreshToken });
+    await setProfessionalSession({ accessToken, refreshToken });
   }
   return accessToken;
 };
@@ -112,7 +112,7 @@ const attachAuthorizationHeader = async (
   config: InternalAxiosRequestConfig,
 ): Promise<InternalAxiosRequestConfig> => {
   applyClientHeaders(config);
-  const token = await getAccessToken();
+  const token = await getProfessionalToken();
   if (token && token !== 'null' && token !== 'undefined') {
     setHeaderValue(config, 'Authorization', `Bearer ${token}`);
   }
@@ -121,7 +121,7 @@ const attachAuthorizationHeader = async (
 
 const refreshAccessToken = async (): Promise<string | null> => {
   if (!refreshPromise) {
-    const refreshToken = await getRefreshToken();
+    const refreshToken = await getProfessionalRefreshToken();
     if (!refreshToken) {
       return null;
     }
@@ -146,7 +146,7 @@ api.interceptors.request.use(
   },
   (error) => {
     return Promise.reject(error);
-  },
+  }
 );
 
 authApi.interceptors.request.use(
@@ -196,7 +196,7 @@ api.interceptors.response.use(
         logWarn('api', 'refresh failed after 401');
       }
 
-      await clearSession();
+      await clearProfessionalToken();
       return Promise.reject(error);
     }
 
@@ -215,4 +215,3 @@ api.interceptors.response.use(
 );
 
 export default api;
-export { authApi };

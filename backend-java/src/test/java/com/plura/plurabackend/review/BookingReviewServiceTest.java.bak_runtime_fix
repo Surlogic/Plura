@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -27,7 +28,6 @@ import com.plura.plurabackend.core.user.model.User;
 import com.plura.plurabackend.professional.model.ProfessionalProfile;
 import com.plura.plurabackend.professional.repository.ProfessionalProfileRepository;
 import java.time.LocalDateTime;
-import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -37,6 +37,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.web.server.ResponseStatusException;
+import java.util.List;
 
 class BookingReviewServiceTest {
 
@@ -242,18 +243,14 @@ class BookingReviewServiceTest {
     @Test
     void professionalOwnerCanHideText() {
         ProfessionalProfile profile = makeProfile(20L);
-        Booking booking = new Booking();
-        booking.setId(1L);
-
         BookingReview review = new BookingReview();
         review.setId(100L);
-        review.setBooking(booking);
         review.setProfessional(profile);
         review.setReviewText("Texto malo");
         review.setTextHiddenByProfessional(false);
 
         when(professionalActorLookupGateway.findProfessionalIdByUserId(5L)).thenReturn(Optional.of(20L));
-        when(bookingReviewRepository.findDetailedByIdAndProfessionalId(100L, 20L)).thenReturn(Optional.of(review));
+        when(bookingReviewRepository.findById(100L)).thenReturn(Optional.of(review));
 
         service.hideReviewText(100L, 5L);
 
@@ -263,31 +260,32 @@ class BookingReviewServiceTest {
 
     @Test
     void professionalCannotHideOtherProfessionalsReview() {
+        ProfessionalProfile profile = makeProfile(20L);
+        BookingReview review = new BookingReview();
+        review.setId(100L);
+        review.setProfessional(profile);
+
         when(professionalActorLookupGateway.findProfessionalIdByUserId(5L)).thenReturn(Optional.of(99L));
-        when(bookingReviewRepository.findDetailedByIdAndProfessionalId(100L, 99L)).thenReturn(Optional.empty());
+        when(bookingReviewRepository.findById(100L)).thenReturn(Optional.of(review));
 
         ResponseStatusException ex = assertThrows(ResponseStatusException.class,
             () -> service.hideReviewText(100L, 5L));
 
-        assertEquals(404, ex.getStatusCode().value());
+        assertEquals(403, ex.getStatusCode().value());
         verify(bookingReviewRepository, never()).save(any());
     }
 
     @Test
     void professionalOwnerCanShowText() {
         ProfessionalProfile profile = makeProfile(20L);
-        Booking booking = new Booking();
-        booking.setId(1L);
-
         BookingReview review = new BookingReview();
         review.setId(100L);
-        review.setBooking(booking);
         review.setProfessional(profile);
         review.setTextHiddenByProfessional(true);
         review.setTextHiddenAt(LocalDateTime.now());
 
         when(professionalActorLookupGateway.findProfessionalIdByUserId(5L)).thenReturn(Optional.of(20L));
-        when(bookingReviewRepository.findDetailedByIdAndProfessionalId(100L, 20L)).thenReturn(Optional.of(review));
+        when(bookingReviewRepository.findById(100L)).thenReturn(Optional.of(review));
 
         service.showReviewText(100L, 5L);
 
@@ -320,19 +318,15 @@ class BookingReviewServiceTest {
         profile.setRating(4.5);
         profile.setReviewsCount(10);
 
-        Booking booking = new Booking();
-        booking.setId(1L);
-
         BookingReview review = new BookingReview();
         review.setId(100L);
-        review.setBooking(booking);
         review.setProfessional(profile);
         review.setRating(3);
         review.setReviewText("Texto visible");
         review.setTextHiddenByProfessional(false);
 
         when(professionalActorLookupGateway.findProfessionalIdByUserId(5L)).thenReturn(Optional.of(20L));
-        when(bookingReviewRepository.findDetailedByIdAndProfessionalId(100L, 20L)).thenReturn(Optional.of(review));
+        when(bookingReviewRepository.findById(100L)).thenReturn(Optional.of(review));
 
         service.hideReviewText(100L, 5L);
 
@@ -347,18 +341,14 @@ class BookingReviewServiceTest {
         profile.setRating(4.5);
         profile.setReviewsCount(10);
 
-        Booking booking = new Booking();
-        booking.setId(1L);
-
         BookingReview review = new BookingReview();
         review.setId(100L);
-        review.setBooking(booking);
         review.setProfessional(profile);
         review.setTextHiddenByProfessional(true);
         review.setTextHiddenAt(LocalDateTime.now());
 
         when(professionalActorLookupGateway.findProfessionalIdByUserId(5L)).thenReturn(Optional.of(20L));
-        when(bookingReviewRepository.findDetailedByIdAndProfessionalId(100L, 20L)).thenReturn(Optional.of(review));
+        when(bookingReviewRepository.findById(100L)).thenReturn(Optional.of(review));
 
         service.showReviewText(100L, 5L);
 
@@ -369,13 +359,19 @@ class BookingReviewServiceTest {
 
     @Test
     void professionalCannotShowOtherProfessionalsReview() {
+        ProfessionalProfile profile = makeProfile(20L);
+        BookingReview review = new BookingReview();
+        review.setId(100L);
+        review.setProfessional(profile);
+        review.setTextHiddenByProfessional(true);
+
         when(professionalActorLookupGateway.findProfessionalIdByUserId(5L)).thenReturn(Optional.of(99L));
-        when(bookingReviewRepository.findDetailedByIdAndProfessionalId(100L, 99L)).thenReturn(Optional.empty());
+        when(bookingReviewRepository.findById(100L)).thenReturn(Optional.of(review));
 
         ResponseStatusException ex = assertThrows(ResponseStatusException.class,
             () -> service.showReviewText(100L, 5L));
 
-        assertEquals(404, ex.getStatusCode().value());
+        assertEquals(403, ex.getStatusCode().value());
         verify(bookingReviewRepository, never()).save(any());
     }
 

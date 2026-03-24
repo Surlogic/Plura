@@ -95,43 +95,6 @@ public class BookingReviewService {
         return toResponse(review, booking.getUser().getFullName());
     }
 
-    @Transactional
-    public void deleteReviewByBookingId(Long bookingId, Long clientUserId) {
-        Booking booking = bookingRepository.findDetailedById(bookingId)
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Reserva no encontrada"));
-
-        if (booking.getUser() == null || !clientUserId.equals(booking.getUser().getId())) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "No autorizado");
-        }
-
-        BookingReview review = bookingReviewRepository.findByBooking_Id(bookingId)
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Reseña no encontrada"));
-
-        Long professionalId = review.getProfessional().getId();
-        bookingReviewRepository.delete(review);
-        bookingReviewRepository.flush();
-        recomputeAggregate(professionalId);
-
-        LOGGER.info("Review deleted by client: reviewId={} bookingId={} professionalId={} clientUserId={}",
-            review.getId(), bookingId, professionalId, clientUserId);
-    }
-
-    @Transactional
-    public void deleteReviewAsProfessional(Long reviewId, Long professionalUserId) {
-        Long professionalId = professionalActorLookupGateway.findProfessionalIdByUserId(professionalUserId)
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.FORBIDDEN, "Perfil profesional no encontrado"));
-
-        BookingReview review = bookingReviewRepository.findDetailedByIdAndProfessionalId(reviewId, professionalId)
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Reseña no encontrada"));
-
-        bookingReviewRepository.delete(review);
-        bookingReviewRepository.flush();
-        recomputeAggregate(professionalId);
-
-        LOGGER.info("Review deleted by professional: reviewId={} professionalId={} professionalUserId={}",
-            reviewId, professionalId, professionalUserId);
-    }
-
     @Transactional(readOnly = true)
     public Optional<BookingReviewResponse> getReviewByBookingId(Long bookingId, Long clientUserId) {
         Booking booking = bookingRepository.findDetailedById(bookingId)

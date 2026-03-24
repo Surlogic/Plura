@@ -41,9 +41,3 @@ export const createBookingReview = async (
   invalidateCachedGet(`/cliente/reservas/${bookingId}/review`);
   return response.data;
 };
-
-export const deleteBookingReview = async (bookingId: string): Promise<void> => {
-  await api.delete(`/cliente/reservas/${bookingId}/review`);
-  invalidateCachedGet(`/cliente/reservas/${bookingId}/review-eligibility`);
-  invalidateCachedGet(`/cliente/reservas/${bookingId}/review`);
-};

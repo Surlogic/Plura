@@ -5,7 +5,7 @@ Este documento cruza el stack tecnico actual con las necesidades del producto de
 ## Stack principal
 
 - Monorepo `pnpm`
-- Web: `Next.js 15`, `React 19`, `TypeScript`
+- Web: `Next.js 16`, `React 19`, `TypeScript`
 - Mobile: `Expo 54`, `React Native 0.81`, `expo-router`
 - Backend: `Spring Boot 3.5`, `Java 17`, `JPA`, `Spring Security`
 - Base de datos: PostgreSQL

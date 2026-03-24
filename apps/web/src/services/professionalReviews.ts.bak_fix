@@ -23,8 +23,3 @@ export const showReviewText = async (reviewId: number): Promise<void> => {
   await api.patch(`/profesional/reviews/${reviewId}/show-text`);
   invalidateCachedGet('/profesional/reviews');
 };
-
-export const deleteProfessionalReview = async (reviewId: number): Promise<void> => {
-  await api.delete(`/profesional/reviews/${reviewId}`);
-  invalidateCachedGet('/profesional/reviews');
-};

@@ -47,9 +47,6 @@ import com.plura.plurabackend.core.booking.repository.BookingRepository;
 import com.plura.plurabackend.core.user.model.User;
 import com.plura.plurabackend.core.user.model.UserRole;
 import com.plura.plurabackend.core.user.repository.UserRepository;
-import com.plura.plurabackend.professional.application.ProfessionalSideEffectCoordinator;
-import com.plura.plurabackend.professional.model.ProfessionalProfile;
-import com.plura.plurabackend.professional.repository.ProfessionalProfileRepository;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.Comparator;
@@ -58,7 +55,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.Set;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -80,8 +76,6 @@ public class BookingProviderIntegrationService {
     private static final Logger LOGGER = LoggerFactory.getLogger(BookingProviderIntegrationService.class);
 
     private final BookingRepository bookingRepository;
-    private final ProfessionalProfileRepository professionalProfileRepository;
-    private final ProfessionalSideEffectCoordinator sideEffectCoordinator;
     private final UserRepository userRepository;
     private final PaymentTransactionRepository paymentTransactionRepository;
     private final BookingFinanceService bookingFinanceService;
@@ -100,8 +94,6 @@ public class BookingProviderIntegrationService {
     @Autowired
     public BookingProviderIntegrationService(
         BookingRepository bookingRepository,
-        ProfessionalProfileRepository professionalProfileRepository,
-        ProfessionalSideEffectCoordinator sideEffectCoordinator,
         UserRepository userRepository,
         PaymentTransactionRepository paymentTransactionRepository,
         BookingFinanceService bookingFinanceService,
@@ -118,8 +110,6 @@ public class BookingProviderIntegrationService {
         List<PaymentProviderClient> clients
     ) {
         this.bookingRepository = bookingRepository;
-        this.professionalProfileRepository = professionalProfileRepository;
-        this.sideEffectCoordinator = sideEffectCoordinator;
         this.userRepository = userRepository;
         this.paymentTransactionRepository = paymentTransactionRepository;
         this.bookingFinanceService = bookingFinanceService;
@@ -1573,22 +1563,6 @@ public class BookingProviderIntegrationService {
             BookingActorType.SYSTEM,
             null,
             "payment_webhook_auto_confirm"
-        );
-        triggerBookingSideEffectsAfterCommit(booking);
-    }
-
-
-    private void triggerBookingSideEffectsAfterCommit(Booking booking) {
-        if (booking == null || booking.getProfessionalId() == null || booking.getStartDateTime() == null) {
-            return;
-        }
-        ProfessionalProfile profile = professionalProfileRepository.findById(booking.getProfessionalId()).orElse(null);
-        if (profile == null) {
-            return;
-        }
-        registerAfterCommit(
-            () -> sideEffectCoordinator.onBookingChanged(profile, Set.of(booking.getStartDateTime().toLocalDate())),
-            false
         );
     }
 

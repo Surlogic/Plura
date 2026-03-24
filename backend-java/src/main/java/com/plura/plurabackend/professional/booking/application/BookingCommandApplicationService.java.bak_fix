@@ -60,8 +60,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.server.ResponseStatusException;
 
 @Service
@@ -204,7 +202,7 @@ public class BookingCommandApplicationService {
                     "create_public_booking"
                 );
             }
-            triggerBookingSideEffectsAfterCommit(profile, Set.of(startDateTime.toLocalDate()));
+            sideEffectCoordinator.onBookingChanged(profile, Set.of(startDateTime.toLocalDate()));
 
             return new PublicBookingResponse(
                 saved.getId(),
@@ -333,7 +331,7 @@ public class BookingCommandApplicationService {
             "cancel_booking_as_client"
         );
 
-        triggerBookingSideEffectsAfterCommit(loadProfessionalForBooking(saved), Set.of(saved.getStartDateTime().toLocalDate()));
+        sideEffectCoordinator.onBookingChanged(loadProfessionalForBooking(saved), Set.of(saved.getStartDateTime().toLocalDate()));
         BookingCommandResponse response = bookingCommandResponseAssembler.toCommandResponse(saved, decision, financePlan.localResult());
         bookingFinancialCommandSupport.dispatchPlannedOperationsAfterCommit(saved, financePlan);
         return response;
@@ -389,7 +387,7 @@ public class BookingCommandApplicationService {
             "cancel_booking_as_professional"
         );
 
-        triggerBookingSideEffectsAfterCommit(profile, Set.of(saved.getStartDateTime().toLocalDate()));
+        sideEffectCoordinator.onBookingChanged(profile, Set.of(saved.getStartDateTime().toLocalDate()));
         BookingCommandResponse response = bookingCommandResponseAssembler.toCommandResponse(saved, decision, financePlan.localResult());
         bookingFinancialCommandSupport.dispatchPlannedOperationsAfterCommit(saved, financePlan);
         return response;
@@ -587,7 +585,7 @@ public class BookingCommandApplicationService {
         booking.applyOperationalStatus(request.getStatus(), nowInSystemZone());
         Booking saved = bookingRepository.save(booking);
         recordOperationalStatusEvent(saved, previousStatus, profile.getUser().getId());
-        triggerBookingSideEffectsAfterCommit(profile, Set.of(saved.getStartDateTime().toLocalDate()));
+        sideEffectCoordinator.onBookingChanged(profile, Set.of(saved.getStartDateTime().toLocalDate()));
         return bookingCommandResponseAssembler.toProfessionalBookingResponse(saved);
     }
 
@@ -685,7 +683,7 @@ public class BookingCommandApplicationService {
             "reschedule_booking"
         );
 
-        triggerBookingSideEffectsAfterCommit(
+        sideEffectCoordinator.onBookingChanged(
             lockedProfessional,
             bookingCommandStateSupport.buildAffectedDates(previousDate, nextDate)
         );
@@ -890,34 +888,6 @@ public class BookingCommandApplicationService {
         } catch (NumberFormatException exception) {
             return null;
         }
-    }
-
-
-    private void triggerBookingSideEffectsAfterCommit(
-        ProfessionalProfile profile,
-        Set<LocalDate> affectedDates
-    ) {
-        if (profile == null || affectedDates == null || affectedDates.isEmpty()) {
-            return;
-        }
-        Set<LocalDate> normalizedDates = Set.copyOf(affectedDates);
-        registerAfterCommit(() -> sideEffectCoordinator.onBookingChanged(profile, normalizedDates));
-    }
-
-    private void registerAfterCommit(Runnable action) {
-        if (action == null) {
-            return;
-        }
-        if (TransactionSynchronizationManager.isSynchronizationActive()) {
-            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-                @Override
-                public void afterCommit() {
-                    action.run();
-                }
-            });
-            return;
-        }
-        action.run();
     }
 
     private ProfessionalProfile loadProfessionalForBooking(Booking booking) {

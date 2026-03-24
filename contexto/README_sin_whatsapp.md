@@ -162,7 +162,7 @@ Notas operativas recientes:
 - los reloads de web ya no deben cerrar sesion por un `5xx` o una falla transitoria de refresh/auth me; la sesion solo cae automaticamente ante `401/403` reales
 - el inbox de notificaciones se apoya en una ruta de lectura mas liviana para bajar latencia de lista sin cambiar la UX ni los contratos
 - pagos online en runtime quedaron `Mercado Pago only`; `DLOCAL` se conserva solo como compatibilidad de lectura para datos historicos y como historia de migraciones Flyway
-- el home web ahora usa SSR (`getServerSideProps`) en vez de ISR/static; la pagina se simplifica a hero, categorias y top businesses; el ranking de top professionals prioriza volumen de reservas confirmadas/completadas de los ultimos 3 meses
+- el home web ahora usa SSR (`getServerSideProps`) en vez de ISR/static; la pagina incluye hero, categorias, top businesses y ReviewsSection (testimonios publicos de feedback de app via `GET /public/app-feedback`); el ranking de top professionals prioriza volumen de reservas confirmadas/completadas de los ultimos 3 meses
 - `ClientNotificationsContext` ya no rompe si se renderiza fuera del provider; devuelve defaults seguros para degradar sin crash en rutas publicas o SSR
 
 ## Estado operativo actual de notificaciones
@@ -304,9 +304,9 @@ Nota: el input original mencionaba `31/04/2026`, fecha invalida; en este context
 
 ## Foto rapida del repo
 
-- `apps/web`: app web con `Pages Router`, `34` pages y `60` componentes.
-- `apps/mobile`: app Expo con `23` pantallas y `16` servicios cliente.
-- `backend-java`: API principal con `395` archivos Java y `58` migraciones SQL.
+- `apps/web`: app web con `Pages Router`, `36` pages y `80` componentes.
+- `apps/mobile`: app Expo con `23` pantallas y `21` servicios cliente.
+- `backend-java`: API principal con `594` archivos Java y `58` migraciones SQL.
 - `packages/shared`: utilidades, contratos y definiciones de billing compartidas.
 - `scripts`: helpers de desarrollo del workspace.
 

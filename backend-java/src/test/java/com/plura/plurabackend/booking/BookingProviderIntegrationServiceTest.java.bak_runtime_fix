@@ -71,8 +71,8 @@ class BookingProviderIntegrationServiceTest {
 
     private final BookingRepository bookingRepository = mock(BookingRepository.class);
     private final UserRepository userRepository = mock(UserRepository.class);
-        private final ProfessionalProfileRepository professionalProfileRepository = mock(ProfessionalProfileRepository.class);
-        private final ProfessionalSideEffectCoordinator professionalSideEffectCoordinator = mock(ProfessionalSideEffectCoordinator.class);
+        professionalProfileRepository = mock(ProfessionalProfileRepository.class);
+        professionalSideEffectCoordinator = mock(ProfessionalSideEffectCoordinator.class);
 
     private final PaymentTransactionRepository paymentTransactionRepository = mock(PaymentTransactionRepository.class);
     private final BookingFinanceService bookingFinanceService = mock(BookingFinanceService.class);

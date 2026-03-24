@@ -60,7 +60,7 @@ Base: `apps/web/src/pages`
 
 ### Rutas publicas
 
-- `/`: home SSR con hero, categorias y top businesses; ya no incluye ReviewsSection ni FAQ; usa `getServerSideProps` con retry client-side si SSR falla.
+- `/`: home SSR con hero, categorias, top businesses y ReviewsSection (testimonios publicos de feedback de app via `GET /public/app-feedback`); usa `getServerSideProps` con retry client-side si SSR falla.
 - `/explorar`: buscador principal con filtros, lista y mapa.
 - `/explorar/[slug]`: vista detallada de exploracion por slug.
 - `/profesional/[slug]`: pagina publica del profesional.
@@ -108,6 +108,10 @@ Modulos relevantes:
 - `hooks/useFavoriteProfessionals.ts`: favoritos del cliente.
 - `services/clientBookings.ts`: reservas y pago del cliente.
 - `services/clientBookings.ts`: reservas y pago del cliente; ahora cachea `actions` y `timeline` por booking y permite prefetch conservador del detalle para bajar waterfalls al entrar o cambiar de seleccion.
+- `services/clientFeatures.ts`: features y entitlements del plan del cliente.
+- `services/clientReviews.ts`: reseñas del cliente por booking.
+- `services/cachedGet.ts`: capa de cache para GET requests reutilizable.
+- `services/pendingReservation.ts`: persistencia local de reservas pendientes para continuidad de flujo.
 - `types/clientBookingTimeline.ts` y `utils/clientBookingTimeline.ts`: contrato y formateo del historial operativo de reservas cliente.
 - `services/clientNotifications.ts`: unread count, preview y acciones de lectura del inbox cliente.
 
@@ -162,7 +166,12 @@ Modulos relevantes:
 - `services/professionalImageUpload.ts`: servicio de subida de imágenes profesional; usa `POST /profesional/images/upload?kind={kind}` con tipos `logo`, `banner`, `gallery`, `service`; retorna URL pública de la imagen subida.
 - `services/professionalNotifications.ts`
 - `services/professionalBookingPolicy.ts`
+- `hooks/useProfessionalMercadoPagoConnection.ts`: estado de conexion OAuth del profesional con Mercado Pago.
 - `hooks/useProfessionalBilling.ts`
+- `services/professionalAnalytics.ts`: analytics y metricas del profesional.
+- `services/professionalMercadoPagoConnection.ts`: operaciones de conexion OAuth Mercado Pago del profesional.
+- `services/professionalReviews.ts`: gestion de reseñas recibidas por el profesional.
+- `services/publicReviews.ts`: reseñas publicas para perfil publico del profesional.
 
 Lectura de producto:
 
@@ -221,6 +230,11 @@ Modulos relevantes:
 
 - `components/search`: barra unificada, sugerencias, fecha y location autocomplete.
 - `components/map`: wrapper de Mapbox.
+- `hooks/useCategories.ts`: carga de categorias para el buscador.
+- `hooks/usePollingMachine.ts`: maquina de polling reutilizable con backoff y pause/resume.
+- `hooks/usePublicProfessionals.ts`: carga de profesionales publicos para superficies de descubrimiento.
+- `hooks/useUnifiedSearch.ts`: hook grande de busqueda unificada con filtros, resultados y estado.
+- `hooks/useClientProfile.ts`: perfil del cliente autenticado.
 - `services/search.ts`: integra search y suggest.
 - `services/geo.ts`: geocoding y autocomplete.
 - `services/api.ts`: auth, refresh y headers de plataforma `WEB`.
@@ -270,13 +284,17 @@ Lectura de producto:
 ### Grupo `(auth)`
 
 - `/(auth)/login`
+- `/(auth)/login-client`
+- `/(auth)/login-professional`
 - `/(auth)/register`
+- `/(auth)/register-client`
+- `/(auth)/register-professional`
 - `/(auth)/forgot-password`
 - `/(auth)/reset-password`
 
 Lectura de producto:
 
-- cubre autenticacion base
+- cubre autenticacion base con flujos separados por rol (cliente y profesional)
 - el login social con Google ya aparece en hooks y variables de entorno
 
 ### Grupo `dashboard`
@@ -312,7 +330,18 @@ Lectura de producto:
 - `src/services/search.ts`
 - `src/services/publicBookings.ts`
 - `src/services/clientBookings.ts`
+- `src/services/clientFeatures.ts`: features y entitlements del cliente.
 - `src/services/professionalBookings.ts`
+- `src/services/professionalConfig.ts`: configuracion del perfil profesional.
+- `src/services/billing.ts`: suscripciones y plan del profesional.
+- `src/services/bookingPolicy.ts`: politicas de reserva.
+- `src/services/categories.ts`: categorias de servicios.
+- `src/services/mercadoPagoBrowser.ts`: apertura de Mercado Pago en browser embebido.
+- `src/services/oauth.ts`: OAuth helpers mobile.
+- `src/services/pendingReservation.ts`: persistencia local de reservas pendientes.
+- `src/services/errors.ts`: manejo centralizado de errores.
+- `src/services/logger.ts`: logging mobile.
+- `src/services/storage.ts`: persistencia local segura.
 - `src/hooks/useGoogleOAuth.ts`
 - `src/services/location.ts` y `src/hooks/useUserLocation.ts`
 - `src/services/pushNotifications.ts` y `src/hooks/usePushNotifications.ts`
@@ -337,9 +366,10 @@ Modulos compartidos actuales:
 - `billing/planAccess.ts`
 - `bookings/idempotency.ts`
 - `bookings/mappers.ts`
+- `bookings/professionalReservationActions.ts`
 - `publicBookings/contracts.ts`
 - `search/service.ts`
-- `types/*`
+- `types/*` (search, professional, bookings, payout)
 
 Uso actual:
 

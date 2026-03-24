@@ -29,7 +29,7 @@ Tambien hay senales de una base mas amplia que el MVP:
 Todavia no se ve como superficie publica madura todo el set de:
 
 - respuestas publicas del negocio a reseñas (reseñas ya cerradas con moderacion, ocultamiento por profesional e internal ops, analytics y notificacion)
-- analytics de producto
+- analytics de producto avanzados (ya existe `GET /profesional/analytics/summary` como base operativa)
 - fidelizacion y ultima hora
 - multi-profesional avanzado
 
@@ -177,6 +177,7 @@ Prefijo: `/profesional`
 - `GET /profesional/reviews` — listado paginado de reseñas recibidas (texto completo siempre visible para el profesional, aunque este oculto publicamente)
 - `PATCH /profesional/reviews/{reviewId}/hide-text` — oculta texto de la reseña publicamente (el rating sigue visible y cuenta en el promedio)
 - `PATCH /profesional/reviews/{reviewId}/show-text` — restaura visibilidad del texto de la reseña
+- `DELETE /profesional/reviews/{reviewId}` — elimina una reseña recibida; verifica ownership del profesional, recomputa agregados
 - el backend ahora distingue tres variantes de respuesta de reseña: publica (respeta ocultamiento por profesional e internal ops), profesional (siempre ve texto), cliente (ve su propia reseña)
 - al crear una reseña se notifica automaticamente al profesional via `ReviewNotificationIntegrationService`
 - existe `recomputeAllAggregates()` para batch-update de rating y reviewsCount de todos los profesionales en una sola query nativa
@@ -223,6 +224,7 @@ Notas:
 - `GET /cliente/reservas/{bookingId}/review-eligibility` — chequea si el cliente puede dejar reseña
 - `POST /cliente/reservas/{bookingId}/review` — crea reseña (rating obligatorio 1-5, text opcional max 2000 chars)
 - `GET /cliente/reservas/{bookingId}/review` — obtiene la reseña existente del cliente
+- `DELETE /cliente/reservas/{bookingId}/review` — elimina la reseña del cliente; verifica ownership, recomputa agregados del profesional
 
 Lectura de producto:
 
@@ -296,6 +298,18 @@ Lectura de producto:
 
 - misma mecanica que feedback de cliente, scopeado por rol `PROFESSIONAL`
 - categorias disponibles: `BUG`, `UX`, `PAYMENTS`, `BOOKING`, `DISCOVERY`, `OTHER`
+
+### Analytics del profesional
+
+Prefijo: `/profesional/analytics`
+
+- `GET /profesional/analytics/summary?view={view}` — resumen de metricas del profesional autenticado; acepta parametro `view` para acotar la ventana temporal
+
+Lectura de producto:
+
+- base de analytics basicos para `Pro`
+- el servicio `ProfessionalAnalyticsService` calcula el resumen por profesional
+- requiere autenticacion y rol profesional via `RoleGuard`
 
 ### Acciones sobre reservas
 
@@ -412,7 +426,22 @@ Lectura de producto:
 - analytics permiten rango de fechas opcional
 - feedback analytics ahora incluyen conteos por `authorRole`, `category` y `rating`, y evolucion diaria
 
-Nota: el repositorio de reseñas (`BookingReviewRepository`) ahora tambien expone queries de analytics para internal ops: `findAllFiltered`, `countFiltered`, `averageRatingFiltered`, `countByRating`, `countWithText/WithoutText/TextHidden`, `topProfessionalsByVolume/ByRating` y `dailyStats`; estas queries estan disponibles a nivel de servicio pero no necesariamente expuestas aun como endpoints REST dedicados
+### Endpoints internos de reseñas
+
+Prefijo: `/internal/ops/reviews`
+
+- `GET /internal/ops/reviews` — listado paginado con filtros (professionalId, rating, hasText, textHidden, from, to)
+- `GET /internal/ops/reviews/{id}` — detalle completo de una reseña
+- `PATCH /internal/ops/reviews/{id}/hide-text` — oculta texto de una reseña (con nota opcional)
+- `PATCH /internal/ops/reviews/{id}/show-text` — restaura visibilidad del texto
+- `GET /internal/ops/reviews/analytics` — analytics de reseñas con rango de fechas opcional
+
+Lectura de producto:
+
+- backoffice de moderacion de reseñas para internal ops
+- protegido por `X-Internal-Token`, no por sesion de usuario
+- permite moderar contenido de reseñas independientemente del profesional
+- analytics incluyen `findAllFiltered`, `countFiltered`, `averageRatingFiltered`, `countByRating`, `countWithText/WithoutText/TextHidden`, `topProfessionalsByVolume/ByRating` y `dailyStats`
 
 ## Paquetes backend mas importantes
 

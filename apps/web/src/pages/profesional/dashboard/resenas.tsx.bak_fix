@@ -6,7 +6,6 @@ import Button from '@/components/ui/Button';
 import { DashboardHero } from '@/components/profesional/dashboard/DashboardUI';
 import { useProfessionalProfile } from '@/hooks/useProfessionalProfile';
 import {
-  deleteProfessionalReview,
   getProfessionalReviews,
   hideReviewText,
   showReviewText,
@@ -88,26 +87,6 @@ export default function ProfesionalResenasPage() {
     });
   }, []);
 
-  const removeReviewLocally = useCallback((reviewId: number) => {
-    setPage((prev) => {
-      if (!prev) return prev;
-
-      const nextContent = prev.content.filter((review) => review.id !== reviewId);
-      const nextTotalElements = Math.max(0, prev.totalElements - 1);
-      const nextTotalPages = nextTotalElements === 0 ? 0 : Math.ceil(nextTotalElements / prev.size);
-
-      return {
-        ...prev,
-        content: nextContent,
-        totalElements: nextTotalElements,
-        totalPages: nextTotalPages,
-        empty: nextContent.length === 0,
-        first: currentPage === 0,
-        last: nextTotalPages === 0 ? true : currentPage >= nextTotalPages - 1,
-      };
-    });
-  }, [currentPage]);
-
   const handleHide = async (reviewId: number) => {
     setActionLoading(reviewId);
     setActionError(null);
@@ -134,22 +113,6 @@ export default function ProfesionalResenasPage() {
     } catch (error) {
       const message =
         error instanceof Error ? error.message : 'No pudimos volver a mostrar el texto de la reseña.';
-      setActionError(message);
-    } finally {
-      setActionLoading(null);
-    }
-  };
-
-  const handleDelete = async (reviewId: number) => {
-    setActionLoading(reviewId);
-    setActionError(null);
-
-    try {
-      await deleteProfessionalReview(reviewId);
-      removeReviewLocally(reviewId);
-    } catch (error) {
-      const message =
-        error instanceof Error ? error.message : 'No pudimos eliminar la reseña.';
       setActionError(message);
     } finally {
       setActionLoading(null);

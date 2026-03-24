@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
   createBookingReview,
-  deleteBookingReview,
   getBookingReview,
   getReviewEligibility,
 } from '@/services/clientReviews';
@@ -58,7 +57,6 @@ export default function ClientBookingReviewSection({ bookingId }: Props) {
   const [rating, setRating] = useState(0);
   const [text, setText] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
@@ -137,30 +135,6 @@ export default function ClientBookingReviewSection({ bookingId }: Props) {
     }
   };
 
-  const handleDelete = async () => {
-    setIsDeleting(true);
-    setSubmitError(null);
-
-    try {
-      await deleteBookingReview(bookingId);
-      setExistingReview(null);
-      setEligibility({
-        eligible: true,
-        alreadyReviewed: false,
-        reason: null,
-      });
-      setRating(0);
-      setText('');
-      setSuccess(false);
-    } catch (error) {
-      const message =
-        error instanceof Error ? error.message : 'No pudimos eliminar tu reseña.';
-      setSubmitError(message);
-    } finally {
-      setIsDeleting(false);
-    }
-  };
-
   if (isLoading) {
     return (
       <div className="mt-4 rounded-[18px] border border-[#E2E7EC] bg-white p-4">
@@ -183,35 +157,16 @@ export default function ClientBookingReviewSection({ bookingId }: Props) {
   if (existingReview) {
     return (
       <div className="mt-4 rounded-[18px] border border-[#E2E7EC] bg-white p-4">
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <p className="text-xs uppercase tracking-[0.25em] text-[#94A3B8]">Tu reseña</p>
-            <div className="mt-3 flex items-center gap-2">
-              <StarSummary rating={existingReview.rating} />
-              <span className="text-sm font-semibold text-[#0E2A47]">{existingReview.rating}/5</span>
-            </div>
-          </div>
-
-          <button
-            type="button"
-            onClick={() => void handleDelete()}
-            disabled={isDeleting}
-            className="shrink-0 rounded-full border border-[#FECACA] bg-white px-3 py-1.5 text-xs font-semibold text-[#B91C1C] transition hover:-translate-y-0.5 hover:shadow-sm disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            {isDeleting ? 'Eliminando...' : 'Eliminar reseña'}
-          </button>
+        <p className="text-xs uppercase tracking-[0.25em] text-[#94A3B8]">Tu reseña</p>
+        <div className="mt-3 flex items-center gap-2">
+          <StarSummary rating={existingReview.rating} />
+          <span className="text-sm font-semibold text-[#0E2A47]">{existingReview.rating}/5</span>
         </div>
-
         {existingReview.text ? (
           <p className="mt-2 text-sm text-[#475569]">{existingReview.text}</p>
         ) : (
           <p className="mt-2 text-xs italic text-[#94A3B8]">Sin comentario, solo calificación.</p>
         )}
-
-        {submitError ? (
-          <p className="mt-2 text-xs text-[#B91C1C]">{submitError}</p>
-        ) : null}
-
         {success ? (
           <p className="mt-2 text-xs text-[#0F766E]">Reseña enviada correctamente.</p>
         ) : null}
@@ -229,7 +184,7 @@ export default function ClientBookingReviewSection({ bookingId }: Props) {
       </p>
 
       <div className="mt-3">
-        <StarSelector value={rating} onChange={setRating} disabled={isSubmitting || isDeleting} />
+        <StarSelector value={rating} onChange={setRating} disabled={isSubmitting} />
       </div>
 
       <textarea
@@ -237,7 +192,7 @@ export default function ClientBookingReviewSection({ bookingId }: Props) {
         onChange={(e) => setText(e.target.value)}
         placeholder="Contanos tu experiencia (opcional)"
         maxLength={2000}
-        disabled={isSubmitting || isDeleting}
+        disabled={isSubmitting}
         className="mt-3 min-h-20 w-full rounded-[14px] border border-[#D9E2EC] bg-white px-3 py-2 text-sm text-[#0E2A47] outline-none transition focus:border-[#1FB6A6] disabled:opacity-60"
       />
 
@@ -248,7 +203,7 @@ export default function ClientBookingReviewSection({ bookingId }: Props) {
       <button
         type="button"
         onClick={handleSubmit}
-        disabled={isSubmitting || isDeleting || rating === 0}
+        disabled={isSubmitting || rating === 0}
         className="mt-3 w-full rounded-full bg-[#0B1D2A] px-4 py-2.5 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-60"
       >
         {isSubmitting ? 'Enviando...' : 'Enviar reseña'}

@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Redirect, router, useLocalSearchParams } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import {
   listPublicProfessionals,
   type PublicProfessionalSummary,
@@ -24,6 +24,7 @@ import {
 import { searchProfessionals } from '../../src/services/search';
 import type { SearchItem, SearchSort, SearchType } from '../../src/types/search';
 import { useProfessionalProfileContext } from '../../src/context/ProfessionalProfileContext';
+import AgendaScreen from '../dashboard/agenda';
 import { listCategories } from '../../src/services/categories';
 import type { ServiceCategoryOption } from '../../src/types/professional';
 import { useUserLocation } from '../../src/hooks/useUserLocation';
@@ -125,7 +126,7 @@ const formatDistance = (distanceKm?: number | null) => {
 };
 
 export default function ExploreScreen() {
-  const { role } = useProfessionalProfileContext();
+  const { role, profile } = useProfessionalProfileContext();
   const {
     location,
     hasCoordinates,
@@ -396,8 +397,8 @@ export default function ExploreScreen() {
     setSortBy('DISTANCE');
   };
 
-  if (role === 'professional') {
-    return <Redirect href="/dashboard/agenda" />;
+  if (role === 'professional' && profile) {
+    return <AgendaScreen />;
   }
 
   return (

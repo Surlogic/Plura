@@ -1,12 +1,14 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Alert, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { Redirect, router } from 'expo-router';
+import { router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { listPublicProfessionals, type PublicProfessionalSummary } from '../../src/services/publicBookings';
 import { getClientNextBooking, type ClientNextBooking } from '../../src/services/clientFeatures';
 import { getApiErrorMessage } from '../../src/services/errors';
 import { useProfessionalProfileContext } from '../../src/context/ProfessionalProfileContext';
+import { ProfessionalHomeTab } from '../../src/features/professional/ProfessionalHomeTab';
 import { listCategories } from '../../src/services/categories';
 import type { ServiceCategoryOption } from '../../src/types/professional';
 import { getCategoryAccent } from '../../src/features/client/categoryUi';
@@ -25,7 +27,7 @@ import {
 } from '../../src/components/ui/MobileSurface';
 
 export default function HomeScreen() {
-  const { role, clientProfile } = useProfessionalProfileContext();
+  const { role, profile, clientProfile } = useProfessionalProfileContext();
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [businesses, setBusinesses] = useState<PublicProfessionalSummary[]>([]);
@@ -118,8 +120,8 @@ export default function HomeScreen() {
     });
   };
 
-  if (role === 'professional') {
-    return <Redirect href="/dashboard" />;
+  if (role === 'professional' && profile) {
+    return <ProfessionalHomeTab />;
   }
 
   return (

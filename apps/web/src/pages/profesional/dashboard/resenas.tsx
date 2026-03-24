@@ -185,7 +185,7 @@ export default function ProfesionalResenasPage() {
                 icon="resenas"
                 accent="ink"
                 title="Reseñas de clientes"
-                description="Gestioná las reseñas que dejan tus clientes. Podés ocultar el texto de una reseña, pero la calificación numérica siempre es visible."
+                description="Gestioná las reseñas que dejan tus clientes. Podés ocultar el texto de una reseña, o eliminarla por completo si necesitás retirarla del perfil."
               />
 
               {profile ? (
@@ -249,24 +249,35 @@ export default function ProfesionalResenasPage() {
                           </div>
                         </div>
 
-                        {review.text ? (
+                        <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
+                          {review.text ? (
+                            <button
+                              type="button"
+                              disabled={actionLoading === review.id}
+                              onClick={() =>
+                                review.textHiddenByProfessional
+                                  ? void handleShow(review.id)
+                                  : void handleHide(review.id)
+                              }
+                              className="rounded-full border border-[#E2E7EC] px-3 py-1.5 text-xs font-semibold text-[#475569] transition hover:-translate-y-0.5 hover:shadow-sm disabled:cursor-not-allowed disabled:opacity-50"
+                            >
+                              {actionLoading === review.id
+                                ? 'Guardando...'
+                                : review.textHiddenByProfessional
+                                  ? 'Mostrar texto'
+                                  : 'Ocultar texto'}
+                            </button>
+                          ) : null}
+
                           <button
                             type="button"
                             disabled={actionLoading === review.id}
-                            onClick={() =>
-                              review.textHiddenByProfessional
-                                ? void handleShow(review.id)
-                                : void handleHide(review.id)
-                            }
-                            className="shrink-0 rounded-full border border-[#E2E7EC] px-3 py-1.5 text-xs font-semibold text-[#475569] transition hover:-translate-y-0.5 hover:shadow-sm disabled:cursor-not-allowed disabled:opacity-50"
+                            onClick={() => void handleDelete(review.id)}
+                            className="rounded-full border border-[#FECACA] bg-white px-3 py-1.5 text-xs font-semibold text-[#B91C1C] transition hover:-translate-y-0.5 hover:shadow-sm disabled:cursor-not-allowed disabled:opacity-50"
                           >
-                            {actionLoading === review.id
-                              ? 'Guardando...'
-                              : review.textHiddenByProfessional
-                                ? 'Mostrar texto'
-                                : 'Ocultar texto'}
+                            {actionLoading === review.id ? 'Guardando...' : 'Eliminar reseña'}
                           </button>
-                        ) : null}
+                        </div>
                       </div>
 
                       {review.text ? (

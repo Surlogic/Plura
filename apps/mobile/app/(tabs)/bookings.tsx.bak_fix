@@ -9,7 +9,6 @@ import {
   View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Redirect } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import {
   cancelClientBooking,
@@ -22,6 +21,7 @@ import {
 import { getPublicSlots } from '../../src/services/publicBookings';
 import { getApiErrorMessage } from '../../src/services/errors';
 import { useProfessionalProfileContext } from '../../src/context/ProfessionalProfileContext';
+import BusinessProfileScreen from '../dashboard/business-profile';
 import { theme } from '../../src/theme';
 import { openMercadoPagoInAppBrowser } from '../../src/services/mercadoPagoBrowser';
 import { AppScreen } from '../../src/components/ui/AppScreen';
@@ -170,7 +170,7 @@ function BookingListCard({ booking, isSelected, onPress }: BookingListCardProps)
 }
 
 export default function ClientBookingsScreen() {
-  const { role, clientProfile } = useProfessionalProfileContext();
+  const { role, profile, clientProfile } = useProfessionalProfileContext();
   const [bookings, setBookings] = useState<ClientDashboardBooking[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -297,8 +297,8 @@ export default function ClientBookingsScreen() {
     ).length,
   }), [bookings, upcomingBookings.length]);
 
-  if (role === 'professional') {
-    return <Redirect href="/dashboard/business-profile" />;
+  if (role === 'professional' && profile) {
+    return <BusinessProfileScreen />;
   }
 
   const handleCancel = async () => {

@@ -1,11 +1,11 @@
-import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import api from '../services/api';
 import {
-  clearSession,
-  getAccessToken,
-  getRefreshToken,
+  getProfessionalRefreshToken,
+  getProfessionalToken,
+  clearProfessionalToken,
 } from '../services/session';
-import { ProfessionalProfile } from '../types/professional';
+import { ProfessionalProfile } from '../types/professional'; // Ajusta la ruta a tus tipos si es necesario
 import { logWarn } from '../services/logger';
 
 type ClientProfile = {
@@ -36,18 +36,16 @@ export const ProfessionalProfileProvider = ({ children }: { children: ReactNode 
   const [role, setRole] = useState<'professional' | 'client' | null>(null);
   const [hasLoaded, setHasLoaded] = useState(false);
 
-  const resetState = () => {
-    setProfile(null);
-    setClientProfile(null);
-    setRole(null);
-  };
-
   const refreshProfile = async () => {
     try {
-      const token = await getAccessToken();
-
-      if (!token || token === 'null' || token === 'undefined') {
-        resetState();
+      const token = await getProfessionalToken();
+      
+      // Si no hay token válido, cortamos acá
+      if (!token || token === "null" || token === "undefined") {
+        setProfile(null);
+        setClientProfile(null);
+        setRole(null);
+        setHasLoaded(true); // <- APAGA LA RUEDITA
         return;
       }
 
@@ -63,30 +61,37 @@ export const ProfessionalProfileProvider = ({ children }: { children: ReactNode 
         setProfile(null);
         setRole('client');
       }
+      
     } catch (error) {
       logWarn('profile', 'error cargando perfil', error);
-      resetState();
+      // Si hay error (ej. timeout o token vencido), borramos el perfil
+      setProfile(null); 
+      setClientProfile(null);
+      setRole(null);
     } finally {
-      setHasLoaded(true);
+      // ESTO ES CLAVE: Pase lo que pase, apaga la ruedita cargando
+      setHasLoaded(true); 
     }
   };
 
   const logout = async () => {
-    const refreshToken = await getRefreshToken();
+    const refreshToken = await getProfessionalRefreshToken();
 
     try {
       await api.post('/auth/logout', refreshToken ? { refreshToken } : {});
     } catch (error) {
       logWarn('profile', 'error cerrando sesion en backend', error);
     } finally {
-      await clearSession();
-      resetState();
-      setHasLoaded(true);
+      await clearProfessionalToken();
+      setProfile(null);
+      setClientProfile(null);
+      setRole(null);
     }
   };
 
+  // Cargar el perfil automáticamente al abrir la app
   useEffect(() => {
-    void refreshProfile();
+    refreshProfile();
   }, []);
 
   return (

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Linking, ScrollView, Text, TouchableOpacity, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { ActivityIndicator, Linking, Text, TouchableOpacity, View } from 'react-native';
+import { Redirect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import {
   buildClientNotifications,
@@ -18,7 +18,7 @@ import {
 import { theme } from '../../src/theme';
 
 export default function NotificationsScreen() {
-  const { role, profile } = useProfessionalProfileContext();
+  const { role } = useProfessionalProfileContext();
   const [isLoading, setIsLoading] = useState(true);
   const [items, setItems] = useState<MobileNotification[]>([]);
   const {
@@ -33,39 +33,17 @@ export default function NotificationsScreen() {
   useEffect(() => {
     const load = async () => {
       setIsLoading(true);
-      const notifications = role === 'professional'
-        ? [
-            {
-              id: 'professional-panel',
-              title: 'Panel profesional activo',
-              body: 'Tus accesos mobile ahora quedaron separados del flujo cliente.',
-              type: 'system' as const,
-              createdAt: new Date().toISOString(),
-            },
-            {
-              id: 'professional-email',
-              title: profile?.emailVerified ? 'Email verificado' : 'Verifica tu email',
-              body: profile?.emailVerified
-                ? 'Tu cuenta ya esta lista para notificaciones y recuperacion.'
-                : 'Confirma tu email desde Cuenta para mejorar seguridad y recuperacion.',
-              type: 'system' as const,
-              createdAt: new Date().toISOString(),
-            },
-            {
-              id: 'professional-plan',
-              title: `Plan ${profile?.professionalPlan || 'BASIC'}`,
-              body: 'Revisa Facturacion para gestionar tu plan y los datos de cobro.',
-              type: 'system' as const,
-              createdAt: new Date().toISOString(),
-            },
-          ]
-        : await buildClientNotifications();
+      const notifications = await buildClientNotifications();
       setItems(notifications);
       setIsLoading(false);
     };
 
     void load();
-  }, [profile?.emailVerified, profile?.professionalPlan, role]);
+  }, []);
+
+  if (role === 'professional') {
+    return <Redirect href="/dashboard/notifications" />;
+  }
 
   const openDeviceSettings = async () => {
     try {
@@ -82,103 +60,89 @@ export default function NotificationsScreen() {
       : 'Pendientes';
 
   return (
-    <AppScreen scroll edges={['top']} contentContainerStyle={{ padding: 24, paddingBottom: 120 }}>
-        <ScreenHero
-          eyebrow="Actividad"
-          title="Notificaciones"
-          description={
-            role === 'professional'
-              ? 'Alertas del panel profesional y estado de la cuenta.'
-              : 'Recordatorios y novedades de tu cuenta.'
-          }
-          icon="notifications-outline"
-          badges={[{ label: `${items.length} items`, tone: 'light' }]}
-        />
+    <AppScreen scroll edges={['top']} contentContainerStyle={{ paddingTop: 24, paddingBottom: 120 }}>
+      <ScreenHero
+        eyebrow="Notificaciones"
+        title="Tus alertas como cliente"
+        description="Revisa recordatorios de reservas, promociones y novedades relevantes para tu cuenta."
+        icon="notifications-outline"
+        badges={[
+          { label: `Push ${pushStatusLabel}`, tone: arePushNotificationsEnabled ? 'success' : 'warning' },
+        ]}
+      />
 
-        <SectionCard style={{ marginTop: 24 }}>
-          <View className="flex-row items-start justify-between">
-            <View className="flex-1 pr-3">
-              <Text className="text-xs font-bold uppercase tracking-[2px] text-gray-500">
-                Permiso del dispositivo
-              </Text>
-              <Text className="mt-2 text-xl font-bold text-secondary">
-                Notificaciones {pushStatusLabel.toLowerCase()}
-              </Text>
-              <Text className="mt-2 text-sm leading-6 text-gray-500">
-                Cuando esten activas podremos usar este canal para reservas confirmadas, cancelaciones, recordatorios y promos.
-              </Text>
-            </View>
-            <StatusPill
-              label={pushStatusLabel}
-              tone={
-                arePushNotificationsEnabled
-                  ? 'success'
-                  : pushSettings.permissionStatus === 'denied'
-                    ? 'warning'
-                    : 'neutral'
-              }
-            />
+      <SectionCard style={{ marginTop: 24 }}>
+        <View className="flex-row items-center justify-between">
+          <View>
+            <Text className="text-sm font-bold text-secondary">Avisos push</Text>
+            <Text className="mt-1 text-xs text-gray-500">
+              Estado del dispositivo: {pushSettings.permissionStatus || 'pendiente'}
+            </Text>
           </View>
+          <StatusPill
+            label={pushStatusLabel}
+            tone={arePushNotificationsEnabled ? 'success' : 'warning'}
+          />
+        </View>
 
-          {isLoadingPushState ? (
-            <View className="mt-4 items-center">
-              <ActivityIndicator color={theme.colors.primary} />
-            </View>
-          ) : (
-            <View className="mt-4 flex-row" style={{ gap: 10 }}>
-              {arePushNotificationsEnabled ? (
-                <ActionButton
-                  onPress={() => void disablePush()}
-                  label={isRefreshingPushState ? 'Guardando...' : 'Silenciar en app'}
-                  tone="soft"
-                  style={{ flex: 1 }}
-                />
-              ) : (
-                <ActionButton
-                  onPress={() => void requestPushPermission()}
-                  label={isRefreshingPushState ? 'Activando...' : 'Activar notificaciones'}
-                  style={{ flex: 1 }}
-                />
-              )}
+        {!arePushNotificationsEnabled ? (
+          <ActionButton
+            label={isRefreshingPushState ? 'Activando...' : 'Activar avisos'}
+            onPress={requestPushPermission}
+            disabled={isRefreshingPushState || isLoadingPushState}
+            style={{ marginTop: 16 }}
+          />
+        ) : (
+          <ActionButton
+            label={isRefreshingPushState ? 'Actualizando...' : 'Desactivar en este dispositivo'}
+            onPress={disablePush}
+            disabled={isRefreshingPushState || isLoadingPushState}
+            tone="secondary"
+            style={{ marginTop: 16 }}
+          />
+        )}
 
-              {pushSettings.permissionStatus === 'denied' && !pushSettings.canAskAgain ? (
-                <ActionButton
-                  onPress={() => void openDeviceSettings()}
-                  label="Abrir ajustes"
-                  tone="secondary"
-                  style={{ flex: 1 }}
-                />
-              ) : null}
-            </View>
-          )}
-        </SectionCard>
-
-        {isLoading ? (
-          <View className="py-16 items-center">
-            <ActivityIndicator color={theme.colors.primary} />
-          </View>
+        {pushSettings.permissionStatus === 'denied' ? (
+          <TouchableOpacity onPress={openDeviceSettings} style={{ marginTop: 14 }}>
+            <Text style={{ color: theme.colors.primaryStrong, fontWeight: '700' }}>
+              Abrir configuracion del dispositivo
+            </Text>
+          </TouchableOpacity>
         ) : null}
+      </SectionCard>
 
-        {!isLoading && items.map((item) => (
-          <View
-            key={item.id}
-            className="mt-4 rounded-[22px] border border-secondary/10 bg-white p-5 shadow-sm"
-          >
-            <View className="flex-row items-center justify-between">
-              <View className="flex-row items-center">
-                <View className={`h-10 w-10 items-center justify-center rounded-full ${item.type === 'booking' ? 'bg-primary/15' : 'bg-secondary/10'}`}>
-                  <Ionicons
-                    name={item.type === 'booking' ? 'calendar-outline' : 'sparkles-outline'}
-                    size={18}
-                    color={item.type === 'booking' ? '#0A7A43' : '#0F172A'}
-                  />
-                </View>
-                <Text className="ml-3 text-sm font-bold text-secondary">{item.title}</Text>
-              </View>
-            </View>
-            <Text className="mt-3 text-sm text-gray-500 leading-5">{item.body}</Text>
+      <View style={{ gap: 12, marginTop: 20 }}>
+        {isLoading ? (
+          <View style={{ paddingVertical: 24, alignItems: 'center' }}>
+            <ActivityIndicator size="small" color={theme.colors.primary} />
           </View>
-        ))}
+        ) : items.length === 0 ? (
+          <SectionCard>
+            <Text className="text-base font-bold text-secondary">Todavia no tienes alertas</Text>
+            <Text className="mt-2 text-sm text-gray-500">
+              Cuando confirmes una reserva o aparezca una promo relevante, la veras aqui.
+            </Text>
+          </SectionCard>
+        ) : (
+          items.map((item) => (
+            <SectionCard key={item.id}>
+              <View className="flex-row items-start justify-between">
+                <View className="flex-1 pr-4">
+                  <Text className="text-base font-bold text-secondary">{item.title}</Text>
+                  <Text className="mt-2 text-sm text-gray-600">{item.body}</Text>
+                  <Text className="mt-3 text-xs text-gray-400">
+                    {new Date(item.createdAt).toLocaleString()}
+                  </Text>
+                </View>
+                <StatusPill
+                  label={item.type === 'promo' ? 'Promo' : item.type === 'booking' ? 'Reserva' : 'Info'}
+                  tone={item.type === 'promo' ? 'primary' : item.type === 'booking' ? 'success' : 'neutral'}
+                />
+              </View>
+            </SectionCard>
+          ))
+        )}
+      </View>
     </AppScreen>
   );
 }

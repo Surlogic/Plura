@@ -1,0 +1,29 @@
+import 'expo-dev-client';
+import { Stack } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { ProfessionalProfileProvider } from '../src/context/ProfessionalProfileContext';
+import { theme } from '../src/theme';
+
+export default function RootLayout() {
+  return (
+    <SafeAreaProvider>
+      <ProfessionalProfileProvider>
+        <StatusBar style="dark" backgroundColor={theme.colors.background} />
+        <Stack
+          screenOptions={{
+            headerShown: false,
+            contentStyle: { backgroundColor: theme.colors.background },
+            animation: 'fade',
+          }}
+        >
+          <Stack.Screen name="index" />
+          <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+          <Stack.Screen name="dashboard" options={{ headerShown: false }} />
+          <Stack.Screen name="reservar" options={{ headerShown: false }} />
+        </Stack>
+      </ProfessionalProfileProvider>
+    </SafeAreaProvider>
+  );
+}

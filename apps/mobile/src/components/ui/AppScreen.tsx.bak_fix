@@ -1,6 +1,5 @@
 import React from 'react';
 import {
-  Platform,
   ScrollView,
   StyleSheet,
   View,
@@ -36,12 +35,10 @@ export function AppScreen({
       contentContainerStyle={[styles.scrollContent, contentContainerStyle]}
       {...scrollProps}
     >
-      <View style={styles.innerShell}>{children}</View>
+      {children}
     </ScrollView>
   ) : (
-    <View style={[styles.content, contentContainerStyle]}>
-      <View style={styles.innerShell}>{children}</View>
-    </View>
+    <View style={[styles.content, contentContainerStyle]}>{children}</View>
   );
 
   return (
@@ -105,19 +102,12 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: theme.colors.background,
   },
-  innerShell: {
-    width: '100%',
-    maxWidth: Platform.OS === 'web' ? 560 : undefined,
-    alignSelf: 'center',
-  },
   content: {
     flex: 1,
-    paddingHorizontal: 16,
   },
   scrollContent: {
     flexGrow: 1,
-    paddingHorizontal: 16,
-    paddingBottom: Platform.OS === 'web' ? 124 : 112,
+    paddingBottom: 32,
   },
   glowTopLeft: {
     position: 'absolute',

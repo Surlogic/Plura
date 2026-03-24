@@ -5,7 +5,6 @@ import Footer from '@/components/shared/Footer';
 import Hero from '@/components/home/Hero';
 import CategoriesGrid from '@/components/home/CategoriesGrid';
 import TopBusinesses from '@/components/home/TopBusinesses';
-import ReviewsSection from '@/components/home/ReviewsSection';
 import type { HomeResponse } from '@/types/home';
 import type { Category } from '@/types/category';
 
@@ -120,7 +119,6 @@ export default function HomePage({
           <Hero stats={stats} isLoading={isInitialHomeLoading} />
           <CategoriesGrid categories={categories} isLoading={isInitialHomeLoading} />
           <TopBusinesses professionals={topProfessionals} isLoading={isInitialHomeLoading} />
-          <ReviewsSection />
         </main>
         <Footer />
       </div>

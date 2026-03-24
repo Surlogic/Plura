@@ -64,8 +64,7 @@ export default function ClienteRegisterPage() {
 
   const handleChange = (event: ChangeEvent<HTMLInputElement>) => {
     const { name, value } = event.target;
-    const normalizedValue = name === 'email' || name === 'confirmEmail' ? value.toLowerCase() : value;
-    setForm((prev) => ({ ...prev, [name]: normalizedValue }));
+    setForm((prev) => ({ ...prev, [name]: value }));
   };
 
   const handleBlur = (event: ChangeEvent<HTMLInputElement>) => {

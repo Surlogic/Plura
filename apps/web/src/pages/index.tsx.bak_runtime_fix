@@ -26,7 +26,7 @@ const fetchWithTimeout = (url: string, timeoutMs = HOME_FETCH_TIMEOUT_MS) => {
   const controller = new AbortController();
   const id = setTimeout(() => controller.abort(), timeoutMs);
   return fetch(url, {
-    headers: { Accept: 'application/json' },
+    headers: { Accept: 'application/json', 'ngrok-skip-browser-warning': '1' },
     signal: controller.signal,
   }).finally(() => clearTimeout(id));
 };

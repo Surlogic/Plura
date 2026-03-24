@@ -19,6 +19,11 @@ import {
   getPendingReservation,
 } from '@/services/pendingReservation';
 
+type AccountMismatchHint = {
+  href: string;
+  linkLabel: string;
+};
+
 const resolveQueryValue = (value: string | string[] | undefined) => {
   if (Array.isArray(value)) return value[0] ?? '';
   return value ?? '';
@@ -40,6 +45,22 @@ const extractApiMessage = (error: unknown, fallback: string) => {
   return fallback;
 };
 
+const resolveAccountMismatchHint = (message: string | null): AccountMismatchHint | null => {
+  if (!message) {
+    return null;
+  }
+
+  const normalized = message.toLowerCase();
+  if (normalized.includes('cuenta es profesional') || normalized.includes('acceso profesional')) {
+    return {
+      href: '/profesional/auth/login',
+      linkLabel: 'Ir al acceso profesional',
+    };
+  }
+
+  return null;
+};
+
 export default function ClienteLoginPage() {
   const router = useRouter();
   const { refreshProfile } = useClientProfileContext();
@@ -53,6 +74,8 @@ export default function ClienteLoginPage() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+
+  const mismatchHint = resolveAccountMismatchHint(errorMessage);
 
   const handleChange = (event: ChangeEvent<HTMLInputElement>) => {
     const { name, value } = event.target;
@@ -69,7 +92,7 @@ export default function ClienteLoginPage() {
         email: form.email.trim().toLowerCase(),
         password: form.password,
       });
-      setAuthAccessToken(response.data?.accessToken ?? null, 'CLIENT');
+      setAuthAccessToken(response.data?.accessToken ?? null);
       await completeClientLoginFlow();
     } catch (error) {
       setErrorMessage(
@@ -197,9 +220,17 @@ export default function ClienteLoginPage() {
               </div>
 
               {errorMessage ? (
-                <p className="rounded-[12px] border border-[color:var(--error-soft)] bg-[color:var(--error-soft)] px-3 py-2 text-xs text-[color:var(--error)]">
-                  {errorMessage}
-                </p>
+                <div className="space-y-2 rounded-[12px] border border-[color:var(--error-soft)] bg-[color:var(--error-soft)] px-3 py-2 text-xs text-[color:var(--error)]">
+                  <p>{errorMessage}</p>
+                  {mismatchHint ? (
+                    <Link
+                      href={mismatchHint.href}
+                      className="inline-flex font-semibold underline underline-offset-4"
+                    >
+                      {mismatchHint.linkLabel}
+                    </Link>
+                  ) : null}
+                </div>
               ) : null}
 
               <button

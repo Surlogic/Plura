@@ -1,5 +1,5 @@
 import api from '@/services/api';
-import { setAuthAccessToken, type KnownAuthSessionRole } from '@/services/session';
+import { setAuthAccessToken } from '@/services/session';
 
 export type OAuthProvider = 'google' | 'apple';
 export type OAuthRole = 'USER' | 'PROFESSIONAL' | null;
@@ -64,12 +64,6 @@ const extractRoleFromAccessToken = (accessToken: string | null | undefined): OAu
   }
 };
 
-const toKnownSessionRole = (role: OAuthRole): KnownAuthSessionRole | undefined => {
-  if (role === 'USER') return 'CLIENT';
-  if (role === 'PROFESSIONAL') return 'PROFESSIONAL';
-  return undefined;
-};
-
 export async function oauthLogin(
   provider: OAuthProvider,
   tokenOrCode: string,
@@ -95,10 +89,9 @@ export async function oauthLogin(
   const response = await api.post<OAuthResponse>('/auth/oauth', payload);
 
   const data = response.data;
-  const role = extractRoleFromAccessToken(data.accessToken);
-  setAuthAccessToken(data.accessToken, toKnownSessionRole(role));
+  setAuthAccessToken(data.accessToken);
   return {
     ...data,
-    role,
+    role: extractRoleFromAccessToken(data.accessToken),
   };
 }

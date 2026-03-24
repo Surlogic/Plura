@@ -109,7 +109,7 @@ Modulos relevantes:
 - `services/clientBookings.ts`: reservas y pago del cliente.
 - `services/clientBookings.ts`: reservas y pago del cliente; ahora cachea `actions` y `timeline` por booking y permite prefetch conservador del detalle para bajar waterfalls al entrar o cambiar de seleccion.
 - `services/clientFeatures.ts`: features y entitlements del plan del cliente.
-- `services/clientReviews.ts`: reseñas del cliente por booking.
+- `services/clientReviews.ts`: reseñas del cliente por booking; incluye creacion, lectura, elegibilidad y eliminacion con invalidacion de cache.
 - `services/cachedGet.ts`: capa de cache para GET requests reutilizable.
 - `services/pendingReservation.ts`: persistencia local de reservas pendientes para continuidad de flujo.
 - `types/clientBookingTimeline.ts` y `utils/clientBookingTimeline.ts`: contrato y formateo del historial operativo de reservas cliente.
@@ -130,7 +130,7 @@ Lectura de producto:
 - `/cliente/reservas` ya usa su panel lateral de detalle como experiencia real de reserva e incluye timeline de actividad por `bookingId`
 - `/cliente/reservas` mantiene el refresco de estados pendientes, pero el polling ya no corre en background y usa backoff conservador para bajar presion de red
 - `/cliente/reservas` ahora prefetch-ea `actions + timeline` de la reserva seleccionada apenas entra el listado para reducir espera perceptible sin cambiar contratos
-- reseñas implementadas: CTA en sidebar de reserva COMPLETED, formulario con rating 1-5 y texto opcional, review existente visible; proteccion contra race conditions con patron `isActive`
+- reseñas implementadas: CTA en sidebar de reserva COMPLETED, formulario con rating 1-5 y texto opcional, review existente visible con opcion de eliminar; proteccion contra race conditions con patron `isActive`
 - feedback de app integrado en `/cliente/configuracion` con formulario de rating, categoria opcional y texto libre; incluye historial paginado de feedback propio
 - `/cliente/configuracion` ahora requiere challenge OTP por email para eliminar cuenta; muestra codigo enmascarado y advierte sobre cancelacion de reservas e irreversibilidad
 - `ClientNotificationsContext` ya no rompe fuera del provider; devuelve defaults seguros (unreadCount=0, noop callbacks) para degradar sin crash en rutas publicas
@@ -170,7 +170,7 @@ Modulos relevantes:
 - `hooks/useProfessionalBilling.ts`
 - `services/professionalAnalytics.ts`: analytics y metricas del profesional.
 - `services/professionalMercadoPagoConnection.ts`: operaciones de conexion OAuth Mercado Pago del profesional.
-- `services/professionalReviews.ts`: gestion de reseñas recibidas por el profesional.
+- `services/professionalReviews.ts`: gestion de reseñas recibidas por el profesional; incluye listado, ocultamiento de texto y eliminacion con invalidacion de cache.
 - `services/publicReviews.ts`: reseñas publicas para perfil publico del profesional.
 
 Lectura de producto:
@@ -205,7 +205,7 @@ Lectura de producto:
 Notas recientes:
 
 - feedback de app integrado en `/profesional/dashboard/configuracion` con formulario de rating, categoria opcional y texto libre; incluye historial paginado de feedback propio; modulo backend separado `core.feedback`
-- `/profesional/dashboard/resenas` es la pagina de gestion de reseñas del profesional: muestra stats agregados (rating, total), lista paginada de reseñas recibidas con toggle de hide/show del texto publico; el texto oculto sigue visible para el profesional con indicador visual amarillo
+- `/profesional/dashboard/resenas` es la pagina de gestion de reseñas del profesional: muestra stats agregados (rating, total), lista paginada de reseñas recibidas con toggle de hide/show del texto publico y opcion de eliminar reseña; el texto oculto sigue visible para el profesional con indicador visual amarillo
 - `/profesional/dashboard/configuracion` ahora requiere challenge OTP por email para eliminar cuenta; advierte sobre cancelacion de suscripcion y reservas pendientes
 - `PublicReviewsList` muestra reseñas paginadas en el perfil publico del profesional: avatar con inicial, nombre, rating, fecha y texto; respeta ocultamiento mostrando mensaje explicativo
 

@@ -149,10 +149,11 @@ Base transversal que ordena el producto y la arquitectura:
 - detalle completo de reserva y carga manual desde panel
 - centro de notificaciones e historial
 - notificaciones in-app, email y motor de eventos transaccionales
-- reseñas implementadas con tres variantes de respuesta: publica (respeta ocultamiento por profesional e internal ops), profesional (ve todo su texto), cliente (ve su propia reseña); rating y reviewsCount propagados a todas las superficies publicas (home, explorar, mapa, favoritos, marketplace); notificacion automatica al profesional al recibir reseña; recomputo batch de agregados; analytics de reseñas para internal ops; respuesta publica del negocio pendiente
+- reseñas implementadas con tres variantes de respuesta: publica (respeta ocultamiento por profesional e internal ops), profesional (ve todo su texto), cliente (ve su propia reseña); rating y reviewsCount propagados a todas las superficies publicas (home, explorar, mapa, favoritos, marketplace); notificacion automatica al profesional al recibir reseña; recomputo batch de agregados; analytics de reseñas para internal ops; eliminacion de reseña por cliente y por profesional con recomputo de agregados; respuesta publica del negocio pendiente
 - feedback interno de app implementado (cliente y profesional pueden enviar rating + texto + categoria opcional hacia la plataforma; modulo separado `core.feedback`; historial paginado propio en configuracion; backoffice interno con listado, filtros, archive/unarchive y analytics basicos bajo `/internal/ops/app-feedback` protegido por `X-Internal-Token`); feedback con texto se marca automaticamente `publicVisible=true` y queda expuesto via `GET /public/app-feedback` sin auth para testimonios publicos en la web; el nombre del autor se muestra abreviado ("Nombre I.") por privacidad
 - panel administrativo y configuracion general
 - pagos online configurables y metodos de pago visibles
+- side effects de booking (agenda, notificaciones) ejecutados via after-commit para seguridad transaccional
 - base de analytics y eventos del producto
 
 Notas operativas recientes:

@@ -13,4 +13,8 @@ public interface BusinessPhotoRepository extends JpaRepository<BusinessPhoto, Lo
     );
 
     void deleteByProfessional_IdAndType(Long professionalId, BusinessPhotoType type);
+
+    List<BusinessPhoto> findByProfessional_Id(Long professionalId);
+
+    void deleteByProfessional_Id(Long professionalId);
 }

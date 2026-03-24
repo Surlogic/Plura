@@ -16,6 +16,7 @@ import com.plura.plurabackend.core.cache.SlotCacheService;
 import com.plura.plurabackend.core.professional.ProfessionalAccountLifecycleGateway;
 import com.plura.plurabackend.core.professional.ProfessionalAccountSubject;
 import com.plura.plurabackend.core.search.engine.SearchSyncPublisher;
+import com.plura.plurabackend.core.storage.ImageCleanupService;
 import com.plura.plurabackend.core.user.model.User;
 import com.plura.plurabackend.core.user.model.UserRole;
 import com.plura.plurabackend.core.user.repository.UserRepository;
@@ -59,6 +60,7 @@ public class AccountDeletionService {
     private final SearchSyncPublisher searchSyncPublisher;
     private final PasswordEncoder passwordEncoder;
     private final BookingEventService bookingEventService;
+    private final ImageCleanupService imageCleanupService;
     private final ZoneId appZoneId;
 
     public AccountDeletionService(
@@ -75,6 +77,7 @@ public class AccountDeletionService {
         SearchSyncPublisher searchSyncPublisher,
         PasswordEncoder passwordEncoder,
         BookingEventService bookingEventService,
+        ImageCleanupService imageCleanupService,
         @Value("${app.timezone:America/Montevideo}") String appTimezone
     ) {
         this.userRepository = userRepository;
@@ -90,6 +93,7 @@ public class AccountDeletionService {
         this.searchSyncPublisher = searchSyncPublisher;
         this.passwordEncoder = passwordEncoder;
         this.bookingEventService = bookingEventService;
+        this.imageCleanupService = imageCleanupService;
         this.appZoneId = ZoneId.of(appTimezone);
     }
 
@@ -115,6 +119,7 @@ public class AccountDeletionService {
 
     private void deleteClientAccount(User user, LocalDateTime now) {
         cancelFutureBookingsForClient(user.getId(), now);
+        imageCleanupService.deleteIfRemoved(user.getAvatar());
         anonymizeUser(user, now);
         userRepository.save(user);
         sessionService.revokeAllSessionsForUser(user, sessionService.revokeReasonAccountDeletion());
@@ -126,6 +131,10 @@ public class AccountDeletionService {
 
         billingService.cancelSubscriptionForProfessionalId(subject.professionalId(), true);
         cancelFutureBookingsForProfessional(subject.professionalId(), now);
+
+        // Clean up all media from storage BEFORE deactivation nullifies URLs
+        professionalAccountLifecycleGateway.cleanupProfessionalMedia(subject.professionalId());
+        imageCleanupService.deleteIfRemoved(user.getAvatar());
 
         professionalAccountLifecycleGateway.deactivateProfessionalProfile(subject);
         professionalAccountLifecycleGateway.clearProfessionalCoordinates(subject.professionalId());

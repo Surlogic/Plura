@@ -24,6 +24,7 @@ import com.plura.plurabackend.core.cache.SlotCacheService;
 import com.plura.plurabackend.core.professional.ProfessionalAccountLifecycleGateway;
 import com.plura.plurabackend.core.professional.ProfessionalAccountSubject;
 import com.plura.plurabackend.core.search.engine.SearchSyncPublisher;
+import com.plura.plurabackend.core.storage.ImageCleanupService;
 import com.plura.plurabackend.core.user.model.User;
 import com.plura.plurabackend.core.user.model.UserRole;
 import com.plura.plurabackend.core.user.repository.UserRepository;
@@ -50,6 +51,7 @@ class AccountDeletionServiceTest {
     private final SearchSyncPublisher searchSyncPublisher = mock(SearchSyncPublisher.class);
     private final PasswordEncoder passwordEncoder = mock(PasswordEncoder.class);
     private final BookingEventService bookingEventService = mock(BookingEventService.class);
+    private final ImageCleanupService imageCleanupService = mock(ImageCleanupService.class);
 
     private final AccountDeletionService service = new AccountDeletionService(
         userRepository,
@@ -65,12 +67,14 @@ class AccountDeletionServiceTest {
         searchSyncPublisher,
         passwordEncoder,
         bookingEventService,
+        imageCleanupService,
         "America/Montevideo"
     );
 
     @Test
     void deletesClientAccountAndCancelsFutureBookings() {
         User user = clientUser(10L, "cliente@plura.com");
+        user.setAvatar("r2://plura-images/avatars/10/photo.jpg");
         ProfessionalProfile professional = professionalProfile(20L, "pro-demo");
         Booking booking = booking(100L, user, professional, LocalDateTime.now().plusDays(2));
 
@@ -90,6 +94,7 @@ class AccountDeletionServiceTest {
         assertNotNull(user.getDeletedAt());
         assertFalse(user.getEmail().contains("cliente@plura.com"));
 
+        verify(imageCleanupService).deleteIfRemoved("r2://plura-images/avatars/10/photo.jpg");
         verify(bookingRepository).saveAll(List.of(booking));
         verify(availableSlotAsyncDispatcher).rebuildProfessionalDay(eq(20L), eq(booking.getStartDateTime().toLocalDate()));
         verify(scheduleSummaryService).requestRebuild(20L);
@@ -101,6 +106,7 @@ class AccountDeletionServiceTest {
     @Test
     void deletesProfessionalAccountAndCancelsSubscriptionImmediately() {
         User user = professionalUser(30L, "pro@plura.com");
+        user.setAvatar("r2://plura-images/avatars/30/photo.jpg");
         ProfessionalProfile profile = professionalProfile(40L, "pro-slug");
         profile.setUser(user);
         Booking booking = booking(101L, clientUser(31L, "other@plura.com"), profile, LocalDateTime.now().plusDays(1));
@@ -123,6 +129,8 @@ class AccountDeletionServiceTest {
         assertNotNull(user.getDeletedAt());
 
         verify(billingService).cancelSubscriptionForProfessionalId(40L, true);
+        verify(professionalAccountLifecycleGateway).cleanupProfessionalMedia(40L);
+        verify(imageCleanupService).deleteIfRemoved("r2://plura-images/avatars/30/photo.jpg");
         verify(availableSlotRepository).deleteByProfessionalId(40L);
         verify(professionalAccountLifecycleGateway).deactivateProfessionalProfile(
             new ProfessionalAccountSubject(40L, "pro-slug")

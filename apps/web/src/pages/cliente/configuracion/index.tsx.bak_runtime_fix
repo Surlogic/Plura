@@ -201,6 +201,7 @@ export default function ClienteConfiguracionPage() {
   };
 
   const handleSendPhoneVerification = async () => {
+  const handleSendPhoneVerification = async () => {
     if (isSendingPhoneVerification || !profile) return;
     setPhoneVerificationMessage(null);
     setPhoneVerificationError(null);

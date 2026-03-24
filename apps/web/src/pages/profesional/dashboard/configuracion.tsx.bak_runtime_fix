@@ -296,6 +296,7 @@ export default function ProfesionalSettingsPage() {
   };
 
   const handleLogout = async () => {
+  const handleLogout = async () => {
     if (isLoggingOut) return;
 
     setIsLoggingOut(true);
@@ -1202,6 +1203,9 @@ export default function ProfesionalSettingsPage() {
                             ) : null}
                           </div>
                         ) : null}
+                      </div>
+                    </div>
+                  </div>
                       </div>
                     </div>
                   </div>

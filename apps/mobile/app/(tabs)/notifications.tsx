@@ -1,12 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Linking, Text, TouchableOpacity, View } from 'react-native';
-import { Redirect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import {
   buildClientNotifications,
   type MobileNotification,
 } from '../../src/services/clientFeatures';
-import { useProfessionalProfileContext } from '../../src/context/ProfessionalProfileContext';
+import { useAuthSession } from '../../src/context/ProfessionalProfileContext';
 import { usePushNotifications } from '../../src/hooks/usePushNotifications';
 import { AppScreen } from '../../src/components/ui/AppScreen';
 import {
@@ -19,7 +18,7 @@ import { theme } from '../../src/theme';
 import AuthWall from '../../src/components/auth/AuthWall';
 
 export default function NotificationsScreen() {
-  const { role, isAuthenticated } = useProfessionalProfileContext();
+  const { isAuthenticated } = useAuthSession();
   const [isLoading, setIsLoading] = useState(true);
   const [items, setItems] = useState<MobileNotification[]>([]);
   const {
@@ -47,10 +46,6 @@ export default function NotificationsScreen() {
 
     void load();
   }, [isAuthenticated]);
-
-  if (role === 'professional') {
-    return <Redirect href="/dashboard/notifications" />;
-  }
 
   if (!isAuthenticated) {
     return (

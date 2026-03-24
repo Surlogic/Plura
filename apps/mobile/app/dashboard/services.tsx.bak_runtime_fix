@@ -12,7 +12,7 @@ import {
   listServiceCategories,
   updateProfessionalService,
 } from '../../src/services/professionalConfig';
-import { useAuthSession } from '../../src/context/ProfessionalProfileContext';
+import { useProfessionalProfileContext } from '../../src/context/ProfessionalProfileContext';
 import { AppScreen } from '../../src/components/ui/AppScreen';
 import { MessageCard, ScreenHero, SectionCard } from '../../src/components/ui/MobileSurface';
 
@@ -49,7 +49,7 @@ const getPaymentTypeLabel = (value?: string | null) => {
 };
 
 export default function ServicesScreen() {
-  const { profile } = useAuthSession();
+  const { profile } = useProfessionalProfileContext();
   const [services, setServices] = useState<ProfessionalService[]>([]);
   const [categories, setCategories] = useState<ServiceCategoryOption[]>([]);
   const [isLoading, setIsLoading] = useState(true);

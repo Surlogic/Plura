@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Redirect, router } from 'expo-router';
+import { router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import {
   getFavoriteProfessionalSlugs,
@@ -12,7 +12,7 @@ import {
   listPublicProfessionals,
   type PublicProfessionalSummary,
 } from '../../src/services/publicBookings';
-import { useProfessionalProfileContext } from '../../src/context/ProfessionalProfileContext';
+import { useAuthSession } from '../../src/context/ProfessionalProfileContext';
 import { getCategoryAccent } from '../../src/features/client/categoryUi';
 import { AppScreen } from '../../src/components/ui/AppScreen';
 import { theme } from '../../src/theme';
@@ -26,13 +26,13 @@ import {
 } from '../../src/components/ui/MobileSurface';
 
 export default function FavoritesScreen() {
-  const { role, clientProfile, isAuthenticated } = useProfessionalProfileContext();
+  const { clientProfile, isAuthenticated } = useAuthSession();
   const [loading, setLoading] = useState(true);
   const [favorites, setFavorites] = useState<string[]>([]);
   const [professionals, setProfessionals] = useState<PublicProfessionalSummary[]>([]);
 
   useEffect(() => {
-    if (role === 'professional' || !isAuthenticated) {
+    if (!isAuthenticated) {
       setFavorites([]);
       setProfessionals([]);
       setLoading(false);
@@ -63,24 +63,20 @@ export default function FavoritesScreen() {
     return () => {
       isCancelled = true;
     };
-  }, [role, isAuthenticated]);
+  }, [isAuthenticated]);
 
   useEffect(() => {
-    if (role === 'professional' || !isAuthenticated) return undefined;
+    if (!isAuthenticated) return undefined;
     const unsubscribe = subscribeFavoriteProfessionalSlugs((next) => {
       setFavorites(next);
     });
     return unsubscribe;
-  }, [role, isAuthenticated]);
+  }, [isAuthenticated]);
 
   const favoriteItems = useMemo(
     () => professionals.filter((item) => favorites.includes(item.slug)),
     [favorites, professionals],
   );
-
-  if (role === 'professional') {
-    return <Redirect href="/dashboard/services" />;
-  }
 
   if (!isAuthenticated) {
     return (

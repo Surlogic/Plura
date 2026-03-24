@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Redirect, router, useLocalSearchParams } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import {
   listPublicProfessionals,
   type PublicProfessionalSummary,
@@ -23,7 +23,7 @@ import {
 } from '../../src/services/clientFeatures';
 import { searchProfessionals } from '../../src/services/search';
 import type { SearchItem, SearchSort, SearchType } from '../../src/types/search';
-import { useProfessionalProfileContext } from '../../src/context/ProfessionalProfileContext';
+import { useAuthSession } from '../../src/context/ProfessionalProfileContext';
 import { listCategories } from '../../src/services/categories';
 import type { ServiceCategoryOption } from '../../src/types/professional';
 import { useUserLocation } from '../../src/hooks/useUserLocation';
@@ -125,7 +125,7 @@ const formatDistance = (distanceKm?: number | null) => {
 };
 
 export default function ExploreScreen() {
-  const { role } = useProfessionalProfileContext();
+  const { isAuthenticated } = useAuthSession();
   const {
     location,
     hasCoordinates,
@@ -177,11 +177,6 @@ export default function ExploreScreen() {
   }, [initialQuery]);
 
   useEffect(() => {
-    if (role === 'professional') {
-      setIsLoading(false);
-      return;
-    }
-
     let isCancelled = false;
 
     const load = async () => {
@@ -245,16 +240,14 @@ export default function ExploreScreen() {
     initialQuery,
     initialRadiusKm,
     initialSort,
-    role,
   ]);
 
   useEffect(() => {
-    if (role === 'professional') return undefined;
     const unsubscribe = subscribeFavoriteProfessionalSlugs((next) => {
       setFavoriteSlugs(next);
     });
     return unsubscribe;
-  }, [role]);
+  }, []);
 
   const filterOptions = useMemo(
     () => [
@@ -395,10 +388,6 @@ export default function ExploreScreen() {
     setUseMyLocation(true);
     setSortBy('DISTANCE');
   };
-
-  if (role === 'professional') {
-    return <Redirect href="/dashboard/agenda" />;
-  }
 
   return (
     <AppScreen scroll edges={['top']} contentContainerStyle={{ paddingBottom: 120 }}>

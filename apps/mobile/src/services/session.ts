@@ -120,11 +120,3 @@ export const clearSession = async () => {
     logError('session', 'error borrando sesion', error);
   }
 };
-
-// Compatibilidad backward-compatible
-export const getProfessionalToken = getAccessToken;
-export const setProfessionalToken = setAccessToken;
-export const getProfessionalRefreshToken = getRefreshToken;
-export const setProfessionalRefreshToken = setRefreshToken;
-export const setProfessionalSession = setSession;
-export const clearProfessionalToken = clearSession;

@@ -4,13 +4,13 @@ import { Platform, StyleSheet, View } from 'react-native';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { ProfessionalProfileProvider } from '../src/context/ProfessionalProfileContext';
+import { AuthSessionProvider } from '../src/context/ProfessionalProfileContext';
 import { theme } from '../src/theme';
 
 export default function RootLayout() {
   return (
     <SafeAreaProvider>
-      <ProfessionalProfileProvider>
+      <AuthSessionProvider>
         <StatusBar style="dark" backgroundColor={theme.colors.background} />
         <View style={styles.root}>
           <View style={styles.shell}>
@@ -29,7 +29,7 @@ export default function RootLayout() {
             </Stack>
           </View>
         </View>
-      </ProfessionalProfileProvider>
+      </AuthSessionProvider>
     </SafeAreaProvider>
   );
 }

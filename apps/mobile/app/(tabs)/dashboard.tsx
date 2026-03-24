@@ -1,10 +1,10 @@
 import React from 'react';
 import { ActivityIndicator, Text, TouchableOpacity, View } from 'react-native';
-import { Redirect, router } from 'expo-router';
+import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import EmailVerificationCard from '../../src/components/auth/EmailVerificationCard';
-import { useProfessionalProfileContext } from '../../src/context/ProfessionalProfileContext';
+import { useAuthSession } from '../../src/context/ProfessionalProfileContext';
 import { AppScreen } from '../../src/components/ui/AppScreen';
 import {
   ActionButton,
@@ -13,7 +13,7 @@ import {
 } from '../../src/components/ui/MobileSurface';
 
 export default function DashboardTab() {
-  const { clientProfile, role, hasLoaded, logout, refreshProfile } = useProfessionalProfileContext();
+  const { clientProfile, hasLoaded, logout, refreshProfile } = useAuthSession();
 
   if (!hasLoaded) {
     return (
@@ -21,10 +21,6 @@ export default function DashboardTab() {
         <ActivityIndicator size="large" color="#0A7A43" />
       </View>
     );
-  }
-
-  if (role === 'professional') {
-    return <Redirect href="/dashboard" />;
   }
 
   if (clientProfile) {

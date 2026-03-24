@@ -1,13 +1,13 @@
 import React from 'react';
-import { Redirect, Tabs } from 'expo-router';
+import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useProfessionalProfileContext } from '../../src/context/ProfessionalProfileContext';
+import { useAuthSession } from '../../src/context/ProfessionalProfileContext';
 import { theme } from '../../src/theme';
 
 export default function TabsLayout() {
-  const { role, hasLoaded } = useProfessionalProfileContext();
+  const { hasLoaded } = useAuthSession();
   const insets = useSafeAreaInsets();
   const baseTabBarHeight = Platform.OS === 'ios' ? 60 : 58;
   const bottomPadding =
@@ -20,11 +20,6 @@ export default function TabsLayout() {
   if (!hasLoaded) {
     return null;
   }
-
-  if (role === 'professional') {
-    return <Redirect href="/dashboard" />;
-  }
-
   return (
     <Tabs
       screenOptions={{

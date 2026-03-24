@@ -23,7 +23,7 @@ import {
   subscribeFavoriteProfessionalSlugs,
   toggleFavoriteProfessionalSlug,
 } from '../../src/services/clientFeatures';
-import { useAuthSession } from '../../src/context/ProfessionalProfileContext';
+import { useProfessionalProfileContext } from '../../src/context/ProfessionalProfileContext';
 import type { WorkDayKey } from '../../src/types/professional';
 import {
   buildMapboxStaticMapUrl,
@@ -153,7 +153,7 @@ const buildMapsUrl = ({
 
 export default function ProfesionalDetailScreen() {
   const { slug } = useLocalSearchParams<{ slug: string }>();
-  const { role, profile } = useAuthSession();
+  const { role, profile } = useProfessionalProfileContext();
   const [data, setData] = useState<PublicProfessionalPage | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

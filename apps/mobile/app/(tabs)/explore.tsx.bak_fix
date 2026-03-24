@@ -23,8 +23,7 @@ import {
 } from '../../src/services/clientFeatures';
 import { searchProfessionals } from '../../src/services/search';
 import type { SearchItem, SearchSort, SearchType } from '../../src/types/search';
-import { useProfessionalProfileContext } from '../../src/context/ProfessionalProfileContext';
-import AgendaScreen from '../dashboard/agenda';
+import { useAuthSession } from '../../src/context/ProfessionalProfileContext';
 import { listCategories } from '../../src/services/categories';
 import type { ServiceCategoryOption } from '../../src/types/professional';
 import { useUserLocation } from '../../src/hooks/useUserLocation';
@@ -126,7 +125,7 @@ const formatDistance = (distanceKm?: number | null) => {
 };
 
 export default function ExploreScreen() {
-  const { role, profile } = useProfessionalProfileContext();
+  const { isAuthenticated } = useAuthSession();
   const {
     location,
     hasCoordinates,
@@ -178,11 +177,6 @@ export default function ExploreScreen() {
   }, [initialQuery]);
 
   useEffect(() => {
-    if (role === 'professional') {
-      setIsLoading(false);
-      return;
-    }
-
     let isCancelled = false;
 
     const load = async () => {
@@ -396,10 +390,6 @@ export default function ExploreScreen() {
     setUseMyLocation(true);
     setSortBy('DISTANCE');
   };
-
-  if (role === 'professional' && profile) {
-    return <AgendaScreen />;
-  }
 
   return (
     <AppScreen scroll edges={['top']} contentContainerStyle={{ paddingBottom: 120 }}>

@@ -3,16 +3,19 @@ import { Redirect, Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useProfessionalProfileContext } from '../../src/context/ProfessionalProfileContext';
+import { useAuthSession } from '../../src/context/ProfessionalProfileContext';
 import { theme } from '../../src/theme';
 
 export default function TabsLayout() {
-  const { role, hasLoaded } = useProfessionalProfileContext();
+  const { role, hasLoaded } = useAuthSession();
   const insets = useSafeAreaInsets();
   const baseTabBarHeight = Platform.OS === 'ios' ? 60 : 58;
-  const bottomPadding = Platform.OS === 'ios'
-    ? Math.max(insets.bottom, 14)
-    : Math.max(insets.bottom, 12);
+  const bottomPadding =
+    Platform.OS === 'ios'
+      ? Math.max(insets.bottom, 14)
+      : Platform.OS === 'web'
+        ? 14
+        : Math.max(insets.bottom, 12);
 
   if (!hasLoaded) {
     return null;
@@ -28,12 +31,11 @@ export default function TabsLayout() {
         headerShown: false,
         tabBarActiveTintColor: theme.colors.primary,
         tabBarInactiveTintColor: theme.colors.inkFaint,
+        tabBarHideOnKeyboard: true,
         tabBarStyle: {
           backgroundColor: theme.colors.surface,
           borderTopWidth: 1,
           borderTopColor: theme.colors.border,
-          marginHorizontal: 14,
-          marginBottom: Platform.OS === 'ios' ? 12 : 10,
           borderRadius: 28,
           position: 'absolute',
           elevation: 18,
@@ -44,6 +46,13 @@ export default function TabsLayout() {
           height: baseTabBarHeight + bottomPadding,
           paddingBottom: bottomPadding,
           paddingTop: 10,
+          marginHorizontal: Platform.OS === 'web' ? 0 : 14,
+          marginBottom: Platform.OS === 'ios' ? 12 : 10,
+          alignSelf: 'center',
+          width: '100%',
+          maxWidth: Platform.OS === 'web' ? 560 : undefined,
+          left: Platform.OS === 'web' ? 0 : undefined,
+          right: Platform.OS === 'web' ? 0 : undefined,
         },
         tabBarLabelStyle: {
           fontSize: 11,

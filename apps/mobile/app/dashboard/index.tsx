@@ -1,9 +1,9 @@
 import React from 'react';
 import { Redirect } from 'expo-router';
-import { useProfessionalProfileContext } from '../../src/context/ProfessionalProfileContext';
+import { useAuthSession } from '../../src/context/ProfessionalProfileContext';
 
 export default function ProfessionalDashboardIndex() {
-  const { hasLoaded, role, isAuthenticated } = useProfessionalProfileContext();
+  const { hasLoaded, role, isAuthenticated } = useAuthSession();
 
   if (!hasLoaded) {
     return null;

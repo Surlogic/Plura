@@ -12,9 +12,9 @@ import { Link } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import api from '../../services/api';
 import AuthLoadingOverlay from '../../components/auth/AuthLoadingOverlay';
-import { useAuthSession } from '../../context/ProfessionalProfileContext';
+import { useProfessionalProfileContext } from '../../context/ProfessionalProfileContext';
 import { useGoogleOAuth } from '../../hooks/useGoogleOAuth';
-import { setSession } from '../../services/session';
+import { setProfessionalSession } from '../../services/session';
 import { authRoleCopy, continueAfterAuth, type AuthRole } from './config';
 import { AppScreen, surfaceStyles } from '../../components/ui/AppScreen';
 import { theme } from '../../theme';
@@ -25,7 +25,7 @@ type RoleLoginScreenProps = {
 
 export function RoleLoginScreen({ role }: RoleLoginScreenProps) {
   const copy = authRoleCopy[role];
-  const { refreshProfile } = useAuthSession();
+  const { refreshProfile } = useProfessionalProfileContext();
   const [form, setForm] = useState({ email: '', password: '' });
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -65,7 +65,7 @@ export function RoleLoginScreen({ role }: RoleLoginScreenProps) {
         return;
       }
 
-      await setSession({ accessToken, refreshToken });
+      await setProfessionalSession({ accessToken, refreshToken });
       await refreshProfile();
       await continueAfterAuth(role);
     } catch {

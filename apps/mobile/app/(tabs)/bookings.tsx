@@ -9,7 +9,6 @@ import {
   View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Redirect } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import {
   cancelClientBooking,
@@ -21,7 +20,7 @@ import {
 } from '../../src/services/clientBookings';
 import { getPublicSlots } from '../../src/services/publicBookings';
 import { getApiErrorMessage } from '../../src/services/errors';
-import { useProfessionalProfileContext } from '../../src/context/ProfessionalProfileContext';
+import { useAuthSession } from '../../src/context/ProfessionalProfileContext';
 import { theme } from '../../src/theme';
 import AuthWall from '../../src/components/auth/AuthWall';
 import { openMercadoPagoInAppBrowser } from '../../src/services/mercadoPagoBrowser';
@@ -171,7 +170,7 @@ function BookingListCard({ booking, isSelected, onPress }: BookingListCardProps)
 }
 
 export default function ClientBookingsScreen() {
-  const { role, clientProfile, isAuthenticated } = useProfessionalProfileContext();
+  const { clientProfile, isAuthenticated } = useAuthSession();
   const [bookings, setBookings] = useState<ClientDashboardBooking[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -187,7 +186,7 @@ export default function ClientBookingsScreen() {
   const [cancelReason, setCancelReason] = useState('');
 
   const loadBookings = async () => {
-    if (role === 'professional' || !isAuthenticated) {
+    if (!isAuthenticated) {
       setBookings([]);
       setSelectedBookingId(null);
       setIsLoading(false);
@@ -213,18 +212,18 @@ export default function ClientBookingsScreen() {
 
   useEffect(() => {
     void loadBookings();
-  }, [role, isAuthenticated]);
+  }, [isAuthenticated]);
 
   useEffect(() => {
     const subscription = AppState.addEventListener('change', (nextState) => {
-      if (nextState !== 'active' || role === 'professional' || !isAuthenticated) return;
+      if (nextState !== 'active' || !isAuthenticated) return;
       void loadBookings();
     });
 
     return () => {
       subscription.remove();
     };
-  }, [role, isAuthenticated]);
+  }, [isAuthenticated]);
 
   const selectedBooking = useMemo(
     () => bookings.find((booking) => booking.id === selectedBookingId) ?? null,
@@ -299,10 +298,6 @@ export default function ClientBookingsScreen() {
       (booking) => booking.financialSummary?.financialStatus === 'PAYMENT_PENDING',
     ).length,
   }), [bookings, upcomingBookings.length]);
-
-  if (role === 'professional') {
-    return <Redirect href="/dashboard/business-profile" />;
-  }
 
   if (!isAuthenticated) {
     return (

@@ -11,7 +11,7 @@ import {
 import { Link, router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import AuthLoadingOverlay from '../../components/auth/AuthLoadingOverlay';
-import { useAuthSession } from '../../context/ProfessionalProfileContext';
+import { useProfessionalProfileContext } from '../../context/ProfessionalProfileContext';
 import { useGoogleOAuth } from '../../hooks/useGoogleOAuth';
 import { getApiErrorMessage } from '../../services/errors';
 import {
@@ -57,7 +57,7 @@ const isPhoneValid = (value: string) => /^[+0-9()\-\s]{3,30}$/.test(value);
 
 export function RoleRegisterScreen({ role }: RoleRegisterScreenProps) {
   const copy = authRoleCopy[role];
-  const { refreshProfile } = useAuthSession();
+  const { refreshProfile } = useProfessionalProfileContext();
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);

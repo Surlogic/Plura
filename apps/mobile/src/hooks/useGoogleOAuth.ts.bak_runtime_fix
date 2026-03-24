@@ -9,7 +9,7 @@ import {
   oauthLoginWithToken,
   type OAuthAuthAction,
 } from '../services/oauth';
-import { setSession } from '../services/session';
+import { setProfessionalSession } from '../services/session';
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -87,7 +87,7 @@ export function useGoogleOAuth({
       return;
     }
 
-    await setSession({
+    await setProfessionalSession({
       accessToken: result.accessToken,
       refreshToken: result.refreshToken,
     });
@@ -168,7 +168,7 @@ export function useGoogleOAuth({
           return;
         }
 
-        await setSession({
+        await setProfessionalSession({
           accessToken: result.accessToken,
           refreshToken: result.refreshToken,
         });

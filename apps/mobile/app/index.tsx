@@ -1,11 +1,11 @@
 import React from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import { Redirect } from 'expo-router';
-import { useProfessionalProfileContext } from '../src/context/ProfessionalProfileContext';
+import { useAuthSession } from '../src/context/ProfessionalProfileContext';
 import { theme } from '../src/theme';
 
 export default function EntryScreen() {
-  const { hasLoaded, role } = useProfessionalProfileContext();
+  const { hasLoaded, role } = useAuthSession();
 
   if (!hasLoaded) {
     return (

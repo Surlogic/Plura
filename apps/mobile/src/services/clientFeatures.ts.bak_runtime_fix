@@ -1,6 +1,6 @@
 import api from './api';
 import { getJsonItem, setJsonItem } from './storage';
-import { getAccessToken } from './session';
+import { getProfessionalToken } from './session';
 
 export type ClientNextBooking = {
   id: string;
@@ -76,7 +76,7 @@ export const getClientNextBooking = async (): Promise<ClientNextBooking | null> 
 };
 
 export const getFavoriteProfessionalSlugs = async (): Promise<string[]> => {
-  const token = await getAccessToken();
+  const token = await getProfessionalToken();
   if (!token) {
     return getJsonItem<string[]>(FAVORITES_KEY, []);
   }
@@ -115,7 +115,7 @@ export const subscribeFavoriteProfessionalSlugs = (listener: FavoritesListener):
 export const toggleFavoriteProfessionalSlug = async (slug: string): Promise<string[]> => {
   const favorites = await getFavoriteProfessionalSlugs();
   const exists = favorites.includes(slug);
-  const token = await getAccessToken();
+  const token = await getProfessionalToken();
 
   if (token) {
     try {

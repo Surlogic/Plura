@@ -1,10 +1,10 @@
 import React from 'react';
 import { Redirect, Stack } from 'expo-router';
-import { useProfessionalProfileContext } from '../../src/context/ProfessionalProfileContext';
+import { useAuthSession } from '../../src/context/ProfessionalProfileContext';
 import { theme } from '../../src/theme';
 
 export default function ProfessionalDashboardLayout() {
-  const { hasLoaded, role, isAuthenticated } = useProfessionalProfileContext();
+  const { hasLoaded, role, isAuthenticated } = useAuthSession();
 
   if (!hasLoaded) {
     return null;

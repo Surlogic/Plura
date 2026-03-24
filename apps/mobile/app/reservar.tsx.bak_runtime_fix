@@ -16,7 +16,7 @@ import {
   clearPendingReservation,
   savePendingReservation,
 } from '../src/services/pendingReservation';
-import { useAuthSession } from '../src/context/ProfessionalProfileContext';
+import { useProfessionalProfileContext } from '../src/context/ProfessionalProfileContext';
 import { openMercadoPagoInAppBrowser } from '../src/services/mercadoPagoBrowser';
 
 type Params = {
@@ -75,7 +75,7 @@ const resolveServiceCategoryLabel = (
 
 export default function ReservationCheckoutScreen() {
   const { slug, serviceId, date, time } = useLocalSearchParams<Params>();
-  const { hasLoaded, isAuthenticated, role } = useAuthSession();
+  const { hasLoaded, isAuthenticated, role } = useProfessionalProfileContext();
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);

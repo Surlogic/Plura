@@ -1,7 +1,7 @@
 import React from 'react';
 import { Text, View } from 'react-native';
 import { router } from 'expo-router';
-import { useAuthSession } from '../../src/context/ProfessionalProfileContext';
+import { useProfessionalProfileContext } from '../../src/context/ProfessionalProfileContext';
 import { AppScreen } from '../../src/components/ui/AppScreen';
 import {
   ActionButton,
@@ -11,7 +11,7 @@ import {
 } from '../../src/components/ui/MobileSurface';
 
 export default function ProfessionalNotificationsScreen() {
-  const { profile } = useAuthSession();
+  const { profile } = useProfessionalProfileContext();
 
   return (
     <AppScreen scroll edges={['top']} contentContainerStyle={{ paddingTop: 24, paddingBottom: 120 }}>

@@ -130,10 +130,3 @@ export const useAuthSession = () => {
   if (!context) throw new Error('Debe usarse dentro de un Provider');
   return context;
 };
-
-/**
- * Compatibilidad backward-compatible.
- * Mantener mientras existan imports viejos en la app.
- */
-export const ProfessionalProfileProvider = AuthSessionProvider;
-export const useProfessionalProfileContext = useAuthSession;

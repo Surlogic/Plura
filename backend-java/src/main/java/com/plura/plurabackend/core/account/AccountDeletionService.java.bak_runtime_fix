@@ -106,13 +106,12 @@ public class AccountDeletionService {
     }
 
     private void deleteClientAccount(User user, LocalDateTime now) {
-        List<BookingAvailabilityImpact> futureBookingImpacts = snapshotBookingAvailabilityImpacts(
-            bookingRepository.findByUser_IdAndOperationalStatusInAndStartDateTimeGreaterThanEqual(
+        List<Booking> futureActiveBookings = bookingRepository
+            .findByUser_IdAndOperationalStatusInAndStartDateTimeGreaterThanEqual(
                 user.getId(),
                 ACTIVE_BOOKING_STATUSES,
                 now
-            )
-        );
+            );
         List<Long> bookingIds = findBookingIdsForUser(user.getId());
 
         purgeBookingGraph(bookingIds);
@@ -125,11 +124,9 @@ public class AccountDeletionService {
         purgeUserOwnedArtifacts(user.getId());
 
         imageCleanupService.deleteIfRemoved(user.getAvatar());
+        userRepository.delete(user);
 
-        flushAndClearPersistenceContext();
-        deleteUserById(user.getId());
-
-        refreshAvailabilityAfterClientBookingRemoval(futureBookingImpacts);
+        refreshAvailabilityAfterClientBookingRemoval(futureActiveBookings);
     }
 
     private void deleteProfessionalAccount(User user) {
@@ -160,44 +157,26 @@ public class AccountDeletionService {
         }
         profileCacheService.evictPublicSummaries();
 
-        flushAndClearPersistenceContext();
         deleteProfessionalProfile(subject.professionalId());
-        deleteUserById(user.getId());
-
+        userRepository.delete(user);
         searchSyncPublisher.publishProfileChanged(subject.professionalId());
     }
 
-    private List<BookingAvailabilityImpact> snapshotBookingAvailabilityImpacts(List<Booking> bookings) {
+    private void refreshAvailabilityAfterClientBookingRemoval(List<Booking> bookings) {
         if (bookings == null || bookings.isEmpty()) {
-            return List.of();
-        }
-
-        List<BookingAvailabilityImpact> snapshots = new ArrayList<>();
-        for (Booking booking : bookings) {
-            if (booking.getProfessionalId() == null || booking.getStartDateTime() == null) {
-                continue;
-            }
-            snapshots.add(new BookingAvailabilityImpact(
-                booking.getProfessionalId(),
-                booking.getProfessionalSlugSnapshot(),
-                booking.getStartDateTime().toLocalDate()
-            ));
-        }
-        return snapshots;
-    }
-
-    private void refreshAvailabilityAfterClientBookingRemoval(List<BookingAvailabilityImpact> impacts) {
-        if (impacts == null || impacts.isEmpty()) {
             return;
         }
 
         Map<Long, Set<LocalDate>> datesByProfessionalId = new HashMap<>();
         Map<Long, String> slugByProfessionalId = new HashMap<>();
-        for (BookingAvailabilityImpact impact : impacts) {
-            datesByProfessionalId.computeIfAbsent(impact.professionalId(), ignored -> new HashSet<>())
-                .add(impact.date());
-            if (impact.slug() != null && !impact.slug().isBlank()) {
-                slugByProfessionalId.putIfAbsent(impact.professionalId(), impact.slug());
+        for (Booking booking : bookings) {
+            if (booking.getProfessionalId() == null || booking.getStartDateTime() == null) {
+                continue;
+            }
+            datesByProfessionalId.computeIfAbsent(booking.getProfessionalId(), ignored -> new HashSet<>())
+                .add(booking.getStartDateTime().toLocalDate());
+            if (booking.getProfessionalSlugSnapshot() != null && !booking.getProfessionalSlugSnapshot().isBlank()) {
+                slugByProfessionalId.putIfAbsent(booking.getProfessionalId(), booking.getProfessionalSlugSnapshot());
             }
         }
 
@@ -343,15 +322,6 @@ public class AccountDeletionService {
         bulkDelete("DELETE FROM ProfessionalProfile profile WHERE profile.id = :professionalId", "professionalId", professionalId);
     }
 
-    private void deleteUserById(Long userId) {
-        bulkDelete("DELETE FROM User user WHERE user.id = :userId", "userId", userId);
-    }
-
-    private void flushAndClearPersistenceContext() {
-        entityManager.flush();
-        entityManager.clear();
-    }
-
     private List<Long> findBookingIdsForUser(Long userId) {
         return entityManager.createQuery(
             "SELECT booking.id FROM Booking booking WHERE booking.user.id = :userId",
@@ -394,6 +364,4 @@ public class AccountDeletionService {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Token inválido");
         }
     }
-
-    private record BookingAvailabilityImpact(Long professionalId, String slug, LocalDate date) {}
 }

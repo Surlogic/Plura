@@ -105,20 +105,9 @@ export default function ClienteLoginPage() {
   const handleOAuthAuthenticated = async (result: OAuthLoginResult) => {
     setErrorMessage(null);
 
-    const requiresPhoneCompletion = !(result.user.phoneNumber ?? '').trim();
-
     if (result.role === 'PROFESSIONAL') {
-      if (requiresPhoneCompletion) {
-        router.push('/profesional/auth/complete-phone');
-        return;
-      }
       await refreshProfessionalProfile();
       router.push('/profesional/dashboard');
-      return;
-    }
-
-    if (requiresPhoneCompletion) {
-      router.push('/cliente/auth/complete-phone');
       return;
     }
 

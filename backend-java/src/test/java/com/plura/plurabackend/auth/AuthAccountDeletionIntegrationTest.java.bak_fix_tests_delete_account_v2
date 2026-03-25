@@ -1,23 +1,23 @@
 package com.plura.plurabackend.core.auth;
 
-import static org.mockito.Mockito.atLeastOnce;
-import static org.mockito.Mockito.verify;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.atLeastOnce;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.plura.plurabackend.core.auth.repository.AuthAuditLogRepository;
 import com.plura.plurabackend.core.auth.repository.AuthOtpChallengeRepository;
 import com.plura.plurabackend.core.auth.repository.AuthSessionRepository;
 import com.plura.plurabackend.core.auth.repository.RefreshTokenRepository;
+import com.plura.plurabackend.core.user.model.User;
 import com.plura.plurabackend.core.user.repository.UserRepository;
-import org.junit.jupiter.api.Assertions;
+import org.mockito.ArgumentCaptor;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -124,7 +124,12 @@ class AuthAccountDeletionIntegrationTest {
                 .header("Authorization", "Bearer " + accessToken))
             .andExpect(status().isUnauthorized());
 
-        Assertions.assertTrue(userRepository.findAll().isEmpty());
+        User deletedUser = userRepository.findByEmail("cliente-delete@plura.com").orElse(null);
+        org.junit.jupiter.api.Assertions.assertNull(deletedUser);
+
+        User anonymizedUser = userRepository.findAll().stream().findFirst().orElseThrow();
+        org.junit.jupiter.api.Assertions.assertNotNull(anonymizedUser.getDeletedAt());
+        org.junit.jupiter.api.Assertions.assertTrue(anonymizedUser.getEmail().endsWith("@plura.invalid"));
     }
 
     @Test
@@ -169,8 +174,6 @@ class AuthAccountDeletionIntegrationTest {
                     }
                     """.formatted(latestChallengeId(), deletionCode)))
             .andExpect(status().isNoContent());
-
-        Assertions.assertTrue(userRepository.findAll().isEmpty());
 
         mockMvc.perform(post("/auth/register/cliente")
                 .header("Authorization", "Bearer " + accessToken)

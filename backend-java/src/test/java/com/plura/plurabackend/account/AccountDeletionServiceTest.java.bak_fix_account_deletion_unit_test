@@ -112,18 +112,15 @@ class AccountDeletionServiceTest {
         mockExecuteUpdateQuery("DELETE FROM RefreshToken token WHERE token.user.id = :userId");
         mockExecuteUpdateQuery("DELETE FROM ClientFavoriteProfessional favorite WHERE favorite.clientUser.id = :userId");
         mockExecuteUpdateQuery("DELETE FROM AppFeedback feedback WHERE feedback.author.id = :userId");
-        mockExecuteUpdateQuery("DELETE FROM User user WHERE user.id = :userId");
 
         service.deleteCurrentAccount("10", UserRole.USER);
 
         verify(imageCleanupService).deleteIfRemoved("r2://plura-images/avatars/10/photo.jpg");
-        verify(entityManager).flush();
-        verify(entityManager).clear();
+        verify(userRepository).delete(user);
         verify(availableSlotAsyncDispatcher).rebuildProfessionalDay(eq(20L), eq(booking.getStartDateTime().toLocalDate()));
         verify(scheduleSummaryService).requestRebuild(20L);
         verify(searchSyncPublisher).publishProfilesChanged(List.of(20L));
         verify(billingService, never()).cancelSubscriptionForProfessionalId(any(), eq(true));
-        verify(userRepository, never()).delete(any());
     }
 
     @Test
@@ -180,7 +177,6 @@ class AccountDeletionServiceTest {
         );
         mockExecuteUpdateQuery("DELETE FROM BusinessPhoto photo WHERE photo.professional.id = :professionalId");
         mockExecuteUpdateQuery("DELETE FROM ProfessionalProfile profile WHERE profile.id = :professionalId");
-        mockExecuteUpdateQuery("DELETE FROM User user WHERE user.id = :userId");
 
         service.deleteCurrentAccount("30", UserRole.PROFESSIONAL);
 
@@ -191,11 +187,9 @@ class AccountDeletionServiceTest {
         verify(profileCacheService).evictPublicPageBySlug("pro-slug");
         verify(profileCacheService).evictPublicSummaries();
         verify(slotCacheService).evictByPrefix("slots:40:");
-        verify(entityManager).flush();
-        verify(entityManager).clear();
+        verify(userRepository).delete(user);
         verify(searchSyncPublisher).publishProfileChanged(40L);
         verify(entityManager, atLeastOnce()).createQuery(any(String.class));
-        verify(userRepository, never()).delete(any());
     }
 
     private void mockLongListQuery(String jpql, List<Long> result) {

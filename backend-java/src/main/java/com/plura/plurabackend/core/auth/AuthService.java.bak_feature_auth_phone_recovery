@@ -8,7 +8,6 @@ import com.plura.plurabackend.core.auth.dto.RegisterProfesionalRequest;
 import com.plura.plurabackend.core.auth.dto.RegisterRequest;
 import com.plura.plurabackend.core.auth.dto.UserResponse;
 import com.plura.plurabackend.core.auth.dto.AuthSessionResponse;
-import com.plura.plurabackend.core.auth.dto.CompleteOAuthPhoneRequest;
 import com.plura.plurabackend.core.auth.model.AuthAuditEventType;
 import com.plura.plurabackend.core.auth.model.AuthAuditStatus;
 import com.plura.plurabackend.core.auth.model.AuthSession;
@@ -863,28 +862,6 @@ public class AuthService {
         );
     }
 
-    @Transactional
-    public void completeOAuthPhone(String rawUserId, CompleteOAuthPhoneRequest request) {
-        User user = loadUserByRawId(rawUserId);
-        if (request == null || request.getPhoneNumber() == null || request.getPhoneNumber().isBlank()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Teléfono inválido");
-        }
-
-        String normalizedPhone = normalizePhoneNumber(request.getPhoneNumber());
-        if (normalizedPhone == null) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Teléfono inválido");
-        }
-
-        String currentPhone = normalizePhoneNumber(user.getPhoneNumber());
-        if (normalizedPhone.equals(currentPhone)) {
-            return;
-        }
-
-        user.setPhoneNumber(normalizedPhone);
-        user.setPhoneVerifiedAt(null);
-        userRepository.save(user);
-    }
-
     public UserResponse getClienteProfile(String rawUserId) {
         User user = loadUserByRawId(rawUserId);
         ensureClientUser(user);
@@ -921,25 +898,6 @@ public class AuthService {
             user.getPhoneVerifiedAt() != null,
             user.getCreatedAt()
         );
-    }
-
-    private String normalizePhoneNumber(String value) {
-        String normalized = normalizeOAuthValue(value);
-        if (normalized == null) {
-            return null;
-        }
-        String collapsed = normalized
-            .replace(" ", "")
-            .replace("-", "")
-            .replace("(", "")
-            .replace(")", "");
-        if (collapsed.startsWith("+")) {
-            String digits = collapsed.substring(1).replaceAll("\D", "");
-            String candidate = "+" + digits;
-            return digits.length() >= 8 && digits.length() <= 20 ? candidate : null;
-        }
-        String digits = collapsed.replaceAll("\D", "");
-        return digits.length() >= 8 && digits.length() <= 20 ? digits : null;
     }
 
     private boolean applyTrustedEmailVerification(User user, String normalizedProvider) {

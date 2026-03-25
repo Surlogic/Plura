@@ -4,7 +4,6 @@ import com.plura.plurabackend.core.account.AccountDeletionService;
 import com.plura.plurabackend.core.auth.dto.AcceptedMessageResponse;
 import com.plura.plurabackend.core.auth.dto.AuthAuditListResponse;
 import com.plura.plurabackend.core.auth.dto.ChangePasswordRequest;
-import com.plura.plurabackend.core.auth.dto.CompleteOAuthPhoneRequest;
 import com.plura.plurabackend.core.auth.dto.ConfirmEmailVerificationRequest;
 import com.plura.plurabackend.core.auth.dto.ConfirmPhoneVerificationRequest;
 import com.plura.plurabackend.core.auth.dto.DeleteAccountRequest;
@@ -13,10 +12,6 @@ import com.plura.plurabackend.core.auth.dto.LoginRequest;
 import com.plura.plurabackend.core.auth.dto.LogoutRequest;
 import com.plura.plurabackend.core.auth.dto.AuthSessionListResponse;
 import com.plura.plurabackend.core.auth.dto.ForgotPasswordRequest;
-import com.plura.plurabackend.core.auth.dto.PasswordRecoveryConfirmRequest;
-import com.plura.plurabackend.core.auth.dto.PasswordRecoveryStartRequest;
-import com.plura.plurabackend.core.auth.dto.PasswordRecoveryVerifyPhoneRequest;
-import com.plura.plurabackend.core.auth.dto.PasswordRecoveryVerifyPhoneResponse;
 import com.plura.plurabackend.core.auth.dto.PhoneVerificationSendResponse;
 import com.plura.plurabackend.core.auth.dto.ProfesionalProfileResponse;
 import com.plura.plurabackend.core.auth.dto.OtpChallengeSendRequest;
@@ -219,18 +214,6 @@ public class AuthController {
         return buildAuthResponse(result, httpRequest);
     }
 
-    @PostMapping("/oauth/complete-phone")
-    public ResponseEntity<AcceptedMessageResponse> completeOAuthPhone(
-        @Valid @RequestBody CompleteOAuthPhoneRequest request,
-        Authentication authentication
-    ) {
-        Authentication activeAuthentication = requireAuthentication();
-        authService.completeOAuthPhone(activeAuthentication.getPrincipal().toString(), request);
-        return ResponseEntity.ok()
-            .header(HttpHeaders.CACHE_CONTROL, "no-store")
-            .body(new AcceptedMessageResponse("Teléfono guardado correctamente."));
-    }
-
     @PostMapping("/refresh")
     public ResponseEntity<RegisterResponse> refreshSession(
         @CookieValue(name = REFRESH_COOKIE, required = false) String refreshToken,
@@ -346,58 +329,6 @@ public class AuthController {
         @Valid @RequestBody ResetPasswordRequest request
     ) {
         passwordLifecycleService.resetPassword(request.getToken(), request.getNewPassword());
-        return buildClearedSessionResponse();
-    }
-
-    @PostMapping("/password/recovery/start")
-    public ResponseEntity<AcceptedMessageResponse> startPasswordRecovery(
-        @Valid @RequestBody PasswordRecoveryStartRequest request,
-        HttpServletRequest httpRequest
-    ) {
-        passwordLifecycleService.startPasswordRecovery(
-            request.getEmail(),
-            extractClientIp(httpRequest),
-            httpRequest == null ? null : httpRequest.getHeader("User-Agent")
-        );
-        return ResponseEntity.accepted()
-            .header(HttpHeaders.CACHE_CONTROL, "no-store")
-            .body(new AcceptedMessageResponse(
-                "Email validado. Ahora confirmá el teléfono para enviarte el código de recuperación."
-            ));
-    }
-
-    @PostMapping("/password/recovery/verify-phone")
-    public ResponseEntity<PasswordRecoveryVerifyPhoneResponse> verifyPasswordRecoveryPhone(
-        @Valid @RequestBody PasswordRecoveryVerifyPhoneRequest request,
-        HttpServletRequest httpRequest
-    ) {
-        authAbuseProtectionService.enforcePasswordResetAllowed(request.getEmail(), httpRequest);
-        PasswordRecoveryVerifyPhoneResponse response = passwordLifecycleService.verifyRecoveryPhoneAndSendCode(
-            request.getEmail(),
-            request.getPhoneNumber(),
-            extractClientIp(httpRequest),
-            httpRequest == null ? null : httpRequest.getHeader("User-Agent")
-        );
-        return ResponseEntity.ok()
-            .header(HttpHeaders.CACHE_CONTROL, "no-store")
-            .body(response);
-    }
-
-    @PostMapping("/password/recovery/confirm")
-    public ResponseEntity<Void> confirmPasswordRecovery(
-        @Valid @RequestBody PasswordRecoveryConfirmRequest request,
-        HttpServletRequest httpRequest
-    ) {
-        passwordLifecycleService.confirmPasswordRecovery(
-            request.getEmail(),
-            request.getPhoneNumber(),
-            request.getChallengeId(),
-            request.getCode(),
-            request.getNewPassword(),
-            request.getConfirmPassword(),
-            extractClientIp(httpRequest),
-            httpRequest == null ? null : httpRequest.getHeader("User-Agent")
-        );
         return buildClearedSessionResponse();
     }
 

@@ -2,7 +2,6 @@ package com.plura.plurabackend.core.account;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -27,7 +26,6 @@ import com.plura.plurabackend.core.user.repository.UserRepository;
 import com.plura.plurabackend.professional.model.ProfessionalProfile;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.Query;
-import jakarta.persistence.TypedQuery;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -112,18 +110,15 @@ class AccountDeletionServiceTest {
         mockExecuteUpdateQuery("DELETE FROM RefreshToken token WHERE token.user.id = :userId");
         mockExecuteUpdateQuery("DELETE FROM ClientFavoriteProfessional favorite WHERE favorite.clientUser.id = :userId");
         mockExecuteUpdateQuery("DELETE FROM AppFeedback feedback WHERE feedback.author.id = :userId");
-        mockExecuteUpdateQuery("DELETE FROM User user WHERE user.id = :userId");
 
         service.deleteCurrentAccount("10", UserRole.USER);
 
         verify(imageCleanupService).deleteIfRemoved("r2://plura-images/avatars/10/photo.jpg");
-        verify(entityManager).flush();
-        verify(entityManager).clear();
+        verify(userRepository).delete(user);
         verify(availableSlotAsyncDispatcher).rebuildProfessionalDay(eq(20L), eq(booking.getStartDateTime().toLocalDate()));
         verify(scheduleSummaryService).requestRebuild(20L);
         verify(searchSyncPublisher).publishProfilesChanged(List.of(20L));
         verify(billingService, never()).cancelSubscriptionForProfessionalId(any(), eq(true));
-        verify(userRepository, never()).delete(any());
     }
 
     @Test
@@ -180,7 +175,6 @@ class AccountDeletionServiceTest {
         );
         mockExecuteUpdateQuery("DELETE FROM BusinessPhoto photo WHERE photo.professional.id = :professionalId");
         mockExecuteUpdateQuery("DELETE FROM ProfessionalProfile profile WHERE profile.id = :professionalId");
-        mockExecuteUpdateQuery("DELETE FROM User user WHERE user.id = :userId");
 
         service.deleteCurrentAccount("30", UserRole.PROFESSIONAL);
 
@@ -191,27 +185,24 @@ class AccountDeletionServiceTest {
         verify(profileCacheService).evictPublicPageBySlug("pro-slug");
         verify(profileCacheService).evictPublicSummaries();
         verify(slotCacheService).evictByPrefix("slots:40:");
-        verify(entityManager).flush();
-        verify(entityManager).clear();
+        verify(userRepository).delete(user);
         verify(searchSyncPublisher).publishProfileChanged(40L);
-        verify(entityManager, atLeastOnce()).createQuery(any(String.class));
-        verify(userRepository, never()).delete(any());
     }
 
+    @SuppressWarnings("unchecked")
     private void mockLongListQuery(String jpql, List<Long> result) {
-        @SuppressWarnings("unchecked")
-        TypedQuery<Long> query = mock(TypedQuery.class);
-        when(entityManager.createQuery(jpql, Long.class)).thenReturn(query);
+        Query query = mock(Query.class);
+        when(entityManager.createQuery(jpql, Long.class)).thenReturn((jakarta.persistence.TypedQuery<Long>) query);
         when(query.setParameter(any(String.class), any())).thenReturn(query);
-        when(query.getResultList()).thenReturn(result);
+        when(((jakarta.persistence.TypedQuery<Long>) query).getResultList()).thenReturn(result);
     }
 
+    @SuppressWarnings("unchecked")
     private void mockStringListQuery(String jpql, List<String> result) {
-        @SuppressWarnings("unchecked")
-        TypedQuery<String> query = mock(TypedQuery.class);
-        when(entityManager.createQuery(jpql, String.class)).thenReturn(query);
+        Query query = mock(Query.class);
+        when(entityManager.createQuery(jpql, String.class)).thenReturn((jakarta.persistence.TypedQuery<String>) query);
         when(query.setParameter(any(String.class), any())).thenReturn(query);
-        when(query.getResultList()).thenReturn(result);
+        when(((jakarta.persistence.TypedQuery<String>) query).getResultList()).thenReturn(result);
     }
 
     private void mockExecuteUpdateQuery(String jpql) {

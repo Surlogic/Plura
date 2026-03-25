@@ -43,7 +43,7 @@ public class RefreshToken {
     @Column(name = "expiry_date", nullable = false)
     private LocalDateTime expiryDate;
 
-    @Column(name = "revoked_at")
+    @Column(name = "revoked")
     private LocalDateTime revokedAt;
 
     @PrePersist

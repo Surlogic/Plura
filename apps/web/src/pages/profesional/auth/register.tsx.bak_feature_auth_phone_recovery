@@ -108,11 +108,6 @@ export default function ProfesionalRegisterPage() {
       setErrorMessage('No pudimos completar el alta profesional con esa cuenta. Intentá nuevamente desde este flujo.');
       return;
     }
-    const requiresPhoneCompletion = !(result.user.phoneNumber ?? '').trim();
-    if (requiresPhoneCompletion) {
-      router.push('/profesional/auth/complete-phone');
-      return;
-    }
     await refreshProfile();
     router.push('/profesional/dashboard');
   };

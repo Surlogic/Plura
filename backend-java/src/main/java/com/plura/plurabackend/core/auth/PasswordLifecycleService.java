@@ -358,6 +358,15 @@ public class PasswordLifecycleService {
         return user.getProvider() == null || user.getPasswordChangedAt() != null;
     }
 
+    private boolean isEligibleForPasswordRecovery(User user) {
+        return user != null
+            && user.getDeletedAt() == null
+            && user.getEmail() != null
+            && !user.getEmail().isBlank()
+            && user.getPhoneNumber() != null
+            && !user.getPhoneNumber().isBlank();
+    }
+
     private String buildResetUrl(String rawToken) {
         String trimmedBaseUrl = passwordResetPublicBaseUrl == null ? "" : passwordResetPublicBaseUrl.trim();
         String sanitizedBaseUrl = trimmedBaseUrl.endsWith("/")
@@ -427,7 +436,7 @@ public class PasswordLifecycleService {
         User user = userRepository.findByEmailAndDeletedAtIsNull(normalizedEmail)
             .orElseThrow(() -> new AuthApiException(HttpStatus.BAD_REQUEST, "RECOVERY_DATA_INVALID", "No pudimos validar el email y el teléfono."));
 
-        if (!isEligibleForPasswordReset(user)) {
+        if (!isEligibleForPasswordRecovery(user)) {
             throw new AuthApiException(HttpStatus.BAD_REQUEST, "RECOVERY_DATA_INVALID", "No pudimos validar el email y el teléfono.");
         }
 

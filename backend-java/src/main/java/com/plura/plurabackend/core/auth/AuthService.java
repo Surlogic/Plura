@@ -934,11 +934,11 @@ public class AuthService {
             .replace("(", "")
             .replace(")", "");
         if (collapsed.startsWith("+")) {
-            String digits = collapsed.substring(1).replaceAll("\D", "");
+            String digits = collapsed.substring(1).replaceAll("\\D", "");
             String candidate = "+" + digits;
             return digits.length() >= 8 && digits.length() <= 20 ? candidate : null;
         }
-        String digits = collapsed.replaceAll("\D", "");
+        String digits = collapsed.replaceAll("\\D", "");
         return digits.length() >= 8 && digits.length() <= 20 ? digits : null;
     }
 

@@ -72,9 +72,6 @@ public class SecurityConfig {
                     "/auth/register/**",
                     "/auth/password/forgot",
                     "/auth/password/reset",
-                    "/auth/password/recovery/start",
-                    "/auth/password/recovery/verify-phone",
-                    "/auth/password/recovery/confirm",
                     "/auth/refresh",
                     "/auth/logout",
                     "/api/home",
@@ -95,7 +92,6 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.GET, "/profesional/payment-providers/mercadopago/oauth/callback").permitAll()
                 .requestMatchers(HttpMethod.DELETE, "/auth/me").hasAnyRole("PROFESSIONAL", "USER")
                 .requestMatchers(HttpMethod.POST, "/auth/password/change").hasAnyRole("PROFESSIONAL", "USER")
-                .requestMatchers(HttpMethod.POST, "/auth/oauth/complete-phone").hasAnyRole("PROFESSIONAL", "USER")
                 .requestMatchers("/auth/challenge/**").hasAnyRole("PROFESSIONAL", "USER")
                 .requestMatchers("/auth/verify/**").hasAnyRole("PROFESSIONAL", "USER")
                 .requestMatchers("/auth/me/profesional", "/auth/me/professional").hasRole("PROFESSIONAL")

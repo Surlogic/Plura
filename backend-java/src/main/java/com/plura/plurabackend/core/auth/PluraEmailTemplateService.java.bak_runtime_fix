@@ -245,7 +245,6 @@ public class PluraEmailTemplateService {
         return switch (purpose) {
             case ACCOUNT_DELETION -> "la eliminación de tu cuenta";
             case PASSWORD_CHANGE -> "el cambio de tu contraseña";
-            case PASSWORD_RECOVERY -> "la recuperación de tu contraseña";
         };
     }
 

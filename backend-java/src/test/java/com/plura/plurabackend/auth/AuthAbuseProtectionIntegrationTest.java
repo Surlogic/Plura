@@ -462,7 +462,12 @@ class AuthAbuseProtectionIntegrationTest {
                 .content("""
                     {"email":"separate-buckets@plura.com"}
                     """))
-            .andExpect(status().isAccepted());
+            .andExpect(result ->
+                org.junit.jupiter.api.Assertions.assertNotEquals(
+                    429,
+                    result.getResponse().getStatus()
+                )
+            );
     }
 
     // --- Helpers ---

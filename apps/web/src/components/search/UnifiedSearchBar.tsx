@@ -172,7 +172,8 @@ export default memo(function UnifiedSearchBar({
       : `${dateSummaryBase} + Ahora`
     : dateSummaryBase;
 
-  const locationSummary = values.city.trim() || (hasCoordinates ? 'Cerca de mi' : 'Zona o ciudad');
+  const locationSummary =
+    locationInput.trim() || values.city.trim() || (hasCoordinates ? 'Cerca de mi' : 'Zona o ciudad');
   const locationValueClass = getAdaptiveValueClass(locationSummary);
   const hasDateRange = Boolean(values.from && values.to);
   const isSearchActive = isSearchOpen;
@@ -209,8 +210,14 @@ export default memo(function UnifiedSearchBar({
                       setValues((previous) => ({
                         ...previous,
                         query: nextValue,
-                        type: 'SERVICIO',
-                        categorySlug: undefined,
+                        type:
+                          previous.type === 'PROFESIONAL' || previous.type === 'LOCAL'
+                            ? previous.type
+                            : 'SERVICIO',
+                        categorySlug:
+                          previous.type === 'PROFESIONAL' || previous.type === 'LOCAL'
+                            ? previous.categorySlug
+                            : undefined,
                       }));
                       setIsSearchOpen(true);
                       setIsDateOpen(false);

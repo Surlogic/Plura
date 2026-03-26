@@ -144,7 +144,7 @@ app:
     materialized-view:
       refresh-enabled: ${SEARCH_MV_REFRESH_ENABLED:true}
       # Evita refresh concurrente por cada instancia al levantar.
-      refresh-on-startup: ${SEARCH_MV_REFRESH_ON_STARTUP:false}
+      refresh-on-startup: ${SEARCH_MV_REFRESH_ON_STARTUP:true}
       refresh-cron: ${SEARCH_MV_REFRESH_CRON:0 */30 * * * *}
   cors:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3002}

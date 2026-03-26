@@ -304,6 +304,7 @@ public class SearchNativeRepository {
         return " WHERE 1 = 1 "
             + " AND (:categorySlug = '' OR doc.category_slugs::text[] @> ARRAY[:categorySlug]::text[] OR doc.rubro_slug = :categorySlug) "
             + buildLocationClause("doc")
+            + " AND (:dateFilter = false OR " + dateMatchExpression + ") "
             + " AND (:availableNow = false OR " + availableNowMatchExpression + ") "
             + " AND (:queryBlank = true OR ("
             + "   (:type = 'RUBRO' AND ("
@@ -399,18 +400,6 @@ public class SearchNativeRepository {
     }
 
     private String buildDateMatchExpression(String alias, String availabilitySource, boolean nextAvailableAtEnabled) {
-        if ("FLAG".equalsIgnoreCase(availabilitySource)) {
-            if (nextAvailableAtEnabled) {
-                return "("
-                    + "COALESCE(" + alias + ".has_availability_today, false) = true "
-                    + "OR ("
-                    + alias + ".next_available_at IS NOT NULL "
-                    + "AND " + alias + ".next_available_at >= :dateStart "
-                    + "AND " + alias + ".next_available_at < :dateEnd"
-                    + "))";
-            }
-            return "COALESCE(" + alias + ".has_availability_today, false) = true";
-        }
         return "EXISTS ("
             + "SELECT 1 FROM available_slot a "
             + "WHERE a.professional_id = " + alias + ".professional_id "
@@ -421,9 +410,6 @@ public class SearchNativeRepository {
     }
 
     private String buildAvailableNowMatchExpression(String alias, String availabilitySource) {
-        if ("FLAG".equalsIgnoreCase(availabilitySource)) {
-            return "COALESCE(" + alias + ".has_availability_today, false) = true";
-        }
         return "EXISTS ("
             + "SELECT 1 FROM available_slot a "
             + "WHERE a.professional_id = " + alias + ".professional_id "
@@ -436,6 +422,7 @@ public class SearchNativeRepository {
     private String buildLocationClause(String alias) {
         return " AND ("
             + "   :city = '' "
+            + "   OR :hasCoords = true "
             + "   OR " + alias + ".location_text_normalized LIKE :cityLike "
             + " ) "
             + " AND ("

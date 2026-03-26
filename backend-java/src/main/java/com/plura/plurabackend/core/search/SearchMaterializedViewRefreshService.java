@@ -40,7 +40,10 @@ public class SearchMaterializedViewRefreshService implements ApplicationRunner {
         if (!refreshOnStartup) {
             return;
         }
-        Thread refreshThread = new Thread(() -> refresh("startup"), "search-mv-refresh-startup");
+        Thread refreshThread = new Thread(
+            () -> distributedLockService.runWithLock(LOCK_ID, "mv-refresh-startup", () -> refresh("startup")),
+            "search-mv-refresh-startup"
+        );
         refreshThread.setDaemon(true);
         refreshThread.start();
     }

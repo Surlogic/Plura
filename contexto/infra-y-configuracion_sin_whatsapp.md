@@ -58,6 +58,7 @@ Infra actual detectada:
 - Meilisearch opcional
 - geocoding y suggest
 - Mapbox en frontend
+- refresh de materialized views de search tambien al startup con lock distribuido para evitar vistas stale despues de deploys o reinicios
 
 ### Servicios, agenda, reservas y operaciones
 
@@ -414,6 +415,10 @@ Notas reales de deploy en Render:
   - geocodifica perfiles profesionales sin coordenadas
 - `backend-java/scripts/audit_public_consistency.sh`
   - compara servicios y agenda publicados contra DB
+- `backend-java/scripts/seed_marketplace_uy_qa.sh`
+  - ejecuta `backend-java/db/qa_marketplace_uy_seed.sql` usando `.env.backend` o `backend-java/.env`
+  - crea un dataset QA idempotente de marketplace con `24` profesionales de Uruguay, `1` cliente QA y refresco inmediato de search/suggest via materialized views
+  - password comun del dataset: `PluraQA2026!`
 - `backend-java/scripts/release/run_phase3_migrations.sh`
 - `backend-java/scripts/release/run_phase4_migrations.sh`
 

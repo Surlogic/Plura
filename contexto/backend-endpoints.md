@@ -125,6 +125,9 @@ El backend soporta:
 - refresh concurrente al startup y por cron de las materialized views de search
 - atajo conservador en primera pagina para evitar `COUNT(*)` cuando el resultado completo entra en una sola pagina sin romper el total exacto
 - suggest con menor sobrelectura antes del ordenado final para bajar costo del typeahead sin cambiar contrato
+- `GET /api/search` ya aplica el filtro de fecha en el `WHERE`; no queda solo como señal de ordenamiento
+- `GET /api/search?availableNow=true` ya valida disponibilidad real contra `available_slot`; no usa la bandera agregada `has_availability_today` como aproximacion
+- cuando `/api/search` recibe `lat/lng` junto con `city`, el radio geografico prevalece y el texto de ciudad no debe vaciar resultados por mismatch de address-string
 
 Lectura de producto:
 

@@ -605,15 +605,18 @@ export function useUnifiedSearch({
   }, []);
 
   const selectGeoItem = useCallback((item: GeoAutocompleteItem) => {
-    const location = item.city ? `${item.label}, ${item.city}` : item.label;
+    const normalizedLabel = item.label.trim();
+    const normalizedCity = item.city.trim();
+    const location = normalizedCity ? `${normalizedLabel}, ${normalizedCity}` : normalizedLabel;
+    const searchCity = normalizedCity || normalizedLabel;
     setValues((previous) => ({
       ...previous,
-      city: location,
+      city: searchCity,
       lat: typeof item.lat === 'number' ? item.lat : undefined,
       lng: typeof item.lng === 'number' ? item.lng : undefined,
     }));
     setLocationInput(location);
-    rememberCity(location);
+    rememberCity(searchCity);
     setIsLocationOpen(false);
   }, [rememberCity]);
 

@@ -77,7 +77,7 @@ export default function ProfesionalBillingPage() {
   );
 
   const connectionCopy = getMercadoPagoConnectionStatusCopy(connection);
-  const mercadoPagoBadge = canUseOnlinePayments ? connectionCopy.badge : 'Disponible desde PROFESIONAL';
+  const mercadoPagoBadge = canUseOnlinePayments ? connectionCopy.badge : 'Disponible desde Pro';
   const mercadoPagoTitle = canUseOnlinePayments
     ? connectionCopy.title
     : 'Tu plan actual no habilita cobros online';
@@ -336,7 +336,7 @@ export default function ProfesionalBillingPage() {
                         >
                           <DashboardSectionHeading
                             title="Planes disponibles"
-                            description="BASIC funciona como base gratuita. PROFESIONAL y ENTERPRISE abren checkout en Mercado Pago para la suscripción de Plura."
+                            description="Free funciona como base gratuita. Pro y Premium abren checkout en Mercado Pago para la suscripción de Plura."
                             action={isLoadingBilling ? (
                               <span className="text-xs font-semibold text-[#94A3B8]">
                                 Cargando...

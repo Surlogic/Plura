@@ -15,7 +15,7 @@ export default function MercadoPagoUpgradeCard({
       <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
         <div className="max-w-3xl">
           <span className="inline-flex rounded-full border border-[#F2D6A8] bg-[#FFF7E8] px-3 py-1 text-xs font-semibold text-[#B45309]">
-            Disponible desde PROFESIONAL
+            Disponible desde Pro
           </span>
 
           <h3 className="mt-4 text-[1.9rem] font-semibold tracking-[-0.04em] text-[#0E2A47]">
@@ -24,7 +24,7 @@ export default function MercadoPagoUpgradeCard({
 
           <p className="mt-2 text-sm text-[#516072]">
             En {currentPlanLabel} podés gestionar tu operación, pero para cobrar reservas online con Mercado Pago
-            necesitás pasar a PROFESIONAL o ENTERPRISE.
+            necesitás pasar a Pro o Premium.
           </p>
 
           <div className="mt-5 grid gap-4 sm:grid-cols-3">
@@ -38,7 +38,7 @@ export default function MercadoPagoUpgradeCard({
             </div>
             <div className="rounded-[20px] border border-[#E7D9B8] bg-white/90 p-4">
               <p className="text-xs uppercase tracking-[0.3em] text-[#94A3B8]">Upgrade</p>
-              <p className="mt-2 text-sm font-semibold text-[#0E2A47]">PROFESIONAL o ENTERPRISE</p>
+              <p className="mt-2 text-sm font-semibold text-[#0E2A47]">Pro o Premium</p>
             </div>
           </div>
 
@@ -56,7 +56,7 @@ export default function MercadoPagoUpgradeCard({
             Ver planes con cobros online
           </Button>
           <p className="text-sm text-[#516072]">
-            Mientras tu plan siga en BASIC no intentamos iniciar la conexión OAuth, así evitamos errores y estados
+            Mientras tu plan siga en Free no intentamos iniciar la conexión OAuth, así evitamos errores y estados
             confusos.
           </p>
         </div>

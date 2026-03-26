@@ -1403,7 +1403,7 @@ export default function ProfesionalDashboardPage() {
 
                       {!canUseMonthlyCalendar ? (
                         <p className="text-xs text-[color:var(--ink-muted)]">
-                          La vista mensual queda disponible en Enterprise.
+                          La vista mensual queda disponible en Premium.
                         </p>
                       ) : null}
 
@@ -1447,7 +1447,7 @@ export default function ProfesionalDashboardPage() {
 
                       {!canNavigateCalendar ? (
                         <p className="text-xs text-[color:var(--ink-muted)]">
-                          La navegación por semanas se habilita desde Profesional.
+                          La navegación por semanas se habilita desde Pro.
                         </p>
                       ) : null}
 

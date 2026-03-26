@@ -843,7 +843,7 @@ export default function ProfesionalServicesBuilderPage() {
                                     onClick={() => {
                                       if (isLockedOption) {
                                         setSaveMessage(
-                                          'Los pagos online se habilitan desde el plan Profesional.',
+                                          'Los pagos online se habilitan desde el plan Pro.',
                                         );
                                         setSaveError(true);
                                         return;
@@ -884,7 +884,7 @@ export default function ProfesionalServicesBuilderPage() {
                             </div>
                             {!canUseOnlinePayments ? (
                               <p className="mt-3 rounded-[16px] border border-[color:var(--premium-soft)] bg-[color:var(--premium-soft)] px-3 py-2 text-xs text-[color:var(--premium-strong)]">
-                                La seña online y el prepago total se habilitan en el plan Profesional.
+                                La seña online y el prepago total se habilitan en el plan Pro.
                               </p>
                             ) : null}
                           </div>

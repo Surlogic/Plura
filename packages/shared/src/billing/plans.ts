@@ -18,7 +18,7 @@ export type SharedBillingPlanDefinition = {
 export const sharedBillingPlans: SharedBillingPlanDefinition[] = [
   {
     id: 'BASIC',
-    label: 'BASIC',
+    label: 'Free',
     backendPlanCode: 'PLAN_BASIC',
     profilePlanCode: 'BASIC',
     priceMonthly: 0,
@@ -27,7 +27,7 @@ export const sharedBillingPlans: SharedBillingPlanDefinition[] = [
   },
   {
     id: 'PROFESIONAL',
-    label: 'PROFESIONAL',
+    label: 'Pro',
     backendPlanCode: 'PLAN_PROFESIONAL',
     profilePlanCode: 'PROFESIONAL',
     priceMonthly: 590,
@@ -37,12 +37,12 @@ export const sharedBillingPlans: SharedBillingPlanDefinition[] = [
   },
   {
     id: 'ENTERPRISE',
-    label: 'ENTERPRISE',
+    label: 'Premium',
     backendPlanCode: 'PLAN_ENTERPRISE',
     profilePlanCode: 'ENTERPRISE',
     priceMonthly: 1290,
     priceLabel: '$1.290 UYU / mes',
-    benefits: ['Todo lo de PROFESIONAL', 'Tienda', 'Chat interno', 'Mayor capacidad operativa'],
+    benefits: ['Todo lo de Pro', 'Tienda', 'Chat interno', 'Mayor capacidad operativa'],
   },
 ];
 

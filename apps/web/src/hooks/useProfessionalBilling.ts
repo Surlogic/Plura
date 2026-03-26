@@ -585,8 +585,8 @@ export function useProfessionalBilling({
 
       const isMercadoPago = subscription.provider?.toUpperCase() === 'MERCADOPAGO';
       const confirmMessage = isMercadoPago
-        ? 'La suscripcion se cancelara de inmediato y volveras a BASIC. ¿Deseas continuar?'
-        : 'Tu suscripcion seguira activa hasta el fin del periodo actual y luego volvera a BASIC.';
+        ? 'La suscripcion se cancelara de inmediato y volveras a Free. ¿Deseas continuar?'
+        : 'Tu suscripcion seguira activa hasta el fin del periodo actual y luego volvera a Free.';
       const confirmed = window.confirm(confirmMessage);
       if (!confirmed) return;
 
@@ -600,12 +600,12 @@ export function useProfessionalBilling({
           type: 'CANCEL_END',
           banner: {
             tone: 'success',
-            title: isMercadoPago ? 'Suscripcion cancelada' : 'Cambio a BASIC programado',
+            title: isMercadoPago ? 'Suscripcion cancelada' : 'Cambio a Free programado',
             description: isMercadoPago
-              ? 'Tu suscripcion fue cancelada y ahora estas en el plan BASIC.'
+              ? 'Tu suscripcion fue cancelada y ahora estas en el plan Free.'
               : nextSubscription.currentPeriodEnd
                 ? `Tu plan superior seguira activo hasta ${formatBillingDate(nextSubscription.currentPeriodEnd)}.`
-                : 'La suscripcion quedo marcada para volver a BASIC al final del periodo.',
+                : 'La suscripcion quedo marcada para volver a Free al final del periodo.',
           },
         });
       } catch (error) {
@@ -613,7 +613,7 @@ export function useProfessionalBilling({
           type: 'CANCEL_END',
           banner: {
             tone: 'error',
-            title: 'No se pudo cambiar a BASIC',
+            title: 'No se pudo cambiar a Free',
             description: resolveBackendMessage(error, 'No se pudo cancelar la suscripcion actual.'),
           },
         });

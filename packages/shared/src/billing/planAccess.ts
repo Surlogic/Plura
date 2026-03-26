@@ -28,7 +28,7 @@ export const nextPlanFor = (
 };
 
 export const PLAN_LABELS: Record<ProfessionalPlanCode, string> = {
-  BASIC: 'Basic',
-  PROFESIONAL: 'Profesional',
-  ENTERPRISE: 'Enterprise',
+  BASIC: 'Free',
+  PROFESIONAL: 'Pro',
+  ENTERPRISE: 'Premium',
 };

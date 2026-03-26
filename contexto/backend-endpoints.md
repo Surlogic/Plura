@@ -59,12 +59,16 @@ Prefijo: `/auth`
 - `POST /auth/login/cliente`
 - `POST /auth/login/profesional`
 - `POST /auth/oauth`
+- `POST /auth/oauth/complete-phone`
 - `POST /auth/refresh`
 - `POST /auth/logout`
 - `POST /auth/logout-all`
 - `POST /auth/password/change`
 - `POST /auth/password/forgot`
 - `POST /auth/password/reset`
+- `POST /auth/password/recovery/start`
+- `POST /auth/password/recovery/verify-phone`
+- `POST /auth/password/recovery/confirm`
 - `POST /auth/verify/email/send`
 - `POST /auth/verify/email/confirm`
 - `POST /auth/verify/phone/send`
@@ -84,7 +88,7 @@ El dominio `auth` incluye:
 - JWT + refresh tokens
 - sesiones persistidas
 - auditoria auth
-- password reset
+- password reset legacy por token y recovery escalonado email + telefono + OTP por email
 - verificacion email y telefono
 - OTP challenge
 - OAuth Google y Apple
@@ -95,6 +99,9 @@ Lectura de producto:
 - cubre el bloque `CORE` de autenticacion y seguridad
 - soporta registro directo del profesional en `Free`
 - ya da base para login social y gestion de sesiones
+- `POST /auth/oauth/complete-phone` cierra el faltante de telefono cuando el alta/login OAuth no lo trae y hoy tiene pantallas web dedicadas para cliente y profesional
+- `POST /auth/password/forgot` + `POST /auth/password/reset` siguen como flujo legacy por token y todavia los consume mobile
+- `POST /auth/password/recovery/start|verify-phone|confirm` son el flujo mas nuevo de recuperacion escalonada que hoy usa la web
 
 ### Busqueda y geolocalizacion
 

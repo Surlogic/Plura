@@ -9,6 +9,7 @@ import {
   SectionCard,
   StatusPill,
 } from '../../src/components/ui/MobileSurface';
+import { PLAN_LABELS } from '../../../../packages/shared/src/billing/planAccess';
 
 export default function ProfessionalNotificationsScreen() {
   const { profile } = useAuthSession();
@@ -25,7 +26,7 @@ export default function ProfessionalNotificationsScreen() {
             label: profile?.emailVerified ? 'Email verificado' : 'Email pendiente',
             tone: profile?.emailVerified ? 'success' : 'warning',
           },
-          { label: `Plan ${profile?.professionalPlan || 'BASIC'}`, tone: 'light' },
+          { label: `Plan ${PLAN_LABELS[profile?.professionalPlan || 'BASIC']}`, tone: 'light' },
         ]}
       />
 

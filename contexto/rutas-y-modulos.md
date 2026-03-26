@@ -72,6 +72,8 @@ Base: `apps/web/src/pages`
 - `/oauth/mercadopago/callback`: retorno dedicado para conexion OAuth de Mercado Pago del profesional.
 - `/auth/forgot-password`
 - `/auth/reset-password`
+- `/cliente/auth/complete-phone`
+- `/profesional/auth/complete-phone`
 
 Lectura de producto:
 
@@ -83,11 +85,13 @@ Lectura de producto:
 - cuando existe sesion conocida del cliente, `/explorar`, `/profesional/[slug]` y `/profesional/pagina/[slug]` tambien hidratan el perfil cliente para mantener navbar y favoritos coherentes en la navegacion publica
 - `_app.tsx` ya usa un `session hint` con rol (`CLIENT` o `PROFESSIONAL`) para rehidratar el perfil correcto tambien en `/` y otras rutas publicas al reabrir navegador; si el hint viejo no tiene rol, el bootstrap puede intentar ambos perfiles de forma transitoria hasta que el usuario vuelva a iniciar sesion
 - aunque no haya sync reciente en memoria, el toggle de favoritos en web revalida contra backend en la primera interaccion util para evitar dobles clicks o estados viejos del cache local
+- `/cliente/auth/complete-phone` y `/profesional/auth/complete-phone` completan el telefono faltante despues de OAuth via `POST /auth/oauth/complete-phone`
 
 ### Rutas del cliente
 
 - `/cliente/auth/login`
 - `/cliente/auth/register`
+- `/cliente/auth/complete-phone`
 - `/cliente/inicio`
 - `/cliente/dashboard`
 - `/cliente/reservas`
@@ -141,6 +145,7 @@ Lectura de producto:
 
 - `/profesional/auth/login`
 - `/profesional/auth/register`
+- `/profesional/auth/complete-phone`
 - `/profesional/dashboard`
 - `/profesional/dashboard/servicios`
 - `/profesional/dashboard/horarios`
@@ -297,13 +302,16 @@ Lectura de producto:
 
 - cubre autenticacion base con flujos separados por rol (cliente y profesional)
 - el login social con Google ya aparece en hooks y variables de entorno
+- en mobile, `/(auth)/forgot-password` y `/(auth)/reset-password` siguen consumiendo el flujo legacy `email + token` (`/auth/password/forgot` y `/auth/password/reset`); todavia no replican la recuperacion web por `email + telefono + OTP`
 
 ### Grupo `dashboard`
 
+- `/dashboard`
 - `/dashboard/agenda`
 - `/dashboard/services`
 - `/dashboard/business-profile`
 - `/dashboard/billing`
+- `/dashboard/notifications`
 - `/dashboard/schedule`
 - `/dashboard/settings`
 
@@ -311,12 +319,14 @@ Lectura de producto:
 
 - reproduce parte del panel profesional en mobile
 - responde bien al objetivo `Free` y `Pro` de operar una agenda desde el telefono
+- `/dashboard` redirige segun sesion: profesional va a `/dashboard/agenda`; otros casos vuelven a tabs o login
 - `dashboard/billing` ya no usa `payout-config`; muestra el plan de Plura y el estado de conexion OAuth de `Mercado Pago` como unico provider vigente para cobros
 - `dashboard/billing` en mobile ya respeta el gating principal de web: si el perfil no tiene `allowOnlinePayments`, no intenta conectar `Mercado Pago` y deja la conexion reservada para `PROFESIONAL / ENTERPRISE`
 - `dashboard/billing` refresca perfil + suscripcion al volver a foreground para bajar desfasajes despues del checkout del plan o del flujo OAuth
 - `dashboard/billing` ahora abre el checkout del plan y la autorizacion OAuth de `Mercado Pago` dentro de un browser embebido de Expo; al cerrar esa vista vuelve a refrescar perfil + billing
 - `dashboard/services` en mobile ya bloquea `DEPOSIT` y `FULL_PREPAY` cuando el perfil no tiene `allowOnlinePayments`, alineando la configuracion de servicios con web
 - `dashboard/agenda` en mobile ya no expone las acciones manuales `completar` ni `retry payout`; queda alineado con la UX operativa web basada en confirmacion, cancelacion, no-show y reagendamiento
+- `dashboard/notifications` sigue siendo una pantalla transitoria de estado/configuracion para profesional; todavia no replica el inbox completo de web
 - no expone aun el set completo de capacidades `Premium`
 
 ### Otras pantallas mobile

@@ -18,6 +18,7 @@ import {
   DashboardSectionHeading,
   DashboardStatCard,
 } from '@/components/profesional/dashboard/DashboardUI';
+import { PLAN_LABELS } from '../../../../../../packages/shared/src/billing/planAccess';
 
 const slugify = (value: string) =>
   value
@@ -450,7 +451,7 @@ export default function ProfesionalBusinessProfilePage() {
 
             {!canManageEnhancedPublicProfile ? (
               <p className="rounded-[20px] border border-[color:var(--premium-soft)] bg-[color:var(--premium-soft)] px-4 py-3 text-sm text-[color:var(--premium-strong)] shadow-[var(--shadow-card)]">
-                El logo del negocio y los canales externos se administran desde el plan Profesional. En BASIC podés seguir editando nombre, rubros, ubicación y teléfono.
+                El logo del negocio y los canales externos se administran desde el plan {PLAN_LABELS.PROFESIONAL}. En {PLAN_LABELS.BASIC} podés seguir editando nombre, rubros, ubicación y teléfono.
               </p>
             ) : null}
 

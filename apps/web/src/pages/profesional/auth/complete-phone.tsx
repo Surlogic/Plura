@@ -8,7 +8,7 @@ import Footer from '@/components/shared/Footer';
 import Badge from '@/components/ui/Badge';
 import Card from '@/components/ui/Card';
 import api from '@/services/api';
-import { useClientProfileContext } from '@/context/ClientProfileContext';
+import { useProfessionalProfileContext } from '@/context/ProfessionalProfileContext';
 
 const resolveApiMessage = (error: unknown, fallback: string) => {
   if (isAxiosError<{ message?: string }>(error)) {
@@ -19,7 +19,7 @@ const resolveApiMessage = (error: unknown, fallback: string) => {
 
 export default function ProfesionalCompletePhonePage() {
   const router = useRouter();
-  const { refreshProfile } = useClientProfileContext();
+  const { refreshProfile } = useProfessionalProfileContext();
   const [phoneNumber, setPhoneNumber] = useState('');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);

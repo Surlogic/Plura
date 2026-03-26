@@ -135,7 +135,7 @@ Plan para crecimiento, reputacion visual y operacion multiequipo. Precio objetiv
 
 Base transversal que ordena el producto y la arquitectura:
 
-- autenticacion y seguridad: registro, login, recuperacion, sesiones, OAuth Google y Apple; eliminacion de cuenta requiere challenge OTP por email (`/auth/challenge/send` con purpose `ACCOUNT_DELETION`) antes de ejecutar `DELETE /auth/me` con `challengeId + code`
+- autenticacion y seguridad: registro, login, recuperacion, sesiones, OAuth Google y Apple; hoy conviven dos recuperaciones de contraseña (`/auth/password/forgot` + `/auth/password/reset` como flujo legacy por token y `/auth/password/recovery/*` como flujo escalonado email + telefono + OTP por email); login OAuth puede requerir completar telefono via `POST /auth/oauth/complete-phone`; eliminacion de cuenta requiere challenge OTP por email (`/auth/challenge/send` con purpose `ACCOUNT_DELETION`) antes de ejecutar `DELETE /auth/me` con `challengeId + code`
 - onboarding inicial del negocio o profesional cuando este listo
 - roles y permisos
 - perfil editable del negocio o profesional
@@ -166,6 +166,7 @@ Notas operativas recientes:
 - pagos online en runtime quedaron `Mercado Pago only`; `DLOCAL` se conserva solo como compatibilidad de lectura para datos historicos y como historia de migraciones Flyway
 - el home web ahora usa SSR (`getServerSideProps`) en vez de ISR/static; la pagina incluye hero, categorias, top businesses y ReviewsSection (testimonios publicos de feedback de app via `GET /public/app-feedback`); el ranking de top professionals prioriza volumen de reservas confirmadas/completadas de los ultimos 3 meses
 - `ClientNotificationsContext` ya no rompe si se renderiza fuera del provider; devuelve defaults seguros para degradar sin crash en rutas publicas o SSR
+- la web ya usa recuperacion de contraseña en 3 pasos (`email -> telefono -> codigo`) sobre `/auth/password/recovery/*`, mientras mobile todavia conserva el flujo legacy por email/token
 
 ## Estado operativo actual de notificaciones
 

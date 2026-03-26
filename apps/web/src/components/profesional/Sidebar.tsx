@@ -105,11 +105,7 @@ function ProfesionalSidebar({ profile, active }: SidebarProps) {
   const resolvedLogoUrl = resolveAssetUrl(profile?.logoUrl);
 
   const planLabel = profile?.professionalPlan
-    ? {
-        BASIC: 'Basic',
-        PROFESIONAL: 'Profesional',
-        ENTERPRISE: 'Enterprise',
-      }[profile.professionalPlan]
+    ? PLAN_LABELS[profile.professionalPlan]
     : 'Beta';
 
   useEffect(() => {

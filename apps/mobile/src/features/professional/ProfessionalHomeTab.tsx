@@ -14,6 +14,7 @@ import {
   SectionCard,
   StatusPill,
 } from '../../components/ui/MobileSurface';
+import { PLAN_LABELS } from '../../../../../packages/shared/src/billing/planAccess';
 
 const quickLinks = [
   { key: 'agenda', title: 'Agenda', subtitle: 'Turnos del dia y acciones rapidas', icon: 'calendar-outline' as const, color: theme.colors.primary, route: '/dashboard/agenda' },
@@ -32,7 +33,7 @@ export function ProfessionalHomeTab() {
   const publicPageRoute = profile.slug ? `/profesional/${profile.slug}` : null;
   const spotlightItems = [
     { key: 'page', label: 'Pagina publica', value: publicPageRoute ? 'Lista para clientes' : 'Falta slug publico', tone: publicPageRoute ? 'bg-primary/10 text-primary' : 'bg-amber-100 text-amber-700' },
-    { key: 'plan', label: 'Plan activo', value: profile.professionalPlan || 'BASIC', tone: 'bg-secondary/10 text-secondary' },
+    { key: 'plan', label: 'Plan activo', value: PLAN_LABELS[profile.professionalPlan || 'BASIC'], tone: 'bg-secondary/10 text-secondary' },
     { key: 'mode', label: 'Tipo de atencion', value: profile.tipoCliente || 'Profesional', tone: 'bg-secondary/10 text-secondary' },
     { key: 'location', label: 'Ubicacion', value: profile.city || profile.location || 'Sin configurar', tone: 'bg-secondary/10 text-secondary' },
   ];
@@ -45,7 +46,7 @@ export function ProfessionalHomeTab() {
           description="Desde aqui gestionas el negocio y tambien puedes revisar como se ve tu pagina publica en mobile."
           icon="briefcase-outline"
           badges={[
-            { label: `Plan ${profile.professionalPlan || 'BASIC'}`, tone: 'light' },
+            { label: `Plan ${PLAN_LABELS[profile.professionalPlan || 'BASIC']}`, tone: 'light' },
             { label: profile.rubro || 'Profesional', tone: 'light' },
             ...(profile.slug ? [{ label: `@${profile.slug}`, tone: 'light' as const }] : []),
           ]}

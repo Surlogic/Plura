@@ -378,7 +378,7 @@ export default function ProfesionalPublicPageBuilder() {
 
                 {!canManageEnhancedContent ? (
                   <p className="rounded-[20px] border border-[color:var(--premium-soft)] bg-[color:var(--premium-soft)] px-4 py-3 text-sm text-[color:var(--premium-strong)] shadow-[var(--shadow-card)]">
-                    La frase principal y el texto “Sobre mí” se editan desde el plan {PLAN_LABELS.PROFESIONAL}. En BASIC podés seguir actualizando fotos y compartir tu ficha pública.
+                    La frase principal y el texto “Sobre mí” se editan desde el plan {PLAN_LABELS.PROFESIONAL}. En {PLAN_LABELS.BASIC} podés seguir actualizando fotos y compartir tu ficha pública.
                   </p>
                 ) : null}
 

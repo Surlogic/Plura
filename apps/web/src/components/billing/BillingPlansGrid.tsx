@@ -27,7 +27,7 @@ const resolveButtonLabel = ({
   }
 
   if (planId === 'BASIC') {
-    return cancelAtPeriodEnd ? 'Cambio programado' : 'Cambiar a BASIC';
+    return cancelAtPeriodEnd ? 'Cambio programado' : 'Cambiar a Free';
   }
 
   if (currentPlanId === 'BASIC') {

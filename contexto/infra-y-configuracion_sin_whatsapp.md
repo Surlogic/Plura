@@ -38,6 +38,8 @@ Lectura operativa actual:
 - `auth_refresh_token` queda como compatibilidad legacy del modelo anterior, pero el fallback por default ya no viene habilitado en `application.yml`
 - en web, el interceptor de refresh y los providers de perfil ya no degradan cualquier error a logout: solo `401/403` invalidan la sesion; errores de red, timeout o `5xx` quedan como fallas transitorias sin limpiar credenciales locales
 - `apps/web/src/services/session.ts` ahora persiste tambien `plura_auth_session_role` (`CLIENT` o `PROFESSIONAL`) para bootstrap de sesion en rutas publicas sin adivinar el perfil a cargar
+- el backend soporta dos recuperaciones de contraseña en paralelo: legacy por token (`/auth/password/forgot` + `/auth/password/reset`) y recovery escalonado (`/auth/password/recovery/start|verify-phone|confirm`)
+- despues de OAuth, el backend puede exigir completar telefono con `POST /auth/oauth/complete-phone` antes de considerar cerrada la cuenta para ciertos flujos
 
 ### Marketplace, ubicacion y mapa
 
@@ -236,7 +238,7 @@ Lectura de producto:
 
 - cubre API, mapa y login social en web
 - el repo ya trae `pnpm -C apps/web analyze` para abrir el analisis de chunks sin agregar tooling nuevo
-- para probar localmente OAuth profesional de Mercado Pago end-to-end, `.env.frontend` debe apuntar al backend local (`NEXT_PUBLIC_API_URL=http://localhost:3000`); si la web local apunta a Render, el onboarding usa el backend remoto aunque la UI corra en `localhost:3002`
+- `.env.frontend` quedo alineado a despliegue `Vercel -> Fly` con `NEXT_PUBLIC_API_URL=https://plura.fly.dev`; para probar localmente OAuth profesional de Mercado Pago end-to-end hay que sobreescribir temporalmente esa variable a `http://localhost:3000`
 
 ### Mobile
 
@@ -269,7 +271,7 @@ Lectura de producto:
 Areas de configuracion principales en `application.yml`:
 
 - server y compresion
-- datasource PostgreSQL y H2 fallback
+- datasource PostgreSQL obligatorio en runtime (`SPRING_DATASOURCE_URL` o `DATABASE_URL`)
 - Flyway
 - JWT y refresh token
 - OAuth Google y Apple
@@ -410,12 +412,14 @@ Notas reales de deploy en Render:
 - `docker-compose.yml` de raiz ya quedo alineado con el monorepo actual: levanta `backend-java` con Gradle y `apps/web` con `pnpm`, usando `.env.backend`, `backend-java/.env` y `.env.frontend`
 - `packages/shared` no esta empaquetado como workspace package consumible.
 - `apps/web/next.config.js` habilita `externalDir` para poder importar desde `packages/shared/src`.
-- el backend contempla H2 como fallback de arranque, pero la app real esta pensada para PostgreSQL.
+- el backend ya no contempla H2 como fallback de arranque en runtime; si falta `SPRING_DATASOURCE_URL` o `DATABASE_URL`, la aplicacion debe fallar temprano para no ocultar una configuracion rota de PostgreSQL
+- el backend expone `server.port=${PORT:3000}` y ahora fija `server.address=0.0.0.0` por default para despliegues tipo Fly.io/Render
 - el naming de planes en codigo sigue siendo `BASIC / PROFESIONAL / ENTERPRISE`; el contexto de producto actualizado usa `Free / Pro / Premium`.
 - Flyway conserva migraciones historicas de dLocal (`V34`, `V37`) solo por continuidad de schema; el runtime vigente ya es Mercado Pago only y `V47` elimina los campos legacy del dominio profesional.
 - billing de suscripciones requiere que el schema de `subscription` acepte `PLAN_BASIC`, `PLAN_PROFESIONAL` y `PLAN_ENTERPRISE`; `V51` alinea el constraint legacy que todavia admitia `PLAN_PRO` y `PLAN_PREMIUM`
 - `V57` agrega columna `public_visible` (boolean, default false) a `app_feedback` con indice `idx_app_feedback_public` sobre `(public_visible, created_at DESC)`; backfill a `true` para feedback ACTIVE con texto existente
-- en local, `backend-java/.env` usa como retorno de suscripcion Mercado Pago una URL publica HTTPS de Render en vez de `localhost`, porque `preapproval` no acepta `localhost` y `plura.com` no estaba resolviendo un TLS util para el retorno
+- `.env.backend` quedo como base de deploy para `Fly.io + Vercel`: usa `DATABASE_URL`, `server.address=0.0.0.0`, placeholders `https://TU_APP.fly.dev` y `https://TU_FRONTEND.vercel.app`, y concentra tambien URLs publicas de billing/OAuth compatibles con ese split
+- en local, `backend-java/.env` sigue usando frontend remoto en Vercel y callback backend publico temporal (ngrok) para destrabar flujos de Mercado Pago que no aceptan `localhost`; las variables activas de storage son `IMAGE_STORAGE_PROVIDER` + `R2_*`, no los aliases legacy `APP_STORAGE_*`
 - en `render.yaml`, el servicio `plura-api` usa `rootDir=backend-java`, por lo que `dockerfilePath` y `dockerContext` deben mantenerse relativos a esa carpeta; hoy quedaron alineados a `./Dockerfile` y `.`
 - el blueprint de Render ya expone tanto variables legacy de Mercado Pago como el naming explicito por dominio `SUBSCRIPTIONS_*` y `RESERVATIONS_*`, incluido el flag `BILLING_MERCADOPAGO_RESERVATIONS_OAUTH_PKCE_ENABLED`
 - para storage de imágenes en producción, el servicio backend debe exponer las variables `IMAGE_STORAGE_PROVIDER=r2`, `R2_ENDPOINT`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY` y opcionalmente `R2_BUCKET` y `R2_PUBLIC_BASE_URL`

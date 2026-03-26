@@ -300,7 +300,7 @@ export default function BillingScreen() {
             </>
           ) : (
             <>
-              <Text className="mt-2 text-lg font-bold text-secondary">Disponible desde PROFESIONAL</Text>
+              <Text className="mt-2 text-lg font-bold text-secondary">Disponible desde Pro</Text>
               <Text className="mt-1 text-sm text-gray-500">Tu plan actual no habilita cobros online.</Text>
               <Text className="mt-2 text-sm text-gray-500">
                 Cuando subas de plan vas a poder conectar tu cuenta de Mercado Pago y cobrar reservas online desde Plura.

@@ -367,6 +367,7 @@ El script `scripts/predev.sh`:
 Notas reales de deploy en Render:
 
 - `plura-api` debe declarar tambien `APP_PUBLIC_WEB_URL` para links/callbacks absolutos
+- `plura-web` debe usar el mismo `NEXT_BUILD_DIR` en build y start; el blueprint quedo alineado a `.next-build` en ambos comandos para que `next start` encuentre el artefacto correcto
 - el blueprint ya no provisiona una base propia en Render: espera `Supabase PostgreSQL` por Session Pooler con `SPRING_DATASOURCE_URL`, `SPRING_DATASOURCE_USERNAME`, `SPRING_DATASOURCE_PASSWORD`, `SPRING_DATASOURCE_DRIVER_CLASS_NAME=org.postgresql.Driver`, `SPRING_FLYWAY_URL`, `SPRING_FLYWAY_USER`, `SPRING_FLYWAY_PASSWORD` y `SPRING_FLYWAY_DRIVER_CLASS_NAME=org.postgresql.Driver`
 - para OAuth Mercado Pago del profesional el servicio backend necesita exponer en Render:
   - `BILLING_MERCADOPAGO_RESERVATIONS_PLATFORM_ACCESS_TOKEN`

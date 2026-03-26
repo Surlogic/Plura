@@ -1,14 +1,12 @@
 import Link from 'next/link';
-import { memo, useCallback } from 'react';
+import { memo } from 'react';
 import { useRouter } from 'next/router';
-import api from '@/services/api';
 import { useClientProfileContext } from '@/context/ClientProfileContext';
 import { useProfessionalProfileContext } from '@/context/ProfessionalProfileContext';
+import { useAuthLogout } from '@/hooks/useAuthLogout';
 import Button from '@/components/ui/Button';
 import BrandLogo from '@/components/ui/BrandLogo';
 import ThemeSwitcher from '@/components/theme/ThemeSwitcher';
-import { clearFavoriteProfessionals } from '@/services/clientFeatures';
-import { clearAuthAccessToken } from '@/services/session';
 
 type NavbarProps = {
   variant?: 'default' | 'dashboard';
@@ -32,17 +30,16 @@ export default memo(function Navbar({
 }: NavbarProps) {
   const router = useRouter();
   const {
-    clearProfile: clearProfessionalProfile,
     profile: professionalProfile,
     hasLoaded: professionalHasLoaded,
     isLoading: professionalLoading,
   } = useProfessionalProfileContext();
   const {
-    clearProfile: clearClientProfile,
     profile: clientProfile,
     hasLoaded: clientHasLoaded,
     isLoading: clientLoading,
   } = useClientProfileContext();
+  const { isLoggingOut, logout } = useAuthLogout();
   const isAuthPage = router.pathname.startsWith('/cliente/auth') ||
     router.pathname.startsWith('/profesional/auth');
   const showAuthLoading = !isAuthPage && (
@@ -59,23 +56,6 @@ export default memo(function Navbar({
       : 'PUBLIC';
   const displayName = professionalProfile?.fullName || clientProfile?.fullName || '';
   const initials = getInitials(displayName || 'Perfil');
-
-  const handleLogout = useCallback(() => {
-    api
-      .post('/auth/logout')
-      .catch(() => undefined)
-      .finally(() => {
-        clearAuthAccessToken();
-        clearFavoriteProfessionals();
-        clearProfessionalProfile();
-        clearClientProfile();
-        if (role === 'PROFESSIONAL') {
-          router.push('/profesional/auth/login');
-          return;
-        }
-        router.push('/cliente/auth/login');
-      });
-  }, [clearClientProfile, clearProfessionalProfile, role, router]);
 
   const isDashboard = variant === 'dashboard';
   const headerClassName = isDashboard
@@ -107,8 +87,14 @@ export default memo(function Navbar({
               <Button href="/profesional/dashboard" size="md">
                 Mi dashboard
               </Button>
-              <Button type="button" onClick={handleLogout} variant="primary" size="md">
-                Cerrar sesión
+              <Button
+                type="button"
+                onClick={() => void logout('PROFESSIONAL')}
+                variant="primary"
+                size="md"
+                disabled={isLoggingOut}
+              >
+                {isLoggingOut ? 'Cerrando sesión...' : 'Cerrar sesión'}
               </Button>
             </>
           ) : role === 'CLIENT' ? (
@@ -131,8 +117,14 @@ export default memo(function Navbar({
                 </span>
                 <span className="font-medium">Perfil</span>
               </Link>
-              <Button type="button" onClick={handleLogout} variant="primary" size="md">
-                Cerrar sesión
+              <Button
+                type="button"
+                onClick={() => void logout('CLIENT')}
+                variant="primary"
+                size="md"
+                disabled={isLoggingOut}
+              >
+                {isLoggingOut ? 'Cerrando sesión...' : 'Cerrar sesión'}
               </Button>
             </>
           ) : (

@@ -7,6 +7,7 @@ import EmailVerificationPanel from '@/components/auth/EmailVerificationPanel';
 import { useRouter } from 'next/router';
 import ProfesionalSidebar from '@/components/profesional/Sidebar';
 import { useClientProfileContext } from '@/context/ClientProfileContext';
+import { useAuthLogout } from '@/hooks/useAuthLogout';
 import { useProfessionalProfile } from '@/hooks/useProfessionalProfile';
 import { useProfessionalProfileContext } from '@/context/ProfessionalProfileContext';
 import { useProfessionalDashboardUnsavedSection } from '@/context/ProfessionalDashboardUnsavedChangesContext';
@@ -103,10 +104,10 @@ export default function ProfesionalSettingsPage() {
   const { profile, isLoading, hasLoaded } = useProfessionalProfile();
   const { clearProfile: clearClientProfile } = useClientProfileContext();
   const { clearProfile, refreshProfile } = useProfessionalProfileContext();
+  const { isLoggingOut, logout } = useAuthLogout();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [settingsMessage, setSettingsMessage] = useState<string | null>(null);
   const [isSettingsError, setIsSettingsError] = useState(false);
-  const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [isDeletingAccount, setIsDeletingAccount] = useState(false);
   const [isDeleteFlowOpen, setIsDeleteFlowOpen] = useState(false);
   const [deleteChallengeId, setDeleteChallengeId] = useState<string | null>(null);
@@ -296,21 +297,7 @@ export default function ProfesionalSettingsPage() {
   };
 
   const handleLogout = async () => {
-    if (isLoggingOut) return;
-
-    setIsLoggingOut(true);
-    try {
-      await api.post('/auth/logout');
-    } catch {
-      // We still clear the local session if the backend logout call fails.
-    } finally {
-      clearAuthAccessToken();
-      clearFavoriteProfessionals();
-      clearProfile();
-      clearClientProfile();
-      await router.replace('/profesional/auth/login');
-      setIsLoggingOut(false);
-    }
+    await logout('PROFESSIONAL');
   };
 
   const handleChangePassword = async () => {

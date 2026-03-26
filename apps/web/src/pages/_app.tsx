@@ -3,9 +3,11 @@ import { useMemo } from 'react';
 import { Instrument_Sans } from 'next/font/google';
 import { useRouter } from 'next/router';
 import '@/pages/globals.css';
+import LogoutLoadingOverlay from '@/components/auth/LogoutLoadingOverlay';
 import { ProfessionalProfileProvider } from '@/context/ProfessionalProfileContext';
 import { ClientProfileProvider } from '@/context/ClientProfileContext';
 import { ClientNotificationsProvider } from '@/context/ClientNotificationsContext';
+import { LogoutTransitionProvider } from '@/context/LogoutTransitionContext';
 import { ProfessionalDashboardUnsavedChangesProvider } from '@/context/ProfessionalDashboardUnsavedChangesContext';
 import { ProfessionalNotificationsProvider } from '@/context/ProfessionalNotificationsContext';
 import { ThemeProvider } from '@/components/theme/ThemeProvider';
@@ -163,7 +165,10 @@ export default function App({ Component, pageProps }: AppProps) {
 
   return (
     <ThemeProvider>
-      {content}
+      <LogoutTransitionProvider>
+        {content}
+        <LogoutLoadingOverlay />
+      </LogoutTransitionProvider>
     </ThemeProvider>
   );
 }

@@ -1,14 +1,10 @@
 import Link from 'next/link';
 import { useRouter } from 'next/router';
-import api from '@/services/api';
+import { useAuthLogout } from '@/hooks/useAuthLogout';
 import Button from '@/components/ui/Button';
 import BrandLogo from '@/components/ui/BrandLogo';
 import ThemeSwitcher from '@/components/theme/ThemeSwitcher';
 import ClientNotificationBell from '@/components/cliente/notifications/ClientNotificationBell';
-import { useClientProfileContext } from '@/context/ClientProfileContext';
-import { useProfessionalProfileContext } from '@/context/ProfessionalProfileContext';
-import { clearFavoriteProfessionals } from '@/services/clientFeatures';
-import { clearAuthAccessToken } from '@/services/session';
 
 type ClientDashboardNavbarProps = {
   name: string;
@@ -28,20 +24,7 @@ export default function ClientDashboardNavbar({
   onOpenSidebar,
 }: ClientDashboardNavbarProps) {
   const router = useRouter();
-  const { clearProfile: clearClientProfile } = useClientProfileContext();
-  const { clearProfile: clearProfessionalProfile } = useProfessionalProfileContext();
-
-  const handleLogout = async () => {
-    try {
-      await api.post('/auth/logout');
-    } finally {
-      clearAuthAccessToken();
-      clearFavoriteProfessionals();
-      clearProfessionalProfile();
-      clearClientProfile();
-      router.push('/cliente/auth/login');
-    }
-  };
+  const { isLoggingOut, logout } = useAuthLogout();
 
   return (
     <header className="sticky top-0 z-50 border-b border-[color:var(--border-soft)] bg-[color:var(--surface)]/88 backdrop-blur-xl">
@@ -127,10 +110,11 @@ export default function ClientDashboardNavbar({
               </Link>
               <button
                 type="button"
-                onClick={handleLogout}
-                className="mt-1 block w-full rounded-lg px-3 py-2 text-left text-sm font-semibold text-[color:var(--error)] transition hover:bg-[color:var(--error-soft)]"
+                onClick={() => void logout('CLIENT')}
+                disabled={isLoggingOut}
+                className="mt-1 block w-full rounded-lg px-3 py-2 text-left text-sm font-semibold text-[color:var(--error)] transition hover:bg-[color:var(--error-soft)] disabled:cursor-not-allowed disabled:opacity-60"
               >
-                Cerrar sesión
+                {isLoggingOut ? 'Cerrando sesión...' : 'Cerrar sesión'}
               </button>
             </div>
           </details>

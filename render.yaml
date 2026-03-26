@@ -168,7 +168,7 @@ services:
     name: plura-web
     runtime: node
     rootDir: .
-    buildCommand: corepack enable && corepack prepare pnpm@latest --activate && pnpm install --frozen-lockfile && SKIP_HOME_SSG_FETCH=true pnpm -C apps/web build
+    buildCommand: corepack enable && corepack prepare pnpm@10.23.0 --activate && pnpm install --frozen-lockfile && NEXT_BUILD_DIR=.next-build SKIP_HOME_SSG_FETCH=true pnpm -C apps/web build
     startCommand: corepack enable && corepack prepare pnpm@10.23.0 --activate && NODE_ENV=production NEXT_BUILD_DIR=.next-build pnpm -C apps/web exec next start -p ${PORT}
     envVars:
       - key: NODE_VERSION

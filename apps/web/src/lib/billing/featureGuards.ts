@@ -12,7 +12,7 @@ export type ProfessionalFeatureKey =
   | 'advancedAnalytics';
 
 const FEATURE_REQUIRED_PLAN: Record<ProfessionalFeatureKey, ProfessionalPlanCode> = {
-  enhancedPublicProfile: 'PROFESIONAL',
+  enhancedPublicProfile: 'BASIC',
   onlinePayments: 'PROFESIONAL',
   weeklyCalendarNavigation: 'BASIC',
   monthlyCalendar: 'BASIC',

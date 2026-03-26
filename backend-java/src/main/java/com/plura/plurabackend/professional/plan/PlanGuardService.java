@@ -74,6 +74,14 @@ public class PlanGuardService {
         }
     }
 
+    public void requireLimitNotExceeded(String rawUserId, LimitCapability capability, long currentValue) {
+        ProfessionalPlanEntitlements entitlements = entitlementsForProfessionalUserId(rawUserId);
+        int limit = capability.resolveLimit(entitlements);
+        if (currentValue > limit) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, capability.exceededMessage(limit));
+        }
+    }
+
     public void requirePublicProfileTier(String rawUserId, PublicProfileTier minimumTier) {
         ProfessionalPlanEntitlements entitlements = entitlementsForProfessionalUserId(rawUserId);
         if (entitlements.publicProfileTier().compareTo(minimumTier) < 0) {

@@ -6,6 +6,7 @@ import com.plura.plurabackend.core.category.model.Category;
 import com.plura.plurabackend.core.category.repository.CategoryRepository;
 import com.plura.plurabackend.professional.model.ProfessionalProfile;
 import com.plura.plurabackend.professional.plan.BooleanCapability;
+import com.plura.plurabackend.professional.plan.LimitCapability;
 import com.plura.plurabackend.professional.plan.PlanGuardService;
 import com.plura.plurabackend.professional.service.dto.ProfesionalServiceRequest;
 import com.plura.plurabackend.professional.service.dto.ProfesionalServiceResponse;
@@ -56,6 +57,9 @@ public class ProfileServiceCatalogSupport {
         ProfessionalProfile profile,
         ProfesionalServiceRequest request
     ) {
+        long nextServiceCount = profesionalServiceRepository.countByProfessional_Id(profile.getId()) + 1;
+        planGuardService.requireLimitNotExceeded(rawUserId, LimitCapability.MAX_SERVICES, nextServiceCount);
+
         ServicePaymentType paymentType = resolveServicePaymentType(request.getPaymentType());
         ensurePaymentTypeAllowed(rawUserId, paymentType);
         BigDecimal price = request.getPrice();

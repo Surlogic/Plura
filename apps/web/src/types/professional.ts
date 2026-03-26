@@ -90,6 +90,7 @@ export type ProfessionalService = {
   bufferTime: string;
   paymentType: ServicePaymentType;
   photos: ServicePhoto[];
+  active?: boolean;
   paused?: boolean;
 };
 

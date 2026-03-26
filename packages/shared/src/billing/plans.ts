@@ -23,7 +23,7 @@ export const sharedBillingPlans: SharedBillingPlanDefinition[] = [
     profilePlanCode: 'BASIC',
     priceMonthly: 0,
     priceLabel: 'Gratis',
-    benefits: ['Perfil publico', 'Agenda basica', 'Reservas manuales'],
+    benefits: ['Logo, banner y textos publicos', 'Hasta 3 fotos en galeria', 'Hasta 15 servicios con 1 foto'],
   },
   {
     id: 'PROFESIONAL',
@@ -32,7 +32,7 @@ export const sharedBillingPlans: SharedBillingPlanDefinition[] = [
     profilePlanCode: 'PROFESIONAL',
     priceMonthly: 590,
     priceLabel: '$590 UYU / mes',
-    benefits: ['Pagos online', 'Analytics basicos', 'Automatizaciones', 'Perfil mejorado'],
+    benefits: ['Hasta 6 fotos en galeria', 'Hasta 30 servicios con 1 foto', 'Pagos online', 'Analytics basicos'],
     recommended: true,
   },
   {
@@ -42,7 +42,7 @@ export const sharedBillingPlans: SharedBillingPlanDefinition[] = [
     profilePlanCode: 'ENTERPRISE',
     priceMonthly: 1290,
     priceLabel: '$1.290 UYU / mes',
-    benefits: ['Todo lo de Pro', 'Tienda', 'Chat interno', 'Mayor capacidad operativa'],
+    benefits: ['Hasta 10 fotos en galeria', 'Servicios ilimitados', 'Todo lo de Pro', 'Mayor capacidad operativa'],
   },
 ];
 

@@ -9,6 +9,7 @@ export type ProfessionalPlanEntitlements = {
   maxLocations: number;
   maxBusinessPhotos: number;
   maxServiceImagesPerService: number;
+  maxServices: number;
   publicProfileTier: PublicProfileTier;
   scheduleTier: ScheduleTier;
   analyticsTier: AnalyticsTier;

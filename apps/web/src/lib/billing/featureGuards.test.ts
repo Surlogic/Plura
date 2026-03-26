@@ -16,9 +16,10 @@ const buildEntitlements = (
 ): ProfessionalPlanEntitlements => ({
   maxProfessionals: 1,
   maxLocations: 1,
-  maxBusinessPhotos: 5,
+  maxBusinessPhotos: 3,
   maxServiceImagesPerService: 1,
-  publicProfileTier: 'BASIC',
+  maxServices: 15,
+  publicProfileTier: 'ENHANCED',
   scheduleTier: 'DAILY',
   analyticsTier: 'NONE',
   allowOnlinePayments: false,
@@ -62,7 +63,7 @@ test('resolveProfessionalFeatureAccess falls back to BASIC plan defaults', () =>
   const access = resolveProfessionalFeatureAccess(buildProfile());
 
   assert.deepEqual(access, {
-    enhancedPublicProfile: false,
+    enhancedPublicProfile: true,
     onlinePayments: false,
     weeklyCalendarNavigation: true,
     monthlyCalendar: true,
@@ -130,6 +131,6 @@ test('planIncludesProfessionalFeature matches the expected paywall boundaries', 
 });
 
 test('requiredPlanForFeature exposes the correct minimum plan', () => {
-  assert.equal(requiredPlanForFeature('enhancedPublicProfile'), 'PROFESIONAL');
+  assert.equal(requiredPlanForFeature('enhancedPublicProfile'), 'BASIC');
   assert.equal(requiredPlanForFeature('advancedAnalytics'), 'ENTERPRISE');
 });

@@ -5,6 +5,7 @@ public record ProfessionalPlanEntitlements(
     int maxLocations,
     int maxBusinessPhotos,
     int maxServiceImagesPerService,
+    int maxServices,
     PublicProfileTier publicProfileTier,
     ScheduleTier scheduleTier,
     AnalyticsTier analyticsTier,

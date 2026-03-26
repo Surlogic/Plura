@@ -18,6 +18,10 @@ public enum LimitCapability {
     MAX_SERVICE_IMAGES_PER_SERVICE(
         "imágenes por servicio",
         ProfessionalPlanEntitlements::maxServiceImagesPerService
+    ),
+    MAX_SERVICES(
+        "servicios",
+        ProfessionalPlanEntitlements::maxServices
     );
 
     private final String label;

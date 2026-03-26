@@ -84,8 +84,13 @@ if [[ "${db_url}" == postgres://* || "${db_url}" == postgresql://* ]]; then
     db_url_has_credentials="true"
   fi
 fi
-if [[ "${db_url_has_credentials}" != "true" && ( -z "${db_user}" || -z "${db_password}" ) ]]; then
-  warnings+=("Revisa credenciales PostgreSQL: si la URL no lleva usuario y password embebidos, falta definir SPRING_DATASOURCE_USERNAME/SPRING_DATASOURCE_PASSWORD o DATABASE_USERNAME/DATABASE_PASSWORD.")
+if [[ "${db_url_has_credentials}" != "true" ]]; then
+  if [[ -z "${db_user}" ]]; then
+    fatal_missing+=("SPRING_DATASOURCE_USERNAME o DATABASE_USERNAME cuando la URL PostgreSQL no trae credenciales embebidas")
+  fi
+  if [[ -z "${db_password}" ]]; then
+    fatal_missing+=("SPRING_DATASOURCE_PASSWORD o DATABASE_PASSWORD cuando la URL PostgreSQL no trae credenciales embebidas")
+  fi
 fi
 if [[ -n "${db_driver}" && "${db_driver}" != "org.postgresql.Driver" ]]; then
   fatal_missing+=("SPRING_DATASOURCE_DRIVER_CLASS_NAME debe ser org.postgresql.Driver")

@@ -39,6 +39,7 @@ Lectura operativa actual:
 - en web, el interceptor de refresh y los providers de perfil ya no degradan cualquier error a logout: solo `401/403` invalidan la sesion; errores de red, timeout o `5xx` quedan como fallas transitorias sin limpiar credenciales locales
 - `apps/web/src/services/session.ts` ahora persiste tambien `plura_auth_session_role` (`CLIENT` o `PROFESSIONAL`) para bootstrap de sesion en rutas publicas sin adivinar el perfil a cargar
 - el backend soporta dos recuperaciones de contraseña en paralelo: legacy por token (`/auth/password/forgot` + `/auth/password/reset`) y recovery escalonado (`/auth/password/recovery/start|verify-phone|confirm`)
+- el recovery escalonado por OTP depende de entrega real de email: si SMTP falla o no esta operativo, `verify-phone` devuelve error y no deja challenges activos a medias
 - despues de OAuth, el backend puede exigir completar telefono con `POST /auth/oauth/complete-phone` antes de considerar cerrada la cuenta para ciertos flujos
 
 ### Marketplace, ubicacion y mapa
@@ -151,6 +152,7 @@ Notas reales de binding local:
 
 - el backend no depende solo del `.env` del cwd: ahora intenta leer `./.env` y tambien `./backend-java/.env`
 - si se ejecuta el backend desde la raiz del monorepo, `backend-java/.env` sigue siendo tomado como fallback
+- `backend-java/fly.toml` ya fija los env no secretos principales para Fly (`APP_PUBLIC_WEB_URL`, `CORS_ALLOWED_ORIGINS`, cookies auth, SMTP habilitado, storage `r2`, billing base y redirects OAuth/callback de Mercado Pago); los secretos sensibles siguen yendo por `fly secrets`
 - el backend mantiene fallback a los nombres legacy `BILLING_MERCADOPAGO_ACCESS_TOKEN`, `BILLING_MERCADOPAGO_WEBHOOK_SECRET` y `BILLING_MERCADOPAGO_OAUTH_*`, pero el naming operativo recomendado ya es explicito por dominio: `SUBSCRIPTIONS_*` para planes y `RESERVATIONS_*` para cobros/OAuth profesional
 - para OAuth de Mercado Pago el error de `state` ya no implica adivinar secretos: el backend espera primero `BILLING_MERCADOPAGO_RESERVATIONS_OAUTH_STATE_SIGNING_SECRET`, y si no existe hace fallback a la clave de cifrado o al client secret
 - en local, tener solo `BILLING_MERCADOPAGO_RESERVATIONS_PLATFORM_ACCESS_TOKEN` no alcanza para OAuth: para abrir el onboarding siguen siendo obligatorios `CLIENT_ID` y `REDIRECT_URI`; para completar el callback y persistir la conexion del profesional tambien se vuelve obligatorio `CLIENT_SECRET`
@@ -296,6 +298,8 @@ Variables criticas sin las que el backend puede fallar o degradarse:
 - credenciales OAuth si se usa login social
 - variables de billing si se habilitan pagos reales
 - variables OAuth de Mercado Pago si se quiere conectar la cuenta del profesional desde billing
+- SMTP operativo si se quiere usar recovery escalonado y otros OTP por email sin degradacion
+- en Fly, ademas de los env no secretos versionados en `backend-java/fly.toml`, siguen siendo obligatorios como secrets al menos: `DATABASE_URL` o `SPRING_DATASOURCE_*`, `JWT_SECRET`, `JWT_REFRESH_PEPPER`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `EMAIL_FROM_ADDRESS`, `EMAIL_SMTP_USERNAME`, `EMAIL_SMTP_PASSWORD`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `BILLING_MERCADOPAGO_SUBSCRIPTIONS_ACCESS_TOKEN`, `BILLING_MERCADOPAGO_SUBSCRIPTIONS_WEBHOOK_SECRET`, `BILLING_MERCADOPAGO_RESERVATIONS_PLATFORM_ACCESS_TOKEN`, `BILLING_MERCADOPAGO_RESERVATIONS_WEBHOOK_SECRET`, `BILLING_MERCADOPAGO_RESERVATIONS_OAUTH_CLIENT_ID`, `BILLING_MERCADOPAGO_RESERVATIONS_OAUTH_CLIENT_SECRET`, `BILLING_MERCADOPAGO_RESERVATIONS_OAUTH_STATE_SIGNING_SECRET`, `BILLING_MERCADOPAGO_RESERVATIONS_OAUTH_TOKEN_ENCRYPTION_KEY`
 
 Notas operativas de performance hoy:
 
@@ -419,6 +423,7 @@ Notas reales de deploy en Render:
 - billing de suscripciones requiere que el schema de `subscription` acepte `PLAN_BASIC`, `PLAN_PROFESIONAL` y `PLAN_ENTERPRISE`; `V51` alinea el constraint legacy que todavia admitia `PLAN_PRO` y `PLAN_PREMIUM`
 - `V57` agrega columna `public_visible` (boolean, default false) a `app_feedback` con indice `idx_app_feedback_public` sobre `(public_visible, created_at DESC)`; backfill a `true` para feedback ACTIVE con texto existente
 - `.env.backend` quedo como base de deploy para `Fly.io + Vercel`: usa `DATABASE_URL`, `server.address=0.0.0.0`, placeholders `https://TU_APP.fly.dev` y `https://TU_FRONTEND.vercel.app`, y concentra tambien URLs publicas de billing/OAuth compatibles con ese split
+- `backend-java/fly.toml` expone `internal_port = 3000` y define `http_service.checks` sobre `GET /health` con `grace_period = 180s`; esto es necesario porque el backend puede tardar mas de 2 minutos en abrir Tomcat mientras inicializa DB, Flyway y JPA
 - en local, `backend-java/.env` sigue usando frontend remoto en Vercel y callback backend publico temporal (ngrok) para destrabar flujos de Mercado Pago que no aceptan `localhost`; las variables activas de storage son `IMAGE_STORAGE_PROVIDER` + `R2_*`, no los aliases legacy `APP_STORAGE_*`
 - en `render.yaml`, el servicio `plura-api` usa `rootDir=backend-java`, por lo que `dockerfilePath` y `dockerContext` deben mantenerse relativos a esa carpeta; hoy quedaron alineados a `./Dockerfile` y `.`
 - el blueprint de Render ya expone tanto variables legacy de Mercado Pago como el naming explicito por dominio `SUBSCRIPTIONS_*` y `RESERVATIONS_*`, incluido el flag `BILLING_MERCADOPAGO_RESERVATIONS_OAUTH_PKCE_ENABLED`

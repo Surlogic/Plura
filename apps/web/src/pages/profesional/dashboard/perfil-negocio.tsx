@@ -603,8 +603,8 @@ export default function ProfesionalBusinessProfilePage() {
                                   className="block w-full border-b border-[#F1F5F9] px-3 py-2 text-left text-sm text-[#0E2A47] last:border-b-0 hover:bg-[#F8FAFC]"
                                   onMouseDown={(event) => {
                                     event.preventDefault();
-                                    applyGeoSuggestion(item);
                                   }}
+                                  onClick={() => applyGeoSuggestion(item)}
                                 >
                                   {(item.country || item.city || item.placeName || '').trim()}
                                 </button>
@@ -630,8 +630,8 @@ export default function ProfesionalBusinessProfilePage() {
                                   className="block w-full border-b border-[#F1F5F9] px-3 py-2 text-left text-sm text-[#0E2A47] last:border-b-0 hover:bg-[#F8FAFC]"
                                   onMouseDown={(event) => {
                                     event.preventDefault();
-                                    applyGeoSuggestion(item);
                                   }}
+                                  onClick={() => applyGeoSuggestion(item)}
                                 >
                                   {(item.city || item.fullAddress || item.placeName || '').trim()}
                                 </button>
@@ -660,8 +660,8 @@ export default function ProfesionalBusinessProfilePage() {
                                   className="block w-full border-b border-[#F1F5F9] px-3 py-2 text-left text-sm text-[#0E2A47] last:border-b-0 hover:bg-[#F8FAFC]"
                                   onMouseDown={(event) => {
                                     event.preventDefault();
-                                    applyGeoSuggestion(item);
                                   }}
+                                  onClick={() => applyGeoSuggestion(item)}
                                 >
                                   <span className="block font-medium">{(item.fullAddress || item.placeName || '').trim()}</span>
                                   <span className="block text-xs text-[#64748B]">{[item.city, item.country].filter(Boolean).join(', ')}</span>

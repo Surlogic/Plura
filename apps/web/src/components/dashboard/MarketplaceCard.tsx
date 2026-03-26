@@ -12,6 +12,7 @@ type MarketplaceCardProps = {
   badge?: string;
   badgeTone?: 'primary' | 'success';
   href?: string;
+  onActionClick?: () => void;
 };
 
 const badgeStyles: Record<NonNullable<MarketplaceCardProps['badgeTone']>, string> = {
@@ -30,6 +31,7 @@ export default memo(function MarketplaceCard({
   badge,
   badgeTone = 'primary',
   href,
+  onActionClick,
 }: MarketplaceCardProps) {
   const displayRating = rating?.trim();
   const displayPrice = price?.trim() || 'Precio a confirmar';
@@ -94,13 +96,21 @@ export default memo(function MarketplaceCard({
           >
             Ver perfil
           </Link>
-        ) : (
+        ) : onActionClick ? (
           <button
             type="button"
+            onClick={onActionClick}
             className="w-full rounded-full bg-[#F59E0B] px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
           >
             Reservar rápido
           </button>
+        ) : (
+          <span
+            className="block w-full rounded-full border border-[#DFE7EF] bg-[#F8FAFC] px-4 py-2 text-center text-sm font-semibold text-[#64748B]"
+            aria-disabled="true"
+          >
+            Perfil no disponible
+          </span>
         )}
       </div>
     </article>

@@ -1,5 +1,10 @@
 import Link from 'next/link';
-import type { ButtonHTMLAttributes, ReactNode } from 'react';
+import type { LinkProps } from 'next/link';
+import type {
+  AnchorHTMLAttributes,
+  ButtonHTMLAttributes,
+  ReactNode,
+} from 'react';
 import { cn } from '@/components/ui/cn';
 
 type ButtonVariant = 'primary' | 'secondary' | 'quiet' | 'accent' | 'contrast';
@@ -12,9 +17,11 @@ type CommonProps = {
   size?: ButtonSize;
 };
 
-type LinkButtonProps = CommonProps & {
-  href: string;
-};
+type LinkButtonProps = CommonProps &
+  LinkProps &
+  Omit<AnchorHTMLAttributes<HTMLAnchorElement>, 'href'> & {
+    href: LinkProps['href'];
+  };
 
 type NativeButtonProps = CommonProps &
   ButtonHTMLAttributes<HTMLButtonElement> & {
@@ -60,15 +67,19 @@ export default function Button({
   );
 
   if ('href' in props && props.href) {
+    const { href, ...linkProps } = props as LinkButtonProps;
     return (
-      <Link href={props.href} className={resolvedClassName}>
+      // eslint-disable-next-line no-restricted-syntax -- Este wrapper necesita reenviar props validas de Link.
+      <Link href={href} {...linkProps} className={resolvedClassName}>
         {children}
       </Link>
     );
   }
 
+  const buttonProps = props as NativeButtonProps;
   return (
-    <button {...props} className={resolvedClassName}>
+    // eslint-disable-next-line no-restricted-syntax -- Este wrapper necesita reenviar props nativas del boton.
+    <button {...buttonProps} className={resolvedClassName}>
       {children}
     </button>
   );

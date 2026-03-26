@@ -127,6 +127,62 @@ class AuthAbuseProtectionIntegrationTest {
         assertFalse(rateLimitLogs.isEmpty(), "FORGOT_PASSWORD_RATE_LIMITED audit event should be logged");
     }
 
+    @Test
+    void passwordRecoveryStartRateLimitBlocksAfterExcessiveAttempts() throws Exception {
+        for (int i = 0; i < 20; i++) {
+            mockMvc.perform(post("/auth/password/recovery/start")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content("""
+                        {"email":"recovery-start-rl@plura.com"}
+                        """))
+                .andExpect(result ->
+                    org.junit.jupiter.api.Assertions.assertNotEquals(429, result.getResponse().getStatus())
+                );
+        }
+
+        mockMvc.perform(post("/auth/password/recovery/start")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {"email":"recovery-start-rl@plura.com"}
+                    """))
+            .andExpect(status().isTooManyRequests());
+    }
+
+    @Test
+    void passwordRecoveryConfirmRateLimitBlocksAfterExcessiveAttempts() throws Exception {
+        for (int i = 0; i < 20; i++) {
+            mockMvc.perform(post("/auth/password/recovery/confirm")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content("""
+                        {
+                          "email":"recovery-confirm-rl@plura.com",
+                          "phoneNumber":"+5491111111111",
+                          "challengeId":"fake-challenge-id",
+                          "code":"123456",
+                          "newPassword":"Password123",
+                          "confirmPassword":"Password123"
+                        }
+                        """))
+                .andExpect(result ->
+                    org.junit.jupiter.api.Assertions.assertNotEquals(429, result.getResponse().getStatus())
+                );
+        }
+
+        mockMvc.perform(post("/auth/password/recovery/confirm")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "email":"recovery-confirm-rl@plura.com",
+                      "phoneNumber":"+5491111111111",
+                      "challengeId":"fake-challenge-id",
+                      "code":"123456",
+                      "newPassword":"Password123",
+                      "confirmPassword":"Password123"
+                    }
+                    """))
+            .andExpect(status().isTooManyRequests());
+    }
+
     // --- Register rate limiting ---
 
     @Test

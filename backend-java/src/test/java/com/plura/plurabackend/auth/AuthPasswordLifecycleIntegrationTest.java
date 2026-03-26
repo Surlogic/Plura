@@ -1,6 +1,7 @@
 package com.plura.plurabackend.core.auth;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -11,6 +12,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.plura.plurabackend.core.auth.repository.AuthOtpChallengeRepository;
 import com.plura.plurabackend.core.auth.repository.AuthSessionRepository;
 import com.plura.plurabackend.core.auth.repository.PasswordResetTokenRepository;
 import com.plura.plurabackend.core.auth.repository.RefreshTokenRepository;
@@ -25,6 +27,7 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
@@ -67,13 +70,20 @@ class AuthPasswordLifecycleIntegrationTest {
     private PasswordResetTokenRepository passwordResetTokenRepository;
 
     @Autowired
+    private AuthOtpChallengeRepository authOtpChallengeRepository;
+
+    @Autowired
     private PasswordEncoder passwordEncoder;
 
     @MockBean
     private PasswordResetNotificationSender passwordResetNotificationSender;
 
+    @MockBean
+    private OtpChallengeNotificationSender otpChallengeNotificationSender;
+
     @BeforeEach
     void cleanUp() {
+        authOtpChallengeRepository.deleteAll();
         passwordResetTokenRepository.deleteAll();
         authSessionRepository.deleteAll();
         refreshTokenRepository.deleteAll();
@@ -259,6 +269,103 @@ class AuthPasswordLifecycleIntegrationTest {
         org.junit.jupiter.api.Assertions.assertEquals(0L, passwordResetTokenRepository.count());
     }
 
+    @Test
+    void passwordRecoveryResetsProfessionalPasswordAndInvalidatesExistingSession() throws Exception {
+        registerProfessional("recovery-prof@plura.com", "+5491166666666", "Password123");
+        JsonNode loginPayload = loginProfessional("recovery-prof@plura.com", "Password123");
+        String accessToken = loginPayload.path("accessToken").asText();
+
+        mockMvc.perform(post("/auth/password/recovery/start")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "email": "recovery-prof@plura.com"
+                    }
+                    """))
+            .andExpect(status().isAccepted());
+
+        mockMvc.perform(post("/auth/password/recovery/verify-phone")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "email": "recovery-prof@plura.com",
+                      "phoneNumber": "+5491166666666"
+                    }
+                    """))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.challengeId").isNotEmpty())
+            .andExpect(jsonPath("$.maskedDestination").value("r***@plura.com"));
+
+        ArgumentCaptor<OtpChallengeNotificationSender.OtpChallengeNotification> captor =
+            ArgumentCaptor.forClass(OtpChallengeNotificationSender.OtpChallengeNotification.class);
+        verify(otpChallengeNotificationSender).sendChallenge(captor.capture());
+
+        mockMvc.perform(post("/auth/password/recovery/confirm")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "email": "recovery-prof@plura.com",
+                      "phoneNumber": "+5491166666666",
+                      "challengeId": "%s",
+                      "code": "%s",
+                      "newPassword": "Password456",
+                      "confirmPassword": "Password456"
+                    }
+                    """.formatted(
+                    authOtpChallengeRepository.findAll().get(0).getId(),
+                    captor.getValue().code()
+                )))
+            .andExpect(status().isNoContent());
+
+        mockMvc.perform(get("/auth/me/profesional")
+                .header("Authorization", "Bearer " + accessToken))
+            .andExpect(status().isUnauthorized());
+
+        mockMvc.perform(post("/auth/login/profesional")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "email": "recovery-prof@plura.com",
+                      "password": "Password123"
+                    }
+                    """))
+            .andExpect(status().isUnauthorized());
+
+        mockMvc.perform(post("/auth/login/profesional")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "email": "recovery-prof@plura.com",
+                      "password": "Password456"
+                    }
+                    """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.accessToken").isNotEmpty());
+    }
+
+    @Test
+    void passwordRecoveryVerifyPhoneRollsBackChallengeWhenOtpDeliveryFails() throws Exception {
+        registerClient("recovery-mail-fail@plura.com", "Password123");
+        doThrow(new AuthApiException(
+            HttpStatus.SERVICE_UNAVAILABLE,
+            "OTP_CHALLENGE_EMAIL_UNAVAILABLE",
+            "No pudimos enviar el codigo por email. Intenta de nuevo mas tarde."
+        )).when(otpChallengeNotificationSender).sendChallenge(any());
+
+        mockMvc.perform(post("/auth/password/recovery/verify-phone")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "email": "recovery-mail-fail@plura.com",
+                      "phoneNumber": "+5491111111111"
+                    }
+                    """))
+            .andExpect(status().isServiceUnavailable())
+            .andExpect(jsonPath("$.error").value("OTP_CHALLENGE_EMAIL_UNAVAILABLE"));
+
+        org.junit.jupiter.api.Assertions.assertEquals(0L, authOtpChallengeRepository.count());
+    }
+
     private void registerClient(String email, String password) throws Exception {
         mockMvc.perform(post("/auth/register/cliente")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -273,8 +380,32 @@ class AuthPasswordLifecycleIntegrationTest {
             .andExpect(status().isAccepted());
     }
 
+    private void registerProfessional(String email, String phoneNumber, String password) throws Exception {
+        User professional = new User();
+        professional.setFullName("Profesional Demo");
+        professional.setEmail(email);
+        professional.setPhoneNumber(phoneNumber);
+        professional.setPassword(passwordEncoder.encode(password));
+        professional.setRole(UserRole.PROFESSIONAL);
+        userRepository.save(professional);
+    }
+
     private JsonNode loginClient(String email, String password) throws Exception {
         MvcResult result = mockMvc.perform(post("/auth/login/cliente")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "email": "%s",
+                      "password": "%s"
+                    }
+                    """.formatted(email, password)))
+            .andExpect(status().isOk())
+            .andReturn();
+        return objectMapper.readTree(result.getResponse().getContentAsString());
+    }
+
+    private JsonNode loginProfessional(String email, String password) throws Exception {
+        MvcResult result = mockMvc.perform(post("/auth/login/profesional")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
                     {

@@ -117,6 +117,50 @@ class NotificationSenderWiringTest {
         assertEquals("user@plura.com", delivery.lastMessage.toAddress());
     }
 
+    @Test
+    void otpChallengeSenderFailsWhenDeliveryDoesNotSend() {
+        OtpChallengeEmailNotificationSender sender = new OtpChallengeEmailNotificationSender(
+            new FailingTransactionalEmailService(TransactionalEmailService.DeliveryStatus.FAILED),
+            new PluraEmailTemplateService("Plura", "https://plura.app"),
+            10
+        );
+
+        AuthApiException exception = assertThrows(
+            AuthApiException.class,
+            () -> sender.sendChallenge(new OtpChallengeNotificationSender.OtpChallengeNotification(
+                user("German", "user@plura.com"),
+                OtpChallengePurpose.PASSWORD_RECOVERY,
+                OtpChallengeChannel.EMAIL,
+                "user@plura.com",
+                "654321"
+            ))
+        );
+
+        assertEquals("OTP_CHALLENGE_EMAIL_UNAVAILABLE", exception.getErrorCode());
+    }
+
+    @Test
+    void otpChallengeSenderFailsWhenSmtpFallbackWouldSkipDelivery() {
+        OtpChallengeEmailNotificationSender sender = new OtpChallengeEmailNotificationSender(
+            new FailingTransactionalEmailService(TransactionalEmailService.DeliveryStatus.SKIPPED_FALLBACK),
+            new PluraEmailTemplateService("Plura", "https://plura.app"),
+            10
+        );
+
+        AuthApiException exception = assertThrows(
+            AuthApiException.class,
+            () -> sender.sendChallenge(new OtpChallengeNotificationSender.OtpChallengeNotification(
+                user("German", "user@plura.com"),
+                OtpChallengePurpose.PASSWORD_RECOVERY,
+                OtpChallengeChannel.EMAIL,
+                "user@plura.com",
+                "654321"
+            ))
+        );
+
+        assertEquals("OTP_CHALLENGE_EMAIL_UNAVAILABLE", exception.getErrorCode());
+    }
+
     private User user(String fullName, String email) {
         User user = new User();
         user.setFullName(fullName);

@@ -1,6 +1,49 @@
 app = "plura"
 primary_region = "iad"
 
+[env]
+  PORT = "3000"
+  SERVER_ADDRESS = "0.0.0.0"
+  APP_TIMEZONE = "America/Montevideo"
+  APP_PUBLIC_WEB_URL = "https://plura-web-a6ka.vercel.app"
+  APP_TRUST_FORWARDED_HEADERS = "true"
+  CORS_ALLOWED_ORIGINS = "https://plura-web-a6ka.vercel.app"
+  LOG_LEVEL_ROOT = "INFO"
+  SWAGGER_ENABLED = "false"
+  SPRING_JPA_DDL_AUTO = "validate"
+  SPRING_FLYWAY_VALIDATE_ON_MIGRATE = "false"
+  JWT_EXPIRATION_MINUTES = "30"
+  AUTH_COOKIE_SECURE = "true"
+  AUTH_COOKIE_SAMESITE = "None"
+  AUTH_EXPOSE_ACCESS_TOKEN = "true"
+  AUTH_OAUTH_GOOGLE_ALLOWED_REDIRECT_URIS = "https://plura-web-a6ka.vercel.app/oauth/callback"
+  AUTH_PASSWORD_RESET_PUBLIC_BASE_URL = "https://plura-web-a6ka.vercel.app"
+  EMAIL_DELIVERY_ENABLED = "true"
+  IMAGE_STORAGE_PROVIDER = "r2"
+  R2_ENDPOINT = "https://8522a3637ef9c5f8faebec76f1748bc5.r2.cloudflarestorage.com"
+  R2_BUCKET = "plura-images"
+  R2_REGION = "auto"
+  R2_PUBLIC_BASE_URL = "https://img.surlogicuy.com"
+  BILLING_ENABLED = "true"
+  BILLING_MODE = "production"
+  BILLING_PROVIDER_VERIFICATION_ENABLED = "true"
+  BILLING_WEBHOOK_BASE_URL = "https://plura.fly.dev"
+  BILLING_PLAN_BASIC_PRICE = "0"
+  BILLING_PLAN_BASIC_CURRENCY = "UYU"
+  BILLING_PLAN_PROFESIONAL_PRICE = "590"
+  BILLING_PLAN_PROFESIONAL_CURRENCY = "UYU"
+  BILLING_PLAN_ENTERPRISE_PRICE = "1290"
+  BILLING_PLAN_ENTERPRISE_CURRENCY = "UYU"
+  BILLING_MERCADOPAGO_SUBSCRIPTION_BACK_URL = "https://plura-web-a6ka.vercel.app/profesional/dashboard/billing"
+  BILLING_MERCADOPAGO_SUCCESS_URL = "https://plura-web-a6ka.vercel.app/profesional/dashboard/billing"
+  BILLING_MERCADOPAGO_FAILURE_URL = "https://plura-web-a6ka.vercel.app/profesional/dashboard/billing"
+  BILLING_MERCADOPAGO_PENDING_URL = "https://plura-web-a6ka.vercel.app/profesional/dashboard/billing"
+  BILLING_MERCADOPAGO_RESERVATIONS_OAUTH_REDIRECT_URI = "https://plura.fly.dev/profesional/payment-providers/mercadopago/oauth/callback"
+  BILLING_MERCADOPAGO_RESERVATIONS_OAUTH_FRONTEND_REDIRECT_URL = "https://plura-web-a6ka.vercel.app/oauth/mercadopago/callback"
+  BILLING_MERCADOPAGO_RESERVATIONS_OAUTH_AUTHORIZATION_URL = "https://auth.mercadopago.com/authorization"
+  BILLING_MERCADOPAGO_RESERVATIONS_OAUTH_TOKEN_URL = "https://api.mercadopago.com/oauth/token"
+  BILLING_MERCADOPAGO_RESERVATIONS_OAUTH_PKCE_ENABLED = "true"
+
 [http_service]
   auto_start_machines = true
   auto_stop_machines = "off"
@@ -8,6 +51,14 @@ primary_region = "iad"
   internal_port = 3000
   min_machines_running = 1
   processes = ["app"]
+
+  [[http_service.checks]]
+    grace_period = "180s"
+    interval = "15s"
+    method = "get"
+    path = "/health"
+    protocol = "http"
+    timeout = "10s"
 
 [[vm]]
   cpu_kind = "shared"

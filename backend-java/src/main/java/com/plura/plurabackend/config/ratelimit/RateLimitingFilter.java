@@ -126,6 +126,15 @@ public class RateLimitingFilter extends OncePerRequestFilter {
         if ("POST".equals(method) && "/auth/password/reset".equals(path)) {
             return new RateLimitTarget("reset-pwd-ip", extractClientIp(request), 20);
         }
+        if ("POST".equals(method) && "/auth/password/recovery/start".equals(path)) {
+            return new RateLimitTarget("recovery-start-pwd-ip", extractClientIp(request), 20);
+        }
+        if ("POST".equals(method) && "/auth/password/recovery/verify-phone".equals(path)) {
+            return new RateLimitTarget("recovery-verify-phone-pwd-ip", extractClientIp(request), 20);
+        }
+        if ("POST".equals(method) && "/auth/password/recovery/confirm".equals(path)) {
+            return new RateLimitTarget("recovery-confirm-pwd-ip", extractClientIp(request), 20);
+        }
         if ("POST".equals(method) && "/auth/verify/email/send".equals(path)) {
             return new RateLimitTarget("verify-email-send", resolveUserOrIp(request), 30);
         }

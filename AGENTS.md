@@ -22,6 +22,7 @@ No finalizar tareas que cambien comportamiento, estructura, endpoints, módulos,
 3. Plan corto
 4. Implementar
 5. Actualizar contexto afectado
+7. Revisar y corregir la deployabilidad
 6. Resumir cambios y pendientes
 
 ## Restricciones

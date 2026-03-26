@@ -512,8 +512,8 @@ export default function ProfesionalRegisterPage() {
                           className="block w-full border-b border-[color:var(--border-soft)] px-3 py-2 text-left text-sm text-[color:var(--ink)] last:border-b-0 hover:bg-[color:var(--surface-soft)]"
                           onMouseDown={(event) => {
                             event.preventDefault();
-                            applyGeoSuggestion(item);
                           }}
+                          onClick={() => applyGeoSuggestion(item)}
                         >
                           {(item.country || item.city || item.fullAddress || item.placeName || '').trim()}
                         </button>
@@ -545,8 +545,8 @@ export default function ProfesionalRegisterPage() {
                           className="block w-full border-b border-[color:var(--border-soft)] px-3 py-2 text-left text-sm text-[color:var(--ink)] last:border-b-0 hover:bg-[color:var(--surface-soft)]"
                           onMouseDown={(event) => {
                             event.preventDefault();
-                            applyGeoSuggestion(item);
                           }}
+                          onClick={() => applyGeoSuggestion(item)}
                         >
                           {(item.city || item.fullAddress || item.placeName || '').trim()}
                         </button>
@@ -581,8 +581,8 @@ export default function ProfesionalRegisterPage() {
                           className="block w-full border-b border-[color:var(--border-soft)] px-3 py-2 text-left text-sm text-[color:var(--ink)] last:border-b-0 hover:bg-[color:var(--surface-soft)]"
                           onMouseDown={(event) => {
                             event.preventDefault();
-                            applyGeoSuggestion(item);
                           }}
+                          onClick={() => applyGeoSuggestion(item)}
                         >
                           <span className="block font-medium">
                             {(item.fullAddress || item.placeName || '').trim() || 'Dirección sugerida'}

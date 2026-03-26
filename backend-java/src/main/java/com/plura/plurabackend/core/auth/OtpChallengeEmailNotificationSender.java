@@ -4,6 +4,7 @@ import com.plura.plurabackend.core.auth.model.OtpChallengeChannel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -38,7 +39,7 @@ public class OtpChallengeEmailNotificationSender implements OtpChallengeNotifica
             );
             return;
         }
-        transactionalEmailService.send(
+        TransactionalEmailService.DeliveryStatus deliveryStatus = transactionalEmailService.send(
             templateService.buildOtpChallengeEmail(
                 notification.destination(),
                 notification.user().getFullName(),
@@ -47,6 +48,13 @@ public class OtpChallengeEmailNotificationSender implements OtpChallengeNotifica
                 ttlMinutes
             )
         );
+        if (deliveryStatus != TransactionalEmailService.DeliveryStatus.SENT) {
+            throw new AuthApiException(
+                HttpStatus.SERVICE_UNAVAILABLE,
+                "OTP_CHALLENGE_EMAIL_UNAVAILABLE",
+                "No pudimos enviar el codigo por email. Intenta de nuevo mas tarde."
+            );
+        }
     }
 
     private String maskDestination(String destination) {

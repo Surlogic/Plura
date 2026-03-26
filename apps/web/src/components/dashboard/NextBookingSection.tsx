@@ -1,3 +1,5 @@
+import Link from 'next/link';
+
 type NextBooking = {
   id: string;
   professional: string;
@@ -33,12 +35,12 @@ export default function NextBookingSection({ booking }: NextBookingSectionProps)
             Tu próxima cita
           </h2>
         </div>
-        <button
-          type="button"
+        <Link
+          href="/cliente/reservas"
           className="rounded-full border border-[#E2E7EC] bg-white px-4 py-2 text-xs font-semibold text-[#0E2A47] shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
         >
           Ver todas
-        </button>
+        </Link>
       </div>
 
       {!booking ? (
@@ -74,12 +76,15 @@ export default function NextBookingSection({ booking }: NextBookingSectionProps)
               >
                 {statusLabels[booking.status]}
               </span>
-              <button
-                type="button"
+              <Link
+                href={{
+                  pathname: '/cliente/reservas',
+                  query: { bookingId: booking.id },
+                }}
                 className="inline-flex h-11 items-center justify-center rounded-full bg-[#F59E0B] px-5 text-sm font-semibold text-white transition hover:brightness-105 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#F59E0B]/40"
               >
                 Ver detalle
-              </button>
+              </Link>
             </div>
           </div>
         </article>

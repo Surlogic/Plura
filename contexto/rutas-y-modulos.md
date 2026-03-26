@@ -132,6 +132,7 @@ Lectura de producto:
 - cubre la base del plan `Usuario`
 - el historial de reservas y favoritos ya tiene estructura
 - la web cliente ya tiene campana, unread badge, dropdown preview e inbox real en `/cliente/notificaciones`
+- `/cliente/inicio` ya conecta sus CTA de proxima reserva con la UX real de reservas: `Ver todas` navega a `/cliente/reservas` y `Ver detalle` abre `/cliente/reservas?bookingId={id}` cuando existe una reserva proxima
 - `/cliente/reservas` ya usa su panel lateral de detalle como experiencia real de reserva e incluye timeline de actividad por `bookingId`
 - `/cliente/reservas` mantiene el refresco de estados pendientes, pero el polling ya no corre en background y usa backoff conservador para bajar presion de red
 - `/cliente/reservas` ahora prefetch-ea `actions + timeline` de la reserva seleccionada apenas entra el listado para reducir espera perceptible sin cambiar contratos
@@ -183,6 +184,7 @@ Lectura de producto:
 
 - esta area concentra el valor de `Free` y buena parte de `Pro`
 - `servicios`, `horarios`, `reservas`, `perfil-negocio` y `notificaciones` son el corazon operativo
+- los autocompletes de ubicacion en `/profesional/auth/register` y `/profesional/dashboard/perfil-negocio` ya seleccionan sugerencias por click normal sin depender de `mouseDown`, evitando opciones que parecian clickeables pero no confirmaban bien al navegar con teclado o blur
 - `billing` ya existe, pero el naming de codigo sigue siendo `BASIC / PROFESIONAL / ENTERPRISE`
 - `/profesional/dashboard/billing` ya separa dos bloques: `Mi plan de Plura` y `Cobros de reservas con Mercado Pago`
 - la web profesional ya consume `GET/POST/DELETE /profesional/payment-providers/mercadopago/*` y no usa `payout-config`

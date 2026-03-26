@@ -29,7 +29,7 @@ export const resolveProfessionalFeatureAccess = (profile?: ProfessionalProfile |
   return {
     enhancedPublicProfile: entitlements
       ? entitlements.publicProfileTier === 'ENHANCED'
-      : hasPlanAccess(currentPlan, 'PROFESIONAL'),
+      : hasPlanAccess(currentPlan, FEATURE_REQUIRED_PLAN.enhancedPublicProfile),
     onlinePayments: entitlements
       ? entitlements.allowOnlinePayments
       : hasPlanAccess(currentPlan, 'PROFESIONAL'),

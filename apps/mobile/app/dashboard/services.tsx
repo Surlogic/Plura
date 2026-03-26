@@ -48,6 +48,8 @@ const getPaymentTypeLabel = (value?: string | null) => {
   return option?.label ?? 'Pago en el local';
 };
 
+const PRACTICAL_UNLIMITED = 9999;
+
 export default function ServicesScreen() {
   const { profile } = useAuthSession();
   const [services, setServices] = useState<ProfessionalService[]>([]);
@@ -59,6 +61,8 @@ export default function ServicesScreen() {
   const [draft, setDraft] = useState(emptyDraft);
   const [message, setMessage] = useState<string | null>(null);
   const canUseOnlinePayments = Boolean(profile?.professionalEntitlements?.allowOnlinePayments);
+  const maxServices = profile?.professionalEntitlements?.maxServices ?? 15;
+  const hasReachedServiceLimit = editingId == null && services.length >= maxServices;
 
   const resolveCategoryLabel = (service: ProfessionalService) => {
     const categoryName = service.categoryName?.trim();
@@ -240,6 +244,12 @@ export default function ServicesScreen() {
               setIsSaving(true);
               setMessage(null);
               try {
+                if (!editingId && services.length >= maxServices) {
+                  setMessage(`Tu plan permite hasta ${maxServices} servicios.`);
+                  setIsSaving(false);
+                  return;
+                }
+
                 if (!canUseOnlinePayments && draft.paymentType !== 'ON_SITE') {
                   setMessage('Tu plan actual no permite seña online ni pago total online.');
                   setIsSaving(false);
@@ -293,10 +303,11 @@ export default function ServicesScreen() {
         
         <View className="flex-row justify-between items-center mb-6">
           <Text className="text-sm font-semibold text-gray-500 uppercase tracking-[2px]">
-            Tus Servicios ({services.length})
+            Tus Servicios ({maxServices >= PRACTICAL_UNLIMITED ? services.length : `${services.length}/${maxServices}`})
           </Text>
           <TouchableOpacity
-            className="bg-secondary px-3 py-1.5 rounded-full"
+            className={`px-3 py-1.5 rounded-full ${hasReachedServiceLimit ? 'bg-gray-300' : 'bg-secondary'}`}
+            disabled={hasReachedServiceLimit}
             onPress={() => {
               setEditingId(null);
               setDraft(emptyDraft);
@@ -305,6 +316,14 @@ export default function ServicesScreen() {
             <Text className="text-white text-xs font-bold">Nuevo</Text>
           </TouchableOpacity>
         </View>
+
+        {maxServices < PRACTICAL_UNLIMITED ? (
+          <MessageCard
+            message={`Límite del plan: ${services.length}/${maxServices} servicios. Cada servicio puede tener 1 foto pública.`}
+            tone="primary"
+            style={{ marginBottom: 16 }}
+          />
+        ) : null}
 
         {services.length === 0 ? (
           <View className="bg-white rounded-[20px] p-6 items-center border border-dashed border-gray-300">

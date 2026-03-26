@@ -4,7 +4,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ChangeEvent } from 'react';
 import ProfesionalSidebar from '@/components/profesional/Sidebar';
 import Button from '@/components/ui/Button';
-import LockedFeature from '@/components/ui/LockedFeature';
 import { useProfessionalProfile } from '@/hooks/useProfessionalProfile';
 import { useProfessionalDashboardUnsavedSection } from '@/context/ProfessionalDashboardUnsavedChangesContext';
 import { resolveProfessionalFeatureAccess } from '@/lib/billing/featureGuards';
@@ -31,6 +30,12 @@ type PublicPageForm = {
   headline: string;
   about: string;
 };
+
+const createEmptyPhotos = (count = 1): PhotoItem[] =>
+  Array.from({ length: Math.max(1, count) }, (_, index) => ({
+    id: `photo-${index + 1}`,
+    url: '',
+  }));
 
 const slugify = (value: string) =>
   value
@@ -62,13 +67,8 @@ export default function ProfesionalPublicPageBuilder() {
     about: '',
   });
   const [initialForm, setInitialForm] = useState<PublicPageForm | null>(null);
-  const maxBusinessPhotos = profile?.professionalEntitlements?.maxBusinessPhotos ?? 5;
-  const [photos, setPhotos] = useState<PhotoItem[]>([
-    { id: 'photo-1', url: '' },
-    { id: 'photo-2', url: '' },
-    { id: 'photo-3', url: '' },
-    { id: 'photo-4', url: '' },
-  ]);
+  const maxBusinessPhotos = profile?.professionalEntitlements?.maxBusinessPhotos ?? 3;
+  const [photos, setPhotos] = useState<PhotoItem[]>(createEmptyPhotos());
   const [initialPhotos, setInitialPhotos] = useState<PhotoItem[] | null>(null);
 
   const displayName = profile?.fullName || '';
@@ -96,6 +96,10 @@ export default function ProfesionalPublicPageBuilder() {
   );
   const canAddPhoto = photos.length < maxBusinessPhotos;
   const canManageEnhancedContent = featureAccess.enhancedPublicProfile;
+  const filledPhotoCount = useMemo(
+    () => photos.filter((photo) => photo.url).length,
+    [photos],
+  );
   const previewPayload = useMemo(
     () => ({
       type: 'plura-preview',
@@ -197,12 +201,7 @@ export default function ProfesionalPublicPageBuilder() {
                 id: `photo-${index + 1}`,
                 url,
               }))
-            : [
-                { id: 'photo-1', url: '' },
-                { id: 'photo-2', url: '' },
-                { id: 'photo-3', url: '' },
-                { id: 'photo-4', url: '' },
-              ];
+            : createEmptyPhotos();
         setForm(loadedForm);
         setInitialForm(loadedForm);
         setPhotos(loadedPhotos);
@@ -216,7 +215,7 @@ export default function ProfesionalPublicPageBuilder() {
       .finally(() => {
         setHasLoadedPage(true);
       });
-  }, [profile, hasLoadedPage]);
+  }, [profile, hasLoadedPage, maxBusinessPhotos]);
 
   const inputClassName =
     'h-11 w-full rounded-[16px] border border-[color:var(--border-soft)] bg-white/92 px-3 text-sm text-[color:var(--ink)] placeholder:text-[color:var(--ink-faint)] focus:border-[color:var(--accent)] focus:outline-none focus:ring-4 focus:ring-[color:var(--focus-ring)]';
@@ -345,7 +344,7 @@ export default function ProfesionalPublicPageBuilder() {
                     {services.length} servicios visibles
                   </span>
                   <span className="rounded-full border border-white/18 bg-white/10 px-3 py-1 text-xs font-semibold text-[color:var(--text-on-dark-secondary)] backdrop-blur-sm">
-                    {photos.filter((photo) => photo.url).length} fotos cargadas
+                    {filledPhotoCount} fotos cargadas
                   </span>
                   {isDirty ? (
                     <span className="rounded-full border border-white/18 bg-white/10 px-3 py-1 text-xs font-semibold text-[color:var(--text-on-dark-secondary)] backdrop-blur-sm">
@@ -376,12 +375,6 @@ export default function ProfesionalPublicPageBuilder() {
                   </p>
                 ) : null}
 
-                {!canManageEnhancedContent ? (
-                  <p className="rounded-[20px] border border-[color:var(--premium-soft)] bg-[color:var(--premium-soft)] px-4 py-3 text-sm text-[color:var(--premium-strong)] shadow-[var(--shadow-card)]">
-                    La frase principal y el texto “Sobre mí” se editan desde el plan {PLAN_LABELS.PROFESIONAL}. En {PLAN_LABELS.BASIC} podés seguir actualizando fotos y compartir tu ficha pública.
-                  </p>
-                ) : null}
-
             {showSkeleton ? (
               <div className="rounded-[28px] border border-white/70 bg-white/95 p-6 shadow-[0_18px_40px_rgba(15,23,42,0.12)]">
                 <div className="h-5 w-48 rounded-full bg-[#E2E7EC]" />
@@ -405,31 +398,26 @@ export default function ProfesionalPublicPageBuilder() {
                     />
                     <DashboardStatCard
                       label="Fotos"
-                      value={`${photos.filter((photo) => photo.url).length}/${maxBusinessPhotos}`}
+                      value={`${filledPhotoCount}/${maxBusinessPhotos}`}
                       detail="Galería del negocio"
                       icon="publica"
                     />
                   </div>
 
-                  <LockedFeature
-                    requiredPlan="PROFESIONAL"
-                    currentPlan={profile?.professionalPlan}
-                  >
-                    <div className="rounded-[24px] border border-white/70 bg-white/95 p-5 shadow-[0_16px_36px_rgba(15,23,42,0.12)]">
-                      <DashboardSectionHeading
-                        title="Frase principal"
-                        description="Es la promesa principal que aparece debajo del nombre en la ficha pública."
+                  <div className="rounded-[24px] border border-white/70 bg-white/95 p-5 shadow-[0_16px_36px_rgba(15,23,42,0.12)]">
+                    <DashboardSectionHeading
+                      title="Frase principal"
+                      description="Es la promesa principal que aparece debajo del nombre en la ficha pública."
+                    />
+                    <div className="mt-4">
+                      <input
+                        className={inputClassName}
+                        name="headline"
+                        value={form.headline}
+                        onChange={handleChange}
                       />
-                      <div className="mt-4">
-                        <input
-                          className={inputClassName}
-                          name="headline"
-                          value={form.headline}
-                          onChange={handleChange}
-                        />
-                      </div>
                     </div>
-                  </LockedFeature>
+                  </div>
 
                   <div className="rounded-[24px] border border-white/70 bg-white/95 p-5 shadow-[0_16px_36px_rgba(15,23,42,0.12)]">
                     <div className="flex items-center justify-between">
@@ -451,7 +439,7 @@ export default function ProfesionalPublicPageBuilder() {
                             : 'cursor-not-allowed border-[#E2E7EC] bg-[#F4F6F8] text-[#94A3B8]'
                         }`}
                       >
-                        Agregar foto ({photos.length}/{maxBusinessPhotos})
+                        Agregar foto ({filledPhotoCount}/{maxBusinessPhotos})
                       </button>
                     </div>
                     <div className="mt-4 grid gap-4 sm:grid-cols-2">
@@ -478,25 +466,20 @@ export default function ProfesionalPublicPageBuilder() {
                     </div>
                   </div>
 
-                  <LockedFeature
-                    requiredPlan="PROFESIONAL"
-                    currentPlan={profile?.professionalPlan}
-                  >
-                    <div className="rounded-[24px] border border-white/70 bg-white/95 p-5 shadow-[0_16px_36px_rgba(15,23,42,0.12)]">
-                      <DashboardSectionHeading
-                        title="Sobre mí"
-                        description="Contá quién sos, qué hacés y qué tipo de experiencia van a encontrar tus clientes."
+                  <div className="rounded-[24px] border border-white/70 bg-white/95 p-5 shadow-[0_16px_36px_rgba(15,23,42,0.12)]">
+                    <DashboardSectionHeading
+                      title="Sobre mí"
+                      description="Contá quién sos, qué hacés y qué tipo de experiencia van a encontrar tus clientes."
+                    />
+                    <div className="mt-4">
+                      <textarea
+                        className={`${inputClassName} h-28 resize-none`}
+                        name="about"
+                        value={form.about}
+                        onChange={handleChange}
                       />
-                      <div className="mt-4">
-                        <textarea
-                          className={`${inputClassName} h-28 resize-none`}
-                          name="about"
-                          value={form.about}
-                          onChange={handleChange}
-                        />
-                      </div>
                     </div>
-                  </LockedFeature>
+                  </div>
                 </div>
 
                 <div className="space-y-6">

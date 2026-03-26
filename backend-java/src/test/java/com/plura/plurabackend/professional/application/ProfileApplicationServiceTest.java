@@ -1,6 +1,7 @@
 package com.plura.plurabackend.professional.application;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
@@ -68,9 +69,7 @@ class ProfileApplicationServiceTest {
             "https://cdn.example/1.jpg",
             "https://cdn.example/2.jpg",
             "https://cdn.example/3.jpg",
-            "https://cdn.example/4.jpg",
-            "https://cdn.example/5.jpg",
-            "https://cdn.example/6.jpg"
+            "https://cdn.example/4.jpg"
         ));
 
         ResponseStatusException exception = assertThrows(
@@ -79,29 +78,28 @@ class ProfileApplicationServiceTest {
         );
 
         assertEquals(HttpStatus.BAD_REQUEST, exception.getStatusCode());
-        assertEquals("Tu plan permite hasta 5 fotos del negocio", exception.getReason());
+        assertEquals("Tu plan permite hasta 3 fotos del negocio", exception.getReason());
     }
 
     @Test
-    void blocksEnhancedPublicPageFieldsForBasicPlan() {
+    void allowsEnhancedPublicPageFieldsForBasicPlanWhenPlanPolicyEnablesThem() {
         PlanGuardService planGuardService = mock(PlanGuardService.class);
         ProfessionalAccessSupport professionalAccessSupport = mock(ProfessionalAccessSupport.class);
+        ProfessionalProfileRepository professionalProfileRepository = mock(ProfessionalProfileRepository.class);
         ProfessionalProfile profile = new ProfessionalProfile();
         profile.setId(21L);
 
         org.mockito.Mockito.when(professionalAccessSupport.loadProfessionalByUserId("21"))
             .thenReturn(profile);
+        org.mockito.Mockito.when(professionalProfileRepository.save(profile)).thenReturn(profile);
         org.mockito.Mockito.when(planGuardService.effectivePlanForProfessionalUserId("21"))
             .thenReturn(new EffectiveProfessionalPlan(
                 ProfessionalPlanCode.BASIC,
                 new ProfessionalPlanPolicyService().entitlementsFor(ProfessionalPlanCode.BASIC)
             ));
-        org.mockito.Mockito.doThrow(new ResponseStatusException(HttpStatus.FORBIDDEN, "blocked"))
-            .when(planGuardService)
-            .requirePublicProfileTier("21", com.plura.plurabackend.professional.plan.PublicProfileTier.ENHANCED);
 
         ProfileApplicationService service = new ProfileApplicationService(
-            mock(ProfessionalProfileRepository.class),
+            professionalProfileRepository,
             mock(BusinessPhotoRepository.class),
             mock(ProfessionalCategorySupport.class),
             mock(UserRepository.class),
@@ -121,20 +119,17 @@ class ProfileApplicationServiceTest {
         ProfesionalPublicPageUpdateRequest request = new ProfesionalPublicPageUpdateRequest();
         request.setHeadline("Nueva portada");
 
-        ResponseStatusException exception = assertThrows(
-            ResponseStatusException.class,
-            () -> service.updatePublicPage("21", request)
-        );
-
-        assertEquals(HttpStatus.FORBIDDEN, exception.getStatusCode());
+        assertDoesNotThrow(() -> service.updatePublicPage("21", request));
         verify(planGuardService)
             .requirePublicProfileTier("21", com.plura.plurabackend.professional.plan.PublicProfileTier.ENHANCED);
     }
 
     @Test
-    void blocksEnhancedBusinessProfileFieldsForBasicPlan() {
+    void allowsEnhancedBusinessProfileFieldsForBasicPlanWhenPlanPolicyEnablesThem() {
         PlanGuardService planGuardService = mock(PlanGuardService.class);
         ProfessionalAccessSupport professionalAccessSupport = mock(ProfessionalAccessSupport.class);
+        ProfessionalProfileRepository professionalProfileRepository = mock(ProfessionalProfileRepository.class);
+        UserRepository userRepository = mock(UserRepository.class);
         ProfessionalProfile profile = new ProfessionalProfile();
         profile.setId(21L);
         User user = new User();
@@ -143,12 +138,14 @@ class ProfileApplicationServiceTest {
 
         org.mockito.Mockito.when(professionalAccessSupport.loadProfessionalByUserId("21"))
             .thenReturn(profile);
+        org.mockito.Mockito.when(userRepository.save(user)).thenReturn(user);
+        org.mockito.Mockito.when(professionalProfileRepository.save(profile)).thenReturn(profile);
 
         ProfileApplicationService service = new ProfileApplicationService(
-            mock(ProfessionalProfileRepository.class),
+            professionalProfileRepository,
             mock(BusinessPhotoRepository.class),
             mock(ProfessionalCategorySupport.class),
-            mock(UserRepository.class),
+            userRepository,
             planGuardService,
             mock(ImageThumbnailJobService.class),
             mock(ImageCleanupService.class),
@@ -162,19 +159,10 @@ class ProfileApplicationServiceTest {
             new SimpleMeterRegistry()
         );
 
-        org.mockito.Mockito.doThrow(new ResponseStatusException(HttpStatus.FORBIDDEN, "blocked"))
-            .when(planGuardService)
-            .requirePublicProfileTier("21", com.plura.plurabackend.professional.plan.PublicProfileTier.ENHANCED);
-
         ProfesionalBusinessProfileUpdateRequest request = new ProfesionalBusinessProfileUpdateRequest();
         request.setLogoUrl("https://cdn.example/logo.png");
 
-        ResponseStatusException exception = assertThrows(
-            ResponseStatusException.class,
-            () -> service.updateBusinessProfile("21", request)
-        );
-
-        assertEquals(HttpStatus.FORBIDDEN, exception.getStatusCode());
+        assertDoesNotThrow(() -> service.updateBusinessProfile("21", request));
         verify(planGuardService)
             .requirePublicProfileTier("21", com.plura.plurabackend.professional.plan.PublicProfileTier.ENHANCED);
     }

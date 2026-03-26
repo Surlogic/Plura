@@ -120,6 +120,8 @@ const formatDepositAmount = (value?: number | null) => {
   }).format(value);
 };
 
+const PRACTICAL_UNLIMITED = 9999;
+
 export default function ProfesionalServicesBuilderPage() {
   const { profile, isLoading, hasLoaded } = useProfessionalProfile();
   const featureAccess = resolveProfessionalFeatureAccess(profile);
@@ -137,6 +139,7 @@ export default function ProfesionalServicesBuilderPage() {
   const [selectedImageFile, setSelectedImageFile] = useState<File | null>(null);
   const [selectedImagePreview, setSelectedImagePreview] = useState<string>('');
   const canUseOnlinePayments = featureAccess.onlinePayments;
+  const maxServices = profile?.professionalEntitlements?.maxServices ?? 15;
 
   const showSkeleton = !hasLoaded || (isLoading && !profile);
 
@@ -279,6 +282,11 @@ export default function ProfesionalServicesBuilderPage() {
 
   const handleSubmitService = async (): Promise<boolean> => {
     if (isSubmitting) return false;
+    if (!editingId && services.length >= maxServices) {
+      setSaveMessage(`Tu plan permite hasta ${maxServices} servicios.`);
+      setSaveError(true);
+      return false;
+    }
     if (!draft.name.trim() || !draft.price.trim() || !draft.duration.trim()) {
       setSaveMessage('Completá nombre, precio y duración.');
       setSaveError(true);
@@ -447,6 +455,8 @@ export default function ProfesionalServicesBuilderPage() {
     () => services.filter((service) => Boolean(service.imageUrl)).length,
     [services],
   );
+  const serviceCapacityLabel = maxServices >= PRACTICAL_UNLIMITED ? 'Ilimitados' : `${serviceCount}/${maxServices}`;
+  const hasReachedServiceLimit = !editingId && services.length >= maxServices;
   const isDirty = useMemo(() => {
     const hasDifferentMode = editingId !== initialEditingId;
     const hasDifferentDraft =
@@ -573,8 +583,8 @@ export default function ProfesionalServicesBuilderPage() {
                     <div className="grid gap-4 md:grid-cols-3">
                       <DashboardStatCard
                         label="Servicios"
-                        value={`${serviceCount}`}
-                        detail="Cargados en base de datos"
+                        value={serviceCapacityLabel}
+                        detail={maxServices >= PRACTICAL_UNLIMITED ? 'Capacidad sin tope operativo' : 'Cargados sobre el límite del plan'}
                         icon="servicios"
                         tone="warm"
                       />
@@ -708,6 +718,15 @@ export default function ProfesionalServicesBuilderPage() {
                           title={editingId ? 'Actualizar servicio' : 'Crear servicio'}
                           description="Usá esta ficha para completar precio, duración, imagen y buffer operativo."
                         />
+                        {!editingId && maxServices < PRACTICAL_UNLIMITED ? (
+                          <p className={`mt-4 rounded-[16px] border px-3 py-2 text-xs ${
+                            hasReachedServiceLimit
+                              ? 'border-red-200 bg-red-50 text-red-500'
+                              : 'border-[#E2E7EC] bg-[#F8FAFC] text-[#64748B]'
+                          }`}>
+                            Límite del plan: {serviceCount}/{maxServices} servicios. Cada servicio puede tener 1 foto pública.
+                          </p>
+                        ) : null}
                         <div className="mt-4 grid gap-4">
                           <div>
                             <label className="text-sm font-medium text-[#0E2A47]">
@@ -953,7 +972,7 @@ export default function ProfesionalServicesBuilderPage() {
                             type="button"
                             onClick={() => void handleSubmitService()}
                             className="rounded-full bg-[#1FB6A6] px-4 py-2 text-xs font-semibold text-white transition hover:-translate-y-0.5 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-70"
-                            disabled={isSubmitting}
+                            disabled={isSubmitting || hasReachedServiceLimit}
                           >
                             {isSubmitting
                               ? 'Guardando...'

@@ -4,10 +4,8 @@ import { useCallback, useEffect, useState } from 'react';
 import ProfesionalSidebar from '@/components/profesional/Sidebar';
 import Button from '@/components/ui/Button';
 import InternationalPhoneField from '@/components/ui/InternationalPhoneField';
-import LockedFeature from '@/components/ui/LockedFeature';
 import { useProfessionalProfile } from '@/hooks/useProfessionalProfile';
 import { useCategories } from '@/hooks/useCategories';
-import { resolveProfessionalFeatureAccess } from '@/lib/billing/featureGuards';
 import api from '@/services/api';
 import { isAxiosError } from 'axios';
 import { useProfessionalDashboardUnsavedSection } from '@/context/ProfessionalDashboardUnsavedChangesContext';
@@ -19,7 +17,6 @@ import {
   DashboardSectionHeading,
   DashboardStatCard,
 } from '@/components/profesional/dashboard/DashboardUI';
-import { PLAN_LABELS } from '../../../../../../packages/shared/src/billing/planAccess';
 
 const slugify = (value: string) =>
   value
@@ -72,7 +69,6 @@ type BusinessProfileForm = {
 
 export default function ProfesionalBusinessProfilePage() {
   const { profile, isLoading, hasLoaded, refreshProfile } = useProfessionalProfile();
-  const featureAccess = resolveProfessionalFeatureAccess(profile);
   const { categories, isLoading: isLoadingCategories } = useCategories();
   const [hasInitialized, setHasInitialized] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -102,8 +98,6 @@ export default function ProfesionalBusinessProfilePage() {
     whatsapp: '',
   });
   const [initialForm, setInitialForm] = useState<BusinessProfileForm | null>(null);
-  const canManageEnhancedPublicProfile = featureAccess.enhancedPublicProfile;
-
   useEffect(() => {
     if (!profile || hasInitialized) return;
     const hasProfileCategories =
@@ -322,15 +316,13 @@ export default function ProfesionalBusinessProfilePage() {
         latitude,
         longitude,
         phoneNumber: form.phone.trim(),
-        ...(canManageEnhancedPublicProfile ? {
-          logoUrl: form.logoUrl.trim(),
-          bannerUrl: form.bannerUrl.trim(),
-          instagram: form.instagram.trim(),
-          facebook: form.facebook.trim(),
-          tiktok: form.tiktok.trim(),
-          website: form.website.trim(),
-          whatsapp: form.whatsapp.trim(),
-        } : {}),
+        logoUrl: form.logoUrl.trim(),
+        bannerUrl: form.bannerUrl.trim(),
+        instagram: form.instagram.trim(),
+        facebook: form.facebook.trim(),
+        tiktok: form.tiktok.trim(),
+        website: form.website.trim(),
+        whatsapp: form.whatsapp.trim(),
       };
       await api.put('/profesional/profile', {
         ...normalizedPayload,
@@ -346,13 +338,13 @@ export default function ProfesionalBusinessProfilePage() {
         latitude: normalizedPayload.latitude ?? undefined,
         longitude: normalizedPayload.longitude ?? undefined,
         phone: normalizedPayload.phoneNumber,
-        logoUrl: canManageEnhancedPublicProfile ? form.logoUrl.trim() : form.logoUrl,
-        bannerUrl: canManageEnhancedPublicProfile ? form.bannerUrl.trim() : form.bannerUrl,
-        instagram: canManageEnhancedPublicProfile ? form.instagram.trim() : form.instagram,
-        facebook: canManageEnhancedPublicProfile ? form.facebook.trim() : form.facebook,
-        tiktok: canManageEnhancedPublicProfile ? form.tiktok.trim() : form.tiktok,
-        website: canManageEnhancedPublicProfile ? form.website.trim() : form.website,
-        whatsapp: canManageEnhancedPublicProfile ? form.whatsapp.trim() : form.whatsapp,
+        logoUrl: form.logoUrl.trim(),
+        bannerUrl: form.bannerUrl.trim(),
+        instagram: form.instagram.trim(),
+        facebook: form.facebook.trim(),
+        tiktok: form.tiktok.trim(),
+        website: form.website.trim(),
+        whatsapp: form.whatsapp.trim(),
       };
       setForm(persistedForm);
       setInitialForm(persistedForm);
@@ -374,7 +366,7 @@ export default function ProfesionalBusinessProfilePage() {
     } finally {
       setIsSaving(false);
     }
-  }, [canManageEnhancedPublicProfile, categories, form, initialForm, isSaving, refreshProfile]);
+  }, [categories, form, initialForm, isSaving, refreshProfile]);
 
   const handleReset = useCallback(() => {
     if (!initialForm) return;
@@ -459,12 +451,6 @@ export default function ProfesionalBusinessProfilePage() {
               </p>
             ) : null}
 
-            {!canManageEnhancedPublicProfile ? (
-              <p className="rounded-[20px] border border-[color:var(--premium-soft)] bg-[color:var(--premium-soft)] px-4 py-3 text-sm text-[color:var(--premium-strong)] shadow-[var(--shadow-card)]">
-                El logo del negocio y los canales externos se administran desde el plan {PLAN_LABELS.PROFESIONAL}. En {PLAN_LABELS.BASIC} podés seguir editando nombre, rubros, ubicación y teléfono.
-              </p>
-            ) : null}
-
             <div className="grid gap-4 md:grid-cols-3">
               <DashboardStatCard
                 label="Rubros"
@@ -517,37 +503,27 @@ export default function ProfesionalBusinessProfilePage() {
                         placeholder="Ej: Atelier Glow"
                       />
                     </div>
-                    <LockedFeature
-                      requiredPlan="PROFESIONAL"
-                      currentPlan={profile?.professionalPlan}
-                    >
-                      <ImageUploader
-                        label="Logo"
-                        value={form.logoUrl}
-                        onChange={(url) => {
-                          setForm((prev) => ({ ...prev, logoUrl: url }));
-                          setIsDirty(true);
-                        }}
-                        kind="logo"
-                        variant="circle"
-                      />
-                    </LockedFeature>
-                    <LockedFeature
-                      requiredPlan="PROFESIONAL"
-                      currentPlan={profile?.professionalPlan}
-                    >
-                      <ImageUploader
-                        label="Banner"
-                        value={form.bannerUrl}
-                        onChange={(url) => {
-                          setForm((prev) => ({ ...prev, bannerUrl: url }));
-                          setIsDirty(true);
-                        }}
-                        kind="banner"
-                        variant="banner"
-                        hint="Imagen de portada. jpg, png, webp. Máximo 1MB."
-                      />
-                    </LockedFeature>
+                    <ImageUploader
+                      label="Logo"
+                      value={form.logoUrl}
+                      onChange={(url) => {
+                        setForm((prev) => ({ ...prev, logoUrl: url }));
+                        setIsDirty(true);
+                      }}
+                      kind="logo"
+                      variant="circle"
+                    />
+                    <ImageUploader
+                      label="Banner"
+                      value={form.bannerUrl}
+                      onChange={(url) => {
+                        setForm((prev) => ({ ...prev, bannerUrl: url }));
+                        setIsDirty(true);
+                      }}
+                      kind="banner"
+                      variant="banner"
+                      hint="Imagen de portada. jpg, png, webp. Máximo 1MB."
+                    />
                     <div>
                       <label className="text-sm font-medium text-[#0E2A47]">
                         Rubro
@@ -711,16 +687,12 @@ export default function ProfesionalBusinessProfilePage() {
                   </div>
                 </div>
 
-                <LockedFeature
-                  requiredPlan="PROFESIONAL"
-                  currentPlan={profile?.professionalPlan}
-                >
-                  <div className="rounded-[24px] border border-white/70 bg-white/95 p-5 shadow-[0_16px_36px_rgba(15,23,42,0.12)]">
-                    <DashboardSectionHeading
-                      title="Redes sociales"
-                      description="Canales que refuerzan confianza y derivan tráfico."
-                    />
-                    <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                <div className="rounded-[24px] border border-white/70 bg-white/95 p-5 shadow-[0_16px_36px_rgba(15,23,42,0.12)]">
+                  <DashboardSectionHeading
+                    title="Redes sociales"
+                    description="Canales que refuerzan confianza y derivan tráfico."
+                  />
+                  <div className="mt-4 grid gap-4 sm:grid-cols-2">
                       <div>
                         <label className="text-sm font-medium text-[#0E2A47]">
                           Instagram
@@ -781,9 +753,8 @@ export default function ProfesionalBusinessProfilePage() {
                           placeholder="https://wa.me/598XXXXXXXX"
                         />
                       </div>
-                    </div>
                   </div>
-                </LockedFeature>
+                </div>
               </div>
             )}
               </div>

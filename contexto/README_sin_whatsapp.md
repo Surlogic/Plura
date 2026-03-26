@@ -68,9 +68,9 @@ Plan de entrada para validar valor real sin regalar toda la operacion.
 - una sola agenda activa
 - un solo profesional activo
 - un solo local
-- perfil publico basico
-- hasta `5` fotos
-- servicios con nombre, duracion, precio y foto principal
+- perfil publico con logo, banner y textos visibles
+- hasta `3` fotos de galeria del negocio
+- hasta `15` servicios publicos con nombre, duracion, precio y `1` foto por servicio
 - agenda completa en dashboard web
 - bloqueo de horarios
 - confirmacion y cancelacion desde panel
@@ -102,7 +102,9 @@ Bloqueos esperados en producto:
 Plan para ahorrar tiempo y profesionalizar una sola agenda activa. Precio objetivo actual: `$590 UYU / mes`.
 
 - todo lo de `Free`
-- perfil mejorado con portada, logo, descripcion larga, mapa y metodos de pago
+- hasta `6` fotos de galeria del negocio
+- hasta `30` servicios publicos con `1` foto por servicio
+- perfil publico con portada, logo, descripcion larga, mapa y metodos de pago
 - pagos online configurables y cobro en local o al reservar
 - historial completo y reprogramacion mas completa
 - ficha del cliente, notas, historial de visitas y seguimiento basico
@@ -119,6 +121,8 @@ Limite clave:
 Plan para crecimiento, reputacion visual y operacion multiequipo. Precio objetivo actual: `$1.290 UYU / mes`.
 
 - todo lo de `Pro`
+- hasta `10` fotos de galeria del negocio
+- servicios publicos ilimitados
 - multiples profesionales y multiples locales
 - agenda maestra
 - reportes por profesional y por local
@@ -165,6 +169,7 @@ Notas operativas recientes:
 - las rutas publicas web mas criticas ya evitan ruido de auth cuando no existe una sesion conocida del cliente
 - la web ahora persiste un `session hint` con rol (`CLIENT` o `PROFESSIONAL`) para poder rehidratar el perfil correcto tambien en `/` y otras rutas publicas despues de cerrar y reabrir el navegador
 - los reloads de web ya no deben cerrar sesion por un `5xx` o una falla transitoria de refresh/auth me; la sesion solo cae automaticamente ante `401/403` reales
+- al cerrar sesion desde la web, la UI ahora muestra un overlay transitorio de `Cerrando sesión` y redirige al login correcto por rol (`/cliente/auth/login` o `/profesional/auth/login`) en vez de dejar la pantalla sin feedback mientras limpia estado local
 - el inbox de notificaciones se apoya en una ruta de lectura mas liviana para bajar latencia de lista sin cambiar la UX ni los contratos
 - pagos online en runtime quedaron `Mercado Pago only`; `DLOCAL` se conserva solo como compatibilidad de lectura para datos historicos y como historia de migraciones Flyway
 - el home web ahora usa SSR (`getServerSideProps`) en vez de ISR/static; la pagina incluye hero, categorias, top businesses y ReviewsSection (testimonios publicos de feedback de app via `GET /public/app-feedback`); el ranking de top professionals prioriza volumen de reservas confirmadas/completadas de los ultimos 3 meses

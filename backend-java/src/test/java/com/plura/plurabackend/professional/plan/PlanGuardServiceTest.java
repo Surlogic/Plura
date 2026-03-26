@@ -53,11 +53,11 @@ class PlanGuardServiceTest {
 
         ResponseStatusException exception = assertThrows(
             ResponseStatusException.class,
-            () -> service.requireLimitNotExceeded(LimitCapability.MAX_BUSINESS_PHOTOS, 6)
+            () -> service.requireLimitNotExceeded(LimitCapability.MAX_BUSINESS_PHOTOS, 4)
         );
 
         assertEquals(HttpStatus.BAD_REQUEST, exception.getStatusCode());
-        assertEquals("Tu plan permite hasta 5 fotos del negocio", exception.getReason());
+        assertEquals("Tu plan permite hasta 3 fotos del negocio", exception.getReason());
     }
 
     @Test

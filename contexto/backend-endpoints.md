@@ -201,6 +201,8 @@ Lectura de producto:
 - cubre constructor de servicios, imagen principal, duracion y precio
 - cubre horarios de trabajo y politicas de reserva
 - cubre carga manual de turnos desde panel
+- `PUT /profesional/profile` y `PUT /profesional/public-page` ya permiten que `Free/BASIC` gestione logo, banner, headline y about del perfil publico; la diferencia entre planes para la pagina publica queda en limites de capacidad, no en bloqueo de esos textos/base visual
+- `POST /profesional/services` ahora corta por capacidad de plan: `BASIC` hasta `15` servicios, `PROFESIONAL` hasta `30`, `ENTERPRISE` sin tope practico; cada servicio mantiene una sola imagen publica
 - `GET /profesional/reservas` sostiene gestion operativa de reservas para `Free/BASIC` y no debe confundirse con gating de agenda semanal o mensual
 - `POST /profesional/payment-providers/mercadopago/oauth/start` y `GET /profesional/payment-providers/mercadopago/oauth/callback` ahora exigen capacidad `ONLINE_PAYMENTS`; `BASIC` no puede iniciar ni completar la conexion OAuth
 - `POST /profesional/payment-providers/mercadopago/oauth/start` solo necesita la configuracion minima para abrir Mercado Pago: `client-id`, `redirect-uri` y `authorization-url`
@@ -221,8 +223,8 @@ Notas:
 
 - `POST /profesional/services/image` confirma que el repo ya integra carga de imagenes en servicios
 - `POST /profesional/images/upload` es el endpoint genérico recomendado para subir logos, banners, galería y fotos de servicio; organiza los archivos por `professionals/{professionalId}/{kind}/` en R2 o filesystem local
-- `GET /profesional/public-page` y `PUT /profesional/public-page` ahora incluyen campo `photos` (lista de URLs de galería, máximo 10); la resolución de fotos combina `business_photo` (tipos LOCAL, WORK, SERVICE), `publicPhotos` del perfil y fotos de servicios, deduplicando y ordenando por fecha de creación
-- `PUT /profesional/profile` ahora soporta `bannerUrl` para imagen de portada del negocio
+- `GET /profesional/public-page` y `PUT /profesional/public-page` incluyen campo `photos` para la galería pública; el request admite hasta `10` por validación estructural, pero el límite efectivo se aplica por plan en runtime (`3 / 6 / 10`); la resolución de fotos combina `business_photo` (tipos LOCAL, WORK, SERVICE), `publicPhotos` del perfil y fotos de servicios, deduplicando y ordenando por fecha de creación
+- `PUT /profesional/profile` soporta `logoUrl` y `bannerUrl` para la identidad pública del negocio desde cualquier plan actual
 - la capa de categorias existe en el sistema, pero el nivel exacto de etiquetas y reglas por servicio requiere revisar dominio y UI puntual
 
 ### Reservas del cliente

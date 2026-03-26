@@ -92,8 +92,6 @@ export default function BusinessProfileScreen() {
   const [form, setForm] = useState(emptyForm);
   const [hasInitialized, setHasInitialized] = useState(false);
 
-  const canManageEnhancedPublicProfile = profile?.professionalEntitlements?.publicProfileTier === 'ENHANCED';
-
   useEffect(() => {
     let isCancelled = false;
 
@@ -374,50 +372,39 @@ export default function BusinessProfileScreen() {
           />
         </SectionCard>
 
-        {canManageEnhancedPublicProfile ? (
-          <>
-            <SectionCard style={{ marginTop: 20 }}>
-              <Text className="text-xs font-semibold uppercase tracking-[2px] text-gray-500">Pagina publica</Text>
+        <SectionCard style={{ marginTop: 20 }}>
+          <Text className="text-xs font-semibold uppercase tracking-[2px] text-gray-500">Pagina publica</Text>
 
-              <TextInput
-                className="mt-3 h-12 rounded-2xl border border-secondary/10 bg-background px-4 text-secondary"
-                placeholder="Headline publico"
-                value={form.headline}
-                onChangeText={(text) => setForm((prev) => ({ ...prev, headline: text }))}
-              />
+          <TextInput
+            className="mt-3 h-12 rounded-2xl border border-secondary/10 bg-background px-4 text-secondary"
+            placeholder="Headline publico"
+            value={form.headline}
+            onChangeText={(text) => setForm((prev) => ({ ...prev, headline: text }))}
+          />
 
-              <TextInput
-                className="mt-3 min-h-[90px] rounded-2xl border border-secondary/10 bg-background px-4 py-3 text-secondary"
-                multiline
-                textAlignVertical="top"
-                placeholder="Sobre tu negocio"
-                value={form.about}
-                onChangeText={(text) => setForm((prev) => ({ ...prev, about: text }))}
-              />
-            </SectionCard>
+          <TextInput
+            className="mt-3 min-h-[90px] rounded-2xl border border-secondary/10 bg-background px-4 py-3 text-secondary"
+            multiline
+            textAlignVertical="top"
+            placeholder="Sobre tu negocio"
+            value={form.about}
+            onChangeText={(text) => setForm((prev) => ({ ...prev, about: text }))}
+          />
+        </SectionCard>
 
-            <SectionCard style={{ marginTop: 20 }}>
-              <Text className="text-xs font-semibold uppercase tracking-[2px] text-gray-500">Redes</Text>
+        <SectionCard style={{ marginTop: 20 }}>
+          <Text className="text-xs font-semibold uppercase tracking-[2px] text-gray-500">Redes</Text>
 
-              {(['instagram', 'facebook', 'tiktok', 'website', 'whatsapp'] as const).map((key) => (
-                <TextInput
-                  key={key}
-                  className="mt-3 h-12 rounded-2xl border border-secondary/10 bg-background px-4 text-secondary"
-                  placeholder={key}
-                  value={form[key]}
-                  onChangeText={(text) => setForm((prev) => ({ ...prev, [key]: text }))}
-                />
-              ))}
-            </SectionCard>
-          </>
-        ) : (
-          <SectionCard style={{ marginTop: 20 }} soft>
-            <Text className="text-xs font-semibold uppercase tracking-[2px] text-primary">Plan actual</Text>
-            <Text className="mt-2 text-sm leading-6 text-secondary">
-              En este plan puedes editar nombre, rubros, direccion y telefono. El contenido avanzado de pagina publica y redes se gestiona desde un plan superior.
-            </Text>
-          </SectionCard>
-        )}
+          {(['instagram', 'facebook', 'tiktok', 'website', 'whatsapp'] as const).map((key) => (
+            <TextInput
+              key={key}
+              className="mt-3 h-12 rounded-2xl border border-secondary/10 bg-background px-4 text-secondary"
+              placeholder={key}
+              value={form[key]}
+              onChangeText={(text) => setForm((prev) => ({ ...prev, [key]: text }))}
+            />
+          ))}
+        </SectionCard>
 
         {message ? <MessageCard message={message} tone={message.includes('correctamente') ? 'success' : 'primary'} style={{ marginTop: 16 }} /> : null}
 
@@ -449,25 +436,21 @@ export default function BusinessProfileScreen() {
                 latitude: geocoded.latitude,
                 longitude: geocoded.longitude,
                 phoneNumber: form.phoneNumber.trim(),
-                ...(canManageEnhancedPublicProfile ? {
-                  instagram: form.instagram.trim(),
-                  facebook: form.facebook.trim(),
-                  tiktok: form.tiktok.trim(),
-                  website: form.website.trim(),
-                  whatsapp: form.whatsapp.trim(),
-                } : {}),
+                instagram: form.instagram.trim(),
+                facebook: form.facebook.trim(),
+                tiktok: form.tiktok.trim(),
+                website: form.website.trim(),
+                whatsapp: form.whatsapp.trim(),
               };
 
               await updateProfessionalBusinessProfile({
                 ...normalizedBusinessPayload,
               });
 
-              if (canManageEnhancedPublicProfile) {
-                await updateProfessionalPublicPage({
-                  headline: form.headline.trim(),
-                  about: form.about.trim(),
-                });
-              }
+              await updateProfessionalPublicPage({
+                headline: form.headline.trim(),
+                about: form.about.trim(),
+              });
 
               await refreshProfile();
               setForm((prev) => ({

@@ -84,6 +84,7 @@ Lectura de producto:
 - `/explorar` y `/profesional/pagina/[slug]` ya no fuerzan auth refresh ni favoritos en 401 cuando el cliente no tiene una sesion conocida; las features auth-only se habilitan recien con hint de sesion valida
 - cuando existe sesion conocida del cliente, `/explorar`, `/profesional/[slug]` y `/profesional/pagina/[slug]` tambien hidratan el perfil cliente para mantener navbar y favoritos coherentes en la navegacion publica
 - `_app.tsx` ya usa un `session hint` con rol (`CLIENT` o `PROFESSIONAL`) para rehidratar el perfil correcto tambien en `/` y otras rutas publicas al reabrir navegador; si el hint viejo no tiene rol, el bootstrap puede intentar ambos perfiles de forma transitoria hasta que el usuario vuelva a iniciar sesion
+- el logout web se unifico en un flujo comun (`useAuthLogout` + `LogoutTransitionProvider`): muestra overlay de `Cerrando sesión`, limpia perfiles/cache local y deriva al login especifico del rol real
 - aunque no haya sync reciente en memoria, el toggle de favoritos en web revalida contra backend en la primera interaccion util para evitar dobles clicks o estados viejos del cache local
 - `/explorar` ya usa la fecha como filtro real de disponibilidad y no solo como ordenador; `Disponible ahora` tambien se apoya en disponibilidad real
 - en la geoseleccion de `/explorar`, el frontend ya no persiste la direccion completa de Mapbox como `city` para backend; prioriza una ciudad/zona mas amplia y deja las coordenadas como filtro fuerte
@@ -159,8 +160,8 @@ Lectura de producto:
 - `/profesional/dashboard/reservas`
 - `/profesional/dashboard/configuracion`
 - `/profesional/dashboard/resenas`
-- `/profesional/dashboard/pagina-publica` — ahora incluye galería de fotos del negocio con upload vía `ImageUploader` (kind="gallery"), máximo según `maxBusinessPhotos` del plan, preview en iframe; headline y about bloqueados para BASIC
-- `/profesional/dashboard/perfil-negocio` — ahora soporta upload de logo (kind="logo", variant="circle") y banner (kind="banner", variant="banner"), ambos bloqueados para BASIC; usa `ImageUploader` component
+- `/profesional/dashboard/pagina-publica` — ahora incluye galería de fotos del negocio con upload vía `ImageUploader` (kind="gallery"), máximo según `maxBusinessPhotos` del plan (`BASIC=3`, `PROFESIONAL=6`, `ENTERPRISE=10`), preview en iframe; headline y about ya se editan también desde `BASIC`
+- `/profesional/dashboard/perfil-negocio` — ahora soporta upload de logo (kind="logo", variant="circle") y banner (kind="banner", variant="banner") desde `BASIC`; también deja editar redes/contacto público sin bloquear por plan
 - `/profesional/dashboard/billing`
 - `/profesional/notificaciones`
 
@@ -255,6 +256,7 @@ Modulos relevantes:
 - `services/geo.ts`: geocoding y autocomplete.
 - `services/api.ts`: auth, refresh y headers de plataforma `WEB`.
 - `services/session.ts`: mantiene fallback token y un `known session hint` en storage para no disparar refresh/autofetch en rutas publicas cuando no hay sesion confirmada.
+- `hooks/useAuthLogout.ts` + `context/LogoutTransitionContext.tsx`: cierre de sesion unificado con overlay global y redireccion por rol.
 - `lib/auth/sessionErrors.ts`: clasifica `401/403` de auth aparte de errores transitorios para que la web no fuerce logout por fallas de red o `5xx`.
 - `services/appFeedback.ts`: feedback de app del cliente y profesional; ahora incluye `getPublicAppFeedback(limit)` para testimonios publicos via `GET /public/app-feedback`.
 - `middleware.ts`: CSP y headers de seguridad.
@@ -336,7 +338,7 @@ Lectura de producto:
 - `dashboard/billing` en mobile ya respeta el gating principal de web: si el perfil no tiene `allowOnlinePayments`, no intenta conectar `Mercado Pago` y deja la conexion reservada para `PROFESIONAL / ENTERPRISE`
 - `dashboard/billing` refresca perfil + suscripcion al volver a foreground para bajar desfasajes despues del checkout del plan o del flujo OAuth
 - `dashboard/billing` ahora abre el checkout del plan y la autorizacion OAuth de `Mercado Pago` dentro de un browser embebido de Expo; al cerrar esa vista vuelve a refrescar perfil + billing
-- `dashboard/services` en mobile ya bloquea `DEPOSIT` y `FULL_PREPAY` cuando el perfil no tiene `allowOnlinePayments`, alineando la configuracion de servicios con web
+- `dashboard/services` en mobile ya bloquea `DEPOSIT` y `FULL_PREPAY` cuando el perfil no tiene `allowOnlinePayments`, alineando la configuracion de servicios con web; ademas respeta el tope de servicios por plan (`15/30/ilimitado`)
 - `dashboard/agenda` en mobile ya no expone las acciones manuales `completar` ni `retry payout`; queda alineado con la UX operativa web basada en confirmacion, cancelacion, no-show y reagendamiento
 - `dashboard/agenda` ya usa selector internacional para el telefono opcional al crear reservas manuales desde mobile
 - `dashboard/notifications` sigue siendo una pantalla transitoria de estado/configuracion para profesional; todavia no replica el inbox completo de web

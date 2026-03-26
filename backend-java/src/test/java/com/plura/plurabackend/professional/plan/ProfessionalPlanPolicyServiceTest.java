@@ -16,8 +16,9 @@ class ProfessionalPlanPolicyServiceTest {
 
         assertEquals(1, basic.maxProfessionals());
         assertEquals(1, basic.maxLocations());
-        assertEquals(5, basic.maxBusinessPhotos());
-        assertEquals(PublicProfileTier.BASIC, basic.publicProfileTier());
+        assertEquals(3, basic.maxBusinessPhotos());
+        assertEquals(15, basic.maxServices());
+        assertEquals(PublicProfileTier.ENHANCED, basic.publicProfileTier());
         assertEquals(ScheduleTier.DAILY, basic.scheduleTier());
         assertEquals(AnalyticsTier.NONE, basic.analyticsTier());
         assertFalse(basic.allowOnlinePayments());
@@ -32,7 +33,8 @@ class ProfessionalPlanPolicyServiceTest {
 
         assertEquals(basic.maxProfessionals(), profesional.maxProfessionals());
         assertEquals(basic.maxLocations(), profesional.maxLocations());
-        assertEquals(15, profesional.maxBusinessPhotos());
+        assertEquals(6, profesional.maxBusinessPhotos());
+        assertEquals(30, profesional.maxServices());
         assertEquals(PublicProfileTier.ENHANCED, profesional.publicProfileTier());
         assertEquals(ScheduleTier.WEEKLY, profesional.scheduleTier());
         assertEquals(AnalyticsTier.BASIC, profesional.analyticsTier());
@@ -51,7 +53,8 @@ class ProfessionalPlanPolicyServiceTest {
 
         assertEquals(9999, enterprise.maxProfessionals());
         assertEquals(9999, enterprise.maxLocations());
-        assertEquals(30, enterprise.maxBusinessPhotos());
+        assertEquals(10, enterprise.maxBusinessPhotos());
+        assertEquals(9999, enterprise.maxServices());
         assertEquals(ScheduleTier.MASTER, enterprise.scheduleTier());
         assertEquals(AnalyticsTier.ADVANCED, enterprise.analyticsTier());
         assertTrue(enterprise.allowLoyalty());

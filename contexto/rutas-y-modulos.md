@@ -85,7 +85,9 @@ Lectura de producto:
 - cuando existe sesion conocida del cliente, `/explorar`, `/profesional/[slug]` y `/profesional/pagina/[slug]` tambien hidratan el perfil cliente para mantener navbar y favoritos coherentes en la navegacion publica
 - `_app.tsx` ya usa un `session hint` con rol (`CLIENT` o `PROFESSIONAL`) para rehidratar el perfil correcto tambien en `/` y otras rutas publicas al reabrir navegador; si el hint viejo no tiene rol, el bootstrap puede intentar ambos perfiles de forma transitoria hasta que el usuario vuelva a iniciar sesion
 - aunque no haya sync reciente en memoria, el toggle de favoritos en web revalida contra backend en la primera interaccion util para evitar dobles clicks o estados viejos del cache local
+- `/auth/forgot-password` y `/auth/reset-password` ahora redirigen automaticamente al login correcto (`/cliente/auth/login` o `/profesional/auth/login`) segun el `role` que devuelve backend al completar el reset
 - `/cliente/auth/complete-phone` y `/profesional/auth/complete-phone` completan el telefono faltante despues de OAuth via `POST /auth/oauth/complete-phone`
+- los formularios web que hoy piden telefono en auth (`/cliente/auth/register`, `/profesional/auth/register`, `/auth/forgot-password`, `/cliente/auth/complete-phone`, `/profesional/auth/complete-phone`) ya usan un selector de pais con bandera + codigo internacional y arman el `phoneNumber` final en formato internacional antes de enviarlo al backend
 
 ### Rutas del cliente
 
@@ -132,6 +134,7 @@ Lectura de producto:
 - cubre la base del plan `Usuario`
 - el historial de reservas y favoritos ya tiene estructura
 - la web cliente ya tiene campana, unread badge, dropdown preview e inbox real en `/cliente/notificaciones`
+- `/cliente/auth/register` ya no pide escribir manualmente el prefijo internacional: usa selector de pais con bandera y compone el telefono completo para backend
 - `/cliente/inicio` ya conecta sus CTA de proxima reserva con la UX real de reservas: `Ver todas` navega a `/cliente/reservas` y `Ver detalle` abre `/cliente/reservas?bookingId={id}` cuando existe una reserva proxima
 - `/cliente/reservas` ya usa su panel lateral de detalle como experiencia real de reserva e incluye timeline de actividad por `bookingId`
 - `/cliente/reservas` mantiene el refresco de estados pendientes, pero el polling ya no corre en background y usa backoff conservador para bajar presion de red
@@ -185,6 +188,8 @@ Lectura de producto:
 - esta area concentra el valor de `Free` y buena parte de `Pro`
 - `servicios`, `horarios`, `reservas`, `perfil-negocio` y `notificaciones` son el corazon operativo
 - los autocompletes de ubicacion en `/profesional/auth/register` y `/profesional/dashboard/perfil-negocio` ya seleccionan sugerencias por click normal sin depender de `mouseDown`, evitando opciones que parecian clickeables pero no confirmaban bien al navegar con teclado o blur
+- `/profesional/auth/register` y `/profesional/dashboard/perfil-negocio` ya comparten el mismo selector internacional de telefono con bandera + codigo; evita cargar el prefijo a mano y deja el numero persistido listo para backend
+- `/profesional/dashboard/reservas` tambien usa selector internacional cuando el profesional carga una reserva manual con telefono de cliente opcional
 - `billing` ya existe, pero el naming de codigo sigue siendo `BASIC / PROFESIONAL / ENTERPRISE`
 - `/profesional/dashboard/billing` ya separa dos bloques: `Mi plan de Plura` y `Cobros de reservas con Mercado Pago`
 - la web profesional ya consume `GET/POST/DELETE /profesional/payment-providers/mercadopago/*` y no usa `payout-config`
@@ -305,6 +310,8 @@ Lectura de producto:
 - cubre autenticacion base con flujos separados por rol (cliente y profesional)
 - el login social con Google ya aparece en hooks y variables de entorno
 - en mobile, `/(auth)/forgot-password` y `/(auth)/reset-password` siguen consumiendo el flujo legacy `email + token` (`/auth/password/forgot` y `/auth/password/reset`); todavia no replican la recuperacion web por `email + telefono + OTP`
+- `/(auth)/reset-password` ahora tambien redirige al login especifico del rol (`/(auth)/login-client` o `/(auth)/login-professional`) cuando backend confirma el cambio de contraseña
+- `/(auth)/register-client` y `/(auth)/register-professional` ya usan selector internacional de telefono con bandera + codigo y envian el numero final listo para backend
 
 ### Grupo `dashboard`
 
@@ -328,8 +335,10 @@ Lectura de producto:
 - `dashboard/billing` ahora abre el checkout del plan y la autorizacion OAuth de `Mercado Pago` dentro de un browser embebido de Expo; al cerrar esa vista vuelve a refrescar perfil + billing
 - `dashboard/services` en mobile ya bloquea `DEPOSIT` y `FULL_PREPAY` cuando el perfil no tiene `allowOnlinePayments`, alineando la configuracion de servicios con web
 - `dashboard/agenda` en mobile ya no expone las acciones manuales `completar` ni `retry payout`; queda alineado con la UX operativa web basada en confirmacion, cancelacion, no-show y reagendamiento
+- `dashboard/agenda` ya usa selector internacional para el telefono opcional al crear reservas manuales desde mobile
 - `dashboard/notifications` sigue siendo una pantalla transitoria de estado/configuracion para profesional; todavia no replica el inbox completo de web
 - no expone aun el set completo de capacidades `Premium`
+- `dashboard/business-profile` ya usa el mismo selector internacional de telefono que auth para editar el contacto del negocio sin pedir prefijo manual
 
 ### Otras pantallas mobile
 

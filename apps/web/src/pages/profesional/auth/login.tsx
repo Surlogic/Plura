@@ -45,6 +45,13 @@ const extractApiMessage = (error: unknown, fallback: string) => {
 export default function ProfesionalLoginPage() {
   const router = useRouter();
   const { refreshProfile } = useProfessionalProfileContext();
+  const passwordResetCompleted = (() => {
+    const rawValue = router.query.passwordReset;
+    if (Array.isArray(rawValue)) {
+      return rawValue[0]?.trim() === '1';
+    }
+    return rawValue?.trim() === '1';
+  })();
   const [form, setForm] = useState({ email: '', password: '' });
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -185,6 +192,12 @@ export default function ProfesionalLoginPage() {
               </div>
 
               <form className="mt-6 space-y-4" onSubmit={handleSubmit}>
+                {passwordResetCompleted ? (
+                  <p className="rounded-[12px] border border-[#cdeee9] bg-[#f0fffc] px-3 py-2 text-xs text-[#1FB6A6]">
+                    Tu contraseña ya fue actualizada. Iniciá sesión para continuar.
+                  </p>
+                ) : null}
+
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-[color:var(--ink)]">Gmail</label>
                   <input

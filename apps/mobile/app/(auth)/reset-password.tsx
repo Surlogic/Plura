@@ -8,14 +8,31 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
-import { Link, useLocalSearchParams } from 'expo-router';
+import { Link, useLocalSearchParams, useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import api from '../../src/services/api';
 import { getApiErrorMessage } from '../../src/services/errors';
 import { AppScreen, surfaceStyles } from '../../src/components/ui/AppScreen';
 import { theme } from '../../src/theme';
 
+type PasswordResetRole = 'USER' | 'PROFESSIONAL';
+
+type PasswordResetCompletedResponse = {
+  role?: PasswordResetRole | null;
+};
+
+const resolveLoginPathFromRole = (role?: PasswordResetRole | null) => {
+  if (role === 'PROFESSIONAL') {
+    return '/(auth)/login-professional';
+  }
+  if (role === 'USER') {
+    return '/(auth)/login-client';
+  }
+  return '/(auth)/login';
+};
+
 export default function ResetPasswordScreen() {
+  const router = useRouter();
   const params = useLocalSearchParams<{ token?: string }>();
   const initialToken = useMemo(() => {
     if (Array.isArray(params.token)) return params.token[0] ?? '';
@@ -43,13 +60,14 @@ export default function ResetPasswordScreen() {
 
     try {
       setIsSubmitting(true);
-      await api.post('/auth/password/reset', {
+      const response = await api.post<PasswordResetCompletedResponse>('/auth/password/reset', {
         token: token.trim(),
         newPassword: password,
       });
-      setMessage('La contrasena fue actualizada. Inicia sesion nuevamente.');
+      setMessage('La contrasena fue actualizada. Redirigiendo al acceso correcto...');
       setPassword('');
       setConfirmPassword('');
+      router.replace(resolveLoginPathFromRole(response.data?.role));
     } catch (error) {
       setErrorMessage(getApiErrorMessage(error, 'No se pudo restablecer la contrasena.'));
     } finally {

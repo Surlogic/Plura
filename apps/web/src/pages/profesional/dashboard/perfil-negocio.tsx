@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import ProfesionalSidebar from '@/components/profesional/Sidebar';
 import Button from '@/components/ui/Button';
+import InternationalPhoneField from '@/components/ui/InternationalPhoneField';
 import LockedFeature from '@/components/ui/LockedFeature';
 import { useProfessionalProfile } from '@/hooks/useProfessionalProfile';
 import { useCategories } from '@/hooks/useCategories';
@@ -226,6 +227,15 @@ export default function ProfesionalBusinessProfilePage() {
           : [...prev.categorySlugs, slug],
       };
     });
+    setIsDirty(true);
+    setSaveMessage(null);
+  };
+
+  const handlePhoneChange = (nextPhoneNumber: string) => {
+    setForm((prev) => ({
+      ...prev,
+      phone: nextPhoneNumber,
+    }));
     setIsDirty(true);
     setSaveMessage(null);
   };
@@ -685,13 +695,18 @@ export default function ProfesionalBusinessProfilePage() {
                       <label className="text-sm font-medium text-[#0E2A47]">
                         Teléfono
                       </label>
-                      <input
-                        className={inputClassName}
-                        name="phone"
-                        value={form.phone}
-                        onChange={handleChange}
-                        placeholder="Ej: +54 11 5555 4444"
-                      />
+                      <div className="mt-1">
+                        <InternationalPhoneField
+                          value={form.phone}
+                          onChange={handlePhoneChange}
+                          selectClassName={inputClassName}
+                          inputClassName={inputClassName}
+                          inputPlaceholder="11 2345 6789"
+                        />
+                      </div>
+                      <p className="mt-2 text-xs text-[#64748B]">
+                        El código del país se agrega automáticamente según la selección.
+                      </p>
                     </div>
                   </div>
                 </div>

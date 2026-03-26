@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { useRouter } from 'next/router';
 import { useMemo, useState } from 'react';
 import type { FormEvent } from 'react';
 import { isAxiosError } from 'axios';
@@ -6,7 +7,14 @@ import AuthTopBar from '@/components/auth/AuthTopBar';
 import Footer from '@/components/shared/Footer';
 import Card from '@/components/ui/Card';
 import Badge from '@/components/ui/Badge';
+import InternationalPhoneField from '@/components/ui/InternationalPhoneField';
 import api from '@/services/api';
+
+type PasswordResetRole = 'USER' | 'PROFESSIONAL';
+
+type PasswordResetCompletedResponse = {
+  role?: PasswordResetRole | null;
+};
 
 type RecoveryVerifyPhoneResponse = {
   challengeId: string;
@@ -23,7 +31,12 @@ const resolveMessage = (error: unknown, fallback: string) => {
   return fallback;
 };
 
+const resolveLoginPathFromRole = (role?: PasswordResetRole | null) => {
+  return role === 'PROFESSIONAL' ? '/profesional/auth/login?passwordReset=1' : '/cliente/auth/login?passwordReset=1';
+};
+
 export default function ForgotPasswordPage() {
+  const router = useRouter();
   const [step, setStep] = useState<Step>('email');
   const [email, setEmail] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
@@ -44,6 +57,7 @@ export default function ForgotPasswordPage() {
       confirmPassword.length >= 8
     );
   }, [challengeId, code, newPassword, confirmPassword]);
+  const canSubmitPhoneStep = phoneNumber.replace(/\D/g, '').length >= 8;
 
   const handleEmailSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -100,7 +114,7 @@ export default function ForgotPasswordPage() {
 
     try {
       setIsSubmitting(true);
-      await api.post('/auth/password/recovery/confirm', {
+      const response = await api.post<PasswordResetCompletedResponse>('/auth/password/recovery/confirm', {
         email: email.trim().toLowerCase(),
         phoneNumber: phoneNumber.trim(),
         challengeId: challengeId.trim(),
@@ -108,12 +122,13 @@ export default function ForgotPasswordPage() {
         newPassword,
         confirmPassword,
       });
-      setMessage('La contraseña fue actualizada. Ahora podés iniciar sesión.');
+      setMessage('La contraseña fue actualizada. Redirigiendo al login correcto...');
       setStep('email');
       setChallengeId('');
       setCode('');
       setNewPassword('');
       setConfirmPassword('');
+      await router.replace(resolveLoginPathFromRole(response.data?.role));
     } catch (error) {
       setErrorMessage(resolveMessage(error, 'No pudimos completar la recuperación.'));
     } finally {
@@ -165,19 +180,21 @@ export default function ForgotPasswordPage() {
               </div>
               <div className="space-y-2">
                 <label className="text-sm font-medium text-[color:var(--ink)]">Número de teléfono</label>
-                <input
-                  className="h-12 w-full rounded-[18px] border border-[color:var(--border-soft)] bg-white/90 px-4 text-sm text-[color:var(--ink)] focus:border-[color:var(--accent)] focus:outline-none focus:ring-2 focus:ring-[color:var(--accent-soft)]"
-                  type="tel"
+                <InternationalPhoneField
                   value={phoneNumber}
-                  onChange={(event) => setPhoneNumber(event.target.value)}
-                  placeholder="59899123456"
-                  minLength={8}
+                  onChange={setPhoneNumber}
                   required
+                  selectClassName="h-12 w-full rounded-[18px] border border-[color:var(--border-soft)] bg-white/90 px-4 text-sm text-[color:var(--ink)] focus:border-[color:var(--accent)] focus:outline-none focus:ring-2 focus:ring-[color:var(--accent-soft)]"
+                  inputClassName="h-12 w-full rounded-[18px] border border-[color:var(--border-soft)] bg-white/90 px-4 text-sm text-[color:var(--ink)] focus:border-[color:var(--accent)] focus:outline-none focus:ring-2 focus:ring-[color:var(--accent-soft)]"
+                  inputPlaceholder="99 123 456"
                 />
+                <p className="text-xs text-[color:var(--ink-faint)]">
+                  Elegí tu país y escribí el número sin repetir el código internacional.
+                </p>
               </div>
               <button
                 type="submit"
-                disabled={isSubmitting}
+                disabled={isSubmitting || !canSubmitPhoneStep}
                 className="h-12 w-full rounded-full bg-[linear-gradient(135deg,#1FB6A6,#0E2A47)] text-sm font-semibold text-white transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-70"
               >
                 {isSubmitting ? 'Verificando...' : 'Validar y enviar código'}

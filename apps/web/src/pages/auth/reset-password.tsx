@@ -9,11 +9,21 @@ import Card from '@/components/ui/Card';
 import Badge from '@/components/ui/Badge';
 import api from '@/services/api';
 
+type PasswordResetRole = 'USER' | 'PROFESSIONAL';
+
+type PasswordResetCompletedResponse = {
+  role?: PasswordResetRole | null;
+};
+
 const resolveMessage = (error: unknown, fallback: string) => {
   if (isAxiosError<{ message?: string }>(error)) {
     return error.response?.data?.message || fallback;
   }
   return fallback;
+};
+
+const resolveLoginPathFromRole = (role?: PasswordResetRole | null) => {
+  return role === 'PROFESSIONAL' ? '/profesional/auth/login?passwordReset=1' : '/cliente/auth/login?passwordReset=1';
 };
 
 export default function ResetPasswordPage() {
@@ -55,13 +65,14 @@ export default function ResetPasswordPage() {
     }
     try {
       setIsSubmitting(true);
-      await api.post('/auth/password/reset', {
+      const response = await api.post<PasswordResetCompletedResponse>('/auth/password/reset', {
         token: token.trim(),
         newPassword: password,
       });
-      setMessage('La contraseña fue actualizada. Iniciá sesión nuevamente.');
+      setMessage('La contraseña fue actualizada. Redirigiendo al login correcto...');
       setPassword('');
       setConfirmPassword('');
+      await router.replace(resolveLoginPathFromRole(response.data?.role));
     } catch (error) {
       setErrorMessage(resolveMessage(error, 'No se pudo restablecer la contraseña.'));
     } finally {

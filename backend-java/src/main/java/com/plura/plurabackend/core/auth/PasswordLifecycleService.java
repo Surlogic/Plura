@@ -10,6 +10,7 @@ import com.plura.plurabackend.core.auth.model.PasswordResetToken;
 import com.plura.plurabackend.core.auth.repository.AuthOtpChallengeRepository;
 import com.plura.plurabackend.core.auth.repository.PasswordResetTokenRepository;
 import com.plura.plurabackend.core.user.model.User;
+import com.plura.plurabackend.core.user.model.UserRole;
 import com.plura.plurabackend.core.user.repository.UserRepository;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -185,7 +186,7 @@ public class PasswordLifecycleService {
     }
 
     @Transactional
-    public void confirmPasswordRecovery(
+    public UserRole confirmPasswordRecovery(
         String email,
         String phoneNumber,
         String challengeId,
@@ -256,6 +257,7 @@ public class PasswordLifecycleService {
             normalizeUserAgent(userAgent),
             Map.of("email", user.getEmail(), "mode", "recovery_code")
         );
+        return user.getRole();
     }
 
     @Transactional
@@ -298,7 +300,7 @@ public class PasswordLifecycleService {
     }
 
     @Transactional
-    public void resetPassword(String rawToken, String newPassword) {
+    public UserRole resetPassword(String rawToken, String newPassword) {
         String normalizedToken = normalizeSubmittedToken(rawToken);
         passwordPolicyService.validateNewPassword(newPassword);
         PasswordResetToken resetToken = passwordResetTokenRepository.findByTokenHash(hashToken(normalizedToken))
@@ -338,6 +340,7 @@ public class PasswordLifecycleService {
             null,
             Map.of("email", user.getEmail())
         );
+        return user.getRole();
     }
 
     private User loadActiveUser(String rawUserId) {

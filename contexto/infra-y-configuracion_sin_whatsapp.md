@@ -276,7 +276,7 @@ Lectura de producto:
 Areas de configuracion principales en `application.yml`:
 
 - server y compresion
-- datasource PostgreSQL obligatorio en runtime (`SPRING_DATASOURCE_URL` o `DATABASE_URL`)
+- datasource PostgreSQL obligatorio en runtime (`SPRING_DATASOURCE_URL` o `DATABASE_URL`), hoy alineado a `Supabase PostgreSQL` por `Session Pooler`
 - Flyway
 - JWT y refresh token
 - OAuth Google y Apple
@@ -302,7 +302,9 @@ Variables criticas sin las que el backend puede fallar o degradarse:
 - variables de billing si se habilitan pagos reales
 - variables OAuth de Mercado Pago si se quiere conectar la cuenta del profesional desde billing
 - SMTP operativo si se quiere usar recovery escalonado y otros OTP por email sin degradacion
-- en Fly, ademas de los env no secretos versionados en `backend-java/fly.toml`, siguen siendo obligatorios como secrets al menos: `DATABASE_URL` o `SPRING_DATASOURCE_*`, `JWT_SECRET`, `JWT_REFRESH_PEPPER`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `EMAIL_FROM_ADDRESS`, `EMAIL_SMTP_USERNAME`, `EMAIL_SMTP_PASSWORD`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `BILLING_MERCADOPAGO_SUBSCRIPTIONS_ACCESS_TOKEN`, `BILLING_MERCADOPAGO_SUBSCRIPTIONS_WEBHOOK_SECRET`, `BILLING_MERCADOPAGO_RESERVATIONS_PLATFORM_ACCESS_TOKEN`, `BILLING_MERCADOPAGO_RESERVATIONS_WEBHOOK_SECRET`, `BILLING_MERCADOPAGO_RESERVATIONS_OAUTH_CLIENT_ID`, `BILLING_MERCADOPAGO_RESERVATIONS_OAUTH_CLIENT_SECRET`, `BILLING_MERCADOPAGO_RESERVATIONS_OAUTH_STATE_SIGNING_SECRET`, `BILLING_MERCADOPAGO_RESERVATIONS_OAUTH_TOKEN_ENCRYPTION_KEY`
+- en Fly, ademas de los env no secretos versionados en `backend-java/fly.toml`, siguen siendo obligatorios como secrets al menos: `SPRING_DATASOURCE_PASSWORD`, `SPRING_FLYWAY_PASSWORD`, `JWT_SECRET`, `JWT_REFRESH_PEPPER`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `EMAIL_FROM_ADDRESS`, `EMAIL_SMTP_USERNAME`, `EMAIL_SMTP_PASSWORD`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `BILLING_MERCADOPAGO_SUBSCRIPTIONS_ACCESS_TOKEN`, `BILLING_MERCADOPAGO_SUBSCRIPTIONS_WEBHOOK_SECRET`, `BILLING_MERCADOPAGO_RESERVATIONS_PLATFORM_ACCESS_TOKEN`, `BILLING_MERCADOPAGO_RESERVATIONS_WEBHOOK_SECRET`, `BILLING_MERCADOPAGO_RESERVATIONS_OAUTH_CLIENT_ID`, `BILLING_MERCADOPAGO_RESERVATIONS_OAUTH_CLIENT_SECRET`, `BILLING_MERCADOPAGO_RESERVATIONS_OAUTH_STATE_SIGNING_SECRET`, `BILLING_MERCADOPAGO_RESERVATIONS_OAUTH_TOKEN_ENCRYPTION_KEY`
+- para el pooler de Supabase hoy la dupla operativa recomendada queda fija y sin fallback silencioso: `SPRING_DATASOURCE_URL=jdbc:postgresql://aws-1-sa-east-1.pooler.supabase.com:5432/postgres` + `SPRING_DATASOURCE_USERNAME=postgres.owzzpcnuzzekqvqdimpr`; `SPRING_DATASOURCE_PASSWORD` y `SPRING_FLYWAY_PASSWORD` van como secret aparte
+- Flyway ahora puede declararse explicito con `SPRING_FLYWAY_URL`, `SPRING_FLYWAY_USER`, `SPRING_FLYWAY_PASSWORD` y `SPRING_FLYWAY_DRIVER_CLASS_NAME`, pero si no vienen informados el bootstrap los alinea automaticamente al mismo datasource ya resuelto
 
 Notas operativas de performance hoy:
 
@@ -359,11 +361,11 @@ El script `scripts/predev.sh`:
 
 - `plura-api`: backend Docker
 - `plura-web`: app Next.js
-- `plura-db`: base PostgreSQL gestionada
 
 Notas reales de deploy en Render:
 
 - `plura-api` debe declarar tambien `APP_PUBLIC_WEB_URL` para links/callbacks absolutos
+- el blueprint ya no provisiona una base propia en Render: espera `Supabase PostgreSQL` por Session Pooler con `SPRING_DATASOURCE_URL`, `SPRING_DATASOURCE_USERNAME`, `SPRING_DATASOURCE_PASSWORD`, `SPRING_DATASOURCE_DRIVER_CLASS_NAME=org.postgresql.Driver`, `SPRING_FLYWAY_URL`, `SPRING_FLYWAY_USER`, `SPRING_FLYWAY_PASSWORD` y `SPRING_FLYWAY_DRIVER_CLASS_NAME=org.postgresql.Driver`
 - para OAuth Mercado Pago del profesional el servicio backend necesita exponer en Render:
   - `BILLING_MERCADOPAGO_RESERVATIONS_PLATFORM_ACCESS_TOKEN`
   - `BILLING_MERCADOPAGO_RESERVATIONS_WEBHOOK_SECRET`
@@ -420,16 +422,18 @@ Notas reales de deploy en Render:
 - `packages/shared` no esta empaquetado como workspace package consumible.
 - `apps/web/next.config.js` habilita `externalDir` para poder importar desde `packages/shared/src`.
 - el backend ya no contempla H2 como fallback de arranque en runtime; si falta `SPRING_DATASOURCE_URL` o `DATABASE_URL`, la aplicacion debe fallar temprano para no ocultar una configuracion rota de PostgreSQL
+- datasource y Flyway quedaron cerrados sobre la misma base por default: si el backend recibe `DATABASE_URL` en formato `postgres://` o `postgresql://`, el bootstrap la normaliza a JDBC, extrae credenciales embebidas y rellena tambien `SPRING_FLYWAY_*` para evitar que migraciones y JPA apunten a bases distintas
 - el backend expone `server.port=${PORT:3000}` y ahora fija `server.address=0.0.0.0` por default para despliegues tipo Fly.io/Render
 - el naming de planes en codigo sigue siendo `BASIC / PROFESIONAL / ENTERPRISE`; el contexto de producto actualizado usa `Free / Pro / Premium`.
 - Flyway conserva migraciones historicas de dLocal (`V34`, `V37`) solo por continuidad de schema; el runtime vigente ya es Mercado Pago only y `V47` elimina los campos legacy del dominio profesional.
 - billing de suscripciones requiere que el schema de `subscription` acepte `PLAN_BASIC`, `PLAN_PROFESIONAL` y `PLAN_ENTERPRISE`; `V51` alinea el constraint legacy que todavia admitia `PLAN_PRO` y `PLAN_PREMIUM`
 - `V57` agrega columna `public_visible` (boolean, default false) a `app_feedback` con indice `idx_app_feedback_public` sobre `(public_visible, created_at DESC)`; backfill a `true` para feedback ACTIVE con texto existente
-- `.env.backend` quedo orientado a `Fly.io` como archivo plano de importacion de secrets (`KEY=VALUE`, sin comentarios): contiene solo variables no versionadas en `backend-java/fly.toml` y necesarias para runtime sensible (`DATABASE_URL`, JWT, OAuth, SMTP, R2, Mercado Pago, `OPS_INTERNAL_TOKEN`), sin duplicar los env no secretos ya declarados en `fly.toml`
+- `.env.backend` sigue siendo el archivo plano de importacion de env para local/docker y hoy ya usa `SPRING_DATASOURCE_*` + `SPRING_FLYWAY_*` apuntando al Session Pooler de Supabase; no deberia volver a cargar `DATABASE_URL` de una base vieja como fuente principal
 - `backend-java/fly.toml` fija `primary_region = "gru"` para priorizar Sao Paulo mientras Fly presenta incidentes de provision en otras regiones; si la plataforma se estabiliza y conviene volver a otra region, hay que redeployar con esa region explicita
+- el repo ahora incluye `.github/workflows/deploy-fly-backend.yml`: despliega el backend a Fly en cada `push` a `main` y tambien permite corrida manual (`workflow_dispatch`); usa `flyctl deploy --config backend-java/fly.toml --remote-only` y requiere el secret de GitHub Actions `FLY_API_TOKEN`
 - `backend-java/fly.toml` expone `internal_port = 3000` y define `http_service.checks` sobre `GET /health` con `grace_period = 180s`; esto es necesario porque el backend puede tardar mas de 2 minutos en abrir Tomcat mientras inicializa DB, Flyway y JPA
 - en local, `backend-java/.env` sigue usando frontend remoto en Vercel y callback backend publico temporal (ngrok) para destrabar flujos de Mercado Pago que no aceptan `localhost`; las variables activas de storage son `IMAGE_STORAGE_PROVIDER` + `R2_*`, no los aliases legacy `APP_STORAGE_*`
 - en `render.yaml`, el servicio `plura-api` usa `rootDir=backend-java`, por lo que `dockerfilePath` y `dockerContext` deben mantenerse relativos a esa carpeta; hoy quedaron alineados a `./Dockerfile` y `.`
-- el blueprint de Render ya expone tanto variables legacy de Mercado Pago como el naming explicito por dominio `SUBSCRIPTIONS_*` y `RESERVATIONS_*`, incluido el flag `BILLING_MERCADOPAGO_RESERVATIONS_OAUTH_PKCE_ENABLED`
+- el blueprint de Render ya expone tanto variables legacy de Mercado Pago como el naming explicito por dominio `SUBSCRIPTIONS_*` y `RESERVATIONS_*`, incluido el flag `BILLING_MERCADOPAGO_RESERVATIONS_OAUTH_PKCE_ENABLED`; para DB ya no depende de una instancia `plura-db` administrada por Render
 - para storage de imágenes en producción, el servicio backend debe exponer las variables `IMAGE_STORAGE_PROVIDER=r2`, `R2_ENDPOINT`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY` y opcionalmente `R2_BUCKET` y `R2_PUBLIC_BASE_URL`
 - la web en Render necesita `NEXT_PUBLIC_IMAGE_CDN_BASE_URL` apuntando al dominio CDN de R2 para resolver URLs de imágenes

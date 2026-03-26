@@ -12,6 +12,7 @@ import GoogleLoginButton from '@/components/auth/GoogleLoginButton';
 import AppleLoginButton from '@/components/auth/AppleLoginButton';
 import Badge from '@/components/ui/Badge';
 import Card from '@/components/ui/Card';
+import InternationalPhoneField from '@/components/ui/InternationalPhoneField';
 import api from '@/services/api';
 import { useClientProfileContext } from '@/context/ClientProfileContext';
 import { useProfessionalProfileContext } from '@/context/ProfessionalProfileContext';
@@ -82,6 +83,14 @@ export default function ClienteRegisterPage() {
     setTouched((prev) => ({ ...prev, [name]: true }));
   };
 
+  const handlePhoneChange = (nextPhoneNumber: string) => {
+    setForm((prev) => ({ ...prev, phoneNumber: nextPhoneNumber }));
+  };
+
+  const handlePhoneBlur = () => {
+    setTouched((prev) => ({ ...prev, phoneNumber: true }));
+  };
+
   const emailValue = form.email.trim().toLowerCase();
   const confirmEmailValue = form.confirmEmail.trim().toLowerCase();
   const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -107,7 +116,7 @@ export default function ClienteRegisterPage() {
     confirmEmail: confirmEmailValue.length > 0 && confirmEmailValue === emailValue
       ? ''
       : 'Los correos no coinciden.',
-    phoneNumber: form.phoneNumber.trim().length >= 8 ? '' : 'Mínimo 8 dígitos.',
+    phoneNumber: form.phoneNumber.replace(/\D/g, '').length >= 8 ? '' : 'Ingresá un número válido.',
     password: passwordValid ? '' : 'La contraseña no cumple los requisitos.',
     confirmPassword: form.confirmPassword.length > 0 && form.confirmPassword === form.password
       ? ''
@@ -287,16 +296,18 @@ export default function ClienteRegisterPage() {
 
             <div className="space-y-2">
               <label className="text-sm font-medium text-[color:var(--ink)]">Celular</label>
-              <input
-                className={inputClass('phoneNumber')}
-                placeholder="Tu número de celular"
-                type="tel"
-                name="phoneNumber"
+              <InternationalPhoneField
                 value={form.phoneNumber}
-                onChange={handleChange}
-                onBlur={handleBlur}
+                onChange={handlePhoneChange}
+                onBlur={handlePhoneBlur}
                 required
+                selectClassName={inputClass('phoneNumber')}
+                inputClassName={inputClass('phoneNumber')}
+                inputPlaceholder="11 2345 6789"
               />
+              <p className="text-xs text-[color:var(--ink-faint)]">
+                Seleccioná tu país y escribí el número sin el código internacional.
+              </p>
               {touched.phoneNumber && validationErrors.phoneNumber ? (
                 <p className="text-xs text-red-600">{validationErrors.phoneNumber}</p>
               ) : null}

@@ -45,6 +45,7 @@ export default function ClienteLoginPage() {
   const { refreshProfile } = useClientProfileContext();
   const { refreshProfile: refreshProfessionalProfile } = useProfessionalProfileContext();
   const redirectIntent = resolveQueryValue(router.query.redirect).trim();
+  const passwordResetCompleted = resolveQueryValue(router.query.passwordReset).trim() === '1';
   const shouldConfirmReservationAfterLogin = redirectIntent === 'confirm-reservation';
   const registerHref = shouldConfirmReservationAfterLogin
     ? '/cliente/auth/register?redirect=confirm-reservation'
@@ -173,6 +174,12 @@ export default function ClienteLoginPage() {
             </div>
 
             <form className="mt-6 space-y-4" onSubmit={handleSubmit}>
+              {passwordResetCompleted ? (
+                <p className="rounded-[12px] border border-[#cdeee9] bg-[#f0fffc] px-3 py-2 text-xs text-[#1FB6A6]">
+                  Tu contraseña ya fue actualizada. Iniciá sesión para continuar.
+                </p>
+              ) : null}
+
               <div className="space-y-2">
                 <label className="text-sm font-medium text-[color:var(--ink)]">Gmail</label>
                 <input

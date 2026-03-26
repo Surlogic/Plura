@@ -21,6 +21,8 @@
     "src/lib/bookings/paymentSession.ts",
     "src/lib/bookings/paymentSession.test.ts",
     "src/lib/bookings/professionalReservationActions.test.ts",
+    "src/lib/phone/internationalPhone.ts",
+    "src/lib/phone/internationalPhone.test.ts",
     "src/utils/checkoutWindow.ts",
     "src/utils/checkoutWindow.test.ts"
   ]

@@ -24,6 +24,8 @@ import api from '../../services/api';
 import type { ServiceCategoryOption } from '../../types/professional';
 import { authRoleCopy, continueAfterAuth, type AuthRole } from './config';
 import { AppScreen, surfaceStyles } from '../../components/ui/AppScreen';
+import InternationalPhoneField from '../../components/ui/InternationalPhoneField';
+import { hasMinimumPhoneDigits } from '../../lib/internationalPhone';
 import { theme } from '../../theme';
 
 type RoleRegisterScreenProps = {
@@ -52,8 +54,6 @@ type ClientRegisterForm = {
   password: string;
   confirmPassword: string;
 };
-
-const isPhoneValid = (value: string) => /^[+0-9()\-\s]{3,30}$/.test(value);
 
 export function RoleRegisterScreen({ role }: RoleRegisterScreenProps) {
   const copy = authRoleCopy[role];
@@ -189,8 +189,8 @@ export function RoleRegisterScreen({ role }: RoleRegisterScreenProps) {
       return false;
     }
 
-    if (!isPhoneValid(phoneNumber)) {
-      setErrorMessage('El telefono tiene un formato invalido.');
+    if (!hasMinimumPhoneDigits(phoneNumber)) {
+      setErrorMessage('Ingresa un telefono valido.');
       return false;
     }
 
@@ -246,8 +246,8 @@ export function RoleRegisterScreen({ role }: RoleRegisterScreenProps) {
       return false;
     }
 
-    if (!isPhoneValid(phoneNumber)) {
-      setErrorMessage('El telefono tiene un formato invalido.');
+    if (!hasMinimumPhoneDigits(phoneNumber)) {
+      setErrorMessage('Ingresa un telefono valido.');
       return false;
     }
 
@@ -487,22 +487,19 @@ export function RoleRegisterScreen({ role }: RoleRegisterScreenProps) {
                 />
               </View>
 
-              <View className="mt-4">
-                <Text className="mb-1 text-xs font-medium text-secondary">Telefono</Text>
-                <TextInput
-                  className="h-12 rounded-2xl border border-secondary/10 bg-backgroundSoft px-4 text-sm text-secondary"
-                  placeholder="Ej: +54 11 1234 5678"
-                  keyboardType="phone-pad"
-                  value={role === 'cliente' ? clientForm.phoneNumber : professionalForm.phoneNumber}
-                  onChangeText={(value) => {
-                    if (role === 'cliente') {
-                      setClientForm((prev) => ({ ...prev, phoneNumber: value }));
-                    } else {
-                      setProfessionalForm((prev) => ({ ...prev, phoneNumber: value }));
-                    }
-                  }}
-                />
-              </View>
+              <InternationalPhoneField
+                label="Telefono"
+                value={role === 'cliente' ? clientForm.phoneNumber : professionalForm.phoneNumber}
+                onChange={(value) => {
+                  if (role === 'cliente') {
+                    setClientForm((prev) => ({ ...prev, phoneNumber: value }));
+                  } else {
+                    setProfessionalForm((prev) => ({ ...prev, phoneNumber: value }));
+                  }
+                }}
+                placeholder="11 2345 6789"
+                helperText="Selecciona el pais y escribe el numero sin repetir el codigo internacional."
+              />
 
               {role === 'profesional' ? (
                 <>

@@ -7,6 +7,7 @@ import ProfesionalSidebar from '@/components/profesional/Sidebar';
 import ProfessionalBookingTimeline from '@/components/profesional/reservations/ProfessionalBookingTimeline';
 import Button from '@/components/ui/Button';
 import Card from '@/components/ui/Card';
+import InternationalPhoneField from '@/components/ui/InternationalPhoneField';
 import { useProfessionalProfile } from '@/hooks/useProfessionalProfile';
 import { useProfessionalDashboardUnsavedSection } from '@/context/ProfessionalDashboardUnsavedChangesContext';
 import {
@@ -474,6 +475,10 @@ export default function ProfesionalReservationsPage() {
       setCreateError('Seleccioná fecha y hora.');
       return;
     }
+    if (createForm.clientPhone.trim() && createForm.clientPhone.replace(/\D/g, '').length < 8) {
+      setCreateError('Si cargás teléfono del cliente, ingresá un número válido.');
+      return;
+    }
 
     setIsCreatingReservation(true);
     setCreateError(null);
@@ -679,14 +684,18 @@ export default function ProfesionalReservationsPage() {
                     </label>
                     <label className="text-xs font-semibold uppercase tracking-[0.2em] text-[#64748B]">
                       Teléfono
-                      <input
-                        type="text"
-                        value={createForm.clientPhone}
-                        onChange={(event) =>
-                          setCreateForm((prev) => ({ ...prev, clientPhone: event.target.value }))
-                        }
-                        className="mt-1.5 w-full rounded-[12px] border border-[#D9E2EC] px-3 py-2.5 text-sm text-[#0E2A47] outline-none transition focus:border-[#1FB6A6]"
-                      />
+                      <div className="mt-1.5">
+                        <InternationalPhoneField
+                          value={createForm.clientPhone}
+                          onChange={(value) =>
+                            setCreateForm((prev) => ({ ...prev, clientPhone: value }))
+                          }
+                          selectClassName="w-full rounded-[12px] border border-[#D9E2EC] px-3 py-2.5 text-sm text-[#0E2A47] outline-none transition focus:border-[#1FB6A6]"
+                          inputClassName="w-full rounded-[12px] border border-[#D9E2EC] px-3 py-2.5 text-sm text-[#0E2A47] outline-none transition focus:border-[#1FB6A6]"
+                          wrapperClassName="grid gap-3"
+                          inputPlaceholder="11 2345 6789"
+                        />
+                      </div>
                     </label>
                     <label className="text-xs font-semibold uppercase tracking-[0.2em] text-[#64748B]">
                       Fecha

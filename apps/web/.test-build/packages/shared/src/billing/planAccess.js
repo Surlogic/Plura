@@ -24,7 +24,7 @@ const nextPlanFor = (currentPlan) => {
 };
 exports.nextPlanFor = nextPlanFor;
 exports.PLAN_LABELS = {
-    BASIC: 'Basic',
-    PROFESIONAL: 'Profesional',
-    ENTERPRISE: 'Enterprise',
+    BASIC: 'Free',
+    PROFESIONAL: 'Pro',
+    ENTERPRISE: 'Premium',
 };

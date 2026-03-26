@@ -16,7 +16,9 @@ import {
 import { getApiErrorMessage } from '../../src/services/errors';
 import type { ServiceCategoryOption } from '../../src/types/professional';
 import { AppScreen } from '../../src/components/ui/AppScreen';
+import InternationalPhoneField from '../../src/components/ui/InternationalPhoneField';
 import { MessageCard, ScreenHero, SectionCard } from '../../src/components/ui/MobileSurface';
+import { hasMinimumPhoneDigits } from '../../src/lib/internationalPhone';
 
 const slugify = (value: string) => (
   value
@@ -150,7 +152,7 @@ export default function BusinessProfileScreen() {
       isSaving
       || !form.fullName.trim()
       || form.categorySlugs.length === 0
-      || !form.phoneNumber.trim()
+      || !hasMinimumPhoneDigits(form.phoneNumber)
       || !form.country.trim()
       || !form.city.trim()
       || !form.fullAddress.trim()
@@ -363,11 +365,12 @@ export default function BusinessProfileScreen() {
             </View>
           ) : null}
 
-          <TextInput
-            className="mt-3 h-12 rounded-2xl border border-secondary/10 bg-background px-4 text-secondary"
-            placeholder="Telefono"
+          <InternationalPhoneField
+            label="Telefono"
             value={form.phoneNumber}
-            onChangeText={(text) => setForm((prev) => ({ ...prev, phoneNumber: text }))}
+            onChange={(value) => setForm((prev) => ({ ...prev, phoneNumber: value }))}
+            placeholder="11 2345 6789"
+            helperText="El codigo internacional se agrega automaticamente segun el pais elegido."
           />
         </SectionCard>
 

@@ -12,6 +12,7 @@ import GoogleLoginButton from '@/components/auth/GoogleLoginButton';
 import AppleLoginButton from '@/components/auth/AppleLoginButton';
 import Badge from '@/components/ui/Badge';
 import Card from '@/components/ui/Card';
+import InternationalPhoneField from '@/components/ui/InternationalPhoneField';
 import api from '@/services/api';
 import { useCategories } from '@/hooks/useCategories';
 import { mapboxForwardGeocode } from '@/services/mapbox';
@@ -128,6 +129,14 @@ export default function ProfesionalRegisterPage() {
     setTouched((prev) => ({ ...prev, [name]: true }));
   };
 
+  const handlePhoneChange = (nextPhoneNumber: string) => {
+    setForm((prev) => ({ ...prev, phoneNumber: nextPhoneNumber }));
+  };
+
+  const handlePhoneBlur = () => {
+    setTouched((prev) => ({ ...prev, phoneNumber: true }));
+  };
+
   const handleGeoFieldChange = async (
     field: 'country' | 'city' | 'fullAddress',
     value: string,
@@ -191,7 +200,7 @@ export default function ProfesionalRegisterPage() {
     confirmEmail: confirmEmailValue.length > 0 && confirmEmailValue === emailValue
       ? ''
       : 'Los correos no coinciden.',
-    phoneNumber: form.phoneNumber.trim().length >= 8 ? '' : 'Mínimo 8 dígitos.',
+    phoneNumber: form.phoneNumber.replace(/\D/g, '').length >= 8 ? '' : 'Ingresá un número válido.',
     tipoCliente: form.tipoCliente ? '' : 'Seleccioná una modalidad.',
     country: requiresLocation && form.country.trim().length === 0 ? 'Indicá el país.' : '',
     city: requiresLocation && form.city.trim().length === 0 ? 'Indicá la ciudad.' : '',
@@ -454,16 +463,18 @@ export default function ProfesionalRegisterPage() {
 
             <div className="space-y-2">
               <label className="text-sm font-medium text-[color:var(--ink)]">Número</label>
-              <input
-                className={inputClass('phoneNumber')}
-                placeholder="Tu número de celular"
-                type="tel"
-                name="phoneNumber"
+              <InternationalPhoneField
                 value={form.phoneNumber}
-                onChange={handleChange}
-                onBlur={handleBlur}
+                onChange={handlePhoneChange}
+                onBlur={handlePhoneBlur}
                 required
+                selectClassName={inputClass('phoneNumber')}
+                inputClassName={inputClass('phoneNumber')}
+                inputPlaceholder="11 2345 6789"
               />
+              <p className="text-xs text-[color:var(--ink-faint)]">
+                Seleccioná el país y completá el número sin repetir el prefijo internacional.
+              </p>
               {touched.phoneNumber && validationErrors.phoneNumber ? (
                 <p className="text-xs text-red-600">{validationErrors.phoneNumber}</p>
               ) : null}

@@ -65,6 +65,9 @@ fi
 if [[ -z "${db_url}" ]]; then
   fatal_missing+=("SPRING_DATASOURCE_URL o DATABASE_URL")
 fi
+if [[ "${db_url}" == jdbc:h2:* || "${db_url}" == h2:* ]]; then
+  fatal_missing+=("SPRING_DATASOURCE_URL productiva no puede apuntar a H2")
+fi
 
 db_user="$(resolve_var "SPRING_DATASOURCE_USERNAME")"
 if [[ -z "${db_user}" ]]; then
@@ -74,6 +77,7 @@ db_password="$(resolve_var "SPRING_DATASOURCE_PASSWORD")"
 if [[ -z "${db_password}" ]]; then
   db_password="$(resolve_var "DATABASE_PASSWORD")"
 fi
+db_driver="$(resolve_var "SPRING_DATASOURCE_DRIVER_CLASS_NAME")"
 db_url_has_credentials="false"
 if [[ "${db_url}" == postgres://* || "${db_url}" == postgresql://* ]]; then
   if [[ "${db_url}" =~ ^[^:]+://[^/@:]+(:[^/@]*)?@ ]]; then
@@ -82,6 +86,38 @@ if [[ "${db_url}" == postgres://* || "${db_url}" == postgresql://* ]]; then
 fi
 if [[ "${db_url_has_credentials}" != "true" && ( -z "${db_user}" || -z "${db_password}" ) ]]; then
   warnings+=("Revisa credenciales PostgreSQL: si la URL no lleva usuario y password embebidos, falta definir SPRING_DATASOURCE_USERNAME/SPRING_DATASOURCE_PASSWORD o DATABASE_USERNAME/DATABASE_PASSWORD.")
+fi
+if [[ -n "${db_driver}" && "${db_driver}" != "org.postgresql.Driver" ]]; then
+  fatal_missing+=("SPRING_DATASOURCE_DRIVER_CLASS_NAME debe ser org.postgresql.Driver")
+fi
+
+flyway_url="$(resolve_var "SPRING_FLYWAY_URL")"
+if [[ -z "${flyway_url}" ]]; then
+  flyway_url="${db_url}"
+fi
+flyway_user="$(resolve_var "SPRING_FLYWAY_USER")"
+if [[ -z "${flyway_user}" ]]; then
+  flyway_user="${db_user}"
+fi
+flyway_password="$(resolve_var "SPRING_FLYWAY_PASSWORD")"
+if [[ -z "${flyway_password}" ]]; then
+  flyway_password="${db_password}"
+fi
+flyway_driver="$(resolve_var "SPRING_FLYWAY_DRIVER_CLASS_NAME")"
+if [[ -z "${flyway_driver}" ]]; then
+  flyway_driver="${db_driver}"
+fi
+if [[ "${flyway_url}" == jdbc:h2:* || "${flyway_url}" == h2:* ]]; then
+  fatal_missing+=("SPRING_FLYWAY_URL productiva no puede apuntar a H2")
+fi
+if [[ -n "${flyway_driver}" && "${flyway_driver}" != "org.postgresql.Driver" ]]; then
+  fatal_missing+=("SPRING_FLYWAY_DRIVER_CLASS_NAME debe ser org.postgresql.Driver")
+fi
+if [[ -n "${db_url}" && -n "${flyway_url}" && "${flyway_url}" != "${db_url}" ]]; then
+  warnings+=("SPRING_FLYWAY_URL difiere de SPRING_DATASOURCE_URL; valida que datasource y migraciones apunten a la misma base.")
+fi
+if [[ -n "${db_user}" && -n "${flyway_user}" && "${flyway_user}" != "${db_user}" ]]; then
+  warnings+=("SPRING_FLYWAY_USER difiere de SPRING_DATASOURCE_USERNAME; valida permisos y coherencia de migraciones.")
 fi
 
 image_provider="$(lower "$(resolve_var "IMAGE_STORAGE_PROVIDER")")"
@@ -124,6 +160,8 @@ echo "SERVER_ADDRESS efectivo: $(resolve_var "SERVER_ADDRESS")"
 echo "IMAGE_STORAGE_PROVIDER efectivo: ${image_provider}"
 echo "BILLING_ENABLED efectivo: ${billing_enabled:-false}"
 echo "BILLING_MERCADOPAGO_ENABLED efectivo: ${mercadopago_enabled:-false}"
+echo "SPRING_DATASOURCE_URL efectivo: ${db_url}"
+echo "SPRING_FLYWAY_URL efectivo: ${flyway_url}"
 echo
 
 if [[ ${#fatal_missing[@]} -gt 0 ]]; then

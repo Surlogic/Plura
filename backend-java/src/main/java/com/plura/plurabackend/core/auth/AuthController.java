@@ -14,6 +14,7 @@ import com.plura.plurabackend.core.auth.dto.LogoutRequest;
 import com.plura.plurabackend.core.auth.dto.AuthSessionListResponse;
 import com.plura.plurabackend.core.auth.dto.ForgotPasswordRequest;
 import com.plura.plurabackend.core.auth.dto.PasswordRecoveryConfirmRequest;
+import com.plura.plurabackend.core.auth.dto.PasswordResetCompletedResponse;
 import com.plura.plurabackend.core.auth.dto.PasswordRecoveryStartRequest;
 import com.plura.plurabackend.core.auth.dto.PasswordRecoveryVerifyPhoneRequest;
 import com.plura.plurabackend.core.auth.dto.PasswordRecoveryVerifyPhoneResponse;
@@ -342,11 +343,11 @@ public class AuthController {
     }
 
     @PostMapping("/password/reset")
-    public ResponseEntity<Void> resetPassword(
+    public ResponseEntity<PasswordResetCompletedResponse> resetPassword(
         @Valid @RequestBody ResetPasswordRequest request
     ) {
-        passwordLifecycleService.resetPassword(request.getToken(), request.getNewPassword());
-        return buildClearedSessionResponse();
+        UserRole role = passwordLifecycleService.resetPassword(request.getToken(), request.getNewPassword());
+        return buildClearedSessionResponse(new PasswordResetCompletedResponse(role.name()));
     }
 
     @PostMapping("/password/recovery/start")
@@ -384,11 +385,11 @@ public class AuthController {
     }
 
     @PostMapping("/password/recovery/confirm")
-    public ResponseEntity<Void> confirmPasswordRecovery(
+    public ResponseEntity<PasswordResetCompletedResponse> confirmPasswordRecovery(
         @Valid @RequestBody PasswordRecoveryConfirmRequest request,
         HttpServletRequest httpRequest
     ) {
-        passwordLifecycleService.confirmPasswordRecovery(
+        UserRole role = passwordLifecycleService.confirmPasswordRecovery(
             request.getEmail(),
             request.getPhoneNumber(),
             request.getChallengeId(),
@@ -398,7 +399,7 @@ public class AuthController {
             extractClientIp(httpRequest),
             httpRequest == null ? null : httpRequest.getHeader("User-Agent")
         );
-        return buildClearedSessionResponse();
+        return buildClearedSessionResponse(new PasswordResetCompletedResponse(role.name()));
     }
 
     @PostMapping("/verify/email/send")
@@ -720,6 +721,14 @@ public class AuthController {
             .header(HttpHeaders.SET_COOKIE, clearCookie(ACCESS_COOKIE, "/").toString())
             .header(HttpHeaders.SET_COOKIE, clearCookie(REFRESH_COOKIE, "/auth").toString())
             .build();
+    }
+
+    private <T> ResponseEntity<T> buildClearedSessionResponse(T body) {
+        return ResponseEntity.ok()
+            .header(HttpHeaders.CACHE_CONTROL, "no-store")
+            .header(HttpHeaders.SET_COOKIE, clearCookie(ACCESS_COOKIE, "/").toString())
+            .header(HttpHeaders.SET_COOKIE, clearCookie(REFRESH_COOKIE, "/auth").toString())
+            .body(body);
     }
 
     private ResponseEntity<RegisterResponse> authenticateLogin(

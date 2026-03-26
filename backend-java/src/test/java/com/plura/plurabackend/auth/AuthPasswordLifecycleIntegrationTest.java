@@ -208,7 +208,8 @@ class AuthPasswordLifecycleIntegrationTest {
                       "newPassword": "Password456"
                     }
                     """.formatted(rawResetToken)))
-            .andExpect(status().isNoContent());
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.role").value("USER"));
 
         mockMvc.perform(get("/auth/me/cliente")
                 .header("Authorization", "Bearer " + accessToken))
@@ -315,7 +316,8 @@ class AuthPasswordLifecycleIntegrationTest {
                     authOtpChallengeRepository.findAll().get(0).getId(),
                     captor.getValue().code()
                 )))
-            .andExpect(status().isNoContent());
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.role").value("PROFESSIONAL"));
 
         mockMvc.perform(get("/auth/me/profesional")
                 .header("Authorization", "Bearer " + accessToken))

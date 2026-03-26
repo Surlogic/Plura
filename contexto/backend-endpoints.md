@@ -102,6 +102,7 @@ Lectura de producto:
 - `POST /auth/oauth/complete-phone` cierra el faltante de telefono cuando el alta/login OAuth no lo trae y hoy tiene pantallas web dedicadas para cliente y profesional
 - `POST /auth/password/forgot` + `POST /auth/password/reset` siguen como flujo legacy por token y todavia los consume mobile
 - `POST /auth/password/recovery/start|verify-phone|confirm` son el flujo mas nuevo de recuperacion escalonada que hoy usa la web
+- `POST /auth/password/reset` y `POST /auth/password/recovery/confirm` ya no cierran con `204` vacio: ahora devuelven `200` con `role` (`USER` o `PROFESSIONAL`) y limpian cookies/sesion para que frontend redirija al login correcto segun la cuenta recuperada
 - en el recovery escalonado, `verify-phone` solo responde exito si el email con el OTP pudo salir realmente; si SMTP falla o queda en fallback incompleto, el backend devuelve `503` y revierte el challenge
 - el rate limiting de borde ya cubre tambien `/auth/password/recovery/start|verify-phone|confirm`, no solo el flujo legacy
 

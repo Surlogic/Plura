@@ -24,6 +24,9 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 @EnableAsync
 public class PluraBackendApplication {
 
+	private static final String POSTGRESQL_DRIVER = "org.postgresql.Driver";
+	private static final String H2_DRIVER = "org.h2.Driver";
+
 	/**
 	 * Método principal que arranca la aplicación Spring Boot.
 	 * Carga variables desde .env (si existe) y las inyecta como propiedades del sistema.
@@ -33,38 +36,47 @@ public class PluraBackendApplication {
 		// Soporta tanto ejecucion desde backend-java/ como desde la raiz del monorepo.
 		Map<String, String> dotenvValues = loadDotenvValues();
 		dotenvValues.forEach(PluraBackendApplication::applyDotenvFallback);
-		applyDatasourceCompatibility(dotenvValues);
+		applyDatasourceCompatibility();
 		SpringApplication.run(PluraBackendApplication.class, args);
 	}
 
-	private static void applyDatasourceCompatibility(Map<String, String> dotenvValues) {
+	private static void applyDatasourceCompatibility() {
 		String configuredUrl = firstNonBlank(
 			currentValue("SPRING_DATASOURCE_URL"),
-			currentValue("DATABASE_URL"),
-			dotenvValues.get("SPRING_DATASOURCE_URL"),
-			dotenvValues.get("DATABASE_URL")
+			currentValue("DATABASE_URL")
 		);
 		if (isBlank(configuredUrl)) {
-			return;
+			throw new IllegalStateException(
+				"Falta configurar SPRING_DATASOURCE_URL o DATABASE_URL para arrancar el backend con PostgreSQL."
+			);
 		}
 
 		ParsedDatasource parsedDatasource = normalizeDatasource(configuredUrl);
-		if (!isBlank(parsedDatasource.jdbcUrl())
-			&& !parsedDatasource.jdbcUrl().equals(currentValue("SPRING_DATASOURCE_URL"))) {
-			System.setProperty("SPRING_DATASOURCE_URL", parsedDatasource.jdbcUrl());
-		}
+		String datasourceUrl = firstNonBlank(parsedDatasource.jdbcUrl(), configuredUrl);
+		String datasourceUsername = firstNonBlank(
+			currentValue("SPRING_DATASOURCE_USERNAME"),
+			currentValue("DATABASE_USERNAME"),
+			parsedDatasource.username()
+		);
+		String datasourcePassword = firstNonBlank(
+			currentValue("SPRING_DATASOURCE_PASSWORD"),
+			currentValue("DATABASE_PASSWORD"),
+			parsedDatasource.password()
+		);
+		String datasourceDriverClassName = firstNonBlank(
+			currentValue("SPRING_DATASOURCE_DRIVER_CLASS_NAME"),
+			parsedDatasource.driverClassName()
+		);
 
-		if (isBlank(currentValue("SPRING_DATASOURCE_USERNAME"))
-			&& isBlank(currentValue("DATABASE_USERNAME"))
-			&& !isBlank(parsedDatasource.username())) {
-			System.setProperty("SPRING_DATASOURCE_USERNAME", parsedDatasource.username());
-		}
+		applyResolvedProperty("SPRING_DATASOURCE_URL", datasourceUrl);
+		applyResolvedProperty("SPRING_DATASOURCE_USERNAME", datasourceUsername);
+		applyResolvedProperty("SPRING_DATASOURCE_PASSWORD", datasourcePassword);
+		applyResolvedProperty("SPRING_DATASOURCE_DRIVER_CLASS_NAME", datasourceDriverClassName);
 
-		if (isBlank(currentValue("SPRING_DATASOURCE_PASSWORD"))
-			&& isBlank(currentValue("DATABASE_PASSWORD"))
-			&& !isBlank(parsedDatasource.password())) {
-			System.setProperty("SPRING_DATASOURCE_PASSWORD", parsedDatasource.password());
-		}
+		applyResolvedPropertyIfBlank("SPRING_FLYWAY_URL", datasourceUrl);
+		applyResolvedPropertyIfBlank("SPRING_FLYWAY_USER", datasourceUsername);
+		applyResolvedPropertyIfBlank("SPRING_FLYWAY_PASSWORD", datasourcePassword);
+		applyResolvedPropertyIfBlank("SPRING_FLYWAY_DRIVER_CLASS_NAME", datasourceDriverClassName);
 	}
 
 	private static Map<String, String> loadDotenvValues() {
@@ -92,18 +104,30 @@ public class PluraBackendApplication {
 		}
 	}
 
+	private static void applyResolvedProperty(String key, String value) {
+		if (!isBlank(value) && !value.equals(currentValue(key))) {
+			System.setProperty(key, value);
+		}
+	}
+
+	private static void applyResolvedPropertyIfBlank(String key, String value) {
+		if (isBlank(currentValue(key))) {
+			applyResolvedProperty(key, value);
+		}
+	}
+
 	private static String currentValue(String key) {
 		return firstNonBlank(System.getProperty(key), System.getenv(key));
 	}
 
 	private static ParsedDatasource normalizeDatasource(String rawUrl) {
 		if (isBlank(rawUrl) || rawUrl.startsWith("jdbc:")) {
-			return new ParsedDatasource(rawUrl, null, null);
+			return new ParsedDatasource(rawUrl, null, null, resolveDriverClassName(rawUrl));
 		}
 
 		String normalizedUrl = rawUrl.replaceFirst("^postgres://", "postgresql://");
 		if (!normalizedUrl.startsWith("postgresql://")) {
-			return new ParsedDatasource(rawUrl, null, null);
+			return new ParsedDatasource(rawUrl, null, null, resolveDriverClassName(rawUrl));
 		}
 
 		URI uri = URI.create(normalizedUrl);
@@ -124,7 +148,28 @@ public class PluraBackendApplication {
 			password = userInfo.length > 1 ? decodeUrlComponent(userInfo[1]) : null;
 		}
 
-		return new ParsedDatasource(jdbcUrl.toString(), username, password);
+		String resolvedJdbcUrl = jdbcUrl.toString();
+		return new ParsedDatasource(
+			resolvedJdbcUrl,
+			username,
+			password,
+			resolveDriverClassName(resolvedJdbcUrl)
+		);
+	}
+
+	private static String resolveDriverClassName(String url) {
+		if (isBlank(url)) {
+			return null;
+		}
+		if (url.startsWith("jdbc:postgresql:")
+			|| url.startsWith("postgresql://")
+			|| url.startsWith("postgres://")) {
+			return POSTGRESQL_DRIVER;
+		}
+		if (url.startsWith("jdbc:h2:")) {
+			return H2_DRIVER;
+		}
+		return null;
 	}
 
 	private static String decodeUrlComponent(String value) {
@@ -146,5 +191,10 @@ public class PluraBackendApplication {
 		return null;
 	}
 
-	private record ParsedDatasource(String jdbcUrl, String username, String password) {}
+	private record ParsedDatasource(
+		String jdbcUrl,
+		String username,
+		String password,
+		String driverClassName
+	) {}
 }

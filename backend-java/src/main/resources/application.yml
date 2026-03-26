@@ -39,6 +39,7 @@ spring:
     url: ${SPRING_DATASOURCE_URL:${DATABASE_URL:}}
     username: ${SPRING_DATASOURCE_USERNAME:${DATABASE_USERNAME:}}
     password: ${SPRING_DATASOURCE_PASSWORD:${DATABASE_PASSWORD:}}
+    driver-class-name: ${SPRING_DATASOURCE_DRIVER_CLASS_NAME:}
     hikari:
       maximum-pool-size: ${HIKARI_MAX_POOL_SIZE:30}
       minimum-idle: ${HIKARI_MIN_IDLE:5}
@@ -66,6 +67,10 @@ spring:
         order_updates: true
   flyway:
     enabled: ${SPRING_FLYWAY_ENABLED:true}
+    url: ${SPRING_FLYWAY_URL:${SPRING_DATASOURCE_URL:${DATABASE_URL:}}}
+    user: ${SPRING_FLYWAY_USER:${SPRING_DATASOURCE_USERNAME:${DATABASE_USERNAME:}}}
+    password: ${SPRING_FLYWAY_PASSWORD:${SPRING_DATASOURCE_PASSWORD:${DATABASE_PASSWORD:}}}
+    driver-class-name: ${SPRING_FLYWAY_DRIVER_CLASS_NAME:${SPRING_DATASOURCE_DRIVER_CLASS_NAME:}}
     locations: ${SPRING_FLYWAY_LOCATIONS:classpath:db/migration}
     baseline-on-migrate: ${SPRING_FLYWAY_BASELINE_ON_MIGRATE:true}
     baseline-version: ${SPRING_FLYWAY_BASELINE_VERSION:0}

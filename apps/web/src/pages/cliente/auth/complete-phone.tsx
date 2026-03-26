@@ -1,12 +1,13 @@
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { useState } from 'react';
-import type { ChangeEvent, FormEvent } from 'react';
+import type { FormEvent } from 'react';
 import { isAxiosError } from 'axios';
 import AuthTopBar from '@/components/auth/AuthTopBar';
 import Footer from '@/components/shared/Footer';
 import Badge from '@/components/ui/Badge';
 import Card from '@/components/ui/Card';
+import InternationalPhoneField from '@/components/ui/InternationalPhoneField';
 import api from '@/services/api';
 import { useClientProfileContext } from '@/context/ClientProfileContext';
 
@@ -23,10 +24,7 @@ export default function ClienteCompletePhonePage() {
   const [phoneNumber, setPhoneNumber] = useState('');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  const handleChange = (event: ChangeEvent<HTMLInputElement>) => {
-    setPhoneNumber(event.target.value);
-  };
+  const canSubmit = phoneNumber.replace(/\D/g, '').length >= 8;
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -62,15 +60,17 @@ export default function ClienteCompletePhonePage() {
           <form className="mt-6 space-y-4" onSubmit={handleSubmit}>
             <div className="space-y-2">
               <label className="text-sm font-medium text-[color:var(--ink)]">Número de teléfono</label>
-              <input
-                className="h-12 w-full rounded-[18px] border border-[color:var(--border-soft)] bg-white/90 px-4 text-sm text-[color:var(--ink)] focus:border-[color:var(--accent)] focus:outline-none focus:ring-2 focus:ring-[color:var(--accent-soft)]"
-                type="tel"
+              <InternationalPhoneField
                 value={phoneNumber}
-                onChange={handleChange}
-                placeholder="59899123456"
-                minLength={8}
+                onChange={setPhoneNumber}
                 required
+                selectClassName="h-12 w-full rounded-[18px] border border-[color:var(--border-soft)] bg-white/90 px-4 text-sm text-[color:var(--ink)] focus:border-[color:var(--accent)] focus:outline-none focus:ring-2 focus:ring-[color:var(--accent-soft)]"
+                inputClassName="h-12 w-full rounded-[18px] border border-[color:var(--border-soft)] bg-white/90 px-4 text-sm text-[color:var(--ink)] focus:border-[color:var(--accent)] focus:outline-none focus:ring-2 focus:ring-[color:var(--accent-soft)]"
+                inputPlaceholder="99 123 456"
               />
+              <p className="text-xs text-[color:var(--ink-faint)]">
+                Elegí tu país y cargá el número sin el prefijo internacional.
+              </p>
             </div>
 
             {errorMessage ? (
@@ -81,7 +81,7 @@ export default function ClienteCompletePhonePage() {
 
             <button
               type="submit"
-              disabled={isSubmitting}
+              disabled={isSubmitting || !canSubmit}
               className="h-12 w-full rounded-full bg-[linear-gradient(135deg,#1FB6A6,#0E2A47)] text-sm font-semibold text-white transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-70"
             >
               {isSubmitting ? 'Guardando...' : 'Guardar y continuar'}

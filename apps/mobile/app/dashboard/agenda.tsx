@@ -25,7 +25,9 @@ import { getPublicSlots } from '../../src/services/publicBookings';
 import { useAuthSession } from '../../src/context/ProfessionalProfileContext';
 import { canProfessionalConfirmReservation } from '../../../../packages/shared/src/bookings/professionalReservationActions';
 import { AppScreen } from '../../src/components/ui/AppScreen';
+import InternationalPhoneField from '../../src/components/ui/InternationalPhoneField';
 import { MessageCard, ScreenHero, StatusPill } from '../../src/components/ui/MobileSurface';
+import { hasMinimumPhoneDigits } from '../../src/lib/internationalPhone';
 
 const toIsoDate = (value: Date) => value.toISOString().slice(0, 10);
 const today = new Date();
@@ -293,6 +295,10 @@ export default function AgendaScreen() {
       setMessage('Completa cliente, servicio, fecha y hora para crear la reserva.');
       return;
     }
+    if (createForm.clientPhone.trim() && !hasMinimumPhoneDigits(createForm.clientPhone)) {
+      setMessage('Si cargas telefono del cliente, ingresa un numero valido.');
+      return;
+    }
 
     setIsSubmittingAction(true);
     setMessage(null);
@@ -491,7 +497,13 @@ export default function AgendaScreen() {
               <>
                 <TextInput className="mt-4 h-12 rounded-2xl border border-secondary/10 bg-background px-4 text-secondary" placeholder="Nombre del cliente" value={createForm.clientName} onChangeText={(value) => setCreateForm((prev) => ({ ...prev, clientName: value }))} />
                 <TextInput className="mt-3 h-12 rounded-2xl border border-secondary/10 bg-background px-4 text-secondary" placeholder="Email cliente (opcional)" value={createForm.clientEmail} onChangeText={(value) => setCreateForm((prev) => ({ ...prev, clientEmail: value }))} />
-                <TextInput className="mt-3 h-12 rounded-2xl border border-secondary/10 bg-background px-4 text-secondary" placeholder="Telefono cliente (opcional)" value={createForm.clientPhone} onChangeText={(value) => setCreateForm((prev) => ({ ...prev, clientPhone: value }))} />
+                <InternationalPhoneField
+                  label="Telefono cliente"
+                  value={createForm.clientPhone}
+                  onChange={(value) => setCreateForm((prev) => ({ ...prev, clientPhone: value }))}
+                  placeholder="11 2345 6789"
+                  helperText="Opcional. Si lo cargas, se guarda con codigo internacional."
+                />
                 <View className="mt-3 flex-row" style={{ gap: 10 }}>
                   <TextInput className="h-12 flex-1 rounded-2xl border border-secondary/10 bg-background px-4 text-secondary" placeholder="Fecha YYYY-MM-DD" value={createForm.date} onChangeText={(value) => setCreateForm((prev) => ({ ...prev, date: value }))} />
                   <TextInput className="h-12 w-28 rounded-2xl border border-secondary/10 bg-background px-4 text-secondary" placeholder="HH:mm" value={createForm.time} onChangeText={(value) => setCreateForm((prev) => ({ ...prev, time: value }))} />

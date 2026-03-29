@@ -83,29 +83,28 @@ export default memo(function BusinessGallery({ photos, businessName }: BusinessG
     );
   }
 
-  const visiblePhotos = normalizedPhotos.slice(0, Math.min(normalizedPhotos.length, 5));
+  const visiblePhotos = normalizedPhotos.slice(0, Math.min(normalizedPhotos.length, 6));
   const hiddenPhotosCount = Math.max(0, normalizedPhotos.length - visiblePhotos.length);
-
-  const getTileClassName = (index: number) => {
-    if (visiblePhotos.length === 1) {
-      return 'col-span-2 h-[320px] md:col-span-4';
-    }
-    if (index === 0) {
-      return 'col-span-2 h-[260px] md:col-span-2 md:row-span-2 md:h-auto';
-    }
-    return 'h-[156px]';
-  };
+  const isSinglePhoto = visiblePhotos.length === 1;
 
   return (
     <>
-      <div className="space-y-4">
-        <div className="grid grid-cols-2 gap-3 md:grid-cols-4 md:auto-rows-[156px]">
+      <div className="space-y-4 overflow-hidden rounded-[28px]">
+        <div
+          className={`grid gap-3 ${
+            isSinglePhoto
+              ? 'mx-auto max-w-[420px] grid-cols-1'
+              : visiblePhotos.length === 2
+                ? 'grid-cols-2'
+                : 'grid-cols-2 md:grid-cols-3'
+          }`}
+        >
           {visiblePhotos.map((photo, index) => (
             <button
               key={`${photo}-${index}`}
               type="button"
               onClick={() => setActiveIndex(index)}
-              className={`group relative overflow-hidden rounded-[24px] border border-[#D9E2EC] bg-[#EEF2F6] text-left transition hover:-translate-y-1 hover:shadow-[0_18px_44px_-32px_rgba(15,23,42,0.32)] ${getTileClassName(index)}`}
+              className="group relative aspect-[4/3] overflow-hidden rounded-[24px] border border-[#D9E2EC] bg-[#EEF2F6] text-left transition hover:-translate-y-0.5 hover:shadow-[0_18px_44px_-32px_rgba(15,23,42,0.24)]"
               aria-label={`Abrir foto ${index + 1}`}
             >
               <span className="absolute inset-0">
@@ -118,16 +117,6 @@ export default memo(function BusinessGallery({ photos, businessName }: BusinessG
                 />
               </span>
               <span className="absolute inset-0 bg-[linear-gradient(180deg,rgba(15,23,42,0.02)_15%,rgba(15,23,42,0.36)_100%)]" />
-              {index === 0 ? (
-                <span className="absolute inset-x-0 bottom-0 p-5 text-white">
-                  <span className="block text-[0.68rem] font-semibold uppercase tracking-[0.28em] text-white/70">
-                    Galeria
-                  </span>
-                  <span className="mt-2 block text-lg font-semibold">
-                    {businessName || 'Espacio profesional'}
-                  </span>
-                </span>
-              ) : null}
               {hiddenPhotosCount > 0 && index === visiblePhotos.length - 1 ? (
                 <span className="absolute inset-0 flex items-center justify-center bg-[rgba(15,23,42,0.42)] text-base font-semibold text-white">
                   +{hiddenPhotosCount} fotos
@@ -177,21 +166,21 @@ export default memo(function BusinessGallery({ photos, businessName }: BusinessG
             </div>
 
             <div className="flex items-center justify-center gap-3">
-            {normalizedPhotos.length > 1 ? (
-              <button
-                type="button"
-                onClick={() =>
-                  setActiveIndex((prev) => {
-                    if (prev === null) return prev;
-                    return (prev - 1 + normalizedPhotos.length) % normalizedPhotos.length;
-                  })
-                }
-                className="hidden h-10 w-10 shrink-0 items-center justify-center rounded-full border border-white/40 bg-white/10 text-xl font-semibold text-white backdrop-blur-sm sm:flex"
-                aria-label="Foto anterior"
-              >
-                {'<'}
-              </button>
-            ) : null}
+              {normalizedPhotos.length > 1 ? (
+                <button
+                  type="button"
+                  onClick={() =>
+                    setActiveIndex((prev) => {
+                      if (prev === null) return prev;
+                      return (prev - 1 + normalizedPhotos.length) % normalizedPhotos.length;
+                    })
+                  }
+                  className="hidden h-10 w-10 shrink-0 items-center justify-center rounded-full border border-white/40 bg-white/10 text-xl font-semibold text-white backdrop-blur-sm sm:flex"
+                  aria-label="Foto anterior"
+                >
+                  {'<'}
+                </button>
+              ) : null}
 
               <div className="relative max-h-[92vh] max-w-[96vw] overflow-hidden rounded-[24px] border border-white/20 bg-black/25">
                 <div className="relative h-[70vh] w-[92vw] max-w-[1200px] sm:h-[78vh] sm:w-[86vw]">

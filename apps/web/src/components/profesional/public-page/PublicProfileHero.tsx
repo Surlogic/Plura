@@ -1,6 +1,7 @@
 import Image from 'next/image';
 import FavoriteToggleButton from '@/components/shared/FavoriteToggleButton';
 import Badge from '@/components/ui/Badge';
+import Button from '@/components/ui/Button';
 import Card from '@/components/ui/Card';
 import { resolveAssetUrl } from '@/utils/assetUrl';
 import {
@@ -21,9 +22,13 @@ type PublicProfileHeroProps = {
   logoMedia?: ProfessionalMediaPresentation | null;
   logoUrl?: string;
   name: string;
+  onReserve: () => void;
   onToggleFavorite: () => void;
+  onViewServices: () => void;
+  reserveLabel?: string;
   rating?: number | null;
   reviewsCount?: number | null;
+  reserveDisabled?: boolean;
 };
 
 const sanitizeImageSrc = (value?: string) => {
@@ -73,9 +78,13 @@ export default function PublicProfileHero({
   logoMedia,
   logoUrl,
   name,
+  onReserve,
   onToggleFavorite,
+  onViewServices,
+  reserveLabel = 'Reservar',
   rating,
   reviewsCount,
+  reserveDisabled = false,
 }: PublicProfileHeroProps) {
   const safeBannerSrc = sanitizeImageSrc(bannerUrl);
   const safeLogoSrc = sanitizeImageSrc(logoUrl);
@@ -161,14 +170,34 @@ export default function PublicProfileHero({
             </div>
 
             {!isPreview ? (
-              <FavoriteToggleButton
-                isActive={isCurrentFavorite}
-                onClick={onToggleFavorite}
-                variant="pill"
-                className="w-full justify-center lg:w-auto"
-                activeLabel="Guardado"
-                inactiveLabel="Guardar"
-              />
+              <div className="flex w-full flex-col gap-3 lg:w-auto lg:min-w-[220px]">
+                <Button
+                  type="button"
+                  variant="primary"
+                  size="lg"
+                  className="w-full"
+                  onClick={onReserve}
+                  disabled={reserveDisabled}
+                >
+                  {reserveLabel}
+                </Button>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  className="w-full"
+                  onClick={onViewServices}
+                >
+                  Ver servicios
+                </Button>
+                <FavoriteToggleButton
+                  isActive={isCurrentFavorite}
+                  onClick={onToggleFavorite}
+                  variant="pill"
+                  className="w-full justify-center"
+                  activeLabel="Guardado"
+                  inactiveLabel="Guardar"
+                />
+              </div>
             ) : null}
           </div>
 

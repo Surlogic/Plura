@@ -10,18 +10,12 @@ import PublicReviewsList from '@/components/profesional/PublicReviewsList';
 import Card from '@/components/ui/Card';
 import { useFavoriteProfessionals } from '@/hooks/useFavoriteProfessionals';
 import { mapboxForwardGeocode } from '@/services/mapbox';
-import {
-  getPublicProfessionalBySlug,
-  getPublicSlots,
-} from '@/services/publicBookings';
+import { getPublicProfessionalBySlug } from '@/services/publicBookings';
 import { hasKnownAuthSession } from '@/services/session';
 import {
   normalizeProfessionalMediaPresentation,
 } from '@/utils/professionalMediaPresentation';
 import PublicProfileHero from '@/components/profesional/public-page/PublicProfileHero';
-import PublicBookingSidebar, {
-  type QuickSlotGroup,
-} from '@/components/profesional/public-page/PublicBookingSidebar';
 import PublicServicesSection, {
   type PublicServiceItem,
 } from '@/components/profesional/public-page/PublicServicesSection';
@@ -72,13 +66,6 @@ type PreviewPayload = {
   photos?: string[];
   services?: PublicService[];
   schedule?: ProfessionalSchedule;
-};
-
-const toLocalDateKey = (daysFromToday = 0) => {
-  const date = new Date();
-  date.setHours(0, 0, 0, 0);
-  date.setDate(date.getDate() + daysFromToday);
-  return date.toLocaleDateString('en-CA');
 };
 
 const isValidMediaPresentation = (
@@ -336,13 +323,10 @@ export default function ProfesionalDetailPage({
   } | null>(null);
   const [selectedServiceIndex, setSelectedServiceIndex] = useState(0);
   const [serviceDetailIndex, setServiceDetailIndex] = useState<number | null>(null);
-  const [quickSlotGroups, setQuickSlotGroups] = useState<QuickSlotGroup[]>([]);
-  const [isLoadingQuickSlots, setIsLoadingQuickSlots] = useState(false);
-  const [quickSlotsRefreshKey, setQuickSlotsRefreshKey] = useState(0);
-  const [hasInteractedWithServices, setHasInteractedWithServices] = useState(false);
   const [isMapSectionVisible, setIsMapSectionVisible] = useState(false);
   const [activeServiceCategory, setActiveServiceCategory] = useState('');
   const mapSectionRef = useRef<HTMLElement | null>(null);
+  const servicesSectionRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
     setData((initialData as PublicProfessional | null) ?? null);
@@ -617,51 +601,6 @@ export default function ProfesionalDetailPage({
   const professionalSlug = typeof slug === 'string' ? slug : '';
   const isCurrentFavorite = isFavorite(professionalSlug);
 
-  useEffect(() => {
-    setHasInteractedWithServices(false);
-    setQuickSlotsRefreshKey(0);
-  }, [professionalSlug]);
-
-  useEffect(() => {
-    if (isPreview || !hasInteractedWithServices || !professionalSlug || !selectedService?.id) {
-      setQuickSlotGroups([]);
-      setIsLoadingQuickSlots(false);
-      return;
-    }
-
-    let cancelled = false;
-    const todayKey = toLocalDateKey(0);
-    const tomorrowKey = toLocalDateKey(1);
-
-    setIsLoadingQuickSlots(true);
-    Promise.all([
-      getPublicSlots(professionalSlug, todayKey, selectedService.id).catch(() => []),
-      getPublicSlots(professionalSlug, tomorrowKey, selectedService.id).catch(() => []),
-    ])
-      .then(([todaySlots, tomorrowSlots]) => {
-        if (cancelled) return;
-        setQuickSlotGroups([
-          { label: 'Hoy', dateKey: todayKey, slots: todaySlots.slice(0, 3) },
-          { label: 'Mañana', dateKey: tomorrowKey, slots: tomorrowSlots.slice(0, 3) },
-        ]);
-      })
-      .finally(() => {
-        if (!cancelled) {
-          setIsLoadingQuickSlots(false);
-        }
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [
-    hasInteractedWithServices,
-    isPreview,
-    professionalSlug,
-    quickSlotsRefreshKey,
-    selectedService?.id,
-  ]);
-
   const handleReserve = (service: PublicService, date?: string, time?: string) => {
     const params = new URLSearchParams();
     if (service.id) params.set('serviceId', service.id);
@@ -678,18 +617,30 @@ export default function ProfesionalDetailPage({
     handleReserve(selectedService, date, time);
   };
 
-  const handleActivateQuickSlots = () => {
-    setHasInteractedWithServices(true);
-    setQuickSlotsRefreshKey((current) => current + 1);
-  };
-
   const handleSelectService = (index: number) => {
-    setHasInteractedWithServices(true);
     setSelectedServiceIndex(index);
     const selectedItem = serviceItems.find((item) => item.index === index);
     if (selectedItem) {
       setActiveServiceCategory(selectedItem.categoryLabel);
     }
+  };
+
+  const handleReserveService = (index: number) => {
+    const service = displayServices[index];
+    if (!service) return;
+    handleReserve(service);
+  };
+
+  const handleViewServices = () => {
+    servicesSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
+  const handlePrimaryReserveEntry = () => {
+    if (selectedService) {
+      handleReserveSelectedService();
+      return;
+    }
+    handleViewServices();
   };
 
   const hasPublicContent = Boolean(
@@ -855,232 +806,245 @@ export default function ProfesionalDetailPage({
           logoMedia={merged.logoMedia}
           logoUrl={merged.logoUrl}
           name={merged.name}
+          onReserve={handlePrimaryReserveEntry}
           onToggleFavorite={toggleFavoriteHandler}
+          onViewServices={handleViewServices}
+          reserveDisabled={false}
+          reserveLabel={selectedService ? 'Reservar' : 'Elegir servicio'}
           rating={data?.rating}
           reviewsCount={data?.reviewsCount}
         />
-
-        <div className="mt-6 lg:hidden">
-          <PublicBookingSidebar
-            fallbackCategoryName={merged.category}
-            hasInteractedWithServices={hasInteractedWithServices}
-            isLoadingQuickSlots={isLoadingQuickSlots}
-            isPreview={isPreview}
-            onActivateQuickSlots={handleActivateQuickSlots}
-            onReserve={handleReserveSelectedService}
-            quickSlotGroups={quickSlotGroups}
-            selectedService={selectedService}
-          />
-        </div>
-
-        <div className="mt-8 grid gap-8 lg:grid-cols-[minmax(0,1fr)_360px] lg:items-start">
-          <div className="space-y-8">
+        <div className="mx-auto mt-8 max-w-[1080px] space-y-8">
+          <section ref={servicesSectionRef} id="servicios">
             <PublicServicesSection
               activeCategory={activeServiceCategory}
               categories={serviceCategories}
               onCategoryChange={setActiveServiceCategory}
               onOpenServiceDetail={setServiceDetailIndex}
+              onReserveService={handleReserveService}
               onSelectService={handleSelectService}
               selectedServiceIndex={selectedServiceIndex}
               serviceItems={serviceItems}
             />
+          </section>
 
+          <Card
+            tone="soft"
+            className="rounded-[32px] border-white/80 bg-[color:var(--surface-soft)]/95 p-6 shadow-[0_18px_52px_-42px_rgba(15,23,42,0.24)] sm:p-7"
+          >
+            <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+              <div>
+                <p className="text-[0.68rem] font-semibold uppercase tracking-[0.32em] text-[color:var(--ink-faint)]">
+                  Reserva
+                </p>
+                <h2 className="mt-2 text-2xl font-semibold text-[color:var(--ink)]">
+                  La reserva se completa en su pantalla dedicada
+                </h2>
+                <p className="mt-3 max-w-2xl text-sm leading-6 text-[color:var(--ink-muted)]">
+                  Este perfil muestra identidad, servicios e información pública. La elección de horario y el checkout siguen en `/reservar`.
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-3">
+                <button
+                  type="button"
+                  onClick={handlePrimaryReserveEntry}
+                  className="rounded-full bg-[color:var(--primary)] px-5 py-3 text-sm font-semibold text-white shadow-[var(--shadow-card)] transition hover:-translate-y-0.5 hover:bg-[color:var(--primary-strong)] disabled:cursor-not-allowed disabled:opacity-55"
+                >
+                  {selectedService ? `Reservar ${selectedService.name}` : 'Elegir servicio'}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleViewServices}
+                  className="rounded-full border border-[color:var(--border-soft)] bg-white px-5 py-3 text-sm font-semibold text-[color:var(--ink)] transition hover:-translate-y-0.5 hover:shadow-[var(--shadow-card)]"
+                >
+                  Ver servicios
+                </button>
+              </div>
+            </div>
+          </Card>
+
+          <Card
+            tone="default"
+            className="overflow-hidden rounded-[32px] border-white/80 bg-white/96 p-6 shadow-[0_26px_72px_-48px_rgba(15,23,42,0.28)] sm:p-8"
+          >
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+              <div>
+                <p className="text-[0.68rem] font-semibold uppercase tracking-[0.32em] text-[color:var(--ink-faint)]">
+                  Galeria
+                </p>
+                <h2 className="mt-2 text-3xl font-semibold text-[color:var(--ink)]">
+                  Espacio, trabajos y detalles
+                </h2>
+                <p className="mt-3 max-w-2xl text-sm leading-6 text-[color:var(--ink-muted)]">
+                  Una galería más limpia, contenida y pensada para mostrar el perfil sin romper la composición.
+                </p>
+              </div>
+              {hasRealGalleryPhotos ? (
+                <p className="text-sm font-medium text-[color:var(--ink-faint)]">
+                  {galleryPhotos.length} {galleryPhotos.length === 1 ? 'foto publicada' : 'fotos publicadas'}
+                </p>
+              ) : null}
+            </div>
+
+            <div className="mt-6 overflow-hidden rounded-[28px]">
+              <BusinessGallery photos={galleryPhotos} businessName={merged.name} />
+            </div>
+          </Card>
+
+          <section ref={mapSectionRef}>
             <Card
               tone="default"
               className="rounded-[32px] border-white/80 bg-white/96 p-6 shadow-[0_26px_72px_-48px_rgba(15,23,42,0.28)] sm:p-8"
             >
-              <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-                <div>
-                  <p className="text-[0.68rem] font-semibold uppercase tracking-[0.32em] text-[color:var(--ink-faint)]">
-                    Galeria
-                  </p>
-                  <h2 className="mt-2 text-3xl font-semibold text-[color:var(--ink)]">
-                    Espacio, trabajos y detalles
-                  </h2>
-                  <p className="mt-3 max-w-2xl text-sm leading-6 text-[color:var(--ink-muted)]">
-                    Una vista mas cuidada del local, servicios y resultados publicados.
-                  </p>
-                </div>
-                {hasRealGalleryPhotos ? (
-                  <p className="text-sm font-medium text-[color:var(--ink-faint)]">
-                    {galleryPhotos.length} {galleryPhotos.length === 1 ? 'foto publicada' : 'fotos publicadas'}
-                  </p>
-                ) : null}
+              <div>
+                <p className="text-[0.68rem] font-semibold uppercase tracking-[0.32em] text-[color:var(--ink-faint)]">
+                  Ubicacion y horarios
+                </p>
+                <h2 className="mt-2 text-3xl font-semibold text-[color:var(--ink)]">
+                  Informacion util antes de reservar
+                </h2>
+                <p className="mt-3 max-w-2xl text-sm leading-6 text-[color:var(--ink-muted)]">
+                  Direccion, contacto y disponibilidad pública, sin mezclar selección de turnos con el perfil.
+                </p>
               </div>
 
-              <div className="mt-6">
-                <BusinessGallery photos={galleryPhotos} businessName={merged.name} />
-              </div>
-            </Card>
-
-            <section ref={mapSectionRef}>
-              <Card
-                tone="default"
-                className="rounded-[32px] border-white/80 bg-white/96 p-6 shadow-[0_26px_72px_-48px_rgba(15,23,42,0.28)] sm:p-8"
-              >
-                <div>
-                  <p className="text-[0.68rem] font-semibold uppercase tracking-[0.32em] text-[color:var(--ink-faint)]">
-                    Ubicacion y horarios
-                  </p>
-                  <h2 className="mt-2 text-3xl font-semibold text-[color:var(--ink)]">
-                    Informacion util antes de reservar
-                  </h2>
-                  <p className="mt-3 max-w-2xl text-sm leading-6 text-[color:var(--ink-muted)]">
-                    Direccion, contacto y disponibilidad publica en una misma seccion.
-                  </p>
-                </div>
-
-                <div className="mt-6 grid gap-5 xl:grid-cols-[320px,minmax(0,1fr)]">
-                  <div className="space-y-5">
-                    <div className="rounded-[28px] border border-[color:var(--border-soft)] bg-[color:var(--surface-soft)] p-5">
-                      <p className="text-[0.68rem] font-semibold uppercase tracking-[0.28em] text-[color:var(--ink-faint)]">
-                        Horarios
-                      </p>
-                      {scheduleSummary.length > 0 ? (
-                        <div className="mt-4 space-y-3">
-                          {scheduleSummary.map((item, index) => (
-                            <div
-                              key={`${item.label}-${index}`}
-                              className="rounded-[18px] border border-[color:var(--border-soft)] bg-white px-4 py-3"
-                            >
-                              <p className="text-sm font-semibold text-[color:var(--ink)]">
-                                {item.label}
-                              </p>
-                              <p className="mt-1 text-sm text-[color:var(--primary)]">
-                                {item.ranges}
-                              </p>
-                            </div>
-                          ))}
-                        </div>
-                      ) : (
-                        <div className="mt-4 rounded-[18px] border border-dashed border-[color:var(--border-soft)] bg-white px-4 py-4 text-sm text-[color:var(--ink-muted)]">
-                          Sin horarios publicos cargados.
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="rounded-[28px] border border-[color:var(--border-soft)] bg-[color:var(--surface-soft)] p-5">
-                      <p className="text-[0.68rem] font-semibold uppercase tracking-[0.28em] text-[color:var(--ink-faint)]">
-                        Contacto
-                      </p>
+              <div className="mt-6 grid gap-5 xl:grid-cols-[320px,minmax(0,1fr)]">
+                <div className="space-y-5">
+                  <div className="rounded-[28px] border border-[color:var(--border-soft)] bg-[color:var(--surface-soft)] p-5">
+                    <p className="text-[0.68rem] font-semibold uppercase tracking-[0.28em] text-[color:var(--ink-faint)]">
+                      Horarios
+                    </p>
+                    {scheduleSummary.length > 0 ? (
                       <div className="mt-4 space-y-3">
-                        <DetailRow label="Direccion" value={addressValue} />
-                        <DetailRow label="Telefono" value={phoneValue} href={phoneValue ? `tel:${phoneValue}` : undefined} />
-                        <DetailRow label="Email" value={emailValue} href={emailValue ? `mailto:${emailValue}` : undefined} />
-                      </div>
-
-                      {hasSocial ? (
-                        <div className="mt-5 border-t border-[color:var(--border-soft)] pt-5">
-                          <p className="text-[0.68rem] font-semibold uppercase tracking-[0.24em] text-[color:var(--ink-faint)]">
-                            Redes
-                          </p>
-                          <div className="mt-3 flex flex-wrap gap-2">
-                            {instagramValue && instagramHref ? (
-                              <a
-                                href={instagramHref}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-[color:var(--border-soft)] bg-white text-[color:var(--ink)] transition hover:-translate-y-0.5 hover:shadow-[var(--shadow-card)]"
-                                aria-label="Instagram"
-                              >
-                                <SocialIcon platform="instagram" />
-                              </a>
-                            ) : null}
-                            {facebookValue && facebookHref ? (
-                              <a
-                                href={facebookHref}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-[color:var(--border-soft)] bg-white text-[color:var(--ink)] transition hover:-translate-y-0.5 hover:shadow-[var(--shadow-card)]"
-                                aria-label="Facebook"
-                              >
-                                <SocialIcon platform="facebook" />
-                              </a>
-                            ) : null}
-                            {tiktokValue && tiktokHref ? (
-                              <a
-                                href={tiktokHref}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-[color:var(--border-soft)] bg-white text-[color:var(--ink)] transition hover:-translate-y-0.5 hover:shadow-[var(--shadow-card)]"
-                                aria-label="TikTok"
-                              >
-                                <SocialIcon platform="tiktok" />
-                              </a>
-                            ) : null}
-                            {websiteValue && websiteHref ? (
-                              <a
-                                href={websiteHref}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-[color:var(--border-soft)] bg-white text-[color:var(--ink)] transition hover:-translate-y-0.5 hover:shadow-[var(--shadow-card)]"
-                                aria-label="Sitio web"
-                              >
-                                <SocialIcon platform="website" />
-                              </a>
-                            ) : null}
-                            {whatsappValue && whatsappHref ? (
-                              <a
-                                href={whatsappHref}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-[color:var(--border-soft)] bg-white text-[color:var(--ink)] transition hover:-translate-y-0.5 hover:shadow-[var(--shadow-card)]"
-                                aria-label="WhatsApp"
-                              >
-                                <SocialIcon platform="whatsapp" />
-                              </a>
-                            ) : null}
+                        {scheduleSummary.map((item, index) => (
+                          <div
+                            key={`${item.label}-${index}`}
+                            className="rounded-[18px] border border-[color:var(--border-soft)] bg-white px-4 py-3"
+                          >
+                            <p className="text-sm font-semibold text-[color:var(--ink)]">
+                              {item.label}
+                            </p>
+                            <p className="mt-1 text-sm text-[color:var(--primary)]">
+                              {item.ranges}
+                            </p>
                           </div>
-                        </div>
-                      ) : null}
-                    </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="mt-4 rounded-[18px] border border-dashed border-[color:var(--border-soft)] bg-white px-4 py-4 text-sm text-[color:var(--ink-muted)]">
+                        Sin horarios publicos cargados.
+                      </div>
+                    )}
                   </div>
 
-                  {shouldRenderMap ? (
-                    <PublicProfileMap
-                      name={merged.name}
-                      category={merged.category}
-                      address={addressLine}
-                      city={cityLine}
-                      latitude={mapLatitude as number}
-                      longitude={mapLongitude as number}
-                      heightClassName="h-[360px]"
-                    />
-                  ) : canShowMap ? (
-                    <MapSectionPlaceholder message="Acercate a esta seccion para cargar el mapa." />
-                  ) : (
-                    <MapSectionPlaceholder message="Ubicacion no disponible." />
-                  )}
+                  <div className="rounded-[28px] border border-[color:var(--border-soft)] bg-[color:var(--surface-soft)] p-5">
+                    <p className="text-[0.68rem] font-semibold uppercase tracking-[0.28em] text-[color:var(--ink-faint)]">
+                      Contacto
+                    </p>
+                    <div className="mt-4 space-y-3">
+                      <DetailRow label="Direccion" value={addressValue} />
+                      <DetailRow label="Telefono" value={phoneValue} href={phoneValue ? `tel:${phoneValue}` : undefined} />
+                      <DetailRow label="Email" value={emailValue} href={emailValue ? `mailto:${emailValue}` : undefined} />
+                    </div>
+
+                    {hasSocial ? (
+                      <div className="mt-5 border-t border-[color:var(--border-soft)] pt-5">
+                        <p className="text-[0.68rem] font-semibold uppercase tracking-[0.24em] text-[color:var(--ink-faint)]">
+                          Redes
+                        </p>
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          {instagramValue && instagramHref ? (
+                            <a
+                              href={instagramHref}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-[color:var(--border-soft)] bg-white text-[color:var(--ink)] transition hover:-translate-y-0.5 hover:shadow-[var(--shadow-card)]"
+                              aria-label="Instagram"
+                            >
+                              <SocialIcon platform="instagram" />
+                            </a>
+                          ) : null}
+                          {facebookValue && facebookHref ? (
+                            <a
+                              href={facebookHref}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-[color:var(--border-soft)] bg-white text-[color:var(--ink)] transition hover:-translate-y-0.5 hover:shadow-[var(--shadow-card)]"
+                              aria-label="Facebook"
+                            >
+                              <SocialIcon platform="facebook" />
+                            </a>
+                          ) : null}
+                          {tiktokValue && tiktokHref ? (
+                            <a
+                              href={tiktokHref}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-[color:var(--border-soft)] bg-white text-[color:var(--ink)] transition hover:-translate-y-0.5 hover:shadow-[var(--shadow-card)]"
+                              aria-label="TikTok"
+                            >
+                              <SocialIcon platform="tiktok" />
+                            </a>
+                          ) : null}
+                          {websiteValue && websiteHref ? (
+                            <a
+                              href={websiteHref}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-[color:var(--border-soft)] bg-white text-[color:var(--ink)] transition hover:-translate-y-0.5 hover:shadow-[var(--shadow-card)]"
+                              aria-label="Sitio web"
+                            >
+                              <SocialIcon platform="website" />
+                            </a>
+                          ) : null}
+                          {whatsappValue && whatsappHref ? (
+                            <a
+                              href={whatsappHref}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-[color:var(--border-soft)] bg-white text-[color:var(--ink)] transition hover:-translate-y-0.5 hover:shadow-[var(--shadow-card)]"
+                              aria-label="WhatsApp"
+                            >
+                              <SocialIcon platform="whatsapp" />
+                            </a>
+                          ) : null}
+                        </div>
+                      </div>
+                    ) : null}
+                  </div>
                 </div>
-              </Card>
-            </section>
 
-            {!isPreview && professionalSlug ? (
-              <Card
-                tone="default"
-                className="rounded-[32px] border-white/80 bg-white/96 p-6 shadow-[0_26px_72px_-48px_rgba(15,23,42,0.28)] sm:p-8"
-              >
-                <PublicReviewsList
-                  slug={professionalSlug}
-                  rating={data?.rating}
-                  reviewsCount={data?.reviewsCount}
-                />
-              </Card>
-            ) : null}
-          </div>
+                {shouldRenderMap ? (
+                  <PublicProfileMap
+                    name={merged.name}
+                    category={merged.category}
+                    address={addressLine}
+                    city={cityLine}
+                    latitude={mapLatitude as number}
+                    longitude={mapLongitude as number}
+                    heightClassName="h-[360px]"
+                  />
+                ) : canShowMap ? (
+                  <MapSectionPlaceholder message="Acercate a esta seccion para cargar el mapa." />
+                ) : (
+                  <MapSectionPlaceholder message="Ubicacion no disponible." />
+                )}
+              </div>
+            </Card>
+          </section>
 
-          <aside className="hidden lg:block lg:sticky lg:top-6">
-            <PublicBookingSidebar
-              fallbackCategoryName={merged.category}
-              hasInteractedWithServices={hasInteractedWithServices}
-              isLoadingQuickSlots={isLoadingQuickSlots}
-              isPreview={isPreview}
-              onActivateQuickSlots={handleActivateQuickSlots}
-              onReserve={handleReserveSelectedService}
-              quickSlotGroups={quickSlotGroups}
-              selectedService={selectedService}
-            />
-          </aside>
+          {!isPreview && professionalSlug ? (
+            <Card
+              tone="default"
+              className="rounded-[32px] border-white/80 bg-white/96 p-6 shadow-[0_26px_72px_-48px_rgba(15,23,42,0.28)] sm:p-8"
+            >
+              <PublicReviewsList
+                slug={professionalSlug}
+                rating={data?.rating}
+                reviewsCount={data?.reviewsCount}
+              />
+            </Card>
+          ) : null}
         </div>
       </main>
 

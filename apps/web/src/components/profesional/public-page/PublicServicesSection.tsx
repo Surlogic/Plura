@@ -1,7 +1,7 @@
 import Image from 'next/image';
-import Button from '@/components/ui/Button';
 import Badge from '@/components/ui/Badge';
 import Card from '@/components/ui/Card';
+import Button from '@/components/ui/Button';
 import { resolveAssetUrl } from '@/utils/assetUrl';
 import type { PublicService } from '@/types/professional';
 import {
@@ -21,6 +21,7 @@ type PublicServicesSectionProps = {
   categories: string[];
   onCategoryChange: (category: string) => void;
   onOpenServiceDetail: (index: number) => void;
+  onReserveService: (index: number) => void;
   onSelectService: (index: number) => void;
   selectedServiceIndex: number;
   serviceItems: PublicServiceItem[];
@@ -43,6 +44,7 @@ export default function PublicServicesSection({
   categories,
   onCategoryChange,
   onOpenServiceDetail,
+  onReserveService,
   onSelectService,
   selectedServiceIndex,
   serviceItems,
@@ -62,11 +64,10 @@ export default function PublicServicesSection({
             Servicios
           </p>
           <h2 className="mt-2 text-3xl font-semibold text-[color:var(--ink)]">
-            Elegi lo que queres reservar
+            Servicios disponibles
           </h2>
           <p className="mt-3 max-w-2xl text-sm leading-6 text-[color:var(--ink-muted)]">
-            La seleccion mantiene el flujo actual de reserva y actualiza el rail lateral con los
-            detalles del servicio.
+            Esta pantalla presenta la oferta y deriva al flujo dedicado de reserva sin meter pasos operativos aca.
           </p>
         </div>
         <Badge variant="neutral" className="w-fit normal-case tracking-normal">
@@ -101,32 +102,32 @@ export default function PublicServicesSection({
           No hay servicios cargados todavia.
         </div>
       ) : (
-        <div className="mt-6 grid gap-4 xl:grid-cols-2">
+        <div className="mt-6 overflow-hidden rounded-[26px] border border-[color:var(--border-soft)] bg-white">
           {visibleItems.map((item) => {
             const imageSrc = normalizeImageSrc(item.service.imageUrl);
             const isSelected = selectedServiceIndex === item.index;
             return (
               <article
                 key={item.service.id ?? `${item.categoryLabel}-${item.index}`}
-                className={`rounded-[28px] border p-5 transition ${
+                className={`grid gap-4 border-b border-[color:var(--border-soft)] px-4 py-4 transition last:border-b-0 sm:grid-cols-[minmax(0,1fr)_120px_110px_170px] sm:items-center sm:px-5 ${
                   isSelected
-                    ? 'border-[color:var(--primary)] bg-[color:var(--primary-soft)]/55 shadow-[0_24px_60px_-44px_rgba(10,122,67,0.34)]'
-                    : 'border-[color:var(--border-soft)] bg-[color:var(--surface-soft)]/85 hover:-translate-y-1 hover:border-[color:var(--border-strong)] hover:bg-white hover:shadow-[var(--shadow-card)]'
+                    ? 'bg-[color:var(--primary-soft)]/45'
+                    : 'bg-white hover:bg-[color:var(--surface-soft)]/55'
                 }`}
               >
-                <div className="flex gap-4">
-                  <div className="relative h-24 w-24 shrink-0 overflow-hidden rounded-[20px] border border-[color:var(--border-soft)] bg-white">
+                <div className="flex min-w-0 gap-4">
+                  <div className="relative hidden h-16 w-16 shrink-0 overflow-hidden rounded-[18px] border border-[color:var(--border-soft)] bg-[color:var(--surface-soft)] sm:block">
                     {imageSrc ? (
                       <Image
                         src={imageSrc}
                         alt={item.service.name || 'Servicio'}
                         fill
-                        sizes="96px"
+                        sizes="64px"
                         className="object-cover"
                       />
                     ) : (
-                      <div className="flex h-full w-full items-center justify-center px-2 text-center text-[0.62rem] font-semibold uppercase tracking-[0.16em] text-[color:var(--ink-faint)]">
-                        Sin foto
+                      <div className="flex h-full w-full items-center justify-center px-2 text-center text-[0.58rem] font-semibold uppercase tracking-[0.14em] text-[color:var(--ink-faint)]">
+                        Foto
                       </div>
                     )}
                   </div>
@@ -140,56 +141,60 @@ export default function PublicServicesSection({
                         {formatServicePaymentType(item.service.paymentType)}
                       </Badge>
                     </div>
-                    <h3 className="mt-3 text-xl font-semibold text-[color:var(--ink)]">
+                    <h3 className="mt-3 text-lg font-semibold text-[color:var(--ink)]">
                       {item.service.name}
                     </h3>
                     {item.service.description ? (
-                      <p className="mt-2 line-clamp-3 text-sm leading-6 text-[color:var(--ink-muted)]">
+                      <p className="mt-1.5 line-clamp-2 text-sm leading-6 text-[color:var(--ink-muted)]">
                         {item.service.description}
                       </p>
                     ) : (
-                      <p className="mt-2 text-sm leading-6 text-[color:var(--ink-faint)]">
+                      <p className="mt-1.5 text-sm leading-6 text-[color:var(--ink-faint)]">
                         Sin descripcion cargada.
                       </p>
                     )}
                   </div>
                 </div>
 
-                <div className="mt-5 grid gap-3 sm:grid-cols-2">
-                  <div className="rounded-[18px] border border-[color:var(--border-soft)] bg-white px-4 py-3">
-                    <p className="text-[0.62rem] font-semibold uppercase tracking-[0.24em] text-[color:var(--ink-faint)]">
-                      Duracion
-                    </p>
-                    <p className="mt-1.5 text-sm font-semibold text-[color:var(--ink)]">
-                      {formatServiceDuration(item.service.duration)}
-                    </p>
-                  </div>
-                  <div className="rounded-[18px] border border-[color:var(--border-soft)] bg-white px-4 py-3">
-                    <p className="text-[0.62rem] font-semibold uppercase tracking-[0.24em] text-[color:var(--ink-faint)]">
-                      Precio
-                    </p>
-                    <p className="mt-1.5 text-sm font-semibold text-[color:var(--primary)]">
-                      {formatServicePrice(item.service.price)}
-                    </p>
-                  </div>
+                <div className="grid gap-1 sm:justify-self-start">
+                  <p className="text-[0.62rem] font-semibold uppercase tracking-[0.24em] text-[color:var(--ink-faint)]">
+                    Duracion
+                  </p>
+                  <p className="text-sm font-semibold text-[color:var(--ink)]">
+                    {formatServiceDuration(item.service.duration)}
+                  </p>
                 </div>
 
-                <div className="mt-5 flex flex-wrap gap-3">
-                  <Button
-                    type="button"
-                    variant={isSelected ? 'primary' : 'secondary'}
-                    className="flex-1"
-                    onClick={() => onSelectService(item.index)}
-                  >
-                    {isSelected ? 'Seleccionado' : 'Agregar'}
-                  </Button>
+                <div className="grid gap-1 sm:justify-self-start">
+                  <p className="text-[0.62rem] font-semibold uppercase tracking-[0.24em] text-[color:var(--ink-faint)]">
+                    Precio
+                  </p>
+                  <p className="text-sm font-semibold text-[color:var(--primary)]">
+                    {formatServicePrice(item.service.price)}
+                  </p>
+                </div>
+
+                <div className="flex flex-wrap gap-2 sm:justify-self-end">
                   <Button
                     type="button"
                     variant="quiet"
-                    className="flex-1 border border-[color:var(--border-soft)] bg-white"
-                    onClick={() => onOpenServiceDetail(item.index)}
+                    className="border border-[color:var(--border-soft)] bg-white"
+                    onClick={() => {
+                      onSelectService(item.index);
+                      onOpenServiceDetail(item.index);
+                    }}
                   >
                     Ver detalle
+                  </Button>
+                  <Button
+                    type="button"
+                    variant={isSelected ? 'primary' : 'secondary'}
+                    onClick={() => {
+                      onSelectService(item.index);
+                      onReserveService(item.index);
+                    }}
+                  >
+                    {isSelected ? 'Reservar' : 'Elegir servicio'}
                   </Button>
                 </div>
               </article>

@@ -20,18 +20,18 @@ export default function SearchField({
   className = '',
   valueClassName = '',
 }: SearchFieldProps) {
-  const baseClassName = `group flex w-full min-w-0 flex-col justify-center rounded-[24px] border px-4 py-3 text-left transition ${SEARCH_CONTROL_HEIGHT_CLASS} ${
+  const baseClassName = `group flex w-full min-w-0 flex-col justify-center rounded-[18px] border px-3.5 py-2.5 text-left transition ${SEARCH_CONTROL_HEIGHT_CLASS} ${
     active
-      ? 'border-[color:var(--border-strong)] bg-white shadow-[0_18px_36px_-28px_rgba(14,42,71,0.42)]'
-      : 'border-transparent bg-[color:var(--surface-muted)] hover:border-[color:var(--border-soft)] hover:bg-white'
+      ? 'border-[color:var(--border-strong)] bg-white shadow-[0_14px_28px_-24px_rgba(14,42,71,0.34)]'
+      : 'border-transparent bg-[color:var(--surface-muted)] hover:bg-white'
   } ${className}`.trim();
 
   const content = (
     <>
-      <span className="truncate whitespace-nowrap text-[0.62rem] font-semibold uppercase tracking-[0.24em] text-[color:var(--ink-faint)]">
+      <span className="truncate whitespace-nowrap text-[0.58rem] font-semibold uppercase tracking-[0.2em] text-[color:var(--ink-faint)]">
         {label}
       </span>
-      <div className={`mt-2 min-w-0 ${valueClassName}`.trim()}>{children}</div>
+      <div className={`mt-1.5 min-w-0 ${valueClassName}`.trim()}>{children}</div>
     </>
   );
 

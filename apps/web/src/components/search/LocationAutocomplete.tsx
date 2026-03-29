@@ -1,5 +1,5 @@
 import type { GeoAutocompleteItem, SearchSuggestionItem } from '@/types/search';
-import { SEARCH_CHIP_CLASS, SEARCH_PANEL_SECTION_CLASS } from '@/components/search/searchUi';
+import { SEARCH_CHIP_CLASS } from '@/components/search/searchUi';
 
 type LocationAutocompleteProps = {
   locationInput: string;
@@ -31,34 +31,13 @@ export default function LocationAutocomplete({
   const showEmptySuggestions = locationInput.trim().length >= 2 && geoSuggestions.length === 0;
 
   return (
-    <div className="space-y-4">
-      <div className={`${SEARCH_PANEL_SECTION_CLASS} space-y-3`}>
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="space-y-1">
-            <p className="text-sm font-semibold text-[color:var(--ink)]">Ubicacion y cercania</p>
-            <p className="text-xs text-[color:var(--ink-muted)]">
-              Combina una zona amplia, una ciudad o tu posicion actual.
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={onUseCurrentLocation}
-            className="inline-flex h-10 items-center gap-2 rounded-full border border-[color:var(--border-soft)] bg-white px-4 text-xs font-semibold text-[color:var(--accent-strong)] transition hover:bg-[color:var(--surface-soft)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--accent-soft)]"
-            disabled={geoStatus === 'loading'}
-          >
-            <svg viewBox="0 0 20 20" fill="none" className="h-3.5 w-3.5" aria-hidden="true">
-              <path d="M10 17c2.8-3.4 4.2-6 4.2-7.7A4.2 4.2 0 105.8 9.3C5.8 11 7.2 13.6 10 17z" stroke="currentColor" strokeWidth="1.6" />
-              <circle cx="10" cy="9" r="1.6" fill="currentColor" />
-            </svg>
-            {geoStatus === 'loading' ? 'Detectando...' : 'Usar mi ubicacion'}
-          </button>
-        </div>
-
-        <div className="relative">
+    <div className="space-y-3">
+      <div className="flex flex-col gap-2 sm:flex-row">
+        <div className="relative min-w-0 flex-1">
           <svg
             viewBox="0 0 20 20"
             fill="none"
-            className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[color:var(--ink-faint)]"
+            className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[color:var(--ink-faint)]"
             aria-hidden="true"
           >
             <path d="M10 17c2.8-3.4 4.2-6 4.2-7.7A4.2 4.2 0 105.8 9.3C5.8 11 7.2 13.6 10 17z" stroke="currentColor" strokeWidth="1.6" />
@@ -68,75 +47,78 @@ export default function LocationAutocomplete({
             value={locationInput}
             onChange={(event) => onLocationInputChange(event.target.value)}
             placeholder="Zona, barrio o ciudad"
-            className="h-12 w-full rounded-[18px] border border-[color:var(--border-soft)] bg-white px-12 text-sm font-medium text-[color:var(--ink)] placeholder:font-normal placeholder:text-[color:var(--ink-muted)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--accent-soft)]"
+            className="h-11 w-full rounded-[16px] border border-[color:var(--border-soft)] bg-white px-10 text-sm font-medium text-[color:var(--ink)] placeholder:font-normal placeholder:text-[color:var(--ink-muted)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--accent-soft)]"
           />
         </div>
+
+        <button
+          type="button"
+          onClick={onUseCurrentLocation}
+          className="inline-flex h-11 items-center justify-center rounded-[16px] border border-[color:var(--border-soft)] bg-[color:var(--surface-muted)] px-4 text-[0.76rem] font-semibold text-[color:var(--ink)] transition hover:bg-white focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--accent-soft)]"
+          disabled={geoStatus === 'loading'}
+        >
+          {geoStatus === 'loading' ? 'Detectando...' : 'Usar mi ubicacion'}
+        </button>
       </div>
 
       {geoSuggestions.length > 0 ? (
-        <div className={`${SEARCH_PANEL_SECTION_CLASS} max-h-64 space-y-2 overflow-y-auto pr-1`}>
-          {geoSuggestions.map((item) => (
+        <div className="space-y-1.5">
+          {geoSuggestions.slice(0, 5).map((item) => (
             <button
               key={`${item.label}-${item.city}`}
               type="button"
               onClick={() => onSelectGeoItem(item)}
-              className="w-full rounded-[18px] border border-[color:var(--border-soft)] bg-white px-3.5 py-3 text-left transition hover:border-[color:var(--border-strong)] hover:bg-[color:var(--surface-soft)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--accent-soft)]"
+              className="w-full rounded-[14px] px-3 py-2 text-left transition hover:bg-[color:var(--surface-muted)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--accent-soft)]"
             >
               <p className="truncate text-sm font-semibold text-[color:var(--ink)]">{item.label}</p>
-              {item.city ? <p className="truncate pt-0.5 text-xs text-[color:var(--ink-muted)]">{item.city}</p> : null}
+              {item.city ? (
+                <p className="truncate text-[0.74rem] text-[color:var(--ink-muted)]">{item.city}</p>
+              ) : null}
             </button>
           ))}
         </div>
-      ) : showEmptySuggestions ? (
-        <div className={`${SEARCH_PANEL_SECTION_CLASS} text-sm text-[color:var(--ink-muted)]`}>
-          No encontramos coincidencias para esa ubicacion. Proba con una ciudad o zona mas amplia.
+      ) : null}
+
+      {showEmptySuggestions ? (
+        <p className="text-[0.78rem] text-[color:var(--ink-muted)]">
+          No encontramos coincidencias para esa ubicacion.
+        </p>
+      ) : null}
+
+      {geoSuggestions.length === 0 && recentCities.length > 0 ? (
+        <div className="flex flex-wrap gap-1.5">
+          {recentCities.slice(0, 4).map((city) => (
+            <button
+              key={city}
+              type="button"
+              onClick={() => onSelectCity(city)}
+              className={SEARCH_CHIP_CLASS}
+            >
+              {city}
+            </button>
+          ))}
         </div>
       ) : null}
 
-      {popularNearby.length > 0 ? (
-        <div className={SEARCH_PANEL_SECTION_CLASS}>
-          <p className="mb-2 text-[0.68rem] font-semibold uppercase tracking-[0.24em] text-[color:var(--ink-faint)]">
-            Populares en tu zona
-          </p>
-          <div className="flex flex-wrap gap-1.5">
-            {popularNearby.slice(0, 6).map((item) => (
-              <button
-                key={`popular-${item.id || item.name}`}
-                type="button"
-                onClick={() => onPickPopularNearby(item)}
-                className={SEARCH_CHIP_CLASS}
-              >
-                {item.name}
-              </button>
-            ))}
-          </div>
-        </div>
-      ) : null}
-
-      {recentCities.length > 0 ? (
-        <div className={SEARCH_PANEL_SECTION_CLASS}>
-          <p className="mb-2 text-[0.68rem] font-semibold uppercase tracking-[0.24em] text-[color:var(--ink-faint)]">
-            Busquedas recientes
-          </p>
-          <div className="flex flex-wrap gap-1.5">
-            {recentCities.slice(0, 6).map((city) => (
-              <button
-                key={city}
-                type="button"
-                onClick={() => onSelectCity(city)}
-                className={SEARCH_CHIP_CLASS}
-              >
-                {city}
-              </button>
-            ))}
-          </div>
+      {geoSuggestions.length === 0 && !locationInput.trim() && popularNearby.length > 0 ? (
+        <div className="flex flex-wrap gap-1.5">
+          {popularNearby.slice(0, 4).map((item) => (
+            <button
+              key={`popular-${item.id || item.name}`}
+              type="button"
+              onClick={() => onPickPopularNearby(item)}
+              className={SEARCH_CHIP_CLASS}
+            >
+              {item.name}
+            </button>
+          ))}
         </div>
       ) : null}
 
       {geoMessage ? (
         <p
-          className={`text-xs ${
-            geoStatus === 'error' ? 'text-[#B42318]' : 'text-[color:var(--accent-strong)]'
+          className={`text-[0.74rem] ${
+            geoStatus === 'error' ? 'text-[#B42318]' : 'text-[color:var(--ink-muted)]'
           }`}
         >
           {geoMessage}

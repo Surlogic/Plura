@@ -52,11 +52,11 @@ export default memo(function Hero({ stats, isLoading = false }: HeroProps) {
           </div>
         </div>
 
-        <div className="mx-auto mt-7 max-w-[64rem]">
+        <div className="mx-auto mt-6 max-w-[68rem]">
           <SearchBar />
         </div>
 
-        <div className="mx-auto mt-5 max-w-[58rem] border-t border-[color:var(--border-soft)] pt-4">
+        <div className="mx-auto mt-4 max-w-[58rem] border-t border-[color:var(--border-soft)] pt-4">
           <div className="grid gap-4 sm:grid-cols-3 sm:gap-6">
             {statItems.map((item, index) => (
               <div

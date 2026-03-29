@@ -507,18 +507,15 @@ export default function ExplorarPage() {
             citySuggestions={citySuggestions}
           />
 
-          <div className="rounded-[28px] border border-[color:var(--border-soft)] bg-[color:var(--surface-strong)] p-3.5 shadow-[0_24px_54px_-40px_rgba(13,35,58,0.24)]">
-            <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-              <div className="space-y-1">
-                <p className="text-[0.68rem] font-semibold uppercase tracking-[0.24em] text-[color:var(--ink-faint)]">
-                  Controles de resultados
-                </p>
-                <p className="text-sm text-[color:var(--ink-muted)]">
-                  {SEARCH_TYPE_LABELS[searchType]}{city ? ` en ${city}` : ''}{hasCoordinates ? ` dentro de ${Math.round(radiusKm)} km` : ''}.
-                </p>
+          <div className="rounded-[20px] border border-[color:var(--border-soft)] bg-[color:var(--surface-strong)] px-3 py-2.5 shadow-[0_18px_44px_-38px_rgba(13,35,58,0.22)]">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="inline-flex items-center gap-2 rounded-full bg-[color:var(--surface-muted)] px-3 py-1.5 text-[0.72rem] font-semibold text-[color:var(--ink-muted)]">
+                <span>{SEARCH_TYPE_LABELS[searchType]}</span>
+                {city ? <span>• {city}</span> : null}
+                {hasCoordinates ? <span>• {Math.round(radiusKm)} km</span> : null}
               </div>
 
-              <div className="flex flex-wrap items-center gap-3">
+              <div className="flex flex-wrap items-center gap-2.5">
                 <div className="inline-flex rounded-full border border-[color:var(--border-soft)] bg-[color:var(--surface-muted)] p-1">
                   <button
                     type="button"

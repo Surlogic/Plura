@@ -285,27 +285,28 @@ const toUnifiedValuesFromRecent = (entry: RecentSearchEntry): UnifiedSearchValue
 
 export const getAdaptiveValueClass = (value: string) => {
   const length = value.trim().length;
-  if (length > 24) return 'text-sm';
-  if (length > 14) return 'text-[0.95rem]';
-  return 'text-[1.02rem]';
+  if (length > 24) return 'text-[0.82rem]';
+  if (length > 14) return 'text-[0.88rem]';
+  return 'text-[0.93rem]';
 };
 
 const GLOBAL_SEARCH_OPTION: SuggestDropdownItem = {
   id: 'all-services-or-categories',
   type: 'SERVICIO',
-  label: 'Todos los servicios o rubros',
-  secondary: 'Buscar en toda la plataforma',
+  label: 'Explorar todo',
+  secondary: 'Sin restringir tipo',
   variant: 'global',
 };
 
 const POPULAR_CATEGORY_PATTERNS = ['barber', 'unas', 'depil', 'spa', 'cosmet'];
 const LOCATION_AUTOCOMPLETE_DEBOUNCE_MS = 300;
 const SEARCH_SUGGEST_DEBOUNCE_MS = 350;
-const CATEGORY_DROPDOWN_LIMIT = 10;
+const CATEGORY_DROPDOWN_LIMIT = 8;
+const RECENT_DROPDOWN_LIMIT = 3;
 
 const interleaveSuggestionItems = (
   sources: SuggestDropdownItem[][],
-  maxItems = 24,
+  maxItems = 12,
 ) => {
   const buckets = sources.map((items) => [...items]);
   const mixed: SuggestDropdownItem[] = [];
@@ -841,7 +842,7 @@ export function useUnifiedSearch({
 
     return interleaveSuggestionItems(
       [serviceItems, catItems, professionalItems, businessItems],
-      24,
+      12,
     );
   }, [categoryDropdownItems, suggestions.locals, suggestions.professionals, suggestions.services]);
 
@@ -867,11 +868,14 @@ export function useUnifiedSearch({
     const normalizedQuery = normalizeSearchText(searchInput);
     if (!normalizedQuery) {
       if (recentDropdownItems.length > 0) {
-        groups.push({ title: 'Busquedas recientes', items: recentDropdownItems });
+        groups.push({
+          title: 'Recientes',
+          items: recentDropdownItems.slice(0, RECENT_DROPDOWN_LIMIT),
+        });
       }
 
       if (popularCategoryItems.length > 0) {
-        groups.push({ title: 'Rubros populares', items: popularCategoryItems });
+        groups.push({ title: 'Rubros', items: popularCategoryItems.slice(0, 6) });
       }
 
       const popularCategorySlugs = new Set(
@@ -888,7 +892,7 @@ export function useUnifiedSearch({
           items: remainingCategories.slice(0, CATEGORY_DROPDOWN_LIMIT),
           note:
             remainingCategories.length > CATEGORY_DROPDOWN_LIMIT
-              ? 'Escribi para refinar y ver mas rubros.'
+              ? 'Escribi para ver mas.'
               : undefined,
         });
       }

@@ -9,42 +9,43 @@ export type SearchFilterChip = {
 
 type SearchFilterChipsProps = {
   filters: SearchFilterChip[];
-  helperText: string;
+  onClearAll?: () => void;
 };
 
 export default memo(function SearchFilterChips({
   filters,
-  helperText,
+  onClearAll,
 }: SearchFilterChipsProps) {
-  return (
-    <div className="flex flex-col gap-3 border-t border-[color:var(--border-soft)] px-1 pt-3.5 sm:flex-row sm:items-center sm:justify-between">
-      <div className="space-y-1">
-        <p className="text-[0.68rem] font-semibold uppercase tracking-[0.24em] text-[color:var(--ink-faint)]">
-          Filtros listos
-        </p>
-        <p className="text-sm text-[color:var(--ink-muted)]">{helperText}</p>
-      </div>
+  if (filters.length === 0 && !onClearAll) return null;
 
-      {filters.length > 0 ? (
-        <div className="flex flex-wrap gap-2 sm:justify-end">
-          {filters.map((filter) => (
-            <button
-              key={filter.id}
-              type="button"
-              onClick={filter.onRemove}
-              className={SEARCH_CHIP_CLASS}
-              aria-label={`Quitar filtro ${filter.label}`}
-            >
-              <span>{filter.label}</span>
-              <span
-                className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-[color:var(--surface-strong)] text-[10px] text-[color:var(--ink-faint)]"
-                aria-hidden="true"
-              >
-                x
-              </span>
-            </button>
-          ))}
-        </div>
+  return (
+    <div className="flex flex-wrap items-center gap-2 border-t border-[color:var(--border-soft)] pt-2.5">
+      {filters.map((filter) => (
+        <button
+          key={filter.id}
+          type="button"
+          onClick={filter.onRemove}
+          className={SEARCH_CHIP_CLASS}
+          aria-label={`Quitar filtro ${filter.label}`}
+        >
+          <span>{filter.label}</span>
+          <span
+            className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-[color:var(--surface-strong)] text-[10px] text-[color:var(--ink-faint)]"
+            aria-hidden="true"
+          >
+            x
+          </span>
+        </button>
+      ))}
+
+      {onClearAll ? (
+        <button
+          type="button"
+          onClick={onClearAll}
+          className="inline-flex items-center rounded-full px-1.5 py-1 text-[0.72rem] font-semibold text-[color:var(--ink-muted)] transition hover:text-[color:var(--ink)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--accent-soft)]"
+        >
+          Limpiar
+        </button>
       ) : null}
     </div>
   );

@@ -60,7 +60,7 @@ Base: `apps/web/src/pages`
 
 ### Rutas publicas
 
-- `/`: home SSR con hero + buscador unificado en variante simplificada, categorias visuales, top businesses, bloque compacto de `como funciona`, ReviewsSection (testimonios publicos de feedback de app via `GET /public/app-feedback`) y CTA final; usa `getServerSideProps` con retry client-side si SSR falla.
+- `/`: home SSR con hero + buscador unificado en variante simplificada, categorias visuales, top businesses, bloque compacto de `como funciona`, ReviewsSection (testimonios publicos de feedback de app via `GET /public/app-feedback`) y CTA final; `Reservar ahora` deriva a `/explorar` y `Soy profesional` al registro existente `/profesional/auth/register`; usa `getServerSideProps` con retry client-side si SSR falla.
 - `/explorar`: buscador principal con filtros, lista y mapa.
 - `/explorar/[slug]`: vista detallada de exploracion por slug.
 - `/profesional/[slug]`: pagina publica del profesional.
@@ -81,6 +81,7 @@ Lectura de producto:
 - `/explorar`, `/profesional/[slug]` y `/reservar` son parte del loop principal marketplace -> perfil -> reserva
 - cuando una reserva prepaga genera `checkoutUrl`, tanto `/reservar` como `/cliente/reservas` abren Mercado Pago en la pestaña actual para asegurar una experiencia full-page consistente y evitar bloqueos de popup
 - `/reservar` ya no navega automaticamente a `/cliente/reservas` cuando el checkout se inicia; deja una accion manual para ver el estado de la reserva sin interferir con la apertura de Mercado Pago
+- `/reservar` ahora absorbe la operacion fuerte que salio del perfil publico: permite elegir servicio dentro del flujo, muestra pasos claros (`servicio -> fecha -> horario -> confirmacion`) y concentra el resumen/CTA de reserva en una pantalla dedicada
 - `/explorar` y `/profesional/pagina/[slug]` ya no fuerzan auth refresh ni favoritos en 401 cuando el cliente no tiene una sesion conocida; las features auth-only se habilitan recien con hint de sesion valida
 - cuando existe sesion conocida del cliente, `/explorar`, `/profesional/[slug]` y `/profesional/pagina/[slug]` tambien hidratan el perfil cliente para mantener navbar y favoritos coherentes en la navegacion publica
 - `_app.tsx` ya usa un `session hint` con rol (`CLIENT` o `PROFESSIONAL`) para rehidratar el perfil correcto tambien en `/` y otras rutas publicas al reabrir navegador; si el hint viejo no tiene rol, el bootstrap puede intentar ambos perfiles de forma transitoria hasta que el usuario vuelva a iniciar sesion
@@ -266,6 +267,11 @@ Modulos relevantes:
 - `middleware.ts`: CSP y headers de seguridad.
 - `/oauth/mercadopago/callback`: ahora interpreta `result/reason` devueltos por el backend y consulta el estado real de conexion; ya no intenta llamar al callback backend con `code/state`.
 - `pages/profesional/pagina/[slug].tsx`: compone la pagina publica con hero premium, CTA liviano hacia `/reservar`, servicios en lista compacta, galeria contenida, bloque unificado de ubicacion/horarios y reseñas; reutiliza el fetch cacheado del perfil publico y posterga geocoding fallback + mapa hasta que el bloque entra en viewport.
+- `pages/reservar.tsx`: flujo dedicado de reserva con seleccion interna de servicio, fecha y horario, resumen sticky, CTA principal y continuidad de checkout/login pendiente sin cambiar contratos publicos.
+- `components/reservation/ReservationFlowHeader.tsx`: encabezado del flujo con resumen del profesional, progreso por pasos y servicio activo.
+- `components/reservation/ReservationServiceSelector.tsx`: selector compacto de servicios dentro de `/reservar`, con filtro por categoria y cambio de servicio sin volver al perfil publico.
+- `components/reservation/ReservationScheduleStep.tsx`: calendario y horarios del flujo de reserva, desacoplados del resumen final.
+- `components/reservation/ReservationSummaryCard.tsx`: resumen sticky de la reserva con politica, modalidad de pago, CTA y estados de guardado/checkout.
 - `components/profesional/public-page/PublicProfileHero.tsx`: hero publico con banner ancho, logo superpuesto, rating, ubicacion, about y favorito.
 - `components/profesional/public-page/PublicServicesSection.tsx`: lista compacta de servicios con pills por categoria, metadata breve y CTA directo hacia el flujo dedicado de reserva.
 - `components/profesional/public-page/servicePresentation.ts`: formateadores compartidos para precio, duracion, modalidad de pago y categoria publica.

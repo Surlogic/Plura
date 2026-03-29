@@ -27,7 +27,7 @@ export default memo(function FinalCtaSection() {
               <Button href="/explorar" variant="primary" size="lg" className="min-w-[10.5rem]">
                 Reservar ahora
               </Button>
-              <Button href="/profesional/auth/login" variant="secondary" size="lg" className="min-w-[10.5rem] border-white/70 bg-white/88">
+              <Button href="/profesional/auth/register" variant="secondary" size="lg" className="min-w-[10.5rem] border-white/70 bg-white/88">
                 Soy profesional
               </Button>
             </div>

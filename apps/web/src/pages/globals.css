@@ -267,6 +267,29 @@ a:hover {
   outline: none;
 }
 
+.hero-search-service-input,
+.hero-search-service-input:hover,
+.hero-search-service-input:focus,
+.hero-search-service-input:active {
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  outline: none !important;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+.hero-search-service-input:-webkit-autofill,
+.hero-search-service-input:-webkit-autofill:hover,
+.hero-search-service-input:-webkit-autofill:focus,
+.hero-search-service-input:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 1000px transparent inset !important;
+  box-shadow: 0 0 0 1000px transparent inset !important;
+  -webkit-text-fill-color: var(--ink) !important;
+  transition: background-color 9999s ease-out 0s;
+}
+
 :where(table) {
   width: 100%;
   border-collapse: separate;

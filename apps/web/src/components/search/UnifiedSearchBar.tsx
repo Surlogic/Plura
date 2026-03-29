@@ -214,7 +214,7 @@ export default memo(function UnifiedSearchBar({
     ? `inline-flex w-full min-w-[8.75rem] items-center justify-center rounded-[18px] bg-[color:var(--primary)] px-5 text-[0.95rem] font-semibold text-white shadow-[0_20px_34px_-24px_rgba(10,122,67,0.7)] transition hover:bg-[color:var(--primary-strong)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--accent-soft)] focus-visible:ring-offset-2 ${SEARCH_CONTROL_HEIGHT_CLASS}`
     : `inline-flex w-full min-w-[7.5rem] items-center justify-center rounded-[18px] bg-[color:var(--primary)] px-4 text-[0.94rem] font-semibold text-white shadow-[0_16px_26px_-22px_rgba(13,35,58,0.72)] transition hover:bg-[color:var(--primary-strong)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--accent-soft)] focus-visible:ring-offset-2 ${SEARCH_CONTROL_HEIGHT_CLASS}`;
   const searchInputClassName = isHero
-    ? 'h-6 w-full min-w-0 appearance-none border-0 rounded-none bg-transparent p-0 shadow-none text-[0.95rem] font-semibold leading-none text-[color:var(--ink)] outline-none ring-0 placeholder:font-normal placeholder:text-[color:var(--ink-muted)] focus:border-0 focus:outline-none focus:ring-0'
+    ? 'hero-search-service-input h-6 w-full min-w-0 appearance-none border-0 rounded-none bg-transparent p-0 shadow-none text-[0.95rem] font-semibold leading-none text-[color:var(--ink)] outline-none ring-0 placeholder:font-normal placeholder:text-[color:var(--ink-muted)] focus:border-0 focus:outline-none focus:ring-0 focus:shadow-none'
     : 'h-6 w-full min-w-0 bg-transparent text-[0.95rem] font-semibold leading-none text-[color:var(--ink)] placeholder:font-normal placeholder:text-[color:var(--ink-muted)] focus:outline-none';
 
   const openSearchPanel = () => {

@@ -12,8 +12,8 @@ type CategoriesGridProps = {
 
 export default memo(function CategoriesGrid({ categories, isLoading = false }: CategoriesGridProps) {
   const [showAll, setShowAll] = useState(false);
-  const visibleCategories = showAll ? categories : categories.slice(0, 6);
-  const canToggle = categories.length > 6;
+  const visibleCategories = showAll ? categories : categories.slice(0, 8);
+  const canToggle = categories.length > 8;
 
   return (
     <section className="px-4">
@@ -33,7 +33,7 @@ export default memo(function CategoriesGrid({ categories, isLoading = false }: C
             Cargando rubros...
           </Card>
         ) : visibleCategories.length > 0 ? (
-          <div className="grid grid-cols-2 gap-4 md:grid-cols-3">
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-3 md:gap-4 xl:grid-cols-4">
             {visibleCategories.map((category, index) => (
               <CategoryCard
                 key={category.id}

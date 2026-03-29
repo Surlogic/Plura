@@ -42,11 +42,11 @@ export default memo(function RubroCard({
     <Link
       href={`/explorar/${encodeURIComponent(slug)}`}
       className={[
-        'group block overflow-hidden rounded-[28px] border border-[color:var(--border-soft)] bg-white/95 shadow-[var(--shadow-card)] transition hover:-translate-y-1 hover:border-[color:var(--border-strong)] hover:shadow-[var(--shadow-lift)]',
+        'group block overflow-hidden rounded-[26px] border border-[color:var(--border-soft)] bg-white/95 shadow-[var(--shadow-card)] transition hover:-translate-y-1 hover:border-[color:var(--border-strong)] hover:shadow-[var(--shadow-lift)]',
         className || '',
       ].join(' ')}
     >
-      <div className="relative aspect-[4/5] overflow-hidden bg-[color:var(--surface-soft)] sm:aspect-[5/4]">
+      <div className="relative aspect-[4/5] overflow-hidden bg-[color:var(--surface-soft)] sm:aspect-[5/4] xl:aspect-[4/5]">
         {normalizedImageUrl ? (
           <Image
             src={normalizedImageUrl}
@@ -62,26 +62,24 @@ export default memo(function RubroCard({
             aria-hidden="true"
           />
         )}
-        <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(15,23,42,0.14)_0%,rgba(15,23,42,0.32)_32%,rgba(15,23,42,0.82)_68%,rgba(15,23,42,0.96)_100%)]" aria-hidden="true" />
+        <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(15,23,42,0.08)_0%,rgba(15,23,42,0.18)_34%,rgba(15,23,42,0.54)_68%,rgba(15,23,42,0.9)_100%)]" aria-hidden="true" />
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(15,23,42,0.12),transparent_34%)]" aria-hidden="true" />
         <div className="absolute inset-x-0 bottom-0 p-5 sm:p-6">
-          <div className="rounded-[24px] border border-white/12 bg-[rgba(15,23,42,0.72)] p-4 shadow-[0_20px_38px_-28px_rgba(0,0,0,0.6)] backdrop-blur-sm">
-            <div className="flex items-end justify-between gap-4">
-              <h3
-                className="max-w-[12rem] text-lg font-semibold leading-[1.05] sm:max-w-[14rem] sm:text-[1.35rem]"
+          <div className="flex items-end justify-between gap-3">
+            <h3
+              className="max-w-[10.5rem] text-[1.02rem] font-semibold leading-[1.02] text-white drop-shadow-[0_3px_10px_rgba(0,0,0,0.78)] sm:max-w-[11.5rem] sm:text-[1.16rem]"
+              style={{ color: '#ffffff' }}
+            >
+              {title}
+            </h3>
+            {showCta ? (
+              <span
+                className="inline-flex shrink-0 rounded-full border border-white/16 bg-[rgba(255,255,255,0.14)] px-2.5 py-1 text-[0.62rem] font-semibold uppercase tracking-[0.14em] text-white shadow-[0_10px_24px_-18px_rgba(15,23,42,0.52)] backdrop-blur-sm"
                 style={{ color: '#ffffff' }}
               >
-                {title}
-              </h3>
-              {showCta ? (
-                <span
-                  className="inline-flex shrink-0 rounded-full border border-white/18 bg-white/16 px-3 py-1.5 text-[0.68rem] font-semibold uppercase tracking-[0.14em] shadow-[0_10px_28px_-18px_rgba(15,23,42,0.46)] backdrop-blur-sm"
-                  style={{ color: '#ffffff' }}
-                >
-                  Explorar
-                </span>
-              ) : null}
-            </div>
+                Explorar
+              </span>
+            ) : null}
           </div>
         </div>
       </div>

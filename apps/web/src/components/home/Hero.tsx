@@ -11,10 +11,9 @@ const formatStat = (value: number) => value.toLocaleString('es-UY');
 
 export default memo(function Hero({ stats, isLoading = false }: HeroProps) {
   const statItems = useMemo(() => [
-    { label: 'Profesionales activos', value: isLoading ? '...' : formatStat(stats.professionals) },
-    { label: 'Categorias disponibles', value: isLoading ? '...' : formatStat(stats.categories) },
+    { label: 'Profesionales disponibles', value: isLoading ? '...' : formatStat(stats.professionals) },
     { label: 'Reservas mensuales', value: isLoading ? '...' : formatStat(stats.monthlyBookings) },
-  ], [isLoading, stats.monthlyBookings, stats.professionals, stats.categories]);
+  ], [isLoading, stats.monthlyBookings, stats.professionals]);
 
   return (
     <section className="relative px-4 pb-4 pt-8 sm:pt-10">
@@ -43,8 +42,8 @@ export default memo(function Hero({ stats, isLoading = false }: HeroProps) {
           <SearchBar />
         </div>
 
-        <div className="relative mx-auto mt-7 max-w-[46rem]">
-          <div className="grid gap-5 border-t border-[color:var(--border-soft)]/80 pt-4 text-center sm:grid-cols-3 sm:gap-8">
+        <div className="relative mx-auto mt-7 max-w-[34rem]">
+          <div className="grid gap-5 border-t border-[color:var(--border-soft)]/80 pt-4 text-center sm:grid-cols-2 sm:gap-8">
             {statItems.map((item, index) => (
               <div
                 key={item.label}

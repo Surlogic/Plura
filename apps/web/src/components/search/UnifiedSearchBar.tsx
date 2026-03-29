@@ -2,6 +2,7 @@ import {
   memo,
   useCallback,
   useEffect,
+  useMemo,
   useRef,
   type FormEvent,
   type KeyboardEvent as ReactKeyboardEvent,
@@ -10,8 +11,15 @@ import {
 import DateFilter from '@/components/search/DateFilter';
 import LocationAutocomplete from '@/components/search/LocationAutocomplete';
 import SearchField from '@/components/search/SearchField';
+import SearchFilterChips, {
+  type SearchFilterChip,
+} from '@/components/search/SearchFilterChips';
 import SuggestDropdown from '@/components/search/SuggestDropdown';
-import { slugToLabel } from '@/utils/searchQuery';
+import {
+  SEARCH_BAR_MAX_WIDTH_CLASS,
+  SEARCH_CONTROL_HEIGHT_CLASS,
+  SEARCH_PANEL_CLASS,
+} from '@/components/search/searchUi';
 import {
   useUnifiedSearch,
   formatDateLabel,
@@ -19,6 +27,7 @@ import {
   normalizeDate,
   type UnifiedSearchValues,
 } from '@/hooks/useUnifiedSearch';
+import { slugToLabel } from '@/utils/searchQuery';
 
 export type { UnifiedSearchValues };
 
@@ -33,10 +42,17 @@ type UnifiedSearchBarProps = {
 };
 
 const SURFACE_CLASSES: Record<NonNullable<UnifiedSearchBarProps['variant']>, string> = {
-  hero: 'border border-white/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(248,250,252,0.94))] shadow-[0_30px_70px_-42px_rgba(13,35,58,0.5)] backdrop-blur-xl',
-  panel: 'border border-[color:var(--border-strong)] bg-white shadow-[var(--shadow-card)]',
-  explore: 'border border-[color:var(--border-soft)] bg-white shadow-[var(--shadow-card)]',
+  hero: 'border border-white/85 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(247,250,252,0.95))] shadow-[0_36px_76px_-44px_rgba(13,35,58,0.48)] backdrop-blur-xl',
+  panel: 'border border-[color:var(--border-strong)] bg-[color:var(--surface-strong)] shadow-[0_24px_54px_-40px_rgba(13,35,58,0.28)]',
+  explore: 'border border-[color:var(--border-soft)] bg-[color:var(--surface-strong)] shadow-[0_24px_54px_-40px_rgba(13,35,58,0.24)]',
 };
+
+const SEARCH_TYPE_LABELS = {
+  RUBRO: 'Rubro',
+  PROFESIONAL: 'Profesional',
+  LOCAL: 'Local',
+  SERVICIO: 'Servicio',
+} as const;
 
 export default memo(function UnifiedSearchBar({
   initialValues,
@@ -88,7 +104,6 @@ export default memo(function UnifiedSearchBar({
     closeAllDropdowns,
   } = search;
 
-  // Close dropdowns on outside click / escape
   const stableCloseAllDropdowns = useCallback(() => closeAllDropdowns(), [closeAllDropdowns]);
 
   useEffect(() => {
@@ -157,15 +172,19 @@ export default memo(function UnifiedSearchBar({
   };
 
   const hasCoordinates = typeof values.lat === 'number' && typeof values.lng === 'number';
+  const hasDateRange = Boolean(values.from && values.to);
+  const hasDateSelection = Boolean(values.date || hasDateRange || values.availableNow);
+  const hasLocationSelection = Boolean(values.city.trim() || hasCoordinates);
   const inputPlaceholder = values.categorySlug
     ? `Buscar en ${slugToLabel(values.categorySlug)}`
-    : 'Servicio o profesional';
+    : 'Servicio, rubro o profesional';
 
   const dateSummaryBase = values.date
     ? formatDateLabel(values.date)
     : values.from && values.to
       ? `${formatDateLabel(values.from)} - ${formatDateLabel(values.to)}`
       : 'Elegir fecha';
+
   const dateSummary = values.availableNow
     ? dateSummaryBase === 'Elegir fecha'
       ? 'Disponible ahora'
@@ -175,22 +194,113 @@ export default memo(function UnifiedSearchBar({
   const locationSummary =
     locationInput.trim() || values.city.trim() || (hasCoordinates ? 'Cerca de mi' : 'Zona o ciudad');
   const locationValueClass = getAdaptiveValueClass(locationSummary);
-  const hasDateRange = Boolean(values.from && values.to);
-  const isSearchActive = isSearchOpen;
-  const isDateActive = isDateOpen || Boolean(values.date || hasDateRange || values.availableNow);
-  const isLocationActive = isLocationOpen || Boolean(values.city.trim() || hasCoordinates);
-  const hasDateSelection = Boolean(values.date || hasDateRange || values.availableNow);
-  const hasLocationSelection = Boolean(values.city.trim() || hasCoordinates);
-  const panelSurfaceClass =
-    'w-full rounded-[26px] border border-white/90 bg-[color:var(--surface-strong)] p-3.5 shadow-[0_30px_60px_-38px_rgba(13,35,58,0.42)] ring-1 ring-black/5 backdrop-blur';
+  const searchModeLabel = values.categorySlug
+    ? 'Rubro'
+    : values.type !== 'SERVICIO'
+      ? SEARCH_TYPE_LABELS[values.type]
+      : null;
+
+  const openSearchPanel = () => {
+    setIsSearchOpen(true);
+    setIsDateOpen(false);
+    setIsLocationOpen(false);
+  };
+
+  const activeFilters = useMemo<SearchFilterChip[]>(() => {
+    const filters: SearchFilterChip[] = [];
+
+    if (values.query.trim() || values.categorySlug) {
+      const queryLabel = values.categorySlug
+        ? `${SEARCH_TYPE_LABELS.RUBRO}: ${slugToLabel(values.categorySlug)}`
+        : `${SEARCH_TYPE_LABELS[values.type]}: ${values.query.trim() || 'Busqueda'}`;
+
+      filters.push({
+        id: 'query',
+        label: queryLabel,
+        onRemove: () => {
+          setValues((previous) => ({
+            ...previous,
+            type: 'SERVICIO',
+            query: '',
+            categorySlug: undefined,
+          }));
+          setSearchInput('');
+        },
+      });
+    }
+
+    if (values.date) {
+      filters.push({
+        id: 'date',
+        label: `Fecha: ${formatDateLabel(values.date)}`,
+        onRemove: () =>
+          setValues((previous) => ({
+            ...previous,
+            date: '',
+          })),
+      });
+    } else if (values.from && values.to) {
+      filters.push({
+        id: 'range',
+        label: `Rango: ${formatDateLabel(values.from)} - ${formatDateLabel(values.to)}`,
+        onRemove: () =>
+          setValues((previous) => ({
+            ...previous,
+            from: undefined,
+            to: undefined,
+          })),
+      });
+    }
+
+    if (values.availableNow) {
+      filters.push({
+        id: 'availability',
+        label: 'Disponible ahora',
+        onRemove: () =>
+          setValues((previous) => ({
+            ...previous,
+            availableNow: false,
+          })),
+      });
+    }
+
+    if (values.city.trim() || hasCoordinates) {
+      filters.push({
+        id: 'location',
+        label: hasCoordinates ? 'Cerca de mi' : `Ubicacion: ${values.city.trim()}`,
+        onRemove: () => {
+          setValues((previous) => ({
+            ...previous,
+            city: '',
+            lat: undefined,
+            lng: undefined,
+          }));
+          setLocationInput('');
+        },
+      });
+    }
+
+    return filters;
+  }, [hasCoordinates, setLocationInput, setSearchInput, setValues, values]);
+
+  const helperText = activeFilters.length
+    ? `${activeFilters.length} filtro${activeFilters.length > 1 ? 's' : ''} activo${
+        activeFilters.length > 1 ? 's' : ''
+      }. Podes seguir combinando criterios antes de buscar.`
+    : 'Combina servicio, fecha, ubicacion y disponibilidad en una sola busqueda.';
 
   return (
-    <div ref={wrapperRef} className={`relative z-20 w-full overflow-visible ${className || ''}`}>
+    <div
+      ref={wrapperRef}
+      className={`relative z-20 mx-auto w-full ${SEARCH_BAR_MAX_WIDTH_CLASS} overflow-visible ${className || ''}`}
+    >
       <form onSubmit={handleSubmit} className="relative overflow-visible">
-        <div className={`relative overflow-visible rounded-[30px] p-1.5 sm:p-2 ${SURFACE_CLASSES[variant]}`}>
-          <div className="grid gap-1.5 lg:grid-cols-[minmax(0,1.85fr)_minmax(0,0.92fr)_minmax(0,1fr)_auto] lg:items-stretch">
+        <div
+          className={`relative overflow-visible rounded-[32px] p-2 sm:p-2.5 ${SURFACE_CLASSES[variant]}`}
+        >
+          <div className="grid gap-2 lg:grid-cols-[minmax(0,1.85fr)_minmax(0,0.95fr)_minmax(0,1fr)_auto] lg:items-stretch">
             <div className="relative min-w-0">
-              <SearchField label="Servicio o rubro" active={isSearchActive} className="h-full">
+              <SearchField label="Servicio o rubro" active={isSearchOpen} className="h-full">
                 <div className="flex min-w-0 items-center gap-3">
                   <svg
                     viewBox="0 0 20 20"
@@ -201,6 +311,13 @@ export default memo(function UnifiedSearchBar({
                     <circle cx="9" cy="9" r="5.5" stroke="currentColor" strokeWidth="1.6" />
                     <path d="M13 13l4 4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
                   </svg>
+
+                  {searchModeLabel ? (
+                    <span className="hidden shrink-0 rounded-full border border-[color:var(--border-soft)] bg-white px-2.5 py-1 text-[0.62rem] font-semibold uppercase tracking-[0.18em] text-[color:var(--ink-faint)] sm:inline-flex">
+                      {searchModeLabel}
+                    </span>
+                  ) : null}
+
                   <input
                     type="text"
                     value={searchInput}
@@ -219,21 +336,11 @@ export default memo(function UnifiedSearchBar({
                             ? previous.categorySlug
                             : undefined,
                       }));
-                      setIsSearchOpen(true);
-                      setIsDateOpen(false);
-                      setIsLocationOpen(false);
+                      openSearchPanel();
                       setActiveSuggestionIndex(-1);
                     }}
-                    onFocus={() => {
-                      setIsSearchOpen(true);
-                      setIsDateOpen(false);
-                      setIsLocationOpen(false);
-                    }}
-                    onClick={() => {
-                      setIsSearchOpen(true);
-                      setIsDateOpen(false);
-                      setIsLocationOpen(false);
-                    }}
+                    onFocus={openSearchPanel}
+                    onClick={openSearchPanel}
                     onKeyDown={handleInputKeyDown}
                     placeholder={inputPlaceholder}
                     className="h-7 w-full min-w-0 bg-transparent text-[0.98rem] font-semibold leading-none text-[color:var(--ink)] placeholder:font-normal placeholder:text-[color:var(--ink-muted)] focus:outline-none"
@@ -277,7 +384,7 @@ export default memo(function UnifiedSearchBar({
             <div className="relative min-w-0">
               <SearchField
                 label="Fecha"
-                active={isDateActive}
+                active={isDateOpen || hasDateSelection}
                 asButton
                 className="h-full"
                 onClick={() => {
@@ -310,9 +417,20 @@ export default memo(function UnifiedSearchBar({
 
               {isDateOpen ? (
                 <div className="absolute left-0 right-0 top-[calc(100%+12px)] z-[70]">
-                  <div className={panelSurfaceClass}>
+                  <div className={SEARCH_PANEL_CLASS}>
+                    <div className="mb-4 space-y-1">
+                      <p className="text-sm font-semibold text-[color:var(--ink)]">
+                        Fecha y disponibilidad
+                      </p>
+                      <p className="text-xs text-[color:var(--ink-muted)]">
+                        Filtra por dia, rango corto o disponibilidad inmediata sin cambiar de vista.
+                      </p>
+                    </div>
+
                     <DateFilter
                       date={values.date}
+                      from={values.from}
+                      to={values.to}
                       availableNow={values.availableNow}
                       todayIso={todayIso}
                       onPickAnytime={setAnytime}
@@ -344,7 +462,7 @@ export default memo(function UnifiedSearchBar({
             <div className="relative min-w-0">
               <SearchField
                 label="Ubicacion"
-                active={isLocationActive}
+                active={isLocationOpen || hasLocationSelection}
                 asButton
                 className="h-full"
                 onClick={() => {
@@ -377,7 +495,16 @@ export default memo(function UnifiedSearchBar({
 
               {isLocationOpen ? (
                 <div className="absolute left-0 right-0 top-[calc(100%+12px)] z-[70]">
-                  <div className={panelSurfaceClass}>
+                  <div className={SEARCH_PANEL_CLASS}>
+                    <div className="mb-4 space-y-1">
+                      <p className="text-sm font-semibold text-[color:var(--ink)]">
+                        Ubicacion y cercania
+                      </p>
+                      <p className="text-xs text-[color:var(--ink-muted)]">
+                        Priorizamos ciudad o radio geografico para que el filtro sea mas util y consistente.
+                      </p>
+                    </div>
+
                     <LocationAutocomplete
                       locationInput={locationInput}
                       onLocationInputChange={(value) => {
@@ -416,7 +543,7 @@ export default memo(function UnifiedSearchBar({
             <div className="flex flex-col gap-2 sm:flex-row lg:flex-col lg:justify-stretch">
               <button
                 type="submit"
-                className="inline-flex h-[70px] w-full min-w-[7.5rem] items-center justify-center rounded-[22px] bg-[color:var(--primary)] px-5 text-[0.98rem] font-semibold text-white shadow-[0_18px_30px_-24px_rgba(13,35,58,0.72)] transition hover:-translate-y-[1px] hover:bg-[color:var(--primary-strong)] hover:shadow-[0_24px_38px_-26px_rgba(13,35,58,0.74)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--accent-soft)] focus-visible:ring-offset-2"
+                className={`inline-flex w-full min-w-[8.5rem] items-center justify-center rounded-[22px] bg-[color:var(--primary)] px-5 text-[0.98rem] font-semibold text-white shadow-[0_18px_30px_-24px_rgba(13,35,58,0.72)] transition hover:-translate-y-[1px] hover:bg-[color:var(--primary-strong)] hover:shadow-[0_24px_38px_-26px_rgba(13,35,58,0.74)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--accent-soft)] focus-visible:ring-offset-2 ${SEARCH_CONTROL_HEIGHT_CLASS}`}
               >
                 {submitLabel}
               </button>
@@ -424,12 +551,16 @@ export default memo(function UnifiedSearchBar({
                 <button
                   type="button"
                   onClick={onClearClick}
-                  className="inline-flex h-[70px] w-full items-center justify-center rounded-[22px] border border-[color:var(--border-soft)] bg-white/86 px-4 text-sm font-semibold text-[color:var(--ink)] transition hover:bg-white focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--accent-soft)]"
+                  className={`inline-flex w-full items-center justify-center rounded-[22px] border border-[color:var(--border-soft)] bg-white px-4 text-sm font-semibold text-[color:var(--ink)] transition hover:bg-[color:var(--surface-soft)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--accent-soft)] ${SEARCH_CONTROL_HEIGHT_CLASS}`}
                 >
                   Limpiar
                 </button>
               ) : null}
             </div>
+          </div>
+
+          <div className="mt-4">
+            <SearchFilterChips filters={activeFilters} helperText={helperText} />
           </div>
         </div>
       </form>

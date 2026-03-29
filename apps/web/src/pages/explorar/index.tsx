@@ -88,16 +88,6 @@ const decodeLegacyValue = (value: string) => {
   }
 };
 
-const formatDateLabel = (value: string) => {
-  const parsed = new Date(`${value}T00:00:00`);
-  if (Number.isNaN(parsed.getTime())) return value;
-  return parsed.toLocaleDateString('es-UY', {
-    day: '2-digit',
-    month: 'short',
-    year: 'numeric',
-  });
-};
-
 const humanizeSlug = (slug: string) =>
   slug
     .split('-')
@@ -368,20 +358,6 @@ export default function ExplorarPage() {
     return result;
   }, [items, city]);
 
-  const activeFilters = useMemo(() => {
-    const filters: string[] = [`Tipo: ${SEARCH_TYPE_LABELS[searchType]}`];
-
-    if (query) filters.push(`Búsqueda: ${query}`);
-    if (categorySlug) filters.push(`Rubro: ${humanizeSlug(categorySlug)}`);
-    if (city) filters.push(`Ubicación: ${city}`);
-    if (hasCoordinates) filters.push(`Cerca mío (${radiusKm} km)`);
-    if (date) filters.push(`Fecha: ${formatDateLabel(date)}`);
-    if (from && to && !date) filters.push(`Rango: ${formatDateLabel(from)} - ${formatDateLabel(to)}`);
-    if (availableNow) filters.push('Disponible ahora');
-
-    return filters;
-  }, [searchType, query, categorySlug, city, hasCoordinates, radiusKm, date, from, to, availableNow]);
-
   const totalPages = Math.max(1, Math.ceil(total / size));
 
   const getCategoryLabel = useCallback((item: SearchItem) =>
@@ -413,7 +389,7 @@ export default function ExplorarPage() {
     });
 
     return payloadById;
-  }, [items]);
+  }, [getCategoryLabel, items]);
 
   const replaceQuery = useCallback((nextQuery: Record<string, string>) => {
     void router.replace(
@@ -525,86 +501,88 @@ export default function ExplorarPage() {
             </p>
           </div>
 
-          <div className="flex flex-wrap gap-2">
-            {activeFilters.map((filter) => (
-              <span
-                key={filter}
-                className="inline-flex rounded-full border border-[color:var(--border-soft)] bg-[color:var(--surface-soft)] px-3 py-1 text-xs font-semibold text-[color:var(--ink)]"
-              >
-                {filter}
-              </span>
-            ))}
-          </div>
+          <ExploreFilters
+            initialValues={filterValues}
+            fixedQuery={fixedQuery}
+            citySuggestions={citySuggestions}
+          />
 
-          <div className="flex flex-wrap items-center gap-3">
-            <div className="inline-flex rounded-full border border-[color:var(--border-soft)] bg-[color:var(--surface-strong)] p-1 shadow-[var(--shadow-card)]">
-              <button
-                type="button"
-                onClick={() => handleViewChange(false)}
-                className={`rounded-full px-4 py-2 text-sm font-semibold transition ${
-                  !isMapView
-                    ? 'bg-[color:var(--surface-dark)] text-[color:var(--text-on-dark)]'
-                    : 'text-[color:var(--ink)] hover:bg-[color:var(--surface-soft)]'
-                }`}
-                aria-pressed={!isMapView}
-              >
-                Vista lista
-              </button>
-              <button
-                type="button"
-                onClick={() => handleViewChange(true)}
-                className={`rounded-full px-4 py-2 text-sm font-semibold transition ${
-                  isMapView
-                    ? 'bg-[color:var(--surface-dark)] text-[color:var(--text-on-dark)]'
-                    : 'text-[color:var(--ink)] hover:bg-[color:var(--surface-soft)]'
-                }`}
-                aria-pressed={isMapView}
-              >
-                Vista mapa
-              </button>
-            </div>
+          <div className="rounded-[28px] border border-[color:var(--border-soft)] bg-[color:var(--surface-strong)] p-3.5 shadow-[0_24px_54px_-40px_rgba(13,35,58,0.24)]">
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+              <div className="space-y-1">
+                <p className="text-[0.68rem] font-semibold uppercase tracking-[0.24em] text-[color:var(--ink-faint)]">
+                  Controles de resultados
+                </p>
+                <p className="text-sm text-[color:var(--ink-muted)]">
+                  {SEARCH_TYPE_LABELS[searchType]}{city ? ` en ${city}` : ''}{hasCoordinates ? ` dentro de ${Math.round(radiusKm)} km` : ''}.
+                </p>
+              </div>
 
-            <div className="inline-flex items-center gap-2 rounded-full border border-[color:var(--border-soft)] bg-[color:var(--surface-strong)] px-3 py-1.5 shadow-[var(--shadow-card)]">
-              <span className="text-xs font-semibold uppercase tracking-[0.15em] text-[color:var(--ink-faint)]">
-                Orden
-              </span>
-              <select
-                value={sort}
-                onChange={(event) => handleSortChange(event.target.value as SearchSort)}
-                className="rounded-full bg-transparent text-sm font-semibold text-[color:var(--ink)] focus:outline-none"
-              >
-                {SORT_OPTIONS.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-            </div>
+              <div className="flex flex-wrap items-center gap-3">
+                <div className="inline-flex rounded-full border border-[color:var(--border-soft)] bg-[color:var(--surface-muted)] p-1">
+                  <button
+                    type="button"
+                    onClick={() => handleViewChange(false)}
+                    className={`rounded-full px-4 py-2 text-sm font-semibold transition ${
+                      !isMapView
+                        ? 'bg-[color:var(--surface-dark)] text-[color:var(--text-on-dark)]'
+                        : 'text-[color:var(--ink)] hover:bg-white'
+                    }`}
+                    aria-pressed={!isMapView}
+                  >
+                    Vista lista
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleViewChange(true)}
+                    className={`rounded-full px-4 py-2 text-sm font-semibold transition ${
+                      isMapView
+                        ? 'bg-[color:var(--surface-dark)] text-[color:var(--text-on-dark)]'
+                        : 'text-[color:var(--ink)] hover:bg-white'
+                    }`}
+                    aria-pressed={isMapView}
+                  >
+                    Vista mapa
+                  </button>
+                </div>
 
-            <div className="inline-flex items-center gap-2 rounded-full border border-[color:var(--border-soft)] bg-[color:var(--surface-strong)] px-3 py-1.5 shadow-[var(--shadow-card)]">
-              <span className="text-xs font-semibold uppercase tracking-[0.15em] text-[color:var(--ink-faint)]">
-                Radio
-              </span>
-              <select
-                value={String(selectedRadiusOption)}
-                onChange={(event) => handleRadiusChange(Number(event.target.value))}
-                className="rounded-full bg-transparent text-sm font-semibold text-[color:var(--ink)] focus:outline-none"
-              >
-                {RADIUS_OPTIONS.map((value) => (
-                  <option key={value} value={value}>
-                    {value} km
-                  </option>
-                ))}
-              </select>
+                <label className="inline-flex items-center gap-2 rounded-full border border-[color:var(--border-soft)] bg-[color:var(--surface-muted)] px-3 py-1.5">
+                  <span className="text-xs font-semibold uppercase tracking-[0.15em] text-[color:var(--ink-faint)]">
+                    Orden
+                  </span>
+                  <select
+                    value={sort}
+                    onChange={(event) => handleSortChange(event.target.value as SearchSort)}
+                    className="rounded-full bg-transparent text-sm font-semibold text-[color:var(--ink)] focus:outline-none"
+                  >
+                    {SORT_OPTIONS.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <label className="inline-flex items-center gap-2 rounded-full border border-[color:var(--border-soft)] bg-[color:var(--surface-muted)] px-3 py-1.5">
+                  <span className="text-xs font-semibold uppercase tracking-[0.15em] text-[color:var(--ink-faint)]">
+                    Radio
+                  </span>
+                  <select
+                    value={String(selectedRadiusOption)}
+                    onChange={(event) => handleRadiusChange(Number(event.target.value))}
+                    className="rounded-full bg-transparent text-sm font-semibold text-[color:var(--ink)] focus:outline-none"
+                  >
+                    {RADIUS_OPTIONS.map((value) => (
+                      <option key={value} value={value}>
+                        {value} km
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
             </div>
           </div>
         </header>
-
-        <ExploreFilters
-          initialValues={filterValues}
-          fixedQuery={fixedQuery}
-          citySuggestions={citySuggestions}
-        />
 
         {isMapView ? (
           <section className="space-y-4">

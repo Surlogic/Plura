@@ -2,7 +2,6 @@ import {
   useCallback,
   useEffect,
   useMemo,
-  useRef,
   useState,
 } from 'react';
 import { useRouter } from 'next/router';
@@ -302,6 +301,7 @@ const GLOBAL_SEARCH_OPTION: SuggestDropdownItem = {
 const POPULAR_CATEGORY_PATTERNS = ['barber', 'unas', 'depil', 'spa', 'cosmet'];
 const LOCATION_AUTOCOMPLETE_DEBOUNCE_MS = 300;
 const SEARCH_SUGGEST_DEBOUNCE_MS = 350;
+const CATEGORY_DROPDOWN_LIMIT = 10;
 
 const interleaveSuggestionItems = (
   sources: SuggestDropdownItem[][],
@@ -360,23 +360,16 @@ export function useUnifiedSearch({
 
   const [geoSuggestions, setGeoSuggestions] = useState<GeoAutocompleteItem[]>([]);
 
+  const normalizedInitialValues = useMemo(
+    () => normalizeInitialValues(initialValues),
+    [initialValues],
+  );
+
   useEffect(() => {
-    const normalized = normalizeInitialValues(initialValues);
-    setValues(normalized);
-    setSearchInput(normalized.query);
-    setLocationInput(normalized.city);
-  }, [
-    initialValues?.type,
-    initialValues?.query,
-    initialValues?.categorySlug,
-    initialValues?.city,
-    initialValues?.lat,
-    initialValues?.lng,
-    initialValues?.date,
-    initialValues?.from,
-    initialValues?.to,
-    initialValues?.availableNow,
-  ]);
+    setValues(normalizedInitialValues);
+    setSearchInput(normalizedInitialValues.query);
+    setLocationInput(normalizedInitialValues.city);
+  }, [normalizedInitialValues]);
 
 
   useEffect(() => {
@@ -867,7 +860,7 @@ export function useUnifiedSearch({
   );
 
   const dropdownGroups = useMemo(() => {
-    const groups: Array<{ title: string; items: SuggestDropdownItem[] }> = [
+    const groups: Array<{ title: string; items: SuggestDropdownItem[]; note?: string }> = [
       { title: '', items: [GLOBAL_SEARCH_OPTION] },
     ];
 
@@ -890,7 +883,14 @@ export function useUnifiedSearch({
       });
 
       if (remainingCategories.length > 0) {
-        groups.push({ title: 'Todos los rubros', items: remainingCategories });
+        groups.push({
+          title: 'Todos los rubros',
+          items: remainingCategories.slice(0, CATEGORY_DROPDOWN_LIMIT),
+          note:
+            remainingCategories.length > CATEGORY_DROPDOWN_LIMIT
+              ? 'Escribi para refinar y ver mas rubros.'
+              : undefined,
+        });
       }
 
       return groups;

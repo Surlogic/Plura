@@ -14,6 +14,7 @@ export type SuggestDropdownItem = {
 type SuggestDropdownGroup = {
   title: string;
   items: SuggestDropdownItem[];
+  note?: string;
 };
 
 type SuggestDropdownProps = {
@@ -55,13 +56,16 @@ export default function SuggestDropdown({
   let currentStartIndex = 0;
 
   return (
-    <div className="pointer-events-auto w-full overflow-hidden rounded-[28px] border border-[color:var(--border-strong)] bg-[color:var(--surface-strong)] p-3 shadow-[var(--shadow-lift)] ring-1 ring-black/5">
+    <div className="pointer-events-auto w-full overflow-hidden rounded-[28px] border border-[color:var(--border-strong)] bg-[color:var(--surface-strong)] p-3.5 shadow-[0_28px_58px_-36px_rgba(13,35,58,0.38)] ring-1 ring-black/5">
       {flattened.length === 0 ? (
-        <p className="px-2 py-3 text-sm text-[color:var(--ink-muted)]">Sin sugerencias por ahora.</p>
+        <div className="rounded-[22px] border border-dashed border-[color:var(--border-soft)] bg-[color:var(--surface-muted)] px-4 py-5 text-sm text-[color:var(--ink-muted)]">
+          <p className="font-semibold text-[color:var(--ink)]">Sin sugerencias por ahora.</p>
+          <p className="mt-1">Proba con otro servicio, rubro, profesional o local.</p>
+        </div>
       ) : (
         <>
           {loading ? (
-            <p className="px-2 pb-2 text-xs font-medium uppercase tracking-[0.18em] text-[color:var(--ink-faint)]">
+            <p className="px-2 pb-3 text-xs font-medium uppercase tracking-[0.18em] text-[color:var(--ink-faint)]">
               Actualizando sugerencias...
             </p>
           ) : null}
@@ -79,11 +83,20 @@ export default function SuggestDropdown({
               return (
                 <section
                   key={`${group.title || 'grupo'}-${groupIndex}`}
-                  className={`space-y-2 ${showDividerAfter ? 'border-b border-[color:var(--border-soft)] pb-3.5' : ''}`}
+                  className={`space-y-2.5 ${showDividerAfter ? 'border-b border-[color:var(--border-soft)] pb-4' : ''}`}
                 >
                   {group.title ? (
-                    <p className="px-2 text-[0.66rem] font-semibold uppercase tracking-[0.24em] text-[color:var(--ink-faint)]">
-                      {group.title}
+                    <div className="space-y-1 px-2">
+                      <p className="text-[0.66rem] font-semibold uppercase tracking-[0.24em] text-[color:var(--ink-faint)]">
+                        {group.title}
+                      </p>
+                      {group.note ? (
+                        <p className="text-xs text-[color:var(--ink-muted)]">{group.note}</p>
+                      ) : null}
+                    </div>
+                  ) : group.note ? (
+                    <p className="px-2 text-xs text-[color:var(--ink-muted)]">
+                      {group.note}
                     </p>
                   ) : null}
                   <div className="space-y-1.5">
@@ -96,8 +109,8 @@ export default function SuggestDropdown({
                             ? 'border-[color:var(--border-strong)] bg-[color:var(--surface-soft)] shadow-[0_18px_34px_-28px_rgba(13,35,58,0.65)]'
                             : 'border-[color:var(--border-soft)] bg-white hover:border-[color:var(--border-strong)] hover:bg-[color:var(--surface-soft)]'
                           : isActive
-                            ? 'border-[color:var(--accent-soft)] bg-[color:var(--surface-soft)] shadow-[0_18px_34px_-28px_rgba(13,35,58,0.55)]'
-                            : 'border-transparent bg-white hover:border-[color:var(--border-soft)] hover:bg-[color:var(--surface-soft)]';
+                            ? 'border-[color:var(--accent-strong)] bg-[color:var(--surface-soft)] shadow-[0_18px_34px_-28px_rgba(13,35,58,0.45)]'
+                            : 'border-transparent bg-[color:var(--surface-muted)] hover:border-[color:var(--border-soft)] hover:bg-white';
 
                       return (
                         <button

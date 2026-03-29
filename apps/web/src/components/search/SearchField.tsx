@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { SEARCH_CONTROL_HEIGHT_CLASS } from '@/components/search/searchUi';
 
 type SearchFieldProps = {
   label: string;
@@ -19,10 +20,10 @@ export default function SearchField({
   className = '',
   valueClassName = '',
 }: SearchFieldProps) {
-  const baseClassName = `flex min-h-[70px] w-full min-w-0 flex-col justify-center rounded-[24px] border px-4 py-[0.85rem] text-left transition ${
+  const baseClassName = `group flex w-full min-w-0 flex-col justify-center rounded-[24px] border px-4 py-3 text-left transition ${SEARCH_CONTROL_HEIGHT_CLASS} ${
     active
-      ? 'border-white/90 bg-white shadow-[0_16px_30px_-24px_rgba(14,42,71,0.42)]'
-      : 'border-transparent bg-white/18 hover:bg-white/42'
+      ? 'border-[color:var(--border-strong)] bg-white shadow-[0_18px_36px_-28px_rgba(14,42,71,0.42)]'
+      : 'border-transparent bg-[color:var(--surface-muted)] hover:border-[color:var(--border-soft)] hover:bg-white'
   } ${className}`.trim();
 
   const content = (
@@ -30,7 +31,7 @@ export default function SearchField({
       <span className="truncate whitespace-nowrap text-[0.62rem] font-semibold uppercase tracking-[0.24em] text-[color:var(--ink-faint)]">
         {label}
       </span>
-      <div className={`mt-1.5 min-w-0 ${valueClassName}`.trim()}>{children}</div>
+      <div className={`mt-2 min-w-0 ${valueClassName}`.trim()}>{children}</div>
     </>
   );
 
@@ -39,7 +40,7 @@ export default function SearchField({
       <button
         type="button"
         onClick={onClick}
-        className={`${baseClassName} focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--accent-soft)]`}
+        className={`${baseClassName} focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--accent-soft)] focus-visible:ring-offset-2`}
       >
         {content}
       </button>
@@ -47,7 +48,9 @@ export default function SearchField({
   }
 
   return (
-    <div className={`${baseClassName} focus-within:ring-2 focus-within:ring-[color:var(--accent-soft)]`}>
+    <div
+      className={`${baseClassName} focus-within:border-[color:var(--accent-strong)] focus-within:ring-2 focus-within:ring-[color:var(--accent-soft)] focus-within:ring-offset-2`}
+    >
       {content}
     </div>
   );

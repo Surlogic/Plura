@@ -164,6 +164,7 @@ Notas operativas recientes:
 
 - search y suggest siguen manteniendo los mismos endpoints publicos, pero hoy se apoyan en materialized views denormalizadas para bajar joins y costo por request
 - `/explorar` ya filtra por fecha y `disponible ahora` usando disponibilidad real de `available_slot`; la fecha ya no solo reordena resultados
+- la barra unificada de busqueda web ahora comparte el mismo shell base entre home, dashboard cliente y `/explorar`: mismo ancho maximo, misma altura de controles, mismos radios y dropdowns; los filtros activos viven dentro del buscador como chips removibles para combinar rubro/consulta, fecha, ubicacion y disponibilidad sin duplicar UI por pagina
 - la geoseleccion desde autocomplete ya no debe combinar una direccion hiper especifica con radio geografico de forma excluyente; cuando hay coordenadas, el radio manda y el texto de ciudad queda como apoyo UX
 - las materialized views de search ahora se refrescan tambien al startup bajo lock distribuido para evitar que `search_professional_document_mv` quede vieja respecto de `professional_profile`
 - las rutas publicas web mas criticas ya evitan ruido de auth cuando no existe una sesion conocida del cliente

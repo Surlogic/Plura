@@ -167,6 +167,7 @@ Notas operativas recientes:
 - la geoseleccion desde autocomplete ya no debe combinar una direccion hiper especifica con radio geografico de forma excluyente; cuando hay coordenadas, el radio manda y el texto de ciudad queda como apoyo UX
 - las materialized views de search ahora se refrescan tambien al startup bajo lock distribuido para evitar que `search_professional_document_mv` quede vieja respecto de `professional_profile`
 - las rutas publicas web mas criticas ya evitan ruido de auth cuando no existe una sesion conocida del cliente
+- el backend ahora tambien degrada a anonimo en superficies publicas (`/health`, `/categories`, `/api/home`, `/api/search`, `/api/geo/*`, `/public/**`, uploads y webhooks) si llega un JWT o cookie auth invalido/vencido; no debe responder `401` solo por credenciales viejas mientras la ruta siga siendo publica
 - la web ahora persiste un `session hint` con rol (`CLIENT` o `PROFESSIONAL`) para poder rehidratar el perfil correcto tambien en `/` y otras rutas publicas despues de cerrar y reabrir el navegador
 - los reloads de web ya no deben cerrar sesion por un `5xx` o una falla transitoria de refresh/auth me; la sesion solo cae automaticamente ante `401/403` reales
 - al cerrar sesion desde la web, la UI ahora muestra un overlay transitorio de `Cerrando sesión` y redirige al login correcto por rol (`/cliente/auth/login` o `/profesional/auth/login`) en vez de dejar la pantalla sin feedback mientras limpia estado local

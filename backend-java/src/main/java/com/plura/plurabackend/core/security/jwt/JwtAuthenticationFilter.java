@@ -87,7 +87,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             filterChain.doFilter(request, response);
             return;
         }
-        boolean allowInvalidToken = isPublicAuthPath(request);
+        boolean allowInvalidToken = isPublicRoute(request);
         try {
             // Verifica firma, expiración e issuer.
             DecodedJWT jwt = verifier.verify(token);
@@ -279,7 +279,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         return session;
     }
 
-    private boolean isPublicAuthPath(HttpServletRequest request) {
+    private boolean isPublicRoute(HttpServletRequest request) {
+        if (request != null && "OPTIONS".equalsIgnoreCase(request.getMethod())) {
+            return true;
+        }
         String path = request.getServletPath();
         if (path == null || path.isBlank()) {
             path = request.getRequestURI();
@@ -287,7 +290,19 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         if (path == null || path.isBlank()) {
             return false;
         }
-        return path.equals("/auth/login")
+        return path.equals("/health")
+            || path.equals("/categories")
+            || path.equals("/api/categories")
+            || path.equals("/api/home")
+            || path.equals("/error")
+            || path.startsWith("/api/search")
+            || path.startsWith("/api/geo/")
+            || path.startsWith("/public/")
+            || path.startsWith("/uploads/")
+            || path.startsWith("/webhooks/")
+            || ("GET".equalsIgnoreCase(request.getMethod())
+                && path.equals("/profesional/payment-providers/mercadopago/oauth/callback"))
+            || path.equals("/auth/login")
             || path.startsWith("/auth/login/")
             || path.equals("/auth/register")
             || path.startsWith("/auth/register/")

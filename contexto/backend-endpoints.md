@@ -47,6 +47,7 @@ Lectura de producto:
 - base para home, categorias y marketplace
 - relevante para `Usuario` y para la visibilidad del plan `Free`
 - `GET /api/home` ahora se consume via SSR (`getServerSideProps`); devuelve categorias, stats (usuarios, profesionales, categorias, reservas mensuales) y top professionals rankeados por volumen de reservas confirmadas/completadas de los ultimos 3 meses
+- estas superficies publicas ya no deben caer en `401` si el navegador arrastra un access token o cookie auth invalido/vencido; backend degrada a anonimo y responde el payload publico igual
 
 ### Auth y sesiones
 
@@ -133,6 +134,7 @@ Lectura de producto:
 
 - cubre marketplace, buscador y filtros
 - tambien cubre ubicacion, direccion y mapa
+- `/api/search`, `/api/search/suggest` y `/api/geo/*` deben seguir funcionando sin login incluso si el browser manda credenciales auth viejas; el filtro JWT no debe bloquear exploracion publica por ese motivo
 
 ### Profesionales publicos
 
@@ -152,6 +154,7 @@ Lectura de producto:
 
 - permite mostrar testimonios reales de clientes y profesionales en superficies publicas como el home
 - separado de reseñas entre clientes y profesionales (`core.review`); esto es feedback hacia la plataforma (`core.feedback`)
+- como el resto de `/public/**`, si llega auth invalida se degrada a anonimo en vez de devolver `401`
 
 ### Profesionales publicos
 

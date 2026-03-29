@@ -264,6 +264,35 @@ class AuthSessionIntegrationTest {
     }
 
     @Test
+    void publicHealthIgnoresInvalidBearerToken() throws Exception {
+        mockMvc.perform(get("/health")
+                .header("Authorization", "Bearer invalid-token"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.status").value("ok"));
+    }
+
+    @Test
+    void publicCategoriesIgnoreInvalidAccessCookie() throws Exception {
+        mockMvc.perform(get("/categories")
+                .cookie(new MockCookie("plura_access_token", "invalid-token")))
+            .andExpect(status().isOk());
+    }
+
+    @Test
+    void refreshWithInvalidCookiesReturnsUnauthorizedInsteadOfServerError() throws Exception {
+        mockMvc.perform(post("/auth/refresh")
+                .header("Origin", "http://localhost:3002")
+                .header("X-Plura-Client-Platform", "WEB")
+                .header("X-Plura-Session-Transport", "COOKIE")
+                .cookie(
+                    new MockCookie("plura_access_token", "invalid-access-token"),
+                    new MockCookie("plura_refresh_token", "invalid-refresh-token")
+                ))
+            .andExpect(status().isUnauthorized())
+            .andExpect(jsonPath("$.error").value("REFRESH_TOKEN_INVALID"));
+    }
+
+    @Test
     void deleteSessionRevokesOnlyRequestedSession() throws Exception {
         registerClient("delete-session@plura.com");
 

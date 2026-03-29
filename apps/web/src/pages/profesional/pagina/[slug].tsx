@@ -829,41 +829,6 @@ export default function ProfesionalDetailPage({
           </section>
 
           <Card
-            tone="soft"
-            className="rounded-[32px] border-white/80 bg-[color:var(--surface-soft)]/95 p-6 shadow-[0_18px_52px_-42px_rgba(15,23,42,0.24)] sm:p-7"
-          >
-            <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-              <div>
-                <p className="text-[0.68rem] font-semibold uppercase tracking-[0.32em] text-[color:var(--ink-faint)]">
-                  Reserva
-                </p>
-                <h2 className="mt-2 text-2xl font-semibold text-[color:var(--ink)]">
-                  La reserva se completa en su pantalla dedicada
-                </h2>
-                <p className="mt-3 max-w-2xl text-sm leading-6 text-[color:var(--ink-muted)]">
-                  Este perfil muestra identidad, servicios e información pública. La elección de horario y el checkout siguen en `/reservar`.
-                </p>
-              </div>
-              <div className="flex flex-wrap gap-3">
-                <button
-                  type="button"
-                  onClick={handlePrimaryReserveEntry}
-                  className="rounded-full bg-[color:var(--primary)] px-5 py-3 text-sm font-semibold text-white shadow-[var(--shadow-card)] transition hover:-translate-y-0.5 hover:bg-[color:var(--primary-strong)] disabled:cursor-not-allowed disabled:opacity-55"
-                >
-                  {selectedService ? `Reservar ${selectedService.name}` : 'Elegir servicio'}
-                </button>
-                <button
-                  type="button"
-                  onClick={handleViewServices}
-                  className="rounded-full border border-[color:var(--border-soft)] bg-white px-5 py-3 text-sm font-semibold text-[color:var(--ink)] transition hover:-translate-y-0.5 hover:shadow-[var(--shadow-card)]"
-                >
-                  Ver servicios
-                </button>
-              </div>
-            </div>
-          </Card>
-
-          <Card
             tone="default"
             className="overflow-hidden rounded-[32px] border-white/80 bg-white/96 p-6 shadow-[0_26px_72px_-48px_rgba(15,23,42,0.28)] sm:p-8"
           >

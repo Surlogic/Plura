@@ -1,7 +1,7 @@
 'use client';
 
 import Image from 'next/image';
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { memo, useEffect, useMemo, useRef, useState } from 'react';
 import { resolveAssetUrl } from '@/utils/assetUrl';
 
 type BusinessGalleryProps = {
@@ -24,10 +24,7 @@ const sanitizeImageSrc = (value: string): string | null => {
 };
 
 export default memo(function BusinessGallery({ photos, businessName }: BusinessGalleryProps) {
-  const trackRef = useRef<HTMLDivElement | null>(null);
-  const rafRef = useRef<number | null>(null);
-  const [canScrollLeft, setCanScrollLeft] = useState(false);
-  const [canScrollRight, setCanScrollRight] = useState(false);
+  const thumbnailTrackRef = useRef<HTMLDivElement | null>(null);
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
 
   const normalizedPhotos = useMemo(() => {
@@ -44,44 +41,6 @@ export default memo(function BusinessGallery({ photos, businessName }: BusinessG
 
     return result.slice(0, 15);
   }, [photos]);
-
-  const updateScrollState = useCallback(() => {
-    const node = trackRef.current;
-    if (!node) {
-      setCanScrollLeft(false);
-      setCanScrollRight(false);
-      return;
-    }
-
-    const maxScrollLeft = node.scrollWidth - node.clientWidth;
-    setCanScrollLeft(node.scrollLeft > 4);
-    setCanScrollRight(maxScrollLeft - node.scrollLeft > 4);
-  }, []);
-
-  const scheduleScrollStateUpdate = useCallback(() => {
-    if (rafRef.current !== null) return;
-    rafRef.current = window.requestAnimationFrame(() => {
-      rafRef.current = null;
-      updateScrollState();
-    });
-  }, [updateScrollState]);
-
-  useEffect(() => {
-    scheduleScrollStateUpdate();
-  }, [normalizedPhotos.length, scheduleScrollStateUpdate]);
-
-  useEffect(() => {
-    window.addEventListener('resize', scheduleScrollStateUpdate, { passive: true });
-    return () => window.removeEventListener('resize', scheduleScrollStateUpdate);
-  }, [scheduleScrollStateUpdate]);
-
-  useEffect(() => {
-    return () => {
-      if (rafRef.current !== null) {
-        window.cancelAnimationFrame(rafRef.current);
-      }
-    };
-  }, []);
 
   useEffect(() => {
     if (activeIndex === null) return undefined;
@@ -109,71 +68,83 @@ export default memo(function BusinessGallery({ photos, businessName }: BusinessG
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [activeIndex, normalizedPhotos.length]);
 
-  const scrollByViewport = (direction: -1 | 1) => {
-    const node = trackRef.current;
-    if (!node) return;
-    const distance = Math.max(node.clientWidth * 0.85, 260);
-    node.scrollBy({ left: direction * distance, behavior: 'smooth' });
-  };
+  useEffect(() => {
+    if (activeIndex === null) return;
+    const node = thumbnailTrackRef.current;
+    const target = node?.querySelector<HTMLElement>(`[data-photo-index="${activeIndex}"]`);
+    target?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+  }, [activeIndex]);
 
   if (normalizedPhotos.length === 0) {
     return (
-      <div className="rounded-[20px] border border-dashed border-[#CBD5E1] bg-[#F8FAFC] px-5 py-8 text-sm text-[#64748B]">
+      <div className="rounded-[24px] border border-dashed border-[#CBD5E1] bg-[#F8FAFC] px-5 py-10 text-sm text-[#64748B]">
         No hay fotos cargadas todavia.
       </div>
     );
   }
 
+  const visiblePhotos = normalizedPhotos.slice(0, Math.min(normalizedPhotos.length, 5));
+  const hiddenPhotosCount = Math.max(0, normalizedPhotos.length - visiblePhotos.length);
+
+  const getTileClassName = (index: number) => {
+    if (visiblePhotos.length === 1) {
+      return 'col-span-2 h-[320px] md:col-span-4';
+    }
+    if (index === 0) {
+      return 'col-span-2 h-[260px] md:col-span-2 md:row-span-2 md:h-auto';
+    }
+    return 'h-[156px]';
+  };
+
   return (
     <>
-      <div className="relative">
-        <div
-          ref={trackRef}
-          onScroll={scheduleScrollStateUpdate}
-          className="flex snap-x snap-mandatory gap-3 overflow-x-auto pb-2 pr-1 scroll-smooth [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-        >
-          {normalizedPhotos.map((photo, index) => (
+      <div className="space-y-4">
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-4 md:auto-rows-[156px]">
+          {visiblePhotos.map((photo, index) => (
             <button
               key={`${photo}-${index}`}
               type="button"
               onClick={() => setActiveIndex(index)}
-              className="h-28 w-[160px] shrink-0 snap-start overflow-hidden rounded-[16px] border border-[#D9E2EC] bg-[#EEF2F6] transition hover:-translate-y-0.5 hover:shadow-sm sm:h-32 sm:w-[164px]"
+              className={`group relative overflow-hidden rounded-[24px] border border-[#D9E2EC] bg-[#EEF2F6] text-left transition hover:-translate-y-1 hover:shadow-[0_18px_44px_-32px_rgba(15,23,42,0.32)] ${getTileClassName(index)}`}
               aria-label={`Abrir foto ${index + 1}`}
             >
-              <span className="relative block h-full w-full">
+              <span className="absolute inset-0">
                 <Image
                   src={photo}
                   alt={`Foto ${index + 1} de ${businessName || 'negocio'}`}
                   fill
-                  sizes="(max-width: 640px) 160px, 164px"
-                  className="h-full w-full object-cover"
+                  sizes="(max-width: 768px) 50vw, 25vw"
+                  className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.03]"
                 />
               </span>
+              <span className="absolute inset-0 bg-[linear-gradient(180deg,rgba(15,23,42,0.02)_15%,rgba(15,23,42,0.36)_100%)]" />
+              {index === 0 ? (
+                <span className="absolute inset-x-0 bottom-0 p-5 text-white">
+                  <span className="block text-[0.68rem] font-semibold uppercase tracking-[0.28em] text-white/70">
+                    Galeria
+                  </span>
+                  <span className="mt-2 block text-lg font-semibold">
+                    {businessName || 'Espacio profesional'}
+                  </span>
+                </span>
+              ) : null}
+              {hiddenPhotosCount > 0 && index === visiblePhotos.length - 1 ? (
+                <span className="absolute inset-0 flex items-center justify-center bg-[rgba(15,23,42,0.42)] text-base font-semibold text-white">
+                  +{hiddenPhotosCount} fotos
+                </span>
+              ) : null}
             </button>
           ))}
         </div>
 
-        {normalizedPhotos.length > 1 ? (
-          <>
-            <button
-              type="button"
-              onClick={() => scrollByViewport(-1)}
-              disabled={!canScrollLeft}
-              className="absolute left-2 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full border border-[color:var(--border-soft)] bg-white/95 text-base text-[color:var(--ink)] shadow-[var(--shadow-card)] transition disabled:cursor-not-allowed disabled:opacity-45"
-              aria-label="Ver fotos anteriores"
-            >
-              {'<'}
-            </button>
-            <button
-              type="button"
-              onClick={() => scrollByViewport(1)}
-              disabled={!canScrollRight}
-              className="absolute right-2 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full border border-[color:var(--border-soft)] bg-white/95 text-base text-[color:var(--ink)] shadow-[var(--shadow-card)] transition disabled:cursor-not-allowed disabled:opacity-45"
-              aria-label="Ver fotos siguientes"
-            >
-              {'>'}
-            </button>
-          </>
+        {normalizedPhotos.length > visiblePhotos.length ? (
+          <button
+            type="button"
+            onClick={() => setActiveIndex(0)}
+            className="rounded-full border border-[color:var(--border-soft)] bg-white px-4 py-2 text-sm font-semibold text-[color:var(--ink)] transition hover:-translate-y-0.5 hover:shadow-[var(--shadow-card)]"
+          >
+            Ver todas las fotos
+          </button>
         ) : null}
       </div>
 
@@ -185,7 +156,27 @@ export default memo(function BusinessGallery({ photos, businessName }: BusinessG
             onClick={() => setActiveIndex(null)}
             aria-label="Cerrar galeria"
           />
-          <div className="relative z-[1] flex w-full items-center justify-center gap-3">
+          <div className="relative z-[1] flex w-full max-w-[1320px] flex-col gap-4">
+            <div className="flex items-center justify-between gap-4 text-white">
+              <div>
+                <p className="text-[0.68rem] font-semibold uppercase tracking-[0.28em] text-white/70">
+                  Galeria
+                </p>
+                <p className="mt-2 text-lg font-semibold">
+                  {activeIndex + 1} de {normalizedPhotos.length}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setActiveIndex(null)}
+                className="rounded-full border border-white/40 bg-white/10 px-4 py-2 text-sm font-semibold text-white backdrop-blur-sm"
+                aria-label="Cerrar"
+              >
+                Cerrar
+              </button>
+            </div>
+
+            <div className="flex items-center justify-center gap-3">
             {normalizedPhotos.length > 1 ? (
               <button
                 type="button"
@@ -202,41 +193,64 @@ export default memo(function BusinessGallery({ photos, businessName }: BusinessG
               </button>
             ) : null}
 
-            <div className="relative max-h-[92vh] max-w-[96vw] overflow-hidden rounded-[18px] border border-white/20 bg-black/25">
-              <div className="relative h-[75vh] w-[92vw] max-w-[1200px] sm:h-[84vh] sm:w-[86vw]">
-                <Image
-                  src={normalizedPhotos[activeIndex]}
-                  alt={`Foto ${activeIndex + 1} de ${businessName || 'negocio'}`}
-                  fill
-                  sizes="(max-width: 640px) 92vw, 86vw"
-                  className="object-contain"
-                  priority
-                />
+              <div className="relative max-h-[92vh] max-w-[96vw] overflow-hidden rounded-[24px] border border-white/20 bg-black/25">
+                <div className="relative h-[70vh] w-[92vw] max-w-[1200px] sm:h-[78vh] sm:w-[86vw]">
+                  <Image
+                    src={normalizedPhotos[activeIndex]}
+                    alt={`Foto ${activeIndex + 1} de ${businessName || 'negocio'}`}
+                    fill
+                    sizes="(max-width: 640px) 92vw, 86vw"
+                    className="object-contain"
+                    priority
+                  />
+                </div>
               </div>
-              <button
-                type="button"
-                onClick={() => setActiveIndex(null)}
-                className="absolute right-3 top-3 rounded-full border border-white/50 bg-black/30 px-3 py-1 text-xs font-semibold text-white"
-                aria-label="Cerrar"
-              >
-                Cerrar
-              </button>
+
+              {normalizedPhotos.length > 1 ? (
+                <button
+                  type="button"
+                  onClick={() =>
+                    setActiveIndex((prev) => {
+                      if (prev === null) return prev;
+                      return (prev + 1) % normalizedPhotos.length;
+                    })
+                  }
+                  className="hidden h-10 w-10 shrink-0 items-center justify-center rounded-full border border-white/40 bg-white/10 text-xl font-semibold text-white backdrop-blur-sm sm:flex"
+                  aria-label="Foto siguiente"
+                >
+                  {'>'}
+                </button>
+              ) : null}
             </div>
 
             {normalizedPhotos.length > 1 ? (
-              <button
-                type="button"
-                onClick={() =>
-                  setActiveIndex((prev) => {
-                    if (prev === null) return prev;
-                    return (prev + 1) % normalizedPhotos.length;
-                  })
-                }
-                className="hidden h-10 w-10 shrink-0 items-center justify-center rounded-full border border-white/40 bg-white/10 text-xl font-semibold text-white backdrop-blur-sm sm:flex"
-                aria-label="Foto siguiente"
+              <div
+                ref={thumbnailTrackRef}
+                className="flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
               >
-                {'>'}
-              </button>
+                {normalizedPhotos.map((photo, index) => (
+                  <button
+                    key={`${photo}-thumb-${index}`}
+                    type="button"
+                    data-photo-index={index}
+                    onClick={() => setActiveIndex(index)}
+                    className={`relative h-20 w-20 shrink-0 overflow-hidden rounded-[16px] border transition ${
+                      index === activeIndex
+                        ? 'border-white shadow-[0_0_0_2px_rgba(255,255,255,0.35)]'
+                        : 'border-white/20 opacity-70 hover:opacity-100'
+                    }`}
+                    aria-label={`Ir a foto ${index + 1}`}
+                  >
+                    <Image
+                      src={photo}
+                      alt={`Miniatura ${index + 1} de ${businessName || 'negocio'}`}
+                      fill
+                      sizes="80px"
+                      className="object-cover"
+                    />
+                  </button>
+                ))}
+              </div>
             ) : null}
           </div>
         </div>

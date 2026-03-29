@@ -162,6 +162,7 @@ Lectura de producto:
 - es la base de `Usuario` y del valor visible de `Free`
 - `GET /public/profesionales/{slug}` mantiene cache de perfil publico y ahora registra timing tecnico. Devuelve `rating` y `reviewsCount` reales
 - `GET /public/profesionales/{slug}` ahora devuelve también `logoMedia` y `bannerMedia` con `{ positionX, positionY, zoom }` para reproducir el encuadre persistido de identidad visual en frontend
+- `GET /public/profesionales/{slug}` ordena `photos` priorizando primero la galería pública del negocio (`LOCAL/WORK` y fallback `publicPhotos`) y recién después las fotos de servicios para que la sección de galería no repita primero assets ya visibles dentro de cada servicio
 - `GET /public/profesionales/{slug}/slots` mantiene el mismo calculo funcional de disponibilidad, pero usa un finder liviano del profesional y registra timing tecnico
 
 ### Configuracion del profesional
@@ -225,7 +226,7 @@ Notas:
 
 - `POST /profesional/services/image` confirma que el repo ya integra carga de imagenes en servicios
 - `POST /profesional/images/upload` es el endpoint genérico recomendado para subir logos, banners, galería y fotos de servicio; organiza los archivos por `professionals/{professionalId}/{kind}/` en R2 o filesystem local
-- `GET /profesional/public-page` y `PUT /profesional/public-page` incluyen campo `photos` para la galería pública; el request admite hasta `10` por validación estructural, pero el límite efectivo se aplica por plan en runtime (`3 / 6 / 10`); la resolución de fotos combina `business_photo` (tipos LOCAL, WORK, SERVICE), `publicPhotos` del perfil y fotos de servicios, deduplicando y ordenando por fecha de creación
+- `GET /profesional/public-page` y `PUT /profesional/public-page` incluyen campo `photos` para la galería pública; el request admite hasta `10` por validación estructural, pero el límite efectivo se aplica por plan en runtime (`3 / 6 / 10`); en la página pública la resolución final prioriza `business_photo` de galería (`LOCAL`, `WORK`) y fallback `publicPhotos`, y deja después las fotos ligadas a servicios (`SERVICE` + imagen principal del servicio), deduplicando sin cambiar el contrato
 - `PUT /profesional/profile` soporta `logoUrl` y `bannerUrl` para la identidad pública del negocio desde cualquier plan actual
 - la capa de categorias existe en el sistema, pero el nivel exacto de etiquetas y reglas por servicio requiere revisar dominio y UI puntual
 

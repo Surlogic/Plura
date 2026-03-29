@@ -6,10 +6,7 @@ import Navbar from '@/components/shared/Navbar';
 import Footer from '@/components/shared/Footer';
 import BusinessGallery from '@/components/profesional/BusinessGallery';
 import ServiceDetailModal from '@/components/profesional/ServiceDetailModal';
-import FavoriteToggleButton from '@/components/shared/FavoriteToggleButton';
 import PublicReviewsList from '@/components/profesional/PublicReviewsList';
-import Badge from '@/components/ui/Badge';
-import Button from '@/components/ui/Button';
 import Card from '@/components/ui/Card';
 import { useFavoriteProfessionals } from '@/hooks/useFavoriteProfessionals';
 import { mapboxForwardGeocode } from '@/services/mapbox';
@@ -18,11 +15,22 @@ import {
   getPublicSlots,
 } from '@/services/publicBookings';
 import { hasKnownAuthSession } from '@/services/session';
-import { resolveAssetUrl } from '@/utils/assetUrl';
 import {
-  buildProfessionalMediaStyle,
   normalizeProfessionalMediaPresentation,
 } from '@/utils/professionalMediaPresentation';
+import PublicProfileHero from '@/components/profesional/public-page/PublicProfileHero';
+import PublicBookingSidebar, {
+  type QuickSlotGroup,
+} from '@/components/profesional/public-page/PublicBookingSidebar';
+import PublicServicesSection, {
+  type PublicServiceItem,
+} from '@/components/profesional/public-page/PublicServicesSection';
+import {
+  formatServiceDuration,
+  formatServicePaymentType,
+  formatServicePrice,
+  resolveServiceCategoryLabel,
+} from '@/components/profesional/public-page/servicePresentation';
 import type {
   ProfessionalMediaPresentation,
   ProfessionalSchedule,
@@ -35,7 +43,7 @@ const PublicProfileMap = dynamic(
   {
     ssr: false,
     loading: () => (
-      <div className="flex h-80 items-center justify-center rounded-2xl border border-[#E2E7EC] bg-[#F3F6F9] px-4 text-center text-sm text-[#64748B]">
+      <div className="flex h-[360px] items-center justify-center rounded-[28px] border border-[#E2E7EC] bg-[#F3F6F9] px-4 text-center text-sm text-[#64748B]">
         Cargando mapa...
       </div>
     ),
@@ -52,35 +60,6 @@ const dayLabels: Record<WorkDayKey, string> = {
   sun: 'Domingo',
 };
 
-const formatServiceDuration = (value?: string) => {
-  if (!value) return 'Duración a definir';
-  const trimmed = value.trim();
-  if (!trimmed) return 'Duración a definir';
-  if (/[a-zA-Z]/.test(trimmed)) return trimmed;
-  const minutes = Number(trimmed);
-  if (!Number.isFinite(minutes)) return trimmed;
-  if (minutes < 60) return `${minutes} min`;
-  const hours = Math.floor(minutes / 60);
-  const remaining = Math.round(minutes % 60);
-  if (remaining === 0) return `${hours} h`;
-  return `${hours} h ${remaining} min`;
-};
-
-const formatServicePrice = (value?: string) => {
-  if (!value) return 'Consultar';
-  const trimmed = value.trim();
-  if (!trimmed) return 'Consultar';
-  if (trimmed.includes('$')) return trimmed;
-  return `$${trimmed}`;
-};
-
-const formatServicePaymentType = (value?: string) => {
-  const normalized = (value || '').trim().toUpperCase();
-  if (normalized === 'DEPOSIT') return 'Seña online';
-  if (normalized === 'FULL_PREPAY' || normalized === 'FULL') return 'Pago total online';
-  return 'Pago en el lugar';
-};
-
 type PreviewPayload = {
   name?: string;
   category?: string;
@@ -95,33 +74,11 @@ type PreviewPayload = {
   schedule?: ProfessionalSchedule;
 };
 
-type QuickSlotGroup = {
-  label: 'Hoy' | 'Mañana';
-  dateKey: string;
-  slots: string[];
-};
-
 const toLocalDateKey = (daysFromToday = 0) => {
   const date = new Date();
   date.setHours(0, 0, 0, 0);
   date.setDate(date.getDate() + daysFromToday);
   return date.toLocaleDateString('en-CA');
-};
-
-// Valida que el payload de postMessage tenga la forma esperada
-const isValidPreviewPayload = (value: unknown): value is PreviewPayload => {
-  if (!value || typeof value !== 'object') return false;
-  const obj = value as Record<string, unknown>;
-  if ('name' in obj && obj.name !== undefined && typeof obj.name !== 'string') return false;
-  if ('category' in obj && obj.category !== undefined && typeof obj.category !== 'string') return false;
-  if ('logoUrl' in obj && obj.logoUrl !== undefined && typeof obj.logoUrl !== 'string') return false;
-  if ('bannerUrl' in obj && obj.bannerUrl !== undefined && typeof obj.bannerUrl !== 'string') return false;
-  if ('logoMedia' in obj && obj.logoMedia !== undefined && !isValidMediaPresentation(obj.logoMedia)) return false;
-  if ('bannerMedia' in obj && obj.bannerMedia !== undefined && !isValidMediaPresentation(obj.bannerMedia)) return false;
-  if ('headline' in obj && obj.headline !== undefined && typeof obj.headline !== 'string') return false;
-  if ('about' in obj && obj.about !== undefined && typeof obj.about !== 'string') return false;
-  if ('photos' in obj && obj.photos !== undefined && (!Array.isArray(obj.photos) || !obj.photos.every((item) => typeof item === 'string'))) return false;
-  return true;
 };
 
 const isValidMediaPresentation = (
@@ -136,21 +93,25 @@ const isValidMediaPresentation = (
   );
 };
 
-// Acepta solo URLs de imagen con protocolo seguro para evitar inyección CSS
-const sanitizeImageSrc = (src: string): string | undefined => {
-  if (!src) return undefined;
-  const resolved = resolveAssetUrl(src);
-  if (!resolved) return undefined;
-  try {
-    const baseOrigin =
-      typeof window !== 'undefined' ? window.location.origin : 'http://localhost';
-    const url = new URL(resolved, baseOrigin);
-    if (url.protocol === 'https:' || url.protocol === 'http:') return resolved;
-    return undefined;
-  } catch {
-    if (resolved.startsWith('/') || resolved.startsWith('./')) return resolved;
-    return undefined;
+const isValidPreviewPayload = (value: unknown): value is PreviewPayload => {
+  if (!value || typeof value !== 'object') return false;
+  const obj = value as Record<string, unknown>;
+  if ('name' in obj && obj.name !== undefined && typeof obj.name !== 'string') return false;
+  if ('category' in obj && obj.category !== undefined && typeof obj.category !== 'string') return false;
+  if ('logoUrl' in obj && obj.logoUrl !== undefined && typeof obj.logoUrl !== 'string') return false;
+  if ('bannerUrl' in obj && obj.bannerUrl !== undefined && typeof obj.bannerUrl !== 'string') return false;
+  if ('logoMedia' in obj && obj.logoMedia !== undefined && !isValidMediaPresentation(obj.logoMedia)) return false;
+  if ('bannerMedia' in obj && obj.bannerMedia !== undefined && !isValidMediaPresentation(obj.bannerMedia)) return false;
+  if ('headline' in obj && obj.headline !== undefined && typeof obj.headline !== 'string') return false;
+  if ('about' in obj && obj.about !== undefined && typeof obj.about !== 'string') return false;
+  if (
+    'photos' in obj &&
+    obj.photos !== undefined &&
+    (!Array.isArray(obj.photos) || !obj.photos.every((item) => typeof item === 'string'))
+  ) {
+    return false;
   }
+  return true;
 };
 
 const sanitizeExternalUrl = (value: string): string | null => {
@@ -167,6 +128,8 @@ const sanitizeExternalUrl = (value: string): string | null => {
     return null;
   }
 };
+
+type SocialPlatform = 'instagram' | 'facebook' | 'tiktok' | 'website' | 'whatsapp';
 
 const resolveSocialHref = (
   value: string | null | undefined,
@@ -235,17 +198,11 @@ const splitLocationLines = (location: string) => {
   };
 };
 
-const MapSectionPlaceholder = ({
-  message,
-}: {
-  message: string;
-}) => (
-  <div className="flex h-80 items-center justify-center rounded-2xl border border-[#E2E7EC] bg-[#F3F6F9] px-4 text-center text-sm text-[#64748B]">
+const MapSectionPlaceholder = ({ message }: { message: string }) => (
+  <div className="flex h-[360px] items-center justify-center rounded-[28px] border border-[#E2E7EC] bg-[#F3F6F9] px-6 text-center text-sm text-[#64748B]">
     {message}
   </div>
 );
-
-type SocialPlatform = 'instagram' | 'facebook' | 'tiktok' | 'website' | 'whatsapp';
 
 const SocialIcon = ({ platform }: { platform: SocialPlatform }) => {
   if (platform === 'instagram') {
@@ -280,6 +237,40 @@ const SocialIcon = ({ platform }: { platform: SocialPlatform }) => {
     <svg viewBox="0 0 24 24" aria-hidden="true" className="h-4 w-4 fill-current">
       <path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5.1-1.3A10 10 0 1 0 12 2Zm0 18a8 8 0 0 1-4.2-1.2l-.4-.2-3 .8.8-2.9-.2-.4A8 8 0 1 1 12 20Zm4.2-6c-.2-.1-1.2-.6-1.4-.7s-.3-.1-.5.1-.6.7-.7.8-.3.1-.5 0a5.8 5.8 0 0 1-1.7-1.1 6.5 6.5 0 0 1-1.2-1.5c-.1-.2 0-.3.1-.4l.3-.4a1.5 1.5 0 0 0 .2-.4.5.5 0 0 0 0-.5c0-.1-.5-1.1-.7-1.5s-.4-.3-.5-.3h-.4a.8.8 0 0 0-.6.3 2.4 2.4 0 0 0-.8 1.8 4 4 0 0 0 .9 2.2 9.1 9.1 0 0 0 3.4 3 11.3 11.3 0 0 0 1.1.4 2.7 2.7 0 0 0 1.2.1 2 2 0 0 0 1.3-.9 1.6 1.6 0 0 0 .1-.9c0-.1-.2-.2-.4-.3Z" />
     </svg>
+  );
+};
+
+const DetailRow = ({
+  href,
+  label,
+  value,
+}: {
+  href?: string;
+  label: string;
+  value: string;
+}) => {
+  if (!value) return null;
+
+  const content = href ? (
+    <a
+      href={href}
+      target={href.startsWith('mailto:') || href.startsWith('tel:') ? undefined : '_blank'}
+      rel={href.startsWith('mailto:') || href.startsWith('tel:') ? undefined : 'noopener noreferrer'}
+      className="text-sm leading-6 text-[color:var(--ink)] transition hover:text-[color:var(--primary)]"
+    >
+      {value}
+    </a>
+  ) : (
+    <span className="text-sm leading-6 text-[color:var(--ink)]">{value}</span>
+  );
+
+  return (
+    <div className="rounded-[18px] border border-[color:var(--border-soft)] bg-white px-4 py-3">
+      <p className="text-[0.62rem] font-semibold uppercase tracking-[0.24em] text-[color:var(--ink-faint)]">
+        {label}
+      </p>
+      <div className="mt-1.5">{content}</div>
+    </div>
   );
 };
 
@@ -325,12 +316,14 @@ export default function ProfesionalDetailPage({
   const { isFavorite, toggleFavorite } = useFavoriteProfessionals({
     enabled: canResolveClientFeatures,
   });
+
   const slug = Array.isArray(router.query.slug)
     ? router.query.slug[0]
     : router.query.slug;
   const isPreview = Array.isArray(router.query.preview)
     ? router.query.preview[0] === '1'
     : router.query.preview === '1';
+
   const [preview, setPreview] = useState<PreviewPayload | null>(null);
   const [data, setData] = useState<PublicProfessional | null>(
     (initialData as PublicProfessional | null) ?? null,
@@ -345,9 +338,16 @@ export default function ProfesionalDetailPage({
   const [serviceDetailIndex, setServiceDetailIndex] = useState<number | null>(null);
   const [quickSlotGroups, setQuickSlotGroups] = useState<QuickSlotGroup[]>([]);
   const [isLoadingQuickSlots, setIsLoadingQuickSlots] = useState(false);
+  const [quickSlotsRefreshKey, setQuickSlotsRefreshKey] = useState(0);
   const [hasInteractedWithServices, setHasInteractedWithServices] = useState(false);
   const [isMapSectionVisible, setIsMapSectionVisible] = useState(false);
+  const [activeServiceCategory, setActiveServiceCategory] = useState('');
   const mapSectionRef = useRef<HTMLElement | null>(null);
+
+  useEffect(() => {
+    setData((initialData as PublicProfessional | null) ?? null);
+    setErrorMessage(null);
+  }, [initialData]);
 
   useEffect(() => {
     if (isPreview) return;
@@ -357,7 +357,9 @@ export default function ProfesionalDetailPage({
 
   useEffect(() => {
     if (!slug || isPreview) return;
-    if (!data) setIsLoading(true);
+    if (data?.slug === slug) return;
+
+    setIsLoading(true);
     setErrorMessage(null);
 
     getPublicProfessionalBySlug(slug)
@@ -370,7 +372,7 @@ export default function ProfesionalDetailPage({
       .finally(() => {
         setIsLoading(false);
       });
-  }, [slug, isPreview]);
+  }, [data?.slug, isPreview, slug]);
 
   useEffect(() => {
     if (!isPreview) return;
@@ -391,27 +393,27 @@ export default function ProfesionalDetailPage({
 
   const resolved = useMemo(() => {
     const fallback = {
-      name: '',
-      category: '',
-      logoUrl: '',
-      logoMedia: normalizeProfessionalMediaPresentation(null),
-      bannerUrl: '',
-      bannerMedia: normalizeProfessionalMediaPresentation(null),
-      location: '',
-      headline: '',
       about: '',
+      bannerMedia: normalizeProfessionalMediaPresentation(null),
+      bannerUrl: '',
+      category: '',
       email: '',
-      phoneNumber: '',
-      instagram: '',
       facebook: '',
+      headline: '',
+      instagram: '',
+      latitude: null as number | null,
+      location: '',
+      logoMedia: normalizeProfessionalMediaPresentation(null),
+      logoUrl: '',
+      longitude: null as number | null,
+      name: '',
+      phoneNumber: '',
+      photos: [] as string[],
+      schedule: null as ProfessionalSchedule | null,
+      services: [] as PublicService[],
       tiktok: '',
       website: '',
       whatsapp: '',
-      latitude: null as number | null,
-      longitude: null as number | null,
-      photos: [],
-      services: [] as PublicService[],
-      schedule: null as ProfessionalSchedule | null,
     };
 
     if (!data) {
@@ -420,27 +422,27 @@ export default function ProfesionalDetailPage({
 
     return {
       ...fallback,
-      name: data.fullName || data.name || fallback.name,
-      category: data.rubro || fallback.category,
-      logoUrl: data.logoUrl || fallback.logoUrl,
-      logoMedia: normalizeProfessionalMediaPresentation(data.logoMedia),
-      bannerUrl: data.bannerUrl || fallback.bannerUrl,
-      bannerMedia: normalizeProfessionalMediaPresentation(data.bannerMedia),
-      headline: data.headline || fallback.headline,
       about: data.about || data.description || fallback.about,
-      location: data.location || data.address || fallback.location,
+      bannerMedia: normalizeProfessionalMediaPresentation(data.bannerMedia),
+      bannerUrl: data.bannerUrl || fallback.bannerUrl,
+      category: data.rubro || fallback.category,
       email: data.email || fallback.email,
-      phoneNumber: data.phoneNumber || data.phone || fallback.phoneNumber,
-      instagram: data.instagram || fallback.instagram,
       facebook: data.facebook || fallback.facebook,
+      headline: data.headline || fallback.headline,
+      instagram: data.instagram || fallback.instagram,
+      latitude: parseOptionalNumber(data.latitude ?? data.lat),
+      location: data.location || data.address || fallback.location,
+      logoMedia: normalizeProfessionalMediaPresentation(data.logoMedia),
+      logoUrl: data.logoUrl || fallback.logoUrl,
+      longitude: parseOptionalNumber(data.longitude ?? data.lng),
+      name: data.fullName || data.name || fallback.name,
+      phoneNumber: data.phoneNumber || data.phone || fallback.phoneNumber,
+      photos: data.photos || fallback.photos,
+      schedule: data.schedule ?? fallback.schedule,
+      services: data.services || fallback.services,
       tiktok: data.tiktok || fallback.tiktok,
       website: data.website || fallback.website,
       whatsapp: data.whatsapp || fallback.whatsapp,
-      latitude: parseOptionalNumber(data.latitude ?? data.lat),
-      longitude: parseOptionalNumber(data.longitude ?? data.lng),
-      photos: data.photos || fallback.photos,
-      services: data.services || fallback.services,
-      schedule: data.schedule ?? fallback.schedule,
     };
   }, [data]);
 
@@ -448,34 +450,34 @@ export default function ProfesionalDetailPage({
     if (!preview) return resolved;
     return {
       ...resolved,
-      name: preview.name ?? resolved.name,
-      category: preview.category ?? resolved.category,
-      logoUrl: preview.logoUrl ?? resolved.logoUrl,
-      logoMedia: preview.logoMedia
-        ? normalizeProfessionalMediaPresentation(preview.logoMedia)
-        : resolved.logoMedia,
-      bannerUrl: preview.bannerUrl ?? resolved.bannerUrl,
+      about: preview.about ?? resolved.about,
       bannerMedia: preview.bannerMedia
         ? normalizeProfessionalMediaPresentation(preview.bannerMedia)
         : resolved.bannerMedia,
+      bannerUrl: preview.bannerUrl ?? resolved.bannerUrl,
+      category: preview.category ?? resolved.category,
       headline: preview.headline ?? resolved.headline,
-      about: preview.about ?? resolved.about,
+      logoMedia: preview.logoMedia
+        ? normalizeProfessionalMediaPresentation(preview.logoMedia)
+        : resolved.logoMedia,
+      logoUrl: preview.logoUrl ?? resolved.logoUrl,
+      name: preview.name ?? resolved.name,
       photos: preview.photos ?? resolved.photos,
       schedule: preview.schedule ?? resolved.schedule,
     };
-  }, [resolved, preview]);
+  }, [preview, resolved]);
 
-  const displayServices = useMemo(() => preview
-    ? Array.isArray(preview.services)
-      ? preview.services
-      : []
-    : Array.isArray(data?.services)
-      ? data.services
-      : [], [preview, data?.services]);
-  const selectedService = displayServices[selectedServiceIndex] ?? null;
-  const serviceDetail = serviceDetailIndex !== null
-    ? displayServices[serviceDetailIndex] ?? null
-    : null;
+  const displayServices = useMemo(
+    () =>
+      preview
+        ? Array.isArray(preview.services)
+          ? preview.services
+          : []
+        : Array.isArray(data?.services)
+          ? data.services
+          : [],
+    [data?.services, preview],
+  );
 
   useEffect(() => {
     if (displayServices.length === 0) {
@@ -491,12 +493,46 @@ export default function ProfesionalDetailPage({
     }
   }, [displayServices.length, selectedServiceIndex, serviceDetailIndex]);
 
+  const serviceItems = useMemo<PublicServiceItem[]>(
+    () =>
+      displayServices.map((service, index) => ({
+        categoryLabel: resolveServiceCategoryLabel(service, merged.category),
+        index,
+        service,
+      })),
+    [displayServices, merged.category],
+  );
+
+  const serviceCategories = useMemo(
+    () => Array.from(new Set(serviceItems.map((item) => item.categoryLabel))),
+    [serviceItems],
+  );
+
+  useEffect(() => {
+    const firstCategory = serviceCategories[0] ?? '';
+    setActiveServiceCategory((current) =>
+      current && serviceCategories.includes(current) ? current : firstCategory,
+    );
+  }, [serviceCategories]);
+
+  useEffect(() => {
+    if (!activeServiceCategory) return;
+    const selectedItem = serviceItems.find((item) => item.index === selectedServiceIndex);
+    if (selectedItem?.categoryLabel === activeServiceCategory) return;
+    const firstItem = serviceItems.find((item) => item.categoryLabel === activeServiceCategory);
+    if (firstItem) {
+      setSelectedServiceIndex(firstItem.index);
+    }
+  }, [activeServiceCategory, selectedServiceIndex, serviceItems]);
+
+  const selectedService = displayServices[selectedServiceIndex] ?? null;
+  const serviceDetail =
+    serviceDetailIndex !== null ? displayServices[serviceDetailIndex] ?? null : null;
+
   const displaySchedule = merged.schedule ?? null;
-  const scheduleDays = Array.isArray(displaySchedule?.days)
-    ? displaySchedule?.days
-    : [];
 
   const scheduleSummary = useMemo(() => {
+    const scheduleDays = Array.isArray(displaySchedule?.days) ? displaySchedule.days : [];
     if (!displaySchedule || scheduleDays.length === 0) {
       return [] as { label: string; ranges: string }[];
     }
@@ -505,11 +541,6 @@ export default function ProfesionalDetailPage({
       (day) => day.enabled && !day.paused && (day.ranges ?? []).length > 0,
     );
     if (activeDays.length === 0) return [];
-
-    const group: {
-      label: string;
-      ranges: string;
-    }[] = [];
 
     const buckets: Record<string, WorkDayKey[]> = {};
     activeDays.forEach((day) => {
@@ -529,62 +560,28 @@ export default function ProfesionalDetailPage({
 
     const formatDayLabel = (days: WorkDayKey[]) => {
       const set = new Set(days);
-      if (set.has('mon') && set.has('fri') && days.length >= 5) {
-        
-        const weekdays: WorkDayKey[] = ['mon', 'tue', 'wed', 'thu', 'fri'];
-        
-        if (weekdays.every((day) => set.has(day)) && days.length === 5) {
-          return 'Lun a Vie';
-        }
+      const weekdays: WorkDayKey[] = ['mon', 'tue', 'wed', 'thu', 'fri'];
+      if (weekdays.every((day) => set.has(day)) && days.length === weekdays.length) {
+        return 'Lun a Vie';
       }
       if (set.has('sat') && days.length === 1) return 'Sáb';
       if (set.has('sun') && days.length === 1) return 'Dom';
       if (days.length > 1) {
-        const first = dayLabels[days[0]];
-        const last = dayLabels[days[days.length - 1]];
-        return `${first} a ${last}`;
+        return `${dayLabels[days[0]]} a ${dayLabels[days[days.length - 1]]}`;
       }
       return dayLabels[days[0]];
     };
 
-    const formatRangeLabel = (value: string) => {
-      const trimmed = value.trim();
-      if (!trimmed) return '';
-      if (/[^0-9]/.test(trimmed)) return trimmed;
-      const minutes = Number(trimmed);
-      if (!Number.isFinite(minutes)) return trimmed;
-      if (minutes < 60) return `${minutes} min`;
-      const hours = Math.floor(minutes / 60);
-      const remaining = Math.round(minutes % 60);
-      if (remaining === 0) return `${hours} h`;
-      return `${hours} h ${remaining} min`;
-    };
-
-    orderedRanges.forEach((ranges) => {
-      const parsedRanges = ranges
-        .split('·')
-        .map((segment) => segment.trim())
-        .filter(Boolean)
-        .map((segment) => {
-          const [start, end] = segment.split('-').map((part) => part.trim());
-          if (!start || !end) return segment;
-          return `${formatRangeLabel(start)} - ${formatRangeLabel(end)}`;
-        })
-        .join(' · ');
+    return orderedRanges.map((ranges) => {
       const days = buckets[ranges].sort(
         (a, b) => dayOrder.indexOf(a) - dayOrder.indexOf(b),
       );
-      group.push({ label: formatDayLabel(days), ranges: parsedRanges });
+      return {
+        label: formatDayLabel(days),
+        ranges,
+      };
     });
-
-    return group;
-  }, [displaySchedule, scheduleDays]);
-
-  const resolveServiceCategoryLabel = (service?: PublicService | null) => {
-    const serviceCategory = service?.categoryName?.trim();
-    if (serviceCategory) return serviceCategory;
-    return merged.category.trim();
-  };
+  }, [displaySchedule]);
 
   const initials = useMemo(
     () =>
@@ -615,13 +612,14 @@ export default function ProfesionalDetailPage({
     const combined = [...localPhotos, ...serviceGalleryPhotos];
     return Array.from(new Set(combined.filter(Boolean))).slice(0, 15);
   }, [merged.photos, serviceGalleryPhotos]);
-  const hasRealGalleryPhotos = galleryPhotos.some((photo) => Boolean(photo));
 
+  const hasRealGalleryPhotos = galleryPhotos.some((photo) => Boolean(photo));
   const professionalSlug = typeof slug === 'string' ? slug : '';
   const isCurrentFavorite = isFavorite(professionalSlug);
 
   useEffect(() => {
     setHasInteractedWithServices(false);
+    setQuickSlotsRefreshKey(0);
   }, [professionalSlug]);
 
   useEffect(() => {
@@ -656,7 +654,13 @@ export default function ProfesionalDetailPage({
     return () => {
       cancelled = true;
     };
-  }, [hasInteractedWithServices, isPreview, professionalSlug, selectedService?.id]);
+  }, [
+    hasInteractedWithServices,
+    isPreview,
+    professionalSlug,
+    quickSlotsRefreshKey,
+    selectedService?.id,
+  ]);
 
   const handleReserve = (service: PublicService, date?: string, time?: string) => {
     const params = new URLSearchParams();
@@ -669,18 +673,23 @@ export default function ProfesionalDetailPage({
     router.push(query ? `/reservar?${query}` : '/reservar');
   };
 
-  const openServiceDetail = (index: number) => {
-    setServiceDetailIndex(index);
+  const handleReserveSelectedService = (date?: string, time?: string) => {
+    if (!selectedService) return;
+    handleReserve(selectedService, date, time);
   };
 
-  const closeServiceDetail = () => {
-    setServiceDetailIndex(null);
+  const handleActivateQuickSlots = () => {
+    setHasInteractedWithServices(true);
+    setQuickSlotsRefreshKey((current) => current + 1);
   };
 
-  const handleSelectServiceFromDetail = () => {
-    if (serviceDetailIndex === null) return;
-    handleSelectService(serviceDetailIndex);
-    setServiceDetailIndex(null);
+  const handleSelectService = (index: number) => {
+    setHasInteractedWithServices(true);
+    setSelectedServiceIndex(index);
+    const selectedItem = serviceItems.find((item) => item.index === index);
+    if (selectedItem) {
+      setActiveServiceCategory(selectedItem.categoryLabel);
+    }
   };
 
   const hasPublicContent = Boolean(
@@ -697,11 +706,13 @@ export default function ProfesionalDetailPage({
     () => splitLocationLines(merged.location || ''),
     [merged.location],
   );
+
   const hasCoordinates =
     typeof merged.latitude === 'number' &&
     Number.isFinite(merged.latitude) &&
     typeof merged.longitude === 'number' &&
     Number.isFinite(merged.longitude);
+
   useEffect(() => {
     if (hasCoordinates || isPreview || !isMapSectionVisible) {
       setFallbackCoordinates(null);
@@ -758,11 +769,6 @@ export default function ProfesionalDetailPage({
     return () => observer.disconnect();
   }, []);
 
-  const handleSelectService = (index: number) => {
-    setHasInteractedWithServices(true);
-    setSelectedServiceIndex(index);
-  };
-
   const mapLatitude = hasCoordinates ? merged.latitude : fallbackCoordinates?.latitude;
   const mapLongitude = hasCoordinates ? merged.longitude : fallbackCoordinates?.longitude;
   const hasRenderableCoordinates =
@@ -772,21 +778,16 @@ export default function ProfesionalDetailPage({
     Number.isFinite(mapLongitude);
   const canShowMap = Boolean(addressLine) && hasRenderableCoordinates;
   const shouldRenderMap = canShowMap && isMapSectionVisible;
-  const profile = merged;
   const addressValue = [addressLine, cityLine].filter(Boolean).join(', ');
-  const phoneValue = profile.phoneNumber?.trim() || '';
-  const emailValue = profile.email?.trim() || '';
-  const instagramValue = profile.instagram?.trim() || '';
-  const facebookValue = profile.facebook?.trim() || '';
-  const tiktokValue = profile.tiktok?.trim() || '';
-  const websiteValue = profile.website?.trim() || '';
-  const whatsappValue = profile.whatsapp?.trim() || '';
+  const phoneValue = merged.phoneNumber?.trim() || '';
+  const emailValue = merged.email?.trim() || '';
+  const instagramValue = merged.instagram?.trim() || '';
+  const facebookValue = merged.facebook?.trim() || '';
+  const tiktokValue = merged.tiktok?.trim() || '';
+  const websiteValue = merged.website?.trim() || '';
+  const whatsappValue = merged.whatsapp?.trim() || '';
   const hasSocial = Boolean(
-    profile.instagram ||
-      profile.facebook ||
-      profile.tiktok ||
-      profile.website ||
-      profile.whatsapp,
+    instagramValue || facebookValue || tiktokValue || websiteValue || whatsappValue,
   );
   const instagramHref = resolveSocialHref(instagramValue, 'instagram');
   const facebookHref = resolveSocialHref(facebookValue, 'facebook');
@@ -794,463 +795,329 @@ export default function ProfesionalDetailPage({
   const websiteHref = resolveSocialHref(websiteValue, 'website');
   const whatsappHref = resolveSocialHref(whatsappValue, 'whatsapp');
   const favoriteImage = galleryPhotos[0] || merged.logoUrl || undefined;
+  const locationLabel = cityLine || addressLine || merged.location || '';
+
+  const toggleFavoriteHandler = () => {
+    if (!professionalSlug) return;
+    void toggleFavorite({
+      category: merged.category || 'Profesional',
+      headline: merged.headline || undefined,
+      imageUrl: favoriteImage || undefined,
+      location: merged.location || undefined,
+      name: merged.name || 'Profesional',
+      slug: professionalSlug,
+    });
+  };
 
   return (
     <div
-      className={`min-h-screen text-[#0E2A47] ${
+      className={`min-h-screen text-[color:var(--ink)] ${
         isPreview
           ? 'bg-transparent'
-          : 'bg-[radial-gradient(1200px_640px_at_10%_-10%,rgba(31,182,166,0.18),transparent_55%),radial-gradient(900px_520px_at_100%_0%,rgba(242,140,56,0.14),transparent_50%),linear-gradient(180deg,#edf3f1_0%,#e4eaee_100%)]'
+          : 'bg-[linear-gradient(180deg,#f4f7f4_0%,#eef2ef_42%,#f8faf9_100%)]'
       }`}
     >
       {isPreview ? null : <Navbar />}
+
       <main
-        className={`mx-auto w-full max-w-[1100px] px-4 sm:px-6 lg:px-10 ${
-          isPreview ? 'pb-6 pt-6' : 'pb-32 pt-10'
+        className={`mx-auto w-full max-w-[1240px] px-4 sm:px-6 lg:px-8 ${
+          isPreview ? 'pb-6 pt-6' : 'pb-36 pt-8 sm:pt-10'
         }`}
       >
         {!isPreview && isLoading ? (
-          <div className="mb-6 rounded-[24px] border border-[#E2E7EC] bg-white/80 px-6 py-4 text-sm text-[#64748B]">
+          <div className="mb-6 rounded-[24px] border border-[#E2E7EC] bg-white/85 px-6 py-4 text-sm text-[#64748B]">
             Cargando información del profesional...
           </div>
         ) : null}
+
         {!isPreview && errorMessage ? (
           <div className="mb-6 rounded-[24px] border border-red-200 bg-red-50 px-6 py-4 text-sm text-red-600">
             {errorMessage}
           </div>
         ) : null}
+
         {!isPreview && !isLoading && !errorMessage && !hasPublicContent ? (
-          <div className="mb-6 rounded-[24px] border border-[#E2E7EC] bg-white/80 px-6 py-4 text-sm text-[#64748B]">
+          <div className="mb-6 rounded-[24px] border border-[#E2E7EC] bg-white/85 px-6 py-4 text-sm text-[#64748B]">
             No hay información pública cargada para este profesional.
           </div>
         ) : null}
-        <Card tone="glass" padding="none" className="overflow-hidden rounded-[36px] border-white/80">
-          {(() => {
-            const safeBannerSrc = merged.bannerUrl ? sanitizeImageSrc(merged.bannerUrl) : undefined;
-            if (safeBannerSrc) {
-              return (
-                <div className="relative h-32 sm:h-40 lg:h-52">
-                  <img
-                    src={safeBannerSrc}
-                    alt="Banner"
-                    className="h-full w-full object-cover"
-                    style={buildProfessionalMediaStyle(merged.bannerMedia)}
-                  />
-                </div>
-              );
-            }
-            return <div className="h-32 bg-[linear-gradient(120deg,#0B1D2A,#145E63,#BFEDE7)] sm:h-40 lg:h-52" />;
-          })()}
-          <div className="relative -mt-10 px-6 pb-8 sm:-mt-12 lg:-mt-14">
-            <Card tone="glass" className="flex flex-col gap-6 rounded-[30px] border-white/80 lg:flex-row lg:items-end lg:justify-between">
-              <div className="flex items-center gap-5">
-                <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-full border-2 border-[color:var(--accent)] bg-white text-base font-semibold text-[color:var(--ink)]">
-                  {(() => {
-                    const safeLogoSrc = merged.logoUrl ? sanitizeImageSrc(merged.logoUrl) : undefined;
-                    if (!safeLogoSrc) return initials;
-                    return (
-                      <img
-                        src={safeLogoSrc}
-                        alt={`Logo de ${merged.name || 'profesional'}`}
-                        className="h-full w-full object-cover"
-                        style={buildProfessionalMediaStyle(merged.logoMedia)}
-                      />
-                    );
-                  })()}
-                </div>
-                <div className="space-y-1">
-                  <p className="text-[0.7rem] uppercase tracking-[0.4em] text-[color:var(--ink-faint)]">
-                    Profesional / Empresa
+
+        <PublicProfileHero
+          about={merged.about}
+          bannerMedia={merged.bannerMedia}
+          bannerUrl={merged.bannerUrl}
+          category={merged.category}
+          headline={merged.headline}
+          initials={initials}
+          isCurrentFavorite={isCurrentFavorite}
+          isPreview={isPreview}
+          locationLabel={locationLabel}
+          logoMedia={merged.logoMedia}
+          logoUrl={merged.logoUrl}
+          name={merged.name}
+          onToggleFavorite={toggleFavoriteHandler}
+          rating={data?.rating}
+          reviewsCount={data?.reviewsCount}
+        />
+
+        <div className="mt-6 lg:hidden">
+          <PublicBookingSidebar
+            fallbackCategoryName={merged.category}
+            hasInteractedWithServices={hasInteractedWithServices}
+            isLoadingQuickSlots={isLoadingQuickSlots}
+            isPreview={isPreview}
+            onActivateQuickSlots={handleActivateQuickSlots}
+            onReserve={handleReserveSelectedService}
+            quickSlotGroups={quickSlotGroups}
+            selectedService={selectedService}
+          />
+        </div>
+
+        <div className="mt-8 grid gap-8 lg:grid-cols-[minmax(0,1fr)_360px] lg:items-start">
+          <div className="space-y-8">
+            <PublicServicesSection
+              activeCategory={activeServiceCategory}
+              categories={serviceCategories}
+              onCategoryChange={setActiveServiceCategory}
+              onOpenServiceDetail={setServiceDetailIndex}
+              onSelectService={handleSelectService}
+              selectedServiceIndex={selectedServiceIndex}
+              serviceItems={serviceItems}
+            />
+
+            <Card
+              tone="default"
+              className="rounded-[32px] border-white/80 bg-white/96 p-6 shadow-[0_26px_72px_-48px_rgba(15,23,42,0.28)] sm:p-8"
+            >
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+                <div>
+                  <p className="text-[0.68rem] font-semibold uppercase tracking-[0.32em] text-[color:var(--ink-faint)]">
+                    Galeria
                   </p>
-                  <h1 className="text-3xl font-semibold text-[color:var(--ink)] sm:text-4xl">
-                    {merged.name}
-                  </h1>
-                  <p className="text-sm text-[color:var(--ink-muted)] sm:text-base">{merged.headline}</p>
-                  <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
-                    {data?.reviewsCount != null && data.reviewsCount > 0 && data.rating != null ? (
-                      <Badge variant="neutral" className="normal-case tracking-normal">
-                        ★ {data.rating.toFixed(1)} ({data.reviewsCount} {data.reviewsCount === 1 ? 'reseña' : 'reseñas'})
-                      </Badge>
-                    ) : (
-                      <Badge variant="neutral" className="normal-case tracking-normal">Sin reseñas aún</Badge>
-                    )}
-                    <Badge variant="accent" className="normal-case tracking-normal">Confirmación inmediata</Badge>
-                  </div>
+                  <h2 className="mt-2 text-3xl font-semibold text-[color:var(--ink)]">
+                    Espacio, trabajos y detalles
+                  </h2>
+                  <p className="mt-3 max-w-2xl text-sm leading-6 text-[color:var(--ink-muted)]">
+                    Una vista mas cuidada del local, servicios y resultados publicados.
+                  </p>
                 </div>
+                {hasRealGalleryPhotos ? (
+                  <p className="text-sm font-medium text-[color:var(--ink-faint)]">
+                    {galleryPhotos.length} {galleryPhotos.length === 1 ? 'foto publicada' : 'fotos publicadas'}
+                  </p>
+                ) : null}
               </div>
 
-              <div className="w-full space-y-3 lg:w-64">
-                {merged.category ? (
-                  <Card tone="soft" className="rounded-[20px] px-4 py-3">
-                    <p className="text-[0.65rem] uppercase tracking-[0.35em] text-[color:var(--ink-faint)]">
-                      Rubro
-                    </p>
-                    <p className="text-sm font-semibold text-[color:var(--ink)]">
-                      {merged.category}
-                    </p>
-                  </Card>
-                ) : null}
-                <FavoriteToggleButton
-                  isActive={isCurrentFavorite}
-                  onClick={() => {
-                    if (!professionalSlug) return;
-                    void toggleFavorite({
-                      slug: professionalSlug,
-                      name: merged.name || 'Profesional',
-                      category: merged.category || 'Profesional',
-                      location: merged.location || undefined,
-                      imageUrl: favoriteImage || undefined,
-                      headline: merged.headline || undefined,
-                    });
-                  }}
-                  variant="pill"
-                  activeLabel="Guardado en favoritos"
-                  inactiveLabel="Guardar en favoritos"
-                  className="w-full justify-center"
-                />
-                <Button
-                  type="button"
-                  onClick={() => {
-                    if (selectedService) {
-                      handleReserve(selectedService);
-                    }
-                  }}
-                  disabled={!selectedService}
-                  variant="primary"
-                  className={`w-full ${!selectedService ? 'cursor-not-allowed border-[color:var(--border-soft)] bg-[color:var(--surface-soft)] text-[color:var(--ink-faint)] shadow-none' : ''}`}
-                >
-                  Reservar turno
-                </Button>
+              <div className="mt-6">
+                <BusinessGallery photos={galleryPhotos} businessName={merged.name} />
               </div>
             </Card>
-          </div>
-        </Card>
 
-        <Card tone="glass" className="mt-8 px-6 py-7 sm:px-8">
-          <p className="text-[0.65rem] uppercase tracking-[0.35em] text-[color:var(--ink-faint)]">Galeria</p>
-          <h2 className="mt-2 text-2xl font-semibold">Fotos del local, trabajos y servicios</h2>
-          <div className="mt-5">
-            <BusinessGallery photos={galleryPhotos} businessName={merged.name} />
-          </div>
-          {hasRealGalleryPhotos ? (
-            <p className="mt-3 text-xs text-[color:var(--ink-faint)]">
-              Mostrando {Math.min(galleryPhotos.length, 6)} de {galleryPhotos.length} fotos.
-            </p>
-          ) : null}
-        </Card>
+            <section ref={mapSectionRef}>
+              <Card
+                tone="default"
+                className="rounded-[32px] border-white/80 bg-white/96 p-6 shadow-[0_26px_72px_-48px_rgba(15,23,42,0.28)] sm:p-8"
+              >
+                <div>
+                  <p className="text-[0.68rem] font-semibold uppercase tracking-[0.32em] text-[color:var(--ink-faint)]">
+                    Ubicacion y horarios
+                  </p>
+                  <h2 className="mt-2 text-3xl font-semibold text-[color:var(--ink)]">
+                    Informacion util antes de reservar
+                  </h2>
+                  <p className="mt-3 max-w-2xl text-sm leading-6 text-[color:var(--ink-muted)]">
+                    Direccion, contacto y disponibilidad publica en una misma seccion.
+                  </p>
+                </div>
 
-        <Card tone="glass" className="mt-10 px-6 py-8 sm:px-8">
-          <section>
-            <p className="text-[0.65rem] uppercase tracking-[0.35em] text-[color:var(--ink-faint)]">Servicios</p>
-            <h2 className="mt-2 text-2xl font-semibold">Seleccioná tu servicio</h2>
-            {displayServices.length === 0 ? (
-              <p className="mt-4 text-sm text-[color:var(--ink-muted)]">No hay servicios cargados todavía.</p>
-            ) : (
-              <div className="mt-6 divide-y divide-[#E6EBF0]">
-                {displayServices.map((service, index) => (
-                  <div
-                    key={service.id ?? service.name ?? `service-${index}`}
-                    role="button"
-                    tabIndex={0}
-                    onClick={() => handleSelectService(index)}
-                    onKeyDown={(event) => {
-                      if (event.key === 'Enter' || event.key === ' ') {
-                        event.preventDefault();
-                        handleSelectService(index);
-                      }
-                    }}
-                    className={`grid w-full gap-3 py-4 text-left transition sm:grid-cols-[32px_56px_minmax(0,1fr)_140px_120px] sm:items-center ${
-                      selectedServiceIndex === index ? 'bg-[color:var(--accent-soft)]/45' : ''
-                    }`}
-                  >
-                    <span className="mt-1 flex h-5 w-5 items-center justify-center rounded-full border border-[#C7D1DB]">
-                      <span
-                        className={`h-2.5 w-2.5 rounded-full ${
-                          selectedServiceIndex === index ? 'bg-[color:var(--primary-strong)]' : 'bg-transparent'
-                        }`}
-                      />
-                    </span>
-                    <div className="h-14 w-14 overflow-hidden rounded-[12px] border border-[#D9E2EC] bg-white">
-                      {service.imageUrl && sanitizeImageSrc(service.imageUrl) ? (
-                        <img
-                          src={sanitizeImageSrc(service.imageUrl)}
-                          alt={service.name || 'Servicio'}
-                          className="h-full w-full object-cover"
-                        />
+                <div className="mt-6 grid gap-5 xl:grid-cols-[320px,minmax(0,1fr)]">
+                  <div className="space-y-5">
+                    <div className="rounded-[28px] border border-[color:var(--border-soft)] bg-[color:var(--surface-soft)] p-5">
+                      <p className="text-[0.68rem] font-semibold uppercase tracking-[0.28em] text-[color:var(--ink-faint)]">
+                        Horarios
+                      </p>
+                      {scheduleSummary.length > 0 ? (
+                        <div className="mt-4 space-y-3">
+                          {scheduleSummary.map((item, index) => (
+                            <div
+                              key={`${item.label}-${index}`}
+                              className="rounded-[18px] border border-[color:var(--border-soft)] bg-white px-4 py-3"
+                            >
+                              <p className="text-sm font-semibold text-[color:var(--ink)]">
+                                {item.label}
+                              </p>
+                              <p className="mt-1 text-sm text-[color:var(--primary)]">
+                                {item.ranges}
+                              </p>
+                            </div>
+                          ))}
+                        </div>
                       ) : (
-                        <div className="flex h-full w-full items-center justify-center text-[0.55rem] font-semibold uppercase tracking-[0.1em] text-[#94A3B8]">
-                          Sin foto
+                        <div className="mt-4 rounded-[18px] border border-dashed border-[color:var(--border-soft)] bg-white px-4 py-4 text-sm text-[color:var(--ink-muted)]">
+                          Sin horarios publicos cargados.
                         </div>
                       )}
                     </div>
-                    <div className="min-w-0">
-                      <p className="text-base font-semibold text-[#0E2A47]">{service.name}</p>
-                      {service.description ? (
-                        <p className="mt-0.5 line-clamp-2 text-xs text-[#64748B]">
-                          {service.description}
-                        </p>
-                      ) : null}
-                      {resolveServiceCategoryLabel(service) ? (
-                        <p className="mt-1 text-[0.7rem] font-semibold uppercase tracking-[0.12em] text-[#64748B]">
-                          {resolveServiceCategoryLabel(service)}
-                        </p>
-                      ) : null}
-                      <p className="mt-1 text-[0.7rem] font-semibold uppercase tracking-[0.12em] text-[#64748B]">
-                        {formatServicePaymentType(service.paymentType)}
+
+                    <div className="rounded-[28px] border border-[color:var(--border-soft)] bg-[color:var(--surface-soft)] p-5">
+                      <p className="text-[0.68rem] font-semibold uppercase tracking-[0.28em] text-[color:var(--ink-faint)]">
+                        Contacto
                       </p>
-                      <button
-                        type="button"
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          openServiceDetail(index);
-                        }}
-                        className="mt-1 rounded-full border border-[#D9E2EC] bg-white px-2.5 py-1 text-[0.68rem] font-semibold text-[#0E2A47] transition hover:-translate-y-0.5 hover:shadow-sm"
-                      >
-                        Ver info
-                      </button>
-                    </div>
-                    <p className="text-sm text-[color:var(--ink-muted)]">{formatServiceDuration(service.duration)}</p>
-                    <p className="text-base font-semibold text-[color:var(--accent-strong)]">{formatServicePrice(service.price)}</p>
-                  </div>
-                ))}
-              </div>
-            )}
-            {displayServices.length > 0 ? (
-              <Button
-                type="button"
-                onClick={() => {
-                  if (selectedService) {
-                    handleReserve(selectedService);
-                  }
-                }}
-                disabled={!selectedService}
-                variant="primary"
-                className={`mt-6 ${!selectedService ? 'cursor-not-allowed border-[color:var(--border-soft)] bg-[color:var(--surface-soft)] text-[color:var(--ink-faint)] shadow-none' : ''}`}
-              >
-                Continuar
-              </Button>
-            ) : null}
-          </section>
+                      <div className="mt-4 space-y-3">
+                        <DetailRow label="Direccion" value={addressValue} />
+                        <DetailRow label="Telefono" value={phoneValue} href={phoneValue ? `tel:${phoneValue}` : undefined} />
+                        <DetailRow label="Email" value={emailValue} href={emailValue ? `mailto:${emailValue}` : undefined} />
+                      </div>
 
-          <section className="mt-10 border-t border-[#E6EBF0] pt-10">
-            <p className="text-[0.65rem] uppercase tracking-[0.35em] text-[color:var(--ink-faint)]">Próximos turnos</p>
-            <h2 className="mt-2 text-2xl font-semibold">Próximos turnos disponibles</h2>
-            {isPreview ? (
-              <p className="mt-4 text-sm text-[color:var(--ink-muted)]">Disponible al publicar la página.</p>
-            ) : !hasInteractedWithServices ? (
-              <p className="mt-4 text-sm text-[color:var(--ink-muted)]">
-                Seleccioná un servicio para consultar próximos turnos sin salir de la página.
-              </p>
-            ) : isLoadingQuickSlots ? (
-              <p className="mt-4 text-sm text-[color:var(--ink-muted)]">Buscando horarios...</p>
-            ) : quickSlotGroups.every((group) => group.slots.length === 0) ? (
-              <p className="mt-4 text-sm text-[color:var(--ink-muted)]">No hay turnos próximos para este servicio.</p>
-            ) : (
-              <div className="mt-5 space-y-5">
-                {quickSlotGroups.map((group) => (
-                  <div key={group.dateKey}>
-                    <p className="text-sm font-semibold text-[#0E2A47]">{group.label}</p>
-                    <div className="mt-2 flex flex-wrap gap-2">
-                      {group.slots.length > 0 ? (
-                        group.slots.map((slot) => (
-                          <button
-                            key={`${group.dateKey}-${slot}`}
-                            type="button"
-                            onClick={() => {
-                              if (selectedService) {
-                                handleReserve(selectedService, group.dateKey, slot);
-                              }
-                            }}
-                            className="rounded-full border border-[color:var(--border-soft)] bg-white px-3 py-1.5 text-sm font-semibold text-[color:var(--ink)] transition hover:-translate-y-0.5 hover:border-[color:var(--border-strong)] hover:shadow-sm"
-                          >
-                            {slot}
-                          </button>
-                        ))
-                      ) : (
-                        <span className="text-sm text-[#94A3B8]">Sin turnos</span>
-                      )}
+                      {hasSocial ? (
+                        <div className="mt-5 border-t border-[color:var(--border-soft)] pt-5">
+                          <p className="text-[0.68rem] font-semibold uppercase tracking-[0.24em] text-[color:var(--ink-faint)]">
+                            Redes
+                          </p>
+                          <div className="mt-3 flex flex-wrap gap-2">
+                            {instagramValue && instagramHref ? (
+                              <a
+                                href={instagramHref}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-[color:var(--border-soft)] bg-white text-[color:var(--ink)] transition hover:-translate-y-0.5 hover:shadow-[var(--shadow-card)]"
+                                aria-label="Instagram"
+                              >
+                                <SocialIcon platform="instagram" />
+                              </a>
+                            ) : null}
+                            {facebookValue && facebookHref ? (
+                              <a
+                                href={facebookHref}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-[color:var(--border-soft)] bg-white text-[color:var(--ink)] transition hover:-translate-y-0.5 hover:shadow-[var(--shadow-card)]"
+                                aria-label="Facebook"
+                              >
+                                <SocialIcon platform="facebook" />
+                              </a>
+                            ) : null}
+                            {tiktokValue && tiktokHref ? (
+                              <a
+                                href={tiktokHref}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-[color:var(--border-soft)] bg-white text-[color:var(--ink)] transition hover:-translate-y-0.5 hover:shadow-[var(--shadow-card)]"
+                                aria-label="TikTok"
+                              >
+                                <SocialIcon platform="tiktok" />
+                              </a>
+                            ) : null}
+                            {websiteValue && websiteHref ? (
+                              <a
+                                href={websiteHref}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-[color:var(--border-soft)] bg-white text-[color:var(--ink)] transition hover:-translate-y-0.5 hover:shadow-[var(--shadow-card)]"
+                                aria-label="Sitio web"
+                              >
+                                <SocialIcon platform="website" />
+                              </a>
+                            ) : null}
+                            {whatsappValue && whatsappHref ? (
+                              <a
+                                href={whatsappHref}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-[color:var(--border-soft)] bg-white text-[color:var(--ink)] transition hover:-translate-y-0.5 hover:shadow-[var(--shadow-card)]"
+                                aria-label="WhatsApp"
+                              >
+                                <SocialIcon platform="whatsapp" />
+                              </a>
+                            ) : null}
+                          </div>
+                        </div>
+                      ) : null}
                     </div>
                   </div>
-                ))}
-              </div>
-            )}
-          </section>
 
-          {scheduleSummary.length > 0 ? (
-            <section className="mt-10 border-t border-[#E6EBF0] pt-10">
-              <p className="text-[0.65rem] uppercase tracking-[0.35em] text-[color:var(--ink-faint)]">Horarios</p>
-              <h2 className="mt-2 text-2xl font-semibold">Horarios de atención</h2>
-              <div className="mt-5 space-y-2">
-                {scheduleSummary.map((item, index) => (
-                  <div
-                    key={`${item.label}-${index}`}
-                    className="flex flex-wrap items-center justify-between gap-3 border-b border-[#EEF2F6] py-2 text-sm text-[#0E2A47]"
-                  >
-                    <span className="font-medium">{item.label}</span>
-                    <span className="font-semibold text-[#1FB6A6]">{item.ranges}</span>
-                  </div>
-                ))}
-              </div>
+                  {shouldRenderMap ? (
+                    <PublicProfileMap
+                      name={merged.name}
+                      category={merged.category}
+                      address={addressLine}
+                      city={cityLine}
+                      latitude={mapLatitude as number}
+                      longitude={mapLongitude as number}
+                      heightClassName="h-[360px]"
+                    />
+                  ) : canShowMap ? (
+                    <MapSectionPlaceholder message="Acercate a esta seccion para cargar el mapa." />
+                  ) : (
+                    <MapSectionPlaceholder message="Ubicacion no disponible." />
+                  )}
+                </div>
+              </Card>
             </section>
-          ) : null}
 
-          <section ref={mapSectionRef} className="mt-10 border-t border-[#E6EBF0] pt-10">
-            <p className="text-[0.65rem] uppercase tracking-[0.35em] text-[#94A3B8]">Sobre</p>
-            <h2 className="mt-2 text-2xl font-semibold">Sobre el local o profesional</h2>
-            {merged.about ? (
-              <p className="mt-4 text-sm leading-relaxed text-[#64748B]">{merged.about}</p>
-            ) : (
-              <p className="mt-4 text-sm text-[#64748B]">Sin descripción cargada.</p>
-            )}
-          </section>
-
-          {professionalSlug ? <PublicReviewsList slug={professionalSlug} /> : null}
-
-          <section className="mt-10 border-t border-[#E6EBF0] pt-10">
-            <p className="text-[0.65rem] uppercase tracking-[0.35em] text-[#94A3B8]">Ubicación</p>
-            <h2 className="mt-2 text-2xl font-semibold">Datos, ubicación y mapa</h2>
-            <div className="mt-5 grid gap-6 lg:grid-cols-[280px,1fr]">
-              <div className="text-sm text-[#64748B]">
-                <p className="font-semibold text-[#0E2A47]">Contacto</p>
-                {addressValue || phoneValue || emailValue ? (
-                  <div className="mt-2 space-y-2">
-                    {addressValue ? (
-                      <div className="flex items-center gap-2">
-                        <span className="inline-flex min-w-[1.8rem] justify-center text-sm">📍</span>
-                        <span className="text-sm text-[#475569]">{addressValue}</span>
-                      </div>
-                    ) : null}
-                    {phoneValue ? (
-                      <div className="flex items-center gap-2">
-                        <span className="inline-flex min-w-[1.8rem] justify-center text-sm">📞</span>
-                        <span className="text-sm text-[#475569]">{phoneValue}</span>
-                      </div>
-                    ) : null}
-                    {emailValue ? (
-                      <div className="flex items-center gap-2">
-                        <span className="inline-flex min-w-[1.8rem] justify-center text-sm">✉️</span>
-                        <span className="text-sm text-[#475569]">{emailValue}</span>
-                      </div>
-                    ) : null}
-                  </div>
-                ) : (
-                  <p className="mt-1">-</p>
-                )}
-
-                {hasSocial ? (
-                  <>
-                    <p className="mt-6 font-semibold text-[#0E2A47]">Redes</p>
-                    <div className="mt-2 flex flex-wrap gap-2">
-                      {instagramValue && instagramHref ? (
-                        <a
-                          href={instagramHref}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-[#D9E2EC] bg-white text-[#0E2A47] transition hover:-translate-y-0.5 hover:shadow-sm"
-                          title="Instagram"
-                          aria-label="Instagram"
-                        >
-                          <SocialIcon platform="instagram" />
-                        </a>
-                      ) : null}
-                      {facebookValue && facebookHref ? (
-                        <a
-                          href={facebookHref}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-[#D9E2EC] bg-white text-[#0E2A47] transition hover:-translate-y-0.5 hover:shadow-sm"
-                          title="Facebook"
-                          aria-label="Facebook"
-                        >
-                          <SocialIcon platform="facebook" />
-                        </a>
-                      ) : null}
-                      {tiktokValue && tiktokHref ? (
-                        <a
-                          href={tiktokHref}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-[#D9E2EC] bg-white text-[#0E2A47] transition hover:-translate-y-0.5 hover:shadow-sm"
-                          title="TikTok"
-                          aria-label="TikTok"
-                        >
-                          <SocialIcon platform="tiktok" />
-                        </a>
-                      ) : null}
-                      {websiteValue && websiteHref ? (
-                        <a
-                          href={websiteHref}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-[#D9E2EC] bg-white text-[#0E2A47] transition hover:-translate-y-0.5 hover:shadow-sm"
-                          title="Website"
-                          aria-label="Website"
-                        >
-                          <SocialIcon platform="website" />
-                        </a>
-                      ) : null}
-                      {whatsappValue && whatsappHref ? (
-                        <a
-                          href={whatsappHref}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-[#D9E2EC] bg-white text-[#0E2A47] transition hover:-translate-y-0.5 hover:shadow-sm"
-                          title="WhatsApp"
-                          aria-label="WhatsApp"
-                        >
-                          <SocialIcon platform="whatsapp" />
-                        </a>
-                      ) : null}
-                    </div>
-                  </>
-                ) : null}
-              </div>
-              {shouldRenderMap ? (
-                <PublicProfileMap
-                  name={merged.name}
-                  category={merged.category}
-                  address={addressLine}
-                  city={cityLine}
-                  latitude={mapLatitude as number}
-                  longitude={mapLongitude as number}
+            {!isPreview && professionalSlug ? (
+              <Card
+                tone="default"
+                className="rounded-[32px] border-white/80 bg-white/96 p-6 shadow-[0_26px_72px_-48px_rgba(15,23,42,0.28)] sm:p-8"
+              >
+                <PublicReviewsList
+                  slug={professionalSlug}
+                  rating={data?.rating}
+                  reviewsCount={data?.reviewsCount}
                 />
-              ) : canShowMap ? (
-                <MapSectionPlaceholder message="Acercate para cargar el mapa." />
-              ) : (
-                <MapSectionPlaceholder message="Ubicación no disponible" />
-              )}
-            </div>
-          </section>
-        </Card>
+              </Card>
+            ) : null}
+          </div>
+
+          <aside className="hidden lg:block lg:sticky lg:top-6">
+            <PublicBookingSidebar
+              fallbackCategoryName={merged.category}
+              hasInteractedWithServices={hasInteractedWithServices}
+              isLoadingQuickSlots={isLoadingQuickSlots}
+              isPreview={isPreview}
+              onActivateQuickSlots={handleActivateQuickSlots}
+              onReserve={handleReserveSelectedService}
+              quickSlotGroups={quickSlotGroups}
+              selectedService={selectedService}
+            />
+          </aside>
+        </div>
       </main>
+
       {!isPreview && selectedService ? (
-        <div className="fixed inset-x-0 bottom-3 z-40 px-3 sm:px-6">
-          <div className="mx-auto flex w-full max-w-[1100px] flex-col gap-3 rounded-2xl border border-[#D9E3EC] bg-white/95 px-4 py-3 shadow-[0_16px_40px_rgba(15,23,42,0.16)] backdrop-blur sm:flex-row sm:items-center sm:justify-between">
-            <div className="min-w-0">
-              <p className="truncate text-sm font-semibold text-[#0E2A47]">
+        <div className="fixed inset-x-0 bottom-3 z-40 px-3 lg:hidden">
+          <div className="mx-auto flex w-full max-w-[1240px] items-center gap-3 rounded-[22px] border border-[#D9E3EC] bg-white/96 px-4 py-3 shadow-[0_18px_44px_-28px_rgba(15,23,42,0.28)] backdrop-blur">
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-semibold text-[color:var(--ink)]">
                 {selectedService.name}
               </p>
-              <p className="text-xs text-[#64748B]">
+              <p className="truncate text-xs text-[color:var(--ink-muted)]">
                 {formatServicePrice(selectedService.price)} · {formatServiceDuration(selectedService.duration)} · {formatServicePaymentType(selectedService.paymentType)}
               </p>
             </div>
             <button
               type="button"
-              onClick={() => handleReserve(selectedService)}
-              className="rounded-full bg-[#0B1D2A] px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
+              onClick={() => handleReserveSelectedService()}
+              className="rounded-full bg-[color:var(--primary)] px-4 py-2 text-sm font-semibold text-white shadow-[var(--shadow-card)] transition hover:-translate-y-0.5 hover:bg-[color:var(--primary-strong)]"
             >
               Reservar
             </button>
           </div>
         </div>
       ) : null}
+
       {isPreview ? null : <Footer />}
+
       <ServiceDetailModal
         isOpen={serviceDetailIndex !== null}
         service={serviceDetail}
         fallbackCategoryName={merged.category}
-        onClose={closeServiceDetail}
-        onSelectService={handleSelectServiceFromDetail}
+        onClose={() => setServiceDetailIndex(null)}
+        onSelectService={() => {
+          if (serviceDetailIndex === null) return;
+          handleSelectService(serviceDetailIndex);
+          setServiceDetailIndex(null);
+        }}
       />
     </div>
   );

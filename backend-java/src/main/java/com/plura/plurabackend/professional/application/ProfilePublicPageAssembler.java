@@ -187,8 +187,8 @@ public class ProfilePublicPageAssembler {
         List<ProfesionalServiceResponse> services
     ) {
         LinkedHashSet<String> photoUrls = new LinkedHashSet<>();
-        List<BusinessPhotoType> galleryTypes = List.of(BusinessPhotoType.LOCAL, BusinessPhotoType.WORK, BusinessPhotoType.SERVICE);
-        businessPhotoRepository.findByProfessional_IdAndTypeInOrderByCreatedAtAsc(profile.getId(), galleryTypes).stream()
+        List<BusinessPhotoType> businessGalleryTypes = List.of(BusinessPhotoType.LOCAL, BusinessPhotoType.WORK);
+        businessPhotoRepository.findByProfessional_IdAndTypeInOrderByCreatedAtAsc(profile.getId(), businessGalleryTypes).stream()
             .map(BusinessPhoto::getUrl)
             .map(this::normalizePublicPhotoUrl)
             .filter(photo -> photo != null)
@@ -200,6 +200,15 @@ public class ProfilePublicPageAssembler {
                 .filter(photo -> photo != null)
                 .forEach(photoUrls::add);
         }
+
+        businessPhotoRepository.findByProfessional_IdAndTypeInOrderByCreatedAtAsc(
+            profile.getId(),
+            List.of(BusinessPhotoType.SERVICE)
+        ).stream()
+            .map(BusinessPhoto::getUrl)
+            .map(this::normalizePublicPhotoUrl)
+            .filter(photo -> photo != null)
+            .forEach(photoUrls::add);
 
         services.stream()
             .map(ProfesionalServiceResponse::getImageUrl)

@@ -1,0 +1,189 @@
+import Image from 'next/image';
+import FavoriteToggleButton from '@/components/shared/FavoriteToggleButton';
+import Badge from '@/components/ui/Badge';
+import Card from '@/components/ui/Card';
+import { resolveAssetUrl } from '@/utils/assetUrl';
+import {
+  buildProfessionalMediaStyle,
+} from '@/utils/professionalMediaPresentation';
+import type { ProfessionalMediaPresentation } from '@/types/professional';
+
+type PublicProfileHeroProps = {
+  about?: string;
+  bannerMedia?: ProfessionalMediaPresentation | null;
+  bannerUrl?: string;
+  category?: string;
+  headline?: string;
+  initials?: string;
+  isCurrentFavorite: boolean;
+  isPreview?: boolean;
+  locationLabel?: string;
+  logoMedia?: ProfessionalMediaPresentation | null;
+  logoUrl?: string;
+  name: string;
+  onToggleFavorite: () => void;
+  rating?: number | null;
+  reviewsCount?: number | null;
+};
+
+const sanitizeImageSrc = (value?: string) => {
+  if (!value) return '';
+  const resolved = resolveAssetUrl(value);
+  if (!resolved) return '';
+  try {
+    const baseOrigin =
+      typeof window !== 'undefined' ? window.location.origin : 'http://localhost';
+    const parsed = new URL(resolved, baseOrigin);
+    return parsed.protocol === 'http:' || parsed.protocol === 'https:' ? resolved : '';
+  } catch {
+    return '';
+  }
+};
+
+const LocationIcon = () => (
+  <svg viewBox="0 0 24 24" aria-hidden="true" className="h-4 w-4">
+    <path
+      d="M12 21s6-5.5 6-11a6 6 0 1 0-12 0c0 5.5 6 11 6 11Z"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+    <circle cx="12" cy="10" r="2.5" fill="none" stroke="currentColor" strokeWidth="1.8" />
+  </svg>
+);
+
+const StarIcon = () => (
+  <svg viewBox="0 0 24 24" aria-hidden="true" className="h-4 w-4 fill-current">
+    <path d="m12 3.7 2.3 4.7 5.2.8-3.7 3.7.9 5.2L12 15.7 7.3 18l.9-5.2-3.7-3.7 5.2-.8L12 3.7Z" />
+  </svg>
+);
+
+export default function PublicProfileHero({
+  about,
+  bannerMedia,
+  bannerUrl,
+  category,
+  headline,
+  initials,
+  isCurrentFavorite,
+  isPreview = false,
+  locationLabel,
+  logoMedia,
+  logoUrl,
+  name,
+  onToggleFavorite,
+  rating,
+  reviewsCount,
+}: PublicProfileHeroProps) {
+  const safeBannerSrc = sanitizeImageSrc(bannerUrl);
+  const safeLogoSrc = sanitizeImageSrc(logoUrl);
+  const hasRating = typeof rating === 'number' && Number.isFinite(rating);
+  const hasReviews = typeof reviewsCount === 'number' && reviewsCount > 0;
+
+  return (
+    <Card
+      tone="default"
+      padding="none"
+      className="overflow-hidden rounded-[38px] border-white/80 bg-white/96 shadow-[0_34px_90px_-54px_rgba(15,23,42,0.3)]"
+    >
+      <div className="relative h-[220px] sm:h-[280px] lg:h-[340px]">
+        {safeBannerSrc ? (
+          <Image
+            src={safeBannerSrc}
+            alt={`Banner de ${name || 'profesional'}`}
+            fill
+            sizes="100vw"
+            className="object-cover"
+            style={buildProfessionalMediaStyle(bannerMedia)}
+            priority={!isPreview}
+          />
+        ) : (
+          <div className="h-full w-full bg-[linear-gradient(145deg,#0f172a_0%,#1d2d39_58%,rgba(10,122,67,0.62)_100%)]" />
+        )}
+        <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(15,23,42,0.16)_0%,rgba(15,23,42,0.28)_38%,rgba(15,23,42,0.5)_100%)]" />
+      </div>
+
+      <div className="relative px-5 pb-7 sm:px-8 sm:pb-8 lg:px-10">
+        <div className="-mt-16 rounded-[32px] border border-white/90 bg-white/95 p-5 shadow-[0_24px_72px_-52px_rgba(15,23,42,0.36)] backdrop-blur sm:-mt-20 sm:p-7">
+          <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
+            <div className="flex min-w-0 gap-4 sm:gap-5">
+              <div className="relative flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-[28px] border-4 border-white bg-[color:var(--surface-soft)] text-xl font-semibold text-[color:var(--ink)] shadow-[0_24px_50px_-40px_rgba(15,23,42,0.35)] sm:h-24 sm:w-24">
+                {safeLogoSrc ? (
+                  <Image
+                    src={safeLogoSrc}
+                    alt={`Logo de ${name || 'profesional'}`}
+                    fill
+                    sizes="96px"
+                    className="object-cover"
+                    style={buildProfessionalMediaStyle(logoMedia)}
+                  />
+                ) : (
+                  initials || '?'
+                )}
+              </div>
+
+              <div className="min-w-0">
+                {category ? (
+                  <Badge variant="neutral" className="normal-case tracking-normal">
+                    {category}
+                  </Badge>
+                ) : null}
+                <h1 className="mt-3 text-3xl font-semibold tracking-[-0.03em] text-[color:var(--ink)] sm:text-4xl lg:text-[2.85rem]">
+                  {name}
+                </h1>
+                {headline ? (
+                  <p className="mt-3 max-w-3xl text-base leading-7 text-[color:var(--ink-muted)] sm:text-lg">
+                    {headline}
+                  </p>
+                ) : null}
+                <div className="mt-4 flex flex-wrap items-center gap-2.5 text-sm">
+                  <div className="inline-flex items-center gap-2 rounded-full border border-[color:var(--border-soft)] bg-[color:var(--surface-soft)] px-3 py-2 text-[color:var(--ink)]">
+                    <StarIcon />
+                    {hasRating && hasReviews ? (
+                      <span className="font-medium">
+                        {rating.toFixed(1)} · {reviewsCount} {reviewsCount === 1 ? 'reseña' : 'reseñas'}
+                      </span>
+                    ) : (
+                      <span className="font-medium">Sin reseñas publicas todavia</span>
+                    )}
+                  </div>
+
+                  {locationLabel ? (
+                    <div className="inline-flex items-center gap-2 rounded-full border border-[color:var(--border-soft)] bg-[color:var(--surface-soft)] px-3 py-2 text-[color:var(--ink)]">
+                      <LocationIcon />
+                      <span className="font-medium">{locationLabel}</span>
+                    </div>
+                  ) : null}
+                </div>
+              </div>
+            </div>
+
+            {!isPreview ? (
+              <FavoriteToggleButton
+                isActive={isCurrentFavorite}
+                onClick={onToggleFavorite}
+                variant="pill"
+                className="w-full justify-center lg:w-auto"
+                activeLabel="Guardado"
+                inactiveLabel="Guardar"
+              />
+            ) : null}
+          </div>
+
+          {about ? (
+            <div className="mt-6 border-t border-[color:var(--border-soft)] pt-6">
+              <p className="text-[0.68rem] font-semibold uppercase tracking-[0.32em] text-[color:var(--ink-faint)]">
+                Sobre el profesional
+              </p>
+              <p className="mt-3 max-w-4xl text-sm leading-7 text-[color:var(--ink-muted)] sm:text-base">
+                {about}
+              </p>
+            </div>
+          ) : null}
+        </div>
+      </div>
+    </Card>
+  );
+}

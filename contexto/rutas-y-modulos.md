@@ -90,6 +90,7 @@ Lectura de producto:
 - en la geoseleccion de `/explorar`, el frontend ya no persiste la direccion completa de Mapbox como `city` para backend; prioriza una ciudad/zona mas amplia y deja las coordenadas como filtro fuerte
 - al escribir manualmente en la barra de `/explorar`, si el usuario venia refinando una busqueda de `PROFESIONAL` o `LOCAL`, el frontend ya no pisa ese tipo automaticamente en cada tecla
 - home, dashboard cliente y `/explorar` ahora reutilizan exactamente la misma barra base de busqueda (`components/search/UnifiedSearchBar`): misma logica, mismos dropdowns y mismos contratos; en home se renderiza una variante hero mas limpia con foco en `servicio + ubicacion + fecha + CTA`, mientras `/explorar` conserva el refinamiento completo y el rail interno de chips
+- `/profesional/pagina/[slug]` y `/profesional/[slug]` ahora priorizan una composicion premium en 2 columnas: hero editorial con banner + logo superpuesto, rail sticky de reserva en desktop, servicios por categoria, galeria visual, bloque unificado de ubicacion/horarios y reseñas; mantienen el mismo salto funcional al flujo separado de `/reservar`
 - `/auth/forgot-password` y `/auth/reset-password` ahora redirigen automaticamente al login correcto (`/cliente/auth/login` o `/profesional/auth/login`) segun el `role` que devuelve backend al completar el reset
 - `/cliente/auth/complete-phone` y `/profesional/auth/complete-phone` completan el telefono faltante despues de OAuth via `POST /auth/oauth/complete-phone`
 - los formularios web que hoy piden telefono en auth (`/cliente/auth/register`, `/profesional/auth/register`, `/auth/forgot-password`, `/cliente/auth/complete-phone`, `/profesional/auth/complete-phone`) ya usan un selector de pais con bandera + codigo internacional y arman el `phoneNumber` final en formato internacional antes de enviarlo al backend
@@ -227,7 +228,7 @@ Notas recientes:
 - feedback de app integrado en `/profesional/dashboard/configuracion` con formulario de rating, categoria opcional y texto libre; incluye historial paginado de feedback propio; modulo backend separado `core.feedback`
 - `/profesional/dashboard/resenas` es la pagina de gestion de reseñas del profesional: muestra stats agregados (rating, total), lista paginada de reseñas recibidas con toggle de hide/show del texto publico y opcion de eliminar reseña; el texto oculto sigue visible para el profesional con indicador visual amarillo
 - `/profesional/dashboard/configuracion` ahora requiere challenge OTP por email para eliminar cuenta; advierte sobre cancelacion de suscripcion y reservas pendientes
-- `PublicReviewsList` muestra reseñas paginadas en el perfil publico del profesional: avatar con inicial, nombre, rating, fecha y texto; respeta ocultamiento mostrando mensaje explicativo
+- `PublicReviewsList` ahora muestra un resumen visual de rating + total y una distribucion calculada sobre la muestra visible cargada, seguido por reseñas paginadas; sigue respetando ocultamiento del texto publico
 - `/profesional/pagina/[slug]` y `/profesional/[slug]` ahora renderizan `logo` y `banner` con `object-position + zoom` persistidos desde perfil del negocio, manteniendo la misma composición visual que ve el profesional al editar
 
 Huecos relevantes contra el objetivo:
@@ -264,7 +265,11 @@ Modulos relevantes:
 - `services/appFeedback.ts`: feedback de app del cliente y profesional; ahora incluye `getPublicAppFeedback(limit)` para testimonios publicos via `GET /public/app-feedback`.
 - `middleware.ts`: CSP y headers de seguridad.
 - `/oauth/mercadopago/callback`: ahora interpreta `result/reason` devueltos por el backend y consulta el estado real de conexion; ya no intenta llamar al callback backend con `code/state`.
-- `pages/profesional/pagina/[slug].tsx`: reutiliza fetch cacheado del perfil publico, difiere quick slots hasta interaccion real con servicios y posterga tanto el geocoding fallback como la carga del mapa hasta que el bloque entra en viewport para bajar costo inicial en la pagina publica; ahora muestra galería de fotos del negocio (`BusinessGallery`), logo, banner, headline y about del perfil.
+- `pages/profesional/pagina/[slug].tsx`: compone la pagina publica con hero premium, rail sticky de reserva, servicios por categoria, galeria editorial, bloque unificado de ubicacion/horarios y reseñas; reutiliza el fetch cacheado del perfil publico, sigue difiriendo quick slots hasta interaccion real con servicios y posterga geocoding fallback + mapa hasta que el bloque entra en viewport.
+- `components/profesional/public-page/PublicProfileHero.tsx`: hero publico con banner ancho, logo superpuesto, rating, ubicacion, about y favorito.
+- `components/profesional/public-page/PublicBookingSidebar.tsx`: rail de reserva reutilizando el servicio seleccionado, quick slots y CTA hacia `/reservar`.
+- `components/profesional/public-page/PublicServicesSection.tsx`: grilla de servicios con pills por categoria, cards y seleccion del servicio activo.
+- `components/profesional/public-page/servicePresentation.ts`: formateadores compartidos para precio, duracion, modalidad de pago y categoria publica.
 - `components/profesional/ImageUploader.tsx`: componente reutilizable de subida de imágenes con variantes `square`, `circle` y `banner`; valida MIME (jpeg, png, webp) y tamaño (1MB); muestra preview blob inmediato y sube vía `professionalImageUpload` service.
 - `utils/assetUrl.ts`: incluye `resolveR2Url()` para convertir URLs R2 (`r2://bucket/path`) a URLs CDN públicas usando `NEXT_PUBLIC_IMAGE_CDN_BASE_URL`.
 

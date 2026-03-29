@@ -98,16 +98,25 @@ export default function Footer() {
         ) : (
           <>
             <div className={`space-y-2 text-sm ${secondaryTextClassName}`}>
-              <p className={strongTextClassName}>Plataforma</p>
-              <p>Cómo funciona</p>
-              <p>Planes para negocios</p>
-              <p>Ayuda y soporte</p>
+              <p className={strongTextClassName}>Descubrir</p>
+              <Link href="/explorar" className={linkClassName}>
+                Explorar
+              </Link>
+              <Link href="/cliente/auth/register" className={linkClassName}>
+                Crear cuenta
+              </Link>
+              <Link href="/login" className={linkClassName}>
+                Iniciar sesión
+              </Link>
             </div>
             <div className={`space-y-2 text-sm ${secondaryTextClassName}`}>
-              <p className={strongTextClassName}>Comunidad</p>
-              <p>Profesionales destacados</p>
-              <p>Reseñas reales</p>
-              <p>Recomendaciones</p>
+              <p className={strongTextClassName}>Profesionales</p>
+              <Link href="/profesional/auth/login" className={linkClassName}>
+                Soy profesional
+              </Link>
+              <Link href="/explorar" className={linkClassName}>
+                Ver perfiles
+              </Link>
             </div>
           </>
         )}

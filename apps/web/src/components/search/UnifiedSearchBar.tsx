@@ -63,6 +63,7 @@ export default memo(function UnifiedSearchBar({
   citySuggestions = [],
 }: UnifiedSearchBarProps) {
   const wrapperRef = useRef<HTMLDivElement | null>(null);
+  const isHero = variant === 'hero';
 
   const search = useUnifiedSearch({ initialValues, fixedQuery, citySuggestions });
 
@@ -193,6 +194,21 @@ export default memo(function UnifiedSearchBar({
     : values.type !== 'SERVICIO'
       ? SEARCH_TYPE_LABELS[values.type]
       : null;
+  const queryFieldLabel = isHero ? 'Servicio' : 'Servicio o rubro';
+  const queryFieldClassName = isHero ? 'border-[color:var(--border-soft)] bg-white/94 hover:bg-white' : 'h-full';
+  const selectionFieldClassName = isHero
+    ? 'border-[color:var(--border-soft)] bg-white/94 hover:bg-white'
+    : 'h-full';
+  const queryWrapperOrderClassName = isHero ? 'order-1 md:col-[1]' : '';
+  const locationWrapperOrderClassName = isHero ? 'order-2 md:col-[2]' : '';
+  const dateWrapperOrderClassName = isHero ? 'order-3 md:col-[3]' : '';
+  const submitWrapperOrderClassName = isHero ? 'order-4 md:col-[4]' : '';
+  const searchGridClassName = isHero
+    ? 'grid gap-2 md:grid-cols-[minmax(0,1.7fr)_minmax(0,1.05fr)_minmax(0,0.9fr)_auto] md:items-stretch'
+    : 'grid gap-1.5 md:grid-cols-[minmax(0,1.9fr)_minmax(0,0.85fr)_minmax(0,0.95fr)_auto] md:items-stretch';
+  const submitButtonClassName = isHero
+    ? `inline-flex w-full min-w-[8.25rem] items-center justify-center rounded-[20px] bg-[color:var(--primary)] px-5 text-[0.95rem] font-semibold text-white shadow-[0_20px_34px_-24px_rgba(10,122,67,0.7)] transition hover:bg-[color:var(--primary-strong)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--accent-soft)] focus-visible:ring-offset-2 ${SEARCH_CONTROL_HEIGHT_CLASS}`
+    : `inline-flex w-full min-w-[7.5rem] items-center justify-center rounded-[18px] bg-[color:var(--primary)] px-4 text-[0.94rem] font-semibold text-white shadow-[0_16px_26px_-22px_rgba(13,35,58,0.72)] transition hover:bg-[color:var(--primary-strong)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--accent-soft)] focus-visible:ring-offset-2 ${SEARCH_CONTROL_HEIGHT_CLASS}`;
 
   const openSearchPanel = () => {
     setIsSearchOpen(true);
@@ -286,9 +302,13 @@ export default memo(function UnifiedSearchBar({
         <div
           className={`relative overflow-visible rounded-[24px] p-1.5 sm:p-2 ${SURFACE_CLASSES[variant]}`}
         >
-          <div className="grid gap-1.5 md:grid-cols-[minmax(0,1.9fr)_minmax(0,0.85fr)_minmax(0,0.95fr)_auto] md:items-stretch">
-            <div className="relative min-w-0">
-              <SearchField label="Servicio o rubro" active={isSearchOpen} className="h-full">
+          <div className={searchGridClassName}>
+            <div className={`relative min-w-0 ${queryWrapperOrderClassName}`.trim()}>
+              <SearchField
+                label={queryFieldLabel}
+                active={isSearchOpen}
+                className={queryFieldClassName}
+              >
                 <div className="flex min-w-0 items-center gap-2.5">
                   <svg
                     viewBox="0 0 20 20"
@@ -300,7 +320,7 @@ export default memo(function UnifiedSearchBar({
                     <path d="M13 13l4 4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
                   </svg>
 
-                  {searchModeLabel ? (
+                  {searchModeLabel && !isHero ? (
                     <span className="hidden shrink-0 rounded-full bg-white px-2 py-1 text-[0.58rem] font-semibold uppercase tracking-[0.16em] text-[color:var(--ink-faint)] sm:inline-flex">
                       {searchModeLabel}
                     </span>
@@ -369,81 +389,12 @@ export default memo(function UnifiedSearchBar({
               ) : null}
             </div>
 
-            <div className="relative min-w-0">
-              <SearchField
-                label="Fecha"
-                active={isDateOpen || hasDateSelection}
-                asButton
-                className="h-full"
-                onClick={() => {
-                  setIsDateOpen((current) => !current);
-                  setIsSearchOpen(false);
-                  setIsLocationOpen(false);
-                }}
-              >
-                <div className="flex min-w-0 items-center gap-2.5">
-                  <svg
-                    viewBox="0 0 20 20"
-                    fill="none"
-                    className="h-3.5 w-3.5 shrink-0 text-[color:var(--ink-faint)]"
-                    aria-hidden="true"
-                  >
-                    <rect x="3" y="4.5" width="14" height="12" rx="2.5" stroke="currentColor" strokeWidth="1.5" />
-                    <path d="M6.5 3v3M13.5 3v3M3 8h14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-                  </svg>
-                  <span
-                    className={`w-full truncate text-left text-[0.88rem] leading-5 ${
-                      hasDateSelection
-                        ? 'font-semibold text-[color:var(--ink)]'
-                        : 'font-medium text-[color:var(--ink-muted)]'
-                    }`}
-                  >
-                    {dateSummary}
-                  </span>
-                </div>
-              </SearchField>
-
-              {isDateOpen ? (
-                <div className="absolute left-0 right-0 top-[calc(100%+8px)] z-[70] sm:right-auto sm:w-[21.5rem]">
-                  <div className={SEARCH_PANEL_CLASS}>
-                    <DateFilter
-                      date={values.date}
-                      from={values.from}
-                      to={values.to}
-                      availableNow={values.availableNow}
-                      todayIso={todayIso}
-                      onPickAnytime={setAnytime}
-                      onPickToday={pickToday}
-                      onPickTomorrow={pickTomorrow}
-                      onPickThisWeek={pickThisWeek}
-                      onPickDate={(value) => {
-                        const nextDate = normalizeDate(value);
-                        setValues((previous) => ({
-                          ...previous,
-                          date: nextDate,
-                          from: undefined,
-                          to: undefined,
-                        }));
-                      }}
-                      onToggleAvailableNow={() =>
-                        setValues((previous) => ({
-                          ...previous,
-                          availableNow: !previous.availableNow,
-                        }))
-                      }
-                      showAvailableToggle
-                    />
-                  </div>
-                </div>
-              ) : null}
-            </div>
-
-            <div className="relative min-w-0">
+            <div className={`relative min-w-0 ${locationWrapperOrderClassName}`.trim()}>
               <SearchField
                 label="Ubicacion"
                 active={isLocationOpen || hasLocationSelection}
                 asButton
-                className="h-full"
+                className={selectionFieldClassName}
                 onClick={() => {
                   setIsLocationOpen((current) => !current);
                   setIsSearchOpen(false);
@@ -510,17 +461,86 @@ export default memo(function UnifiedSearchBar({
               ) : null}
             </div>
 
-            <div className="flex">
+            <div className={`relative min-w-0 ${dateWrapperOrderClassName}`.trim()}>
+              <SearchField
+                label="Fecha"
+                active={isDateOpen || hasDateSelection}
+                asButton
+                className={selectionFieldClassName}
+                onClick={() => {
+                  setIsDateOpen((current) => !current);
+                  setIsSearchOpen(false);
+                  setIsLocationOpen(false);
+                }}
+              >
+                <div className="flex min-w-0 items-center gap-2.5">
+                  <svg
+                    viewBox="0 0 20 20"
+                    fill="none"
+                    className="h-3.5 w-3.5 shrink-0 text-[color:var(--ink-faint)]"
+                    aria-hidden="true"
+                  >
+                    <rect x="3" y="4.5" width="14" height="12" rx="2.5" stroke="currentColor" strokeWidth="1.5" />
+                    <path d="M6.5 3v3M13.5 3v3M3 8h14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                  </svg>
+                  <span
+                    className={`w-full truncate text-left text-[0.88rem] leading-5 ${
+                      hasDateSelection
+                        ? 'font-semibold text-[color:var(--ink)]'
+                        : 'font-medium text-[color:var(--ink-muted)]'
+                    }`}
+                  >
+                    {dateSummary}
+                  </span>
+                </div>
+              </SearchField>
+
+              {isDateOpen ? (
+                <div className="absolute left-0 right-0 top-[calc(100%+8px)] z-[70] sm:right-auto sm:w-[21.5rem]">
+                  <div className={SEARCH_PANEL_CLASS}>
+                    <DateFilter
+                      date={values.date}
+                      from={values.from}
+                      to={values.to}
+                      availableNow={values.availableNow}
+                      todayIso={todayIso}
+                      onPickAnytime={setAnytime}
+                      onPickToday={pickToday}
+                      onPickTomorrow={pickTomorrow}
+                      onPickThisWeek={pickThisWeek}
+                      onPickDate={(value) => {
+                        const nextDate = normalizeDate(value);
+                        setValues((previous) => ({
+                          ...previous,
+                          date: nextDate,
+                          from: undefined,
+                          to: undefined,
+                        }));
+                      }}
+                      onToggleAvailableNow={() =>
+                        setValues((previous) => ({
+                          ...previous,
+                          availableNow: !previous.availableNow,
+                        }))
+                      }
+                      showAvailableToggle
+                    />
+                  </div>
+                </div>
+              ) : null}
+            </div>
+
+            <div className={`flex ${submitWrapperOrderClassName}`.trim()}>
               <button
                 type="submit"
-                className={`inline-flex w-full min-w-[7.5rem] items-center justify-center rounded-[18px] bg-[color:var(--primary)] px-4 text-[0.94rem] font-semibold text-white shadow-[0_16px_26px_-22px_rgba(13,35,58,0.72)] transition hover:bg-[color:var(--primary-strong)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--accent-soft)] focus-visible:ring-offset-2 ${SEARCH_CONTROL_HEIGHT_CLASS}`}
+                className={submitButtonClassName}
               >
                 {submitLabel}
               </button>
             </div>
           </div>
 
-          {activeFilters.length > 0 ? (
+          {activeFilters.length > 0 && !isHero ? (
             <div className="mt-2.5 px-1">
               <SearchFilterChips filters={activeFilters} onClearAll={showClearButton ? handleClear : undefined} />
             </div>

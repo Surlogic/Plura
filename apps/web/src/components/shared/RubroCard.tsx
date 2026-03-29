@@ -9,6 +9,7 @@ type RubroCardProps = {
   className?: string;
   sizes?: string;
   priority?: boolean;
+  showCta?: boolean;
 };
 
 const normalizeImageUrl = (value?: string | null) => {
@@ -33,6 +34,7 @@ export default memo(function RubroCard({
   className,
   sizes = '(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw',
   priority = false,
+  showCta = false,
 }: RubroCardProps) {
   const normalizedImageUrl = normalizeImageUrl(imageUrl);
 
@@ -44,7 +46,7 @@ export default memo(function RubroCard({
         className || '',
       ].join(' ')}
     >
-      <div className="relative aspect-[16/9] overflow-hidden bg-[color:var(--surface-soft)]">
+      <div className="relative aspect-[4/5] overflow-hidden bg-[color:var(--surface-soft)] sm:aspect-[5/4]">
         {normalizedImageUrl ? (
           <Image
             src={normalizedImageUrl}
@@ -62,8 +64,17 @@ export default memo(function RubroCard({
         )}
         <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(15,23,42,0.06)_0%,rgba(15,23,42,0.22)_42%,rgba(15,23,42,0.84)_100%)]" aria-hidden="true" />
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(54,200,244,0.14),transparent_36%)]" aria-hidden="true" />
-        <div className="absolute inset-x-0 bottom-0 p-5">
-          <h3 className="text-xl font-semibold text-[color:var(--text-on-dark)]">{title}</h3>
+        <div className="absolute inset-x-0 bottom-0 p-5 sm:p-6">
+          <div className="flex items-end justify-between gap-4">
+            <h3 className="text-lg font-semibold text-[color:var(--text-on-dark)] sm:text-[1.35rem]">
+              {title}
+            </h3>
+            {showCta ? (
+              <span className="inline-flex shrink-0 rounded-full border border-white/18 bg-white/12 px-3 py-1.5 text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-[color:var(--text-on-dark)] backdrop-blur-sm">
+                Explorar
+              </span>
+            ) : null}
+          </div>
         </div>
       </div>
     </Link>

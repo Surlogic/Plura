@@ -60,7 +60,7 @@ Base: `apps/web/src/pages`
 
 ### Rutas publicas
 
-- `/`: home SSR con hero, categorias, top businesses y ReviewsSection (testimonios publicos de feedback de app via `GET /public/app-feedback`); usa `getServerSideProps` con retry client-side si SSR falla.
+- `/`: home SSR con hero + buscador unificado en variante simplificada, categorias visuales, top businesses, bloque compacto de `como funciona`, ReviewsSection (testimonios publicos de feedback de app via `GET /public/app-feedback`) y CTA final; usa `getServerSideProps` con retry client-side si SSR falla.
 - `/explorar`: buscador principal con filtros, lista y mapa.
 - `/explorar/[slug]`: vista detallada de exploracion por slug.
 - `/profesional/[slug]`: pagina publica del profesional.
@@ -89,7 +89,7 @@ Lectura de producto:
 - `/explorar` ya usa la fecha como filtro real de disponibilidad y no solo como ordenador; `Disponible ahora` tambien se apoya en disponibilidad real
 - en la geoseleccion de `/explorar`, el frontend ya no persiste la direccion completa de Mapbox como `city` para backend; prioriza una ciudad/zona mas amplia y deja las coordenadas como filtro fuerte
 - al escribir manualmente en la barra de `/explorar`, si el usuario venia refinando una busqueda de `PROFESIONAL` o `LOCAL`, el frontend ya no pisa ese tipo automaticamente en cada tecla
-- home, dashboard cliente y `/explorar` ahora reutilizan exactamente la misma barra base de busqueda (`components/search/UnifiedSearchBar`): mismo ancho maximo, misma grilla, mismos dropdowns y un rail interno de chips para filtros activos; `/explorar` deja de duplicar chips por fuera de la barra y conserva solo una toolbar secundaria para vista, orden y radio
+- home, dashboard cliente y `/explorar` ahora reutilizan exactamente la misma barra base de busqueda (`components/search/UnifiedSearchBar`): misma logica, mismos dropdowns y mismos contratos; en home se renderiza una variante hero mas limpia con foco en `servicio + ubicacion + fecha + CTA`, mientras `/explorar` conserva el refinamiento completo y el rail interno de chips
 - `/auth/forgot-password` y `/auth/reset-password` ahora redirigen automaticamente al login correcto (`/cliente/auth/login` o `/profesional/auth/login`) segun el `role` que devuelve backend al completar el reset
 - `/cliente/auth/complete-phone` y `/profesional/auth/complete-phone` completan el telefono faltante despues de OAuth via `POST /auth/oauth/complete-phone`
 - los formularios web que hoy piden telefono en auth (`/cliente/auth/register`, `/profesional/auth/register`, `/auth/forgot-password`, `/cliente/auth/complete-phone`, `/profesional/auth/complete-phone`) ya usan un selector de pais con bandera + codigo internacional y arman el `phoneNumber` final en formato internacional antes de enviarlo al backend

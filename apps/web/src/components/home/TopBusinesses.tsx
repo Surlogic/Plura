@@ -1,4 +1,3 @@
-import Link from 'next/link';
 import { memo } from 'react';
 import BusinessCard from './BusinessCard';
 import Button from '@/components/ui/Button';
@@ -28,9 +27,9 @@ export default memo(function TopBusinesses({ professionals, isLoading = false }:
       <div className="mx-auto w-full max-w-6xl space-y-6">
         <SectionHeading
           kicker="Destacados"
-          title="Locales y profesionales con mejor presentación"
-          description="Una selección visible y consistente para que el primer nivel de exploración no se sienta como una lista genérica."
-          action={<Button href="/explorar">Ver todos</Button>}
+          title="Profesionales destacados"
+          description="Una selección corta para orientarte rápido y seguir explorando en el perfil o en búsqueda."
+          action={<Button href="/explorar" variant="quiet">Ver explorar</Button>}
         />
         {isLoading ? (
           <Card tone="soft" className="border-dashed text-sm text-[color:var(--ink-muted)]">
@@ -45,19 +44,15 @@ export default memo(function TopBusinesses({ professionals, isLoading = false }:
             {items.map((business) => {
               const slug = business.slug || slugify(business.name);
               return (
-                <Link
+                <BusinessCard
                   key={business.id}
+                  name={business.name}
+                  category={business.category}
+                  rating={business.rating}
+                  reviewsCount={business.reviewsCount}
+                  imageUrl={business.imageUrl}
                   href={`/profesional/pagina/${slug}`}
-                  className="block"
-                >
-                  <BusinessCard
-                    name={business.name}
-                    category={business.category}
-                    rating={business.rating}
-                    reviewsCount={business.reviewsCount}
-                    imageUrl={business.imageUrl}
-                  />
-                </Link>
+                />
               );
             })}
           </div>

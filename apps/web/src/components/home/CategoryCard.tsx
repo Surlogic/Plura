@@ -15,6 +15,14 @@ export default memo(function CategoryCard({
   priority = false,
 }: CategoryCardProps) {
   return (
-    <RubroCard title={title} imageUrl={imageUrl} slug={slug} priority={priority} />
+    <RubroCard
+      title={title}
+      imageUrl={imageUrl}
+      slug={slug}
+      priority={priority}
+      showCta
+      className="rounded-[30px]"
+      sizes="(max-width: 768px) 50vw, 33vw"
+    />
   );
 });

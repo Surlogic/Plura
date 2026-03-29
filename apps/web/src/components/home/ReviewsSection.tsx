@@ -76,12 +76,14 @@ export default function ReviewsSection() {
     <section className="px-4">
       <div className="mx-auto w-full max-w-6xl space-y-6">
         <div className="space-y-2">
-          <p className="text-xs font-semibold uppercase tracking-[0.28em] text-[color:var(--ink-muted)]">
+          <p className="text-[0.68rem] font-semibold uppercase tracking-[0.3em] text-[color:var(--ink-faint)]">
             Opiniones sobre Plura
           </p>
-          <h2 className="text-2xl font-semibold text-[color:var(--ink)]">Lo que dicen quienes usan la app</h2>
-          <p className="max-w-2xl text-sm text-[color:var(--ink-muted)]">
-            Testimonios reales de clientes y profesionales que ya usan Plura en su día a día.
+          <h2 className="text-2xl font-semibold text-[color:var(--ink)] sm:text-[2rem]">
+            Confianza basada en experiencia real
+          </h2>
+          <p className="max-w-2xl text-sm text-[color:var(--ink-muted)] sm:text-base">
+            Comentarios breves de clientes y profesionales que ya usan Plura.
           </p>
         </div>
 
@@ -90,7 +92,7 @@ export default function ReviewsSection() {
             {Array.from({ length: 3 }).map((_, index) => (
               <article
                 key={index}
-                className="rounded-[28px] border border-white/70 bg-white/88 p-6 shadow-[0_22px_60px_rgba(15,23,42,0.08)] backdrop-blur"
+                className="rounded-[26px] border border-[color:var(--border-soft)] bg-white/92 p-5 shadow-[var(--shadow-card)]"
               >
                 <div className="animate-pulse space-y-4">
                   <div className="flex items-center gap-3">
@@ -117,12 +119,11 @@ export default function ReviewsSection() {
             {reviews.map((review) => (
               <article
                 key={review.id}
-                className="group relative overflow-hidden rounded-[28px] border border-white/70 bg-white/88 p-6 shadow-[0_22px_60px_rgba(15,23,42,0.08)] backdrop-blur transition duration-300 hover:-translate-y-1 hover:shadow-[0_26px_72px_rgba(14,165,233,0.12)]"
+                className="rounded-[26px] border border-[color:var(--border-soft)] bg-white/94 p-5 shadow-[var(--shadow-card)] transition hover:-translate-y-0.5 hover:shadow-[var(--shadow-lift)]"
               >
-                <div className="absolute inset-x-0 top-0 h-1 bg-[linear-gradient(90deg,#0EA5E9,#22C55E,#8B5CF6)] opacity-80" />
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex items-center gap-3">
-                    <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,rgba(14,165,233,0.16),rgba(34,197,94,0.16))] text-sm font-semibold text-[color:var(--ink)]">
+                    <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[color:var(--surface-soft)] text-sm font-semibold text-[color:var(--ink)]">
                       {initialsFromName(review.authorDisplayName)}
                     </div>
                     <div>
@@ -137,16 +138,16 @@ export default function ReviewsSection() {
                       </div>
                     </div>
                   </div>
-                  <span className="rounded-full border border-[color:var(--stroke-soft)] bg-white/70 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-[color:var(--ink-muted)]">
+                  <span className="rounded-full border border-[color:var(--border-soft)] bg-[color:var(--surface-soft)] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-[color:var(--ink-muted)]">
                     {ROLE_LABELS[review.authorRole || ''] || 'Usuario'}
                   </span>
                 </div>
 
-                <p className="mt-5 text-sm leading-6 text-[color:var(--ink-muted)]">
+                <p className="mt-4 line-clamp-4 text-sm leading-6 text-[color:var(--ink-muted)]">
                   {review.text}
                 </p>
 
-                <div className="mt-5 flex items-center justify-between gap-3 text-xs text-[color:var(--ink-faint)]">
+                <div className="mt-4 flex items-center justify-between gap-3 text-xs text-[color:var(--ink-faint)]">
                   <span>{review.category ? review.category.replaceAll('_', ' ') : 'Experiencia general'}</span>
                   <span>{formatDate(review.createdAt)}</span>
                 </div>

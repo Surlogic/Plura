@@ -5,7 +5,9 @@ import Footer from '@/components/shared/Footer';
 import Hero from '@/components/home/Hero';
 import CategoriesGrid from '@/components/home/CategoriesGrid';
 import TopBusinesses from '@/components/home/TopBusinesses';
+import HowItWorksSection from '@/components/home/HowItWorksSection';
 import ReviewsSection from '@/components/home/ReviewsSection';
+import FinalCtaSection from '@/components/home/FinalCtaSection';
 import type { HomeResponse } from '@/types/home';
 import type { Category } from '@/types/category';
 
@@ -116,11 +118,13 @@ export default function HomePage({
       <div className="pointer-events-none absolute inset-x-0 top-0 h-[520px] bg-[linear-gradient(180deg,rgba(15,23,42,0.03),transparent)]" />
       <div className="relative z-10">
         <Navbar />
-        <main className="space-y-20 pb-24">
+        <main className="space-y-14 pb-24 sm:space-y-18">
           <Hero stats={stats} isLoading={isInitialHomeLoading} />
           <CategoriesGrid categories={categories} isLoading={isInitialHomeLoading} />
           <TopBusinesses professionals={topProfessionals} isLoading={isInitialHomeLoading} />
+          <HowItWorksSection />
           <ReviewsSection />
+          <FinalCtaSection />
         </main>
         <Footer />
       </div>

@@ -62,15 +62,15 @@ export default memo(function RubroCard({
             aria-hidden="true"
           />
         )}
-        <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(15,23,42,0.06)_0%,rgba(15,23,42,0.22)_42%,rgba(15,23,42,0.84)_100%)]" aria-hidden="true" />
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(54,200,244,0.14),transparent_36%)]" aria-hidden="true" />
+        <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(15,23,42,0.04)_0%,rgba(15,23,42,0.18)_32%,rgba(15,23,42,0.72)_68%,rgba(15,23,42,0.92)_100%)]" aria-hidden="true" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.08),transparent_34%)]" aria-hidden="true" />
         <div className="absolute inset-x-0 bottom-0 p-5 sm:p-6">
           <div className="flex items-end justify-between gap-4">
-            <h3 className="text-lg font-semibold text-[color:var(--text-on-dark)] sm:text-[1.35rem]">
+            <h3 className="max-w-[12rem] text-lg font-semibold leading-[1.05] text-white sm:max-w-[14rem] sm:text-[1.35rem]">
               {title}
             </h3>
             {showCta ? (
-              <span className="inline-flex shrink-0 rounded-full border border-white/18 bg-white/12 px-3 py-1.5 text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-[color:var(--text-on-dark)] backdrop-blur-sm">
+              <span className="inline-flex shrink-0 rounded-full bg-white/92 px-3 py-1.5 text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-[color:var(--brand-navy)] shadow-[0_10px_28px_-18px_rgba(15,23,42,0.46)]">
                 Explorar
               </span>
             ) : null}

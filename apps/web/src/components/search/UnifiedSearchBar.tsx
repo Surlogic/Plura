@@ -41,7 +41,7 @@ type UnifiedSearchBarProps = {
 };
 
 const SURFACE_CLASSES: Record<NonNullable<UnifiedSearchBarProps['variant']>, string> = {
-  hero: 'border border-white/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(248,250,252,0.96))] shadow-[0_28px_68px_-46px_rgba(13,35,58,0.46)] backdrop-blur-xl',
+  hero: 'border border-white/70 bg-white/92 shadow-[0_28px_70px_-48px_rgba(13,35,58,0.34)] backdrop-blur-xl',
   panel: 'border border-[color:var(--border-soft)] bg-[color:var(--surface-strong)] shadow-[0_20px_48px_-38px_rgba(13,35,58,0.28)]',
   explore: 'border border-[color:var(--border-soft)] bg-[color:var(--surface-strong)] shadow-[0_20px_48px_-38px_rgba(13,35,58,0.24)]',
 };

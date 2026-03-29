@@ -195,19 +195,23 @@ export default memo(function UnifiedSearchBar({
       ? SEARCH_TYPE_LABELS[values.type]
       : null;
   const queryFieldLabel = isHero ? 'Servicio' : 'Servicio o rubro';
-  const queryFieldClassName = isHero ? 'border-[color:var(--border-soft)] bg-white/94 hover:bg-white' : 'h-full';
-  const selectionFieldClassName = isHero
-    ? 'border-[color:var(--border-soft)] bg-white/94 hover:bg-white'
-    : 'h-full';
-  const queryWrapperOrderClassName = isHero ? 'order-1 md:col-[1]' : '';
-  const locationWrapperOrderClassName = isHero ? 'order-2 md:col-[2]' : '';
-  const dateWrapperOrderClassName = isHero ? 'order-3 md:col-[3]' : '';
+  const queryFieldClassName = isHero ? 'h-full' : 'h-full';
+  const selectionFieldClassName = isHero ? 'h-full' : 'h-full';
+  const heroFieldShellClassName = 'px-4 py-1 sm:px-5';
+  const heroDividerClassName = 'border-t border-[color:var(--border-soft)]/85 md:border-t-0 md:border-r';
+  const queryWrapperOrderClassName = isHero ? `order-1 md:col-[1] ${heroFieldShellClassName}` : '';
+  const locationWrapperOrderClassName = isHero
+    ? `order-2 md:col-[2] ${heroFieldShellClassName} ${heroDividerClassName}`
+    : '';
+  const dateWrapperOrderClassName = isHero
+    ? `order-3 md:col-[3] ${heroFieldShellClassName} ${heroDividerClassName}`
+    : '';
   const submitWrapperOrderClassName = isHero ? 'order-4 md:col-[4]' : '';
   const searchGridClassName = isHero
-    ? 'grid gap-2 md:grid-cols-[minmax(0,1.7fr)_minmax(0,1.05fr)_minmax(0,0.9fr)_auto] md:items-stretch'
+    ? 'grid gap-0 md:grid-cols-[minmax(0,1.7fr)_minmax(0,1.05fr)_minmax(0,0.9fr)_auto] md:items-center'
     : 'grid gap-1.5 md:grid-cols-[minmax(0,1.9fr)_minmax(0,0.85fr)_minmax(0,0.95fr)_auto] md:items-stretch';
   const submitButtonClassName = isHero
-    ? `inline-flex w-full min-w-[8.25rem] items-center justify-center rounded-[20px] bg-[color:var(--primary)] px-5 text-[0.95rem] font-semibold text-white shadow-[0_20px_34px_-24px_rgba(10,122,67,0.7)] transition hover:bg-[color:var(--primary-strong)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--accent-soft)] focus-visible:ring-offset-2 ${SEARCH_CONTROL_HEIGHT_CLASS}`
+    ? `inline-flex w-full min-w-[8.75rem] items-center justify-center rounded-[18px] bg-[color:var(--primary)] px-5 text-[0.95rem] font-semibold text-white shadow-[0_20px_34px_-24px_rgba(10,122,67,0.7)] transition hover:bg-[color:var(--primary-strong)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--accent-soft)] focus-visible:ring-offset-2 ${SEARCH_CONTROL_HEIGHT_CLASS}`
     : `inline-flex w-full min-w-[7.5rem] items-center justify-center rounded-[18px] bg-[color:var(--primary)] px-4 text-[0.94rem] font-semibold text-white shadow-[0_16px_26px_-22px_rgba(13,35,58,0.72)] transition hover:bg-[color:var(--primary-strong)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--accent-soft)] focus-visible:ring-offset-2 ${SEARCH_CONTROL_HEIGHT_CLASS}`;
 
   const openSearchPanel = () => {
@@ -308,6 +312,7 @@ export default memo(function UnifiedSearchBar({
                 label={queryFieldLabel}
                 active={isSearchOpen}
                 className={queryFieldClassName}
+                chrome={isHero ? 'bare' : 'framed'}
               >
                 <div className="flex min-w-0 items-center gap-2.5">
                   <svg
@@ -395,6 +400,7 @@ export default memo(function UnifiedSearchBar({
                 active={isLocationOpen || hasLocationSelection}
                 asButton
                 className={selectionFieldClassName}
+                chrome={isHero ? 'bare' : 'framed'}
                 onClick={() => {
                   setIsLocationOpen((current) => !current);
                   setIsSearchOpen(false);
@@ -467,6 +473,7 @@ export default memo(function UnifiedSearchBar({
                 active={isDateOpen || hasDateSelection}
                 asButton
                 className={selectionFieldClassName}
+                chrome={isHero ? 'bare' : 'framed'}
                 onClick={() => {
                   setIsDateOpen((current) => !current);
                   setIsSearchOpen(false);
@@ -530,7 +537,7 @@ export default memo(function UnifiedSearchBar({
               ) : null}
             </div>
 
-            <div className={`flex ${submitWrapperOrderClassName}`.trim()}>
+            <div className={`flex ${submitWrapperOrderClassName} ${isHero ? 'border-t border-[color:var(--border-soft)]/85 px-1 pt-2 md:border-l md:border-t-0 md:px-2 md:pl-4 md:pt-0' : ''}`.trim()}>
               <button
                 type="submit"
                 className={submitButtonClassName}

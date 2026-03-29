@@ -192,6 +192,7 @@ Lectura de producto:
 
 - esta area concentra el valor de `Free` y buena parte de `Pro`
 - `servicios`, `horarios`, `reservas`, `perfil-negocio` y `notificaciones` son el corazon operativo
+- `/profesional/dashboard/perfil-negocio` ahora incluye constructor visual para `logo` y `banner`: después de subir, el profesional puede recentrar y ajustar zoom; ese encuadre queda persistido y se aplica también en la ficha pública
 - los autocompletes de ubicacion en `/profesional/auth/register` y `/profesional/dashboard/perfil-negocio` ya seleccionan sugerencias por click normal sin depender de `mouseDown`, evitando opciones que parecian clickeables pero no confirmaban bien al navegar con teclado o blur
 - `/profesional/auth/register` y `/profesional/dashboard/perfil-negocio` ya comparten el mismo selector internacional de telefono con bandera + codigo; evita cargar el prefijo a mano y deja el numero persistido listo para backend
 - `/profesional/dashboard/reservas` tambien usa selector internacional cuando el profesional carga una reserva manual con telefono de cliente opcional
@@ -219,6 +220,7 @@ Lectura de producto:
 - `/profesional/dashboard` en vista semanal usa una base completa de `24h` con scroll vertical interno; el viewport visible muestra aproximadamente `12h`, el foco inicial se calcula en frontend con horarios configurados y reservas visibles de la semana, agrega margen corto y solo cae a fallback `09:00-18:00` para posicionamiento inicial si no hay datos suficientes; el eje horario visible marca horas de una en una y deja subdivisiones de `30m` como referencia sutil
 - `/profesional/dashboard` agrega una toolbar compacta para saltar dentro del dia a `Madrugada`, `Mañana`, `Tarde`, `Noche` y `Ahora` sin romper navegacion semanal ni render de reservas
 - `/profesional/dashboard` en desktop prioriza visibilidad y estabilidad de agenda sobre un shell full-height estricto: la pagina puede seguir scrolleando normalmente, mientras la vista semanal mantiene scroll interno solo en el cuerpo del calendario y una altura explicita para que la grilla no colapse ni quede truncada
+- `/profesional/dashboard/pagina-publica` sigue editando textos y galería, pero la preview ya consume también el encuadre persistido de `logo` y `banner` definido en `perfil-negocio`
 
 Notas recientes:
 
@@ -226,6 +228,7 @@ Notas recientes:
 - `/profesional/dashboard/resenas` es la pagina de gestion de reseñas del profesional: muestra stats agregados (rating, total), lista paginada de reseñas recibidas con toggle de hide/show del texto publico y opcion de eliminar reseña; el texto oculto sigue visible para el profesional con indicador visual amarillo
 - `/profesional/dashboard/configuracion` ahora requiere challenge OTP por email para eliminar cuenta; advierte sobre cancelacion de suscripcion y reservas pendientes
 - `PublicReviewsList` muestra reseñas paginadas en el perfil publico del profesional: avatar con inicial, nombre, rating, fecha y texto; respeta ocultamiento mostrando mensaje explicativo
+- `/profesional/pagina/[slug]` y `/profesional/[slug]` ahora renderizan `logo` y `banner` con `object-position + zoom` persistidos desde perfil del negocio, manteniendo la misma composición visual que ve el profesional al editar
 
 Huecos relevantes contra el objetivo:
 

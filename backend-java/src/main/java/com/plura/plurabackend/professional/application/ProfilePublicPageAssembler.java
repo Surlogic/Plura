@@ -5,6 +5,7 @@ import com.plura.plurabackend.core.booking.dto.BookingPolicySnapshotResponse;
 import com.plura.plurabackend.core.booking.policy.BookingPolicySnapshotService;
 import com.plura.plurabackend.core.storage.ImageStorageService;
 import com.plura.plurabackend.core.user.model.User;
+import com.plura.plurabackend.professional.dto.MediaPresentationDto;
 import com.plura.plurabackend.professional.dto.ProfesionalPublicPageResponse;
 import com.plura.plurabackend.professional.dto.ProfesionalPublicSummaryResponse;
 import com.plura.plurabackend.professional.model.ProfessionalProfile;
@@ -75,7 +76,17 @@ public class ProfilePublicPageAssembler {
             .headline(profile.getPublicHeadline())
             .about(profile.getPublicAbout())
             .logoUrl(normalizePublicPhotoUrl(profile.getLogoUrl()))
+            .logoMedia(toMediaPresentation(
+                profile.getLogoPositionX(),
+                profile.getLogoPositionY(),
+                profile.getLogoZoom()
+            ))
             .bannerUrl(normalizePublicPhotoUrl(profile.getBannerUrl()))
+            .bannerMedia(toMediaPresentation(
+                profile.getBannerPositionX(),
+                profile.getBannerPositionY(),
+                profile.getBannerZoom()
+            ))
             .address(profile.getFullAddress() == null ? profile.getLocation() : profile.getFullAddress())
             .location(profile.getLocation())
             .country(profile.getCountry())
@@ -115,6 +126,14 @@ public class ProfilePublicPageAssembler {
             normalizePublicPhotoUrl(profile.getLogoUrl()),
             profile.getRating(),
             profile.getReviewsCount()
+        );
+    }
+
+    private MediaPresentationDto toMediaPresentation(Double positionX, Double positionY, Double zoom) {
+        return new MediaPresentationDto(
+            positionX != null ? positionX : 50d,
+            positionY != null ? positionY : 50d,
+            zoom != null ? zoom : 1d
         );
     }
 

@@ -1,6 +1,7 @@
 package com.plura.plurabackend.core.auth.dto;
 
 import com.plura.plurabackend.core.category.dto.CategoryResponse;
+import com.plura.plurabackend.professional.dto.MediaPresentationDto;
 import com.plura.plurabackend.professional.plan.ProfessionalPlanEntitlements;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -46,8 +47,12 @@ public class ProfesionalProfileResponse {
     private String tipoCliente;
     /** URL del logotipo del profesional/empresa. */
     private String logoUrl;
+    /** Encuadre persistido del logotipo del profesional/empresa. */
+    private MediaPresentationDto logoMedia;
     /** URL del banner del profesional/empresa. */
     private String bannerUrl;
+    /** Encuadre persistido del banner del profesional/empresa. */
+    private MediaPresentationDto bannerMedia;
     /** Enlace al perfil de Instagram. */
     private String instagram;
     /** Enlace al perfil de Facebook. */

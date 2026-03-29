@@ -161,6 +161,7 @@ Lectura de producto:
 - soporta perfil publico, disponibilidad real y reserva sin pasar por panel privado
 - es la base de `Usuario` y del valor visible de `Free`
 - `GET /public/profesionales/{slug}` mantiene cache de perfil publico y ahora registra timing tecnico. Devuelve `rating` y `reviewsCount` reales
+- `GET /public/profesionales/{slug}` ahora devuelve también `logoMedia` y `bannerMedia` con `{ positionX, positionY, zoom }` para reproducir el encuadre persistido de identidad visual en frontend
 - `GET /public/profesionales/{slug}/slots` mantiene el mismo calculo funcional de disponibilidad, pero usa un finder liviano del profesional y registra timing tecnico
 
 ### Configuracion del profesional
@@ -202,6 +203,7 @@ Lectura de producto:
 - cubre horarios de trabajo y politicas de reserva
 - cubre carga manual de turnos desde panel
 - `PUT /profesional/profile` y `PUT /profesional/public-page` ya permiten que `Free/BASIC` gestione logo, banner, headline y about del perfil publico; la diferencia entre planes para la pagina publica queda en limites de capacidad, no en bloqueo de esos textos/base visual
+- `PUT /profesional/profile` ahora acepta opcionalmente `logoMedia` y `bannerMedia` con `{ positionX, positionY, zoom }` para persistir el encuadre visual del logo y del banner; `GET /auth/me/profesional` y `GET /profesional/public-page` exponen esos mismos metadatos normalizados para rehidratar el editor y la preview
 - `POST /profesional/services` ahora corta por capacidad de plan: `BASIC` hasta `15` servicios, `PROFESIONAL` hasta `30`, `ENTERPRISE` sin tope practico; cada servicio mantiene una sola imagen publica
 - `GET /profesional/reservas` sostiene gestion operativa de reservas para `Free/BASIC` y no debe confundirse con gating de agenda semanal o mensual
 - `POST /profesional/payment-providers/mercadopago/oauth/start` y `GET /profesional/payment-providers/mercadopago/oauth/callback` ahora exigen capacidad `ONLINE_PAYMENTS`; `BASIC` no puede iniciar ni completar la conexion OAuth

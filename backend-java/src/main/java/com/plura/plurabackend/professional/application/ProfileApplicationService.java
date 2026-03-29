@@ -7,6 +7,7 @@ import com.plura.plurabackend.core.booking.dto.BookingPolicyUpdateRequest;
 import com.plura.plurabackend.core.category.model.Category;
 import com.plura.plurabackend.professional.profile.ProfessionalCategorySupport;
 import com.plura.plurabackend.professional.dto.ProfesionalBusinessProfileUpdateRequest;
+import com.plura.plurabackend.professional.dto.MediaPresentationDto;
 import com.plura.plurabackend.professional.dto.ProfesionalPublicPageResponse;
 import com.plura.plurabackend.professional.dto.ProfesionalPublicPageUpdateRequest;
 import com.plura.plurabackend.professional.dto.ProfesionalPublicSummaryResponse;
@@ -350,12 +351,34 @@ public class ProfileApplicationService {
                 imageThumbnailJobService.generateThumbnailsAsync(extractStorageObjectKey(logoUrl));
             }
         }
+        if (request.getLogoMedia() != null) {
+            MediaPresentationDto logoMedia = mergeMediaPresentation(
+                request.getLogoMedia(),
+                profile.getLogoPositionX(),
+                profile.getLogoPositionY(),
+                profile.getLogoZoom()
+            );
+            profile.setLogoPositionX(logoMedia.getPositionX());
+            profile.setLogoPositionY(logoMedia.getPositionY());
+            profile.setLogoZoom(logoMedia.getZoom());
+        }
         if (request.getBannerUrl() != null) {
             String bannerUrl = request.getBannerUrl().trim();
             profile.setBannerUrl(bannerUrl.isBlank() ? null : bannerUrl);
             if (!bannerUrl.isBlank()) {
                 imageThumbnailJobService.generateThumbnailsAsync(extractStorageObjectKey(bannerUrl));
             }
+        }
+        if (request.getBannerMedia() != null) {
+            MediaPresentationDto bannerMedia = mergeMediaPresentation(
+                request.getBannerMedia(),
+                profile.getBannerPositionX(),
+                profile.getBannerPositionY(),
+                profile.getBannerZoom()
+            );
+            profile.setBannerPositionX(bannerMedia.getPositionX());
+            profile.setBannerPositionY(bannerMedia.getPositionY());
+            profile.setBannerZoom(bannerMedia.getZoom());
         }
         if (request.getInstagram() != null) {
             profile.setInstagram(normalizeOptional(request.getInstagram()));
@@ -384,6 +407,19 @@ public class ProfileApplicationService {
         if (request.getBannerUrl() != null) {
             imageCleanupService.deleteIfChanged(oldBannerUrl, profile.getBannerUrl());
         }
+    }
+
+    private MediaPresentationDto mergeMediaPresentation(
+        MediaPresentationDto request,
+        Double currentPositionX,
+        Double currentPositionY,
+        Double currentZoom
+    ) {
+        return new MediaPresentationDto(
+            request.getPositionX() != null ? request.getPositionX() : (currentPositionX != null ? currentPositionX : 50d),
+            request.getPositionY() != null ? request.getPositionY() : (currentPositionY != null ? currentPositionY : 50d),
+            request.getZoom() != null ? request.getZoom() : (currentZoom != null ? currentZoom : 1d)
+        );
     }
 
     public BookingPolicyResponse getBookingPolicy(String rawUserId) {

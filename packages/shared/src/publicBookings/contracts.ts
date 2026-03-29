@@ -4,6 +4,12 @@ export type PublicBookingStatus =
   | 'CANCELLED'
   | 'COMPLETED';
 
+export type PublicMediaPresentation = {
+  positionX: number;
+  positionY: number;
+  zoom: number;
+};
+
 export type PublicBookingRequest = {
   serviceId: string;
   startDateTime: string;
@@ -50,6 +56,9 @@ export type PublicProfessionalPageBase<
   headline?: string | null;
   about?: string | null;
   logoUrl?: string | null;
+  logoMedia?: PublicMediaPresentation | null;
+  bannerUrl?: string | null;
+  bannerMedia?: PublicMediaPresentation | null;
   categories?: TCategory[];
   address?: string | null;
   location?: string | null;

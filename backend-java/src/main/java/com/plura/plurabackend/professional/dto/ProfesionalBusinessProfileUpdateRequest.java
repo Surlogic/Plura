@@ -1,5 +1,6 @@
 package com.plura.plurabackend.professional.dto;
 
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import java.util.List;
@@ -41,6 +42,12 @@ public class ProfesionalBusinessProfileUpdateRequest {
     @Size(max = 500)
     @Pattern(regexp = "^(|https?://.+|/uploads/.+|r2://.+|r2:.+)$")
     private String bannerUrl;
+
+    @Valid
+    private MediaPresentationDto logoMedia;
+
+    @Valid
+    private MediaPresentationDto bannerMedia;
 
     @Size(max = 255)
     @Pattern(regexp = "^(|https?://\\S+|[A-Za-z0-9._@-]{1,255})$")

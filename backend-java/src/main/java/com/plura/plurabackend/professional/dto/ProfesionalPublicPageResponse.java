@@ -24,7 +24,9 @@ public class ProfesionalPublicPageResponse {
     private String headline;
     private String about;
     private String logoUrl;
+    private MediaPresentationDto logoMedia;
     private String bannerUrl;
+    private MediaPresentationDto bannerMedia;
     private String address;
     private String location;
     private String country;

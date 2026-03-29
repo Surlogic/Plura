@@ -26,6 +26,7 @@ import com.plura.plurabackend.core.auth.repository.RefreshTokenRepository;
 import com.plura.plurabackend.core.common.util.SlugUtils;
 import com.plura.plurabackend.core.professional.ProfessionalAccountProfileGateway;
 import com.plura.plurabackend.core.professional.ProfessionalProfileRegistrationCommand;
+import com.plura.plurabackend.professional.dto.MediaPresentationDto;
 import com.plura.plurabackend.professional.model.ProfessionalProfile;
 import com.plura.plurabackend.professional.plan.EffectiveProfessionalPlan;
 import com.plura.plurabackend.professional.plan.EffectiveProfessionalPlanService;
@@ -845,7 +846,9 @@ public class AuthService {
             profile.getLongitude(),
             profile.getTipoCliente(),
             profile.getLogoUrl(),
+            toMediaPresentation(profile.getLogoPositionX(), profile.getLogoPositionY(), profile.getLogoZoom()),
             profile.getBannerUrl(),
+            toMediaPresentation(profile.getBannerPositionX(), profile.getBannerPositionY(), profile.getBannerZoom()),
             profile.getInstagram(),
             profile.getFacebook(),
             profile.getTiktok(),
@@ -860,6 +863,14 @@ public class AuthService {
             user.getCreatedAt(),
             profile.getRating(),
             profile.getReviewsCount()
+        );
+    }
+
+    private MediaPresentationDto toMediaPresentation(Double positionX, Double positionY, Double zoom) {
+        return new MediaPresentationDto(
+            positionX != null ? positionX : 50d,
+            positionY != null ? positionY : 50d,
+            zoom != null ? zoom : 1d
         );
     }
 

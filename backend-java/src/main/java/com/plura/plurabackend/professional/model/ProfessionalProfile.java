@@ -61,8 +61,26 @@ public class ProfessionalProfile {
     @Column(name = "logo_url")
     private String logoUrl;
 
+    @Column(name = "logo_position_x")
+    private Double logoPositionX;
+
+    @Column(name = "logo_position_y")
+    private Double logoPositionY;
+
+    @Column(name = "logo_zoom")
+    private Double logoZoom;
+
     @Column(name = "banner_url", length = 500)
     private String bannerUrl;
+
+    @Column(name = "banner_position_x")
+    private Double bannerPositionX;
+
+    @Column(name = "banner_position_y")
+    private Double bannerPositionY;
+
+    @Column(name = "banner_zoom")
+    private Double bannerZoom;
 
     @Column(name = "instagram")
     private String instagram;

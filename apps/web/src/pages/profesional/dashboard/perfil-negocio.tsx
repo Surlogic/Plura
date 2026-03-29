@@ -17,6 +17,11 @@ import {
   DashboardSectionHeading,
   DashboardStatCard,
 } from '@/components/profesional/dashboard/DashboardUI';
+import type { ProfessionalMediaPresentation } from '@/types/professional';
+import {
+  DEFAULT_PROFESSIONAL_MEDIA_PRESENTATION,
+  normalizeProfessionalMediaPresentation,
+} from '@/utils/professionalMediaPresentation';
 
 const slugify = (value: string) =>
   value
@@ -53,6 +58,8 @@ type BusinessProfileForm = {
   categorySlugs: string[];
   logoUrl: string;
   bannerUrl: string;
+  logoMedia: ProfessionalMediaPresentation;
+  bannerMedia: ProfessionalMediaPresentation;
   location: string;
   country: string;
   city: string;
@@ -84,6 +91,8 @@ export default function ProfesionalBusinessProfilePage() {
     categorySlugs: [] as string[],
     logoUrl: '',
     bannerUrl: '',
+    logoMedia: DEFAULT_PROFESSIONAL_MEDIA_PRESENTATION,
+    bannerMedia: DEFAULT_PROFESSIONAL_MEDIA_PRESENTATION,
     location: '',
     country: '',
     city: '',
@@ -125,6 +134,8 @@ export default function ProfesionalBusinessProfilePage() {
       categorySlugs,
       logoUrl: profile.logoUrl || '',
       bannerUrl: profile.bannerUrl || '',
+      logoMedia: normalizeProfessionalMediaPresentation(profile.logoMedia),
+      bannerMedia: normalizeProfessionalMediaPresentation(profile.bannerMedia),
       location: profile.location || '',
       country: profile.country || '',
       city: profile.city || '',
@@ -318,6 +329,8 @@ export default function ProfesionalBusinessProfilePage() {
         phoneNumber: form.phone.trim(),
         logoUrl: form.logoUrl.trim(),
         bannerUrl: form.bannerUrl.trim(),
+        logoMedia: normalizeProfessionalMediaPresentation(form.logoMedia),
+        bannerMedia: normalizeProfessionalMediaPresentation(form.bannerMedia),
         instagram: form.instagram.trim(),
         facebook: form.facebook.trim(),
         tiktok: form.tiktok.trim(),
@@ -340,6 +353,8 @@ export default function ProfesionalBusinessProfilePage() {
         phone: normalizedPayload.phoneNumber,
         logoUrl: form.logoUrl.trim(),
         bannerUrl: form.bannerUrl.trim(),
+        logoMedia: normalizedPayload.logoMedia,
+        bannerMedia: normalizedPayload.bannerMedia,
         instagram: form.instagram.trim(),
         facebook: form.facebook.trim(),
         tiktok: form.tiktok.trim(),
@@ -507,22 +522,46 @@ export default function ProfesionalBusinessProfilePage() {
                       label="Logo"
                       value={form.logoUrl}
                       onChange={(url) => {
-                        setForm((prev) => ({ ...prev, logoUrl: url }));
+                        setForm((prev) => ({
+                          ...prev,
+                          logoUrl: url,
+                          logoMedia:
+                            prev.logoUrl && prev.logoUrl === url
+                              ? prev.logoMedia
+                              : DEFAULT_PROFESSIONAL_MEDIA_PRESENTATION,
+                        }));
                         setIsDirty(true);
                       }}
                       kind="logo"
                       variant="circle"
+                      presentation={form.logoMedia}
+                      onPresentationChange={(logoMedia) => {
+                        setForm((prev) => ({ ...prev, logoMedia }));
+                        setIsDirty(true);
+                      }}
                     />
                     <ImageUploader
                       label="Banner"
                       value={form.bannerUrl}
                       onChange={(url) => {
-                        setForm((prev) => ({ ...prev, bannerUrl: url }));
+                        setForm((prev) => ({
+                          ...prev,
+                          bannerUrl: url,
+                          bannerMedia:
+                            prev.bannerUrl && prev.bannerUrl === url
+                              ? prev.bannerMedia
+                              : DEFAULT_PROFESSIONAL_MEDIA_PRESENTATION,
+                        }));
                         setIsDirty(true);
                       }}
                       kind="banner"
                       variant="banner"
                       hint="Imagen de portada. jpg, png, webp. Máximo 1MB."
+                      presentation={form.bannerMedia}
+                      onPresentationChange={(bannerMedia) => {
+                        setForm((prev) => ({ ...prev, bannerMedia }));
+                        setIsDirty(true);
+                      }}
                     />
                     <div>
                       <label className="text-sm font-medium text-[#0E2A47]">

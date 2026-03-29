@@ -15,6 +15,9 @@ import {
   DashboardSectionHeading,
   DashboardStatCard,
 } from '@/components/profesional/dashboard/DashboardUI';
+import {
+  normalizeProfessionalMediaPresentation,
+} from '@/utils/professionalMediaPresentation';
 import { nextPlanFor, PLAN_LABELS } from '../../../../../../packages/shared/src/billing/planAccess';
 import type {
   ProfessionalSchedule,
@@ -107,7 +110,9 @@ export default function ProfesionalPublicPageBuilder() {
         name: displayName,
         category: displayCategory,
         logoUrl: resolveAssetUrl(profile?.logoUrl || ''),
+        logoMedia: normalizeProfessionalMediaPresentation(profile?.logoMedia),
         bannerUrl: resolveAssetUrl(profile?.bannerUrl || ''),
+        bannerMedia: normalizeProfessionalMediaPresentation(profile?.bannerMedia),
         headline: form.headline,
         about: form.about,
         photos: photos.map((photo) => photo.url).filter(Boolean).map((url) => resolveAssetUrl(url)).filter(Boolean),
@@ -122,7 +127,9 @@ export default function ProfesionalPublicPageBuilder() {
       form.headline,
       photos,
       profile?.logoUrl,
+      profile?.logoMedia,
       profile?.bannerUrl,
+      profile?.bannerMedia,
       previewServices,
       schedule,
     ],

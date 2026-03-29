@@ -19,7 +19,12 @@ import {
 } from '@/services/publicBookings';
 import { hasKnownAuthSession } from '@/services/session';
 import { resolveAssetUrl } from '@/utils/assetUrl';
+import {
+  buildProfessionalMediaStyle,
+  normalizeProfessionalMediaPresentation,
+} from '@/utils/professionalMediaPresentation';
 import type {
+  ProfessionalMediaPresentation,
   ProfessionalSchedule,
   PublicService,
   WorkDayKey,
@@ -80,7 +85,9 @@ type PreviewPayload = {
   name?: string;
   category?: string;
   logoUrl?: string;
+  logoMedia?: ProfessionalMediaPresentation | null;
   bannerUrl?: string;
+  bannerMedia?: ProfessionalMediaPresentation | null;
   headline?: string;
   about?: string;
   photos?: string[];
@@ -109,10 +116,24 @@ const isValidPreviewPayload = (value: unknown): value is PreviewPayload => {
   if ('category' in obj && obj.category !== undefined && typeof obj.category !== 'string') return false;
   if ('logoUrl' in obj && obj.logoUrl !== undefined && typeof obj.logoUrl !== 'string') return false;
   if ('bannerUrl' in obj && obj.bannerUrl !== undefined && typeof obj.bannerUrl !== 'string') return false;
+  if ('logoMedia' in obj && obj.logoMedia !== undefined && !isValidMediaPresentation(obj.logoMedia)) return false;
+  if ('bannerMedia' in obj && obj.bannerMedia !== undefined && !isValidMediaPresentation(obj.bannerMedia)) return false;
   if ('headline' in obj && obj.headline !== undefined && typeof obj.headline !== 'string') return false;
   if ('about' in obj && obj.about !== undefined && typeof obj.about !== 'string') return false;
   if ('photos' in obj && obj.photos !== undefined && (!Array.isArray(obj.photos) || !obj.photos.every((item) => typeof item === 'string'))) return false;
   return true;
+};
+
+const isValidMediaPresentation = (
+  value: unknown,
+): value is ProfessionalMediaPresentation => {
+  if (!value || typeof value !== 'object') return false;
+  const obj = value as Record<string, unknown>;
+  return (
+    typeof obj.positionX === 'number' &&
+    typeof obj.positionY === 'number' &&
+    typeof obj.zoom === 'number'
+  );
 };
 
 // Acepta solo URLs de imagen con protocolo seguro para evitar inyección CSS
@@ -270,7 +291,9 @@ type PublicProfessional = {
   rubro: string;
   description?: string | null;
   logoUrl?: string | null;
+  logoMedia?: ProfessionalMediaPresentation | null;
   bannerUrl?: string | null;
+  bannerMedia?: ProfessionalMediaPresentation | null;
   headline?: string | null;
   about?: string | null;
   address?: string | null;
@@ -371,7 +394,9 @@ export default function ProfesionalDetailPage({
       name: '',
       category: '',
       logoUrl: '',
+      logoMedia: normalizeProfessionalMediaPresentation(null),
       bannerUrl: '',
+      bannerMedia: normalizeProfessionalMediaPresentation(null),
       location: '',
       headline: '',
       about: '',
@@ -398,7 +423,9 @@ export default function ProfesionalDetailPage({
       name: data.fullName || data.name || fallback.name,
       category: data.rubro || fallback.category,
       logoUrl: data.logoUrl || fallback.logoUrl,
+      logoMedia: normalizeProfessionalMediaPresentation(data.logoMedia),
       bannerUrl: data.bannerUrl || fallback.bannerUrl,
+      bannerMedia: normalizeProfessionalMediaPresentation(data.bannerMedia),
       headline: data.headline || fallback.headline,
       about: data.about || data.description || fallback.about,
       location: data.location || data.address || fallback.location,
@@ -424,7 +451,13 @@ export default function ProfesionalDetailPage({
       name: preview.name ?? resolved.name,
       category: preview.category ?? resolved.category,
       logoUrl: preview.logoUrl ?? resolved.logoUrl,
+      logoMedia: preview.logoMedia
+        ? normalizeProfessionalMediaPresentation(preview.logoMedia)
+        : resolved.logoMedia,
       bannerUrl: preview.bannerUrl ?? resolved.bannerUrl,
+      bannerMedia: preview.bannerMedia
+        ? normalizeProfessionalMediaPresentation(preview.bannerMedia)
+        : resolved.bannerMedia,
       headline: preview.headline ?? resolved.headline,
       about: preview.about ?? resolved.about,
       photos: preview.photos ?? resolved.photos,
@@ -801,6 +834,7 @@ export default function ProfesionalDetailPage({
                     src={safeBannerSrc}
                     alt="Banner"
                     className="h-full w-full object-cover"
+                    style={buildProfessionalMediaStyle(merged.bannerMedia)}
                   />
                 </div>
               );
@@ -819,6 +853,7 @@ export default function ProfesionalDetailPage({
                         src={safeLogoSrc}
                         alt={`Logo de ${merged.name || 'profesional'}`}
                         className="h-full w-full object-cover"
+                        style={buildProfessionalMediaStyle(merged.logoMedia)}
                       />
                     );
                   })()}

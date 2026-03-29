@@ -10,11 +10,16 @@ import type {
   BookingRefundStatus,
 } from '@/types/bookings';
 import type {
+  ProfessionalMediaPresentation,
   ProfessionalPlanCode,
   ProfessionalPlanEntitlements,
 } from '../../../../packages/shared/src/types/professional';
 
-export type { ProfessionalPlanCode, ProfessionalPlanEntitlements };
+export type {
+  ProfessionalMediaPresentation,
+  ProfessionalPlanCode,
+  ProfessionalPlanEntitlements,
+};
 
 export type ProfessionalProfile = {
   id: string;
@@ -34,6 +39,8 @@ export type ProfessionalProfile = {
   tipoCliente: string;
   logoUrl?: string | null;
   bannerUrl?: string | null;
+  logoMedia?: ProfessionalMediaPresentation | null;
+  bannerMedia?: ProfessionalMediaPresentation | null;
   instagram?: string | null;
   facebook?: string | null;
   tiktok?: string | null;

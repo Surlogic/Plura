@@ -19,6 +19,7 @@ import {
 } from '@/components/profesional/dashboard/DashboardUI';
 import ProfessionalNotificationBell from '@/components/profesional/notifications/ProfessionalNotificationBell';
 import { resolveAssetUrl } from '@/utils/assetUrl';
+import { buildProfessionalMediaStyle } from '@/utils/professionalMediaPresentation';
 
 type MenuItem = {
   label: string;
@@ -137,6 +138,7 @@ function ProfesionalSidebar({ profile, active }: SidebarProps) {
                 fill
                 sizes="56px"
                 className="object-cover"
+                style={buildProfessionalMediaStyle(profile?.logoMedia)}
               />
             ) : (
               initials

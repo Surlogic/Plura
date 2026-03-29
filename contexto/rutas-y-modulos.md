@@ -172,7 +172,7 @@ Modulos relevantes:
 - `components/profesional/notifications`: campana en sidebar, dropdown FE-1 e inbox FE-2 con toolbar, lista, items y acciones de lectura.
 - `components/profesional/reservations`: timeline operativo dentro del panel de detalle de la reserva seleccionada.
 - `context/ProfessionalNotificationsContext.tsx`: token de refresh mas estado compartido del unread count para sincronizar inbox, dropdown y contador sin duplicar requests.
-- `context/ProfessionalProfileContext.tsx`: carga `/auth/me/profesional` o fallback `/auth/me/professional`.
+- `context/ProfessionalProfileContext.tsx`: carga `/auth/me/profesional`.
 - `hooks/useProfessionalNotificationInbox.ts`: filtros por estado y evento, carga incremental y acciones `mark read` / `read all`.
 - `hooks/useProfessionalNotificationUnreadCount.ts` y `hooks/useProfessionalNotificationPreview.ts`: mantienen contador y preview de FE-1 en sync con acciones del inbox.
 - `hooks/useProfessionalBookingTimeline.ts`: carga `GET /profesional/reservas/{bookingId}/timeline` con estados `loading / empty / error`.
@@ -249,7 +249,6 @@ Modulos relevantes:
 - `components/search`: sistema compartido del buscador web; incluye barra base, footer de filtros activos, sugerencias, fecha y location autocomplete con dropdowns visualmente unificados.
 - `components/map`: wrapper de Mapbox.
 - `hooks/useCategories.ts`: carga de categorias para el buscador.
-- `hooks/usePollingMachine.ts`: maquina de polling reutilizable con backoff y pause/resume.
 - `hooks/usePublicProfessionals.ts`: carga de profesionales publicos para superficies de descubrimiento.
 - `hooks/useUnifiedSearch.ts`: hook grande de busqueda unificada con filtros, resultados y estado.
 - `hooks/useClientProfile.ts`: perfil del cliente autenticado.

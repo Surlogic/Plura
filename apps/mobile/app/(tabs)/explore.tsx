@@ -23,7 +23,6 @@ import {
 } from '../../src/services/clientFeatures';
 import { searchProfessionals } from '../../src/services/search';
 import type { SearchItem, SearchSort, SearchType } from '../../src/types/search';
-import { useAuthSession } from '../../src/context/ProfessionalProfileContext';
 import { listCategories } from '../../src/services/categories';
 import type { ServiceCategoryOption } from '../../src/types/professional';
 import { useUserLocation } from '../../src/hooks/useUserLocation';
@@ -125,7 +124,6 @@ const formatDistance = (distanceKm?: number | null) => {
 };
 
 export default function ExploreScreen() {
-  const { isAuthenticated } = useAuthSession();
   const {
     location,
     hasCoordinates,

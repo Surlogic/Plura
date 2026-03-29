@@ -1,8 +1,6 @@
 import type {
   BookingActionsBase,
   BookingCommandResponseBase,
-  BookingFinancialSummary,
-  BookingPaymentSession,
   ProfessionalBookingPolicyBase,
   ProfessionalBookingPolicyUpdateInputBase,
 } from '../../../../packages/shared/src/types/bookings';

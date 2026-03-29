@@ -53,10 +53,8 @@ Lectura de producto:
 
 Prefijo: `/auth`
 
-- `POST /auth/register`
 - `POST /auth/register/cliente`
 - `POST /auth/register/profesional`
-- `POST /auth/login`
 - `POST /auth/login/cliente`
 - `POST /auth/login/profesional`
 - `POST /auth/oauth`
@@ -81,7 +79,6 @@ Prefijo: `/auth`
 - `DELETE /auth/me` — ahora requiere `challengeId` + `code` OTP en el body; el challenge se obtiene previamente con `POST /auth/challenge/send` (purpose `ACCOUNT_DELETION`, channel `EMAIL`)
 - `GET /auth/audit`
 - `GET /auth/me/profesional`
-- `GET /auth/me/professional`
 - `GET /auth/me/cliente`
 
 El dominio `auth` incluye:
@@ -346,13 +343,12 @@ Prefijo: `/profesional/reservas`
 - `POST /profesional/reservas/{id}/cancel`
 - `POST /profesional/reservas/{id}/reschedule`
 - `POST /profesional/reservas/{id}/no-show`
-- `POST /profesional/reservas/{id}/complete`
 
 Lectura de producto:
 
 - confirma que el backend ya contempla estados operativos clave
 - cubre buena parte de agenda diaria y gestion de reservas de `Free`
-- `no-show` y `complete` son base para analytics y seguimiento posteriores
+- `no-show` sigue expuesto como accion operativa dedicada; la completitud de reservas ya no vive como endpoint publico separado en esta superficie
 
 ### Favoritos
 
@@ -371,7 +367,6 @@ Lectura de producto:
 
 Prefijo: `/billing`
 
-- `POST /billing/checkout`
 - `POST /billing/subscription`
 - `GET /billing/subscription`
 - `POST /billing/cancel`

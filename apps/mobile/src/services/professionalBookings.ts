@@ -134,32 +134,6 @@ export const markProfessionalBookingNoShow = async (bookingId: string) => {
   return mapCommandResponse(response.data);
 };
 
-export const completeProfessionalBooking = async (bookingId: string) => {
-  const response = await api.post<BookingCommandResponse<ProfessionalBookingDto>>(
-    `/profesional/reservas/${bookingId}/complete`,
-    {},
-    {
-      headers: {
-        'Idempotency-Key': buildIdempotencyKey(`professional-complete-${bookingId}`),
-      },
-    },
-  );
-  return mapCommandResponse(response.data);
-};
-
-export const retryProfessionalBookingPayout = async (bookingId: string) => {
-  const response = await api.post<BookingCommandResponse<ProfessionalBookingDto>>(
-    `/profesional/reservas/${bookingId}/payout/retry`,
-    {},
-    {
-      headers: {
-        'Idempotency-Key': buildIdempotencyKey(`professional-retry-payout-${bookingId}`),
-      },
-    },
-  );
-  return mapCommandResponse(response.data);
-};
-
 export const listProfessionalServices = async (): Promise<ProfessionalServiceDto[]> => {
   const response = await api.get<ProfessionalServiceDto[]>('/profesional/services');
   return filterActiveItems<ProfessionalServiceDto>(response.data);

@@ -1,7 +1,6 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { useRouter } from 'next/router';
 import ProfesionalSidebar from '@/components/profesional/Sidebar';
 import Button from '@/components/ui/Button';
 import {
@@ -22,7 +21,6 @@ import { useProfessionalProfile } from '@/hooks/useProfessionalProfile';
 import { useProfessionalBilling } from '@/hooks/useProfessionalBilling';
 
 export default function ProfesionalBillingPage() {
-  const router = useRouter();
   const { profile, isLoading, hasLoaded, refreshProfile } = useProfessionalProfile();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const plansRef = useRef<HTMLDivElement | null>(null);

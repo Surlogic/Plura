@@ -143,11 +143,11 @@ public class AuthController {
     }
 
     /**
-     * Registra un nuevo cliente. Acepta POST en /auth/register y /auth/register/cliente.
+     * Registra un nuevo cliente.
      * Siempre retorna 202 Accepted para no revelar si el email ya existe (seguridad).
      * Aplica protección contra abuso (rate limiting) antes de procesar.
      */
-    @PostMapping({"/register", "/register/cliente"})
+    @PostMapping("/register/cliente")
     public ResponseEntity<RegistrationAcceptedResponse> registerCliente(
         @Valid @RequestBody RegisterRequest request,
         HttpServletRequest httpRequest
@@ -184,7 +184,7 @@ public class AuthController {
      * Aplica rate limiting, registra auditoría de intentos fallidos,
      * y devuelve tokens de acceso + refresh en cookies o body.
      */
-    @PostMapping({"/login", "/login/cliente"})
+    @PostMapping("/login/cliente")
     public ResponseEntity<RegisterResponse> loginCliente(
         @Valid @RequestBody LoginRequest request,
         HttpServletRequest httpRequest
@@ -652,7 +652,7 @@ public class AuthController {
         return authAuditService.getRecentEventsForUser(userId);
     }
 
-    @GetMapping({"/me/profesional", "/me/professional"})
+    @GetMapping("/me/profesional")
     public ProfesionalProfileResponse getProfesionalProfile() {
         String profesionalId = String.valueOf(currentActorService.currentProfessionalUserId());
         return authService.getProfesionalProfile(profesionalId);

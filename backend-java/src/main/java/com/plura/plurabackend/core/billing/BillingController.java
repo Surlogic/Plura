@@ -1,7 +1,6 @@
 package com.plura.plurabackend.core.billing;
 
 import com.plura.plurabackend.core.billing.dto.BillingCancelRequest;
-import com.plura.plurabackend.core.billing.dto.BillingCheckoutRequest;
 import com.plura.plurabackend.core.billing.dto.BillingCheckoutResponse;
 import com.plura.plurabackend.core.billing.dto.BillingCreateSubscriptionRequest;
 import com.plura.plurabackend.core.billing.dto.BillingSubscriptionResponse;
@@ -30,20 +29,6 @@ public class BillingController {
      */
     public BillingController(BillingService billingService) {
         this.billingService = billingService;
-    }
-
-    /**
-     * Crea una sesión de checkout para un plan de suscripción.
-     * Este endpoint está deprecated y redirige internamente a createSubscription.
-     *
-     * @param request datos del checkout incluyendo código de plan y proveedor
-     * @return respuesta con la URL de checkout y datos de la suscripción
-     */
-    @PostMapping("/checkout")
-    public BillingCheckoutResponse createCheckout(
-        @Valid @RequestBody BillingCheckoutRequest request
-    ) {
-        return billingService.createCheckout(request);
     }
 
     /**

@@ -1,7 +1,6 @@
 package com.plura.plurabackend.core.billing;
 
 import com.plura.plurabackend.core.billing.dto.BillingCancelRequest;
-import com.plura.plurabackend.core.billing.dto.BillingCheckoutRequest;
 import com.plura.plurabackend.core.billing.dto.BillingCheckoutResponse;
 import com.plura.plurabackend.core.billing.dto.BillingCreateSubscriptionRequest;
 import com.plura.plurabackend.core.billing.dto.BillingSubscriptionResponse;
@@ -75,26 +74,6 @@ public class BillingService {
             mapped.put(client.provider(), client);
         }
         this.providerClients = mapped;
-    }
-
-    /**
-     * Crea un checkout (DEPRECATED). Redirige internamente a createSubscription.
-     * Solo soporta el proveedor MERCADOPAGO.
-     *
-     * @param request datos del checkout
-     * @return respuesta con URL de checkout y datos de la suscripción
-     */
-    @Transactional
-    public BillingCheckoutResponse createCheckout(BillingCheckoutRequest request) {
-        LOGGER.warn("POST /billing/checkout esta deprecated. Redirigiendo internamente a createSubscription.");
-        if (request.getProvider() != null
-            && !request.getProvider().isBlank()
-            && PaymentProvider.fromCode(request.getProvider()) != PaymentProvider.MERCADOPAGO) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Solo MERCADOPAGO esta soportado para billing");
-        }
-        BillingCreateSubscriptionRequest subscriptionRequest = new BillingCreateSubscriptionRequest();
-        subscriptionRequest.setPlanCode(request.getPlanCode());
-        return createSubscription(subscriptionRequest);
     }
 
     /**

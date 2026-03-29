@@ -1,5 +1,3 @@
-import type { AppFeedbackPage, AppFeedbackResponse } from '@/types/appFeedback';
-
 type InternalFeedbackListItem = {
   id: number;
   authorUserId: number;

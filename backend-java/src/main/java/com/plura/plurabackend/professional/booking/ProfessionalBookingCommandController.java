@@ -6,7 +6,6 @@ import com.plura.plurabackend.core.booking.dto.BookingRescheduleRequest;
 import com.plura.plurabackend.core.security.RoleGuard;
 import com.plura.plurabackend.professional.profile.ProfessionalPublicPageService;
 import jakarta.validation.Valid;
-import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -63,14 +62,6 @@ public class ProfessionalBookingCommandController {
         @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey
     ) {
         return professionalPublicPageService.markBookingNoShow(getProfesionalId(), bookingId, idempotencyKey);
-    }
-
-    @PostMapping("/{id}/complete")
-    public BookingCommandResponse completeBooking(
-        @PathVariable("id") Long bookingId,
-        @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey
-    ) {
-        return professionalPublicPageService.completeBooking(getProfesionalId(), bookingId, idempotencyKey);
     }
 
     private String getProfesionalId() {

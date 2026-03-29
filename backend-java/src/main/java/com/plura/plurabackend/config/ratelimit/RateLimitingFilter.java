@@ -105,13 +105,13 @@ public class RateLimitingFilter extends OncePerRequestFilter {
         String method = request.getMethod();
         String path = request.getRequestURI();
 
-        if ("POST".equals(method) && ("/auth/login".equals(path) || path.startsWith("/auth/login/"))) {
+        if ("POST".equals(method) && path.startsWith("/auth/login/")) {
             return new RateLimitTarget("login-ip", extractClientIp(request), 30);
         }
         if ("POST".equals(method) && "/auth/oauth".equals(path)) {
             return new RateLimitTarget("oauth-ip", extractClientIp(request), 20);
         }
-        if ("POST".equals(method) && ("/auth/register".equals(path) || path.startsWith("/auth/register/"))) {
+        if ("POST".equals(method) && path.startsWith("/auth/register/")) {
             return new RateLimitTarget("register-ip", extractClientIp(request), 20);
         }
         if ("POST".equals(method) && "/auth/refresh".equals(path)) {
@@ -165,7 +165,7 @@ public class RateLimitingFilter extends OncePerRequestFilter {
         if ("GET".equals(method) && "/billing/subscription".equals(path)) {
             return new RateLimitTarget("billing-subscription-read", resolveUserOrIp(request), 30);
         }
-        if ("POST".equals(method) && ("/billing/checkout".equals(path) || "/billing/subscription".equals(path))) {
+        if ("POST".equals(method) && "/billing/subscription".equals(path)) {
             return new RateLimitTarget("billing-checkout", resolveUserOrIp(request), 6);
         }
         if ("POST".equals(method) && "/billing/cancel".equals(path)) {

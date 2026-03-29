@@ -13,7 +13,6 @@ function UnsavedChangesOverlayInner({ isDashboardRoute }: UnsavedChangesOverlayP
     saveCurrentSection,
     showSavingOverlay,
     showConfirmModal,
-    pendingHref,
     handleSaveAndExit,
     handleDiscardAndExit,
     dismissConfirmModal,

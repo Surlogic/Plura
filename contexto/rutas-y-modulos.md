@@ -65,8 +65,8 @@ Base: `apps/web/src/pages`
 - `/explorar/[slug]`: vista detallada de exploracion por slug.
 - `/profesional/[slug]`: pagina publica del profesional.
 - `/profesional/pagina/[slug]`: variante de pagina publica.
-- `/reservar`: flujo de reserva desde perfil publico.
-- `/reserva-confirmada`: confirmacion post reserva o pago.
+- `/reservar`: flujo publico de reserva paso a paso desde el perfil publico.
+- `/reserva-confirmada`: ruta legacy de confirmacion; hoy no forma parte del circuito principal de reserva web.
 - `/login`: acceso general.
 - `/oauth/callback`: callback de OAuth.
 - `/oauth/mercadopago/callback`: retorno dedicado para conexion OAuth de Mercado Pago del profesional.
@@ -80,8 +80,10 @@ Lectura de producto:
 - estas rutas soportan el nucleo de `Usuario` y el `MVP`
 - `/explorar`, `/profesional/[slug]` y `/reservar` son parte del loop principal marketplace -> perfil -> reserva
 - cuando una reserva prepaga genera `checkoutUrl`, tanto `/reservar` como `/cliente/reservas` abren Mercado Pago en la pestaña actual para asegurar una experiencia full-page consistente y evitar bloqueos de popup
-- `/reservar` ya no navega automaticamente a `/cliente/reservas` cuando el checkout se inicia; deja una accion manual para ver el estado de la reserva sin interferir con la apertura de Mercado Pago
-- `/reservar` ahora absorbe la operacion fuerte que salio del perfil publico: permite elegir servicio dentro del flujo, muestra pasos claros (`servicio -> fecha -> horario -> confirmacion`) y concentra el resumen/CTA de reserva en una pantalla dedicada
+- `/reservar` ya no mezcla toda la operacion en una sola pantalla larga: orquesta `5` pasos reales (`confirmar servicio -> elegir dia -> elegir horario -> revisar turno -> confirmar y reservar`)
+- `/reservar` mantiene la misma creacion de reserva y el mismo checkout que antes, pero ahora no auto-selecciona el primer servicio ni el primer dia sin feedback visual
+- `/reservar` sigue siendo compatible con `pendingReservation`: si el cliente cae en login al final del flujo, al volver retoma el resumen final listo para confirmar
+- el paso final de `/reservar` no promete confirmacion falsa: la reserva sigue naciendo en `PENDING`; si hay pago online, la confirmacion final depende del backend y Mercado Pago
 - `/explorar` y `/profesional/pagina/[slug]` ya no fuerzan auth refresh ni favoritos en 401 cuando el cliente no tiene una sesion conocida; las features auth-only se habilitan recien con hint de sesion valida
 - cuando existe sesion conocida del cliente, `/explorar`, `/profesional/[slug]` y `/profesional/pagina/[slug]` tambien hidratan el perfil cliente para mantener navbar y favoritos coherentes en la navegacion publica
 - `_app.tsx` ya usa un `session hint` con rol (`CLIENT` o `PROFESSIONAL`) para rehidratar el perfil correcto tambien en `/` y otras rutas publicas al reabrir navegador; si el hint viejo no tiene rol, el bootstrap puede intentar ambos perfiles de forma transitoria hasta que el usuario vuelva a iniciar sesion
@@ -267,11 +269,14 @@ Modulos relevantes:
 - `middleware.ts`: CSP y headers de seguridad.
 - `/oauth/mercadopago/callback`: ahora interpreta `result/reason` devueltos por el backend y consulta el estado real de conexion; ya no intenta llamar al callback backend con `code/state`.
 - `pages/profesional/pagina/[slug].tsx`: compone la pagina publica con hero premium, CTA liviano hacia `/reservar`, servicios en lista compacta, galeria contenida, bloque unificado de ubicacion/horarios y reseñas; reutiliza el fetch cacheado del perfil publico y posterga geocoding fallback + mapa hasta que el bloque entra en viewport.
-- `pages/reservar.tsx`: flujo dedicado de reserva con seleccion interna de servicio, fecha y horario, resumen sticky, CTA principal y continuidad de checkout/login pendiente sin cambiar contratos publicos.
+- `pages/reservar.tsx`: orquestador del flujo publico de reserva en `5` pasos reales; mantiene los mismos servicios/endpoints (`public profile`, `slots`, `create booking`, `payment-session`), compatibilidad con `pendingReservation` y la derivacion a `/cliente/reservas` para seguimiento post-creacion/post-checkout.
 - `components/reservation/ReservationFlowHeader.tsx`: encabezado del flujo con resumen del profesional, progreso por pasos y servicio activo.
-- `components/reservation/ReservationServiceSelector.tsx`: selector compacto de servicios dentro de `/reservar`, con filtro por categoria y cambio de servicio sin volver al perfil publico.
-- `components/reservation/ReservationScheduleStep.tsx`: calendario y horarios del flujo de reserva, desacoplados del resumen final.
-- `components/reservation/ReservationSummaryCard.tsx`: resumen sticky de la reserva con politica, modalidad de pago, CTA y estados de guardado/checkout.
+- `components/reservation/ReservationServiceSelector.tsx`: paso `1`; muestra el servicio elegido con su detalle completo y deja editar/cancelar o abrir el selector interno por categoria.
+- `components/reservation/ReservationScheduleStep.tsx`: pasos `2` y `3`; separa en modo calendario (`dia`) y modo horarios (`time`) para no mezclar fecha con slots en la misma vista.
+- `components/reservation/ReservationReviewStep.tsx`: paso `4`; resumen intermedio del turno con edicion explicita de servicio, dia u horario antes del cierre.
+- `components/reservation/ReservationSummaryCard.tsx`: paso `5`; resumen final con CTA segun modalidad (`Reservar`, `Pagar seña y reservar`, `Pagar y reservar`), politica y nota operativa de estado `PENDING`.
+- `components/reservation/ReservationProgressSidebar.tsx`: sidebar persistente con progreso del flujo, resumen de seleccion y datos utiles del profesional.
+- `components/reservation/paymentDetails.ts`: helper de presentacion para monto a pagar ahora, saldo restante y CTA final segun `paymentType`.
 - `components/profesional/public-page/PublicProfileHero.tsx`: hero publico con banner ancho, logo superpuesto, rating, ubicacion, about y favorito.
 - `components/profesional/public-page/PublicServicesSection.tsx`: lista compacta de servicios con pills por categoria, metadata breve y CTA directo hacia el flujo dedicado de reserva.
 - `components/profesional/public-page/servicePresentation.ts`: formateadores compartidos para precio, duracion, modalidad de pago y categoria publica.

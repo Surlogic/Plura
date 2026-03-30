@@ -18,9 +18,10 @@ type ReservationFlowHeaderProps = {
 
 const stepLabels = [
   'Servicio',
-  'Fecha',
+  'Día',
   'Horario',
-  'Confirmacion',
+  'Revisión',
+  'Reserva',
 ] as const;
 
 const resolveImage = (value?: string | null) => {
@@ -55,11 +56,11 @@ export default function ReservationFlowHeader({
               Flujo de reserva
             </Badge>
             <h1 className="mt-4 text-3xl font-semibold tracking-[-0.03em] text-[color:var(--ink)] sm:text-[2.5rem]">
-              Completá tu turno en un solo flujo
+              Reservá paso a paso
             </h1>
             <p className="mt-3 max-w-3xl text-sm leading-7 text-[color:var(--ink-muted)] sm:text-base">
-              Elegí servicio, fecha y horario con una vista clara. La confirmación y el checkout, si
-              aplica, quedan resueltos desde esta pantalla.
+              Confirmá el servicio, elegí día, seleccioná horario, revisá el turno y terminá la
+              reserva sin mezclar todo en una sola pantalla.
             </p>
 
             <div className="mt-5 flex flex-wrap items-center gap-2.5">
@@ -126,7 +127,7 @@ export default function ReservationFlowHeader({
           </div>
         </div>
 
-        <div className="relative mt-7 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="relative mt-7 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
           {stepLabels.map((label, index) => {
             const stepNumber = index + 1;
             const isCompleted = currentStep > stepNumber;

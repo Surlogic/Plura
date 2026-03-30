@@ -3,23 +3,24 @@ import Badge from '@/components/ui/Badge';
 import Button from '@/components/ui/Button';
 import Card from '@/components/ui/Card';
 import { resolveAssetUrl } from '@/utils/assetUrl';
-import { getPaymentTypeDescription, getPaymentTypeLabel, isPrepaidBooking } from '@/utils/bookings';
 import { formatDuration, formatPrice } from '@/utils/reservarHelpers';
 import type {
   PublicProfessionalPage,
   PublicProfessionalService,
 } from '@/services/publicBookings';
+import { getReservationPaymentDetails } from '@/components/reservation/paymentDetails';
 
 type ReservationSummaryCardProps = {
   canSubmit: boolean;
   clientHasLoaded: boolean;
   clientLoading: boolean;
-  createdCheckoutBookingId: string | null;
-  currentStep: number;
   isLoadingContext: boolean;
   isSaving: boolean;
+  onCancel: () => void;
   onConfirm: () => void;
-  onViewBooking: () => void;
+  onEditDay: () => void;
+  onEditService: () => void;
+  onEditTime: () => void;
   policyDescription: string;
   professional: PublicProfessionalPage | null;
   saveError: string | null;
@@ -27,13 +28,6 @@ type ReservationSummaryCardProps = {
   selectedDateLabel: string;
   selectedService: PublicProfessionalService | null;
   selectedTime: string | null;
-};
-
-const stepCopy: Record<number, string> = {
-  1: 'Elegí el servicio para empezar la reserva.',
-  2: 'Definí la fecha en la que querés reservar.',
-  3: 'Seleccioná un horario disponible para continuar.',
-  4: 'Revisá el resumen y confirmá la reserva.',
 };
 
 const resolveImage = (value?: string | null) => {
@@ -45,12 +39,13 @@ export default function ReservationSummaryCard({
   canSubmit,
   clientHasLoaded,
   clientLoading,
-  createdCheckoutBookingId,
-  currentStep,
   isLoadingContext,
   isSaving,
+  onCancel,
   onConfirm,
-  onViewBooking,
+  onEditDay,
+  onEditService,
+  onEditTime,
   policyDescription,
   professional,
   saveError,
@@ -60,11 +55,7 @@ export default function ReservationSummaryCard({
   selectedTime,
 }: ReservationSummaryCardProps) {
   const imageUrl = resolveImage(selectedService?.imageUrl || professional?.logoUrl);
-  const paymentTypeLabel = getPaymentTypeLabel(selectedService?.paymentType);
-  const paymentTypeDescription = getPaymentTypeDescription(selectedService?.paymentType);
-  const ctaLabel = isPrepaidBooking(selectedService?.paymentType)
-    ? 'Reservar y abrir checkout'
-    : 'Confirmar reserva';
+  const paymentDetails = getReservationPaymentDetails(selectedService);
 
   return (
     <Card
@@ -74,17 +65,20 @@ export default function ReservationSummaryCard({
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-[0.68rem] font-semibold uppercase tracking-[0.32em] text-[color:var(--ink-faint)]">
-            Paso 4
+            Paso 5
           </p>
-          <h2 className="mt-2 text-2xl font-semibold text-[color:var(--ink)]">Resumen final</h2>
+          <h2 className="mt-2 text-2xl font-semibold text-[color:var(--ink)]">
+            Confirmar y reservar
+          </h2>
         </div>
-        <Badge variant={currentStep === 4 ? 'accent' : 'neutral'} className="normal-case tracking-normal">
-          {currentStep === 4 ? 'Listo para confirmar' : `Paso actual ${currentStep}`}
+        <Badge variant="accent" className="normal-case tracking-normal">
+          Paso final
         </Badge>
       </div>
 
       <p className="mt-3 text-sm leading-6 text-[color:var(--ink-muted)]">
-        {stepCopy[currentStep] || stepCopy[4]}
+        Este es el cierre del flujo. La reserva se crea con el backend actual y conserva su estado
+        operativo real.
       </p>
 
       <div className="mt-5 overflow-hidden rounded-[24px] border border-[color:var(--border-soft)] bg-[color:var(--surface-soft)]">
@@ -148,7 +142,7 @@ export default function ReservationSummaryCard({
 
             <div>
               <p className="text-[0.62rem] font-semibold uppercase tracking-[0.24em] text-[color:var(--ink-faint)]">
-                Fecha y hora
+                Día y hora
               </p>
               <p className="mt-1 text-sm font-semibold capitalize text-[color:var(--ink)]">
                 {selectedDateLabel}
@@ -163,8 +157,42 @@ export default function ReservationSummaryCard({
             <p className="text-[0.62rem] font-semibold uppercase tracking-[0.24em] text-[color:var(--ink-faint)]">
               Pago
             </p>
-            <p className="mt-1 text-sm font-semibold text-[color:var(--ink)]">{paymentTypeLabel}</p>
-            <p className="mt-2 text-sm leading-6 text-[color:var(--ink-muted)]">{paymentTypeDescription}</p>
+            <p className="mt-1 text-sm font-semibold text-[color:var(--ink)]">
+              {paymentDetails.paymentTypeLabel}
+            </p>
+            <p className="mt-2 text-sm leading-6 text-[color:var(--ink-muted)]">
+              {paymentDetails.paymentTypeDescription}
+            </p>
+
+            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              <div className="rounded-[16px] border border-[color:var(--border-soft)] bg-[color:var(--surface-soft)] px-4 py-3">
+                <p className="text-[0.62rem] font-semibold uppercase tracking-[0.22em] text-[color:var(--ink-faint)]">
+                  {paymentDetails.payNowLabel}
+                </p>
+                <p className="mt-1 text-sm font-semibold text-[color:var(--ink)]">
+                  {paymentDetails.payNowAmount}
+                </p>
+              </div>
+              {paymentDetails.remainingLabel && paymentDetails.remainingAmount ? (
+                <div className="rounded-[16px] border border-[color:var(--border-soft)] bg-[color:var(--surface-soft)] px-4 py-3">
+                  <p className="text-[0.62rem] font-semibold uppercase tracking-[0.22em] text-[color:var(--ink-faint)]">
+                    {paymentDetails.remainingLabel}
+                  </p>
+                  <p className="mt-1 text-sm font-semibold text-[color:var(--ink)]">
+                    {paymentDetails.remainingAmount}
+                  </p>
+                </div>
+              ) : null}
+            </div>
+          </div>
+
+          <div className="rounded-[20px] border border-[color:var(--border-soft)] bg-white p-4">
+            <p className="text-[0.62rem] font-semibold uppercase tracking-[0.24em] text-[color:var(--ink-faint)]">
+              Estado operativo
+            </p>
+            <p className="mt-2 text-sm leading-6 text-[color:var(--ink-muted)]">
+              {paymentDetails.pendingNotice}
+            </p>
           </div>
 
           <div className="rounded-[20px] border border-[color:var(--border-soft)] bg-white p-4">
@@ -176,6 +204,18 @@ export default function ReservationSummaryCard({
             </p>
           </div>
         </div>
+      </div>
+
+      <div className="mt-5 flex flex-wrap gap-3">
+        <Button type="button" variant="secondary" onClick={onEditService}>
+          Editar servicio
+        </Button>
+        <Button type="button" variant="secondary" onClick={onEditDay}>
+          Editar día
+        </Button>
+        <Button type="button" variant="secondary" onClick={onEditTime}>
+          Editar horario
+        </Button>
       </div>
 
       <div className="mt-5 space-y-3">
@@ -190,23 +230,21 @@ export default function ReservationSummaryCard({
             isSaving ||
             isLoadingContext ||
             clientLoading ||
-            !clientHasLoaded ||
-            Boolean(createdCheckoutBookingId)
+            !clientHasLoaded
           }
         >
-          {isSaving ? 'Preparando reserva...' : ctaLabel}
+          {isSaving ? 'Preparando reserva...' : paymentDetails.ctaLabel}
         </Button>
 
-        {createdCheckoutBookingId ? (
-          <Button
-            type="button"
-            variant="secondary"
-            className="w-full"
-            onClick={onViewBooking}
-          >
-            Ver estado de la reserva
-          </Button>
-        ) : null}
+        <Button
+          type="button"
+          variant="quiet"
+          size="lg"
+          className="w-full justify-start text-[#B45309]"
+          onClick={onCancel}
+        >
+          Cancelar reserva
+        </Button>
 
         {saveMessage ? (
           <p className="rounded-[18px] border border-[color:var(--success-soft)] bg-[color:var(--success-soft)]/55 px-4 py-3 text-sm font-medium text-[color:var(--success)]">

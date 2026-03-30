@@ -1,12 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/router';
 import { isAxiosError } from 'axios';
-import dynamic from 'next/dynamic';
 import Footer from '@/components/shared/Footer';
 import Navbar from '@/components/shared/Navbar';
-import Button from '@/components/ui/Button';
-import Card from '@/components/ui/Card';
 import ReservationFlowHeader from '@/components/reservation/ReservationFlowHeader';
+import ReservationProgressSidebar from '@/components/reservation/ReservationProgressSidebar';
+import ReservationReviewStep from '@/components/reservation/ReservationReviewStep';
 import ReservationScheduleStep from '@/components/reservation/ReservationScheduleStep';
 import ReservationServiceSelector from '@/components/reservation/ReservationServiceSelector';
 import ReservationSummaryCard from '@/components/reservation/ReservationSummaryCard';
@@ -24,7 +23,7 @@ import {
   getPublicSlots,
   type PublicProfessionalPage,
 } from '@/services/publicBookings';
-import { describeBookingPolicy, getPaymentTypeLabel, isPrepaidBooking } from '@/utils/bookings';
+import { describeBookingPolicy, isPrepaidBooking } from '@/utils/bookings';
 import {
   type CheckoutOpenResult,
   openCheckoutUrl,
@@ -37,24 +36,27 @@ import {
   RESERVATION_TIMEOUT_ERROR,
   extractApiMessage,
   formatDuration,
-  parseOptionalNumber,
   resolveQueryValue,
-  splitLocationLines,
   toLocalDateKey,
   dayKeyByIndex,
   isReservationTimeoutError,
   weekOrder,
 } from '@/utils/reservarHelpers';
 
-const PublicProfileMap = dynamic(
-  () => import('@/components/profesional/PublicProfileMap'),
-  { ssr: false },
-);
-
 type CalendarDay = {
   date: Date;
   dateKey: string;
   dayKey: WorkDayKey;
+};
+
+type ReservationStep = 1 | 2 | 3 | 4 | 5;
+
+const resolveInitialDate = (
+  dateValue: string,
+  calendarDays: CalendarDay[],
+) => {
+  if (!dateValue) return null;
+  return calendarDays.some((item) => item.dateKey === dateValue) ? dateValue : null;
 };
 
 export default function ReservationPage() {
@@ -63,7 +65,9 @@ export default function ReservationPage() {
     useClientProfileContext();
   const [professional, setProfessional] = useState<PublicProfessionalPage | null>(null);
   const [selectedServiceId, setSelectedServiceId] = useState<string | null>(null);
+  const [confirmedServiceId, setConfirmedServiceId] = useState<string | null>(null);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const [confirmedDate, setConfirmedDate] = useState<string | null>(null);
   const [selectedTime, setSelectedTime] = useState<string | null>(null);
   const [slots, setSlots] = useState<string[]>([]);
   const [isLoadingContext, setIsLoadingContext] = useState(false);
@@ -72,9 +76,9 @@ export default function ReservationPage() {
   const [contextError, setContextError] = useState<string | null>(null);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
-  const [createdCheckoutBookingId, setCreatedCheckoutBookingId] = useState<string | null>(null);
-  const [hasAppliedPendingSelection, setHasAppliedPendingSelection] = useState(false);
   const [activeServiceCategory, setActiveServiceCategory] = useState('');
+  const [activeStep, setActiveStep] = useState<ReservationStep>(1);
+  const [isEditingServiceSelection, setIsEditingServiceSelection] = useState(false);
 
   const professionalSlug = resolveQueryValue(router.query.profesional).trim();
   const serviceId =
@@ -107,6 +111,13 @@ export default function ReservationPage() {
     () => professional?.services.find((item) => item.id === selectedServiceId) ?? null,
     [professional?.services, selectedServiceId],
   );
+
+  const confirmedService = useMemo(
+    () => professional?.services.find((item) => item.id === confirmedServiceId) ?? null,
+    [professional?.services, confirmedServiceId],
+  );
+
+  const headerService = activeStep === 1 ? selectedService : confirmedService ?? selectedService;
 
   const serviceCategories = useMemo(() => {
     const values = new Set<string>();
@@ -162,35 +173,18 @@ export default function ReservationPage() {
     });
   }, [calendarDays, selectedDate]);
 
-  const currentStep = !selectedService ? 1 : !selectedDate ? 2 : !selectedTime ? 3 : 4;
-  const canSubmit = Boolean(selectedService?.id && selectedDate && selectedTime);
+  const confirmedDateLabel = useMemo(() => {
+    if (!confirmedDate) return 'Elegí una fecha';
+    const date = calendarDays.find((item) => item.dateKey === confirmedDate)?.date;
+    if (!date) return 'Elegí una fecha';
+    return date.toLocaleDateString('es-AR', {
+      weekday: 'long',
+      day: 'numeric',
+      month: 'long',
+    });
+  }, [calendarDays, confirmedDate]);
 
-  useEffect(() => {
-    if (!selectedDate && calendarDays.length > 0) {
-      setSelectedDate(calendarDays[0].dateKey);
-    }
-  }, [calendarDays, selectedDate]);
-
-  useEffect(() => {
-    if (!router.isReady) return;
-    if (!dateQuery && !timeQuery) return;
-
-    if (dateQuery && calendarDays.some((item) => item.dateKey === dateQuery)) {
-      setSelectedDate(dateQuery);
-    }
-    if (timeQuery) {
-      setSelectedTime(timeQuery);
-    }
-  }, [calendarDays, dateQuery, router.isReady, timeQuery]);
-
-  useEffect(() => {
-    if (resumeQuery !== '1') return;
-    setSaveError('Retomá la reserva y confirmá para abrir el checkout real.');
-  }, [resumeQuery]);
-
-  useEffect(() => {
-    setHasAppliedPendingSelection(false);
-  }, [professionalSlug]);
+  const canSubmit = Boolean(confirmedService?.id && confirmedDate && selectedTime);
 
   useEffect(() => {
     if (serviceCategories.length === 0) {
@@ -215,10 +209,12 @@ export default function ReservationPage() {
 
     setContextError(null);
     setSaveMessage(null);
+    setSaveError(null);
 
     if (!professionalSlug) {
       setProfessional(null);
       setSelectedServiceId(null);
+      setConfirmedServiceId(null);
       setContextError('Falta el slug del profesional para reservar.');
       return;
     }
@@ -227,19 +223,18 @@ export default function ReservationPage() {
     getPublicProfessionalBySlug(professionalSlug)
       .then((response) => {
         const services = Array.isArray(response.services) ? response.services : [];
+        const pendingReservation = resumeQuery === '1' ? getPendingReservation() : null;
+        const pendingMatchesProfessional = pendingReservation?.professionalSlug === professionalSlug;
+
         setProfessional(response);
 
         if (services.length === 0) {
           setSelectedServiceId(null);
+          setConfirmedServiceId(null);
           setContextError('Este profesional todavía no tiene servicios públicos para reservar.');
           return;
         }
 
-        const pendingReservation = getPendingReservation();
-        const pendingService =
-          pendingReservation?.professionalSlug === professionalSlug
-            ? services.find((item) => item.id === pendingReservation.serviceId)
-            : undefined;
         const byId = serviceId
           ? services.find((item) => item.id === serviceId)
           : undefined;
@@ -248,17 +243,46 @@ export default function ReservationPage() {
               (item) => item.name.trim().toLowerCase() === serviceNameQuery.toLowerCase(),
             )
           : undefined;
+        const pendingService = pendingMatchesProfessional
+          ? services.find((item) => item.id === pendingReservation?.serviceId)
+          : undefined;
 
-        const nextService = byId ?? byName ?? pendingService ?? services[0] ?? null;
+        const nextService = byId ?? byName ?? pendingService ?? null;
+        const nextSelectedDate = resolveInitialDate(
+          dateQuery || (pendingMatchesProfessional ? pendingReservation?.date || '' : ''),
+          calendarDays,
+        );
+        const nextSelectedTime = timeQuery || (pendingMatchesProfessional ? pendingReservation?.time || '' : '');
+
         setSelectedServiceId(nextService?.id ?? null);
+        setSelectedDate(nextSelectedDate);
+        setSelectedTime(nextSelectedTime || null);
+
+        if (resumeQuery === '1' && nextService?.id && nextSelectedDate && nextSelectedTime) {
+          setConfirmedServiceId(nextService.id);
+          setConfirmedDate(nextSelectedDate);
+          setActiveStep(5);
+          setIsEditingServiceSelection(false);
+          setSaveError('Retomaste la reserva. Revisá el resumen final y confirmá para continuar.');
+        } else {
+          setConfirmedServiceId(null);
+          setConfirmedDate(null);
+          setActiveStep(1);
+          setIsEditingServiceSelection(!nextService);
+          if (resumeQuery === '1') {
+            setSaveError('Retomá la reserva desde el paso siguiente disponible.');
+          }
+        }
 
         if ((serviceId || serviceNameQuery) && !byId && !byName) {
           setSaveError('El servicio elegido ya no está disponible. Elegí otro para continuar.');
+          setIsEditingServiceSelection(true);
         }
       })
       .catch((error) => {
         setProfessional(null);
         setSelectedServiceId(null);
+        setConfirmedServiceId(null);
         setContextError(
           extractApiMessage(error, 'No se pudo cargar la información del profesional.'),
         );
@@ -266,10 +290,10 @@ export default function ReservationPage() {
       .finally(() => {
         setIsLoadingContext(false);
       });
-  }, [professionalSlug, router.isReady, serviceId, serviceNameQuery]);
+  }, [calendarDays, professionalSlug, resumeQuery, router.isReady, serviceId, serviceNameQuery, dateQuery, timeQuery]);
 
   useEffect(() => {
-    if (!professionalSlug || !selectedService?.id || !selectedDate) {
+    if (!confirmedService?.id || !confirmedDate) {
       setSlots([]);
       return;
     }
@@ -277,7 +301,7 @@ export default function ReservationPage() {
     let isCancelled = false;
     setIsLoadingSlots(true);
 
-    getPublicSlots(professionalSlug, selectedDate, selectedService.id)
+    getPublicSlots(professionalSlug, confirmedDate, confirmedService.id)
       .then((response) => {
         if (isCancelled) return;
         setSlots(response);
@@ -299,69 +323,112 @@ export default function ReservationPage() {
     return () => {
       isCancelled = true;
     };
-  }, [professionalSlug, selectedDate, selectedService?.id]);
+  }, [professionalSlug, confirmedDate, confirmedService?.id]);
 
   useEffect(() => {
-    if (hasAppliedPendingSelection) return;
-    if (!professionalSlug || !selectedService?.id) return;
-    if (calendarDays.length === 0) return;
-
-    const pendingReservation = getPendingReservation();
-    if (
-      !pendingReservation ||
-      pendingReservation.professionalSlug !== professionalSlug ||
-      pendingReservation.serviceId !== selectedService.id
-    ) {
-      setHasAppliedPendingSelection(true);
+    if (activeStep > 1 && !confirmedService?.id) {
+      setActiveStep(1);
       return;
     }
-
-    const hasPendingDate = calendarDays.some((item) => item.dateKey === pendingReservation.date);
-    if (hasPendingDate) {
-      setSelectedDate(pendingReservation.date);
+    if (activeStep > 2 && !confirmedDate) {
+      setActiveStep(2);
+      return;
     }
-    if (pendingReservation.time) {
-      setSelectedTime(pendingReservation.time);
+    if (activeStep > 3 && !selectedTime) {
+      setActiveStep(3);
     }
-    setHasAppliedPendingSelection(true);
-  }, [calendarDays, hasAppliedPendingSelection, professionalSlug, selectedService?.id]);
+  }, [activeStep, confirmedDate, confirmedService?.id, selectedTime]);
 
-  useEffect(() => {
-    setCreatedCheckoutBookingId(null);
-  }, [professionalSlug, selectedDate, selectedTime, selectedService?.id]);
+  const resetMessages = () => {
+    setSaveError(null);
+    setSaveMessage(null);
+  };
 
   const handleSelectService = (serviceSelectionId: string) => {
     setSelectedServiceId(serviceSelectionId);
-    setSelectedTime(null);
-    setSaveError(null);
-    setSaveMessage(null);
+    resetMessages();
+  };
+
+  const handleEditService = () => {
+    setActiveStep(1);
+    setIsEditingServiceSelection(true);
+    resetMessages();
+  };
+
+  const handleConfirmService = () => {
+    if (!selectedService?.id) {
+      setSaveMessage(null);
+      setSaveError('Elegí un servicio para continuar.');
+      return;
+    }
+
+    const serviceChanged = confirmedServiceId !== selectedService.id;
+    setConfirmedServiceId(selectedService.id);
+    setActiveStep(2);
+    setIsEditingServiceSelection(false);
+
+    if (serviceChanged) {
+      setSelectedDate(null);
+      setConfirmedDate(null);
+      setSelectedTime(null);
+      setSlots([]);
+    }
+
+    resetMessages();
   };
 
   const handleSelectDate = (dateKey: string) => {
     setSelectedDate(dateKey);
-    setSelectedTime(null);
-    setSaveError(null);
-    setSaveMessage(null);
+    resetMessages();
+  };
+
+  const handleContinueDay = () => {
+    if (!selectedDate) {
+      setSaveMessage(null);
+      setSaveError('Elegí un día para continuar.');
+      return;
+    }
+
+    const dayChanged = confirmedDate !== selectedDate;
+    setConfirmedDate(selectedDate);
+    setActiveStep(3);
+    if (dayChanged) {
+      setSelectedTime(null);
+    }
+    resetMessages();
+  };
+
+  const handleEditDay = () => {
+    setActiveStep(2);
+    resetMessages();
   };
 
   const handleSelectTime = (time: string) => {
     setSelectedTime(time);
-    setSaveError(null);
-    setSaveMessage(null);
+    setActiveStep(4);
+    resetMessages();
   };
 
-  const handleViewCreatedBooking = () => {
-    if (!createdCheckoutBookingId) return;
-    void router.push({
-      pathname: '/cliente/reservas',
-      query: { bookingId: createdCheckoutBookingId },
-    });
+  const handleEditTime = () => {
+    setActiveStep(3);
+    resetMessages();
+  };
+
+  const handleContinueReview = () => {
+    setActiveStep(5);
+    resetMessages();
+  };
+
+  const handleCancelReservation = () => {
+    clearPendingReservation();
+    resetMessages();
+    void router.push(professionalSlug ? `/profesional/${professionalSlug}` : '/explorar');
   };
 
   const handleConfirm = async () => {
-    if (!professionalSlug || !selectedService?.id || !selectedDate || !selectedTime) {
+    if (!professionalSlug || !confirmedService?.id || !confirmedDate || !selectedTime) {
       setSaveMessage(null);
-      setSaveError('Completá servicio, fecha y hora para reservar.');
+      setSaveError('Completá servicio, día y horario para reservar.');
       return;
     }
 
@@ -374,11 +441,11 @@ export default function ReservationPage() {
     if (!clientProfile) {
       savePendingReservation({
         professionalSlug,
-        serviceId: selectedService.id,
-        date: selectedDate,
+        serviceId: confirmedService.id,
+        date: confirmedDate,
         time: selectedTime,
         professionalName: professional?.fullName || undefined,
-        serviceName: selectedService.name,
+        serviceName: confirmedService.name,
       });
       void router.push(RESERVATION_LOGIN_REDIRECT);
       return;
@@ -387,15 +454,14 @@ export default function ReservationPage() {
     setIsSaving(true);
     setSaveError(null);
     setSaveMessage(null);
-    setCreatedCheckoutBookingId(null);
 
-    const requiresCheckout = isPrepaidBooking(selectedService.paymentType);
+    const requiresCheckout = isPrepaidBooking(confirmedService.paymentType);
     let createdBookingId: number | null = null;
 
     try {
       const created = await createPublicReservation(professionalSlug, {
-        serviceId: selectedService.id,
-        startDateTime: `${selectedDate}T${selectedTime}`,
+        serviceId: confirmedService.id,
+        startDateTime: `${confirmedDate}T${selectedTime}`,
       });
 
       if (!created || typeof created.id !== 'number') {
@@ -410,7 +476,6 @@ export default function ReservationPage() {
         const hasCheckoutUrl = Boolean(paymentSession.checkoutUrl);
         let checkoutMode: 'started' | 'failed' | 'synced' = hasCheckoutUrl ? 'started' : 'synced';
         let checkoutOpenResult: CheckoutOpenResult = 'blocked';
-        setCreatedCheckoutBookingId(String(created.id));
 
         if (paymentSession.checkoutUrl) {
           checkoutOpenResult = openCheckoutUrl(paymentSession.checkoutUrl);
@@ -420,10 +485,7 @@ export default function ReservationPage() {
         }
 
         setSaveMessage(getBookingPaymentSessionMessage(paymentSession));
-        if (checkoutMode === 'started') {
-          if (checkoutOpenResult === 'current-tab') {
-            return;
-          }
+        if (checkoutMode === 'started' && checkoutOpenResult === 'current-tab') {
           return;
         }
 
@@ -464,11 +526,11 @@ export default function ReservationPage() {
       } else if (isAxiosError(error) && error.response?.status === 401) {
         savePendingReservation({
           professionalSlug,
-          serviceId: selectedService.id,
-          date: selectedDate,
+          serviceId: confirmedService.id,
+          date: confirmedDate,
           time: selectedTime,
           professionalName: professional?.fullName || undefined,
-          serviceName: selectedService.name,
+          serviceName: confirmedService.name,
         });
         setSaveError('Necesitás iniciar sesión como cliente para reservar.');
         void router.push(RESERVATION_LOGIN_REDIRECT);
@@ -481,34 +543,19 @@ export default function ReservationPage() {
     }
   };
 
-  const locationText = (professional?.location || '').trim();
-  const { addressLine, cityLine } = useMemo(
-    () => splitLocationLines(locationText),
-    [locationText],
-  );
-  const mapLatitude = parseOptionalNumber(professional?.latitude);
-  const mapLongitude = parseOptionalNumber(professional?.longitude);
-  const hasMapCoordinates = mapLatitude !== null && mapLongitude !== null;
-  const canRenderReservationMap = Boolean(addressLine) && hasMapCoordinates;
   const policyDescription = describeBookingPolicy(professional?.bookingPolicy);
-  const contactPhone = professional?.phoneNumber?.trim() || professional?.phone?.trim() || '';
-  const contactEmail = professional?.email?.trim() || '';
-  const professionalStory =
-    professional?.headline?.trim() ||
-    professional?.about?.trim() ||
-    professional?.description?.trim() ||
-    '';
+  const currentDateLabel = activeStep >= 3 ? confirmedDateLabel : selectedDateLabel;
 
   return (
     <div className="min-h-screen bg-[linear-gradient(180deg,#f5f8f5_0%,#edf2ef_38%,#f8faf9_100%)] text-[color:var(--ink)]">
       <Navbar />
 
-      <main className="mx-auto w-full max-w-[1320px] px-4 pb-28 pt-8 sm:px-6 lg:px-8 lg:pt-10">
+      <main className="mx-auto w-full max-w-[1320px] px-4 pb-20 pt-8 sm:px-6 lg:px-8 lg:pt-10">
         <ReservationFlowHeader
-          currentStep={currentStep}
+          currentStep={activeStep}
           isLoading={isLoadingContext && !professional}
           professional={professional}
-          selectedService={selectedService}
+          selectedService={headerService}
         />
 
         {!isLoadingContext && contextError ? (
@@ -523,183 +570,115 @@ export default function ReservationPage() {
           </div>
         ) : null}
 
-        <section className="mt-8 grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_380px]">
+        <section className="mt-8 grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
           <div className="space-y-6">
-            <ReservationServiceSelector
-              activeCategory={activeServiceCategory}
-              categories={serviceCategories}
-              onCategoryChange={setActiveServiceCategory}
-              onSelectService={handleSelectService}
-              selectedServiceId={selectedServiceId}
-              services={professional?.services ?? []}
-            />
-
-            <ReservationScheduleStep
-              calendarCells={calendarCells}
-              calendarTitle={calendarTitle}
-              isLoadingSlots={isLoadingSlots}
-              isReady={Boolean(selectedService)}
-              onSelectDate={handleSelectDate}
-              onSelectTime={handleSelectTime}
-              selectedDate={selectedDate}
-              selectedDateLabel={selectedDateLabel}
-              selectedServiceName={selectedService?.name}
-              selectedTime={selectedTime}
-              serviceDurationLabel={formatDuration(selectedService?.duration)}
-              slots={slots}
-            />
-
-            <Card
-              tone="default"
-              className="rounded-[32px] border-white/80 bg-white/96 p-6 shadow-[0_24px_70px_-48px_rgba(15,23,42,0.28)] sm:p-8"
-            >
-              <div>
-                <p className="text-[0.68rem] font-semibold uppercase tracking-[0.32em] text-[color:var(--ink-faint)]">
-                  Profesional y lugar
-                </p>
-                <h2 className="mt-2 text-2xl font-semibold text-[color:var(--ink)] sm:text-3xl">
-                  Información útil antes de confirmar
-                </h2>
-                <p className="mt-3 max-w-2xl text-sm leading-6 text-[color:var(--ink-muted)]">
-                  El perfil público queda para descubrimiento. Acá ves el resumen operativo y la
-                  información necesaria para completar la reserva.
-                </p>
+            {activeStep !== 5 && saveMessage ? (
+              <div className="rounded-[22px] border border-[color:var(--success-soft)] bg-[color:var(--success-soft)]/55 px-5 py-4 text-sm font-medium text-[color:var(--success)]">
+                {saveMessage}
               </div>
+            ) : null}
 
-              <div className="mt-6 grid gap-5 lg:grid-cols-[minmax(0,1fr)_340px]">
-                <div className="space-y-5">
-                  <div className="rounded-[24px] border border-[color:var(--border-soft)] bg-[color:var(--surface-soft)] p-5">
-                    <p className="text-[0.62rem] font-semibold uppercase tracking-[0.24em] text-[color:var(--ink-faint)]">
-                      Profesional
-                    </p>
-                    <p className="mt-2 text-lg font-semibold text-[color:var(--ink)]">
-                      {professional?.fullName || 'Cargando profesional...'}
-                    </p>
-                    {professionalStory ? (
-                      <p className="mt-3 text-sm leading-7 text-[color:var(--ink-muted)]">
-                        {professionalStory}
-                      </p>
-                    ) : (
-                      <p className="mt-3 text-sm leading-7 text-[color:var(--ink-muted)]">
-                        {selectedService
-                          ? `${selectedService.name} · ${formatDuration(selectedService.duration)} · ${getPaymentTypeLabel(selectedService.paymentType)}`
-                          : 'Elegí un servicio para completar el resumen de la reserva.'}
-                      </p>
-                    )}
-                  </div>
-
-                  <div className="rounded-[24px] border border-[color:var(--border-soft)] bg-[color:var(--surface-soft)] p-5">
-                    <p className="text-[0.62rem] font-semibold uppercase tracking-[0.24em] text-[color:var(--ink-faint)]">
-                      Ubicación y contacto
-                    </p>
-                    <div className="mt-4 space-y-3 text-sm text-[color:var(--ink-muted)]">
-                      <div>
-                        <p className="font-semibold text-[color:var(--ink)]">Dirección</p>
-                        <p className="mt-1">
-                          {addressLine || professional?.location || 'Ubicación a confirmar'}
-                        </p>
-                        {cityLine ? <p className="mt-1">{cityLine}</p> : null}
-                      </div>
-                      {contactPhone ? (
-                        <div>
-                          <p className="font-semibold text-[color:var(--ink)]">Teléfono</p>
-                          <p className="mt-1">{contactPhone}</p>
-                        </div>
-                      ) : null}
-                      {contactEmail ? (
-                        <div>
-                          <p className="font-semibold text-[color:var(--ink)]">Email</p>
-                          <p className="mt-1">{contactEmail}</p>
-                        </div>
-                      ) : null}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="overflow-hidden rounded-[28px] border border-[color:var(--border-soft)] bg-[color:var(--surface-soft)] p-3">
-                  {canRenderReservationMap ? (
-                    <PublicProfileMap
-                      name={professional?.fullName || 'Profesional'}
-                      category={professional?.rubro || 'Servicio'}
-                      address={addressLine}
-                      city={cityLine}
-                      latitude={mapLatitude as number}
-                      longitude={mapLongitude as number}
-                      heightClassName="h-[320px]"
-                    />
-                  ) : (
-                    <div className="flex h-[320px] items-center justify-center rounded-[22px] border border-dashed border-[color:var(--border-soft)] bg-white px-5 text-center text-sm text-[color:var(--ink-muted)]">
-                      No hay mapa disponible para esta dirección.
-                    </div>
-                  )}
-                </div>
+            {activeStep !== 5 && saveError ? (
+              <div className="rounded-[22px] border border-[#FECACA] bg-[#FEF2F2] px-5 py-4 text-sm font-medium text-[#DC2626]">
+                {saveError}
               </div>
-            </Card>
+            ) : null}
+
+            {activeStep === 1 ? (
+              <ReservationServiceSelector
+                activeCategory={activeServiceCategory}
+                categories={serviceCategories}
+                onCancel={handleCancelReservation}
+                onCategoryChange={setActiveServiceCategory}
+                onConfirmService={handleConfirmService}
+                onEditService={() => setIsEditingServiceSelection((current) => !current)}
+                onSelectService={handleSelectService}
+                selectedService={selectedService}
+                selectedServiceId={selectedServiceId}
+                services={professional?.services ?? []}
+                showPicker={isEditingServiceSelection || !selectedService}
+              />
+            ) : null}
+
+            {activeStep === 2 ? (
+              <ReservationScheduleStep
+                calendarCells={calendarCells}
+                calendarTitle={calendarTitle}
+                mode="day"
+                onCancel={handleCancelReservation}
+                onContinue={handleContinueDay}
+                onEditService={handleEditService}
+                onSelectDate={handleSelectDate}
+                selectedDate={selectedDate}
+                selectedDateLabel={selectedDateLabel}
+                selectedServiceName={confirmedService?.name}
+              />
+            ) : null}
+
+            {activeStep === 3 ? (
+              <ReservationScheduleStep
+                isLoadingSlots={isLoadingSlots}
+                mode="time"
+                onCancel={handleCancelReservation}
+                onEditDay={handleEditDay}
+                onSelectTime={handleSelectTime}
+                selectedDateLabel={confirmedDateLabel}
+                selectedServiceName={confirmedService?.name}
+                selectedTime={selectedTime}
+                serviceDurationLabel={formatDuration(confirmedService?.duration)}
+                slots={slots}
+              />
+            ) : null}
+
+            {activeStep === 4 ? (
+              <ReservationReviewStep
+                onCancel={handleCancelReservation}
+                onContinue={handleContinueReview}
+                onEditDay={handleEditDay}
+                onEditService={handleEditService}
+                onEditTime={handleEditTime}
+                professional={professional}
+                selectedDateLabel={confirmedDateLabel}
+                selectedService={confirmedService}
+                selectedTime={selectedTime}
+              />
+            ) : null}
+
+            {activeStep === 5 ? (
+              <ReservationSummaryCard
+                canSubmit={canSubmit}
+                clientHasLoaded={clientHasLoaded}
+                clientLoading={clientLoading}
+                isLoadingContext={isLoadingContext}
+                isSaving={isSaving}
+                onCancel={handleCancelReservation}
+                onConfirm={handleConfirm}
+                onEditDay={handleEditDay}
+                onEditService={handleEditService}
+                onEditTime={handleEditTime}
+                policyDescription={policyDescription}
+                professional={professional}
+                saveError={saveError}
+                saveMessage={saveMessage}
+                selectedDateLabel={confirmedDateLabel}
+                selectedService={confirmedService}
+                selectedTime={selectedTime}
+              />
+            ) : null}
           </div>
 
           <aside className="xl:sticky xl:top-24">
-            <ReservationSummaryCard
-              canSubmit={canSubmit}
-              clientHasLoaded={clientHasLoaded}
-              clientLoading={clientLoading}
-              createdCheckoutBookingId={createdCheckoutBookingId}
-              currentStep={currentStep}
-              isLoadingContext={isLoadingContext}
-              isSaving={isSaving}
-              onConfirm={handleConfirm}
-              onViewBooking={handleViewCreatedBooking}
+            <ReservationProgressSidebar
+              currentStep={activeStep}
               policyDescription={policyDescription}
               professional={professional}
-              saveError={saveError}
-              saveMessage={saveMessage}
-              selectedDateLabel={selectedDateLabel}
-              selectedService={selectedService}
-              selectedTime={selectedTime}
+              selectedDateLabel={currentDateLabel === 'Elegí una fecha' ? null : currentDateLabel}
+              selectedService={headerService}
+              selectedTime={activeStep >= 4 ? selectedTime : null}
             />
           </aside>
         </section>
       </main>
-
-      {selectedService ? (
-        <div className="fixed inset-x-0 bottom-3 z-40 px-3 xl:hidden">
-          <div className="mx-auto flex w-full max-w-[1320px] items-center gap-3 rounded-[24px] border border-white/80 bg-white/96 px-4 py-3 shadow-[0_18px_44px_-28px_rgba(15,23,42,0.28)] backdrop-blur">
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-semibold text-[color:var(--ink)]">
-                {selectedService.name}
-              </p>
-              <p className="truncate text-xs text-[color:var(--ink-muted)]">
-                {selectedTime
-                  ? `${selectedDateLabel} · ${selectedTime}`
-                  : currentStep === 2
-                    ? 'Elegí la fecha para continuar'
-                    : currentStep === 3
-                      ? 'Elegí el horario para continuar'
-                      : 'Revisá el resumen y confirmá'}
-              </p>
-            </div>
-
-            <Button
-              type="button"
-              variant="primary"
-              onClick={handleConfirm}
-              disabled={
-                !canSubmit ||
-                isSaving ||
-                isLoadingContext ||
-                clientLoading ||
-                !clientHasLoaded ||
-                Boolean(createdCheckoutBookingId)
-              }
-            >
-              {isSaving
-                ? 'Preparando...'
-                : isPrepaidBooking(selectedService.paymentType)
-                  ? 'Pagar'
-                  : 'Confirmar'}
-            </Button>
-          </div>
-        </div>
-      ) : null}
 
       <Footer />
     </div>

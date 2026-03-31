@@ -17,6 +17,7 @@ import com.plura.plurabackend.core.booking.ProfessionalActorLookupGateway;
 import com.plura.plurabackend.core.booking.model.Booking;
 import com.plura.plurabackend.core.booking.model.BookingOperationalStatus;
 import com.plura.plurabackend.core.booking.repository.BookingRepository;
+import com.plura.plurabackend.core.review.BookingReviewPolicy;
 import com.plura.plurabackend.core.review.BookingReviewService;
 import com.plura.plurabackend.core.review.ReviewNotificationIntegrationService;
 import com.plura.plurabackend.core.review.dto.BookingReviewReportResponse;
@@ -68,7 +69,8 @@ class BookingReviewServiceTest {
             bookingRepository,
             professionalProfileRepository,
             professionalActorLookupGateway,
-            reviewNotificationIntegrationService
+            reviewNotificationIntegrationService,
+            "America/Montevideo"
         );
     }
 
@@ -85,6 +87,9 @@ class BookingReviewServiceTest {
         booking.setServiceNameSnapshot("Corte de pelo");
         booking.setTimezone("America/Montevideo");
         booking.setStartDateTime(LocalDateTime.of(2026, 3, 10, 9, 0));
+        if (status == BookingOperationalStatus.COMPLETED) {
+            booking.setCompletedAt(LocalDateTime.now().minusDays(1));
+        }
         return booking;
     }
 
@@ -191,6 +196,20 @@ class BookingReviewServiceTest {
     }
 
     @Test
+    void rejectsReviewWhenWindowExpired() {
+        Booking booking = makeBooking(1L, 10L, 20L, BookingOperationalStatus.COMPLETED);
+        booking.setCompletedAt(LocalDateTime.now().minusDays(BookingReviewPolicy.REVIEW_WINDOW_DAYS + 1L));
+        when(bookingRepository.findDetailedById(1L)).thenReturn(Optional.of(booking));
+
+        CreateBookingReviewRequest request = new CreateBookingReviewRequest(4, "Tarde");
+        ResponseStatusException ex = assertThrows(ResponseStatusException.class,
+            () -> service.createReview(1L, 10L, request));
+
+        assertEquals(409, ex.getStatusCode().value());
+        verify(bookingReviewRepository, never()).save(any());
+    }
+
+    @Test
     void updatesAggregateOnCreate() {
         Booking booking = makeBooking(1L, 10L, 20L, BookingOperationalStatus.COMPLETED);
         ProfessionalProfile profile = makeProfile(20L);
@@ -213,6 +232,32 @@ class BookingReviewServiceTest {
         verify(professionalProfileRepository).save(captor.capture());
         assertEquals(4.2, captor.getValue().getRating());
         assertEquals(5, captor.getValue().getReviewsCount());
+    }
+
+    @Test
+    void updatesAggregateOnCreateWhenRepositoryReturnsNestedRow() {
+        Booking booking = makeBooking(1L, 10L, 20L, BookingOperationalStatus.COMPLETED);
+        ProfessionalProfile profile = makeProfile(20L);
+
+        when(bookingRepository.findDetailedById(1L)).thenReturn(Optional.of(booking));
+        when(bookingReviewRepository.existsByBooking_Id(1L)).thenReturn(false);
+        when(professionalProfileRepository.findById(20L)).thenReturn(Optional.of(profile));
+        when(bookingReviewRepository.findRatingAggregateByProfessionalId(20L))
+            .thenReturn(new Object[]{new Object[]{4.8, 2L}});
+        when(bookingReviewRepository.saveAndFlush(any(BookingReview.class))).thenAnswer(invocation -> {
+            BookingReview review = invocation.getArgument(0);
+            review.setId(103L);
+            review.setCreatedAt(LocalDateTime.now());
+            review.setUpdatedAt(LocalDateTime.now());
+            return review;
+        });
+
+        service.createReview(1L, 10L, new CreateBookingReviewRequest(5, "Excelente"));
+
+        ArgumentCaptor<ProfessionalProfile> captor = ArgumentCaptor.forClass(ProfessionalProfile.class);
+        verify(professionalProfileRepository).save(captor.capture());
+        assertEquals(4.8, captor.getValue().getRating());
+        assertEquals(2, captor.getValue().getReviewsCount());
     }
 
     @Test

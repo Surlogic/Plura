@@ -212,6 +212,7 @@ class BookingCommandApplicationServiceRescheduleTest {
             true,
             true,
             false,
+            false,
             BigDecimal.ZERO,
             BigDecimal.ZERO,
             "UYU",

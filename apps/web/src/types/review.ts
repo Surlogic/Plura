@@ -27,6 +27,31 @@ export type ReviewEligibilityResponse = {
   reason: string | null;
 };
 
+export type ReviewReminder = {
+  bookingId: number;
+  professionalName: string;
+  serviceName: string;
+  completedAt: string;
+  reviewWindowEndsAt: string;
+  reminderCount: number;
+};
+
+export type NextReviewReminderResponse =
+  | {
+      exists: false;
+      reminder: null;
+    }
+  | {
+      exists: true;
+      reminder: ReviewReminder;
+    };
+
+export type ReviewReminderShownResponse = {
+  recorded: boolean;
+  reminderCount: number;
+  reason: string | null;
+};
+
 export type CreateBookingReviewRequest = {
   rating: number;
   text?: string | null;

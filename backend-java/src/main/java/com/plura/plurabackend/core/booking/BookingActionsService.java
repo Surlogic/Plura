@@ -80,6 +80,7 @@ public class BookingActionsService {
             evaluation.canCancel(),
             evaluation.canReschedule(),
             evaluation.canMarkNoShow(),
+            evaluation.canComplete(),
             evaluation.refundPreviewAmount(),
             evaluation.retainPreviewAmount(),
             evaluation.currency(),

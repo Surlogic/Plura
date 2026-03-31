@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import EmailVerificationPanel from '@/components/auth/EmailVerificationPanel';
+import ClientReviewReminderCard from '@/components/cliente/reviews/ClientReviewReminderCard';
 import ClientShell from '@/components/cliente/ClientShell';
 import DashboardHero from '@/components/dashboard/DashboardHero';
 import CategoryChips from '@/components/dashboard/CategoryChips';
@@ -66,6 +67,7 @@ export default function ClienteInicioPage() {
             description="Confirmá tu casilla principal desde acá mismo. No bloquea el uso de Plura, pero deja mejor preparada tu cuenta para recuperaciones y avisos importantes."
           />
         ) : null}
+        <ClientReviewReminderCard />
         <CategoryChips categories={categories} />
         <NextBookingSection booking={nextBooking} />
         <SuggestedSection suggestions={suggestions} isLoading={isLoading} />

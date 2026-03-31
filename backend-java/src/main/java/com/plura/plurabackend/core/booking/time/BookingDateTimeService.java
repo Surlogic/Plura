@@ -1,5 +1,6 @@
 package com.plura.plurabackend.core.booking.time;
 
+import com.plura.plurabackend.core.booking.dto.ProfessionalBookingResponse;
 import com.plura.plurabackend.core.booking.model.Booking;
 import java.time.Instant;
 import java.time.LocalDateTime;
@@ -74,6 +75,31 @@ public class BookingDateTimeService {
             return null;
         }
         return booking.getStartDateTime().atZone(resolveZoneId(booking.getTimezone())).toInstant();
+    }
+
+    public int resolveEffectiveDurationMinutes(Booking booking) {
+        if (booking == null) {
+            return 30;
+        }
+        return ProfessionalBookingResponse.resolveEffectiveDurationMinutes(
+            booking.getServiceDurationSnapshot(),
+            booking.getServicePostBufferMinutesSnapshot()
+        );
+    }
+
+    public LocalDateTime resolveEndDateTime(Booking booking) {
+        if (booking == null || booking.getStartDateTime() == null) {
+            return null;
+        }
+        return booking.getStartDateTime().plusMinutes(resolveEffectiveDurationMinutes(booking));
+    }
+
+    public Instant resolveEndInstant(Booking booking) {
+        Instant startInstant = resolveStartInstant(booking);
+        if (startInstant == null) {
+            return null;
+        }
+        return startInstant.plusSeconds(resolveEffectiveDurationMinutes(booking) * 60L);
     }
 
     public String toUtcString(Booking booking) {

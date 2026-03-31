@@ -10,6 +10,7 @@ public record BookingActionsEvaluation(
     boolean canCancel,
     boolean canReschedule,
     boolean canMarkNoShow,
+    boolean canComplete,
     BigDecimal refundPreviewAmount,
     BigDecimal retainPreviewAmount,
     String currency,

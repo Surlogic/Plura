@@ -250,6 +250,20 @@ export const markProfessionalBookingNoShow = async (bookingId: string) => {
   return mapCommandResponse(response.data);
 };
 
+export const completeProfessionalBooking = async (bookingId: string) => {
+  const response = await api.post<BookingCommandResponse<ProfessionalBookingDto>>(
+    `/profesional/reservas/${bookingId}/complete`,
+    {},
+    {
+      headers: {
+        'Idempotency-Key': buildIdempotencyKey(`professional-complete-${bookingId}`),
+      },
+    },
+  );
+  invalidateProfessionalBookingCaches();
+  return mapCommandResponse(response.data);
+};
+
 export const listProfessionalServices = async (): Promise<ProfessionalServiceDto[]> => {
   const response = await cachedGet<ProfessionalServiceDto[]>(
     '/profesional/services',

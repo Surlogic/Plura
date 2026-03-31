@@ -16,6 +16,7 @@ import com.plura.plurabackend.core.review.repository.BookingReviewRepository;
 import com.plura.plurabackend.professional.model.ProfessionalProfile;
 import com.plura.plurabackend.professional.repository.ProfessionalProfileRepository;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
@@ -26,6 +27,7 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.support.PageableExecutionUtils;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -42,6 +44,7 @@ public class BookingReviewService {
     private final ProfessionalProfileRepository professionalProfileRepository;
     private final ProfessionalActorLookupGateway professionalActorLookupGateway;
     private final ReviewNotificationIntegrationService reviewNotificationIntegrationService;
+    private final ZoneId systemZoneId;
 
     public BookingReviewService(
         BookingReviewRepository bookingReviewRepository,
@@ -49,7 +52,8 @@ public class BookingReviewService {
         BookingRepository bookingRepository,
         ProfessionalProfileRepository professionalProfileRepository,
         ProfessionalActorLookupGateway professionalActorLookupGateway,
-        ReviewNotificationIntegrationService reviewNotificationIntegrationService
+        ReviewNotificationIntegrationService reviewNotificationIntegrationService,
+        @Value("${app.timezone:America/Montevideo}") String appTimezone
     ) {
         this.bookingReviewRepository = bookingReviewRepository;
         this.bookingReviewReportRepository = bookingReviewReportRepository;
@@ -57,6 +61,7 @@ public class BookingReviewService {
         this.professionalProfileRepository = professionalProfileRepository;
         this.professionalActorLookupGateway = professionalActorLookupGateway;
         this.reviewNotificationIntegrationService = reviewNotificationIntegrationService;
+        this.systemZoneId = ZoneId.of(appTimezone);
     }
 
     @Transactional
@@ -69,6 +74,9 @@ public class BookingReviewService {
         }
         if (booking.getOperationalStatus() != BookingOperationalStatus.COMPLETED) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Solo se pueden reseñar reservas completadas.");
+        }
+        if (!BookingReviewPolicy.isWithinReviewWindow(booking.getCompletedAt(), LocalDateTime.now(systemZoneId))) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "La ventana para dejar una reseña ya venció.");
         }
         if (bookingReviewRepository.existsByBooking_Id(bookingId)) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Ya existe una reseña para esta reserva.");
@@ -232,7 +240,7 @@ public class BookingReviewService {
 
     @Transactional
     public void recomputeAggregate(Long professionalId) {
-        Object[] result = bookingReviewRepository.findRatingAggregateByProfessionalId(professionalId);
+        Object[] result = normalizeAggregateRow(bookingReviewRepository.findRatingAggregateByProfessionalId(professionalId));
         double avgRating = result[0] == null ? 0d : ((Number) result[0]).doubleValue();
         int count = result[1] == null ? 0 : ((Number) result[1]).intValue();
 
@@ -330,5 +338,15 @@ public class BookingReviewService {
         }
         String trimmed = text.trim();
         return trimmed.isEmpty() ? null : trimmed;
+    }
+
+    private Object[] normalizeAggregateRow(Object[] result) {
+        if (result == null || result.length == 0) {
+            return new Object[]{0d, 0L};
+        }
+        if (result.length == 1 && result[0] instanceof Object[] nestedResult) {
+            return nestedResult;
+        }
+        return result;
     }
 }

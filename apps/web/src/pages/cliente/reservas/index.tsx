@@ -3,6 +3,7 @@ import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
 import ClientShell from '@/components/cliente/ClientShell';
+import ClientReviewReminderCard from '@/components/cliente/reviews/ClientReviewReminderCard';
 import ClientBookingTimeline from '@/components/cliente/reservations/ClientBookingTimeline';
 import ClientBookingReviewSection from '@/components/cliente/reservations/ClientBookingReviewSection';
 import { useClientProfile } from '@/hooks/useClientProfile';
@@ -135,6 +136,7 @@ export default function ClienteReservasPage() {
   const [isLoadingSlots, setIsLoadingSlots] = useState(false);
   const [cancelReason, setCancelReason] = useState('');
   const [timelineRefreshToken, setTimelineRefreshToken] = useState(0);
+  const [reviewReminderRefreshToken, setReviewReminderRefreshToken] = useState(0);
 
   const queryBookingId = useMemo(() => {
     const value = router.query.bookingId;
@@ -548,6 +550,8 @@ export default function ClienteReservasPage() {
         </p>
       </section>
 
+      <ClientReviewReminderCard refreshToken={reviewReminderRefreshToken} />
+
       {statusBanner ? (
         <div
           className={`rounded-[18px] border px-4 py-3 text-sm ${
@@ -711,7 +715,15 @@ export default function ClienteReservasPage() {
                 />
 
                 {selectedBooking.status === 'COMPLETED' ? (
-                  <ClientBookingReviewSection bookingId={selectedBooking.id} />
+                  <ClientBookingReviewSection
+                    bookingId={selectedBooking.id}
+                    onReviewCreated={() => {
+                      setReviewReminderRefreshToken((current) => current + 1);
+                    }}
+                    onReviewDeleted={() => {
+                      setReviewReminderRefreshToken((current) => current + 1);
+                    }}
+                  />
                 ) : null}
 
                 <div className="mt-4 rounded-[18px] border border-[#E2E7EC] bg-white p-4">

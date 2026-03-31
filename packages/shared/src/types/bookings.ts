@@ -37,6 +37,7 @@ export type BookingActionsBase = {
   canCancel: boolean;
   canReschedule: boolean;
   canMarkNoShow: boolean;
+  canComplete: boolean;
   refundPreviewAmount?: number | null;
   retainPreviewAmount?: number | null;
   currency?: string | null;

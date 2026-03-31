@@ -5,6 +5,9 @@ import com.plura.plurabackend.core.booking.model.BookingOperationalStatus;
 import com.plura.plurabackend.core.booking.repository.BookingRepository;
 import com.plura.plurabackend.core.review.dto.ReviewEligibilityResponse;
 import com.plura.plurabackend.core.review.repository.BookingReviewRepository;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
@@ -14,13 +17,16 @@ public class BookingReviewEligibilityService {
 
     private final BookingRepository bookingRepository;
     private final BookingReviewRepository bookingReviewRepository;
+    private final ZoneId systemZoneId;
 
     public BookingReviewEligibilityService(
         BookingRepository bookingRepository,
-        BookingReviewRepository bookingReviewRepository
+        BookingReviewRepository bookingReviewRepository,
+        @Value("${app.timezone:America/Montevideo}") String appTimezone
     ) {
         this.bookingRepository = bookingRepository;
         this.bookingReviewRepository = bookingReviewRepository;
+        this.systemZoneId = ZoneId.of(appTimezone);
     }
 
     public ReviewEligibilityResponse checkEligibility(Long bookingId, Long clientUserId) {
@@ -39,6 +45,11 @@ public class BookingReviewEligibilityService {
         if (booking.getOperationalStatus() != BookingOperationalStatus.COMPLETED) {
             return new ReviewEligibilityResponse(false, false,
                 "Solo se pueden reseñar reservas completadas.");
+        }
+        LocalDateTime now = LocalDateTime.now(systemZoneId);
+        if (!BookingReviewPolicy.isWithinReviewWindow(booking.getCompletedAt(), now)) {
+            return new ReviewEligibilityResponse(false, false,
+                "La ventana para dejar una reseña ya venció.");
         }
 
         return new ReviewEligibilityResponse(true, false, null);

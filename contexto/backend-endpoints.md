@@ -189,6 +189,10 @@ Prefijo: `/profesional`
 - `GET /profesional/reservas`
 - `POST /profesional/reservas`
 - `PUT /profesional/reservas/{id}`
+- `POST /profesional/reservas/{id}/cancel`
+- `POST /profesional/reservas/{id}/reschedule`
+- `POST /profesional/reservas/{id}/no-show`
+- `POST /profesional/reservas/{id}/complete`
 - `GET /profesional/reviews` — listado paginado de reseñas recibidas (texto completo siempre visible para el profesional, aunque este oculto publicamente)
 - `PATCH /profesional/reviews/{reviewId}/hide-text` — oculta texto de la reseña publicamente (el rating sigue visible y cuenta en el promedio)
 - `PATCH /profesional/reviews/{reviewId}/show-text` — restaura visibilidad del texto de la reseña
@@ -207,6 +211,13 @@ Lectura de producto:
 - `PUT /profesional/profile` ahora acepta opcionalmente `logoMedia` y `bannerMedia` con `{ positionX, positionY, zoom }` para persistir el encuadre visual del logo y del banner; `GET /auth/me/profesional` y `GET /profesional/public-page` exponen esos mismos metadatos normalizados para rehidratar el editor y la preview
 - `POST /profesional/services` ahora corta por capacidad de plan: `BASIC` hasta `15` servicios, `PROFESIONAL` hasta `30`, `ENTERPRISE` sin tope practico; cada servicio mantiene una sola imagen publica
 - `GET /profesional/reservas` sostiene gestion operativa de reservas para `Free/BASIC` y no debe confundirse con gating de agenda semanal o mensual
+- `POST /public/profesionales/{slug}/reservas` crea siempre en `PENDING`; guarda snapshot de servicio/politica, registra `BOOKING_CREATED`, inicializa finanzas y solo dispara notificacion de `booking created` inmediata cuando el servicio es `ON_SITE`
+- `POST /cliente/reservas/{id}/payment-session` no cambia por si solo el estado operativo; si el checkout corresponde a pago online, la reserva sigue `PENDING` hasta que el webhook exitoso confirme el cobro
+- el webhook de Mercado Pago auto-confirma reservas prepagas: ante cobro exitoso de una reserva `PENDING`, backend la mueve a `CONFIRMED`, registra `BOOKING_CONFIRMED`, notifica y rehace side effects de disponibilidad
+- para reservas `ON_SITE`, `CONFIRMED` significa confirmacion operativa manual del profesional; para reservas prepagas, significa que el cobro ya quedo acreditado y backend cerro esa confirmacion automaticamente
+- `POST /profesional/reservas/{id}/complete` existe en runtime, queda protegido por `/profesional/**` en Spring Security y delega a `BookingService.completeBooking(...)`; solo permite completar reservas `CONFIRMED` cuyo turno ya termino (`booking.endDateTime <= now`, incluyendo post-buffer)
+- `PUT /profesional/reservas/{id}` con `status=COMPLETED` tambien reutiliza la misma logica de `completeBooking(...)`, pero el endpoint explicito `/complete` es la ruta operativa recomendada para UI/QA
+- `GET /reservas/{id}/actions` ahora devuelve `canComplete` ademas de `canCancel`, `canReschedule` y `canMarkNoShow`; `canComplete` se habilita solo cuando la reserva `CONFIRMED` ya termino, mientras `canMarkNoShow` sigue habilitandose desde que el turno ya empezo
 - `POST /profesional/payment-providers/mercadopago/oauth/start` y `GET /profesional/payment-providers/mercadopago/oauth/callback` ahora exigen capacidad `ONLINE_PAYMENTS`; `BASIC` no puede iniciar ni completar la conexion OAuth
 - `POST /profesional/payment-providers/mercadopago/oauth/start` solo necesita la configuracion minima para abrir Mercado Pago: `client-id`, `redirect-uri` y `authorization-url`
 - si `billing.mercadopago.reservations.oauth.pkce-enabled=true`, `POST /profesional/payment-providers/mercadopago/oauth/start` genera ademas `code_verifier`, `code_challenge` y `code_challenge_method=S256`; el `verifier` queda almacenado temporalmente en backend y nunca pasa por frontend
@@ -243,6 +254,8 @@ Notas:
 - `POST /cliente/reservas/{bookingId}/review` — crea reseña (rating obligatorio 1-5, text opcional max 2000 chars)
 - `GET /cliente/reservas/{bookingId}/review` — contrato estable: devuelve `{ exists: false }` o `{ exists: true, review: ... }`
 - `DELETE /cliente/reservas/{bookingId}/review` — elimina la reseña del cliente; verifica ownership, recomputa agregados del profesional
+- `GET /cliente/review-reminders/next` — devuelve a lo sumo un reminder in-app de reseña pendiente para el cliente autenticado
+- `POST /cliente/review-reminders/{bookingId}/shown` — registra que la web mostro realmente la card de reminder para ese booking y consume la cuota diaria/total de ese reminder
 
 Lectura de producto:
 
@@ -255,6 +268,8 @@ Lectura de producto:
 - `GET /cliente/reservas` y `GET /cliente/reservas/proxima` siguen intentando sincronizar cobros pendientes antes de responder, pero esa sync ahora corre en transaccion aislada y si falla de forma transitoria no tumba el listado: el endpoint responde con el snapshot actual de la reserva
 - `timeline` ya expone historial operativo de eventos de notification por reserva para el cliente autenticado
 - `GET /cliente/reservas/me` conserva el mismo response shape, pero ahora batch-ea summary/refund/payout latest por booking ids y queda mejor cubierto por un indice Flyway `booking(user_id, start_date_time)`
+- `GET /cliente/reservas/{bookingId}/review-eligibility` y `POST /cliente/reservas/{bookingId}/review` exigen ownership del booking, ausencia de reseña previa, `booking.operationalStatus == COMPLETED` y ventana de `7` dias desde `completedAt`
+- los reminders in-app de reseña usan backend como fuente de verdad: solo consideran reservas `COMPLETED` sin reseña dentro de la misma ventana de `7` dias; backend corta el reminder cuando ya hubo reseña, cuando vence la ventana, cuando se llega a `3` impresiones o cuando todavia no paso `1` dia desde el ultimo reminder mostrado
 
 ### Notificaciones del cliente
 

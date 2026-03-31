@@ -17,6 +17,7 @@ public class BookingActionsResponse {
     private boolean canCancel;
     private boolean canReschedule;
     private boolean canMarkNoShow;
+    private boolean canComplete;
     private BigDecimal refundPreviewAmount;
     private BigDecimal retainPreviewAmount;
     private String currency;

@@ -45,6 +45,7 @@ import com.plura.plurabackend.core.user.repository.UserRepository;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Timer;
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
@@ -522,8 +523,14 @@ public class BookingCommandApplicationService {
         if (booking.getOperationalStatus() != BookingOperationalStatus.CONFIRMED) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "La reserva no puede completarse en su estado actual");
         }
-        if (booking.getStartDateTime().isAfter(now)) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "La reserva solo puede completarse después de su inicio");
+        Instant bookingEndInstant = bookingDateTimeService.resolveEndInstant(booking);
+        Instant nowInstant = now.atZone(systemZoneId).toInstant();
+        if (bookingEndInstant != null && bookingEndInstant.isAfter(nowInstant)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "La reserva solo puede completarse después de que termine el turno");
+        }
+        LocalDateTime bookingEndDateTime = bookingDateTimeService.resolveEndDateTime(booking);
+        if (bookingEndInstant == null && bookingEndDateTime != null && bookingEndDateTime.isAfter(now)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "La reserva solo puede completarse después de que termine el turno");
         }
 
         BookingOperationalStatus previousStatus = booking.getOperationalStatus();
@@ -718,6 +725,7 @@ public class BookingCommandApplicationService {
             rawEvaluation.canCancel(),
             rawEvaluation.canReschedule(),
             rawEvaluation.canMarkNoShow(),
+            rawEvaluation.canComplete(),
             rawEvaluation.refundPreviewAmount(),
             rawEvaluation.retainPreviewAmount(),
             rawEvaluation.currency(),

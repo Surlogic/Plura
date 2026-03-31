@@ -17,6 +17,7 @@ import {
 } from '@/components/profesional/dashboard/DashboardUI';
 import {
   cancelProfessionalBooking,
+  completeProfessionalBooking,
   createProfessionalReservation,
   getProfessionalBookingActions,
   getProfessionalReservationsForDates,
@@ -1093,6 +1094,22 @@ export default function ProfesionalReservationsPage() {
                                 </Button>
                               ) : null}
 
+                              {actions?.canComplete ? (
+                                <Button
+                                  type="button"
+                                  variant="secondary"
+                                  disabled={isSubmittingAction}
+                                  onClick={() =>
+                                    runReservationAction(
+                                      () => completeProfessionalBooking(selectedReservation.id),
+                                      'No se pudo completar la reserva.',
+                                    )
+                                  }
+                                >
+                                  {isSubmittingAction ? 'Completando...' : 'Marcar completada'}
+                                </Button>
+                              ) : null}
+
                               {actions?.canMarkNoShow ? (
                                 <Button
                                   type="button"
@@ -1105,7 +1122,7 @@ export default function ProfesionalReservationsPage() {
                                     )
                                   }
                                 >
-                                  {isSubmittingAction ? 'Marcando...' : 'Marcar NO_SHOW'}
+                                  {isSubmittingAction ? 'Marcando...' : 'Marcar no-show'}
                                 </Button>
                               ) : null}
                             </div>

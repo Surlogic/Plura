@@ -86,6 +86,28 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
 
     @Query(
         """
+        SELECT b
+        FROM Booking b
+        WHERE b.user.id = :userId
+          AND b.operationalStatus = com.plura.plurabackend.core.booking.model.BookingOperationalStatus.COMPLETED
+          AND b.completedAt IS NOT NULL
+          AND b.completedAt >= :completedAfter
+          AND NOT EXISTS (
+              SELECT 1
+              FROM BookingReview r
+              WHERE r.booking = b
+          )
+        ORDER BY b.completedAt DESC, b.id DESC
+        """
+    )
+    List<Booking> findRecentCompletedWithoutReviewForUser(
+        @Param("userId") Long userId,
+        @Param("completedAfter") LocalDateTime completedAfter,
+        Pageable pageable
+    );
+
+    @Query(
+        """
         SELECT new com.plura.plurabackend.core.booking.dto.ProfessionalBookingResponse(
             b.id,
             u.id,

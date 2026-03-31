@@ -64,6 +64,14 @@ public class ProfessionalBookingCommandController {
         return professionalPublicPageService.markBookingNoShow(getProfesionalId(), bookingId, idempotencyKey);
     }
 
+    @PostMapping("/{id}/complete")
+    public BookingCommandResponse completeBooking(
+        @PathVariable("id") Long bookingId,
+        @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey
+    ) {
+        return professionalPublicPageService.completeBooking(getProfesionalId(), bookingId, idempotencyKey);
+    }
+
     private String getProfesionalId() {
         return String.valueOf(roleGuard.requireProfessional());
     }

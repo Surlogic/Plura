@@ -102,6 +102,14 @@ public class ProfessionalPublicPageService {
         return bookingService.markBookingNoShow(rawUserId, bookingId, idempotencyKey);
     }
 
+    public BookingCommandResponse completeBooking(
+        String rawUserId,
+        Long bookingId,
+        String idempotencyKey
+    ) {
+        return bookingService.completeBooking(rawUserId, bookingId, idempotencyKey);
+    }
+
     public List<ProfesionalPublicSummaryResponse> listPublicProfessionals(
         Integer limit,
         Integer page,

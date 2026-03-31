@@ -250,7 +250,7 @@ class BookingActionsEvaluatorTest {
     }
 
     @Test
-    void shouldAllowProfessionalNoShowOnlyAfterStart() {
+    void shouldAllowProfessionalCompleteOnlyAfterBookingEnd() {
         Booking booking = booking(ServicePaymentType.DEPOSIT, BigDecimal.valueOf(2500), BigDecimal.valueOf(500));
         booking.setOperationalStatus(BookingOperationalStatus.CONFIRMED);
         booking.setStartDateTime(LocalDateTime.of(2026, 3, 8, 10, 0));
@@ -266,9 +266,47 @@ class BookingActionsEvaluatorTest {
         assertFalse(evaluation.canCancel());
         assertFalse(evaluation.canReschedule());
         assertTrue(evaluation.canMarkNoShow());
+        assertTrue(evaluation.canComplete());
         assertEquals(BigDecimal.ZERO, evaluation.refundPreviewAmount());
         assertEquals(BigDecimal.valueOf(500), evaluation.retainPreviewAmount());
+        assertTrue(evaluation.reasonCodes().contains(BookingActionReasonCode.PROFESSIONAL_CAN_MARK_COMPLETED));
         assertTrue(evaluation.reasonCodes().contains(BookingActionReasonCode.PROFESSIONAL_CAN_MARK_NO_SHOW));
+    }
+
+    @Test
+    void shouldBlockProfessionalCompleteBeforeBookingEndEvenIfItAlreadyStarted() {
+        Booking booking = booking(ServicePaymentType.ON_SITE, BigDecimal.ZERO, null);
+        booking.setOperationalStatus(BookingOperationalStatus.CONFIRMED);
+        booking.setStartDateTime(LocalDateTime.of(2026, 3, 8, 11, 30));
+        booking.setServiceDurationSnapshot("60 min");
+        BookingPolicySnapshot policy = policy(true, 24, 2, 1, LateCancellationRefundMode.FULL, BigDecimal.valueOf(100));
+
+        BookingActionsEvaluation evaluation = evaluator.evaluate(
+            booking,
+            new BookingActionActor(BookingActionActor.BookingActionActorType.PROFESSIONAL, 20L, 30L),
+            policy,
+            LocalDateTime.of(2026, 3, 8, 12, 0)
+        );
+
+        assertFalse(evaluation.canComplete());
+        assertTrue(evaluation.canMarkNoShow());
+    }
+
+    @Test
+    void shouldBlockProfessionalCompleteBeforeStart() {
+        Booking booking = booking(ServicePaymentType.ON_SITE, BigDecimal.ZERO, null);
+        booking.setOperationalStatus(BookingOperationalStatus.CONFIRMED);
+        booking.setStartDateTime(LocalDateTime.of(2026, 3, 8, 18, 0));
+        BookingPolicySnapshot policy = policy(true, 24, 2, 1, LateCancellationRefundMode.FULL, BigDecimal.valueOf(100));
+
+        BookingActionsEvaluation evaluation = evaluator.evaluate(
+            booking,
+            new BookingActionActor(BookingActionActor.BookingActionActorType.PROFESSIONAL, 20L, 30L),
+            policy,
+            LocalDateTime.of(2026, 3, 8, 12, 0)
+        );
+
+        assertFalse(evaluation.canComplete());
     }
 
     private Booking booking(ServicePaymentType paymentType, BigDecimal price, BigDecimal depositAmount) {
@@ -278,6 +316,8 @@ class BookingActionsEvaluatorTest {
         booking.setTimezone("America/Montevideo");
         booking.setStartDateTime(LocalDateTime.of(2026, 3, 10, 12, 0));
         booking.setRescheduleCount(0);
+        booking.setServiceDurationSnapshot("60 min");
+        booking.setServicePostBufferMinutesSnapshot(0);
         booking.setServicePaymentTypeSnapshot(paymentType);
         booking.setServicePriceSnapshot(price);
         booking.setServiceDepositAmountSnapshot(depositAmount);

@@ -9,6 +9,8 @@ import type { BookingReviewResponse, ReviewEligibilityResponse } from '@/types/r
 
 type Props = {
   bookingId: string;
+  onReviewCreated?: () => void;
+  onReviewDeleted?: () => void;
 };
 
 const StarSelector = ({
@@ -51,7 +53,11 @@ const StarSummary = ({ rating }: { rating: number }) => (
   </span>
 );
 
-export default function ClientBookingReviewSection({ bookingId }: Props) {
+export default function ClientBookingReviewSection({
+  bookingId,
+  onReviewCreated,
+  onReviewDeleted,
+}: Props) {
   const [eligibility, setEligibility] = useState<ReviewEligibilityResponse | null>(null);
   const [existingReview, setExistingReview] = useState<BookingReviewResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -128,6 +134,7 @@ export default function ClientBookingReviewSection({ bookingId }: Props) {
       );
       setSuccess(true);
       setText('');
+      onReviewCreated?.();
     } catch (error) {
       const message =
         error instanceof Error ? error.message : 'No pudimos enviar tu reseña.';
@@ -144,14 +151,11 @@ export default function ClientBookingReviewSection({ bookingId }: Props) {
     try {
       await deleteBookingReview(bookingId);
       setExistingReview(null);
-      setEligibility({
-        eligible: true,
-        alreadyReviewed: false,
-        reason: null,
-      });
       setRating(0);
       setText('');
       setSuccess(false);
+      await load();
+      onReviewDeleted?.();
     } catch (error) {
       const message =
         error instanceof Error ? error.message : 'No pudimos eliminar tu reseña.';

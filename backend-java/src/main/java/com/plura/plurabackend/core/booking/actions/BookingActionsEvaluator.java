@@ -46,8 +46,13 @@ public class BookingActionsEvaluator {
         boolean activeBooking = booking.getOperationalStatus() == BookingOperationalStatus.PENDING
             || booking.getOperationalStatus() == BookingOperationalStatus.CONFIRMED;
         java.time.Instant bookingInstant = bookingDateTimeService.resolveStartInstant(booking);
+        java.time.Instant bookingEndInstant = bookingDateTimeService.resolveEndInstant(booking);
         java.time.Instant nowInstant = now.atZone(bookingDateTimeService.resolveZoneId(booking.getTimezone())).toInstant();
         boolean bookingStarted = bookingInstant != null ? !bookingInstant.isAfter(nowInstant) : !booking.getStartDateTime().isAfter(now);
+        LocalDateTime bookingEndDateTime = bookingDateTimeService.resolveEndDateTime(booking);
+        boolean bookingEnded = bookingEndInstant != null
+            ? !bookingEndInstant.isAfter(nowInstant)
+            : bookingEndDateTime != null && !bookingEndDateTime.isAfter(now);
 
         BigDecimal prepaidAmount = bookingMoneyResolver.resolvePrepaidAmount(booking);
         BigDecimal refundPreview = BigDecimal.ZERO;
@@ -56,6 +61,7 @@ public class BookingActionsEvaluator {
         boolean canCancel = false;
         boolean canReschedule = false;
         boolean canMarkNoShow = false;
+        boolean canComplete = false;
         BookingSuggestedAction suggestedAction = BookingSuggestedAction.NONE;
 
         long hoursUntilStart = bookingInstant == null
@@ -81,6 +87,7 @@ public class BookingActionsEvaluator {
                 canCancel,
                 canReschedule,
                 canMarkNoShow,
+                canComplete,
                 refundPreview,
                 retainPreview,
                 suggestedAction,
@@ -163,6 +170,7 @@ public class BookingActionsEvaluator {
                 canCancel,
                 canReschedule,
                 false,
+                false,
                 refundPreview,
                 retainPreview,
                 suggestedAction,
@@ -190,6 +198,10 @@ public class BookingActionsEvaluator {
         }
 
         canMarkNoShow = booking.getOperationalStatus() == BookingOperationalStatus.CONFIRMED && bookingStarted;
+        canComplete = booking.getOperationalStatus() == BookingOperationalStatus.CONFIRMED && bookingEnded;
+        if (canComplete) {
+            reasons.add(BookingActionReasonCode.PROFESSIONAL_CAN_MARK_COMPLETED);
+        }
         if (canMarkNoShow) {
             retainPreview = prepaidAmount;
             refundPreview = BigDecimal.ZERO;
@@ -198,13 +210,17 @@ public class BookingActionsEvaluator {
             reasons.add(BookingActionReasonCode.NO_SHOW_ONLY_AFTER_START);
         }
 
-        String messageCode = canMarkNoShow
-            ? "booking.actions.professional_can_mark_no_show"
+        String messageCode = canComplete
+            ? "booking.actions.professional_can_complete_or_mark_no_show"
+            : canMarkNoShow
+                ? "booking.actions.professional_can_mark_no_show"
             : canCancel
                 ? "booking.actions.professional_cancel_would_refund"
                 : "booking.actions.professional_no_actions_available";
-        String fallback = canMarkNoShow
-            ? "La reserva ya empezó y el profesional puede marcar no-show manualmente."
+        String fallback = canComplete
+            ? "La reserva ya terminó y el profesional puede marcarla como completada o no-show."
+            : canMarkNoShow
+                ? "La reserva ya empezó y el profesional puede marcar no-show manualmente."
             : canCancel
                 ? "Si el profesional cancela, el preview es devolución total del monto prepagado."
                 : "No hay acciones disponibles para esta reserva desde el lado profesional.";
@@ -215,6 +231,7 @@ public class BookingActionsEvaluator {
             canCancel,
             canReschedule,
             canMarkNoShow,
+            canComplete,
             refundPreview,
             retainPreview,
             BookingSuggestedAction.NONE,
@@ -231,6 +248,7 @@ public class BookingActionsEvaluator {
         boolean canCancel,
         boolean canReschedule,
         boolean canMarkNoShow,
+        boolean canComplete,
         BigDecimal refundPreview,
         BigDecimal retainPreview,
         BookingSuggestedAction suggestedAction,
@@ -243,6 +261,7 @@ public class BookingActionsEvaluator {
             canCancel,
             canReschedule,
             canMarkNoShow,
+            canComplete,
             refundPreview,
             retainPreview,
             bookingMoneyResolver.resolveCurrency(booking),

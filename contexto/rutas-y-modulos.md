@@ -129,6 +129,7 @@ Modulos relevantes:
 - `services/clientBookings.ts`: reservas y pago del cliente; ahora cachea `actions` y `timeline` por booking y permite prefetch conservador del detalle para bajar waterfalls al entrar o cambiar de seleccion.
 - `services/clientFeatures.ts`: features y entitlements del plan del cliente.
 - `services/clientReviews.ts`: reseñas del cliente por booking; incluye creacion, lectura con contrato `{ exists, review }`, elegibilidad y eliminacion con invalidacion de cache.
+- `services/clientReviewReminders.ts`: reminder in-app de reseña; consulta la siguiente reserva elegible y registra la impresion real contra backend para respetar cadencia diaria y limite por booking.
 - `services/cachedGet.ts`: capa de cache para GET requests reutilizable.
 - `services/pendingReservation.ts`: persistencia local de reservas pendientes para continuidad de flujo.
 - `types/clientBookingTimeline.ts` y `utils/clientBookingTimeline.ts`: contrato y formateo del historial operativo de reservas cliente.
@@ -151,7 +152,8 @@ Lectura de producto:
 - `/cliente/reservas` ya usa su panel lateral de detalle como experiencia real de reserva e incluye timeline de actividad por `bookingId`
 - `/cliente/reservas` mantiene el refresco de estados pendientes, pero el polling ya no corre en background y usa backoff conservador para bajar presion de red
 - `/cliente/reservas` ahora prefetch-ea `actions + timeline` de la reserva seleccionada apenas entra el listado para reducir espera perceptible sin cambiar contratos
-- reseñas implementadas: CTA en sidebar de reserva COMPLETED, formulario con rating 1-5 y texto opcional, review existente visible con opcion de eliminar; proteccion contra race conditions con patron `isActive`
+- reseñas implementadas: CTA en sidebar de reserva `COMPLETED`, formulario con rating `1-5` y texto opcional, review existente visible con opcion de eliminar; proteccion contra race conditions con patron `isActive`; la elegibilidad real sigue viniendo de backend y exige ownership + ausencia de reseña previa + `booking.status == COMPLETED` + ventana de `7` dias desde `completedAt`
+- la web cliente ahora muestra un reminder in-app de reseña en `/cliente/inicio` y `/cliente/reservas` con `components/cliente/reviews/ClientReviewReminderCard`; la card navega a `/cliente/reservas?bookingId={id}`, deja `Mas tarde` como cierre local de la vista actual y delega toda la cadencia en backend: maximo `1` reminder por dia, `3` por reserva y solo dentro de la misma ventana de `7` dias
 - feedback de app integrado en `/cliente/configuracion` con formulario de rating, categoria opcional y texto libre; incluye historial paginado de feedback propio
 - `/cliente/configuracion` ahora requiere challenge OTP por email para eliminar cuenta; muestra codigo enmascarado y advierte sobre cancelacion de reservas e irreversibilidad
 - `ClientNotificationsContext` ya no rompe fuera del provider; devuelve defaults seguros (unreadCount=0, noop callbacks) para degradar sin crash en rutas publicas
@@ -218,7 +220,8 @@ Lectura de producto:
 - `/profesional/dashboard/reservas` mantiene auto-refresh para estados pendientes, pero ahora pausa polling con la pestaña oculta y aplica backoff para reducir trafico redundante
 - `/profesional/dashboard/reservas` ahora paraleliza reservas y servicios al entrar, y prefetch-ea `actions + timeline` de la seleccion activa para acortar la cascada inicial
 - `/profesional/dashboard/reservas` debe seguir disponible para `Free/BASIC` como modulo operativo de reservas
-- la web profesional ya no expone la accion manual `completar` para reservas; en la UX operativa quedaron confirmacion, cancelacion, no-show, reagendamiento y lectura de timeline
+- la web profesional vuelve a exponer la accion manual `Marcar completada` para reservas `CONFIRMED` cuyo turno ya termino; convive con confirmacion, cancelacion, no-show, reagendamiento y timeline sin mezclar reglas
+- `/profesional/dashboard/reservas` usa `GET /reservas/{id}/actions` para decidir acciones; ese contrato ahora expone tambien `canComplete`
 - `/profesional/dashboard` recorta trabajo de agenda en cliente: la grilla semanal y mensual quedaron separadas para evitar rerenders pesados al abrir el drawer, y la carga de reservas ya no expande fechas dispersas a un unico rango continuo cuando el dashboard combina semana actual con una semana o mes navegados
 - `/profesional/dashboard` debe mostrar en agenda todas las reservas no canceladas del rango visible, incluyendo `pending`, `confirmed`, `completed` y `no_show`; `cancelled` queda fuera para no bloquear visualmente huecos liberados
 - `/profesional/dashboard` ya no limita la carga de bookings a `today` cuando el plan es `DAILY/BASIC`; la agenda semanal y mensual queda visible tambien en `Free/BASIC` y usa los bookings reales del rango visible para evitar huecos falsos

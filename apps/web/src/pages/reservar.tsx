@@ -29,6 +29,7 @@ import {
   type CheckoutOpenResult,
   openCheckoutUrl,
 } from '@/utils/checkoutWindow';
+import { getKnownAuthSessionRole, hasKnownAuthSession } from '@/services/session';
 import {
   type WorkDayKey,
   DAYS_AHEAD,
@@ -229,6 +230,9 @@ export default function ReservationPage() {
   }, [calendarDays, confirmedDate]);
 
   const canSubmit = Boolean(confirmedService?.id && confirmedDate && selectedTime);
+  const knownSessionRole = getKnownAuthSessionRole();
+  const shouldWaitForClientSession =
+    hasKnownAuthSession() && (knownSessionRole === 'CLIENT' || knownSessionRole === null);
 
   const persistPendingReservation = () => {
     if (!professionalSlug || !confirmedService?.id || !confirmedDate || !selectedTime) {
@@ -675,7 +679,7 @@ export default function ReservationPage() {
       return;
     }
 
-    if (!clientHasLoaded || clientLoading) {
+    if (shouldWaitForClientSession && (!clientHasLoaded || clientLoading)) {
       setSaveMessage(null);
       setSaveError('Estamos verificando tu sesión. Intentá nuevamente.');
       return;
@@ -802,8 +806,6 @@ export default function ReservationPage() {
             {activeStep === 5 ? (
               <ReservationSummaryCard
                 canSubmit={canSubmit}
-                clientHasLoaded={clientHasLoaded}
-                clientLoading={clientLoading}
                 isLoadingContext={isLoadingContext}
                 requiresAuthentication={!clientProfile}
                 isSaving={isSaving}

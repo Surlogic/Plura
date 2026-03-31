@@ -1,6 +1,5 @@
 import Link from 'next/link';
 import { memo } from 'react';
-import { useRouter } from 'next/router';
 import { useClientProfileContext } from '@/context/ClientProfileContext';
 import { useProfessionalProfileContext } from '@/context/ProfessionalProfileContext';
 import { useAuthLogout } from '@/hooks/useAuthLogout';
@@ -28,27 +27,9 @@ export default memo(function Navbar({
   showMenuButton = false,
   onMenuClick,
 }: NavbarProps) {
-  const router = useRouter();
-  const {
-    profile: professionalProfile,
-    hasLoaded: professionalHasLoaded,
-    isLoading: professionalLoading,
-  } = useProfessionalProfileContext();
-  const {
-    profile: clientProfile,
-    hasLoaded: clientHasLoaded,
-    isLoading: clientLoading,
-  } = useClientProfileContext();
+  const { profile: professionalProfile } = useProfessionalProfileContext();
+  const { profile: clientProfile } = useClientProfileContext();
   const { isLoggingOut, logout } = useAuthLogout();
-  const isAuthPage = router.pathname.startsWith('/cliente/auth') ||
-    router.pathname.startsWith('/profesional/auth');
-  const showAuthLoading = !isAuthPage && (
-    (router.pathname.startsWith('/profesional/dashboard') &&
-      (!professionalHasLoaded || professionalLoading)) ||
-    ((router.pathname.startsWith('/cliente') ||
-      router.pathname.startsWith('/explorar') ||
-      router.pathname.startsWith('/reservar')) &&
-      (!clientHasLoaded || clientLoading)));
   const role: 'PUBLIC' | 'CLIENT' | 'PROFESSIONAL' = professionalProfile
     ? 'PROFESSIONAL'
     : clientProfile
@@ -75,11 +56,7 @@ export default memo(function Navbar({
         </div>
         <div className="flex flex-col gap-2 text-sm sm:flex-row sm:items-center">
           <ThemeSwitcher variant="compact" showLabel={false} className="self-start sm:self-auto" />
-          {showAuthLoading ? (
-            <span className="rounded-full border border-[color:var(--border-soft)] bg-[color:var(--surface-strong)] px-4 py-2 text-[color:var(--ink-muted)] shadow-[var(--shadow-card)]">
-              Cargando...
-            </span>
-          ) : role === 'PROFESSIONAL' ? (
+          {role === 'PROFESSIONAL' ? (
             <>
               <Button href="/explorar" size="md">
                 Explorar

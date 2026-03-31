@@ -12,8 +12,6 @@ import { getReservationPaymentDetails } from '@/components/reservation/paymentDe
 
 type ReservationSummaryCardProps = {
   canSubmit: boolean;
-  clientHasLoaded: boolean;
-  clientLoading: boolean;
   isLoadingContext: boolean;
   isSaving: boolean;
   onCancel: () => void;
@@ -38,8 +36,6 @@ const resolveImage = (value?: string | null) => {
 
 export default function ReservationSummaryCard({
   canSubmit,
-  clientHasLoaded,
-  clientLoading,
   isLoadingContext,
   isSaving,
   onCancel,
@@ -236,13 +232,7 @@ export default function ReservationSummaryCard({
           size="lg"
           className="w-full"
           onClick={onConfirm}
-          disabled={
-            !canSubmit ||
-            isSaving ||
-            isLoadingContext ||
-            clientLoading ||
-            !clientHasLoaded
-          }
+          disabled={!canSubmit || isSaving || isLoadingContext}
         >
           {isSaving ? 'Preparando reserva...' : paymentDetails.ctaLabel}
         </Button>

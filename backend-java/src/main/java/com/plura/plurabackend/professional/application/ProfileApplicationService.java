@@ -1,6 +1,7 @@
 package com.plura.plurabackend.professional.application;
 
 import com.plura.plurabackend.core.storage.ImageCleanupService;
+import com.plura.plurabackend.core.storage.ImageStorageService;
 import com.plura.plurabackend.core.cache.ProfileCacheService;
 import com.plura.plurabackend.core.booking.dto.BookingPolicyResponse;
 import com.plura.plurabackend.core.booking.dto.BookingPolicyUpdateRequest;
@@ -50,6 +51,7 @@ public class ProfileApplicationService {
     private final PlanGuardService planGuardService;
     private final ImageThumbnailJobService imageThumbnailJobService;
     private final ImageCleanupService imageCleanupService;
+    private final ImageStorageService imageStorageService;
     private final ProfileCacheService profileCacheService;
     private final ProfessionalAccessSupport professionalAccessSupport;
     private final ProfessionalSideEffectCoordinator sideEffectCoordinator;
@@ -67,6 +69,7 @@ public class ProfileApplicationService {
         PlanGuardService planGuardService,
         ImageThumbnailJobService imageThumbnailJobService,
         ImageCleanupService imageCleanupService,
+        ImageStorageService imageStorageService,
         ProfileCacheService profileCacheService,
         ProfessionalAccessSupport professionalAccessSupport,
         ProfessionalSideEffectCoordinator sideEffectCoordinator,
@@ -83,6 +86,7 @@ public class ProfileApplicationService {
         this.planGuardService = planGuardService;
         this.imageThumbnailJobService = imageThumbnailJobService;
         this.imageCleanupService = imageCleanupService;
+        this.imageStorageService = imageStorageService;
         this.profileCacheService = profileCacheService;
         this.professionalAccessSupport = professionalAccessSupport;
         this.sideEffectCoordinator = sideEffectCoordinator;
@@ -206,7 +210,7 @@ public class ProfileApplicationService {
         if (request.getPhotos() != null) {
             oldPhotos = new ArrayList<>(profile.getPublicPhotos());
             List<String> cleaned = request.getPhotos().stream()
-                .map(photo -> photo == null ? "" : photo.trim())
+                .map(this::normalizeStoredImageReference)
                 .filter(photo -> !photo.isBlank())
                 .toList();
             int maxBusinessPhotos = effectivePlan.entitlements().maxBusinessPhotos();
@@ -345,7 +349,7 @@ public class ProfileApplicationService {
         String oldBannerUrl = profile.getBannerUrl();
 
         if (request.getLogoUrl() != null) {
-            String logoUrl = request.getLogoUrl().trim();
+            String logoUrl = normalizeStoredImageReference(request.getLogoUrl());
             profile.setLogoUrl(logoUrl.isBlank() ? null : logoUrl);
             if (!logoUrl.isBlank()) {
                 imageThumbnailJobService.generateThumbnailsAsync(extractStorageObjectKey(logoUrl));
@@ -363,7 +367,7 @@ public class ProfileApplicationService {
             profile.setLogoZoom(logoMedia.getZoom());
         }
         if (request.getBannerUrl() != null) {
-            String bannerUrl = request.getBannerUrl().trim();
+            String bannerUrl = normalizeStoredImageReference(request.getBannerUrl());
             profile.setBannerUrl(bannerUrl.isBlank() ? null : bannerUrl);
             if (!bannerUrl.isBlank()) {
                 imageThumbnailJobService.generateThumbnailsAsync(extractStorageObjectKey(bannerUrl));
@@ -478,10 +482,10 @@ public class ProfileApplicationService {
     }
 
     private String extractStorageObjectKey(String urlOrKey) {
-        if (urlOrKey == null || urlOrKey.isBlank()) {
+        String value = normalizeStoredImageReference(urlOrKey);
+        if (value.isBlank()) {
             return "";
         }
-        String value = urlOrKey.trim();
         if (value.startsWith("r2://")) {
             String withoutScheme = value.substring("r2://".length()).replaceFirst("^/+", "");
             int slash = withoutScheme.indexOf('/');
@@ -503,6 +507,11 @@ public class ProfileApplicationService {
             return value.substring(slash + 1);
         }
         return value;
+    }
+
+    private String normalizeStoredImageReference(String urlOrKey) {
+        String normalized = imageStorageService.normalizeStoredReference(urlOrKey);
+        return normalized == null ? "" : normalized.trim();
     }
 
     private String buildPublicSummaryCacheKey(

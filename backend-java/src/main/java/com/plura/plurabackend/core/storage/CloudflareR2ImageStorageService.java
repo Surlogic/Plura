@@ -97,6 +97,25 @@ public class CloudflareR2ImageStorageService implements ImageStorageService {
     }
 
     @Override
+    public String normalizeStoredReference(String urlOrStorageKey) {
+        if (urlOrStorageKey == null) {
+            return null;
+        }
+        String trimmed = stripQueryAndFragment(urlOrStorageKey.trim());
+        if (trimmed.isBlank()) {
+            return null;
+        }
+        if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
+            String extractedKey = extractManagedKeyFromPublicUrl(trimmed);
+            return extractedKey.isBlank() ? trimmed : toStorageUri(extractedKey);
+        }
+        if (trimmed.startsWith("/") && !trimmed.startsWith("//")) {
+            return toStorageUri(trimmed);
+        }
+        return toStorageUri(trimmed);
+    }
+
+    @Override
     public String generateUploadUrl(String objectKey, String contentType, long contentLength) {
         Timer.Sample sample = Timer.start(meterRegistry);
         try {
@@ -255,6 +274,48 @@ public class CloudflareR2ImageStorageService implements ImageStorageService {
             return publicBaseUrl + "/" + key;
         }
         return endpoint + "/" + bucket + "/" + key;
+    }
+
+    private String extractManagedKeyFromPublicUrl(String url) {
+        String normalizedUrl = stripQueryAndFragment(url);
+        String publicBase = !publicBaseUrl.isBlank() ? publicBaseUrl : endpoint + "/" + bucket;
+        String key = extractKeyFromBase(normalizedUrl, publicBase);
+        if (!key.isBlank()) {
+            return key;
+        }
+        return extractKeyFromBase(normalizedUrl, endpoint + "/" + bucket);
+    }
+
+    private String extractKeyFromBase(String url, String base) {
+        String normalizedBase = stripQueryAndFragment(base);
+        if (normalizedBase.isBlank()) {
+            return "";
+        }
+        if (url.equals(normalizedBase)) {
+            return "";
+        }
+        if (!url.startsWith(normalizedBase + "/")) {
+            return "";
+        }
+        return normalizeObjectKey(url.substring(normalizedBase.length() + 1));
+    }
+
+    private String stripQueryAndFragment(String value) {
+        String normalized = value == null ? "" : value.trim();
+        int queryIndex = normalized.indexOf('?');
+        if (queryIndex >= 0) {
+            normalized = normalized.substring(0, queryIndex);
+        }
+        int fragmentIndex = normalized.indexOf('#');
+        if (fragmentIndex >= 0) {
+            normalized = normalized.substring(0, fragmentIndex);
+        }
+        return normalized;
+    }
+
+    private String toStorageUri(String objectKeyOrUrl) {
+        String key = normalizeObjectKey(objectKeyOrUrl);
+        return key.equals("missing") ? null : "r2://" + bucket + "/" + key;
     }
 
     private String normalizeObjectKey(String rawObjectKey) {

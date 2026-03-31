@@ -145,6 +145,7 @@ Base transversal que ordena el producto y la arquitectura:
 - perfil editable del negocio o profesional
 - ubicacion, direccion y mapa
 - almacenamiento y gestion de imagenes con Cloudflare R2 como storage principal en producción; endpoint genérico `POST /profesional/images/upload` para logo, banner, galería y servicios; galería del negocio con tabla `business_photo` (tipos LOCAL, SERVICE, WORK); banner de perfil; resolución de URLs R2 a CDN público en frontend
+- al persistir logo, banner, galería o fotos de servicio, backend canoniza URLs públicas del CDN o `/uploads` a referencias internas de storage para evitar metadatos inconsistentes; en la web pública, si una foto apunta a un objeto faltante, la UI la omite o cae a placeholder sin romper la composición
 - identidad visual del negocio con encuadre persistente para `logo` y `banner`: el dashboard profesional ya permite subir ambos assets y abrir un editor visual en modal al terminar la subida o desde `Editar encuadre`; la composición (`positionX`, `positionY`, `zoom`) se reutiliza en preview, sidebar profesional y perfil público para evitar recortes raros o estirados perceptivos
 - constructor de servicios con categorias, etiquetas, duracion, precio y buffers
 - horarios de trabajo y bloqueos manuales

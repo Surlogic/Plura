@@ -52,6 +52,34 @@ public class LocalImageStorageService implements ImageStorageService {
     }
 
     @Override
+    public String normalizeStoredReference(String urlOrStorageKey) {
+        if (urlOrStorageKey == null) {
+            return null;
+        }
+        String trimmed = stripQueryAndFragment(urlOrStorageKey.trim());
+        if (trimmed.isBlank()) {
+            return null;
+        }
+        if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
+            String path = extractPath(trimmed);
+            if (path.startsWith(publicBaseUrl + "/")) {
+                return publicBaseUrl + "/" + sanitizeKey(path.substring(publicBaseUrl.length() + 1));
+            }
+            if (path.startsWith("/uploads/")) {
+                return "/uploads/" + sanitizeKey(path.substring("/uploads/".length()));
+            }
+            return trimmed;
+        }
+        if (trimmed.startsWith(publicBaseUrl + "/")) {
+            return publicBaseUrl + "/" + sanitizeKey(trimmed.substring(publicBaseUrl.length() + 1));
+        }
+        if (trimmed.startsWith("/uploads/")) {
+            return "/uploads/" + sanitizeKey(trimmed.substring("/uploads/".length()));
+        }
+        return trimmed;
+    }
+
+    @Override
     public String generatePublicUrl(String objectKey) {
         Timer.Sample sample = Timer.start(meterRegistry);
         try {
@@ -184,6 +212,28 @@ public class LocalImageStorageService implements ImageStorageService {
             .replace("..", "")
             .replace('\\', '/')
             .replaceFirst("^/+", "");
+    }
+
+    private String extractPath(String value) {
+        int schemeSeparator = value.indexOf("://");
+        if (schemeSeparator < 0) {
+            return value;
+        }
+        int pathStart = value.indexOf('/', schemeSeparator + 3);
+        return pathStart >= 0 ? value.substring(pathStart) : "";
+    }
+
+    private String stripQueryAndFragment(String value) {
+        String normalized = value == null ? "" : value.trim();
+        int queryIndex = normalized.indexOf('?');
+        if (queryIndex >= 0) {
+            normalized = normalized.substring(0, queryIndex);
+        }
+        int fragmentIndex = normalized.indexOf('#');
+        if (fragmentIndex >= 0) {
+            normalized = normalized.substring(0, fragmentIndex);
+        }
+        return normalized;
     }
 
     private String normalizeBase(String baseUrl) {

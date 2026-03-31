@@ -7,6 +7,14 @@ public interface ImageStorageService {
 
     String storeImage(byte[] bytes, String objectKey, String contentType);
 
+    default String normalizeStoredReference(String urlOrStorageKey) {
+        if (urlOrStorageKey == null) {
+            return null;
+        }
+        String trimmed = urlOrStorageKey.trim();
+        return trimmed.isBlank() ? null : trimmed;
+    }
+
     default String generateUploadUrl(String objectKey, String contentType, long contentLength) {
         return generateUploadUrl(objectKey);
     }

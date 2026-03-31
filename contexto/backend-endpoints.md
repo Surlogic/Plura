@@ -209,6 +209,7 @@ Lectura de producto:
 - cubre carga manual de turnos desde panel
 - `PUT /profesional/profile` y `PUT /profesional/public-page` ya permiten que `Free/BASIC` gestione logo, banner, headline y about del perfil publico; la diferencia entre planes para la pagina publica queda en limites de capacidad, no en bloqueo de esos textos/base visual
 - `PUT /profesional/profile` ahora acepta opcionalmente `logoMedia` y `bannerMedia` con `{ positionX, positionY, zoom }` para persistir el encuadre visual del logo y del banner; `GET /auth/me/profesional` y `GET /profesional/public-page` exponen esos mismos metadatos normalizados para rehidratar el editor y la preview
+- `PUT /profesional/profile`, `PUT /profesional/public-page` y `POST/PUT /profesional/services` ahora canonizan referencias de imágenes antes de persistirlas: si reciben una URL pública del CDN/R2 o de `/uploads`, la convierten otra vez a referencia interna de storage para no dejar metadatos inconsistentes en DB
 - `POST /profesional/services` ahora corta por capacidad de plan: `BASIC` hasta `15` servicios, `PROFESIONAL` hasta `30`, `ENTERPRISE` sin tope practico; cada servicio mantiene una sola imagen publica
 - `GET /profesional/reservas` sostiene gestion operativa de reservas para `Free/BASIC` y no debe confundirse con gating de agenda semanal o mensual
 - `POST /public/profesionales/{slug}/reservas` crea siempre en `PENDING`; guarda snapshot de servicio/politica, registra `BOOKING_CREATED`, inicializa finanzas y solo dispara notificacion de `booking created` inmediata cuando el servicio es `ON_SITE`
@@ -238,6 +239,7 @@ Notas:
 - `POST /profesional/services/image` confirma que el repo ya integra carga de imagenes en servicios
 - `POST /profesional/images/upload` es el endpoint genérico recomendado para subir logos, banners, galería y fotos de servicio; organiza los archivos por `professionals/{professionalId}/{kind}/` en R2 o filesystem local
 - `GET /profesional/public-page` y `PUT /profesional/public-page` incluyen campo `photos` para la galería pública; el request admite hasta `10` por validación estructural, pero el límite efectivo se aplica por plan en runtime (`3 / 6 / 10`); en la página pública la resolución final prioriza `business_photo` de galería (`LOCAL`, `WORK`) y fallback `publicPhotos`, y deja después las fotos ligadas a servicios (`SERVICE` + imagen principal del servicio), deduplicando sin cambiar el contrato
+- la capa de cleanup de imágenes también normaliza referencias antes de comparar o borrar; si una misma imagen reaparece como `r2://...` o como URL pública del CDN, backend la trata como el mismo asset administrado
 - `PUT /profesional/profile` soporta `logoUrl` y `bannerUrl` para la identidad pública del negocio desde cualquier plan actual
 - la capa de categorias existe en el sistema, pero el nivel exacto de etiquetas y reglas por servicio requiere revisar dominio y UI puntual
 

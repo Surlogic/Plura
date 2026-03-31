@@ -3,11 +3,14 @@ package com.plura.plurabackend.professional.application;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.when;
 
 import com.plura.plurabackend.core.storage.ImageCleanupService;
+import com.plura.plurabackend.core.storage.ImageStorageService;
 import com.plura.plurabackend.core.cache.ProfileCacheService;
 import com.plura.plurabackend.professional.profile.ProfessionalCategorySupport;
 import com.plura.plurabackend.professional.dto.ProfesionalBusinessProfileUpdateRequest;
@@ -29,6 +32,12 @@ import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 
 class ProfileApplicationServiceTest {
+
+    private ImageStorageService buildImageStorageServiceMock() {
+        ImageStorageService imageStorageService = mock(ImageStorageService.class);
+        when(imageStorageService.normalizeStoredReference(anyString())).thenAnswer(invocation -> invocation.getArgument(0));
+        return imageStorageService;
+    }
 
     @Test
     void blocksPublicPagePhotoLimitUsingProfessionalEntitlements() {
@@ -54,6 +63,7 @@ class ProfileApplicationServiceTest {
             planGuardService,
             mock(ImageThumbnailJobService.class),
             mock(ImageCleanupService.class),
+            buildImageStorageServiceMock(),
             mock(ProfileCacheService.class),
             professionalAccessSupport,
             mock(ProfessionalSideEffectCoordinator.class),
@@ -106,6 +116,7 @@ class ProfileApplicationServiceTest {
             planGuardService,
             mock(ImageThumbnailJobService.class),
             mock(ImageCleanupService.class),
+            buildImageStorageServiceMock(),
             mock(ProfileCacheService.class),
             professionalAccessSupport,
             mock(ProfessionalSideEffectCoordinator.class),
@@ -149,6 +160,7 @@ class ProfileApplicationServiceTest {
             planGuardService,
             mock(ImageThumbnailJobService.class),
             mock(ImageCleanupService.class),
+            buildImageStorageServiceMock(),
             mock(ProfileCacheService.class),
             professionalAccessSupport,
             mock(ProfessionalSideEffectCoordinator.class),
@@ -192,6 +204,7 @@ class ProfileApplicationServiceTest {
             planGuardService,
             mock(ImageThumbnailJobService.class),
             mock(ImageCleanupService.class),
+            buildImageStorageServiceMock(),
             mock(ProfileCacheService.class),
             professionalAccessSupport,
             mock(ProfessionalSideEffectCoordinator.class),

@@ -19,6 +19,7 @@ class ImageCleanupServiceTest {
     @BeforeEach
     void setUp() {
         imageStorageService = mock(ImageStorageService.class);
+        when(imageStorageService.normalizeStoredReference(anyString())).thenAnswer(invocation -> invocation.getArgument(0));
         cleanupService = new ImageCleanupService(imageStorageService);
     }
 
@@ -40,7 +41,7 @@ class ImageCleanupServiceTest {
             "r2://plura-images/professionals/1/logos/same.jpg",
             "r2://plura-images/professionals/1/logos/same.jpg"
         );
-        verifyNoInteractions(imageStorageService);
+        verify(imageStorageService, never()).deleteImage(anyString());
     }
 
     @Test
@@ -60,19 +61,19 @@ class ImageCleanupServiceTest {
     @Test
     void deleteIfChanged_doesNothingWhenOldIsNull() {
         cleanupService.deleteIfChanged(null, "r2://bucket/new.jpg");
-        verifyNoInteractions(imageStorageService);
+        verify(imageStorageService, never()).deleteImage(anyString());
     }
 
     @Test
     void deleteIfChanged_doesNothingWhenOldIsBlank() {
         cleanupService.deleteIfChanged("", "r2://bucket/new.jpg");
-        verifyNoInteractions(imageStorageService);
+        verify(imageStorageService, never()).deleteImage(anyString());
     }
 
     @Test
     void deleteIfChanged_ignoresExternalHttpUrl() {
         cleanupService.deleteIfChanged("https://external-cdn.com/image.jpg", "r2://bucket/new.jpg");
-        verifyNoInteractions(imageStorageService);
+        verify(imageStorageService, never()).deleteImage(anyString());
     }
 
     // --- deleteIfRemoved ---
@@ -87,13 +88,13 @@ class ImageCleanupServiceTest {
     @Test
     void deleteIfRemoved_ignoresNull() {
         cleanupService.deleteIfRemoved(null);
-        verifyNoInteractions(imageStorageService);
+        verify(imageStorageService, never()).deleteImage(anyString());
     }
 
     @Test
     void deleteIfRemoved_ignoresExternal() {
         cleanupService.deleteIfRemoved("https://cdn.example.com/photo.jpg");
-        verifyNoInteractions(imageStorageService);
+        verify(imageStorageService, never()).deleteImage(anyString());
     }
 
     @Test
@@ -128,7 +129,7 @@ class ImageCleanupServiceTest {
         List<String> oldPhotos = List.of("r2://a.jpg", "r2://b.jpg", "r2://c.jpg");
         List<String> newPhotos = List.of("r2://c.jpg", "r2://a.jpg", "r2://b.jpg");
         cleanupService.deleteRemovedFromList(oldPhotos, newPhotos);
-        verifyNoInteractions(imageStorageService);
+        verify(imageStorageService, never()).deleteImage(anyString());
     }
 
     @Test
@@ -197,6 +198,17 @@ class ImageCleanupServiceTest {
         when(imageStorageService.deleteImage("services/uuid.jpg")).thenReturn(true);
         cleanupService.deleteIfRemoved("services/uuid.jpg");
         verify(imageStorageService).deleteImage("services/uuid.jpg");
+    }
+
+    @Test
+    void deleteIfRemoved_handlesManagedPublicUrlAfterCanonicalization() {
+        when(imageStorageService.normalizeStoredReference("https://img.surlogicuy.com/professionals/1/gallery/uuid.jpg"))
+            .thenReturn("r2://plura-images/professionals/1/gallery/uuid.jpg");
+        when(imageStorageService.deleteImage("r2://plura-images/professionals/1/gallery/uuid.jpg")).thenReturn(true);
+
+        cleanupService.deleteIfRemoved("https://img.surlogicuy.com/professionals/1/gallery/uuid.jpg");
+
+        verify(imageStorageService).deleteImage("r2://plura-images/professionals/1/gallery/uuid.jpg");
     }
 
     // --- resilience ---

@@ -26,6 +26,7 @@ const sanitizeImageSrc = (value: string): string | null => {
 export default memo(function BusinessGallery({ photos, businessName }: BusinessGalleryProps) {
   const thumbnailTrackRef = useRef<HTMLDivElement | null>(null);
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
+  const [failedPhotos, setFailedPhotos] = useState<string[]>([]);
 
   const normalizedPhotos = useMemo(() => {
     const unique = new Set<string>();
@@ -42,6 +43,26 @@ export default memo(function BusinessGallery({ photos, businessName }: BusinessG
     return result.slice(0, 15);
   }, [photos]);
 
+  const availablePhotos = useMemo(
+    () => normalizedPhotos.filter((photo) => !failedPhotos.includes(photo)),
+    [failedPhotos, normalizedPhotos],
+  );
+
+  useEffect(() => {
+    setFailedPhotos((prev) => prev.filter((photo) => normalizedPhotos.includes(photo)));
+  }, [normalizedPhotos]);
+
+  useEffect(() => {
+    if (activeIndex === null) return;
+    if (availablePhotos.length === 0) {
+      setActiveIndex(null);
+      return;
+    }
+    if (activeIndex >= availablePhotos.length) {
+      setActiveIndex(availablePhotos.length - 1);
+    }
+  }, [activeIndex, availablePhotos.length]);
+
   useEffect(() => {
     if (activeIndex === null) return undefined;
 
@@ -52,21 +73,21 @@ export default memo(function BusinessGallery({ photos, businessName }: BusinessG
       }
       if (event.key === 'ArrowRight') {
         setActiveIndex((prev) => {
-          if (prev === null || normalizedPhotos.length === 0) return prev;
-          return (prev + 1) % normalizedPhotos.length;
+          if (prev === null || availablePhotos.length === 0) return prev;
+          return (prev + 1) % availablePhotos.length;
         });
       }
       if (event.key === 'ArrowLeft') {
         setActiveIndex((prev) => {
-          if (prev === null || normalizedPhotos.length === 0) return prev;
-          return (prev - 1 + normalizedPhotos.length) % normalizedPhotos.length;
+          if (prev === null || availablePhotos.length === 0) return prev;
+          return (prev - 1 + availablePhotos.length) % availablePhotos.length;
         });
       }
     };
 
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [activeIndex, normalizedPhotos.length]);
+  }, [activeIndex, availablePhotos.length]);
 
   useEffect(() => {
     if (activeIndex === null) return;
@@ -75,7 +96,11 @@ export default memo(function BusinessGallery({ photos, businessName }: BusinessG
     target?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
   }, [activeIndex]);
 
-  if (normalizedPhotos.length === 0) {
+  const handleImageError = (photo: string) => {
+    setFailedPhotos((prev) => (prev.includes(photo) ? prev : [...prev, photo]));
+  };
+
+  if (availablePhotos.length === 0) {
     return (
       <div className="rounded-[24px] border border-dashed border-[#CBD5E1] bg-[#F8FAFC] px-5 py-10 text-sm text-[#64748B]">
         No hay fotos cargadas todavia.
@@ -83,8 +108,8 @@ export default memo(function BusinessGallery({ photos, businessName }: BusinessG
     );
   }
 
-  const visiblePhotos = normalizedPhotos.slice(0, Math.min(normalizedPhotos.length, 6));
-  const hiddenPhotosCount = Math.max(0, normalizedPhotos.length - visiblePhotos.length);
+  const visiblePhotos = availablePhotos.slice(0, Math.min(availablePhotos.length, 6));
+  const hiddenPhotosCount = Math.max(0, availablePhotos.length - visiblePhotos.length);
   const isSinglePhoto = visiblePhotos.length === 1;
 
   return (
@@ -114,6 +139,7 @@ export default memo(function BusinessGallery({ photos, businessName }: BusinessG
                   fill
                   sizes="(max-width: 768px) 50vw, 25vw"
                   className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.03]"
+                  onError={() => handleImageError(photo)}
                 />
               </span>
               <span className="absolute inset-0 bg-[linear-gradient(180deg,rgba(15,23,42,0.02)_15%,rgba(15,23,42,0.36)_100%)]" />
@@ -126,7 +152,7 @@ export default memo(function BusinessGallery({ photos, businessName }: BusinessG
           ))}
         </div>
 
-        {normalizedPhotos.length > visiblePhotos.length ? (
+        {availablePhotos.length > visiblePhotos.length ? (
           <button
             type="button"
             onClick={() => setActiveIndex(0)}
@@ -152,7 +178,7 @@ export default memo(function BusinessGallery({ photos, businessName }: BusinessG
                   Galeria
                 </p>
                 <p className="mt-2 text-lg font-semibold">
-                  {activeIndex + 1} de {normalizedPhotos.length}
+                  {activeIndex + 1} de {availablePhotos.length}
                 </p>
               </div>
               <button
@@ -166,13 +192,13 @@ export default memo(function BusinessGallery({ photos, businessName }: BusinessG
             </div>
 
             <div className="flex items-center justify-center gap-3">
-              {normalizedPhotos.length > 1 ? (
+              {availablePhotos.length > 1 ? (
                 <button
                   type="button"
                   onClick={() =>
                     setActiveIndex((prev) => {
                       if (prev === null) return prev;
-                      return (prev - 1 + normalizedPhotos.length) % normalizedPhotos.length;
+                      return (prev - 1 + availablePhotos.length) % availablePhotos.length;
                     })
                   }
                   className="hidden h-10 w-10 shrink-0 items-center justify-center rounded-full border border-white/40 bg-white/10 text-xl font-semibold text-white backdrop-blur-sm sm:flex"
@@ -185,23 +211,24 @@ export default memo(function BusinessGallery({ photos, businessName }: BusinessG
               <div className="relative max-h-[92vh] max-w-[96vw] overflow-hidden rounded-[24px] border border-white/20 bg-black/25">
                 <div className="relative h-[70vh] w-[92vw] max-w-[1200px] sm:h-[78vh] sm:w-[86vw]">
                   <Image
-                    src={normalizedPhotos[activeIndex]}
+                    src={availablePhotos[activeIndex]}
                     alt={`Foto ${activeIndex + 1} de ${businessName || 'negocio'}`}
                     fill
                     sizes="(max-width: 640px) 92vw, 86vw"
                     className="object-contain"
                     priority
+                    onError={() => handleImageError(availablePhotos[activeIndex])}
                   />
                 </div>
               </div>
 
-              {normalizedPhotos.length > 1 ? (
+              {availablePhotos.length > 1 ? (
                 <button
                   type="button"
                   onClick={() =>
                     setActiveIndex((prev) => {
                       if (prev === null) return prev;
-                      return (prev + 1) % normalizedPhotos.length;
+                      return (prev + 1) % availablePhotos.length;
                     })
                   }
                   className="hidden h-10 w-10 shrink-0 items-center justify-center rounded-full border border-white/40 bg-white/10 text-xl font-semibold text-white backdrop-blur-sm sm:flex"
@@ -212,12 +239,12 @@ export default memo(function BusinessGallery({ photos, businessName }: BusinessG
               ) : null}
             </div>
 
-            {normalizedPhotos.length > 1 ? (
+            {availablePhotos.length > 1 ? (
               <div
                 ref={thumbnailTrackRef}
                 className="flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
               >
-                {normalizedPhotos.map((photo, index) => (
+                {availablePhotos.map((photo, index) => (
                   <button
                     key={`${photo}-thumb-${index}`}
                     type="button"
@@ -236,6 +263,7 @@ export default memo(function BusinessGallery({ photos, businessName }: BusinessG
                       fill
                       sizes="80px"
                       className="object-cover"
+                      onError={() => handleImageError(photo)}
                     />
                   </button>
                 ))}

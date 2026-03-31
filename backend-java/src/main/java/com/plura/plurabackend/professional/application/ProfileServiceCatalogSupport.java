@@ -1,6 +1,7 @@
 package com.plura.plurabackend.professional.application;
 
 import com.plura.plurabackend.core.storage.ImageCleanupService;
+import com.plura.plurabackend.core.storage.ImageStorageService;
 import com.plura.plurabackend.core.booking.model.ServicePaymentType;
 import com.plura.plurabackend.core.category.model.Category;
 import com.plura.plurabackend.core.category.repository.CategoryRepository;
@@ -28,6 +29,7 @@ public class ProfileServiceCatalogSupport {
     private final CategoryRepository categoryRepository;
     private final PlanGuardService planGuardService;
     private final ImageCleanupService imageCleanupService;
+    private final ImageStorageService imageStorageService;
 
     public ProfileServiceCatalogSupport(
         ProfesionalServiceRepository profesionalServiceRepository,
@@ -35,7 +37,8 @@ public class ProfileServiceCatalogSupport {
         ProfessionalSideEffectCoordinator sideEffectCoordinator,
         CategoryRepository categoryRepository,
         PlanGuardService planGuardService,
-        ImageCleanupService imageCleanupService
+        ImageCleanupService imageCleanupService,
+        ImageStorageService imageStorageService
     ) {
         this.profesionalServiceRepository = profesionalServiceRepository;
         this.profilePublicPageAssembler = profilePublicPageAssembler;
@@ -43,6 +46,7 @@ public class ProfileServiceCatalogSupport {
         this.categoryRepository = categoryRepository;
         this.planGuardService = planGuardService;
         this.imageCleanupService = imageCleanupService;
+        this.imageStorageService = imageStorageService;
     }
 
     public List<ProfesionalServiceResponse> listServices(ProfessionalProfile profile) {
@@ -73,7 +77,7 @@ public class ProfileServiceCatalogSupport {
         service.setDepositAmount(depositAmount);
         service.setDuration(request.getDuration() == null ? null : request.getDuration().trim());
         service.setCategory(resolveRequestedCategory(request.getCategorySlug()));
-        service.setImageUrl(normalizeOptional(request.getImageUrl()));
+        service.setImageUrl(normalizeStoredImageReference(request.getImageUrl()));
         service.setPostBufferMinutes(sanitizePostBufferMinutes(request.getPostBufferMinutes()));
         service.setPaymentType(paymentType);
         service.setCurrency(resolveServiceCurrency(request.getCurrency()));
@@ -124,7 +128,7 @@ public class ProfileServiceCatalogSupport {
         }
         String oldImageUrl = service.getImageUrl();
         if (request.getImageUrl() != null) {
-            service.setImageUrl(normalizeOptional(request.getImageUrl()));
+            service.setImageUrl(normalizeStoredImageReference(request.getImageUrl()));
         }
         if (request.getPostBufferMinutes() != null) {
             service.setPostBufferMinutes(sanitizePostBufferMinutes(request.getPostBufferMinutes()));
@@ -230,6 +234,10 @@ public class ProfileServiceCatalogSupport {
         }
         String normalized = value.trim();
         return normalized.isBlank() ? null : normalized;
+    }
+
+    private String normalizeStoredImageReference(String value) {
+        return normalizeOptional(imageStorageService.normalizeStoredReference(value));
     }
 
     private Category resolveRequestedCategory(String rawSlug) {

@@ -97,6 +97,8 @@ Infra actual detectada:
 - tabla `business_photo` para galería del negocio con tipos LOCAL, SERVICE y WORK
 - columna `banner_url` en `professional_profile` (V58)
 - frontend resuelve URLs R2 (`r2://bucket/path`) a CDN público vía `NEXT_PUBLIC_IMAGE_CDN_BASE_URL`
+- backend canoniza al guardar `logoUrl`, `bannerUrl`, `photos` de galería e `imageUrl` de servicios: si la UI round-tripea una URL pública del CDN o `/uploads`, la convierte de nuevo a referencia interna de storage antes de persistirla
+- cleanup de media compara y borra assets sobre esa referencia canonizada, evitando tratar como distintas una `r2://...` y su URL pública equivalente
 
 Nota:
 

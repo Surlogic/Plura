@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
 import { resolveAssetUrl } from '@/utils/assetUrl';
 import type { PublicService } from '@/types/professional';
@@ -39,6 +39,7 @@ export default function ServiceDetailModal({
 }: ServiceDetailModalProps) {
   const onCloseRef = useRef(onClose);
   onCloseRef.current = onClose;
+  const [imageFailed, setImageFailed] = useState(false);
 
   useEffect(() => {
     if (!isOpen) return undefined;
@@ -52,6 +53,10 @@ export default function ServiceDetailModal({
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [isOpen]);
+
+  useEffect(() => {
+    setImageFailed(false);
+  }, [service?.id, service?.imageUrl]);
 
   if (!isOpen || !service) {
     return null;
@@ -88,13 +93,14 @@ export default function ServiceDetailModal({
         </div>
 
         <div className="relative mt-4 h-52 w-full overflow-hidden rounded-[16px] border border-[color:var(--border-soft)] bg-[color:var(--surface-soft)]">
-          {imageSrc ? (
+          {imageSrc && !imageFailed ? (
             <Image
               src={imageSrc}
               alt={service.name || 'Servicio'}
               fill
               sizes="(max-width: 640px) 100vw, 600px"
               className="h-full w-full object-cover"
+              onError={() => setImageFailed(true)}
             />
           ) : (
             <div className="flex h-full w-full items-center justify-center text-sm font-semibold uppercase tracking-[0.16em] text-[color:var(--ink-faint)]">

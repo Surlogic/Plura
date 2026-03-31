@@ -27,5 +27,9 @@ class LocalImageStorageServiceTest {
             "/uploads/profiles/photo.jpg",
             storageService.generatePublicUrl("r2:profiles/photo.jpg")
         );
+        assertEquals(
+            "/uploads/profiles/photo.jpg",
+            storageService.normalizeStoredReference("https://api.example.com/uploads/profiles/photo.jpg?version=1")
+        );
     }
 }

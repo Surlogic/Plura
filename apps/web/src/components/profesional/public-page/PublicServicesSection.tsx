@@ -1,4 +1,5 @@
 import Image from 'next/image';
+import { useState } from 'react';
 import Badge from '@/components/ui/Badge';
 import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
@@ -49,6 +50,7 @@ export default function PublicServicesSection({
   selectedServiceIndex,
   serviceItems,
 }: PublicServicesSectionProps) {
+  const [failedImages, setFailedImages] = useState<string[]>([]);
   const visibleItems = activeCategory
     ? serviceItems.filter((item) => item.categoryLabel === activeCategory)
     : serviceItems;
@@ -105,6 +107,7 @@ export default function PublicServicesSection({
         <div className="mt-6 overflow-hidden rounded-[26px] border border-[color:var(--border-soft)] bg-white">
           {visibleItems.map((item) => {
             const imageSrc = normalizeImageSrc(item.service.imageUrl);
+            const canRenderImage = Boolean(imageSrc) && !failedImages.includes(imageSrc);
             const isSelected = selectedServiceIndex === item.index;
             return (
               <article
@@ -117,13 +120,16 @@ export default function PublicServicesSection({
               >
                 <div className="flex min-w-0 gap-4">
                   <div className="relative hidden h-16 w-16 shrink-0 overflow-hidden rounded-[18px] border border-[color:var(--border-soft)] bg-[color:var(--surface-soft)] sm:block">
-                    {imageSrc ? (
+                    {canRenderImage ? (
                       <Image
                         src={imageSrc}
                         alt={item.service.name || 'Servicio'}
                         fill
                         sizes="64px"
                         className="object-cover"
+                        onError={() =>
+                          setFailedImages((prev) => (prev.includes(imageSrc) ? prev : [...prev, imageSrc]))
+                        }
                       />
                     ) : (
                       <div className="flex h-full w-full items-center justify-center px-2 text-center text-[0.58rem] font-semibold uppercase tracking-[0.14em] text-[color:var(--ink-faint)]">

@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.mock;
 
 import com.plura.plurabackend.core.storage.ImageCleanupService;
+import com.plura.plurabackend.core.storage.ImageStorageService;
 import com.plura.plurabackend.core.booking.model.ServicePaymentType;
 import com.plura.plurabackend.core.category.repository.CategoryRepository;
 import com.plura.plurabackend.professional.model.ProfessionalProfile;
@@ -37,7 +38,8 @@ class ProfileServiceCatalogSupportTest {
             mock(ProfessionalSideEffectCoordinator.class),
             mock(CategoryRepository.class),
             planGuardService,
-            mock(ImageCleanupService.class)
+            mock(ImageCleanupService.class),
+            mock(ImageStorageService.class)
         );
 
         ProfesionalServiceRequest request = new ProfesionalServiceRequest();
@@ -70,7 +72,8 @@ class ProfileServiceCatalogSupportTest {
             mock(ProfessionalSideEffectCoordinator.class),
             mock(CategoryRepository.class),
             planGuardService,
-            mock(ImageCleanupService.class)
+            mock(ImageCleanupService.class),
+            mock(ImageStorageService.class)
         );
 
         ProfesionalServiceRequest request = new ProfesionalServiceRequest();

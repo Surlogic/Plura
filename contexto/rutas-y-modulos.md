@@ -231,6 +231,7 @@ Lectura de producto:
 - `/profesional/dashboard` agrega una toolbar compacta para saltar dentro del dia a `Madrugada`, `Mañana`, `Tarde`, `Noche` y `Ahora` sin romper navegacion semanal ni render de reservas
 - `/profesional/dashboard` en desktop prioriza visibilidad y estabilidad de agenda sobre un shell full-height estricto: la pagina puede seguir scrolleando normalmente, mientras la vista semanal mantiene scroll interno solo en el cuerpo del calendario y una altura explicita para que la grilla no colapse ni quede truncada
 - `/profesional/dashboard/pagina-publica` sigue editando textos y galería, pero la preview ya consume también el encuadre persistido de `logo` y `banner` definido en `perfil-negocio`
+- la ficha pública web ahora degrada mejor cuando una foto pública o imagen de servicio apunta a un asset faltante en storage/CDN: la galería omite esa imagen rota y los cards/modales de servicios caen a placeholder sin romper el layout
 
 Notas recientes:
 

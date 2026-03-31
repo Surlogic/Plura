@@ -20,11 +20,11 @@ public class ImageCleanupService {
     }
 
     public void deleteIfChanged(String oldUrl, String newUrl) {
-        if (!isManagedImage(oldUrl)) {
+        String normalizedOld = normalizeImageReference(oldUrl);
+        if (!isManagedImage(normalizedOld)) {
             return;
         }
-        String normalizedOld = oldUrl.trim();
-        String normalizedNew = newUrl == null ? "" : newUrl.trim();
+        String normalizedNew = normalizeImageReference(newUrl);
         if (normalizedOld.equals(normalizedNew)) {
             return;
         }
@@ -32,10 +32,11 @@ public class ImageCleanupService {
     }
 
     public void deleteIfRemoved(String oldUrl) {
-        if (!isManagedImage(oldUrl)) {
+        String normalizedOld = normalizeImageReference(oldUrl);
+        if (!isManagedImage(normalizedOld)) {
             return;
         }
-        safeDelete(oldUrl.trim());
+        safeDelete(normalizedOld);
     }
 
     public void deleteRemovedFromList(List<String> oldUrls, List<String> newUrls) {
@@ -45,16 +46,16 @@ public class ImageCleanupService {
         Set<String> kept = new HashSet<>();
         if (newUrls != null) {
             for (String url : newUrls) {
-                if (url != null && !url.isBlank()) {
-                    kept.add(url.trim());
+                String normalized = normalizeImageReference(url);
+                if (!normalized.isBlank()) {
+                    kept.add(normalized);
                 }
             }
         }
         for (String oldUrl : oldUrls) {
-            if (oldUrl != null && !oldUrl.isBlank() && !kept.contains(oldUrl.trim())) {
-                if (isManagedImage(oldUrl)) {
-                    safeDelete(oldUrl.trim());
-                }
+            String normalizedOld = normalizeImageReference(oldUrl);
+            if (!normalizedOld.isBlank() && !kept.contains(normalizedOld) && isManagedImage(normalizedOld)) {
+                safeDelete(normalizedOld);
             }
         }
     }
@@ -68,6 +69,11 @@ public class ImageCleanupService {
             || trimmed.startsWith("r2:")
             || trimmed.startsWith("/uploads/")
             || (trimmed.startsWith("professionals/") || trimmed.startsWith("services/"));
+    }
+
+    private String normalizeImageReference(String url) {
+        String normalized = imageStorageService.normalizeStoredReference(url);
+        return normalized == null ? "" : normalized.trim();
     }
 
     private void safeDelete(String url) {

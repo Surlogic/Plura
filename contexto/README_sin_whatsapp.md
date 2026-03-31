@@ -168,6 +168,7 @@ Notas operativas recientes:
 
 - search y suggest siguen manteniendo los mismos endpoints publicos, pero hoy se apoyan en materialized views denormalizadas para bajar joins y costo por request
 - `/explorar` ya filtra por fecha y `disponible ahora` usando disponibilidad real de `available_slot`; la fecha ya no solo reordena resultados
+- cuando una reserva cambia de horario o estado operativo con impacto en agenda (`cancel`, `reschedule`, confirmacion por pago), el backend ya reconstruye `available_slot` del dia afectado en el mismo ciclo after-commit; discovery y marketplace no deberian quedar mostrando huecos viejos por un rebuild async tardio
 - la barra unificada de busqueda web ahora comparte el mismo shell base entre home, dashboard cliente y `/explorar`: mismo ancho maximo, misma altura de controles, mismos radios y dropdowns; los filtros activos viven dentro del buscador como chips removibles para combinar rubro/consulta, fecha, ubicacion y disponibilidad sin duplicar UI por pagina
 - la geoseleccion desde autocomplete ya no debe combinar una direccion hiper especifica con radio geografico de forma excluyente; cuando hay coordenadas, el radio manda y el texto de ciudad queda como apoyo UX
 - las materialized views de search ahora se refrescan tambien al startup bajo lock distribuido para evitar que `search_professional_document_mv` quede vieja respecto de `professional_profile`
@@ -187,6 +188,8 @@ Notas operativas recientes:
   `POST /public/profesionales/{slug}/reservas` crea siempre en `PENDING`;
   si el servicio es `ON_SITE`, el profesional confirma manualmente desde `/profesional/dashboard/reservas`;
   si requiere pago online, el backend confirma automaticamente al acreditar el webhook de Mercado Pago;
+  mientras la reserva siga `PENDING` o `CONFIRMED`, el horario queda bloqueado y no puede coexistir otra reserva en ese mismo tramo;
+  si la reserva se cancela o se reagenda, el slot anterior se libera y la disponibilidad publica se recalcula enseguida para ese dia;
   una reserva `CONFIRMED` puede pasar a `COMPLETED` manualmente desde `/profesional/dashboard/reservas` o via `POST /profesional/reservas/{id}/complete` solo cuando ya termino el turno completo (`booking.endDateTime <= now`, incluyendo post-buffer);
   la reseña del cliente sigue habilitada solo sobre reservas `COMPLETED`, sin reseña previa y dentro de `7` dias desde `completedAt`
 - la web cliente ahora suma recordatorio in-app de reseña con backend como fuente de verdad: al entrar a `/cliente/inicio` o `/cliente/reservas`, busca una reserva `COMPLETED` elegible, registra la impresion real y muestra como maximo `1` reminder por dia, `3` por reserva y solo dentro de los `7` dias posteriores a `completedAt`; desaparece si el cliente reseña, si vence la ventana o si llega al tope

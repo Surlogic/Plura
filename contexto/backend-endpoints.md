@@ -163,7 +163,7 @@ Lectura de producto:
 - `GET /public/profesionales/{slug}` mantiene cache de perfil publico y ahora registra timing tecnico. Devuelve `rating` y `reviewsCount` reales
 - `GET /public/profesionales/{slug}` ahora devuelve también `logoMedia` y `bannerMedia` con `{ positionX, positionY, zoom }` para reproducir el encuadre persistido de identidad visual en frontend
 - `GET /public/profesionales/{slug}` ordena `photos` priorizando primero la galería pública del negocio (`LOCAL/WORK` y fallback `publicPhotos`) y recién después las fotos de servicios para que la sección de galería no repita primero assets ya visibles dentro de cada servicio
-- `GET /public/profesionales/{slug}/slots` mantiene el mismo calculo funcional de disponibilidad, pero usa un finder liviano del profesional y registra timing tecnico
+- `GET /public/profesionales/{slug}/slots` mantiene el mismo calculo funcional de disponibilidad, pero usa un finder liviano del profesional y registra timing tecnico; la fuente de verdad operativa sigue siendo el calculo live sobre agenda + reservas, no la tabla denormalizada `available_slot`
 
 ### Configuracion del profesional
 
@@ -213,8 +213,10 @@ Lectura de producto:
 - `POST /profesional/services` ahora corta por capacidad de plan: `BASIC` hasta `15` servicios, `PROFESIONAL` hasta `30`, `ENTERPRISE` sin tope practico; cada servicio mantiene una sola imagen publica
 - `GET /profesional/reservas` sostiene gestion operativa de reservas para `Free/BASIC` y no debe confundirse con gating de agenda semanal o mensual
 - `POST /public/profesionales/{slug}/reservas` crea siempre en `PENDING`; guarda snapshot de servicio/politica, registra `BOOKING_CREATED`, inicializa finanzas y solo dispara notificacion de `booking created` inmediata cuando el servicio es `ON_SITE`
+- mientras una reserva siga `PENDING` o `CONFIRMED`, su franja queda bloqueada para evitar superposiciones; si luego se cancela o se reagenda, backend reconstruye `available_slot` del/los dias afectados en el mismo after-commit para que discovery y perfil publico no queden desalineados
 - `POST /cliente/reservas/{id}/payment-session` no cambia por si solo el estado operativo; si el checkout corresponde a pago online, la reserva sigue `PENDING` hasta que el webhook exitoso confirme el cobro
 - el webhook de Mercado Pago auto-confirma reservas prepagas: ante cobro exitoso de una reserva `PENDING`, backend la mueve a `CONFIRMED`, registra `BOOKING_CONFIRMED`, notifica y rehace side effects de disponibilidad
+- `POST /cliente/reservas/{id}/reschedule` y `POST /profesional/reservas/{id}/reschedule` siguen aceptando el mismo payload, pero el backend ya interpreta `startDateTime` en la timezone operativa de la agenda; cualquier `timezone` enviada por clientes legacy se ignora para no desalinear slots y bloqueos
 - para reservas `ON_SITE`, `CONFIRMED` significa confirmacion operativa manual del profesional; para reservas prepagas, significa que el cobro ya quedo acreditado y backend cerro esa confirmacion automaticamente
 - `POST /profesional/reservas/{id}/complete` existe en runtime, queda protegido por `/profesional/**` en Spring Security y delega a `BookingService.completeBooking(...)`; solo permite completar reservas `CONFIRMED` cuyo turno ya termino (`booking.endDateTime <= now`, incluyendo post-buffer)
 - `PUT /profesional/reservas/{id}` con `status=COMPLETED` tambien reutiliza la misma logica de `completeBooking(...)`, pero el endpoint explicito `/complete` es la ruta operativa recomendada para UI/QA

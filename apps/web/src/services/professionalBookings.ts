@@ -218,13 +218,11 @@ export const cancelProfessionalBooking = async (
 export const rescheduleProfessionalBooking = async (
   bookingId: string,
   startDateTime: string,
-  timezone?: string,
 ) => {
   const response = await api.post<BookingCommandResponse<ProfessionalBookingDto>>(
     `/profesional/reservas/${bookingId}/reschedule`,
     {
       startDateTime,
-      timezone: timezone?.trim() || undefined,
     },
     {
       headers: {

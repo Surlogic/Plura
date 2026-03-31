@@ -230,7 +230,7 @@ class BookingCommandApplicationServiceRescheduleTest {
 
         BookingRescheduleRequest request = new BookingRescheduleRequest();
         request.setStartDateTime(nextStart.toString());
-        request.setTimezone("America/Montevideo");
+        request.setTimezone("Europe/Madrid");
 
         when(userRepository.findByIdAndDeletedAtIsNull(client.getId())).thenReturn(Optional.of(client));
         when(bookingRepository.findDetailedByIdForUpdate(booking.getId())).thenReturn(Optional.of(booking));

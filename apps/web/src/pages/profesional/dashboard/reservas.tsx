@@ -1065,7 +1065,6 @@ export default function ProfesionalReservationsPage() {
                                           () => rescheduleProfessionalBooking(
                                             selectedReservation.id,
                                             `${rescheduleDate}T${rescheduleTime}:00`,
-                                            selectedReservation.timezone || undefined,
                                           ),
                                           'No se pudo reagendar la reserva.',
                                         )

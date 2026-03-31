@@ -1,6 +1,7 @@
 package com.plura.plurabackend.professional.application;
 
 import com.plura.plurabackend.core.availability.AvailableSlotAsyncDispatcher;
+import com.plura.plurabackend.core.availability.AvailableSlotService;
 import com.plura.plurabackend.core.availability.ScheduleSummaryService;
 import com.plura.plurabackend.core.cache.ProfileCacheService;
 import com.plura.plurabackend.core.cache.SlotCacheService;
@@ -20,6 +21,7 @@ public class ProfessionalSideEffectCoordinator {
     private static final Logger LOGGER = LoggerFactory.getLogger(ProfessionalSideEffectCoordinator.class);
 
     private final AvailableSlotAsyncDispatcher availableSlotAsyncDispatcher;
+    private final AvailableSlotService availableSlotService;
     private final ScheduleSummaryService scheduleSummaryService;
     private final SlotCacheService slotCacheService;
     private final ProfileCacheService profileCacheService;
@@ -27,12 +29,14 @@ public class ProfessionalSideEffectCoordinator {
 
     public ProfessionalSideEffectCoordinator(
         AvailableSlotAsyncDispatcher availableSlotAsyncDispatcher,
+        AvailableSlotService availableSlotService,
         ScheduleSummaryService scheduleSummaryService,
         SlotCacheService slotCacheService,
         ProfileCacheService profileCacheService,
         SearchSyncPublisher searchSyncPublisher
     ) {
         this.availableSlotAsyncDispatcher = availableSlotAsyncDispatcher;
+        this.availableSlotService = availableSlotService;
         this.scheduleSummaryService = scheduleSummaryService;
         this.slotCacheService = slotCacheService;
         this.profileCacheService = profileCacheService;
@@ -141,11 +145,12 @@ public class ProfessionalSideEffectCoordinator {
 
     private void dispatchAvailabilityRebuildDay(Long professionalId, LocalDate date) {
         try {
-            availableSlotAsyncDispatcher.rebuildProfessionalDay(professionalId, date);
+            // Los cambios de booking necesitan reflejarse enseguida en discovery y agenda.
+            availableSlotService.rebuildProfessionalDay(professionalId, date);
             scheduleSummaryService.requestRebuild(professionalId);
         } catch (RuntimeException exception) {
             LOGGER.warn(
-                "No se pudo encolar rebuild async del día {} para profesional {} afterCommit",
+                "No se pudo reconstruir disponibilidad del día {} para profesional {} afterCommit",
                 date,
                 professionalId,
                 exception

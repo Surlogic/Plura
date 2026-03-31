@@ -520,7 +520,6 @@ export default function ClienteReservasPage() {
       const response = await rescheduleClientBooking(
         selectedBooking.id,
         `${rescheduleDate}T${rescheduleTime}:00`,
-        selectedBooking.timezone || undefined,
       );
       setStatusBanner({
         tone: 'success',

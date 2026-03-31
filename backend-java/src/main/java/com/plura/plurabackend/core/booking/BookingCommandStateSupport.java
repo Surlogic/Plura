@@ -77,12 +77,8 @@ public class BookingCommandStateSupport {
         BookingRescheduleRequest request,
         String fallbackTimezone
     ) {
-        if (request != null && request.getTimezone() != null && !request.getTimezone().isBlank()) {
-            return bookingDateTimeService.resolveZoneId(request.getTimezone()).getId();
-        }
-        if (booking.getTimezone() != null && !booking.getTimezone().isBlank()) {
-            return bookingDateTimeService.resolveZoneId(booking.getTimezone()).getId();
-        }
+        // La agenda operativa y los slots públicos viven en la timezone del sistema.
+        // Reagendar con una timezone arbitraria del cliente puede desalinear el bloqueo real.
         return fallbackTimezone;
     }
 }

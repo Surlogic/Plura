@@ -202,13 +202,11 @@ export const cancelClientBooking = async (
 export const rescheduleClientBooking = async (
   bookingId: string,
   startDateTime: string,
-  timezone?: string,
 ) => {
   const response = await api.post<BookingCommandResponse<ClientDashboardBooking>>(
     `/cliente/reservas/${bookingId}/reschedule`,
     {
       startDateTime,
-      timezone: timezone?.trim() || undefined,
     },
     {
       headers: {

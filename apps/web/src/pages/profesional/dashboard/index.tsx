@@ -23,6 +23,7 @@ import {
   updateProfessionalReservationStatus,
 } from '@/services/professionalBookings';
 import { getProfessionalAnalyticsSummary, type ProfessionalAnalyticsSummary } from '@/services/professionalAnalytics';
+import { getOperationalStatusLabel, getOperationalStatusTone } from '@/utils/bookings';
 import type {
   ProfessionalReservation,
   ProfessionalSchedule,
@@ -120,35 +121,72 @@ const resolveReservationDurationMinutes = (reservation: ProfessionalReservation)
   ?? parseDurationToMinutes(reservation.duration)
   ?? 30;
 
-const reservationStatusPalette = {
+const reservationStatusToOperationalStatus: Record<ReservationStatus, 'PENDING' | 'CONFIRMED' | 'CANCELLED' | 'COMPLETED' | 'NO_SHOW'> = {
+  pending: 'PENDING',
+  confirmed: 'CONFIRMED',
+  cancelled: 'CANCELLED',
+  completed: 'COMPLETED',
+  no_show: 'NO_SHOW',
+};
+
+const reservationStatusPalette: Record<ReservationStatus, {
+  accent: string;
+  card: string;
+  dot: string;
+  monthCard: string;
+  monthCardToday: string;
+}> = {
   confirmed: {
-    badge: 'bg-[#FFF0DD] text-[#B45309]',
+    accent: 'bg-[#1FB6A6]',
+    card: 'bg-[#EBFBF8] border-[#BDEDE6] hover:bg-[#D9F7F1]',
+    dot: 'bg-[#1FB6A6]',
+    monthCard: 'border border-[#BDEDE6] bg-[#EBFBF8] text-[#0F766E]',
+    monthCardToday: 'border border-[#8DE0D4] bg-[#E0F7F3] text-[#0F766E]',
   },
   pending: {
-    badge: 'bg-[#FEF3C7] text-[#B45309]',
+    accent: 'bg-[#F59E0B]',
+    card: 'bg-[#FFF7E8] border-[#F6D6A8] hover:bg-[#FDECC8]',
+    dot: 'bg-[#F59E0B]',
+    monthCard: 'border border-[#F6D6A8] bg-[#FFF7E8] text-[#B45309]',
+    monthCardToday: 'border border-[#F7D27A] bg-[#FFF1CC] text-[#92400E]',
   },
   cancelled: {
-    badge: 'bg-[#FEE2E2] text-[#B91C1C]',
+    accent: 'bg-[#EF4444]',
+    card: 'bg-[#FEF2F2] border-[#FECACA] hover:bg-[#FEE2E2]',
+    dot: 'bg-[#EF4444]',
+    monthCard: 'border border-[#FECACA] bg-[#FEF2F2] text-[#B91C1C]',
+    monthCardToday: 'border border-[#FCA5A5] bg-[#FEE2E2] text-[#991B1B]',
   },
   completed: {
-    badge: 'bg-[#E2E8F0] text-[#334155]',
+    accent: 'bg-[#0B1D2A]',
+    card: 'bg-[#F3F6F9] border-[#D7E0E8] hover:bg-[#E8EEF4]',
+    dot: 'bg-[#0B1D2A]',
+    monthCard: 'border border-[#D7E0E8] bg-[#F3F6F9] text-[#334155]',
+    monthCardToday: 'border border-[#C5D2DE] bg-[#E7EDF4] text-[#0B1D2A]',
   },
   no_show: {
-    badge: 'bg-[#EDE9FE] text-[#6D28D9]',
+    accent: 'bg-[#7C3AED]',
+    card: 'bg-[#F5F0FF] border-[#DCCDFE] hover:bg-[#EEE4FF]',
+    dot: 'bg-[#7C3AED]',
+    monthCard: 'border border-[#DCCDFE] bg-[#F5F0FF] text-[#6D28D9]',
+    monthCardToday: 'border border-[#C4B5FD] bg-[#EFE6FF] text-[#5B21B6]',
   },
 };
 
-const reservationStatusLabel = {
-  confirmed: 'Confirmada',
-  pending: 'Pendiente',
-  cancelled: 'Cancelada',
-  completed: 'Completada',
-  no_show: 'No asistió',
-};
+const getReservationStatusKey = (
+  status?: ReservationStatus | null,
+): ReservationStatus => status ?? 'pending';
 
-const reservationCardAccentClassName = 'bg-[#FF7A00]';
-const reservationCardClassName =
-  'bg-[#FFF3E6] border-[#F4D4B0] hover:bg-[#FFE7CC]';
+const getReservationStatusPalette = (status?: ReservationStatus | null) =>
+  reservationStatusPalette[getReservationStatusKey(status)];
+
+const getReservationStatusBadge = (status?: ReservationStatus | null) => {
+  const operationalStatus = reservationStatusToOperationalStatus[getReservationStatusKey(status)];
+  return {
+    className: getOperationalStatusTone(operationalStatus),
+    label: getOperationalStatusLabel(operationalStatus),
+  };
+};
 
 const resolveBackendMessage = (error: unknown, fallback: string) => {
   if (isAxiosError<{ message?: string }>(error)) {
@@ -495,15 +533,8 @@ const WeekCalendarBoard = memo(function WeekCalendarBoard({
                     const columns = Math.max(layout.columns, 1);
                     const width = `calc((100% - ${(columns - 1) * gap}px) / ${columns})`;
                     const left = `calc(${layout.column} * ((100% - ${(columns - 1) * gap}px) / ${columns} + ${gap}px))`;
-                    const statusKey = layout.reservation.status ?? 'confirmed';
-                    const palette =
-                      reservationStatusPalette[
-                        statusKey as keyof typeof reservationStatusPalette
-                      ] ?? reservationStatusPalette.confirmed;
-                    const statusText =
-                      reservationStatusLabel[
-                        statusKey as keyof typeof reservationStatusLabel
-                      ] ?? reservationStatusLabel.confirmed;
+                    const palette = getReservationStatusPalette(layout.reservation.status);
+                    const statusBadge = getReservationStatusBadge(layout.reservation.status);
 
                     return (
                       <button
@@ -514,24 +545,24 @@ const WeekCalendarBoard = memo(function WeekCalendarBoard({
                         onClick={() => onReservationOpen(layout.reservation)}
                       >
                         <div
-                          className={`group relative flex h-full min-h-[44px] flex-col overflow-hidden rounded-[10px] border px-2.5 py-2 text-left shadow-[0_6px_18px_rgba(15,23,42,0.10)] transition hover:-translate-y-0.5 hover:shadow-[0_12px_24px_rgba(15,23,42,0.14)] ${reservationCardClassName} ${
+                          className={`group relative flex h-full min-h-[44px] flex-col overflow-hidden rounded-[10px] border px-2.5 py-2 text-left shadow-[0_6px_18px_rgba(15,23,42,0.10)] transition hover:-translate-y-0.5 hover:shadow-[0_12px_24px_rgba(15,23,42,0.14)] ${palette.card} ${
                             isToday ? 'ring-1 ring-[#FFD9B0]' : ''
                           }`}
                         >
                           <span
-                            className={`absolute left-0 top-0 h-full w-1 rounded-l-[10px] ${reservationCardAccentClassName}`}
+                            className={`absolute left-0 top-0 h-full w-1 rounded-l-[10px] ${palette.accent}`}
                           />
                           <div className="flex items-start justify-between gap-2 pl-1.5">
                             <span className="text-[12px] font-medium leading-none text-[#475569]">
                               {timeRangeLabel}
                             </span>
                             {showStatus ? (
-                              <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${palette.badge}`}>
-                                {statusText}
+                              <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${statusBadge.className}`}>
+                                {statusBadge.label}
                               </span>
                             ) : (
                               <span
-                                className="mt-0.5 h-2.5 w-2.5 shrink-0 rounded-full bg-[#FF7A00]"
+                                className={`mt-0.5 h-2.5 w-2.5 shrink-0 rounded-full ${palette.dot}`}
                                 aria-hidden="true"
                               />
                             )}
@@ -609,18 +640,19 @@ const MonthCalendarBoard = memo(function MonthCalendarBoard({
               </div>
               {count > 0 ? (
                 <div className="mt-2 space-y-1">
-                  {dayReservations.slice(0, 2).map((reservation) => (
-                    <div
-                      key={reservation.id}
-                      className={`truncate rounded-md px-2 py-1 text-[0.62rem] font-medium ${
-                        day.isToday
-                          ? 'bg-white/12 text-white'
-                          : 'bg-white text-[color:var(--ink-muted)]'
-                      }`}
-                    >
-                      {reservation.time} · {reservation.serviceName}
-                    </div>
-                  ))}
+                  {dayReservations.slice(0, 2).map((reservation) => {
+                    const palette = getReservationStatusPalette(reservation.status);
+                    return (
+                      <div
+                        key={reservation.id}
+                        className={`truncate rounded-md px-2 py-1 text-[0.62rem] font-medium ${
+                          day.isToday ? palette.monthCardToday : palette.monthCard
+                        }`}
+                      >
+                        {reservation.time} · {reservation.serviceName}
+                      </div>
+                    );
+                  })}
                   {count > 2 ? (
                     <p className={`text-[0.58rem] ${day.isToday ? 'text-white/70' : 'text-[color:var(--ink-faint)]'}`}>
                       +{count - 2} más
@@ -1549,16 +1581,8 @@ export default function ProfesionalDashboardPage() {
             </div>
 
             <div className="mt-4 flex flex-wrap items-center gap-2">
-              <span
-                className={`rounded-full px-3 py-1 text-xs font-semibold ${
-                  reservationStatusPalette[
-                    (selectedReservation.status ?? 'confirmed') as keyof typeof reservationStatusPalette
-                  ]?.badge ?? reservationStatusPalette.confirmed.badge
-                }`}
-              >
-                {reservationStatusLabel[
-                  (selectedReservation.status ?? 'confirmed') as keyof typeof reservationStatusLabel
-                ] ?? reservationStatusLabel.confirmed}
+              <span className={`rounded-full px-3 py-1 text-xs font-semibold ${getReservationStatusBadge(selectedReservation.status).className}`}>
+                {getReservationStatusBadge(selectedReservation.status).label}
               </span>
               <span className="text-xs text-[color:var(--ink-muted)]">
                 {selectedReservation.time

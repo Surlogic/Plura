@@ -84,6 +84,7 @@ Lectura operativa actual:
 - `Free/BASIC` ya puede usar la agenda del dashboard sin bloqueos de vista semanal o mensual
 - `Free/BASIC` debe poder entrar a `/profesional/dashboard/reservas`, ver reservas operativas y ejecutar acciones base desde panel segun estado y politica
 - en `/profesional/dashboard`, incluso con `scheduleTier=DAILY`, la semana visible debe cargar y mostrar todas las reservas no canceladas del rango visible para no marcar huecos falsos ni permitir lectura engañosa de disponibilidad
+- la agenda profesional web diferencia visualmente `pending`, `confirmed`, `completed` y `no_show` con color por estado tanto en la grilla semanal como en el resumen mensual; `cancelled` no se renderiza en agenda
 - la agenda semanal del dashboard usa base completa de `24h` con scroll vertical interno, pero el viewport visible muestra aproximadamente `12h`; el foco inicial inteligente usa horario laboral y reservas visibles, y el fallback solo define a que franja abrir si faltan datos
 - en desktop, `/profesional/dashboard` prioriza layout estable y agenda visible: mantiene scroll de pagina normal para la pantalla completa y reserva el scroll interno al cuerpo de la agenda semanal, evitando truncar la grilla por un shell full-height demasiado estricto
 

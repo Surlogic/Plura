@@ -1,14 +1,18 @@
 'use client';
 
 import Link from 'next/link';
+import { useRouter } from 'next/router';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { ChangeEvent, FormEvent } from 'react';
 import { isAxiosError } from 'axios';
+import AppleLoginButton from '@/components/auth/AppleLoginButton';
+import GoogleLoginButton from '@/components/auth/GoogleLoginButton';
 import Badge from '@/components/ui/Badge';
 import Button from '@/components/ui/Button';
 import Card from '@/components/ui/Card';
 import InternationalPhoneField from '@/components/ui/InternationalPhoneField';
 import { useClientProfileContext } from '@/context/ClientProfileContext';
+import type { OAuthLoginResult } from '@/lib/auth/oauthLogin';
 import api from '@/services/api';
 import { setAuthAccessToken } from '@/services/session';
 
@@ -65,15 +69,18 @@ export default function ReservationAuthOverlay({
   serviceName,
   timeLabel,
 }: ReservationAuthOverlayProps) {
+  const router = useRouter();
   const { refreshProfile } = useClientProfileContext();
   const firstInputRef = useRef<HTMLInputElement | null>(null);
   const [mode, setMode] = useState<AuthMode>('register');
   const [loginForm, setLoginForm] = useState(loginFormInitial);
   const [registerForm, setRegisterForm] = useState(registerFormInitial);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const isRegisterMode = mode === 'register';
+  const isBusy = isSubmitting || isGoogleLoading;
 
   useEffect(() => {
     if (!isOpen) return undefined;
@@ -86,7 +93,7 @@ export default function ReservationAuthOverlay({
     });
 
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape' && !isSubmitting) {
+      if (event.key === 'Escape' && !isBusy) {
         onClose();
       }
     };
@@ -98,7 +105,7 @@ export default function ReservationAuthOverlay({
       document.body.style.overflow = previousOverflow;
       window.removeEventListener('keydown', onKeyDown);
     };
-  }, [isOpen, isSubmitting, onClose]);
+  }, [isBusy, isOpen, onClose]);
 
   useEffect(() => {
     if (!isOpen) {
@@ -106,6 +113,7 @@ export default function ReservationAuthOverlay({
       setLoginForm(loginFormInitial);
       setRegisterForm(registerFormInitial);
       setErrorMessage(null);
+      setIsGoogleLoading(false);
       setIsSubmitting(false);
     }
   }, [isOpen]);
@@ -140,6 +148,23 @@ export default function ReservationAuthOverlay({
     await api.get('/auth/me/cliente');
     await refreshProfile();
     await onAuthenticated();
+  };
+
+  const handleOAuthAuthenticated = async (result: OAuthLoginResult) => {
+    setErrorMessage(null);
+
+    if (result.role === 'PROFESSIONAL') {
+      setErrorMessage('Esta cuenta está registrada como profesional. Usá una cuenta cliente para reservar.');
+      return;
+    }
+
+    const requiresPhoneCompletion = !(result.user.phoneNumber ?? '').trim();
+    if (requiresPhoneCompletion) {
+      void router.push('/cliente/auth/complete-phone?redirect=confirm-reservation');
+      return;
+    }
+
+    await continueAuthenticatedFlow();
   };
 
   const handleLoginChange = (event: ChangeEvent<HTMLInputElement>) => {
@@ -232,7 +257,7 @@ export default function ReservationAuthOverlay({
         className="absolute inset-0 bg-[rgba(18,49,38,0.36)] backdrop-blur-[4px]"
         onClick={onClose}
         aria-label="Cerrar acceso para completar la reserva"
-        disabled={isSubmitting}
+        disabled={isBusy}
       />
 
       <Card
@@ -307,7 +332,7 @@ export default function ReservationAuthOverlay({
               variant="quiet"
               size="sm"
               onClick={onClose}
-              disabled={isSubmitting}
+              disabled={isBusy}
             >
               Cerrar
             </Button>
@@ -325,7 +350,7 @@ export default function ReservationAuthOverlay({
                 setMode('register');
                 setErrorMessage(null);
               }}
-              disabled={isSubmitting}
+              disabled={isBusy}
             >
               Crear cuenta
             </button>
@@ -340,10 +365,38 @@ export default function ReservationAuthOverlay({
                 setMode('login');
                 setErrorMessage(null);
               }}
-              disabled={isSubmitting}
+              disabled={isBusy}
             >
               Ya tengo cuenta
             </button>
+          </div>
+
+          <div className="mt-6 space-y-3">
+            <div className="space-y-2">
+              <GoogleLoginButton
+                authAction={isRegisterMode ? 'REGISTER' : 'LOGIN'}
+                intendedRole="USER"
+                onAuthenticated={handleOAuthAuthenticated}
+                onError={setErrorMessage}
+                buttonLabel={isRegisterMode ? 'Continuar con Google' : 'Ingresar con Google'}
+                loadingLabel={isRegisterMode ? 'Conectando Google...' : 'Ingresando con Google...'}
+                onLoadingChange={setIsGoogleLoading}
+              />
+              <AppleLoginButton
+                authAction={isRegisterMode ? 'REGISTER' : 'LOGIN'}
+                intendedRole="USER"
+                onAuthenticated={handleOAuthAuthenticated}
+                onError={setErrorMessage}
+              />
+            </div>
+
+            <div className="flex items-center gap-3">
+              <div className="h-px flex-1 bg-[color:var(--border-soft)]" />
+              <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[color:var(--ink-faint)]">
+                o con email
+              </span>
+              <div className="h-px flex-1 bg-[color:var(--border-soft)]" />
+            </div>
           </div>
 
           {isRegisterMode ? (
@@ -444,7 +497,7 @@ export default function ReservationAuthOverlay({
                 variant="primary"
                 size="lg"
                 className="w-full"
-                disabled={isSubmitting}
+                disabled={isBusy}
               >
                 {isSubmitting ? 'Creando cuenta...' : 'Crear cuenta y confirmar'}
               </Button>
@@ -483,7 +536,7 @@ export default function ReservationAuthOverlay({
                 variant="primary"
                 size="lg"
                 className="w-full"
-                disabled={isSubmitting}
+                disabled={isBusy}
               >
                 {isSubmitting ? 'Ingresando...' : 'Ingresar y confirmar'}
               </Button>

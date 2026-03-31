@@ -10,6 +10,7 @@ import Card from '@/components/ui/Card';
 import InternationalPhoneField from '@/components/ui/InternationalPhoneField';
 import api from '@/services/api';
 import { useClientProfileContext } from '@/context/ClientProfileContext';
+import { getPendingReservation } from '@/services/pendingReservation';
 
 const resolveApiMessage = (error: unknown, fallback: string) => {
   if (isAxiosError<{ message?: string }>(error)) {
@@ -21,6 +22,9 @@ const resolveApiMessage = (error: unknown, fallback: string) => {
 export default function ClienteCompletePhonePage() {
   const router = useRouter();
   const { refreshProfile } = useClientProfileContext();
+  const redirectIntent = Array.isArray(router.query.redirect)
+    ? router.query.redirect[0]
+    : router.query.redirect;
   const [phoneNumber, setPhoneNumber] = useState('');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -36,6 +40,20 @@ export default function ClienteCompletePhonePage() {
         phoneNumber,
       });
       await refreshProfile();
+      if (redirectIntent === 'confirm-reservation') {
+        const pendingReservation = getPendingReservation();
+        if (pendingReservation) {
+          router.push({
+            pathname: '/reservar',
+            query: {
+              profesional: pendingReservation.professionalSlug,
+              serviceId: pendingReservation.serviceId,
+              resume: '1',
+            },
+          });
+          return;
+        }
+      }
       router.push('/cliente/inicio');
     } catch (error) {
       setErrorMessage(resolveApiMessage(error, 'No pudimos guardar tu teléfono.'));

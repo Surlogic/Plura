@@ -268,6 +268,7 @@ Archivo ejemplo:
 Lectura de producto:
 
 - mobile ya tiene base para API, mapa y login Google
+- el login Google mobile hoy es mixto: Android usa `@react-native-google-signin/google-signin` y necesita especialmente `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID` para pedir `idToken`; iOS/web usan `expo-auth-session`; `EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID` y `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID` siguen siendo las variables recomendadas, mientras `EXPO_PUBLIC_GOOGLE_CLIENT_ID` queda como fallback general
 - para el mapa del perfil publico mobile, la variable operativa recomendada pasa a ser `EXPO_PUBLIC_MAPBOX_TOKEN`; `MAPBOX_TOKEN` queda como fallback legacy local
 - mobile usa `expo-web-browser` para abrir checkout de reservas, checkout de plan y OAuth de `Mercado Pago` dentro de la app sin sacar al usuario a un navegador externo completo
 - mobile ahora tambien depende de `expo-location` y `expo-notifications` para pedir permisos nativos de ubicacion y notificaciones

@@ -48,31 +48,40 @@ export function useGoogleOAuth({
   onErrorRef.current = onError;
 
   const isExpoGo = Constants.appOwnership === 'expo';
-  const expoClientId = readEnvValue(
-    process.env.EXPO_PUBLIC_GOOGLE_EXPO_CLIENT_ID,
+  const genericClientId = readEnvValue(
     process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID,
+    process.env.EXPO_PUBLIC_GOOGLE_EXPO_CLIENT_ID,
   );
-  const androidClientId = readEnvValue(process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID);
-  const iosClientId = readEnvValue(process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID);
+  const androidClientId = readEnvValue(
+    process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID,
+    genericClientId,
+  );
+  const iosClientId = readEnvValue(
+    process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
+    genericClientId,
+  );
   const webClientId = readEnvValue(
     process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
     process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID,
+    process.env.EXPO_PUBLIC_GOOGLE_EXPO_CLIENT_ID,
   );
 
   const hasGoogleConfig = Platform.OS === 'web'
-    ? Boolean(webClientId || expoClientId)
-    : Boolean(Platform.select({
-        android: Boolean(androidClientId) && !isExpoGo,
-        ios: Boolean(iosClientId) && !isExpoGo,
-        default: false,
-      }));
+    ? Boolean(webClientId || genericClientId)
+    : Platform.OS === 'android'
+      ? Boolean(webClientId) && !isExpoGo
+      : Boolean(Platform.select({
+          ios: Boolean(iosClientId) && !isExpoGo,
+          default: false,
+        }));
 
   const [googleRequest, googleResponse, promptGoogleAuth] = Google.useAuthRequest({
-    clientId: expoClientId || webClientId || 'missing-client-id',
+    clientId: genericClientId || webClientId || 'missing-client-id',
     androidClientId: androidClientId || undefined,
     iosClientId: iosClientId || undefined,
     webClientId: webClientId || undefined,
     scopes: ['openid', 'profile', 'email'],
+    selectAccount: true,
     shouldAutoExchangeCode: Platform.OS !== 'web',
   });
 
@@ -209,7 +218,7 @@ export function useGoogleOAuth({
     if (!hasGoogleConfig) {
       onErrorRef.current(
         Platform.OS === 'android'
-          ? 'Falta EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID para Android.'
+          ? 'Falta EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID para Android.'
           : Platform.OS === 'ios'
             ? 'Falta EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID para iOS.'
             : 'Falta EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID.',
@@ -230,6 +239,10 @@ export function useGoogleOAuth({
         await GoogleSignin.hasPlayServices({
           showPlayServicesUpdateDialog: true,
         });
+
+        if (GoogleSignin.hasPreviousSignIn()) {
+          await GoogleSignin.signOut().catch(() => null);
+        }
 
         const signInResult = await GoogleSignin.signIn();
         if (signInResult.type !== 'success') {
@@ -288,9 +301,41 @@ export function useGoogleOAuth({
         setIsGoogleSubmitting(false);
         return;
       }
-      console.log('Error desconocido en Google Sign-In:', error);
-      console.log('Error desconocido en Google Sign-In:', onErrorRef.current);
-      onErrorRef.current('No se pudo abrir el acceso con Google.');
+      if (String(error?.code || '') === '10' || /DEVELOPER_ERROR/i.test(String(error?.message || ''))) {
+        onErrorRef.current(
+          'Google Sign-In quedo rechazado por configuracion de Android. Hay que validar el paquete `com.plura.mobile`, la huella SHA del build y el cliente OAuth de Android en Google Cloud.',
+        );
+        setIsGoogleSubmitting(false);
+        return;
+      }
+
+      const errorCode = typeof error?.code === 'string' ? error.code : null;
+      const errorMessage = typeof error?.message === 'string' ? error.message.trim() : '';
+
+      if (errorCode === 'ERR_WEB_BROWSER_CLOSED' || /cancel/i.test(errorMessage)) {
+        setIsGoogleSubmitting(false);
+        return;
+      }
+      if (errorCode === 'ERR_WEB_BROWSER_BLOCKED') {
+        onErrorRef.current('Google fue bloqueado por el navegador del sistema. Intenta nuevamente.');
+        setIsGoogleSubmitting(false);
+        return;
+      }
+      if (errorCode === 'ERR_WEB_BROWSER_CRYPTO') {
+        onErrorRef.current('El dispositivo no pudo preparar el acceso seguro con Google.');
+        setIsGoogleSubmitting(false);
+        return;
+      }
+      if (errorCode === 'ERR_WEB_BROWSER_ACTIVITY') {
+        onErrorRef.current('Google ya esta procesando un inicio de sesion.');
+        setIsGoogleSubmitting(false);
+        return;
+      }
+      onErrorRef.current(
+        errorMessage
+          ? `No se pudo abrir el acceso con Google. ${errorMessage}`
+          : 'No se pudo abrir el acceso con Google.',
+      );
       setIsGoogleSubmitting(false);
     }
   };

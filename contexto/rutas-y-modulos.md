@@ -342,6 +342,7 @@ Lectura de producto:
 
 - cubre autenticacion base con flujos separados por rol (cliente y profesional)
 - el login social con Google ya aparece en hooks y variables de entorno
+- `src/hooks/useGoogleOAuth` usa `@react-native-google-signin/google-signin` en Android para abrir el selector nativo de cuentas y pedir `idToken` con `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID`; en iOS/web mantiene `expo-auth-session`; sigue requiriendo development build fuera de `Expo Go`
 - en mobile, `/(auth)/forgot-password` y `/(auth)/reset-password` siguen consumiendo el flujo legacy `email + token` (`/auth/password/forgot` y `/auth/password/reset`); todavia no replican la recuperacion web por `email + telefono + OTP`
 - `/(auth)/reset-password` ahora tambien redirige al login especifico del rol (`/(auth)/login-client` o `/(auth)/login-professional`) cuando backend confirma el cambio de contraseña
 - `/(auth)/register-client` y `/(auth)/register-professional` ya usan selector internacional de telefono con bandera + codigo y envian el numero final listo para backend
@@ -397,7 +398,7 @@ Lectura de producto:
 - `src/services/errors.ts`: manejo centralizado de errores.
 - `src/services/logger.ts`: logging mobile.
 - `src/services/storage.ts`: persistencia local segura.
-- `src/hooks/useGoogleOAuth.ts`
+- `src/hooks/useGoogleOAuth.ts`: en Android usa `@react-native-google-signin/google-signin` para evitar `invalid_request` del flujo web y forzar chooser nativo de cuentas; en iOS/web mantiene `expo-auth-session` y soporta token directo o authorization code segun lo que devuelva Google
 - `src/services/location.ts` y `src/hooks/useUserLocation.ts`
 - `src/services/pushNotifications.ts` y `src/hooks/usePushNotifications.ts`
 

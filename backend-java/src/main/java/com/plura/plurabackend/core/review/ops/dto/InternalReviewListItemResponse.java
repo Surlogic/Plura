@@ -1,5 +1,6 @@
 package com.plura.plurabackend.core.review.ops.dto;
 
+import com.plura.plurabackend.core.review.dto.ReviewReportSummaryResponse;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 
@@ -17,6 +18,9 @@ public class InternalReviewListItemResponse {
     private String text;
     private boolean textHiddenByProfessional;
     private boolean textHiddenByInternalOps;
+    private boolean reported;
+    private long reportCount;
+    private ReviewReportSummaryResponse latestReport;
     private String internalModerationNote;
     private String createdAt;
 }

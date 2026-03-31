@@ -108,6 +108,16 @@ type InternalReviewListItem = {
   text: string | null;
   textHiddenByProfessional: boolean;
   textHiddenByInternalOps: boolean;
+  reported: boolean;
+  reportCount: number;
+  latestReport: {
+    id: number;
+    reason: 'SPAM' | 'OFFENSIVE' | 'FALSE_INFORMATION' | 'HARASSMENT' | 'OTHER';
+    note: string | null;
+    status: 'OPEN' | 'REVIEWED' | 'RESOLVED';
+    createdAt: string | null;
+    resolvedAt: string | null;
+  } | null;
   internalModerationNote: string | null;
   createdAt: string;
 };

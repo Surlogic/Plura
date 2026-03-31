@@ -6,12 +6,16 @@ import Button from '@/components/ui/Button';
 import { DashboardHero } from '@/components/profesional/dashboard/DashboardUI';
 import { useProfessionalProfile } from '@/hooks/useProfessionalProfile';
 import {
-  deleteProfessionalReview,
   getProfessionalReviews,
   hideReviewText,
+  reportProfessionalReview,
   showReviewText,
 } from '@/services/professionalReviews';
-import type { BookingReviewPage, BookingReviewResponse } from '@/types/review';
+import type {
+  BookingReviewPage,
+  BookingReviewResponse,
+  ReviewReportReason,
+} from '@/types/review';
 
 const formatDate = (iso: string) => {
   try {
@@ -33,7 +37,7 @@ const StarDisplay = ({ rating }: { rating: number }) => (
 );
 
 export default function ProfesionalResenasPage() {
-  const { profile } = useProfessionalProfile();
+  const { profile, refreshProfile } = useProfessionalProfile();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [page, setPage] = useState<BookingReviewPage | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -41,6 +45,10 @@ export default function ProfesionalResenasPage() {
   const [actionLoading, setActionLoading] = useState<number | null>(null);
   const [pageError, setPageError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [actionSuccess, setActionSuccess] = useState<string | null>(null);
+  const [reportingReviewId, setReportingReviewId] = useState<number | null>(null);
+  const [reportReason, setReportReason] = useState<ReviewReportReason>('SPAM');
+  const [reportNote, setReportNote] = useState('');
 
   const load = useCallback(async (pageNum: number, isActive?: () => boolean) => {
     setIsLoading(true);
@@ -71,50 +79,18 @@ export default function ProfesionalResenasPage() {
     };
   }, [load]);
 
-  const updateReviewVisibilityLocally = useCallback((reviewId: number, hidden: boolean) => {
-    setPage((prev) => {
-      if (!prev) return prev;
-      return {
-        ...prev,
-        content: prev.content.map((review: BookingReviewResponse) =>
-          review.id === reviewId
-            ? {
-                ...review,
-                textHiddenByProfessional: hidden,
-              }
-            : review,
-        ),
-      };
-    });
-  }, []);
-
-  const removeReviewLocally = useCallback((reviewId: number) => {
-    setPage((prev) => {
-      if (!prev) return prev;
-
-      const nextContent = prev.content.filter((review) => review.id !== reviewId);
-      const nextTotalElements = Math.max(0, prev.totalElements - 1);
-      const nextTotalPages = nextTotalElements === 0 ? 0 : Math.ceil(nextTotalElements / prev.size);
-
-      return {
-        ...prev,
-        content: nextContent,
-        totalElements: nextTotalElements,
-        totalPages: nextTotalPages,
-        empty: nextContent.length === 0,
-        first: currentPage === 0,
-        last: nextTotalPages === 0 ? true : currentPage >= nextTotalPages - 1,
-      };
-    });
-  }, [currentPage]);
+  const reloadReviewsAndProfile = useCallback(async () => {
+    await Promise.all([load(currentPage), refreshProfile()]);
+  }, [currentPage, load, refreshProfile]);
 
   const handleHide = async (reviewId: number) => {
     setActionLoading(reviewId);
     setActionError(null);
+    setActionSuccess(null);
 
     try {
       await hideReviewText(reviewId);
-      updateReviewVisibilityLocally(reviewId, true);
+      await reloadReviewsAndProfile();
     } catch (error) {
       const message =
         error instanceof Error ? error.message : 'No pudimos ocultar el texto de la reseña.';
@@ -127,10 +103,11 @@ export default function ProfesionalResenasPage() {
   const handleShow = async (reviewId: number) => {
     setActionLoading(reviewId);
     setActionError(null);
+    setActionSuccess(null);
 
     try {
       await showReviewText(reviewId);
-      updateReviewVisibilityLocally(reviewId, false);
+      await reloadReviewsAndProfile();
     } catch (error) {
       const message =
         error instanceof Error ? error.message : 'No pudimos volver a mostrar el texto de la reseña.';
@@ -140,16 +117,24 @@ export default function ProfesionalResenasPage() {
     }
   };
 
-  const handleDelete = async (reviewId: number) => {
+  const handleReport = async (reviewId: number) => {
     setActionLoading(reviewId);
     setActionError(null);
+    setActionSuccess(null);
 
     try {
-      await deleteProfessionalReview(reviewId);
-      removeReviewLocally(reviewId);
+      await reportProfessionalReview(reviewId, {
+        reason: reportReason,
+        note: reportNote.trim() || null,
+      });
+      setReportingReviewId(null);
+      setReportReason('SPAM');
+      setReportNote('');
+      setActionSuccess('Reporte enviado a internal ops.');
+      await reloadReviewsAndProfile();
     } catch (error) {
       const message =
-        error instanceof Error ? error.message : 'No pudimos eliminar la reseña.';
+        error instanceof Error ? error.message : 'No pudimos reportar la reseña.';
       setActionError(message);
     } finally {
       setActionLoading(null);
@@ -185,7 +170,7 @@ export default function ProfesionalResenasPage() {
                 icon="resenas"
                 accent="ink"
                 title="Reseñas de clientes"
-                description="Gestioná las reseñas que dejan tus clientes. Podés ocultar el texto de una reseña, o eliminarla por completo si necesitás retirarla del perfil."
+                description="Gestioná las reseñas que dejan tus clientes. Podés ocultar el texto público y reportar contenido que incumpla normas para revisión de internal ops."
               />
 
               {profile ? (
@@ -218,6 +203,12 @@ export default function ProfesionalResenasPage() {
                 </div>
               ) : null}
 
+              {actionSuccess ? (
+                <div className="rounded-[18px] border border-[#BFEDE7] bg-[#F0FDFA] px-4 py-3">
+                  <p className="text-sm text-[#0F766E]">{actionSuccess}</p>
+                </div>
+              ) : null}
+
               {isLoading && !page ? (
                 <p className="text-sm text-[#64748B]">Cargando reseñas...</p>
               ) : !page || page.empty ? (
@@ -226,7 +217,9 @@ export default function ProfesionalResenasPage() {
                 </div>
               ) : (
                 <div className="space-y-4">
-                  {page.content.map((review: BookingReviewResponse) => (
+                  {page.content.map((review: BookingReviewResponse) => {
+                    const isReportingThisReview = reportingReviewId === review.id;
+                    return (
                     <div
                       key={review.id}
                       className="rounded-[18px] border border-[#E2E7EC] bg-white p-5"
@@ -250,6 +243,12 @@ export default function ProfesionalResenasPage() {
                         </div>
 
                         <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
+                          {review.reportedByProfessional ? (
+                            <span className="rounded-full bg-[#EFF6FF] px-3 py-1.5 text-xs font-semibold text-[#1D4ED8]">
+                              Reportada
+                            </span>
+                          ) : null}
+
                           {review.text ? (
                             <button
                               type="button"
@@ -269,14 +268,24 @@ export default function ProfesionalResenasPage() {
                             </button>
                           ) : null}
 
-                          <button
-                            type="button"
-                            disabled={actionLoading === review.id}
-                            onClick={() => void handleDelete(review.id)}
-                            className="rounded-full border border-[#FECACA] bg-white px-3 py-1.5 text-xs font-semibold text-[#B91C1C] transition hover:-translate-y-0.5 hover:shadow-sm disabled:cursor-not-allowed disabled:opacity-50"
-                          >
-                            {actionLoading === review.id ? 'Guardando...' : 'Eliminar reseña'}
-                          </button>
+                          {!review.reportedByProfessional ? (
+                            <button
+                              type="button"
+                              disabled={actionLoading === review.id}
+                              onClick={() => {
+                                setActionError(null);
+                                setActionSuccess(null);
+                                setReportingReviewId((current) =>
+                                  current === review.id ? null : review.id,
+                                );
+                                setReportReason('SPAM');
+                                setReportNote('');
+                              }}
+                              className="rounded-full border border-[#DBEAFE] bg-white px-3 py-1.5 text-xs font-semibold text-[#1D4ED8] transition hover:-translate-y-0.5 hover:shadow-sm disabled:cursor-not-allowed disabled:opacity-50"
+                            >
+                              {isReportingThisReview ? 'Cancelar reporte' : 'Reportar reseña'}
+                            </button>
+                          ) : null}
                         </div>
                       </div>
 
@@ -294,8 +303,65 @@ export default function ProfesionalResenasPage() {
                       ) : (
                         <p className="mt-3 text-xs italic text-[#94A3B8]">Sin texto, solo calificación.</p>
                       )}
+
+                      {isReportingThisReview ? (
+                        <div className="mt-4 rounded-[14px] border border-[#DBEAFE] bg-[#F8FBFF] p-4">
+                          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#64748B]">
+                            Reportar reseña
+                          </p>
+                          <p className="mt-1 text-sm text-[#475569]">
+                            Internal ops revisará el reporte. Reportar no elimina ni oculta automáticamente la reseña.
+                          </p>
+
+                          <label className="mt-3 block text-xs font-semibold uppercase tracking-[0.2em] text-[#64748B]">
+                            Motivo
+                            <select
+                              value={reportReason}
+                              onChange={(event) => setReportReason(event.target.value as ReviewReportReason)}
+                              className="mt-1.5 w-full rounded-[12px] border border-[#D9E2EC] bg-white px-3 py-2 text-sm text-[#0E2A47] outline-none transition focus:border-[#1FB6A6]"
+                            >
+                              <option value="SPAM">Spam o promoción engañosa</option>
+                              <option value="OFFENSIVE">Contenido ofensivo</option>
+                              <option value="FALSE_INFORMATION">Información falsa</option>
+                              <option value="HARASSMENT">Acoso o maltrato</option>
+                              <option value="OTHER">Otro</option>
+                            </select>
+                          </label>
+
+                          <label className="mt-3 block text-xs font-semibold uppercase tracking-[0.2em] text-[#64748B]">
+                            Nota opcional
+                            <textarea
+                              value={reportNote}
+                              onChange={(event) => setReportNote(event.target.value)}
+                              maxLength={1000}
+                              className="mt-1.5 min-h-24 w-full rounded-[12px] border border-[#D9E2EC] bg-white px-3 py-2 text-sm text-[#0E2A47] outline-none transition focus:border-[#1FB6A6]"
+                              placeholder="Explicá brevemente por qué reportás esta reseña."
+                            />
+                          </label>
+
+                          <div className="mt-3 flex flex-wrap gap-2">
+                            <button
+                              type="button"
+                              disabled={actionLoading === review.id}
+                              onClick={() => void handleReport(review.id)}
+                              className="rounded-full bg-[#0B1D2A] px-4 py-2 text-xs font-semibold text-white transition hover:-translate-y-0.5 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-60"
+                            >
+                              {actionLoading === review.id ? 'Enviando...' : 'Enviar reporte'}
+                            </button>
+                            <button
+                              type="button"
+                              disabled={actionLoading === review.id}
+                              onClick={() => setReportingReviewId(null)}
+                              className="rounded-full border border-[#E2E7EC] bg-white px-4 py-2 text-xs font-semibold text-[#475569]"
+                            >
+                              Cancelar
+                            </button>
+                          </div>
+                        </div>
+                      ) : null}
                     </div>
-                  ))}
+                    );
+                  })}
 
                   {page.totalPages > 1 ? (
                     <div className="flex items-center justify-center gap-3 pt-2">

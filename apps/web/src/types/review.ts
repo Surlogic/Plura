@@ -6,9 +6,20 @@ export type BookingReviewResponse = {
   text: string | null;
   authorDisplayName: string;
   textHiddenByProfessional: boolean;
+  reportedByProfessional: boolean;
   createdAt: string;
   updatedAt: string;
 };
+
+export type BookingReviewLookupResponse =
+  | {
+      exists: false;
+      review: null;
+    }
+  | {
+      exists: true;
+      review: BookingReviewResponse;
+    };
 
 export type ReviewEligibilityResponse = {
   eligible: boolean;
@@ -19,6 +30,29 @@ export type ReviewEligibilityResponse = {
 export type CreateBookingReviewRequest = {
   rating: number;
   text?: string | null;
+};
+
+export type ReviewReportReason =
+  | 'SPAM'
+  | 'OFFENSIVE'
+  | 'FALSE_INFORMATION'
+  | 'HARASSMENT'
+  | 'OTHER';
+
+export type CreateProfessionalReviewReportRequest = {
+  reason: ReviewReportReason;
+  note?: string | null;
+};
+
+export type BookingReviewReportResponse = {
+  id: number;
+  reviewId: number;
+  professionalId: number;
+  reason: ReviewReportReason;
+  note: string | null;
+  status: 'OPEN' | 'REVIEWED' | 'RESOLVED';
+  createdAt: string;
+  resolvedAt: string | null;
 };
 
 export type BookingReviewPage = {

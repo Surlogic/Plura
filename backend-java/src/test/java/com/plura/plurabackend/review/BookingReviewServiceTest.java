@@ -19,9 +19,15 @@ import com.plura.plurabackend.core.booking.model.BookingOperationalStatus;
 import com.plura.plurabackend.core.booking.repository.BookingRepository;
 import com.plura.plurabackend.core.review.BookingReviewService;
 import com.plura.plurabackend.core.review.ReviewNotificationIntegrationService;
+import com.plura.plurabackend.core.review.dto.BookingReviewReportResponse;
 import com.plura.plurabackend.core.review.dto.BookingReviewResponse;
 import com.plura.plurabackend.core.review.dto.CreateBookingReviewRequest;
+import com.plura.plurabackend.core.review.dto.CreateBookingReviewReportRequest;
 import com.plura.plurabackend.core.review.model.BookingReview;
+import com.plura.plurabackend.core.review.model.BookingReviewReport;
+import com.plura.plurabackend.core.review.model.BookingReviewReportReason;
+import com.plura.plurabackend.core.review.model.BookingReviewReportStatus;
+import com.plura.plurabackend.core.review.repository.BookingReviewReportRepository;
 import com.plura.plurabackend.core.review.repository.BookingReviewRepository;
 import com.plura.plurabackend.core.user.model.User;
 import com.plura.plurabackend.professional.model.ProfessionalProfile;
@@ -41,6 +47,7 @@ import org.springframework.web.server.ResponseStatusException;
 class BookingReviewServiceTest {
 
     private BookingReviewRepository bookingReviewRepository;
+    private BookingReviewReportRepository bookingReviewReportRepository;
     private BookingRepository bookingRepository;
     private ProfessionalProfileRepository professionalProfileRepository;
     private ProfessionalActorLookupGateway professionalActorLookupGateway;
@@ -50,12 +57,14 @@ class BookingReviewServiceTest {
     @BeforeEach
     void setUp() {
         bookingReviewRepository = mock(BookingReviewRepository.class);
+        bookingReviewReportRepository = mock(BookingReviewReportRepository.class);
         bookingRepository = mock(BookingRepository.class);
         professionalProfileRepository = mock(ProfessionalProfileRepository.class);
         professionalActorLookupGateway = mock(ProfessionalActorLookupGateway.class);
         reviewNotificationIntegrationService = mock(ReviewNotificationIntegrationService.class);
         service = new BookingReviewService(
             bookingReviewRepository,
+            bookingReviewReportRepository,
             bookingRepository,
             professionalProfileRepository,
             professionalActorLookupGateway,
@@ -111,6 +120,7 @@ class BookingReviewServiceTest {
         assertEquals("Excelente servicio", response.getText());
         assertEquals("Cliente Test", response.getAuthorDisplayName());
         assertFalse(response.isTextHiddenByProfessional());
+        assertFalse(response.isReportedByProfessional());
 
         verify(professionalProfileRepository).save(any(ProfessionalProfile.class));
         verify(reviewNotificationIntegrationService).notifyReviewReceived(any(), eq(booking));
@@ -237,6 +247,7 @@ class BookingReviewServiceTest {
         assertEquals(2, resp.getRating());
         assertNull(resp.getText());
         assertTrue(resp.isTextHiddenByProfessional());
+        assertFalse(resp.isReportedByProfessional());
     }
 
     @Test
@@ -409,6 +420,7 @@ class BookingReviewServiceTest {
         BookingReviewResponse resp = page.getContent().get(0);
         assertEquals("Excelente", resp.getText());
         assertFalse(resp.isTextHiddenByProfessional());
+        assertFalse(resp.isReportedByProfessional());
     }
 
     @Test
@@ -435,5 +447,113 @@ class BookingReviewServiceTest {
         assertEquals(5, response.getRating());
         assertEquals("Genial", response.getText());
         verify(professionalProfileRepository).save(any(ProfessionalProfile.class));
+    }
+
+    @Test
+    void deleteReviewUpdatesAggregates() {
+        Booking booking = makeBooking(1L, 10L, 20L, BookingOperationalStatus.COMPLETED);
+        ProfessionalProfile profile = makeProfile(20L);
+        BookingReview review = new BookingReview();
+        review.setId(100L);
+        review.setBooking(booking);
+        review.setProfessional(profile);
+
+        when(bookingRepository.findDetailedById(1L)).thenReturn(Optional.of(booking));
+        when(bookingReviewRepository.findByBooking_Id(1L)).thenReturn(Optional.of(review));
+        when(bookingReviewRepository.findRatingAggregateByProfessionalId(20L)).thenReturn(new Object[]{4.1, 3L});
+        when(professionalProfileRepository.findById(20L)).thenReturn(Optional.of(profile));
+
+        service.deleteReviewByBookingId(1L, 10L);
+
+        verify(bookingReviewRepository).delete(review);
+        verify(bookingReviewRepository).flush();
+        assertEquals(4.1, profile.getRating());
+        assertEquals(3, profile.getReviewsCount());
+    }
+
+    @Test
+    void deleteLastReviewLeavesAggregatesInZero() {
+        Booking booking = makeBooking(1L, 10L, 20L, BookingOperationalStatus.COMPLETED);
+        ProfessionalProfile profile = makeProfile(20L);
+        profile.setRating(4.8);
+        profile.setReviewsCount(1);
+
+        BookingReview review = new BookingReview();
+        review.setId(100L);
+        review.setBooking(booking);
+        review.setProfessional(profile);
+
+        when(bookingRepository.findDetailedById(1L)).thenReturn(Optional.of(booking));
+        when(bookingReviewRepository.findByBooking_Id(1L)).thenReturn(Optional.of(review));
+        when(bookingReviewRepository.findRatingAggregateByProfessionalId(20L)).thenReturn(new Object[]{0d, 0L});
+        when(professionalProfileRepository.findById(20L)).thenReturn(Optional.of(profile));
+
+        service.deleteReviewByBookingId(1L, 10L);
+
+        assertEquals(0d, profile.getRating());
+        assertEquals(0, profile.getReviewsCount());
+    }
+
+    @Test
+    void professionalCanReportOwnReview() {
+        ProfessionalProfile profile = makeProfile(20L);
+        Booking booking = new Booking();
+        booking.setId(1L);
+
+        BookingReview review = new BookingReview();
+        review.setId(100L);
+        review.setBooking(booking);
+        review.setProfessional(profile);
+
+        when(professionalActorLookupGateway.findProfessionalIdByUserId(5L)).thenReturn(Optional.of(20L));
+        when(bookingReviewRepository.findDetailedByIdAndProfessionalId(100L, 20L)).thenReturn(Optional.of(review));
+        when(bookingReviewReportRepository.existsByReview_IdAndProfessional_IdAndStatus(
+            100L, 20L, BookingReviewReportStatus.OPEN
+        )).thenReturn(false);
+        when(bookingReviewReportRepository.saveAndFlush(any(BookingReviewReport.class))).thenAnswer(invocation -> {
+            BookingReviewReport report = invocation.getArgument(0);
+            report.setId(700L);
+            report.setCreatedAt(LocalDateTime.now());
+            return report;
+        });
+
+        BookingReviewReportResponse response = service.reportReview(
+            100L,
+            5L,
+            new CreateBookingReviewReportRequest(BookingReviewReportReason.SPAM, "Spam evidente")
+        );
+
+        assertEquals(700L, response.getId());
+        assertEquals(BookingReviewReportReason.SPAM, response.getReason());
+        assertEquals(BookingReviewReportStatus.OPEN, response.getStatus());
+    }
+
+    @Test
+    void cannotCreateDuplicateOpenReportForSameReviewAndProfessional() {
+        ProfessionalProfile profile = makeProfile(20L);
+        Booking booking = new Booking();
+        booking.setId(1L);
+
+        BookingReview review = new BookingReview();
+        review.setId(100L);
+        review.setBooking(booking);
+        review.setProfessional(profile);
+
+        when(professionalActorLookupGateway.findProfessionalIdByUserId(5L)).thenReturn(Optional.of(20L));
+        when(bookingReviewRepository.findDetailedByIdAndProfessionalId(100L, 20L)).thenReturn(Optional.of(review));
+        when(bookingReviewReportRepository.existsByReview_IdAndProfessional_IdAndStatus(
+            100L, 20L, BookingReviewReportStatus.OPEN
+        )).thenReturn(true);
+
+        ResponseStatusException exception = assertThrows(ResponseStatusException.class, () ->
+            service.reportReview(
+                100L,
+                5L,
+                new CreateBookingReviewReportRequest(BookingReviewReportReason.OTHER, "Duplicado")
+            )
+        );
+
+        assertEquals(409, exception.getStatusCode().value());
+        verify(bookingReviewReportRepository, never()).saveAndFlush(any());
     }
 }

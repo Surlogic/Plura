@@ -14,6 +14,7 @@ public class BookingReviewResponse {
     private String text;
     private String authorDisplayName;
     private boolean textHiddenByProfessional;
+    private boolean reportedByProfessional;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }

@@ -206,14 +206,15 @@ public interface BookingReviewRepository extends JpaRepository<BookingReview, Lo
     @Query(
         value = """
             UPDATE professional_profile pp
-            SET rating = agg.avg_rating,
-                reviews_count = agg.review_count
+            SET rating = COALESCE(agg.avg_rating, 0),
+                reviews_count = COALESCE(agg.review_count, 0)
             FROM (
-                SELECT r.professional_id,
-                       COALESCE(AVG(r.rating), 0) AS avg_rating,
+                SELECT pp2.id AS professional_id,
+                       AVG(r.rating) AS avg_rating,
                        COUNT(r.id) AS review_count
-                FROM booking_review r
-                GROUP BY r.professional_id
+                FROM professional_profile pp2
+                LEFT JOIN booking_review r ON r.professional_id = pp2.id
+                GROUP BY pp2.id
             ) agg
             WHERE pp.id = agg.professional_id
             """,

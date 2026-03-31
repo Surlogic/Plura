@@ -128,7 +128,7 @@ Modulos relevantes:
 - `services/clientBookings.ts`: reservas y pago del cliente.
 - `services/clientBookings.ts`: reservas y pago del cliente; ahora cachea `actions` y `timeline` por booking y permite prefetch conservador del detalle para bajar waterfalls al entrar o cambiar de seleccion.
 - `services/clientFeatures.ts`: features y entitlements del plan del cliente.
-- `services/clientReviews.ts`: reseñas del cliente por booking; incluye creacion, lectura, elegibilidad y eliminacion con invalidacion de cache.
+- `services/clientReviews.ts`: reseñas del cliente por booking; incluye creacion, lectura con contrato `{ exists, review }`, elegibilidad y eliminacion con invalidacion de cache.
 - `services/cachedGet.ts`: capa de cache para GET requests reutilizable.
 - `services/pendingReservation.ts`: persistencia local de reservas pendientes para continuidad de flujo.
 - `types/clientBookingTimeline.ts` y `utils/clientBookingTimeline.ts`: contrato y formateo del historial operativo de reservas cliente.
@@ -192,7 +192,7 @@ Modulos relevantes:
 - `hooks/useProfessionalBilling.ts`
 - `services/professionalAnalytics.ts`: analytics y metricas del profesional.
 - `services/professionalMercadoPagoConnection.ts`: operaciones de conexion OAuth Mercado Pago del profesional.
-- `services/professionalReviews.ts`: gestion de reseñas recibidas por el profesional; incluye listado, ocultamiento de texto y eliminacion con invalidacion de cache.
+- `services/professionalReviews.ts`: gestion de reseñas recibidas por el profesional; incluye listado, ocultamiento de texto, reporte por incumplimiento e invalidacion tambien de `/auth/me/profesional` para mantener KPIs sincronizados.
 - `services/publicReviews.ts`: reseñas publicas para perfil publico del profesional.
 
 Lectura de producto:
@@ -232,7 +232,7 @@ Lectura de producto:
 Notas recientes:
 
 - feedback de app integrado en `/profesional/dashboard/configuracion` con formulario de rating, categoria opcional y texto libre; incluye historial paginado de feedback propio; modulo backend separado `core.feedback`
-- `/profesional/dashboard/resenas` es la pagina de gestion de reseñas del profesional: muestra stats agregados (rating, total), lista paginada de reseñas recibidas con toggle de hide/show del texto publico y opcion de eliminar reseña; el texto oculto sigue visible para el profesional con indicador visual amarillo
+- `/profesional/dashboard/resenas` es la pagina de gestion de reseñas del profesional: muestra stats agregados (rating, total), lista paginada de reseñas recibidas con toggle de hide/show del texto publico y flujo inline para reportar incumplimientos; ya no permite eliminar reseñas; el texto oculto sigue visible para el profesional con indicador visual amarillo y los KPIs se refrescan contra `ProfessionalProfileContext` despues de las mutaciones
 - `/profesional/dashboard/configuracion` ahora requiere challenge OTP por email para eliminar cuenta; advierte sobre cancelacion de suscripcion y reservas pendientes
 - `PublicReviewsList` ahora muestra un resumen visual de rating + total y una distribucion calculada sobre la muestra visible cargada, seguido por reseñas paginadas; sigue respetando ocultamiento del texto publico
 - `/profesional/pagina/[slug]` y `/profesional/[slug]` ahora renderizan `logo` y `banner` con `object-position + zoom` persistidos desde perfil del negocio, manteniendo la misma composición visual que ve el profesional al editar

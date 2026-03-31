@@ -1,6 +1,7 @@
 import api from '@/services/api';
 import { cachedGet, invalidateCachedGet } from '@/services/cachedGet';
 import type {
+  BookingReviewLookupResponse,
   BookingReviewResponse,
   CreateBookingReviewRequest,
   ReviewEligibilityResponse,
@@ -19,13 +20,12 @@ export const getReviewEligibility = async (
 
 export const getBookingReview = async (
   bookingId: string,
-): Promise<BookingReviewResponse | null> => {
-  const response = await cachedGet<BookingReviewResponse | ''>(
+): Promise<BookingReviewLookupResponse> => {
+  const response = await cachedGet<BookingReviewLookupResponse>(
     `/cliente/reservas/${bookingId}/review`,
     undefined,
     { ttlMs: 15000, staleWhileRevalidate: true },
   );
-  if (!response.data || typeof response.data === 'string') return null;
   return response.data;
 };
 

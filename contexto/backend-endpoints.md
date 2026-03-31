@@ -192,10 +192,10 @@ Prefijo: `/profesional`
 - `GET /profesional/reviews` — listado paginado de reseñas recibidas (texto completo siempre visible para el profesional, aunque este oculto publicamente)
 - `PATCH /profesional/reviews/{reviewId}/hide-text` — oculta texto de la reseña publicamente (el rating sigue visible y cuenta en el promedio)
 - `PATCH /profesional/reviews/{reviewId}/show-text` — restaura visibilidad del texto de la reseña
-- `DELETE /profesional/reviews/{reviewId}` — elimina una reseña recibida; verifica ownership del profesional, recomputa agregados
+- `POST /profesional/reviews/{reviewId}/report` — reporta una reseña recibida por incumplimiento; valida ownership del profesional, evita duplicados abiertos y no altera rating/reviewsCount
 - el backend ahora distingue tres variantes de respuesta de reseña: publica (respeta ocultamiento por profesional e internal ops), profesional (siempre ve texto), cliente (ve su propia reseña)
 - al crear una reseña se notifica automaticamente al profesional via `ReviewNotificationIntegrationService`
-- existe `recomputeAllAggregates()` para batch-update de rating y reviewsCount de todos los profesionales en una sola query nativa
+- existe `recomputeAllAggregates()` para batch-update de rating y reviewsCount de todos los profesionales en una sola query nativa, incluyendo perfiles sin reseñas que deben quedar en `0`
 
 Lectura de producto:
 
@@ -241,7 +241,7 @@ Notas:
 - `POST /cliente/reservas/{id}/payment-session`
 - `GET /cliente/reservas/{bookingId}/review-eligibility` — chequea si el cliente puede dejar reseña
 - `POST /cliente/reservas/{bookingId}/review` — crea reseña (rating obligatorio 1-5, text opcional max 2000 chars)
-- `GET /cliente/reservas/{bookingId}/review` — obtiene la reseña existente del cliente
+- `GET /cliente/reservas/{bookingId}/review` — contrato estable: devuelve `{ exists: false }` o `{ exists: true, review: ... }`
 - `DELETE /cliente/reservas/{bookingId}/review` — elimina la reseña del cliente; verifica ownership, recomputa agregados del profesional
 
 Lectura de producto:
@@ -447,7 +447,7 @@ Lectura de producto:
 Prefijo: `/internal/ops/reviews`
 
 - `GET /internal/ops/reviews` — listado paginado con filtros (professionalId, rating, hasText, textHidden, from, to)
-- `GET /internal/ops/reviews/{id}` — detalle completo de una reseña
+- `GET /internal/ops/reviews/{id}` — detalle completo de una reseña, incluyendo estado de reportes
 - `PATCH /internal/ops/reviews/{id}/hide-text` — oculta texto de una reseña (con nota opcional)
 - `PATCH /internal/ops/reviews/{id}/show-text` — restaura visibilidad del texto
 - `GET /internal/ops/reviews/analytics` — analytics de reseñas con rango de fechas opcional
@@ -456,7 +456,7 @@ Lectura de producto:
 
 - backoffice de moderacion de reseñas para internal ops
 - protegido por `X-Internal-Token`, no por sesion de usuario
-- permite moderar contenido de reseñas independientemente del profesional
+- permite moderar contenido de reseñas independientemente del profesional y detectar reseñas reportadas desde el dashboard profesional
 - analytics incluyen `findAllFiltered`, `countFiltered`, `averageRatingFiltered`, `countByRating`, `countWithText/WithoutText/TextHidden`, `topProfessionalsByVolume/ByRating` y `dailyStats`
 
 ## Paquetes backend mas importantes

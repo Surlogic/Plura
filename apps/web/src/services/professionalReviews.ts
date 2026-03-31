@@ -1,6 +1,10 @@
 import api from '@/services/api';
 import { cachedGet, invalidateCachedGet } from '@/services/cachedGet';
-import type { BookingReviewPage } from '@/types/review';
+import type {
+  BookingReviewPage,
+  BookingReviewReportResponse,
+  CreateProfessionalReviewReportRequest,
+} from '@/types/review';
 
 export const getProfessionalReviews = async (
   page = 0,
@@ -17,14 +21,24 @@ export const getProfessionalReviews = async (
 export const hideReviewText = async (reviewId: number): Promise<void> => {
   await api.patch(`/profesional/reviews/${reviewId}/hide-text`);
   invalidateCachedGet('/profesional/reviews');
+  invalidateCachedGet('/auth/me/profesional');
 };
 
 export const showReviewText = async (reviewId: number): Promise<void> => {
   await api.patch(`/profesional/reviews/${reviewId}/show-text`);
   invalidateCachedGet('/profesional/reviews');
+  invalidateCachedGet('/auth/me/profesional');
 };
 
-export const deleteProfessionalReview = async (reviewId: number): Promise<void> => {
-  await api.delete(`/profesional/reviews/${reviewId}`);
+export const reportProfessionalReview = async (
+  reviewId: number,
+  request: CreateProfessionalReviewReportRequest,
+): Promise<BookingReviewReportResponse> => {
+  const response = await api.post<BookingReviewReportResponse>(
+    `/profesional/reviews/${reviewId}/report`,
+    request,
+  );
   invalidateCachedGet('/profesional/reviews');
+  invalidateCachedGet('/auth/me/profesional');
+  return response.data;
 };

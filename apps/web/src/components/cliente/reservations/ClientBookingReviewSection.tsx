@@ -74,9 +74,9 @@ export default function ClientBookingReviewSection({ bookingId }: Props) {
       setEligibility(elig);
 
       if (elig.alreadyReviewed) {
-        const review = await getBookingReview(bookingId);
+        const lookup = await getBookingReview(bookingId);
         if (isActive && !isActive()) return;
-        setExistingReview(review);
+        setExistingReview(lookup.exists ? lookup.review : null);
       } else {
         setExistingReview(null);
       }

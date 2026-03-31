@@ -13,10 +13,14 @@ import static org.mockito.Mockito.when;
 
 import com.plura.plurabackend.core.booking.model.Booking;
 import com.plura.plurabackend.core.review.model.BookingReview;
+import com.plura.plurabackend.core.review.model.BookingReviewReport;
+import com.plura.plurabackend.core.review.model.BookingReviewReportReason;
+import com.plura.plurabackend.core.review.model.BookingReviewReportStatus;
 import com.plura.plurabackend.core.review.ops.InternalBookingReviewOpsService;
 import com.plura.plurabackend.core.review.ops.dto.InternalReviewAnalyticsResponse;
 import com.plura.plurabackend.core.review.ops.dto.InternalReviewDetailResponse;
 import com.plura.plurabackend.core.review.ops.dto.InternalReviewListItemResponse;
+import com.plura.plurabackend.core.review.repository.BookingReviewReportRepository;
 import com.plura.plurabackend.core.review.repository.BookingReviewRepository;
 import com.plura.plurabackend.core.user.model.User;
 import com.plura.plurabackend.professional.model.ProfessionalProfile;
@@ -33,6 +37,7 @@ import org.springframework.web.server.ResponseStatusException;
 class InternalBookingReviewOpsServiceTest {
 
     private BookingReviewRepository bookingReviewRepository;
+    private BookingReviewReportRepository bookingReviewReportRepository;
     private InternalBookingReviewOpsService service;
 
     private BookingReview sampleReview;
@@ -44,7 +49,8 @@ class InternalBookingReviewOpsServiceTest {
     @BeforeEach
     void setUp() {
         bookingReviewRepository = mock(BookingReviewRepository.class);
-        service = new InternalBookingReviewOpsService(bookingReviewRepository);
+        bookingReviewReportRepository = mock(BookingReviewReportRepository.class);
+        service = new InternalBookingReviewOpsService(bookingReviewRepository, bookingReviewReportRepository);
 
         clientUser = new User();
         clientUser.setId(10L);
@@ -84,6 +90,8 @@ class InternalBookingReviewOpsServiceTest {
         Page<BookingReview> page = new PageImpl<>(List.of(sampleReview), PageRequest.of(0, 20), 1);
         when(bookingReviewRepository.findAllFiltered(any(), any(), any(), any(), any(), any(), any()))
             .thenReturn(page);
+        when(bookingReviewReportRepository.findByReview_IdInOrderByCreatedAtDescIdDesc(any()))
+            .thenReturn(List.of());
 
         Page<InternalReviewListItemResponse> result = service.list(0, 20, null, null, null, null, null, null);
 
@@ -100,6 +108,8 @@ class InternalBookingReviewOpsServiceTest {
         assertEquals("Excelente servicio", item.getText());
         assertFalse(item.isTextHiddenByProfessional());
         assertFalse(item.isTextHiddenByInternalOps());
+        assertFalse(item.isReported());
+        assertEquals(0L, item.getReportCount());
     }
 
     @Test
@@ -120,6 +130,8 @@ class InternalBookingReviewOpsServiceTest {
     @Test
     void detail_returnsReviewDetail() {
         when(bookingReviewRepository.findDetailedById(1L)).thenReturn(Optional.of(sampleReview));
+        when(bookingReviewReportRepository.findByReview_IdInOrderByCreatedAtDescIdDesc(List.of(1L)))
+            .thenReturn(List.of());
 
         InternalReviewDetailResponse detail = service.detail(1L);
 
@@ -127,6 +139,7 @@ class InternalBookingReviewOpsServiceTest {
         assertEquals(4, detail.getRating());
         assertEquals("Excelente servicio", detail.getText());
         assertFalse(detail.isTextHiddenByInternalOps());
+        assertFalse(detail.isReported());
     }
 
     @Test
@@ -271,5 +284,31 @@ class InternalBookingReviewOpsServiceTest {
         ResponseStatusException ex = assertThrows(ResponseStatusException.class,
             () -> service.list(0, 20, null, null, null, null, "not-a-date", null));
         assertEquals(400, ex.getStatusCode().value());
+    }
+
+    @Test
+    void list_includesReportSummaryWhenReviewWasReported() {
+        BookingReviewReport report = new BookingReviewReport();
+        report.setId(30L);
+        report.setReview(sampleReview);
+        report.setProfessional(professionalProfile);
+        report.setReason(BookingReviewReportReason.OFFENSIVE);
+        report.setNote("Texto ofensivo");
+        report.setStatus(BookingReviewReportStatus.OPEN);
+        report.setCreatedAt(LocalDateTime.of(2026, 3, 21, 12, 0));
+
+        Page<BookingReview> page = new PageImpl<>(List.of(sampleReview), PageRequest.of(0, 20), 1);
+        when(bookingReviewRepository.findAllFiltered(any(), any(), any(), any(), any(), any(), any()))
+            .thenReturn(page);
+        when(bookingReviewReportRepository.findByReview_IdInOrderByCreatedAtDescIdDesc(any()))
+            .thenReturn(List.of(report));
+
+        Page<InternalReviewListItemResponse> result = service.list(0, 20, null, null, null, null, null, null);
+
+        InternalReviewListItemResponse item = result.getContent().get(0);
+        assertTrue(item.isReported());
+        assertEquals(1L, item.getReportCount());
+        assertNotNull(item.getLatestReport());
+        assertEquals(BookingReviewReportReason.OFFENSIVE, item.getLatestReport().getReason());
     }
 }

@@ -386,6 +386,7 @@ function ReviewsTab() {
                       <span className="text-xs text-[#CBD5E1]">{formatDate(item.createdAt)}</span>
                       {item.textHiddenByProfessional ? <span className="rounded-full bg-[#FEF3C7] px-2 py-0.5 text-[0.55rem] font-semibold text-[#92400E]">Oculto por profesional</span> : null}
                       {item.textHiddenByInternalOps ? <span className="rounded-full bg-[#FECACA] px-2 py-0.5 text-[0.55rem] font-semibold text-[#B91C1C]">Oculto por ops</span> : null}
+                      {item.reported ? <span className="rounded-full bg-[#DBEAFE] px-2 py-0.5 text-[0.55rem] font-semibold text-[#1D4ED8]">Reportada</span> : null}
                     </div>
                   </div>
                   {item.text ? (
@@ -400,6 +401,19 @@ function ReviewsTab() {
                   ) : null}
                 </div>
                 {item.text ? <p className="mt-2 text-sm text-[#475569]">{item.text}</p> : <p className="mt-2 text-xs italic text-[#94A3B8]">Solo calificacion, sin texto.</p>}
+                {item.reported && item.latestReport ? (
+                  <div className="mt-2 rounded-[12px] border border-[#DBEAFE] bg-[#F8FBFF] px-3 py-2">
+                    <p className="text-[0.65rem] font-semibold uppercase tracking-[0.18em] text-[#64748B]">
+                      Último reporte · {item.reportCount} total
+                    </p>
+                    <p className="mt-1 text-xs text-[#0E2A47]">
+                      Motivo: {item.latestReport.reason} · Estado: {item.latestReport.status}
+                    </p>
+                    {item.latestReport.note ? (
+                      <p className="mt-1 text-xs text-[#475569]">{item.latestReport.note}</p>
+                    ) : null}
+                  </div>
+                ) : null}
                 {item.internalModerationNote ? <p className="mt-1 text-[0.65rem] text-[#B91C1C]">Nota interna: {item.internalModerationNote}</p> : null}
               </div>
             );

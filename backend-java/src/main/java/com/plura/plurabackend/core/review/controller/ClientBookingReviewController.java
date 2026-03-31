@@ -2,12 +2,12 @@ package com.plura.plurabackend.core.review.controller;
 
 import com.plura.plurabackend.core.review.BookingReviewEligibilityService;
 import com.plura.plurabackend.core.review.BookingReviewService;
+import com.plura.plurabackend.core.review.dto.BookingReviewLookupResponse;
 import com.plura.plurabackend.core.review.dto.BookingReviewResponse;
 import com.plura.plurabackend.core.review.dto.CreateBookingReviewRequest;
 import com.plura.plurabackend.core.review.dto.ReviewEligibilityResponse;
 import com.plura.plurabackend.core.security.CurrentActorService;
 import jakarta.validation.Valid;
-import java.util.Map;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -60,10 +60,11 @@ public class ClientBookingReviewController {
     }
 
     @GetMapping("/{bookingId}/review")
-    public ResponseEntity<?> getReview(@PathVariable Long bookingId) {
+    public ResponseEntity<BookingReviewLookupResponse> getReview(@PathVariable Long bookingId) {
         Long clientUserId = currentActorService.currentClientUserId();
         return bookingReviewService.getReviewByBookingId(bookingId, clientUserId)
-            .<ResponseEntity<?>>map(ResponseEntity::ok)
-            .orElseGet(() -> ResponseEntity.ok(Map.of("exists", false)));
+            .map(BookingReviewLookupResponse::found)
+            .map(ResponseEntity::ok)
+            .orElseGet(() -> ResponseEntity.ok(BookingReviewLookupResponse.missing()));
     }
 }

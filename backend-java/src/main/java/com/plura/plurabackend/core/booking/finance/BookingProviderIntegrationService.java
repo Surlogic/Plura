@@ -857,7 +857,13 @@ public class BookingProviderIntegrationService {
                 } else {
                     refundTx.setStatus(PaymentTransactionStatus.PENDING);
                     updatedRefund = bookingFinanceService.markRefundRecordPendingProvider(refundRecordId, providerRefund.providerRefundId());
-                    providerOperationService.markSucceeded(operation.getId(), providerRefund.providerRefundId(), providerRefund.rawResponseJson());
+                    providerOperationService.markUncertain(
+                        operation.getId(),
+                        providerRefund.providerRefundId(),
+                        providerRefund.rawResponseJson(),
+                        "awaiting_refund_webhook",
+                        LocalDateTime.now().plusMinutes(15)
+                    );
                 }
                 paymentTransactionRepository.save(refundTx);
                 bookingFinanceService.applyRefundEvidence(booking, updatedRefund);

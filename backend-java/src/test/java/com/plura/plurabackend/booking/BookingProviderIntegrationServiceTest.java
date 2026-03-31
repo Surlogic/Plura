@@ -534,6 +534,92 @@ class BookingProviderIntegrationServiceTest {
     }
 
     @Test
+    void shouldKeepRefundOperationUnderFollowUpWhenProviderLeavesRefundPending() {
+        BookingProviderIntegrationService service = buildService();
+        Booking booking = prepaidBooking();
+
+        BookingRefundRecord refundRecord = new BookingRefundRecord();
+        refundRecord.setId("refund-pending");
+        refundRecord.setBooking(booking);
+        refundRecord.setTargetAmount(BigDecimal.valueOf(250));
+        refundRecord.setRequestedAmount(BigDecimal.valueOf(250));
+        refundRecord.setCurrency("UYU");
+        refundRecord.setReasonCode(BookingRefundReasonCode.CLIENT_CANCELLATION);
+        refundRecord.setStatus(BookingRefundStatus.PENDING_PROVIDER);
+
+        PaymentTransaction refundTx = new PaymentTransaction();
+        refundTx.setId("tx-refund-pending");
+        refundTx.setBooking(booking);
+        refundTx.setRefundRecord(refundRecord);
+        refundTx.setProfessionalId(booking.getProfessionalId());
+        refundTx.setProvider(PaymentProvider.MERCADOPAGO);
+        refundTx.setTransactionType(PaymentTransactionType.BOOKING_REFUND);
+        refundTx.setStatus(PaymentTransactionStatus.PENDING);
+        refundTx.setExternalReference("refund:" + refundRecord.getId());
+
+        PaymentTransaction chargeTx = new PaymentTransaction();
+        chargeTx.setId("tx-charge-approved");
+        chargeTx.setBooking(booking);
+        chargeTx.setProfessionalId(booking.getProfessionalId());
+        chargeTx.setProvider(PaymentProvider.MERCADOPAGO);
+        chargeTx.setProviderPaymentId("pay-1");
+        chargeTx.setTransactionType(PaymentTransactionType.BOOKING_CHARGE);
+        chargeTx.setStatus(PaymentTransactionStatus.APPROVED);
+        chargeTx.setExternalReference("booking:" + booking.getId());
+        chargeTx.setAmount(BigDecimal.valueOf(500));
+        chargeTx.setCurrency("UYU");
+
+        ProviderOperation operation = new ProviderOperation();
+        operation.setId("op-refund-pending");
+        operation.setOperationType(ProviderOperationType.BOOKING_REFUND);
+        operation.setStatus(ProviderOperationStatus.PROCESSING);
+        operation.setProvider(PaymentProvider.MERCADOPAGO);
+        operation.setBookingId(booking.getId());
+        operation.setPaymentTransactionId(refundTx.getId());
+        operation.setRefundRecordId(refundRecord.getId());
+        operation.setExternalReference(refundTx.getExternalReference());
+
+        when(providerOperationService.getRequired(operation.getId())).thenReturn(operation);
+        when(paymentTransactionRepository.findById(refundTx.getId())).thenReturn(Optional.of(refundTx));
+        when(bookingRepository.findDetailedById(booking.getId())).thenReturn(Optional.of(booking));
+        when(paymentTransactionRepository.findByBooking_IdAndTransactionTypeAndStatusIn(
+            booking.getId(),
+            PaymentTransactionType.BOOKING_CHARGE,
+            List.of(
+                PaymentTransactionStatus.APPROVED,
+                PaymentTransactionStatus.PARTIALLY_REFUNDED,
+                PaymentTransactionStatus.REFUNDED
+            )
+        )).thenReturn(List.of(chargeTx));
+        when(bookingFinanceService.findById(refundRecord.getId())).thenReturn(refundRecord);
+        when(providerClient.createRefund(any())).thenReturn(new com.plura.plurabackend.core.billing.payments.provider.ProviderRefundResult(
+            "rf-pending",
+            "pay-1",
+            "PENDING",
+            BigDecimal.valueOf(250),
+            "UYU",
+            "{\"status\":\"pending\"}"
+        ));
+        when(bookingFinanceService.markRefundRecordPendingProvider(refundRecord.getId(), "rf-pending")).thenReturn(refundRecord);
+        when(paymentTransactionRepository.save(any(PaymentTransaction.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(bookingFinanceService.applyRefundEvidence(booking, refundRecord))
+            .thenReturn(financialSummaryEntity(booking, BookingFinancialStatus.REFUND_PENDING));
+
+        service.processClaimedProviderOperation(operation.getId());
+
+        verify(providerOperationService).markUncertain(
+            eq(operation.getId()),
+            eq("rf-pending"),
+            eq("{\"status\":\"pending\"}"),
+            eq("awaiting_refund_webhook"),
+            any(LocalDateTime.class)
+        );
+        verify(providerOperationService, never()).markSucceeded(eq(operation.getId()), eq("rf-pending"), eq("{\"status\":\"pending\"}"));
+        assertEquals(PaymentTransactionStatus.PENDING, refundTx.getStatus());
+        assertEquals("rf-pending", refundTx.getProviderPaymentId());
+    }
+
+    @Test
     void shouldFailLegacyProviderOperationWithoutCallingRuntimeProvider() {
         BookingProviderIntegrationService service = buildService();
         ProviderOperation operation = new ProviderOperation();

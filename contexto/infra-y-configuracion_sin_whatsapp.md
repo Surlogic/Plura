@@ -128,6 +128,7 @@ Lectura real del backend hoy:
 - `Mercado Pago` tambien esta conectado al checkout real de reservas y refunds usando OAuth del profesional
 - ya existe storage de OAuth para cuentas Mercado Pago de profesionales en `professional_payment_provider_connection`
 - `payment_event`, `payment_transaction` y `provider_operation` ya funcionan como base de auditoria y conciliacion compartida
+- cuando un refund de reserva queda iniciado pero Mercado Pago no lo confirma en el mismo response, la `provider_operation` de tipo `BOOKING_REFUND` permanece en seguimiento (`UNCERTAIN`) hasta webhook o reconciliacion; no debe darse por exitosa solo por haber recibido un `pending`
 - el enum `PaymentProvider` mantiene compatibilidad con filas legacy `DLOCAL` solo para que lecturas historicas no rompan reservas ni mediciones
 - el runtime operativo ya no acepta `DLOCAL` como input nuevo; cualquier operacion pendiente legacy se degrada a compatibilidad o se marca como provider retirado
 - la semantica valida de pagos online actuales sigue centrada en `Mercado Pago`

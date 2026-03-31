@@ -23,6 +23,7 @@ type ReservationSummaryCardProps = {
   onEditTime: () => void;
   policyDescription: string;
   professional: PublicProfessionalPage | null;
+  requiresAuthentication: boolean;
   saveError: string | null;
   saveMessage: string | null;
   selectedDateLabel: string;
@@ -48,6 +49,7 @@ export default function ReservationSummaryCard({
   onEditTime,
   policyDescription,
   professional,
+  requiresAuthentication,
   saveError,
   saveMessage,
   selectedDateLabel,
@@ -80,6 +82,15 @@ export default function ReservationSummaryCard({
         Este es el cierre del flujo. La reserva se crea con el backend actual y conserva su estado
         operativo real.
       </p>
+
+      {requiresAuthentication ? (
+        <div className="mt-4 rounded-[20px] border border-[color:var(--accent-soft)] bg-[color:var(--surface-soft)] px-4 py-3">
+          <p className="text-sm leading-6 text-[color:var(--ink-muted)]">
+            Al tocar el botón principal se abre una pantalla de acceso para crear tu cuenta o
+            iniciar sesión sin salir de esta reserva.
+          </p>
+        </div>
+      ) : null}
 
       <div className="mt-5 overflow-hidden rounded-[24px] border border-[color:var(--border-soft)] bg-[color:var(--surface-soft)]">
         <div className="relative h-44 w-full border-b border-[color:var(--border-soft)] bg-white">

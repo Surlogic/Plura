@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/router';
 import { isAxiosError } from 'axios';
 import Footer from '@/components/shared/Footer';
+import ReservationAuthOverlay from '@/components/reservation/ReservationAuthOverlay';
 import Navbar from '@/components/shared/Navbar';
 import ReservationFlowHeader from '@/components/reservation/ReservationFlowHeader';
 import ReservationProgressSidebar from '@/components/reservation/ReservationProgressSidebar';
@@ -32,7 +33,6 @@ import {
   type WorkDayKey,
   DAYS_AHEAD,
   RESERVATION_ERROR_FALLBACK,
-  RESERVATION_LOGIN_REDIRECT,
   RESERVATION_TIMEOUT_ERROR,
   extractApiMessage,
   formatDuration,
@@ -108,6 +108,7 @@ export default function ReservationPage() {
   const [activeServiceCategory, setActiveServiceCategory] = useState('');
   const [activeStep, setActiveStep] = useState<ReservationStep>(1);
   const [isEditingServiceSelection, setIsEditingServiceSelection] = useState(false);
+  const [isAuthOverlayOpen, setIsAuthOverlayOpen] = useState(false);
 
   const professionalSlug = resolveQueryValue(router.query.profesional).trim();
   const serviceId =
@@ -228,6 +229,21 @@ export default function ReservationPage() {
   }, [calendarDays, confirmedDate]);
 
   const canSubmit = Boolean(confirmedService?.id && confirmedDate && selectedTime);
+
+  const persistPendingReservation = () => {
+    if (!professionalSlug || !confirmedService?.id || !confirmedDate || !selectedTime) {
+      return;
+    }
+
+    savePendingReservation({
+      professionalSlug,
+      serviceId: confirmedService.id,
+      date: confirmedDate,
+      time: selectedTime,
+      professionalName: professional?.fullName || undefined,
+      serviceName: confirmedService.name,
+    });
+  };
 
   useEffect(() => {
     if (serviceCategories.length === 0) {
@@ -549,41 +565,20 @@ export default function ReservationPage() {
 
   const handleCancelReservation = () => {
     clearPendingReservation();
+    setIsAuthOverlayOpen(false);
     resetMessages();
     void router.push(professionalSlug ? `/profesional/${professionalSlug}` : '/explorar');
   };
 
-  const handleConfirm = async () => {
-    if (isSaving) {
-      return;
-    }
-
+  const submitReservation = async () => {
     if (!professionalSlug || !confirmedService?.id || !confirmedDate || !selectedTime) {
       setSaveMessage(null);
       setSaveError('Completá servicio, día y horario para reservar.');
       return;
     }
 
-    if (!clientHasLoaded || clientLoading) {
-      setSaveMessage(null);
-      setSaveError('Estamos verificando tu sesión. Intentá nuevamente.');
-      return;
-    }
-
-    if (!clientProfile) {
-      savePendingReservation({
-        professionalSlug,
-        serviceId: confirmedService.id,
-        date: confirmedDate,
-        time: selectedTime,
-        professionalName: professional?.fullName || undefined,
-        serviceName: confirmedService.name,
-      });
-      void router.push(RESERVATION_LOGIN_REDIRECT);
-      return;
-    }
-
     setIsSaving(true);
+    setIsAuthOverlayOpen(false);
     setSaveError(null);
     setSaveMessage(null);
 
@@ -602,6 +597,7 @@ export default function ReservationPage() {
 
       createdBookingId = created.id;
       clearPendingReservation();
+      setIsAuthOverlayOpen(false);
 
       if (requiresCheckout) {
         const paymentSession = await createClientBookingPaymentSession(String(created.id));
@@ -656,16 +652,9 @@ export default function ReservationPage() {
       } else if (isAxiosError(error) && error.response?.status === 409) {
         setSaveError(extractApiMessage(error, 'Ese horario ya está reservado. Elegí otro.'));
       } else if (isAxiosError(error) && error.response?.status === 401) {
-        savePendingReservation({
-          professionalSlug,
-          serviceId: confirmedService.id,
-          date: confirmedDate,
-          time: selectedTime,
-          professionalName: professional?.fullName || undefined,
-          serviceName: confirmedService.name,
-        });
-        setSaveError('Necesitás iniciar sesión como cliente para reservar.');
-        void router.push(RESERVATION_LOGIN_REDIRECT);
+        persistPendingReservation();
+        setSaveError('Necesitás iniciar sesión como cliente para confirmar esta reserva.');
+        setIsAuthOverlayOpen(true);
       } else {
         setSaveError(extractApiMessage(error, RESERVATION_ERROR_FALLBACK));
       }
@@ -673,6 +662,40 @@ export default function ReservationPage() {
     } finally {
       setIsSaving(false);
     }
+  };
+
+  const handleConfirm = async () => {
+    if (isSaving) {
+      return;
+    }
+
+    if (!professionalSlug || !confirmedService?.id || !confirmedDate || !selectedTime) {
+      setSaveMessage(null);
+      setSaveError('Completá servicio, día y horario para reservar.');
+      return;
+    }
+
+    if (!clientHasLoaded || clientLoading) {
+      setSaveMessage(null);
+      setSaveError('Estamos verificando tu sesión. Intentá nuevamente.');
+      return;
+    }
+
+    if (!clientProfile) {
+      persistPendingReservation();
+      setSaveMessage(null);
+      setSaveError(null);
+      setIsAuthOverlayOpen(true);
+      return;
+    }
+
+    await submitReservation();
+  };
+
+  const handleAuthenticatedReservation = async () => {
+    setSaveMessage('Sesión lista. Estamos confirmando tu reserva...');
+    setSaveError(null);
+    await submitReservation();
   };
 
   const policyDescription = describeBookingPolicy(professional?.bookingPolicy);
@@ -782,6 +805,7 @@ export default function ReservationPage() {
                 clientHasLoaded={clientHasLoaded}
                 clientLoading={clientLoading}
                 isLoadingContext={isLoadingContext}
+                requiresAuthentication={!clientProfile}
                 isSaving={isSaving}
                 onCancel={handleCancelReservation}
                 onConfirm={handleConfirm}
@@ -811,6 +835,16 @@ export default function ReservationPage() {
           </aside>
         </section>
       </main>
+
+      <ReservationAuthOverlay
+        dateLabel={confirmedDateLabel}
+        isOpen={isAuthOverlayOpen}
+        onAuthenticated={handleAuthenticatedReservation}
+        onClose={() => setIsAuthOverlayOpen(false)}
+        professionalName={professional?.fullName}
+        serviceName={confirmedService?.name}
+        timeLabel={selectedTime}
+      />
 
       <Footer />
     </div>

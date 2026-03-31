@@ -82,7 +82,7 @@ Lectura de producto:
 - cuando una reserva prepaga genera `checkoutUrl`, tanto `/reservar` como `/cliente/reservas` abren Mercado Pago en la pestaña actual para asegurar una experiencia full-page consistente y evitar bloqueos de popup
 - `/reservar` ya no mezcla toda la operacion en una sola pantalla larga: orquesta `5` pasos reales (`confirmar servicio -> elegir dia -> elegir horario -> revisar turno -> confirmar y reservar`)
 - `/reservar` mantiene la misma creacion de reserva y el mismo checkout que antes, pero ahora no auto-selecciona el primer servicio ni el primer dia sin feedback visual
-- `/reservar` sigue siendo compatible con `pendingReservation`: si el cliente cae en login al final del flujo, al volver retoma el resumen final listo para confirmar
+- `/reservar` sigue siendo compatible con `pendingReservation`: en el paso final, si falta sesion cliente, primero abre una pantalla embebida de registro/login dentro del flujo para no sacar al usuario de la reserva; si aun asi deriva a login o registro completos, al volver retoma el resumen final listo para confirmar
 - `/reservar` tambien refleja `serviceId`, `date`, `time` y `step` en la URL con `router.replace(..., { shallow: true })` para que un refresh del navegador no rompa el progreso local del flujo
 - el paso final de `/reservar` no promete confirmacion falsa: la reserva sigue naciendo en `PENDING`; si hay pago online, la confirmacion final depende del backend y Mercado Pago
 - `/explorar` y `/profesional/pagina/[slug]` ya no fuerzan auth refresh ni favoritos en 401 cuando el cliente no tiene una sesion conocida; las features auth-only se habilitan recien con hint de sesion valida

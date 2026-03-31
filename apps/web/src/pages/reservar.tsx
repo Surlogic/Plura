@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/router';
 import { isAxiosError } from 'axios';
 import Footer from '@/components/shared/Footer';
@@ -51,6 +51,35 @@ type CalendarDay = {
 
 type ReservationStep = 1 | 2 | 3 | 4 | 5;
 
+const parseStepValue = (value: string): ReservationStep | null => {
+  const parsed = Number.parseInt(value, 10);
+  if (parsed >= 1 && parsed <= 5) {
+    return parsed as ReservationStep;
+  }
+  return null;
+};
+
+const resolveStepByState = ({
+  confirmedDate,
+  confirmedServiceId,
+  requestedStep,
+  selectedTime,
+}: {
+  confirmedDate: string | null;
+  confirmedServiceId: string | null;
+  requestedStep: ReservationStep | null;
+  selectedTime: string | null;
+}) => {
+  if (!confirmedServiceId) return 1 as ReservationStep;
+  if (!requestedStep || requestedStep <= 1) return 1 as ReservationStep;
+  if (!confirmedDate) return 2 as ReservationStep;
+  if (requestedStep === 2) return 2 as ReservationStep;
+  if (!selectedTime) return 3 as ReservationStep;
+  if (requestedStep === 3) return 3 as ReservationStep;
+  if (requestedStep === 4) return 4 as ReservationStep;
+  return 5 as ReservationStep;
+};
+
 const resolveInitialDate = (
   dateValue: string,
   calendarDays: CalendarDay[],
@@ -88,6 +117,20 @@ export default function ReservationPage() {
   const dateQuery = resolveQueryValue(router.query.date).trim();
   const timeQuery = resolveQueryValue(router.query.time).trim();
   const resumeQuery = resolveQueryValue(router.query.resume).trim();
+  const stepQuery = resolveQueryValue(router.query.step).trim();
+  const routeStateRef = useRef({
+    dateQuery: '',
+    stepQuery: '',
+    timeQuery: '',
+  });
+
+  useEffect(() => {
+    routeStateRef.current = {
+      dateQuery,
+      stepQuery,
+      timeQuery,
+    };
+  }, [dateQuery, stepQuery, timeQuery]);
 
   const calendarDays = useMemo<CalendarDay[]>(() => {
     const result: CalendarDay[] = [];
@@ -249,14 +292,17 @@ export default function ReservationPage() {
 
         const nextService = byId ?? byName ?? pendingService ?? null;
         const nextSelectedDate = resolveInitialDate(
-          dateQuery || (pendingMatchesProfessional ? pendingReservation?.date || '' : ''),
+          routeStateRef.current.dateQuery || (pendingMatchesProfessional ? pendingReservation?.date || '' : ''),
           calendarDays,
         );
-        const nextSelectedTime = timeQuery || (pendingMatchesProfessional ? pendingReservation?.time || '' : '');
+        const nextSelectedTime = routeStateRef.current.timeQuery
+          || (pendingMatchesProfessional ? pendingReservation?.time || '' : '');
 
         setSelectedServiceId(nextService?.id ?? null);
         setSelectedDate(nextSelectedDate);
         setSelectedTime(nextSelectedTime || null);
+
+        const requestedStep = parseStepValue(routeStateRef.current.stepQuery);
 
         if (resumeQuery === '1' && nextService?.id && nextSelectedDate && nextSelectedTime) {
           setConfirmedServiceId(nextService.id);
@@ -264,6 +310,24 @@ export default function ReservationPage() {
           setActiveStep(5);
           setIsEditingServiceSelection(false);
           setSaveError('Retomaste la reserva. Revisá el resumen final y confirmá para continuar.');
+        } else if (requestedStep) {
+          const restoredConfirmedServiceId = requestedStep >= 2 && nextService?.id
+            ? nextService.id
+            : null;
+          const restoredConfirmedDate = requestedStep >= 3
+            ? nextSelectedDate
+            : null;
+          const restoredStep = resolveStepByState({
+            confirmedDate: restoredConfirmedDate,
+            confirmedServiceId: restoredConfirmedServiceId,
+            requestedStep,
+            selectedTime: nextSelectedTime || null,
+          });
+
+          setConfirmedServiceId(restoredConfirmedServiceId);
+          setConfirmedDate(restoredConfirmedDate);
+          setActiveStep(restoredStep);
+          setIsEditingServiceSelection(restoredStep === 1 && !nextService);
         } else {
           setConfirmedServiceId(null);
           setConfirmedDate(null);
@@ -290,7 +354,7 @@ export default function ReservationPage() {
       .finally(() => {
         setIsLoadingContext(false);
       });
-  }, [calendarDays, professionalSlug, resumeQuery, router.isReady, serviceId, serviceNameQuery, dateQuery, timeQuery]);
+  }, [calendarDays, professionalSlug, resumeQuery, router.isReady, serviceId, serviceNameQuery, stepQuery]);
 
   useEffect(() => {
     if (!confirmedService?.id || !confirmedDate) {
@@ -305,7 +369,19 @@ export default function ReservationPage() {
       .then((response) => {
         if (isCancelled) return;
         setSlots(response);
-        setSelectedTime((current) => (current && response.includes(current) ? current : null));
+        let clearedUnavailableTime = false;
+        setSelectedTime((current) => {
+          if (current && response.includes(current)) {
+            return current;
+          }
+          if (current) {
+            clearedUnavailableTime = true;
+          }
+          return null;
+        });
+        if (clearedUnavailableTime) {
+          setSaveError('El horario elegido ya no está disponible. Elegí otro para continuar.');
+        }
       })
       .catch((error) => {
         if (isCancelled) return;
@@ -324,6 +400,58 @@ export default function ReservationPage() {
       isCancelled = true;
     };
   }, [professionalSlug, confirmedDate, confirmedService?.id]);
+
+  useEffect(() => {
+    if (!router.isReady || !professionalSlug) return;
+
+    const syncedServiceId = selectedServiceId || '';
+    const syncedDate = activeStep >= 2 ? (activeStep === 2 ? selectedDate || '' : confirmedDate || selectedDate || '') : '';
+    const syncedTime = activeStep >= 4 ? selectedTime || '' : '';
+    const nextStepValue = String(activeStep);
+    const currentStepValue = resolveQueryValue(router.query.step).trim();
+    const currentServiceId = resolveQueryValue(router.query.serviceId).trim() ||
+      resolveQueryValue(router.query.servicioId).trim();
+    const currentDate = resolveQueryValue(router.query.date).trim();
+    const currentTime = resolveQueryValue(router.query.time).trim();
+    const currentResume = resolveQueryValue(router.query.resume).trim();
+
+    if (
+      currentServiceId === syncedServiceId &&
+      currentDate === syncedDate &&
+      currentTime === syncedTime &&
+      currentStepValue === nextStepValue &&
+      currentResume !== '1'
+    ) {
+      return;
+    }
+
+    const nextQuery: Record<string, string> = {
+      profesional: professionalSlug,
+      step: nextStepValue,
+    };
+
+    if (syncedServiceId) nextQuery.serviceId = syncedServiceId;
+    if (syncedDate) nextQuery.date = syncedDate;
+    if (syncedTime) nextQuery.time = syncedTime;
+
+    void router.replace(
+      {
+        pathname: router.pathname,
+        query: nextQuery,
+      },
+      undefined,
+      { shallow: true },
+    );
+  }, [
+    activeStep,
+    confirmedDate,
+    professionalSlug,
+    router,
+    router.isReady,
+    selectedDate,
+    selectedServiceId,
+    selectedTime,
+  ]);
 
   useEffect(() => {
     if (activeStep > 1 && !confirmedService?.id) {
@@ -426,6 +554,10 @@ export default function ReservationPage() {
   };
 
   const handleConfirm = async () => {
+    if (isSaving) {
+      return;
+    }
+
     if (!professionalSlug || !confirmedService?.id || !confirmedDate || !selectedTime) {
       setSaveMessage(null);
       setSaveError('Completá servicio, día y horario para reservar.');
@@ -667,7 +799,7 @@ export default function ReservationPage() {
             ) : null}
           </div>
 
-          <aside className="xl:sticky xl:top-24">
+          <aside className="hidden xl:block xl:sticky xl:top-24">
             <ReservationProgressSidebar
               currentStep={activeStep}
               policyDescription={policyDescription}

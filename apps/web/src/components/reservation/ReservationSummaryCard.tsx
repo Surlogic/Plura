@@ -207,13 +207,13 @@ export default function ReservationSummaryCard({
       </div>
 
       <div className="mt-5 flex flex-wrap gap-3">
-        <Button type="button" variant="secondary" onClick={onEditService}>
+        <Button type="button" variant="secondary" onClick={onEditService} disabled={isSaving}>
           Editar servicio
         </Button>
-        <Button type="button" variant="secondary" onClick={onEditDay}>
+        <Button type="button" variant="secondary" onClick={onEditDay} disabled={isSaving}>
           Editar día
         </Button>
-        <Button type="button" variant="secondary" onClick={onEditTime}>
+        <Button type="button" variant="secondary" onClick={onEditTime} disabled={isSaving}>
           Editar horario
         </Button>
       </div>
@@ -242,6 +242,7 @@ export default function ReservationSummaryCard({
           size="lg"
           className="w-full justify-start text-[#B45309]"
           onClick={onCancel}
+          disabled={isSaving}
         >
           Cancelar reserva
         </Button>

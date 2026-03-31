@@ -3,6 +3,7 @@ import type {
   SearchSort,
   SearchType,
 } from '../../../../packages/shared/src/types/search';
+import type { ProfessionalMediaPresentation } from '@/types/professional';
 
 export type { SearchSort, SearchType };
 
@@ -24,6 +25,11 @@ export type SearchItem = {
   longitude?: number | null;
   priceFrom?: number | null;
   coverImageUrl?: string | null;
+  bannerUrl?: string | null;
+  bannerMedia?: ProfessionalMediaPresentation | null;
+  logoUrl?: string | null;
+  logoMedia?: ProfessionalMediaPresentation | null;
+  fallbackPhotoUrl?: string | null;
   locationText?: string | null;
 };
 

@@ -9,7 +9,11 @@ import com.plura.plurabackend.core.professional.ProfessionalHomeGateway;
 import com.plura.plurabackend.core.professional.ProfessionalHomeProfileView;
 import com.plura.plurabackend.core.professional.ProfessionalSearchIndexGateway;
 import com.plura.plurabackend.core.professional.ProfessionalSearchIndexProfileView;
+import com.plura.plurabackend.professional.dto.MediaPresentationDto;
 import com.plura.plurabackend.professional.model.ProfessionalProfile;
+import com.plura.plurabackend.professional.photo.model.BusinessPhoto;
+import com.plura.plurabackend.professional.photo.model.BusinessPhotoType;
+import com.plura.plurabackend.professional.photo.repository.BusinessPhotoRepository;
 import com.plura.plurabackend.professional.repository.ProfessionalProfileRepository;
 import com.plura.plurabackend.professional.service.model.ProfesionalService;
 import com.plura.plurabackend.professional.service.repository.ProfesionalServiceRepository;
@@ -32,13 +36,16 @@ public class ProfessionalCoreReadGatewayService implements
 
     private final ProfessionalProfileRepository professionalProfileRepository;
     private final ProfesionalServiceRepository profesionalServiceRepository;
+    private final BusinessPhotoRepository businessPhotoRepository;
 
     public ProfessionalCoreReadGatewayService(
         ProfessionalProfileRepository professionalProfileRepository,
-        ProfesionalServiceRepository profesionalServiceRepository
+        ProfesionalServiceRepository profesionalServiceRepository,
+        BusinessPhotoRepository businessPhotoRepository
     ) {
         this.professionalProfileRepository = professionalProfileRepository;
         this.profesionalServiceRepository = profesionalServiceRepository;
+        this.businessPhotoRepository = businessPhotoRepository;
     }
 
     @Override
@@ -51,22 +58,25 @@ public class ProfessionalCoreReadGatewayService implements
         if (ids == null || ids.isEmpty()) {
             return List.of();
         }
-        Map<Long, ProfessionalProfile> byId = professionalProfileRepository.findByIdInAndActiveTrueWithRelations(ids)
-            .stream()
+        List<ProfessionalProfile> profiles = professionalProfileRepository.findByIdInAndActiveTrueWithRelations(ids);
+        Map<Long, String> fallbackPhotoByProfessionalId = resolveFallbackPhotoUrls(profiles);
+        Map<Long, ProfessionalProfile> byId = profiles.stream()
             .collect(LinkedHashMap::new, (map, profile) -> map.put(profile.getId(), profile), Map::putAll);
         return ids.stream()
             .map(byId::get)
             .filter(Objects::nonNull)
-            .map(this::toHomeProfileView)
+            .map(profile -> toHomeProfileView(profile, fallbackPhotoByProfessionalId.get(profile.getId())))
             .toList();
     }
 
     @Override
     public List<ProfessionalHomeProfileView> findRecentActiveProfiles(int page, int size) {
-        return professionalProfileRepository.findByActiveTrueWithRelationsOrderByCreatedAtDesc(
-                PageRequest.of(Math.max(0, page), Math.max(1, size))
-            ).stream()
-            .map(this::toHomeProfileView)
+        List<ProfessionalProfile> profiles = professionalProfileRepository.findByActiveTrueWithRelationsOrderByCreatedAtDesc(
+            PageRequest.of(Math.max(0, page), Math.max(1, size))
+        );
+        Map<Long, String> fallbackPhotoByProfessionalId = resolveFallbackPhotoUrls(profiles);
+        return profiles.stream()
+            .map(profile -> toHomeProfileView(profile, fallbackPhotoByProfessionalId.get(profile.getId())))
             .toList();
     }
 
@@ -120,12 +130,18 @@ public class ProfessionalCoreReadGatewayService implements
         );
     }
 
-    private ProfessionalHomeProfileView toHomeProfileView(ProfessionalProfile profile) {
+    private ProfessionalHomeProfileView toHomeProfileView(
+        ProfessionalProfile profile,
+        String fallbackPhotoUrl
+    ) {
         String displayName = profile.getUser() == null ? profile.getDisplayName() : profile.getUser().getFullName();
         String slug = profile.getSlug();
         if (slug == null || slug.isBlank()) {
             slug = SlugUtils.toSlug(displayName == null ? "profesional" : displayName);
         }
+        String normalizedBannerUrl = normalizeOptionalUrl(profile.getBannerUrl());
+        String normalizedLogoUrl = normalizeOptionalUrl(profile.getLogoUrl());
+        String normalizedFallbackPhotoUrl = normalizeOptionalUrl(fallbackPhotoUrl);
         return new ProfessionalHomeProfileView(
             profile.getId(),
             slug,
@@ -133,7 +149,12 @@ public class ProfessionalCoreReadGatewayService implements
             resolvePrimaryCategoryName(profile),
             profile.getRating(),
             profile.getReviewsCount(),
-            resolveImageUrl(profile)
+            normalizedBannerUrl != null ? normalizedBannerUrl : normalizedFallbackPhotoUrl,
+            normalizedBannerUrl,
+            toMediaPresentation(profile.getBannerPositionX(), profile.getBannerPositionY(), profile.getBannerZoom()),
+            normalizedLogoUrl,
+            toMediaPresentation(profile.getLogoPositionX(), profile.getLogoPositionY(), profile.getLogoZoom()),
+            normalizedFallbackPhotoUrl
         );
     }
 
@@ -178,27 +199,76 @@ public class ProfessionalCoreReadGatewayService implements
             .orElse(profile.getRubro());
     }
 
-    private String resolveImageUrl(ProfessionalProfile profile) {
-        List<String> photos = profile.getPublicPhotos();
-        if (photos != null) {
-            for (String photo : photos) {
-                if (photo != null && !photo.isBlank()) {
-                    return photo.trim();
+    private Map<Long, String> resolveFallbackPhotoUrls(List<ProfessionalProfile> profiles) {
+        if (profiles == null || profiles.isEmpty()) {
+            return Map.of();
+        }
+
+        List<Long> professionalIds = profiles.stream()
+            .map(ProfessionalProfile::getId)
+            .filter(Objects::nonNull)
+            .toList();
+        if (professionalIds.isEmpty()) {
+            return Map.of();
+        }
+
+        Map<Long, String> resolved = new LinkedHashMap<>();
+        businessPhotoRepository.findByProfessional_IdInAndTypeInOrderByProfessional_IdAscCreatedAtAsc(
+            professionalIds,
+            List.of(BusinessPhotoType.LOCAL, BusinessPhotoType.WORK)
+        ).stream()
+            .forEach(photo -> {
+                Long professionalId = photo.getProfessional() == null ? null : photo.getProfessional().getId();
+                if (professionalId == null || resolved.containsKey(professionalId)) {
+                    return;
                 }
+                String normalized = normalizeOptionalUrl(photo.getUrl());
+                if (normalized != null) {
+                    resolved.put(professionalId, normalized);
+                }
+            });
+
+        for (ProfessionalProfile profile : profiles) {
+            Long professionalId = profile.getId();
+            if (professionalId == null || resolved.containsKey(professionalId)) {
+                continue;
+            }
+            String fallbackFromLegacyPhotos = firstValidPhoto(profile.getPublicPhotos());
+            if (fallbackFromLegacyPhotos != null) {
+                resolved.put(professionalId, fallbackFromLegacyPhotos);
             }
         }
-        Set<Category> categories = profile.getCategories();
-        if (categories == null || categories.isEmpty()) {
+
+        return resolved;
+    }
+
+    private String firstValidPhoto(List<String> photos) {
+        if (photos == null || photos.isEmpty()) {
             return null;
         }
-        return categories.stream()
-            .sorted(categoryComparator())
-            .map(Category::getImageUrl)
-            .filter(Objects::nonNull)
-            .map(String::trim)
-            .filter(url -> !url.isBlank())
-            .findFirst()
-            .orElse(null);
+        for (String photo : photos) {
+            String normalized = normalizeOptionalUrl(photo);
+            if (normalized != null) {
+                return normalized;
+            }
+        }
+        return null;
+    }
+
+    private String normalizeOptionalUrl(String value) {
+        if (value == null) {
+            return null;
+        }
+        String trimmed = value.trim();
+        return trimmed.isBlank() ? null : trimmed;
+    }
+
+    private MediaPresentationDto toMediaPresentation(Double positionX, Double positionY, Double zoom) {
+        return new MediaPresentationDto(
+            positionX != null ? positionX : 50d,
+            positionY != null ? positionY : 50d,
+            zoom != null ? zoom : 1d
+        );
     }
 
     private Comparator<Category> categoryComparator() {

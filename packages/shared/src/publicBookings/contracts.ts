@@ -77,6 +77,7 @@ export type PublicProfessionalPageBase<
   tiktok?: string | null;
   website?: string | null;
   whatsapp?: string | null;
+  photos?: string[];
   schedule?: TSchedule;
   services: PublicProfessionalServiceBase<TPaymentType>[];
   bookingPolicy?: TBookingPolicy | null;

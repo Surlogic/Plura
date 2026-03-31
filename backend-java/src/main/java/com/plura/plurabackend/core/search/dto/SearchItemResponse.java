@@ -1,5 +1,6 @@
 package com.plura.plurabackend.core.search.dto;
 
+import com.plura.plurabackend.professional.dto.MediaPresentationDto;
 import java.util.List;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -19,5 +20,10 @@ public class SearchItemResponse {
     private Double longitude;
     private Double priceFrom;
     private String coverImageUrl;
+    private String bannerUrl;
+    private MediaPresentationDto bannerMedia;
+    private String logoUrl;
+    private MediaPresentationDto logoMedia;
+    private String fallbackPhotoUrl;
     private String locationText;
 }

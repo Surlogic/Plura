@@ -1,19 +1,30 @@
 import Image from 'next/image';
 import Link from 'next/link';
-import { memo, useCallback } from 'react';
+import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import FavoriteToggleButton from '@/components/shared/FavoriteToggleButton';
+import type { ProfessionalMediaPresentation } from '@/types/professional';
+import {
+  buildPublicBusinessImageStyle,
+  buildPublicBusinessLogoStyle,
+  resolvePublicBusinessMedia,
+} from '@/utils/publicBusinessMedia';
 
 type ExploreCardProps = {
+  bannerMedia?: ProfessionalMediaPresentation | null;
+  bannerUrl?: string | null;
   id?: string;
   name: string;
   category: string;
   city?: string;
   distance?: number | null;
+  fallbackPhotoUrl?: string | null;
   rating?: string;
   reviewsCount?: number | null;
   price?: string;
   available?: boolean;
   imageUrl?: string | null;
+  logoMedia?: ProfessionalMediaPresentation | null;
+  logoUrl?: string | null;
   href?: string;
   isHighlighted?: boolean;
   priority?: boolean;
@@ -24,16 +35,21 @@ type ExploreCardProps = {
 };
 
 export default memo(function ExploreCard({
+  bannerMedia,
+  bannerUrl,
   id,
   name,
   category,
   city,
   distance,
+  fallbackPhotoUrl,
   rating,
   reviewsCount,
   price,
   available,
   imageUrl,
+  logoMedia,
+  logoUrl,
   href,
   isHighlighted = false,
   priority = false,
@@ -48,6 +64,30 @@ export default memo(function ExploreCard({
   const displayDistance = typeof distance === 'number' ? `${distance.toFixed(1)} km` : '';
   const handleMouseEnter = useCallback(() => onHoverStart?.(id), [onHoverStart, id]);
   const handleMouseLeave = useCallback(() => onHoverEnd?.(id), [onHoverEnd, id]);
+  const media = useMemo(
+    () =>
+      resolvePublicBusinessMedia({
+        bannerMedia,
+        bannerUrl,
+        fallbackPhotoUrl,
+        imageUrl,
+        logoMedia,
+        logoUrl,
+        name,
+      }),
+    [bannerMedia, bannerUrl, fallbackPhotoUrl, imageUrl, logoMedia, logoUrl, name],
+  );
+  const mediaKey = media.mainImageCandidates.map((candidate) => candidate.key).join('|');
+  const [mainImageIndex, setMainImageIndex] = useState(0);
+  const [logoFailed, setLogoFailed] = useState(false);
+
+  useEffect(() => {
+    setMainImageIndex(0);
+    setLogoFailed(false);
+  }, [mediaKey, media.logo?.src]);
+
+  const activeImage = media.mainImageCandidates[mainImageIndex] ?? null;
+  const showLogoImage = Boolean(media.logo?.src) && !logoFailed;
 
   return (
     <article
@@ -57,23 +97,57 @@ export default memo(function ExploreCard({
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
     >
-      <div className="relative h-40 w-full overflow-hidden rounded-[20px] bg-[color:var(--surface-soft)]">
+      <div className="relative h-44 w-full overflow-hidden rounded-[20px] bg-[color:var(--surface-soft)]">
         {href ? (
           <Link href={href} className="absolute inset-0 z-10" aria-label={`Ver perfil de ${name}`}>
             <span className="sr-only">Ver perfil de {name}</span>
           </Link>
         ) : null}
-        {imageUrl ? (
+        {activeImage ? (
           <Image
-            src={imageUrl}
-            alt={name}
+            src={activeImage.src}
+            alt={`Imagen de ${name}`}
             fill
             sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
             priority={priority}
             className="object-cover transition duration-500 group-hover:scale-105"
+            style={buildPublicBusinessImageStyle(activeImage)}
+            onError={() =>
+              setMainImageIndex((current) => Math.min(current + 1, media.mainImageCandidates.length))
+            }
           />
-        ) : null}
+        ) : (
+          <div className="absolute inset-0 bg-[linear-gradient(145deg,#102033_0%,#17324e_56%,rgba(56,189,150,0.28)_100%)]">
+            <div className="flex h-full w-full items-end p-4">
+              <div className="rounded-[20px] border border-white/18 bg-white/12 px-3.5 py-2.5 backdrop-blur-sm">
+                <p className="text-[0.56rem] font-semibold uppercase tracking-[0.22em] text-white/72">
+                  Marca
+                </p>
+                <p className="mt-1.5 text-xl font-semibold tracking-[0.08em] text-white">
+                  {media.initials}
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
         <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(15,23,42,0.02),rgba(15,23,42,0.5))]" />
+        <div className="absolute bottom-3 left-3 z-20">
+          <div className="relative flex h-14 w-14 items-center justify-center overflow-hidden rounded-[18px] border border-white/85 bg-white text-sm font-semibold text-[color:var(--ink)] shadow-[0_18px_36px_-28px_rgba(15,23,42,0.5)]">
+            {showLogoImage ? (
+              <Image
+                src={media.logo!.src}
+                alt={`Logo de ${name}`}
+                fill
+                sizes="56px"
+                className="object-cover"
+                style={buildPublicBusinessLogoStyle(media.logo)}
+                onError={() => setLogoFailed(true)}
+              />
+            ) : (
+              media.initials
+            )}
+          </div>
+        </div>
         {onFavoriteToggle ? (
           <div className="absolute right-3 top-3 z-20">
             <FavoriteToggleButton

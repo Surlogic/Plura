@@ -621,6 +621,11 @@ export default function ExplorarPage() {
                         price={formatPriceFrom(item.priceFrom)}
                         city={item.locationText || undefined}
                         distance={item.distanceKm}
+                        bannerUrl={item.bannerUrl}
+                        bannerMedia={item.bannerMedia}
+                        logoUrl={item.logoUrl}
+                        logoMedia={item.logoMedia}
+                        fallbackPhotoUrl={item.fallbackPhotoUrl}
                         imageUrl={item.coverImageUrl}
                         available={availableNow}
                         href={
@@ -702,6 +707,11 @@ export default function ExplorarPage() {
                       price={formatPriceFrom(item.priceFrom)}
                       city={item.locationText || undefined}
                       distance={item.distanceKm}
+                      bannerUrl={item.bannerUrl}
+                      bannerMedia={item.bannerMedia}
+                      logoUrl={item.logoUrl}
+                      logoMedia={item.logoMedia}
+                      fallbackPhotoUrl={item.fallbackPhotoUrl}
                       imageUrl={item.coverImageUrl}
                       available={availableNow}
                       href={

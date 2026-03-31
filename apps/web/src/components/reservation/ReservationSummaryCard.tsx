@@ -1,14 +1,19 @@
 import Image from 'next/image';
+import { useEffect, useMemo, useState } from 'react';
 import Badge from '@/components/ui/Badge';
 import Button from '@/components/ui/Button';
 import Card from '@/components/ui/Card';
-import { resolveAssetUrl } from '@/utils/assetUrl';
 import { formatDuration, formatPrice } from '@/utils/reservarHelpers';
 import type {
   PublicProfessionalPage,
   PublicProfessionalService,
 } from '@/services/publicBookings';
 import { getReservationPaymentDetails } from '@/components/reservation/paymentDetails';
+import {
+  buildPublicBusinessImageStyle,
+  buildPublicBusinessLogoStyle,
+  resolvePublicBusinessMedia,
+} from '@/utils/publicBusinessMedia';
 
 type ReservationSummaryCardProps = {
   canSubmit: boolean;
@@ -29,11 +34,6 @@ type ReservationSummaryCardProps = {
   selectedTime: string | null;
 };
 
-const resolveImage = (value?: string | null) => {
-  if (!value) return '';
-  return resolveAssetUrl(value) || '';
-};
-
 export default function ReservationSummaryCard({
   canSubmit,
   isLoadingContext,
@@ -52,7 +52,37 @@ export default function ReservationSummaryCard({
   selectedService,
   selectedTime,
 }: ReservationSummaryCardProps) {
-  const imageUrl = resolveImage(selectedService?.imageUrl || professional?.logoUrl);
+  const displayName = professional?.fullName || 'Profesional';
+  const media = useMemo(
+    () =>
+      resolvePublicBusinessMedia({
+        bannerMedia: professional?.bannerMedia,
+        bannerUrl: professional?.bannerUrl,
+        logoMedia: professional?.logoMedia,
+        logoUrl: professional?.logoUrl,
+        name: displayName,
+        photoUrls: professional?.photos || [],
+      }),
+    [
+      displayName,
+      professional?.bannerMedia,
+      professional?.bannerUrl,
+      professional?.logoMedia,
+      professional?.logoUrl,
+      professional?.photos,
+    ],
+  );
+  const mediaKey = media.mainImageCandidates.map((candidate) => candidate.key).join('|');
+  const [mainImageIndex, setMainImageIndex] = useState(0);
+  const [logoFailed, setLogoFailed] = useState(false);
+
+  useEffect(() => {
+    setMainImageIndex(0);
+    setLogoFailed(false);
+  }, [mediaKey, media.logo?.src]);
+
+  const activeImage = media.mainImageCandidates[mainImageIndex] ?? null;
+  const showLogoImage = Boolean(media.logo?.src) && !logoFailed;
   const paymentDetails = getReservationPaymentDetails(selectedService);
 
   return (
@@ -90,19 +120,40 @@ export default function ReservationSummaryCard({
 
       <div className="mt-5 overflow-hidden rounded-[24px] border border-[color:var(--border-soft)] bg-[color:var(--surface-soft)]">
         <div className="relative h-44 w-full border-b border-[color:var(--border-soft)] bg-white">
-          {imageUrl ? (
+          {activeImage ? (
             <Image
-              src={imageUrl}
-              alt={selectedService?.name || professional?.fullName || 'Reserva'}
+              src={activeImage.src}
+              alt={`Marca de ${displayName}`}
               fill
               sizes="(max-width: 1024px) 100vw, 360px"
               className="object-cover"
+              style={buildPublicBusinessImageStyle(activeImage)}
+              onError={() =>
+                setMainImageIndex((current) => Math.min(current + 1, media.mainImageCandidates.length))
+              }
             />
           ) : (
-            <div className="flex h-full w-full items-center justify-center text-[0.62rem] font-semibold uppercase tracking-[0.16em] text-[color:var(--ink-faint)]">
-              Sin imagen
+            <div className="flex h-full w-full items-center justify-center bg-[linear-gradient(145deg,#102033_0%,#17324e_58%,rgba(16,185,129,0.24)_100%)] text-sm font-semibold uppercase tracking-[0.2em] text-white">
+              {media.initials}
             </div>
           )}
+          <div className="absolute bottom-4 left-4">
+            <div className="relative flex h-16 w-16 items-center justify-center overflow-hidden rounded-[22px] border border-white/90 bg-white text-base font-semibold text-[color:var(--ink)] shadow-[0_20px_36px_-28px_rgba(15,23,42,0.5)]">
+              {showLogoImage ? (
+                <Image
+                  src={media.logo!.src}
+                  alt={`Logo de ${displayName}`}
+                  fill
+                  sizes="64px"
+                  className="object-cover"
+                  style={buildPublicBusinessLogoStyle(media.logo)}
+                  onError={() => setLogoFailed(true)}
+                />
+              ) : (
+                media.initials
+              )}
+            </div>
+          </div>
         </div>
 
         <div className="space-y-4 p-5">

@@ -115,7 +115,8 @@ class PublicSurfaceRatingPropagationTest {
     @Test
     void homeProfileViewPropagatesRatingAndCount() {
         ProfessionalHomeProfileView view = new ProfessionalHomeProfileView(
-            10L, "ana-garcia", "Ana Garcia", "Peluqueria", 4.2, 8, "https://cdn.test/logo.jpg"
+            10L, "ana-garcia", "Ana Garcia", "Peluqueria", 4.2, 8,
+            "https://cdn.test/logo.jpg", null, null, null, null, null
         );
 
         HomeTopProfessionalResponse response = new HomeTopProfessionalResponse(
@@ -125,7 +126,12 @@ class PublicSurfaceRatingPropagationTest {
             view.primaryCategoryName(),
             view.rating(),
             view.reviewsCount(),
-            view.imageUrl()
+            view.imageUrl(),
+            view.bannerUrl(),
+            view.bannerMedia(),
+            view.logoUrl(),
+            view.logoMedia(),
+            view.fallbackPhotoUrl()
         );
 
         assertEquals(4.2, response.getRating());
@@ -135,7 +141,8 @@ class PublicSurfaceRatingPropagationTest {
     @Test
     void homeProfileViewWithNullRating() {
         ProfessionalHomeProfileView view = new ProfessionalHomeProfileView(
-            10L, "ana-garcia", "Ana Garcia", "Peluqueria", null, 0, null
+            10L, "ana-garcia", "Ana Garcia", "Peluqueria", null, 0,
+            null, null, null, null, null, null
         );
 
         HomeTopProfessionalResponse response = new HomeTopProfessionalResponse(
@@ -145,7 +152,12 @@ class PublicSurfaceRatingPropagationTest {
             view.primaryCategoryName(),
             view.rating(),
             view.reviewsCount(),
-            view.imageUrl()
+            view.imageUrl(),
+            view.bannerUrl(),
+            view.bannerMedia(),
+            view.logoUrl(),
+            view.logoMedia(),
+            view.fallbackPhotoUrl()
         );
 
         assertNull(response.getRating());

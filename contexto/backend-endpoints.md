@@ -47,6 +47,7 @@ Lectura de producto:
 - base para home, categorias y marketplace
 - relevante para `Usuario` y para la visibilidad del plan `Free`
 - `GET /api/home` ahora se consume via SSR (`getServerSideProps`); devuelve categorias, stats (usuarios, profesionales, categorias, reservas mensuales) y top professionals rankeados por volumen de reservas confirmadas/completadas de los ultimos 3 meses
+- `GET /api/home` ahora expone branding de card publica por profesional: `bannerUrl`, `bannerMedia`, `logoUrl`, `logoMedia` y `fallbackPhotoUrl`; `imageUrl` se mantiene como compatibilidad y ya prioriza `banner` o primera foto real del negocio en vez de categorias genericas
 - estas superficies publicas ya no deben caer en `401` si el navegador arrastra un access token o cookie auth invalido/vencido; backend degrada a anonimo y responde el payload publico igual
 
 ### Auth y sesiones
@@ -126,6 +127,7 @@ El backend soporta:
 - `GET /api/search` ya aplica el filtro de fecha en el `WHERE`; no queda solo como señal de ordenamiento
 - `GET /api/search?availableNow=true` ya valida disponibilidad real contra `available_slot`; no usa la bandera agregada `has_availability_today` como aproximacion
 - cuando `/api/search` recibe `lat/lng` junto con `city`, el radio geografico prevalece y el texto de ciudad no debe vaciar resultados por mismatch de address-string
+- `GET /api/search` ahora expone `bannerUrl`, `bannerMedia`, `logoUrl`, `logoMedia` y `fallbackPhotoUrl` por resultado; `coverImageUrl` se conserva por compatibilidad pero ya prioriza `banner`, luego foto real del negocio (`LOCAL/WORK`) y solo al final imagen de servicio como fallback extremo
 
 Lectura de producto:
 

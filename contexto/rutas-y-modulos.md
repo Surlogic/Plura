@@ -60,8 +60,8 @@ Base: `apps/web/src/pages`
 
 ### Rutas publicas
 
-- `/`: home SSR con hero + buscador unificado en variante simplificada, categorias visuales, top businesses, bloque compacto de `como funciona`, ReviewsSection (testimonios publicos de feedback de app via `GET /public/app-feedback`) y CTA final; `Reservar ahora` deriva a `/explorar` y `Soy profesional` al registro existente `/profesional/auth/register`; usa `getServerSideProps` con retry client-side si SSR falla.
-- `/explorar`: buscador principal con filtros, lista y mapa.
+- `/`: home SSR con hero + buscador unificado en variante simplificada, categorias visuales, top businesses, bloque compacto de `como funciona`, ReviewsSection (testimonios publicos de feedback de app via `GET /public/app-feedback`) y CTA final; `Reservar ahora` deriva a `/explorar` y `Soy profesional` al registro existente `/profesional/auth/register`; usa `getServerSideProps` con retry client-side si SSR falla. Las cards destacadas ya usan `banner` como media principal, `logo` superpuesto y fallback a foto real del negocio antes de cualquier placeholder.
+- `/explorar`: buscador principal con filtros, lista y mapa. Las cards de resultados ya comparten la misma jerarquía visual del home (`banner + logo`, fallback a foto real del negocio, placeholder elegante si no hay assets).
 - `/explorar/[slug]`: vista detallada de exploracion por slug.
 - `/profesional/[slug]`: pagina publica del profesional.
 - `/profesional/pagina/[slug]`: variante de pagina publica.
@@ -85,6 +85,7 @@ Lectura de producto:
 - `/reservar` sigue siendo compatible con `pendingReservation`: en el paso final, si falta sesion cliente, primero abre una pantalla embebida de registro/login dentro del flujo para no sacar al usuario de la reserva; ese overlay reutiliza tambien Google y Apple; si aun asi deriva a login, registro o `complete-phone` completos, al volver retoma el resumen final listo para confirmar
 - `/reservar` tambien refleja `serviceId`, `date`, `time` y `step` en la URL con `router.replace(..., { shallow: true })` para que un refresh del navegador no rompa el progreso local del flujo
 - `/reservar` no debe bloquear el CTA final cuando el visitante es anonimo y no existe una sesion cliente conocida; en ese caso abre directo el acceso embebido del paso final
+- `/reservar` ya alinea la identidad visual del negocio con el perfil publico: header y resumen final priorizan branding del profesional (`banner`/foto del negocio + `logo`) y dejan la imagen de servicio solo en superficies centradas en el servicio
 - el `Navbar` compartido de rutas publicas (`/`, `/explorar`, `/profesional/pagina/[slug]`, `/profesional/[slug]`, `/reservar`) ya no muestra un pill `Cargando...` por bootstrap de auth: mientras el perfil se hidrata, degrada visualmente a la variante publica y luego promueve al estado real si encuentra sesion valida
 - el paso final de `/reservar` no promete confirmacion falsa: la reserva sigue naciendo en `PENDING`; si hay pago online, la confirmacion final depende del backend y Mercado Pago
 - `/explorar` y `/profesional/pagina/[slug]` ya no fuerzan auth refresh ni favoritos en 401 cuando el cliente no tiene una sesion conocida; las features auth-only se habilitan recien con hint de sesion valida
@@ -241,6 +242,7 @@ Notas recientes:
 - `/profesional/dashboard/configuracion` ahora requiere challenge OTP por email para eliminar cuenta; advierte sobre cancelacion de suscripcion y reservas pendientes
 - `PublicReviewsList` ahora muestra un resumen visual de rating + total y una distribucion calculada sobre la muestra visible cargada, seguido por reseñas paginadas; sigue respetando ocultamiento del texto publico
 - `/profesional/pagina/[slug]` y `/profesional/[slug]` ahora renderizan `logo` y `banner` con `object-position + zoom` persistidos desde perfil del negocio, manteniendo la misma composición visual que ve el profesional al editar
+- `apps/web/src/utils/publicBusinessMedia.ts`: presenter compartido para cards y superficies publicas; resuelve prioridad visual `banner -> foto real del negocio -> legacy image -> service image` (solo fallback extremo), deduplica URLs y reaplica `logo/bannerMedia` en web
 
 Huecos relevantes contra el objetivo:
 

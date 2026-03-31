@@ -11,6 +11,7 @@ import com.plura.plurabackend.core.home.dto.HomeStatsResponse;
 import com.plura.plurabackend.core.home.dto.HomeTopProfessionalResponse;
 import com.plura.plurabackend.core.professional.ProfessionalHomeGateway;
 import com.plura.plurabackend.core.professional.ProfessionalHomeProfileView;
+import com.plura.plurabackend.core.storage.ImageStorageService;
 import com.plura.plurabackend.core.user.model.User;
 import com.plura.plurabackend.core.user.model.UserRole;
 import com.plura.plurabackend.core.user.repository.UserRepository;
@@ -44,6 +45,7 @@ public class HomeService {
     private final ProfessionalHomeGateway professionalHomeGateway;
     private final CategoryRepository categoryRepository;
     private final BookingRepository bookingRepository;
+    private final ImageStorageService imageStorageService;
     private final ZoneId appZoneId;
 
     public HomeService(
@@ -51,12 +53,14 @@ public class HomeService {
         ProfessionalHomeGateway professionalHomeGateway,
         CategoryRepository categoryRepository,
         BookingRepository bookingRepository,
+        ImageStorageService imageStorageService,
         @Value("${app.timezone:America/Montevideo}") String appTimezone
     ) {
         this.userRepository = userRepository;
         this.professionalHomeGateway = professionalHomeGateway;
         this.categoryRepository = categoryRepository;
         this.bookingRepository = bookingRepository;
+        this.imageStorageService = imageStorageService;
         this.appZoneId = ZoneId.of(appTimezone);
     }
 
@@ -150,8 +154,20 @@ public class HomeService {
             profile.primaryCategoryName(),
             profile.rating(),
             profile.reviewsCount(),
-            profile.imageUrl()
+            resolvePublicUrl(profile.imageUrl()),
+            resolvePublicUrl(profile.bannerUrl()),
+            profile.bannerMedia(),
+            resolvePublicUrl(profile.logoUrl()),
+            profile.logoMedia(),
+            resolvePublicUrl(profile.fallbackPhotoUrl())
         );
+    }
+
+    private String resolvePublicUrl(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        return imageStorageService.resolvePublicUrl(value);
     }
 
     private CategoryResponse mapCategory(Category category) {

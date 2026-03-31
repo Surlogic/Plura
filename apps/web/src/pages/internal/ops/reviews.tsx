@@ -2,30 +2,16 @@ import { useCallback, useEffect, useState } from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
 import {
-  fetchFeedbackList,
-  fetchFeedbackAnalytics,
-  archiveFeedback,
-  unarchiveFeedback,
+  fetchReviewList,
+  fetchReviewAnalytics,
+  hideReviewTextOps,
+  showReviewTextOps,
 } from '@/services/internalOps';
 import type {
-  InternalFeedbackListItem,
-  InternalFeedbackListPage,
-  InternalFeedbackAnalytics,
+  InternalReviewAnalytics,
+  InternalReviewListItem,
+  InternalReviewListPage,
 } from '@/services/internalOps';
-
-const CATEGORY_LABELS: Record<string, string> = {
-  UX: 'Experiencia de uso',
-  BUG: 'Error o bug',
-  PAYMENTS: 'Pagos',
-  BOOKING: 'Reservas',
-  DISCOVERY: 'Busqueda',
-  OTHER: 'Otro',
-};
-
-const ROLE_LABELS: Record<string, string> = {
-  CLIENT: 'Cliente',
-  PROFESSIONAL: 'Profesional',
-};
 
 const formatDate = (iso: string) => {
   try {
@@ -135,17 +121,17 @@ function StatCard({ label, value }: { label: string; value: string | number }) {
   );
 }
 
-export default function InternalFeedbackPage() {
+export default function InternalOpsReviewsPage() {
   const [configured, setConfigured] = useState(false);
-  const [page, setPage] = useState<InternalFeedbackListPage | null>(null);
-  const [analytics, setAnalytics] = useState<InternalFeedbackAnalytics | null>(null);
+  const [page, setPage] = useState<InternalReviewListPage | null>(null);
+  const [analytics, setAnalytics] = useState<InternalReviewAnalytics | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(0);
-  const [filterRole, setFilterRole] = useState('');
-  const [filterCategory, setFilterCategory] = useState('');
+  const [actionLoading, setActionLoading] = useState<number | null>(null);
   const [filterRating, setFilterRating] = useState('');
-  const [filterStatus, setFilterStatus] = useState('');
+  const [filterHasText, setFilterHasText] = useState('');
+  const [filterTextHidden, setFilterTextHidden] = useState('');
   const [filterFrom, setFilterFrom] = useState('');
   const [filterTo, setFilterTo] = useState('');
 
@@ -162,17 +148,16 @@ export default function InternalFeedbackPage() {
     setError(null);
     try {
       const [listResult, analyticsResult] = await Promise.all([
-        fetchFeedbackList({
+        fetchReviewList({
           page: pageNum,
           size: 20,
-          authorRole: filterRole || undefined,
-          category: filterCategory || undefined,
-          rating: filterRating || undefined,
-          status: filterStatus || undefined,
+          rating: filterRating ? Number(filterRating) : undefined,
+          hasText: filterHasText === '' ? undefined : filterHasText === 'true',
+          textHidden: filterTextHidden === '' ? undefined : filterTextHidden === 'true',
           from: filterFrom || undefined,
           to: filterTo || undefined,
         }),
-        fetchFeedbackAnalytics(filterFrom || undefined, filterTo || undefined),
+        fetchReviewAnalytics(filterFrom || undefined, filterTo || undefined),
       ]);
       setPage(listResult);
       setAnalytics(analyticsResult);
@@ -182,47 +167,58 @@ export default function InternalFeedbackPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [filterRole, filterCategory, filterRating, filterStatus, filterFrom, filterTo]);
+  }, [filterRating, filterHasText, filterTextHidden, filterFrom, filterTo]);
 
   useEffect(() => {
     if (!configured) return;
     void load(0);
   }, [configured, load]);
 
-  const handleArchiveToggle = async (id: number, currentStatus: string) => {
+  const handleHideText = async (id: number) => {
+    setActionLoading(id);
     try {
-      if (currentStatus === 'ARCHIVED') {
-        await unarchiveFeedback(id);
-      } else {
-        await archiveFeedback(id);
-      }
+      await hideReviewTextOps(id);
       await load(currentPage);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Error al actualizar.');
+      setError(e instanceof Error ? e.message : 'Error.');
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleShowText = async (id: number) => {
+    setActionLoading(id);
+    try {
+      await showReviewTextOps(id);
+      await load(currentPage);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Error.');
+    } finally {
+      setActionLoading(null);
     }
   };
 
   return (
     <>
       <Head>
-        <title>Feedback app | Plura Ops</title>
+        <title>Moderación de reseñas | Plura Ops</title>
         <meta name="robots" content="noindex,nofollow" />
       </Head>
       <div className="min-h-screen bg-[#F8FAFC] px-4 py-8">
         <div className="mx-auto max-w-5xl space-y-6">
           <div className="flex items-center justify-between gap-3">
             <div>
-              <h1 className="text-2xl font-semibold text-[#0E2A47]">Feedback de app</h1>
+              <h1 className="text-2xl font-semibold text-[#0E2A47]">Moderación de reseñas</h1>
               <p className="text-sm text-[#64748B]">
-                Panel interno exclusivo para feedback sobre el producto.
+                Superficie interna dedicada a reseñas públicas y reportes.
               </p>
             </div>
             <div className="flex items-center gap-3">
               <Link
-                href="/internal/ops/reviews"
+                href="/internal/feedback"
                 className="rounded-full border border-[#E2E7EC] bg-white px-4 py-2 text-xs font-semibold text-[#475569] transition hover:-translate-y-0.5 hover:shadow-sm"
               >
-                Ir a reseñas
+                Ir a feedback app
               </Link>
               {configured ? (
                 <button
@@ -253,19 +249,10 @@ export default function InternalFeedbackPage() {
               {analytics ? (
                 <div className="space-y-4">
                   <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-                    <StatCard label="Total" value={analytics.totalFeedbacks} />
+                    <StatCard label="Total resenas" value={analytics.totalReviews} />
                     <StatCard label="Rating promedio" value={analytics.averageRating != null ? analytics.averageRating.toFixed(2) : '—'} />
-                    {Object.entries(analytics.countByAuthorRole).map(([role, count]) => (
-                      <StatCard key={role} label={ROLE_LABELS[role] ?? role} value={count} />
-                    ))}
-                  </div>
-                  <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-                    {Object.entries(analytics.countByCategory).map(([cat, count]) => (
-                      <div key={cat} className="rounded-[14px] border border-[#E2E7EC] bg-white px-3 py-2">
-                        <p className="text-[0.6rem] uppercase tracking-[0.2em] text-[#94A3B8]">{CATEGORY_LABELS[cat] ?? cat}</p>
-                        <p className="mt-0.5 text-lg font-semibold text-[#0E2A47]">{count}</p>
-                      </div>
-                    ))}
+                    <StatCard label="Con texto" value={analytics.withText} />
+                    <StatCard label="Texto oculto" value={analytics.textHidden} />
                   </div>
                   <div className="flex flex-wrap gap-2">
                     {Object.entries(analytics.countByRating).sort(([a], [b]) => Number(a) - Number(b)).map(([star, count]) => (
@@ -275,58 +262,93 @@ export default function InternalFeedbackPage() {
                       </div>
                     ))}
                   </div>
+                  {analytics.topByVolume.length > 0 ? (
+                    <div className="rounded-[16px] border border-[#E2E7EC] bg-white p-4">
+                      <p className="text-[0.6rem] uppercase tracking-[0.25em] text-[#94A3B8]">Top profesionales por volumen</p>
+                      <div className="mt-2 space-y-1">
+                        {analytics.topByVolume.slice(0, 5).map((p) => (
+                          <div key={p.professionalId} className="flex items-center justify-between text-xs">
+                            <span className="font-semibold text-[#0E2A47]">{p.name}</span>
+                            <span className="text-[#64748B]">{p.reviewCount} resenas · ★ {p.averageRating.toFixed(1)}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ) : null}
                 </div>
               ) : null}
 
               <div className="flex flex-wrap gap-2">
-                <select value={filterRole} onChange={(e) => setFilterRole(e.target.value)} className={selectClass}>
-                  <option value="">Todos los roles</option>
-                  <option value="CLIENT">Cliente</option>
-                  <option value="PROFESSIONAL">Profesional</option>
-                </select>
-                <select value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)} className={selectClass}>
-                  <option value="">Todas las categorias</option>
-                  {Object.entries(CATEGORY_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-                </select>
                 <select value={filterRating} onChange={(e) => setFilterRating(e.target.value)} className={selectClass}>
                   <option value="">Todos los ratings</option>
                   {[1, 2, 3, 4, 5].map((r) => <option key={r} value={r}>{'★'.repeat(r)}</option>)}
                 </select>
-                <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} className={selectClass}>
-                  <option value="">Todos los estados</option>
-                  <option value="ACTIVE">Activo</option>
-                  <option value="ARCHIVED">Archivado</option>
+                <select value={filterHasText} onChange={(e) => setFilterHasText(e.target.value)} className={selectClass}>
+                  <option value="">Con/sin texto</option>
+                  <option value="true">Con texto</option>
+                  <option value="false">Sin texto</option>
+                </select>
+                <select value={filterTextHidden} onChange={(e) => setFilterTextHidden(e.target.value)} className={selectClass}>
+                  <option value="">Visibilidad</option>
+                  <option value="true">Texto oculto</option>
+                  <option value="false">Texto visible</option>
                 </select>
                 <input type="date" value={filterFrom} onChange={(e) => setFilterFrom(e.target.value)} className={inputClass} />
                 <input type="date" value={filterTo} onChange={(e) => setFilterTo(e.target.value)} className={inputClass} />
                 <button type="button" onClick={() => load(0)} className="h-9 rounded-full bg-[#0B1D2A] px-4 text-xs font-semibold text-white">Filtrar</button>
               </div>
 
-              {isLoading && !page ? <p className="text-sm text-[#64748B]">Cargando...</p> : !page || page.empty ? <p className="text-sm text-[#64748B]">Sin resultados.</p> : (
+              {isLoading && !page ? <p className="text-sm text-[#64748B]">Cargando...</p> : !page || page.empty ? <p className="text-sm text-[#64748B]">Sin resenas.</p> : (
                 <div className="space-y-3">
-                  {page.content.map((item: InternalFeedbackListItem) => (
-                    <div key={item.id} className={`rounded-[16px] border bg-white p-4 ${item.status === 'ARCHIVED' ? 'border-[#FDE68A] bg-[#FFFBEB]' : 'border-[#E2E7EC]'}`}>
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="space-y-1">
-                          <div className="flex items-center gap-2">
-                            <span className="text-sm font-semibold text-[#0E2A47]">{item.authorName}</span>
-                            <span className="rounded-full bg-[#F1F5F9] px-2 py-0.5 text-[0.6rem] font-semibold text-[#64748B]">{ROLE_LABELS[item.authorRole] ?? item.authorRole}</span>
-                            {item.status === 'ARCHIVED' ? <span className="rounded-full bg-[#FEF3C7] px-2 py-0.5 text-[0.6rem] font-semibold text-[#92400E]">Archivado</span> : null}
+                  {page.content.map((item: InternalReviewListItem) => {
+                    const anyHidden = item.textHiddenByProfessional || item.textHiddenByInternalOps;
+                    return (
+                      <div key={item.id} className={`rounded-[16px] border bg-white p-4 ${anyHidden ? 'border-[#FDE68A] bg-[#FFFBEB]' : 'border-[#E2E7EC]'}`}>
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm font-semibold text-[#0E2A47]">{item.clientName}</span>
+                              <span className="text-xs text-[#94A3B8]">→</span>
+                              <span className="text-sm text-[#0E2A47]">{item.professionalName}</span>
+                              <span className="text-xs text-[#CBD5E1]">#{item.bookingId}</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm text-[#F59E0B]">{'★'.repeat(item.rating)}<span className="text-[#CBD5E1]">{'★'.repeat(5 - item.rating)}</span></span>
+                              <span className="text-xs text-[#CBD5E1]">{formatDate(item.createdAt)}</span>
+                              {item.textHiddenByProfessional ? <span className="rounded-full bg-[#FEF3C7] px-2 py-0.5 text-[0.55rem] font-semibold text-[#92400E]">Oculto por profesional</span> : null}
+                              {item.textHiddenByInternalOps ? <span className="rounded-full bg-[#FECACA] px-2 py-0.5 text-[0.55rem] font-semibold text-[#B91C1C]">Oculto por ops</span> : null}
+                              {item.reported ? <span className="rounded-full bg-[#DBEAFE] px-2 py-0.5 text-[0.55rem] font-semibold text-[#1D4ED8]">Reportada</span> : null}
+                            </div>
                           </div>
-                          <div className="flex items-center gap-2">
-                            <span className="text-sm text-[#F59E0B]">{'★'.repeat(item.rating)}</span>
-                            {item.category ? <span className="text-xs text-[#94A3B8]">{CATEGORY_LABELS[item.category] ?? item.category}</span> : null}
-                            <span className="text-xs text-[#CBD5E1]">{formatDate(item.createdAt)}</span>
-                          </div>
+                          {item.text ? (
+                            <button
+                              type="button"
+                              disabled={actionLoading === item.id}
+                              onClick={() => item.textHiddenByInternalOps ? handleShowText(item.id) : handleHideText(item.id)}
+                              className="shrink-0 rounded-full border border-[#E2E7EC] px-3 py-1 text-xs font-semibold text-[#475569] transition hover:-translate-y-0.5 hover:shadow-sm disabled:cursor-not-allowed disabled:opacity-50"
+                            >
+                              {actionLoading === item.id ? 'Guardando...' : item.textHiddenByInternalOps ? 'Mostrar texto' : 'Ocultar texto'}
+                            </button>
+                          ) : null}
                         </div>
-                        <button type="button" onClick={() => handleArchiveToggle(item.id, item.status)} className="shrink-0 rounded-full border border-[#E2E7EC] px-3 py-1 text-xs font-semibold text-[#475569] transition hover:-translate-y-0.5 hover:shadow-sm">
-                          {item.status === 'ARCHIVED' ? 'Desarchivar' : 'Archivar'}
-                        </button>
+                        {item.text ? <p className="mt-2 text-sm text-[#475569]">{item.text}</p> : <p className="mt-2 text-xs italic text-[#94A3B8]">Solo calificacion, sin texto.</p>}
+                        {item.reported && item.latestReport ? (
+                          <div className="mt-2 rounded-[12px] border border-[#DBEAFE] bg-[#F8FBFF] px-3 py-2">
+                            <p className="text-[0.65rem] font-semibold uppercase tracking-[0.18em] text-[#64748B]">
+                              Último reporte · {item.reportCount} total
+                            </p>
+                            <p className="mt-1 text-xs text-[#0E2A47]">
+                              Motivo: {item.latestReport.reason} · Estado: {item.latestReport.status}
+                            </p>
+                            {item.latestReport.note ? (
+                              <p className="mt-1 text-xs text-[#475569]">{item.latestReport.note}</p>
+                            ) : null}
+                          </div>
+                        ) : null}
+                        {item.internalModerationNote ? <p className="mt-1 text-[0.65rem] text-[#B91C1C]">Nota interna: {item.internalModerationNote}</p> : null}
                       </div>
-                      {item.text ? <p className="mt-2 text-sm text-[#475569]">{item.text}</p> : null}
-                      {item.contextSource ? <p className="mt-1 text-[0.65rem] text-[#CBD5E1]">Desde: {item.contextSource}</p> : null}
-                    </div>
-                  ))}
+                    );
+                  })}
                   <Pagination page={page} isLoading={isLoading} onPageChange={(p) => load(p)} />
                 </div>
               )}

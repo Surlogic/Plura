@@ -247,12 +247,14 @@ Huecos relevantes contra el objetivo:
 
 ### Rutas internas de operaciones
 
-- `/internal/feedback`: panel operativo de feedback interno de app con listado filtrable, analytics y archivo/desarchivo; protegido por token interno configurable desde localStorage, no por sesion de usuario; `<meta name="robots" content="noindex,nofollow" />`
+- `/internal/feedback`: panel operativo exclusivo para feedback interno de app con listado filtrable, analytics y archivo/desarchivo; protegido por token interno configurable desde localStorage, no por sesion de usuario; `<meta name="robots" content="noindex,nofollow" />`
+- `/internal/ops/reviews`: superficie interna dedicada a moderacion de reseñas publicas y reportes; lista paginada, analytics, badges de reportes y acciones de hide/show del texto; protegida por el mismo `X-Internal-Token`
 
 Modulos relevantes:
 
 - `services/internalOps.ts`: cliente HTTP con `X-Internal-Token` y URL base configurables desde localStorage
-- `pages/internal/feedback.tsx`: pagina completa con configuracion, analytics, filtros y tabla de feedback
+- `pages/internal/feedback.tsx`: pagina completa con configuracion, analytics, filtros y tabla de feedback de app; enlaza a la superficie separada de reseñas
+- `pages/internal/ops/reviews.tsx`: pagina completa de moderacion de reseñas para internal ops; consume `/internal/ops/reviews*`, muestra reportes y mantiene hide/show del texto
 
 ### Modulos transversales web
 

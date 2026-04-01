@@ -631,6 +631,7 @@ public class BookingProviderIntegrationService {
             ProviderRefundResult providerRefund = client.createRefund(
                 new ProviderRefundRequest(
                     chargeTransaction.getProviderPaymentId(),
+                    booking.getProfessionalId(),
                     refundRecord.getId(),
                     refundRecord.getTargetAmount(),
                     refundRecord.getCurrency(),

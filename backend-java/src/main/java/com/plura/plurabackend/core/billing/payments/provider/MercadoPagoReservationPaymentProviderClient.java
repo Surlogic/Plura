@@ -153,13 +153,10 @@ public class MercadoPagoReservationPaymentProviderClient implements PaymentProvi
 
     @Override
     public ProviderRefundResult createRefund(ProviderRefundRequest request) {
-        Long professionalId = parseLong(extractBookingId(request.refundReference()));
-        if (professionalId == null) {
-            // refundReference es refund:{id}, el profesional se resuelve desde el charge original via BookingProviderIntegrationService.
-            professionalId = null;
-        }
         throwIfBlank(request.providerPaymentId(), "providerPaymentId es obligatorio para refund");
+        Long professionalId = request.professionalId();
         JsonNode payment = sendPlatformRequest(
+            professionalId,
             request.providerPaymentId(),
             HttpMethod.POST,
             billingProperties.getMercadopago().getReservationRefundPath().replace("{id}", request.providerPaymentId()),
@@ -212,29 +209,32 @@ public class MercadoPagoReservationPaymentProviderClient implements PaymentProvi
     }
 
     private JsonNode sendPlatformRequest(
+        Long professionalId,
         String providerPaymentId,
         HttpMethod method,
         String path,
         Object body,
         String failureMessage
     ) {
-        JsonNode payment = sendRequest(
-            billingProperties.getMercadopago().getReservations().getPlatformAccessToken(),
-            HttpMethod.GET,
-            billingProperties.getMercadopago().getReservationPaymentStatusPath().replace("{id}", providerPaymentId),
-            null,
-            null,
-            "No se pudo consultar el pago original en Mercado Pago"
-        );
-        Long professionalId = parseLong(firstNonBlank(
-            textValue(payment.at("/metadata"), "professionalId"),
-            extractProfessionalId(textValue(payment, "external_reference"))
-        ));
         if (professionalId == null) {
-            throw new ResponseStatusException(
-                HttpStatus.BAD_GATEWAY,
-                "Mercado Pago no devolvio professionalId para el pago original"
+            JsonNode payment = sendRequest(
+                billingProperties.getMercadopago().getReservations().getPlatformAccessToken(),
+                HttpMethod.GET,
+                billingProperties.getMercadopago().getReservationPaymentStatusPath().replace("{id}", providerPaymentId),
+                null,
+                null,
+                "No se pudo consultar el pago original en Mercado Pago"
             );
+            professionalId = parseLong(firstNonBlank(
+                textValue(payment.at("/metadata"), "professionalId"),
+                extractProfessionalId(textValue(payment, "external_reference"))
+            ));
+            if (professionalId == null) {
+                throw new ResponseStatusException(
+                    HttpStatus.BAD_GATEWAY,
+                    "Mercado Pago no devolvio professionalId para el pago original"
+                );
+            }
         }
         ProfessionalPaymentProviderConnectionService.MercadoPagoConnectionAccess access =
             connectionService.resolveMercadoPagoAccessForProfessional(professionalId);

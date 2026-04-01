@@ -59,6 +59,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
@@ -607,6 +608,10 @@ class BookingProviderIntegrationServiceTest {
 
         service.processClaimedProviderOperation(operation.getId());
 
+        ArgumentCaptor<com.plura.plurabackend.core.billing.payments.provider.ProviderRefundRequest> refundRequestCaptor =
+            ArgumentCaptor.forClass(com.plura.plurabackend.core.billing.payments.provider.ProviderRefundRequest.class);
+        verify(providerClient).createRefund(refundRequestCaptor.capture());
+        assertEquals(booking.getProfessionalId(), refundRequestCaptor.getValue().professionalId());
         verify(providerOperationService).markUncertain(
             eq(operation.getId()),
             eq("rf-pending"),

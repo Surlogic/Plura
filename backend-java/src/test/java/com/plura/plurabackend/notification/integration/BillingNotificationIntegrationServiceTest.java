@@ -89,6 +89,7 @@ class BillingNotificationIntegrationServiceTest {
         verify(notificationService).record(captor.capture());
         assertEquals(NotificationEventType.PAYMENT_REFUNDED, captor.getValue().eventType());
         assertTrue(captor.getValue().dedupeKey().endsWith("REFUND_PARTIAL"));
+        assertTrue(String.valueOf(captor.getValue().payload().get("refundTimingHint")).contains("Mercado Pago"));
     }
 
     @Test

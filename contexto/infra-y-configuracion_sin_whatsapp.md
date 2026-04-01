@@ -131,6 +131,7 @@ Lectura real del backend hoy:
 - cuando un refund de reserva queda iniciado pero Mercado Pago no lo confirma en el mismo response, la `provider_operation` de tipo `BOOKING_REFUND` permanece en seguimiento (`UNCERTAIN`) hasta webhook o reconciliacion; no debe darse por exitosa solo por haber recibido un `pending`
 - al despachar refunds de reservas, backend resuelve la cuenta OAuth del profesional con el `professionalId` propio del booking/charge; ya no depende de que Mercado Pago devuelva ese dato otra vez al consultar el pago original
 - si SMTP esta operativo, ese estado `refund pendiente` tambien dispara email transaccional para cliente y profesional con texto de acreditacion sujeto a tiempos de Mercado Pago y del emisor
+- si el refund queda completado sin pasar por webhook posterior, el backend ahora igual emite `PAYMENT_REFUNDED` y despacha email transaccional con la misma leyenda de acreditacion
 - el enum `PaymentProvider` mantiene compatibilidad con filas legacy `DLOCAL` solo para que lecturas historicas no rompan reservas ni mediciones
 - el runtime operativo ya no acepta `DLOCAL` como input nuevo; cualquier operacion pendiente legacy se degrada a compatibilidad o se marca como provider retirado
 - la semantica valida de pagos online actuales sigue centrada en `Mercado Pago`

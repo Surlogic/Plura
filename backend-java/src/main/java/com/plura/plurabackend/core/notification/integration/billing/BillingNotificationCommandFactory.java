@@ -86,6 +86,7 @@ public class BillingNotificationCommandFactory {
         String sourceAction
     ) {
         Map<String, Object> payload = basePayload(booking, transaction, event, sourceAction);
+        payload.put("refundTimingHint", "La devolución se acreditará según los tiempos de Mercado Pago y del emisor del medio de pago.");
         return buildCommand(
             NotificationEventType.PAYMENT_REFUNDED,
             booking,

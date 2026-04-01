@@ -850,6 +850,12 @@ public class BookingProviderIntegrationService {
                     refundTx.setApprovedAt(LocalDateTime.now());
                     updatedRefund = bookingFinanceService.markRefundRecordCompleted(refundRecordId, providerRefund.providerRefundId());
                     providerOperationService.markSucceeded(operation.getId(), providerRefund.providerRefundId(), providerRefund.rawResponseJson());
+                    billingNotificationIntegrationService.recordPaymentRefunded(
+                        booking,
+                        refundTx,
+                        null,
+                        "refund_dispatch_succeeded"
+                    );
                 } else if (isRefundFailure(providerRefund.status())) {
                     refundTx.setStatus(PaymentTransactionStatus.FAILED);
                     refundTx.setFailedAt(LocalDateTime.now());

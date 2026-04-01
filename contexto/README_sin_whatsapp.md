@@ -193,6 +193,7 @@ Notas operativas recientes:
   si una reserva prepaga se cancela fuera de la ventana de no devolucion segun la policy snapshot, backend genera el refund correspondiente y deja trazabilidad en finanzas;
   si Mercado Pago responde que el refund quedo iniciado pero todavia no final, la operacion no se considera cerrada: queda bajo seguimiento en `provider_operation` hasta webhook o reconciliacion;
   cuando ese refund queda iniciado pero pendiente, backend emite notificacion in-app y email transaccional a cliente y profesional aclarando que la acreditacion depende de los tiempos de Mercado Pago y del emisor;
+  si el refund queda completado en el mismo dispatch, backend tambien emite `PAYMENT_REFUNDED` sin esperar un webhook extra y el email incluye la misma aclaracion de tiempos de acreditacion;
   mientras la reserva siga `PENDING` o `CONFIRMED`, el horario queda bloqueado y no puede coexistir otra reserva en ese mismo tramo;
   si la reserva se cancela o se reagenda, el slot anterior se libera y la disponibilidad publica se recalcula enseguida para ese dia;
   una reserva `CONFIRMED` puede pasar a `COMPLETED` manualmente desde `/profesional/dashboard/reservas` o via `POST /profesional/reservas/{id}/complete` solo cuando ya termino el turno completo (`booking.endDateTime <= now`, incluyendo post-buffer);

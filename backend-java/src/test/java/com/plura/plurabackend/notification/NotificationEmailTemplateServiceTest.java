@@ -110,6 +110,24 @@ class NotificationEmailTemplateServiceTest {
         assertTrue(message.textBody().contains("Acreditación:"));
     }
 
+    @Test
+    void shouldBuildRefundedTemplateWithTimingNoticeForClient() {
+        NotificationEmailMessage message = templateService.buildMessage(
+            buildDispatch(
+                NotificationEventType.PAYMENT_REFUNDED,
+                "client_payment_refunded",
+                null,
+                NotificationRecipientType.CLIENT
+            )
+        );
+
+        assertEquals("client_payment_refunded", message.templateKey());
+        assertTrue(message.htmlBody().contains("Mercado Pago"));
+        assertTrue(message.htmlBody().contains("Acreditación:</strong>"));
+        assertTrue(message.textBody().contains("Mercado Pago"));
+        assertTrue(message.textBody().contains("Acreditación:"));
+    }
+
     private static Stream<Arguments> supportedEventTypes() {
         return Stream.of(
             Arguments.of(NotificationEventType.BOOKING_CREATED, "professional_booking_created", "Nueva reserva en Plura", "Nueva reserva"),

@@ -147,8 +147,8 @@ public class NotificationEmailTemplateService {
                 ? "Iniciamos la devolución asociada a tu reserva para " + serviceName + ". La acreditación depende de los tiempos de Mercado Pago y del emisor."
                 : "Se inició una devolución asociada a " + serviceName + ". La acreditación depende de los tiempos de Mercado Pago y del emisor.";
             case PAYMENT_REFUNDED -> clientRecipient
-                ? "Se registró un reembolso asociado a tu reserva para " + serviceName + "."
-                : "Se registró un reembolso asociado a " + serviceName + ".";
+                ? "Se registró un reembolso asociado a tu reserva para " + serviceName + ". La acreditación final depende de los tiempos de Mercado Pago y del emisor."
+                : "Se registró un reembolso asociado a " + serviceName + ". La acreditación final depende de los tiempos de Mercado Pago y del emisor.";
             default -> throw unsupportedTemplate(eventType);
         };
     }
@@ -196,7 +196,7 @@ public class NotificationEmailTemplateService {
                     : "",
                 escapeHtml(amount),
                 escapeHtml(providerStatus),
-                eventType == NotificationEventType.PAYMENT_REFUND_PENDING
+                (eventType == NotificationEventType.PAYMENT_REFUND_PENDING || eventType == NotificationEventType.PAYMENT_REFUNDED)
                     ? "<p style=\"margin:0 0 8px 0;\"><strong>Acreditación:</strong> " +
                         escapeHtml(firstNonBlank(stringValue(payload.get("refundTimingHint")), "Según tiempos de Mercado Pago y del emisor.")) + "</p>"
                     : "",
@@ -233,7 +233,8 @@ public class NotificationEmailTemplateService {
                     + professionalLine
                     + "\nMonto: " + amount
                     + "\nEstado proveedor: " + firstNonBlank(providerStatus, "No disponible")
-                    + (event.getEventType() == NotificationEventType.PAYMENT_REFUND_PENDING
+                    + ((event.getEventType() == NotificationEventType.PAYMENT_REFUND_PENDING
+                        || event.getEventType() == NotificationEventType.PAYMENT_REFUNDED)
                         ? "\nAcreditación: " + firstNonBlank(stringValue(payload.get("refundTimingHint")), "Según tiempos de Mercado Pago y del emisor.")
                         : "")
                     + "\nServicio: " + serviceName;

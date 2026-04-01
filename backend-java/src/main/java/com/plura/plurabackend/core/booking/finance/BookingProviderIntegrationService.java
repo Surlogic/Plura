@@ -858,6 +858,12 @@ public class BookingProviderIntegrationService {
                 } else {
                     refundTx.setStatus(PaymentTransactionStatus.PENDING);
                     updatedRefund = bookingFinanceService.markRefundRecordPendingProvider(refundRecordId, providerRefund.providerRefundId());
+                    billingNotificationIntegrationService.recordPaymentRefundPending(
+                        booking,
+                        refundTx,
+                        null,
+                        "refund_dispatch_pending"
+                    );
                     providerOperationService.markUncertain(
                         operation.getId(),
                         providerRefund.providerRefundId(),

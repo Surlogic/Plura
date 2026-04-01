@@ -119,7 +119,7 @@ Modulos relevantes:
 
 - `components/cliente`: shell y sidebar del area cliente.
 - `components/cliente/notifications`: campana en navbar cliente, dropdown preview e inbox FE-C2 con toolbar, lista, items y acciones de lectura.
-- `components/cliente/reservations`: timeline e historial sobrio dentro del panel de detalle de la reserva seleccionada.
+- `components/cliente/reservations`: timeline e historial sobrio dentro del panel de detalle de la reserva seleccionada; ya etiqueta tambien `PAYMENT_REFUND_PENDING` como reembolso en proceso.
 - `context/ClientNotificationsContext.tsx`: token de refresh mas estado compartido del unread count para deduplicar requests entre campana e inbox sin cambiar la UX visible.
 - `context/ClientProfileContext.tsx`: carga `GET /auth/me/cliente`.
 - `hooks/useClientBookingTimeline.ts`: carga `GET /cliente/reservas/{bookingId}/timeline` con estados `loading / empty / error`.
@@ -179,7 +179,7 @@ Lectura de producto:
 Modulos relevantes:
 
 - `components/profesional`: UI publica y dashboard.
-- `components/profesional/notifications`: campana en sidebar, dropdown FE-1 e inbox FE-2 con toolbar, lista, items y acciones de lectura.
+- `components/profesional/notifications`: campana en sidebar, dropdown FE-1 e inbox FE-2 con toolbar, lista, items y acciones de lectura; ya reconocen `PAYMENT_REFUND_PENDING` como reembolso en proceso.
 - `components/profesional/reservations`: timeline operativo dentro del panel de detalle de la reserva seleccionada.
 - `context/ProfessionalNotificationsContext.tsx`: token de refresh mas estado compartido del unread count para sincronizar inbox, dropdown y contador sin duplicar requests.
 - `context/ProfessionalProfileContext.tsx`: carga `/auth/me/profesional`.

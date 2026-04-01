@@ -7,6 +7,7 @@ export type ProfessionalNotificationEventType =
   | 'BOOKING_NO_SHOW'
   | 'PAYMENT_APPROVED'
   | 'PAYMENT_FAILED'
+  | 'PAYMENT_REFUND_PENDING'
   | 'PAYMENT_REFUNDED'
   | (string & {});
 

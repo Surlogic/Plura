@@ -107,6 +107,7 @@ public class NotificationEmailTemplateService {
             case BOOKING_NO_SHOW -> "Reserva marcada como no-show";
             case PAYMENT_APPROVED -> "Pago aprobado";
             case PAYMENT_FAILED -> "Pago fallido";
+            case PAYMENT_REFUND_PENDING -> "Reembolso en proceso";
             case PAYMENT_REFUNDED -> "Reembolso registrado";
             default -> throw unsupportedTemplate(eventType);
         };
@@ -142,6 +143,9 @@ public class NotificationEmailTemplateService {
             case PAYMENT_FAILED -> clientRecipient
                 ? "No pudimos aprobar el pago asociado a tu reserva para " + serviceName + "."
                 : "Falló un pago asociado a " + serviceName + ".";
+            case PAYMENT_REFUND_PENDING -> clientRecipient
+                ? "Iniciamos la devolución asociada a tu reserva para " + serviceName + ". La acreditación depende de los tiempos de Mercado Pago y del emisor."
+                : "Se inició una devolución asociada a " + serviceName + ". La acreditación depende de los tiempos de Mercado Pago y del emisor.";
             case PAYMENT_REFUNDED -> clientRecipient
                 ? "Se registró un reembolso asociado a tu reserva para " + serviceName + "."
                 : "Se registró un reembolso asociado a " + serviceName + ".";
@@ -178,11 +182,12 @@ public class NotificationEmailTemplateService {
                 escapeHtml(startDateTime),
                 escapeHtml(timezone)
             );
-            case PAYMENT_APPROVED, PAYMENT_FAILED, PAYMENT_REFUNDED -> """
+            case PAYMENT_APPROVED, PAYMENT_FAILED, PAYMENT_REFUND_PENDING, PAYMENT_REFUNDED -> """
                 <p style="margin:0 0 8px 0;"><strong>Reserva:</strong> %s</p>
                 %s
                 <p style="margin:0 0 8px 0;"><strong>Monto:</strong> %s</p>
                 <p style="margin:0 0 8px 0;"><strong>Estado proveedor:</strong> %s</p>
+                %s
                 <p style="margin:0;"><strong>Servicio:</strong> %s</p>
                 """.formatted(
                 escapeHtml(bookingId),
@@ -191,6 +196,10 @@ public class NotificationEmailTemplateService {
                     : "",
                 escapeHtml(amount),
                 escapeHtml(providerStatus),
+                eventType == NotificationEventType.PAYMENT_REFUND_PENDING
+                    ? "<p style=\"margin:0 0 8px 0;\"><strong>Acreditación:</strong> " +
+                        escapeHtml(firstNonBlank(stringValue(payload.get("refundTimingHint")), "Según tiempos de Mercado Pago y del emisor.")) + "</p>"
+                    : "",
                 escapeHtml(safeServiceName(payload))
             );
             default -> throw unsupportedTemplate(eventType);
@@ -219,11 +228,14 @@ public class NotificationEmailTemplateService {
                     + professionalLine
                     + "\nInicio: " + firstNonBlank(startDateTime, "No disponible")
                     + "\nZona horaria: " + firstNonBlank(timezone, "No disponible");
-            case PAYMENT_APPROVED, PAYMENT_FAILED, PAYMENT_REFUNDED ->
+            case PAYMENT_APPROVED, PAYMENT_FAILED, PAYMENT_REFUND_PENDING, PAYMENT_REFUNDED ->
                 "Reserva: " + bookingId
                     + professionalLine
                     + "\nMonto: " + amount
                     + "\nEstado proveedor: " + firstNonBlank(providerStatus, "No disponible")
+                    + (event.getEventType() == NotificationEventType.PAYMENT_REFUND_PENDING
+                        ? "\nAcreditación: " + firstNonBlank(stringValue(payload.get("refundTimingHint")), "Según tiempos de Mercado Pago y del emisor.")
+                        : "")
                     + "\nServicio: " + serviceName;
             default -> throw unsupportedTemplate(event.getEventType());
         };
@@ -262,6 +274,7 @@ public class NotificationEmailTemplateService {
             case BOOKING_NO_SHOW -> "Reserva marcada como no-show";
             case PAYMENT_APPROVED -> "Pago aprobado";
             case PAYMENT_FAILED -> "Pago fallido";
+            case PAYMENT_REFUND_PENDING -> "Reembolso en proceso";
             case PAYMENT_REFUNDED -> "Reembolso registrado";
             default -> throw unsupportedTemplate(eventType);
         };
@@ -280,6 +293,7 @@ public class NotificationEmailTemplateService {
                 BOOKING_NO_SHOW,
                 PAYMENT_APPROVED,
                 PAYMENT_FAILED,
+                PAYMENT_REFUND_PENDING,
                 PAYMENT_REFUNDED -> {
                 return;
             }

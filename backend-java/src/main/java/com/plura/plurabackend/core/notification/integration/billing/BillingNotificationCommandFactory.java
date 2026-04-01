@@ -113,6 +113,36 @@ public class BillingNotificationCommandFactory {
         );
     }
 
+    public NotificationRecordCommand buildPaymentRefundPending(
+        Booking booking,
+        PaymentTransaction transaction,
+        ParsedWebhookEvent event,
+        ProfessionalNotificationRecipient recipient,
+        String sourceAction
+    ) {
+        Map<String, Object> payload = basePayload(booking, transaction, event, sourceAction);
+        payload.put("refundTimingHint", "La devolución se acreditará según los tiempos de Mercado Pago y del emisor del medio de pago.");
+        return buildCommand(
+            NotificationEventType.PAYMENT_REFUND_PENDING,
+            booking,
+            transaction,
+            event,
+            recipient,
+            sourceAction,
+            dedupeKey(NotificationEventType.PAYMENT_REFUND_PENDING, booking, recipient, transaction, null),
+            payload,
+            new NotificationInAppProjectionCommand(
+                "Reembolso en proceso",
+                "Se inició una devolución asociada a la reserva de " + serviceLabel(booking) + ". La acreditación depende de Mercado Pago.",
+                NotificationSeverity.INFO,
+                "PAYMENT",
+                actionUrl(booking),
+                "Ver reserva"
+            ),
+            emailProjection(recipient, "professional_payment_refund_pending", "Reembolso en proceso", payload)
+        );
+    }
+
     private NotificationRecordCommand buildCommand(
         NotificationEventType eventType,
         Booking booking,
@@ -227,7 +257,8 @@ public class BillingNotificationCommandFactory {
         PaymentTransaction transaction,
         ParsedWebhookEvent event
     ) {
-        if (eventType == NotificationEventType.PAYMENT_REFUNDED && event != null && event.eventTime() != null) {
+        if ((eventType == NotificationEventType.PAYMENT_REFUNDED || eventType == NotificationEventType.PAYMENT_REFUND_PENDING)
+            && event != null && event.eventTime() != null) {
             return event.eventTime();
         }
         if (transaction == null) {

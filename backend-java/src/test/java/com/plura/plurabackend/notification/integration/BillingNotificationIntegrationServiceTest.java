@@ -92,6 +92,41 @@ class BillingNotificationIntegrationServiceTest {
     }
 
     @Test
+    void paymentRefundPendingAlsoEmitsClientNotification() {
+        NotificationService notificationService = Mockito.mock(NotificationService.class);
+        ProfessionalNotificationRecipientGateway professionalRecipientGateway = Mockito.mock(ProfessionalNotificationRecipientGateway.class);
+        ClientNotificationRecipientGateway clientRecipientGateway = Mockito.mock(ClientNotificationRecipientGateway.class);
+        when(notificationService.record(any())).thenReturn(new NotificationRegistrationResult("evt-3", "uuid-3", true));
+        when(professionalRecipientGateway.findNotificationRecipientByProfessionalId(30L)).thenReturn(
+            Optional.of(new ProfessionalNotificationRecipient(30L, "pro@test.com", "Pro Uno"))
+        );
+        when(clientRecipientGateway.findNotificationRecipientByUserId(50L)).thenReturn(
+            Optional.of(new ClientNotificationRecipient(50L, "client@test.com", "Cliente Uno"))
+        );
+
+        BillingNotificationIntegrationService service = new BillingNotificationIntegrationService(
+            notificationService,
+            new BillingNotificationCommandFactory(),
+            new ClientBillingNotificationCommandFactory(),
+            professionalRecipientGateway,
+            clientRecipientGateway
+        );
+
+        Booking booking = booking();
+        User user = new User();
+        user.setId(50L);
+        booking.setUser(user);
+
+        service.recordPaymentRefundPending(booking, transaction(), null, "refund_dispatch_pending");
+
+        ArgumentCaptor<NotificationRecordCommand> captor = ArgumentCaptor.forClass(NotificationRecordCommand.class);
+        verify(notificationService, times(2)).record(captor.capture());
+        assertEquals(NotificationEventType.PAYMENT_REFUND_PENDING, captor.getAllValues().get(0).eventType());
+        assertEquals(NotificationEventType.PAYMENT_REFUND_PENDING, captor.getAllValues().get(1).eventType());
+        assertTrue(String.valueOf(captor.getAllValues().get(1).payload().get("refundTimingHint")).contains("Mercado Pago"));
+    }
+
+    @Test
     void paymentApprovedAlsoEmitsClientNotificationWhenBookingHasClientUser() {
         NotificationService notificationService = Mockito.mock(NotificationService.class);
         ProfessionalNotificationRecipientGateway professionalRecipientGateway = Mockito.mock(ProfessionalNotificationRecipientGateway.class);

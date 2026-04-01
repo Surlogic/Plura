@@ -98,6 +98,26 @@ public class BillingNotificationIntegrationService {
         }
     }
 
+    public void recordPaymentRefundPending(Booking booking, PaymentTransaction transaction, ParsedWebhookEvent event, String sourceAction) {
+        recordProfessional(billingNotificationCommandFactory.buildPaymentRefundPending(
+            booking,
+            transaction,
+            event,
+            resolveProfessionalRecipient(booking, transaction),
+            sourceAction
+        ));
+        ClientNotificationRecipient clientRecipient = resolveClientRecipient(booking, transaction);
+        if (clientRecipient != null) {
+            recordClient(clientBillingNotificationCommandFactory.buildPaymentRefundPending(
+                booking,
+                transaction,
+                event,
+                clientRecipient,
+                sourceAction
+            ));
+        }
+    }
+
     private ProfessionalNotificationRecipient resolveProfessionalRecipient(Booking booking, PaymentTransaction transaction) {
         Long professionalId = booking != null && booking.getProfessionalId() != null
             ? booking.getProfessionalId()

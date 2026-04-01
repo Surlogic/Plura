@@ -100,6 +100,8 @@ export const getProfessionalBookingTimelineSummary = (
       return 'El cobro asociado fue aprobado.';
     case 'PAYMENT_FAILED':
       return 'El cobro asociado registró un fallo.';
+    case 'PAYMENT_REFUND_PENDING':
+      return 'La devolución fue iniciada y quedó pendiente de acreditación del proveedor.';
     case 'PAYMENT_REFUNDED':
       return 'Se registró un reembolso vinculado a esta reserva.';
     default:

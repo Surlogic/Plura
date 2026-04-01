@@ -132,7 +132,9 @@ public class MercadoPagoReservationPaymentProviderClient implements PaymentProvi
                 normalizeCurrency(request.expectedCurrency()),
                 professionalId,
                 null,
-                request.providerPaymentId()
+                request.providerPaymentId(),
+                null,
+                null
             );
         }
 
@@ -147,7 +149,9 @@ public class MercadoPagoReservationPaymentProviderClient implements PaymentProvi
                 extractProfessionalId(textValue(payment, "external_reference"))
             )),
             null,
-            textValue(payment, "id")
+            textValue(payment, "id"),
+            textValue(payment, "payment_type_id"),
+            textValue(payment, "payment_method_id")
         );
     }
 

@@ -165,6 +165,7 @@ public class NotificationEmailTemplateService {
         String amount = amountLabel(payload);
         String providerStatus = firstNonBlank(stringValue(payload.get("providerStatus")), "No disponible");
         String professionalDisplayName = firstNonBlank(stringValue(payload.get("professionalDisplayName")), null);
+        String refundPaymentMethodLabel = firstNonBlank(stringValue(payload.get("refundPaymentMethodLabel")), null);
         boolean clientRecipient = recipientType == NotificationRecipientType.CLIENT;
         return switch (eventType) {
             case BOOKING_CREATED, BOOKING_CONFIRMED, BOOKING_CANCELLED, BOOKING_RESCHEDULED, BOOKING_COMPLETED, BOOKING_NO_SHOW -> """
@@ -188,6 +189,7 @@ public class NotificationEmailTemplateService {
                 <p style="margin:0 0 8px 0;"><strong>Monto:</strong> %s</p>
                 <p style="margin:0 0 8px 0;"><strong>Estado proveedor:</strong> %s</p>
                 %s
+                %s
                 <p style="margin:0;"><strong>Servicio:</strong> %s</p>
                 """.formatted(
                 escapeHtml(bookingId),
@@ -196,6 +198,10 @@ public class NotificationEmailTemplateService {
                     : "",
                 escapeHtml(amount),
                 escapeHtml(providerStatus),
+                (eventType == NotificationEventType.PAYMENT_REFUND_PENDING || eventType == NotificationEventType.PAYMENT_REFUNDED)
+                    && refundPaymentMethodLabel != null
+                    ? "<p style=\"margin:0 0 8px 0;\"><strong>Medio de pago:</strong> " + escapeHtml(refundPaymentMethodLabel) + "</p>"
+                    : "",
                 (eventType == NotificationEventType.PAYMENT_REFUND_PENDING || eventType == NotificationEventType.PAYMENT_REFUNDED)
                     ? "<p style=\"margin:0 0 8px 0;\"><strong>Acreditación:</strong> " +
                         escapeHtml(firstNonBlank(stringValue(payload.get("refundTimingHint")), "Según tiempos de Mercado Pago y del emisor.")) + "</p>"
@@ -218,6 +224,7 @@ public class NotificationEmailTemplateService {
         String amount = amountLabel(payload);
         String providerStatus = stringValue(payload.get("providerStatus"));
         String professionalDisplayName = stringValue(payload.get("professionalDisplayName"));
+        String refundPaymentMethodLabel = stringValue(payload.get("refundPaymentMethodLabel"));
         String professionalLine = recipientType == NotificationRecipientType.CLIENT && !isBlank(professionalDisplayName)
             ? "\nProfesional: " + professionalDisplayName
             : "";
@@ -233,6 +240,11 @@ public class NotificationEmailTemplateService {
                     + professionalLine
                     + "\nMonto: " + amount
                     + "\nEstado proveedor: " + firstNonBlank(providerStatus, "No disponible")
+                    + ((event.getEventType() == NotificationEventType.PAYMENT_REFUND_PENDING
+                        || event.getEventType() == NotificationEventType.PAYMENT_REFUNDED)
+                        && !isBlank(refundPaymentMethodLabel)
+                        ? "\nMedio de pago: " + refundPaymentMethodLabel
+                        : "")
                     + ((event.getEventType() == NotificationEventType.PAYMENT_REFUND_PENDING
                         || event.getEventType() == NotificationEventType.PAYMENT_REFUNDED)
                         ? "\nAcreditación: " + firstNonBlank(stringValue(payload.get("refundTimingHint")), "Según tiempos de Mercado Pago y del emisor.")

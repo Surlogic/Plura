@@ -192,8 +192,10 @@ Notas operativas recientes:
   si requiere pago online, el backend confirma automaticamente al acreditar el webhook de Mercado Pago;
   si una reserva prepaga se cancela fuera de la ventana de no devolucion segun la policy snapshot, backend genera el refund correspondiente y deja trazabilidad en finanzas;
   si Mercado Pago responde que el refund quedo iniciado pero todavia no final, la operacion no se considera cerrada: queda bajo seguimiento en `provider_operation` hasta webhook o reconciliacion;
-  cuando ese refund queda iniciado pero pendiente, backend emite notificacion in-app y email transaccional solo al cliente aclarando que la acreditacion depende de los tiempos de Mercado Pago y del emisor;
-  si el refund queda completado en el mismo dispatch, backend tambien emite `PAYMENT_REFUNDED` solo para el cliente sin esperar un webhook extra, con la misma aclaracion de tiempos de acreditacion;
+  cuando ese refund queda iniciado pero pendiente, backend emite notificacion in-app y email transaccional solo al cliente con texto segun el medio de pago detectado;
+  si Mercado Pago devuelve `account_money`, el mensaje avisa acreditacion inmediata o dentro del mismo dia;
+  si detecta tarjeta, el mensaje cita la referencia oficial de 7 a 20 dias habiles y muestra una ventana conservadora un poco mas amplia para no prometer de mas;
+  si el refund queda completado en el mismo dispatch, backend tambien emite `PAYMENT_REFUNDED` solo para el cliente sin esperar un webhook extra, reutilizando esa misma logica de estimacion;
   mientras la reserva siga `PENDING` o `CONFIRMED`, el horario queda bloqueado y no puede coexistir otra reserva en ese mismo tramo;
   si la reserva se cancela o se reagenda, el slot anterior se libera y la disponibilidad publica se recalcula enseguida para ese dia;
   una reserva `CONFIRMED` puede pasar a `COMPLETED` manualmente desde `/profesional/dashboard/reservas` o via `POST /profesional/reservas/{id}/complete` solo cuando ya termino el turno completo (`booking.endDateTime <= now`, incluyendo post-buffer);

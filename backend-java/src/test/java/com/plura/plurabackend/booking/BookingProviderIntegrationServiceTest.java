@@ -146,7 +146,9 @@ class BookingProviderIntegrationServiceTest {
             "UYU",
             booking.getProfessionalId(),
             null,
-            null
+            null,
+            "debit_card",
+            "visa"
         ));
         when(bookingProfessionalPlanGateway.allowsOnlinePayments(booking.getProfessionalId())).thenReturn(true);
         when(bookingFinanceService.ensureInitializedWithEvidence(booking))
@@ -393,7 +395,9 @@ class BookingProviderIntegrationServiceTest {
             "UYU",
             booking.getProfessionalId(),
             null,
-            "mp-pay-1"
+            "mp-pay-1",
+            "debit_card",
+            "visa"
         ));
         when(paymentTransactionRepository.save(any(PaymentTransaction.class)))
             .thenAnswer(invocation -> invocation.getArgument(0));

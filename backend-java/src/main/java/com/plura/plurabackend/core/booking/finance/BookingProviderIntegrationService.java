@@ -1168,6 +1168,8 @@ public class BookingProviderIntegrationService {
         verificationPayload.put("status", verification.status());
         verificationPayload.put("amount", verification.amount());
         verificationPayload.put("currency", verification.currency());
+        verificationPayload.put("paymentTypeId", verification.paymentTypeId());
+        verificationPayload.put("paymentMethodId", verification.paymentMethodId());
         String checkoutUrl = extractCheckoutUrl(pendingCharge);
         if (checkoutUrl != null && !checkoutUrl.isBlank()) {
             verificationPayload.put("checkoutUrl", checkoutUrl);

@@ -429,6 +429,8 @@ public class BillingWebhookService {
         copyIfPresent(root, safe, "external_id");
         copyIfPresent(root, safe, "subscription_id");
         copyIfPresent(root, safe, "payment_id");
+        copyIfPresent(root, safe, "payment_type_id");
+        copyIfPresent(root, safe, "payment_method_id");
 
         JsonNode dataId = root.at("/data/id");
         if (!dataId.isMissingNode() && !dataId.isNull()) {

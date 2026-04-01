@@ -105,8 +105,12 @@ class NotificationEmailTemplateServiceTest {
 
         assertEquals("client_payment_refund_pending", message.templateKey());
         assertTrue(message.htmlBody().contains("Mercado Pago"));
+        assertTrue(message.htmlBody().contains("Medio de pago:</strong> Tarjeta de débito"));
+        assertTrue(message.htmlBody().contains("30 de marzo"));
+        assertTrue(message.htmlBody().contains("17 de abril"));
         assertTrue(message.htmlBody().contains("Acreditación:</strong>"));
         assertTrue(message.textBody().contains("Mercado Pago"));
+        assertTrue(message.textBody().contains("Medio de pago: Tarjeta de débito"));
         assertTrue(message.textBody().contains("Acreditación:"));
     }
 
@@ -123,8 +127,12 @@ class NotificationEmailTemplateServiceTest {
 
         assertEquals("client_payment_refunded", message.templateKey());
         assertTrue(message.htmlBody().contains("Mercado Pago"));
+        assertTrue(message.htmlBody().contains("Medio de pago:</strong> Tarjeta de débito"));
+        assertTrue(message.htmlBody().contains("30 de marzo"));
+        assertTrue(message.htmlBody().contains("17 de abril"));
         assertTrue(message.htmlBody().contains("Acreditación:</strong>"));
         assertTrue(message.textBody().contains("Mercado Pago"));
+        assertTrue(message.textBody().contains("Medio de pago: Tarjeta de débito"));
         assertTrue(message.textBody().contains("Acreditación:"));
     }
 
@@ -189,7 +197,8 @@ class NotificationEmailTemplateServiceTest {
                     "amount", BigDecimal.valueOf(1850),
                     "currency", "UYU",
                     "providerStatus", "approved",
-                    "refundTimingHint", "La devolución se acreditará según los tiempos de Mercado Pago y del emisor del medio de pago."
+                    "refundPaymentMethodLabel", "Tarjeta de débito",
+                    "refundTimingHint", "Mercado Pago indica entre 7 y 20 días hábiles desde la cancelación. Como estimación conservadora, tomá como referencia entre el 30 de marzo y el 17 de abril."
                 )
             );
         } catch (Exception exception) {

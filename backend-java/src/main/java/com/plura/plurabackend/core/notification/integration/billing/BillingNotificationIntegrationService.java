@@ -79,13 +79,6 @@ public class BillingNotificationIntegrationService {
     }
 
     public void recordPaymentRefunded(Booking booking, PaymentTransaction transaction, ParsedWebhookEvent event, String sourceAction) {
-        recordProfessional(billingNotificationCommandFactory.buildPaymentRefunded(
-            booking,
-            transaction,
-            event,
-            resolveProfessionalRecipient(booking, transaction),
-            sourceAction
-        ));
         ClientNotificationRecipient clientRecipient = resolveClientRecipient(booking, transaction);
         if (clientRecipient != null) {
             recordClient(clientBillingNotificationCommandFactory.buildPaymentRefunded(
@@ -99,13 +92,6 @@ public class BillingNotificationIntegrationService {
     }
 
     public void recordPaymentRefundPending(Booking booking, PaymentTransaction transaction, ParsedWebhookEvent event, String sourceAction) {
-        recordProfessional(billingNotificationCommandFactory.buildPaymentRefundPending(
-            booking,
-            transaction,
-            event,
-            resolveProfessionalRecipient(booking, transaction),
-            sourceAction
-        ));
         ClientNotificationRecipient clientRecipient = resolveClientRecipient(booking, transaction);
         if (clientRecipient != null) {
             recordClient(clientBillingNotificationCommandFactory.buildPaymentRefundPending(

@@ -8,7 +8,8 @@ import {
   oauthLoginWithAuthorizationCode,
   oauthLoginWithToken,
   type OAuthAuthAction,
-} from '../services/oauth';
+  type OAuthResult,
+} from '../services/authBackend';
 import { setSession } from '../services/session';
 
 WebBrowser.maybeCompleteAuthSession();
@@ -19,7 +20,7 @@ type UseGoogleOAuthOptions = {
   role: AuthRole;
   authAction: OAuthAuthAction;
   refreshProfile: () => Promise<unknown>;
-  onSuccess: () => Promise<void>;
+  onSuccess: (result: OAuthResult) => Promise<void>;
   onError: (message: string) => void;
 };
 
@@ -101,7 +102,7 @@ export function useGoogleOAuth({
       refreshToken: result.refreshToken,
     });
     await refreshProfileRef.current();
-    await onSuccessRef.current();
+    await onSuccessRef.current(result);
   };
 
   useEffect(() => {
@@ -182,7 +183,7 @@ export function useGoogleOAuth({
           refreshToken: result.refreshToken,
         });
         await refreshProfileRef.current();
-        await onSuccessRef.current();
+        await onSuccessRef.current(result);
       } catch (error: any) {
         const responseData = error?.response?.data;
         const backendMessage =
@@ -346,4 +347,3 @@ export function useGoogleOAuth({
     handleGoogleAuth,
   };
 }
-

@@ -20,7 +20,7 @@ Necesario para:
 - registro y login
 - recuperacion de cuenta
 - sesiones
-- login social con Google y Apple
+- login social con Google en frontend
 - roles `cliente` y `profesional`
 
 Infra actual detectada:
@@ -28,7 +28,7 @@ Infra actual detectada:
 - JWT
 - refresh tokens
 - cookies y bearer tokens segun plataforma
-- OAuth Google y Apple
+- OAuth Google expuesto en frontend; soporte OAuth adicional conservado en backend auth
 - rate limiting
 - auditoria auth
 
@@ -290,7 +290,7 @@ Areas de configuracion principales en `application.yml`:
 - datasource PostgreSQL obligatorio en runtime (`SPRING_DATASOURCE_URL` o `DATABASE_URL`), hoy alineado a `Supabase PostgreSQL` por `Session Pooler`
 - Flyway
 - JWT y refresh token
-- OAuth Google y Apple
+- OAuth Google expuesto en frontend; soporte OAuth adicional conservado en backend auth
 - mail SMTP
 - cache y Redis
 - feature flags de search, profile y slots
@@ -404,7 +404,7 @@ Notas reales de deploy en Render:
 ## Integraciones externas detectadas
 
 - Google OAuth
-- Apple OAuth
+- Apple OAuth conservado solo a nivel backend/auth module; hoy sin exposicion en web ni mobile
 - Mapbox
 - Mercado Pago
 - Redis

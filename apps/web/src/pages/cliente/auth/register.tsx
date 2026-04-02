@@ -9,7 +9,6 @@ import AuthTopBar from '@/components/auth/AuthTopBar';
 import AuthLoadingOverlay from '@/components/auth/AuthLoadingOverlay';
 import Footer from '@/components/shared/Footer';
 import GoogleLoginButton from '@/components/auth/GoogleLoginButton';
-import AppleLoginButton from '@/components/auth/AppleLoginButton';
 import Badge from '@/components/ui/Badge';
 import Card from '@/components/ui/Card';
 import InternationalPhoneField from '@/components/ui/InternationalPhoneField';
@@ -224,12 +223,6 @@ export default function ClienteRegisterPage() {
                 buttonLabel="Continuar con Google"
                 loadingLabel="Registrando..."
                 onLoadingChange={setIsGoogleLoading}
-              />
-              <AppleLoginButton
-                authAction="REGISTER"
-                intendedRole="USER"
-                onAuthenticated={handleOAuthAuthenticated}
-                onError={setErrorMessage}
               />
             </div>
           </div>

@@ -5,7 +5,6 @@ import { useRouter } from 'next/router';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { ChangeEvent, FormEvent } from 'react';
 import { isAxiosError } from 'axios';
-import AppleLoginButton from '@/components/auth/AppleLoginButton';
 import GoogleLoginButton from '@/components/auth/GoogleLoginButton';
 import Badge from '@/components/ui/Badge';
 import Button from '@/components/ui/Button';
@@ -381,12 +380,6 @@ export default function ReservationAuthOverlay({
                 buttonLabel={isRegisterMode ? 'Continuar con Google' : 'Ingresar con Google'}
                 loadingLabel={isRegisterMode ? 'Conectando Google...' : 'Ingresando con Google...'}
                 onLoadingChange={setIsGoogleLoading}
-              />
-              <AppleLoginButton
-                authAction={isRegisterMode ? 'REGISTER' : 'LOGIN'}
-                intendedRole="USER"
-                onAuthenticated={handleOAuthAuthenticated}
-                onError={setErrorMessage}
               />
             </div>
 

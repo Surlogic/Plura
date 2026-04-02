@@ -21,8 +21,15 @@ import {
 } from '../../services/geo';
 import { listServiceCategories } from '../../services/professionalConfig';
 import api from '../../services/api';
+import type { OAuthResult } from '../../services/authBackend';
 import type { ServiceCategoryOption } from '../../types/professional';
-import { authRoleCopy, continueAfterAuth, type AuthRole } from './config';
+import {
+  authRoleCopy,
+  backendRoleToAuthRole,
+  continueAfterAuth,
+  resolveCompletePhoneRouteFromBackendRole,
+  type AuthRole,
+} from './config';
 import { AppScreen, surfaceStyles } from '../../components/ui/AppScreen';
 import InternationalPhoneField from '../../components/ui/InternationalPhoneField';
 import { hasMinimumPhoneDigits } from '../../lib/internationalPhone';
@@ -118,13 +125,33 @@ export function RoleRegisterScreen({ role }: RoleRegisterScreenProps) {
     };
   }, [role]);
 
+  const handleOAuthAuthenticated = async (result: OAuthResult) => {
+    setErrorMessage(null);
+
+    if (role === 'profesional' && result.role !== 'PROFESSIONAL') {
+      setErrorMessage('No pudimos completar el alta profesional con esa cuenta. Intenta nuevamente desde este flujo.');
+      return;
+    }
+
+    const resolvedRole = backendRoleToAuthRole(result.role);
+    if (!resolvedRole) {
+      setErrorMessage('El backend no devolvio un rol valido para esta sesion.');
+      return;
+    }
+
+    if (!(result.user.phoneNumber ?? '').trim()) {
+      router.replace(resolveCompletePhoneRouteFromBackendRole(result.role));
+      return;
+    }
+
+    await continueAfterAuth(resolvedRole);
+  };
+
   const { isGoogleSubmitting, handleGoogleAuth } = useGoogleOAuth({
     role,
     authAction: 'REGISTER',
     refreshProfile,
-    onSuccess: async () => {
-      await continueAfterAuth(role);
-    },
+    onSuccess: handleOAuthAuthenticated,
     onError: (message) => {
       setErrorMessage(message || null);
     },

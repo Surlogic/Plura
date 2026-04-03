@@ -173,7 +173,6 @@ export default function SettingsScreen() {
                 },
               });
               await logout();
-              router.replace('/(auth)/login');
             } catch (error) {
               Alert.alert(
                 'No se pudo eliminar la cuenta',
@@ -237,7 +236,6 @@ export default function SettingsScreen() {
       });
       setPasswordMessage('Contraseña actualizada. Inicia sesión nuevamente.');
       await logout();
-      router.replace('/(auth)/login');
     } catch (error) {
       setPasswordError(getApiErrorMessage(error, 'No se pudo actualizar la contraseña.'));
     } finally {

@@ -1,8 +1,13 @@
 import Image from 'next/image';
+import { useEffect, useMemo, useState } from 'react';
 import Badge from '@/components/ui/Badge';
 import Card from '@/components/ui/Card';
-import { resolveAssetUrl } from '@/utils/assetUrl';
 import { getPaymentTypeLabel } from '@/utils/bookings';
+import {
+  buildPublicBusinessImageStyle,
+  buildPublicBusinessLogoStyle,
+  resolvePublicBusinessMedia,
+} from '@/utils/publicBusinessMedia';
 import { formatDuration, formatPrice } from '@/utils/reservarHelpers';
 import type {
   PublicProfessionalPage,
@@ -24,11 +29,6 @@ const stepLabels = [
   'Reserva',
 ] as const;
 
-const resolveImage = (value?: string | null) => {
-  if (!value) return '';
-  return resolveAssetUrl(value) || '';
-};
-
 export default function ReservationFlowHeader({
   currentStep,
   isLoading = false,
@@ -37,9 +37,36 @@ export default function ReservationFlowHeader({
 }: ReservationFlowHeaderProps) {
   const displayName = professional?.fullName || 'Profesional';
   const location = professional?.location?.trim() || '';
-  const logoUrl = resolveImage(professional?.logoUrl);
-  const serviceImageUrl = resolveImage(selectedService?.imageUrl);
-  const coverImage = logoUrl || serviceImageUrl;
+  const media = useMemo(
+    () =>
+      resolvePublicBusinessMedia({
+        bannerMedia: professional?.bannerMedia,
+        bannerUrl: professional?.bannerUrl,
+        logoMedia: professional?.logoMedia,
+        logoUrl: professional?.logoUrl,
+        name: displayName,
+        photoUrls: professional?.photos || [],
+      }),
+    [
+      displayName,
+      professional?.bannerMedia,
+      professional?.bannerUrl,
+      professional?.logoMedia,
+      professional?.logoUrl,
+      professional?.photos,
+    ],
+  );
+  const mediaKey = media.mainImageCandidates.map((candidate) => candidate.key).join('|');
+  const [mainImageIndex, setMainImageIndex] = useState(0);
+  const [logoFailed, setLogoFailed] = useState(false);
+
+  useEffect(() => {
+    setMainImageIndex(0);
+    setLogoFailed(false);
+  }, [mediaKey, media.logo?.src]);
+
+  const activeImage = media.mainImageCandidates[mainImageIndex] ?? null;
+  const showLogoImage = Boolean(media.logo?.src) && !logoFailed;
 
   return (
     <Card
@@ -82,20 +109,41 @@ export default function ReservationFlowHeader({
 
           <div className="relative min-w-0 rounded-[28px] border border-white/80 bg-white/90 p-4 shadow-[0_24px_54px_-42px_rgba(15,23,42,0.3)] backdrop-blur lg:w-[360px]">
             <div className="flex items-start gap-4">
-              <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-[20px] border border-[color:var(--border-soft)] bg-[color:var(--surface-soft)]">
-                {coverImage ? (
+              <div className="relative h-20 w-24 shrink-0 overflow-hidden rounded-[22px] border border-[color:var(--border-soft)] bg-[color:var(--surface-soft)]">
+                {activeImage ? (
                   <Image
-                    src={coverImage}
-                    alt={selectedService?.name || displayName}
+                    src={activeImage.src}
+                    alt={`Marca de ${displayName}`}
                     fill
-                    sizes="64px"
+                    sizes="96px"
                     className="object-cover"
+                    style={buildPublicBusinessImageStyle(activeImage)}
+                    onError={() =>
+                      setMainImageIndex((current) => Math.min(current + 1, media.mainImageCandidates.length))
+                    }
                   />
                 ) : (
-                  <div className="flex h-full w-full items-center justify-center text-[0.58rem] font-semibold uppercase tracking-[0.16em] text-[color:var(--ink-faint)]">
-                    Plura
+                  <div className="flex h-full w-full items-center justify-center bg-[linear-gradient(145deg,#102033_0%,#17324e_62%,rgba(16,185,129,0.22)_100%)] text-sm font-semibold uppercase tracking-[0.2em] text-white">
+                    {media.initials}
                   </div>
                 )}
+                <div className="absolute bottom-2 left-2">
+                  <div className="relative flex h-10 w-10 items-center justify-center overflow-hidden rounded-[14px] border border-white/90 bg-white text-xs font-semibold text-[color:var(--ink)] shadow-[0_18px_28px_-24px_rgba(15,23,42,0.45)]">
+                    {showLogoImage ? (
+                      <Image
+                        src={media.logo!.src}
+                        alt={`Logo de ${displayName}`}
+                        fill
+                        sizes="40px"
+                        className="object-cover"
+                        style={buildPublicBusinessLogoStyle(media.logo)}
+                        onError={() => setLogoFailed(true)}
+                      />
+                    ) : (
+                      media.initials
+                    )}
+                  </div>
+                </div>
               </div>
 
               <div className="min-w-0">

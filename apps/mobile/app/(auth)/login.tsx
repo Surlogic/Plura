@@ -13,43 +13,40 @@ export default function LoginEntryScreen() {
       contentContainerStyle={{ justifyContent: 'center', paddingHorizontal: 24, paddingVertical: 28 }}
     >
       <LinearGradient
-        colors={theme.gradients.heroElevated}
+        colors={['#EAF7F8', '#DDEFF7', '#F4F8FB']}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         className="rounded-[32px] px-6 py-7"
       >
-        <Text className="text-xs font-bold uppercase tracking-[2px] text-white/70">
+        <Text className="text-xs font-bold uppercase tracking-[2px] text-secondary/60">
           Acceso Plura
         </Text>
-        <Text className="mt-3 text-3xl font-bold text-white">
-          Entra con una experiencia alineada a la web
+        <Text className="mt-3 text-3xl font-bold text-secondary">
+          Elegí cómo querés iniciar
         </Text>
-        <Text className="mt-3 text-sm leading-6 text-white/78">
-          Cliente y profesional ahora comparten la misma identidad visual: limpia, moderna y más premium.
+        <Text className="mt-3 text-sm leading-6 text-secondary/78">
+          Desde acá vas directo al login correcto, sin repetir la portada inicial.
         </Text>
 
         <View className="mt-5 flex-row flex-wrap" style={{ gap: 10 }}>
-          <View className="rounded-full bg-white/12 px-4 py-2">
-            <Text className="text-xs font-semibold text-white">Reserva simple</Text>
+          <View className="rounded-full bg-white/80 px-4 py-2">
+            <Text className="text-xs font-semibold text-secondary">Cliente</Text>
           </View>
-          <View className="rounded-full bg-white/12 px-4 py-2">
-            <Text className="text-xs font-semibold text-white">Agenda clara</Text>
-          </View>
-          <View className="rounded-full bg-white/12 px-4 py-2">
-            <Text className="text-xs font-semibold text-white">Diseño consistente</Text>
+          <View className="rounded-full bg-white/80 px-4 py-2">
+            <Text className="text-xs font-semibold text-secondary">Profesional</Text>
           </View>
         </View>
       </LinearGradient>
 
       <View className="mt-5 rounded-[32px] p-6" style={surfaceStyles.card}>
         <Text className="text-xs font-bold uppercase tracking-[2px] text-faint">
-          Elegir acceso
+          Accesos directos
         </Text>
         <Text className="mt-2 text-2xl font-bold text-secondary">
-          Iniciar sesion
+          Iniciar sesión
         </Text>
         <Text className="mt-2 text-sm leading-6 text-muted">
-          Selecciona el flujo que mejor encaja con tu cuenta.
+          Elegí el acceso correcto según tu cuenta.
         </Text>
 
         <Link href="/(auth)/login-client" asChild>
@@ -96,17 +93,11 @@ export default function LoginEntryScreen() {
           </TouchableOpacity>
         </Link>
 
-        <View className="mt-6 rounded-[24px] border border-dashed border-secondary/15 bg-backgroundSoft p-5">
-          <Text className="text-sm font-semibold text-secondary">Todavia no tienes cuenta</Text>
-          <Text className="mt-1 text-sm leading-5 text-muted">
-            Crea tu cuenta y luego entra desde el flujo correcto.
-          </Text>
+        <View className="mt-6 flex-row justify-center">
+          <Text className="text-sm text-muted">¿No tenés cuenta? </Text>
           <Link href="/(auth)/register" asChild>
-            <TouchableOpacity
-              className="mt-4 h-12 items-center justify-center rounded-full"
-              style={{ backgroundColor: theme.colors.secondary }}
-            >
-              <Text className="font-semibold text-white">Crear cuenta</Text>
+            <TouchableOpacity>
+              <Text className="text-sm font-bold text-primary">Crear cuenta</Text>
             </TouchableOpacity>
           </Link>
         </View>

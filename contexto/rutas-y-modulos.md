@@ -60,8 +60,8 @@ Base: `apps/web/src/pages`
 
 ### Rutas publicas
 
-- `/`: home SSR con hero + buscador unificado en variante simplificada, categorias visuales, top businesses, bloque compacto de `como funciona`, ReviewsSection (testimonios publicos de feedback de app via `GET /public/app-feedback`) y CTA final; `Reservar ahora` deriva a `/explorar` y `Soy profesional` al registro existente `/profesional/auth/register`; usa `getServerSideProps` con retry client-side si SSR falla.
-- `/explorar`: buscador principal con filtros, lista y mapa.
+- `/`: home SSR con hero + buscador unificado en variante simplificada, media visual animada de rubros dentro del hero, categorias visuales, top businesses, bloque compacto de `como funciona`, ReviewsSection (testimonios publicos de feedback de app via `GET /public/app-feedback`) y CTA final; `Reservar ahora` deriva a `/explorar` y `Soy profesional` al registro existente `/profesional/auth/register`; usa `getServerSideProps` con retry client-side si SSR falla. El hero ahora rota automaticamente imagenes de todos los rubros publicos disponibles en `homeData.categories`, usando `category.imageUrl` cuando existe y placeholders SVG locales por slug/nombre como fallback, sin tocar la logica compartida del buscador. Las cards destacadas ya usan `banner` como media principal, `logo` superpuesto y fallback a foto real del negocio antes de cualquier placeholder.
+- `/explorar`: buscador principal con filtros, lista y mapa. Las cards de resultados ya comparten la misma jerarquía visual del home (`banner + logo`, fallback a foto real del negocio, placeholder elegante si no hay assets).
 - `/explorar/[slug]`: vista detallada de exploracion por slug.
 - `/profesional/[slug]`: pagina publica del profesional.
 - `/profesional/pagina/[slug]`: variante de pagina publica.
@@ -82,9 +82,10 @@ Lectura de producto:
 - cuando una reserva prepaga genera `checkoutUrl`, tanto `/reservar` como `/cliente/reservas` abren Mercado Pago en la pestaña actual para asegurar una experiencia full-page consistente y evitar bloqueos de popup
 - `/reservar` ya no mezcla toda la operacion en una sola pantalla larga: orquesta `5` pasos reales (`confirmar servicio -> elegir dia -> elegir horario -> revisar turno -> confirmar y reservar`)
 - `/reservar` mantiene la misma creacion de reserva y el mismo checkout que antes, pero ahora no auto-selecciona el primer servicio ni el primer dia sin feedback visual
-- `/reservar` sigue siendo compatible con `pendingReservation`: en el paso final, si falta sesion cliente, primero abre una pantalla embebida de registro/login dentro del flujo para no sacar al usuario de la reserva; ese overlay reutiliza tambien Google y Apple; si aun asi deriva a login, registro o `complete-phone` completos, al volver retoma el resumen final listo para confirmar
+- `/reservar` sigue siendo compatible con `pendingReservation`: en el paso final, si falta sesion cliente, primero abre una pantalla embebida de registro/login dentro del flujo para no sacar al usuario de la reserva; ese overlay hoy reutiliza credenciales propias y Google; si aun asi deriva a login, registro o `complete-phone` completos, al volver retoma el resumen final listo para confirmar
 - `/reservar` tambien refleja `serviceId`, `date`, `time` y `step` en la URL con `router.replace(..., { shallow: true })` para que un refresh del navegador no rompa el progreso local del flujo
 - `/reservar` no debe bloquear el CTA final cuando el visitante es anonimo y no existe una sesion cliente conocida; en ese caso abre directo el acceso embebido del paso final
+- `/reservar` ya alinea la identidad visual del negocio con el perfil publico: header y resumen final priorizan branding del profesional (`banner`/foto del negocio + `logo`) y dejan la imagen de servicio solo en superficies centradas en el servicio
 - el `Navbar` compartido de rutas publicas (`/`, `/explorar`, `/profesional/pagina/[slug]`, `/profesional/[slug]`, `/reservar`) ya no muestra un pill `Cargando...` por bootstrap de auth: mientras el perfil se hidrata, degrada visualmente a la variante publica y luego promueve al estado real si encuentra sesion valida
 - el paso final de `/reservar` no promete confirmacion falsa: la reserva sigue naciendo en `PENDING`; si hay pago online, la confirmacion final depende del backend y Mercado Pago
 - `/explorar` y `/profesional/pagina/[slug]` ya no fuerzan auth refresh ni favoritos en 401 cuando el cliente no tiene una sesion conocida; las features auth-only se habilitan recien con hint de sesion valida
@@ -95,7 +96,7 @@ Lectura de producto:
 - `/explorar` ya usa la fecha como filtro real de disponibilidad y no solo como ordenador; `Disponible ahora` tambien se apoya en disponibilidad real
 - en la geoseleccion de `/explorar`, el frontend ya no persiste la direccion completa de Mapbox como `city` para backend; prioriza una ciudad/zona mas amplia y deja las coordenadas como filtro fuerte
 - al escribir manualmente en la barra de `/explorar`, si el usuario venia refinando una busqueda de `PROFESIONAL` o `LOCAL`, el frontend ya no pisa ese tipo automaticamente en cada tecla
-- home, dashboard cliente y `/explorar` ahora reutilizan exactamente la misma barra base de busqueda (`components/search/UnifiedSearchBar`): misma logica, mismos dropdowns y mismos contratos; en home se renderiza una variante hero mas limpia con foco en `servicio + ubicacion + fecha + CTA`, mientras `/explorar` conserva el refinamiento completo y el rail interno de chips
+- home, dashboard cliente y `/explorar` ahora reutilizan exactamente la misma barra base de busqueda (`components/search/UnifiedSearchBar`): misma logica, mismos dropdowns y mismos contratos; en home se renderiza una variante hero mas limpia con foco en `servicio + ubicacion + fecha + CTA`, conviviendo con un componente visual encapsulado `components/home/HomeHeroVisual` que rota rubros con `prefers-reduced-motion`, mientras `/explorar` conserva el refinamiento completo y el rail interno de chips
 - `/profesional/pagina/[slug]` y `/profesional/[slug]` ahora separan mejor perfil y reserva: hero editorial con CTA liviano, servicios en lista compacta, galeria contenida, bloque unificado de ubicacion/horarios y reseñas; la operacion completa de reserva queda derivada a `/reservar`
 - `/auth/forgot-password` y `/auth/reset-password` ahora redirigen automaticamente al login correcto (`/cliente/auth/login` o `/profesional/auth/login`) segun el `role` que devuelve backend al completar el reset
 - `/cliente/auth/complete-phone` y `/profesional/auth/complete-phone` completan el telefono faltante despues de OAuth via `POST /auth/oauth/complete-phone`
@@ -118,7 +119,7 @@ Modulos relevantes:
 
 - `components/cliente`: shell y sidebar del area cliente.
 - `components/cliente/notifications`: campana en navbar cliente, dropdown preview e inbox FE-C2 con toolbar, lista, items y acciones de lectura.
-- `components/cliente/reservations`: timeline e historial sobrio dentro del panel de detalle de la reserva seleccionada.
+- `components/cliente/reservations`: timeline e historial sobrio dentro del panel de detalle de la reserva seleccionada; ya etiqueta tambien `PAYMENT_REFUND_PENDING` como reembolso en proceso.
 - `context/ClientNotificationsContext.tsx`: token de refresh mas estado compartido del unread count para deduplicar requests entre campana e inbox sin cambiar la UX visible.
 - `context/ClientProfileContext.tsx`: carga `GET /auth/me/cliente`.
 - `hooks/useClientBookingTimeline.ts`: carga `GET /cliente/reservas/{bookingId}/timeline` con estados `loading / empty / error`.
@@ -178,7 +179,7 @@ Lectura de producto:
 Modulos relevantes:
 
 - `components/profesional`: UI publica y dashboard.
-- `components/profesional/notifications`: campana en sidebar, dropdown FE-1 e inbox FE-2 con toolbar, lista, items y acciones de lectura.
+- `components/profesional/notifications`: campana en sidebar, dropdown FE-1 e inbox FE-2 con toolbar, lista, items y acciones de lectura; los eventos de refund nuevos ya no se emiten para profesional.
 - `components/profesional/reservations`: timeline operativo dentro del panel de detalle de la reserva seleccionada.
 - `context/ProfessionalNotificationsContext.tsx`: token de refresh mas estado compartido del unread count para sincronizar inbox, dropdown y contador sin duplicar requests.
 - `context/ProfessionalProfileContext.tsx`: carga `/auth/me/profesional`.
@@ -241,6 +242,7 @@ Notas recientes:
 - `/profesional/dashboard/configuracion` ahora requiere challenge OTP por email para eliminar cuenta; advierte sobre cancelacion de suscripcion y reservas pendientes
 - `PublicReviewsList` ahora muestra un resumen visual de rating + total y una distribucion calculada sobre la muestra visible cargada, seguido por reseñas paginadas; sigue respetando ocultamiento del texto publico
 - `/profesional/pagina/[slug]` y `/profesional/[slug]` ahora renderizan `logo` y `banner` con `object-position + zoom` persistidos desde perfil del negocio, manteniendo la misma composición visual que ve el profesional al editar
+- `apps/web/src/utils/publicBusinessMedia.ts`: presenter compartido para cards y superficies publicas; resuelve prioridad visual `banner -> foto real del negocio -> legacy image -> service image` (solo fallback extremo), deduplica URLs y reaplica `logo/bannerMedia` en web
 
 Huecos relevantes contra el objetivo:
 
@@ -306,8 +308,9 @@ Base: `apps/mobile/app`
 
 ### Entrada y layout
 
-- `app/index.tsx`: redirige a `/(tabs)`.
+- `app/index.tsx`: si hay sesion profesional redirige a `/dashboard`, si hay sesion cliente redirige a `/(tabs)` y si no hay sesion muestra una portada mobile con logo Plura y CTAs `Iniciar como cliente` / `Iniciar como profesional`.
 - `app/_layout.tsx`: monta `ProfessionalProfileProvider` y stack principal.
+- el logout mobile ya vuelve siempre a `/` para reusar esa portada inicial; no redirige directo a `/(auth)/login`
 
 ### Grupo `(tabs)`
 
@@ -336,15 +339,18 @@ Lectura de producto:
 - `/(auth)/register`
 - `/(auth)/register-client`
 - `/(auth)/register-professional`
+- `/(auth)/complete-phone-client`
+- `/(auth)/complete-phone-professional`
 - `/(auth)/forgot-password`
 - `/(auth)/reset-password`
 
 Lectura de producto:
 
 - cubre autenticacion base con flujos separados por rol (cliente y profesional)
-- el login social con Google ya aparece en hooks y variables de entorno
+- login y registro por rol ya combinan credenciales propias y Google sobre el mismo backend `auth`
 - `src/hooks/useGoogleOAuth` usa `@react-native-google-signin/google-signin` en Android para abrir el selector nativo de cuentas y pedir `idToken` con `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID`; en iOS/web mantiene `expo-auth-session`; sigue requiriendo development build fuera de `Expo Go`
-- en mobile, `/(auth)/forgot-password` y `/(auth)/reset-password` siguen consumiendo el flujo legacy `email + token` (`/auth/password/forgot` y `/auth/password/reset`); todavia no replican la recuperacion web por `email + telefono + OTP`
+- `/(auth)/forgot-password` ya replica la recuperacion web por `email -> telefono -> codigo` sobre `/auth/password/recovery/*`
+- `/(auth)/complete-phone-client` y `/(auth)/complete-phone-professional` completan el telefono faltante despues de OAuth via `POST /auth/oauth/complete-phone`
 - `/(auth)/reset-password` ahora tambien redirige al login especifico del rol (`/(auth)/login-client` o `/(auth)/login-professional`) cuando backend confirma el cambio de contraseña
 - `/(auth)/register-client` y `/(auth)/register-professional` ya usan selector internacional de telefono con bandera + codigo y envian el numero final listo para backend
 

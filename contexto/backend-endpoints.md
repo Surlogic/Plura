@@ -47,6 +47,7 @@ Lectura de producto:
 - base para home, categorias y marketplace
 - relevante para `Usuario` y para la visibilidad del plan `Free`
 - `GET /api/home` ahora se consume via SSR (`getServerSideProps`); devuelve categorias, stats (usuarios, profesionales, categorias, reservas mensuales) y top professionals rankeados por volumen de reservas confirmadas/completadas de los ultimos 3 meses
+- `GET /api/home` ahora expone branding de card publica por profesional: `bannerUrl`, `bannerMedia`, `logoUrl`, `logoMedia` y `fallbackPhotoUrl`; `imageUrl` se mantiene como compatibilidad y ya prioriza `banner` o primera foto real del negocio en vez de categorias genericas
 - estas superficies publicas ya no deben caer en `401` si el navegador arrastra un access token o cookie auth invalido/vencido; backend degrada a anonimo y responde el payload publico igual
 
 ### Auth y sesiones
@@ -97,9 +98,9 @@ Lectura de producto:
 - cubre el bloque `CORE` de autenticacion y seguridad
 - soporta registro directo del profesional en `Free`
 - ya da base para login social y gestion de sesiones
-- `POST /auth/oauth/complete-phone` cierra el faltante de telefono cuando el alta/login OAuth no lo trae y hoy tiene pantallas web dedicadas para cliente y profesional
-- `POST /auth/password/forgot` + `POST /auth/password/reset` siguen como flujo legacy por token y todavia los consume mobile
-- `POST /auth/password/recovery/start|verify-phone|confirm` son el flujo mas nuevo de recuperacion escalonada que hoy usa la web
+- `POST /auth/oauth/complete-phone` cierra el faltante de telefono cuando el alta/login OAuth no lo trae y hoy tiene pantallas dedicadas tanto en web como en mobile para cliente y profesional
+- `POST /auth/password/forgot` + `POST /auth/password/reset` siguen como flujo legacy por token y hoy quedan como compatibilidad de enlaces viejos o soporte manual
+- `POST /auth/password/recovery/start|verify-phone|confirm` son el flujo vigente de recuperacion escalonada que ya usan web y mobile
 - `POST /auth/password/reset` y `POST /auth/password/recovery/confirm` ya no cierran con `204` vacio: ahora devuelven `200` con `role` (`USER` o `PROFESSIONAL`) y limpian cookies/sesion para que frontend redirija al login correcto segun la cuenta recuperada
 - en el recovery escalonado, `verify-phone` solo responde exito si el email con el OTP pudo salir realmente; si SMTP falla o queda en fallback incompleto, el backend devuelve `503` y revierte el challenge
 - el rate limiting de borde ya cubre tambien `/auth/password/recovery/start|verify-phone|confirm`, no solo el flujo legacy
@@ -126,6 +127,7 @@ El backend soporta:
 - `GET /api/search` ya aplica el filtro de fecha en el `WHERE`; no queda solo como señal de ordenamiento
 - `GET /api/search?availableNow=true` ya valida disponibilidad real contra `available_slot`; no usa la bandera agregada `has_availability_today` como aproximacion
 - cuando `/api/search` recibe `lat/lng` junto con `city`, el radio geografico prevalece y el texto de ciudad no debe vaciar resultados por mismatch de address-string
+- `GET /api/search` ahora expone `bannerUrl`, `bannerMedia`, `logoUrl`, `logoMedia` y `fallbackPhotoUrl` por resultado; `coverImageUrl` se conserva por compatibilidad pero ya prioriza `banner`, luego foto real del negocio (`LOCAL/WORK`) y solo al final imagen de servicio como fallback extremo
 
 Lectura de producto:
 
@@ -216,6 +218,12 @@ Lectura de producto:
 - mientras una reserva siga `PENDING` o `CONFIRMED`, su franja queda bloqueada para evitar superposiciones; si luego se cancela o se reagenda, backend reconstruye `available_slot` del/los dias afectados en el mismo after-commit para que discovery y perfil publico no queden desalineados
 - `POST /cliente/reservas/{id}/payment-session` no cambia por si solo el estado operativo; si el checkout corresponde a pago online, la reserva sigue `PENDING` hasta que el webhook exitoso confirme el cobro
 - el webhook de Mercado Pago auto-confirma reservas prepagas: ante cobro exitoso de una reserva `PENDING`, backend la mueve a `CONFIRMED`, registra `BOOKING_CONFIRMED`, notifica y rehace side effects de disponibilidad
+- `POST /cliente/reservas/{id}/cancel` y `POST /profesional/reservas/{id}/cancel` siguen la policy snapshot de la reserva: si el preview de cancelacion deja monto a devolver, backend crea `booking_refund_record`, agenda la operacion provider y dispara el worker after-commit
+- si Mercado Pago devuelve un refund en estado aun no final, backend ya no lo marca como cerrado: la `provider_operation` queda `UNCERTAIN` para seguir esperando webhook o reconciliacion, en vez de figurar como `SUCCEEDED` prematuramente
+- para iniciar el refund backend ya no depende de que Mercado Pago repita `professionalId` al consultar el pago original: usa el `professionalId` propio de la reserva/charge para resolver la cuenta OAuth correcta del profesional
+- cuando el refund queda iniciado pero pendiente de acreditacion, backend registra `PAYMENT_REFUND_PENDING` solo para el cliente, lo refleja en inbox/timeline cliente y genera email transaccional con copy segun `paymentTypeId/paymentMethodId` si Mercado Pago lo devolvio
+- si detecta `account_money`, el copy habla de acreditacion inmediata o dentro del mismo dia; si detecta tarjeta, usa la referencia oficial de 7 a 20 dias habiles y muestra una ventana conservadora ligeramente mas amplia
+- cuando el refund queda aprobado en el mismo dispatch provider, backend registra tambien `PAYMENT_REFUNDED` en ese momento solo para el cliente; ya no depende exclusivamente de un webhook posterior para avisar por inbox/email al cliente
 - `POST /cliente/reservas/{id}/reschedule` y `POST /profesional/reservas/{id}/reschedule` siguen aceptando el mismo payload, pero el backend ya interpreta `startDateTime` en la timezone operativa de la agenda; cualquier `timezone` enviada por clientes legacy se ignora para no desalinear slots y bloqueos
 - para reservas `ON_SITE`, `CONFIRMED` significa confirmacion operativa manual del profesional; para reservas prepagas, significa que el cobro ya quedo acreditado y backend cerro esa confirmacion automaticamente
 - `POST /profesional/reservas/{id}/complete` existe en runtime, queda protegido por `/profesional/**` en Spring Security y delega a `BookingService.completeBooking(...)`; solo permite completar reservas `CONFIRMED` cuyo turno ya termino (`booking.endDateTime <= now`, incluyendo post-buffer)

@@ -42,7 +42,7 @@ const securityHeaders = [
   { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
   { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=(self), payment=()' },
   { key: 'Strict-Transport-Security', value: 'max-age=31536000; includeSubDomains' },
-  // Required for OAuth popup flows (Google/Apple) so callback can access window.opener.
+  // Required for OAuth popup flows (Google) so callback can access window.opener.
   { key: 'Cross-Origin-Opener-Policy', value: 'same-origin-allow-popups' },
   { key: 'Cross-Origin-Resource-Policy', value: 'same-origin' },
   { key: 'X-DNS-Prefetch-Control', value: 'on' },

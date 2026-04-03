@@ -45,6 +45,11 @@ class SearchServiceTest {
                     -56.1,
                     1500d,
                     "r2://bucket/profiles/photo.jpg",
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
                     "Montevideo"
                 )),
                 false

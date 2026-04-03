@@ -92,6 +92,50 @@ class NotificationEmailTemplateServiceTest {
         assertTrue(message.textBody().contains("/profesional/dashboard/reservas?bookingId=101"));
     }
 
+    @Test
+    void shouldBuildRefundPendingTemplateWithTimingNoticeForClient() {
+        NotificationEmailMessage message = templateService.buildMessage(
+            buildDispatch(
+                NotificationEventType.PAYMENT_REFUND_PENDING,
+                "client_payment_refund_pending",
+                null,
+                NotificationRecipientType.CLIENT
+            )
+        );
+
+        assertEquals("client_payment_refund_pending", message.templateKey());
+        assertTrue(message.htmlBody().contains("Mercado Pago"));
+        assertTrue(message.htmlBody().contains("Medio de pago:</strong> Tarjeta de débito"));
+        assertTrue(message.htmlBody().contains("30 de marzo"));
+        assertTrue(message.htmlBody().contains("17 de abril"));
+        assertTrue(message.htmlBody().contains("Acreditación:</strong>"));
+        assertTrue(message.textBody().contains("Mercado Pago"));
+        assertTrue(message.textBody().contains("Medio de pago: Tarjeta de débito"));
+        assertTrue(message.textBody().contains("Acreditación:"));
+    }
+
+    @Test
+    void shouldBuildRefundedTemplateWithTimingNoticeForClient() {
+        NotificationEmailMessage message = templateService.buildMessage(
+            buildDispatch(
+                NotificationEventType.PAYMENT_REFUNDED,
+                "client_payment_refunded",
+                null,
+                NotificationRecipientType.CLIENT
+            )
+        );
+
+        assertEquals("client_payment_refunded", message.templateKey());
+        assertTrue(message.htmlBody().contains("Mercado Pago"));
+        assertTrue(message.htmlBody().contains("Medio de pago:</strong> Tarjeta de débito"));
+        assertTrue(message.htmlBody().contains("30 de marzo"));
+        assertTrue(message.htmlBody().contains("17 de abril"));
+        assertTrue(message.htmlBody().contains("Acreditación:</strong>"));
+        assertTrue(message.textBody().contains("Mercado Pago"));
+        assertTrue(message.textBody().contains("Medio de pago: Tarjeta de débito"));
+        assertTrue(message.textBody().contains("Acreditación:"));
+    }
+
     private static Stream<Arguments> supportedEventTypes() {
         return Stream.of(
             Arguments.of(NotificationEventType.BOOKING_CREATED, "professional_booking_created", "Nueva reserva en Plura", "Nueva reserva"),
@@ -102,6 +146,7 @@ class NotificationEmailTemplateServiceTest {
             Arguments.of(NotificationEventType.BOOKING_NO_SHOW, "professional_booking_no_show", "Reserva marcada como no-show", "Reserva marcada como no-show"),
             Arguments.of(NotificationEventType.PAYMENT_APPROVED, "professional_payment_approved", "Pago aprobado", "Pago aprobado"),
             Arguments.of(NotificationEventType.PAYMENT_FAILED, "professional_payment_failed", "Pago fallido", "Pago fallido"),
+            Arguments.of(NotificationEventType.PAYMENT_REFUND_PENDING, "professional_payment_refund_pending", "Reembolso en proceso", "Reembolso en proceso"),
             Arguments.of(NotificationEventType.PAYMENT_REFUNDED, "professional_payment_refunded", "Reembolso registrado", "Reembolso registrado")
         );
     }
@@ -151,7 +196,9 @@ class NotificationEmailTemplateServiceTest {
                     "professionalDisplayName", "Pro Uno",
                     "amount", BigDecimal.valueOf(1850),
                     "currency", "UYU",
-                    "providerStatus", "approved"
+                    "providerStatus", "approved",
+                    "refundPaymentMethodLabel", "Tarjeta de débito",
+                    "refundTimingHint", "Mercado Pago indica entre 7 y 20 días hábiles desde la cancelación. Como estimación conservadora, tomá como referencia entre el 30 de marzo y el 17 de abril."
                 )
             );
         } catch (Exception exception) {

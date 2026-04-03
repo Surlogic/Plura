@@ -4,7 +4,6 @@ import { useState } from 'react';
 import type { ChangeEvent, FormEvent } from 'react';
 import { isAxiosError } from 'axios';
 import AuthTopBar from '@/components/auth/AuthTopBar';
-import AppleLoginButton from '@/components/auth/AppleLoginButton';
 import AuthLoadingOverlay from '@/components/auth/AuthLoadingOverlay';
 import GoogleLoginButton from '@/components/auth/GoogleLoginButton';
 import Footer from '@/components/shared/Footer';
@@ -245,11 +244,6 @@ export default function ClienteLoginPage() {
                   buttonLabel="Continuar con Google"
                   loadingLabel="Iniciando..."
                   onLoadingChange={setIsGoogleLoading}
-                />
-                <AppleLoginButton
-                  intendedRole="USER"
-                  onAuthenticated={handleOAuthAuthenticated}
-                  onError={setErrorMessage}
                 />
               </div>
             </div>

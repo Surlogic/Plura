@@ -7,6 +7,11 @@ import java.util.List;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface BusinessPhotoRepository extends JpaRepository<BusinessPhoto, Long> {
+    List<BusinessPhoto> findByProfessional_IdInAndTypeInOrderByProfessional_IdAscCreatedAtAsc(
+        Collection<Long> professionalIds,
+        Collection<BusinessPhotoType> types
+    );
+
     List<BusinessPhoto> findByProfessional_IdAndTypeInOrderByCreatedAtAsc(
         Long professionalId,
         Collection<BusinessPhotoType> types

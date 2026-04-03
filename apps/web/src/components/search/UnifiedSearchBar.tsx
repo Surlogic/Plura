@@ -47,7 +47,7 @@ const SURFACE_CLASSES: Record<NonNullable<UnifiedSearchBarProps['variant']>, str
 };
 
 const SEARCH_TYPE_LABELS = {
-  RUBRO: 'Rubro',
+  RUBRO: 'Categoría',
   PROFESIONAL: 'Profesional',
   LOCAL: 'Local',
   SERVICIO: 'Servicio',
@@ -172,7 +172,7 @@ export default memo(function UnifiedSearchBar({
   const hasLocationSelection = Boolean(values.city.trim() || hasCoordinates);
   const inputPlaceholder = values.categorySlug
     ? `Buscar en ${slugToLabel(values.categorySlug)}`
-    : 'Servicio, rubro o profesional';
+    : 'Servicio, categoría o profesional';
 
   const dateSummaryBase = values.date
     ? formatDateLabel(values.date)
@@ -190,11 +190,11 @@ export default memo(function UnifiedSearchBar({
     locationInput.trim() || values.city.trim() || (hasCoordinates ? 'Cerca de mi' : 'Zona o ciudad');
   const locationValueClass = getAdaptiveValueClass(locationSummary);
   const searchModeLabel = values.categorySlug
-    ? 'Rubro'
+    ? 'Categoría'
     : values.type !== 'SERVICIO'
       ? SEARCH_TYPE_LABELS[values.type]
       : null;
-  const queryFieldLabel = isHero ? 'Servicio' : 'Servicio o rubro';
+  const queryFieldLabel = isHero ? 'Servicio' : 'Servicio o categoría';
   const queryFieldClassName = isHero ? 'h-full' : 'h-full';
   const selectionFieldClassName = isHero ? 'h-full' : 'h-full';
   const heroFieldShellClassName = 'px-4 py-1 sm:px-5';
@@ -360,7 +360,7 @@ export default memo(function UnifiedSearchBar({
                     onKeyDown={handleInputKeyDown}
                     placeholder={inputPlaceholder}
                     className={searchInputClassName}
-                    aria-label="Buscar tratamiento, rubro, profesional o local"
+                    aria-label="Buscar tratamiento, categoría, profesional o local"
                     autoComplete="off"
                   />
                 </div>
@@ -374,24 +374,7 @@ export default memo(function UnifiedSearchBar({
                     groups={dropdownGroups}
                     activeIndex={activeSuggestionIndex}
                     onHoverIndex={setActiveSuggestionIndex}
-                    onSelect={(item) => {
-                      if (item.recentSearch) {
-                        runSearch({
-                          type: item.type,
-                          query: item.recentSearch.query,
-                          categorySlug: item.recentSearch.categorySlug,
-                          city: item.recentSearch.city,
-                          lat: item.recentSearch.lat,
-                          lng: item.recentSearch.lng,
-                          date: item.recentSearch.date,
-                          from: item.recentSearch.from,
-                          to: item.recentSearch.to,
-                          availableNow: item.recentSearch.availableNow,
-                        });
-                        return;
-                      }
-                      applySuggestion(item);
-                    }}
+                    onSelect={applySuggestion}
                   />
                 </div>
               ) : null}

@@ -9,5 +9,7 @@ public record ProviderVerificationResult(
     String currency,
     Long professionalId,
     String planCode,
-    String providerObjectId
+    String providerObjectId,
+    String paymentTypeId,
+    String paymentMethodId
 ) {}

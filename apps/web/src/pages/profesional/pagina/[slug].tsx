@@ -809,6 +809,7 @@ export default function ProfesionalDetailPage({
           onReserve={handlePrimaryReserveEntry}
           onToggleFavorite={toggleFavoriteHandler}
           onViewServices={handleViewServices}
+          photoUrls={merged.photos}
           reserveDisabled={false}
           reserveLabel={selectedService ? 'Reservar' : 'Elegir servicio'}
           rating={data?.rating}

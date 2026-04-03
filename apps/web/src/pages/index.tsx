@@ -119,7 +119,7 @@ export default function HomePage({
       <div className="relative z-10">
         <Navbar />
         <main className="space-y-14 pb-24 sm:space-y-18">
-          <Hero stats={stats} isLoading={isInitialHomeLoading} />
+          <Hero categories={categories} stats={stats} isLoading={isInitialHomeLoading} />
           <CategoriesGrid categories={categories} isLoading={isInitialHomeLoading} />
           <TopBusinesses professionals={topProfessionals} isLoading={isInitialHomeLoading} />
           <HowItWorksSection />

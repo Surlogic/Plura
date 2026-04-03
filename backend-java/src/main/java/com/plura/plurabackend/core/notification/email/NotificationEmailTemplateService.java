@@ -107,6 +107,7 @@ public class NotificationEmailTemplateService {
             case BOOKING_NO_SHOW -> "Reserva marcada como no-show";
             case PAYMENT_APPROVED -> "Pago aprobado";
             case PAYMENT_FAILED -> "Pago fallido";
+            case PAYMENT_REFUND_PENDING -> "Reembolso en proceso";
             case PAYMENT_REFUNDED -> "Reembolso registrado";
             default -> throw unsupportedTemplate(eventType);
         };
@@ -142,9 +143,12 @@ public class NotificationEmailTemplateService {
             case PAYMENT_FAILED -> clientRecipient
                 ? "No pudimos aprobar el pago asociado a tu reserva para " + serviceName + "."
                 : "Falló un pago asociado a " + serviceName + ".";
+            case PAYMENT_REFUND_PENDING -> clientRecipient
+                ? "Iniciamos la devolución asociada a tu reserva para " + serviceName + ". La acreditación depende de los tiempos de Mercado Pago y del emisor."
+                : "Se inició una devolución asociada a " + serviceName + ". La acreditación depende de los tiempos de Mercado Pago y del emisor.";
             case PAYMENT_REFUNDED -> clientRecipient
-                ? "Se registró un reembolso asociado a tu reserva para " + serviceName + "."
-                : "Se registró un reembolso asociado a " + serviceName + ".";
+                ? "Se registró un reembolso asociado a tu reserva para " + serviceName + ". La acreditación final depende de los tiempos de Mercado Pago y del emisor."
+                : "Se registró un reembolso asociado a " + serviceName + ". La acreditación final depende de los tiempos de Mercado Pago y del emisor.";
             default -> throw unsupportedTemplate(eventType);
         };
     }
@@ -161,6 +165,7 @@ public class NotificationEmailTemplateService {
         String amount = amountLabel(payload);
         String providerStatus = firstNonBlank(stringValue(payload.get("providerStatus")), "No disponible");
         String professionalDisplayName = firstNonBlank(stringValue(payload.get("professionalDisplayName")), null);
+        String refundPaymentMethodLabel = firstNonBlank(stringValue(payload.get("refundPaymentMethodLabel")), null);
         boolean clientRecipient = recipientType == NotificationRecipientType.CLIENT;
         return switch (eventType) {
             case BOOKING_CREATED, BOOKING_CONFIRMED, BOOKING_CANCELLED, BOOKING_RESCHEDULED, BOOKING_COMPLETED, BOOKING_NO_SHOW -> """
@@ -178,11 +183,13 @@ public class NotificationEmailTemplateService {
                 escapeHtml(startDateTime),
                 escapeHtml(timezone)
             );
-            case PAYMENT_APPROVED, PAYMENT_FAILED, PAYMENT_REFUNDED -> """
+            case PAYMENT_APPROVED, PAYMENT_FAILED, PAYMENT_REFUND_PENDING, PAYMENT_REFUNDED -> """
                 <p style="margin:0 0 8px 0;"><strong>Reserva:</strong> %s</p>
                 %s
                 <p style="margin:0 0 8px 0;"><strong>Monto:</strong> %s</p>
                 <p style="margin:0 0 8px 0;"><strong>Estado proveedor:</strong> %s</p>
+                %s
+                %s
                 <p style="margin:0;"><strong>Servicio:</strong> %s</p>
                 """.formatted(
                 escapeHtml(bookingId),
@@ -191,6 +198,14 @@ public class NotificationEmailTemplateService {
                     : "",
                 escapeHtml(amount),
                 escapeHtml(providerStatus),
+                (eventType == NotificationEventType.PAYMENT_REFUND_PENDING || eventType == NotificationEventType.PAYMENT_REFUNDED)
+                    && refundPaymentMethodLabel != null
+                    ? "<p style=\"margin:0 0 8px 0;\"><strong>Medio de pago:</strong> " + escapeHtml(refundPaymentMethodLabel) + "</p>"
+                    : "",
+                (eventType == NotificationEventType.PAYMENT_REFUND_PENDING || eventType == NotificationEventType.PAYMENT_REFUNDED)
+                    ? "<p style=\"margin:0 0 8px 0;\"><strong>Acreditación:</strong> " +
+                        escapeHtml(firstNonBlank(stringValue(payload.get("refundTimingHint")), "Según tiempos de Mercado Pago y del emisor.")) + "</p>"
+                    : "",
                 escapeHtml(safeServiceName(payload))
             );
             default -> throw unsupportedTemplate(eventType);
@@ -209,6 +224,7 @@ public class NotificationEmailTemplateService {
         String amount = amountLabel(payload);
         String providerStatus = stringValue(payload.get("providerStatus"));
         String professionalDisplayName = stringValue(payload.get("professionalDisplayName"));
+        String refundPaymentMethodLabel = stringValue(payload.get("refundPaymentMethodLabel"));
         String professionalLine = recipientType == NotificationRecipientType.CLIENT && !isBlank(professionalDisplayName)
             ? "\nProfesional: " + professionalDisplayName
             : "";
@@ -219,11 +235,20 @@ public class NotificationEmailTemplateService {
                     + professionalLine
                     + "\nInicio: " + firstNonBlank(startDateTime, "No disponible")
                     + "\nZona horaria: " + firstNonBlank(timezone, "No disponible");
-            case PAYMENT_APPROVED, PAYMENT_FAILED, PAYMENT_REFUNDED ->
+            case PAYMENT_APPROVED, PAYMENT_FAILED, PAYMENT_REFUND_PENDING, PAYMENT_REFUNDED ->
                 "Reserva: " + bookingId
                     + professionalLine
                     + "\nMonto: " + amount
                     + "\nEstado proveedor: " + firstNonBlank(providerStatus, "No disponible")
+                    + ((event.getEventType() == NotificationEventType.PAYMENT_REFUND_PENDING
+                        || event.getEventType() == NotificationEventType.PAYMENT_REFUNDED)
+                        && !isBlank(refundPaymentMethodLabel)
+                        ? "\nMedio de pago: " + refundPaymentMethodLabel
+                        : "")
+                    + ((event.getEventType() == NotificationEventType.PAYMENT_REFUND_PENDING
+                        || event.getEventType() == NotificationEventType.PAYMENT_REFUNDED)
+                        ? "\nAcreditación: " + firstNonBlank(stringValue(payload.get("refundTimingHint")), "Según tiempos de Mercado Pago y del emisor.")
+                        : "")
                     + "\nServicio: " + serviceName;
             default -> throw unsupportedTemplate(event.getEventType());
         };
@@ -262,6 +287,7 @@ public class NotificationEmailTemplateService {
             case BOOKING_NO_SHOW -> "Reserva marcada como no-show";
             case PAYMENT_APPROVED -> "Pago aprobado";
             case PAYMENT_FAILED -> "Pago fallido";
+            case PAYMENT_REFUND_PENDING -> "Reembolso en proceso";
             case PAYMENT_REFUNDED -> "Reembolso registrado";
             default -> throw unsupportedTemplate(eventType);
         };
@@ -280,6 +306,7 @@ public class NotificationEmailTemplateService {
                 BOOKING_NO_SHOW,
                 PAYMENT_APPROVED,
                 PAYMENT_FAILED,
+                PAYMENT_REFUND_PENDING,
                 PAYMENT_REFUNDED -> {
                 return;
             }

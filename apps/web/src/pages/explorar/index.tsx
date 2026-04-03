@@ -25,7 +25,7 @@ const ExploreMap = dynamic(() => import('@/components/explorar/ExploreMap'), {
 });
 
 const SEARCH_TYPE_LABELS: Record<SearchType, string> = {
-  RUBRO: 'Rubro',
+  RUBRO: 'Categoría',
   PROFESIONAL: 'Profesional',
   LOCAL: 'Local',
   SERVICIO: 'Servicio',
@@ -604,7 +604,7 @@ export default function ExplorarPage() {
                         <p className="font-semibold text-[#0E2A47]">
                           No encontramos profesionales en esta zona.
                         </p>
-                        <p>Intentá ampliar el radio, buscar otro rubro o quitar filtros.</p>
+                        <p>Intentá ampliar el radio, buscar otra categoría o quitar filtros.</p>
                       </div>
                     )}
                   </div>
@@ -621,6 +621,11 @@ export default function ExplorarPage() {
                         price={formatPriceFrom(item.priceFrom)}
                         city={item.locationText || undefined}
                         distance={item.distanceKm}
+                        bannerUrl={item.bannerUrl}
+                        bannerMedia={item.bannerMedia}
+                        logoUrl={item.logoUrl}
+                        logoMedia={item.logoMedia}
+                        fallbackPhotoUrl={item.fallbackPhotoUrl}
                         imageUrl={item.coverImageUrl}
                         available={availableNow}
                         href={
@@ -686,7 +691,7 @@ export default function ExplorarPage() {
                     <p className="font-semibold text-[#0E2A47]">
                       No encontramos profesionales en esta zona.
                     </p>
-                    <p>Intentá ampliar el radio, buscar otro rubro o quitar filtros.</p>
+                    <p>Intentá ampliar el radio, buscar otra categoría o quitar filtros.</p>
                   </div>
                 )}
               </div>
@@ -702,6 +707,11 @@ export default function ExplorarPage() {
                       price={formatPriceFrom(item.priceFrom)}
                       city={item.locationText || undefined}
                       distance={item.distanceKm}
+                      bannerUrl={item.bannerUrl}
+                      bannerMedia={item.bannerMedia}
+                      logoUrl={item.logoUrl}
+                      logoMedia={item.logoMedia}
+                      fallbackPhotoUrl={item.fallbackPhotoUrl}
                       imageUrl={item.coverImageUrl}
                       available={availableNow}
                       href={

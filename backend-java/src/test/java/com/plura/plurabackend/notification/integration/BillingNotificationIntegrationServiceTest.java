@@ -7,6 +7,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.plura.plurabackend.core.billing.payments.model.PaymentProvider;
 import com.plura.plurabackend.core.billing.payments.model.PaymentTransaction;
 import com.plura.plurabackend.core.billing.payments.model.PaymentTransactionStatus;
@@ -48,7 +49,7 @@ class BillingNotificationIntegrationServiceTest {
         BillingNotificationIntegrationService service = new BillingNotificationIntegrationService(
             notificationService,
             new BillingNotificationCommandFactory(),
-            new ClientBillingNotificationCommandFactory(),
+            clientBillingFactory(),
             recipientGateway,
             clientRecipientGateway
         );
@@ -66,29 +67,72 @@ class BillingNotificationIntegrationServiceTest {
     }
 
     @Test
-    void paymentRefundedKeepsSemanticDifferenceForPartialRefund() {
+    void paymentRefundedOnlyEmitsClientNotificationAndKeepsSemanticDifferenceForPartialRefund() {
         NotificationService notificationService = Mockito.mock(NotificationService.class);
         ProfessionalNotificationRecipientGateway recipientGateway = Mockito.mock(ProfessionalNotificationRecipientGateway.class);
         ClientNotificationRecipientGateway clientRecipientGateway = Mockito.mock(ClientNotificationRecipientGateway.class);
         when(notificationService.record(any())).thenReturn(new NotificationRegistrationResult("evt-2", "uuid-2", true));
-        when(recipientGateway.findNotificationRecipientByProfessionalId(30L)).thenReturn(
-            Optional.of(new ProfessionalNotificationRecipient(30L, null, "Pro Uno"))
+        when(clientRecipientGateway.findNotificationRecipientByUserId(50L)).thenReturn(
+            Optional.of(new ClientNotificationRecipient(50L, "client@test.com", "Cliente Uno"))
         );
 
         BillingNotificationIntegrationService service = new BillingNotificationIntegrationService(
             notificationService,
             new BillingNotificationCommandFactory(),
-            new ClientBillingNotificationCommandFactory(),
+            clientBillingFactory(),
             recipientGateway,
             clientRecipientGateway
         );
 
-        service.recordPaymentRefunded(booking(), transaction(), partialRefundEvent(), "payment_webhook");
+        Booking booking = booking();
+        User user = new User();
+        user.setId(50L);
+        booking.setUser(user);
+
+        service.recordPaymentRefunded(booking, transaction(), partialRefundEvent(), "payment_webhook");
 
         ArgumentCaptor<NotificationRecordCommand> captor = ArgumentCaptor.forClass(NotificationRecordCommand.class);
         verify(notificationService).record(captor.capture());
         assertEquals(NotificationEventType.PAYMENT_REFUNDED, captor.getValue().eventType());
         assertTrue(captor.getValue().dedupeKey().endsWith("REFUND_PARTIAL"));
+        assertTrue(String.valueOf(captor.getValue().payload().get("refundTimingHint")).contains("Mercado Pago"));
+        assertTrue(String.valueOf(captor.getValue().payload().get("refundTimingHint")).contains("30 de marzo"));
+        assertEquals("Visa Débito", captor.getValue().payload().get("refundPaymentMethodLabel"));
+        assertEquals("50", captor.getValue().recipientId());
+    }
+
+    @Test
+    void paymentRefundPendingOnlyEmitsClientNotification() {
+        NotificationService notificationService = Mockito.mock(NotificationService.class);
+        ProfessionalNotificationRecipientGateway professionalRecipientGateway = Mockito.mock(ProfessionalNotificationRecipientGateway.class);
+        ClientNotificationRecipientGateway clientRecipientGateway = Mockito.mock(ClientNotificationRecipientGateway.class);
+        when(notificationService.record(any())).thenReturn(new NotificationRegistrationResult("evt-3", "uuid-3", true));
+        when(clientRecipientGateway.findNotificationRecipientByUserId(50L)).thenReturn(
+            Optional.of(new ClientNotificationRecipient(50L, "client@test.com", "Cliente Uno"))
+        );
+
+        BillingNotificationIntegrationService service = new BillingNotificationIntegrationService(
+            notificationService,
+            new BillingNotificationCommandFactory(),
+            clientBillingFactory(),
+            professionalRecipientGateway,
+            clientRecipientGateway
+        );
+
+        Booking booking = booking();
+        User user = new User();
+        user.setId(50L);
+        booking.setUser(user);
+
+        service.recordPaymentRefundPending(booking, transaction(), null, "refund_dispatch_pending");
+
+        ArgumentCaptor<NotificationRecordCommand> captor = ArgumentCaptor.forClass(NotificationRecordCommand.class);
+        verify(notificationService).record(captor.capture());
+        assertEquals(NotificationEventType.PAYMENT_REFUND_PENDING, captor.getValue().eventType());
+        assertEquals("50", captor.getValue().recipientId());
+        assertTrue(String.valueOf(captor.getValue().payload().get("refundTimingHint")).contains("Mercado Pago"));
+        assertTrue(String.valueOf(captor.getValue().payload().get("refundTimingHint")).contains("17 de abril"));
+        assertEquals("Visa Débito", captor.getValue().payload().get("refundPaymentMethodLabel"));
     }
 
     @Test
@@ -107,7 +151,7 @@ class BillingNotificationIntegrationServiceTest {
         BillingNotificationIntegrationService service = new BillingNotificationIntegrationService(
             notificationService,
             new BillingNotificationCommandFactory(),
-            new ClientBillingNotificationCommandFactory(),
+            clientBillingFactory(),
             professionalRecipientGateway,
             clientRecipientGateway
         );
@@ -148,10 +192,15 @@ class BillingNotificationIntegrationServiceTest {
         transaction.setAmount(new BigDecimal("1500"));
         transaction.setCurrency("UYU");
         transaction.setStatus(PaymentTransactionStatus.APPROVED);
+        transaction.setPayloadJson("{\"paymentTypeId\":\"debit_card\",\"paymentMethodId\":\"visa\"}");
         transaction.setApprovedAt(LocalDateTime.of(2026, 3, 18, 11, 0));
         transaction.setUpdatedAt(LocalDateTime.of(2026, 3, 18, 11, 0));
         transaction.setCreatedAt(LocalDateTime.of(2026, 3, 18, 10, 0));
         return transaction;
+    }
+
+    private ClientBillingNotificationCommandFactory clientBillingFactory() {
+        return new ClientBillingNotificationCommandFactory(new ObjectMapper(), "America/Montevideo");
     }
 
     private ParsedWebhookEvent approvedEvent() {

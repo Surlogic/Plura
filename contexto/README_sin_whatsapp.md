@@ -140,7 +140,7 @@ Plan para crecimiento, reputacion visual y operacion multiequipo. Precio objetiv
 
 Base transversal que ordena el producto y la arquitectura:
 
-- autenticacion y seguridad: registro, login, recuperacion, sesiones, OAuth Google y Apple; hoy conviven dos recuperaciones de contraseña (`/auth/password/forgot` + `/auth/password/reset` como flujo legacy por token y `/auth/password/recovery/*` como flujo escalonado email + telefono + OTP por email); al confirmar cualquiera de los resets, backend devuelve el `role` recuperado (`USER` o `PROFESSIONAL`) para redirigir al login correcto y limpiar sesion previa; login OAuth puede requerir completar telefono via `POST /auth/oauth/complete-phone`; eliminacion de cuenta requiere challenge OTP por email (`/auth/challenge/send` con purpose `ACCOUNT_DELETION`) antes de ejecutar `DELETE /auth/me` con `challengeId + code`
+- autenticacion y seguridad: registro, login, recuperacion, sesiones y OAuth; hoy web y mobile exponen Google como login social activo, mientras backend conserva soporte OAuth mas amplio a nivel modulo auth; conviven dos recuperaciones de contraseña (`/auth/password/forgot` + `/auth/password/reset` como flujo legacy por token y `/auth/password/recovery/*` como flujo escalonado email + telefono + OTP por email); al confirmar cualquiera de los resets, backend devuelve el `role` recuperado (`USER` o `PROFESSIONAL`) para redirigir al login correcto y limpiar sesion previa; login OAuth puede requerir completar telefono via `POST /auth/oauth/complete-phone`; eliminacion de cuenta requiere challenge OTP por email (`/auth/challenge/send` con purpose `ACCOUNT_DELETION`) antes de ejecutar `DELETE /auth/me` con `challengeId + code`
 - onboarding inicial del negocio o profesional cuando este listo
 - roles y permisos
 - perfil editable del negocio o profesional
@@ -180,21 +180,29 @@ Notas operativas recientes:
 - al cerrar sesion desde la web, la UI ahora muestra un overlay transitorio de `Cerrando sesión` y redirige al login correcto por rol (`/cliente/auth/login` o `/profesional/auth/login`) en vez de dejar la pantalla sin feedback mientras limpia estado local
 - el inbox de notificaciones se apoya en una ruta de lectura mas liviana para bajar latencia de lista sin cambiar la UX ni los contratos
 - pagos online en runtime quedaron `Mercado Pago only`; `DLOCAL` se conserva solo como compatibilidad de lectura para datos historicos y como historia de migraciones Flyway
-- el home web ahora usa SSR (`getServerSideProps`) en vez de ISR/static; la pagina prioriza `buscar -> categorias -> destacados -> como funciona -> confianza -> CTA final`, reutiliza la barra unificada de busqueda en una variante hero mas limpia y sigue consumiendo testimonios publicos reales via `GET /public/app-feedback`; el ranking de top professionals prioriza volumen de reservas confirmadas/completadas de los ultimos 3 meses
+- el home web ahora usa SSR (`getServerSideProps`) en vez de ISR/static; la pagina prioriza `buscar -> categorias -> destacados -> como funciona -> confianza -> CTA final`, reutiliza la barra unificada de busqueda en una variante hero mas limpia y suma un media block animado de rubros dentro del hero que rota automaticamente usando `homeData.categories`, `category.imageUrl` cuando existe y placeholders SVG locales como fallback, respetando `prefers-reduced-motion`; sigue consumiendo testimonios publicos reales via `GET /public/app-feedback`; el ranking de top professionals prioriza volumen de reservas confirmadas/completadas de los ultimos 3 meses
+- home y explorar ya comparten una identidad visual publica consistente para negocios/locales: las cards priorizan `banner` como media principal, muestran `logo` superpuesto, caen a foto real del negocio si falta banner y evitan usar categorias o imagenes de servicio como branding principal salvo fallback extremo
 - la reserva publica web en `/reservar` ya no comprime servicio, fecha, horario y checkout en una sola pantalla: ahora corre en `5` pasos reales (`confirmar servicio -> elegir dia -> elegir horario -> revisar turno -> confirmar y reservar`), mantiene los mismos endpoints backend y sigue retomando el cierre desde `pendingReservation` despues de login
-- en el paso final de `/reservar`, si el cliente todavia no tiene sesion, la web ahora abre primero una pantalla embebida de registro/login para completar el acceso sin salir del flujo; ese overlay tambien ofrece Google y Apple; `pendingReservation` se conserva como respaldo si el usuario termina en las pantallas completas de auth o en `complete-phone` despues de OAuth
+- `/api/home` y `/api/search` ahora exponen metadata suficiente de branding de card (`bannerUrl`, `bannerMedia`, `logoUrl`, `logoMedia`, `fallbackPhotoUrl`) para que home y marketplace no dependan de una sola imagen plana
+- en el paso final de `/reservar`, si el cliente todavia no tiene sesion, la web ahora abre primero una pantalla embebida de registro/login para completar el acceso sin salir del flujo; ese overlay hoy ofrece credenciales propias y Google; `pendingReservation` se conserva como respaldo si el usuario termina en las pantallas completas de auth o en `complete-phone` despues de OAuth
 - el paso final del flujo publico no promete confirmacion inmediata: la reserva sigue naciendo en `PENDING`; si el servicio requiere pago online, la confirmacion final depende del backend y de la acreditacion de Mercado Pago
 - flujo real de estados para QA manual:
   `POST /public/profesionales/{slug}/reservas` crea siempre en `PENDING`;
   si el servicio es `ON_SITE`, el profesional confirma manualmente desde `/profesional/dashboard/reservas`;
   si requiere pago online, el backend confirma automaticamente al acreditar el webhook de Mercado Pago;
+  si una reserva prepaga se cancela fuera de la ventana de no devolucion segun la policy snapshot, backend genera el refund correspondiente y deja trazabilidad en finanzas;
+  si Mercado Pago responde que el refund quedo iniciado pero todavia no final, la operacion no se considera cerrada: queda bajo seguimiento en `provider_operation` hasta webhook o reconciliacion;
+  cuando ese refund queda iniciado pero pendiente, backend emite notificacion in-app y email transaccional solo al cliente con texto segun el medio de pago detectado;
+  si Mercado Pago devuelve `account_money`, el mensaje avisa acreditacion inmediata o dentro del mismo dia;
+  si detecta tarjeta, el mensaje cita la referencia oficial de 7 a 20 dias habiles y muestra una ventana conservadora un poco mas amplia para no prometer de mas;
+  si el refund queda completado en el mismo dispatch, backend tambien emite `PAYMENT_REFUNDED` solo para el cliente sin esperar un webhook extra, reutilizando esa misma logica de estimacion;
   mientras la reserva siga `PENDING` o `CONFIRMED`, el horario queda bloqueado y no puede coexistir otra reserva en ese mismo tramo;
   si la reserva se cancela o se reagenda, el slot anterior se libera y la disponibilidad publica se recalcula enseguida para ese dia;
   una reserva `CONFIRMED` puede pasar a `COMPLETED` manualmente desde `/profesional/dashboard/reservas` o via `POST /profesional/reservas/{id}/complete` solo cuando ya termino el turno completo (`booking.endDateTime <= now`, incluyendo post-buffer);
   la reseña del cliente sigue habilitada solo sobre reservas `COMPLETED`, sin reseña previa y dentro de `7` dias desde `completedAt`
 - la web cliente ahora suma recordatorio in-app de reseña con backend como fuente de verdad: al entrar a `/cliente/inicio` o `/cliente/reservas`, busca una reserva `COMPLETED` elegible, registra la impresion real y muestra como maximo `1` reminder por dia, `3` por reserva y solo dentro de los `7` dias posteriores a `completedAt`; desaparece si el cliente reseña, si vence la ventana o si llega al tope
 - `ClientNotificationsContext` ya no rompe si se renderiza fuera del provider; devuelve defaults seguros para degradar sin crash en rutas publicas o SSR
-- la web ya usa recuperacion de contraseña en 3 pasos (`email -> telefono -> codigo`) sobre `/auth/password/recovery/*`, mientras mobile todavia conserva el flujo legacy por email/token
+- web y mobile ya usan recuperacion de contraseña en 3 pasos (`email -> telefono -> codigo`) sobre `/auth/password/recovery/*`; el flujo legacy `/auth/password/forgot|reset` queda solo como compatibilidad
 - los formularios principales que cargan telefono en web y mobile ya usan selector de pais con bandera + codigo internacional; el frontend compone el numero final antes de enviarlo al backend
 - tras completar un reset de contraseña, web y mobile ya no dejan la eleccion manual del acceso: navegan al login de cliente o profesional segun el rol real de la cuenta recuperada
 
@@ -338,7 +346,7 @@ Nota: el input original mencionaba `31/04/2026`, fecha invalida; en este context
 ## Foto rapida del repo
 
 - `apps/web`: app web con `Pages Router`, `36` pages y `80` componentes.
-- `apps/mobile`: app Expo con `23` pantallas y `21` servicios cliente.
+- `apps/mobile`: app Expo con `31` pantallas y `21` servicios cliente.
 - `backend-java`: API principal con `594` archivos Java y `58` migraciones SQL.
 - `packages/shared`: utilidades, contratos y definiciones de billing compartidas.
 - `scripts`: helpers de desarrollo del workspace.
@@ -348,7 +356,7 @@ Nota: el input original mencionaba `31/04/2026`, fecha invalida; en este context
 Capacidades ya visibles en codigo:
 
 - autenticacion, sesiones, refresh y password reset
-- OAuth Google y Apple
+- OAuth Google expuesto en frontend; soporte OAuth adicional conservado en backend auth
 - perfiles de cliente y profesional
 - catalogo de servicios del profesional
 - agenda, slots y reservas
@@ -396,9 +404,11 @@ La web usa `apps/web/src/pages` como capa de rutas y `apps/web/src/services` par
 
 La app mobile usa `expo-router` con grupos:
 
+- `app/index.tsx` como entrada: resuelve sesion y, cuando no existe login activo, muestra una portada de bienvenida con logo y acceso separado para cliente o profesional
 - `app/(tabs)` para la experiencia principal del cliente
-- `app/(auth)` para login, registro y password reset
+- `app/(auth)` para login, registro, recovery escalonado y completar telefono despues de OAuth
 - `app/dashboard` para vistas del profesional
+- al cerrar sesion en mobile, la navegacion ya no deriva al login por rol: limpia sesion y vuelve siempre a la portada inicial `app/index.tsx`, desde donde el usuario elige de nuevo acceso cliente o profesional
 
 El cliente Axios mobile:
 

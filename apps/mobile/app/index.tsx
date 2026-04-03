@@ -2,6 +2,7 @@ import React from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import { Redirect } from 'expo-router';
 import { useAuthSession } from '../src/context/ProfessionalProfileContext';
+import { AuthWelcomeScreen } from '../src/features/auth/AuthWelcomeScreen';
 import { theme } from '../src/theme';
 
 export default function EntryScreen() {
@@ -26,5 +27,9 @@ export default function EntryScreen() {
     return <Redirect href="/dashboard" />;
   }
 
-  return <Redirect href="/(tabs)" />;
+  if (role === 'client') {
+    return <Redirect href="/(tabs)" />;
+  }
+
+  return <AuthWelcomeScreen />;
 }

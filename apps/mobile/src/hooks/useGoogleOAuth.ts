@@ -8,7 +8,8 @@ import {
   oauthLoginWithAuthorizationCode,
   oauthLoginWithToken,
   type OAuthAuthAction,
-} from '../services/oauth';
+  type OAuthResult,
+} from '../services/authBackend';
 import { setSession } from '../services/session';
 
 WebBrowser.maybeCompleteAuthSession();
@@ -19,11 +20,12 @@ type UseGoogleOAuthOptions = {
   role: AuthRole;
   authAction: OAuthAuthAction;
   refreshProfile: () => Promise<unknown>;
-  onSuccess: () => Promise<void>;
+  onSuccess: (result: OAuthResult) => Promise<void>;
   onError: (message: string) => void;
 };
 
 const GOOGLE_AUTH_WARMUP_URL = 'https://accounts.google.com/o/oauth2/v2/auth';
+const MOBILE_ENV_FILE = 'apps/mobile/.env';
 
 const readEnvValue = (...values: Array<string | undefined>) => {
   const resolved = values.find((value) => typeof value === 'string' && value.trim().length > 0);
@@ -65,6 +67,11 @@ export function useGoogleOAuth({
     process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID,
     process.env.EXPO_PUBLIC_GOOGLE_EXPO_CLIENT_ID,
   );
+  const googleConfigErrorMessage = Platform.OS === 'android'
+    ? `Falta configurar Google OAuth para Android. Defini EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID en ${MOBILE_ENV_FILE} y reinicia el dev server/build.`
+    : Platform.OS === 'ios'
+      ? `Falta configurar Google OAuth para iOS. Defini EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID en ${MOBILE_ENV_FILE} y reinicia el dev server/build.`
+      : `Falta configurar Google OAuth. Defini EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID en ${MOBILE_ENV_FILE} y reinicia el dev server/build.`;
 
   const hasGoogleConfig = Platform.OS === 'web'
     ? Boolean(webClientId || genericClientId)
@@ -101,7 +108,7 @@ export function useGoogleOAuth({
       refreshToken: result.refreshToken,
     });
     await refreshProfileRef.current();
-    await onSuccessRef.current();
+    await onSuccessRef.current(result);
   };
 
   useEffect(() => {
@@ -182,7 +189,7 @@ export function useGoogleOAuth({
           refreshToken: result.refreshToken,
         });
         await refreshProfileRef.current();
-        await onSuccessRef.current();
+        await onSuccessRef.current(result);
       } catch (error: any) {
         const responseData = error?.response?.data;
         const backendMessage =
@@ -209,20 +216,14 @@ export function useGoogleOAuth({
     if (Platform.OS !== 'web' && isExpoGo) {
       onErrorRef.current(
         Platform.OS === 'android'
-          ? 'Google OAuth no funciona en Expo Go. Usa un development build y configura EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID.'
-          : 'Google OAuth no funciona en Expo Go. Usa un development build y configura EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID.',
+          ? `Google OAuth no funciona en Expo Go. Usa un development build y configura EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID y EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID en ${MOBILE_ENV_FILE}.`
+          : `Google OAuth no funciona en Expo Go. Usa un development build y configura EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID en ${MOBILE_ENV_FILE}.`,
       );
       return;
     }
 
     if (!hasGoogleConfig) {
-      onErrorRef.current(
-        Platform.OS === 'android'
-          ? 'Falta EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID para Android.'
-          : Platform.OS === 'ios'
-            ? 'Falta EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID para iOS.'
-            : 'Falta EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID.',
-      );
+      onErrorRef.current(googleConfigErrorMessage);
       return;
     }
 
@@ -346,4 +347,3 @@ export function useGoogleOAuth({
     handleGoogleAuth,
   };
 }
-

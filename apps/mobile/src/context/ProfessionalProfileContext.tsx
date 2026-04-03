@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { router } from 'expo-router';
 import api from '../services/api';
 import {
   clearSession,
@@ -101,6 +102,7 @@ export const AuthSessionProvider = ({ children }: { children: ReactNode }) => {
       await clearSession();
       resetState();
       setHasLoaded(true);
+      router.replace('/');
     }
   };
 

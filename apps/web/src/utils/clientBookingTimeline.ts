@@ -87,6 +87,8 @@ export const getClientBookingTimelineSummary = (item: ClientBookingTimelineItem)
       return 'El pago asociado fue aprobado.';
     case 'PAYMENT_FAILED':
       return 'El pago asociado registró un fallo.';
+    case 'PAYMENT_REFUND_PENDING':
+      return 'La devolución fue iniciada y su acreditación depende de Mercado Pago.';
     case 'PAYMENT_REFUNDED':
       return 'Se registró un reembolso asociado a esta reserva.';
     default:

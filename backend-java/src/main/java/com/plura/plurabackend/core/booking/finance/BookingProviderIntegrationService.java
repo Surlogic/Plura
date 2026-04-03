@@ -631,6 +631,7 @@ public class BookingProviderIntegrationService {
             ProviderRefundResult providerRefund = client.createRefund(
                 new ProviderRefundRequest(
                     chargeTransaction.getProviderPaymentId(),
+                    booking.getProfessionalId(),
                     refundRecord.getId(),
                     refundRecord.getTargetAmount(),
                     refundRecord.getCurrency(),
@@ -849,6 +850,12 @@ public class BookingProviderIntegrationService {
                     refundTx.setApprovedAt(LocalDateTime.now());
                     updatedRefund = bookingFinanceService.markRefundRecordCompleted(refundRecordId, providerRefund.providerRefundId());
                     providerOperationService.markSucceeded(operation.getId(), providerRefund.providerRefundId(), providerRefund.rawResponseJson());
+                    billingNotificationIntegrationService.recordPaymentRefunded(
+                        booking,
+                        refundTx,
+                        null,
+                        "refund_dispatch_succeeded"
+                    );
                 } else if (isRefundFailure(providerRefund.status())) {
                     refundTx.setStatus(PaymentTransactionStatus.FAILED);
                     refundTx.setFailedAt(LocalDateTime.now());
@@ -857,7 +864,19 @@ public class BookingProviderIntegrationService {
                 } else {
                     refundTx.setStatus(PaymentTransactionStatus.PENDING);
                     updatedRefund = bookingFinanceService.markRefundRecordPendingProvider(refundRecordId, providerRefund.providerRefundId());
-                    providerOperationService.markSucceeded(operation.getId(), providerRefund.providerRefundId(), providerRefund.rawResponseJson());
+                    billingNotificationIntegrationService.recordPaymentRefundPending(
+                        booking,
+                        refundTx,
+                        null,
+                        "refund_dispatch_pending"
+                    );
+                    providerOperationService.markUncertain(
+                        operation.getId(),
+                        providerRefund.providerRefundId(),
+                        providerRefund.rawResponseJson(),
+                        "awaiting_refund_webhook",
+                        LocalDateTime.now().plusMinutes(15)
+                    );
                 }
                 paymentTransactionRepository.save(refundTx);
                 bookingFinanceService.applyRefundEvidence(booking, updatedRefund);
@@ -1149,6 +1168,8 @@ public class BookingProviderIntegrationService {
         verificationPayload.put("status", verification.status());
         verificationPayload.put("amount", verification.amount());
         verificationPayload.put("currency", verification.currency());
+        verificationPayload.put("paymentTypeId", verification.paymentTypeId());
+        verificationPayload.put("paymentMethodId", verification.paymentMethodId());
         String checkoutUrl = extractCheckoutUrl(pendingCharge);
         if (checkoutUrl != null && !checkoutUrl.isBlank()) {
             verificationPayload.put("checkoutUrl", checkoutUrl);

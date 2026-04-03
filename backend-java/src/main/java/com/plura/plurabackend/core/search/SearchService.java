@@ -272,6 +272,11 @@ public class SearchService {
                     null,
                     null,
                     null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
                     null
                 ))
                 .collect(Collectors.toList());
@@ -310,6 +315,11 @@ public class SearchService {
                 item.getLongitude(),
                 item.getPriceFrom(),
                 imageStorageService.resolvePublicUrl(item.getCoverImageUrl()),
+                imageStorageService.resolvePublicUrl(item.getBannerUrl()),
+                item.getBannerMedia(),
+                imageStorageService.resolvePublicUrl(item.getLogoUrl()),
+                item.getLogoMedia(),
+                imageStorageService.resolvePublicUrl(item.getFallbackPhotoUrl()),
                 item.getLocationText()
             ))
             .toList();

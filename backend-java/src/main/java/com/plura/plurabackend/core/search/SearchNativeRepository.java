@@ -65,6 +65,15 @@ public class SearchNativeRepository {
                 + "doc.price_from AS price_from, "
                 + "COALESCE(doc.category_slugs, ARRAY[]::text[]) AS category_slugs, "
                 + "doc.cover_image_url AS cover_image_url, "
+                + "doc.banner_url AS banner_url, "
+                + "doc.banner_position_x AS banner_position_x, "
+                + "doc.banner_position_y AS banner_position_y, "
+                + "doc.banner_zoom AS banner_zoom, "
+                + "doc.logo_url AS logo_url, "
+                + "doc.logo_position_x AS logo_position_x, "
+                + "doc.logo_position_y AS logo_position_y, "
+                + "doc.logo_zoom AS logo_zoom, "
+                + "doc.fallback_photo_url AS fallback_photo_url, "
                 + buildDistanceExpression("doc") + " AS distance_km, "
                 + "CASE WHEN :dateFilter = true AND " + dateMatchExpression + " THEN 1 ELSE 0 END AS date_match, "
                 + "CASE WHEN :availableNow = true AND " + availableNowMatchExpression + " THEN 1 ELSE 0 END AS available_now_match, "
@@ -276,6 +285,15 @@ public class SearchNativeRepository {
                 + "doc.longitude AS longitude, "
                 + "doc.price_from AS price_from, "
                 + "doc.cover_image_url AS cover_image_url, "
+                + "doc.banner_url AS banner_url, "
+                + "doc.banner_position_x AS banner_position_x, "
+                + "doc.banner_position_y AS banner_position_y, "
+                + "doc.banner_zoom AS banner_zoom, "
+                + "doc.logo_url AS logo_url, "
+                + "doc.logo_position_x AS logo_position_x, "
+                + "doc.logo_position_y AS logo_position_y, "
+                + "doc.logo_zoom AS logo_zoom, "
+                + "doc.fallback_photo_url AS fallback_photo_url, "
                 + "doc.location_text AS location_text "
                 + "FROM " + PROFESSIONAL_DOCUMENT_VIEW + " doc "
                 + "WHERE doc.professional_id IN (:ids)";
@@ -535,7 +553,32 @@ public class SearchNativeRepository {
                 rs.getObject("longitude") == null ? null : rs.getDouble("longitude"),
                 rs.getObject("price_from") == null ? null : rs.getDouble("price_from"),
                 rs.getString("cover_image_url"),
+                rs.getString("banner_url"),
+                mediaPresentation(
+                    rs.getObject("banner_position_x") == null ? null : rs.getDouble("banner_position_x"),
+                    rs.getObject("banner_position_y") == null ? null : rs.getDouble("banner_position_y"),
+                    rs.getObject("banner_zoom") == null ? null : rs.getDouble("banner_zoom")
+                ),
+                rs.getString("logo_url"),
+                mediaPresentation(
+                    rs.getObject("logo_position_x") == null ? null : rs.getDouble("logo_position_x"),
+                    rs.getObject("logo_position_y") == null ? null : rs.getDouble("logo_position_y"),
+                    rs.getObject("logo_zoom") == null ? null : rs.getDouble("logo_zoom")
+                ),
+                rs.getString("fallback_photo_url"),
                 rs.getString("location_text")
+            );
+        }
+
+        private com.plura.plurabackend.professional.dto.MediaPresentationDto mediaPresentation(
+            Double positionX,
+            Double positionY,
+            Double zoom
+        ) {
+            return new com.plura.plurabackend.professional.dto.MediaPresentationDto(
+                positionX != null ? positionX : 50d,
+                positionY != null ? positionY : 50d,
+                zoom != null ? zoom : 1d
             );
         }
 

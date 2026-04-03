@@ -5,6 +5,7 @@ import {
 } from '../../services/pendingReservation';
 
 export type AuthRole = 'cliente' | 'profesional';
+export type BackendAuthRole = 'USER' | 'PROFESSIONAL';
 
 export type AuthRoleCopy = {
   role: AuthRole;
@@ -53,6 +54,26 @@ export const authRoleCopy: Record<AuthRole, AuthRoleCopy> = {
     loginEndpoint: '/auth/login/profesional',
     registerEndpoint: '/auth/register/profesional',
   },
+};
+
+export const authRoleToBackendRole = (role: AuthRole): BackendAuthRole => {
+  return role === 'profesional' ? 'PROFESSIONAL' : 'USER';
+};
+
+export const backendRoleToAuthRole = (role?: BackendAuthRole | null): AuthRole | null => {
+  if (role === 'PROFESSIONAL') return 'profesional';
+  if (role === 'USER') return 'cliente';
+  return null;
+};
+
+export const resolveLoginRouteFromBackendRole = (role?: BackendAuthRole | null) => {
+  return role === 'PROFESSIONAL' ? '/(auth)/login-professional' : '/(auth)/login-client';
+};
+
+export const resolveCompletePhoneRouteFromBackendRole = (role?: BackendAuthRole | null) => {
+  return role === 'PROFESSIONAL'
+    ? '/(auth)/complete-phone-professional'
+    : '/(auth)/complete-phone-client';
 };
 
 export const continueAfterAuth = async (role: AuthRole) => {

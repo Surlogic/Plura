@@ -8,7 +8,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { Link } from 'expo-router';
+import { Link, router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import api from '../../services/api';
 import AuthLoadingOverlay from '../../components/auth/AuthLoadingOverlay';
@@ -16,7 +16,14 @@ import { useAuthSession } from '../../context/ProfessionalProfileContext';
 import { useGoogleOAuth } from '../../hooks/useGoogleOAuth';
 import { setSession } from '../../services/session';
 import { getApiErrorMessage } from '../../services/errors';
-import { authRoleCopy, continueAfterAuth, type AuthRole } from './config';
+import type { OAuthResult } from '../../services/authBackend';
+import {
+  authRoleCopy,
+  backendRoleToAuthRole,
+  continueAfterAuth,
+  resolveCompletePhoneRouteFromBackendRole,
+  type AuthRole,
+} from './config';
 import { AppScreen, surfaceStyles } from '../../components/ui/AppScreen';
 import { theme } from '../../theme';
 
@@ -31,13 +38,33 @@ export function RoleLoginScreen({ role }: RoleLoginScreenProps) {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const handleOAuthAuthenticated = async (result: OAuthResult) => {
+    setErrorMessage(null);
+
+    if (role === 'profesional' && result.role !== 'PROFESSIONAL') {
+      setErrorMessage('Esta cuenta no quedo asociada como profesional. Usa acceso cliente o registrate como profesional.');
+      return;
+    }
+
+    const resolvedRole = backendRoleToAuthRole(result.role);
+    if (!resolvedRole) {
+      setErrorMessage('El backend no devolvio un rol valido para esta sesion.');
+      return;
+    }
+
+    if (!(result.user.phoneNumber ?? '').trim()) {
+      router.replace(resolveCompletePhoneRouteFromBackendRole(result.role));
+      return;
+    }
+
+    await continueAfterAuth(resolvedRole);
+  };
+
   const { isGoogleSubmitting, handleGoogleAuth } = useGoogleOAuth({
     role,
     authAction: 'LOGIN',
     refreshProfile,
-    onSuccess: async () => {
-      await continueAfterAuth(role);
-    },
+    onSuccess: handleOAuthAuthenticated,
     onError: (message) => {
       setErrorMessage(message || null);
     },
@@ -231,4 +258,3 @@ export function RoleLoginScreen({ role }: RoleLoginScreenProps) {
     </>
   );
 }
-

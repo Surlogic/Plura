@@ -1,15 +1,18 @@
 import { memo, useMemo } from 'react';
+import type { Category } from '@/types/category';
 import SearchBar from './SearchBar';
+import HomeHeroVisual from './HomeHeroVisual';
 import type { HomeStats } from '@/types/home';
 
 type HeroProps = {
+  categories: Category[];
   stats: HomeStats;
   isLoading?: boolean;
 };
 
 const formatStat = (value: number) => value.toLocaleString('es-UY');
 
-export default memo(function Hero({ stats, isLoading = false }: HeroProps) {
+export default memo(function Hero({ categories, stats, isLoading = false }: HeroProps) {
   const statItems = useMemo(() => [
     { label: 'Profesionales disponibles', value: isLoading ? '...' : formatStat(stats.professionals) },
     { label: 'Reservas mensuales', value: isLoading ? '...' : formatStat(stats.monthlyBookings) },
@@ -38,25 +41,35 @@ export default memo(function Hero({ stats, isLoading = false }: HeroProps) {
           </div>
         </div>
 
-        <div className="relative mx-auto mt-8 max-w-[68rem]">
-          <SearchBar />
-        </div>
+        <div className="relative mx-auto mt-8 max-w-[72rem]">
+          <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_25rem] lg:items-start">
+            <div className="lg:col-span-2">
+              <SearchBar />
+            </div>
 
-        <div className="relative mx-auto mt-7 max-w-[34rem]">
-          <div className="grid gap-5 border-t border-[color:var(--border-soft)]/80 pt-4 text-center sm:grid-cols-2 sm:gap-8">
-            {statItems.map((item, index) => (
-              <div
-                key={item.label}
-                className={index > 0 ? 'sm:border-l sm:border-[color:var(--border-soft)]/70 sm:pl-8' : ''}
-              >
-                <p className="text-[1.25rem] font-semibold leading-none text-[color:var(--ink)] sm:text-[1.42rem]">
-                  {item.value}
-                </p>
-                <p className="mt-1.5 text-[0.68rem] font-semibold uppercase tracking-[0.22em] text-[color:var(--ink-faint)]">
-                  {item.label}
-                </p>
+            <div className="order-2 lg:order-none">
+              <div className="mx-auto max-w-[34rem] lg:mx-0 lg:max-w-none">
+                <div className="grid gap-5 border-t border-[color:var(--border-soft)]/80 pt-4 text-center sm:grid-cols-2 sm:gap-8">
+                  {statItems.map((item, index) => (
+                    <div
+                      key={item.label}
+                      className={index > 0 ? 'sm:border-l sm:border-[color:var(--border-soft)]/70 sm:pl-8' : ''}
+                    >
+                      <p className="text-[1.25rem] font-semibold leading-none text-[color:var(--ink)] sm:text-[1.42rem]">
+                        {item.value}
+                      </p>
+                      <p className="mt-1.5 text-[0.68rem] font-semibold uppercase tracking-[0.22em] text-[color:var(--ink-faint)]">
+                        {item.label}
+                      </p>
+                    </div>
+                  ))}
+                </div>
               </div>
-            ))}
+            </div>
+
+            <div className="order-1 lg:order-none lg:row-span-2">
+              <HomeHeroVisual categories={categories} isLoading={isLoading} />
+            </div>
           </div>
         </div>
       </div>

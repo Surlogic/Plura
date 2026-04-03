@@ -50,6 +50,11 @@ export default memo(function TopBusinesses({ professionals, isLoading = false }:
                   category={business.category}
                   rating={business.rating}
                   reviewsCount={business.reviewsCount}
+                  bannerUrl={business.bannerUrl}
+                  bannerMedia={business.bannerMedia}
+                  logoUrl={business.logoUrl}
+                  logoMedia={business.logoMedia}
+                  fallbackPhotoUrl={business.fallbackPhotoUrl}
                   imageUrl={business.imageUrl}
                   href={`/profesional/pagina/${slug}`}
                 />

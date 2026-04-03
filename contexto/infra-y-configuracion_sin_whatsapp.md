@@ -20,7 +20,7 @@ Necesario para:
 - registro y login
 - recuperacion de cuenta
 - sesiones
-- login social con Google y Apple
+- login social con Google en frontend
 - roles `cliente` y `profesional`
 
 Infra actual detectada:
@@ -28,7 +28,7 @@ Infra actual detectada:
 - JWT
 - refresh tokens
 - cookies y bearer tokens segun plataforma
-- OAuth Google y Apple
+- OAuth Google expuesto en frontend; soporte OAuth adicional conservado en backend auth
 - rate limiting
 - auditoria auth
 
@@ -128,6 +128,11 @@ Lectura real del backend hoy:
 - `Mercado Pago` tambien esta conectado al checkout real de reservas y refunds usando OAuth del profesional
 - ya existe storage de OAuth para cuentas Mercado Pago de profesionales en `professional_payment_provider_connection`
 - `payment_event`, `payment_transaction` y `provider_operation` ya funcionan como base de auditoria y conciliacion compartida
+- cuando un refund de reserva queda iniciado pero Mercado Pago no lo confirma en el mismo response, la `provider_operation` de tipo `BOOKING_REFUND` permanece en seguimiento (`UNCERTAIN`) hasta webhook o reconciliacion; no debe darse por exitosa solo por haber recibido un `pending`
+- al despachar refunds de reservas, backend resuelve la cuenta OAuth del profesional con el `professionalId` propio del booking/charge; ya no depende de que Mercado Pago devuelva ese dato otra vez al consultar el pago original
+- si SMTP esta operativo, ese estado `refund pendiente` tambien dispara email transaccional solo para el cliente con texto de acreditacion sujeto a tiempos de Mercado Pago y del emisor
+- si el refund queda completado sin pasar por webhook posterior, el backend ahora igual emite `PAYMENT_REFUNDED` y despacha email transaccional solo para el cliente con la misma leyenda de acreditacion
+- para mejorar ese copy, backend ahora persiste `paymentTypeId` y `paymentMethodId` cuando Mercado Pago los devuelve en verificacion/webhook, y con eso ajusta el mensaje entre `dinero en cuenta` vs `tarjeta`
 - el enum `PaymentProvider` mantiene compatibilidad con filas legacy `DLOCAL` solo para que lecturas historicas no rompan reservas ni mediciones
 - el runtime operativo ya no acepta `DLOCAL` como input nuevo; cualquier operacion pendiente legacy se degrada a compatibilidad o se marca como provider retirado
 - la semantica valida de pagos online actuales sigue centrada en `Mercado Pago`
@@ -159,6 +164,8 @@ Notas reales de binding local:
 - para evitar desalineos entre placeholders de `application.yml` y beans que leen propiedades ya resueltas (`SecurityConfig`, `CookieOriginProtectionFilter`, rate limiting), `backend-java/fly.toml` expone tambien `APP_CORS_ALLOWED_ORIGINS` y `APP_SECURITY_TRUST_FORWARDED_HEADERS` ademas de los aliases legacy/no anidados; esto corrige preflights CORS reales contra `https://plura-web-a6ka.vercel.app`
 - cuando Fly muestra `Proxy not finding machines to route requests` para este backend, el primer chequeo no deberia ser el puerto: el codigo ya expone `server.address=0.0.0.0` y `server.port=${PORT:3000}`; el fallo mas probable pasa por machine caida, `healthcheck` sin pasar o secrets faltantes de DB/JWT/R2
 - el repo ahora incluye `backend-java/scripts/check_fly_runtime_env.sh` para validar desde shell las variables minimas de arranque segun el `fly.toml` actual y separar faltantes fatales de advertencias operativas
+- la secuencia real de migraciones Flyway del backend llega a `V64`; `V64__search_card_branding_media.sql` corrige una colision previa con `V62` que hacia caer el startup antes de bindear el puerto
+- el repo ahora incluye `backend-java/src/test/java/com/plura/plurabackend/db/FlywayMigrationVersionUniquenessTest.java` para detectar versiones Flyway duplicadas antes de romper un deploy
 - el backend mantiene fallback a los nombres legacy `BILLING_MERCADOPAGO_ACCESS_TOKEN`, `BILLING_MERCADOPAGO_WEBHOOK_SECRET` y `BILLING_MERCADOPAGO_OAUTH_*`, pero el naming operativo recomendado ya es explicito por dominio: `SUBSCRIPTIONS_*` para planes y `RESERVATIONS_*` para cobros/OAuth profesional
 - para OAuth de Mercado Pago el error de `state` ya no implica adivinar secretos: el backend espera primero `BILLING_MERCADOPAGO_RESERVATIONS_OAUTH_STATE_SIGNING_SECRET`, y si no existe hace fallback a la clave de cifrado o al client secret
 - en local, tener solo `BILLING_MERCADOPAGO_RESERVATIONS_PLATFORM_ACCESS_TOKEN` no alcanza para OAuth: para abrir el onboarding siguen siendo obligatorios `CLIENT_ID` y `REDIRECT_URI`; para completar el callback y persistir la conexion del profesional tambien se vuelve obligatorio `CLIENT_SECRET`
@@ -284,7 +291,7 @@ Areas de configuracion principales en `application.yml`:
 - datasource PostgreSQL obligatorio en runtime (`SPRING_DATASOURCE_URL` o `DATABASE_URL`), hoy alineado a `Supabase PostgreSQL` por `Session Pooler`
 - Flyway
 - JWT y refresh token
-- OAuth Google y Apple
+- OAuth Google expuesto en frontend; soporte OAuth adicional conservado en backend auth
 - mail SMTP
 - cache y Redis
 - feature flags de search, profile y slots
@@ -307,7 +314,7 @@ Variables criticas sin las que el backend puede fallar o degradarse:
 - variables de billing si se habilitan pagos reales
 - variables OAuth de Mercado Pago si se quiere conectar la cuenta del profesional desde billing
 - SMTP operativo si se quiere usar recovery escalonado y otros OTP por email sin degradacion
-- en Fly, ademas de los env no secretos versionados en `backend-java/fly.toml`, siguen siendo obligatorios como secrets al menos: `SPRING_DATASOURCE_PASSWORD`, `SPRING_FLYWAY_PASSWORD`, `JWT_SECRET`, `JWT_REFRESH_PEPPER`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `EMAIL_FROM_ADDRESS`, `EMAIL_SMTP_USERNAME`, `EMAIL_SMTP_PASSWORD`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `BILLING_MERCADOPAGO_SUBSCRIPTIONS_ACCESS_TOKEN`, `BILLING_MERCADOPAGO_SUBSCRIPTIONS_WEBHOOK_SECRET`, `BILLING_MERCADOPAGO_RESERVATIONS_PLATFORM_ACCESS_TOKEN`, `BILLING_MERCADOPAGO_RESERVATIONS_WEBHOOK_SECRET`, `BILLING_MERCADOPAGO_RESERVATIONS_OAUTH_CLIENT_ID`, `BILLING_MERCADOPAGO_RESERVATIONS_OAUTH_CLIENT_SECRET`, `BILLING_MERCADOPAGO_RESERVATIONS_OAUTH_STATE_SIGNING_SECRET`, `BILLING_MERCADOPAGO_RESERVATIONS_OAUTH_TOKEN_ENCRYPTION_KEY`
+- en Fly, ademas de los env no secretos versionados en `backend-java/fly.toml`, siguen siendo obligatorios como secrets al menos: `SPRING_DATASOURCE_PASSWORD`, `SPRING_FLYWAY_PASSWORD`, `JWT_SECRET`, `JWT_REFRESH_PEPPER`, `GOOGLE_CLIENT_ID`, `GOOGLE_ANDROID_CLIENT_ID`, `GOOGLE_IOS_CLIENT_ID` si se va a aceptar OAuth mobile iOS, `GOOGLE_CLIENT_SECRET`, `EMAIL_FROM_ADDRESS`, `EMAIL_SMTP_USERNAME`, `EMAIL_SMTP_PASSWORD`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `BILLING_MERCADOPAGO_SUBSCRIPTIONS_ACCESS_TOKEN`, `BILLING_MERCADOPAGO_SUBSCRIPTIONS_WEBHOOK_SECRET`, `BILLING_MERCADOPAGO_RESERVATIONS_PLATFORM_ACCESS_TOKEN`, `BILLING_MERCADOPAGO_RESERVATIONS_WEBHOOK_SECRET`, `BILLING_MERCADOPAGO_RESERVATIONS_OAUTH_CLIENT_ID`, `BILLING_MERCADOPAGO_RESERVATIONS_OAUTH_CLIENT_SECRET`, `BILLING_MERCADOPAGO_RESERVATIONS_OAUTH_STATE_SIGNING_SECRET`, `BILLING_MERCADOPAGO_RESERVATIONS_OAUTH_TOKEN_ENCRYPTION_KEY`
 - para el pooler de Supabase hoy la dupla operativa recomendada queda fija y sin fallback silencioso: `SPRING_DATASOURCE_URL=jdbc:postgresql://aws-1-sa-east-1.pooler.supabase.com:5432/postgres` + `SPRING_DATASOURCE_USERNAME=postgres.owzzpcnuzzekqvqdimpr`; `SPRING_DATASOURCE_PASSWORD` y `SPRING_FLYWAY_PASSWORD` van como secret aparte
 - Flyway ahora puede declararse explicito con `SPRING_FLYWAY_URL`, `SPRING_FLYWAY_USER`, `SPRING_FLYWAY_PASSWORD` y `SPRING_FLYWAY_DRIVER_CLASS_NAME`, pero si no vienen informados el bootstrap los alinea automaticamente al mismo datasource ya resuelto
 - `backend-java/scripts/check_fly_runtime_env.sh` ya trata como faltante fatal cualquier deploy Fly donde la URL PostgreSQL no embeba credenciales y falten `SPRING_DATASOURCE_USERNAME` o `SPRING_DATASOURCE_PASSWORD`; esto refleja el patron real con Supabase pooler y evita falsos "bind errors" cuando en realidad el proceso cae antes de abrir Tomcat
@@ -398,7 +405,7 @@ Notas reales de deploy en Render:
 ## Integraciones externas detectadas
 
 - Google OAuth
-- Apple OAuth
+- Apple OAuth conservado solo a nivel backend/auth module; hoy sin exposicion en web ni mobile
 - Mapbox
 - Mercado Pago
 - Redis

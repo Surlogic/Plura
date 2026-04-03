@@ -1,12 +1,14 @@
 import Image from 'next/image';
+import { useEffect, useMemo, useState } from 'react';
 import FavoriteToggleButton from '@/components/shared/FavoriteToggleButton';
 import Badge from '@/components/ui/Badge';
 import Button from '@/components/ui/Button';
 import Card from '@/components/ui/Card';
-import { resolveAssetUrl } from '@/utils/assetUrl';
 import {
-  buildProfessionalMediaStyle,
-} from '@/utils/professionalMediaPresentation';
+  buildPublicBusinessImageStyle,
+  buildPublicBusinessLogoStyle,
+  resolvePublicBusinessMedia,
+} from '@/utils/publicBusinessMedia';
 import type { ProfessionalMediaPresentation } from '@/types/professional';
 
 type PublicProfileHeroProps = {
@@ -25,24 +27,11 @@ type PublicProfileHeroProps = {
   onReserve: () => void;
   onToggleFavorite: () => void;
   onViewServices: () => void;
+  photoUrls?: string[];
   reserveLabel?: string;
   rating?: number | null;
   reviewsCount?: number | null;
   reserveDisabled?: boolean;
-};
-
-const sanitizeImageSrc = (value?: string) => {
-  if (!value) return '';
-  const resolved = resolveAssetUrl(value);
-  if (!resolved) return '';
-  try {
-    const baseOrigin =
-      typeof window !== 'undefined' ? window.location.origin : 'http://localhost';
-    const parsed = new URL(resolved, baseOrigin);
-    return parsed.protocol === 'http:' || parsed.protocol === 'https:' ? resolved : '';
-  } catch {
-    return '';
-  }
 };
 
 const LocationIcon = () => (
@@ -81,13 +70,36 @@ export default function PublicProfileHero({
   onReserve,
   onToggleFavorite,
   onViewServices,
+  photoUrls = [],
   reserveLabel = 'Reservar',
   rating,
   reviewsCount,
   reserveDisabled = false,
 }: PublicProfileHeroProps) {
-  const safeBannerSrc = sanitizeImageSrc(bannerUrl);
-  const safeLogoSrc = sanitizeImageSrc(logoUrl);
+  const media = useMemo(
+    () =>
+      resolvePublicBusinessMedia({
+        bannerMedia,
+        bannerUrl,
+        logoMedia,
+        logoUrl,
+        name,
+        photoUrls,
+      }),
+    [bannerMedia, bannerUrl, logoMedia, logoUrl, name, photoUrls],
+  );
+  const mediaKey = media.mainImageCandidates.map((candidate) => candidate.key).join('|');
+  const [bannerIndex, setBannerIndex] = useState(0);
+  const [logoFailed, setLogoFailed] = useState(false);
+
+  useEffect(() => {
+    setBannerIndex(0);
+    setLogoFailed(false);
+  }, [mediaKey, media.logo?.src]);
+
+  const activeBanner = media.mainImageCandidates[bannerIndex] ?? null;
+  const fallbackInitials = initials || media.initials || '?';
+  const showLogoImage = Boolean(media.logo?.src) && !logoFailed;
   const hasRating = typeof rating === 'number' && Number.isFinite(rating);
   const hasReviews = typeof reviewsCount === 'number' && reviewsCount > 0;
 
@@ -98,15 +110,18 @@ export default function PublicProfileHero({
       className="overflow-hidden rounded-[38px] border-white/80 bg-white/96 shadow-[0_34px_90px_-54px_rgba(15,23,42,0.3)]"
     >
       <div className="relative h-[220px] sm:h-[280px] lg:h-[340px]">
-        {safeBannerSrc ? (
+        {activeBanner ? (
           <Image
-            src={safeBannerSrc}
+            src={activeBanner.src}
             alt={`Banner de ${name || 'profesional'}`}
             fill
             sizes="100vw"
             className="object-cover"
-            style={buildProfessionalMediaStyle(bannerMedia)}
+            style={buildPublicBusinessImageStyle(activeBanner)}
             priority={!isPreview}
+            onError={() =>
+              setBannerIndex((current) => Math.min(current + 1, media.mainImageCandidates.length))
+            }
           />
         ) : (
           <div className="h-full w-full bg-[linear-gradient(145deg,#0f172a_0%,#1d2d39_58%,rgba(10,122,67,0.62)_100%)]" />
@@ -119,17 +134,18 @@ export default function PublicProfileHero({
           <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
             <div className="flex min-w-0 gap-4 sm:gap-5">
               <div className="relative flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-[28px] border-4 border-white bg-[color:var(--surface-soft)] text-xl font-semibold text-[color:var(--ink)] shadow-[0_24px_50px_-40px_rgba(15,23,42,0.35)] sm:h-24 sm:w-24">
-                {safeLogoSrc ? (
+                {showLogoImage ? (
                   <Image
-                    src={safeLogoSrc}
+                    src={media.logo!.src}
                     alt={`Logo de ${name || 'profesional'}`}
                     fill
                     sizes="96px"
                     className="object-cover"
-                    style={buildProfessionalMediaStyle(logoMedia)}
+                    style={buildPublicBusinessLogoStyle(media.logo)}
+                    onError={() => setLogoFailed(true)}
                   />
                 ) : (
-                  initials || '?'
+                  fallbackInitials
                 )}
               </div>
 

@@ -26,6 +26,7 @@ const EVENT_TYPE_LABELS: Record<string, string> = {
   BOOKING_NO_SHOW: 'No show',
   PAYMENT_APPROVED: 'Pago aprobado',
   PAYMENT_FAILED: 'Pago fallido',
+  PAYMENT_REFUND_PENDING: 'Reembolso en proceso',
   PAYMENT_REFUNDED: 'Pago reembolsado',
 };
 
@@ -53,6 +54,7 @@ export const PROFESSIONAL_NOTIFICATION_TYPE_OPTIONS: ProfessionalNotificationTyp
   { value: 'BOOKING_NO_SHOW', label: EVENT_TYPE_LABELS.BOOKING_NO_SHOW },
   { value: 'PAYMENT_APPROVED', label: EVENT_TYPE_LABELS.PAYMENT_APPROVED },
   { value: 'PAYMENT_FAILED', label: EVENT_TYPE_LABELS.PAYMENT_FAILED },
+  { value: 'PAYMENT_REFUND_PENDING', label: EVENT_TYPE_LABELS.PAYMENT_REFUND_PENDING },
   { value: 'PAYMENT_REFUNDED', label: EVENT_TYPE_LABELS.PAYMENT_REFUNDED },
 ];
 

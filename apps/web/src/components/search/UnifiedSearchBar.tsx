@@ -247,9 +247,11 @@ export default memo(function UnifiedSearchBar({
       ? SEARCH_TYPE_LABELS[values.type]
       : null;
   const queryFieldLabel = 'Servicios';
-  const queryFieldClassName = isHero ? 'h-full' : 'h-full';
-  const selectionFieldClassName = isHero ? 'h-full' : 'h-full';
-  const heroFieldShellClassName = 'px-4 py-1 sm:px-5';
+  const queryFieldClassName = isHero ? 'h-full justify-start py-1.5' : 'h-full';
+  const selectionFieldClassName = isHero ? 'h-full justify-start py-1.5' : 'h-full';
+  const queryValueClassName = isHero ? 'mt-2 flex min-h-[1.65rem] items-start' : '';
+  const selectionValueClassName = isHero ? 'mt-2 flex min-h-[1.65rem] items-start' : '';
+  const heroFieldShellClassName = 'px-4 py-2 sm:px-5';
   const heroDividerClassName = 'border-t border-[color:var(--border-soft)]/85 md:border-t-0 md:border-r';
   const queryWrapperOrderClassName = isHero ? `order-1 md:col-[1] ${heroFieldShellClassName}` : '';
   const locationWrapperOrderClassName = isHero
@@ -269,7 +271,7 @@ export default memo(function UnifiedSearchBar({
     ? `inline-flex w-full min-w-[8.75rem] items-center justify-center rounded-[18px] px-5 text-[0.95rem] font-semibold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--accent-soft)] focus-visible:ring-offset-2 ${submitButtonToneClassName} ${SEARCH_CONTROL_HEIGHT_CLASS}`
     : `inline-flex w-full min-w-[7.5rem] items-center justify-center rounded-[18px] px-4 text-[0.94rem] font-semibold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--accent-soft)] focus-visible:ring-offset-2 ${submitButtonToneClassName} ${SEARCH_CONTROL_HEIGHT_CLASS}`;
   const searchInputClassName = isHero
-    ? 'hero-search-service-input h-6 w-full min-w-0 appearance-none border-0 rounded-none bg-transparent p-0 shadow-none text-[0.95rem] font-semibold leading-none text-[color:var(--ink)] outline-none ring-0 placeholder:font-normal placeholder:text-[color:var(--ink-muted)] focus:border-0 focus:outline-none focus:ring-0 focus:shadow-none'
+    ? 'hero-search-service-input block min-h-[1.65rem] w-full min-w-0 appearance-none border-0 rounded-none bg-transparent p-0 shadow-none text-[0.95rem] font-semibold leading-[1.2] text-[color:var(--ink)] outline-none ring-0 placeholder:font-normal placeholder:text-[color:var(--ink-muted)] focus:border-0 focus:outline-none focus:ring-0 focus:shadow-none'
     : 'h-6 w-full min-w-0 bg-transparent text-[0.95rem] font-semibold leading-none text-[color:var(--ink)] placeholder:font-normal placeholder:text-[color:var(--ink-muted)] focus:outline-none';
 
   const openSearchPanel = () => {
@@ -370,6 +372,7 @@ export default memo(function UnifiedSearchBar({
                 label={<SearchSectionLabel icon="search" text={queryFieldLabel} />}
                 active={isSearchOpen}
                 className={queryFieldClassName}
+                valueClassName={queryValueClassName}
                 chrome={isHero ? 'bare' : 'framed'}
               >
                 <div className="flex min-w-0 items-center gap-2.5">
@@ -431,6 +434,7 @@ export default memo(function UnifiedSearchBar({
                 active={isLocationOpen || hasLocationSelection}
                 asButton
                 className={selectionFieldClassName}
+                valueClassName={selectionValueClassName}
                 chrome={isHero ? 'bare' : 'framed'}
                 onClick={() => {
                   setIsLocationOpen((current) => !current);
@@ -495,6 +499,7 @@ export default memo(function UnifiedSearchBar({
                 active={isDateOpen || hasDateSelection}
                 asButton
                 className={selectionFieldClassName}
+                valueClassName={selectionValueClassName}
                 chrome={isHero ? 'bare' : 'framed'}
                 onClick={() => {
                   setIsDateOpen((current) => !current);

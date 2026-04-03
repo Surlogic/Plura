@@ -1,6 +1,7 @@
 import React from 'react';
 import {
   Platform,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   View,
@@ -19,6 +20,8 @@ type AppScreenProps = {
   style?: StyleProp<ViewStyle>;
   contentContainerStyle?: StyleProp<ViewStyle>;
   scrollProps?: Omit<ScrollViewProps, 'contentContainerStyle'>;
+  refreshing?: boolean;
+  onRefresh?: (() => void) | undefined;
 };
 
 export function AppScreen({
@@ -28,11 +31,24 @@ export function AppScreen({
   style,
   contentContainerStyle,
   scrollProps,
+  refreshing = false,
+  onRefresh,
 }: AppScreenProps) {
   const content = scroll ? (
     <ScrollView
       showsVerticalScrollIndicator={false}
       keyboardShouldPersistTaps="handled"
+      refreshControl={
+        onRefresh ? (
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={theme.colors.primary}
+            colors={[theme.colors.primary]}
+            progressViewOffset={16}
+          />
+        ) : undefined
+      }
       contentContainerStyle={[styles.scrollContent, contentContainerStyle]}
       {...scrollProps}
     >

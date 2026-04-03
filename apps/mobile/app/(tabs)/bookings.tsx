@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -16,6 +16,7 @@ import {
   rescheduleClientBooking,
   type ClientDashboardBooking,
 } from '../../src/services/clientBookings';
+import { useFocusEffect } from 'expo-router';
 import { getPublicSlots } from '../../src/services/publicBookings';
 import { getApiErrorMessage } from '../../src/services/errors';
 import { useAuthSession } from '../../src/context/ProfessionalProfileContext';
@@ -171,6 +172,7 @@ export default function ClientBookingsScreen() {
   const { clientProfile, isAuthenticated } = useAuthSession();
   const [bookings, setBookings] = useState<ClientDashboardBooking[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
@@ -183,7 +185,7 @@ export default function ClientBookingsScreen() {
   const [isLoadingSlots, setIsLoadingSlots] = useState(false);
   const [cancelReason, setCancelReason] = useState('');
 
-  const loadBookings = async () => {
+  const loadBookings = useCallback(async (options?: { showLoader?: boolean }) => {
     if (!isAuthenticated) {
       setBookings([]);
       setSelectedBookingId(null);
@@ -191,7 +193,10 @@ export default function ClientBookingsScreen() {
       return;
     }
 
-    setIsLoading(true);
+    const showLoader = options?.showLoader ?? true;
+    if (showLoader) {
+      setIsLoading(true);
+    }
     setError(null);
     try {
       const response = await getClientBookings();
@@ -204,13 +209,17 @@ export default function ClientBookingsScreen() {
       setBookings([]);
       setError(getApiErrorMessage(loadError, 'No pudimos cargar tus reservas.'));
     } finally {
-      setIsLoading(false);
+      if (showLoader) {
+        setIsLoading(false);
+      }
     }
-  };
-
-  useEffect(() => {
-    void loadBookings();
   }, [isAuthenticated]);
+
+  useFocusEffect(
+    useCallback(() => {
+      void loadBookings();
+    }, [loadBookings]),
+  );
 
   useEffect(() => {
     const subscription = AppState.addEventListener('change', (nextState) => {
@@ -221,7 +230,16 @@ export default function ClientBookingsScreen() {
     return () => {
       subscription.remove();
     };
-  }, [isAuthenticated]);
+  }, [isAuthenticated, loadBookings]);
+
+  const handleRefresh = useCallback(async () => {
+    setIsRefreshing(true);
+    try {
+      await loadBookings({ showLoader: false });
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [loadBookings]);
 
   const selectedBooking = useMemo(
     () => bookings.find((booking) => booking.id === selectedBookingId) ?? null,
@@ -299,7 +317,15 @@ export default function ClientBookingsScreen() {
 
   if (!isAuthenticated) {
     return (
-      <AppScreen scroll edges={['top']} contentContainerStyle={{ paddingTop: 24, paddingBottom: 120 }}>
+      <AppScreen
+        scroll
+        edges={['top']}
+        refreshing={isRefreshing}
+        onRefresh={() => {
+          void handleRefresh();
+        }}
+        contentContainerStyle={{ paddingTop: 24, paddingBottom: 120 }}
+      >
         <ScreenHero
           eyebrow="Reservas"
           title="Tus reservas viven en tu cuenta"
@@ -383,7 +409,15 @@ export default function ClientBookingsScreen() {
   };
 
   return (
-    <AppScreen scroll edges={['top']} contentContainerStyle={{ padding: 24, paddingBottom: 120 }}>
+    <AppScreen
+      scroll
+      edges={['top']}
+      refreshing={isRefreshing}
+      onRefresh={() => {
+        void handleRefresh();
+      }}
+      contentContainerStyle={{ padding: 24, paddingBottom: 120 }}
+    >
         <ScreenHero
           eyebrow="Reservas"
           title={clientProfile?.fullName ? `${clientProfile.fullName}, tus turnos` : 'Mis turnos'}

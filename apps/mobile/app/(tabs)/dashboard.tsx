@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useCallback, useState } from 'react';
 import { ActivityIndicator, Text, TouchableOpacity, View } from 'react-native';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import EmailVerificationCard from '../../src/components/auth/EmailVerificationCard';
@@ -14,6 +14,22 @@ import {
 
 export default function DashboardTab() {
   const { clientProfile, hasLoaded, logout, refreshProfile } = useAuthSession();
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  useFocusEffect(
+    useCallback(() => {
+      void refreshProfile();
+    }, [refreshProfile]),
+  );
+
+  const handleRefresh = useCallback(async () => {
+    setIsRefreshing(true);
+    try {
+      await refreshProfile();
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [refreshProfile]);
 
   if (!hasLoaded) {
     return (
@@ -25,7 +41,15 @@ export default function DashboardTab() {
 
   if (clientProfile) {
     return (
-      <AppScreen scroll edges={['top']} contentContainerStyle={{ paddingTop: 24, paddingBottom: 120 }}>
+      <AppScreen
+        scroll
+        edges={['top']}
+        refreshing={isRefreshing}
+        onRefresh={() => {
+          void handleRefresh();
+        }}
+        contentContainerStyle={{ paddingTop: 24, paddingBottom: 120 }}
+      >
         <ScreenHero
           eyebrow="Panel cliente"
           title={`Hola, ${clientProfile.fullName}`}

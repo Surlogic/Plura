@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { router, useLocalSearchParams } from 'expo-router';
+import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import {
   listPublicProfessionals,
   type PublicProfessionalSummary,
@@ -153,6 +153,7 @@ export default function ExploreScreen() {
   const [activeFilter, setActiveFilter] = useState(initialCategorySlug || 'all');
   const [search, setSearch] = useState(initialQuery);
   const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [places, setPlaces] = useState<ExplorePlace[]>([]);
   const [favoriteSlugs, setFavoriteSlugs] = useState<string[]>([]);
   const [categories, setCategories] = useState<ServiceCategoryOption[]>([]);
@@ -174,62 +175,54 @@ export default function ExploreScreen() {
     setSearch(initialQuery);
   }, [initialQuery]);
 
-  useEffect(() => {
-    let isCancelled = false;
-
-    const load = async () => {
+  const load = useCallback(async (options?: { showLoader?: boolean }) => {
+    const showLoader = options?.showLoader ?? true;
+    if (showLoader) {
       setIsLoading(true);
-      try {
-        const [favorites, categoryItems] = await Promise.all([
-          getFavoriteProfessionalSlugs(),
-          listCategories().catch(() => []),
-        ]);
+    }
 
-        if (isCancelled) return;
-        setFavoriteSlugs(favorites);
-        setCategories(categoryItems);
+    try {
+      const [favorites, categoryItems] = await Promise.all([
+        getFavoriteProfessionalSlugs(),
+        listCategories().catch(() => []),
+      ]);
 
-        let nextPlaces: ExplorePlace[];
+      setFavoriteSlugs(favorites);
+      setCategories(categoryItems);
 
-        if (initialHasCoordinates && typeof initialLat === 'number' && typeof initialLng === 'number') {
-          try {
-            const searchResponse = await searchProfessionals({
-              query: initialQuery || undefined,
-              type: 'SERVICIO',
-              categorySlug: initialCategorySlug || undefined,
-              lat: initialLat,
-              lng: initialLng,
-              radiusKm: Number(initialRadiusKm),
-              sort: initialSort === 'RATING' ? 'DISTANCE' : initialSort,
-              page: 0,
-              size: 50,
-            });
-            nextPlaces = searchResponse.items.map((item) =>
-              mapSearchResultToPlace(item, categoryItems),
-            );
-          } catch {
-            const publicProfessionals = await listPublicProfessionals();
-            nextPlaces = publicProfessionals.map(mapPublicProfessionalToPlace);
-          }
-        } else {
+      let nextPlaces: ExplorePlace[];
+
+      if (initialHasCoordinates && typeof initialLat === 'number' && typeof initialLng === 'number') {
+        try {
+          const searchResponse = await searchProfessionals({
+            query: initialQuery || undefined,
+            type: 'SERVICIO',
+            categorySlug: initialCategorySlug || undefined,
+            lat: initialLat,
+            lng: initialLng,
+            radiusKm: Number(initialRadiusKm),
+            sort: initialSort === 'RATING' ? 'DISTANCE' : initialSort,
+            page: 0,
+            size: 50,
+          });
+          nextPlaces = searchResponse.items.map((item) =>
+            mapSearchResultToPlace(item, categoryItems),
+          );
+        } catch {
           const publicProfessionals = await listPublicProfessionals();
           nextPlaces = publicProfessionals.map(mapPublicProfessionalToPlace);
         }
-
-        if (isCancelled) return;
-        setPlaces(nextPlaces);
-      } finally {
-        if (!isCancelled) {
-          setIsLoading(false);
-        }
+      } else {
+        const publicProfessionals = await listPublicProfessionals();
+        nextPlaces = publicProfessionals.map(mapPublicProfessionalToPlace);
       }
-    };
 
-    void load();
-
-    return () => {
-      isCancelled = true;
-    };
+      setPlaces(nextPlaces);
+    } finally {
+      if (showLoader) {
+        setIsLoading(false);
+      }
+    }
   }, [
     initialCategorySlug,
     initialHasCoordinates,
@@ -240,12 +233,44 @@ export default function ExploreScreen() {
     initialSort,
   ]);
 
+  useFocusEffect(
+    useCallback(() => {
+      let isActive = true;
+
+      const run = async () => {
+        try {
+          await load();
+        } finally {
+          if (!isActive) return;
+        }
+      };
+
+      void run();
+
+      return () => {
+        isActive = false;
+      };
+    }, [load]),
+  );
+
   useEffect(() => {
     const unsubscribe = subscribeFavoriteProfessionalSlugs((next) => {
       setFavoriteSlugs(next);
     });
     return unsubscribe;
   }, []);
+
+  const handleRefresh = useCallback(async () => {
+    setIsRefreshing(true);
+    try {
+      await Promise.all([
+        load({ showLoader: false }),
+        refreshLocation(),
+      ]);
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [load, refreshLocation]);
 
   const filterOptions = useMemo(
     () => [
@@ -388,7 +413,15 @@ export default function ExploreScreen() {
   };
 
   return (
-    <AppScreen scroll edges={['top']} contentContainerStyle={{ paddingBottom: 120 }}>
+    <AppScreen
+      scroll
+      edges={['top']}
+      refreshing={isRefreshing}
+      onRefresh={() => {
+        void handleRefresh();
+      }}
+      contentContainerStyle={{ paddingBottom: 120 }}
+    >
       <View className="px-6 pt-4">
         <ScreenHero
           eyebrow="Explorar"

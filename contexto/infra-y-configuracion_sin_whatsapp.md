@@ -274,6 +274,7 @@ Lectura de producto:
 - mobile ahora tambien depende de `expo-location` y `expo-notifications` para pedir permisos nativos de ubicacion y notificaciones
 - `app.json` ya declara el plugin `expo-location` con texto de permiso foreground y habilita `expo-notifications` para el permiso del sistema en runtime
 - el estado local de permiso push se persiste hoy junto con preferencias del cliente en storage seguro; aun no existe variable/env ni endpoint backend adicional para registrar device tokens
+- `apps/mobile/eas.json` ya fija `environment` por profile (`development`, `preview`, `production`) para que EAS Build tome las variables correctas sin depender de `--environment`; ademas `preview` fuerza `android.buildType=apk` para pruebas instalables fuera de store
 
 ### Backend
 

@@ -1,7 +1,7 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { ActivityIndicator, Alert, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { listPublicProfessionals, type PublicProfessionalSummary } from '../../src/services/publicBookings';
 import { getClientNextBooking, type ClientNextBooking } from '../../src/services/clientFeatures';
@@ -27,6 +27,7 @@ import {
 export default function HomeScreen() {
   const { clientProfile, isAuthenticated, role } = useAuthSession();
   const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [businesses, setBusinesses] = useState<PublicProfessionalSummary[]>([]);
   const [nextBooking, setNextBooking] = useState<ClientNextBooking | null>(null);
@@ -44,39 +45,48 @@ export default function HomeScreen() {
     requestPermission: requestPushPermission,
   } = usePushNotifications();
 
-  useEffect(() => {
-    let isCancelled = false;
-
-    const load = async () => {
+  const load = useCallback(async (options?: { showLoader?: boolean }) => {
+    const showLoader = options?.showLoader ?? true;
+    if (showLoader) {
       setIsLoading(true);
-      setErrorMessage(null);
-      try {
-        const [professionals, upcoming, categoryItems] = await Promise.all([
-          listPublicProfessionals(),
-          isAuthenticated ? getClientNextBooking().catch(() => null) : Promise.resolve(null),
-          listCategories().catch(() => []),
-        ]);
+    }
+    setErrorMessage(null);
+    try {
+      const [professionals, upcoming, categoryItems] = await Promise.all([
+        listPublicProfessionals(),
+        isAuthenticated ? getClientNextBooking().catch(() => null) : Promise.resolve(null),
+        listCategories().catch(() => []),
+      ]);
 
-        if (isCancelled) return;
-        setBusinesses(professionals);
-        setNextBooking(upcoming);
-        setCategories(categoryItems);
-      } catch (error) {
-        if (isCancelled) return;
-        setErrorMessage(getApiErrorMessage(error, 'No pudimos cargar la pantalla de inicio.'));
-      } finally {
-        if (!isCancelled) {
-          setIsLoading(false);
-        }
+      setBusinesses(professionals);
+      setNextBooking(upcoming);
+      setCategories(categoryItems);
+    } catch (error) {
+      setErrorMessage(getApiErrorMessage(error, 'No pudimos cargar la pantalla de inicio.'));
+    } finally {
+      if (showLoader) {
+        setIsLoading(false);
       }
-    };
-
-    void load();
-
-    return () => {
-      isCancelled = true;
-    };
+    }
   }, [isAuthenticated]);
+
+  useFocusEffect(
+    useCallback(() => {
+      void load();
+    }, [load]),
+  );
+
+  const handleRefresh = useCallback(async () => {
+    setIsRefreshing(true);
+    try {
+      await Promise.all([
+        load({ showLoader: false }),
+        refreshLocation(),
+      ]);
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [load, refreshLocation]);
 
   const topBusinesses = useMemo(() => businesses.slice(0, 6), [businesses]);
   const displayName = clientProfile?.fullName?.trim() || 'Explora Plura';
@@ -114,7 +124,14 @@ export default function HomeScreen() {
   };
 
   return (
-    <AppScreen scroll contentContainerStyle={{ paddingBottom: 40 }}>
+    <AppScreen
+      scroll
+      refreshing={isRefreshing}
+      onRefresh={() => {
+        void handleRefresh();
+      }}
+      contentContainerStyle={{ paddingBottom: 40 }}
+    >
       <View className="px-6 pt-6 pb-4">
         <ScreenHero
           eyebrow={isAuthenticated ? 'Inicio cliente' : 'Explorar en mobile'}

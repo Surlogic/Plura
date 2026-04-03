@@ -1,7 +1,7 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import {
   getFavoriteProfessionalSlugs,
@@ -28,10 +28,11 @@ import {
 export default function FavoritesScreen() {
   const { clientProfile, isAuthenticated } = useAuthSession();
   const [loading, setLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [favorites, setFavorites] = useState<string[]>([]);
   const [professionals, setProfessionals] = useState<PublicProfessionalSummary[]>([]);
 
-  useEffect(() => {
+  const load = useCallback(async (options?: { showLoader?: boolean }) => {
     if (!isAuthenticated) {
       setFavorites([]);
       setProfessionals([]);
@@ -39,31 +40,30 @@ export default function FavoritesScreen() {
       return;
     }
 
-    let isCancelled = false;
-
-    const load = async () => {
+    const showLoader = options?.showLoader ?? true;
+    if (showLoader) {
       setLoading(true);
-      try {
-        const [saved, items] = await Promise.all([
-          getFavoriteProfessionalSlugs(),
-          listPublicProfessionals(),
-        ]);
-        if (isCancelled) return;
-        setFavorites(saved);
-        setProfessionals(items);
-      } finally {
-        if (!isCancelled) {
-          setLoading(false);
-        }
+    }
+
+    try {
+      const [saved, items] = await Promise.all([
+        getFavoriteProfessionalSlugs(),
+        listPublicProfessionals(),
+      ]);
+      setFavorites(saved);
+      setProfessionals(items);
+    } finally {
+      if (showLoader) {
+        setLoading(false);
       }
-    };
-
-    void load();
-
-    return () => {
-      isCancelled = true;
-    };
+    }
   }, [isAuthenticated]);
+
+  useFocusEffect(
+    useCallback(() => {
+      void load();
+    }, [load]),
+  );
 
   useEffect(() => {
     if (!isAuthenticated) return undefined;
@@ -73,6 +73,15 @@ export default function FavoritesScreen() {
     return unsubscribe;
   }, [isAuthenticated]);
 
+  const handleRefresh = useCallback(async () => {
+    setIsRefreshing(true);
+    try {
+      await load({ showLoader: false });
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [load]);
+
   const favoriteItems = useMemo(
     () => professionals.filter((item) => favorites.includes(item.slug)),
     [favorites, professionals],
@@ -80,7 +89,15 @@ export default function FavoritesScreen() {
 
   if (!isAuthenticated) {
     return (
-      <AppScreen scroll edges={['top']} contentContainerStyle={{ padding: 24, paddingBottom: 120 }}>
+      <AppScreen
+        scroll
+        edges={['top']}
+        refreshing={isRefreshing}
+        onRefresh={() => {
+          void handleRefresh();
+        }}
+        contentContainerStyle={{ padding: 24, paddingBottom: 120 }}
+      >
         <ScreenHero
           eyebrow="Favoritos"
           title="Guarda tus profesionales preferidos"
@@ -97,7 +114,15 @@ export default function FavoritesScreen() {
   }
 
   return (
-    <AppScreen scroll edges={['top']} contentContainerStyle={{ padding: 24, paddingBottom: 120 }}>
+    <AppScreen
+      scroll
+      edges={['top']}
+      refreshing={isRefreshing}
+      onRefresh={() => {
+        void handleRefresh();
+      }}
+      contentContainerStyle={{ padding: 24, paddingBottom: 120 }}
+    >
         <ScreenHero
           eyebrow="Favoritos"
           title={clientProfile?.fullName ? `${clientProfile.fullName}, tus favoritos` : 'Tus favoritos'}

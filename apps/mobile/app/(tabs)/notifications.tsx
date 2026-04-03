@@ -1,5 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Linking, Text, TouchableOpacity, View } from 'react-native';
+import { useFocusEffect } from 'expo-router';
 import {
   buildClientNotifications,
   type MobileNotification,
@@ -33,6 +34,7 @@ const getNotificationBadge = (type: MobileNotification['type']) => {
 export default function NotificationsScreen() {
   const { isAuthenticated } = useAuthSession();
   const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [items, setItems] = useState<MobileNotification[]>([]);
   const {
     settings: pushSettings,
@@ -41,28 +43,73 @@ export default function NotificationsScreen() {
     isEnabled: arePushNotificationsEnabled,
     requestPermission: requestPushPermission,
     disablePush,
+    syncPermission: syncPushPermission,
   } = usePushNotifications();
 
   useEffect(() => {
+    if (!isAuthenticated) {
+      setItems([]);
+    }
+  }, [isAuthenticated]);
+
+  const [pushStatus, setPushStatus] = useState(pushSettings);
+
+  useEffect(() => {
+    setPushStatus(pushSettings);
+  }, [pushSettings]);
+
+  const load = useCallback(async (options?: { showLoader?: boolean }) => {
     if (!isAuthenticated) {
       setItems([]);
       setIsLoading(false);
       return;
     }
 
-    const load = async () => {
+    const showLoader = options?.showLoader ?? true;
+    if (showLoader) {
       setIsLoading(true);
-      const notifications = await buildClientNotifications();
-      setItems(notifications);
-      setIsLoading(false);
-    };
+    }
 
-    void load();
-  }, [isAuthenticated]);
+    try {
+      const [notifications, nextPushState] = await Promise.all([
+        buildClientNotifications(),
+        syncPushPermission(),
+      ]);
+      setItems(notifications);
+      setPushStatus(nextPushState);
+    } finally {
+      if (showLoader) {
+        setIsLoading(false);
+      }
+    }
+  }, [isAuthenticated, syncPushPermission]);
+
+  useFocusEffect(
+    useCallback(() => {
+      void load();
+    }, [load]),
+  );
+
+  const handleRefresh = useCallback(async () => {
+    setIsRefreshing(true);
+    try {
+      await load({ showLoader: false });
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [load]);
 
   if (!isAuthenticated) {
     return (
-      <AppScreen scroll edges={['top']} contentContainerStyle={{ paddingTop: 24, paddingBottom: 120 }}>
+      <AppScreen
+        scroll
+        edges={['top']}
+        refreshing={isRefreshing}
+        onRefresh={() => {
+          void handleRefresh();
+        }}
+        contentContainerStyle={{ paddingTop: 24, paddingBottom: 120 }}
+      >
         <ScreenHero
           eyebrow="Notificaciones"
           title="Tus alertas van en tu cuenta"
@@ -89,12 +136,20 @@ export default function NotificationsScreen() {
 
   const pushStatusLabel = arePushNotificationsEnabled
     ? 'Activas'
-    : pushSettings.permissionStatus === 'denied'
+    : pushStatus.permissionStatus === 'denied'
       ? 'Bloqueadas'
       : 'Pendientes';
 
   return (
-    <AppScreen scroll edges={['top']} contentContainerStyle={{ paddingTop: 24, paddingBottom: 120 }}>
+    <AppScreen
+      scroll
+      edges={['top']}
+      refreshing={isRefreshing}
+      onRefresh={() => {
+        void handleRefresh();
+      }}
+      contentContainerStyle={{ paddingTop: 24, paddingBottom: 120 }}
+    >
       <ScreenHero
         eyebrow="Notificaciones"
         title="Tus alertas como cliente"
@@ -110,7 +165,7 @@ export default function NotificationsScreen() {
           <View>
             <Text className="text-sm font-bold text-secondary">Avisos push</Text>
             <Text className="mt-1 text-xs text-gray-500">
-              Estado del dispositivo: {pushSettings.permissionStatus || 'pendiente'}
+              Estado del dispositivo: {pushStatus.permissionStatus || 'pendiente'}
             </Text>
           </View>
           <StatusPill
@@ -136,7 +191,7 @@ export default function NotificationsScreen() {
           />
         )}
 
-        {pushSettings.permissionStatus === 'denied' ? (
+        {pushStatus.permissionStatus === 'denied' ? (
           <TouchableOpacity onPress={openDeviceSettings} style={{ marginTop: 14 }}>
             <Text style={{ color: theme.colors.primaryStrong, fontWeight: '700' }}>
               Abrir configuracion del dispositivo

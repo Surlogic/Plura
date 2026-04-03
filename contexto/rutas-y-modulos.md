@@ -326,6 +326,7 @@ Lectura de producto:
 - `/(tabs)/index` ya muestra un bloque de ubicacion del cliente para abrir exploracion ordenada por cercania y un CTA para activar permisos de notificaciones del dispositivo
 - `/(tabs)/explore` ya puede reutilizar la ubicacion actual del cliente para pedir `/api/search` con `lat/lng`, `radiusKm` y `sort=DISTANCE`, mostrando tambien la zona actual y distancia aproximada por resultado cuando backend la devuelve
 - `/(tabs)/notifications` ya refleja el permiso push del sistema y permite activarlo o derivar a ajustes del dispositivo; todavia no registra tokens push en backend
+- las tabs cliente principales (`index`, `explore`, `favorites`, `bookings`, `notifications`, `dashboard`) ahora rehidratan datos al volver a foco y tambien soportan gesto manual de pull-to-refresh desde `AppScreen`
 
 ### Grupo `(auth)`
 
@@ -401,6 +402,7 @@ Lectura de producto:
 - `src/hooks/useGoogleOAuth.ts`: en Android usa `@react-native-google-signin/google-signin` para evitar `invalid_request` del flujo web y forzar chooser nativo de cuentas; en iOS/web mantiene `expo-auth-session` y soporta token directo o authorization code segun lo que devuelva Google
 - `src/services/location.ts` y `src/hooks/useUserLocation.ts`
 - `src/services/pushNotifications.ts` y `src/hooks/usePushNotifications.ts`
+- `src/components/ui/AppScreen.tsx`: shell base mobile; cuando `scroll=true` ahora soporta `pull-to-refresh` comun mediante `refreshing + onRefresh`
 
 Lectura de producto:
 

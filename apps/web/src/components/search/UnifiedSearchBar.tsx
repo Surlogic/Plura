@@ -4,6 +4,7 @@ import {
   useEffect,
   useMemo,
   useRef,
+  useState,
   type FormEvent,
   type KeyboardEvent as ReactKeyboardEvent,
 } from 'react';
@@ -35,6 +36,7 @@ type UnifiedSearchBarProps = {
   initialValues?: Partial<UnifiedSearchValues>;
   fixedQuery?: Record<string, string | undefined>;
   variant?: 'hero' | 'panel' | 'explore';
+  interactiveFocusExpansion?: boolean;
   submitLabel?: string;
   className?: string;
   showClearButton?: boolean;
@@ -44,6 +46,7 @@ type UnifiedSearchBarProps = {
 type SearchSectionLabelProps = {
   icon: 'search' | 'location' | 'calendar';
   text: string;
+  hideText?: boolean;
 };
 
 const SURFACE_CLASSES: Record<NonNullable<UnifiedSearchBarProps['variant']>, string> = {
@@ -59,7 +62,7 @@ const SEARCH_TYPE_LABELS = {
   SERVICIO: 'Servicio',
 } as const;
 
-function SearchSectionLabel({ icon, text }: SearchSectionLabelProps) {
+function SearchSectionLabel({ icon, text, hideText = false }: SearchSectionLabelProps) {
   return (
     <>
       {icon === 'search' ? (
@@ -98,7 +101,7 @@ function SearchSectionLabel({ icon, text }: SearchSectionLabelProps) {
         </svg>
       ) : null}
 
-      <span className="truncate">{text}</span>
+      {hideText ? null : <span className="truncate">{text}</span>}
     </>
   );
 }
@@ -107,6 +110,7 @@ export default memo(function UnifiedSearchBar({
   initialValues,
   fixedQuery,
   variant = 'panel',
+  interactiveFocusExpansion = false,
   submitLabel = 'Buscar',
   className,
   showClearButton = false,
@@ -114,8 +118,10 @@ export default memo(function UnifiedSearchBar({
 }: UnifiedSearchBarProps) {
   const wrapperRef = useRef<HTMLDivElement | null>(null);
   const isHero = variant === 'hero';
+  const heroFocusExpansionEnabled = isHero && interactiveFocusExpansion;
   const { resolvedTheme } = useTheme();
   const isDarkTheme = resolvedTheme === 'dark';
+  const [heroExpandedField, setHeroExpandedField] = useState<'query' | null>(null);
 
   const search = useUnifiedSearch({ initialValues, fixedQuery, citySuggestions });
 
@@ -156,7 +162,12 @@ export default memo(function UnifiedSearchBar({
     closeAllDropdowns,
   } = search;
 
-  const stableCloseAllDropdowns = useCallback(() => closeAllDropdowns(), [closeAllDropdowns]);
+  const stableCloseAllDropdowns = useCallback(() => {
+    closeAllDropdowns();
+    if (heroFocusExpansionEnabled) {
+      setHeroExpandedField(null);
+    }
+  }, [closeAllDropdowns, heroFocusExpansionEnabled]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -178,6 +189,9 @@ export default memo(function UnifiedSearchBar({
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (heroFocusExpansionEnabled) {
+      setHeroExpandedField(null);
+    }
     runSearch({
       ...values,
       query: searchInput.trim() || values.query,
@@ -215,6 +229,9 @@ export default memo(function UnifiedSearchBar({
       event.preventDefault();
       setIsSearchOpen(false);
       setActiveSuggestionIndex(-1);
+      if (heroFocusExpansionEnabled) {
+        setHeroExpandedField(null);
+      }
     }
   };
 
@@ -251,25 +268,41 @@ export default memo(function UnifiedSearchBar({
   const hiddenHeroLabelClassName = isHero ? 'sr-only' : '';
   const heroInlineLabelClassName =
     'inline-flex min-w-0 items-center gap-1.5 truncate whitespace-nowrap text-[0.58rem] font-semibold uppercase tracking-[0.2em] text-[color:var(--ink-faint)]';
+  const heroServicesExpanded = heroFocusExpansionEnabled && heroExpandedField === 'query';
   const queryFieldClassName = isHero ? 'h-full justify-center py-1.5' : 'h-full';
   const selectionFieldClassName = isHero ? 'h-full justify-center py-1.5' : 'h-full';
   const queryValueClassName = isHero ? '!mt-0 flex min-h-[1.65rem] items-center' : '';
   const selectionValueClassName = isHero ? '!mt-0 flex min-h-[1.65rem] items-center' : '';
   const heroFieldShellClassName = 'px-4 py-2 sm:px-5';
   const heroDividerClassName = 'border-t border-[color:var(--border-soft)]/85 md:border-t-0 md:border-r';
+  const heroFieldMotionClassName = heroFocusExpansionEnabled
+    ? 'lg:transition-[flex-basis,max-width,padding,opacity] lg:duration-300 lg:ease-[cubic-bezier(0.22,1,0.36,1)]'
+    : '';
+  const heroQueryWidthClassName = heroServicesExpanded
+    ? 'lg:flex-[1.95_1_0%] lg:min-w-[24rem]'
+    : 'lg:flex-[1.7_1_0%] lg:min-w-[21rem]';
+  const heroSelectionExpandedWidthClassName = 'lg:flex-[1_1_0%] lg:min-w-[10.5rem]';
+  const heroSelectionCompactWidthClassName =
+    'lg:flex-[0_0_4.6rem] lg:min-w-[4.6rem] lg:px-3 lg:items-center lg:justify-center';
   const centeredHeroDropdownClassName = isHero
     ? 'sm:left-1/2 sm:right-auto sm:-translate-x-1/2'
     : 'sm:right-auto';
-  const queryWrapperOrderClassName = isHero ? `order-1 md:col-[1] ${heroFieldShellClassName}` : '';
+  const queryWrapperOrderClassName = isHero
+    ? `order-1 md:col-[1] ${heroFieldShellClassName} ${heroFieldMotionClassName} ${heroQueryWidthClassName}`
+    : '';
   const locationWrapperOrderClassName = isHero
-    ? `order-2 md:col-[2] ${heroFieldShellClassName} ${heroDividerClassName}`
+    ? `order-2 md:col-[2] ${heroFieldShellClassName} ${heroDividerClassName} ${heroFieldMotionClassName} ${
+        heroServicesExpanded ? heroSelectionCompactWidthClassName : heroSelectionExpandedWidthClassName
+      }`
     : '';
   const dateWrapperOrderClassName = isHero
-    ? `order-3 md:col-[3] ${heroFieldShellClassName} ${heroDividerClassName}`
+    ? `order-3 md:col-[3] ${heroFieldShellClassName} ${heroDividerClassName} ${heroFieldMotionClassName} ${
+        heroServicesExpanded ? heroSelectionCompactWidthClassName : heroSelectionExpandedWidthClassName
+      }`
     : '';
-  const submitWrapperOrderClassName = isHero ? 'order-4 md:col-[4]' : '';
+  const submitWrapperOrderClassName = isHero ? 'order-4 md:col-[4] lg:flex-[0_0_11.5rem]' : '';
   const searchGridClassName = isHero
-    ? 'grid gap-0 md:grid-cols-[minmax(0,1.7fr)_minmax(0,1.05fr)_minmax(0,0.9fr)_auto] md:items-center'
+    ? 'grid gap-0 md:grid-cols-[minmax(0,1.7fr)_minmax(0,1.05fr)_minmax(0,0.9fr)_auto] md:items-center lg:flex lg:items-stretch'
     : 'grid gap-1.5 md:grid-cols-[minmax(0,1.9fr)_minmax(0,0.85fr)_minmax(0,0.95fr)_auto] md:items-stretch';
   const submitButtonToneClassName = isDarkTheme
     ? 'border border-[color:var(--primary-strong)] bg-[linear-gradient(135deg,var(--primary)_0%,var(--primary-strong)_100%)] text-[color:var(--text-on-dark)] shadow-[0_22px_40px_-28px_rgba(0,0,0,0.72)] hover:-translate-y-0.5 hover:border-[color:var(--brand-primary-light)] hover:bg-[linear-gradient(135deg,var(--primary-strong)_0%,var(--brand-primary-light)_100%)] hover:shadow-[var(--shadow-lift)]'
@@ -285,6 +318,9 @@ export default memo(function UnifiedSearchBar({
     setIsSearchOpen(true);
     setIsDateOpen(false);
     setIsLocationOpen(false);
+    if (heroFocusExpansionEnabled) {
+      setHeroExpandedField('query');
+    }
   };
 
   const activeFilters = useMemo<SearchFilterChip[]>(() => {
@@ -392,7 +428,7 @@ export default memo(function UnifiedSearchBar({
 
                   {isHero && !hasQuerySelection ? (
                     <span
-                      className={`pointer-events-none absolute inset-y-0 left-0 flex items-center ${heroInlineLabelClassName}`}
+                      className={`pointer-events-none absolute inset-y-0 left-0 flex items-center transition-opacity duration-200 ${heroInlineLabelClassName}`}
                       aria-hidden="true"
                     >
                       <SearchSectionLabel icon="search" text={queryFieldLabel} />
@@ -451,23 +487,43 @@ export default memo(function UnifiedSearchBar({
                 active={isLocationOpen || hasLocationSelection}
                 asButton
                 className={selectionFieldClassName}
+                onFocus={() => {
+                  if (heroFocusExpansionEnabled) {
+                    setHeroExpandedField(null);
+                  }
+                }}
                 labelClassName={hiddenHeroLabelClassName}
                 valueClassName={selectionValueClassName}
                 chrome={isHero ? 'bare' : 'framed'}
                 onClick={() => {
+                  if (heroFocusExpansionEnabled) {
+                    setHeroExpandedField(null);
+                  }
                   setIsLocationOpen((current) => !current);
                   setIsSearchOpen(false);
                   setIsDateOpen(false);
                 }}
               >
-                <div className="flex min-w-0 items-center gap-2.5">
+                <div
+                  className={`flex min-w-0 items-center gap-2.5 transition-[gap,opacity,transform] duration-200 ${
+                    heroServicesExpanded ? 'justify-center lg:gap-0' : ''
+                  }`}
+                >
+                  {heroServicesExpanded ? (
+                    <span className="hidden h-9 w-9 items-center justify-center rounded-full border border-[color:var(--border-soft)] bg-[color:var(--surface-muted)] text-[color:var(--ink-faint)] lg:inline-flex">
+                      <SearchSectionLabel icon="location" text="Ubicación" hideText />
+                    </span>
+                  ) : null}
+
                   {isHero && !hasLocationSelection ? (
-                    <span className={heroInlineLabelClassName}>
+                    <span className={`${heroInlineLabelClassName} ${heroServicesExpanded ? 'lg:hidden' : ''}`.trim()}>
                       <SearchSectionLabel icon="location" text="Ubicación" />
                     </span>
                   ) : (
                     <span
-                      className={`w-full truncate text-left leading-5 ${locationValueClass} ${
+                      className={`w-full truncate text-left leading-5 transition-opacity duration-200 ${
+                        heroServicesExpanded ? 'lg:hidden' : ''
+                      } ${locationValueClass} ${
                         hasLocationSelection
                           ? 'font-semibold text-[color:var(--ink)]'
                           : 'font-medium text-[color:var(--ink-muted)]'
@@ -525,23 +581,43 @@ export default memo(function UnifiedSearchBar({
                 active={isDateOpen || hasDateSelection}
                 asButton
                 className={selectionFieldClassName}
+                onFocus={() => {
+                  if (heroFocusExpansionEnabled) {
+                    setHeroExpandedField(null);
+                  }
+                }}
                 labelClassName={hiddenHeroLabelClassName}
                 valueClassName={selectionValueClassName}
                 chrome={isHero ? 'bare' : 'framed'}
                 onClick={() => {
+                  if (heroFocusExpansionEnabled) {
+                    setHeroExpandedField(null);
+                  }
                   setIsDateOpen((current) => !current);
                   setIsSearchOpen(false);
                   setIsLocationOpen(false);
                 }}
               >
-                <div className="flex min-w-0 items-center gap-2.5">
+                <div
+                  className={`flex min-w-0 items-center gap-2.5 transition-[gap,opacity,transform] duration-200 ${
+                    heroServicesExpanded ? 'justify-center lg:gap-0' : ''
+                  }`}
+                >
+                  {heroServicesExpanded ? (
+                    <span className="hidden h-9 w-9 items-center justify-center rounded-full border border-[color:var(--border-soft)] bg-[color:var(--surface-muted)] text-[color:var(--ink-faint)] lg:inline-flex">
+                      <SearchSectionLabel icon="calendar" text="Fecha" hideText />
+                    </span>
+                  ) : null}
+
                   {isHero && !hasDateSelection ? (
-                    <span className={heroInlineLabelClassName}>
+                    <span className={`${heroInlineLabelClassName} ${heroServicesExpanded ? 'lg:hidden' : ''}`.trim()}>
                       <SearchSectionLabel icon="calendar" text="Fecha" />
                     </span>
                   ) : (
                     <span
-                      className={`w-full truncate text-left text-[0.88rem] leading-5 ${
+                      className={`w-full truncate text-left text-[0.88rem] leading-5 transition-opacity duration-200 ${
+                        heroServicesExpanded ? 'lg:hidden' : ''
+                      } ${
                         hasDateSelection
                           ? 'font-semibold text-[color:var(--ink)]'
                           : 'font-medium text-[color:var(--ink-muted)]'

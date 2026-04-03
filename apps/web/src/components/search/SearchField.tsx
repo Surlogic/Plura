@@ -6,6 +6,7 @@ type SearchFieldProps = {
   active?: boolean;
   asButton?: boolean;
   onClick?: () => void;
+  onFocus?: () => void;
   children: ReactNode;
   className?: string;
   labelClassName?: string;
@@ -18,6 +19,7 @@ export default function SearchField({
   active = false,
   asButton = false,
   onClick,
+  onFocus,
   children,
   className = '',
   labelClassName = '',
@@ -53,6 +55,7 @@ export default function SearchField({
       <button
         type="button"
         onClick={onClick}
+        onFocus={onFocus}
         className={`${baseClassName} focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--accent-soft)] focus-visible:ring-offset-2`}
       >
         {content}

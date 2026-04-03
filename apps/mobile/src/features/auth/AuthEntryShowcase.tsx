@@ -3,6 +3,7 @@ import { ScrollView, StyleSheet, Text, TouchableOpacity, View, useWindowDimensio
 import { Link } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
+import { theme } from '../../theme';
 
 export function AuthEntryShowcase() {
   const { width, height } = useWindowDimensions();
@@ -20,15 +21,15 @@ export function AuthEntryShowcase() {
 
   return (
     <View style={styles.shell}>
-      <LinearGradient colors={['#0A7A43', '#086537', '#162033']} style={StyleSheet.absoluteFill} />
+      <LinearGradient colors={theme.gradients.heroElevated} style={StyleSheet.absoluteFill} />
       <LinearGradient
-        colors={['rgba(142, 219, 99, 0.22)', 'rgba(142, 219, 99, 0)']}
+        colors={['rgba(54, 200, 244, 0.18)', 'rgba(54, 200, 244, 0)']}
         start={{ x: 1, y: 0.1 }}
         end={{ x: 0, y: 1 }}
         style={styles.glowRight}
       />
       <LinearGradient
-        colors={['rgba(10, 122, 67, 0.28)', 'rgba(10, 122, 67, 0)']}
+        colors={['rgba(142, 219, 99, 0.18)', 'rgba(142, 219, 99, 0)']}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={styles.glowLeft}
@@ -48,7 +49,7 @@ export function AuthEntryShowcase() {
               </Text>
             </View>
             <View className="rounded-full bg-white/10 px-3 py-2">
-              <Text className="text-[11px] font-semibold uppercase tracking-[1.5px] text-[#8EDB63]">
+              <Text style={styles.brandPillText}>
                 PLURA
               </Text>
             </View>
@@ -83,7 +84,7 @@ export function AuthEntryShowcase() {
 
               <View style={[styles.phoneFrame, { width: frameWidth, borderRadius: 28 * frameScale }]}>
                 <LinearGradient
-                  colors={['#F2F8F2', '#D8EFCB', '#A9D59A']}
+                  colors={[theme.colors.surfaceStrong, theme.colors.backgroundMuted, theme.colors.primaryLight]}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 1 }}
                   style={[styles.mapArea, { height: mapHeight }]}
@@ -100,8 +101,8 @@ export function AuthEntryShowcase() {
                 <View style={[styles.phoneBody, { paddingHorizontal: 16 * frameScale, paddingVertical: 15 * frameScale }]}>
                   <View className="flex-row items-start justify-between">
                     <View className="flex-1 pr-3">
-                      <View className="rounded-full bg-[#EEF8F1] px-2 py-1 self-start">
-                        <Text className="text-[10px] font-bold uppercase tracking-[1px] text-[#0A7A43]">
+                      <View style={styles.newBadge}>
+                        <Text style={styles.newBadgeText}>
                           Nuevo
                         </Text>
                       </View>
@@ -113,24 +114,23 @@ export function AuthEntryShowcase() {
                       </Text>
                     </View>
                     <View
-                      className="items-center justify-center rounded-full bg-[#EEF8F1]"
-                      style={{ width: 36 * frameScale, height: 36 * frameScale }}
+                      style={[styles.featureIconWrap, { width: 36 * frameScale, height: 36 * frameScale }]}
                     >
-                      <Ionicons name="sparkles" size={Math.max(15, 18 * frameScale)} color="#0A7A43" />
+                      <Ionicons name="sparkles" size={Math.max(15, 18 * frameScale)} color={theme.colors.primary} />
                     </View>
                   </View>
 
                   <View className="mt-4 flex-row" style={{ gap: 8 * frameScale }}>
                     <View style={styles.metricPill}>
-                      <Ionicons name="compass-outline" size={14} color="#0A7A43" />
+                      <Ionicons name="compass-outline" size={14} color={theme.colors.primary} />
                       <Text style={styles.metricText}>Explorar</Text>
                     </View>
                     <View style={styles.metricPill}>
-                      <Ionicons name="calendar-outline" size={14} color="#0A7A43" />
+                      <Ionicons name="calendar-outline" size={14} color={theme.colors.primary} />
                       <Text style={styles.metricText}>Reservar</Text>
                     </View>
                     <View style={styles.metricPill}>
-                      <Ionicons name="storefront-outline" size={14} color="#0A7A43" />
+                      <Ionicons name="storefront-outline" size={14} color={theme.colors.primary} />
                       <Text style={styles.metricText}>Publicar</Text>
                     </View>
                   </View>
@@ -233,6 +233,13 @@ const styles = StyleSheet.create({
     height: 220,
     borderRadius: 220,
   },
+  brandPillText: {
+    color: theme.colors.primaryLight,
+    fontSize: 11,
+    fontWeight: '600',
+    letterSpacing: 1.5,
+    textTransform: 'uppercase',
+  },
   mockupWrap: {
     position: 'relative',
     width: '100%',
@@ -246,7 +253,7 @@ const styles = StyleSheet.create({
     width: 112,
     height: 240,
     borderRadius: 56,
-    backgroundColor: 'rgba(10, 122, 67, 0.34)',
+    backgroundColor: 'rgba(54, 200, 244, 0.14)',
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.08)',
   },
@@ -257,7 +264,7 @@ const styles = StyleSheet.create({
     width: 128,
     height: 254,
     borderRadius: 64,
-    backgroundColor: 'rgba(142, 219, 99, 0.2)',
+    backgroundColor: 'rgba(200, 138, 243, 0.16)',
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.08)',
   },
@@ -298,6 +305,26 @@ const styles = StyleSheet.create({
     paddingVertical: 15,
     backgroundColor: '#FFFFFF',
   },
+  newBadge: {
+    alignSelf: 'flex-start',
+    borderRadius: 999,
+    backgroundColor: theme.colors.primarySoft,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  newBadgeText: {
+    color: theme.colors.primary,
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+  },
+  featureIconWrap: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 999,
+    backgroundColor: theme.colors.primarySoft,
+  },
   cardTitle: {
     marginTop: 8,
     fontSize: 16,
@@ -315,7 +342,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 6,
     borderRadius: 999,
-    backgroundColor: '#F6FAFB',
+    backgroundColor: theme.colors.backgroundMuted,
     paddingHorizontal: 10,
     paddingVertical: 8,
   },
@@ -328,10 +355,10 @@ const styles = StyleSheet.create({
     flex: 1,
     minWidth: 14,
     borderRadius: 999,
-    backgroundColor: '#D9E6E8',
+    backgroundColor: theme.colors.border,
   },
   barHighlight: {
-    backgroundColor: '#0A7A43',
+    backgroundColor: theme.colors.primary,
   },
   actions: {
     paddingTop: 12,
@@ -356,7 +383,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: 999,
-    backgroundColor: '#0A7A43',
+    backgroundColor: theme.colors.primary,
   },
   primaryButtonText: {
     color: '#FFFFFF',

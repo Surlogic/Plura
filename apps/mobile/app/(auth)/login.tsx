@@ -13,7 +13,7 @@ export default function LoginEntryScreen() {
       contentContainerStyle={{ justifyContent: 'center', paddingHorizontal: 24, paddingVertical: 28 }}
     >
       <LinearGradient
-        colors={['#EAF7F8', '#DDEFF7', '#F4F8FB']}
+        colors={[theme.colors.surfaceStrong, theme.colors.backgroundMuted, theme.colors.backgroundSoft]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         className="rounded-[32px] px-6 py-7"

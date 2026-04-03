@@ -18,6 +18,7 @@ import {
 } from '../src/services/pendingReservation';
 import { useAuthSession } from '../src/context/ProfessionalProfileContext';
 import { openMercadoPagoInAppBrowser } from '../src/services/mercadoPagoBrowser';
+import { theme } from '../src/theme';
 
 type Params = {
   slug?: string;
@@ -120,7 +121,7 @@ export default function ReservationCheckoutScreen() {
     <SafeAreaView className="flex-1 bg-background">
       <ScrollView contentContainerStyle={{ paddingBottom: 50 }}>
         <LinearGradient
-          colors={['#0F172A', '#36C8F4', '#0A7A43']}
+          colors={theme.gradients.hero}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           className="px-6 pt-12 pb-10"
@@ -141,7 +142,7 @@ export default function ReservationCheckoutScreen() {
 
         {isLoading ? (
           <View className="py-16 items-center">
-            <ActivityIndicator color="#0A7A43" />
+            <ActivityIndicator color={theme.colors.primary} />
           </View>
         ) : (
           <View className="px-6 -mt-6">

@@ -84,10 +84,10 @@ type EmptyStateProps = {
 
 const pillToneMap: Record<PillTone, { backgroundColor: string; textColor: string }> = {
   neutral: { backgroundColor: '#EEF4F7', textColor: theme.colors.secondary },
-  primary: { backgroundColor: 'rgba(12,122,104,0.14)', textColor: theme.colors.primaryStrong },
-  success: { backgroundColor: 'rgba(21,138,93,0.14)', textColor: theme.colors.success },
-  warning: { backgroundColor: 'rgba(185,120,32,0.16)', textColor: theme.colors.warning },
-  danger: { backgroundColor: 'rgba(196,79,97,0.16)', textColor: theme.colors.danger },
+  primary: { backgroundColor: theme.colors.primarySoft, textColor: theme.colors.primaryStrong },
+  success: { backgroundColor: theme.colors.successSoft, textColor: theme.colors.success },
+  warning: { backgroundColor: theme.colors.warningSoft, textColor: theme.colors.warning },
+  danger: { backgroundColor: theme.colors.dangerSoft, textColor: theme.colors.danger },
   light: { backgroundColor: 'rgba(255,255,255,0.16)', textColor: theme.colors.white },
 };
 

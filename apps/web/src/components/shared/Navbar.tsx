@@ -112,9 +112,6 @@ export default memo(function Navbar({
               <Button href="/login" size="md">
                 Iniciar sesión
               </Button>
-              <Button href="/cliente/auth/register" size="md">
-                Crear cuenta
-              </Button>
               <Button href="/profesional/auth/login" variant="primary" size="md">
                 Soy profesional
               </Button>

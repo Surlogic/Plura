@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 import { SEARCH_CONTROL_HEIGHT_CLASS } from '@/components/search/searchUi';
 
 type SearchFieldProps = {
-  label: string;
+  label: ReactNode;
   active?: boolean;
   asButton?: boolean;
   onClick?: () => void;
@@ -37,7 +37,7 @@ export default function SearchField({
 
   const content = (
     <>
-      <span className="truncate whitespace-nowrap text-[0.58rem] font-semibold uppercase tracking-[0.2em] text-[color:var(--ink-faint)]">
+      <span className="flex min-w-0 items-center gap-1.5 truncate whitespace-nowrap text-[0.58rem] font-semibold uppercase tracking-[0.2em] text-[color:var(--ink-faint)]">
         {label}
       </span>
       <div className={`mt-1.5 min-w-0 ${valueClassName}`.trim()}>{children}</div>

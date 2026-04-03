@@ -19,7 +19,6 @@ export default memo(function CategoriesGrid({ categories, isLoading = false }: C
     <section className="px-4">
       <div className="mx-auto w-full max-w-6xl space-y-6">
         <SectionHeading
-          kicker="Explorar"
           title="Explorá por categoría"
           description="Entrá por el tipo de servicio y seguí explorando con más detalle desde la siguiente pantalla."
           action={canToggle ? (

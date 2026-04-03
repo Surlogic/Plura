@@ -13,7 +13,7 @@ Después de hacer cambios relevantes, actualizar esos archivos si quedaron desal
 - `contexto/infra-y-configuracion_sin_whatsapp.md`
 
 ## Regla obligatoria
-Responder en español.
+Responder en español y si se commitean cambios tambien en español.
 No finalizar tareas que cambien comportamiento, estructura, endpoints, módulos, rutas o configuración sin revisar si corresponde actualizar `contexto/`.
 
 ## Flujo

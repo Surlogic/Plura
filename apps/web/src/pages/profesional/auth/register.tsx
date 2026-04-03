@@ -10,6 +10,7 @@ import AuthLoadingOverlay from '@/components/auth/AuthLoadingOverlay';
 import Footer from '@/components/shared/Footer';
 import GoogleLoginButton from '@/components/auth/GoogleLoginButton';
 import Badge from '@/components/ui/Badge';
+import Button from '@/components/ui/Button';
 import Card from '@/components/ui/Card';
 import InternationalPhoneField from '@/components/ui/InternationalPhoneField';
 import api from '@/services/api';
@@ -669,13 +670,15 @@ export default function ProfesionalRegisterPage() {
               </p>
             ) : null}
 
-            <button
+            <Button
               type="submit"
-              className="h-12 w-full rounded-full border border-transparent bg-[image:var(--brand-gradient)] text-sm font-semibold text-white shadow-[var(--shadow-lift)] transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-70"
+              variant="brand"
+              size="lg"
+              className="w-full"
               disabled={isSubmitting || !isFormValid}
             >
               {isSubmitting ? 'Creando cuenta...' : 'Crear cuenta'}
-            </button>
+            </Button>
           </form>
 
           <p className="text-center text-xs text-[color:var(--ink-muted)]">

@@ -33,6 +33,7 @@ import {
   ScreenHero,
   SectionCard,
   SectionHeader,
+  SelectionChip,
   StatusPill,
 } from '../../src/components/ui/MobileSurface';
 import { theme } from '../../src/theme';
@@ -512,28 +513,25 @@ export default function ExploreScreen() {
             <Text className="text-xs uppercase tracking-[2px] text-gray-500">Tipo</Text>
             <View className="mt-2 flex-row" style={{ gap: 8 }}>
               {(['SERVICIO', 'PROFESIONAL', 'RUBRO'] as SearchType[]).map((type) => (
-                <TouchableOpacity
+                <SelectionChip
                   key={type}
+                  label={type === 'RUBRO' ? 'CATEGORIA' : type}
+                  selected={searchType === type}
+                  tone="solid"
                   onPress={() => setSearchType(type)}
-                  className={`rounded-full px-3 py-2 ${searchType === type ? 'bg-secondary' : 'border border-secondary/10 bg-white'}`}
-                >
-                  <Text className={`text-xs font-semibold ${searchType === type ? 'text-white' : 'text-secondary'}`}>
-                    {type === 'RUBRO' ? 'CATEGORÍA' : type}
-                  </Text>
-                </TouchableOpacity>
+                />
               ))}
             </View>
 
             <Text className="mt-4 text-xs uppercase tracking-[2px] text-gray-500">Orden</Text>
             <View className="mt-2 flex-row" style={{ gap: 8 }}>
               {sortOptions.map((option) => (
-                <TouchableOpacity
+                <SelectionChip
                   key={option.value}
+                  label={option.label}
+                  selected={sortBy === option.value}
                   onPress={() => void handleSortChange(option.value)}
-                  className={`rounded-full px-3 py-2 ${sortBy === option.value ? 'bg-secondary' : 'border border-secondary/10 bg-white'}`}
-                >
-                  <Text className={`text-xs font-semibold ${sortBy === option.value ? 'text-white' : 'text-secondary'}`}>{option.label}</Text>
-                </TouchableOpacity>
+                />
               ))}
             </View>
 
@@ -556,13 +554,13 @@ export default function ExploreScreen() {
 
             <View className="mt-4 flex-row" style={{ gap: 8 }}>
               {(['3', '5', '10', '20'] as const).map((radius) => (
-                <TouchableOpacity
+                <SelectionChip
                   key={radius}
+                  label={`${radius} km`}
+                  selected={radiusKm === radius}
+                  tone="solid"
                   onPress={() => setRadiusKm(radius)}
-                  className={`rounded-full px-3 py-2 ${radiusKm === radius ? 'bg-primary' : 'border border-secondary/10 bg-white'}`}
-                >
-                  <Text className={`text-xs font-semibold ${radiusKm === radius ? 'text-white' : 'text-secondary'}`}>{radius} km</Text>
-                </TouchableOpacity>
+                />
               ))}
             </View>
 
@@ -601,17 +599,13 @@ export default function ExploreScreen() {
           {filterOptions.map((filter) => {
             const isActive = activeFilter === filter.slug;
             return (
-              <TouchableOpacity
+              <SelectionChip
                 key={filter.slug}
+                label={filter.name}
+                selected={isActive}
+                tone="solid"
                 onPress={() => setActiveFilter(filter.slug)}
-                className={`rounded-full border px-4 py-2 ${
-                  isActive ? 'border-secondary bg-secondary' : 'border-secondary/10 bg-white'
-                }`}
-              >
-                <Text className={`text-sm font-semibold ${isActive ? 'text-white' : 'text-secondary'}`}>
-                  {filter.name}
-                </Text>
-              </TouchableOpacity>
+              />
             );
           })}
         </ScrollView>

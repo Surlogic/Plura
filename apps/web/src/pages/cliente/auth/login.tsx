@@ -8,6 +8,7 @@ import AuthLoadingOverlay from '@/components/auth/AuthLoadingOverlay';
 import GoogleLoginButton from '@/components/auth/GoogleLoginButton';
 import Footer from '@/components/shared/Footer';
 import Badge from '@/components/ui/Badge';
+import Button from '@/components/ui/Button';
 import Card from '@/components/ui/Card';
 import { useProfessionalProfileContext } from '@/context/ProfessionalProfileContext';
 import api from '@/services/api';
@@ -219,13 +220,9 @@ export default function ClienteLoginPage() {
                 </p>
               ) : null}
 
-              <button
-                type="submit"
-                className="h-12 w-full rounded-full border border-transparent bg-[image:var(--brand-gradient)] text-sm font-semibold text-white shadow-[var(--shadow-lift)] transition hover:-translate-y-0.5 hover:brightness-105 focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--focus-ring)] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-70"
-                disabled={isSubmitting}
-              >
+              <Button type="submit" variant="brand" size="lg" className="w-full" disabled={isSubmitting}>
                 {isSubmitting ? 'Ingresando...' : 'Iniciar sesión'}
-              </button>
+              </Button>
             </form>
 
             <div className="mt-5 space-y-3">

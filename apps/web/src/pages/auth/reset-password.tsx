@@ -7,6 +7,7 @@ import AuthTopBar from '@/components/auth/AuthTopBar';
 import Footer from '@/components/shared/Footer';
 import Card from '@/components/ui/Card';
 import Badge from '@/components/ui/Badge';
+import Button from '@/components/ui/Button';
 import api from '@/services/api';
 
 type PasswordResetRole = 'USER' | 'PROFESSIONAL';
@@ -143,13 +144,9 @@ export default function ResetPasswordPage() {
               </p>
             ) : null}
 
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="h-12 w-full rounded-full bg-[linear-gradient(135deg,#1FB6A6,#0E2A47)] text-sm font-semibold text-white transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-70"
-            >
+            <Button type="submit" variant="brand" size="lg" className="w-full" disabled={isSubmitting}>
               {isSubmitting ? 'Actualizando...' : 'Guardar nueva contraseña'}
-            </button>
+            </Button>
           </form>
 
           <div className="mt-6 flex flex-col gap-2 text-sm">

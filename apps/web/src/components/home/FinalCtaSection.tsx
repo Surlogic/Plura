@@ -12,9 +12,6 @@ export default memo(function FinalCtaSection() {
           <div className="pointer-events-none absolute bottom-0 left-1/3 h-28 w-28 rounded-full bg-[color:var(--premium)]/8 blur-3xl" />
           <div className="relative flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
             <div className="max-w-2xl space-y-2">
-              <p className="text-[0.68rem] font-semibold uppercase tracking-[0.3em] text-[color:var(--accent-strong)]">
-                Empeza ahora
-              </p>
               <h2 className="text-2xl font-semibold text-[color:var(--ink)] sm:text-[2rem]">
                 Encontrá tu próximo turno o sumá tu negocio a Plura
               </h2>

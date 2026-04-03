@@ -1,5 +1,6 @@
 import Button from '@/components/ui/Button';
 import Card from '@/components/ui/Card';
+import ToggleChip from '@/components/ui/ToggleChip';
 import {
   dayLabelsShort,
   weekOrder,
@@ -105,21 +106,18 @@ export default function ReservationScheduleStep(props: ReservationScheduleStepPr
               const monthLabel = cell.date.toLocaleDateString('es-AR', { month: 'short' });
 
               return (
-                <button
+                <ToggleChip
                   key={cell.key}
-                  type="button"
                   onClick={() => props.onSelectDate(cell.dateKey)}
-                  className={`flex min-h-[72px] flex-col items-center justify-center rounded-[18px] border px-1.5 py-2 text-center transition ${
-                    isSelected
-                      ? 'border-[color:var(--primary)] bg-[color:var(--primary-soft)] text-[color:var(--ink)] shadow-[var(--shadow-card)]'
-                      : 'border-[color:var(--border-soft)] bg-white text-[color:var(--ink)] hover:-translate-y-0.5 hover:bg-[color:var(--surface)]'
-                  }`}
+                  selected={isSelected}
+                  tone="soft"
+                  shape="tile"
                 >
                   <span className="text-base font-semibold">{dayNumber}</span>
                   <span className="mt-1 text-[0.62rem] uppercase tracking-[0.16em] text-[color:var(--ink-faint)]">
                     {monthLabel}
                   </span>
-                </button>
+                </ToggleChip>
               );
             })}
           </div>
@@ -204,18 +202,15 @@ export default function ReservationScheduleStep(props: ReservationScheduleStepPr
             props.slots.map((slot) => {
               const isSelected = props.selectedTime === slot;
               return (
-                <button
+                <ToggleChip
                   key={slot}
-                  type="button"
                   onClick={() => props.onSelectTime(slot)}
-                  className={`rounded-[16px] border px-3 py-3 text-sm font-semibold transition ${
-                    isSelected
-                      ? 'border-[color:var(--primary)] bg-[color:var(--primary)] text-white shadow-[var(--shadow-card)]'
-                      : 'border-[color:var(--border-soft)] bg-white text-[color:var(--ink)] hover:-translate-y-0.5 hover:bg-[color:var(--surface-soft)]'
-                  }`}
+                  selected={isSelected}
+                  tone="solid"
+                  className="rounded-[16px]"
                 >
                   {slot}
-                </button>
+                </ToggleChip>
               );
             })
           )}

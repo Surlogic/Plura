@@ -26,7 +26,6 @@ export default memo(function TopBusinesses({ professionals, isLoading = false }:
     <section className="px-4">
       <div className="mx-auto w-full max-w-6xl space-y-6">
         <SectionHeading
-          kicker="Destacados"
           title="Profesionales destacados"
           description="Una selección corta para orientarte rápido y seguir explorando en el perfil o en búsqueda."
           action={<Button href="/explorar" variant="quiet">Ver explorar</Button>}

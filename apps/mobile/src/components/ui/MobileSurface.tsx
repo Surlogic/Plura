@@ -14,12 +14,24 @@ import {
 import { theme } from '../../theme';
 
 type PillTone = 'neutral' | 'primary' | 'success' | 'warning' | 'danger' | 'light';
-type ButtonTone = 'primary' | 'secondary' | 'soft' | 'danger' | 'light';
+type ButtonTone = 'primary' | 'brand' | 'secondary' | 'soft' | 'danger' | 'light';
+type ChipTone = 'soft' | 'solid';
 
 type ActionButtonProps = {
   label: string;
   onPress?: ((event: GestureResponderEvent) => void) | undefined;
   tone?: ButtonTone;
+  disabled?: boolean;
+  loading?: boolean;
+  style?: StyleProp<ViewStyle>;
+  textStyle?: StyleProp<TextStyle>;
+};
+
+type SelectionChipProps = {
+  label: string;
+  selected?: boolean;
+  onPress?: ((event: GestureResponderEvent) => void) | undefined;
+  tone?: ChipTone;
   disabled?: boolean;
   style?: StyleProp<ViewStyle>;
   textStyle?: StyleProp<TextStyle>;
@@ -79,11 +91,16 @@ const pillToneMap: Record<PillTone, { backgroundColor: string; textColor: string
   light: { backgroundColor: 'rgba(255,255,255,0.16)', textColor: theme.colors.white },
 };
 
-const buttonToneMap: Record<ButtonTone, { backgroundColor: string; borderColor: string; textColor: string }> = {
+const buttonToneMap: Record<ButtonTone, { backgroundColor?: string; borderColor: string; textColor: string; gradient?: readonly [string, string, ...string[]] }> = {
   primary: {
-    backgroundColor: theme.colors.secondary,
-    borderColor: theme.colors.secondary,
+    backgroundColor: theme.colors.primary,
+    borderColor: theme.colors.primary,
     textColor: theme.colors.white,
+  },
+  brand: {
+    borderColor: 'transparent',
+    textColor: theme.colors.white,
+    gradient: theme.gradients.brand,
   },
   secondary: {
     backgroundColor: theme.colors.surfaceStrong,
@@ -96,9 +113,9 @@ const buttonToneMap: Record<ButtonTone, { backgroundColor: string; borderColor: 
     textColor: theme.colors.secondary,
   },
   danger: {
-    backgroundColor: '#FFF5F6',
-    borderColor: '#F3C8CF',
-    textColor: theme.colors.danger,
+    backgroundColor: theme.colors.danger,
+    borderColor: theme.colors.danger,
+    textColor: theme.colors.white,
   },
   light: {
     backgroundColor: 'rgba(255,255,255,0.16)',
@@ -125,14 +142,42 @@ export function ActionButton({
   onPress,
   tone = 'primary',
   disabled = false,
+  loading = false,
   style,
   textStyle,
 }: ActionButtonProps) {
   const toneStyles = buttonToneMap[disabled ? 'secondary' : tone];
+  const content = (
+    <>
+      {loading ? <Ionicons name="reload-outline" size={16} color={toneStyles.textColor} /> : null}
+      <Text style={[styles.buttonText, { color: toneStyles.textColor }, textStyle]}>{label}</Text>
+    </>
+  );
+
+  if (toneStyles.gradient && !disabled) {
+    return (
+      <TouchableOpacity
+        activeOpacity={0.9}
+        disabled={disabled || loading}
+        onPress={onPress}
+        style={[styles.buttonTouchable, style]}
+      >
+        <LinearGradient
+          colors={toneStyles.gradient}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={[styles.button, styles.buttonGradient]}
+        >
+          {content}
+        </LinearGradient>
+      </TouchableOpacity>
+    );
+  }
+
   return (
     <TouchableOpacity
       activeOpacity={0.9}
-      disabled={disabled}
+      disabled={disabled || loading}
       onPress={onPress}
       style={[
         styles.button,
@@ -144,7 +189,49 @@ export function ActionButton({
         style,
       ]}
     >
-      <Text style={[styles.buttonText, { color: toneStyles.textColor }, textStyle]}>{label}</Text>
+      {content}
+    </TouchableOpacity>
+  );
+}
+
+export function SelectionChip({
+  label,
+  selected = false,
+  onPress,
+  tone = 'soft',
+  disabled = false,
+  style,
+  textStyle,
+}: SelectionChipProps) {
+  const selectedStyles = tone === 'solid'
+    ? styles.selectionChipSelectedSolid
+    : styles.selectionChipSelectedSoft;
+
+  return (
+    <TouchableOpacity
+      activeOpacity={0.9}
+      disabled={disabled}
+      onPress={onPress}
+      style={[
+        styles.selectionChip,
+        selected ? selectedStyles : styles.selectionChipIdle,
+        disabled ? styles.selectionChipDisabled : null,
+        style,
+      ]}
+    >
+      <Text
+        style={[
+          styles.selectionChipText,
+          selected
+            ? tone === 'solid'
+              ? styles.selectionChipTextSelectedSolid
+              : styles.selectionChipTextSelectedSoft
+            : styles.selectionChipTextIdle,
+          textStyle,
+        ]}
+      >
+        {label}
+      </Text>
     </TouchableOpacity>
   );
 }
@@ -343,11 +430,59 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
+    flexDirection: 'row',
+    gap: 8,
     paddingHorizontal: 18,
+  },
+  buttonTouchable: {
+    minHeight: 46,
+    borderRadius: 999,
+    overflow: 'hidden',
+  },
+  buttonGradient: {
+    width: '100%',
+    height: '100%',
+    minHeight: 46,
   },
   buttonText: {
     fontSize: 14,
     fontWeight: '700',
+  },
+  selectionChip: {
+    borderRadius: 999,
+    borderWidth: 1,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  selectionChipIdle: {
+    borderColor: theme.colors.border,
+    backgroundColor: theme.colors.surfaceStrong,
+  },
+  selectionChipSelectedSoft: {
+    borderColor: theme.colors.primary,
+    backgroundColor: 'rgba(10,122,67,0.12)',
+  },
+  selectionChipSelectedSolid: {
+    borderColor: theme.colors.primary,
+    backgroundColor: theme.colors.primary,
+  },
+  selectionChipDisabled: {
+    opacity: 0.55,
+  },
+  selectionChipText: {
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  selectionChipTextIdle: {
+    color: theme.colors.secondary,
+  },
+  selectionChipTextSelectedSoft: {
+    color: theme.colors.primaryStrong,
+  },
+  selectionChipTextSelectedSolid: {
+    color: theme.colors.white,
   },
   sectionHeader: {
     flexDirection: 'row',

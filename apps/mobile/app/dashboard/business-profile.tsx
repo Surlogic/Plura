@@ -16,7 +16,13 @@ import { getApiErrorMessage } from '../../src/services/errors';
 import type { ServiceCategoryOption } from '../../src/types/professional';
 import { AppScreen } from '../../src/components/ui/AppScreen';
 import InternationalPhoneField from '../../src/components/ui/InternationalPhoneField';
-import { MessageCard, ScreenHero, SectionCard } from '../../src/components/ui/MobileSurface';
+import {
+  ActionButton,
+  MessageCard,
+  ScreenHero,
+  SectionCard,
+  SelectionChip,
+} from '../../src/components/ui/MobileSurface';
 import { hasMinimumPhoneDigits } from '../../src/lib/internationalPhone';
 
 const slugify = (value: string) => (
@@ -248,12 +254,12 @@ export default function BusinessProfileScreen() {
             <Text className="mt-1 text-sm leading-6 text-gray-500">
               Revisa como se muestra tu perfil al cliente desde la app mobile.
             </Text>
-            <TouchableOpacity
+            <ActionButton
+              label="Ver pagina publica"
               onPress={() => router.push(`/profesional/${profile.slug}`)}
-              className="mt-4 h-12 items-center justify-center rounded-full bg-secondary"
-            >
-              <Text className="font-bold text-white">Ver pagina publica</Text>
-            </TouchableOpacity>
+              tone="primary"
+              style={{ marginTop: 16 }}
+            />
           </SectionCard>
         ) : null}
 
@@ -278,15 +284,13 @@ export default function BusinessProfileScreen() {
                 categories.map((category) => {
                   const isSelected = form.categorySlugs.includes(category.slug);
                   return (
-                    <TouchableOpacity
+                    <SelectionChip
                       key={category.id}
-                      className={`rounded-full px-4 py-2 ${isSelected ? 'bg-secondary' : 'border border-secondary/10 bg-background'}`}
+                      label={category.name}
+                      selected={isSelected}
+                      tone="solid"
                       onPress={() => toggleCategory(category.slug)}
-                    >
-                      <Text className={`text-xs font-semibold ${isSelected ? 'text-white' : 'text-secondary'}`}>
-                        {category.name}
-                      </Text>
-                    </TouchableOpacity>
+                    />
                   );
                 })
               )}
@@ -407,8 +411,11 @@ export default function BusinessProfileScreen() {
 
         {message ? <MessageCard message={message} tone={message.includes('correctamente') ? 'success' : 'primary'} style={{ marginTop: 16 }} /> : null}
 
-        <TouchableOpacity
+        <ActionButton
           disabled={isDisabled}
+          loading={isSaving}
+          label="Guardar cambios"
+          tone="primary"
           onPress={async () => {
             setIsSaving(true);
             setMessage(null);
@@ -468,10 +475,9 @@ export default function BusinessProfileScreen() {
               setIsSaving(false);
             }
           }}
-          className={`mt-6 h-14 rounded-full items-center justify-center ${isDisabled ? 'bg-gray-300' : 'bg-secondary'}`}
-        >
-          {isSaving ? <ActivityIndicator color="#fff" /> : <Text className="font-bold text-white">Guardar cambios</Text>}
-        </TouchableOpacity>
+          style={{ marginTop: 24, minHeight: 56 }}
+          textStyle={{ fontSize: 15 }}
+        />
     </AppScreen>
   );
 }

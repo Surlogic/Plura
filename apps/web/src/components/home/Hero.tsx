@@ -27,18 +27,13 @@ export default memo(function Hero({ categories, stats, isLoading = false }: Hero
       <div className="relative mx-auto max-w-6xl">
         <div className="grid gap-7 lg:grid-cols-[minmax(0,42rem)_24rem] lg:items-start lg:gap-x-10 lg:gap-y-6 xl:grid-cols-[minmax(0,43rem)_25rem]">
           <div className="order-1 mx-auto max-w-[38rem] text-center lg:mx-0 lg:max-w-none lg:text-left">
-            <div className="space-y-4 sm:space-y-5">
-              <p className="text-[0.76rem] font-semibold tracking-[0.06em] text-[color:var(--accent-strong)]">
-                Marketplace de estética y cuidado personal
+            <div className="space-y-3">
+              <h1 className="text-[2.5rem] font-semibold leading-[0.94] text-[color:var(--ink)] sm:text-[3.15rem] lg:text-[3.85rem]">
+                Reservá tu próximo turno sin complicaciones.
+              </h1>
+              <p className="mx-auto max-w-[31rem] text-[1rem] leading-6 text-[color:var(--ink-muted)] sm:text-[1.06rem] lg:mx-0">
+                Tu servicio ideal te está esperando…
               </p>
-              <div className="space-y-3">
-                <h1 className="text-[2.5rem] font-semibold leading-[0.94] text-[color:var(--ink)] sm:text-[3.15rem] lg:text-[3.85rem]">
-                  Reservá tu próximo turno sin complicaciones.
-                </h1>
-                <p className="mx-auto max-w-[31rem] text-[1rem] leading-6 text-[color:var(--ink-muted)] sm:text-[1.06rem] lg:mx-0">
-                  Tu servicio ideal te está esperando…
-                </p>
-              </div>
             </div>
           </div>
 

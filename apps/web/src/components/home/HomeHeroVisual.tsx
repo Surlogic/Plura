@@ -18,7 +18,6 @@ type HeroVisualSlide = {
   accent: string;
   id: string;
   imageUrl: string;
-  label: string;
   placeholderImageUrl: string;
   title: string;
 };
@@ -185,7 +184,6 @@ const buildSlides = (categories: Category[]): HeroVisualSlide[] => {
         accent: theme.accent,
         id: category.id,
         imageUrl: category.imageUrl?.trim() || placeholderImageUrl,
-        label: theme.label,
         placeholderImageUrl,
         title,
       };
@@ -247,7 +245,7 @@ export default memo(function HomeHeroVisual({ categories }: HomeHeroVisualProps)
     }, VISUAL_ROTATION_MS);
 
     return () => window.clearInterval(intervalId);
-  }, [prefersReducedMotion, rotateSlide, slides.length]);
+  }, [prefersReducedMotion, slides.length]);
 
   const activeSlide = slides[activeIndex] ?? slides[0];
   if (!activeSlide) {
@@ -322,10 +320,7 @@ export default memo(function HomeHeroVisual({ categories }: HomeHeroVisualProps)
 
           <div className="absolute inset-x-0 bottom-0 p-4 sm:p-5">
             <div className="rounded-[22px] border border-white/18 bg-[rgba(15,23,42,0.22)] p-4 text-white shadow-[0_24px_48px_-38px_rgba(15,23,42,0.72)] backdrop-blur-md">
-              <p className="text-[0.64rem] font-semibold uppercase tracking-[0.24em] text-white/70">
-                {activeSlide.label}
-              </p>
-              <div className="mt-2 flex items-end justify-between gap-3">
+              <div className="flex items-end justify-between gap-3">
                 <h2 className="text-[1.45rem] font-semibold leading-[1.02] text-white sm:text-[1.6rem]">
                   {activeSlide.title}
                 </h2>

@@ -49,7 +49,6 @@ export default memo(function HowItWorksSection() {
     <section className="px-4">
       <div className="mx-auto w-full max-w-6xl space-y-6">
         <SectionHeading
-          kicker="Como funciona"
           title="Reservar en Plura es simple"
           description="Un recorrido corto para encontrar, elegir y reservar sin vueltas."
         />

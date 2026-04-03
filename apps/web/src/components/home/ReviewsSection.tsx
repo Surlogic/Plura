@@ -76,9 +76,6 @@ export default function ReviewsSection() {
     <section className="px-4">
       <div className="mx-auto w-full max-w-6xl space-y-6">
         <div className="space-y-2">
-          <p className="text-[0.68rem] font-semibold uppercase tracking-[0.3em] text-[color:var(--ink-faint)]">
-            Opiniones sobre Plura
-          </p>
           <h2 className="text-2xl font-semibold text-[color:var(--ink)] sm:text-[2rem]">
             Confianza basada en experiencia real
           </h2>

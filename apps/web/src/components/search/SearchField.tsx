@@ -8,6 +8,7 @@ type SearchFieldProps = {
   onClick?: () => void;
   children: ReactNode;
   className?: string;
+  labelClassName?: string;
   valueClassName?: string;
   chrome?: 'framed' | 'bare';
 };
@@ -19,6 +20,7 @@ export default function SearchField({
   onClick,
   children,
   className = '',
+  labelClassName = '',
   valueClassName = '',
   chrome = 'framed',
 }: SearchFieldProps) {
@@ -37,7 +39,9 @@ export default function SearchField({
 
   const content = (
     <>
-      <span className="flex min-w-0 items-center gap-1.5 truncate whitespace-nowrap text-[0.58rem] font-semibold uppercase tracking-[0.2em] text-[color:var(--ink-faint)]">
+      <span
+        className={`flex min-w-0 items-center gap-1.5 truncate whitespace-nowrap text-[0.58rem] font-semibold uppercase tracking-[0.2em] text-[color:var(--ink-faint)] ${labelClassName}`.trim()}
+      >
         {label}
       </span>
       <div className={`mt-1.5 min-w-0 ${valueClassName}`.trim()}>{children}</div>

@@ -222,6 +222,7 @@ export default memo(function UnifiedSearchBar({
   const hasDateRange = Boolean(values.from && values.to);
   const hasDateSelection = Boolean(values.date || hasDateRange || values.availableNow);
   const hasLocationSelection = Boolean(values.city.trim() || hasCoordinates);
+  const hasQuerySelection = Boolean(searchInput.trim() || values.query.trim() || values.categorySlug);
   const inputPlaceholder = values.categorySlug
     ? `Buscar en ${slugToLabel(values.categorySlug)}`
     : 'Servicio, categoría o profesional';
@@ -247,10 +248,13 @@ export default memo(function UnifiedSearchBar({
       ? SEARCH_TYPE_LABELS[values.type]
       : null;
   const queryFieldLabel = 'Servicios';
-  const queryFieldClassName = isHero ? 'h-full justify-start py-1.5' : 'h-full';
-  const selectionFieldClassName = isHero ? 'h-full justify-start py-1.5' : 'h-full';
-  const queryValueClassName = isHero ? 'mt-2 flex min-h-[1.65rem] items-start' : '';
-  const selectionValueClassName = isHero ? 'mt-2 flex min-h-[1.65rem] items-start' : '';
+  const hiddenHeroLabelClassName = isHero ? 'sr-only' : '';
+  const heroInlineLabelClassName =
+    'inline-flex min-w-0 items-center gap-1.5 truncate whitespace-nowrap text-[0.58rem] font-semibold uppercase tracking-[0.2em] text-[color:var(--ink-faint)]';
+  const queryFieldClassName = isHero ? 'h-full justify-center py-1.5' : 'h-full';
+  const selectionFieldClassName = isHero ? 'h-full justify-center py-1.5' : 'h-full';
+  const queryValueClassName = isHero ? '!mt-0 flex min-h-[1.65rem] items-center' : '';
+  const selectionValueClassName = isHero ? '!mt-0 flex min-h-[1.65rem] items-center' : '';
   const heroFieldShellClassName = 'px-4 py-2 sm:px-5';
   const heroDividerClassName = 'border-t border-[color:var(--border-soft)]/85 md:border-t-0 md:border-r';
   const queryWrapperOrderClassName = isHero ? `order-1 md:col-[1] ${heroFieldShellClassName}` : '';
@@ -372,13 +376,23 @@ export default memo(function UnifiedSearchBar({
                 label={<SearchSectionLabel icon="search" text={queryFieldLabel} />}
                 active={isSearchOpen}
                 className={queryFieldClassName}
+                labelClassName={hiddenHeroLabelClassName}
                 valueClassName={queryValueClassName}
                 chrome={isHero ? 'bare' : 'framed'}
               >
-                <div className="flex min-w-0 items-center gap-2.5">
+                <div className="relative flex min-w-0 items-center gap-2.5">
                   {searchModeLabel && !isHero ? (
                     <span className="hidden shrink-0 rounded-full bg-white px-2 py-1 text-[0.58rem] font-semibold uppercase tracking-[0.16em] text-[color:var(--ink-faint)] sm:inline-flex">
                       {searchModeLabel}
+                    </span>
+                  ) : null}
+
+                  {isHero && !hasQuerySelection ? (
+                    <span
+                      className={`pointer-events-none absolute inset-y-0 left-0 flex items-center ${heroInlineLabelClassName}`}
+                      aria-hidden="true"
+                    >
+                      <SearchSectionLabel icon="search" text={queryFieldLabel} />
                     </span>
                   ) : null}
 
@@ -406,7 +420,7 @@ export default memo(function UnifiedSearchBar({
                     onFocus={openSearchPanel}
                     onClick={openSearchPanel}
                     onKeyDown={handleInputKeyDown}
-                    placeholder={inputPlaceholder}
+                    placeholder={isHero ? '' : inputPlaceholder}
                     className={searchInputClassName}
                     aria-label="Buscar tratamiento, categoría, profesional o local"
                     autoComplete="off"
@@ -434,6 +448,7 @@ export default memo(function UnifiedSearchBar({
                 active={isLocationOpen || hasLocationSelection}
                 asButton
                 className={selectionFieldClassName}
+                labelClassName={hiddenHeroLabelClassName}
                 valueClassName={selectionValueClassName}
                 chrome={isHero ? 'bare' : 'framed'}
                 onClick={() => {
@@ -443,15 +458,21 @@ export default memo(function UnifiedSearchBar({
                 }}
               >
                 <div className="flex min-w-0 items-center gap-2.5">
-                  <span
-                    className={`w-full truncate text-left leading-5 ${locationValueClass} ${
-                      hasLocationSelection
-                        ? 'font-semibold text-[color:var(--ink)]'
-                        : 'font-medium text-[color:var(--ink-muted)]'
-                    }`}
-                  >
-                    {locationSummary}
-                  </span>
+                  {isHero && !hasLocationSelection ? (
+                    <span className={heroInlineLabelClassName}>
+                      <SearchSectionLabel icon="location" text="Ubicación" />
+                    </span>
+                  ) : (
+                    <span
+                      className={`w-full truncate text-left leading-5 ${locationValueClass} ${
+                        hasLocationSelection
+                          ? 'font-semibold text-[color:var(--ink)]'
+                          : 'font-medium text-[color:var(--ink-muted)]'
+                      }`}
+                    >
+                      {locationSummary}
+                    </span>
+                  )}
                 </div>
               </SearchField>
 
@@ -499,6 +520,7 @@ export default memo(function UnifiedSearchBar({
                 active={isDateOpen || hasDateSelection}
                 asButton
                 className={selectionFieldClassName}
+                labelClassName={hiddenHeroLabelClassName}
                 valueClassName={selectionValueClassName}
                 chrome={isHero ? 'bare' : 'framed'}
                 onClick={() => {
@@ -508,15 +530,21 @@ export default memo(function UnifiedSearchBar({
                 }}
               >
                 <div className="flex min-w-0 items-center gap-2.5">
-                  <span
-                    className={`w-full truncate text-left text-[0.88rem] leading-5 ${
-                      hasDateSelection
-                        ? 'font-semibold text-[color:var(--ink)]'
-                        : 'font-medium text-[color:var(--ink-muted)]'
-                    }`}
-                  >
-                    {dateSummary}
-                  </span>
+                  {isHero && !hasDateSelection ? (
+                    <span className={heroInlineLabelClassName}>
+                      <SearchSectionLabel icon="calendar" text="Fecha" />
+                    </span>
+                  ) : (
+                    <span
+                      className={`w-full truncate text-left text-[0.88rem] leading-5 ${
+                        hasDateSelection
+                          ? 'font-semibold text-[color:var(--ink)]'
+                          : 'font-medium text-[color:var(--ink-muted)]'
+                      }`}
+                    >
+                      {dateSummary}
+                    </span>
+                  )}
                 </div>
               </SearchField>
 

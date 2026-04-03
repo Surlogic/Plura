@@ -1,5 +1,6 @@
 package com.plura.plurabackend.professional.profile;
 
+import com.plura.plurabackend.core.analytics.tracking.AppProductEventTrackingService;
 import com.plura.plurabackend.core.booking.dto.PublicBookingRequest;
 import com.plura.plurabackend.core.booking.dto.PublicBookingResponse;
 import jakarta.validation.Valid;
@@ -21,6 +22,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -33,9 +35,14 @@ public class ProfesionalPublicController {
     private static final Logger LOGGER = LoggerFactory.getLogger(ProfesionalPublicController.class);
     private static final String BOOKING_SLOT_CONSTRAINT = "uq_professional_start";
     private final ProfessionalPublicPageService professionalPublicPageService;
+    private final AppProductEventTrackingService appProductEventTrackingService;
 
-    public ProfesionalPublicController(ProfessionalPublicPageService professionalPublicPageService) {
+    public ProfesionalPublicController(
+        ProfessionalPublicPageService professionalPublicPageService,
+        AppProductEventTrackingService appProductEventTrackingService
+    ) {
         this.professionalPublicPageService = professionalPublicPageService;
+        this.appProductEventTrackingService = appProductEventTrackingService;
     }
 
     @GetMapping
@@ -50,8 +57,13 @@ public class ProfesionalPublicController {
     }
 
     @GetMapping("/{slug}")
-    public ProfesionalPublicPageResponse getProfesionalBySlug(@PathVariable String slug) {
-        return professionalPublicPageService.getPublicPageBySlug(slug);
+    public ProfesionalPublicPageResponse getProfesionalBySlug(
+        @PathVariable String slug,
+        @RequestHeader(value = "X-Plura-Client-Platform", required = false) String clientPlatform
+    ) {
+        ProfesionalPublicPageResponse response = professionalPublicPageService.getPublicPageBySlug(slug);
+        appProductEventTrackingService.trackProfessionalProfileView(clientPlatform, response);
+        return response;
     }
 
     @GetMapping("/{slug}/slots")
@@ -67,6 +79,7 @@ public class ProfesionalPublicController {
     public ResponseEntity<?> createReservation(
         @PathVariable String slug,
         @Valid @RequestBody PublicBookingRequest request,
+        @RequestHeader(value = "X-Plura-Client-Platform", required = false) String clientPlatform,
         Authentication authentication
     ) {
         if (
@@ -82,7 +95,8 @@ public class ProfesionalPublicController {
             PublicBookingResponse response = professionalPublicPageService.createPublicBooking(
                 slug,
                 request,
-                authentication.getPrincipal().toString()
+                authentication.getPrincipal().toString(),
+                clientPlatform
             );
             return ResponseEntity.status(HttpStatus.CREATED).body(response);
         } catch (DataIntegrityViolationException exception) {

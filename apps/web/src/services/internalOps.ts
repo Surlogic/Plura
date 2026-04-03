@@ -177,3 +177,124 @@ export const fetchReviewAnalytics = (from?: string, to?: string) => {
   const qs = searchParams.toString();
   return opsFetch<InternalReviewAnalytics>(`/internal/ops/reviews/analytics${qs ? `?${qs}` : ''}`);
 };
+
+// Analytics Ops
+
+type InternalOpsAnalyticsOverview = {
+  from: string;
+  to: string;
+  totalReservations: number;
+  completedReservations: number;
+  cancelledReservations: number;
+  noShowReservations: number;
+  estimatedRevenue: number;
+  averageTicket: number;
+  totalSearches: number;
+  totalProfileViews: number;
+};
+
+type InternalOpsAnalyticsCategoryPerformance = {
+  categoryKey: string;
+  categoryLabel: string;
+  totalBookings: number;
+  pendingBookings: number;
+  confirmedBookings: number;
+  completedBookings: number;
+  cancelledBookings: number;
+  noShowBookings: number;
+  cancellationRate: number;
+  noShowRate: number;
+  estimatedRevenue: number;
+  averageTicket: number;
+};
+
+type InternalOpsAnalyticsServicePerformance = {
+  serviceId: string;
+  serviceName: string;
+  categoryLabel: string;
+  totalBookings: number;
+  estimatedRevenue: number;
+  averageTicket: number;
+};
+
+type InternalOpsAnalyticsFunnelByCategory = {
+  categoryKey: string;
+  categoryLabel: string;
+  searches: number;
+  profileViews: number;
+  reservations: number;
+  searchToProfileRate: number;
+  profileToReservationRate: number;
+  searchToReservationRate: number;
+};
+
+type InternalOpsAnalyticsRetention = {
+  activeClients: number;
+  returningClients: number;
+  returningRate: number;
+  repeatClientsInPeriod: number;
+  repeatRate: number;
+  previousWindowClients: number;
+  retainedFromPreviousWindow: number;
+  windowRetentionRate: number;
+};
+
+type InternalOpsAnalyticsDemandPoint = {
+  label: string;
+  count: number;
+};
+
+type InternalOpsAnalyticsCityPerformance = {
+  city: string;
+  searches: number;
+  profileViews: number;
+  reservations: number;
+  profileToReservationRate: number;
+  searchToReservationRate: number;
+};
+
+type InternalOpsAnalyticsProfessionalPerformance = {
+  professionalId: number;
+  professionalName: string;
+  professionalSlug: string;
+  categoryLabel: string;
+  city: string;
+  totalBookings: number;
+  estimatedRevenue: number;
+  averageTicket: number;
+  occupancyRate: number;
+  rating: number;
+  reviewsCount: number;
+};
+
+type InternalOpsAnalyticsSummary = {
+  overview: InternalOpsAnalyticsOverview;
+  categoryPerformance: InternalOpsAnalyticsCategoryPerformance[];
+  servicePerformance: InternalOpsAnalyticsServicePerformance[];
+  funnelByCategory: InternalOpsAnalyticsFunnelByCategory[];
+  retention: InternalOpsAnalyticsRetention;
+  demandByWeekday: InternalOpsAnalyticsDemandPoint[];
+  demandByHour: InternalOpsAnalyticsDemandPoint[];
+  cityPerformance: InternalOpsAnalyticsCityPerformance[];
+  professionalPerformance: InternalOpsAnalyticsProfessionalPerformance[];
+};
+
+export type {
+  InternalOpsAnalyticsOverview,
+  InternalOpsAnalyticsCategoryPerformance,
+  InternalOpsAnalyticsServicePerformance,
+  InternalOpsAnalyticsFunnelByCategory,
+  InternalOpsAnalyticsRetention,
+  InternalOpsAnalyticsDemandPoint,
+  InternalOpsAnalyticsCityPerformance,
+  InternalOpsAnalyticsProfessionalPerformance,
+  InternalOpsAnalyticsSummary,
+};
+
+export const fetchOpsAnalyticsSummary = (from?: string, to?: string) => {
+  const searchParams = new URLSearchParams();
+  if (from) searchParams.set('from', from);
+  if (to) searchParams.set('to', to);
+  const qs = searchParams.toString();
+  return opsFetch<InternalOpsAnalyticsSummary>(`/internal/ops/analytics/summary${qs ? `?${qs}` : ''}`);
+};

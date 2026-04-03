@@ -256,12 +256,14 @@ Huecos relevantes contra el objetivo:
 
 - `/internal/feedback`: panel operativo exclusivo para feedback interno de app con listado filtrable, analytics y archivo/desarchivo; protegido por token interno configurable desde localStorage, no por sesion de usuario; `<meta name="robots" content="noindex,nofollow" />`
 - `/internal/ops/reviews`: superficie interna dedicada a moderacion de reseñas publicas y reportes; lista paginada, analytics, badges de reportes y acciones de hide/show del texto; protegida por el mismo `X-Internal-Token`
+- `/internal/ops/analytics`: tablero interno de negocio y marketplace para el equipo de Plura; consume un resumen agregado desde `/internal/ops/analytics/summary` y muestra reservas, facturacion estimada, rubros, funnel `search -> profile -> reserva`, retencion, ciudades, horarios y top profesionales; protegido por el mismo `X-Internal-Token`
 
 Modulos relevantes:
 
 - `services/internalOps.ts`: cliente HTTP con `X-Internal-Token` y URL base configurables desde localStorage
 - `pages/internal/feedback.tsx`: pagina completa con configuracion, analytics, filtros y tabla de feedback de app; enlaza a la superficie separada de reseñas
 - `pages/internal/ops/reviews.tsx`: pagina completa de moderacion de reseñas para internal ops; consume `/internal/ops/reviews*`, muestra reportes y mantiene hide/show del texto
+- `pages/internal/ops/analytics.tsx`: pagina completa del tablero interno de negocio; ordena `overview`, rubros, servicios, funnel, retencion, demanda, ciudades y profesionales top sin exponer esos datos en la UX del cliente o del profesional
 
 ### Modulos transversales web
 
@@ -278,6 +280,7 @@ Modulos relevantes:
 - `hooks/useAuthLogout.ts` + `context/LogoutTransitionContext.tsx`: cierre de sesion unificado con overlay global y redireccion por rol.
 - `lib/auth/sessionErrors.ts`: clasifica `401/403` de auth aparte de errores transitorios para que la web no fuerce logout por fallas de red o `5xx`.
 - `services/appFeedback.ts`: feedback de app del cliente y profesional; ahora incluye `getPublicAppFeedback(limit)` para testimonios publicos via `GET /public/app-feedback`.
+- `services/internalOps.ts`: ahora tambien tipa y consume `GET /internal/ops/analytics/summary` para la superficie interna de analytics.
 - `middleware.ts`: CSP y headers de seguridad.
 - `/oauth/mercadopago/callback`: ahora interpreta `result/reason` devueltos por el backend y consulta el estado real de conexion; ya no intenta llamar al callback backend con `code/state`.
 - `pages/profesional/pagina/[slug].tsx`: compone la pagina publica con hero premium, CTA liviano hacia `/reservar`, servicios en lista compacta, galeria contenida, bloque unificado de ubicacion/horarios y reseñas; reutiliza el fetch cacheado del perfil publico y posterga geocoding fallback + mapa hasta que el bloque entra en viewport.
@@ -298,6 +301,7 @@ Modulos relevantes:
 Lectura de producto:
 
 - search + mapa sostienen marketplace y descubrimiento
+- el repo ahora ya expone un backoffice interno de analytics separado de la experiencia de cliente/profesional: vive en `/internal/ops/analytics` y se apoya en agregados propios de reservas/pagos/reseñas mas tracking server-side de `search` y `profile view`
 - `middleware.ts` y `services/api.ts` sostienen parte del bloque core de autenticacion y seguridad
 - en rutas protegidas web, un fallo transitorio al refrescar sesion o cargar `/auth/me/*` ya no limpia la sesion local ni redirige a login; la redireccion queda reservada a `401/403` reales
 - `_app.tsx` mantiene globales los providers de perfil, pero ahora monta por ruta los providers de notificaciones y del shell profesional con cambios sin guardar solo en dashboard/notificaciones para bajar costo base fuera de esas superficies; ademas las campanas de notificaciones del shell difieren la primera carga del unread count hasta interaccion o idle en vez de pedirlo apenas monta la vista; los hooks de perfil ya no fuerzan un refetch extra cuando el provider aun no termino su carga inicial

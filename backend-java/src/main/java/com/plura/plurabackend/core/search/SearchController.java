@@ -1,5 +1,7 @@
 package com.plura.plurabackend.core.search;
 
+import com.plura.plurabackend.core.analytics.tracking.AppProductEventTrackingService;
+import jakarta.servlet.http.HttpServletRequest;
 import com.plura.plurabackend.core.search.dto.SearchResponse;
 import com.plura.plurabackend.core.search.dto.SearchSuggestResponse;
 import java.time.LocalDate;
@@ -14,9 +16,14 @@ import org.springframework.web.bind.annotation.RestController;
 public class SearchController {
 
     private final SearchService searchService;
+    private final AppProductEventTrackingService appProductEventTrackingService;
 
-    public SearchController(SearchService searchService) {
+    public SearchController(
+        SearchService searchService,
+        AppProductEventTrackingService appProductEventTrackingService
+    ) {
         this.searchService = searchService;
+        this.appProductEventTrackingService = appProductEventTrackingService;
     }
 
     @GetMapping
@@ -34,9 +41,10 @@ public class SearchController {
         @RequestParam(required = false, defaultValue = "false") boolean availableNow,
         @RequestParam(required = false) Integer page,
         @RequestParam(required = false) Integer size,
-        @RequestParam(required = false) String sort
+        @RequestParam(required = false) String sort,
+        HttpServletRequest request
     ) {
-        return searchService.search(
+        SearchResponse response = searchService.search(
             query,
             type,
             categorySlug,
@@ -52,6 +60,25 @@ public class SearchController {
             size,
             sort
         );
+        appProductEventTrackingService.trackSearch(
+            request == null ? null : request.getHeader("X-Plura-Client-Platform"),
+            type,
+            query,
+            categorySlug,
+            city,
+            lat,
+            lng,
+            radiusKm,
+            date,
+            from,
+            to,
+            availableNow,
+            page,
+            size,
+            sort,
+            response == null ? 0L : response.getTotal()
+        );
+        return response;
     }
 
     @GetMapping("/suggest")

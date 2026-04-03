@@ -163,6 +163,7 @@ Base transversal que ordena el producto y la arquitectura:
 - pagos online configurables y metodos de pago visibles
 - side effects de booking (agenda, notificaciones) ejecutados via after-commit para seguridad transaccional
 - base de analytics y eventos del producto
+- tablero interno de negocio ya integrado en web bajo `/internal/ops/analytics`: usa agregados propios de reservas/pagos/reseñas y tracking server-side de `search` + `profile view` para que el equipo de Plura vea rubros, servicios, funnel, retencion, ciudades y top profesionales sin exponer esa capa al cliente final
 
 Notas operativas recientes:
 
@@ -376,7 +377,7 @@ Capacidades de producto definidas pero no necesariamente cerradas en UI o API pu
 - onboarding inicial del negocio
 - timeline cliente dentro del detalle de reserva
 - respuesta publica del negocio a reseñas (reseñas ya cerradas con moderacion, ocultamiento y analytics en backend + web)
-- analytics de producto y reporting orientado a plan
+- analytics de producto y reporting orientado a plan; ademas ya existe una primera capa interna de `Ops Analytics` separada de cliente/profesional para negocio y marketplace
 - bloqueo visible de features por plan dentro de toda la experiencia
 - funciones Premium como multi-profesional, fidelizacion, ultima hora, portfolio y tienda
 

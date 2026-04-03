@@ -137,7 +137,8 @@ public class BookingCommandApplicationService {
     public PublicBookingResponse createPublicBooking(
         String slug,
         PublicBookingRequest request,
-        String rawUserId
+        String rawUserId,
+        String sourcePlatform
     ) {
         Timer.Sample sample = Timer.start(meterRegistry);
         try {
@@ -179,6 +180,7 @@ public class BookingCommandApplicationService {
             booking.setTimezone(resolvedStart.timezone());
             booking.applyOperationalStatus(BookingOperationalStatus.PENDING, now);
             booking.setCreatedAt(now);
+            booking.setSourcePlatformSnapshot(normalizeSourcePlatform(sourcePlatform));
             captureServiceSnapshot(booking, service);
             bookingPolicySnapshotService.applySnapshot(
                 booking,
@@ -242,7 +244,12 @@ public class BookingCommandApplicationService {
         bookingRequest.setServiceId(request.getServiceId().trim());
         bookingRequest.setStartDateTime(request.getStartDateTime().trim());
 
-        PublicBookingResponse created = createPublicBooking(profile.getSlug(), bookingRequest, String.valueOf(clientUserId));
+        PublicBookingResponse created = createPublicBooking(
+            profile.getSlug(),
+            bookingRequest,
+            String.valueOf(clientUserId),
+            "INTERNAL"
+        );
         Booking booking = bookingRepository.findById(created.getId())
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Reserva no encontrada"));
 
@@ -857,12 +864,17 @@ public class BookingCommandApplicationService {
         booking.setServicePostBufferMinutesSnapshot(resolvePostBufferMinutes(service));
         booking.setServicePaymentTypeSnapshot(resolveServicePaymentType(service.getPaymentType()));
         booking.setServicePriceSnapshot(parsePriceSnapshot(service.getPrice()));
+        booking.setServiceCategorySlugSnapshot(service.getCategory() == null ? null : service.getCategory().getSlug());
+        booking.setServiceCategoryNameSnapshot(service.getCategory() == null ? null : service.getCategory().getName());
         booking.setServiceDepositAmountSnapshot(service.getDepositAmount());
         booking.setServiceCurrencySnapshot(resolveServiceCurrency(service.getCurrency()));
         if (service.getProfessional() != null) {
             booking.setProfessionalId(service.getProfessional().getId());
             booking.setProfessionalSlugSnapshot(service.getProfessional().getSlug());
             booking.setProfessionalLocationSnapshot(service.getProfessional().getLocation());
+            booking.setProfessionalRubroSnapshot(service.getProfessional().getRubro());
+            booking.setProfessionalCitySnapshot(service.getProfessional().getCity());
+            booking.setProfessionalCountrySnapshot(service.getProfessional().getCountry());
             if (service.getProfessional().getUser() != null) {
                 booking.setProfessionalDisplayNameSnapshot(service.getProfessional().getUser().getFullName());
             } else {
@@ -898,6 +910,17 @@ public class BookingCommandApplicationService {
         } catch (NumberFormatException exception) {
             return null;
         }
+    }
+
+    private String normalizeSourcePlatform(String sourcePlatform) {
+        if (sourcePlatform == null || sourcePlatform.isBlank()) {
+            return "UNKNOWN";
+        }
+        String normalized = sourcePlatform.trim().toUpperCase(Locale.ROOT);
+        return switch (normalized) {
+            case "WEB", "MOBILE", "INTERNAL" -> normalized;
+            default -> "UNKNOWN";
+        };
     }
 
 

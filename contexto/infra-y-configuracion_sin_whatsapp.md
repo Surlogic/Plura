@@ -224,10 +224,11 @@ Infra actual detectada:
 
 - Prometheus y Actuator para observabilidad tecnica
 - Micrometer ya registra timings utiles en search y ahora tambien en public profile, public slots, client bookings, notification inbox y unread count
+- tracking funcional interno en PostgreSQL via tabla `app_product_event` para `SEARCH_PERFORMED` y `PROFESSIONAL_PROFILE_VIEWED`, persistido server-side desde los endpoints publicos ya existentes
+- snapshots adicionales en `booking` (`serviceCategory*`, `professionalRubro/City/Country`, `sourcePlatform`) para que el reporting interno no dependa de joins inestables contra estado actual del servicio o del perfil
 
 Pendiente a nivel de producto:
 
-- capa clara de eventos funcionales
 - definicion de KPIs de negocio y plan
 - reporting por profesional y por local
 
@@ -323,6 +324,7 @@ Notas operativas de performance hoy:
 
 - `GET /cliente/reservas/me` queda mejor cubierto con el indice Flyway `idx_booking_user_start` sobre `booking(user_id, start_date_time)`
 - search, perfil publico, slots, inbox y unread ya tienen timings tecnicos listos para enganchar a dashboards
+- `V65__internal_ops_business_analytics.sql` agrega la tabla `app_product_event` mas indices de reporting en `booking`; esto habilita analytics internos sin depender de proveedor externo para la base inicial del funnel
 - `QUERY_COUNT_HEADER_ENABLED=true` expone `X-Plura-Sql-Query-Count` para requests HTTP y cuenta sentencias Hibernate/JPA por request; no cubre consultas JDBC directas como search o el nuevo inbox read path
 - `V50__scale_hardening_indexes.sql` limpia indices sin uso claro en `email_dispatch`, `provider_operation` y `booking`, y agrega cobertura para lecturas por `provider_operation(status, updated_at|lease_until)` y `payment_transaction(external_reference, created_at)`
 - `provider_operation.findDueOperations()` ahora evita leer operaciones con `lease_until` todavia activo, para bajar churn del worker bajo concurrencia

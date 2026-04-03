@@ -133,6 +133,7 @@ Lectura de producto:
 
 - cubre marketplace, buscador y filtros
 - tambien cubre ubicacion, direccion y mapa
+- `GET /api/search` ahora tambien registra un evento interno liviano `SEARCH_PERFORMED` en `app_product_event` para analytics de producto y funnel; el tracking corre server-side para web y mobile usando `X-Plura-Client-Platform`, y solo cuenta la primera pagina de resultados
 - `/api/search`, `/api/search/suggest` y `/api/geo/*` deben seguir funcionando sin login incluso si el browser manda credenciales auth viejas; el filtro JWT no debe bloquear exploracion publica por ese motivo
 
 ### Profesionales publicos
@@ -162,6 +163,7 @@ Lectura de producto:
 - circuito publico central del MVP
 - soporta perfil publico, disponibilidad real y reserva sin pasar por panel privado
 - es la base de `Usuario` y del valor visible de `Free`
+- `GET /public/profesionales/{slug}` ahora tambien registra un evento interno `PROFESSIONAL_PROFILE_VIEWED` en `app_product_event` para analytics de producto; el tracking se hace en backend y reutiliza `X-Plura-Client-Platform`
 - `GET /public/profesionales/{slug}` mantiene cache de perfil publico y ahora registra timing tecnico. Devuelve `rating` y `reviewsCount` reales
 - `GET /public/profesionales/{slug}` ahora devuelve también `logoMedia` y `bannerMedia` con `{ positionX, positionY, zoom }` para reproducir el encuadre persistido de identidad visual en frontend
 - `GET /public/profesionales/{slug}` ordena `photos` priorizando primero la galería pública del negocio (`LOCAL/WORK` y fallback `publicPhotos`) y recién después las fotos de servicios para que la sección de galería no repita primero assets ya visibles dentro de cada servicio
@@ -215,6 +217,7 @@ Lectura de producto:
 - `POST /profesional/services` ahora corta por capacidad de plan: `BASIC` hasta `15` servicios, `PROFESIONAL` hasta `30`, `ENTERPRISE` sin tope practico; cada servicio mantiene una sola imagen publica
 - `GET /profesional/reservas` sostiene gestion operativa de reservas para `Free/BASIC` y no debe confundirse con gating de agenda semanal o mensual
 - `POST /public/profesionales/{slug}/reservas` crea siempre en `PENDING`; guarda snapshot de servicio/politica, registra `BOOKING_CREATED`, inicializa finanzas y solo dispara notificacion de `booking created` inmediata cuando el servicio es `ON_SITE`
+- al crear una reserva publica, backend ahora snapshot-ea tambien `serviceCategorySlug/Name`, `professionalRubro`, `professionalCity`, `professionalCountry` y `sourcePlatform` dentro de `booking` para reporting interno mas estable
 - mientras una reserva siga `PENDING` o `CONFIRMED`, su franja queda bloqueada para evitar superposiciones; si luego se cancela o se reagenda, backend reconstruye `available_slot` del/los dias afectados en el mismo after-commit para que discovery y perfil publico no queden desalineados
 - `POST /cliente/reservas/{id}/payment-session` no cambia por si solo el estado operativo; si el checkout corresponde a pago online, la reserva sigue `PENDING` hasta que el webhook exitoso confirme el cobro
 - el webhook de Mercado Pago auto-confirma reservas prepagas: ante cobro exitoso de una reserva `PENDING`, backend la mueve a `CONFIRMED`, registra `BOOKING_CONFIRMED`, notifica y rehace side effects de disponibilidad
@@ -485,6 +488,18 @@ Lectura de producto:
 - protegido por `X-Internal-Token`, no por sesion de usuario
 - permite moderar contenido de reseñas independientemente del profesional y detectar reseñas reportadas desde el dashboard profesional
 - analytics incluyen `findAllFiltered`, `countFiltered`, `averageRatingFiltered`, `countByRating`, `countWithText/WithoutText/TextHidden`, `topProfessionalsByVolume/ByRating` y `dailyStats`
+
+### Endpoints internos de analytics de negocio
+
+Prefijo: `/internal/ops/analytics`
+
+- `GET /internal/ops/analytics/summary` — resumen agregado para backoffice interno con rango opcional `from/to`; devuelve overview, performance por rubro, servicios top, funnel por rubro (`searches -> profile views -> reservations`), retencion/recompra, demanda por dia/hora, ciudades y top profesionales
+
+Lectura de producto:
+
+- no es analytics para cliente ni profesional; es un tablero interno exclusivo para el equipo de Plura
+- mezcla datos transaccionales de `booking`, `available_slot`, `professional_profile` y `booking_review` con eventos funcionales server-side persistidos en `app_product_event`
+- permite responder dentro del producto interno preguntas como `que rubros se mueven mas`, `que ciudades convierten mejor`, `que servicios reservan mas` y `quienes son los profesionales top`
 
 ## Paquetes backend mas importantes
 

@@ -88,6 +88,12 @@ public class Booking {
     @Column(name = "service_price_snapshot", precision = 12, scale = 2)
     private BigDecimal servicePriceSnapshot;
 
+    @Column(name = "service_category_slug_snapshot", length = 120)
+    private String serviceCategorySlugSnapshot;
+
+    @Column(name = "service_category_name_snapshot", length = 120)
+    private String serviceCategoryNameSnapshot;
+
     @Column(name = "service_deposit_amount_snapshot", precision = 12, scale = 2)
     private BigDecimal serviceDepositAmountSnapshot;
 
@@ -103,6 +109,18 @@ public class Booking {
     @Enumerated(EnumType.STRING)
     @Column(name = "service_payment_type_snapshot", nullable = false, length = 20)
     private ServicePaymentType servicePaymentTypeSnapshot;
+
+    @Column(name = "professional_rubro_snapshot", length = 255)
+    private String professionalRubroSnapshot;
+
+    @Column(name = "professional_city_snapshot", length = 255)
+    private String professionalCitySnapshot;
+
+    @Column(name = "professional_country_snapshot", length = 255)
+    private String professionalCountrySnapshot;
+
+    @Column(name = "source_platform_snapshot", length = 20)
+    private String sourcePlatformSnapshot;
 
     @Column(name = "policy_snapshot_json", columnDefinition = "text")
     private String policySnapshotJson;

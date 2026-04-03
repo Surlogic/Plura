@@ -18,21 +18,28 @@ export default function SectionHeading({
   align = 'left',
   className,
 }: SectionHeadingProps) {
+  const isCentered = align === 'center';
+
   return (
     <div
       className={cn(
-        'flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between',
-        align === 'center' ? 'text-center sm:flex-col sm:items-center' : '',
+        'flex w-full flex-col gap-4 sm:flex-row sm:items-end sm:justify-between',
+        isCentered ? 'items-center justify-center text-center sm:flex-col sm:items-center sm:justify-center' : '',
         className,
       )}
     >
-      <div className={cn('space-y-3', align === 'center' ? 'max-w-2xl' : 'max-w-3xl')}>
+      <div
+        className={cn(
+          'space-y-3',
+          isCentered ? 'mx-auto flex w-full max-w-2xl flex-col items-center text-center' : 'max-w-3xl',
+        )}
+      >
         {kicker ? (
           <p className="text-[0.68rem] font-semibold uppercase tracking-[0.34em] text-[color:var(--ink-faint)]">
             {kicker}
           </p>
         ) : null}
-        <div className="space-y-2">
+        <div className={cn('space-y-2', isCentered ? 'mx-auto w-full text-center' : '')}>
           <h2 className="text-2xl font-semibold text-[color:var(--ink)] sm:text-3xl">
             {title}
           </h2>

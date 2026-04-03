@@ -204,7 +204,7 @@ export default function InternalOpsReviewsPage() {
         <title>Moderación de reseñas | Plura Ops</title>
         <meta name="robots" content="noindex,nofollow" />
       </Head>
-      <div className="min-h-screen bg-[#F8FAFC] px-4 py-8">
+      <div className="min-h-screen bg-[color:var(--background)] px-4 py-8">
         <div className="mx-auto max-w-5xl space-y-6">
           <div className="flex items-center justify-between gap-3">
             <div>

@@ -706,7 +706,7 @@ export default function ReservationPage() {
   const currentDateLabel = activeStep >= 3 ? confirmedDateLabel : selectedDateLabel;
 
   return (
-    <div className="min-h-screen bg-[linear-gradient(180deg,#f5f8f5_0%,#edf2ef_38%,#f8faf9_100%)] text-[color:var(--ink)]">
+    <div className="min-h-screen bg-[linear-gradient(180deg,#fbf7f1_0%,#f5f1eb_44%,#efe7db_100%)] text-[color:var(--ink)]">
       <Navbar />
 
       <main className="mx-auto w-full max-w-[1320px] px-4 pb-20 pt-8 sm:px-6 lg:px-8 lg:pt-10">

@@ -74,8 +74,8 @@ export default function ReservationFlowHeader({
       padding="none"
       className="overflow-hidden rounded-[36px] border-white/80 bg-white/96 shadow-[0_30px_90px_-52px_rgba(15,23,42,0.3)]"
     >
-      <div className="relative overflow-hidden bg-[linear-gradient(160deg,#f7fbf8_0%,#edf4ef_52%,#e6efea_100%)] px-6 py-7 sm:px-8 sm:py-8 lg:px-10">
-        <div className="absolute inset-y-0 right-0 hidden w-[38%] bg-[radial-gradient(circle_at_top_right,rgba(10,122,67,0.12),transparent_58%)] lg:block" />
+      <div className="relative overflow-hidden bg-[linear-gradient(160deg,#fdf9f4_0%,#f6efe6_52%,#ede2d4_100%)] px-6 py-7 sm:px-8 sm:py-8 lg:px-10">
+        <div className="absolute inset-y-0 right-0 hidden w-[38%] bg-[radial-gradient(circle_at_top_right,rgba(201,170,130,0.18),transparent_58%)] lg:block" />
 
         <div className="relative flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
           <div className="min-w-0">

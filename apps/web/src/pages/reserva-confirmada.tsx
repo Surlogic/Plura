@@ -20,7 +20,7 @@ export default function ReservationConfirmedPage() {
   const status = resolveQueryValue(router.query.status).trim();
 
   return (
-    <div className="min-h-screen bg-[radial-gradient(circle_at_top,#FFFFFF_0%,#EEF2F6_45%,#D3D7DC_100%)] text-[#0E2A47]">
+    <div className="min-h-screen bg-[radial-gradient(circle_at_top,#FFFCF8_0%,#F5F1EB_48%,#E9DECE_100%)] text-[#0E2A47]">
       <Navbar />
       <main className="mx-auto w-full max-w-[900px] px-4 pb-24 pt-12 sm:px-6">
         <section className="rounded-[28px] border border-white/70 bg-white/95 p-8 shadow-[0_28px_70px_rgba(15,23,42,0.18)]">

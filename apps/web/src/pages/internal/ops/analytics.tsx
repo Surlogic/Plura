@@ -179,7 +179,7 @@ export default function InternalOpsAnalyticsPage() {
         <title>Ops Analytics | Plura Ops</title>
         <meta name="robots" content="noindex,nofollow" />
       </Head>
-      <div className="min-h-screen bg-[#F8FAFC] px-4 py-8">
+      <div className="min-h-screen bg-[color:var(--background)] px-4 py-8">
         <div className="mx-auto max-w-7xl space-y-6">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>

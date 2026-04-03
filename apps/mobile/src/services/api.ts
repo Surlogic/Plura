@@ -11,6 +11,7 @@ import {
   getRefreshToken,
   setSession,
 } from './session';
+import { getAnalyticsSessionId } from './analyticsSession';
 import { isRetryableNetworkError } from './errors';
 import { logWarn } from './logger';
 
@@ -22,6 +23,7 @@ type RetryableConfig = {
 const MAX_RETRY_ATTEMPTS = 1;
 const MAX_AUTH_RETRY_ATTEMPTS = 1;
 const CLIENT_PLATFORM_HEADER = 'X-Plura-Client-Platform';
+const ANALYTICS_SESSION_HEADER = 'X-Plura-Analytics-Session-Id';
 const SESSION_TRANSPORT_HEADER = 'X-Plura-Session-Transport';
 
 const getBaseUrl = () => {
@@ -60,6 +62,11 @@ const isAuthRoute = (url?: string) => {
     || url.includes('/auth/refresh')
     || url.includes('/auth/logout')
   );
+};
+
+const shouldSkipAuthorizationHeader = (url?: string) => {
+  if (!url) return false;
+  return url.includes('/auth/refresh');
 };
 
 const tokenFromAuthResponse = (data: unknown): string | null => {
@@ -102,6 +109,7 @@ const applyClientHeaders = (
   config: InternalAxiosRequestConfig,
 ): InternalAxiosRequestConfig => {
   setHeaderValue(config, CLIENT_PLATFORM_HEADER, 'MOBILE');
+  setHeaderValue(config, ANALYTICS_SESSION_HEADER, getAnalyticsSessionId());
   if (isAuthRoute(config.url)) {
     setHeaderValue(config, SESSION_TRANSPORT_HEADER, 'BODY');
   }
@@ -150,7 +158,12 @@ api.interceptors.request.use(
 );
 
 authApi.interceptors.request.use(
-  async (config) => attachAuthorizationHeader(config),
+  async (config) => {
+    if (shouldSkipAuthorizationHeader(config.url)) {
+      return applyClientHeaders(config);
+    }
+    return attachAuthorizationHeader(config);
+  },
   (error) => Promise.reject(error),
 );
 

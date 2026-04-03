@@ -10,7 +10,6 @@ import {
   type OAuthAuthAction,
   type OAuthResult,
 } from '../services/authBackend';
-import { setSession } from '../services/session';
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -103,10 +102,6 @@ export function useGoogleOAuth({
       return;
     }
 
-    await setSession({
-      accessToken: result.accessToken,
-      refreshToken: result.refreshToken,
-    });
     await refreshProfileRef.current();
     await onSuccessRef.current(result);
   };
@@ -184,10 +179,6 @@ export function useGoogleOAuth({
           return;
         }
 
-        await setSession({
-          accessToken: result.accessToken,
-          refreshToken: result.refreshToken,
-        });
         await refreshProfileRef.current();
         await onSuccessRef.current(result);
       } catch (error: any) {

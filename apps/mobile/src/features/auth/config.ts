@@ -77,6 +77,11 @@ export const resolveCompletePhoneRouteFromBackendRole = (role?: BackendAuthRole 
 };
 
 export const continueAfterAuth = async (role: AuthRole) => {
+  if (role === 'profesional') {
+    router.replace('/dashboard');
+    return;
+  }
+
   if (role === 'cliente') {
     const pending = await getPendingReservation();
     if (pending) {

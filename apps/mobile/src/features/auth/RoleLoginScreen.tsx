@@ -14,7 +14,6 @@ import api from '../../services/api';
 import AuthLoadingOverlay from '../../components/auth/AuthLoadingOverlay';
 import { useAuthSession } from '../../context/ProfessionalProfileContext';
 import { useGoogleOAuth } from '../../hooks/useGoogleOAuth';
-import { setSession } from '../../services/session';
 import { getApiErrorMessage } from '../../services/errors';
 import type { OAuthResult } from '../../services/authBackend';
 import {
@@ -93,7 +92,6 @@ export function RoleLoginScreen({ role }: RoleLoginScreenProps) {
         return;
       }
 
-      await setSession({ accessToken, refreshToken });
       await refreshProfile();
       await continueAfterAuth(role);
     } catch (error: unknown) {

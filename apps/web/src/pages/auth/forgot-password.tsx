@@ -7,6 +7,7 @@ import AuthTopBar from '@/components/auth/AuthTopBar';
 import Footer from '@/components/shared/Footer';
 import Card from '@/components/ui/Card';
 import Badge from '@/components/ui/Badge';
+import Button from '@/components/ui/Button';
 import InternationalPhoneField from '@/components/ui/InternationalPhoneField';
 import api from '@/services/api';
 
@@ -162,13 +163,9 @@ export default function ForgotPasswordPage() {
                   required
                 />
               </div>
-              <button
-                type="submit"
-                disabled={isSubmitting}
-                className="h-12 w-full rounded-full bg-[linear-gradient(135deg,#1FB6A6,#0E2A47)] text-sm font-semibold text-white transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-70"
-              >
+              <Button type="submit" variant="brand" size="lg" className="w-full" disabled={isSubmitting}>
                 {isSubmitting ? 'Validando...' : 'Continuar'}
-              </button>
+              </Button>
             </form>
           ) : null}
 
@@ -192,13 +189,15 @@ export default function ForgotPasswordPage() {
                   Elegí tu país y escribí el número sin repetir el código internacional.
                 </p>
               </div>
-              <button
+              <Button
                 type="submit"
+                variant="brand"
+                size="lg"
+                className="w-full"
                 disabled={isSubmitting || !canSubmitPhoneStep}
-                className="h-12 w-full rounded-full bg-[linear-gradient(135deg,#1FB6A6,#0E2A47)] text-sm font-semibold text-white transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-70"
               >
                 {isSubmitting ? 'Verificando...' : 'Validar y enviar código'}
-              </button>
+              </Button>
             </form>
           ) : null}
 
@@ -236,13 +235,15 @@ export default function ForgotPasswordPage() {
                   required
                 />
               </div>
-              <button
+              <Button
                 type="submit"
+                variant="brand"
+                size="lg"
+                className="w-full"
                 disabled={isSubmitting || !canSubmitCodeStep}
-                className="h-12 w-full rounded-full bg-[linear-gradient(135deg,#1FB6A6,#0E2A47)] text-sm font-semibold text-white transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-70"
               >
                 {isSubmitting ? 'Actualizando...' : 'Guardar nueva contraseña'}
-              </button>
+              </Button>
             </form>
           ) : null}
 

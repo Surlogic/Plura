@@ -6,6 +6,7 @@ import { isAxiosError } from 'axios';
 import AuthTopBar from '@/components/auth/AuthTopBar';
 import Footer from '@/components/shared/Footer';
 import Badge from '@/components/ui/Badge';
+import Button from '@/components/ui/Button';
 import Card from '@/components/ui/Card';
 import InternationalPhoneField from '@/components/ui/InternationalPhoneField';
 import api from '@/services/api';
@@ -79,13 +80,15 @@ export default function ProfesionalCompletePhonePage() {
               </p>
             ) : null}
 
-            <button
+            <Button
               type="submit"
+              variant="brand"
+              size="lg"
+              className="w-full"
               disabled={isSubmitting || !canSubmit}
-              className="h-12 w-full rounded-full bg-[linear-gradient(135deg,#1FB6A6,#0E2A47)] text-sm font-semibold text-white transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-70"
             >
               {isSubmitting ? 'Guardando...' : 'Guardar y continuar'}
-            </button>
+            </Button>
           </form>
 
           <div className="mt-6 text-sm">

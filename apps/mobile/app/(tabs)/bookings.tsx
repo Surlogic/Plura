@@ -25,9 +25,11 @@ import AuthWall from '../../src/components/auth/AuthWall';
 import { openMercadoPagoInAppBrowser } from '../../src/services/mercadoPagoBrowser';
 import { AppScreen } from '../../src/components/ui/AppScreen';
 import {
+  ActionButton,
   EmptyState,
   MessageCard,
   ScreenHero,
+  SelectionChip,
   SectionHeader,
   StatusPill,
 } from '../../src/components/ui/MobileSurface';
@@ -594,13 +596,14 @@ export default function ClientBookingsScreen() {
                     value={cancelReason}
                     onChangeText={setCancelReason}
                   />
-                  <TouchableOpacity
+                  <ActionButton
                     disabled={isSubmitting}
+                    loading={isSubmitting}
+                    label="Cancelar reserva"
+                    tone="danger"
                     onPress={() => void handleCancel()}
-                    className="mt-3 h-11 items-center justify-center rounded-full bg-red-600"
-                  >
-                    <Text className="font-bold text-white">Cancelar reserva</Text>
-                  </TouchableOpacity>
+                    style={{ marginTop: 12 }}
+                  />
                 </>
               ) : null}
 
@@ -623,40 +626,38 @@ export default function ClientBookingsScreen() {
                         <Text className="text-sm text-gray-500">No encontramos horarios para esa fecha.</Text>
                       ) : (
                         slots.map((slot) => (
-                          <TouchableOpacity
+                          <SelectionChip
                             key={slot}
+                            label={slot}
+                            selected={selectedSlot === slot}
+                            tone="solid"
                             onPress={() => setSelectedSlot(slot)}
-                            className={`rounded-full px-4 py-2 ${
-                              selectedSlot === slot ? 'bg-secondary' : 'border border-secondary/10 bg-background'
-                            }`}
-                          >
-                            <Text className={`text-xs font-semibold ${selectedSlot === slot ? 'text-white' : 'text-secondary'}`}>
-                              {slot}
-                            </Text>
-                          </TouchableOpacity>
+                          />
                         ))
                       )}
                     </View>
                   )}
 
-                  <TouchableOpacity
+                  <ActionButton
                     disabled={isSubmitting || !selectedSlot}
+                    loading={isSubmitting}
+                    label="Confirmar nuevo horario"
+                    tone="primary"
                     onPress={() => void handleReschedule()}
-                    className={`mt-3 h-11 items-center justify-center rounded-full ${selectedSlot ? 'bg-secondary' : 'bg-gray-300'}`}
-                  >
-                    <Text className="font-bold text-white">Confirmar nuevo horario</Text>
-                  </TouchableOpacity>
+                    style={{ marginTop: 12 }}
+                  />
                 </>
               ) : null}
 
               {selectedBooking.financialSummary?.financialStatus === 'PAYMENT_PENDING' ? (
-                <TouchableOpacity
+                <ActionButton
                   disabled={isSubmitting}
+                  loading={isSubmitting}
+                  label="Completar pago"
+                  tone="primary"
                   onPress={() => void handleStartCheckout()}
-                  className="mt-3 h-11 items-center justify-center rounded-full bg-primary"
-                >
-                  <Text className="font-bold text-white">Completar pago</Text>
-                </TouchableOpacity>
+                  style={{ marginTop: 12 }}
+                />
               ) : null}
             </View>
           </View>

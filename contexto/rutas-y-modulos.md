@@ -266,6 +266,7 @@ Modulos relevantes:
 ### Modulos transversales web
 
 - `components/search`: sistema compartido del buscador web; incluye barra base, footer de filtros activos, sugerencias, fecha y location autocomplete con dropdowns visualmente unificados.
+- `components/ui/Button.tsx` y `components/ui/ToggleChip.tsx`: primitivas base de CTA y seleccion web; auth, pasos de reserva y acciones puntuales ya migraron a variantes semanticas compartidas (`brand`, `primary`, `secondary`, `contrast`, `danger`, chips `soft/solid`) para sostener identidad visual consistente.
 - `components/map`: wrapper de Mapbox.
 - `hooks/useCategories.ts`: carga de categorias para el buscador.
 - `hooks/usePublicProfessionals.ts`: carga de profesionales publicos para superficies de descubrimiento.
@@ -409,6 +410,7 @@ Lectura de producto:
 - `src/services/location.ts` y `src/hooks/useUserLocation.ts`
 - `src/services/pushNotifications.ts` y `src/hooks/usePushNotifications.ts`
 - `src/components/ui/AppScreen.tsx`: shell base mobile; cuando `scroll=true` ahora soporta `pull-to-refresh` comun mediante `refreshing + onRefresh`
+- `src/components/ui/MobileSurface.tsx`: concentra primitives mobile de superficie (`SectionCard`, `StatusPill`) y tambien los CTA/chips reutilizables (`ActionButton`, `SelectionChip`); el tono primario ya quedo alineado con el verde de marca web y los filtros/acciones principales migran sobre esta base comun.
 
 Lectura de producto:
 

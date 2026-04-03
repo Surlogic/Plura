@@ -122,18 +122,20 @@ export default function DashboardTab() {
       <Text className="text-base text-gray-500 mb-8 text-center">
         Inicia sesion para entrar como cliente o profesional y gestionar tu espacio correspondiente.
       </Text>
-      <TouchableOpacity
-        className="w-full h-14 bg-[#0A7A43] rounded-full items-center justify-center mb-3"
+      <ActionButton
+        label="Iniciar sesion"
+        tone="brand"
         onPress={() => router.push('/(auth)/login')}
-      >
-        <Text className="text-white font-bold text-base">Iniciar sesion</Text>
-      </TouchableOpacity>
-      <TouchableOpacity
-        className="w-full h-14 border border-secondary/20 rounded-full items-center justify-center"
+        style={{ width: '100%', minHeight: 56, marginBottom: 12 }}
+        textStyle={{ fontSize: 16 }}
+      />
+      <ActionButton
+        label="Crear cuenta"
+        tone="secondary"
         onPress={() => router.push('/(auth)/register')}
-      >
-        <Text className="text-secondary font-bold text-base">Crear cuenta</Text>
-      </TouchableOpacity>
+        style={{ width: '100%', minHeight: 56 }}
+        textStyle={{ fontSize: 16 }}
+      />
     </SafeAreaView>
   );
 }

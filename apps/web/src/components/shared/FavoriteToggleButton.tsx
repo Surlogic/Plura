@@ -37,14 +37,14 @@ export default memo(function FavoriteToggleButton({
 }: FavoriteToggleButtonProps) {
   const baseClassName =
     variant === 'pill'
-      ? 'inline-flex h-11 items-center gap-2 rounded-full border px-4 text-sm font-semibold shadow-sm transition hover:-translate-y-0.5 hover:shadow-md'
-      : 'inline-flex h-10 w-10 items-center justify-center rounded-full border shadow-sm transition hover:-translate-y-0.5 hover:shadow-md';
+      ? 'inline-flex h-11 items-center gap-2 rounded-full border px-4 text-sm font-semibold shadow-[var(--shadow-card)] transition hover:-translate-y-0.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--focus-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-[color:var(--focus-ring-offset)]'
+      : 'inline-flex h-10 w-10 items-center justify-center rounded-full border shadow-[var(--shadow-card)] transition hover:-translate-y-0.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--focus-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-[color:var(--focus-ring-offset)]';
 
   const paletteClassName = isActive
-    ? 'border-[#FECACA] bg-[#FEF2F2] text-[#DC2626]'
+    ? 'border-[color:var(--error-soft)] bg-[#FEF2F2] text-[color:var(--error)]'
     : tone === 'light'
-      ? 'border-white/70 bg-white/92 text-[#0E2A47]'
-      : 'border-[#DCE4EC] bg-white text-[#0E2A47]';
+      ? 'border-white/70 bg-white/92 text-[color:var(--ink)]'
+      : 'border-[color:var(--border-soft)] bg-white text-[color:var(--ink)]';
 
   return (
     <button

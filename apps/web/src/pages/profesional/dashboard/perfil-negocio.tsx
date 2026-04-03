@@ -445,14 +445,15 @@ export default function ProfesionalBusinessProfilePage() {
                 </>
               }
               actions={(
-                <button
+                <Button
                   type="button"
                   onClick={() => void handleSave()}
                   disabled={isSaving}
-                  className="rounded-full border border-white/22 bg-white/10 px-4 py-2 text-sm font-semibold text-[color:var(--text-on-dark)] shadow-[var(--shadow-card)] backdrop-blur-sm transition hover:-translate-y-0.5 hover:border-white/34 hover:bg-white/18"
+                  variant="contrast"
+                  className="px-4"
                 >
                   {isSaving ? 'Guardando...' : 'Guardar cambios'}
-                </button>
+                </Button>
               )}
             />
 

@@ -14,7 +14,13 @@ import {
 } from '../../src/services/professionalConfig';
 import { useAuthSession } from '../../src/context/ProfessionalProfileContext';
 import { AppScreen } from '../../src/components/ui/AppScreen';
-import { MessageCard, ScreenHero, SectionCard } from '../../src/components/ui/MobileSurface';
+import {
+  ActionButton,
+  MessageCard,
+  ScreenHero,
+  SectionCard,
+  SelectionChip,
+} from '../../src/components/ui/MobileSurface';
 
 type ServicePaymentMode = 'ON_SITE' | 'DEPOSIT' | 'FULL_PREPAY';
 
@@ -143,32 +149,20 @@ export default function ServicesScreen() {
               Categoría del servicio
             </Text>
             <View className="flex-row flex-wrap" style={{ gap: 8 }}>
-              <TouchableOpacity
-                className={`rounded-2xl border px-4 py-3 ${
-                  draft.categorySlug === ''
-                    ? 'border-secondary bg-secondary/10'
-                    : 'border-secondary/10 bg-background'
-                }`}
+              <SelectionChip
+                label="Sin categoria especifica"
+                selected={draft.categorySlug === ''}
                 onPress={() => setDraft((prev) => ({ ...prev, categorySlug: '' }))}
-              >
-                <Text className={`font-semibold ${draft.categorySlug === '' ? 'text-secondary' : 'text-gray-700'}`}>
-                  Sin categoría específica
-                </Text>
-              </TouchableOpacity>
+              />
               {categories.map((category) => {
                 const isSelected = draft.categorySlug === category.slug;
                 return (
-                  <TouchableOpacity
+                  <SelectionChip
                     key={category.id}
-                    className={`rounded-2xl border px-4 py-3 ${
-                      isSelected ? 'border-secondary bg-secondary/10' : 'border-secondary/10 bg-background'
-                    }`}
+                    label={category.name}
+                    selected={isSelected}
                     onPress={() => setDraft((prev) => ({ ...prev, categorySlug: category.slug }))}
-                  >
-                    <Text className={`font-semibold ${isSelected ? 'text-secondary' : 'text-gray-700'}`}>
-                      {category.name}
-                    </Text>
-                  </TouchableOpacity>
+                  />
                 );
               })}
             </View>
@@ -202,11 +196,11 @@ export default function ServicesScreen() {
                 const isSelected = draft.paymentType === option.value;
                 const isLockedOption = !canUseOnlinePayments && option.value !== 'ON_SITE';
                 return (
-                  <TouchableOpacity
+                  <SelectionChip
                     key={option.value}
-                    className={`rounded-2xl border px-4 py-3 ${
-                      isSelected ? 'border-secondary bg-secondary/10' : 'border-secondary/10 bg-background'
-                    }`}
+                    label={option.label}
+                    selected={isSelected}
+                    disabled={isLockedOption}
                     onPress={() => {
                       if (isLockedOption) {
                         setMessage('Los pagos online se habilitan desde el plan Pro.');
@@ -214,11 +208,7 @@ export default function ServicesScreen() {
                       }
                       setDraft((prev) => ({ ...prev, paymentType: option.value }));
                     }}
-                  >
-                    <Text className={`font-semibold ${isLockedOption ? 'text-gray-400' : isSelected ? 'text-secondary' : 'text-gray-700'}`}>
-                      {option.label}
-                    </Text>
-                  </TouchableOpacity>
+                  />
                 );
               })}
             </View>
@@ -238,8 +228,11 @@ export default function ServicesScreen() {
             />
           ) : null}
 
-          <TouchableOpacity
+          <ActionButton
             disabled={isSaving || !draft.name.trim() || !draft.price.trim() || !draft.duration.trim()}
+            loading={isSaving}
+            label={editingId ? 'Guardar cambios' : 'Crear servicio'}
+            tone="primary"
             onPress={async () => {
               setIsSaving(true);
               setMessage(null);
@@ -293,10 +286,8 @@ export default function ServicesScreen() {
                 setIsSaving(false);
               }
             }}
-            className={`mt-4 h-11 rounded-full items-center justify-center ${isSaving ? 'bg-gray-300' : 'bg-secondary'}`}
-          >
-            {isSaving ? <ActivityIndicator color="#fff" /> : <Text className="text-white font-semibold">{editingId ? 'Guardar cambios' : 'Crear servicio'}</Text>}
-          </TouchableOpacity>
+            style={{ marginTop: 16 }}
+          />
 
           {message ? <MessageCard message={message} tone="primary" style={{ marginTop: 12 }} /> : null}
         </SectionCard>
@@ -305,16 +296,17 @@ export default function ServicesScreen() {
           <Text className="text-sm font-semibold text-gray-500 uppercase tracking-[2px]">
             Tus Servicios ({maxServices >= PRACTICAL_UNLIMITED ? services.length : `${services.length}/${maxServices}`})
           </Text>
-          <TouchableOpacity
-            className={`px-3 py-1.5 rounded-full ${hasReachedServiceLimit ? 'bg-gray-300' : 'bg-secondary'}`}
+          <ActionButton
+            label="Nuevo"
+            tone="primary"
             disabled={hasReachedServiceLimit}
             onPress={() => {
               setEditingId(null);
               setDraft(emptyDraft);
             }}
-          >
-            <Text className="text-white text-xs font-bold">Nuevo</Text>
-          </TouchableOpacity>
+            style={{ minHeight: 36 }}
+            textStyle={{ fontSize: 12 }}
+          />
         </View>
 
         {maxServices < PRACTICAL_UNLIMITED ? (
@@ -348,8 +340,9 @@ export default function ServicesScreen() {
               </View>
 
               <View className="flex-row mt-4 gap-2">
-                <TouchableOpacity
-                  className="flex-1 bg-background border border-secondary/10 py-2.5 rounded-full items-center"
+                <ActionButton
+                  label="Editar"
+                  tone="secondary"
                   onPress={() => {
                     setEditingId(service.id);
                     setDraft({
@@ -364,11 +357,12 @@ export default function ServicesScreen() {
                       paymentType: normalizePaymentType(service.paymentType),
                     });
                   }}
-                >
-                  <Text className="text-secondary font-bold text-sm">Editar</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  className="bg-red-50 border border-red-100 py-2.5 px-5 rounded-full items-center"
+                  style={{ flex: 1, minHeight: 42 }}
+                  textStyle={{ fontSize: 13 }}
+                />
+                <ActionButton
+                  label="Eliminar"
+                  tone="danger"
                   onPress={async () => {
                     try {
                       await deleteProfessionalService(service.id);
@@ -377,9 +371,9 @@ export default function ServicesScreen() {
                       setMessage('No se pudo eliminar el servicio.');
                     }
                   }}
-                >
-                  <Ionicons name="trash-outline" size={16} color="#EF4444" />
-                </TouchableOpacity>
+                  style={{ minHeight: 42 }}
+                  textStyle={{ fontSize: 13 }}
+                />
               </View>
             </View>
           ))

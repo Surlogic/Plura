@@ -1,0 +1,259 @@
+Qué es este panel
+Ops Analytics es el tablero interno de Plura para ustedes, no para clientes ni profesionales.
+Sirve para entender el negocio, el marketplace y el comportamiento de la app.
+
+Lo usás para responder preguntas como:
+
+qué rubros se mueven más
+qué servicios se reservan más
+qué ciudades convierten mejor
+qué profesionales están funcionando mejor
+si la gente busca, mira perfiles y después reserva
+si los clientes vuelven o no
+Cómo se entra
+Se entra por:
+
+url base front + /internal/ops/analytics
+
+Hoy funciona así:
+
+pedís login cliente
+solo una sesión cliente autorizada puede ver el panel
+si no está logueado, te manda al login cliente
+si la cuenta no tiene permiso, muestra acceso restringido
+Cómo se usa
+
+Entrás al panel.
+Elegís un rango de fechas.
+Tocás Actualizar.
+Leés cada bloque según la pregunta que querés responder.
+Ejemplos:
+
+si querés saber qué vender más: mirás Rubros y Servicios
+si querés saber si la gente convierte: mirás Funnel por Rubro
+si querés saber si los clientes vuelven: mirás Retención y Recompra
+si querés saber cuándo hay más demanda: mirás Demanda
+si querés saber quiénes están rindiendo mejor: mirás Profesionales Top
+Qué significa cada bloque
+
+1. Resumen superior
+Te da una foto rápida del período elegido.
+
+Campos:
+
+Reservas: cuántas reservas se crearon en ese rango
+Completadas: cuántas terminaron realizadas
+Canceladas: cuántas se cancelaron
+No show: cuántas quedaron como ausente
+Facturación est.: suma estimada de reservas no canceladas
+Ticket prom.: promedio de valor por reserva no cancelada
+Searches: cuántas búsquedas hizo la gente
+Profile views: cuántas veces se vieron perfiles
+Retorno: porcentaje de clientes que ya habían reservado antes
+Retención: porcentaje de clientes de la ventana anterior que volvieron en esta
+Cómo leerlo:
+
+si hay muchas búsquedas y pocas reservas, tenés problema de conversión
+si sube facturación pero no suben reservas, probablemente subió el ticket promedio
+si suben canceladas o no-show, hay fricción operativa
+2. Rubros
+Mide el rendimiento por categoría/rubro.
+
+Columnas:
+
+Rubro
+Reservas
+Facturación
+Ticket
+Cancelación
+No-show
+Además muestra rankings:
+
+Top facturación
+Top ticket
+Top cancelación
+Top no-show
+Cómo leerlo:
+
+rubro con más reservas = más movimiento
+rubro con más facturación = más plata total
+rubro con más ticket = servicios más caros o de más valor
+rubro con más cancelación o no-show = problema de calidad, expectativa o proceso
+3. Funnel por Rubro
+Mide el embudo:
+búsqueda -> perfil -> reserva
+
+Columnas:
+
+Searches: cuántas búsquedas hubo de ese rubro
+Perfiles: cuántas vistas de perfil hubo
+Reservas: cuántas reservas terminó generando
+Search->Perfil: qué porcentaje de búsquedas termina en visita a perfil
+Perfil->Reserva: qué porcentaje de vistas termina en reserva
+Search->Reserva: conversión total del embudo
+Cómo leerlo:
+
+muchas búsquedas y pocas vistas = el listing no convence
+muchas vistas y pocas reservas = el perfil o la oferta no convierten
+si un rubro tiene poca búsqueda pero alta conversión, puede ser oportunidad para empujarlo más
+4. Servicios
+Te muestra los servicios más fuertes del período.
+
+Columnas:
+
+Servicio
+Rubro
+Reservas
+Facturación
+Ticket
+Cómo leerlo:
+
+servicio más reservado = mayor demanda
+servicio con más facturación = más ingreso total
+servicio con mayor ticket = valor promedio más alto
+Esto te sirve para:
+
+decidir qué destacar en la app
+ver qué servicios conviene promocionar
+detectar servicios estrella
+5. Retención y Recompra
+Mide si los clientes vuelven.
+
+Campos:
+
+Clientes activos: clientes que reservaron en el período
+Clientes recurrentes: clientes que ya habían reservado antes
+Tasa retorno: porcentaje de activos que ya eran conocidos
+2+ reservas: clientes con dos o más reservas dentro del período
+Tasa recompra: porcentaje de clientes que repitieron dentro del mismo rango
+Retención ventana: de los clientes del período anterior, cuántos volvieron en este
+Cómo leerlo:
+
+retorno alto = buena base de clientes que vuelven
+recompra alta = buen hábito de uso
+retención de ventana alta = el negocio está reteniendo demanda, no solo captándola
+6. Demanda
+Te dice cuándo se concentra la demanda.
+
+Subbloques:
+
+Día: reservas por día de la semana
+Hora: reservas por hora
+Cómo leerlo:
+
+sirve para saber cuáles son los días más calientes
+sirve para saber qué horarios tienen más presión
+ayuda a entender oferta/demanda y decisiones de agenda, campañas o recordatorios
+7. Ciudades
+Mide el desempeño por ciudad o zona.
+
+Columnas:
+
+Ciudad
+Searches
+Perfiles
+Reservas
+Perfil->Reserva
+Search->Reserva
+Cómo leerlo:
+
+ciudad con muchas búsquedas y poca reserva = interés, pero baja conversión
+ciudad con pocas búsquedas y alta conversión = nicho fuerte
+sirve para saber dónde empujar adquisición
+8. Profesionales Top
+Ranking de mejores profesionales del período.
+
+Subbloques:
+
+Top reservas
+Top ingresos
+Top ocupación
+Top reseñas
+Métricas usadas:
+
+reservas
+facturación estimada
+ticket promedio
+ocupación
+rating
+cantidad de reseñas
+Cómo leerlo:
+
+top reservas = más volumen
+top ingresos = más valor económico
+top ocupación = agenda más aprovechada
+top reseñas = mejor validación social
+De dónde sale la información
+El panel mezcla 2 tipos de datos:
+
+1. Datos transaccionales
+Salen de reservas reales:
+
+booking
+available_slot
+professional_profile
+reviews
+Esto alimenta:
+
+reservas
+facturación
+ticket
+cancelación
+no-show
+demanda
+top profesionales
+2. Datos de comportamiento
+Salen de eventos internos de producto:
+
+SEARCH_PERFORMED
+PROFESSIONAL_PROFILE_VIEWED
+Esto alimenta:
+
+búsquedas
+vistas de perfil
+funnel
+ciudades
+parte de conversión
+Cómo funciona por detrás
+El backend arma todo en un solo resumen:
+
+endpoint: GET /internal/ops/analytics/summary
+devuelve:
+overview
+categoryPerformance
+servicePerformance
+funnelByCategory
+retention
+demandByWeekday
+demandByHour
+cityPerformance
+professionalPerformance
+La pantalla simplemente:
+
+pide ese resumen
+lo muestra en tarjetas y tablas
+permite filtrar por fecha
+Qué significa “estimado”
+Cuando ves Facturación est., significa:
+
+usa el valor snapshot guardado en la reserva
+cuenta reservas no canceladas
+no significa necesariamente plata ya cobrada
+es más una métrica comercial/operativa que contable exacta
+Qué cosas hay que tener en cuenta
+
+el funnel depende de eventos; cuanto más uso real tenga la app, mejor se llena
+si recién se activó, el funnel histórico puede estar más vacío que reservas/facturación
+la calidad del dato mejora porque el booking guarda snapshots de rubro, servicio, ciudad y precio
+Qué otros módulos internos tenés dentro de Ops
+Además de analytics, tu ecosistema interno hoy tiene:
+
+Internal Feedback
+Sirve para ver feedback que dejan usuarios o profesionales sobre la app.
+Podés filtrar, ver analytics y archivar/desarchivar.
+
+Internal Reviews Ops
+Sirve para moderar reseñas públicas, revisar reportes y ocultar/restaurar texto.
+
+Internal Analytics
+Es el tablero de negocio y marketplace que describimos arriba.

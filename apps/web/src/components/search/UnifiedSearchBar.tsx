@@ -373,16 +373,6 @@ export default memo(function UnifiedSearchBar({
                 chrome={isHero ? 'bare' : 'framed'}
               >
                 <div className="flex min-w-0 items-center gap-2.5">
-                  <svg
-                    viewBox="0 0 20 20"
-                    fill="none"
-                    className="h-4 w-4 shrink-0 text-[color:var(--accent-strong)]"
-                    aria-hidden="true"
-                  >
-                    <circle cx="9" cy="9" r="5.5" stroke="currentColor" strokeWidth="1.6" />
-                    <path d="M13 13l4 4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-                  </svg>
-
                   {searchModeLabel && !isHero ? (
                     <span className="hidden shrink-0 rounded-full bg-white px-2 py-1 text-[0.58rem] font-semibold uppercase tracking-[0.16em] text-[color:var(--ink-faint)] sm:inline-flex">
                       {searchModeLabel}
@@ -449,15 +439,6 @@ export default memo(function UnifiedSearchBar({
                 }}
               >
                 <div className="flex min-w-0 items-center gap-2.5">
-                  <svg
-                    viewBox="0 0 20 20"
-                    fill="none"
-                    className="h-3.5 w-3.5 shrink-0 text-[color:var(--ink-faint)]"
-                    aria-hidden="true"
-                  >
-                    <path d="M10 17c2.8-3.4 4.2-6 4.2-7.7A4.2 4.2 0 105.8 9.3C5.8 11 7.2 13.6 10 17z" stroke="currentColor" strokeWidth="1.6" />
-                    <circle cx="10" cy="9" r="1.6" fill="currentColor" />
-                  </svg>
                   <span
                     className={`w-full truncate text-left leading-5 ${locationValueClass} ${
                       hasLocationSelection
@@ -522,15 +503,6 @@ export default memo(function UnifiedSearchBar({
                 }}
               >
                 <div className="flex min-w-0 items-center gap-2.5">
-                  <svg
-                    viewBox="0 0 20 20"
-                    fill="none"
-                    className="h-3.5 w-3.5 shrink-0 text-[color:var(--ink-faint)]"
-                    aria-hidden="true"
-                  >
-                    <rect x="3" y="4.5" width="14" height="12" rx="2.5" stroke="currentColor" strokeWidth="1.5" />
-                    <path d="M6.5 3v3M13.5 3v3M3 8h14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-                  </svg>
                   <span
                     className={`w-full truncate text-left text-[0.88rem] leading-5 ${
                       hasDateSelection

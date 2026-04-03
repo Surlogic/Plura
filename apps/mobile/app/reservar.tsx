@@ -12,6 +12,7 @@ import {
   type PublicProfessionalService,
 } from '../src/services/publicBookings';
 import { getApiErrorMessage } from '../src/services/errors';
+import { trackProductAnalyticsEvent } from '../src/services/productAnalytics';
 import {
   clearPendingReservation,
   savePendingReservation,
@@ -81,8 +82,11 @@ export default function ReservationCheckoutScreen() {
   const [isSaving, setIsSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [service, setService] = useState<PublicProfessionalService | null>(null);
+  const [professionalId, setProfessionalId] = useState<number | null>(null);
   const [professionalName, setProfessionalName] = useState('Profesional');
   const [professionalCategory, setProfessionalCategory] = useState('Profesional');
+  const [professionalCity, setProfessionalCity] = useState<string | null>(null);
+  const [professionalCountry, setProfessionalCountry] = useState<string | null>(null);
 
   useEffect(() => {
     const load = async () => {
@@ -95,8 +99,12 @@ export default function ReservationCheckoutScreen() {
       setIsLoading(true);
       try {
         const professional = await getPublicProfessionalBySlug(slug);
+        const parsedProfessionalId = Number.parseInt(professional.id, 10);
+        setProfessionalId(Number.isFinite(parsedProfessionalId) ? parsedProfessionalId : null);
         setProfessionalName(professional.fullName || 'Profesional');
         setProfessionalCategory(professional.rubro || 'Profesional');
+        setProfessionalCity(professional.city || null);
+        setProfessionalCountry(professional.country || null);
         const selected = professional.services.find((item) => item.id === serviceId) || null;
         setService(selected);
         if (!selected) {
@@ -111,6 +119,38 @@ export default function ReservationCheckoutScreen() {
 
     load();
   }, [serviceId, slug]);
+
+  useEffect(() => {
+    if (!slug || !serviceId) return;
+    void trackProductAnalyticsEvent({
+      eventKey: 'RESERVATION_STEP_VIEWED',
+      sourceSurface: 'reservation_flow_mobile',
+      stepName: 'confirm',
+      professionalId,
+      professionalSlug: slug,
+      professionalRubro: professionalCategory,
+      categorySlug: service?.categorySlug ?? null,
+      categoryLabel: resolveServiceCategoryLabel(service, professionalCategory) || null,
+      serviceId,
+      city: professionalCity,
+      country: professionalCountry,
+      metadata: {
+        entrySurface: 'mobile_checkout',
+        requiresCheckout: isPrepaidService(service?.paymentType),
+      },
+    });
+  }, [
+    professionalCategory,
+    professionalCity,
+    professionalCountry,
+    professionalId,
+    service?.categorySlug,
+    service?.categoryName,
+    service?.paymentType,
+    service,
+    serviceId,
+    slug,
+  ]);
 
   const canConfirm = useMemo(
     () => Boolean(slug && serviceId && date && time && service) && !isSaving,
@@ -227,6 +267,24 @@ export default function ReservationCheckoutScreen() {
 
                   setIsSaving(true);
                   setMessage(null);
+                  void trackProductAnalyticsEvent({
+                    eventKey: 'RESERVATION_SUBMIT_ATTEMPTED',
+                    sourceSurface: 'reservation_flow_mobile',
+                    stepName: 'confirm',
+                    professionalId,
+                    professionalSlug: slug,
+                    professionalRubro: professionalCategory,
+                    categorySlug: service?.categorySlug ?? null,
+                    categoryLabel: resolveServiceCategoryLabel(service, professionalCategory) || null,
+                    serviceId,
+                    city: professionalCity,
+                    country: professionalCountry,
+                    metadata: {
+                      selectedDate: date,
+                      selectedTime: time,
+                      requiresCheckout: isPrepaidService(service?.paymentType),
+                    },
+                  });
                   try {
                     const created = await createPublicReservation(slug, {
                       serviceId,
@@ -257,6 +315,23 @@ export default function ReservationCheckoutScreen() {
                     }, 900);
                   } catch (error: unknown) {
                     if (isAxiosError(error) && error.response?.status === 401) {
+                      void trackProductAnalyticsEvent({
+                        eventKey: 'RESERVATION_AUTH_OPENED',
+                        sourceSurface: 'reservation_flow_mobile',
+                        stepName: 'confirm',
+                        professionalId,
+                        professionalSlug: slug,
+                        professionalRubro: professionalCategory,
+                        categorySlug: service?.categorySlug ?? null,
+                        categoryLabel: resolveServiceCategoryLabel(service, professionalCategory) || null,
+                        serviceId,
+                        city: professionalCity,
+                        country: professionalCountry,
+                        metadata: {
+                          reason: 'missing_client_session',
+                          redirectTarget: '/(auth)/login',
+                        },
+                      });
                       await savePendingReservation({
                         professionalSlug: slug,
                         serviceId,

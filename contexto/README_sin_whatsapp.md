@@ -163,14 +163,14 @@ Base transversal que ordena el producto y la arquitectura:
 - pagos online configurables y metodos de pago visibles
 - side effects de booking (agenda, notificaciones) ejecutados via after-commit para seguridad transaccional
 - base de analytics y eventos del producto
-- tablero interno de negocio ya integrado en web bajo `/internal/ops/analytics`: usa agregados propios de reservas/pagos/reseñas y tracking server-side de `search` + `profile view` para que el equipo de Plura vea rubros, servicios, funnel, retencion, ciudades y top profesionales sin exponer esa capa al cliente final
+- tablero interno de negocio ya integrado en web bajo `/internal/ops/analytics`: usa agregados propios de reservas/pagos/reseñas y tracking interno en `app_product_event`; ya no mira solo `search` + `profile view`, sino tambien funnel real de `/reservar` (`step viewed`, servicio/fecha/horario confirmados, auth abierto/completado, submit), `BOOKING_CREATED`, `PAYMENT_SESSION_CREATED`, `BOOKING_CONFIRMED`, `BOOKING_COMPLETED`, plataformas y mix por modalidad de pago sin exponer esa capa al cliente final
 
 Notas operativas recientes:
 
 - search y suggest siguen manteniendo los mismos endpoints publicos, pero hoy se apoyan en materialized views denormalizadas para bajar joins y costo por request
 - `/explorar` ya filtra por fecha y `disponible ahora` usando disponibilidad real de `available_slot`; la fecha ya no solo reordena resultados
 - cuando una reserva cambia de horario o estado operativo con impacto en agenda (`cancel`, `reschedule`, confirmacion por pago), el backend ya reconstruye `available_slot` del dia afectado en el mismo ciclo after-commit; discovery y marketplace no deberian quedar mostrando huecos viejos por un rebuild async tardio
-- la barra unificada de busqueda web ahora usa exactamente la misma presentacion visual del home tambien en dashboard cliente y `/explorar`: mismo shell hero, mismo ancho maximo, misma altura de controles, mismos radios y dropdowns; cuando aplica refinamiento extra, `/explorar` mantiene los filtros activos dentro del buscador como chips removibles para combinar rubro/consulta, fecha, ubicacion y disponibilidad sin duplicar UI por pagina
+- la barra unificada de busqueda web ahora usa exactamente la misma base visual del home tambien en dashboard cliente y `/explorar`: mismo shell hero, mismo ancho maximo, misma altura de controles y mismos contratos; la variante `hero` del home suma una interaccion propia de foco en desktop donde `Servicios` se expande y `Ubicacion/Fecha` se compactan a icono mientras ese campo queda activo, sin trasladar esa animacion a `/explorar`; cuando aplica refinamiento extra, `/explorar` mantiene los filtros activos dentro del buscador como chips removibles para combinar rubro/consulta, fecha, ubicacion y disponibilidad sin duplicar UI por pagina
 - la geoseleccion desde autocomplete ya no debe combinar una direccion hiper especifica con radio geografico de forma excluyente; cuando hay coordenadas, el radio manda y el texto de ciudad queda como apoyo UX
 - las materialized views de search ahora se refrescan tambien al startup bajo lock distribuido para evitar que `search_professional_document_mv` quede vieja respecto de `professional_profile`
 - las rutas publicas web mas criticas ya evitan ruido de auth cuando no existe una sesion conocida del cliente
@@ -181,7 +181,7 @@ Notas operativas recientes:
 - al cerrar sesion desde la web, la UI ahora muestra un overlay transitorio de `Cerrando sesión` y redirige al login correcto por rol (`/cliente/auth/login` o `/profesional/auth/login`) en vez de dejar la pantalla sin feedback mientras limpia estado local
 - el inbox de notificaciones se apoya en una ruta de lectura mas liviana para bajar latencia de lista sin cambiar la UX ni los contratos
 - pagos online en runtime quedaron `Mercado Pago only`; `DLOCAL` se conserva solo como compatibilidad de lectura para datos historicos y como historia de migraciones Flyway
-- el home web ahora usa SSR (`getServerSideProps`) en vez de ISR/static; la pagina prioriza `buscar -> categorias -> destacados -> como funciona -> confianza -> CTA final`, reutiliza la barra unificada de busqueda en una variante hero mas limpia y arma el bloque superior como `texto + card visual`, dejando el buscador mas contenido en la columna izquierda debajo del texto; esa card animada de rubros rota automaticamente usando `homeData.categories`, `category.imageUrl` cuando existe y placeholders SVG locales como fallback, respetando `prefers-reduced-motion`; sigue consumiendo testimonios publicos reales via `GET /public/app-feedback`; el ranking de top professionals prioriza volumen de reservas confirmadas/completadas de los ultimos 3 meses
+- el home web ahora usa SSR (`getServerSideProps`) en vez de ISR/static; la pagina prioriza `buscar -> categorias -> destacados -> como funciona -> confianza -> CTA final`, reutiliza la barra unificada de busqueda en una variante hero mas limpia y arma el bloque superior como `texto + card visual`, dejando en desktop la columna izquierda ordenada como `titulo/subtitulo -> buscador -> metricas` con mas aire vertical antes del resto del home; esa card animada de rubros rota automaticamente usando `homeData.categories`, `category.imageUrl` cuando existe y placeholders SVG locales como fallback, respetando `prefers-reduced-motion`; sigue consumiendo testimonios publicos reales via `GET /public/app-feedback`; el ranking de top professionals prioriza volumen de reservas confirmadas/completadas de los ultimos 3 meses
 - home y explorar ya comparten una identidad visual publica consistente para negocios/locales: las cards priorizan `banner` como media principal, muestran `logo` superpuesto, caen a foto real del negocio si falta banner y evitan usar categorias o imagenes de servicio como branding principal salvo fallback extremo
 - la reserva publica web en `/reservar` ya no comprime servicio, fecha, horario y checkout en una sola pantalla: ahora corre en `5` pasos reales (`confirmar servicio -> elegir dia -> elegir horario -> revisar turno -> confirmar y reservar`), mantiene los mismos endpoints backend y sigue retomando el cierre desde `pendingReservation` despues de login
 - `/api/home` y `/api/search` ahora exponen metadata suficiente de branding de card (`bannerUrl`, `bannerMedia`, `logoUrl`, `logoMedia`, `fallbackPhotoUrl`) para que home y marketplace no dependan de una sola imagen plana
@@ -409,7 +409,7 @@ La app mobile usa `expo-router` con grupos:
 - `app/(tabs)` para la experiencia principal del cliente
 - `app/(auth)` para login, registro, recovery escalonado y completar telefono despues de OAuth
 - `app/dashboard` para vistas del profesional
-- al cerrar sesion en mobile, la navegacion ya no deriva al login por rol: limpia sesion y vuelve siempre a la portada inicial `app/index.tsx`, desde donde el usuario elige de nuevo acceso cliente o profesional
+- al cerrar sesion en mobile, la navegacion ya vuelve al login correcto por rol (`/(auth)/login-client` o `/(auth)/login-professional`) en vez de mandar siempre a la portada inicial
 
 El cliente Axios mobile:
 
@@ -417,6 +417,8 @@ El cliente Axios mobile:
 - envia `Authorization: Bearer`
 - persiste access y refresh token
 - renueva sesion con `POST /auth/refresh`
+- para bootstrap de sesion ya no prueba ambos `/auth/me/*` a ciegas: primero lee el `role` del JWT, consulta solo el endpoint correcto y deduplica refresh concurrentes
+- ante un `401/403` real limpia la sesion local; ante fallas transitorias de red o `5xx` ya no invalida por reflejo el estado autenticado cargado
 
 ### Backend
 

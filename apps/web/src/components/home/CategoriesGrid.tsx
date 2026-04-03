@@ -21,11 +21,6 @@ export default memo(function CategoriesGrid({ categories, isLoading = false }: C
         <SectionHeading
           title="Explorá por categoría"
           description="Entrá por el tipo de servicio y seguí explorando con más detalle desde la siguiente pantalla."
-          action={canToggle ? (
-            <Button type="button" onClick={() => setShowAll((prev) => !prev)} variant="quiet">
-              {showAll ? 'Ver menos' : 'Ver todas'}
-            </Button>
-          ) : undefined}
         />
         {isLoading ? (
           <Card tone="soft" className="border-dashed text-sm text-[color:var(--ink-muted)]">
@@ -48,6 +43,13 @@ export default memo(function CategoriesGrid({ categories, isLoading = false }: C
             No hay rubros para mostrar por ahora.
           </Card>
         )}
+        {canToggle ? (
+          <div className="flex justify-end">
+            <Button type="button" onClick={() => setShowAll((prev) => !prev)} variant="quiet">
+              {showAll ? 'Ver menos' : 'Ver todas'}
+            </Button>
+          </div>
+        ) : null}
       </div>
     </section>
   );

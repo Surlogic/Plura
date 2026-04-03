@@ -753,7 +753,6 @@ export function useUnifiedSearch({
         id: `rubro-${category.slug}`,
         type: 'RUBRO',
         label: category.name,
-        secondary: 'Rubro',
         categorySlug: category.slug,
       });
     });
@@ -764,7 +763,6 @@ export function useUnifiedSearch({
         id: `rubro-suggest-${category.slug}`,
         type: 'RUBRO',
         label: category.name,
-        secondary: 'Rubro',
         categorySlug: category.slug,
       });
     });
@@ -819,7 +817,6 @@ export function useUnifiedSearch({
     const catItems = categoryDropdownItems.map((item, index) => ({
       ...item,
       id: `mix-rubro-${item.categorySlug || item.id}-${index}`,
-      secondary: 'Rubro',
     }));
     const serviceItems = suggestions.services.map((item, index) => ({
       id: `mix-servicio-${item.id || item.name}-${index}`,

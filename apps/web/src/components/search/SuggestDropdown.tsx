@@ -32,7 +32,7 @@ const getTypeLabel = (item: SuggestDropdownItem) => {
 
   switch (item.type) {
     case 'RUBRO':
-      return 'Rubro';
+      return 'Categoría';
     case 'PROFESIONAL':
       return 'Profesional';
     case 'LOCAL':

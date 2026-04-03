@@ -69,7 +69,7 @@ export default function ReservationServiceSelector({
       </div>
 
       {selectedService && !showPicker ? (
-        <div className="mt-6 overflow-hidden rounded-[28px] border border-[color:var(--border-soft)] bg-[linear-gradient(180deg,#f7fbf8_0%,#eef5ef_100%)]">
+        <div className="mt-6 overflow-hidden rounded-[28px] border border-[color:var(--border-soft)] bg-[linear-gradient(180deg,#fdf9f4_0%,#f6efe6_100%)]">
           <div className="grid gap-6 p-5 lg:grid-cols-[260px_minmax(0,1fr)] lg:p-6">
             <div className="relative min-h-[220px] overflow-hidden rounded-[24px] border border-[color:var(--border-soft)] bg-white">
               {imageUrl ? (

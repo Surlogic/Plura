@@ -46,7 +46,7 @@ export default function ProfesionalCompletePhonePage() {
   };
 
   return (
-    <div className="min-h-screen bg-[radial-gradient(1100px_620px_at_5%_-10%,rgba(31,182,166,0.18),transparent_55%),linear-gradient(180deg,#f8fcfb_0%,#eef4f2_100%)] text-[color:var(--ink)]">
+    <div className="min-h-screen bg-[radial-gradient(1100px_620px_at_5%_-10%,rgba(201,170,130,0.18),transparent_55%),linear-gradient(180deg,#fdf9f4_0%,#f5f1eb_100%)] text-[color:var(--ink)]">
       <AuthTopBar tone="professional" />
       <main className="mx-auto flex w-full max-w-4xl items-center justify-center px-4 py-12 sm:px-6">
         <Card tone="default" padding="lg" className="w-full max-w-md rounded-[32px]">

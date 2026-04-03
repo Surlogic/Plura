@@ -41,6 +41,11 @@ type UnifiedSearchBarProps = {
   citySuggestions?: string[];
 };
 
+type SearchSectionLabelProps = {
+  icon: 'search' | 'location' | 'calendar';
+  text: string;
+};
+
 const SURFACE_CLASSES: Record<NonNullable<UnifiedSearchBarProps['variant']>, string> = {
   hero: 'border border-white/70 bg-white/92 shadow-[0_28px_70px_-48px_rgba(13,35,58,0.34)] backdrop-blur-xl',
   panel: 'border border-[color:var(--border-soft)] bg-[color:var(--surface-strong)] shadow-[0_20px_48px_-38px_rgba(13,35,58,0.28)]',
@@ -53,6 +58,50 @@ const SEARCH_TYPE_LABELS = {
   LOCAL: 'Local',
   SERVICIO: 'Servicio',
 } as const;
+
+function SearchSectionLabel({ icon, text }: SearchSectionLabelProps) {
+  return (
+    <>
+      {icon === 'search' ? (
+        <svg
+          viewBox="0 0 20 20"
+          fill="none"
+          className="h-3 w-3 shrink-0 text-[color:var(--accent-strong)]"
+          aria-hidden="true"
+        >
+          <circle cx="9" cy="9" r="5.5" stroke="currentColor" strokeWidth="1.6" />
+          <path d="M13 13l4 4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+        </svg>
+      ) : null}
+
+      {icon === 'location' ? (
+        <svg
+          viewBox="0 0 20 20"
+          fill="none"
+          className="h-3 w-3 shrink-0 text-[color:var(--ink-faint)]"
+          aria-hidden="true"
+        >
+          <path d="M10 17c2.8-3.4 4.2-6 4.2-7.7A4.2 4.2 0 105.8 9.3C5.8 11 7.2 13.6 10 17z" stroke="currentColor" strokeWidth="1.6" />
+          <circle cx="10" cy="9" r="1.6" fill="currentColor" />
+        </svg>
+      ) : null}
+
+      {icon === 'calendar' ? (
+        <svg
+          viewBox="0 0 20 20"
+          fill="none"
+          className="h-3 w-3 shrink-0 text-[color:var(--ink-faint)]"
+          aria-hidden="true"
+        >
+          <rect x="3" y="4.5" width="14" height="12" rx="2.5" stroke="currentColor" strokeWidth="1.5" />
+          <path d="M6.5 3v3M13.5 3v3M3 8h14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+        </svg>
+      ) : null}
+
+      <span className="truncate">{text}</span>
+    </>
+  );
+}
 
 export default memo(function UnifiedSearchBar({
   initialValues,
@@ -197,7 +246,7 @@ export default memo(function UnifiedSearchBar({
     : values.type !== 'SERVICIO'
       ? SEARCH_TYPE_LABELS[values.type]
       : null;
-  const queryFieldLabel = isHero ? 'Servicio' : 'Servicio o categoría';
+  const queryFieldLabel = 'Servicios';
   const queryFieldClassName = isHero ? 'h-full' : 'h-full';
   const selectionFieldClassName = isHero ? 'h-full' : 'h-full';
   const heroFieldShellClassName = 'px-4 py-1 sm:px-5';
@@ -318,7 +367,7 @@ export default memo(function UnifiedSearchBar({
           <div className={searchGridClassName}>
             <div className={`relative min-w-0 ${queryWrapperOrderClassName}`.trim()}>
               <SearchField
-                label={queryFieldLabel}
+                label={<SearchSectionLabel icon="search" text={queryFieldLabel} />}
                 active={isSearchOpen}
                 className={queryFieldClassName}
                 chrome={isHero ? 'bare' : 'framed'}
@@ -388,7 +437,7 @@ export default memo(function UnifiedSearchBar({
 
             <div className={`relative min-w-0 ${locationWrapperOrderClassName}`.trim()}>
               <SearchField
-                label="Ubicacion"
+                label={<SearchSectionLabel icon="location" text="Ubicación" />}
                 active={isLocationOpen || hasLocationSelection}
                 asButton
                 className={selectionFieldClassName}
@@ -461,7 +510,7 @@ export default memo(function UnifiedSearchBar({
 
             <div className={`relative min-w-0 ${dateWrapperOrderClassName}`.trim()}>
               <SearchField
-                label="Fecha"
+                label={<SearchSectionLabel icon="calendar" text="Fecha" />}
                 active={isDateOpen || hasDateSelection}
                 asButton
                 className={selectionFieldClassName}
@@ -539,7 +588,7 @@ export default memo(function UnifiedSearchBar({
             </div>
           </div>
 
-          {activeFilters.length > 0 && !isHero ? (
+          {activeFilters.length > 0 && (!isHero || showClearButton) ? (
             <div className="mt-2.5 px-1">
               <SearchFilterChips filters={activeFilters} onClearAll={showClearButton ? handleClear : undefined} />
             </div>

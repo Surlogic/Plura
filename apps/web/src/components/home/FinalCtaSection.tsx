@@ -11,7 +11,7 @@ export default memo(function FinalCtaSection() {
           <div className="pointer-events-none absolute right-0 top-4 h-36 w-36 rounded-full bg-[color:var(--accent)]/10 blur-3xl" />
           <div className="pointer-events-none absolute bottom-0 left-1/3 h-28 w-28 rounded-full bg-[color:var(--premium)]/8 blur-3xl" />
           <div className="relative flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
-            <div className="max-w-2xl space-y-2">
+            <div className="max-w-2xl space-y-2 text-center lg:text-center">
               <h2 className="text-2xl font-semibold text-[color:var(--ink)] sm:text-[2rem]">
                 Encontrá tu próximo turno o sumá tu negocio a Plura
               </h2>

@@ -22,7 +22,7 @@ export default function DashboardHero({ name, location }: DashboardHeroProps) {
         </div>
 
         <UnifiedSearchBar
-          variant="panel"
+          variant="hero"
           initialValues={{ city: location }}
         />
       </div>

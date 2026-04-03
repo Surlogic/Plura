@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import com.plura.plurabackend.core.analytics.tracking.AppProductEventTrackingService;
 import com.plura.plurabackend.core.booking.actions.BookingActionsEvaluator;
 import com.plura.plurabackend.core.booking.BookingCommandResponseAssembler;
 import com.plura.plurabackend.core.booking.BookingCommandStateSupport;
@@ -77,6 +78,8 @@ class BookingCommandApplicationServiceCompleteTest {
     );
     private final BookingNotificationIntegrationService bookingNotificationIntegrationService =
         mock(BookingNotificationIntegrationService.class);
+    private final AppProductEventTrackingService appProductEventTrackingService =
+        mock(AppProductEventTrackingService.class);
     private final MeterRegistry meterRegistry = mock(MeterRegistry.class);
     private final PasswordEncoder passwordEncoder = mock(PasswordEncoder.class);
     private final BookingCommandApplicationService bookingCommandApplicationService = new BookingCommandApplicationService(
@@ -97,6 +100,7 @@ class BookingCommandApplicationServiceCompleteTest {
         bookingCommandResponseAssembler,
         bookingCommandStateSupport,
         bookingNotificationIntegrationService,
+        appProductEventTrackingService,
         meterRegistry,
         passwordEncoder,
         "America/Montevideo"

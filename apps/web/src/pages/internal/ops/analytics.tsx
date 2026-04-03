@@ -172,6 +172,27 @@ export default function InternalOpsAnalyticsPage() {
     () => [...(analytics?.professionalPerformance || [])].sort((a, b) => b.reviewsCount - a.reviewsCount).slice(0, 10),
     [analytics],
   );
+  const reservationFunnelRows = useMemo(() => {
+    if (!analytics?.reservationFunnel) return [];
+    const funnel = analytics.reservationFunnel;
+    return [
+      ['Searches', formatInt(funnel.searches), '-'],
+      ['Profile views', formatInt(funnel.profileViews), '-'],
+      ['Entradas al flujo', formatInt(funnel.reservationFlowSessions), formatPercent(funnel.profileToFlowRate)],
+      ['Servicio confirmado', formatInt(funnel.serviceConfirmedSessions), '-'],
+      ['Fecha confirmada', formatInt(funnel.dateConfirmedSessions), '-'],
+      ['Horario elegido', formatInt(funnel.timeSelectedSessions), '-'],
+      ['Review visto', formatInt(funnel.reviewSessions), '-'],
+      ['Confirmación vista', formatInt(funnel.confirmSessions), '-'],
+      ['Auth abierto', formatInt(funnel.authOpenedSessions), '-'],
+      ['Auth completado', formatInt(funnel.authCompletedSessions), '-'],
+      ['Submit intentado', formatInt(funnel.submitAttemptedSessions), formatPercent(funnel.flowToSubmitRate)],
+      ['Reservas creadas', formatInt(funnel.bookingsCreated), formatPercent(funnel.submitToBookingRate)],
+      ['Checkouts iniciados', formatInt(funnel.paymentSessions), '-'],
+      ['Reservas confirmadas', formatInt(funnel.bookingsConfirmed), formatPercent(funnel.bookingToConfirmationRate)],
+      ['Reservas completadas', formatInt(funnel.bookingsCompleted), formatPercent(funnel.bookingToCompletionRate)],
+    ];
+  }, [analytics]);
 
   return (
     <>
@@ -265,6 +286,7 @@ export default function InternalOpsAnalyticsPage() {
                 <>
                   <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
                     <StatCard label="Reservas" value={formatInt(analytics.overview.totalReservations)} />
+                    <StatCard label="Confirmadas" value={formatInt(analytics.overview.confirmedReservations)} />
                     <StatCard label="Completadas" value={formatInt(analytics.overview.completedReservations)} />
                     <StatCard label="Canceladas" value={formatInt(analytics.overview.cancelledReservations)} />
                     <StatCard label="No show" value={formatInt(analytics.overview.noShowReservations)} />
@@ -275,6 +297,26 @@ export default function InternalOpsAnalyticsPage() {
                     <StatCard label="Retorno" value={formatPercent(analytics.retention.returningRate)} detail={`${formatInt(analytics.retention.returningClients)} clientes`} />
                     <StatCard label="Retencion" value={formatPercent(analytics.retention.windowRetentionRate)} detail={`${formatInt(analytics.retention.retainedFromPreviousWindow)} retenidos`} />
                   </div>
+
+                  <Section
+                    title="Funnel Completo"
+                    subtitle="Desde exploracion hasta reserva creada, checkout, confirmacion y completion."
+                  >
+                    <div className="grid gap-4 xl:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
+                      <Table
+                        columns={['Paso', 'Volumen', 'Tasa']}
+                        rows={reservationFunnelRows}
+                      />
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        <StatCard label="Perfil -> flujo" value={formatPercent(analytics.reservationFunnel.profileToFlowRate)} />
+                        <StatCard label="Flujo -> submit" value={formatPercent(analytics.reservationFunnel.flowToSubmitRate)} />
+                        <StatCard label="Submit -> booking" value={formatPercent(analytics.reservationFunnel.submitToBookingRate)} />
+                        <StatCard label="Booking -> confirmada" value={formatPercent(analytics.reservationFunnel.bookingToConfirmationRate)} />
+                        <StatCard label="Booking -> completada" value={formatPercent(analytics.reservationFunnel.bookingToCompletionRate)} />
+                        <StatCard label="Checkouts" value={formatInt(analytics.reservationFunnel.paymentSessions)} />
+                      </div>
+                    </div>
+                  </Section>
 
                   <Section
                     title="Rubros"
@@ -358,6 +400,46 @@ export default function InternalOpsAnalyticsPage() {
                       ])}
                     />
                   </Section>
+
+                  <div className="grid gap-4 xl:grid-cols-2">
+                    <Section
+                      title="Plataformas"
+                      subtitle="Comparativa entre web, mobile e internal en exploracion, flujo y completion."
+                    >
+                      <Table
+                        columns={['Plataforma', 'Searches', 'Perfiles', 'Flujo', 'Reservas', 'Completadas', 'Search->Reserva', 'Booking->Completada']}
+                        rows={(analytics.platformPerformance || []).map((item) => [
+                          item.platform,
+                          formatInt(item.searches),
+                          formatInt(item.profileViews),
+                          formatInt(item.reservationFlowSessions),
+                          formatInt(item.bookings),
+                          formatInt(item.completedBookings),
+                          formatPercent(item.searchToBookingRate),
+                          formatPercent(item.bookingToCompletionRate),
+                        ])}
+                      />
+                    </Section>
+
+                    <Section
+                      title="Mix de Pago"
+                      subtitle="Rendimiento por modalidad de cobro del servicio."
+                    >
+                      <Table
+                        columns={['Modalidad', 'Reservas', 'Confirmadas', 'Completadas', 'Canceladas', 'Completion', 'Cancelacion', 'Facturacion']}
+                        rows={(analytics.paymentTypePerformance || []).map((item) => [
+                          item.paymentType,
+                          formatInt(item.totalBookings),
+                          formatInt(item.confirmedBookings),
+                          formatInt(item.completedBookings),
+                          formatInt(item.cancelledBookings),
+                          formatPercent(item.completionRate),
+                          formatPercent(item.cancellationRate),
+                          formatMoney(item.estimatedRevenue),
+                        ])}
+                      />
+                    </Section>
+                  </div>
 
                   <div className="grid gap-4 xl:grid-cols-2">
                     <Section

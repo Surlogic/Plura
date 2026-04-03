@@ -151,6 +151,7 @@ public class SecurityConfig {
             "x-internal-token",
             "X-Requested-With",
             "X-Plura-Client-Platform",
+            "X-Plura-Analytics-Session-Id",
             "X-Plura-Session-Transport",
             "Idempotency-Key",
             "idempotency-key"

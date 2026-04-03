@@ -46,7 +46,23 @@ public class BookingService implements BookingCommandWorkflowService {
         String rawUserId,
         String sourcePlatform
     ) {
-        return bookingCommandApplicationService.createPublicBooking(slug, request, rawUserId, sourcePlatform);
+        return bookingCommandApplicationService.createPublicBooking(slug, request, rawUserId, sourcePlatform, null);
+    }
+
+    public PublicBookingResponse createPublicBooking(
+        String slug,
+        PublicBookingRequest request,
+        String rawUserId,
+        String sourcePlatform,
+        String analyticsSessionId
+    ) {
+        return bookingCommandApplicationService.createPublicBooking(
+            slug,
+            request,
+            rawUserId,
+            sourcePlatform,
+            analyticsSessionId
+        );
     }
 
     public List<ProfessionalBookingResponse> getProfessionalBookings(

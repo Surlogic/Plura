@@ -12,6 +12,7 @@ import {
   setKnownAuthSession,
   setAuthAccessToken,
 } from '@/services/session';
+import { getAnalyticsSessionId } from '@/lib/analytics/session';
 import { isAuthSessionError } from '@/lib/auth/sessionErrors';
 
 const api = axios.create({
@@ -25,6 +26,7 @@ const authApi = axios.create({
 });
 
 const CLIENT_PLATFORM_HEADER = 'X-Plura-Client-Platform';
+const ANALYTICS_SESSION_HEADER = 'X-Plura-Analytics-Session-Id';
 const SESSION_TRANSPORT_HEADER = 'X-Plura-Session-Transport';
 
 const authTokenFromResponse = (
@@ -104,13 +106,19 @@ const attachAuthHeader = (
   }
   if (config.headers instanceof AxiosHeaders) {
     config.headers.set(CLIENT_PLATFORM_HEADER, 'WEB');
+    const analyticsSessionId = getAnalyticsSessionId();
+    if (analyticsSessionId) {
+      config.headers.set(ANALYTICS_SESSION_HEADER, analyticsSessionId);
+    }
     if (isAuthRoute(config.url)) {
       config.headers.set(SESSION_TRANSPORT_HEADER, 'COOKIE');
     }
   } else {
+    const analyticsSessionId = getAnalyticsSessionId();
     config.headers = AxiosHeaders.from({
       ...(config.headers as AxiosRequestHeaders | undefined),
       [CLIENT_PLATFORM_HEADER]: 'WEB',
+      ...(analyticsSessionId ? { [ANALYTICS_SESSION_HEADER]: analyticsSessionId } : {}),
       ...(isAuthRoute(config.url) ? { [SESSION_TRANSPORT_HEADER]: 'COOKIE' } : {}),
     });
   }

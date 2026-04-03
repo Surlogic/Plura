@@ -31,6 +31,7 @@ public class InternalOpsAnalyticsService {
 
         return new InternalOpsAnalyticsResponse(
             loadOverview(window, params),
+            loadReservationFunnel(params),
             loadCategoryPerformance(params),
             loadServicePerformance(params),
             loadFunnelByCategory(params),
@@ -38,7 +39,9 @@ public class InternalOpsAnalyticsService {
             loadDemandByWeekday(params),
             loadDemandByHour(params),
             loadCityPerformance(params),
-            loadProfessionalPerformance(params)
+            loadProfessionalPerformance(params),
+            loadPlatformPerformance(params),
+            loadPaymentTypePerformance(params)
         );
     }
 
@@ -50,6 +53,7 @@ public class InternalOpsAnalyticsService {
             """
             SELECT
                 COUNT(*) AS total_reservations,
+                COALESCE(SUM(CASE WHEN b.status = 'CONFIRMED' THEN 1 ELSE 0 END), 0) AS confirmed_reservations,
                 COALESCE(SUM(CASE WHEN b.status = 'COMPLETED' THEN 1 ELSE 0 END), 0) AS completed_reservations,
                 COALESCE(SUM(CASE WHEN b.status = 'CANCELLED' THEN 1 ELSE 0 END), 0) AS cancelled_reservations,
                 COALESCE(SUM(CASE WHEN b.status = 'NO_SHOW' THEN 1 ELSE 0 END), 0) AS no_show_reservations,
@@ -61,6 +65,7 @@ public class InternalOpsAnalyticsService {
             params,
             (rs, rowNum) -> new OverviewRow(
                 rs.getLong("total_reservations"),
+                rs.getLong("confirmed_reservations"),
                 rs.getLong("completed_reservations"),
                 rs.getLong("cancelled_reservations"),
                 rs.getLong("no_show_reservations"),
@@ -88,6 +93,7 @@ public class InternalOpsAnalyticsService {
             window.fromDate().toString(),
             window.toDateExclusive().minusDays(1).toString(),
             bookingRow == null ? 0L : bookingRow.totalReservations(),
+            bookingRow == null ? 0L : bookingRow.confirmedReservations(),
             bookingRow == null ? 0L : bookingRow.completedReservations(),
             bookingRow == null ? 0L : bookingRow.cancelledReservations(),
             bookingRow == null ? 0L : bookingRow.noShowReservations(),
@@ -95,6 +101,129 @@ public class InternalOpsAnalyticsService {
             roundMoney(bookingRow == null ? 0d : bookingRow.averageTicket()),
             eventRow == null ? 0L : eventRow.totalSearches(),
             eventRow == null ? 0L : eventRow.totalProfileViews()
+        );
+    }
+
+    private InternalOpsAnalyticsResponse.ReservationFunnel loadReservationFunnel(MapSqlParameterSource params) {
+        return jdbcTemplate.queryForObject(
+            """
+            WITH event_metrics AS (
+                SELECT
+                    COALESCE(SUM(CASE WHEN e.event_key = 'SEARCH_PERFORMED' THEN 1 ELSE 0 END), 0) AS searches,
+                    COALESCE(SUM(CASE WHEN e.event_key = 'PROFESSIONAL_PROFILE_VIEWED' THEN 1 ELSE 0 END), 0) AS profile_views,
+                    COALESCE(COUNT(DISTINCT CASE
+                        WHEN e.event_key = 'RESERVATION_STEP_VIEWED' AND e.step_name = 'service'
+                        THEN COALESCE(
+                            NULLIF(e.session_id, ''),
+                            CASE WHEN e.user_id IS NOT NULL THEN CONCAT('user:', e.user_id::text) END,
+                            CONCAT('event:', e.id::text)
+                        )
+                    END), 0) AS reservation_flow_sessions,
+                    COALESCE(COUNT(DISTINCT CASE
+                        WHEN e.event_key = 'RESERVATION_SERVICE_CONFIRMED'
+                        THEN COALESCE(
+                            NULLIF(e.session_id, ''),
+                            CASE WHEN e.user_id IS NOT NULL THEN CONCAT('user:', e.user_id::text) END,
+                            CONCAT('event:', e.id::text)
+                        )
+                    END), 0) AS service_confirmed_sessions,
+                    COALESCE(COUNT(DISTINCT CASE
+                        WHEN e.event_key = 'RESERVATION_DATE_CONFIRMED'
+                        THEN COALESCE(
+                            NULLIF(e.session_id, ''),
+                            CASE WHEN e.user_id IS NOT NULL THEN CONCAT('user:', e.user_id::text) END,
+                            CONCAT('event:', e.id::text)
+                        )
+                    END), 0) AS date_confirmed_sessions,
+                    COALESCE(COUNT(DISTINCT CASE
+                        WHEN e.event_key = 'RESERVATION_TIME_SELECTED'
+                        THEN COALESCE(
+                            NULLIF(e.session_id, ''),
+                            CASE WHEN e.user_id IS NOT NULL THEN CONCAT('user:', e.user_id::text) END,
+                            CONCAT('event:', e.id::text)
+                        )
+                    END), 0) AS time_selected_sessions,
+                    COALESCE(COUNT(DISTINCT CASE
+                        WHEN e.event_key = 'RESERVATION_STEP_VIEWED' AND e.step_name = 'review'
+                        THEN COALESCE(
+                            NULLIF(e.session_id, ''),
+                            CASE WHEN e.user_id IS NOT NULL THEN CONCAT('user:', e.user_id::text) END,
+                            CONCAT('event:', e.id::text)
+                        )
+                    END), 0) AS review_sessions,
+                    COALESCE(COUNT(DISTINCT CASE
+                        WHEN e.event_key = 'RESERVATION_STEP_VIEWED' AND e.step_name = 'confirm'
+                        THEN COALESCE(
+                            NULLIF(e.session_id, ''),
+                            CASE WHEN e.user_id IS NOT NULL THEN CONCAT('user:', e.user_id::text) END,
+                            CONCAT('event:', e.id::text)
+                        )
+                    END), 0) AS confirm_sessions,
+                    COALESCE(COUNT(DISTINCT CASE
+                        WHEN e.event_key = 'RESERVATION_AUTH_OPENED'
+                        THEN COALESCE(
+                            NULLIF(e.session_id, ''),
+                            CASE WHEN e.user_id IS NOT NULL THEN CONCAT('user:', e.user_id::text) END,
+                            CONCAT('event:', e.id::text)
+                        )
+                    END), 0) AS auth_opened_sessions,
+                    COALESCE(COUNT(DISTINCT CASE
+                        WHEN e.event_key = 'RESERVATION_AUTH_COMPLETED'
+                        THEN COALESCE(
+                            NULLIF(e.session_id, ''),
+                            CASE WHEN e.user_id IS NOT NULL THEN CONCAT('user:', e.user_id::text) END,
+                            CONCAT('event:', e.id::text)
+                        )
+                    END), 0) AS auth_completed_sessions,
+                    COALESCE(COUNT(DISTINCT CASE
+                        WHEN e.event_key = 'RESERVATION_SUBMIT_ATTEMPTED'
+                        THEN COALESCE(
+                            NULLIF(e.session_id, ''),
+                            CASE WHEN e.user_id IS NOT NULL THEN CONCAT('user:', e.user_id::text) END,
+                            CONCAT('event:', e.id::text)
+                        )
+                    END), 0) AS submit_attempted_sessions,
+                    COALESCE(COUNT(DISTINCT CASE WHEN e.event_key = 'BOOKING_CREATED' THEN e.booking_id END), 0) AS bookings_created,
+                    COALESCE(COUNT(DISTINCT CASE WHEN e.event_key = 'PAYMENT_SESSION_CREATED' THEN e.booking_id END), 0) AS payment_sessions,
+                    COALESCE(COUNT(DISTINCT CASE WHEN e.event_key = 'BOOKING_CONFIRMED' THEN e.booking_id END), 0) AS bookings_confirmed,
+                    COALESCE(COUNT(DISTINCT CASE WHEN e.event_key = 'BOOKING_COMPLETED' THEN e.booking_id END), 0) AS bookings_completed
+                FROM app_product_event e
+                WHERE e.occurred_at >= :from AND e.occurred_at < :to
+            )
+            SELECT *
+            FROM event_metrics
+            """,
+            params,
+            (rs, rowNum) -> {
+                long profileViews = rs.getLong("profile_views");
+                long reservationFlowSessions = rs.getLong("reservation_flow_sessions");
+                long submitAttemptedSessions = rs.getLong("submit_attempted_sessions");
+                long bookingsCreated = rs.getLong("bookings_created");
+                long bookingsConfirmed = rs.getLong("bookings_confirmed");
+                long bookingsCompleted = rs.getLong("bookings_completed");
+                return new InternalOpsAnalyticsResponse.ReservationFunnel(
+                    rs.getLong("searches"),
+                    profileViews,
+                    reservationFlowSessions,
+                    rs.getLong("service_confirmed_sessions"),
+                    rs.getLong("date_confirmed_sessions"),
+                    rs.getLong("time_selected_sessions"),
+                    rs.getLong("review_sessions"),
+                    rs.getLong("confirm_sessions"),
+                    rs.getLong("auth_opened_sessions"),
+                    rs.getLong("auth_completed_sessions"),
+                    submitAttemptedSessions,
+                    bookingsCreated,
+                    rs.getLong("payment_sessions"),
+                    bookingsConfirmed,
+                    bookingsCompleted,
+                    roundRate(reservationFlowSessions, profileViews),
+                    roundRate(submitAttemptedSessions, reservationFlowSessions),
+                    roundRate(bookingsCreated, submitAttemptedSessions),
+                    roundRate(bookingsConfirmed, bookingsCreated),
+                    roundRate(bookingsCompleted, bookingsCreated)
+                );
+            }
         );
     }
 
@@ -518,6 +647,136 @@ public class InternalOpsAnalyticsService {
         );
     }
 
+    private List<InternalOpsAnalyticsResponse.PlatformPerformance> loadPlatformPerformance(MapSqlParameterSource params) {
+        return jdbcTemplate.query(
+            """
+            WITH search_metrics AS (
+                SELECT
+                    COALESCE(NULLIF(e.platform, ''), 'UNKNOWN') AS platform,
+                    COUNT(*) AS searches
+                FROM app_product_event e
+                WHERE e.event_key = 'SEARCH_PERFORMED'
+                  AND e.occurred_at >= :from AND e.occurred_at < :to
+                GROUP BY 1
+            ),
+            profile_metrics AS (
+                SELECT
+                    COALESCE(NULLIF(e.platform, ''), 'UNKNOWN') AS platform,
+                    COUNT(*) AS profile_views
+                FROM app_product_event e
+                WHERE e.event_key = 'PROFESSIONAL_PROFILE_VIEWED'
+                  AND e.occurred_at >= :from AND e.occurred_at < :to
+                GROUP BY 1
+            ),
+            flow_metrics AS (
+                SELECT
+                    COALESCE(NULLIF(e.platform, ''), 'UNKNOWN') AS platform,
+                    COUNT(DISTINCT COALESCE(
+                        NULLIF(e.session_id, ''),
+                        CASE WHEN e.user_id IS NOT NULL THEN CONCAT('user:', e.user_id::text) END,
+                        CONCAT('event:', e.id::text)
+                    )) AS reservation_flow_sessions
+                FROM app_product_event e
+                WHERE e.event_key = 'RESERVATION_STEP_VIEWED'
+                  AND e.step_name = 'service'
+                  AND e.occurred_at >= :from AND e.occurred_at < :to
+                GROUP BY 1
+            ),
+            booking_metrics AS (
+                SELECT
+                    COALESCE(NULLIF(b.source_platform_snapshot, ''), 'UNKNOWN') AS platform,
+                    COUNT(*) AS bookings,
+                    COALESCE(SUM(CASE WHEN b.status = 'CONFIRMED' THEN 1 ELSE 0 END), 0) AS confirmed_bookings,
+                    COALESCE(SUM(CASE WHEN b.status = 'COMPLETED' THEN 1 ELSE 0 END), 0) AS completed_bookings,
+                    COALESCE(SUM(CASE WHEN b.status = 'CANCELLED' THEN 1 ELSE 0 END), 0) AS cancelled_bookings,
+                    COALESCE(SUM(CASE WHEN b.status = 'NO_SHOW' THEN 1 ELSE 0 END), 0) AS no_show_bookings
+                FROM booking b
+                WHERE b.created_at >= :from AND b.created_at < :to
+                GROUP BY 1
+            ),
+            all_platforms AS (
+                SELECT platform FROM search_metrics
+                UNION
+                SELECT platform FROM profile_metrics
+                UNION
+                SELECT platform FROM flow_metrics
+                UNION
+                SELECT platform FROM booking_metrics
+            )
+            SELECT
+                p.platform,
+                COALESCE(s.searches, 0) AS searches,
+                COALESCE(pr.profile_views, 0) AS profile_views,
+                COALESCE(f.reservation_flow_sessions, 0) AS reservation_flow_sessions,
+                COALESCE(b.bookings, 0) AS bookings,
+                COALESCE(b.confirmed_bookings, 0) AS confirmed_bookings,
+                COALESCE(b.completed_bookings, 0) AS completed_bookings,
+                COALESCE(b.cancelled_bookings, 0) AS cancelled_bookings,
+                COALESCE(b.no_show_bookings, 0) AS no_show_bookings
+            FROM all_platforms p
+            LEFT JOIN search_metrics s ON s.platform = p.platform
+            LEFT JOIN profile_metrics pr ON pr.platform = p.platform
+            LEFT JOIN flow_metrics f ON f.platform = p.platform
+            LEFT JOIN booking_metrics b ON b.platform = p.platform
+            ORDER BY bookings DESC, profile_views DESC, searches DESC, p.platform ASC
+            """,
+            params,
+            (rs, rowNum) -> {
+                long searches = rs.getLong("searches");
+                long bookings = rs.getLong("bookings");
+                return new InternalOpsAnalyticsResponse.PlatformPerformance(
+                    rs.getString("platform"),
+                    searches,
+                    rs.getLong("profile_views"),
+                    rs.getLong("reservation_flow_sessions"),
+                    bookings,
+                    rs.getLong("confirmed_bookings"),
+                    rs.getLong("completed_bookings"),
+                    rs.getLong("cancelled_bookings"),
+                    rs.getLong("no_show_bookings"),
+                    roundRate(bookings, searches),
+                    roundRate(rs.getLong("completed_bookings"), bookings)
+                );
+            }
+        );
+    }
+
+    private List<InternalOpsAnalyticsResponse.PaymentTypePerformance> loadPaymentTypePerformance(MapSqlParameterSource params) {
+        return jdbcTemplate.query(
+            """
+            SELECT
+                COALESCE(NULLIF(b.service_payment_type_snapshot::text, ''), 'ON_SITE') AS payment_type,
+                COUNT(*) AS total_bookings,
+                COALESCE(SUM(CASE WHEN b.status = 'CONFIRMED' THEN 1 ELSE 0 END), 0) AS confirmed_bookings,
+                COALESCE(SUM(CASE WHEN b.status = 'COMPLETED' THEN 1 ELSE 0 END), 0) AS completed_bookings,
+                COALESCE(SUM(CASE WHEN b.status = 'CANCELLED' THEN 1 ELSE 0 END), 0) AS cancelled_bookings,
+                COALESCE(SUM(CASE WHEN b.status <> 'CANCELLED' THEN COALESCE(b.service_price_snapshot, 0) ELSE 0 END), 0) AS estimated_revenue,
+                COALESCE(AVG(CASE WHEN b.status <> 'CANCELLED' THEN COALESCE(b.service_price_snapshot, 0) END), 0) AS average_ticket
+            FROM booking b
+            WHERE b.created_at >= :from AND b.created_at < :to
+            GROUP BY 1
+            ORDER BY total_bookings DESC, estimated_revenue DESC, payment_type ASC
+            """,
+            params,
+            (rs, rowNum) -> {
+                long totalBookings = rs.getLong("total_bookings");
+                long completedBookings = rs.getLong("completed_bookings");
+                long cancelledBookings = rs.getLong("cancelled_bookings");
+                return new InternalOpsAnalyticsResponse.PaymentTypePerformance(
+                    rs.getString("payment_type"),
+                    totalBookings,
+                    rs.getLong("confirmed_bookings"),
+                    completedBookings,
+                    cancelledBookings,
+                    roundRate(completedBookings, totalBookings),
+                    roundRate(cancelledBookings, totalBookings),
+                    roundMoney(rs.getDouble("estimated_revenue")),
+                    roundMoney(rs.getDouble("average_ticket"))
+                );
+            }
+        );
+    }
+
     private MapSqlParameterSource baseParams(LocalDateTime from, LocalDateTime to) {
         return new MapSqlParameterSource()
             .addValue("from", Timestamp.valueOf(from))
@@ -587,6 +846,7 @@ public class InternalOpsAnalyticsService {
 
     private record OverviewRow(
         long totalReservations,
+        long confirmedReservations,
         long completedReservations,
         long cancelledReservations,
         long noShowReservations,

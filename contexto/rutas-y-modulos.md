@@ -60,7 +60,7 @@ Base: `apps/web/src/pages`
 
 ### Rutas publicas
 
-- `/`: home SSR con hero + buscador unificado en variante simplificada, categorias visuales, top businesses, bloque editorial de `como funciona` en formato timeline de `4` pasos, ReviewsSection (testimonios publicos de feedback de app via `GET /public/app-feedback`) y CTA final; `Reservar ahora` deriva a `/explorar` y `Soy profesional` al registro existente `/profesional/auth/register`; usa `getServerSideProps` con retry client-side si SSR falla. El hero ahora arma una composicion superior `texto + visual` y ubica el buscador con ancho mas contenido en la columna izquierda, debajo del texto; la pieza visual es una sola card animada que rota automaticamente imagenes de todos los rubros publicos disponibles en `homeData.categories`, usando `category.imageUrl` cuando existe y placeholders SVG locales por slug/nombre como fallback, sin tocar la logica compartida del buscador. Las cards destacadas ya usan `banner` como media principal, `logo` superpuesto y fallback a foto real del negocio antes de cualquier placeholder.
+- `/`: home SSR con hero + buscador unificado en variante simplificada, categorias visuales, top businesses, bloque editorial de `como funciona` en formato timeline de `4` pasos, ReviewsSection (testimonios publicos de feedback de app via `GET /public/app-feedback`) y CTA final; `Reservar ahora` deriva a `/explorar` y `Soy profesional` al registro existente `/profesional/auth/register`; usa `getServerSideProps` con retry client-side si SSR falla. El hero ahora arma una composicion superior `texto + visual` y ubica la columna izquierda como `titulo/subtitulo -> buscador -> metricas`, con mas aire vertical entre buscador y stats para que no quede pegado a `Explorá por categoría`; la pieza visual es una sola card animada que rota automaticamente imagenes de todos los rubros publicos disponibles en `homeData.categories`, usando `category.imageUrl` cuando existe y placeholders SVG locales por slug/nombre como fallback, sin tocar la logica compartida del buscador. Las cards destacadas ya usan `banner` como media principal, `logo` superpuesto y fallback a foto real del negocio antes de cualquier placeholder.
 - `/explorar`: buscador principal con filtros, lista y mapa. Las cards de resultados ya comparten la misma jerarquía visual del home (`banner + logo`, fallback a foto real del negocio, placeholder elegante si no hay assets).
 - `/explorar/[slug]`: vista detallada de exploracion por slug.
 - `/profesional/[slug]`: pagina publica del profesional.
@@ -96,7 +96,7 @@ Lectura de producto:
 - `/explorar` ya usa la fecha como filtro real de disponibilidad y no solo como ordenador; `Disponible ahora` tambien se apoya en disponibilidad real
 - en la geoseleccion de `/explorar`, el frontend ya no persiste la direccion completa de Mapbox como `city` para backend; prioriza una ciudad/zona mas amplia y deja las coordenadas como filtro fuerte
 - al escribir manualmente en la barra de `/explorar`, si el usuario venia refinando una busqueda de `PROFESIONAL` o `LOCAL`, el frontend ya no pisa ese tipo automaticamente en cada tecla
-- home, dashboard cliente y `/explorar` ahora reutilizan exactamente la misma barra base de busqueda (`components/search/UnifiedSearchBar`) y tambien la misma presentacion visual del home: mismo shell hero, misma logica, mismos dropdowns y mismos contratos; en home convive arriba con un componente visual encapsulado `components/home/HomeHeroVisual` que muestra una sola card animada de rubros con `prefers-reduced-motion`, mientras `/explorar` conserva el refinamiento completo con chips activos dentro del mismo buscador
+- home, dashboard cliente y `/explorar` ahora reutilizan exactamente la misma barra base de busqueda (`components/search/UnifiedSearchBar`) y tambien la misma presentacion visual del home: mismo shell hero, mismos contratos y mismos dropdowns; la diferencia es que el home activa una prop especifica de la variante `hero` para expandir `Servicios` en desktop y compactar `Ubicacion/Fecha` a icono mientras ese campo queda activo, mientras `/explorar` conserva el refinamiento completo con chips activos dentro del mismo buscador sin esa animacion
 - `/profesional/pagina/[slug]` y `/profesional/[slug]` ahora separan mejor perfil y reserva: hero editorial con CTA liviano, servicios en lista compacta, galeria contenida, bloque unificado de ubicacion/horarios y reseñas; la operacion completa de reserva queda derivada a `/reservar`
 - `/auth/forgot-password` y `/auth/reset-password` ahora redirigen automaticamente al login correcto (`/cliente/auth/login` o `/profesional/auth/login`) segun el `role` que devuelve backend al completar el reset
 - `/cliente/auth/complete-phone` y `/profesional/auth/complete-phone` completan el telefono faltante despues de OAuth via `POST /auth/oauth/complete-phone`
@@ -256,14 +256,14 @@ Huecos relevantes contra el objetivo:
 
 - `/internal/feedback`: panel operativo exclusivo para feedback interno de app con listado filtrable, analytics y archivo/desarchivo; protegido por token interno configurable desde localStorage, no por sesion de usuario; `<meta name="robots" content="noindex,nofollow" />`
 - `/internal/ops/reviews`: superficie interna dedicada a moderacion de reseñas publicas y reportes; lista paginada, analytics, badges de reportes y acciones de hide/show del texto; protegida por el mismo `X-Internal-Token`
-- `/internal/ops/analytics`: tablero interno de negocio y marketplace para el equipo de Plura; consume un resumen agregado desde `/internal/ops/analytics/summary` y muestra reservas, facturacion estimada, rubros, funnel `search -> profile -> reserva`, retencion, ciudades, horarios y top profesionales; en web ya no pide token manual para esta superficie: exige sesion cliente y habilita acceso solo a la cuenta interna `admin@surlogicuy.com`, con redirect al login cliente si falta sesion
+- `/internal/ops/analytics`: tablero interno de negocio y marketplace para el equipo de Plura; consume un resumen agregado desde `/internal/ops/analytics/summary` y ahora muestra tambien funnel completo de reserva (`search -> profile -> flujo -> submit -> booking -> checkout -> confirmacion -> completion`), comparativa por plataforma (`WEB/MOBILE/INTERNAL`) y mix por modalidad de pago; en web ya no pide token manual para esta superficie: exige sesion cliente y habilita acceso solo a la cuenta interna `admin@surlogicuy.com`, con redirect al login cliente si falta sesion
 
 Modulos relevantes:
 
 - `services/internalOps.ts`: cliente HTTP con `X-Internal-Token` y URL base configurables desde localStorage
 - `pages/internal/feedback.tsx`: pagina completa con configuracion, analytics, filtros y tabla de feedback de app; enlaza a la superficie separada de reseñas
 - `pages/internal/ops/reviews.tsx`: pagina completa de moderacion de reseñas para internal ops; consume `/internal/ops/reviews*`, muestra reportes y mantiene hide/show del texto
-- `pages/internal/ops/analytics.tsx`: pagina completa del tablero interno de negocio; ordena `overview`, rubros, servicios, funnel, retencion, demanda, ciudades y profesionales top sin exponer esos datos en la UX del cliente o del profesional
+- `pages/internal/ops/analytics.tsx`: pagina completa del tablero interno de negocio; ordena `overview`, funnel completo de reserva, rubros, servicios, plataformas, mix de pago, retencion, demanda, ciudades y profesionales top sin exponer esos datos en la UX del cliente o del profesional
 
 ### Modulos transversales web
 
@@ -276,7 +276,7 @@ Modulos relevantes:
 - `hooks/useClientProfile.ts`: perfil del cliente autenticado.
 - `services/search.ts`: integra search y suggest.
 - `services/geo.ts`: geocoding y autocomplete.
-- `services/api.ts`: auth, refresh y headers de plataforma `WEB`.
+- `services/api.ts`: auth, refresh y headers de plataforma `WEB`; ahora tambien adjunta `X-Plura-Analytics-Session-Id` en requests client-side para correlacionar discovery + funnel de reserva.
 - `services/session.ts`: mantiene fallback token y un `known session hint` en storage para no disparar refresh/autofetch en rutas publicas cuando no hay sesion confirmada.
 - `hooks/useAuthLogout.ts` + `context/LogoutTransitionContext.tsx`: cierre de sesion unificado con overlay global y redireccion por rol.
 - `lib/auth/sessionErrors.ts`: clasifica `401/403` de auth aparte de errores transitorios para que la web no fuerce logout por fallas de red o `5xx`.
@@ -286,6 +286,7 @@ Modulos relevantes:
 - `/oauth/mercadopago/callback`: ahora interpreta `result/reason` devueltos por el backend y consulta el estado real de conexion; ya no intenta llamar al callback backend con `code/state`.
 - `pages/profesional/pagina/[slug].tsx`: compone la pagina publica con hero premium, CTA liviano hacia `/reservar`, servicios en lista compacta, galeria contenida, bloque unificado de ubicacion/horarios y reseñas; reutiliza el fetch cacheado del perfil publico y posterga geocoding fallback + mapa hasta que el bloque entra en viewport.
 - `pages/reservar.tsx`: orquestador del flujo publico de reserva en `5` pasos reales; mantiene los mismos servicios/endpoints (`public profile`, `slots`, `create booking`, `payment-session`), compatibilidad con `pendingReservation` y la derivacion a `/cliente/reservas` para seguimiento post-creacion/post-checkout.
+- `pages/reservar.tsx`: ademas del flujo operativo, ahora emite eventos internos del funnel (`RESERVATION_STEP_VIEWED`, servicio/fecha/horario confirmados, auth abierto/completado, submit, checkout bloqueado) hacia `POST /public/product-analytics/events` sin afectar la UX si el tracking falla.
 - `components/reservation/ReservationFlowHeader.tsx`: encabezado del flujo con resumen del profesional, progreso por pasos y servicio activo.
 - `components/reservation/ReservationServiceSelector.tsx`: paso `1`; muestra el servicio elegido con su detalle completo y deja editar/cancelar o abrir el selector interno por categoria.
 - `components/reservation/ReservationScheduleStep.tsx`: pasos `2` y `3`; separa en modo calendario (`dia`) y modo horarios (`time`) para no mezclar fecha con slots en la misma vista.
@@ -302,7 +303,7 @@ Modulos relevantes:
 Lectura de producto:
 
 - search + mapa sostienen marketplace y descubrimiento
-- el repo ahora ya expone un backoffice interno de analytics separado de la experiencia de cliente/profesional: vive en `/internal/ops/analytics` y se apoya en agregados propios de reservas/pagos/reseñas mas tracking server-side de `search` y `profile view`
+- el repo ahora ya expone un backoffice interno de analytics separado de la experiencia de cliente/profesional: vive en `/internal/ops/analytics` y se apoya en agregados propios de reservas/pagos/reseñas mas tracking interno de marketplace y funnel de reserva persistido en `app_product_event`
 - `middleware.ts` y `services/api.ts` sostienen parte del bloque core de autenticacion y seguridad
 - en rutas protegidas web, un fallo transitorio al refrescar sesion o cargar `/auth/me/*` ya no limpia la sesion local ni redirige a login; la redireccion queda reservada a `401/403` reales
 - `_app.tsx` mantiene globales los providers de perfil, pero ahora monta por ruta los providers de notificaciones y del shell profesional con cambios sin guardar solo en dashboard/notificaciones para bajar costo base fuera de esas superficies; ademas las campanas de notificaciones del shell difieren la primera carga del unread count hasta interaccion o idle en vez de pedirlo apenas monta la vista; los hooks de perfil ya no fuerzan un refetch extra cuando el provider aun no termino su carga inicial
@@ -315,7 +316,7 @@ Base: `apps/mobile/app`
 
 - `app/index.tsx`: si hay sesion profesional redirige a `/dashboard`, si hay sesion cliente redirige a `/(tabs)` y si no hay sesion muestra una portada mobile con logo Plura y CTAs `Iniciar como cliente` / `Iniciar como profesional`.
 - `app/_layout.tsx`: monta `ProfessionalProfileProvider` y stack principal.
-- el logout mobile ya vuelve siempre a `/` para reusar esa portada inicial; no redirige directo a `/(auth)/login`
+- el logout mobile ahora deriva al login correcto por rol activo (`/(auth)/login-client` o `/(auth)/login-professional`) para no mezclar los accesos despues de limpiar sesion
 
 ### Grupo `(tabs)`
 
@@ -353,11 +354,13 @@ Lectura de producto:
 
 - cubre autenticacion base con flujos separados por rol (cliente y profesional)
 - login y registro por rol ya combinan credenciales propias y Google sobre el mismo backend `auth`
+- al completar login o OAuth, cliente y profesional ya salen por rutas distintas: cliente retoma `pendingReservation` o cae en `/(tabs)/dashboard`, mientras profesional entra directo a `/dashboard`
 - `src/hooks/useGoogleOAuth` usa `@react-native-google-signin/google-signin` en Android para abrir el selector nativo de cuentas y pedir `idToken` con `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID`; en iOS/web mantiene `expo-auth-session`; sigue requiriendo development build fuera de `Expo Go`
 - `/(auth)/forgot-password` ya replica la recuperacion web por `email -> telefono -> codigo` sobre `/auth/password/recovery/*`
 - `/(auth)/complete-phone-client` y `/(auth)/complete-phone-professional` completan el telefono faltante despues de OAuth via `POST /auth/oauth/complete-phone`
 - `/(auth)/reset-password` ahora tambien redirige al login especifico del rol (`/(auth)/login-client` o `/(auth)/login-professional`) cuando backend confirma el cambio de contraseña
 - `/(auth)/register-client` y `/(auth)/register-professional` ya usan selector internacional de telefono con bandera + codigo y envian el numero final listo para backend
+- `ProfessionalProfileContext` ya no hace doble fetch secuencial `profesional -> cliente` en cada refresh: usa el `role` del access token para pedir solo `/auth/me/profesional` o `/auth/me/cliente`, y reutiliza un unico refresh en vuelo cuando varias pantallas vuelven a foco al mismo tiempo
 
 ### Grupo `dashboard`
 

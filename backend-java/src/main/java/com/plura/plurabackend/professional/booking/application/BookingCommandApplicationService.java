@@ -1,5 +1,6 @@
 package com.plura.plurabackend.professional.booking.application;
 
+import com.plura.plurabackend.core.analytics.tracking.AppProductEventTrackingService;
 import com.plura.plurabackend.core.booking.actions.BookingActionsEvaluation;
 import com.plura.plurabackend.core.booking.actions.BookingActionsEvaluator;
 import com.plura.plurabackend.core.booking.actions.model.BookingActionActor;
@@ -85,6 +86,7 @@ public class BookingCommandApplicationService {
     private final BookingCommandResponseAssembler bookingCommandResponseAssembler;
     private final BookingCommandStateSupport bookingCommandStateSupport;
     private final BookingNotificationIntegrationService bookingNotificationIntegrationService;
+    private final AppProductEventTrackingService appProductEventTrackingService;
     private final MeterRegistry meterRegistry;
     private final PasswordEncoder passwordEncoder;
     private final ZoneId systemZoneId;
@@ -107,6 +109,7 @@ public class BookingCommandApplicationService {
         BookingCommandResponseAssembler bookingCommandResponseAssembler,
         BookingCommandStateSupport bookingCommandStateSupport,
         BookingNotificationIntegrationService bookingNotificationIntegrationService,
+        AppProductEventTrackingService appProductEventTrackingService,
         MeterRegistry meterRegistry,
         PasswordEncoder passwordEncoder,
         @Value("${app.timezone:America/Montevideo}") String appTimezone
@@ -128,6 +131,7 @@ public class BookingCommandApplicationService {
         this.bookingCommandResponseAssembler = bookingCommandResponseAssembler;
         this.bookingCommandStateSupport = bookingCommandStateSupport;
         this.bookingNotificationIntegrationService = bookingNotificationIntegrationService;
+        this.appProductEventTrackingService = appProductEventTrackingService;
         this.meterRegistry = meterRegistry;
         this.passwordEncoder = passwordEncoder;
         this.systemZoneId = ZoneId.of(appTimezone);
@@ -138,7 +142,8 @@ public class BookingCommandApplicationService {
         String slug,
         PublicBookingRequest request,
         String rawUserId,
-        String sourcePlatform
+        String sourcePlatform,
+        String analyticsSessionId
     ) {
         Timer.Sample sample = Timer.start(meterRegistry);
         try {
@@ -199,6 +204,11 @@ public class BookingCommandApplicationService {
                     "servicePaymentType", saved.getServicePaymentTypeSnapshot().name()
                 )
             );
+            appProductEventTrackingService.trackBookingCreated(
+                sourcePlatform,
+                analyticsSessionId,
+                saved
+            );
             if (saved.getServicePaymentTypeSnapshot() == ServicePaymentType.ON_SITE) {
                 bookingNotificationIntegrationService.recordBookingCreated(
                     saved,
@@ -248,7 +258,8 @@ public class BookingCommandApplicationService {
             profile.getSlug(),
             bookingRequest,
             String.valueOf(clientUserId),
-            "INTERNAL"
+            "INTERNAL",
+            null
         );
         Booking booking = bookingRepository.findById(created.getId())
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Reserva no encontrada"));
@@ -259,6 +270,12 @@ public class BookingCommandApplicationService {
             bookingEventService.record(
                 booking,
                 BookingEventType.BOOKING_CONFIRMED,
+                BookingActorType.PROFESSIONAL,
+                profile.getUser().getId(),
+                Map.of("source", "manual_professional_booking")
+            );
+            appProductEventTrackingService.trackBookingConfirmed(
+                booking,
                 BookingActorType.PROFESSIONAL,
                 profile.getUser().getId(),
                 Map.of("source", "manual_professional_booking")
@@ -334,6 +351,12 @@ public class BookingCommandApplicationService {
             client.getId(),
             buildCancellationEventPayload(saved, previousStatus, decision, request)
         );
+        appProductEventTrackingService.trackBookingCancelled(
+            saved,
+            BookingActorType.CLIENT,
+            client.getId(),
+            buildCancellationEventPayload(saved, previousStatus, decision, request)
+        );
         bookingNotificationIntegrationService.recordBookingCancelled(
             saved,
             BookingActorType.CLIENT,
@@ -386,6 +409,12 @@ public class BookingCommandApplicationService {
         bookingEventService.record(
             saved,
             BookingEventType.BOOKING_CANCELLED,
+            BookingActorType.PROFESSIONAL,
+            profile.getUser().getId(),
+            buildCancellationEventPayload(saved, previousStatus, decision, request)
+        );
+        appProductEventTrackingService.trackBookingCancelled(
+            saved,
             BookingActorType.PROFESSIONAL,
             profile.getUser().getId(),
             buildCancellationEventPayload(saved, previousStatus, decision, request)
@@ -507,6 +536,16 @@ public class BookingCommandApplicationService {
                 "decisionId", decision.getId()
             )
         );
+        appProductEventTrackingService.trackBookingNoShow(
+            saved,
+            BookingActorType.PROFESSIONAL,
+            profile.getUser().getId(),
+            Map.of(
+                "previousStatus", previousStatus.name(),
+                "nextStatus", saved.getOperationalStatus().name(),
+                "decisionId", decision.getId()
+            )
+        );
         bookingNotificationIntegrationService.recordBookingNoShow(
             saved,
             BookingActorType.PROFESSIONAL,
@@ -566,6 +605,16 @@ public class BookingCommandApplicationService {
         bookingEventService.record(
             saved,
             BookingEventType.BOOKING_COMPLETED,
+            BookingActorType.PROFESSIONAL,
+            profile.getUser().getId(),
+            Map.of(
+                "previousStatus", previousStatus.name(),
+                "nextStatus", saved.getOperationalStatus().name(),
+                "decisionId", decision.getId()
+            )
+        );
+        appProductEventTrackingService.trackBookingCompleted(
+            saved,
             BookingActorType.PROFESSIONAL,
             profile.getUser().getId(),
             Map.of(
@@ -680,6 +729,20 @@ public class BookingCommandApplicationService {
         bookingEventService.record(
             saved,
             BookingEventType.BOOKING_RESCHEDULED,
+            actorType,
+            actorUserId,
+            Map.of(
+                "previousStartDateTime", previousStartDateTime.toString(),
+                "nextStartDateTime", nextStartDateTime.toString(),
+                "previousTimezone", previousTimezone,
+                "nextTimezone", nextTimezone,
+                "rescheduleCountBefore", previousRescheduleCount,
+                "rescheduleCountAfter", saved.getRescheduleCount(),
+                "decisionId", decision.getId()
+            )
+        );
+        appProductEventTrackingService.trackBookingRescheduled(
+            saved,
             actorType,
             actorUserId,
             Map.of(
@@ -983,6 +1046,44 @@ public class BookingCommandApplicationService {
                 "timezone", booking.getTimezone()
             )
         );
+        Map<String, Object> trackingMetadata = new LinkedHashMap<>();
+        trackingMetadata.put("previousStatus", previousStatus == null ? null : previousStatus.name());
+        trackingMetadata.put("nextStatus", booking.getOperationalStatus().name());
+        trackingMetadata.put("timezone", booking.getTimezone());
+        switch (eventType) {
+            case BOOKING_CREATED -> appProductEventTrackingService.trackBookingCreated(
+                booking.getSourcePlatformSnapshot(),
+                null,
+                booking
+            );
+            case BOOKING_CONFIRMED -> appProductEventTrackingService.trackBookingConfirmed(
+                booking,
+                BookingActorType.PROFESSIONAL,
+                actorUserId,
+                trackingMetadata
+            );
+            case BOOKING_CANCELLED -> appProductEventTrackingService.trackBookingCancelled(
+                booking,
+                BookingActorType.PROFESSIONAL,
+                actorUserId,
+                trackingMetadata
+            );
+            case BOOKING_COMPLETED -> appProductEventTrackingService.trackBookingCompleted(
+                booking,
+                BookingActorType.PROFESSIONAL,
+                actorUserId,
+                trackingMetadata
+            );
+            case BOOKING_NO_SHOW_MARKED -> appProductEventTrackingService.trackBookingNoShow(
+                booking,
+                BookingActorType.PROFESSIONAL,
+                actorUserId,
+                trackingMetadata
+            );
+            case BOOKING_RESCHEDULED, BOOKING_FINANCIAL_RECOMPUTED, BOOKING_FINANCIAL_RECONCILED,
+                BOOKING_REFUND_RETRY_REQUESTED, BOOKING_PAYOUT_RETRY_REQUESTED -> {
+            }
+        }
         switch (eventType) {
             case BOOKING_CREATED -> bookingNotificationIntegrationService.recordBookingCreated(
                 booking,

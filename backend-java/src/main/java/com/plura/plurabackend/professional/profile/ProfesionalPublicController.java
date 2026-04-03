@@ -34,6 +34,7 @@ public class ProfesionalPublicController {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ProfesionalPublicController.class);
     private static final String BOOKING_SLOT_CONSTRAINT = "uq_professional_start";
+    private static final String ANALYTICS_SESSION_HEADER = AppProductEventTrackingService.ANALYTICS_SESSION_HEADER;
     private final ProfessionalPublicPageService professionalPublicPageService;
     private final AppProductEventTrackingService appProductEventTrackingService;
 
@@ -59,10 +60,17 @@ public class ProfesionalPublicController {
     @GetMapping("/{slug}")
     public ProfesionalPublicPageResponse getProfesionalBySlug(
         @PathVariable String slug,
-        @RequestHeader(value = "X-Plura-Client-Platform", required = false) String clientPlatform
+        @RequestHeader(value = "X-Plura-Client-Platform", required = false) String clientPlatform,
+        @RequestHeader(value = ANALYTICS_SESSION_HEADER, required = false) String analyticsSessionId,
+        Authentication authentication
     ) {
         ProfesionalPublicPageResponse response = professionalPublicPageService.getPublicPageBySlug(slug);
-        appProductEventTrackingService.trackProfessionalProfileView(clientPlatform, response);
+        appProductEventTrackingService.trackProfessionalProfileView(
+            clientPlatform,
+            analyticsSessionId,
+            resolveAuthenticatedUserId(authentication),
+            response
+        );
         return response;
     }
 
@@ -80,6 +88,7 @@ public class ProfesionalPublicController {
         @PathVariable String slug,
         @Valid @RequestBody PublicBookingRequest request,
         @RequestHeader(value = "X-Plura-Client-Platform", required = false) String clientPlatform,
+        @RequestHeader(value = ANALYTICS_SESSION_HEADER, required = false) String analyticsSessionId,
         Authentication authentication
     ) {
         if (
@@ -96,7 +105,8 @@ public class ProfesionalPublicController {
                 slug,
                 request,
                 authentication.getPrincipal().toString(),
-                clientPlatform
+                clientPlatform,
+                analyticsSessionId
             );
             return ResponseEntity.status(HttpStatus.CREATED).body(response);
         } catch (DataIntegrityViolationException exception) {
@@ -146,6 +156,20 @@ public class ProfesionalPublicController {
             current = current.getCause();
         }
         return false;
+    }
+
+    private Long resolveAuthenticatedUserId(Authentication authentication) {
+        if (authentication == null
+            || !authentication.isAuthenticated()
+            || authentication instanceof AnonymousAuthenticationToken
+            || authentication.getPrincipal() == null) {
+            return null;
+        }
+        try {
+            return Long.valueOf(authentication.getPrincipal().toString());
+        } catch (NumberFormatException exception) {
+            return null;
+        }
     }
 
     private String resolveIntegrityErrorMessage(DataIntegrityViolationException exception) {

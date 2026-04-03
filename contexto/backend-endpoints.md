@@ -133,7 +133,7 @@ Lectura de producto:
 
 - cubre marketplace, buscador y filtros
 - tambien cubre ubicacion, direccion y mapa
-- `GET /api/search` ahora tambien registra un evento interno liviano `SEARCH_PERFORMED` en `app_product_event` para analytics de producto y funnel; el tracking corre server-side para web y mobile usando `X-Plura-Client-Platform`, y solo cuenta la primera pagina de resultados
+- `GET /api/search` ahora tambien registra un evento interno liviano `SEARCH_PERFORMED` en `app_product_event` para analytics de producto y funnel; el tracking corre server-side para web y mobile usando `X-Plura-Client-Platform`, acepta tambien `X-Plura-Analytics-Session-Id` para correlacionar sesiones anonimas del funnel y solo cuenta la primera pagina de resultados
 - `/api/search`, `/api/search/suggest` y `/api/geo/*` deben seguir funcionando sin login incluso si el browser manda credenciales auth viejas; el filtro JWT no debe bloquear exploracion publica por ese motivo
 
 ### Profesionales publicos
@@ -145,6 +145,7 @@ Prefijo: `/public/profesionales`
 - `GET /public/profesionales/{slug}/slots`
 - `POST /public/profesionales/{slug}/reservas`
 - `GET /public/profesionales/{slug}/reviews` — listado paginado de reseñas publicas (text null si oculto por profesional o internal ops)
+- `POST /public/product-analytics/events` — endpoint publico y liviano para eventos del funnel web de reserva; hoy acepta `RESERVATION_STEP_VIEWED`, `RESERVATION_SERVICE_CONFIRMED`, `RESERVATION_DATE_CONFIRMED`, `RESERVATION_TIME_SELECTED`, `RESERVATION_AUTH_OPENED`, `RESERVATION_AUTH_COMPLETED`, `RESERVATION_SUBMIT_ATTEMPTED` y `PAYMENT_CHECKOUT_BLOCKED`
 
 ### Feedback publico de app
 
@@ -163,7 +164,8 @@ Lectura de producto:
 - circuito publico central del MVP
 - soporta perfil publico, disponibilidad real y reserva sin pasar por panel privado
 - es la base de `Usuario` y del valor visible de `Free`
-- `GET /public/profesionales/{slug}` ahora tambien registra un evento interno `PROFESSIONAL_PROFILE_VIEWED` en `app_product_event` para analytics de producto; el tracking se hace en backend y reutiliza `X-Plura-Client-Platform`
+- `GET /public/profesionales/{slug}` ahora tambien registra un evento interno `PROFESSIONAL_PROFILE_VIEWED` en `app_product_event` para analytics de producto; el tracking se hace en backend, reutiliza `X-Plura-Client-Platform` y toma `X-Plura-Analytics-Session-Id` cuando existe para unir exploracion con el funnel de reserva
+- `POST /public/profesionales/{slug}/reservas` ahora sigue registrando la reserva operativa normal y ademas persiste `BOOKING_CREATED` en `app_product_event`; si la web manda `X-Plura-Analytics-Session-Id`, ese evento queda unido a la misma sesion anonima del funnel
 - `GET /public/profesionales/{slug}` mantiene cache de perfil publico y ahora registra timing tecnico. Devuelve `rating` y `reviewsCount` reales
 - `GET /public/profesionales/{slug}` ahora devuelve también `logoMedia` y `bannerMedia` con `{ positionX, positionY, zoom }` para reproducir el encuadre persistido de identidad visual en frontend
 - `GET /public/profesionales/{slug}` ordena `photos` priorizando primero la galería pública del negocio (`LOCAL/WORK` y fallback `publicPhotos`) y recién después las fotos de servicios para que la sección de galería no repita primero assets ya visibles dentro de cada servicio
@@ -493,12 +495,13 @@ Lectura de producto:
 
 Prefijo: `/internal/ops/analytics`
 
-- `GET /internal/ops/analytics/summary` — resumen agregado para backoffice interno con rango opcional `from/to`; devuelve overview, performance por rubro, servicios top, funnel por rubro (`searches -> profile views -> reservations`), retencion/recompra, demanda por dia/hora, ciudades y top profesionales
+- `GET /internal/ops/analytics/summary` — resumen agregado para backoffice interno con rango opcional `from/to`; devuelve overview, funnel completo de reserva, performance por rubro, servicios top, funnel por rubro (`searches -> profile views -> reservations`), retencion/recompra, demanda por dia/hora, ciudades, top profesionales, comparativa por plataforma y mix por modalidad de pago
 
 Lectura de producto:
 
 - no es analytics para cliente ni profesional; es un tablero interno exclusivo para el equipo de Plura
 - mezcla datos transaccionales de `booking`, `available_slot`, `professional_profile` y `booking_review` con eventos funcionales server-side persistidos en `app_product_event`
+- los eventos persistidos hoy ya no son solo de discovery: tambien cubren el flujo publico `/reservar`, creacion de booking, inicio de checkout y cambios clave del ciclo de vida (`BOOKING_CONFIRMED`, `BOOKING_CANCELLED`, `BOOKING_RESCHEDULED`, `BOOKING_COMPLETED`, `BOOKING_NO_SHOW`)
 - permite responder dentro del producto interno preguntas como `que rubros se mueven mas`, `que ciudades convierten mejor`, `que servicios reservan mas` y `quienes son los profesionales top`
 - para este endpoint puntual, backend acepta dos formas de acceso: `X-Internal-Token` como backoffice tecnico o sesion autenticada de cliente para el email interno `admin@surlogicuy.com`; esto habilita la web `/internal/ops/analytics` sin exponer token en el navegador
 

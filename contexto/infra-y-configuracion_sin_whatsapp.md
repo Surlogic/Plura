@@ -163,9 +163,10 @@ Notas reales de binding local:
 - `backend-java/fly.toml` ya fija los env no secretos principales para Fly (`APP_PUBLIC_WEB_URL`, `CORS_ALLOWED_ORIGINS`, cookies auth, SMTP habilitado, storage `r2`, billing base y redirects OAuth/callback de Mercado Pago); los secretos sensibles siguen yendo por `fly secrets`
 - para evitar desalineos entre placeholders de `application.yml` y beans que leen propiedades ya resueltas (`SecurityConfig`, `CookieOriginProtectionFilter`, rate limiting), `backend-java/fly.toml` expone tambien `APP_CORS_ALLOWED_ORIGINS` y `APP_SECURITY_TRUST_FORWARDED_HEADERS` ademas de los aliases legacy/no anidados; esto corrige preflights CORS reales contra `https://plura-web-a6ka.vercel.app`
 - el backend acepta `X-Internal-Token` dentro de los headers CORS permitidos; esto es obligatorio para usar desde web los paneles internos `/internal/ops/*` (feedback, reviews, analytics) sin que falle el preflight
+- el backend ahora tambien acepta `X-Plura-Analytics-Session-Id` dentro de los headers CORS permitidos; web lo manda en requests client-side para correlacionar search, profile, funnel de `/reservar` y `BOOKING_CREATED` dentro de una misma sesion anonima
 - cuando Fly muestra `Proxy not finding machines to route requests` para este backend, el primer chequeo no deberia ser el puerto: el codigo ya expone `server.address=0.0.0.0` y `server.port=${PORT:3000}`; el fallo mas probable pasa por machine caida, `healthcheck` sin pasar o secrets faltantes de DB/JWT/R2
 - el repo ahora incluye `backend-java/scripts/check_fly_runtime_env.sh` para validar desde shell las variables minimas de arranque segun el `fly.toml` actual y separar faltantes fatales de advertencias operativas
-- la secuencia real de migraciones Flyway del backend llega a `V64`; `V64__search_card_branding_media.sql` corrige una colision previa con `V62` que hacia caer el startup antes de bindear el puerto
+- la secuencia real de migraciones Flyway del backend llega a `V66`; `V66__app_product_event_funnel_fields.sql` amplia `app_product_event` con `booking_id`, `user_id`, `session_id` y `step_name` para reporting interno mas fino del funnel
 - el repo ahora incluye `backend-java/src/test/java/com/plura/plurabackend/db/FlywayMigrationVersionUniquenessTest.java` para detectar versiones Flyway duplicadas antes de romper un deploy
 - el backend mantiene fallback a los nombres legacy `BILLING_MERCADOPAGO_ACCESS_TOKEN`, `BILLING_MERCADOPAGO_WEBHOOK_SECRET` y `BILLING_MERCADOPAGO_OAUTH_*`, pero el naming operativo recomendado ya es explicito por dominio: `SUBSCRIPTIONS_*` para planes y `RESERVATIONS_*` para cobros/OAuth profesional
 - para OAuth de Mercado Pago el error de `state` ya no implica adivinar secretos: el backend espera primero `BILLING_MERCADOPAGO_RESERVATIONS_OAUTH_STATE_SIGNING_SECRET`, y si no existe hace fallback a la clave de cifrado o al client secret
@@ -225,7 +226,7 @@ Infra actual detectada:
 
 - Prometheus y Actuator para observabilidad tecnica
 - Micrometer ya registra timings utiles en search y ahora tambien en public profile, public slots, client bookings, notification inbox y unread count
-- tracking funcional interno en PostgreSQL via tabla `app_product_event` para `SEARCH_PERFORMED` y `PROFESSIONAL_PROFILE_VIEWED`, persistido server-side desde los endpoints publicos ya existentes
+- tracking funcional interno en PostgreSQL via tabla `app_product_event`; ademas de `SEARCH_PERFORMED` y `PROFESSIONAL_PROFILE_VIEWED`, ahora persiste eventos del funnel web de `/reservar`, `BOOKING_CREATED`, `PAYMENT_SESSION_CREATED` y cambios clave de lifecycle como `BOOKING_CONFIRMED`, `BOOKING_CANCELLED`, `BOOKING_RESCHEDULED`, `BOOKING_COMPLETED` y `BOOKING_NO_SHOW`
 - snapshots adicionales en `booking` (`serviceCategory*`, `professionalRubro/City/Country`, `sourcePlatform`) para que el reporting interno no dependa de joins inestables contra estado actual del servicio o del perfil
 
 Pendiente a nivel de producto:
@@ -283,6 +284,8 @@ Lectura de producto:
 - mobile ahora tambien depende de `expo-location` y `expo-notifications` para pedir permisos nativos de ubicacion y notificaciones
 - `app.json` ya declara el plugin `expo-location` con texto de permiso foreground y habilita `expo-notifications` para el permiso del sistema en runtime
 - el estado local de permiso push se persiste hoy junto con preferencias del cliente en storage seguro; aun no existe variable/env ni endpoint backend adicional para registrar device tokens
+- el bootstrap auth mobile ya usa el `role` embebido en el JWT para resolver el endpoint correcto de `/auth/me/*`; eso evita un request extra por refresh para cuentas cliente y reduce el costo cuando varias pantallas disparan `refreshProfile` en paralelo
+- el request de `POST /auth/refresh` en mobile ya no reenvia el access token vencido en `Authorization`; manda solo headers de plataforma/sesion y el `refreshToken` en body
 - `apps/mobile/eas.json` ya fija `environment` por profile (`development`, `preview`, `production`) para que EAS Build tome las variables correctas sin depender de `--environment`; ademas `preview` fuerza `android.buildType=apk` para pruebas instalables fuera de store
 
 ### Backend
@@ -327,7 +330,7 @@ Notas operativas de performance hoy:
 
 - `GET /cliente/reservas/me` queda mejor cubierto con el indice Flyway `idx_booking_user_start` sobre `booking(user_id, start_date_time)`
 - search, perfil publico, slots, inbox y unread ya tienen timings tecnicos listos para enganchar a dashboards
-- `V65__internal_ops_business_analytics.sql` agrega la tabla `app_product_event` mas indices de reporting en `booking`; esto habilita analytics internos sin depender de proveedor externo para la base inicial del funnel
+- `V65__internal_ops_business_analytics.sql` agrega la tabla `app_product_event` mas indices de reporting en `booking`; `V66__app_product_event_funnel_fields.sql` la amplia con ids/sesion/paso para dejar de mirar solo discovery y poder leer el funnel completo de reserva sin depender de proveedor externo
 - `QUERY_COUNT_HEADER_ENABLED=true` expone `X-Plura-Sql-Query-Count` para requests HTTP y cuenta sentencias Hibernate/JPA por request; no cubre consultas JDBC directas como search o el nuevo inbox read path
 - `V50__scale_hardening_indexes.sql` limpia indices sin uso claro en `email_dispatch`, `provider_operation` y `booking`, y agrega cobertura para lecturas por `provider_operation(status, updated_at|lease_until)` y `payment_transaction(external_reference, created_at)`
 - `provider_operation.findDueOperations()` ahora evita leer operaciones con `lease_until` todavia activo, para bajar churn del worker bajo concurrencia

@@ -61,6 +61,16 @@ public class ProfessionalPublicPageService {
         return bookingService.createPublicBooking(slug, request, rawUserId, sourcePlatform);
     }
 
+    public PublicBookingResponse createPublicBooking(
+        String slug,
+        PublicBookingRequest request,
+        String rawUserId,
+        String sourcePlatform,
+        String analyticsSessionId
+    ) {
+        return bookingService.createPublicBooking(slug, request, rawUserId, sourcePlatform, analyticsSessionId);
+    }
+
     public List<ProfessionalBookingResponse> getProfessionalBookings(
         String rawUserId,
         String rawDate,

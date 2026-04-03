@@ -186,6 +186,7 @@ type InternalOpsAnalyticsOverview = {
   from: string;
   to: string;
   totalReservations: number;
+  confirmedReservations: number;
   completedReservations: number;
   cancelledReservations: number;
   noShowReservations: number;
@@ -193,6 +194,29 @@ type InternalOpsAnalyticsOverview = {
   averageTicket: number;
   totalSearches: number;
   totalProfileViews: number;
+};
+
+type InternalOpsAnalyticsReservationFunnel = {
+  searches: number;
+  profileViews: number;
+  reservationFlowSessions: number;
+  serviceConfirmedSessions: number;
+  dateConfirmedSessions: number;
+  timeSelectedSessions: number;
+  reviewSessions: number;
+  confirmSessions: number;
+  authOpenedSessions: number;
+  authCompletedSessions: number;
+  submitAttemptedSessions: number;
+  bookingsCreated: number;
+  paymentSessions: number;
+  bookingsConfirmed: number;
+  bookingsCompleted: number;
+  profileToFlowRate: number;
+  flowToSubmitRate: number;
+  submitToBookingRate: number;
+  bookingToConfirmationRate: number;
+  bookingToCompletionRate: number;
 };
 
 type InternalOpsAnalyticsCategoryPerformance = {
@@ -269,8 +293,35 @@ type InternalOpsAnalyticsProfessionalPerformance = {
   reviewsCount: number;
 };
 
+type InternalOpsAnalyticsPlatformPerformance = {
+  platform: string;
+  searches: number;
+  profileViews: number;
+  reservationFlowSessions: number;
+  bookings: number;
+  confirmedBookings: number;
+  completedBookings: number;
+  cancelledBookings: number;
+  noShowBookings: number;
+  searchToBookingRate: number;
+  bookingToCompletionRate: number;
+};
+
+type InternalOpsAnalyticsPaymentTypePerformance = {
+  paymentType: string;
+  totalBookings: number;
+  confirmedBookings: number;
+  completedBookings: number;
+  cancelledBookings: number;
+  completionRate: number;
+  cancellationRate: number;
+  estimatedRevenue: number;
+  averageTicket: number;
+};
+
 type InternalOpsAnalyticsSummary = {
   overview: InternalOpsAnalyticsOverview;
+  reservationFunnel: InternalOpsAnalyticsReservationFunnel;
   categoryPerformance: InternalOpsAnalyticsCategoryPerformance[];
   servicePerformance: InternalOpsAnalyticsServicePerformance[];
   funnelByCategory: InternalOpsAnalyticsFunnelByCategory[];
@@ -279,10 +330,13 @@ type InternalOpsAnalyticsSummary = {
   demandByHour: InternalOpsAnalyticsDemandPoint[];
   cityPerformance: InternalOpsAnalyticsCityPerformance[];
   professionalPerformance: InternalOpsAnalyticsProfessionalPerformance[];
+  platformPerformance: InternalOpsAnalyticsPlatformPerformance[];
+  paymentTypePerformance: InternalOpsAnalyticsPaymentTypePerformance[];
 };
 
 export type {
   InternalOpsAnalyticsOverview,
+  InternalOpsAnalyticsReservationFunnel,
   InternalOpsAnalyticsCategoryPerformance,
   InternalOpsAnalyticsServicePerformance,
   InternalOpsAnalyticsFunnelByCategory,
@@ -290,6 +344,8 @@ export type {
   InternalOpsAnalyticsDemandPoint,
   InternalOpsAnalyticsCityPerformance,
   InternalOpsAnalyticsProfessionalPerformance,
+  InternalOpsAnalyticsPlatformPerformance,
+  InternalOpsAnalyticsPaymentTypePerformance,
   InternalOpsAnalyticsSummary,
 };
 

@@ -59,6 +59,18 @@ public class AppProductEvent {
     @Column(name = "service_id", length = 36)
     private String serviceId;
 
+    @Column(name = "booking_id")
+    private Long bookingId;
+
+    @Column(name = "user_id")
+    private Long userId;
+
+    @Column(name = "session_id", length = 120)
+    private String sessionId;
+
+    @Column(name = "step_name", length = 60)
+    private String stepName;
+
     @Column(name = "city", length = 255)
     private String city;
 

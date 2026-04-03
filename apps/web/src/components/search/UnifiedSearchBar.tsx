@@ -19,6 +19,7 @@ import {
   SEARCH_CONTROL_HEIGHT_CLASS,
   SEARCH_PANEL_CLASS,
 } from '@/components/search/searchUi';
+import { useTheme } from '@/components/theme/ThemeProvider';
 import {
   useUnifiedSearch,
   formatDateLabel,
@@ -64,6 +65,8 @@ export default memo(function UnifiedSearchBar({
 }: UnifiedSearchBarProps) {
   const wrapperRef = useRef<HTMLDivElement | null>(null);
   const isHero = variant === 'hero';
+  const { resolvedTheme } = useTheme();
+  const isDarkTheme = resolvedTheme === 'dark';
 
   const search = useUnifiedSearch({ initialValues, fixedQuery, citySuggestions });
 
@@ -210,9 +213,12 @@ export default memo(function UnifiedSearchBar({
   const searchGridClassName = isHero
     ? 'grid gap-0 md:grid-cols-[minmax(0,1.7fr)_minmax(0,1.05fr)_minmax(0,0.9fr)_auto] md:items-center'
     : 'grid gap-1.5 md:grid-cols-[minmax(0,1.9fr)_minmax(0,0.85fr)_minmax(0,0.95fr)_auto] md:items-stretch';
+  const submitButtonToneClassName = isDarkTheme
+    ? 'border border-[color:var(--primary-strong)] bg-[linear-gradient(135deg,var(--primary)_0%,var(--primary-strong)_100%)] text-[color:var(--text-on-dark)] shadow-[0_22px_40px_-28px_rgba(0,0,0,0.72)] hover:-translate-y-0.5 hover:border-[color:var(--brand-primary-light)] hover:bg-[linear-gradient(135deg,var(--primary-strong)_0%,var(--brand-primary-light)_100%)]'
+    : 'bg-[color:var(--primary)] text-white shadow-[0_20px_34px_-24px_rgba(10,122,67,0.7)] hover:bg-[color:var(--primary-strong)]';
   const submitButtonClassName = isHero
-    ? `inline-flex w-full min-w-[8.75rem] items-center justify-center rounded-[18px] bg-[color:var(--primary)] px-5 text-[0.95rem] font-semibold text-white shadow-[0_20px_34px_-24px_rgba(10,122,67,0.7)] transition hover:bg-[color:var(--primary-strong)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--accent-soft)] focus-visible:ring-offset-2 ${SEARCH_CONTROL_HEIGHT_CLASS}`
-    : `inline-flex w-full min-w-[7.5rem] items-center justify-center rounded-[18px] bg-[color:var(--primary)] px-4 text-[0.94rem] font-semibold text-white shadow-[0_16px_26px_-22px_rgba(13,35,58,0.72)] transition hover:bg-[color:var(--primary-strong)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--accent-soft)] focus-visible:ring-offset-2 ${SEARCH_CONTROL_HEIGHT_CLASS}`;
+    ? `inline-flex w-full min-w-[8.75rem] items-center justify-center rounded-[18px] px-5 text-[0.95rem] font-semibold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--accent-soft)] focus-visible:ring-offset-2 ${submitButtonToneClassName} ${SEARCH_CONTROL_HEIGHT_CLASS}`
+    : `inline-flex w-full min-w-[7.5rem] items-center justify-center rounded-[18px] px-4 text-[0.94rem] font-semibold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--accent-soft)] focus-visible:ring-offset-2 ${submitButtonToneClassName} ${SEARCH_CONTROL_HEIGHT_CLASS}`;
   const searchInputClassName = isHero
     ? 'hero-search-service-input h-6 w-full min-w-0 appearance-none border-0 rounded-none bg-transparent p-0 shadow-none text-[0.95rem] font-semibold leading-none text-[color:var(--ink)] outline-none ring-0 placeholder:font-normal placeholder:text-[color:var(--ink-muted)] focus:border-0 focus:outline-none focus:ring-0 focus:shadow-none'
     : 'h-6 w-full min-w-0 bg-transparent text-[0.95rem] font-semibold leading-none text-[color:var(--ink)] placeholder:font-normal placeholder:text-[color:var(--ink-muted)] focus:outline-none';

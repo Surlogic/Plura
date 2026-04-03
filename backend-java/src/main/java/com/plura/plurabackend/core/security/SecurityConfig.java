@@ -147,6 +147,8 @@ public class SecurityConfig {
             "Content-Type",
             "Accept",
             "Origin",
+            "X-Internal-Token",
+            "x-internal-token",
             "X-Requested-With",
             "X-Plura-Client-Platform",
             "X-Plura-Session-Transport",

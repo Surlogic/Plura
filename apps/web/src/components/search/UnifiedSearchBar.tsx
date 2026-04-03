@@ -257,6 +257,9 @@ export default memo(function UnifiedSearchBar({
   const selectionValueClassName = isHero ? '!mt-0 flex min-h-[1.65rem] items-center' : '';
   const heroFieldShellClassName = 'px-4 py-2 sm:px-5';
   const heroDividerClassName = 'border-t border-[color:var(--border-soft)]/85 md:border-t-0 md:border-r';
+  const centeredHeroDropdownClassName = isHero
+    ? 'sm:left-1/2 sm:right-auto sm:-translate-x-1/2'
+    : 'sm:right-auto';
   const queryWrapperOrderClassName = isHero ? `order-1 md:col-[1] ${heroFieldShellClassName}` : '';
   const locationWrapperOrderClassName = isHero
     ? `order-2 md:col-[2] ${heroFieldShellClassName} ${heroDividerClassName}`
@@ -477,7 +480,9 @@ export default memo(function UnifiedSearchBar({
               </SearchField>
 
               {isLocationOpen ? (
-                <div className="absolute left-0 right-0 top-[calc(100%+8px)] z-[70] sm:right-auto sm:w-[22rem]">
+                <div
+                  className={`absolute left-0 right-0 top-[calc(100%+8px)] z-[70] sm:w-[22rem] ${centeredHeroDropdownClassName}`.trim()}
+                >
                   <div className={SEARCH_PANEL_CLASS}>
                     <LocationAutocomplete
                       locationInput={locationInput}
@@ -549,7 +554,9 @@ export default memo(function UnifiedSearchBar({
               </SearchField>
 
               {isDateOpen ? (
-                <div className="absolute left-0 right-0 top-[calc(100%+8px)] z-[70] sm:right-auto sm:w-[21.5rem]">
+                <div
+                  className={`absolute left-0 right-0 top-[calc(100%+8px)] z-[70] sm:w-[21.5rem] ${centeredHeroDropdownClassName}`.trim()}
+                >
                   <div className={SEARCH_PANEL_CLASS}>
                     <DateFilter
                       date={values.date}

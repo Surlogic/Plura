@@ -539,7 +539,7 @@ export default memo(function UnifiedSearchBar({
             </div>
           </div>
 
-          {activeFilters.length > 0 && !isHero ? (
+          {activeFilters.length > 0 && (!isHero || showClearButton) ? (
             <div className="mt-2.5 px-1">
               <SearchFilterChips filters={activeFilters} onClearAll={showClearButton ? handleClear : undefined} />
             </div>

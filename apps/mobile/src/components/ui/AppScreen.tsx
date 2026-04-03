@@ -18,6 +18,7 @@ type AppScreenProps = {
   edges?: Edge[];
   style?: StyleProp<ViewStyle>;
   contentContainerStyle?: StyleProp<ViewStyle>;
+  fillInnerShell?: boolean;
   scrollProps?: Omit<ScrollViewProps, 'contentContainerStyle'>;
 };
 
@@ -27,8 +28,11 @@ export function AppScreen({
   edges = ['top'],
   style,
   contentContainerStyle,
+  fillInnerShell = false,
   scrollProps,
 }: AppScreenProps) {
+  const innerShellStyle = [styles.innerShell, fillInnerShell ? styles.innerShellFill : null];
+
   const content = scroll ? (
     <ScrollView
       showsVerticalScrollIndicator={false}
@@ -36,11 +40,11 @@ export function AppScreen({
       contentContainerStyle={[styles.scrollContent, contentContainerStyle]}
       {...scrollProps}
     >
-      <View style={styles.innerShell}>{children}</View>
+      <View style={innerShellStyle}>{children}</View>
     </ScrollView>
   ) : (
     <View style={[styles.content, contentContainerStyle]}>
-      <View style={styles.innerShell}>{children}</View>
+      <View style={innerShellStyle}>{children}</View>
     </View>
   );
 
@@ -109,6 +113,9 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: Platform.OS === 'web' ? 560 : undefined,
     alignSelf: 'center',
+  },
+  innerShellFill: {
+    flex: 1,
   },
   content: {
     flex: 1,

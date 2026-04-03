@@ -26,7 +26,9 @@ export default memo(function TopBusinesses({ professionals, isLoading = false }:
     <section className="px-4">
       <div className="mx-auto w-full max-w-6xl space-y-6">
         <SectionHeading
+          align="center"
           title="Profesionales destacados"
+          className="mx-auto"
         />
         {isLoading ? (
           <Card tone="soft" className="border-dashed text-sm text-[color:var(--ink-muted)]">

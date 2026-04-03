@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import SectionHeading from '@/components/ui/SectionHeading';
 import {
   getPublicAppFeedback,
   type PublicAppFeedbackItem,
@@ -75,14 +76,12 @@ export default function ReviewsSection() {
   return (
     <section className="px-4">
       <div className="mx-auto w-full max-w-6xl space-y-6">
-        <div className="space-y-2">
-          <h2 className="text-2xl font-semibold text-[color:var(--ink)] sm:text-[2rem]">
-            Confianza basada en experiencia real
-          </h2>
-          <p className="max-w-2xl text-sm text-[color:var(--ink-muted)] sm:text-base">
-            Comentarios breves de clientes y profesionales que ya usan Plura.
-          </p>
-        </div>
+        <SectionHeading
+          align="center"
+          title="Confianza basada en experiencia real"
+          description="Comentarios breves de clientes y profesionales que ya usan Plura."
+          className="mx-auto"
+        />
 
         {isLoading && reviews.length === 0 ? (
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">

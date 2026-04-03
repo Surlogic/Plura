@@ -19,8 +19,10 @@ export default memo(function CategoriesGrid({ categories, isLoading = false }: C
     <section className="px-4">
       <div className="mx-auto w-full max-w-6xl space-y-6">
         <SectionHeading
+          align="center"
           title="Explorá por categoría"
           description="Entrá por el tipo de servicio y seguí explorando con más detalle desde la siguiente pantalla."
+          className="mx-auto"
         />
         {isLoading ? (
           <Card tone="soft" className="border-dashed text-sm text-[color:var(--ink-muted)]">

@@ -215,7 +215,7 @@ export default memo(function UnifiedSearchBar({
     : 'grid gap-1.5 md:grid-cols-[minmax(0,1.9fr)_minmax(0,0.85fr)_minmax(0,0.95fr)_auto] md:items-stretch';
   const submitButtonToneClassName = isDarkTheme
     ? 'border border-[color:var(--primary-strong)] bg-[linear-gradient(135deg,var(--primary)_0%,var(--primary-strong)_100%)] text-[color:var(--text-on-dark)] shadow-[0_22px_40px_-28px_rgba(0,0,0,0.72)] hover:-translate-y-0.5 hover:border-[color:var(--brand-primary-light)] hover:bg-[linear-gradient(135deg,var(--primary-strong)_0%,var(--brand-primary-light)_100%)]'
-    : 'bg-[color:var(--primary)] text-[color:var(--ink)] shadow-[0_20px_34px_-24px_rgba(10,122,67,0.7)] hover:bg-[color:var(--primary-strong)]';
+    : 'bg-[color:var(--primary)] text-white shadow-[0_20px_34px_-24px_rgba(10,122,67,0.7)] hover:bg-[color:var(--primary-strong)]';
   const submitButtonClassName = isHero
     ? `inline-flex w-full min-w-[8.75rem] items-center justify-center rounded-[18px] px-5 text-[0.95rem] font-semibold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--accent-soft)] focus-visible:ring-offset-2 ${submitButtonToneClassName} ${SEARCH_CONTROL_HEIGHT_CLASS}`
     : `inline-flex w-full min-w-[7.5rem] items-center justify-center rounded-[18px] px-4 text-[0.94rem] font-semibold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--accent-soft)] focus-visible:ring-offset-2 ${submitButtonToneClassName} ${SEARCH_CONTROL_HEIGHT_CLASS}`;

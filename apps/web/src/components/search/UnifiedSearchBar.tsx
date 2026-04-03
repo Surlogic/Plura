@@ -240,6 +240,7 @@ export default memo(function UnifiedSearchBar({
   const hasDateSelection = Boolean(values.date || hasDateRange || values.availableNow);
   const hasLocationSelection = Boolean(values.city.trim() || hasCoordinates);
   const hasQuerySelection = Boolean(searchInput.trim() || values.query.trim() || values.categorySlug);
+  const heroOpenPanel = isSearchOpen ? 'query' : isLocationOpen ? 'location' : isDateOpen ? 'date' : null;
   const inputPlaceholder = values.categorySlug
     ? `Buscar en ${slugToLabel(values.categorySlug)}`
     : 'Servicio, categoría o profesional';
@@ -269,26 +270,36 @@ export default memo(function UnifiedSearchBar({
   const heroInlineLabelClassName =
     'inline-flex min-w-0 items-center gap-1.5 truncate whitespace-nowrap text-[0.58rem] font-semibold uppercase tracking-[0.2em] text-[color:var(--ink-faint)]';
   const heroServicesExpanded = heroFocusExpansionEnabled && heroExpandedField === 'query';
+  const heroPanelReservedSpace = !isHero
+    ? 0
+    : heroOpenPanel === 'query'
+      ? 304
+      : heroOpenPanel === 'location'
+        ? 272
+        : heroOpenPanel === 'date'
+          ? 252
+          : 0;
   const queryFieldClassName = isHero ? 'h-full justify-center py-1.5' : 'h-full';
   const selectionFieldClassName = isHero ? 'h-full justify-center py-1.5' : 'h-full';
   const queryValueClassName = isHero ? '!mt-0 flex min-h-[1.65rem] items-center' : '';
   const selectionValueClassName = isHero ? '!mt-0 flex min-h-[1.65rem] items-center' : '';
   const heroFieldShellClassName = 'px-4 py-2 sm:px-5';
   const heroDividerClassName = 'border-t border-[color:var(--border-soft)]/85 md:border-t-0 md:border-r';
+  const heroQueryDividerClassName = 'md:border-r md:border-[color:var(--border-soft)]/85';
   const heroFieldMotionClassName = heroFocusExpansionEnabled
     ? 'lg:transition-[flex-basis,max-width,padding,opacity] lg:duration-300 lg:ease-[cubic-bezier(0.22,1,0.36,1)]'
     : '';
   const heroQueryWidthClassName = heroServicesExpanded
-    ? 'lg:flex-[1.95_1_0%] lg:min-w-[24rem]'
-    : 'lg:flex-[1.7_1_0%] lg:min-w-[21rem]';
-  const heroSelectionExpandedWidthClassName = 'lg:flex-[1_1_0%] lg:min-w-[10.5rem]';
+    ? 'lg:flex-[1.9_1_0%]'
+    : 'lg:flex-[1.34_1_0%]';
+  const heroSelectionExpandedWidthClassName = 'lg:flex-[0.92_1_0%]';
   const heroSelectionCompactWidthClassName =
-    'lg:flex-[0_0_4.6rem] lg:min-w-[4.6rem] lg:px-3 lg:items-center lg:justify-center';
+    'lg:flex-[0_0_4.1rem] lg:px-3 lg:items-center lg:justify-center';
   const centeredHeroDropdownClassName = isHero
     ? 'sm:left-1/2 sm:right-auto sm:-translate-x-1/2'
     : 'sm:right-auto';
   const queryWrapperOrderClassName = isHero
-    ? `order-1 md:col-[1] ${heroFieldShellClassName} ${heroFieldMotionClassName} ${heroQueryWidthClassName}`
+    ? `order-1 md:col-[1] ${heroFieldShellClassName} ${heroQueryDividerClassName} ${heroFieldMotionClassName} ${heroQueryWidthClassName}`
     : '';
   const locationWrapperOrderClassName = isHero
     ? `order-2 md:col-[2] ${heroFieldShellClassName} ${heroDividerClassName} ${heroFieldMotionClassName} ${
@@ -300,7 +311,7 @@ export default memo(function UnifiedSearchBar({
         heroServicesExpanded ? heroSelectionCompactWidthClassName : heroSelectionExpandedWidthClassName
       }`
     : '';
-  const submitWrapperOrderClassName = isHero ? 'order-4 md:col-[4] lg:flex-[0_0_11.5rem]' : '';
+  const submitWrapperOrderClassName = isHero ? 'order-4 md:col-[4] lg:flex-[0_0_10.5rem]' : '';
   const searchGridClassName = isHero
     ? 'grid gap-0 md:grid-cols-[minmax(0,1.7fr)_minmax(0,1.05fr)_minmax(0,0.9fr)_auto] md:items-center lg:flex lg:items-stretch'
     : 'grid gap-1.5 md:grid-cols-[minmax(0,1.9fr)_minmax(0,0.85fr)_minmax(0,0.95fr)_auto] md:items-stretch';
@@ -403,7 +414,8 @@ export default memo(function UnifiedSearchBar({
   return (
     <div
       ref={wrapperRef}
-      className={`relative z-20 mx-auto w-full ${SEARCH_BAR_MAX_WIDTH_CLASS} overflow-visible ${className || ''}`}
+      className={`relative z-20 mx-auto w-full ${SEARCH_BAR_MAX_WIDTH_CLASS} overflow-visible transition-[padding-bottom] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] ${className || ''}`}
+      style={isHero ? { paddingBottom: heroPanelReservedSpace } : undefined}
     >
       <form onSubmit={handleSubmit} className="relative overflow-visible">
         <div
@@ -666,7 +678,7 @@ export default memo(function UnifiedSearchBar({
               ) : null}
             </div>
 
-            <div className={`flex ${submitWrapperOrderClassName} ${isHero ? 'border-t border-[color:var(--border-soft)]/85 px-1 pt-2 md:border-l md:border-t-0 md:px-2 md:pl-4 md:pt-0' : ''}`.trim()}>
+            <div className={`flex items-stretch self-stretch ${submitWrapperOrderClassName} ${isHero ? 'border-t border-[color:var(--border-soft)]/85 px-1 pt-2 md:border-l md:border-t-0 md:px-2 md:pl-4 md:pt-0 lg:pl-3' : ''}`.trim()}>
               <button
                 type="submit"
                 className={submitButtonClassName}

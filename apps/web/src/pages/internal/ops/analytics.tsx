@@ -1,10 +1,14 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
+import { useRouter } from 'next/router';
+import { useClientProfileContext } from '@/context/ClientProfileContext';
 import {
   fetchOpsAnalyticsSummary,
   type InternalOpsAnalyticsSummary,
 } from '@/services/internalOps';
+
+const OPS_ADMIN_EMAIL = 'admin@surlogicuy.com';
 
 const inputClass =
   'h-9 rounded-[10px] border border-[#D9E2EC] bg-white px-2 text-xs text-[#0E2A47] focus:border-[#1FB6A6] focus:outline-none';
@@ -24,53 +28,6 @@ const formatMoney = (value: number) => {
 const formatPercent = (value: number) => `${(value ?? 0).toFixed(2)}%`;
 const formatInt = (value: number) => (value ?? 0).toLocaleString('es-UY');
 const formatRate = (value: number) => `${(value ?? 0).toFixed(1)}`;
-
-function OpsConfig({ onConfigured }: { onConfigured: () => void }) {
-  const [apiUrl, setApiUrl] = useState(() =>
-    typeof window !== 'undefined' ? localStorage.getItem('plura_ops_api_url') || '' : '',
-  );
-  const [token, setToken] = useState(() =>
-    typeof window !== 'undefined' ? localStorage.getItem('plura_ops_token') || '' : '',
-  );
-
-  return (
-    <div className="mx-auto max-w-md space-y-4 rounded-[20px] border border-[#E2E7EC] bg-white p-6 shadow-sm">
-      <h2 className="text-lg font-semibold text-[#0E2A47]">Configuracion de acceso</h2>
-      <div>
-        <label className="text-xs font-semibold text-[#64748B]">URL base API</label>
-        <input
-          type="text"
-          value={apiUrl}
-          onChange={(e) => setApiUrl(e.target.value)}
-          placeholder="http://localhost:3000"
-          className="mt-1 w-full rounded-[12px] border border-[#D9E2EC] px-3 py-2 text-sm"
-        />
-      </div>
-      <div>
-        <label className="text-xs font-semibold text-[#64748B]">X-Internal-Token</label>
-        <input
-          type="password"
-          value={token}
-          onChange={(e) => setToken(e.target.value)}
-          placeholder="Token interno"
-          className="mt-1 w-full rounded-[12px] border border-[#D9E2EC] px-3 py-2 text-sm"
-        />
-      </div>
-      <button
-        type="button"
-        onClick={() => {
-          localStorage.setItem('plura_ops_api_url', apiUrl.trim());
-          localStorage.setItem('plura_ops_token', token.trim());
-          onConfigured();
-        }}
-        disabled={!apiUrl.trim() || !token.trim()}
-        className="w-full rounded-full bg-[#0B1D2A] px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50"
-      >
-        Conectar
-      </button>
-    </div>
-  );
-}
 
 function StatCard({ label, value, detail }: { label: string; value: string; detail?: string }) {
   return (
@@ -138,7 +95,8 @@ function Table({
 }
 
 export default function InternalOpsAnalyticsPage() {
-  const [configured, setConfigured] = useState(false);
+  const router = useRouter();
+  const { profile, authStatus, hasLoaded, isLoading: isProfileLoading, refreshProfile } = useClientProfileContext();
   const [analytics, setAnalytics] = useState<InternalOpsAnalyticsSummary | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -146,14 +104,31 @@ export default function InternalOpsAnalyticsPage() {
   const [to, setTo] = useState('');
 
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const url = localStorage.getItem('plura_ops_api_url');
-      const token = localStorage.getItem('plura_ops_token');
-      if (url && token) {
-        setConfigured(true);
-      }
+    if (!hasLoaded && !isProfileLoading) {
+      void refreshProfile();
     }
-  }, []);
+  }, [hasLoaded, isProfileLoading, refreshProfile]);
+
+  const normalizedProfileEmail = (profile?.email || '').trim().toLowerCase();
+  const isAdminClient = normalizedProfileEmail === OPS_ADMIN_EMAIL;
+  const loginHref = `/cliente/auth/login?redirect=${encodeURIComponent('/internal/ops/analytics')}`;
+
+  useEffect(() => {
+    if (!hasLoaded || !isAdminClient) return;
+    const load = async () => {
+      setIsLoading(true);
+      setError(null);
+      try {
+        const response = await fetchOpsAnalyticsSummary(from || undefined, to || undefined);
+        setAnalytics(response);
+      } catch (e) {
+        setError(e instanceof Error ? e.message : 'Error al cargar analytics.');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    void load();
+  }, [from, to, hasLoaded, isAdminClient]);
 
   const load = useCallback(async () => {
     setIsLoading(true);
@@ -167,11 +142,6 @@ export default function InternalOpsAnalyticsPage() {
       setIsLoading(false);
     }
   }, [from, to]);
-
-  useEffect(() => {
-    if (!configured) return;
-    void load();
-  }, [configured, load]);
 
   const topCategoriesByRevenue = useMemo(
     () => [...(analytics?.categoryPerformance || [])].sort((a, b) => b.estimatedRevenue - a.estimatedRevenue).slice(0, 10),
@@ -218,37 +188,62 @@ export default function InternalOpsAnalyticsPage() {
                 Tablero interno para negocio, marketplace, conversion y retencion.
               </p>
             </div>
-            <div className="flex items-center gap-3">
-              <Link
-                href="/internal/feedback"
-                className="rounded-full border border-[#E2E7EC] bg-white px-4 py-2 text-xs font-semibold text-[#475569] transition hover:-translate-y-0.5 hover:shadow-sm"
-              >
-                Feedback app
-              </Link>
-              <Link
-                href="/internal/ops/reviews"
-                className="rounded-full border border-[#E2E7EC] bg-white px-4 py-2 text-xs font-semibold text-[#475569] transition hover:-translate-y-0.5 hover:shadow-sm"
-              >
-                Resenas
-              </Link>
-              {configured ? (
-                <button
-                  type="button"
-                  onClick={() => {
-                    localStorage.removeItem('plura_ops_api_url');
-                    localStorage.removeItem('plura_ops_token');
-                    setConfigured(false);
-                  }}
-                  className="text-xs font-semibold text-[#94A3B8] underline"
-                >
-                  Cambiar conexion
-                </button>
+            <div className="flex items-center gap-3 text-xs text-[#64748B]">
+              <span>Acceso cliente interno</span>
+              {profile?.email ? (
+                <span className="rounded-full border border-[#E2E7EC] bg-white px-3 py-1 font-semibold text-[#0E2A47]">
+                  {profile.email}
+                </span>
               ) : null}
             </div>
           </div>
 
-          {!configured ? (
-            <OpsConfig onConfigured={() => setConfigured(true)} />
+          {!hasLoaded || isProfileLoading ? (
+            <div className="rounded-[20px] border border-[#E2E7EC] bg-white p-6 text-sm text-[#64748B] shadow-sm">
+              Validando acceso interno...
+            </div>
+          ) : authStatus !== 'authenticated' || !profile ? (
+            <div className="mx-auto max-w-md space-y-4 rounded-[20px] border border-[#E2E7EC] bg-white p-6 shadow-sm">
+              <div className="space-y-2">
+                <h2 className="text-lg font-semibold text-[#0E2A47]">Iniciá sesión como cliente</h2>
+                <p className="text-sm text-[#64748B]">
+                  Este panel se habilita solo con la cuenta Google interna <span className="font-semibold text-[#0E2A47]">{OPS_ADMIN_EMAIL}</span>.
+                </p>
+              </div>
+              <Link
+                href={loginHref}
+                className="inline-flex rounded-full bg-[#0B1D2A] px-4 py-2.5 text-sm font-semibold text-white"
+              >
+                Ir al login cliente
+              </Link>
+            </div>
+          ) : !isAdminClient ? (
+            <div className="mx-auto max-w-lg space-y-4 rounded-[20px] border border-[#FECACA] bg-white p-6 shadow-sm">
+              <div className="space-y-2">
+                <h2 className="text-lg font-semibold text-[#991B1B]">Acceso restringido</h2>
+                <p className="text-sm text-[#7F1D1D]">
+                  Esta pantalla solo esta habilitada para la cuenta cliente <span className="font-semibold">{OPS_ADMIN_EMAIL}</span>.
+                </p>
+                <p className="text-sm text-[#64748B]">
+                  Sesion actual: <span className="font-semibold text-[#0E2A47]">{profile.email}</span>
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-3">
+                <button
+                  type="button"
+                  onClick={() => router.push('/cliente/inicio')}
+                  className="rounded-full border border-[#E2E7EC] bg-white px-4 py-2.5 text-sm font-semibold text-[#475569]"
+                >
+                  Ir a inicio cliente
+                </button>
+                <Link
+                  href={loginHref}
+                  className="rounded-full bg-[#0B1D2A] px-4 py-2.5 text-sm font-semibold text-white"
+                >
+                  Cambiar de cuenta
+                </Link>
+              </div>
+            </div>
           ) : (
             <div className="space-y-5">
               {error ? (

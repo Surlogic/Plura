@@ -1,3 +1,5 @@
+import api from '@/services/api';
+
 type InternalFeedbackListItem = {
   id: number;
   authorUserId: number;
@@ -296,5 +298,7 @@ export const fetchOpsAnalyticsSummary = (from?: string, to?: string) => {
   if (from) searchParams.set('from', from);
   if (to) searchParams.set('to', to);
   const qs = searchParams.toString();
-  return opsFetch<InternalOpsAnalyticsSummary>(`/internal/ops/analytics/summary${qs ? `?${qs}` : ''}`);
+  return api
+    .get<InternalOpsAnalyticsSummary>(`/internal/ops/analytics/summary${qs ? `?${qs}` : ''}`)
+    .then((response) => response.data);
 };

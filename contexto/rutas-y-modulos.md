@@ -256,7 +256,7 @@ Huecos relevantes contra el objetivo:
 
 - `/internal/feedback`: panel operativo exclusivo para feedback interno de app con listado filtrable, analytics y archivo/desarchivo; protegido por token interno configurable desde localStorage, no por sesion de usuario; `<meta name="robots" content="noindex,nofollow" />`
 - `/internal/ops/reviews`: superficie interna dedicada a moderacion de reseñas publicas y reportes; lista paginada, analytics, badges de reportes y acciones de hide/show del texto; protegida por el mismo `X-Internal-Token`
-- `/internal/ops/analytics`: tablero interno de negocio y marketplace para el equipo de Plura; consume un resumen agregado desde `/internal/ops/analytics/summary` y muestra reservas, facturacion estimada, rubros, funnel `search -> profile -> reserva`, retencion, ciudades, horarios y top profesionales; protegido por el mismo `X-Internal-Token`
+- `/internal/ops/analytics`: tablero interno de negocio y marketplace para el equipo de Plura; consume un resumen agregado desde `/internal/ops/analytics/summary` y muestra reservas, facturacion estimada, rubros, funnel `search -> profile -> reserva`, retencion, ciudades, horarios y top profesionales; en web ya no pide token manual para esta superficie: exige sesion cliente y habilita acceso solo a la cuenta interna `admin@surlogicuy.com`, con redirect al login cliente si falta sesion
 
 Modulos relevantes:
 

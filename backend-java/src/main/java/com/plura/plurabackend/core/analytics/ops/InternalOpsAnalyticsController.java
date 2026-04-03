@@ -25,11 +25,11 @@ public class InternalOpsAnalyticsController {
 
     @GetMapping("/summary")
     public InternalOpsAnalyticsResponse summary(
-        @RequestHeader("X-Internal-Token") String internalToken,
+        @RequestHeader(value = "X-Internal-Token", required = false) String internalToken,
         @RequestParam(value = "from", required = false) String from,
         @RequestParam(value = "to", required = false) String to
     ) {
-        internalOpsAccessService.requireAuthorized(internalToken);
+        internalOpsAccessService.requireAuthorizedOrAdminClientSession(internalToken);
         return internalOpsAnalyticsService.summary(from, to);
     }
 }

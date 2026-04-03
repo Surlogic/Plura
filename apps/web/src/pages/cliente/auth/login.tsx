@@ -24,6 +24,13 @@ const resolveQueryValue = (value: string | string[] | undefined) => {
   return value ?? '';
 };
 
+const resolveSafeRedirectPath = (value: string) => {
+  const trimmed = value.trim();
+  if (!trimmed || trimmed === 'confirm-reservation') return null;
+  if (!trimmed.startsWith('/') || trimmed.startsWith('//')) return null;
+  return trimmed;
+};
+
 const extractApiMessage = (error: unknown, fallback: string) => {
   if (isAxiosError(error)) {
     const responseData = error.response?.data;
@@ -47,6 +54,7 @@ export default function ClienteLoginPage() {
   const redirectIntent = resolveQueryValue(router.query.redirect).trim();
   const passwordResetCompleted = resolveQueryValue(router.query.passwordReset).trim() === '1';
   const shouldConfirmReservationAfterLogin = redirectIntent === 'confirm-reservation';
+  const safeRedirectPath = resolveSafeRedirectPath(redirectIntent);
   const registerHref = shouldConfirmReservationAfterLogin
     ? '/cliente/auth/register?redirect=confirm-reservation'
     : '/cliente/auth/register';
@@ -84,6 +92,11 @@ export default function ClienteLoginPage() {
   const completeClientLoginFlow = async () => {
     await api.get('/auth/me/cliente');
     await refreshProfile();
+
+    if (safeRedirectPath) {
+      router.push(safeRedirectPath);
+      return;
+    }
 
     if (shouldConfirmReservationAfterLogin) {
       const pendingReservation = getPendingReservation();

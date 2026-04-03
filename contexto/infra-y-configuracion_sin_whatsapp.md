@@ -311,6 +311,8 @@ Variables criticas sin las que el backend puede fallar o degradarse:
 
 - `JWT_SECRET`
 - `JWT_REFRESH_PEPPER`
+- `OPS_INTERNAL_TOKEN` para paneles internos protegidos por token
+- `OPS_ADMIN_CLIENT_EMAIL` si se quiere cambiar el email cliente habilitado para entrar al panel web `/internal/ops/analytics`; por default queda `admin@surlogicuy.com`
 - credenciales DB productivas
 - credenciales OAuth si se usa login social
 - variables de billing si se habilitan pagos reales

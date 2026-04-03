@@ -500,6 +500,7 @@ Lectura de producto:
 - no es analytics para cliente ni profesional; es un tablero interno exclusivo para el equipo de Plura
 - mezcla datos transaccionales de `booking`, `available_slot`, `professional_profile` y `booking_review` con eventos funcionales server-side persistidos en `app_product_event`
 - permite responder dentro del producto interno preguntas como `que rubros se mueven mas`, `que ciudades convierten mejor`, `que servicios reservan mas` y `quienes son los profesionales top`
+- para este endpoint puntual, backend acepta dos formas de acceso: `X-Internal-Token` como backoffice tecnico o sesion autenticada de cliente para el email interno `admin@surlogicuy.com`; esto habilita la web `/internal/ops/analytics` sin exponer token en el navegador
 
 ## Paquetes backend mas importantes
 

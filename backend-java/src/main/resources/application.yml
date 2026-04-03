@@ -130,6 +130,7 @@ app:
     brand-name: ${APP_BRAND_NAME:Plura}
   ops:
     internal-token: ${OPS_INTERNAL_TOKEN:}
+    admin-client-email: ${OPS_ADMIN_CLIENT_EMAIL:admin@surlogicuy.com}
   mapbox:
     token: ${MAPBOX_TOKEN:${NEXT_PUBLIC_MAPBOX_TOKEN:}}
   search:

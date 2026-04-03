@@ -310,6 +310,7 @@ Base: `apps/mobile/app`
 
 - `app/index.tsx`: si hay sesion profesional redirige a `/dashboard`, si hay sesion cliente redirige a `/(tabs)` y si no hay sesion muestra una portada mobile con logo Plura y CTAs `Iniciar como cliente` / `Iniciar como profesional`.
 - `app/_layout.tsx`: monta `ProfessionalProfileProvider` y stack principal.
+- el logout mobile ya vuelve siempre a `/` para reusar esa portada inicial; no redirige directo a `/(auth)/login`
 
 ### Grupo `(tabs)`
 

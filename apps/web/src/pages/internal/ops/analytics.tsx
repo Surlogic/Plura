@@ -188,14 +188,7 @@ export default function InternalOpsAnalyticsPage() {
                 Tablero interno para negocio, marketplace, conversion y retencion.
               </p>
             </div>
-            <div className="flex items-center gap-3 text-xs text-[#64748B]">
-              <span>Acceso cliente interno</span>
-              {profile?.email ? (
-                <span className="rounded-full border border-[#E2E7EC] bg-white px-3 py-1 font-semibold text-[#0E2A47]">
-                  {profile.email}
-                </span>
-              ) : null}
-            </div>
+            <div className="text-xs text-[#64748B]">Acceso cliente interno</div>
           </div>
 
           {!hasLoaded || isProfileLoading ? (
@@ -205,9 +198,9 @@ export default function InternalOpsAnalyticsPage() {
           ) : authStatus !== 'authenticated' || !profile ? (
             <div className="mx-auto max-w-md space-y-4 rounded-[20px] border border-[#E2E7EC] bg-white p-6 shadow-sm">
               <div className="space-y-2">
-                <h2 className="text-lg font-semibold text-[#0E2A47]">Iniciá sesión como cliente</h2>
+                <h2 className="text-lg font-semibold text-[#0E2A47]">Iniciar sesion como cliente</h2>
                 <p className="text-sm text-[#64748B]">
-                  Este panel se habilita solo con la cuenta Google interna <span className="font-semibold text-[#0E2A47]">{OPS_ADMIN_EMAIL}</span>.
+                  Este panel requiere una sesion cliente autorizada para continuar.
                 </p>
               </div>
               <Link
@@ -222,10 +215,7 @@ export default function InternalOpsAnalyticsPage() {
               <div className="space-y-2">
                 <h2 className="text-lg font-semibold text-[#991B1B]">Acceso restringido</h2>
                 <p className="text-sm text-[#7F1D1D]">
-                  Esta pantalla solo esta habilitada para la cuenta cliente <span className="font-semibold">{OPS_ADMIN_EMAIL}</span>.
-                </p>
-                <p className="text-sm text-[#64748B]">
-                  Sesion actual: <span className="font-semibold text-[#0E2A47]">{profile.email}</span>
+                  Esta pantalla no esta habilitada para la sesion actual.
                 </p>
               </div>
               <div className="flex flex-wrap gap-3">

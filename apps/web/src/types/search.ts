@@ -73,17 +73,3 @@ export type SearchSuggestParams = {
   radiusKm?: number;
   limit?: number;
 };
-
-export type RecentSearchEntry = {
-  type: SearchType;
-  query: string;
-  categorySlug?: string;
-  city: string;
-  lat?: number;
-  lng?: number;
-  date: string;
-  from?: string;
-  to?: string;
-  availableNow: boolean;
-  createdAt: string;
-};

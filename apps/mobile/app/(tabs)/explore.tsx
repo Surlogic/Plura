@@ -392,8 +392,8 @@ export default function ExploreScreen() {
       <View className="px-6 pt-4">
         <ScreenHero
           eyebrow="Explorar"
-          title="Profesionales y rubros"
-          description="Busca por servicio, cercania o categoria con un panel mas limpio y facil de leer."
+          title="Profesionales y categorías"
+          description="Busca por servicio, cercanía o categoría con un panel más limpio y fácil de leer."
           icon="compass-outline"
           badges={[
             { label: useMyLocation ? locationLabel : 'Busqueda general', tone: 'light' },
@@ -411,6 +411,7 @@ export default function ExploreScreen() {
               value={search}
               onChangeText={setSearch}
               returnKeyType="search"
+              accessibilityLabel="Buscar servicios, categorías o profesionales"
             />
             {search.length > 0 ? (
               <TouchableOpacity onPress={() => setSearch('')}>
@@ -483,7 +484,9 @@ export default function ExploreScreen() {
                   onPress={() => setSearchType(type)}
                   className={`rounded-full px-3 py-2 ${searchType === type ? 'bg-secondary' : 'border border-secondary/10 bg-white'}`}
                 >
-                  <Text className={`text-xs font-semibold ${searchType === type ? 'text-white' : 'text-secondary'}`}>{type}</Text>
+                  <Text className={`text-xs font-semibold ${searchType === type ? 'text-white' : 'text-secondary'}`}>
+                    {type === 'RUBRO' ? 'CATEGORÍA' : type}
+                  </Text>
                 </TouchableOpacity>
               ))}
             </View>
@@ -591,7 +594,7 @@ export default function ExploreScreen() {
         {!isLoading && filteredPlaces.length === 0 ? (
           <EmptyState
             title="No encontramos resultados"
-            description="Prueba ampliando el radio, cambiando rubro o ajustando el texto de busqueda."
+            description="Prueba ampliando el radio, cambiando categoría o ajustando el texto de búsqueda."
             icon="search-outline"
           />
         ) : null}

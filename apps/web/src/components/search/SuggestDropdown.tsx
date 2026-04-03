@@ -1,5 +1,4 @@
 import type { SearchType } from '@/types/search';
-import type { RecentSearchEntry } from '@/types/search';
 
 export type SuggestDropdownItem = {
   id: string;
@@ -7,8 +6,7 @@ export type SuggestDropdownItem = {
   label: string;
   secondary?: string;
   categorySlug?: string;
-  recentSearch?: RecentSearchEntry;
-  variant?: 'default' | 'global' | 'recent';
+  variant?: 'default' | 'global';
 };
 
 type SuggestDropdownGroup = {
@@ -28,7 +26,6 @@ type SuggestDropdownProps = {
 
 const getTypeLabel = (item: SuggestDropdownItem) => {
   if (item.variant === 'global') return 'Explorar';
-  if (item.variant === 'recent') return 'Reciente';
 
   switch (item.type) {
     case 'RUBRO':

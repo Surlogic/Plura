@@ -11,7 +11,6 @@ import {
   SEARCH_DEFAULT_CITY_SUGGESTIONS,
   SEARCH_DEFAULT_PAGE,
   SEARCH_RECENT_ITEMS_LIMIT,
-  SEARCH_RECENT_SEARCHES_LIMIT,
   SEARCH_SUGGESTIONS_LIMIT,
 } from '@/config/search';
 import { useCategories } from '@/hooks/useCategories';
@@ -23,7 +22,6 @@ import {
 } from '@/utils/searchQuery';
 import type {
   GeoAutocompleteItem,
-  RecentSearchEntry,
   SearchSuggestResponse,
   SearchSuggestionItem,
   SearchType,
@@ -62,8 +60,6 @@ const EMPTY_SUGGESTIONS: SearchSuggestResponse = {
 };
 
 const RECENT_CITIES_STORAGE_KEY = 'plura:search-recent-cities';
-const RECENT_SEARCHES_STORAGE_KEY = 'plura:search-recent-queries';
-
 function readRecentCities(): string[] {
   if (typeof window === 'undefined') return [];
   try {
@@ -72,17 +68,6 @@ function readRecentCities(): string[] {
     const parsed = JSON.parse(raw) as unknown;
     if (!Array.isArray(parsed)) return [];
     return parsed.map((item: unknown) => String(item)).filter((s: string) => s.trim()).slice(0, SEARCH_RECENT_ITEMS_LIMIT);
-  } catch {
-    return [];
-  }
-}
-
-function readRecentSearches(): RecentSearchEntry[] {
-  if (typeof window === 'undefined') return [];
-  try {
-    const raw = window.localStorage.getItem(RECENT_SEARCHES_STORAGE_KEY);
-    if (!raw) return [];
-    return normalizeRecentSearches(JSON.parse(raw) as unknown);
   } catch {
     return [];
   }
@@ -142,105 +127,6 @@ const uniqueNonEmpty = (values: string[]) => {
   return normalized;
 };
 
-const recentSearchKey = (value: UnifiedSearchValues) =>
-  [
-    value.type,
-    value.query.trim().toLocaleLowerCase('es-UY'),
-    (value.categorySlug || '').toLocaleLowerCase('es-UY'),
-    value.city.trim().toLocaleLowerCase('es-UY'),
-    typeof value.lat === 'number' ? value.lat.toFixed(4) : '',
-    typeof value.lng === 'number' ? value.lng.toFixed(4) : '',
-    value.date,
-    value.from || '',
-    value.to || '',
-    value.availableNow ? '1' : '0',
-  ].join('|');
-
-const recentSearchKeyFromEntry = (entry: RecentSearchEntry) =>
-  recentSearchKey({
-    type: normalizeType(entry.type),
-    query: entry.query,
-    categorySlug: entry.categorySlug,
-    city: entry.city,
-    lat: entry.lat,
-    lng: entry.lng,
-    date: entry.date,
-    from: entry.from,
-    to: entry.to,
-    availableNow: entry.availableNow,
-  });
-
-const recentSearchIdentity = (entry: RecentSearchEntry) => {
-  const normalizedQuery = normalizeSearchText(entry.query);
-  if (normalizedQuery) return `query:${normalizedQuery}`;
-
-  const normalizedCategory = normalizeSearchText((entry.categorySlug || '').replace(/-/g, ' '));
-  if (normalizedCategory) return `category:${normalizedCategory}`;
-
-  return `filters:${recentSearchKeyFromEntry(entry)}`;
-};
-
-const parseRecentCreatedAt = (value: string) => {
-  const timestamp = Date.parse(value);
-  return Number.isNaN(timestamp) ? 0 : timestamp;
-};
-
-const dedupeRecentSearches = (entries: RecentSearchEntry[]) => {
-  const sorted = [...entries].sort(
-    (left, right) => parseRecentCreatedAt(right.createdAt) - parseRecentCreatedAt(left.createdAt),
-  );
-  const deduped = new Map<string, RecentSearchEntry>();
-
-  sorted.forEach((entry) => {
-    const identity = recentSearchIdentity(entry);
-    if (deduped.has(identity)) return;
-    deduped.set(identity, entry);
-  });
-
-  return Array.from(deduped.values()).slice(0, SEARCH_RECENT_SEARCHES_LIMIT);
-};
-
-const normalizeRecentSearches = (raw: unknown): RecentSearchEntry[] => {
-  if (!Array.isArray(raw)) return [];
-
-  const sanitized = raw.map((item) => {
-    const value = item as Partial<RecentSearchEntry>;
-    const type = normalizeType(value.type);
-    return {
-      type,
-      query: typeof value.query === 'string' ? value.query : '',
-      categorySlug:
-        typeof value.categorySlug === 'string' && value.categorySlug.trim()
-          ? value.categorySlug.trim()
-          : undefined,
-      city: typeof value.city === 'string' ? value.city : '',
-      lat: typeof value.lat === 'number' ? value.lat : undefined,
-      lng: typeof value.lng === 'number' ? value.lng : undefined,
-      date: typeof value.date === 'string' ? normalizeDate(value.date) : '',
-      from: typeof value.from === 'string' ? normalizeDate(value.from) : undefined,
-      to: typeof value.to === 'string' ? normalizeDate(value.to) : undefined,
-      availableNow: Boolean(value.availableNow),
-      createdAt:
-        typeof value.createdAt === 'string' && value.createdAt.trim()
-          ? value.createdAt
-          : new Date().toISOString(),
-    };
-  });
-
-  return dedupeRecentSearches(sanitized);
-};
-
-const hasMeaningfulSearch = (value: UnifiedSearchValues) =>
-  Boolean(
-    value.query.trim() ||
-      value.categorySlug ||
-      value.city.trim() ||
-      (typeof value.lat === 'number' && typeof value.lng === 'number') ||
-      value.date ||
-      (value.from && value.to) ||
-      value.availableNow,
-  );
-
 export const formatDateLabel = (value: string) => {
   const parsed = new Date(`${value}T00:00:00`);
   if (Number.isNaN(parsed.getTime())) return value;
@@ -250,38 +136,6 @@ export const formatDateLabel = (value: string) => {
     month: 'short',
   });
 };
-
-const recentSearchLabel = (entry: RecentSearchEntry) => {
-  const query = entry.query.trim();
-  if (query) return query;
-  if (entry.categorySlug?.trim()) return slugToLabel(entry.categorySlug);
-  return 'Busqueda reciente';
-};
-
-const recentSearchSecondary = (entry: RecentSearchEntry) => {
-  const parts: string[] = ['Busqueda reciente'];
-  if (entry.city.trim()) parts.push(entry.city.trim());
-  if (entry.date) {
-    parts.push(formatDateLabel(entry.date));
-  } else if (entry.from && entry.to) {
-    parts.push(`${formatDateLabel(entry.from)} - ${formatDateLabel(entry.to)}`);
-  }
-  if (entry.availableNow) parts.push('Disponible ahora');
-  return parts.join(' · ');
-};
-
-const toUnifiedValuesFromRecent = (entry: RecentSearchEntry): UnifiedSearchValues => ({
-  type: normalizeType(entry.type),
-  query: entry.query,
-  categorySlug: entry.categorySlug,
-  city: entry.city,
-  lat: entry.lat,
-  lng: entry.lng,
-  date: entry.date,
-  from: entry.from,
-  to: entry.to,
-  availableNow: entry.availableNow,
-});
 
 export const getAdaptiveValueClass = (value: string) => {
   const length = value.trim().length;
@@ -298,11 +152,8 @@ const GLOBAL_SEARCH_OPTION: SuggestDropdownItem = {
   variant: 'global',
 };
 
-const POPULAR_CATEGORY_PATTERNS = ['barber', 'unas', 'depil', 'spa', 'cosmet'];
 const LOCATION_AUTOCOMPLETE_DEBOUNCE_MS = 300;
 const SEARCH_SUGGEST_DEBOUNCE_MS = 350;
-const CATEGORY_DROPDOWN_LIMIT = 8;
-const RECENT_DROPDOWN_LIMIT = 3;
 
 const interleaveSuggestionItems = (
   sources: SuggestDropdownItem[][],
@@ -353,7 +204,6 @@ export function useUnifiedSearch({
   const [geoStatus, setGeoStatus] = useState<'idle' | 'loading' | 'active' | 'error'>('idle');
   const [geoMessage, setGeoMessage] = useState('');
   const [recentCities, setRecentCities] = useState<string[]>(readRecentCities);
-  const [recentSearches, setRecentSearches] = useState<RecentSearchEntry[]>(readRecentSearches);
 
   const [suggestions, setSuggestions] = useState<SearchSuggestResponse>(EMPTY_SUGGESTIONS);
   const [isSuggestLoading, setIsSuggestLoading] = useState(false);
@@ -371,6 +221,11 @@ export function useUnifiedSearch({
     setSearchInput(normalizedInitialValues.query);
     setLocationInput(normalizedInitialValues.city);
   }, [normalizedInitialValues]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    window.localStorage.removeItem('plura:search-recent-queries');
+  }, []);
 
 
   useEffect(() => {
@@ -441,30 +296,6 @@ export function useUnifiedSearch({
     setRecentCities((prev) => {
       const next = uniqueNonEmpty([normalized, ...prev]).slice(0, SEARCH_RECENT_ITEMS_LIMIT);
       window.localStorage.setItem(RECENT_CITIES_STORAGE_KEY, JSON.stringify(next));
-      return next;
-    });
-  }, []);
-
-  const saveRecentSearch = useCallback((searchValues: UnifiedSearchValues) => {
-    if (typeof window === 'undefined') return;
-
-    const nextEntry: RecentSearchEntry = {
-      type: searchValues.type,
-      query: searchValues.query,
-      categorySlug: searchValues.categorySlug,
-      city: searchValues.city,
-      lat: searchValues.lat,
-      lng: searchValues.lng,
-      date: searchValues.date,
-      from: searchValues.from,
-      to: searchValues.to,
-      availableNow: searchValues.availableNow,
-      createdAt: new Date().toISOString(),
-    };
-
-    setRecentSearches((previous) => {
-      const next = dedupeRecentSearches([nextEntry, ...previous]);
-      window.localStorage.setItem(RECENT_SEARCHES_STORAGE_KEY, JSON.stringify(next));
       return next;
     });
   }, []);
@@ -549,10 +380,6 @@ export function useUnifiedSearch({
       rememberCity(nextValues.city);
     }
 
-    if (hasMeaningfulSearch(nextValues)) {
-      saveRecentSearch(nextValues);
-    }
-
     setValues(nextValues);
     setSearchInput(nextValues.query);
     setLocationInput(nextValues.city);
@@ -566,7 +393,7 @@ export function useUnifiedSearch({
       undefined,
       { shallow: true },
     );
-  }, [buildExploreQuery, closeAllDropdowns, rememberCity, router, saveRecentSearch]);
+  }, [buildExploreQuery, closeAllDropdowns, rememberCity, router]);
 
   const handleUseCurrentLocation = useCallback(() => {
     if (typeof window === 'undefined' || !navigator.geolocation) {
@@ -626,19 +453,6 @@ export function useUnifiedSearch({
   }, []);
 
   const applySuggestion = useCallback((item: SuggestDropdownItem, submitImmediately = false) => {
-    if (item.recentSearch) {
-      const nextValues = toUnifiedValuesFromRecent(item.recentSearch);
-      setValues(nextValues);
-      setSearchInput(nextValues.query);
-      setLocationInput(nextValues.city);
-      closeAllDropdowns();
-
-      if (submitImmediately) {
-        runSearch(nextValues);
-      }
-      return;
-    }
-
     const isGlobalOption = item.variant === 'global';
     const nextValues: UnifiedSearchValues = {
       ...values,
@@ -659,7 +473,7 @@ export function useUnifiedSearch({
     if (submitImmediately) {
       runSearch(nextValues);
     }
-  }, [closeAllDropdowns, runSearch, values]);
+  }, [runSearch, values]);
 
   const setAnytime = useCallback(() => {
     setValues((previous) => ({
@@ -786,33 +600,6 @@ export function useUnifiedSearch({
     });
   }, [allCategoryDropdownItems, searchInput]);
 
-  const popularCategoryItems = useMemo(() => {
-    if (allCategoryDropdownItems.length === 0) return [];
-
-    const selected: SuggestDropdownItem[] = [];
-    const used = new Set<string>();
-
-    POPULAR_CATEGORY_PATTERNS.forEach((pattern) => {
-      const match = allCategoryDropdownItems.find((item) => {
-        const slug = normalizeSearchText(item.categorySlug || '');
-        const label = normalizeSearchText(item.label);
-        return !used.has(item.id) && (slug.includes(pattern) || label.includes(pattern));
-      });
-      if (!match) return;
-      used.add(match.id);
-      selected.push(match);
-    });
-
-    allCategoryDropdownItems.forEach((item) => {
-      if (selected.length >= 6) return;
-      if (used.has(item.id)) return;
-      used.add(item.id);
-      selected.push(item);
-    });
-
-    return selected;
-  }, [allCategoryDropdownItems]);
-
   const mixedSuggestionItems = useMemo(() => {
     const catItems = categoryDropdownItems.map((item, index) => ({
       ...item,
@@ -843,20 +630,6 @@ export function useUnifiedSearch({
     );
   }, [categoryDropdownItems, suggestions.locals, suggestions.professionals, suggestions.services]);
 
-  const recentDropdownItems = useMemo(
-    () =>
-      recentSearches.map((entry, index) => ({
-        id: `recent-search-${index}-${entry.createdAt}`,
-        type: normalizeType(entry.type),
-        label: recentSearchLabel(entry),
-        secondary: recentSearchSecondary(entry),
-        categorySlug: entry.categorySlug,
-        recentSearch: entry,
-        variant: 'recent' as const,
-      })),
-    [recentSearches],
-  );
-
   const dropdownGroups = useMemo(() => {
     const groups: Array<{ title: string; items: SuggestDropdownItem[]; note?: string }> = [
       { title: '', items: [GLOBAL_SEARCH_OPTION] },
@@ -864,33 +637,10 @@ export function useUnifiedSearch({
 
     const normalizedQuery = normalizeSearchText(searchInput);
     if (!normalizedQuery) {
-      if (recentDropdownItems.length > 0) {
+      if (allCategoryDropdownItems.length > 0) {
         groups.push({
-          title: 'Recientes',
-          items: recentDropdownItems.slice(0, RECENT_DROPDOWN_LIMIT),
-        });
-      }
-
-      if (popularCategoryItems.length > 0) {
-        groups.push({ title: 'Rubros', items: popularCategoryItems.slice(0, 6) });
-      }
-
-      const popularCategorySlugs = new Set(
-        popularCategoryItems.map((item) => item.categorySlug).filter(Boolean),
-      );
-      const remainingCategories = allCategoryDropdownItems.filter((item) => {
-        if (!item.categorySlug) return true;
-        return !popularCategorySlugs.has(item.categorySlug);
-      });
-
-      if (remainingCategories.length > 0) {
-        groups.push({
-          title: 'Todos los rubros',
-          items: remainingCategories.slice(0, CATEGORY_DROPDOWN_LIMIT),
-          note:
-            remainingCategories.length > CATEGORY_DROPDOWN_LIMIT
-              ? 'Escribi para ver mas.'
-              : undefined,
+          title: 'Categorías',
+          items: allCategoryDropdownItems,
         });
       }
 
@@ -902,7 +652,7 @@ export function useUnifiedSearch({
     }
 
     return groups;
-  }, [allCategoryDropdownItems, mixedSuggestionItems, popularCategoryItems, recentDropdownItems, searchInput]);
+  }, [allCategoryDropdownItems, mixedSuggestionItems, searchInput]);
 
   const flatDropdownItems = useMemo(
     () => dropdownGroups.flatMap((group) => group.items),

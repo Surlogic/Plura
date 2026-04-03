@@ -27,7 +27,6 @@ export default memo(function TopBusinesses({ professionals, isLoading = false }:
       <div className="mx-auto w-full max-w-6xl space-y-6">
         <SectionHeading
           title="Profesionales destacados"
-          description="Una selección corta para orientarte rápido y seguir explorando en el perfil o en búsqueda."
         />
         {isLoading ? (
           <Card tone="soft" className="border-dashed text-sm text-[color:var(--ink-muted)]">

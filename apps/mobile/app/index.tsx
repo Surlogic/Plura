@@ -28,7 +28,7 @@ export default function EntryScreen() {
   }
 
   if (role === 'client') {
-    return <Redirect href="/(tabs)" />;
+    return <Redirect href="/(tabs)/index" />;
   }
 
   return <AuthWelcomeScreen />;

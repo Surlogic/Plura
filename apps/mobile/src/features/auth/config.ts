@@ -99,5 +99,5 @@ export const continueAfterAuth = async (role: AuthRole) => {
     }
   }
 
-  router.replace('/(tabs)/dashboard');
+  router.replace('/(tabs)/index');
 };

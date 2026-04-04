@@ -295,7 +295,7 @@ export default function SettingsScreen() {
   }
 
   return (
-    <AppScreen scroll edges={['top']} contentContainerStyle={{ padding: 24, paddingBottom: 60 }}>
+    <AppScreen scroll edges={['top']} contentContainerStyle={{ padding: 24, paddingBottom: 144 }}>
         <ScreenHero
           eyebrow="Configuracion"
           title="Cuenta y seguridad"

@@ -15,7 +15,7 @@ export default function ProfessionalNotificationsScreen() {
   const { profile } = useAuthSession();
 
   return (
-    <AppScreen scroll edges={['top']} contentContainerStyle={{ paddingTop: 24, paddingBottom: 120 }}>
+    <AppScreen scroll edges={['top']} contentContainerStyle={{ paddingTop: 24, paddingBottom: 144 }}>
       <ScreenHero
         eyebrow="Notificaciones profesional"
         title="Estado del negocio"

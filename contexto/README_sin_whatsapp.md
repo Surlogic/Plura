@@ -409,6 +409,8 @@ La app mobile usa `expo-router` con grupos:
 - `app/(tabs)` para la experiencia principal del cliente
 - `app/(auth)` para login, registro, recovery escalonado y completar telefono despues de OAuth
 - `app/dashboard` para vistas del profesional
+- si la sesion es de cliente, mobile entra explicitamente por `/(tabs)/index`; si por estado viejo o deep link cae en `app/dashboard`, el layout profesional la reubica al shell cliente para no dejarla atrapada en vistas como `Turnos y reservas`
+- el shell profesional mobile ahora incluye una barra inferior persistente para navegar entre modulos clave del dashboard sin volver manualmente atras
 - al cerrar sesion en mobile, la navegacion ya vuelve al login correcto por rol (`/(auth)/login-client` o `/(auth)/login-professional`) en vez de mandar siempre a la portada inicial
 
 El cliente Axios mobile:

@@ -115,7 +115,7 @@ export default function ServicesScreen() {
   }
 
   return (
-    <AppScreen scroll edges={['top']} contentContainerStyle={{ paddingHorizontal: 24, paddingTop: 20, paddingBottom: 40 }}>
+    <AppScreen scroll edges={['top']} contentContainerStyle={{ paddingHorizontal: 24, paddingTop: 20, paddingBottom: 144 }}>
         <ScreenHero
           eyebrow="Servicios"
           title="Catalogo profesional"

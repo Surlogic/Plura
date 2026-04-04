@@ -137,7 +137,7 @@ export default function BillingScreen() {
   }
 
   return (
-    <AppScreen scroll edges={['top']} contentContainerStyle={{ padding: 24, paddingBottom: 60 }}>
+    <AppScreen scroll edges={['top']} contentContainerStyle={{ padding: 24, paddingBottom: 144 }}>
         <ScreenHero
           eyebrow="Facturacion"
           title="Plan y cobros"

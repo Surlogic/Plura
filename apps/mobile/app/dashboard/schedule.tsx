@@ -62,7 +62,7 @@ export default function ScheduleScreen() {
   }
 
   return (
-    <AppScreen scroll edges={['top']} contentContainerStyle={{ padding: 24, paddingBottom: 60 }}>
+    <AppScreen scroll edges={['top']} contentContainerStyle={{ padding: 24, paddingBottom: 144 }}>
         <ScreenHero
           eyebrow="Horarios"
           title="Disponibilidad semanal"

@@ -235,7 +235,7 @@ export default function BusinessProfileScreen() {
   }
 
   return (
-    <AppScreen scroll edges={['top']} contentContainerStyle={{ padding: 24, paddingBottom: 60 }}>
+    <AppScreen scroll edges={['top']} contentContainerStyle={{ padding: 24, paddingBottom: 144 }}>
         <ScreenHero
           eyebrow="Perfil del negocio"
           title="Identidad publica"

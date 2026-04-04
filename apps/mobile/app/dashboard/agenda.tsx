@@ -436,7 +436,7 @@ export default function AgendaScreen() {
     </View>
   );
   return (
-    <AppScreen scroll edges={['top']} contentContainerStyle={{ paddingBottom: 40 }}>
+    <AppScreen scroll edges={['top']} contentContainerStyle={{ paddingBottom: 144 }}>
         <View className="px-6 pt-6">
           <ScreenHero
             eyebrow="Agenda profesional"

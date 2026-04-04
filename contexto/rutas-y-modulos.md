@@ -314,7 +314,7 @@ Base: `apps/mobile/app`
 
 ### Entrada y layout
 
-- `app/index.tsx`: si hay sesion profesional redirige a `/dashboard`, si hay sesion cliente redirige a `/(tabs)` y si no hay sesion muestra una portada mobile con logo Plura y CTAs `Iniciar como cliente` / `Iniciar como profesional`.
+- `app/index.tsx`: si hay sesion profesional redirige a `/dashboard`, si hay sesion cliente redirige explicitamente a `/(tabs)/index` para entrar al shell principal con tab bar visible y si no hay sesion muestra una portada mobile con logo Plura y CTAs `Iniciar como cliente` / `Iniciar como profesional`.
 - `app/_layout.tsx`: monta `ProfessionalProfileProvider` y stack principal.
 - el logout mobile ahora deriva al login correcto por rol activo (`/(auth)/login-client` o `/(auth)/login-professional`) para no mezclar los accesos despues de limpiar sesion
 
@@ -330,6 +330,7 @@ Base: `apps/mobile/app`
 Lectura de producto:
 
 - la tab bar esta centrada en cliente
+- el layout `app/(tabs)/_layout.tsx` ahora expulsa sesiones profesionales hacia `/dashboard` para evitar cruces de shells o quedar atrapado en superficies cliente sin navegacion coherente
 - `explore`, `favorites`, `bookings` y `notifications` reflejan el nucleo del plan `Usuario`
 - `dashboard` mezcla acceso de cliente y profesional, lo que puede servir al MVP pero puede requerir separacion mas adelante
 - `/(tabs)/index` ya muestra un bloque de ubicacion del cliente para abrir exploracion ordenada por cercania y un CTA para activar permisos de notificaciones del dispositivo
@@ -354,7 +355,7 @@ Lectura de producto:
 
 - cubre autenticacion base con flujos separados por rol (cliente y profesional)
 - login y registro por rol ya combinan credenciales propias y Google sobre el mismo backend `auth`
-- al completar login o OAuth, cliente y profesional ya salen por rutas distintas: cliente retoma `pendingReservation` o cae en `/(tabs)/dashboard`, mientras profesional entra directo a `/dashboard`
+- al completar login o OAuth, cliente y profesional ya salen por rutas distintas: cliente retoma `pendingReservation` o cae en `/(tabs)/index` como entrada principal con tabs visibles, mientras profesional entra directo a `/dashboard`
 - `src/hooks/useGoogleOAuth` usa `@react-native-google-signin/google-signin` en Android para abrir el selector nativo de cuentas y pedir `idToken` con `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID`; en iOS/web mantiene `expo-auth-session`; sigue requiriendo development build fuera de `Expo Go`
 - `/(auth)/forgot-password` ya replica la recuperacion web por `email -> telefono -> codigo` sobre `/auth/password/recovery/*`
 - `/(auth)/complete-phone-client` y `/(auth)/complete-phone-professional` completan el telefono faltante despues de OAuth via `POST /auth/oauth/complete-phone`
@@ -378,6 +379,8 @@ Lectura de producto:
 - reproduce parte del panel profesional en mobile
 - responde bien al objetivo `Free` y `Pro` de operar una agenda desde el telefono
 - `/dashboard` redirige segun sesion: profesional va a `/dashboard/agenda`; otros casos vuelven a tabs o login
+- `app/dashboard/_layout.tsx` ahora reubica cualquier sesion no profesional autenticada en `/(tabs)/index` para evitar que cliente vea vistas operativas del profesional como `Turnos y reservas`
+- el dashboard profesional mobile ahora monta una barra inferior persistente propia con accesos a `agenda`, `servicios`, `perfil`, `cobros` y `ajustes`; ya no depende de links sueltos dentro de cada pantalla para moverse entre modulos
 - `dashboard/billing` ya no usa `payout-config`; muestra el plan de Plura y el estado de conexion OAuth de `Mercado Pago` como unico provider vigente para cobros
 - `dashboard/billing` en mobile ya respeta el gating principal de web: si el perfil no tiene `allowOnlinePayments`, no intenta conectar `Mercado Pago` y deja la conexion reservada para `PROFESIONAL / ENTERPRISE`
 - `dashboard/billing` refresca perfil + suscripcion al volver a foreground para bajar desfasajes despues del checkout del plan o del flujo OAuth

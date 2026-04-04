@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import type { PointerEventHandler, ReactNode } from 'react';
 import { SEARCH_CONTROL_HEIGHT_CLASS } from '@/components/search/searchUi';
 
 type SearchFieldProps = {
@@ -7,6 +7,7 @@ type SearchFieldProps = {
   asButton?: boolean;
   onClick?: () => void;
   onFocus?: () => void;
+  onPointerDown?: PointerEventHandler<HTMLButtonElement>;
   children: ReactNode;
   className?: string;
   labelClassName?: string;
@@ -20,6 +21,7 @@ export default function SearchField({
   asButton = false,
   onClick,
   onFocus,
+  onPointerDown,
   children,
   className = '',
   labelClassName = '',
@@ -56,6 +58,7 @@ export default function SearchField({
         type="button"
         onClick={onClick}
         onFocus={onFocus}
+        onPointerDown={onPointerDown}
         className={`${baseClassName} focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--accent-soft)] focus-visible:ring-offset-2`}
       >
         {content}

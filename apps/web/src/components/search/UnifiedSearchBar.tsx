@@ -122,6 +122,7 @@ export default memo(function UnifiedSearchBar({
   const { resolvedTheme } = useTheme();
   const isDarkTheme = resolvedTheme === 'dark';
   const [heroExpandedField, setHeroExpandedField] = useState<'query' | null>(null);
+  const skipHeroSelectionFocusCollapseRef = useRef(false);
 
   const search = useUnifiedSearch({ initialValues, fixedQuery, citySuggestions });
 
@@ -334,6 +335,19 @@ export default memo(function UnifiedSearchBar({
     }
   };
 
+  const handleSelectionFieldPointerDown = useCallback(() => {
+    skipHeroSelectionFocusCollapseRef.current = true;
+  }, []);
+
+  const handleSelectionFieldFocus = useCallback(() => {
+    if (!heroFocusExpansionEnabled) return;
+    if (skipHeroSelectionFocusCollapseRef.current) {
+      skipHeroSelectionFocusCollapseRef.current = false;
+      return;
+    }
+    setHeroExpandedField(null);
+  }, [heroFocusExpansionEnabled]);
+
   const activeFilters = useMemo<SearchFilterChip[]>(() => {
     const filters: SearchFilterChip[] = [];
 
@@ -499,15 +513,13 @@ export default memo(function UnifiedSearchBar({
                 active={isLocationOpen || hasLocationSelection}
                 asButton
                 className={selectionFieldClassName}
-                onFocus={() => {
-                  if (heroFocusExpansionEnabled) {
-                    setHeroExpandedField(null);
-                  }
-                }}
+                onFocus={handleSelectionFieldFocus}
+                onPointerDown={handleSelectionFieldPointerDown}
                 labelClassName={hiddenHeroLabelClassName}
                 valueClassName={selectionValueClassName}
                 chrome={isHero ? 'bare' : 'framed'}
                 onClick={() => {
+                  skipHeroSelectionFocusCollapseRef.current = false;
                   if (heroFocusExpansionEnabled) {
                     setHeroExpandedField(null);
                   }
@@ -593,15 +605,13 @@ export default memo(function UnifiedSearchBar({
                 active={isDateOpen || hasDateSelection}
                 asButton
                 className={selectionFieldClassName}
-                onFocus={() => {
-                  if (heroFocusExpansionEnabled) {
-                    setHeroExpandedField(null);
-                  }
-                }}
+                onFocus={handleSelectionFieldFocus}
+                onPointerDown={handleSelectionFieldPointerDown}
                 labelClassName={hiddenHeroLabelClassName}
                 valueClassName={selectionValueClassName}
                 chrome={isHero ? 'bare' : 'framed'}
                 onClick={() => {
+                  skipHeroSelectionFocusCollapseRef.current = false;
                   if (heroFocusExpansionEnabled) {
                     setHeroExpandedField(null);
                   }

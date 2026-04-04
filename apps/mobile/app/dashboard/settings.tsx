@@ -16,7 +16,7 @@ import {
 import type { ProfessionalBookingPolicy } from '../../src/types/bookings';
 import { usePushNotifications } from '../../src/hooks/usePushNotifications';
 import { AppScreen } from '../../src/components/ui/AppScreen';
-import { ScreenHero } from '../../src/components/ui/MobileSurface';
+import { ActionButton, ScreenHero, SectionCard } from '../../src/components/ui/MobileSurface';
 
 type Preferences = {
   emailReminders: boolean;
@@ -306,6 +306,21 @@ export default function SettingsScreen() {
             { label: pushSettings.pushReminders ? 'Push activo' : 'Push pendiente', tone: 'light' },
           ]}
         />
+
+        <SectionCard style={{ marginTop: 24 }}>
+          <Text className="text-xs font-semibold uppercase tracking-[2px] text-gray-500">Sesion</Text>
+          <Text className="mt-2 text-sm leading-6 text-gray-500">
+            Cierra la sesion actual de este dispositivo y vuelve al acceso correspondiente segun tu rol.
+          </Text>
+          <ActionButton
+            label="Cerrar sesion"
+            tone="danger"
+            onPress={() => {
+              void logout();
+            }}
+            style={{ marginTop: 16 }}
+          />
+        </SectionCard>
 
         <View className="mt-8 rounded-[22px] bg-white p-5 border border-secondary/10">
           <View className="flex-row items-center justify-between py-2">

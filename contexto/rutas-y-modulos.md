@@ -389,6 +389,7 @@ Lectura de producto:
 - `dashboard/agenda` en mobile ya no expone las acciones manuales `completar` ni `retry payout`; queda alineado con la UX operativa web basada en confirmacion, cancelacion, no-show y reagendamiento
 - `dashboard/agenda` ya usa selector internacional para el telefono opcional al crear reservas manuales desde mobile
 - `dashboard/notifications` sigue siendo una pantalla transitoria de estado/configuracion para profesional; todavia no replica el inbox completo de web
+- `dashboard/settings` ahora expone tambien el cierre de sesion visible dentro del propio dashboard profesional mobile, sin depender de volver a la experiencia cliente
 - no expone aun el set completo de capacidades `Premium`
 - `dashboard/business-profile` ya usa el mismo selector internacional de telefono que auth para editar el contacto del negocio sin pedir prefijo manual
 

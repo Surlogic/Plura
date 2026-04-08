@@ -1,203 +1,49 @@
-import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Switch, Text, TouchableOpacity, View, TextInput } from 'react-native';
+import React from 'react';
+import { ActivityIndicator, Switch, Text, TouchableOpacity, View, TextInput } from 'react-native';
 import { router } from 'expo-router';
-import api from '../../../services/api';
 import EmailVerificationCard from '../../../components/auth/EmailVerificationCard';
-import { useProfessionalSession } from '../session/useProfessionalSession';
-import { getApiErrorMessage } from '../../../services/errors';
-import {
-  getProfessionalBookingPolicy,
-  updateProfessionalBookingPolicy,
-} from '../../../services/bookingPolicy';
-import type { ProfessionalBookingPolicy } from '../../../types/bookings';
 import { AppScreen } from '../../../components/ui/AppScreen';
 import { ActionButton, ScreenHero, SectionCard } from '../../../components/ui/MobileSurface';
+import { useProfessionalSettings } from '../hooks/useProfessionalSettings';
 
 export default function SettingsScreen() {
-  const { profile, refreshProfile, logout } = useProfessionalSession();
-  const [isDeletingAccount, setIsDeletingAccount] = useState(false);
-  const [isSendingDeleteChallenge, setIsSendingDeleteChallenge] = useState(false);
-  const [deleteChallengeId, setDeleteChallengeId] = useState<string | null>(null);
-  const [deleteChallengeCode, setDeleteChallengeCode] = useState('');
-  const [deleteChallengeMessage, setDeleteChallengeMessage] = useState<string | null>(null);
-  const [deleteChallengeError, setDeleteChallengeError] = useState<string | null>(null);
-  const [isChangingPassword, setIsChangingPassword] = useState(false);
-  const [passwordMessage, setPasswordMessage] = useState<string | null>(null);
-  const [passwordError, setPasswordError] = useState<string | null>(null);
-  const [passwordForm, setPasswordForm] = useState({
-    currentPassword: '',
-    newPassword: '',
-    confirmPassword: '',
-  });
-  const [phoneVerificationCode, setPhoneVerificationCode] = useState('');
-  const [phoneVerificationMessage, setPhoneVerificationMessage] = useState<string | null>(null);
-  const [phoneVerificationError, setPhoneVerificationError] = useState<string | null>(null);
-  const [isSendingPhoneVerification, setIsSendingPhoneVerification] = useState(false);
-  const [isConfirmingPhoneVerification, setIsConfirmingPhoneVerification] = useState(false);
-  const [bookingPolicy, setBookingPolicy] = useState<ProfessionalBookingPolicy | null>(null);
-  const [isLoadingBookingPolicy, setIsLoadingBookingPolicy] = useState(false);
-  const [isSavingBookingPolicy, setIsSavingBookingPolicy] = useState(false);
-  const [bookingPolicyMessage, setBookingPolicyMessage] = useState<string | null>(null);
-
+  const {
+    profile,
+    refreshProfile,
+    logout,
+    bookingPolicy,
+    isLoadingBookingPolicy,
+    isSavingBookingPolicy,
+    bookingPolicyMessage,
+    isDeletingAccount,
+    isSendingDeleteChallenge,
+    deleteChallengeCode,
+    deleteChallengeMessage,
+    deleteChallengeError,
+    passwordForm,
+    passwordMessage,
+    passwordError,
+    isChangingPassword,
+    phoneVerificationCode,
+    phoneVerificationMessage,
+    phoneVerificationError,
+    isSendingPhoneVerification,
+    isConfirmingPhoneVerification,
+    setBookingPolicy,
+    setDeleteChallengeCode,
+    setPasswordForm,
+    setPhoneVerificationCode,
+    sendDeleteChallenge,
+    deleteAccount,
+    changePassword,
+    sendPhoneVerification,
+    confirmPhoneVerification,
+    saveBookingPolicy,
+  } = useProfessionalSettings();
   const currentEmail = profile?.email;
   const emailVerified = Boolean(profile?.emailVerified);
   const currentPhone = profile?.phoneNumber;
   const phoneVerified = Boolean(profile?.phoneVerified);
-
-  useEffect(() => {
-    const loadPolicy = async () => {
-      setIsLoadingBookingPolicy(true);
-      try {
-        const policy = await getProfessionalBookingPolicy();
-        setBookingPolicy(policy);
-      } catch (error) {
-        setBookingPolicyMessage(getApiErrorMessage(error, 'No se pudo cargar la politica de reservas.'));
-      } finally {
-        setIsLoadingBookingPolicy(false);
-      }
-    };
-
-    void loadPolicy();
-  }, []);
-
-  const handleDeleteAccount = () => {
-    if (isDeletingAccount) return;
-    if (!deleteChallengeId || !deleteChallengeCode.trim()) {
-      setDeleteChallengeError('Primero solicitá el challenge e ingresá el código recibido.');
-      return;
-    }
-    const description = 'Si tienes una suscripcion activa, se dara de baja antes de eliminar tu cuenta.';
-
-    Alert.alert(
-      'Eliminar cuenta',
-      `${description} Esta accion no se puede deshacer.`,
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Eliminar',
-          style: 'destructive',
-          onPress: async () => {
-            setIsDeletingAccount(true);
-            try {
-              await api.delete('/auth/me', {
-                data: {
-                  challengeId: deleteChallengeId,
-                  code: deleteChallengeCode.trim(),
-                },
-              });
-              await logout();
-            } catch (error) {
-              Alert.alert(
-                'No se pudo eliminar la cuenta',
-                getApiErrorMessage(error, 'Intenta nuevamente en unos minutos.'),
-              );
-            } finally {
-              setIsDeletingAccount(false);
-            }
-          },
-        },
-      ],
-    );
-  };
-
-  const handleSendDeleteChallenge = async (channel: 'EMAIL' | 'SMS') => {
-    if (isSendingDeleteChallenge) return;
-    setDeleteChallengeMessage(null);
-    setDeleteChallengeError(null);
-
-    try {
-      setIsSendingDeleteChallenge(true);
-      const response = await api.post<{ challengeId: string; expiresAt: string; maskedDestination: string }>(
-        '/auth/challenge/send',
-        {
-          purpose: 'ACCOUNT_DELETION',
-          channel,
-        },
-      );
-      setDeleteChallengeId(response.data.challengeId);
-      setDeleteChallengeMessage(
-        `Código enviado por ${channel === 'EMAIL' ? 'email' : 'SMS'} a ${response.data.maskedDestination}.`,
-      );
-    } catch (error) {
-      setDeleteChallengeError(
-        getApiErrorMessage(error, 'No se pudo enviar el challenge de eliminación.'),
-      );
-    } finally {
-      setIsSendingDeleteChallenge(false);
-    }
-  };
-
-  const handleChangePassword = async () => {
-    if (isChangingPassword) return;
-    setPasswordMessage(null);
-    setPasswordError(null);
-
-    if (passwordForm.newPassword.length < 8) {
-      setPasswordError('La contraseña debe tener al menos 8 caracteres.');
-      return;
-    }
-    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
-      setPasswordError('Las contraseñas no coinciden.');
-      return;
-    }
-
-    try {
-      setIsChangingPassword(true);
-      await api.post('/auth/password/change', {
-        currentPassword: passwordForm.currentPassword,
-        newPassword: passwordForm.newPassword,
-      });
-      setPasswordMessage('Contraseña actualizada. Inicia sesión nuevamente.');
-      await logout();
-    } catch (error) {
-      setPasswordError(getApiErrorMessage(error, 'No se pudo actualizar la contraseña.'));
-    } finally {
-      setIsChangingPassword(false);
-    }
-  };
-
-  const handleSendPhoneVerification = async () => {
-    if (isSendingPhoneVerification || !currentPhone) return;
-    setPhoneVerificationMessage(null);
-    setPhoneVerificationError(null);
-
-    try {
-      setIsSendingPhoneVerification(true);
-      const response = await api.post<{ message: string; cooldownSeconds?: number | null }>(
-        '/auth/verify/phone/send',
-        {},
-      );
-      const suffix = response.data.cooldownSeconds && response.data.cooldownSeconds > 0
-        ? ` Podés reenviar en ${response.data.cooldownSeconds}s.`
-        : '';
-      setPhoneVerificationMessage(`${response.data.message}${suffix}`);
-      await refreshProfile();
-    } catch (error) {
-      setPhoneVerificationError(getApiErrorMessage(error, 'No se pudo enviar el OTP.'));
-    } finally {
-      setIsSendingPhoneVerification(false);
-    }
-  };
-
-  const handleConfirmPhoneVerification = async () => {
-    if (isConfirmingPhoneVerification || !currentPhone) return;
-    setPhoneVerificationMessage(null);
-    setPhoneVerificationError(null);
-
-    try {
-      setIsConfirmingPhoneVerification(true);
-      await api.post('/auth/verify/phone/confirm', {
-        code: phoneVerificationCode.trim(),
-      });
-      setPhoneVerificationCode('');
-      setPhoneVerificationMessage('Teléfono verificado correctamente.');
-      await refreshProfile();
-    } catch (error) {
-      setPhoneVerificationError(getApiErrorMessage(error, 'No se pudo verificar el OTP.'));
-    } finally {
-      setIsConfirmingPhoneVerification(false);
-    }
-  };
 
   return (
     <AppScreen scroll edges={['top']} contentContainerStyle={{ padding: 24, paddingBottom: 144 }}>
@@ -260,7 +106,7 @@ export default function SettingsScreen() {
             <>
               <TouchableOpacity
                 onPress={() => {
-                  void handleSendPhoneVerification();
+                  void sendPhoneVerification();
                 }}
                 disabled={isSendingPhoneVerification}
                 className="mt-4 h-12 items-center justify-center rounded-full border border-secondary/10 bg-background"
@@ -281,7 +127,7 @@ export default function SettingsScreen() {
 
               <TouchableOpacity
                 onPress={() => {
-                  void handleConfirmPhoneVerification();
+                  void confirmPhoneVerification();
                 }}
                 disabled={isConfirmingPhoneVerification}
                 className="mt-3 h-12 items-center justify-center rounded-full bg-secondary"
@@ -341,7 +187,7 @@ export default function SettingsScreen() {
 
           <TouchableOpacity
             onPress={() => {
-              void handleChangePassword();
+              void changePassword();
             }}
             disabled={isChangingPassword}
             className="mt-4 h-12 items-center justify-center rounded-full bg-secondary"
@@ -446,26 +292,8 @@ export default function SettingsScreen() {
               </View>
 
               <TouchableOpacity
-                onPress={async () => {
-                  if (!bookingPolicy || isSavingBookingPolicy) return;
-                  setIsSavingBookingPolicy(true);
-                  setBookingPolicyMessage(null);
-                  try {
-                    const updated = await updateProfessionalBookingPolicy({
-                      allowClientCancellation: bookingPolicy.allowClientCancellation,
-                      allowClientReschedule: bookingPolicy.allowClientReschedule,
-                      cancellationWindowHours: bookingPolicy.cancellationWindowHours ?? null,
-                      rescheduleWindowHours: bookingPolicy.rescheduleWindowHours ?? null,
-                      maxClientReschedules: bookingPolicy.maxClientReschedules ?? null,
-                      retainDepositOnLateCancellation: bookingPolicy.retainDepositOnLateCancellation,
-                    });
-                    setBookingPolicy(updated);
-                    setBookingPolicyMessage('Politica guardada correctamente.');
-                  } catch (error) {
-                    setBookingPolicyMessage(getApiErrorMessage(error, 'No se pudo guardar la politica.'));
-                  } finally {
-                    setIsSavingBookingPolicy(false);
-                  }
+                onPress={() => {
+                  void saveBookingPolicy();
                 }}
                 disabled={isSavingBookingPolicy}
                 className="mt-4 h-12 items-center justify-center rounded-full bg-secondary"
@@ -489,7 +317,7 @@ export default function SettingsScreen() {
           </Text>
           <TouchableOpacity
             onPress={() => {
-              void handleSendDeleteChallenge('EMAIL');
+              void sendDeleteChallenge('EMAIL');
             }}
             disabled={isSendingDeleteChallenge}
             className="mt-4 h-12 items-center justify-center rounded-full border border-red-200 bg-white"
@@ -501,7 +329,7 @@ export default function SettingsScreen() {
           {currentPhone ? (
             <TouchableOpacity
               onPress={() => {
-                void handleSendDeleteChallenge('SMS');
+                void sendDeleteChallenge('SMS');
               }}
               disabled={isSendingDeleteChallenge}
               className="mt-3 h-12 items-center justify-center rounded-full border border-red-200 bg-white"
@@ -526,7 +354,7 @@ export default function SettingsScreen() {
             <Text className="mt-3 text-xs font-semibold text-red-600">{deleteChallengeError}</Text>
           ) : null}
           <TouchableOpacity
-            onPress={handleDeleteAccount}
+            onPress={deleteAccount}
             disabled={isDeletingAccount}
             className="mt-4 h-12 items-center justify-center rounded-full border border-red-200 bg-white"
           >

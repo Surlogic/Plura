@@ -426,10 +426,13 @@ Lectura de producto:
 - `src/features/client/navigation/ClientTabsLayout.tsx`: barra inferior y guard de tabs cliente, separada del routing Expo.
 - `src/features/client/screens/*`: implementaciones reales de `home`, `explore`, `favorites`, `bookings`, `notifications` y `profile` del cliente.
 - `src/features/client/screens/SettingsScreen.tsx`: preferencias, push, verificaciones, seguridad y baja de cuenta del cliente.
+- `src/features/client/hooks/useClientSettings.ts`: estado, efectos y mutaciones de configuración cliente fuera de la screen.
 - `src/features/client/session/useClientSession.ts`: facade de sesion cliente; expone solo estado y acciones del lado usuario para no arrastrar `profile` profesional dentro de features cliente.
 - `src/features/professional/auth/*`: login, registro y complete-phone profesional con salida directa a `/dashboard`.
 - `src/features/professional/screens/*`: implementaciones reales de `agenda`, `services`, `business-profile`, `billing`, `schedule`, `settings`, `notifications` y redirect inicial del dashboard profesional.
 - `src/features/professional/screens/SettingsScreen.tsx`: ya no toca preferencias cliente; queda reservado a seguridad/verificaciones del profesional y política de reservas.
+- `src/features/professional/hooks/useProfessionalSettings.ts`: estado, efectos y mutaciones de configuración profesional fuera de la screen.
+- `src/features/professional/hooks/useProfessionalAgenda.ts`: estado, carga, acciones y formularios operativos de agenda/reservas fuera de la screen.
 - `src/features/professional/session/useProfessionalSession.ts`: facade de sesion profesional; expone solo estado y acciones del lado negocio para no arrastrar `clientProfile` dentro de features profesionales.
 - `src/hooks/useGoogleOAuth.ts`: en Android usa `@react-native-google-signin/google-signin` para evitar `invalid_request` del flujo web y forzar chooser nativo de cuentas; en iOS/web mantiene `expo-auth-session` y soporta token directo o authorization code segun lo que devuelva Google
 - `src/features/shared/auth/*`: namespace nuevo para piezas auth compartidas de mobile; ya expone la entrada publica (`AuthWelcomeScreen`, `AuthEntryShowcase`) sin mezclarla con la futura separacion cliente/profesional

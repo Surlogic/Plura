@@ -297,6 +297,7 @@ Prefijo: `/cliente`
 - `GET /cliente/notificaciones/{id}`
 - `PATCH /cliente/notificaciones/{id}/read`
 - `PATCH /cliente/notificaciones/read-all`
+- `PUT /cliente/notificaciones/push-token` — upsert simple del device token mobile del cliente autenticado; recibe `{ pushToken, platform, enabled }`, se usa tanto para registrar el token vigente como para deshabilitar tokens viejos al rotar, y deja base lista para futuras push nativas sin cambiar inbox/email actuales
 
 Lectura de producto:
 
@@ -305,6 +306,7 @@ Lectura de producto:
 - reutiliza el mismo modulo `core.notification` que profesional
 - inbox y unread count registran timing tecnico para no seguir ciegos sobre latencia real
 - el inbox paginado ahora sale por una ruta JDBC directa sobre `app_notification` + `notification_event` para evitar hidratacion JPA y parsing repetido del assembler en el listado
+- `PUT /cliente/notificaciones/push-token` hoy solo registra o deshabilita device tokens; no dispara despacho push server-side por si mismo y un `enabled=false` para un token inexistente se ignora sin crear filas basura
 
 ### Notificaciones del profesional
 

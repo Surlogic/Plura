@@ -314,9 +314,10 @@ Base: `apps/mobile/app`
 
 ### Entrada y layout
 
-- `app/index.tsx`: si hay sesion profesional redirige a `/dashboard`, si hay sesion cliente redirige explicitamente a `/(tabs)/index` para entrar al shell principal con tab bar visible y si no hay sesion muestra una portada mobile con logo Plura y CTAs `Iniciar como cliente` / `Iniciar como profesional`.
+- `app/index.tsx`: si hay sesion profesional redirige a `/dashboard`, si hay sesion cliente entra al shell principal por `/(tabs)` para dejar que Expo Router resuelva la tab inicial sin exponer `index` en el deep link, y si no hay sesion muestra una portada mobile con logo Plura y CTAs `Iniciar como cliente` / `Iniciar como profesional`.
 - `app/_layout.tsx`: monta `AuthSessionProvider` desde `src/context/auth/AuthSessionContext.tsx` y el stack principal.
 - el logout mobile ahora deriva al login correcto por rol activo (`/(auth)/login-client` o `/(auth)/login-professional`) para no mezclar los accesos despues de limpiar sesion
+- `app/+native-intent.tsx` y `app/+not-found.tsx` ahora normalizan entradas nativas vacias o stale (`plura:///`, `plura://index`, `plura:///(tabs)/index`) para que el arranque release no caiga en `Unmatched Route`
 
 ### Grupo `(tabs)`
 
@@ -357,7 +358,7 @@ Lectura de producto:
 - cubre autenticacion base con flujos separados por rol (cliente y profesional)
 - login y registro por rol ya combinan credenciales propias y Google sobre el mismo backend `auth`
 - las rutas reales de auth mobile ya no usan pantallas hibridas por `role`: cliente vive bajo `src/features/client/auth/*`, profesional bajo `src/features/professional/auth/*` y `src/features/shared/auth/*` queda reservado a entry points, recovery y rutas comunes
-- al completar login o OAuth, cliente y profesional ya salen por rutas distintas: cliente retoma `pendingReservation` o cae en `/(tabs)/index` como entrada principal con tabs visibles, mientras profesional entra directo a `/dashboard`
+- al completar login o OAuth, cliente y profesional ya salen por rutas distintas: cliente retoma `pendingReservation` o cae en `/(tabs)` como entrada principal con tabs visibles, mientras profesional entra directo a `/dashboard`
 - `src/hooks/useGoogleOAuth` usa `@react-native-google-signin/google-signin` en Android para abrir el selector nativo de cuentas y pedir `idToken` con `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID`; en iOS/web mantiene `expo-auth-session`; sigue requiriendo development build fuera de `Expo Go`
 - en mobile, cuando Google o backend devuelven un conflicto (`409`) dentro del flujo nativo, `useGoogleOAuth` ya intenta mostrar el `message` real de la API en vez del texto generico de Axios
 - `/(auth)/forgot-password` ya replica la recuperacion web por `email -> telefono -> codigo` sobre `/auth/password/recovery/*`
@@ -383,7 +384,7 @@ Lectura de producto:
 - responde bien al objetivo `Free` y `Pro` de operar una agenda desde el telefono
 - `app/dashboard` ya no contiene implementacion de negocio: queda como routing fino de Expo y delega en `src/features/professional/screens/*`
 - `/dashboard` redirige segun sesion: profesional va a `/dashboard/agenda`; otros casos vuelven a tabs o login
-- `app/dashboard/_layout.tsx` ahora reubica cualquier sesion no profesional autenticada en `/(tabs)/index` para evitar que cliente vea vistas operativas del profesional como `Turnos y reservas`
+- `app/dashboard/_layout.tsx` ahora reubica cualquier sesion no profesional autenticada en `/(tabs)` para evitar que cliente vea vistas operativas del profesional como `Turnos y reservas`
 - el dashboard profesional mobile ahora monta una barra inferior persistente propia con accesos a `agenda`, `servicios`, `perfil`, `cobros` y `ajustes`; ya no depende de links sueltos dentro de cada pantalla para moverse entre modulos y su implementacion base ya vive bajo `src/features/professional/navigation/ProfessionalBottomNav.tsx`
 - `dashboard/billing` ya no usa `payout-config`; muestra el plan de Plura y el estado de conexion OAuth de `Mercado Pago` como unico provider vigente para cobros
 - `dashboard/billing` en mobile ya respeta el gating principal de web: si el perfil no tiene `allowOnlinePayments`, no intenta conectar `Mercado Pago` y deja la conexion reservada para `PROFESIONAL / ENTERPRISE`

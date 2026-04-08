@@ -14,7 +14,10 @@ Después de hacer cambios relevantes, actualizar esos archivos si quedaron desal
 
 ## Regla obligatoria
 Responder en español y si se commitean cambios tambien en español.
-No finalizar tareas que cambien comportamiento, estructura, endpoints, módulos, rutas o configuración sin revisar si corresponde actualizar `contexto/`.
+No finalizar tareas que cambien comportamiento, estructura, endpoints, módulos, rutas o configuración sin revisar si corresponde actualizar.
+Cambiar solo lo que hay que cambiar, no cambiar odo el codigo solo la parte necesaria si es necesario tcar todo se toca.
+No responder con explicaciones que no importan si no con el resumen final si es requerido en el chat.
+`contexto/`.
 
 ## Flujo
 1. Leer contexto relevante

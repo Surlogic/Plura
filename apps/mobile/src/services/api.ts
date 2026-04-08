@@ -25,12 +25,19 @@ const MAX_AUTH_RETRY_ATTEMPTS = 1;
 const CLIENT_PLATFORM_HEADER = 'X-Plura-Client-Platform';
 const ANALYTICS_SESSION_HEADER = 'X-Plura-Analytics-Session-Id';
 const SESSION_TRANSPORT_HEADER = 'X-Plura-Session-Transport';
+const MOBILE_ENV_FILE = 'apps/mobile/.env';
 
 const getBaseUrl = () => {
-  if (process.env.EXPO_PUBLIC_API_URL) return process.env.EXPO_PUBLIC_API_URL;
+  const configuredBaseUrl = process.env.EXPO_PUBLIC_API_URL?.trim();
+  if (configuredBaseUrl) return configuredBaseUrl;
   if (Platform.OS === 'web') return 'http://localhost:3000';
-  if (Platform.OS === 'android') return 'http://10.0.2.2:3000';
-  return 'http://localhost:3000';
+  if (__DEV__) {
+    if (Platform.OS === 'android') return 'http://10.0.2.2:3000';
+    return 'http://localhost:3000';
+  }
+  throw new Error(
+    `Falta EXPO_PUBLIC_API_URL para mobile release. Definila en ${MOBILE_ENV_FILE} o en el environment de EAS antes de generar la build.`,
+  );
 };
 
 const api = axios.create({

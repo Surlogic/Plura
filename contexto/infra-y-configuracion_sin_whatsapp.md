@@ -209,7 +209,6 @@ Infra actual detectada:
 
 Capacidad pendiente o no claramente documentada:
 
-- registro backend de `push token` por dispositivo
 - despacho push nativo desde eventos transaccionales de reserva
 - motor de eventos de producto mas visible
 - extensiones de preferencias de notificaciones mas finas por canal o evento
@@ -283,7 +282,11 @@ Lectura de producto:
 - mobile usa `expo-web-browser` para abrir checkout de reservas, checkout de plan y OAuth de `Mercado Pago` dentro de la app sin sacar al usuario a un navegador externo completo
 - mobile ahora tambien depende de `expo-location` y `expo-notifications` para pedir permisos nativos de ubicacion y notificaciones
 - `app.json` ya declara el plugin `expo-location` con texto de permiso foreground y habilita `expo-notifications` para el permiso del sistema en runtime
-- el estado local de permiso push se persiste hoy junto con preferencias del cliente en storage seguro; aun no existe variable/env ni endpoint backend adicional para registrar device tokens
+- `EXPO_PUBLIC_API_URL` ya no tiene fallback silencioso en release mobile: si falta fuera de `__DEV__`, el bundle falla temprano para evitar builds que apunten accidentalmente a localhost
+- el estado local de permiso push se persiste junto con preferencias del cliente en storage seguro y, cuando existe sesion cliente autenticada, mobile sincroniza el `push token` contra `PUT /cliente/notificaciones/push-token`
+- si el cliente desactiva push desde la app pero el permiso del sistema sigue en `granted`, mobile respeta ese opt-out local y no lo reactiva solo al volver a foreground
+- si Expo rota el `push token`, mobile deshabilita primero el token anterior antes de sincronizar el nuevo para no dejar devices viejos activos por la misma instalacion
+- para release mobile, Google OAuth ya depende de configurar `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID` y los client IDs nativos correspondientes (`EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID`, `EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID`); `EXPO_PUBLIC_GOOGLE_CLIENT_ID` queda solo como fallback legacy
 - el bootstrap auth mobile ya usa el `role` embebido en el JWT para resolver el endpoint correcto de `/auth/me/*`; eso evita un request extra por refresh para cuentas cliente y reduce el costo cuando varias pantallas disparan `refreshProfile` en paralelo
 - el request de `POST /auth/refresh` en mobile ya no reenvia el access token vencido en `Authorization`; manda solo headers de plataforma/sesion y el `refreshToken` en body
 - `apps/mobile/eas.json` ya fija `environment` por profile (`development`, `preview`, `production`) para que EAS Build tome las variables correctas sin depender de `--environment`; ademas `preview` fuerza `android.buildType=apk` para pruebas instalables fuera de store

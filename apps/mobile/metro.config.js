@@ -16,12 +16,15 @@ const resolvePackageDir = (pkgName) => {
   }
 };
 
-config.watchFolders = [workspaceRoot];
-config.resolver.nodeModulesPaths = [
-  path.resolve(projectRoot, 'node_modules'),
-  path.resolve(workspaceRoot, 'node_modules'),
-];
-config.resolver.disableHierarchicalLookup = true;
+config.watchFolders = Array.from(new Set([...(config.watchFolders || []), workspaceRoot]));
+config.resolver.nodeModulesPaths = Array.from(
+  new Set([
+    ...(config.resolver.nodeModulesPaths || []),
+    path.resolve(projectRoot, 'node_modules'),
+    path.resolve(workspaceRoot, 'node_modules'),
+  ]),
+);
+config.resolver.disableHierarchicalLookup = false;
 // pnpm isolated linker can break transitive resolution during Metro bundling.
 config.resolver.extraNodeModules = {
   ...(config.resolver.extraNodeModules || {}),

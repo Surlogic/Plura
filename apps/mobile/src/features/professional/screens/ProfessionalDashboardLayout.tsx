@@ -2,6 +2,7 @@ import React from 'react';
 import { Redirect, Stack } from 'expo-router';
 import { View } from 'react-native';
 import { useProfessionalSession } from '../session/useProfessionalSession';
+import { AUTH_ENTRY_LOGIN_ROUTE, CLIENT_HOME_ROUTE } from '../../shared/auth/routes';
 import { ProfessionalBottomNav } from '../../../features/professional/navigation/ProfessionalBottomNav';
 import { theme } from '../../../theme';
 
@@ -13,7 +14,7 @@ export default function ProfessionalDashboardLayout() {
   }
 
   if (!isProfessional) {
-    return <Redirect href={isAuthenticated ? '/(tabs)/index' : '/(auth)/login'} />;
+    return <Redirect href={isAuthenticated ? CLIENT_HOME_ROUTE : AUTH_ENTRY_LOGIN_ROUTE} />;
   }
 
   return (

@@ -381,6 +381,7 @@ Lectura de producto:
 
 - reproduce parte del panel profesional en mobile
 - responde bien al objetivo `Free` y `Pro` de operar una agenda desde el telefono
+- `app/dashboard` ya no contiene implementacion de negocio: queda como routing fino de Expo y delega en `src/features/professional/screens/*`
 - `/dashboard` redirige segun sesion: profesional va a `/dashboard/agenda`; otros casos vuelven a tabs o login
 - `app/dashboard/_layout.tsx` ahora reubica cualquier sesion no profesional autenticada en `/(tabs)/index` para evitar que cliente vea vistas operativas del profesional como `Turnos y reservas`
 - el dashboard profesional mobile ahora monta una barra inferior persistente propia con accesos a `agenda`, `servicios`, `perfil`, `cobros` y `ajustes`; ya no depende de links sueltos dentro de cada pantalla para moverse entre modulos y su implementacion base ya vive bajo `src/features/professional/navigation/ProfessionalBottomNav.tsx`
@@ -424,6 +425,7 @@ Lectura de producto:
 - `src/features/client/navigation/ClientTabsLayout.tsx`: barra inferior y guard de tabs cliente, separada del routing Expo.
 - `src/features/client/screens/*`: implementaciones reales de `home`, `explore`, `favorites`, `bookings`, `notifications` y `profile` del cliente.
 - `src/features/professional/auth/*`: login, registro y complete-phone profesional con salida directa a `/dashboard`.
+- `src/features/professional/screens/*`: implementaciones reales de `agenda`, `services`, `business-profile`, `billing`, `schedule`, `settings`, `notifications` y redirect inicial del dashboard profesional.
 - `src/hooks/useGoogleOAuth.ts`: en Android usa `@react-native-google-signin/google-signin` para evitar `invalid_request` del flujo web y forzar chooser nativo de cuentas; en iOS/web mantiene `expo-auth-session` y soporta token directo o authorization code segun lo que devuelva Google
 - `src/features/shared/auth/*`: namespace nuevo para piezas auth compartidas de mobile; ya expone la entrada publica (`AuthWelcomeScreen`, `AuthEntryShowcase`) sin mezclarla con la futura separacion cliente/profesional
 - `src/services/location.ts` y `src/hooks/useUserLocation.ts`

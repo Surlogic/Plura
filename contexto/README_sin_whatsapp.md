@@ -409,9 +409,9 @@ La app mobile usa `expo-router` con grupos:
 - `app/index.tsx` como entrada: resuelve sesion y, cuando no existe login activo, muestra una portada de bienvenida con logo y acceso separado para cliente o profesional
 - `app/(tabs)` como shell de rutas Expo para cliente; la implementacion real de tabs ya vive en `src/features/client/navigation/*` y `src/features/client/screens/*`
 - `app/(auth)` para login, registro, recovery escalonado y completar telefono despues de OAuth
-- `app/dashboard` para vistas del profesional
+- `app/dashboard` como shell de rutas Expo para profesional; la implementacion real del dashboard ya vive en `src/features/professional/screens/*`
 - la base de sesion mobile ya esta migrando a un namespace neutral `src/context/auth/AuthSessionContext.tsx`; el archivo historico `src/context/ProfessionalProfileContext.tsx` queda solo como compatibilidad temporal
-- la entrada auth publica mobile ya empezo a moverse a `src/features/shared/auth/*`, las tabs cliente ya arrancan desde `src/features/client/navigation/*` + `src/features/client/screens/*`, la navegacion del dashboard profesional ya arranca desde `src/features/professional/navigation/*` y las pantallas auth reales ya quedaron separadas entre `src/features/client/auth/*` y `src/features/professional/auth/*`
+- la entrada auth publica mobile ya empezo a moverse a `src/features/shared/auth/*`, las tabs cliente ya arrancan desde `src/features/client/navigation/*` + `src/features/client/screens/*`, la navegacion del dashboard profesional ya arranca desde `src/features/professional/navigation/*`, sus pantallas reales viven en `src/features/professional/screens/*` y las pantallas auth reales ya quedaron separadas entre `src/features/client/auth/*` y `src/features/professional/auth/*`
 - si la sesion es de cliente, mobile entra explicitamente por `/(tabs)/index`; si por estado viejo o deep link cae en `app/dashboard`, el layout profesional la reubica al shell cliente para no dejarla atrapada en vistas como `Turnos y reservas`
 - el shell profesional mobile ahora incluye una barra inferior persistente para navegar entre modulos clave del dashboard sin volver manualmente atras
 - al cerrar sesion en mobile, la navegacion ya vuelve al login correcto por rol (`/(auth)/login-client` o `/(auth)/login-professional`) en vez de mandar siempre a la portada inicial

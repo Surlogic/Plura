@@ -6,7 +6,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { listPublicProfessionals, type PublicProfessionalSummary } from '../../../services/publicBookings';
 import { getClientNextBooking, type ClientNextBooking } from '../../../services/clientFeatures';
 import { getApiErrorMessage } from '../../../services/errors';
-import { useAuthSession } from '../../../context/auth/AuthSessionContext';
+import { useClientSession } from '../session/useClientSession';
 import { listCategories } from '../../../services/categories';
 import type { ServiceCategoryOption } from '../../../types/professional';
 import { getCategoryAccent } from '../../../features/client/categoryUi';
@@ -25,7 +25,7 @@ import {
 } from '../../../components/ui/MobileSurface';
 
 export default function HomeScreen() {
-  const { clientProfile, isAuthenticated, role } = useAuthSession();
+  const { clientProfile, isAuthenticated, isClient } = useClientSession();
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -92,7 +92,7 @@ export default function HomeScreen() {
   const displayName = clientProfile?.fullName?.trim() || 'Explora Plura';
   const locationLabel = location.label || 'tu zona';
   const shouldShowPushPrompt =
-    isAuthenticated && role !== 'professional' && !arePushNotificationsEnabled;
+    isAuthenticated && isClient && !arePushNotificationsEnabled;
 
   const handleOpenNearby = async () => {
     const nextLocation = hasCoordinates

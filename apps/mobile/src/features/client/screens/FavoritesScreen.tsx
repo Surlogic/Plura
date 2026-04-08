@@ -12,7 +12,7 @@ import {
   listPublicProfessionals,
   type PublicProfessionalSummary,
 } from '../../../services/publicBookings';
-import { useAuthSession } from '../../../context/auth/AuthSessionContext';
+import { useClientSession } from '../session/useClientSession';
 import { getCategoryAccent } from '../../../features/client/categoryUi';
 import { AppScreen } from '../../../components/ui/AppScreen';
 import { theme } from '../../../theme';
@@ -26,7 +26,7 @@ import {
 } from '../../../components/ui/MobileSurface';
 
 export default function FavoritesScreen() {
-  const { clientProfile, isAuthenticated } = useAuthSession();
+  const { clientProfile, isAuthenticated } = useClientSession();
   const [loading, setLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [favorites, setFavorites] = useState<string[]>([]);

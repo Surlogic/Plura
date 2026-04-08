@@ -7,7 +7,7 @@ import {
 } from '../../../services/clientFeatures';
 import api from '../../../services/api';
 import EmailVerificationCard from '../../../components/auth/EmailVerificationCard';
-import { useAuthSession } from '../../../context/auth/AuthSessionContext';
+import { useProfessionalSession } from '../session/useProfessionalSession';
 import { getApiErrorMessage } from '../../../services/errors';
 import {
   getProfessionalBookingPolicy,
@@ -25,7 +25,7 @@ type Preferences = {
 };
 
 export default function SettingsScreen() {
-  const { role, profile, clientProfile, refreshProfile, logout } = useAuthSession();
+  const { profile, refreshProfile, logout } = useProfessionalSession();
   const [isLoading, setIsLoading] = useState(true);
   const [isDeletingAccount, setIsDeletingAccount] = useState(false);
   const [isSendingDeleteChallenge, setIsSendingDeleteChallenge] = useState(false);
@@ -61,14 +61,10 @@ export default function SettingsScreen() {
     disablePush,
   } = usePushNotifications();
 
-  const currentEmail = role === 'professional' ? profile?.email : clientProfile?.email;
-  const emailVerified = role === 'professional'
-    ? Boolean(profile?.emailVerified)
-    : Boolean(clientProfile?.emailVerified);
-  const currentPhone = role === 'professional' ? profile?.phoneNumber : clientProfile?.phoneNumber;
-  const phoneVerified = role === 'professional'
-    ? Boolean(profile?.phoneVerified)
-    : Boolean(clientProfile?.phoneVerified);
+  const currentEmail = profile?.email;
+  const emailVerified = Boolean(profile?.emailVerified);
+  const currentPhone = profile?.phoneNumber;
+  const phoneVerified = Boolean(profile?.phoneVerified);
 
   useEffect(() => {
     const load = async () => {
@@ -88,7 +84,6 @@ export default function SettingsScreen() {
 
   useEffect(() => {
     const loadPolicy = async () => {
-      if (role !== 'professional') return;
       setIsLoadingBookingPolicy(true);
       try {
         const policy = await getProfessionalBookingPolicy();
@@ -101,7 +96,7 @@ export default function SettingsScreen() {
     };
 
     void loadPolicy();
-  }, [role]);
+  }, []);
 
   const toggle = async (key: keyof Preferences) => {
     if (key === 'pushReminders') {
@@ -151,9 +146,7 @@ export default function SettingsScreen() {
       setDeleteChallengeError('Primero solicitá el challenge e ingresá el código recibido.');
       return;
     }
-    const description = role === 'professional'
-      ? 'Si tienes una suscripcion activa, se dara de baja antes de eliminar tu cuenta.'
-      : 'Se cancelaran tus proximas reservas antes de eliminar tu cuenta.';
+    const description = 'Si tienes una suscripcion activa, se dara de baja antes de eliminar tu cuenta.';
 
     Alert.alert(
       'Eliminar cuenta',
@@ -302,7 +295,7 @@ export default function SettingsScreen() {
           description="Ajusta recordatorios, verificaciones y politicas con una interfaz mas clara."
           icon="settings-outline"
           badges={[
-            { label: role === 'professional' ? 'Perfil profesional' : 'Perfil cliente', tone: 'light' },
+            { label: 'Perfil profesional', tone: 'light' },
             { label: pushSettings.pushReminders ? 'Push activo' : 'Push pendiente', tone: 'light' },
           ]}
         />
@@ -477,140 +470,136 @@ export default function SettingsScreen() {
           </TouchableOpacity>
         </View>
 
-        {role === 'professional' ? (
-          <View className="mt-6 rounded-[22px] bg-white p-5 border border-secondary/10">
-            <Text className="font-semibold text-secondary">Politica de reservas</Text>
-            <Text className="mt-1 text-xs text-gray-500">
-              Define cancelacion y reagendado para clientes.
-            </Text>
+        <View className="mt-6 rounded-[22px] bg-white p-5 border border-secondary/10">
+          <Text className="font-semibold text-secondary">Politica de reservas</Text>
+          <Text className="mt-1 text-xs text-gray-500">
+            Define cancelacion y reagendado para clientes.
+          </Text>
 
-            {isLoadingBookingPolicy ? (
-              <View className="mt-4 items-center">
-                <ActivityIndicator color="#0A7A43" />
+          {isLoadingBookingPolicy ? (
+            <View className="mt-4 items-center">
+              <ActivityIndicator color="#0A7A43" />
+            </View>
+          ) : null}
+
+          {bookingPolicy ? (
+            <>
+              <View className="mt-4 flex-row items-center justify-between">
+                <Text className="text-sm font-semibold text-secondary">Permitir cancelacion cliente</Text>
+                <Switch
+                  value={bookingPolicy.allowClientCancellation}
+                  onValueChange={(value) =>
+                    setBookingPolicy((prev) => (prev ? { ...prev, allowClientCancellation: value } : prev))
+                  }
+                />
               </View>
-            ) : null}
 
-            {bookingPolicy ? (
-              <>
-                <View className="mt-4 flex-row items-center justify-between">
-                  <Text className="text-sm font-semibold text-secondary">Permitir cancelacion cliente</Text>
-                  <Switch
-                    value={bookingPolicy.allowClientCancellation}
-                    onValueChange={(value) =>
-                      setBookingPolicy((prev) => (prev ? { ...prev, allowClientCancellation: value } : prev))
-                    }
-                  />
-                </View>
-
-                <View className="mt-4 flex-row items-center justify-between">
-                  <Text className="text-sm font-semibold text-secondary">Permitir reagendar cliente</Text>
-                  <Switch
-                    value={bookingPolicy.allowClientReschedule}
-                    onValueChange={(value) =>
-                      setBookingPolicy((prev) => (prev ? { ...prev, allowClientReschedule: value } : prev))
-                    }
-                  />
-                </View>
-
-                <TextInput
-                  className="mt-3 h-12 rounded-[16px] border border-secondary/10 bg-background px-4 text-secondary"
-                  placeholder="Ventana cancelacion (horas)"
-                  keyboardType="number-pad"
-                  value={String(bookingPolicy.cancellationWindowHours ?? '')}
-                  onChangeText={(text) =>
-                    setBookingPolicy((prev) => (prev
-                      ? {
-                          ...prev,
-                          cancellationWindowHours: text.trim() ? Number(text) : null,
-                        }
-                      : prev))
+              <View className="mt-4 flex-row items-center justify-between">
+                <Text className="text-sm font-semibold text-secondary">Permitir reagendar cliente</Text>
+                <Switch
+                  value={bookingPolicy.allowClientReschedule}
+                  onValueChange={(value) =>
+                    setBookingPolicy((prev) => (prev ? { ...prev, allowClientReschedule: value } : prev))
                   }
                 />
+              </View>
 
-                <TextInput
-                  className="mt-3 h-12 rounded-[16px] border border-secondary/10 bg-background px-4 text-secondary"
-                  placeholder="Ventana reagenda (horas)"
-                  keyboardType="number-pad"
-                  value={String(bookingPolicy.rescheduleWindowHours ?? '')}
-                  onChangeText={(text) =>
-                    setBookingPolicy((prev) => (prev
-                      ? {
-                          ...prev,
-                          rescheduleWindowHours: text.trim() ? Number(text) : null,
-                        }
-                      : prev))
+              <TextInput
+                className="mt-3 h-12 rounded-[16px] border border-secondary/10 bg-background px-4 text-secondary"
+                placeholder="Ventana cancelacion (horas)"
+                keyboardType="number-pad"
+                value={String(bookingPolicy.cancellationWindowHours ?? '')}
+                onChangeText={(text) =>
+                  setBookingPolicy((prev) => (prev
+                    ? {
+                        ...prev,
+                        cancellationWindowHours: text.trim() ? Number(text) : null,
+                      }
+                    : prev))
+                }
+              />
+
+              <TextInput
+                className="mt-3 h-12 rounded-[16px] border border-secondary/10 bg-background px-4 text-secondary"
+                placeholder="Ventana reagenda (horas)"
+                keyboardType="number-pad"
+                value={String(bookingPolicy.rescheduleWindowHours ?? '')}
+                onChangeText={(text) =>
+                  setBookingPolicy((prev) => (prev
+                    ? {
+                        ...prev,
+                        rescheduleWindowHours: text.trim() ? Number(text) : null,
+                      }
+                    : prev))
+                }
+              />
+
+              <TextInput
+                className="mt-3 h-12 rounded-[16px] border border-secondary/10 bg-background px-4 text-secondary"
+                placeholder="Maximo reagendados por cliente"
+                keyboardType="number-pad"
+                value={String(bookingPolicy.maxClientReschedules ?? '')}
+                onChangeText={(text) =>
+                  setBookingPolicy((prev) => (prev
+                    ? {
+                        ...prev,
+                        maxClientReschedules: text.trim() ? Number(text) : null,
+                      }
+                    : prev))
+                }
+              />
+
+              <View className="mt-4 flex-row items-center justify-between">
+                <Text className="text-sm font-semibold text-secondary">Retener sena por cancelacion tardia</Text>
+                <Switch
+                  value={bookingPolicy.retainDepositOnLateCancellation}
+                  onValueChange={(value) =>
+                    setBookingPolicy((prev) => (prev ? { ...prev, retainDepositOnLateCancellation: value } : prev))
                   }
                 />
+              </View>
 
-                <TextInput
-                  className="mt-3 h-12 rounded-[16px] border border-secondary/10 bg-background px-4 text-secondary"
-                  placeholder="Maximo reagendados por cliente"
-                  keyboardType="number-pad"
-                  value={String(bookingPolicy.maxClientReschedules ?? '')}
-                  onChangeText={(text) =>
-                    setBookingPolicy((prev) => (prev
-                      ? {
-                          ...prev,
-                          maxClientReschedules: text.trim() ? Number(text) : null,
-                        }
-                      : prev))
+              <TouchableOpacity
+                onPress={async () => {
+                  if (!bookingPolicy || isSavingBookingPolicy) return;
+                  setIsSavingBookingPolicy(true);
+                  setBookingPolicyMessage(null);
+                  try {
+                    const updated = await updateProfessionalBookingPolicy({
+                      allowClientCancellation: bookingPolicy.allowClientCancellation,
+                      allowClientReschedule: bookingPolicy.allowClientReschedule,
+                      cancellationWindowHours: bookingPolicy.cancellationWindowHours ?? null,
+                      rescheduleWindowHours: bookingPolicy.rescheduleWindowHours ?? null,
+                      maxClientReschedules: bookingPolicy.maxClientReschedules ?? null,
+                      retainDepositOnLateCancellation: bookingPolicy.retainDepositOnLateCancellation,
+                    });
+                    setBookingPolicy(updated);
+                    setBookingPolicyMessage('Politica guardada correctamente.');
+                  } catch (error) {
+                    setBookingPolicyMessage(getApiErrorMessage(error, 'No se pudo guardar la politica.'));
+                  } finally {
+                    setIsSavingBookingPolicy(false);
                   }
-                />
+                }}
+                disabled={isSavingBookingPolicy}
+                className="mt-4 h-12 items-center justify-center rounded-full bg-secondary"
+              >
+                <Text className="font-semibold text-white">
+                  {isSavingBookingPolicy ? 'Guardando...' : 'Guardar politica'}
+                </Text>
+              </TouchableOpacity>
+            </>
+          ) : null}
 
-                <View className="mt-4 flex-row items-center justify-between">
-                  <Text className="text-sm font-semibold text-secondary">Retener sena por cancelacion tardia</Text>
-                  <Switch
-                    value={bookingPolicy.retainDepositOnLateCancellation}
-                    onValueChange={(value) =>
-                      setBookingPolicy((prev) => (prev ? { ...prev, retainDepositOnLateCancellation: value } : prev))
-                    }
-                  />
-                </View>
-
-                <TouchableOpacity
-                  onPress={async () => {
-                    if (!bookingPolicy || isSavingBookingPolicy) return;
-                    setIsSavingBookingPolicy(true);
-                    setBookingPolicyMessage(null);
-                    try {
-                      const updated = await updateProfessionalBookingPolicy({
-                        allowClientCancellation: bookingPolicy.allowClientCancellation,
-                        allowClientReschedule: bookingPolicy.allowClientReschedule,
-                        cancellationWindowHours: bookingPolicy.cancellationWindowHours ?? null,
-                        rescheduleWindowHours: bookingPolicy.rescheduleWindowHours ?? null,
-                        maxClientReschedules: bookingPolicy.maxClientReschedules ?? null,
-                        retainDepositOnLateCancellation: bookingPolicy.retainDepositOnLateCancellation,
-                      });
-                      setBookingPolicy(updated);
-                      setBookingPolicyMessage('Politica guardada correctamente.');
-                    } catch (error) {
-                      setBookingPolicyMessage(getApiErrorMessage(error, 'No se pudo guardar la politica.'));
-                    } finally {
-                      setIsSavingBookingPolicy(false);
-                    }
-                  }}
-                  disabled={isSavingBookingPolicy}
-                  className="mt-4 h-12 items-center justify-center rounded-full bg-secondary"
-                >
-                  <Text className="font-semibold text-white">
-                    {isSavingBookingPolicy ? 'Guardando...' : 'Guardar politica'}
-                  </Text>
-                </TouchableOpacity>
-              </>
-            ) : null}
-
-            {bookingPolicyMessage ? (
-              <Text className="mt-3 text-xs font-semibold text-secondary">{bookingPolicyMessage}</Text>
-            ) : null}
-          </View>
-        ) : null}
+          {bookingPolicyMessage ? (
+            <Text className="mt-3 text-xs font-semibold text-secondary">{bookingPolicyMessage}</Text>
+          ) : null}
+        </View>
 
         <View className="mt-6 rounded-[22px] border border-red-200 bg-red-50 p-5">
           <Text className="font-semibold text-red-700">Eliminar cuenta</Text>
           <Text className="mt-2 text-xs text-red-600">
-            {role === 'professional'
-              ? 'La cuenta profesional se despublica y la suscripcion se cancela si sigue activa.'
-              : 'Se cancelan tus proximos turnos y se cierra tu sesion en el dispositivo.'}
+            La cuenta profesional se despublica y la suscripcion se cancela si sigue activa.
           </Text>
           <TouchableOpacity
             onPress={() => {

@@ -1,15 +1,15 @@
 import React from 'react';
 import { Redirect } from 'expo-router';
-import { useAuthSession } from '../../../context/auth/AuthSessionContext';
+import { useProfessionalSession } from '../session/useProfessionalSession';
 
 export default function ProfessionalDashboardIndex() {
-  const { hasLoaded, role } = useAuthSession();
+  const { hasLoaded, isProfessional } = useProfessionalSession();
 
   if (!hasLoaded) {
     return null;
   }
 
-  if (role !== 'professional') return null;
+  if (!isProfessional) return null;
 
   return <Redirect href="/dashboard/agenda" />;
 }

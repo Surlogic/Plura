@@ -21,7 +21,7 @@ import {
 import type { ProfessionalReservation } from '../../../types/professional';
 import { getApiErrorMessage } from '../../../services/errors';
 import { getPublicSlots } from '../../../services/publicBookings';
-import { useAuthSession } from '../../../context/auth/AuthSessionContext';
+import { useProfessionalSession } from '../session/useProfessionalSession';
 import { canProfessionalConfirmReservation } from '../../../../../../packages/shared/src/bookings/professionalReservationActions';
 import { AppScreen } from '../../../components/ui/AppScreen';
 import InternationalPhoneField from '../../../components/ui/InternationalPhoneField';
@@ -91,7 +91,7 @@ const parseReservationDateTime = (reservation: ProfessionalReservation) => {
 };
 
 export default function AgendaScreen() {
-  const { profile } = useAuthSession();
+  const { profile } = useProfessionalSession();
   const [filter, setFilter] = useState<'hoy' | 'proximas'>('hoy');
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmittingAction, setIsSubmittingAction] = useState(false);

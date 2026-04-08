@@ -11,7 +11,7 @@ import {
 import { Link, router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import AuthLoadingOverlay from '../../../../components/auth/AuthLoadingOverlay';
-import { useAuthSession } from '../../../../context/auth/AuthSessionContext';
+import { useProfessionalSession } from '../../session/useProfessionalSession';
 import { useGoogleOAuth } from '../../../../hooks/useGoogleOAuth';
 import { getApiErrorMessage } from '../../../../services/errors';
 import {
@@ -48,7 +48,7 @@ type ProfessionalRegisterForm = {
 };
 
 export function ProfessionalRegisterScreen() {
-  const { refreshProfile } = useAuthSession();
+  const { refreshProfile } = useProfessionalSession();
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);

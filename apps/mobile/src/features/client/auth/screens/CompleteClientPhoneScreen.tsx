@@ -10,7 +10,7 @@ import {
 import { Link } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import AuthLoadingOverlay from '../../../../components/auth/AuthLoadingOverlay';
-import { useAuthSession } from '../../../../context/auth/AuthSessionContext';
+import { useClientSession } from '../../session/useClientSession';
 import { hasMinimumPhoneDigits } from '../../../../lib/internationalPhone';
 import { completeOAuthPhone } from '../../../../services/authBackend';
 import { getApiErrorMessage } from '../../../../services/errors';
@@ -20,7 +20,7 @@ import { theme } from '../../../../theme';
 import { clientAuthCopy, continueAfterClientAuth } from '../config';
 
 export function CompleteClientPhoneScreen() {
-  const { refreshProfile } = useAuthSession();
+  const { refreshProfile } = useClientSession();
   const [phoneNumber, setPhoneNumber] = useState('');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);

@@ -22,13 +22,13 @@ import {
   startProfessionalMercadoPagoOAuth,
   type ProfessionalMercadoPagoConnection,
 } from '../../../services/billing';
-import { useAuthSession } from '../../../context/auth/AuthSessionContext';
+import { useProfessionalSession } from '../session/useProfessionalSession';
 import { openMercadoPagoInAppBrowser } from '../../../services/mercadoPagoBrowser';
 import { AppScreen } from '../../../components/ui/AppScreen';
 import { MessageCard, ScreenHero, SectionCard } from '../../../components/ui/MobileSurface';
 
 export default function BillingScreen() {
-  const { profile, refreshProfile } = useAuthSession();
+  const { profile, refreshProfile } = useProfessionalSession();
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [message, setMessage] = useState<string | null>(null);

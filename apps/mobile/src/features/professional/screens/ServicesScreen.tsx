@@ -12,7 +12,7 @@ import {
   listServiceCategories,
   updateProfessionalService,
 } from '../../../services/professionalConfig';
-import { useAuthSession } from '../../../context/auth/AuthSessionContext';
+import { useProfessionalSession } from '../session/useProfessionalSession';
 import { AppScreen } from '../../../components/ui/AppScreen';
 import {
   ActionButton,
@@ -57,7 +57,7 @@ const getPaymentTypeLabel = (value?: string | null) => {
 const PRACTICAL_UNLIMITED = 9999;
 
 export default function ServicesScreen() {
-  const { profile } = useAuthSession();
+  const { profile } = useProfessionalSession();
   const [services, setServices] = useState<ProfessionalService[]>([]);
   const [categories, setCategories] = useState<ServiceCategoryOption[]>([]);
   const [isLoading, setIsLoading] = useState(true);

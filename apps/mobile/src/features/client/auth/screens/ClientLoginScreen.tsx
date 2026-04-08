@@ -12,7 +12,7 @@ import { Link, router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import api from '../../../../services/api';
 import AuthLoadingOverlay from '../../../../components/auth/AuthLoadingOverlay';
-import { useAuthSession } from '../../../../context/auth/AuthSessionContext';
+import { useClientSession } from '../../session/useClientSession';
 import { useGoogleOAuth } from '../../../../hooks/useGoogleOAuth';
 import { getApiErrorMessage } from '../../../../services/errors';
 import type { OAuthResult } from '../../../../services/authBackend';
@@ -27,7 +27,7 @@ import {
 } from '../../../shared/auth/routes';
 
 export function ClientLoginScreen() {
-  const { refreshProfile } = useAuthSession();
+  const { refreshProfile } = useClientSession();
   const [form, setForm] = useState({ email: '', password: '' });
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);

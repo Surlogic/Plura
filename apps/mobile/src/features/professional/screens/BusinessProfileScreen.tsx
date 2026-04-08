@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { router } from 'expo-router';
-import { useAuthSession } from '../../../context/auth/AuthSessionContext';
+import { useProfessionalSession } from '../session/useProfessionalSession';
 import {
   listServiceCategories,
   updateProfessionalBusinessProfile,
@@ -86,7 +86,7 @@ const emptyForm = {
 };
 
 export default function BusinessProfileScreen() {
-  const { profile, refreshProfile } = useAuthSession();
+  const { profile, refreshProfile } = useProfessionalSession();
   const [categories, setCategories] = useState<ServiceCategoryOption[]>([]);
   const [isLoadingCategories, setIsLoadingCategories] = useState(false);
   const [isSaving, setIsSaving] = useState(false);

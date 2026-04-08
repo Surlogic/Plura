@@ -5,7 +5,7 @@ import {
   buildClientNotifications,
   type MobileNotification,
 } from '../../../services/clientFeatures';
-import { useAuthSession } from '../../../context/auth/AuthSessionContext';
+import { useClientSession } from '../session/useClientSession';
 import { usePushNotifications } from '../../../hooks/usePushNotifications';
 import { AppScreen } from '../../../components/ui/AppScreen';
 import {
@@ -32,7 +32,7 @@ const getNotificationBadge = (type: MobileNotification['type']) => {
 };
 
 export default function NotificationsScreen() {
-  const { isAuthenticated } = useAuthSession();
+  const { isAuthenticated } = useClientSession();
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [items, setItems] = useState<MobileNotification[]>([]);

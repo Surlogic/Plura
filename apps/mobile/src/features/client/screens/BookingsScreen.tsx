@@ -19,7 +19,7 @@ import {
 import { useFocusEffect } from 'expo-router';
 import { getPublicSlots } from '../../../services/publicBookings';
 import { getApiErrorMessage } from '../../../services/errors';
-import { useAuthSession } from '../../../context/auth/AuthSessionContext';
+import { useClientSession } from '../session/useClientSession';
 import { theme } from '../../../theme';
 import AuthWall from '../../../components/auth/AuthWall';
 import { openMercadoPagoInAppBrowser } from '../../../services/mercadoPagoBrowser';
@@ -171,7 +171,7 @@ function BookingListCard({ booking, isSelected, onPress }: BookingListCardProps)
 }
 
 export default function ClientBookingsScreen() {
-  const { clientProfile, isAuthenticated } = useAuthSession();
+  const { clientProfile, isAuthenticated } = useClientSession();
   const [bookings, setBookings] = useState<ClientDashboardBooking[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);

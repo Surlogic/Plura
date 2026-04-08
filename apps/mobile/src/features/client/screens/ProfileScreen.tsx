@@ -4,7 +4,7 @@ import { router, useFocusEffect } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import EmailVerificationCard from '../../../components/auth/EmailVerificationCard';
-import { useAuthSession } from '../../../context/auth/AuthSessionContext';
+import { useClientSession } from '../session/useClientSession';
 import { AppScreen } from '../../../components/ui/AppScreen';
 import {
   ActionButton,
@@ -13,7 +13,7 @@ import {
 } from '../../../components/ui/MobileSurface';
 
 export default function DashboardTab() {
-  const { clientProfile, hasLoaded, logout, refreshProfile } = useAuthSession();
+  const { clientProfile, hasLoaded, logout, refreshProfile } = useClientSession();
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   useFocusEffect(

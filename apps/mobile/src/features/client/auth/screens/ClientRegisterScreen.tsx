@@ -11,7 +11,7 @@ import {
 import { Link, router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import AuthLoadingOverlay from '../../../../components/auth/AuthLoadingOverlay';
-import { useAuthSession } from '../../../../context/auth/AuthSessionContext';
+import { useClientSession } from '../../session/useClientSession';
 import { useGoogleOAuth } from '../../../../hooks/useGoogleOAuth';
 import { getApiErrorMessage } from '../../../../services/errors';
 import api from '../../../../services/api';
@@ -37,7 +37,7 @@ type ClientRegisterForm = {
 };
 
 export function ClientRegisterScreen() {
-  const { refreshProfile } = useAuthSession();
+  const { refreshProfile } = useClientSession();
   const [form, setForm] = useState<ClientRegisterForm>({
     fullName: '',
     email: '',

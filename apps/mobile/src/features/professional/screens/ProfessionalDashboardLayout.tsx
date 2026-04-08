@@ -1,18 +1,18 @@
 import React from 'react';
 import { Redirect, Stack } from 'expo-router';
 import { View } from 'react-native';
-import { useAuthSession } from '../../../context/auth/AuthSessionContext';
+import { useProfessionalSession } from '../session/useProfessionalSession';
 import { ProfessionalBottomNav } from '../../../features/professional/navigation/ProfessionalBottomNav';
 import { theme } from '../../../theme';
 
 export default function ProfessionalDashboardLayout() {
-  const { hasLoaded, role, isAuthenticated } = useAuthSession();
+  const { hasLoaded, isAuthenticated, isProfessional } = useProfessionalSession();
 
   if (!hasLoaded) {
     return null;
   }
 
-  if (role !== 'professional') {
+  if (!isProfessional) {
     return <Redirect href={isAuthenticated ? '/(tabs)/index' : '/(auth)/login'} />;
   }
 

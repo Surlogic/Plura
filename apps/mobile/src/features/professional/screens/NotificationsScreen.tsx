@@ -1,7 +1,7 @@
 import React from 'react';
 import { Text, View } from 'react-native';
 import { router } from 'expo-router';
-import { useAuthSession } from '../../../context/auth/AuthSessionContext';
+import { useProfessionalSession } from '../session/useProfessionalSession';
 import { AppScreen } from '../../../components/ui/AppScreen';
 import {
   ActionButton,
@@ -12,7 +12,7 @@ import {
 import { PLAN_LABELS } from '../../../../../../packages/shared/src/billing/planAccess';
 
 export default function ProfessionalNotificationsScreen() {
-  const { profile } = useAuthSession();
+  const { profile } = useProfessionalSession();
 
   return (
     <AppScreen scroll edges={['top']} contentContainerStyle={{ paddingTop: 24, paddingBottom: 144 }}>

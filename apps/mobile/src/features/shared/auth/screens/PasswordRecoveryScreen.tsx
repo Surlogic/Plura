@@ -10,18 +10,18 @@ import {
 } from 'react-native';
 import { Link, router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
-import AuthLoadingOverlay from '../../components/auth/AuthLoadingOverlay';
-import InternationalPhoneField from '../../components/ui/InternationalPhoneField';
-import { AppScreen, surfaceStyles } from '../../components/ui/AppScreen';
-import { hasMinimumPhoneDigits } from '../../lib/internationalPhone';
+import AuthLoadingOverlay from '../../../../components/auth/AuthLoadingOverlay';
+import InternationalPhoneField from '../../../../components/ui/InternationalPhoneField';
+import { AppScreen, surfaceStyles } from '../../../../components/ui/AppScreen';
+import { hasMinimumPhoneDigits } from '../../../../lib/internationalPhone';
 import {
   confirmPasswordRecovery,
   startPasswordRecovery,
   verifyPasswordRecoveryPhone,
-} from '../../services/authBackend';
-import { getApiErrorMessage } from '../../services/errors';
-import { resolveLoginRouteFromBackendRole } from '../shared/auth/routes';
-import { theme } from '../../theme';
+} from '../../../../services/authBackend';
+import { getApiErrorMessage } from '../../../../services/errors';
+import { resolveLoginRouteFromBackendRole } from '../routes';
+import { theme } from '../../../../theme';
 
 type RecoveryStep = 'email' | 'phone' | 'code';
 
@@ -260,65 +260,51 @@ export function PasswordRecoveryScreen() {
 
             {errorMessage ? (
               <View className="mt-4 rounded-2xl border border-red-200 bg-red-50 p-3">
-                <Text className="text-center text-xs text-red-600">{errorMessage}</Text>
+                <Text className="text-center text-xs text-red-700">{errorMessage}</Text>
               </View>
             ) : null}
 
             <TouchableOpacity
-              className="mt-6 shadow-md"
-              onPress={
-                step === 'email'
-                  ? handleEmailSubmit
-                  : step === 'phone'
-                    ? handlePhoneSubmit
-                    : handleConfirmSubmit
-              }
-              disabled={
-                isSubmitting
-                || (step === 'phone' && !canSubmitPhoneStep)
-                || (step === 'code' && !canSubmitCodeStep)
-              }
-              activeOpacity={0.85}
+              className={`mt-6 h-14 items-center justify-center rounded-full ${isSubmitting ? 'bg-secondary/50' : 'bg-secondary'}`}
+              disabled={isSubmitting || (step === 'phone' && !canSubmitPhoneStep) || (step === 'code' && !canSubmitCodeStep)}
+              onPress={() => {
+                if (step === 'email') {
+                  void handleEmailSubmit();
+                  return;
+                }
+                if (step === 'phone') {
+                  void handlePhoneSubmit();
+                  return;
+                }
+                void handleConfirmSubmit();
+              }}
             >
-              <LinearGradient
-                colors={theme.gradients.hero}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                className="h-14 flex-row items-center justify-center rounded-full"
-              >
-                {isSubmitting ? (
-                  <ActivityIndicator color="#FFFFFF" />
-                ) : (
-                  <Text className="text-base font-semibold text-white">
-                    {step === 'email'
-                      ? 'Continuar'
-                      : step === 'phone'
-                        ? 'Validar y enviar codigo'
-                        : 'Guardar nueva contrasena'}
-                  </Text>
-                )}
-              </LinearGradient>
+              <Text className="text-base font-semibold text-white">
+                {step === 'email'
+                  ? 'Continuar'
+                  : step === 'phone'
+                    ? 'Validar telefono'
+                    : 'Guardar nueva contrasena'}
+              </Text>
             </TouchableOpacity>
 
-            <Link href="/(auth)/login" asChild>
-              <TouchableOpacity className="mt-5 items-center">
-                <Text className="text-sm font-semibold text-secondary">Volver a iniciar sesion</Text>
-              </TouchableOpacity>
-            </Link>
+            <View className="mt-6 flex-row justify-center">
+              <Link href="/(auth)/login" asChild>
+                <TouchableOpacity activeOpacity={0.85}>
+                  <Text className="text-sm font-semibold text-secondary">
+                    Volver al login
+                  </Text>
+                </TouchableOpacity>
+              </Link>
+            </View>
           </View>
         </AppScreen>
       </KeyboardAvoidingView>
 
       <AuthLoadingOverlay
         visible={isSubmitting}
-        title="Recuperando acceso"
-        description={
-          step === 'email'
-            ? 'Validando el email de tu cuenta.'
-            : step === 'phone'
-              ? 'Verificando el telefono y enviando el codigo.'
-              : 'Guardando tu nueva contrasena.'
-        }
+        title="Procesando"
+        description="Estamos validando tu recuperación."
       />
     </>
   );

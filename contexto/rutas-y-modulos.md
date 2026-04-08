@@ -435,7 +435,8 @@ Lectura de producto:
 - `src/features/professional/hooks/useProfessionalAgenda.ts`: estado, carga, acciones y formularios operativos de agenda/reservas fuera de la screen.
 - `src/features/professional/session/useProfessionalSession.ts`: facade de sesion profesional; expone solo estado y acciones del lado negocio para no arrastrar `clientProfile` dentro de features profesionales.
 - `src/hooks/useGoogleOAuth.ts`: en Android usa `@react-native-google-signin/google-signin` para evitar `invalid_request` del flujo web y forzar chooser nativo de cuentas; en iOS/web mantiene `expo-auth-session` y soporta token directo o authorization code segun lo que devuelva Google
-- `src/features/shared/auth/*`: namespace nuevo para piezas auth compartidas de mobile; ya expone la entrada publica (`AuthWelcomeScreen`, `AuthEntryShowcase`) sin mezclarla con la futura separacion cliente/profesional
+- `src/features/shared/auth/*`: namespace definitivo para auth compartida de mobile; ya contiene la entrada publica (`AuthWelcomeScreen`, `AuthEntryShowcase`), recovery (`PasswordRecoveryScreen`) y rutas comunes sin aliases legacy.
+- `src/features/professional/navigation/ProfessionalBottomNav.tsx`: implementacion real de la barra inferior profesional; ya no depende del alias viejo en `src/components/professional`.
 - `src/services/location.ts` y `src/hooks/useUserLocation.ts`
 - `src/services/pushNotifications.ts` y `src/hooks/usePushNotifications.ts`: sincronizan permisos push del dispositivo, persisten preferencia local y, para cliente autenticado, registran o deshabilitan el `push token` contra backend
 - `src/components/ui/AppScreen.tsx`: shell base mobile; cuando `scroll=true` ahora soporta `pull-to-refresh` comun mediante `refreshing + onRefresh`

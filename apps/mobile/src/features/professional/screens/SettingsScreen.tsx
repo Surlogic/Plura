@@ -1,10 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Linking, Switch, Text, TouchableOpacity, View, TextInput } from 'react-native';
+import { ActivityIndicator, Alert, Switch, Text, TouchableOpacity, View, TextInput } from 'react-native';
 import { router } from 'expo-router';
-import {
-  getClientPreferences,
-  updateClientPreferences,
-} from '../../../services/clientFeatures';
 import api from '../../../services/api';
 import EmailVerificationCard from '../../../components/auth/EmailVerificationCard';
 import { useProfessionalSession } from '../session/useProfessionalSession';
@@ -14,19 +10,11 @@ import {
   updateProfessionalBookingPolicy,
 } from '../../../services/bookingPolicy';
 import type { ProfessionalBookingPolicy } from '../../../types/bookings';
-import { usePushNotifications } from '../../../hooks/usePushNotifications';
 import { AppScreen } from '../../../components/ui/AppScreen';
 import { ActionButton, ScreenHero, SectionCard } from '../../../components/ui/MobileSurface';
 
-type Preferences = {
-  emailReminders: boolean;
-  pushReminders: boolean;
-  marketing: boolean;
-};
-
 export default function SettingsScreen() {
   const { profile, refreshProfile, logout } = useProfessionalSession();
-  const [isLoading, setIsLoading] = useState(true);
   const [isDeletingAccount, setIsDeletingAccount] = useState(false);
   const [isSendingDeleteChallenge, setIsSendingDeleteChallenge] = useState(false);
   const [deleteChallengeId, setDeleteChallengeId] = useState<string | null>(null);
@@ -50,37 +38,11 @@ export default function SettingsScreen() {
   const [isLoadingBookingPolicy, setIsLoadingBookingPolicy] = useState(false);
   const [isSavingBookingPolicy, setIsSavingBookingPolicy] = useState(false);
   const [bookingPolicyMessage, setBookingPolicyMessage] = useState<string | null>(null);
-  const [preferences, setPreferences] = useState<Preferences>({
-    emailReminders: true,
-    pushReminders: false,
-    marketing: false,
-  });
-  const {
-    settings: pushSettings,
-    requestPermission: requestPushPermission,
-    disablePush,
-  } = usePushNotifications();
 
   const currentEmail = profile?.email;
   const emailVerified = Boolean(profile?.emailVerified);
   const currentPhone = profile?.phoneNumber;
   const phoneVerified = Boolean(profile?.phoneVerified);
-
-  useEffect(() => {
-    const load = async () => {
-      const next = await getClientPreferences();
-      setPreferences(next);
-      setIsLoading(false);
-    };
-    load();
-  }, []);
-
-  useEffect(() => {
-    setPreferences((current) => ({
-      ...current,
-      pushReminders: pushSettings.pushReminders,
-    }));
-  }, [pushSettings.pushReminders]);
 
   useEffect(() => {
     const loadPolicy = async () => {
@@ -97,48 +59,6 @@ export default function SettingsScreen() {
 
     void loadPolicy();
   }, []);
-
-  const toggle = async (key: keyof Preferences) => {
-    if (key === 'pushReminders') {
-      if (preferences.pushReminders) {
-        const next = await disablePush();
-        setPreferences((current) => ({ ...current, pushReminders: next.pushReminders }));
-        return;
-      }
-
-      const next = await requestPushPermission();
-      setPreferences((current) => ({ ...current, pushReminders: next.pushReminders }));
-
-      if (!next.pushReminders) {
-        if (next.permissionStatus === 'denied' && !next.canAskAgain) {
-          Alert.alert(
-            'Notificaciones bloqueadas',
-            'Activalas desde los ajustes del dispositivo para recibir avisos de reservas y promos.',
-            [
-              { text: 'Ahora no', style: 'cancel' },
-              {
-                text: 'Abrir ajustes',
-                onPress: () => {
-                  void Linking.openSettings();
-                },
-              },
-            ],
-          );
-          return;
-        }
-
-        Alert.alert(
-          'Permiso pendiente',
-          'Necesitamos permiso del sistema para enviarte avisos de reservas y notificaciones importantes.',
-        );
-      }
-
-      return;
-    }
-
-    const next = await updateClientPreferences({ [key]: !preferences[key] });
-    setPreferences(next);
-  };
 
   const handleDeleteAccount = () => {
     if (isDeletingAccount) return;
@@ -279,24 +199,16 @@ export default function SettingsScreen() {
     }
   };
 
-  if (isLoading) {
-    return (
-      <View className="flex-1 bg-background items-center justify-center">
-        <ActivityIndicator color="#0A7A43" />
-      </View>
-    );
-  }
-
   return (
     <AppScreen scroll edges={['top']} contentContainerStyle={{ padding: 24, paddingBottom: 144 }}>
         <ScreenHero
           eyebrow="Configuracion"
-          title="Cuenta y seguridad"
-          description="Ajusta recordatorios, verificaciones y politicas con una interfaz mas clara."
+          title="Cuenta profesional y operación"
+          description="Ajusta seguridad, verificaciones y política de reservas sin mezclar esta superficie con preferencias del cliente."
           icon="settings-outline"
           badges={[
             { label: 'Perfil profesional', tone: 'light' },
-            { label: pushSettings.pushReminders ? 'Push activo' : 'Push pendiente', tone: 'light' },
+            { label: profile?.professionalPlan || 'BASIC', tone: 'light' },
           ]}
         />
 
@@ -314,32 +226,6 @@ export default function SettingsScreen() {
             style={{ marginTop: 16 }}
           />
         </SectionCard>
-
-        <View className="mt-8 rounded-[22px] bg-white p-5 border border-secondary/10">
-          <View className="flex-row items-center justify-between py-2">
-            <View className="flex-1 pr-3">
-              <Text className="font-semibold text-secondary">Recordatorios por email</Text>
-              <Text className="text-xs text-gray-500 mt-1">Avisos antes de cada turno.</Text>
-            </View>
-            <Switch value={preferences.emailReminders} onValueChange={() => toggle('emailReminders')} />
-          </View>
-
-          <View className="mt-4 flex-row items-center justify-between py-2">
-            <View className="flex-1 pr-3">
-              <Text className="font-semibold text-secondary">Recordatorios push</Text>
-              <Text className="text-xs text-gray-500 mt-1">Nuevas alertas en tu dispositivo.</Text>
-            </View>
-            <Switch value={preferences.pushReminders} onValueChange={() => toggle('pushReminders')} />
-          </View>
-
-          <View className="mt-4 flex-row items-center justify-between py-2">
-            <View className="flex-1 pr-3">
-              <Text className="font-semibold text-secondary">Novedades y promos</Text>
-              <Text className="text-xs text-gray-500 mt-1">Actualizaciones de productos.</Text>
-            </View>
-            <Switch value={preferences.marketing} onValueChange={() => toggle('marketing')} />
-          </View>
-        </View>
 
         <View className="mt-6">
           <EmailVerificationCard
@@ -488,7 +374,7 @@ export default function SettingsScreen() {
                 <Text className="text-sm font-semibold text-secondary">Permitir cancelacion cliente</Text>
                 <Switch
                   value={bookingPolicy.allowClientCancellation}
-                  onValueChange={(value) =>
+                  onValueChange={(value: boolean) =>
                     setBookingPolicy((prev) => (prev ? { ...prev, allowClientCancellation: value } : prev))
                   }
                 />
@@ -498,7 +384,7 @@ export default function SettingsScreen() {
                 <Text className="text-sm font-semibold text-secondary">Permitir reagendar cliente</Text>
                 <Switch
                   value={bookingPolicy.allowClientReschedule}
-                  onValueChange={(value) =>
+                  onValueChange={(value: boolean) =>
                     setBookingPolicy((prev) => (prev ? { ...prev, allowClientReschedule: value } : prev))
                   }
                 />
@@ -553,7 +439,7 @@ export default function SettingsScreen() {
                 <Text className="text-sm font-semibold text-secondary">Retener sena por cancelacion tardia</Text>
                 <Switch
                   value={bookingPolicy.retainDepositOnLateCancellation}
-                  onValueChange={(value) =>
+                  onValueChange={(value: boolean) =>
                     setBookingPolicy((prev) => (prev ? { ...prev, retainDepositOnLateCancellation: value } : prev))
                   }
                 />

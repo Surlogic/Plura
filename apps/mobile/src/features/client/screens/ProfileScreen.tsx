@@ -104,6 +104,24 @@ export default function DashboardTab() {
           </TouchableOpacity>
         </SectionCard>
 
+        <SectionCard style={{ marginTop: 16, paddingVertical: 18 }}>
+          <TouchableOpacity
+            onPress={() => router.push('/client/settings')}
+            className="flex-row items-center justify-between"
+          >
+            <View className="flex-row items-center">
+              <View className="h-10 w-10 rounded-full bg-primary/10 items-center justify-center">
+                <Ionicons name="settings-outline" size={18} color="#0A7A43" />
+              </View>
+              <View className="ml-3">
+                <Text className="font-bold text-secondary">Configuración</Text>
+                <Text className="text-xs text-gray-500">Preferencias y seguridad</Text>
+              </View>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color="#7D8DA1" />
+          </TouchableOpacity>
+        </SectionCard>
+
         <ActionButton
           onPress={logout}
           label="Cerrar sesion"

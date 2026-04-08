@@ -1,6 +1,6 @@
 import React from 'react';
-import { CompleteOAuthPhoneScreen } from '../../src/features/auth/CompleteOAuthPhoneScreen';
+import { CompleteClientPhoneScreen } from '../../src/features/client/auth/screens/CompleteClientPhoneScreen';
 
 export default function CompletePhoneClientScreen() {
-  return <CompleteOAuthPhoneScreen role="cliente" />;
+  return <CompleteClientPhoneScreen />;
 }

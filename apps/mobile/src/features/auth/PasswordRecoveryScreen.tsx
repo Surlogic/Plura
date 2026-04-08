@@ -20,7 +20,7 @@ import {
   verifyPasswordRecoveryPhone,
 } from '../../services/authBackend';
 import { getApiErrorMessage } from '../../services/errors';
-import { resolveLoginRouteFromBackendRole } from './config';
+import { resolveLoginRouteFromBackendRole } from '../shared/auth/routes';
 import { theme } from '../../theme';
 
 type RecoveryStep = 'email' | 'phone' | 'code';

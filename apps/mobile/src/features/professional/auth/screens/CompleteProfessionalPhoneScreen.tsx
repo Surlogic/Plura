@@ -7,24 +7,20 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { Link } from 'expo-router';
+import { Link, router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
-import AuthLoadingOverlay from '../../components/auth/AuthLoadingOverlay';
-import { useAuthSession } from '../../context/auth/AuthSessionContext';
-import { hasMinimumPhoneDigits } from '../../lib/internationalPhone';
-import { completeOAuthPhone } from '../../services/authBackend';
-import { getApiErrorMessage } from '../../services/errors';
-import InternationalPhoneField from '../../components/ui/InternationalPhoneField';
-import { AppScreen, surfaceStyles } from '../../components/ui/AppScreen';
-import { authRoleCopy, continueAfterAuth, type AuthRole } from './config';
-import { theme } from '../../theme';
+import AuthLoadingOverlay from '../../../../components/auth/AuthLoadingOverlay';
+import { useAuthSession } from '../../../../context/auth/AuthSessionContext';
+import { hasMinimumPhoneDigits } from '../../../../lib/internationalPhone';
+import { completeOAuthPhone } from '../../../../services/authBackend';
+import { getApiErrorMessage } from '../../../../services/errors';
+import InternationalPhoneField from '../../../../components/ui/InternationalPhoneField';
+import { AppScreen, surfaceStyles } from '../../../../components/ui/AppScreen';
+import { theme } from '../../../../theme';
+import { professionalAuthCopy } from '../config';
+import { PROFESSIONAL_HOME_ROUTE } from '../../../shared/auth/routes';
 
-type CompleteOAuthPhoneScreenProps = {
-  role: AuthRole;
-};
-
-export function CompleteOAuthPhoneScreen({ role }: CompleteOAuthPhoneScreenProps) {
-  const copy = authRoleCopy[role];
+export function CompleteProfessionalPhoneScreen() {
   const { refreshProfile } = useAuthSession();
   const [phoneNumber, setPhoneNumber] = useState('');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -42,7 +38,7 @@ export function CompleteOAuthPhoneScreen({ role }: CompleteOAuthPhoneScreenProps
       setIsSubmitting(true);
       await completeOAuthPhone(phoneNumber.trim());
       await refreshProfile();
-      await continueAfterAuth(role);
+      router.replace(PROFESSIONAL_HOME_ROUTE);
     } catch (error: unknown) {
       setErrorMessage(getApiErrorMessage(error, 'No pudimos guardar tu telefono.'));
     } finally {
@@ -63,25 +59,25 @@ export function CompleteOAuthPhoneScreen({ role }: CompleteOAuthPhoneScreenProps
         >
           <View className="px-6">
             <LinearGradient
-              colors={role === 'cliente' ? theme.gradients.brand : theme.gradients.heroElevated}
+              colors={theme.gradients.heroElevated}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
               className="rounded-[30px] px-6 py-6"
             >
-              <Text className={`text-xs font-bold uppercase tracking-[2px] ${role === 'cliente' ? 'text-secondary/70' : 'text-white/70'}`}>
+              <Text className="text-xs font-bold uppercase tracking-[2px] text-white/70">
                 Ultimo paso
               </Text>
-              <Text className={`mt-3 text-3xl font-semibold ${role === 'cliente' ? 'text-secondary' : 'text-white'}`}>
+              <Text className="mt-3 text-3xl font-semibold text-white">
                 Completa tu telefono
               </Text>
-              <Text className={`mt-2 text-sm leading-6 ${role === 'cliente' ? 'text-secondary/80' : 'text-white/80'}`}>
+              <Text className="mt-2 text-sm leading-6 text-white/80">
                 Antes de entrar necesitamos guardar un numero para validaciones y recuperacion de acceso.
               </Text>
             </LinearGradient>
 
             <View className="mt-4 rounded-[32px] p-8" style={surfaceStyles.card}>
               <Text className="text-xs font-bold uppercase tracking-[2px] text-faint">
-                {copy.badge}
+                {professionalAuthCopy.badge}
               </Text>
               <Text className="mt-2 text-2xl font-semibold text-secondary">
                 Guardar telefono
@@ -111,7 +107,7 @@ export function CompleteOAuthPhoneScreen({ role }: CompleteOAuthPhoneScreenProps
                 activeOpacity={0.85}
               >
                 <LinearGradient
-                  colors={role === 'cliente' ? theme.gradients.brand : theme.gradients.hero}
+                  colors={theme.gradients.hero}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 1 }}
                   className="h-14 flex-row items-center justify-center rounded-full"
@@ -119,14 +115,12 @@ export function CompleteOAuthPhoneScreen({ role }: CompleteOAuthPhoneScreenProps
                   {isSubmitting ? (
                     <ActivityIndicator color="#FFFFFF" />
                   ) : (
-                    <Text className={`text-base font-semibold ${role === 'cliente' ? 'text-secondary' : 'text-white'}`}>
-                      Guardar y continuar
-                    </Text>
+                    <Text className="text-base font-semibold text-white">Guardar y continuar</Text>
                   )}
                 </LinearGradient>
               </TouchableOpacity>
 
-              <Link href={copy.loginRoute} asChild>
+              <Link href={professionalAuthCopy.loginRoute} asChild>
                 <TouchableOpacity className="mt-5 items-center">
                   <Text className="text-sm font-semibold text-secondary">Volver al acceso</Text>
                 </TouchableOpacity>
@@ -139,7 +133,7 @@ export function CompleteOAuthPhoneScreen({ role }: CompleteOAuthPhoneScreenProps
       <AuthLoadingOverlay
         visible={isSubmitting}
         title="Guardando telefono"
-        description={`Registrando el telefono de tu cuenta ${copy.label}.`}
+        description="Registrando el telefono de tu cuenta profesional."
       />
     </>
   );

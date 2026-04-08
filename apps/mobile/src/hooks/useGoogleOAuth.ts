@@ -10,6 +10,7 @@ import {
   type OAuthAuthAction,
   type OAuthResult,
 } from '../services/authBackend';
+import { getApiErrorMessage } from '../services/errors';
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -324,9 +325,12 @@ export function useGoogleOAuth({
         return;
       }
       onErrorRef.current(
-        errorMessage
-          ? `No se pudo abrir el acceso con Google. ${errorMessage}`
-          : 'No se pudo abrir el acceso con Google.',
+        getApiErrorMessage(
+          error,
+          errorMessage
+            ? `No se pudo abrir el acceso con Google. ${errorMessage}`
+            : 'No se pudo abrir el acceso con Google.',
+        ),
       );
       setIsGoogleSubmitting(false);
     }

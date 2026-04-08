@@ -1,6 +1,6 @@
 import React from 'react';
-import { RoleRegisterScreen } from '../../src/features/auth/RoleRegisterScreen';
+import { ProfessionalRegisterScreen } from '../../src/features/professional/auth/screens/ProfessionalRegisterScreen';
 
 export default function RegisterProfessionalScreen() {
-  return <RoleRegisterScreen role="profesional" />;
+  return <ProfessionalRegisterScreen />;
 }

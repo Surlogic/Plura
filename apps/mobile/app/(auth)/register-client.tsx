@@ -1,6 +1,6 @@
 import React from 'react';
-import { RoleRegisterScreen } from '../../src/features/auth/RoleRegisterScreen';
+import { ClientRegisterScreen } from '../../src/features/client/auth/screens/ClientRegisterScreen';
 
 export default function RegisterClientScreen() {
-  return <RoleRegisterScreen role="cliente" />;
+  return <ClientRegisterScreen />;
 }

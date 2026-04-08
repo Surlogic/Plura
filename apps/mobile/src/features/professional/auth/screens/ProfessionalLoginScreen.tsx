@@ -10,28 +10,22 @@ import {
 } from 'react-native';
 import { Link, router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
-import api from '../../services/api';
-import AuthLoadingOverlay from '../../components/auth/AuthLoadingOverlay';
-import { useAuthSession } from '../../context/auth/AuthSessionContext';
-import { useGoogleOAuth } from '../../hooks/useGoogleOAuth';
-import { getApiErrorMessage } from '../../services/errors';
-import type { OAuthResult } from '../../services/authBackend';
+import api from '../../../../services/api';
+import AuthLoadingOverlay from '../../../../components/auth/AuthLoadingOverlay';
+import { useAuthSession } from '../../../../context/auth/AuthSessionContext';
+import { useGoogleOAuth } from '../../../../hooks/useGoogleOAuth';
+import { getApiErrorMessage } from '../../../../services/errors';
+import type { OAuthResult } from '../../../../services/authBackend';
+import { AppScreen, surfaceStyles } from '../../../../components/ui/AppScreen';
+import { theme } from '../../../../theme';
+import { professionalAuthCopy } from '../config';
 import {
-  authRoleCopy,
-  backendRoleToAuthRole,
-  continueAfterAuth,
-  resolveCompletePhoneRouteFromBackendRole,
-  type AuthRole,
-} from './config';
-import { AppScreen, surfaceStyles } from '../../components/ui/AppScreen';
-import { theme } from '../../theme';
+  AUTH_ENTRY_LOGIN_ROUTE,
+  AUTH_FORGOT_PASSWORD_ROUTE,
+  PROFESSIONAL_HOME_ROUTE,
+} from '../../../shared/auth/routes';
 
-type RoleLoginScreenProps = {
-  role: AuthRole;
-};
-
-export function RoleLoginScreen({ role }: RoleLoginScreenProps) {
-  const copy = authRoleCopy[role];
+export function ProfessionalLoginScreen() {
   const { refreshProfile } = useAuthSession();
   const [form, setForm] = useState({ email: '', password: '' });
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -40,27 +34,21 @@ export function RoleLoginScreen({ role }: RoleLoginScreenProps) {
   const handleOAuthAuthenticated = async (result: OAuthResult) => {
     setErrorMessage(null);
 
-    if (role === 'profesional' && result.role !== 'PROFESSIONAL') {
+    if (result.role !== 'PROFESSIONAL') {
       setErrorMessage('Esta cuenta no quedo asociada como profesional. Usa acceso cliente o registrate como profesional.');
       return;
     }
 
-    const resolvedRole = backendRoleToAuthRole(result.role);
-    if (!resolvedRole) {
-      setErrorMessage('El backend no devolvio un rol valido para esta sesion.');
-      return;
-    }
-
     if (!(result.user.phoneNumber ?? '').trim()) {
-      router.replace(resolveCompletePhoneRouteFromBackendRole(result.role));
+      router.replace(professionalAuthCopy.completePhoneRoute);
       return;
     }
 
-    await continueAfterAuth(resolvedRole);
+    router.replace(PROFESSIONAL_HOME_ROUTE);
   };
 
   const { isGoogleSubmitting, handleGoogleAuth } = useGoogleOAuth({
-    role,
+    role: 'profesional',
     authAction: 'LOGIN',
     refreshProfile,
     onSuccess: handleOAuthAuthenticated,
@@ -79,7 +67,7 @@ export function RoleLoginScreen({ role }: RoleLoginScreenProps) {
 
     try {
       setIsSubmitting(true);
-      const response = await api.post(copy.loginEndpoint, {
+      const response = await api.post(professionalAuthCopy.loginEndpoint, {
         email: form.email.trim().toLowerCase(),
         password: form.password,
       });
@@ -93,16 +81,13 @@ export function RoleLoginScreen({ role }: RoleLoginScreenProps) {
       }
 
       await refreshProfile();
-      await continueAfterAuth(role);
+      router.replace(PROFESSIONAL_HOME_ROUTE);
     } catch (error: unknown) {
       setErrorMessage(getApiErrorMessage(error, 'No se pudo iniciar sesion.'));
     } finally {
       setIsSubmitting(false);
     }
   };
-
-  const heroColors = role === 'cliente' ? theme.gradients.brand : theme.gradients.heroElevated;
-  const submitColors = role === 'cliente' ? theme.gradients.brand : theme.gradients.hero;
 
   return (
     <>
@@ -117,19 +102,19 @@ export function RoleLoginScreen({ role }: RoleLoginScreenProps) {
         >
           <View className="px-6">
             <LinearGradient
-              colors={heroColors}
+              colors={theme.gradients.heroElevated}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
               className="rounded-[30px] px-6 py-6"
             >
-              <Text className={`text-xs font-bold uppercase tracking-[2px] ${role === 'cliente' ? 'text-secondary/70' : 'text-white/70'}`}>
-                {copy.badge}
+              <Text className="text-xs font-bold uppercase tracking-[2px] text-white/70">
+                {professionalAuthCopy.badge}
               </Text>
-              <Text className={`mt-3 text-3xl font-semibold ${role === 'cliente' ? 'text-secondary' : 'text-white'}`}>
-                {copy.title}
+              <Text className="mt-3 text-3xl font-semibold text-white">
+                {professionalAuthCopy.title}
               </Text>
-              <Text className={`mt-2 text-sm leading-6 ${role === 'cliente' ? 'text-secondary/80' : 'text-white/80'}`}>
-                {copy.description}
+              <Text className="mt-2 text-sm leading-6 text-white/80">
+                {professionalAuthCopy.description}
               </Text>
             </LinearGradient>
 
@@ -137,13 +122,13 @@ export function RoleLoginScreen({ role }: RoleLoginScreenProps) {
               <View className="flex-row items-center justify-between">
                 <View>
                   <Text className="text-xs font-bold uppercase tracking-[2px] text-faint">
-                    {copy.badge}
+                    {professionalAuthCopy.badge}
                   </Text>
                   <Text className="mt-2 text-3xl font-semibold text-secondary">
-                    {copy.title}
+                    {professionalAuthCopy.title}
                   </Text>
                 </View>
-                <Link href="/(auth)/login" asChild>
+                <Link href={AUTH_ENTRY_LOGIN_ROUTE} asChild>
                   <TouchableOpacity className="rounded-full border border-secondary/10 bg-backgroundSoft px-4 py-2">
                     <Text className="text-xs font-semibold text-secondary">Cambiar acceso</Text>
                   </TouchableOpacity>
@@ -151,13 +136,13 @@ export function RoleLoginScreen({ role }: RoleLoginScreenProps) {
               </View>
 
               <Text className="mt-3 text-sm leading-6 text-muted">
-                {copy.description}
+                {professionalAuthCopy.description}
               </Text>
 
-              <Link href={copy.alternateLoginRoute} asChild>
+              <Link href={professionalAuthCopy.alternateLoginRoute} asChild>
                 <TouchableOpacity className="mt-4 self-start">
                   <Text className="text-xs font-semibold text-primary">
-                    {copy.alternateLoginLabel}
+                    {professionalAuthCopy.alternateLoginLabel}
                   </Text>
                 </TouchableOpacity>
               </Link>
@@ -185,7 +170,7 @@ export function RoleLoginScreen({ role }: RoleLoginScreenProps) {
                   value={form.password}
                   onChangeText={(password) => setForm((prev) => ({ ...prev, password }))}
                 />
-                <Link href="/(auth)/forgot-password" asChild>
+                <Link href={AUTH_FORGOT_PASSWORD_ROUTE} asChild>
                   <TouchableOpacity className="mt-3 self-end">
                     <Text className="text-xs font-semibold text-secondary">Olvide mi contrasena</Text>
                   </TouchableOpacity>
@@ -205,7 +190,7 @@ export function RoleLoginScreen({ role }: RoleLoginScreenProps) {
                 activeOpacity={0.85}
               >
                 <LinearGradient
-                  colors={submitColors}
+                  colors={theme.gradients.hero}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 1 }}
                   className="h-14 flex-row items-center justify-center rounded-full"
@@ -233,9 +218,9 @@ export function RoleLoginScreen({ role }: RoleLoginScreenProps) {
 
               <View className="mt-8 flex-row justify-center">
                 <Text className="text-sm text-muted">No tienes cuenta </Text>
-                <Link href={copy.registerRoute} asChild>
+                <Link href={professionalAuthCopy.registerRoute} asChild>
                   <TouchableOpacity>
-                    <Text className="text-sm font-bold text-primary">{copy.registerLinkLabel}</Text>
+                    <Text className="text-sm font-bold text-primary">{professionalAuthCopy.registerLinkLabel}</Text>
                   </TouchableOpacity>
                 </Link>
               </View>
@@ -249,8 +234,8 @@ export function RoleLoginScreen({ role }: RoleLoginScreenProps) {
         title="Iniciando sesion"
         description={
           isGoogleSubmitting
-            ? `Conectando tu cuenta de Google como ${copy.label}.`
-            : `Verificando tus credenciales como ${copy.label}.`
+            ? 'Conectando tu cuenta de Google como profesional.'
+            : 'Verificando tus credenciales profesionales.'
         }
       />
     </>

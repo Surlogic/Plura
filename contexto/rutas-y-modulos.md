@@ -355,8 +355,10 @@ Lectura de producto:
 
 - cubre autenticacion base con flujos separados por rol (cliente y profesional)
 - login y registro por rol ya combinan credenciales propias y Google sobre el mismo backend `auth`
+- las rutas reales de auth mobile ya no usan pantallas hibridas por `role`: cliente vive bajo `src/features/client/auth/*`, profesional bajo `src/features/professional/auth/*` y `src/features/shared/auth/*` queda reservado a entry points, recovery y rutas comunes
 - al completar login o OAuth, cliente y profesional ya salen por rutas distintas: cliente retoma `pendingReservation` o cae en `/(tabs)/index` como entrada principal con tabs visibles, mientras profesional entra directo a `/dashboard`
 - `src/hooks/useGoogleOAuth` usa `@react-native-google-signin/google-signin` en Android para abrir el selector nativo de cuentas y pedir `idToken` con `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID`; en iOS/web mantiene `expo-auth-session`; sigue requiriendo development build fuera de `Expo Go`
+- en mobile, cuando Google o backend devuelven un conflicto (`409`) dentro del flujo nativo, `useGoogleOAuth` ya intenta mostrar el `message` real de la API en vez del texto generico de Axios
 - `/(auth)/forgot-password` ya replica la recuperacion web por `email -> telefono -> codigo` sobre `/auth/password/recovery/*`
 - `/(auth)/complete-phone-client` y `/(auth)/complete-phone-professional` completan el telefono faltante despues de OAuth via `POST /auth/oauth/complete-phone`
 - `/(auth)/reset-password` ahora tambien redirige al login especifico del rol (`/(auth)/login-client` o `/(auth)/login-professional`) cuando backend confirma el cambio de contraseña
@@ -417,6 +419,8 @@ Lectura de producto:
 - `src/services/errors.ts`: manejo centralizado de errores.
 - `src/services/logger.ts`: logging mobile.
 - `src/services/storage.ts`: persistencia local segura.
+- `src/features/client/auth/*`: login, registro y complete-phone del cliente con navegacion post-auth propia (`pendingReservation -> /(tabs)/index`).
+- `src/features/professional/auth/*`: login, registro y complete-phone profesional con salida directa a `/dashboard`.
 - `src/hooks/useGoogleOAuth.ts`: en Android usa `@react-native-google-signin/google-signin` para evitar `invalid_request` del flujo web y forzar chooser nativo de cuentas; en iOS/web mantiene `expo-auth-session` y soporta token directo o authorization code segun lo que devuelva Google
 - `src/features/shared/auth/*`: namespace nuevo para piezas auth compartidas de mobile; ya expone la entrada publica (`AuthWelcomeScreen`, `AuthEntryShowcase`) sin mezclarla con la futura separacion cliente/profesional
 - `src/services/location.ts` y `src/hooks/useUserLocation.ts`

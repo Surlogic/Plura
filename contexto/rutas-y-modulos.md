@@ -330,9 +330,10 @@ Base: `apps/mobile/app`
 Lectura de producto:
 
 - la tab bar esta centrada en cliente
-- el layout `app/(tabs)/_layout.tsx` ahora expulsa sesiones profesionales hacia `/dashboard` para evitar cruces de shells o quedar atrapado en superficies cliente sin navegacion coherente
+- `app/(tabs)` ya no contiene implementacion de negocio: queda como routing fino de Expo y delega en `src/features/client/navigation/ClientTabsLayout.tsx` + `src/features/client/screens/*`
+- el layout de tabs cliente ahora expulsa sesiones profesionales hacia `/dashboard` para evitar cruces de shells o quedar atrapado en superficies cliente sin navegacion coherente
 - `explore`, `favorites`, `bookings` y `notifications` reflejan el nucleo del plan `Usuario`
-- `dashboard` mezcla acceso de cliente y profesional, lo que puede servir al MVP pero puede requerir separacion mas adelante
+- `dashboard` dentro de tabs ya funciona como perfil cliente y deja de mezclar acceso con la superficie profesional
 - `/(tabs)/index` ya muestra un bloque de ubicacion del cliente para abrir exploracion ordenada por cercania y un CTA para activar permisos de notificaciones del dispositivo
 - `/(tabs)/explore` ya puede reutilizar la ubicacion actual del cliente para pedir `/api/search` con `lat/lng`, `radiusKm` y `sort=DISTANCE`, mostrando tambien la zona actual y distancia aproximada por resultado cuando backend la devuelve
 - `/(tabs)/notifications` ya refleja el permiso push del sistema y permite activarlo o derivar a ajustes del dispositivo; todavia no registra tokens push en backend
@@ -420,6 +421,8 @@ Lectura de producto:
 - `src/services/logger.ts`: logging mobile.
 - `src/services/storage.ts`: persistencia local segura.
 - `src/features/client/auth/*`: login, registro y complete-phone del cliente con navegacion post-auth propia (`pendingReservation -> /(tabs)/index`).
+- `src/features/client/navigation/ClientTabsLayout.tsx`: barra inferior y guard de tabs cliente, separada del routing Expo.
+- `src/features/client/screens/*`: implementaciones reales de `home`, `explore`, `favorites`, `bookings`, `notifications` y `profile` del cliente.
 - `src/features/professional/auth/*`: login, registro y complete-phone profesional con salida directa a `/dashboard`.
 - `src/hooks/useGoogleOAuth.ts`: en Android usa `@react-native-google-signin/google-signin` para evitar `invalid_request` del flujo web y forzar chooser nativo de cuentas; en iOS/web mantiene `expo-auth-session` y soporta token directo o authorization code segun lo que devuelva Google
 - `src/features/shared/auth/*`: namespace nuevo para piezas auth compartidas de mobile; ya expone la entrada publica (`AuthWelcomeScreen`, `AuthEntryShowcase`) sin mezclarla con la futura separacion cliente/profesional

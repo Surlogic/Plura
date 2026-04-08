@@ -5,7 +5,7 @@ import {
   buildClientNotifications,
   type MobileNotification,
 } from '../../src/services/clientFeatures';
-import { useAuthSession } from '../../src/context/ProfessionalProfileContext';
+import { useAuthSession } from '../../src/context/auth/AuthSessionContext';
 import { usePushNotifications } from '../../src/hooks/usePushNotifications';
 import { AppScreen } from '../../src/components/ui/AppScreen';
 import {

@@ -1,8 +1,8 @@
 import React from 'react';
 import { Redirect, Stack } from 'expo-router';
 import { View } from 'react-native';
-import { useAuthSession } from '../../src/context/ProfessionalProfileContext';
-import { ProfessionalBottomNav } from '../../src/components/professional/ProfessionalBottomNav';
+import { useAuthSession } from '../../src/context/auth/AuthSessionContext';
+import { ProfessionalBottomNav } from '../../src/features/professional/navigation/ProfessionalBottomNav';
 import { theme } from '../../src/theme';
 
 export default function ProfessionalDashboardLayout() {

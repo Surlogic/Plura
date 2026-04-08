@@ -4,7 +4,7 @@ import { Platform, StyleSheet, View } from 'react-native';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { AuthSessionProvider } from '../src/context/ProfessionalProfileContext';
+import { AuthSessionProvider } from '../src/context/auth/AuthSessionContext';
 import { theme } from '../src/theme';
 
 export default function RootLayout() {

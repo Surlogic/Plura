@@ -23,7 +23,7 @@ import {
   subscribeFavoriteProfessionalSlugs,
   toggleFavoriteProfessionalSlug,
 } from '../../src/services/clientFeatures';
-import { useAuthSession } from '../../src/context/ProfessionalProfileContext';
+import { useAuthSession } from '../../src/context/auth/AuthSessionContext';
 import type { WorkDayKey } from '../../src/types/professional';
 import {
   buildMapboxStaticMapUrl,

@@ -17,7 +17,7 @@ import {
   clearPendingReservation,
   savePendingReservation,
 } from '../src/services/pendingReservation';
-import { useAuthSession } from '../src/context/ProfessionalProfileContext';
+import { useAuthSession } from '../src/context/auth/AuthSessionContext';
 import { openMercadoPagoInAppBrowser } from '../src/services/mercadoPagoBrowser';
 import { theme } from '../src/theme';
 

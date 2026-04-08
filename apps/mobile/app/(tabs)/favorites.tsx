@@ -12,7 +12,7 @@ import {
   listPublicProfessionals,
   type PublicProfessionalSummary,
 } from '../../src/services/publicBookings';
-import { useAuthSession } from '../../src/context/ProfessionalProfileContext';
+import { useAuthSession } from '../../src/context/auth/AuthSessionContext';
 import { getCategoryAccent } from '../../src/features/client/categoryUi';
 import { AppScreen } from '../../src/components/ui/AppScreen';
 import { theme } from '../../src/theme';

@@ -1,8 +1,8 @@
 import React from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import { Redirect } from 'expo-router';
-import { useAuthSession } from '../src/context/ProfessionalProfileContext';
-import { AuthWelcomeScreen } from '../src/features/auth/AuthWelcomeScreen';
+import { useAuthSession } from '../src/context/auth/AuthSessionContext';
+import { AuthWelcomeScreen } from '../src/features/shared/auth/screens/AuthWelcomeScreen';
 import { theme } from '../src/theme';
 
 export default function EntryScreen() {

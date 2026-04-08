@@ -4,7 +4,7 @@ import { router, useFocusEffect } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import EmailVerificationCard from '../../src/components/auth/EmailVerificationCard';
-import { useAuthSession } from '../../src/context/ProfessionalProfileContext';
+import { useAuthSession } from '../../src/context/auth/AuthSessionContext';
 import { AppScreen } from '../../src/components/ui/AppScreen';
 import {
   ActionButton,

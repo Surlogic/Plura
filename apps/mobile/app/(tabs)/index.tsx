@@ -6,7 +6,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { listPublicProfessionals, type PublicProfessionalSummary } from '../../src/services/publicBookings';
 import { getClientNextBooking, type ClientNextBooking } from '../../src/services/clientFeatures';
 import { getApiErrorMessage } from '../../src/services/errors';
-import { useAuthSession } from '../../src/context/ProfessionalProfileContext';
+import { useAuthSession } from '../../src/context/auth/AuthSessionContext';
 import { listCategories } from '../../src/services/categories';
 import type { ServiceCategoryOption } from '../../src/types/professional';
 import { getCategoryAccent } from '../../src/features/client/categoryUi';

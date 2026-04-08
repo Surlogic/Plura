@@ -7,7 +7,7 @@ import {
 } from '../../src/services/clientFeatures';
 import api from '../../src/services/api';
 import EmailVerificationCard from '../../src/components/auth/EmailVerificationCard';
-import { useAuthSession } from '../../src/context/ProfessionalProfileContext';
+import { useAuthSession } from '../../src/context/auth/AuthSessionContext';
 import { getApiErrorMessage } from '../../src/services/errors';
 import {
   getProfessionalBookingPolicy,

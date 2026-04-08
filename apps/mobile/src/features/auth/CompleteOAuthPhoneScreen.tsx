@@ -10,7 +10,7 @@ import {
 import { Link } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import AuthLoadingOverlay from '../../components/auth/AuthLoadingOverlay';
-import { useAuthSession } from '../../context/ProfessionalProfileContext';
+import { useAuthSession } from '../../context/auth/AuthSessionContext';
 import { hasMinimumPhoneDigits } from '../../lib/internationalPhone';
 import { completeOAuthPhone } from '../../services/authBackend';
 import { getApiErrorMessage } from '../../services/errors';

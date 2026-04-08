@@ -22,7 +22,7 @@ import {
   startProfessionalMercadoPagoOAuth,
   type ProfessionalMercadoPagoConnection,
 } from '../../src/services/billing';
-import { useAuthSession } from '../../src/context/ProfessionalProfileContext';
+import { useAuthSession } from '../../src/context/auth/AuthSessionContext';
 import { openMercadoPagoInAppBrowser } from '../../src/services/mercadoPagoBrowser';
 import { AppScreen } from '../../src/components/ui/AppScreen';
 import { MessageCard, ScreenHero, SectionCard } from '../../src/components/ui/MobileSurface';

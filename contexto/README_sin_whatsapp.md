@@ -229,7 +229,8 @@ En mobile cliente hoy hay una base adicional de permisos del dispositivo:
 
 - `/(tabs)/index`, `/(tabs)/notifications` y `/dashboard/settings` ya pueden solicitar al sistema activar notificaciones
 - el estado del permiso y la preferencia local de `pushReminders` queda persistido en storage seguro del dispositivo
-- todavia no existe en el repo una ruta backend para registrar `push token` o despachar push nativas; el alcance actual sigue siendo permiso + UX preparada + inbox/in-app existente
+- mobile ahora tambien sincroniza el `push token` del cliente autenticado contra backend via `PUT /cliente/notificaciones/push-token` cuando el permiso queda `granted`, y lo marca deshabilitado si el permiso se revoca o el usuario apaga `pushReminders`
+- todavia no existe en el repo un worker de despacho push nativo server-side; el alcance operativo actual sigue siendo inbox/in-app + email, con base de device tokens ya persistida para futuras integraciones
 
 Pendiente visible despues de estas fases:
 
@@ -369,7 +370,7 @@ Capacidades ya visibles en codigo:
 - billing, suscripciones, checkout de reservas y webhooks con Mercado Pago
 - mobile ya muestra mapa en el perfil publico del profesional y abre los flujos de `Mercado Pago` dentro de la app con browser embebido
 - mobile ya puede pedir permiso de ubicacion del dispositivo para mostrar la zona actual del cliente y lanzar exploracion ordenada por cercania real con `lat/lng`
-- mobile ya puede pedir permiso de notificaciones del sistema y persistir ese estado local en `home`, `notificaciones` y `configuracion`; todavia no registra device tokens en backend ni envia push server-side desde el repo actual
+- mobile ya puede pedir permiso de notificaciones del sistema, persistir ese estado local en `home`, `notificaciones` y `configuracion`, y registrar/deshabilitar el `push token` del cliente autenticado en backend; todavia no envia push server-side desde el repo actual
 - storage de imagenes con Cloudflare R2, CDN público, galería de fotos del negocio y banner de perfil
 
 Capacidades de producto definidas pero no necesariamente cerradas en UI o API publica:
@@ -409,6 +410,8 @@ La app mobile usa `expo-router` con grupos:
 - `app/(tabs)` para la experiencia principal del cliente
 - `app/(auth)` para login, registro, recovery escalonado y completar telefono despues de OAuth
 - `app/dashboard` para vistas del profesional
+- la base de sesion mobile ya esta migrando a un namespace neutral `src/context/auth/AuthSessionContext.tsx`; el archivo historico `src/context/ProfessionalProfileContext.tsx` queda solo como compatibilidad temporal
+- la entrada auth publica mobile ya empezo a moverse a `src/features/shared/auth/*`, y la navegacion del dashboard profesional ya arranca desde `src/features/professional/navigation/*`
 - si la sesion es de cliente, mobile entra explicitamente por `/(tabs)/index`; si por estado viejo o deep link cae en `app/dashboard`, el layout profesional la reubica al shell cliente para no dejarla atrapada en vistas como `Turnos y reservas`
 - el shell profesional mobile ahora incluye una barra inferior persistente para navegar entre modulos clave del dashboard sin volver manualmente atras
 - al cerrar sesion en mobile, la navegacion ya vuelve al login correcto por rol (`/(auth)/login-client` o `/(auth)/login-professional`) en vez de mandar siempre a la portada inicial

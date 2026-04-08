@@ -12,7 +12,7 @@ import {
   listServiceCategories,
   updateProfessionalService,
 } from '../../src/services/professionalConfig';
-import { useAuthSession } from '../../src/context/ProfessionalProfileContext';
+import { useAuthSession } from '../../src/context/auth/AuthSessionContext';
 import { AppScreen } from '../../src/components/ui/AppScreen';
 import {
   ActionButton,

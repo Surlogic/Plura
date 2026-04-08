@@ -315,7 +315,7 @@ Base: `apps/mobile/app`
 ### Entrada y layout
 
 - `app/index.tsx`: si hay sesion profesional redirige a `/dashboard`, si hay sesion cliente redirige explicitamente a `/(tabs)/index` para entrar al shell principal con tab bar visible y si no hay sesion muestra una portada mobile con logo Plura y CTAs `Iniciar como cliente` / `Iniciar como profesional`.
-- `app/_layout.tsx`: monta `ProfessionalProfileProvider` y stack principal.
+- `app/_layout.tsx`: monta `AuthSessionProvider` desde `src/context/auth/AuthSessionContext.tsx` y el stack principal.
 - el logout mobile ahora deriva al login correcto por rol activo (`/(auth)/login-client` o `/(auth)/login-professional`) para no mezclar los accesos despues de limpiar sesion
 
 ### Grupo `(tabs)`
@@ -361,7 +361,7 @@ Lectura de producto:
 - `/(auth)/complete-phone-client` y `/(auth)/complete-phone-professional` completan el telefono faltante despues de OAuth via `POST /auth/oauth/complete-phone`
 - `/(auth)/reset-password` ahora tambien redirige al login especifico del rol (`/(auth)/login-client` o `/(auth)/login-professional`) cuando backend confirma el cambio de contraseña
 - `/(auth)/register-client` y `/(auth)/register-professional` ya usan selector internacional de telefono con bandera + codigo y envian el numero final listo para backend
-- `ProfessionalProfileContext` ya no hace doble fetch secuencial `profesional -> cliente` en cada refresh: usa el `role` del access token para pedir solo `/auth/me/profesional` o `/auth/me/cliente`, y reutiliza un unico refresh en vuelo cuando varias pantallas vuelven a foco al mismo tiempo
+- `src/context/auth/AuthSessionContext.tsx` centraliza la sesion mobile y ya no hace doble fetch secuencial `profesional -> cliente` en cada refresh: usa el `role` del access token para pedir solo `/auth/me/profesional` o `/auth/me/cliente`, y reutiliza un unico refresh en vuelo cuando varias pantallas vuelven a foco al mismo tiempo; `src/context/ProfessionalProfileContext.tsx` queda como compatibilidad temporal mientras avanza la separacion modular
 
 ### Grupo `dashboard`
 
@@ -380,7 +380,7 @@ Lectura de producto:
 - responde bien al objetivo `Free` y `Pro` de operar una agenda desde el telefono
 - `/dashboard` redirige segun sesion: profesional va a `/dashboard/agenda`; otros casos vuelven a tabs o login
 - `app/dashboard/_layout.tsx` ahora reubica cualquier sesion no profesional autenticada en `/(tabs)/index` para evitar que cliente vea vistas operativas del profesional como `Turnos y reservas`
-- el dashboard profesional mobile ahora monta una barra inferior persistente propia con accesos a `agenda`, `servicios`, `perfil`, `cobros` y `ajustes`; ya no depende de links sueltos dentro de cada pantalla para moverse entre modulos
+- el dashboard profesional mobile ahora monta una barra inferior persistente propia con accesos a `agenda`, `servicios`, `perfil`, `cobros` y `ajustes`; ya no depende de links sueltos dentro de cada pantalla para moverse entre modulos y su implementacion base ya vive bajo `src/features/professional/navigation/ProfessionalBottomNav.tsx`
 - `dashboard/billing` ya no usa `payout-config`; muestra el plan de Plura y el estado de conexion OAuth de `Mercado Pago` como unico provider vigente para cobros
 - `dashboard/billing` en mobile ya respeta el gating principal de web: si el perfil no tiene `allowOnlinePayments`, no intenta conectar `Mercado Pago` y deja la conexion reservada para `PROFESIONAL / ENTERPRISE`
 - `dashboard/billing` refresca perfil + suscripcion al volver a foreground para bajar desfasajes despues del checkout del plan o del flujo OAuth
@@ -418,8 +418,9 @@ Lectura de producto:
 - `src/services/logger.ts`: logging mobile.
 - `src/services/storage.ts`: persistencia local segura.
 - `src/hooks/useGoogleOAuth.ts`: en Android usa `@react-native-google-signin/google-signin` para evitar `invalid_request` del flujo web y forzar chooser nativo de cuentas; en iOS/web mantiene `expo-auth-session` y soporta token directo o authorization code segun lo que devuelva Google
+- `src/features/shared/auth/*`: namespace nuevo para piezas auth compartidas de mobile; ya expone la entrada publica (`AuthWelcomeScreen`, `AuthEntryShowcase`) sin mezclarla con la futura separacion cliente/profesional
 - `src/services/location.ts` y `src/hooks/useUserLocation.ts`
-- `src/services/pushNotifications.ts` y `src/hooks/usePushNotifications.ts`
+- `src/services/pushNotifications.ts` y `src/hooks/usePushNotifications.ts`: sincronizan permisos push del dispositivo, persisten preferencia local y, para cliente autenticado, registran o deshabilitan el `push token` contra backend
 - `src/components/ui/AppScreen.tsx`: shell base mobile; cuando `scroll=true` ahora soporta `pull-to-refresh` comun mediante `refreshing + onRefresh`
 - `src/components/ui/MobileSurface.tsx`: concentra primitives mobile de superficie (`SectionCard`, `StatusPill`) y tambien los CTA/chips reutilizables (`ActionButton`, `SelectionChip`); el tono primario ya quedo alineado con el verde de marca web y los filtros/acciones principales migran sobre esta base comun.
 
@@ -430,7 +431,7 @@ Lectura de producto:
 - `/reservar` en mobile ya puede continuar reservas con pago online: crea la reserva, abre `Mercado Pago` dentro de la app con browser embebido y luego deriva a `/(tabs)/bookings` para seguir el estado de la reserva
 - `/(tabs)/bookings` ahora tambien reabre pagos pendientes de `Mercado Pago` dentro de la app y refresca reservas al volver
 - mobile cliente ya puede usar ubicacion real para experiencias de cercania dentro de `home` y `explore`
-- la parte push mobile queda en estado intermedio: permiso del dispositivo y UX listos, pero el envio push server-side todavia no esta cableado en el repo
+- la parte push mobile queda en estado intermedio: permiso del dispositivo, UX y registro backend del `push token` ya existen, pero el envio push server-side todavia no esta cableado en el repo
 - todavia no se ve una capa madura para notificaciones transaccionales, fidelizacion o chat (reseñas base ya estan en backend y web, pendiente UI mobile)
 
 ## Shared

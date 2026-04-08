@@ -19,7 +19,7 @@ import {
 import { useFocusEffect } from 'expo-router';
 import { getPublicSlots } from '../../src/services/publicBookings';
 import { getApiErrorMessage } from '../../src/services/errors';
-import { useAuthSession } from '../../src/context/ProfessionalProfileContext';
+import { useAuthSession } from '../../src/context/auth/AuthSessionContext';
 import { theme } from '../../src/theme';
 import AuthWall from '../../src/components/auth/AuthWall';
 import { openMercadoPagoInAppBrowser } from '../../src/services/mercadoPagoBrowser';

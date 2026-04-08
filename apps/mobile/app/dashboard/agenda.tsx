@@ -21,7 +21,7 @@ import {
 import type { ProfessionalReservation } from '../../src/types/professional';
 import { getApiErrorMessage } from '../../src/services/errors';
 import { getPublicSlots } from '../../src/services/publicBookings';
-import { useAuthSession } from '../../src/context/ProfessionalProfileContext';
+import { useAuthSession } from '../../src/context/auth/AuthSessionContext';
 import { canProfessionalConfirmReservation } from '../../../../packages/shared/src/bookings/professionalReservationActions';
 import { AppScreen } from '../../src/components/ui/AppScreen';
 import InternationalPhoneField from '../../src/components/ui/InternationalPhoneField';

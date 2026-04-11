@@ -19,6 +19,7 @@ import java.time.LocalDateTime;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Locale;
 import java.util.Optional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -270,7 +271,7 @@ public class BillingService {
         PaymentProvider provider,
         BillingProperties.PlanConfig planConfig
     ) {
-        Subscription subscription = subscriptionRepository.findByProfessionalId(professional.getId())
+        Subscription subscription = subscriptionRepository.findByProfessionalIdForUpdate(professional.getId())
             .orElseGet(Subscription::new);
 
         if (subscription.getId() != null
@@ -280,6 +281,9 @@ public class BillingService {
             throw new ResponseStatusException(HttpStatus.CONFLICT,
                 "Ya tienes una suscripción activa hasta " + subscription.getCurrentPeriodEnd());
         }
+
+        assertMercadoPagoSubscriptionCanBeReused(subscription, professional, plan, provider);
+
         subscription.setProfessionalId(professional.getId());
         subscription.setPlan(plan);
         subscription.setStatus(SubscriptionStatus.TRIAL);
@@ -296,6 +300,59 @@ public class BillingService {
         }
         subscription.setProviderCustomerId(null);
         return subscriptionRepository.saveAndFlush(subscription);
+    }
+
+    private void assertMercadoPagoSubscriptionCanBeReused(
+        Subscription subscription,
+        ProfessionalProfile professional,
+        SubscriptionPlanCode requestedPlan,
+        PaymentProvider requestedProvider
+    ) {
+        if (subscription.getId() == null
+            || subscription.getProvider() != PaymentProvider.MERCADOPAGO
+            || requestedProvider != PaymentProvider.MERCADOPAGO) {
+            return;
+        }
+
+        String providerSubscriptionId = subscription.getProviderSubscriptionId();
+        if (providerSubscriptionId == null || providerSubscriptionId.isBlank()) {
+            return;
+        }
+
+        MercadoPagoSubscriptionService.SubscriptionSnapshot snapshot =
+            mercadoPagoSubscriptionService.getSubscription(providerSubscriptionId);
+        String remoteStatus = normalizeMercadoPagoSubscriptionStatus(snapshot.status());
+        if (!isOpenMercadoPagoSubscriptionStatus(remoteStatus)) {
+            return;
+        }
+
+        LOGGER.warn(
+            "Blocked duplicate Mercado Pago subscription checkout professionalId={} subscriptionId={} providerSubscriptionId={} remoteStatus={} currentPlan={} requestedPlan={}",
+            professional == null ? null : professional.getId(),
+            subscription.getId(),
+            providerSubscriptionId,
+            remoteStatus,
+            subscription.getPlan(),
+            requestedPlan
+        );
+        throw new ResponseStatusException(
+            HttpStatus.CONFLICT,
+            "Ya hay una suscripción de Mercado Pago en curso o activa para esta cuenta. Cancelala antes de iniciar otra."
+        );
+    }
+
+    private String normalizeMercadoPagoSubscriptionStatus(String status) {
+        if (status == null) {
+            return "";
+        }
+        return status.trim().toLowerCase(Locale.ROOT);
+    }
+
+    private boolean isOpenMercadoPagoSubscriptionStatus(String status) {
+        return "pending".equals(status)
+            || "authorized".equals(status)
+            || "active".equals(status)
+            || "paused".equals(status);
     }
 
     /** Verifica que el módulo de facturación esté habilitado. Lanza excepción si no lo está. */

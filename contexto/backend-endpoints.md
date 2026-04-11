@@ -432,6 +432,7 @@ Estado real detectado en codigo:
 - `/webhooks/mercadopago` procesa suscripciones y reservas con routing interno por dominio
 - `/cliente/reservas/{id}/payment-session` sigue siendo la entrada real para checkout de reservas
 - si `Mercado Pago` responde `card_token_id is required` al crear el `preapproval`, el backend hace fallback al checkout hosted del `preapproval_plan` y devuelve igual una `checkoutUrl`
+- `POST /billing/subscription` ahora toma lock pesimista sobre la suscripción del profesional y rechaza crear un segundo `preapproval` de `Mercado Pago` mientras el anterior siga `pending`, `authorized`, `active` o `paused`; esto evita dobles suscripciones/cobros por reintentos sobre la misma cuenta
 
 Lectura de producto:
 

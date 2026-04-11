@@ -20,11 +20,10 @@ import { AppScreen, surfaceStyles } from '../../../../components/ui/AppScreen';
 import { theme } from '../../../../theme';
 import { clientAuthCopy, continueAfterClientAuth } from '../config';
 import {
-  AUTH_ENTRY_LOGIN_ROUTE,
+  AUTH_WELCOME_ROUTE,
   AUTH_FORGOT_PASSWORD_ROUTE,
-  PROFESSIONAL_COMPLETE_PHONE_ROUTE,
-  PROFESSIONAL_HOME_ROUTE,
 } from '../../../shared/auth/routes';
+import { clearSession } from '../../../../services/session';
 
 export function ClientLoginScreen() {
   const { refreshProfile } = useClientSession();
@@ -36,11 +35,9 @@ export function ClientLoginScreen() {
     setErrorMessage(null);
 
     if (result.role === 'PROFESSIONAL') {
-      if (!(result.user.phoneNumber ?? '').trim()) {
-        router.replace(PROFESSIONAL_COMPLETE_PHONE_ROUTE);
-        return;
-      }
-      router.replace(PROFESSIONAL_HOME_ROUTE);
+      await clearSession();
+      await refreshProfile();
+      setErrorMessage('Esta cuenta pertenece al acceso profesional. Usa el login profesional.');
       return;
     }
 
@@ -133,9 +130,9 @@ export function ClientLoginScreen() {
                     {clientAuthCopy.title}
                   </Text>
                 </View>
-                <Link href={AUTH_ENTRY_LOGIN_ROUTE} asChild>
+                <Link href={AUTH_WELCOME_ROUTE} asChild>
                   <TouchableOpacity className="rounded-full border border-secondary/10 bg-backgroundSoft px-4 py-2">
-                    <Text className="text-xs font-semibold text-secondary">Cambiar acceso</Text>
+                    <Text className="text-xs font-semibold text-secondary">Volver</Text>
                   </TouchableOpacity>
                 </Link>
               </View>
@@ -147,7 +144,7 @@ export function ClientLoginScreen() {
               <Link href={clientAuthCopy.alternateLoginRoute} asChild>
                 <TouchableOpacity className="mt-4 self-start">
                   <Text className="text-xs font-semibold text-primary">
-                    {clientAuthCopy.alternateLoginLabel}
+                    Ir al login profesional
                   </Text>
                 </TouchableOpacity>
               </Link>

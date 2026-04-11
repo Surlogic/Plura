@@ -20,6 +20,7 @@ import {
 import { useAuthSession } from '../src/context/auth/AuthSessionContext';
 import { openMercadoPagoInAppBrowser } from '../src/services/mercadoPagoBrowser';
 import { theme } from '../src/theme';
+import { CLIENT_LOGIN_ROUTE } from '../src/features/shared/auth/routes';
 
 type Params = {
   slug?: string;
@@ -249,7 +250,7 @@ export default function ReservationCheckoutScreen() {
                     });
                     setMessage('Necesitas iniciar sesion para confirmar. Redirigiendo...');
                     setTimeout(() => {
-                      router.replace('/(auth)/login');
+                      router.replace(CLIENT_LOGIN_ROUTE);
                     }, 500);
                     return;
                   }
@@ -329,7 +330,7 @@ export default function ReservationCheckoutScreen() {
                         country: professionalCountry,
                         metadata: {
                           reason: 'missing_client_session',
-                          redirectTarget: '/(auth)/login',
+                          redirectTarget: CLIENT_LOGIN_ROUTE,
                         },
                       });
                       await savePendingReservation({
@@ -340,7 +341,7 @@ export default function ReservationCheckoutScreen() {
                       });
                       setMessage('Necesitas iniciar sesion para confirmar. Redirigiendo...');
                       setTimeout(() => {
-                        router.replace('/(auth)/login');
+                        router.replace(CLIENT_LOGIN_ROUTE);
                       }, 500);
                       return;
                     }

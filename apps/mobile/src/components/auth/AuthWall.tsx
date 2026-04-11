@@ -4,17 +4,25 @@ import { router } from 'expo-router';
 import { Ionicons } from '../../lib/icons';
 import { ActionButton, SectionCard } from '../ui/MobileSurface';
 import { theme } from '../../theme';
+import {
+  CLIENT_LOGIN_ROUTE,
+  CLIENT_REGISTER_ROUTE,
+} from '../../features/shared/auth/routes';
 
 type AuthWallProps = {
   title: string;
   description: string;
   icon?: keyof typeof Ionicons.glyphMap;
+  loginRoute?: string;
+  registerRoute?: string;
 };
 
 export default function AuthWall({
   title,
   description,
   icon = 'lock-closed-outline',
+  loginRoute = CLIENT_LOGIN_ROUTE,
+  registerRoute = CLIENT_REGISTER_ROUTE,
 }: AuthWallProps) {
   return (
     <SectionCard style={{ marginTop: 24 }}>
@@ -37,11 +45,11 @@ export default function AuthWall({
 
         <ActionButton
           label="Iniciar sesion"
-          onPress={() => router.push('/(auth)/login')}
+          onPress={() => router.push(loginRoute)}
           style={{ alignSelf: 'stretch', marginTop: 20 }}
         />
 
-        <TouchableOpacity onPress={() => router.push('/(auth)/register')} style={{ marginTop: 14 }}>
+        <TouchableOpacity onPress={() => router.push(registerRoute)} style={{ marginTop: 14 }}>
           <Text style={{ color: theme.colors.primaryStrong, fontWeight: '700' }}>
             Crear cuenta
           </Text>

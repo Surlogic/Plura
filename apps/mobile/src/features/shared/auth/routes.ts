@@ -8,8 +8,7 @@ export const CLIENT_COMPLETE_PHONE_ROUTE = '/(auth)/complete-phone-client' as co
 export const PROFESSIONAL_COMPLETE_PHONE_ROUTE = '/(auth)/complete-phone-professional' as const;
 export const CLIENT_HOME_ROUTE = '/(tabs)' as const;
 export const PROFESSIONAL_HOME_ROUTE = '/dashboard' as const;
-export const AUTH_ENTRY_LOGIN_ROUTE = '/(auth)/login' as const;
-export const AUTH_ENTRY_REGISTER_ROUTE = '/(auth)/register' as const;
+export const AUTH_WELCOME_ROUTE = '/' as const;
 export const AUTH_FORGOT_PASSWORD_ROUTE = '/(auth)/forgot-password' as const;
 
 export const resolveLoginRouteFromBackendRole = (role?: BackendAuthRole | null) => {

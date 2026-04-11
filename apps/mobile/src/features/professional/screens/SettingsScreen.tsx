@@ -71,6 +71,14 @@ export default function SettingsScreen() {
             }}
             style={{ marginTop: 16 }}
           />
+          <ActionButton
+            label="Editar horarios"
+            tone="secondary"
+            onPress={() => {
+              router.push('/dashboard/schedule');
+            }}
+            style={{ marginTop: 12 }}
+          />
         </SectionCard>
 
         <View className="mt-6">

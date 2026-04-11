@@ -327,6 +327,7 @@ Base: `apps/mobile/app`
 - `/(tabs)/favorites`
 - `/(tabs)/bookings`
 - `/(tabs)/notifications`
+- `/(tabs)/settings` — ruta cliente oculta de tabs para preferencias, seguridad y baja de cuenta; no aparece en la tab bar
 
 Lectura de producto:
 
@@ -342,10 +343,8 @@ Lectura de producto:
 
 ### Grupo `(auth)`
 
-- `/(auth)/login`
 - `/(auth)/login-client`
 - `/(auth)/login-professional`
-- `/(auth)/register`
 - `/(auth)/register-client`
 - `/(auth)/register-professional`
 - `/(auth)/complete-phone-client`
@@ -355,17 +354,18 @@ Lectura de producto:
 
 Lectura de producto:
 
-- cubre autenticacion base con flujos separados por rol (cliente y profesional)
+- cubre autenticacion base con flujos separados por rol (cliente y profesional); la portada publica `/` es el unico selector inicial de acceso
 - login y registro por rol ya combinan credenciales propias y Google sobre el mismo backend `auth`
-- las rutas reales de auth mobile ya no usan pantallas hibridas por `role`: cliente vive bajo `src/features/client/auth/*`, profesional bajo `src/features/professional/auth/*` y `src/features/shared/auth/*` queda reservado a entry points, recovery y rutas comunes
+- las rutas reales de auth mobile ya no usan pantallas hibridas por `role`: cliente vive bajo `src/features/client/auth/*`, profesional bajo `src/features/professional/auth/*` y `src/features/shared/auth/*` queda reservado a entry point publico `/`, recovery y rutas comunes
 - al completar login o OAuth, cliente y profesional ya salen por rutas distintas: cliente retoma `pendingReservation` o cae en `/(tabs)` como entrada principal con tabs visibles, mientras profesional entra directo a `/dashboard`
+- si el flujo cliente recibe una cuenta OAuth profesional, mobile limpia la sesion y exige volver al acceso profesional en vez de dejar entrar al shell equivocado; el flujo profesional mantiene la misma separacion frente a cuentas cliente
 - `src/hooks/useGoogleOAuth` usa `@react-native-google-signin/google-signin` en Android para abrir el selector nativo de cuentas y pedir `idToken` con `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID`; en iOS/web mantiene `expo-auth-session`; sigue requiriendo development build fuera de `Expo Go`
 - en mobile, cuando Google o backend devuelven un conflicto (`409`) dentro del flujo nativo, `useGoogleOAuth` ya intenta mostrar el `message` real de la API en vez del texto generico de Axios
 - `/(auth)/forgot-password` ya replica la recuperacion web por `email -> telefono -> codigo` sobre `/auth/password/recovery/*`
 - `/(auth)/complete-phone-client` y `/(auth)/complete-phone-professional` completan el telefono faltante despues de OAuth via `POST /auth/oauth/complete-phone`
-- `/(auth)/reset-password` ahora tambien redirige al login especifico del rol (`/(auth)/login-client` o `/(auth)/login-professional`) cuando backend confirma el cambio de contraseña
+- `/(auth)/reset-password` sigue como compatibilidad de deep links legacy por token y, al terminar, ya redirige al login especifico del rol o vuelve a `/` si backend no informa rol
 - `/(auth)/register-client` y `/(auth)/register-professional` ya usan selector internacional de telefono con bandera + codigo y envian el numero final listo para backend
-- `src/context/auth/AuthSessionContext.tsx` centraliza la sesion mobile y ya no hace doble fetch secuencial `profesional -> cliente` en cada refresh: usa el `role` del access token para pedir solo `/auth/me/profesional` o `/auth/me/cliente`, y reutiliza un unico refresh en vuelo cuando varias pantallas vuelven a foco al mismo tiempo; `src/context/ProfessionalProfileContext.tsx` queda como compatibilidad temporal mientras avanza la separacion modular
+- `src/context/auth/AuthSessionContext.tsx` centraliza la sesion mobile y ya no hace doble fetch secuencial `profesional -> cliente` en cada refresh: usa el `role` del access token para pedir solo `/auth/me/profesional` o `/auth/me/cliente`, y reutiliza un unico refresh en vuelo cuando varias pantallas vuelven a foco al mismo tiempo
 
 ### Grupo `dashboard`
 
@@ -374,7 +374,6 @@ Lectura de producto:
 - `/dashboard/services`
 - `/dashboard/business-profile`
 - `/dashboard/billing`
-- `/dashboard/notifications`
 - `/dashboard/schedule`
 - `/dashboard/settings`
 
@@ -393,8 +392,7 @@ Lectura de producto:
 - `dashboard/services` en mobile ya bloquea `DEPOSIT` y `FULL_PREPAY` cuando el perfil no tiene `allowOnlinePayments`, alineando la configuracion de servicios con web; ademas respeta el tope de servicios por plan (`15/30/ilimitado`)
 - `dashboard/agenda` en mobile ya no expone las acciones manuales `completar` ni `retry payout`; queda alineado con la UX operativa web basada en confirmacion, cancelacion, no-show y reagendamiento
 - `dashboard/agenda` ya usa selector internacional para el telefono opcional al crear reservas manuales desde mobile
-- `dashboard/notifications` sigue siendo una pantalla transitoria de estado/configuracion para profesional; todavia no replica el inbox completo de web
-- `dashboard/settings` ahora expone tambien el cierre de sesion visible dentro del propio dashboard profesional mobile, sin depender de volver a la experiencia cliente
+- `dashboard/settings` ahora expone tambien el cierre de sesion visible dentro del propio dashboard profesional mobile y un acceso explicito a `dashboard/schedule`, sin depender de links legacy o de volver a la experiencia cliente
 - no expone aun el set completo de capacidades `Premium`
 - `dashboard/business-profile` ya usa el mismo selector internacional de telefono que auth para editar el contacto del negocio sin pedir prefijo manual
 
@@ -402,7 +400,7 @@ Lectura de producto:
 
 - `/profesional/[slug]`: perfil publico del profesional.
 - `/reservar`: flujo de reserva.
-- `/client/settings`: configuración cliente separada de las tabs, con preferencias, push, seguridad y baja de cuenta.
+- `/(tabs)/settings`: configuración cliente dentro del shell cliente, con preferencias, push, seguridad y baja de cuenta, sin una rama `/client` aparte.
 
 ### Modulos transversales mobile
 

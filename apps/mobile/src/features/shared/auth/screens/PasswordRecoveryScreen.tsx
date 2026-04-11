@@ -20,7 +20,10 @@ import {
   verifyPasswordRecoveryPhone,
 } from '../../../../services/authBackend';
 import { getApiErrorMessage } from '../../../../services/errors';
-import { resolveLoginRouteFromBackendRole } from '../routes';
+import {
+  AUTH_WELCOME_ROUTE,
+  resolveLoginRouteFromBackendRole,
+} from '../routes';
 import { theme } from '../../../../theme';
 
 type RecoveryStep = 'email' | 'phone' | 'code';
@@ -289,10 +292,10 @@ export function PasswordRecoveryScreen() {
             </TouchableOpacity>
 
             <View className="mt-6 flex-row justify-center">
-              <Link href="/(auth)/login" asChild>
+              <Link href={AUTH_WELCOME_ROUTE} asChild>
                 <TouchableOpacity activeOpacity={0.85}>
                   <Text className="text-sm font-semibold text-secondary">
-                    Volver al login
+                    Volver a accesos
                   </Text>
                 </TouchableOpacity>
               </Link>

@@ -29,7 +29,7 @@ import { hasMinimumPhoneDigits } from '../../../../lib/internationalPhone';
 import { theme } from '../../../../theme';
 import { professionalAuthCopy } from '../config';
 import {
-  AUTH_ENTRY_REGISTER_ROUTE,
+  AUTH_WELCOME_ROUTE,
   PROFESSIONAL_HOME_ROUTE,
 } from '../../../shared/auth/routes';
 
@@ -296,9 +296,9 @@ export function ProfessionalRegisterScreen() {
                     Crear cuenta profesional
                   </Text>
                 </View>
-                <Link href={AUTH_ENTRY_REGISTER_ROUTE} asChild>
+                <Link href={AUTH_WELCOME_ROUTE} asChild>
                   <TouchableOpacity className="rounded-full border border-secondary/10 px-4 py-2">
-                    <Text className="text-xs font-semibold text-secondary">Cambiar rol</Text>
+                    <Text className="text-xs font-semibold text-secondary">Volver</Text>
                   </TouchableOpacity>
                 </Link>
               </View>

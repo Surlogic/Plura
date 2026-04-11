@@ -11,6 +11,10 @@ import {
   ScreenHero,
   SectionCard,
 } from '../../../components/ui/MobileSurface';
+import {
+  CLIENT_LOGIN_ROUTE,
+  CLIENT_REGISTER_ROUTE,
+} from '../../shared/auth/routes';
 
 export default function DashboardTab() {
   const { clientProfile, hasLoaded, logout, refreshProfile } = useClientSession();
@@ -106,7 +110,7 @@ export default function DashboardTab() {
 
         <SectionCard style={{ marginTop: 16, paddingVertical: 18 }}>
           <TouchableOpacity
-            onPress={() => router.push('/client/settings')}
+            onPress={() => router.push('/(tabs)/settings')}
             className="flex-row items-center justify-between"
           >
             <View className="flex-row items-center">
@@ -143,14 +147,14 @@ export default function DashboardTab() {
       <ActionButton
         label="Iniciar sesion"
         tone="brand"
-        onPress={() => router.push('/(auth)/login')}
+        onPress={() => router.push(CLIENT_LOGIN_ROUTE)}
         style={{ width: '100%', minHeight: 56, marginBottom: 12 }}
         textStyle={{ fontSize: 16 }}
       />
       <ActionButton
         label="Crear cuenta"
         tone="secondary"
-        onPress={() => router.push('/(auth)/register')}
+        onPress={() => router.push(CLIENT_REGISTER_ROUTE)}
         style={{ width: '100%', minHeight: 56 }}
         textStyle={{ fontSize: 16 }}
       />

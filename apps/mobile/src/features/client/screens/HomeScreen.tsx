@@ -23,6 +23,7 @@ import {
   SectionHeader,
   StatusPill,
 } from '../../../components/ui/MobileSurface';
+import { CLIENT_LOGIN_ROUTE } from '../../shared/auth/routes';
 
 export default function HomeScreen() {
   const { clientProfile, isAuthenticated, isClient } = useClientSession();
@@ -151,7 +152,7 @@ export default function HomeScreen() {
           }}
           secondaryAction={{
             label: isAuthenticated ? 'Alertas' : 'Ingresar',
-            onPress: () => router.push(isAuthenticated ? '/(tabs)/notifications' : '/(auth)/login'),
+            onPress: () => router.push(isAuthenticated ? '/(tabs)/notifications' : CLIENT_LOGIN_ROUTE),
             tone: 'light',
           }}
         />

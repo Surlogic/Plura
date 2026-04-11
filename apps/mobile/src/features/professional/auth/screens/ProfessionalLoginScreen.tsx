@@ -20,7 +20,7 @@ import { AppScreen, surfaceStyles } from '../../../../components/ui/AppScreen';
 import { theme } from '../../../../theme';
 import { professionalAuthCopy } from '../config';
 import {
-  AUTH_ENTRY_LOGIN_ROUTE,
+  AUTH_WELCOME_ROUTE,
   AUTH_FORGOT_PASSWORD_ROUTE,
   PROFESSIONAL_HOME_ROUTE,
 } from '../../../shared/auth/routes';
@@ -128,9 +128,9 @@ export function ProfessionalLoginScreen() {
                     {professionalAuthCopy.title}
                   </Text>
                 </View>
-                <Link href={AUTH_ENTRY_LOGIN_ROUTE} asChild>
+                <Link href={AUTH_WELCOME_ROUTE} asChild>
                   <TouchableOpacity className="rounded-full border border-secondary/10 bg-backgroundSoft px-4 py-2">
-                    <Text className="text-xs font-semibold text-secondary">Cambiar acceso</Text>
+                    <Text className="text-xs font-semibold text-secondary">Volver</Text>
                   </TouchableOpacity>
                 </Link>
               </View>

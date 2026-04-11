@@ -14,6 +14,11 @@ import api from '../../src/services/api';
 import { getApiErrorMessage } from '../../src/services/errors';
 import { AppScreen, surfaceStyles } from '../../src/components/ui/AppScreen';
 import { theme } from '../../src/theme';
+import {
+  AUTH_WELCOME_ROUTE,
+  CLIENT_LOGIN_ROUTE,
+  PROFESSIONAL_LOGIN_ROUTE,
+} from '../../src/features/shared/auth/routes';
 
 type PasswordResetRole = 'USER' | 'PROFESSIONAL';
 
@@ -23,12 +28,12 @@ type PasswordResetCompletedResponse = {
 
 const resolveLoginPathFromRole = (role?: PasswordResetRole | null) => {
   if (role === 'PROFESSIONAL') {
-    return '/(auth)/login-professional';
+    return PROFESSIONAL_LOGIN_ROUTE;
   }
   if (role === 'USER') {
-    return '/(auth)/login-client';
+    return CLIENT_LOGIN_ROUTE;
   }
-  return '/(auth)/login';
+  return AUTH_WELCOME_ROUTE;
 };
 
 export default function ResetPasswordScreen() {
@@ -170,9 +175,9 @@ export default function ResetPasswordScreen() {
             </LinearGradient>
           </TouchableOpacity>
 
-          <Link href="/(auth)/login" asChild>
+          <Link href={AUTH_WELCOME_ROUTE} asChild>
             <TouchableOpacity className="mt-5 items-center">
-              <Text className="text-sm font-semibold text-secondary">Volver a iniciar sesion</Text>
+              <Text className="text-sm font-semibold text-secondary">Volver a accesos</Text>
             </TouchableOpacity>
           </Link>
         </View>

@@ -9,7 +9,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons } from '../../lib/icons';
 import {
   buildInternationalPhoneNumber,
   DEFAULT_PHONE_COUNTRY_CODE,

@@ -2,7 +2,7 @@ import React, { useCallback, useState } from 'react';
 import { ActivityIndicator, Text, TouchableOpacity, View } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons } from '../../../lib/icons';
 import EmailVerificationCard from '../../../components/auth/EmailVerificationCard';
 import { useClientSession } from '../session/useClientSession';
 import { AppScreen } from '../../../components/ui/AppScreen';

@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
 import { Link } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons } from '../../src/lib/icons';
 import { AppScreen, surfaceStyles } from '../../src/components/ui/AppScreen';
 import { theme } from '../../src/theme';
 

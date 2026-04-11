@@ -1,5 +1,6 @@
 import 'expo-dev-client';
 import React from 'react';
+import { useFonts } from 'expo-font';
 import { Platform, StyleSheet, View } from 'react-native';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -8,6 +9,14 @@ import { AuthSessionProvider } from '../src/context/auth/AuthSessionContext';
 import { theme } from '../src/theme';
 
 export default function RootLayout() {
+  const [fontsLoaded] = useFonts({
+    ionicons: require('../assets/fonts/Ionicons.ttf'),
+  });
+
+  if (!fontsLoaded) {
+    return <View style={styles.root} />;
+  }
+
   return (
     <SafeAreaProvider>
       <AuthSessionProvider>

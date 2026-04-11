@@ -1,7 +1,7 @@
 import React from 'react';
 import { Text, TouchableOpacity, View } from 'react-native';
 import { router } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons } from '../../lib/icons';
 import { ActionButton, SectionCard } from '../ui/MobileSurface';
 import { theme } from '../../theme';
 

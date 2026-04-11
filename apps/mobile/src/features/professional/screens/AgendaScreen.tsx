@@ -7,7 +7,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons } from '../../../lib/icons';
 import type { ProfessionalReservation } from '../../../types/professional';
 import { canProfessionalConfirmReservation } from '../../../../../../packages/shared/src/bookings/professionalReservationActions';
 import { AppScreen } from '../../../components/ui/AppScreen';

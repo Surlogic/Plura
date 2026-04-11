@@ -6,7 +6,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons } from '../../lib/icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { theme } from '../../theme';
 

@@ -282,6 +282,7 @@ Lectura de producto:
 - mobile usa `expo-web-browser` para abrir checkout de reservas, checkout de plan y OAuth de `Mercado Pago` dentro de la app sin sacar al usuario a un navegador externo completo
 - mobile ahora tambien depende de `expo-location` y `expo-notifications` para pedir permisos nativos de ubicacion y notificaciones
 - `app.json` ya declara el plugin `expo-location` con texto de permiso foreground y habilita `expo-notifications` para el permiso del sistema en runtime
+- mobile ya no consume `Ionicons` directo desde `@expo/vector-icons`: usa un wrapper local en `apps/mobile/src/lib/icons.ts` con `Ionicons.ttf` embebido en `apps/mobile/assets/fonts/Ionicons.ttf`, y `apps/mobile/app/_layout.tsx` lo precarga antes de renderizar pantallas para evitar fallas de `ExpoAsset.downloadAsync` en dev client
 - `EXPO_PUBLIC_API_URL` ya no tiene fallback silencioso en release mobile: si falta fuera de `__DEV__`, el bundle falla temprano para evitar builds que apunten accidentalmente a localhost
 - el estado local de permiso push se persiste junto con preferencias del cliente en storage seguro y, cuando existe sesion cliente autenticada, mobile sincroniza el `push token` contra `PUT /cliente/notificaciones/push-token`
 - si el cliente desactiva push desde la app pero el permiso del sistema sigue en `granted`, mobile respeta ese opt-out local y no lo reactiva solo al volver a foreground

@@ -271,10 +271,13 @@ export default memo(function HomeHeroVisual({ categories }: HomeHeroVisualProps)
   const progressWidth = slides.length > 0 ? `${((activeIndex + 1) / slides.length) * 100}%` : '0%';
 
   return (
-    <aside className="relative mx-auto w-full max-w-[22rem] lg:mx-0 lg:max-w-[24rem]" aria-label="Rubros destacados de Plura">
-      <div className="pointer-events-none absolute left-1/2 top-4 h-24 w-24 -translate-x-1/2 rounded-full bg-[color:var(--accent)]/16 blur-3xl lg:left-auto lg:right-10 lg:translate-x-0" />
-      <div className="relative overflow-hidden rounded-[30px] border border-white/72 bg-white/84 shadow-[0_34px_90px_-58px_rgba(15,23,42,0.42)] backdrop-blur-xl">
-        <div className="relative aspect-[4/4.95] min-h-[18rem] sm:min-h-[20rem]">
+    <aside
+      className="relative mx-auto w-full max-w-[29rem] xl:mx-0 xl:max-w-[30rem] 2xl:max-w-[31rem]"
+      aria-label="Rubros destacados de Plura"
+    >
+      <div className="pointer-events-none absolute left-1/2 top-5 h-24 w-24 -translate-x-1/2 rounded-full bg-[color:var(--accent)]/16 blur-3xl xl:left-auto xl:right-10 xl:translate-x-0" />
+      <div className="relative overflow-hidden rounded-[32px] border border-white/72 bg-white/84 shadow-[0_34px_90px_-58px_rgba(15,23,42,0.42)] backdrop-blur-xl">
+        <div className="relative aspect-[4/4.72] min-h-[19rem] sm:min-h-[22rem] lg:min-h-[24rem] xl:min-h-[27rem] 2xl:min-h-[29rem]">
           {exitingSlide ? (
             <div
               className="absolute inset-0"
@@ -289,7 +292,7 @@ export default memo(function HomeHeroVisual({ categories }: HomeHeroVisualProps)
                 alt=""
                 fill
                 priority
-                sizes="(max-width: 1024px) min(88vw, 352px), 384px"
+                sizes="(max-width: 640px) min(88vw, 464px), (max-width: 1279px) min(76vw, 500px), 496px"
                 className="object-cover"
                 onError={() => markImageAsFailed(exitingSlide.id)}
               />
@@ -310,7 +313,7 @@ export default memo(function HomeHeroVisual({ categories }: HomeHeroVisualProps)
               alt={`Rubro ${activeSlide.title}`}
               fill
               priority
-              sizes="(max-width: 1024px) min(88vw, 352px), 384px"
+              sizes="(max-width: 640px) min(88vw, 464px), (max-width: 1279px) min(76vw, 500px), 496px"
               className="object-cover"
               onError={() => markImageAsFailed(activeSlide.id)}
             />
@@ -321,10 +324,10 @@ export default memo(function HomeHeroVisual({ categories }: HomeHeroVisualProps)
           <div className="absolute inset-x-0 bottom-0 p-4 sm:p-5">
             <div className="rounded-[22px] border border-white/18 bg-[rgba(15,23,42,0.22)] p-4 text-white shadow-[0_24px_48px_-38px_rgba(15,23,42,0.72)] backdrop-blur-md">
               <div className="flex items-end justify-between gap-3">
-                <h2 className="text-[1.45rem] font-semibold leading-[1.02] text-white sm:text-[1.6rem]">
+                <h2 className="text-[1.35rem] font-semibold leading-[1.02] text-white sm:text-[1.5rem] lg:text-[1.65rem]">
                   {activeSlide.title}
                 </h2>
-                <span className="shrink-0 text-[0.72rem] font-medium text-white/66">
+                <span className="shrink-0 text-[0.7rem] font-medium text-white/66">
                   {activeIndex + 1}/{slides.length}
                 </span>
               </div>

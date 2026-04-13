@@ -241,7 +241,6 @@ export default memo(function UnifiedSearchBar({
   const hasDateSelection = Boolean(values.date || hasDateRange || values.availableNow);
   const hasLocationSelection = Boolean(values.city.trim() || hasCoordinates);
   const hasQuerySelection = Boolean(searchInput.trim() || values.query.trim() || values.categorySlug);
-  const heroOpenPanel = isSearchOpen ? 'query' : isLocationOpen ? 'location' : isDateOpen ? 'date' : null;
   const inputPlaceholder = values.categorySlug
     ? `Buscar en ${slugToLabel(values.categorySlug)}`
     : 'Servicio, categoría o profesional';
@@ -271,15 +270,6 @@ export default memo(function UnifiedSearchBar({
   const heroInlineLabelClassName =
     'inline-flex min-w-0 items-center gap-1.5 truncate whitespace-nowrap text-[0.58rem] font-semibold uppercase tracking-[0.2em] text-[color:var(--ink-faint)]';
   const heroServicesExpanded = heroFocusExpansionEnabled && heroExpandedField === 'query';
-  const heroPanelReservedSpace = !isHero
-    ? 0
-    : heroOpenPanel === 'query'
-      ? 304
-      : heroOpenPanel === 'location'
-        ? 272
-        : heroOpenPanel === 'date'
-          ? 252
-          : 0;
   const queryFieldClassName = isHero ? 'h-full justify-center py-1.5' : 'h-full';
   const selectionFieldClassName = isHero ? 'h-full justify-center py-1.5' : 'h-full';
   const queryValueClassName = isHero ? '!mt-0 flex min-h-[1.65rem] items-center' : '';
@@ -314,7 +304,7 @@ export default memo(function UnifiedSearchBar({
     : '';
   const submitWrapperOrderClassName = isHero ? 'order-4 md:col-[4] lg:flex-[0_0_10.5rem]' : '';
   const searchGridClassName = isHero
-    ? 'grid gap-0 md:grid-cols-[minmax(0,1.7fr)_minmax(0,1.05fr)_minmax(0,0.9fr)_auto] md:items-center lg:flex lg:items-stretch'
+    ? 'grid gap-0 md:grid-cols-[minmax(0,1.95fr)_minmax(0,1.05fr)_minmax(0,0.95fr)_auto] md:items-center lg:flex lg:items-stretch'
     : 'grid gap-1.5 md:grid-cols-[minmax(0,1.9fr)_minmax(0,0.85fr)_minmax(0,0.95fr)_auto] md:items-stretch';
   const submitButtonToneClassName = isDarkTheme
     ? 'border border-[color:var(--primary-strong)] bg-[linear-gradient(135deg,var(--primary)_0%,var(--primary-strong)_100%)] text-[color:var(--text-on-dark)] shadow-[0_22px_40px_-28px_rgba(0,0,0,0.72)] hover:-translate-y-0.5 hover:border-[color:var(--brand-primary-light)] hover:bg-[linear-gradient(135deg,var(--primary-strong)_0%,var(--brand-primary-light)_100%)] hover:shadow-[var(--shadow-lift)]'
@@ -428,8 +418,7 @@ export default memo(function UnifiedSearchBar({
   return (
     <div
       ref={wrapperRef}
-      className={`relative z-20 mx-auto w-full ${SEARCH_BAR_MAX_WIDTH_CLASS} overflow-visible transition-[padding-bottom] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] ${className || ''}`}
-      style={isHero ? { paddingBottom: heroPanelReservedSpace } : undefined}
+      className={`relative z-30 mx-auto w-full ${SEARCH_BAR_MAX_WIDTH_CLASS} overflow-visible ${className || ''}`}
     >
       <form onSubmit={handleSubmit} className="relative overflow-visible">
         <div
@@ -494,7 +483,7 @@ export default memo(function UnifiedSearchBar({
               </SearchField>
 
               {isSearchOpen ? (
-                <div className="absolute left-0 right-0 top-[calc(100%+8px)] z-[70] sm:right-auto sm:w-[min(100%,36rem)]">
+                <div className="absolute left-0 right-0 top-[calc(100%+8px)] z-[80] sm:right-auto sm:w-[min(100%,38rem)]">
                   <SuggestDropdown
                     open={isSearchOpen}
                     loading={isSuggestLoading}
@@ -561,7 +550,7 @@ export default memo(function UnifiedSearchBar({
 
               {isLocationOpen ? (
                 <div
-                  className={`absolute left-0 right-0 top-[calc(100%+8px)] z-[70] sm:w-[22rem] ${centeredHeroDropdownClassName}`.trim()}
+                  className={`absolute left-0 right-0 top-[calc(100%+8px)] z-[80] sm:w-[22rem] ${centeredHeroDropdownClassName}`.trim()}
                 >
                   <div className={SEARCH_PANEL_CLASS}>
                     <LocationAutocomplete
@@ -653,7 +642,7 @@ export default memo(function UnifiedSearchBar({
 
               {isDateOpen ? (
                 <div
-                  className={`absolute left-0 right-0 top-[calc(100%+8px)] z-[70] sm:w-[21.5rem] ${centeredHeroDropdownClassName}`.trim()}
+                  className={`absolute left-0 right-0 top-[calc(100%+8px)] z-[80] sm:w-[21.5rem] ${centeredHeroDropdownClassName}`.trim()}
                 >
                   <div className={SEARCH_PANEL_CLASS}>
                     <DateFilter

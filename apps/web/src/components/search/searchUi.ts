@@ -1,4 +1,4 @@
-export const SEARCH_BAR_MAX_WIDTH_CLASS = 'max-w-[68rem]';
+export const SEARCH_BAR_MAX_WIDTH_CLASS = 'max-w-[72rem]';
 
 export const SEARCH_CONTROL_HEIGHT_CLASS = 'min-h-[60px]';
 

@@ -97,7 +97,7 @@ public class ClientBillingNotificationCommandFactory {
                 actionUrl(booking),
                 "Ver reserva"
             ),
-            emailProjection(recipient, "client_payment_failed", "Pago fallido", payload)
+            emailProjection(recipient, "client_payment_failed", "Pago pendiente", payload)
         );
     }
 
@@ -133,7 +133,7 @@ public class ClientBillingNotificationCommandFactory {
                 actionUrl(booking),
                 "Ver reserva"
             ),
-            emailProjection(recipient, "client_payment_refunded", "Reembolso registrado", payload)
+            emailProjection(recipient, "client_payment_refunded", "Devolución registrada", payload)
         );
     }
 
@@ -163,7 +163,7 @@ public class ClientBillingNotificationCommandFactory {
                 actionUrl(booking),
                 "Ver reserva"
             ),
-            emailProjection(recipient, "client_payment_refund_pending", "Reembolso en proceso", payload)
+            emailProjection(recipient, "client_payment_refund_pending", "Devolución en proceso", payload)
         );
     }
 
@@ -210,6 +210,7 @@ public class ClientBillingNotificationCommandFactory {
         payload.put("startDateTime", booking == null || booking.getStartDateTime() == null ? null : booking.getStartDateTime().toString());
         payload.put("timezone", booking == null ? null : booking.getTimezone());
         payload.put("professionalDisplayName", booking == null ? null : booking.getProfessionalDisplayNameSnapshot());
+        payload.put("professionalLocation", booking == null ? null : booking.getProfessionalLocationSnapshot());
         payload.put("paymentTransactionId", transaction == null ? null : transaction.getId());
         payload.put("providerPaymentId", transaction == null ? null : transaction.getProviderPaymentId());
         payload.put("provider", transaction == null || transaction.getProvider() == null ? null : transaction.getProvider().name());

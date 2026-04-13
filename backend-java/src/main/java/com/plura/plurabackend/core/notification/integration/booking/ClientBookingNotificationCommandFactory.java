@@ -44,7 +44,7 @@ public class ClientBookingNotificationCommandFactory {
                 actionUrl(booking),
                 "Ver reserva"
             ),
-            emailProjection(recipient, "client_booking_created", "Reserva creada", payload)
+            emailProjection(recipient, "client_booking_created", "Confirmación de reserva", payload)
         );
     }
 
@@ -102,7 +102,7 @@ public class ClientBookingNotificationCommandFactory {
                 actionUrl(booking),
                 "Ver reserva"
             ),
-            emailProjection(recipient, "client_booking_cancelled", "Reserva cancelada", payload)
+            emailProjection(recipient, "client_booking_cancelled", "Cancelación de reserva", payload)
         );
     }
 
@@ -181,6 +181,7 @@ public class ClientBookingNotificationCommandFactory {
         payload.put("servicePrice", booking.getServicePriceSnapshot());
         payload.put("serviceCurrency", booking.getServiceCurrencySnapshot());
         payload.put("professionalDisplayName", booking.getProfessionalDisplayNameSnapshot());
+        payload.put("professionalLocation", booking.getProfessionalLocationSnapshot());
         payload.put("status", booking.getOperationalStatus() == null ? null : booking.getOperationalStatus().name());
         payload.put("sourceAction", sourceAction);
         payload.put("actionUrl", actionUrl(booking));

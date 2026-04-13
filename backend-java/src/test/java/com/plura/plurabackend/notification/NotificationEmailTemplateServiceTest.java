@@ -72,10 +72,37 @@ class NotificationEmailTemplateServiceTest {
 
         assertEquals("client_booking_confirmed", message.templateKey());
         assertEquals("pro@plura.test", message.toAddress());
+        assertEquals("Reserva confirmada", message.subject());
         assertTrue(message.htmlBody().contains("Tu reserva para Corte y barba quedó confirmada."));
-        assertTrue(message.htmlBody().contains("Profesional:</strong> Pro Uno"));
-        assertTrue(message.textBody().contains("Profesional: Pro Uno"));
+        assertTrue(message.htmlBody().contains("Fecha:</strong> 20 de marzo de 2026"));
+        assertTrue(message.htmlBody().contains("Horario:</strong> 14:30 hs"));
+        assertTrue(message.htmlBody().contains("Lugar:</strong> Pro Uno"));
+        assertTrue(message.htmlBody().contains("Dirección:</strong> Av. Italia 1234, Montevideo"));
+        assertTrue(message.htmlBody().contains("Si necesitás realizar algún cambio"));
+        assertTrue(message.textBody().contains("Lugar: Pro Uno"));
+        assertTrue(message.textBody().contains("Dirección: Av. Italia 1234, Montevideo"));
+        assertTrue(message.textBody().contains("Gestionar tu reserva"));
         assertTrue(message.textBody().contains("/cliente/reservas?bookingId=101"));
+    }
+
+    @Test
+    void shouldBuildClientCancellationTemplateWithMatchingTone() {
+        NotificationEmailMessage message = templateService.buildMessage(
+            buildDispatch(
+                NotificationEventType.BOOKING_CANCELLED,
+                "client_booking_cancelled",
+                null,
+                NotificationRecipientType.CLIENT
+            )
+        );
+
+        assertEquals("client_booking_cancelled", message.templateKey());
+        assertEquals("Cancelación de reserva", message.subject());
+        assertTrue(message.htmlBody().contains("Tu reserva para Corte y barba fue cancelada."));
+        assertTrue(message.htmlBody().contains("A continuación, te compartimos los detalles de tu reserva:"));
+        assertTrue(message.htmlBody().contains("Si querés volver a reservar"));
+        assertTrue(message.textBody().contains("Cancelación de reserva"));
+        assertTrue(message.textBody().contains("Dirección: Av. Italia 1234, Montevideo"));
     }
 
     @Test
@@ -104,14 +131,17 @@ class NotificationEmailTemplateServiceTest {
         );
 
         assertEquals("client_payment_refund_pending", message.templateKey());
-        assertTrue(message.htmlBody().contains("Mercado Pago"));
+        assertEquals("Devolución en proceso", message.subject());
+        assertTrue(message.htmlBody().contains("A continuación, te compartimos los detalles de tu reserva y del movimiento informado:"));
+        assertTrue(message.htmlBody().contains("Lugar:</strong> Pro Uno"));
+        assertTrue(message.htmlBody().contains("Dirección:</strong> Av. Italia 1234, Montevideo"));
         assertTrue(message.htmlBody().contains("Medio de pago:</strong> Tarjeta de débito"));
         assertTrue(message.htmlBody().contains("30 de marzo"));
         assertTrue(message.htmlBody().contains("17 de abril"));
-        assertTrue(message.htmlBody().contains("Acreditación:</strong>"));
+        assertTrue(message.htmlBody().contains("Acreditación estimada:</strong>"));
         assertTrue(message.textBody().contains("Mercado Pago"));
         assertTrue(message.textBody().contains("Medio de pago: Tarjeta de débito"));
-        assertTrue(message.textBody().contains("Acreditación:"));
+        assertTrue(message.textBody().contains("Acreditación estimada:"));
     }
 
     @Test
@@ -126,14 +156,17 @@ class NotificationEmailTemplateServiceTest {
         );
 
         assertEquals("client_payment_refunded", message.templateKey());
-        assertTrue(message.htmlBody().contains("Mercado Pago"));
+        assertEquals("Devolución registrada", message.subject());
+        assertTrue(message.htmlBody().contains("A continuación, te compartimos los detalles de tu reserva y del movimiento informado:"));
+        assertTrue(message.htmlBody().contains("Lugar:</strong> Pro Uno"));
+        assertTrue(message.htmlBody().contains("Dirección:</strong> Av. Italia 1234, Montevideo"));
         assertTrue(message.htmlBody().contains("Medio de pago:</strong> Tarjeta de débito"));
         assertTrue(message.htmlBody().contains("30 de marzo"));
         assertTrue(message.htmlBody().contains("17 de abril"));
-        assertTrue(message.htmlBody().contains("Acreditación:</strong>"));
+        assertTrue(message.htmlBody().contains("Acreditación estimada:</strong>"));
         assertTrue(message.textBody().contains("Mercado Pago"));
         assertTrue(message.textBody().contains("Medio de pago: Tarjeta de débito"));
-        assertTrue(message.textBody().contains("Acreditación:"));
+        assertTrue(message.textBody().contains("Acreditación estimada:"));
     }
 
     private static Stream<Arguments> supportedEventTypes() {
@@ -188,17 +221,21 @@ class NotificationEmailTemplateServiceTest {
     private String writePayload(NotificationEventType eventType) {
         try {
             return new ObjectMapper().writeValueAsString(
-                Map.of(
-                    "bookingId", 101,
-                    "serviceName", "Corte y barba",
-                    "startDateTime", "2026-03-20T14:30:00",
-                    "timezone", "America/Montevideo",
-                    "professionalDisplayName", "Pro Uno",
-                    "amount", BigDecimal.valueOf(1850),
-                    "currency", "UYU",
-                    "providerStatus", "approved",
-                    "refundPaymentMethodLabel", "Tarjeta de débito",
-                    "refundTimingHint", "Mercado Pago indica entre 7 y 20 días hábiles desde la cancelación. Como estimación conservadora, tomá como referencia entre el 30 de marzo y el 17 de abril."
+                Map.ofEntries(
+                    Map.entry("bookingId", 101),
+                    Map.entry("serviceName", "Corte y barba"),
+                    Map.entry("startDateTime", "2026-03-20T14:30:00"),
+                    Map.entry("timezone", "America/Montevideo"),
+                    Map.entry("professionalDisplayName", "Pro Uno"),
+                    Map.entry("professionalLocation", "Av. Italia 1234, Montevideo"),
+                    Map.entry("amount", BigDecimal.valueOf(1850)),
+                    Map.entry("currency", "UYU"),
+                    Map.entry("providerStatus", "approved"),
+                    Map.entry("refundPaymentMethodLabel", "Tarjeta de débito"),
+                    Map.entry(
+                        "refundTimingHint",
+                        "Mercado Pago indica entre 7 y 20 días hábiles desde la cancelación. Como estimación conservadora, tomá como referencia entre el 30 de marzo y el 17 de abril."
+                    )
                 )
             );
         } catch (Exception exception) {

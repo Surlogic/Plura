@@ -23,7 +23,12 @@ public class ProfessionalCategorySupport {
         Map.entry("peluqueria", "cabello"),
         Map.entry("cejas", "pestanas-cejas"),
         Map.entry("pestanas", "pestanas-cejas"),
-        Map.entry("faciales", "estetica-facial")
+        Map.entry("faciales", "estetica-facial"),
+        Map.entry("kinesiologia", "fisioterapia"),
+        Map.entry("fisioterapia-kinesiologia", "fisioterapia"),
+        Map.entry("fisioterapia-o-kinesiologia", "fisioterapia"),
+        Map.entry("rehabilitacion-recuperacion-fisica", "rehabilitacion"),
+        Map.entry("meditacion-mindfulness", "meditacion")
     );
 
     private final CategoryRepository categoryRepository;

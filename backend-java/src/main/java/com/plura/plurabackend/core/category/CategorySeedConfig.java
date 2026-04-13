@@ -32,7 +32,24 @@ public class CategorySeedConfig {
         new SeedCategory("Dermocosmética", "dermocosmetica", "https://images.unsplash.com/photo-1556228720-195a672e8a03?auto=format&fit=crop&w=1200&q=80", 12),
         new SeedCategory("Medicina Estética", "medicina-estetica", "https://images.unsplash.com/photo-1537368910025-700350fe46c7?auto=format&fit=crop&w=1200&q=80", 13),
         new SeedCategory("Micropigmentación", "micropigmentacion", "https://images.unsplash.com/photo-1522335789203-aabd1fc54bc9?auto=format&fit=crop&w=1200&q=80", 14),
-        new SeedCategory("Bienestar Holístico", "bienestar-holistico", "https://images.unsplash.com/photo-1506126613408-eca07ce68773?auto=format&fit=crop&w=1200&q=80", 15)
+        new SeedCategory("Bienestar Holístico", "bienestar-holistico", "https://images.unsplash.com/photo-1506126613408-eca07ce68773?auto=format&fit=crop&w=1200&q=80", 15),
+        new SeedCategory("Psicología", "psicologia", null, 16),
+        new SeedCategory("Nutrición", "nutricion", null, 17),
+        new SeedCategory("Entrenamiento Personal", "entrenamiento-personal", null, 18),
+        new SeedCategory("Tatuajes", "tatuajes", null, 19),
+        new SeedCategory("Piercing", "piercing", null, 20),
+        new SeedCategory("Podología", "podologia", null, 21),
+        new SeedCategory("Fisioterapia / Kinesiología", "fisioterapia", null, 22),
+        new SeedCategory("Yoga", "yoga", null, 23),
+        new SeedCategory("Pilates", "pilates", null, 24),
+        new SeedCategory("Peinados y Novias", "peinados-novias", null, 25),
+        new SeedCategory("Tratamientos Capilares", "tratamientos-capilares", null, 26),
+        new SeedCategory("Asesoría de Imagen", "asesoria-de-imagen", null, 27),
+        new SeedCategory("Colorimetría", "colorimetria", null, 28),
+        new SeedCategory("Rehabilitación / Recuperación Física", "rehabilitacion", null, 29),
+        new SeedCategory("Meditación / Mindfulness", "meditacion", null, 30),
+        new SeedCategory("Reflexología", "reflexologia", null, 31),
+        new SeedCategory("Acupuntura", "acupuntura", null, 32)
     );
 
     @Bean

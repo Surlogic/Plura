@@ -6,6 +6,7 @@ type CategoryCardProps = {
   imageUrl?: string | null;
   slug: string;
   priority?: boolean;
+  professionalsCount?: number | null;
 };
 
 export default memo(function CategoryCard({
@@ -13,6 +14,7 @@ export default memo(function CategoryCard({
   imageUrl,
   slug,
   priority = false,
+  professionalsCount,
 }: CategoryCardProps) {
   return (
     <RubroCard
@@ -20,6 +22,7 @@ export default memo(function CategoryCard({
       imageUrl={imageUrl}
       slug={slug}
       priority={priority}
+      professionalsCount={professionalsCount}
       showCta
       className="rounded-[30px]"
       sizes="(max-width: 768px) 50vw, 33vw"

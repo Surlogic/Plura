@@ -4,4 +4,5 @@ export type Category = {
   slug: string;
   imageUrl?: string | null;
   displayOrder?: number | null;
+  professionalsCount?: number | null;
 };

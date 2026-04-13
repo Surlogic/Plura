@@ -100,6 +100,18 @@ public interface ProfessionalProfileRepository extends JpaRepository<Professiona
         Pageable pageable
     );
 
+    @Query(
+        """
+        SELECT c.id, COUNT(DISTINCT p.id)
+        FROM ProfessionalProfile p
+        JOIN p.categories c
+        WHERE p.active = true
+          AND c.id IN :categoryIds
+        GROUP BY c.id
+        """
+    )
+    List<Object[]> countActiveProfessionalsGroupedByCategoryIds(@Param("categoryIds") Collection<UUID> categoryIds);
+
     /** Lock pesimista para serializar creaciones de reservas sobre el mismo profesional. */
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT p FROM ProfessionalProfile p WHERE p.slug = :slug")

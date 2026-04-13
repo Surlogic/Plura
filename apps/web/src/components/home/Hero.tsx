@@ -34,10 +34,10 @@ export default memo(function Hero({ categories: _categories, stats, isLoading = 
         </div>
 
         <div className="mx-auto flex max-w-[64rem] flex-col items-center gap-7 text-center sm:gap-8 lg:gap-9">
-          <div className="mx-auto flex w-full max-w-[46rem] flex-col items-center">
+          <div className="mx-auto flex w-full max-w-[52rem] flex-col items-center">
             <div className="flex w-full flex-col items-center space-y-2 text-center lg:space-y-3">
-              <h1 className="mx-auto max-w-[12.6ch] text-center text-[2.45rem] font-semibold leading-[0.95] tracking-[-0.04em] text-[color:var(--ink)] sm:text-[3.05rem] lg:text-[3.7rem] xl:text-[4rem] 2xl:text-[4.2rem]">
-                <span className="block sm:whitespace-nowrap">Reservá tu próximo turno</span>
+              <h1 className="mx-auto text-center text-[2.45rem] font-semibold leading-[0.95] tracking-[-0.04em] text-[color:var(--ink)] sm:text-[3.05rem] lg:text-[3.7rem] xl:text-[4rem] 2xl:text-[4.2rem]">
+                <span className="block whitespace-nowrap">Reservá tu próximo turno</span>
                 <span className="block">sin complicaciones.</span>
               </h1>
 

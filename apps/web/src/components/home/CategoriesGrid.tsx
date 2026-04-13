@@ -36,6 +36,7 @@ export default memo(function CategoriesGrid({ categories, isLoading = false }: C
                 title={category.name}
                 slug={category.slug}
                 imageUrl={category.imageUrl}
+                professionalsCount={category.professionalsCount}
                 priority={index < 3}
               />
             ))}

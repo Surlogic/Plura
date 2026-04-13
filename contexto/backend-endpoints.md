@@ -47,6 +47,7 @@ Lectura de producto:
 - base para home, categorias y marketplace
 - relevante para `Usuario` y para la visibilidad del plan `Free`
 - `GET /api/home` ahora se consume via SSR (`getServerSideProps`); devuelve categorias, stats (usuarios, profesionales, categorias, reservas mensuales) y top professionals rankeados por volumen de reservas confirmadas/completadas de los ultimos 3 meses
+- dentro de `GET /api/home`, cada categoria ahora incluye `professionalsCount` con la cantidad de profesionales activos asociados (0 cuando no hay)
 - `GET /api/home` ahora expone branding de card publica por profesional: `bannerUrl`, `bannerMedia`, `logoUrl`, `logoMedia` y `fallbackPhotoUrl`; `imageUrl` se mantiene como compatibilidad y ya prioriza `banner` o primera foto real del negocio en vez de categorias genericas
 - estas superficies publicas ya no deben caer en `401` si el navegador arrastra un access token o cookie auth invalido/vencido; backend degrada a anonimo y responde el payload publico igual
 

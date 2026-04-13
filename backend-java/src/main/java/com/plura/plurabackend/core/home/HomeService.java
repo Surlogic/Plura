@@ -12,7 +12,6 @@ import com.plura.plurabackend.core.home.dto.HomeTopProfessionalResponse;
 import com.plura.plurabackend.core.professional.ProfessionalHomeGateway;
 import com.plura.plurabackend.core.professional.ProfessionalHomeProfileView;
 import com.plura.plurabackend.core.storage.ImageStorageService;
-import com.plura.plurabackend.core.user.model.User;
 import com.plura.plurabackend.core.user.model.UserRole;
 import com.plura.plurabackend.core.user.repository.UserRepository;
 import java.time.LocalDate;
@@ -20,12 +19,10 @@ import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Comparator;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
+import java.util.UUID;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -67,8 +64,10 @@ public class HomeService {
     @Transactional(readOnly = true)
     public HomeResponse getHomeData() {
         List<Category> activeCategories = categoryRepository.findByActiveTrueOrderByDisplayOrderAscNameAsc();
+        Map<UUID, Long> professionalsCountByCategoryId = resolveProfessionalsCountByCategoryId(activeCategories);
+
         List<CategoryResponse> categories = activeCategories.stream()
-            .map(this::mapCategory)
+            .map(category -> mapCategory(category, professionalsCountByCategoryId))
             .toList();
 
         HomeStatsResponse stats = new HomeStatsResponse(
@@ -81,6 +80,22 @@ public class HomeService {
         List<HomeTopProfessionalResponse> topProfessionals = resolveTopProfessionals();
 
         return new HomeResponse(stats, categories, topProfessionals);
+    }
+
+    private Map<UUID, Long> resolveProfessionalsCountByCategoryId(List<Category> activeCategories) {
+        if (activeCategories.isEmpty()) {
+            return Map.of();
+        }
+
+        List<UUID> categoryIds = activeCategories.stream()
+            .map(Category::getId)
+            .filter(Objects::nonNull)
+            .toList();
+
+        if (categoryIds.isEmpty()) {
+            return Map.of();
+        }
+        return professionalHomeGateway.countActiveProfessionalsGroupedByCategoryIds(categoryIds);
     }
 
     private long countMonthlyBookings() {
@@ -170,14 +185,14 @@ public class HomeService {
         return imageStorageService.resolvePublicUrl(value);
     }
 
-    private CategoryResponse mapCategory(Category category) {
+    private CategoryResponse mapCategory(Category category, Map<UUID, Long> professionalsCountByCategoryId) {
         return new CategoryResponse(
             category.getId(),
             category.getName(),
             category.getSlug(),
             category.getImageUrl(),
-            category.getDisplayOrder()
+            category.getDisplayOrder(),
+            professionalsCountByCategoryId.getOrDefault(category.getId(), 0L)
         );
     }
-
 }

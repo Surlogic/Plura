@@ -24,6 +24,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.UUID;
 import java.util.stream.Collectors;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
@@ -51,6 +52,21 @@ public class ProfessionalCoreReadGatewayService implements
     @Override
     public long countActiveProfessionals() {
         return professionalProfileRepository.countByActiveTrue();
+    }
+
+    @Override
+    public Map<UUID, Long> countActiveProfessionalsGroupedByCategoryIds(Collection<UUID> categoryIds) {
+        if (categoryIds == null || categoryIds.isEmpty()) {
+            return Map.of();
+        }
+        Map<UUID, Long> counts = new LinkedHashMap<>();
+        for (Object[] row : professionalProfileRepository.countActiveProfessionalsGroupedByCategoryIds(categoryIds)) {
+            if (row == null || row.length < 2 || !(row[0] instanceof UUID) || !(row[1] instanceof Number)) {
+                continue;
+            }
+            counts.put((UUID) row[0], ((Number) row[1]).longValue());
+        }
+        return counts;
     }
 
     @Override

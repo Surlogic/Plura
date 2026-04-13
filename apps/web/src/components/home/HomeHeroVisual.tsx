@@ -271,10 +271,10 @@ export default memo(function HomeHeroVisual({ categories }: HomeHeroVisualProps)
   const progressWidth = slides.length > 0 ? `${((activeIndex + 1) / slides.length) * 100}%` : '0%';
 
   return (
-    <aside className="relative mx-auto w-full max-w-[20.75rem] lg:mx-0 lg:max-w-[20.75rem] xl:max-w-[21.75rem]" aria-label="Rubros destacados de Plura">
+    <aside className="relative mx-auto w-full max-w-[22rem] lg:mx-0 lg:max-w-[24rem]" aria-label="Rubros destacados de Plura">
       <div className="pointer-events-none absolute left-1/2 top-4 h-24 w-24 -translate-x-1/2 rounded-full bg-[color:var(--accent)]/16 blur-3xl lg:left-auto lg:right-10 lg:translate-x-0" />
-      <div className="relative overflow-hidden rounded-[2rem] border border-white/72 bg-white/84 shadow-[0_34px_90px_-58px_rgba(15,23,42,0.42)] backdrop-blur-xl">
-        <div className="relative aspect-[4/4.88] min-h-[18rem] sm:min-h-[20rem] lg:min-h-[25.25rem]">
+      <div className="relative overflow-hidden rounded-[30px] border border-white/72 bg-white/84 shadow-[0_34px_90px_-58px_rgba(15,23,42,0.42)] backdrop-blur-xl">
+        <div className="relative aspect-[4/4.95] min-h-[18rem] sm:min-h-[20rem]">
           {exitingSlide ? (
             <div
               className="absolute inset-0"

@@ -9,6 +9,8 @@ export type {
   BookingFinancialStatus,
   BookingFinancialSummary,
   BookingOperationalStatus,
+  BookingPaymentBreakdown,
+  BookingProcessingFeeMode,
   BookingPaymentSession,
   BookingPaymentType,
 } from '../../../../packages/shared/src/types/bookings';

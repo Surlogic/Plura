@@ -223,6 +223,26 @@ export default function ReservationSummaryCard({
             </p>
 
             <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              {paymentDetails.prepaidLabel && paymentDetails.prepaidAmount ? (
+                <div className="rounded-[16px] border border-[color:var(--border-soft)] bg-[color:var(--surface-soft)] px-4 py-3">
+                  <p className="text-[0.62rem] font-semibold uppercase tracking-[0.22em] text-[color:var(--ink-faint)]">
+                    {paymentDetails.prepaidLabel}
+                  </p>
+                  <p className="mt-1 text-sm font-semibold text-[color:var(--ink)]">
+                    {paymentDetails.prepaidAmount}
+                  </p>
+                </div>
+              ) : null}
+              {paymentDetails.processingFeeLabel && paymentDetails.processingFeeAmount ? (
+                <div className="rounded-[16px] border border-[color:var(--border-soft)] bg-[color:var(--surface-soft)] px-4 py-3">
+                  <p className="text-[0.62rem] font-semibold uppercase tracking-[0.22em] text-[color:var(--ink-faint)]">
+                    {paymentDetails.processingFeeLabel}
+                  </p>
+                  <p className="mt-1 text-sm font-semibold text-[color:var(--ink)]">
+                    {paymentDetails.processingFeeAmount}
+                  </p>
+                </div>
+              ) : null}
               <div className="rounded-[16px] border border-[color:var(--border-soft)] bg-[color:var(--surface-soft)] px-4 py-3">
                 <p className="text-[0.62rem] font-semibold uppercase tracking-[0.22em] text-[color:var(--ink-faint)]">
                   {paymentDetails.payNowLabel}

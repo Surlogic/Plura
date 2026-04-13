@@ -23,10 +23,12 @@ import com.plura.plurabackend.core.booking.BookingCommandResponseAssembler;
 import com.plura.plurabackend.core.booking.BookingCommandStateSupport;
 import com.plura.plurabackend.core.booking.BookingFinancialCommandSupport;
 import com.plura.plurabackend.core.booking.BookingSchedulingAvailabilityGateway;
+import com.plura.plurabackend.core.booking.finance.BookingPaymentBreakdownService;
 import com.plura.plurabackend.core.booking.finance.BookingFinanceService;
 import com.plura.plurabackend.core.booking.finance.BookingFinanceDispatchPlan;
 import com.plura.plurabackend.core.booking.finance.BookingFinanceUpdateResult;
 import com.plura.plurabackend.core.booking.model.Booking;
+import com.plura.plurabackend.core.booking.model.BookingProcessingFeeMode;
 import com.plura.plurabackend.core.booking.model.BookingOperationalStatus;
 import com.plura.plurabackend.core.booking.model.ServicePaymentType;
 import com.plura.plurabackend.core.notification.integration.booking.BookingNotificationIntegrationService;
@@ -76,6 +78,7 @@ public class BookingCommandApplicationService {
     private final BookingActionsEvaluator bookingActionsEvaluator;
     private final BookingActionDecisionService bookingActionDecisionService;
     private final BookingFinanceService bookingFinanceService;
+    private final BookingPaymentBreakdownService bookingPaymentBreakdownService;
     private final BookingSchedulingAvailabilityGateway bookingSchedulingAvailabilityGateway;
     private final BookingEventService bookingEventService;
     private final UserRepository userRepository;
@@ -99,6 +102,7 @@ public class BookingCommandApplicationService {
         BookingActionsEvaluator bookingActionsEvaluator,
         BookingActionDecisionService bookingActionDecisionService,
         BookingFinanceService bookingFinanceService,
+        BookingPaymentBreakdownService bookingPaymentBreakdownService,
         BookingSchedulingAvailabilityGateway bookingSchedulingAvailabilityGateway,
         BookingEventService bookingEventService,
         UserRepository userRepository,
@@ -121,6 +125,7 @@ public class BookingCommandApplicationService {
         this.bookingActionsEvaluator = bookingActionsEvaluator;
         this.bookingActionDecisionService = bookingActionDecisionService;
         this.bookingFinanceService = bookingFinanceService;
+        this.bookingPaymentBreakdownService = bookingPaymentBreakdownService;
         this.bookingSchedulingAvailabilityGateway = bookingSchedulingAvailabilityGateway;
         this.bookingEventService = bookingEventService;
         this.userRepository = userRepository;
@@ -921,6 +926,8 @@ public class BookingCommandApplicationService {
     }
 
     private void captureServiceSnapshot(Booking booking, ProfesionalService service) {
+        BookingPaymentBreakdownService.BookingPaymentBreakdown paymentBreakdown =
+            bookingPaymentBreakdownService.quoteForService(service);
         booking.setServiceId(service.getId());
         booking.setServiceNameSnapshot(service.getName());
         booking.setServiceDurationSnapshot(service.getDuration());
@@ -930,6 +937,9 @@ public class BookingCommandApplicationService {
         booking.setServiceCategorySlugSnapshot(service.getCategory() == null ? null : service.getCategory().getSlug());
         booking.setServiceCategoryNameSnapshot(service.getCategory() == null ? null : service.getCategory().getName());
         booking.setServiceDepositAmountSnapshot(service.getDepositAmount());
+        booking.setPrepaidProcessingFeeModeSnapshot(resolveProcessingFeeMode(service.getProcessingFeeMode()));
+        booking.setPrepaidProcessingFeeAmountSnapshot(paymentBreakdown.processingFeeAmount());
+        booking.setPrepaidTotalAmountSnapshot(paymentBreakdown.totalAmount());
         booking.setServiceCurrencySnapshot(resolveServiceCurrency(service.getCurrency()));
         if (service.getProfessional() != null) {
             booking.setProfessionalId(service.getProfessional().getId());
@@ -955,6 +965,10 @@ public class BookingCommandApplicationService {
 
     private ServicePaymentType resolveServicePaymentType(ServicePaymentType paymentType) {
         return paymentType == null ? ServicePaymentType.ON_SITE : paymentType;
+    }
+
+    private BookingProcessingFeeMode resolveProcessingFeeMode(BookingProcessingFeeMode processingFeeMode) {
+        return processingFeeMode == null ? BookingProcessingFeeMode.INSTANT : processingFeeMode;
     }
 
     private String resolveServiceCurrency(String currency) {

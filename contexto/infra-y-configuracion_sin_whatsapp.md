@@ -128,6 +128,9 @@ Lectura real del backend hoy:
 - `Mercado Pago` tambien esta conectado al checkout real de reservas y refunds usando OAuth del profesional
 - ya existe storage de OAuth para cuentas Mercado Pago de profesionales en `professional_payment_provider_connection`
 - `payment_event`, `payment_transaction` y `provider_operation` ya funcionan como base de auditoria y conciliacion compartida
+- el checkout de reservas puede sumar un `cargo de procesamiento` separado al cliente; backend lo calcula server-side y lo snapshot-ea en `booking.prepaid_processing_fee_amount_snapshot`, `booking.prepaid_total_amount_snapshot` y `booking.prepaid_processing_fee_mode_snapshot` para no depender de redondeos ni del modo vigente al momento de ver la reserva despues
+- cada servicio online guarda su preferencia de acreditacion Mercado Pago en `professional_service.processing_fee_mode`; hoy puede elegir `INSTANT` (`5,99% + IVA`) o `DELAYED_21_DAYS` (`4,99% + IVA`)
+- el `cargo de procesamiento` de checkout hoy combina el fee de Mercado Pago segun ese modo, el `IVA` sobre ese fee y un `1%` adicional de plataforma; con la arquitectura OAuth actual ese `1%` queda incluido en el total cobrado al cliente, pero no se liquida a Plura como split separado dentro de Mercado Pago
 - cuando un refund de reserva queda iniciado pero Mercado Pago no lo confirma en el mismo response, la `provider_operation` de tipo `BOOKING_REFUND` permanece en seguimiento (`UNCERTAIN`) hasta webhook o reconciliacion; no debe darse por exitosa solo por haber recibido un `pending`
 - al despachar refunds de reservas, backend resuelve la cuenta OAuth del profesional con el `professionalId` propio del booking/charge; ya no depende de que Mercado Pago devuelva ese dato otra vez al consultar el pago original
 - si SMTP esta operativo, ese estado `refund pendiente` tambien dispara email transaccional solo para el cliente con texto de acreditacion sujeto a tiempos de Mercado Pago y del emisor
@@ -155,6 +158,12 @@ Variables de backend para Mercado Pago de reservas y OAuth profesional:
 - `BILLING_MERCADOPAGO_RESERVATIONS_OAUTH_STATE_SIGNING_SECRET`
 - `BILLING_MERCADOPAGO_RESERVATIONS_OAUTH_TOKEN_ENCRYPTION_KEY`
 - `BILLING_MERCADOPAGO_RESERVATIONS_OAUTH_PKCE_ENABLED`
+- `BILLING_MERCADOPAGO_RESERVATIONS_PROCESSING_FEE_ENABLED`
+- `BILLING_MERCADOPAGO_RESERVATIONS_PROCESSING_FEE_LABEL`
+- `BILLING_MERCADOPAGO_RESERVATIONS_PROCESSING_FEE_INSTANT_PROVIDER_FEE_PERCENT`
+- `BILLING_MERCADOPAGO_RESERVATIONS_PROCESSING_FEE_DELAYED_PROVIDER_FEE_PERCENT`
+- `BILLING_MERCADOPAGO_RESERVATIONS_PROCESSING_FEE_TAX_PERCENT`
+- `BILLING_MERCADOPAGO_RESERVATIONS_PROCESSING_FEE_PLATFORM_FEE_PERCENT`
 
 Notas reales de binding local:
 
@@ -166,7 +175,7 @@ Notas reales de binding local:
 - el backend ahora tambien acepta `X-Plura-Analytics-Session-Id` dentro de los headers CORS permitidos; web lo manda en requests client-side para correlacionar search, profile, funnel de `/reservar` y `BOOKING_CREATED` dentro de una misma sesion anonima
 - cuando Fly muestra `Proxy not finding machines to route requests` para este backend, el primer chequeo no deberia ser el puerto: el codigo ya expone `server.address=0.0.0.0` y `server.port=${PORT:3000}`; el fallo mas probable pasa por machine caida, `healthcheck` sin pasar o secrets faltantes de DB/JWT/R2
 - el repo ahora incluye `backend-java/scripts/check_fly_runtime_env.sh` para validar desde shell las variables minimas de arranque segun el `fly.toml` actual y separar faltantes fatales de advertencias operativas
-- la secuencia real de migraciones Flyway del backend llega a `V66`; `V66__app_product_event_funnel_fields.sql` amplia `app_product_event` con `booking_id`, `user_id`, `session_id` y `step_name` para reporting interno mas fino del funnel
+- la secuencia real de migraciones Flyway del backend llega a `V68`; `V67__booking_prepaid_processing_fee_snapshot.sql` agrega en `booking` los snapshots `prepaid_processing_fee_amount_snapshot` y `prepaid_total_amount_snapshot`; `V68__service_processing_fee_mode.sql` agrega `processing_fee_mode` a `professional_service` y `prepaid_processing_fee_mode_snapshot` a `booking`
 - el repo ahora incluye `backend-java/src/test/java/com/plura/plurabackend/db/FlywayMigrationVersionUniquenessTest.java` para detectar versiones Flyway duplicadas antes de romper un deploy
 - el backend mantiene fallback a los nombres legacy `BILLING_MERCADOPAGO_ACCESS_TOKEN`, `BILLING_MERCADOPAGO_WEBHOOK_SECRET` y `BILLING_MERCADOPAGO_OAUTH_*`, pero el naming operativo recomendado ya es explicito por dominio: `SUBSCRIPTIONS_*` para planes y `RESERVATIONS_*` para cobros/OAuth profesional
 - para OAuth de Mercado Pago el error de `state` ya no implica adivinar secretos: el backend espera primero `BILLING_MERCADOPAGO_RESERVATIONS_OAUTH_STATE_SIGNING_SECRET`, y si no existe hace fallback a la clave de cifrado o al client secret
@@ -176,6 +185,8 @@ Notas reales de binding local:
   `http://localhost:3000/profesional/payment-providers/mercadopago/oauth/callback`
   `https://plura-ir62.onrender.com/profesional/payment-providers/mercadopago/oauth/callback`
 - `BILLING_MERCADOPAGO_RESERVATIONS_OAUTH_FRONTEND_REDIRECT_URL` es la pantalla web final de resultado y no debe registrarse en Mercado Pago como Redirect URL OAuth
+- el cargo de procesamiento de reservas se parametriza con `INSTANT_PROVIDER_FEE_PERCENT`, `DELAYED_PROVIDER_FEE_PERCENT`, `TAX_PERCENT` y `PLATFORM_FEE_PERCENT`; backend elige el porcentaje Mercado Pago segun `processingFeeMode` del servicio, calcula `fee_efectiva = fee_provider * (1 + IVA) + fee_plataforma`, luego `total = neto / (1 - fee_efectiva)` y redondea hacia arriba a 2 decimales para no subcobrar el neto del servicio
+- por compatibilidad, `BILLING_MERCADOPAGO_RESERVATIONS_PROCESSING_FEE_PROVIDER_FEE_PERCENT` sigue funcionando como fallback legacy del porcentaje `INSTANT`
 - el storage de credenciales para miles de profesionales ya esta separado en tres capas: credenciales globales de suscripciones, credenciales globales de reservas/OAuth profesional y tokens por profesional cifrados en `professional_payment_provider_connection`
 - `metadata_json` de la conexion OAuth no debe guardar la respuesta cruda del provider ni tokens en claro; solo metadata minima util como `scope`, `userId`, `publicKey` y flags operativos
 - la misma fila `professional_payment_provider_connection` guarda ahora tambien el intento OAuth pendiente (`pending_oauth_state`, `pending_oauth_state_expires_at`, `pending_oauth_code_verifier_encrypted`) para resolver PKCE y correlacionar callbacks sin depender de memoria de proceso

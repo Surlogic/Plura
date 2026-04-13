@@ -9,7 +9,7 @@ import { useProfessionalDashboardUnsavedSection } from '@/context/ProfessionalDa
 import { resolveProfessionalFeatureAccess } from '@/lib/billing/featureGuards';
 import api from '@/services/api';
 import { cachedGet, invalidateCachedGet } from '@/services/cachedGet';
-import type { ServicePaymentType } from '@/types/professional';
+import type { BookingProcessingFeeMode, ServicePaymentType } from '@/types/professional';
 import { resolveAssetUrl } from '@/utils/assetUrl';
 import {
   DashboardHero,
@@ -30,6 +30,7 @@ type ProfesionalServiceItem = {
   duration: string;
   postBufferMinutes?: number | null;
   paymentType?: ServicePaymentType | null;
+  processingFeeMode?: BookingProcessingFeeMode | null;
   active?: boolean;
 };
 
@@ -45,6 +46,7 @@ type ServiceDraft = {
   duration: string;
   postBufferMinutes: string;
   paymentType: ServicePaymentMode;
+  processingFeeMode: BookingProcessingFeeMode;
   active: boolean;
 };
 
@@ -58,6 +60,7 @@ const createEmptyDraft = (): ServiceDraft => ({
   duration: '',
   postBufferMinutes: '',
   paymentType: 'ON_SITE',
+  processingFeeMode: 'INSTANT',
   active: true,
 });
 
@@ -85,6 +88,23 @@ const SERVICE_PAYMENT_OPTIONS: Array<{
   },
 ];
 
+const PROCESSING_FEE_OPTIONS: Array<{
+  value: BookingProcessingFeeMode;
+  label: string;
+  description: string;
+}> = [
+  {
+    value: 'INSTANT',
+    label: '5,99% + IVA',
+    description: 'Acreditación inmediata de Mercado Pago. El checkout también suma 1% de Plura.',
+  },
+  {
+    value: 'DELAYED_21_DAYS',
+    label: '4,99% + IVA',
+    description: 'Acreditación a 21 días de Mercado Pago. El checkout también suma 1% de Plura.',
+  },
+];
+
 const normalizeDurationLabel = (value: string) => {
   const trimmed = value.trim();
   if (!trimmed) return '';
@@ -109,6 +129,21 @@ const formatPaymentTypeLabel = (value?: ServicePaymentType | null) => {
   const normalized = normalizePaymentType(value);
   const option = SERVICE_PAYMENT_OPTIONS.find((item) => item.value === normalized);
   return option?.label ?? 'Pago en el local';
+};
+
+const normalizeProcessingFeeMode = (
+  value?: BookingProcessingFeeMode | string | null,
+): BookingProcessingFeeMode => {
+  return (value || '').trim().toUpperCase() === 'DELAYED_21_DAYS'
+    ? 'DELAYED_21_DAYS'
+    : 'INSTANT';
+};
+
+const formatProcessingFeeModeLabel = (value?: BookingProcessingFeeMode | string | null) => {
+  const option = PROCESSING_FEE_OPTIONS.find(
+    (item) => item.value === normalizeProcessingFeeMode(value),
+  );
+  return option?.label ?? PROCESSING_FEE_OPTIONS[0].label;
 };
 
 const formatDepositAmount = (value?: number | null) => {
@@ -222,6 +257,7 @@ export default function ProfesionalServicesBuilderPage() {
           ? String(service.postBufferMinutes)
           : '',
       paymentType: normalizePaymentType(service.paymentType),
+      processingFeeMode: normalizeProcessingFeeMode(service.processingFeeMode),
       active: service.active !== false,
     };
     setDraft(editDraft);
@@ -356,6 +392,7 @@ export default function ProfesionalServicesBuilderPage() {
         duration: draft.duration.trim(),
         postBufferMinutes: normalizedBuffer,
         paymentType: draft.paymentType,
+        processingFeeMode: draft.processingFeeMode,
         active: draft.active,
       };
       const optimisticService: ProfesionalServiceItem = {
@@ -371,6 +408,7 @@ export default function ProfesionalServicesBuilderPage() {
         duration: payload.duration,
         postBufferMinutes: payload.postBufferMinutes,
         paymentType: payload.paymentType,
+        processingFeeMode: payload.processingFeeMode,
         active: payload.active,
       };
 
@@ -672,6 +710,11 @@ export default function ProfesionalServicesBuilderPage() {
                                         ? ` · Seña ${formatDepositAmount(service.depositAmount)}`
                                         : ''}
                                     </p>
+                                    {normalizePaymentType(service.paymentType) !== 'ON_SITE' ? (
+                                      <p className="mt-1 text-[0.72rem] text-[#64748B]">
+                                        Checkout: {formatProcessingFeeModeLabel(service.processingFeeMode)}
+                                      </p>
+                                    ) : null}
                                     {service.description ? (
                                       <p className="mt-1 line-clamp-2 text-xs text-[#64748B]">
                                         {service.description}
@@ -907,6 +950,40 @@ export default function ProfesionalServicesBuilderPage() {
                               </p>
                             ) : null}
                           </div>
+                          {draft.paymentType !== 'ON_SITE' && canUseOnlinePayments ? (
+                            <div>
+                              <label className="text-sm font-medium text-[#0E2A47]">
+                                Acreditación de Mercado Pago
+                              </label>
+                              <div className="mt-2 grid gap-2">
+                                {PROCESSING_FEE_OPTIONS.map((option) => {
+                                  const isSelected = draft.processingFeeMode === option.value;
+                                  return (
+                                    <button
+                                      key={option.value}
+                                      type="button"
+                                      onClick={() => handleDraftChange('processingFeeMode', option.value)}
+                                      className={`rounded-[16px] border px-4 py-3 text-left transition ${
+                                        isSelected
+                                          ? 'border-[#1FB6A6] bg-[#F0FFFC] shadow-[0_10px_24px_rgba(31,182,166,0.12)]'
+                                          : 'border-[#E2E7EC] bg-white hover:-translate-y-0.5 hover:shadow-sm'
+                                      }`}
+                                    >
+                                      <p className="text-sm font-semibold text-[#0E2A47]">
+                                        {option.label}
+                                      </p>
+                                      <p className="mt-1 text-xs text-[#64748B]">
+                                        {option.description}
+                                      </p>
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                              <p className="mt-2 text-xs text-[#64748B]">
+                                El cargo al cliente incluye el fee de Mercado Pago, su IVA y 1% adicional de Plura.
+                              </p>
+                            </div>
+                          ) : null}
                           {draft.paymentType === 'DEPOSIT' ? (
                             <div>
                               <label className="text-sm font-medium text-[#0E2A47]">

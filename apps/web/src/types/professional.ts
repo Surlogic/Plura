@@ -2,6 +2,8 @@ import type { Category } from '@/types/category';
 import type {
   BookingFinancialStatus,
   BookingFinancialSummary,
+  BookingPaymentBreakdown,
+  BookingProcessingFeeMode,
   BookingPaymentType,
   BookingPolicySnapshot,
   BookingPayoutRecord,
@@ -20,6 +22,7 @@ export type {
   ProfessionalPlanCode,
   ProfessionalPlanEntitlements,
 };
+export type { BookingProcessingFeeMode };
 
 export type ProfessionalProfile = {
   id: string;
@@ -96,6 +99,8 @@ export type ProfessionalService = {
   postBufferMinutes?: number;
   bufferTime: string;
   paymentType: ServicePaymentType;
+  processingFeeMode?: BookingProcessingFeeMode | null;
+  paymentBreakdown?: BookingPaymentBreakdown | null;
   photos: ServicePhoto[];
   active?: boolean;
   paused?: boolean;
@@ -115,6 +120,8 @@ export type PublicService = {
   postBufferMinutes?: number;
   bufferTime?: string;
   paymentType?: ServicePaymentType;
+  processingFeeMode?: BookingProcessingFeeMode | null;
+  paymentBreakdown?: BookingPaymentBreakdown | null;
   photos?: string[];
 };
 
@@ -167,6 +174,7 @@ export type ProfessionalReservation = {
   effectiveDurationMinutes?: number;
   status?: ReservationStatus;
   paymentType?: BookingPaymentType | null;
+  paymentBreakdown?: BookingPaymentBreakdown | null;
   financialSummary?: BookingFinancialSummary | null;
   paymentStatus?: BookingFinancialStatus | null;
   refundStatus?: BookingRefundStatus | null;

@@ -1,6 +1,7 @@
 package com.plura.plurabackend.professional.application;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.plura.plurabackend.core.booking.finance.BookingPaymentBreakdownService;
 import com.plura.plurabackend.core.booking.dto.BookingPolicySnapshotResponse;
 import com.plura.plurabackend.core.booking.policy.BookingPolicySnapshotService;
 import com.plura.plurabackend.core.storage.ImageStorageService;
@@ -33,6 +34,7 @@ public class ProfilePublicPageAssembler {
     private final ProfessionalCategorySupport categorySupport;
     private final ProfesionalServiceRepository profesionalServiceRepository;
     private final BookingPolicySnapshotService bookingPolicySnapshotService;
+    private final BookingPaymentBreakdownService bookingPaymentBreakdownService;
     private final ImageStorageService imageStorageService;
     private final ObjectMapper objectMapper;
 
@@ -41,6 +43,7 @@ public class ProfilePublicPageAssembler {
         ProfessionalCategorySupport categorySupport,
         ProfesionalServiceRepository profesionalServiceRepository,
         BookingPolicySnapshotService bookingPolicySnapshotService,
+        BookingPaymentBreakdownService bookingPaymentBreakdownService,
         ImageStorageService imageStorageService,
         ObjectMapper objectMapper
     ) {
@@ -48,6 +51,7 @@ public class ProfilePublicPageAssembler {
         this.categorySupport = categorySupport;
         this.profesionalServiceRepository = profesionalServiceRepository;
         this.bookingPolicySnapshotService = bookingPolicySnapshotService;
+        this.bookingPaymentBreakdownService = bookingPaymentBreakdownService;
         this.imageStorageService = imageStorageService;
         this.objectMapper = objectMapper;
     }
@@ -151,7 +155,9 @@ public class ProfilePublicPageAssembler {
             normalizePublicPhotoUrl(service.getImageUrl()),
             resolvePostBufferMinutes(service),
             resolveServicePaymentType(service.getPaymentType()),
-            service.getActive()
+            resolveProcessingFeeMode(service.getProcessingFeeMode()),
+            service.getActive(),
+            bookingPaymentBreakdownService.toResponse(bookingPaymentBreakdownService.quoteForService(service))
         );
     }
 
@@ -169,8 +175,18 @@ public class ProfilePublicPageAssembler {
             normalizePublicPhotoUrl(service.getImageUrl()),
             null,
             resolveServicePaymentType(service.getPaymentType()),
-            service.getActive()
+            resolveProcessingFeeMode(service.getProcessingFeeMode()),
+            service.getActive(),
+            bookingPaymentBreakdownService.toResponse(bookingPaymentBreakdownService.quoteForService(service))
         );
+    }
+
+    private com.plura.plurabackend.core.booking.model.BookingProcessingFeeMode resolveProcessingFeeMode(
+        com.plura.plurabackend.core.booking.model.BookingProcessingFeeMode processingFeeMode
+    ) {
+        return processingFeeMode == null
+            ? com.plura.plurabackend.core.booking.model.BookingProcessingFeeMode.INSTANT
+            : processingFeeMode;
     }
 
     private ProfesionalScheduleDto readStoredSchedule(String rawScheduleJson) {

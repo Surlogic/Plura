@@ -5,6 +5,7 @@ import com.plura.plurabackend.core.booking.dto.BookingPayoutRecordResponse;
 import com.plura.plurabackend.core.booking.dto.BookingRefundRecordResponse;
 import com.plura.plurabackend.core.booking.dto.ProfessionalBookingResponse;
 import com.plura.plurabackend.core.booking.BookingPaymentsGateway;
+import com.plura.plurabackend.core.booking.finance.BookingPaymentBreakdownService;
 import com.plura.plurabackend.core.booking.finance.BookingFinanceService;
 import com.plura.plurabackend.core.booking.model.Booking;
 import com.plura.plurabackend.core.booking.model.BookingOperationalStatus;
@@ -35,6 +36,7 @@ public class BookingQueryApplicationService {
 
     private final BookingRepository bookingRepository;
     private final BookingFinanceService bookingFinanceService;
+    private final BookingPaymentBreakdownService bookingPaymentBreakdownService;
     private final BookingPaymentsGateway bookingPaymentsGateway;
     private final BookingPolicySnapshotService bookingPolicySnapshotService;
     private final BookingDateTimeService bookingDateTimeService;
@@ -43,6 +45,7 @@ public class BookingQueryApplicationService {
     public BookingQueryApplicationService(
         BookingRepository bookingRepository,
         BookingFinanceService bookingFinanceService,
+        BookingPaymentBreakdownService bookingPaymentBreakdownService,
         BookingPaymentsGateway bookingPaymentsGateway,
         BookingPolicySnapshotService bookingPolicySnapshotService,
         BookingDateTimeService bookingDateTimeService,
@@ -50,6 +53,7 @@ public class BookingQueryApplicationService {
     ) {
         this.bookingRepository = bookingRepository;
         this.bookingFinanceService = bookingFinanceService;
+        this.bookingPaymentBreakdownService = bookingPaymentBreakdownService;
         this.bookingPaymentsGateway = bookingPaymentsGateway;
         this.bookingPolicySnapshotService = bookingPolicySnapshotService;
         this.bookingDateTimeService = bookingDateTimeService;
@@ -130,6 +134,11 @@ public class BookingQueryApplicationService {
             if (bookingEntity != null) {
                 booking.setStatus(bookingEntity.getOperationalStatus().name());
                 booking.setStartDateTimeUtc(bookingDateTimeService.toUtcString(bookingEntity));
+                booking.setPaymentBreakdown(
+                    bookingPaymentBreakdownService.toResponse(
+                        bookingPaymentBreakdownService.quoteForBooking(bookingEntity)
+                    )
+                );
                 booking.setPolicySnapshot(
                     bookingPolicySnapshotService.toResponse(bookingPolicySnapshotService.resolveForBooking(bookingEntity))
                 );

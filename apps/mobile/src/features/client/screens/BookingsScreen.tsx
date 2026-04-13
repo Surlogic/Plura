@@ -530,6 +530,40 @@ export default function ClientBookingsScreen() {
                   Ubicacion:
                   <Text className="font-semibold text-secondary"> {selectedBooking.location || 'A confirmar'}</Text>
                 </Text>
+                {selectedBooking.paymentBreakdown?.prepaidBaseAmount != null ? (
+                  <Text className="text-sm text-gray-500">
+                    {selectedBooking.paymentType === 'DEPOSIT' ? 'Seña del servicio:' : 'Monto del servicio:'}
+                    <Text className="font-semibold text-secondary">
+                      {' '}{formatMoney(
+                        selectedBooking.paymentBreakdown.prepaidBaseAmount,
+                        selectedBooking.paymentBreakdown.currency,
+                      )}
+                    </Text>
+                  </Text>
+                ) : null}
+                {selectedBooking.paymentBreakdown?.processingFeeAmount != null
+                && selectedBooking.paymentBreakdown.processingFeeAmount > 0 ? (
+                  <Text className="text-sm text-gray-500">
+                    {selectedBooking.paymentBreakdown.processingFeeLabel || 'Cargo de procesamiento'}:
+                    <Text className="font-semibold text-secondary">
+                      {' '}{formatMoney(
+                        selectedBooking.paymentBreakdown.processingFeeAmount,
+                        selectedBooking.paymentBreakdown.currency,
+                      )}
+                    </Text>
+                  </Text>
+                ) : null}
+                {selectedBooking.paymentBreakdown?.totalAmount != null ? (
+                  <Text className="text-sm text-gray-500">
+                    Total cobrado:
+                    <Text className="font-semibold text-secondary">
+                      {' '}{formatMoney(
+                        selectedBooking.paymentBreakdown.totalAmount,
+                        selectedBooking.paymentBreakdown.currency,
+                      )}
+                    </Text>
+                  </Text>
+                ) : null}
                 {selectedBooking.financialSummary?.amountHeld != null ? (
                   <Text className="text-sm text-gray-500">
                     Fondos retenidos:

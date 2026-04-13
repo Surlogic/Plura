@@ -1,6 +1,7 @@
 package com.plura.plurabackend.core.billing;
 
 import com.plura.plurabackend.core.billing.payments.model.PaymentProvider;
+import com.plura.plurabackend.core.booking.model.BookingProcessingFeeMode;
 import com.plura.plurabackend.core.billing.subscriptions.model.SubscriptionPlanCode;
 import jakarta.annotation.PostConstruct;
 import java.math.BigDecimal;
@@ -53,6 +54,7 @@ public class BillingProperties {
                 mercadopago.getSubscriptions().getWebhookSecret(),
                 "BILLING_MERCADOPAGO_SUBSCRIPTIONS_WEBHOOK_SECRET"
             );
+            validateProcessingFee(mercadopago.getReservations().getProcessingFee());
         }
     }
 
@@ -126,6 +128,32 @@ public class BillingProperties {
     private void requirePresent(String value, String fieldName) {
         if (value == null || value.isBlank()) {
             throw new IllegalStateException(fieldName + " no está configurado");
+        }
+    }
+
+    private void validateProcessingFee(MercadoPago.ProcessingFee processingFee) {
+        if (processingFee == null || !processingFee.isEnabled()) {
+            return;
+        }
+        if (processingFee.getInstantProviderFeePercent().compareTo(BigDecimal.ZERO) < 0) {
+            throw new IllegalStateException("BILLING_MERCADOPAGO_RESERVATIONS_PROCESSING_FEE_INSTANT_PROVIDER_FEE_PERCENT no puede ser negativo");
+        }
+        if (processingFee.getDelayedProviderFeePercent().compareTo(BigDecimal.ZERO) < 0) {
+            throw new IllegalStateException("BILLING_MERCADOPAGO_RESERVATIONS_PROCESSING_FEE_DELAYED_PROVIDER_FEE_PERCENT no puede ser negativo");
+        }
+        if (processingFee.getTaxPercent().compareTo(BigDecimal.ZERO) < 0) {
+            throw new IllegalStateException("BILLING_MERCADOPAGO_RESERVATIONS_PROCESSING_FEE_TAX_PERCENT no puede ser negativo");
+        }
+        if (processingFee.getPlatformFeePercent().compareTo(BigDecimal.ZERO) < 0) {
+            throw new IllegalStateException("BILLING_MERCADOPAGO_RESERVATIONS_PROCESSING_FEE_PLATFORM_FEE_PERCENT no puede ser negativo");
+        }
+        for (BookingProcessingFeeMode mode : BookingProcessingFeeMode.values()) {
+            BigDecimal effectivePercent = processingFee.resolveProviderFeePercent(mode)
+                .multiply(BigDecimal.ONE.add(processingFee.getTaxPercent().divide(BigDecimal.valueOf(100), 8, java.math.RoundingMode.HALF_UP)))
+                .add(processingFee.getPlatformFeePercent());
+            if (effectivePercent.compareTo(BigDecimal.valueOf(100)) >= 0) {
+                throw new IllegalStateException("El cargo de procesamiento configurado deja un porcentaje efectivo inválido");
+            }
         }
     }
 
@@ -407,6 +435,7 @@ public class BillingProperties {
         public static class Reservations {
             private String platformAccessToken = "";
             private String webhookSecret = "";
+            private ProcessingFee processingFee = new ProcessingFee();
             private OAuth oauth = new OAuth();
 
             public String getPlatformAccessToken() {
@@ -425,6 +454,14 @@ public class BillingProperties {
                 this.webhookSecret = webhookSecret;
             }
 
+            public ProcessingFee getProcessingFee() {
+                return processingFee;
+            }
+
+            public void setProcessingFee(ProcessingFee processingFee) {
+                this.processingFee = processingFee == null ? new ProcessingFee() : processingFee;
+            }
+
             public OAuth getOauth() {
                 return oauth;
             }
@@ -433,6 +470,69 @@ public class BillingProperties {
                 this.oauth = oauth == null ? new OAuth() : oauth;
             }
 
+        }
+
+        public static class ProcessingFee {
+            private boolean enabled = false;
+            private String label = "Cargo de procesamiento";
+            private BigDecimal instantProviderFeePercent = BigDecimal.ZERO;
+            private BigDecimal delayedProviderFeePercent = BigDecimal.ZERO;
+            private BigDecimal taxPercent = BigDecimal.ZERO;
+            private BigDecimal platformFeePercent = BigDecimal.ZERO;
+
+            public boolean isEnabled() {
+                return enabled;
+            }
+
+            public void setEnabled(boolean enabled) {
+                this.enabled = enabled;
+            }
+
+            public String getLabel() {
+                return label;
+            }
+
+            public void setLabel(String label) {
+                this.label = label == null || label.isBlank() ? "Cargo de procesamiento" : label.trim();
+            }
+
+            public BigDecimal getInstantProviderFeePercent() {
+                return instantProviderFeePercent;
+            }
+
+            public void setInstantProviderFeePercent(BigDecimal instantProviderFeePercent) {
+                this.instantProviderFeePercent = instantProviderFeePercent == null ? BigDecimal.ZERO : instantProviderFeePercent;
+            }
+
+            public BigDecimal getDelayedProviderFeePercent() {
+                return delayedProviderFeePercent;
+            }
+
+            public void setDelayedProviderFeePercent(BigDecimal delayedProviderFeePercent) {
+                this.delayedProviderFeePercent = delayedProviderFeePercent == null ? BigDecimal.ZERO : delayedProviderFeePercent;
+            }
+
+            public BigDecimal getTaxPercent() {
+                return taxPercent;
+            }
+
+            public void setTaxPercent(BigDecimal taxPercent) {
+                this.taxPercent = taxPercent == null ? BigDecimal.ZERO : taxPercent;
+            }
+
+            public BigDecimal getPlatformFeePercent() {
+                return platformFeePercent;
+            }
+
+            public void setPlatformFeePercent(BigDecimal platformFeePercent) {
+                this.platformFeePercent = platformFeePercent == null ? BigDecimal.ZERO : platformFeePercent;
+            }
+
+            public BigDecimal resolveProviderFeePercent(BookingProcessingFeeMode mode) {
+                return mode == BookingProcessingFeeMode.DELAYED_21_DAYS
+                    ? delayedProviderFeePercent
+                    : instantProviderFeePercent;
+            }
         }
 
         public static class OAuth {

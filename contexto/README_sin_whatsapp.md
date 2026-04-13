@@ -27,7 +27,7 @@ Definicion cerrada de monetizacion:
 - el upgrade aparece dentro del producto cuando necesita una funcion bloqueada
 - `Pro` se activa con `30` dias gratis desde la app
 - si deja de pagar, conserva cuenta y datos, pero vuelve al comportamiento base de `Free`
-- no hay comision por reserva; el modelo es suscripcion mensual
+- el modelo principal sigue siendo suscripcion mensual; en reservas prepagas el checkout puede sumar al cliente un cargo de procesamiento segun el servicio para cubrir fee de Mercado Pago + IVA + `1%` de plataforma
 
 ## Planes de producto
 
@@ -187,6 +187,8 @@ Notas operativas recientes:
 - `/api/home` y `/api/search` ahora exponen metadata suficiente de branding de card (`bannerUrl`, `bannerMedia`, `logoUrl`, `logoMedia`, `fallbackPhotoUrl`) para que home y marketplace no dependan de una sola imagen plana
 - en el paso final de `/reservar`, si el cliente todavia no tiene sesion, la web ahora abre primero una pantalla embebida de registro/login para completar el acceso sin salir del flujo; ese overlay hoy ofrece credenciales propias y Google; `pendingReservation` se conserva como respaldo si el usuario termina en las pantallas completas de auth o en `complete-phone` despues de OAuth
 - el paso final del flujo publico no promete confirmacion inmediata: la reserva sigue naciendo en `PENDING`; si el servicio requiere pago online, la confirmacion final depende del backend y de la acreditacion de Mercado Pago
+- para reservas con pago online, web y mobile ya pueden mostrar separado `monto del servicio o seña`, `cargo de procesamiento` y `total del checkout`; ese desglose lo calcula backend y queda snapshoteado en la reserva para mantener el mismo total en todos los clientes
+- cada servicio online puede elegir en dashboard entre acreditación Mercado Pago `5,99% + IVA` inmediata o `4,99% + IVA` a `21` dias; backend usa ese modo por servicio, suma ademas `1%` de plataforma al checkout y snapshot-ea el modo elegido en la reserva para no recalcular con otra configuracion despues
 - flujo real de estados para QA manual:
   `POST /public/profesionales/{slug}/reservas` crea siempre en `PENDING`;
   si el servicio es `ON_SITE`, el profesional confirma manualmente desde `/profesional/dashboard/reservas`;

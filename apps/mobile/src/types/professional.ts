@@ -1,9 +1,11 @@
+import type { BookingPaymentBreakdown, BookingProcessingFeeMode } from './bookings';
 import type {
   ProfessionalPlanCode,
   ProfessionalPlanEntitlements,
 } from '../../../../packages/shared/src/types/professional';
 
 export type { ProfessionalPlanCode, ProfessionalPlanEntitlements };
+export type { BookingProcessingFeeMode };
 
 export type ServiceCategoryOption = {
   id: string;
@@ -70,6 +72,8 @@ export type ProfessionalService = {
   postBufferMinutes?: number;
   bufferTime: string;
   paymentType: ServicePaymentType;
+  processingFeeMode?: BookingProcessingFeeMode | null;
+  paymentBreakdown?: BookingPaymentBreakdown | null;
   photos: ServicePhoto[];
   active?: boolean;
   paused?: boolean;
@@ -89,6 +93,8 @@ export type PublicService = {
   postBufferMinutes?: number;
   bufferTime?: string;
   paymentType?: ServicePaymentType;
+  processingFeeMode?: BookingProcessingFeeMode | null;
+  paymentBreakdown?: BookingPaymentBreakdown | null;
   photos?: string[];
 };
 
@@ -140,6 +146,7 @@ export type ProfessionalReservation = {
   serviceId?: string;
   userId?: string;
   paymentType?: 'ON_SITE' | 'DEPOSIT' | 'FULL_PREPAY' | null;
+  paymentBreakdown?: BookingPaymentBreakdown | null;
   financialSummary?: {
     financialStatus?:
       | 'NOT_REQUIRED'

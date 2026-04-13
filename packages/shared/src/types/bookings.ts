@@ -6,6 +6,7 @@ export type BookingOperationalStatus =
   | 'NO_SHOW';
 
 export type BookingPaymentType = 'ON_SITE' | 'DEPOSIT' | 'FULL_PREPAY';
+export type BookingProcessingFeeMode = 'INSTANT' | 'DELAYED_21_DAYS';
 
 export type BookingFinancialStatus =
   | 'NOT_REQUIRED'
@@ -32,6 +33,18 @@ export type BookingFinancialSummary = {
   updatedAt?: string | null;
 };
 
+export type BookingPaymentBreakdown = {
+  prepaidBaseAmount?: number | null;
+  processingFeeAmount?: number | null;
+  totalAmount?: number | null;
+  currency?: string | null;
+  processingFeeLabel?: string | null;
+  processingFeeMode?: BookingProcessingFeeMode | null;
+  providerFeePercent?: number | null;
+  taxPercent?: number | null;
+  platformFeePercent?: number | null;
+};
+
 export type BookingActionsBase = {
   bookingId: number;
   canCancel: boolean;
@@ -50,6 +63,7 @@ export type BookingPaymentSession = {
   provider?: string | null;
   checkoutUrl?: string | null;
   amount?: number | null;
+  paymentBreakdown?: BookingPaymentBreakdown | null;
   currency?: string | null;
   financialStatus?: BookingFinancialStatus | null;
 };

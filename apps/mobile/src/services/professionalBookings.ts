@@ -3,6 +3,7 @@ import type { ProfessionalReservation, ReservationStatus } from '../types/profes
 import type {
   BookingActions,
   BookingCommandResponse,
+  BookingPaymentBreakdown,
   BookingFinancialSummary,
   BookingPaymentType,
 } from '../types/bookings';
@@ -17,7 +18,8 @@ import {
 
 type ProfessionalBookingDto = ProfessionalBookingDtoBase<
   BookingPaymentType,
-  BookingFinancialSummary
+  BookingFinancialSummary,
+  BookingPaymentBreakdown
 >;
 
 type ProfessionalBookingCreatePayload = {

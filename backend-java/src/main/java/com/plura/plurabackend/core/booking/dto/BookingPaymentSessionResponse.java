@@ -14,6 +14,7 @@ public class BookingPaymentSessionResponse {
     private String provider;
     private String checkoutUrl;
     private BigDecimal amount;
+    private BookingPaymentBreakdownResponse paymentBreakdown;
     private String currency;
     private String financialStatus;
 }

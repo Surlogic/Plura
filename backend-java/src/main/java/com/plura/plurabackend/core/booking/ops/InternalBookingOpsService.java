@@ -20,6 +20,7 @@ import com.plura.plurabackend.core.booking.event.model.BookingEventType;
 import com.plura.plurabackend.core.booking.event.repository.BookingEventRepository;
 import com.plura.plurabackend.core.booking.finance.BookingFinancialEvidenceSnapshot;
 import com.plura.plurabackend.core.booking.finance.BookingFinanceDispatchPlan;
+import com.plura.plurabackend.core.booking.finance.BookingPaymentBreakdownService;
 import com.plura.plurabackend.core.booking.finance.BookingFinanceService;
 import com.plura.plurabackend.core.booking.finance.BookingFinanceUpdateResult;
 import com.plura.plurabackend.core.booking.finance.BookingMoneyResolver;
@@ -74,6 +75,7 @@ public class InternalBookingOpsService {
     private final BookingFinanceService bookingFinanceService;
     private final BookingProviderIntegrationService bookingProviderIntegrationService;
     private final BookingEventService bookingEventService;
+    private final BookingPaymentBreakdownService bookingPaymentBreakdownService;
     private final BookingMoneyResolver bookingMoneyResolver;
 
     public InternalBookingOpsService(
@@ -89,6 +91,7 @@ public class InternalBookingOpsService {
         BookingFinanceService bookingFinanceService,
         BookingProviderIntegrationService bookingProviderIntegrationService,
         BookingEventService bookingEventService,
+        BookingPaymentBreakdownService bookingPaymentBreakdownService,
         BookingMoneyResolver bookingMoneyResolver
     ) {
         this.bookingRepository = bookingRepository;
@@ -103,6 +106,7 @@ public class InternalBookingOpsService {
         this.bookingFinanceService = bookingFinanceService;
         this.bookingProviderIntegrationService = bookingProviderIntegrationService;
         this.bookingEventService = bookingEventService;
+        this.bookingPaymentBreakdownService = bookingPaymentBreakdownService;
         this.bookingMoneyResolver = bookingMoneyResolver;
     }
 
@@ -340,6 +344,7 @@ public class InternalBookingOpsService {
             null,
             null,
             null,
+            bookingPaymentBreakdownService.toResponse(bookingPaymentBreakdownService.quoteForBooking(booking)),
             null
         );
     }

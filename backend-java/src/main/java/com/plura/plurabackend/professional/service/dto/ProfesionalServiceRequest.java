@@ -1,6 +1,7 @@
 package com.plura.plurabackend.professional.service.dto;
 
 import com.plura.plurabackend.core.booking.model.ServicePaymentType;
+import com.plura.plurabackend.core.booking.model.BookingProcessingFeeMode;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Pattern;
@@ -39,6 +40,8 @@ public class ProfesionalServiceRequest {
     private Integer postBufferMinutes;
 
     private ServicePaymentType paymentType;
+
+    private BookingProcessingFeeMode processingFeeMode;
 
     @Size(max = 10)
     @Pattern(regexp = "^[A-Z]{3}$")

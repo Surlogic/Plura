@@ -97,6 +97,16 @@ public class Booking {
     @Column(name = "service_deposit_amount_snapshot", precision = 12, scale = 2)
     private BigDecimal serviceDepositAmountSnapshot;
 
+    @Column(name = "prepaid_processing_fee_amount_snapshot", precision = 12, scale = 2)
+    private BigDecimal prepaidProcessingFeeAmountSnapshot;
+
+    @Column(name = "prepaid_total_amount_snapshot", precision = 12, scale = 2)
+    private BigDecimal prepaidTotalAmountSnapshot;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "prepaid_processing_fee_mode_snapshot", nullable = false, length = 32)
+    private BookingProcessingFeeMode prepaidProcessingFeeModeSnapshot;
+
     @Column(name = "service_currency_snapshot", nullable = false, length = 10)
     private String serviceCurrencySnapshot;
 
@@ -159,6 +169,9 @@ public class Booking {
         }
         if (this.servicePaymentTypeSnapshot == null) {
             this.servicePaymentTypeSnapshot = ServicePaymentType.ON_SITE;
+        }
+        if (this.prepaidProcessingFeeModeSnapshot == null) {
+            this.prepaidProcessingFeeModeSnapshot = BookingProcessingFeeMode.INSTANT;
         }
         if (this.serviceCurrencySnapshot == null || this.serviceCurrencySnapshot.isBlank()) {
             this.serviceCurrencySnapshot = "UYU";

@@ -7,6 +7,7 @@ import type {
   BookingFinancialStatus,
   BookingFinancialSummary,
   BookingOperationalStatus,
+  BookingPaymentBreakdown,
   BookingPaymentSession,
   BookingPaymentType,
   BookingPolicySnapshot,
@@ -35,6 +36,7 @@ export type ClientDashboardNextBooking = {
   professionalSlug?: string | null;
   serviceId?: string | null;
   paymentType?: BookingPaymentType | null;
+  paymentBreakdown?: BookingPaymentBreakdown | null;
   financialSummary?: BookingFinancialSummary | null;
   timezone?: string | null;
   startDateTimeUtc?: string | null;
@@ -58,6 +60,7 @@ export type ClientDashboardBooking = {
   professionalSlug?: string | null;
   serviceId?: string | null;
   paymentType?: BookingPaymentType | null;
+  paymentBreakdown?: BookingPaymentBreakdown | null;
   financialSummary?: BookingFinancialSummary | null;
   timezone?: string | null;
   startDateTimeUtc?: string | null;
@@ -72,6 +75,7 @@ export type ClientDashboardBooking = {
 type ClientBookingDto = ClientBookingDtoBase<
   BookingPaymentType,
   BookingFinancialSummary,
+  BookingPaymentBreakdown,
   BookingFinancialStatus,
   BookingRefundStatus,
   BookingPayoutStatus,
@@ -134,6 +138,7 @@ export const getClientNextBooking = async (): Promise<ClientDashboardNextBooking
     professionalSlug: mapped.professionalSlug,
     serviceId: mapped.serviceId,
     paymentType: mapped.paymentType,
+    paymentBreakdown: mapped.paymentBreakdown,
     financialSummary: mapped.financialSummary,
     timezone: mapped.timezone,
     startDateTimeUtc: mapped.startDateTimeUtc,

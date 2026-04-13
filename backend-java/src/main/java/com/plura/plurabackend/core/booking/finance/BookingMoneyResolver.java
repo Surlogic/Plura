@@ -8,6 +8,12 @@ import org.springframework.stereotype.Service;
 @Service
 public class BookingMoneyResolver {
 
+    private final BookingPaymentBreakdownService bookingPaymentBreakdownService;
+
+    public BookingMoneyResolver(BookingPaymentBreakdownService bookingPaymentBreakdownService) {
+        this.bookingPaymentBreakdownService = bookingPaymentBreakdownService;
+    }
+
     public BigDecimal resolvePrepaidAmount(Booking booking) {
         if (booking == null) {
             return BigDecimal.ZERO;
@@ -16,10 +22,23 @@ public class BookingMoneyResolver {
         if (paymentType == null || paymentType == ServicePaymentType.ON_SITE) {
             return BigDecimal.ZERO;
         }
+        if (booking.getPrepaidTotalAmountSnapshot() != null) {
+            return normalizeAmount(booking.getPrepaidTotalAmountSnapshot());
+        }
         if (paymentType == ServicePaymentType.DEPOSIT) {
             return normalizeAmount(booking.getServiceDepositAmountSnapshot());
         }
         return normalizeAmount(booking.getServicePriceSnapshot());
+    }
+
+    public BigDecimal resolvePrepaidProcessingFeeAmount(Booking booking) {
+        if (booking == null) {
+            return BigDecimal.ZERO;
+        }
+        if (booking.getPrepaidProcessingFeeAmountSnapshot() != null) {
+            return normalizeAmount(booking.getPrepaidProcessingFeeAmountSnapshot());
+        }
+        return bookingPaymentBreakdownService.quoteForBooking(booking).processingFeeAmount();
     }
 
     public String resolveCurrency(Booking booking) {

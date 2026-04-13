@@ -2,6 +2,7 @@ import Badge from '@/components/ui/Badge';
 import Button from '@/components/ui/Button';
 import Card from '@/components/ui/Card';
 import type { PublicProfessionalPage, PublicProfessionalService } from '@/services/publicBookings';
+import { getReservationPaymentDetails } from '@/components/reservation/paymentDetails';
 import { getPaymentTypeLabel } from '@/utils/bookings';
 import { formatDuration, formatPrice } from '@/utils/reservarHelpers';
 
@@ -28,6 +29,8 @@ export default function ReservationReviewStep({
   selectedService,
   selectedTime,
 }: ReservationReviewStepProps) {
+  const paymentDetails = getReservationPaymentDetails(selectedService);
+
   return (
     <Card
       tone="default"
@@ -95,6 +98,30 @@ export default function ReservationReviewStep({
                 {formatPrice(selectedService?.price)}
               </span>
             </p>
+            {paymentDetails.prepaidLabel && paymentDetails.prepaidAmount ? (
+              <p>
+                {paymentDetails.prepaidLabel}:
+                <span className="ml-2 font-semibold text-[color:var(--ink)]">
+                  {paymentDetails.prepaidAmount}
+                </span>
+              </p>
+            ) : null}
+            {paymentDetails.processingFeeLabel && paymentDetails.processingFeeAmount ? (
+              <p>
+                {paymentDetails.processingFeeLabel}:
+                <span className="ml-2 font-semibold text-[color:var(--ink)]">
+                  {paymentDetails.processingFeeAmount}
+                </span>
+              </p>
+            ) : null}
+            {selectedService?.paymentType !== 'ON_SITE' ? (
+              <p>
+                {paymentDetails.payNowLabel}:
+                <span className="ml-2 font-semibold text-[color:var(--ink)]">
+                  {paymentDetails.payNowAmount}
+                </span>
+              </p>
+            ) : null}
           </div>
         </div>
       </div>

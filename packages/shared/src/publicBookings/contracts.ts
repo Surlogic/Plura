@@ -1,3 +1,5 @@
+import type { BookingPaymentBreakdown, BookingProcessingFeeMode } from '../types/bookings';
+
 export type PublicBookingStatus =
   | 'PENDING'
   | 'CONFIRMED'
@@ -37,8 +39,10 @@ export type PublicProfessionalServiceBase<TPaymentType = string> = {
   depositAmount?: number | null;
   currency?: string | null;
   paymentType?: TPaymentType;
+  processingFeeMode?: BookingProcessingFeeMode | null;
   duration?: string;
   postBufferMinutes?: number;
+  paymentBreakdown?: BookingPaymentBreakdown | null;
 };
 
 export type PublicProfessionalPageBase<

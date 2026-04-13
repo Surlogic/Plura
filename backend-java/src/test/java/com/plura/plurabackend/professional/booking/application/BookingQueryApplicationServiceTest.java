@@ -8,6 +8,7 @@ import static org.mockito.Mockito.when;
 
 import com.plura.plurabackend.core.booking.BookingPaymentsGateway;
 import com.plura.plurabackend.core.booking.dto.BookingFinancialSummaryResponse;
+import com.plura.plurabackend.core.booking.finance.BookingPaymentBreakdownService;
 import com.plura.plurabackend.core.booking.finance.BookingFinanceService;
 import com.plura.plurabackend.core.booking.dto.BookingPayoutRecordResponse;
 import com.plura.plurabackend.core.booking.dto.BookingRefundRecordResponse;
@@ -34,6 +35,7 @@ class BookingQueryApplicationServiceTest {
     void allowsOperationalReservationQueriesAcrossMultipleDays() {
         BookingRepository bookingRepository = mock(BookingRepository.class);
         BookingFinanceService bookingFinanceService = mock(BookingFinanceService.class);
+        BookingPaymentBreakdownService bookingPaymentBreakdownService = mock(BookingPaymentBreakdownService.class);
         BookingPaymentsGateway bookingPaymentsGateway = mock(BookingPaymentsGateway.class);
         ProfessionalAccessSupport professionalAccessSupport = mock(ProfessionalAccessSupport.class);
         ProfessionalProfile profile = new ProfessionalProfile();
@@ -42,6 +44,7 @@ class BookingQueryApplicationServiceTest {
         BookingQueryApplicationService service = new BookingQueryApplicationService(
             bookingRepository,
             bookingFinanceService,
+            bookingPaymentBreakdownService,
             bookingPaymentsGateway,
             mock(BookingPolicySnapshotService.class),
             mock(BookingDateTimeService.class),
@@ -72,6 +75,7 @@ class BookingQueryApplicationServiceTest {
     void stillLoadsSingleDayQueries() {
         BookingRepository bookingRepository = mock(BookingRepository.class);
         BookingFinanceService bookingFinanceService = mock(BookingFinanceService.class);
+        BookingPaymentBreakdownService bookingPaymentBreakdownService = mock(BookingPaymentBreakdownService.class);
         BookingPaymentsGateway bookingPaymentsGateway = mock(BookingPaymentsGateway.class);
         ProfessionalAccessSupport professionalAccessSupport = mock(ProfessionalAccessSupport.class);
         ProfessionalProfile profile = new ProfessionalProfile();
@@ -80,6 +84,7 @@ class BookingQueryApplicationServiceTest {
         BookingQueryApplicationService service = new BookingQueryApplicationService(
             bookingRepository,
             bookingFinanceService,
+            bookingPaymentBreakdownService,
             bookingPaymentsGateway,
             mock(BookingPolicySnapshotService.class),
             mock(BookingDateTimeService.class),
@@ -110,6 +115,7 @@ class BookingQueryApplicationServiceTest {
     void syncsPendingPrepaidBookingsBeforeBuildingProfessionalList() {
         BookingRepository bookingRepository = mock(BookingRepository.class);
         BookingFinanceService bookingFinanceService = mock(BookingFinanceService.class);
+        BookingPaymentBreakdownService bookingPaymentBreakdownService = mock(BookingPaymentBreakdownService.class);
         BookingPaymentsGateway bookingPaymentsGateway = mock(BookingPaymentsGateway.class);
         ProfessionalAccessSupport professionalAccessSupport = mock(ProfessionalAccessSupport.class);
         BookingPolicySnapshotService bookingPolicySnapshotService = mock(BookingPolicySnapshotService.class);
@@ -120,6 +126,7 @@ class BookingQueryApplicationServiceTest {
         BookingQueryApplicationService service = new BookingQueryApplicationService(
             bookingRepository,
             bookingFinanceService,
+            bookingPaymentBreakdownService,
             bookingPaymentsGateway,
             bookingPolicySnapshotService,
             bookingDateTimeService,
@@ -163,6 +170,7 @@ class BookingQueryApplicationServiceTest {
     void keepsProfessionalListAvailableWhenPendingPaymentSyncFails() {
         BookingRepository bookingRepository = mock(BookingRepository.class);
         BookingFinanceService bookingFinanceService = mock(BookingFinanceService.class);
+        BookingPaymentBreakdownService bookingPaymentBreakdownService = mock(BookingPaymentBreakdownService.class);
         BookingPaymentsGateway bookingPaymentsGateway = mock(BookingPaymentsGateway.class);
         ProfessionalAccessSupport professionalAccessSupport = mock(ProfessionalAccessSupport.class);
         BookingPolicySnapshotService bookingPolicySnapshotService = mock(BookingPolicySnapshotService.class);
@@ -173,6 +181,7 @@ class BookingQueryApplicationServiceTest {
         BookingQueryApplicationService service = new BookingQueryApplicationService(
             bookingRepository,
             bookingFinanceService,
+            bookingPaymentBreakdownService,
             bookingPaymentsGateway,
             bookingPolicySnapshotService,
             bookingDateTimeService,

@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity, ActivityIndicator, TextInput } from 'react-native';
 import { Ionicons } from '../../../lib/icons';
 import type {
+  BookingProcessingFeeMode,
   ProfessionalService,
   ServiceCategoryOption,
 } from '../../../types/professional';
@@ -23,6 +24,7 @@ import {
 } from '../../../components/ui/MobileSurface';
 
 type ServicePaymentMode = 'ON_SITE' | 'DEPOSIT' | 'FULL_PREPAY';
+type ServiceProcessingFeeMode = BookingProcessingFeeMode;
 
 const emptyDraft = {
   name: '',
@@ -34,12 +36,30 @@ const emptyDraft = {
   duration: '',
   postBufferMinutes: '0',
   paymentType: 'ON_SITE' as ServicePaymentMode,
+  processingFeeMode: 'INSTANT' as ServiceProcessingFeeMode,
 };
 
 const PAYMENT_OPTIONS: Array<{ value: ServicePaymentMode; label: string }> = [
   { value: 'ON_SITE', label: 'Pago en el local' },
   { value: 'DEPOSIT', label: 'Seña online' },
   { value: 'FULL_PREPAY', label: 'Pago total online' },
+];
+
+const PROCESSING_FEE_OPTIONS: Array<{
+  value: ServiceProcessingFeeMode;
+  label: string;
+  description: string;
+}> = [
+  {
+    value: 'INSTANT',
+    label: '5,99% + IVA',
+    description: 'Acreditación inmediata de Mercado Pago. Se suma además 1% de Plura al checkout.',
+  },
+  {
+    value: 'DELAYED_21_DAYS',
+    label: '4,99% + IVA',
+    description: 'Acreditación a 21 días de Mercado Pago. Se suma además 1% de Plura al checkout.',
+  },
 ];
 
 const normalizePaymentType = (value?: string | null): ServicePaymentMode => {
@@ -52,6 +72,19 @@ const normalizePaymentType = (value?: string | null): ServicePaymentMode => {
 const getPaymentTypeLabel = (value?: string | null) => {
   const option = PAYMENT_OPTIONS.find((item) => item.value === normalizePaymentType(value));
   return option?.label ?? 'Pago en el local';
+};
+
+const normalizeProcessingFeeMode = (value?: string | null): ServiceProcessingFeeMode => {
+  return (value || '').trim().toUpperCase() === 'DELAYED_21_DAYS'
+    ? 'DELAYED_21_DAYS'
+    : 'INSTANT';
+};
+
+const getProcessingFeeModeLabel = (service: ProfessionalService) => {
+  const option = PROCESSING_FEE_OPTIONS.find(
+    (item) => item.value === normalizeProcessingFeeMode(service.processingFeeMode),
+  );
+  return option?.label ?? PROCESSING_FEE_OPTIONS[0].label;
 };
 
 const PRACTICAL_UNLIMITED = 9999;
@@ -228,6 +261,27 @@ export default function ServicesScreen() {
             />
           ) : null}
 
+          {draft.paymentType !== 'ON_SITE' && canUseOnlinePayments ? (
+            <View className="mt-3" style={{ gap: 8 }}>
+              <Text className="text-sm font-semibold text-gray-500 uppercase tracking-[2px]">
+                Acreditación de Mercado Pago
+              </Text>
+              <View style={{ gap: 8 }}>
+                {PROCESSING_FEE_OPTIONS.map((option) => (
+                  <SelectionChip
+                    key={option.value}
+                    label={option.label}
+                    selected={draft.processingFeeMode === option.value}
+                    onPress={() => setDraft((prev) => ({ ...prev, processingFeeMode: option.value }))}
+                  />
+                ))}
+              </View>
+              <Text className="text-xs text-gray-500">
+                El cargo al cliente incluye el fee de Mercado Pago, su IVA y 1% adicional de Plura.
+              </Text>
+            </View>
+          ) : null}
+
           <ActionButton
             disabled={isSaving || !draft.name.trim() || !draft.price.trim() || !draft.duration.trim()}
             loading={isSaving}
@@ -265,6 +319,7 @@ export default function ServicesScreen() {
                   duration: draft.duration.trim(),
                   postBufferMinutes: Number(draft.postBufferMinutes) || 0,
                   paymentType: draft.paymentType,
+                  processingFeeMode: draft.processingFeeMode,
                   active: true,
                 };
 
@@ -333,6 +388,11 @@ export default function ServicesScreen() {
                     <Text className="text-sm text-gray-500 mt-1">{resolveCategoryLabel(service)}</Text>
                   ) : null}
                   <Text className="text-sm text-gray-500 mt-1">{getPaymentTypeLabel(service.paymentType)}</Text>
+                  {normalizePaymentType(service.paymentType) !== 'ON_SITE' ? (
+                    <Text className="text-sm text-gray-500 mt-1">
+                      Checkout: {getProcessingFeeModeLabel(service)}
+                    </Text>
+                  ) : null}
                 </View>
                 <Text className="text-base font-bold text-primary">
                   {service.price ? `$${service.price}` : 'Consultar'}
@@ -355,6 +415,7 @@ export default function ServicesScreen() {
                       duration: service.duration || '',
                       postBufferMinutes: service.postBufferMinutes != null ? String(service.postBufferMinutes) : '0',
                       paymentType: normalizePaymentType(service.paymentType),
+                      processingFeeMode: normalizeProcessingFeeMode(service.processingFeeMode),
                     });
                   }}
                   style={{ flex: 1, minHeight: 42 }}

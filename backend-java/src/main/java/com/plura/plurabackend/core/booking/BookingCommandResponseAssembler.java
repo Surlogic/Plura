@@ -4,6 +4,7 @@ import com.plura.plurabackend.core.booking.decision.BookingActionDecisionService
 import com.plura.plurabackend.core.booking.decision.model.BookingActionDecision;
 import com.plura.plurabackend.core.booking.dto.BookingCommandResponse;
 import com.plura.plurabackend.core.booking.dto.ProfessionalBookingResponse;
+import com.plura.plurabackend.core.booking.finance.BookingPaymentBreakdownService;
 import com.plura.plurabackend.core.booking.finance.BookingFinanceService;
 import com.plura.plurabackend.core.booking.finance.BookingFinanceUpdateResult;
 import com.plura.plurabackend.core.booking.finance.model.BookingFinancialSummary;
@@ -25,17 +26,20 @@ import org.springframework.web.server.ResponseStatusException;
 public class BookingCommandResponseAssembler {
 
     private final BookingFinanceService bookingFinanceService;
+    private final BookingPaymentBreakdownService bookingPaymentBreakdownService;
     private final BookingPolicySnapshotService bookingPolicySnapshotService;
     private final BookingActionDecisionService bookingActionDecisionService;
     private final BookingDateTimeService bookingDateTimeService;
 
     public BookingCommandResponseAssembler(
         BookingFinanceService bookingFinanceService,
+        BookingPaymentBreakdownService bookingPaymentBreakdownService,
         BookingPolicySnapshotService bookingPolicySnapshotService,
         BookingActionDecisionService bookingActionDecisionService,
         BookingDateTimeService bookingDateTimeService
     ) {
         this.bookingFinanceService = bookingFinanceService;
+        this.bookingPaymentBreakdownService = bookingPaymentBreakdownService;
         this.bookingPolicySnapshotService = bookingPolicySnapshotService;
         this.bookingActionDecisionService = bookingActionDecisionService;
         this.bookingDateTimeService = bookingDateTimeService;
@@ -126,6 +130,9 @@ public class BookingCommandResponseAssembler {
         var latestPayout = financeResult != null && financeResult.payoutRecord() != null
             ? financeResult.payoutRecord()
             : bookingFinanceService.findLatestPayoutRecord(booking.getId());
+        var paymentBreakdown = bookingPaymentBreakdownService.toResponse(
+            bookingPaymentBreakdownService.quoteForBooking(booking)
+        );
         ProfessionalBookingResponse response = new ProfessionalBookingResponse(
             booking.getId(),
             String.valueOf(booking.getUser().getId()),
@@ -144,6 +151,7 @@ public class BookingCommandResponseAssembler {
             summary.getFinancialStatus() == null ? null : summary.getFinancialStatus().name(),
             bookingFinanceService.resolveRefundStatus(latestRefund),
             bookingFinanceService.resolvePayoutStatus(latestPayout),
+            paymentBreakdown,
             bookingFinanceService.toResponse(summary)
         );
         response.setLatestRefund(bookingFinanceService.toResponse(latestRefund));

@@ -50,6 +50,19 @@ const formatPrice = (value?: string) => {
   return value.includes('$') ? value : `$${value}`;
 };
 
+const formatMoney = (amount?: number | null, currency?: string | null) => {
+  if (typeof amount !== 'number' || Number.isNaN(amount)) return null;
+  try {
+    return new Intl.NumberFormat('es-UY', {
+      style: 'currency',
+      currency: currency || 'UYU',
+      maximumFractionDigits: 2,
+    }).format(amount);
+  } catch {
+    return `${currency || 'UYU'} ${amount.toFixed(2)}`;
+  }
+};
+
 const buildStartDateTime = (date?: string, time?: string): string | null => {
   if (!date || !time) return null;
   const normalizedTime = time.trim();
@@ -76,6 +89,29 @@ const resolveServiceCategoryLabel = (
   return fallbackCategory?.trim() || '';
 };
 
+const resolvePaymentBreakdown = (service: PublicProfessionalService | null) => {
+  const breakdown = service?.paymentBreakdown;
+  if (!breakdown) {
+    return null;
+  }
+  const currency = breakdown.currency || service?.currency || 'UYU';
+  const processingFeeAmount = typeof breakdown.processingFeeAmount === 'number'
+    ? breakdown.processingFeeAmount
+    : null;
+  return {
+    prepaidLabel: service?.paymentType === 'DEPOSIT' ? 'Seña del servicio' : 'Monto del servicio',
+    prepaidAmount: formatMoney(breakdown.prepaidBaseAmount, currency),
+    processingFeeLabel: processingFeeAmount && processingFeeAmount > 0
+      ? (breakdown.processingFeeLabel?.trim() || 'Cargo de procesamiento')
+      : null,
+    processingFeeAmount: processingFeeAmount && processingFeeAmount > 0
+      ? formatMoney(processingFeeAmount, currency)
+      : null,
+    totalLabel: 'Total del checkout',
+    totalAmount: formatMoney(breakdown.totalAmount, currency),
+  };
+};
+
 export default function ReservationCheckoutScreen() {
   const { slug, serviceId, date, time } = useLocalSearchParams<Params>();
   const { hasLoaded, isAuthenticated, role } = useAuthSession();
@@ -88,6 +124,7 @@ export default function ReservationCheckoutScreen() {
   const [professionalCategory, setProfessionalCategory] = useState('Profesional');
   const [professionalCity, setProfessionalCity] = useState<string | null>(null);
   const [professionalCountry, setProfessionalCountry] = useState<string | null>(null);
+  const paymentBreakdown = useMemo(() => resolvePaymentBreakdown(service), [service]);
 
   useEffect(() => {
     const load = async () => {
@@ -220,6 +257,26 @@ export default function ReservationCheckoutScreen() {
                     {isPrepaidService(service?.paymentType) ? 'Requiere checkout' : 'En el lugar'}
                   </Text>
                 </View>
+                {paymentBreakdown?.prepaidAmount ? (
+                  <View className="mt-3 flex-row items-center justify-between">
+                    <Text className="text-sm text-gray-500">{paymentBreakdown.prepaidLabel}</Text>
+                    <Text className="text-sm font-semibold text-secondary">{paymentBreakdown.prepaidAmount}</Text>
+                  </View>
+                ) : null}
+                {paymentBreakdown?.processingFeeLabel && paymentBreakdown.processingFeeAmount ? (
+                  <View className="mt-3 flex-row items-center justify-between">
+                    <Text className="text-sm text-gray-500">{paymentBreakdown.processingFeeLabel}</Text>
+                    <Text className="text-sm font-semibold text-secondary">
+                      {paymentBreakdown.processingFeeAmount}
+                    </Text>
+                  </View>
+                ) : null}
+                {paymentBreakdown?.totalAmount ? (
+                  <View className="mt-3 flex-row items-center justify-between">
+                    <Text className="text-sm text-gray-500">{paymentBreakdown.totalLabel}</Text>
+                    <Text className="text-sm font-semibold text-primary">{paymentBreakdown.totalAmount}</Text>
+                  </View>
+                ) : null}
               </View>
 
               {message ? (
@@ -231,7 +288,7 @@ export default function ReservationCheckoutScreen() {
               <View className="mt-4 rounded-xl bg-secondary/5 p-3">
                 <Text className="text-xs text-secondary">
                   {isPrepaidService(service?.paymentType)
-                    ? 'Si confirmas este turno, vamos a crear la reserva y abrir Mercado Pago para completar el checkout.'
+                    ? 'Si confirmas este turno, vamos a crear la reserva y abrir Mercado Pago con el total del checkout calculado por el backend.'
                     : 'Si confirmas este turno, la reserva quedara registrada y podras seguirla desde Mis turnos.'}
                 </Text>
               </View>

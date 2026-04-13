@@ -10,6 +10,7 @@ import com.plura.plurabackend.core.booking.dto.BookingFinancialSummaryResponse;
 import com.plura.plurabackend.core.booking.dto.BookingPayoutRecordResponse;
 import com.plura.plurabackend.core.booking.dto.BookingRefundRecordResponse;
 import com.plura.plurabackend.core.booking.finance.BookingFinanceService;
+import com.plura.plurabackend.core.booking.finance.BookingPaymentBreakdownService;
 import com.plura.plurabackend.core.booking.model.Booking;
 import com.plura.plurabackend.core.booking.model.BookingOperationalStatus;
 import com.plura.plurabackend.core.booking.model.ServicePaymentType;
@@ -34,6 +35,7 @@ class BookingClientServiceTest {
         BookingRepository bookingRepository = mock(BookingRepository.class);
         UserRepository userRepository = mock(UserRepository.class);
         BookingFinanceService bookingFinanceService = mock(BookingFinanceService.class);
+        BookingPaymentBreakdownService bookingPaymentBreakdownService = mock(BookingPaymentBreakdownService.class);
         BookingPolicySnapshotService bookingPolicySnapshotService = mock(BookingPolicySnapshotService.class);
         BookingDateTimeService bookingDateTimeService = mock(BookingDateTimeService.class);
         BookingClientProfessionalViewGateway bookingClientProfessionalViewGateway = mock(BookingClientProfessionalViewGateway.class);
@@ -42,6 +44,7 @@ class BookingClientServiceTest {
             bookingRepository,
             userRepository,
             bookingFinanceService,
+            bookingPaymentBreakdownService,
             bookingPolicySnapshotService,
             bookingDateTimeService,
             bookingClientProfessionalViewGateway,

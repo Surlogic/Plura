@@ -5,6 +5,7 @@ import type {
   BookingCommandResponse,
   BookingFinancialStatus,
   BookingFinancialSummary,
+  BookingPaymentBreakdown,
   BookingPaymentType,
   BookingPolicySnapshot,
   BookingPayoutRecord,
@@ -31,6 +32,7 @@ import {
 type ProfessionalBookingDto = ProfessionalBookingDtoBase<
   BookingPaymentType,
   BookingFinancialSummary,
+  BookingPaymentBreakdown,
   BookingFinancialStatus,
   BookingRefundStatus,
   BookingPayoutStatus,

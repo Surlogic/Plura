@@ -26,6 +26,7 @@ public class ProfessionalBookingResponse {
     private String paymentStatus;
     private String refundStatus;
     private String payoutStatus;
+    private BookingPaymentBreakdownResponse paymentBreakdown;
     private BookingFinancialSummaryResponse financialSummary;
     private BookingRefundRecordResponse latestRefund;
     private BookingPayoutRecordResponse latestPayout;
@@ -60,6 +61,7 @@ public class ProfessionalBookingResponse {
             paymentType == null ? ServicePaymentType.ON_SITE.name() : paymentType.name(),
             rescheduleCount == null ? 0 : Math.max(0, rescheduleCount),
             status == null ? "" : status.name(),
+            null,
             null,
             null,
             null,
@@ -122,6 +124,7 @@ public class ProfessionalBookingResponse {
         String paymentStatus,
         String refundStatus,
         String payoutStatus,
+        BookingPaymentBreakdownResponse paymentBreakdown,
         BookingFinancialSummaryResponse financialSummary
     ) {
         this.id = id;
@@ -143,6 +146,7 @@ public class ProfessionalBookingResponse {
         this.paymentStatus = paymentStatus;
         this.refundStatus = refundStatus;
         this.payoutStatus = payoutStatus;
+        this.paymentBreakdown = paymentBreakdown;
         this.financialSummary = financialSummary;
     }
 }

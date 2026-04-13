@@ -1,4 +1,5 @@
 import type {
+  BookingPaymentBreakdown,
   BookingCommandResponseBase,
   BookingOperationalStatus,
 } from '../types/bookings';
@@ -33,6 +34,7 @@ export type BookingDateTimeFormatter = (
 export type ClientBookingDtoBase<
   TPaymentType = string,
   TFinancialSummary = unknown,
+  TPaymentBreakdown = BookingPaymentBreakdown,
   TPaymentStatus = unknown,
   TRefundStatus = string,
   TPayoutStatus = string,
@@ -52,6 +54,7 @@ export type ClientBookingDtoBase<
   paymentStatus?: TPaymentStatus | null;
   refundStatus?: TRefundStatus | null;
   payoutStatus?: TPayoutStatus | null;
+  paymentBreakdown?: TPaymentBreakdown | null;
   financialSummary?: TFinancialSummary | null;
   latestRefund?: TRefundRecord | null;
   latestPayout?: TPayoutRecord | null;
@@ -84,6 +87,7 @@ export type ClientBookingsResponseDto<TBooking> =
 export type ClientDashboardBookingBase<
   TPaymentType = string,
   TFinancialSummary = unknown,
+  TPaymentBreakdown = BookingPaymentBreakdown,
   TPaymentStatus = unknown,
   TRefundStatus = string,
   TPayoutStatus = string,
@@ -102,6 +106,7 @@ export type ClientDashboardBookingBase<
   professionalSlug?: string | null;
   serviceId?: string | null;
   paymentType?: TPaymentType | null;
+  paymentBreakdown?: TPaymentBreakdown | null;
   financialSummary?: TFinancialSummary | null;
   timezone?: string | null;
   startDateTimeUtc?: string | null;
@@ -116,6 +121,7 @@ export type ClientDashboardBookingBase<
 export type ProfessionalBookingDtoBase<
   TPaymentType = string,
   TFinancialSummary = unknown,
+  TPaymentBreakdown = BookingPaymentBreakdown,
   TPaymentStatus = unknown,
   TRefundStatus = string,
   TPayoutStatus = string,
@@ -139,6 +145,7 @@ export type ProfessionalBookingDtoBase<
   paymentStatus?: TPaymentStatus | null;
   refundStatus?: TRefundStatus | null;
   payoutStatus?: TPayoutStatus | null;
+  paymentBreakdown?: TPaymentBreakdown | null;
   financialSummary?: TFinancialSummary | null;
   latestRefund?: TRefundRecord | null;
   latestPayout?: TPayoutRecord | null;
@@ -149,6 +156,7 @@ export type ProfessionalBookingDtoBase<
 export type ProfessionalReservationBase<
   TPaymentType = string,
   TFinancialSummary = unknown,
+  TPaymentBreakdown = BookingPaymentBreakdown,
   TPaymentStatus = unknown,
   TRefundStatus = string,
   TPayoutStatus = string,
@@ -168,6 +176,7 @@ export type ProfessionalReservationBase<
   effectiveDurationMinutes?: number;
   status?: FrontendReservationStatus;
   paymentType?: TPaymentType | null;
+  paymentBreakdown?: TPaymentBreakdown | null;
   financialSummary?: TFinancialSummary | null;
   paymentStatus?: TPaymentStatus | null;
   refundStatus?: TRefundStatus | null;
@@ -213,6 +222,7 @@ const financialStatusFromSummary = <TPaymentStatus>(
 export const mapClientBookingBase = <
   TPaymentType = string,
   TFinancialSummary = unknown,
+  TPaymentBreakdown = BookingPaymentBreakdown,
   TPaymentStatus = unknown,
   TRefundStatus = string,
   TPayoutStatus = string,
@@ -223,6 +233,7 @@ export const mapClientBookingBase = <
   booking: ClientBookingDtoBase<
     TPaymentType,
     TFinancialSummary,
+    TPaymentBreakdown,
     TPaymentStatus,
     TRefundStatus,
     TPayoutStatus,
@@ -234,6 +245,7 @@ export const mapClientBookingBase = <
 ): ClientDashboardBookingBase<
   TPaymentType,
   TFinancialSummary,
+  TPaymentBreakdown,
   TPaymentStatus,
   TRefundStatus,
   TPayoutStatus,
@@ -264,6 +276,7 @@ export const mapClientBookingBase = <
     professionalSlug: booking.professional?.slug || booking.professionalSlug || null,
     serviceId: booking.service?.id || booking.serviceId || null,
     paymentType: booking.paymentType || null,
+    paymentBreakdown: booking.paymentBreakdown || null,
     financialSummary: booking.financialSummary || null,
     timezone,
     startDateTimeUtc,
@@ -317,6 +330,7 @@ export const toApiReservationStatus = (
 export const mapProfessionalBookingBase = <
   TPaymentType = string,
   TFinancialSummary = unknown,
+  TPaymentBreakdown = BookingPaymentBreakdown,
   TPaymentStatus = unknown,
   TRefundStatus = string,
   TPayoutStatus = string,
@@ -327,6 +341,7 @@ export const mapProfessionalBookingBase = <
   booking: ProfessionalBookingDtoBase<
     TPaymentType,
     TFinancialSummary,
+    TPaymentBreakdown,
     TPaymentStatus,
     TRefundStatus,
     TPayoutStatus,
@@ -338,6 +353,7 @@ export const mapProfessionalBookingBase = <
 ): ProfessionalReservationBase<
   TPaymentType,
   TFinancialSummary,
+  TPaymentBreakdown,
   TPaymentStatus,
   TRefundStatus,
   TPayoutStatus,
@@ -366,6 +382,7 @@ export const mapProfessionalBookingBase = <
     serviceId: booking.serviceId,
     userId: booking.userId,
     paymentType: booking.paymentType || null,
+    paymentBreakdown: booking.paymentBreakdown || null,
     financialSummary: booking.financialSummary || null,
     paymentStatus: booking.paymentStatus || financialStatusFromSummary<TPaymentStatus>(booking.financialSummary),
     refundStatus: (booking.refundStatus ?? 'NONE') as TRefundStatus,

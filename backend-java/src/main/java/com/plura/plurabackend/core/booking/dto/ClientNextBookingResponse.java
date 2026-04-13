@@ -20,6 +20,7 @@ public class ClientNextBookingResponse {
     private String paymentStatus;
     private String refundStatus;
     private String payoutStatus;
+    private BookingPaymentBreakdownResponse paymentBreakdown;
     private BookingFinancialSummaryResponse financialSummary;
     private BookingRefundRecordResponse latestRefund;
     private BookingPayoutRecordResponse latestPayout;

@@ -4,6 +4,8 @@ import type {
   BookingFinancialStatus,
   BookingFinancialSummary,
   BookingOperationalStatus,
+  BookingPaymentBreakdown,
+  BookingProcessingFeeMode,
   BookingPaymentSession,
   BookingPaymentType,
   ProfessionalBookingPolicyBase,
@@ -14,6 +16,8 @@ export type {
   BookingFinancialStatus,
   BookingFinancialSummary,
   BookingOperationalStatus,
+  BookingPaymentBreakdown,
+  BookingProcessingFeeMode,
   BookingPaymentSession,
   BookingPaymentType,
 };

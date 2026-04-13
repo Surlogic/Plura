@@ -2,6 +2,7 @@ package com.plura.plurabackend.professional.application;
 
 import com.plura.plurabackend.core.storage.ImageCleanupService;
 import com.plura.plurabackend.core.storage.ImageStorageService;
+import com.plura.plurabackend.core.booking.model.BookingProcessingFeeMode;
 import com.plura.plurabackend.core.booking.model.ServicePaymentType;
 import com.plura.plurabackend.core.category.model.Category;
 import com.plura.plurabackend.core.category.repository.CategoryRepository;
@@ -80,6 +81,7 @@ public class ProfileServiceCatalogSupport {
         service.setImageUrl(normalizeStoredImageReference(request.getImageUrl()));
         service.setPostBufferMinutes(sanitizePostBufferMinutes(request.getPostBufferMinutes()));
         service.setPaymentType(paymentType);
+        service.setProcessingFeeMode(resolveProcessingFeeMode(request.getProcessingFeeMode()));
         service.setCurrency(resolveServiceCurrency(request.getCurrency()));
         service.setActive(request.getActive() == null ? true : request.getActive());
 
@@ -134,6 +136,9 @@ public class ProfileServiceCatalogSupport {
             service.setPostBufferMinutes(sanitizePostBufferMinutes(request.getPostBufferMinutes()));
         }
         service.setPaymentType(nextPaymentType);
+        if (request.getProcessingFeeMode() != null) {
+            service.setProcessingFeeMode(resolveProcessingFeeMode(request.getProcessingFeeMode()));
+        }
         if (request.getCurrency() != null) {
             service.setCurrency(resolveServiceCurrency(request.getCurrency()));
         }
@@ -179,6 +184,10 @@ public class ProfileServiceCatalogSupport {
 
     private ServicePaymentType resolveServicePaymentType(ServicePaymentType paymentType) {
         return paymentType == null ? ServicePaymentType.ON_SITE : paymentType;
+    }
+
+    private BookingProcessingFeeMode resolveProcessingFeeMode(BookingProcessingFeeMode processingFeeMode) {
+        return processingFeeMode == null ? BookingProcessingFeeMode.INSTANT : processingFeeMode;
     }
 
     private void ensurePaymentTypeAllowed(String rawUserId, ServicePaymentType paymentType) {

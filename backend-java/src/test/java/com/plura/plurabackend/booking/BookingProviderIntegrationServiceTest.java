@@ -37,6 +37,7 @@ import com.plura.plurabackend.core.booking.event.model.BookingActorType;
 import com.plura.plurabackend.core.booking.event.model.BookingEventType;
 import com.plura.plurabackend.core.booking.finance.BookingFinanceService;
 import com.plura.plurabackend.core.booking.finance.BookingMoneyResolver;
+import com.plura.plurabackend.core.booking.finance.BookingPaymentBreakdownService;
 import com.plura.plurabackend.core.booking.finance.BookingProviderIntegrationService;
 import com.plura.plurabackend.core.booking.finance.model.BookingFinancialStatus;
 import com.plura.plurabackend.core.booking.finance.model.BookingFinancialSummary;
@@ -79,10 +80,12 @@ class BookingProviderIntegrationServiceTest {
     private final PaymentTransactionRepository paymentTransactionRepository = mock(PaymentTransactionRepository.class);
     private final BookingFinanceService bookingFinanceService = mock(BookingFinanceService.class);
     private final BookingEventService bookingEventService = mock(BookingEventService.class);
-    private final BookingMoneyResolver bookingMoneyResolver = new BookingMoneyResolver();
+    private final BillingProperties billingProperties = new BillingProperties();
+    private final BookingPaymentBreakdownService bookingPaymentBreakdownService =
+        new BookingPaymentBreakdownService(billingProperties);
+    private final BookingMoneyResolver bookingMoneyResolver = new BookingMoneyResolver(bookingPaymentBreakdownService);
     private final ProviderOperationService providerOperationService = mock(ProviderOperationService.class);
     private final ProviderOperationWorker providerOperationWorker = mock(ProviderOperationWorker.class);
-    private final BillingProperties billingProperties = new BillingProperties();
     private final PaymentProviderClient providerClient = mock(PaymentProviderClient.class);
     private final BillingNotificationIntegrationService billingNotificationIntegrationService =
         mock(BillingNotificationIntegrationService.class);
@@ -746,6 +749,7 @@ class BookingProviderIntegrationServiceTest {
             bookingFinanceService,
             bookingEventService,
             bookingMoneyResolver,
+            bookingPaymentBreakdownService,
             providerOperationService,
             providerOperationWorker,
             transactionManager,

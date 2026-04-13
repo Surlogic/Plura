@@ -7,6 +7,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.plura.plurabackend.core.billing.BillingProperties;
 import com.plura.plurabackend.core.billing.payments.repository.PaymentTransactionRepository;
 import com.plura.plurabackend.core.billing.payments.model.PaymentTransaction;
 import com.plura.plurabackend.core.billing.payments.model.PaymentTransactionStatus;
@@ -18,6 +19,7 @@ import com.plura.plurabackend.core.booking.event.model.BookingActorType;
 import com.plura.plurabackend.core.booking.finance.BookingFinanceService;
 import com.plura.plurabackend.core.booking.finance.BookingFinanceUpdateResult;
 import com.plura.plurabackend.core.booking.finance.BookingMoneyResolver;
+import com.plura.plurabackend.core.booking.finance.BookingPaymentBreakdownService;
 import com.plura.plurabackend.core.booking.finance.model.BookingFinancialStatus;
 import com.plura.plurabackend.core.booking.finance.model.BookingFinancialSummary;
 import com.plura.plurabackend.core.booking.finance.model.BookingPayoutReasonCode;
@@ -49,7 +51,7 @@ class BookingFinanceServiceTest {
         payoutRecordRepository,
         paymentTransactionRepository,
         bookingActionDecisionRepository,
-        new BookingMoneyResolver(),
+        new BookingMoneyResolver(new BookingPaymentBreakdownService(new BillingProperties())),
         new ObjectMapper()
     );
 

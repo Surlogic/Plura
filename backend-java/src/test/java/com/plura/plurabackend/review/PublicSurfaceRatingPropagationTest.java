@@ -7,6 +7,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.plura.plurabackend.core.booking.finance.BookingPaymentBreakdownService;
 import com.plura.plurabackend.core.booking.policy.BookingPolicySnapshotService;
 import com.plura.plurabackend.core.common.util.SlugUtils;
 import com.plura.plurabackend.core.home.dto.HomeTopProfessionalResponse;
@@ -36,6 +37,7 @@ class PublicSurfaceRatingPropagationTest {
         ProfessionalCategorySupport categorySupport = mock(ProfessionalCategorySupport.class);
         ProfesionalServiceRepository serviceRepository = mock(ProfesionalServiceRepository.class);
         BookingPolicySnapshotService bookingPolicySnapshotService = mock(BookingPolicySnapshotService.class);
+        BookingPaymentBreakdownService bookingPaymentBreakdownService = mock(BookingPaymentBreakdownService.class);
         ImageStorageService imageStorageService = mock(ImageStorageService.class);
 
         when(categorySupport.resolvePrimaryRubro(any())).thenReturn("Peluqueria");
@@ -51,6 +53,7 @@ class PublicSurfaceRatingPropagationTest {
             categorySupport,
             serviceRepository,
             bookingPolicySnapshotService,
+            bookingPaymentBreakdownService,
             imageStorageService,
             new ObjectMapper()
         );

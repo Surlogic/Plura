@@ -6,6 +6,7 @@ import com.plura.plurabackend.core.booking.dto.BookingFinancialSummaryResponse;
 import com.plura.plurabackend.core.booking.dto.BookingPayoutRecordResponse;
 import com.plura.plurabackend.core.booking.dto.BookingRefundRecordResponse;
 import com.plura.plurabackend.core.booking.dto.ClientNextBookingResponse;
+import com.plura.plurabackend.core.booking.finance.BookingPaymentBreakdownService;
 import com.plura.plurabackend.core.booking.finance.BookingFinanceService;
 import com.plura.plurabackend.core.booking.model.Booking;
 import com.plura.plurabackend.core.booking.model.BookingOperationalStatus;
@@ -35,6 +36,7 @@ public class BookingClientService {
     private final BookingRepository bookingRepository;
     private final UserRepository userRepository;
     private final BookingFinanceService bookingFinanceService;
+    private final BookingPaymentBreakdownService bookingPaymentBreakdownService;
     private final BookingPolicySnapshotService bookingPolicySnapshotService;
     private final BookingDateTimeService bookingDateTimeService;
     private final BookingClientProfessionalViewGateway bookingClientProfessionalViewGateway;
@@ -46,6 +48,7 @@ public class BookingClientService {
         BookingRepository bookingRepository,
         UserRepository userRepository,
         BookingFinanceService bookingFinanceService,
+        BookingPaymentBreakdownService bookingPaymentBreakdownService,
         BookingPolicySnapshotService bookingPolicySnapshotService,
         BookingDateTimeService bookingDateTimeService,
         BookingClientProfessionalViewGateway bookingClientProfessionalViewGateway,
@@ -55,6 +58,7 @@ public class BookingClientService {
         this.bookingRepository = bookingRepository;
         this.userRepository = userRepository;
         this.bookingFinanceService = bookingFinanceService;
+        this.bookingPaymentBreakdownService = bookingPaymentBreakdownService;
         this.bookingPolicySnapshotService = bookingPolicySnapshotService;
         this.bookingDateTimeService = bookingDateTimeService;
         this.bookingClientProfessionalViewGateway = bookingClientProfessionalViewGateway;
@@ -128,6 +132,9 @@ public class BookingClientService {
         BookingFinancialSummaryResponse financialSummary = financialSummaries.get(booking.getId());
         BookingRefundRecordResponse latestRefund = latestRefunds.get(booking.getId());
         BookingPayoutRecordResponse latestPayout = latestPayouts.get(booking.getId());
+        var paymentBreakdown = bookingPaymentBreakdownService.toResponse(
+            bookingPaymentBreakdownService.quoteForBooking(booking)
+        );
         return new ClientNextBookingResponse(
             booking.getId(),
             booking.getOperationalStatus().name(),
@@ -140,6 +147,7 @@ public class BookingClientService {
             financialSummary == null ? null : financialSummary.getFinancialStatus(),
             latestRefund == null ? "NONE" : latestRefund.getStatus(),
             latestPayout == null ? "NONE" : latestPayout.getStatus(),
+            paymentBreakdown,
             financialSummary,
             latestRefund,
             latestPayout,

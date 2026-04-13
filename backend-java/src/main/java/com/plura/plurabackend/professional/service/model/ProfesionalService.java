@@ -1,6 +1,7 @@
 package com.plura.plurabackend.professional.service.model;
 
 import com.plura.plurabackend.core.booking.model.ServicePaymentType;
+import com.plura.plurabackend.core.booking.model.BookingProcessingFeeMode;
 import com.plura.plurabackend.core.category.model.Category;
 import com.plura.plurabackend.professional.model.ProfessionalProfile;
 import jakarta.persistence.Column;
@@ -66,6 +67,10 @@ public class ProfesionalService {
     @Column(name = "payment_type", nullable = false, length = 20)
     private ServicePaymentType paymentType = ServicePaymentType.ON_SITE;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "processing_fee_mode", nullable = false, length = 32)
+    private BookingProcessingFeeMode processingFeeMode = BookingProcessingFeeMode.INSTANT;
+
     @Column(name = "active", nullable = false)
     private Boolean active = true;
 
@@ -85,6 +90,9 @@ public class ProfesionalService {
         }
         if (this.paymentType == null) {
             this.paymentType = ServicePaymentType.ON_SITE;
+        }
+        if (this.processingFeeMode == null) {
+            this.processingFeeMode = BookingProcessingFeeMode.INSTANT;
         }
         if (this.currency == null || this.currency.isBlank()) {
             this.currency = "UYU";

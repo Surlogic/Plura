@@ -671,6 +671,40 @@ export default function ClienteReservasPage() {
                       Ubicación:{' '}
                       <span className="font-semibold text-[#0E2A47]">{selectedBooking.location}</span>
                     </p>
+                    {selectedBooking.paymentBreakdown?.prepaidBaseAmount != null ? (
+                      <p>
+                        {selectedBooking.paymentType === 'DEPOSIT' ? 'Seña del servicio' : 'Monto del servicio'}:{' '}
+                        <span className="font-semibold text-[#0E2A47]">
+                          {formatBookingMoney(
+                            selectedBooking.paymentBreakdown.prepaidBaseAmount,
+                            selectedBooking.paymentBreakdown.currency,
+                          )}
+                        </span>
+                      </p>
+                    ) : null}
+                    {selectedBooking.paymentBreakdown?.processingFeeAmount != null
+                    && selectedBooking.paymentBreakdown.processingFeeAmount > 0 ? (
+                      <p>
+                        {selectedBooking.paymentBreakdown.processingFeeLabel || 'Cargo de procesamiento'}:{' '}
+                        <span className="font-semibold text-[#0E2A47]">
+                          {formatBookingMoney(
+                            selectedBooking.paymentBreakdown.processingFeeAmount,
+                            selectedBooking.paymentBreakdown.currency,
+                          )}
+                        </span>
+                      </p>
+                    ) : null}
+                    {selectedBooking.paymentBreakdown?.totalAmount != null ? (
+                      <p>
+                        Total cobrado:{' '}
+                        <span className="font-semibold text-[#0E2A47]">
+                          {formatBookingMoney(
+                            selectedBooking.paymentBreakdown.totalAmount,
+                            selectedBooking.paymentBreakdown.currency,
+                          )}
+                        </span>
+                      </p>
+                    ) : null}
                     {selectedBooking.financialSummary?.amountHeld ? (
                       <p>
                         Fondos retenidos:{' '}

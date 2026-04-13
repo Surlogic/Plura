@@ -1,5 +1,6 @@
 import api from './api';
 import type {
+  BookingProcessingFeeMode,
   ProfessionalSchedule,
   ProfessionalService,
   ServiceCategoryOption,
@@ -39,6 +40,7 @@ export type ServicePayload = {
   duration: string;
   postBufferMinutes: number;
   paymentType: 'ON_SITE' | 'DEPOSIT' | 'FULL_PREPAY';
+  processingFeeMode: BookingProcessingFeeMode;
   active: boolean;
 };
 

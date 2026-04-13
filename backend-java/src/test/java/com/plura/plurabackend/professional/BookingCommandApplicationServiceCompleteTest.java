@@ -14,6 +14,7 @@ import com.plura.plurabackend.core.booking.BookingPaymentsGateway;
 import com.plura.plurabackend.core.booking.BookingSchedulingAvailabilityGateway;
 import com.plura.plurabackend.core.booking.decision.BookingActionDecisionService;
 import com.plura.plurabackend.core.booking.event.BookingEventService;
+import com.plura.plurabackend.core.booking.finance.BookingPaymentBreakdownService;
 import com.plura.plurabackend.core.booking.finance.BookingFinanceService;
 import com.plura.plurabackend.core.booking.model.Booking;
 import com.plura.plurabackend.core.booking.model.BookingOperationalStatus;
@@ -49,6 +50,7 @@ class BookingCommandApplicationServiceCompleteTest {
     private final BookingActionsEvaluator bookingActionsEvaluator = mock(BookingActionsEvaluator.class);
     private final BookingActionDecisionService bookingActionDecisionService = mock(BookingActionDecisionService.class);
     private final BookingFinanceService bookingFinanceService = mock(BookingFinanceService.class);
+    private final BookingPaymentBreakdownService bookingPaymentBreakdownService = mock(BookingPaymentBreakdownService.class);
     private final BookingPaymentsGateway bookingPaymentsGateway = mock(BookingPaymentsGateway.class);
     private final BookingSchedulingAvailabilityGateway bookingSchedulingAvailabilityGateway = mock(
         BookingSchedulingAvailabilityGateway.class
@@ -72,6 +74,7 @@ class BookingCommandApplicationServiceCompleteTest {
     );
     private final BookingCommandResponseAssembler bookingCommandResponseAssembler = new BookingCommandResponseAssembler(
         bookingFinanceService,
+        bookingPaymentBreakdownService,
         bookingPolicySnapshotService,
         bookingActionDecisionService,
         bookingDateTimeService
@@ -90,6 +93,7 @@ class BookingCommandApplicationServiceCompleteTest {
         bookingActionsEvaluator,
         bookingActionDecisionService,
         bookingFinanceService,
+        bookingPaymentBreakdownService,
         bookingSchedulingAvailabilityGateway,
         bookingEventService,
         userRepository,

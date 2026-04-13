@@ -4,12 +4,14 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.plura.plurabackend.core.billing.BillingProperties;
 import com.plura.plurabackend.core.booking.actions.BookingActionsEvaluation;
 import com.plura.plurabackend.core.booking.actions.BookingActionsEvaluator;
 import com.plura.plurabackend.core.booking.actions.model.BookingActionActor;
 import com.plura.plurabackend.core.booking.actions.model.BookingActionReasonCode;
 import com.plura.plurabackend.core.booking.actions.model.BookingSuggestedAction;
 import com.plura.plurabackend.core.booking.finance.BookingMoneyResolver;
+import com.plura.plurabackend.core.booking.finance.BookingPaymentBreakdownService;
 import com.plura.plurabackend.core.booking.model.Booking;
 import com.plura.plurabackend.core.booking.model.BookingOperationalStatus;
 import com.plura.plurabackend.core.booking.model.ServicePaymentType;
@@ -23,7 +25,7 @@ import org.junit.jupiter.api.Test;
 class BookingActionsEvaluatorTest {
 
     private final BookingActionsEvaluator evaluator = new BookingActionsEvaluator(
-        new BookingMoneyResolver(),
+        new BookingMoneyResolver(new BookingPaymentBreakdownService(new BillingProperties())),
         new BookingDateTimeService("America/Montevideo")
     );
 

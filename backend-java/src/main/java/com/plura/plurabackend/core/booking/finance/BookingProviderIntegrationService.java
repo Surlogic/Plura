@@ -88,6 +88,7 @@ public class BookingProviderIntegrationService {
     private final BookingFinanceService bookingFinanceService;
     private final BookingEventService bookingEventService;
     private final BookingMoneyResolver bookingMoneyResolver;
+    private final BookingPaymentBreakdownService bookingPaymentBreakdownService;
     private final ProviderOperationService providerOperationService;
     private final ProviderOperationWorker providerOperationWorker;
     private final BillingProperties billingProperties;
@@ -109,6 +110,7 @@ public class BookingProviderIntegrationService {
         BookingFinanceService bookingFinanceService,
         BookingEventService bookingEventService,
         BookingMoneyResolver bookingMoneyResolver,
+        BookingPaymentBreakdownService bookingPaymentBreakdownService,
         ProviderOperationService providerOperationService,
         @Lazy ProviderOperationWorker providerOperationWorker,
         PlatformTransactionManager transactionManager,
@@ -128,6 +130,7 @@ public class BookingProviderIntegrationService {
         this.bookingFinanceService = bookingFinanceService;
         this.bookingEventService = bookingEventService;
         this.bookingMoneyResolver = bookingMoneyResolver;
+        this.bookingPaymentBreakdownService = bookingPaymentBreakdownService;
         this.providerOperationService = providerOperationService;
         this.providerOperationWorker = providerOperationWorker;
         this.billingProperties = billingProperties;
@@ -163,6 +166,9 @@ public class BookingProviderIntegrationService {
         }
 
         BigDecimal amount = bookingMoneyResolver.resolvePrepaidAmount(booking);
+        var paymentBreakdown = bookingPaymentBreakdownService.toResponse(
+            bookingPaymentBreakdownService.quoteForBooking(booking)
+        );
         if (amount.signum() <= 0 || booking.getServicePaymentTypeSnapshot() == ServicePaymentType.ON_SITE) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "La reserva no requiere pago anticipado");
         }
@@ -200,6 +206,7 @@ public class BookingProviderIntegrationService {
                 existingApproved.getProvider().name(),
                 null,
                 existingApproved.getAmount(),
+                paymentBreakdown,
                 existingApproved.getCurrency(),
                 summary.getFinancialStatus().name()
             );
@@ -227,6 +234,7 @@ public class BookingProviderIntegrationService {
                     existingPending.getProvider() == null ? null : existingPending.getProvider().name(),
                     session.checkoutUrl(),
                     existingPending.getAmount(),
+                    paymentBreakdown,
                     existingPending.getCurrency(),
                     summary.getFinancialStatus().name()
                 );
@@ -247,6 +255,7 @@ public class BookingProviderIntegrationService {
                     existingPending.getProvider() == null ? null : existingPending.getProvider().name(),
                     session.checkoutUrl(),
                     existingPending.getAmount(),
+                    paymentBreakdown,
                     existingPending.getCurrency(),
                     summary.getFinancialStatus().name()
                 );
@@ -264,6 +273,7 @@ public class BookingProviderIntegrationService {
                 existingPending.getProvider() == null ? null : existingPending.getProvider().name(),
                 checkoutUrl,
                 existingPending.getAmount(),
+                paymentBreakdown,
                 existingPending.getCurrency(),
                 summary.getFinancialStatus().name()
             );
@@ -356,6 +366,7 @@ public class BookingProviderIntegrationService {
             provider.name(),
             checkoutSession.checkoutUrl(),
             amount,
+            paymentBreakdown,
             transaction.getCurrency(),
             summary.getFinancialStatus().name()
         );

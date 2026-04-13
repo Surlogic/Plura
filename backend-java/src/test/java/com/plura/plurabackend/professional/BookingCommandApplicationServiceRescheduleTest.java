@@ -31,6 +31,7 @@ import com.plura.plurabackend.core.booking.dto.BookingRescheduleRequest;
 import com.plura.plurabackend.core.booking.event.BookingEventService;
 import com.plura.plurabackend.core.booking.finance.BookingFinanceDispatchPlan;
 import com.plura.plurabackend.core.booking.finance.BookingFinanceUpdateResult;
+import com.plura.plurabackend.core.booking.finance.BookingPaymentBreakdownService;
 import com.plura.plurabackend.core.booking.finance.BookingFinanceService;
 import com.plura.plurabackend.core.booking.finance.model.BookingFinancialStatus;
 import com.plura.plurabackend.core.booking.finance.model.BookingFinancialSummary;
@@ -88,6 +89,7 @@ class BookingCommandApplicationServiceRescheduleTest {
     private final BookingActionsEvaluator bookingActionsEvaluator = mock(BookingActionsEvaluator.class);
     private final BookingActionDecisionService bookingActionDecisionService = mock(BookingActionDecisionService.class);
     private final BookingFinanceService bookingFinanceService = mock(BookingFinanceService.class);
+    private final BookingPaymentBreakdownService bookingPaymentBreakdownService = mock(BookingPaymentBreakdownService.class);
     private final BookingPaymentsGateway bookingPaymentsGateway = mock(BookingPaymentsGateway.class);
     private final BookingSchedulingAvailabilityGateway bookingSchedulingAvailabilityGateway = mock(
         BookingSchedulingAvailabilityGateway.class
@@ -123,6 +125,7 @@ class BookingCommandApplicationServiceRescheduleTest {
     );
     private final BookingCommandResponseAssembler bookingCommandResponseAssembler = new BookingCommandResponseAssembler(
         bookingFinanceService,
+        bookingPaymentBreakdownService,
         bookingPolicySnapshotService,
         bookingActionDecisionService,
         bookingDateTimeService
@@ -139,6 +142,7 @@ class BookingCommandApplicationServiceRescheduleTest {
         bookingActionsEvaluator,
         bookingActionDecisionService,
         bookingFinanceService,
+        bookingPaymentBreakdownService,
         bookingSchedulingAvailabilityGateway,
         bookingEventService,
         userRepository,

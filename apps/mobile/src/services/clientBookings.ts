@@ -2,6 +2,7 @@ import api from './api';
 import type {
   BookingActions,
   BookingCommandResponse,
+  BookingPaymentBreakdown,
   BookingFinancialSummary,
   BookingOperationalStatus,
   BookingPaymentSession,
@@ -28,12 +29,14 @@ export type ClientDashboardBooking = {
   professionalSlug?: string | null;
   serviceId?: string | null;
   paymentType?: BookingPaymentType | null;
+  paymentBreakdown?: BookingPaymentBreakdown | null;
   financialSummary?: BookingFinancialSummary | null;
 };
 
 type ClientBookingDto = ClientBookingDtoBase<
   BookingPaymentType,
-  BookingFinancialSummary
+  BookingFinancialSummary,
+  BookingPaymentBreakdown
 >;
 
 type ClientBookingsPayload = ClientBookingsResponseDto<ClientBookingDto>;

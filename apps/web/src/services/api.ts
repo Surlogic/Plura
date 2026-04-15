@@ -37,24 +37,35 @@ const authTokenFromResponse = (
   return typeof token === 'string' && token.trim() ? token.trim() : null;
 };
 
+const getUrlPathname = (url?: string) => {
+  if (!url) return '';
+  try {
+    return new URL(url, 'http://localhost').pathname;
+  } catch {
+    return url.split('?')[0] || '';
+  }
+};
+
 const isAuthRoute = (url?: string) => {
-  if (!url) return false;
+  const pathname = getUrlPathname(url);
+  if (!pathname) return false;
   return (
-    url.includes('/auth/login') ||
-    url.includes('/auth/register') ||
-    url.includes('/auth/oauth') ||
-    url.includes('/auth/refresh') ||
-    url.includes('/auth/logout')
+    pathname.startsWith('/auth/login') ||
+    pathname.startsWith('/auth/register') ||
+    pathname === '/auth/oauth' ||
+    pathname === '/auth/refresh' ||
+    pathname === '/auth/logout'
   );
 };
 
 const isSessionMutatingAuthRoute = (url?: string) => {
-  if (!url) return false;
+  const pathname = getUrlPathname(url);
+  if (!pathname) return false;
   return (
-    url.includes('/auth/login') ||
-    url.includes('/auth/oauth') ||
-    url.includes('/auth/refresh') ||
-    url.includes('/auth/logout')
+    pathname.startsWith('/auth/login') ||
+    pathname === '/auth/oauth' ||
+    pathname === '/auth/refresh' ||
+    pathname === '/auth/logout'
   );
 };
 

@@ -353,6 +353,9 @@ Notas operativas de performance hoy:
 - `QUERY_COUNT_HEADER_ENABLED=true` expone `X-Plura-Sql-Query-Count` para requests HTTP y cuenta sentencias Hibernate/JPA por request; no cubre consultas JDBC directas como search o el nuevo inbox read path
 - `V50__scale_hardening_indexes.sql` limpia indices sin uso claro en `email_dispatch`, `provider_operation` y `booking`, y agrega cobertura para lecturas por `provider_operation(status, updated_at|lease_until)` y `payment_transaction(external_reference, created_at)`
 - `provider_operation.findDueOperations()` ahora evita leer operaciones con `lease_until` todavia activo, para bajar churn del worker bajo concurrencia
+- `V70__supabase_data_api_hardening.sql` ya dejo `public` bloqueado para Data API (`authenticator -> pgrst.db_schemas=api_public`), con RLS y policy deny-all sobre tablas propias del proyecto en `public`
+- `V73__move_relocatable_extensions_out_of_public.sql` mueve `pg_trgm` y `unaccent` al schema `extensions` y redefine `public.immutable_unaccent()` para dejar de depender de `public.unaccent`
+- `postgis` sigue siendo el unico hallazgo de extensiones que no se puede cerrar solo con Flyway normal: en Supabase viene no relocatable y moverlo fuera de `public` requiere privilegio sobre `pg_extension` o intervención de soporte, por lo que `public.spatial_ref_sys` puede seguir apareciendo en Advisor hasta completar ese paso
 - los defaults del backend quedaron mas conservadores para scale-out:
   - `HIKARI_MIN_IDLE` default `2`
   - `AUTH_ALLOW_LEGACY_REFRESH_FALLBACK` default `false`

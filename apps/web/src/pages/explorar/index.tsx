@@ -494,10 +494,10 @@ export default function ExplorarPage() {
           <div className="space-y-2">
             <p className="text-xs uppercase tracking-[0.35em] text-[color:var(--ink-faint)]">Explorar</p>
             <h1 className="text-3xl font-semibold text-[color:var(--ink)] sm:text-4xl">
-              Profesionales y locales
+              Profesionales y Negocios
             </h1>
             <p className="max-w-2xl text-sm text-[color:var(--ink-muted)] sm:text-base">
-              Buscá por tipo, ubicación, fecha o disponibilidad inmediata.
+              Buscá por categoría, ubicación, fecha o disponibilidad inmediata
             </p>
           </div>
 

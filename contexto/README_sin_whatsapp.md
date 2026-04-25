@@ -164,6 +164,7 @@ Base transversal que ordena el producto y la arquitectura:
 - side effects de booking (agenda, notificaciones) ejecutados via after-commit para seguridad transaccional
 - base de analytics y eventos del producto
 - tablero interno de negocio ya integrado en web bajo `/internal/ops/analytics`: usa agregados propios de reservas/pagos/reseñas y tracking interno en `app_product_event`; ya no mira solo `search` + `profile view`, sino tambien funnel real de `/reservar` (`step viewed`, servicio/fecha/horario confirmados, auth abierto/completado, submit), `BOOKING_CREATED`, `PAYMENT_SESSION_CREATED`, `BOOKING_CONFIRMED`, `BOOKING_COMPLETED`, plataformas y mix por modalidad de pago sin exponer esa capa al cliente final
+- hardening de base para Supabase ya aplicado desde Flyway: la app sigue usando Supabase como PostgreSQL administrado detras del backend Spring, pero el Data API/PostgREST deja de exponer `public`; queda reservado un schema `api_public` vacio para futuras superficies auditadas y las tablas operativas actuales de `public` pasan a RLS defensivo deny-all para roles API
 
 Notas operativas recientes:
 

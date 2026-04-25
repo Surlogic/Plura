@@ -10,6 +10,7 @@ import {
   SEARCH_CITY_SUGGESTIONS_LIMIT,
   SEARCH_DEFAULT_CITY_SUGGESTIONS,
   SEARCH_DEFAULT_PAGE,
+  SEARCH_DEFAULT_RADIUS_KM,
   SEARCH_RECENT_ITEMS_LIMIT,
   SEARCH_SUGGESTIONS_LIMIT,
 } from '@/config/search';
@@ -34,6 +35,7 @@ export type UnifiedSearchValues = {
   city: string;
   lat?: number;
   lng?: number;
+  radiusKm: number;
   date: string;
   from?: string;
   to?: string;
@@ -45,6 +47,7 @@ const DEFAULT_VALUES: UnifiedSearchValues = {
   query: '',
   categorySlug: undefined,
   city: '',
+  radiusKm: SEARCH_DEFAULT_RADIUS_KM,
   date: '',
   from: undefined,
   to: undefined,
@@ -89,6 +92,13 @@ export const normalizeDate = (value?: string) => {
   return /^\d{4}-\d{2}-\d{2}$/.test(trimmed) ? trimmed : '';
 };
 
+const normalizeRadiusKm = (value?: number) => {
+  if (typeof value !== 'number' || !Number.isFinite(value)) {
+    return SEARCH_DEFAULT_RADIUS_KM;
+  }
+  return Math.max(1, Math.min(100, Math.round(value)));
+};
+
 export const normalizeInitialValues = (
   initialValues?: Partial<UnifiedSearchValues>,
 ): UnifiedSearchValues => {
@@ -102,6 +112,7 @@ export const normalizeInitialValues = (
     city: initialValues?.city?.trim() || '',
     lat: typeof initialValues?.lat === 'number' ? initialValues.lat : undefined,
     lng: typeof initialValues?.lng === 'number' ? initialValues.lng : undefined,
+    radiusKm: normalizeRadiusKm(initialValues?.radiusKm),
     date: normalizeDate(initialValues?.date),
     from: normalizeDate(initialValues?.from),
     to: normalizeDate(initialValues?.to),
@@ -333,6 +344,10 @@ export function useUnifiedSearch({
       query.lng = String(formValues.lng);
     }
 
+    if (typeof formValues.radiusKm === 'number' && Number.isFinite(formValues.radiusKm)) {
+      query.radiusKm = String(normalizeRadiusKm(formValues.radiusKm));
+    }
+
     if (formValues.date) {
       query.date = formValues.date;
     }
@@ -412,6 +427,7 @@ export function useUnifiedSearch({
           city: '',
           lat: position.coords.latitude,
           lng: position.coords.longitude,
+          radiusKm: normalizeRadiusKm(previous.radiusKm),
         }));
         setLocationInput('');
         setGeoStatus('active');
@@ -435,6 +451,7 @@ export function useUnifiedSearch({
       city: searchCity,
       lat: typeof item.lat === 'number' ? item.lat : undefined,
       lng: typeof item.lng === 'number' ? item.lng : undefined,
+      radiusKm: normalizeRadiusKm(previous.radiusKm),
     }));
     setLocationInput(location);
     rememberCity(searchCity);
@@ -447,9 +464,17 @@ export function useUnifiedSearch({
       city,
       lat: undefined,
       lng: undefined,
+      radiusKm: normalizeRadiusKm(previous.radiusKm),
     }));
     setLocationInput(city);
     setIsLocationOpen(false);
+  }, []);
+
+  const setRadiusKm = useCallback((radiusKm: number) => {
+    setValues((previous) => ({
+      ...previous,
+      radiusKm: normalizeRadiusKm(radiusKm),
+    }));
   }, []);
 
   const applySuggestion = useCallback((item: SuggestDropdownItem, submitImmediately = false) => {
@@ -727,6 +752,7 @@ export function useUnifiedSearch({
     handleUseCurrentLocation,
     selectGeoItem,
     selectCity,
+    setRadiusKm,
     setAnytime,
     pickToday,
     pickTomorrow,

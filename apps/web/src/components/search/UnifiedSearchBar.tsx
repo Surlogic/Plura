@@ -156,6 +156,7 @@ export default memo(function UnifiedSearchBar({
     handleUseCurrentLocation,
     selectGeoItem,
     selectCity,
+    setRadiusKm,
     setAnytime,
     pickToday,
     pickTomorrow,
@@ -258,8 +259,9 @@ export default memo(function UnifiedSearchBar({
       : `${dateSummaryBase} + Ahora`
     : dateSummaryBase;
 
+  const radiusSummary = `${Math.round(values.radiusKm)} km`;
   const locationSummary =
-    locationInput.trim() || values.city.trim() || (hasCoordinates ? 'Cerca de mi' : 'Zona o ciudad');
+    locationInput.trim() || values.city.trim() || (hasCoordinates ? `Cerca de mi · ${radiusSummary}` : 'Zona o ciudad');
   const locationValueClass = getAdaptiveValueClass(locationSummary);
   const searchModeLabel = values.categorySlug
     ? 'Categoría'
@@ -400,7 +402,7 @@ export default memo(function UnifiedSearchBar({
     if (values.city.trim() || hasCoordinates) {
       filters.push({
         id: 'location',
-        label: hasCoordinates ? 'Cerca de mi' : `Ubicacion: ${values.city.trim()}`,
+        label: hasCoordinates ? `Cerca de mi · ${radiusSummary}` : `Ubicacion: ${values.city.trim()}`,
         onRemove: () => {
           setValues((previous) => ({
             ...previous,
@@ -414,7 +416,7 @@ export default memo(function UnifiedSearchBar({
     }
 
     return filters;
-  }, [hasCoordinates, setLocationInput, setSearchInput, setValues, values]);
+  }, [hasCoordinates, radiusSummary, setLocationInput, setSearchInput, setValues, values]);
 
   return (
     <div
@@ -574,6 +576,8 @@ export default memo(function UnifiedSearchBar({
                         geoStatus={geoStatus}
                         geoMessage={geoMessage}
                         popularNearby={nearbyCandidates}
+                        radiusKm={values.radiusKm}
+                        onRadiusChange={setRadiusKm}
                         onPickPopularNearby={(item) => {
                           setValues((prev) => ({
                             ...prev,

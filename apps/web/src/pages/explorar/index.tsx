@@ -37,7 +37,6 @@ const SORT_OPTIONS: Array<{ value: SearchSort; label: string }> = [
   { value: 'RATING', label: 'Mejor valorados' },
 ];
 
-const RADIUS_OPTIONS = [3, 5, 10, 20, 30];
 
 const getSingleQueryValue = (value: string | string[] | undefined) =>
   Array.isArray(value) ? value[0] || '' : value || '';
@@ -290,12 +289,13 @@ export default function ExplorarPage() {
       city,
       lat: hasCoordinates ? lat : undefined,
       lng: hasCoordinates ? lng : undefined,
+      radiusKm,
       date,
       from,
       to,
       availableNow,
     }),
-    [searchType, query, categorySlug, city, hasCoordinates, lat, lng, date, from, to, availableNow],
+    [searchType, query, categorySlug, city, hasCoordinates, lat, lng, radiusKm, date, from, to, availableNow],
   );
 
   const baseExploreQuery = useMemo(() => {
@@ -418,19 +418,6 @@ export default function ExplorarPage() {
     replaceQuery(nextQuery);
   }, [baseExploreQuery, isMapView, replaceQuery]);
 
-  const handleRadiusChange = useCallback((nextRadiusKm: number) => {
-    const sanitizedRadius = Number.isFinite(nextRadiusKm)
-      ? Math.max(1, Math.min(100, Math.round(nextRadiusKm)))
-      : SEARCH_DEFAULT_RADIUS_KM;
-    const nextQuery: Record<string, string> = {
-      ...baseExploreQuery,
-      radiusKm: String(sanitizedRadius),
-      page: '0',
-    };
-    if (isMapView) nextQuery.vista = 'mapa';
-    replaceQuery(nextQuery);
-  }, [baseExploreQuery, isMapView, replaceQuery]);
-
   const handlePageChange = useCallback((nextPage: number) => {
     const normalizedPage = Math.max(0, Math.min(nextPage, totalPages - 1));
     const nextQuery: Record<string, string> = {
@@ -472,11 +459,6 @@ export default function ExplorarPage() {
     },
     [favoritePayloadById, toggleFavorite],
   );
-
-  const selectedRadiusOption = useMemo(() => {
-    const rounded = Math.round(radiusKm);
-    return RADIUS_OPTIONS.includes(rounded) ? rounded : SEARCH_DEFAULT_RADIUS_KM;
-  }, [radiusKm]);
   const fixedQuery = useMemo(() => ({
     ...(isMapView ? { vista: 'mapa' as const } : {}),
     sort,
@@ -557,25 +539,7 @@ export default function ExplorarPage() {
                       </option>
                     ))}
                   </select>
-                </label>
-
-                <label className="inline-flex items-center gap-2 rounded-full border border-[color:var(--border-soft)] bg-[color:var(--surface-muted)] px-3 py-1.5">
-                  <span className="text-xs font-semibold uppercase tracking-[0.15em] text-[color:var(--ink-faint)]">
-                    Radio
-                  </span>
-                  <select
-                    value={String(selectedRadiusOption)}
-                    onChange={(event) => handleRadiusChange(Number(event.target.value))}
-                    className="rounded-full bg-transparent text-sm font-semibold text-[color:var(--ink)] focus:outline-none"
-                  >
-                    {RADIUS_OPTIONS.map((value) => (
-                      <option key={value} value={value}>
-                        {value} km
-                      </option>
-                    ))}
-                  </select>
-                </label>
-              </div>
+                </label>              </div>
             </div>
           </div>
         </header>

@@ -1,4 +1,5 @@
 import type { GeoAutocompleteItem, SearchSuggestionItem } from '@/types/search';
+import { SEARCH_DEFAULT_RADIUS_KM } from '@/config/search';
 import { SEARCH_CHIP_CLASS } from '@/components/search/searchUi';
 
 type LocationAutocompleteProps = {
@@ -12,8 +13,12 @@ type LocationAutocompleteProps = {
   geoStatus: 'idle' | 'loading' | 'active' | 'error';
   geoMessage: string;
   popularNearby: SearchSuggestionItem[];
+  radiusKm: number;
+  onRadiusChange: (radiusKm: number) => void;
   onPickPopularNearby: (item: SearchSuggestionItem) => void;
 };
+
+const RADIUS_OPTIONS = [3, 5, 10, 20, 30];
 
 export default function LocationAutocomplete({
   locationInput,
@@ -26,9 +31,15 @@ export default function LocationAutocomplete({
   geoStatus,
   geoMessage,
   popularNearby,
+  radiusKm,
+  onRadiusChange,
   onPickPopularNearby,
 }: LocationAutocompleteProps) {
   const showEmptySuggestions = locationInput.trim().length >= 2 && geoSuggestions.length === 0;
+  const selectedRadiusOption = RADIUS_OPTIONS.includes(Math.round(radiusKm))
+    ? Math.round(radiusKm)
+    : SEARCH_DEFAULT_RADIUS_KM;
+  const showRadiusSelector = geoStatus === 'active' || Boolean(locationInput.trim()) || geoSuggestions.length > 0;
 
   return (
     <div className="space-y-3">
@@ -60,6 +71,28 @@ export default function LocationAutocomplete({
           {geoStatus === 'loading' ? 'Detectando...' : 'Usar mi ubicacion'}
         </button>
       </div>
+
+      {showRadiusSelector ? (
+        <label className="flex items-center justify-between gap-3 rounded-[16px] border border-[color:var(--border-soft)] bg-[color:var(--surface-muted)] px-3 py-2">
+          <span className="min-w-0">
+            <span className="block text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-[color:var(--ink-faint)]">
+              Radio de búsqueda
+            </span>
+            <span className="block text-[0.76rem] text-[color:var(--ink-muted)]">
+              Se aplica cuando usás ubicación o coordenadas.
+            </span>
+          </span>
+          <select
+            value={String(selectedRadiusOption)}
+            onChange={(event) => onRadiusChange(Number(event.target.value))}
+            className="shrink-0 rounded-full border border-[color:var(--border-soft)] bg-white px-3 py-1.5 text-sm font-semibold text-[color:var(--ink)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--accent-soft)]"
+          >
+            {RADIUS_OPTIONS.map((value) => (
+              <option key={value} value={value}>{value} km</option>
+            ))}
+          </select>
+        </label>
+      ) : null}
 
       {geoSuggestions.length > 0 ? (
         <div className="space-y-1.5">

@@ -491,11 +491,11 @@ export default function ExplorarPage() {
       {hasClientSession ? <ClientDashboardNavbar name={displayName} /> : <Navbar />}
       <main className="mx-auto w-full max-w-6xl space-y-10 px-4 pb-24 pt-12">
         <header className="space-y-4">
-          <div className="space-y-2">
+          <div className="mx-auto max-w-2xl space-y-2 text-center">
             <h1 className="text-3xl font-semibold text-[color:var(--ink)] sm:text-4xl">
               Profesionales y Negocios
             </h1>
-            <p className="max-w-2xl text-sm text-[color:var(--ink-muted)] sm:text-base">
+            <p className="mx-auto max-w-2xl text-sm text-[color:var(--ink-muted)] sm:text-base">
               Buscá por categoría, ubicación, fecha o disponibilidad inmediata
             </p>
           </div>

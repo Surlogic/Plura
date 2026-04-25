@@ -472,7 +472,7 @@ export default function ExplorarPage() {
     <div className="min-h-screen bg-[color:var(--bg-soft)] text-[color:var(--ink)]">
       {hasClientSession ? <ClientDashboardNavbar name={displayName} /> : <Navbar />}
       <main className="mx-auto w-full max-w-[1400px] space-y-8 px-4 pb-24 pt-0 sm:px-6 lg:px-10">
-        <header className="sticky top-[73px] z-40 -mx-4 border-b border-[color:var(--border-soft)] bg-[color:var(--bg-soft)]/94 px-4 py-1.5 shadow-[0_14px_30px_-34px_rgba(13,35,58,0.32)] backdrop-blur-xl sm:-mx-6 sm:px-6 lg:-mx-10 lg:px-10">
+        <header className="sticky top-[73px] z-40 -mx-4 border-b border-[color:var(--border-soft)] bg-[color:var(--bg-soft)]/94 px-4 py-2 shadow-[0_14px_30px_-34px_rgba(13,35,58,0.32)] backdrop-blur-xl sm:-mx-6 sm:px-6 lg:-mx-10 lg:px-10">
           <div className="sr-only">
             <h1 className="text-3xl font-semibold text-[color:var(--ink)] sm:text-4xl">
               Profesionales y Negocios
@@ -489,7 +489,7 @@ export default function ExplorarPage() {
             citySuggestions={citySuggestions}
           />
 
-          <div className="mt-1.5 rounded-[14px] border border-[color:var(--border-soft)] bg-[color:var(--surface-strong)] px-2.5 py-1 shadow-[0_12px_28px_-34px_rgba(13,35,58,0.18)]">
+          <div className="mt-2 rounded-[16px] border border-[color:var(--border-soft)] bg-[color:var(--surface-strong)] px-2.5 py-1.5 shadow-[0_12px_28px_-34px_rgba(13,35,58,0.18)]">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="inline-flex items-center gap-2 rounded-full bg-[color:var(--surface-muted)] px-2 py-0.5 text-[0.68rem] font-semibold text-[color:var(--ink-muted)]">
                 <span>{SEARCH_TYPE_LABELS[searchType]}</span>
@@ -502,7 +502,7 @@ export default function ExplorarPage() {
                   <button
                     type="button"
                     onClick={() => handleViewChange(false)}
-                    className={`rounded-full px-3 py-1 text-sm font-semibold transition ${
+                    className={`rounded-full px-3 py-1.5 text-sm font-semibold transition ${
                       !isMapView
                         ? 'bg-[color:var(--surface-dark)] text-[color:var(--text-on-dark)]'
                         : 'text-[color:var(--ink)] hover:bg-white'
@@ -514,7 +514,7 @@ export default function ExplorarPage() {
                   <button
                     type="button"
                     onClick={() => handleViewChange(true)}
-                    className={`rounded-full px-3 py-1 text-sm font-semibold transition ${
+                    className={`rounded-full px-3 py-1.5 text-sm font-semibold transition ${
                       isMapView
                         ? 'bg-[color:var(--surface-dark)] text-[color:var(--text-on-dark)]'
                         : 'text-[color:var(--ink)] hover:bg-white'
@@ -525,7 +525,7 @@ export default function ExplorarPage() {
                   </button>
                 </div>
 
-                <label className="inline-flex items-center gap-2 rounded-full border border-[color:var(--border-soft)] bg-[color:var(--surface-muted)] px-2 py-0.5">
+                <label className="inline-flex items-center gap-2 rounded-full border border-[color:var(--border-soft)] bg-[color:var(--surface-muted)] px-2.5 py-1">
                   <span className="text-xs font-semibold uppercase tracking-[0.15em] text-[color:var(--ink-faint)]">
                     Orden
                   </span>

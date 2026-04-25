@@ -21,12 +21,14 @@ export default memo(function Hero({ categories: _categories, stats, isLoading = 
   );
 
   return (
-    <section className="relative overflow-hidden px-4 pb-10 pt-6 sm:px-6 sm:pb-14 sm:pt-8 lg:px-8 lg:pb-18 xl:px-10 xl:pb-20">
-      <div className="pointer-events-none absolute inset-x-0 top-0 h-[28rem] bg-[radial-gradient(circle_at_top,rgba(54,200,244,0.16),transparent_58%)]" />
-      <div className="pointer-events-none absolute left-0 top-16 h-52 w-52 rounded-full bg-[color:var(--primary)]/7 blur-3xl" />
-      <div className="pointer-events-none absolute right-0 top-8 h-56 w-56 rounded-full bg-[color:var(--accent)]/10 blur-3xl" />
+    <section className="relative z-20 overflow-visible px-4 pb-10 pt-6 sm:px-6 sm:pb-14 sm:pt-8 lg:px-8 lg:pb-18 xl:px-10 xl:pb-20">
+      <div className="pointer-events-none absolute inset-0 overflow-hidden">
+        <div className="absolute inset-x-0 top-0 h-[28rem] bg-[radial-gradient(circle_at_top,rgba(54,200,244,0.16),transparent_58%)]" />
+        <div className="absolute left-0 top-16 h-52 w-52 rounded-full bg-[color:var(--primary)]/7 blur-3xl" />
+        <div className="absolute right-0 top-8 h-56 w-56 rounded-full bg-[color:var(--accent)]/10 blur-3xl" />
+      </div>
 
-      <div className="relative mx-auto max-w-[1140px]">
+      <div className="relative z-10 mx-auto max-w-[1140px]">
         <div className="mb-6 flex justify-center sm:mb-7 lg:mb-8">
           <p className="w-fit bg-[linear-gradient(90deg,var(--brand-cyan)_0%,var(--primary)_100%)] bg-clip-text text-center text-[0.82rem] font-semibold uppercase tracking-[0.22em] text-transparent sm:text-[0.9rem]">
             Marketplace de estética y cuidado personal

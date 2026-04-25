@@ -489,7 +489,7 @@ export default function ExplorarPage() {
             citySuggestions={citySuggestions}
           />
 
-          <div className="mt-2 rounded-[16px] border border-[color:var(--border-soft)] bg-[color:var(--surface-strong)] px-2.5 py-1.5 shadow-[0_12px_28px_-34px_rgba(13,35,58,0.18)]">
+          <div className="mt-2">
             <div className="flex flex-wrap items-center justify-end gap-3">
               <div className="flex flex-wrap items-center gap-2.5">
                 <div className="inline-flex rounded-full border border-[color:var(--border-soft)] bg-[color:var(--surface-muted)] p-0.5">

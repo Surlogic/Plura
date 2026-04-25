@@ -5,6 +5,9 @@ export const SEARCH_CONTROL_HEIGHT_CLASS = 'min-h-[60px]';
 export const SEARCH_PANEL_CLASS =
   'w-full rounded-[22px] border border-[color:var(--border-soft)] bg-[color:var(--surface-strong)] p-3 shadow-[0_24px_48px_-34px_rgba(13,35,58,0.34)] ring-1 ring-black/5 backdrop-blur sm:p-3.5';
 
+export const SEARCH_PANEL_SCROLL_CLASS =
+  'max-h-[min(24rem,calc(100vh-10rem))] overflow-y-auto overscroll-contain pr-1';
+
 export const SEARCH_PANEL_SECTION_CLASS =
   'rounded-[18px] bg-[color:var(--surface-muted)] p-2.5';
 

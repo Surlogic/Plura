@@ -1,4 +1,5 @@
 import type { SearchType } from '@/types/search';
+import { SEARCH_PANEL_SCROLL_CLASS } from '@/components/search/searchUi';
 
 export type SuggestDropdownItem = {
   id: string;
@@ -65,7 +66,7 @@ export default function SuggestDropdown({
               Actualizando sugerencias...
             </p>
           ) : null}
-          <div className="max-h-[300px] space-y-3 overflow-y-auto overscroll-contain pr-1">
+          <div className={`${SEARCH_PANEL_SCROLL_CLASS} space-y-3`}>
             {groups.map((group, groupIndex) => {
               if (group.items.length === 0) return null;
 

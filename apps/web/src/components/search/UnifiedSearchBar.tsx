@@ -19,6 +19,7 @@ import {
   SEARCH_BAR_MAX_WIDTH_CLASS,
   SEARCH_CONTROL_HEIGHT_CLASS,
   SEARCH_PANEL_CLASS,
+  SEARCH_PANEL_SCROLL_CLASS,
 } from '@/components/search/searchUi';
 import { useTheme } from '@/components/theme/ThemeProvider';
 import {
@@ -553,36 +554,38 @@ export default memo(function UnifiedSearchBar({
                   className={`absolute left-0 right-0 top-[calc(100%+8px)] z-[80] sm:w-[22rem] ${centeredHeroDropdownClassName}`.trim()}
                 >
                   <div className={SEARCH_PANEL_CLASS}>
-                    <LocationAutocomplete
-                      locationInput={locationInput}
-                      onLocationInputChange={(value) => {
-                        setLocationInput(value);
-                        setValues((previous) => ({
-                          ...previous,
-                          city: value,
-                          lat: undefined,
-                          lng: undefined,
-                        }));
-                      }}
-                      onUseCurrentLocation={handleUseCurrentLocation}
-                      onSelectGeoItem={selectGeoItem}
-                      onSelectCity={selectCity}
-                      geoSuggestions={geoSuggestions}
-                      recentCities={mergedCitySuggestions}
-                      geoStatus={geoStatus}
-                      geoMessage={geoMessage}
-                      popularNearby={nearbyCandidates}
-                      onPickPopularNearby={(item) => {
-                        setValues((prev) => ({
-                          ...prev,
-                          type: 'LOCAL',
-                          query: item.name,
-                          categorySlug: undefined,
-                        }));
-                        setSearchInput(item.name);
-                        setIsLocationOpen(false);
-                      }}
-                    />
+                    <div className={SEARCH_PANEL_SCROLL_CLASS}>
+                      <LocationAutocomplete
+                        locationInput={locationInput}
+                        onLocationInputChange={(value) => {
+                          setLocationInput(value);
+                          setValues((previous) => ({
+                            ...previous,
+                            city: value,
+                            lat: undefined,
+                            lng: undefined,
+                          }));
+                        }}
+                        onUseCurrentLocation={handleUseCurrentLocation}
+                        onSelectGeoItem={selectGeoItem}
+                        onSelectCity={selectCity}
+                        geoSuggestions={geoSuggestions}
+                        recentCities={mergedCitySuggestions}
+                        geoStatus={geoStatus}
+                        geoMessage={geoMessage}
+                        popularNearby={nearbyCandidates}
+                        onPickPopularNearby={(item) => {
+                          setValues((prev) => ({
+                            ...prev,
+                            type: 'LOCAL',
+                            query: item.name,
+                            categorySlug: undefined,
+                          }));
+                          setSearchInput(item.name);
+                          setIsLocationOpen(false);
+                        }}
+                      />
+                    </div>
                   </div>
                 </div>
               ) : null}
@@ -645,33 +648,35 @@ export default memo(function UnifiedSearchBar({
                   className={`absolute left-0 right-0 top-[calc(100%+8px)] z-[80] sm:w-[21.5rem] ${centeredHeroDropdownClassName}`.trim()}
                 >
                   <div className={SEARCH_PANEL_CLASS}>
-                    <DateFilter
-                      date={values.date}
-                      from={values.from}
-                      to={values.to}
-                      availableNow={values.availableNow}
-                      todayIso={todayIso}
-                      onPickAnytime={setAnytime}
-                      onPickToday={pickToday}
-                      onPickTomorrow={pickTomorrow}
-                      onPickThisWeek={pickThisWeek}
-                      onPickDate={(value) => {
-                        const nextDate = normalizeDate(value);
-                        setValues((previous) => ({
-                          ...previous,
-                          date: nextDate,
-                          from: undefined,
-                          to: undefined,
-                        }));
-                      }}
-                      onToggleAvailableNow={() =>
-                        setValues((previous) => ({
-                          ...previous,
-                          availableNow: !previous.availableNow,
-                        }))
-                      }
-                      showAvailableToggle
-                    />
+                    <div className={SEARCH_PANEL_SCROLL_CLASS}>
+                      <DateFilter
+                        date={values.date}
+                        from={values.from}
+                        to={values.to}
+                        availableNow={values.availableNow}
+                        todayIso={todayIso}
+                        onPickAnytime={setAnytime}
+                        onPickToday={pickToday}
+                        onPickTomorrow={pickTomorrow}
+                        onPickThisWeek={pickThisWeek}
+                        onPickDate={(value) => {
+                          const nextDate = normalizeDate(value);
+                          setValues((previous) => ({
+                            ...previous,
+                            date: nextDate,
+                            from: undefined,
+                            to: undefined,
+                          }));
+                        }}
+                        onToggleAvailableNow={() =>
+                          setValues((previous) => ({
+                            ...previous,
+                            availableNow: !previous.availableNow,
+                          }))
+                        }
+                        showAvailableToggle
+                      />
+                    </div>
                   </div>
                 </div>
               ) : null}

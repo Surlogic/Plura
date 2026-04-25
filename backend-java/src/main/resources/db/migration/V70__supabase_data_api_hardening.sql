@@ -38,9 +38,14 @@ DECLARE
     table_record record;
 BEGIN
     FOR table_record IN
-        SELECT schemaname, tablename
-        FROM pg_tables
-        WHERE schemaname = 'public'
+        SELECT
+            n.nspname AS schemaname,
+            c.relname AS tablename
+        FROM pg_class c
+        JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE n.nspname = 'public'
+          AND c.relkind IN ('r', 'p')
+          AND pg_get_userbyid(c.relowner) = current_user
     LOOP
         EXECUTE format(
             'ALTER TABLE %I.%I ENABLE ROW LEVEL SECURITY',

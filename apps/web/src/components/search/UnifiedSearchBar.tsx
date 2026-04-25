@@ -285,8 +285,8 @@ export default memo(function UnifiedSearchBar({
     : '';
   const heroQueryWidthClassName = heroServicesExpanded
     ? 'lg:flex-[1.9_1_0%]'
-    : 'lg:flex-[1.34_1_0%]';
-  const heroSelectionExpandedWidthClassName = 'lg:flex-[0.92_1_0%]';
+    : 'lg:flex-[1.55_1_0%]';
+  const heroSelectionExpandedWidthClassName = 'lg:flex-[1.05_1_0%]';
   const heroSelectionCompactWidthClassName =
     'lg:flex-[0_0_4.1rem] lg:px-3 lg:items-center lg:justify-center';
   const centeredHeroDropdownClassName = isHero
@@ -307,7 +307,7 @@ export default memo(function UnifiedSearchBar({
     : '';
   const submitWrapperOrderClassName = isHero ? 'order-4 md:col-[4] lg:flex-[0_0_10.5rem]' : '';
   const searchGridClassName = isHero
-    ? 'grid gap-0 md:grid-cols-[minmax(0,1.95fr)_minmax(0,1.05fr)_minmax(0,0.95fr)_auto] md:items-center lg:flex lg:items-stretch'
+    ? 'grid gap-0 md:grid-cols-[minmax(0,2fr)_minmax(0,1.15fr)_minmax(0,1fr)_auto] md:items-center lg:flex lg:items-stretch'
     : 'grid gap-1.5 md:grid-cols-[minmax(0,1.9fr)_minmax(0,0.85fr)_minmax(0,0.95fr)_auto] md:items-stretch';
   const submitButtonToneClassName = isDarkTheme
     ? 'border border-[color:var(--primary-strong)] bg-[linear-gradient(135deg,var(--primary)_0%,var(--primary-strong)_100%)] text-[color:var(--text-on-dark)] shadow-[0_22px_40px_-28px_rgba(0,0,0,0.72)] hover:-translate-y-0.5 hover:border-[color:var(--brand-primary-light)] hover:bg-[linear-gradient(135deg,var(--primary-strong)_0%,var(--brand-primary-light)_100%)] hover:shadow-[var(--shadow-lift)]'

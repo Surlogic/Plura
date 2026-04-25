@@ -471,24 +471,25 @@ export default function ExplorarPage() {
   return (
     <div className="min-h-screen bg-[color:var(--bg-soft)] text-[color:var(--ink)]">
       {hasClientSession ? <ClientDashboardNavbar name={displayName} /> : <Navbar />}
-      <main className="mx-auto w-full max-w-6xl space-y-10 px-4 pb-24 pt-12">
-        <header className="space-y-4">
-          <div className="mx-auto max-w-2xl space-y-2 text-center">
+      <main className="mx-auto w-full max-w-[1400px] space-y-8 px-4 pb-24 pt-0 sm:px-6 lg:px-10">
+        <header className="sticky top-[73px] z-40 -mx-4 border-b border-[color:var(--border-soft)] bg-[color:var(--bg-soft)]/94 px-4 py-3 shadow-[0_18px_42px_-38px_rgba(13,35,58,0.42)] backdrop-blur-xl sm:-mx-6 sm:px-6 lg:-mx-10 lg:px-10">
+          <div className="sr-only">
             <h1 className="text-3xl font-semibold text-[color:var(--ink)] sm:text-4xl">
               Profesionales y Negocios
             </h1>
-            <p className="mx-auto max-w-2xl text-sm text-[color:var(--ink-muted)] sm:text-base">
+            <p className="text-sm text-[color:var(--ink-muted)] sm:text-base">
               Buscá por categoría, ubicación, fecha o disponibilidad inmediata
             </p>
           </div>
 
           <ExploreFilters
+            className="max-w-none"
             initialValues={filterValues}
             fixedQuery={fixedQuery}
             citySuggestions={citySuggestions}
           />
 
-          <div className="rounded-[20px] border border-[color:var(--border-soft)] bg-[color:var(--surface-strong)] px-3 py-2.5 shadow-[0_18px_44px_-38px_rgba(13,35,58,0.22)]">
+          <div className="mt-3 rounded-[20px] border border-[color:var(--border-soft)] bg-[color:var(--surface-strong)] px-3 py-2.5 shadow-[0_18px_44px_-38px_rgba(13,35,58,0.22)]">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="inline-flex items-center gap-2 rounded-full bg-[color:var(--surface-muted)] px-3 py-1.5 text-[0.72rem] font-semibold text-[color:var(--ink-muted)]">
                 <span>{SEARCH_TYPE_LABELS[searchType]}</span>

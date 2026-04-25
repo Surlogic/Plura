@@ -6,12 +6,14 @@ type ExploreFiltersProps = {
   initialValues: Partial<UnifiedSearchValues>;
   fixedQuery?: Record<string, string | undefined>;
   citySuggestions?: string[];
+  className?: string;
 };
 
 export default function ExploreFilters({
   initialValues,
   fixedQuery,
   citySuggestions = [],
+  className,
 }: ExploreFiltersProps) {
   return (
     <UnifiedSearchBar
@@ -19,6 +21,7 @@ export default function ExploreFilters({
       initialValues={initialValues}
       fixedQuery={fixedQuery}
       citySuggestions={citySuggestions}
+      className={className}
       showClearButton
     />
   );

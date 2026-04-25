@@ -492,7 +492,6 @@ export default function ExplorarPage() {
       <main className="mx-auto w-full max-w-6xl space-y-10 px-4 pb-24 pt-12">
         <header className="space-y-4">
           <div className="space-y-2">
-            <p className="text-xs uppercase tracking-[0.35em] text-[color:var(--ink-faint)]">Explorar</p>
             <h1 className="text-3xl font-semibold text-[color:var(--ink)] sm:text-4xl">
               Profesionales y Negocios
             </h1>

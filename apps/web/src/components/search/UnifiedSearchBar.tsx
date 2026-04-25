@@ -273,8 +273,9 @@ export default memo(function UnifiedSearchBar({
       : null;
   const queryFieldLabel = 'Servicios';
   const hiddenHeroLabelClassName = isHero ? 'sr-only' : '';
-  const heroInlineLabelClassName =
-    'inline-flex min-w-0 items-center gap-1.5 truncate whitespace-nowrap ${isCompact ? 'text-[0.54rem] tracking-[0.18em]' : 'text-[0.58rem] tracking-[0.2em]'} font-semibold uppercase text-[color:var(--ink-faint)]';
+  const heroInlineLabelClassName = `inline-flex min-w-0 items-center gap-1.5 truncate whitespace-nowrap ${
+    isCompact ? 'text-[0.54rem] tracking-[0.18em]' : 'text-[0.58rem] tracking-[0.2em]'
+  } font-semibold uppercase text-[color:var(--ink-faint)]`;
   const heroServicesExpanded = heroFocusExpansionEnabled && heroExpandedField === 'query';
   const compactControlClassName = isCompact ? '!min-h-[34px]' : '';
   const queryFieldClassName = isHero

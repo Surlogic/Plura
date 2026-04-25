@@ -10,7 +10,8 @@ Este documento cruza el stack tecnico actual con las necesidades del producto de
 - Backend: `Spring Boot 3.5`, `Java 17`, `JPA`, `Spring Security`
 - Base de datos: PostgreSQL
 - Migraciones: Flyway
-- hardening de indices Supabase Advisor aplicado desde Flyway (`V70`): se limpian indices duplicados o sin uso real en el codigo actual y se agregan indices faltantes para FKs activas de billing/reviews
+- hardening Supabase Data API aplicado desde Flyway (`V70`): `public` deja de ser el schema expuesto por PostgREST y se reserva `api_public` para futuras vistas/funciones publicas auditadas
+- cleanup de indices Supabase Advisor aplicado desde Flyway (`V71`): se limpian indices duplicados o sin uso real en el codigo actual y se agregan indices faltantes para FKs activas de billing/reviews
 
 ## Lectura de infraestructura por eje de producto
 
@@ -177,7 +178,7 @@ Notas reales de binding local:
 - cuando Fly muestra `Proxy not finding machines to route requests` para este backend, el primer chequeo no deberia ser el puerto: el codigo ya expone `server.address=0.0.0.0` y `server.port=${PORT:3000}`; el fallo mas probable pasa por machine caida, `healthcheck` sin pasar o secrets faltantes de DB/JWT/R2
 - el repo ahora incluye `backend-java/scripts/check_fly_runtime_env.sh` para validar desde shell las variables minimas de arranque segun el `fly.toml` actual y separar faltantes fatales de advertencias operativas
 - `V68__service_processing_fee_mode.sql` agrega `processing_fee_mode` a `professional_service` y `prepaid_processing_fee_mode_snapshot` a `booking`; `V69__booking_prepaid_processing_fee_snapshot.sql` agrega en `booking` los snapshots `prepaid_processing_fee_amount_snapshot` y `prepaid_total_amount_snapshot`
-- la secuencia real de migraciones Flyway del backend llega a `V70`; `V70__advisor_index_cleanup.sql` limpia duplicados/redundancias marcadas por Supabase Advisor (`auth_refresh_token`, `professional_profile`, `booking`, `available_slot`, `auth_session`, `booking_review_reminder`, `notification_event`, `app_product_event`, etc.) y agrega indices faltantes para `booking_review.business_replied_by_user_id`, `payment_transaction.subscription_id`, `payment_event.refund_record_id` y `payment_event.payment_transaction_id`
+- la secuencia real de migraciones Flyway del backend llega a `V71`; `V70__supabase_data_api_hardening.sql` crea `api_public` como schema expuesto vacio para PostgREST, revoca grants API sobre `public`, habilita RLS deny-all en tablas actuales de `public` y fija `search_path` en funciones SQL/PLpgSQL sensibles; `V71__advisor_index_cleanup.sql` limpia duplicados/redundancias marcadas por Supabase Advisor (`auth_refresh_token`, `professional_profile`, `booking`, `available_slot`, `auth_session`, `booking_review_reminder`, `notification_event`, `app_product_event`, etc.) y agrega indices faltantes para `booking_review.business_replied_by_user_id`, `payment_transaction.subscription_id`, `payment_event.refund_record_id` y `payment_event.payment_transaction_id`
 - el repo ahora incluye `backend-java/src/test/java/com/plura/plurabackend/db/FlywayMigrationVersionUniquenessTest.java` para detectar versiones Flyway duplicadas antes de romper un deploy
 - el backend mantiene fallback a los nombres legacy `BILLING_MERCADOPAGO_ACCESS_TOKEN`, `BILLING_MERCADOPAGO_WEBHOOK_SECRET` y `BILLING_MERCADOPAGO_OAUTH_*`, pero el naming operativo recomendado ya es explicito por dominio: `SUBSCRIPTIONS_*` para planes y `RESERVATIONS_*` para cobros/OAuth profesional
 - para OAuth de Mercado Pago el error de `state` ya no implica adivinar secretos: el backend espera primero `BILLING_MERCADOPAGO_RESERVATIONS_OAUTH_STATE_SIGNING_SECRET`, y si no existe hace fallback a la clave de cifrado o al client secret

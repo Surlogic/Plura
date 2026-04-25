@@ -22,6 +22,7 @@ export default function ExploreFilters({
       fixedQuery={fixedQuery}
       citySuggestions={citySuggestions}
       className={className}
+      density="compact"
       showClearButton
     />
   );

@@ -42,6 +42,7 @@ type UnifiedSearchBarProps = {
   className?: string;
   showClearButton?: boolean;
   citySuggestions?: string[];
+  density?: 'default' | 'compact';
 };
 
 type SearchSectionLabelProps = {
@@ -116,9 +117,11 @@ export default memo(function UnifiedSearchBar({
   className,
   showClearButton = false,
   citySuggestions = [],
+  density = 'default',
 }: UnifiedSearchBarProps) {
   const wrapperRef = useRef<HTMLDivElement | null>(null);
   const isHero = variant === 'hero';
+  const isCompact = density === 'compact';
   const heroFocusExpansionEnabled = isHero && interactiveFocusExpansion;
   const { resolvedTheme } = useTheme();
   const isDarkTheme = resolvedTheme === 'dark';
@@ -273,11 +276,16 @@ export default memo(function UnifiedSearchBar({
   const heroInlineLabelClassName =
     'inline-flex min-w-0 items-center gap-1.5 truncate whitespace-nowrap text-[0.58rem] font-semibold uppercase tracking-[0.2em] text-[color:var(--ink-faint)]';
   const heroServicesExpanded = heroFocusExpansionEnabled && heroExpandedField === 'query';
-  const queryFieldClassName = isHero ? 'h-full justify-center py-1.5' : 'h-full';
-  const selectionFieldClassName = isHero ? 'h-full justify-center py-1.5' : 'h-full';
-  const queryValueClassName = isHero ? '!mt-0 flex min-h-[1.65rem] items-center' : '';
-  const selectionValueClassName = isHero ? '!mt-0 flex min-h-[1.65rem] items-center' : '';
-  const heroFieldShellClassName = 'px-4 py-2 sm:px-5';
+  const compactControlClassName = isCompact ? 'min-h-[48px]' : '';
+  const queryFieldClassName = isHero
+    ? `h-full justify-center ${isCompact ? 'py-0.5' : 'py-1.5'} ${compactControlClassName}`.trim()
+    : 'h-full';
+  const selectionFieldClassName = isHero
+    ? `h-full justify-center ${isCompact ? 'py-0.5' : 'py-1.5'} ${compactControlClassName}`.trim()
+    : 'h-full';
+  const queryValueClassName = isHero ? '!mt-0 flex min-h-[1.35rem] items-center' : '';
+  const selectionValueClassName = isHero ? '!mt-0 flex min-h-[1.35rem] items-center' : '';
+  const heroFieldShellClassName = isCompact ? 'px-4 py-1.5 sm:px-5' : 'px-4 py-2 sm:px-5';
   const heroDividerClassName = 'border-t border-[color:var(--border-soft)]/85 md:border-t-0 md:border-r';
   const heroQueryDividerClassName = 'md:border-r md:border-[color:var(--border-soft)]/85';
   const heroFieldMotionClassName = heroFocusExpansionEnabled
@@ -312,9 +320,10 @@ export default memo(function UnifiedSearchBar({
   const submitButtonToneClassName = isDarkTheme
     ? 'border border-[color:var(--primary-strong)] bg-[linear-gradient(135deg,var(--primary)_0%,var(--primary-strong)_100%)] text-[color:var(--text-on-dark)] shadow-[0_22px_40px_-28px_rgba(0,0,0,0.72)] hover:-translate-y-0.5 hover:border-[color:var(--brand-primary-light)] hover:bg-[linear-gradient(135deg,var(--primary-strong)_0%,var(--brand-primary-light)_100%)] hover:shadow-[var(--shadow-lift)]'
     : 'border border-[color:var(--primary)] bg-[color:var(--primary)] text-[color:var(--ink)] shadow-[var(--shadow-card)] hover:-translate-y-0.5 hover:border-[color:var(--primary-strong)] hover:bg-[color:var(--primary-strong)] hover:text-white hover:shadow-[var(--shadow-lift)]';
+  const submitControlHeightClassName = isCompact ? 'min-h-[48px]' : SEARCH_CONTROL_HEIGHT_CLASS;
   const submitButtonClassName = isHero
-    ? `inline-flex w-full min-w-[8.75rem] items-center justify-center rounded-[18px] px-5 text-[0.95rem] font-semibold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--accent-soft)] focus-visible:ring-offset-2 ${submitButtonToneClassName} ${SEARCH_CONTROL_HEIGHT_CLASS}`
-    : `inline-flex w-full min-w-[7.5rem] items-center justify-center rounded-[18px] px-4 text-[0.94rem] font-semibold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--accent-soft)] focus-visible:ring-offset-2 ${submitButtonToneClassName} ${SEARCH_CONTROL_HEIGHT_CLASS}`;
+    ? `inline-flex w-full min-w-[8.75rem] items-center justify-center rounded-[16px] px-5 text-[0.95rem] font-semibold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--accent-soft)] focus-visible:ring-offset-2 ${submitButtonToneClassName} ${submitControlHeightClassName}`
+    : `inline-flex w-full min-w-[7.5rem] items-center justify-center rounded-[18px] px-4 text-[0.94rem] font-semibold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--accent-soft)] focus-visible:ring-offset-2 ${submitButtonToneClassName} ${submitControlHeightClassName}`;
   const searchInputClassName = isHero
     ? 'hero-search-service-input block min-h-[1.65rem] w-full min-w-0 appearance-none border-0 rounded-none bg-transparent p-0 shadow-none text-[0.95rem] font-semibold leading-[1.2] text-[color:var(--ink)] outline-none ring-0 placeholder:font-normal placeholder:text-[color:var(--ink-muted)] focus:border-0 focus:outline-none focus:ring-0 focus:shadow-none'
     : 'h-6 w-full min-w-0 bg-transparent text-[0.95rem] font-semibold leading-none text-[color:var(--ink)] placeholder:font-normal placeholder:text-[color:var(--ink-muted)] focus:outline-none';
@@ -425,7 +434,7 @@ export default memo(function UnifiedSearchBar({
     >
       <form onSubmit={handleSubmit} className="relative overflow-visible">
         <div
-          className={`relative overflow-visible rounded-[24px] p-1.5 sm:p-2 ${SURFACE_CLASSES[variant]}`}
+          className={`relative overflow-visible rounded-[24px] ${isCompact ? 'p-1 sm:p-1.5' : 'p-1.5 sm:p-2'} ${SURFACE_CLASSES[variant]}`}
         >
           <div className={searchGridClassName}>
             <div className={`relative min-w-0 ${queryWrapperOrderClassName}`.trim()}>
@@ -686,7 +695,7 @@ export default memo(function UnifiedSearchBar({
               ) : null}
             </div>
 
-            <div className={`flex items-stretch self-stretch ${submitWrapperOrderClassName} ${isHero ? 'border-t border-[color:var(--border-soft)]/85 px-1 pt-2 md:border-l md:border-t-0 md:px-2 md:pl-4 md:pt-0 lg:pl-3' : ''}`.trim()}>
+            <div className={`flex items-stretch self-stretch ${submitWrapperOrderClassName} ${isHero ? `border-t border-[color:var(--border-soft)]/85 px-1 ${isCompact ? 'pt-1.5 md:px-2 md:pl-3 lg:pl-2' : 'pt-2 md:px-2 md:pl-4 lg:pl-3'} md:border-l md:border-t-0 md:pt-0` : ''}`.trim()}>
               <button
                 type="submit"
                 className={submitButtonClassName}

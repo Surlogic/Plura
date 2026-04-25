@@ -490,13 +490,7 @@ export default function ExplorarPage() {
           />
 
           <div className="mt-2 rounded-[16px] border border-[color:var(--border-soft)] bg-[color:var(--surface-strong)] px-2.5 py-1.5 shadow-[0_12px_28px_-34px_rgba(13,35,58,0.18)]">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div className="inline-flex items-center gap-2 rounded-full bg-[color:var(--surface-muted)] px-2 py-0.5 text-[0.68rem] font-semibold text-[color:var(--ink-muted)]">
-                <span>{SEARCH_TYPE_LABELS[searchType]}</span>
-                {city ? <span>• {city}</span> : null}
-                {hasCoordinates ? <span>• {Math.round(radiusKm)} km</span> : null}
-              </div>
-
+            <div className="flex flex-wrap items-center justify-end gap-3">
               <div className="flex flex-wrap items-center gap-2.5">
                 <div className="inline-flex rounded-full border border-[color:var(--border-soft)] bg-[color:var(--surface-muted)] p-0.5">
                   <button
@@ -527,7 +521,7 @@ export default function ExplorarPage() {
 
                 <label className="inline-flex items-center gap-2 rounded-full border border-[color:var(--border-soft)] bg-[color:var(--surface-muted)] px-2.5 py-1">
                   <span className="text-xs font-semibold uppercase tracking-[0.15em] text-[color:var(--ink-faint)]">
-                    Orden
+                    Ordenar
                   </span>
                   <select
                     value={sort}
@@ -540,7 +534,8 @@ export default function ExplorarPage() {
                       </option>
                     ))}
                   </select>
-                </label>              </div>
+                </label>
+              </div>
             </div>
           </div>
         </header>

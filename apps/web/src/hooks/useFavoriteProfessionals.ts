@@ -9,16 +9,20 @@ import {
 
 export const useFavoriteProfessionals = ({
   enabled = true,
+  syncWithServer = enabled,
 }: {
   enabled?: boolean;
+  syncWithServer?: boolean;
 } = {}) => {
-  return useFavoriteProfessionalsState({ enabled });
+  return useFavoriteProfessionalsState({ enabled, syncWithServer });
 };
 
 export const useFavoriteProfessionalsState = ({
   enabled = true,
+  syncWithServer = enabled,
 }: {
   enabled?: boolean;
+  syncWithServer?: boolean;
 } = {}) => {
   const [favorites, setFavorites] = useState<ClientFavoriteProfessional[]>([]);
   const [hasHydrated, setHasHydrated] = useState(false);
@@ -34,7 +38,7 @@ export const useFavoriteProfessionalsState = ({
 
     let isMounted = true;
 
-    getFavoriteProfessionals()
+    getFavoriteProfessionals({ syncWithServer })
       .then((items) => {
         if (!isMounted) return;
         setFavorites(items);
@@ -55,7 +59,7 @@ export const useFavoriteProfessionalsState = ({
       isMounted = false;
       unsubscribe();
     };
-  }, [enabled]);
+  }, [enabled, syncWithServer]);
 
   const favoriteSlugs = useMemo(
     () => new Set(favorites.map((item) => item.slug)),
@@ -73,7 +77,7 @@ export const useFavoriteProfessionalsState = ({
   const toggleFavorite = useCallback(
     async (favorite: ClientFavoriteProfessional) => {
       try {
-        const next = await toggleFavoriteProfessional(favorite);
+        const next = await toggleFavoriteProfessional(favorite, { syncWithServer });
         setFavorites(next);
         setHasHydrated(true);
         return next;
@@ -81,19 +85,19 @@ export const useFavoriteProfessionalsState = ({
         return favoritesRef.current;
       }
     },
-    [],
+    [syncWithServer],
   );
 
   const removeFavorite = useCallback(async (slug: string) => {
     try {
-      const next = await removeFavoriteProfessional(slug);
+      const next = await removeFavoriteProfessional(slug, { syncWithServer });
       setFavorites(next);
       setHasHydrated(true);
       return next;
     } catch {
       return favoritesRef.current;
     }
-  }, []);
+  }, [syncWithServer]);
 
   return {
     favorites,

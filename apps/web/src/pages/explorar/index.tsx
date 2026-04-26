@@ -96,10 +96,11 @@ export default function ExplorarPage() {
   const router = useRouter();
   const { profile, hasLoaded } = useClientProfileContext();
   const canResolveClientFeatures = hasKnownAuthSession();
+  const hasClientSession = hasLoaded && Boolean(profile);
   const { isFavorite, toggleFavorite } = useFavoriteProfessionals({
     enabled: canResolveClientFeatures,
+    syncWithServer: hasClientSession,
   });
-  const hasClientSession = hasLoaded && Boolean(profile);
   const displayName = profile?.fullName || 'Cliente';
 
   const rawPathSlug = getSingleQueryValue(router.query.slug as string | string[] | undefined);

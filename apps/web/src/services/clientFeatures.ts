@@ -10,6 +10,10 @@ export type ClientFavoriteProfessional = {
   headline?: string;
 };
 
+type FavoriteSyncOptions = {
+  syncWithServer?: boolean;
+};
+
 const FAVORITES_KEY = 'plura_client_favorite_professionals';
 const FAVORITES_ENDPOINT = '/cliente/favoritos';
 const FAVORITES_SERVER_SYNC_TTL_MS = 15000;
@@ -158,8 +162,15 @@ const ensureStorageListener = () => {
   hasStorageListener = true;
 };
 
-export const getFavoriteProfessionals = async (): Promise<ClientFavoriteProfessional[]> => {
+export const getFavoriteProfessionals = async (
+  options: FavoriteSyncOptions = {},
+): Promise<ClientFavoriteProfessional[]> => {
+  const { syncWithServer = true } = options;
   if (typeof window === 'undefined') {
+    return readFavorites();
+  }
+
+  if (!syncWithServer) {
     return readFavorites();
   }
 
@@ -182,12 +193,14 @@ export const subscribeFavoriteProfessionals = (
 
 export const toggleFavoriteProfessional = async (
   favorite: ClientFavoriteProfessional,
+  options: FavoriteSyncOptions = {},
 ): Promise<ClientFavoriteProfessional[]> => {
+  const { syncWithServer = true } = options;
   const sanitized = sanitizeFavorite(favorite);
   if (!sanitized) return readFavorites();
 
   let favorites = readFavorites();
-  if (shouldRefreshServerFavorites()) {
+  if (syncWithServer && shouldRefreshServerFavorites()) {
     const syncedFavorites = await syncFavoritesFromServerIfPossible();
     if (syncedFavorites) {
       favorites = syncedFavorites;
@@ -195,7 +208,7 @@ export const toggleFavoriteProfessional = async (
   }
   const exists = favorites.some((item) => item.slug === sanitized.slug);
 
-  if (typeof window !== 'undefined') {
+  if (syncWithServer && typeof window !== 'undefined') {
     try {
       if (exists) {
         await api.delete(`${FAVORITES_ENDPOINT}/${encodeURIComponent(sanitized.slug)}`);
@@ -222,19 +235,21 @@ export const toggleFavoriteProfessional = async (
 
 export const removeFavoriteProfessional = async (
   slug: string,
+  options: FavoriteSyncOptions = {},
 ): Promise<ClientFavoriteProfessional[]> => {
+  const { syncWithServer = true } = options;
   const normalizedSlug = normalizeText(slug);
   if (!normalizedSlug) return readFavorites();
 
   let favorites = readFavorites();
-  if (shouldRefreshServerFavorites()) {
+  if (syncWithServer && shouldRefreshServerFavorites()) {
     const syncedFavorites = await syncFavoritesFromServerIfPossible();
     if (syncedFavorites) {
       favorites = syncedFavorites;
     }
   }
 
-  if (typeof window !== 'undefined') {
+  if (syncWithServer && typeof window !== 'undefined') {
     try {
       await api.delete(`${FAVORITES_ENDPOINT}/${encodeURIComponent(normalizedSlug)}`);
     } catch (error) {

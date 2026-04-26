@@ -1,6 +1,8 @@
 'use client';
+/* eslint-disable no-restricted-syntax */
 
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import mapboxgl from 'mapbox-gl';
 import Map, { type MapProps, type MapRef } from 'react-map-gl/mapbox';
 
 const MAPBOX_TOKEN = (process.env.NEXT_PUBLIC_MAPBOX_TOKEN || '').trim();
@@ -12,6 +14,7 @@ type MapViewProps = Omit<MapProps, 'mapboxAccessToken' | 'mapStyle' | 'ref'> & {
   containerClassName?: string;
   fallbackClassName?: string;
   fallbackMessage?: string;
+  webglFallbackMessage?: string;
 };
 
 export default function MapView({
@@ -20,11 +23,15 @@ export default function MapView({
   containerClassName = '',
   fallbackClassName = '',
   fallbackMessage = 'Falta `NEXT_PUBLIC_MAPBOX_TOKEN` para mostrar el mapa.',
+  webglFallbackMessage = 'Este dispositivo o navegador no pudo inicializar el mapa.',
   onLoad,
+  onError,
   ...props
 }: MapViewProps) {
   const internalMapRef = useRef<MapRef | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const [webglSupported, setWebglSupported] = useState<boolean | null>(null);
+  const [mapFailed, setMapFailed] = useState(false);
 
   const setMapRef = useCallback(
     (instance: MapRef | null) => {
@@ -45,6 +52,15 @@ export default function MapView({
     return () => observer.disconnect();
   }, []);
 
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      setWebglSupported(mapboxgl.supported());
+    } catch {
+      setWebglSupported(false);
+    }
+  }, []);
+
   if (!MAPBOX_TOKEN) {
     return (
       <div
@@ -55,12 +71,36 @@ export default function MapView({
     );
   }
 
+  if (webglSupported === null) {
+    return <div ref={containerRef} className={`h-full w-full ${containerClassName}`} />;
+  }
+
+  if (webglSupported === false || mapFailed) {
+    return (
+      <div
+        className={`flex h-full w-full items-center justify-center px-4 text-center text-sm text-[#64748B] ${fallbackClassName}`}
+      >
+        {webglFallbackMessage}
+      </div>
+    );
+  }
+
   return (
     <div ref={containerRef} className={`h-full w-full ${containerClassName}`}>
       <Map
         ref={setMapRef}
         mapStyle={mapStyle}
         mapboxAccessToken={MAPBOX_TOKEN}
+        onError={(event) => {
+          const message = event.error?.message || '';
+          if (
+            message.includes('WebGL')
+            || message.includes('Failed to initialize')
+          ) {
+            setMapFailed(true);
+          }
+          onError?.(event);
+        }}
         onLoad={(event) => {
           internalMapRef.current?.resize();
           onLoad?.(event);

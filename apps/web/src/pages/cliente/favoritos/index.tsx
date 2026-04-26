@@ -6,8 +6,12 @@ import { useFavoriteProfessionals } from '@/hooks/useFavoriteProfessionals';
 import { useClientProfile } from '@/hooks/useClientProfile';
 
 export default function ClienteFavoritosPage() {
-  const { profile } = useClientProfile();
-  const { favorites, hasHydrated, removeFavorite } = useFavoriteProfessionals();
+  const { profile, hasLoaded, authStatus } = useClientProfile();
+  const canSyncFavorites = authStatus === 'authenticated' && Boolean(profile);
+  const { favorites, hasHydrated, removeFavorite } = useFavoriteProfessionals({
+    enabled: canSyncFavorites,
+    syncWithServer: canSyncFavorites,
+  });
   const displayName = profile?.fullName || 'Cliente';
 
   return (
@@ -20,7 +24,7 @@ export default function ClienteFavoritosPage() {
         </p>
       </section>
 
-      {!hasHydrated ? (
+      {!hasLoaded || authStatus === 'unknown' || !hasHydrated ? (
         <section className="rounded-[24px] border border-dashed border-[#E2E7EC] bg-white p-6 text-sm text-[#64748B]">
           Cargando favoritos...
         </section>

@@ -13,5 +13,5 @@ export const useClientProfile = () => {
     }
   }, [router, hasLoaded, isLoading, profile, authStatus, clearProfile]);
 
-  return { profile, isLoading, hasLoaded };
+  return { profile, isLoading, hasLoaded, authStatus };
 };

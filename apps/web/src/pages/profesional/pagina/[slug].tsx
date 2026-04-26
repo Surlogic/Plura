@@ -9,6 +9,7 @@ import ServiceDetailModal from '@/components/profesional/ServiceDetailModal';
 import PublicReviewsList from '@/components/profesional/PublicReviewsList';
 import Card from '@/components/ui/Card';
 import { useFavoriteProfessionals } from '@/hooks/useFavoriteProfessionals';
+import { useClientProfileContext } from '@/context/ClientProfileContext';
 import { mapboxForwardGeocode } from '@/services/mapbox';
 import { getPublicProfessionalBySlug } from '@/services/publicBookings';
 import { hasKnownAuthSession } from '@/services/session';
@@ -300,8 +301,11 @@ export default function ProfesionalDetailPage({
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const router = useRouter();
   const canResolveClientFeatures = hasKnownAuthSession();
+  const { profile, hasLoaded } = useClientProfileContext();
+  const hasClientSession = hasLoaded && Boolean(profile);
   const { isFavorite, toggleFavorite } = useFavoriteProfessionals({
     enabled: canResolveClientFeatures,
+    syncWithServer: hasClientSession,
   });
 
   const slug = Array.isArray(router.query.slug)

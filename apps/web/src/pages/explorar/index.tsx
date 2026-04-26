@@ -547,12 +547,6 @@ export default function ExplorarPage() {
           </header>
 
           <section className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h2 className="text-xl font-semibold text-[#0E2A47]">Mapa</h2>
-              <span className="text-sm text-[#6B7280]">
-                {isLoading ? 'Cargando...' : `${total.toLocaleString('es-UY')} resultados`}
-              </span>
-            </div>
             <div className="grid gap-4 lg:grid-cols-12">
               <div className="order-2 rounded-[24px] border border-[#0E2A47]/10 bg-white p-4 shadow-sm lg:order-1 lg:col-span-5 lg:max-h-[620px] lg:overflow-y-auto">
                 {error ? (
@@ -643,20 +637,14 @@ export default function ExplorarPage() {
   return (
     <div className="flex h-[100dvh] flex-col overflow-hidden bg-[color:var(--bg-soft)] text-[color:var(--ink)]">
       {navbar}
-      <main className="mx-auto flex min-h-0 w-full max-w-[1400px] flex-1 flex-col overflow-hidden px-4 pb-4 pt-0 sm:px-6 lg:px-10">
+      <main className="mx-auto flex min-h-0 w-full max-w-[1400px] flex-1 flex-col overflow-hidden px-4 pt-0 sm:px-6 lg:px-10">
         <header className="shrink-0 -mx-4 border-b border-[color:var(--border-soft)] bg-[color:var(--bg-soft)]/94 px-4 py-2 shadow-[0_14px_30px_-34px_rgba(13,35,58,0.32)] backdrop-blur-xl sm:-mx-6 sm:px-6 lg:-mx-10 lg:px-10">
           {exploreControls}
         </header>
 
-        <section className="flex min-h-0 flex-1 flex-col overflow-hidden py-4">
+        <section className="flex min-h-0 flex-1 flex-col overflow-hidden pt-4">
           <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain pr-1">
-            <div className="space-y-4 pb-6">
-              <div className="flex items-center justify-between">
-                <h2 className="text-xl font-semibold text-[#0E2A47]">Resultados</h2>
-                <span className="text-sm text-[#6B7280]">
-                  {isLoading ? 'Cargando...' : `${total.toLocaleString('es-UY')} resultados`}
-                </span>
-              </div>
+            <div className="space-y-4 pb-8">
               {error ? (
                 <div className="rounded-[20px] border border-dashed border-[#E2E7EC] bg-white px-4 py-6 text-sm text-[#64748B]">
                   {error}

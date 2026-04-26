@@ -161,6 +161,8 @@ function ExploreMap({
 }: ExploreMapProps) {
   const mapRef = useRef<MapRef | null>(null);
   const lastExternalFocusRef = useRef<string | null>(null);
+  const lastAutoViewportKeyRef = useRef<string | null>(null);
+  const userInteractedSinceResultsRef = useRef(false);
   const [mapReady, setMapReady] = useState(false);
   const [selectedResultId, setSelectedResultId] = useState<string | null>(null);
   const [cursor, setCursor] = useState<'default' | 'pointer'>('default');
@@ -212,6 +214,21 @@ function ExploreMap({
     [items],
   );
 
+  const viewportKey = useMemo(
+    () => {
+      const itemKey = [...items]
+        .map((item) => `${item.id}:${item.latitude.toFixed(5)},${item.longitude.toFixed(5)}`)
+        .sort()
+        .join('|');
+      const userKey = userLocation
+        ? `${userLocation.latitude.toFixed(5)},${userLocation.longitude.toFixed(5)}`
+        : 'no-user-location';
+
+      return `${itemKey}__${userKey}`;
+    },
+    [items, userLocation],
+  );
+
   const effectiveActiveResultId = selectedResultId || activeResultId;
 
   const selectedItem = useMemo(
@@ -230,7 +247,35 @@ function ExploreMap({
   }, [items, onActiveResultChange, selectedResultId]);
 
   useEffect(() => {
+    userInteractedSinceResultsRef.current = false;
+  }, [viewportKey]);
+
+  const markUserInteraction = useCallback(() => {
+    userInteractedSinceResultsRef.current = true;
+  }, []);
+
+  useEffect(() => {
+    if (!mapReady || !mapRef.current) return undefined;
+
+    const map = mapRef.current.getMap();
+    const interactionEvents = ['mousedown', 'touchstart', 'dragstart', 'wheel', 'dblclick'] as const;
+    interactionEvents.forEach((eventName) => {
+      map.on(eventName, markUserInteraction);
+    });
+
+    return () => {
+      interactionEvents.forEach((eventName) => {
+        map.off(eventName, markUserInteraction);
+      });
+    };
+  }, [mapReady, markUserInteraction]);
+
+  useEffect(() => {
     if (!mapReady || !mapRef.current || items.length === 0) return;
+    if (lastAutoViewportKeyRef.current === viewportKey) return;
+    if (userInteractedSinceResultsRef.current) return;
+
+    lastAutoViewportKeyRef.current = viewportKey;
 
     if (items.length === 1) {
       mapRef.current.flyTo({
@@ -252,7 +297,7 @@ function ExploreMap({
       duration: 650,
       maxZoom: 14,
     });
-  }, [items, mapReady, userLocation]);
+  }, [items, mapReady, userLocation, viewportKey]);
 
   useEffect(() => {
     if (!mapReady || !mapRef.current || !activeResultId || selectedResultId) return;
@@ -368,16 +413,7 @@ function ExploreMap({
     [userLocation],
   );
 
-  const mapResetKey = useMemo(
-    () =>
-      [
-        items.length,
-        effectiveActiveResultId || '',
-        userLocation?.latitude ?? '',
-        userLocation?.longitude ?? '',
-      ].join('|'),
-    [effectiveActiveResultId, items.length, userLocation?.latitude, userLocation?.longitude],
-  );
+  const mapResetKey = viewportKey;
 
   const interactiveFallbackMap = useMemo(
     () => (

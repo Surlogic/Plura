@@ -33,6 +33,7 @@ type ExploreCardProps = {
   isFavorite?: boolean;
   onFavoriteToggle?: (id?: string) => void;
   density?: 'default' | 'compact';
+  imageSizes?: string;
 };
 
 export default memo(function ExploreCard({
@@ -59,12 +60,14 @@ export default memo(function ExploreCard({
   isFavorite = false,
   onFavoriteToggle,
   density = 'default',
+  imageSizes,
 }: ExploreCardProps) {
   const isCompact = density === 'compact';
   const displayRating = rating?.trim();
   const displayPrice = price?.trim() || 'Ver perfil';
   const displayCity = city?.trim();
   const displayDistance = typeof distance === 'number' ? `${distance.toFixed(1)} km` : '';
+  const resolvedImageSizes = imageSizes?.trim() || '(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw';
   const handleMouseEnter = useCallback(() => onHoverStart?.(id), [onHoverStart, id]);
   const handleMouseLeave = useCallback(() => onHoverEnd?.(id), [onHoverEnd, id]);
   const media = useMemo(
@@ -111,7 +114,7 @@ export default memo(function ExploreCard({
             src={activeImage.src}
             alt={`Imagen de ${name}`}
             fill
-            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+            sizes={resolvedImageSizes}
             priority={priority}
             className="object-cover transition duration-500 group-hover:scale-105"
             style={buildPublicBusinessImageStyle(activeImage)}

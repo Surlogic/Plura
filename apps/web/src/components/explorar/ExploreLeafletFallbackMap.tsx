@@ -1,8 +1,15 @@
 'use client';
 
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useRef, type MutableRefObject } from 'react';
 import Link from 'next/link';
-import { CircleMarker, MapContainer, Popup, TileLayer, ZoomControl, useMap } from 'react-leaflet';
+import {
+  CircleMarker,
+  MapContainer,
+  Popup,
+  TileLayer,
+  ZoomControl,
+  useMap,
+} from 'react-leaflet';
 import type { LatLngBoundsExpression, LatLngExpression } from 'leaflet';
 
 type ExploreLeafletMapItem = {
@@ -39,28 +46,26 @@ const formatPriceFrom = (value?: number | null) => {
 function FitToResults({
   items,
   userLocation,
-  activeResultId,
+  viewportKey,
+  lastAutoViewportKeyRef,
+  userInteractedSinceResultsRef,
 }: {
   items: ExploreLeafletMapItem[];
   userLocation?: {
     latitude: number;
     longitude: number;
   };
-  activeResultId?: string | null;
+  viewportKey: string;
+  lastAutoViewportKeyRef: MutableRefObject<string | null>;
+  userInteractedSinceResultsRef: MutableRefObject<boolean>;
 }) {
   const map = useMap();
 
   useEffect(() => {
-    if (activeResultId) {
-      const activeItem = items.find((item) => item.id === activeResultId);
-      if (activeItem) {
-        map.flyTo([activeItem.latitude, activeItem.longitude], Math.max(map.getZoom(), 13), {
-          animate: true,
-          duration: 0.45,
-        });
-        return;
-      }
-    }
+    if (lastAutoViewportKeyRef.current === viewportKey) return;
+    if (userInteractedSinceResultsRef.current) return;
+
+    lastAutoViewportKeyRef.current = viewportKey;
 
     if (items.length === 1) {
       map.flyTo([items[0].latitude, items[0].longitude], 13, {
@@ -90,7 +95,57 @@ function FitToResults({
       maxZoom: 14,
       animate: true,
     });
-  }, [activeResultId, items, map, userLocation]);
+  }, [items, lastAutoViewportKeyRef, map, userInteractedSinceResultsRef, userLocation, viewportKey]);
+
+  return null;
+}
+
+function FocusActiveResult({
+  items,
+  activeResultId,
+}: {
+  items: ExploreLeafletMapItem[];
+  activeResultId?: string | null;
+}) {
+  const map = useMap();
+
+  useEffect(() => {
+    if (!activeResultId) return;
+    const activeItem = items.find((item) => item.id === activeResultId);
+    if (!activeItem) return;
+
+    map.flyTo([activeItem.latitude, activeItem.longitude], Math.max(map.getZoom(), 13), {
+      animate: true,
+      duration: 0.45,
+    });
+  }, [activeResultId, items, map]);
+
+  return null;
+}
+
+function TrackManualMapInteraction({
+  userInteractedSinceResultsRef,
+}: {
+  userInteractedSinceResultsRef: MutableRefObject<boolean>;
+}) {
+  const map = useMap();
+
+  useEffect(() => {
+    const markInteraction = () => {
+      userInteractedSinceResultsRef.current = true;
+    };
+    const interactionEvents = ['mousedown', 'touchstart', 'dragstart', 'dblclick', 'wheel'] as const;
+
+    interactionEvents.forEach((eventName) => {
+      map.on(eventName, markInteraction);
+    });
+
+    return () => {
+      interactionEvents.forEach((eventName) => {
+        map.off(eventName, markInteraction);
+      });
+    };
+  }, [map, userInteractedSinceResultsRef]);
 
   return null;
 }
@@ -101,10 +156,30 @@ export default function ExploreLeafletFallbackMap({
   activeResultId = null,
   onActiveResultChange,
 }: ExploreLeafletFallbackMapProps) {
+  const lastAutoViewportKeyRef = useRef<string | null>(null);
+  const userInteractedSinceResultsRef = useRef(false);
   const selectedItem = useMemo(
     () => items.find((item) => item.id === activeResultId) || null,
     [activeResultId, items],
   );
+  const viewportKey = useMemo(
+    () => {
+      const itemKey = [...items]
+        .map((item) => `${item.id}:${item.latitude.toFixed(5)},${item.longitude.toFixed(5)}`)
+        .sort()
+        .join('|');
+      const userKey = userLocation
+        ? `${userLocation.latitude.toFixed(5)},${userLocation.longitude.toFixed(5)}`
+        : 'no-user-location';
+
+      return `${itemKey}__${userKey}`;
+    },
+    [items, userLocation],
+  );
+
+  useEffect(() => {
+    userInteractedSinceResultsRef.current = false;
+  }, [viewportKey]);
 
   return (
     <div className="relative h-full w-full border border-[#DCE5ED] bg-[#E9EEF2]">
@@ -124,7 +199,15 @@ export default function ExploreLeafletFallbackMap({
           attribution="&copy; OpenStreetMap contributors &copy; CARTO"
         />
         <ZoomControl position="topright" />
-        <FitToResults items={items} userLocation={userLocation} activeResultId={activeResultId} />
+        <TrackManualMapInteraction userInteractedSinceResultsRef={userInteractedSinceResultsRef} />
+        <FitToResults
+          items={items}
+          userLocation={userLocation}
+          viewportKey={viewportKey}
+          lastAutoViewportKeyRef={lastAutoViewportKeyRef}
+          userInteractedSinceResultsRef={userInteractedSinceResultsRef}
+        />
+        <FocusActiveResult items={items} activeResultId={activeResultId} />
 
         {items.map((item) => {
           const isActive = activeResultId === item.id;

@@ -659,6 +659,7 @@ export default function ExplorarPage() {
                           isFavorite={isFavorite(item.slug)}
                           onFavoriteToggle={handleFavoriteToggle}
                           density="compact"
+                          imageSizes="(max-width: 459px) 100vw, (max-width: 1023px) 50vw, 280px"
                         />
                       ))}
                     </div>
@@ -672,7 +673,7 @@ export default function ExplorarPage() {
                 <ExploreMap
                   results={items}
                   userLocation={mapUserLocation}
-                  activeResultId={activeMapItemId}
+                  activeResultId={selectedMapItemId}
                   onActiveResultChange={setSelectedMapItemId}
                 />
                 {isLoading ? (

@@ -7,8 +7,10 @@ import {
   useReducer,
   type ReactNode,
 } from 'react';
+import type { AxiosRequestConfig } from 'axios';
 import { cachedGet } from '@/services/cachedGet';
 import { invalidateCachedGet } from '@/services/cachedGet';
+import { clearAuthAccessToken } from '@/services/session';
 import { isAuthSessionError } from '@/lib/auth/sessionErrors';
 import type { ClientProfile } from '@/types/client';
 
@@ -74,9 +76,13 @@ const ClientProfileContext =
 export function ClientProfileProvider({
   children,
   autoLoad = false,
+  skipRefreshOnAutoLoad = false,
+  clearStoredSessionOnAutoLoadAuthError = false,
 }: {
   children: ReactNode;
   autoLoad?: boolean;
+  skipRefreshOnAutoLoad?: boolean;
+  clearStoredSessionOnAutoLoadAuthError?: boolean;
 }) {
   const [state, dispatch] = useReducer(profileReducer, initialState);
 
@@ -103,10 +109,31 @@ export function ClientProfileProvider({
     }
   }, []);
 
+  const autoLoadProfile = useCallback(async () => {
+    dispatch({ type: 'LOAD_START' });
+    try {
+      const response = await cachedGet<ClientProfile>(
+        CLIENT_PROFILE_ENDPOINT,
+        { skipAuthRefresh: skipRefreshOnAutoLoad } as AxiosRequestConfig,
+        { ttlMs: 15000 },
+      );
+      dispatch({ type: 'LOAD_SUCCESS', profile: response.data });
+    } catch (error) {
+      if (isAuthSessionError(error)) {
+        if (clearStoredSessionOnAutoLoadAuthError) {
+          clearAuthAccessToken();
+        }
+        dispatch({ type: 'LOAD_AUTH_ERROR' });
+      } else {
+        dispatch({ type: 'LOAD_NETWORK_ERROR' });
+      }
+    }
+  }, [clearStoredSessionOnAutoLoadAuthError, skipRefreshOnAutoLoad]);
+
   useEffect(() => {
     if (!autoLoad || state.hasLoaded || state.isLoading) return;
-    void refreshProfile();
-  }, [autoLoad, state.hasLoaded, state.isLoading, refreshProfile]);
+    void autoLoadProfile();
+  }, [autoLoad, autoLoadProfile, state.hasLoaded, state.isLoading]);
 
   const value = useMemo(
     () => ({

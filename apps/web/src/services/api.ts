@@ -30,6 +30,11 @@ const CLIENT_PLATFORM_HEADER = 'X-Plura-Client-Platform';
 const ANALYTICS_SESSION_HEADER = 'X-Plura-Analytics-Session-Id';
 const SESSION_TRANSPORT_HEADER = 'X-Plura-Session-Transport';
 
+type AuthAwareAxiosRequestConfig = AxiosRequestConfig & {
+  skipAuthRefresh?: boolean;
+  _retry?: boolean;
+};
+
 const authTokenFromResponse = (
   responseData: unknown,
 ): string | null => {
@@ -199,12 +204,13 @@ api.interceptors.response.use(
     return response;
   },
   async (error) => {
-    const originalRequest = error.config as AxiosRequestConfig & { _retry?: boolean };
+    const originalRequest = error.config as AuthAwareAxiosRequestConfig;
     const status = error.response?.status;
 
     if (
       status === 401 &&
       !originalRequest?._retry &&
+      !originalRequest?.skipAuthRefresh &&
       !isAuthRoute(originalRequest?.url)
     ) {
       originalRequest._retry = true;

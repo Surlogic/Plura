@@ -97,6 +97,8 @@ export default function App({ Component, pageProps }: AppProps) {
     return {
       isProfessionalDashboardArea,
       isProfessionalNotificationsArea,
+      shouldSkipRefreshOnClientAutoLoad: shouldAutoLoadClientProfileFromPublicSession,
+      shouldSkipRefreshOnProfessionalAutoLoad: shouldAutoLoadProfessionalProfileFromPublicSession,
       shouldAutoLoadClientProfile:
         (isClientArea && !isClientAuthArea) ||
         shouldAutoLoadClientProfileFromPublicSession,
@@ -115,6 +117,8 @@ export default function App({ Component, pageProps }: AppProps) {
     isProfessionalNotificationsArea,
     shouldAutoLoadClientProfile,
     shouldAutoLoadProfessionalProfile,
+    shouldSkipRefreshOnClientAutoLoad,
+    shouldSkipRefreshOnProfessionalAutoLoad,
     shouldMountClientNotifications,
     shouldMountProfessionalNotifications,
   } = routeFlags;
@@ -137,13 +141,21 @@ export default function App({ Component, pageProps }: AppProps) {
   }
 
   content = (
-    <ClientProfileProvider autoLoad={shouldAutoLoadClientProfile}>
+    <ClientProfileProvider
+      autoLoad={shouldAutoLoadClientProfile}
+      skipRefreshOnAutoLoad={shouldSkipRefreshOnClientAutoLoad}
+      clearStoredSessionOnAutoLoadAuthError={shouldSkipRefreshOnClientAutoLoad}
+    >
       {content}
     </ClientProfileProvider>
   );
 
   content = (
-    <ProfessionalProfileProvider autoLoad={shouldAutoLoadProfessionalProfile}>
+    <ProfessionalProfileProvider
+      autoLoad={shouldAutoLoadProfessionalProfile}
+      skipRefreshOnAutoLoad={shouldSkipRefreshOnProfessionalAutoLoad}
+      clearStoredSessionOnAutoLoadAuthError={shouldSkipRefreshOnProfessionalAutoLoad}
+    >
       {content}
     </ProfessionalProfileProvider>
   );

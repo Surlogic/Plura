@@ -152,16 +152,6 @@ const parseOptionalNumber = (value: unknown): number | null => {
   return null;
 };
 
-const STATIC_MAPBOX_TOKEN = (process.env.NEXT_PUBLIC_MAPBOX_TOKEN || '').trim();
-const STATIC_MAP_STYLE_PATH = 'mapbox/light-v11';
-const STATIC_MAP_MARKER_LIMIT = 20;
-
-const buildStaticMarkerOverlay = (
-  longitude: number,
-  latitude: number,
-  color: string,
-) => encodeURIComponent(`pin-s+${color}(${longitude},${latitude})`);
-
 function ExploreMap({
   results,
   userLocation,
@@ -377,68 +367,6 @@ function ExploreMap({
     [userLocation],
   );
 
-  const staticMapUrl = useMemo(() => {
-    if (!STATIC_MAPBOX_TOKEN) return null;
-
-    const prioritizedItems = (() => {
-      if (!effectiveActiveResultId) return items;
-      const activeItem = items.find((item) => item.id === effectiveActiveResultId);
-      if (!activeItem) return items;
-      return [activeItem, ...items.filter((item) => item.id !== effectiveActiveResultId)];
-    })();
-
-    const staticItems = prioritizedItems.slice(0, STATIC_MAP_MARKER_LIMIT);
-    const overlays = [
-      ...staticItems.map((item) =>
-        buildStaticMarkerOverlay(item.longitude, item.latitude, item.id === effectiveActiveResultId ? 'F59E0B' : '0E2A47'),
-      ),
-      ...(userLocation
-        ? [buildStaticMarkerOverlay(userLocation.longitude, userLocation.latitude, '16A34A')]
-        : []),
-    ].filter(Boolean);
-
-    const overlayPath = overlays.join(',');
-    const baseUrl = `https://api.mapbox.com/styles/v1/${STATIC_MAP_STYLE_PATH}/static`;
-    const accessToken = encodeURIComponent(STATIC_MAPBOX_TOKEN);
-
-    if (overlayPath) {
-      return `${baseUrl}/${overlayPath}/auto/1200x1200?padding=72,72,72,72&access_token=${accessToken}`;
-    }
-
-    return `${baseUrl}/${DEFAULT_CENTER.longitude},${DEFAULT_CENTER.latitude},10/1200x1200?access_token=${accessToken}`;
-  }, [effectiveActiveResultId, items, userLocation]);
-
-  const staticMapIsTruncated = items.length > STATIC_MAP_MARKER_LIMIT;
-
-  const staticMapFallback = useMemo(() => {
-    if (!staticMapUrl) {
-      return (
-        <div className="flex h-full w-full items-center justify-center bg-[#E9EEF2] px-4 text-center text-sm text-[#64748B]">
-          No pudimos cargar el mapa en este navegador.
-        </div>
-      );
-    }
-
-    return (
-      <div className="relative h-full w-full overflow-hidden border border-[#DCE5ED] bg-[#E9EEF2]">
-        {/* eslint-disable-next-line @next/next/no-img-element -- static map fallback uses external Mapbox image URL */}
-        <img
-          src={staticMapUrl}
-          alt="Mapa estático de resultados"
-          className="h-full w-full object-cover"
-          loading="lazy"
-        />
-        <div className="pointer-events-none absolute inset-x-0 bottom-3 flex justify-center px-4">
-          <p className="rounded-full bg-white/92 px-3 py-1 text-xs font-semibold text-[#0E2A47] shadow-sm">
-            {staticMapIsTruncated
-              ? `Modo estático: mostrando ${STATIC_MAP_MARKER_LIMIT} de ${items.length} resultados.`
-              : 'Modo estático: tu navegador no soporta el mapa interactivo.'}
-          </p>
-        </div>
-      </div>
-    );
-  }, [items.length, staticMapIsTruncated, staticMapUrl]);
-
   const mapResetKey = useMemo(
     () =>
       [
@@ -468,11 +396,16 @@ function ExploreMap({
         onMouseLeave={handleMapMouseLeave}
         interactiveLayerIds={INTERACTIVE_LAYER_IDS}
         cursor={cursor}
+        interactive
+        dragPan
+        scrollZoom
+        doubleClickZoom
         dragRotate={false}
-        touchZoomRotate={false}
-        containerClassName="h-full w-full overflow-hidden border border-[#DCE5ED]"
+        touchZoomRotate
+        containerClassName="pointer-events-auto h-full w-full overflow-hidden border border-[#DCE5ED]"
         fallbackClassName="h-full bg-[#E9EEF2]"
-        webglFallbackNode={staticMapFallback}
+        webglFallbackMessage="No pudimos inicializar el mapa interactivo en este navegador."
+        skipWebGlSupportCheck
         resetKey={mapResetKey}
       >
         <NavigationControl position="top-right" showCompass={false} />

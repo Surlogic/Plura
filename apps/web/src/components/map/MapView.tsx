@@ -16,6 +16,8 @@ type MapViewProps = Omit<MapProps, 'mapboxAccessToken' | 'mapStyle' | 'ref'> & {
   fallbackMessage?: string;
   webglFallbackMessage?: string;
   webglFallbackNode?: ReactNode;
+  allowForceInteractiveRetry?: boolean;
+  skipWebGlSupportCheck?: boolean;
   resetKey?: string | number;
 };
 
@@ -92,6 +94,8 @@ export default function MapView({
   fallbackMessage = 'Falta `NEXT_PUBLIC_MAPBOX_TOKEN` para mostrar el mapa.',
   webglFallbackMessage = 'Este dispositivo o navegador no pudo inicializar el mapa.',
   webglFallbackNode,
+  allowForceInteractiveRetry = false,
+  skipWebGlSupportCheck = false,
   resetKey,
   onLoad,
   onError,
@@ -101,6 +105,7 @@ export default function MapView({
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [webglSupported, setWebglSupported] = useState<boolean | null>(null);
   const [mapFailed, setMapFailed] = useState(false);
+  const [forceInteractiveRetry, setForceInteractiveRetry] = useState(false);
 
   const setMapRef = useCallback(
     (instance: MapRef | null) => {
@@ -122,11 +127,16 @@ export default function MapView({
   }, []);
 
   useEffect(() => {
+    if (skipWebGlSupportCheck) {
+      setWebglSupported(true);
+      return;
+    }
     setWebglSupported(detectWebGlSupport());
-  }, []);
+  }, [skipWebGlSupportCheck]);
 
   useEffect(() => {
     setMapFailed(false);
+    setForceInteractiveRetry(false);
   }, [resetKey]);
 
   if (!MAPBOX_TOKEN) {
@@ -143,9 +153,25 @@ export default function MapView({
     return <div ref={containerRef} className={`h-full w-full ${containerClassName}`} />;
   }
 
-  if (!webglSupported || mapFailed) {
+  if ((!webglSupported && !forceInteractiveRetry) || mapFailed) {
     if (webglFallbackNode) {
-      return <div className={`h-full w-full ${containerClassName}`}>{webglFallbackNode}</div>;
+      return (
+        <div className={`relative h-full w-full ${containerClassName}`}>
+          {webglFallbackNode}
+          {allowForceInteractiveRetry ? (
+            <button
+              type="button"
+              onClick={() => {
+                setMapFailed(false);
+                setForceInteractiveRetry(true);
+              }}
+              className="absolute right-3 top-3 rounded-full bg-white/95 px-3 py-1.5 text-xs font-semibold text-[#0E2A47] shadow-sm transition hover:bg-white"
+            >
+              Probar mapa interactivo
+            </button>
+          ) : null}
+        </div>
+      );
     }
     return (
       <div
@@ -181,6 +207,7 @@ export default function MapView({
               message.includes('WebGL')
               || message.includes('Failed to initialize')
             ) {
+              setForceInteractiveRetry(false);
               setMapFailed(true);
             }
             onError?.(event);

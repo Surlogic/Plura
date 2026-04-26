@@ -2,6 +2,7 @@
 /* eslint-disable no-restricted-syntax */
 
 import { Component, useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
+import mapboxgl from 'mapbox-gl';
 import Map, { type MapProps, type MapRef } from 'react-map-gl/mapbox';
 
 const MAPBOX_TOKEN = (process.env.NEXT_PUBLIC_MAPBOX_TOKEN || '').trim();
@@ -48,6 +49,32 @@ class MapRuntimeBoundary extends Component<MapRuntimeBoundaryProps, MapRuntimeBo
   }
 }
 
+const detectWebGlSupport = () => {
+  if (typeof window === 'undefined' || typeof document === 'undefined') {
+    return null;
+  }
+
+  try {
+    if (typeof mapboxgl.supported === 'function') {
+      return mapboxgl.supported({ failIfMajorPerformanceCaveat: false });
+    }
+  } catch {
+    // Sigue con fallback manual.
+  }
+
+  try {
+    const canvas = document.createElement('canvas');
+    const context =
+      canvas.getContext('webgl2')
+      || canvas.getContext('webgl')
+      || canvas.getContext('experimental-webgl');
+
+    return Boolean(context);
+  } catch {
+    return false;
+  }
+};
+
 export default function MapView({
   mapRef,
   mapStyle = DEFAULT_MAP_STYLE,
@@ -61,6 +88,7 @@ export default function MapView({
 }: MapViewProps) {
   const internalMapRef = useRef<MapRef | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const [webglSupported, setWebglSupported] = useState<boolean | null>(null);
   const [mapFailed, setMapFailed] = useState(false);
 
   const setMapRef = useCallback(
@@ -82,6 +110,10 @@ export default function MapView({
     return () => observer.disconnect();
   }, []);
 
+  useEffect(() => {
+    setWebglSupported(detectWebGlSupport());
+  }, []);
+
   if (!MAPBOX_TOKEN) {
     return (
       <div
@@ -92,7 +124,11 @@ export default function MapView({
     );
   }
 
-  if (mapFailed) {
+  if (webglSupported === null) {
+    return <div ref={containerRef} className={`h-full w-full ${containerClassName}`} />;
+  }
+
+  if (!webglSupported || mapFailed) {
     return (
       <div
         className={`flex h-full w-full items-center justify-center px-4 text-center text-sm text-[#64748B] ${fallbackClassName}`}

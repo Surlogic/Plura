@@ -2,7 +2,6 @@
 /* eslint-disable no-restricted-syntax */
 
 import { Component, useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
-import mapboxgl from 'mapbox-gl';
 import Map, { type MapProps, type MapRef } from 'react-map-gl/mapbox';
 
 const MAPBOX_TOKEN = (process.env.NEXT_PUBLIC_MAPBOX_TOKEN || '').trim();
@@ -62,7 +61,6 @@ export default function MapView({
 }: MapViewProps) {
   const internalMapRef = useRef<MapRef | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
-  const [webglSupported, setWebglSupported] = useState<boolean | null>(null);
   const [mapFailed, setMapFailed] = useState(false);
 
   const setMapRef = useCallback(
@@ -84,15 +82,6 @@ export default function MapView({
     return () => observer.disconnect();
   }, []);
 
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    try {
-      setWebglSupported(mapboxgl.supported());
-    } catch {
-      setWebglSupported(false);
-    }
-  }, []);
-
   if (!MAPBOX_TOKEN) {
     return (
       <div
@@ -103,11 +92,7 @@ export default function MapView({
     );
   }
 
-  if (webglSupported === null) {
-    return <div ref={containerRef} className={`h-full w-full ${containerClassName}`} />;
-  }
-
-  if (webglSupported === false || mapFailed) {
+  if (mapFailed) {
     return (
       <div
         className={`flex h-full w-full items-center justify-center px-4 text-center text-sm text-[#64748B] ${fallbackClassName}`}

@@ -34,8 +34,7 @@ import lombok.NoArgsConstructor;
         )
     },
     indexes = {
-        @Index(name = "idx_payment_event_created_at", columnList = "created_at"),
-        @Index(name = "idx_payment_event_professional", columnList = "professional_id")
+        @Index(name = "idx_payment_event_created_at", columnList = "created_at")
     }
 )
 public class PaymentEvent {

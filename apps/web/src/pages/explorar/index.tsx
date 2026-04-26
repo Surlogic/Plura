@@ -3,7 +3,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/router';
 import dynamic from 'next/dynamic';
 import Navbar from '@/components/shared/Navbar';
-import Footer from '@/components/shared/Footer';
 import ExploreFilters from '@/components/explorar/ExploreFilters';
 import ExploreCard from '@/components/explorar/ExploreCard';
 import ClientDashboardNavbar from '@/components/dashboard/ClientDashboardNavbar';
@@ -539,71 +538,73 @@ export default function ExplorarPage() {
 
   if (isMapView) {
     return (
-      <div className="min-h-screen bg-[color:var(--bg-soft)] text-[color:var(--ink)]">
+      <div className="flex h-[100dvh] flex-col overflow-hidden bg-[color:var(--bg-soft)] text-[color:var(--ink)]">
         {navbar}
-        <main className="mx-auto w-full max-w-[1400px] space-y-8 px-4 pb-24 pt-0 sm:px-6 lg:px-10">
-          <header className="sticky top-[73px] z-40 -mx-4 border-b border-[color:var(--border-soft)] bg-[color:var(--bg-soft)]/94 px-4 py-2 shadow-[0_14px_30px_-34px_rgba(13,35,58,0.32)] backdrop-blur-xl sm:-mx-6 sm:px-6 lg:-mx-10 lg:px-10">
+        <main className="relative isolate mx-auto flex min-h-0 w-full max-w-[1400px] flex-1 flex-col overflow-visible px-4 pt-0 sm:px-6 lg:px-10">
+          <header className="relative z-[70] shrink-0 -mx-4 overflow-visible border-b border-[color:var(--border-soft)] bg-[color:var(--bg-soft)]/94 px-4 py-2 shadow-[0_14px_30px_-34px_rgba(13,35,58,0.32)] backdrop-blur-xl sm:-mx-6 sm:px-6 lg:-mx-10 lg:px-10">
             {exploreControls}
           </header>
 
-          <section className="space-y-4">
-            <div className="grid gap-4 lg:grid-cols-12">
-              <div className="order-2 rounded-[24px] border border-[#0E2A47]/10 bg-white p-4 shadow-sm lg:order-1 lg:col-span-5 lg:max-h-[620px] lg:overflow-y-auto">
-                {error ? (
-                  <div className="rounded-[16px] border border-dashed border-[#E2E7EC] bg-[#F8FAFC] px-4 py-6 text-sm text-[#64748B]">
-                    {error}
-                  </div>
-                ) : items.length === 0 ? (
-                  <div className="rounded-[16px] border border-dashed border-[#E2E7EC] bg-[#F8FAFC] px-4 py-6 text-sm text-[#64748B]">
-                    {isLoading ? (
-                      'Buscando profesionales...'
-                    ) : (
-                      <div className="space-y-1">
-                        <p className="font-semibold text-[#0E2A47]">
-                          No encontramos profesionales en esta zona.
-                        </p>
-                        <p>Intentá ampliar el radio, buscar otra categoría o quitar filtros.</p>
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-1 gap-4">
-                    {items.map((item, index) => (
-                      <ExploreCard
-                        key={item.id}
-                        id={String(item.id)}
-                        name={item.name}
-                        category={getCategoryLabel(item)}
-                        rating={typeof item.rating === 'number' ? item.rating.toFixed(1) : undefined}
-                        reviewsCount={item.reviewsCount}
-                        price={formatPriceFrom(item.priceFrom)}
-                        city={item.locationText || undefined}
-                        distance={item.distanceKm}
-                        bannerUrl={item.bannerUrl}
-                        bannerMedia={item.bannerMedia}
-                        logoUrl={item.logoUrl}
-                        logoMedia={item.logoMedia}
-                        fallbackPhotoUrl={item.fallbackPhotoUrl}
-                        imageUrl={item.coverImageUrl}
-                        available={availableNow}
-                        href={
-                          item.slug
-                            ? `/profesional/pagina/${encodeURIComponent(item.slug)}`
-                            : undefined
-                        }
-                        isHighlighted={activeMapItemId === String(item.id)}
-                        priority={index < 2}
-                        onHoverStart={handleMapItemHoverStart}
-                        onHoverEnd={handleMapItemHoverEnd}
-                        isFavorite={isFavorite(item.slug)}
-                        onFavoriteToggle={handleFavoriteToggle}
-                      />
-                    ))}
-                  </div>
-                )}
+          <section className="relative z-0 flex min-h-0 flex-1 flex-col overflow-hidden py-4">
+            <div className="flex min-h-0 flex-1 flex-col gap-4 lg:flex-row">
+              <div className="order-2 flex min-h-0 flex-[0_0_42%] flex-col overflow-hidden rounded-[24px] border border-[#0E2A47]/10 bg-white p-4 shadow-sm lg:order-1 lg:basis-[26%]">
+                <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain pr-1">
+                  {error ? (
+                    <div className="rounded-[16px] border border-dashed border-[#E2E7EC] bg-[#F8FAFC] px-4 py-6 text-sm text-[#64748B]">
+                      {error}
+                    </div>
+                  ) : items.length === 0 ? (
+                    <div className="rounded-[16px] border border-dashed border-[#E2E7EC] bg-[#F8FAFC] px-4 py-6 text-sm text-[#64748B]">
+                      {isLoading ? (
+                        'Buscando profesionales...'
+                      ) : (
+                        <div className="space-y-1">
+                          <p className="font-semibold text-[#0E2A47]">
+                            No encontramos profesionales en esta zona.
+                          </p>
+                          <p>Intentá ampliar el radio, buscar otra categoría o quitar filtros.</p>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 gap-4">
+                      {items.map((item, index) => (
+                        <ExploreCard
+                          key={item.id}
+                          id={String(item.id)}
+                          name={item.name}
+                          category={getCategoryLabel(item)}
+                          rating={typeof item.rating === 'number' ? item.rating.toFixed(1) : undefined}
+                          reviewsCount={item.reviewsCount}
+                          price={formatPriceFrom(item.priceFrom)}
+                          city={item.locationText || undefined}
+                          distance={item.distanceKm}
+                          bannerUrl={item.bannerUrl}
+                          bannerMedia={item.bannerMedia}
+                          logoUrl={item.logoUrl}
+                          logoMedia={item.logoMedia}
+                          fallbackPhotoUrl={item.fallbackPhotoUrl}
+                          imageUrl={item.coverImageUrl}
+                          available={availableNow}
+                          href={
+                            item.slug
+                              ? `/profesional/pagina/${encodeURIComponent(item.slug)}`
+                              : undefined
+                          }
+                          isHighlighted={activeMapItemId === String(item.id)}
+                          priority={index < 2}
+                          onHoverStart={handleMapItemHoverStart}
+                          onHoverEnd={handleMapItemHoverEnd}
+                          isFavorite={isFavorite(item.slug)}
+                          onFavoriteToggle={handleFavoriteToggle}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
-              <div className="order-1 rounded-[24px] border border-[#0E2A47]/10 bg-white p-4 shadow-sm lg:order-2 lg:col-span-7">
-                <div className="relative">
+              <div className="order-1 flex min-h-0 flex-1 flex-col rounded-[24px] border border-[#0E2A47]/10 bg-white p-4 shadow-sm lg:order-2 lg:basis-[74%]">
+                <div className="relative min-h-0 flex-1">
                   <ExploreMap
                     results={items}
                     userLocation={mapUserLocation}
@@ -629,7 +630,6 @@ export default function ExplorarPage() {
             </div>
           </section>
         </main>
-        <Footer />
       </div>
     );
   }

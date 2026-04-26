@@ -24,8 +24,7 @@ import lombok.NoArgsConstructor;
     name = "auth_refresh_token",
     indexes = {
         @Index(name = "idx_refresh_token_hash", columnList = "token", unique = true),
-        @Index(name = "idx_refresh_token_user", columnList = "user_id"),
-        @Index(name = "idx_refresh_token_expires", columnList = "expiry_date")
+        @Index(name = "idx_refresh_token_user", columnList = "user_id")
     }
 )
 public class RefreshToken {

@@ -36,7 +36,6 @@ import lombok.NoArgsConstructor;
         )
     },
     indexes = {
-        @Index(name = "idx_payment_transaction_professional", columnList = "professional_id"),
         @Index(name = "idx_payment_transaction_created_at", columnList = "created_at")
     }
 )

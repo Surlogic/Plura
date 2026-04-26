@@ -25,8 +25,7 @@ import lombok.NoArgsConstructor;
 @Table(
     name = "client_push_device",
     indexes = {
-        @Index(name = "idx_client_push_device_token", columnList = "push_token", unique = true),
-        @Index(name = "idx_client_push_device_user_enabled", columnList = "user_id, enabled, updated_at DESC")
+        @Index(name = "idx_client_push_device_token", columnList = "push_token", unique = true)
     }
 )
 public class ClientPushDevice {

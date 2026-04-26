@@ -33,9 +33,7 @@ import lombok.NoArgsConstructor;
         @UniqueConstraint(name = "uq_booking_review_booking", columnNames = {"booking_id"})
     },
     indexes = {
-        @Index(name = "idx_booking_review_professional_created_at", columnList = "professional_id, created_at"),
-        @Index(name = "idx_booking_review_user_created_at", columnList = "user_id, created_at"),
-        @Index(name = "idx_booking_review_business_replied_at", columnList = "business_replied_at")
+        @Index(name = "idx_booking_review_professional_created_at", columnList = "professional_id, created_at")
     }
 )
 public class BookingReview {

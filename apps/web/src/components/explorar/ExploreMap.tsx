@@ -368,7 +368,7 @@ function ExploreMap({
   );
 
   return (
-    <div className="relative h-[420px]">
+    <div className="relative h-full min-h-[320px]">
       <Head>
         <link
           rel="stylesheet"

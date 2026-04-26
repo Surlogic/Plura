@@ -548,16 +548,16 @@ export default function ExplorarPage() {
       <div className="flex h-[100dvh] flex-col overflow-hidden bg-[color:var(--bg-soft)] text-[color:var(--ink)]">
         {navbar}
         <main className="relative isolate h-0 min-h-0 w-full flex-1 overflow-hidden">
-          <section className="relative z-0 grid h-full min-h-0 grid-cols-1 gap-1 overflow-hidden p-1 sm:gap-1.5 sm:p-1.5 lg:grid-cols-[minmax(520px,38vw)_minmax(0,1fr)] lg:gap-2 lg:p-2">
-            <div className="relative z-[90] flex h-full min-h-0 w-full flex-col overflow-visible rounded-[18px] border border-[#0E2A47]/10 bg-white shadow-sm">
-              <div className="relative z-[100] shrink-0 overflow-visible border-b border-[#E2E7EC] px-2 py-2 sm:px-2.5 sm:py-2.5">
+          <section className="relative z-0 flex h-full min-h-0 w-full flex-col gap-px overflow-hidden bg-[#E2E7EC] lg:flex-row">
+            <div className="relative z-[90] flex h-full min-h-0 w-full flex-col overflow-visible bg-white lg:min-w-[520px] lg:basis-[38vw] lg:max-w-[620px]">
+              <div className="relative z-[100] shrink-0 overflow-visible border-b border-[#E2E7EC] px-2 py-2">
                 {exploreFiltersControl}
                 <div className="mt-1 flex items-center justify-end">
                   {exploreSortControl}
                 </div>
               </div>
 
-              <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-2 py-2 sm:px-2.5 sm:py-2.5">
+              <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-2 py-2">
                 <div className="pr-1">
                   {error ? (
                     <div className="rounded-[16px] border border-dashed border-[#E2E7EC] bg-[#F8FAFC] px-4 py-6 text-sm text-[#64748B]">
@@ -616,7 +616,7 @@ export default function ExplorarPage() {
               </div>
             </div>
 
-            <div className="flex h-full min-h-0 flex-col rounded-[18px] border border-[#0E2A47]/10 bg-white p-1 shadow-sm sm:p-1.5">
+            <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden bg-white">
               <div className="relative min-h-0 flex-1">
                 <ExploreMap
                   results={items}

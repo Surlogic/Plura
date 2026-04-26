@@ -387,8 +387,8 @@ function ExploreMap({
         cursor={cursor}
         dragRotate={false}
         touchZoomRotate={false}
-        containerClassName="h-full overflow-hidden rounded-[20px] border border-[#DCE5ED]"
-        fallbackClassName="h-full rounded-[20px] bg-[#E9EEF2]"
+        containerClassName="h-full overflow-hidden border border-[#DCE5ED]"
+        fallbackClassName="h-full bg-[#E9EEF2]"
       >
         <NavigationControl position="top-right" showCompass={false} />
 

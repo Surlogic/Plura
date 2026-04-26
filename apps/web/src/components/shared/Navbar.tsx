@@ -66,7 +66,13 @@ export default memo(function Navbar({
             exploreViewToggle ? 'order-2 lg:order-3' : ''
           }`}
         >
-          <ThemeSwitcher variant="compact" showLabel={false} className="self-start sm:self-auto" />
+          {role !== 'PUBLIC' ? (
+            <ThemeSwitcher
+              variant="compact"
+              showLabel={false}
+              className="self-start sm:self-auto"
+            />
+          ) : null}
           {role === 'PROFESSIONAL' ? (
             <>
               <Button href="/explorar" size="md">
@@ -126,6 +132,11 @@ export default memo(function Navbar({
               <Button href="/profesional/auth/login" variant="primary" size="md">
                 Soy profesional
               </Button>
+              <ThemeSwitcher
+                variant="compact"
+                showLabel={false}
+                className="self-start sm:self-auto"
+              />
             </>
           )}
         </div>

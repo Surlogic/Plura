@@ -21,6 +21,21 @@ if (nextArgs.includes("--analyze")) {
 }
 
 const filteredNextArgs = nextArgs.filter((arg) => arg !== "--analyze");
+const resolvedNextArgs = [...filteredNextArgs];
+
+if (nextCommand === "start") {
+  const hasPortArg = resolvedNextArgs.includes("-p") || resolvedNextArgs.includes("--port");
+  const hasHostArg = resolvedNextArgs.includes("-H") || resolvedNextArgs.includes("--hostname");
+
+  if (!hasPortArg) {
+    resolvedNextArgs.push("-p", env.PORT || "3000");
+  }
+
+  if (!hasHostArg) {
+    resolvedNextArgs.push("-H", env.HOSTNAME || "0.0.0.0");
+  }
+}
+
 const cleanMode = nextCommand === "start" ? "ensure" : "clean";
 const cleanScript = path.join(__dirname, "clean-next-build.cjs");
 const nextBin = require.resolve("next/dist/bin/next", { paths: [appDir] });
@@ -35,7 +50,7 @@ if (cleanResult.status !== 0) {
   process.exit(cleanResult.status ?? 1);
 }
 
-const child = spawn(process.execPath, [nextBin, nextCommand, ...filteredNextArgs], {
+const child = spawn(process.execPath, [nextBin, nextCommand, ...resolvedNextArgs], {
   cwd: appDir,
   stdio: "inherit",
   env,

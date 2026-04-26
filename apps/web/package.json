@@ -7,7 +7,7 @@
     "dev": "node ../../scripts/predev.cjs 3002 && next dev -p 3002",
     "build": "node ./scripts/clean-next-build.cjs clean && next build",
     "analyze": "ANALYZE=true node ./scripts/clean-next-build.cjs clean && ANALYZE=true next build",
-    "start": "node ./scripts/clean-next-build.cjs ensure && next start",
+    "start": "node ./scripts/run-next-command.cjs start",
     "lint": "eslint",
     "test:unit": "node ./scripts/run-unit-tests.cjs",
     "perf:budget": "node ./scripts/check-bundle-budget.cjs"

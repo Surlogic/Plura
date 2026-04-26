@@ -37,7 +37,6 @@ const SORT_OPTIONS: Array<{ value: SearchSort; label: string }> = [
   { value: 'RATING', label: 'Mejor valorados' },
 ];
 
-
 const getSingleQueryValue = (value: string | string[] | undefined) =>
   Array.isArray(value) ? value[0] || '' : value || '';
 
@@ -467,80 +466,86 @@ export default function ExplorarPage() {
   }), [isMapView, sort, size, radiusKm]);
 
   const activeMapItemId = hoveredMapItemId || selectedMapItemId;
+  const navbar = hasClientSession ? <ClientDashboardNavbar name={displayName} /> : <Navbar />;
+  const exploreControls = (
+    <>
+      <div className="sr-only">
+        <h1 className="text-3xl font-semibold text-[color:var(--ink)] sm:text-4xl">
+          Profesionales y Negocios
+        </h1>
+        <p className="text-sm text-[color:var(--ink-muted)] sm:text-base">
+          Buscá por categoría, ubicación, fecha o disponibilidad inmediata
+        </p>
+      </div>
 
-  return (
-    <div className="min-h-screen bg-[color:var(--bg-soft)] text-[color:var(--ink)]">
-      {hasClientSession ? <ClientDashboardNavbar name={displayName} /> : <Navbar />}
-      <main className="mx-auto w-full max-w-[1400px] space-y-8 px-4 pb-24 pt-0 sm:px-6 lg:px-10">
-        <header className="sticky top-[73px] z-40 -mx-4 border-b border-[color:var(--border-soft)] bg-[color:var(--bg-soft)]/94 px-4 py-2 shadow-[0_14px_30px_-34px_rgba(13,35,58,0.32)] backdrop-blur-xl sm:-mx-6 sm:px-6 lg:-mx-10 lg:px-10">
-          <div className="sr-only">
-            <h1 className="text-3xl font-semibold text-[color:var(--ink)] sm:text-4xl">
-              Profesionales y Negocios
-            </h1>
-            <p className="text-sm text-[color:var(--ink-muted)] sm:text-base">
-              Buscá por categoría, ubicación, fecha o disponibilidad inmediata
-            </p>
-          </div>
+      <ExploreFilters
+        className="max-w-none"
+        initialValues={filterValues}
+        fixedQuery={fixedQuery}
+        citySuggestions={citySuggestions}
+      />
 
-          <ExploreFilters
-            className="max-w-none"
-            initialValues={filterValues}
-            fixedQuery={fixedQuery}
-            citySuggestions={citySuggestions}
-          />
-
-          <div className="mt-2">
-            <div className="flex flex-wrap items-center justify-end gap-3">
-              <div className="flex flex-wrap items-center gap-2.5">
-                <div className="inline-flex rounded-full border border-[color:var(--border-soft)] bg-[color:var(--surface-muted)] p-0.5">
-                  <button
-                    type="button"
-                    onClick={() => handleViewChange(false)}
-                    className={`rounded-full px-3 py-1.5 text-sm font-semibold transition ${
-                      !isMapView
-                        ? 'bg-[color:var(--surface-dark)] text-[color:var(--text-on-dark)]'
-                        : 'text-[color:var(--ink)] hover:bg-white'
-                    }`}
-                    aria-pressed={!isMapView}
-                  >
-                    Vista lista
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleViewChange(true)}
-                    className={`rounded-full px-3 py-1.5 text-sm font-semibold transition ${
-                      isMapView
-                        ? 'bg-[color:var(--surface-dark)] text-[color:var(--text-on-dark)]'
-                        : 'text-[color:var(--ink)] hover:bg-white'
-                    }`}
-                    aria-pressed={isMapView}
-                  >
-                    Vista mapa
-                  </button>
-                </div>
-
-                <label className="inline-flex items-center gap-2 rounded-full border border-[color:var(--border-soft)] bg-[color:var(--surface-muted)] px-2.5 py-1">
-                  <span className="text-xs font-semibold uppercase tracking-[0.15em] text-[color:var(--ink-faint)]">
-                    Ordenar
-                  </span>
-                  <select
-                    value={sort}
-                    onChange={(event) => handleSortChange(event.target.value as SearchSort)}
-                    className="rounded-full bg-transparent text-sm font-semibold text-[color:var(--ink)] focus:outline-none"
-                  >
-                    {SORT_OPTIONS.map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-              </div>
+      <div className="mt-2">
+        <div className="flex flex-wrap items-center justify-end gap-3">
+          <div className="flex flex-wrap items-center gap-2.5">
+            <div className="inline-flex rounded-full border border-[color:var(--border-soft)] bg-[color:var(--surface-muted)] p-0.5">
+              <button
+                type="button"
+                onClick={() => handleViewChange(false)}
+                className={`rounded-full px-3 py-1.5 text-sm font-semibold transition ${
+                  !isMapView
+                    ? 'bg-[color:var(--surface-dark)] text-[color:var(--text-on-dark)]'
+                    : 'text-[color:var(--ink)] hover:bg-white'
+                }`}
+                aria-pressed={!isMapView}
+              >
+                Páginas
+              </button>
+              <button
+                type="button"
+                onClick={() => handleViewChange(true)}
+                className={`rounded-full px-3 py-1.5 text-sm font-semibold transition ${
+                  isMapView
+                    ? 'bg-[color:var(--surface-dark)] text-[color:var(--text-on-dark)]'
+                    : 'text-[color:var(--ink)] hover:bg-white'
+                }`}
+                aria-pressed={isMapView}
+              >
+                Mapa
+              </button>
             </div>
-          </div>
-        </header>
 
-        {isMapView ? (
+            <label className="inline-flex items-center gap-2 rounded-full border border-[color:var(--border-soft)] bg-[color:var(--surface-muted)] px-2.5 py-1">
+              <span className="text-xs font-semibold uppercase tracking-[0.15em] text-[color:var(--ink-faint)]">
+                Ordenar
+              </span>
+              <select
+                value={sort}
+                onChange={(event) => handleSortChange(event.target.value as SearchSort)}
+                className="rounded-full bg-transparent text-sm font-semibold text-[color:var(--ink)] focus:outline-none"
+              >
+                {SORT_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+        </div>
+      </div>
+    </>
+  );
+
+  if (isMapView) {
+    return (
+      <div className="min-h-screen bg-[color:var(--bg-soft)] text-[color:var(--ink)]">
+        {navbar}
+        <main className="mx-auto w-full max-w-[1400px] space-y-8 px-4 pb-24 pt-0 sm:px-6 lg:px-10">
+          <header className="sticky top-[73px] z-40 -mx-4 border-b border-[color:var(--border-soft)] bg-[color:var(--bg-soft)]/94 px-4 py-2 shadow-[0_14px_30px_-34px_rgba(13,35,58,0.32)] backdrop-blur-xl sm:-mx-6 sm:px-6 lg:-mx-10 lg:px-10">
+            {exploreControls}
+          </header>
+
           <section className="space-y-4">
             <div className="flex items-center justify-between">
               <h2 className="text-xl font-semibold text-[#0E2A47]">Mapa</h2>
@@ -629,92 +634,107 @@ export default function ExplorarPage() {
               </div>
             </div>
           </section>
-        ) : (
-          <section className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h2 className="text-xl font-semibold text-[#0E2A47]">Resultados</h2>
-              <span className="text-sm text-[#6B7280]">
-                {isLoading ? 'Cargando...' : `${total.toLocaleString('es-UY')} resultados`}
-              </span>
-            </div>
-            {error ? (
-              <div className="rounded-[20px] border border-dashed border-[#E2E7EC] bg-white px-4 py-6 text-sm text-[#64748B]">
-                {error}
-              </div>
-            ) : items.length === 0 ? (
-              <div className="rounded-[20px] border border-dashed border-[#E2E7EC] bg-white px-4 py-6 text-sm text-[#64748B]">
-                {isLoading ? (
-                  'Buscando profesionales...'
-                ) : (
-                  <div className="space-y-1">
-                    <p className="font-semibold text-[#0E2A47]">
-                      No encontramos profesionales en esta zona.
-                    </p>
-                    <p>Intentá ampliar el radio, buscar otra categoría o quitar filtros.</p>
-                  </div>
-                )}
-              </div>
-            ) : (
-              <>
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                  {items.map((item, index) => (
-                    <ExploreCard
-                      key={item.id}
-                      name={item.name}
-                      category={getCategoryLabel(item)}
-                      rating={typeof item.rating === 'number' ? item.rating.toFixed(1) : undefined}
-                      price={formatPriceFrom(item.priceFrom)}
-                      city={item.locationText || undefined}
-                      distance={item.distanceKm}
-                      bannerUrl={item.bannerUrl}
-                      bannerMedia={item.bannerMedia}
-                      logoUrl={item.logoUrl}
-                      logoMedia={item.logoMedia}
-                      fallbackPhotoUrl={item.fallbackPhotoUrl}
-                      imageUrl={item.coverImageUrl}
-                      available={availableNow}
-                      href={
-                        item.slug
-                          ? `/profesional/pagina/${encodeURIComponent(item.slug)}`
-                          : undefined
-                      }
-                      priority={index < 4}
-                      isFavorite={isFavorite(item.slug)}
-                      id={String(item.id)}
-                      onFavoriteToggle={handleFavoriteToggle}
-                    />
-                  ))}
-                </div>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
 
-                <div className="flex flex-wrap items-center justify-between gap-3 rounded-[18px] border border-[#E2E7EC] bg-white px-4 py-3">
-                  <p className="text-sm text-[#64748B]">
-                    Página {(page + 1).toLocaleString('es-UY')} de {totalPages.toLocaleString('es-UY')}
-                  </p>
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      disabled={page <= 0}
-                      onClick={() => handlePageChange(page - 1)}
-                      className="inline-flex h-9 items-center justify-center rounded-full border border-[#DFE7EF] bg-white px-4 text-sm font-semibold text-[#0E2A47] transition hover:bg-[#F8FAFC] disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                      Anterior
-                    </button>
-                    <button
-                      type="button"
-                      disabled={page >= totalPages - 1}
-                      onClick={() => handlePageChange(page + 1)}
-                      className="inline-flex h-9 items-center justify-center rounded-full border border-[#DFE7EF] bg-white px-4 text-sm font-semibold text-[#0E2A47] transition hover:bg-[#F8FAFC] disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                      Siguiente
-                    </button>
-                  </div>
+  return (
+    <div className="flex h-[100dvh] flex-col overflow-hidden bg-[color:var(--bg-soft)] text-[color:var(--ink)]">
+      {navbar}
+      <main className="mx-auto flex min-h-0 w-full max-w-[1400px] flex-1 flex-col overflow-hidden px-4 pb-4 pt-0 sm:px-6 lg:px-10">
+        <header className="shrink-0 -mx-4 border-b border-[color:var(--border-soft)] bg-[color:var(--bg-soft)]/94 px-4 py-2 shadow-[0_14px_30px_-34px_rgba(13,35,58,0.32)] backdrop-blur-xl sm:-mx-6 sm:px-6 lg:-mx-10 lg:px-10">
+          {exploreControls}
+        </header>
+
+        <section className="flex min-h-0 flex-1 flex-col overflow-hidden py-4">
+          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain pr-1">
+            <div className="space-y-4 pb-6">
+              <div className="flex items-center justify-between">
+                <h2 className="text-xl font-semibold text-[#0E2A47]">Resultados</h2>
+                <span className="text-sm text-[#6B7280]">
+                  {isLoading ? 'Cargando...' : `${total.toLocaleString('es-UY')} resultados`}
+                </span>
+              </div>
+              {error ? (
+                <div className="rounded-[20px] border border-dashed border-[#E2E7EC] bg-white px-4 py-6 text-sm text-[#64748B]">
+                  {error}
                 </div>
-              </>
-            )}
-          </section>
-        )}
+              ) : items.length === 0 ? (
+                <div className="rounded-[20px] border border-dashed border-[#E2E7EC] bg-white px-4 py-6 text-sm text-[#64748B]">
+                  {isLoading ? (
+                    'Buscando profesionales...'
+                  ) : (
+                    <div className="space-y-1">
+                      <p className="font-semibold text-[#0E2A47]">
+                        No encontramos profesionales en esta zona.
+                      </p>
+                      <p>Intentá ampliar el radio, buscar otra categoría o quitar filtros.</p>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <>
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                    {items.map((item, index) => (
+                      <ExploreCard
+                        key={item.id}
+                        name={item.name}
+                        category={getCategoryLabel(item)}
+                        rating={typeof item.rating === 'number' ? item.rating.toFixed(1) : undefined}
+                        price={formatPriceFrom(item.priceFrom)}
+                        city={item.locationText || undefined}
+                        distance={item.distanceKm}
+                        bannerUrl={item.bannerUrl}
+                        bannerMedia={item.bannerMedia}
+                        logoUrl={item.logoUrl}
+                        logoMedia={item.logoMedia}
+                        fallbackPhotoUrl={item.fallbackPhotoUrl}
+                        imageUrl={item.coverImageUrl}
+                        available={availableNow}
+                        href={
+                          item.slug
+                            ? `/profesional/pagina/${encodeURIComponent(item.slug)}`
+                            : undefined
+                        }
+                        priority={index < 4}
+                        isFavorite={isFavorite(item.slug)}
+                        id={String(item.id)}
+                        onFavoriteToggle={handleFavoriteToggle}
+                      />
+                    ))}
+                  </div>
+
+                  <div className="flex flex-wrap items-center justify-between gap-3 rounded-[18px] border border-[#E2E7EC] bg-white px-4 py-3">
+                    <p className="text-sm text-[#64748B]">
+                      Página {(page + 1).toLocaleString('es-UY')} de {totalPages.toLocaleString('es-UY')}
+                    </p>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        disabled={page <= 0}
+                        onClick={() => handlePageChange(page - 1)}
+                        className="inline-flex h-9 items-center justify-center rounded-full border border-[#DFE7EF] bg-white px-4 text-sm font-semibold text-[#0E2A47] transition hover:bg-[#F8FAFC] disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        Anterior
+                      </button>
+                      <button
+                        type="button"
+                        disabled={page >= totalPages - 1}
+                        onClick={() => handlePageChange(page + 1)}
+                        className="inline-flex h-9 items-center justify-center rounded-full border border-[#DFE7EF] bg-white px-4 text-sm font-semibold text-[#0E2A47] transition hover:bg-[#F8FAFC] disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        Siguiente
+                      </button>
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        </section>
       </main>
-      <Footer />
     </div>
   );
 }

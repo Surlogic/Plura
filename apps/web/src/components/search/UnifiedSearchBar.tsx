@@ -121,6 +121,8 @@ export default memo(function UnifiedSearchBar({
 }: UnifiedSearchBarProps) {
   const wrapperRef = useRef<HTMLDivElement | null>(null);
   const isHero = variant === 'hero';
+  const isExplore = variant === 'explore';
+  const usesBareLayout = isHero || isExplore;
   const isCompact = density === 'compact';
   const heroFocusExpansionEnabled = isHero && interactiveFocusExpansion;
   const { resolvedTheme } = useTheme();
@@ -272,21 +274,29 @@ export default memo(function UnifiedSearchBar({
       ? SEARCH_TYPE_LABELS[values.type]
       : null;
   const queryFieldLabel = 'Servicios';
-  const hiddenHeroLabelClassName = isHero ? 'sr-only' : '';
+  const hiddenHeroLabelClassName = usesBareLayout ? 'sr-only' : '';
   const heroInlineLabelClassName = `inline-flex min-w-0 items-center gap-1.5 truncate whitespace-nowrap ${
     isCompact ? 'text-[0.54rem] tracking-[0.18em]' : 'text-[0.58rem] tracking-[0.2em]'
   } font-semibold uppercase text-[color:var(--ink-faint)]`;
   const heroServicesExpanded = heroFocusExpansionEnabled && heroExpandedField === 'query';
-  const compactControlClassName = isCompact ? '!min-h-[42px]' : '';
-  const queryFieldClassName = isHero
+  const compactControlClassName = isCompact
+    ? isExplore
+      ? '!min-h-[40px]'
+      : '!min-h-[42px]'
+    : '';
+  const queryFieldClassName = usesBareLayout
     ? `h-full justify-center ${isCompact ? '!py-0' : 'py-1.5'} ${compactControlClassName}`.trim()
     : 'h-full';
-  const selectionFieldClassName = isHero
+  const selectionFieldClassName = usesBareLayout
     ? `h-full justify-center ${isCompact ? '!py-0' : 'py-1.5'} ${compactControlClassName}`.trim()
     : 'h-full';
-  const queryValueClassName = isHero ? '!mt-0 flex !min-h-[0.85rem] items-center' : '';
-  const selectionValueClassName = isHero ? '!mt-0 flex !min-h-[0.85rem] items-center' : '';
-  const heroFieldShellClassName = isCompact ? '!px-3 !py-1 sm:!px-4' : 'px-4 py-2 sm:px-5';
+  const queryValueClassName = usesBareLayout ? '!mt-0 flex !min-h-[0.85rem] items-center' : '';
+  const selectionValueClassName = usesBareLayout ? '!mt-0 flex !min-h-[0.85rem] items-center' : '';
+  const heroFieldShellClassName = isCompact
+    ? isExplore
+      ? '!px-2.5 !py-0.5 sm:!px-3'
+      : '!px-3 !py-1 sm:!px-4'
+    : 'px-4 py-2 sm:px-5';
   const heroDividerClassName = 'border-t border-[color:var(--border-soft)]/85 md:border-t-0 md:border-r';
   const heroQueryDividerClassName = 'md:border-r md:border-[color:var(--border-soft)]/85';
   const heroFieldMotionClassName = heroFocusExpansionEnabled
@@ -301,33 +311,44 @@ export default memo(function UnifiedSearchBar({
   const centeredHeroDropdownClassName = isHero
     ? 'sm:left-1/2 sm:right-auto sm:-translate-x-1/2'
     : 'sm:right-auto';
-  const queryWrapperOrderClassName = isHero
+  const queryWrapperOrderClassName = usesBareLayout
     ? `order-1 md:col-[1] ${heroFieldShellClassName} ${heroQueryDividerClassName} ${heroFieldMotionClassName} ${heroQueryWidthClassName}`
     : '';
-  const locationWrapperOrderClassName = isHero
+  const locationWrapperOrderClassName = usesBareLayout
     ? `order-2 md:col-[2] ${heroFieldShellClassName} ${heroDividerClassName} ${heroFieldMotionClassName} ${
         heroServicesExpanded ? heroSelectionCompactWidthClassName : heroSelectionExpandedWidthClassName
       }`
     : '';
-  const dateWrapperOrderClassName = isHero
+  const dateWrapperOrderClassName = usesBareLayout
     ? `order-3 md:col-[3] ${heroFieldShellClassName} ${heroDividerClassName} ${heroFieldMotionClassName} ${
         heroServicesExpanded ? heroSelectionCompactWidthClassName : heroSelectionExpandedWidthClassName
       }`
     : '';
-  const submitWrapperOrderClassName = isHero ? 'order-4 md:col-[4] lg:flex-[0_0_10.5rem]' : '';
-  const searchGridClassName = isHero
+  const submitWrapperOrderClassName = usesBareLayout
+    ? `order-4 md:col-[4] ${isExplore ? 'lg:flex-[0_0_8.75rem]' : 'lg:flex-[0_0_10.5rem]'}`
+    : '';
+  const searchGridClassName = usesBareLayout
     ? 'grid gap-0 md:grid-cols-[minmax(0,2fr)_minmax(0,1.15fr)_minmax(0,1fr)_auto] md:items-center lg:flex lg:items-stretch'
     : 'grid gap-1.5 md:grid-cols-[minmax(0,1.9fr)_minmax(0,0.85fr)_minmax(0,0.95fr)_auto] md:items-stretch';
   const submitButtonToneClassName = isDarkTheme
     ? 'border border-[color:var(--primary-strong)] bg-[linear-gradient(135deg,var(--primary)_0%,var(--primary-strong)_100%)] text-[color:var(--text-on-dark)] shadow-[0_22px_40px_-28px_rgba(0,0,0,0.72)] hover:-translate-y-0.5 hover:border-[color:var(--brand-primary-light)] hover:bg-[linear-gradient(135deg,var(--primary-strong)_0%,var(--brand-primary-light)_100%)] hover:shadow-[var(--shadow-lift)]'
     : 'border border-[color:var(--primary)] bg-[color:var(--primary)] text-[color:var(--ink)] shadow-[var(--shadow-card)] hover:-translate-y-0.5 hover:border-[color:var(--primary-strong)] hover:bg-[color:var(--primary-strong)] hover:text-white hover:shadow-[var(--shadow-lift)]';
-  const submitControlHeightClassName = isCompact ? '!min-h-[42px]' : SEARCH_CONTROL_HEIGHT_CLASS;
-  const submitButtonClassName = isHero
-    ? `inline-flex w-full min-w-[8.5rem] items-center justify-center rounded-[14px] px-4 text-[0.9rem] font-semibold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--accent-soft)] focus-visible:ring-offset-2 ${submitButtonToneClassName} ${submitControlHeightClassName}`
+  const submitControlHeightClassName = isCompact
+    ? isExplore
+      ? '!min-h-[40px]'
+      : '!min-h-[42px]'
+    : SEARCH_CONTROL_HEIGHT_CLASS;
+  const submitButtonClassName = usesBareLayout
+    ? `inline-flex w-full ${isExplore ? 'min-w-[7.75rem] rounded-[12px] text-[0.85rem]' : 'min-w-[8.5rem] rounded-[14px] text-[0.9rem]'} items-center justify-center px-4 font-semibold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--accent-soft)] focus-visible:ring-offset-2 ${submitButtonToneClassName} ${submitControlHeightClassName}`
     : `inline-flex w-full min-w-[7.5rem] items-center justify-center rounded-[18px] px-4 text-[0.94rem] font-semibold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--accent-soft)] focus-visible:ring-offset-2 ${submitButtonToneClassName} ${submitControlHeightClassName}`;
-  const searchInputClassName = isHero
+  const searchInputClassName = usesBareLayout
     ? 'hero-search-service-input block min-h-[1.65rem] w-full min-w-0 appearance-none border-0 rounded-none bg-transparent p-0 shadow-none text-[0.95rem] font-semibold leading-[1.2] text-[color:var(--ink)] outline-none ring-0 placeholder:font-normal placeholder:text-[color:var(--ink-muted)] focus:border-0 focus:outline-none focus:ring-0 focus:shadow-none'
     : 'h-6 w-full min-w-0 bg-transparent text-[0.95rem] font-semibold leading-none text-[color:var(--ink)] placeholder:font-normal placeholder:text-[color:var(--ink-muted)] focus:outline-none';
+  const surfaceClassName = isCompact
+    ? isExplore
+      ? 'rounded-[14px] !p-0.5'
+      : 'rounded-[16px] !p-1'
+    : 'rounded-[24px] p-1.5 sm:p-2';
 
   const openSearchPanel = () => {
     setIsSearchOpen(true);
@@ -435,7 +456,7 @@ export default memo(function UnifiedSearchBar({
     >
       <form onSubmit={handleSubmit} className="relative overflow-visible">
         <div
-          className={`relative overflow-visible ${isCompact ? 'rounded-[16px] !p-1' : 'rounded-[24px] p-1.5 sm:p-2'} ${SURFACE_CLASSES[variant]}`}
+          className={`relative overflow-visible ${surfaceClassName} ${SURFACE_CLASSES[variant]}`}
         >
           <div className={searchGridClassName}>
             <div className={`relative min-w-0 ${queryWrapperOrderClassName}`.trim()}>
@@ -445,16 +466,16 @@ export default memo(function UnifiedSearchBar({
                 className={queryFieldClassName}
                 labelClassName={hiddenHeroLabelClassName}
                 valueClassName={queryValueClassName}
-                chrome={isHero ? 'bare' : 'framed'}
+                chrome={usesBareLayout ? 'bare' : 'framed'}
               >
                 <div className="relative flex min-w-0 items-center gap-2.5">
-                  {searchModeLabel && !isHero ? (
+                  {searchModeLabel && !usesBareLayout ? (
                     <span className="hidden shrink-0 rounded-full bg-white px-2 py-1 text-[0.58rem] font-semibold uppercase tracking-[0.16em] text-[color:var(--ink-faint)] sm:inline-flex">
                       {searchModeLabel}
                     </span>
                   ) : null}
 
-                  {isHero && !hasQuerySelection ? (
+                  {usesBareLayout && !hasQuerySelection ? (
                     <span
                       className={`pointer-events-none absolute inset-y-0 left-0 flex items-center transition-opacity duration-200 ${heroInlineLabelClassName}`}
                       aria-hidden="true"
@@ -487,7 +508,7 @@ export default memo(function UnifiedSearchBar({
                     onFocus={openSearchPanel}
                     onClick={openSearchPanel}
                     onKeyDown={handleInputKeyDown}
-                    placeholder={isHero ? '' : inputPlaceholder}
+                    placeholder={usesBareLayout ? '' : inputPlaceholder}
                     className={searchInputClassName}
                     aria-label="Buscar tratamiento, categoría, profesional o local"
                     autoComplete="off"
@@ -519,7 +540,7 @@ export default memo(function UnifiedSearchBar({
                 onPointerDown={handleSelectionFieldPointerDown}
                 labelClassName={hiddenHeroLabelClassName}
                 valueClassName={selectionValueClassName}
-                chrome={isHero ? 'bare' : 'framed'}
+                chrome={usesBareLayout ? 'bare' : 'framed'}
                 onClick={() => {
                   skipHeroSelectionFocusCollapseRef.current = false;
                   if (heroFocusExpansionEnabled) {
@@ -541,7 +562,7 @@ export default memo(function UnifiedSearchBar({
                     </span>
                   ) : null}
 
-                  {isHero && !hasLocationSelection ? (
+                  {usesBareLayout && !hasLocationSelection ? (
                     <span className={`${heroInlineLabelClassName} ${heroServicesExpanded ? 'lg:hidden' : ''}`.trim()}>
                       <SearchSectionLabel icon="location" text="Ubicación" />
                     </span>
@@ -615,7 +636,7 @@ export default memo(function UnifiedSearchBar({
                 onPointerDown={handleSelectionFieldPointerDown}
                 labelClassName={hiddenHeroLabelClassName}
                 valueClassName={selectionValueClassName}
-                chrome={isHero ? 'bare' : 'framed'}
+                chrome={usesBareLayout ? 'bare' : 'framed'}
                 onClick={() => {
                   skipHeroSelectionFocusCollapseRef.current = false;
                   if (heroFocusExpansionEnabled) {
@@ -637,7 +658,7 @@ export default memo(function UnifiedSearchBar({
                     </span>
                   ) : null}
 
-                  {isHero && !hasDateSelection ? (
+                  {usesBareLayout && !hasDateSelection ? (
                     <span className={`${heroInlineLabelClassName} ${heroServicesExpanded ? 'lg:hidden' : ''}`.trim()}>
                       <SearchSectionLabel icon="calendar" text="Fecha" />
                     </span>
@@ -696,7 +717,7 @@ export default memo(function UnifiedSearchBar({
               ) : null}
             </div>
 
-            <div className={`flex items-stretch self-stretch ${submitWrapperOrderClassName} ${isHero ? `border-t border-[color:var(--border-soft)]/85 px-1 ${isCompact ? '!pt-0 md:!px-1 md:!pl-2 lg:!pl-2' : 'pt-2 md:px-2 md:pl-4 lg:pl-3'} md:border-l md:border-t-0 md:pt-0` : ''}`.trim()}>
+            <div className={`flex items-stretch self-stretch ${submitWrapperOrderClassName} ${usesBareLayout ? `border-t border-[color:var(--border-soft)]/85 px-1 ${isCompact ? `${isExplore ? '!pt-0 md:!px-1 md:!pl-1.5 lg:!pl-1.5' : '!pt-0 md:!px-1 md:!pl-2 lg:!pl-2'}` : 'pt-2 md:px-2 md:pl-4 lg:pl-3'} md:border-l md:border-t-0 md:pt-0` : ''}`.trim()}>
               <button
                 type="submit"
                 className={submitButtonClassName}
@@ -706,8 +727,8 @@ export default memo(function UnifiedSearchBar({
             </div>
           </div>
 
-          {activeFilters.length > 0 && (!isHero || showClearButton) ? (
-            <div className="mt-2.5 px-1">
+          {activeFilters.length > 0 && (!usesBareLayout || showClearButton) ? (
+            <div className={`px-1 ${isExplore ? 'mt-2' : 'mt-2.5'}`}>
               <SearchFilterChips filters={activeFilters} onClearAll={showClearButton ? handleClear : undefined} />
             </div>
           ) : null}

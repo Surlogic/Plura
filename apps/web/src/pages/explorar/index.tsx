@@ -516,15 +516,15 @@ export default function ExplorarPage() {
         citySuggestions={citySuggestions}
       />
 
-      <div className="mt-1 flex items-center justify-end">
-        <label className="inline-flex items-center gap-2 rounded-full border border-[color:var(--border-soft)] bg-[color:var(--surface-muted)] px-2.5 py-1">
+      <div className="mt-0.5 flex items-center justify-end">
+        <label className="inline-flex items-center gap-2 rounded-full border border-[color:var(--border-soft)] bg-[color:var(--surface-muted)] px-2.5 py-0.5">
           <span className="text-xs font-semibold uppercase tracking-[0.15em] text-[color:var(--ink-faint)]">
             Ordenar
           </span>
           <select
             value={sort}
             onChange={(event) => handleSortChange(event.target.value as SearchSort)}
-            className="rounded-full bg-transparent text-sm font-semibold text-[color:var(--ink)] focus:outline-none"
+            className="rounded-full bg-transparent py-0.5 text-sm font-semibold text-[color:var(--ink)] focus:outline-none"
           >
             {SORT_OPTIONS.map((option) => (
               <option key={option.value} value={option.value}>
@@ -542,12 +542,12 @@ export default function ExplorarPage() {
       <div className="flex h-[100dvh] flex-col overflow-hidden bg-[color:var(--bg-soft)] text-[color:var(--ink)]">
         {navbar}
         <main className="relative isolate mx-auto flex min-h-0 w-full max-w-[1400px] flex-1 flex-col overflow-visible px-4 pt-0 sm:px-6 lg:px-10">
-          <header className="relative z-[70] shrink-0 -mx-4 overflow-visible border-b border-[color:var(--border-soft)] bg-[color:var(--bg-soft)]/94 px-4 py-2 shadow-[0_14px_30px_-34px_rgba(13,35,58,0.32)] backdrop-blur-xl sm:-mx-6 sm:px-6 lg:-mx-10 lg:px-10">
+          <header className="relative z-[70] shrink-0 -mx-4 overflow-visible border-b border-[color:var(--border-soft)] bg-[color:var(--bg-soft)]/94 px-4 py-1.5 shadow-[0_14px_30px_-34px_rgba(13,35,58,0.32)] backdrop-blur-xl sm:-mx-6 sm:px-6 sm:py-2 lg:-mx-10 lg:px-10">
             {exploreControls}
           </header>
 
-          <section className="relative z-0 flex min-h-0 flex-1 flex-col overflow-hidden py-4">
-            <div className="flex min-h-0 flex-1 flex-col gap-4 lg:flex-row">
+          <section className="relative z-0 flex min-h-0 flex-1 flex-col overflow-hidden pt-2 pb-3">
+            <div className="flex min-h-0 flex-1 flex-col gap-3 lg:flex-row">
               <div className="order-2 flex min-h-0 flex-[0_0_42%] flex-col overflow-hidden rounded-[24px] border border-[#0E2A47]/10 bg-white p-4 shadow-sm lg:order-1 lg:basis-[26%]">
                 <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain pr-1">
                   {error ? (
@@ -639,11 +639,11 @@ export default function ExplorarPage() {
     <div className="flex h-[100dvh] flex-col overflow-hidden bg-[color:var(--bg-soft)] text-[color:var(--ink)]">
       {navbar}
       <main className="relative isolate mx-auto flex min-h-0 w-full max-w-[1400px] flex-1 flex-col overflow-hidden px-4 pt-0 sm:px-6 lg:px-10">
-        <header className="relative z-[70] shrink-0 -mx-4 overflow-visible border-b border-[color:var(--border-soft)] bg-[color:var(--bg-soft)]/94 px-4 py-2 shadow-[0_14px_30px_-34px_rgba(13,35,58,0.32)] backdrop-blur-xl sm:-mx-6 sm:px-6 lg:-mx-10 lg:px-10">
+        <header className="relative z-[70] shrink-0 -mx-4 overflow-visible border-b border-[color:var(--border-soft)] bg-[color:var(--bg-soft)]/94 px-4 py-1.5 shadow-[0_14px_30px_-34px_rgba(13,35,58,0.32)] backdrop-blur-xl sm:-mx-6 sm:px-6 sm:py-2 lg:-mx-10 lg:px-10">
           {exploreControls}
         </header>
 
-        <section className="relative z-0 flex min-h-0 flex-1 flex-col overflow-hidden pt-0">
+        <section className="relative z-0 flex min-h-0 flex-1 flex-col overflow-hidden pt-2">
           <div className="relative z-0 min-h-0 flex-1 overflow-y-auto overscroll-contain pr-1">
             <div className="space-y-4 pb-8">
               {error ? (

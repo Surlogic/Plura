@@ -17,7 +17,7 @@ export default function ExploreFilters({
 }: ExploreFiltersProps) {
   return (
     <UnifiedSearchBar
-      variant="hero"
+      variant="explore"
       initialValues={initialValues}
       fixedQuery={fixedQuery}
       citySuggestions={citySuggestions}

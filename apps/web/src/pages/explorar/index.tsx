@@ -498,6 +498,32 @@ export default function ExplorarPage() {
   ) : (
     <Navbar exploreViewToggle={exploreViewToggle} />
   );
+  const exploreSortControl = (
+    <label className="inline-flex items-center gap-2 rounded-full border border-[color:var(--border-soft)] bg-[color:var(--surface-muted)] px-2.5 py-0.5">
+      <span className="text-xs font-semibold uppercase tracking-[0.15em] text-[color:var(--ink-faint)]">
+        Ordenar
+      </span>
+      <select
+        value={sort}
+        onChange={(event) => handleSortChange(event.target.value as SearchSort)}
+        className="rounded-full bg-transparent py-0.5 text-sm font-semibold text-[color:var(--ink)] focus:outline-none"
+      >
+        {SORT_OPTIONS.map((option) => (
+          <option key={option.value} value={option.value}>
+            {option.label}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
+  const exploreFiltersControl = (
+    <ExploreFilters
+      className="max-w-none"
+      initialValues={filterValues}
+      fixedQuery={fixedQuery}
+      citySuggestions={citySuggestions}
+    />
+  );
   const exploreControls = (
     <>
       <div className="sr-only">
@@ -509,30 +535,10 @@ export default function ExplorarPage() {
         </p>
       </div>
 
-      <ExploreFilters
-        className="max-w-none"
-        initialValues={filterValues}
-        fixedQuery={fixedQuery}
-        citySuggestions={citySuggestions}
-      />
+      {exploreFiltersControl}
 
       <div className="mt-0.5 flex items-center justify-end">
-        <label className="inline-flex items-center gap-2 rounded-full border border-[color:var(--border-soft)] bg-[color:var(--surface-muted)] px-2.5 py-0.5">
-          <span className="text-xs font-semibold uppercase tracking-[0.15em] text-[color:var(--ink-faint)]">
-            Ordenar
-          </span>
-          <select
-            value={sort}
-            onChange={(event) => handleSortChange(event.target.value as SearchSort)}
-            className="rounded-full bg-transparent py-0.5 text-sm font-semibold text-[color:var(--ink)] focus:outline-none"
-          >
-            {SORT_OPTIONS.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-        </label>
+        {exploreSortControl}
       </div>
     </>
   );
@@ -541,15 +547,18 @@ export default function ExplorarPage() {
     return (
       <div className="flex h-[100dvh] flex-col overflow-hidden bg-[color:var(--bg-soft)] text-[color:var(--ink)]">
         {navbar}
-        <main className="relative isolate mx-auto flex min-h-0 w-full max-w-[1400px] flex-1 flex-col overflow-visible px-4 pt-0 sm:px-6 lg:px-10">
-          <header className="relative z-[70] shrink-0 -mx-4 overflow-visible border-b border-[color:var(--border-soft)] bg-[color:var(--bg-soft)]/94 px-4 py-1.5 shadow-[0_14px_30px_-34px_rgba(13,35,58,0.32)] backdrop-blur-xl sm:-mx-6 sm:px-6 sm:py-2 lg:-mx-10 lg:px-10">
-            {exploreControls}
-          </header>
+        <main className="relative isolate mx-auto flex min-h-0 w-full max-w-[1400px] flex-1 overflow-hidden px-4 pt-2 pb-3 sm:px-6 lg:px-10">
+          <section className="relative z-0 flex min-h-0 flex-1 flex-col gap-3 overflow-hidden lg:flex-row">
+            <div className="relative z-[90] flex min-h-0 w-full flex-col overflow-visible rounded-[24px] border border-[#0E2A47]/10 bg-white shadow-sm lg:min-w-[320px] lg:max-w-[420px] lg:flex-[0_0_25%]">
+              <div className="relative z-[100] shrink-0 overflow-visible border-b border-[#E2E7EC] px-3 py-3 sm:px-4">
+                {exploreFiltersControl}
+                <div className="mt-2 flex items-center justify-end">
+                  {exploreSortControl}
+                </div>
+              </div>
 
-          <section className="relative z-0 flex min-h-0 flex-1 flex-col overflow-hidden pt-2 pb-3">
-            <div className="flex min-h-0 flex-1 flex-col gap-3 lg:flex-row">
-              <div className="order-2 flex min-h-0 flex-[0_0_42%] flex-col overflow-hidden rounded-[24px] border border-[#0E2A47]/10 bg-white p-4 shadow-sm lg:order-1 lg:basis-[26%]">
-                <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain pr-1">
+              <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 py-3 sm:px-4">
+                <div className="pr-1">
                   {error ? (
                     <div className="rounded-[16px] border border-dashed border-[#E2E7EC] bg-[#F8FAFC] px-4 py-6 text-sm text-[#64748B]">
                       {error}
@@ -604,29 +613,30 @@ export default function ExplorarPage() {
                   )}
                 </div>
               </div>
-              <div className="order-1 flex min-h-0 flex-1 flex-col rounded-[24px] border border-[#0E2A47]/10 bg-white p-4 shadow-sm lg:order-2 lg:basis-[74%]">
-                <div className="relative min-h-0 flex-1">
-                  <ExploreMap
-                    results={items}
-                    userLocation={mapUserLocation}
-                    activeResultId={activeMapItemId}
-                    onActiveResultChange={setSelectedMapItemId}
-                  />
-                  {isLoading ? (
-                    <div className="pointer-events-none absolute inset-x-0 top-3 flex justify-center px-4">
-                      <p className="rounded-full bg-white/95 px-3 py-1 text-xs font-semibold text-[#0E2A47] shadow-sm">
-                        Cargando resultados...
-                      </p>
-                    </div>
-                  ) : null}
-                  {!isLoading && items.length === 0 ? (
-                    <div className="pointer-events-none absolute inset-x-0 bottom-3 flex justify-center px-4">
-                      <p className="rounded-full bg-white/95 px-3 py-1 text-xs font-semibold text-[#0E2A47] shadow-sm">
-                        No hay profesionales en esta zona. Mové el mapa o ampliá el radio.
-                      </p>
-                    </div>
-                  ) : null}
-                </div>
+            </div>
+
+            <div className="flex min-h-0 flex-1 flex-col rounded-[24px] border border-[#0E2A47]/10 bg-white p-4 shadow-sm lg:flex-[1_1_75%]">
+              <div className="relative min-h-0 flex-1">
+                <ExploreMap
+                  results={items}
+                  userLocation={mapUserLocation}
+                  activeResultId={activeMapItemId}
+                  onActiveResultChange={setSelectedMapItemId}
+                />
+                {isLoading ? (
+                  <div className="pointer-events-none absolute inset-x-0 top-3 flex justify-center px-4">
+                    <p className="rounded-full bg-white/95 px-3 py-1 text-xs font-semibold text-[#0E2A47] shadow-sm">
+                      Cargando resultados...
+                    </p>
+                  </div>
+                ) : null}
+                {!isLoading && items.length === 0 ? (
+                  <div className="pointer-events-none absolute inset-x-0 bottom-3 flex justify-center px-4">
+                    <p className="rounded-full bg-white/95 px-3 py-1 text-xs font-semibold text-[#0E2A47] shadow-sm">
+                      No hay profesionales en esta zona. Mové el mapa o ampliá el radio.
+                    </p>
+                  </div>
+                ) : null}
               </div>
             </div>
           </section>

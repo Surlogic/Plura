@@ -41,8 +41,8 @@ spring:
     password: ${SPRING_DATASOURCE_PASSWORD:${DATABASE_PASSWORD:}}
     driver-class-name: ${SPRING_DATASOURCE_DRIVER_CLASS_NAME:}
     hikari:
-      maximum-pool-size: ${HIKARI_MAX_POOL_SIZE:30}
-      minimum-idle: ${HIKARI_MIN_IDLE:5}
+      maximum-pool-size: ${HIKARI_MAX_POOL_SIZE:10}
+      minimum-idle: ${HIKARI_MIN_IDLE:2}
       connection-timeout: 30000
       idle-timeout: 600000
       max-lifetime: 1800000
@@ -145,7 +145,7 @@ app:
     materialized-view:
       refresh-enabled: ${SEARCH_MV_REFRESH_ENABLED:true}
       # Evita refresh concurrente por cada instancia al levantar.
-      refresh-on-startup: ${SEARCH_MV_REFRESH_ON_STARTUP:true}
+      refresh-on-startup: ${SEARCH_MV_REFRESH_ON_STARTUP:false}
       refresh-cron: ${SEARCH_MV_REFRESH_CRON:0 */30 * * * *}
   cors:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3002}

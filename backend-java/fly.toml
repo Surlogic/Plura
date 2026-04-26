@@ -1,6 +1,9 @@
 app = "plura"
 primary_region = "gru"
 
+[deploy]
+  strategy = "immediate"
+
 [env]
   PORT = "3000"
   SERVER_ADDRESS = "0.0.0.0"
@@ -20,6 +23,8 @@ primary_region = "gru"
   SPRING_FLYWAY_DRIVER_CLASS_NAME = "org.postgresql.Driver"
   SPRING_JPA_DDL_AUTO = "validate"
   SPRING_FLYWAY_VALIDATE_ON_MIGRATE = "false"
+  HIKARI_MAX_POOL_SIZE = "4"
+  HIKARI_MIN_IDLE = "0"
   JWT_EXPIRATION_MINUTES = "30"
   AUTH_COOKIE_SECURE = "true"
   AUTH_COOKIE_SAMESITE = "None"
@@ -52,6 +57,7 @@ primary_region = "gru"
   BILLING_MERCADOPAGO_RESERVATIONS_OAUTH_AUTHORIZATION_URL = "https://auth.mercadopago.com/authorization"
   BILLING_MERCADOPAGO_RESERVATIONS_OAUTH_TOKEN_URL = "https://api.mercadopago.com/oauth/token"
   BILLING_MERCADOPAGO_RESERVATIONS_OAUTH_PKCE_ENABLED = "true"
+  SEARCH_MV_REFRESH_ON_STARTUP = "false"
 
 [http_service]
   auto_start_machines = true

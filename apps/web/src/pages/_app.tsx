@@ -3,6 +3,7 @@ import { useMemo } from 'react';
 import { Instrument_Sans } from 'next/font/google';
 import { useRouter } from 'next/router';
 import '@/pages/globals.css';
+import 'mapbox-gl/dist/mapbox-gl.css';
 import LogoutLoadingOverlay from '@/components/auth/LogoutLoadingOverlay';
 import { ProfessionalProfileProvider } from '@/context/ProfessionalProfileContext';
 import { ClientProfileProvider } from '@/context/ClientProfileContext';

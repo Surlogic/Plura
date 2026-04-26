@@ -1,5 +1,4 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import Head from 'next/head';
 import Link from 'next/link';
 import type { SearchItem } from '@/types/search';
 import {
@@ -368,14 +367,7 @@ function ExploreMap({
   );
 
   return (
-    <div className="relative h-full min-h-0">
-      <Head>
-        <link
-          rel="stylesheet"
-          href="https://api.mapbox.com/mapbox-gl-js/v3.19.1/mapbox-gl.css"
-          key="mapbox-gl-stylesheet"
-        />
-      </Head>
+    <div className="relative flex h-full min-h-0 w-full flex-1">
       <MapView
         mapRef={mapRef}
         initialViewState={initialViewState}
@@ -387,7 +379,7 @@ function ExploreMap({
         cursor={cursor}
         dragRotate={false}
         touchZoomRotate={false}
-        containerClassName="h-full overflow-hidden border border-[#DCE5ED]"
+        containerClassName="h-full w-full overflow-hidden border border-[#DCE5ED]"
         fallbackClassName="h-full bg-[#E9EEF2]"
       >
         <NavigationControl position="top-right" showCompass={false} />

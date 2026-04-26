@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useRef } from 'react';
 import Map, { type MapProps, type MapRef } from 'react-map-gl/mapbox';
-import MapboxStyles from '@/components/map/MapboxStyles';
 
 const MAPBOX_TOKEN = (process.env.NEXT_PUBLIC_MAPBOX_TOKEN || '').trim();
 const DEFAULT_MAP_STYLE = 'mapbox://styles/mapbox/light-v11';
@@ -49,7 +48,7 @@ export default function MapView({
   if (!MAPBOX_TOKEN) {
     return (
       <div
-        className={`flex items-center justify-center px-4 text-center text-sm text-[#64748B] ${fallbackClassName}`}
+        className={`flex h-full w-full items-center justify-center px-4 text-center text-sm text-[#64748B] ${fallbackClassName}`}
       >
         {fallbackMessage}
       </div>
@@ -57,20 +56,17 @@ export default function MapView({
   }
 
   return (
-    <>
-      <MapboxStyles />
-      <div ref={containerRef} className={containerClassName}>
-        <Map
-          ref={setMapRef}
-          mapStyle={mapStyle}
-          mapboxAccessToken={MAPBOX_TOKEN}
-          onLoad={(event) => {
-            internalMapRef.current?.resize();
-            onLoad?.(event);
-          }}
-          {...props}
-        />
-      </div>
-    </>
+    <div ref={containerRef} className={`h-full w-full ${containerClassName}`}>
+      <Map
+        ref={setMapRef}
+        mapStyle={mapStyle}
+        mapboxAccessToken={MAPBOX_TOKEN}
+        onLoad={(event) => {
+          internalMapRef.current?.resize();
+          onLoad?.(event);
+        }}
+        {...props}
+      />
+    </div>
   );
 }

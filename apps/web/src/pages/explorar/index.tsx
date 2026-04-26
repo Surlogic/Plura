@@ -640,7 +640,7 @@ export default function ExplorarPage() {
             </div>
 
             <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden bg-white">
-              <div className="relative min-h-0 flex-1">
+              <div className="relative flex min-h-0 flex-1">
                 <ExploreMap
                   results={items}
                   userLocation={mapUserLocation}

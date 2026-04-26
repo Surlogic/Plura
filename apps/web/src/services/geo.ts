@@ -9,6 +9,17 @@ export type GeoLocationSuggestion = {
   placeName?: string | null;
 };
 
+export type BrowserGeoPosition = {
+  latitude: number;
+  longitude: number;
+};
+
+type BrowserGeoOptions = {
+  enableHighAccuracy?: boolean;
+  timeout?: number;
+  maximumAge?: number;
+};
+
 export const getGeoLocationSuggestions = async (
   query: string,
   limit = 6,
@@ -26,3 +37,28 @@ export const getGeoLocationSuggestions = async (
     return [];
   }
 };
+
+export const getBrowserCurrentPosition = (
+  options: BrowserGeoOptions = {},
+): Promise<BrowserGeoPosition> =>
+  new Promise((resolve, reject) => {
+    if (typeof window === 'undefined' || !navigator.geolocation) {
+      reject(new Error('Geolocalizacion no disponible en este navegador.'));
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        resolve({
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude,
+        });
+      },
+      (error) => reject(error),
+      {
+        enableHighAccuracy: options.enableHighAccuracy ?? true,
+        timeout: options.timeout ?? 12000,
+        maximumAge: options.maximumAge ?? 60000,
+      },
+    );
+  });

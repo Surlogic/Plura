@@ -15,6 +15,7 @@ import {
 import { useClientProfileContext } from '@/context/ClientProfileContext';
 import { useFavoriteProfessionals } from '@/hooks/useFavoriteProfessionals';
 import { hasKnownAuthSession } from '@/services/session';
+import { getBrowserCurrentPosition } from '@/services/geo';
 import { searchProfessionals } from '@/services/search';
 import type { SearchItem, SearchSort, SearchType } from '@/types/search';
 import type { UnifiedSearchValues } from '@/components/search/UnifiedSearchBar';
@@ -198,7 +199,12 @@ export default function ExplorarPage() {
   const [error, setError] = useState<string | null>(null);
   const [selectedMapItemId, setSelectedMapItemId] = useState<string | null>(null);
   const [hoveredMapItemId, setHoveredMapItemId] = useState<string | null>(null);
+  const [browserUserLocation, setBrowserUserLocation] = useState<{
+    latitude: number;
+    longitude: number;
+  } | null>(null);
   const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const didAttemptAutoGeolocationRef = useRef(false);
 
   useEffect(() => {
     if (!router.isReady) return;
@@ -417,6 +423,34 @@ export default function ExplorarPage() {
     );
   }, [router]);
 
+  useEffect(() => {
+    if (!router.isReady || !isMapView) return;
+    if (hasCoordinates) return;
+    if (didAttemptAutoGeolocationRef.current) return;
+
+    didAttemptAutoGeolocationRef.current = true;
+
+    void getBrowserCurrentPosition({
+      enableHighAccuracy: true,
+      timeout: 12000,
+      maximumAge: 60000,
+    })
+      .then((position) => {
+        setBrowserUserLocation(position);
+        const nextQuery: Record<string, string> = {
+          ...baseExploreQuery,
+          lat: String(position.latitude),
+          lng: String(position.longitude),
+          page: '0',
+        };
+        delete nextQuery.city;
+        replaceQuery(nextQuery);
+      })
+      .catch(() => {
+        setBrowserUserLocation(null);
+      });
+  }, [baseExploreQuery, hasCoordinates, isMapView, replaceQuery, router.isReady]);
+
   const handleViewChange = useCallback((nextIsMapView: boolean) => {
     const nextQuery: Record<string, string> = { ...baseExploreQuery };
     if (nextIsMapView) nextQuery.vista = 'mapa';
@@ -447,9 +481,9 @@ export default function ExplorarPage() {
     () => (
       hasCoordinates && typeof lat === 'number' && typeof lng === 'number'
         ? { latitude: lat, longitude: lng }
-        : undefined
+        : browserUserLocation || undefined
     ),
-    [hasCoordinates, lat, lng],
+    [browserUserLocation, hasCoordinates, lat, lng],
   );
 
   const handleMapItemHoverStart = useCallback((id?: string) => {

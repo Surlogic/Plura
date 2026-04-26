@@ -15,6 +15,7 @@ import {
   SEARCH_SUGGESTIONS_LIMIT,
 } from '@/config/search';
 import { useCategories } from '@/hooks/useCategories';
+import { getBrowserCurrentPosition } from '@/services/geo';
 import { autocompleteGeo, searchSuggestions } from '@/services/search';
 import {
   normalizeSearchText,
@@ -411,34 +412,30 @@ export function useUnifiedSearch({
   }, [buildExploreQuery, closeAllDropdowns, rememberCity, router]);
 
   const handleUseCurrentLocation = useCallback(() => {
-    if (typeof window === 'undefined' || !navigator.geolocation) {
-      setGeoStatus('error');
-      setGeoMessage('Geolocalizacion no disponible en este navegador.');
-      return;
-    }
-
     setGeoStatus('loading');
     setGeoMessage('Buscando tu ubicacion...');
 
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
+    void getBrowserCurrentPosition({
+      enableHighAccuracy: true,
+      timeout: 12000,
+      maximumAge: 60000,
+    })
+      .then((position) => {
         setValues((previous) => ({
           ...previous,
           city: '',
-          lat: position.coords.latitude,
-          lng: position.coords.longitude,
+          lat: position.latitude,
+          lng: position.longitude,
           radiusKm: normalizeRadiusKm(previous.radiusKm),
         }));
         setLocationInput('');
         setGeoStatus('active');
         setGeoMessage('Usando ubicacion actual.');
-      },
-      () => {
+      })
+      .catch(() => {
         setGeoStatus('error');
         setGeoMessage('No pudimos acceder a tu ubicacion. Podes buscar por ciudad o barrio.');
-      },
-      { enableHighAccuracy: true, timeout: 12000, maximumAge: 60000 },
-    );
+      });
   }, []);
 
   const selectGeoItem = useCallback((item: GeoAutocompleteItem) => {

@@ -120,8 +120,8 @@ export default function ExploreLeafletFallbackMap({
         attributionControl={false}
       >
         <TileLayer
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-          attribution="&copy; OpenStreetMap contributors"
+          url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
+          attribution="&copy; OpenStreetMap contributors &copy; CARTO"
         />
         <ZoomControl position="topright" />
         <FitToResults items={items} userLocation={userLocation} activeResultId={activeResultId} />
@@ -191,12 +191,6 @@ export default function ExploreLeafletFallbackMap({
           </Popup>
         ) : null}
       </MapContainer>
-
-      <div className="pointer-events-none absolute inset-x-0 bottom-3 flex justify-center px-4">
-        <p className="rounded-full bg-white/92 px-3 py-1 text-xs font-semibold text-[#0E2A47] shadow-sm">
-          Modo compatible: mapa interactivo sin WebGL.
-        </p>
-      </div>
     </div>
   );
 }

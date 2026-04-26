@@ -21,6 +21,31 @@ const normalizeSessionRole = (value?: string | null): KnownAuthSessionRole | nul
   return null;
 };
 
+const decodeBase64Url = (value: string) => {
+  const normalized = value.replace(/-/g, '+').replace(/_/g, '/');
+  const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, '=');
+
+  if (typeof window !== 'undefined' && typeof window.atob === 'function') {
+    return window.atob(padded);
+  }
+  return Buffer.from(padded, 'base64').toString('utf8');
+};
+
+const roleFromAccessToken = (token?: string | null): KnownAuthSessionRole | null => {
+  try {
+    if (!token) return null;
+    const parts = token.split('.');
+    if (parts.length < 2) return null;
+    const payloadRaw = decodeBase64Url(parts[1]);
+    const payload = JSON.parse(payloadRaw) as { role?: unknown };
+    if (payload.role === 'USER') return 'CLIENT';
+    if (payload.role === 'PROFESSIONAL') return 'PROFESSIONAL';
+    return null;
+  } catch {
+    return null;
+  }
+};
+
 export const getAuthAccessToken = (): string | null => {
   if (inMemoryAccessToken) return inMemoryAccessToken;
   if (typeof window === 'undefined') return null;
@@ -38,8 +63,18 @@ export const getKnownAuthSessionRole = (): KnownAuthSessionRole | null => {
     return inMemorySessionRole;
   }
   const storedRole = normalizeSessionRole(window.localStorage.getItem(SESSION_ROLE_STORAGE_KEY));
-  inMemorySessionRole = storedRole;
-  return storedRole;
+  if (storedRole) {
+    inMemorySessionRole = storedRole;
+    return storedRole;
+  }
+
+  const derivedRole = roleFromAccessToken(getAuthAccessToken());
+  inMemorySessionRole = derivedRole;
+  if (derivedRole) {
+    window.localStorage.setItem(SESSION_ROLE_STORAGE_KEY, derivedRole);
+    window.localStorage.setItem(SESSION_HINT_STORAGE_KEY, '1');
+  }
+  return derivedRole;
 };
 
 export const hasKnownAuthSession = (): boolean => {

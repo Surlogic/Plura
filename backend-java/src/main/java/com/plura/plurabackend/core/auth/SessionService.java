@@ -231,7 +231,7 @@ public class SessionService {
     private AuthSessionResponse toResponse(AuthSession session, boolean current) {
         return new AuthSessionResponse(
             session.getId(),
-            session.getSessionType().name(),
+            (session.getSessionType() == null ? AuthSessionType.WEB : session.getSessionType()).name(),
             session.getDeviceLabel(),
             session.getUserAgent(),
             session.getIpAddress(),

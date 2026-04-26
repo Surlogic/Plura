@@ -15,12 +15,15 @@ type MapViewProps = Omit<MapProps, 'mapboxAccessToken' | 'mapStyle' | 'ref'> & {
   fallbackClassName?: string;
   fallbackMessage?: string;
   webglFallbackMessage?: string;
+  webglFallbackNode?: ReactNode;
+  resetKey?: string | number;
 };
 
 type MapRuntimeBoundaryProps = {
   children: ReactNode;
   fallback: ReactNode;
   onRuntimeError?: () => void;
+  resetKey?: string | number;
 };
 
 type MapRuntimeBoundaryState = {
@@ -39,6 +42,12 @@ class MapRuntimeBoundary extends Component<MapRuntimeBoundaryProps, MapRuntimeBo
 
   componentDidCatch() {
     this.props.onRuntimeError?.();
+  }
+
+  componentDidUpdate(prevProps: MapRuntimeBoundaryProps) {
+    if (prevProps.resetKey !== this.props.resetKey && this.state.hasError) {
+      this.setState({ hasError: false });
+    }
   }
 
   render() {
@@ -82,6 +91,8 @@ export default function MapView({
   fallbackClassName = '',
   fallbackMessage = 'Falta `NEXT_PUBLIC_MAPBOX_TOKEN` para mostrar el mapa.',
   webglFallbackMessage = 'Este dispositivo o navegador no pudo inicializar el mapa.',
+  webglFallbackNode,
+  resetKey,
   onLoad,
   onError,
   ...props
@@ -114,6 +125,10 @@ export default function MapView({
     setWebglSupported(detectWebGlSupport());
   }, []);
 
+  useEffect(() => {
+    setMapFailed(false);
+  }, [resetKey]);
+
   if (!MAPBOX_TOKEN) {
     return (
       <div
@@ -129,6 +144,9 @@ export default function MapView({
   }
 
   if (!webglSupported || mapFailed) {
+    if (webglFallbackNode) {
+      return <div className={`h-full w-full ${containerClassName}`}>{webglFallbackNode}</div>;
+    }
     return (
       <div
         className={`flex h-full w-full items-center justify-center px-4 text-center text-sm text-[#64748B] ${fallbackClassName}`}
@@ -138,7 +156,7 @@ export default function MapView({
     );
   }
 
-  const webglFallback = (
+  const webglFallback = webglFallbackNode || (
     <div
       className={`flex h-full w-full items-center justify-center px-4 text-center text-sm text-[#64748B] ${fallbackClassName}`}
     >
@@ -148,7 +166,11 @@ export default function MapView({
 
   return (
     <div ref={containerRef} className={`h-full w-full ${containerClassName}`}>
-      <MapRuntimeBoundary fallback={webglFallback} onRuntimeError={() => setMapFailed(true)}>
+      <MapRuntimeBoundary
+        fallback={webglFallback}
+        onRuntimeError={() => setMapFailed(true)}
+        resetKey={resetKey}
+      >
         <Map
           ref={setMapRef}
           mapStyle={mapStyle}

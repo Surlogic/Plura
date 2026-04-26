@@ -557,6 +557,11 @@ public class AuthService {
             auditRefreshFailure(sessionUserId(session), session.getId(), sessionContext, "session_revoked");
             throw new AuthApiException(HttpStatus.UNAUTHORIZED, "SESSION_REVOKED", "La sesión ya no es válida.");
         }
+        if (session.getExpiresAt() == null) {
+            sessionService.revokeSession(session, "SESSION_INVALID");
+            auditRefreshFailure(sessionUserId(session), session.getId(), sessionContext, "session_missing_expiry");
+            throw new AuthApiException(HttpStatus.UNAUTHORIZED, "SESSION_INVALID", "La sesión ya no es válida.");
+        }
         if (session.getExpiresAt().isBefore(now)) {
             sessionService.revokeSession(session, "EXPIRED");
             auditRefreshFailure(sessionUserId(session), session.getId(), sessionContext, "session_expired");
@@ -568,6 +573,14 @@ public class AuthService {
             sessionService.revokeSession(session, "USER_NOT_FOUND");
             auditRefreshFailure(sessionUserId(session), session.getId(), sessionContext, "user_not_found");
             throw new AuthApiException(HttpStatus.UNAUTHORIZED, "SESSION_INVALID", "La sesión ya no es válida.");
+        }
+        if (user.getRole() == null) {
+            sessionService.revokeSession(session, "SESSION_INVALID");
+            auditRefreshFailure(user.getId(), session.getId(), sessionContext, "session_missing_role");
+            throw new AuthApiException(HttpStatus.UNAUTHORIZED, "SESSION_INVALID", "La sesión ya no es válida.");
+        }
+        if (session.getSessionType() == null) {
+            session.setSessionType(resolveSessionType(sessionContext));
         }
 
         if (trackedMatch.matchType() == SessionService.RefreshTokenMatchType.PREVIOUS) {
@@ -617,6 +630,13 @@ public class AuthService {
             auditRefreshFailure(userId, null, sessionContext, "legacy_refresh_revoked");
             throw new AuthApiException(HttpStatus.UNAUTHORIZED, "SESSION_REVOKED", "La sesión ya no es válida.");
         }
+        if (stored.getExpiryDate() == null) {
+            stored.setRevokedAt(now);
+            refreshTokenRepository.save(stored);
+            Long userId = stored.getUser() == null ? null : stored.getUser().getId();
+            auditRefreshFailure(userId, null, sessionContext, "legacy_refresh_missing_expiry");
+            throw new AuthApiException(HttpStatus.UNAUTHORIZED, "SESSION_INVALID", "La sesión ya no es válida.");
+        }
         if (stored.getExpiryDate().isBefore(now)) {
             stored.setRevokedAt(now);
             refreshTokenRepository.save(stored);
@@ -630,6 +650,12 @@ public class AuthService {
             stored.setRevokedAt(now);
             refreshTokenRepository.save(stored);
             auditRefreshFailure(null, null, sessionContext, "legacy_user_not_found");
+            throw new AuthApiException(HttpStatus.UNAUTHORIZED, "SESSION_INVALID", "La sesión ya no es válida.");
+        }
+        if (user.getRole() == null) {
+            stored.setRevokedAt(now);
+            refreshTokenRepository.save(stored);
+            auditRefreshFailure(user.getId(), null, sessionContext, "legacy_user_missing_role");
             throw new AuthApiException(HttpStatus.UNAUTHORIZED, "SESSION_INVALID", "La sesión ya no es válida.");
         }
 
@@ -740,7 +766,7 @@ public class AuthService {
     private AuthSessionResponse toAuthSessionResponse(AuthSession session, boolean current) {
         return new AuthSessionResponse(
             session.getId(),
-            session.getSessionType().name(),
+            normalizeSessionTypeName(session),
             session.getDeviceLabel(),
             session.getUserAgent(),
             session.getIpAddress(),
@@ -762,6 +788,11 @@ public class AuthService {
             return null;
         }
         return trimmed.length() <= 64 ? trimmed : trimmed.substring(0, 64);
+    }
+
+    private String normalizeSessionTypeName(AuthSession session) {
+        AuthSessionType sessionType = session == null ? null : session.getSessionType();
+        return (sessionType == null ? AuthSessionType.WEB : sessionType).name();
     }
 
     private void handleRefreshTokenReuse(AuthSession session, SessionContext sessionContext) {

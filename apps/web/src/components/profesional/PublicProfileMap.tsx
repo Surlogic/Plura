@@ -43,6 +43,7 @@ export default function PublicProfileMap({
         fallbackClassName={`${heightClassName} rounded-2xl border border-[#E2E7EC] bg-[#F3F6F9]`}
         fallbackMessage="Falta `NEXT_PUBLIC_MAPBOX_TOKEN` para mostrar el mapa."
         initialViewState={initialViewState}
+        resetKey={`${latitude}|${longitude}|${zoom}|${interactive ? '1' : '0'}`}
         interactive={interactive}
         dragRotate={false}
         dragPan={interactive}

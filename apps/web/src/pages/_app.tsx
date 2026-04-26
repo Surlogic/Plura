@@ -12,6 +12,7 @@ import { LogoutTransitionProvider } from '@/context/LogoutTransitionContext';
 import { ProfessionalDashboardUnsavedChangesProvider } from '@/context/ProfessionalDashboardUnsavedChangesContext';
 import { ProfessionalNotificationsProvider } from '@/context/ProfessionalNotificationsContext';
 import { ThemeProvider } from '@/components/theme/ThemeProvider';
+import { getKnownAuthSessionRole, hasKnownAuthSession } from '@/services/session';
 import UnsavedChangesOverlay from '@/components/profesional/dashboard/UnsavedChangesOverlay';
 export function reportWebVitals(metric: {
   id: string;
@@ -63,6 +64,13 @@ const instrumentSans = Instrument_Sans({
 const isRouteOrChild = (path: string, route: string) =>
   path === route || path.startsWith(`${route}/`);
 
+const shouldBootstrapAuthStateOnPublicPath = (path: string) =>
+  path === '/' ||
+  isRouteOrChild(path, '/explorar') ||
+  isRouteOrChild(path, '/profesional/pagina') ||
+  path === '/profesional/[slug]' ||
+  path === '/reservar';
+
 export default function App({ Component, pageProps }: AppProps) {
   const router = useRouter();
   const pathname = router.pathname || '';
@@ -72,14 +80,30 @@ export default function App({ Component, pageProps }: AppProps) {
     const isClientAuthArea = isRouteOrChild(pathname, '/cliente/auth');
     const isProfessionalDashboardArea = isRouteOrChild(pathname, '/profesional/dashboard');
     const isProfessionalNotificationsArea = isRouteOrChild(pathname, '/profesional/notificaciones');
+    const hasKnownSession = hasKnownAuthSession();
+    const knownSessionRole = getKnownAuthSessionRole();
+    const shouldBootstrapPublicAuth = shouldBootstrapAuthStateOnPublicPath(pathname);
+
+    const shouldAutoLoadClientProfileFromPublicSession =
+      shouldBootstrapPublicAuth &&
+      hasKnownSession &&
+      knownSessionRole === 'CLIENT';
+
+    const shouldAutoLoadProfessionalProfileFromPublicSession =
+      shouldBootstrapPublicAuth &&
+      hasKnownSession &&
+      knownSessionRole === 'PROFESSIONAL';
 
     return {
       isProfessionalDashboardArea,
       isProfessionalNotificationsArea,
-      shouldAutoLoadClientProfile: isClientArea && !isClientAuthArea,
+      shouldAutoLoadClientProfile:
+        (isClientArea && !isClientAuthArea) ||
+        shouldAutoLoadClientProfileFromPublicSession,
       shouldAutoLoadProfessionalProfile:
         isProfessionalDashboardArea ||
-        isProfessionalNotificationsArea,
+        isProfessionalNotificationsArea ||
+        shouldAutoLoadProfessionalProfileFromPublicSession,
       shouldMountClientNotifications: isClientArea && !isClientAuthArea,
       shouldMountProfessionalNotifications:
         isProfessionalDashboardArea || isProfessionalNotificationsArea,

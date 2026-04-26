@@ -1,7 +1,7 @@
 'use client';
 /* eslint-disable no-restricted-syntax */
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { Component, useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import mapboxgl from 'mapbox-gl';
 import Map, { type MapProps, type MapRef } from 'react-map-gl/mapbox';
 
@@ -16,6 +16,38 @@ type MapViewProps = Omit<MapProps, 'mapboxAccessToken' | 'mapStyle' | 'ref'> & {
   fallbackMessage?: string;
   webglFallbackMessage?: string;
 };
+
+type MapRuntimeBoundaryProps = {
+  children: ReactNode;
+  fallback: ReactNode;
+  onRuntimeError?: () => void;
+};
+
+type MapRuntimeBoundaryState = {
+  hasError: boolean;
+};
+
+class MapRuntimeBoundary extends Component<MapRuntimeBoundaryProps, MapRuntimeBoundaryState> {
+  constructor(props: MapRuntimeBoundaryProps) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError(): MapRuntimeBoundaryState {
+    return { hasError: true };
+  }
+
+  componentDidCatch() {
+    this.props.onRuntimeError?.();
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return this.props.fallback;
+    }
+    return this.props.children;
+  }
+}
 
 export default function MapView({
   mapRef,
@@ -85,28 +117,38 @@ export default function MapView({
     );
   }
 
+  const webglFallback = (
+    <div
+      className={`flex h-full w-full items-center justify-center px-4 text-center text-sm text-[#64748B] ${fallbackClassName}`}
+    >
+      {webglFallbackMessage}
+    </div>
+  );
+
   return (
     <div ref={containerRef} className={`h-full w-full ${containerClassName}`}>
-      <Map
-        ref={setMapRef}
-        mapStyle={mapStyle}
-        mapboxAccessToken={MAPBOX_TOKEN}
-        onError={(event) => {
-          const message = event.error?.message || '';
-          if (
-            message.includes('WebGL')
-            || message.includes('Failed to initialize')
-          ) {
-            setMapFailed(true);
-          }
-          onError?.(event);
-        }}
-        onLoad={(event) => {
-          internalMapRef.current?.resize();
-          onLoad?.(event);
-        }}
-        {...props}
-      />
+      <MapRuntimeBoundary fallback={webglFallback} onRuntimeError={() => setMapFailed(true)}>
+        <Map
+          ref={setMapRef}
+          mapStyle={mapStyle}
+          mapboxAccessToken={MAPBOX_TOKEN}
+          onError={(event) => {
+            const message = event.error?.message || '';
+            if (
+              message.includes('WebGL')
+              || message.includes('Failed to initialize')
+            ) {
+              setMapFailed(true);
+            }
+            onError?.(event);
+          }}
+          onLoad={(event) => {
+            internalMapRef.current?.resize();
+            onLoad?.(event);
+          }}
+          {...props}
+        />
+      </MapRuntimeBoundary>
     </div>
   );
 }

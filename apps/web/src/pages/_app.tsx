@@ -87,12 +87,12 @@ export default function App({ Component, pageProps }: AppProps) {
     const shouldAutoLoadClientProfileFromPublicSession =
       shouldBootstrapPublicAuth &&
       hasKnownSession &&
-      (knownSessionRole === 'CLIENT' || knownSessionRole === null);
+      knownSessionRole === 'CLIENT';
 
     const shouldAutoLoadProfessionalProfileFromPublicSession =
       shouldBootstrapPublicAuth &&
       hasKnownSession &&
-      (knownSessionRole === 'PROFESSIONAL' || knownSessionRole === null);
+      knownSessionRole === 'PROFESSIONAL';
 
     return {
       isProfessionalDashboardArea,
@@ -123,6 +123,7 @@ export default function App({ Component, pageProps }: AppProps) {
     <div
       className={`${instrumentSans.variable} ${instrumentSans.className} font-sans antialiased`}
     >
+      {/* eslint-disable-next-line no-restricted-syntax -- Next App entrypoint passes page props dynamically */}
       <Component {...pageProps} />
     </div>
   );

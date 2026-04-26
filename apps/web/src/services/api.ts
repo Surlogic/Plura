@@ -9,6 +9,7 @@ import {
   clearAuthAccessToken,
   getAuthAccessToken,
   hasKnownAuthSession,
+  type KnownAuthSessionRole,
   setKnownAuthSession,
   setAuthAccessToken,
 } from '@/services/session';
@@ -35,6 +36,31 @@ const authTokenFromResponse = (
   if (!responseData || typeof responseData !== 'object') return null;
   const token = (responseData as { accessToken?: unknown }).accessToken;
   return typeof token === 'string' && token.trim() ? token.trim() : null;
+};
+
+const decodeBase64Url = (value: string) => {
+  const normalized = value.replace(/-/g, '+').replace(/_/g, '/');
+  const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, '=');
+
+  if (typeof window !== 'undefined' && typeof window.atob === 'function') {
+    return window.atob(padded);
+  }
+  return Buffer.from(padded, 'base64').toString('utf8');
+};
+
+const roleFromAccessToken = (token?: string | null): KnownAuthSessionRole | undefined => {
+  try {
+    if (!token) return undefined;
+    const parts = token.split('.');
+    if (parts.length < 2) return undefined;
+    const payloadRaw = decodeBase64Url(parts[1]);
+    const payload = JSON.parse(payloadRaw) as { role?: unknown };
+    if (payload.role === 'USER') return 'CLIENT';
+    if (payload.role === 'PROFESSIONAL') return 'PROFESSIONAL';
+    return undefined;
+  } catch {
+    return undefined;
+  }
 };
 
 const getUrlPathname = (url?: string) => {
@@ -158,7 +184,7 @@ api.interceptors.response.use(
   (response) => {
     const token = authTokenFromResponse(response.data);
     if (token) {
-      setAuthAccessToken(token);
+      setAuthAccessToken(token, roleFromAccessToken(token));
     } else if (isSessionMutatingAuthRoute(response.config.url)) {
       if (isLogoutRoute(response.config.url)) {
         clearAuthAccessToken();
@@ -197,7 +223,7 @@ api.interceptors.response.use(
           .then((response) => {
             const token = authTokenFromResponse(response.data);
             if (token) {
-              setAuthAccessToken(token);
+              setAuthAccessToken(token, roleFromAccessToken(token));
             } else {
               setKnownAuthSession(true);
             }

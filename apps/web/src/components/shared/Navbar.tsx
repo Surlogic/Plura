@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { memo } from 'react';
+import { memo, type ReactNode } from 'react';
 import { useClientProfileContext } from '@/context/ClientProfileContext';
 import { useProfessionalProfileContext } from '@/context/ProfessionalProfileContext';
 import { useAuthLogout } from '@/hooks/useAuthLogout';
@@ -11,6 +11,7 @@ type NavbarProps = {
   variant?: 'default' | 'dashboard';
   showMenuButton?: boolean;
   onMenuClick?: () => void;
+  exploreViewToggle?: ReactNode;
 };
 
 const getInitials = (name: string) =>
@@ -26,6 +27,7 @@ export default memo(function Navbar({
   variant = 'default',
   showMenuButton = false,
   onMenuClick,
+  exploreViewToggle,
 }: NavbarProps) {
   const { profile: professionalProfile } = useProfessionalProfileContext();
   const { profile: clientProfile } = useClientProfileContext();
@@ -45,7 +47,7 @@ export default memo(function Navbar({
 
   return (
     <header className={headerClassName}>
-      <div className="mx-auto flex w-full max-w-[1400px] items-center justify-between gap-4 px-4 py-4 sm:px-6 lg:px-10">
+      <div className="mx-auto flex w-full max-w-[1400px] flex-wrap items-center justify-between gap-x-4 gap-y-3 px-4 py-4 sm:px-6 lg:px-10">
         <div className="flex items-center gap-3">
           {showMenuButton ? (
             <Button type="button" onClick={onMenuClick} size="sm" className="lg:hidden">
@@ -54,7 +56,16 @@ export default memo(function Navbar({
           ) : null}
           <BrandLogo href="/" variant="navbar" priority />
         </div>
-        <div className="flex flex-col gap-2 text-sm sm:flex-row sm:items-center">
+        {exploreViewToggle ? (
+          <div className="order-3 flex w-full justify-center lg:order-2 lg:w-auto lg:flex-1">
+            {exploreViewToggle}
+          </div>
+        ) : null}
+        <div
+          className={`flex flex-col gap-2 text-sm sm:flex-row sm:items-center ${
+            exploreViewToggle ? 'order-2 lg:order-3' : ''
+          }`}
+        >
           <ThemeSwitcher variant="compact" showLabel={false} className="self-start sm:self-auto" />
           {role === 'PROFESSIONAL' ? (
             <>

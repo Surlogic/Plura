@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import type { ReactNode } from 'react';
 import { useRouter } from 'next/router';
 import { useAuthLogout } from '@/hooks/useAuthLogout';
 import Button from '@/components/ui/Button';
@@ -9,6 +10,7 @@ import ClientNotificationBell from '@/components/cliente/notifications/ClientNot
 type ClientDashboardNavbarProps = {
   name: string;
   onOpenSidebar?: () => void;
+  exploreViewToggle?: ReactNode;
 };
 
 const getInitials = (name: string) =>
@@ -22,13 +24,14 @@ const getInitials = (name: string) =>
 export default function ClientDashboardNavbar({
   name,
   onOpenSidebar,
+  exploreViewToggle,
 }: ClientDashboardNavbarProps) {
   const router = useRouter();
   const { isLoggingOut, logout } = useAuthLogout();
 
   return (
     <header className="sticky top-0 z-50 border-b border-[color:var(--border-soft)] bg-[color:var(--surface)]/88 backdrop-blur-xl">
-      <div className="mx-auto flex w-full max-w-[1400px] items-center justify-between gap-3 px-4 py-4 sm:px-6 lg:px-10">
+      <div className="mx-auto flex w-full max-w-[1400px] flex-wrap items-center justify-between gap-x-3 gap-y-3 px-4 py-4 sm:px-6 lg:px-10">
         <div className="flex items-center gap-2 sm:gap-3">
           {onOpenSidebar ? (
             <Button
@@ -50,6 +53,11 @@ export default function ClientDashboardNavbar({
           ) : null}
           <BrandLogo href="/cliente/inicio" variant="navbar" priority />
         </div>
+        {exploreViewToggle ? (
+          <div className="order-3 flex w-full justify-center lg:order-2 lg:w-auto lg:flex-1">
+            {exploreViewToggle}
+          </div>
+        ) : null}
 
         <nav className="hidden items-center gap-2 text-sm font-semibold text-[color:var(--ink)] md:flex">
           <Link
@@ -72,7 +80,7 @@ export default function ClientDashboardNavbar({
           </Link>
         </nav>
 
-        <div className="flex items-center gap-2 sm:gap-3">
+        <div className={`flex items-center gap-2 sm:gap-3 ${exploreViewToggle ? 'order-2 lg:order-4' : ''}`}>
           <ThemeSwitcher variant="compact" showLabel={false} className="hidden md:flex" />
           <ClientNotificationBell
             onNavigate={(href) => {

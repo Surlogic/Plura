@@ -465,7 +465,39 @@ export default function ExplorarPage() {
   }), [isMapView, sort, size, radiusKm]);
 
   const activeMapItemId = hoveredMapItemId || selectedMapItemId;
-  const navbar = hasClientSession ? <ClientDashboardNavbar name={displayName} /> : <Navbar />;
+  const exploreViewToggle = (
+    <div className="inline-flex rounded-full border border-[color:var(--border-soft)] bg-[color:var(--surface-muted)] p-0.5 shadow-[var(--shadow-card)]">
+      <button
+        type="button"
+        onClick={() => handleViewChange(false)}
+        className={`rounded-full px-3 py-1.5 text-sm font-semibold transition ${
+          !isMapView
+            ? 'bg-[color:var(--surface-dark)] text-[color:var(--text-on-dark)]'
+            : 'text-[color:var(--ink)] hover:bg-white'
+        }`}
+        aria-pressed={!isMapView}
+      >
+        Páginas
+      </button>
+      <button
+        type="button"
+        onClick={() => handleViewChange(true)}
+        className={`rounded-full px-3 py-1.5 text-sm font-semibold transition ${
+          isMapView
+            ? 'bg-[color:var(--surface-dark)] text-[color:var(--text-on-dark)]'
+            : 'text-[color:var(--ink)] hover:bg-white'
+        }`}
+        aria-pressed={isMapView}
+      >
+        Mapa
+      </button>
+    </div>
+  );
+  const navbar = hasClientSession ? (
+    <ClientDashboardNavbar name={displayName} exploreViewToggle={exploreViewToggle} />
+  ) : (
+    <Navbar exploreViewToggle={exploreViewToggle} />
+  );
   const exploreControls = (
     <>
       <div className="sr-only">
@@ -484,54 +516,23 @@ export default function ExplorarPage() {
         citySuggestions={citySuggestions}
       />
 
-      <div className="mt-2">
-        <div className="flex flex-wrap items-center justify-end gap-3">
-          <div className="flex flex-wrap items-center gap-2.5">
-            <div className="inline-flex rounded-full border border-[color:var(--border-soft)] bg-[color:var(--surface-muted)] p-0.5">
-              <button
-                type="button"
-                onClick={() => handleViewChange(false)}
-                className={`rounded-full px-3 py-1.5 text-sm font-semibold transition ${
-                  !isMapView
-                    ? 'bg-[color:var(--surface-dark)] text-[color:var(--text-on-dark)]'
-                    : 'text-[color:var(--ink)] hover:bg-white'
-                }`}
-                aria-pressed={!isMapView}
-              >
-                Páginas
-              </button>
-              <button
-                type="button"
-                onClick={() => handleViewChange(true)}
-                className={`rounded-full px-3 py-1.5 text-sm font-semibold transition ${
-                  isMapView
-                    ? 'bg-[color:var(--surface-dark)] text-[color:var(--text-on-dark)]'
-                    : 'text-[color:var(--ink)] hover:bg-white'
-                }`}
-                aria-pressed={isMapView}
-              >
-                Mapa
-              </button>
-            </div>
-
-            <label className="inline-flex items-center gap-2 rounded-full border border-[color:var(--border-soft)] bg-[color:var(--surface-muted)] px-2.5 py-1">
-              <span className="text-xs font-semibold uppercase tracking-[0.15em] text-[color:var(--ink-faint)]">
-                Ordenar
-              </span>
-              <select
-                value={sort}
-                onChange={(event) => handleSortChange(event.target.value as SearchSort)}
-                className="rounded-full bg-transparent text-sm font-semibold text-[color:var(--ink)] focus:outline-none"
-              >
-                {SORT_OPTIONS.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-          </div>
-        </div>
+      <div className="mt-1 flex items-center justify-end">
+        <label className="inline-flex items-center gap-2 rounded-full border border-[color:var(--border-soft)] bg-[color:var(--surface-muted)] px-2.5 py-1">
+          <span className="text-xs font-semibold uppercase tracking-[0.15em] text-[color:var(--ink-faint)]">
+            Ordenar
+          </span>
+          <select
+            value={sort}
+            onChange={(event) => handleSortChange(event.target.value as SearchSort)}
+            className="rounded-full bg-transparent text-sm font-semibold text-[color:var(--ink)] focus:outline-none"
+          >
+            {SORT_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </label>
       </div>
     </>
   );

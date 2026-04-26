@@ -62,7 +62,11 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     setResolvedTheme(resolved);
 
     try {
-      window.localStorage.setItem(THEME_STORAGE_KEY, themePreference);
+      if (themePreference === 'system') {
+        window.localStorage.removeItem(THEME_STORAGE_KEY);
+      } else {
+        window.localStorage.setItem(THEME_STORAGE_KEY, themePreference);
+      }
     } catch (error) {
       // Ignore storage write failures and keep the current session theme.
     }

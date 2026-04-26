@@ -7,6 +7,7 @@ export type KnownAuthSessionRole = 'CLIENT' | 'PROFESSIONAL';
 let inMemoryAccessToken: string | null = null;
 let inMemorySessionHint: boolean | null = null;
 let inMemorySessionRole: KnownAuthSessionRole | null | undefined;
+const ACCESS_TOKEN_EXPIRY_SKEW_MS = 30_000;
 
 const normalizeToken = (token?: string | null) => {
   if (typeof token !== 'string') return null;
@@ -31,13 +32,22 @@ const decodeBase64Url = (value: string) => {
   return Buffer.from(padded, 'base64').toString('utf8');
 };
 
-const roleFromAccessToken = (token?: string | null): KnownAuthSessionRole | null => {
+const parseAccessTokenPayload = (token?: string | null) => {
   try {
     if (!token) return null;
     const parts = token.split('.');
     if (parts.length < 2) return null;
     const payloadRaw = decodeBase64Url(parts[1]);
-    const payload = JSON.parse(payloadRaw) as { role?: unknown };
+    return JSON.parse(payloadRaw) as { role?: unknown; exp?: unknown };
+  } catch {
+    return null;
+  }
+};
+
+const roleFromAccessToken = (token?: string | null): KnownAuthSessionRole | null => {
+  try {
+    const payload = parseAccessTokenPayload(token);
+    if (!payload) return null;
     if (payload.role === 'USER') return 'CLIENT';
     if (payload.role === 'PROFESSIONAL') return 'PROFESSIONAL';
     return null;
@@ -46,12 +56,30 @@ const roleFromAccessToken = (token?: string | null): KnownAuthSessionRole | null
   }
 };
 
+const isAccessTokenExpired = (token?: string | null) => {
+  const payload = parseAccessTokenPayload(token);
+  if (!payload || typeof payload.exp !== 'number' || !Number.isFinite(payload.exp)) {
+    return false;
+  }
+  return payload.exp * 1000 <= Date.now() + ACCESS_TOKEN_EXPIRY_SKEW_MS;
+};
+
 export const getAuthAccessToken = (): string | null => {
   if (inMemoryAccessToken) return inMemoryAccessToken;
   if (typeof window === 'undefined') return null;
   const stored = normalizeToken(window.localStorage.getItem(ACCESS_TOKEN_STORAGE_KEY));
   inMemoryAccessToken = stored;
   return stored;
+};
+
+export const getUsableAuthAccessToken = (): string | null => {
+  const token = getAuthAccessToken();
+  if (!token) return null;
+  if (!isAccessTokenExpired(token)) {
+    return token;
+  }
+  clearAuthAccessToken();
+  return null;
 };
 
 export const getKnownAuthSessionRole = (): KnownAuthSessionRole | null => {
@@ -78,7 +106,7 @@ export const getKnownAuthSessionRole = (): KnownAuthSessionRole | null => {
 };
 
 export const hasKnownAuthSession = (): boolean => {
-  if (getAuthAccessToken()) return true;
+  if (getUsableAuthAccessToken()) return true;
   if (getKnownAuthSessionRole()) return true;
   if (inMemorySessionHint !== null) return inMemorySessionHint;
   if (typeof window === 'undefined') return false;

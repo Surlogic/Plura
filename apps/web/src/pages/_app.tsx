@@ -4,6 +4,7 @@ import { Instrument_Sans } from 'next/font/google';
 import { useRouter } from 'next/router';
 import '@/pages/globals.css';
 import 'mapbox-gl/dist/mapbox-gl.css';
+import 'leaflet/dist/leaflet.css';
 import LogoutLoadingOverlay from '@/components/auth/LogoutLoadingOverlay';
 import { ProfessionalProfileProvider } from '@/context/ProfessionalProfileContext';
 import { ClientProfileProvider } from '@/context/ClientProfileContext';
@@ -12,7 +13,7 @@ import { LogoutTransitionProvider } from '@/context/LogoutTransitionContext';
 import { ProfessionalDashboardUnsavedChangesProvider } from '@/context/ProfessionalDashboardUnsavedChangesContext';
 import { ProfessionalNotificationsProvider } from '@/context/ProfessionalNotificationsContext';
 import { ThemeProvider } from '@/components/theme/ThemeProvider';
-import { getKnownAuthSessionRole, hasKnownAuthSession } from '@/services/session';
+import { getKnownAuthSessionRole, getUsableAuthAccessToken } from '@/services/session';
 import UnsavedChangesOverlay from '@/components/profesional/dashboard/UnsavedChangesOverlay';
 export function reportWebVitals(metric: {
   id: string;
@@ -80,18 +81,18 @@ export default function App({ Component, pageProps }: AppProps) {
     const isClientAuthArea = isRouteOrChild(pathname, '/cliente/auth');
     const isProfessionalDashboardArea = isRouteOrChild(pathname, '/profesional/dashboard');
     const isProfessionalNotificationsArea = isRouteOrChild(pathname, '/profesional/notificaciones');
-    const hasKnownSession = hasKnownAuthSession();
+    const hasUsableAccessToken = Boolean(getUsableAuthAccessToken());
     const knownSessionRole = getKnownAuthSessionRole();
     const shouldBootstrapPublicAuth = shouldBootstrapAuthStateOnPublicPath(pathname);
 
     const shouldAutoLoadClientProfileFromPublicSession =
       shouldBootstrapPublicAuth &&
-      hasKnownSession &&
+      hasUsableAccessToken &&
       knownSessionRole === 'CLIENT';
 
     const shouldAutoLoadProfessionalProfileFromPublicSession =
       shouldBootstrapPublicAuth &&
-      hasKnownSession &&
+      hasUsableAccessToken &&
       knownSessionRole === 'PROFESSIONAL';
 
     return {

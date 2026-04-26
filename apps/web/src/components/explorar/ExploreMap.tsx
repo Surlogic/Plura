@@ -14,6 +14,7 @@ import {
 } from 'react-map-gl/mapbox';
 import mapboxgl from 'mapbox-gl';
 import MapView from '@/components/map/MapView';
+import ExploreLeafletFallbackMap from '@/components/explorar/ExploreLeafletFallbackMap';
 
 type ExploreMapItem = {
   id: string;
@@ -378,6 +379,18 @@ function ExploreMap({
     [effectiveActiveResultId, items.length, userLocation?.latitude, userLocation?.longitude],
   );
 
+  const interactiveFallbackMap = useMemo(
+    () => (
+      <ExploreLeafletFallbackMap
+        items={items}
+        userLocation={userLocation}
+        activeResultId={effectiveActiveResultId}
+        onActiveResultChange={onActiveResultChange}
+      />
+    ),
+    [effectiveActiveResultId, items, onActiveResultChange, userLocation],
+  );
+
   return (
     <div className="relative flex h-full min-h-0 w-full flex-1">
       <Head>
@@ -404,8 +417,7 @@ function ExploreMap({
         touchZoomRotate
         containerClassName="pointer-events-auto h-full w-full overflow-hidden border border-[#DCE5ED]"
         fallbackClassName="h-full bg-[#E9EEF2]"
-        webglFallbackMessage="No pudimos inicializar el mapa interactivo en este navegador."
-        skipWebGlSupportCheck
+        webglFallbackNode={interactiveFallbackMap}
         resetKey={mapResetKey}
       >
         <NavigationControl position="top-right" showCompass={false} />

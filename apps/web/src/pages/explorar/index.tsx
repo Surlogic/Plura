@@ -547,17 +547,17 @@ export default function ExplorarPage() {
     return (
       <div className="flex h-[100dvh] flex-col overflow-hidden bg-[color:var(--bg-soft)] text-[color:var(--ink)]">
         {navbar}
-        <main className="relative isolate mx-auto flex min-h-0 w-full max-w-[1400px] flex-1 overflow-hidden px-4 pt-2 pb-3 sm:px-6 lg:px-10">
-          <section className="relative z-0 flex min-h-0 flex-1 flex-col gap-3 overflow-hidden lg:flex-row">
-            <div className="relative z-[90] flex min-h-0 w-full flex-col overflow-visible rounded-[24px] border border-[#0E2A47]/10 bg-white shadow-sm lg:min-w-[320px] lg:max-w-[420px] lg:flex-[0_0_25%]">
-              <div className="relative z-[100] shrink-0 overflow-visible border-b border-[#E2E7EC] px-3 py-3 sm:px-4">
+        <main className="relative isolate flex min-h-0 w-full flex-1 overflow-hidden px-2 pb-2 pt-1.5 sm:px-3 sm:pb-3 lg:px-4 lg:pb-4">
+          <section className="relative z-0 flex min-h-0 flex-1 flex-col gap-2 overflow-hidden lg:flex-row">
+            <div className="relative z-[90] flex min-h-0 w-full flex-col overflow-visible rounded-[22px] border border-[#0E2A47]/10 bg-white shadow-sm lg:min-w-[360px] lg:max-w-[560px] lg:flex-[0_0_36%] xl:flex-[0_0_34%]">
+              <div className="relative z-[100] shrink-0 overflow-visible border-b border-[#E2E7EC] px-2.5 py-2.5 sm:px-3 sm:py-3">
                 {exploreFiltersControl}
-                <div className="mt-2 flex items-center justify-end">
+                <div className="mt-1.5 flex items-center justify-end">
                   {exploreSortControl}
                 </div>
               </div>
 
-              <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 py-3 sm:px-4">
+              <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-2.5 py-2.5 sm:px-3 sm:py-3">
                 <div className="pr-1">
                   {error ? (
                     <div className="rounded-[16px] border border-dashed border-[#E2E7EC] bg-[#F8FAFC] px-4 py-6 text-sm text-[#64748B]">
@@ -577,7 +577,7 @@ export default function ExplorarPage() {
                       )}
                     </div>
                   ) : (
-                    <div className="grid grid-cols-1 gap-4">
+                    <div className="grid grid-cols-1 gap-3 min-[460px]:grid-cols-2 lg:grid-cols-2">
                       {items.map((item, index) => (
                         <ExploreCard
                           key={item.id}
@@ -607,6 +607,7 @@ export default function ExplorarPage() {
                           onHoverEnd={handleMapItemHoverEnd}
                           isFavorite={isFavorite(item.slug)}
                           onFavoriteToggle={handleFavoriteToggle}
+                          density="compact"
                         />
                       ))}
                     </div>
@@ -615,7 +616,7 @@ export default function ExplorarPage() {
               </div>
             </div>
 
-            <div className="flex min-h-0 flex-1 flex-col rounded-[24px] border border-[#0E2A47]/10 bg-white p-4 shadow-sm lg:flex-[1_1_75%]">
+            <div className="flex min-h-0 flex-1 flex-col rounded-[22px] border border-[#0E2A47]/10 bg-white p-2 shadow-sm sm:p-2.5 lg:flex-[1_1_64%] xl:flex-[1_1_66%]">
               <div className="relative min-h-0 flex-1">
                 <ExploreMap
                   results={items}

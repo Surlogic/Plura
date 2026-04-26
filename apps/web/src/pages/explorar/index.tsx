@@ -23,13 +23,6 @@ const ExploreMap = dynamic(() => import('@/components/explorar/ExploreMap'), {
   ssr: false,
 });
 
-const SEARCH_TYPE_LABELS: Record<SearchType, string> = {
-  RUBRO: 'Categoría',
-  PROFESIONAL: 'Profesional',
-  LOCAL: 'Local',
-  SERVICIO: 'Servicio',
-};
-
 const SORT_OPTIONS: Array<{ value: SearchSort; label: string }> = [
   { value: 'RELEVANCE', label: 'Relevancia' },
   { value: 'DISTANCE', label: 'Distancia' },

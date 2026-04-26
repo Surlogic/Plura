@@ -198,6 +198,10 @@ html.dark {
   color-scheme: dark;
 }
 
+html.explore-route {
+  scrollbar-gutter: auto;
+}
+
 body {
   background: var(--background);
   color: var(--ink);
@@ -212,6 +216,17 @@ body {
   background-repeat: no-repeat;
   text-rendering: optimizeLegibility;
   min-height: 100vh;
+}
+
+body.explore-route {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+html.explore-route-map,
+body.explore-route-map {
+  overflow: hidden;
 }
 
 :where(h1, h2, h3, h4, h5, h6) {

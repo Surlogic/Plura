@@ -175,6 +175,29 @@ export default function ExplorarPage() {
   }, [rawSort, hasCoordinates]);
   const isMapView = rawViewMode === 'mapa';
 
+  useEffect(() => {
+    const html = document.documentElement;
+    const body = document.body;
+
+    html.classList.add('explore-route');
+    body.classList.add('explore-route');
+
+    if (isMapView) {
+      html.classList.add('explore-route-map');
+      body.classList.add('explore-route-map');
+    } else {
+      html.classList.remove('explore-route-map');
+      body.classList.remove('explore-route-map');
+    }
+
+    return () => {
+      html.classList.remove('explore-route');
+      body.classList.remove('explore-route');
+      html.classList.remove('explore-route-map');
+      body.classList.remove('explore-route-map');
+    };
+  }, [isMapView]);
+
   const [items, setItems] = useState<SearchItem[]>([]);
   const [total, setTotal] = useState(0);
   const [isLoading, setIsLoading] = useState(false);

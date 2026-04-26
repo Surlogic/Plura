@@ -642,7 +642,7 @@ export default function ExplorarPage() {
           {exploreControls}
         </header>
 
-        <section className="relative z-0 flex min-h-0 flex-1 flex-col overflow-hidden pt-2">
+        <section className="relative z-0 flex min-h-0 flex-1 flex-col overflow-hidden pt-0">
           <div className="relative z-0 min-h-0 flex-1 overflow-y-auto overscroll-contain pr-1">
             <div className="space-y-4 pb-8">
               {error ? (

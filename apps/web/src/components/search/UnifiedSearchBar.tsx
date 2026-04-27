@@ -15,6 +15,7 @@ import SearchFilterChips, {
   type SearchFilterChip,
 } from '@/components/search/SearchFilterChips';
 import SuggestDropdown from '@/components/search/SuggestDropdown';
+import { SEARCH_DEFAULT_RADIUS_KM } from '@/config/search';
 import {
   SEARCH_BAR_MAX_WIDTH_CLASS,
   SEARCH_CONTROL_HEIGHT_CLASS,
@@ -44,6 +45,7 @@ type UnifiedSearchBarProps = {
   citySuggestions?: string[];
   density?: 'default' | 'compact';
   locationSummaryOverride?: string;
+  onLocationClear?: (mode: 'remove' | 'clear-all') => void;
 };
 
 type SearchSectionLabelProps = {
@@ -120,6 +122,7 @@ export default memo(function UnifiedSearchBar({
   citySuggestions = [],
   density = 'default',
   locationSummaryOverride,
+  onLocationClear,
 }: UnifiedSearchBarProps) {
   const wrapperRef = useRef<HTMLDivElement | null>(null);
   const isHero = variant === 'hero';
@@ -272,12 +275,21 @@ export default memo(function UnifiedSearchBar({
     || locationInput.trim()
     || values.city.trim()
     || (hasCoordinates ? `Cerca de mi · ${radiusSummary}` : 'Zona o ciudad');
+  const locationChipLabel =
+    locationSummaryOverride
+    || (hasCoordinates ? `Cerca de mi · ${radiusSummary}` : `Ubicacion: ${values.city.trim()}`);
   const locationValueClass = getAdaptiveValueClass(locationSummary);
   const searchModeLabel = values.categorySlug
     ? 'Categoría'
     : values.type !== 'SERVICIO'
       ? SEARCH_TYPE_LABELS[values.type]
       : null;
+  const handleClearAllFilters = useCallback(() => {
+    if (values.city.trim() || hasCoordinates) {
+      onLocationClear?.('clear-all');
+    }
+    handleClear();
+  }, [handleClear, hasCoordinates, onLocationClear, values.city]);
   const queryFieldLabel = 'Servicios';
   const hiddenHeroLabelClassName = usesBareLayout ? 'sr-only' : '';
   const heroInlineLabelClassName = `inline-flex min-w-0 items-center gap-1.5 truncate whitespace-nowrap ${
@@ -316,6 +328,12 @@ export default memo(function UnifiedSearchBar({
   const centeredHeroDropdownClassName = isHero
     ? 'sm:left-1/2 sm:right-auto sm:-translate-x-1/2'
     : 'sm:right-auto';
+  const suggestDropdownWidthClassName = isExplore
+    ? 'sm:w-[min(38rem,calc(100vw-1.5rem))]'
+    : 'sm:w-[min(100%,38rem)]';
+  const suggestDropdownPanelClassName = isExplore
+    ? 'max-h-[min(26rem,calc(100vh-8.5rem))]'
+    : '';
   const queryWrapperOrderClassName = usesBareLayout
     ? `order-1 md:col-[1] ${heroFieldShellClassName} ${heroQueryDividerClassName} ${heroFieldMotionClassName} ${heroQueryWidthClassName}`
     : '';
@@ -438,21 +456,31 @@ export default memo(function UnifiedSearchBar({
     if (values.city.trim() || hasCoordinates) {
       filters.push({
         id: 'location',
-        label: hasCoordinates ? `Cerca de mi · ${radiusSummary}` : `Ubicacion: ${values.city.trim()}`,
+        label: locationChipLabel,
         onRemove: () => {
           setValues((previous) => ({
             ...previous,
             city: '',
             lat: undefined,
             lng: undefined,
+            radiusKm: SEARCH_DEFAULT_RADIUS_KM,
           }));
           setLocationInput('');
+          onLocationClear?.('remove');
         },
       });
     }
 
     return filters;
-  }, [hasCoordinates, radiusSummary, setLocationInput, setSearchInput, setValues, values]);
+  }, [
+    hasCoordinates,
+    locationChipLabel,
+    onLocationClear,
+    setLocationInput,
+    setSearchInput,
+    setValues,
+    values,
+  ]);
 
   return (
     <div
@@ -522,7 +550,9 @@ export default memo(function UnifiedSearchBar({
               </SearchField>
 
               {isSearchOpen ? (
-                <div className="absolute left-0 right-0 top-[calc(100%+8px)] z-[80] sm:right-auto sm:w-[min(100%,38rem)]">
+                <div
+                  className={`absolute left-0 right-0 top-[calc(100%+8px)] z-[80] sm:right-auto ${suggestDropdownWidthClassName}`.trim()}
+                >
                   <SuggestDropdown
                     open={isSearchOpen}
                     loading={isSuggestLoading}
@@ -530,6 +560,7 @@ export default memo(function UnifiedSearchBar({
                     activeIndex={activeSuggestionIndex}
                     onHoverIndex={setActiveSuggestionIndex}
                     onSelect={applySuggestion}
+                    className={suggestDropdownPanelClassName}
                   />
                 </div>
               ) : null}
@@ -734,7 +765,10 @@ export default memo(function UnifiedSearchBar({
 
           {activeFilters.length > 0 && (!usesBareLayout || showClearButton) ? (
             <div className={`px-1 ${isExplore ? 'mt-2' : 'mt-2.5'}`}>
-              <SearchFilterChips filters={activeFilters} onClearAll={showClearButton ? handleClear : undefined} />
+              <SearchFilterChips
+                filters={activeFilters}
+                onClearAll={showClearButton ? handleClearAllFilters : undefined}
+              />
             </div>
           ) : null}
         </div>

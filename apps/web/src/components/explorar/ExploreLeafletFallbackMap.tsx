@@ -31,8 +31,9 @@ type ExploreLeafletFallbackMapProps = {
     latitude: number;
     longitude: number;
   };
-  activeResultId?: string | null;
-  onActiveResultChange?: (id: string | null) => void;
+  selectedResultId?: string | null;
+  selectionRequestNonce?: number;
+  onSelectResult?: (id: string | null) => void;
 };
 
 const DEFAULT_CENTER: LatLngExpression = [-34.9011, -56.1645];
@@ -102,23 +103,25 @@ function FitToResults({
 
 function FocusActiveResult({
   items,
-  activeResultId,
+  selectedResultId,
+  selectionRequestNonce,
 }: {
   items: ExploreLeafletMapItem[];
-  activeResultId?: string | null;
+  selectedResultId?: string | null;
+  selectionRequestNonce?: number;
 }) {
   const map = useMap();
 
   useEffect(() => {
-    if (!activeResultId) return;
-    const activeItem = items.find((item) => item.id === activeResultId);
+    if (!selectedResultId) return;
+    const activeItem = items.find((item) => item.id === selectedResultId);
     if (!activeItem) return;
 
-    map.flyTo([activeItem.latitude, activeItem.longitude], Math.max(map.getZoom(), 13), {
+    map.flyTo([activeItem.latitude, activeItem.longitude], Math.max(map.getZoom(), 14), {
       animate: true,
-      duration: 0.45,
+      duration: 0.5,
     });
-  }, [activeResultId, items, map]);
+  }, [items, map, selectedResultId, selectionRequestNonce]);
 
   return null;
 }
@@ -153,14 +156,15 @@ function TrackManualMapInteraction({
 export default function ExploreLeafletFallbackMap({
   items,
   userLocation,
-  activeResultId = null,
-  onActiveResultChange,
+  selectedResultId = null,
+  selectionRequestNonce = 0,
+  onSelectResult,
 }: ExploreLeafletFallbackMapProps) {
   const lastAutoViewportKeyRef = useRef<string | null>(null);
   const userInteractedSinceResultsRef = useRef(false);
   const selectedItem = useMemo(
-    () => items.find((item) => item.id === activeResultId) || null,
-    [activeResultId, items],
+    () => items.find((item) => item.id === selectedResultId) || null,
+    [items, selectedResultId],
   );
   const viewportKey = useMemo(
     () => {
@@ -207,10 +211,14 @@ export default function ExploreLeafletFallbackMap({
           lastAutoViewportKeyRef={lastAutoViewportKeyRef}
           userInteractedSinceResultsRef={userInteractedSinceResultsRef}
         />
-        <FocusActiveResult items={items} activeResultId={activeResultId} />
+        <FocusActiveResult
+          items={items}
+          selectedResultId={selectedResultId}
+          selectionRequestNonce={selectionRequestNonce}
+        />
 
         {items.map((item) => {
-          const isActive = activeResultId === item.id;
+          const isActive = selectedResultId === item.id;
           return (
             <CircleMarker
               key={item.id}
@@ -223,7 +231,7 @@ export default function ExploreLeafletFallbackMap({
                 fillOpacity: 0.92,
               }}
               eventHandlers={{
-                click: () => onActiveResultChange?.(item.id),
+                click: () => onSelectResult?.(item.id),
               }}
             />
           );
@@ -247,7 +255,7 @@ export default function ExploreLeafletFallbackMap({
             position={[selectedItem.latitude, selectedItem.longitude]}
             closeOnClick={false}
             eventHandlers={{
-              remove: () => onActiveResultChange?.(null),
+              remove: () => onSelectResult?.(null),
             }}
           >
             <div className="min-w-[220px] space-y-1.5">

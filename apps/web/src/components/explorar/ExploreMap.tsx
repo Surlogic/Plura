@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
 import type { SearchItem } from '@/types/search';
@@ -15,6 +15,11 @@ import {
 import mapboxgl from 'mapbox-gl';
 import MapView from '@/components/map/MapView';
 import ExploreLeafletFallbackMap from '@/components/explorar/ExploreLeafletFallbackMap';
+import {
+  buildPublicBusinessLogoStyle,
+  getPublicBusinessInitials,
+  resolvePublicBusinessMedia,
+} from '@/utils/publicBusinessMedia';
 
 type ExploreMapItem = {
   id: string;
@@ -27,6 +32,9 @@ type ExploreMapItem = {
   latitude: number;
   longitude: number;
   locationText?: string | null;
+  logoSrc?: string | null;
+  logoStyle?: CSSProperties;
+  initials: string;
 };
 
 type ExploreMapProps = {
@@ -35,8 +43,9 @@ type ExploreMapProps = {
     latitude: number;
     longitude: number;
   };
-  activeResultId?: string | null;
-  onActiveResultChange?: (id: string | null) => void;
+  selectedResultId?: string | null;
+  selectionRequestNonce?: number;
+  onSelectResult?: (id: string | null) => void;
   onViewportCenterChange?: (center: { latitude: number; longitude: number }) => void;
 };
 
@@ -48,11 +57,8 @@ const MAP_SOURCE_ID = 'plura-professionals';
 const CLUSTER_LAYER_ID = 'plura-clusters';
 const CLUSTER_COUNT_LAYER_ID = 'plura-clusters-count';
 const UNCLUSTERED_LAYER_ID = 'plura-unclustered-points';
-const UNCLUSTERED_LABEL_LAYER_ID = 'plura-unclustered-labels';
 const INTERACTIVE_LAYER_IDS = [
   CLUSTER_LAYER_ID,
-  UNCLUSTERED_LAYER_ID,
-  UNCLUSTERED_LABEL_LAYER_ID,
 ];
 const NOISE_LAYER_MATCHERS = [
   /poi/i,
@@ -101,39 +107,12 @@ const unclusteredLayer: LayerProps = {
   filter: ['!', ['has', 'point_count']],
   paint: {
     'circle-color': '#0E2A47',
-    'circle-radius': 19,
-    'circle-stroke-width': 2,
-    'circle-stroke-color': '#FFFFFF',
+    'circle-radius': 24,
+    'circle-opacity': 0.01,
+    'circle-stroke-width': 1,
+    'circle-stroke-opacity': 0.01,
+    'circle-stroke-color': '#0E2A47',
   },
-};
-
-const unclusteredLabelLayer: LayerProps = {
-  id: UNCLUSTERED_LABEL_LAYER_ID,
-  type: 'symbol',
-  source: MAP_SOURCE_ID,
-  filter: ['!', ['has', 'point_count']],
-  layout: {
-    'text-field': ['coalesce', ['get', 'markerLabel'], 'Perfil'],
-    'text-size': 11,
-    'text-font': ['Open Sans Bold', 'Arial Unicode MS Bold'],
-    'text-allow-overlap': true,
-    'text-ignore-placement': true,
-  },
-  paint: {
-    'text-color': '#000000',
-  },
-};
-
-const formatPriceFrom = (value?: number | null) => {
-  if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0) return 'Ver perfil';
-  const rounded = Math.round(value);
-  return `Desde $${new Intl.NumberFormat('es-UY').format(rounded)}`;
-};
-
-const formatMarkerLabel = (value?: number | null) => {
-  if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0) return 'Perfil';
-  const rounded = Math.max(0, Math.round(value));
-  return `$${new Intl.NumberFormat('es-UY').format(rounded)}`;
 };
 
 const humanizeSlug = (slug: string) =>
@@ -154,19 +133,83 @@ const parseOptionalNumber = (value: unknown): number | null => {
   return null;
 };
 
+function ExploreMapMarkerAvatar({
+  item,
+  isActive,
+  showRating = true,
+}: {
+  item: ExploreMapItem;
+  isActive: boolean;
+  showRating?: boolean;
+}) {
+  const [hasLogoError, setHasLogoError] = useState(false);
+  const hasRating = typeof item.rating === 'number' && Number.isFinite(item.rating) && item.rating > 0;
+  const showLogo = Boolean(item.logoSrc) && !hasLogoError;
+
+  useEffect(() => {
+    setHasLogoError(false);
+  }, [item.logoSrc]);
+
+  return (
+    <div className="flex flex-col items-center">
+      <span
+        className={`relative flex items-center justify-center overflow-hidden rounded-full border bg-[linear-gradient(135deg,#F6F1E8_0%,#FFFFFF_100%)] text-[#0E2A47] shadow-[0_18px_28px_-18px_rgba(14,42,71,0.5)] transition-transform duration-150 group-hover:-translate-y-0.5 ${
+          isActive
+            ? 'h-11 w-11 border-[#2E9B66] ring-4 ring-[#2E9B66]/18 sm:h-[2.8rem] sm:w-[2.8rem]'
+            : 'h-9 w-9 border-white/95 sm:h-10 sm:w-10'
+        }`}
+      >
+        {showLogo ? (
+          // eslint-disable-next-line @next/next/no-img-element -- marker de mapa liviano sin wrappers extra
+          <img
+            src={item.logoSrc || ''}
+            alt=""
+            aria-hidden="true"
+            loading="lazy"
+            decoding="async"
+            className="h-full w-full object-cover"
+            style={item.logoStyle}
+            onError={() => setHasLogoError(true)}
+          />
+        ) : null}
+        <span
+          className={`absolute inset-0 flex items-center justify-center font-semibold tracking-[0.08em] ${
+            isActive ? 'text-[0.82rem]' : 'text-[0.72rem]'
+          } ${showLogo ? 'hidden' : ''}`}
+        >
+          {item.initials}
+        </span>
+      </span>
+      {showRating && hasRating ? (
+        <span
+          className={`mt-[-0.1rem] hidden min-h-[1.15rem] items-center rounded-full border px-1.5 py-0.5 text-[0.62rem] font-semibold shadow-[0_12px_22px_-16px_rgba(14,42,71,0.44)] sm:inline-flex ${
+            isActive
+              ? 'border-[#D7EEDC] bg-[#F1FAF4] text-[#17653F]'
+              : 'border-white/95 bg-white/96 text-[#0E2A47]'
+          }`}
+        >
+          <span className="mr-1 text-[0.68rem] text-[#E59C17]">★</span>
+          {item.rating?.toFixed(1)}
+        </span>
+      ) : null}
+    </div>
+  );
+}
+
 function ExploreMap({
   results,
   userLocation,
-  activeResultId = null,
-  onActiveResultChange,
+  selectedResultId = null,
+  selectionRequestNonce = 0,
+  onSelectResult,
   onViewportCenterChange,
 }: ExploreMapProps) {
   const mapRef = useRef<MapRef | null>(null);
-  const lastExternalFocusRef = useRef<string | null>(null);
+  const lastSelectionFocusRef = useRef<string | null>(null);
   const lastAutoViewportKeyRef = useRef<string | null>(null);
   const userInteractedSinceResultsRef = useRef(false);
   const [mapReady, setMapReady] = useState(false);
-  const [selectedResultId, setSelectedResultId] = useState<string | null>(null);
+  const [visibleMarkerIds, setVisibleMarkerIds] = useState<string[]>([]);
   const [cursor, setCursor] = useState<'default' | 'pointer'>('default');
 
   const items = useMemo<ExploreMapItem[]>(
@@ -176,6 +219,13 @@ function ExploreMap({
         const latitude = parseOptionalNumber(item.latitude);
         const longitude = parseOptionalNumber(item.longitude);
         if (latitude === null || longitude === null) return;
+        const publicMedia = resolvePublicBusinessMedia({
+          logoMedia: item.logoMedia,
+          logoUrl: item.logoUrl,
+          fallbackPhotoUrl: item.fallbackPhotoUrl,
+          imageUrl: item.coverImageUrl,
+          name: item.name,
+        });
 
         mapped.push({
           id: String(item.id),
@@ -191,6 +241,9 @@ function ExploreMap({
           latitude,
           longitude,
           locationText: item.locationText || null,
+          logoSrc: publicMedia.logo?.src || null,
+          logoStyle: buildPublicBusinessLogoStyle(publicMedia.logo),
+          initials: publicMedia.initials || getPublicBusinessInitials(item.name),
         });
       });
       return mapped;
@@ -209,7 +262,6 @@ function ExploreMap({
         },
         properties: {
           id: item.id,
-          markerLabel: formatMarkerLabel(item.priceFrom),
         },
       })),
     }),
@@ -231,22 +283,24 @@ function ExploreMap({
     [items, userLocation],
   );
 
-  const effectiveActiveResultId = selectedResultId || activeResultId;
+  const visibleMarkers = useMemo(
+    () => items.filter((item) => visibleMarkerIds.includes(item.id)),
+    [items, visibleMarkerIds],
+  );
 
   const selectedItem = useMemo(
     () => {
-      if (!effectiveActiveResultId) return null;
-      return items.find((item) => item.id === effectiveActiveResultId) || null;
+      if (!selectedResultId) return null;
+      return items.find((item) => item.id === selectedResultId) || null;
     },
-    [effectiveActiveResultId, items],
+    [items, selectedResultId],
   );
 
   useEffect(() => {
     if (selectedResultId && !items.some((item) => item.id === selectedResultId)) {
-      setSelectedResultId(null);
-      onActiveResultChange?.(null);
+      onSelectResult?.(null);
     }
-  }, [items, onActiveResultChange, selectedResultId]);
+  }, [items, onSelectResult, selectedResultId]);
 
   useEffect(() => {
     userInteractedSinceResultsRef.current = false;
@@ -326,25 +380,27 @@ function ExploreMap({
   }, [items, mapReady, userLocation, viewportKey]);
 
   useEffect(() => {
-    if (!mapReady || !mapRef.current || !activeResultId || selectedResultId) return;
-    if (lastExternalFocusRef.current === activeResultId) return;
-    const nextItem = items.find((item) => item.id === activeResultId);
+    if (!mapReady || !mapRef.current || !selectedResultId) return;
+    const nextFocusKey = `${selectedResultId}:${selectionRequestNonce}`;
+    if (lastSelectionFocusRef.current === nextFocusKey) return;
+    const nextItem = items.find((item) => item.id === selectedResultId);
     if (!nextItem) return;
 
-    lastExternalFocusRef.current = activeResultId;
+    lastSelectionFocusRef.current = nextFocusKey;
     const currentZoom = mapRef.current.getZoom();
     mapRef.current.easeTo({
       center: [nextItem.longitude, nextItem.latitude],
-      zoom: Math.max(currentZoom, 12),
-      duration: 360,
+      zoom: Math.max(currentZoom, 14.5),
+      duration: 460,
+      offset: [0, 0],
     });
-  }, [activeResultId, items, mapReady, selectedResultId]);
+  }, [items, mapReady, selectedResultId, selectionRequestNonce]);
 
   useEffect(() => {
-    if (!activeResultId) {
-      lastExternalFocusRef.current = null;
+    if (!selectedResultId) {
+      lastSelectionFocusRef.current = null;
     }
-  }, [activeResultId]);
+  }, [selectedResultId]);
 
   const hideVisualNoiseLayers = useCallback(() => {
     const map = mapRef.current?.getMap();
@@ -369,13 +425,42 @@ function ExploreMap({
     emitViewportCenter();
   }, [emitViewportCenter, hideVisualNoiseLayers]);
 
+  const syncVisibleMarkers = useCallback(() => {
+    const map = mapRef.current?.getMap();
+    if (!map || !map.isStyleLoaded()) return;
+
+    try {
+      const { clientWidth, clientHeight } = map.getContainer();
+      const features = map.queryRenderedFeatures([[0, 0], [clientWidth, clientHeight]], {
+        layers: [UNCLUSTERED_LAYER_ID],
+      });
+      const nextIds = Array.from(
+        new Set(
+          features
+            .map((feature) => String(feature.properties?.id || ''))
+            .filter(Boolean),
+        ),
+      );
+      setVisibleMarkerIds((current) => {
+        if (
+          current.length === nextIds.length
+          && current.every((value, index) => value === nextIds[index])
+        ) {
+          return current;
+        }
+        return nextIds;
+      });
+    } catch {
+      // El source puede no estar listo en frames intermedios.
+    }
+  }, []);
+
   const handleMapClick = useCallback((event: MapMouseEvent) => {
     const features = (event as MapMouseEvent & { features?: mapboxgl.MapboxGeoJSONFeature[] })
       .features;
     const feature = features?.[0];
     if (!feature) {
-      setSelectedResultId(null);
-      onActiveResultChange?.(null);
+      onSelectResult?.(null);
       return;
     }
     const layerId = feature.layer?.id || '';
@@ -401,23 +486,13 @@ function ExploreMap({
       });
       return;
     }
-
-    if (layerId === UNCLUSTERED_LAYER_ID || layerId === UNCLUSTERED_LABEL_LAYER_ID) {
-      const clickedId = String(feature.properties?.id || '');
-      if (!clickedId) return;
-      setSelectedResultId(clickedId);
-      onActiveResultChange?.(clickedId);
-    }
-  }, [onActiveResultChange]);
+  }, [onSelectResult]);
 
   const handleMapMouseMove = useCallback((event: MapMouseEvent) => {
     const features = (event as MapMouseEvent & { features?: mapboxgl.MapboxGeoJSONFeature[] })
       .features;
     const hasInteractiveFeature = features?.some(
-      (item) =>
-        item.layer?.id === UNCLUSTERED_LAYER_ID ||
-        item.layer?.id === UNCLUSTERED_LABEL_LAYER_ID ||
-        item.layer?.id === CLUSTER_LAYER_ID,
+      (item) => item.layer?.id === CLUSTER_LAYER_ID,
     );
     setCursor(hasInteractiveFeature ? 'pointer' : 'default');
   }, []);
@@ -427,9 +502,12 @@ function ExploreMap({
   }, []);
 
   const handlePopupClose = useCallback(() => {
-    setSelectedResultId(null);
-    onActiveResultChange?.(null);
-  }, [onActiveResultChange]);
+    onSelectResult?.(null);
+  }, [onSelectResult]);
+
+  const handleMarkerSelect = useCallback((id: string) => {
+    onSelectResult?.(id);
+  }, [onSelectResult]);
 
   const initialViewState = useMemo(
     () => ({
@@ -447,12 +525,33 @@ function ExploreMap({
       <ExploreLeafletFallbackMap
         items={items}
         userLocation={userLocation}
-        activeResultId={effectiveActiveResultId}
-        onActiveResultChange={onActiveResultChange}
+        selectedResultId={selectedResultId}
+        selectionRequestNonce={selectionRequestNonce}
+        onSelectResult={onSelectResult}
       />
     ),
-    [effectiveActiveResultId, items, onActiveResultChange, userLocation],
+    [items, onSelectResult, selectedResultId, selectionRequestNonce, userLocation],
   );
+
+  useEffect(() => {
+    if (!mapReady || !mapRef.current) return undefined;
+
+    const map = mapRef.current.getMap();
+    const handleIdle = () => {
+      syncVisibleMarkers();
+    };
+
+    map.on('idle', handleIdle);
+    syncVisibleMarkers();
+    const frameId = window.requestAnimationFrame(() => {
+      syncVisibleMarkers();
+    });
+
+    return () => {
+      window.cancelAnimationFrame(frameId);
+      map.off('idle', handleIdle);
+    };
+  }, [mapReady, syncVisibleMarkers, geojson]);
 
   return (
     <div className="relative flex h-full min-h-0 w-full flex-1">
@@ -499,9 +598,32 @@ function ExploreMap({
           <Layer {...clusterCountLayer} />
           {/* eslint-disable-next-line no-restricted-syntax -- react-map-gl Layer expects props object */}
           <Layer {...unclusteredLayer} />
-          {/* eslint-disable-next-line no-restricted-syntax -- react-map-gl Layer expects props object */}
-          <Layer {...unclusteredLabelLayer} />
         </Source>
+
+        {visibleMarkers.map((item) => {
+          const isActive = selectedResultId === item.id;
+
+          return (
+            <Marker
+              key={item.id}
+              longitude={item.longitude}
+              latitude={item.latitude}
+              anchor="bottom"
+            >
+              <button
+                type="button"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  handleMarkerSelect(item.id);
+                }}
+                className="group flex -translate-y-1 flex-col items-center focus:outline-none"
+                aria-label={`Ver ${item.name}`}
+              >
+                <ExploreMapMarkerAvatar item={item} isActive={isActive} />
+              </button>
+            </Marker>
+          );
+        })}
 
         {userLocation ? (
           <Marker longitude={userLocation.longitude} latitude={userLocation.latitude} anchor="center">
@@ -518,19 +640,28 @@ function ExploreMap({
             onClose={handlePopupClose}
             offset={14}
           >
-            <div className="min-w-[220px] space-y-1.5">
-              <p className="text-sm font-semibold text-[#0E2A47]">{selectedItem.name}</p>
-              <p className="text-xs text-[#64748B]">{selectedItem.category || 'Profesional'}</p>
-              {selectedItem.locationText ? (
-                <p className="text-xs text-[#94A3B8]">{selectedItem.locationText}</p>
-              ) : null}
-              <div className="flex items-center justify-between text-xs text-[#334155]">
-                <span>
-                  {typeof selectedItem.rating === 'number'
-                    ? `★ ${selectedItem.rating.toFixed(1)}${selectedItem.reviewsCount ? ` (${selectedItem.reviewsCount})` : ''}`
-                    : 'Sin reseñas'}
-                </span>
-                <span className="text-[#000000]">{formatPriceFrom(selectedItem.priceFrom)}</span>
+            <div className="min-w-[220px] max-w-[240px] space-y-2">
+              <div className="flex items-start gap-3">
+                <div className="shrink-0">
+                  <ExploreMapMarkerAvatar item={selectedItem} isActive showRating={false} />
+                </div>
+                <div className="min-w-0 space-y-1">
+                  <p className="truncate text-sm font-semibold text-[#0E2A47]">{selectedItem.name}</p>
+                  <p className="truncate text-xs text-[#64748B]">{selectedItem.category || 'Profesional'}</p>
+                  <div className="flex items-center gap-2 text-xs text-[#334155]">
+                    <span className="inline-flex items-center rounded-full bg-[#FFF7E7] px-2 py-0.5 font-semibold text-[#8A5A00]">
+                      <span className="mr-1 text-[#E59C17]">★</span>
+                      {typeof selectedItem.rating === 'number' && selectedItem.rating > 0
+                        ? selectedItem.rating.toFixed(1)
+                        : 'Sin rating'}
+                    </span>
+                    {selectedItem.reviewsCount && selectedItem.reviewsCount > 0 ? (
+                      <span className="text-[#64748B]">
+                        {selectedItem.reviewsCount} reseñas
+                      </span>
+                    ) : null}
+                  </div>
+                </div>
               </div>
               <Link
                 href={`/profesional/pagina/${encodeURIComponent(selectedItem.slug)}`}

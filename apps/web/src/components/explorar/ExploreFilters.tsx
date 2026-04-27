@@ -8,6 +8,7 @@ type ExploreFiltersProps = {
   citySuggestions?: string[];
   className?: string;
   locationSummaryOverride?: string;
+  onLocationClear?: (mode: 'remove' | 'clear-all') => void;
 };
 
 export default function ExploreFilters({
@@ -16,6 +17,7 @@ export default function ExploreFilters({
   citySuggestions = [],
   className,
   locationSummaryOverride,
+  onLocationClear,
 }: ExploreFiltersProps) {
   return (
     <UnifiedSearchBar
@@ -27,6 +29,7 @@ export default function ExploreFilters({
       density="compact"
       showClearButton
       locationSummaryOverride={locationSummaryOverride}
+      onLocationClear={onLocationClear}
     />
   );
 }

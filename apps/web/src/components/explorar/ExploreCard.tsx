@@ -1,6 +1,6 @@
 import Image from 'next/image';
 import Link from 'next/link';
-import { memo, useCallback, useEffect, useMemo, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useState, type MouseEvent as ReactMouseEvent } from 'react';
 import FavoriteToggleButton from '@/components/shared/FavoriteToggleButton';
 import type { ProfessionalMediaPresentation } from '@/types/professional';
 import {
@@ -30,6 +30,7 @@ type ExploreCardProps = {
   priority?: boolean;
   onHoverStart?: (id?: string) => void;
   onHoverEnd?: (id?: string) => void;
+  onSelect?: (id?: string) => void;
   isFavorite?: boolean;
   onFavoriteToggle?: (id?: string) => void;
   density?: 'default' | 'compact';
@@ -57,6 +58,7 @@ export default memo(function ExploreCard({
   priority = false,
   onHoverStart,
   onHoverEnd,
+  onSelect,
   isFavorite = false,
   onFavoriteToggle,
   density = 'default',
@@ -70,6 +72,11 @@ export default memo(function ExploreCard({
   const resolvedImageSizes = imageSizes?.trim() || '(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw';
   const handleMouseEnter = useCallback(() => onHoverStart?.(id), [onHoverStart, id]);
   const handleMouseLeave = useCallback(() => onHoverEnd?.(id), [onHoverEnd, id]);
+  const handleSelect = useCallback((event: ReactMouseEvent<HTMLElement>) => {
+    const target = event.target as HTMLElement | null;
+    if (target?.closest('a,button')) return;
+    onSelect?.(id);
+  }, [id, onSelect]);
   const media = useMemo(
     () =>
       resolvePublicBusinessMedia({
@@ -97,9 +104,12 @@ export default memo(function ExploreCard({
 
   return (
     <article
-      className={`group rounded-[24px] border border-[color:var(--border-soft)] bg-[color:var(--surface-strong)] ${isCompact ? 'p-3' : 'p-4'} shadow-[var(--shadow-card)] transition hover:-translate-y-1 hover:border-[color:var(--border-strong)] hover:shadow-[var(--shadow-lift)] ${
-        isHighlighted ? 'ring-2 ring-[color:var(--accent-soft)]' : ''
+      className={`group rounded-[24px] border bg-[color:var(--surface-strong)] ${isCompact ? 'p-3' : 'p-4'} shadow-[var(--shadow-card)] transition hover:-translate-y-1 hover:shadow-[var(--shadow-lift)] ${
+        isHighlighted
+          ? 'border-[#B9E2CB] ring-2 ring-[#DDF3E8] shadow-[0_20px_44px_-32px_rgba(23,101,63,0.34)]'
+          : 'border-[color:var(--border-soft)] hover:border-[color:var(--border-strong)]'
       }`}
+      onClick={handleSelect}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
     >
@@ -215,7 +225,7 @@ export default memo(function ExploreCard({
             href={href}
             className={`inline-flex rounded-full border border-[color:var(--border-soft)] bg-[color:var(--surface-soft)] font-semibold text-[color:var(--ink)] transition hover:border-[color:var(--border-strong)] hover:bg-[color:var(--surface-strong)] ${isCompact ? 'px-3 py-1.5 text-[0.68rem]' : 'px-4 py-2 text-xs'}`}
           >
-            Ver perfil
+            Reservar
           </Link>
         </div>
       ) : null}

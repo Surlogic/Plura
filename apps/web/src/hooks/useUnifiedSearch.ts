@@ -313,11 +313,14 @@ export function useUnifiedSearch({
   }, []);
 
   const buildExploreQuery = useCallback((formValues: UnifiedSearchValues) => {
+    const hasCoordinateLocation =
+      typeof formValues.lat === 'number' && typeof formValues.lng === 'number';
+    const hasLocationSelection = Boolean(formValues.city.trim() || hasCoordinateLocation);
     const query: Record<string, string> = {
       type: formValues.type,
       page: String(SEARCH_DEFAULT_PAGE),
       sort:
-        typeof formValues.lat === 'number' && typeof formValues.lng === 'number'
+        hasCoordinateLocation
           ? 'DISTANCE'
           : 'RATING',
     };
@@ -340,12 +343,16 @@ export function useUnifiedSearch({
       query.city = formValues.city.trim();
     }
 
-    if (typeof formValues.lat === 'number' && typeof formValues.lng === 'number') {
+    if (hasCoordinateLocation) {
       query.lat = String(formValues.lat);
       query.lng = String(formValues.lng);
     }
 
-    if (typeof formValues.radiusKm === 'number' && Number.isFinite(formValues.radiusKm)) {
+    if (
+      hasLocationSelection
+      && typeof formValues.radiusKm === 'number'
+      && Number.isFinite(formValues.radiusKm)
+    ) {
       query.radiusKm = String(normalizeRadiusKm(formValues.radiusKm));
     }
 
@@ -364,6 +371,12 @@ export function useUnifiedSearch({
 
     if (fixedQuery) {
       Object.entries(fixedQuery).forEach(([key, value]) => {
+        if ((key === 'radiusKm' || key === 'locationSource') && !hasLocationSelection) {
+          return;
+        }
+        if (key === 'locationSource' && formValues.city.trim()) {
+          return;
+        }
         if (typeof value === 'string' && value.trim()) {
           query[key] = value;
         }
@@ -555,6 +568,15 @@ export function useUnifiedSearch({
     const preservedQuery: Record<string, string> = { page: String(SEARCH_DEFAULT_PAGE) };
     if (fixedQuery) {
       Object.entries(fixedQuery).forEach(([key, value]) => {
+        if (
+          key === 'city'
+          || key === 'lat'
+          || key === 'lng'
+          || key === 'radiusKm'
+          || key === 'locationSource'
+        ) {
+          return;
+        }
         if (typeof value === 'string' && value.trim()) {
           preservedQuery[key] = value;
         }

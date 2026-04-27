@@ -35,6 +35,7 @@ const SORT_OPTIONS: Array<{ value: SearchSort; label: string }> = [
 const MAP_INITIAL_USER_RADIUS_KM = 2;
 const BROWSER_LOCATION_APPROXIMATE_ACCURACY_METERS = 1000;
 const BROWSER_LOCATION_VERY_APPROXIMATE_ACCURACY_METERS = 3000;
+const MANUAL_LOCATION_STORAGE_KEY = 'plura:explore-manual-location';
 
 const getSingleQueryValue = (value: string | string[] | undefined) =>
   Array.isArray(value) ? value[0] || '' : value || '';
@@ -72,6 +73,11 @@ const parseBoolean = (value: string) => {
   return normalized === 'true' || normalized === '1' || normalized === 'si';
 };
 
+const normalizeLocationSource = (value: string) => {
+  const normalized = value.trim().toLowerCase();
+  return normalized === 'browser' || normalized === 'manual' ? normalized : '';
+};
+
 const normalizeDate = (value: string) =>
   /^\d{4}-\d{2}-\d{2}$/.test(value.trim()) ? value.trim() : '';
 
@@ -97,6 +103,50 @@ const formatPriceFrom = (value?: number | null) => {
     return undefined;
   }
   return `Desde $${new Intl.NumberFormat('es-UY').format(Math.round(value))}`;
+};
+
+type StoredManualLocation = {
+  latitude: number;
+  longitude: number;
+  updatedAt: number;
+};
+
+type SelectionSource = 'map' | 'list' | null;
+
+const readStoredManualLocation = (): StoredManualLocation | null => {
+  if (typeof window === 'undefined') return null;
+
+  try {
+    const raw = window.localStorage.getItem(MANUAL_LOCATION_STORAGE_KEY);
+    if (!raw) return null;
+
+    const parsed = JSON.parse(raw) as Partial<StoredManualLocation> | null;
+    if (
+      !parsed
+      || typeof parsed.latitude !== 'number'
+      || !Number.isFinite(parsed.latitude)
+      || typeof parsed.longitude !== 'number'
+      || !Number.isFinite(parsed.longitude)
+      || typeof parsed.updatedAt !== 'number'
+      || !Number.isFinite(parsed.updatedAt)
+    ) {
+      return null;
+    }
+
+    return parsed as StoredManualLocation;
+  } catch {
+    return null;
+  }
+};
+
+const writeStoredManualLocation = (location: StoredManualLocation) => {
+  if (typeof window === 'undefined') return;
+  window.localStorage.setItem(MANUAL_LOCATION_STORAGE_KEY, JSON.stringify(location));
+};
+
+const clearStoredManualLocation = () => {
+  if (typeof window === 'undefined') return;
+  window.localStorage.removeItem(MANUAL_LOCATION_STORAGE_KEY);
 };
 
 export default function ExplorarPage() {
@@ -133,6 +183,9 @@ export default function ExplorarPage() {
   const rawSize = getSingleQueryValue(router.query.size as string | string[] | undefined);
   const rawSort = getSingleQueryValue(router.query.sort as string | string[] | undefined);
   const rawViewMode = getSingleQueryValue(router.query.vista as string | string[] | undefined);
+  const rawLocationSource = getSingleQueryValue(
+    router.query.locationSource as string | string[] | undefined,
+  );
 
   const searchType = useMemo<SearchType>(() => {
     const parsedType = normalizeSearchType(rawType);
@@ -171,6 +224,7 @@ export default function ExplorarPage() {
   const availableNow = parseBoolean(rawAvailableNow);
   const page = parseInteger(rawPage, SEARCH_DEFAULT_PAGE, SEARCH_DEFAULT_PAGE, 10000);
   const size = parseInteger(rawSize, SEARCH_DEFAULT_SIZE, 1, SEARCH_MAX_SIZE);
+  const locationSource = normalizeLocationSource(rawLocationSource);
   const sort = useMemo<SearchSort>(() => {
     if (rawSort.trim()) {
       return normalizeSort(rawSort);
@@ -207,6 +261,15 @@ export default function ExplorarPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedMapItemId, setSelectedMapItemId] = useState<string | null>(null);
+  const [selectionEvent, setSelectionEvent] = useState<{
+    id: string | null;
+    source: SelectionSource;
+    nonce: number;
+  }>({
+    id: null,
+    source: null,
+    nonce: 0,
+  });
   const [hoveredMapItemId, setHoveredMapItemId] = useState<string | null>(null);
   const [browserUserLocation, setBrowserUserLocation] = useState<{
     latitude: number;
@@ -223,8 +286,19 @@ export default function ExplorarPage() {
   const [isAdjustingLocation, setIsAdjustingLocation] = useState(false);
   const [isRefreshingBrowserLocation, setIsRefreshingBrowserLocation] = useState(false);
   const [browserLocationNotice, setBrowserLocationNotice] = useState<string | null>(null);
+  const [storedManualLocation, setStoredManualLocation] = useState<StoredManualLocation | null>(null);
+  const [hasLoadedStoredManualLocation, setHasLoadedStoredManualLocation] = useState(false);
   const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const didAttemptAutoGeolocationRef = useRef(false);
+  const didUserClearLocationRef = useRef(false);
+  const didRestoreManualLocationRef = useRef(false);
+  const resultCardRefs = useRef(new Map<string, HTMLDivElement>());
+
+  useEffect(() => {
+    if (!router.isReady) return;
+    setStoredManualLocation(readStoredManualLocation());
+    setHasLoadedStoredManualLocation(true);
+  }, [router.isReady]);
 
   useEffect(() => {
     if (!router.isReady) return;
@@ -322,6 +396,36 @@ export default function ExplorarPage() {
     }
   }, [hoveredMapItemId, items, selectedMapItemId]);
 
+  const handleSelectResult = useCallback((id: string | null, source: SelectionSource) => {
+    setSelectedMapItemId(id);
+    setSelectionEvent({
+      id,
+      source,
+      nonce: Date.now(),
+    });
+  }, []);
+
+  useEffect(() => {
+    if (!isMapView) return;
+    if (selectionEvent.source !== 'map' || !selectionEvent.id) return;
+    if (!items.some((item) => String(item.id) === selectionEvent.id)) return;
+
+    const target = resultCardRefs.current.get(selectionEvent.id);
+    if (!target) return;
+
+    const frameId = window.requestAnimationFrame(() => {
+      target.scrollIntoView({
+        block: 'center',
+        inline: 'nearest',
+        behavior: 'smooth',
+      });
+    });
+
+    return () => {
+      window.cancelAnimationFrame(frameId);
+    };
+  }, [isMapView, items, selectionEvent]);
+
   const filterValues = useMemo<Partial<UnifiedSearchValues>>(
     () => ({
       type: searchType,
@@ -355,6 +459,7 @@ export default function ExplorarPage() {
       nextQuery.lat = String(lat);
       nextQuery.lng = String(lng);
     }
+    if (locationSource && hasCoordinates && !city) nextQuery.locationSource = locationSource;
     if (date) nextQuery.date = date;
     if (from && to) {
       nextQuery.from = from;
@@ -373,6 +478,7 @@ export default function ExplorarPage() {
     lat,
     lng,
     radiusKm,
+    locationSource,
     date,
     from,
     to,
@@ -449,6 +555,9 @@ export default function ExplorarPage() {
     setLocationSelectionSource('browser-auto');
     setIsAdjustingLocation(false);
     setBrowserLocationNotice(null);
+    setStoredManualLocation(null);
+    clearStoredManualLocation();
+    didUserClearLocationRef.current = false;
 
     const nextQuery: Record<string, string> = {
       ...baseExploreQuery,
@@ -457,14 +566,75 @@ export default function ExplorarPage() {
       page: '0',
       sort: 'DISTANCE',
       radiusKm: String(hasExplicitRadiusKm ? radiusKm : MAP_INITIAL_USER_RADIUS_KM),
+      locationSource: 'browser',
+    };
+    delete nextQuery.city;
+    replaceQuery(nextQuery);
+  }, [baseExploreQuery, hasExplicitRadiusKm, radiusKm, replaceQuery]);
+
+  const applyManualLocationToMap = useCallback((location: { latitude: number; longitude: number }) => {
+    const storedLocation: StoredManualLocation = {
+      latitude: location.latitude,
+      longitude: location.longitude,
+      updatedAt: Date.now(),
+    };
+
+    setBrowserUserLocation(null);
+    setLocationSelectionSource('manual-adjusted');
+    setIsAdjustingLocation(false);
+    setBrowserLocationNotice(null);
+    setStoredManualLocation(storedLocation);
+    writeStoredManualLocation(storedLocation);
+    didUserClearLocationRef.current = false;
+
+    const nextQuery: Record<string, string> = {
+      ...baseExploreQuery,
+      lat: String(location.latitude),
+      lng: String(location.longitude),
+      page: '0',
+      sort: 'DISTANCE',
+      radiusKm: String(hasExplicitRadiusKm ? radiusKm : MAP_INITIAL_USER_RADIUS_KM),
+      locationSource: 'manual',
     };
     delete nextQuery.city;
     replaceQuery(nextQuery);
   }, [baseExploreQuery, hasExplicitRadiusKm, radiusKm, replaceQuery]);
 
   useEffect(() => {
+    if (!router.isReady || !hasCoordinates || locationSource !== 'manual') return;
+    const manualLocation: StoredManualLocation = {
+      latitude: lat,
+      longitude: lng,
+      updatedAt: Date.now(),
+    };
+    setStoredManualLocation(manualLocation);
+    writeStoredManualLocation(manualLocation);
+  }, [router.isReady, hasCoordinates, lat, lng, locationSource]);
+
+  useEffect(() => {
+    if (!router.isReady || !isMapView || hasCoordinates) return;
+    if (!hasLoadedStoredManualLocation) return;
+    if (didUserClearLocationRef.current) return;
+    if (didRestoreManualLocationRef.current) return;
+    if (!storedManualLocation) return;
+
+    didRestoreManualLocationRef.current = true;
+    applyManualLocationToMap(storedManualLocation);
+  }, [
+    applyManualLocationToMap,
+    hasCoordinates,
+    hasLoadedStoredManualLocation,
+    isMapView,
+    router.isReady,
+    storedManualLocation,
+  ]);
+
+  useEffect(() => {
     if (!router.isReady || !isMapView) return;
     if (hasCoordinates) return;
+    if (!hasLoadedStoredManualLocation) return;
+    if (storedManualLocation) return;
+    if (didUserClearLocationRef.current) return;
     if (didAttemptAutoGeolocationRef.current) return;
 
     didAttemptAutoGeolocationRef.current = true;
@@ -488,9 +658,11 @@ export default function ExplorarPage() {
       });
   }, [
     applyBrowserLocationToMap,
+    hasLoadedStoredManualLocation,
     hasCoordinates,
     isMapView,
     router.isReady,
+    storedManualLocation,
   ]);
 
   useEffect(() => {
@@ -533,7 +705,16 @@ export default function ExplorarPage() {
     ),
     [browserUserLocation, hasCoordinates, lat, lng],
   );
-  const isUsingAutoBrowserLocation = locationSelectionSource === 'browser-auto' && hasCoordinates;
+  const effectiveLocationSelectionSource = locationSelectionSource || (
+    locationSource === 'manual'
+      ? 'manual-adjusted'
+      : locationSource === 'browser'
+        ? 'browser-auto'
+        : null
+  );
+  const shouldUseLocationSourceOverride = hasCoordinates && !city;
+  const isUsingAutoBrowserLocation =
+    effectiveLocationSelectionSource === 'browser-auto' && shouldUseLocationSourceOverride;
   const isBrowserLocationApproximate =
     isUsingAutoBrowserLocation
     && typeof browserUserLocation?.accuracy === 'number'
@@ -550,7 +731,9 @@ export default function ExplorarPage() {
     ),
     [hasCoordinates, lat, lng, mapViewportCenter],
   );
-  const locationSummaryOverride = locationSelectionSource === 'manual-adjusted'
+  const locationSummaryOverride = !shouldUseLocationSourceOverride
+    ? undefined
+    : effectiveLocationSelectionSource === 'manual-adjusted'
     ? `Zona elegida · ${Math.round(radiusKm)} km`
     : isBrowserLocationVeryApproximate
       ? `Ubicación aproximada · ${Math.round(radiusKm)} km`
@@ -568,28 +751,8 @@ export default function ExplorarPage() {
 
   const handleUseMapCenterAsLocation = useCallback(() => {
     if (!effectiveMapViewportCenter) return;
-
-    const nextQuery: Record<string, string> = {
-      ...baseExploreQuery,
-      lat: String(effectiveMapViewportCenter.latitude),
-      lng: String(effectiveMapViewportCenter.longitude),
-      page: '0',
-      sort: 'DISTANCE',
-      radiusKm: String(hasExplicitRadiusKm ? radiusKm : MAP_INITIAL_USER_RADIUS_KM),
-    };
-    delete nextQuery.city;
-
-    setLocationSelectionSource('manual-adjusted');
-    setIsAdjustingLocation(false);
-    setBrowserLocationNotice(null);
-    replaceQuery(nextQuery);
-  }, [
-    baseExploreQuery,
-    effectiveMapViewportCenter,
-    hasExplicitRadiusKm,
-    radiusKm,
-    replaceQuery,
-  ]);
+    applyManualLocationToMap(effectiveMapViewportCenter);
+  }, [applyManualLocationToMap, effectiveMapViewportCenter]);
 
   const handleRefreshBrowserLocation = useCallback(() => {
     if (isRefreshingBrowserLocation) return;
@@ -597,6 +760,7 @@ export default function ExplorarPage() {
     setIsRefreshingBrowserLocation(true);
     setBrowserLocationNotice(null);
     setIsAdjustingLocation(false);
+    didUserClearLocationRef.current = false;
 
     void getBestBrowserCurrentPosition({
       enableHighAccuracy: true,
@@ -617,6 +781,33 @@ export default function ExplorarPage() {
         setIsRefreshingBrowserLocation(false);
       });
   }, [applyBrowserLocationToMap, isRefreshingBrowserLocation]);
+
+  const handleClearLocation = useCallback((mode: 'remove' | 'clear-all' = 'remove') => {
+    didUserClearLocationRef.current = true;
+    setBrowserUserLocation(null);
+    setLocationSelectionSource(null);
+    setMapViewportCenter(null);
+    setIsAdjustingLocation(false);
+    setBrowserLocationNotice(null);
+    setStoredManualLocation(null);
+    clearStoredManualLocation();
+
+    if (mode === 'clear-all') return;
+
+    const nextQuery: Record<string, string> = {
+      ...baseExploreQuery,
+      page: '0',
+      sort: sort === 'DISTANCE' ? 'RATING' : sort,
+    };
+
+    delete nextQuery.city;
+    delete nextQuery.lat;
+    delete nextQuery.lng;
+    delete nextQuery.radiusKm;
+    delete nextQuery.locationSource;
+
+    replaceQuery(nextQuery);
+  }, [baseExploreQuery, replaceQuery, sort]);
 
   const handleMapItemHoverStart = useCallback((id?: string) => {
     if (!id) return;
@@ -645,9 +836,10 @@ export default function ExplorarPage() {
     sort,
     size: String(size),
     ...(hasExplicitRadiusKm ? { radiusKm: String(radiusKm) } : {}),
-  }), [hasExplicitRadiusKm, isMapView, sort, size, radiusKm]);
+    ...(locationSource && hasCoordinates && !city ? { locationSource } : {}),
+  }), [hasExplicitRadiusKm, isMapView, sort, size, radiusKm, locationSource, hasCoordinates, city]);
 
-  const activeMapItemId = hoveredMapItemId || selectedMapItemId;
+  const activeMapItemId = selectedMapItemId || hoveredMapItemId;
   const exploreViewToggle = (
     <div className="inline-flex rounded-full border border-[color:var(--border-soft)] bg-[color:var(--surface-muted)] p-0.5 shadow-[var(--shadow-card)]">
       <button
@@ -706,6 +898,7 @@ export default function ExplorarPage() {
       fixedQuery={fixedQuery}
       citySuggestions={citySuggestions}
       locationSummaryOverride={locationSummaryOverride}
+      onLocationClear={handleClearLocation}
     />
   );
   const exploreControls = (
@@ -762,39 +955,54 @@ export default function ExplorarPage() {
                     </div>
                   ) : (
                     <div className="grid grid-cols-1 gap-3 min-[460px]:grid-cols-2 lg:grid-cols-2">
-                      {items.map((item, index) => (
-                        <ExploreCard
-                          key={item.id}
-                          id={String(item.id)}
-                          name={item.name}
-                          category={getCategoryLabel(item)}
-                          rating={typeof item.rating === 'number' ? item.rating.toFixed(1) : undefined}
-                          reviewsCount={item.reviewsCount}
-                          price={formatPriceFrom(item.priceFrom)}
-                          city={item.locationText || undefined}
-                          distance={item.distanceKm}
-                          bannerUrl={item.bannerUrl}
-                          bannerMedia={item.bannerMedia}
-                          logoUrl={item.logoUrl}
-                          logoMedia={item.logoMedia}
-                          fallbackPhotoUrl={item.fallbackPhotoUrl}
-                          imageUrl={item.coverImageUrl}
-                          available={availableNow}
-                          href={
-                            item.slug
-                              ? `/profesional/pagina/${encodeURIComponent(item.slug)}`
-                              : undefined
-                          }
-                          isHighlighted={activeMapItemId === String(item.id)}
-                          priority={index < 2}
-                          onHoverStart={handleMapItemHoverStart}
-                          onHoverEnd={handleMapItemHoverEnd}
-                          isFavorite={isFavorite(item.slug)}
-                          onFavoriteToggle={handleFavoriteToggle}
-                          density="compact"
-                          imageSizes="(max-width: 459px) 100vw, (max-width: 1023px) 50vw, 280px"
-                        />
-                      ))}
+                      {items.map((item, index) => {
+                        const itemId = String(item.id);
+
+                        return (
+                          <div
+                            key={item.id}
+                            ref={(node) => {
+                              if (node) {
+                                resultCardRefs.current.set(itemId, node);
+                                return;
+                              }
+                              resultCardRefs.current.delete(itemId);
+                            }}
+                          >
+                            <ExploreCard
+                              id={itemId}
+                              name={item.name}
+                              category={getCategoryLabel(item)}
+                              rating={typeof item.rating === 'number' ? item.rating.toFixed(1) : undefined}
+                              reviewsCount={item.reviewsCount}
+                              price={formatPriceFrom(item.priceFrom)}
+                              city={item.locationText || undefined}
+                              distance={item.distanceKm}
+                              bannerUrl={item.bannerUrl}
+                              bannerMedia={item.bannerMedia}
+                              logoUrl={item.logoUrl}
+                              logoMedia={item.logoMedia}
+                              fallbackPhotoUrl={item.fallbackPhotoUrl}
+                              imageUrl={item.coverImageUrl}
+                              available={availableNow}
+                              href={
+                                item.slug
+                                  ? `/profesional/pagina/${encodeURIComponent(item.slug)}`
+                                  : undefined
+                              }
+                              isHighlighted={activeMapItemId === itemId}
+                              priority={index < 2}
+                              onHoverStart={handleMapItemHoverStart}
+                              onHoverEnd={handleMapItemHoverEnd}
+                              onSelect={() => handleSelectResult(itemId, 'list')}
+                              isFavorite={isFavorite(item.slug)}
+                              onFavoriteToggle={handleFavoriteToggle}
+                              density="compact"
+                              imageSizes="(max-width: 459px) 100vw, (max-width: 1023px) 50vw, 280px"
+                            />
+                          </div>
+                        );
+                      })}
                     </div>
                   )}
                 </div>
@@ -806,8 +1014,9 @@ export default function ExplorarPage() {
                 <ExploreMap
                   results={items}
                   userLocation={mapUserLocation}
-                  activeResultId={selectedMapItemId}
-                  onActiveResultChange={setSelectedMapItemId}
+                  selectedResultId={selectedMapItemId}
+                  selectionRequestNonce={selectionEvent.nonce}
+                  onSelectResult={(id) => handleSelectResult(id, 'map')}
                   onViewportCenterChange={setMapViewportCenter}
                 />
                 {isLoading

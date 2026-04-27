@@ -23,6 +23,7 @@ type SuggestDropdownProps = {
   activeIndex: number;
   onSelect: (item: SuggestDropdownItem) => void;
   onHoverIndex: (index: number) => void;
+  className?: string;
 };
 
 const getTypeLabel = (item: SuggestDropdownItem) => {
@@ -47,6 +48,7 @@ export default function SuggestDropdown({
   activeIndex,
   onSelect,
   onHoverIndex,
+  className = '',
 }: SuggestDropdownProps) {
   if (!open) return null;
 
@@ -54,7 +56,9 @@ export default function SuggestDropdown({
   let currentStartIndex = 0;
 
   return (
-    <div className="pointer-events-auto w-full overflow-hidden rounded-[22px] border border-[color:var(--border-soft)] bg-[color:var(--surface-strong)] p-2.5 shadow-[0_24px_50px_-36px_rgba(13,35,58,0.36)] ring-1 ring-black/5">
+    <div
+      className={`pointer-events-auto w-full overflow-hidden rounded-[22px] border border-[color:var(--border-soft)] bg-[color:var(--surface-strong)] p-2.5 shadow-[0_24px_50px_-36px_rgba(13,35,58,0.36)] ring-1 ring-black/5 ${className}`.trim()}
+    >
       {flattened.length === 0 ? (
         <p className="px-2 py-2 text-sm text-[color:var(--ink-muted)]">
           Sin sugerencias por ahora.
@@ -119,18 +123,18 @@ export default function SuggestDropdown({
                           className={`w-full rounded-[16px] border px-3 py-2.5 text-left transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--accent-soft)] ${toneClass}`}
                           aria-selected={isActive}
                         >
-                          <div className="flex items-start justify-between gap-3">
-                            <div className="min-w-0">
-                              <p className="truncate text-[0.9rem] font-semibold text-[color:var(--ink)]">
+                          <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-3">
+                            <div className="min-w-0 flex-1">
+                              <p className="text-[0.9rem] font-semibold leading-5 text-[color:var(--ink)] [overflow-wrap:anywhere]">
                                 {item.label}
                               </p>
                               {item.secondary ? (
-                                <p className="mt-0.5 truncate text-[0.74rem] leading-4 text-[color:var(--ink-muted)]">
+                                <p className="mt-0.5 line-clamp-2 text-[0.74rem] leading-4 text-[color:var(--ink-muted)] [overflow-wrap:anywhere]">
                                   {item.secondary}
                                 </p>
                               ) : null}
                             </div>
-                            <span className="shrink-0 rounded-full bg-white px-2 py-1 text-[0.58rem] font-semibold uppercase tracking-[0.16em] text-[color:var(--ink-faint)]">
+                            <span className="inline-flex shrink-0 self-start rounded-full bg-white px-2 py-1 text-[0.58rem] font-semibold uppercase tracking-[0.16em] text-[color:var(--ink-faint)]">
                               {getTypeLabel(item)}
                             </span>
                           </div>

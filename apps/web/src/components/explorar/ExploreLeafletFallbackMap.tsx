@@ -5,12 +5,13 @@ import Link from 'next/link';
 import {
   CircleMarker,
   MapContainer,
+  Marker,
   Popup,
   TileLayer,
   ZoomControl,
   useMap,
 } from 'react-leaflet';
-import type { LatLngBoundsExpression, LatLngExpression } from 'leaflet';
+import { divIcon, type DivIcon, type LatLngBoundsExpression, type LatLngExpression } from 'leaflet';
 
 type ExploreLeafletMapItem = {
   id: string;
@@ -23,6 +24,8 @@ type ExploreLeafletMapItem = {
   latitude: number;
   longitude: number;
   locationText?: string | null;
+  logoSrc?: string | null;
+  initials: string;
 };
 
 type ExploreLeafletFallbackMapProps = {
@@ -42,6 +45,95 @@ const DEFAULT_ZOOM = 10;
 const formatPriceFrom = (value?: number | null) => {
   if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0) return 'Ver perfil';
   return `Desde $${new Intl.NumberFormat('es-UY').format(Math.round(value))}`;
+};
+
+const buildLeafletMarkerIcon = (item: ExploreLeafletMapItem, isActive: boolean): DivIcon => {
+  const hasRating = typeof item.rating === 'number' && Number.isFinite(item.rating) && item.rating > 0;
+  const ratingMarkup = hasRating
+    ? `<span style="
+        display:inline-flex;
+        align-items:center;
+        gap:4px;
+        min-height:18px;
+        margin-top:-2px;
+        padding:2px 6px;
+        border-radius:999px;
+        border:1px solid ${isActive ? '#D7EEDC' : 'rgba(255,255,255,0.95)'};
+        background:${isActive ? '#F1FAF4' : 'rgba(255,255,255,0.96)'};
+        color:${isActive ? '#17653F' : '#0E2A47'};
+        font-size:10px;
+        font-weight:700;
+        line-height:1;
+        box-shadow:0 12px 22px -16px rgba(14,42,71,0.44);
+      ">
+        <span style="color:#E59C17;">★</span>${item.rating?.toFixed(1)}
+      </span>`
+    : '';
+
+  const avatarSize = isActive ? 44 : 38;
+  const avatarMarkup = item.logoSrc
+    ? `<img
+        src="${item.logoSrc}"
+        alt=""
+        aria-hidden="true"
+        style="width:100%;height:100%;object-fit:cover;display:block;"
+        onerror="this.style.display='none';this.nextElementSibling.style.display='flex';"
+      />
+      <span style="
+        position:absolute;
+        inset:0;
+        display:none;
+        align-items:center;
+        justify-content:center;
+        font-size:${isActive ? '13px' : '11px'};
+        font-weight:700;
+        letter-spacing:0.08em;
+        color:#0E2A47;
+      ">${item.initials}</span>`
+    : `<span style="
+        position:absolute;
+        inset:0;
+        display:flex;
+        align-items:center;
+        justify-content:center;
+        font-size:${isActive ? '13px' : '11px'};
+        font-weight:700;
+        letter-spacing:0.08em;
+        color:#0E2A47;
+      ">${item.initials}</span>`;
+
+  return divIcon({
+    className: '',
+    iconSize: [72, hasRating ? avatarSize + 20 : avatarSize],
+    iconAnchor: [36, hasRating ? avatarSize + 10 : avatarSize],
+    popupAnchor: [0, -(hasRating ? avatarSize + 2 : avatarSize - 2)],
+    html: `
+      <div style="
+        display:flex;
+        flex-direction:column;
+        align-items:center;
+        transform:translateY(-4px);
+        pointer-events:auto;
+      ">
+        <span style="
+          position:relative;
+          display:flex;
+          align-items:center;
+          justify-content:center;
+          width:${avatarSize}px;
+          height:${avatarSize}px;
+          overflow:hidden;
+          border-radius:999px;
+          border:1px solid ${isActive ? '#2E9B66' : 'rgba(255,255,255,0.95)'};
+          background:linear-gradient(135deg,#F6F1E8 0%,#FFFFFF 100%);
+          box-shadow:${isActive ? '0 0 0 4px rgba(46,155,102,0.18), 0 18px 28px -18px rgba(14,42,71,0.5)' : '0 18px 28px -18px rgba(14,42,71,0.5)'};
+        ">
+          ${avatarMarkup}
+        </span>
+        ${ratingMarkup}
+      </div>
+    `,
+  });
 };
 
 function FitToResults({
@@ -220,16 +312,10 @@ export default function ExploreLeafletFallbackMap({
         {items.map((item) => {
           const isActive = selectedResultId === item.id;
           return (
-            <CircleMarker
+            <Marker
               key={item.id}
-              center={[item.latitude, item.longitude]}
-              radius={isActive ? 11 : 9}
-              pathOptions={{
-                color: '#FFFFFF',
-                weight: 2,
-                fillColor: isActive ? '#F59E0B' : '#0E2A47',
-                fillOpacity: 0.92,
-              }}
+              position={[item.latitude, item.longitude]}
+              icon={buildLeafletMarkerIcon(item, isActive)}
               eventHandlers={{
                 click: () => onSelectResult?.(item.id),
               }}

@@ -15,7 +15,7 @@ import {
   SEARCH_SUGGESTIONS_LIMIT,
 } from '@/config/search';
 import { useCategories } from '@/hooks/useCategories';
-import { getBrowserCurrentPosition } from '@/services/geo';
+import { getBestBrowserCurrentPosition } from '@/services/geo';
 import { autocompleteGeo, searchSuggestions } from '@/services/search';
 import {
   normalizeSearchText,
@@ -415,10 +415,12 @@ export function useUnifiedSearch({
     setGeoStatus('loading');
     setGeoMessage('Buscando tu ubicacion...');
 
-    void getBrowserCurrentPosition({
+    void getBestBrowserCurrentPosition({
       enableHighAccuracy: true,
-      timeout: 12000,
-      maximumAge: 60000,
+      timeout: 15000,
+      maximumAge: 0,
+      sampleDurationMs: 7000,
+      earlyAccuracyMeters: 100,
     })
       .then((position) => {
         setValues((previous) => ({

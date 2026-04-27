@@ -15,7 +15,10 @@ import {
 import { useClientProfileContext } from '@/context/ClientProfileContext';
 import { useFavoriteProfessionals } from '@/hooks/useFavoriteProfessionals';
 import { hasKnownAuthSession } from '@/services/session';
-import { getBrowserCurrentPosition } from '@/services/geo';
+import {
+  getBestBrowserCurrentPosition,
+  type BrowserGeoPosition,
+} from '@/services/geo';
 import { searchProfessionals } from '@/services/search';
 import type { SearchItem, SearchSort, SearchType } from '@/types/search';
 import type { UnifiedSearchValues } from '@/components/search/UnifiedSearchBar';
@@ -210,6 +213,16 @@ export default function ExplorarPage() {
     longitude: number;
     accuracy?: number;
   } | null>(null);
+  const [locationSelectionSource, setLocationSelectionSource] = useState<
+    'browser-auto' | 'manual-adjusted' | null
+  >(null);
+  const [mapViewportCenter, setMapViewportCenter] = useState<{
+    latitude: number;
+    longitude: number;
+  } | null>(null);
+  const [isAdjustingLocation, setIsAdjustingLocation] = useState(false);
+  const [isRefreshingBrowserLocation, setIsRefreshingBrowserLocation] = useState(false);
+  const [browserLocationNotice, setBrowserLocationNotice] = useState<string | null>(null);
   const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const didAttemptAutoGeolocationRef = useRef(false);
 
@@ -431,6 +444,24 @@ export default function ExplorarPage() {
     );
   }, [router]);
 
+  const applyBrowserLocationToMap = useCallback((position: BrowserGeoPosition) => {
+    setBrowserUserLocation(position);
+    setLocationSelectionSource('browser-auto');
+    setIsAdjustingLocation(false);
+    setBrowserLocationNotice(null);
+
+    const nextQuery: Record<string, string> = {
+      ...baseExploreQuery,
+      lat: String(position.latitude),
+      lng: String(position.longitude),
+      page: '0',
+      sort: 'DISTANCE',
+      radiusKm: String(hasExplicitRadiusKm ? radiusKm : MAP_INITIAL_USER_RADIUS_KM),
+    };
+    delete nextQuery.city;
+    replaceQuery(nextQuery);
+  }, [baseExploreQuery, hasExplicitRadiusKm, radiusKm, replaceQuery]);
+
   useEffect(() => {
     if (!router.isReady || !isMapView) return;
     if (hasCoordinates) return;
@@ -438,36 +469,35 @@ export default function ExplorarPage() {
 
     didAttemptAutoGeolocationRef.current = true;
 
-    void getBrowserCurrentPosition({
+    void getBestBrowserCurrentPosition({
       enableHighAccuracy: true,
-      timeout: 12000,
-      maximumAge: 60000,
+      timeout: 15000,
+      maximumAge: 0,
+      sampleDurationMs: 7000,
+      earlyAccuracyMeters: 100,
     })
       .then((position) => {
-        setBrowserUserLocation(position);
-        const nextQuery: Record<string, string> = {
-          ...baseExploreQuery,
-          lat: String(position.latitude),
-          lng: String(position.longitude),
-          page: '0',
-          sort: 'DISTANCE',
-          radiusKm: String(hasExplicitRadiusKm ? radiusKm : MAP_INITIAL_USER_RADIUS_KM),
-        };
-        delete nextQuery.city;
-        replaceQuery(nextQuery);
+        applyBrowserLocationToMap(position);
       })
       .catch(() => {
         setBrowserUserLocation(null);
+        setLocationSelectionSource(null);
+        setBrowserLocationNotice(
+          'No pudimos acceder a tu ubicación. Revisá permisos del navegador o usá el centro del mapa.',
+        );
       });
   }, [
-    baseExploreQuery,
+    applyBrowserLocationToMap,
     hasCoordinates,
-    hasExplicitRadiusKm,
     isMapView,
-    radiusKm,
-    replaceQuery,
     router.isReady,
   ]);
+
+  useEffect(() => {
+    if (hasCoordinates) return;
+    setLocationSelectionSource(null);
+    setIsAdjustingLocation(false);
+  }, [hasCoordinates]);
 
   const handleViewChange = useCallback((nextIsMapView: boolean) => {
     const nextQuery: Record<string, string> = { ...baseExploreQuery };
@@ -503,15 +533,7 @@ export default function ExplorarPage() {
     ),
     [browserUserLocation, hasCoordinates, lat, lng],
   );
-  const isUsingAutoBrowserLocation = useMemo(() => {
-    if (!browserUserLocation) return false;
-    if (!hasCoordinates || typeof lat !== 'number' || typeof lng !== 'number') return false;
-
-    return (
-      Math.abs(lat - browserUserLocation.latitude) < 0.000001
-      && Math.abs(lng - browserUserLocation.longitude) < 0.000001
-    );
-  }, [browserUserLocation, hasCoordinates, lat, lng]);
+  const isUsingAutoBrowserLocation = locationSelectionSource === 'browser-auto' && hasCoordinates;
   const isBrowserLocationApproximate =
     isUsingAutoBrowserLocation
     && typeof browserUserLocation?.accuracy === 'number'
@@ -520,9 +542,81 @@ export default function ExplorarPage() {
     isUsingAutoBrowserLocation
     && typeof browserUserLocation?.accuracy === 'number'
     && browserUserLocation.accuracy > BROWSER_LOCATION_VERY_APPROXIMATE_ACCURACY_METERS;
-  const locationSummaryOverride = isBrowserLocationVeryApproximate
-    ? `Ubicación aproximada · ${Math.round(radiusKm)} km`
-    : undefined;
+  const effectiveMapViewportCenter = useMemo(
+    () => mapViewportCenter || (
+      hasCoordinates && typeof lat === 'number' && typeof lng === 'number'
+        ? { latitude: lat, longitude: lng }
+        : null
+    ),
+    [hasCoordinates, lat, lng, mapViewportCenter],
+  );
+  const locationSummaryOverride = locationSelectionSource === 'manual-adjusted'
+    ? `Zona elegida · ${Math.round(radiusKm)} km`
+    : isBrowserLocationVeryApproximate
+      ? `Ubicación aproximada · ${Math.round(radiusKm)} km`
+      : undefined;
+  const canAdjustMapLocation = true;
+  const canRefreshBrowserLocation = true;
+
+  const handleStartAdjustLocation = useCallback(() => {
+    setIsAdjustingLocation(true);
+  }, []);
+
+  const handleCancelAdjustLocation = useCallback(() => {
+    setIsAdjustingLocation(false);
+  }, []);
+
+  const handleUseMapCenterAsLocation = useCallback(() => {
+    if (!effectiveMapViewportCenter) return;
+
+    const nextQuery: Record<string, string> = {
+      ...baseExploreQuery,
+      lat: String(effectiveMapViewportCenter.latitude),
+      lng: String(effectiveMapViewportCenter.longitude),
+      page: '0',
+      sort: 'DISTANCE',
+      radiusKm: String(hasExplicitRadiusKm ? radiusKm : MAP_INITIAL_USER_RADIUS_KM),
+    };
+    delete nextQuery.city;
+
+    setLocationSelectionSource('manual-adjusted');
+    setIsAdjustingLocation(false);
+    setBrowserLocationNotice(null);
+    replaceQuery(nextQuery);
+  }, [
+    baseExploreQuery,
+    effectiveMapViewportCenter,
+    hasExplicitRadiusKm,
+    radiusKm,
+    replaceQuery,
+  ]);
+
+  const handleRefreshBrowserLocation = useCallback(() => {
+    if (isRefreshingBrowserLocation) return;
+
+    setIsRefreshingBrowserLocation(true);
+    setBrowserLocationNotice(null);
+    setIsAdjustingLocation(false);
+
+    void getBestBrowserCurrentPosition({
+      enableHighAccuracy: true,
+      timeout: 15000,
+      maximumAge: 0,
+      sampleDurationMs: 7000,
+      earlyAccuracyMeters: 100,
+    })
+      .then((position) => {
+        applyBrowserLocationToMap(position);
+      })
+      .catch(() => {
+        setBrowserLocationNotice(
+          'No pudimos actualizar tu ubicación. Revisá permisos del navegador.',
+        );
+      })
+      .finally(() => {
+        setIsRefreshingBrowserLocation(false);
+      });
+  }, [applyBrowserLocationToMap, isRefreshingBrowserLocation]);
 
   const handleMapItemHoverStart = useCallback((id?: string) => {
     if (!id) return;
@@ -714,19 +808,87 @@ export default function ExplorarPage() {
                   userLocation={mapUserLocation}
                   activeResultId={selectedMapItemId}
                   onActiveResultChange={setSelectedMapItemId}
+                  onViewportCenterChange={setMapViewportCenter}
                 />
-                {isLoading || isBrowserLocationApproximate ? (
+                {isLoading
+                || isRefreshingBrowserLocation
+                || isBrowserLocationApproximate
+                || Boolean(browserLocationNotice)
+                || canAdjustMapLocation
+                || canRefreshBrowserLocation ? (
                   <div className="pointer-events-none absolute inset-x-0 top-3 flex justify-center px-4">
-                    <div className="flex max-w-[20rem] flex-col items-center gap-2">
+                    <div className="flex max-w-[22rem] flex-col items-center gap-2">
                       {isLoading ? (
                         <p className="rounded-full bg-white/95 px-3 py-1 text-xs font-semibold text-[#0E2A47] shadow-sm">
                           Cargando resultados...
+                        </p>
+                      ) : null}
+                      {isRefreshingBrowserLocation ? (
+                        <p className="rounded-full bg-white/95 px-3 py-1 text-xs font-semibold text-[#0E2A47] shadow-sm">
+                          Actualizando tu ubicación...
                         </p>
                       ) : null}
                       {isBrowserLocationApproximate ? (
                         <p className="rounded-full bg-white/95 px-3 py-1 text-center text-xs font-medium text-[#64748B] shadow-sm">
                           Tu ubicación parece aproximada. Podés mover el mapa o buscar una zona.
                         </p>
+                      ) : null}
+                      {browserLocationNotice ? (
+                        <p className="rounded-full bg-white/95 px-3 py-1 text-center text-xs font-medium text-[#64748B] shadow-sm">
+                          {browserLocationNotice}
+                        </p>
+                      ) : null}
+                      {canAdjustMapLocation || canRefreshBrowserLocation ? (
+                        <div className="pointer-events-auto flex w-full flex-col items-center gap-2 rounded-[18px] bg-white/95 px-3 py-2 text-center shadow-sm">
+                          {isAdjustingLocation ? (
+                            <p className="text-xs font-medium text-[#64748B]">
+                              Mové el mapa hasta tu zona y usá el centro como ubicación.
+                            </p>
+                          ) : null}
+                          <div className="flex flex-wrap items-center justify-center gap-2">
+                            {isAdjustingLocation ? (
+                              <>
+                                <button
+                                  type="button"
+                                  onClick={handleUseMapCenterAsLocation}
+                                  disabled={!effectiveMapViewportCenter}
+                                  className="inline-flex h-8 items-center justify-center rounded-full bg-[#0E2A47] px-3 text-xs font-semibold text-white transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
+                                >
+                                  Usar centro del mapa
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={handleCancelAdjustLocation}
+                                  className="inline-flex h-8 items-center justify-center rounded-full border border-[#DCE5ED] bg-white px-3 text-xs font-semibold text-[#0E2A47] transition hover:bg-[#F8FAFC]"
+                                >
+                                  Cancelar
+                                </button>
+                              </>
+                            ) : (
+                              <>
+                                <button
+                                  type="button"
+                                  onClick={handleRefreshBrowserLocation}
+                                  disabled={isRefreshingBrowserLocation}
+                                  className="inline-flex h-8 items-center justify-center rounded-full bg-[#0E2A47] px-3 text-xs font-semibold text-white transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
+                                >
+                                  {isRefreshingBrowserLocation
+                                    ? 'Actualizando...'
+                                    : 'Actualizar mi ubicación'}
+                                </button>
+                                {canAdjustMapLocation ? (
+                                  <button
+                                    type="button"
+                                    onClick={handleStartAdjustLocation}
+                                    className="inline-flex h-8 items-center justify-center rounded-full border border-[#DCE5ED] bg-white px-3 text-xs font-semibold text-[#0E2A47] transition hover:bg-[#F8FAFC]"
+                                  >
+                                    Ajustar ubicación
+                                  </button>
+                                ) : null}
+                              </>
+                            )}
+                          </div>
+                        </div>
                       ) : null}
                     </div>
                   </div>

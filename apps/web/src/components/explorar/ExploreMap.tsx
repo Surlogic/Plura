@@ -37,6 +37,7 @@ type ExploreMapProps = {
   };
   activeResultId?: string | null;
   onActiveResultChange?: (id: string | null) => void;
+  onViewportCenterChange?: (center: { latitude: number; longitude: number }) => void;
 };
 
 const DEFAULT_CENTER = {
@@ -158,6 +159,7 @@ function ExploreMap({
   userLocation,
   activeResultId = null,
   onActiveResultChange,
+  onViewportCenterChange,
 }: ExploreMapProps) {
   const mapRef = useRef<MapRef | null>(null);
   const lastExternalFocusRef = useRef<string | null>(null);
@@ -253,6 +255,14 @@ function ExploreMap({
   const markUserInteraction = useCallback(() => {
     userInteractedSinceResultsRef.current = true;
   }, []);
+  const emitViewportCenter = useCallback(() => {
+    const center = mapRef.current?.getCenter();
+    if (!center) return;
+    onViewportCenterChange?.({
+      latitude: center.lat,
+      longitude: center.lng,
+    });
+  }, [onViewportCenterChange]);
 
   useEffect(() => {
     if (!mapReady || !mapRef.current) return undefined;
@@ -269,6 +279,22 @@ function ExploreMap({
       });
     };
   }, [mapReady, markUserInteraction]);
+
+  useEffect(() => {
+    if (!mapReady || !mapRef.current || !onViewportCenterChange) return undefined;
+
+    const map = mapRef.current.getMap();
+    const handleMoveEnd = () => {
+      emitViewportCenter();
+    };
+
+    emitViewportCenter();
+    map.on('moveend', handleMoveEnd);
+
+    return () => {
+      map.off('moveend', handleMoveEnd);
+    };
+  }, [emitViewportCenter, mapReady, onViewportCenterChange]);
 
   useEffect(() => {
     if (!mapReady || !mapRef.current || items.length === 0) return;
@@ -340,7 +366,8 @@ function ExploreMap({
   const handleMapLoad = useCallback(() => {
     setMapReady(true);
     hideVisualNoiseLayers();
-  }, [hideVisualNoiseLayers]);
+    emitViewportCenter();
+  }, [emitViewportCenter, hideVisualNoiseLayers]);
 
   const handleMapClick = useCallback((event: MapMouseEvent) => {
     const features = (event as MapMouseEvent & { features?: mapboxgl.MapboxGeoJSONFeature[] })

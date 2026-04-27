@@ -44,11 +44,14 @@ export default memo(function Navbar({
   const headerClassName = isDashboard
     ? 'border-b border-[color:var(--border-soft)] bg-[color:var(--surface)]/88 backdrop-blur-xl'
     : 'sticky top-0 z-50 border-b border-[color:var(--border-soft)] bg-[color:var(--surface)]/84 backdrop-blur-xl';
+  const navButtonClassName = 'h-10 px-3.5';
+  const compactThemeSwitcherClassName =
+    'self-start sm:self-auto [&>div]:p-0.5 [&_button]:h-7 [&_button]:w-7';
 
   return (
     <header className={headerClassName}>
-      <div className="mx-auto flex w-full max-w-[1400px] flex-wrap items-center justify-between gap-x-4 gap-y-3 px-4 py-4 sm:px-6 lg:px-10">
-        <div className="flex items-center gap-3">
+      <div className="mx-auto flex w-full max-w-[1400px] flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 py-2.5 sm:px-6 sm:py-3 lg:px-10">
+        <div className="flex items-center gap-2.5">
           {showMenuButton ? (
             <Button type="button" onClick={onMenuClick} size="sm" className="lg:hidden">
               Menú
@@ -70,15 +73,15 @@ export default memo(function Navbar({
             <ThemeSwitcher
               variant="compact"
               showLabel={false}
-              className="self-start sm:self-auto"
+              className={compactThemeSwitcherClassName}
             />
           ) : null}
           {role === 'PROFESSIONAL' ? (
             <>
-              <Button href="/explorar" size="md">
+              <Button href="/explorar" size="md" className={navButtonClassName}>
                 Explorar
               </Button>
-              <Button href="/profesional/dashboard" size="md">
+              <Button href="/profesional/dashboard" size="md" className={navButtonClassName}>
                 Mi dashboard
               </Button>
               <Button
@@ -86,6 +89,7 @@ export default memo(function Navbar({
                 onClick={() => void logout('PROFESSIONAL')}
                 variant="primary"
                 size="md"
+                className={navButtonClassName}
                 disabled={isLoggingOut}
               >
                 {isLoggingOut ? 'Cerrando sesión...' : 'Cerrar sesión'}
@@ -93,18 +97,18 @@ export default memo(function Navbar({
             </>
           ) : role === 'CLIENT' ? (
             <>
-              <Button href="/explorar" size="md">
+              <Button href="/explorar" size="md" className={navButtonClassName}>
                 Explorar
               </Button>
-              <Button href="/cliente/reservas" size="md">
+              <Button href="/cliente/reservas" size="md" className={navButtonClassName}>
                 Mis reservas
               </Button>
-              <Button href="/cliente/favoritos" size="md">
+              <Button href="/cliente/favoritos" size="md" className={navButtonClassName}>
                 Favoritos
               </Button>
               <Link
                 href="/cliente/perfil"
-                className="inline-flex items-center gap-2 rounded-full border border-[color:var(--border-soft)] bg-[color:var(--surface-strong)] px-2 py-1.5 pr-3 text-[color:var(--ink)] shadow-[var(--shadow-card)] transition hover:-translate-y-0.5 hover:border-[color:var(--border-strong)] hover:bg-[color:var(--surface-hover)]"
+                className="inline-flex h-10 items-center gap-2 rounded-full border border-[color:var(--border-soft)] bg-[color:var(--surface-strong)] px-2 py-1 pr-3 text-[color:var(--ink)] shadow-[var(--shadow-card)] transition hover:-translate-y-0.5 hover:border-[color:var(--border-strong)] hover:bg-[color:var(--surface-hover)]"
               >
                 <span className="flex h-7 w-7 items-center justify-center rounded-full bg-[color:var(--primary-soft)] text-xs font-semibold text-[color:var(--primary)]">
                   {initials}
@@ -116,6 +120,7 @@ export default memo(function Navbar({
                 onClick={() => void logout('CLIENT')}
                 variant="primary"
                 size="md"
+                className={navButtonClassName}
                 disabled={isLoggingOut}
               >
                 {isLoggingOut ? 'Cerrando sesión...' : 'Cerrar sesión'}
@@ -123,19 +128,24 @@ export default memo(function Navbar({
             </>
           ) : (
             <>
-              <Button href="/explorar" size="md">
+              <Button href="/explorar" size="md" className={navButtonClassName}>
                 Explorar
               </Button>
-              <Button href="/login" size="md">
+              <Button href="/login" size="md" className={navButtonClassName}>
                 Iniciar sesión
               </Button>
-              <Button href="/profesional/auth/login" variant="primary" size="md">
+              <Button
+                href="/profesional/auth/login"
+                variant="primary"
+                size="md"
+                className={navButtonClassName}
+              >
                 Soy profesional
               </Button>
               <ThemeSwitcher
                 variant="compact"
                 showLabel={false}
-                className="self-start sm:self-auto"
+                className={compactThemeSwitcherClassName}
               />
             </>
           )}

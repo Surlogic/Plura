@@ -28,10 +28,11 @@ export default function ClientDashboardNavbar({
 }: ClientDashboardNavbarProps) {
   const router = useRouter();
   const { isLoggingOut, logout } = useAuthLogout();
+  const compactThemeSwitcherClassName = 'hidden md:flex [&>div]:p-0.5 [&_button]:h-7 [&_button]:w-7';
 
   return (
     <header className="sticky top-0 z-50 border-b border-[color:var(--border-soft)] bg-[color:var(--surface)]/88 backdrop-blur-xl">
-      <div className="mx-auto flex w-full max-w-[1400px] flex-wrap items-center justify-between gap-x-3 gap-y-3 px-4 py-4 sm:px-6 lg:px-10">
+      <div className="mx-auto flex w-full max-w-[1400px] flex-wrap items-center justify-between gap-x-3 gap-y-2 px-4 py-2.5 sm:px-6 sm:py-3 lg:px-10">
         <div className="flex items-center gap-2 sm:gap-3">
           {onOpenSidebar ? (
             <Button
@@ -62,26 +63,30 @@ export default function ClientDashboardNavbar({
         <nav className="hidden items-center gap-2 text-sm font-semibold text-[color:var(--ink)] md:flex">
           <Link
             href="/explorar"
-            className="rounded-full px-3 py-2 transition hover:bg-[color:var(--surface-soft)]"
+            className="inline-flex h-10 items-center rounded-full px-3 transition hover:bg-[color:var(--surface-soft)]"
           >
             Explorar
           </Link>
           <Link
             href="/cliente/reservas"
-            className="rounded-full px-3 py-2 transition hover:bg-[color:var(--surface-soft)]"
+            className="inline-flex h-10 items-center rounded-full px-3 transition hover:bg-[color:var(--surface-soft)]"
           >
             Mis reservas
           </Link>
           <Link
             href="/cliente/favoritos"
-            className="rounded-full px-3 py-2 transition hover:bg-[color:var(--surface-soft)]"
+            className="inline-flex h-10 items-center rounded-full px-3 transition hover:bg-[color:var(--surface-soft)]"
           >
             Favoritos
           </Link>
         </nav>
 
         <div className={`flex items-center gap-2 sm:gap-3 ${exploreViewToggle ? 'order-2 lg:order-4' : ''}`}>
-          <ThemeSwitcher variant="compact" showLabel={false} className="hidden md:flex" />
+          <ThemeSwitcher
+            variant="compact"
+            showLabel={false}
+            className={compactThemeSwitcherClassName}
+          />
           <ClientNotificationBell
             onNavigate={(href) => {
               void router.push(href);

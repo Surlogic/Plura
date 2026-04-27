@@ -20,7 +20,7 @@ const variantConfig: Record<
 > = {
   navbar: {
     size: 34,
-    className: 'min-h-12 py-1',
+    className: 'min-h-10 py-0.5',
   },
   footer: {
     size: 30,

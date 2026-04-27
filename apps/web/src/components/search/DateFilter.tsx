@@ -41,7 +41,7 @@ export default function DateFilter({
 
   return (
     <div className="space-y-3">
-      <div className="flex flex-wrap gap-2">
+      <div className="grid grid-cols-1 gap-2 min-[360px]:grid-cols-2">
         <button type="button" onClick={onPickAnytime} className={quickActionClass(!date && !hasRange)}>
           Cualquier dia
         </button>

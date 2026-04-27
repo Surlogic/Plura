@@ -398,6 +398,7 @@ export default memo(function UnifiedSearchBar({
     (
       container: HTMLDivElement | null,
       preferredWidth: number,
+      minWidth: number = 320,
       minVisibleHeight: number = 160,
     ): ExploreDropdownMetrics | null => {
       if (!isExplore || !wrapperRef.current || !container || typeof window === 'undefined') {
@@ -410,14 +411,16 @@ export default memo(function UnifiedSearchBar({
 
       if (availableWidth <= 0) return null;
 
-      const width = Math.min(preferredWidth, availableWidth);
-      const unclampedLeft = containerRect.left - wrapperRect.left;
-      const left = Math.min(Math.max(unclampedLeft, 0), Math.max(availableWidth - width, 0));
+      const offsetWithinWrapper = containerRect.left - wrapperRect.left;
+      const resolvedMinWidth = Math.min(minWidth, availableWidth);
+      const width = availableWidth <= resolvedMinWidth
+        ? availableWidth
+        : Math.min(preferredWidth, availableWidth);
       const availableHeight = Math.max(window.innerHeight - containerRect.bottom - 16, minVisibleHeight);
       const maxHeight = Math.min(availableHeight, Math.round(window.innerHeight * 0.6), 520);
 
       return {
-        left: Math.round(left),
+        left: Math.round(-offsetWithinWrapper),
         width: Math.round(width),
         maxHeight: Math.round(Math.max(maxHeight, minVisibleHeight)),
       };
@@ -431,9 +434,9 @@ export default memo(function UnifiedSearchBar({
 
     const updateLayouts = () => {
       setExploreDropdownLayouts({
-        query: measureExploreDropdown(queryContainerRef.current, 608, 180),
-        location: measureExploreDropdown(locationContainerRef.current, 420, 180),
-        date: measureExploreDropdown(dateContainerRef.current, 400, 180),
+        query: measureExploreDropdown(queryContainerRef.current, 560, 320, 180),
+        location: measureExploreDropdown(locationContainerRef.current, 560, 320, 180),
+        date: measureExploreDropdown(dateContainerRef.current, 460, 320, 180),
       });
     };
 

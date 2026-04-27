@@ -128,13 +128,13 @@ export default function SuggestDropdown({
                           className={`w-full rounded-[16px] border px-3 py-2.5 text-left transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--accent-soft)] ${toneClass}`}
                           aria-selected={isActive}
                         >
-                          <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-3">
+                          <div className="flex flex-col items-start gap-2 min-[360px]:flex-row min-[360px]:items-start min-[360px]:justify-between min-[360px]:gap-3">
                             <div className="min-w-0 flex-1">
-                              <p className="text-[0.9rem] font-semibold leading-5 text-[color:var(--ink)] [overflow-wrap:anywhere]">
+                              <p className="break-words text-[0.9rem] font-semibold leading-5 text-[color:var(--ink)]">
                                 {item.label}
                               </p>
                               {item.secondary ? (
-                                <p className="mt-0.5 line-clamp-2 text-[0.74rem] leading-4 text-[color:var(--ink-muted)] [overflow-wrap:anywhere]">
+                                <p className="mt-0.5 line-clamp-2 break-words text-[0.74rem] leading-4 text-[color:var(--ink-muted)]">
                                   {item.secondary}
                                 </p>
                               ) : null}

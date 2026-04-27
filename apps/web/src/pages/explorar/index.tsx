@@ -29,6 +29,8 @@ const SORT_OPTIONS: Array<{ value: SearchSort; label: string }> = [
   { value: 'DISTANCE', label: 'Distancia' },
   { value: 'RATING', label: 'Mejor valorados' },
 ];
+const MAP_INITIAL_USER_RADIUS_KM = 2;
+const BROWSER_LOCATION_APPROXIMATE_ACCURACY_METERS = 1000;
 
 const getSingleQueryValue = (value: string | string[] | undefined) =>
   Array.isArray(value) ? value[0] || '' : value || '';
@@ -155,7 +157,9 @@ export default function ExplorarPage() {
   const lat = parseOptionalNumber(rawLat);
   const lng = parseOptionalNumber(rawLng);
   const hasCoordinates = typeof lat === 'number' && typeof lng === 'number';
-  const radiusKm = parseOptionalNumber(rawRadiusKm) ?? SEARCH_DEFAULT_RADIUS_KM;
+  const explicitRadiusKm = parseOptionalNumber(rawRadiusKm);
+  const hasExplicitRadiusKm = typeof explicitRadiusKm === 'number';
+  const radiusKm = explicitRadiusKm ?? SEARCH_DEFAULT_RADIUS_KM;
   const date = normalizeDate(rawDate);
   const from = normalizeDate(rawFrom);
   const to = normalizeDate(rawTo);
@@ -202,6 +206,7 @@ export default function ExplorarPage() {
   const [browserUserLocation, setBrowserUserLocation] = useState<{
     latitude: number;
     longitude: number;
+    accuracy?: number;
   } | null>(null);
   const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const didAttemptAutoGeolocationRef = useRef(false);
@@ -442,6 +447,8 @@ export default function ExplorarPage() {
           lat: String(position.latitude),
           lng: String(position.longitude),
           page: '0',
+          sort: 'DISTANCE',
+          radiusKm: String(hasExplicitRadiusKm ? radiusKm : MAP_INITIAL_USER_RADIUS_KM),
         };
         delete nextQuery.city;
         replaceQuery(nextQuery);
@@ -449,7 +456,15 @@ export default function ExplorarPage() {
       .catch(() => {
         setBrowserUserLocation(null);
       });
-  }, [baseExploreQuery, hasCoordinates, isMapView, replaceQuery, router.isReady]);
+  }, [
+    baseExploreQuery,
+    hasCoordinates,
+    hasExplicitRadiusKm,
+    isMapView,
+    radiusKm,
+    replaceQuery,
+    router.isReady,
+  ]);
 
   const handleViewChange = useCallback((nextIsMapView: boolean) => {
     const nextQuery: Record<string, string> = { ...baseExploreQuery };
@@ -485,6 +500,19 @@ export default function ExplorarPage() {
     ),
     [browserUserLocation, hasCoordinates, lat, lng],
   );
+  const isUsingAutoBrowserLocation = useMemo(() => {
+    if (!browserUserLocation) return false;
+    if (!hasCoordinates || typeof lat !== 'number' || typeof lng !== 'number') return false;
+
+    return (
+      Math.abs(lat - browserUserLocation.latitude) < 0.000001
+      && Math.abs(lng - browserUserLocation.longitude) < 0.000001
+    );
+  }, [browserUserLocation, hasCoordinates, lat, lng]);
+  const isBrowserLocationApproximate =
+    isUsingAutoBrowserLocation
+    && typeof browserUserLocation?.accuracy === 'number'
+    && browserUserLocation.accuracy > BROWSER_LOCATION_APPROXIMATE_ACCURACY_METERS;
 
   const handleMapItemHoverStart = useCallback((id?: string) => {
     if (!id) return;
@@ -521,7 +549,7 @@ export default function ExplorarPage() {
       <button
         type="button"
         onClick={() => handleViewChange(false)}
-        className={`rounded-full px-3 py-1.5 text-sm font-semibold transition ${
+        className={`inline-flex h-9 items-center rounded-full px-3 text-sm font-semibold transition ${
           !isMapView
             ? 'bg-[color:var(--surface-dark)] text-[color:var(--text-on-dark)]'
             : 'text-[color:var(--ink)] hover:bg-white'
@@ -533,7 +561,7 @@ export default function ExplorarPage() {
       <button
         type="button"
         onClick={() => handleViewChange(true)}
-        className={`rounded-full px-3 py-1.5 text-sm font-semibold transition ${
+        className={`inline-flex h-9 items-center rounded-full px-3 text-sm font-semibold transition ${
           isMapView
             ? 'bg-[color:var(--surface-dark)] text-[color:var(--text-on-dark)]'
             : 'text-[color:var(--ink)] hover:bg-white'
@@ -676,11 +704,20 @@ export default function ExplorarPage() {
                   activeResultId={selectedMapItemId}
                   onActiveResultChange={setSelectedMapItemId}
                 />
-                {isLoading ? (
+                {isLoading || isBrowserLocationApproximate ? (
                   <div className="pointer-events-none absolute inset-x-0 top-3 flex justify-center px-4">
-                    <p className="rounded-full bg-white/95 px-3 py-1 text-xs font-semibold text-[#0E2A47] shadow-sm">
-                      Cargando resultados...
-                    </p>
+                    <div className="flex max-w-[20rem] flex-col items-center gap-2">
+                      {isLoading ? (
+                        <p className="rounded-full bg-white/95 px-3 py-1 text-xs font-semibold text-[#0E2A47] shadow-sm">
+                          Cargando resultados...
+                        </p>
+                      ) : null}
+                      {isBrowserLocationApproximate ? (
+                        <p className="rounded-full bg-white/95 px-3 py-1 text-center text-xs font-medium text-[#64748B] shadow-sm">
+                          Tu ubicación parece aproximada. Podés mover el mapa o buscar una zona.
+                        </p>
+                      ) : null}
+                    </div>
                   </div>
                 ) : null}
                 {!isLoading && items.length === 0 ? (

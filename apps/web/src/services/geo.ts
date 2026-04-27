@@ -12,6 +12,7 @@ export type GeoLocationSuggestion = {
 export type BrowserGeoPosition = {
   latitude: number;
   longitude: number;
+  accuracy?: number;
 };
 
 type BrowserGeoOptions = {
@@ -52,6 +53,10 @@ export const getBrowserCurrentPosition = (
         resolve({
           latitude: position.coords.latitude,
           longitude: position.coords.longitude,
+          accuracy:
+            typeof position.coords.accuracy === 'number' && Number.isFinite(position.coords.accuracy)
+              ? position.coords.accuracy
+              : undefined,
         });
       },
       (error) => reject(error),

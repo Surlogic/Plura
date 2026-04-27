@@ -397,8 +397,6 @@ export default memo(function UnifiedSearchBar({
   const measureExploreDropdown = useCallback(
     (
       container: HTMLDivElement | null,
-      preferredWidth: number,
-      minWidth: number = 320,
       minVisibleHeight: number = 160,
     ): ExploreDropdownMetrics | null => {
       if (!isExplore || !wrapperRef.current || !container || typeof window === 'undefined') {
@@ -412,16 +410,12 @@ export default memo(function UnifiedSearchBar({
       if (availableWidth <= 0) return null;
 
       const offsetWithinWrapper = containerRect.left - wrapperRect.left;
-      const resolvedMinWidth = Math.min(minWidth, availableWidth);
-      const width = availableWidth <= resolvedMinWidth
-        ? availableWidth
-        : Math.min(preferredWidth, availableWidth);
       const availableHeight = Math.max(window.innerHeight - containerRect.bottom - 16, minVisibleHeight);
       const maxHeight = Math.min(availableHeight, Math.round(window.innerHeight * 0.6), 520);
 
       return {
         left: Math.round(-offsetWithinWrapper),
-        width: Math.round(width),
+        width: Math.round(availableWidth),
         maxHeight: Math.round(Math.max(maxHeight, minVisibleHeight)),
       };
     },
@@ -434,9 +428,9 @@ export default memo(function UnifiedSearchBar({
 
     const updateLayouts = () => {
       setExploreDropdownLayouts({
-        query: measureExploreDropdown(queryContainerRef.current, 560, 320, 180),
-        location: measureExploreDropdown(locationContainerRef.current, 560, 320, 180),
-        date: measureExploreDropdown(dateContainerRef.current, 460, 320, 180),
+        query: measureExploreDropdown(queryContainerRef.current, 180),
+        location: measureExploreDropdown(locationContainerRef.current, 180),
+        date: measureExploreDropdown(dateContainerRef.current, 180),
       });
     };
 
@@ -468,7 +462,8 @@ export default memo(function UnifiedSearchBar({
         left: metrics.left,
         right: 'auto',
         width: metrics.width,
-        maxWidth: '100%',
+        maxWidth: metrics.width,
+        minWidth: 'min(360px, 100%)',
       };
     },
     [isExplore],

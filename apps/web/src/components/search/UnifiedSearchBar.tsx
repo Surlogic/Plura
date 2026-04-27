@@ -43,6 +43,7 @@ type UnifiedSearchBarProps = {
   showClearButton?: boolean;
   citySuggestions?: string[];
   density?: 'default' | 'compact';
+  locationSummaryOverride?: string;
 };
 
 type SearchSectionLabelProps = {
@@ -118,6 +119,7 @@ export default memo(function UnifiedSearchBar({
   showClearButton = false,
   citySuggestions = [],
   density = 'default',
+  locationSummaryOverride,
 }: UnifiedSearchBarProps) {
   const wrapperRef = useRef<HTMLDivElement | null>(null);
   const isHero = variant === 'hero';
@@ -266,7 +268,10 @@ export default memo(function UnifiedSearchBar({
 
   const radiusSummary = `${Math.round(values.radiusKm)} km`;
   const locationSummary =
-    locationInput.trim() || values.city.trim() || (hasCoordinates ? `Cerca de mi · ${radiusSummary}` : 'Zona o ciudad');
+    locationSummaryOverride
+    || locationInput.trim()
+    || values.city.trim()
+    || (hasCoordinates ? `Cerca de mi · ${radiusSummary}` : 'Zona o ciudad');
   const locationValueClass = getAdaptiveValueClass(locationSummary);
   const searchModeLabel = values.categorySlug
     ? 'Categoría'

@@ -31,6 +31,7 @@ const SORT_OPTIONS: Array<{ value: SearchSort; label: string }> = [
 ];
 const MAP_INITIAL_USER_RADIUS_KM = 2;
 const BROWSER_LOCATION_APPROXIMATE_ACCURACY_METERS = 1000;
+const BROWSER_LOCATION_VERY_APPROXIMATE_ACCURACY_METERS = 3000;
 
 const getSingleQueryValue = (value: string | string[] | undefined) =>
   Array.isArray(value) ? value[0] || '' : value || '';
@@ -157,8 +158,9 @@ export default function ExplorarPage() {
   const lat = parseOptionalNumber(rawLat);
   const lng = parseOptionalNumber(rawLng);
   const hasCoordinates = typeof lat === 'number' && typeof lng === 'number';
+  const hasRadiusKmQueryParam = rawRadiusKm.trim() !== '';
   const explicitRadiusKm = parseOptionalNumber(rawRadiusKm);
-  const hasExplicitRadiusKm = typeof explicitRadiusKm === 'number';
+  const hasExplicitRadiusKm = hasRadiusKmQueryParam;
   const radiusKm = explicitRadiusKm ?? SEARCH_DEFAULT_RADIUS_KM;
   const date = normalizeDate(rawDate);
   const from = normalizeDate(rawFrom);
@@ -330,12 +332,12 @@ export default function ExplorarPage() {
       page: String(page),
       size: String(size),
       sort,
-      radiusKm: String(radiusKm),
     };
 
     if (query) nextQuery.query = query;
     if (categorySlug) nextQuery.categorySlug = categorySlug;
     if (city) nextQuery.city = city;
+    if (hasExplicitRadiusKm) nextQuery.radiusKm = String(radiusKm);
     if (hasCoordinates && typeof lat === 'number' && typeof lng === 'number') {
       nextQuery.lat = String(lat);
       nextQuery.lng = String(lng);
@@ -353,6 +355,7 @@ export default function ExplorarPage() {
     query,
     categorySlug,
     city,
+    hasExplicitRadiusKm,
     hasCoordinates,
     lat,
     lng,
@@ -513,6 +516,13 @@ export default function ExplorarPage() {
     isUsingAutoBrowserLocation
     && typeof browserUserLocation?.accuracy === 'number'
     && browserUserLocation.accuracy > BROWSER_LOCATION_APPROXIMATE_ACCURACY_METERS;
+  const isBrowserLocationVeryApproximate =
+    isUsingAutoBrowserLocation
+    && typeof browserUserLocation?.accuracy === 'number'
+    && browserUserLocation.accuracy > BROWSER_LOCATION_VERY_APPROXIMATE_ACCURACY_METERS;
+  const locationSummaryOverride = isBrowserLocationVeryApproximate
+    ? `Ubicación aproximada · ${Math.round(radiusKm)} km`
+    : undefined;
 
   const handleMapItemHoverStart = useCallback((id?: string) => {
     if (!id) return;
@@ -540,8 +550,8 @@ export default function ExplorarPage() {
     ...(isMapView ? { vista: 'mapa' as const } : {}),
     sort,
     size: String(size),
-    radiusKm: String(radiusKm),
-  }), [isMapView, sort, size, radiusKm]);
+    ...(hasExplicitRadiusKm ? { radiusKm: String(radiusKm) } : {}),
+  }), [hasExplicitRadiusKm, isMapView, sort, size, radiusKm]);
 
   const activeMapItemId = hoveredMapItemId || selectedMapItemId;
   const exploreViewToggle = (
@@ -601,6 +611,7 @@ export default function ExplorarPage() {
       initialValues={filterValues}
       fixedQuery={fixedQuery}
       citySuggestions={citySuggestions}
+      locationSummaryOverride={locationSummaryOverride}
     />
   );
   const exploreControls = (

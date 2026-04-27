@@ -7,6 +7,7 @@ type ExploreFiltersProps = {
   fixedQuery?: Record<string, string | undefined>;
   citySuggestions?: string[];
   className?: string;
+  locationSummaryOverride?: string;
 };
 
 export default function ExploreFilters({
@@ -14,6 +15,7 @@ export default function ExploreFilters({
   fixedQuery,
   citySuggestions = [],
   className,
+  locationSummaryOverride,
 }: ExploreFiltersProps) {
   return (
     <UnifiedSearchBar
@@ -24,6 +26,7 @@ export default function ExploreFilters({
       className={className}
       density="compact"
       showClearButton
+      locationSummaryOverride={locationSummaryOverride}
     />
   );
 }

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useRef, type MutableRefObject } from 'react';
+import { useCallback, useEffect, useMemo, useRef, type MutableRefObject } from 'react';
 import Link from 'next/link';
 import {
   CircleMarker,
@@ -12,6 +12,7 @@ import {
   useMap,
 } from 'react-leaflet';
 import { divIcon, type DivIcon, type LatLngBoundsExpression, type LatLngExpression } from 'leaflet';
+import type { ExploreMapViewportBounds } from '@/utils/exploreMapViewport';
 
 type ExploreLeafletMapItem = {
   id: string;
@@ -37,6 +38,8 @@ type ExploreLeafletFallbackMapProps = {
   selectedResultId?: string | null;
   selectionRequestNonce?: number;
   onSelectResult?: (id: string | null) => void;
+  onViewportCenterChange?: (center: { latitude: number; longitude: number }) => void;
+  onViewportBoundsChange?: (bounds: ExploreMapViewportBounds | null) => void;
 };
 
 const DEFAULT_CENTER: LatLngExpression = [-34.9011, -56.1645];
@@ -245,12 +248,55 @@ function TrackManualMapInteraction({
   return null;
 }
 
+function ReportViewportState({
+  items,
+  onViewportCenterChange,
+  onViewportBoundsChange,
+}: {
+  items: ExploreLeafletMapItem[];
+  onViewportCenterChange?: (center: { latitude: number; longitude: number }) => void;
+  onViewportBoundsChange?: (bounds: ExploreMapViewportBounds | null) => void;
+}) {
+  const map = useMap();
+  const emitViewportState = useCallback(() => {
+    const center = map.getCenter();
+    onViewportCenterChange?.({
+      latitude: center.lat,
+      longitude: center.lng,
+    });
+
+    const bounds = map.getBounds();
+    onViewportBoundsChange?.({
+      north: bounds.getNorth(),
+      south: bounds.getSouth(),
+      east: bounds.getEast(),
+      west: bounds.getWest(),
+    });
+  }, [map, onViewportBoundsChange, onViewportCenterChange]);
+
+  useEffect(() => {
+    emitViewportState();
+  }, [emitViewportState, items]);
+
+  useEffect(() => {
+    map.on('moveend', emitViewportState);
+
+    return () => {
+      map.off('moveend', emitViewportState);
+    };
+  }, [emitViewportState, map]);
+
+  return null;
+}
+
 export default function ExploreLeafletFallbackMap({
   items,
   userLocation,
   selectedResultId = null,
   selectionRequestNonce = 0,
   onSelectResult,
+  onViewportCenterChange,
+  onViewportBoundsChange,
 }: ExploreLeafletFallbackMapProps) {
   const lastAutoViewportKeyRef = useRef<string | null>(null);
   const userInteractedSinceResultsRef = useRef(false);
@@ -296,6 +342,11 @@ export default function ExploreLeafletFallbackMap({
         />
         <ZoomControl position="topright" />
         <TrackManualMapInteraction userInteractedSinceResultsRef={userInteractedSinceResultsRef} />
+        <ReportViewportState
+          items={items}
+          onViewportCenterChange={onViewportCenterChange}
+          onViewportBoundsChange={onViewportBoundsChange}
+        />
         <FitToResults
           items={items}
           userLocation={userLocation}

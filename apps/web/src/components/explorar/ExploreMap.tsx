@@ -15,6 +15,7 @@ import {
 import mapboxgl from 'mapbox-gl';
 import MapView from '@/components/map/MapView';
 import ExploreLeafletFallbackMap from '@/components/explorar/ExploreLeafletFallbackMap';
+import type { ExploreMapViewportBounds } from '@/utils/exploreMapViewport';
 import {
   buildPublicBusinessLogoStyle,
   getPublicBusinessInitials,
@@ -48,6 +49,7 @@ type ExploreMapProps = {
   selectionRequestNonce?: number;
   onSelectResult?: (id: string | null) => void;
   onViewportCenterChange?: (center: { latitude: number; longitude: number }) => void;
+  onViewportBoundsChange?: (bounds: ExploreMapViewportBounds | null) => void;
 };
 
 const DEFAULT_CENTER = {
@@ -205,6 +207,7 @@ function ExploreMap({
   selectionRequestNonce = 0,
   onSelectResult,
   onViewportCenterChange,
+  onViewportBoundsChange,
 }: ExploreMapProps) {
   const mapRef = useRef<MapRef | null>(null);
   const lastSelectionFocusRef = useRef<string | null>(null);
@@ -311,14 +314,25 @@ function ExploreMap({
   const markUserInteraction = useCallback(() => {
     userInteractedSinceResultsRef.current = true;
   }, []);
-  const emitViewportCenter = useCallback(() => {
-    const center = mapRef.current?.getCenter();
+  const emitViewportState = useCallback(() => {
+    const map = mapRef.current?.getMap();
+    if (!map) return;
+
+    const center = map.getCenter();
     if (!center) return;
+
     onViewportCenterChange?.({
       latitude: center.lat,
       longitude: center.lng,
     });
-  }, [onViewportCenterChange]);
+    const bounds = map.getBounds();
+    onViewportBoundsChange?.({
+      north: bounds.getNorth(),
+      south: bounds.getSouth(),
+      east: bounds.getEast(),
+      west: bounds.getWest(),
+    });
+  }, [onViewportBoundsChange, onViewportCenterChange]);
 
   useEffect(() => {
     if (!mapReady || !mapRef.current) return undefined;
@@ -337,20 +351,22 @@ function ExploreMap({
   }, [mapReady, markUserInteraction]);
 
   useEffect(() => {
-    if (!mapReady || !mapRef.current || !onViewportCenterChange) return undefined;
+    if (!mapReady || !mapRef.current || (!onViewportCenterChange && !onViewportBoundsChange)) {
+      return undefined;
+    }
 
     const map = mapRef.current.getMap();
     const handleMoveEnd = () => {
-      emitViewportCenter();
+      emitViewportState();
     };
 
-    emitViewportCenter();
+    emitViewportState();
     map.on('moveend', handleMoveEnd);
 
     return () => {
       map.off('moveend', handleMoveEnd);
     };
-  }, [emitViewportCenter, mapReady, onViewportCenterChange]);
+  }, [emitViewportState, mapReady, onViewportBoundsChange, onViewportCenterChange]);
 
   useEffect(() => {
     if (!mapReady || !mapRef.current || items.length === 0) return;
@@ -433,8 +449,8 @@ function ExploreMap({
   const handleMapLoad = useCallback(() => {
     setMapReady(true);
     hideVisualNoiseLayers();
-    emitViewportCenter();
-  }, [emitViewportCenter, hideVisualNoiseLayers]);
+    emitViewportState();
+  }, [emitViewportState, hideVisualNoiseLayers]);
 
   const syncVisibleMarkers = useCallback(() => {
     const map = mapRef.current?.getMap();
@@ -539,9 +555,19 @@ function ExploreMap({
         selectedResultId={selectedResultId}
         selectionRequestNonce={selectionRequestNonce}
         onSelectResult={onSelectResult}
+        onViewportCenterChange={onViewportCenterChange}
+        onViewportBoundsChange={onViewportBoundsChange}
       />
     ),
-    [items, onSelectResult, selectedResultId, selectionRequestNonce, userLocation],
+    [
+      items,
+      onSelectResult,
+      onViewportBoundsChange,
+      onViewportCenterChange,
+      selectedResultId,
+      selectionRequestNonce,
+      userLocation,
+    ],
   );
 
   useEffect(() => {

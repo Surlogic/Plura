@@ -22,6 +22,11 @@ import {
 import { searchProfessionals } from '@/services/search';
 import type { SearchItem, SearchSort, SearchType } from '@/types/search';
 import type { UnifiedSearchValues } from '@/components/search/UnifiedSearchBar';
+import {
+  areExploreMapViewportBoundsEqual,
+  isPointWithinExploreMapViewportBounds,
+  type ExploreMapViewportBounds,
+} from '@/utils/exploreMapViewport';
 
 const ExploreMap = dynamic(() => import('@/components/explorar/ExploreMap'), {
   ssr: false,
@@ -146,6 +151,14 @@ const clearStoredManualLocation = () => {
   if (typeof window === 'undefined') return;
   window.localStorage.removeItem(MANUAL_LOCATION_STORAGE_KEY);
 };
+
+const hasFiniteItemCoordinates = (
+  item: SearchItem,
+): item is SearchItem & { latitude: number; longitude: number } =>
+  typeof item.latitude === 'number'
+  && Number.isFinite(item.latitude)
+  && typeof item.longitude === 'number'
+  && Number.isFinite(item.longitude);
 
 export default function ExplorarPage() {
   const router = useRouter();
@@ -281,6 +294,7 @@ export default function ExplorarPage() {
     latitude: number;
     longitude: number;
   } | null>(null);
+  const [mapViewportBounds, setMapViewportBounds] = useState<ExploreMapViewportBounds | null>(null);
   const [isAdjustingLocation, setIsAdjustingLocation] = useState(false);
   const [isRefreshingBrowserLocation, setIsRefreshingBrowserLocation] = useState(false);
   const [browserLocationNotice, setBrowserLocationNotice] = useState<string | null>(null);
@@ -404,25 +418,10 @@ export default function ExplorarPage() {
   }, []);
 
   useEffect(() => {
-    if (!isMapView) return;
-    if (selectionEvent.source !== 'map' || !selectionEvent.id) return;
-    if (!items.some((item) => String(item.id) === selectionEvent.id)) return;
-
-    const target = resultCardRefs.current.get(selectionEvent.id);
-    if (!target) return;
-
-    const frameId = window.requestAnimationFrame(() => {
-      target.scrollIntoView({
-        block: 'center',
-        inline: 'nearest',
-        behavior: 'smooth',
-      });
-    });
-
-    return () => {
-      window.cancelAnimationFrame(frameId);
-    };
-  }, [isMapView, items, selectionEvent]);
+    if (!isMapView) {
+      setMapViewportBounds(null);
+    }
+  }, [isMapView]);
 
   const filterValues = useMemo<Partial<UnifiedSearchValues>>(
     () => ({
@@ -505,6 +504,50 @@ export default function ExplorarPage() {
   }, [items, city]);
 
   const totalPages = Math.max(1, Math.ceil(total / size));
+  const mapCompatibleItems = useMemo(
+    () => items.filter(hasFiniteItemCoordinates),
+    [items],
+  );
+  const visibleMapListItems = useMemo(() => {
+    if (!isMapView) return items;
+    if (!mapViewportBounds) return mapCompatibleItems;
+
+    return mapCompatibleItems.filter((item) =>
+      isPointWithinExploreMapViewportBounds(
+        {
+          latitude: item.latitude,
+          longitude: item.longitude,
+        },
+        mapViewportBounds,
+      ));
+  }, [isMapView, items, mapCompatibleItems, mapViewportBounds]);
+
+  useEffect(() => {
+    if (!isMapView) return;
+    if (selectionEvent.source !== 'map' || !selectionEvent.id) return;
+    if (!visibleMapListItems.some((item) => String(item.id) === selectionEvent.id)) return;
+
+    const target = resultCardRefs.current.get(selectionEvent.id);
+    if (!target) return;
+
+    const frameId = window.requestAnimationFrame(() => {
+      target.scrollIntoView({
+        block: 'center',
+        inline: 'nearest',
+        behavior: 'smooth',
+      });
+    });
+
+    return () => {
+      window.cancelAnimationFrame(frameId);
+    };
+  }, [isMapView, selectionEvent, visibleMapListItems]);
+
+  useEffect(() => {
+    if (!isMapView || !selectedMapItemId) return;
+    if (visibleMapListItems.some((item) => String(item.id) === selectedMapItemId)) return;
+    setSelectedMapItemId(null);
+  }, [isMapView, selectedMapItemId, visibleMapListItems]);
 
   const getCategoryLabel = useCallback((item: SearchItem) =>
     item.categorySlugs.length > 0 ? humanizeSlug(item.categorySlugs[0]) : 'Profesional', []);
@@ -859,6 +902,9 @@ export default function ExplorarPage() {
   }), [hasAppliedLocationFilter, hasExplicitRadiusKm, isMapView, sort, size, radiusKm, locationSource]);
 
   const activeMapItemId = selectedMapItemId || hoveredMapItemId;
+  const hasMapBoundsFilter = Boolean(mapViewportBounds);
+  const hasVisibleMapItems = visibleMapListItems.length > 0;
+  const hasResultsWithoutMapCoordinates = items.length > 0 && mapCompatibleItems.length === 0;
   const exploreViewToggle = (
     <div className="inline-flex rounded-full border border-[color:var(--border-soft)] bg-[color:var(--surface-muted)] p-0.5 shadow-[var(--shadow-card)]">
       <button
@@ -972,9 +1018,26 @@ export default function ExplorarPage() {
                         </div>
                       )}
                     </div>
+                  ) : !hasVisibleMapItems ? (
+                    <div className="rounded-[16px] border border-dashed border-[#E2E7EC] bg-[#F8FAFC] px-4 py-6 text-sm text-[#64748B]">
+                      <div className="space-y-1">
+                        <p className="font-semibold text-[#0E2A47]">
+                          {hasResultsWithoutMapCoordinates
+                            ? 'Estos resultados no tienen coordenadas para mostrarse en el mapa.'
+                            : hasMapBoundsFilter
+                              ? 'No hay resultados visibles en este cuadrante.'
+                              : 'No hay resultados visibles en el mapa.'}
+                        </p>
+                        <p>
+                          {hasResultsWithoutMapCoordinates
+                            ? 'Probá otra búsqueda o quitá filtros para encontrar perfiles con ubicación.'
+                            : 'Mové el mapa, ajustá el zoom o cambiá los filtros para ver más resultados.'}
+                        </p>
+                      </div>
+                    </div>
                   ) : (
                     <div className="grid grid-cols-1 gap-3 min-[460px]:grid-cols-2 lg:grid-cols-2">
-                      {items.map((item, index) => {
+                      {visibleMapListItems.map((item, index) => {
                         const itemId = String(item.id);
 
                         return (
@@ -1038,6 +1101,13 @@ export default function ExplorarPage() {
                   selectionRequestNonce={selectionEvent.nonce}
                   onSelectResult={(id) => handleSelectResult(id, 'map')}
                   onViewportCenterChange={setMapViewportCenter}
+                  onViewportBoundsChange={(nextBounds) => {
+                    setMapViewportBounds((currentBounds) =>
+                      areExploreMapViewportBoundsEqual(currentBounds, nextBounds)
+                        ? currentBounds
+                        : nextBounds
+                    );
+                  }}
                 />
                 {isLoading
                 || isRefreshingBrowserLocation

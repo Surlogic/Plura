@@ -301,10 +301,47 @@ export default function ExplorarPage() {
   const [storedManualLocation, setStoredManualLocation] = useState<StoredManualLocation | null>(null);
   const [hasLoadedStoredManualLocation, setHasLoadedStoredManualLocation] = useState(false);
   const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const latestSearchRequestIdRef = useRef(0);
   const didAttemptAutoGeolocationRef = useRef(false);
   const didUserClearLocationRef = useRef(false);
   const didRestoreManualLocationRef = useRef(false);
   const resultCardRefs = useRef(new Map<string, HTMLDivElement>());
+
+  const activeSearchRequestKey = useMemo(
+    () => JSON.stringify({
+      query,
+      type: searchType,
+      categorySlug,
+      city,
+      lat: hasCoordinates ? lat : null,
+      lng: hasCoordinates ? lng : null,
+      radiusKm,
+      date,
+      from,
+      to,
+      availableNow,
+      page,
+      size,
+      sort,
+    }),
+    [
+      query,
+      searchType,
+      categorySlug,
+      city,
+      hasCoordinates,
+      lat,
+      lng,
+      radiusKm,
+      date,
+      from,
+      to,
+      availableNow,
+      page,
+      size,
+      sort,
+    ],
+  );
 
   useEffect(() => {
     if (!router.isReady) return;
@@ -315,8 +352,20 @@ export default function ExplorarPage() {
   useEffect(() => {
     if (!router.isReady) return;
 
+    latestSearchRequestIdRef.current += 1;
+    setItems([]);
+    setTotal(0);
+    setSelectedMapItemId(null);
+    setHoveredMapItemId(null);
+    setError(null);
+  }, [activeSearchRequestKey, router.isReady]);
+
+  useEffect(() => {
+    if (!router.isReady) return;
+
     let isMounted = true;
     const controller = new AbortController();
+    const requestId = latestSearchRequestIdRef.current;
 
     setIsLoading(true);
     setError(null);
@@ -344,12 +393,12 @@ export default function ExplorarPage() {
 
       searchProfessionals(requestParams, controller.signal)
         .then((response) => {
-          if (!isMounted) return;
+          if (!isMounted || latestSearchRequestIdRef.current !== requestId) return;
           setItems(Array.isArray(response.items) ? response.items : []);
           setTotal(response.total || 0);
         })
         .catch((err) => {
-          if (!isMounted) return;
+          if (!isMounted || latestSearchRequestIdRef.current !== requestId) return;
           if (
             (err as { name?: string; code?: string }).name === 'CanceledError' ||
             (err as { name?: string; code?: string }).code === 'ERR_CANCELED'
@@ -371,7 +420,9 @@ export default function ExplorarPage() {
           setError('No se pudieron cargar los resultados de búsqueda.');
         })
         .finally(() => {
-          if (isMounted) setIsLoading(false);
+          if (isMounted && latestSearchRequestIdRef.current === requestId) {
+            setIsLoading(false);
+          }
         });
     }, 300);
 
@@ -397,6 +448,7 @@ export default function ExplorarPage() {
     page,
     size,
     sort,
+    activeSearchRequestKey,
   ]);
 
   useEffect(() => {

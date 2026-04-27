@@ -43,6 +43,7 @@ type ExploreMapProps = {
     latitude: number;
     longitude: number;
   };
+  preferUserLocationViewport?: boolean;
   selectedResultId?: string | null;
   selectionRequestNonce?: number;
   onSelectResult?: (id: string | null) => void;
@@ -199,6 +200,7 @@ function ExploreMapMarkerAvatar({
 function ExploreMap({
   results,
   userLocation,
+  preferUserLocationViewport = false,
   selectedResultId = null,
   selectionRequestNonce = 0,
   onSelectResult,
@@ -357,6 +359,15 @@ function ExploreMap({
 
     lastAutoViewportKeyRef.current = viewportKey;
 
+    if (preferUserLocationViewport && userLocation) {
+      mapRef.current.flyTo({
+        center: [userLocation.longitude, userLocation.latitude],
+        zoom: Math.max(mapRef.current.getZoom(), 11.5),
+        duration: 650,
+      });
+      return;
+    }
+
     if (items.length === 1) {
       mapRef.current.flyTo({
         center: [items[0].longitude, items[0].latitude],
@@ -377,7 +388,7 @@ function ExploreMap({
       duration: 650,
       maxZoom: 14,
     });
-  }, [items, mapReady, userLocation, viewportKey]);
+  }, [items, mapReady, preferUserLocationViewport, userLocation, viewportKey]);
 
   useEffect(() => {
     if (!mapReady || !mapRef.current || !selectedResultId) return;

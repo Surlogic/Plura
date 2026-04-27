@@ -227,12 +227,16 @@ export function useUnifiedSearch({
     () => normalizeInitialValues(initialValues),
     [initialValues],
   );
+  const hasExplicitInitialRadius = typeof initialValues?.radiusKm === 'number'
+    && Number.isFinite(initialValues.radiusKm);
+  const [isRadiusExplicit, setIsRadiusExplicit] = useState(hasExplicitInitialRadius);
 
   useEffect(() => {
     setValues(normalizedInitialValues);
     setSearchInput(normalizedInitialValues.query);
     setLocationInput(normalizedInitialValues.city);
-  }, [normalizedInitialValues]);
+    setIsRadiusExplicit(hasExplicitInitialRadius);
+  }, [hasExplicitInitialRadius, normalizedInitialValues]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -350,6 +354,7 @@ export function useUnifiedSearch({
 
     if (
       hasLocationSelection
+      && isRadiusExplicit
       && typeof formValues.radiusKm === 'number'
       && Number.isFinite(formValues.radiusKm)
     ) {
@@ -384,7 +389,7 @@ export function useUnifiedSearch({
     }
 
     return query;
-  }, [fixedQuery]);
+  }, [fixedQuery, isRadiusExplicit]);
 
   const closeAllDropdowns = useCallback(() => {
     setIsSearchOpen(false);
@@ -483,6 +488,7 @@ export function useUnifiedSearch({
   }, []);
 
   const setRadiusKm = useCallback((radiusKm: number) => {
+    setIsRadiusExplicit(true);
     setValues((previous) => ({
       ...previous,
       radiusKm: normalizeRadiusKm(radiusKm),
@@ -557,6 +563,7 @@ export function useUnifiedSearch({
   const handleClear = useCallback(() => {
     const resetValues = normalizeInitialValues();
     setValues(resetValues);
+    setIsRadiusExplicit(false);
     setSearchInput('');
     setLocationInput('');
     setGeoStatus('idle');

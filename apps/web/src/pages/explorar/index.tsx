@@ -32,9 +32,7 @@ const SORT_OPTIONS: Array<{ value: SearchSort; label: string }> = [
   { value: 'DISTANCE', label: 'Distancia' },
   { value: 'RATING', label: 'Mejor valorados' },
 ];
-const MAP_INITIAL_USER_RADIUS_KM = 2;
 const BROWSER_LOCATION_APPROXIMATE_ACCURACY_METERS = 1000;
-const BROWSER_LOCATION_VERY_APPROXIMATE_ACCURACY_METERS = 3000;
 const MANUAL_LOCATION_STORAGE_KEY = 'plura:explore-manual-location';
 
 const getSingleQueryValue = (value: string | string[] | undefined) =>
@@ -550,7 +548,14 @@ export default function ExplorarPage() {
     );
   }, [router]);
 
-  const applyBrowserLocationToMap = useCallback((position: BrowserGeoPosition) => {
+  const setVisualBrowserLocation = useCallback((position: BrowserGeoPosition) => {
+    setBrowserUserLocation(position);
+    setLocationSelectionSource('browser-auto');
+    setIsAdjustingLocation(false);
+    setBrowserLocationNotice(null);
+  }, []);
+
+  const applyBrowserLocationToQuery = useCallback((position: BrowserGeoPosition) => {
     setBrowserUserLocation(position);
     setLocationSelectionSource('browser-auto');
     setIsAdjustingLocation(false);
@@ -565,10 +570,13 @@ export default function ExplorarPage() {
       lng: String(position.longitude),
       page: '0',
       sort: 'DISTANCE',
-      radiusKm: String(hasExplicitRadiusKm ? radiusKm : MAP_INITIAL_USER_RADIUS_KM),
       locationSource: 'browser',
     };
     delete nextQuery.city;
+    delete nextQuery.radiusKm;
+    if (hasExplicitRadiusKm) {
+      nextQuery.radiusKm = String(radiusKm);
+    }
     replaceQuery(nextQuery);
   }, [baseExploreQuery, hasExplicitRadiusKm, radiusKm, replaceQuery]);
 
@@ -593,10 +601,13 @@ export default function ExplorarPage() {
       lng: String(location.longitude),
       page: '0',
       sort: 'DISTANCE',
-      radiusKm: String(hasExplicitRadiusKm ? radiusKm : MAP_INITIAL_USER_RADIUS_KM),
       locationSource: 'manual',
     };
     delete nextQuery.city;
+    delete nextQuery.radiusKm;
+    if (hasExplicitRadiusKm) {
+      nextQuery.radiusKm = String(radiusKm);
+    }
     replaceQuery(nextQuery);
   }, [baseExploreQuery, hasExplicitRadiusKm, radiusKm, replaceQuery]);
 
@@ -647,7 +658,7 @@ export default function ExplorarPage() {
       earlyAccuracyMeters: 100,
     })
       .then((position) => {
-        applyBrowserLocationToMap(position);
+        setVisualBrowserLocation(position);
       })
       .catch(() => {
         setBrowserUserLocation(null);
@@ -657,19 +668,23 @@ export default function ExplorarPage() {
         );
       });
   }, [
-    applyBrowserLocationToMap,
     hasLoadedStoredManualLocation,
     hasCoordinates,
     isMapView,
     router.isReady,
+    setVisualBrowserLocation,
     storedManualLocation,
   ]);
 
   useEffect(() => {
     if (hasCoordinates) return;
+    if (browserUserLocation) {
+      setLocationSelectionSource('browser-auto');
+      return;
+    }
     setLocationSelectionSource(null);
     setIsAdjustingLocation(false);
-  }, [hasCoordinates]);
+  }, [browserUserLocation, hasCoordinates]);
 
   const handleViewChange = useCallback((nextIsMapView: boolean) => {
     const nextQuery: Record<string, string> = { ...baseExploreQuery };
@@ -705,6 +720,7 @@ export default function ExplorarPage() {
     ),
     [browserUserLocation, hasCoordinates, lat, lng],
   );
+  const hasAppliedLocationFilter = hasCoordinates && !city;
   const effectiveLocationSelectionSource = locationSelectionSource || (
     locationSource === 'manual'
       ? 'manual-adjusted'
@@ -712,32 +728,36 @@ export default function ExplorarPage() {
         ? 'browser-auto'
         : null
   );
-  const shouldUseLocationSourceOverride = hasCoordinates && !city;
+  const shouldUseLocationSourceOverride = hasAppliedLocationFilter;
   const isUsingAutoBrowserLocation =
-    effectiveLocationSelectionSource === 'browser-auto' && shouldUseLocationSourceOverride;
+    effectiveLocationSelectionSource === 'browser-auto';
   const isBrowserLocationApproximate =
     isUsingAutoBrowserLocation
     && typeof browserUserLocation?.accuracy === 'number'
     && browserUserLocation.accuracy > BROWSER_LOCATION_APPROXIMATE_ACCURACY_METERS;
-  const isBrowserLocationVeryApproximate =
-    isUsingAutoBrowserLocation
-    && typeof browserUserLocation?.accuracy === 'number'
-    && browserUserLocation.accuracy > BROWSER_LOCATION_VERY_APPROXIMATE_ACCURACY_METERS;
   const effectiveMapViewportCenter = useMemo(
     () => mapViewportCenter || (
       hasCoordinates && typeof lat === 'number' && typeof lng === 'number'
         ? { latitude: lat, longitude: lng }
+        : browserUserLocation
+          ? { latitude: browserUserLocation.latitude, longitude: browserUserLocation.longitude }
         : null
     ),
-    [hasCoordinates, lat, lng, mapViewportCenter],
+    [browserUserLocation, hasCoordinates, lat, lng, mapViewportCenter],
   );
   const locationSummaryOverride = !shouldUseLocationSourceOverride
     ? undefined
     : effectiveLocationSelectionSource === 'manual-adjusted'
-    ? `Zona elegida · ${Math.round(radiusKm)} km`
-    : isBrowserLocationVeryApproximate
-      ? `Ubicación aproximada · ${Math.round(radiusKm)} km`
-      : undefined;
+    ? hasExplicitRadiusKm
+      ? `Zona elegida · ${Math.round(radiusKm)} km`
+      : 'Zona elegida'
+    : effectiveLocationSelectionSource === 'browser-auto'
+      ? hasExplicitRadiusKm
+        ? `Cerca de mí · ${Math.round(radiusKm)} km`
+        : 'Cerca de mí'
+      : hasExplicitRadiusKm
+        ? `Ubicación elegida · ${Math.round(radiusKm)} km`
+        : 'Ubicación elegida';
   const canAdjustMapLocation = true;
   const canRefreshBrowserLocation = true;
 
@@ -770,7 +790,7 @@ export default function ExplorarPage() {
       earlyAccuracyMeters: 100,
     })
       .then((position) => {
-        applyBrowserLocationToMap(position);
+        applyBrowserLocationToQuery(position);
       })
       .catch(() => {
         setBrowserLocationNotice(
@@ -780,12 +800,11 @@ export default function ExplorarPage() {
       .finally(() => {
         setIsRefreshingBrowserLocation(false);
       });
-  }, [applyBrowserLocationToMap, isRefreshingBrowserLocation]);
+  }, [applyBrowserLocationToQuery, isRefreshingBrowserLocation]);
 
   const handleClearLocation = useCallback((mode: 'remove' | 'clear-all' = 'remove') => {
     didUserClearLocationRef.current = true;
-    setBrowserUserLocation(null);
-    setLocationSelectionSource(null);
+    setLocationSelectionSource(browserUserLocation ? 'browser-auto' : null);
     setMapViewportCenter(null);
     setIsAdjustingLocation(false);
     setBrowserLocationNotice(null);
@@ -807,7 +826,7 @@ export default function ExplorarPage() {
     delete nextQuery.locationSource;
 
     replaceQuery(nextQuery);
-  }, [baseExploreQuery, replaceQuery, sort]);
+  }, [baseExploreQuery, browserUserLocation, replaceQuery, sort]);
 
   const handleMapItemHoverStart = useCallback((id?: string) => {
     if (!id) return;
@@ -836,8 +855,8 @@ export default function ExplorarPage() {
     sort,
     size: String(size),
     ...(hasExplicitRadiusKm ? { radiusKm: String(radiusKm) } : {}),
-    ...(locationSource && hasCoordinates && !city ? { locationSource } : {}),
-  }), [hasExplicitRadiusKm, isMapView, sort, size, radiusKm, locationSource, hasCoordinates, city]);
+    ...(locationSource && hasAppliedLocationFilter ? { locationSource } : {}),
+  }), [hasAppliedLocationFilter, hasExplicitRadiusKm, isMapView, sort, size, radiusKm, locationSource]);
 
   const activeMapItemId = selectedMapItemId || hoveredMapItemId;
   const exploreViewToggle = (
@@ -1014,6 +1033,7 @@ export default function ExplorarPage() {
                 <ExploreMap
                   results={items}
                   userLocation={mapUserLocation}
+                  preferUserLocationViewport={Boolean(browserUserLocation) && !hasAppliedLocationFilter}
                   selectedResultId={selectedMapItemId}
                   selectionRequestNonce={selectionEvent.nonce}
                   onSelectResult={(id) => handleSelectResult(id, 'map')}
@@ -1083,7 +1103,9 @@ export default function ExplorarPage() {
                                 >
                                   {isRefreshingBrowserLocation
                                     ? 'Actualizando...'
-                                    : 'Actualizar mi ubicación'}
+                                    : hasAppliedLocationFilter && locationSource === 'browser'
+                                      ? 'Actualizar mi ubicación'
+                                      : 'Buscar cerca de mí'}
                                 </button>
                                 {canAdjustMapLocation ? (
                                   <button

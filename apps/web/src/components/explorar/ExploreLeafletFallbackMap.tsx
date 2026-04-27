@@ -266,6 +266,7 @@ function ReportViewportState({
     });
 
     const bounds = map.getBounds();
+    if (!bounds) return;
     onViewportBoundsChange?.({
       north: bounds.getNorth(),
       south: bounds.getSouth(),

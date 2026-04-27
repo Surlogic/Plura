@@ -24,6 +24,7 @@ type SuggestDropdownProps = {
   onSelect: (item: SuggestDropdownItem) => void;
   onHoverIndex: (index: number) => void;
   className?: string;
+  maxHeight?: number;
 };
 
 const getTypeLabel = (item: SuggestDropdownItem) => {
@@ -49,6 +50,7 @@ export default function SuggestDropdown({
   onSelect,
   onHoverIndex,
   className = '',
+  maxHeight,
 }: SuggestDropdownProps) {
   if (!open) return null;
 
@@ -70,7 +72,10 @@ export default function SuggestDropdown({
               Actualizando sugerencias...
             </p>
           ) : null}
-          <div className={`${SEARCH_PANEL_SCROLL_CLASS} space-y-3`}>
+          <div
+            className={`${SEARCH_PANEL_SCROLL_CLASS} space-y-3`}
+            style={maxHeight ? { maxHeight } : undefined}
+          >
             {groups.map((group, groupIndex) => {
               if (group.items.length === 0) return null;
 

@@ -5,6 +5,7 @@ import {
   useMemo,
   useRef,
   useState,
+  type CSSProperties,
   type FormEvent,
   type KeyboardEvent as ReactKeyboardEvent,
 } from 'react';
@@ -52,6 +53,18 @@ type SearchSectionLabelProps = {
   icon: 'search' | 'location' | 'calendar';
   text: string;
   hideText?: boolean;
+};
+
+type ExploreDropdownMetrics = {
+  left: number;
+  width: number;
+  maxHeight: number;
+};
+
+type ExploreDropdownLayouts = {
+  query: ExploreDropdownMetrics | null;
+  location: ExploreDropdownMetrics | null;
+  date: ExploreDropdownMetrics | null;
 };
 
 const SURFACE_CLASSES: Record<NonNullable<UnifiedSearchBarProps['variant']>, string> = {
@@ -125,6 +138,9 @@ export default memo(function UnifiedSearchBar({
   onLocationClear,
 }: UnifiedSearchBarProps) {
   const wrapperRef = useRef<HTMLDivElement | null>(null);
+  const queryContainerRef = useRef<HTMLDivElement | null>(null);
+  const locationContainerRef = useRef<HTMLDivElement | null>(null);
+  const dateContainerRef = useRef<HTMLDivElement | null>(null);
   const isHero = variant === 'hero';
   const isExplore = variant === 'explore';
   const usesBareLayout = isHero || isExplore;
@@ -133,6 +149,11 @@ export default memo(function UnifiedSearchBar({
   const { resolvedTheme } = useTheme();
   const isDarkTheme = resolvedTheme === 'dark';
   const [heroExpandedField, setHeroExpandedField] = useState<'query' | null>(null);
+  const [exploreDropdownLayouts, setExploreDropdownLayouts] = useState<ExploreDropdownLayouts>({
+    query: null,
+    location: null,
+    date: null,
+  });
   const skipHeroSelectionFocusCollapseRef = useRef(false);
 
   const search = useUnifiedSearch({ initialValues, fixedQuery, citySuggestions });
@@ -373,6 +394,88 @@ export default memo(function UnifiedSearchBar({
       : 'rounded-[16px] !p-1'
     : 'rounded-[24px] p-1.5 sm:p-2';
 
+  const measureExploreDropdown = useCallback(
+    (
+      container: HTMLDivElement | null,
+      preferredWidth: number,
+      minVisibleHeight: number = 160,
+    ): ExploreDropdownMetrics | null => {
+      if (!isExplore || !wrapperRef.current || !container || typeof window === 'undefined') {
+        return null;
+      }
+
+      const wrapperRect = wrapperRef.current.getBoundingClientRect();
+      const containerRect = container.getBoundingClientRect();
+      const availableWidth = Math.max(wrapperRect.width, 0);
+
+      if (availableWidth <= 0) return null;
+
+      const width = Math.min(preferredWidth, availableWidth);
+      const unclampedLeft = containerRect.left - wrapperRect.left;
+      const left = Math.min(Math.max(unclampedLeft, 0), Math.max(availableWidth - width, 0));
+      const availableHeight = Math.max(window.innerHeight - containerRect.bottom - 16, minVisibleHeight);
+      const maxHeight = Math.min(availableHeight, Math.round(window.innerHeight * 0.6), 520);
+
+      return {
+        left: Math.round(left),
+        width: Math.round(width),
+        maxHeight: Math.round(Math.max(maxHeight, minVisibleHeight)),
+      };
+    },
+    [isExplore],
+  );
+
+  useEffect(() => {
+    if (!isExplore) return;
+    if (!isSearchOpen && !isLocationOpen && !isDateOpen) return;
+
+    const updateLayouts = () => {
+      setExploreDropdownLayouts({
+        query: measureExploreDropdown(queryContainerRef.current, 608, 180),
+        location: measureExploreDropdown(locationContainerRef.current, 420, 180),
+        date: measureExploreDropdown(dateContainerRef.current, 400, 180),
+      });
+    };
+
+    updateLayouts();
+
+    const resizeObserver =
+      typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(() => updateLayouts());
+
+    if (resizeObserver) {
+      if (wrapperRef.current) resizeObserver.observe(wrapperRef.current);
+      if (queryContainerRef.current) resizeObserver.observe(queryContainerRef.current);
+      if (locationContainerRef.current) resizeObserver.observe(locationContainerRef.current);
+      if (dateContainerRef.current) resizeObserver.observe(dateContainerRef.current);
+    }
+
+    window.addEventListener('resize', updateLayouts);
+
+    return () => {
+      resizeObserver?.disconnect();
+      window.removeEventListener('resize', updateLayouts);
+    };
+  }, [isDateOpen, isExplore, isLocationOpen, isSearchOpen, measureExploreDropdown]);
+
+  const buildExploreDropdownStyle = useCallback(
+    (metrics: ExploreDropdownMetrics | null): CSSProperties | undefined => {
+      if (!isExplore || !metrics) return undefined;
+
+      return {
+        left: metrics.left,
+        right: 'auto',
+        width: metrics.width,
+        maxWidth: '100%',
+      };
+    },
+    [isExplore],
+  );
+
+  const getExploreDropdownMaxHeight = useCallback(
+    (metrics: ExploreDropdownMetrics | null) => (isExplore ? metrics?.maxHeight : undefined),
+    [isExplore],
+  );
+
   const openSearchPanel = () => {
     setIsSearchOpen(true);
     setIsDateOpen(false);
@@ -492,7 +595,7 @@ export default memo(function UnifiedSearchBar({
           className={`relative overflow-visible ${surfaceClassName} ${SURFACE_CLASSES[variant]}`}
         >
           <div className={searchGridClassName}>
-            <div className={`relative min-w-0 ${queryWrapperOrderClassName}`.trim()}>
+            <div ref={queryContainerRef} className={`relative min-w-0 ${queryWrapperOrderClassName}`.trim()}>
               <SearchField
                 label={<SearchSectionLabel icon="search" text={queryFieldLabel} />}
                 active={isSearchOpen}
@@ -551,7 +654,8 @@ export default memo(function UnifiedSearchBar({
 
               {isSearchOpen ? (
                 <div
-                  className={`absolute left-0 right-0 top-[calc(100%+8px)] z-[80] sm:right-auto ${suggestDropdownWidthClassName}`.trim()}
+                  className={`absolute left-0 right-0 top-[calc(100%+8px)] z-[80] min-w-0 ${isExplore ? '' : `sm:right-auto ${suggestDropdownWidthClassName}`}`.trim()}
+                  style={buildExploreDropdownStyle(exploreDropdownLayouts.query)}
                 >
                   <SuggestDropdown
                     open={isSearchOpen}
@@ -561,12 +665,13 @@ export default memo(function UnifiedSearchBar({
                     onHoverIndex={setActiveSuggestionIndex}
                     onSelect={applySuggestion}
                     className={suggestDropdownPanelClassName}
+                    maxHeight={getExploreDropdownMaxHeight(exploreDropdownLayouts.query)}
                   />
                 </div>
               ) : null}
             </div>
 
-            <div className={`relative min-w-0 ${locationWrapperOrderClassName}`.trim()}>
+            <div ref={locationContainerRef} className={`relative min-w-0 ${locationWrapperOrderClassName}`.trim()}>
               <SearchField
                 label={<SearchSectionLabel icon="location" text="Ubicación" />}
                 active={isLocationOpen || hasLocationSelection}
@@ -620,10 +725,18 @@ export default memo(function UnifiedSearchBar({
 
               {isLocationOpen ? (
                 <div
-                  className={`absolute left-0 right-0 top-[calc(100%+8px)] z-[80] sm:w-[22rem] ${centeredHeroDropdownClassName}`.trim()}
+                  className={`absolute left-0 right-0 top-[calc(100%+8px)] z-[80] min-w-0 ${isExplore ? '' : `sm:w-[22rem] ${centeredHeroDropdownClassName}`}`.trim()}
+                  style={buildExploreDropdownStyle(exploreDropdownLayouts.location)}
                 >
                   <div className={SEARCH_PANEL_CLASS}>
-                    <div className={SEARCH_PANEL_SCROLL_CLASS}>
+                    <div
+                      className={SEARCH_PANEL_SCROLL_CLASS}
+                      style={
+                        getExploreDropdownMaxHeight(exploreDropdownLayouts.location)
+                          ? { maxHeight: getExploreDropdownMaxHeight(exploreDropdownLayouts.location) }
+                          : undefined
+                      }
+                    >
                       <LocationAutocomplete
                         locationInput={locationInput}
                         onLocationInputChange={(value) => {
@@ -662,7 +775,7 @@ export default memo(function UnifiedSearchBar({
               ) : null}
             </div>
 
-            <div className={`relative min-w-0 ${dateWrapperOrderClassName}`.trim()}>
+            <div ref={dateContainerRef} className={`relative min-w-0 ${dateWrapperOrderClassName}`.trim()}>
               <SearchField
                 label={<SearchSectionLabel icon="calendar" text="Fecha" />}
                 active={isDateOpen || hasDateSelection}
@@ -716,10 +829,18 @@ export default memo(function UnifiedSearchBar({
 
               {isDateOpen ? (
                 <div
-                  className={`absolute left-0 right-0 top-[calc(100%+8px)] z-[80] sm:w-[21.5rem] ${centeredHeroDropdownClassName}`.trim()}
+                  className={`absolute left-0 right-0 top-[calc(100%+8px)] z-[80] min-w-0 ${isExplore ? '' : `sm:w-[21.5rem] ${centeredHeroDropdownClassName}`}`.trim()}
+                  style={buildExploreDropdownStyle(exploreDropdownLayouts.date)}
                 >
                   <div className={SEARCH_PANEL_CLASS}>
-                    <div className={SEARCH_PANEL_SCROLL_CLASS}>
+                    <div
+                      className={SEARCH_PANEL_SCROLL_CLASS}
+                      style={
+                        getExploreDropdownMaxHeight(exploreDropdownLayouts.date)
+                          ? { maxHeight: getExploreDropdownMaxHeight(exploreDropdownLayouts.date) }
+                          : undefined
+                      }
+                    >
                       <DateFilter
                         date={values.date}
                         from={values.from}

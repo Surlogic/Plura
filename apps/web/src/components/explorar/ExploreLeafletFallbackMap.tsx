@@ -422,6 +422,7 @@ export default function ExploreLeafletFallbackMap({
             key={selectedItem.id}
             position={[selectedItem.latitude, selectedItem.longitude]}
             closeOnClick={false}
+            className="explore-map-popup"
             eventHandlers={{
               remove: () => {
                 if (selectedResultIdRef.current !== selectedItem.id) return;

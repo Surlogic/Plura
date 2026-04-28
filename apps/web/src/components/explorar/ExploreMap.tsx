@@ -539,6 +539,7 @@ function ExploreMap({
             latitude={selectedItem.latitude}
             anchor="top"
             closeOnClick={false}
+            className="explore-map-popup"
             onClose={() => handlePopupClose(selectedItem.id)}
             offset={14}
           >

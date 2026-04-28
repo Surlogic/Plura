@@ -147,13 +147,12 @@ public class SearchNativeRepository {
                 + "AND (:queryBlank = true OR ("
                 + "  svc.service_name_normalized % :queryNormalized "
                 + "  OR svc.service_name_normalized LIKE :queryLike "
-                + "  OR svc.search_vector @@ plainto_tsquery('simple', :queryTs)"
                 + ")) "
                 + "GROUP BY svc.service_name "
                 + "ORDER BY "
                 + "CASE WHEN :queryBlank = false THEN MAX(GREATEST("
                 + "  similarity(svc.service_name_normalized, :queryNormalized), "
-                + "  COALESCE(ts_rank_cd(svc.search_vector, plainto_tsquery('simple', :queryTs)), 0.0)"
+                + "  CASE WHEN svc.service_name_normalized LIKE :queryLike THEN 1.0 ELSE 0.0 END"
                 + ")) ELSE NULL END DESC NULLS LAST, "
                 + "COUNT(*) DESC, svc.service_name ASC "
                 + "LIMIT :limit";
@@ -162,31 +161,23 @@ public class SearchNativeRepository {
             "SELECT "
                 + "doc.professional_id::text AS id, "
                 + "doc.display_name AS full_name, "
-                + "COALESCE(NULLIF(doc.public_headline, ''), doc.display_name) AS local_name, "
+                + "doc.display_name AS local_name, "
                 + "doc.rating AS rating, "
                 + "doc.reviews_count AS reviews_count, "
                 + "GREATEST("
                 + "  similarity(doc.name_normalized, :queryNormalized), "
-                + "  similarity(doc.headline_normalized, :queryNormalized), "
-                + "  COALESCE(ts_rank_cd(doc.search_vector, plainto_tsquery('simple', :queryTs)), 0.0)"
+                + "  CASE WHEN doc.name_normalized LIKE :queryLike THEN 1.0 ELSE 0.0 END"
                 + ") AS professional_score, "
                 + "GREATEST("
-                + "  similarity(doc.headline_normalized, :queryNormalized), "
                 + "  similarity(doc.name_normalized, :queryNormalized), "
-                + "  similarity(doc.location_text_normalized, :queryNormalized), "
-                + "  COALESCE(ts_rank_cd(doc.search_vector, plainto_tsquery('simple', :queryTs)), 0.0)"
+                + "  CASE WHEN doc.name_normalized LIKE :queryLike THEN 1.0 ELSE 0.0 END"
                 + ") AS local_score "
                 + "FROM " + PROFESSIONAL_DOCUMENT_VIEW + " doc "
                 + "WHERE 1 = 1 "
                 + professionalLocationClause
                 + "AND (:queryBlank = true OR ("
                 + "  doc.name_normalized % :queryNormalized "
-                + "  OR doc.headline_normalized % :queryNormalized "
-                + "  OR doc.location_text_normalized % :queryNormalized "
                 + "  OR doc.name_normalized LIKE :queryLike "
-                + "  OR doc.headline_normalized LIKE :queryLike "
-                + "  OR doc.location_text_normalized LIKE :queryLike "
-                + "  OR doc.search_vector @@ plainto_tsquery('simple', :queryTs)"
                 + ")) "
                 + "ORDER BY doc.rating DESC, doc.reviews_count DESC, full_name ASC "
                 + "LIMIT :profilePoolLimit";
@@ -237,20 +228,20 @@ public class SearchNativeRepository {
         List<SearchSuggestItemResponse> professionals = profilePool.stream()
             .sorted(professionalOrder)
             .limit(limit)
-            .map(candidate -> new SearchSuggestItemResponse(candidate.id(), candidate.fullName()))
+            .map(candidate -> SearchSuggestItemResponse.professional(candidate.id(), candidate.fullName()))
             .collect(Collectors.toList());
 
         List<SearchSuggestItemResponse> locals = profilePool.stream()
             .sorted(localOrder)
             .limit(limit)
-            .map(candidate -> new SearchSuggestItemResponse(candidate.id(), candidate.localName()))
+            .map(candidate -> SearchSuggestItemResponse.local(candidate.id(), candidate.localName()))
             .collect(Collectors.toList());
 
         List<SearchSuggestItemResponse> popularNearby = criteria.hasLocationFilter()
             ? profilePool.stream()
                 .sorted(nearbyOrder)
                 .limit(MAX_POPULAR_NEARBY)
-                .map(candidate -> new SearchSuggestItemResponse(candidate.id(), candidate.localName()))
+                .map(candidate -> SearchSuggestItemResponse.local(candidate.id(), candidate.localName()))
                 .collect(Collectors.toList())
             : List.of();
 
@@ -643,7 +634,7 @@ public class SearchNativeRepository {
     };
 
     private static final RowMapper<SearchSuggestItemResponse> SEARCH_SUGGEST_ITEM_ROW_MAPPER =
-        (rs, rowNum) -> new SearchSuggestItemResponse(rs.getString("id"), rs.getString("name"));
+        (rs, rowNum) -> SearchSuggestItemResponse.service(rs.getString("id"), rs.getString("name"));
 
     public record SearchPageResult(long total, List<SearchItemResponse> items, boolean hasNext) {}
 }

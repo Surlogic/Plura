@@ -15,6 +15,7 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.text.Normalizer;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
@@ -119,18 +120,26 @@ public class MeiliSearchEngineClient implements SearchEngineClient {
             Set<String> services = new LinkedHashSet<>();
             List<SearchSuggestItemResponse> professionals = new ArrayList<>();
             List<SearchSuggestItemResponse> locals = new ArrayList<>();
+            String normalizedQuery = normalizeSuggestText(criteria.query());
+            boolean queryBlank = normalizedQuery.isBlank();
 
             for (Map<String, Object> hit : hits) {
                 Long id = toLong(hit.get("id"));
                 String displayName = safeString(hit.get("displayName"));
-                String localName = safeString(hit.get("locationText"));
-                readStringList(hit.get("categories")).forEach(categories::add);
-                readStringList(hit.get("services")).forEach(services::add);
-                if (id != null && !displayName.isBlank() && professionals.size() < limit) {
-                    professionals.add(new SearchSuggestItemResponse(String.valueOf(id), displayName));
+                boolean displayNameMatches = queryBlank || matchesSuggestText(displayName, normalizedQuery);
+
+                readStringList(hit.get("categories")).stream()
+                    .filter(name -> queryBlank || matchesSuggestText(name, normalizedQuery))
+                    .forEach(categories::add);
+                readStringList(hit.get("services")).stream()
+                    .filter(name -> queryBlank || matchesSuggestText(name, normalizedQuery))
+                    .forEach(services::add);
+
+                if (id != null && !displayName.isBlank() && displayNameMatches && professionals.size() < limit) {
+                    professionals.add(SearchSuggestItemResponse.professional(String.valueOf(id), displayName));
                 }
-                if (id != null && !localName.isBlank() && locals.size() < limit) {
-                    locals.add(new SearchSuggestItemResponse(String.valueOf(id), localName));
+                if (id != null && !displayName.isBlank() && displayNameMatches && locals.size() < limit) {
+                    locals.add(SearchSuggestItemResponse.local(String.valueOf(id), displayName));
                 }
             }
 
@@ -140,7 +149,7 @@ public class MeiliSearchEngineClient implements SearchEngineClient {
                 .collect(Collectors.toList());
             List<SearchSuggestItemResponse> serviceResponses = services.stream()
                 .limit(limit)
-                .map(name -> new SearchSuggestItemResponse(null, name))
+                .map(name -> SearchSuggestItemResponse.service(null, name))
                 .collect(Collectors.toList());
 
             return new SearchSuggestResponse(
@@ -256,6 +265,14 @@ public class MeiliSearchEngineClient implements SearchEngineClient {
         return value == null ? "" : String.valueOf(value).trim();
     }
 
+    private boolean matchesSuggestText(String value, String normalizedQuery) {
+        if (normalizedQuery == null || normalizedQuery.isBlank()) {
+            return true;
+        }
+        String normalizedValue = normalizeSuggestText(value);
+        return !normalizedValue.isBlank() && normalizedValue.contains(normalizedQuery);
+    }
+
     private List<String> readStringList(Object value) {
         if (!(value instanceof List<?> list)) {
             return List.of();
@@ -295,6 +312,14 @@ public class MeiliSearchEngineClient implements SearchEngineClient {
         return value.toLowerCase(Locale.ROOT)
             .replaceAll("[^a-z0-9]+", "-")
             .replaceAll("(^-+|-+$)", "");
+    }
+
+    private String normalizeSuggestText(String value) {
+        if (value == null) {
+            return "";
+        }
+        return Normalizer.normalize(value.trim().toLowerCase(Locale.ROOT), Normalizer.Form.NFD)
+            .replaceAll("\\p{InCombiningDiacriticalMarks}+", "");
     }
 
     private String normalizeHost(String rawHost) {

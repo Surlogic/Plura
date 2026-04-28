@@ -156,6 +156,61 @@ export const getAdaptiveValueClass = (value: string) => {
   return 'text-[0.93rem]';
 };
 
+const normalizeSuggestionLabel = (value?: string | null) => {
+  const trimmed = value?.trim();
+  return trimmed ? trimmed : null;
+};
+
+const resolveSuggestionLabel = (
+  item: SearchSuggestionItem,
+  type: Exclude<SearchType, 'RUBRO'>,
+) => {
+  if (type === 'LOCAL') {
+    return (
+      normalizeSuggestionLabel(item.displayName)
+      || normalizeSuggestionLabel(item.businessName)
+      || normalizeSuggestionLabel(item.professionalName)
+      || normalizeSuggestionLabel(item.name)
+    );
+  }
+
+  if (type === 'PROFESIONAL') {
+    return (
+      normalizeSuggestionLabel(item.displayName)
+      || normalizeSuggestionLabel(item.professionalName)
+      || normalizeSuggestionLabel(item.businessName)
+      || normalizeSuggestionLabel(item.name)
+    );
+  }
+
+  return (
+    normalizeSuggestionLabel(item.displayName)
+    || normalizeSuggestionLabel(item.serviceName)
+    || normalizeSuggestionLabel(item.name)
+  );
+};
+
+const dedupeSuggestionItems = (items: SuggestDropdownItem[], maxItems: number) => {
+  const unique: SuggestDropdownItem[] = [];
+  const seen = new Set<string>();
+
+  for (const item of items) {
+    const label = normalizeSearchText(item.label);
+    if (!label) continue;
+
+    if (seen.has(label)) continue;
+
+    seen.add(label);
+    unique.push(item);
+
+    if (unique.length >= maxItems) {
+      break;
+    }
+  }
+
+  return unique;
+};
+
 const GLOBAL_SEARCH_OPTION: SuggestDropdownItem = {
   id: 'all-services-or-categories',
   type: 'SERVICIO',
@@ -166,28 +221,6 @@ const GLOBAL_SEARCH_OPTION: SuggestDropdownItem = {
 
 const LOCATION_AUTOCOMPLETE_DEBOUNCE_MS = 300;
 const SEARCH_SUGGEST_DEBOUNCE_MS = 350;
-
-const interleaveSuggestionItems = (
-  sources: SuggestDropdownItem[][],
-  maxItems = 12,
-) => {
-  const buckets = sources.map((items) => [...items]);
-  const mixed: SuggestDropdownItem[] = [];
-
-  while (mixed.length < maxItems) {
-    let progressed = false;
-    buckets.forEach((bucket) => {
-      if (mixed.length >= maxItems) return;
-      const item = bucket.shift();
-      if (!item) return;
-      mixed.push(item);
-      progressed = true;
-    });
-    if (!progressed) break;
-  }
-
-  return mixed;
-};
 
 type UseUnifiedSearchOptions = {
   initialValues?: Partial<UnifiedSearchValues>;
@@ -658,27 +691,50 @@ export function useUnifiedSearch({
       ...item,
       id: `mix-rubro-${item.categorySlug || item.id}-${index}`,
     }));
-    const serviceItems = suggestions.services.map((item, index) => ({
-      id: `mix-servicio-${item.id || item.name}-${index}`,
-      type: 'SERVICIO' as const,
-      label: item.name,
-      secondary: 'Servicio',
-    }));
-    const professionalItems = suggestions.professionals.map((item, index) => ({
-      id: `mix-profesional-${item.id || item.name}-${index}`,
-      type: 'PROFESIONAL' as const,
-      label: item.name,
-      secondary: 'Profesional',
-    }));
-    const businessItems = suggestions.locals.map((item, index) => ({
-      id: `mix-negocio-${item.id || item.name}-${index}`,
-      type: 'LOCAL' as const,
-      label: item.name,
-      secondary: 'Negocio',
-    }));
+    const businessItems = suggestions.locals
+      .map((item, index) => {
+        const label = resolveSuggestionLabel(item, 'LOCAL');
+        if (!label) return null;
 
-    return interleaveSuggestionItems(
-      [serviceItems, catItems, professionalItems, businessItems],
+        return {
+          id: `mix-negocio-${item.id || label}-${index}`,
+          type: 'LOCAL' as const,
+          label,
+        };
+      })
+      .filter((item): item is SuggestDropdownItem => item !== null);
+    const professionalItems = suggestions.professionals
+      .map((item, index) => {
+        const label = resolveSuggestionLabel(item, 'PROFESIONAL');
+        if (!label) return null;
+
+        return {
+          id: `mix-profesional-${item.id || label}-${index}`,
+          type: 'PROFESIONAL' as const,
+          label,
+        };
+      })
+      .filter((item): item is SuggestDropdownItem => item !== null);
+    const serviceItems = suggestions.services
+      .map((item, index) => {
+        const label = resolveSuggestionLabel(item, 'SERVICIO');
+        if (!label) return null;
+
+        return {
+          id: `mix-servicio-${item.id || label}-${index}`,
+          type: 'SERVICIO' as const,
+          label,
+        };
+      })
+      .filter((item): item is SuggestDropdownItem => item !== null);
+
+    return dedupeSuggestionItems(
+      [
+        ...catItems,
+        ...businessItems,
+        ...professionalItems,
+        ...serviceItems,
+      ],
       12,
     );
   }, [categoryDropdownItems, suggestions.locals, suggestions.professionals, suggestions.services]);

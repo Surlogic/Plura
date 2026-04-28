@@ -9,6 +9,7 @@ import {
   type FormEvent,
   type KeyboardEvent as ReactKeyboardEvent,
 } from 'react';
+import { createPortal } from 'react-dom';
 import DateFilter from '@/components/search/DateFilter';
 import LocationAutocomplete from '@/components/search/LocationAutocomplete';
 import SearchField from '@/components/search/SearchField';
@@ -57,6 +58,7 @@ type SearchSectionLabelProps = {
 
 type ExploreDropdownMetrics = {
   left: number;
+  top: number;
   width: number;
   maxHeight: number;
 };
@@ -138,6 +140,7 @@ export default memo(function UnifiedSearchBar({
   onLocationClear,
 }: UnifiedSearchBarProps) {
   const wrapperRef = useRef<HTMLDivElement | null>(null);
+  const exploreDropdownPortalRef = useRef<HTMLDivElement | null>(null);
   const queryContainerRef = useRef<HTMLDivElement | null>(null);
   const locationContainerRef = useRef<HTMLDivElement | null>(null);
   const dateContainerRef = useRef<HTMLDivElement | null>(null);
@@ -205,7 +208,11 @@ export default memo(function UnifiedSearchBar({
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (wrapperRef.current && !wrapperRef.current.contains(event.target as Node)) {
+      const target = event.target as Node;
+      const clickedInsideWrapper = wrapperRef.current?.contains(target);
+      const clickedInsideExplorePortal = exploreDropdownPortalRef.current?.contains(target);
+
+      if (!clickedInsideWrapper && !clickedInsideExplorePortal) {
         stableCloseAllDropdowns();
       }
     };
@@ -409,12 +416,12 @@ export default memo(function UnifiedSearchBar({
 
       if (availableWidth <= 0) return null;
 
-      const offsetWithinWrapper = containerRect.left - wrapperRect.left;
       const availableHeight = Math.max(window.innerHeight - containerRect.bottom - 16, minVisibleHeight);
       const maxHeight = Math.min(availableHeight, Math.round(window.innerHeight * 0.6), 520);
 
       return {
-        left: Math.round(-offsetWithinWrapper),
+        left: Math.round(wrapperRect.left),
+        top: Math.round(containerRect.bottom + 8),
         width: Math.round(availableWidth),
         maxHeight: Math.round(Math.max(maxHeight, minVisibleHeight)),
       };
@@ -447,10 +454,12 @@ export default memo(function UnifiedSearchBar({
     }
 
     window.addEventListener('resize', updateLayouts);
+    window.addEventListener('scroll', updateLayouts, true);
 
     return () => {
       resizeObserver?.disconnect();
       window.removeEventListener('resize', updateLayouts);
+      window.removeEventListener('scroll', updateLayouts, true);
     };
   }, [isDateOpen, isExplore, isLocationOpen, isSearchOpen, measureExploreDropdown]);
 
@@ -460,7 +469,7 @@ export default memo(function UnifiedSearchBar({
 
       return {
         left: metrics.left,
-        right: 'auto',
+        top: metrics.top,
         width: metrics.width,
         maxWidth: metrics.width,
         minWidth: 'min(360px, 100%)',
@@ -472,6 +481,29 @@ export default memo(function UnifiedSearchBar({
   const getExploreDropdownMaxHeight = useCallback(
     (metrics: ExploreDropdownMetrics | null) => (isExplore ? metrics?.maxHeight : undefined),
     [isExplore],
+  );
+  const renderExploreDropdownPortal = useCallback(
+    (content: JSX.Element, metrics: ExploreDropdownMetrics | null) => {
+      if (!isExplore || !metrics || typeof document === 'undefined') {
+        return null;
+      }
+
+      return createPortal(
+        <div
+          ref={exploreDropdownPortalRef}
+          className="pointer-events-none fixed inset-0 z-[220]"
+        >
+          <div
+            className="pointer-events-auto absolute"
+            style={buildExploreDropdownStyle(metrics)}
+          >
+            {content}
+          </div>
+        </div>,
+        document.body,
+      );
+    },
+    [buildExploreDropdownStyle, isExplore],
   );
 
   const openSearchPanel = () => {
@@ -651,21 +683,36 @@ export default memo(function UnifiedSearchBar({
               </SearchField>
 
               {isSearchOpen ? (
-                <div
-                  className={`absolute left-0 right-0 top-[calc(100%+8px)] z-[80] min-w-0 ${isExplore ? '' : `sm:right-auto ${suggestDropdownWidthClassName}`}`.trim()}
-                  style={buildExploreDropdownStyle(exploreDropdownLayouts.query)}
-                >
-                  <SuggestDropdown
-                    open={isSearchOpen}
-                    loading={isSuggestLoading}
-                    groups={dropdownGroups}
-                    activeIndex={activeSuggestionIndex}
-                    onHoverIndex={setActiveSuggestionIndex}
-                    onSelect={applySuggestion}
-                    className={suggestDropdownPanelClassName}
-                    maxHeight={getExploreDropdownMaxHeight(exploreDropdownLayouts.query)}
-                  />
-                </div>
+                isExplore
+                  ? renderExploreDropdownPortal(
+                      <SuggestDropdown
+                        open={isSearchOpen}
+                        loading={isSuggestLoading}
+                        groups={dropdownGroups}
+                        activeIndex={activeSuggestionIndex}
+                        onHoverIndex={setActiveSuggestionIndex}
+                        onSelect={applySuggestion}
+                        className={suggestDropdownPanelClassName}
+                        maxHeight={getExploreDropdownMaxHeight(exploreDropdownLayouts.query)}
+                      />,
+                      exploreDropdownLayouts.query,
+                    )
+                  : (
+                      <div
+                        className={`absolute left-0 right-0 top-[calc(100%+8px)] z-[80] min-w-0 sm:right-auto ${suggestDropdownWidthClassName}`.trim()}
+                      >
+                        <SuggestDropdown
+                          open={isSearchOpen}
+                          loading={isSuggestLoading}
+                          groups={dropdownGroups}
+                          activeIndex={activeSuggestionIndex}
+                          onHoverIndex={setActiveSuggestionIndex}
+                          onSelect={applySuggestion}
+                          className={suggestDropdownPanelClassName}
+                          maxHeight={getExploreDropdownMaxHeight(exploreDropdownLayouts.query)}
+                        />
+                      </div>
+                    )
               ) : null}
             </div>
 
@@ -722,54 +769,95 @@ export default memo(function UnifiedSearchBar({
               </SearchField>
 
               {isLocationOpen ? (
-                <div
-                  className={`absolute left-0 right-0 top-[calc(100%+8px)] z-[80] min-w-0 ${isExplore ? '' : `sm:w-[22rem] ${centeredHeroDropdownClassName}`}`.trim()}
-                  style={buildExploreDropdownStyle(exploreDropdownLayouts.location)}
-                >
-                  <div className={SEARCH_PANEL_CLASS}>
-                    <div
-                      className={SEARCH_PANEL_SCROLL_CLASS}
-                      style={
-                        getExploreDropdownMaxHeight(exploreDropdownLayouts.location)
-                          ? { maxHeight: getExploreDropdownMaxHeight(exploreDropdownLayouts.location) }
-                          : undefined
-                      }
-                    >
-                      <LocationAutocomplete
-                        locationInput={locationInput}
-                        onLocationInputChange={(value) => {
-                          setLocationInput(value);
-                          setValues((previous) => ({
-                            ...previous,
-                            city: value,
-                            lat: undefined,
-                            lng: undefined,
-                          }));
-                        }}
-                        onUseCurrentLocation={handleUseCurrentLocation}
-                        onSelectGeoItem={selectGeoItem}
-                        onSelectCity={selectCity}
-                        geoSuggestions={geoSuggestions}
-                        recentCities={mergedCitySuggestions}
-                        geoStatus={geoStatus}
-                        geoMessage={geoMessage}
-                        popularNearby={nearbyCandidates}
-                        radiusKm={values.radiusKm}
-                        onRadiusChange={setRadiusKm}
-                        onPickPopularNearby={(item) => {
-                          setValues((prev) => ({
-                            ...prev,
-                            type: 'LOCAL',
-                            query: item.name,
-                            categorySlug: undefined,
-                          }));
-                          setSearchInput(item.name);
-                          setIsLocationOpen(false);
-                        }}
-                      />
-                    </div>
-                  </div>
-                </div>
+                isExplore
+                  ? renderExploreDropdownPortal(
+                      <div className={SEARCH_PANEL_CLASS}>
+                        <div
+                          className={SEARCH_PANEL_SCROLL_CLASS}
+                          style={
+                            getExploreDropdownMaxHeight(exploreDropdownLayouts.location)
+                              ? { maxHeight: getExploreDropdownMaxHeight(exploreDropdownLayouts.location) }
+                              : undefined
+                          }
+                        >
+                          <LocationAutocomplete
+                            locationInput={locationInput}
+                            onLocationInputChange={(value) => {
+                              setLocationInput(value);
+                              setValues((previous) => ({
+                                ...previous,
+                                city: value,
+                                lat: undefined,
+                                lng: undefined,
+                              }));
+                            }}
+                            onUseCurrentLocation={handleUseCurrentLocation}
+                            onSelectGeoItem={selectGeoItem}
+                            onSelectCity={selectCity}
+                            geoSuggestions={geoSuggestions}
+                            recentCities={mergedCitySuggestions}
+                            geoStatus={geoStatus}
+                            geoMessage={geoMessage}
+                            popularNearby={nearbyCandidates}
+                            radiusKm={values.radiusKm}
+                            onRadiusChange={setRadiusKm}
+                            onPickPopularNearby={(item) => {
+                              setValues((prev) => ({
+                                ...prev,
+                                type: 'LOCAL',
+                                query: item.name,
+                                categorySlug: undefined,
+                              }));
+                              setSearchInput(item.name);
+                              setIsLocationOpen(false);
+                            }}
+                          />
+                        </div>
+                      </div>,
+                      exploreDropdownLayouts.location,
+                    )
+                  : (
+                      <div
+                        className={`absolute left-0 right-0 top-[calc(100%+8px)] z-[80] min-w-0 sm:w-[22rem] ${centeredHeroDropdownClassName}`.trim()}
+                      >
+                        <div className={SEARCH_PANEL_CLASS}>
+                          <div className={SEARCH_PANEL_SCROLL_CLASS}>
+                            <LocationAutocomplete
+                              locationInput={locationInput}
+                              onLocationInputChange={(value) => {
+                                setLocationInput(value);
+                                setValues((previous) => ({
+                                  ...previous,
+                                  city: value,
+                                  lat: undefined,
+                                  lng: undefined,
+                                }));
+                              }}
+                              onUseCurrentLocation={handleUseCurrentLocation}
+                              onSelectGeoItem={selectGeoItem}
+                              onSelectCity={selectCity}
+                              geoSuggestions={geoSuggestions}
+                              recentCities={mergedCitySuggestions}
+                              geoStatus={geoStatus}
+                              geoMessage={geoMessage}
+                              popularNearby={nearbyCandidates}
+                              radiusKm={values.radiusKm}
+                              onRadiusChange={setRadiusKm}
+                              onPickPopularNearby={(item) => {
+                                setValues((prev) => ({
+                                  ...prev,
+                                  type: 'LOCAL',
+                                  query: item.name,
+                                  categorySlug: undefined,
+                                }));
+                                setSearchInput(item.name);
+                                setIsLocationOpen(false);
+                              }}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    )
               ) : null}
             </div>
 
@@ -826,49 +914,85 @@ export default memo(function UnifiedSearchBar({
               </SearchField>
 
               {isDateOpen ? (
-                <div
-                  className={`absolute left-0 right-0 top-[calc(100%+8px)] z-[80] min-w-0 ${isExplore ? '' : `sm:w-[21.5rem] ${centeredHeroDropdownClassName}`}`.trim()}
-                  style={buildExploreDropdownStyle(exploreDropdownLayouts.date)}
-                >
-                  <div className={SEARCH_PANEL_CLASS}>
-                    <div
-                      className={SEARCH_PANEL_SCROLL_CLASS}
-                      style={
-                        getExploreDropdownMaxHeight(exploreDropdownLayouts.date)
-                          ? { maxHeight: getExploreDropdownMaxHeight(exploreDropdownLayouts.date) }
-                          : undefined
-                      }
-                    >
-                      <DateFilter
-                        date={values.date}
-                        from={values.from}
-                        to={values.to}
-                        availableNow={values.availableNow}
-                        todayIso={todayIso}
-                        onPickAnytime={setAnytime}
-                        onPickToday={pickToday}
-                        onPickTomorrow={pickTomorrow}
-                        onPickThisWeek={pickThisWeek}
-                        onPickDate={(value) => {
-                          const nextDate = normalizeDate(value);
-                          setValues((previous) => ({
-                            ...previous,
-                            date: nextDate,
-                            from: undefined,
-                            to: undefined,
-                          }));
-                        }}
-                        onToggleAvailableNow={() =>
-                          setValues((previous) => ({
-                            ...previous,
-                            availableNow: !previous.availableNow,
-                          }))
-                        }
-                        showAvailableToggle
-                      />
-                    </div>
-                  </div>
-                </div>
+                isExplore
+                  ? renderExploreDropdownPortal(
+                      <div className={SEARCH_PANEL_CLASS}>
+                        <div
+                          className={SEARCH_PANEL_SCROLL_CLASS}
+                          style={
+                            getExploreDropdownMaxHeight(exploreDropdownLayouts.date)
+                              ? { maxHeight: getExploreDropdownMaxHeight(exploreDropdownLayouts.date) }
+                              : undefined
+                          }
+                        >
+                          <DateFilter
+                            date={values.date}
+                            from={values.from}
+                            to={values.to}
+                            availableNow={values.availableNow}
+                            todayIso={todayIso}
+                            onPickAnytime={setAnytime}
+                            onPickToday={pickToday}
+                            onPickTomorrow={pickTomorrow}
+                            onPickThisWeek={pickThisWeek}
+                            onPickDate={(value) => {
+                              const nextDate = normalizeDate(value);
+                              setValues((previous) => ({
+                                ...previous,
+                                date: nextDate,
+                                from: undefined,
+                                to: undefined,
+                              }));
+                            }}
+                            onToggleAvailableNow={() =>
+                              setValues((previous) => ({
+                                ...previous,
+                                availableNow: !previous.availableNow,
+                              }))
+                            }
+                            showAvailableToggle
+                          />
+                        </div>
+                      </div>,
+                      exploreDropdownLayouts.date,
+                    )
+                  : (
+                      <div
+                        className={`absolute left-0 right-0 top-[calc(100%+8px)] z-[80] min-w-0 sm:w-[21.5rem] ${centeredHeroDropdownClassName}`.trim()}
+                      >
+                        <div className={SEARCH_PANEL_CLASS}>
+                          <div className={SEARCH_PANEL_SCROLL_CLASS}>
+                            <DateFilter
+                              date={values.date}
+                              from={values.from}
+                              to={values.to}
+                              availableNow={values.availableNow}
+                              todayIso={todayIso}
+                              onPickAnytime={setAnytime}
+                              onPickToday={pickToday}
+                              onPickTomorrow={pickTomorrow}
+                              onPickThisWeek={pickThisWeek}
+                              onPickDate={(value) => {
+                                const nextDate = normalizeDate(value);
+                                setValues((previous) => ({
+                                  ...previous,
+                                  date: nextDate,
+                                  from: undefined,
+                                  to: undefined,
+                                }));
+                              }}
+                              onToggleAvailableNow={() =>
+                                setValues((previous) => ({
+                                  ...previous,
+                                  availableNow: !previous.availableNow,
+                                }))
+                              }
+                              showAvailableToggle
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    )
               ) : null}
             </div>
 

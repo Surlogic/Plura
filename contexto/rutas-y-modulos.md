@@ -98,6 +98,7 @@ Lectura de producto:
 - en la geoseleccion de `/explorar`, el frontend ya no persiste la direccion completa de Mapbox como `city` para backend; prioriza una ciudad/zona mas amplia y deja las coordenadas como filtro fuerte
 - al escribir manualmente en la barra de `/explorar`, si el usuario venia refinando una busqueda de `PROFESIONAL` o `LOCAL`, el frontend ya no pisa ese tipo automaticamente en cada tecla
 - home, dashboard cliente y `/explorar` ahora reutilizan exactamente la misma barra base de busqueda (`components/search/UnifiedSearchBar`) y tambien la misma presentacion visual del home: mismo shell hero, mismos contratos y mismos dropdowns; la diferencia es que el home activa una prop especifica de la variante `hero` para expandir `Servicios` en desktop y compactar `Ubicacion/Fecha` a icono mientras ese campo queda activo, mientras `/explorar` conserva el refinamiento completo con chips activos dentro del mismo buscador sin esa animacion
+- en ese dropdown compartido, cuando hay texto en el campo principal, la sugerencia visible ya prioriza `Categoría -> Local -> Profesional -> Servicio` con labels limpios por tipo; no debe usar `headline/about/descripciones` como texto principal y deduplica labels repetidos entre tipos
 - `/profesional/pagina/[slug]` y `/profesional/[slug]` ahora separan mejor perfil y reserva: hero editorial con CTA liviano, servicios en lista compacta, galeria contenida, bloque unificado de ubicacion/horarios y reseñas; la operacion completa de reserva queda derivada a `/reservar`
 - `/auth/forgot-password` y `/auth/reset-password` ahora redirigen automaticamente al login correcto (`/cliente/auth/login` o `/profesional/auth/login`) segun el `role` que devuelve backend al completar el reset
 - `/cliente/auth/complete-phone` y `/profesional/auth/complete-phone` completan el telefono faltante despues de OAuth via `POST /auth/oauth/complete-phone`
@@ -274,6 +275,7 @@ Modulos relevantes:
 - `hooks/useCategories.ts`: carga de categorias para el buscador.
 - `hooks/usePublicProfessionals.ts`: carga de profesionales publicos para superficies de descubrimiento.
 - `hooks/useUnifiedSearch.ts`: hook grande de busqueda unificada con filtros, resultados y estado.
+- `hooks/useUnifiedSearch.ts`: al mapear `/api/search/suggest`, prioriza `displayName/businessName/professionalName/serviceName` segun el tipo antes de caer a `name`, y descarta sugerencias sin label util
 - `hooks/useClientProfile.ts`: perfil del cliente autenticado.
 - `services/search.ts`: integra search y suggest.
 - `services/geo.ts`: geocoding y autocomplete.

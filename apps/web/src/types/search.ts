@@ -59,6 +59,10 @@ export type SearchSuggestionCategory = {
 export type SearchSuggestionItem = {
   id?: string | null;
   name: string;
+  displayName?: string | null;
+  professionalName?: string | null;
+  businessName?: string | null;
+  serviceName?: string | null;
 };
 
 export type SearchSuggestResponse = {

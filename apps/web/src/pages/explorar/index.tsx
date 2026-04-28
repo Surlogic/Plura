@@ -1124,15 +1124,23 @@ export default function ExplorarPage() {
       </div>
     </>
   );
+  const mapViewPanelShellClassName =
+    'relative z-[90] flex h-full min-h-0 w-full flex-col overflow-hidden bg-[linear-gradient(180deg,var(--bg-soft)_0%,var(--surface-soft)_100%)] lg:min-w-[520px] lg:basis-[38vw] lg:max-w-[620px]';
+  const mapViewPanelHeaderClassName =
+    'relative z-[100] shrink-0 overflow-visible border-b border-[color:var(--border-soft)] bg-[color:var(--surface)]/94 px-2 py-2 shadow-[0_14px_30px_-34px_rgba(13,35,58,0.32)] backdrop-blur-xl';
+  const mapViewFeedbackClassName =
+    'rounded-[18px] border border-[color:var(--border-soft)] bg-[color:var(--surface-strong)] px-4 py-3 text-sm text-[color:var(--ink-muted)] shadow-[var(--shadow-card)]';
+  const mapViewEmptyStateClassName =
+    'rounded-[20px] border border-dashed border-[color:var(--border-soft)] bg-[color:var(--surface-strong)] px-4 py-6 text-sm text-[color:var(--ink-muted)] shadow-[var(--shadow-card)]';
 
   if (isMapView) {
     return (
       <div className="flex h-[100dvh] flex-col overflow-hidden bg-[color:var(--bg-soft)] text-[color:var(--ink)]">
         {navbar}
         <main className="relative isolate h-0 min-h-0 w-full flex-1 overflow-hidden">
-          <section className="relative z-0 flex h-full min-h-0 w-full flex-col gap-px overflow-hidden bg-[#E2E7EC] lg:flex-row">
-            <div className="relative z-[90] flex h-full min-h-0 w-full flex-col overflow-visible bg-white lg:min-w-[520px] lg:basis-[38vw] lg:max-w-[620px]">
-              <div className="relative z-[100] shrink-0 overflow-visible border-b border-[#E2E7EC] px-2 py-2">
+          <section className="relative z-0 flex h-full min-h-0 w-full flex-col gap-px overflow-hidden bg-[color:var(--border-soft)] lg:flex-row">
+            <div className={mapViewPanelShellClassName}>
+              <div className={mapViewPanelHeaderClassName}>
                 {exploreFiltersControl}
                 <div className="mt-1 flex items-center justify-end">
                   {exploreSortControl}
@@ -1142,16 +1150,16 @@ export default function ExplorarPage() {
               <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-2 py-2">
                 <div className="pr-1">
                   {error ? (
-                    <div className="rounded-[16px] border border-dashed border-[#E2E7EC] bg-[#F8FAFC] px-4 py-6 text-sm text-[#64748B]">
+                    <div className={mapViewEmptyStateClassName}>
                       {error}
                     </div>
                   ) : items.length === 0 ? (
-                    <div className="rounded-[16px] border border-dashed border-[#E2E7EC] bg-[#F8FAFC] px-4 py-6 text-sm text-[#64748B]">
+                    <div className={mapViewEmptyStateClassName}>
                       {isLoading ? (
                         'Buscando profesionales...'
                       ) : (
                         <div className="space-y-1">
-                          <p className="font-semibold text-[#0E2A47]">
+                          <p className="font-semibold text-[color:var(--ink)]">
                             No encontramos profesionales en esta zona.
                           </p>
                           <p>Intentá ampliar el radio, buscar otra categoría o quitar filtros.</p>
@@ -1161,7 +1169,7 @@ export default function ExplorarPage() {
                   ) : (
                     <div className="space-y-3">
                       {hasResultsWithoutMapCoordinates ? (
-                        <div className="rounded-[16px] border border-[#E2E7EC] bg-[#F8FAFC] px-4 py-3 text-sm text-[#64748B]">
+                        <div className={mapViewFeedbackClassName}>
                           Algunos resultados no tienen coordenadas precisas. Se muestran en la lista, pero no como marcador en el mapa.
                         </div>
                       ) : null}
@@ -1221,7 +1229,7 @@ export default function ExplorarPage() {
               </div>
             </div>
 
-            <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden bg-white">
+            <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden bg-[color:var(--surface-soft)]">
               <div className="relative flex min-h-0 flex-1">
                 <ExploreMap
                   results={mapResults}

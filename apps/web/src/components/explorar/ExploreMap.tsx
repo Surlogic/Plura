@@ -1,6 +1,5 @@
-import { memo, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Head from 'next/head';
-import Link from 'next/link';
 import type { SearchItem } from '@/types/search';
 import {
   Marker,
@@ -11,11 +10,13 @@ import {
 import mapboxgl from 'mapbox-gl';
 import MapView from '@/components/map/MapView';
 import ExploreLeafletFallbackMap from '@/components/explorar/ExploreLeafletFallbackMap';
+import ExploreMapPopupCard from '@/components/explorar/ExploreMapPopupCard';
 import type { ExploreMapViewportBounds } from '@/utils/exploreMapViewport';
 import {
   buildPublicBusinessLogoStyle,
   getPublicBusinessInitials,
   resolvePublicBusinessMedia,
+  type ResolvedPublicBusinessMedia,
 } from '@/utils/publicBusinessMedia';
 import {
   getSearchResultKindLabel,
@@ -25,7 +26,7 @@ import {
 
 type ExploreMapItem = {
   id: string;
-  slug: string;
+  slug?: string | null;
   name: string;
   secondaryName?: string | null;
   category: string;
@@ -36,8 +37,7 @@ type ExploreMapItem = {
   latitude: number;
   longitude: number;
   locationText?: string | null;
-  logoSrc?: string | null;
-  logoStyle?: CSSProperties;
+  media: ResolvedPublicBusinessMedia;
   initials: string;
 };
 
@@ -89,13 +89,6 @@ const parseOptionalNumber = (value: unknown): number | null => {
   return null;
 };
 
-const formatPriceFrom = (value?: number | null) => {
-  if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0) {
-    return 'Ver perfil';
-  }
-  return `Desde $${new Intl.NumberFormat('es-UY').format(Math.round(value))}`;
-};
-
 function ExploreMapMarkerAvatar({
   item,
   isActive,
@@ -107,11 +100,11 @@ function ExploreMapMarkerAvatar({
 }) {
   const [hasLogoError, setHasLogoError] = useState(false);
   const hasRating = typeof item.rating === 'number' && Number.isFinite(item.rating) && item.rating > 0;
-  const showLogo = Boolean(item.logoSrc) && !hasLogoError;
+  const showLogo = Boolean(item.media.logo?.src) && !hasLogoError;
 
   useEffect(() => {
     setHasLogoError(false);
-  }, [item.logoSrc]);
+  }, [item.media.logo?.src]);
 
   return (
     <div className="flex flex-col items-center">
@@ -125,13 +118,13 @@ function ExploreMapMarkerAvatar({
         {showLogo ? (
           // eslint-disable-next-line @next/next/no-img-element -- marker de mapa liviano sin wrappers extra
           <img
-            src={item.logoSrc || ''}
+            src={item.media.logo?.src || ''}
             alt=""
             aria-hidden="true"
             loading="lazy"
             decoding="async"
             className="h-full w-full object-cover"
-            style={item.logoStyle}
+            style={buildPublicBusinessLogoStyle(item.media.logo)}
             onError={() => setHasLogoError(true)}
           />
         ) : null}
@@ -186,7 +179,9 @@ function ExploreMap({
         const primaryName = getSearchResultPrimaryName(item);
         const secondaryName = getSearchResultSecondaryName(item);
         const kindLabel = getSearchResultKindLabel(item);
-        const publicMedia = resolvePublicBusinessMedia({
+        const media = resolvePublicBusinessMedia({
+          bannerMedia: item.bannerMedia,
+          bannerUrl: item.bannerUrl,
           logoMedia: item.logoMedia,
           logoUrl: item.logoUrl,
           fallbackPhotoUrl: item.fallbackPhotoUrl,
@@ -196,7 +191,7 @@ function ExploreMap({
 
         mapped.push({
           id: String(item.id),
-          slug: item.slug || String(item.id),
+          slug: item.slug || null,
           name: primaryName,
           secondaryName,
           category:
@@ -210,9 +205,8 @@ function ExploreMap({
           latitude,
           longitude,
           locationText: item.locationText || null,
-          logoSrc: publicMedia.logo?.src || null,
-          logoStyle: buildPublicBusinessLogoStyle(publicMedia.logo),
-          initials: publicMedia.initials || getPublicBusinessInitials(primaryName),
+          media,
+          initials: media.initials || getPublicBusinessInitials(primaryName),
         });
       });
       return mapped;
@@ -525,46 +519,7 @@ function ExploreMap({
             onClose={handlePopupClose}
             offset={14}
           >
-            <div className="min-w-[220px] max-w-[240px] space-y-2">
-              <div className="flex items-start gap-3">
-                <div className="shrink-0">
-                  <ExploreMapMarkerAvatar item={selectedItem} isActive showRating={false} />
-                </div>
-                <div className="min-w-0 space-y-1">
-                  <p className="truncate text-sm font-semibold text-[#0E2A47]">{selectedItem.name}</p>
-                  {selectedItem.secondaryName ? (
-                    <p className="truncate text-xs font-medium text-[#334155]">{selectedItem.secondaryName}</p>
-                  ) : null}
-                  <p className="truncate text-xs text-[#64748B]">
-                    {selectedItem.kindLabel}
-                    {selectedItem.category ? ` · ${selectedItem.category}` : ''}
-                  </p>
-                  {selectedItem.locationText ? (
-                    <p className="truncate text-xs text-[#94A3B8]">{selectedItem.locationText}</p>
-                  ) : null}
-                  <div className="flex items-center gap-2 text-xs text-[#334155]">
-                    <span className="inline-flex items-center rounded-full bg-[#FFF7E7] px-2 py-0.5 font-semibold text-[#8A5A00]">
-                      <span className="mr-1 text-[#E59C17]">★</span>
-                      {typeof selectedItem.rating === 'number' && selectedItem.rating > 0
-                        ? selectedItem.rating.toFixed(1)
-                        : 'Sin rating'}
-                    </span>
-                    {selectedItem.reviewsCount && selectedItem.reviewsCount > 0 ? (
-                      <span className="text-[#64748B]">
-                        {selectedItem.reviewsCount} reseñas
-                      </span>
-                    ) : null}
-                    <span className="text-[#0E2A47]">{formatPriceFrom(selectedItem.priceFrom)}</span>
-                  </div>
-                </div>
-              </div>
-              <Link
-                href={`/profesional/pagina/${encodeURIComponent(selectedItem.slug)}`}
-                className="inline-flex h-8 items-center justify-center rounded-full bg-[#0E2A47] px-3 text-xs font-semibold text-white transition hover:brightness-110"
-              >
-                Reservar
-              </Link>
-            </div>
+            <ExploreMapPopupCard item={selectedItem} />
           </Popup>
         ) : null}
       </MapView>

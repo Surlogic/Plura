@@ -1,7 +1,6 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, type MutableRefObject } from 'react';
-import Link from 'next/link';
 import {
   CircleMarker,
   MapContainer,
@@ -12,11 +11,13 @@ import {
   useMap,
 } from 'react-leaflet';
 import { divIcon, type DivIcon, type LatLngBoundsExpression, type LatLngExpression } from 'leaflet';
+import ExploreMapPopupCard from '@/components/explorar/ExploreMapPopupCard';
 import type { ExploreMapViewportBounds } from '@/utils/exploreMapViewport';
+import type { ResolvedPublicBusinessMedia } from '@/utils/publicBusinessMedia';
 
 type ExploreLeafletMapItem = {
   id: string;
-  slug: string;
+  slug?: string | null;
   name: string;
   secondaryName?: string | null;
   category: string;
@@ -27,7 +28,7 @@ type ExploreLeafletMapItem = {
   latitude: number;
   longitude: number;
   locationText?: string | null;
-  logoSrc?: string | null;
+  media: ResolvedPublicBusinessMedia;
   initials: string;
 };
 
@@ -46,11 +47,6 @@ type ExploreLeafletFallbackMapProps = {
 
 const DEFAULT_CENTER: LatLngExpression = [-34.9011, -56.1645];
 const DEFAULT_ZOOM = 10;
-
-const formatPriceFrom = (value?: number | null) => {
-  if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0) return 'Ver perfil';
-  return `Desde $${new Intl.NumberFormat('es-UY').format(Math.round(value))}`;
-};
 
 const buildLeafletMarkerIcon = (item: ExploreLeafletMapItem, isActive: boolean): DivIcon => {
   const hasRating = typeof item.rating === 'number' && Number.isFinite(item.rating) && item.rating > 0;
@@ -76,9 +72,9 @@ const buildLeafletMarkerIcon = (item: ExploreLeafletMapItem, isActive: boolean):
     : '';
 
   const avatarSize = isActive ? 44 : 38;
-  const avatarMarkup = item.logoSrc
+  const avatarMarkup = item.media.logo?.src
     ? `<img
-        src="${item.logoSrc}"
+        src="${item.media.logo.src}"
         alt=""
         aria-hidden="true"
         style="width:100%;height:100%;object-fit:cover;display:block;"
@@ -398,33 +394,7 @@ export default function ExploreLeafletFallbackMap({
               remove: () => onSelectResult?.(null),
             }}
           >
-            <div className="min-w-[220px] space-y-1.5">
-              <p className="text-sm font-semibold text-[#0E2A47]">{selectedItem.name}</p>
-              {selectedItem.secondaryName ? (
-                <p className="text-xs font-medium text-[#334155]">{selectedItem.secondaryName}</p>
-              ) : null}
-              <p className="text-xs text-[#64748B]">
-                {selectedItem.kindLabel}
-                {selectedItem.category ? ` · ${selectedItem.category}` : ''}
-              </p>
-              {selectedItem.locationText ? (
-                <p className="text-xs text-[#94A3B8]">{selectedItem.locationText}</p>
-              ) : null}
-              <div className="flex items-center justify-between text-xs text-[#334155]">
-                <span>
-                  {typeof selectedItem.rating === 'number'
-                    ? `★ ${selectedItem.rating.toFixed(1)}${selectedItem.reviewsCount ? ` (${selectedItem.reviewsCount})` : ''}`
-                    : 'Sin reseñas'}
-                </span>
-                <span className="text-[#000000]">{formatPriceFrom(selectedItem.priceFrom)}</span>
-              </div>
-              <Link
-                href={`/profesional/pagina/${encodeURIComponent(selectedItem.slug)}`}
-                className="inline-flex h-8 items-center justify-center rounded-full bg-[#0E2A47] px-3 text-xs font-semibold text-white transition hover:brightness-110"
-              >
-                Ver perfil
-              </Link>
-            </div>
+            <ExploreMapPopupCard item={selectedItem} />
           </Popup>
         ) : null}
       </MapContainer>

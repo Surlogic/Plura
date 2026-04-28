@@ -562,7 +562,7 @@ function ExploreMap({
                 href={`/profesional/pagina/${encodeURIComponent(selectedItem.slug)}`}
                 className="inline-flex h-8 items-center justify-center rounded-full bg-[#0E2A47] px-3 text-xs font-semibold text-white transition hover:brightness-110"
               >
-                Ver perfil
+                Reservar
               </Link>
             </div>
           </Popup>

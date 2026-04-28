@@ -139,6 +139,8 @@ const uniqueNonEmpty = (values: string[]) => {
   return normalized;
 };
 
+const isNonNull = <T>(value: T | null): value is T => value !== null;
+
 export const formatDateLabel = (value: string) => {
   const parsed = new Date(`${value}T00:00:00`);
   if (Number.isNaN(parsed.getTime())) return value;
@@ -702,7 +704,7 @@ export function useUnifiedSearch({
           label,
         };
       })
-      .filter((item): item is SuggestDropdownItem => item !== null);
+      .filter(isNonNull);
     const professionalItems = suggestions.professionals
       .map((item, index) => {
         const label = resolveSuggestionLabel(item, 'PROFESIONAL');
@@ -714,7 +716,7 @@ export function useUnifiedSearch({
           label,
         };
       })
-      .filter((item): item is SuggestDropdownItem => item !== null);
+      .filter(isNonNull);
     const serviceItems = suggestions.services
       .map((item, index) => {
         const label = resolveSuggestionLabel(item, 'SERVICIO');
@@ -726,7 +728,7 @@ export function useUnifiedSearch({
           label,
         };
       })
-      .filter((item): item is SuggestDropdownItem => item !== null);
+      .filter(isNonNull);
 
     return dedupeSuggestionItems(
       [

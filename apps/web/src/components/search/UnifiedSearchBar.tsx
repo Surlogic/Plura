@@ -8,6 +8,7 @@ import {
   type CSSProperties,
   type FormEvent,
   type KeyboardEvent as ReactKeyboardEvent,
+  type ReactNode,
 } from 'react';
 import { createPortal } from 'react-dom';
 import DateFilter from '@/components/search/DateFilter';
@@ -483,7 +484,7 @@ export default memo(function UnifiedSearchBar({
     [isExplore],
   );
   const renderExploreDropdownPortal = useCallback(
-    (content: JSX.Element, metrics: ExploreDropdownMetrics | null) => {
+    (content: ReactNode, metrics: ExploreDropdownMetrics | null) => {
       if (!isExplore || !metrics || typeof document === 'undefined') {
         return null;
       }

@@ -27,9 +27,25 @@ import {
   isPointWithinExploreMapViewportBounds,
   type ExploreMapViewportBounds,
 } from '@/utils/exploreMapViewport';
+import {
+  getSearchResultKindLabel,
+  getSearchResultPrimaryName,
+} from '@/utils/searchResultPresentation';
 
-const ExploreMap = dynamic(() => import('@/components/explorar/ExploreMap'), {
+const AUTO_GEOLOCATION_TIMEOUT_MS = 4000;
+const AUTO_GEOLOCATION_SAMPLE_DURATION_MS = 1500;
+const AUTO_GEOLOCATION_MAXIMUM_AGE_MS = 120000;
+const AUTO_GEOLOCATION_EARLY_ACCURACY_METERS = 400;
+
+const loadExploreMap = () => import('@/components/explorar/ExploreMap');
+
+const ExploreMap = dynamic(loadExploreMap, {
   ssr: false,
+  loading: () => (
+    <div className="flex h-full min-h-0 flex-1 items-center justify-center bg-[#F3F6F8] px-4 text-center text-sm font-medium text-[#64748B]">
+      Cargando mapa...
+    </div>
+  ),
 });
 
 const SORT_OPTIONS: Array<{ value: SearchSort; label: string }> = [
@@ -197,6 +213,7 @@ export default function ExplorarPage() {
   const rawLocationSource = getSingleQueryValue(
     router.query.locationSource as string | string[] | undefined,
   );
+  const routeIsMapView = rawViewMode === 'mapa';
 
   const searchType = useMemo<SearchType>(() => {
     const parsedType = normalizeSearchType(rawType);
@@ -242,7 +259,15 @@ export default function ExplorarPage() {
     }
     return hasCoordinates ? 'DISTANCE' : 'RATING';
   }, [rawSort, hasCoordinates]);
-  const isMapView = rawViewMode === 'mapa';
+  const [pendingViewMode, setPendingViewMode] = useState<'mapa' | 'paginas' | null>(null);
+  const routeViewMode = routeIsMapView ? 'mapa' : 'paginas';
+  const isMapView = (pendingViewMode ?? routeViewMode) === 'mapa';
+
+  useEffect(() => {
+    if (pendingViewMode === routeViewMode) {
+      setPendingViewMode(null);
+    }
+  }, [pendingViewMode, routeViewMode]);
 
   useEffect(() => {
     const html = document.documentElement;
@@ -348,6 +373,41 @@ export default function ExplorarPage() {
     setStoredManualLocation(readStoredManualLocation());
     setHasLoadedStoredManualLocation(true);
   }, [router.isReady]);
+
+  useEffect(() => {
+    if (isMapView) return undefined;
+    if (typeof window === 'undefined') return undefined;
+
+    const preloadMap = () => {
+      void loadExploreMap();
+    };
+
+    if ('requestIdleCallback' in window) {
+      const idleCallbackId = (
+        window as Window & {
+          requestIdleCallback: (
+            callback: IdleRequestCallback,
+            options?: IdleRequestOptions,
+          ) => number;
+        }
+      ).requestIdleCallback(() => {
+        preloadMap();
+      }, { timeout: 1500 });
+
+      return () => {
+        (
+          window as Window & {
+            cancelIdleCallback?: (handle: number) => void;
+          }
+        ).cancelIdleCallback?.(idleCallbackId);
+      };
+    }
+
+    const timeoutId = globalThis.setTimeout(preloadMap, 300);
+    return () => {
+      globalThis.clearTimeout(timeoutId);
+    };
+  }, [isMapView]);
 
   useEffect(() => {
     if (!router.isReady) return;
@@ -601,8 +661,12 @@ export default function ExplorarPage() {
     setSelectedMapItemId(null);
   }, [isMapView, selectedMapItemId, visibleMapListItems]);
 
-  const getCategoryLabel = useCallback((item: SearchItem) =>
-    item.categorySlugs.length > 0 ? humanizeSlug(item.categorySlugs[0]) : 'Profesional', []);
+  const getCategoryLabel = useCallback((item: SearchItem) => {
+    const categoryLabel = item.categorySlugs.length > 0
+      ? humanizeSlug(item.categorySlugs[0])
+      : 'Profesional';
+    return `${getSearchResultKindLabel(item)} · ${categoryLabel}`;
+  }, []);
 
   const favoritePayloadById = useMemo(() => {
     const payloadById = new Map<
@@ -621,7 +685,7 @@ export default function ExplorarPage() {
       if (!item.slug) return;
       payloadById.set(String(item.id), {
         slug: item.slug,
-        name: item.name,
+        name: getSearchResultPrimaryName(item),
         category: getCategoryLabel(item),
         location: item.locationText || undefined,
         imageUrl: item.coverImageUrl || undefined,
@@ -632,15 +696,20 @@ export default function ExplorarPage() {
     return payloadById;
   }, [getCategoryLabel, items]);
 
-  const replaceQuery = useCallback((nextQuery: Record<string, string>) => {
-    void router.replace(
-      {
-        pathname: '/explorar',
-        query: nextQuery,
-      },
-      undefined,
-      { shallow: true },
-    );
+  const replaceQuery = useCallback(async (nextQuery: Record<string, string>) => {
+    try {
+      await router.replace(
+        {
+          pathname: '/explorar',
+          query: nextQuery,
+        },
+        undefined,
+        { shallow: true },
+      );
+      return true;
+    } catch {
+      return false;
+    }
   }, [router]);
 
   const setVisualBrowserLocation = useCallback((position: BrowserGeoPosition) => {
@@ -672,7 +741,7 @@ export default function ExplorarPage() {
     if (hasExplicitRadiusKm) {
       nextQuery.radiusKm = String(radiusKm);
     }
-    replaceQuery(nextQuery);
+    void replaceQuery(nextQuery);
   }, [baseExploreQuery, hasExplicitRadiusKm, radiusKm, replaceQuery]);
 
   const applyManualLocationToMap = useCallback((location: { latitude: number; longitude: number }) => {
@@ -703,7 +772,7 @@ export default function ExplorarPage() {
     if (hasExplicitRadiusKm) {
       nextQuery.radiusKm = String(radiusKm);
     }
-    replaceQuery(nextQuery);
+    void replaceQuery(nextQuery);
   }, [baseExploreQuery, hasExplicitRadiusKm, radiusKm, replaceQuery]);
 
   useEffect(() => {
@@ -746,11 +815,11 @@ export default function ExplorarPage() {
     didAttemptAutoGeolocationRef.current = true;
 
     void getBestBrowserCurrentPosition({
-      enableHighAccuracy: true,
-      timeout: 15000,
-      maximumAge: 0,
-      sampleDurationMs: 7000,
-      earlyAccuracyMeters: 100,
+      enableHighAccuracy: false,
+      timeout: AUTO_GEOLOCATION_TIMEOUT_MS,
+      maximumAge: AUTO_GEOLOCATION_MAXIMUM_AGE_MS,
+      sampleDurationMs: AUTO_GEOLOCATION_SAMPLE_DURATION_MS,
+      earlyAccuracyMeters: AUTO_GEOLOCATION_EARLY_ACCURACY_METERS,
     })
       .then((position) => {
         setVisualBrowserLocation(position);
@@ -781,11 +850,24 @@ export default function ExplorarPage() {
     setIsAdjustingLocation(false);
   }, [browserUserLocation, hasCoordinates]);
 
-  const handleViewChange = useCallback((nextIsMapView: boolean) => {
+  const prefetchMapView = useCallback(() => {
+    void loadExploreMap();
+  }, []);
+
+  const handleViewChange = useCallback(async (nextIsMapView: boolean) => {
+    const targetViewMode = nextIsMapView ? 'mapa' : 'paginas';
+    if (nextIsMapView) {
+      prefetchMapView();
+    }
+    setPendingViewMode(targetViewMode);
+
     const nextQuery: Record<string, string> = { ...baseExploreQuery };
     if (nextIsMapView) nextQuery.vista = 'mapa';
-    replaceQuery(nextQuery);
-  }, [baseExploreQuery, replaceQuery]);
+    const didNavigate = await replaceQuery(nextQuery);
+    if (!didNavigate) {
+      setPendingViewMode(null);
+    }
+  }, [baseExploreQuery, prefetchMapView, replaceQuery]);
 
   const handleSortChange = useCallback((nextSort: SearchSort) => {
     const nextQuery: Record<string, string> = {
@@ -794,7 +876,7 @@ export default function ExplorarPage() {
       page: '0',
     };
     if (isMapView) nextQuery.vista = 'mapa';
-    replaceQuery(nextQuery);
+    void replaceQuery(nextQuery);
   }, [baseExploreQuery, isMapView, replaceQuery]);
 
   const handlePageChange = useCallback((nextPage: number) => {
@@ -804,7 +886,7 @@ export default function ExplorarPage() {
       page: String(normalizedPage),
     };
     if (isMapView) nextQuery.vista = 'mapa';
-    replaceQuery(nextQuery);
+    void replaceQuery(nextQuery);
   }, [baseExploreQuery, isMapView, replaceQuery, totalPages]);
 
   const mapUserLocation = useMemo(
@@ -851,10 +933,19 @@ export default function ExplorarPage() {
         ? `Cerca de mí · ${Math.round(radiusKm)} km`
         : 'Cerca de mí'
       : hasExplicitRadiusKm
-        ? `Ubicación elegida · ${Math.round(radiusKm)} km`
-        : 'Ubicación elegida';
+      ? `Ubicación elegida · ${Math.round(radiusKm)} km`
+      : 'Ubicación elegida';
   const canAdjustMapLocation = true;
   const canRefreshBrowserLocation = true;
+  const shouldPreferUserLocationViewport = Boolean(browserUserLocation)
+    && !hasAppliedLocationFilter
+    && !query
+    && !categorySlug
+    && !city
+    && !date
+    && !from
+    && !to
+    && !availableNow;
 
   const handleStartAdjustLocation = useCallback(() => {
     setIsAdjustingLocation(true);
@@ -920,7 +1011,7 @@ export default function ExplorarPage() {
     delete nextQuery.radiusKm;
     delete nextQuery.locationSource;
 
-    replaceQuery(nextQuery);
+    void replaceQuery(nextQuery);
   }, [baseExploreQuery, browserUserLocation, replaceQuery, sort]);
 
   const handleMapItemHoverStart = useCallback((id?: string) => {
@@ -961,7 +1052,9 @@ export default function ExplorarPage() {
     <div className="inline-flex rounded-full border border-[color:var(--border-soft)] bg-[color:var(--surface-muted)] p-0.5 shadow-[var(--shadow-card)]">
       <button
         type="button"
-        onClick={() => handleViewChange(false)}
+        onClick={() => {
+          void handleViewChange(false);
+        }}
         className={`inline-flex h-9 items-center rounded-full px-3 text-sm font-semibold transition ${
           !isMapView
             ? 'bg-[color:var(--surface-dark)] text-[color:var(--text-on-dark)]'
@@ -973,7 +1066,11 @@ export default function ExplorarPage() {
       </button>
       <button
         type="button"
-        onClick={() => handleViewChange(true)}
+        onClick={() => {
+          void handleViewChange(true);
+        }}
+        onMouseEnter={prefetchMapView}
+        onFocus={prefetchMapView}
         className={`inline-flex h-9 items-center rounded-full px-3 text-sm font-semibold transition ${
           isMapView
             ? 'bg-[color:var(--surface-dark)] text-[color:var(--text-on-dark)]'
@@ -1105,7 +1202,7 @@ export default function ExplorarPage() {
                           >
                             <ExploreCard
                               id={itemId}
-                              name={item.name}
+                              name={getSearchResultPrimaryName(item)}
                               category={getCategoryLabel(item)}
                               rating={typeof item.rating === 'number' ? item.rating.toFixed(1) : undefined}
                               reviewsCount={item.reviewsCount}
@@ -1148,7 +1245,7 @@ export default function ExplorarPage() {
                 <ExploreMap
                   results={items}
                   userLocation={mapUserLocation}
-                  preferUserLocationViewport={Boolean(browserUserLocation) && !hasAppliedLocationFilter}
+                  preferUserLocationViewport={shouldPreferUserLocationViewport}
                   selectedResultId={selectedMapItemId}
                   selectionRequestNonce={selectionEvent.nonce}
                   onSelectResult={(id) => handleSelectResult(id, 'map')}
@@ -1295,7 +1392,7 @@ export default function ExplorarPage() {
                     {items.map((item, index) => (
                       <ExploreCard
                         key={item.id}
-                        name={item.name}
+                        name={getSearchResultPrimaryName(item)}
                         category={getCategoryLabel(item)}
                         rating={typeof item.rating === 'number' ? item.rating.toFixed(1) : undefined}
                         price={formatPriceFrom(item.priceFrom)}

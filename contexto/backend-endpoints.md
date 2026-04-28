@@ -129,6 +129,7 @@ El backend soporta:
 - `GET /api/search?availableNow=true` ya valida disponibilidad real contra `available_slot`; no usa la bandera agregada `has_availability_today` como aproximacion
 - cuando `/api/search` recibe `lat/lng` junto con `city`, el radio geografico prevalece y el texto de ciudad no debe vaciar resultados por mismatch de address-string
 - `GET /api/search` ahora expone `bannerUrl`, `bannerMedia`, `logoUrl`, `logoMedia` y `fallbackPhotoUrl` por resultado; `coverImageUrl` se conserva por compatibilidad pero ya prioriza `banner`, luego foto real del negocio (`LOCAL/WORK`) y solo al final imagen de servicio como fallback extremo
+- `GET /api/search` ahora también expone `resultKind` (`LOCAL` o `PROFESIONAL`), `professionalName` y `businessName` por item para que frontend distinga si debe priorizar identidad de local o perfil sin inventarlo client-side
 
 Lectura de producto:
 

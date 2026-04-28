@@ -55,7 +55,12 @@ public class SearchNativeRepository {
             "SELECT "
                 + "doc.professional_id::text AS id, "
                 + "doc.slug AS slug, "
-                + "doc.display_name AS name, "
+                + "CASE WHEN " + buildResultKindExpression("doc") + " = 'LOCAL' "
+                + "THEN COALESCE(NULLIF(doc.public_headline, ''), doc.display_name) "
+                + "ELSE doc.display_name END AS name, "
+                + "doc.display_name AS professional_name, "
+                + "COALESCE(NULLIF(doc.public_headline, ''), doc.display_name) AS business_name, "
+                + buildResultKindExpression("doc") + " AS result_kind, "
                 + "doc.public_headline AS headline, "
                 + "doc.rating AS rating, "
                 + "doc.reviews_count AS reviews_count, "
@@ -267,6 +272,7 @@ public class SearchNativeRepository {
 
         MapSqlParameterSource params = new MapSqlParameterSource();
         params.addValue("ids", professionalIds);
+        params.addValue("type", criteria.type().name());
         params.addValue("hasCoords", criteria.hasCoordinates());
         params.addValue("lat", criteria.lat());
         params.addValue("lng", criteria.lng());
@@ -275,7 +281,12 @@ public class SearchNativeRepository {
             "SELECT "
                 + "doc.professional_id::text AS id, "
                 + "doc.slug AS slug, "
-                + "doc.display_name AS name, "
+                + "CASE WHEN " + buildResultKindExpression("doc") + " = 'LOCAL' "
+                + "THEN COALESCE(NULLIF(doc.public_headline, ''), doc.display_name) "
+                + "ELSE doc.display_name END AS name, "
+                + "doc.display_name AS professional_name, "
+                + "COALESCE(NULLIF(doc.public_headline, ''), doc.display_name) AS business_name, "
+                + buildResultKindExpression("doc") + " AS result_kind, "
                 + "doc.public_headline AS headline, "
                 + "doc.rating AS rating, "
                 + "doc.reviews_count AS reviews_count, "
@@ -462,6 +473,16 @@ public class SearchNativeRepository {
             + "END";
     }
 
+    private String buildResultKindExpression(String alias) {
+        return "CASE "
+            + "  WHEN :type = 'LOCAL' THEN 'LOCAL' "
+            + "  WHEN :type = 'PROFESIONAL' THEN 'PROFESIONAL' "
+            + "  WHEN COALESCE(NULLIF(" + alias + ".public_headline, ''), '') <> '' "
+            + "    AND COALESCE(NULLIF(" + alias + ".public_headline, ''), '') <> " + alias + ".display_name THEN 'LOCAL' "
+            + "  ELSE 'PROFESIONAL' "
+            + "END";
+    }
+
     private MapSqlParameterSource buildParams(SearchQueryCriteria criteria) {
         String query = normalize(criteria.query());
         String city = normalize(criteria.city());
@@ -544,6 +565,9 @@ public class SearchNativeRepository {
                 rs.getString("id"),
                 rs.getString("slug"),
                 rs.getString("name"),
+                rs.getString("professional_name"),
+                rs.getString("business_name"),
+                rs.getString("result_kind"),
                 rs.getString("headline"),
                 rs.getObject("rating") == null ? null : rs.getDouble("rating"),
                 rs.getObject("reviews_count") == null ? null : rs.getInt("reviews_count"),

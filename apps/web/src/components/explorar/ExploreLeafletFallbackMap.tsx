@@ -18,7 +18,9 @@ type ExploreLeafletMapItem = {
   id: string;
   slug: string;
   name: string;
+  secondaryName?: string | null;
   category: string;
+  kindLabel: string;
   rating?: number | null;
   reviewsCount?: number | null;
   priceFrom?: number | null;
@@ -398,7 +400,13 @@ export default function ExploreLeafletFallbackMap({
           >
             <div className="min-w-[220px] space-y-1.5">
               <p className="text-sm font-semibold text-[#0E2A47]">{selectedItem.name}</p>
-              <p className="text-xs text-[#64748B]">{selectedItem.category || 'Profesional'}</p>
+              {selectedItem.secondaryName ? (
+                <p className="text-xs font-medium text-[#334155]">{selectedItem.secondaryName}</p>
+              ) : null}
+              <p className="text-xs text-[#64748B]">
+                {selectedItem.kindLabel}
+                {selectedItem.category ? ` · ${selectedItem.category}` : ''}
+              </p>
               {selectedItem.locationText ? (
                 <p className="text-xs text-[#94A3B8]">{selectedItem.locationText}</p>
               ) : null}

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import type { GetServerSideProps, InferGetServerSidePropsType } from 'next';
+import type { GetStaticProps, InferGetStaticPropsType } from 'next';
 import Navbar from '@/components/shared/Navbar';
 import Footer from '@/components/shared/Footer';
 import Hero from '@/components/home/Hero';
@@ -16,6 +16,7 @@ type HomePageProps = {
 };
 
 const HOME_FETCH_TIMEOUT_MS = 10000;
+const HOME_REVALIDATE_SECONDS = 300;
 
 const emptyStats: HomeResponse['stats'] = {
   activeUsers: 0,
@@ -60,7 +61,7 @@ const fetchHomeData = async (
   }
 };
 
-export const getServerSideProps: GetServerSideProps<HomePageProps> = async () => {
+export const getStaticProps: GetStaticProps<HomePageProps> = async () => {
   const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
   const homeData = await fetchHomeData(apiBaseUrl, { logErrors: true });
 
@@ -68,12 +69,13 @@ export const getServerSideProps: GetServerSideProps<HomePageProps> = async () =>
     props: {
       homeData,
     },
+    revalidate: HOME_REVALIDATE_SECONDS,
   };
 };
 
 export default function HomePage({
   homeData,
-}: InferGetServerSidePropsType<typeof getServerSideProps>) {
+}: InferGetStaticPropsType<typeof getStaticProps>) {
   const [resolvedHomeData, setResolvedHomeData] = useState(homeData);
   const [isLoadingHomeData, setIsLoadingHomeData] = useState(!hasRenderableHomeData(homeData));
 

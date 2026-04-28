@@ -1,4 +1,5 @@
 export type SearchType = 'RUBRO' | 'PROFESIONAL' | 'LOCAL' | 'SERVICIO';
+export type SearchResultKind = 'PROFESIONAL' | 'LOCAL';
 
 export type SearchSort = 'RELEVANCE' | 'DISTANCE' | 'RATING';
 

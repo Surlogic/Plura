@@ -21,12 +21,19 @@ import {
   getPublicBusinessInitials,
   resolvePublicBusinessMedia,
 } from '@/utils/publicBusinessMedia';
+import {
+  getSearchResultKindLabel,
+  getSearchResultPrimaryName,
+  getSearchResultSecondaryName,
+} from '@/utils/searchResultPresentation';
 
 type ExploreMapItem = {
   id: string;
   slug: string;
   name: string;
+  secondaryName?: string | null;
   category: string;
+  kindLabel: string;
   rating?: number | null;
   reviewsCount?: number | null;
   priceFrom?: number | null;
@@ -136,6 +143,13 @@ const parseOptionalNumber = (value: unknown): number | null => {
   return null;
 };
 
+const formatPriceFrom = (value?: number | null) => {
+  if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0) {
+    return 'Ver perfil';
+  }
+  return `Desde $${new Intl.NumberFormat('es-UY').format(Math.round(value))}`;
+};
+
 function ExploreMapMarkerAvatar({
   item,
   isActive,
@@ -224,22 +238,27 @@ function ExploreMap({
         const latitude = parseOptionalNumber(item.latitude);
         const longitude = parseOptionalNumber(item.longitude);
         if (latitude === null || longitude === null) return;
+        const primaryName = getSearchResultPrimaryName(item);
+        const secondaryName = getSearchResultSecondaryName(item);
+        const kindLabel = getSearchResultKindLabel(item);
         const publicMedia = resolvePublicBusinessMedia({
           logoMedia: item.logoMedia,
           logoUrl: item.logoUrl,
           fallbackPhotoUrl: item.fallbackPhotoUrl,
           imageUrl: item.coverImageUrl,
-          name: item.name,
+          name: primaryName,
         });
 
         mapped.push({
           id: String(item.id),
           slug: item.slug || String(item.id),
-          name: item.name || 'Profesional',
+          name: primaryName,
+          secondaryName,
           category:
             Array.isArray(item.categorySlugs) && item.categorySlugs.length > 0
               ? humanizeSlug(item.categorySlugs[0])
               : 'Profesional',
+          kindLabel,
           rating: parseOptionalNumber(item.rating),
           reviewsCount: typeof item.reviewsCount === 'number' ? item.reviewsCount : null,
           priceFrom: parseOptionalNumber(item.priceFrom),
@@ -248,7 +267,7 @@ function ExploreMap({
           locationText: item.locationText || null,
           logoSrc: publicMedia.logo?.src || null,
           logoStyle: buildPublicBusinessLogoStyle(publicMedia.logo),
-          initials: publicMedia.initials || getPublicBusinessInitials(item.name),
+          initials: publicMedia.initials || getPublicBusinessInitials(primaryName),
         });
       });
       return mapped;
@@ -685,7 +704,16 @@ function ExploreMap({
                 </div>
                 <div className="min-w-0 space-y-1">
                   <p className="truncate text-sm font-semibold text-[#0E2A47]">{selectedItem.name}</p>
-                  <p className="truncate text-xs text-[#64748B]">{selectedItem.category || 'Profesional'}</p>
+                  {selectedItem.secondaryName ? (
+                    <p className="truncate text-xs font-medium text-[#334155]">{selectedItem.secondaryName}</p>
+                  ) : null}
+                  <p className="truncate text-xs text-[#64748B]">
+                    {selectedItem.kindLabel}
+                    {selectedItem.category ? ` · ${selectedItem.category}` : ''}
+                  </p>
+                  {selectedItem.locationText ? (
+                    <p className="truncate text-xs text-[#94A3B8]">{selectedItem.locationText}</p>
+                  ) : null}
                   <div className="flex items-center gap-2 text-xs text-[#334155]">
                     <span className="inline-flex items-center rounded-full bg-[#FFF7E7] px-2 py-0.5 font-semibold text-[#8A5A00]">
                       <span className="mr-1 text-[#E59C17]">★</span>
@@ -698,6 +726,7 @@ function ExploreMap({
                         {selectedItem.reviewsCount} reseñas
                       </span>
                     ) : null}
+                    <span className="text-[#0E2A47]">{formatPriceFrom(selectedItem.priceFrom)}</span>
                   </div>
                 </div>
               </div>

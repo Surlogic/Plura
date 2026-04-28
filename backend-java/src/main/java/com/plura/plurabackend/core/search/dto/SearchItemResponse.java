@@ -11,6 +11,9 @@ public class SearchItemResponse {
     private String id;
     private String slug;
     private String name;
+    private String professionalName;
+    private String businessName;
+    private String resultKind;
     private String headline;
     private Double rating;
     private Integer reviewsCount;

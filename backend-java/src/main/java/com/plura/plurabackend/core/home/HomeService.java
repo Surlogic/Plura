@@ -24,6 +24,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -61,6 +62,7 @@ public class HomeService {
         this.appZoneId = ZoneId.of(appTimezone);
     }
 
+    @Cacheable("homeData")
     @Transactional(readOnly = true)
     public HomeResponse getHomeData() {
         List<Category> activeCategories = categoryRepository.findByActiveTrueOrderByDisplayOrderAscNameAsc();

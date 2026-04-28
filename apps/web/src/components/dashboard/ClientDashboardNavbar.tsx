@@ -52,7 +52,7 @@ export default function ClientDashboardNavbar({
               </svg>
             </Button>
           ) : null}
-          <BrandLogo href="/cliente/inicio" variant="navbar" priority />
+          <BrandLogo href="/" variant="navbar" priority />
         </div>
         {exploreViewToggle ? (
           <div className="order-3 flex w-full justify-center lg:order-2 lg:w-auto lg:flex-1">

@@ -1,15 +1,19 @@
 import type {
   SearchQueryParamsBase,
+  SearchResultKind,
   SearchSort,
   SearchType,
 } from '../../../../packages/shared/src/types/search';
 
-export type { SearchSort, SearchType };
+export type { SearchResultKind, SearchSort, SearchType };
 
 export type SearchItem = {
   id: string;
   slug: string;
   name: string;
+  professionalName?: string | null;
+  businessName?: string | null;
+  resultKind?: SearchResultKind | null;
   headline?: string | null;
   rating?: number | null;
   reviewsCount?: number | null;

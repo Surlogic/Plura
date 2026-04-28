@@ -407,8 +407,6 @@ export default function ExplorarPage() {
     if (!router.isReady) return;
 
     latestSearchRequestIdRef.current += 1;
-    setItems([]);
-    setTotal(0);
     setSelectedMapItemId(null);
     setHoveredMapItemId(null);
     setError(null);

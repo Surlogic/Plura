@@ -70,6 +70,15 @@ const NOISE_LAYER_MATCHERS = [
   /natural-point-label/i,
   /airport-label/i,
 ];
+const MARKER_MAP_CLICK_SUPPRESSION_MS = 350;
+
+const stopMarkerEventPropagation = (event: {
+  stopPropagation: () => void;
+  nativeEvent?: Event;
+}) => {
+  event.stopPropagation();
+  event.nativeEvent?.stopImmediatePropagation?.();
+};
 
 const humanizeSlug = (slug: string) =>
   slug
@@ -168,6 +177,7 @@ function ExploreMap({
   const lastSelectionFocusRef = useRef<string | null>(null);
   const lastAutoViewportKeyRef = useRef<string | null>(null);
   const userInteractedSinceResultsRef = useRef(false);
+  const ignoreMapClickUntilRef = useRef(0);
   const [mapReady, setMapReady] = useState(false);
 
   const items = useMemo<ExploreMapItem[]>(
@@ -412,6 +422,7 @@ function ExploreMap({
   }, [emitViewportState, hideVisualNoiseLayers]);
 
   const handleMapClick = useCallback(() => {
+    if (Date.now() < ignoreMapClickUntilRef.current) return;
     onSelectResult?.(null);
   }, [onSelectResult]);
 
@@ -421,6 +432,7 @@ function ExploreMap({
   }, [onSelectResult]);
 
   const handleMarkerSelect = useCallback((id: string) => {
+    ignoreMapClickUntilRef.current = Date.now() + MARKER_MAP_CLICK_SUPPRESSION_MS;
     const nextId = selectedResultIdRef.current === id ? null : id;
     onSelectResult?.(nextId);
   }, [onSelectResult]);
@@ -498,8 +510,11 @@ function ExploreMap({
             >
               <button
                 type="button"
+                onMouseDown={stopMarkerEventPropagation}
+                onTouchStart={stopMarkerEventPropagation}
+                onPointerDown={stopMarkerEventPropagation}
                 onClick={(event) => {
-                  event.stopPropagation();
+                  stopMarkerEventPropagation(event);
                   handleMarkerSelect(item.id);
                 }}
                 className="group flex -translate-y-1 flex-col items-center focus:outline-none"

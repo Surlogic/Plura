@@ -51,7 +51,7 @@ function ExploreMapPopupCard({ item }: { item: ExploreMapPopupCardItem }) {
   const hasRating = typeof item.rating === 'number' && Number.isFinite(item.rating) && item.rating > 0;
 
   return (
-    <article className="w-[264px] overflow-hidden rounded-[22px] border border-[color:var(--border-soft)] bg-[color:var(--surface-strong)] shadow-[var(--shadow-lift)]">
+    <article className="w-[264px] overflow-hidden rounded-[22px] bg-[color:var(--surface-strong)]">
       <div className="relative h-24 overflow-hidden bg-[color:var(--surface-soft)]">
         {activeBanner ? (
           <Image

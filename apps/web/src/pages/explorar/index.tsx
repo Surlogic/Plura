@@ -5,6 +5,7 @@ import dynamic from 'next/dynamic';
 import Navbar from '@/components/shared/Navbar';
 import ExploreFilters from '@/components/explorar/ExploreFilters';
 import ExploreCard from '@/components/explorar/ExploreCard';
+import ExploreSortDropdown from '@/components/explorar/ExploreSortDropdown';
 import ClientDashboardNavbar from '@/components/dashboard/ClientDashboardNavbar';
 import {
   SEARCH_DEFAULT_PAGE,
@@ -1079,22 +1080,11 @@ export default function ExplorarPage() {
     <Navbar exploreViewToggle={exploreViewToggle} />
   );
   const exploreSortControl = (
-    <label className="inline-flex items-center gap-2 rounded-full border border-[color:var(--border-soft)] bg-[color:var(--surface-muted)] px-2.5 py-0.5">
-      <span className="text-xs font-semibold uppercase tracking-[0.15em] text-[color:var(--ink-faint)]">
-        Ordenar
-      </span>
-      <select
-        value={sort}
-        onChange={(event) => handleSortChange(event.target.value as SearchSort)}
-        className="rounded-full bg-transparent py-0.5 text-sm font-semibold text-[color:var(--ink)] focus:outline-none"
-      >
-        {SORT_OPTIONS.map((option) => (
-          <option key={option.value} value={option.value}>
-            {option.label}
-          </option>
-        ))}
-      </select>
-    </label>
+    <ExploreSortDropdown
+      value={sort}
+      options={SORT_OPTIONS}
+      onChange={handleSortChange}
+    />
   );
   const exploreFiltersControl = (
     <ExploreFilters

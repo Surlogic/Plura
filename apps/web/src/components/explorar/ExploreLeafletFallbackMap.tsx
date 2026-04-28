@@ -10,8 +10,20 @@ import {
   ZoomControl,
   useMap,
 } from 'react-leaflet';
-import { divIcon, type DivIcon, type LatLngBoundsExpression, type LatLngExpression } from 'leaflet';
+import {
+  divIcon,
+  point,
+  type DivIcon,
+  type LatLngBoundsExpression,
+  type LatLngExpression,
+} from 'leaflet';
 import ExploreMapPopupCard from '@/components/explorar/ExploreMapPopupCard';
+import {
+  getExploreMapPopupVerticalFocusOffset,
+  LEAFLET_POPUP_CARD_SELECTOR,
+  LEAFLET_POPUP_OFFSET_Y_PX,
+  measureExploreMapPopupCardHeight,
+} from '@/components/explorar/exploreMapPopupPosition';
 import type { ExploreMapViewportBounds } from '@/utils/exploreMapViewport';
 import type { ResolvedPublicBusinessMedia } from '@/utils/publicBusinessMedia';
 
@@ -210,10 +222,26 @@ function FocusActiveResult({
     const activeItem = items.find((item) => item.id === selectedResultId);
     if (!activeItem) return;
 
-    map.flyTo([activeItem.latitude, activeItem.longitude], Math.max(map.getZoom(), 14), {
-      animate: true,
-      duration: 0.5,
+    const frameId = window.requestAnimationFrame(() => {
+      const container = map.getContainer();
+      const targetZoom = Math.max(map.getZoom(), 14);
+      const offsetY = getExploreMapPopupVerticalFocusOffset({
+        containerHeight: container.clientHeight,
+        popupHeight: measureExploreMapPopupCardHeight(container, LEAFLET_POPUP_CARD_SELECTOR),
+        popupOffset: LEAFLET_POPUP_OFFSET_Y_PX,
+      });
+      const targetPoint = map
+        .project([activeItem.latitude, activeItem.longitude], targetZoom)
+        .subtract(point(0, offsetY));
+      const targetCenter = map.unproject(targetPoint, targetZoom);
+
+      map.flyTo(targetCenter, targetZoom, {
+        animate: true,
+        duration: 0.5,
+      });
     });
+
+    return () => window.cancelAnimationFrame(frameId);
   }, [items, map, selectedResultId, selectionRequestNonce]);
 
   return null;
@@ -423,6 +451,8 @@ export default function ExploreLeafletFallbackMap({
             position={[selectedItem.latitude, selectedItem.longitude]}
             closeOnClick={false}
             className="explore-map-popup"
+            maxWidth={320}
+            offset={[0, LEAFLET_POPUP_OFFSET_Y_PX]}
             eventHandlers={{
               remove: () => {
                 if (selectedResultIdRef.current !== selectedItem.id) return;

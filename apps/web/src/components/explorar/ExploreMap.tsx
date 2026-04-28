@@ -11,6 +11,12 @@ import mapboxgl from 'mapbox-gl';
 import MapView from '@/components/map/MapView';
 import ExploreLeafletFallbackMap from '@/components/explorar/ExploreLeafletFallbackMap';
 import ExploreMapPopupCard from '@/components/explorar/ExploreMapPopupCard';
+import {
+  getExploreMapPopupVerticalFocusOffset,
+  MAPBOX_POPUP_CARD_SELECTOR,
+  MAPBOX_POPUP_OFFSET_PX,
+  measureExploreMapPopupCardHeight,
+} from '@/components/explorar/exploreMapPopupPosition';
 import type { ExploreMapViewportBounds } from '@/utils/exploreMapViewport';
 import {
   buildPublicBusinessLogoStyle,
@@ -376,21 +382,34 @@ function ExploreMap({
   }, [fitMapToItems, fitToResultsRequestNonce, items, mapReady]);
 
   useEffect(() => {
-    if (!mapReady || !mapRef.current || !selectedResultId) return;
-    const nextFocusKey = `${selectedResultId}:${selectionRequestNonce}`;
+    if (!mapReady || !mapRef.current || !selectedItem) return;
+    const nextFocusKey = `${selectedItem.id}:${selectionRequestNonce}`;
     if (lastSelectionFocusRef.current === nextFocusKey) return;
-    const nextItem = items.find((item) => item.id === selectedResultId);
-    if (!nextItem) return;
 
     lastSelectionFocusRef.current = nextFocusKey;
-    const currentZoom = mapRef.current.getZoom();
-    mapRef.current.easeTo({
-      center: [nextItem.longitude, nextItem.latitude],
-      zoom: Math.max(currentZoom, 14.5),
-      duration: 460,
-      offset: [0, 0],
+    const frameId = window.requestAnimationFrame(() => {
+      const mapInstance = mapRef.current;
+      const map = mapInstance?.getMap();
+      const container = map?.getContainer();
+      if (!mapInstance || !container) return;
+
+      const currentZoom = mapInstance.getZoom();
+      const offsetY = getExploreMapPopupVerticalFocusOffset({
+        containerHeight: container.clientHeight,
+        popupHeight: measureExploreMapPopupCardHeight(container, MAPBOX_POPUP_CARD_SELECTOR),
+        popupOffset: MAPBOX_POPUP_OFFSET_PX,
+      });
+
+      mapInstance.easeTo({
+        center: [selectedItem.longitude, selectedItem.latitude],
+        zoom: Math.max(currentZoom, 14.5),
+        duration: 460,
+        offset: [0, offsetY],
+      });
     });
-  }, [items, mapReady, selectedResultId, selectionRequestNonce]);
+
+    return () => window.cancelAnimationFrame(frameId);
+  }, [mapReady, selectedItem, selectionRequestNonce]);
 
   useEffect(() => {
     if (!selectedResultId) {
@@ -540,8 +559,9 @@ function ExploreMap({
             anchor="top"
             closeOnClick={false}
             className="explore-map-popup"
+            maxWidth="none"
             onClose={() => handlePopupClose(selectedItem.id)}
-            offset={14}
+            offset={MAPBOX_POPUP_OFFSET_PX}
           >
             <ExploreMapPopupCard item={selectedItem} />
           </Popup>

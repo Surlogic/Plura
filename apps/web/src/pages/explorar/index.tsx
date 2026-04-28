@@ -26,6 +26,7 @@ import {
   getSearchResultKindLabel,
   getSearchResultPrimaryName,
 } from '@/utils/searchResultPresentation';
+import { normalizeSearchText } from '@/utils/searchQuery';
 
 const AUTO_GEOLOCATION_TIMEOUT_MS = 4000;
 const AUTO_GEOLOCATION_SAMPLE_DURATION_MS = 1500;
@@ -137,6 +138,29 @@ const clearStoredManualLocation = () => {
   window.localStorage.removeItem(MANUAL_LOCATION_STORAGE_KEY);
 };
 
+const shouldPersistExploreType = (type: SearchType | null, categorySlug: string) => {
+  if (type === 'LOCAL' || type === 'PROFESIONAL') return true;
+  if (type === 'RUBRO') return !categorySlug.trim();
+  return false;
+};
+
+const getExploreResultIdentityKey = (item: SearchItem) => {
+  const rawPrimaryName = getSearchResultPrimaryName(item).trim();
+  if (!rawPrimaryName || rawPrimaryName === 'Profesional') return null;
+
+  const itemId = String(item.id || '').trim();
+  if (itemId) return `id:${itemId}`;
+
+  const slug = item.slug?.trim();
+  if (slug) return `slug:${slug}`;
+
+  const normalizedName = normalizeSearchText(rawPrimaryName);
+  const normalizedLocation = normalizeSearchText(item.locationText || '');
+  if (!normalizedName) return null;
+
+  return `fallback:${normalizedName}:${normalizedLocation}`;
+};
+
 const hasFiniteItemCoordinates = (
   item: SearchItem,
 ): item is SearchItem & { latitude: number; longitude: number } =>
@@ -183,13 +207,14 @@ export default function ExplorarPage() {
     router.query.locationSource as string | string[] | undefined,
   );
   const routeIsMapView = rawViewMode === 'mapa';
+  const parsedQueryType = useMemo(() => normalizeSearchType(rawType), [rawType]);
 
   const searchType = useMemo<SearchType>(() => {
-    const parsedType = normalizeSearchType(rawType);
-    if (parsedType) return parsedType;
-    if (rawPathSlug || rawLegacyCategory) return 'RUBRO';
+    if (parsedQueryType === 'LOCAL' || parsedQueryType === 'PROFESIONAL') return parsedQueryType;
+    if (parsedQueryType === 'RUBRO') return 'RUBRO';
+    if (rawPathSlug || rawLegacyCategory || rawCategorySlug.trim()) return 'RUBRO';
     return 'SERVICIO';
-  }, [rawType, rawPathSlug, rawLegacyCategory]);
+  }, [parsedQueryType, rawCategorySlug, rawPathSlug, rawLegacyCategory]);
 
   const query = useMemo(() => {
     const fromQuery = rawQuery.trim();
@@ -206,6 +231,15 @@ export default function ExplorarPage() {
     const legacy = decodeLegacyValue(rawLegacyCategory).trim();
     return legacy ? legacy.toLowerCase().replace(/\s+/g, '-') : '';
   }, [rawCategorySlug, rawPathSlug, rawLegacyCategory]);
+  const requestSearchType = useMemo<SearchType | undefined>(() => {
+    if (shouldPersistExploreType(parsedQueryType, categorySlug)) {
+      return parsedQueryType || undefined;
+    }
+    if (rawPathSlug || rawLegacyCategory) {
+      return 'RUBRO';
+    }
+    return undefined;
+  }, [categorySlug, parsedQueryType, rawLegacyCategory, rawPathSlug]);
 
   const city = rawCity.trim();
   const lat = parseOptionalNumber(rawLat);
@@ -304,7 +338,7 @@ export default function ExplorarPage() {
   const activeSearchRequestKey = useMemo(
     () => JSON.stringify({
       query,
-      type: searchType,
+      type: requestSearchType || null,
       categorySlug,
       city,
       lat: hasCoordinates ? lat : null,
@@ -320,7 +354,7 @@ export default function ExplorarPage() {
     }),
     [
       query,
-      searchType,
+      requestSearchType,
       categorySlug,
       city,
       hasCoordinates,
@@ -402,7 +436,7 @@ export default function ExplorarPage() {
 
     const requestParams = {
       query: query || undefined,
-      type: searchType,
+      type: requestSearchType,
       categorySlug: categorySlug || undefined,
       city: city || undefined,
       lat: hasCoordinates ? lat : undefined,
@@ -460,7 +494,7 @@ export default function ExplorarPage() {
   }, [
     router.isReady,
     query,
-    searchType,
+    requestSearchType,
     categorySlug,
     city,
     lat,
@@ -514,11 +548,14 @@ export default function ExplorarPage() {
 
   const baseExploreQuery = useMemo(() => {
     const nextQuery: Record<string, string> = {
-      type: searchType,
       page: String(page),
       size: String(size),
       sort,
     };
+
+    if (shouldPersistExploreType(parsedQueryType, categorySlug) && parsedQueryType) {
+      nextQuery.type = parsedQueryType;
+    }
 
     if (query) nextQuery.query = query;
     if (categorySlug) nextQuery.categorySlug = categorySlug;
@@ -538,7 +575,7 @@ export default function ExplorarPage() {
 
     return nextQuery;
   }, [
-    searchType,
+    parsedQueryType,
     query,
     categorySlug,
     city,
@@ -576,7 +613,20 @@ export default function ExplorarPage() {
   }, [items, city]);
 
   const totalPages = Math.max(1, Math.ceil(total / size));
-  const searchResults = items;
+  const searchResults = useMemo(() => {
+    const normalizedItems: SearchItem[] = [];
+    const seen = new Set<string>();
+
+    items.forEach((item) => {
+      const key = getExploreResultIdentityKey(item);
+      if (!key || seen.has(key)) return;
+
+      seen.add(key);
+      normalizedItems.push(item);
+    });
+
+    return normalizedItems;
+  }, [items]);
   const mapResults = useMemo(
     () => searchResults.filter(hasFiniteItemCoordinates),
     [searchResults],
@@ -660,6 +710,24 @@ export default function ExplorarPage() {
       return false;
     }
   }, [router]);
+
+  useEffect(() => {
+    if (!router.isReady) return;
+    if (!rawType.trim()) return;
+    if (shouldPersistExploreType(parsedQueryType, categorySlug)) return;
+
+    const nextQuery: Record<string, string> = { ...baseExploreQuery };
+    if (isMapView) nextQuery.vista = 'mapa';
+    void replaceQuery(nextQuery);
+  }, [
+    baseExploreQuery,
+    categorySlug,
+    isMapView,
+    parsedQueryType,
+    rawType,
+    replaceQuery,
+    router.isReady,
+  ]);
 
   const setVisualBrowserLocation = useCallback((position: BrowserGeoPosition) => {
     setBrowserUserLocation(position);

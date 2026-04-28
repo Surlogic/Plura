@@ -163,6 +163,20 @@ const normalizeSuggestionLabel = (value?: string | null) => {
   return trimmed ? trimmed : null;
 };
 
+const shouldPersistExploreType = (type: SearchType, categorySlug?: string) => {
+  if (type === 'LOCAL' || type === 'PROFESIONAL') return true;
+  if (type === 'RUBRO') return !categorySlug?.trim();
+  return false;
+};
+
+const shouldOmitCategoryQuery = (query?: string, categorySlug?: string) => {
+  const normalizedQuery = normalizeSearchText(query || '');
+  const normalizedCategory = normalizeSearchText((categorySlug || '').replace(/-/g, ' '));
+
+  if (!normalizedQuery || !normalizedCategory) return false;
+  return normalizedQuery === normalizedCategory;
+};
+
 const resolveSuggestionLabel = (
   item: SearchSuggestionItem,
   type: Exclude<SearchType, 'RUBRO'>,
@@ -356,7 +370,6 @@ export function useUnifiedSearch({
       typeof formValues.lat === 'number' && typeof formValues.lng === 'number';
     const hasLocationSelection = Boolean(formValues.city.trim() || hasCoordinateLocation);
     const query: Record<string, string> = {
-      type: formValues.type,
       page: String(SEARCH_DEFAULT_PAGE),
       sort:
         hasCoordinateLocation
@@ -364,14 +377,19 @@ export function useUnifiedSearch({
           : 'RATING',
     };
 
+    if (shouldPersistExploreType(formValues.type, formValues.categorySlug)) {
+      query.type = formValues.type;
+    }
+
     const trimmedQuery = formValues.query.trim();
     const isDuplicateRubroQuery = shouldOmitRubroQuery(
       formValues.type,
       trimmedQuery,
       formValues.categorySlug,
     );
+    const isDuplicateCategoryQuery = shouldOmitCategoryQuery(trimmedQuery, formValues.categorySlug);
 
-    if (trimmedQuery && !isDuplicateRubroQuery) {
+    if (trimmedQuery && !isDuplicateRubroQuery && !isDuplicateCategoryQuery) {
       query.query = trimmedQuery;
     }
     if (formValues.categorySlug?.trim()) {

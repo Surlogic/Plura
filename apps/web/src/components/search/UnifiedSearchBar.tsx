@@ -70,6 +70,12 @@ type ExploreDropdownLayouts = {
   date: ExploreDropdownMetrics | null;
 };
 
+const EXPLORE_DROPDOWN_OFFSET_PX = 8;
+const EXPLORE_DROPDOWN_VIEWPORT_MARGIN_PX = 20;
+const EXPLORE_DROPDOWN_MIN_SCROLL_HEIGHT_PX = 160;
+const EXPLORE_SUGGEST_DROPDOWN_CHROME_PX = 44;
+const EXPLORE_PANEL_DROPDOWN_CHROME_PX = 36;
+
 const SURFACE_CLASSES: Record<NonNullable<UnifiedSearchBarProps['variant']>, string> = {
   hero: 'border border-white/70 bg-white/92 shadow-[0_28px_70px_-48px_rgba(13,35,58,0.34)] transition-shadow duration-200 hover:shadow-[0_32px_78px_-46px_rgba(13,35,58,0.4)] backdrop-blur-xl',
   panel: 'border border-[color:var(--border-soft)] bg-[color:var(--surface-strong)] shadow-[0_20px_48px_-38px_rgba(13,35,58,0.28)]',
@@ -405,7 +411,7 @@ export default memo(function UnifiedSearchBar({
   const measureExploreDropdown = useCallback(
     (
       container: HTMLDivElement | null,
-      minVisibleHeight: number = 160,
+      minVisibleHeight: number = EXPLORE_DROPDOWN_MIN_SCROLL_HEIGHT_PX,
     ): ExploreDropdownMetrics | null => {
       if (!isExplore || !wrapperRef.current || !container || typeof window === 'undefined') {
         return null;
@@ -417,12 +423,16 @@ export default memo(function UnifiedSearchBar({
 
       if (availableWidth <= 0) return null;
 
-      const availableHeight = Math.max(window.innerHeight - containerRect.bottom - 16, minVisibleHeight);
-      const maxHeight = Math.min(availableHeight, Math.round(window.innerHeight * 0.6), 520);
+      const dropdownTop = containerRect.bottom + EXPLORE_DROPDOWN_OFFSET_PX;
+      const availableViewportHeight = Math.max(
+        window.innerHeight - dropdownTop - EXPLORE_DROPDOWN_VIEWPORT_MARGIN_PX,
+        minVisibleHeight,
+      );
+      const maxHeight = Math.min(availableViewportHeight, Math.round(window.innerHeight * 0.6), 520);
 
       return {
         left: Math.round(wrapperRect.left),
-        top: Math.round(containerRect.bottom + 8),
+        top: Math.round(dropdownTop),
         width: Math.round(availableWidth),
         maxHeight: Math.round(Math.max(maxHeight, minVisibleHeight)),
       };
@@ -480,7 +490,14 @@ export default memo(function UnifiedSearchBar({
   );
 
   const getExploreDropdownMaxHeight = useCallback(
-    (metrics: ExploreDropdownMetrics | null) => (isExplore ? metrics?.maxHeight : undefined),
+    (
+      metrics: ExploreDropdownMetrics | null,
+      chromeOffset: number = 0,
+      minHeight: number = EXPLORE_DROPDOWN_MIN_SCROLL_HEIGHT_PX,
+    ) => {
+      if (!isExplore || !metrics?.maxHeight) return undefined;
+      return Math.max(metrics.maxHeight - chromeOffset, minHeight);
+    },
     [isExplore],
   );
   const renderExploreDropdownPortal = useCallback(
@@ -694,7 +711,10 @@ export default memo(function UnifiedSearchBar({
                         onHoverIndex={setActiveSuggestionIndex}
                         onSelect={applySuggestion}
                         className={suggestDropdownPanelClassName}
-                        maxHeight={getExploreDropdownMaxHeight(exploreDropdownLayouts.query)}
+                        maxHeight={getExploreDropdownMaxHeight(
+                          exploreDropdownLayouts.query,
+                          EXPLORE_SUGGEST_DROPDOWN_CHROME_PX,
+                        )}
                       />,
                       exploreDropdownLayouts.query,
                     )
@@ -774,10 +794,18 @@ export default memo(function UnifiedSearchBar({
                   ? renderExploreDropdownPortal(
                       <div className={SEARCH_PANEL_CLASS}>
                         <div
-                          className={SEARCH_PANEL_SCROLL_CLASS}
+                          className={`${SEARCH_PANEL_SCROLL_CLASS} pb-3`.trim()}
                           style={
-                            getExploreDropdownMaxHeight(exploreDropdownLayouts.location)
-                              ? { maxHeight: getExploreDropdownMaxHeight(exploreDropdownLayouts.location) }
+                            getExploreDropdownMaxHeight(
+                              exploreDropdownLayouts.location,
+                              EXPLORE_PANEL_DROPDOWN_CHROME_PX,
+                            )
+                              ? {
+                                  maxHeight: getExploreDropdownMaxHeight(
+                                    exploreDropdownLayouts.location,
+                                    EXPLORE_PANEL_DROPDOWN_CHROME_PX,
+                                  ),
+                                }
                               : undefined
                           }
                         >
@@ -822,7 +850,7 @@ export default memo(function UnifiedSearchBar({
                         className={`absolute left-0 right-0 top-[calc(100%+8px)] z-[80] min-w-0 sm:w-[22rem] ${centeredHeroDropdownClassName}`.trim()}
                       >
                         <div className={SEARCH_PANEL_CLASS}>
-                          <div className={SEARCH_PANEL_SCROLL_CLASS}>
+                          <div className={`${SEARCH_PANEL_SCROLL_CLASS} pb-3`.trim()}>
                             <LocationAutocomplete
                               locationInput={locationInput}
                               onLocationInputChange={(value) => {
@@ -919,10 +947,18 @@ export default memo(function UnifiedSearchBar({
                   ? renderExploreDropdownPortal(
                       <div className={SEARCH_PANEL_CLASS}>
                         <div
-                          className={SEARCH_PANEL_SCROLL_CLASS}
+                          className={`${SEARCH_PANEL_SCROLL_CLASS} pb-3`.trim()}
                           style={
-                            getExploreDropdownMaxHeight(exploreDropdownLayouts.date)
-                              ? { maxHeight: getExploreDropdownMaxHeight(exploreDropdownLayouts.date) }
+                            getExploreDropdownMaxHeight(
+                              exploreDropdownLayouts.date,
+                              EXPLORE_PANEL_DROPDOWN_CHROME_PX,
+                            )
+                              ? {
+                                  maxHeight: getExploreDropdownMaxHeight(
+                                    exploreDropdownLayouts.date,
+                                    EXPLORE_PANEL_DROPDOWN_CHROME_PX,
+                                  ),
+                                }
                               : undefined
                           }
                         >
@@ -962,7 +998,7 @@ export default memo(function UnifiedSearchBar({
                         className={`absolute left-0 right-0 top-[calc(100%+8px)] z-[80] min-w-0 sm:w-[21.5rem] ${centeredHeroDropdownClassName}`.trim()}
                       >
                         <div className={SEARCH_PANEL_CLASS}>
-                          <div className={SEARCH_PANEL_SCROLL_CLASS}>
+                          <div className={`${SEARCH_PANEL_SCROLL_CLASS} pb-3`.trim()}>
                             <DateFilter
                               date={values.date}
                               from={values.from}

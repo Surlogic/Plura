@@ -73,7 +73,7 @@ export default function SuggestDropdown({
             </p>
           ) : null}
           <div
-            className={`${SEARCH_PANEL_SCROLL_CLASS} space-y-3`}
+            className={`${SEARCH_PANEL_SCROLL_CLASS} space-y-3 pb-3`}
             style={maxHeight ? { maxHeight } : undefined}
           >
             {groups.map((group, groupIndex) => {

@@ -246,6 +246,28 @@ function TrackManualMapInteraction({
   return null;
 }
 
+function ClearSelectionOnMapClick({
+  onSelectResult,
+}: {
+  onSelectResult?: (id: string | null) => void;
+}) {
+  const map = useMap();
+
+  useEffect(() => {
+    const handleMapClick = () => {
+      onSelectResult?.(null);
+    };
+
+    map.on('click', handleMapClick);
+
+    return () => {
+      map.off('click', handleMapClick);
+    };
+  }, [map, onSelectResult]);
+
+  return null;
+}
+
 function ReportViewportState({
   items,
   onViewportCenterChange,
@@ -297,6 +319,7 @@ export default function ExploreLeafletFallbackMap({
   onViewportCenterChange,
   onViewportBoundsChange,
 }: ExploreLeafletFallbackMapProps) {
+  const selectedResultIdRef = useRef<string | null>(selectedResultId);
   const lastAutoViewportKeyRef = useRef<string | null>(null);
   const userInteractedSinceResultsRef = useRef(false);
   const selectedItem = useMemo(
@@ -317,6 +340,10 @@ export default function ExploreLeafletFallbackMap({
     },
     [items, userLocation],
   );
+
+  useEffect(() => {
+    selectedResultIdRef.current = selectedResultId;
+  }, [selectedResultId]);
 
   useEffect(() => {
     userInteractedSinceResultsRef.current = false;
@@ -341,6 +368,7 @@ export default function ExploreLeafletFallbackMap({
         />
         <ZoomControl position="topright" />
         <TrackManualMapInteraction userInteractedSinceResultsRef={userInteractedSinceResultsRef} />
+        <ClearSelectionOnMapClick onSelectResult={onSelectResult} />
         <ReportViewportState
           items={items}
           onViewportCenterChange={onViewportCenterChange}
@@ -367,7 +395,10 @@ export default function ExploreLeafletFallbackMap({
               position={[item.latitude, item.longitude]}
               icon={buildLeafletMarkerIcon(item, isActive)}
               eventHandlers={{
-                click: () => onSelectResult?.(item.id),
+                click: () => {
+                  const nextId = selectedResultIdRef.current === item.id ? null : item.id;
+                  onSelectResult?.(nextId);
+                },
               }}
             />
           );
@@ -388,10 +419,14 @@ export default function ExploreLeafletFallbackMap({
 
         {selectedItem ? (
           <Popup
+            key={selectedItem.id}
             position={[selectedItem.latitude, selectedItem.longitude]}
             closeOnClick={false}
             eventHandlers={{
-              remove: () => onSelectResult?.(null),
+              remove: () => {
+                if (selectedResultIdRef.current !== selectedItem.id) return;
+                onSelectResult?.(null);
+              },
             }}
           >
             <ExploreMapPopupCard item={selectedItem} />

@@ -164,6 +164,7 @@ function ExploreMap({
   onViewportBoundsChange,
 }: ExploreMapProps) {
   const mapRef = useRef<MapRef | null>(null);
+  const selectedResultIdRef = useRef<string | null>(selectedResultId);
   const lastSelectionFocusRef = useRef<string | null>(null);
   const lastAutoViewportKeyRef = useRef<string | null>(null);
   const userInteractedSinceResultsRef = useRef(false);
@@ -236,6 +237,10 @@ function ExploreMap({
     },
     [items, selectedResultId],
   );
+
+  useEffect(() => {
+    selectedResultIdRef.current = selectedResultId;
+  }, [selectedResultId]);
 
   useEffect(() => {
     if (selectedResultId && !items.some((item) => item.id === selectedResultId)) {
@@ -410,12 +415,14 @@ function ExploreMap({
     onSelectResult?.(null);
   }, [onSelectResult]);
 
-  const handlePopupClose = useCallback(() => {
+  const handlePopupClose = useCallback((closingId?: string | null) => {
+    if (closingId && selectedResultIdRef.current !== closingId) return;
     onSelectResult?.(null);
   }, [onSelectResult]);
 
   const handleMarkerSelect = useCallback((id: string) => {
-    onSelectResult?.(id);
+    const nextId = selectedResultIdRef.current === id ? null : id;
+    onSelectResult?.(nextId);
   }, [onSelectResult]);
 
   const initialViewState = useMemo(
@@ -512,11 +519,12 @@ function ExploreMap({
 
         {selectedItem ? (
           <Popup
+            key={selectedItem.id}
             longitude={selectedItem.longitude}
             latitude={selectedItem.latitude}
             anchor="top"
             closeOnClick={false}
-            onClose={handlePopupClose}
+            onClose={() => handlePopupClose(selectedItem.id)}
             offset={14}
           >
             <ExploreMapPopupCard item={selectedItem} />

@@ -126,7 +126,7 @@ function ExploreMapPopupCard({ item }: { item: ExploreMapPopupCardItem }) {
         {reserveHref ? (
           <Link
             href={reserveHref}
-            className="mt-3 inline-flex h-10 w-full items-center justify-center rounded-full border border-[color:var(--primary)] bg-[color:var(--primary)] px-4 text-sm font-semibold text-white shadow-[var(--shadow-card)] transition hover:-translate-y-0.5 hover:border-[color:var(--primary-strong)] hover:bg-[color:var(--primary-strong)] hover:text-[color:var(--accent-strong)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--focus-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-[color:var(--focus-ring-offset)]"
+            className="mt-3 inline-flex h-10 w-full items-center justify-center rounded-full border border-[color:var(--primary)] bg-[color:var(--primary)] px-4 text-sm font-semibold !text-[#0F172A] no-underline shadow-[var(--shadow-card)] transition hover:-translate-y-0.5 hover:border-[color:var(--primary-strong)] hover:bg-[color:var(--primary-strong)] hover:!text-[color:var(--accent-strong)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--focus-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-[color:var(--focus-ring-offset)] visited:!text-[#0F172A]"
           >
             Reservar
           </Link>

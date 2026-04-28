@@ -3,13 +3,9 @@ import Head from 'next/head';
 import Link from 'next/link';
 import type { SearchItem } from '@/types/search';
 import {
-  Layer,
   Marker,
   NavigationControl,
   Popup,
-  Source,
-  type LayerProps,
-  type MapMouseEvent,
   type MapRef,
 } from 'react-map-gl/mapbox';
 import mapboxgl from 'mapbox-gl';
@@ -54,6 +50,7 @@ type ExploreMapProps = {
   preferUserLocationViewport?: boolean;
   selectedResultId?: string | null;
   selectionRequestNonce?: number;
+  fitToResultsRequestNonce?: number;
   onSelectResult?: (id: string | null) => void;
   onViewportCenterChange?: (center: { latitude: number; longitude: number }) => void;
   onViewportBoundsChange?: (bounds: ExploreMapViewportBounds | null) => void;
@@ -63,13 +60,6 @@ const DEFAULT_CENTER = {
   latitude: -34.9011,
   longitude: -56.1645,
 };
-const MAP_SOURCE_ID = 'plura-professionals';
-const CLUSTER_LAYER_ID = 'plura-clusters';
-const CLUSTER_COUNT_LAYER_ID = 'plura-clusters-count';
-const UNCLUSTERED_LAYER_ID = 'plura-unclustered-points';
-const INTERACTIVE_LAYER_IDS = [
-  CLUSTER_LAYER_ID,
-];
 const NOISE_LAYER_MATCHERS = [
   /poi/i,
   /transit/i,
@@ -80,50 +70,6 @@ const NOISE_LAYER_MATCHERS = [
   /natural-point-label/i,
   /airport-label/i,
 ];
-
-const clusterLayer: LayerProps = {
-  id: CLUSTER_LAYER_ID,
-  type: 'circle',
-  source: MAP_SOURCE_ID,
-  filter: ['has', 'point_count'],
-  paint: {
-    'circle-color': '#0E2A47',
-    'circle-radius': ['step', ['get', 'point_count'], 18, 10, 22, 30, 26, 60, 30],
-    'circle-opacity': 0.88,
-    'circle-stroke-width': 2,
-    'circle-stroke-color': '#FFFFFF',
-  },
-};
-
-const clusterCountLayer: LayerProps = {
-  id: CLUSTER_COUNT_LAYER_ID,
-  type: 'symbol',
-  source: MAP_SOURCE_ID,
-  filter: ['has', 'point_count'],
-  layout: {
-    'text-field': ['get', 'point_count_abbreviated'],
-    'text-size': 12,
-    'text-font': ['Open Sans Bold', 'Arial Unicode MS Bold'],
-  },
-  paint: {
-    'text-color': '#FFFFFF',
-  },
-};
-
-const unclusteredLayer: LayerProps = {
-  id: UNCLUSTERED_LAYER_ID,
-  type: 'circle',
-  source: MAP_SOURCE_ID,
-  filter: ['!', ['has', 'point_count']],
-  paint: {
-    'circle-color': '#0E2A47',
-    'circle-radius': 24,
-    'circle-opacity': 0.01,
-    'circle-stroke-width': 1,
-    'circle-stroke-opacity': 0.01,
-    'circle-stroke-color': '#0E2A47',
-  },
-};
 
 const humanizeSlug = (slug: string) =>
   slug
@@ -219,6 +165,7 @@ function ExploreMap({
   preferUserLocationViewport = false,
   selectedResultId = null,
   selectionRequestNonce = 0,
+  fitToResultsRequestNonce = 0,
   onSelectResult,
   onViewportCenterChange,
   onViewportBoundsChange,
@@ -228,8 +175,6 @@ function ExploreMap({
   const lastAutoViewportKeyRef = useRef<string | null>(null);
   const userInteractedSinceResultsRef = useRef(false);
   const [mapReady, setMapReady] = useState(false);
-  const [visibleMarkerIds, setVisibleMarkerIds] = useState<string[]>([]);
-  const [cursor, setCursor] = useState<'default' | 'pointer'>('default');
 
   const items = useMemo<ExploreMapItem[]>(
     () => {
@@ -275,23 +220,6 @@ function ExploreMap({
     [results],
   );
 
-  const geojson = useMemo(
-    () => ({
-      type: 'FeatureCollection' as const,
-      features: items.map((item) => ({
-        type: 'Feature' as const,
-        geometry: {
-          type: 'Point' as const,
-          coordinates: [item.longitude, item.latitude] as [number, number],
-        },
-        properties: {
-          id: item.id,
-        },
-      })),
-    }),
-    [items],
-  );
-
   const viewportKey = useMemo(
     () => {
       const itemKey = [...items]
@@ -305,11 +233,6 @@ function ExploreMap({
       return `${itemKey}__${userKey}`;
     },
     [items, userLocation],
-  );
-
-  const visibleMarkers = useMemo(
-    () => items.filter((item) => visibleMarkerIds.includes(item.id)),
-    [items, visibleMarkerIds],
   );
 
   const selectedItem = useMemo(
@@ -353,6 +276,28 @@ function ExploreMap({
       west: bounds.getWest(),
     });
   }, [onViewportBoundsChange, onViewportCenterChange]);
+
+  const fitMapToItems = useCallback((nextItems: ExploreMapItem[]) => {
+    if (!mapRef.current || nextItems.length === 0) return;
+
+    if (nextItems.length === 1) {
+      mapRef.current.flyTo({
+        center: [nextItems[0].longitude, nextItems[0].latitude],
+        zoom: 13,
+        duration: 650,
+      });
+      return;
+    }
+
+    const bounds = new mapboxgl.LngLatBounds();
+    nextItems.forEach((item) => bounds.extend([item.longitude, item.latitude]));
+
+    mapRef.current.fitBounds(bounds, {
+      padding: 64,
+      duration: 650,
+      maxZoom: 14,
+    });
+  }, []);
 
   useEffect(() => {
     if (!mapReady || !mapRef.current) return undefined;
@@ -413,18 +358,13 @@ function ExploreMap({
       return;
     }
 
-    const bounds = new mapboxgl.LngLatBounds();
-    items.forEach((item) => bounds.extend([item.longitude, item.latitude]));
-    if (userLocation) {
-      bounds.extend([userLocation.longitude, userLocation.latitude]);
-    }
+    fitMapToItems(items);
+  }, [fitMapToItems, items, mapReady, preferUserLocationViewport, userLocation, viewportKey]);
 
-    mapRef.current.fitBounds(bounds, {
-      padding: 64,
-      duration: 650,
-      maxZoom: 14,
-    });
-  }, [items, mapReady, preferUserLocationViewport, userLocation, viewportKey]);
+  useEffect(() => {
+    if (!mapReady || fitToResultsRequestNonce <= 0) return;
+    fitMapToItems(items);
+  }, [fitMapToItems, fitToResultsRequestNonce, items, mapReady]);
 
   useEffect(() => {
     if (!mapReady || !mapRef.current || !selectedResultId) return;
@@ -472,81 +412,9 @@ function ExploreMap({
     emitViewportState();
   }, [emitViewportState, hideVisualNoiseLayers]);
 
-  const syncVisibleMarkers = useCallback(() => {
-    const map = mapRef.current?.getMap();
-    if (!map || !map.isStyleLoaded()) return;
-
-    try {
-      const { clientWidth, clientHeight } = map.getContainer();
-      const features = map.queryRenderedFeatures([[0, 0], [clientWidth, clientHeight]], {
-        layers: [UNCLUSTERED_LAYER_ID],
-      });
-      const nextIds = Array.from(
-        new Set(
-          features
-            .map((feature) => String(feature.properties?.id || ''))
-            .filter(Boolean),
-        ),
-      );
-      setVisibleMarkerIds((current) => {
-        if (
-          current.length === nextIds.length
-          && current.every((value, index) => value === nextIds[index])
-        ) {
-          return current;
-        }
-        return nextIds;
-      });
-    } catch {
-      // El source puede no estar listo en frames intermedios.
-    }
-  }, []);
-
-  const handleMapClick = useCallback((event: MapMouseEvent) => {
-    const features = (event as MapMouseEvent & { features?: mapboxgl.MapboxGeoJSONFeature[] })
-      .features;
-    const feature = features?.[0];
-    if (!feature) {
-      onSelectResult?.(null);
-      return;
-    }
-    const layerId = feature.layer?.id || '';
-
-    if (layerId === CLUSTER_LAYER_ID) {
-      const clusterId = Number(feature.properties?.cluster_id);
-      if (!Number.isFinite(clusterId)) return;
-
-      const map = mapRef.current?.getMap();
-      const source = map?.getSource(MAP_SOURCE_ID) as mapboxgl.GeoJSONSource | undefined;
-      if (!map || !source) return;
-
-      source.getClusterExpansionZoom(clusterId, (error, zoom) => {
-        if (error || typeof zoom !== 'number') return;
-        const coordinates = (feature.geometry as { coordinates?: number[] }).coordinates;
-        if (!Array.isArray(coordinates) || coordinates.length < 2) return;
-        const [lng, lat] = coordinates as [number, number];
-        map.easeTo({
-          center: [lng, lat],
-          zoom,
-          duration: 450,
-        });
-      });
-      return;
-    }
+  const handleMapClick = useCallback(() => {
+    onSelectResult?.(null);
   }, [onSelectResult]);
-
-  const handleMapMouseMove = useCallback((event: MapMouseEvent) => {
-    const features = (event as MapMouseEvent & { features?: mapboxgl.MapboxGeoJSONFeature[] })
-      .features;
-    const hasInteractiveFeature = features?.some(
-      (item) => item.layer?.id === CLUSTER_LAYER_ID,
-    );
-    setCursor(hasInteractiveFeature ? 'pointer' : 'default');
-  }, []);
-
-  const handleMapMouseLeave = useCallback(() => {
-    setCursor('default');
-  }, []);
 
   const handlePopupClose = useCallback(() => {
     onSelectResult?.(null);
@@ -590,26 +458,6 @@ function ExploreMap({
     ],
   );
 
-  useEffect(() => {
-    if (!mapReady || !mapRef.current) return undefined;
-
-    const map = mapRef.current.getMap();
-    const handleIdle = () => {
-      syncVisibleMarkers();
-    };
-
-    map.on('idle', handleIdle);
-    syncVisibleMarkers();
-    const frameId = window.requestAnimationFrame(() => {
-      syncVisibleMarkers();
-    });
-
-    return () => {
-      window.cancelAnimationFrame(frameId);
-      map.off('idle', handleIdle);
-    };
-  }, [mapReady, syncVisibleMarkers, geojson]);
-
   return (
     <div className="relative flex h-full min-h-0 w-full flex-1">
       <Head>
@@ -624,10 +472,6 @@ function ExploreMap({
         initialViewState={initialViewState}
         onLoad={handleMapLoad}
         onClick={handleMapClick}
-        onMouseMove={handleMapMouseMove}
-        onMouseLeave={handleMapMouseLeave}
-        interactiveLayerIds={INTERACTIVE_LAYER_IDS}
-        cursor={cursor}
         interactive
         dragPan
         scrollZoom
@@ -641,23 +485,7 @@ function ExploreMap({
       >
         <NavigationControl position="top-right" showCompass={false} />
 
-        <Source
-          id={MAP_SOURCE_ID}
-          type="geojson"
-          data={geojson}
-          cluster
-          clusterRadius={46}
-          clusterMaxZoom={14}
-        >
-          {/* eslint-disable-next-line no-restricted-syntax -- react-map-gl Layer expects props object */}
-          <Layer {...clusterLayer} />
-          {/* eslint-disable-next-line no-restricted-syntax -- react-map-gl Layer expects props object */}
-          <Layer {...clusterCountLayer} />
-          {/* eslint-disable-next-line no-restricted-syntax -- react-map-gl Layer expects props object */}
-          <Layer {...unclusteredLayer} />
-        </Source>
-
-        {visibleMarkers.map((item) => {
+        {items.map((item) => {
           const isActive = selectedResultId === item.id;
 
           return (

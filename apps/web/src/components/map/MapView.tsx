@@ -4,6 +4,7 @@
 import { Component, useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import mapboxgl from 'mapbox-gl';
 import Map, { type MapProps, type MapRef } from 'react-map-gl/mapbox';
+import MapStyles from '@/components/map/MapStyles';
 
 const MAPBOX_TOKEN = (process.env.NEXT_PUBLIC_MAPBOX_TOKEN || '').trim();
 const DEFAULT_MAP_STYLE = 'mapbox://styles/mapbox/light-v11';
@@ -191,34 +192,37 @@ export default function MapView({
   );
 
   return (
-    <div ref={containerRef} className={`h-full w-full ${containerClassName}`}>
-      <MapRuntimeBoundary
-        fallback={webglFallback}
-        onRuntimeError={() => setMapFailed(true)}
-        resetKey={resetKey}
-      >
-        <Map
-          ref={setMapRef}
-          mapStyle={mapStyle}
-          mapboxAccessToken={MAPBOX_TOKEN}
-          onError={(event) => {
-            const message = event.error?.message || '';
-            if (
-              message.includes('WebGL')
-              || message.includes('Failed to initialize')
-            ) {
-              setForceInteractiveRetry(false);
-              setMapFailed(true);
-            }
-            onError?.(event);
-          }}
-          onLoad={(event) => {
-            internalMapRef.current?.resize();
-            onLoad?.(event);
-          }}
-          {...props}
-        />
-      </MapRuntimeBoundary>
-    </div>
+    <>
+      <MapStyles />
+      <div ref={containerRef} className={`h-full w-full ${containerClassName}`}>
+        <MapRuntimeBoundary
+          fallback={webglFallback}
+          onRuntimeError={() => setMapFailed(true)}
+          resetKey={resetKey}
+        >
+          <Map
+            ref={setMapRef}
+            mapStyle={mapStyle}
+            mapboxAccessToken={MAPBOX_TOKEN}
+            onError={(event) => {
+              const message = event.error?.message || '';
+              if (
+                message.includes('WebGL')
+                || message.includes('Failed to initialize')
+              ) {
+                setForceInteractiveRetry(false);
+                setMapFailed(true);
+              }
+              onError?.(event);
+            }}
+            onLoad={(event) => {
+              internalMapRef.current?.resize();
+              onLoad?.(event);
+            }}
+            {...props}
+          />
+        </MapRuntimeBoundary>
+      </div>
+    </>
   );
 }

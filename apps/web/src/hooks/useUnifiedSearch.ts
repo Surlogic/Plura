@@ -22,6 +22,7 @@ import {
   shouldOmitRubroQuery,
   slugToLabel,
 } from '@/utils/searchQuery';
+import type { Category } from '@/types/category';
 import type {
   GeoAutocompleteItem,
   SearchSuggestResponse,
@@ -242,15 +243,17 @@ type UseUnifiedSearchOptions = {
   initialValues?: Partial<UnifiedSearchValues>;
   fixedQuery?: Record<string, string | undefined>;
   citySuggestions?: string[];
+  initialCategories?: Category[];
 };
 
 export function useUnifiedSearch({
   initialValues,
   fixedQuery,
   citySuggestions = [],
+  initialCategories,
 }: UseUnifiedSearchOptions) {
   const router = useRouter();
-  const { categories } = useCategories();
+  const { categories } = useCategories({ initialCategories });
 
   const [values, setValues] = useState<UnifiedSearchValues>(() =>
     normalizeInitialValues(initialValues),

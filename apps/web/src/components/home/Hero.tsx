@@ -50,7 +50,7 @@ export default memo(function Hero({ categories: _categories, stats, isLoading = 
           </div>
 
           <div className="w-full max-w-[64rem] pt-5 sm:pt-6 xl:pt-8">
-            <SearchBar />
+            <SearchBar categories={_categories} />
           </div>
 
           <div className="w-full max-w-[64rem]">

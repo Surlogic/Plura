@@ -378,41 +378,6 @@ export default function ExplorarPage() {
   }, [router.isReady]);
 
   useEffect(() => {
-    if (isMapView) return undefined;
-    if (typeof window === 'undefined') return undefined;
-
-    const preloadMap = () => {
-      void loadExploreMap();
-    };
-
-    if ('requestIdleCallback' in window) {
-      const idleCallbackId = (
-        window as Window & {
-          requestIdleCallback: (
-            callback: IdleRequestCallback,
-            options?: IdleRequestOptions,
-          ) => number;
-        }
-      ).requestIdleCallback(() => {
-        preloadMap();
-      }, { timeout: 1500 });
-
-      return () => {
-        (
-          window as Window & {
-            cancelIdleCallback?: (handle: number) => void;
-          }
-        ).cancelIdleCallback?.(idleCallbackId);
-      };
-    }
-
-    const timeoutId = globalThis.setTimeout(preloadMap, 300);
-    return () => {
-      globalThis.clearTimeout(timeoutId);
-    };
-  }, [isMapView]);
-
-  useEffect(() => {
     if (!router.isReady) return;
 
     latestSearchRequestIdRef.current += 1;
@@ -1061,8 +1026,6 @@ export default function ExplorarPage() {
         onClick={() => {
           void handleViewChange(true);
         }}
-        onMouseEnter={prefetchMapView}
-        onFocus={prefetchMapView}
         className={`inline-flex h-9 items-center rounded-full px-3 text-sm font-semibold transition ${
           isMapView
             ? 'bg-[color:var(--surface-dark)] text-[color:var(--text-on-dark)]'

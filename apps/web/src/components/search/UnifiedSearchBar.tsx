@@ -33,6 +33,7 @@ import {
   normalizeDate,
   type UnifiedSearchValues,
 } from '@/hooks/useUnifiedSearch';
+import type { Category } from '@/types/category';
 import { slugToLabel } from '@/utils/searchQuery';
 
 export type { UnifiedSearchValues };
@@ -46,6 +47,7 @@ type UnifiedSearchBarProps = {
   className?: string;
   showClearButton?: boolean;
   citySuggestions?: string[];
+  initialCategories?: Category[];
   density?: 'default' | 'compact';
   locationSummaryOverride?: string;
   onLocationClear?: (mode: 'remove' | 'clear-all') => void;
@@ -142,6 +144,7 @@ export default memo(function UnifiedSearchBar({
   className,
   showClearButton = false,
   citySuggestions = [],
+  initialCategories,
   density = 'default',
   locationSummaryOverride,
   onLocationClear,
@@ -166,7 +169,12 @@ export default memo(function UnifiedSearchBar({
   });
   const skipHeroSelectionFocusCollapseRef = useRef(false);
 
-  const search = useUnifiedSearch({ initialValues, fixedQuery, citySuggestions });
+  const search = useUnifiedSearch({
+    initialValues,
+    fixedQuery,
+    citySuggestions,
+    initialCategories,
+  });
 
   const {
     values,

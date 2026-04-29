@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, type MutableRefObject } from 'react';
+import MapStyles from '@/components/map/MapStyles';
 import {
   CircleMarker,
   MapContainer,
@@ -378,92 +379,95 @@ export default function ExploreLeafletFallbackMap({
   }, [viewportKey]);
 
   return (
-    <div className="relative h-full w-full border border-[#DCE5ED] bg-[#E9EEF2]">
-      <MapContainer
-        center={DEFAULT_CENTER}
-        zoom={DEFAULT_ZOOM}
-        className="h-full w-full"
-        zoomControl={false}
-        scrollWheelZoom
-        dragging
-        doubleClickZoom
-        touchZoom
-        attributionControl={false}
-      >
-        <TileLayer
-          url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
-          attribution="&copy; OpenStreetMap contributors &copy; CARTO"
-        />
-        <ZoomControl position="topright" />
-        <TrackManualMapInteraction userInteractedSinceResultsRef={userInteractedSinceResultsRef} />
-        <ClearSelectionOnMapClick onSelectResult={onSelectResult} />
-        <ReportViewportState
-          items={items}
-          onViewportCenterChange={onViewportCenterChange}
-          onViewportBoundsChange={onViewportBoundsChange}
-        />
-        <FitToResults
-          items={items}
-          userLocation={userLocation}
-          viewportKey={viewportKey}
-          lastAutoViewportKeyRef={lastAutoViewportKeyRef}
-          userInteractedSinceResultsRef={userInteractedSinceResultsRef}
-        />
-        <FocusActiveResult
-          items={items}
-          selectedResultId={selectedResultId}
-          selectionRequestNonce={selectionRequestNonce}
-        />
+    <>
+      <MapStyles includeMapbox={false} includeLeaflet />
+      <div className="relative h-full w-full border border-[#DCE5ED] bg-[#E9EEF2]">
+        <MapContainer
+          center={DEFAULT_CENTER}
+          zoom={DEFAULT_ZOOM}
+          className="h-full w-full"
+          zoomControl={false}
+          scrollWheelZoom
+          dragging
+          doubleClickZoom
+          touchZoom
+          attributionControl={false}
+        >
+          <TileLayer
+            url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
+            attribution="&copy; OpenStreetMap contributors &copy; CARTO"
+          />
+          <ZoomControl position="topright" />
+          <TrackManualMapInteraction userInteractedSinceResultsRef={userInteractedSinceResultsRef} />
+          <ClearSelectionOnMapClick onSelectResult={onSelectResult} />
+          <ReportViewportState
+            items={items}
+            onViewportCenterChange={onViewportCenterChange}
+            onViewportBoundsChange={onViewportBoundsChange}
+          />
+          <FitToResults
+            items={items}
+            userLocation={userLocation}
+            viewportKey={viewportKey}
+            lastAutoViewportKeyRef={lastAutoViewportKeyRef}
+            userInteractedSinceResultsRef={userInteractedSinceResultsRef}
+          />
+          <FocusActiveResult
+            items={items}
+            selectedResultId={selectedResultId}
+            selectionRequestNonce={selectionRequestNonce}
+          />
 
-        {items.map((item) => {
-          const isActive = selectedResultId === item.id;
-          return (
-            <Marker
-              key={item.id}
-              position={[item.latitude, item.longitude]}
-              icon={buildLeafletMarkerIcon(item, isActive)}
-              eventHandlers={{
-                click: () => {
-                  const nextId = selectedResultIdRef.current === item.id ? null : item.id;
-                  onSelectResult?.(nextId);
-                },
+          {items.map((item) => {
+            const isActive = selectedResultId === item.id;
+            return (
+              <Marker
+                key={item.id}
+                position={[item.latitude, item.longitude]}
+                icon={buildLeafletMarkerIcon(item, isActive)}
+                eventHandlers={{
+                  click: () => {
+                    const nextId = selectedResultIdRef.current === item.id ? null : item.id;
+                    onSelectResult?.(nextId);
+                  },
+                }}
+              />
+            );
+          })}
+
+          {userLocation ? (
+            <CircleMarker
+              center={[userLocation.latitude, userLocation.longitude]}
+              radius={7}
+              pathOptions={{
+                color: '#FFFFFF',
+                weight: 2,
+                fillColor: '#16A34A',
+                fillOpacity: 0.95,
               }}
             />
-          );
-        })}
+          ) : null}
 
-        {userLocation ? (
-          <CircleMarker
-            center={[userLocation.latitude, userLocation.longitude]}
-            radius={7}
-            pathOptions={{
-              color: '#FFFFFF',
-              weight: 2,
-              fillColor: '#16A34A',
-              fillOpacity: 0.95,
-            }}
-          />
-        ) : null}
-
-        {selectedItem ? (
-          <Popup
-            key={selectedItem.id}
-            position={[selectedItem.latitude, selectedItem.longitude]}
-            closeOnClick={false}
-            className="explore-map-popup"
-            maxWidth={320}
-            offset={[0, LEAFLET_POPUP_OFFSET_Y_PX]}
-            eventHandlers={{
-              remove: () => {
-                if (selectedResultIdRef.current !== selectedItem.id) return;
-                onSelectResult?.(null);
-              },
-            }}
-          >
-            <ExploreMapPopupCard item={selectedItem} />
-          </Popup>
-        ) : null}
-      </MapContainer>
-    </div>
+          {selectedItem ? (
+            <Popup
+              key={selectedItem.id}
+              position={[selectedItem.latitude, selectedItem.longitude]}
+              closeOnClick={false}
+              className="explore-map-popup"
+              maxWidth={320}
+              offset={[0, LEAFLET_POPUP_OFFSET_Y_PX]}
+              eventHandlers={{
+                remove: () => {
+                  if (selectedResultIdRef.current !== selectedItem.id) return;
+                  onSelectResult?.(null);
+                },
+              }}
+            >
+              <ExploreMapPopupCard item={selectedItem} />
+            </Popup>
+          ) : null}
+        </MapContainer>
+      </div>
+    </>
   );
 }

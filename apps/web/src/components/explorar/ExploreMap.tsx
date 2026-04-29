@@ -1,5 +1,4 @@
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import Head from 'next/head';
+import { memo, useCallback, useEffect, useMemo, useRef, useState, type ComponentType } from 'react';
 import type { SearchItem } from '@/types/search';
 import {
   Marker,
@@ -9,7 +8,6 @@ import {
 } from 'react-map-gl/mapbox';
 import mapboxgl from 'mapbox-gl';
 import MapView from '@/components/map/MapView';
-import ExploreLeafletFallbackMap from '@/components/explorar/ExploreLeafletFallbackMap';
 import ExploreMapPopupCard from '@/components/explorar/ExploreMapPopupCard';
 import {
   getExploreMapPopupVerticalFocusOffset,
@@ -61,6 +59,21 @@ type ExploreMapProps = {
   onViewportCenterChange?: (center: { latitude: number; longitude: number }) => void;
   onViewportBoundsChange?: (bounds: ExploreMapViewportBounds | null) => void;
 };
+
+type ExploreLeafletFallbackMapProps = {
+  items: ExploreMapItem[];
+  userLocation?: {
+    latitude: number;
+    longitude: number;
+  };
+  selectedResultId?: string | null;
+  selectionRequestNonce?: number;
+  onSelectResult?: (id: string | null) => void;
+  onViewportCenterChange?: (center: { latitude: number; longitude: number }) => void;
+  onViewportBoundsChange?: (bounds: ExploreMapViewportBounds | null) => void;
+};
+
+type ExploreLeafletFallbackMapComponent = ComponentType<ExploreLeafletFallbackMapProps>;
 
 const DEFAULT_CENTER = {
   latitude: -34.9011,
@@ -165,6 +178,29 @@ function ExploreMapMarkerAvatar({
       ) : null}
     </div>
   );
+}
+
+function DeferredExploreLeafletFallbackMap(props: ExploreLeafletFallbackMapProps) {
+  const [FallbackMap, setFallbackMap] = useState<ExploreLeafletFallbackMapComponent | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    void import('@/components/explorar/ExploreLeafletFallbackMap').then((module) => {
+      if (cancelled) return;
+      setFallbackMap(() => module.default as ExploreLeafletFallbackMapComponent);
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  if (!FallbackMap) {
+    return <div className="h-full w-full bg-[#E9EEF2]" />;
+  }
+
+  return <FallbackMap {...props} />;
 }
 
 function ExploreMap({
@@ -469,7 +505,7 @@ function ExploreMap({
 
   const interactiveFallbackMap = useMemo(
     () => (
-      <ExploreLeafletFallbackMap
+      <DeferredExploreLeafletFallbackMap
         items={items}
         userLocation={userLocation}
         selectedResultId={selectedResultId}
@@ -492,13 +528,6 @@ function ExploreMap({
 
   return (
     <div className="relative flex h-full min-h-0 w-full flex-1">
-      <Head>
-        <link
-          rel="stylesheet"
-          href="https://api.mapbox.com/mapbox-gl-js/v3.19.1/mapbox-gl.css"
-          key="mapbox-gl-stylesheet"
-        />
-      </Head>
       <MapView
         mapRef={mapRef}
         initialViewState={initialViewState}

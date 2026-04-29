@@ -5,6 +5,14 @@ import type { Category } from '@/types/category';
 let cachedCategories: Category[] | null = null;
 let inflightPromise: Promise<Category[]> | null = null;
 
+const seedCategoryCache = (initialCategories?: Category[]) => {
+  if (cachedCategories || !Array.isArray(initialCategories) || initialCategories.length === 0) {
+    return;
+  }
+
+  cachedCategories = initialCategories;
+};
+
 const fetchCategories = (): Promise<Category[]> => {
   if (cachedCategories) return Promise.resolve(cachedCategories);
   if (inflightPromise) return inflightPromise;
@@ -23,7 +31,13 @@ const fetchCategories = (): Promise<Category[]> => {
   return inflightPromise;
 };
 
-export const useCategories = () => {
+export const useCategories = ({
+  initialCategories,
+}: {
+  initialCategories?: Category[];
+} = {}) => {
+  seedCategoryCache(initialCategories);
+
   const [categories, setCategories] = useState<Category[]>(cachedCategories ?? []);
   const [isLoading, setIsLoading] = useState(!cachedCategories);
   const [error, setError] = useState<string | null>(null);

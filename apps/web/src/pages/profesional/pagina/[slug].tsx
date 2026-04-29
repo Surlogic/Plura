@@ -424,6 +424,7 @@ export default function ProfesionalDetailPage({
     selectedServiceIndex !== null ? displayServices[selectedServiceIndex] ?? null : null;
   const serviceDetail =
     serviceDetailIndex !== null ? displayServices[serviceDetailIndex] ?? null : null;
+  const aboutValue = merged.about?.trim() || '';
 
   const displaySchedule = merged.schedule ?? null;
 
@@ -732,6 +733,22 @@ export default function ProfesionalDetailPage({
               serviceItems={serviceItems}
             />
           </section>
+
+          {aboutValue ? (
+            <section className="border-t border-[color:var(--border-soft)] py-6 sm:py-7">
+              <div className="max-w-4xl">
+                <p className="text-[0.68rem] font-semibold uppercase tracking-[0.32em] text-[color:var(--ink-faint)]">
+                  Sobre nosotros
+                </p>
+                <h2 className="mt-2 text-3xl font-semibold text-[color:var(--ink)]">
+                  Sobre nosotros
+                </h2>
+                <p className="mt-3 whitespace-pre-line text-sm leading-7 text-[color:var(--ink-muted)] sm:text-base">
+                  {aboutValue}
+                </p>
+              </div>
+            </section>
+          ) : null}
 
           {!isPreview && professionalSlug ? (
             <section className="border-t border-[color:var(--border-soft)] py-6 sm:py-7">

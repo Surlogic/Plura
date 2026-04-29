@@ -754,6 +754,12 @@ export default function ProfesionalDetailPage({
             <section className="border-t border-[color:var(--border-soft)] py-6 sm:py-7">
               <PublicReviewsList
                 slug={professionalSlug}
+                name={merged.name}
+                category={merged.category}
+                address={addressLine || addressValue}
+                city={cityLine}
+                latitude={data?.latitude ?? data?.lat ?? null}
+                longitude={data?.longitude ?? data?.lng ?? null}
                 rating={data?.rating}
                 reviewsCount={data?.reviewsCount}
               />

@@ -26,6 +26,7 @@ import {
   formatServicePrice,
   resolveServiceCategoryLabel,
 } from '@/components/profesional/public-page/servicePresentation';
+import { resolveAssetUrl } from '@/utils/assetUrl';
 import type {
   ProfessionalMediaPresentation,
   ProfessionalSchedule,
@@ -161,6 +162,25 @@ const splitLocationLines = (location: string) => {
     addressLine: parts[0],
     cityLine: parts.slice(1).join(', '),
   };
+};
+
+const normalizeComparableAssetUrl = (value: string | null | undefined): string => {
+  const resolved = resolveAssetUrl(value);
+  if (!resolved) return '';
+  try {
+    return new URL(resolved).toString();
+  } catch {
+    return resolved;
+  }
+};
+
+const isServiceAssetUrl = (value: string): boolean => {
+  if (!value) return false;
+  try {
+    return new URL(value).pathname.toLowerCase().includes('/services/');
+  } catch {
+    return value.toLowerCase().includes('/services/');
+  }
 };
 
 type PublicProfessional = {
@@ -473,22 +493,29 @@ export default function ProfesionalDetailPage({
     [merged.name],
   );
 
-  const serviceGalleryPhotos = useMemo(
-    () =>
-      displayServices
-        .flatMap((service) => {
-          const galleryPhotos = Array.isArray(service.photos) ? service.photos : [];
-          return service.imageUrl ? [service.imageUrl, ...galleryPhotos] : galleryPhotos;
-        })
-        .filter(Boolean),
-    [displayServices],
-  );
+  const serviceImageUrls = useMemo(() => {
+    const urls = displayServices.flatMap((service) => {
+      const galleryPhotos = Array.isArray(service.photos) ? service.photos : [];
+      return service.imageUrl ? [service.imageUrl, ...galleryPhotos] : galleryPhotos;
+    });
+    return new Set(urls.map((photo) => normalizeComparableAssetUrl(photo)).filter(Boolean));
+  }, [displayServices]);
 
   const galleryPhotos = useMemo(() => {
-    const localPhotos = merged.photos ?? [];
-    const combined = [...localPhotos, ...serviceGalleryPhotos];
-    return Array.from(new Set(combined.filter(Boolean))).slice(0, 15);
-  }, [merged.photos, serviceGalleryPhotos]);
+    const unique = new Set<string>();
+    const publicGalleryPhotos: string[] = [];
+
+    (merged.photos ?? []).forEach((photo) => {
+      const normalized = normalizeComparableAssetUrl(photo);
+      if (!normalized) return;
+      if (serviceImageUrls.has(normalized) || isServiceAssetUrl(normalized)) return;
+      if (unique.has(normalized)) return;
+      unique.add(normalized);
+      publicGalleryPhotos.push(normalized);
+    });
+
+    return publicGalleryPhotos.slice(0, 15);
+  }, [merged.photos, serviceImageUrls]);
 
   const hasRealGalleryPhotos = galleryPhotos.some((photo) => Boolean(photo));
   const professionalSlug = typeof slug === 'string' ? slug : '';

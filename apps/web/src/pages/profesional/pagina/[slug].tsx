@@ -698,14 +698,11 @@ export default function ProfesionalDetailPage({
             <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
               <div>
                 <p className="text-[0.68rem] font-semibold uppercase tracking-[0.32em] text-[color:var(--ink-faint)]">
-                  Galeria
+                  Galería de fotos
                 </p>
                 <h2 className="mt-2 text-3xl font-semibold text-[color:var(--ink)]">
                   Espacio, trabajos y detalles
                 </h2>
-                <p className="mt-3 max-w-3xl text-sm leading-6 text-[color:var(--ink-muted)]">
-                  Una galería más limpia, contenida y pensada para mostrar el perfil sin romper la composición.
-                </p>
               </div>
               {hasRealGalleryPhotos ? (
                 <p className="text-sm font-medium text-[color:var(--ink-faint)]">
@@ -740,9 +737,6 @@ export default function ProfesionalDetailPage({
                 <p className="text-[0.68rem] font-semibold uppercase tracking-[0.32em] text-[color:var(--ink-faint)]">
                   Sobre nosotros
                 </p>
-                <h2 className="mt-2 text-3xl font-semibold text-[color:var(--ink)]">
-                  Sobre nosotros
-                </h2>
                 <p className="mt-3 whitespace-pre-line text-sm leading-7 text-[color:var(--ink-muted)] sm:text-base">
                   {aboutValue}
                 </p>

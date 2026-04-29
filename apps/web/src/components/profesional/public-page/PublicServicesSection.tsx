@@ -55,14 +55,11 @@ export default function PublicServicesSection({
       <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <p className="text-[0.68rem] font-semibold uppercase tracking-[0.32em] text-[color:var(--ink-faint)]">
-            Servicios
+            Servicios disponibles
           </p>
           <h2 className="mt-2 text-3xl font-semibold text-[color:var(--ink)]">
-            Servicios disponibles
+            Elegí tu opción ideal…
           </h2>
-          <p className="mt-3 max-w-3xl text-sm leading-6 text-[color:var(--ink-muted)]">
-            Esta pantalla presenta la oferta y deriva al flujo dedicado de reserva sin meter pasos operativos aca.
-          </p>
         </div>
         <Badge variant="neutral" className="w-fit normal-case tracking-normal">
           {serviceItems.length} {serviceItems.length === 1 ? 'servicio disponible' : 'servicios disponibles'}

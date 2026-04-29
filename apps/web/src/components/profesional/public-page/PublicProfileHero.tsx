@@ -37,7 +37,6 @@ type PublicProfileHeroProps = {
   name: string;
   onReserve: () => void;
   onToggleFavorite: () => void;
-  onViewServices: () => void;
   photoUrls?: string[];
   reserveLabel?: string;
   rating?: number | null;
@@ -124,7 +123,6 @@ export default function PublicProfileHero({
   name,
   onReserve,
   onToggleFavorite,
-  onViewServices,
   photoUrls = [],
   reserveLabel = 'Reservar',
   rating,
@@ -272,21 +270,13 @@ export default function PublicProfileHero({
                 >
                   {reserveLabel}
                 </Button>
-                <Button
-                  type="button"
-                  variant="secondary"
-                  className="w-full"
-                  onClick={onViewServices}
-                >
-                  Ver servicios
-                </Button>
                 <FavoriteToggleButton
                   isActive={isCurrentFavorite}
                   onClick={onToggleFavorite}
                   variant="pill"
                   className="w-full justify-center"
-                  activeLabel="Guardado"
-                  inactiveLabel="Guardar"
+                  activeLabel="Favoritos"
+                  inactiveLabel="Favoritos"
                 />
               </div>
             ) : null}

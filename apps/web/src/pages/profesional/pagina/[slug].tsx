@@ -242,6 +242,7 @@ export default function ProfesionalDetailPage({
   );
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [favoriteNotice, setFavoriteNotice] = useState<string | null>(null);
   const [selectedServiceIndex, setSelectedServiceIndex] = useState(0);
   const [serviceDetailIndex, setServiceDetailIndex] = useState<number | null>(null);
   const [activeServiceCategory, setActiveServiceCategory] = useState('');
@@ -251,6 +252,12 @@ export default function ProfesionalDetailPage({
     setData((initialData as PublicProfessional | null) ?? null);
     setErrorMessage(null);
   }, [initialData]);
+
+  useEffect(() => {
+    if (!favoriteNotice) return undefined;
+    const timeoutId = window.setTimeout(() => setFavoriteNotice(null), 5000);
+    return () => window.clearTimeout(timeoutId);
+  }, [favoriteNotice]);
 
   useEffect(() => {
     if (isPreview) return;
@@ -552,14 +559,20 @@ export default function ProfesionalDetailPage({
   };
 
   const handleViewServices = () => {
-    servicesSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    if (typeof window === 'undefined') return;
+
+    const section =
+      servicesSectionRef.current ?? document.getElementById('servicios');
+
+    if (section) {
+      section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      return;
+    }
+
+    window.location.hash = '#servicios';
   };
 
   const handlePrimaryReserveEntry = () => {
-    if (selectedService) {
-      handleReserveSelectedService();
-      return;
-    }
     handleViewServices();
   };
 
@@ -608,6 +621,13 @@ export default function ProfesionalDetailPage({
 
   const toggleFavoriteHandler = () => {
     if (!professionalSlug) return;
+
+    if (!hasClientSession) {
+      setFavoriteNotice('Tenés que iniciar sesión o registrarte para añadir a favoritos.');
+      return;
+    }
+
+    setFavoriteNotice(null);
     void toggleFavorite({
       category: merged.category || 'Profesional',
       headline: merged.headline || undefined,
@@ -645,6 +665,15 @@ export default function ProfesionalDetailPage({
           </div>
         ) : null}
 
+        {!isPreview && favoriteNotice ? (
+          <div
+            role="alert"
+            className="mb-6 rounded-[24px] border border-amber-200 bg-amber-50 px-6 py-4 text-sm text-amber-900"
+          >
+            {favoriteNotice}
+          </div>
+        ) : null}
+
         {!isPreview && !isLoading && !errorMessage && !hasPublicContent ? (
           <div className="mb-6 rounded-[24px] border border-[#E2E7EC] bg-white/85 px-6 py-4 text-sm text-[#64748B]">
             No hay información pública cargada para este profesional.
@@ -665,10 +694,9 @@ export default function ProfesionalDetailPage({
           name={merged.name}
           onReserve={handlePrimaryReserveEntry}
           onToggleFavorite={toggleFavoriteHandler}
-          onViewServices={handleViewServices}
           photoUrls={merged.photos}
           reserveDisabled={false}
-          reserveLabel={selectedService ? 'Reservar' : 'Elegir servicio'}
+          reserveLabel="Reservar"
           rating={data?.rating}
           reviewsCount={data?.reviewsCount}
           scheduleSummary={scheduleSummary}

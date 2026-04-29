@@ -1,7 +1,6 @@
 import type { GetServerSideProps, InferGetServerSidePropsType } from 'next';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/router';
-import dynamic from 'next/dynamic';
 import Navbar from '@/components/shared/Navbar';
 import Footer from '@/components/shared/Footer';
 import BusinessGallery from '@/components/profesional/BusinessGallery';
@@ -9,13 +8,15 @@ import ServiceDetailModal from '@/components/profesional/ServiceDetailModal';
 import PublicReviewsList from '@/components/profesional/PublicReviewsList';
 import { useFavoriteProfessionals } from '@/hooks/useFavoriteProfessionals';
 import { useClientProfileContext } from '@/context/ClientProfileContext';
-import { mapboxForwardGeocode } from '@/services/mapbox';
 import { getPublicProfessionalBySlug } from '@/services/publicBookings';
 import { hasKnownAuthSession } from '@/services/session';
 import {
   normalizeProfessionalMediaPresentation,
 } from '@/utils/professionalMediaPresentation';
-import PublicProfileHero from '@/components/profesional/public-page/PublicProfileHero';
+import PublicProfileHero, {
+  type PublicHeroScheduleItem,
+  type PublicHeroSocialLink,
+} from '@/components/profesional/public-page/PublicProfileHero';
 import PublicServicesSection, {
   type PublicServiceItem,
 } from '@/components/profesional/public-page/PublicServicesSection';
@@ -31,18 +32,6 @@ import type {
   PublicService,
   WorkDayKey,
 } from '@/types/professional';
-
-const PublicProfileMap = dynamic(
-  () => import('@/components/profesional/PublicProfileMap'),
-  {
-    ssr: false,
-    loading: () => (
-      <div className="flex h-[360px] items-center justify-center rounded-[28px] border border-[#E2E7EC] bg-[#F3F6F9] px-4 text-center text-sm text-[#64748B]">
-        Cargando mapa...
-      </div>
-    ),
-  },
-);
 
 const dayLabels: Record<WorkDayKey, string> = {
   mon: 'Lunes',
@@ -153,17 +142,6 @@ const resolveSocialHref = (
   return '';
 };
 
-const parseOptionalNumber = (value: unknown): number | null => {
-  if (typeof value === 'number') {
-    return Number.isFinite(value) ? value : null;
-  }
-  if (typeof value === 'string') {
-    const parsed = Number.parseFloat(value);
-    return Number.isFinite(parsed) ? parsed : null;
-  }
-  return null;
-};
-
 const splitLocationLines = (location: string) => {
   const normalized = location.trim();
   if (!normalized) {
@@ -183,82 +161,6 @@ const splitLocationLines = (location: string) => {
     addressLine: parts[0],
     cityLine: parts.slice(1).join(', '),
   };
-};
-
-const MapSectionPlaceholder = ({ message }: { message: string }) => (
-  <div className="flex h-[360px] items-center justify-center rounded-[28px] border border-[#E2E7EC] bg-[#F3F6F9] px-6 text-center text-sm text-[#64748B]">
-    {message}
-  </div>
-);
-
-const SocialIcon = ({ platform }: { platform: SocialPlatform }) => {
-  if (platform === 'instagram') {
-    return (
-      <svg viewBox="0 0 24 24" aria-hidden="true" className="h-4 w-4 fill-current">
-        <path d="M7 2h10a5 5 0 0 1 5 5v10a5 5 0 0 1-5 5H7a5 5 0 0 1-5-5V7a5 5 0 0 1 5-5Zm10 2H7a3 3 0 0 0-3 3v10a3 3 0 0 0 3 3h10a3 3 0 0 0 3-3V7a3 3 0 0 0-3-3Zm-5 3.5A4.5 4.5 0 1 1 7.5 12 4.5 4.5 0 0 1 12 7.5Zm0 2A2.5 2.5 0 1 0 14.5 12 2.5 2.5 0 0 0 12 9.5ZM17.75 6.5a1.25 1.25 0 1 1-1.25 1.25 1.25 1.25 0 0 1 1.25-1.25Z" />
-      </svg>
-    );
-  }
-  if (platform === 'facebook') {
-    return (
-      <svg viewBox="0 0 24 24" aria-hidden="true" className="h-4 w-4 fill-current">
-        <path d="M13 22v-9h3l.5-3H13V8.3c0-.9.3-1.5 1.6-1.5H16V4.1c-.3 0-1.2-.1-2.3-.1-2.3 0-3.8 1.4-3.8 4V10H7v3h2.9v9H13Z" />
-      </svg>
-    );
-  }
-  if (platform === 'tiktok') {
-    return (
-      <svg viewBox="0 0 24 24" aria-hidden="true" className="h-4 w-4 fill-current">
-        <path d="M15 3c.4 2 1.8 3.5 4 3.8v2.7c-1.6 0-3.1-.5-4.3-1.4v6.1a5.2 5.2 0 1 1-5.2-5.2c.4 0 .8 0 1.2.1v2.8a2.6 2.6 0 1 0 1.4 2.3V3H15Z" />
-      </svg>
-    );
-  }
-  if (platform === 'website') {
-    return (
-      <svg viewBox="0 0 24 24" aria-hidden="true" className="h-4 w-4 fill-current">
-        <path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2Zm7.9 9h-3.1a15.4 15.4 0 0 0-1.2-5A8 8 0 0 1 19.9 11Zm-7.9 9a13.2 13.2 0 0 1-2-7 13.2 13.2 0 0 1 2-7 13.2 13.2 0 0 1 2 7 13.2 13.2 0 0 1-2 7Zm-2.6-.4A15.4 15.4 0 0 1 8.2 13H4.1a8 8 0 0 0 5.3 6.6ZM4.1 11h4.1a15.4 15.4 0 0 1 1.2-5A8 8 0 0 0 4.1 11Zm10.5 8.6a15.4 15.4 0 0 0 1.2-5h4.1a8 8 0 0 1-5.3 5Zm1.2-8.6a15.4 15.4 0 0 0-1.2-5 8 8 0 0 1 5.3 5Z" />
-      </svg>
-    );
-  }
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true" className="h-4 w-4 fill-current">
-      <path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5.1-1.3A10 10 0 1 0 12 2Zm0 18a8 8 0 0 1-4.2-1.2l-.4-.2-3 .8.8-2.9-.2-.4A8 8 0 1 1 12 20Zm4.2-6c-.2-.1-1.2-.6-1.4-.7s-.3-.1-.5.1-.6.7-.7.8-.3.1-.5 0a5.8 5.8 0 0 1-1.7-1.1 6.5 6.5 0 0 1-1.2-1.5c-.1-.2 0-.3.1-.4l.3-.4a1.5 1.5 0 0 0 .2-.4.5.5 0 0 0 0-.5c0-.1-.5-1.1-.7-1.5s-.4-.3-.5-.3h-.4a.8.8 0 0 0-.6.3 2.4 2.4 0 0 0-.8 1.8 4 4 0 0 0 .9 2.2 9.1 9.1 0 0 0 3.4 3 11.3 11.3 0 0 0 1.1.4 2.7 2.7 0 0 0 1.2.1 2 2 0 0 0 1.3-.9 1.6 1.6 0 0 0 .1-.9c0-.1-.2-.2-.4-.3Z" />
-    </svg>
-  );
-};
-
-const DetailRow = ({
-  href,
-  label,
-  value,
-}: {
-  href?: string;
-  label: string;
-  value: string;
-}) => {
-  if (!value) return null;
-
-  const content = href ? (
-    <a
-      href={href}
-      target={href.startsWith('mailto:') || href.startsWith('tel:') ? undefined : '_blank'}
-      rel={href.startsWith('mailto:') || href.startsWith('tel:') ? undefined : 'noopener noreferrer'}
-      className="text-sm leading-6 text-[color:var(--ink)] transition hover:text-[color:var(--primary)]"
-    >
-      {value}
-    </a>
-  ) : (
-    <span className="text-sm leading-6 text-[color:var(--ink)]">{value}</span>
-  );
-
-  return (
-    <div className="rounded-[16px] border border-[color:var(--border-soft)] bg-white px-4 py-3">
-      <p className="text-[0.62rem] font-semibold uppercase tracking-[0.24em] text-[color:var(--ink-faint)]">
-        {label}
-      </p>
-      <div className="mt-1.5">{content}</div>
-    </div>
-  );
 };
 
 type PublicProfessional = {
@@ -320,15 +222,9 @@ export default function ProfesionalDetailPage({
   );
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [fallbackCoordinates, setFallbackCoordinates] = useState<{
-    latitude: number;
-    longitude: number;
-  } | null>(null);
   const [selectedServiceIndex, setSelectedServiceIndex] = useState(0);
   const [serviceDetailIndex, setServiceDetailIndex] = useState<number | null>(null);
-  const [isMapSectionVisible, setIsMapSectionVisible] = useState(false);
   const [activeServiceCategory, setActiveServiceCategory] = useState('');
-  const mapSectionRef = useRef<HTMLElement | null>(null);
   const servicesSectionRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
@@ -384,15 +280,12 @@ export default function ProfesionalDetailPage({
       bannerMedia: normalizeProfessionalMediaPresentation(null),
       bannerUrl: '',
       category: '',
-      email: '',
       facebook: '',
       headline: '',
       instagram: '',
-      latitude: null as number | null,
       location: '',
       logoMedia: normalizeProfessionalMediaPresentation(null),
       logoUrl: '',
-      longitude: null as number | null,
       name: '',
       phoneNumber: '',
       photos: [] as string[],
@@ -413,15 +306,12 @@ export default function ProfesionalDetailPage({
       bannerMedia: normalizeProfessionalMediaPresentation(data.bannerMedia),
       bannerUrl: data.bannerUrl || fallback.bannerUrl,
       category: data.rubro || fallback.category,
-      email: data.email || fallback.email,
       facebook: data.facebook || fallback.facebook,
       headline: data.headline || fallback.headline,
       instagram: data.instagram || fallback.instagram,
-      latitude: parseOptionalNumber(data.latitude ?? data.lat),
       location: data.location || data.address || fallback.location,
       logoMedia: normalizeProfessionalMediaPresentation(data.logoMedia),
       logoUrl: data.logoUrl || fallback.logoUrl,
-      longitude: parseOptionalNumber(data.longitude ?? data.lng),
       name: data.fullName || data.name || fallback.name,
       phoneNumber: data.phoneNumber || data.phone || fallback.phoneNumber,
       photos: data.photos || fallback.photos,
@@ -521,7 +411,7 @@ export default function ProfesionalDetailPage({
   const scheduleSummary = useMemo(() => {
     const scheduleDays = Array.isArray(displaySchedule?.days) ? displaySchedule.days : [];
     if (!displaySchedule || scheduleDays.length === 0) {
-      return [] as { label: string; ranges: string }[];
+      return [] as PublicHeroScheduleItem[];
     }
 
     const activeDays = scheduleDays.filter(
@@ -646,110 +536,49 @@ export default function ProfesionalDetailPage({
     handleViewServices();
   };
 
-  const hasPublicContent = Boolean(
-    merged.name ||
-      merged.headline ||
-      merged.category ||
-      merged.logoUrl ||
-      merged.about ||
-      (Array.isArray(merged.photos) && merged.photos.some(Boolean)) ||
-      displayServices.length > 0,
-  );
-
   const { addressLine, cityLine } = useMemo(
     () => splitLocationLines(merged.location || ''),
     [merged.location],
   );
-
-  const hasCoordinates =
-    typeof merged.latitude === 'number' &&
-    Number.isFinite(merged.latitude) &&
-    typeof merged.longitude === 'number' &&
-    Number.isFinite(merged.longitude);
-
-  useEffect(() => {
-    if (hasCoordinates || isPreview || !isMapSectionVisible) {
-      setFallbackCoordinates(null);
-      return;
-    }
-    const location = (merged.location || '').trim();
-    if (!location) {
-      setFallbackCoordinates(null);
-      return;
-    }
-
-    let cancelled = false;
-    mapboxForwardGeocode(location)
-      .then((result) => {
-        if (cancelled) return;
-        if (!result) {
-          setFallbackCoordinates(null);
-          return;
-        }
-        setFallbackCoordinates({
-          latitude: result.latitude,
-          longitude: result.longitude,
-        });
-      })
-      .catch(() => {
-        if (!cancelled) {
-          setFallbackCoordinates(null);
-        }
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [hasCoordinates, isMapSectionVisible, isPreview, merged.location]);
-
-  useEffect(() => {
-    const section = mapSectionRef.current;
-    if (!section || typeof IntersectionObserver === 'undefined') {
-      setIsMapSectionVisible(true);
-      return;
-    }
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries.some((entry) => entry.isIntersecting)) {
-          setIsMapSectionVisible(true);
-          observer.disconnect();
-        }
-      },
-      { rootMargin: '200px 0px' },
-    );
-
-    observer.observe(section);
-    return () => observer.disconnect();
-  }, []);
-
-  const mapLatitude = hasCoordinates ? merged.latitude : fallbackCoordinates?.latitude;
-  const mapLongitude = hasCoordinates ? merged.longitude : fallbackCoordinates?.longitude;
-  const hasRenderableCoordinates =
-    typeof mapLatitude === 'number' &&
-    Number.isFinite(mapLatitude) &&
-    typeof mapLongitude === 'number' &&
-    Number.isFinite(mapLongitude);
-  const canShowMap = Boolean(addressLine) && hasRenderableCoordinates;
-  const shouldRenderMap = canShowMap && isMapSectionVisible;
   const addressValue = [addressLine, cityLine].filter(Boolean).join(', ');
   const phoneValue = merged.phoneNumber?.trim() || '';
-  const emailValue = merged.email?.trim() || '';
   const instagramValue = merged.instagram?.trim() || '';
   const facebookValue = merged.facebook?.trim() || '';
   const tiktokValue = merged.tiktok?.trim() || '';
   const websiteValue = merged.website?.trim() || '';
   const whatsappValue = merged.whatsapp?.trim() || '';
-  const hasSocial = Boolean(
-    instagramValue || facebookValue || tiktokValue || websiteValue || whatsappValue,
-  );
+  const whatsappContactValue = phoneValue || whatsappValue;
   const instagramHref = resolveSocialHref(instagramValue, 'instagram');
   const facebookHref = resolveSocialHref(facebookValue, 'facebook');
   const tiktokHref = resolveSocialHref(tiktokValue, 'tiktok');
   const websiteHref = resolveSocialHref(websiteValue, 'website');
-  const whatsappHref = resolveSocialHref(whatsappValue, 'whatsapp');
+  const whatsappHref = resolveSocialHref(whatsappContactValue, 'whatsapp');
+  const socialLinks = useMemo<PublicHeroSocialLink[]>(
+    () =>
+      [
+        instagramHref ? { href: instagramHref, label: 'Instagram', platform: 'instagram' as const } : null,
+        facebookHref ? { href: facebookHref, label: 'Facebook', platform: 'facebook' as const } : null,
+        tiktokHref ? { href: tiktokHref, label: 'TikTok', platform: 'tiktok' as const } : null,
+        websiteHref ? { href: websiteHref, label: 'Sitio web', platform: 'website' as const } : null,
+      ].filter((item): item is PublicHeroSocialLink => Boolean(item)),
+    [facebookHref, instagramHref, tiktokHref, websiteHref],
+  );
   const favoriteImage = galleryPhotos[0] || merged.logoUrl || undefined;
-  const locationLabel = cityLine || addressLine || merged.location || '';
+  const locationLabel = addressValue || cityLine || merged.location || '';
+
+  const hasPublicContent = Boolean(
+    merged.name ||
+      merged.headline ||
+      merged.category ||
+      merged.logoUrl ||
+      addressValue ||
+      phoneValue ||
+      scheduleSummary.length > 0 ||
+      socialLinks.length > 0 ||
+      whatsappHref ||
+      (Array.isArray(merged.photos) && merged.photos.some(Boolean)) ||
+      displayServices.length > 0,
+  );
 
   const toggleFavoriteHandler = () => {
     if (!professionalSlug) return;
@@ -797,7 +626,7 @@ export default function ProfesionalDetailPage({
         ) : null}
 
         <PublicProfileHero
-          about={merged.about}
+          address={addressValue}
           bannerMedia={merged.bannerMedia}
           bannerUrl={merged.bannerUrl}
           category={merged.category}
@@ -817,6 +646,10 @@ export default function ProfesionalDetailPage({
           reserveLabel={selectedService ? 'Reservar' : 'Elegir servicio'}
           rating={data?.rating}
           reviewsCount={data?.reviewsCount}
+          scheduleSummary={scheduleSummary}
+          socialLinks={socialLinks}
+          whatsappHref={whatsappHref}
+          whatsappLabel={whatsappContactValue}
         />
         <div className="mt-6">
           <section className="border-t border-[color:var(--border-soft)] py-6 sm:py-7">
@@ -859,146 +692,6 @@ export default function ProfesionalDetailPage({
               selectedServiceIndex={selectedServiceIndex}
               serviceItems={serviceItems}
             />
-          </section>
-
-          <section
-            ref={mapSectionRef}
-            className="border-t border-[color:var(--border-soft)] py-6 sm:py-7"
-          >
-              <div>
-                <p className="text-[0.68rem] font-semibold uppercase tracking-[0.32em] text-[color:var(--ink-faint)]">
-                  Ubicacion y horarios
-                </p>
-                <h2 className="mt-2 text-3xl font-semibold text-[color:var(--ink)]">
-                  Informacion util antes de reservar
-                </h2>
-                <p className="mt-3 max-w-3xl text-sm leading-6 text-[color:var(--ink-muted)]">
-                  Direccion, contacto y disponibilidad pública, sin mezclar selección de turnos con el perfil.
-                </p>
-              </div>
-
-              <div className="mt-5 grid gap-4 xl:grid-cols-[360px,minmax(0,1fr)]">
-                <div className="space-y-4">
-                  <div className="rounded-[22px] border border-[color:var(--border-soft)] bg-[color:var(--surface-soft)] p-5">
-                    <p className="text-[0.68rem] font-semibold uppercase tracking-[0.28em] text-[color:var(--ink-faint)]">
-                      Horarios
-                    </p>
-                    {scheduleSummary.length > 0 ? (
-                      <div className="mt-4 space-y-2.5">
-                        {scheduleSummary.map((item, index) => (
-                          <div
-                            key={`${item.label}-${index}`}
-                            className="rounded-[16px] border border-[color:var(--border-soft)] bg-white px-4 py-3"
-                          >
-                            <p className="text-sm font-semibold text-[color:var(--ink)]">
-                              {item.label}
-                            </p>
-                            <p className="mt-1 text-sm text-[color:var(--primary)]">
-                              {item.ranges}
-                            </p>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="mt-4 rounded-[16px] border border-dashed border-[color:var(--border-soft)] bg-white px-4 py-4 text-sm text-[color:var(--ink-muted)]">
-                        Sin horarios publicos cargados.
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="rounded-[22px] border border-[color:var(--border-soft)] bg-[color:var(--surface-soft)] p-5">
-                    <p className="text-[0.68rem] font-semibold uppercase tracking-[0.28em] text-[color:var(--ink-faint)]">
-                      Contacto
-                    </p>
-                    <div className="mt-4 space-y-3">
-                      <DetailRow label="Direccion" value={addressValue} />
-                      <DetailRow label="Telefono" value={phoneValue} href={phoneValue ? `tel:${phoneValue}` : undefined} />
-                      <DetailRow label="Email" value={emailValue} href={emailValue ? `mailto:${emailValue}` : undefined} />
-                    </div>
-
-                    {hasSocial ? (
-                      <div className="mt-4 border-t border-[color:var(--border-soft)] pt-4">
-                        <p className="text-[0.68rem] font-semibold uppercase tracking-[0.24em] text-[color:var(--ink-faint)]">
-                          Redes
-                        </p>
-                        <div className="mt-3 flex flex-wrap gap-2">
-                          {instagramValue && instagramHref ? (
-                            <a
-                              href={instagramHref}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-[color:var(--border-soft)] bg-white text-[color:var(--ink)] transition hover:-translate-y-0.5 hover:shadow-[var(--shadow-card)]"
-                              aria-label="Instagram"
-                            >
-                              <SocialIcon platform="instagram" />
-                            </a>
-                          ) : null}
-                          {facebookValue && facebookHref ? (
-                            <a
-                              href={facebookHref}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-[color:var(--border-soft)] bg-white text-[color:var(--ink)] transition hover:-translate-y-0.5 hover:shadow-[var(--shadow-card)]"
-                              aria-label="Facebook"
-                            >
-                              <SocialIcon platform="facebook" />
-                            </a>
-                          ) : null}
-                          {tiktokValue && tiktokHref ? (
-                            <a
-                              href={tiktokHref}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-[color:var(--border-soft)] bg-white text-[color:var(--ink)] transition hover:-translate-y-0.5 hover:shadow-[var(--shadow-card)]"
-                              aria-label="TikTok"
-                            >
-                              <SocialIcon platform="tiktok" />
-                            </a>
-                          ) : null}
-                          {websiteValue && websiteHref ? (
-                            <a
-                              href={websiteHref}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-[color:var(--border-soft)] bg-white text-[color:var(--ink)] transition hover:-translate-y-0.5 hover:shadow-[var(--shadow-card)]"
-                              aria-label="Sitio web"
-                            >
-                              <SocialIcon platform="website" />
-                            </a>
-                          ) : null}
-                          {whatsappValue && whatsappHref ? (
-                            <a
-                              href={whatsappHref}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-[color:var(--border-soft)] bg-white text-[color:var(--ink)] transition hover:-translate-y-0.5 hover:shadow-[var(--shadow-card)]"
-                              aria-label="WhatsApp"
-                            >
-                              <SocialIcon platform="whatsapp" />
-                            </a>
-                          ) : null}
-                        </div>
-                      </div>
-                    ) : null}
-                  </div>
-                </div>
-
-                {shouldRenderMap ? (
-                  <PublicProfileMap
-                    name={merged.name}
-                    category={merged.category}
-                    address={addressLine}
-                    city={cityLine}
-                    latitude={mapLatitude as number}
-                    longitude={mapLongitude as number}
-                    heightClassName="h-[360px]"
-                  />
-                ) : canShowMap ? (
-                  <MapSectionPlaceholder message="Acercate a esta seccion para cargar el mapa." />
-                ) : (
-                  <MapSectionPlaceholder message="Ubicacion no disponible." />
-                )}
-              </div>
           </section>
 
           {!isPreview && professionalSlug ? (

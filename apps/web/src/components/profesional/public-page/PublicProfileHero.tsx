@@ -10,8 +10,21 @@ import {
 } from '@/utils/publicBusinessMedia';
 import type { ProfessionalMediaPresentation } from '@/types/professional';
 
+type PublicHeroSocialPlatform = 'instagram' | 'facebook' | 'tiktok' | 'website';
+
+export type PublicHeroScheduleItem = {
+  label: string;
+  ranges: string;
+};
+
+export type PublicHeroSocialLink = {
+  href: string;
+  label: string;
+  platform: PublicHeroSocialPlatform;
+};
+
 type PublicProfileHeroProps = {
-  about?: string;
+  address?: string;
   bannerMedia?: ProfessionalMediaPresentation | null;
   bannerUrl?: string;
   category?: string;
@@ -31,6 +44,10 @@ type PublicProfileHeroProps = {
   rating?: number | null;
   reviewsCount?: number | null;
   reserveDisabled?: boolean;
+  scheduleSummary?: PublicHeroScheduleItem[];
+  socialLinks?: PublicHeroSocialLink[];
+  whatsappHref?: string;
+  whatsappLabel?: string;
 };
 
 const LocationIcon = () => (
@@ -53,8 +70,64 @@ const StarIcon = () => (
   </svg>
 );
 
+const ClockIcon = () => (
+  <svg viewBox="0 0 24 24" aria-hidden="true" className="h-4 w-4">
+    <circle
+      cx="12"
+      cy="12"
+      r="8.5"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+    />
+    <path
+      d="M12 7.8v4.6l3 1.8"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </svg>
+);
+
+const WhatsAppIcon = () => (
+  <svg viewBox="0 0 24 24" aria-hidden="true" className="h-4 w-4 fill-current">
+    <path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5.1-1.3A10 10 0 1 0 12 2Zm0 18a8 8 0 0 1-4.2-1.2l-.4-.2-3 .8.8-2.9-.2-.4A8 8 0 1 1 12 20Zm4.2-6c-.2-.1-1.2-.6-1.4-.7s-.3-.1-.5.1-.6.7-.7.8-.3.1-.5 0a5.8 5.8 0 0 1-1.7-1.1 6.5 6.5 0 0 1-1.2-1.5c-.1-.2 0-.3.1-.4l.3-.4a1.5 1.5 0 0 0 .2-.4.5.5 0 0 0 0-.5c0-.1-.5-1.1-.7-1.5s-.4-.3-.5-.3h-.4a.8.8 0 0 0-.6.3 2.4 2.4 0 0 0-.8 1.8 4 4 0 0 0 .9 2.2 9.1 9.1 0 0 0 3.4 3 11.3 11.3 0 0 0 1.1.4 2.7 2.7 0 0 0 1.2.1 2 2 0 0 0 1.3-.9 1.6 1.6 0 0 0 .1-.9c0-.1-.2-.2-.4-.3Z" />
+  </svg>
+);
+
+const SocialIcon = ({ platform }: { platform: PublicHeroSocialPlatform }) => {
+  if (platform === 'instagram') {
+    return (
+      <svg viewBox="0 0 24 24" aria-hidden="true" className="h-4 w-4 fill-current">
+        <path d="M7 2h10a5 5 0 0 1 5 5v10a5 5 0 0 1-5 5H7a5 5 0 0 1-5-5V7a5 5 0 0 1 5-5Zm10 2H7a3 3 0 0 0-3 3v10a3 3 0 0 0 3 3h10a3 3 0 0 0 3-3V7a3 3 0 0 0-3-3Zm-5 3.5A4.5 4.5 0 1 1 7.5 12 4.5 4.5 0 0 1 12 7.5Zm0 2A2.5 2.5 0 1 0 14.5 12 2.5 2.5 0 0 0 12 9.5ZM17.75 6.5a1.25 1.25 0 1 1-1.25 1.25 1.25 1.25 0 0 1 1.25-1.25Z" />
+      </svg>
+    );
+  }
+  if (platform === 'facebook') {
+    return (
+      <svg viewBox="0 0 24 24" aria-hidden="true" className="h-4 w-4 fill-current">
+        <path d="M13 22v-9h3l.5-3H13V8.3c0-.9.3-1.5 1.6-1.5H16V4.1c-.3 0-1.2-.1-2.3-.1-2.3 0-3.8 1.4-3.8 4V10H7v3h2.9v9H13Z" />
+      </svg>
+    );
+  }
+  if (platform === 'tiktok') {
+    return (
+      <svg viewBox="0 0 24 24" aria-hidden="true" className="h-4 w-4 fill-current">
+        <path d="M15 3c.4 2 1.8 3.5 4 3.8v2.7c-1.6 0-3.1-.5-4.3-1.4v6.1a5.2 5.2 0 1 1-5.2-5.2c.4 0 .8 0 1.2.1v2.8a2.6 2.6 0 1 0 1.4 2.3V3H15Z" />
+      </svg>
+    );
+  }
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" className="h-4 w-4 fill-current">
+      <path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2Zm7.9 9h-3.1a15.4 15.4 0 0 0-1.2-5A8 8 0 0 1 19.9 11Zm-7.9 9a13.2 13.2 0 0 1-2-7 13.2 13.2 0 0 1 2-7 13.2 13.2 0 0 1 2 7 13.2 13.2 0 0 1-2 7Zm-2.6-.4A15.4 15.4 0 0 1 8.2 13H4.1a8 8 0 0 0 5.3 6.6ZM4.1 11h4.1a15.4 15.4 0 0 1 1.2-5A8 8 0 0 0 4.1 11Zm10.5 8.6a15.4 15.4 0 0 0 1.2-5h4.1a8 8 0 0 1-5.3 5Zm1.2-8.6a15.4 15.4 0 0 0-1.2-5 8 8 0 0 1 5.3 5Z" />
+    </svg>
+  );
+};
+
 export default function PublicProfileHero({
-  about,
+  address,
   bannerMedia,
   bannerUrl,
   category,
@@ -74,6 +147,10 @@ export default function PublicProfileHero({
   rating,
   reviewsCount,
   reserveDisabled = false,
+  scheduleSummary = [],
+  socialLinks = [],
+  whatsappHref,
+  whatsappLabel,
 }: PublicProfileHeroProps) {
   const media = useMemo(
     () =>
@@ -101,6 +178,7 @@ export default function PublicProfileHero({
   const showLogoImage = Boolean(media.logo?.src) && !logoFailed;
   const hasRating = typeof rating === 'number' && Number.isFinite(rating);
   const hasReviews = typeof reviewsCount === 'number' && reviewsCount > 0;
+  const hasUtilityInfo = Boolean(address || scheduleSummary.length > 0 || whatsappHref || socialLinks.length > 0);
 
   return (
     <section className="overflow-hidden rounded-[28px] border border-[color:var(--border-soft)] bg-[color:var(--surface)]">
@@ -212,14 +290,90 @@ export default function PublicProfileHero({
             ) : null}
           </div>
 
-          {about ? (
+          {hasUtilityInfo ? (
             <div className="mt-5 border-t border-[color:var(--border-soft)] pt-5">
-              <p className="text-[0.68rem] font-semibold uppercase tracking-[0.32em] text-[color:var(--ink-faint)]">
-                Sobre el profesional
-              </p>
-              <p className="mt-3 max-w-5xl text-sm leading-7 text-[color:var(--ink-muted)] sm:text-base">
-                {about}
-              </p>
+              <div className="grid gap-4 xl:grid-cols-[minmax(0,1.25fr)_minmax(0,0.95fr)]">
+                <div className="space-y-3">
+                  {address ? (
+                    <div className="rounded-[18px] border border-[color:var(--border-soft)] bg-[color:var(--surface-soft)] px-4 py-3">
+                      <p className="text-[0.62rem] font-semibold uppercase tracking-[0.24em] text-[color:var(--ink-faint)]">
+                        Direccion
+                      </p>
+                      <p className="mt-1.5 text-sm leading-6 text-[color:var(--ink)] sm:text-base">
+                        {address}
+                      </p>
+                    </div>
+                  ) : null}
+
+                  {scheduleSummary.length > 0 ? (
+                    <div className="rounded-[18px] border border-[color:var(--border-soft)] bg-[color:var(--surface-soft)] px-4 py-3">
+                      <div className="flex items-center gap-2 text-[0.62rem] font-semibold uppercase tracking-[0.24em] text-[color:var(--ink-faint)]">
+                        <ClockIcon />
+                        <span>Horarios</span>
+                      </div>
+                      <div className="mt-2.5 space-y-2">
+                        {scheduleSummary.map((item) => (
+                          <div
+                            key={`${item.label}-${item.ranges}`}
+                            className="flex flex-wrap items-center justify-between gap-2 rounded-[14px] bg-white px-3 py-2"
+                          >
+                            <span className="text-sm font-semibold text-[color:var(--ink)]">
+                              {item.label}
+                            </span>
+                            <span className="text-sm text-[color:var(--primary)]">
+                              {item.ranges}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ) : null}
+                </div>
+
+                <div className="space-y-3">
+                  {whatsappHref && whatsappLabel ? (
+                    <div className="rounded-[18px] border border-[color:var(--border-soft)] bg-[color:var(--surface-soft)] px-4 py-3">
+                      <p className="text-[0.62rem] font-semibold uppercase tracking-[0.24em] text-[color:var(--ink-faint)]">
+                        Contacto
+                      </p>
+                      <div className="mt-2.5 flex flex-wrap gap-2">
+                        <a
+                          href={whatsappHref}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-2 rounded-full border border-[color:var(--border-soft)] bg-white px-3 py-2 text-sm font-medium text-[color:var(--ink)] transition hover:-translate-y-0.5 hover:shadow-[var(--shadow-card)]"
+                        >
+                          <WhatsAppIcon />
+                          <span>{whatsappLabel}</span>
+                        </a>
+                      </div>
+                    </div>
+                  ) : null}
+
+                  {socialLinks.length > 0 ? (
+                    <div className="rounded-[18px] border border-[color:var(--border-soft)] bg-[color:var(--surface-soft)] px-4 py-3">
+                      <p className="text-[0.62rem] font-semibold uppercase tracking-[0.24em] text-[color:var(--ink-faint)]">
+                        Redes
+                      </p>
+                      <div className="mt-2.5 flex flex-wrap gap-2">
+                        {socialLinks.map((link) => (
+                          <a
+                            key={`${link.platform}-${link.href}`}
+                            href={link.href}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-[color:var(--border-soft)] bg-white text-[color:var(--ink)] transition hover:-translate-y-0.5 hover:shadow-[var(--shadow-card)]"
+                            aria-label={link.label}
+                            title={link.label}
+                          >
+                            <SocialIcon platform={link.platform} />
+                          </a>
+                        ))}
+                      </div>
+                    </div>
+                  ) : null}
+                </div>
+              </div>
             </div>
           ) : null}
         </div>

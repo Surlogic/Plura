@@ -114,14 +114,14 @@ export default memo(function BusinessGallery({ photos, businessName }: BusinessG
 
   return (
     <>
-      <div className="space-y-4 overflow-hidden rounded-[28px]">
+      <div className="space-y-4 overflow-hidden rounded-[24px] p-4 sm:p-5">
         <div
           className={`grid gap-3 ${
             isSinglePhoto
-              ? 'mx-auto max-w-[420px] grid-cols-1'
+              ? 'mx-auto max-w-[560px] grid-cols-1'
               : visiblePhotos.length === 2
                 ? 'grid-cols-2'
-                : 'grid-cols-2 md:grid-cols-3'
+                : 'grid-cols-2 md:grid-cols-3 xl:grid-cols-4'
           }`}
         >
           {visiblePhotos.map((photo, index) => (

@@ -3,7 +3,6 @@ import { useEffect, useMemo, useState } from 'react';
 import FavoriteToggleButton from '@/components/shared/FavoriteToggleButton';
 import Badge from '@/components/ui/Badge';
 import Button from '@/components/ui/Button';
-import Card from '@/components/ui/Card';
 import {
   buildPublicBusinessImageStyle,
   buildPublicBusinessLogoStyle,
@@ -104,12 +103,8 @@ export default function PublicProfileHero({
   const hasReviews = typeof reviewsCount === 'number' && reviewsCount > 0;
 
   return (
-    <Card
-      tone="default"
-      padding="none"
-      className="overflow-hidden rounded-[38px] border-white/80 bg-white/96 shadow-[0_34px_90px_-54px_rgba(15,23,42,0.3)]"
-    >
-      <div className="relative h-[220px] sm:h-[280px] lg:h-[340px]">
+    <section className="overflow-hidden rounded-[28px] border border-[color:var(--border-soft)] bg-[color:var(--surface)]">
+      <div className="relative h-[236px] sm:h-[300px] lg:h-[360px] xl:h-[400px]">
         {activeBanner ? (
           <Image
             src={activeBanner.src}
@@ -129,11 +124,11 @@ export default function PublicProfileHero({
         <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(15,23,42,0.16)_0%,rgba(15,23,42,0.28)_38%,rgba(15,23,42,0.5)_100%)]" />
       </div>
 
-      <div className="relative px-5 pb-7 sm:px-8 sm:pb-8 lg:px-10">
-        <div className="-mt-16 rounded-[32px] border border-white/90 bg-white/95 p-5 shadow-[0_24px_72px_-52px_rgba(15,23,42,0.36)] backdrop-blur sm:-mt-20 sm:p-7">
-          <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
+      <div className="relative px-4 pb-5 sm:px-6 sm:pb-6 lg:px-8 lg:pb-7">
+        <div className="-mt-14 rounded-[24px] bg-[color:var(--surface)]/95 p-5 backdrop-blur-sm sm:-mt-16 sm:p-6 lg:-mt-[4.5rem] lg:p-7">
+          <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
             <div className="flex min-w-0 gap-4 sm:gap-5">
-              <div className="relative flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-[28px] border-4 border-white bg-[color:var(--surface-soft)] text-xl font-semibold text-[color:var(--ink)] shadow-[0_24px_50px_-40px_rgba(15,23,42,0.35)] sm:h-24 sm:w-24">
+              <div className="relative flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-[24px] border-4 border-white bg-[color:var(--surface-soft)] text-xl font-semibold text-[color:var(--ink)] sm:h-24 sm:w-24">
                 {showLogoImage ? (
                   <Image
                     src={media.logo!.src}
@@ -155,16 +150,16 @@ export default function PublicProfileHero({
                     {category}
                   </Badge>
                 ) : null}
-                <h1 className="mt-3 text-3xl font-semibold tracking-[-0.03em] text-[color:var(--ink)] sm:text-4xl lg:text-[2.85rem]">
+                <h1 className="mt-3 text-3xl font-semibold tracking-[-0.03em] text-[color:var(--ink)] sm:text-4xl lg:text-[3rem]">
                   {name}
                 </h1>
                 {headline ? (
-                  <p className="mt-3 max-w-3xl text-base leading-7 text-[color:var(--ink-muted)] sm:text-lg">
+                  <p className="mt-3 max-w-4xl text-base leading-7 text-[color:var(--ink-muted)] sm:text-lg">
                     {headline}
                   </p>
                 ) : null}
-                <div className="mt-4 flex flex-wrap items-center gap-2.5 text-sm">
-                  <div className="inline-flex items-center gap-2 rounded-full border border-[color:var(--border-soft)] bg-[color:var(--surface-soft)] px-3 py-2 text-[color:var(--ink)]">
+                <div className="mt-4 flex flex-wrap items-center gap-2 text-sm">
+                  <div className="inline-flex items-center gap-2 rounded-full border border-[color:var(--border-soft)] bg-[color:var(--surface-soft)] px-3 py-1.5 text-[color:var(--ink)]">
                     <StarIcon />
                     {hasRating && hasReviews ? (
                       <span className="font-medium">
@@ -176,7 +171,7 @@ export default function PublicProfileHero({
                   </div>
 
                   {locationLabel ? (
-                    <div className="inline-flex items-center gap-2 rounded-full border border-[color:var(--border-soft)] bg-[color:var(--surface-soft)] px-3 py-2 text-[color:var(--ink)]">
+                    <div className="inline-flex items-center gap-2 rounded-full border border-[color:var(--border-soft)] bg-[color:var(--surface-soft)] px-3 py-1.5 text-[color:var(--ink)]">
                       <LocationIcon />
                       <span className="font-medium">{locationLabel}</span>
                     </div>
@@ -186,7 +181,7 @@ export default function PublicProfileHero({
             </div>
 
             {!isPreview ? (
-              <div className="flex w-full flex-col gap-3 lg:w-auto lg:min-w-[220px]">
+              <div className="flex w-full flex-col gap-2.5 lg:w-[240px] lg:shrink-0">
                 <Button
                   type="button"
                   variant="primary"
@@ -218,17 +213,17 @@ export default function PublicProfileHero({
           </div>
 
           {about ? (
-            <div className="mt-6 border-t border-[color:var(--border-soft)] pt-6">
+            <div className="mt-5 border-t border-[color:var(--border-soft)] pt-5">
               <p className="text-[0.68rem] font-semibold uppercase tracking-[0.32em] text-[color:var(--ink-faint)]">
                 Sobre el profesional
               </p>
-              <p className="mt-3 max-w-4xl text-sm leading-7 text-[color:var(--ink-muted)] sm:text-base">
+              <p className="mt-3 max-w-5xl text-sm leading-7 text-[color:var(--ink-muted)] sm:text-base">
                 {about}
               </p>
             </div>
           ) : null}
         </div>
       </div>
-    </Card>
+    </section>
   );
 }

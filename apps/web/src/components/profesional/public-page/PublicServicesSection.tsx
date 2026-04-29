@@ -1,7 +1,6 @@
 import Image from 'next/image';
 import { useState } from 'react';
 import Badge from '@/components/ui/Badge';
-import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
 import { resolveAssetUrl } from '@/utils/assetUrl';
 import type { PublicService } from '@/types/professional';
@@ -56,10 +55,7 @@ export default function PublicServicesSection({
     : serviceItems;
 
   return (
-    <Card
-      tone="default"
-      className="rounded-[32px] border-white/80 bg-white/96 p-6 shadow-[0_26px_72px_-48px_rgba(15,23,42,0.28)] sm:p-8"
-    >
+    <section>
       <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <p className="text-[0.68rem] font-semibold uppercase tracking-[0.32em] text-[color:var(--ink-faint)]">
@@ -68,7 +64,7 @@ export default function PublicServicesSection({
           <h2 className="mt-2 text-3xl font-semibold text-[color:var(--ink)]">
             Servicios disponibles
           </h2>
-          <p className="mt-3 max-w-2xl text-sm leading-6 text-[color:var(--ink-muted)]">
+          <p className="mt-3 max-w-3xl text-sm leading-6 text-[color:var(--ink-muted)]">
             Esta pantalla presenta la oferta y deriva al flujo dedicado de reserva sin meter pasos operativos aca.
           </p>
         </div>
@@ -78,7 +74,7 @@ export default function PublicServicesSection({
       </div>
 
       {categories.length > 1 ? (
-        <div className="mt-6 flex flex-wrap gap-2">
+        <div className="mt-5 flex flex-wrap gap-2">
           {categories.map((category) => {
             const isActive = category === activeCategory;
             return (
@@ -100,11 +96,11 @@ export default function PublicServicesSection({
       ) : null}
 
       {visibleItems.length === 0 ? (
-        <div className="mt-6 rounded-[24px] border border-dashed border-[color:var(--border-soft)] bg-[color:var(--surface-soft)] px-5 py-10 text-sm text-[color:var(--ink-muted)]">
+        <div className="mt-5 rounded-[20px] border border-dashed border-[color:var(--border-soft)] bg-[color:var(--surface-soft)] px-5 py-8 text-sm text-[color:var(--ink-muted)]">
           No hay servicios cargados todavia.
         </div>
       ) : (
-        <div className="mt-6 overflow-hidden rounded-[26px] border border-[color:var(--border-soft)] bg-white">
+        <div className="mt-5 overflow-hidden rounded-[22px] border border-[color:var(--border-soft)] bg-[color:var(--surface)]">
           {visibleItems.map((item) => {
             const imageSrc = normalizeImageSrc(item.service.imageUrl);
             const canRenderImage = Boolean(imageSrc) && !failedImages.includes(imageSrc);
@@ -112,14 +108,14 @@ export default function PublicServicesSection({
             return (
               <article
                 key={item.service.id ?? `${item.categoryLabel}-${item.index}`}
-                className={`grid gap-4 border-b border-[color:var(--border-soft)] px-4 py-4 transition last:border-b-0 sm:grid-cols-[minmax(0,1fr)_120px_110px_170px] sm:items-center sm:px-5 ${
+                className={`grid gap-3 border-b border-[color:var(--border-soft)] px-4 py-4 transition last:border-b-0 lg:grid-cols-[minmax(0,1.6fr)_110px_110px_220px] lg:items-center lg:px-5 ${
                   isSelected
                     ? 'bg-[color:var(--primary-soft)]/45'
-                    : 'bg-white hover:bg-[color:var(--surface-soft)]/55'
+                    : 'bg-[color:var(--surface)] hover:bg-[color:var(--surface-soft)]/55'
                 }`}
               >
                 <div className="flex min-w-0 gap-4">
-                  <div className="relative hidden h-16 w-16 shrink-0 overflow-hidden rounded-[18px] border border-[color:var(--border-soft)] bg-[color:var(--surface-soft)] sm:block">
+                  <div className="relative hidden h-16 w-16 shrink-0 overflow-hidden rounded-[16px] border border-[color:var(--border-soft)] bg-[color:var(--surface-soft)] sm:block">
                     {canRenderImage ? (
                       <Image
                         src={imageSrc}
@@ -208,6 +204,6 @@ export default function PublicServicesSection({
           })}
         </div>
       )}
-    </Card>
+    </section>
   );
 }

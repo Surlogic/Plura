@@ -7,7 +7,6 @@ import Footer from '@/components/shared/Footer';
 import BusinessGallery from '@/components/profesional/BusinessGallery';
 import ServiceDetailModal from '@/components/profesional/ServiceDetailModal';
 import PublicReviewsList from '@/components/profesional/PublicReviewsList';
-import Card from '@/components/ui/Card';
 import { useFavoriteProfessionals } from '@/hooks/useFavoriteProfessionals';
 import { useClientProfileContext } from '@/context/ClientProfileContext';
 import { mapboxForwardGeocode } from '@/services/mapbox';
@@ -253,7 +252,7 @@ const DetailRow = ({
   );
 
   return (
-    <div className="rounded-[18px] border border-[color:var(--border-soft)] bg-white px-4 py-3">
+    <div className="rounded-[16px] border border-[color:var(--border-soft)] bg-white px-4 py-3">
       <p className="text-[0.62rem] font-semibold uppercase tracking-[0.24em] text-[color:var(--ink-faint)]">
         {label}
       </p>
@@ -775,8 +774,8 @@ export default function ProfesionalDetailPage({
       {isPreview ? null : <Navbar />}
 
       <main
-        className={`mx-auto w-full max-w-[1240px] px-4 sm:px-6 lg:px-8 ${
-          isPreview ? 'pb-6 pt-6' : 'pb-36 pt-8 sm:pt-10'
+        className={`mx-auto w-full max-w-[1500px] px-4 sm:px-6 lg:px-8 ${
+          isPreview ? 'pb-6 pt-4 sm:pt-6' : 'pb-32 pt-4 sm:pt-6 lg:pt-8'
         }`}
       >
         {!isPreview && isLoading ? (
@@ -819,8 +818,12 @@ export default function ProfesionalDetailPage({
           rating={data?.rating}
           reviewsCount={data?.reviewsCount}
         />
-        <div className="mx-auto mt-8 max-w-[1080px] space-y-8">
-          <section ref={servicesSectionRef} id="servicios">
+        <div className="mt-6">
+          <section
+            ref={servicesSectionRef}
+            id="servicios"
+            className="border-t border-[color:var(--border-soft)] py-6 sm:py-7"
+          >
             <PublicServicesSection
               activeCategory={activeServiceCategory}
               categories={serviceCategories}
@@ -833,10 +836,7 @@ export default function ProfesionalDetailPage({
             />
           </section>
 
-          <Card
-            tone="default"
-            className="overflow-hidden rounded-[32px] border-white/80 bg-white/96 p-6 shadow-[0_26px_72px_-48px_rgba(15,23,42,0.28)] sm:p-8"
-          >
+          <section className="border-t border-[color:var(--border-soft)] py-6 sm:py-7">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
               <div>
                 <p className="text-[0.68rem] font-semibold uppercase tracking-[0.32em] text-[color:var(--ink-faint)]">
@@ -845,7 +845,7 @@ export default function ProfesionalDetailPage({
                 <h2 className="mt-2 text-3xl font-semibold text-[color:var(--ink)]">
                   Espacio, trabajos y detalles
                 </h2>
-                <p className="mt-3 max-w-2xl text-sm leading-6 text-[color:var(--ink-muted)]">
+                <p className="mt-3 max-w-3xl text-sm leading-6 text-[color:var(--ink-muted)]">
                   Una galería más limpia, contenida y pensada para mostrar el perfil sin romper la composición.
                 </p>
               </div>
@@ -856,16 +856,15 @@ export default function ProfesionalDetailPage({
               ) : null}
             </div>
 
-            <div className="mt-6 overflow-hidden rounded-[28px]">
+            <div className="mt-5 overflow-hidden rounded-[24px] border border-[color:var(--border-soft)]">
               <BusinessGallery photos={galleryPhotos} businessName={merged.name} />
             </div>
-          </Card>
+          </section>
 
-          <section ref={mapSectionRef}>
-            <Card
-              tone="default"
-              className="rounded-[32px] border-white/80 bg-white/96 p-6 shadow-[0_26px_72px_-48px_rgba(15,23,42,0.28)] sm:p-8"
-            >
+          <section
+            ref={mapSectionRef}
+            className="border-t border-[color:var(--border-soft)] py-6 sm:py-7"
+          >
               <div>
                 <p className="text-[0.68rem] font-semibold uppercase tracking-[0.32em] text-[color:var(--ink-faint)]">
                   Ubicacion y horarios
@@ -873,23 +872,23 @@ export default function ProfesionalDetailPage({
                 <h2 className="mt-2 text-3xl font-semibold text-[color:var(--ink)]">
                   Informacion util antes de reservar
                 </h2>
-                <p className="mt-3 max-w-2xl text-sm leading-6 text-[color:var(--ink-muted)]">
+                <p className="mt-3 max-w-3xl text-sm leading-6 text-[color:var(--ink-muted)]">
                   Direccion, contacto y disponibilidad pública, sin mezclar selección de turnos con el perfil.
                 </p>
               </div>
 
-              <div className="mt-6 grid gap-5 xl:grid-cols-[320px,minmax(0,1fr)]">
-                <div className="space-y-5">
-                  <div className="rounded-[28px] border border-[color:var(--border-soft)] bg-[color:var(--surface-soft)] p-5">
+              <div className="mt-5 grid gap-4 xl:grid-cols-[360px,minmax(0,1fr)]">
+                <div className="space-y-4">
+                  <div className="rounded-[22px] border border-[color:var(--border-soft)] bg-[color:var(--surface-soft)] p-5">
                     <p className="text-[0.68rem] font-semibold uppercase tracking-[0.28em] text-[color:var(--ink-faint)]">
                       Horarios
                     </p>
                     {scheduleSummary.length > 0 ? (
-                      <div className="mt-4 space-y-3">
+                      <div className="mt-4 space-y-2.5">
                         {scheduleSummary.map((item, index) => (
                           <div
                             key={`${item.label}-${index}`}
-                            className="rounded-[18px] border border-[color:var(--border-soft)] bg-white px-4 py-3"
+                            className="rounded-[16px] border border-[color:var(--border-soft)] bg-white px-4 py-3"
                           >
                             <p className="text-sm font-semibold text-[color:var(--ink)]">
                               {item.label}
@@ -901,13 +900,13 @@ export default function ProfesionalDetailPage({
                         ))}
                       </div>
                     ) : (
-                      <div className="mt-4 rounded-[18px] border border-dashed border-[color:var(--border-soft)] bg-white px-4 py-4 text-sm text-[color:var(--ink-muted)]">
+                      <div className="mt-4 rounded-[16px] border border-dashed border-[color:var(--border-soft)] bg-white px-4 py-4 text-sm text-[color:var(--ink-muted)]">
                         Sin horarios publicos cargados.
                       </div>
                     )}
                   </div>
 
-                  <div className="rounded-[28px] border border-[color:var(--border-soft)] bg-[color:var(--surface-soft)] p-5">
+                  <div className="rounded-[22px] border border-[color:var(--border-soft)] bg-[color:var(--surface-soft)] p-5">
                     <p className="text-[0.68rem] font-semibold uppercase tracking-[0.28em] text-[color:var(--ink-faint)]">
                       Contacto
                     </p>
@@ -918,7 +917,7 @@ export default function ProfesionalDetailPage({
                     </div>
 
                     {hasSocial ? (
-                      <div className="mt-5 border-t border-[color:var(--border-soft)] pt-5">
+                      <div className="mt-4 border-t border-[color:var(--border-soft)] pt-4">
                         <p className="text-[0.68rem] font-semibold uppercase tracking-[0.24em] text-[color:var(--ink-faint)]">
                           Redes
                         </p>
@@ -1000,27 +999,23 @@ export default function ProfesionalDetailPage({
                   <MapSectionPlaceholder message="Ubicacion no disponible." />
                 )}
               </div>
-            </Card>
           </section>
 
           {!isPreview && professionalSlug ? (
-            <Card
-              tone="default"
-              className="rounded-[32px] border-white/80 bg-white/96 p-6 shadow-[0_26px_72px_-48px_rgba(15,23,42,0.28)] sm:p-8"
-            >
+            <section className="border-t border-[color:var(--border-soft)] py-6 sm:py-7">
               <PublicReviewsList
                 slug={professionalSlug}
                 rating={data?.rating}
                 reviewsCount={data?.reviewsCount}
               />
-            </Card>
+            </section>
           ) : null}
         </div>
       </main>
 
       {!isPreview && selectedService ? (
         <div className="fixed inset-x-0 bottom-3 z-40 px-3 lg:hidden">
-          <div className="mx-auto flex w-full max-w-[1240px] items-center gap-3 rounded-[22px] border border-[#D9E3EC] bg-white/96 px-4 py-3 shadow-[0_18px_44px_-28px_rgba(15,23,42,0.28)] backdrop-blur">
+          <div className="mx-auto flex w-full max-w-[1500px] items-center gap-3 rounded-[22px] border border-[#D9E3EC] bg-white/96 px-4 py-3 shadow-[0_18px_44px_-28px_rgba(15,23,42,0.28)] backdrop-blur">
             <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-semibold text-[color:var(--ink)]">
                 {selectedService.name}

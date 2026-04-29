@@ -1,7 +1,6 @@
 import { memo, useCallback, useEffect, useState } from 'react';
 import { getPublicProfessionalReviews } from '@/services/publicReviews';
 import type { BookingReviewPage, BookingReviewResponse } from '@/types/review';
-import Card from '@/components/ui/Card';
 
 type Props = {
   slug: string;
@@ -120,11 +119,8 @@ export default memo(function PublicReviewsList({ slug, rating, reviewsCount }: P
         </div>
       ) : null}
 
-      <div className="mt-6 grid gap-6 xl:grid-cols-[280px,minmax(0,1fr)]">
-        <Card
-          tone="soft"
-          className="rounded-[28px] border-[color:var(--border-soft)] bg-[color:var(--surface-soft)] p-5"
-        >
+      <div className="mt-5 grid gap-5 xl:grid-cols-[300px,minmax(0,1fr)]">
+        <div className="rounded-[22px] border border-[color:var(--border-soft)] bg-[color:var(--surface-soft)] p-5">
           <p className="text-[0.68rem] font-semibold uppercase tracking-[0.28em] text-[color:var(--ink-faint)]">
             Resumen
           </p>
@@ -162,13 +158,13 @@ export default memo(function PublicReviewsList({ slug, rating, reviewsCount }: P
               ? 'La distribucion se calcula sobre las reseñas visibles cargadas en esta pagina.'
               : 'La distribucion corresponde a las reseñas publicas cargadas actualmente.'}
           </p>
-        </Card>
+        </div>
 
         <div className="space-y-4">
           {page.content.map((review: BookingReviewResponse) => (
             <article
               key={review.id}
-              className="rounded-[24px] border border-[color:var(--border-soft)] bg-white p-5 shadow-[0_18px_48px_-42px_rgba(15,23,42,0.22)]"
+              className="rounded-[20px] border border-[color:var(--border-soft)] bg-white p-5"
             >
               <div className="flex items-start justify-between gap-4">
                 <div className="flex items-center gap-3">

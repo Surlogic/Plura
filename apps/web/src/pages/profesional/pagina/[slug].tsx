@@ -243,7 +243,7 @@ export default function ProfesionalDetailPage({
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [favoriteNotice, setFavoriteNotice] = useState<string | null>(null);
-  const [selectedServiceIndex, setSelectedServiceIndex] = useState(0);
+  const [selectedServiceIndex, setSelectedServiceIndex] = useState<number | null>(null);
   const [serviceDetailIndex, setServiceDetailIndex] = useState<number | null>(null);
   const [activeServiceCategory, setActiveServiceCategory] = useState('');
   const servicesSectionRef = useRef<HTMLElement | null>(null);
@@ -385,12 +385,12 @@ export default function ProfesionalDetailPage({
 
   useEffect(() => {
     if (displayServices.length === 0) {
-      setSelectedServiceIndex(0);
+      setSelectedServiceIndex(null);
       setServiceDetailIndex(null);
       return;
     }
-    if (selectedServiceIndex >= displayServices.length) {
-      setSelectedServiceIndex(0);
+    if (selectedServiceIndex !== null && selectedServiceIndex >= displayServices.length) {
+      setSelectedServiceIndex(null);
     }
     if (serviceDetailIndex !== null && serviceDetailIndex >= displayServices.length) {
       setServiceDetailIndex(null);
@@ -419,17 +419,8 @@ export default function ProfesionalDetailPage({
     );
   }, [serviceCategories]);
 
-  useEffect(() => {
-    if (!activeServiceCategory) return;
-    const selectedItem = serviceItems.find((item) => item.index === selectedServiceIndex);
-    if (selectedItem?.categoryLabel === activeServiceCategory) return;
-    const firstItem = serviceItems.find((item) => item.categoryLabel === activeServiceCategory);
-    if (firstItem) {
-      setSelectedServiceIndex(firstItem.index);
-    }
-  }, [activeServiceCategory, selectedServiceIndex, serviceItems]);
-
-  const selectedService = displayServices[selectedServiceIndex] ?? null;
+  const selectedService =
+    selectedServiceIndex !== null ? displayServices[selectedServiceIndex] ?? null : null;
   const serviceDetail =
     serviceDetailIndex !== null ? displayServices[serviceDetailIndex] ?? null : null;
 
@@ -740,8 +731,6 @@ export default function ProfesionalDetailPage({
               onCategoryChange={setActiveServiceCategory}
               onOpenServiceDetail={setServiceDetailIndex}
               onReserveService={handleReserveService}
-              onSelectService={handleSelectService}
-              selectedServiceIndex={selectedServiceIndex}
               serviceItems={serviceItems}
             />
           </section>

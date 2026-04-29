@@ -22,8 +22,6 @@ type PublicServicesSectionProps = {
   onCategoryChange: (category: string) => void;
   onOpenServiceDetail: (index: number) => void;
   onReserveService: (index: number) => void;
-  onSelectService: (index: number) => void;
-  selectedServiceIndex: number;
   serviceItems: PublicServiceItem[];
 };
 
@@ -45,8 +43,6 @@ export default function PublicServicesSection({
   onCategoryChange,
   onOpenServiceDetail,
   onReserveService,
-  onSelectService,
-  selectedServiceIndex,
   serviceItems,
 }: PublicServicesSectionProps) {
   const [failedImages, setFailedImages] = useState<string[]>([]);
@@ -104,15 +100,10 @@ export default function PublicServicesSection({
           {visibleItems.map((item) => {
             const imageSrc = normalizeImageSrc(item.service.imageUrl);
             const canRenderImage = Boolean(imageSrc) && !failedImages.includes(imageSrc);
-            const isSelected = selectedServiceIndex === item.index;
             return (
               <article
                 key={item.service.id ?? `${item.categoryLabel}-${item.index}`}
-                className={`grid gap-3 border-b border-[color:var(--border-soft)] px-4 py-4 transition last:border-b-0 lg:grid-cols-[minmax(0,1.6fr)_110px_110px_220px] lg:items-center lg:px-5 ${
-                  isSelected
-                    ? 'bg-[color:var(--primary-soft)]/45'
-                    : 'bg-[color:var(--surface)] hover:bg-[color:var(--surface-soft)]/55'
-                }`}
+                className="grid gap-3 border-b border-[color:var(--border-soft)] bg-[color:var(--surface)] px-4 py-4 transition last:border-b-0 hover:bg-[color:var(--surface-soft)]/55 lg:grid-cols-[minmax(0,1.6fr)_110px_110px_220px] lg:items-center lg:px-5"
               >
                 <div className="flex min-w-0 gap-4">
                   <div className="relative hidden h-16 w-16 shrink-0 overflow-hidden rounded-[16px] border border-[color:var(--border-soft)] bg-[color:var(--surface-soft)] sm:block">
@@ -181,22 +172,16 @@ export default function PublicServicesSection({
                     type="button"
                     variant="quiet"
                     className="border border-[color:var(--border-soft)] bg-white"
-                    onClick={() => {
-                      onSelectService(item.index);
-                      onOpenServiceDetail(item.index);
-                    }}
+                    onClick={() => onOpenServiceDetail(item.index)}
                   >
                     Ver detalle
                   </Button>
                   <Button
                     type="button"
-                    variant={isSelected ? 'primary' : 'secondary'}
-                    onClick={() => {
-                      onSelectService(item.index);
-                      onReserveService(item.index);
-                    }}
+                    variant="primary"
+                    onClick={() => onReserveService(item.index)}
                   >
-                    {isSelected ? 'Reservar' : 'Elegir servicio'}
+                    Reservar
                   </Button>
                 </div>
               </article>

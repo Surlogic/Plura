@@ -819,23 +819,6 @@ export default function ProfesionalDetailPage({
           reviewsCount={data?.reviewsCount}
         />
         <div className="mt-6">
-          <section
-            ref={servicesSectionRef}
-            id="servicios"
-            className="border-t border-[color:var(--border-soft)] py-6 sm:py-7"
-          >
-            <PublicServicesSection
-              activeCategory={activeServiceCategory}
-              categories={serviceCategories}
-              onCategoryChange={setActiveServiceCategory}
-              onOpenServiceDetail={setServiceDetailIndex}
-              onReserveService={handleReserveService}
-              onSelectService={handleSelectService}
-              selectedServiceIndex={selectedServiceIndex}
-              serviceItems={serviceItems}
-            />
-          </section>
-
           <section className="border-t border-[color:var(--border-soft)] py-6 sm:py-7">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
               <div>
@@ -859,6 +842,23 @@ export default function ProfesionalDetailPage({
             <div className="mt-5 overflow-hidden rounded-[24px] border border-[color:var(--border-soft)]">
               <BusinessGallery photos={galleryPhotos} businessName={merged.name} />
             </div>
+          </section>
+
+          <section
+            ref={servicesSectionRef}
+            id="servicios"
+            className="border-t border-[color:var(--border-soft)] py-6 sm:py-7"
+          >
+            <PublicServicesSection
+              activeCategory={activeServiceCategory}
+              categories={serviceCategories}
+              onCategoryChange={setActiveServiceCategory}
+              onOpenServiceDetail={setServiceDetailIndex}
+              onReserveService={handleReserveService}
+              onSelectService={handleSelectService}
+              selectedServiceIndex={selectedServiceIndex}
+              serviceItems={serviceItems}
+            />
           </section>
 
           <section

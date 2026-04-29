@@ -2,7 +2,6 @@ import Image from 'next/image';
 import { useEffect, useMemo, useState } from 'react';
 import FavoriteToggleButton from '@/components/shared/FavoriteToggleButton';
 import Badge from '@/components/ui/Badge';
-import Button from '@/components/ui/Button';
 import {
   buildPublicBusinessImageStyle,
   buildPublicBusinessLogoStyle,
@@ -35,13 +34,10 @@ type PublicProfileHeroProps = {
   logoMedia?: ProfessionalMediaPresentation | null;
   logoUrl?: string;
   name: string;
-  onReserve: () => void;
   onToggleFavorite: () => void;
   photoUrls?: string[];
-  reserveLabel?: string;
   rating?: number | null;
   reviewsCount?: number | null;
-  reserveDisabled?: boolean;
   scheduleSummary?: PublicHeroScheduleItem[];
   socialLinks?: PublicHeroSocialLink[];
   whatsappHref?: string;
@@ -121,13 +117,10 @@ export default function PublicProfileHero({
   logoMedia,
   logoUrl,
   name,
-  onReserve,
   onToggleFavorite,
   photoUrls = [],
-  reserveLabel = 'Reservar',
   rating,
   reviewsCount,
-  reserveDisabled = false,
   scheduleSummary = [],
   socialLinks = [],
   whatsappHref,
@@ -259,22 +252,12 @@ export default function PublicProfileHero({
             </div>
 
             {!isPreview ? (
-              <div className="flex w-full flex-col gap-2.5 lg:w-[240px] lg:shrink-0">
-                <Button
-                  type="button"
-                  variant="primary"
-                  size="lg"
-                  className="w-full"
-                  onClick={onReserve}
-                  disabled={reserveDisabled}
-                >
-                  {reserveLabel}
-                </Button>
+              <div className="flex w-full lg:w-auto lg:shrink-0 lg:justify-end">
                 <FavoriteToggleButton
                   isActive={isCurrentFavorite}
                   onClick={onToggleFavorite}
                   variant="pill"
-                  className="w-full justify-center"
+                  className="w-full justify-center lg:min-w-[170px]"
                   activeLabel="Favoritos"
                   inactiveLabel="Favoritos"
                 />

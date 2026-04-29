@@ -6,6 +6,7 @@ import Footer from '@/components/shared/Footer';
 import BusinessGallery from '@/components/profesional/BusinessGallery';
 import ServiceDetailModal from '@/components/profesional/ServiceDetailModal';
 import PublicReviewsList from '@/components/profesional/PublicReviewsList';
+import Button from '@/components/ui/Button';
 import { useFavoriteProfessionals } from '@/hooks/useFavoriteProfessionals';
 import { useClientProfileContext } from '@/context/ClientProfileContext';
 import { getPublicProfessionalBySlug } from '@/services/publicBookings';
@@ -683,11 +684,8 @@ export default function ProfesionalDetailPage({
           logoMedia={merged.logoMedia}
           logoUrl={merged.logoUrl}
           name={merged.name}
-          onReserve={handlePrimaryReserveEntry}
           onToggleFavorite={toggleFavoriteHandler}
           photoUrls={merged.photos}
-          reserveDisabled={false}
-          reserveLabel="Reservar"
           rating={data?.rating}
           reviewsCount={data?.reviewsCount}
           scheduleSummary={scheduleSummary}
@@ -746,6 +744,22 @@ export default function ProfesionalDetailPage({
           ) : null}
         </div>
       </main>
+
+      {!isPreview && !selectedService ? (
+        <div
+          className="fixed bottom-[calc(env(safe-area-inset-bottom,0px)+1rem)] right-4 z-40 sm:bottom-[calc(env(safe-area-inset-bottom,0px)+1.25rem)] sm:right-5 lg:bottom-6 lg:right-6"
+        >
+          <Button
+            type="button"
+            variant="primary"
+            size="lg"
+            className="rounded-full px-5 shadow-[0_18px_44px_-28px_rgba(15,23,42,0.28)]"
+            onClick={handlePrimaryReserveEntry}
+          >
+            Reservar
+          </Button>
+        </div>
+      ) : null}
 
       {!isPreview && selectedService ? (
         <div className="fixed inset-x-0 bottom-3 z-40 px-3 lg:hidden">

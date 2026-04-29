@@ -32,7 +32,6 @@ type PublicProfileHeroProps = {
   initials?: string;
   isCurrentFavorite: boolean;
   isPreview?: boolean;
-  locationLabel?: string;
   logoMedia?: ProfessionalMediaPresentation | null;
   logoUrl?: string;
   name: string;
@@ -47,22 +46,7 @@ type PublicProfileHeroProps = {
   scheduleSummary?: PublicHeroScheduleItem[];
   socialLinks?: PublicHeroSocialLink[];
   whatsappHref?: string;
-  whatsappLabel?: string;
 };
-
-const LocationIcon = () => (
-  <svg viewBox="0 0 24 24" aria-hidden="true" className="h-4 w-4">
-    <path
-      d="M12 21s6-5.5 6-11a6 6 0 1 0-12 0c0 5.5 6 11 6 11Z"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-    <circle cx="12" cy="10" r="2.5" fill="none" stroke="currentColor" strokeWidth="1.8" />
-  </svg>
-);
 
 const StarIcon = () => (
   <svg viewBox="0 0 24 24" aria-hidden="true" className="h-4 w-4 fill-current">
@@ -135,7 +119,6 @@ export default function PublicProfileHero({
   initials,
   isCurrentFavorite,
   isPreview = false,
-  locationLabel,
   logoMedia,
   logoUrl,
   name,
@@ -150,7 +133,6 @@ export default function PublicProfileHero({
   scheduleSummary = [],
   socialLinks = [],
   whatsappHref,
-  whatsappLabel,
 }: PublicProfileHeroProps) {
   const media = useMemo(
     () =>
@@ -178,7 +160,7 @@ export default function PublicProfileHero({
   const showLogoImage = Boolean(media.logo?.src) && !logoFailed;
   const hasRating = typeof rating === 'number' && Number.isFinite(rating);
   const hasReviews = typeof reviewsCount === 'number' && reviewsCount > 0;
-  const hasUtilityInfo = Boolean(address || scheduleSummary.length > 0 || whatsappHref || socialLinks.length > 0);
+  const hasUtilityInfo = Boolean(address || scheduleSummary.length > 0);
 
   return (
     <section className="overflow-hidden rounded-[28px] border border-[color:var(--border-soft)] bg-[color:var(--surface)]">
@@ -248,12 +230,32 @@ export default function PublicProfileHero({
                     )}
                   </div>
 
-                  {locationLabel ? (
-                    <div className="inline-flex items-center gap-2 rounded-full border border-[color:var(--border-soft)] bg-[color:var(--surface-soft)] px-3 py-1.5 text-[color:var(--ink)]">
-                      <LocationIcon />
-                      <span className="font-medium">{locationLabel}</span>
-                    </div>
+                  {whatsappHref ? (
+                    <a
+                      href={whatsappHref}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-[color:var(--border-soft)] bg-[color:var(--surface-soft)] text-[color:var(--ink)] transition hover:-translate-y-0.5 hover:bg-white hover:shadow-[var(--shadow-card)]"
+                      aria-label="WhatsApp"
+                      title="WhatsApp"
+                    >
+                      <WhatsAppIcon />
+                    </a>
                   ) : null}
+
+                  {socialLinks.map((link) => (
+                    <a
+                      key={`${link.platform}-${link.href}`}
+                      href={link.href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-[color:var(--border-soft)] bg-[color:var(--surface-soft)] text-[color:var(--ink)] transition hover:-translate-y-0.5 hover:bg-white hover:shadow-[var(--shadow-card)]"
+                      aria-label={link.label}
+                      title={link.label}
+                    >
+                      <SocialIcon platform={link.platform} />
+                    </a>
+                  ))}
                 </div>
               </div>
             </div>
@@ -292,87 +294,41 @@ export default function PublicProfileHero({
 
           {hasUtilityInfo ? (
             <div className="mt-5 border-t border-[color:var(--border-soft)] pt-5">
-              <div className="grid gap-4 xl:grid-cols-[minmax(0,1.25fr)_minmax(0,0.95fr)]">
-                <div className="space-y-3">
-                  {address ? (
-                    <div className="rounded-[18px] border border-[color:var(--border-soft)] bg-[color:var(--surface-soft)] px-4 py-3">
-                      <p className="text-[0.62rem] font-semibold uppercase tracking-[0.24em] text-[color:var(--ink-faint)]">
-                        Direccion
-                      </p>
-                      <p className="mt-1.5 text-sm leading-6 text-[color:var(--ink)] sm:text-base">
-                        {address}
-                      </p>
-                    </div>
-                  ) : null}
+              <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)]">
+                {address ? (
+                  <div className="rounded-[18px] border border-[color:var(--border-soft)] bg-[color:var(--surface-soft)] px-4 py-3">
+                    <p className="text-[0.62rem] font-semibold uppercase tracking-[0.24em] text-[color:var(--ink-faint)]">
+                      Direccion
+                    </p>
+                    <p className="mt-1.5 text-sm leading-6 text-[color:var(--ink)] sm:text-base">
+                      {address}
+                    </p>
+                  </div>
+                ) : null}
 
-                  {scheduleSummary.length > 0 ? (
-                    <div className="rounded-[18px] border border-[color:var(--border-soft)] bg-[color:var(--surface-soft)] px-4 py-3">
-                      <div className="flex items-center gap-2 text-[0.62rem] font-semibold uppercase tracking-[0.24em] text-[color:var(--ink-faint)]">
-                        <ClockIcon />
-                        <span>Horarios</span>
-                      </div>
-                      <div className="mt-2.5 space-y-2">
-                        {scheduleSummary.map((item) => (
-                          <div
-                            key={`${item.label}-${item.ranges}`}
-                            className="flex flex-wrap items-center justify-between gap-2 rounded-[14px] bg-white px-3 py-2"
-                          >
-                            <span className="text-sm font-semibold text-[color:var(--ink)]">
-                              {item.label}
-                            </span>
-                            <span className="text-sm text-[color:var(--primary)]">
-                              {item.ranges}
-                            </span>
-                          </div>
-                        ))}
-                      </div>
+                {scheduleSummary.length > 0 ? (
+                  <div className="rounded-[18px] border border-[color:var(--border-soft)] bg-[color:var(--surface-soft)] px-4 py-3">
+                    <div className="flex items-center gap-2 text-[0.62rem] font-semibold uppercase tracking-[0.24em] text-[color:var(--ink-faint)]">
+                      <ClockIcon />
+                      <span>Horarios</span>
                     </div>
-                  ) : null}
-                </div>
-
-                <div className="space-y-3">
-                  {whatsappHref && whatsappLabel ? (
-                    <div className="rounded-[18px] border border-[color:var(--border-soft)] bg-[color:var(--surface-soft)] px-4 py-3">
-                      <p className="text-[0.62rem] font-semibold uppercase tracking-[0.24em] text-[color:var(--ink-faint)]">
-                        Contacto
-                      </p>
-                      <div className="mt-2.5 flex flex-wrap gap-2">
-                        <a
-                          href={whatsappHref}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-2 rounded-full border border-[color:var(--border-soft)] bg-white px-3 py-2 text-sm font-medium text-[color:var(--ink)] transition hover:-translate-y-0.5 hover:shadow-[var(--shadow-card)]"
+                    <div className="mt-2.5 space-y-2">
+                      {scheduleSummary.map((item) => (
+                        <div
+                          key={`${item.label}-${item.ranges}`}
+                          className="flex flex-wrap items-center justify-between gap-2 rounded-[14px] bg-white px-3 py-2"
                         >
-                          <WhatsAppIcon />
-                          <span>{whatsappLabel}</span>
-                        </a>
-                      </div>
+                          <span className="text-sm font-semibold text-[color:var(--ink)]">
+                            {item.label}
+                          </span>
+                          <span className="text-sm text-[color:var(--primary)]">
+                            {item.ranges}
+                          </span>
+                        </div>
+                      ))}
                     </div>
-                  ) : null}
-
-                  {socialLinks.length > 0 ? (
-                    <div className="rounded-[18px] border border-[color:var(--border-soft)] bg-[color:var(--surface-soft)] px-4 py-3">
-                      <p className="text-[0.62rem] font-semibold uppercase tracking-[0.24em] text-[color:var(--ink-faint)]">
-                        Redes
-                      </p>
-                      <div className="mt-2.5 flex flex-wrap gap-2">
-                        {socialLinks.map((link) => (
-                          <a
-                            key={`${link.platform}-${link.href}`}
-                            href={link.href}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-[color:var(--border-soft)] bg-white text-[color:var(--ink)] transition hover:-translate-y-0.5 hover:shadow-[var(--shadow-card)]"
-                            aria-label={link.label}
-                            title={link.label}
-                          >
-                            <SocialIcon platform={link.platform} />
-                          </a>
-                        ))}
-                      </div>
-                    </div>
-                  ) : null}
-                </div>
+                  </div>
+                ) : null}
               </div>
             </div>
           ) : null}

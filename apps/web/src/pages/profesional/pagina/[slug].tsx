@@ -564,7 +564,6 @@ export default function ProfesionalDetailPage({
     [facebookHref, instagramHref, tiktokHref, websiteHref],
   );
   const favoriteImage = galleryPhotos[0] || merged.logoUrl || undefined;
-  const locationLabel = addressValue || cityLine || merged.location || '';
 
   const hasPublicContent = Boolean(
     merged.name ||
@@ -634,7 +633,6 @@ export default function ProfesionalDetailPage({
           initials={initials}
           isCurrentFavorite={isCurrentFavorite}
           isPreview={isPreview}
-          locationLabel={locationLabel}
           logoMedia={merged.logoMedia}
           logoUrl={merged.logoUrl}
           name={merged.name}
@@ -649,7 +647,6 @@ export default function ProfesionalDetailPage({
           scheduleSummary={scheduleSummary}
           socialLinks={socialLinks}
           whatsappHref={whatsappHref}
-          whatsappLabel={whatsappContactValue}
         />
         <div className="mt-6">
           <section className="border-t border-[color:var(--border-soft)] py-6 sm:py-7">

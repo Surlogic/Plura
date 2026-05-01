@@ -523,8 +523,11 @@ export default function ProfesionalDetailPage({
 
   const handleReserve = (service: PublicService, date?: string, time?: string) => {
     const params = new URLSearchParams();
-    if (service.id) params.set('serviceId', service.id);
-    if (service.name) params.set('servicio', service.name);
+    if (service.id) {
+      params.set('serviceId', service.id);
+    } else if (service.name) {
+      params.set('servicio', service.name);
+    }
     if (professionalSlug) params.set('profesional', professionalSlug);
     if (date) params.set('date', date);
     if (time) params.set('time', time);

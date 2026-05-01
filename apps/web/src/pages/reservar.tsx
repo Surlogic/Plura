@@ -341,19 +341,20 @@ export default function ReservationPage() {
           return;
         }
 
-        const byId = serviceId
-          ? services.find((item) => item.id === serviceId)
-          : undefined;
-        const byName = !byId && serviceNameQuery
+        const requestedServiceById = serviceId
+          ? services.find((item) => item.id === serviceId) ?? null
+          : null;
+        const requestedServiceByName = !serviceId && serviceNameQuery
           ? services.find(
               (item) => item.name.trim().toLowerCase() === serviceNameQuery.toLowerCase(),
-            )
-          : undefined;
-        const pendingService = pendingMatchesProfessional
+            ) ?? null
+          : null;
+        const hasRequestedService = Boolean(serviceId || serviceNameQuery);
+        const pendingService = !hasRequestedService && pendingMatchesProfessional
           ? services.find((item) => item.id === pendingReservation?.serviceId)
-          : undefined;
+          : null;
 
-        const nextService = byId ?? byName ?? pendingService ?? null;
+        const nextService = requestedServiceById ?? requestedServiceByName ?? pendingService ?? null;
         const nextSelectedDate = resolveInitialDate(
           routeStateRef.current.dateQuery || (pendingMatchesProfessional ? pendingReservation?.date || '' : ''),
           calendarDays,
@@ -401,7 +402,11 @@ export default function ReservationPage() {
           }
         }
 
-        if ((serviceId || serviceNameQuery) && !byId && !byName) {
+        const hasInvalidRequestedService =
+          (Boolean(serviceId) && !requestedServiceById) ||
+          (!serviceId && Boolean(serviceNameQuery) && !requestedServiceByName);
+
+        if (hasInvalidRequestedService) {
           setSaveError('El servicio elegido ya no está disponible. Elegí otro para continuar.');
           setIsEditingServiceSelection(true);
         }

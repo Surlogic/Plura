@@ -12,5 +12,5 @@ public class ProfessionalWorkerInvitationLookupResponse {
     private String professionalId;
     private String professionalName;
     private LocalDateTime expiresAt;
-    private boolean requiresAccountCreation;
+    private boolean needsAccountCreation;
 }

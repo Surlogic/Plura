@@ -33,6 +33,7 @@ export default function ProfessionalDashboardLayout() {
           <Stack.Screen name="index" />
           <Stack.Screen name="agenda" />
           <Stack.Screen name="services" />
+          <Stack.Screen name="equipo" />
           <Stack.Screen name="business-profile" />
           <Stack.Screen name="billing" />
           <Stack.Screen name="schedule" />

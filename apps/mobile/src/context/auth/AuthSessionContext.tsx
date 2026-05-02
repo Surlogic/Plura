@@ -17,7 +17,17 @@ import {
 } from '../../services/session';
 import type { ProfessionalProfile } from '../../types/professional';
 import { logWarn } from '../../services/logger';
-import { extractRoleFromAccessToken, type BackendAuthRole } from '../../services/authToken';
+import {
+  extractContextFromAccessToken,
+  extractRoleFromAccessToken,
+  type AuthContextType,
+  type BackendAuthRole,
+} from '../../services/authToken';
+import {
+  fetchAuthMe,
+  type AuthContextDescriptor,
+} from '../../services/authContext';
+import { fetchWorkerSummary, type WorkerSummary } from '../../services/workerDashboard';
 
 export type ClientProfile = {
   id: string;
@@ -29,12 +39,15 @@ export type ClientProfile = {
   role?: string;
 };
 
-export type AuthRole = 'professional' | 'client' | null;
+export type AuthRole = 'professional' | 'client' | 'worker' | null;
 
 interface AuthSessionContextValue {
   profile: ProfessionalProfile | null;
   clientProfile: ClientProfile | null;
+  workerSummary: WorkerSummary | null;
   role: AuthRole;
+  activeContext: AuthContextDescriptor | null;
+  contexts: AuthContextDescriptor[];
   isAuthenticated: boolean;
   hasLoaded: boolean;
   refreshProfile: () => Promise<void>;
@@ -42,15 +55,6 @@ interface AuthSessionContextValue {
 }
 
 const AuthSessionContext = createContext<AuthSessionContextValue | undefined>(undefined);
-
-const resolveAuthenticatedRole = (
-  professionalProfile: ProfessionalProfile | null,
-  currentClientProfile: ClientProfile | null,
-): AuthRole => {
-  if (professionalProfile) return 'professional';
-  if (currentClientProfile) return 'client';
-  return null;
-};
 
 const isUnauthorizedSessionError = (error: unknown) => {
   if (!isAxiosError(error)) return false;
@@ -62,76 +66,106 @@ const canFallbackToClientProfile = (error: unknown) => {
   return error.response?.status === 403 || error.response?.status === 404;
 };
 
+const resolveRoleFromContext = (
+  ctx: AuthContextType | null,
+  backendRole: BackendAuthRole | null,
+): AuthRole => {
+  if (ctx === 'WORKER') return 'worker';
+  if (ctx === 'PROFESSIONAL') return 'professional';
+  if (ctx === 'CLIENT') return 'client';
+  if (backendRole === 'PROFESSIONAL') return 'professional';
+  if (backendRole === 'USER') return 'client';
+  return null;
+};
+
 export const AuthSessionProvider = ({ children }: { children: ReactNode }) => {
   const [profile, setProfile] = useState<ProfessionalProfile | null>(null);
   const [clientProfile, setClientProfile] = useState<ClientProfile | null>(null);
+  const [workerSummary, setWorkerSummary] = useState<WorkerSummary | null>(null);
   const [role, setRole] = useState<AuthRole>(null);
+  const [activeContext, setActiveContext] = useState<AuthContextDescriptor | null>(null);
+  const [contexts, setContexts] = useState<AuthContextDescriptor[]>([]);
   const [hasLoaded, setHasLoaded] = useState(false);
   const refreshProfilePromiseRef = useRef<Promise<void> | null>(null);
 
   const resetState = () => {
     setProfile(null);
     setClientProfile(null);
+    setWorkerSummary(null);
     setRole(null);
+    setActiveContext(null);
+    setContexts([]);
   };
 
-  const setProfessionalState = (professionalProfile: ProfessionalProfile) => {
-    setProfile(professionalProfile);
-    setClientProfile(null);
-    setRole('professional');
-  };
-
-  const setClientState = (nextClientProfile: ClientProfile) => {
-    setClientProfile(nextClientProfile);
-    setProfile(null);
-    setRole('client');
-  };
-
-  const loadProfileForRole = useCallback(async (backendRole: BackendAuthRole) => {
-    if (backendRole === 'PROFESSIONAL') {
-      const professionalResponse = await api.get<ProfessionalProfile>('/auth/me/profesional');
-      setProfessionalState(professionalResponse.data);
+  const loadProfileForRole = useCallback(async (nextRole: AuthRole) => {
+    if (nextRole === 'professional') {
+      const response = await api.get<ProfessionalProfile>('/auth/me/profesional');
+      setProfile(response.data);
+      setClientProfile(null);
+      setWorkerSummary(null);
+      setRole('professional');
       return;
     }
-
-    const clientResponse = await api.get<ClientProfile>('/auth/me/cliente');
-    setClientState(clientResponse.data);
+    if (nextRole === 'worker') {
+      const summary = await fetchWorkerSummary();
+      setWorkerSummary(summary);
+      setProfile(null);
+      setClientProfile(null);
+      setRole('worker');
+      return;
+    }
+    const response = await api.get<ClientProfile>('/auth/me/cliente');
+    setClientProfile(response.data);
+    setProfile(null);
+    setWorkerSummary(null);
+    setRole('client');
   }, []);
 
   const performRefreshProfile = useCallback(async () => {
     try {
       const token = await getAccessToken();
-
       if (!token || token === 'null' || token === 'undefined') {
         resetState();
         return;
       }
 
-      const hintedRole = extractRoleFromAccessToken(token);
+      const ctxFromToken = extractContextFromAccessToken(token);
+      const backendRole = extractRoleFromAccessToken(token);
+      const desiredRole = resolveRoleFromContext(ctxFromToken, backendRole);
 
       try {
-        if (hintedRole) {
-          await loadProfileForRole(hintedRole);
-          return;
-        }
-
-        try {
-          await loadProfileForRole('PROFESSIONAL');
-          return;
-        } catch (error) {
-          if (!canFallbackToClientProfile(error)) {
-            throw error;
-          }
-        }
-
-        await loadProfileForRole('USER');
+        const me = await fetchAuthMe();
+        setActiveContext(me.activeContext ?? null);
+        setContexts(Array.isArray(me.contexts) ? me.contexts : []);
       } catch (error) {
         if (isUnauthorizedSessionError(error)) {
           await clearSession();
           resetState();
           return;
         }
+        logWarn('auth-session', 'no se pudo cargar /auth/me, sigo con fallback', error);
+      }
 
+      try {
+        if (desiredRole) {
+          await loadProfileForRole(desiredRole);
+          return;
+        }
+        try {
+          await loadProfileForRole('professional');
+          return;
+        } catch (error) {
+          if (!canFallbackToClientProfile(error)) {
+            throw error;
+          }
+        }
+        await loadProfileForRole('client');
+      } catch (error) {
+        if (isUnauthorizedSessionError(error)) {
+          await clearSession();
+          resetState();
+          return;
+        }
         logWarn('auth-session', 'error cargando sesion autenticada', error);
       }
     } catch (error) {
@@ -143,25 +177,16 @@ export const AuthSessionProvider = ({ children }: { children: ReactNode }) => {
     if (refreshProfilePromiseRef.current) {
       return refreshProfilePromiseRef.current;
     }
-
     const request = performRefreshProfile().finally(() => {
       setHasLoaded(true);
       refreshProfilePromiseRef.current = null;
     });
-
     refreshProfilePromiseRef.current = request;
     return request;
   }, [performRefreshProfile]);
 
   const logout = useCallback(async () => {
     const refreshToken = await getRefreshToken();
-    const logoutRedirect =
-      role === 'professional'
-        ? '/(auth)/login-professional'
-        : role === 'client'
-          ? '/(auth)/login-client'
-          : '/';
-
     try {
       await api.post('/auth/logout', refreshToken ? { refreshToken } : {});
     } catch (error) {
@@ -170,9 +195,9 @@ export const AuthSessionProvider = ({ children }: { children: ReactNode }) => {
       await clearSession();
       resetState();
       setHasLoaded(true);
-      router.replace(logoutRedirect);
+      router.replace('/');
     }
-  }, [role]);
+  }, []);
 
   useEffect(() => {
     void refreshProfile();
@@ -183,8 +208,11 @@ export const AuthSessionProvider = ({ children }: { children: ReactNode }) => {
       value={{
         profile,
         clientProfile,
+        workerSummary,
         role,
-        isAuthenticated: Boolean(resolveAuthenticatedRole(profile, clientProfile)),
+        activeContext,
+        contexts,
+        isAuthenticated: Boolean(role),
         hasLoaded,
         refreshProfile,
         logout,

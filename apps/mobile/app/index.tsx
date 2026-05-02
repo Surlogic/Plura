@@ -2,7 +2,11 @@ import React from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import { Redirect } from 'expo-router';
 import { useAuthSession } from '../src/context/auth/AuthSessionContext';
-import { CLIENT_HOME_ROUTE } from '../src/features/shared/auth/routes';
+import {
+  CLIENT_HOME_ROUTE,
+  PROFESSIONAL_HOME_ROUTE,
+  WORKER_HOME_ROUTE,
+} from '../src/features/shared/auth/routes';
 import { AuthWelcomeScreen } from '../src/features/shared/auth/screens/AuthWelcomeScreen';
 import { theme } from '../src/theme';
 
@@ -25,7 +29,11 @@ export default function EntryScreen() {
   }
 
   if (role === 'professional') {
-    return <Redirect href="/dashboard" />;
+    return <Redirect href={PROFESSIONAL_HOME_ROUTE} />;
+  }
+
+  if (role === 'worker') {
+    return <Redirect href={WORKER_HOME_ROUTE} />;
   }
 
   if (role === 'client') {

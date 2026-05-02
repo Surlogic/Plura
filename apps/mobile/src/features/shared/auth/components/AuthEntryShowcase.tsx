@@ -177,9 +177,9 @@ export function AuthEntryShowcase() {
         </ScrollView>
 
         <View style={styles.actions}>
-          <Link href="/(auth)/login-client" asChild>
+          <Link href="/(auth)/login" asChild>
             <TouchableOpacity activeOpacity={0.86} style={styles.primaryButton}>
-              <Text style={styles.primaryButtonText}>Reserva ya</Text>
+              <Text style={styles.primaryButtonText}>Iniciar sesión</Text>
             </TouchableOpacity>
           </Link>
 

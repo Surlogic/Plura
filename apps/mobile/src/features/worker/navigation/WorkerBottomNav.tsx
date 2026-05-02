@@ -1,76 +1,44 @@
 import React from 'react';
-import { Ionicons } from '../../../lib/icons';
-import { router, usePathname } from 'expo-router';
 import { Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { router, usePathname } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Ionicons } from '../../../lib/icons';
 import { theme } from '../../../theme';
 
-type ProfessionalNavItem = {
-  href:
-    | '/dashboard/agenda'
-    | '/dashboard/services'
-    | '/dashboard/equipo'
-    | '/dashboard/business-profile'
-    | '/dashboard/billing'
-    | '/dashboard/settings';
+type WorkerNavItem = {
+  href: '/trabajador/calendario' | '/trabajador/reservas' | '/trabajador/cuenta';
   label: string;
   icon: keyof typeof Ionicons.glyphMap;
   activeIcon: keyof typeof Ionicons.glyphMap;
-  matchPrefix?: string;
 };
 
-const NAV_ITEMS: ProfessionalNavItem[] = [
+const NAV_ITEMS: WorkerNavItem[] = [
   {
-    href: '/dashboard/agenda',
+    href: '/trabajador/calendario',
     label: 'Agenda',
     icon: 'calendar-outline',
     activeIcon: 'calendar',
-    matchPrefix: '/dashboard/agenda',
   },
   {
-    href: '/dashboard/services',
-    label: 'Servicios',
-    icon: 'cut-outline',
-    activeIcon: 'cut',
-    matchPrefix: '/dashboard/services',
+    href: '/trabajador/reservas',
+    label: 'Reservas',
+    icon: 'list-outline',
+    activeIcon: 'list',
   },
   {
-    href: '/dashboard/equipo',
-    label: 'Equipo',
-    icon: 'people-outline',
-    activeIcon: 'people',
-    matchPrefix: '/dashboard/equipo',
-  },
-  {
-    href: '/dashboard/business-profile',
-    label: 'Perfil',
-    icon: 'storefront-outline',
-    activeIcon: 'storefront',
-    matchPrefix: '/dashboard/business-profile',
-  },
-  {
-    href: '/dashboard/billing',
-    label: 'Cobros',
-    icon: 'card-outline',
-    activeIcon: 'card',
-    matchPrefix: '/dashboard/billing',
-  },
-  {
-    href: '/dashboard/settings',
-    label: 'Ajustes',
-    icon: 'settings-outline',
-    activeIcon: 'settings',
-    matchPrefix: '/dashboard/settings',
+    href: '/trabajador/cuenta',
+    label: 'Cuenta',
+    icon: 'person-outline',
+    activeIcon: 'person',
   },
 ];
 
-const isActiveItem = (pathname: string, item: ProfessionalNavItem) => {
+const isActiveItem = (pathname: string, item: WorkerNavItem) => {
   if (pathname === item.href) return true;
-  if (item.matchPrefix && pathname.startsWith(item.matchPrefix)) return true;
-  return false;
+  return pathname.startsWith(`${item.href}/`);
 };
 
-export function ProfessionalBottomNav() {
+export function WorkerBottomNav() {
   const pathname = usePathname();
   const insets = useSafeAreaInsets();
   const bottomPadding =

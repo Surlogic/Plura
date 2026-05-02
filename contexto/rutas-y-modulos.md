@@ -215,9 +215,16 @@ Lectura de producto:
 
 - esta area concentra el valor de `Free` y buena parte de `Pro`
 - `servicios`, `horarios`, `reservas`, `perfil-negocio` y `notificaciones` son el corazon operativo
-- el multiequipo ya tiene puntos clave armados: backend de equipo (`/profesional/team*`), pantalla `/trabajador/invitacion` para aceptar invitaciones, dashboard admin `/profesional/dashboard/equipo` con listar/invitar/asignar servicios/suspender/reactivar/eliminar y vistas trabajador `/trabajador/calendario` y `/trabajador/reservas`. Pendiente: editor de horarios por trabajador en UI admin, vista de calendario completo (no solo lista por dias) en UI trabajador, mobile y reserva publica con `worker_id` autoasignado.
-- el login unificado expone `/auth/login` y permite que un mismo email use varios contextos (`CLIENT`, `PROFESSIONAL`, `WORKER`); la pantalla `/login` ahora hace ese flujo en web. Las pantallas `/cliente/auth/login` y `/profesional/auth/login` siguen funcionando como compatibilidad y emiten tokens con `ctx` por rol.
-- el email de invitacion usa la ruta web `/trabajador/invitacion?token=...` que ya existe; chequea email vs cuenta existente y, si hace falta, pide nombre/telefono/password antes de aceptar.
+- el multiequipo ya tiene puntos clave armados en web y mobile:
+  - backend de equipo (`/profesional/team*`)
+  - pantalla aceptar invitacion `/trabajador/invitacion` (web) y `/(auth)/worker-invitation` (mobile)
+  - dashboard admin `/profesional/dashboard/equipo` (web) y `/dashboard/equipo` (mobile) con listar/invitar/asignar servicios/suspender/reactivar/eliminar
+  - dashboard trabajador `/trabajador/calendario`, `/trabajador/reservas` (web) y stack `/trabajador/{calendario,reservas,cuenta}` con bottom nav dedicada (mobile)
+  - login unificado `/login` (web) y `/(auth)/login` (mobile) con selector de contexto cuando el email tiene mas de un acceso
+  - pantalla de cuenta del trabajador en mobile permite cambiar de contexto (entrar como cliente o como dueno de otro local) sin volver a loguearse
+  - Pendiente: editor de horarios por trabajador en UI admin (web/mobile), vista de calendario completo (no solo lista por dias) en UI trabajador y reserva publica con `worker_id` autoasignado.
+- el login unificado expone `/auth/login` y permite que un mismo email use varios contextos (`CLIENT`, `PROFESSIONAL`, `WORKER`); el JWT lleva claim `ctx` con el contexto activo y `pid`/`wid` cuando aplica. Las pantallas legacy `/cliente/auth/login`, `/profesional/auth/login` y sus equivalentes mobile siguen funcionando como compatibilidad.
+- el email de invitacion usa la ruta `/trabajador/invitacion?token=...`; en mobile el deep-link queda en `/(auth)/worker-invitation?token=...`. Ambas pantallas chequean si el email ya tiene cuenta en Plura y, si hace falta, piden nombre/telefono/password antes de aceptar.
 - `/profesional/dashboard/perfil-negocio` ahora incluye constructor visual para `logo` y `banner` dentro de un modal: se abre al terminar una subida/reemplazo y también desde `Editar encuadre`; ese encuadre queda persistido y se aplica también en la ficha pública
 - los autocompletes de ubicacion en `/profesional/auth/register` y `/profesional/dashboard/perfil-negocio` ya seleccionan sugerencias por click normal sin depender de `mouseDown`, evitando opciones que parecian clickeables pero no confirmaban bien al navegar con teclado o blur
 - `/profesional/auth/register` y `/profesional/dashboard/perfil-negocio` ya comparten el mismo selector internacional de telefono con bandera + codigo; evita cargar el prefijo a mano y deja el numero persistido listo para backend
@@ -266,9 +273,9 @@ Huecos relevantes contra el objetivo:
 - ficha del cliente orientada a `Pro`
 - analytics mas visibles
 - chat interno
-- mobile (cliente y profesional) todavia sin selector de contexto ni dashboard de trabajador; web ya cubre login unificado, dashboard admin de equipo y vista de trabajador
-- editor de horarios por trabajador en UI admin (los endpoints `/profesional/team/{id}/schedule` ya existen)
+- editor de horarios por trabajador en UI admin web/mobile (los endpoints `/profesional/team/{id}/schedule` ya existen)
 - reserva publica que respete `worker_id`: hoy backend permite guardarlo, la migracion V78 ya cambio la unicidad de booking, pero la generacion de slots/checkout publico aun no autoasigna ni filtra por trabajador
+- vista de calendario completo (no solo lista por dia) tanto en web como en mobile para trabajador
 
 ### Rutas internas de operaciones
 

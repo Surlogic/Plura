@@ -127,15 +127,18 @@ function ProfesionalSidebar({ profile, active }: SidebarProps) {
   return (
     <aside
       ref={rootRef}
-      className="relative min-h-full overflow-x-hidden rounded-r-[28px] border-r border-[color:var(--border-soft)] bg-[color:var(--sidebar-surface)] px-5 py-6 text-[color:var(--ink)]"
+      className="relative min-h-full overflow-x-hidden border-r border-[#E2E8F0] bg-white px-3 py-4 text-[color:var(--ink)]"
     >
-      <div className="border-b border-[color:var(--border-soft)] pb-5">
-        <div className="flex justify-center">
+      <div className="border-b border-[#E2E8F0] pb-3">
+        <div className="flex items-center justify-between gap-3 px-1">
           <BrandLogo href="/" variant="mobile" className="justify-center" />
+          <span className="rounded-full border border-[#D9ECE8] bg-[#F0FDFA] px-2 py-1 text-[0.52rem] font-semibold uppercase tracking-[0.08em] text-[#0F766E]">
+            {planLabel}
+          </span>
         </div>
 
-        <div className="mt-6 flex flex-col items-center text-center">
-          <div className="relative flex h-14 w-14 items-center justify-center overflow-hidden rounded-[18px] border border-[color:var(--border-soft)] bg-white text-base font-semibold text-[color:var(--primary)] shadow-[var(--shadow-card)]">
+        <div className="mt-4 flex items-center gap-3 px-1">
+          <div className="relative flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-[12px] border border-[color:var(--border-soft)] bg-white text-sm font-semibold text-[color:var(--primary)]">
             {resolvedLogoUrl ? (
               <Image
                 src={resolvedLogoUrl}
@@ -149,30 +152,27 @@ function ProfesionalSidebar({ profile, active }: SidebarProps) {
               initials
             )}
           </div>
-          <div className="mt-3 flex flex-wrap justify-center gap-2">
-            <Badge variant="success" className="px-2 py-1 text-[0.56rem] tracking-[0.14em]">
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-1.5">
+              <p className="truncate text-[0.88rem] font-semibold">{displayName}</p>
+              <Badge variant="success" className="px-1.5 py-0.5 text-[0.48rem] tracking-[0.08em]">
               Profesional
-            </Badge>
-            <span className="rounded-full border border-[color:var(--premium-soft)] bg-[color:var(--premium-soft)] px-2 py-1 text-[0.56rem] font-semibold uppercase tracking-[0.1em] text-[color:var(--premium-strong)]">
-              {planLabel}
-            </span>
-          </div>
-          <div className="mt-3 min-w-0 max-w-full">
-            <p className="truncate text-[1rem] font-semibold">{displayName}</p>
-            <p className="mt-1 text-sm text-[color:var(--ink-muted)]">{displayMeta}</p>
+              </Badge>
+            </div>
+            <p className="mt-0.5 truncate text-[0.76rem] text-[color:var(--ink-muted)]">{displayMeta}</p>
           </div>
         </div>
 
         <ProfessionalNotificationBell onNavigate={requestNavigation} />
       </div>
 
-      <div className="relative mt-5 space-y-5">
+      <div className="relative mt-3 space-y-3">
         {menuSections.map((section) => (
           <div key={section.label}>
-            <p className="px-1 text-[0.6rem] font-semibold uppercase tracking-[0.22em] text-[color:var(--ink-muted)]">
+            <p className="px-1 text-[0.56rem] font-semibold uppercase tracking-[0.18em] text-[color:var(--ink-muted)]">
               {section.label}
             </p>
-            <nav className="mt-2.5 space-y-1.5">
+            <nav className="mt-2 space-y-1">
               {section.items.map((item) => {
                 const isActive = item.label === active;
                 const hintedPlan = item.featureKey ? requiredPlanForFeature(item.featureKey) : null;
@@ -184,29 +184,29 @@ function ProfesionalSidebar({ profile, active }: SidebarProps) {
                   : false;
                 const isDisabled = item.disabled || isLocked;
                 const itemClassName = cn(
-                  'group flex w-full items-center gap-3 rounded-[14px] border px-3 py-2.5 text-left transition',
+                  'group flex w-full items-center gap-2.5 rounded-[10px] border px-2.5 py-2 text-left transition',
                   isActive && !isLocked
-                    ? 'border-[color:var(--primary-soft)] bg-[color:var(--primary-soft)] text-[color:var(--primary-strong)] shadow-[var(--shadow-card)]'
+                    ? 'border-[#BFEDE7] bg-[#ECFDF5] text-[#0F766E]'
                     : isDisabled
-                      ? 'cursor-not-allowed border-[color:var(--border-soft)] bg-white/60 text-[color:var(--ink-faint)]'
-                      : 'border-transparent bg-transparent text-[color:var(--ink)] hover:border-[color:var(--border-soft)] hover:bg-white',
+                      ? 'cursor-not-allowed border-transparent bg-transparent text-[color:var(--ink-faint)]'
+                      : 'border-transparent bg-transparent text-[color:var(--ink)] hover:border-[#E2E8F0] hover:bg-[#F8FAFC]',
                 );
 
                 const content = (
                   <>
                     <span
                       className={cn(
-                        'inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-[12px] border',
+                        'inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-[8px] border',
                         isActive && !isLocked
-                          ? 'border-white bg-white text-[color:var(--primary)]'
+                          ? 'border-[#BFEDE7] bg-white text-[#0F766E]'
                           : isLocked
-                            ? 'border-[color:var(--border-soft)] bg-[color:var(--surface-soft)] text-[color:var(--ink-faint)]'
-                            : 'border-[color:var(--border-soft)] bg-[color:var(--surface-soft)] text-[color:var(--ink)]',
+                            ? 'border-[#E2E8F0] bg-transparent text-[color:var(--ink-faint)]'
+                            : 'border-[#E2E8F0] bg-white text-[color:var(--ink)]',
                       )}
                     >
-                      <DashboardIcon name={item.icon} className="h-4 w-4" />
+                      <DashboardIcon name={item.icon} className="h-[15px] w-[15px]" />
                     </span>
-                    <span className={cn('min-w-0 flex-1 truncate text-sm font-semibold', isLocked && 'opacity-60')}>
+                    <span className={cn('min-w-0 flex-1 truncate text-[0.84rem] font-medium', isLocked && 'opacity-60')}>
                       {item.label}
                     </span>
                     {(isLocked && item.requiredPlan) || (showsFeatureHint && hintedPlan) ? (

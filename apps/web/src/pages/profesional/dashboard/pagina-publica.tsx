@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ChangeEvent } from 'react';
-import ProfesionalSidebar from '@/components/profesional/Sidebar';
+import ProfessionalDashboardShell from '@/components/profesional/dashboard/ProfessionalDashboardShell';
 import Button from '@/components/ui/Button';
 import { useProfessionalProfile } from '@/hooks/useProfessionalProfile';
 import { useProfessionalDashboardUnsavedSection } from '@/context/ProfessionalDashboardUnsavedChangesContext';
@@ -11,7 +11,8 @@ import api from '@/services/api';
 import ImageUploader from '@/components/profesional/dashboard/ImageUploader';
 import { resolveAssetUrl } from '@/utils/assetUrl';
 import {
-  DashboardHero,
+  DashboardHeaderBadge,
+  DashboardPageHeader,
   DashboardSectionHeading,
   DashboardStatCard,
 } from '@/components/profesional/dashboard/DashboardUI';
@@ -62,7 +63,6 @@ export default function ProfesionalPublicPageBuilder() {
   const [saveError, setSaveError] = useState(false);
   const [isDirty, setIsDirty] = useState(false);
   const [hasLoadedPage, setHasLoadedPage] = useState(false);
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [services, setServices] = useState<PublicService[]>([]);
   const [schedule, setSchedule] = useState<ProfessionalSchedule | null>(null);
   const [form, setForm] = useState<PublicPageForm>({
@@ -314,56 +314,32 @@ export default function ProfesionalPublicPageBuilder() {
     onReset: handleReset,
   });
 
-  const handleToggleMenu = () => {
-    setIsMenuOpen((prev) => !prev);
-  };
-
   return (
-    <div className="app-shell min-h-screen bg-[color:var(--background)] text-[color:var(--ink)]">
-      <div className="flex min-h-screen">
-          <aside className="hidden w-[260px] shrink-0 border-r border-[color:var(--border-soft)] bg-[color:var(--sidebar-surface)] lg:block">
-            <div className="sticky top-0 h-screen overflow-y-auto">
-              <ProfesionalSidebar profile={profile} active="Página pública" />
-            </div>
-          </aside>
-          <div className="flex-1">
-            <div className="px-4 pt-4 sm:px-6 lg:hidden">
-              <Button type="button" size="sm" onClick={handleToggleMenu}>
-                {isMenuOpen ? 'Cerrar menu' : 'Abrir menu'}
-              </Button>
-            </div>
-            {isMenuOpen ? (
-              <div className="border-b border-[color:var(--border-soft)] bg-[color:var(--surface)]/92 backdrop-blur-xl lg:hidden">
-                <ProfesionalSidebar profile={profile} active="Página pública" />
-              </div>
-            ) : null}
-            <main className="mx-auto w-full max-w-[1400px] px-4 py-6 sm:px-6 sm:py-8 lg:px-10">
-              <div className="space-y-6">
-            <DashboardHero
+    <ProfessionalDashboardShell profile={profile} active="Página pública">
+      <div className="space-y-6">
+            <DashboardPageHeader
               eyebrow="Escaparate"
-              icon="publica"
-              accent="teal"
-              title="Página pública y preview en un solo flujo"
-              description="Ajustá el mensaje, la galería y la presentación general con foco en cómo se verá la ficha final para el cliente."
+              title="Página pública"
+              description="Editá mensaje, galería y preview desde un flujo más limpio de settings."
               meta={
                 <>
-                  <span className="rounded-full border border-white/18 bg-white/10 px-3 py-1 text-xs font-semibold text-[color:var(--text-on-dark-secondary)] backdrop-blur-sm">
+                  <DashboardHeaderBadge tone="success">
                     {services.length} servicios visibles
-                  </span>
-                  <span className="rounded-full border border-white/18 bg-white/10 px-3 py-1 text-xs font-semibold text-[color:var(--text-on-dark-secondary)] backdrop-blur-sm">
+                  </DashboardHeaderBadge>
+                  <DashboardHeaderBadge>
                     {filledPhotoCount} fotos cargadas
-                  </span>
+                  </DashboardHeaderBadge>
                   {isDirty ? (
-                    <span className="rounded-full border border-white/18 bg-white/10 px-3 py-1 text-xs font-semibold text-[color:var(--text-on-dark-secondary)] backdrop-blur-sm">
+                    <DashboardHeaderBadge tone="warning">
                       Cambios sin guardar
-                    </span>
+                    </DashboardHeaderBadge>
                   ) : null}
                 </>
               }
               actions={(
                 <Button
                   type="button"
-                  variant="contrast"
+                  variant="primary"
                   onClick={handleSave}
                   disabled={isSaving}
                 >
@@ -383,7 +359,7 @@ export default function ProfesionalPublicPageBuilder() {
                 ) : null}
 
             {showSkeleton ? (
-              <div className="rounded-[28px] border border-white/70 bg-white/95 p-6 shadow-[0_18px_40px_rgba(15,23,42,0.12)]">
+              <div className="rounded-[18px] border border-white/70 bg-white/95 p-5 shadow-[0_4px_14px_rgba(15,23,42,0.04)]">
                 <div className="h-5 w-48 rounded-full bg-[#E2E7EC]" />
                 <div className="mt-4 space-y-3">
                   <div className="h-10 w-full rounded-[14px] bg-[#F1F5F9]" />
@@ -411,7 +387,7 @@ export default function ProfesionalPublicPageBuilder() {
                     />
                   </div>
 
-                  <div className="rounded-[24px] border border-white/70 bg-white/95 p-5 shadow-[0_16px_36px_rgba(15,23,42,0.12)]">
+                  <div className="rounded-[18px] border border-white/70 bg-white/95 p-5 shadow-[0_4px_14px_rgba(15,23,42,0.04)]">
                     <DashboardSectionHeading
                       title="Frase principal"
                       description="Es la promesa principal que aparece debajo del nombre en la ficha pública."
@@ -426,7 +402,7 @@ export default function ProfesionalPublicPageBuilder() {
                     </div>
                   </div>
 
-                  <div className="rounded-[24px] border border-white/70 bg-white/95 p-5 shadow-[0_16px_36px_rgba(15,23,42,0.12)]">
+                  <div className="rounded-[18px] border border-white/70 bg-white/95 p-5 shadow-[0_4px_14px_rgba(15,23,42,0.04)]">
                     <div className="flex items-center justify-between">
                       <DashboardSectionHeading
                         title="Fotos del negocio o trabajos"
@@ -473,7 +449,7 @@ export default function ProfesionalPublicPageBuilder() {
                     </div>
                   </div>
 
-                  <div className="rounded-[24px] border border-white/70 bg-white/95 p-5 shadow-[0_16px_36px_rgba(15,23,42,0.12)]">
+                  <div className="rounded-[18px] border border-white/70 bg-white/95 p-5 shadow-[0_4px_14px_rgba(15,23,42,0.04)]">
                     <DashboardSectionHeading
                       title="Sobre mí"
                       description="Contá quién sos, qué hacés y qué tipo de experiencia van a encontrar tus clientes."
@@ -490,7 +466,7 @@ export default function ProfesionalPublicPageBuilder() {
                 </div>
 
                 <div className="space-y-6">
-                  <div className="rounded-[28px] border border-white/70 bg-white/95 p-6 shadow-[0_18px_40px_rgba(15,23,42,0.12)] xl:sticky xl:top-6">
+                  <div className="rounded-[18px] border border-white/70 bg-white/95 p-5 shadow-[0_4px_14px_rgba(15,23,42,0.04)] xl:sticky xl:top-4">
                     <DashboardSectionHeading
                       eyebrow="Vista previa"
                       title="Página pública"
@@ -518,7 +494,7 @@ export default function ProfesionalPublicPageBuilder() {
                     </div>
                   </div>
 
-                  <div className="rounded-[24px] border border-white/70 bg-white/95 p-5 shadow-[0_16px_36px_rgba(15,23,42,0.12)]">
+                  <div className="rounded-[18px] border border-white/70 bg-white/95 p-5 shadow-[0_4px_14px_rgba(15,23,42,0.04)]">
                     <DashboardSectionHeading
                       title="URL pública"
                       description="Usá este link o QR para compartir tu ficha y atraer reservas directas."
@@ -557,10 +533,7 @@ export default function ProfesionalPublicPageBuilder() {
                 </div>
               </div>
             )}
-              </div>
-            </main>
-          </div>
-        </div>
-    </div>
+      </div>
+    </ProfessionalDashboardShell>
   );
 }

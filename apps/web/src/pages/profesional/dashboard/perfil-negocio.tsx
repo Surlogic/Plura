@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import ProfesionalSidebar from '@/components/profesional/Sidebar';
+import ProfessionalDashboardShell from '@/components/profesional/dashboard/ProfessionalDashboardShell';
 import Button from '@/components/ui/Button';
 import InternationalPhoneField from '@/components/ui/InternationalPhoneField';
 import { useProfessionalProfile } from '@/hooks/useProfessionalProfile';
@@ -13,7 +13,8 @@ import { mapboxForwardGeocode } from '@/services/mapbox';
 import { getGeoLocationSuggestions, type GeoLocationSuggestion } from '@/services/geo';
 import ImageUploader from '@/components/profesional/dashboard/ImageUploader';
 import {
-  DashboardHero,
+  DashboardHeaderBadge,
+  DashboardPageHeader,
   DashboardSectionHeading,
   DashboardStatCard,
 } from '@/components/profesional/dashboard/DashboardUI';
@@ -83,7 +84,6 @@ export default function ProfesionalBusinessProfilePage() {
   const { profile, isLoading, hasLoaded, refreshProfile } = useProfessionalProfile();
   const { categories, isLoading: isLoadingCategories } = useCategories();
   const [hasInitialized, setHasInitialized] = useState(false);
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isDirty, setIsDirty] = useState(false);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
@@ -403,49 +403,26 @@ export default function ProfesionalBusinessProfilePage() {
     onSave: handleSave,
     onReset: handleReset,
   });
-  const handleToggleMenu = () => {
-    setIsMenuOpen((prev) => !prev);
-  };
 
   return (
-    <div className="app-shell min-h-screen bg-[color:var(--background)] text-[color:var(--ink)]">
-      <div className="flex min-h-screen">
-          <aside className="hidden w-[260px] shrink-0 border-r border-[color:var(--border-soft)] bg-[color:var(--sidebar-surface)] lg:block">
-            <div className="sticky top-0 h-screen overflow-y-auto">
-              <ProfesionalSidebar profile={profile} active="Perfil del negocio" />
-            </div>
-          </aside>
-          <div className="flex-1">
-            <div className="px-4 pt-4 sm:px-6 lg:hidden">
-              <Button type="button" size="sm" onClick={handleToggleMenu}>
-                {isMenuOpen ? 'Cerrar menu' : 'Abrir menu'}
-              </Button>
-            </div>
-            {isMenuOpen ? (
-              <div className="border-b border-[color:var(--border-soft)] bg-[color:var(--surface)]/92 backdrop-blur-xl lg:hidden">
-                <ProfesionalSidebar profile={profile} active="Perfil del negocio" />
-              </div>
-            ) : null}
-            <main className="mx-auto w-full max-w-[1400px] px-4 py-6 sm:px-6 sm:py-8 lg:px-10">
-              <div className="space-y-6">
-            <DashboardHero
+    <ProfessionalDashboardShell profile={profile} active="Perfil del negocio">
+      <div className="space-y-6">
+            <DashboardPageHeader
               eyebrow="Presencia pública"
-              icon="negocio"
-              accent="teal"
-              title="Identidad comercial, ubicación y canales de contacto"
-              description="Definí cómo se presenta tu negocio en la ficha pública y asegurate de que los clientes encuentren rápido tu propuesta, tu dirección y tus vías de contacto."
+              title="Perfil del negocio"
+              description="Organizá identidad, ubicación y contacto como ajustes claros de una cuenta profesional."
               meta={
                 <>
-                  <span className="rounded-full border border-white/18 bg-white/10 px-3 py-1 text-xs font-semibold text-[color:var(--text-on-dark-secondary)] backdrop-blur-sm">
+                  <DashboardHeaderBadge tone="success">
                     {form.categorySlugs.length} rubros
-                  </span>
-                  <span className="rounded-full border border-white/18 bg-white/10 px-3 py-1 text-xs font-semibold text-[color:var(--text-on-dark-secondary)] backdrop-blur-sm">
+                  </DashboardHeaderBadge>
+                  <DashboardHeaderBadge>
                     {form.city || 'Sin ciudad'}
-                  </span>
+                  </DashboardHeaderBadge>
                   {isDirty ? (
-                    <span className="rounded-full border border-white/18 bg-white/10 px-3 py-1 text-xs font-semibold text-[color:var(--text-on-dark-secondary)] backdrop-blur-sm">
+                    <DashboardHeaderBadge tone="warning">
                       Cambios sin guardar
-                    </span>
+                    </DashboardHeaderBadge>
                   ) : null}
                 </>
               }
@@ -454,7 +431,7 @@ export default function ProfesionalBusinessProfilePage() {
                   type="button"
                   onClick={() => void handleSave()}
                   disabled={isSaving}
-                  variant="contrast"
+                  variant="primary"
                   className="px-4"
                 >
                   {isSaving ? 'Guardando...' : 'Guardar cambios'}
@@ -496,7 +473,7 @@ export default function ProfesionalBusinessProfilePage() {
             </div>
 
             {showSkeleton ? (
-              <div className="rounded-[28px] border border-white/70 bg-white/95 p-6 shadow-[0_18px_40px_rgba(15,23,42,0.12)]">
+              <div className="rounded-[18px] border border-white/70 bg-white/95 p-5 shadow-[0_4px_14px_rgba(15,23,42,0.04)]">
                 <div className="h-5 w-40 rounded-full bg-[#E2E7EC]" />
                 <div className="mt-4 space-y-3">
                   <div className="h-10 w-full rounded-[14px] bg-[#F1F5F9]" />
@@ -506,7 +483,7 @@ export default function ProfesionalBusinessProfilePage() {
               </div>
             ) : (
               <div className="space-y-6">
-                <div className="rounded-[24px] border border-white/70 bg-white/95 p-5 shadow-[0_16px_36px_rgba(15,23,42,0.12)]">
+                <div className="rounded-[18px] border border-white/70 bg-white/95 p-5 shadow-[0_4px_14px_rgba(15,23,42,0.04)]">
                   <DashboardSectionHeading
                     title="Identidad"
                     description="Nombre comercial, logo y rubros principales."
@@ -706,7 +683,7 @@ export default function ProfesionalBusinessProfilePage() {
                   </div>
                 </div>
 
-                <div className="rounded-[24px] border border-white/70 bg-white/95 p-5 shadow-[0_16px_36px_rgba(15,23,42,0.12)]">
+                <div className="rounded-[18px] border border-white/70 bg-white/95 p-5 shadow-[0_4px_14px_rgba(15,23,42,0.04)]">
                   <DashboardSectionHeading
                     title="Contacto"
                     description="Datos directos para que el cliente pueda escribir o llamar."
@@ -732,7 +709,7 @@ export default function ProfesionalBusinessProfilePage() {
                   </div>
                 </div>
 
-                <div className="rounded-[24px] border border-white/70 bg-white/95 p-5 shadow-[0_16px_36px_rgba(15,23,42,0.12)]">
+                <div className="rounded-[18px] border border-white/70 bg-white/95 p-5 shadow-[0_4px_14px_rgba(15,23,42,0.04)]">
                   <DashboardSectionHeading
                     title="Redes sociales"
                     description="Canales que refuerzan confianza y derivan tráfico."
@@ -802,10 +779,7 @@ export default function ProfesionalBusinessProfilePage() {
                 </div>
               </div>
             )}
-              </div>
-            </main>
-          </div>
-        </div>
-    </div>
+      </div>
+    </ProfessionalDashboardShell>
   );
 }

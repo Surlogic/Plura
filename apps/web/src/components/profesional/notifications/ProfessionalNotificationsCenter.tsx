@@ -1,6 +1,10 @@
 'use client';
 
-import { DashboardHero, DashboardSectionHeading } from '@/components/profesional/dashboard/DashboardUI';
+import {
+  DashboardHeaderBadge,
+  DashboardPageHeader,
+  DashboardSectionHeading,
+} from '@/components/profesional/dashboard/DashboardUI';
 import ProfessionalNotificationsList from '@/components/profesional/notifications/ProfessionalNotificationsList';
 import ProfessionalNotificationsToolbar from '@/components/profesional/notifications/ProfessionalNotificationsToolbar';
 import Button from '@/components/ui/Button';
@@ -47,24 +51,22 @@ export default function ProfessionalNotificationsCenter() {
 
   return (
     <>
-      <DashboardHero
+      <DashboardPageHeader
         eyebrow="Inbox profesional"
-        title="Centro de notificaciones"
-        description="Revisá reservas, pagos y cambios operativos en un solo lugar, con filtros simples y acciones de lectura claras."
-        icon="notificaciones"
-        accent="ink"
+        title="Notificaciones operativas"
+        description="Revisá eventos del negocio, filtrá rápido y marcá lecturas sin salir del dashboard."
         meta={(
           <>
-            <span className="rounded-full border px-3 py-1 text-[0.68rem] font-semibold uppercase tracking-[0.14em]">
+            <DashboardHeaderBadge tone={hasUnread ? 'warning' : 'success'}>
               {formatInboxMeta(unreadCount, isUnreadCountLoading)}
-            </span>
-            <span className="rounded-full border px-3 py-1 text-[0.68rem] font-semibold uppercase tracking-[0.14em]">
+            </DashboardHeaderBadge>
+            <DashboardHeaderBadge>
               {total} en inbox
-            </span>
+            </DashboardHeaderBadge>
             {hasActiveFilters ? (
-              <span className="rounded-full border px-3 py-1 text-[0.68rem] font-semibold uppercase tracking-[0.14em]">
+              <DashboardHeaderBadge tone="accent">
                 Filtros activos
-              </span>
+              </DashboardHeaderBadge>
             ) : null}
           </>
         )}
@@ -72,13 +74,13 @@ export default function ProfessionalNotificationsCenter() {
           <>
             <Button
               type="button"
-              variant="contrast"
+              variant="primary"
               onClick={() => void markAllAsRead()}
               disabled={!hasUnread || isMarkingAll}
             >
               {isMarkingAll ? 'Marcando...' : 'Marcar todas como leidas'}
             </Button>
-            <Button href="/profesional/dashboard/reservas" variant="contrast">
+            <Button href="/profesional/dashboard/reservas">
               Ver reservas
             </Button>
           </>

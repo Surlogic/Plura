@@ -5,7 +5,7 @@ import { isAxiosError } from 'axios';
 import Link from 'next/link';
 import EmailVerificationPanel from '@/components/auth/EmailVerificationPanel';
 import { useRouter } from 'next/router';
-import ProfesionalSidebar from '@/components/profesional/Sidebar';
+import ProfessionalDashboardShell from '@/components/profesional/dashboard/ProfessionalDashboardShell';
 import { useClientProfileContext } from '@/context/ClientProfileContext';
 import { useAuthLogout } from '@/hooks/useAuthLogout';
 import { useProfessionalProfile } from '@/hooks/useProfessionalProfile';
@@ -25,7 +25,8 @@ import ThemeSwitcher from '@/components/theme/ThemeSwitcher';
 import { createProfessionalAppFeedback, getProfessionalAppFeedbackMine } from '@/services/appFeedback';
 import AppFeedbackHistory from '@/components/shared/AppFeedbackHistory';
 import {
-  DashboardHero,
+  DashboardHeaderBadge,
+  DashboardPageHeader,
   DashboardSectionHeading,
   DashboardStatCard,
 } from '@/components/profesional/dashboard/DashboardUI';
@@ -105,7 +106,6 @@ export default function ProfesionalSettingsPage() {
   const { clearProfile: clearClientProfile } = useClientProfileContext();
   const { clearProfile, refreshProfile } = useProfessionalProfileContext();
   const { isLoggingOut, logout } = useAuthLogout();
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [settingsMessage, setSettingsMessage] = useState<string | null>(null);
   const [isSettingsError, setIsSettingsError] = useState(false);
   const [isDeletingAccount, setIsDeletingAccount] = useState(false);
@@ -519,44 +519,21 @@ export default function ProfesionalSettingsPage() {
     'rounded-full bg-[color:var(--primary)] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[color:var(--primary-strong)] disabled:cursor-not-allowed disabled:opacity-60';
 
   return (
-    <div className="app-shell min-h-screen bg-[color:var(--background)] text-[color:var(--ink)]">
-      <div className="flex min-h-screen">
-        <aside className="hidden w-[260px] shrink-0 border-r border-[color:var(--border-soft)] bg-[color:var(--sidebar-surface)] lg:block">
-          <div className="sticky top-0 h-screen overflow-y-auto">
-            <ProfesionalSidebar profile={profile} active="Configuración" />
-          </div>
-        </aside>
-
-        <div className="flex-1">
-          <div className="px-4 pt-4 sm:px-6 lg:hidden">
-            <Button type="button" size="sm" onClick={() => setIsMenuOpen((prev) => !prev)}>
-              {isMenuOpen ? 'Cerrar menu' : 'Abrir menu'}
-            </Button>
-          </div>
-
-          {isMenuOpen ? (
-            <div className="border-b border-[color:var(--border-soft)] bg-[color:var(--surface)]/92 backdrop-blur-xl lg:hidden">
-              <ProfesionalSidebar profile={profile} active="Configuración" />
-            </div>
-          ) : null}
-
-          <main className="mx-auto w-full max-w-[1400px] px-4 py-6 sm:px-6 sm:py-8 lg:px-10">
-            <div className="space-y-6">
-              <DashboardHero
+    <ProfessionalDashboardShell profile={profile} active="Configuración">
+      <div className="space-y-6">
+              <DashboardPageHeader
                 eyebrow="Cuenta"
-                icon="configuracion"
-                accent="ink"
-                title="Acceso, sesion y acciones sensibles en un mismo lugar"
-                description="La gestion comercial del plan ahora vive en Facturacion. Desde aqui mantene la cuenta, revisa accesos y administra decisiones sensibles."
+                title="Configuración de cuenta"
+                description="Políticas, seguridad, apariencia y acciones sensibles en un solo panel."
                 meta={
-                  <span className="rounded-full border border-white/18 bg-white/10 px-3 py-1 text-xs font-semibold text-[color:var(--text-on-dark-secondary)] backdrop-blur-sm">
+                  <DashboardHeaderBadge tone="accent">
                     Dashboard profesional
-                  </span>
+                  </DashboardHeaderBadge>
                 }
                 actions={
                   <Link
                     href="/profesional/dashboard/billing"
-                    className="inline-flex h-11 items-center justify-center rounded-full border border-white/22 bg-white/10 px-4 text-sm font-semibold text-[color:var(--text-on-dark)] shadow-[var(--shadow-card)] backdrop-blur-sm transition hover:-translate-y-0.5 hover:border-white/34 hover:bg-white/18"
+                    className="inline-flex h-11 items-center justify-center rounded-full border border-[color:var(--border-soft)] bg-white px-4 text-sm font-semibold text-[color:var(--ink)] shadow-[var(--shadow-card)] transition hover:-translate-y-0.5 hover:border-[color:var(--border-strong)] hover:bg-[color:var(--surface-soft)]"
                   >
                     Ir a Facturación
                   </Link>
@@ -574,7 +551,7 @@ export default function ProfesionalSettingsPage() {
               ) : null}
 
               {showSkeleton ? (
-                <div className="rounded-[28px] border border-white/70 bg-white/95 p-6 shadow-[0_18px_40px_rgba(15,23,42,0.12)]">
+                <div className="rounded-[18px] border border-white/70 bg-white/95 p-5 shadow-[0_4px_14px_rgba(15,23,42,0.04)]">
                   <div className="h-5 w-48 rounded-full bg-[#E2E7EC]" />
                   <div className="mt-4 space-y-3">
                     <div className="h-10 w-full rounded-[14px] bg-[#F1F5F9]" />
@@ -634,7 +611,7 @@ export default function ProfesionalSettingsPage() {
                     description="Confirmá el email principal para reforzar la identidad de la cuenta. El estado se actualiza en el dashboard sin requerir recarga manual."
                   />
 
-                  <div className="rounded-[28px] border border-white/70 bg-white/95 p-6 shadow-[0_18px_40px_rgba(15,23,42,0.12)]">
+                  <div className="rounded-[18px] border border-white/70 bg-white/95 p-5 shadow-[0_4px_14px_rgba(15,23,42,0.04)]">
                     <DashboardSectionHeading
                       eyebrow="Verificación"
                       title="Teléfono first-party"
@@ -980,7 +957,7 @@ export default function ProfesionalSettingsPage() {
                         )}
                       </div>
 
-                      <div className="rounded-[24px] border border-white/70 bg-white/95 p-5 shadow-[0_16px_36px_rgba(15,23,42,0.12)]">
+                      <div className="rounded-[18px] border border-white/70 bg-white/95 p-5 shadow-[0_4px_14px_rgba(15,23,42,0.04)]">
                         <DashboardSectionHeading
                           title="Contraseña"
                           description="Actualizar la contraseña invalida todas las sesiones activas por seguridad."
@@ -1194,10 +1171,7 @@ export default function ProfesionalSettingsPage() {
                   </div>
                 </div>
               )}
-            </div>
-          </main>
-        </div>
       </div>
-    </div>
+    </ProfessionalDashboardShell>
   );
 }

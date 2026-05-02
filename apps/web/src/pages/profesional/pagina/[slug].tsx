@@ -184,6 +184,16 @@ const isServiceAssetUrl = (value: string): boolean => {
   }
 };
 
+const normalizeServiceId = (value: unknown): string => {
+  if (typeof value === 'string') {
+    return value.trim();
+  }
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return String(value).trim();
+  }
+  return '';
+};
+
 type PublicProfessional = {
   id: string;
   slug: string;
@@ -523,8 +533,9 @@ export default function ProfesionalDetailPage({
 
   const handleReserve = (service: PublicService, date?: string, time?: string) => {
     const params = new URLSearchParams();
-    if (service.id) {
-      params.set('serviceId', service.id);
+    const normalizedServiceId = normalizeServiceId(service.id);
+    if (normalizedServiceId) {
+      params.set('serviceId', normalizedServiceId);
     } else if (service.name) {
       params.set('servicio', service.name);
     }

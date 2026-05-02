@@ -1,10 +1,11 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import ProfesionalSidebar from '@/components/profesional/Sidebar';
+import ProfessionalDashboardShell from '@/components/profesional/dashboard/ProfessionalDashboardShell';
 import Button from '@/components/ui/Button';
 import {
-  DashboardHero,
+  DashboardHeaderBadge,
+  DashboardPageHeader,
   DashboardSectionHeading,
   DashboardStatCard,
 } from '@/components/profesional/dashboard/DashboardUI';
@@ -22,7 +23,6 @@ import { useProfessionalBilling } from '@/hooks/useProfessionalBilling';
 
 export default function ProfesionalBillingPage() {
   const { profile, isLoading, hasLoaded, refreshProfile } = useProfessionalProfile();
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
   const plansRef = useRef<HTMLDivElement | null>(null);
   const planDetailsRef = useRef<HTMLDivElement | null>(null);
   const paymentsSectionRef = useRef<HTMLElement | null>(null);
@@ -175,43 +175,20 @@ export default function ProfesionalBillingPage() {
   }, [handleDisconnectMercadoPago]);
 
   return (
-    <div className="app-shell min-h-screen bg-[color:var(--background)] text-[color:var(--ink)]">
-      <div className="flex min-h-screen">
-        <aside className="hidden w-[260px] shrink-0 border-r border-[color:var(--border-soft)] bg-[color:var(--sidebar-surface)] lg:block">
-          <div className="sticky top-0 h-screen overflow-y-auto">
-            <ProfesionalSidebar profile={profile} active="Facturación" />
-          </div>
-        </aside>
-
-        <div className="flex-1">
-          <div className="px-4 pt-4 sm:px-6 lg:hidden">
-            <Button type="button" size="sm" onClick={() => setIsMenuOpen((prev) => !prev)}>
-              {isMenuOpen ? 'Cerrar menu' : 'Abrir menu'}
-            </Button>
-          </div>
-
-          {isMenuOpen ? (
-            <div className="border-b border-[color:var(--border-soft)] bg-[color:var(--surface)]/92 backdrop-blur-xl lg:hidden">
-              <ProfesionalSidebar profile={profile} active="Facturación" />
-            </div>
-          ) : null}
-
-          <main className="mx-auto w-full max-w-[1400px] px-4 py-6 sm:px-6 sm:py-8 lg:px-10">
-            <div className="space-y-6">
-              <DashboardHero
+    <ProfessionalDashboardShell profile={profile} active="Facturación">
+      <div className="space-y-6">
+              <DashboardPageHeader
                 eyebrow="Facturación"
-                icon="plan"
-                accent="ink"
-                title="Gestioná tu plan de Plura y la cuenta con la que cobrás reservas"
-                description="Acá separás claramente tu suscripción a Plura de la cuenta de Mercado Pago que usás para cobrar reservas online."
+                title="Facturación y cobros"
+                description="Mantené separado el plan de Plura de la cuenta de Mercado Pago usada para cobrar reservas."
                 meta={
                   <>
-                    <span className="rounded-full border border-white/18 bg-white/10 px-3 py-1 text-xs font-semibold text-[color:var(--text-on-dark-secondary)] backdrop-blur-sm">
+                    <DashboardHeaderBadge tone="accent">
                       Plan {currentPlan.label}
-                    </span>
-                    <span className="rounded-full border border-white/18 bg-white/10 px-3 py-1 text-xs font-semibold text-[color:var(--text-on-dark-secondary)] backdrop-blur-sm">
+                    </DashboardHeaderBadge>
+                    <DashboardHeaderBadge tone={connection?.connected ? 'success' : 'default'}>
                       Cobros: {mercadoPagoBadge}
-                    </span>
+                    </DashboardHeaderBadge>
                   </>
                 }
                 actions={
@@ -253,7 +230,7 @@ export default function ProfesionalBillingPage() {
               ) : null}
 
               {showSkeleton ? (
-                <div className="rounded-[28px] border border-white/70 bg-white/95 p-6 shadow-[0_18px_40px_rgba(15,23,42,0.12)]">
+                <div className="rounded-[18px] border border-white/70 bg-white/95 p-5 shadow-[0_4px_14px_rgba(15,23,42,0.04)]">
                   <div className="h-5 w-48 rounded-full bg-[#E2E7EC]" />
                   <div className="mt-4 space-y-3">
                     <div className="h-10 w-full rounded-[14px] bg-[#F1F5F9]" />
@@ -330,7 +307,7 @@ export default function ProfesionalBillingPage() {
                         <section
                           id="billing-plans"
                           ref={plansRef}
-                          className="rounded-[28px] border border-white/70 bg-white/95 p-5 shadow-[0_18px_40px_rgba(15,23,42,0.12)]"
+                          className="rounded-[18px] border border-white/70 bg-white/95 p-5 shadow-[0_4px_14px_rgba(15,23,42,0.04)]"
                         >
                           <DashboardSectionHeading
                             title="Planes disponibles"
@@ -355,7 +332,7 @@ export default function ProfesionalBillingPage() {
                         </section>
                       </>
                     ) : (
-                      <div className="rounded-[28px] border border-white/70 bg-white/95 p-5 shadow-[0_18px_40px_rgba(15,23,42,0.12)]">
+                      <div className="rounded-[18px] border border-white/70 bg-white/95 p-5 shadow-[0_4px_14px_rgba(15,23,42,0.04)]">
                         <div className="h-5 w-40 rounded-full bg-[#E2E7EC]" />
                         <div className="mt-4 space-y-3">
                           <div className="h-24 rounded-[20px] bg-[#F1F5F9]" />
@@ -385,7 +362,7 @@ export default function ProfesionalBillingPage() {
                           onRefresh={handleRefreshMercadoPagoConnection}
                         />
                       ) : (
-                        <div className="rounded-[28px] border border-white/70 bg-white/95 p-6 shadow-[0_18px_40px_rgba(15,23,42,0.12)]">
+                        <div className="rounded-[18px] border border-white/70 bg-white/95 p-5 shadow-[0_4px_14px_rgba(15,23,42,0.04)]">
                           <div className="h-5 w-56 rounded-full bg-[#E2E7EC]" />
                           <div className="mt-4 grid gap-4 sm:grid-cols-3">
                             <div className="h-24 rounded-[20px] bg-[#F1F5F9]" />
@@ -403,10 +380,7 @@ export default function ProfesionalBillingPage() {
                   </section>
                 </div>
               )}
-            </div>
-          </main>
-        </div>
       </div>
-    </div>
+    </ProfessionalDashboardShell>
   );
 }

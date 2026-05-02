@@ -259,7 +259,7 @@ export default function ReservationServiceSelector({
           disabled={!selectedService}
           className="sm:min-w-[220px]"
         >
-          Confirmar servicio
+          Continuar
         </Button>
         <Button
           type="button"
@@ -268,7 +268,7 @@ export default function ReservationServiceSelector({
           onClick={onEditService}
           disabled={!selectedService}
         >
-          Editar
+          Cambiar servicio
         </Button>
         <Button
           type="button"

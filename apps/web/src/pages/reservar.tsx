@@ -865,7 +865,7 @@ export default function ReservationPage() {
     <div className="min-h-screen bg-[linear-gradient(180deg,#fbf7f1_0%,#f5f1eb_44%,#efe7db_100%)] text-[color:var(--ink)]">
       <Navbar />
 
-      <main className="mx-auto w-full max-w-[1080px] px-4 pb-20 pt-6 sm:px-6 lg:px-8 lg:pt-8">
+      <main className="mx-auto w-full max-w-[1040px] px-4 pb-20 pt-4 sm:px-5 lg:px-6 lg:pt-4">
         {!isLoadingContext && contextError ? (
           <div className="rounded-[22px] border border-[#FECACA] bg-[#FEF2F2] px-5 py-4 text-sm font-medium text-[#DC2626]">
             {contextError}
@@ -878,7 +878,7 @@ export default function ReservationPage() {
           </div>
         ) : null}
 
-        <section className="mt-6 space-y-6">
+        <section className="mt-4 space-y-5">
           {activeStep !== 3 && saveMessage ? (
             <div className="rounded-[22px] border border-[color:var(--success-soft)] bg-[color:var(--success-soft)]/55 px-5 py-4 text-sm font-medium text-[color:var(--success)]">
               {saveMessage}

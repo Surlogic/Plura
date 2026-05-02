@@ -4,9 +4,6 @@ import { isAxiosError } from 'axios';
 import Footer from '@/components/shared/Footer';
 import ReservationAuthOverlay from '@/components/reservation/ReservationAuthOverlay';
 import Navbar from '@/components/shared/Navbar';
-import ReservationFlowHeader from '@/components/reservation/ReservationFlowHeader';
-import ReservationProgressSidebar from '@/components/reservation/ReservationProgressSidebar';
-import ReservationReviewStep from '@/components/reservation/ReservationReviewStep';
 import ReservationScheduleStep from '@/components/reservation/ReservationScheduleStep';
 import ReservationServiceSelector from '@/components/reservation/ReservationServiceSelector';
 import ReservationSummaryCard from '@/components/reservation/ReservationSummaryCard';
@@ -51,12 +48,15 @@ type CalendarDay = {
   dayKey: WorkDayKey;
 };
 
-type ReservationStep = 1 | 2 | 3 | 4 | 5;
+type ReservationStep = 1 | 2 | 3;
 
 const parseStepValue = (value: string): ReservationStep | null => {
   const parsed = Number.parseInt(value, 10);
-  if (parsed >= 1 && parsed <= 5) {
+  if (parsed >= 1 && parsed <= 3) {
     return parsed as ReservationStep;
+  }
+  if (parsed === 4 || parsed === 5) {
+    return 3;
   }
   return null;
 };
@@ -74,12 +74,9 @@ const resolveStepByState = ({
 }) => {
   if (!confirmedServiceId) return 1 as ReservationStep;
   if (!requestedStep || requestedStep <= 1) return 1 as ReservationStep;
-  if (!confirmedDate) return 2 as ReservationStep;
+  if (!confirmedDate || !selectedTime) return 2 as ReservationStep;
   if (requestedStep === 2) return 2 as ReservationStep;
-  if (!selectedTime) return 3 as ReservationStep;
-  if (requestedStep === 3) return 3 as ReservationStep;
-  if (requestedStep === 4) return 4 as ReservationStep;
-  return 5 as ReservationStep;
+  return 3 as ReservationStep;
 };
 
 const resolveInitialDate = (
@@ -169,8 +166,6 @@ export default function ReservationPage() {
     () => professional?.services.find((item) => item.id === confirmedServiceId) ?? null,
     [professional?.services, confirmedServiceId],
   );
-
-  const headerService = activeStep === 1 ? selectedService : confirmedService ?? selectedService;
 
   const serviceCategories = useMemo(() => {
     const values = new Set<string>();
@@ -371,16 +366,14 @@ export default function ReservationPage() {
         if (resumeQuery === '1' && nextService?.id && nextSelectedDate && nextSelectedTime) {
           setConfirmedServiceId(nextService.id);
           setConfirmedDate(nextSelectedDate);
-          setActiveStep(5);
+          setActiveStep(3);
           setIsEditingServiceSelection(false);
           setSaveError('Retomaste la reserva. Revisá el resumen final y confirmá para continuar.');
         } else if (requestedStep) {
           const restoredConfirmedServiceId = requestedStep >= 2 && nextService?.id
             ? nextService.id
             : null;
-          const restoredConfirmedDate = requestedStep >= 3
-            ? nextSelectedDate
-            : null;
+          const restoredConfirmedDate = requestedStep >= 3 ? nextSelectedDate : null;
           const restoredStep = resolveStepByState({
             confirmedDate: restoredConfirmedDate,
             confirmedServiceId: restoredConfirmedServiceId,
@@ -425,7 +418,9 @@ export default function ReservationPage() {
   }, [calendarDays, professionalSlug, resumeQuery, router.isReady, serviceId, serviceNameQuery, stepQuery]);
 
   useEffect(() => {
-    if (!confirmedService?.id || !confirmedDate) {
+    const slotDate = activeStep === 2 ? selectedDate : confirmedDate;
+
+    if (!confirmedService?.id || !slotDate) {
       setSlots([]);
       return;
     }
@@ -433,7 +428,7 @@ export default function ReservationPage() {
     let isCancelled = false;
     setIsLoadingSlots(true);
 
-    getPublicSlots(professionalSlug, confirmedDate, confirmedService.id)
+    getPublicSlots(professionalSlug, slotDate, confirmedService.id)
       .then((response) => {
         if (isCancelled) return;
         setSlots(response);
@@ -467,14 +462,14 @@ export default function ReservationPage() {
     return () => {
       isCancelled = true;
     };
-  }, [professionalSlug, confirmedDate, confirmedService?.id]);
+  }, [activeStep, professionalSlug, confirmedDate, confirmedService?.id, selectedDate]);
 
   useEffect(() => {
     if (!router.isReady || !professionalSlug) return;
 
     const syncedServiceId = selectedServiceId || '';
     const syncedDate = activeStep >= 2 ? (activeStep === 2 ? selectedDate || '' : confirmedDate || selectedDate || '') : '';
-    const syncedTime = activeStep >= 4 ? selectedTime || '' : '';
+    const syncedTime = activeStep >= 2 ? selectedTime || '' : '';
     const nextStepValue = String(activeStep);
     const currentStepValue = resolveQueryValue(router.query.step).trim();
     const currentServiceId = resolveQueryValue(router.query.serviceId).trim() ||
@@ -526,10 +521,8 @@ export default function ReservationPage() {
 
     const stepNameByNumber: Record<ReservationStep, string> = {
       1: 'service',
-      2: 'day',
-      3: 'time',
-      4: 'review',
-      5: 'confirm',
+      2: 'schedule',
+      3: 'confirm',
     };
     const stepName = stepNameByNumber[activeStep];
     if (trackedStepViewsRef.current.has(stepName)) {
@@ -563,12 +556,8 @@ export default function ReservationPage() {
       setActiveStep(1);
       return;
     }
-    if (activeStep > 2 && !confirmedDate) {
+    if (activeStep > 2 && (!confirmedDate || !selectedTime)) {
       setActiveStep(2);
-      return;
-    }
-    if (activeStep > 3 && !selectedTime) {
-      setActiveStep(3);
     }
   }, [activeStep, confirmedDate, confirmedService?.id, selectedTime]);
 
@@ -625,63 +614,58 @@ export default function ReservationPage() {
   };
 
   const handleSelectDate = (dateKey: string) => {
+    if (selectedDate !== dateKey) {
+      setSelectedTime(null);
+    }
     setSelectedDate(dateKey);
     resetMessages();
   };
 
-  const handleContinueDay = () => {
+  const handleContinueSchedule = () => {
     if (!selectedDate) {
       setSaveMessage(null);
       setSaveError('Elegí un día para continuar.');
       return;
     }
 
-    const dayChanged = confirmedDate !== selectedDate;
+    if (!selectedTime) {
+      setSaveMessage(null);
+      setSaveError('Elegí un horario para continuar.');
+      return;
+    }
+
     setConfirmedDate(selectedDate);
     setActiveStep(3);
-    if (dayChanged) {
-      setSelectedTime(null);
-    }
 
     void trackProductAnalyticsEvent(
       buildAnalyticsPayload({
         eventKey: 'RESERVATION_DATE_CONFIRMED',
-        stepName: 'day',
+        stepName: 'schedule',
         metadata: {
           selectedDate,
+          selectedTime,
         },
       }),
     );
     resetMessages();
   };
 
-  const handleEditDay = () => {
+  const handleEditSchedule = () => {
     setActiveStep(2);
     resetMessages();
   };
 
   const handleSelectTime = (time: string) => {
     setSelectedTime(time);
-    setActiveStep(4);
     void trackProductAnalyticsEvent(
       buildAnalyticsPayload({
         eventKey: 'RESERVATION_TIME_SELECTED',
-        stepName: 'time',
+        stepName: 'schedule',
         metadata: {
           selectedTime: time,
         },
       }),
     );
-    resetMessages();
-  };
-
-  const handleEditTime = () => {
-    setActiveStep(3);
-    resetMessages();
-  };
-
-  const handleContinueReview = () => {
-    setActiveStep(5);
     resetMessages();
   };
 
@@ -876,138 +860,91 @@ export default function ReservationPage() {
   };
 
   const policyDescription = describeBookingPolicy(professional?.bookingPolicy);
-  const currentDateLabel = activeStep >= 3 ? confirmedDateLabel : selectedDateLabel;
 
   return (
     <div className="min-h-screen bg-[linear-gradient(180deg,#fbf7f1_0%,#f5f1eb_44%,#efe7db_100%)] text-[color:var(--ink)]">
       <Navbar />
 
-      <main className="mx-auto w-full max-w-[1320px] px-4 pb-20 pt-8 sm:px-6 lg:px-8 lg:pt-10">
-        <ReservationFlowHeader
-          currentStep={activeStep}
-          isLoading={isLoadingContext && !professional}
-          professional={professional}
-          selectedService={headerService}
-        />
-
+      <main className="mx-auto w-full max-w-[1080px] px-4 pb-20 pt-6 sm:px-6 lg:px-8 lg:pt-8">
         {!isLoadingContext && contextError ? (
-          <div className="mt-6 rounded-[22px] border border-[#FECACA] bg-[#FEF2F2] px-5 py-4 text-sm font-medium text-[#DC2626]">
+          <div className="rounded-[22px] border border-[#FECACA] bg-[#FEF2F2] px-5 py-4 text-sm font-medium text-[#DC2626]">
             {contextError}
           </div>
         ) : null}
 
         {isLoadingContext && !professional ? (
-          <div className="mt-6 rounded-[22px] border border-[color:var(--border-soft)] bg-white/90 px-5 py-4 text-sm text-[color:var(--ink-muted)]">
+          <div className="rounded-[22px] border border-[color:var(--border-soft)] bg-white/90 px-5 py-4 text-sm text-[color:var(--ink-muted)]">
             Cargando información del profesional y disponibilidad...
           </div>
         ) : null}
 
-        <section className="mt-8 grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
-          <div className="space-y-6">
-            {activeStep !== 5 && saveMessage ? (
-              <div className="rounded-[22px] border border-[color:var(--success-soft)] bg-[color:var(--success-soft)]/55 px-5 py-4 text-sm font-medium text-[color:var(--success)]">
-                {saveMessage}
-              </div>
-            ) : null}
+        <section className="mt-6 space-y-6">
+          {activeStep !== 3 && saveMessage ? (
+            <div className="rounded-[22px] border border-[color:var(--success-soft)] bg-[color:var(--success-soft)]/55 px-5 py-4 text-sm font-medium text-[color:var(--success)]">
+              {saveMessage}
+            </div>
+          ) : null}
 
-            {activeStep !== 5 && saveError ? (
-              <div className="rounded-[22px] border border-[#FECACA] bg-[#FEF2F2] px-5 py-4 text-sm font-medium text-[#DC2626]">
-                {saveError}
-              </div>
-            ) : null}
+          {activeStep !== 3 && saveError ? (
+            <div className="rounded-[22px] border border-[#FECACA] bg-[#FEF2F2] px-5 py-4 text-sm font-medium text-[#DC2626]">
+              {saveError}
+            </div>
+          ) : null}
 
-            {activeStep === 1 ? (
-              <ReservationServiceSelector
-                activeCategory={activeServiceCategory}
-                categories={serviceCategories}
-                onCancel={handleCancelReservation}
-                onCategoryChange={setActiveServiceCategory}
-                onConfirmService={handleConfirmService}
-                onEditService={() => setIsEditingServiceSelection((current) => !current)}
-                onSelectService={handleSelectService}
-                selectedService={selectedService}
-                selectedServiceId={selectedServiceId}
-                services={professional?.services ?? []}
-                showPicker={isEditingServiceSelection || !selectedService}
-              />
-            ) : null}
+          {activeStep === 1 ? (
+            <ReservationServiceSelector
+              activeCategory={activeServiceCategory}
+              categories={serviceCategories}
+              onCancel={handleCancelReservation}
+              onCategoryChange={setActiveServiceCategory}
+              onConfirmService={handleConfirmService}
+              onEditService={() => setIsEditingServiceSelection((current) => !current)}
+              onSelectService={handleSelectService}
+              selectedService={selectedService}
+              selectedServiceId={selectedServiceId}
+              services={professional?.services ?? []}
+              showPicker={isEditingServiceSelection || !selectedService}
+            />
+          ) : null}
 
-            {activeStep === 2 ? (
-              <ReservationScheduleStep
-                calendarCells={calendarCells}
-                calendarTitle={calendarTitle}
-                mode="day"
-                onCancel={handleCancelReservation}
-                onContinue={handleContinueDay}
-                onEditService={handleEditService}
-                onSelectDate={handleSelectDate}
-                selectedDate={selectedDate}
-                selectedDateLabel={selectedDateLabel}
-                selectedServiceName={confirmedService?.name}
-              />
-            ) : null}
+          {activeStep === 2 ? (
+            <ReservationScheduleStep
+              calendarCells={calendarCells}
+              calendarTitle={calendarTitle}
+              isLoadingSlots={isLoadingSlots}
+              onCancel={handleCancelReservation}
+              onContinue={handleContinueSchedule}
+              onEditService={handleEditService}
+              onSelectDate={handleSelectDate}
+              onSelectTime={handleSelectTime}
+              selectedDate={selectedDate}
+              selectedDateLabel={selectedDateLabel}
+              selectedServiceName={confirmedService?.name}
+              selectedTime={selectedTime}
+              serviceDurationLabel={formatDuration(confirmedService?.duration)}
+              slots={slots}
+            />
+          ) : null}
 
-            {activeStep === 3 ? (
-              <ReservationScheduleStep
-                isLoadingSlots={isLoadingSlots}
-                mode="time"
-                onCancel={handleCancelReservation}
-                onEditDay={handleEditDay}
-                onSelectTime={handleSelectTime}
-                selectedDateLabel={confirmedDateLabel}
-                selectedServiceName={confirmedService?.name}
-                selectedTime={selectedTime}
-                serviceDurationLabel={formatDuration(confirmedService?.duration)}
-                slots={slots}
-              />
-            ) : null}
-
-            {activeStep === 4 ? (
-              <ReservationReviewStep
-                onCancel={handleCancelReservation}
-                onContinue={handleContinueReview}
-                onEditDay={handleEditDay}
-                onEditService={handleEditService}
-                onEditTime={handleEditTime}
-                professional={professional}
-                selectedDateLabel={confirmedDateLabel}
-                selectedService={confirmedService}
-                selectedTime={selectedTime}
-              />
-            ) : null}
-
-            {activeStep === 5 ? (
-              <ReservationSummaryCard
-                canSubmit={canSubmit}
-                isLoadingContext={isLoadingContext}
-                requiresAuthentication={!clientProfile}
-                isSaving={isSaving}
-                onCancel={handleCancelReservation}
-                onConfirm={handleConfirm}
-                onEditDay={handleEditDay}
-                onEditService={handleEditService}
-                onEditTime={handleEditTime}
-                policyDescription={policyDescription}
-                professional={professional}
-                saveError={saveError}
-                saveMessage={saveMessage}
-                selectedDateLabel={confirmedDateLabel}
-                selectedService={confirmedService}
-                selectedTime={selectedTime}
-              />
-            ) : null}
-          </div>
-
-          <aside className="hidden xl:block xl:sticky xl:top-24">
-            <ReservationProgressSidebar
-              currentStep={activeStep}
+          {activeStep === 3 ? (
+            <ReservationSummaryCard
+              canSubmit={canSubmit}
+              isLoadingContext={isLoadingContext}
+              requiresAuthentication={!clientProfile}
+              isSaving={isSaving}
+              onCancel={handleCancelReservation}
+              onConfirm={handleConfirm}
+              onEditSchedule={handleEditSchedule}
+              onEditService={handleEditService}
               policyDescription={policyDescription}
               professional={professional}
-              selectedDateLabel={currentDateLabel === 'Elegí una fecha' ? null : currentDateLabel}
-              selectedService={headerService}
-              selectedTime={activeStep >= 4 ? selectedTime : null}
+              saveError={saveError}
+              saveMessage={saveMessage}
+              selectedDateLabel={confirmedDateLabel}
+              selectedService={confirmedService}
+              selectedTime={selectedTime}
             />
-          </aside>
+          ) : null}
         </section>
       </main>
 

@@ -21,9 +21,8 @@ type ReservationSummaryCardProps = {
   isSaving: boolean;
   onCancel: () => void;
   onConfirm: () => void;
-  onEditDay: () => void;
+  onEditSchedule: () => void;
   onEditService: () => void;
-  onEditTime: () => void;
   policyDescription: string;
   professional: PublicProfessionalPage | null;
   requiresAuthentication: boolean;
@@ -40,9 +39,8 @@ export default function ReservationSummaryCard({
   isSaving,
   onCancel,
   onConfirm,
-  onEditDay,
+  onEditSchedule,
   onEditService,
-  onEditTime,
   policyDescription,
   professional,
   requiresAuthentication,
@@ -93,10 +91,10 @@ export default function ReservationSummaryCard({
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-[0.68rem] font-semibold uppercase tracking-[0.32em] text-[color:var(--ink-faint)]">
-            Paso 5
+            Paso 3
           </p>
           <h2 className="mt-2 text-2xl font-semibold text-[color:var(--ink)]">
-            Confirmar y reservar
+            Revisa y confirma
           </h2>
         </div>
         <Badge variant="accent" className="normal-case tracking-normal">
@@ -105,8 +103,8 @@ export default function ReservationSummaryCard({
       </div>
 
       <p className="mt-3 text-sm leading-6 text-[color:var(--ink-muted)]">
-        Este es el cierre del flujo. La reserva se crea con el backend actual y conserva su estado
-        operativo real.
+        Este es el resumen final antes de crear la reserva. El flujo conserva la misma logica
+        actual de estado pendiente, autenticacion y checkout cuando corresponde.
       </p>
 
       {requiresAuthentication ? (
@@ -288,11 +286,8 @@ export default function ReservationSummaryCard({
         <Button type="button" variant="secondary" onClick={onEditService} disabled={isSaving}>
           Editar servicio
         </Button>
-        <Button type="button" variant="secondary" onClick={onEditDay} disabled={isSaving}>
-          Editar día
-        </Button>
-        <Button type="button" variant="secondary" onClick={onEditTime} disabled={isSaving}>
-          Editar horario
+        <Button type="button" variant="secondary" onClick={onEditSchedule} disabled={isSaving}>
+          Editar fecha y horario
         </Button>
       </div>
 

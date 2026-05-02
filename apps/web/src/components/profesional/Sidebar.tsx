@@ -10,12 +10,14 @@ import {
   type ProfessionalFeatureKey,
 } from '@/lib/billing/featureGuards';
 import { useProfessionalDashboardUnsavedChanges } from '@/context/ProfessionalDashboardUnsavedChangesContext';
+import Badge from '@/components/ui/Badge';
 import BrandLogo from '@/components/ui/BrandLogo';
 import { cn } from '@/components/ui/cn';
 import {
   DashboardIcon,
   type DashboardIconName,
 } from '@/components/profesional/dashboard/DashboardUI';
+import ProfessionalNotificationBell from '@/components/profesional/notifications/ProfessionalNotificationBell';
 import { resolveAssetUrl } from '@/utils/assetUrl';
 import { buildProfessionalMediaStyle } from '@/utils/professionalMediaPresentation';
 
@@ -37,9 +39,10 @@ const menuSections: MenuSection[] = [
   {
     label: 'Operación',
     items: [
-      { label: 'Dashboard', href: '/profesional/dashboard', icon: 'agenda' },
+      { label: 'Agenda', href: '/profesional/dashboard', icon: 'agenda' },
       { label: 'Reservas', href: '/profesional/dashboard/reservas', icon: 'reservas' },
-      { label: 'Horarios', href: '/profesional/dashboard/horarios', icon: 'horarios' },
+      { label: 'Notificaciones', href: '/profesional/notificaciones', icon: 'notificaciones' },
+      { label: 'Horarios de trabajo', href: '/profesional/dashboard/horarios', icon: 'horarios' },
       {
         label: 'Servicios',
         href: '/profesional/dashboard/servicios',
@@ -73,7 +76,6 @@ const menuSections: MenuSection[] = [
   {
     label: 'Cuenta',
     items: [
-      { label: 'Notificaciones', href: '/profesional/notificaciones', icon: 'notificaciones' },
       { label: 'Facturación', href: '/profesional/dashboard/billing', icon: 'plan' },
       { label: 'Configuración', href: '/profesional/dashboard/configuracion', icon: 'configuracion' },
     ],
@@ -120,14 +122,17 @@ function ProfesionalSidebar({ profile, active }: SidebarProps) {
   return (
     <aside
       ref={rootRef}
-      className="relative flex min-h-full flex-col overflow-x-hidden border-r border-[#E2E8F0] bg-white px-4 py-5 text-[color:var(--ink)]"
+      className="relative min-h-full overflow-x-hidden border-r border-[#E2E8F0] bg-white px-3 py-4 text-[color:var(--ink)]"
     >
-      <div className="border-b border-[#E2E8F0] pb-4">
-        <div className="px-1">
-          <BrandLogo href="/" variant="mobile" className="justify-start" />
+      <div className="border-b border-[#E2E8F0] pb-3">
+        <div className="flex items-center justify-between gap-3 px-1">
+          <BrandLogo href="/" variant="mobile" className="justify-center" />
+          <span className="rounded-full border border-[#D9ECE8] bg-[#F0FDFA] px-2 py-1 text-[0.52rem] font-semibold uppercase tracking-[0.08em] text-[#0F766E]">
+            {planLabel}
+          </span>
         </div>
 
-        <div className="mt-5 flex items-center gap-3 rounded-[16px] border border-[#E2E8F0] bg-[#F8FAFC] px-3 py-3">
+        <div className="mt-4 flex items-center gap-3 px-1">
           <div className="relative flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-[12px] border border-[color:var(--border-soft)] bg-white text-sm font-semibold text-[color:var(--primary)]">
             {resolvedLogoUrl ? (
               <Image
@@ -143,22 +148,23 @@ function ProfesionalSidebar({ profile, active }: SidebarProps) {
             )}
           </div>
           <div className="min-w-0 flex-1">
-              <p className="truncate text-[0.92rem] font-semibold text-[#0F172A]">{displayName}</p>
-              <p className="mt-0.5 truncate text-[0.78rem] text-[color:var(--ink-muted)]">{displayMeta}</p>
+            <div className="flex items-center gap-1.5">
+              <p className="truncate text-[0.88rem] font-semibold">{displayName}</p>
+              <Badge variant="success" className="px-1.5 py-0.5 text-[0.48rem] tracking-[0.08em]">
+              Profesional
+              </Badge>
             </div>
-          <span className="text-[#94A3B8]">
-            <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
-              <path d="m6 8 4 4 4-4" />
-            </svg>
-          </span>
+            <p className="mt-0.5 truncate text-[0.76rem] text-[color:var(--ink-muted)]">{displayMeta}</p>
+          </div>
         </div>
 
+        <ProfessionalNotificationBell onNavigate={requestNavigation} />
       </div>
 
-      <div className="relative mt-4 flex-1 space-y-4">
+      <div className="relative mt-3 space-y-3">
         {menuSections.map((section) => (
           <div key={section.label}>
-            <p className="px-1 text-[0.56rem] font-semibold uppercase tracking-[0.18em] text-[#94A3B8]">
+            <p className="px-1 text-[0.56rem] font-semibold uppercase tracking-[0.18em] text-[color:var(--ink-muted)]">
               {section.label}
             </p>
             <nav className="mt-2 space-y-1">
@@ -173,10 +179,10 @@ function ProfesionalSidebar({ profile, active }: SidebarProps) {
                   : false;
                 const isDisabled = item.disabled || isLocked;
                 const itemClassName = cn(
-                  'group flex w-full items-center gap-2.5 rounded-[12px] border px-3 py-2.5 text-left transition',
+                  'group flex w-full items-center gap-2.5 rounded-[10px] border px-2.5 py-2 text-left transition',
                   isActive && !isLocked
                     ? 'border-[#BFEDE7] bg-[#ECFDF5] text-[#0F766E]'
-                  : isDisabled
+                    : isDisabled
                       ? 'cursor-not-allowed border-transparent bg-transparent text-[color:var(--ink-faint)]'
                       : 'border-transparent bg-transparent text-[color:var(--ink)] hover:border-[#E2E8F0] hover:bg-[#F8FAFC]',
                 );
@@ -195,7 +201,7 @@ function ProfesionalSidebar({ profile, active }: SidebarProps) {
                     >
                       <DashboardIcon name={item.icon} className="h-[15px] w-[15px]" />
                     </span>
-                    <span className={cn('min-w-0 flex-1 truncate text-[0.88rem] font-medium', isLocked && 'opacity-60')}>
+                    <span className={cn('min-w-0 flex-1 truncate text-[0.84rem] font-medium', isLocked && 'opacity-60')}>
                       {item.label}
                     </span>
                     {(isLocked && item.requiredPlan) || (showsFeatureHint && hintedPlan) ? (
@@ -243,37 +249,6 @@ function ProfesionalSidebar({ profile, active }: SidebarProps) {
             </nav>
           </div>
         ))}
-      </div>
-
-      <div className="space-y-3 border-t border-[#E2E8F0] pt-4">
-        <div className="rounded-[16px] border border-[#E2E8F0] bg-[#F8FAFC] p-3">
-          <div className="flex items-center gap-2 text-[#0F766E]">
-            <span className="inline-flex h-8 w-8 items-center justify-center rounded-[10px] border border-[#BFEDE7] bg-white">
-              <DashboardIcon name="plan" className="h-4 w-4" />
-            </span>
-            <div>
-              <p className="text-[0.8rem] font-semibold text-[#0F172A]">Estás en {planLabel}</p>
-              <p className="text-[0.72rem] text-[#64748B]">Gestioná tu plan y cobros.</p>
-            </div>
-          </div>
-          <button
-            type="button"
-            onClick={() => requestNavigation('/profesional/dashboard/billing')}
-            className="mt-3 inline-flex h-9 w-full items-center justify-center rounded-full border border-[#BFEDE7] bg-white px-3 text-xs font-semibold text-[#0F766E] transition hover:bg-[#F0FDFA]"
-          >
-            Ver plan
-          </button>
-        </div>
-
-        <div className="flex items-center gap-3 rounded-[16px] border border-[#E2E8F0] bg-white px-3 py-3">
-          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#FEE2E2] text-xs font-semibold text-[#BE123C]">
-            {initials}
-          </div>
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-[0.82rem] font-semibold text-[#0F172A]">{displayName}</p>
-            <p className="truncate text-[0.72rem] text-[#64748B]">Centro operativo</p>
-          </div>
-        </div>
       </div>
     </aside>
   );

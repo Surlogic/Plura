@@ -2,10 +2,18 @@ package com.plura.plurabackend.core.auth;
 
 import com.auth0.jwt.JWT;
 import com.auth0.jwt.algorithms.Algorithm;
+import com.plura.plurabackend.core.auth.context.AuthContextDescriptor;
+import com.plura.plurabackend.core.auth.context.AuthContextResolver;
+import com.plura.plurabackend.core.auth.context.AuthContextType;
+import com.plura.plurabackend.core.auth.dto.AuthMeResponse;
 import com.plura.plurabackend.core.auth.dto.LoginRequest;
 import com.plura.plurabackend.core.auth.dto.ProfesionalProfileResponse;
 import com.plura.plurabackend.core.auth.dto.RegisterProfesionalRequest;
 import com.plura.plurabackend.core.auth.dto.RegisterRequest;
+import com.plura.plurabackend.core.auth.dto.SelectContextRequest;
+import com.plura.plurabackend.core.auth.dto.SelectContextResponse;
+import com.plura.plurabackend.core.auth.dto.UnifiedLoginRequest;
+import com.plura.plurabackend.core.auth.dto.UnifiedLoginResponse;
 import com.plura.plurabackend.core.auth.dto.UserResponse;
 import com.plura.plurabackend.core.auth.dto.AuthSessionResponse;
 import com.plura.plurabackend.core.auth.dto.CompleteOAuthPhoneRequest;
@@ -68,6 +76,7 @@ public class AuthService {
     private final AuthAuditService authAuditService;
     private final ProfessionalAccountProfileGateway professionalAccountProfileGateway;
     private final EffectiveProfessionalPlanService effectiveProfessionalPlanService;
+    private final AuthContextResolver authContextResolver;
     private final PasswordEncoder passwordEncoder;
     private final Algorithm jwtAlgorithm;
     private final long jwtExpirationMinutes;
@@ -111,6 +120,7 @@ public class AuthService {
         AuthAuditService authAuditService,
         ProfessionalAccountProfileGateway professionalAccountProfileGateway,
         EffectiveProfessionalPlanService effectiveProfessionalPlanService,
+        AuthContextResolver authContextResolver,
         PasswordEncoder passwordEncoder,
         @Value("${jwt.secret}") String jwtSecret,
         @Value("${jwt.expiration-minutes:30}") long jwtExpirationMinutes,
@@ -133,6 +143,7 @@ public class AuthService {
         this.authAuditService = authAuditService;
         this.professionalAccountProfileGateway = professionalAccountProfileGateway;
         this.effectiveProfessionalPlanService = effectiveProfessionalPlanService;
+        this.authContextResolver = authContextResolver;
         this.passwordEncoder = passwordEncoder;
         this.jwtAlgorithm = Algorithm.HMAC256(jwtSecret);
         this.jwtExpirationMinutes = jwtExpirationMinutes;
@@ -492,6 +503,15 @@ public class AuthService {
     }
 
     private AuthResult issueTokens(User user, UserResponse userResponse, SessionContext sessionContext) {
+        return issueTokens(user, userResponse, sessionContext, deriveDefaultContextFromRole(user));
+    }
+
+    private AuthResult issueTokens(
+        User user,
+        UserResponse userResponse,
+        SessionContext sessionContext,
+        AuthContextDescriptor context
+    ) {
         String userId = String.valueOf(user.getId());
         user.setLastLoginAt(LocalDateTime.now());
         user.setLastLoginIp(normalizeIpAddress(sessionContext == null ? null : sessionContext.ipAddress()));
@@ -505,7 +525,8 @@ public class AuthService {
             savedUser.getEmail(),
             savedUser.getRole(),
             sessionToken.session().getId(),
-            savedUser.getSessionVersion()
+            savedUser.getSessionVersion(),
+            context
         );
         authAuditService.log(
             AuthAuditEventType.LOGIN_SUCCESS,
@@ -529,6 +550,17 @@ public class AuthService {
     }
 
     private String createAccessToken(String userId, String email, UserRole role, String sessionId, Integer sessionVersion) {
+        return createAccessToken(userId, email, role, sessionId, sessionVersion, null);
+    }
+
+    private String createAccessToken(
+        String userId,
+        String email,
+        UserRole role,
+        String sessionId,
+        Integer sessionVersion,
+        AuthContextDescriptor context
+    ) {
         Date now = new Date();
         Date expiresAt = Date.from(Instant.now().plus(jwtExpirationMinutes, ChronoUnit.MINUTES));
         com.auth0.jwt.JWTCreator.Builder builder = JWT.create()
@@ -543,6 +575,15 @@ public class AuthService {
         }
         if (sessionVersion != null) {
             builder.withClaim("sv", sessionVersion);
+        }
+        if (context != null && context.type() != null) {
+            builder.withClaim("ctx", context.type().name());
+            if (context.professionalId() != null && !context.professionalId().isBlank()) {
+                builder.withClaim("pid", context.professionalId());
+            }
+            if (context.workerId() != null && !context.workerId().isBlank()) {
+                builder.withClaim("wid", context.workerId());
+            }
         }
         return builder.sign(jwtAlgorithm);
     }
@@ -1204,4 +1245,109 @@ public class AuthService {
             (Category category) -> category.getDisplayOrder() == null ? Integer.MAX_VALUE : category.getDisplayOrder()
         ).thenComparing(Category::getName);
     }
+
+    @Transactional
+    public UnifiedLoginResult loginUnified(UnifiedLoginRequest request, SessionContext sessionContext) {
+        String email = request.getEmail() == null ? "" : request.getEmail().trim().toLowerCase(Locale.ROOT);
+        User user = userRepository.findByEmailAndDeletedAtIsNull(email).orElse(null);
+        if (user == null) {
+            burnPasswordWorkFactor(request.getPassword());
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Credenciales inválidas");
+        }
+        if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Credenciales inválidas");
+        }
+
+        List<AuthContextDescriptor> contexts = authContextResolver.resolve(user);
+        if (contexts.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "No hay contextos disponibles para esta cuenta");
+        }
+
+        AuthContextDescriptor active = null;
+        if (request.getDesiredContext() != null) {
+            active = authContextResolver.select(
+                contexts,
+                request.getDesiredContext(),
+                request.getDesiredWorkerId(),
+                request.getDesiredProfessionalId()
+            );
+            if (active == null) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Contexto deseado no disponible");
+            }
+        }
+        if (active == null) {
+            active = authContextResolver.pickDefault(contexts);
+        }
+
+        AuthResult tokens = issueTokens(user, toUserResponse(user), sessionContext, active);
+        boolean selectionRequired = contexts.size() > 1 && request.getDesiredContext() == null;
+        return new UnifiedLoginResult(tokens, contexts, active, selectionRequired);
+    }
+
+    @Transactional
+    public SelectContextResponse selectContext(
+        String rawUserId,
+        String currentSessionId,
+        SelectContextRequest request
+    ) {
+        if (request == null || request.getType() == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Contexto requerido");
+        }
+        User user = loadUserByRawId(rawUserId);
+        List<AuthContextDescriptor> contexts = authContextResolver.resolve(user);
+        AuthContextDescriptor selected = authContextResolver.select(
+            contexts,
+            request.getType(),
+            request.getWorkerId(),
+            request.getProfessionalId()
+        );
+        if (selected == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Contexto no disponible");
+        }
+        Integer sessionVersion = user.getSessionVersion();
+        if (sessionVersion == null || sessionVersion < 1) {
+            user.setSessionVersion(1);
+            userRepository.save(user);
+            sessionVersion = 1;
+        }
+        String accessToken = createAccessToken(
+            String.valueOf(user.getId()),
+            user.getEmail(),
+            user.getRole(),
+            currentSessionId,
+            sessionVersion,
+            selected
+        );
+        return new SelectContextResponse(accessToken, selected);
+    }
+
+    @Transactional(readOnly = true)
+    public AuthMeResponse getMe(String rawUserId, AuthContextType activeContextType, String activeProfessionalId, String activeWorkerId) {
+        User user = loadUserByRawId(rawUserId);
+        List<AuthContextDescriptor> contexts = authContextResolver.resolve(user);
+        AuthContextDescriptor active = null;
+        if (activeContextType != null) {
+            active = authContextResolver.select(contexts, activeContextType, activeWorkerId, activeProfessionalId);
+        }
+        if (active == null && !contexts.isEmpty()) {
+            active = authContextResolver.pickDefault(contexts);
+        }
+        return new AuthMeResponse(toUserResponse(user), active, contexts);
+    }
+
+    private AuthContextDescriptor deriveDefaultContextFromRole(User user) {
+        if (user == null || user.getRole() == null) {
+            return null;
+        }
+        return user.getRole() == UserRole.PROFESSIONAL
+            ? new AuthContextDescriptor(AuthContextType.PROFESSIONAL, null, null, null, null, null, true)
+            : new AuthContextDescriptor(AuthContextType.CLIENT, null, null, null, null, null, false);
+    }
+
+    public record UnifiedLoginResult(
+        AuthResult auth,
+        List<AuthContextDescriptor> contexts,
+        AuthContextDescriptor activeContext,
+        boolean contextSelectionRequired
+    ) {}
 }

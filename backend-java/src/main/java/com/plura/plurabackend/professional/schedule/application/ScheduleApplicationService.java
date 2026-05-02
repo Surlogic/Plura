@@ -17,6 +17,8 @@ import com.plura.plurabackend.professional.schedule.dto.ProfesionalScheduleDto;
 import com.plura.plurabackend.professional.schedule.dto.ProfesionalScheduleRangeDto;
 import com.plura.plurabackend.professional.service.model.ProfesionalService;
 import com.plura.plurabackend.professional.service.repository.ProfesionalServiceRepository;
+import com.plura.plurabackend.professional.worker.model.ProfessionalWorkerStatus;
+import com.plura.plurabackend.professional.worker.repository.ProfessionalWorkerRepository;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Timer;
 import java.time.DayOfWeek;
@@ -52,6 +54,7 @@ public class ScheduleApplicationService implements BookingSchedulingAvailability
     private final ObjectMapper objectMapper;
     private final ProfessionalAccessSupport professionalAccessSupport;
     private final ProfessionalSideEffectCoordinator sideEffectCoordinator;
+    private final ProfessionalWorkerRepository professionalWorkerRepository;
     private final ZoneId systemZoneId;
     private final MeterRegistry meterRegistry;
 
@@ -63,6 +66,7 @@ public class ScheduleApplicationService implements BookingSchedulingAvailability
         ObjectMapper objectMapper,
         ProfessionalAccessSupport professionalAccessSupport,
         ProfessionalSideEffectCoordinator sideEffectCoordinator,
+        ProfessionalWorkerRepository professionalWorkerRepository,
         MeterRegistry meterRegistry,
         @Value("${app.timezone:America/Montevideo}") String appTimezone
     ) {
@@ -73,6 +77,7 @@ public class ScheduleApplicationService implements BookingSchedulingAvailability
         this.objectMapper = objectMapper;
         this.professionalAccessSupport = professionalAccessSupport;
         this.sideEffectCoordinator = sideEffectCoordinator;
+        this.professionalWorkerRepository = professionalWorkerRepository;
         this.meterRegistry = meterRegistry;
         this.systemZoneId = ZoneId.of(appTimezone);
     }
@@ -165,7 +170,17 @@ public class ScheduleApplicationService implements BookingSchedulingAvailability
         profile.setSlotDurationMinutes(slotDurationMinutes);
 
         try {
-            profile.setScheduleJson(objectMapper.writeValueAsString(normalized));
+            String scheduleJson = objectMapper.writeValueAsString(normalized);
+            profile.setScheduleJson(scheduleJson);
+            professionalWorkerRepository.findByProfessional_IdAndOwnerTrueAndStatusNot(
+                    profile.getId(),
+                    ProfessionalWorkerStatus.REMOVED
+                )
+                .ifPresent(ownerWorker -> {
+                    ownerWorker.setScheduleJson(scheduleJson);
+                    ownerWorker.setSlotDurationMinutes(slotDurationMinutes);
+                    professionalWorkerRepository.save(ownerWorker);
+                });
         } catch (JsonProcessingException exception) {
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "No se pudo guardar el horario");
         }

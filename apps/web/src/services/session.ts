@@ -2,7 +2,7 @@ const ACCESS_TOKEN_STORAGE_KEY = 'plura_access_token_fallback';
 const SESSION_HINT_STORAGE_KEY = 'plura_auth_session_hint';
 const SESSION_ROLE_STORAGE_KEY = 'plura_auth_session_role';
 
-export type KnownAuthSessionRole = 'CLIENT' | 'PROFESSIONAL';
+export type KnownAuthSessionRole = 'CLIENT' | 'PROFESSIONAL' | 'WORKER';
 
 let inMemoryAccessToken: string | null = null;
 let inMemorySessionHint: boolean | null = null;
@@ -16,7 +16,7 @@ const normalizeToken = (token?: string | null) => {
 };
 
 const normalizeSessionRole = (value?: string | null): KnownAuthSessionRole | null => {
-  if (value === 'CLIENT' || value === 'PROFESSIONAL') {
+  if (value === 'CLIENT' || value === 'PROFESSIONAL' || value === 'WORKER') {
     return value;
   }
   return null;
@@ -38,7 +38,7 @@ const parseAccessTokenPayload = (token?: string | null) => {
     const parts = token.split('.');
     if (parts.length < 2) return null;
     const payloadRaw = decodeBase64Url(parts[1]);
-    return JSON.parse(payloadRaw) as { role?: unknown; exp?: unknown };
+    return JSON.parse(payloadRaw) as { role?: unknown; ctx?: unknown; exp?: unknown };
   } catch {
     return null;
   }
@@ -48,6 +48,9 @@ const roleFromAccessToken = (token?: string | null): KnownAuthSessionRole | null
   try {
     const payload = parseAccessTokenPayload(token);
     if (!payload) return null;
+    if (payload.ctx === 'WORKER') return 'WORKER';
+    if (payload.ctx === 'PROFESSIONAL') return 'PROFESSIONAL';
+    if (payload.ctx === 'CLIENT') return 'CLIENT';
     if (payload.role === 'USER') return 'CLIENT';
     if (payload.role === 'PROFESSIONAL') return 'PROFESSIONAL';
     return null;

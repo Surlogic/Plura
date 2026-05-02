@@ -18,6 +18,7 @@ export type DashboardIconName =
   | 'share'
   | 'plan'
   | 'danger'
+  | 'equipo'
   | 'resenas';
 
 type IconProps = SVGProps<SVGSVGElement> & {
@@ -127,6 +128,14 @@ const iconPathByName: Record<DashboardIconName, ReactNode> = {
   resenas: (
     <>
       <path d="m12 3 2.5 5.1L20 9l-4 3.9.9 5.6L12 15.8l-4.9 2.7.9-5.6L4 9l5.5-.9L12 3Z" />
+    </>
+  ),
+  equipo: (
+    <>
+      <circle cx="9" cy="9" r="3" />
+      <circle cx="17" cy="10" r="2" />
+      <path d="M3.5 19c0-2.6 2.5-4.5 5.5-4.5s5.5 1.9 5.5 4.5" />
+      <path d="M14.5 16.5c1-1.2 2.5-2 4-2 1.5 0 3 .8 3.5 2" />
     </>
   ),
 };

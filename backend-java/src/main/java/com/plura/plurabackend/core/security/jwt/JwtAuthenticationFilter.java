@@ -6,6 +6,7 @@ import com.auth0.jwt.algorithms.Algorithm;
 import com.auth0.jwt.exceptions.JWTVerificationException;
 import com.auth0.jwt.interfaces.DecodedJWT;
 import com.plura.plurabackend.core.auth.AuthAuditService;
+import com.plura.plurabackend.core.auth.context.AuthContextType;
 import com.plura.plurabackend.core.auth.model.AuthAuditEventType;
 import com.plura.plurabackend.core.auth.model.AuthAuditStatus;
 import com.plura.plurabackend.core.auth.SessionService;
@@ -95,6 +96,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             String tokenRole = jwt.getClaim("role").asString();
             String sessionId = jwt.getClaim("sid").asString();
             Integer sessionVersion = jwt.getClaim("sv").asInt();
+            String contextRaw = jwt.getClaim("ctx").asString();
+            String professionalIdClaim = jwt.getClaim("pid").asString();
+            String workerIdClaim = jwt.getClaim("wid").asString();
+            AuthContextType contextType = parseContext(contextRaw);
             User user = loadActiveUser(subject, response, allowInvalidToken);
             if (user == null) {
                 if (allowInvalidToken) {
@@ -151,11 +156,21 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Rol de token inválido");
                 return;
             }
+            if (contextType == AuthContextType.WORKER) {
+                authorities.add(new SimpleGrantedAuthority("ROLE_WORKER"));
+            }
 
             // Crea la autenticación con el subject del JWT.
             UsernamePasswordAuthenticationToken authentication =
                 new UsernamePasswordAuthenticationToken(subject, null, authorities);
-            authentication.setDetails(new AuthenticatedTokenDetails(sessionId, sessionVersion, isLegacyToken(sessionId, sessionVersion)));
+            authentication.setDetails(new AuthenticatedTokenDetails(
+                sessionId,
+                sessionVersion,
+                isLegacyToken(sessionId, sessionVersion),
+                contextType,
+                normalizeStringClaim(professionalIdClaim),
+                normalizeStringClaim(workerIdClaim)
+            ));
             SecurityContextHolder.getContext().setAuthentication(authentication);
             filterChain.doFilter(request, response);
         } catch (JWTVerificationException ex) {
@@ -217,6 +232,25 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private boolean isLegacyToken(String sessionId, Integer sessionVersion) {
         return sessionId == null || sessionId.isBlank() || sessionVersion == null;
+    }
+
+    private AuthContextType parseContext(String rawContext) {
+        if (rawContext == null || rawContext.isBlank()) {
+            return null;
+        }
+        try {
+            return AuthContextType.valueOf(rawContext.trim().toUpperCase(java.util.Locale.ROOT));
+        } catch (IllegalArgumentException ignored) {
+            return null;
+        }
+    }
+
+    private String normalizeStringClaim(String value) {
+        if (value == null) {
+            return null;
+        }
+        String trimmed = value.trim();
+        return trimmed.isBlank() ? null : trimmed;
     }
 
     private void rejectLegacyToken(
@@ -303,12 +337,14 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             || ("GET".equalsIgnoreCase(request.getMethod())
                 && path.equals("/profesional/payment-providers/mercadopago/oauth/callback"))
             || path.startsWith("/auth/login/")
+            || path.equals("/auth/login")
             || path.startsWith("/auth/register/")
             || path.equals("/auth/password/forgot")
             || path.equals("/auth/password/reset")
             || path.equals("/auth/password/recovery/start")
             || path.equals("/auth/password/recovery/verify-phone")
             || path.equals("/auth/password/recovery/confirm")
+            || path.startsWith("/auth/worker-invitations")
             || path.equals("/auth/oauth")
             || path.equals("/auth/refresh")
             || path.equals("/auth/logout");

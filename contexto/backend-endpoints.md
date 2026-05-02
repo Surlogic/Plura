@@ -59,8 +59,13 @@ Prefijo: `/auth`
 - `POST /auth/register/profesional`
 - `POST /auth/login/cliente`
 - `POST /auth/login/profesional`
+- `POST /auth/login` — login unificado: autentica con email/password y resuelve los contextos disponibles del usuario (`CLIENT`, `PROFESSIONAL`, `WORKER`). Devuelve `accessToken` + `activeContext` + `contexts` + `contextSelectionRequired`. Si solo hay un contexto se elige por defecto; si hay varios, frontend muestra selector. Acepta `desiredContext`/`desiredWorkerId`/`desiredProfessionalId` opcionales.
+- `GET /auth/me` y `GET /auth/contexts` — alias autenticados que devuelven el `UserResponse`, el contexto activo derivado del JWT y todos los contextos disponibles para la cuenta.
+- `POST /auth/context/select` — cambia el contexto activo emitiendo solo un nuevo access token (sin rotar refresh). Body: `type` (`CLIENT|PROFESSIONAL|WORKER`) + `workerId?` + `professionalId?`.
 - `POST /auth/oauth`
 - `POST /auth/oauth/complete-phone`
+- `GET /auth/worker-invitations?token={token}` — consulta publica de una invitacion de trabajador pendiente, sin sesion, para mostrar email/local y si requiere crear cuenta.
+- `POST /auth/worker-invitations/accept` — acepta una invitacion de trabajador por token; si el email no existe crea una cuenta `USER`, vincula el `professional_worker` y lo activa.
 - `POST /auth/refresh`
 - `POST /auth/logout`
 - `POST /auth/logout-all`
@@ -200,6 +205,18 @@ Prefijo: `/profesional`
 - `GET /profesional/reservas`
 - `POST /profesional/reservas`
 - `PUT /profesional/reservas/{id}`
+- `GET /profesional/team` — lista trabajadores del local/cuenta principal actual.
+- `POST /profesional/team/invitations` — crea invitacion de trabajador, aplica limite `maxProfessionals` del plan, asigna servicios y agenda inicial, y envia email con link.
+- `PATCH /profesional/team/{workerId}` — actualiza nombre o estado operativo del trabajador; el trabajador dueño no puede suspenderse ni eliminarse.
+- `GET /profesional/team/{workerId}/schedule`
+- `PUT /profesional/team/{workerId}/schedule`
+- `PUT /profesional/team/{workerId}/services`
+
+Endpoints del trabajador autenticado (requieren JWT con `ctx=WORKER`):
+
+- `GET /trabajador/me` — datos basicos del trabajador y del local donde trabaja.
+- `GET /trabajador/reservas?date|dateFrom|dateTo` — reservas asignadas al trabajador en un rango.
+- `GET /trabajador/calendario?dateFrom|dateTo` — alias para uso desde la vista de agenda.
 - `POST /profesional/reservas/{id}/cancel`
 - `POST /profesional/reservas/{id}/reschedule`
 - `POST /profesional/reservas/{id}/no-show`
@@ -224,6 +241,8 @@ Lectura de producto:
 - `POST /profesional/services` ahora corta por capacidad de plan: `BASIC` hasta `15` servicios, `PROFESIONAL` hasta `30`, `ENTERPRISE` sin tope practico; cada servicio mantiene una sola imagen publica
 - `GET /profesional/services`, `POST /profesional/services`, `PUT /profesional/services/{id}` y `GET /public/profesionales/{slug}` ya exponen/persisten `processingFeeMode` por servicio para pagos online; hoy las variantes operativas son `INSTANT` (`5,99% + IVA`) y `DELAYED_21_DAYS` (`4,99% + IVA`)
 - `GET /profesional/reservas` sostiene gestion operativa de reservas para `Free/BASIC` y no debe confundirse con gating de agenda semanal o mensual
+- la base backend de multitrabajador ya existe para el plan `Premium`: `professional_worker`, asignaciones `professional_worker_service`, agenda propia por trabajador, invitacion por email y `worker_id` opcional en `booking` y `available_slot`; el flujo publico de reserva todavia sigue operando contra el local/perfil general hasta completar la fase de disponibilidad por trabajador
+- al migrar, cada `professional_profile` existente recibe un trabajador dueño activo con la agenda legacy, todos los servicios y las reservas/slots existentes asignados; cuando se edita `/profesional/schedule`, tambien se sincroniza la agenda del trabajador dueño
 - `POST /public/profesionales/{slug}/reservas` crea siempre en `PENDING`; guarda snapshot de servicio/politica, registra `BOOKING_CREATED`, inicializa finanzas y solo dispara notificacion de `booking created` inmediata cuando el servicio es `ON_SITE`
 - `GET /public/profesionales/{slug}` y `GET /profesional/services` ahora exponen `paymentBreakdown` por servicio (`prepaidBaseAmount`, `processingFeeAmount`, `totalAmount`, `currency`, `processingFeeLabel`, `processingFeeMode`, `providerFeePercent`, `taxPercent`, `platformFeePercent`) cuando el pago es online; frontend debe consumir ese desglose en vez de recalcular porcentajes
 - al crear una reserva publica, backend ahora snapshot-ea tambien `serviceCategorySlug/Name`, `professionalRubro`, `professionalCity`, `professionalCountry` y `sourcePlatform` dentro de `booking` para reporting interno mas estable

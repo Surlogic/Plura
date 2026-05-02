@@ -49,6 +49,11 @@ const menuSections: MenuSection[] = [
         icon: 'servicios',
         featureKey: 'onlinePayments',
       },
+      {
+        label: 'Equipo',
+        href: '/profesional/dashboard/equipo',
+        icon: 'equipo',
+      },
     ],
   },
   {

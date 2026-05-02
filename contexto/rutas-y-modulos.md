@@ -52,7 +52,8 @@ Huecos o maduracion pendiente:
 
 - onboarding inicial guiado
 - gating completo por plan en toda la UX
-- modulos Premium de multiequipo, fidelizacion, portfolio, tienda y automatizacion avanzada
+- UI y flujo completo Premium de multiequipo: ya existen el backend de equipo, login unificado con selector de contexto, pantalla de aceptacion de invitacion, dashboard admin de equipo y dashboard basico de trabajador (calendario y reservas). Pendiente: editor de horarios por trabajador en UI admin, calendario completo (no solo lista por dias) en UI trabajador y reserva publica que use `worker_id` con autoasignacion.
+- modulos Premium de fidelizacion, portfolio, tienda y automatizacion avanzada
 
 ## Web
 
@@ -202,10 +203,21 @@ Modulos relevantes:
 - `services/professionalReviews.ts`: gestion de reseñas recibidas por el profesional; incluye listado, ocultamiento de texto, reporte por incumplimiento e invalidacion tambien de `/auth/me/profesional` para mantener KPIs sincronizados.
 - `services/publicReviews.ts`: reseñas publicas para perfil publico del profesional.
 
+Backend relacionado:
+
+- `backend-java/src/main/java/com/plura/plurabackend/professional/worker`: base backend inicial de equipo/trabajadores para planes con multiequipo; expone `/profesional/team*` para listar, invitar, editar/suspender/eliminar trabajadores, configurar agenda propia y asignar servicios existentes del local.
+- `backend-java/src/main/java/com/plura/plurabackend/professional/worker/dashboard`: endpoints `/trabajador/me`, `/trabajador/reservas`, `/trabajador/calendario` que requieren JWT con `ctx=WORKER` y consultan reservas filtradas por `worker_id`.
+- `backend-java/src/main/java/com/plura/plurabackend/core/auth/context`: resolver y DTO de contextos de auth (`AuthContextType`, `AuthContextDescriptor`, `AuthContextResolver`); habilita el login unificado y el switch de contexto en `/auth/login`, `/auth/me`, `/auth/contexts`, `/auth/context/select`.
+- `backend-java/src/main/resources/db/migration/V77__professional_workers_foundation.sql`: crea `professional_worker`, `professional_worker_service` y agrega `worker_id` opcional en `booking` y `available_slot`; hace backfill de un trabajador owner por cada profesional existente para mantener compatibilidad.
+- `backend-java/src/main/resources/db/migration/V78__booking_worker_unique_constraint.sql`: reemplaza la unicidad legacy `(professional_id, start_date_time)` por una unicidad por trabajador (parcial sobre `worker_id` excluyendo `CANCELLED`) y elimina el unique legacy de `available_slot` para permitir slots concurrentes por trabajador.
+
 Lectura de producto:
 
 - esta area concentra el valor de `Free` y buena parte de `Pro`
 - `servicios`, `horarios`, `reservas`, `perfil-negocio` y `notificaciones` son el corazon operativo
+- el multiequipo ya tiene puntos clave armados: backend de equipo (`/profesional/team*`), pantalla `/trabajador/invitacion` para aceptar invitaciones, dashboard admin `/profesional/dashboard/equipo` con listar/invitar/asignar servicios/suspender/reactivar/eliminar y vistas trabajador `/trabajador/calendario` y `/trabajador/reservas`. Pendiente: editor de horarios por trabajador en UI admin, vista de calendario completo (no solo lista por dias) en UI trabajador, mobile y reserva publica con `worker_id` autoasignado.
+- el login unificado expone `/auth/login` y permite que un mismo email use varios contextos (`CLIENT`, `PROFESSIONAL`, `WORKER`); la pantalla `/login` ahora hace ese flujo en web. Las pantallas `/cliente/auth/login` y `/profesional/auth/login` siguen funcionando como compatibilidad y emiten tokens con `ctx` por rol.
+- el email de invitacion usa la ruta web `/trabajador/invitacion?token=...` que ya existe; chequea email vs cuenta existente y, si hace falta, pide nombre/telefono/password antes de aceptar.
 - `/profesional/dashboard/perfil-negocio` ahora incluye constructor visual para `logo` y `banner` dentro de un modal: se abre al terminar una subida/reemplazo y también desde `Editar encuadre`; ese encuadre queda persistido y se aplica también en la ficha pública
 - los autocompletes de ubicacion en `/profesional/auth/register` y `/profesional/dashboard/perfil-negocio` ya seleccionan sugerencias por click normal sin depender de `mouseDown`, evitando opciones que parecian clickeables pero no confirmaban bien al navegar con teclado o blur
 - `/profesional/auth/register` y `/profesional/dashboard/perfil-negocio` ya comparten el mismo selector internacional de telefono con bandera + codigo; evita cargar el prefijo a mano y deja el numero persistido listo para backend
@@ -254,7 +266,9 @@ Huecos relevantes contra el objetivo:
 - ficha del cliente orientada a `Pro`
 - analytics mas visibles
 - chat interno
-- soporte multiequipo propio de `Premium`
+- mobile (cliente y profesional) todavia sin selector de contexto ni dashboard de trabajador; web ya cubre login unificado, dashboard admin de equipo y vista de trabajador
+- editor de horarios por trabajador en UI admin (los endpoints `/profesional/team/{id}/schedule` ya existen)
+- reserva publica que respete `worker_id`: hoy backend permite guardarlo, la migracion V78 ya cambio la unicidad de booking, pero la generacion de slots/checkout publico aun no autoasigna ni filtra por trabajador
 
 ### Rutas internas de operaciones
 

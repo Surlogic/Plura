@@ -24,6 +24,7 @@ import com.plura.plurabackend.professional.schedule.dto.ProfesionalScheduleDto;
 import com.plura.plurabackend.professional.schedule.dto.ProfesionalScheduleRangeDto;
 import com.plura.plurabackend.professional.service.model.ProfesionalService;
 import com.plura.plurabackend.professional.service.repository.ProfesionalServiceRepository;
+import com.plura.plurabackend.professional.worker.repository.ProfessionalWorkerRepository;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
@@ -39,6 +40,7 @@ class ScheduleApplicationServiceTest {
     private final ProfesionalServiceRepository profesionalServiceRepository = mock(ProfesionalServiceRepository.class);
     private final BookingRepository bookingRepository = mock(BookingRepository.class);
     private final SlotCacheService slotCacheService = mock(SlotCacheService.class);
+    private final ProfessionalWorkerRepository professionalWorkerRepository = mock(ProfessionalWorkerRepository.class);
     private final UserRepository userRepository = mock(UserRepository.class);
     private final ProfessionalAccessSupport professionalAccessSupport = new ProfessionalAccessSupport(
         professionalProfileRepository,
@@ -53,6 +55,7 @@ class ScheduleApplicationServiceTest {
         new ObjectMapper(),
         professionalAccessSupport,
         sideEffectCoordinator,
+        professionalWorkerRepository,
         new SimpleMeterRegistry(),
         "America/Montevideo"
     );

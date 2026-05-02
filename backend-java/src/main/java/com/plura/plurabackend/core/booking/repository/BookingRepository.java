@@ -215,6 +215,35 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
 
     @Query(
         """
+        SELECT new com.plura.plurabackend.core.booking.dto.ProfessionalBookingResponse(
+            b.id,
+            u.id,
+            u.fullName,
+            b.serviceId,
+            b.serviceNameSnapshot,
+            b.startDateTime,
+            b.timezone,
+            b.serviceDurationSnapshot,
+            b.servicePostBufferMinutesSnapshot,
+            b.servicePaymentTypeSnapshot,
+            b.rescheduleCount,
+            b.operationalStatus
+        )
+        FROM Booking b
+        JOIN b.user u
+        WHERE b.workerId = :workerId
+            AND b.startDateTime BETWEEN :start AND :end
+        ORDER BY b.startDateTime ASC
+        """
+    )
+    List<ProfessionalBookingResponse> findWorkerBookingResponsesByWorkerIdAndStartDateTimeBetween(
+        @Param("workerId") Long workerId,
+        @Param("start") LocalDateTime start,
+        @Param("end") LocalDateTime end
+    );
+
+    @Query(
+        """
         SELECT b.professionalId, COUNT(b.id)
         FROM Booking b
         WHERE b.operationalStatus IN :statuses

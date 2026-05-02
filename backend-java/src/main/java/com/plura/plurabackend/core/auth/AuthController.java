@@ -1,9 +1,16 @@
 package com.plura.plurabackend.core.auth;
 
 import com.plura.plurabackend.core.account.AccountDeletionService;
+import com.plura.plurabackend.core.auth.context.AuthContextDescriptor;
+import com.plura.plurabackend.core.auth.context.AuthContextType;
 import com.plura.plurabackend.core.auth.dto.AcceptedMessageResponse;
 import com.plura.plurabackend.core.auth.dto.AuthAuditListResponse;
+import com.plura.plurabackend.core.auth.dto.AuthMeResponse;
 import com.plura.plurabackend.core.auth.dto.ChangePasswordRequest;
+import com.plura.plurabackend.core.auth.dto.SelectContextRequest;
+import com.plura.plurabackend.core.auth.dto.SelectContextResponse;
+import com.plura.plurabackend.core.auth.dto.UnifiedLoginRequest;
+import com.plura.plurabackend.core.auth.dto.UnifiedLoginResponse;
 import com.plura.plurabackend.core.auth.dto.CompleteOAuthPhoneRequest;
 import com.plura.plurabackend.core.auth.dto.ConfirmEmailVerificationRequest;
 import com.plura.plurabackend.core.auth.dto.ConfirmPhoneVerificationRequest;
@@ -206,6 +213,91 @@ public class AuthController {
             httpRequest,
             () -> authService.loginProfesional(request, buildSessionContext(httpRequest))
         );
+    }
+
+    @PostMapping("/login")
+    public ResponseEntity<UnifiedLoginResponse> loginUnified(
+        @Valid @RequestBody UnifiedLoginRequest request,
+        HttpServletRequest httpRequest
+    ) {
+        try {
+            authAbuseProtectionService.enforceLoginAllowed(request.getEmail(), httpRequest);
+        } catch (ResponseStatusException rateLimited) {
+            if (rateLimited.getStatusCode().value() == HttpStatus.TOO_MANY_REQUESTS.value()) {
+                authAuditService.log(
+                    AuthAuditEventType.LOGIN_RATE_LIMITED,
+                    AuthAuditStatus.FAILURE,
+                    null,
+                    null,
+                    extractClientIp(httpRequest),
+                    httpRequest == null ? null : httpRequest.getHeader("User-Agent"),
+                    Map.of("email", request.getEmail() == null ? "" : request.getEmail().trim().toLowerCase(java.util.Locale.ROOT))
+                );
+            }
+            throw rateLimited;
+        }
+        try {
+            AuthService.UnifiedLoginResult result = authService.loginUnified(request, buildSessionContext(httpRequest));
+            authAbuseProtectionService.recordLoginSuccess(request.getEmail(), httpRequest);
+            return buildUnifiedAuthResponse(result, httpRequest);
+        } catch (ResponseStatusException exception) {
+            if (exception.getStatusCode().value() == HttpStatus.UNAUTHORIZED.value()) {
+                authAbuseProtectionService.recordLoginFailure(request.getEmail(), httpRequest);
+                authAuditService.log(
+                    AuthAuditEventType.LOGIN_FAILURE,
+                    AuthAuditStatus.FAILURE,
+                    null,
+                    null,
+                    extractClientIp(httpRequest),
+                    httpRequest == null ? null : httpRequest.getHeader("User-Agent"),
+                    Map.of("email", request.getEmail() == null ? "" : request.getEmail().trim().toLowerCase(java.util.Locale.ROOT))
+                );
+            }
+            throw exception;
+        }
+    }
+
+    @GetMapping("/contexts")
+    public ResponseEntity<AuthMeResponse> listContexts() {
+        Authentication activeAuthentication = requireAuthentication();
+        AuthMeResponse response = authService.getMe(
+            activeAuthentication.getPrincipal().toString(),
+            currentActorService.currentTokenDetails() == null ? null : currentActorService.currentTokenDetails().contextType(),
+            currentActorService.currentTokenDetails() == null ? null : currentActorService.currentTokenDetails().professionalId(),
+            currentActorService.currentTokenDetails() == null ? null : currentActorService.currentTokenDetails().workerId()
+        );
+        return ResponseEntity.ok()
+            .header(HttpHeaders.CACHE_CONTROL, "no-store")
+            .body(response);
+    }
+
+    @GetMapping("/me")
+    public ResponseEntity<AuthMeResponse> getMe() {
+        return listContexts();
+    }
+
+    @PostMapping("/context/select")
+    public ResponseEntity<SelectContextResponse> selectContext(
+        @Valid @RequestBody SelectContextRequest request,
+        HttpServletRequest httpRequest
+    ) {
+        Authentication activeAuthentication = requireAuthentication();
+        SelectContextResponse response = authService.selectContext(
+            activeAuthentication.getPrincipal().toString(),
+            resolveAuthenticatedSessionId(activeAuthentication),
+            request
+        );
+        ResponseCookie accessCookie = buildAccessCookie(response.getAccessToken());
+        SessionTransport sessionTransport = resolveSessionTransport(httpRequest);
+        boolean exposeTokensInBody = sessionTransport == SessionTransport.BODY || exposeAccessToken;
+        SelectContextResponse payload = new SelectContextResponse(
+            exposeTokensInBody ? response.getAccessToken() : null,
+            response.getActiveContext()
+        );
+        return ResponseEntity.ok()
+            .header(HttpHeaders.CACHE_CONTROL, "no-store")
+            .header(HttpHeaders.SET_COOKIE, accessCookie.toString())
+            .body(payload);
     }
 
     @PostMapping("/oauth")
@@ -662,6 +754,32 @@ public class AuthController {
     public UserResponse getClienteProfile() {
         String clienteId = String.valueOf(currentActorService.currentClientUserId());
         return authService.getClienteProfile(clienteId);
+    }
+
+    private ResponseEntity<UnifiedLoginResponse> buildUnifiedAuthResponse(
+        AuthService.UnifiedLoginResult result,
+        HttpServletRequest request
+    ) {
+        AuthService.AuthResult auth = result.auth();
+        ResponseCookie accessCookie = buildAccessCookie(auth.accessToken());
+        ResponseCookie refreshCookie = buildRefreshCookie(auth.refreshToken());
+        SessionTransport sessionTransport = resolveSessionTransport(request);
+        boolean exposeTokensInBody = sessionTransport == SessionTransport.BODY;
+        UnifiedLoginResponse payload = new UnifiedLoginResponse(
+            exposeTokensInBody || exposeAccessToken ? auth.accessToken() : null,
+            exposeTokensInBody ? auth.refreshToken() : null,
+            auth.user(),
+            auth.session(),
+            result.activeContext(),
+            result.contexts(),
+            result.contextSelectionRequired()
+        );
+        return ResponseEntity.ok()
+            .header(HttpHeaders.CACHE_CONTROL, "no-store, no-cache, max-age=0, must-revalidate")
+            .header("Pragma", "no-cache")
+            .header(HttpHeaders.SET_COOKIE, accessCookie.toString())
+            .header(HttpHeaders.SET_COOKIE, refreshCookie.toString())
+            .body(payload);
     }
 
     private ResponseEntity<RegisterResponse> buildAuthResponse(AuthService.AuthResult result, HttpServletRequest request) {

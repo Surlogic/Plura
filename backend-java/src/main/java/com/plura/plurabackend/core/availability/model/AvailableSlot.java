@@ -1,6 +1,7 @@
 package com.plura.plurabackend.core.availability.model;
 
 import com.plura.plurabackend.professional.model.ProfessionalProfile;
+import com.plura.plurabackend.professional.worker.model.ProfessionalWorker;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -13,7 +14,6 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
-import jakarta.persistence.UniqueConstraint;
 import java.time.LocalDateTime;
 import lombok.Getter;
 import lombok.Setter;
@@ -21,12 +21,7 @@ import lombok.Setter;
 @Getter
 @Setter
 @Entity
-@Table(
-    name = "available_slot",
-    uniqueConstraints = {
-        @UniqueConstraint(name = "uq_available_slot_professional_start", columnNames = {"professional_id", "start_at"})
-    }
-)
+@Table(name = "available_slot")
 public class AvailableSlot {
 
     @Id
@@ -36,6 +31,10 @@ public class AvailableSlot {
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "professional_id", nullable = false)
     private ProfessionalProfile professional;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "worker_id")
+    private ProfessionalWorker worker;
 
     @Column(name = "start_at", nullable = false)
     private LocalDateTime startAt;

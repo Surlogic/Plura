@@ -18,4 +18,8 @@ public class RoleGuard {
     public Long requireUser() {
         return currentActorService.currentClientUserId();
     }
+
+    public Long requireWorker() {
+        return currentActorService.currentWorkerId();
+    }
 }

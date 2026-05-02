@@ -66,6 +66,7 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.POST, "/auth/oauth").permitAll()
                 // Endpoints públicos de autenticación.
                 .requestMatchers(
+                    "/auth/login",
                     "/auth/login/**",
                     "/auth/register/**",
                     "/auth/password/forgot",
@@ -73,6 +74,8 @@ public class SecurityConfig {
                     "/auth/password/recovery/start",
                     "/auth/password/recovery/verify-phone",
                     "/auth/password/recovery/confirm",
+                    "/auth/worker-invitations",
+                    "/auth/worker-invitations/**",
                     "/auth/refresh",
                     "/auth/logout",
                     "/api/home",
@@ -98,7 +101,9 @@ public class SecurityConfig {
                 .requestMatchers("/auth/verify/**").hasAnyRole("PROFESSIONAL", "USER")
                 .requestMatchers("/auth/me/profesional").hasRole("PROFESSIONAL")
                 .requestMatchers("/auth/me/cliente").hasRole("USER")
+                .requestMatchers("/auth/me", "/auth/contexts", "/auth/context/select").hasAnyRole("PROFESSIONAL", "USER")
                 .requestMatchers("/auth/sessions", "/auth/sessions/**", "/auth/logout-all", "/auth/audit").hasAnyRole("PROFESSIONAL", "USER")
+                .requestMatchers("/trabajador/**").hasRole("WORKER")
                 .requestMatchers("/profesional/**").hasRole("PROFESSIONAL")
                 .requestMatchers("/billing/**").hasRole("PROFESSIONAL")
                 .requestMatchers("/cliente/**").hasRole("USER")

@@ -58,6 +58,9 @@ class AuthServiceRefreshUnitTest {
     @Mock
     private EffectiveProfessionalPlanService effectiveProfessionalPlanService;
 
+    @Mock
+    private com.plura.plurabackend.core.auth.context.AuthContextResolver authContextResolver;
+
     private AuthService authService;
 
     @BeforeEach
@@ -72,6 +75,7 @@ class AuthServiceRefreshUnitTest {
             authAuditService,
             professionalAccountProfileGateway,
             effectiveProfessionalPlanService,
+            authContextResolver,
             passwordEncoder,
             "unit-test-jwt-secret",
             30,

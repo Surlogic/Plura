@@ -386,6 +386,7 @@ Capacidades de producto definidas pero no necesariamente cerradas en UI o API pu
 - analytics de producto y reporting orientado a plan; ademas ya existe una primera capa interna de `Ops Analytics` separada de cliente/profesional para negocio y marketplace
 - bloqueo visible de features por plan dentro de toda la experiencia
 - funciones Premium como multi-profesional, fidelizacion, ultima hora, portfolio y tienda
+- base backend inicial de multitrabajador Premium: schema `professional_worker` + `professional_worker_service`, `worker_id` opcional en reservas/slots, trabajador dueño backfilleado para cada local existente, endpoints admin `/profesional/team*` para invitar/listar/editar agenda/servicios y endpoints publicos `/auth/worker-invitations*` para aceptar invitaciones; todavia falta conectar disponibilidad publica, reserva por trabajador, dashboards de trabajador y login unificado por contexto
 
 ## Arquitectura resumida
 

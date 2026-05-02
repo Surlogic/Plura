@@ -10,7 +10,6 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
-import jakarta.persistence.UniqueConstraint;
 import jakarta.persistence.Version;
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -23,15 +22,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 @Entity
-@Table(
-    name = "booking",
-    uniqueConstraints = {
-        @UniqueConstraint(
-            name = "uq_professional_start",
-            columnNames = {"professional_id", "start_date_time"}
-        )
-    }
-)
+@Table(name = "booking")
 public class Booking {
 
     @Id
@@ -44,6 +35,9 @@ public class Booking {
 
     @Column(name = "professional_id", nullable = false)
     private Long professionalId;
+
+    @Column(name = "worker_id")
+    private Long workerId;
 
     @Column(name = "service_id", nullable = false)
     private String serviceId;
@@ -84,6 +78,12 @@ public class Booking {
 
     @Column(name = "professional_location_snapshot")
     private String professionalLocationSnapshot;
+
+    @Column(name = "worker_name_snapshot")
+    private String workerNameSnapshot;
+
+    @Column(name = "worker_email_snapshot")
+    private String workerEmailSnapshot;
 
     @Column(name = "service_price_snapshot", precision = 12, scale = 2)
     private BigDecimal servicePriceSnapshot;

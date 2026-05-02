@@ -15,6 +15,8 @@ public interface ProfesionalServiceRepository extends JpaRepository<ProfesionalS
 
     List<ProfesionalService> findByProfessional_IdAndActiveTrueOrderByCreatedAtDesc(Long professionalId);
 
+    List<ProfesionalService> findByProfessional_IdAndIdIn(Long professionalId, Collection<String> serviceIds);
+
     List<ProfesionalService> findByProfessional_IdInAndActiveTrueOrderByCreatedAtDesc(Collection<Long> professionalIds);
 
     @Modifying

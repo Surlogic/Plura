@@ -4,6 +4,7 @@ import { useLogoutTransitionContext } from '@/context/LogoutTransitionContext';
 const descriptions = {
   CLIENT: 'Estamos cerrando tu sesión y te llevamos al acceso de cliente.',
   PROFESSIONAL: 'Estamos cerrando tu sesión y te llevamos al acceso profesional.',
+  WORKER: 'Estamos cerrando tu sesión y te llevamos al acceso unificado.',
 } as const;
 
 export default function LogoutLoadingOverlay() {

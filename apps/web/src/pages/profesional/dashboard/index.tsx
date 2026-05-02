@@ -397,10 +397,10 @@ const WeekCalendarBoard = memo(function WeekCalendarBoard({
   onReservationOpen: (reservation: ProfessionalReservation) => void;
 }) {
   return (
-    <div className="mt-3 min-h-[540px] overflow-x-auto lg:mt-2 lg:h-full">
-      <div className="min-h-[540px] min-w-[980px] overflow-hidden rounded-[18px] border border-[#E2E7EC] bg-white shadow-[0_4px_14px_rgba(15,23,42,0.04)] lg:flex lg:h-full lg:flex-col">
-        <div className="flex border-b border-[#E2E7EC] bg-[linear-gradient(180deg,#FAFCFE_0%,#F4F8FB_100%)]">
-          <div className="sticky left-0 z-20 w-20 shrink-0 bg-[linear-gradient(180deg,#FAFCFE_0%,#F4F8FB_100%)] px-4 py-3 text-[0.6rem] uppercase tracking-[0.3em] text-[#94A3B8]">
+    <div className="mt-3 min-h-[520px] overflow-x-auto lg:mt-2 lg:h-full lg:min-h-0 lg:overflow-x-visible">
+      <div className="min-h-[520px] min-w-[860px] overflow-hidden rounded-[18px] border border-[#E2E8F0] bg-white shadow-[0_1px_3px_rgba(15,23,42,0.05)] lg:flex lg:h-full lg:min-h-[calc(100vh-250px)] lg:min-w-0 lg:flex-col">
+        <div className="flex border-b border-[#E2E8F0] bg-[#F8FAFC]">
+          <div className="sticky left-0 z-20 w-16 shrink-0 bg-[#F8FAFC] px-3 py-3 text-[0.6rem] uppercase tracking-[0.24em] text-[#94A3B8] lg:w-[72px]">
             Hora
           </div>
           <div className="grid flex-1 grid-cols-7">
@@ -410,7 +410,7 @@ const WeekCalendarBoard = memo(function WeekCalendarBoard({
               return (
                 <div
                   key={day.dateKey}
-                  className={`px-4 py-3 text-xs ${
+                  className={`px-3 py-3 text-xs lg:px-4 ${
                     index < weekDays.length - 1 ? 'border-r border-[#E2E7EC]' : ''
                   } ${isToday ? 'bg-[#F2FFFB]' : ''}`}
                 >
@@ -447,7 +447,7 @@ const WeekCalendarBoard = memo(function WeekCalendarBoard({
           className="flex overflow-y-auto overscroll-contain scroll-smooth lg:min-h-0 lg:flex-1"
           style={{ height: '100%' }}
         >
-          <div className="sticky left-0 z-10 w-20 shrink-0 border-r border-[#E2E7EC] bg-white shadow-[4px_0_12px_rgba(15,23,42,0.06)]">
+          <div className="sticky left-0 z-10 w-16 shrink-0 border-r border-[#E2E8F0] bg-white shadow-[2px_0_6px_rgba(15,23,42,0.04)] lg:w-[72px]">
             <div className="relative" style={{ height: visibleCalendarRange.calendarHeight }}>
               {visibleCalendarRange.labelMarkers.map((markerMinutes) => {
                 const top = Math.min(
@@ -554,7 +554,7 @@ const WeekCalendarBoard = memo(function WeekCalendarBoard({
                         onClick={() => onReservationOpen(layout.reservation)}
                       >
                         <div
-                          className={`group relative flex h-full min-h-[44px] flex-col overflow-hidden rounded-[10px] border px-2.5 py-2 text-left shadow-[0_6px_18px_rgba(15,23,42,0.10)] transition hover:-translate-y-0.5 hover:shadow-[0_12px_24px_rgba(15,23,42,0.14)] ${palette.card} ${
+                          className={`group relative flex h-full min-h-[44px] flex-col overflow-hidden rounded-[10px] border px-2.5 py-2 text-left shadow-[0_1px_3px_rgba(15,23,42,0.06)] transition hover:-translate-y-0.5 hover:shadow-[0_6px_16px_rgba(15,23,42,0.10)] ${palette.card} ${
                             isToday ? 'ring-1 ring-[#FFD9B0]' : ''
                           }`}
                         >
@@ -1276,9 +1276,14 @@ export default function ProfesionalDashboardPage() {
   };
 
   return (
-    <ProfessionalDashboardShell profile={profile} active="Agenda" contentClassName="py-4 sm:py-6">
-      <div className="flex flex-col gap-4">
-                <section className="space-y-3 lg:shrink-0">
+    <ProfessionalDashboardShell
+      profile={profile}
+      active="Agenda"
+      maxWidthClassName="max-w-none"
+      contentClassName="py-3 sm:py-4"
+    >
+      <div className="flex flex-col gap-3">
+                <section className="space-y-2.5 lg:shrink-0">
                   <DashboardPageHeader
                     eyebrow="Centro operativo"
                     title={profile?.fullName ? `${profile.fullName}, este es tu tablero de hoy` : 'Tu tablero operativo de hoy'}
@@ -1342,7 +1347,7 @@ export default function ProfesionalDashboardPage() {
                     </p>
                   ) : null}
 
-                  <div className="grid gap-2.5 sm:grid-cols-2 xl:grid-cols-4">
+                  <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
                       {agendaOverviewCards.map((item) => (
                         <DashboardStatCard
                           key={item.label}
@@ -1355,17 +1360,17 @@ export default function ProfesionalDashboardPage() {
                       ))}
                   </div>
                 </section>
-                <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_360px] lg:items-start">
-                  <section className="flex flex-col rounded-[18px] border border-white/70 bg-white/95 p-4 shadow-[0_4px_14px_rgba(15,23,42,0.04)] sm:p-5">
+                <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_340px] lg:items-start">
+                  <section className="flex flex-col rounded-[18px] border border-[#E2E8F0] bg-white p-4 shadow-[0_1px_3px_rgba(15,23,42,0.05)]">
                     <DashboardSectionHeading
                       eyebrow="Agenda"
                       title={calendarView === 'week' ? 'Agenda semanal' : 'Calendario mensual'}
                       description={calendarView === 'week' ? calendarWeekLabel : monthLabel}
                     />
 
-                    <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+                    <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
                       <div className="flex flex-wrap items-center gap-2">
-                        <div className="flex rounded-full border border-[color:var(--border-soft)] bg-white p-0.5 shadow-[var(--shadow-card)]">
+                        <div className="flex rounded-full border border-[#E2E8F0] bg-white p-0.5">
                           <button
                             type="button"
                               onClick={() => handleSetView('week')}
@@ -1405,7 +1410,7 @@ export default function ProfesionalDashboardPage() {
                           </p>
                         ) : null}
 
-                        <div className="relative flex items-center gap-0.5 rounded-full border border-[color:var(--border-soft)] bg-white px-1 py-1 shadow-[var(--shadow-card)]">
+                        <div className="relative flex items-center gap-0.5 rounded-full border border-[#E2E8F0] bg-white px-1 py-1">
                           <button
                             type="button"
                             onClick={handlePrev}
@@ -1460,7 +1465,7 @@ export default function ProfesionalDashboardPage() {
                     </div>
 
                     {calendarView === 'week' ? (
-                      <div className="mt-2.5 flex flex-wrap items-center justify-between gap-3 rounded-[16px] border border-[#E2E8F0] bg-[#F8FAFC] px-3 py-2.5">
+                      <div className="mt-2.5 flex flex-wrap items-center justify-between gap-3 rounded-[16px] border border-[#E2E8F0] bg-[#F8FAFC] px-3 py-2">
                         <div className="flex flex-wrap gap-2">
                           {[
                             { label: 'Madrugada', value: 'lateNight' as const },
@@ -1487,7 +1492,7 @@ export default function ProfesionalDashboardPage() {
                     ) : null}
 
                     {calendarView === 'week' ? (
-                      <div className="min-h-[540px] lg:h-[min(72vh,860px)]">
+                      <div className="min-h-[520px] lg:h-[min(76vh,900px)]">
                         <WeekCalendarBoard
                           weekDays={weekDays}
                           todayKey={todayKey}
@@ -1500,7 +1505,7 @@ export default function ProfesionalDashboardPage() {
                         />
                       </div>
                     ) : (
-                      <div className="min-h-[540px] lg:max-h-[min(72vh,860px)] lg:overflow-auto">
+                      <div className="min-h-[520px] lg:max-h-[min(76vh,900px)] lg:overflow-auto">
                         <MonthCalendarBoard
                           monthGridDays={monthGridDays}
                           reservationsByDate={reservationsByDate}
@@ -1510,8 +1515,8 @@ export default function ProfesionalDashboardPage() {
                     )}
                   </section>
 
-                  <aside className="space-y-4 lg:sticky lg:top-4">
-                    <Card className="rounded-[18px] border-white/70 bg-white/95 p-4 shadow-[0_4px_14px_rgba(15,23,42,0.04)]">
+                  <aside className="space-y-3 lg:sticky lg:top-3">
+                    <Card className="rounded-[18px] border-[#E2E8F0] bg-white p-4 shadow-[0_1px_3px_rgba(15,23,42,0.05)]">
                       <DashboardSectionHeading
                         title="Reservas próximas"
                         description="Lo inmediato del rango visible."
@@ -1540,7 +1545,7 @@ export default function ProfesionalDashboardPage() {
                                 key={reservation.id}
                                 type="button"
                                 onClick={() => handleOpenReservation(reservation)}
-                                className="flex w-full items-start gap-3 rounded-[14px] border border-[#E2E8F0] bg-white px-3 py-3 text-left transition hover:border-[#CBD5E1] hover:bg-[#FCFDFE]"
+                                className="flex w-full items-start gap-3 rounded-[14px] border border-[#E2E8F0] bg-white px-3 py-3 text-left transition hover:border-[#CBD5E1] hover:bg-[#F8FAFC]"
                               >
                                 <div className="w-14 shrink-0">
                                   <p className="text-sm font-semibold text-[#0E2A47]">
@@ -1569,7 +1574,7 @@ export default function ProfesionalDashboardPage() {
                     </Card>
 
                     <LockedFeature requiredPlan="PROFESIONAL" currentPlan={profile?.professionalPlan}>
-                      <Card className="rounded-[18px] border-white/70 bg-white/95 p-4 shadow-[0_4px_14px_rgba(15,23,42,0.04)]">
+                      <Card className="rounded-[18px] border-[#E2E8F0] bg-white p-4 shadow-[0_1px_3px_rgba(15,23,42,0.05)]">
                         <DashboardSectionHeading
                           title="Pulso semanal"
                           description="Ocupación y actividad comercial como panel secundario."

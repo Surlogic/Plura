@@ -328,7 +328,7 @@ type DashboardHeaderBadgeProps = {
 
 const badgeToneClassNames = {
   default: 'border-[#D9E2EC] bg-[#F8FAFC] text-[#475569]',
-  accent: 'border-[#DBEAFE] bg-[#F8FBFF] text-[#1D4ED8]',
+  accent: 'border-[#D9ECE8] bg-[#F0FDFA] text-[#0F766E]',
   success: 'border-[#BFEDE7] bg-[#F0FDFA] text-[#0F766E]',
   warning: 'border-[#F6D6A8] bg-[#FFF7E8] text-[#B45309]',
 };
@@ -360,9 +360,9 @@ type DashboardStatCardProps = {
 
 const statToneClassNames = {
   default:
-    'border-[color:var(--border-soft)] bg-white/96 text-[color:var(--ink)]',
+    'border-[#E2E8F0] bg-white text-[color:var(--ink)]',
   accent:
-    'border-[color:var(--border-soft)] bg-[color:var(--surface-soft)] text-[color:var(--ink)]',
+    'border-[#D9ECE8] bg-[#F0FDFA] text-[color:var(--ink)]',
   warm:
     'border-[#F3DEC0] bg-[#FFF9F1] text-[color:var(--ink)]',
   dark:
@@ -380,7 +380,7 @@ export const DashboardStatCard = memo(function DashboardStatCard({
   return (
     <div
       className={cn(
-        'rounded-[16px] border p-3.5 shadow-[0_4px_12px_rgba(15,23,42,0.04)]',
+        'rounded-[16px] border p-3 shadow-[0_1px_3px_rgba(15,23,42,0.05)]',
         statToneClassNames[tone],
         className,
       )}
@@ -410,7 +410,7 @@ export const DashboardStatCard = memo(function DashboardStatCard({
         </div>
         <span className={cn(
           'inline-flex h-9 w-9 items-center justify-center rounded-[12px]',
-          tone === 'dark' ? 'border border-white/14 bg-white/10 text-[color:var(--text-on-dark)]' : 'border border-[color:var(--border-soft)] bg-[color:var(--surface-soft)] text-[color:var(--primary)]',
+          tone === 'dark' ? 'border border-white/14 bg-white/10 text-[color:var(--text-on-dark)]' : 'border border-[#E2E8F0] bg-white text-[color:var(--primary)]',
         )}>
           <DashboardIcon name={icon} className="h-[18px] w-[18px]" />
         </span>

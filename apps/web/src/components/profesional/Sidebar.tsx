@@ -122,12 +122,12 @@ function ProfesionalSidebar({ profile, active }: SidebarProps) {
   return (
     <aside
       ref={rootRef}
-      className="relative min-h-full overflow-x-hidden border-r border-[color:var(--border-soft)] bg-[#F8FAFC] px-3 py-4 text-[color:var(--ink)]"
+      className="relative min-h-full overflow-x-hidden border-r border-[#E2E8F0] bg-white px-3 py-4 text-[color:var(--ink)]"
     >
-      <div className="border-b border-[color:var(--border-soft)] pb-3">
+      <div className="border-b border-[#E2E8F0] pb-3">
         <div className="flex items-center justify-between gap-3 px-1">
           <BrandLogo href="/" variant="mobile" className="justify-center" />
-          <span className="rounded-full border border-[color:var(--premium-soft)] bg-[color:var(--premium-soft)] px-2 py-1 text-[0.52rem] font-semibold uppercase tracking-[0.08em] text-[color:var(--premium-strong)]">
+          <span className="rounded-full border border-[#D9ECE8] bg-[#F0FDFA] px-2 py-1 text-[0.52rem] font-semibold uppercase tracking-[0.08em] text-[#0F766E]">
             {planLabel}
           </span>
         </div>
@@ -181,10 +181,10 @@ function ProfesionalSidebar({ profile, active }: SidebarProps) {
                 const itemClassName = cn(
                   'group flex w-full items-center gap-2.5 rounded-[10px] border px-2.5 py-2 text-left transition',
                   isActive && !isLocked
-                    ? 'border-[color:var(--primary-soft)] bg-white text-[color:var(--primary-strong)]'
+                    ? 'border-[#BFEDE7] bg-[#ECFDF5] text-[#0F766E]'
                     : isDisabled
                       ? 'cursor-not-allowed border-transparent bg-transparent text-[color:var(--ink-faint)]'
-                      : 'border-transparent bg-transparent text-[color:var(--ink)] hover:border-[color:var(--border-soft)] hover:bg-white',
+                      : 'border-transparent bg-transparent text-[color:var(--ink)] hover:border-[#E2E8F0] hover:bg-[#F8FAFC]',
                 );
 
                 const content = (
@@ -193,10 +193,10 @@ function ProfesionalSidebar({ profile, active }: SidebarProps) {
                       className={cn(
                         'inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-[8px] border',
                         isActive && !isLocked
-                          ? 'border-[color:var(--primary-soft)] bg-[color:var(--primary-soft)] text-[color:var(--primary)]'
+                          ? 'border-[#BFEDE7] bg-white text-[#0F766E]'
                           : isLocked
-                            ? 'border-[color:var(--border-soft)] bg-transparent text-[color:var(--ink-faint)]'
-                            : 'border-[color:var(--border-soft)] bg-white text-[color:var(--ink)]',
+                            ? 'border-[#E2E8F0] bg-transparent text-[color:var(--ink-faint)]'
+                            : 'border-[#E2E8F0] bg-white text-[color:var(--ink)]',
                       )}
                     >
                       <DashboardIcon name={item.icon} className="h-[15px] w-[15px]" />

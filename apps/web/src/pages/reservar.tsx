@@ -7,6 +7,7 @@ import Navbar from '@/components/shared/Navbar';
 import ReservationScheduleStep from '@/components/reservation/ReservationScheduleStep';
 import ReservationServiceSelector from '@/components/reservation/ReservationServiceSelector';
 import ReservationSummaryCard from '@/components/reservation/ReservationSummaryCard';
+import Button from '@/components/ui/Button';
 import { useClientProfileContext } from '@/context/ClientProfileContext';
 import { getBookingPaymentSessionMessage } from '@/lib/bookings/paymentSession';
 import { createClientBookingPaymentSession } from '@/services/clientBookings';
@@ -247,6 +248,9 @@ export default function ReservationPage() {
       month: 'long',
     });
   }, [calendarDays, confirmedDate]);
+
+  const publicProfileSlug = professionalSlug || professional?.slug?.trim() || '';
+  const publicProfileHref = publicProfileSlug ? `/profesional/${publicProfileSlug}` : null;
 
   const canSubmit = Boolean(confirmedService?.id && confirmedDate && selectedTime);
   const knownSessionRole = getKnownAuthSessionRole();
@@ -886,6 +890,23 @@ export default function ReservationPage() {
       <Navbar />
 
       <main className="mx-auto w-full max-w-[1040px] px-4 pb-20 pt-4 sm:px-5 lg:px-6 lg:pt-4">
+        {publicProfileHref ? (
+          <div className="mb-4 flex items-center justify-between gap-3 rounded-[22px] border border-[color:var(--border-soft)] bg-white/88 px-4 py-3">
+            <div className="min-w-0">
+              <p className="text-[0.62rem] font-semibold uppercase tracking-[0.24em] text-[color:var(--ink-faint)]">
+                Perfil público
+              </p>
+              <p className="truncate text-sm font-semibold text-[color:var(--ink)]">
+                {professional?.fullName || 'Volver al profesional'}
+              </p>
+            </div>
+
+            <Button href={publicProfileHref} variant="quiet" size="sm" className="shrink-0">
+              ← Volver al perfil
+            </Button>
+          </div>
+        ) : null}
+
         {!isLoadingContext && contextError ? (
           <div className="rounded-[22px] border border-[#FECACA] bg-[#FEF2F2] px-5 py-4 text-sm font-medium text-[#DC2626]">
             {contextError}

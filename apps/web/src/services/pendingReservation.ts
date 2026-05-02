@@ -13,15 +13,25 @@ const PENDING_RESERVATION_KEY = 'pendingReservation';
 
 const hasWindow = () => typeof window !== 'undefined';
 
+const normalizeStorageString = (value: unknown) => {
+  if (typeof value === 'string') {
+    return value.trim();
+  }
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return String(value).trim();
+  }
+  return '';
+};
+
 export const savePendingReservation = (pending: PendingReservation) => {
   if (!hasWindow()) return;
   const payload: PendingReservation = {
-    professionalSlug: pending.professionalSlug.trim(),
-    serviceId: pending.serviceId.trim(),
-    date: pending.date.trim(),
-    time: pending.time.trim(),
-    professionalName: pending.professionalName?.trim() || undefined,
-    serviceName: pending.serviceName?.trim() || undefined,
+    professionalSlug: normalizeStorageString(pending.professionalSlug),
+    serviceId: normalizeStorageString(pending.serviceId),
+    date: normalizeStorageString(pending.date),
+    time: normalizeStorageString(pending.time),
+    professionalName: normalizeStorageString(pending.professionalName) || undefined,
+    serviceName: normalizeStorageString(pending.serviceName) || undefined,
   };
   if (!payload.professionalSlug || !payload.serviceId || !payload.date || !payload.time) {
     return;
@@ -36,27 +46,13 @@ export const getPendingReservation = (): PendingReservation | null => {
 
   try {
     const parsed = JSON.parse(raw) as Partial<PendingReservation>;
-    if (
-      typeof parsed.professionalSlug !== 'string' ||
-      typeof parsed.serviceId !== 'string' ||
-      typeof parsed.date !== 'string' ||
-      typeof parsed.time !== 'string'
-    ) {
-      return null;
-    }
     const pending: PendingReservation = {
-      professionalSlug: parsed.professionalSlug.trim(),
-      serviceId: parsed.serviceId.trim(),
-      date: parsed.date.trim(),
-      time: parsed.time.trim(),
-      professionalName:
-        typeof parsed.professionalName === 'string' && parsed.professionalName.trim()
-          ? parsed.professionalName.trim()
-          : undefined,
-      serviceName:
-        typeof parsed.serviceName === 'string' && parsed.serviceName.trim()
-          ? parsed.serviceName.trim()
-          : undefined,
+      professionalSlug: normalizeStorageString(parsed.professionalSlug),
+      serviceId: normalizeStorageString(parsed.serviceId),
+      date: normalizeStorageString(parsed.date),
+      time: normalizeStorageString(parsed.time),
+      professionalName: normalizeStorageString(parsed.professionalName) || undefined,
+      serviceName: normalizeStorageString(parsed.serviceName) || undefined,
     };
     if (!pending.professionalSlug || !pending.serviceId || !pending.date || !pending.time) {
       return null;

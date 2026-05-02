@@ -50,6 +50,16 @@ type CalendarDay = {
 
 type ReservationStep = 1 | 2 | 3;
 
+const normalizeServiceId = (value: unknown): string => {
+  if (typeof value === 'string') {
+    return value.trim();
+  }
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return String(value).trim();
+  }
+  return '';
+};
+
 const parseStepValue = (value: string): ReservationStep | null => {
   const parsed = Number.parseInt(value, 10);
   if (parsed >= 1 && parsed <= 3) {
@@ -113,8 +123,8 @@ export default function ReservationPage() {
 
   const professionalSlug = resolveQueryValue(router.query.profesional).trim();
   const serviceId =
-    resolveQueryValue(router.query.serviceId).trim() ||
-    resolveQueryValue(router.query.servicioId).trim();
+    normalizeServiceId(resolveQueryValue(router.query.serviceId)) ||
+    normalizeServiceId(resolveQueryValue(router.query.servicioId));
   const serviceNameQuery = resolveQueryValue(router.query.servicio).trim();
   const dateQuery = resolveQueryValue(router.query.date).trim();
   const timeQuery = resolveQueryValue(router.query.time).trim();
@@ -153,7 +163,10 @@ export default function ReservationPage() {
   }, []);
 
   const selectedService = useMemo(
-    () => professional?.services.find((item) => item.id === selectedServiceId) ?? null,
+    () =>
+      professional?.services.find(
+        (item) => normalizeServiceId(item.id) === normalizeServiceId(selectedServiceId),
+      ) ?? null,
     [professional?.services, selectedServiceId],
   );
   const professionalId = useMemo(() => {
@@ -163,7 +176,10 @@ export default function ReservationPage() {
   }, [professional?.id]);
 
   const confirmedService = useMemo(
-    () => professional?.services.find((item) => item.id === confirmedServiceId) ?? null,
+    () =>
+      professional?.services.find(
+        (item) => normalizeServiceId(item.id) === normalizeServiceId(confirmedServiceId),
+      ) ?? null,
     [professional?.services, confirmedServiceId],
   );
 
@@ -337,7 +353,7 @@ export default function ReservationPage() {
         }
 
         const requestedServiceById = serviceId
-          ? services.find((item) => item.id === serviceId) ?? null
+          ? services.find((item) => normalizeServiceId(item.id) === serviceId) ?? null
           : null;
         const requestedServiceByName = !serviceId && serviceNameQuery
           ? services.find(
@@ -345,11 +361,13 @@ export default function ReservationPage() {
             ) ?? null
           : null;
         const hasRequestedService = Boolean(serviceId || serviceNameQuery);
+        const pendingServiceId = normalizeServiceId(pendingReservation?.serviceId);
         const pendingService = !hasRequestedService && pendingMatchesProfessional
-          ? services.find((item) => item.id === pendingReservation?.serviceId)
+          ? services.find((item) => normalizeServiceId(item.id) === pendingServiceId)
           : null;
 
         const nextService = requestedServiceById ?? requestedServiceByName ?? pendingService ?? null;
+        const nextServiceId = normalizeServiceId(nextService?.id);
         const nextSelectedDate = resolveInitialDate(
           routeStateRef.current.dateQuery || (pendingMatchesProfessional ? pendingReservation?.date || '' : ''),
           calendarDays,
@@ -357,21 +375,21 @@ export default function ReservationPage() {
         const nextSelectedTime = routeStateRef.current.timeQuery
           || (pendingMatchesProfessional ? pendingReservation?.time || '' : '');
 
-        setSelectedServiceId(nextService?.id ?? null);
+        setSelectedServiceId(nextServiceId || null);
         setSelectedDate(nextSelectedDate);
         setSelectedTime(nextSelectedTime || null);
 
         const requestedStep = parseStepValue(routeStateRef.current.stepQuery);
 
-        if (resumeQuery === '1' && nextService?.id && nextSelectedDate && nextSelectedTime) {
-          setConfirmedServiceId(nextService.id);
+        if (resumeQuery === '1' && nextServiceId && nextSelectedDate && nextSelectedTime) {
+          setConfirmedServiceId(nextServiceId);
           setConfirmedDate(nextSelectedDate);
           setActiveStep(3);
           setIsEditingServiceSelection(false);
           setSaveError('Retomaste la reserva. Revisá el resumen final y confirmá para continuar.');
         } else if (requestedStep) {
-          const restoredConfirmedServiceId = requestedStep >= 2 && nextService?.id
-            ? nextService.id
+          const restoredConfirmedServiceId = requestedStep >= 2 && nextServiceId
+            ? nextServiceId
             : null;
           const restoredConfirmedDate = requestedStep >= 3 ? nextSelectedDate : null;
           const restoredStep = resolveStepByState({
@@ -472,8 +490,8 @@ export default function ReservationPage() {
     const syncedTime = activeStep >= 2 ? selectedTime || '' : '';
     const nextStepValue = String(activeStep);
     const currentStepValue = resolveQueryValue(router.query.step).trim();
-    const currentServiceId = resolveQueryValue(router.query.serviceId).trim() ||
-      resolveQueryValue(router.query.servicioId).trim();
+    const currentServiceId = normalizeServiceId(resolveQueryValue(router.query.serviceId)) ||
+      normalizeServiceId(resolveQueryValue(router.query.servicioId));
     const currentDate = resolveQueryValue(router.query.date).trim();
     const currentTime = resolveQueryValue(router.query.time).trim();
     const currentResume = resolveQueryValue(router.query.resume).trim();
@@ -567,7 +585,7 @@ export default function ReservationPage() {
   };
 
   const handleSelectService = (serviceSelectionId: string) => {
-    setSelectedServiceId(serviceSelectionId);
+    setSelectedServiceId(normalizeServiceId(serviceSelectionId) || null);
     resetMessages();
   };
 
@@ -578,14 +596,16 @@ export default function ReservationPage() {
   };
 
   const handleConfirmService = () => {
-    if (!selectedService?.id) {
+    const normalizedSelectedServiceId = normalizeServiceId(selectedService?.id);
+
+    if (!normalizedSelectedServiceId || !selectedService) {
       setSaveMessage(null);
       setSaveError('Elegí un servicio para continuar.');
       return;
     }
 
-    const serviceChanged = confirmedServiceId !== selectedService.id;
-    setConfirmedServiceId(selectedService.id);
+    const serviceChanged = confirmedServiceId !== normalizedSelectedServiceId;
+    setConfirmedServiceId(normalizedSelectedServiceId);
     setActiveStep(2);
     setIsEditingServiceSelection(false);
 
@@ -600,7 +620,7 @@ export default function ReservationPage() {
       buildAnalyticsPayload({
         eventKey: 'RESERVATION_SERVICE_CONFIRMED',
         stepName: 'service',
-        serviceId: selectedService.id,
+        serviceId: normalizedSelectedServiceId,
         categorySlug: selectedService.categorySlug ?? null,
         categoryLabel: selectedService.categoryName ?? professional?.rubro ?? null,
         metadata: {

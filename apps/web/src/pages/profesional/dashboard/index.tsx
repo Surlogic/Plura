@@ -113,6 +113,14 @@ const formatMinutesLabel = (minutes: number) => {
   const mins = safeMinutes % 60;
   return `${String(hours).padStart(2, '0')}:${String(mins).padStart(2, '0')}`;
 };
+const formatDateShort = (dateKey: string) => {
+  const [year, month, day] = dateKey.split('-').map(Number);
+  const date = new Date(year, (month || 1) - 1, day || 1);
+  return new Intl.DateTimeFormat('es-AR', {
+    day: 'numeric',
+    month: 'short',
+  }).format(date);
+};
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
 const roundDownToStep = (value: number, step: number) => Math.floor(value / step) * step;
 const roundUpToStep = (value: number, step: number) => Math.ceil(value / step) * step;
@@ -1128,10 +1136,17 @@ export default function ProfesionalDashboardPage() {
     ).length,
     [agendaReservations, todayKey],
   );
-  const daysWithOpenCapacity = analyticsSummary
-    ? Math.max(analyticsSummary.weeklyScheduledDays - analyticsSummary.weeklyDaysWithReservations, 0)
-    : Math.max(scheduleDays.length - daysWithReservations, 0);
   const agendaOverviewCards = useMemo(() => [
+    {
+      label: 'Reservas hoy',
+      value: `${analyticsSummary?.todayBookings ?? todayCount}`,
+      detail:
+        (analyticsSummary?.todayDelta ?? todayDiff) === 0
+          ? 'Mismo ritmo que ayer'
+          : `${(analyticsSummary?.todayDelta ?? todayDiff) > 0 ? '+' : ''}${analyticsSummary?.todayDelta ?? todayDiff} vs ayer`,
+      icon: 'reservas' as const,
+      tone: 'accent' as const,
+    },
     {
       label: 'Pendientes hoy',
       value: `${todayPendingCount}`,
@@ -1149,13 +1164,31 @@ export default function ProfesionalDashboardPage() {
       tone: 'accent' as const,
     },
     {
-      label: 'Días con espacio',
-      value: `${daysWithOpenCapacity}`,
-      detail: scheduleDays.length > 0 ? 'Jornadas con margen esta semana' : 'Sin jornada configurada',
-      icon: 'spark' as const,
+      label: 'Clientes semana',
+      value: `${analyticsSummary?.weeklyUniqueClients ?? uniqueClientsWeek}`,
+      detail: 'Atendidos o por atender esta semana',
+      icon: 'share' as const,
       tone: 'default' as const,
     },
-  ], [todayPendingCount, nextReservation, daysWithOpenCapacity, scheduleDays.length]);
+  ], [analyticsSummary, todayCount, todayDiff, todayPendingCount, nextReservation, uniqueClientsWeek]);
+  const upcomingReservations = useMemo(() => {
+    return [...agendaReservations]
+      .filter((reservation) => {
+        if (!reservation.date) return false;
+        if (reservation.date < todayKey) return false;
+        if (reservation.date === todayKey) {
+          const minutes = parseTimeToMinutes(reservation.time);
+          if (minutes === null || minutes < currentMinutes) return false;
+        }
+        return true;
+      })
+      .sort((a, b) => {
+        const aKey = `${a.date}T${a.time || '00:00'}`;
+        const bKey = `${b.date}T${b.time || '00:00'}`;
+        return aKey.localeCompare(bKey);
+      })
+      .slice(0, 5);
+  }, [agendaReservations, currentMinutes, todayKey]);
 
   const handlePrev = () => {
     if (!canNavigateCalendar) return;
@@ -1309,8 +1342,7 @@ export default function ProfesionalDashboardPage() {
                     </p>
                   ) : null}
 
-                  <div className="grid gap-3 lg:grid-cols-[minmax(0,1.2fr)_minmax(320px,0.8fr)]">
-                    <div className="grid gap-2.5 sm:grid-cols-3">
+                  <div className="grid gap-2.5 sm:grid-cols-2 xl:grid-cols-4">
                       {agendaOverviewCards.map((item) => (
                         <DashboardStatCard
                           key={item.label}
@@ -1321,95 +1353,87 @@ export default function ProfesionalDashboardPage() {
                           tone={item.tone}
                         />
                       ))}
-                    </div>
-
-                    <LockedFeature requiredPlan="PROFESIONAL" currentPlan={profile?.professionalPlan}>
-                      <Card className="rounded-[18px] border-white/70 bg-white/95 p-4 shadow-[0_4px_14px_rgba(15,23,42,0.04)]">
-                        <div className="flex flex-wrap items-start justify-between gap-2">
-                          <div>
-                            <p className="text-[0.62rem] uppercase tracking-[0.3em] text-[#94A3B8]">
-                              Tendencia
-                            </p>
-                            <h3 className="mt-1 text-base font-semibold tracking-[-0.02em] text-[#0E2A47]">
-                              Pulso semanal
-                            </h3>
-                          </div>
-                          {canViewAnalytics && !featureAccess.advancedAnalytics ? (
-                            <span className="rounded-full border border-[color:var(--premium-soft)] bg-[color:var(--premium-soft)] px-2.5 py-1 text-[0.65rem] font-semibold text-[color:var(--premium-strong)]">
-                              Analytics básicos
-                            </span>
-                          ) : null}
-                        </div>
-
-                        {canViewAnalytics ? (
-                          <div className="mt-3 grid gap-2 sm:grid-cols-3">
-                            {stats.map((item, index) => (
-                              <div
-                                key={item.label}
-                                className={cn(
-                                  'rounded-[18px] border px-3 py-2.5',
-                                  index === 0
-                                    ? 'border-[#f4dcc7] bg-[#fff5e8]'
-                                    : index === 1
-                                      ? 'border-[#cdeee9] bg-[#f0fffc]'
-                                      : 'border-[#E2E8F0] bg-[#F8FAFC]',
-                                )}
-                              >
-                                <p className="text-[0.58rem] uppercase tracking-[0.24em] text-[#94A3B8]">
-                                  {item.label}
-                                </p>
-                                <p className="mt-1.5 text-lg font-semibold leading-none text-[#0E2A47] sm:text-xl">
-                                  {item.value}
-                                </p>
-                                <p className="mt-1 text-[0.72rem] leading-snug text-[#64748B]">
-                                  {item.detail}
-                                </p>
-                              </div>
-                            ))}
-                          </div>
-                        ) : (
-                          <div className="mt-3 rounded-[16px] border border-dashed border-[#D9E2EC] bg-[#F8FAFC] px-3 py-2.5 text-xs text-[#64748B]">
-                            Analytics todavía no activos para este plan. La agenda sigue mostrando los turnos reales del rango visible.
-                          </div>
-                        )}
-                      </Card>
-                    </LockedFeature>
                   </div>
                 </section>
+                <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_360px] lg:items-start">
+                  <section className="flex flex-col rounded-[18px] border border-white/70 bg-white/95 p-4 shadow-[0_4px_14px_rgba(15,23,42,0.04)] sm:p-5">
+                    <DashboardSectionHeading
+                      eyebrow="Agenda"
+                      title={calendarView === 'week' ? 'Agenda semanal' : 'Calendario mensual'}
+                      description={calendarView === 'week' ? calendarWeekLabel : monthLabel}
+                    />
 
-                <section className="flex flex-col rounded-[18px] border border-white/70 bg-white/95 p-4 shadow-[0_4px_14px_rgba(15,23,42,0.04)] sm:p-5">
-                  <DashboardSectionHeading
-                    eyebrow="Agenda"
-                    title={calendarView === 'week' ? 'Semana actual' : 'Calendario mensual'}
-                    description={calendarView === 'week' ? calendarWeekLabel : monthLabel}
-                  />
+                    <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <div className="flex rounded-full border border-[color:var(--border-soft)] bg-white p-0.5 shadow-[var(--shadow-card)]">
+                          <button
+                            type="button"
+                              onClick={() => handleSetView('week')}
+                              className={`rounded-full px-4 py-1.5 text-xs font-semibold transition ${
+                                calendarView === 'week'
+                                ? 'bg-[color:var(--primary)] text-white'
+                                : 'text-[color:var(--ink-faint)] hover:text-[color:var(--ink-muted)]'
+                              }`}
+                          >
+                            Semanal
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleSetView('month')}
+                            disabled={!canUseMonthlyCalendar}
+                            className={`relative rounded-full px-4 py-1.5 text-xs font-semibold transition ${
+                              calendarView === 'month'
+                                ? 'bg-[color:var(--primary)] text-white'
+                                : 'text-[color:var(--ink-faint)] hover:text-[color:var(--ink-muted)]'
+                            } ${!canUseMonthlyCalendar ? 'cursor-not-allowed opacity-45' : ''}`}
+                          >
+                            Mensual
+                            {!canUseMonthlyCalendar && (
+                              <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-[color:var(--premium-soft)] text-[color:var(--premium-strong)]">
+                                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                                  <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                                </svg>
+                              </span>
+                            )}
+                          </button>
+                        </div>
 
-                  <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <div className="flex rounded-full border border-[color:var(--border-soft)] bg-white p-0.5 shadow-[var(--shadow-card)]">
-                        <button
-                          type="button"
-                            onClick={() => handleSetView('week')}
-                            className={`rounded-full px-4 py-1.5 text-xs font-semibold transition ${
-                              calendarView === 'week'
-                              ? 'bg-[color:var(--primary)] text-white'
-                              : 'text-[color:var(--ink-faint)] hover:text-[color:var(--ink-muted)]'
+                        {!canUseMonthlyCalendar ? (
+                          <p className="text-xs text-[color:var(--ink-muted)]">
+                            La vista mensual queda disponible en Premium.
+                          </p>
+                        ) : null}
+
+                        <div className="relative flex items-center gap-0.5 rounded-full border border-[color:var(--border-soft)] bg-white px-1 py-1 shadow-[var(--shadow-card)]">
+                          <button
+                            type="button"
+                            onClick={handlePrev}
+                            disabled={!canNavigateCalendar}
+                            className={`rounded-full px-2 py-1 text-sm transition ${
+                              canNavigateCalendar
+                                ? 'text-[color:var(--ink-muted)] hover:bg-[color:var(--surface-soft)] hover:text-[color:var(--ink)]'
+                                : 'cursor-not-allowed text-[color:var(--ink-faint)] opacity-45'
                             }`}
-                        >
-                          Semanal
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleSetView('month')}
-                          disabled={!canUseMonthlyCalendar}
-                          className={`relative rounded-full px-4 py-1.5 text-xs font-semibold transition ${
-                            calendarView === 'month'
-                              ? 'bg-[color:var(--primary)] text-white'
-                              : 'text-[color:var(--ink-faint)] hover:text-[color:var(--ink-muted)]'
-                          } ${!canUseMonthlyCalendar ? 'cursor-not-allowed opacity-45' : ''}`}
-                        >
-                          Mensual
-                          {!canUseMonthlyCalendar && (
+                          >
+                            ‹
+                          </button>
+                          <span className="min-w-[120px] text-center text-xs font-medium text-[color:var(--ink-muted)]">
+                            {calendarView === 'week' ? calendarWeekLabel : monthLabel}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={handleNext}
+                            disabled={!canNavigateCalendar}
+                            className={`rounded-full px-2 py-1 text-sm transition ${
+                              canNavigateCalendar
+                                ? 'text-[color:var(--ink-muted)] hover:bg-[color:var(--surface-soft)] hover:text-[color:var(--ink)]'
+                                : 'cursor-not-allowed text-[color:var(--ink-faint)] opacity-45'
+                            }`}
+                          >
+                            ›
+                          </button>
+                          {!canNavigateCalendar && (
                             <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-[color:var(--premium-soft)] text-[color:var(--premium-strong)]">
                               <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                                 <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
@@ -1417,119 +1441,182 @@ export default function ProfesionalDashboardPage() {
                               </svg>
                             </span>
                           )}
+                        </div>
+
+                        {!canNavigateCalendar ? (
+                          <p className="text-xs text-[color:var(--ink-muted)]">
+                            La navegación por semanas se habilita desde Pro.
+                          </p>
+                        ) : null}
+
+                        <button
+                          type="button"
+                          onClick={handleToday}
+                          className="rounded-full border border-[#E2E7EC] bg-white px-3 py-1.5 text-xs font-semibold text-[#64748B] transition hover:-translate-y-0.5 hover:shadow-sm"
+                        >
+                          Hoy
                         </button>
                       </div>
+                    </div>
 
-                      {!canUseMonthlyCalendar ? (
-                        <p className="text-xs text-[color:var(--ink-muted)]">
-                          La vista mensual queda disponible en Premium.
+                    {calendarView === 'week' ? (
+                      <div className="mt-2.5 flex flex-wrap items-center justify-between gap-3 rounded-[16px] border border-[#E2E8F0] bg-[#F8FAFC] px-3 py-2.5">
+                        <div className="flex flex-wrap gap-2">
+                          {[
+                            { label: 'Madrugada', value: 'lateNight' as const },
+                            { label: 'Mañana', value: 'morning' as const },
+                            { label: 'Tarde', value: 'afternoon' as const },
+                            { label: 'Noche', value: 'evening' as const },
+                            { label: 'Ahora', value: 'now' as const },
+                          ].map((segment) => (
+                            <button
+                              key={segment.value}
+                              type="button"
+                              onClick={() => handleJumpToDaySegment(segment.value)}
+                              className="rounded-full border border-[#D9E2EC] bg-white px-3 py-1.5 text-[0.72rem] font-semibold text-[#475569] transition hover:border-[#BFD3E4] hover:bg-[#FDFEFF]"
+                            >
+                              {segment.label}
+                            </button>
+                          ))}
+                        </div>
+                        <p className="text-[0.72rem] text-[#64748B]">
+                          Base 24h con foco inicial
+                          {weekFocusWindow.isFallback ? ' por fallback' : ' según horarios y reservas'}
                         </p>
-                      ) : null}
+                      </div>
+                    ) : null}
 
-                      <div className="relative flex items-center gap-0.5 rounded-full border border-[color:var(--border-soft)] bg-white px-1 py-1 shadow-[var(--shadow-card)]">
-                        <button
-                          type="button"
-                          onClick={handlePrev}
-                          disabled={!canNavigateCalendar}
-                          className={`rounded-full px-2 py-1 text-sm transition ${
-                            canNavigateCalendar
-                              ? 'text-[color:var(--ink-muted)] hover:bg-[color:var(--surface-soft)] hover:text-[color:var(--ink)]'
-                              : 'cursor-not-allowed text-[color:var(--ink-faint)] opacity-45'
-                          }`}
-                        >
-                          ‹
-                        </button>
-                        <span className="min-w-[120px] text-center text-xs font-medium text-[color:var(--ink-muted)]">
-                          {calendarView === 'week' ? calendarWeekLabel : monthLabel}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={handleNext}
-                          disabled={!canNavigateCalendar}
-                          className={`rounded-full px-2 py-1 text-sm transition ${
-                            canNavigateCalendar
-                              ? 'text-[color:var(--ink-muted)] hover:bg-[color:var(--surface-soft)] hover:text-[color:var(--ink)]'
-                              : 'cursor-not-allowed text-[color:var(--ink-faint)] opacity-45'
-                          }`}
-                        >
-                          ›
-                        </button>
-                        {!canNavigateCalendar && (
-                          <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-[color:var(--premium-soft)] text-[color:var(--premium-strong)]">
-                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                              <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
-                              <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-                            </svg>
-                          </span>
+                    {calendarView === 'week' ? (
+                      <div className="min-h-[540px] lg:h-[min(72vh,860px)]">
+                        <WeekCalendarBoard
+                          weekDays={weekDays}
+                          todayKey={todayKey}
+                          reservationsByDate={reservationsByDate}
+                          visibleCalendarRange={visibleCalendarRange}
+                          dayLayoutsByDate={dayLayoutsByDate}
+                          currentTimeIndicator={currentTimeIndicator}
+                          scrollContainerRef={weekCalendarScrollRef}
+                          onReservationOpen={handleOpenReservation}
+                        />
+                      </div>
+                    ) : (
+                      <div className="min-h-[540px] lg:max-h-[min(72vh,860px)] lg:overflow-auto">
+                        <MonthCalendarBoard
+                          monthGridDays={monthGridDays}
+                          reservationsByDate={reservationsByDate}
+                          monthLabel={monthLabel}
+                        />
+                      </div>
+                    )}
+                  </section>
+
+                  <aside className="space-y-4 lg:sticky lg:top-4">
+                    <Card className="rounded-[18px] border-white/70 bg-white/95 p-4 shadow-[0_4px_14px_rgba(15,23,42,0.04)]">
+                      <DashboardSectionHeading
+                        title="Reservas próximas"
+                        description="Lo inmediato del rango visible."
+                        action={(
+                          <Button
+                            type="button"
+                            size="sm"
+                            onClick={() => {
+                              requestNavigation('/profesional/dashboard/reservas');
+                            }}
+                          >
+                            Ver todas
+                          </Button>
+                        )}
+                      />
+                      <div className="mt-4 space-y-2.5">
+                        {upcomingReservations.length === 0 ? (
+                          <div className="rounded-[14px] border border-dashed border-[#D9E2EC] bg-[#F8FAFC] px-3 py-4 text-sm text-[#64748B]">
+                            No hay reservas próximas para mostrar.
+                          </div>
+                        ) : (
+                          upcomingReservations.map((reservation) => {
+                            const statusBadge = getReservationStatusBadge(reservation.status);
+                            return (
+                              <button
+                                key={reservation.id}
+                                type="button"
+                                onClick={() => handleOpenReservation(reservation)}
+                                className="flex w-full items-start gap-3 rounded-[14px] border border-[#E2E8F0] bg-white px-3 py-3 text-left transition hover:border-[#CBD5E1] hover:bg-[#FCFDFE]"
+                              >
+                                <div className="w-14 shrink-0">
+                                  <p className="text-sm font-semibold text-[#0E2A47]">
+                                    {reservation.time || '--:--'}
+                                  </p>
+                                  <p className="mt-0.5 text-[0.72rem] text-[#64748B]">
+                                    {formatDateShort(reservation.date)}
+                                  </p>
+                                </div>
+                                <div className="min-w-0 flex-1">
+                                  <p className="truncate text-sm font-semibold text-[#0E2A47]">
+                                    {reservation.clientName || 'Cliente'}
+                                  </p>
+                                  <p className="mt-0.5 truncate text-[0.78rem] text-[#64748B]">
+                                    {reservation.serviceName || 'Servicio'}
+                                  </p>
+                                </div>
+                                <span className={`shrink-0 rounded-full px-2.5 py-1 text-[0.68rem] font-semibold ${statusBadge.className}`}>
+                                  {statusBadge.label}
+                                </span>
+                              </button>
+                            );
+                          })
                         )}
                       </div>
+                    </Card>
 
-                      {!canNavigateCalendar ? (
-                        <p className="text-xs text-[color:var(--ink-muted)]">
-                          La navegación por semanas se habilita desde Pro.
-                        </p>
-                      ) : null}
+                    <LockedFeature requiredPlan="PROFESIONAL" currentPlan={profile?.professionalPlan}>
+                      <Card className="rounded-[18px] border-white/70 bg-white/95 p-4 shadow-[0_4px_14px_rgba(15,23,42,0.04)]">
+                        <DashboardSectionHeading
+                          title="Pulso semanal"
+                          description="Ocupación y actividad comercial como panel secundario."
+                          action={
+                            canViewAnalytics && !featureAccess.advancedAnalytics ? (
+                              <span className="rounded-full border border-[color:var(--premium-soft)] bg-[color:var(--premium-soft)] px-2.5 py-1 text-[0.65rem] font-semibold text-[color:var(--premium-strong)]">
+                                Analytics básicos
+                              </span>
+                            ) : null
+                          }
+                        />
 
-                      <button
-                        type="button"
-                        onClick={handleToday}
-                        className="rounded-full border border-[#E2E7EC] bg-white px-3 py-1.5 text-xs font-semibold text-[#64748B] transition hover:-translate-y-0.5 hover:shadow-sm"
-                      >
-                        Hoy
-                      </button>
-                    </div>
-                  </div>
-
-                  {calendarView === 'week' ? (
-                    <div className="mt-2.5 flex flex-wrap items-center justify-between gap-3 rounded-[18px] border border-[#E2E8F0] bg-[#F8FAFC] px-3 py-2.5">
-                      <div className="flex flex-wrap gap-2">
-                        {[
-                          { label: 'Madrugada', value: 'lateNight' as const },
-                          { label: 'Mañana', value: 'morning' as const },
-                          { label: 'Tarde', value: 'afternoon' as const },
-                          { label: 'Noche', value: 'evening' as const },
-                          { label: 'Ahora', value: 'now' as const },
-                        ].map((segment) => (
-                          <button
-                            key={segment.value}
-                            type="button"
-                            onClick={() => handleJumpToDaySegment(segment.value)}
-                            className="rounded-full border border-[#D9E2EC] bg-white px-3 py-1.5 text-[0.72rem] font-semibold text-[#475569] transition hover:border-[#BFD3E4] hover:bg-[#FDFEFF]"
-                          >
-                            {segment.label}
-                          </button>
-                        ))}
-                      </div>
-                      <p className="text-[0.72rem] text-[#64748B]">
-                        Base 24h con foco inicial
-                        {weekFocusWindow.isFallback ? ' por fallback' : ' según horarios y reservas'}
-                      </p>
-                    </div>
-                  ) : null}
-
-                  {calendarView === 'week' ? (
-                    <div className="min-h-[540px] lg:h-[min(72vh,860px)]">
-                      <WeekCalendarBoard
-                        weekDays={weekDays}
-                        todayKey={todayKey}
-                        reservationsByDate={reservationsByDate}
-                        visibleCalendarRange={visibleCalendarRange}
-                        dayLayoutsByDate={dayLayoutsByDate}
-                        currentTimeIndicator={currentTimeIndicator}
-                        scrollContainerRef={weekCalendarScrollRef}
-                        onReservationOpen={handleOpenReservation}
-                      />
-                    </div>
-                  ) : (
-                    <div className="min-h-[540px] lg:max-h-[min(72vh,860px)] lg:overflow-auto">
-                      <MonthCalendarBoard
-                        monthGridDays={monthGridDays}
-                        reservationsByDate={reservationsByDate}
-                        monthLabel={monthLabel}
-                      />
-                    </div>
-                  )}
-                </section>
+                        {canViewAnalytics ? (
+                          <div className="mt-4 space-y-2.5">
+                            {stats.map((item, index) => (
+                              <div
+                                key={item.label}
+                                className={cn(
+                                  'rounded-[14px] border px-3 py-3',
+                                  index === 0
+                                    ? 'border-[#F3DEC0] bg-[#FFF9F1]'
+                                    : index === 1
+                                      ? 'border-[#CDEEE9] bg-[#F0FFFC]'
+                                      : 'border-[#E2E8F0] bg-[#F8FAFC]',
+                                )}
+                              >
+                                <p className="text-[0.58rem] uppercase tracking-[0.22em] text-[#94A3B8]">
+                                  {item.label}
+                                </p>
+                                <p className="mt-1.5 text-xl font-semibold leading-none text-[#0E2A47]">
+                                  {item.value}
+                                </p>
+                                <p className="mt-1 text-[0.74rem] leading-snug text-[#64748B]">
+                                  {item.detail}
+                                </p>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="mt-4 rounded-[14px] border border-dashed border-[#D9E2EC] bg-[#F8FAFC] px-3 py-3 text-xs text-[#64748B]">
+                            Analytics todavía no activos para este plan. La agenda sigue mostrando los turnos reales del rango visible.
+                          </div>
+                        )}
+                      </Card>
+                    </LockedFeature>
+                  </aside>
+                </div>
               </div>
       {selectedReservation ? (
         <div className="fixed inset-0 z-50 flex justify-end">

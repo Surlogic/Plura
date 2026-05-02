@@ -12,7 +12,7 @@ export default function ProfesionalNotificationsPage() {
       profile={profile}
       active="Notificaciones"
       maxWidthClassName="max-w-6xl"
-      contentClassName="gap-6 lg:py-8"
+      contentClassName="gap-6"
     >
       <ProfessionalNotificationsCenter />
     </ProfessionalDashboardShell>

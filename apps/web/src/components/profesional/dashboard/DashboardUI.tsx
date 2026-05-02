@@ -261,6 +261,66 @@ export const DashboardHero = memo(function DashboardHero({
   );
 });
 
+type DashboardPageHeaderProps = {
+  eyebrow?: string;
+  title: string;
+  description?: string;
+  actions?: ReactNode;
+  meta?: ReactNode;
+  className?: string;
+  withDivider?: boolean;
+};
+
+export const DashboardPageHeader = memo(function DashboardPageHeader({
+  eyebrow,
+  title,
+  description,
+  actions,
+  meta,
+  className,
+  withDivider = true,
+}: DashboardPageHeaderProps) {
+  return (
+    <div
+      className={cn(
+        'flex flex-col gap-3 py-3 lg:flex-row lg:items-start lg:justify-between',
+        withDivider && 'border-b border-[color:var(--border-soft)]',
+        className,
+      )}
+    >
+      <div className="min-w-0 flex-1">
+        {eyebrow ? (
+          <p className="text-[0.68rem] font-semibold uppercase tracking-[0.2em] text-[color:var(--ink-faint)]">
+            {eyebrow}
+          </p>
+        ) : null}
+        <div className="flex flex-col gap-2 lg:flex-row lg:items-end lg:justify-between">
+          <div className="min-w-0">
+            <h1 className="text-xl font-semibold tracking-[-0.03em] text-[color:var(--ink)] sm:text-2xl">
+              {title}
+            </h1>
+            {description ? (
+              <p className="mt-1 max-w-3xl text-sm text-[color:var(--ink-muted)]">
+                {description}
+              </p>
+            ) : null}
+          </div>
+        </div>
+        {meta ? (
+          <div className="mt-3 flex flex-wrap gap-2">
+            {meta}
+          </div>
+        ) : null}
+      </div>
+      {actions ? (
+        <div className="flex shrink-0 flex-wrap items-center gap-2 lg:justify-end">
+          {actions}
+        </div>
+      ) : null}
+    </div>
+  );
+});
+
 type DashboardHeaderBadgeProps = {
   children: ReactNode;
   tone?: 'default' | 'accent' | 'success' | 'warning';
@@ -304,7 +364,7 @@ const statToneClassNames = {
   accent:
     'border-[color:var(--border-soft)] bg-[color:var(--surface-soft)] text-[color:var(--ink)]',
   warm:
-    'border-[color:var(--premium-soft)] bg-[rgba(200,138,243,0.08)] text-[color:var(--ink)]',
+    'border-[#F3DEC0] bg-[#FFF9F1] text-[color:var(--ink)]',
   dark:
     'border-white/12 bg-[linear-gradient(160deg,var(--brand-navy)_0%,var(--brand-navy-soft)_54%,var(--brand-navy-elevated)_100%)] text-[color:var(--text-on-dark)]',
 };
@@ -320,7 +380,7 @@ export const DashboardStatCard = memo(function DashboardStatCard({
   return (
     <div
       className={cn(
-        'rounded-[20px] border p-4 shadow-[0_12px_30px_rgba(15,23,42,0.06)]',
+        'rounded-[16px] border p-3.5 shadow-[0_4px_12px_rgba(15,23,42,0.04)]',
         statToneClassNames[tone],
         className,
       )}
@@ -328,20 +388,20 @@ export const DashboardStatCard = memo(function DashboardStatCard({
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className={cn(
-          'text-[0.68rem] font-semibold uppercase tracking-[0.28em]',
+          'text-[0.65rem] font-semibold uppercase tracking-[0.22em]',
           tone === 'dark' ? 'text-[color:var(--text-on-dark-secondary)]' : 'text-[color:var(--ink-muted)]',
           )}>
             {label}
           </p>
           <p className={cn(
-            'mt-2.5 text-[1.6rem] font-semibold tracking-[-0.04em] sm:text-[1.8rem]',
+            'mt-2 text-[1.35rem] font-semibold tracking-[-0.04em] sm:text-[1.55rem]',
             tone === 'dark' ? 'text-[color:var(--text-on-dark)]' : 'text-[color:var(--ink)]',
           )}>
             {value}
           </p>
           {detail ? (
             <p className={cn(
-              'mt-1.5 text-xs sm:text-[0.82rem]',
+              'mt-1 text-[0.76rem] sm:text-[0.8rem]',
               tone === 'dark' ? 'text-[color:var(--text-on-dark-secondary)]' : 'text-[color:var(--ink-muted)]',
             )}>
               {detail}
@@ -349,7 +409,7 @@ export const DashboardStatCard = memo(function DashboardStatCard({
           ) : null}
         </div>
         <span className={cn(
-          'inline-flex h-10 w-10 items-center justify-center rounded-[14px]',
+          'inline-flex h-9 w-9 items-center justify-center rounded-[12px]',
           tone === 'dark' ? 'border border-white/14 bg-white/10 text-[color:var(--text-on-dark)]' : 'border border-[color:var(--border-soft)] bg-[color:var(--surface-soft)] text-[color:var(--primary)]',
         )}>
           <DashboardIcon name={icon} className="h-[18px] w-[18px]" />

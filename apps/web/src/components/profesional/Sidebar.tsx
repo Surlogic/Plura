@@ -122,15 +122,18 @@ function ProfesionalSidebar({ profile, active }: SidebarProps) {
   return (
     <aside
       ref={rootRef}
-      className="relative min-h-full overflow-x-hidden rounded-r-[24px] border-r border-[color:var(--border-soft)] bg-[color:var(--sidebar-surface)] px-4 py-5 text-[color:var(--ink)]"
+      className="relative min-h-full overflow-x-hidden border-r border-[color:var(--border-soft)] bg-[#F8FAFC] px-3 py-4 text-[color:var(--ink)]"
     >
-      <div className="border-b border-[color:var(--border-soft)] pb-4">
-        <div className="flex justify-center">
+      <div className="border-b border-[color:var(--border-soft)] pb-3">
+        <div className="flex items-center justify-between gap-3 px-1">
           <BrandLogo href="/" variant="mobile" className="justify-center" />
+          <span className="rounded-full border border-[color:var(--premium-soft)] bg-[color:var(--premium-soft)] px-2 py-1 text-[0.52rem] font-semibold uppercase tracking-[0.08em] text-[color:var(--premium-strong)]">
+            {planLabel}
+          </span>
         </div>
 
-        <div className="mt-5 flex flex-col items-center text-center">
-          <div className="relative flex h-12 w-12 items-center justify-center overflow-hidden rounded-[16px] border border-[color:var(--border-soft)] bg-white text-sm font-semibold text-[color:var(--primary)] shadow-[var(--shadow-card)]">
+        <div className="mt-4 flex items-center gap-3 px-1">
+          <div className="relative flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-[12px] border border-[color:var(--border-soft)] bg-white text-sm font-semibold text-[color:var(--primary)]">
             {resolvedLogoUrl ? (
               <Image
                 src={resolvedLogoUrl}
@@ -144,27 +147,24 @@ function ProfesionalSidebar({ profile, active }: SidebarProps) {
               initials
             )}
           </div>
-          <div className="mt-3 flex flex-wrap justify-center gap-1.5">
-            <Badge variant="success" className="px-2 py-1 text-[0.54rem] tracking-[0.12em]">
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-1.5">
+              <p className="truncate text-[0.88rem] font-semibold">{displayName}</p>
+              <Badge variant="success" className="px-1.5 py-0.5 text-[0.48rem] tracking-[0.08em]">
               Profesional
-            </Badge>
-            <span className="rounded-full border border-[color:var(--premium-soft)] bg-[color:var(--premium-soft)] px-2 py-1 text-[0.54rem] font-semibold uppercase tracking-[0.08em] text-[color:var(--premium-strong)]">
-              {planLabel}
-            </span>
-          </div>
-          <div className="mt-3 min-w-0 max-w-full">
-            <p className="truncate text-[0.95rem] font-semibold">{displayName}</p>
-            <p className="mt-1 text-[0.82rem] text-[color:var(--ink-muted)]">{displayMeta}</p>
+              </Badge>
+            </div>
+            <p className="mt-0.5 truncate text-[0.76rem] text-[color:var(--ink-muted)]">{displayMeta}</p>
           </div>
         </div>
 
         <ProfessionalNotificationBell onNavigate={requestNavigation} />
       </div>
 
-      <div className="relative mt-4 space-y-4">
+      <div className="relative mt-3 space-y-3">
         {menuSections.map((section) => (
           <div key={section.label}>
-            <p className="px-1 text-[0.58rem] font-semibold uppercase tracking-[0.2em] text-[color:var(--ink-muted)]">
+            <p className="px-1 text-[0.56rem] font-semibold uppercase tracking-[0.18em] text-[color:var(--ink-muted)]">
               {section.label}
             </p>
             <nav className="mt-2 space-y-1">
@@ -179,11 +179,11 @@ function ProfesionalSidebar({ profile, active }: SidebarProps) {
                   : false;
                 const isDisabled = item.disabled || isLocked;
                 const itemClassName = cn(
-                  'group flex w-full items-center gap-3 rounded-[12px] border px-3 py-2 text-left transition',
+                  'group flex w-full items-center gap-2.5 rounded-[10px] border px-2.5 py-2 text-left transition',
                   isActive && !isLocked
-                    ? 'border-[color:var(--primary-soft)] bg-[color:var(--primary-soft)] text-[color:var(--primary-strong)] shadow-[var(--shadow-card)]'
+                    ? 'border-[color:var(--primary-soft)] bg-white text-[color:var(--primary-strong)]'
                     : isDisabled
-                      ? 'cursor-not-allowed border-[color:var(--border-soft)] bg-white/60 text-[color:var(--ink-faint)]'
+                      ? 'cursor-not-allowed border-transparent bg-transparent text-[color:var(--ink-faint)]'
                       : 'border-transparent bg-transparent text-[color:var(--ink)] hover:border-[color:var(--border-soft)] hover:bg-white',
                 );
 
@@ -191,17 +191,17 @@ function ProfesionalSidebar({ profile, active }: SidebarProps) {
                   <>
                     <span
                       className={cn(
-                        'inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[10px] border',
+                        'inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-[8px] border',
                         isActive && !isLocked
-                          ? 'border-white bg-white text-[color:var(--primary)]'
+                          ? 'border-[color:var(--primary-soft)] bg-[color:var(--primary-soft)] text-[color:var(--primary)]'
                           : isLocked
-                            ? 'border-[color:var(--border-soft)] bg-[color:var(--surface-soft)] text-[color:var(--ink-faint)]'
-                            : 'border-[color:var(--border-soft)] bg-[color:var(--surface-soft)] text-[color:var(--ink)]',
+                            ? 'border-[color:var(--border-soft)] bg-transparent text-[color:var(--ink-faint)]'
+                            : 'border-[color:var(--border-soft)] bg-white text-[color:var(--ink)]',
                       )}
                     >
-                      <DashboardIcon name={item.icon} className="h-4 w-4" />
+                      <DashboardIcon name={item.icon} className="h-[15px] w-[15px]" />
                     </span>
-                    <span className={cn('min-w-0 flex-1 truncate text-[0.9rem] font-semibold', isLocked && 'opacity-60')}>
+                    <span className={cn('min-w-0 flex-1 truncate text-[0.84rem] font-medium', isLocked && 'opacity-60')}>
                       {item.label}
                     </span>
                     {(isLocked && item.requiredPlan) || (showsFeatureHint && hintedPlan) ? (

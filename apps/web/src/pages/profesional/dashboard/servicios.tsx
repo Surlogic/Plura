@@ -13,7 +13,7 @@ import type { BookingProcessingFeeMode, ServicePaymentType } from '@/types/profe
 import { resolveAssetUrl } from '@/utils/assetUrl';
 import {
   DashboardHeaderBadge,
-  DashboardHero,
+  DashboardPageHeader,
   DashboardSectionHeading,
   DashboardStatCard,
 } from '@/components/profesional/dashboard/DashboardUI';
@@ -547,10 +547,8 @@ export default function ProfesionalServicesBuilderPage() {
   return (
     <ProfessionalDashboardShell profile={profile} active="Servicios">
       <div className="space-y-6">
-                <DashboardHero
+                <DashboardPageHeader
                   eyebrow="Oferta comercial"
-                  icon="servicios"
-                  accent="warm"
                   title="Servicios"
                   description="Separá catálogo y editor para actualizar la oferta con más jerarquía visual."
                   meta={
@@ -591,7 +589,7 @@ export default function ProfesionalServicesBuilderPage() {
                 ) : null}
 
                 {showSkeleton ? (
-                  <div className="rounded-[28px] border border-white/70 bg-white/95 p-6 shadow-[0_18px_40px_rgba(15,23,42,0.12)]">
+                  <div className="rounded-[18px] border border-white/70 bg-white/95 p-5 shadow-[0_4px_14px_rgba(15,23,42,0.04)]">
                     <div className="h-5 w-52 rounded-full bg-[#E2E7EC]" />
                     <div className="mt-4 space-y-3">
                       <div className="h-10 w-full rounded-[14px] bg-[#F1F5F9]" />
@@ -625,7 +623,7 @@ export default function ProfesionalServicesBuilderPage() {
                     </div>
 
                     <div className="grid gap-6 lg:grid-cols-[1.08fr,0.92fr]">
-                      <div className="rounded-[24px] border border-white/70 bg-white/95 p-5 shadow-[0_16px_36px_rgba(15,23,42,0.12)]">
+                      <div className="rounded-[18px] border border-white/70 bg-white/95 p-5 shadow-[0_4px_14px_rgba(15,23,42,0.04)]">
                         <DashboardSectionHeading
                           eyebrow="Catálogo"
                           title="Listado de servicios"
@@ -738,7 +736,7 @@ export default function ProfesionalServicesBuilderPage() {
                         </div>
                       </div>
 
-                      <div className="rounded-[24px] border border-white/70 bg-white/95 p-5 shadow-[0_16px_36px_rgba(15,23,42,0.12)]">
+                      <div className="rounded-[18px] border border-white/70 bg-white/95 p-5 shadow-[0_4px_14px_rgba(15,23,42,0.04)]">
                         <DashboardSectionHeading
                           eyebrow={editingId ? 'Edición' : 'Alta'}
                           title={editingId ? 'Actualizar servicio' : 'Crear servicio'}

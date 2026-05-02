@@ -14,7 +14,7 @@ import { getGeoLocationSuggestions, type GeoLocationSuggestion } from '@/service
 import ImageUploader from '@/components/profesional/dashboard/ImageUploader';
 import {
   DashboardHeaderBadge,
-  DashboardHero,
+  DashboardPageHeader,
   DashboardSectionHeading,
   DashboardStatCard,
 } from '@/components/profesional/dashboard/DashboardUI';
@@ -407,10 +407,8 @@ export default function ProfesionalBusinessProfilePage() {
   return (
     <ProfessionalDashboardShell profile={profile} active="Perfil del negocio">
       <div className="space-y-6">
-            <DashboardHero
+            <DashboardPageHeader
               eyebrow="Presencia pública"
-              icon="negocio"
-              accent="teal"
               title="Perfil del negocio"
               description="Organizá identidad, ubicación y contacto como ajustes claros de una cuenta profesional."
               meta={
@@ -475,7 +473,7 @@ export default function ProfesionalBusinessProfilePage() {
             </div>
 
             {showSkeleton ? (
-              <div className="rounded-[28px] border border-white/70 bg-white/95 p-6 shadow-[0_18px_40px_rgba(15,23,42,0.12)]">
+              <div className="rounded-[18px] border border-white/70 bg-white/95 p-5 shadow-[0_4px_14px_rgba(15,23,42,0.04)]">
                 <div className="h-5 w-40 rounded-full bg-[#E2E7EC]" />
                 <div className="mt-4 space-y-3">
                   <div className="h-10 w-full rounded-[14px] bg-[#F1F5F9]" />
@@ -485,7 +483,7 @@ export default function ProfesionalBusinessProfilePage() {
               </div>
             ) : (
               <div className="space-y-6">
-                <div className="rounded-[24px] border border-white/70 bg-white/95 p-5 shadow-[0_16px_36px_rgba(15,23,42,0.12)]">
+                <div className="rounded-[18px] border border-white/70 bg-white/95 p-5 shadow-[0_4px_14px_rgba(15,23,42,0.04)]">
                   <DashboardSectionHeading
                     title="Identidad"
                     description="Nombre comercial, logo y rubros principales."
@@ -685,7 +683,7 @@ export default function ProfesionalBusinessProfilePage() {
                   </div>
                 </div>
 
-                <div className="rounded-[24px] border border-white/70 bg-white/95 p-5 shadow-[0_16px_36px_rgba(15,23,42,0.12)]">
+                <div className="rounded-[18px] border border-white/70 bg-white/95 p-5 shadow-[0_4px_14px_rgba(15,23,42,0.04)]">
                   <DashboardSectionHeading
                     title="Contacto"
                     description="Datos directos para que el cliente pueda escribir o llamar."
@@ -711,7 +709,7 @@ export default function ProfesionalBusinessProfilePage() {
                   </div>
                 </div>
 
-                <div className="rounded-[24px] border border-white/70 bg-white/95 p-5 shadow-[0_16px_36px_rgba(15,23,42,0.12)]">
+                <div className="rounded-[18px] border border-white/70 bg-white/95 p-5 shadow-[0_4px_14px_rgba(15,23,42,0.04)]">
                   <DashboardSectionHeading
                     title="Redes sociales"
                     description="Canales que refuerzan confianza y derivan tráfico."

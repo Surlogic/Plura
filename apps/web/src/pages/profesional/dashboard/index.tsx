@@ -14,7 +14,7 @@ import { useProfessionalDashboardUnsavedSection } from '@/context/ProfessionalDa
 import api from '@/services/api';
 import {
   DashboardHeaderBadge,
-  DashboardHero,
+  DashboardPageHeader,
   DashboardSectionHeading,
   DashboardStatCard,
 } from '@/components/profesional/dashboard/DashboardUI';
@@ -390,7 +390,7 @@ const WeekCalendarBoard = memo(function WeekCalendarBoard({
 }) {
   return (
     <div className="mt-3 min-h-[540px] overflow-x-auto lg:mt-2 lg:h-full">
-      <div className="min-h-[540px] min-w-[980px] overflow-hidden rounded-[24px] border border-[#E2E7EC] bg-white shadow-[0_20px_45px_rgba(15,23,42,0.08)] lg:flex lg:h-full lg:flex-col">
+      <div className="min-h-[540px] min-w-[980px] overflow-hidden rounded-[18px] border border-[#E2E7EC] bg-white shadow-[0_4px_14px_rgba(15,23,42,0.04)] lg:flex lg:h-full lg:flex-col">
         <div className="flex border-b border-[#E2E7EC] bg-[linear-gradient(180deg,#FAFCFE_0%,#F4F8FB_100%)]">
           <div className="sticky left-0 z-20 w-20 shrink-0 bg-[linear-gradient(180deg,#FAFCFE_0%,#F4F8FB_100%)] px-4 py-3 text-[0.6rem] uppercase tracking-[0.3em] text-[#94A3B8]">
             Hora
@@ -600,7 +600,7 @@ const MonthCalendarBoard = memo(function MonthCalendarBoard({
   monthLabel: string;
 }) {
   return (
-    <div className="mt-6 overflow-hidden rounded-[24px] border border-[#E2E7EC] bg-white shadow-[0_16px_36px_rgba(15,23,42,0.06)]">
+    <div className="mt-6 overflow-hidden rounded-[18px] border border-[#E2E7EC] bg-white shadow-[0_4px_14px_rgba(15,23,42,0.04)]">
       <div className="grid grid-cols-7 gap-1 border-b border-[#E2E7EC] bg-[#F8FAFC] px-2 text-center">
         {['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'].map((dayLabel) => (
           <div key={dayLabel} className="py-2 text-xs font-semibold text-[#94A3B8]">
@@ -1246,11 +1246,8 @@ export default function ProfesionalDashboardPage() {
     <ProfessionalDashboardShell profile={profile} active="Agenda" contentClassName="py-4 sm:py-6">
       <div className="flex flex-col gap-4">
                 <section className="space-y-3 lg:shrink-0">
-                  <DashboardHero
+                  <DashboardPageHeader
                     eyebrow="Centro operativo"
-                    icon="agenda"
-                    accent="ink"
-                    size="compact"
                     title={profile?.fullName ? `${profile.fullName}, este es tu tablero de hoy` : 'Tu tablero operativo de hoy'}
                     description="La agenda queda al frente con el contexto justo para resolver pendientes, próximos turnos y disponibilidad semanal."
                     meta={
@@ -1327,7 +1324,7 @@ export default function ProfesionalDashboardPage() {
                     </div>
 
                     <LockedFeature requiredPlan="PROFESIONAL" currentPlan={profile?.professionalPlan}>
-                      <Card className="border-white/70 bg-white/95 p-4">
+                      <Card className="rounded-[18px] border-white/70 bg-white/95 p-4 shadow-[0_4px_14px_rgba(15,23,42,0.04)]">
                         <div className="flex flex-wrap items-start justify-between gap-2">
                           <div>
                             <p className="text-[0.62rem] uppercase tracking-[0.3em] text-[#94A3B8]">
@@ -1380,7 +1377,7 @@ export default function ProfesionalDashboardPage() {
                   </div>
                 </section>
 
-                <section className="flex flex-col rounded-[24px] border border-white/70 bg-white/95 p-4 shadow-[0_18px_40px_rgba(15,23,42,0.08)] sm:p-5">
+                <section className="flex flex-col rounded-[18px] border border-white/70 bg-white/95 p-4 shadow-[0_4px_14px_rgba(15,23,42,0.04)] sm:p-5">
                   <DashboardSectionHeading
                     eyebrow="Agenda"
                     title={calendarView === 'week' ? 'Semana actual' : 'Calendario mensual'}

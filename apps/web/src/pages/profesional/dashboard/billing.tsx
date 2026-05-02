@@ -5,7 +5,7 @@ import ProfessionalDashboardShell from '@/components/profesional/dashboard/Profe
 import Button from '@/components/ui/Button';
 import {
   DashboardHeaderBadge,
-  DashboardHero,
+  DashboardPageHeader,
   DashboardSectionHeading,
   DashboardStatCard,
 } from '@/components/profesional/dashboard/DashboardUI';
@@ -177,10 +177,8 @@ export default function ProfesionalBillingPage() {
   return (
     <ProfessionalDashboardShell profile={profile} active="Facturación">
       <div className="space-y-6">
-              <DashboardHero
+              <DashboardPageHeader
                 eyebrow="Facturación"
-                icon="plan"
-                accent="ink"
                 title="Facturación y cobros"
                 description="Mantené separado el plan de Plura de la cuenta de Mercado Pago usada para cobrar reservas."
                 meta={
@@ -232,7 +230,7 @@ export default function ProfesionalBillingPage() {
               ) : null}
 
               {showSkeleton ? (
-                <div className="rounded-[28px] border border-white/70 bg-white/95 p-6 shadow-[0_18px_40px_rgba(15,23,42,0.12)]">
+                <div className="rounded-[18px] border border-white/70 bg-white/95 p-5 shadow-[0_4px_14px_rgba(15,23,42,0.04)]">
                   <div className="h-5 w-48 rounded-full bg-[#E2E7EC]" />
                   <div className="mt-4 space-y-3">
                     <div className="h-10 w-full rounded-[14px] bg-[#F1F5F9]" />
@@ -309,7 +307,7 @@ export default function ProfesionalBillingPage() {
                         <section
                           id="billing-plans"
                           ref={plansRef}
-                          className="rounded-[28px] border border-white/70 bg-white/95 p-5 shadow-[0_18px_40px_rgba(15,23,42,0.12)]"
+                          className="rounded-[18px] border border-white/70 bg-white/95 p-5 shadow-[0_4px_14px_rgba(15,23,42,0.04)]"
                         >
                           <DashboardSectionHeading
                             title="Planes disponibles"
@@ -334,7 +332,7 @@ export default function ProfesionalBillingPage() {
                         </section>
                       </>
                     ) : (
-                      <div className="rounded-[28px] border border-white/70 bg-white/95 p-5 shadow-[0_18px_40px_rgba(15,23,42,0.12)]">
+                      <div className="rounded-[18px] border border-white/70 bg-white/95 p-5 shadow-[0_4px_14px_rgba(15,23,42,0.04)]">
                         <div className="h-5 w-40 rounded-full bg-[#E2E7EC]" />
                         <div className="mt-4 space-y-3">
                           <div className="h-24 rounded-[20px] bg-[#F1F5F9]" />
@@ -364,7 +362,7 @@ export default function ProfesionalBillingPage() {
                           onRefresh={handleRefreshMercadoPagoConnection}
                         />
                       ) : (
-                        <div className="rounded-[28px] border border-white/70 bg-white/95 p-6 shadow-[0_18px_40px_rgba(15,23,42,0.12)]">
+                        <div className="rounded-[18px] border border-white/70 bg-white/95 p-5 shadow-[0_4px_14px_rgba(15,23,42,0.04)]">
                           <div className="h-5 w-56 rounded-full bg-[#E2E7EC]" />
                           <div className="mt-4 grid gap-4 sm:grid-cols-3">
                             <div className="h-24 rounded-[20px] bg-[#F1F5F9]" />

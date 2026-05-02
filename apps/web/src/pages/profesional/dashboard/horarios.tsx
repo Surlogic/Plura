@@ -11,7 +11,7 @@ import api from '@/services/api';
 import { useProfessionalDashboardUnsavedSection } from '@/context/ProfessionalDashboardUnsavedChangesContext';
 import {
   DashboardHeaderBadge,
-  DashboardHero,
+  DashboardPageHeader,
   DashboardSectionHeading,
   DashboardStatCard,
 } from '@/components/profesional/dashboard/DashboardUI';
@@ -491,10 +491,8 @@ export default function ProfesionalScheduleBuilderPage() {
   return (
     <ProfessionalDashboardShell profile={profile} active="Horarios de trabajo">
       <div className="space-y-6">
-            <DashboardHero
+            <DashboardPageHeader
               eyebrow="Disponibilidad"
-              icon="horarios"
-              accent="ink"
               title="Horarios de trabajo"
               description="Configurá la base semanal, las pausas y la duración de slots desde un layout más operativo."
               meta={
@@ -556,7 +554,7 @@ export default function ProfesionalScheduleBuilderPage() {
             </div>
 
             {showSkeleton ? (
-              <div className="rounded-[28px] border border-white/70 bg-white/95 p-6 shadow-[0_18px_40px_rgba(15,23,42,0.12)]">
+              <div className="rounded-[18px] border border-white/70 bg-white/95 p-5 shadow-[0_4px_14px_rgba(15,23,42,0.04)]">
                 <div className="h-5 w-52 rounded-full bg-[#E2E7EC]" />
                 <div className="mt-4 space-y-3">
                   <div className="h-10 w-full rounded-[14px] bg-[#F1F5F9]" />
@@ -569,7 +567,7 @@ export default function ProfesionalScheduleBuilderPage() {
                 <div className="space-y-6">
                   <div
                     ref={constructorRef}
-                    className="rounded-[24px] border border-white/70 bg-white/95 p-6 shadow-[0_16px_36px_rgba(15,23,42,0.12)]"
+                    className="rounded-[18px] border border-white/70 bg-white/95 p-5 shadow-[0_4px_14px_rgba(15,23,42,0.04)]"
                   >
                     <div>
                       <DashboardSectionHeading
@@ -775,7 +773,7 @@ export default function ProfesionalScheduleBuilderPage() {
                 </div>
 
                 <div className="space-y-6">
-                  <div className="rounded-[24px] border border-white/70 bg-white/95 p-5 shadow-[0_16px_36px_rgba(15,23,42,0.12)]">
+                  <div className="rounded-[18px] border border-white/70 bg-white/95 p-5 shadow-[0_4px_14px_rgba(15,23,42,0.04)]">
                     <p className="text-[0.65rem] uppercase tracking-[0.35em] text-[#94A3B8]">
                       Agenda
                     </p>
@@ -809,7 +807,7 @@ export default function ProfesionalScheduleBuilderPage() {
                     ) : null}
                   </div>
 
-                  <div className="rounded-[24px] border border-white/70 bg-white/95 p-5 shadow-[0_16px_36px_rgba(15,23,42,0.12)]">
+                  <div className="rounded-[18px] border border-white/70 bg-white/95 p-5 shadow-[0_4px_14px_rgba(15,23,42,0.04)]">
                     <p className="text-[0.65rem] uppercase tracking-[0.35em] text-[#94A3B8]">
                       Pausas programadas
                     </p>

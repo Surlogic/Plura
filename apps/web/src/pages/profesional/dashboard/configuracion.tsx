@@ -26,7 +26,7 @@ import { createProfessionalAppFeedback, getProfessionalAppFeedbackMine } from '@
 import AppFeedbackHistory from '@/components/shared/AppFeedbackHistory';
 import {
   DashboardHeaderBadge,
-  DashboardHero,
+  DashboardPageHeader,
   DashboardSectionHeading,
   DashboardStatCard,
 } from '@/components/profesional/dashboard/DashboardUI';
@@ -521,10 +521,8 @@ export default function ProfesionalSettingsPage() {
   return (
     <ProfessionalDashboardShell profile={profile} active="Configuración">
       <div className="space-y-6">
-              <DashboardHero
+              <DashboardPageHeader
                 eyebrow="Cuenta"
-                icon="configuracion"
-                accent="ink"
                 title="Configuración de cuenta"
                 description="Políticas, seguridad, apariencia y acciones sensibles en un solo panel."
                 meta={
@@ -553,7 +551,7 @@ export default function ProfesionalSettingsPage() {
               ) : null}
 
               {showSkeleton ? (
-                <div className="rounded-[28px] border border-white/70 bg-white/95 p-6 shadow-[0_18px_40px_rgba(15,23,42,0.12)]">
+                <div className="rounded-[18px] border border-white/70 bg-white/95 p-5 shadow-[0_4px_14px_rgba(15,23,42,0.04)]">
                   <div className="h-5 w-48 rounded-full bg-[#E2E7EC]" />
                   <div className="mt-4 space-y-3">
                     <div className="h-10 w-full rounded-[14px] bg-[#F1F5F9]" />
@@ -613,7 +611,7 @@ export default function ProfesionalSettingsPage() {
                     description="Confirmá el email principal para reforzar la identidad de la cuenta. El estado se actualiza en el dashboard sin requerir recarga manual."
                   />
 
-                  <div className="rounded-[28px] border border-white/70 bg-white/95 p-6 shadow-[0_18px_40px_rgba(15,23,42,0.12)]">
+                  <div className="rounded-[18px] border border-white/70 bg-white/95 p-5 shadow-[0_4px_14px_rgba(15,23,42,0.04)]">
                     <DashboardSectionHeading
                       eyebrow="Verificación"
                       title="Teléfono first-party"
@@ -959,7 +957,7 @@ export default function ProfesionalSettingsPage() {
                         )}
                       </div>
 
-                      <div className="rounded-[24px] border border-white/70 bg-white/95 p-5 shadow-[0_16px_36px_rgba(15,23,42,0.12)]">
+                      <div className="rounded-[18px] border border-white/70 bg-white/95 p-5 shadow-[0_4px_14px_rgba(15,23,42,0.04)]">
                         <DashboardSectionHeading
                           title="Contraseña"
                           description="Actualizar la contraseña invalida todas las sesiones activas por seguridad."

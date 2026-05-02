@@ -12,7 +12,7 @@ import { useProfessionalProfile } from '@/hooks/useProfessionalProfile';
 import { useProfessionalDashboardUnsavedSection } from '@/context/ProfessionalDashboardUnsavedChangesContext';
 import {
   DashboardHeaderBadge,
-  DashboardHero,
+  DashboardPageHeader,
   DashboardSectionHeading,
   DashboardStatCard,
 } from '@/components/profesional/dashboard/DashboardUI';
@@ -593,10 +593,8 @@ export default function ProfesionalReservationsPage() {
   return (
     <ProfessionalDashboardShell profile={profile} active="Reservas">
       <div className="space-y-6">
-              <DashboardHero
+              <DashboardPageHeader
                 eyebrow="Reservas"
-                icon="reservas"
-                accent="teal"
                 title="Panel de reservas"
                 description="Listado, detalle, acciones y timeline en una misma vista operativa."
                 meta={(
@@ -734,7 +732,7 @@ export default function ProfesionalReservationsPage() {
               ) : null}
 
               {showSkeleton ? (
-                <div className="rounded-[28px] border border-white/70 bg-white/95 p-6 shadow-[0_18px_40px_rgba(15,23,42,0.12)]">
+                <div className="rounded-[18px] border border-white/70 bg-white/95 p-5 shadow-[0_4px_14px_rgba(15,23,42,0.04)]">
                   <div className="h-5 w-40 rounded-full bg-[#E2E7EC]" />
                   <div className="mt-4 space-y-3">
                     <div className="h-10 w-full rounded-[14px] bg-[#F1F5F9]" />
@@ -775,7 +773,7 @@ export default function ProfesionalReservationsPage() {
 
                   <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_420px]">
                     <div className="space-y-6">
-                      <Card className="border-white/70 bg-white/95 p-5">
+                      <Card className="rounded-[18px] border-white/70 bg-white/95 p-5 shadow-[0_4px_14px_rgba(15,23,42,0.04)]">
                         <DashboardSectionHeading
                           title="Reservas de hoy"
                           description="Prioridad operativa y financiera para lo inmediato."
@@ -791,7 +789,7 @@ export default function ProfesionalReservationsPage() {
                         </div>
                       </Card>
 
-                      <Card className="border-white/70 bg-white/95 p-5">
+                      <Card className="rounded-[18px] border-white/70 bg-white/95 p-5 shadow-[0_4px_14px_rgba(15,23,42,0.04)]">
                         <DashboardSectionHeading
                           title="Próximas reservas"
                           description="Reservas futuras activas con su estado financiero."
@@ -807,7 +805,7 @@ export default function ProfesionalReservationsPage() {
                         </div>
                       </Card>
 
-                      <Card className="border-white/70 bg-white/95 p-5">
+                      <Card className="rounded-[18px] border-white/70 bg-white/95 p-5 shadow-[0_4px_14px_rgba(15,23,42,0.04)]">
                         <DashboardSectionHeading
                           title="Reservas cerradas"
                           description="Completadas o marcadas como no-show."
@@ -823,7 +821,7 @@ export default function ProfesionalReservationsPage() {
                         </div>
                       </Card>
 
-                      <Card className="border-white/70 bg-white/95 p-5">
+                      <Card className="rounded-[18px] border-white/70 bg-white/95 p-5 shadow-[0_4px_14px_rgba(15,23,42,0.04)]">
                         <DashboardSectionHeading
                           title="Canceladas"
                           description="Seguimiento de cancelaciones ya cerradas."
@@ -841,7 +839,7 @@ export default function ProfesionalReservationsPage() {
                     </div>
 
                     <aside className="xl:sticky xl:top-24 xl:self-start">
-                      <Card className="border-white/70 bg-white/95 p-5">
+                      <Card className="rounded-[18px] border-white/70 bg-white/95 p-5 shadow-[0_4px_14px_rgba(15,23,42,0.04)]">
                         {!selectedReservation ? (
                           <div className="rounded-[18px] border border-dashed border-[#CBD5F5] bg-white/70 px-4 py-4 text-sm text-[#64748B]">
                             Seleccioná una reserva para ver su detalle.

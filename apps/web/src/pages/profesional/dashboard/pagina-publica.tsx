@@ -12,7 +12,7 @@ import ImageUploader from '@/components/profesional/dashboard/ImageUploader';
 import { resolveAssetUrl } from '@/utils/assetUrl';
 import {
   DashboardHeaderBadge,
-  DashboardHero,
+  DashboardPageHeader,
   DashboardSectionHeading,
   DashboardStatCard,
 } from '@/components/profesional/dashboard/DashboardUI';
@@ -317,10 +317,8 @@ export default function ProfesionalPublicPageBuilder() {
   return (
     <ProfessionalDashboardShell profile={profile} active="Página pública">
       <div className="space-y-6">
-            <DashboardHero
+            <DashboardPageHeader
               eyebrow="Escaparate"
-              icon="publica"
-              accent="teal"
               title="Página pública"
               description="Editá mensaje, galería y preview desde un flujo más limpio de settings."
               meta={
@@ -361,7 +359,7 @@ export default function ProfesionalPublicPageBuilder() {
                 ) : null}
 
             {showSkeleton ? (
-              <div className="rounded-[28px] border border-white/70 bg-white/95 p-6 shadow-[0_18px_40px_rgba(15,23,42,0.12)]">
+              <div className="rounded-[18px] border border-white/70 bg-white/95 p-5 shadow-[0_4px_14px_rgba(15,23,42,0.04)]">
                 <div className="h-5 w-48 rounded-full bg-[#E2E7EC]" />
                 <div className="mt-4 space-y-3">
                   <div className="h-10 w-full rounded-[14px] bg-[#F1F5F9]" />
@@ -389,7 +387,7 @@ export default function ProfesionalPublicPageBuilder() {
                     />
                   </div>
 
-                  <div className="rounded-[24px] border border-white/70 bg-white/95 p-5 shadow-[0_16px_36px_rgba(15,23,42,0.12)]">
+                  <div className="rounded-[18px] border border-white/70 bg-white/95 p-5 shadow-[0_4px_14px_rgba(15,23,42,0.04)]">
                     <DashboardSectionHeading
                       title="Frase principal"
                       description="Es la promesa principal que aparece debajo del nombre en la ficha pública."
@@ -404,7 +402,7 @@ export default function ProfesionalPublicPageBuilder() {
                     </div>
                   </div>
 
-                  <div className="rounded-[24px] border border-white/70 bg-white/95 p-5 shadow-[0_16px_36px_rgba(15,23,42,0.12)]">
+                  <div className="rounded-[18px] border border-white/70 bg-white/95 p-5 shadow-[0_4px_14px_rgba(15,23,42,0.04)]">
                     <div className="flex items-center justify-between">
                       <DashboardSectionHeading
                         title="Fotos del negocio o trabajos"
@@ -451,7 +449,7 @@ export default function ProfesionalPublicPageBuilder() {
                     </div>
                   </div>
 
-                  <div className="rounded-[24px] border border-white/70 bg-white/95 p-5 shadow-[0_16px_36px_rgba(15,23,42,0.12)]">
+                  <div className="rounded-[18px] border border-white/70 bg-white/95 p-5 shadow-[0_4px_14px_rgba(15,23,42,0.04)]">
                     <DashboardSectionHeading
                       title="Sobre mí"
                       description="Contá quién sos, qué hacés y qué tipo de experiencia van a encontrar tus clientes."
@@ -468,7 +466,7 @@ export default function ProfesionalPublicPageBuilder() {
                 </div>
 
                 <div className="space-y-6">
-                  <div className="rounded-[28px] border border-white/70 bg-white/95 p-6 shadow-[0_18px_40px_rgba(15,23,42,0.12)] xl:sticky xl:top-6">
+                  <div className="rounded-[18px] border border-white/70 bg-white/95 p-5 shadow-[0_4px_14px_rgba(15,23,42,0.04)] xl:sticky xl:top-4">
                     <DashboardSectionHeading
                       eyebrow="Vista previa"
                       title="Página pública"
@@ -496,7 +494,7 @@ export default function ProfesionalPublicPageBuilder() {
                     </div>
                   </div>
 
-                  <div className="rounded-[24px] border border-white/70 bg-white/95 p-5 shadow-[0_16px_36px_rgba(15,23,42,0.12)]">
+                  <div className="rounded-[18px] border border-white/70 bg-white/95 p-5 shadow-[0_4px_14px_rgba(15,23,42,0.04)]">
                     <DashboardSectionHeading
                       title="URL pública"
                       description="Usá este link o QR para compartir tu ficha y atraer reservas directas."

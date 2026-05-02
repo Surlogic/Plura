@@ -5,7 +5,7 @@ import Button from '@/components/ui/Button';
 import ProfessionalDashboardShell from '@/components/profesional/dashboard/ProfessionalDashboardShell';
 import {
   DashboardHeaderBadge,
-  DashboardHero,
+  DashboardPageHeader,
   DashboardStatCard,
 } from '@/components/profesional/dashboard/DashboardUI';
 import { useProfessionalProfile } from '@/hooks/useProfessionalProfile';
@@ -147,10 +147,8 @@ export default function ProfesionalResenasPage() {
   return (
     <ProfessionalDashboardShell profile={profile} active="Reseñas">
       <div className="space-y-6">
-              <DashboardHero
+              <DashboardPageHeader
                 eyebrow="Reseñas"
-                icon="resenas"
-                accent="ink"
                 title="Reseñas de clientes"
                 description="Gestioná visibilidad pública y reportes sin perder de vista el estado reputacional del negocio."
                 meta={(

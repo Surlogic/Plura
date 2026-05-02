@@ -2,7 +2,7 @@
 
 import {
   DashboardHeaderBadge,
-  DashboardHero,
+  DashboardPageHeader,
   DashboardSectionHeading,
 } from '@/components/profesional/dashboard/DashboardUI';
 import ProfessionalNotificationsList from '@/components/profesional/notifications/ProfessionalNotificationsList';
@@ -51,12 +51,10 @@ export default function ProfessionalNotificationsCenter() {
 
   return (
     <>
-      <DashboardHero
+      <DashboardPageHeader
         eyebrow="Inbox profesional"
         title="Notificaciones operativas"
         description="Revisá eventos del negocio, filtrá rápido y marcá lecturas sin salir del dashboard."
-        icon="notificaciones"
-        accent="ink"
         meta={(
           <>
             <DashboardHeaderBadge tone={hasUnread ? 'warning' : 'success'}>

@@ -3,7 +3,7 @@
 import { isAxiosError } from 'axios';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/router';
-import ProfesionalSidebar from '@/components/profesional/Sidebar';
+import ProfessionalDashboardShell from '@/components/profesional/dashboard/ProfessionalDashboardShell';
 import ProfessionalBookingTimeline from '@/components/profesional/reservations/ProfessionalBookingTimeline';
 import Button from '@/components/ui/Button';
 import Card from '@/components/ui/Card';
@@ -11,6 +11,7 @@ import InternationalPhoneField from '@/components/ui/InternationalPhoneField';
 import { useProfessionalProfile } from '@/hooks/useProfessionalProfile';
 import { useProfessionalDashboardUnsavedSection } from '@/context/ProfessionalDashboardUnsavedChangesContext';
 import {
+  DashboardHeaderBadge,
   DashboardHero,
   DashboardSectionHeading,
   DashboardStatCard,
@@ -590,35 +591,31 @@ export default function ProfesionalReservationsPage() {
   };
 
   return (
-    <div className="app-shell min-h-screen bg-[color:var(--background)] text-[color:var(--ink)]">
-      <div className="flex min-h-screen">
-        <aside className="hidden w-[260px] shrink-0 border-r border-[color:var(--border-soft)] bg-[color:var(--sidebar-surface)] lg:block">
-          <div className="sticky top-0 h-screen overflow-y-auto">
-            <ProfesionalSidebar profile={profile} active="Reservas" />
-          </div>
-        </aside>
-
-        <div className="flex-1">
-          <main className="mx-auto w-full max-w-[1400px] px-4 py-6 sm:px-6 sm:py-8 lg:px-10">
-            <div className="space-y-6">
+    <ProfessionalDashboardShell profile={profile} active="Reservas">
+      <div className="space-y-6">
               <DashboardHero
                 eyebrow="Reservas"
                 icon="reservas"
                 accent="teal"
-                title="Reservas con estado operativo y financiero real"
-                description="Revisá el estado actual de cada reserva, sus pagos y las acciones disponibles sin mezclar configuraciones de cobro."
+                title="Panel de reservas"
+                description="Listado, detalle, acciones y timeline en una misma vista operativa."
                 meta={(
                   <>
-                    <span className="rounded-full border border-white/18 bg-white/10 px-3 py-1 text-xs font-semibold text-[color:var(--text-on-dark-secondary)] backdrop-blur-sm">
+                    <DashboardHeaderBadge tone="success">
                       {todayReservations.length} para hoy
-                    </span>
-                    <span className="rounded-full border border-white/18 bg-white/10 px-3 py-1 text-xs font-semibold text-[color:var(--text-on-dark-secondary)] backdrop-blur-sm">
+                    </DashboardHeaderBadge>
+                    <DashboardHeaderBadge>
                       {upcomingReservations.length} próximas
-                    </span>
+                    </DashboardHeaderBadge>
+                    {selectedReservation ? (
+                      <DashboardHeaderBadge tone="accent">
+                        Seleccionada: {selectedReservation.clientName || 'Cliente'}
+                      </DashboardHeaderBadge>
+                    ) : null}
                   </>
                 )}
                 actions={(
-                  <Button type="button" variant="contrast" onClick={() => setShowCreateForm((current) => !current)}>
+                  <Button type="button" variant="primary" onClick={() => setShowCreateForm((current) => !current)}>
                     {showCreateForm ? 'Cerrar alta manual' : 'Nueva reserva manual'}
                   </Button>
                 )}
@@ -776,7 +773,7 @@ export default function ProfesionalReservationsPage() {
                     />
                   </div>
 
-                  <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_420px]">
+                  <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_420px]">
                     <div className="space-y-6">
                       <Card className="border-white/70 bg-white/95 p-5">
                         <DashboardSectionHeading
@@ -1132,10 +1129,7 @@ export default function ProfesionalReservationsPage() {
                   </div>
                 </>
               )}
-            </div>
-          </main>
-        </div>
       </div>
-    </div>
+    </ProfessionalDashboardShell>
   );
 }

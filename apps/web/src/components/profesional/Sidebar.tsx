@@ -122,15 +122,15 @@ function ProfesionalSidebar({ profile, active }: SidebarProps) {
   return (
     <aside
       ref={rootRef}
-      className="relative min-h-full overflow-x-hidden rounded-r-[28px] border-r border-[color:var(--border-soft)] bg-[color:var(--sidebar-surface)] px-5 py-6 text-[color:var(--ink)]"
+      className="relative min-h-full overflow-x-hidden rounded-r-[24px] border-r border-[color:var(--border-soft)] bg-[color:var(--sidebar-surface)] px-4 py-5 text-[color:var(--ink)]"
     >
-      <div className="border-b border-[color:var(--border-soft)] pb-5">
+      <div className="border-b border-[color:var(--border-soft)] pb-4">
         <div className="flex justify-center">
           <BrandLogo href="/" variant="mobile" className="justify-center" />
         </div>
 
-        <div className="mt-6 flex flex-col items-center text-center">
-          <div className="relative flex h-14 w-14 items-center justify-center overflow-hidden rounded-[18px] border border-[color:var(--border-soft)] bg-white text-base font-semibold text-[color:var(--primary)] shadow-[var(--shadow-card)]">
+        <div className="mt-5 flex flex-col items-center text-center">
+          <div className="relative flex h-12 w-12 items-center justify-center overflow-hidden rounded-[16px] border border-[color:var(--border-soft)] bg-white text-sm font-semibold text-[color:var(--primary)] shadow-[var(--shadow-card)]">
             {resolvedLogoUrl ? (
               <Image
                 src={resolvedLogoUrl}
@@ -144,30 +144,30 @@ function ProfesionalSidebar({ profile, active }: SidebarProps) {
               initials
             )}
           </div>
-          <div className="mt-3 flex flex-wrap justify-center gap-2">
-            <Badge variant="success" className="px-2 py-1 text-[0.56rem] tracking-[0.14em]">
+          <div className="mt-3 flex flex-wrap justify-center gap-1.5">
+            <Badge variant="success" className="px-2 py-1 text-[0.54rem] tracking-[0.12em]">
               Profesional
             </Badge>
-            <span className="rounded-full border border-[color:var(--premium-soft)] bg-[color:var(--premium-soft)] px-2 py-1 text-[0.56rem] font-semibold uppercase tracking-[0.1em] text-[color:var(--premium-strong)]">
+            <span className="rounded-full border border-[color:var(--premium-soft)] bg-[color:var(--premium-soft)] px-2 py-1 text-[0.54rem] font-semibold uppercase tracking-[0.08em] text-[color:var(--premium-strong)]">
               {planLabel}
             </span>
           </div>
           <div className="mt-3 min-w-0 max-w-full">
-            <p className="truncate text-[1rem] font-semibold">{displayName}</p>
-            <p className="mt-1 text-sm text-[color:var(--ink-muted)]">{displayMeta}</p>
+            <p className="truncate text-[0.95rem] font-semibold">{displayName}</p>
+            <p className="mt-1 text-[0.82rem] text-[color:var(--ink-muted)]">{displayMeta}</p>
           </div>
         </div>
 
         <ProfessionalNotificationBell onNavigate={requestNavigation} />
       </div>
 
-      <div className="relative mt-5 space-y-5">
+      <div className="relative mt-4 space-y-4">
         {menuSections.map((section) => (
           <div key={section.label}>
-            <p className="px-1 text-[0.6rem] font-semibold uppercase tracking-[0.22em] text-[color:var(--ink-muted)]">
+            <p className="px-1 text-[0.58rem] font-semibold uppercase tracking-[0.2em] text-[color:var(--ink-muted)]">
               {section.label}
             </p>
-            <nav className="mt-2.5 space-y-1.5">
+            <nav className="mt-2 space-y-1">
               {section.items.map((item) => {
                 const isActive = item.label === active;
                 const hintedPlan = item.featureKey ? requiredPlanForFeature(item.featureKey) : null;
@@ -179,7 +179,7 @@ function ProfesionalSidebar({ profile, active }: SidebarProps) {
                   : false;
                 const isDisabled = item.disabled || isLocked;
                 const itemClassName = cn(
-                  'group flex w-full items-center gap-3 rounded-[14px] border px-3 py-2.5 text-left transition',
+                  'group flex w-full items-center gap-3 rounded-[12px] border px-3 py-2 text-left transition',
                   isActive && !isLocked
                     ? 'border-[color:var(--primary-soft)] bg-[color:var(--primary-soft)] text-[color:var(--primary-strong)] shadow-[var(--shadow-card)]'
                     : isDisabled
@@ -191,7 +191,7 @@ function ProfesionalSidebar({ profile, active }: SidebarProps) {
                   <>
                     <span
                       className={cn(
-                        'inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-[12px] border',
+                        'inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[10px] border',
                         isActive && !isLocked
                           ? 'border-white bg-white text-[color:var(--primary)]'
                           : isLocked
@@ -201,7 +201,7 @@ function ProfesionalSidebar({ profile, active }: SidebarProps) {
                     >
                       <DashboardIcon name={item.icon} className="h-4 w-4" />
                     </span>
-                    <span className={cn('min-w-0 flex-1 truncate text-sm font-semibold', isLocked && 'opacity-60')}>
+                    <span className={cn('min-w-0 flex-1 truncate text-[0.9rem] font-semibold', isLocked && 'opacity-60')}>
                       {item.label}
                     </span>
                     {(isLocked && item.requiredPlan) || (showsFeatureHint && hintedPlan) ? (

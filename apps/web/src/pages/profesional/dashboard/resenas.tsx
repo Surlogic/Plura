@@ -1,9 +1,13 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import ProfesionalSidebar from '@/components/profesional/Sidebar';
 import Button from '@/components/ui/Button';
-import { DashboardHero } from '@/components/profesional/dashboard/DashboardUI';
+import ProfessionalDashboardShell from '@/components/profesional/dashboard/ProfessionalDashboardShell';
+import {
+  DashboardHeaderBadge,
+  DashboardHero,
+  DashboardStatCard,
+} from '@/components/profesional/dashboard/DashboardUI';
 import { useProfessionalProfile } from '@/hooks/useProfessionalProfile';
 import {
   getProfessionalReviews,
@@ -38,7 +42,6 @@ const StarDisplay = ({ rating }: { rating: number }) => (
 
 export default function ProfesionalResenasPage() {
   const { profile, refreshProfile } = useProfessionalProfile();
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [page, setPage] = useState<BookingReviewPage | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(0);
@@ -142,51 +145,41 @@ export default function ProfesionalResenasPage() {
   };
 
   return (
-    <div className="app-shell min-h-screen bg-[color:var(--background)] text-[color:var(--ink)]">
-      <div className="flex min-h-screen">
-        <aside className="hidden w-[260px] shrink-0 border-r border-[color:var(--border-soft)] bg-[color:var(--sidebar-surface)] lg:block">
-          <div className="sticky top-0 h-screen overflow-y-auto">
-            <ProfesionalSidebar profile={profile} active="Reseñas" />
-          </div>
-        </aside>
-
-        <div className="flex-1">
-          <div className="px-4 pt-4 sm:px-6 lg:hidden">
-            <Button type="button" size="sm" onClick={() => setIsMenuOpen((prev) => !prev)}>
-              {isMenuOpen ? 'Cerrar menu' : 'Abrir menu'}
-            </Button>
-          </div>
-
-          {isMenuOpen ? (
-            <div className="border-b border-[color:var(--border-soft)] bg-[color:var(--surface)]/92 backdrop-blur-xl lg:hidden">
-              <ProfesionalSidebar profile={profile} active="Reseñas" />
-            </div>
-          ) : null}
-
-          <main className="mx-auto w-full max-w-[1400px] px-4 py-6 sm:px-6 sm:py-8 lg:px-10">
-            <div className="space-y-6">
+    <ProfessionalDashboardShell profile={profile} active="Reseñas">
+      <div className="space-y-6">
               <DashboardHero
                 eyebrow="Reseñas"
                 icon="resenas"
                 accent="ink"
                 title="Reseñas de clientes"
-                description="Gestioná las reseñas que dejan tus clientes. Podés ocultar el texto público y reportar contenido que incumpla normas para revisión de internal ops."
+                description="Gestioná visibilidad pública y reportes sin perder de vista el estado reputacional del negocio."
+                meta={(
+                  <>
+                    <DashboardHeaderBadge tone="accent">
+                      ★ {profile?.rating?.toFixed(1) ?? '0.0'}
+                    </DashboardHeaderBadge>
+                    <DashboardHeaderBadge tone="success">
+                      {profile?.reviewsCount ?? 0} reseñas
+                    </DashboardHeaderBadge>
+                  </>
+                )}
               />
 
               {profile ? (
-                <div className="flex gap-4">
-                  <div className="rounded-[18px] border border-[#E2E7EC] bg-white px-5 py-4">
-                    <p className="text-xs uppercase tracking-[0.25em] text-[#94A3B8]">Calificación</p>
-                    <p className="mt-1 text-2xl font-semibold text-[#0E2A47]">
-                      ★ {profile.rating?.toFixed(1) ?? '0.0'}
-                    </p>
-                  </div>
-                  <div className="rounded-[18px] border border-[#E2E7EC] bg-white px-5 py-4">
-                    <p className="text-xs uppercase tracking-[0.25em] text-[#94A3B8]">Total reseñas</p>
-                    <p className="mt-1 text-2xl font-semibold text-[#0E2A47]">
-                      {profile.reviewsCount ?? 0}
-                    </p>
-                  </div>
+                <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                  <DashboardStatCard
+                    label="Calificación"
+                    value={`★ ${profile.rating?.toFixed(1) ?? '0.0'}`}
+                    detail="Promedio visible del negocio"
+                    icon="resenas"
+                    tone="accent"
+                  />
+                  <DashboardStatCard
+                    label="Total reseñas"
+                    value={`${profile.reviewsCount ?? 0}`}
+                    detail="Historial acumulado"
+                    icon="check"
+                  />
                 </div>
               ) : null}
 
@@ -388,10 +381,7 @@ export default function ProfesionalResenasPage() {
                   ) : null}
                 </div>
               )}
-            </div>
-          </main>
-        </div>
       </div>
-    </div>
+    </ProfessionalDashboardShell>
   );
 }

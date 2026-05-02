@@ -4,7 +4,7 @@ import { memo, useCallback, useEffect, useMemo, useRef, useState, type RefObject
 import { isAxiosError } from 'axios';
 import Link from 'next/link';
 import EmailVerificationPanel from '@/components/auth/EmailVerificationPanel';
-import ProfesionalSidebar from '@/components/profesional/Sidebar';
+import ProfessionalDashboardShell from '@/components/profesional/dashboard/ProfessionalDashboardShell';
 import Button from '@/components/ui/Button';
 import Card from '@/components/ui/Card';
 import { cn } from '@/components/ui/cn';
@@ -13,6 +13,7 @@ import { useProfessionalProfile } from '@/hooks/useProfessionalProfile';
 import { useProfessionalDashboardUnsavedSection } from '@/context/ProfessionalDashboardUnsavedChangesContext';
 import api from '@/services/api';
 import {
+  DashboardHeaderBadge,
   DashboardHero,
   DashboardSectionHeading,
   DashboardStatCard,
@@ -683,7 +684,6 @@ export default function ProfesionalDashboardPage() {
   const [weekOffset, setWeekOffset] = useState(0);
   const [monthOffset, setMonthOffset] = useState(0);
   const [clockNow, setClockNow] = useState(() => new Date());
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [selectedReservation, setSelectedReservation] =
     useState<ProfessionalReservation | null>(null);
   const [drawerVisible, setDrawerVisible] = useState(false);
@@ -784,6 +784,15 @@ export default function ProfesionalDashboardPage() {
     return `${monthNames[firstOfMonth.getMonth()]} ${firstOfMonth.getFullYear()}`;
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [monthOffset]);
+  const todayHeadlineLabel = useMemo(
+    () =>
+      new Intl.DateTimeFormat('es-AR', {
+        weekday: 'long',
+        day: 'numeric',
+        month: 'long',
+      }).format(clockNow),
+    [clockNow],
+  );
 
   const agendaReservations = useMemo(
     () => reservations.filter((reservation) => (reservation.status ?? 'pending') !== 'cancelled'),
@@ -1186,9 +1195,6 @@ export default function ProfesionalDashboardPage() {
       align: segment === 'now' ? 'center' : 'start',
     });
   }, [calendarView, scrollWeekCalendarToMinute]);
-  const handleToggleMenu = () => {
-    setIsMenuOpen((prev) => !prev);
-  };
 
   const handleOpenReservation = useCallback((reservation: ProfessionalReservation) => {
     setSelectedReservation(reservation);
@@ -1237,46 +1243,31 @@ export default function ProfesionalDashboardPage() {
   };
 
   return (
-    <div className="app-shell min-h-screen bg-[color:var(--background)] text-[color:var(--ink)]">
-      <div className="flex min-h-screen">
-          <aside className="hidden w-[260px] shrink-0 border-r border-[color:var(--border-soft)] bg-[color:var(--sidebar-surface)] lg:block">
-            <div className="sticky top-0 h-screen overflow-y-auto">
-              <ProfesionalSidebar profile={profile} active="Agenda" />
-            </div>
-          </aside>
-          <div className="flex flex-1 flex-col">
-            <div className="px-4 pt-4 sm:px-6 lg:hidden">
-              <Button type="button" size="sm" onClick={handleToggleMenu}>
-                {isMenuOpen ? 'Cerrar menu' : 'Abrir menu'}
-              </Button>
-            </div>
-            {isMenuOpen ? (
-              <div className="border-b border-[color:var(--border-soft)] bg-[color:var(--surface)]/92 backdrop-blur-xl lg:hidden">
-                <ProfesionalSidebar profile={profile} active="Agenda" />
-              </div>
-            ) : null}
-            <main className="mx-auto flex w-full max-w-[1400px] flex-1 flex-col px-4 py-4 sm:px-6 sm:py-6 lg:px-7 lg:py-4">
-              <div className="flex flex-col gap-4">
+    <ProfessionalDashboardShell profile={profile} active="Agenda" contentClassName="py-4 sm:py-6">
+      <div className="flex flex-col gap-4">
                 <section className="space-y-3 lg:shrink-0">
                   <DashboardHero
                     eyebrow="Centro operativo"
                     icon="agenda"
                     accent="ink"
                     size="compact"
-                    title="Agenda y reservas con foco en lo urgente"
-                    description="Controlá el día, anticipá huecos disponibles y resolvé rápido pendientes, confirmaciones y cambios de agenda."
+                    title={profile?.fullName ? `${profile.fullName}, este es tu tablero de hoy` : 'Tu tablero operativo de hoy'}
+                    description="La agenda queda al frente con el contexto justo para resolver pendientes, próximos turnos y disponibilidad semanal."
                     meta={
                       <>
-                        <span className="rounded-full border border-white/18 bg-white/10 px-3 py-1 text-xs font-semibold text-[color:var(--text-on-dark-secondary)] backdrop-blur-sm">
+                        <DashboardHeaderBadge tone="accent">
+                          {todayHeadlineLabel}
+                        </DashboardHeaderBadge>
+                        <DashboardHeaderBadge tone="success">
                           {todayCount} reservas hoy
-                        </span>
-                        <span className="rounded-full border border-white/18 bg-white/10 px-3 py-1 text-xs font-semibold text-[color:var(--text-on-dark-secondary)] backdrop-blur-sm">
+                        </DashboardHeaderBadge>
+                        <DashboardHeaderBadge tone={todayPendingCount > 0 ? 'warning' : 'default'}>
                           {todayPendingCount} pendientes
-                        </span>
+                        </DashboardHeaderBadge>
                         {nextReservation ? (
-                          <span className="rounded-full border border-white/18 bg-white/10 px-3 py-1 text-xs font-semibold text-[color:var(--text-on-dark-secondary)] backdrop-blur-sm">
+                          <DashboardHeaderBadge>
                             Próxima: {nextReservation.time}
-                          </span>
+                          </DashboardHeaderBadge>
                         ) : null}
                       </>
                     }
@@ -1284,7 +1275,7 @@ export default function ProfesionalDashboardPage() {
                       <>
                         <Button
                           type="button"
-                          variant="contrast"
+                          variant="primary"
                           onClick={() => {
                             requestNavigation('/profesional/dashboard/reservas');
                           }}
@@ -1293,7 +1284,6 @@ export default function ProfesionalDashboardPage() {
                         </Button>
                         <Button
                           type="button"
-                          variant="contrast"
                           onClick={() => {
                             requestNavigation('/profesional/dashboard/horarios');
                           }}
@@ -1322,7 +1312,7 @@ export default function ProfesionalDashboardPage() {
                     </p>
                   ) : null}
 
-                  <div className="grid gap-2.5 lg:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)]">
+                  <div className="grid gap-3 lg:grid-cols-[minmax(0,1.2fr)_minmax(320px,0.8fr)]">
                     <div className="grid gap-2.5 sm:grid-cols-3">
                       {agendaOverviewCards.map((item) => (
                         <DashboardStatCard
@@ -1390,7 +1380,7 @@ export default function ProfesionalDashboardPage() {
                   </div>
                 </section>
 
-                <section className="flex flex-col rounded-[28px] border border-white/70 bg-white/95 p-4 shadow-[0_18px_40px_rgba(15,23,42,0.08)] sm:p-5">
+                <section className="flex flex-col rounded-[24px] border border-white/70 bg-white/95 p-4 shadow-[0_18px_40px_rgba(15,23,42,0.08)] sm:p-5">
                   <DashboardSectionHeading
                     eyebrow="Agenda"
                     title={calendarView === 'week' ? 'Semana actual' : 'Calendario mensual'}
@@ -1544,9 +1534,6 @@ export default function ProfesionalDashboardPage() {
                   )}
                 </section>
               </div>
-            </main>
-          </div>
-        </div>
       {selectedReservation ? (
         <div className="fixed inset-0 z-50 flex justify-end">
           <button
@@ -1658,6 +1645,6 @@ export default function ProfesionalDashboardPage() {
           </aside>
         </div>
       ) : null}
-    </div>
+    </ProfessionalDashboardShell>
   );
 }

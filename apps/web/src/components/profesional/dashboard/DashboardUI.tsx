@@ -161,12 +161,21 @@ type DashboardHeroProps = {
 };
 
 const heroToneClassNames = {
-  teal:
-    'bg-[linear-gradient(145deg,var(--brand-navy)_0%,var(--brand-navy-soft)_52%,var(--brand-navy-elevated)_100%)] text-[color:var(--text-on-dark)]',
-  warm:
-    'bg-[linear-gradient(145deg,var(--brand-navy)_0%,#2b2435_56%,#4a3524_100%)] text-[color:var(--text-on-dark)]',
-  ink:
-    'bg-[linear-gradient(145deg,var(--brand-navy)_0%,var(--brand-navy-soft)_58%,var(--brand-navy-elevated)_100%)] text-[color:var(--text-on-dark)]',
+  teal: {
+    shell: 'border-[#D9ECE8] bg-[linear-gradient(180deg,rgba(31,182,166,0.05)_0%,rgba(255,255,255,0.98)_34%,#FFFFFF_100%)]',
+    icon: 'border-[#BFEDE7] bg-[#ECFDF5] text-[#0F766E]',
+    eyebrow: 'text-[#0F766E]',
+  },
+  warm: {
+    shell: 'border-[#F4E1C7] bg-[linear-gradient(180deg,rgba(245,158,11,0.06)_0%,rgba(255,255,255,0.98)_34%,#FFFFFF_100%)]',
+    icon: 'border-[#F6D6A8] bg-[#FFF7E8] text-[#B45309]',
+    eyebrow: 'text-[#B45309]',
+  },
+  ink: {
+    shell: 'border-[#D9E2EC] bg-[linear-gradient(180deg,rgba(14,42,71,0.04)_0%,rgba(255,255,255,0.98)_34%,#FFFFFF_100%)]',
+    icon: 'border-[#D7E0E8] bg-[#F4F7FB] text-[#0E2A47]',
+    eyebrow: 'text-[#0E2A47]',
+  },
 };
 
 export const DashboardHero = memo(function DashboardHero({
@@ -179,96 +188,104 @@ export const DashboardHero = memo(function DashboardHero({
   actions,
   meta,
 }: DashboardHeroProps) {
+  const toneStyles = heroToneClassNames[accent];
+
   return (
     <Card
-      tone="dark"
       className={cn(
-        'relative isolate overflow-hidden border-white/12 shadow-[var(--shadow-lift)]',
-        size === 'compact' ? 'p-5' : 'p-6',
-        heroToneClassNames[accent],
+        'relative isolate overflow-hidden border shadow-[0_16px_40px_rgba(15,23,42,0.08)]',
+        size === 'compact' ? 'p-4 sm:p-5' : 'p-5 sm:p-6',
+        toneStyles.shell,
       )}
     >
-      <div className="pointer-events-none absolute inset-0 z-0">
-        <div className="absolute inset-0 bg-[linear-gradient(160deg,rgba(15,23,42,0.16)_0%,rgba(15,23,42,0.3)_44%,rgba(15,23,42,0.5)_100%)]" />
-        <div className="absolute inset-x-0 top-0 h-px bg-white/16" />
-        <div className="absolute -left-12 top-8 h-36 w-36 rounded-full bg-[color:var(--brand-primary)]/8 blur-3xl" />
-        <div className="absolute right-0 top-0 h-48 w-48 rounded-full bg-[color:var(--accent)]/12 blur-3xl" />
-      </div>
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-16 bg-[linear-gradient(180deg,rgba(255,255,255,0)_0%,rgba(255,255,255,0.42)_100%)]" />
+      <div className="pointer-events-none absolute right-0 top-0 h-28 w-28 rounded-full bg-white/70 blur-3xl" />
+      <div className="pointer-events-none absolute left-6 top-0 h-px w-[calc(100%-3rem)] bg-white/90" />
       <div
         className={cn(
-          'relative z-10 flex flex-col opacity-100 lg:flex-row lg:items-end lg:justify-between',
-          size === 'compact' ? 'gap-4' : 'gap-5',
+          'relative z-10 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between',
+          size === 'compact' ? 'lg:gap-5' : 'lg:gap-6',
         )}
       >
-        <div className="max-w-3xl">
-          <div
-            className={cn(
-              'inline-flex items-center gap-3 rounded-full border border-white/[0.32] bg-white/[0.04] backdrop-blur-sm',
-              size === 'compact' ? 'px-3 py-1.5' : 'px-3 py-2',
-            )}
-          >
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-3">
             <span
               className={cn(
-                'inline-flex items-center justify-center rounded-full border border-white/[0.24] bg-white/[0.04] text-[#F4F8FB]',
-                size === 'compact' ? 'h-8 w-8' : 'h-9 w-9',
+                'inline-flex items-center justify-center rounded-[14px] border shadow-[0_10px_24px_rgba(15,23,42,0.06)]',
+                size === 'compact' ? 'h-10 w-10' : 'h-11 w-11',
+                toneStyles.icon,
               )}
             >
               <DashboardIcon name={icon} className="h-[18px] w-[18px]" />
             </span>
-            <span
-              className={cn(
-                'font-semibold uppercase tracking-[0.26em] text-[#EAF2F7]',
-                size === 'compact' ? 'text-[0.62rem]' : 'text-[0.68rem]',
-              )}
-            >
-              {eyebrow}
-            </span>
+            <div className="min-w-0">
+              <p
+                className={cn(
+                  'text-[0.65rem] font-semibold uppercase tracking-[0.22em]',
+                  toneStyles.eyebrow,
+                )}
+              >
+                {eyebrow}
+              </p>
+              <h1
+                className={cn(
+                  'mt-1 font-semibold tracking-[-0.03em] text-[color:var(--ink)]',
+                  size === 'compact' ? 'text-[1.35rem] sm:text-[1.55rem]' : 'text-[1.55rem] sm:text-[1.8rem]',
+                )}
+              >
+                {title}
+              </h1>
+            </div>
           </div>
-          <h1
-            className={cn(
-              'max-w-2xl font-semibold tracking-[-0.03em] !text-[#F4F8FB] opacity-100',
-              size === 'compact'
-                ? 'mt-3 text-[1.72rem] sm:text-[1.9rem]'
-                : 'mt-4 text-[2rem] sm:text-[2.15rem]',
-            )}
-            style={{ color: '#F4F8FB' }}
-          >
-            {title}
-          </h1>
           <p
             className={cn(
-              'max-w-2xl !text-[#D6E2EA] opacity-100',
-              size === 'compact'
-                ? 'mt-2 text-[0.88rem] sm:text-[0.92rem]'
-                : 'mt-3 text-sm sm:text-[0.95rem]',
+              'max-w-3xl text-[color:var(--ink-muted)]',
+              size === 'compact' ? 'mt-3 text-sm' : 'mt-4 text-[0.95rem]',
             )}
-            style={{ color: '#D6E2EA' }}
           >
             {description}
           </p>
           {meta ? (
-            <div
-              className={cn(
-                'flex flex-wrap gap-2 text-[#EAF2F7] [&_span]:border-white/[0.32] [&_span]:bg-white/[0.04] [&_span]:!text-[#EAF2F7]',
-                size === 'compact' ? 'mt-4' : 'mt-5',
-              )}
-            >
+            <div className="mt-4 flex flex-wrap gap-2">
               {meta}
             </div>
           ) : null}
         </div>
         {actions ? (
-          <div
-            className={cn(
-              'relative z-10 flex flex-wrap [&_a]:border-white/[0.42] [&_a]:bg-white/[0.02] [&_a]:!text-[#F4F8FB] [&_a:hover]:bg-white/[0.06] [&_button]:border-white/[0.42] [&_button]:bg-white/[0.02] [&_button]:!text-[#F4F8FB] [&_button:hover]:bg-white/[0.06]',
-              size === 'compact' ? 'gap-2.5' : 'gap-3',
-            )}
-          >
+          <div className="relative z-10 flex shrink-0 flex-wrap gap-2.5 lg:justify-end">
             {actions}
           </div>
         ) : null}
       </div>
     </Card>
+  );
+});
+
+type DashboardHeaderBadgeProps = {
+  children: ReactNode;
+  tone?: 'default' | 'accent' | 'success' | 'warning';
+};
+
+const badgeToneClassNames = {
+  default: 'border-[#D9E2EC] bg-[#F8FAFC] text-[#475569]',
+  accent: 'border-[#DBEAFE] bg-[#F8FBFF] text-[#1D4ED8]',
+  success: 'border-[#BFEDE7] bg-[#F0FDFA] text-[#0F766E]',
+  warning: 'border-[#F6D6A8] bg-[#FFF7E8] text-[#B45309]',
+};
+
+export const DashboardHeaderBadge = memo(function DashboardHeaderBadge({
+  children,
+  tone = 'default',
+}: DashboardHeaderBadgeProps) {
+  return (
+    <span
+      className={cn(
+        'inline-flex items-center rounded-full border px-3 py-1 text-[0.72rem] font-semibold',
+        badgeToneClassNames[tone],
+      )}
+    >
+      {children}
+    </span>
   );
 });
 
@@ -303,7 +320,7 @@ export const DashboardStatCard = memo(function DashboardStatCard({
   return (
     <div
       className={cn(
-        'rounded-[22px] border p-4 shadow-[var(--shadow-card)]',
+        'rounded-[20px] border p-4 shadow-[0_12px_30px_rgba(15,23,42,0.06)]',
         statToneClassNames[tone],
         className,
       )}
@@ -317,14 +334,14 @@ export const DashboardStatCard = memo(function DashboardStatCard({
             {label}
           </p>
           <p className={cn(
-            'mt-3 text-[2rem] font-semibold tracking-[-0.04em]',
+            'mt-2.5 text-[1.6rem] font-semibold tracking-[-0.04em] sm:text-[1.8rem]',
             tone === 'dark' ? 'text-[color:var(--text-on-dark)]' : 'text-[color:var(--ink)]',
           )}>
             {value}
           </p>
           {detail ? (
             <p className={cn(
-              'mt-2 text-sm',
+              'mt-1.5 text-xs sm:text-[0.82rem]',
               tone === 'dark' ? 'text-[color:var(--text-on-dark-secondary)]' : 'text-[color:var(--ink-muted)]',
             )}>
               {detail}
@@ -332,10 +349,10 @@ export const DashboardStatCard = memo(function DashboardStatCard({
           ) : null}
         </div>
         <span className={cn(
-          'inline-flex h-11 w-11 items-center justify-center rounded-2xl',
+          'inline-flex h-10 w-10 items-center justify-center rounded-[14px]',
           tone === 'dark' ? 'border border-white/14 bg-white/10 text-[color:var(--text-on-dark)]' : 'border border-[color:var(--border-soft)] bg-[color:var(--surface-soft)] text-[color:var(--primary)]',
         )}>
-          <DashboardIcon name={icon} />
+          <DashboardIcon name={icon} className="h-[18px] w-[18px]" />
         </span>
       </div>
     </div>

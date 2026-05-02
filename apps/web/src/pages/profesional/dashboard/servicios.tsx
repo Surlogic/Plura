@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import ProfesionalSidebar from '@/components/profesional/Sidebar';
+import ProfessionalDashboardShell from '@/components/profesional/dashboard/ProfessionalDashboardShell';
 import Button from '@/components/ui/Button';
 import { useCategories } from '@/hooks/useCategories';
 import { useProfessionalProfile } from '@/hooks/useProfessionalProfile';
@@ -12,6 +12,7 @@ import { cachedGet, invalidateCachedGet } from '@/services/cachedGet';
 import type { BookingProcessingFeeMode, ServicePaymentType } from '@/types/professional';
 import { resolveAssetUrl } from '@/utils/assetUrl';
 import {
+  DashboardHeaderBadge,
   DashboardHero,
   DashboardSectionHeading,
   DashboardStatCard,
@@ -170,7 +171,6 @@ export default function ProfesionalServicesBuilderPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
   const [saveError, setSaveError] = useState(false);
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [selectedImageFile, setSelectedImageFile] = useState<File | null>(null);
   const [selectedImagePreview, setSelectedImagePreview] = useState<string>('');
   const canUseOnlinePayments = featureAccess.onlinePayments;
@@ -451,10 +451,6 @@ export default function ProfesionalServicesBuilderPage() {
     }
   };
 
-  const handleToggleMenu = () => {
-    setIsMenuOpen((prev) => !prev);
-  };
-
   const handleToggleServiceActive = async (service: ProfesionalServiceItem) => {
     if (isSubmitting) return;
     setIsSubmitting(true);
@@ -549,46 +545,33 @@ export default function ProfesionalServicesBuilderPage() {
   });
 
   return (
-    <div className="app-shell min-h-screen bg-[color:var(--background)] text-[color:var(--ink)]">
-      <div className="flex min-h-screen">
-          <aside className="hidden w-[260px] shrink-0 border-r border-[color:var(--border-soft)] bg-[color:var(--sidebar-surface)] lg:block">
-            <div className="sticky top-0 h-screen overflow-y-auto">
-              <ProfesionalSidebar profile={profile} active="Servicios" />
-            </div>
-          </aside>
-          <div className="flex-1">
-            <div className="px-4 pt-4 sm:px-6 lg:hidden">
-              <Button type="button" size="sm" onClick={handleToggleMenu}>
-                {isMenuOpen ? 'Cerrar menu' : 'Abrir menu'}
-              </Button>
-            </div>
-            {isMenuOpen ? (
-              <div className="border-b border-[color:var(--border-soft)] bg-[color:var(--surface)]/92 backdrop-blur-xl lg:hidden">
-                <ProfesionalSidebar profile={profile} active="Servicios" />
-              </div>
-            ) : null}
-            <main className="mx-auto w-full max-w-[1400px] px-4 py-6 sm:px-6 sm:py-8 lg:px-10">
-              <div className="space-y-6">
+    <ProfessionalDashboardShell profile={profile} active="Servicios">
+      <div className="space-y-6">
                 <DashboardHero
                   eyebrow="Oferta comercial"
                   icon="servicios"
                   accent="warm"
-                  title="Servicios organizados para editar, activar y comparar rápido"
-                  description="Dale más peso al catálogo, detectá faltantes visuales y actualizá tu oferta sin perder de vista lo que ya está publicado."
+                  title="Servicios"
+                  description="Separá catálogo y editor para actualizar la oferta con más jerarquía visual."
                   meta={
                     <>
-                      <span className="rounded-full border border-white/18 bg-white/10 px-3 py-1 text-xs font-semibold text-[color:var(--text-on-dark-secondary)] backdrop-blur-sm">
+                      <DashboardHeaderBadge tone="success">
                         {serviceCount} servicios
-                      </span>
-                      <span className="rounded-full border border-white/18 bg-white/10 px-3 py-1 text-xs font-semibold text-[color:var(--text-on-dark-secondary)] backdrop-blur-sm">
+                      </DashboardHeaderBadge>
+                      <DashboardHeaderBadge>
                         {activeServiceCount} activos
-                      </span>
+                      </DashboardHeaderBadge>
+                      {maxServices < PRACTICAL_UNLIMITED ? (
+                        <DashboardHeaderBadge tone={hasReachedServiceLimit ? 'warning' : 'default'}>
+                          Límite {serviceCount}/{maxServices}
+                        </DashboardHeaderBadge>
+                      ) : null}
                     </>
                   }
                   actions={(
                     <Button
                       type="button"
-                      variant="contrast"
+                      variant="primary"
                       onClick={() => void loadServices()}
                       disabled={isLoadingServices}
                     >
@@ -1062,10 +1045,7 @@ export default function ProfesionalServicesBuilderPage() {
                     </div>
                   </div>
                 )}
-              </div>
-            </main>
-          </div>
-        </div>
-    </div>
+      </div>
+    </ProfessionalDashboardShell>
   );
 }

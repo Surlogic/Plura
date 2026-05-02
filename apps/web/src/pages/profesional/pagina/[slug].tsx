@@ -540,6 +540,7 @@ export default function ProfesionalDetailPage({
       params.set('servicio', service.name);
     }
     if (professionalSlug) params.set('profesional', professionalSlug);
+    params.set('step', '1');
     if (date) params.set('date', date);
     if (time) params.set('time', time);
     const query = params.toString();

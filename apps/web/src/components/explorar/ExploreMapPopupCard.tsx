@@ -27,9 +27,9 @@ const formatPriceFrom = (value?: number | null) => {
   return `Desde $${new Intl.NumberFormat('es-UY').format(Math.round(value))}`;
 };
 
-export const buildExploreReserveHref = (slug?: string | null) => {
+export const buildExploreProfileHref = (slug?: string | null) => {
   const trimmedSlug = slug?.trim();
-  return trimmedSlug ? `/reservar?profesional=${encodeURIComponent(trimmedSlug)}` : null;
+  return trimmedSlug ? `/profesional/pagina/${encodeURIComponent(trimmedSlug)}` : null;
 };
 
 function ExploreMapPopupCard({ item }: { item: ExploreMapPopupCardItem }) {
@@ -46,7 +46,7 @@ function ExploreMapPopupCard({ item }: { item: ExploreMapPopupCardItem }) {
   }, [bannerKey, item.media.logo?.src]);
 
   const activeBanner = item.media.mainImageCandidates[bannerIndex] ?? null;
-  const reserveHref = buildExploreReserveHref(item.slug);
+  const reserveHref = buildExploreProfileHref(item.slug);
   const showLogo = Boolean(item.media.logo?.src) && !logoFailed;
   const hasRating = typeof item.rating === 'number' && Number.isFinite(item.rating) && item.rating > 0;
 

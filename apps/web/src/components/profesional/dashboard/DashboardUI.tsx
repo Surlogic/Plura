@@ -269,6 +269,7 @@ type DashboardPageHeaderProps = {
   meta?: ReactNode;
   className?: string;
   withDivider?: boolean;
+  variant?: 'default' | 'topbar';
 };
 
 export const DashboardPageHeader = memo(function DashboardPageHeader({
@@ -279,11 +280,14 @@ export const DashboardPageHeader = memo(function DashboardPageHeader({
   meta,
   className,
   withDivider = true,
+  variant = 'default',
 }: DashboardPageHeaderProps) {
   return (
     <div
       className={cn(
-        'flex flex-col gap-3 py-3 lg:flex-row lg:items-start lg:justify-between',
+        variant === 'topbar'
+          ? 'flex flex-col gap-3 py-1 lg:flex-row lg:items-center lg:justify-between'
+          : 'flex flex-col gap-3 py-3 lg:flex-row lg:items-start lg:justify-between',
         withDivider && 'border-b border-[color:var(--border-soft)]',
         className,
       )}
@@ -294,20 +298,29 @@ export const DashboardPageHeader = memo(function DashboardPageHeader({
             {eyebrow}
           </p>
         ) : null}
-        <div className="flex flex-col gap-2 lg:flex-row lg:items-end lg:justify-between">
+        <div className={cn(
+          'flex flex-col gap-2 lg:flex-row lg:justify-between',
+          variant === 'topbar' ? 'lg:items-center' : 'lg:items-end',
+        )}>
           <div className="min-w-0">
-            <h1 className="text-xl font-semibold tracking-[-0.03em] text-[color:var(--ink)] sm:text-2xl">
+            <h1 className={cn(
+              'font-semibold tracking-[-0.03em] text-[color:var(--ink)]',
+              variant === 'topbar' ? 'text-[1.9rem] sm:text-[2.1rem]' : 'text-xl sm:text-2xl',
+            )}>
               {title}
             </h1>
             {description ? (
-              <p className="mt-1 max-w-3xl text-sm text-[color:var(--ink-muted)]">
+              <p className={cn(
+                'max-w-3xl text-sm text-[color:var(--ink-muted)]',
+                variant === 'topbar' ? 'mt-1' : 'mt-1',
+              )}>
                 {description}
               </p>
             ) : null}
           </div>
         </div>
         {meta ? (
-          <div className="mt-3 flex flex-wrap gap-2">
+          <div className={cn('flex flex-wrap gap-2', variant === 'topbar' ? 'mt-2' : 'mt-3')}>
             {meta}
           </div>
         ) : null}
@@ -380,13 +393,25 @@ export const DashboardStatCard = memo(function DashboardStatCard({
   return (
     <div
       className={cn(
-        'rounded-[16px] border p-3 shadow-[0_1px_3px_rgba(15,23,42,0.05)]',
+        'rounded-[16px] border bg-white px-4 py-3 shadow-[0_1px_3px_rgba(15,23,42,0.05)]',
         statToneClassNames[tone],
         className,
       )}
     >
-      <div className="flex items-start justify-between gap-3">
-        <div>
+      <div className="flex items-center gap-3">
+        <span className={cn(
+          'inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-[14px]',
+          tone === 'dark'
+            ? 'border border-white/14 bg-white/10 text-[color:var(--text-on-dark)]'
+            : tone === 'accent'
+              ? 'border-[#BFEDE7] bg-[#ECFDF5] text-[#0F766E]'
+              : tone === 'warm'
+                ? 'border-[#F6D6A8] bg-[#FFF7E8] text-[#B45309]'
+                : 'border-[#E2E8F0] bg-[#F8FAFC] text-[color:var(--primary)]',
+        )}>
+          <DashboardIcon name={icon} className="h-[18px] w-[18px]" />
+        </span>
+        <div className="min-w-0 flex-1">
           <p className={cn(
           'text-[0.65rem] font-semibold uppercase tracking-[0.22em]',
           tone === 'dark' ? 'text-[color:var(--text-on-dark-secondary)]' : 'text-[color:var(--ink-muted)]',
@@ -408,12 +433,6 @@ export const DashboardStatCard = memo(function DashboardStatCard({
             </p>
           ) : null}
         </div>
-        <span className={cn(
-          'inline-flex h-9 w-9 items-center justify-center rounded-[12px]',
-          tone === 'dark' ? 'border border-white/14 bg-white/10 text-[color:var(--text-on-dark)]' : 'border border-[#E2E8F0] bg-white text-[color:var(--primary)]',
-        )}>
-          <DashboardIcon name={icon} className="h-[18px] w-[18px]" />
-        </span>
       </div>
     </div>
   );

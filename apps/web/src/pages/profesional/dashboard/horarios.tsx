@@ -489,7 +489,7 @@ export default function ProfesionalScheduleBuilderPage() {
   }, [lastSavedSchedule, slotDurationMinutes]);
 
   return (
-    <ProfessionalDashboardShell profile={profile} active="Horarios de trabajo">
+    <ProfessionalDashboardShell profile={profile} active="Horarios">
       <div className="space-y-6">
             <DashboardPageHeader
               eyebrow="Disponibilidad"

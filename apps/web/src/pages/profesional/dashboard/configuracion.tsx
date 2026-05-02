@@ -7,7 +7,6 @@ import EmailVerificationPanel from '@/components/auth/EmailVerificationPanel';
 import { useRouter } from 'next/router';
 import ProfessionalDashboardShell from '@/components/profesional/dashboard/ProfessionalDashboardShell';
 import { useClientProfileContext } from '@/context/ClientProfileContext';
-import { useAuthLogout } from '@/hooks/useAuthLogout';
 import { useProfessionalProfile } from '@/hooks/useProfessionalProfile';
 import { useProfessionalProfileContext } from '@/context/ProfessionalProfileContext';
 import { useProfessionalDashboardUnsavedSection } from '@/context/ProfessionalDashboardUnsavedChangesContext';
@@ -105,7 +104,6 @@ export default function ProfesionalSettingsPage() {
   const { profile, isLoading, hasLoaded } = useProfessionalProfile();
   const { clearProfile: clearClientProfile } = useClientProfileContext();
   const { clearProfile, refreshProfile } = useProfessionalProfileContext();
-  const { isLoggingOut, logout } = useAuthLogout();
   const [settingsMessage, setSettingsMessage] = useState<string | null>(null);
   const [isSettingsError, setIsSettingsError] = useState(false);
   const [isDeletingAccount, setIsDeletingAccount] = useState(false);
@@ -141,7 +139,7 @@ export default function ProfesionalSettingsPage() {
   useProfessionalDashboardUnsavedSection({
     sectionId: 'settings-account',
     isDirty: false,
-    isSaving: isLoggingOut || isDeletingAccount,
+    isSaving: isDeletingAccount,
   });
 
   useEffect(() => {
@@ -294,10 +292,6 @@ export default function ProfesionalSettingsPage() {
     } finally {
       setIsVerifyingDeleteChallenge(false);
     }
-  };
-
-  const handleLogout = async () => {
-    await logout('PROFESSIONAL');
   };
 
   const handleChangePassword = async () => {
@@ -678,48 +672,6 @@ export default function ProfesionalSettingsPage() {
 
                   <div className="grid gap-6 lg:grid-cols-[0.95fr,1.05fr]">
                     <div className="space-y-6">
-                      <div className={sectionCardClassName}>
-                        <DashboardSectionHeading
-                          title="Acceso"
-                          description="Datos base del profesional y referencias de identidad publica."
-                        />
-                        <div className="mt-4 grid gap-4">
-                          <div>
-                            <p className="text-xs uppercase tracking-[0.3em] text-[color:var(--ink-faint)]">
-                              Email
-                            </p>
-                            <p className="mt-1 text-base font-semibold text-[color:var(--ink)]">
-                              {profile?.email || 'No disponible'}
-                            </p>
-                          </div>
-                          <div>
-                            <p className="text-xs uppercase tracking-[0.3em] text-[color:var(--ink-faint)]">
-                              Slug publico
-                            </p>
-                            <p className="mt-1 text-base font-semibold text-[color:var(--ink)]">
-                              {profile?.slug || 'No disponible'}
-                            </p>
-                          </div>
-                          <div className="rounded-[18px] border border-[color:var(--border-soft)] bg-[color:var(--surface-soft)] p-4">
-                            <p className="text-sm font-semibold text-[color:var(--ink)]">
-                              Sesion actual
-                            </p>
-                            <p className="mt-1 text-sm text-[color:var(--ink-muted)]">
-                              Cerra sesion desde aca si queres salir del dashboard profesional.
-                            </p>
-                            <Button
-                              type="button"
-                              size="md"
-                              onClick={() => void handleLogout()}
-                              disabled={isLoggingOut}
-                              className="mt-4"
-                            >
-                              {isLoggingOut ? 'Cerrando sesión...' : 'Cerrar sesión'}
-                            </Button>
-                          </div>
-                        </div>
-                      </div>
-
                       <div className={sectionCardClassName}>
                         <DashboardSectionHeading
                           title="Facturación"

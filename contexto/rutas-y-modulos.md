@@ -174,6 +174,7 @@ Lectura de producto:
 - `/profesional/dashboard/servicios`
 - `/profesional/dashboard/horarios`
 - `/profesional/dashboard/reservas`
+- `/profesional/dashboard/acceso`
 - `/profesional/dashboard/configuracion`
 - `/profesional/dashboard/resenas`
 - `/profesional/dashboard/pagina-publica` — ahora incluye galería de fotos del negocio con upload vía `ImageUploader` (kind="gallery"), máximo según `maxBusinessPhotos` del plan (`BASIC=3`, `PROFESIONAL=6`, `ENTERPRISE=10`), preview en iframe; esas fotos son las que consume la galería pública del perfil y ya no se mezclan con imágenes de servicios; headline y about ya se editan también desde `BASIC`
@@ -215,6 +216,7 @@ Lectura de producto:
 
 - esta area concentra el valor de `Free` y buena parte de `Pro`
 - `servicios`, `horarios`, `reservas`, `perfil-negocio` y `notificaciones` son el corazon operativo
+- `acceso`, `billing` y `configuracion` viven separados dentro del grupo `Cuenta` del sidebar; `acceso` concentra email, slug publico, sesion actual y logout, mientras `configuracion` queda para seguridad, politicas, apariencia y acciones sensibles
 - el multiequipo ya tiene puntos clave armados en web y mobile:
   - backend de equipo (`/profesional/team*`)
   - pantalla aceptar invitacion `/trabajador/invitacion` (web) y `/(auth)/worker-invitation` (mobile)

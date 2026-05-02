@@ -995,13 +995,9 @@ export default function ReservationPage() {
       </main>
 
       <ReservationAuthOverlay
-        dateLabel={confirmedDateLabel}
         isOpen={isAuthOverlayOpen}
         onAuthenticated={handleAuthenticatedReservation}
         onClose={() => setIsAuthOverlayOpen(false)}
-        professionalName={professional?.fullName}
-        serviceName={confirmedService?.name}
-        timeLabel={selectedTime}
       />
 
       <Footer />

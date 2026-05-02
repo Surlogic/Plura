@@ -5,12 +5,14 @@ import type { ChangeEvent, FormEvent } from 'react';
 import { isAxiosError } from 'axios';
 import AuthTopBar from '@/components/auth/AuthTopBar';
 import AuthLoadingOverlay from '@/components/auth/AuthLoadingOverlay';
+import GoogleLoginButton from '@/components/auth/GoogleLoginButton';
 import Footer from '@/components/shared/Footer';
 import Badge from '@/components/ui/Badge';
 import Button from '@/components/ui/Button';
 import Card from '@/components/ui/Card';
 import api from '@/services/api';
 import { setAuthAccessToken, setKnownAuthSessionRole } from '@/services/session';
+import type { OAuthLoginResult } from '@/lib/auth/oauthLogin';
 
 type AuthContextType = 'CLIENT' | 'PROFESSIONAL' | 'WORKER';
 
@@ -35,6 +37,11 @@ type UnifiedLoginResponse = {
 type SelectContextResponse = {
   accessToken?: string | null;
   activeContext?: AuthContextDescriptor | null;
+};
+
+type AuthMeResponse = {
+  activeContext?: AuthContextDescriptor | null;
+  contexts?: AuthContextDescriptor[];
 };
 
 const extractApiMessage = (error: unknown, fallback: string) => {
@@ -110,6 +117,7 @@ export default function UnifiedLoginPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [contexts, setContexts] = useState<AuthContextDescriptor[] | null>(null);
   const [selectingContext, setSelectingContext] = useState<string | null>(null);
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
 
   const handleChange = (event: ChangeEvent<HTMLInputElement>) => {
     const { name, value } = event.target;
@@ -148,6 +156,36 @@ export default function UnifiedLoginPage() {
       setErrorMessage(extractApiMessage(error, 'Credenciales inválidas o error de servidor.'));
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleOAuthAuthenticated = async (result: OAuthLoginResult) => {
+    setErrorMessage(null);
+    if (result.role === 'PROFESSIONAL') {
+      setKnownAuthSessionRole('PROFESSIONAL');
+    } else if (result.role === 'USER') {
+      setKnownAuthSessionRole('CLIENT');
+    }
+    try {
+      const response = await api.get<AuthMeResponse>('/auth/me');
+      const data = response.data ?? {};
+      const list = Array.isArray(data.contexts) ? data.contexts : [];
+      if (list.length > 1) {
+        setContexts(list);
+        return;
+      }
+      if (data.activeContext) {
+        setKnownAuthSessionRole(sessionRoleForContext(data.activeContext.type));
+        router.push(dashboardForContext(data.activeContext));
+        return;
+      }
+      router.push('/cliente/inicio');
+    } catch (error) {
+      if (result.role === 'PROFESSIONAL') {
+        router.push('/profesional/dashboard');
+      } else {
+        router.push('/cliente/inicio');
+      }
     }
   };
 
@@ -238,10 +276,28 @@ export default function UnifiedLoginPage() {
                     </p>
                   ) : null}
 
-                  <Button type="submit" variant="brand" size="lg" className="w-full" disabled={isSubmitting}>
+                  <Button type="submit" variant="brand" size="lg" className="w-full" disabled={isSubmitting || isGoogleLoading}>
                     {isSubmitting ? 'Ingresando...' : 'Iniciar sesión'}
                   </Button>
                 </form>
+
+                <div className="mt-5 space-y-3">
+                  <div className="flex items-center gap-3">
+                    <div className="h-px flex-1 bg-[color:var(--border-soft)]" />
+                    <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[color:var(--ink-faint)]">
+                      o continuar con
+                    </span>
+                    <div className="h-px flex-1 bg-[color:var(--border-soft)]" />
+                  </div>
+                  <GoogleLoginButton
+                    onAuthenticated={handleOAuthAuthenticated}
+                    onError={(message) => setErrorMessage(message)}
+                    onLoadingChange={setIsGoogleLoading}
+                    authAction="LOGIN"
+                    buttonLabel="Continuar con Google"
+                    loadingLabel="Iniciando..."
+                  />
+                </div>
 
                 <p className="mt-6 text-center text-xs text-[color:var(--ink-muted)]">
                   ¿No tenés cuenta?{' '}
@@ -320,9 +376,13 @@ export default function UnifiedLoginPage() {
         </div>
       </main>
       <AuthLoadingOverlay
-        visible={isSubmitting || Boolean(selectingContext)}
+        visible={isSubmitting || isGoogleLoading || Boolean(selectingContext)}
         title={selectingContext ? 'Cambiando de contexto' : 'Iniciando sesión'}
-        description="Validando credenciales y preparando tu acceso."
+        description={
+          isGoogleLoading
+            ? 'Conectando tu cuenta de Google.'
+            : 'Validando credenciales y preparando tu acceso.'
+        }
       />
       <Footer />
     </div>

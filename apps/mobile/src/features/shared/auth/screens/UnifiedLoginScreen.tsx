@@ -15,6 +15,7 @@ import AuthLoadingOverlay from '../../../../components/auth/AuthLoadingOverlay';
 import { AppScreen, surfaceStyles } from '../../../../components/ui/AppScreen';
 import { theme } from '../../../../theme';
 import {
+  fetchAuthMe,
   loginUnified,
   selectContext,
   type AuthContextDescriptor,
@@ -22,6 +23,8 @@ import {
 import { setSession } from '../../../../services/session';
 import { useAuthSession } from '../../../../context/auth/AuthSessionContext';
 import { getApiErrorMessage } from '../../../../services/errors';
+import { useGoogleOAuth } from '../../../../hooks/useGoogleOAuth';
+import type { OAuthResult } from '../../../../services/authBackend';
 import {
   AUTH_FORGOT_PASSWORD_ROUTE,
   CLIENT_REGISTER_ROUTE,
@@ -84,6 +87,31 @@ export function UnifiedLoginScreen() {
     await refreshProfile();
     router.replace(homeRouteForContext(descriptor));
   };
+
+  const handleOAuthAuthenticated = async (_result: OAuthResult) => {
+    setErrorMessage(null);
+    try {
+      const me = await fetchAuthMe();
+      const list = Array.isArray(me.contexts) ? me.contexts : [];
+      if (list.length > 1) {
+        setContexts(list);
+        return;
+      }
+      await finishLogin(me.activeContext ?? null);
+    } catch {
+      await finishLogin(null);
+    }
+  };
+
+  const { isGoogleSubmitting, handleGoogleAuth } = useGoogleOAuth({
+    role: 'cliente',
+    authAction: 'LOGIN',
+    refreshProfile,
+    onSuccess: handleOAuthAuthenticated,
+    onError: (message) => {
+      setErrorMessage(message || null);
+    },
+  });
 
   const handleSubmit = async () => {
     setErrorMessage(null);
@@ -212,7 +240,7 @@ export function UnifiedLoginScreen() {
                 <TouchableOpacity
                   className="mt-6"
                   onPress={handleSubmit}
-                  disabled={isSubmitting}
+                  disabled={isSubmitting || isGoogleSubmitting}
                   activeOpacity={0.85}
                 >
                   <LinearGradient
@@ -227,6 +255,41 @@ export function UnifiedLoginScreen() {
                       <Text className="text-base font-semibold text-white">Iniciar sesion</Text>
                     )}
                   </LinearGradient>
+                </TouchableOpacity>
+
+                <View className="mt-5 flex-row items-center" style={{ gap: 8 }}>
+                  <View
+                    style={{
+                      flex: 1,
+                      height: 1,
+                      backgroundColor: theme.colors.border,
+                    }}
+                  />
+                  <Text className="text-[11px] font-bold uppercase tracking-[1.2px] text-faint">
+                    o continuar con
+                  </Text>
+                  <View
+                    style={{
+                      flex: 1,
+                      height: 1,
+                      backgroundColor: theme.colors.border,
+                    }}
+                  />
+                </View>
+
+                <TouchableOpacity
+                  className="mt-3 h-14 items-center justify-center rounded-full border border-secondary/15 bg-backgroundSoft"
+                  onPress={handleGoogleAuth}
+                  disabled={isSubmitting || isGoogleSubmitting}
+                  activeOpacity={0.85}
+                >
+                  {isGoogleSubmitting ? (
+                    <ActivityIndicator color={theme.colors.ink} />
+                  ) : (
+                    <Text className="text-base font-semibold text-secondary">
+                      Continuar con Google
+                    </Text>
+                  )}
                 </TouchableOpacity>
 
                 <View className="mt-8 flex-row flex-wrap justify-center gap-2">
@@ -306,9 +369,13 @@ export function UnifiedLoginScreen() {
       </KeyboardAvoidingView>
 
       <AuthLoadingOverlay
-        visible={isSubmitting || Boolean(selectingKey)}
+        visible={isSubmitting || isGoogleSubmitting || Boolean(selectingKey)}
         title={selectingKey ? 'Cambiando de contexto' : 'Iniciando sesion'}
-        description="Validando credenciales y preparando tu acceso."
+        description={
+          isGoogleSubmitting
+            ? 'Conectando tu cuenta de Google.'
+            : 'Validando credenciales y preparando tu acceso.'
+        }
       />
     </>
   );

@@ -500,6 +500,10 @@ export default function ReservationPage() {
     const currentTime = resolveQueryValue(router.query.time).trim();
     const currentResume = resolveQueryValue(router.query.resume).trim();
 
+    if (currentServiceId && !selectedServiceId && !professional?.id) {
+      return;
+    }
+
     if (
       currentServiceId === syncedServiceId &&
       currentDate === syncedDate &&
@@ -530,6 +534,7 @@ export default function ReservationPage() {
   }, [
     activeStep,
     confirmedDate,
+    professional?.id,
     professionalSlug,
     router,
     router.isReady,

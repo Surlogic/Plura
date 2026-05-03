@@ -4,6 +4,7 @@ import {
   Image,
   Platform,
   ScrollView,
+  StyleSheet,
   Text,
   TouchableOpacity,
   View,
@@ -46,6 +47,9 @@ const MAX_FEATURED_ITEMS = 8;
 const MAX_PERSONALIZED_ITEMS = 8;
 const MAX_FAVORITES_ITEMS = 8;
 const MAX_NEW_ITEMS = 8;
+
+const softBorderColor = 'rgba(15, 23, 42, 0.055)';
+const softPrimaryBorderColor = 'rgba(10, 122, 67, 0.12)';
 
 type PersonalizedRailItem = {
   business: PublicProfessionalSummary;
@@ -121,8 +125,8 @@ function BusinessVisual({
   if (business.logoUrl) {
     return (
       <View
-        className="overflow-hidden rounded-[24px] border border-secondary/5 bg-backgroundSoft"
-        style={{ height }}
+        className="overflow-hidden rounded-[24px] bg-backgroundSoft"
+        style={[styles.mediaSurface, { height }]}
       >
         <LinearGradient
           colors={[theme.colors.surfaceStrong, theme.colors.backgroundSoft]}
@@ -176,8 +180,8 @@ function CategoryShortcut({
       style={{ width: 78, alignItems: 'center' }}
     >
       <View
-        className="h-[68px] w-[68px] items-center justify-center overflow-hidden rounded-full border border-secondary/6"
-        style={{ backgroundColor: theme.colors.surfaceStrong }}
+        className="h-[68px] w-[68px] items-center justify-center overflow-hidden rounded-full"
+        style={styles.categoryCircle}
       >
         {category.imageUrl ? (
           <Image
@@ -209,8 +213,8 @@ function MoreShortcut({ onPress }: { onPress: () => void }) {
       style={{ width: 78, alignItems: 'center' }}
     >
       <View
-        className="h-[68px] w-[68px] items-center justify-center rounded-full border border-dashed border-primary/20"
-        style={{ backgroundColor: theme.colors.surfaceStrong }}
+        className="h-[68px] w-[68px] items-center justify-center rounded-full"
+        style={styles.moreCategoryCircle}
       >
         <Ionicons name="add" size={24} color={theme.colors.primaryStrong} />
       </View>
@@ -236,8 +240,8 @@ function FeaturedBusinessCard({
     <TouchableOpacity
       activeOpacity={0.92}
       onPress={onPress}
-      className="w-[285px] overflow-hidden rounded-[28px] border border-secondary/6 bg-white"
-      style={theme.shadow.card}
+      className="w-[285px] overflow-hidden rounded-[28px] bg-white"
+      style={styles.softCardSurface}
     >
       <View className="p-4">
         <View>
@@ -249,7 +253,7 @@ function FeaturedBusinessCard({
               onToggleFavorite();
             }}
             className="absolute right-3 top-3 h-10 w-10 items-center justify-center rounded-full bg-white"
-            style={theme.shadow.card}
+            style={styles.iconButtonShadow}
           >
             <Ionicons
               name={isFavorite ? 'heart' : 'heart-outline'}
@@ -313,8 +317,8 @@ function CompactBusinessCard({
     <TouchableOpacity
       activeOpacity={0.92}
       onPress={onPress}
-      className="w-[252px] overflow-hidden rounded-[26px] border border-secondary/6 bg-white"
-      style={theme.shadow.card}
+      className="w-[252px] overflow-hidden rounded-[26px] bg-white"
+      style={styles.softCardSurface}
     >
       <View className="p-4">
         <BusinessVisual business={business} height={120} compact />
@@ -551,8 +555,8 @@ export default function HomeScreen() {
           <TouchableOpacity
             activeOpacity={0.88}
             onPress={() => router.push('/(tabs)/notifications')}
-            className="h-12 w-12 items-center justify-center rounded-full border border-secondary/6 bg-white"
-            style={theme.shadow.card}
+            className="h-12 w-12 items-center justify-center rounded-full bg-white"
+            style={styles.floatingButton}
           >
             <Ionicons name="notifications-outline" size={20} color={theme.colors.secondary} />
           </TouchableOpacity>
@@ -561,8 +565,8 @@ export default function HomeScreen() {
         <TouchableOpacity
           activeOpacity={0.9}
           onPress={openExplore}
-          className="mt-5 rounded-[24px] border border-secondary/6 bg-white px-4 py-4"
-          style={theme.shadow.card}
+          className="mt-5 rounded-[24px] bg-white px-4 py-4"
+          style={styles.searchSurface}
         >
           <View className="flex-row items-center">
             <View className="h-11 w-11 items-center justify-center rounded-full bg-backgroundSoft">
@@ -614,7 +618,7 @@ export default function HomeScreen() {
 
         {!isLoading && visibleCategories.length === 0 ? (
           <View className="mt-4 px-5">
-            <SectionCard>
+            <SectionCard style={styles.softSectionCard}>
               <EmptyState
                 title="Sin categorias por ahora"
                 description="Todavia no hay categorias visibles para explorar desde el inicio."
@@ -641,7 +645,10 @@ export default function HomeScreen() {
           contentContainerStyle={{ paddingHorizontal: 20, gap: 14 }}
         >
           {isLoading ? (
-            <View className="w-[285px] items-center justify-center rounded-[28px] border border-secondary/6 bg-white py-12">
+            <View
+              className="w-[285px] items-center justify-center rounded-[28px] bg-white py-12"
+              style={styles.softCardSurface}
+            >
               <ActivityIndicator color={theme.colors.primary} />
             </View>
           ) : null}
@@ -702,7 +709,7 @@ export default function HomeScreen() {
       <View className="mt-4">
         {isLoading ? (
           <View className="px-5">
-            <SectionCard>
+            <SectionCard style={styles.softSectionCard}>
               <View className="items-center py-3">
                 <ActivityIndicator color={theme.colors.primary} />
               </View>
@@ -710,7 +717,7 @@ export default function HomeScreen() {
           </View>
         ) : favoritesBusinesses.length === 0 ? (
           <View className="px-5">
-            <SectionCard>
+            <SectionCard style={styles.softSectionCard}>
               <View className="flex-row items-center justify-between" style={{ gap: 14 }}>
                 <View className="flex-1">
                   <Text className="text-base font-bold text-secondary">
@@ -779,3 +786,76 @@ export default function HomeScreen() {
     </AppScreen>
   );
 }
+
+const styles = StyleSheet.create({
+  mediaSurface: {
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: softBorderColor,
+  },
+  categoryCircle: {
+    backgroundColor: theme.colors.surfaceStrong,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(15, 23, 42, 0.045)',
+    shadowColor: theme.colors.ink,
+    shadowOpacity: 0.045,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 5 },
+    elevation: 2,
+  },
+  moreCategoryCircle: {
+    backgroundColor: theme.colors.surfaceStrong,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: softPrimaryBorderColor,
+    borderStyle: 'dashed',
+    shadowColor: theme.colors.ink,
+    shadowOpacity: 0.035,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 1,
+  },
+  softCardSurface: {
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: softBorderColor,
+    shadowColor: theme.colors.ink,
+    shadowOpacity: 0.055,
+    shadowRadius: 20,
+    shadowOffset: { width: 0, height: 9 },
+    elevation: 3,
+  },
+  iconButtonShadow: {
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(15, 23, 42, 0.035)',
+    shadowColor: theme.colors.ink,
+    shadowOpacity: 0.06,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 3,
+  },
+  floatingButton: {
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: softBorderColor,
+    shadowColor: theme.colors.ink,
+    shadowOpacity: 0.065,
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 7 },
+    elevation: 3,
+  },
+  searchSurface: {
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(15, 23, 42, 0.04)',
+    shadowColor: theme.colors.ink,
+    shadowOpacity: 0.05,
+    shadowRadius: 22,
+    shadowOffset: { width: 0, height: 9 },
+    elevation: 2,
+  },
+  softSectionCard: {
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: softBorderColor,
+    shadowColor: theme.colors.ink,
+    shadowOpacity: 0.045,
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 2,
+  },
+});

@@ -41,7 +41,6 @@ import {
   SectionCard,
 } from '../../../components/ui/MobileSurface';
 
-const MAX_CATEGORY_ITEMS = 5;
 const MAX_FEATURED_ITEMS = 8;
 const MAX_PERSONALIZED_ITEMS = 8;
 const MAX_FAVORITES_ITEMS = 8;
@@ -111,49 +110,15 @@ const getCategoryTone = (value: string) => {
   return { color: theme.colors.accentStrong, backgroundColor: theme.colors.accentSoft };
 };
 
-const getSoftBadgeTheme = (label: string) => {
-  if (label === 'Favorito') {
-    return {
-      backgroundColor: theme.colors.primarySoft,
-      color: theme.colors.primaryStrong,
-      icon: 'heart' as const,
-    };
-  }
-
-  if (label === 'NUEVO') {
-    return {
-      backgroundColor: theme.colors.accentSoft,
-      color: theme.colors.accentStrong,
-      icon: 'sparkles-outline' as const,
-    };
-  }
-
-  if (label === 'Disponible hoy') {
-    return {
-      backgroundColor: theme.colors.primarySoft,
-      color: theme.colors.primaryStrong,
-      icon: 'checkmark-circle' as const,
-    };
-  }
-
-  return {
-    backgroundColor: theme.colors.warningSoft,
-    color: theme.colors.warning,
-    icon: 'refresh-outline' as const,
-  };
-};
-
-function SoftBadge({ label }: { label: string }) {
-  const badge = getSoftBadgeTheme(label);
-
+function AvailableTodayPill() {
   return (
     <View
       className="flex-row items-center rounded-full px-3 py-1.5"
-      style={{ backgroundColor: badge.backgroundColor }}
+      style={{ backgroundColor: theme.colors.primarySoft }}
     >
-      <Ionicons name={badge.icon} size={13} color={badge.color} />
-      <Text className="ml-1 text-xs font-semibold" style={{ color: badge.color }}>
-        {label}
+      <Ionicons name="checkmark-circle" size={13} color={theme.colors.primaryStrong} />
+      <Text className="ml-1 text-xs font-semibold" style={{ color: theme.colors.primaryStrong }}>
+        Disponible hoy
       </Text>
     </View>
   );
@@ -294,24 +259,6 @@ function CategoryShortcut({
   );
 }
 
-function MoreShortcut({ onPress }: { onPress: () => void }) {
-  return (
-    <TouchableOpacity
-      activeOpacity={0.86}
-      onPress={onPress}
-      style={{ width: 78, alignItems: 'center' }}
-    >
-      <View
-        className="h-[68px] w-[68px] items-center justify-center rounded-full"
-        style={styles.moreCategoryCircle}
-      >
-        <Ionicons name="add" size={24} color={theme.colors.primaryStrong} />
-      </View>
-      <Text className="mt-2 text-center text-xs font-semibold text-secondary">Mas</Text>
-    </TouchableOpacity>
-  );
-}
-
 function FeaturedBusinessCard({
   business,
   isFavorite,
@@ -369,7 +316,7 @@ function FeaturedBusinessCard({
           ) : (
             <View />
           )}
-          <SoftBadge label="Disponible hoy" />
+          <AvailableTodayPill />
         </View>
 
         <Text className="mt-4 text-lg font-bold text-secondary" numberOfLines={2}>
@@ -392,22 +339,20 @@ function FeaturedBusinessCard({
 
 function CompactBusinessCard({
   business,
-  badge,
   detail,
+  eyebrow,
   isFavorite,
   onPress,
   onToggleFavorite,
 }: {
   business: PublicProfessionalSummary;
-  badge?: string;
   detail?: string | null;
+  eyebrow?: string;
   isFavorite?: boolean;
   onPress: () => void;
   onToggleFavorite?: (() => void) | undefined;
 }) {
   const ratingLabel = formatRating(business.rating);
-  const categoryName = getBusinessCategory(business);
-  const categoryWash = getCategoryTone(categoryName).backgroundColor;
 
   return (
     <TouchableOpacity
@@ -416,18 +361,9 @@ function CompactBusinessCard({
       className="w-[252px] rounded-[26px] bg-white"
       style={styles.floatingCompactCard}
     >
-      <View className="p-3.5" style={{ backgroundColor: categoryWash, borderRadius: 26 }}>
-        <BusinessVisual business={business} height={126} compact />
-
-        <View className="mt-4 flex-row items-start justify-between rounded-[20px] bg-white/80 p-2.5">
-          <View className="flex-1 pr-2">
-            <Text className="text-base font-bold text-secondary" numberOfLines={2}>
-              {business.fullName}
-            </Text>
-            <Text className="mt-1 text-sm text-muted" numberOfLines={1}>
-              {detail || business.location || getBusinessCategory(business)}
-            </Text>
-          </View>
+      <View className="p-3.5">
+        <View>
+          <BusinessVisual business={business} height={126} compact />
 
           {onToggleFavorite ? (
             <TouchableOpacity
@@ -436,10 +372,10 @@ function CompactBusinessCard({
                 event.stopPropagation();
                 onToggleFavorite();
               }}
-              className="h-9 w-9 items-center justify-center rounded-full"
+              className="absolute right-2.5 top-2.5 h-9 w-9 items-center justify-center rounded-full"
               style={[
                 styles.compactHeartButton,
-                { backgroundColor: isFavorite ? theme.colors.primarySoft : theme.colors.surfaceStrong },
+                { backgroundColor: isFavorite ? theme.colors.primarySoft : theme.colors.white },
               ]}
             >
               <Ionicons
@@ -451,13 +387,26 @@ function CompactBusinessCard({
           ) : null}
         </View>
 
+        <Text className="mt-4 text-base font-bold text-secondary" numberOfLines={2}>
+          {business.fullName}
+        </Text>
+        <Text className="mt-1 text-sm text-muted" numberOfLines={1}>
+          {detail || business.location || getBusinessCategory(business)}
+        </Text>
+
         <View className="mt-3 flex-row items-center justify-between">
-          {badge ? <SoftBadge label={badge} /> : <View />}
           {ratingLabel ? (
-            <View className="flex-row items-center">
+            <View className="flex-row items-center rounded-full px-2.5 py-1" style={styles.compactRatingPill}>
               <Ionicons name="star" size={13} color={theme.colors.primaryStrong} />
               <Text className="ml-1 text-xs font-semibold text-primary">{ratingLabel}</Text>
             </View>
+          ) : (
+            <View />
+          )}
+          {eyebrow ? (
+            <Text className="text-[11px] font-semibold uppercase tracking-[1.2px]" style={styles.subtleEyebrow}>
+              {eyebrow}
+            </Text>
           ) : null}
         </View>
       </View>
@@ -538,16 +487,12 @@ export default function HomeScreen() {
       ? Math.max(insets.bottom, 10)
       : Platform.OS === 'web'
         ? 10
-        : Math.max(insets.bottom, 12);
+        : Math.max(insets.bottom, 30);
   const contentBottomPadding = (Platform.OS === 'ios' ? 60 : 58) + 10 + tabBarBottomOffset + 28;
 
   const sortedCategories = useMemo(
     () => [...categories].sort((a, b) => (a.displayOrder ?? 999) - (b.displayOrder ?? 999)),
     [categories],
-  );
-  const visibleCategories = useMemo(
-    () => sortedCategories.slice(0, MAX_CATEGORY_ITEMS),
-    [sortedCategories],
   );
 
   const featuredBusinesses = useMemo(() => {
@@ -570,7 +515,7 @@ export default function HomeScreen() {
       .slice(0, MAX_FAVORITES_ITEMS);
   }, [businesses, favoriteSlugs]);
 
-  const personalizedBusinesses = useMemo<PersonalizedRailItem[]>(() => {
+  const personalizedFromHistory = useMemo<PersonalizedRailItem[]>(() => {
     const bySlug = new Map(businesses.map((business) => [business.slug, business] as const));
     const candidateBookings = [...bookings]
       .filter((booking) => Boolean(booking.professionalSlug))
@@ -593,13 +538,35 @@ export default function HomeScreen() {
       if (items.length >= MAX_PERSONALIZED_ITEMS) break;
     }
 
-    if (items.length > 0) return items;
+    return items;
+  }, [bookings, businesses]);
 
-    return businesses.slice(0, MAX_PERSONALIZED_ITEMS).map((business) => ({
+  const hasHistoryRecommendations = personalizedFromHistory.length > 0;
+  const discoveryBusinesses = useMemo(
+    () => businesses.slice(0, MAX_PERSONALIZED_ITEMS),
+    [businesses],
+  );
+  const recommendationItems = useMemo<PersonalizedRailItem[]>(() => {
+    if (hasHistoryRecommendations) return personalizedFromHistory;
+    return discoveryBusinesses.map((business) => ({
       business,
       service: null,
     }));
-  }, [bookings, businesses]);
+  }, [discoveryBusinesses, hasHistoryRecommendations, personalizedFromHistory]);
+  const recommendationHeader = hasHistoryRecommendations
+    ? {
+        title: 'Para vos',
+        subtitle: 'Locales con servicios que ya usaste',
+      }
+    : isAuthenticated && hasCoordinates
+      ? {
+          title: 'Cerca de vos',
+          subtitle: 'Locales destacados en tu zona',
+        }
+      : {
+          title: 'Descubrí lugares',
+          subtitle: 'Locales recomendados para empezar',
+        };
 
   const newBusinesses = useMemo(
     () => businesses.slice(0, MAX_NEW_ITEMS),
@@ -687,8 +654,6 @@ export default function HomeScreen() {
       <View className="mt-8 px-5">
         <HomeRailHeader
           title="Categorias"
-          actionLabel="Ver todas"
-          onActionPress={openExplore}
         />
       </View>
 
@@ -698,7 +663,7 @@ export default function HomeScreen() {
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={{ paddingHorizontal: 20, paddingVertical: 6, gap: 14 }}
         >
-          {visibleCategories.map((category) => (
+          {sortedCategories.map((category) => (
             <CategoryShortcut
               key={category.id}
               category={category}
@@ -713,11 +678,9 @@ export default function HomeScreen() {
               }
             />
           ))}
-
-          <MoreShortcut onPress={openExplore} />
         </ScrollView>
 
-        {!isLoading && visibleCategories.length === 0 ? (
+        {!isLoading && sortedCategories.length === 0 ? (
           <View className="mt-4 px-5">
             <SectionCard style={styles.softSectionCard}>
               <EmptyState
@@ -770,8 +733,8 @@ export default function HomeScreen() {
 
       <View className="mt-10 px-5">
         <HomeRailHeader
-          title="Para vos"
-          subtitle="Locales con servicios que ya usaste"
+          title={recommendationHeader.title}
+          subtitle={recommendationHeader.subtitle}
           actionLabel="Ver todo"
           onActionPress={openExplore}
         />
@@ -783,12 +746,11 @@ export default function HomeScreen() {
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 2, paddingBottom: 14, gap: 14 }}
         >
-          {personalizedBusinesses.map(({ business, service }) => (
+          {recommendationItems.map(({ business, service }) => (
             <CompactBusinessCard
-              key={`personalized-${business.slug}`}
+              key={`recommendation-${business.slug}`}
               business={business}
-              badge={service || 'Para volver'}
-              detail={business.location || getBusinessCategory(business)}
+              detail={service || business.location || getBusinessCategory(business)}
               isFavorite={favoriteSet.has(business.slug)}
               onPress={() => router.push(`/profesional/${business.slug}`)}
               onToggleFavorite={() => {
@@ -842,7 +804,6 @@ export default function HomeScreen() {
               <CompactBusinessCard
                 key={`favorite-${business.slug}`}
                 business={business}
-                badge="Favorito"
                 detail={business.location || getBusinessCategory(business)}
                 isFavorite
                 onPress={() => router.push(`/profesional/${business.slug}`)}
@@ -873,7 +834,7 @@ export default function HomeScreen() {
             <CompactBusinessCard
               key={`new-${business.slug}`}
               business={business}
-              badge="NUEVO"
+              eyebrow="Nuevo"
               detail={business.headline || business.location || getBusinessCategory(business)}
               isFavorite={favoriteSet.has(business.slug)}
               onPress={() => router.push(`/profesional/${business.slug}`)}
@@ -904,14 +865,6 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 4 },
     elevation: 0,
   },
-  moreCategoryCircle: {
-    backgroundColor: theme.colors.primarySoft,
-    shadowColor: theme.colors.primary,
-    shadowOpacity: 0.025,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 0,
-  },
   floatingCard: {
     shadowColor: theme.colors.ink,
     shadowOpacity: 0.09,
@@ -925,6 +878,12 @@ const styles = StyleSheet.create({
     shadowRadius: 22,
     shadowOffset: { width: 0, height: 10 },
     elevation: 4,
+  },
+  compactRatingPill: {
+    backgroundColor: theme.colors.primarySoft,
+  },
+  subtleEyebrow: {
+    color: theme.colors.accentStrong,
   },
   iconButtonShadow: {
     shadowColor: theme.colors.ink,

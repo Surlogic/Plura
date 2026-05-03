@@ -29,13 +29,16 @@ export default function ClientTabsLayout() {
   const insets = useSafeAreaInsets();
   const baseTabBarHeight = Platform.OS === 'ios' ? 60 : 58;
   const tabBarHorizontalInset = Platform.OS === 'web' ? 14 : 0;
-  const tabBarBottomOffset = Platform.OS === 'web' ? 10 : 0;
+  const tabBarBottomOffset =
+    Platform.OS === 'web'
+      ? 10
+      : 0;
   const tabBarBottomPadding =
     Platform.OS === 'ios'
       ? Math.max(insets.bottom, 10)
       : Platform.OS === 'web'
         ? 10
-        : Math.max(insets.bottom, 18);
+        : Math.max(insets.bottom, 30);
 
   if (!hasLoaded) {
     return null;
@@ -56,8 +59,8 @@ export default function ClientTabsLayout() {
           backgroundColor: theme.colors.white,
           borderTopWidth: StyleSheet.hairlineWidth,
           borderTopColor: 'rgba(15, 23, 42, 0.06)',
-          borderTopLeftRadius: Platform.OS === 'web' ? 28 : 24,
-          borderTopRightRadius: Platform.OS === 'web' ? 28 : 24,
+          borderTopLeftRadius: Platform.OS === 'web' ? 28 : 0,
+          borderTopRightRadius: Platform.OS === 'web' ? 28 : 0,
           borderBottomLeftRadius: Platform.OS === 'web' ? 28 : 0,
           borderBottomRightRadius: Platform.OS === 'web' ? 28 : 0,
           position: 'absolute',
@@ -69,7 +72,7 @@ export default function ClientTabsLayout() {
           shadowOffset: { width: 0, height: -4 },
           height: baseTabBarHeight + tabBarBottomPadding,
           paddingBottom: tabBarBottomPadding,
-          paddingTop: 8,
+          paddingTop: 4,
           marginHorizontal: 0,
           bottom: tabBarBottomOffset,
           alignSelf: Platform.OS === 'web' ? 'center' : undefined,
@@ -81,10 +84,11 @@ export default function ClientTabsLayout() {
         tabBarLabelStyle: {
           fontSize: 11,
           fontWeight: '700',
-          marginTop: 0,
+          marginTop: -2,
         },
         tabBarItemStyle: {
-          paddingTop: 4,
+          paddingTop: 0,
+          paddingBottom: 4,
         },
       }}
     >

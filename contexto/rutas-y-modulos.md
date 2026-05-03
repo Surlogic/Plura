@@ -360,12 +360,12 @@ Lectura de producto:
 - la tab bar esta centrada en cliente
 - `app/(tabs)` ya no contiene implementacion de negocio: queda como routing fino de Expo y delega en `src/features/client/navigation/ClientTabsLayout.tsx` + `src/features/client/screens/*`
 - el layout de tabs cliente ahora expulsa sesiones profesionales hacia `/dashboard` para evitar cruces de shells o quedar atrapado en superficies cliente sin navegacion coherente
-- `explore`, `favorites`, `bookings` y `notifications` reflejan el nucleo del plan `Usuario`
+- la tab bar visible del cliente ahora queda en `5` accesos: `Inicio`, `MAPA` (ruta `explore`), `Favoritos`, `Reservas` y `Perfil`; `/(tabs)/notifications` sigue existiendo pero sale de la barra y se abre desde la campana del header del home
 - `dashboard` dentro de tabs ya funciona como perfil cliente y deja de mezclar acceso con la superficie profesional
-- `/(tabs)/index` ya muestra un bloque de ubicacion del cliente para abrir exploracion ordenada por cercania y un CTA para activar permisos de notificaciones del dispositivo
+- `/(tabs)/index` ahora prioriza una home marketplace visual: header compacto con campana, search bar que deriva a `/(tabs)/explore`, rail de categorias, rail de destacados, rail personalizado desde reservas cuando existe data, favoritos reales y rail de `Nuevos en la app`; ya no muestra el hero grande ni las cards grandes separadas de ubicacion, notificaciones o proxima reserva
 - `/(tabs)/explore` ya puede reutilizar la ubicacion actual del cliente para pedir `/api/search` con `lat/lng`, `radiusKm` y `sort=DISTANCE`, mostrando tambien la zona actual y distancia aproximada por resultado cuando backend la devuelve
 - `/(tabs)/notifications` ya refleja el permiso push del sistema y permite activarlo o derivar a ajustes del dispositivo; todavia no registra tokens push en backend
-- las tabs cliente principales (`index`, `explore`, `favorites`, `bookings`, `notifications`, `dashboard`) ahora rehidratan datos al volver a foco y tambien soportan gesto manual de pull-to-refresh desde `AppScreen`
+- las superficies cliente principales (`index`, `explore`, `favorites`, `bookings`, `notifications`, `dashboard`) rehidratan datos al volver a foco y tambien soportan gesto manual de pull-to-refresh desde `AppScreen`
 
 ### Grupo `(auth)`
 

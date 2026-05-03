@@ -76,7 +76,7 @@ export default function ClientTabsLayout() {
       <Tabs.Screen
         name="explore"
         options={{
-          title: 'Explorar',
+          title: 'MAPA',
           tabBarIcon: ({ color, focused }) => (
             <Ionicons name={focused ? 'search' : 'search-outline'} size={26} color={color} />
           ),
@@ -103,10 +103,7 @@ export default function ClientTabsLayout() {
       <Tabs.Screen
         name="notifications"
         options={{
-          title: 'Alertas',
-          tabBarIcon: ({ color, focused }) => (
-            <Ionicons name={focused ? 'notifications' : 'notifications-outline'} size={24} color={color} />
-          ),
+          href: null,
         }}
       />
       <Tabs.Screen

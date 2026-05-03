@@ -28,6 +28,14 @@ export type PublicBookingResponseBase = {
   userId: string;
 };
 
+export type PublicCategorySummary = {
+  id: string;
+  name: string;
+  slug: string;
+  imageUrl?: string | null;
+  displayOrder?: number | null;
+};
+
 export type PublicProfessionalServiceBase<TPaymentType = string> = {
   id: string;
   name: string;
@@ -96,7 +104,10 @@ export type PublicProfessionalSummary = {
   rubro?: string;
   location?: string;
   headline?: string;
+  categories?: PublicCategorySummary[];
   logoUrl?: string | null;
+  rating?: number | null;
+  reviewsCount?: number | null;
 };
 
 export const normalizePublicProfessionalPage = <

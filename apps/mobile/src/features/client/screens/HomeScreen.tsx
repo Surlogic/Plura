@@ -1,10 +1,28 @@
-import React, { useCallback, useMemo, useState } from 'react';
-import { ActivityIndicator, Alert, ScrollView, Text, TouchableOpacity, View } from 'react-native';
-import { Ionicons } from '../../../lib/icons';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  ActivityIndicator,
+  Image,
+  ScrollView,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
-import { listPublicProfessionals, type PublicProfessionalSummary } from '../../../services/publicBookings';
-import { getClientNextBooking, type ClientNextBooking } from '../../../services/clientFeatures';
+import { Ionicons } from '../../../lib/icons';
+import {
+  listPublicProfessionals,
+  type PublicProfessionalSummary,
+} from '../../../services/publicBookings';
+import {
+  getFavoriteProfessionalSlugs,
+  subscribeFavoriteProfessionalSlugs,
+  toggleFavoriteProfessionalSlug,
+} from '../../../services/clientFeatures';
+import {
+  getClientBookings,
+  type ClientDashboardBooking,
+} from '../../../services/clientBookings';
 import { getApiErrorMessage } from '../../../services/errors';
 import { useClientSession } from '../session/useClientSession';
 import { listCategories } from '../../../services/categories';
@@ -13,38 +31,344 @@ import { getCategoryAccent } from '../../../features/client/categoryUi';
 import { AppScreen } from '../../../components/ui/AppScreen';
 import { theme } from '../../../theme';
 import { useUserLocation } from '../../../hooks/useUserLocation';
-import { usePushNotifications } from '../../../hooks/usePushNotifications';
 import {
   ActionButton,
   EmptyState,
   MessageCard,
-  ScreenHero,
   SectionCard,
-  SectionHeader,
   StatusPill,
 } from '../../../components/ui/MobileSurface';
-import { CLIENT_LOGIN_ROUTE } from '../../shared/auth/routes';
+
+const MAX_CATEGORY_ITEMS = 5;
+const MAX_FEATURED_ITEMS = 8;
+const MAX_PERSONALIZED_ITEMS = 8;
+const MAX_FAVORITES_ITEMS = 8;
+const MAX_NEW_ITEMS = 8;
+
+type PersonalizedRailItem = {
+  business: PublicProfessionalSummary;
+  service: string | null;
+};
+
+const formatRating = (rating?: number | null) => {
+  if (typeof rating !== 'number' || !Number.isFinite(rating) || rating <= 0) return null;
+  return rating.toFixed(1);
+};
+
+const getDisplayName = (fullName?: string | null) => {
+  const trimmed = fullName?.trim();
+  if (!trimmed) return null;
+  return trimmed.split(/\s+/)[0] || trimmed;
+};
+
+const getBusinessCategory = (business: PublicProfessionalSummary) =>
+  business.categories?.[0]?.name || business.rubro || 'Profesional';
+
+const buildInitials = (value: string) =>
+  value
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part.charAt(0).toUpperCase())
+    .join('');
+
+const sortByDateDesc = (a: ClientDashboardBooking, b: ClientDashboardBooking) =>
+  new Date(b.dateTime).getTime() - new Date(a.dateTime).getTime();
+
+function HomeRailHeader({
+  title,
+  subtitle,
+  actionLabel,
+  onActionPress,
+}: {
+  title: string;
+  subtitle?: string;
+  actionLabel?: string;
+  onActionPress?: (() => void) | undefined;
+}) {
+  return (
+    <View className="flex-row items-end justify-between">
+      <View className="flex-1 pr-3">
+        <Text className="text-[22px] font-bold text-secondary">{title}</Text>
+        {subtitle ? (
+          <Text className="mt-1 text-sm text-muted">{subtitle}</Text>
+        ) : null}
+      </View>
+
+      {actionLabel && onActionPress ? (
+        <TouchableOpacity onPress={onActionPress} activeOpacity={0.82}>
+          <Text className="text-sm font-semibold text-primary">{actionLabel}</Text>
+        </TouchableOpacity>
+      ) : null}
+    </View>
+  );
+}
+
+function BusinessVisual({
+  business,
+  height,
+  compact = false,
+}: {
+  business: PublicProfessionalSummary;
+  height: number;
+  compact?: boolean;
+}) {
+  const categoryName = getBusinessCategory(business);
+  const accent = getCategoryAccent(categoryName);
+
+  if (business.logoUrl) {
+    return (
+      <View
+        className="overflow-hidden rounded-[24px] border border-secondary/5 bg-backgroundSoft"
+        style={{ height }}
+      >
+        <LinearGradient
+          colors={[theme.colors.surfaceStrong, theme.colors.backgroundSoft]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: compact ? 18 : 22 }}
+        >
+          <Image
+            source={{ uri: business.logoUrl }}
+            style={{ width: '72%', height: '72%' }}
+            resizeMode="contain"
+          />
+        </LinearGradient>
+      </View>
+    );
+  }
+
+  return (
+    <LinearGradient
+      colors={[accent.colors[0], accent.colors[1]]}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 1, y: 1 }}
+      className="items-center justify-center overflow-hidden rounded-[24px]"
+      style={{ height }}
+    >
+      <View className="h-16 w-16 items-center justify-center rounded-full bg-white/18">
+        <Text className="text-2xl font-bold text-white">
+          {buildInitials(business.fullName) || 'P'}
+        </Text>
+      </View>
+      <Text className="mt-3 text-xs font-semibold uppercase tracking-[2px] text-white/78">
+        {categoryName}
+      </Text>
+    </LinearGradient>
+  );
+}
+
+function CategoryShortcut({
+  category,
+  onPress,
+}: {
+  category: ServiceCategoryOption;
+  onPress: () => void;
+}) {
+  const accent = getCategoryAccent(category.name);
+
+  return (
+    <TouchableOpacity
+      activeOpacity={0.86}
+      onPress={onPress}
+      style={{ width: 78, alignItems: 'center' }}
+    >
+      <View
+        className="h-[68px] w-[68px] items-center justify-center overflow-hidden rounded-full border border-secondary/6"
+        style={{ backgroundColor: theme.colors.surfaceStrong }}
+      >
+        {category.imageUrl ? (
+          <Image
+            source={{ uri: category.imageUrl }}
+            style={{ width: 42, height: 42, borderRadius: 21 }}
+            resizeMode="cover"
+          />
+        ) : (
+          <View
+            className="h-12 w-12 items-center justify-center rounded-full"
+            style={{ backgroundColor: theme.colors.backgroundSoft }}
+          >
+            <Ionicons name={accent.icon} size={22} color={theme.colors.primaryStrong} />
+          </View>
+        )}
+      </View>
+      <Text className="mt-2 text-center text-xs font-semibold text-secondary" numberOfLines={2}>
+        {category.name}
+      </Text>
+    </TouchableOpacity>
+  );
+}
+
+function MoreShortcut({ onPress }: { onPress: () => void }) {
+  return (
+    <TouchableOpacity
+      activeOpacity={0.86}
+      onPress={onPress}
+      style={{ width: 78, alignItems: 'center' }}
+    >
+      <View
+        className="h-[68px] w-[68px] items-center justify-center rounded-full border border-dashed border-primary/20"
+        style={{ backgroundColor: theme.colors.surfaceStrong }}
+      >
+        <Ionicons name="add" size={24} color={theme.colors.primaryStrong} />
+      </View>
+      <Text className="mt-2 text-center text-xs font-semibold text-secondary">Mas</Text>
+    </TouchableOpacity>
+  );
+}
+
+function FeaturedBusinessCard({
+  business,
+  isFavorite,
+  onPress,
+  onToggleFavorite,
+}: {
+  business: PublicProfessionalSummary;
+  isFavorite: boolean;
+  onPress: () => void;
+  onToggleFavorite: () => void;
+}) {
+  const ratingLabel = formatRating(business.rating);
+
+  return (
+    <TouchableOpacity
+      activeOpacity={0.92}
+      onPress={onPress}
+      className="w-[285px] overflow-hidden rounded-[28px] border border-secondary/6 bg-white"
+      style={theme.shadow.card}
+    >
+      <View className="p-4">
+        <View>
+          <BusinessVisual business={business} height={168} />
+          <TouchableOpacity
+            activeOpacity={0.86}
+            onPress={(event) => {
+              event.stopPropagation();
+              onToggleFavorite();
+            }}
+            className="absolute right-3 top-3 h-10 w-10 items-center justify-center rounded-full bg-white"
+            style={theme.shadow.card}
+          >
+            <Ionicons
+              name={isFavorite ? 'heart' : 'heart-outline'}
+              size={18}
+              color={isFavorite ? theme.colors.primary : theme.colors.secondary}
+            />
+          </TouchableOpacity>
+        </View>
+
+        <View className="mt-4 flex-row items-center justify-between">
+          {ratingLabel ? (
+            <View className="flex-row items-center rounded-full bg-primary/10 px-3 py-1.5">
+              <Ionicons name="star" size={14} color={theme.colors.primaryStrong} />
+              <Text className="ml-1 text-xs font-semibold text-primary">
+                {ratingLabel}
+                {typeof business.reviewsCount === 'number' ? ` (${business.reviewsCount})` : ''}
+              </Text>
+            </View>
+          ) : (
+            <View />
+          )}
+          <StatusPill label="Disponible hoy" tone="success" />
+        </View>
+
+        <Text className="mt-4 text-lg font-bold text-secondary" numberOfLines={2}>
+          {business.fullName}
+        </Text>
+        <Text className="mt-1 text-sm font-medium text-muted" numberOfLines={1}>
+          {getBusinessCategory(business)}
+        </Text>
+
+        <View className="mt-3 flex-row items-center">
+          <Ionicons name="location-outline" size={14} color={theme.colors.primaryStrong} />
+          <Text className="ml-1 flex-1 text-sm text-muted" numberOfLines={1}>
+            {business.location || 'Ubicacion a confirmar'}
+          </Text>
+        </View>
+      </View>
+    </TouchableOpacity>
+  );
+}
+
+function CompactBusinessCard({
+  business,
+  badge,
+  detail,
+  isFavorite,
+  onPress,
+  onToggleFavorite,
+}: {
+  business: PublicProfessionalSummary;
+  badge?: string;
+  detail?: string | null;
+  isFavorite?: boolean;
+  onPress: () => void;
+  onToggleFavorite?: (() => void) | undefined;
+}) {
+  const ratingLabel = formatRating(business.rating);
+
+  return (
+    <TouchableOpacity
+      activeOpacity={0.92}
+      onPress={onPress}
+      className="w-[252px] overflow-hidden rounded-[26px] border border-secondary/6 bg-white"
+      style={theme.shadow.card}
+    >
+      <View className="p-4">
+        <BusinessVisual business={business} height={120} compact />
+
+        <View className="mt-4 flex-row items-start justify-between">
+          <View className="flex-1 pr-2">
+            <Text className="text-base font-bold text-secondary" numberOfLines={2}>
+              {business.fullName}
+            </Text>
+            <Text className="mt-1 text-sm text-muted" numberOfLines={1}>
+              {detail || business.location || getBusinessCategory(business)}
+            </Text>
+          </View>
+
+          {onToggleFavorite ? (
+            <TouchableOpacity
+              activeOpacity={0.86}
+              onPress={(event) => {
+                event.stopPropagation();
+                onToggleFavorite();
+              }}
+              className="h-9 w-9 items-center justify-center rounded-full bg-primary/10"
+            >
+              <Ionicons
+                name={isFavorite ? 'heart' : 'heart-outline'}
+                size={16}
+                color={isFavorite ? theme.colors.primary : theme.colors.secondary}
+              />
+            </TouchableOpacity>
+          ) : null}
+        </View>
+
+        <View className="mt-3 flex-row items-center justify-between">
+          {badge ? <StatusPill label={badge} tone="primary" /> : <View />}
+          {ratingLabel ? (
+            <View className="flex-row items-center">
+              <Ionicons name="star" size={13} color={theme.colors.primaryStrong} />
+              <Text className="ml-1 text-xs font-semibold text-primary">{ratingLabel}</Text>
+            </View>
+          ) : null}
+        </View>
+      </View>
+    </TouchableOpacity>
+  );
+}
 
 export default function HomeScreen() {
-  const { clientProfile, isAuthenticated, isClient } = useClientSession();
+  const { clientProfile, isAuthenticated } = useClientSession();
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [businesses, setBusinesses] = useState<PublicProfessionalSummary[]>([]);
-  const [nextBooking, setNextBooking] = useState<ClientNextBooking | null>(null);
   const [categories, setCategories] = useState<ServiceCategoryOption[]>([]);
-  const {
-    location,
-    hasCoordinates,
-    isRefreshing: isRefreshingLocation,
-    requestAccess: requestLocationAccess,
-    refreshLocation,
-  } = useUserLocation();
-  const {
-    isEnabled: arePushNotificationsEnabled,
-    isRefreshing: isRefreshingPush,
-    requestPermission: requestPushPermission,
-  } = usePushNotifications();
+  const [favoriteSlugs, setFavoriteSlugs] = useState<string[]>([]);
+  const [bookings, setBookings] = useState<ClientDashboardBooking[]>([]);
+  const { location, hasCoordinates, refreshLocation } = useUserLocation();
 
   const load = useCallback(async (options?: { showLoader?: boolean }) => {
     const showLoader = options?.showLoader ?? true;
@@ -52,18 +376,21 @@ export default function HomeScreen() {
       setIsLoading(true);
     }
     setErrorMessage(null);
+
     try {
-      const [professionals, upcoming, categoryItems] = await Promise.all([
+      const [professionals, categoryItems, favorites, bookingItems] = await Promise.all([
         listPublicProfessionals(),
-        isAuthenticated ? getClientNextBooking().catch(() => null) : Promise.resolve(null),
         listCategories().catch(() => []),
+        getFavoriteProfessionalSlugs().catch(() => []),
+        isAuthenticated ? getClientBookings().catch(() => []) : Promise.resolve([]),
       ]);
 
       setBusinesses(professionals);
-      setNextBooking(upcoming);
       setCategories(categoryItems);
+      setFavoriteSlugs(favorites);
+      setBookings(bookingItems);
     } catch (error) {
-      setErrorMessage(getApiErrorMessage(error, 'No pudimos cargar la pantalla de inicio.'));
+      setErrorMessage(getApiErrorMessage(error, 'No pudimos cargar el inicio.'));
     } finally {
       if (showLoader) {
         setIsLoading(false);
@@ -77,6 +404,13 @@ export default function HomeScreen() {
     }, [load]),
   );
 
+  useEffect(() => {
+    const unsubscribe = subscribeFavoriteProfessionalSlugs((next) => {
+      setFavoriteSlugs(next);
+    });
+    return unsubscribe;
+  }, []);
+
   const handleRefresh = useCallback(async () => {
     setIsRefreshing(true);
     try {
@@ -89,40 +423,104 @@ export default function HomeScreen() {
     }
   }, [load, refreshLocation]);
 
-  const topBusinesses = useMemo(() => businesses.slice(0, 6), [businesses]);
-  const displayName = clientProfile?.fullName?.trim() || 'Explora Plura';
-  const locationLabel = location.label || 'tu zona';
-  const shouldShowPushPrompt =
-    isAuthenticated && isClient && !arePushNotificationsEnabled;
+  const favoriteSet = useMemo(() => new Set(favoriteSlugs), [favoriteSlugs]);
+  const firstName = getDisplayName(clientProfile?.fullName) || null;
+  const greeting = firstName ? `Hola, ${firstName} 👋` : 'Hola 👋';
 
-  const handleOpenNearby = async () => {
-    const nextLocation = hasCoordinates
-      ? location
-      : await requestLocationAccess();
+  const sortedCategories = useMemo(
+    () => [...categories].sort((a, b) => (a.displayOrder ?? 999) - (b.displayOrder ?? 999)),
+    [categories],
+  );
+  const visibleCategories = useMemo(
+    () => sortedCategories.slice(0, MAX_CATEGORY_ITEMS),
+    [sortedCategories],
+  );
 
+  const featuredBusinesses = useMemo(() => {
+    const items = [...businesses];
+    items.sort((a, b) => {
+      const ratingDiff = (b.rating ?? -1) - (a.rating ?? -1);
+      if (ratingDiff !== 0) return ratingDiff;
+      const reviewsDiff = (b.reviewsCount ?? -1) - (a.reviewsCount ?? -1);
+      if (reviewsDiff !== 0) return reviewsDiff;
+      return 0;
+    });
+    return items.slice(0, MAX_FEATURED_ITEMS);
+  }, [businesses]);
+
+  const favoritesBusinesses = useMemo(() => {
+    const bySlug = new Map(businesses.map((business) => [business.slug, business] as const));
+    return favoriteSlugs
+      .map((slug) => bySlug.get(slug))
+      .filter((business): business is PublicProfessionalSummary => Boolean(business))
+      .slice(0, MAX_FAVORITES_ITEMS);
+  }, [businesses, favoriteSlugs]);
+
+  const personalizedBusinesses = useMemo<PersonalizedRailItem[]>(() => {
+    const bySlug = new Map(businesses.map((business) => [business.slug, business] as const));
+    const candidateBookings = [...bookings]
+      .filter((booking) => Boolean(booking.professionalSlug))
+      .sort(sortByDateDesc);
+    const completed = candidateBookings.filter((booking) => booking.status === 'COMPLETED');
+    const source = completed.length > 0 ? completed : candidateBookings;
+    const seen = new Set<string>();
+    const items: PersonalizedRailItem[] = [];
+
+    for (const booking of source) {
+      const slug = booking.professionalSlug?.trim();
+      if (!slug || seen.has(slug)) continue;
+      const business = bySlug.get(slug);
+      if (!business) continue;
+      seen.add(slug);
+      items.push({
+        business,
+        service: booking.service || null,
+      });
+      if (items.length >= MAX_PERSONALIZED_ITEMS) break;
+    }
+
+    if (items.length > 0) return items;
+
+    return businesses.slice(0, MAX_PERSONALIZED_ITEMS).map((business) => ({
+      business,
+      service: null,
+    }));
+  }, [bookings, businesses]);
+
+  const newBusinesses = useMemo(
+    () => businesses.slice(0, MAX_NEW_ITEMS),
+    [businesses],
+  );
+
+  const handleToggleFavorite = useCallback(async (slug: string) => {
+    const next = await toggleFavoriteProfessionalSlug(slug);
+    setFavoriteSlugs(next);
+  }, []);
+
+  const openExplore = useCallback(() => {
+    router.push('/(tabs)/explore');
+  }, []);
+
+  const openFeaturedExplore = useCallback(() => {
     if (
-      typeof nextLocation.latitude !== 'number'
-      || typeof nextLocation.longitude !== 'number'
+      hasCoordinates
+      && typeof location.latitude === 'number'
+      && typeof location.longitude === 'number'
     ) {
-      Alert.alert(
-        'Ubicacion requerida',
-        nextLocation.permissionStatus === 'denied' && !nextLocation.canAskAgain
-          ? 'Activa la ubicacion desde los ajustes del dispositivo para mostrar resultados cercanos.'
-          : 'Necesitamos tu ubicacion para abrir profesionales ordenados por cercania.',
-      );
+      router.push({
+        pathname: '/(tabs)/explore',
+        params: {
+          lat: String(location.latitude),
+          lng: String(location.longitude),
+          radiusKm: '10',
+          sort: 'DISTANCE',
+        },
+      });
       return;
     }
 
-    router.push({
-      pathname: '/(tabs)/explore',
-      params: {
-        lat: String(nextLocation.latitude),
-        lng: String(nextLocation.longitude),
-        radiusKm: '10',
-        sort: 'DISTANCE',
-      },
-    });
-  };
+    router.push('/(tabs)/explore');
+  }, [hasCoordinates, location.latitude, location.longitude]);
 
   return (
     <AppScreen
@@ -131,259 +529,237 @@ export default function HomeScreen() {
       onRefresh={() => {
         void handleRefresh();
       }}
-      contentContainerStyle={{ paddingBottom: 40 }}
+      contentContainerStyle={{ paddingBottom: 164 }}
     >
-      <View className="px-6 pt-6 pb-4">
-        <ScreenHero
-          eyebrow={isAuthenticated ? 'Inicio cliente' : 'Explorar en mobile'}
-          title={isAuthenticated ? `Hola, ${displayName}` : 'Encuentra servicios y profesionales'}
-          description={isAuthenticated
-            ? 'Descubre rubros, retoma tu proxima reserva y encuentra profesionales activos con una interfaz mucho mas clara.'
-            : 'Explora rubros, perfiles publicos y disponibilidad antes de iniciar sesion. Cuando quieras guardar favoritos o ver tus reservas, te pediremos acceso.'}
-          icon="sparkles-outline"
-          badges={[
-            { label: hasCoordinates ? locationLabel : 'Ubicacion pendiente', tone: hasCoordinates ? 'light' : 'warning' },
-            { label: isAuthenticated ? (arePushNotificationsEnabled ? 'Alertas activas' : 'Alertas pendientes') : 'Acceso publico', tone: 'light' },
-          ]}
-          primaryAction={{
-            label: 'Explorar',
-            onPress: () => router.push('/(tabs)/explore'),
-            tone: 'secondary',
-          }}
-          secondaryAction={{
-            label: isAuthenticated ? 'Alertas' : 'Ingresar',
-            onPress: () => router.push(isAuthenticated ? '/(tabs)/notifications' : CLIENT_LOGIN_ROUTE),
-            tone: 'light',
-          }}
-        />
+      <View className="px-5 pt-4">
+        <View className="flex-row items-start justify-between">
+          <View className="flex-1 pr-4">
+            <Text className="text-[26px] font-bold text-secondary">{greeting}</Text>
+            <Text className="mt-1 text-base text-muted">¿Que queres hacer hoy?</Text>
+          </View>
 
-        <SectionCard style={{ marginTop: 16, paddingVertical: 16 }}>
           <TouchableOpacity
-            activeOpacity={0.9}
-            onPress={() => router.push('/(tabs)/explore')}
-            className="flex-row items-center"
+            activeOpacity={0.88}
+            onPress={() => router.push('/(tabs)/notifications')}
+            className="h-12 w-12 items-center justify-center rounded-full border border-secondary/6 bg-white"
+            style={theme.shadow.card}
           >
-            <View className="h-11 w-11 items-center justify-center rounded-full bg-backgroundSoft">
-              <Ionicons name="search" size={20} color={theme.colors.secondary} />
-            </View>
-            <View className="ml-3 flex-1">
-              <Text className="text-[11px] font-bold uppercase tracking-[2px] text-faint">
-                Busqueda rapida
-              </Text>
-              <Text className="mt-1 text-base font-semibold text-secondary">
-                Buscar servicios, rubros o locales
-              </Text>
-            </View>
-            <StatusPill label="Explorar" tone="primary" />
+            <Ionicons name="notifications-outline" size={20} color={theme.colors.secondary} />
           </TouchableOpacity>
-        </SectionCard>
+        </View>
 
-        <SectionCard style={{ marginTop: 16 }}>
-          <View className="flex-row items-start">
-            <View className="h-11 w-11 items-center justify-center rounded-full bg-primary/12">
-              <Ionicons name={hasCoordinates ? 'locate' : 'location-outline'} size={20} color={theme.colors.primary} />
+        <TouchableOpacity
+          activeOpacity={0.9}
+          onPress={openExplore}
+          className="mt-5 rounded-[24px] border border-secondary/6 bg-white px-4 py-4"
+          style={theme.shadow.card}
+        >
+          <View className="flex-row items-center">
+            <View className="h-11 w-11 items-center justify-center rounded-full bg-backgroundSoft">
+              <Ionicons name="search" size={20} color={theme.colors.inkFaint} />
             </View>
-            <View className="ml-3 flex-1">
-              <Text className="text-sm font-bold text-secondary">
-                {hasCoordinates ? `Tu ubicacion: ${locationLabel}` : 'Activa tu ubicacion'}
-              </Text>
-              <Text className="mt-1 text-xs leading-5 text-muted">
-                {hasCoordinates
-                  ? 'Ya puedes ordenar resultados por cercania real y abrir un listado cerca de ti.'
-                  : 'Plura puede mostrar profesionales cercanos y mejorar los filtros de exploracion desde mobile.'}
-              </Text>
-            </View>
+            <Text className="ml-3 flex-1 text-base text-muted">
+              Buscar servicios o negocios
+            </Text>
           </View>
+        </TouchableOpacity>
 
-          <View className="mt-4 flex-row" style={{ gap: 10 }}>
-            <ActionButton
-              label="Ver cercanos"
-              onPress={() => void handleOpenNearby()}
-              style={{ flex: 1 }}
-            />
-            <ActionButton
-              label={
-                isRefreshingLocation
-                  ? 'Actualizando...'
-                  : hasCoordinates
-                    ? 'Actualizar'
-                    : 'Usar mi ubicacion'
-              }
-              onPress={() => void (hasCoordinates ? refreshLocation() : requestLocationAccess())}
-              tone="soft"
-              style={{ flex: 1 }}
-            />
-          </View>
-        </SectionCard>
-
-        {shouldShowPushPrompt ? (
-          <ScreenHero
-            eyebrow="Notificaciones"
-            title="Activa avisos de reservas y alertas"
-            description="Asi podemos avisarte cuando una reserva se confirma, cambia o se cancela."
-            icon="notifications-outline"
-            style={{ marginTop: 16 }}
-            gradientColors={theme.gradients.hero}
-            primaryAction={{
-              label: isRefreshingPush ? 'Activando...' : 'Activar notificaciones',
-              onPress: () => void requestPushPermission(),
-              tone: 'secondary',
-            }}
-          />
+        {errorMessage ? (
+          <MessageCard message={errorMessage} tone="danger" style={{ marginTop: 16 }} />
         ) : null}
+      </View>
+
+      <View className="mt-8 px-5">
+        <HomeRailHeader
+          title="Categorias"
+          actionLabel="Ver todas"
+          onActionPress={openExplore}
+        />
       </View>
 
       <View className="mt-4">
-        <View className="px-6">
-          <SectionHeader eyebrow="Rubros" title="Rubros populares" actionLabel="Ver todos" onActionPress={() => router.push('/(tabs)/explore')} />
-        </View>
-
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
-          contentContainerStyle={{ paddingHorizontal: 24, gap: 12, paddingTop: 16 }}
+          contentContainerStyle={{ paddingHorizontal: 20, gap: 14 }}
         >
-          {categories.length === 0 && !isLoading ? (
-            <View style={{ width: 240 }}>
+          {visibleCategories.map((category) => (
+            <CategoryShortcut
+              key={category.id}
+              category={category}
+              onPress={() =>
+                router.push({
+                  pathname: '/(tabs)/explore',
+                  params: {
+                    category: category.slug,
+                    categoryLabel: category.name,
+                  },
+                })
+              }
+            />
+          ))}
+
+          <MoreShortcut onPress={openExplore} />
+        </ScrollView>
+
+        {!isLoading && visibleCategories.length === 0 ? (
+          <View className="mt-4 px-5">
+            <SectionCard>
               <EmptyState
-                title="Sin rubros por ahora"
-                description="Todavia no hay rubros listados para mostrar en esta seccion."
+                title="Sin categorias por ahora"
+                description="Todavia no hay categorias visibles para explorar desde el inicio."
                 icon="grid-outline"
               />
-            </View>
-          ) : null}
-
-          {categories.map((category) => {
-            const accent = getCategoryAccent(category.name);
-            return (
-              <TouchableOpacity
-                key={category.id}
-                activeOpacity={0.88}
-                onPress={() =>
-                  router.push({
-                    pathname: '/(tabs)/explore',
-                    params: { category: category.slug, categoryLabel: category.name },
-                  })
-                }
-                className="w-36"
-              >
-                <LinearGradient
-                  colors={[accent.colors[0], accent.colors[1]]}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  className="h-28 rounded-[24px] p-4 shadow-sm"
-                >
-                  <View className="h-10 w-10 items-center justify-center rounded-full bg-white/15">
-                    <Ionicons name={accent.icon} size={20} color="#FFFFFF" />
-                  </View>
-                  <Text className="mt-5 text-sm font-bold text-white" numberOfLines={2}>
-                    {category.name}
-                  </Text>
-                </LinearGradient>
-              </TouchableOpacity>
-            );
-          })}
-        </ScrollView>
-      </View>
-
-      <View className="mt-10 px-6">
-        {errorMessage ? (
-          <MessageCard message={errorMessage} tone="danger" style={{ marginBottom: 16 }} />
+            </SectionCard>
+          </View>
         ) : null}
-
-        <LinearGradient
-          colors={theme.gradients.hero}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          className="rounded-[28px] p-6 shadow-md"
-        >
-          <Text className="text-xs font-bold uppercase tracking-[2px] text-white/70">
-            Proxima reserva
-          </Text>
-          <Text className="mt-2 text-2xl font-bold text-white">
-            {isAuthenticated
-              ? (nextBooking ? 'Tu proximo turno' : 'Todavia no tienes una reserva activa')
-              : 'Explora antes de ingresar'}
-          </Text>
-          <Text className="mt-2 text-sm text-white/80">
-            {isAuthenticated
-              ? (nextBooking
-                  ? `${nextBooking.service} con ${nextBooking.professional} - ${nextBooking.date} ${nextBooking.time}`
-                  : 'Explora rubros y encuentra profesionales disponibles para reservar desde mobile.')
-              : 'Puedes buscar profesionales, ver perfiles publicos y luego iniciar sesion para guardar favoritos, revisar reservas y recibir alertas.'}
-          </Text>
-          <TouchableOpacity
-            className="mt-4 self-start rounded-full bg-white px-5 py-2.5"
-            onPress={() => router.push(isAuthenticated ? (nextBooking ? '/(tabs)/bookings' : '/(tabs)/explore') : '/(tabs)/explore')}
-          >
-            <Text className="text-sm font-bold text-secondary">
-              {isAuthenticated ? (nextBooking ? 'Ver reservas' : 'Explorar ahora') : 'Explorar ahora'}
-            </Text>
-          </TouchableOpacity>
-        </LinearGradient>
       </View>
 
-      <View className="mt-10">
-        <View className="px-6">
-          <SectionHeader eyebrow="Profesionales" title="Recomendados para vos" actionLabel="Ver todos" onActionPress={() => router.push('/(tabs)/explore')} />
-        </View>
+      <View className="mt-10 px-5">
+        <HomeRailHeader
+          title="Mejor rating y cerca de vos"
+          subtitle={hasCoordinates ? location.label || 'Tu zona actual' : 'Locales destacados del marketplace'}
+          actionLabel="Ver todo"
+          onActionPress={openFeaturedExplore}
+        />
+      </View>
 
+      <View className="mt-4">
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
-          contentContainerStyle={{ paddingHorizontal: 24, gap: 16, paddingTop: 16 }}
+          contentContainerStyle={{ paddingHorizontal: 20, gap: 14 }}
         >
           {isLoading ? (
-            <View className="w-64 items-center justify-center rounded-[28px] border border-secondary/5 bg-white p-4 shadow-sm">
+            <View className="w-[285px] items-center justify-center rounded-[28px] border border-secondary/6 bg-white py-12">
               <ActivityIndicator color={theme.colors.primary} />
             </View>
           ) : null}
 
-          {!isLoading && topBusinesses.map((business) => {
-            const accent = getCategoryAccent(
-              business.rubro || 'Profesional',
-            );
+          {!isLoading && featuredBusinesses.map((business) => (
+            <FeaturedBusinessCard
+              key={business.slug}
+              business={business}
+              isFavorite={favoriteSet.has(business.slug)}
+              onPress={() => router.push(`/profesional/${business.slug}`)}
+              onToggleFavorite={() => {
+                void handleToggleFavorite(business.slug);
+              }}
+            />
+          ))}
+        </ScrollView>
+      </View>
 
-            return (
-              <TouchableOpacity
-                key={business.id}
-                activeOpacity={0.9}
+      <View className="mt-10 px-5">
+        <HomeRailHeader
+          title="Para vos"
+          subtitle="Locales con servicios que ya usaste"
+          actionLabel="Ver todo"
+          onActionPress={openExplore}
+        />
+      </View>
+
+      <View className="mt-4">
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={{ paddingHorizontal: 20, gap: 14 }}
+        >
+          {personalizedBusinesses.map(({ business, service }) => (
+            <CompactBusinessCard
+              key={`personalized-${business.slug}`}
+              business={business}
+              badge={service || 'Para volver'}
+              detail={business.location || getBusinessCategory(business)}
+              isFavorite={favoriteSet.has(business.slug)}
+              onPress={() => router.push(`/profesional/${business.slug}`)}
+              onToggleFavorite={() => {
+                void handleToggleFavorite(business.slug);
+              }}
+            />
+          ))}
+        </ScrollView>
+      </View>
+
+      <View className="mt-10 px-5">
+        <HomeRailHeader
+          title="Tus favoritos"
+          actionLabel="Ver todos"
+          onActionPress={() => router.push('/(tabs)/favorites')}
+        />
+      </View>
+
+      <View className="mt-4 px-5">
+        {isLoading ? (
+          <SectionCard>
+            <View className="items-center py-3">
+              <ActivityIndicator color={theme.colors.primary} />
+            </View>
+          </SectionCard>
+        ) : favoritesBusinesses.length === 0 ? (
+          <SectionCard>
+            <View className="flex-row items-center justify-between" style={{ gap: 14 }}>
+              <View className="flex-1">
+                <Text className="text-base font-bold text-secondary">
+                  Todavia no guardaste favoritos
+                </Text>
+                <Text className="mt-1 text-sm text-muted">
+                  Explora perfiles y guarda tus locales preferidos para volver mas rapido.
+                </Text>
+              </View>
+              <ActionButton label="Explorar" onPress={openExplore} />
+            </View>
+          </SectionCard>
+        ) : (
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={{ gap: 14 }}
+          >
+            {favoritesBusinesses.map((business) => (
+              <CompactBusinessCard
+                key={`favorite-${business.slug}`}
+                business={business}
+                badge="Favorito"
+                detail={business.location || getBusinessCategory(business)}
+                isFavorite
                 onPress={() => router.push(`/profesional/${business.slug}`)}
-                className="w-72 rounded-[28px] border border-secondary/5 bg-white p-4 shadow-sm"
-              >
-                <LinearGradient
-                  colors={[accent.colors[0], accent.colors[1]]}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  className="mb-4 h-36 rounded-[22px] p-4"
-                >
-                  <Text className="text-xs font-bold uppercase tracking-[2px] text-white/70">
-                    Profesional
-                  </Text>
-                  <Text className="mt-4 text-xl font-bold text-white" numberOfLines={2}>
-                    {business.fullName}
-                  </Text>
-                  <Text className="mt-2 text-sm text-white/80" numberOfLines={1}>
-                    {business.rubro || 'Profesional'}
-                  </Text>
-                </LinearGradient>
+                onToggleFavorite={() => {
+                  void handleToggleFavorite(business.slug);
+                }}
+              />
+            ))}
+          </ScrollView>
+        )}
+      </View>
 
-                <View className="flex-row items-start justify-between">
-                  <View className="flex-1 pr-2">
-                    <Text className="text-sm font-bold text-secondary">
-                      {business.headline || 'Agenda disponible'}
-                    </Text>
-                    <Text className="mt-2 text-xs text-muted">
-                      {business.location || 'Ubicacion a confirmar'}
-                    </Text>
-                  </View>
-                  <View className="rounded-full bg-primary/10 px-2 py-1">
-                    <Text className="text-xs font-bold text-primary">Activo</Text>
-                  </View>
-                </View>
-              </TouchableOpacity>
-            );
-          })}
+      <View className="mt-10 px-5">
+        <HomeRailHeader
+          title="Nuevos en la app"
+          actionLabel="Ver todo"
+          onActionPress={openExplore}
+        />
+      </View>
+
+      <View className="mt-4">
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={{ paddingHorizontal: 20, gap: 14 }}
+        >
+          {newBusinesses.map((business) => (
+            <CompactBusinessCard
+              key={`new-${business.slug}`}
+              business={business}
+              badge="NUEVO"
+              detail={business.headline || business.location || getBusinessCategory(business)}
+              isFavorite={favoriteSet.has(business.slug)}
+              onPress={() => router.push(`/profesional/${business.slug}`)}
+              onToggleFavorite={() => {
+                void handleToggleFavorite(business.slug);
+              }}
+            />
+          ))}
         </ScrollView>
       </View>
     </AppScreen>

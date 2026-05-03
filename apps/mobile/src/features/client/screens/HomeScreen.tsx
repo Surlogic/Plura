@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Image,
+  Platform,
   ScrollView,
   Text,
   TouchableOpacity,
@@ -31,6 +32,7 @@ import { getCategoryAccent } from '../../../features/client/categoryUi';
 import { AppScreen } from '../../../components/ui/AppScreen';
 import { theme } from '../../../theme';
 import { useUserLocation } from '../../../hooks/useUserLocation';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   ActionButton,
   EmptyState,
@@ -361,6 +363,7 @@ function CompactBusinessCard({
 
 export default function HomeScreen() {
   const { clientProfile, isAuthenticated } = useClientSession();
+  const insets = useSafeAreaInsets();
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -426,6 +429,13 @@ export default function HomeScreen() {
   const favoriteSet = useMemo(() => new Set(favoriteSlugs), [favoriteSlugs]);
   const firstName = getDisplayName(clientProfile?.fullName) || null;
   const greeting = firstName ? `Hola, ${firstName} 👋` : 'Hola 👋';
+  const tabBarBottomOffset =
+    Platform.OS === 'ios'
+      ? Math.max(insets.bottom, 10)
+      : Platform.OS === 'web'
+        ? 10
+        : Math.max(insets.bottom, 12);
+  const contentBottomPadding = (Platform.OS === 'ios' ? 60 : 58) + 10 + tabBarBottomOffset + 28;
 
   const sortedCategories = useMemo(
     () => [...categories].sort((a, b) => (a.displayOrder ?? 999) - (b.displayOrder ?? 999)),
@@ -529,7 +539,7 @@ export default function HomeScreen() {
       onRefresh={() => {
         void handleRefresh();
       }}
-      contentContainerStyle={{ paddingBottom: 164 }}
+      contentContainerStyle={{ paddingHorizontal: 0, paddingBottom: contentBottomPadding }}
     >
       <View className="px-5 pt-4">
         <View className="flex-row items-start justify-between">
@@ -689,32 +699,36 @@ export default function HomeScreen() {
         />
       </View>
 
-      <View className="mt-4 px-5">
+      <View className="mt-4">
         {isLoading ? (
-          <SectionCard>
-            <View className="items-center py-3">
-              <ActivityIndicator color={theme.colors.primary} />
-            </View>
-          </SectionCard>
-        ) : favoritesBusinesses.length === 0 ? (
-          <SectionCard>
-            <View className="flex-row items-center justify-between" style={{ gap: 14 }}>
-              <View className="flex-1">
-                <Text className="text-base font-bold text-secondary">
-                  Todavia no guardaste favoritos
-                </Text>
-                <Text className="mt-1 text-sm text-muted">
-                  Explora perfiles y guarda tus locales preferidos para volver mas rapido.
-                </Text>
+          <View className="px-5">
+            <SectionCard>
+              <View className="items-center py-3">
+                <ActivityIndicator color={theme.colors.primary} />
               </View>
-              <ActionButton label="Explorar" onPress={openExplore} />
-            </View>
-          </SectionCard>
+            </SectionCard>
+          </View>
+        ) : favoritesBusinesses.length === 0 ? (
+          <View className="px-5">
+            <SectionCard>
+              <View className="flex-row items-center justify-between" style={{ gap: 14 }}>
+                <View className="flex-1">
+                  <Text className="text-base font-bold text-secondary">
+                    Todavia no guardaste favoritos
+                  </Text>
+                  <Text className="mt-1 text-sm text-muted">
+                    Explora perfiles y guarda tus locales preferidos para volver mas rapido.
+                  </Text>
+                </View>
+                <ActionButton label="Explorar" onPress={openExplore} />
+              </View>
+            </SectionCard>
+          </View>
         ) : (
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
-            contentContainerStyle={{ gap: 14 }}
+            contentContainerStyle={{ paddingHorizontal: 20, gap: 14 }}
           >
             {favoritesBusinesses.map((business) => (
               <CompactBusinessCard

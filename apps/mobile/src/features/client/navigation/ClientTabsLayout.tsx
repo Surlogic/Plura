@@ -10,12 +10,14 @@ export default function ClientTabsLayout() {
   const { hasLoaded, role } = useAuthSession();
   const insets = useSafeAreaInsets();
   const baseTabBarHeight = Platform.OS === 'ios' ? 60 : 58;
-  const bottomPadding =
+  const tabBarHorizontalInset = 14;
+  const tabBarBottomOffset =
     Platform.OS === 'ios'
-      ? Math.max(insets.bottom, 14)
+      ? Math.max(insets.bottom, 10)
       : Platform.OS === 'web'
-        ? 14
+        ? 10
         : Math.max(insets.bottom, 12);
+  const tabBarBottomPadding = 10;
 
   if (!hasLoaded) {
     return null;
@@ -43,16 +45,16 @@ export default function ClientTabsLayout() {
           shadowOpacity: 0.09,
           shadowRadius: 18,
           shadowOffset: { width: 0, height: 8 },
-          height: baseTabBarHeight + bottomPadding,
-          paddingBottom: bottomPadding,
+          height: baseTabBarHeight + tabBarBottomPadding,
+          paddingBottom: tabBarBottomPadding,
           paddingTop: 10,
-          marginHorizontal: Platform.OS === 'web' ? 0 : 14,
-          marginBottom: Platform.OS === 'ios' ? 12 : 10,
-          alignSelf: 'center',
-          width: '100%',
+          marginHorizontal: 0,
+          bottom: tabBarBottomOffset,
+          alignSelf: Platform.OS === 'web' ? 'center' : undefined,
+          width: Platform.OS === 'web' ? '100%' : undefined,
           maxWidth: Platform.OS === 'web' ? 560 : undefined,
-          left: Platform.OS === 'web' ? 0 : undefined,
-          right: Platform.OS === 'web' ? 0 : undefined,
+          left: Platform.OS === 'web' ? 0 : tabBarHorizontalInset,
+          right: Platform.OS === 'web' ? 0 : tabBarHorizontalInset,
         },
         tabBarLabelStyle: {
           fontSize: 11,

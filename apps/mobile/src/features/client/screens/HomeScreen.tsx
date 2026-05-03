@@ -39,7 +39,6 @@ import {
   EmptyState,
   MessageCard,
   SectionCard,
-  StatusPill,
 } from '../../../components/ui/MobileSurface';
 
 const MAX_CATEGORY_ITEMS = 5;
@@ -48,8 +47,7 @@ const MAX_PERSONALIZED_ITEMS = 8;
 const MAX_FAVORITES_ITEMS = 8;
 const MAX_NEW_ITEMS = 8;
 
-const softBorderColor = 'rgba(15, 23, 42, 0.055)';
-const softPrimaryBorderColor = 'rgba(10, 122, 67, 0.12)';
+const softBorderColor = 'rgba(15, 23, 42, 0.045)';
 
 type PersonalizedRailItem = {
   business: PublicProfessionalSummary;
@@ -81,6 +79,86 @@ const buildInitials = (value: string) =>
 const sortByDateDesc = (a: ClientDashboardBooking, b: ClientDashboardBooking) =>
   new Date(b.dateTime).getTime() - new Date(a.dateTime).getTime();
 
+const hexToRgba = (hex: string, alpha: number) => {
+  const normalized = hex.replace('#', '');
+  if (normalized.length !== 6) return hex;
+
+  const value = Number.parseInt(normalized, 16);
+  if (Number.isNaN(value)) return hex;
+
+  const red = (value >> 16) & 255;
+  const green = (value >> 8) & 255;
+  const blue = value & 255;
+  return `rgba(${red}, ${green}, ${blue}, ${alpha})`;
+};
+
+const getCategoryTone = (value: string) => {
+  const normalized = value.toLowerCase();
+
+  if (normalized.includes('barb')) {
+    return { color: theme.colors.warning, backgroundColor: theme.colors.warningSoft };
+  }
+  if (normalized.includes('u') || normalized.includes('mani')) {
+    return { color: theme.colors.premiumStrong, backgroundColor: theme.colors.premiumSoft };
+  }
+  if (normalized.includes('cosme') || normalized.includes('facial') || normalized.includes('pest')) {
+    return { color: theme.colors.accentStrong, backgroundColor: theme.colors.accentSoft };
+  }
+  if (normalized.includes('spa') || normalized.includes('pelu') || normalized.includes('cabello')) {
+    return { color: theme.colors.primaryStrong, backgroundColor: theme.colors.primarySoft };
+  }
+
+  return { color: theme.colors.accentStrong, backgroundColor: theme.colors.accentSoft };
+};
+
+const getSoftBadgeTheme = (label: string) => {
+  if (label === 'Favorito') {
+    return {
+      backgroundColor: theme.colors.primarySoft,
+      color: theme.colors.primaryStrong,
+      icon: 'heart' as const,
+    };
+  }
+
+  if (label === 'NUEVO') {
+    return {
+      backgroundColor: theme.colors.accentSoft,
+      color: theme.colors.accentStrong,
+      icon: 'sparkles-outline' as const,
+    };
+  }
+
+  if (label === 'Disponible hoy') {
+    return {
+      backgroundColor: theme.colors.primarySoft,
+      color: theme.colors.primaryStrong,
+      icon: 'checkmark-circle' as const,
+    };
+  }
+
+  return {
+    backgroundColor: theme.colors.warningSoft,
+    color: theme.colors.warning,
+    icon: 'refresh-outline' as const,
+  };
+};
+
+function SoftBadge({ label }: { label: string }) {
+  const badge = getSoftBadgeTheme(label);
+
+  return (
+    <View
+      className="flex-row items-center rounded-full px-3 py-1.5"
+      style={{ backgroundColor: badge.backgroundColor }}
+    >
+      <Ionicons name={badge.icon} size={13} color={badge.color} />
+      <Text className="ml-1 text-xs font-semibold" style={{ color: badge.color }}>
+        {label}
+      </Text>
+    </View>
+  );
+}
+
 function HomeRailHeader({
   title,
   subtitle,
@@ -95,6 +173,7 @@ function HomeRailHeader({
   return (
     <View className="flex-row items-end justify-between">
       <View className="flex-1 pr-3">
+        <View className="mb-2 h-1.5 w-10 rounded-full" style={styles.sectionAccent} />
         <Text className="text-[22px] font-bold text-secondary">{title}</Text>
         {subtitle ? (
           <Text className="mt-1 text-sm text-muted">{subtitle}</Text>
@@ -121,15 +200,17 @@ function BusinessVisual({
 }) {
   const categoryName = getBusinessCategory(business);
   const accent = getCategoryAccent(categoryName);
+  const logoWash = hexToRgba(accent.colors[0], compact ? 0.11 : 0.14);
+  const logoGlow = hexToRgba(accent.colors[1], compact ? 0.12 : 0.16);
 
   if (business.logoUrl) {
     return (
       <View
         className="overflow-hidden rounded-[24px] bg-backgroundSoft"
-        style={[styles.mediaSurface, { height }]}
+        style={{ height }}
       >
         <LinearGradient
-          colors={[theme.colors.surfaceStrong, theme.colors.backgroundSoft]}
+          colors={[logoWash, theme.colors.surfaceStrong, logoGlow] as const}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: compact ? 18 : 22 }}
@@ -157,7 +238,10 @@ function BusinessVisual({
           {buildInitials(business.fullName) || 'P'}
         </Text>
       </View>
-      <Text className="mt-3 text-xs font-semibold uppercase tracking-[2px] text-white/78">
+      <Text
+        className="mt-3 text-xs font-semibold uppercase tracking-[2px]"
+        style={{ color: 'rgba(255, 255, 255, 0.78)' }}
+      >
         {categoryName}
       </Text>
     </LinearGradient>
@@ -172,6 +256,8 @@ function CategoryShortcut({
   onPress: () => void;
 }) {
   const accent = getCategoryAccent(category.name);
+  const categoryTone = getCategoryTone(category.name);
+  const iconWash = hexToRgba(accent.colors[1], 0.14);
 
   return (
     <TouchableOpacity
@@ -181,20 +267,23 @@ function CategoryShortcut({
     >
       <View
         className="h-[68px] w-[68px] items-center justify-center overflow-hidden rounded-full"
-        style={styles.categoryCircle}
+        style={[
+          styles.categoryCircle,
+          { backgroundColor: categoryTone.backgroundColor, shadowColor: categoryTone.color },
+        ]}
       >
         {category.imageUrl ? (
           <Image
             source={{ uri: category.imageUrl }}
-            style={{ width: 42, height: 42, borderRadius: 21 }}
+            style={{ width: 46, height: 46, borderRadius: 23 }}
             resizeMode="cover"
           />
         ) : (
           <View
             className="h-12 w-12 items-center justify-center rounded-full"
-            style={{ backgroundColor: theme.colors.backgroundSoft }}
+            style={{ backgroundColor: iconWash }}
           >
-            <Ionicons name={accent.icon} size={22} color={theme.colors.primaryStrong} />
+            <Ionicons name={accent.icon} size={22} color={categoryTone.color} />
           </View>
         )}
       </View>
@@ -235,17 +324,19 @@ function FeaturedBusinessCard({
   onToggleFavorite: () => void;
 }) {
   const ratingLabel = formatRating(business.rating);
+  const categoryName = getBusinessCategory(business);
+  const categoryTone = getCategoryTone(categoryName);
 
   return (
     <TouchableOpacity
       activeOpacity={0.92}
       onPress={onPress}
-      className="w-[285px] overflow-hidden rounded-[28px] bg-white"
-      style={styles.softCardSurface}
+      className="w-[285px] rounded-[28px] bg-white"
+      style={styles.floatingCard}
     >
-      <View className="p-4">
+      <View className="p-3.5">
         <View>
-          <BusinessVisual business={business} height={168} />
+          <BusinessVisual business={business} height={176} />
           <TouchableOpacity
             activeOpacity={0.86}
             onPress={(event) => {
@@ -265,9 +356,12 @@ function FeaturedBusinessCard({
 
         <View className="mt-4 flex-row items-center justify-between">
           {ratingLabel ? (
-            <View className="flex-row items-center rounded-full bg-primary/10 px-3 py-1.5">
-              <Ionicons name="star" size={14} color={theme.colors.primaryStrong} />
-              <Text className="ml-1 text-xs font-semibold text-primary">
+            <View
+              className="flex-row items-center rounded-full px-3 py-1.5"
+              style={{ backgroundColor: categoryTone.backgroundColor }}
+            >
+              <Ionicons name="star" size={14} color={categoryTone.color} />
+              <Text className="ml-1 text-xs font-semibold" style={{ color: categoryTone.color }}>
                 {ratingLabel}
                 {typeof business.reviewsCount === 'number' ? ` (${business.reviewsCount})` : ''}
               </Text>
@@ -275,7 +369,7 @@ function FeaturedBusinessCard({
           ) : (
             <View />
           )}
-          <StatusPill label="Disponible hoy" tone="success" />
+          <SoftBadge label="Disponible hoy" />
         </View>
 
         <Text className="mt-4 text-lg font-bold text-secondary" numberOfLines={2}>
@@ -312,18 +406,20 @@ function CompactBusinessCard({
   onToggleFavorite?: (() => void) | undefined;
 }) {
   const ratingLabel = formatRating(business.rating);
+  const categoryName = getBusinessCategory(business);
+  const categoryWash = getCategoryTone(categoryName).backgroundColor;
 
   return (
     <TouchableOpacity
       activeOpacity={0.92}
       onPress={onPress}
-      className="w-[252px] overflow-hidden rounded-[26px] bg-white"
-      style={styles.softCardSurface}
+      className="w-[252px] rounded-[26px] bg-white"
+      style={styles.floatingCompactCard}
     >
-      <View className="p-4">
-        <BusinessVisual business={business} height={120} compact />
+      <View className="p-3.5" style={{ backgroundColor: categoryWash, borderRadius: 26 }}>
+        <BusinessVisual business={business} height={126} compact />
 
-        <View className="mt-4 flex-row items-start justify-between">
+        <View className="mt-4 flex-row items-start justify-between rounded-[20px] bg-white/80 p-2.5">
           <View className="flex-1 pr-2">
             <Text className="text-base font-bold text-secondary" numberOfLines={2}>
               {business.fullName}
@@ -340,7 +436,11 @@ function CompactBusinessCard({
                 event.stopPropagation();
                 onToggleFavorite();
               }}
-              className="h-9 w-9 items-center justify-center rounded-full bg-primary/10"
+              className="h-9 w-9 items-center justify-center rounded-full"
+              style={[
+                styles.compactHeartButton,
+                { backgroundColor: isFavorite ? theme.colors.primarySoft : theme.colors.surfaceStrong },
+              ]}
             >
               <Ionicons
                 name={isFavorite ? 'heart' : 'heart-outline'}
@@ -352,7 +452,7 @@ function CompactBusinessCard({
         </View>
 
         <View className="mt-3 flex-row items-center justify-between">
-          {badge ? <StatusPill label={badge} tone="primary" /> : <View />}
+          {badge ? <SoftBadge label={badge} /> : <View />}
           {ratingLabel ? (
             <View className="flex-row items-center">
               <Ionicons name="star" size={13} color={theme.colors.primaryStrong} />
@@ -559,6 +659,7 @@ export default function HomeScreen() {
             style={styles.floatingButton}
           >
             <Ionicons name="notifications-outline" size={20} color={theme.colors.secondary} />
+            <View className="absolute right-3 top-3 h-2.5 w-2.5 rounded-full" style={styles.notificationAccentDot} />
           </TouchableOpacity>
         </View>
 
@@ -569,8 +670,8 @@ export default function HomeScreen() {
           style={styles.searchSurface}
         >
           <View className="flex-row items-center">
-            <View className="h-11 w-11 items-center justify-center rounded-full bg-backgroundSoft">
-              <Ionicons name="search" size={20} color={theme.colors.inkFaint} />
+            <View className="h-11 w-11 items-center justify-center rounded-full" style={styles.searchIconBubble}>
+              <Ionicons name="search" size={20} color={theme.colors.primaryStrong} />
             </View>
             <Text className="ml-3 flex-1 text-base text-muted">
               Buscar servicios o negocios
@@ -595,7 +696,7 @@ export default function HomeScreen() {
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
-          contentContainerStyle={{ paddingHorizontal: 20, gap: 14 }}
+          contentContainerStyle={{ paddingHorizontal: 20, paddingVertical: 6, gap: 14 }}
         >
           {visibleCategories.map((category) => (
             <CategoryShortcut
@@ -642,12 +743,12 @@ export default function HomeScreen() {
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
-          contentContainerStyle={{ paddingHorizontal: 20, gap: 14 }}
+          contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 2, paddingBottom: 14, gap: 14 }}
         >
           {isLoading ? (
             <View
               className="w-[285px] items-center justify-center rounded-[28px] bg-white py-12"
-              style={styles.softCardSurface}
+              style={styles.floatingCard}
             >
               <ActivityIndicator color={theme.colors.primary} />
             </View>
@@ -680,7 +781,7 @@ export default function HomeScreen() {
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
-          contentContainerStyle={{ paddingHorizontal: 20, gap: 14 }}
+          contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 2, paddingBottom: 14, gap: 14 }}
         >
           {personalizedBusinesses.map(({ business, service }) => (
             <CompactBusinessCard
@@ -735,7 +836,7 @@ export default function HomeScreen() {
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
-            contentContainerStyle={{ paddingHorizontal: 20, gap: 14 }}
+            contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 2, paddingBottom: 14, gap: 14 }}
           >
             {favoritesBusinesses.map((business) => (
               <CompactBusinessCard
@@ -766,7 +867,7 @@ export default function HomeScreen() {
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
-          contentContainerStyle={{ paddingHorizontal: 20, gap: 14 }}
+          contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 2, paddingBottom: 14, gap: 14 }}
         >
           {newBusinesses.map((business) => (
             <CompactBusinessCard
@@ -788,63 +889,76 @@ export default function HomeScreen() {
 }
 
 const styles = StyleSheet.create({
-  mediaSurface: {
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: softBorderColor,
+  sectionAccent: {
+    backgroundColor: theme.colors.primaryLight,
+    shadowColor: theme.colors.primary,
+    shadowOpacity: 0.18,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 1,
   },
   categoryCircle: {
-    backgroundColor: theme.colors.surfaceStrong,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(15, 23, 42, 0.045)',
     shadowColor: theme.colors.ink,
-    shadowOpacity: 0.045,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 5 },
-    elevation: 2,
+    shadowOpacity: 0.025,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 0,
   },
   moreCategoryCircle: {
-    backgroundColor: theme.colors.surfaceStrong,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: softPrimaryBorderColor,
-    borderStyle: 'dashed',
+    backgroundColor: theme.colors.primarySoft,
+    shadowColor: theme.colors.primary,
+    shadowOpacity: 0.025,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 0,
+  },
+  floatingCard: {
+    shadowColor: theme.colors.ink,
+    shadowOpacity: 0.09,
+    shadowRadius: 26,
+    shadowOffset: { width: 0, height: 12 },
+    elevation: 5,
+  },
+  floatingCompactCard: {
+    shadowColor: theme.colors.ink,
+    shadowOpacity: 0.075,
+    shadowRadius: 22,
+    shadowOffset: { width: 0, height: 10 },
+    elevation: 4,
+  },
+  iconButtonShadow: {
+    shadowColor: theme.colors.ink,
+    shadowOpacity: 0.07,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 7 },
+    elevation: 3,
+  },
+  compactHeartButton: {
     shadowColor: theme.colors.ink,
     shadowOpacity: 0.035,
     shadowRadius: 10,
     shadowOffset: { width: 0, height: 4 },
     elevation: 1,
   },
-  softCardSurface: {
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: softBorderColor,
-    shadowColor: theme.colors.ink,
-    shadowOpacity: 0.055,
-    shadowRadius: 20,
-    shadowOffset: { width: 0, height: 9 },
-    elevation: 3,
-  },
-  iconButtonShadow: {
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(15, 23, 42, 0.035)',
-    shadowColor: theme.colors.ink,
-    shadowOpacity: 0.06,
-    shadowRadius: 14,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 3,
-  },
   floatingButton: {
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: softBorderColor,
+    backgroundColor: theme.colors.surfaceStrong,
     shadowColor: theme.colors.ink,
-    shadowOpacity: 0.065,
+    shadowOpacity: 0.075,
     shadowRadius: 18,
     shadowOffset: { width: 0, height: 7 },
     elevation: 3,
   },
+  notificationAccentDot: {
+    backgroundColor: theme.colors.primaryLight,
+    borderWidth: 1.5,
+    borderColor: theme.colors.surfaceStrong,
+  },
+  searchIconBubble: {
+    backgroundColor: theme.colors.primarySoft,
+  },
   searchSurface: {
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(15, 23, 42, 0.04)',
     shadowColor: theme.colors.ink,
-    shadowOpacity: 0.05,
+    shadowOpacity: 0.055,
     shadowRadius: 22,
     shadowOffset: { width: 0, height: 9 },
     elevation: 2,

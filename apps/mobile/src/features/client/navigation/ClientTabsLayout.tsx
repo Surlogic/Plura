@@ -1,23 +1,41 @@
 import React from 'react';
 import { Redirect, Tabs } from 'expo-router';
 import { Ionicons } from '../../../lib/icons';
-import { Platform } from 'react-native';
+import { Platform, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuthSession } from '../../../context/auth/AuthSessionContext';
 import { theme } from '../../../theme';
+
+function TabIcon({
+  name,
+  color,
+  focused,
+  size = 24,
+}: {
+  name: React.ComponentProps<typeof Ionicons>['name'];
+  color: string;
+  focused: boolean;
+  size?: number;
+}) {
+  return (
+    <View style={[styles.iconShell, focused ? styles.iconShellActive : null]}>
+      <Ionicons name={name} size={size} color={color} />
+    </View>
+  );
+}
 
 export default function ClientTabsLayout() {
   const { hasLoaded, role } = useAuthSession();
   const insets = useSafeAreaInsets();
   const baseTabBarHeight = Platform.OS === 'ios' ? 60 : 58;
-  const tabBarHorizontalInset = 14;
-  const tabBarBottomOffset =
+  const tabBarHorizontalInset = Platform.OS === 'web' ? 14 : 0;
+  const tabBarBottomOffset = Platform.OS === 'web' ? 10 : 0;
+  const tabBarBottomPadding =
     Platform.OS === 'ios'
       ? Math.max(insets.bottom, 10)
       : Platform.OS === 'web'
         ? 10
-        : Math.max(insets.bottom, 12);
-  const tabBarBottomPadding = 10;
+        : Math.max(insets.bottom, 18);
 
   if (!hasLoaded) {
     return null;
@@ -35,19 +53,23 @@ export default function ClientTabsLayout() {
         tabBarInactiveTintColor: theme.colors.inkFaint,
         tabBarHideOnKeyboard: true,
         tabBarStyle: {
-          backgroundColor: theme.colors.surface,
-          borderTopWidth: Platform.OS === 'web' ? 1 : 0,
-          borderTopColor: 'rgba(15, 23, 42, 0.045)',
-          borderRadius: 28,
+          backgroundColor: theme.colors.white,
+          borderTopWidth: StyleSheet.hairlineWidth,
+          borderTopColor: 'rgba(15, 23, 42, 0.06)',
+          borderTopLeftRadius: Platform.OS === 'web' ? 28 : 24,
+          borderTopRightRadius: Platform.OS === 'web' ? 28 : 24,
+          borderBottomLeftRadius: Platform.OS === 'web' ? 28 : 0,
+          borderBottomRightRadius: Platform.OS === 'web' ? 28 : 0,
           position: 'absolute',
-          elevation: 8,
+          overflow: 'hidden',
+          elevation: 6,
           shadowColor: theme.colors.ink,
-          shadowOpacity: 0.055,
-          shadowRadius: 20,
-          shadowOffset: { width: 0, height: 8 },
+          shadowOpacity: 0.08,
+          shadowRadius: 18,
+          shadowOffset: { width: 0, height: -4 },
           height: baseTabBarHeight + tabBarBottomPadding,
           paddingBottom: tabBarBottomPadding,
-          paddingTop: 10,
+          paddingTop: 8,
           marginHorizontal: 0,
           bottom: tabBarBottomOffset,
           alignSelf: Platform.OS === 'web' ? 'center' : undefined,
@@ -58,11 +80,11 @@ export default function ClientTabsLayout() {
         },
         tabBarLabelStyle: {
           fontSize: 11,
-          fontWeight: '600',
-          marginTop: 2,
+          fontWeight: '700',
+          marginTop: 0,
         },
         tabBarItemStyle: {
-          paddingTop: 2,
+          paddingTop: 4,
         },
       }}
     >
@@ -71,7 +93,7 @@ export default function ClientTabsLayout() {
         options={{
           title: 'Inicio',
           tabBarIcon: ({ color, focused }) => (
-            <Ionicons name={focused ? 'home' : 'home-outline'} size={24} color={color} />
+            <TabIcon name={focused ? 'home' : 'home-outline'} size={23} color={color} focused={focused} />
           ),
         }}
       />
@@ -80,7 +102,7 @@ export default function ClientTabsLayout() {
         options={{
           title: 'MAPA',
           tabBarIcon: ({ color, focused }) => (
-            <Ionicons name={focused ? 'search' : 'search-outline'} size={26} color={color} />
+            <TabIcon name={focused ? 'search' : 'search-outline'} size={25} color={color} focused={focused} />
           ),
         }}
       />
@@ -89,7 +111,7 @@ export default function ClientTabsLayout() {
         options={{
           title: 'Favoritos',
           tabBarIcon: ({ color, focused }) => (
-            <Ionicons name={focused ? 'heart' : 'heart-outline'} size={24} color={color} />
+            <TabIcon name={focused ? 'heart' : 'heart-outline'} size={23} color={color} focused={focused} />
           ),
         }}
       />
@@ -98,7 +120,7 @@ export default function ClientTabsLayout() {
         options={{
           title: 'Reservas',
           tabBarIcon: ({ color, focused }) => (
-            <Ionicons name={focused ? 'calendar' : 'calendar-outline'} size={24} color={color} />
+            <TabIcon name={focused ? 'calendar' : 'calendar-outline'} size={23} color={color} focused={focused} />
           ),
         }}
       />
@@ -113,7 +135,7 @@ export default function ClientTabsLayout() {
         options={{
           title: 'Perfil',
           tabBarIcon: ({ color, focused }) => (
-            <Ionicons name={focused ? 'person' : 'person-outline'} size={24} color={color} />
+            <TabIcon name={focused ? 'person' : 'person-outline'} size={23} color={color} focused={focused} />
           ),
         }}
       />
@@ -126,3 +148,16 @@ export default function ClientTabsLayout() {
     </Tabs>
   );
 }
+
+const styles = StyleSheet.create({
+  iconShell: {
+    minHeight: 26,
+    minWidth: 42,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 999,
+  },
+  iconShellActive: {
+    backgroundColor: theme.colors.primarySoft,
+  },
+});

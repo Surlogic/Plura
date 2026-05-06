@@ -106,7 +106,7 @@ export default function ClientTabsLayout() {
         options={{
           title: 'MAPA',
           tabBarIcon: ({ color, focused }) => (
-            <TabIcon name={focused ? 'search' : 'search-outline'} size={25} color={color} focused={focused} />
+            <TabIcon name={focused ? 'map' : 'map-outline'} size={25} color={color} focused={focused} />
           ),
         }}
       />

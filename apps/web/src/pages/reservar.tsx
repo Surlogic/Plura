@@ -250,7 +250,9 @@ export default function ReservationPage() {
   }, [calendarDays, confirmedDate]);
 
   const publicProfileSlug = professionalSlug || professional?.slug?.trim() || '';
-  const publicProfileHref = publicProfileSlug ? `/profesional/${publicProfileSlug}` : null;
+  const publicProfileHref = publicProfileSlug
+    ? `/profesional/pagina/${encodeURIComponent(publicProfileSlug)}`
+    : null;
 
   const canSubmit = Boolean(confirmedService?.id && confirmedDate && selectedTime);
   const knownSessionRole = getKnownAuthSessionRole();
@@ -702,7 +704,11 @@ export default function ReservationPage() {
     clearPendingReservation();
     setIsAuthOverlayOpen(false);
     resetMessages();
-    void router.push(professionalSlug ? `/profesional/${professionalSlug}` : '/explorar');
+    void router.push(
+      professionalSlug
+        ? `/profesional/pagina/${encodeURIComponent(professionalSlug)}`
+        : '/explorar',
+    );
   };
 
   const submitReservation = async () => {

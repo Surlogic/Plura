@@ -72,6 +72,19 @@ const ClockIcon = () => (
   </svg>
 );
 
+const PinIcon = () => (
+  <svg viewBox="0 0 24 24" aria-hidden="true" className="h-4 w-4">
+    <path
+      d="M12 21s6-5.2 6-11a6 6 0 1 0-12 0c0 5.8 6 11 6 11Z"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinejoin="round"
+    />
+    <circle cx="12" cy="10" r="2" fill="currentColor" />
+  </svg>
+);
+
 const WhatsAppIcon = () => (
   <svg viewBox="0 0 24 24" aria-hidden="true" className="h-4 w-4 fill-current">
     <path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5.1-1.3A10 10 0 1 0 12 2Zm0 18a8 8 0 0 1-4.2-1.2l-.4-.2-3 .8.8-2.9-.2-.4A8 8 0 1 1 12 20Zm4.2-6c-.2-.1-1.2-.6-1.4-.7s-.3-.1-.5.1-.6.7-.7.8-.3.1-.5 0a5.8 5.8 0 0 1-1.7-1.1 6.5 6.5 0 0 1-1.2-1.5c-.1-.2 0-.3.1-.4l.3-.4a1.5 1.5 0 0 0 .2-.4.5.5 0 0 0 0-.5c0-.1-.5-1.1-.7-1.5s-.4-.3-.5-.3h-.4a.8.8 0 0 0-.6.3 2.4 2.4 0 0 0-.8 1.8 4 4 0 0 0 .9 2.2 9.1 9.1 0 0 0 3.4 3 11.3 11.3 0 0 0 1.1.4 2.7 2.7 0 0 0 1.2.1 2 2 0 0 0 1.3-.9 1.6 1.6 0 0 0 .1-.9c0-.1-.2-.2-.4-.3Z" />
@@ -154,12 +167,12 @@ export default function PublicProfileHero({
   const showLogoImage = Boolean(media.logo?.src) && !logoFailed;
   const hasRating = typeof rating === 'number' && Number.isFinite(rating);
   const hasReviews = typeof reviewsCount === 'number' && reviewsCount > 0;
-  const hasUtilityInfo = Boolean(address || scheduleSummary.length > 0);
+  const primarySchedule = scheduleSummary[0] ?? null;
 
   return (
-    <section className="overflow-hidden rounded-[28px] border border-[color:var(--border-soft)] bg-[color:var(--surface)]">
+    <section className="overflow-hidden rounded-[28px] bg-[color:var(--surface)] shadow-[0_26px_90px_-70px_rgba(15,23,42,0.34)]">
       <div className="grid gap-0 lg:grid-cols-[minmax(0,0.92fr)_minmax(420px,1.08fr)]">
-        <div className="flex flex-col justify-center px-5 py-7 sm:px-8 sm:py-9 lg:px-10 xl:px-12">
+        <div className="order-2 flex flex-col justify-center px-5 py-7 sm:px-8 sm:py-9 lg:order-1 lg:px-10 xl:px-12">
           {category ? (
             <Badge variant="neutral" className="w-fit normal-case tracking-normal">
               {category}
@@ -176,78 +189,32 @@ export default function PublicProfileHero({
             </p>
           ) : null}
 
-          <div className="mt-5 flex flex-wrap items-center gap-2 text-sm">
-            <div className="inline-flex items-center gap-2 rounded-full border border-[color:var(--border-soft)] bg-[color:var(--surface-soft)] px-3 py-1.5 text-[color:var(--ink)]">
+          <div className="mt-5 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-[color:var(--ink-muted)]">
+            <div className="inline-flex items-center gap-1.5 font-semibold text-[color:var(--ink)]">
               <StarIcon />
               {hasRating && hasReviews ? (
-                <span className="font-medium">
+                <span>
                   {rating.toFixed(1)} · {reviewsCount} {reviewsCount === 1 ? 'reseña' : 'reseñas'}
                 </span>
               ) : (
-                <span className="font-medium">Sin reseñas públicas todavía</span>
+                <span>Sin reseñas públicas todavía</span>
               )}
             </div>
 
-            {whatsappHref ? (
-              <a
-                href={whatsappHref}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-[color:var(--border-soft)] bg-[color:var(--surface-soft)] text-[color:var(--ink)] transition hover:-translate-y-0.5 hover:bg-white hover:shadow-[var(--shadow-card)]"
-                aria-label="WhatsApp"
-                title="WhatsApp"
-              >
-                <WhatsAppIcon />
-              </a>
+            {address ? (
+              <div className="inline-flex min-w-0 items-center gap-1.5">
+                <PinIcon />
+                <span className="truncate">{address}</span>
+              </div>
             ) : null}
 
-            {socialLinks.map((link) => (
-              <a
-                key={`${link.platform}-${link.href}`}
-                href={link.href}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-[color:var(--border-soft)] bg-[color:var(--surface-soft)] text-[color:var(--ink)] transition hover:-translate-y-0.5 hover:bg-white hover:shadow-[var(--shadow-card)]"
-                aria-label={link.label}
-                title={link.label}
-              >
-                <SocialIcon platform={link.platform} />
-              </a>
-            ))}
+            {primarySchedule ? (
+              <div className="inline-flex items-center gap-1.5">
+                <ClockIcon />
+                <span>{primarySchedule.label} · {primarySchedule.ranges}</span>
+              </div>
+            ) : null}
           </div>
-
-          {hasUtilityInfo ? (
-            <div className="mt-6 grid gap-3 text-sm sm:grid-cols-2">
-              {address ? (
-                <div className="rounded-[18px] border border-[color:var(--border-soft)] bg-[color:var(--surface-soft)] px-4 py-3">
-                  <p className="text-[0.62rem] font-semibold uppercase tracking-[0.24em] text-[color:var(--ink-faint)]">
-                    Dirección
-                  </p>
-                  <p className="mt-1.5 leading-6 text-[color:var(--ink)]">{address}</p>
-                </div>
-              ) : null}
-
-              {scheduleSummary.length > 0 ? (
-                <div className="rounded-[18px] border border-[color:var(--border-soft)] bg-[color:var(--surface-soft)] px-4 py-3">
-                  <div className="flex items-center gap-2 text-[0.62rem] font-semibold uppercase tracking-[0.24em] text-[color:var(--ink-faint)]">
-                    <ClockIcon />
-                    <span>Horarios</span>
-                  </div>
-                  <div className="mt-2 space-y-1.5">
-                    {scheduleSummary.slice(0, 3).map((item) => (
-                      <div
-                        key={`${item.label}-${item.ranges}`}
-                        className="flex flex-wrap items-center justify-between gap-2"
-                      >
-                        <span className="font-semibold text-[color:var(--ink)]">{item.label}</span>
-                        <span className="text-[color:var(--primary)]">{item.ranges}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ) : null}
-            </div>
-          ) : null}
 
           <div className="mt-7 flex flex-col gap-3 sm:flex-row">
             <Button type="button" variant="primary" size="lg" onClick={onViewServices}>
@@ -264,8 +231,34 @@ export default function PublicProfileHero({
             </Button>
           </div>
 
-          {!isPreview ? (
-            <div className="mt-4 flex">
+          <div className="mt-5 flex flex-wrap items-center gap-2">
+            {whatsappHref ? (
+              <a
+                href={whatsappHref}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex h-10 items-center gap-2 rounded-full border border-[color:var(--border-soft)] bg-[color:var(--surface-soft)] px-3 text-sm font-semibold text-[color:var(--ink)] transition hover:-translate-y-0.5 hover:bg-white hover:shadow-[var(--shadow-card)]"
+              >
+                <WhatsAppIcon />
+                WhatsApp
+              </a>
+            ) : null}
+
+            {socialLinks.map((link) => (
+              <a
+                key={`${link.platform}-${link.href}`}
+                href={link.href}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-[color:var(--border-soft)] bg-[color:var(--surface-soft)] text-[color:var(--ink)] transition hover:-translate-y-0.5 hover:bg-white hover:shadow-[var(--shadow-card)]"
+                aria-label={link.label}
+                title={link.label}
+              >
+                <SocialIcon platform={link.platform} />
+              </a>
+            ))}
+
+            {!isPreview ? (
               <FavoriteToggleButton
                 isActive={isCurrentFavorite}
                 onClick={onToggleFavorite}
@@ -274,11 +267,11 @@ export default function PublicProfileHero({
                 activeLabel="Favoritos"
                 inactiveLabel="Favoritos"
               />
-            </div>
-          ) : null}
+            ) : null}
+          </div>
         </div>
 
-        <div className="relative min-h-[320px] overflow-hidden lg:min-h-[560px]">
+        <div className="relative order-1 min-h-[320px] overflow-hidden lg:order-2 lg:m-4 lg:min-h-[560px] lg:rounded-[24px]">
           {activeBanner ? (
             <Image
               src={activeBanner.src}
@@ -321,7 +314,9 @@ export default function PublicProfileHero({
                 ) : null}
                 <div className="mt-2 inline-flex items-center gap-1.5 text-sm font-semibold text-[color:var(--ink)]">
                   <StarIcon />
-                  {hasRating && hasReviews ? rating.toFixed(1) : 'Nuevo'}
+                  {hasRating && hasReviews
+                    ? `${rating.toFixed(1)} · ${reviewsCount} ${reviewsCount === 1 ? 'reseña' : 'reseñas'}`
+                    : 'Nuevo'}
                 </div>
               </div>
             </div>

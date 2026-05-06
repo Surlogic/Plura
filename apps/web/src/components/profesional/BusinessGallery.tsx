@@ -108,19 +108,19 @@ export default memo(function BusinessGallery({ photos, businessName }: BusinessG
     );
   }
 
-  const visiblePhotos = availablePhotos.slice(0, Math.min(availablePhotos.length, 8));
+  const visiblePhotos = availablePhotos.slice(0, Math.min(availablePhotos.length, 6));
   const hiddenPhotosCount = Math.max(0, availablePhotos.length - visiblePhotos.length);
 
   return (
     <>
       <div className="overflow-hidden">
-        <div className="flex gap-3 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
           {visiblePhotos.map((photo, index) => (
             <button
               key={`${photo}-${index}`}
               type="button"
               onClick={() => setActiveIndex(index)}
-              className="group relative aspect-[4/3] w-[76vw] max-w-[360px] shrink-0 overflow-hidden rounded-[20px] border border-[#D9E2EC] bg-[#EEF2F6] text-left transition hover:-translate-y-0.5 hover:shadow-[0_18px_44px_-32px_rgba(15,23,42,0.24)] sm:w-[310px] lg:w-[340px]"
+              className="group relative aspect-[16/10] overflow-hidden rounded-[18px] border border-[color:var(--border-soft)] bg-[color:var(--surface-soft)] text-left transition hover:-translate-y-0.5 hover:shadow-[0_18px_44px_-32px_rgba(15,23,42,0.24)]"
               aria-label={`Abrir foto ${index + 1}`}
             >
               <span className="absolute inset-0">
@@ -128,7 +128,7 @@ export default memo(function BusinessGallery({ photos, businessName }: BusinessG
                   src={photo}
                   alt={`Foto ${index + 1} de ${businessName || 'negocio'}`}
                   fill
-                  sizes="(max-width: 640px) 76vw, 340px"
+                  sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 16vw"
                   className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.03]"
                   onError={() => handleImageError(photo)}
                 />

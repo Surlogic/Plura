@@ -124,71 +124,41 @@ export default memo(function PublicReviewsList({
     typeof latitude === 'number' && Number.isFinite(latitude) &&
     typeof longitude === 'number' && Number.isFinite(longitude);
   const locationLabel = [address.trim(), city.trim()].filter(Boolean).join(', ');
-  const featuredReview = (page?.content ?? [])[0] ?? null;
 
   return (
     <>
       <section>
         <div>
           <p className="text-[0.68rem] font-semibold uppercase tracking-[0.32em] text-[color:var(--ink-faint)]">
-            Confianza
+            Confianza y ubicación
           </p>
           <h2 className="mt-2 text-3xl font-semibold text-[color:var(--ink)]">
-            Reseñas reales y cómo llegar
+            Confianza y ubicación
           </h2>
         </div>
 
-        <div className="mt-6 grid gap-5 xl:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
-          <div className="rounded-[20px] border border-[color:var(--border-soft)] bg-white/78 p-5 sm:p-6">
-            <div className={`flex flex-col ${hasReviews ? 'justify-center' : 'min-h-[180px] justify-start'} text-left`}>
+        <div className="mt-5 grid gap-5 xl:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)]">
+          <div className="rounded-[22px] border border-[color:var(--border-soft)] bg-[color:var(--surface-soft)] p-6">
+            <div className="flex min-h-[320px] flex-col items-center justify-center text-center">
               <p className="text-[0.68rem] font-semibold uppercase tracking-[0.28em] text-[color:var(--ink-faint)]">
                 Reseñas
               </p>
 
               {hasReviews ? (
                 <>
-                  <div className="mt-5 flex flex-wrap items-end gap-4">
-                    <p className="text-6xl font-semibold tracking-[-0.05em] text-[color:var(--ink)]">
-                      {hasGlobalRating ? rating.toFixed(1) : '--'}
-                    </p>
-                    <div className="pb-2">
-                      {hasGlobalRating ? (
-                        <span className="block text-2xl leading-none">
-                          <StarDisplay rating={Math.max(0, Math.min(5, Math.round(rating)))} />
-                        </span>
-                      ) : null}
-                      <p className="mt-2 text-sm font-semibold text-[color:var(--ink)]">
-                        {totalReviews} {totalReviews === 1 ? 'reseña pública' : 'reseñas públicas'}
-                      </p>
-                    </div>
-                  </div>
+                  <p className="mt-5 text-6xl font-semibold tracking-[-0.05em] text-[color:var(--ink)]">
+                    {hasGlobalRating ? rating.toFixed(1) : '--'}
+                  </p>
+                  <p className="mt-3 text-sm font-semibold text-[color:var(--ink)]">
+                    {totalReviews} {totalReviews === 1 ? 'reseña pública' : 'reseñas públicas'}
+                  </p>
                   <button
                     type="button"
                     onClick={() => setIsModalOpen(true)}
-                    className="mt-6 w-fit rounded-full bg-[color:var(--primary)] px-5 py-2.5 text-sm font-semibold text-white shadow-[var(--shadow-card)] transition hover:-translate-y-0.5 hover:bg-[color:var(--primary-strong)]"
+                    className="mt-6 rounded-full border border-[color:var(--border-soft)] bg-white px-5 py-2.5 text-sm font-semibold text-[color:var(--ink)] shadow-[var(--shadow-card)] transition hover:-translate-y-0.5 hover:border-[color:var(--border-strong)] hover:bg-[color:var(--surface-hover)]"
                   >
-                    Ver todas las reseñas
+                    Leer reseñas
                   </button>
-                  {featuredReview ? (
-                    <article className="mt-6 border-t border-[color:var(--border-soft)] pt-5">
-                      <div className="flex items-center gap-3">
-                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[color:var(--surface-soft)] text-xs font-semibold text-[color:var(--primary)]">
-                          {featuredReview.authorDisplayName?.charAt(0)?.toUpperCase() ?? '?'}
-                        </div>
-                        <div className="min-w-0">
-                          <p className="truncate text-sm font-semibold text-[color:var(--ink)]">
-                            {featuredReview.authorDisplayName}
-                          </p>
-                          <StarDisplay rating={featuredReview.rating} />
-                        </div>
-                      </div>
-                      {featuredReview.textHiddenByProfessional ? null : featuredReview.text ? (
-                        <p className="mt-3 line-clamp-3 text-sm leading-6 text-[color:var(--ink-muted)]">
-                          {featuredReview.text}
-                        </p>
-                      ) : null}
-                    </article>
-                  ) : null}
                 </>
               ) : loadError ? (
                 <>
@@ -203,7 +173,7 @@ export default memo(function PublicReviewsList({
                 <p className="mt-5 text-sm text-[color:var(--ink-muted)]">Cargando reseñas...</p>
               ) : (
                 <>
-                  <p className="mt-4 text-base font-semibold text-[color:var(--ink)]">
+                  <p className="mt-5 text-lg font-semibold text-[color:var(--ink)]">
                     Todavía no hay reseñas públicas
                   </p>
                   <p className="mt-2 max-w-sm text-sm leading-6 text-[color:var(--ink-muted)]">
@@ -214,25 +184,19 @@ export default memo(function PublicReviewsList({
             </div>
           </div>
 
-          <div className="rounded-[20px] border border-[color:var(--border-soft)] bg-white/78 p-2">
+          <div className="rounded-[22px] border border-[color:var(--border-soft)] bg-[color:var(--surface-soft)] p-3">
             {hasCoordinates ? (
-              <div className="relative overflow-hidden rounded-[16px]">
-                <div className="absolute left-3 top-3 z-10 max-w-[calc(100%-1.5rem)] rounded-[14px] border border-white/80 bg-white/92 p-3 shadow-[var(--shadow-card)] backdrop-blur-sm sm:max-w-[280px]">
-                  <p className="text-sm font-semibold text-[color:var(--ink)]">{name}</p>
-                  {locationLabel ? (
-                    <p className="mt-1 text-xs leading-5 text-[color:var(--ink-muted)]">{locationLabel}</p>
-                  ) : null}
-                  {mapHref ? (
-                    <a
-                      href={mapHref}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="mt-3 inline-flex rounded-full bg-[color:var(--primary)] px-3 py-1.5 text-xs font-semibold text-white shadow-[var(--shadow-card)] transition hover:-translate-y-0.5 hover:bg-[color:var(--primary-strong)]"
-                    >
-                      Cómo llegar
-                    </a>
-                  ) : null}
-                </div>
+              <div className="relative overflow-hidden rounded-[18px]">
+                {mapHref ? (
+                  <a
+                    href={mapHref}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="absolute right-4 top-4 z-10 rounded-full border border-white/85 bg-white/95 px-4 py-2 text-xs font-semibold text-[color:var(--ink)] shadow-[var(--shadow-card)] transition hover:-translate-y-0.5 hover:bg-white"
+                  >
+                    Cómo llegar
+                  </a>
+                ) : null}
                 <PublicProfileMap
                   name={name}
                   category={category}
@@ -245,7 +209,7 @@ export default memo(function PublicReviewsList({
                 />
               </div>
             ) : (
-              <div className="flex min-h-[200px] flex-col justify-between rounded-[16px] bg-[color:var(--surface-soft)] p-5">
+              <div className="flex min-h-[320px] flex-col justify-between rounded-[18px] border border-[color:var(--border-soft)] bg-white p-5">
                 <div>
                   <p className="text-[0.68rem] font-semibold uppercase tracking-[0.28em] text-[color:var(--ink-faint)]">
                     Ubicación

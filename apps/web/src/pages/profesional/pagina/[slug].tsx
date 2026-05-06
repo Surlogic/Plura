@@ -1,5 +1,4 @@
 import type { GetServerSideProps, InferGetServerSidePropsType } from 'next';
-import Image from 'next/image';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/router';
 import Navbar from '@/components/shared/Navbar';
@@ -193,39 +192,6 @@ const normalizeServiceId = (value: unknown): string => {
     return String(value).trim();
   }
   return '';
-};
-
-const TrustIcon = ({ type }: { type: 'calendar' | 'check' | 'profile' | 'payment' }) => {
-  if (type === 'calendar') {
-    return (
-      <svg viewBox="0 0 24 24" aria-hidden="true" className="h-4 w-4">
-        <path d="M7 3v3M17 3v3M4.5 9h15" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-        <rect x="4.5" y="5" width="15" height="15" rx="3" fill="none" stroke="currentColor" strokeWidth="1.8" />
-      </svg>
-    );
-  }
-  if (type === 'check') {
-    return (
-      <svg viewBox="0 0 24 24" aria-hidden="true" className="h-4 w-4">
-        <circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" strokeWidth="1.8" />
-        <path d="m8.5 12.2 2.2 2.2 4.9-5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-      </svg>
-    );
-  }
-  if (type === 'profile') {
-    return (
-      <svg viewBox="0 0 24 24" aria-hidden="true" className="h-4 w-4">
-        <path d="M12 3.5 18.5 6v5.2c0 4.1-2.7 7.6-6.5 9.1-3.8-1.5-6.5-5-6.5-9.1V6L12 3.5Z" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
-        <path d="M9 12h6M9 15h4" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-      </svg>
-    );
-  }
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true" className="h-4 w-4">
-      <rect x="4" y="6.5" width="16" height="11" rx="2.5" fill="none" stroke="currentColor" strokeWidth="1.8" />
-      <path d="M4 10h16M8 14h3" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-    </svg>
-  );
 };
 
 type PublicProfessional = {
@@ -614,6 +580,10 @@ export default function ProfesionalDetailPage({
     window.location.hash = '#servicios';
   };
 
+  const handlePrimaryReserveEntry = () => {
+    handleViewServices();
+  };
+
   const { addressLine, cityLine } = useMemo(
     () => splitLocationLines(merged.location || ''),
     [merged.location],
@@ -642,10 +612,6 @@ export default function ProfesionalDetailPage({
     [facebookHref, instagramHref, tiktokHref, websiteHref],
   );
   const favoriteImage = galleryPhotos[0] || merged.logoUrl || undefined;
-  const aboutPhoto = galleryPhotos[0] || '';
-  const aboutGridClassName = aboutPhoto
-    ? 'lg:grid-cols-[minmax(0,1.1fr)_minmax(260px,0.68fr)_minmax(280px,0.82fr)]'
-    : 'lg:grid-cols-[minmax(0,1.15fr)_minmax(280px,0.85fr)]';
 
   const hasPublicContent = Boolean(
     merged.name ||
@@ -735,7 +701,6 @@ export default function ProfesionalDetailPage({
           logoUrl={merged.logoUrl}
           name={merged.name}
           onToggleFavorite={toggleFavoriteHandler}
-          onViewServices={handleViewServices}
           photoUrls={merged.photos}
           rating={data?.rating}
           reviewsCount={data?.reviewsCount}
@@ -743,35 +708,33 @@ export default function ProfesionalDetailPage({
           socialLinks={socialLinks}
           whatsappHref={whatsappHref}
         />
-        <div className="mt-4 space-y-9 sm:space-y-11">
-          <section className="grid gap-0 overflow-hidden rounded-[18px] border border-[color:var(--border-soft)] bg-white/72 sm:grid-cols-2 lg:grid-cols-4">
-            {[
-              ['calendar', 'Reserva online', ''],
-              ['profile', 'Servicios, horarios y precios visibles', ''],
-              ['check', 'Confirmación según política del local', ''],
-              ['payment', 'Pago según modalidad del servicio', ''],
-            ].map(([type, title, description]) => (
-              <div
-                key={title}
-                className="flex gap-3 border-b border-[color:var(--border-soft)] px-4 py-3 last:border-b-0 sm:[&:nth-child(odd)]:border-r lg:border-b-0 lg:border-r lg:last:border-r-0"
-              >
-                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[color:var(--surface-soft)] text-[color:var(--primary)] opacity-90">
-                  <TrustIcon type={type as 'calendar' | 'check' | 'profile' | 'payment'} />
-                </span>
-                <span>
-                  <p className="text-sm font-semibold text-[color:var(--ink)]">{title}</p>
-                  {description ? (
-                    <p className="mt-1 text-sm leading-6 text-[color:var(--ink-muted)]">{description}</p>
-                  ) : null}
-                </span>
+        <div className="mt-6">
+          <section className="border-t border-[color:var(--border-soft)] py-6 sm:py-7">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+              <div>
+                <p className="text-[0.68rem] font-semibold uppercase tracking-[0.32em] text-[color:var(--ink-faint)]">
+                  Galería de fotos
+                </p>
+                <h2 className="mt-2 text-3xl font-semibold text-[color:var(--ink)]">
+                  Espacio, trabajos y detalles
+                </h2>
               </div>
-            ))}
+              {hasRealGalleryPhotos ? (
+                <p className="text-sm font-medium text-[color:var(--ink-faint)]">
+                  {galleryPhotos.length} {galleryPhotos.length === 1 ? 'foto publicada' : 'fotos publicadas'}
+                </p>
+              ) : null}
+            </div>
+
+            <div className="mt-5 overflow-hidden rounded-[24px] border border-[color:var(--border-soft)]">
+              <BusinessGallery photos={galleryPhotos} businessName={merged.name} />
+            </div>
           </section>
 
           <section
             ref={servicesSectionRef}
             id="servicios"
-            className="scroll-mt-6"
+            className="border-t border-[color:var(--border-soft)] py-6 sm:py-7"
           >
             <PublicServicesSection
               activeCategory={activeServiceCategory}
@@ -784,110 +747,20 @@ export default function ProfesionalDetailPage({
           </section>
 
           {aboutValue ? (
-            <section>
-              <div className={`grid gap-6 rounded-[22px] bg-white/72 p-5 sm:p-6 lg:p-7 ${aboutGridClassName}`}>
-                <div>
-                  <p className="text-[0.68rem] font-semibold uppercase tracking-[0.32em] text-[color:var(--ink-faint)]">
-                    Sobre nosotros
-                  </p>
-                  <h2 className="mt-2 text-3xl font-semibold text-[color:var(--ink)] sm:text-4xl">
-                    Sobre nosotros
-                  </h2>
-                  <p className="mt-4 whitespace-pre-line text-sm leading-7 text-[color:var(--ink-muted)] sm:text-base">
-                    {aboutValue}
-                  </p>
-                </div>
-
-                <div className="grid content-start gap-2.5">
-                  {merged.category ? (
-                    <div className="rounded-[14px] bg-[color:var(--surface-soft)] px-4 py-3">
-                      <p className="text-[0.62rem] font-semibold uppercase tracking-[0.22em] text-[color:var(--ink-faint)]">
-                        Categoría
-                      </p>
-                      <p className="mt-1.5 text-sm font-semibold text-[color:var(--ink)]">{merged.category}</p>
-                    </div>
-                  ) : null}
-                  {scheduleSummary[0] ? (
-                    <div className="rounded-[14px] bg-[color:var(--surface-soft)] px-4 py-3">
-                      <p className="text-[0.62rem] font-semibold uppercase tracking-[0.22em] text-[color:var(--ink-faint)]">
-                        Horarios
-                      </p>
-                      <p className="mt-1.5 text-sm font-semibold text-[color:var(--ink)]">
-                        {scheduleSummary[0].label} · {scheduleSummary[0].ranges}
-                      </p>
-                    </div>
-                  ) : null}
-                  {addressValue ? (
-                    <div className="rounded-[14px] bg-[color:var(--surface-soft)] px-4 py-3">
-                      <p className="text-[0.62rem] font-semibold uppercase tracking-[0.22em] text-[color:var(--ink-faint)]">
-                        Dirección
-                      </p>
-                      <p className="mt-1.5 text-sm font-semibold leading-6 text-[color:var(--ink)]">
-                        {addressValue}
-                      </p>
-                    </div>
-                  ) : null}
-                  {typeof data?.rating === 'number' && Number.isFinite(data.rating) ? (
-                    <div className="rounded-[14px] bg-[color:var(--surface-soft)] px-4 py-3">
-                      <p className="text-[0.62rem] font-semibold uppercase tracking-[0.22em] text-[color:var(--ink-faint)]">
-                        Rating
-                      </p>
-                      <p className="mt-1.5 text-sm font-semibold text-[color:var(--ink)]">
-                        {data.rating.toFixed(1)} · {data.reviewsCount ?? 0} reseñas
-                      </p>
-                    </div>
-                  ) : null}
-                  {displayServices.length > 0 ? (
-                    <div className="rounded-[14px] bg-[color:var(--surface-soft)] px-4 py-3">
-                      <p className="text-[0.62rem] font-semibold uppercase tracking-[0.22em] text-[color:var(--ink-faint)]">
-                        Servicios
-                      </p>
-                      <p className="mt-1.5 text-sm font-semibold text-[color:var(--ink)]">
-                        {displayServices.length} {displayServices.length === 1 ? 'servicio disponible' : 'servicios disponibles'}
-                      </p>
-                    </div>
-                  ) : null}
-                </div>
-
-                {aboutPhoto ? (
-                  <div className="relative min-h-[240px] overflow-hidden rounded-[18px] bg-[color:var(--surface-soft)] lg:min-h-full">
-                    <Image
-                      src={aboutPhoto}
-                      alt={`Foto de ${merged.name || 'negocio'}`}
-                      fill
-                      sizes="(max-width: 1024px) 100vw, 28vw"
-                      className="object-cover"
-                    />
-                  </div>
-                ) : null}
-              </div>
-            </section>
-          ) : null}
-
-          {hasRealGalleryPhotos ? (
-            <section>
-              <div className="text-center">
-                <div>
-                  <p className="text-[0.68rem] font-semibold uppercase tracking-[0.32em] text-[color:var(--ink-faint)]">
-                    Galería
-                  </p>
-                  <h2 className="mt-2 text-3xl font-semibold text-[color:var(--ink)] sm:text-4xl">
-                    Galería
-                  </h2>
-                </div>
-                <p className="mt-2 text-sm font-medium text-[color:var(--ink-muted)]">
-                  Trabajos, espacio y detalles · {galleryPhotos.length} {galleryPhotos.length === 1 ? 'foto publicada' : 'fotos publicadas'}
+            <section className="border-t border-[color:var(--border-soft)] py-6 sm:py-7">
+              <div className="max-w-4xl">
+                <p className="text-[0.68rem] font-semibold uppercase tracking-[0.32em] text-[color:var(--ink-faint)]">
+                  Sobre nosotros
                 </p>
-              </div>
-
-              <div className="mt-5">
-                <BusinessGallery photos={galleryPhotos} businessName={merged.name} />
+                <p className="mt-3 whitespace-pre-line text-sm leading-7 text-[color:var(--ink-muted)] sm:text-base">
+                  {aboutValue}
+                </p>
               </div>
             </section>
           ) : null}
 
           {!isPreview && professionalSlug ? (
-            <section>
+            <section className="border-t border-[color:var(--border-soft)] py-6 sm:py-7">
               <PublicReviewsList
                 slug={professionalSlug}
                 name={merged.name}
@@ -905,13 +778,15 @@ export default function ProfesionalDetailPage({
       </main>
 
       {!isPreview && !selectedService ? (
-        <div className="fixed bottom-[calc(env(safe-area-inset-bottom,0px)+1rem)] right-4 z-40 sm:bottom-[calc(env(safe-area-inset-bottom,0px)+1.25rem)] sm:right-5 lg:bottom-6 lg:right-6">
+        <div
+          className="fixed bottom-[calc(env(safe-area-inset-bottom,0px)+1rem)] right-4 z-40 sm:bottom-[calc(env(safe-area-inset-bottom,0px)+1.25rem)] sm:right-5 lg:bottom-6 lg:right-6"
+        >
           <Button
             type="button"
             variant="primary"
             size="lg"
             className="rounded-full px-5 shadow-[0_18px_44px_-28px_rgba(15,23,42,0.28)]"
-            onClick={handleViewServices}
+            onClick={handlePrimaryReserveEntry}
           >
             Reservar
           </Button>

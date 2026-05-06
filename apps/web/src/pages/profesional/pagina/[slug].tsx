@@ -1,4 +1,5 @@
 import type { GetServerSideProps, InferGetServerSidePropsType } from 'next';
+import Image from 'next/image';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/router';
 import Navbar from '@/components/shared/Navbar';
@@ -6,7 +7,6 @@ import Footer from '@/components/shared/Footer';
 import BusinessGallery from '@/components/profesional/BusinessGallery';
 import ServiceDetailModal from '@/components/profesional/ServiceDetailModal';
 import PublicReviewsList from '@/components/profesional/PublicReviewsList';
-import Button from '@/components/ui/Button';
 import { useFavoriteProfessionals } from '@/hooks/useFavoriteProfessionals';
 import { useClientProfileContext } from '@/context/ClientProfileContext';
 import { getPublicProfessionalBySlug } from '@/services/publicBookings';
@@ -580,10 +580,6 @@ export default function ProfesionalDetailPage({
     window.location.hash = '#servicios';
   };
 
-  const handlePrimaryReserveEntry = () => {
-    handleViewServices();
-  };
-
   const { addressLine, cityLine } = useMemo(
     () => splitLocationLines(merged.location || ''),
     [merged.location],
@@ -612,6 +608,7 @@ export default function ProfesionalDetailPage({
     [facebookHref, instagramHref, tiktokHref, websiteHref],
   );
   const favoriteImage = galleryPhotos[0] || merged.logoUrl || undefined;
+  const aboutPhoto = galleryPhotos[0] || '';
 
   const hasPublicContent = Boolean(
     merged.name ||
@@ -701,6 +698,7 @@ export default function ProfesionalDetailPage({
           logoUrl={merged.logoUrl}
           name={merged.name}
           onToggleFavorite={toggleFavoriteHandler}
+          onViewServices={handleViewServices}
           photoUrls={merged.photos}
           rating={data?.rating}
           reviewsCount={data?.reviewsCount}
@@ -709,26 +707,21 @@ export default function ProfesionalDetailPage({
           whatsappHref={whatsappHref}
         />
         <div className="mt-6">
-          <section className="border-t border-[color:var(--border-soft)] py-6 sm:py-7">
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-              <div>
-                <p className="text-[0.68rem] font-semibold uppercase tracking-[0.32em] text-[color:var(--ink-faint)]">
-                  Galería de fotos
-                </p>
-                <h2 className="mt-2 text-3xl font-semibold text-[color:var(--ink)]">
-                  Espacio, trabajos y detalles
-                </h2>
+          <section className="grid gap-3 border-t border-[color:var(--border-soft)] py-6 sm:grid-cols-2 lg:grid-cols-4">
+            {[
+              ['Reserva online', 'Fácil, rápida y 24/7'],
+              ['Confirmación del turno', 'Sin llamadas innecesarias'],
+              ['Perfil del negocio', 'Información pública clara'],
+              ['Pago en local / online', 'Según modalidad del servicio'],
+            ].map(([title, description]) => (
+              <div
+                key={title}
+                className="rounded-[20px] border border-[color:var(--border-soft)] bg-white/80 px-4 py-4 shadow-[0_16px_44px_-40px_rgba(15,23,42,0.32)]"
+              >
+                <p className="text-sm font-semibold text-[color:var(--ink)]">{title}</p>
+                <p className="mt-1 text-sm leading-6 text-[color:var(--ink-muted)]">{description}</p>
               </div>
-              {hasRealGalleryPhotos ? (
-                <p className="text-sm font-medium text-[color:var(--ink-faint)]">
-                  {galleryPhotos.length} {galleryPhotos.length === 1 ? 'foto publicada' : 'fotos publicadas'}
-                </p>
-              ) : null}
-            </div>
-
-            <div className="mt-5 overflow-hidden rounded-[24px] border border-[color:var(--border-soft)]">
-              <BusinessGallery photos={galleryPhotos} businessName={merged.name} />
-            </div>
+            ))}
           </section>
 
           <section
@@ -748,13 +741,93 @@ export default function ProfesionalDetailPage({
 
           {aboutValue ? (
             <section className="border-t border-[color:var(--border-soft)] py-6 sm:py-7">
-              <div className="max-w-4xl">
-                <p className="text-[0.68rem] font-semibold uppercase tracking-[0.32em] text-[color:var(--ink-faint)]">
-                  Sobre nosotros
+              <div className="grid gap-6 rounded-[28px] border border-[color:var(--border-soft)] bg-white/82 p-5 sm:p-6 lg:grid-cols-[minmax(0,1.1fr)_minmax(260px,0.7fr)_minmax(280px,0.8fr)] lg:p-7">
+                <div>
+                  <p className="text-[0.68rem] font-semibold uppercase tracking-[0.32em] text-[color:var(--ink-faint)]">
+                    Sobre nosotros
+                  </p>
+                  <h2 className="mt-2 text-3xl font-semibold text-[color:var(--ink)]">
+                    Conocé el espacio
+                  </h2>
+                  <p className="mt-4 whitespace-pre-line text-sm leading-7 text-[color:var(--ink-muted)] sm:text-base">
+                    {aboutValue}
+                  </p>
+                </div>
+
+                <div className="grid content-start gap-3">
+                  {merged.category ? (
+                    <div className="rounded-[18px] border border-[color:var(--border-soft)] bg-[color:var(--surface-soft)] px-4 py-3">
+                      <p className="text-[0.62rem] font-semibold uppercase tracking-[0.22em] text-[color:var(--ink-faint)]">
+                        Categoría
+                      </p>
+                      <p className="mt-1.5 text-sm font-semibold text-[color:var(--ink)]">{merged.category}</p>
+                    </div>
+                  ) : null}
+                  {scheduleSummary[0] ? (
+                    <div className="rounded-[18px] border border-[color:var(--border-soft)] bg-[color:var(--surface-soft)] px-4 py-3">
+                      <p className="text-[0.62rem] font-semibold uppercase tracking-[0.22em] text-[color:var(--ink-faint)]">
+                        Horarios
+                      </p>
+                      <p className="mt-1.5 text-sm font-semibold text-[color:var(--ink)]">
+                        {scheduleSummary[0].label} · {scheduleSummary[0].ranges}
+                      </p>
+                    </div>
+                  ) : null}
+                  {addressValue ? (
+                    <div className="rounded-[18px] border border-[color:var(--border-soft)] bg-[color:var(--surface-soft)] px-4 py-3">
+                      <p className="text-[0.62rem] font-semibold uppercase tracking-[0.22em] text-[color:var(--ink-faint)]">
+                        Dirección
+                      </p>
+                      <p className="mt-1.5 text-sm font-semibold leading-6 text-[color:var(--ink)]">
+                        {addressValue}
+                      </p>
+                    </div>
+                  ) : null}
+                  {typeof data?.rating === 'number' && Number.isFinite(data.rating) ? (
+                    <div className="rounded-[18px] border border-[color:var(--border-soft)] bg-[color:var(--surface-soft)] px-4 py-3">
+                      <p className="text-[0.62rem] font-semibold uppercase tracking-[0.22em] text-[color:var(--ink-faint)]">
+                        Rating
+                      </p>
+                      <p className="mt-1.5 text-sm font-semibold text-[color:var(--ink)]">
+                        {data.rating.toFixed(1)} · {data.reviewsCount ?? 0} reseñas
+                      </p>
+                    </div>
+                  ) : null}
+                </div>
+
+                {aboutPhoto ? (
+                  <div className="relative min-h-[240px] overflow-hidden rounded-[24px] bg-[color:var(--surface-soft)] lg:min-h-full">
+                    <Image
+                      src={aboutPhoto}
+                      alt={`Foto de ${merged.name || 'negocio'}`}
+                      fill
+                      sizes="(max-width: 1024px) 100vw, 28vw"
+                      className="object-cover"
+                    />
+                  </div>
+                ) : null}
+              </div>
+            </section>
+          ) : null}
+
+          {hasRealGalleryPhotos ? (
+            <section className="border-t border-[color:var(--border-soft)] py-6 sm:py-7">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+                <div>
+                  <p className="text-[0.68rem] font-semibold uppercase tracking-[0.32em] text-[color:var(--ink-faint)]">
+                    Galería de fotos
+                  </p>
+                  <h2 className="mt-2 text-3xl font-semibold text-[color:var(--ink)]">
+                    Espacio, trabajos y detalles
+                  </h2>
+                </div>
+                <p className="text-sm font-medium text-[color:var(--ink-faint)]">
+                  {galleryPhotos.length} {galleryPhotos.length === 1 ? 'foto publicada' : 'fotos publicadas'}
                 </p>
-                <p className="mt-3 whitespace-pre-line text-sm leading-7 text-[color:var(--ink-muted)] sm:text-base">
-                  {aboutValue}
-                </p>
+              </div>
+
+              <div className="mt-5">
+                <BusinessGallery photos={galleryPhotos} businessName={merged.name} />
               </div>
             </section>
           ) : null}
@@ -776,22 +849,6 @@ export default function ProfesionalDetailPage({
           ) : null}
         </div>
       </main>
-
-      {!isPreview && !selectedService ? (
-        <div
-          className="fixed bottom-[calc(env(safe-area-inset-bottom,0px)+1rem)] right-4 z-40 sm:bottom-[calc(env(safe-area-inset-bottom,0px)+1.25rem)] sm:right-5 lg:bottom-6 lg:right-6"
-        >
-          <Button
-            type="button"
-            variant="primary"
-            size="lg"
-            className="rounded-full px-5 shadow-[0_18px_44px_-28px_rgba(15,23,42,0.28)]"
-            onClick={handlePrimaryReserveEntry}
-          >
-            Reservar
-          </Button>
-        </div>
-      ) : null}
 
       {!isPreview && selectedService ? (
         <div className="fixed inset-x-0 bottom-3 z-40 px-3 lg:hidden">

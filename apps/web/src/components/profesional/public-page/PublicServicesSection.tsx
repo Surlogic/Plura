@@ -93,93 +93,94 @@ export default function PublicServicesSection({
           No hay servicios cargados todavia.
         </div>
       ) : (
-        <div className="mt-5 overflow-hidden rounded-[22px] border border-[color:var(--border-soft)] bg-[color:var(--surface)]">
+        <div className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           {visibleItems.map((item) => {
             const imageSrc = normalizeImageSrc(item.service.imageUrl);
             const canRenderImage = Boolean(imageSrc) && !failedImages.includes(imageSrc);
             return (
               <article
                 key={item.service.id ?? `${item.categoryLabel}-${item.index}`}
-                className="grid gap-3 border-b border-[color:var(--border-soft)] bg-[color:var(--surface)] px-4 py-4 transition last:border-b-0 hover:bg-[color:var(--surface-soft)]/55 lg:grid-cols-[minmax(0,1.6fr)_110px_110px_220px] lg:items-center lg:px-5"
+                className="flex min-h-full flex-col overflow-hidden rounded-[22px] border border-[color:var(--border-soft)] bg-[color:var(--surface)] shadow-[0_18px_48px_-42px_rgba(15,23,42,0.28)] transition hover:-translate-y-0.5 hover:shadow-[var(--shadow-card)]"
               >
-                <div className="flex min-w-0 gap-4">
-                  <div className="relative hidden h-16 w-16 shrink-0 overflow-hidden rounded-[16px] border border-[color:var(--border-soft)] bg-[color:var(--surface-soft)] sm:block">
-                    {canRenderImage ? (
-                      <Image
-                        src={imageSrc}
-                        alt={item.service.name || 'Servicio'}
-                        fill
-                        sizes="64px"
-                        className="object-cover"
-                        onError={() =>
-                          setFailedImages((prev) => (prev.includes(imageSrc) ? prev : [...prev, imageSrc]))
-                        }
-                      />
-                    ) : (
-                      <div className="flex h-full w-full items-center justify-center px-2 text-center text-[0.58rem] font-semibold uppercase tracking-[0.14em] text-[color:var(--ink-faint)]">
-                        Foto
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <Badge variant="neutral" className="normal-case tracking-normal">
-                        {item.categoryLabel}
-                      </Badge>
-                      <Badge variant="info" className="normal-case tracking-normal">
-                        {formatServicePaymentType(item.service.paymentType)}
-                      </Badge>
+                <div className="relative aspect-[4/3] bg-[color:var(--surface-soft)]">
+                  {canRenderImage ? (
+                    <Image
+                      src={imageSrc}
+                      alt={item.service.name || 'Servicio'}
+                      fill
+                      sizes="(max-width: 640px) 100vw, (max-width: 1280px) 50vw, 25vw"
+                      className="object-cover"
+                      onError={() =>
+                        setFailedImages((prev) => (prev.includes(imageSrc) ? prev : [...prev, imageSrc]))
+                      }
+                    />
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center px-4 text-center text-[0.68rem] font-semibold uppercase tracking-[0.2em] text-[color:var(--ink-faint)]">
+                      Foto del servicio
                     </div>
-                    <h3 className="mt-3 text-lg font-semibold text-[color:var(--ink)]">
-                      {item.service.name}
-                    </h3>
-                    {item.service.description ? (
-                      <p className="mt-1.5 line-clamp-2 text-sm leading-6 text-[color:var(--ink-muted)]">
-                        {item.service.description}
-                      </p>
-                    ) : (
-                      <p className="mt-1.5 text-sm leading-6 text-[color:var(--ink-faint)]">
-                        Sin descripcion cargada.
-                      </p>
-                    )}
+                  )}
+                </div>
+
+                <div className="flex flex-1 flex-col p-4">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Badge variant="neutral" className="normal-case tracking-normal">
+                      {item.categoryLabel}
+                    </Badge>
+                    <Badge variant="info" className="normal-case tracking-normal">
+                      {formatServicePaymentType(item.service.paymentType)}
+                    </Badge>
                   </div>
-                </div>
 
-                <div className="grid gap-1 sm:justify-self-start">
-                  <p className="text-[0.62rem] font-semibold uppercase tracking-[0.24em] text-[color:var(--ink-faint)]">
-                    Duracion
-                  </p>
-                  <p className="text-sm font-semibold text-[color:var(--ink)]">
-                    {formatServiceDuration(item.service.duration)}
-                  </p>
-                </div>
+                  <h3 className="mt-3 text-lg font-semibold leading-6 text-[color:var(--ink)]">
+                    {item.service.name}
+                  </h3>
+                  {item.service.description ? (
+                    <p className="mt-2 line-clamp-3 text-sm leading-6 text-[color:var(--ink-muted)]">
+                      {item.service.description}
+                    </p>
+                  ) : (
+                    <p className="mt-2 text-sm leading-6 text-[color:var(--ink-faint)]">
+                      Sin descripcion cargada.
+                    </p>
+                  )}
 
-                <div className="grid gap-1 sm:justify-self-start">
-                  <p className="text-[0.62rem] font-semibold uppercase tracking-[0.24em] text-[color:var(--ink-faint)]">
-                    Precio
-                  </p>
-                  <p className="text-sm font-semibold text-[color:var(--primary)]">
-                    {formatServicePrice(item.service.price)}
-                  </p>
-                </div>
+                  <div className="mt-4 grid grid-cols-2 gap-3 border-t border-[color:var(--border-soft)] pt-4">
+                    <div>
+                      <p className="text-[0.62rem] font-semibold uppercase tracking-[0.2em] text-[color:var(--ink-faint)]">
+                        Duración
+                      </p>
+                      <p className="mt-1 text-sm font-semibold text-[color:var(--ink)]">
+                        {formatServiceDuration(item.service.duration)}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-[0.62rem] font-semibold uppercase tracking-[0.2em] text-[color:var(--ink-faint)]">
+                        Precio
+                      </p>
+                      <p className="mt-1 text-sm font-semibold text-[color:var(--primary)]">
+                        {formatServicePrice(item.service.price)}
+                      </p>
+                    </div>
+                  </div>
 
-                <div className="flex flex-wrap gap-2 sm:justify-self-end">
-                  <Button
-                    type="button"
-                    variant="quiet"
-                    className="border border-[color:var(--border-soft)] bg-white"
-                    onClick={() => onOpenServiceDetail(item.index)}
-                  >
-                    Ver detalle
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="primary"
-                    onClick={() => onReserveService(item.index)}
-                  >
-                    Reservar
-                  </Button>
+                  <div className="mt-auto flex flex-col gap-2 pt-5">
+                    <Button
+                      type="button"
+                      variant="primary"
+                      className="w-full justify-center"
+                      onClick={() => onReserveService(item.index)}
+                    >
+                      Reservar
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="quiet"
+                      className="w-full justify-center border border-[color:var(--border-soft)] bg-white"
+                      onClick={() => onOpenServiceDetail(item.index)}
+                    >
+                      Ver detalle
+                    </Button>
+                  </div>
                 </div>
               </article>
             );

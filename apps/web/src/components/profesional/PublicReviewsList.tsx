@@ -130,34 +130,43 @@ export default memo(function PublicReviewsList({
       <section>
         <div>
           <p className="text-[0.68rem] font-semibold uppercase tracking-[0.32em] text-[color:var(--ink-faint)]">
-            Confianza y ubicación
+            Confianza
           </p>
           <h2 className="mt-2 text-3xl font-semibold text-[color:var(--ink)]">
-            Confianza y ubicación
+            Reseñas reales y cómo llegar
           </h2>
         </div>
 
         <div className="mt-5 grid gap-5 xl:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)]">
-          <div className="rounded-[22px] border border-[color:var(--border-soft)] bg-[color:var(--surface-soft)] p-6">
-            <div className="flex min-h-[320px] flex-col items-center justify-center text-center">
+          <div className="rounded-[22px] border border-[color:var(--border-soft)] bg-[color:var(--surface-soft)] p-5 sm:p-6">
+            <div className={`flex flex-col ${hasReviews ? 'min-h-[320px] justify-center' : 'min-h-[180px] justify-start'} text-left`}>
               <p className="text-[0.68rem] font-semibold uppercase tracking-[0.28em] text-[color:var(--ink-faint)]">
                 Reseñas
               </p>
 
               {hasReviews ? (
                 <>
-                  <p className="mt-5 text-6xl font-semibold tracking-[-0.05em] text-[color:var(--ink)]">
-                    {hasGlobalRating ? rating.toFixed(1) : '--'}
-                  </p>
-                  <p className="mt-3 text-sm font-semibold text-[color:var(--ink)]">
-                    {totalReviews} {totalReviews === 1 ? 'reseña pública' : 'reseñas públicas'}
-                  </p>
+                  <div className="mt-5 flex flex-wrap items-end gap-4">
+                    <p className="text-6xl font-semibold tracking-[-0.05em] text-[color:var(--ink)]">
+                      {hasGlobalRating ? rating.toFixed(1) : '--'}
+                    </p>
+                    <div className="pb-2">
+                      {hasGlobalRating ? (
+                        <span className="block text-2xl leading-none">
+                          <StarDisplay rating={Math.max(0, Math.min(5, Math.round(rating)))} />
+                        </span>
+                      ) : null}
+                      <p className="mt-2 text-sm font-semibold text-[color:var(--ink)]">
+                        {totalReviews} {totalReviews === 1 ? 'reseña pública' : 'reseñas públicas'}
+                      </p>
+                    </div>
+                  </div>
                   <button
                     type="button"
                     onClick={() => setIsModalOpen(true)}
                     className="mt-6 rounded-full border border-[color:var(--border-soft)] bg-white px-5 py-2.5 text-sm font-semibold text-[color:var(--ink)] shadow-[var(--shadow-card)] transition hover:-translate-y-0.5 hover:border-[color:var(--border-strong)] hover:bg-[color:var(--surface-hover)]"
                   >
-                    Leer reseñas
+                    Ver todas las reseñas
                   </button>
                 </>
               ) : loadError ? (
@@ -173,7 +182,7 @@ export default memo(function PublicReviewsList({
                 <p className="mt-5 text-sm text-[color:var(--ink-muted)]">Cargando reseñas...</p>
               ) : (
                 <>
-                  <p className="mt-5 text-lg font-semibold text-[color:var(--ink)]">
+                  <p className="mt-4 text-base font-semibold text-[color:var(--ink)]">
                     Todavía no hay reseñas públicas
                   </p>
                   <p className="mt-2 max-w-sm text-sm leading-6 text-[color:var(--ink-muted)]">

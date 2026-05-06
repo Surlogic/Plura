@@ -108,28 +108,19 @@ export default memo(function BusinessGallery({ photos, businessName }: BusinessG
     );
   }
 
-  const visiblePhotos = availablePhotos.slice(0, Math.min(availablePhotos.length, 6));
+  const visiblePhotos = availablePhotos.slice(0, Math.min(availablePhotos.length, 8));
   const hiddenPhotosCount = Math.max(0, availablePhotos.length - visiblePhotos.length);
-  const isSinglePhoto = visiblePhotos.length === 1;
 
   return (
     <>
-      <div className="space-y-4 overflow-hidden rounded-[24px] p-4 sm:p-5">
-        <div
-          className={`grid gap-3 ${
-            isSinglePhoto
-              ? 'mx-auto max-w-[560px] grid-cols-1'
-              : visiblePhotos.length === 2
-                ? 'grid-cols-2'
-                : 'grid-cols-2 md:grid-cols-3 xl:grid-cols-4'
-          }`}
-        >
+      <div className="overflow-hidden">
+        <div className="flex gap-3 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {visiblePhotos.map((photo, index) => (
             <button
               key={`${photo}-${index}`}
               type="button"
               onClick={() => setActiveIndex(index)}
-              className="group relative aspect-[4/3] overflow-hidden rounded-[24px] border border-[#D9E2EC] bg-[#EEF2F6] text-left transition hover:-translate-y-0.5 hover:shadow-[0_18px_44px_-32px_rgba(15,23,42,0.24)]"
+              className="group relative aspect-[4/3] w-[76vw] max-w-[360px] shrink-0 overflow-hidden rounded-[20px] border border-[#D9E2EC] bg-[#EEF2F6] text-left transition hover:-translate-y-0.5 hover:shadow-[0_18px_44px_-32px_rgba(15,23,42,0.24)] sm:w-[310px] lg:w-[340px]"
               aria-label={`Abrir foto ${index + 1}`}
             >
               <span className="absolute inset-0">
@@ -137,7 +128,7 @@ export default memo(function BusinessGallery({ photos, businessName }: BusinessG
                   src={photo}
                   alt={`Foto ${index + 1} de ${businessName || 'negocio'}`}
                   fill
-                  sizes="(max-width: 768px) 50vw, 25vw"
+                  sizes="(max-width: 640px) 76vw, 340px"
                   className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.03]"
                   onError={() => handleImageError(photo)}
                 />
@@ -156,7 +147,7 @@ export default memo(function BusinessGallery({ photos, businessName }: BusinessG
           <button
             type="button"
             onClick={() => setActiveIndex(0)}
-            className="rounded-full border border-[color:var(--border-soft)] bg-white px-4 py-2 text-sm font-semibold text-[color:var(--ink)] transition hover:-translate-y-0.5 hover:shadow-[var(--shadow-card)]"
+            className="mt-3 rounded-full border border-[color:var(--border-soft)] bg-white px-4 py-2 text-sm font-semibold text-[color:var(--ink)] transition hover:-translate-y-0.5 hover:shadow-[var(--shadow-card)]"
           >
             Ver todas las fotos
           </button>

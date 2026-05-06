@@ -64,9 +64,9 @@ export default function PublicServicesSection({
             Elegí el tratamiento ideal y reservá en pocos pasos.
           </p>
         </div>
-        <Badge variant="neutral" className="mx-auto mt-4 w-fit normal-case tracking-normal">
+        <p className="mt-3 text-xs font-medium text-[color:var(--ink-faint)]">
           {serviceItems.length} {serviceItems.length === 1 ? 'servicio disponible' : 'servicios disponibles'}
-        </Badge>
+        </p>
       </div>
 
       {categories.length > 1 ? (
@@ -103,7 +103,7 @@ export default function PublicServicesSection({
             return (
               <article
                 key={item.service.id ?? `${item.categoryLabel}-${item.index}`}
-                className="flex min-h-full flex-col overflow-hidden rounded-[22px] border border-[color:var(--border-soft)] bg-[color:var(--surface)] shadow-[0_22px_64px_-54px_rgba(15,23,42,0.36)] transition hover:-translate-y-0.5 hover:shadow-[var(--shadow-card)]"
+                className="flex min-h-full flex-col overflow-hidden rounded-[18px] border border-[color:var(--border-soft)] bg-[color:var(--surface)] transition hover:-translate-y-0.5 hover:border-[color:var(--border-strong)] hover:shadow-[var(--shadow-card)]"
               >
                 <div className="relative aspect-[4/3] bg-[color:var(--surface-soft)]">
                   {canRenderImage ? (
@@ -131,9 +131,6 @@ export default function PublicServicesSection({
                   <div className="flex flex-wrap items-center gap-2">
                     <Badge variant="neutral" className="normal-case tracking-normal">
                       {item.categoryLabel}
-                    </Badge>
-                    <Badge variant="info" className="normal-case tracking-normal">
-                      {formatServicePaymentType(item.service.paymentType)}
                     </Badge>
                   </div>
 
@@ -175,14 +172,13 @@ export default function PublicServicesSection({
                     >
                       Reservar
                     </Button>
-                    <Button
+                    <button
                       type="button"
-                      variant="quiet"
-                      className="w-full justify-center border border-[color:var(--border-soft)] bg-white"
+                      className="w-full rounded-full px-3 py-2 text-sm font-semibold text-[color:var(--ink-muted)] transition hover:bg-[color:var(--surface-soft)] hover:text-[color:var(--ink)]"
                       onClick={() => onOpenServiceDetail(item.index)}
                     >
                       Ver detalle
-                    </Button>
+                    </button>
                   </div>
                 </div>
               </article>

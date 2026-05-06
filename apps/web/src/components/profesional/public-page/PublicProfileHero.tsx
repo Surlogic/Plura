@@ -170,7 +170,7 @@ export default function PublicProfileHero({
   const primarySchedule = scheduleSummary[0] ?? null;
 
   return (
-    <section className="overflow-hidden rounded-[28px] bg-[color:var(--surface)] shadow-[0_26px_90px_-70px_rgba(15,23,42,0.34)]">
+    <section className="overflow-hidden rounded-[22px] bg-[color:var(--surface)] shadow-[var(--shadow-card)]">
       <div className="grid gap-0 lg:grid-cols-[minmax(0,0.92fr)_minmax(420px,1.08fr)]">
         <div className="order-2 flex flex-col justify-center px-5 py-7 sm:px-8 sm:py-9 lg:order-1 lg:px-10 xl:px-12">
           {category ? (
@@ -179,7 +179,7 @@ export default function PublicProfileHero({
             </Badge>
           ) : null}
 
-          <h1 className="mt-4 text-4xl font-semibold tracking-[-0.03em] text-[color:var(--ink)] sm:text-5xl lg:text-[3.5rem]">
+          <h1 className="mt-4 text-4xl font-semibold tracking-[-0.03em] text-[color:var(--ink)] sm:text-5xl lg:text-[3rem]">
             {name}
           </h1>
 
@@ -271,7 +271,7 @@ export default function PublicProfileHero({
           </div>
         </div>
 
-        <div className="relative order-1 min-h-[320px] overflow-hidden lg:order-2 lg:m-4 lg:min-h-[560px] lg:rounded-[24px]">
+        <div className="relative order-1 min-h-[320px] overflow-hidden lg:order-2 lg:min-h-[540px]">
           {activeBanner ? (
             <Image
               src={activeBanner.src}
@@ -290,15 +290,15 @@ export default function PublicProfileHero({
           )}
           <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(15,23,42,0.02)_0%,rgba(15,23,42,0.24)_100%)]" />
 
-          <div className="absolute inset-x-4 bottom-4 rounded-[24px] border border-white/60 bg-white/92 p-4 shadow-[0_24px_80px_-44px_rgba(15,23,42,0.5)] backdrop-blur sm:inset-x-auto sm:bottom-6 sm:left-6 sm:w-[340px]">
-            <div className="flex items-center gap-4">
-              <div className="relative flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-[20px] border border-white bg-[color:var(--surface-soft)] text-lg font-semibold text-[color:var(--ink)]">
+          <div className="absolute inset-x-4 bottom-4 rounded-[18px] border border-white/60 bg-white/90 p-3 shadow-[var(--shadow-card)] backdrop-blur sm:inset-x-auto sm:bottom-5 sm:left-5 sm:w-[300px]">
+            <div className="flex items-center gap-3">
+              <div className="relative flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-[16px] border border-white bg-[color:var(--surface-soft)] text-base font-semibold text-[color:var(--ink)]">
                 {showLogoImage ? (
                   <Image
                     src={media.logo!.src}
                     alt={`Logo de ${name || 'profesional'}`}
                     fill
-                    sizes="64px"
+                    sizes="56px"
                     className="object-cover"
                     style={buildPublicBusinessLogoStyle(media.logo)}
                     onError={() => setLogoFailed(true)}
@@ -308,11 +308,11 @@ export default function PublicProfileHero({
                 )}
               </div>
               <div className="min-w-0">
-                <p className="truncate text-base font-semibold text-[color:var(--ink)]">{name}</p>
+                <p className="truncate text-sm font-semibold text-[color:var(--ink)]">{name}</p>
                 {category ? (
-                  <p className="mt-1 truncate text-sm text-[color:var(--ink-muted)]">{category}</p>
+                  <p className="mt-0.5 truncate text-xs text-[color:var(--ink-muted)]">{category}</p>
                 ) : null}
-                <div className="mt-2 inline-flex items-center gap-1.5 text-sm font-semibold text-[color:var(--ink)]">
+                <div className="mt-1.5 inline-flex items-center gap-1.5 text-xs font-semibold text-[color:var(--ink)]">
                   <StarIcon />
                   {hasRating && hasReviews
                     ? `${rating.toFixed(1)} · ${reviewsCount} ${reviewsCount === 1 ? 'reseña' : 'reseñas'}`

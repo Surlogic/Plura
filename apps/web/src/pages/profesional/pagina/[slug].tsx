@@ -198,7 +198,7 @@ const normalizeServiceId = (value: unknown): string => {
 const TrustIcon = ({ type }: { type: 'calendar' | 'check' | 'profile' | 'payment' }) => {
   if (type === 'calendar') {
     return (
-      <svg viewBox="0 0 24 24" aria-hidden="true" className="h-5 w-5">
+      <svg viewBox="0 0 24 24" aria-hidden="true" className="h-4 w-4">
         <path d="M7 3v3M17 3v3M4.5 9h15" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
         <rect x="4.5" y="5" width="15" height="15" rx="3" fill="none" stroke="currentColor" strokeWidth="1.8" />
       </svg>
@@ -206,7 +206,7 @@ const TrustIcon = ({ type }: { type: 'calendar' | 'check' | 'profile' | 'payment
   }
   if (type === 'check') {
     return (
-      <svg viewBox="0 0 24 24" aria-hidden="true" className="h-5 w-5">
+      <svg viewBox="0 0 24 24" aria-hidden="true" className="h-4 w-4">
         <circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" strokeWidth="1.8" />
         <path d="m8.5 12.2 2.2 2.2 4.9-5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
       </svg>
@@ -214,14 +214,14 @@ const TrustIcon = ({ type }: { type: 'calendar' | 'check' | 'profile' | 'payment
   }
   if (type === 'profile') {
     return (
-      <svg viewBox="0 0 24 24" aria-hidden="true" className="h-5 w-5">
+      <svg viewBox="0 0 24 24" aria-hidden="true" className="h-4 w-4">
         <path d="M12 3.5 18.5 6v5.2c0 4.1-2.7 7.6-6.5 9.1-3.8-1.5-6.5-5-6.5-9.1V6L12 3.5Z" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
         <path d="M9 12h6M9 15h4" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
       </svg>
     );
   }
   return (
-    <svg viewBox="0 0 24 24" aria-hidden="true" className="h-5 w-5">
+    <svg viewBox="0 0 24 24" aria-hidden="true" className="h-4 w-4">
       <rect x="4" y="6.5" width="16" height="11" rx="2.5" fill="none" stroke="currentColor" strokeWidth="1.8" />
       <path d="M4 10h16M8 14h3" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
     </svg>
@@ -743,24 +743,26 @@ export default function ProfesionalDetailPage({
           socialLinks={socialLinks}
           whatsappHref={whatsappHref}
         />
-        <div className="mt-6 space-y-14 sm:space-y-16">
-          <section className="grid gap-0 overflow-hidden rounded-[24px] border border-[color:var(--border-soft)] bg-white/82 shadow-[0_22px_70px_-62px_rgba(15,23,42,0.34)] sm:grid-cols-2 lg:grid-cols-4">
+        <div className="mt-4 space-y-9 sm:space-y-11">
+          <section className="grid gap-0 overflow-hidden rounded-[18px] border border-[color:var(--border-soft)] bg-white/72 sm:grid-cols-2 lg:grid-cols-4">
             {[
-              ['calendar', 'Reserva online', 'Fácil, rápida y 24/7'],
-              ['check', 'Confirmación del turno', 'Sin llamadas innecesarias'],
-              ['profile', 'Información clara', 'Servicios, horarios y ubicación'],
-              ['payment', 'Pago en local / online', 'Según modalidad del servicio'],
+              ['calendar', 'Reserva online', ''],
+              ['profile', 'Servicios, horarios y precios visibles', ''],
+              ['check', 'Confirmación según política del local', ''],
+              ['payment', 'Pago según modalidad del servicio', ''],
             ].map(([type, title, description]) => (
               <div
                 key={title}
-                className="flex gap-3 border-b border-[color:var(--border-soft)] px-4 py-4 last:border-b-0 sm:[&:nth-child(odd)]:border-r lg:border-b-0 lg:border-r lg:last:border-r-0"
+                className="flex gap-3 border-b border-[color:var(--border-soft)] px-4 py-3 last:border-b-0 sm:[&:nth-child(odd)]:border-r lg:border-b-0 lg:border-r lg:last:border-r-0"
               >
-                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[color:var(--surface-soft)] text-[color:var(--primary)]">
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[color:var(--surface-soft)] text-[color:var(--primary)] opacity-90">
                   <TrustIcon type={type as 'calendar' | 'check' | 'profile' | 'payment'} />
                 </span>
                 <span>
                   <p className="text-sm font-semibold text-[color:var(--ink)]">{title}</p>
-                  <p className="mt-1 text-sm leading-6 text-[color:var(--ink-muted)]">{description}</p>
+                  {description ? (
+                    <p className="mt-1 text-sm leading-6 text-[color:var(--ink-muted)]">{description}</p>
+                  ) : null}
                 </span>
               </div>
             ))}
@@ -783,7 +785,7 @@ export default function ProfesionalDetailPage({
 
           {aboutValue ? (
             <section>
-              <div className={`grid gap-6 rounded-[28px] bg-white/78 p-5 shadow-[0_26px_90px_-76px_rgba(15,23,42,0.38)] sm:p-7 lg:p-8 ${aboutGridClassName}`}>
+              <div className={`grid gap-6 rounded-[22px] bg-white/72 p-5 sm:p-6 lg:p-7 ${aboutGridClassName}`}>
                 <div>
                   <p className="text-[0.68rem] font-semibold uppercase tracking-[0.32em] text-[color:var(--ink-faint)]">
                     Sobre nosotros
@@ -798,7 +800,7 @@ export default function ProfesionalDetailPage({
 
                 <div className="grid content-start gap-2.5">
                   {merged.category ? (
-                    <div className="rounded-[18px] bg-[color:var(--surface-soft)] px-4 py-3">
+                    <div className="rounded-[14px] bg-[color:var(--surface-soft)] px-4 py-3">
                       <p className="text-[0.62rem] font-semibold uppercase tracking-[0.22em] text-[color:var(--ink-faint)]">
                         Categoría
                       </p>
@@ -806,7 +808,7 @@ export default function ProfesionalDetailPage({
                     </div>
                   ) : null}
                   {scheduleSummary[0] ? (
-                    <div className="rounded-[18px] bg-[color:var(--surface-soft)] px-4 py-3">
+                    <div className="rounded-[14px] bg-[color:var(--surface-soft)] px-4 py-3">
                       <p className="text-[0.62rem] font-semibold uppercase tracking-[0.22em] text-[color:var(--ink-faint)]">
                         Horarios
                       </p>
@@ -816,7 +818,7 @@ export default function ProfesionalDetailPage({
                     </div>
                   ) : null}
                   {addressValue ? (
-                    <div className="rounded-[18px] bg-[color:var(--surface-soft)] px-4 py-3">
+                    <div className="rounded-[14px] bg-[color:var(--surface-soft)] px-4 py-3">
                       <p className="text-[0.62rem] font-semibold uppercase tracking-[0.22em] text-[color:var(--ink-faint)]">
                         Dirección
                       </p>
@@ -826,7 +828,7 @@ export default function ProfesionalDetailPage({
                     </div>
                   ) : null}
                   {typeof data?.rating === 'number' && Number.isFinite(data.rating) ? (
-                    <div className="rounded-[18px] bg-[color:var(--surface-soft)] px-4 py-3">
+                    <div className="rounded-[14px] bg-[color:var(--surface-soft)] px-4 py-3">
                       <p className="text-[0.62rem] font-semibold uppercase tracking-[0.22em] text-[color:var(--ink-faint)]">
                         Rating
                       </p>
@@ -836,7 +838,7 @@ export default function ProfesionalDetailPage({
                     </div>
                   ) : null}
                   {displayServices.length > 0 ? (
-                    <div className="rounded-[18px] bg-[color:var(--surface-soft)] px-4 py-3">
+                    <div className="rounded-[14px] bg-[color:var(--surface-soft)] px-4 py-3">
                       <p className="text-[0.62rem] font-semibold uppercase tracking-[0.22em] text-[color:var(--ink-faint)]">
                         Servicios
                       </p>
@@ -848,7 +850,7 @@ export default function ProfesionalDetailPage({
                 </div>
 
                 {aboutPhoto ? (
-                  <div className="relative min-h-[240px] overflow-hidden rounded-[24px] bg-[color:var(--surface-soft)] lg:min-h-full">
+                  <div className="relative min-h-[240px] overflow-hidden rounded-[18px] bg-[color:var(--surface-soft)] lg:min-h-full">
                     <Image
                       src={aboutPhoto}
                       alt={`Foto de ${merged.name || 'negocio'}`}

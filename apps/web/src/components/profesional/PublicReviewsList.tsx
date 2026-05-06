@@ -124,7 +124,7 @@ export default memo(function PublicReviewsList({
     typeof latitude === 'number' && Number.isFinite(latitude) &&
     typeof longitude === 'number' && Number.isFinite(longitude);
   const locationLabel = [address.trim(), city.trim()].filter(Boolean).join(', ');
-  const previewReviews = (page?.content ?? []).slice(0, 3);
+  const featuredReview = (page?.content ?? [])[0] ?? null;
 
   return (
     <>
@@ -139,7 +139,7 @@ export default memo(function PublicReviewsList({
         </div>
 
         <div className="mt-6 grid gap-5 xl:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
-          <div className="rounded-[24px] border border-[color:var(--border-soft)] bg-white/82 p-5 shadow-[0_22px_70px_-62px_rgba(15,23,42,0.34)] sm:p-6">
+          <div className="rounded-[20px] border border-[color:var(--border-soft)] bg-white/78 p-5 sm:p-6">
             <div className={`flex flex-col ${hasReviews ? 'justify-center' : 'min-h-[180px] justify-start'} text-left`}>
               <p className="text-[0.68rem] font-semibold uppercase tracking-[0.28em] text-[color:var(--ink-faint)]">
                 Reseñas
@@ -169,32 +169,25 @@ export default memo(function PublicReviewsList({
                   >
                     Ver todas las reseñas
                   </button>
-                  {previewReviews.length > 0 ? (
-                    <div className="mt-6 grid gap-3 md:grid-cols-3">
-                      {previewReviews.map((review) => (
-                        <article
-                          key={review.id}
-                          className="rounded-[18px] border border-[color:var(--border-soft)] bg-[color:var(--surface-soft)] p-4"
-                        >
-                          <div className="flex items-center gap-3">
-                            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[color:var(--primary)] text-xs font-semibold text-white">
-                              {review.authorDisplayName?.charAt(0)?.toUpperCase() ?? '?'}
-                            </div>
-                            <div className="min-w-0">
-                              <p className="truncate text-sm font-semibold text-[color:var(--ink)]">
-                                {review.authorDisplayName}
-                              </p>
-                              <StarDisplay rating={review.rating} />
-                            </div>
-                          </div>
-                          {review.textHiddenByProfessional ? null : review.text ? (
-                            <p className="mt-3 line-clamp-3 text-xs leading-5 text-[color:var(--ink-muted)]">
-                              {review.text}
-                            </p>
-                          ) : null}
-                        </article>
-                      ))}
-                    </div>
+                  {featuredReview ? (
+                    <article className="mt-6 border-t border-[color:var(--border-soft)] pt-5">
+                      <div className="flex items-center gap-3">
+                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[color:var(--surface-soft)] text-xs font-semibold text-[color:var(--primary)]">
+                          {featuredReview.authorDisplayName?.charAt(0)?.toUpperCase() ?? '?'}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-semibold text-[color:var(--ink)]">
+                            {featuredReview.authorDisplayName}
+                          </p>
+                          <StarDisplay rating={featuredReview.rating} />
+                        </div>
+                      </div>
+                      {featuredReview.textHiddenByProfessional ? null : featuredReview.text ? (
+                        <p className="mt-3 line-clamp-3 text-sm leading-6 text-[color:var(--ink-muted)]">
+                          {featuredReview.text}
+                        </p>
+                      ) : null}
+                    </article>
                   ) : null}
                 </>
               ) : loadError ? (
@@ -221,10 +214,10 @@ export default memo(function PublicReviewsList({
             </div>
           </div>
 
-          <div className="rounded-[24px] border border-[color:var(--border-soft)] bg-white/82 p-3 shadow-[0_22px_70px_-62px_rgba(15,23,42,0.34)]">
+          <div className="rounded-[20px] border border-[color:var(--border-soft)] bg-white/78 p-2">
             {hasCoordinates ? (
-              <div className="relative overflow-hidden rounded-[18px]">
-                <div className="absolute left-4 top-4 z-10 max-w-[calc(100%-2rem)] rounded-[18px] border border-white/85 bg-white/95 p-4 shadow-[var(--shadow-card)] backdrop-blur-sm sm:max-w-[320px]">
+              <div className="relative overflow-hidden rounded-[16px]">
+                <div className="absolute left-3 top-3 z-10 max-w-[calc(100%-1.5rem)] rounded-[14px] border border-white/80 bg-white/92 p-3 shadow-[var(--shadow-card)] backdrop-blur-sm sm:max-w-[280px]">
                   <p className="text-sm font-semibold text-[color:var(--ink)]">{name}</p>
                   {locationLabel ? (
                     <p className="mt-1 text-xs leading-5 text-[color:var(--ink-muted)]">{locationLabel}</p>
@@ -234,7 +227,7 @@ export default memo(function PublicReviewsList({
                       href={mapHref}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="mt-3 inline-flex rounded-full bg-[color:var(--primary)] px-4 py-2 text-xs font-semibold text-white shadow-[var(--shadow-card)] transition hover:-translate-y-0.5 hover:bg-[color:var(--primary-strong)]"
+                      className="mt-3 inline-flex rounded-full bg-[color:var(--primary)] px-3 py-1.5 text-xs font-semibold text-white shadow-[var(--shadow-card)] transition hover:-translate-y-0.5 hover:bg-[color:var(--primary-strong)]"
                     >
                       Cómo llegar
                     </a>
@@ -252,7 +245,7 @@ export default memo(function PublicReviewsList({
                 />
               </div>
             ) : (
-              <div className="flex min-h-[220px] flex-col justify-between rounded-[18px] bg-[color:var(--surface-soft)] p-5">
+              <div className="flex min-h-[200px] flex-col justify-between rounded-[16px] bg-[color:var(--surface-soft)] p-5">
                 <div>
                   <p className="text-[0.68rem] font-semibold uppercase tracking-[0.28em] text-[color:var(--ink-faint)]">
                     Ubicación

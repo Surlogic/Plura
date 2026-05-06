@@ -120,7 +120,9 @@ export default memo(function BusinessGallery({ photos, businessName }: BusinessG
               key={`${photo}-${index}`}
               type="button"
               onClick={() => setActiveIndex(index)}
-              className="group relative aspect-[16/10] overflow-hidden rounded-[18px] border border-[color:var(--border-soft)] bg-[color:var(--surface-soft)] text-left transition hover:-translate-y-0.5 hover:shadow-[0_18px_44px_-32px_rgba(15,23,42,0.24)]"
+              className={`group relative aspect-[16/10] overflow-hidden rounded-[16px] bg-[color:var(--surface-soft)] text-left transition hover:-translate-y-0.5 ${
+                index === 0 && visiblePhotos.length > 3 ? 'sm:col-span-2 lg:col-span-2' : ''
+              }`}
               aria-label={`Abrir foto ${index + 1}`}
             >
               <span className="absolute inset-0">
@@ -133,9 +135,9 @@ export default memo(function BusinessGallery({ photos, businessName }: BusinessG
                   onError={() => handleImageError(photo)}
                 />
               </span>
-              <span className="absolute inset-0 bg-[linear-gradient(180deg,rgba(15,23,42,0.02)_15%,rgba(15,23,42,0.36)_100%)]" />
+              <span className="absolute inset-0 bg-[linear-gradient(180deg,rgba(15,23,42,0)_30%,rgba(15,23,42,0.18)_100%)]" />
               {hiddenPhotosCount > 0 && index === visiblePhotos.length - 1 ? (
-                <span className="absolute inset-0 flex items-center justify-center bg-[rgba(15,23,42,0.42)] text-base font-semibold text-white">
+                <span className="absolute inset-0 flex items-center justify-center bg-[rgba(15,23,42,0.28)] text-base font-semibold text-white">
                   +{hiddenPhotosCount} fotos
                 </span>
               ) : null}

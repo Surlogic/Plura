@@ -10,7 +10,6 @@ import {
   type ProfessionalFeatureKey,
 } from '@/lib/billing/featureGuards';
 import { useProfessionalDashboardUnsavedChanges } from '@/context/ProfessionalDashboardUnsavedChangesContext';
-import Badge from '@/components/ui/Badge';
 import { cn } from '@/components/ui/cn';
 import {
   DashboardIcon,
@@ -132,25 +131,32 @@ function ProfesionalSidebar({ profile, active }: SidebarProps) {
       <div className="border-b border-[#EEF2F7] pb-2.5">
         <div className="flex items-center justify-between gap-2 px-1">
           <Link
-            href="/"
-            aria-label="Ir al inicio"
-            className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-[8px] bg-[color:var(--primary)] text-[0.75rem] font-semibold leading-none text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--focus-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-white"
+            href="/profesional/dashboard"
+            aria-label="Ir al inicio del dashboard"
+            className="group inline-flex min-w-0 items-center gap-2 rounded-[8px] px-1.5 py-1 text-[0.84rem] font-semibold leading-none text-[#111827] transition hover:bg-[#F8FAFC] focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--focus-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-white"
+            onClick={(event) => {
+              event.preventDefault();
+              requestNavigation('/profesional/dashboard');
+            }}
           >
-            P
+            <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-[7px] bg-[#ECFDF5] text-[#0F766E] transition group-hover:bg-[#DFF8EE]">
+              <DashboardIcon name="agenda" className="h-[15px] w-[15px]" />
+            </span>
+            <span className="truncate">Inicio</span>
           </Link>
-          <span className="shrink-0 rounded-full bg-[#EEFDF8] px-1.5 py-0.5 text-[0.48rem] font-semibold uppercase leading-none tracking-[0.08em] text-[#0F766E]">
+          <span className="shrink-0 rounded-full bg-[#F0FDF9] px-1.5 py-0.5 text-[0.48rem] font-semibold uppercase leading-none tracking-[0.08em] text-[#0F766E]">
             {planLabel}
           </span>
         </div>
 
         <div className="mt-2.5 flex items-center gap-2.5 rounded-[8px] bg-[#F8FAFC] px-2.5 py-2 ring-1 ring-[#EEF2F7]">
-          <div className="relative flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-[8px] bg-white text-xs font-semibold text-[color:var(--primary)] ring-1 ring-[#E5E7EB]">
+          <div className="relative flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-[8px] bg-white text-xs font-semibold text-[color:var(--primary)] ring-1 ring-[#E5E7EB]">
             {resolvedLogoUrl ? (
               <Image
                 src={resolvedLogoUrl}
                 alt={`Logo de ${displayName}`}
                 fill
-                sizes="56px"
+                sizes="40px"
                 className="object-cover"
                 style={buildProfessionalMediaStyle(profile?.logoMedia)}
               />
@@ -159,16 +165,8 @@ function ProfesionalSidebar({ profile, active }: SidebarProps) {
             )}
           </div>
           <div className="min-w-0 flex-1">
-            <div className="flex min-w-0 items-center gap-1.5">
-              <p className="min-w-0 flex-1 truncate text-[0.83rem] font-semibold leading-4 text-[#111827]">{displayName}</p>
-              <Badge
-                variant="success"
-                className="shrink-0 rounded-full px-1.5 py-0.5 text-[0.44rem] leading-none tracking-[0.08em]"
-              >
-                Profesional
-              </Badge>
-            </div>
-            <p className="mt-0.5 truncate text-[0.7rem] leading-4 text-[color:var(--ink-muted)]">{displayMeta}</p>
+            <p className="min-w-0 truncate text-[0.86rem] font-semibold leading-5 text-[#111827]">{displayName}</p>
+            <p className="min-w-0 truncate text-[0.7rem] leading-4 text-[color:var(--ink-muted)]">{displayMeta}</p>
           </div>
         </div>
 

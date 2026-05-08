@@ -117,7 +117,7 @@ export default function ProfessionalNotificationBell({
         aria-label="Abrir notificaciones"
         aria-busy={showSyncDot}
       >
-        <div className="flex min-w-0 items-center gap-2">
+        <div className="flex min-w-0 flex-1 items-center gap-2">
           <span
             className={cn(
               'inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-[7px] transition',
@@ -129,7 +129,7 @@ export default function ProfessionalNotificationBell({
             <DashboardIcon name="notificaciones" className="h-[15px] w-[15px]" />
           </span>
 
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1">
             <p className="truncate text-[0.82rem] font-medium leading-4 text-current">Notificaciones</p>
             <p className="truncate text-[0.68rem] leading-4 text-[color:var(--ink-muted)]">
               {hasUnread
@@ -141,7 +141,7 @@ export default function ProfessionalNotificationBell({
           </div>
         </div>
 
-        <span className="ml-2 inline-flex shrink-0 items-center gap-1.5">
+        <span className="ml-2 inline-flex shrink-0 items-center gap-1.5 self-center">
           {badgeCount ? (
             <span className="inline-flex min-w-[22px] items-center justify-center rounded-full bg-[#0F766E] px-1.5 py-0.5 text-[0.62rem] font-semibold leading-none text-white">
               {badgeCount}

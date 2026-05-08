@@ -100,45 +100,38 @@ export default function ProfessionalNotificationBell({
   const showSyncDot = isCountLoading && !hasUnread && !hasCountError;
 
   return (
-    <div ref={rootRef} className={cn('relative mt-3', className)}>
+    <div ref={rootRef} className={cn('relative mt-2.5', className)}>
       <button
         type="button"
         onClick={() => void openPanel()}
         onPointerEnter={() => setShouldLoadCount(true)}
         onFocus={() => setShouldLoadCount(true)}
         className={cn(
-          'group flex min-h-[44px] w-full items-center justify-between rounded-[9px] border px-2.5 py-1.5 text-left transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--focus-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-white',
+          'group flex min-h-[42px] w-full items-center justify-between rounded-[8px] px-2 py-1.5 text-left transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--focus-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-white',
           isOpen
-            ? 'border-[#D4F3EC] bg-[#ECFDF5] text-[#0F766E]'
-            : 'border-transparent bg-transparent text-[color:var(--ink)] hover:border-[#E2E8F0] hover:bg-[#F8FAFC]',
+            ? 'bg-[#ECFDF5] text-[#0F3D35]'
+            : 'bg-transparent text-[#334155] hover:bg-[#F8FAFC] hover:text-[#0F172A]',
         )}
         aria-haspopup="dialog"
         aria-expanded={isOpen}
         aria-label="Abrir notificaciones"
         aria-busy={showSyncDot}
       >
-        <div className="flex min-w-0 items-center gap-2.5">
+        <div className="flex min-w-0 items-center gap-2">
           <span
             className={cn(
-              'relative inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-[8px] transition',
-              isOpen ? 'bg-white text-[#0F766E]' : 'text-[color:var(--ink)] group-hover:bg-white',
+              'inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-[7px] transition',
+              isOpen
+                ? 'bg-white text-[#0F766E] shadow-[0_1px_2px_rgba(15,23,42,0.05)]'
+                : 'text-[#64748B] group-hover:bg-white group-hover:text-[#0F172A]',
             )}
           >
             <DashboardIcon name="notificaciones" className="h-[15px] w-[15px]" />
-            {badgeCount ? (
-              <span className="absolute -right-2 -top-1.5 inline-flex min-w-[18px] items-center justify-center rounded-full bg-[color:var(--primary)] px-1 py-0.5 text-[0.55rem] font-semibold leading-none text-white">
-                {badgeCount}
-              </span>
-            ) : showSyncDot ? (
-              <span className="absolute -right-1 -top-1 inline-flex h-3.5 w-3.5 rounded-full border-2 border-white bg-[color:var(--primary)]/18">
-                <span className="m-auto h-1.5 w-1.5 animate-pulse rounded-full bg-[color:var(--primary)]" />
-              </span>
-            ) : null}
           </span>
 
           <div className="min-w-0">
-            <p className="truncate text-[0.84rem] font-medium leading-5 text-current">Notificaciones</p>
-            <p className="truncate text-[0.7rem] leading-4 text-[color:var(--ink-muted)]">
+            <p className="truncate text-[0.82rem] font-medium leading-4 text-current">Notificaciones</p>
+            <p className="truncate text-[0.68rem] leading-4 text-[color:var(--ink-muted)]">
               {hasUnread
                 ? `${count} sin leer`
                 : hasCountError
@@ -148,24 +141,35 @@ export default function ProfessionalNotificationBell({
           </div>
         </div>
 
-        <span
-          className={cn(
-            'inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[color:var(--ink-muted)] transition group-hover:bg-white',
-            isOpen && 'rotate-180 text-[color:var(--primary)]',
-          )}
-        >
-          <svg
-            viewBox="0 0 20 20"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.8"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            className="h-4 w-4"
-            aria-hidden="true"
+        <span className="ml-2 inline-flex shrink-0 items-center gap-1.5">
+          {badgeCount ? (
+            <span className="inline-flex min-w-[22px] items-center justify-center rounded-full bg-[#0F766E] px-1.5 py-0.5 text-[0.62rem] font-semibold leading-none text-white">
+              {badgeCount}
+            </span>
+          ) : showSyncDot ? (
+            <span className="inline-flex h-2 w-2 rounded-full bg-[color:var(--primary)]">
+              <span className="h-2 w-2 animate-ping rounded-full bg-[color:var(--primary)] opacity-30" />
+            </span>
+          ) : null}
+          <span
+            className={cn(
+              'inline-flex h-5 w-5 items-center justify-center rounded-full text-[#94A3B8] transition group-hover:bg-white',
+              isOpen && 'rotate-180 text-[#0F766E]',
+            )}
           >
-            <path d="m5 7 5 6 5-6" />
-          </svg>
+            <svg
+              viewBox="0 0 20 20"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.8"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="h-3.5 w-3.5"
+              aria-hidden="true"
+            >
+              <path d="m5 7 5 6 5-6" />
+            </svg>
+          </span>
         </span>
       </button>
 

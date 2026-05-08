@@ -127,23 +127,24 @@ function ProfesionalSidebar({ profile, active }: SidebarProps) {
   return (
     <aside
       ref={rootRef}
-      className="relative min-h-full overflow-x-hidden border-r border-[#E2E8F0] bg-white px-3 py-3 pb-5 text-[color:var(--ink)] [scrollbar-gutter:stable] [scrollbar-width:thin]"
+      className="relative min-h-full overflow-x-hidden border-r border-[#E5E7EB] bg-white px-3 py-3 pb-5 text-[color:var(--ink)] [scrollbar-color:#CBD5E1_transparent] [scrollbar-gutter:stable] [scrollbar-width:thin]"
     >
-      <div className="border-b border-[#E2E8F0] pb-3">
+      <div className="border-b border-[#EEF2F7] pb-2.5">
         <div className="flex items-center justify-between gap-2 px-1">
           <Link
             href="/"
-            className="min-w-0 text-[0.95rem] font-semibold leading-none text-[color:var(--primary)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--focus-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-white"
+            aria-label="Ir al inicio"
+            className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-[8px] bg-[color:var(--primary)] text-[0.75rem] font-semibold leading-none text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--focus-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-white"
           >
-            Plura
+            P
           </Link>
-          <span className="shrink-0 rounded-full border border-[#D9ECE8] bg-[#F0FDFA] px-1.5 py-0.5 text-[0.5rem] font-semibold uppercase leading-none tracking-[0.08em] text-[#0F766E]">
+          <span className="shrink-0 rounded-full bg-[#EEFDF8] px-1.5 py-0.5 text-[0.48rem] font-semibold uppercase leading-none tracking-[0.08em] text-[#0F766E]">
             {planLabel}
           </span>
         </div>
 
-        <div className="mt-3 flex items-center gap-2.5 rounded-[10px] border border-[#E2E8F0] bg-[#F8FAFC] px-2.5 py-2">
-          <div className="relative flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-[10px] border border-[color:var(--border-soft)] bg-white text-xs font-semibold text-[color:var(--primary)]">
+        <div className="mt-2.5 flex items-center gap-2.5 rounded-[8px] bg-[#F8FAFC] px-2.5 py-2 ring-1 ring-[#EEF2F7]">
+          <div className="relative flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-[8px] bg-white text-xs font-semibold text-[color:var(--primary)] ring-1 ring-[#E5E7EB]">
             {resolvedLogoUrl ? (
               <Image
                 src={resolvedLogoUrl}
@@ -159,28 +160,28 @@ function ProfesionalSidebar({ profile, active }: SidebarProps) {
           </div>
           <div className="min-w-0 flex-1">
             <div className="flex min-w-0 items-center gap-1.5">
-              <p className="min-w-0 flex-1 truncate text-[0.84rem] font-semibold leading-5">{displayName}</p>
+              <p className="min-w-0 flex-1 truncate text-[0.83rem] font-semibold leading-4 text-[#111827]">{displayName}</p>
               <Badge
                 variant="success"
-                className="shrink-0 px-1.5 py-0.5 text-[0.46rem] leading-none tracking-[0.08em]"
+                className="shrink-0 rounded-full px-1.5 py-0.5 text-[0.44rem] leading-none tracking-[0.08em]"
               >
                 Profesional
               </Badge>
             </div>
-            <p className="truncate text-[0.72rem] leading-4 text-[color:var(--ink-muted)]">{displayMeta}</p>
+            <p className="mt-0.5 truncate text-[0.7rem] leading-4 text-[color:var(--ink-muted)]">{displayMeta}</p>
           </div>
         </div>
 
         <ProfessionalNotificationBell onNavigate={requestNavigation} />
       </div>
 
-      <div className="relative mt-3 space-y-3.5">
+      <div className="relative mt-3 space-y-3">
         {menuSections.map((section) => (
           <div key={section.label}>
-            <p className="px-1 text-[0.55rem] font-semibold uppercase leading-4 tracking-[0.16em] text-[color:var(--ink-muted)]">
+            <p className="px-1.5 text-[0.52rem] font-semibold uppercase leading-3 tracking-[0.14em] text-[#94A3B8]">
               {section.label}
             </p>
-            <nav className="mt-1.5 space-y-0.5">
+            <nav className="mt-1 space-y-0.5">
               {section.items.map((item) => {
                 const isActive = item.label === active;
                 const hintedPlan = item.featureKey ? requiredPlanForFeature(item.featureKey) : null;
@@ -192,29 +193,32 @@ function ProfesionalSidebar({ profile, active }: SidebarProps) {
                   : false;
                 const isDisabled = item.disabled || isLocked;
                 const itemClassName = cn(
-                  'group flex min-h-[44px] w-full items-center gap-2.5 rounded-[9px] border px-2.5 py-1.5 text-left transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--focus-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-white',
+                  'group relative flex min-h-[42px] w-full items-center gap-2 rounded-[8px] px-2 py-1.5 text-left transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--focus-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-white',
                   isActive && !isLocked
-                    ? 'border-[#D4F3EC] bg-[#ECFDF5] text-[#0F766E]'
+                    ? 'bg-[#ECFDF5] text-[#0F3D35]'
                     : isDisabled
-                      ? 'cursor-not-allowed border-transparent bg-transparent text-[color:var(--ink-faint)]'
-                      : 'border-transparent bg-transparent text-[color:var(--ink)] hover:border-[#E2E8F0] hover:bg-[#F8FAFC]',
+                      ? 'cursor-not-allowed bg-transparent text-[color:var(--ink-faint)]'
+                      : 'bg-transparent text-[#334155] hover:bg-[#F8FAFC] hover:text-[#0F172A]',
                 );
 
                 const content = (
                   <>
+                    {isActive && !isLocked ? (
+                      <span className="absolute left-0 top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-full bg-[#0F766E]" />
+                    ) : null}
                     <span
                       className={cn(
-                        'inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-[8px]',
+                        'inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-[7px]',
                         isActive && !isLocked
-                          ? 'bg-white text-[#0F766E]'
+                          ? 'bg-white text-[#0F766E] shadow-[0_1px_2px_rgba(15,23,42,0.05)]'
                           : isLocked
                             ? 'bg-transparent text-[color:var(--ink-faint)]'
-                            : 'bg-transparent text-[color:var(--ink)] group-hover:bg-white',
+                            : 'bg-transparent text-[#64748B] group-hover:bg-white group-hover:text-[#0F172A]',
                       )}
                     >
                       <DashboardIcon name={item.icon} className="h-[15px] w-[15px]" />
                     </span>
-                    <span className={cn('min-w-0 flex-1 truncate text-[0.84rem] font-medium', isLocked && 'opacity-60')}>
+                    <span className={cn('min-w-0 flex-1 truncate text-[0.82rem] font-medium', isLocked && 'opacity-60')}>
                       {item.label}
                     </span>
                     {(isLocked && item.requiredPlan) || (showsFeatureHint && hintedPlan) ? (

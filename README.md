@@ -65,57 +65,28 @@ Los SQL legacy/manual se mantienen en:
 
 - `backend-java/db`
 
-## Despliegue en Render
+## Despliegue
 
-El proyecto ya cuenta con un **render.yaml** en la raíz que define los dos servicios:
+La infraestructura vigente es:
 
-- `plura-api`: backend Java empaquetado en un Docker multi‑stage.
-- `plura-web`: frontend Next.js construido con pnpm.
+- Backend: Fly.io, configurado en `backend-java/fly.toml`.
+- Frontend web: Vercel.
+- Base de datos: Supabase PostgreSQL por Session Pooler.
+- Imágenes: Cloudflare R2 con CDN público.
 
-Render ofrece variables de entorno sensibles y una base de datos PostgreSQL gestionada. El `render.yaml`
-deja el backend apuntando al `Dockerfile` relativo de `backend-java` y expone las variables sensibles
-necesarias para auth, correo y billing Mercado Pago. Asegurate de completar en el dashboard, como
-mínimo, las credenciales de suscripciones y reservas (`BILLING_MERCADOPAGO_SUBSCRIPTIONS_*`,
-`BILLING_MERCADOPAGO_RESERVATIONS_*`) además de JWT, BD y URLs públicas.
+El backend Java se empaqueta con `backend-java/Dockerfile` y expone `/health` para los checks de Fly.
+Los valores no secretos principales viven en `backend-java/fly.toml`; los secretos deben cargarse en
+Fly con `fly secrets`, incluyendo credenciales de Supabase, JWT, SMTP, Cloudflare R2 y Mercado Pago.
 
 La configuración de Spring Boot está preparada para:
 
-1. leer `SPRING_DATASOURCE_URL`.*
+1. leer `SPRING_DATASOURCE_URL`
 2. si no existe usar `DATABASE_URL` y convertir automáticamente `postgres://` / `postgresql://` a JDBC
-3. extraer `DATABASE_USERNAME` / `DATABASE_PASSWORD` o las credenciales embebidas en `DATABASE_URL`
-4. si sigue ausente caer en una H2 en memoria para que el contenedor arranque y el healthcheck pase.
+3. extraer credenciales embebidas en `DATABASE_URL` cuando existan
+4. fallar temprano si no hay datasource PostgreSQL válido en runtime
 
-El `render.yaml` enlaza `DATABASE_URL`, `DATABASE_USERNAME` y `DATABASE_PASSWORD` desde `plura-db`
-mediante `fromDatabase`, así que no hace falta cargar manualmente una URL JDBC si usás la base
-gestionada del blueprint.
-
-Las cookies JWT se marcan como `Secure` y el puerto público se asigna con `-Dserver.port=${PORT}`
-para que Render pueda cambiarlo dinámicamente.
-
-> 💡 Si el despliegue falla, revisá los **logs del servicio** en el panel de Render; suelen indicar la
-> variable faltante o el error de conexión a la BD.
->
-> Si ves `PSQLException: The connection attempt failed` junto con `EOFException` durante Flyway,
-> el problema real suele ser la conexión PostgreSQL (URL incorrecta, credenciales erróneas, SSL
-> requerido o base no accesible), no `userRepository` ni JPA.
->
-> ⚠️ *Error común durante despliegues repetidos:* Flyway puede abortar el arranque si un archivo
-> de migración se modificó después de haber sido aplicado en la base de datos (checksum mismatch).
-> En ese caso verás un mensaje como **"Migration checksum mismatch for migration version 2"**.
-> Para solucionarlo podés:
->
-> 1. Conectarte a la base de datos gestionada (´render db connect plura-db´ o vía psql) y ejecutar
->    `flyway repair` para actualizar la fila en `flyway_schema_history`.
-> 2. Borrar la base de datos y dejar que el despliegue cree una nueva (solo si no tenés datos
->    importantes).
-> 3. Temporalmente deshabilitar la validación con `SPRING_FLYWAY_VALIDATE_ON_MIGRATE=false` (como
->    se configura en la plantilla `render.yaml`) y luego volver a habilitarla una vez reparada.
->    Esto permite que el contenedor arranque mientras arreglás la historia de migraciones.
-
-> 🔧 *Build de Next.js lento/que falla:* Si el build de la web se queda colgado en \"Generating static pages\"
-> o falla por timeout (60s por página), revisá que ESLint esté deshabilitado durante el build
-> (configurado en `next.config.js`). Si persiste, podés aumentar el timeout en Render o optimizar
-> las páginas estáticas.
+La web se despliega en Vercel y debe apuntar al backend Fly mediante `NEXT_PUBLIC_API_URL`.
+Para imágenes públicas, Vercel debe exponer `NEXT_PUBLIC_IMAGE_CDN_BASE_URL` con el dominio CDN de R2.
 
 ## Notas
 

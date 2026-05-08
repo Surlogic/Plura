@@ -79,7 +79,7 @@ Si la documentación no coincide con el código, corregir la documentación en l
 ## Qué actualizar según el cambio
 - Endpoints -> `contexto/backend-endpoints.md`
 - Módulos o rutas -> `contexto/rutas-y-modulos.md`
-- Infra, env, docker, render, compose -> `contexto/infra-y-configuracion_sin_whatsapp.md`
+- Infra, env, docker, deploy, compose -> `contexto/infra-y-configuracion_sin_whatsapp.md`
 - Estado general del sistema -> `contexto/README_sin_whatsapp.md`
 
 ## Forma de respuesta esperada

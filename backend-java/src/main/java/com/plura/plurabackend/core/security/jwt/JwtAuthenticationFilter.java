@@ -49,7 +49,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         @Value("${jwt.issuer:plura}") String jwtIssuer,
         @Value("${app.auth.allow-legacy-jwt:true}") boolean allowLegacyJwt
     ) {
-        // jwtSecret es obligatorio; el puerto de render lo inyecta como JWT_SECRET.
+        // jwtSecret es obligatorio; el runtime lo inyecta como JWT_SECRET.
         if (jwtSecret == null || jwtSecret.isBlank()) {
             throw new IllegalStateException("La propiedad jwt.secret no está definida. "
                 + "Configure la variable de entorno JWT_SECRET antes de iniciar la aplicación.");

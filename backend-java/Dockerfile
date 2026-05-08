@@ -29,6 +29,5 @@ COPY --from=builder /app/build/libs/*.jar app.jar
 # El puerto configurado por defecto en application.yml es el 3000
 EXPOSE 3000
 
-# Ejecutamos la aplicación. 
-# Usamos ${PORT} para que Render pueda inyectar dinámicamente su puerto (por defecto 10000)
+# Ejecutamos la aplicación usando PORT cuando el runtime lo inyecta.
 ENTRYPOINT ["sh", "-c", "java -Dserver.port=${PORT:-3000} -jar app.jar"]

@@ -31,13 +31,13 @@ package "Monorepo" as Repo #E8F5E9 {
 }
 
 cloud "Runtime & Deploy" {
-  node "Render: plura-web" as RenderWeb
-  node "Render: plura-api" as RenderApi
-  database "Render PostgreSQL" as PG
+  node "Vercel: web" as VercelWeb
+  node "Fly.io: backend" as FlyApi
+  database "Supabase PostgreSQL" as PG
   database "Redis (optional)" as Redis
   component "Meilisearch (optional)" as Meili
   queue "AWS SQS (optional)" as SQS
-  storage "Cloudflare R2 (optional)" as R2
+  storage "Cloudflare R2 + CDN" as R2
   component "Mapbox" as Mapbox
   component "Google OAuth" as Google
   component "Apple OAuth" as Apple
@@ -70,9 +70,9 @@ Integrations --> Apple : OAuth verification
 Integrations --> MP : subscriptions,\nprofessional OAuth,\nwebhooks
 Api --> SMTP : transactional email
 
-RenderWeb --> Web
-RenderApi --> Api
-RenderApi --> PG
+VercelWeb --> Web
+FlyApi --> Api
+FlyApi --> PG
 
 note right of Api
   Main config source:

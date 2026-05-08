@@ -30,7 +30,7 @@ import org.springframework.web.server.ResponseStatusException;
     "APP_RATE_LIMIT_ENABLED=false",
     "SWAGGER_ENABLED=false",
     "SQS_ENABLED=false",
-    "APP_PUBLIC_WEB_URL=https://plura-web.onrender.com"
+    "APP_PUBLIC_WEB_URL=https://plura-web-a6ka.vercel.app"
 })
 @AutoConfigureMockMvc
 class ProfessionalMercadoPagoConnectionSecurityIntegrationTest {
@@ -57,7 +57,7 @@ class ProfessionalMercadoPagoConnectionSecurityIntegrationTest {
             .andExpect(status().isFound())
             .andExpect(header().string(
                 "Location",
-                "https://plura-web.onrender.com/oauth/mercadopago/callback?result=error&reason=state_invalid"
+                "https://plura-web-a6ka.vercel.app/oauth/mercadopago/callback?result=error&reason=state_invalid"
             ));
     }
 }

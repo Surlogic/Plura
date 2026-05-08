@@ -190,7 +190,7 @@ Notas reales de binding local:
 - con `BILLING_MERCADOPAGO_RESERVATIONS_OAUTH_PKCE_ENABLED=true`, el backend genera `code_verifier` y `code_challenge` con `S256`, persiste temporalmente el `verifier` cifrado en `professional_payment_provider_connection`, y en el token exchange manda `code_verifier` sin exponerlo al frontend
 - `BILLING_MERCADOPAGO_RESERVATIONS_OAUTH_REDIRECT_URI` debe coincidir exactamente con el callback backend registrado en la app OAuth de Mercado Pago; ejemplos:
   `http://localhost:3000/profesional/payment-providers/mercadopago/oauth/callback`
-  `https://plura-ir62.onrender.com/profesional/payment-providers/mercadopago/oauth/callback`
+  `https://plura.fly.dev/profesional/payment-providers/mercadopago/oauth/callback`
 - `BILLING_MERCADOPAGO_RESERVATIONS_OAUTH_FRONTEND_REDIRECT_URL` es la pantalla web final de resultado y no debe registrarse en Mercado Pago como Redirect URL OAuth
 - el cargo de procesamiento de reservas se parametriza con `INSTANT_PROVIDER_FEE_PERCENT`, `DELAYED_PROVIDER_FEE_PERCENT`, `TAX_PERCENT` y `PLATFORM_FEE_PERCENT`; backend elige el porcentaje Mercado Pago segun `processingFeeMode` del servicio, calcula `fee_efectiva = fee_provider * (1 + IVA) + fee_plataforma`, luego `total = neto / (1 - fee_efectiva)` y redondea hacia arriba a 2 decimales para no subcobrar el neto del servicio
 - por compatibilidad, `BILLING_MERCADOPAGO_RESERVATIONS_PROCESSING_FEE_PROVIDER_FEE_PERCENT` sigue funcionando como fallback legacy del porcentaje `INSTANT`
@@ -404,39 +404,21 @@ El script `scripts/predev.sh`:
 
 ## Deploy
 
-`render.yaml` define:
+Deploy vigente:
 
-- `plura-api`: backend Docker
-- `plura-web`: app Next.js
+- backend: Fly.io con `backend-java/fly.toml`, imagen Docker desde `backend-java/Dockerfile` y healthcheck `GET /health`
+- web: Vercel, con variables públicas `NEXT_PUBLIC_API_URL`, `NEXT_PUBLIC_GOOGLE_CLIENT_ID`, `NEXT_PUBLIC_MAPBOX_TOKEN` y `NEXT_PUBLIC_IMAGE_CDN_BASE_URL`
+- base de datos: Supabase PostgreSQL por Session Pooler
+- imágenes: Cloudflare R2 con CDN público
 
-Notas reales de deploy en Render:
+Notas reales de deploy:
 
-- `plura-api` debe declarar tambien `APP_PUBLIC_WEB_URL` para links/callbacks absolutos
-- `plura-web` debe usar el mismo `NEXT_BUILD_DIR` en build y start; el blueprint quedo alineado a `.next-build` en ambos comandos para que `next start` encuentre el artefacto correcto
-- el arranque productivo de `apps/web` ya no depende de flags manuales de plataforma: `pnpm -C apps/web start` entra por `apps/web/scripts/run-next-command.cjs`, asegura `.next-build` y fuerza `next start -p ${PORT:-3000} -H ${HOSTNAME:-0.0.0.0}` cuando no se pasan argumentos explicitos
-- `apps/web/Dockerfile` quedo listo para deploy directo en Fly u otro runtime Docker: instala dependencias del monorepo, builda la web con `SKIP_HOME_SSG_FETCH=true`, expone `3000` y arranca con `pnpm -C apps/web start`
-- el blueprint ya no provisiona una base propia en Render: espera `Supabase PostgreSQL` por Session Pooler con `SPRING_DATASOURCE_URL`, `SPRING_DATASOURCE_USERNAME`, `SPRING_DATASOURCE_PASSWORD`, `SPRING_DATASOURCE_DRIVER_CLASS_NAME=org.postgresql.Driver`, `SPRING_FLYWAY_URL`, `SPRING_FLYWAY_USER`, `SPRING_FLYWAY_PASSWORD` y `SPRING_FLYWAY_DRIVER_CLASS_NAME=org.postgresql.Driver`
-- para OAuth Mercado Pago del profesional el servicio backend necesita exponer en Render:
-  - `BILLING_MERCADOPAGO_RESERVATIONS_PLATFORM_ACCESS_TOKEN`
-  - `BILLING_MERCADOPAGO_RESERVATIONS_WEBHOOK_SECRET`
-  - `BILLING_MERCADOPAGO_RESERVATIONS_OAUTH_CLIENT_ID`
-  - `BILLING_MERCADOPAGO_RESERVATIONS_OAUTH_CLIENT_SECRET`
-  - `BILLING_MERCADOPAGO_RESERVATIONS_OAUTH_REDIRECT_URI`
-  - `BILLING_MERCADOPAGO_RESERVATIONS_OAUTH_FRONTEND_REDIRECT_URL`
-  - `BILLING_MERCADOPAGO_RESERVATIONS_OAUTH_AUTHORIZATION_URL`
-  - `BILLING_MERCADOPAGO_RESERVATIONS_OAUTH_TOKEN_URL`
-  - `BILLING_MERCADOPAGO_RESERVATIONS_OAUTH_STATE_SIGNING_SECRET`
-  - `BILLING_MERCADOPAGO_RESERVATIONS_OAUTH_TOKEN_ENCRYPTION_KEY`
-- para suscripciones Mercado Pago el backend debe exponer aparte:
-  - `BILLING_MERCADOPAGO_SUBSCRIPTIONS_ACCESS_TOKEN`
-  - `BILLING_MERCADOPAGO_SUBSCRIPTIONS_WEBHOOK_SECRET`
-- `BILLING_MERCADOPAGO_RESERVATIONS_OAUTH_REDIRECT_URI` debe apuntar exactamente al callback backend del profesional:
-  - local: `http://localhost:3000/profesional/payment-providers/mercadopago/oauth/callback`
-  - deploy api actual: `https://plura-ir62.onrender.com/profesional/payment-providers/mercadopago/oauth/callback`
-- `BILLING_MERCADOPAGO_RESERVATIONS_OAUTH_FRONTEND_REDIRECT_URL` es solo la pantalla final:
-  - local: `http://localhost:3002/oauth/mercadopago/callback`
-  - deploy web actual: `https://plura-web.onrender.com/oauth/mercadopago/callback`
-- el backend compila para Render con Java 17; cualquier uso de APIs de virtual threads de Java 21 rompe el `bootJar` del deploy
+- el backend Fly debe declarar `APP_PUBLIC_WEB_URL` apuntando a la URL pública de Vercel para links/callbacks absolutos
+- `backend-java/fly.toml` versiona los env no secretos principales; los secretos se cargan con `fly secrets`
+- para Supabase PostgreSQL se usan `SPRING_DATASOURCE_URL`, `SPRING_DATASOURCE_USERNAME`, `SPRING_DATASOURCE_PASSWORD`, `SPRING_FLYWAY_URL`, `SPRING_FLYWAY_USER`, `SPRING_FLYWAY_PASSWORD` y drivers PostgreSQL
+- para OAuth Mercado Pago del profesional, el backend Fly necesita `BILLING_MERCADOPAGO_RESERVATIONS_*`, incluido `OAUTH_REDIRECT_URI=https://plura.fly.dev/profesional/payment-providers/mercadopago/oauth/callback` y `OAUTH_FRONTEND_REDIRECT_URL=https://plura-web-a6ka.vercel.app/oauth/mercadopago/callback`
+- para suscripciones Mercado Pago, el backend Fly necesita `BILLING_MERCADOPAGO_SUBSCRIPTIONS_ACCESS_TOKEN` y `BILLING_MERCADOPAGO_SUBSCRIPTIONS_WEBHOOK_SECRET`
+- el backend compila para Java 17; cualquier uso de APIs de virtual threads de Java 21 rompe el `bootJar` del deploy
 
 ## Integraciones externas detectadas
 
@@ -477,7 +459,7 @@ Notas reales de deploy en Render:
 - `apps/web/next.config.js` habilita `externalDir` para poder importar desde `packages/shared/src`.
 - el backend ya no contempla H2 como fallback de arranque en runtime; si falta `SPRING_DATASOURCE_URL` o `DATABASE_URL`, la aplicacion debe fallar temprano para no ocultar una configuracion rota de PostgreSQL
 - datasource y Flyway quedaron cerrados sobre la misma base por default: si el backend recibe `DATABASE_URL` en formato `postgres://` o `postgresql://`, el bootstrap la normaliza a JDBC, extrae credenciales embebidas y rellena tambien `SPRING_FLYWAY_*` para evitar que migraciones y JPA apunten a bases distintas
-- el backend expone `server.port=${PORT:3000}` y ahora fija `server.address=0.0.0.0` por default para despliegues tipo Fly.io/Render
+- el backend expone `server.port=${PORT:3000}` y ahora fija `server.address=0.0.0.0` por default para Fly.io y contenedores locales
 - `auth_refresh_token` sigue siendo una tabla legacy de soporte para refresh fallback, pero su schema real mantiene `id BIGSERIAL`; el modelo JPA ya quedo alineado a ese contrato para que `ddl-auto=validate` no tumbe el arranque
 - el naming de planes en codigo sigue siendo `BASIC / PROFESIONAL / ENTERPRISE`; el contexto de producto actualizado usa `Free / Pro / Premium`.
 - Flyway conserva migraciones historicas de dLocal (`V34`, `V37`) solo por continuidad de schema; el runtime vigente ya es Mercado Pago only y `V47` elimina los campos legacy del dominio profesional.
@@ -492,7 +474,6 @@ Notas reales de deploy en Render:
 - `backend-java/fly.toml` tambien deja explicito `BILLING_MERCADOPAGO_ENABLED=true`; `BILLING_ENABLED=true` solo no alcanza para dejar operativo Mercado Pago en runtime
 - si Fly reporta `The app is not listening on the expected address` y en la VM solo aparece `/.fly/hallpass`, no asumir primero un problema de `PORT`: con la configuracion actual (`server.address=0.0.0.0`, `server.port=${PORT:3000}`) eso suele indicar que el proceso Java murio en startup por secrets faltantes o fallo temprano de datasource antes de bindear el socket
 - en local, `backend-java/.env` sigue usando frontend remoto en Vercel y callback backend publico temporal (ngrok) para destrabar flujos de Mercado Pago que no aceptan `localhost`; las variables activas de storage son `IMAGE_STORAGE_PROVIDER` + `R2_*`, no los aliases legacy `APP_STORAGE_*`
-- en `render.yaml`, el servicio `plura-api` usa `rootDir=backend-java`, por lo que `dockerfilePath` y `dockerContext` deben mantenerse relativos a esa carpeta; hoy quedaron alineados a `./Dockerfile` y `.`
-- el blueprint de Render ya expone tanto variables legacy de Mercado Pago como el naming explicito por dominio `SUBSCRIPTIONS_*` y `RESERVATIONS_*`, incluido el flag `BILLING_MERCADOPAGO_RESERVATIONS_OAUTH_PKCE_ENABLED`; para DB ya no depende de una instancia `plura-db` administrada por Render
+- Fly.io despliega el backend desde `backend-java/fly.toml` usando `backend-java/Dockerfile`; los secrets de Mercado Pago, Supabase y storage deben mantenerse en Fly, no en archivos versionados
 - para storage de imágenes en producción, el servicio backend debe exponer las variables `IMAGE_STORAGE_PROVIDER=r2`, `R2_ENDPOINT`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY` y opcionalmente `R2_BUCKET` y `R2_PUBLIC_BASE_URL`
-- la web en Render necesita `NEXT_PUBLIC_IMAGE_CDN_BASE_URL` apuntando al dominio CDN de R2 para resolver URLs de imágenes
+- la web en Vercel necesita `NEXT_PUBLIC_IMAGE_CDN_BASE_URL` apuntando al dominio CDN de R2 para resolver URLs de imágenes

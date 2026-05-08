@@ -496,8 +496,8 @@ Puertos locales principales:
 ## Infra y despliegue
 
 - desarrollo local principal: `pnpm` + `backend-java`
-- deploy documentado en `render.yaml`
-- base de datos principal: PostgreSQL
+- backend en Fly.io, web en Vercel
+- base de datos principal: Supabase PostgreSQL
 - cache opcional: Redis
 - search engine opcional: Meilisearch
 - jobs opcionales: SQS

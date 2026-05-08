@@ -86,7 +86,7 @@ class ProfessionalMercadoPagoConnectionControllerTest {
     @Test
     void shouldUseConfiguredFrontendRedirectUrlWhenPresent() {
         billingProperties.getMercadopago().getReservations().getOauth()
-            .setFrontendRedirectUrl("https://plura-web.onrender.com/oauth/mercadopago/callback");
+            .setFrontendRedirectUrl("https://plura-web-a6ka.vercel.app/oauth/mercadopago/callback");
         ProfessionalMercadoPagoConnectionController controller = controller("http://localhost:3002");
         when(mercadoPagoOAuthStateService.resolveProfessionalId("state-1"))
             .thenThrow(new ResponseStatusException(HttpStatus.BAD_REQUEST, "state OAuth invalido"));
@@ -94,7 +94,7 @@ class ProfessionalMercadoPagoConnectionControllerTest {
         ResponseEntity<Void> response = controller.handleOAuthCallback("code-1", "state-1", null, null);
 
         assertEquals(
-            "https://plura-web.onrender.com/oauth/mercadopago/callback?result=error&reason=state_invalid",
+            "https://plura-web-a6ka.vercel.app/oauth/mercadopago/callback?result=error&reason=state_invalid",
             response.getHeaders().getFirst(HttpHeaders.LOCATION)
         );
     }

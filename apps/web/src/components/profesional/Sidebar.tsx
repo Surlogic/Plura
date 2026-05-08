@@ -139,12 +139,12 @@ function ProfesionalSidebar({ profile, active }: SidebarProps) {
       <div className="border-b border-[#EEF2F7] pb-2.5">
         <div className="flex items-center justify-between gap-2 px-1">
           <Link
-            href="/profesional/dashboard"
-            aria-label="Ir al inicio del dashboard"
+            href="/"
+            aria-label="Ir al inicio de la app"
             className="group inline-flex min-w-0 items-center gap-2 rounded-[8px] px-1.5 py-1 text-[0.84rem] font-semibold leading-none text-[#111827] transition hover:bg-[#F8FAFC] focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--focus-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-white"
             onClick={(event) => {
               event.preventDefault();
-              requestNavigation('/profesional/dashboard');
+              requestNavigation('/');
             }}
           >
             <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-[7px] bg-[#ECFDF5] text-[#0F766E] transition group-hover:bg-[#DFF8EE]">

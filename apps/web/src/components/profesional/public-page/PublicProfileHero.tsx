@@ -176,16 +176,16 @@ export default function PublicProfileHero({
       </div>
 
       <div className="relative px-4 pb-5 sm:px-6 sm:pb-6 lg:px-8 lg:pb-7">
-        <div className="-mt-14 rounded-[24px] bg-[color:var(--surface)]/95 p-5 backdrop-blur-sm sm:-mt-16 sm:p-6 lg:-mt-[4.5rem] lg:p-7">
-          <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
-            <div className="flex min-w-0 gap-4 sm:gap-5">
-              <div className="relative flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-[24px] border-4 border-white bg-[color:var(--surface-soft)] text-xl font-semibold text-[color:var(--ink)] sm:h-24 sm:w-24">
+        <div className="-mt-14 rounded-[24px] bg-[color:var(--surface)]/95 p-5 shadow-[0_24px_70px_-48px_rgba(15,23,42,0.42)] backdrop-blur-sm sm:-mt-16 sm:p-6 lg:-mt-[4.5rem] lg:p-7">
+          <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
+            <div className="flex min-w-0 flex-col items-center gap-5 text-center sm:flex-row sm:items-center sm:text-left lg:gap-7">
+              <div className="relative flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-[24px] border-4 border-white bg-[color:var(--surface-soft)] text-2xl font-semibold text-[color:var(--ink)] shadow-[0_18px_48px_-28px_rgba(15,23,42,0.45)] sm:h-28 sm:w-28 lg:h-32 lg:w-32 lg:rounded-[28px]">
                 {showLogoImage ? (
                   <Image
                     src={media.logo!.src}
                     alt={`Logo de ${name || 'profesional'}`}
                     fill
-                    sizes="96px"
+                    sizes="(min-width: 1024px) 128px, (min-width: 640px) 112px, 96px"
                     className="object-cover"
                     style={buildPublicBusinessLogoStyle(media.logo)}
                     onError={() => setLogoFailed(true)}
@@ -195,21 +195,21 @@ export default function PublicProfileHero({
                 )}
               </div>
 
-              <div className="min-w-0">
+              <div className="min-w-0 flex-1">
                 {category ? (
                   <Badge variant="neutral" className="normal-case tracking-normal">
                     {category}
                   </Badge>
                 ) : null}
-                <h1 className="mt-3 text-3xl font-semibold tracking-[-0.03em] text-[color:var(--ink)] sm:text-4xl lg:text-[3rem]">
+                <h1 className="mt-3 text-3xl font-semibold tracking-normal text-[color:var(--ink)] sm:text-4xl lg:text-[3rem]">
                   {name}
                 </h1>
                 {headline ? (
-                  <p className="mt-3 max-w-4xl text-base leading-7 text-[color:var(--ink-muted)] sm:text-lg">
+                  <p className="mx-auto mt-3 max-w-4xl text-base leading-7 text-[color:var(--ink-muted)] sm:mx-0 sm:text-lg">
                     {headline}
                   </p>
                 ) : null}
-                <div className="mt-4 flex flex-wrap items-center gap-2 text-sm">
+                <div className="mt-4 flex flex-wrap items-center justify-center gap-2 text-sm sm:justify-start">
                   <div className="inline-flex items-center gap-2 rounded-full border border-[color:var(--border-soft)] bg-[color:var(--surface-soft)] px-3 py-1.5 text-[color:var(--ink)]">
                     <StarIcon />
                     {hasRating && hasReviews ? (
@@ -252,7 +252,7 @@ export default function PublicProfileHero({
             </div>
 
             {!isPreview ? (
-              <div className="flex w-full lg:w-auto lg:shrink-0 lg:justify-end">
+              <div className="flex w-full lg:w-auto lg:shrink-0 lg:justify-end lg:self-center">
                 <FavoriteToggleButton
                   isActive={isCurrentFavorite}
                   onClick={onToggleFavorite}

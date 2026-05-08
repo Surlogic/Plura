@@ -11,7 +11,6 @@ import {
 } from '@/lib/billing/featureGuards';
 import { useProfessionalDashboardUnsavedChanges } from '@/context/ProfessionalDashboardUnsavedChangesContext';
 import Badge from '@/components/ui/Badge';
-import BrandLogo from '@/components/ui/BrandLogo';
 import { cn } from '@/components/ui/cn';
 import {
   DashboardIcon,
@@ -128,18 +127,23 @@ function ProfesionalSidebar({ profile, active }: SidebarProps) {
   return (
     <aside
       ref={rootRef}
-      className="relative min-h-full overflow-x-hidden border-r border-[#E2E8F0] bg-white px-3 py-4 text-[color:var(--ink)]"
+      className="relative min-h-full overflow-x-hidden border-r border-[#E2E8F0] bg-white px-3 py-3 pb-5 text-[color:var(--ink)] [scrollbar-gutter:stable] [scrollbar-width:thin]"
     >
       <div className="border-b border-[#E2E8F0] pb-3">
-        <div className="flex items-center justify-between gap-3 px-1">
-          <BrandLogo href="/" variant="mobile" className="justify-center" />
-          <span className="rounded-full border border-[#D9ECE8] bg-[#F0FDFA] px-2 py-1 text-[0.52rem] font-semibold uppercase tracking-[0.08em] text-[#0F766E]">
+        <div className="flex items-center justify-between gap-2 px-1">
+          <Link
+            href="/"
+            className="min-w-0 text-[0.95rem] font-semibold leading-none text-[color:var(--primary)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--focus-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-white"
+          >
+            Plura
+          </Link>
+          <span className="shrink-0 rounded-full border border-[#D9ECE8] bg-[#F0FDFA] px-1.5 py-0.5 text-[0.5rem] font-semibold uppercase leading-none tracking-[0.08em] text-[#0F766E]">
             {planLabel}
           </span>
         </div>
 
-        <div className="mt-4 flex items-center gap-3 px-1">
-          <div className="relative flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-[12px] border border-[color:var(--border-soft)] bg-white text-sm font-semibold text-[color:var(--primary)]">
+        <div className="mt-3 flex items-center gap-2.5 rounded-[10px] border border-[#E2E8F0] bg-[#F8FAFC] px-2.5 py-2">
+          <div className="relative flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-[10px] border border-[color:var(--border-soft)] bg-white text-xs font-semibold text-[color:var(--primary)]">
             {resolvedLogoUrl ? (
               <Image
                 src={resolvedLogoUrl}
@@ -154,26 +158,29 @@ function ProfesionalSidebar({ profile, active }: SidebarProps) {
             )}
           </div>
           <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-1.5">
-              <p className="truncate text-[0.88rem] font-semibold">{displayName}</p>
-              <Badge variant="success" className="px-1.5 py-0.5 text-[0.48rem] tracking-[0.08em]">
-              Profesional
+            <div className="flex min-w-0 items-center gap-1.5">
+              <p className="min-w-0 flex-1 truncate text-[0.84rem] font-semibold leading-5">{displayName}</p>
+              <Badge
+                variant="success"
+                className="shrink-0 px-1.5 py-0.5 text-[0.46rem] leading-none tracking-[0.08em]"
+              >
+                Profesional
               </Badge>
             </div>
-            <p className="mt-0.5 truncate text-[0.76rem] text-[color:var(--ink-muted)]">{displayMeta}</p>
+            <p className="truncate text-[0.72rem] leading-4 text-[color:var(--ink-muted)]">{displayMeta}</p>
           </div>
         </div>
 
         <ProfessionalNotificationBell onNavigate={requestNavigation} />
       </div>
 
-      <div className="relative mt-3 space-y-3">
+      <div className="relative mt-3 space-y-3.5">
         {menuSections.map((section) => (
           <div key={section.label}>
-            <p className="px-1 text-[0.56rem] font-semibold uppercase tracking-[0.18em] text-[color:var(--ink-muted)]">
+            <p className="px-1 text-[0.55rem] font-semibold uppercase leading-4 tracking-[0.16em] text-[color:var(--ink-muted)]">
               {section.label}
             </p>
-            <nav className="mt-2 space-y-1">
+            <nav className="mt-1.5 space-y-0.5">
               {section.items.map((item) => {
                 const isActive = item.label === active;
                 const hintedPlan = item.featureKey ? requiredPlanForFeature(item.featureKey) : null;
@@ -185,9 +192,9 @@ function ProfesionalSidebar({ profile, active }: SidebarProps) {
                   : false;
                 const isDisabled = item.disabled || isLocked;
                 const itemClassName = cn(
-                  'group flex w-full items-center gap-2.5 rounded-[10px] border px-2.5 py-2 text-left transition',
+                  'group flex min-h-[44px] w-full items-center gap-2.5 rounded-[9px] border px-2.5 py-1.5 text-left transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--focus-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-white',
                   isActive && !isLocked
-                    ? 'border-[#BFEDE7] bg-[#ECFDF5] text-[#0F766E]'
+                    ? 'border-[#D4F3EC] bg-[#ECFDF5] text-[#0F766E]'
                     : isDisabled
                       ? 'cursor-not-allowed border-transparent bg-transparent text-[color:var(--ink-faint)]'
                       : 'border-transparent bg-transparent text-[color:var(--ink)] hover:border-[#E2E8F0] hover:bg-[#F8FAFC]',
@@ -197,12 +204,12 @@ function ProfesionalSidebar({ profile, active }: SidebarProps) {
                   <>
                     <span
                       className={cn(
-                        'inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-[8px] border',
+                        'inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-[8px]',
                         isActive && !isLocked
-                          ? 'border-[#BFEDE7] bg-white text-[#0F766E]'
+                          ? 'bg-white text-[#0F766E]'
                           : isLocked
-                            ? 'border-[#E2E8F0] bg-transparent text-[color:var(--ink-faint)]'
-                            : 'border-[#E2E8F0] bg-white text-[color:var(--ink)]',
+                            ? 'bg-transparent text-[color:var(--ink-faint)]'
+                            : 'bg-transparent text-[color:var(--ink)] group-hover:bg-white',
                       )}
                     >
                       <DashboardIcon name={item.icon} className="h-[15px] w-[15px]" />

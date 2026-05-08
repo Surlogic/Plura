@@ -28,8 +28,8 @@ export default function ProfessionalDashboardShell({
   return (
     <div className="app-shell min-h-screen bg-[#F7F9FB] text-[color:var(--ink)]">
       <div className="flex min-h-screen">
-        <aside className="hidden w-[244px] shrink-0 border-r border-[#E2E8F0] bg-white lg:block">
-          <div className="sticky top-0 h-screen overflow-y-auto">
+        <aside className="hidden w-[244px] shrink-0 bg-white lg:block">
+          <div className="sticky top-0 h-screen overflow-y-auto overscroll-contain">
             <ProfesionalSidebar profile={profile} active={active} />
           </div>
         </aside>

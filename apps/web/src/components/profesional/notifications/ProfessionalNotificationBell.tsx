@@ -100,28 +100,33 @@ export default function ProfessionalNotificationBell({
   const showSyncDot = isCountLoading && !hasUnread && !hasCountError;
 
   return (
-    <div ref={rootRef} className={cn('relative mt-5', className)}>
+    <div ref={rootRef} className={cn('relative mt-3', className)}>
       <button
         type="button"
         onClick={() => void openPanel()}
         onPointerEnter={() => setShouldLoadCount(true)}
         onFocus={() => setShouldLoadCount(true)}
         className={cn(
-          'group flex w-full items-center justify-between rounded-[18px] border px-3.5 py-3 text-left transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--focus-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-[color:var(--focus-ring-offset)]',
+          'group flex min-h-[44px] w-full items-center justify-between rounded-[9px] border px-2.5 py-1.5 text-left transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--focus-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-white',
           isOpen
-            ? 'border-[color:var(--primary-soft)] bg-[color:var(--primary-soft)]/45 shadow-[var(--shadow-card)]'
-            : 'border-[color:var(--border-soft)] bg-white/88 hover:border-[color:var(--border-strong)] hover:bg-white',
+            ? 'border-[#D4F3EC] bg-[#ECFDF5] text-[#0F766E]'
+            : 'border-transparent bg-transparent text-[color:var(--ink)] hover:border-[#E2E8F0] hover:bg-[#F8FAFC]',
         )}
         aria-haspopup="dialog"
         aria-expanded={isOpen}
         aria-label="Abrir notificaciones"
         aria-busy={showSyncDot}
       >
-        <div className="flex items-center gap-3">
-          <span className="relative inline-flex h-11 w-11 items-center justify-center rounded-[14px] border border-[color:var(--border-soft)] bg-[color:var(--surface-soft)] text-[color:var(--ink)]">
-            <DashboardIcon name="notificaciones" className="h-[18px] w-[18px]" />
+        <div className="flex min-w-0 items-center gap-2.5">
+          <span
+            className={cn(
+              'relative inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-[8px] transition',
+              isOpen ? 'bg-white text-[#0F766E]' : 'text-[color:var(--ink)] group-hover:bg-white',
+            )}
+          >
+            <DashboardIcon name="notificaciones" className="h-[15px] w-[15px]" />
             {badgeCount ? (
-              <span className="absolute -right-1.5 -top-1.5 inline-flex min-w-[22px] items-center justify-center rounded-full bg-[color:var(--primary)] px-1.5 py-1 text-[0.62rem] font-semibold leading-none text-white shadow-[var(--shadow-card)]">
+              <span className="absolute -right-2 -top-1.5 inline-flex min-w-[18px] items-center justify-center rounded-full bg-[color:var(--primary)] px-1 py-0.5 text-[0.55rem] font-semibold leading-none text-white">
                 {badgeCount}
               </span>
             ) : showSyncDot ? (
@@ -132,8 +137,8 @@ export default function ProfessionalNotificationBell({
           </span>
 
           <div className="min-w-0">
-            <p className="text-sm font-semibold text-[color:var(--ink)]">Notificaciones</p>
-            <p className="mt-0.5 text-xs text-[color:var(--ink-muted)]">
+            <p className="truncate text-[0.84rem] font-medium leading-5 text-current">Notificaciones</p>
+            <p className="truncate text-[0.7rem] leading-4 text-[color:var(--ink-muted)]">
               {hasUnread
                 ? `${count} sin leer`
                 : hasCountError
@@ -145,7 +150,7 @@ export default function ProfessionalNotificationBell({
 
         <span
           className={cn(
-            'inline-flex h-8 w-8 items-center justify-center rounded-full border border-[color:var(--border-soft)] bg-white text-[color:var(--ink-muted)] transition',
+            'inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[color:var(--ink-muted)] transition group-hover:bg-white',
             isOpen && 'rotate-180 text-[color:var(--primary)]',
           )}
         >

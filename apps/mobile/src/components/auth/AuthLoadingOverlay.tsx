@@ -88,7 +88,7 @@ export default function AuthLoadingOverlay({
             style={{ backgroundColor: 'rgba(255, 255, 255, 0.12)' }}
           >
             <Text style={{ color: theme.colors.primaryLight, fontWeight: '700', fontSize: 12 }}>
-              Plura sincronizando tu acceso
+              Sincronizando tu acceso
             </Text>
           </View>
         </View>

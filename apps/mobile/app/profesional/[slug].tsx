@@ -144,7 +144,7 @@ const buildMapsUrl = ({
   longitude: number;
   label: string;
 }) => {
-  const encodedLabel = encodeURIComponent(label || 'Plura');
+  const encodedLabel = encodeURIComponent(label || 'Marketplace de cuidado personal');
   if (Platform.OS === 'ios') {
     return `http://maps.apple.com/?ll=${latitude},${longitude}&q=${encodedLabel}`;
   }

@@ -205,7 +205,7 @@ export default function InternalFeedbackPage() {
   return (
     <>
       <Head>
-        <title>Feedback app | Plura Ops</title>
+        <title>Feedback app | Ops</title>
         <meta name="robots" content="noindex,nofollow" />
       </Head>
       <div className="min-h-screen bg-[color:var(--background)] px-4 py-8">

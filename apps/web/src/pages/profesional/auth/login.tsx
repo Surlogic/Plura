@@ -181,7 +181,7 @@ export default function ProfesionalLoginPage() {
                   Iniciar sesión
                 </h1>
                 <p className="text-sm text-[color:var(--ink-muted)]">
-                  Administrá tu negocio, servicios y reservas desde Plura.
+                  Administrá tu negocio, servicios y reservas desde el marketplace.
                 </p>
                 <Link
                   href="/cliente/auth/login"

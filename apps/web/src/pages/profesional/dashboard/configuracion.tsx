@@ -960,7 +960,7 @@ export default function ProfesionalSettingsPage() {
                       <div className="space-y-2">
                         <DashboardSectionHeading title="Feedback" />
                         <p className="text-sm text-[color:var(--ink-muted)]">
-                          Contanos como es tu experiencia usando Plura.
+                          Contanos como es tu experiencia usando la app.
                         </p>
                       </div>
 

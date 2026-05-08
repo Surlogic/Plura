@@ -53,12 +53,12 @@ const PROCESSING_FEE_OPTIONS: Array<{
   {
     value: 'INSTANT',
     label: '5,99% + IVA',
-    description: 'Acreditación inmediata de Mercado Pago. Se suma además 1% de Plura al checkout.',
+    description: 'Acreditación inmediata de Mercado Pago. Se suma además 1% de plataforma al checkout.',
   },
   {
     value: 'DELAYED_21_DAYS',
     label: '4,99% + IVA',
-    description: 'Acreditación a 21 días de Mercado Pago. Se suma además 1% de Plura al checkout.',
+    description: 'Acreditación a 21 días de Mercado Pago. Se suma además 1% de plataforma al checkout.',
   },
 ];
 
@@ -277,7 +277,7 @@ export default function ServicesScreen() {
                 ))}
               </View>
               <Text className="text-xs text-gray-500">
-                El cargo al cliente incluye el fee de Mercado Pago, su IVA y 1% adicional de Plura.
+                El cargo al cliente incluye el fee de Mercado Pago, su IVA y 1% adicional de plataforma.
               </Text>
             </View>
           ) : null}

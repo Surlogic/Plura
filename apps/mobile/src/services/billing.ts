@@ -214,7 +214,7 @@ export const getMercadoPagoConnectionStatusCopy = (
     badge: 'No conectado',
     title: 'Conecta tu cuenta para cobrar reservas online',
     description:
-      'Vincula tu cuenta de Mercado Pago para aceptar pagos de reservas sin mezclarlo con tu plan de Plura.',
+      'Vincula tu cuenta de Mercado Pago para aceptar pagos de reservas sin mezclarlo con tu plan del marketplace.',
   };
 };
 

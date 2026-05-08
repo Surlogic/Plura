@@ -530,7 +530,7 @@ Prefijo: `/internal/ops/analytics`
 
 Lectura de producto:
 
-- no es analytics para cliente ni profesional; es un tablero interno exclusivo para el equipo de Plura
+- no es analytics para cliente ni profesional; es un tablero interno exclusivo para el equipo interno
 - mezcla datos transaccionales de `booking`, `available_slot`, `professional_profile` y `booking_review` con eventos funcionales server-side persistidos en `app_product_event`
 - los eventos persistidos hoy ya no son solo de discovery: tambien cubren el flujo publico `/reservar`, creacion de booking, inicio de checkout y cambios clave del ciclo de vida (`BOOKING_CONFIRMED`, `BOOKING_CANCELLED`, `BOOKING_RESCHEDULED`, `BOOKING_COMPLETED`, `BOOKING_NO_SHOW`)
 - permite responder dentro del producto interno preguntas como `que rubros se mueven mas`, `que ciudades convierten mejor`, `que servicios reservan mas` y `quienes son los profesionales top`

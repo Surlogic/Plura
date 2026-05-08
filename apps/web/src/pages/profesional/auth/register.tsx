@@ -335,7 +335,7 @@ export default function ProfesionalRegisterPage() {
               Registro profesional
             </h1>
             <p className="text-sm text-[color:var(--ink-muted)]">
-              Completá tus datos para gestionar tu negocio en Plura.
+              Completá tus datos para gestionar tu negocio en el marketplace.
             </p>
           </div>
 

@@ -11,7 +11,7 @@ public class PluraEmailTemplateService {
     private final String publicWebUrl;
 
     public PluraEmailTemplateService(
-        @Value("${app.email.brand-name:Plura}") String brandName,
+        @Value("${app.email.brand-name:Marketplace de cuidado personal}") String brandName,
         @Value("${app.email.public-web-url:http://localhost:3002}") String publicWebUrl
     ) {
         this.brandName = normalizeBrandName(brandName);
@@ -258,7 +258,7 @@ public class PluraEmailTemplateService {
 
     private String normalizeBrandName(String value) {
         if (value == null || value.trim().isBlank()) {
-            return "Plura";
+            return "Marketplace de cuidado personal";
         }
         return value.trim();
     }

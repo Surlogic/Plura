@@ -55,7 +55,7 @@ export default function Footer() {
         {role === 'PROFESSIONAL' ? (
           <>
             <div className={`space-y-2 text-sm ${secondaryTextClassName}`}>
-              <p className={strongTextClassName}>Plura</p>
+              <p className={strongTextClassName}>Marketplace</p>
               <Link href="/profesional/dashboard" className={linkClassName}>
                 Panel profesional
               </Link>
@@ -78,7 +78,7 @@ export default function Footer() {
         ) : role === 'CLIENT' ? (
           <>
             <div className={`space-y-2 text-sm ${secondaryTextClassName}`}>
-              <p className={strongTextClassName}>Plura</p>
+              <p className={strongTextClassName}>Marketplace</p>
               <Link href="/explorar" className={linkClassName}>
                 Explorar
               </Link>
@@ -122,12 +122,12 @@ export default function Footer() {
         )}
         <div className={`space-y-2 text-sm ${secondaryTextClassName}`}>
           <p className={strongTextClassName}>Contacto</p>
-          <p>hola@plura.com</p>
+          <p>Contacto desde la app</p>
           <p>Buenos Aires, AR</p>
         </div>
       </div>
       <div className={`border-t px-4 py-6 text-center text-xs ${secondaryTextClassName} ${isProfessionalAuth ? 'border-white/10' : 'border-[color:var(--border-soft)]'}`}>
-        © 2026 Plura. Todos los derechos reservados.
+        © 2026 Marketplace de cuidado personal. Todos los derechos reservados.
       </div>
     </footer>
   );

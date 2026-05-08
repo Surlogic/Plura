@@ -79,7 +79,7 @@ export default function ReviewsSection() {
         <SectionHeading
           align="center"
           title="Confianza basada en experiencia real"
-          description="Comentarios breves de clientes y profesionales que ya usan Plura."
+          description="Comentarios breves de clientes y profesionales."
           className="mx-auto"
         />
 
@@ -124,7 +124,7 @@ export default function ReviewsSection() {
                     </div>
                     <div>
                       <p className="text-sm font-semibold text-[color:var(--ink)]">
-                        {review.authorDisplayName || 'Usuario Plura'}
+                        {review.authorDisplayName || 'Usuario'}
                       </p>
                       <div className="mt-1 flex items-center gap-2">
                         <Stars rating={review.rating} />

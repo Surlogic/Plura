@@ -50,7 +50,7 @@ export function AuthEntryShowcase() {
             </View>
             <View className="rounded-full bg-white/10 px-3 py-2">
               <Text style={styles.brandPillText}>
-                PLURA
+                APP
               </Text>
             </View>
           </View>

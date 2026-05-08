@@ -273,7 +273,7 @@ export default memo(function HomeHeroVisual({ categories }: HomeHeroVisualProps)
   return (
     <aside
       className="relative mx-auto w-full max-w-[29rem] xl:mx-0 xl:max-w-[30rem] 2xl:max-w-[31rem]"
-      aria-label="Rubros destacados de Plura"
+      aria-label="Rubros destacados"
     >
       <div className="pointer-events-none absolute left-1/2 top-5 h-24 w-24 -translate-x-1/2 rounded-full bg-[color:var(--accent)]/16 blur-3xl xl:left-auto xl:right-10 xl:translate-x-0" />
       <div className="relative overflow-hidden rounded-[32px] border border-white/72 bg-white/84 shadow-[0_34px_90px_-58px_rgba(15,23,42,0.42)] backdrop-blur-xl">

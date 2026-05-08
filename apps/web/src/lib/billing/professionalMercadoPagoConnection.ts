@@ -46,7 +46,7 @@ export const getMercadoPagoConnectionStatusCopy = (
     return {
       badge: 'Desconectado',
       title: 'Conectá tu cuenta para cobrar reservas online',
-      description: 'Tus clientes pagarán sus reservas desde Plura y el cobro se procesará con la cuenta que conectes.',
+      description: 'Tus clientes pagarán sus reservas desde el marketplace y el cobro se procesará con la cuenta que conectes.',
       tone: 'warning',
     };
   }
@@ -54,7 +54,7 @@ export const getMercadoPagoConnectionStatusCopy = (
   return {
     badge: 'No conectado',
     title: 'Conectá tu cuenta para cobrar reservas online',
-    description: 'Vinculá tu cuenta de Mercado Pago para aceptar pagos de reservas sin mezclarlo con tu plan de Plura.',
+    description: 'Vinculá tu cuenta de Mercado Pago para aceptar pagos de reservas sin mezclarlo con tu plan del marketplace.',
     tone: 'warning',
   };
 };

@@ -166,7 +166,7 @@ export default function WorkerInvitationPage() {
             <div className="space-y-3">
               <Badge variant="info">Invitación de trabajo</Badge>
               <h1 className="text-2xl font-semibold leading-tight text-[color:var(--ink)]">
-                Sumate a tu equipo en Plura
+                Sumate a tu equipo
               </h1>
               {lookup ? (
                 <p className="text-sm text-[color:var(--ink-muted)]">
@@ -259,7 +259,7 @@ export default function WorkerInvitationPage() {
                   </>
                 ) : (
                   <p className="text-sm text-[color:var(--ink-muted)]">
-                    Ya tenés cuenta en Plura con este email. Aceptá la invitación para conectar tu cuenta como
+                    Ya tenés cuenta con este email. Aceptá la invitación para conectar tu cuenta como
                     trabajador del local.
                   </p>
                 )}

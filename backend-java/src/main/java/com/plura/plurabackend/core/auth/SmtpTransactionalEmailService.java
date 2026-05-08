@@ -33,7 +33,7 @@ public class SmtpTransactionalEmailService implements TransactionalEmailService 
         @Value("${spring.mail.username:}") String mailUsername,
         @Value("${spring.mail.password:}") String mailPassword,
         @Value("${app.email.from-address:}") String fromAddress,
-        @Value("${app.email.from-name:Plura}") String fromName,
+        @Value("${app.email.from-name:Marketplace de cuidado personal}") String fromName,
         @Value("${app.email.reply-to:}") String replyTo
     ) {
         this.javaMailSender = javaMailSender;
@@ -66,7 +66,7 @@ public class SmtpTransactionalEmailService implements TransactionalEmailService 
             );
             helper.setTo(message.toAddress().trim());
             helper.setSubject(message.subject().trim());
-            helper.setFrom(fromAddress.trim(), defaultString(fromName, "Plura").trim());
+            helper.setFrom(fromAddress.trim(), defaultString(fromName, "Marketplace de cuidado personal").trim());
             if (!isBlank(replyTo)) {
                 helper.setReplyTo(replyTo.trim());
             }

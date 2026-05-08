@@ -197,7 +197,7 @@ export default function InternalOpsAnalyticsPage() {
   return (
     <>
       <Head>
-        <title>Ops Analytics | Plura Ops</title>
+        <title>Ops Analytics | Ops</title>
         <meta name="robots" content="noindex,nofollow" />
       </Head>
       <div className="min-h-screen bg-[color:var(--background)] px-4 py-8">

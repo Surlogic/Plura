@@ -226,7 +226,7 @@ export default function UnifiedLoginPage() {
             {!contexts ? (
               <>
                 <div className="space-y-3">
-                  <Badge variant="info">Acceso a Plura</Badge>
+                  <Badge variant="info">Acceso</Badge>
                   <h1 className="text-3xl font-semibold leading-tight text-[color:var(--ink)]">
                     Iniciar sesión
                   </h1>
@@ -323,7 +323,7 @@ export default function UnifiedLoginPage() {
                   ¿Con qué cuenta querés entrar?
                 </h2>
                 <p className="text-sm text-[color:var(--ink-muted)]">
-                  Tu email tiene varios accesos en Plura. Elegí uno para continuar.
+                  Tu email tiene varios accesos. Elegí uno para continuar.
                 </p>
 
                 {errorMessage ? (

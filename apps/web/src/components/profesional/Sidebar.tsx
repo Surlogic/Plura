@@ -15,7 +15,7 @@ import {
   DashboardIcon,
   type DashboardIconName,
 } from '@/components/profesional/dashboard/DashboardUI';
-import ProfessionalNotificationBell from '@/components/profesional/notifications/ProfessionalNotificationBell';
+import { useProfessionalNotificationUnreadCount } from '@/hooks/useProfessionalNotificationUnreadCount';
 import { resolveAssetUrl } from '@/utils/assetUrl';
 import { buildProfessionalMediaStyle } from '@/utils/professionalMediaPresentation';
 
@@ -86,6 +86,12 @@ const menuSections: MenuSection[] = [
   },
 ];
 
+const formatNotificationBadgeCount = (count: number) => {
+  if (count <= 0) return null;
+  if (count > 99) return '99+';
+  return String(count);
+};
+
 type SidebarProps = {
   profile?: ProfessionalProfile | null;
   active: string;
@@ -94,6 +100,7 @@ type SidebarProps = {
 function ProfesionalSidebar({ profile, active }: SidebarProps) {
   const { requestNavigation } = useProfessionalDashboardUnsavedChanges();
   const rootRef = useRef<HTMLElement | null>(null);
+  const { count: unreadNotificationCount } = useProfessionalNotificationUnreadCount();
 
   const initials = useMemo(() => {
     if (!profile?.fullName) return 'PR';
@@ -112,6 +119,7 @@ function ProfesionalSidebar({ profile, active }: SidebarProps) {
   const planLabel = profile?.professionalPlan
     ? PLAN_LABELS[profile.professionalPlan]
     : 'Beta';
+  const notificationBadgeCount = formatNotificationBadgeCount(unreadNotificationCount);
 
   useEffect(() => {
     const id = requestAnimationFrame(() => {
@@ -169,8 +177,6 @@ function ProfesionalSidebar({ profile, active }: SidebarProps) {
             <p className="min-w-0 truncate text-[0.7rem] leading-4 text-[color:var(--ink-muted)]">{displayMeta}</p>
           </div>
         </div>
-
-        <ProfessionalNotificationBell onNavigate={requestNavigation} />
       </div>
 
       <div className="relative mt-3 space-y-3">
@@ -219,6 +225,11 @@ function ProfesionalSidebar({ profile, active }: SidebarProps) {
                     <span className={cn('min-w-0 flex-1 truncate text-[0.82rem] font-medium', isLocked && 'opacity-60')}>
                       {item.label}
                     </span>
+                    {item.label === 'Notificaciones' && notificationBadgeCount ? (
+                      <span className="inline-flex min-w-[22px] shrink-0 items-center justify-center rounded-full bg-[#0F766E] px-1.5 py-0.5 text-[0.62rem] font-semibold leading-none text-white">
+                        {notificationBadgeCount}
+                      </span>
+                    ) : null}
                     {(isLocked && item.requiredPlan) || (showsFeatureHint && hintedPlan) ? (
                       <span
                         className="inline-flex items-center gap-1 rounded-full border border-[color:var(--premium-soft)] bg-[color:var(--premium-soft)] px-2 py-0.5 text-[0.5rem] font-semibold uppercase tracking-[0.1em] text-[color:var(--premium-strong)]"

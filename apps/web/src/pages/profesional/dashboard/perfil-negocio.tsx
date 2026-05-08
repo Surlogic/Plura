@@ -517,6 +517,7 @@ export default function ProfesionalBusinessProfilePage() {
                       }}
                       kind="logo"
                       variant="circle"
+                      hint="Recomendado: 512 x 512 px, formato cuadrado. jpg, png, webp. Máximo 1MB."
                       presentation={form.logoMedia}
                       onPresentationChange={(logoMedia) => {
                         setForm((prev) => ({ ...prev, logoMedia }));
@@ -539,7 +540,7 @@ export default function ProfesionalBusinessProfilePage() {
                       }}
                       kind="banner"
                       variant="banner"
-                      hint="Imagen de portada. jpg, png, webp. Máximo 1MB."
+                      hint="Recomendado: 1600 x 900 px (16:9), mínimo 1200 x 675 px. Mantené lo importante centrado. jpg, png, webp. Máximo 1MB."
                       presentation={form.bannerMedia}
                       onPresentationChange={(bannerMedia) => {
                         setForm((prev) => ({ ...prev, bannerMedia }));

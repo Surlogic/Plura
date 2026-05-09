@@ -8,7 +8,6 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.plura.plurabackend.core.analytics.tracking.AppProductEventTrackingService;
 import com.plura.plurabackend.core.availability.AvailableSlotAsyncDispatcher;
 import com.plura.plurabackend.core.availability.AvailableSlotService;
 import com.plura.plurabackend.core.availability.ScheduleSummaryService;
@@ -137,8 +136,6 @@ class BookingCommandApplicationServiceRescheduleTest {
     );
     private final BookingNotificationIntegrationService bookingNotificationIntegrationService =
         mock(BookingNotificationIntegrationService.class);
-    private final AppProductEventTrackingService appProductEventTrackingService =
-        mock(AppProductEventTrackingService.class);
     private final BookingCommandApplicationService bookingCommandApplicationService = new BookingCommandApplicationService(
         professionalProfileRepository,
         profesionalServiceRepository,
@@ -158,7 +155,6 @@ class BookingCommandApplicationServiceRescheduleTest {
         bookingCommandResponseAssembler,
         bookingCommandStateSupport,
         bookingNotificationIntegrationService,
-        appProductEventTrackingService,
         meterRegistry,
         passwordEncoder,
         "America/Montevideo"

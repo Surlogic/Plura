@@ -280,7 +280,6 @@ app:
       retryable-threshold: ${APP_BILLING_PROVIDER_OPERATION_ALERTS_RETRYABLE_THRESHOLD:10}
       lease-expired-grace-minutes: ${APP_BILLING_PROVIDER_OPERATION_ALERTS_LEASE_EXPIRED_GRACE_MINUTES:5}
       sample-limit: ${APP_BILLING_PROVIDER_OPERATION_ALERTS_SAMPLE_LIMIT:10}
-      metrics-refresh-millis: ${APP_BILLING_PROVIDER_OPERATION_ALERTS_METRICS_REFRESH_MILLIS:30000}
 
   cache:
     search:
@@ -326,7 +325,7 @@ management:
     web:
       base-path: /internal/ops/actuator
       exposure:
-        include: health,metrics,prometheus,scheduledtasks
+        include: health
   endpoint:
     health:
       probes:

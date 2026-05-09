@@ -79,16 +79,6 @@ public class ProfessionalPublicPageService {
      * Crea publico reserva validando datos de entrada y persistiendo el resultado.
      * Tambien concentra los efectos secundarios para que el flujo quede en un estado consistente.
      */
-    public PublicBookingResponse createPublicBooking(
-        String slug,
-        PublicBookingRequest request,
-        String rawUserId,
-        String sourcePlatform,
-        String analyticsSessionId
-    ) {
-        return bookingService.createPublicBooking(slug, request, rawUserId, sourcePlatform, analyticsSessionId);
-    }
-
     public List<ProfessionalBookingResponse> getProfessionalBookings(
         String rawUserId,
         String rawDate,

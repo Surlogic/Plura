@@ -175,13 +175,13 @@ Notas reales de binding local:
 - si se ejecuta el backend desde la raiz del monorepo, `backend-java/.env` sigue siendo tomado como fallback
 - `backend-java/fly.toml` ya fija los env no secretos principales para Fly (`APP_PUBLIC_WEB_URL`, `CORS_ALLOWED_ORIGINS`, cookies auth, SMTP habilitado, storage `r2`, billing base y redirects OAuth/callback de Mercado Pago); los secretos sensibles siguen yendo por `fly secrets`
 - para evitar desalineos entre placeholders de `application.yml` y beans que leen propiedades ya resueltas (`SecurityConfig`, `CookieOriginProtectionFilter`, rate limiting), `backend-java/fly.toml` expone tambien `APP_CORS_ALLOWED_ORIGINS` y `APP_SECURITY_TRUST_FORWARDED_HEADERS` ademas de los aliases legacy/no anidados; esto corrige preflights CORS reales contra `https://plura-web-a6ka.vercel.app`
-- el backend acepta `X-Internal-Token` dentro de los headers CORS permitidos; esto es obligatorio para usar desde web los paneles internos `/internal/ops/*` (feedback, reviews, analytics) sin que falle el preflight
-- el backend ahora tambien acepta `X-Plura-Analytics-Session-Id` dentro de los headers CORS permitidos; web lo manda en requests client-side para correlacionar search, profile, funnel de `/reservar` y `BOOKING_CREATED` dentro de una misma sesion anonima
+- el backend acepta `X-Internal-Token` dentro de los headers CORS permitidos; esto es obligatorio para usar desde web los paneles internos `/internal/ops/*` (feedback, reviews) sin que falle el preflight
+- el backend ya no expone el tracking interno de analytics de producto ni el header `X-Plura-Analytics-Session-Id`.
 - cuando Fly muestra `Proxy not finding machines to route requests` para este backend, el primer chequeo no deberia ser el puerto: el codigo ya expone `server.address=0.0.0.0` y `server.port=${PORT:3000}`; el fallo mas probable pasa por machine caida, `healthcheck` sin pasar o secrets faltantes de DB/JWT/R2
 - `backend-java/fly.toml` ahora fuerza un pool mas chico en Fly (`HIKARI_MAX_POOL_SIZE=4`, `HIKARI_MIN_IDLE=0`), desactiva `SEARCH_MV_REFRESH_ON_STARTUP` y usa `[deploy].strategy = "immediate"` para no agotar el Session Pooler de Supabase durante updates donde una machine nueva compite por conexiones con la release anterior
 - el repo ahora incluye `backend-java/scripts/check_fly_runtime_env.sh` para validar desde shell las variables minimas de arranque segun el `fly.toml` actual y separar faltantes fatales de advertencias operativas
 - `V68__service_processing_fee_mode.sql` agrega `processing_fee_mode` a `professional_service` y `prepaid_processing_fee_mode_snapshot` a `booking`; `V69__booking_prepaid_processing_fee_snapshot.sql` agrega en `booking` los snapshots `prepaid_processing_fee_amount_snapshot` y `prepaid_total_amount_snapshot`
-- la secuencia real de migraciones Flyway del backend llega a `V77`; `V70__supabase_data_api_hardening.sql` crea `api_public` como schema expuesto vacio para PostgREST, revoca grants API sobre `public`, habilita RLS deny-all en tablas actuales de `public` y fija `search_path` en funciones SQL/PLpgSQL sensibles; `V71__advisor_index_cleanup.sql` limpia duplicados/redundancias marcadas por Supabase Advisor (`auth_refresh_token`, `professional_profile`, `booking`, `available_slot`, `auth_session`, `notification_event`, `app_product_event`, etc.) y agrega cobertura puntual adicional de billing/reviews; `V72__restore_fk_indexes_from_advisor.sql` repone los indices FK que Supabase siguio marcando como faltantes tras ese cleanup; `V73__move_relocatable_extensions_out_of_public.sql` mueve `pg_trgm` y `unaccent` al schema `extensions`; `V74__supabase_postgis_spatial_ref_sys_rls.sql` intenta habilitar RLS deny-all sobre `public.spatial_ref_sys` cuando el owner coincide con el usuario de migracion; `V75__move_postgis_out_of_public.sql` deja preparado el hardening de `postgis` con estrategia best-effort para Supabase: intenta mover `postgis` y extensiones dependientes a `extensions`, pero si el rol gestionado no puede tocar `pg_extension` no rompe Flyway y al menos revoca acceso explicito donde tenga permisos; `V76__cleanup_unused_indexes_after_advisor.sql` elimina indices remanentes que el backend actual no usa mas en billing, reviews, auth/oauth y search legacy sobre tablas base; `V77__professional_workers_foundation.sql` agrega `professional_worker`, `professional_worker_service`, `worker_id` en `booking`/`available_slot`, indices para agenda por trabajador y backfill del trabajador dueño por cada local existente
+- la secuencia real de migraciones Flyway del backend llega a `V79`; `V79__remove_internal_product_analytics.sql` elimina la tabla vieja `app_product_event`; las migraciones anteriores se mantienen como historial Flyway aplicado.
 - el backend fija `search_path=public,extensions` en `spring.datasource.hikari.connection-init-sql` para que funciones y casts PostGIS sigan resolviendo despues de mover `postgis` fuera de `public`
 - el repo ahora incluye `backend-java/src/test/java/com/plura/plurabackend/db/FlywayMigrationVersionUniquenessTest.java` para detectar versiones Flyway duplicadas antes de romper un deploy
 - el backend mantiene fallback a los nombres legacy `BILLING_MERCADOPAGO_ACCESS_TOKEN`, `BILLING_MERCADOPAGO_WEBHOOK_SECRET` y `BILLING_MERCADOPAGO_OAUTH_*`, pero el naming operativo recomendado ya es explicito por dominio: `SUBSCRIPTIONS_*` para planes y `RESERVATIONS_*` para cobros/OAuth profesional
@@ -241,9 +241,9 @@ Necesario para:
 
 Infra actual detectada:
 
-- Prometheus y Actuator para observabilidad tecnica
+- Actuator queda limitado a health; se removio el stack Prometheus/Grafana local.
 - Micrometer ya registra timings utiles en search y ahora tambien en public profile, public slots, client bookings, notification inbox y unread count
-- tracking funcional interno en PostgreSQL via tabla `app_product_event`; ademas de `SEARCH_PERFORMED` y `PROFESSIONAL_PROFILE_VIEWED`, ahora persiste eventos del funnel web de `/reservar`, `BOOKING_CREATED`, `PAYMENT_SESSION_CREATED` y cambios clave de lifecycle como `BOOKING_CONFIRMED`, `BOOKING_CANCELLED`, `BOOKING_RESCHEDULED`, `BOOKING_COMPLETED` y `BOOKING_NO_SHOW`
+- no queda tracking funcional interno de analytics de producto en PostgreSQL; el flujo operativo de reservas mantiene sus eventos de dominio y notificaciones.
 - snapshots adicionales en `booking` (`serviceCategory*`, `professionalRubro/City/Country`, `sourcePlatform`) para que el reporting interno no dependa de joins inestables contra estado actual del servicio o del perfil
 
 Pendiente a nivel de producto:
@@ -330,14 +330,13 @@ Areas de configuracion principales en `application.yml`:
 - SQS
 - search engine externo
 - billing
-- observabilidad via Actuator / Prometheus / Micrometer timers
+- healthcheck via Actuator y timers tecnicos internos con Micrometer
 
 Variables criticas sin las que el backend puede fallar o degradarse:
 
 - `JWT_SECRET`
 - `JWT_REFRESH_PEPPER`
 - `OPS_INTERNAL_TOKEN` para paneles internos protegidos por token
-- `OPS_ADMIN_CLIENT_EMAIL` si se quiere cambiar el email cliente habilitado para entrar al panel web `/internal/ops/analytics`; por default queda `admin@surlogicuy.com`
 - credenciales DB productivas
 - credenciales OAuth si se usa login social
 - variables de billing si se habilitan pagos reales
@@ -352,7 +351,7 @@ Notas operativas de performance hoy:
 
 - `GET /cliente/reservas/me` queda mejor cubierto con el indice Flyway `idx_booking_user_start` sobre `booking(user_id, start_date_time)`
 - search, perfil publico, slots, inbox y unread ya tienen timings tecnicos listos para enganchar a dashboards
-- `V65__internal_ops_business_analytics.sql` agrega la tabla `app_product_event` mas indices de reporting en `booking`; `V66__app_product_event_funnel_fields.sql` la amplia con ids/sesion/paso para dejar de mirar solo discovery y poder leer el funnel completo de reserva sin depender de proveedor externo
+- `V65__internal_ops_business_analytics.sql` y `V66__app_product_event_funnel_fields.sql` quedan como historial Flyway aplicado; `V79__remove_internal_product_analytics.sql` remueve la tabla `app_product_event`.
 - `QUERY_COUNT_HEADER_ENABLED=true` expone `X-Plura-Sql-Query-Count` para requests HTTP y cuenta sentencias Hibernate/JPA por request; no cubre consultas JDBC directas como search o el nuevo inbox read path
 - `V50__scale_hardening_indexes.sql` limpia indices sin uso claro en `email_dispatch`, `provider_operation` y `booking`, y agrega cobertura para lecturas por `provider_operation(status, updated_at|lease_until)` y `payment_transaction(external_reference, created_at)`
 - `provider_operation.findDueOperations()` ahora evita leer operaciones con `lease_until` todavia activo, para bajar churn del worker bajo concurrencia
@@ -431,7 +430,7 @@ Notas reales de deploy:
 - AWS S3 SDK / Cloudflare R2
 - AWS SQS
 - SMTP
-- Prometheus / Actuator
+- Actuator limitado a health
 
 ## Integraciones importantes para roadmap que no aparecen cerradas
 

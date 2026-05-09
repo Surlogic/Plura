@@ -3,7 +3,6 @@ package com.plura.plurabackend.core.booking.finance;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.plura.plurabackend.core.analytics.tracking.AppProductEventTrackingService;
 import com.plura.plurabackend.core.billing.BillingProperties;
 import com.plura.plurabackend.core.billing.payments.model.PaymentEvent;
 import com.plura.plurabackend.core.billing.payments.model.PaymentProvider;
@@ -102,7 +101,6 @@ public class BookingProviderIntegrationService {
     private final BookingProfessionalPlanGateway bookingProfessionalPlanGateway;
     private final BillingNotificationIntegrationService billingNotificationIntegrationService;
     private final BookingNotificationIntegrationService bookingNotificationIntegrationService;
-    private final AppProductEventTrackingService appProductEventTrackingService;
     private final Map<PaymentProvider, PaymentProviderClient> providerClients;
     private final TransactionTemplate requiresNewTransaction;
 
@@ -125,7 +123,6 @@ public class BookingProviderIntegrationService {
         BookingProfessionalPlanGateway bookingProfessionalPlanGateway,
         BillingNotificationIntegrationService billingNotificationIntegrationService,
         BookingNotificationIntegrationService bookingNotificationIntegrationService,
-        AppProductEventTrackingService appProductEventTrackingService,
         List<PaymentProviderClient> clients
     ) {
         this.bookingRepository = bookingRepository;
@@ -144,7 +141,6 @@ public class BookingProviderIntegrationService {
         this.bookingProfessionalPlanGateway = bookingProfessionalPlanGateway;
         this.billingNotificationIntegrationService = billingNotificationIntegrationService;
         this.bookingNotificationIntegrationService = bookingNotificationIntegrationService;
-        this.appProductEventTrackingService = appProductEventTrackingService;
         this.requiresNewTransaction = new TransactionTemplate(transactionManager);
         this.requiresNewTransaction.setPropagationBehavior(org.springframework.transaction.TransactionDefinition.PROPAGATION_REQUIRES_NEW);
         Map<PaymentProvider, PaymentProviderClient> mapped = new EnumMap<>(PaymentProvider.class);
@@ -204,12 +200,6 @@ public class BookingProviderIntegrationService {
         );
         if (existingApproved != null) {
             BookingFinancialSummary summary = bookingFinanceService.ensureInitializedWithEvidence(booking);
-            appProductEventTrackingService.trackPaymentSessionCreated(
-                booking,
-                existingApproved,
-                "existing_approved",
-                false
-            );
             return new BookingPaymentSessionResponse(
                 booking.getId(),
                 existingApproved.getId(),
@@ -232,12 +222,6 @@ public class BookingProviderIntegrationService {
             if (isLegacyReadOnlyProvider(existingPending.getProvider())) {
                 ProviderCheckoutSession session = recreatePendingCheckout(existingPending, booking, user);
                 BookingFinancialSummary summary = bookingFinanceService.ensureInitializedWithEvidence(booking);
-                appProductEventTrackingService.trackPaymentSessionCreated(
-                    booking,
-                    existingPending,
-                    "recreated_pending_checkout",
-                    session.checkoutUrl() != null && !session.checkoutUrl().isBlank()
-                );
                 return new BookingPaymentSessionResponse(
                     booking.getId(),
                     existingPending.getId(),
@@ -253,12 +237,6 @@ public class BookingProviderIntegrationService {
             if (checkoutUrl == null || checkoutUrl.isBlank()) {
                 ProviderCheckoutSession session = recreatePendingCheckout(existingPending, booking, user);
                 BookingFinancialSummary summary = bookingFinanceService.ensureInitializedWithEvidence(booking);
-                appProductEventTrackingService.trackPaymentSessionCreated(
-                    booking,
-                    existingPending,
-                    "recreated_missing_checkout_url",
-                    session.checkoutUrl() != null && !session.checkoutUrl().isBlank()
-                );
                 return new BookingPaymentSessionResponse(
                     booking.getId(),
                     existingPending.getId(),
@@ -271,12 +249,6 @@ public class BookingProviderIntegrationService {
                 );
             }
             BookingFinancialSummary summary = bookingFinanceService.ensureInitializedWithEvidence(booking);
-            appProductEventTrackingService.trackPaymentSessionCreated(
-                booking,
-                existingPending,
-                "existing_pending",
-                true
-            );
             return new BookingPaymentSessionResponse(
                 booking.getId(),
                 existingPending.getId(),
@@ -363,12 +335,6 @@ public class BookingProviderIntegrationService {
         operation.setLockedBy(null);
         operation.setLockedAt(null);
         operation.setLeaseUntil(null);
-        appProductEventTrackingService.trackPaymentSessionCreated(
-            booking,
-            transaction,
-            "checkout_created",
-            checkoutSession.checkoutUrl() != null && !checkoutSession.checkoutUrl().isBlank()
-        );
 
         return new BookingPaymentSessionResponse(
             booking.getId(),
@@ -1748,17 +1714,6 @@ public class BookingProviderIntegrationService {
         bookingEventService.record(
             booking,
             BookingEventType.BOOKING_CONFIRMED,
-            BookingActorType.SYSTEM,
-            null,
-            Map.of(
-                "source", "payment_webhook",
-                "paymentTransactionId", transaction.getId(),
-                "provider", event.provider().name(),
-                "providerPaymentId", firstNonBlank(transaction.getProviderPaymentId(), event.providerPaymentId(), event.providerObjectId())
-            )
-        );
-        appProductEventTrackingService.trackBookingConfirmed(
-            booking,
             BookingActorType.SYSTEM,
             null,
             Map.of(

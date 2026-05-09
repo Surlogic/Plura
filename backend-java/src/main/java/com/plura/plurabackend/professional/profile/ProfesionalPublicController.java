@@ -1,6 +1,5 @@
 package com.plura.plurabackend.professional.profile;
 
-import com.plura.plurabackend.core.analytics.tracking.AppProductEventTrackingService;
 import com.plura.plurabackend.core.booking.dto.PublicBookingRequest;
 import com.plura.plurabackend.core.booking.dto.PublicBookingResponse;
 import jakarta.validation.Valid;
@@ -40,16 +39,10 @@ public class ProfesionalPublicController {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ProfesionalPublicController.class);
     private static final String BOOKING_SLOT_CONSTRAINT = "uq_professional_start";
-    private static final String ANALYTICS_SESSION_HEADER = AppProductEventTrackingService.ANALYTICS_SESSION_HEADER;
     private final ProfessionalPublicPageService professionalPublicPageService;
-    private final AppProductEventTrackingService appProductEventTrackingService;
 
-    public ProfesionalPublicController(
-        ProfessionalPublicPageService professionalPublicPageService,
-        AppProductEventTrackingService appProductEventTrackingService
-    ) {
+    public ProfesionalPublicController(ProfessionalPublicPageService professionalPublicPageService) {
         this.professionalPublicPageService = professionalPublicPageService;
-        this.appProductEventTrackingService = appProductEventTrackingService;
     }
 
     /**
@@ -67,20 +60,8 @@ public class ProfesionalPublicController {
     }
 
     @GetMapping("/{slug}")
-    public ProfesionalPublicPageResponse getProfesionalBySlug(
-        @PathVariable String slug,
-        @RequestHeader(value = "X-Plura-Client-Platform", required = false) String clientPlatform,
-        @RequestHeader(value = ANALYTICS_SESSION_HEADER, required = false) String analyticsSessionId,
-        Authentication authentication
-    ) {
-        ProfesionalPublicPageResponse response = professionalPublicPageService.getPublicPageBySlug(slug);
-        appProductEventTrackingService.trackProfessionalProfileView(
-            clientPlatform,
-            analyticsSessionId,
-            resolveAuthenticatedUserId(authentication),
-            response
-        );
-        return response;
+    public ProfesionalPublicPageResponse getProfesionalBySlug(@PathVariable String slug) {
+        return professionalPublicPageService.getPublicPageBySlug(slug);
     }
 
     @GetMapping("/{slug}/slots")
@@ -101,7 +82,6 @@ public class ProfesionalPublicController {
         @PathVariable String slug,
         @Valid @RequestBody PublicBookingRequest request,
         @RequestHeader(value = "X-Plura-Client-Platform", required = false) String clientPlatform,
-        @RequestHeader(value = ANALYTICS_SESSION_HEADER, required = false) String analyticsSessionId,
         Authentication authentication
     ) {
         if (
@@ -118,8 +98,7 @@ public class ProfesionalPublicController {
                 slug,
                 request,
                 authentication.getPrincipal().toString(),
-                clientPlatform,
-                analyticsSessionId
+                clientPlatform
             );
             return ResponseEntity.status(HttpStatus.CREATED).body(response);
         } catch (DataIntegrityViolationException exception) {

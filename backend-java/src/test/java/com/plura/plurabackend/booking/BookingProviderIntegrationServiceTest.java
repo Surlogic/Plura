@@ -14,7 +14,6 @@ import com.plura.plurabackend.professional.application.ProfessionalSideEffectCoo
 import com.plura.plurabackend.professional.repository.ProfessionalProfileRepository;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.plura.plurabackend.core.analytics.tracking.AppProductEventTrackingService;
 import com.plura.plurabackend.core.billing.BillingProperties;
 import com.plura.plurabackend.core.billing.payments.model.PaymentEvent;
 import com.plura.plurabackend.core.billing.payments.model.PaymentProvider;
@@ -96,8 +95,6 @@ class BookingProviderIntegrationServiceTest {
         mock(BillingNotificationIntegrationService.class);
     private final BookingNotificationIntegrationService bookingNotificationIntegrationService =
         mock(BookingNotificationIntegrationService.class);
-    private final AppProductEventTrackingService appProductEventTrackingService =
-        mock(AppProductEventTrackingService.class);
     private final BookingProfessionalPlanGateway bookingProfessionalPlanGateway = mock(BookingProfessionalPlanGateway.class);
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final PlatformTransactionManager transactionManager = new PlatformTransactionManager() {
@@ -803,7 +800,6 @@ class BookingProviderIntegrationServiceTest {
             bookingProfessionalPlanGateway,
             billingNotificationIntegrationService,
             bookingNotificationIntegrationService,
-            appProductEventTrackingService,
             List.of(providerClient)
         );
     }

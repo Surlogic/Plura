@@ -283,14 +283,12 @@ Huecos relevantes contra el objetivo:
 
 - `/internal/feedback`: panel operativo exclusivo para feedback interno de app con listado filtrable, analytics y archivo/desarchivo; protegido por token interno configurable desde localStorage, no por sesion de usuario; `<meta name="robots" content="noindex,nofollow" />`
 - `/internal/ops/reviews`: superficie interna dedicada a moderacion de reseñas publicas y reportes; lista paginada, analytics, badges de reportes y acciones de hide/show del texto; protegida por el mismo `X-Internal-Token`
-- `/internal/ops/analytics`: tablero interno de negocio y marketplace para el equipo interno; consume un resumen agregado desde `/internal/ops/analytics/summary` y ahora muestra tambien funnel completo de reserva (`search -> profile -> flujo -> submit -> booking -> checkout -> confirmacion -> completion`), comparativa por plataforma (`WEB/MOBILE/INTERNAL`) y mix por modalidad de pago; en web ya no pide token manual para esta superficie: exige sesion cliente y habilita acceso solo a la cuenta interna `admin@surlogicuy.com`, con redirect al login cliente si falta sesion
 
 Modulos relevantes:
 
 - `services/internalOps.ts`: cliente HTTP con `X-Internal-Token` y URL base configurables desde localStorage
 - `pages/internal/feedback.tsx`: pagina completa con configuracion, analytics, filtros y tabla de feedback de app; enlaza a la superficie separada de reseñas
 - `pages/internal/ops/reviews.tsx`: pagina completa de moderacion de reseñas para internal ops; consume `/internal/ops/reviews*`, muestra reportes y mantiene hide/show del texto
-- `pages/internal/ops/analytics.tsx`: pagina completa del tablero interno de negocio; ordena `overview`, funnel completo de reserva, rubros, servicios, plataformas, mix de pago, retencion, demanda, ciudades y profesionales top sin exponer esos datos en la UX del cliente o del profesional
 
 ### Modulos transversales web
 
@@ -304,17 +302,15 @@ Modulos relevantes:
 - `hooks/useClientProfile.ts`: perfil del cliente autenticado.
 - `services/search.ts`: integra search y suggest.
 - `services/geo.ts`: geocoding y autocomplete.
-- `services/api.ts`: auth, refresh y headers de plataforma `WEB`; ahora tambien adjunta `X-Plura-Analytics-Session-Id` en requests client-side para correlacionar discovery + funnel de reserva.
+- `services/api.ts`: auth, refresh y headers de plataforma `WEB`.
 - `services/session.ts`: mantiene fallback token y un `known session hint` en storage para no disparar refresh/autofetch en rutas publicas cuando no hay sesion confirmada.
 - `hooks/useAuthLogout.ts` + `context/LogoutTransitionContext.tsx`: cierre de sesion unificado con overlay global y redireccion por rol.
 - `lib/auth/sessionErrors.ts`: clasifica `401/403` de auth aparte de errores transitorios para que la web no fuerce logout por fallas de red o `5xx`.
 - `services/appFeedback.ts`: feedback de app del cliente y profesional; ahora incluye `getPublicAppFeedback(limit)` para testimonios publicos via `GET /public/app-feedback`.
-- `services/internalOps.ts`: ahora tambien tipa y consume `GET /internal/ops/analytics/summary` para la superficie interna de analytics.
 - `middleware.ts`: CSP y headers de seguridad.
 - `/oauth/mercadopago/callback`: ahora interpreta `result/reason` devueltos por el backend y consulta el estado real de conexion; ya no intenta llamar al callback backend con `code/state`.
 - `pages/profesional/pagina/[slug].tsx`: compone la pagina publica con shell ancho (`max-w-[1500px]`), hero abierto con info util integrada (direccion exacta, horarios, WhatsApp/telefono y redes), botón flotante `Reservar` fijo abajo a la derecha con scroll interno a `#servicios`, toggle de `Favoritos` con guard client-side para anónimos, galeria contenida antes de servicios, sección `Sobre nosotros` usando `merged.about` cuando hay copy pública y cierre `Confianza y ubicación` con reseñas en modal + mapa o fallback de dirección; la galeria usa solo `merged.photos`/fotos publicas del negocio y excluye cualquier `imageUrl/photos` de servicios; ya no renderiza bloque aparte de `Ubicacion y horarios` ni email publico en esta landing.
 - `pages/reservar.tsx`: orquestador del flujo publico de reserva en `3` etapas reales; mantiene los mismos servicios/endpoints (`public profile`, `slots`, `create booking`, `payment-session`), compatibilidad con `pendingReservation`, sync de `serviceId/date/time/step` en URL y la derivacion a `/cliente/reservas` para seguimiento post-creacion/post-checkout.
-- `pages/reservar.tsx`: ademas del flujo operativo, ahora emite eventos internos del funnel (`RESERVATION_STEP_VIEWED`, servicio/fecha/horario confirmados, auth abierto/completado, submit, checkout bloqueado) hacia `POST /public/product-analytics/events` sin afectar la UX si el tracking falla.
 - `components/reservation/ReservationServiceSelector.tsx`: paso `1`; muestra el servicio elegido con su detalle completo y deja editar/cancelar o abrir el selector interno por categoria.
 - `components/reservation/ReservationScheduleStep.tsx`: paso `2`; combina calendario + horarios en la misma vista, mantiene la carga real de slots por `serviceId/date` y solo habilita continuar cuando hay fecha y hora.
 - `components/reservation/ReservationSummaryCard.tsx`: paso `3`; unico resumen final con CTA segun modalidad (`Reservar`, `Pagar seña y reservar`, `Pagar y reservar`), politica, nota operativa de estado `PENDING` y atajos para volver a editar servicio o fecha/horario.
@@ -329,7 +325,7 @@ Modulos relevantes:
 Lectura de producto:
 
 - search + mapa sostienen marketplace y descubrimiento
-- el repo ahora ya expone un backoffice interno de analytics separado de la experiencia de cliente/profesional: vive en `/internal/ops/analytics` y se apoya en agregados propios de reservas/pagos/reseñas mas tracking interno de marketplace y funnel de reserva persistido en `app_product_event`
+- el repo ya no expone el backoffice interno de analytics ni tracking de funnel persistido en `app_product_event`.
 - `middleware.ts` y `services/api.ts` sostienen parte del bloque core de autenticacion y seguridad
 - en rutas protegidas web, un fallo transitorio al refrescar sesion o cargar `/auth/me/*` ya no limpia la sesion local ni redirige a login; la redireccion queda reservada a `401/403` reales
 - `_app.tsx` mantiene globales los providers de perfil, pero ahora monta por ruta los providers de notificaciones y del shell profesional con cambios sin guardar solo en dashboard/notificaciones para bajar costo base fuera de esas superficies; ademas las campanas de notificaciones del shell difieren la primera carga del unread count hasta interaccion o idle en vez de pedirlo apenas monta la vista; los hooks de perfil ya no fuerzan un refetch extra cuando el provider aun no termino su carga inicial

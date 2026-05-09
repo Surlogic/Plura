@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/router';
 import { isAxiosError } from 'axios';
 import Footer from '@/components/shared/Footer';
@@ -11,7 +11,6 @@ import Button from '@/components/ui/Button';
 import { useClientProfileContext } from '@/context/ClientProfileContext';
 import { getBookingPaymentSessionMessage } from '@/lib/bookings/paymentSession';
 import { createClientBookingPaymentSession } from '@/services/clientBookings';
-import { trackProductAnalyticsEvent } from '@/services/productAnalytics';
 import {
   clearPendingReservation,
   getPendingReservation,
@@ -119,8 +118,6 @@ export default function ReservationPage() {
   const [activeStep, setActiveStep] = useState<ReservationStep>(1);
   const [isEditingServiceSelection, setIsEditingServiceSelection] = useState(false);
   const [isAuthOverlayOpen, setIsAuthOverlayOpen] = useState(false);
-  const trackedStepViewsRef = useRef<Set<string>>(new Set());
-  const trackedAuthEventsRef = useRef<Set<string>>(new Set());
 
   const professionalSlug = resolveQueryValue(router.query.profesional).trim();
   const serviceId =
@@ -170,12 +167,6 @@ export default function ReservationPage() {
       ) ?? null,
     [professional?.services, selectedServiceId],
   );
-  const professionalId = useMemo(() => {
-    if (!professional?.id) return null;
-    const parsed = Number.parseInt(professional.id, 10);
-    return Number.isFinite(parsed) ? parsed : null;
-  }, [professional?.id]);
-
   const confirmedService = useMemo(
     () =>
       professional?.services.find(
@@ -273,41 +264,6 @@ export default function ReservationPage() {
       serviceName: confirmedService.name,
     });
   };
-
-  const buildAnalyticsPayload = useCallback(
-    (
-      overrides: Parameters<typeof trackProductAnalyticsEvent>[0],
-    ) => ({
-      sourceSurface: 'reservation_flow',
-      professionalId,
-      professionalSlug: professionalSlug || professional?.slug || null,
-      professionalRubro: professional?.rubro || null,
-      categorySlug: confirmedService?.categorySlug ?? selectedService?.categorySlug ?? null,
-      categoryLabel:
-        confirmedService?.categoryName ??
-        selectedService?.categoryName ??
-        professional?.rubro ??
-        null,
-      serviceId: confirmedService?.id ?? selectedService?.id ?? null,
-      city: professional?.city ?? null,
-      country: professional?.country ?? null,
-      ...overrides,
-    }),
-    [
-      confirmedService?.categoryName,
-      confirmedService?.categorySlug,
-      confirmedService?.id,
-      professional?.city,
-      professional?.country,
-      professional?.rubro,
-      professional?.slug,
-      professionalId,
-      professionalSlug,
-      selectedService?.categoryName,
-      selectedService?.categorySlug,
-      selectedService?.id,
-    ],
-  );
 
   useEffect(() => {
     if (serviceCategories.length === 0) {
@@ -546,41 +502,6 @@ export default function ReservationPage() {
   ]);
 
   useEffect(() => {
-    if (!professional || !professionalSlug) return;
-
-    const stepNameByNumber: Record<ReservationStep, string> = {
-      1: 'service',
-      2: 'schedule',
-      3: 'confirm',
-    };
-    const stepName = stepNameByNumber[activeStep];
-    if (trackedStepViewsRef.current.has(stepName)) {
-      return;
-    }
-
-    trackedStepViewsRef.current.add(stepName);
-    void trackProductAnalyticsEvent(
-      buildAnalyticsPayload({
-        eventKey: 'RESERVATION_STEP_VIEWED',
-        stepName,
-        metadata: {
-          activeStep,
-          requiresCheckout: isPrepaidBooking(
-            (confirmedService ?? selectedService)?.paymentType,
-          ),
-        },
-      }),
-    );
-  }, [
-    activeStep,
-    buildAnalyticsPayload,
-    confirmedService,
-    professional,
-    professionalSlug,
-    selectedService,
-  ]);
-
-  useEffect(() => {
     if (activeStep > 1 && !confirmedService?.id) {
       setActiveStep(1);
       return;
@@ -627,20 +548,6 @@ export default function ReservationPage() {
       setSlots([]);
     }
 
-    void trackProductAnalyticsEvent(
-      buildAnalyticsPayload({
-        eventKey: 'RESERVATION_SERVICE_CONFIRMED',
-        stepName: 'service',
-        serviceId: normalizedSelectedServiceId,
-        categorySlug: selectedService.categorySlug ?? null,
-        categoryLabel: selectedService.categoryName ?? professional?.rubro ?? null,
-        metadata: {
-          paymentType: selectedService.paymentType ?? null,
-          price: selectedService.price ?? null,
-        },
-      }),
-    );
-
     resetMessages();
   };
 
@@ -668,16 +575,6 @@ export default function ReservationPage() {
     setConfirmedDate(selectedDate);
     setActiveStep(3);
 
-    void trackProductAnalyticsEvent(
-      buildAnalyticsPayload({
-        eventKey: 'RESERVATION_DATE_CONFIRMED',
-        stepName: 'schedule',
-        metadata: {
-          selectedDate,
-          selectedTime,
-        },
-      }),
-    );
     resetMessages();
   };
 
@@ -688,15 +585,6 @@ export default function ReservationPage() {
 
   const handleSelectTime = (time: string) => {
     setSelectedTime(time);
-    void trackProductAnalyticsEvent(
-      buildAnalyticsPayload({
-        eventKey: 'RESERVATION_TIME_SELECTED',
-        stepName: 'schedule',
-        metadata: {
-          selectedTime: time,
-        },
-      }),
-    );
     resetMessages();
   };
 
@@ -725,17 +613,6 @@ export default function ReservationPage() {
 
     const requiresCheckout = isPrepaidBooking(confirmedService.paymentType);
 
-    void trackProductAnalyticsEvent(
-      buildAnalyticsPayload({
-        eventKey: 'RESERVATION_SUBMIT_ATTEMPTED',
-        stepName: 'confirm',
-        metadata: {
-          selectedDate: confirmedDate,
-          selectedTime,
-          requiresCheckout,
-        },
-      }),
-    );
     let createdBookingId: number | null = null;
 
     try {
@@ -762,16 +639,6 @@ export default function ReservationPage() {
           checkoutOpenResult = openCheckoutUrl(paymentSession.checkoutUrl);
           if (checkoutOpenResult === 'blocked') {
             checkoutMode = 'failed';
-            void trackProductAnalyticsEvent(
-              buildAnalyticsPayload({
-                eventKey: 'PAYMENT_CHECKOUT_BLOCKED',
-                bookingId: created.id,
-                stepName: 'confirm',
-                metadata: {
-                  provider: paymentSession.provider ?? null,
-                },
-              }),
-            );
           }
         }
 
@@ -817,18 +684,6 @@ export default function ReservationPage() {
       } else if (isAxiosError(error) && error.response?.status === 401) {
         persistPendingReservation();
         setSaveError('Necesitás iniciar sesión como cliente para confirmar esta reserva.');
-        if (!trackedAuthEventsRef.current.has('opened')) {
-          trackedAuthEventsRef.current.add('opened');
-          void trackProductAnalyticsEvent(
-            buildAnalyticsPayload({
-              eventKey: 'RESERVATION_AUTH_OPENED',
-              stepName: 'confirm',
-              metadata: {
-                reason: 'session_expired_or_missing',
-              },
-            }),
-          );
-        }
         setIsAuthOverlayOpen(true);
       } else {
         setSaveError(extractApiMessage(error, RESERVATION_ERROR_FALLBACK));
@@ -860,18 +715,6 @@ export default function ReservationPage() {
       persistPendingReservation();
       setSaveMessage(null);
       setSaveError(null);
-      if (!trackedAuthEventsRef.current.has('opened')) {
-        trackedAuthEventsRef.current.add('opened');
-        void trackProductAnalyticsEvent(
-          buildAnalyticsPayload({
-            eventKey: 'RESERVATION_AUTH_OPENED',
-            stepName: 'confirm',
-            metadata: {
-              reason: 'missing_client_session',
-            },
-          }),
-        );
-      }
       setIsAuthOverlayOpen(true);
       return;
     }
@@ -882,15 +725,6 @@ export default function ReservationPage() {
   const handleAuthenticatedReservation = async () => {
     setSaveMessage('Sesión lista. Estamos confirmando tu reserva...');
     setSaveError(null);
-    if (!trackedAuthEventsRef.current.has('completed')) {
-      trackedAuthEventsRef.current.add('completed');
-      void trackProductAnalyticsEvent(
-        buildAnalyticsPayload({
-          eventKey: 'RESERVATION_AUTH_COMPLETED',
-          stepName: 'confirm',
-        }),
-      );
-    }
     await submitReservation();
   };
 

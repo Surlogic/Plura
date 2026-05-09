@@ -31,6 +31,11 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
+/**
+ * Tests de autenticacion, sesiones, OTP y recuperacion de cuenta.
+ * Cubren escenarios de auth abuse protection integracion para documentar el comportamiento esperado y evitar regresiones.
+ * Mantener estos casos alineados con los contratos reales del backend cuando cambie la logica productiva.
+ */
 @SpringBootTest(properties = {
     "SPRING_DATASOURCE_URL=jdbc:h2:mem:plura-abuse-test;MODE=PostgreSQL;DB_CLOSE_DELAY=-1;DATABASE_TO_LOWER=TRUE",
     "SPRING_DATASOURCE_USERNAME=sa",
@@ -62,6 +67,10 @@ class AuthAbuseProtectionIntegrationTest {
     @Autowired private AuthOtpChallengeRepository authOtpChallengeRepository;
     @Autowired private PasswordResetTokenRepository passwordResetTokenRepository;
 
+    /**
+     * Prepara mocks, datos base o configuracion comun antes de cada caso de prueba.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @BeforeEach
     void cleanUp() {
         authAuditLogRepository.deleteAll();
@@ -76,6 +85,10 @@ class AuthAbuseProtectionIntegrationTest {
 
     // --- Login rate limiting ---
 
+    /**
+     * Escenario: login rate limit bloquea after excessive failures.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void loginRateLimitBlocksAfterExcessiveFailures() throws Exception {
         registerClient("login-rl@plura.com");
@@ -104,6 +117,10 @@ class AuthAbuseProtectionIntegrationTest {
 
     // --- Forgot password rate limiting ---
 
+    /**
+     * Escenario: forgot contrasena rate limit bloquea after excessive attempts.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void forgotPasswordRateLimitBlocksAfterExcessiveAttempts() throws Exception {
         for (int i = 0; i < 6; i++) {
@@ -127,6 +144,10 @@ class AuthAbuseProtectionIntegrationTest {
         assertFalse(rateLimitLogs.isEmpty(), "FORGOT_PASSWORD_RATE_LIMITED audit event should be logged");
     }
 
+    /**
+     * Escenario: contrasena recovery start rate limit bloquea after excessive attempts.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void passwordRecoveryStartRateLimitBlocksAfterExcessiveAttempts() throws Exception {
         for (int i = 0; i < 20; i++) {
@@ -148,6 +169,10 @@ class AuthAbuseProtectionIntegrationTest {
             .andExpect(status().isTooManyRequests());
     }
 
+    /**
+     * Escenario: contrasena recovery confirm rate limit bloquea after excessive attempts.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void passwordRecoveryConfirmRateLimitBlocksAfterExcessiveAttempts() throws Exception {
         for (int i = 0; i < 20; i++) {
@@ -185,6 +210,10 @@ class AuthAbuseProtectionIntegrationTest {
 
     // --- Register rate limiting ---
 
+    /**
+     * Escenario: registro rate limit bloquea after excessive attempts.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void registerRateLimitBlocksAfterExcessiveAttempts() throws Exception {
         for (int i = 0; i < 5; i++) {
@@ -210,6 +239,10 @@ class AuthAbuseProtectionIntegrationTest {
 
     // --- Verify email send rate limiting ---
 
+    /**
+     * Escenario: verify email send rate limit bloquea after excessive attempts.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void verifyEmailSendRateLimitBlocksAfterExcessiveAttempts() throws Exception {
         registerClient("verify-email-rl@plura.com");
@@ -237,6 +270,10 @@ class AuthAbuseProtectionIntegrationTest {
 
     // --- Verify email confirm rate limiting ---
 
+    /**
+     * Escenario: verify email confirm rate limit bloquea after excessive attempts.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void verifyEmailConfirmRateLimitBlocksAfterExcessiveAttempts() throws Exception {
         registerClient("verify-email-confirm-rl@plura.com");
@@ -268,6 +305,10 @@ class AuthAbuseProtectionIntegrationTest {
 
     // --- Verify phone send rate limiting ---
 
+    /**
+     * Escenario: verify telefono send rate limit bloquea after excessive attempts.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void verifyPhoneSendRateLimitBlocksAfterExcessiveAttempts() throws Exception {
         registerClient("verify-phone-rl@plura.com");
@@ -295,6 +336,10 @@ class AuthAbuseProtectionIntegrationTest {
 
     // --- Verify phone confirm rate limiting ---
 
+    /**
+     * Escenario: verify telefono confirm rate limit bloquea after excessive attempts.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void verifyPhoneConfirmRateLimitBlocksAfterExcessiveAttempts() throws Exception {
         registerClient("verify-phone-confirm-rl@plura.com");
@@ -326,6 +371,10 @@ class AuthAbuseProtectionIntegrationTest {
 
     // --- Challenge send rate limiting ---
 
+    /**
+     * Escenario: challenge send rate limit bloquea after excessive attempts.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void challengeSendRateLimitBlocksAfterExcessiveAttempts() throws Exception {
         registerClient("challenge-send-rl@plura.com");
@@ -357,6 +406,10 @@ class AuthAbuseProtectionIntegrationTest {
 
     // --- Challenge verify rate limiting ---
 
+    /**
+     * Escenario: challenge verify rate limit bloquea after excessive attempts.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void challengeVerifyRateLimitBlocksAfterExcessiveAttempts() throws Exception {
         registerClient("challenge-verify-rl@plura.com");
@@ -388,6 +441,10 @@ class AuthAbuseProtectionIntegrationTest {
 
     // --- Refresh does not get accidentally blocked ---
 
+    /**
+     * Escenario: refresh is no accidentally blocked by rate limit.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void refreshIsNotAccidentallyBlockedByRateLimit() throws Exception {
         registerClient("refresh-safe@plura.com");
@@ -408,6 +465,10 @@ class AuthAbuseProtectionIntegrationTest {
         assertNotNull(payload.path("accessToken").asText());
     }
 
+    /**
+     * Escenario: refresh rate limit bloquea after excessive attempts.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void refreshRateLimitBlocksAfterExcessiveAttempts() throws Exception {
         registerClient("refresh-rl@plura.com");
@@ -444,6 +505,10 @@ class AuthAbuseProtectionIntegrationTest {
 
     // --- GET /auth/audit returns only events for authenticated user ---
 
+    /**
+     * Escenario: auditoria endpoint verifica que devuelva only eventos for authenticated usuario.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void auditEndpointReturnsOnlyEventsForAuthenticatedUser() throws Exception {
         registerClient("audit-user1@plura.com");
@@ -485,14 +550,22 @@ class AuthAbuseProtectionIntegrationTest {
         assertFalse(containsEvent(events2, AuthAuditEventType.PHONE_VERIFICATION_SENT.name()));
     }
 
+    /**
+     * Escenario: auditoria endpoint requires authentication.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void auditEndpointRequiresAuthentication() throws Exception {
         mockMvc.perform(get("/auth/audit"))
             .andExpect(status().isUnauthorized());
     }
 
-    // --- Differentiated limits: login and forgot password use separate buckets ---
+    // --- Differentiated limits: login y forgot password use separate buckets ---
 
+    /**
+     * Escenario: login y forgot contrasena use separate buckets.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void loginAndForgotPasswordUseSeparateBuckets() throws Exception {
         registerClient("separate-buckets@plura.com");

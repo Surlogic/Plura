@@ -4,11 +4,20 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
+/**
+ * LoggingPhoneVerificationNotificationSender es un componente de dominio del modulo autenticacion.
+ * Responsabilidad: encapsular comportamiento propio del modulo y mantenerlo fuera de controllers u otras capas.
+ * Mantiene separada esta responsabilidad para que el resto del backend use una API clara.
+ * Foco funcional: notificaciones, telefono.
+ */
 @Component
 public class LoggingPhoneVerificationNotificationSender implements PhoneVerificationNotificationSender {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(LoggingPhoneVerificationNotificationSender.class);
 
+    /**
+     * Envia verification code mediante el canal configurado.
+     */
     @Override
     public void sendVerificationCode(PhoneVerificationNotification notification) {
         if (notification == null || notification.user() == null) {
@@ -20,6 +29,9 @@ public class LoggingPhoneVerificationNotificationSender implements PhoneVerifica
         );
     }
 
+    /**
+     * Ejecuta la logica de mask telefono manteniendola encapsulada en este componente.
+     */
     private String maskPhone(String phoneNumber) {
         if (phoneNumber == null || phoneNumber.isBlank()) {
             return "desconocido";

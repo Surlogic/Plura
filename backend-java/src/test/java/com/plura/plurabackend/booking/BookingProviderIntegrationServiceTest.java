@@ -70,6 +70,11 @@ import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.TransactionStatus;
 import org.springframework.transaction.support.SimpleTransactionStatus;
 
+/**
+ * Tests de reservas.
+ * Cubren escenarios de reserva proveedor integracion servicio para documentar el comportamiento esperado y evitar regresiones.
+ * Mantener estos casos alineados con los contratos reales del backend cuando cambie la logica productiva.
+ */
 class BookingProviderIntegrationServiceTest {
 
     private final BookingRepository bookingRepository = mock(BookingRepository.class);
@@ -110,6 +115,10 @@ class BookingProviderIntegrationServiceTest {
         }
     };
 
+    /**
+     * Escenario: debe reuse pendiente Mercado Pago checkout sesion.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void shouldReusePendingMercadoPagoCheckoutSession() throws Exception {
         BookingProviderIntegrationService service = buildService();
@@ -172,6 +181,10 @@ class BookingProviderIntegrationServiceTest {
         verify(providerClient, never()).createBookingCheckout(any());
     }
 
+    /**
+     * Escenario: debe rotate legacy pendiente checkout a Mercado Pago runtime.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void shouldRotateLegacyPendingCheckoutToMercadoPagoRuntime() throws Exception {
         BookingProviderIntegrationService service = buildService();
@@ -228,6 +241,10 @@ class BookingProviderIntegrationServiceTest {
         verify(providerClient).createBookingCheckout(any());
     }
 
+    /**
+     * Escenario: debe crear checkout directly sin after commit.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void shouldCreateCheckoutDirectlyWithoutAfterCommit() throws Exception {
         BookingProviderIntegrationService service = buildService();
@@ -301,6 +318,10 @@ class BookingProviderIntegrationServiceTest {
         assertEquals(ProviderOperationStatus.SUCCEEDED, operation.getStatus());
     }
 
+    /**
+     * Escenario: debe preserve concrete checkout failure reason.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void shouldPreserveConcreteCheckoutFailureReason() {
         BookingProviderIntegrationService service = buildService();
@@ -372,6 +393,10 @@ class BookingProviderIntegrationServiceTest {
         assertTrue(exception.getReason().contains("No se pudo iniciar checkout de reserva"));
     }
 
+    /**
+     * Escenario: debe sync pendiente charge using Mercado Pago verification by external reference.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void shouldSyncPendingChargeUsingMercadoPagoVerificationByExternalReference() {
         BookingProviderIntegrationService service = buildService();
@@ -420,6 +445,10 @@ class BookingProviderIntegrationServiceTest {
         assertEquals("mp-pay-1", charge.getProviderPaymentId());
     }
 
+    /**
+     * Escenario: debe process reservation webhook y confirm reserva.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void shouldProcessReservationWebhookAndConfirmBooking() {
         BookingProviderIntegrationService service = buildService();
@@ -478,6 +507,10 @@ class BookingProviderIntegrationServiceTest {
         );
     }
 
+    /**
+     * Escenario: debe process Mercado Pago reembolso webhook.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void shouldProcessMercadoPagoRefundWebhook() {
         BookingProviderIntegrationService service = buildService();
@@ -544,6 +577,10 @@ class BookingProviderIntegrationServiceTest {
         verify(bookingFinanceService).markRefundRecordCompleted(refundRecord.getId(), "rf-1");
     }
 
+    /**
+     * Escenario: debe keep reembolso operacion under follow up cuando proveedor leaves reembolso pendiente.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void shouldKeepRefundOperationUnderFollowUpWhenProviderLeavesRefundPending() {
         BookingProviderIntegrationService service = buildService();
@@ -634,6 +671,10 @@ class BookingProviderIntegrationServiceTest {
         assertEquals("rf-pending", refundTx.getProviderPaymentId());
     }
 
+    /**
+     * Escenario: debe notify refunded cuando proveedor completes reembolso during dispatch.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void shouldNotifyRefundedWhenProviderCompletesRefundDuringDispatch() {
         BookingProviderIntegrationService service = buildService();
@@ -719,6 +760,10 @@ class BookingProviderIntegrationServiceTest {
         assertEquals("rf-success", refundTx.getProviderPaymentId());
     }
 
+    /**
+     * Escenario: debe fail legacy proveedor operacion sin calling runtime proveedor.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void shouldFailLegacyProviderOperationWithoutCallingRuntimeProvider() {
         BookingProviderIntegrationService service = buildService();

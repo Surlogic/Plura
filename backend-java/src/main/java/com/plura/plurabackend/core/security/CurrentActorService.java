@@ -9,9 +9,19 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
+/**
+ * CurrentActorService es un servicio de negocio del modulo seguridad.
+ * Responsabilidad: coordinar reglas de negocio, validaciones, persistencia e integraciones del caso de uso.
+ * Mantiene separada esta responsabilidad para que el resto del backend use una API clara.
+ * Foco funcional: servicios.
+ */
 @Service
 public class CurrentActorService {
 
+    /**
+     * Exige authentication y corta la ejecucion si falta autorizacion o contexto.
+     * Esta separacion hace explicita la regla de seguridad o negocio que protege el flujo.
+     */
     public Authentication requireAuthentication() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication == null || authentication.getPrincipal() == null) {
@@ -20,6 +30,9 @@ public class CurrentActorService {
         return authentication;
     }
 
+    /**
+     * Ejecuta la logica de actual usuario ID manteniendola encapsulada en este componente.
+     */
     public Long currentUserId() {
         Authentication authentication = requireAuthentication();
         try {
@@ -29,6 +42,9 @@ public class CurrentActorService {
         }
     }
 
+    /**
+     * Ejecuta la logica de actual rol manteniendola encapsulada en este componente.
+     */
     public UserRole currentRole() {
         Authentication authentication = requireAuthentication();
         boolean isProfessional = authentication.getAuthorities().stream()
@@ -46,6 +62,9 @@ public class CurrentActorService {
         throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Rol inválido");
     }
 
+    /**
+     * Ejecuta la logica de actual contexto tipo manteniendola encapsulada en este componente.
+     */
     public AuthContextType currentContextType() {
         AuthenticatedTokenDetails details = currentTokenDetails();
         if (details != null && details.contextType() != null) {
@@ -55,6 +74,9 @@ public class CurrentActorService {
         return role == UserRole.PROFESSIONAL ? AuthContextType.PROFESSIONAL : AuthContextType.CLIENT;
     }
 
+    /**
+     * Obtiene el usuario profesional autenticado desde el contexto de seguridad actual.
+     */
     public Long currentProfessionalUserId() {
         AuthContextType ctx = currentContextType();
         if (ctx != AuthContextType.PROFESSIONAL) {
@@ -66,6 +88,9 @@ public class CurrentActorService {
         return currentUserId();
     }
 
+    /**
+     * Ejecuta la logica de actual cliente usuario ID manteniendola encapsulada en este componente.
+     */
     public Long currentClientUserId() {
         AuthContextType ctx = currentContextType();
         if (ctx != AuthContextType.CLIENT) {
@@ -77,6 +102,9 @@ public class CurrentActorService {
         return currentUserId();
     }
 
+    /**
+     * Ejecuta la logica de actual trabajador ID manteniendola encapsulada en este componente.
+     */
     public Long currentWorkerId() {
         AuthenticatedTokenDetails details = currentTokenDetails();
         if (details == null || details.contextType() != AuthContextType.WORKER) {
@@ -93,6 +121,9 @@ public class CurrentActorService {
         }
     }
 
+    /**
+     * Ejecuta la logica de actual trabajador profesional ID manteniendola encapsulada en este componente.
+     */
     public Long currentWorkerProfessionalId() {
         AuthenticatedTokenDetails details = currentTokenDetails();
         if (details == null || details.contextType() != AuthContextType.WORKER) {
@@ -109,6 +140,9 @@ public class CurrentActorService {
         }
     }
 
+    /**
+     * Ejecuta la logica de actual token details manteniendola encapsulada en este componente.
+     */
     public AuthenticatedTokenDetails currentTokenDetails() {
         Authentication authentication = requireAuthentication();
         Object details = authentication.getDetails();

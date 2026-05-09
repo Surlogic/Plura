@@ -15,6 +15,12 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
+/**
+ * SqsJobWorker es un worker asincronico del modulo jobs / SQS.
+ * Responsabilidad: procesar tareas pendientes con control de estado, reintentos o leases.
+ * Colabora con: queueService, idempotencyService, thumbnailJobService, localImageThumbnailJobService, entre otros.
+ * Foco funcional: trabajadores.
+ */
 @Component
 public class SqsJobWorker {
 
@@ -46,6 +52,9 @@ public class SqsJobWorker {
         this.sqsEnabled = sqsEnabled;
     }
 
+    /**
+     * Ejecuta la logica de poll queue manteniendola encapsulada en este componente.
+     */
     @Scheduled(fixedDelayString = "${app.sqs.worker-delay-millis:1000}")
     public void pollQueue() {
         if (!sqsEnabled || !queueService.isEnabled()) {
@@ -68,6 +77,9 @@ public class SqsJobWorker {
         }
     }
 
+    /**
+     * Procesa message y coordina la respuesta del flujo.
+     */
     private void handleMessage(QueueJobMessage message) throws Exception {
         if (message == null || message.type() == null) {
             return;

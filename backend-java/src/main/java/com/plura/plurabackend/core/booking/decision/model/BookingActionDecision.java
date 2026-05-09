@@ -20,6 +20,12 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+/**
+ * BookingActionDecision es un entidad JPA del modulo reservas / decisiones / modelo.
+ * Responsabilidad: representar una tabla del dominio, sus columnas y los defaults necesarios antes de persistir.
+ * Persistencia: sus campos reflejan columnas reales; cambiar nombres o tipos puede requerir migracion Flyway.
+ * Foco funcional: reservas.
+ */
 @Data
 @NoArgsConstructor
 @AllArgsConstructor

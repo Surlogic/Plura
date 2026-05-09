@@ -6,6 +6,12 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+/**
+ * MediaPresentationDto es un DTO del modulo profesionales / contratos DTO.
+ * Responsabilidad: transportar datos entre capas sin exponer entidades JPA.
+ * Mantiene separada esta responsabilidad para que el resto del backend use una API clara.
+ * Foco funcional: la responsabilidad indicada por su paquete y nombre.
+ */
 @Data
 @NoArgsConstructor
 @AllArgsConstructor

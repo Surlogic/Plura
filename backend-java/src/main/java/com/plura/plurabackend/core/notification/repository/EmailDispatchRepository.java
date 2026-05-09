@@ -12,6 +12,12 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+/**
+ * EmailDispatchRepository es un contrato interno del modulo notificaciones / persistencia.
+ * Responsabilidad: definir una frontera estable para que otros modulos no dependan de detalles concretos.
+ * Persistencia: concentra queries derivadas o JPQL para que los servicios no conozcan SQL/joins.
+ * Foco funcional: email transaccional.
+ */
 public interface EmailDispatchRepository extends JpaRepository<EmailDispatch, String> {
 
     Optional<EmailDispatch> findByNotificationEvent_Id(String notificationEventId);

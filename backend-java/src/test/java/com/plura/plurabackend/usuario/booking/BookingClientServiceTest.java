@@ -28,8 +28,17 @@ import java.util.Map;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 
+/**
+ * Tests de funciones del cliente final / reservas.
+ * Cubren escenarios de reserva cliente servicio para documentar el comportamiento esperado y evitar regresiones.
+ * Mantener estos casos alineados con los contratos reales del backend cuando cambie la logica productiva.
+ */
 class BookingClientServiceTest {
 
+    /**
+     * Escenario: verifica que devuelva cliente reservas sin sincronizar pagos.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void returnsClientBookingsWithoutSyncingPayments() {
         BookingRepository bookingRepository = mock(BookingRepository.class);

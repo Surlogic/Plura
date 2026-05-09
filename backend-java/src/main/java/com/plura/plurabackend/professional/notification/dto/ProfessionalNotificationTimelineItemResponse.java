@@ -7,6 +7,12 @@ import com.plura.plurabackend.core.notification.model.NotificationRecipientType;
 import java.time.LocalDateTime;
 import java.util.Map;
 
+/**
+ * ProfessionalNotificationTimelineItemResponse es un modelo inmutable del modulo profesionales / notificaciones / contratos DTO.
+ * Responsabilidad: agrupar datos de lectura o respuesta con una estructura clara y sin estado mutable.
+ * Contrato: lo consumen web/mobile, asi que renombrar campos puede romper compatibilidad.
+ * Foco funcional: profesionales, notificaciones.
+ */
 public record ProfessionalNotificationTimelineItemResponse(
     String id,
     String eventUuid,

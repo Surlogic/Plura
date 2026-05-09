@@ -17,6 +17,12 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
+/**
+ * CookieOriginProtectionFilter es un filtro HTTP del modulo seguridad.
+ * Responsabilidad: aplicar una regla transversal sobre cada request antes de llegar a los controllers.
+ * Colabora con: allowedOrigins, trustForwardedHeaders.
+ * Foco funcional: la responsabilidad indicada por su paquete y nombre.
+ */
 @Component
 public class CookieOriginProtectionFilter extends OncePerRequestFilter {
 
@@ -45,6 +51,9 @@ public class CookieOriginProtectionFilter extends OncePerRequestFilter {
         this.trustForwardedHeaders = trustForwardedHeaders;
     }
 
+    /**
+     * Aplica el filtro al request actual antes de continuar la cadena HTTP.
+     */
     @Override
     protected void doFilterInternal(
         HttpServletRequest request,
@@ -71,6 +80,9 @@ public class CookieOriginProtectionFilter extends OncePerRequestFilter {
         response.sendError(HttpStatus.FORBIDDEN.value(), "CSRF protection: origin inválido");
     }
 
+    /**
+     * Decide si corresponde skip segun estado actual y reglas del dominio.
+     */
     private boolean shouldSkip(HttpServletRequest request) {
         if (SAFE_METHODS.contains(request.getMethod())) {
             return true;
@@ -89,6 +101,9 @@ public class CookieOriginProtectionFilter extends OncePerRequestFilter {
         return !hasAuthCookie(request);
     }
 
+    /**
+     * Evalua is publico autenticacion endpoint y devuelve una decision booleana para el llamador.
+     */
     private boolean isPublicAuthEndpoint(String path) {
         if (path == null || path.isBlank()) {
             return false;
@@ -100,6 +115,9 @@ public class CookieOriginProtectionFilter extends OncePerRequestFilter {
             || path.startsWith("/auth/oauth");
     }
 
+    /**
+     * Evalua has autenticacion cookie y devuelve una decision booleana para el llamador.
+     */
     private boolean hasAuthCookie(HttpServletRequest request) {
         Cookie[] cookies = request.getCookies();
         if (cookies == null || cookies.length == 0) {
@@ -121,6 +139,9 @@ public class CookieOriginProtectionFilter extends OncePerRequestFilter {
         return false;
     }
 
+    /**
+     * Resuelve caller origin normalizando entradas, defaults y casos borde.
+     */
     private String resolveCallerOrigin(HttpServletRequest request) {
         String originHeader = request.getHeader("Origin");
         String normalizedOrigin = normalizeOrigin(originHeader);
@@ -131,6 +152,9 @@ public class CookieOriginProtectionFilter extends OncePerRequestFilter {
         return normalizeOrigin(refererHeader);
     }
 
+    /**
+     * Resuelve solicitud origin normalizando entradas, defaults y casos borde.
+     */
     private String resolveRequestOrigin(HttpServletRequest request) {
         String scheme = request.getScheme();
         String host = request.getServerName();
@@ -164,6 +188,9 @@ public class CookieOriginProtectionFilter extends OncePerRequestFilter {
         return normalizeOrigin(scheme + "://" + host + ":" + port);
     }
 
+    /**
+     * Normaliza origin para evitar variantes vacias, invalidas o inconsistentes.
+     */
     private String normalizeOrigin(String rawValue) {
         if (rawValue == null) {
             return null;
@@ -193,6 +220,9 @@ public class CookieOriginProtectionFilter extends OncePerRequestFilter {
         }
     }
 
+    /**
+     * Obtiene el primer valor util de forwarded value ignorando nulos o blancos.
+     */
     private String firstForwardedValue(String rawHeader) {
         if (rawHeader == null || rawHeader.isBlank()) {
             return null;

@@ -7,6 +7,12 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+/**
+ * CreateBookingReviewReportRequest es un DTO de entrada del modulo resenas / contratos DTO.
+ * Responsabilidad: definir y validar los datos que llegan desde la API.
+ * Validacion: sus anotaciones Bean Validation son parte del contrato publico del endpoint que lo recibe.
+ * Foco funcional: reservas, resenas.
+ */
 @Data
 @NoArgsConstructor
 @AllArgsConstructor

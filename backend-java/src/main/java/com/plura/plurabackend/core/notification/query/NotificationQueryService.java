@@ -9,6 +9,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+/**
+ * NotificationQueryService es un servicio de negocio del modulo notificaciones / consultas.
+ * Responsabilidad: coordinar reglas de negocio, validaciones, persistencia e integraciones del caso de uso.
+ * Colabora con: appNotificationRepository, notificationInboxReadRepository, meterRegistry, inboxTimer, entre otros.
+ * Foco funcional: notificaciones, servicios.
+ */
 @Service
 public class NotificationQueryService {
 
@@ -40,6 +46,9 @@ public class NotificationQueryService {
             .register(meterRegistry);
     }
 
+    /**
+     * Devuelve el listado de bandeja aplicando permisos y filtros del caso de uso.
+     */
     @Transactional(readOnly = true)
     public NotificationInboxPageView listInbox(NotificationInboxQuery query) {
         Timer.Sample sample = Timer.start(meterRegistry);
@@ -51,6 +60,9 @@ public class NotificationQueryService {
         }
     }
 
+    /**
+     * Ejecuta la logica de no leidas conteo manteniendola encapsulada en este componente.
+     */
     @Transactional(readOnly = true)
     public long unreadCount(NotificationRecipientType recipientType, String recipientId) {
         Timer.Sample sample = Timer.start(meterRegistry);
@@ -64,6 +76,9 @@ public class NotificationQueryService {
         }
     }
 
+    /**
+     * Normaliza normalizar para evitar variantes vacias, invalidas o inconsistentes.
+     */
     private NotificationInboxQuery normalize(NotificationInboxQuery query) {
         if (query == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Query inválida");
@@ -87,6 +102,10 @@ public class NotificationQueryService {
         );
     }
 
+    /**
+     * Exige destinatario ID y corta la ejecucion si falta autorizacion o contexto.
+     * Esta separacion hace explicita la regla de seguridad o negocio que protege el flujo.
+     */
     private String requireRecipientId(String recipientId) {
         if (recipientId == null || recipientId.trim().isBlank()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "recipientId es obligatorio");
@@ -94,6 +113,9 @@ public class NotificationQueryService {
         return recipientId.trim();
     }
 
+    /**
+     * Normaliza size para evitar variantes vacias, invalidas o inconsistentes.
+     */
     private int normalizeSize(int size) {
         if (size <= 0) {
             return DEFAULT_SIZE;

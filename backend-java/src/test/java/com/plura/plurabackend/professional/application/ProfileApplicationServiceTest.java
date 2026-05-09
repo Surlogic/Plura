@@ -31,6 +31,11 @@ import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 
+/**
+ * Tests de funciones del profesional / casos de uso de aplicacion.
+ * Cubren escenarios de perfil application servicio para documentar el comportamiento esperado y evitar regresiones.
+ * Mantener estos casos alineados con los contratos reales del backend cuando cambie la logica productiva.
+ */
 class ProfileApplicationServiceTest {
 
     private ImageStorageService buildImageStorageServiceMock() {
@@ -39,6 +44,10 @@ class ProfileApplicationServiceTest {
         return imageStorageService;
     }
 
+    /**
+     * Escenario: bloquea publico page photo limit using profesional entitlements.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void blocksPublicPagePhotoLimitUsingProfessionalEntitlements() {
         PlanGuardService planGuardService = mock(PlanGuardService.class);
@@ -91,6 +100,10 @@ class ProfileApplicationServiceTest {
         assertEquals("Tu plan permite hasta 3 fotos del negocio", exception.getReason());
     }
 
+    /**
+     * Escenario: permite enhanced publico page fields for basic plan cuando plan politica enables them.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void allowsEnhancedPublicPageFieldsForBasicPlanWhenPlanPolicyEnablesThem() {
         PlanGuardService planGuardService = mock(PlanGuardService.class);
@@ -135,6 +148,10 @@ class ProfileApplicationServiceTest {
             .requirePublicProfileTier("21", com.plura.plurabackend.professional.plan.PublicProfileTier.ENHANCED);
     }
 
+    /**
+     * Escenario: permite enhanced business perfil fields for basic plan cuando plan politica enables them.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void allowsEnhancedBusinessProfileFieldsForBasicPlanWhenPlanPolicyEnablesThem() {
         PlanGuardService planGuardService = mock(PlanGuardService.class);
@@ -179,6 +196,10 @@ class ProfileApplicationServiceTest {
             .requirePublicProfileTier("21", com.plura.plurabackend.professional.plan.PublicProfileTier.ENHANCED);
     }
 
+    /**
+     * Escenario: permite core business perfil fields sin enhanced tier.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void allowsCoreBusinessProfileFieldsWithoutEnhancedTier() {
         PlanGuardService planGuardService = mock(PlanGuardService.class);

@@ -22,6 +22,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+/**
+ * InternalAppFeedbackOpsService es un servicio de negocio del modulo feedback / operaciones internas.
+ * Responsabilidad: coordinar reglas de negocio, validaciones, persistencia e integraciones del caso de uso.
+ * Colabora con: appFeedbackRepository.
+ * Foco funcional: feedback, paneles internos, servicios.
+ */
 @Service
 public class InternalAppFeedbackOpsService {
 
@@ -31,6 +37,10 @@ public class InternalAppFeedbackOpsService {
         this.appFeedbackRepository = appFeedbackRepository;
     }
 
+    /**
+     * Devuelve un listado de elementos del modulo aplicando los filtros disponibles.
+     * Mantiene la consulta encapsulada para que el resto del codigo no repita filtros ni joins.
+     */
     @Transactional(readOnly = true)
     public Page<InternalFeedbackListItemResponse> list(
         int page, int size,
@@ -53,6 +63,9 @@ public class InternalAppFeedbackOpsService {
         return feedbackPage.map(this::toListItem);
     }
 
+    /**
+     * Devuelve el detalle de un elemento puntual con los datos necesarios para la pantalla o API.
+     */
     @Transactional(readOnly = true)
     public InternalFeedbackDetailResponse detail(Long id) {
         AppFeedback feedback = appFeedbackRepository.findById(id)
@@ -60,6 +73,9 @@ public class InternalAppFeedbackOpsService {
         return toDetail(feedback);
     }
 
+    /**
+     * Ejecuta la logica de archive manteniendola encapsulada en este componente.
+     */
     @Transactional
     public InternalFeedbackDetailResponse archive(Long id) {
         AppFeedback feedback = appFeedbackRepository.findById(id)
@@ -69,6 +85,9 @@ public class InternalAppFeedbackOpsService {
         return toDetail(feedback);
     }
 
+    /**
+     * Ejecuta la logica de unarchive manteniendola encapsulada en este componente.
+     */
     @Transactional
     public InternalFeedbackDetailResponse unarchive(Long id) {
         AppFeedback feedback = appFeedbackRepository.findById(id)
@@ -78,6 +97,9 @@ public class InternalAppFeedbackOpsService {
         return toDetail(feedback);
     }
 
+    /**
+     * Ejecuta la logica de analytics manteniendola encapsulada en este componente.
+     */
     @Transactional(readOnly = true)
     public InternalFeedbackAnalyticsResponse analytics(String from, String to) {
         LocalDateTime fromDt = parseDate(from, true);
@@ -121,6 +143,9 @@ public class InternalAppFeedbackOpsService {
         return new InternalFeedbackAnalyticsResponse(total, avg, byRole, byCat, byRating, daily);
     }
 
+    /**
+     * Convierte datos internos al formato listado item esperado por el consumidor.
+     */
     private InternalFeedbackListItemResponse toListItem(AppFeedback f) {
         return new InternalFeedbackListItemResponse(
             f.getId(),
@@ -136,6 +161,9 @@ public class InternalAppFeedbackOpsService {
         );
     }
 
+    /**
+     * Convierte datos internos al formato detalle esperado por el consumidor.
+     */
     private InternalFeedbackDetailResponse toDetail(AppFeedback f) {
         return new InternalFeedbackDetailResponse(
             f.getId(),
@@ -152,6 +180,9 @@ public class InternalAppFeedbackOpsService {
         );
     }
 
+    /**
+     * Parsea enum y convierte errores de formato en errores controlados.
+     */
     private <T extends Enum<T>> T parseEnum(String value, Class<T> enumType) {
         if (value == null || value.isBlank()) {
             return null;
@@ -163,6 +194,9 @@ public class InternalAppFeedbackOpsService {
         }
     }
 
+    /**
+     * Parsea fecha y convierte errores de formato en errores controlados.
+     */
     private LocalDateTime parseDate(String value, boolean startOfDay) {
         if (value == null || value.isBlank()) {
             return null;

@@ -5,6 +5,12 @@ import com.plura.plurabackend.professional.repository.ProfessionalProfileReposit
 import java.util.Optional;
 import org.springframework.stereotype.Service;
 
+/**
+ * ProfessionalActorLookupService es un servicio de negocio del modulo profesionales / reservas.
+ * Responsabilidad: coordinar reglas de negocio, validaciones, persistencia e integraciones del caso de uso.
+ * Colabora con: professionalProfileRepository.
+ * Foco funcional: profesionales, servicios.
+ */
 @Service
 public class ProfessionalActorLookupService implements ProfessionalActorLookupGateway {
 
@@ -14,6 +20,10 @@ public class ProfessionalActorLookupService implements ProfessionalActorLookupGa
         this.professionalProfileRepository = professionalProfileRepository;
     }
 
+    /**
+     * Busca profesional ID by usuario ID aplicando filtros, joins o criterios del caso de uso.
+     * Mantiene la consulta encapsulada para que el resto del codigo no repita filtros ni joins.
+     */
     @Override
     public Optional<Long> findProfessionalIdByUserId(Long userId) {
         return professionalProfileRepository.findByUser_Id(userId).map(profile -> profile.getId());

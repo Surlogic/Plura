@@ -22,6 +22,12 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
+/**
+ * NotificationEmailWorker es un worker asincronico del modulo notificaciones / despacho.
+ * Responsabilidad: procesar tareas pendientes con control de estado, reintentos o leases.
+ * Colabora con: notificationEmailDispatchService, notificationEmailTemplateService, notificationEmailSender, notificationEmailRetryPolicy, entre otros.
+ * Foco funcional: notificaciones, trabajadores, email transaccional.
+ */
 @Component
 public class NotificationEmailWorker {
 
@@ -55,6 +61,9 @@ public class NotificationEmailWorker {
         this.workerId = ManagementFactory.getRuntimeMXBean().getName() + ":notification-email:" + UUID.randomUUID();
     }
 
+    /**
+     * Ejecuta la logica de drain scheduled lote manteniendola encapsulada en este componente.
+     */
     @Scheduled(fixedDelayString = "${app.notification.email-worker.delay-millis:5000}")
     public void drainScheduledBatch() {
         List<EmailDispatch> dueDispatches = notificationEmailDispatchService.findDueDispatches(batchSize);
@@ -72,6 +81,9 @@ public class NotificationEmailWorker {
         }
     }
 
+    /**
+     * Ejecuta la logica de kick dispatch asincronico manteniendola encapsulada en este componente.
+     */
     @Async("notificationEmailExecutor")
     public CompletableFuture<Boolean> kickDispatchAsync(String dispatchId) {
         return CompletableFuture.completedFuture(claimAndProcess(dispatchId));
@@ -110,6 +122,9 @@ public class NotificationEmailWorker {
         }
     }
 
+    /**
+     * Aplica send result sobre el modelo actual manteniendo consistencia.
+     */
     private void applySendResult(EmailDispatch claimed, NotificationEmailSendResult sendResult) {
         if (sendResult == null) {
             scheduleRetryOrFail(claimed, "null_send_result", "NotificationEmailSender devolvió null");
@@ -126,6 +141,9 @@ public class NotificationEmailWorker {
         scheduleRetryOrFail(claimed, sendResult.errorCode(), sendResult.errorMessage());
     }
 
+    /**
+     * Ejecuta la logica de agenda retry or fail manteniendola encapsulada en este componente.
+     */
     private void scheduleRetryOrFail(EmailDispatch claimed, String errorCode, String errorMessage) {
         NotificationEmailRetryPolicy.RetryDecision decision = notificationEmailRetryPolicy.evaluateNextAttempt(
             claimed.getAttemptCount(),

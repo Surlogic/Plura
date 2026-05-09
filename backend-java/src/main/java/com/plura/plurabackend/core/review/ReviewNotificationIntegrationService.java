@@ -19,6 +19,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
+/**
+ * ReviewNotificationIntegrationService es un servicio de negocio del modulo resenas.
+ * Responsabilidad: coordinar reglas de negocio, validaciones, persistencia e integraciones del caso de uso.
+ * Colabora con: notificationService, professionalNotificationRecipientGateway.
+ * Foco funcional: notificaciones, servicios, resenas.
+ */
 @Service
 public class ReviewNotificationIntegrationService {
 
@@ -35,6 +41,9 @@ public class ReviewNotificationIntegrationService {
         this.professionalNotificationRecipientGateway = professionalNotificationRecipientGateway;
     }
 
+    /**
+     * Notifica resena received usando la integracion interna correspondiente.
+     */
     public void notifyReviewReceived(BookingReview review, Booking booking) {
         ProfessionalNotificationRecipient recipient = professionalNotificationRecipientGateway
             .findNotificationRecipientByProfessionalId(review.getProfessional().getId())

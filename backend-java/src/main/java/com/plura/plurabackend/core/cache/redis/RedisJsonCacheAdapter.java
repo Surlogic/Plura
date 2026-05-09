@@ -21,6 +21,12 @@ import org.springframework.data.redis.core.RedisCallback;
 import org.springframework.data.redis.core.ScanOptions;
 import org.springframework.stereotype.Component;
 
+/**
+ * RedisJsonCacheAdapter es un componente de dominio del modulo cache / Redis.
+ * Responsabilidad: encapsular comportamiento propio del modulo y mantenerlo fuera de controllers u otras capas.
+ * Colabora con: objectMapper, redisTemplate, meterRegistry, redisCacheProperties, entre otros.
+ * Foco funcional: cache.
+ */
 @Component
 public class RedisJsonCacheAdapter {
 
@@ -53,6 +59,10 @@ public class RedisJsonCacheAdapter {
         return cacheEnabled && redisEnabled && redisTemplate.isPresent();
     }
 
+    /**
+     * Devuelve get sin modificar estado.
+     * Mantiene la consulta encapsulada para que el resto del codigo no repita filtros ni joins.
+     */
     public <T> Optional<T> get(String key, Class<T> type, String cacheName) {
         return getInternal(key, cacheName, () -> {
             String raw = redisTemplate.get().opsForValue().get(key);
@@ -67,6 +77,10 @@ public class RedisJsonCacheAdapter {
         });
     }
 
+    /**
+     * Devuelve get sin modificar estado.
+     * Mantiene la consulta encapsulada para que el resto del codigo no repita filtros ni joins.
+     */
     public <T> Optional<T> get(String key, JavaType type, String cacheName) {
         return getInternal(key, cacheName, () -> {
             String raw = redisTemplate.get().opsForValue().get(key);
@@ -81,6 +95,9 @@ public class RedisJsonCacheAdapter {
         });
     }
 
+    /**
+     * Ejecuta la logica de put manteniendola encapsulada en este componente.
+     */
     public void put(String key, Object value, @Nullable Duration ttl, String cacheName) {
         if (!isRedisUsable() || key == null || key.isBlank() || value == null) {
             return;
@@ -101,6 +118,9 @@ public class RedisJsonCacheAdapter {
         }
     }
 
+    /**
+     * Ejecuta la logica de evict manteniendola encapsulada en este componente.
+     */
     public void evict(String key, String cacheName) {
         if (!isRedisUsable() || key == null || key.isBlank()) {
             return;
@@ -115,6 +135,9 @@ public class RedisJsonCacheAdapter {
         }
     }
 
+    /**
+     * Ejecuta la logica de evict by prefix manteniendola encapsulada en este componente.
+     */
     public void evictByPrefix(String prefix, String cacheName) {
         if (!isRedisUsable() || prefix == null || prefix.isBlank()) {
             return;
@@ -142,6 +165,9 @@ public class RedisJsonCacheAdapter {
         }
     }
 
+    /**
+     * Resuelve ttl normalizando entradas, defaults y casos borde.
+     */
     private Duration resolveTtl(@Nullable Duration ttl) {
         if (ttl != null && !ttl.isNegative() && !ttl.isZero()) {
             return ttl;
@@ -150,6 +176,9 @@ public class RedisJsonCacheAdapter {
         return Duration.ofSeconds(seconds);
     }
 
+    /**
+     * Ejecuta la logica de scan and delete by pattern manteniendola encapsulada en este componente.
+     */
     private long scanAndDeleteByPattern(RedisConnection connection, String pattern) {
         if (connection == null || pattern == null || pattern.isBlank()) {
             return 0L;
@@ -177,6 +206,10 @@ public class RedisJsonCacheAdapter {
         return deleted;
     }
 
+    /**
+     * Elimina batch y limpia relaciones o datos derivados cuando corresponde.
+     * Tambien concentra los efectos secundarios para que el flujo quede en un estado consistente.
+     */
     private long deleteBatch(RedisConnection connection, List<byte[]> keysBatch) {
         if (keysBatch.isEmpty()) {
             return 0L;
@@ -194,6 +227,9 @@ public class RedisJsonCacheAdapter {
         return connection.del(keys);
     }
 
+    /**
+     * Ejecuta la logica de execute with metricas manteniendola encapsulada en este componente.
+     */
     private <T> T executeWithMetrics(String operation, String cacheName, Supplier<T> action) {
         Timer.Sample sample = Timer.start(meterRegistry);
         try {

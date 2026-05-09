@@ -17,6 +17,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
+/**
+ * ProfessionalAccountLifecycleGatewayService es un servicio de negocio del modulo profesionales / perfil.
+ * Responsabilidad: coordinar reglas de negocio, validaciones, persistencia e integraciones del caso de uso.
+ * Colabora con: professionalProfileRepository, profesionalServiceRepository, businessPhotoRepository, imageCleanupService.
+ * Foco funcional: profesionales, cuentas, servicios.
+ */
 @Service
 public class ProfessionalAccountLifecycleGatewayService implements ProfessionalAccountLifecycleGateway {
 
@@ -39,6 +45,10 @@ public class ProfessionalAccountLifecycleGatewayService implements ProfessionalA
         this.imageCleanupService = imageCleanupService;
     }
 
+    /**
+     * Busca by usuario ID aplicando filtros, joins o criterios del caso de uso.
+     * Mantiene la consulta encapsulada para que el resto del codigo no repita filtros ni joins.
+     */
     @Override
     public Optional<ProfessionalAccountSubject> findByUserId(Long userId) {
         if (userId == null) {
@@ -48,6 +58,9 @@ public class ProfessionalAccountLifecycleGatewayService implements ProfessionalA
             .map(profile -> new ProfessionalAccountSubject(profile.getId(), profile.getSlug()));
     }
 
+    /**
+     * Ejecuta la logica de deactivate profesional perfil manteniendola encapsulada en este componente.
+     */
     @Override
     public void deactivateProfessionalProfile(ProfessionalAccountSubject subject) {
         if (subject == null || subject.professionalId() == null) {
@@ -59,16 +72,25 @@ public class ProfessionalAccountLifecycleGatewayService implements ProfessionalA
         });
     }
 
+    /**
+     * Ejecuta la logica de clear profesional coordinates manteniendola encapsulada en este componente.
+     */
     @Override
     public void clearProfessionalCoordinates(Long professionalId) {
         professionalProfileRepository.updateCoordinates(professionalId, null, null);
     }
 
+    /**
+     * Ejecuta la logica de deactivate servicios by profesional ID manteniendola encapsulada en este componente.
+     */
     @Override
     public void deactivateServicesByProfessionalId(Long professionalId) {
         profesionalServiceRepository.deactivateByProfessionalId(professionalId);
     }
 
+    /**
+     * Ejecuta la logica de cleanup profesional media manteniendola encapsulada en este componente.
+     */
     @Override
     public void cleanupProfessionalMedia(Long professionalId) {
         if (professionalId == null) {
@@ -106,6 +128,9 @@ public class ProfessionalAccountLifecycleGatewayService implements ProfessionalA
         LOGGER.info("Limpieza de media completada para profesional {}", professionalId);
     }
 
+    /**
+     * Aplica deactivation sobre el modelo actual manteniendo consistencia.
+     */
     private void applyDeactivation(ProfessionalProfile profile) {
         profile.setActive(false);
         profile.setDisplayName("Cuenta eliminada");

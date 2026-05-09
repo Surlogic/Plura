@@ -34,8 +34,17 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
 
+/**
+ * Tests de notificaciones, bandejas y emails / integracion entre modulos.
+ * Cubren escenarios de billing notificacion integracion servicio para documentar el comportamiento esperado y evitar regresiones.
+ * Mantener estos casos alineados con los contratos reales del backend cuando cambie la logica productiva.
+ */
 class BillingNotificationIntegrationServiceTest {
 
+    /**
+     * Escenario: pago approved mapea a canonical notificacion evento.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void paymentApprovedMapsToCanonicalNotificationEvent() {
         NotificationService notificationService = Mockito.mock(NotificationService.class);
@@ -66,6 +75,10 @@ class BillingNotificationIntegrationServiceTest {
         assertTrue(command.dedupeKey().contains("provider-pay-1"));
     }
 
+    /**
+     * Escenario: pago refunded only emits cliente notificacion y keeps semantic difference for partial reembolso.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void paymentRefundedOnlyEmitsClientNotificationAndKeepsSemanticDifferenceForPartialRefund() {
         NotificationService notificationService = Mockito.mock(NotificationService.class);
@@ -101,6 +114,10 @@ class BillingNotificationIntegrationServiceTest {
         assertEquals("50", captor.getValue().recipientId());
     }
 
+    /**
+     * Escenario: pago reembolso pendiente only emits cliente notificacion.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void paymentRefundPendingOnlyEmitsClientNotification() {
         NotificationService notificationService = Mockito.mock(NotificationService.class);
@@ -135,6 +152,10 @@ class BillingNotificationIntegrationServiceTest {
         assertEquals("Visa Débito", captor.getValue().payload().get("refundPaymentMethodLabel"));
     }
 
+    /**
+     * Escenario: pago approved also emits cliente notificacion cuando reserva has cliente usuario.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void paymentApprovedAlsoEmitsClientNotificationWhenBookingHasClientUser() {
         NotificationService notificationService = Mockito.mock(NotificationService.class);

@@ -13,6 +13,12 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
+/**
+ * BookingDateTimeService es un servicio de negocio del modulo reservas / tiempo.
+ * Responsabilidad: coordinar reglas de negocio, validaciones, persistencia e integraciones del caso de uso.
+ * Colabora con: appZoneId.
+ * Foco funcional: reservas, servicios.
+ */
 @Service
 public class BookingDateTimeService {
 
@@ -22,6 +28,9 @@ public class BookingDateTimeService {
         this.appZoneId = ZoneId.of(appTimezone);
     }
 
+    /**
+     * Parsea reserva start y convierte errores de formato en errores controlados.
+     */
     public ResolvedBookingDateTime parseBookingStart(String rawDateTime, String rawTimezone) {
         if (rawDateTime == null || rawDateTime.isBlank()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "startDateTime inválido");
@@ -64,6 +73,9 @@ public class BookingDateTimeService {
         }
     }
 
+    /**
+     * Resuelve start instant normalizando entradas, defaults y casos borde.
+     */
     public Instant resolveStartInstant(Booking booking) {
         if (booking == null) {
             return null;
@@ -77,6 +89,9 @@ public class BookingDateTimeService {
         return booking.getStartDateTime().atZone(resolveZoneId(booking.getTimezone())).toInstant();
     }
 
+    /**
+     * Resuelve effective duration minutes normalizando entradas, defaults y casos borde.
+     */
     public int resolveEffectiveDurationMinutes(Booking booking) {
         if (booking == null) {
             return 30;
@@ -87,6 +102,9 @@ public class BookingDateTimeService {
         );
     }
 
+    /**
+     * Resuelve end fecha hora normalizando entradas, defaults y casos borde.
+     */
     public LocalDateTime resolveEndDateTime(Booking booking) {
         if (booking == null || booking.getStartDateTime() == null) {
             return null;
@@ -94,6 +112,9 @@ public class BookingDateTimeService {
         return booking.getStartDateTime().plusMinutes(resolveEffectiveDurationMinutes(booking));
     }
 
+    /**
+     * Resuelve end instant normalizando entradas, defaults y casos borde.
+     */
     public Instant resolveEndInstant(Booking booking) {
         Instant startInstant = resolveStartInstant(booking);
         if (startInstant == null) {
@@ -102,11 +123,17 @@ public class BookingDateTimeService {
         return startInstant.plusSeconds(resolveEffectiveDurationMinutes(booking) * 60L);
     }
 
+    /**
+     * Convierte datos internos al formato utc string esperado por el consumidor.
+     */
     public String toUtcString(Booking booking) {
         Instant instant = resolveStartInstant(booking);
         return instant == null ? null : instant.toString();
     }
 
+    /**
+     * Resuelve zone ID normalizando entradas, defaults y casos borde.
+     */
     public ZoneId resolveZoneId(String rawTimezone) {
         if (rawTimezone == null || rawTimezone.isBlank()) {
             return appZoneId;
@@ -118,6 +145,9 @@ public class BookingDateTimeService {
         }
     }
 
+    /**
+     * Resuelve d reserva fecha hora normalizando entradas, defaults y casos borde.
+     */
     public record ResolvedBookingDateTime(
         LocalDateTime localDateTime,
         Instant utcInstant,

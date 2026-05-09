@@ -2,6 +2,12 @@ package com.plura.plurabackend.core.cache.redis;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
+/**
+ * RedisCacheProperties es un propiedades de configuracion del modulo cache / Redis.
+ * Responsabilidad: mapear variables de entorno o application.yml a un objeto tipado.
+ * Mantiene separada esta responsabilidad para que el resto del backend use una API clara.
+ * Foco funcional: cache.
+ */
 @ConfigurationProperties(prefix = "redis")
 public class RedisCacheProperties {
 

@@ -16,6 +16,12 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
+/**
+ * ProfessionalNotificationController es un controlador REST del modulo profesionales / notificaciones.
+ * Responsabilidad: recibir requests HTTP, validar acceso basico y delegar la operacion al servicio de aplicacion o dominio.
+ * Superficie HTTP: atiende rutas bajo /profesional y deja la logica pesada en servicios.
+ * Foco funcional: profesionales, notificaciones.
+ */
 @RestController
 @RequestMapping("/profesional")
 public class ProfessionalNotificationController {
@@ -31,6 +37,9 @@ public class ProfessionalNotificationController {
         this.roleGuard = roleGuard;
     }
 
+    /**
+     * Devuelve el listado de notificaciones aplicando permisos y filtros del caso de uso.
+     */
     @GetMapping("/notificaciones")
     public ProfessionalNotificationListResponse listNotifications(
         @RequestParam(required = false) String status,
@@ -53,6 +62,9 @@ public class ProfessionalNotificationController {
         );
     }
 
+    /**
+     * Ejecuta la logica de no leidas conteo manteniendola encapsulada en este componente.
+     */
     @GetMapping("/notificaciones/unread-count")
     public ProfessionalNotificationUnreadCountResponse unreadCount() {
         return professionalNotificationService.unreadCount(currentProfessionalUserId());
@@ -63,12 +75,18 @@ public class ProfessionalNotificationController {
         return professionalNotificationService.getDetail(currentProfessionalUserId(), notificationId);
     }
 
+    /**
+     * Marca notificacion como leida y actualiza los indicadores relacionados.
+     */
     @PatchMapping("/notificaciones/{id}/read")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void markNotificationAsRead(@PathVariable("id") String notificationId) {
         professionalNotificationService.markAsRead(currentProfessionalUserId(), notificationId);
     }
 
+    /**
+     * Marca todos notificaciones como leida y actualiza los indicadores relacionados.
+     */
     @PatchMapping("/notificaciones/read-all")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void markAllNotificationsAsRead() {
@@ -80,6 +98,9 @@ public class ProfessionalNotificationController {
         return professionalNotificationService.getBookingTimeline(currentProfessionalUserId(), bookingId);
     }
 
+    /**
+     * Obtiene el usuario profesional autenticado desde el contexto de seguridad actual.
+     */
     private String currentProfessionalUserId() {
         return String.valueOf(roleGuard.requireProfessional());
     }

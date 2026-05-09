@@ -18,8 +18,17 @@ import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 
+/**
+ * Tests de funciones del profesional / casos de uso de aplicacion.
+ * Cubren escenarios de perfil servicio catalog support para documentar el comportamiento esperado y evitar regresiones.
+ * Mantener estos casos alineados con los contratos reales del backend cuando cambie la logica productiva.
+ */
 class ProfileServiceCatalogSupportTest {
 
+    /**
+     * Escenario: bloquea servicio creation cuando plan reached servicio limit.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void blocksServiceCreationWhenPlanReachedServiceLimit() {
         PlanGuardService planGuardService = mock(PlanGuardService.class);
@@ -56,6 +65,10 @@ class ProfileServiceCatalogSupportTest {
         assertEquals("Tu plan permite hasta 15 servicios", exception.getReason());
     }
 
+    /**
+     * Escenario: bloquea prepaid servicio creation for basic plan.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void blocksPrepaidServiceCreationForBasicPlan() {
         PlanGuardService planGuardService = mock(PlanGuardService.class);

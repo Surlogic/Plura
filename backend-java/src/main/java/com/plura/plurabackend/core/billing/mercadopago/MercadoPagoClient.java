@@ -19,6 +19,12 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 import org.springframework.web.server.ResponseStatusException;
 
+/**
+ * MercadoPagoClient es un cliente de integracion del modulo billing / Mercado Pago.
+ * Responsabilidad: aislar llamadas y payloads de una API externa para no mezclar provider logic con dominio.
+ * Colabora con: billingProperties, objectMapper, httpClient.
+ * Foco funcional: Mercado Pago, clientes.
+ */
 @Component
 public class MercadoPagoClient {
 
@@ -39,6 +45,10 @@ public class MercadoPagoClient {
             .build();
     }
 
+    /**
+     * Crea preapproval plan validando datos de entrada y persistiendo el resultado.
+     * Tambien concentra los efectos secundarios para que el flujo quede en un estado consistente.
+     */
     public MercadoPagoPreapprovalPlan createPreapprovalPlan(CreatePreapprovalPlanRequest request) {
         JsonNode response = sendRequest(
             HttpMethod.POST,
@@ -61,6 +71,10 @@ public class MercadoPagoClient {
         );
     }
 
+    /**
+     * Crea preapproval validando datos de entrada y persistiendo el resultado.
+     * Tambien concentra los efectos secundarios para que el flujo quede en un estado consistente.
+     */
     public MercadoPagoPreapproval createPreapproval(CreatePreapprovalRequest request) {
         JsonNode response = sendRequest(
             HttpMethod.POST,
@@ -81,6 +95,10 @@ public class MercadoPagoClient {
         return toPreapproval(response, false);
     }
 
+    /**
+     * Actualiza preapproval estado manteniendo reglas de negocio y consistencia de datos.
+     * Tambien concentra los efectos secundarios para que el flujo quede en un estado consistente.
+     */
     public MercadoPagoPreapproval updatePreapprovalStatus(String preapprovalId, String status) {
         JsonNode response = sendRequest(
             HttpMethod.PUT,
@@ -91,6 +109,9 @@ public class MercadoPagoClient {
         return toPreapproval(response, false);
     }
 
+    /**
+     * Envia solicitud mediante el canal configurado.
+     */
     private JsonNode sendRequest(
         HttpMethod method,
         String path,
@@ -128,6 +149,9 @@ public class MercadoPagoClient {
         }
     }
 
+    /**
+     * Construye http solicitud a partir de datos internos ya validados.
+     */
     private HttpRequest buildHttpRequest(
         HttpMethod method,
         String endpoint,
@@ -154,6 +178,9 @@ public class MercadoPagoClient {
         }
     }
 
+    /**
+     * Convierte datos internos al formato preapproval esperado por el consumidor.
+     */
     private MercadoPagoPreapproval toPreapproval(JsonNode response, boolean requireCheckoutUrl) {
         String preapprovalId = textValue(response, "id");
         if (preapprovalId == null) {
@@ -195,6 +222,9 @@ public class MercadoPagoClient {
         );
     }
 
+    /**
+     * Ejecuta la logica de text value manteniendola encapsulada en este componente.
+     */
     private String textValue(JsonNode node, String fieldName) {
         if (node == null || node.isMissingNode() || node.isNull()) {
             return null;
@@ -207,6 +237,9 @@ public class MercadoPagoClient {
         return value == null || value.isBlank() ? null : value.trim();
     }
 
+    /**
+     * Obtiene el primer valor util de non blank ignorando nulos o blancos.
+     */
     private String firstNonBlank(String... values) {
         for (String value : values) {
             if (value != null && !value.isBlank()) {
@@ -216,6 +249,9 @@ public class MercadoPagoClient {
         return null;
     }
 
+    /**
+     * Ejecuta la logica de decimal value manteniendola encapsulada en este componente.
+     */
     private BigDecimal decimalValue(String rawValue) {
         if (rawValue == null || rawValue.isBlank()) {
             return null;
@@ -227,6 +263,9 @@ public class MercadoPagoClient {
         }
     }
 
+    /**
+     * Extrae proveedor message desde una URL, payload o referencia persistida.
+     */
     private String extractProviderMessage(String responseBody) {
         if (responseBody == null || responseBody.isBlank()) {
             return null;
@@ -245,6 +284,9 @@ public class MercadoPagoClient {
         }
     }
 
+    /**
+     * Ejecuta la logica de long value manteniendola encapsulada en este componente.
+     */
     private Long longValue(String rawValue) {
         if (rawValue == null || rawValue.isBlank()) {
             return null;
@@ -260,6 +302,9 @@ public class MercadoPagoClient {
         }
     }
 
+    /**
+     * Crea preapproval plan solicitud validando datos de entrada y persistiendo el resultado.
+     */
     @JsonInclude(JsonInclude.Include.NON_NULL)
     public record CreatePreapprovalPlanRequest(
         String reason,
@@ -273,6 +318,9 @@ public class MercadoPagoClient {
         }
     }
 
+    /**
+     * Crea preapproval solicitud validando datos de entrada y persistiendo el resultado.
+     */
     @JsonInclude(JsonInclude.Include.NON_NULL)
     public record CreatePreapprovalRequest(
         String preapproval_plan_id,
@@ -295,8 +343,15 @@ public class MercadoPagoClient {
         }
     }
 
+    /**
+     * Actualiza preapproval estado solicitud manteniendo reglas de negocio y consistencia de datos.
+     */
     public record UpdatePreapprovalStatusRequest(String status) {}
 
+    /**
+     * Bloque de datos auto recurring dentro de la respuesta principal.
+     * Agrupa metricas relacionadas para que el frontend no tenga que reconstruirlas.
+     */
     public record AutoRecurring(
         Integer frequency,
         String frequency_type,
@@ -304,17 +359,28 @@ public class MercadoPagoClient {
         String currency_id
     ) {}
 
+    /**
+     * Ejecuta la logica de pago methods allowed manteniendola encapsulada en este componente.
+     */
     @JsonInclude(JsonInclude.Include.NON_NULL)
     public record PaymentMethodsAllowed(
         java.util.List<String> payment_types,
         java.util.List<String> payment_methods
     ) {}
 
+    /**
+     * Bloque de datos mercado pago preapproval plan dentro de la respuesta principal.
+     * Agrupa metricas relacionadas para que el frontend no tenga que reconstruirlas.
+     */
     public record MercadoPagoPreapprovalPlan(
         String id,
         String checkoutUrl
     ) {}
 
+    /**
+     * Bloque de datos mercado pago preapproval dentro de la respuesta principal.
+     * Agrupa metricas relacionadas para que el frontend no tenga que reconstruirlas.
+     */
     public record MercadoPagoPreapproval(
         String id,
         String checkoutUrl,

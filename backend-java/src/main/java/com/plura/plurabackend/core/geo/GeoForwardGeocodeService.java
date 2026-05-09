@@ -18,6 +18,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.http.HttpStatus;
 
+/**
+ * GeoForwardGeocodeService es un servicio de negocio del modulo geolocalizacion.
+ * Responsabilidad: coordinar reglas de negocio, validaciones, persistencia e integraciones del caso de uso.
+ * Colabora con: httpClient, objectMapper, mapboxToken.
+ * Foco funcional: servicios, geolocalizacion.
+ */
 @Service
 public class GeoForwardGeocodeService {
 
@@ -106,6 +112,9 @@ public class GeoForwardGeocodeService {
         }
     }
 
+    /**
+     * Ejecuta la logica de suggest manteniendola encapsulada en este componente.
+     */
     public List<GeoLocationSuggestionResponse> suggest(String rawQuery, int rawLimit) {
         String query = rawQuery == null ? "" : rawQuery.trim();
         if (query.isBlank()) {
@@ -196,6 +205,9 @@ public class GeoForwardGeocodeService {
         }
     }
 
+    /**
+     * Convierte datos internos al formato double esperado por el consumidor.
+     */
     private Double toDouble(Object value) {
         if (value instanceof Number number) {
             double parsed = number.doubleValue();
@@ -212,6 +224,9 @@ public class GeoForwardGeocodeService {
         return null;
     }
 
+    /**
+     * Ejecuta la logica de como trimmed string manteniendola encapsulada en este componente.
+     */
     private String asTrimmedString(Object value) {
         if (!(value instanceof String stringValue)) {
             return null;
@@ -220,6 +235,9 @@ public class GeoForwardGeocodeService {
         return trimmed.isBlank() ? null : trimmed;
     }
 
+    /**
+     * Ejecuta la logica de contexto text manteniendola encapsulada en este componente.
+     */
     private String contextText(Map<?, ?> featureMap, String contextPrefix) {
         Object contextValue = featureMap.get("context");
         if (!(contextValue instanceof List<?> contextItems)) {
@@ -241,6 +259,9 @@ public class GeoForwardGeocodeService {
         return null;
     }
 
+    /**
+     * Evalua is country feature y devuelve una decision booleana para el llamador.
+     */
     private boolean isCountryFeature(Map<?, ?> featureMap) {
         Object placeTypeValue = featureMap.get("place_type");
         if (!(placeTypeValue instanceof List<?> placeTypes)) {
@@ -254,6 +275,9 @@ public class GeoForwardGeocodeService {
         return false;
     }
 
+    /**
+     * Obtiene el primer valor util de non blank ignorando nulos o blancos.
+     */
     private String firstNonBlank(String... values) {
         for (String value : values) {
             if (value != null && !value.isBlank()) {

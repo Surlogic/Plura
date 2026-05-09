@@ -12,6 +12,12 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Service;
 
+/**
+ * SlotCacheServiceFacade es un componente de dominio del modulo cache.
+ * Responsabilidad: encapsular comportamiento propio del modulo y mantenerlo fuera de controllers u otras capas.
+ * Colabora con: inMemory, redis, meterRegistry, stringListType, entre otros.
+ * Foco funcional: servicios, cache.
+ */
 @Service
 @Primary
 public class SlotCacheServiceFacade implements SlotCacheService {
@@ -61,6 +67,9 @@ public class SlotCacheServiceFacade implements SlotCacheService {
         return Optional.empty();
     }
 
+    /**
+     * Ejecuta la logica de put slots manteniendola encapsulada en este componente.
+     */
     @Override
     public void putSlots(String key, List<String> slots) {
         if (!isSlotsCacheActive()) {
@@ -70,6 +79,9 @@ public class SlotCacheServiceFacade implements SlotCacheService {
         redis.put(key, slots, SLOTS_TTL, "slots");
     }
 
+    /**
+     * Ejecuta la logica de evict by prefix manteniendola encapsulada en este componente.
+     */
     @Override
     public void evictByPrefix(String keyPrefix) {
         if (!isSlotsCacheActive()) {
@@ -79,10 +91,16 @@ public class SlotCacheServiceFacade implements SlotCacheService {
         redis.evictByPrefix(keyPrefix, "slots");
     }
 
+    /**
+     * Evalua is slots cache active y devuelve una decision booleana para el llamador.
+     */
     private boolean isSlotsCacheActive() {
         return cacheEnabled && slotsCacheEnabled;
     }
 
+    /**
+     * Marca hit y actualiza los indicadores relacionados.
+     */
     private void markHit(String cacheName, String backend) {
         Counter.builder("plura.cache.hit")
             .description("Cache hits")
@@ -92,6 +110,9 @@ public class SlotCacheServiceFacade implements SlotCacheService {
             .increment();
     }
 
+    /**
+     * Marca miss y actualiza los indicadores relacionados.
+     */
     private void markMiss(String cacheName) {
         Counter.builder("plura.cache.miss")
             .description("Cache misses")

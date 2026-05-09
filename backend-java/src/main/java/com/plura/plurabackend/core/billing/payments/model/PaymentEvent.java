@@ -37,6 +37,13 @@ import lombok.NoArgsConstructor;
         @Index(name = "idx_payment_event_created_at", columnList = "created_at")
     }
 )
+
+/**
+ * PaymentEvent es un evento de dominio del modulo billing / pagos / modelo.
+ * Responsabilidad: registrar un hecho relevante para auditoria, notificaciones o integraciones.
+ * Mantiene separada esta responsabilidad para que el resto del backend use una API clara.
+ * Foco funcional: pagos.
+ */
 public class PaymentEvent {
 
     @Id

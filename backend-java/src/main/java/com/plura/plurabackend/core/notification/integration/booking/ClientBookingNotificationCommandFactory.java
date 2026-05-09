@@ -16,9 +16,18 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import org.springframework.stereotype.Component;
 
+/**
+ * ClientBookingNotificationCommandFactory es un componente de dominio del modulo notificaciones / integraciones / reservas.
+ * Responsabilidad: encapsular comportamiento propio del modulo y mantenerlo fuera de controllers u otras capas.
+ * Mantiene separada esta responsabilidad para que el resto del backend use una API clara.
+ * Foco funcional: notificaciones, reservas, clientes.
+ */
 @Component
 public class ClientBookingNotificationCommandFactory {
 
+    /**
+     * Construye reserva created a partir de datos internos ya validados.
+     */
     public NotificationRecordCommand buildBookingCreated(
         Booking booking,
         ClientNotificationRecipient recipient,
@@ -48,6 +57,9 @@ public class ClientBookingNotificationCommandFactory {
         );
     }
 
+    /**
+     * Construye reserva confirmed a partir de datos internos ya validados.
+     */
     public NotificationRecordCommand buildBookingConfirmed(
         Booking booking,
         ClientNotificationRecipient recipient,
@@ -77,6 +89,9 @@ public class ClientBookingNotificationCommandFactory {
         );
     }
 
+    /**
+     * Construye reserva cancelled a partir de datos internos ya validados.
+     */
     public NotificationRecordCommand buildBookingCancelled(
         Booking booking,
         ClientNotificationRecipient recipient,
@@ -106,6 +121,9 @@ public class ClientBookingNotificationCommandFactory {
         );
     }
 
+    /**
+     * Construye reserva rescheduled a partir de datos internos ya validados.
+     */
     public NotificationRecordCommand buildBookingRescheduled(
         Booking booking,
         ClientNotificationRecipient recipient,
@@ -141,6 +159,9 @@ public class ClientBookingNotificationCommandFactory {
         );
     }
 
+    /**
+     * Construye command a partir de datos internos ya validados.
+     */
     private NotificationRecordCommand buildCommand(
         NotificationEventType eventType,
         Booking booking,
@@ -172,6 +193,9 @@ public class ClientBookingNotificationCommandFactory {
         );
     }
 
+    /**
+     * Construye payload compartidos por varias consultas del componente.
+     */
     private Map<String, Object> basePayload(Booking booking, String sourceAction) {
         Map<String, Object> payload = new LinkedHashMap<>();
         payload.put("bookingId", booking.getId());
@@ -188,6 +212,9 @@ public class ClientBookingNotificationCommandFactory {
         return payload;
     }
 
+    /**
+     * Ejecuta la logica de email projection manteniendola encapsulada en este componente.
+     */
     private NotificationEmailProjectionCommand emailProjection(
         ClientNotificationRecipient recipient,
         String templateKey,
@@ -200,6 +227,9 @@ public class ClientBookingNotificationCommandFactory {
         return new NotificationEmailProjectionCommand(recipient.email(), templateKey, subject, payload);
     }
 
+    /**
+     * Ejecuta la logica de reserva dedupe clave manteniendola encapsulada en este componente.
+     */
     private String bookingDedupeKey(
         NotificationEventType eventType,
         Booking booking,
@@ -218,6 +248,9 @@ public class ClientBookingNotificationCommandFactory {
         return dedupeKey.toString();
     }
 
+    /**
+     * Mapea actor tipo desde el modelo interno al contrato que usa otra capa.
+     */
     private NotificationActorType mapActorType(BookingActorType actorType) {
         if (actorType == null) {
             return null;
@@ -229,6 +262,9 @@ public class ClientBookingNotificationCommandFactory {
         };
     }
 
+    /**
+     * Resuelve occurred at normalizando entradas, defaults y casos borde.
+     */
     private LocalDateTime resolveOccurredAt(NotificationEventType eventType, Booking booking) {
         if (booking == null) {
             return LocalDateTime.now();
@@ -241,14 +277,23 @@ public class ClientBookingNotificationCommandFactory {
         };
     }
 
+    /**
+     * Ejecuta reschedule conteo atrapando errores para que el flujo principal no falle innecesariamente.
+     */
     private int safeRescheduleCount(Booking booking) {
         return booking.getRescheduleCount() == null ? 0 : booking.getRescheduleCount();
     }
 
+    /**
+     * Ejecuta la logica de action URL manteniendola encapsulada en este componente.
+     */
     private String actionUrl(Booking booking) {
         return booking.getId() == null ? null : "/cliente/reservas?bookingId=" + booking.getId();
     }
 
+    /**
+     * Ejecuta la logica de servicio label manteniendola encapsulada en este componente.
+     */
     private String serviceLabel(Booking booking) {
         if (booking == null || booking.getServiceNameSnapshot() == null || booking.getServiceNameSnapshot().isBlank()) {
             return "tu reserva";
@@ -256,6 +301,9 @@ public class ClientBookingNotificationCommandFactory {
         return booking.getServiceNameSnapshot().trim();
     }
 
+    /**
+     * Obtiene el primer valor util de non null ignorando nulos o blancos.
+     */
     private LocalDateTime firstNonNull(LocalDateTime... values) {
         for (LocalDateTime value : values) {
             if (value != null) {

@@ -32,6 +32,12 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 import org.springframework.web.server.ResponseStatusException;
 
+/**
+ * AppleTokenVerifier es un componente de dominio del modulo autenticacion / OAuth / proveedores.
+ * Responsabilidad: encapsular comportamiento propio del modulo y mantenerlo fuera de controllers u otras capas.
+ * Colabora con: httpClient, objectMapper, appleClientId.
+ * Foco funcional: la responsabilidad indicada por su paquete y nombre.
+ */
 @Component
 public class AppleTokenVerifier {
 
@@ -46,6 +52,9 @@ public class AppleTokenVerifier {
     private final ReentrantLock refreshLock = new ReentrantLock();
 
     public AppleTokenVerifier(
+    /**
+     * Verifica el token externo del proveedor y devuelve la identidad validada.
+     */
         @Value("${oauth.apple.client-id:}") String appleClientId,
         ObjectMapper objectMapper
     ) {
@@ -103,6 +112,9 @@ public class AppleTokenVerifier {
         );
     }
 
+    /**
+     * Decodifica decode recibido en formato URL o externo.
+     */
     private DecodedJWT decode(String token) {
         try {
             return JWT.decode(token);
@@ -111,6 +123,9 @@ public class AppleTokenVerifier {
         }
     }
 
+    /**
+     * Ejecuta la logica de verify signature and claims manteniendola encapsulada en este componente.
+     */
     private DecodedJWT verifySignatureAndClaims(String token, RSAPublicKey publicKey) {
         try {
             Algorithm algorithm = Algorithm.RSA256(publicKey, null);
@@ -124,11 +139,17 @@ public class AppleTokenVerifier {
         }
     }
 
+    /**
+     * Resuelve key normalizando entradas, defaults y casos borde.
+     */
     private RSAPublicKey resolveKey(String keyId) {
         refreshKeys(false);
         return cachedKeys.byKid().get(keyId);
     }
 
+    /**
+     * Refresca keys para mantener datos derivados o metricas al dia.
+     */
     private void refreshKeys(boolean force) {
         CachedKeys current = this.cachedKeys;
         if (!force && !current.isExpired()) {
@@ -231,6 +252,9 @@ public class AppleTokenVerifier {
         }
     }
 
+    /**
+     * Construye publico key a partir de datos internos ya validados.
+     */
     private RSAPublicKey buildPublicKey(String modulus, String exponent) throws GeneralSecurityException {
         byte[] modulusBytes = Base64.getUrlDecoder().decode(modulus);
         byte[] exponentBytes = Base64.getUrlDecoder().decode(exponent);
@@ -240,6 +264,10 @@ public class AppleTokenVerifier {
         return (RSAPublicKey) KeyFactory.getInstance("RSA").generatePublic(spec);
     }
 
+    /**
+     * Exige configured y corta la ejecucion si falta autorizacion o contexto.
+     * Esta separacion hace explicita la regla de seguridad o negocio que protege el flujo.
+     */
     private void requireConfigured() {
         if (appleClientId.isBlank()) {
             throw new ResponseStatusException(
@@ -249,6 +277,9 @@ public class AppleTokenVerifier {
         }
     }
 
+    /**
+     * Normaliza normalizar para evitar variantes vacias, invalidas o inconsistentes.
+     */
     private String normalize(String value) {
         if (value == null) {
             return null;
@@ -257,6 +288,9 @@ public class AppleTokenVerifier {
         return trimmed.isBlank() ? null : trimmed;
     }
 
+    /**
+     * Ejecuta la logica de fallback nombre manteniendola encapsulada en este componente.
+     */
     private String fallbackName(String email) {
         int atIndex = email.indexOf('@');
         if (atIndex <= 0) {
@@ -265,6 +299,10 @@ public class AppleTokenVerifier {
         return email.substring(0, atIndex);
     }
 
+    /**
+     * Bloque de datos cached keys usado internamente por esta clase.
+     * Agrupa valores relacionados para que el calculo principal sea mas legible.
+     */
     private record CachedKeys(Map<String, RSAPublicKey> byKid, Instant expiresAt) {
         boolean isExpired() {
             return Instant.now().isAfter(expiresAt);

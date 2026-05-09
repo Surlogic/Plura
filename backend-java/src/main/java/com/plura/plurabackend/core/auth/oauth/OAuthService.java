@@ -43,16 +43,6 @@ public class OAuthService {
         this.allowDirectGoogleToken = allowDirectGoogleToken;
     }
 
-    /**
-     * Verifica la solicitud OAuth y retorna la informacion del usuario autenticado.
-     *
-     * <p>Determina el proveedor a partir del request, normaliza los parametros
-     * y delega la verificacion al verificador correspondiente.</p>
-     *
-     * @param request solicitud OAuth con el proveedor y credenciales
-     * @return informacion del usuario verificado por el proveedor OAuth
-     * @throws ResponseStatusException si el proveedor es invalido o faltan credenciales
-     */
     public OAuthUserInfo verify(OAuthLoginRequest request) {
         String normalizedProvider = normalizeProvider(request.getProvider());
         String token = trimToNull(request.getToken());
@@ -84,6 +74,9 @@ public class OAuthService {
         };
     }
 
+    /**
+     * Normaliza proveedor para evitar variantes vacias, invalidas o inconsistentes.
+     */
     private String normalizeProvider(String provider) {
         if (provider == null) {
             return "";
@@ -91,6 +84,9 @@ public class OAuthService {
         return provider.trim().toLowerCase(Locale.ROOT);
     }
 
+    /**
+     * Ejecuta la logica de trim to null manteniendola encapsulada en este componente.
+     */
     private String trimToNull(String value) {
         if (value == null) return null;
         String trimmed = value.trim();

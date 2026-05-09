@@ -20,6 +20,12 @@ import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
+/**
+ * BookingActionsService es un servicio de negocio del modulo reservas.
+ * Responsabilidad: coordinar reglas de negocio, validaciones, persistencia e integraciones del caso de uso.
+ * Colabora con: bookingRepository, professionalActorLookupGateway, bookingPolicySnapshotService, bookingActionsEvaluator, entre otros.
+ * Foco funcional: reservas, servicios.
+ */
 @Service
 public class BookingActionsService {
 
@@ -92,6 +98,9 @@ public class BookingActionsService {
         );
     }
 
+    /**
+     * Resuelve actor normalizando entradas, defaults y casos borde.
+     */
     private BookingActionActor resolveActor(Authentication authentication, Booking booking) {
         if (authentication == null || authentication.getPrincipal() == null) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "No autenticado");

@@ -15,6 +15,11 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.server.ResponseStatusException;
 
+/**
+ * Tests de funciones del profesional / proveedor de pago del profesional.
+ * Cubren escenarios de profesional Mercado Pago conexion controller para documentar el comportamiento esperado y evitar regresiones.
+ * Mantener estos casos alineados con los contratos reales del backend cuando cambie la logica productiva.
+ */
 class ProfessionalMercadoPagoConnectionControllerTest {
 
     private final ProfessionalPaymentProviderConnectionService connectionService =
@@ -24,6 +29,10 @@ class ProfessionalMercadoPagoConnectionControllerTest {
     private final RoleGuard roleGuard = mock(RoleGuard.class);
     private final BillingProperties billingProperties = new BillingProperties();
 
+    /**
+     * Escenario: debe redirect frontend after exitoso callback.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void shouldRedirectFrontendAfterSuccessfulCallback() {
         ProfessionalMercadoPagoConnectionController controller = controller("http://localhost:3002");
@@ -52,6 +61,10 @@ class ProfessionalMercadoPagoConnectionControllerTest {
         );
     }
 
+    /**
+     * Escenario: debe redirect frontend cuando sesion is faltante.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void shouldRedirectFrontendWhenSessionIsMissing() {
         ProfessionalMercadoPagoConnectionController controller = controller("http://localhost:3002");
@@ -67,6 +80,10 @@ class ProfessionalMercadoPagoConnectionControllerTest {
         );
     }
 
+    /**
+     * Escenario: debe redirect frontend cuando authorization is cancelado.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void shouldRedirectFrontendWhenAuthorizationIsCancelled() {
         ProfessionalMercadoPagoConnectionController controller = controller("http://localhost:3002");
@@ -83,6 +100,10 @@ class ProfessionalMercadoPagoConnectionControllerTest {
         );
     }
 
+    /**
+     * Escenario: debe use configured frontend redirect url cuando present.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void shouldUseConfiguredFrontendRedirectUrlWhenPresent() {
         billingProperties.getMercadopago().getReservations().getOauth()
@@ -99,6 +120,10 @@ class ProfessionalMercadoPagoConnectionControllerTest {
         );
     }
 
+    /**
+     * Escenario: debe redirect frontend cuando callback crashes unexpectedly.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void shouldRedirectFrontendWhenCallbackCrashesUnexpectedly() {
         ProfessionalMercadoPagoConnectionController controller = controller("http://localhost:3002");

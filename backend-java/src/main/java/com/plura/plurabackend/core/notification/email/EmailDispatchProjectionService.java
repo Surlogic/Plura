@@ -11,6 +11,12 @@ import com.plura.plurabackend.core.notification.repository.EmailDispatchReposito
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+/**
+ * EmailDispatchProjectionService es un servicio de negocio del modulo notificaciones / email.
+ * Responsabilidad: coordinar reglas de negocio, validaciones, persistencia e integraciones del caso de uso.
+ * Colabora con: emailDispatchRepository, objectMapper, notificationMetricsService.
+ * Foco funcional: servicios, email transaccional.
+ */
 @Service
 public class EmailDispatchProjectionService {
 
@@ -28,6 +34,9 @@ public class EmailDispatchProjectionService {
         this.notificationMetricsService = notificationMetricsService;
     }
 
+    /**
+     * Ejecuta la logica de project pending manteniendola encapsulada en este componente.
+     */
     @Transactional
     public EmailDispatch projectPending(NotificationEvent event, NotificationEmailProjectionCommand projection) {
         if (event == null || projection == null) {
@@ -52,6 +61,9 @@ public class EmailDispatchProjectionService {
         return saved;
     }
 
+    /**
+     * Guarda json en el formato persistido esperado por el modulo.
+     */
     private String writeJson(Object payload) {
         if (payload == null) {
             return null;
@@ -63,6 +75,10 @@ public class EmailDispatchProjectionService {
         }
     }
 
+    /**
+     * Exige text y corta la ejecucion si falta autorizacion o contexto.
+     * Esta separacion hace explicita la regla de seguridad o negocio que protege el flujo.
+     */
     private String requireText(String value, String field) {
         if (value == null || value.trim().isBlank()) {
             throw new IllegalArgumentException(field + " es obligatorio para proyectar email dispatch");

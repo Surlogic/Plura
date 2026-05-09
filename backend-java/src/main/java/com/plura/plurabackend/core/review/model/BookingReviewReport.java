@@ -39,6 +39,13 @@ import lombok.NoArgsConstructor;
         @Index(name = "idx_booking_review_report_professional_status", columnList = "professional_id, status")
     }
 )
+
+/**
+ * BookingReviewReport es un componente de dominio del modulo resenas / modelo.
+ * Responsabilidad: encapsular comportamiento propio del modulo y mantenerlo fuera de controllers u otras capas.
+ * Mantiene separada esta responsabilidad para que el resto del backend use una API clara.
+ * Foco funcional: reservas, resenas.
+ */
 public class BookingReviewReport {
 
     @Id

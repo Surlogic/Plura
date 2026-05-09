@@ -15,6 +15,12 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+/**
+ * User es un entidad JPA del modulo usuarios / modelo.
+ * Responsabilidad: representar una tabla del dominio, sus columnas y los defaults necesarios antes de persistir.
+ * Persistencia: sus campos reflejan columnas reales; cambiar nombres o tipos puede requerir migracion Flyway.
+ * Foco funcional: usuarios.
+ */
 @Data
 @NoArgsConstructor
 @AllArgsConstructor

@@ -31,6 +31,11 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import com.plura.plurabackend.core.auth.repository.RefreshTokenRepository;
 
+/**
+ * Tests de servicios core compartidos / autenticacion, sesiones, OTP y recuperacion de cuenta.
+ * Cubren escenarios de auth servicio refresh unit para documentar el comportamiento esperado y evitar regresiones.
+ * Mantener estos casos alineados con los contratos reales del backend cuando cambie la logica productiva.
+ */
 @ExtendWith(MockitoExtension.class)
 class AuthServiceRefreshUnitTest {
 
@@ -63,6 +68,10 @@ class AuthServiceRefreshUnitTest {
 
     private AuthService authService;
 
+    /**
+     * Prepara mocks, datos base o configuracion comun antes de cada caso de prueba.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @BeforeEach
     void setUp() {
         PasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
@@ -86,6 +95,10 @@ class AuthServiceRefreshUnitTest {
         );
     }
 
+    /**
+     * Escenario: refresh tracked sesion sin sesion type falls back a contexto type.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void refreshTrackedSessionWithoutSessionTypeFallsBackToContextType() {
         User user = buildUser();
@@ -113,6 +126,10 @@ class AuthServiceRefreshUnitTest {
         assertFalse(result.refreshToken().isBlank());
     }
 
+    /**
+     * Escenario: refresh tracked sesion sin expiry verifica que devuelva no autorizado instead of 500.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void refreshTrackedSessionWithoutExpiryReturnsUnauthorizedInsteadOf500() {
         User user = buildUser();
@@ -135,6 +152,10 @@ class AuthServiceRefreshUnitTest {
         verify(sessionService).revokeSession(session, "SESSION_INVALID");
     }
 
+    /**
+     * Escenario: refresh legacy token sin expiry verifica que devuelva no autorizado instead of 500.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void refreshLegacyTokenWithoutExpiryReturnsUnauthorizedInsteadOf500() {
         User user = buildUser();

@@ -16,6 +16,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
+/**
+ * ProviderOperationService es un servicio de negocio del modulo billing / operaciones de proveedor.
+ * Responsabilidad: coordinar reglas de negocio, validaciones, persistencia e integraciones del caso de uso.
+ * Colabora con: providerOperationRepository.
+ * Foco funcional: operaciones asincronicas, proveedores externos, servicios.
+ */
 @Service
 public class ProviderOperationService {
 
@@ -27,6 +33,10 @@ public class ProviderOperationService {
         this.providerOperationRepository = providerOperationRepository;
     }
 
+    /**
+     * Crea or reuse operacion validando datos de entrada y persistiendo el resultado.
+     * Tambien concentra los efectos secundarios para que el flujo quede en un estado consistente.
+     */
     @Transactional
     public ProviderOperation createOrReuseOperation(
         ProviderOperationType operationType,
@@ -103,6 +113,10 @@ public class ProviderOperationService {
             .orElseThrow(() -> new IllegalStateException("Provider operation no encontrada"));
     }
 
+    /**
+     * Busca due operaciones aplicando filtros, joins o criterios del caso de uso.
+     * Mantiene la consulta encapsulada para que el resto del codigo no repita filtros ni joins.
+     */
     @Transactional(readOnly = true)
     public List<ProviderOperation> findDueOperations(int limit) {
         return providerOperationRepository.findDueOperations(
@@ -117,6 +131,10 @@ public class ProviderOperationService {
         );
     }
 
+    /**
+     * Busca aged operaciones aplicando filtros, joins o criterios del caso de uso.
+     * Mantiene la consulta encapsulada para que el resto del codigo no repita filtros ni joins.
+     */
     @Transactional(readOnly = true)
     public List<ProviderOperation> findAgedOperations(
         List<ProviderOperationStatus> statuses,
@@ -130,6 +148,9 @@ public class ProviderOperationService {
         );
     }
 
+    /**
+     * Ejecuta la logica de claim operacion manteniendola encapsulada en este componente.
+     */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public ProviderOperation claimOperation(String operationId, String workerId, LocalDateTime leaseUntil) {
         LocalDateTime now = LocalDateTime.now();
@@ -163,6 +184,9 @@ public class ProviderOperationService {
         return operation;
     }
 
+    /**
+     * Ejecuta la logica de renew lease manteniendola encapsulada en este componente.
+     */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public boolean renewLease(String operationId, String workerId, LocalDateTime leaseUntil) {
         LocalDateTime now = LocalDateTime.now();
@@ -185,6 +209,9 @@ public class ProviderOperationService {
         return false;
     }
 
+    /**
+     * Ejecuta la logica de requeue operacion manteniendola encapsulada en este componente.
+     */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public boolean requeueOperation(String operationId, String reason) {
         ProviderOperation operation = getRequired(operationId);
@@ -229,6 +256,9 @@ public class ProviderOperationService {
         return true;
     }
 
+    /**
+     * Marca succeeded y actualiza los indicadores relacionados.
+     */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public ProviderOperation markSucceeded(
         String operationId,
@@ -252,6 +282,9 @@ public class ProviderOperationService {
         return saved;
     }
 
+    /**
+     * Marca retryable y actualiza los indicadores relacionados.
+     */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public ProviderOperation markRetryable(
         String operationId,
@@ -278,6 +311,9 @@ public class ProviderOperationService {
         return saved;
     }
 
+    /**
+     * Marca failed y actualiza los indicadores relacionados.
+     */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public ProviderOperation markFailed(
         String operationId,
@@ -304,6 +340,9 @@ public class ProviderOperationService {
         return saved;
     }
 
+    /**
+     * Marca uncertain y actualiza los indicadores relacionados.
+     */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public ProviderOperation markUncertain(
         String operationId,
@@ -330,6 +369,9 @@ public class ProviderOperationService {
         return saved;
     }
 
+    /**
+     * Marca succeeded by reference y actualiza los indicadores relacionados.
+     */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void markSucceededByReference(
         ProviderOperationType operationType,
@@ -360,6 +402,9 @@ public class ProviderOperationService {
             });
     }
 
+    /**
+     * Ejecuta la logica de truncate manteniendola encapsulada en este componente.
+     */
     private String truncate(String value) {
         if (value == null) {
             return null;
@@ -367,12 +412,18 @@ public class ProviderOperationService {
         return value.length() <= 1000 ? value : value.substring(0, 1000);
     }
 
+    /**
+     * Evalua is lease active y devuelve una decision booleana para el llamador.
+     */
     private boolean isLeaseActive(ProviderOperation operation, LocalDateTime now) {
         return operation.getStatus() == ProviderOperationStatus.PROCESSING
             && operation.getLeaseUntil() != null
             && operation.getLeaseUntil().isAfter(now);
     }
 
+    /**
+     * Ejecuta la logica de log transition manteniendola encapsulada en este componente.
+     */
     private void logTransition(ProviderOperation operation) {
         LOGGER.info(
             "Provider operation status updated operationId={} type={} status={} externalReference={} attemptCount={} workerId={} leaseUntil={} providerReference={}",

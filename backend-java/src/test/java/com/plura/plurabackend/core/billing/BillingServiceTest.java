@@ -32,6 +32,11 @@ import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 
+/**
+ * Tests de servicios core compartidos / billing, pagos, webhooks y proveedores.
+ * Cubren escenarios de billing servicio para documentar el comportamiento esperado y evitar regresiones.
+ * Mantener estos casos alineados con los contratos reales del backend cuando cambie la logica productiva.
+ */
 class BillingServiceTest {
 
     private final BillingProperties billingProperties = new BillingProperties();
@@ -51,6 +56,10 @@ class BillingServiceTest {
         List.<PaymentProviderClient>of()
     );
 
+    /**
+     * Prepara mocks, datos base o configuracion comun antes de cada caso de prueba.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @BeforeEach
     void setUp() {
         billingProperties.setEnabled(true);
@@ -69,6 +78,10 @@ class BillingServiceTest {
             .thenAnswer(invocation -> invocation.getArgument(0));
     }
 
+    /**
+     * Escenario: bloquea duplicado Mercado Pago checkout cuando remote suscripcion is still open.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @ParameterizedTest
     @ValueSource(strings = {"pending", "authorized", "active", "paused"})
     void blocksDuplicateMercadoPagoCheckoutWhenRemoteSubscriptionIsStillOpen(String remoteStatus) {
@@ -85,6 +98,10 @@ class BillingServiceTest {
         verify(mercadoPagoSubscriptionService, never()).createSubscription(any());
     }
 
+    /**
+     * Escenario: permite nuevo checkout cuando previous Mercado Pago suscripcion is already cancelado.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void allowsNewCheckoutWhenPreviousMercadoPagoSubscriptionIsAlreadyCancelled() {
         Subscription existing = existingSubscription("preapproval-cancelled");

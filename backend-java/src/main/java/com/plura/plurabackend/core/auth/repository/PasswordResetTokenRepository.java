@@ -10,6 +10,12 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+/**
+ * PasswordResetTokenRepository es un contrato interno del modulo autenticacion / persistencia.
+ * Responsabilidad: definir una frontera estable para que otros modulos no dependan de detalles concretos.
+ * Persistencia: concentra queries derivadas o JPQL para que los servicios no conozcan SQL/joins.
+ * Foco funcional: contrasenas.
+ */
 public interface PasswordResetTokenRepository extends JpaRepository<PasswordResetToken, String> {
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     Optional<PasswordResetToken> findByTokenHash(String tokenHash);

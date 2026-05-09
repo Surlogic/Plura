@@ -30,6 +30,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+/**
+ * BookingClientService es un servicio de negocio del modulo cliente / reservas.
+ * Responsabilidad: coordinar reglas de negocio, validaciones, persistencia e integraciones del caso de uso.
+ * Colabora con: bookingRepository, userRepository, bookingFinanceService, bookingPaymentBreakdownService, entre otros.
+ * Foco funcional: reservas, servicios, clientes.
+ */
 @Service
 public class BookingClientService {
 
@@ -122,6 +128,9 @@ public class BookingClientService {
         }
     }
 
+    /**
+     * Mapea cliente reserva desde el modelo interno al contrato que usa otra capa.
+     */
     private ClientNextBookingResponse mapClientBooking(
         Booking booking,
         Map<Long, BookingFinancialSummaryResponse> financialSummaries,
@@ -158,6 +167,9 @@ public class BookingClientService {
         );
     }
 
+    /**
+     * Resuelve cliente usuario normalizando entradas, defaults y casos borde.
+     */
     private User resolveClientUser(String rawUserId) {
         Long userId = parseUserId(rawUserId);
         User user = userRepository.findByIdAndDeletedAtIsNull(userId)
@@ -167,12 +179,18 @@ public class BookingClientService {
         return user;
     }
 
+    /**
+     * Ejecuta la logica de ensure cliente usuario manteniendola encapsulada en este componente.
+     */
     private void ensureClientUser(User user) {
         if (user.getRole() != UserRole.USER) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Solo clientes");
         }
     }
 
+    /**
+     * Parsea usuario ID y convierte errores de formato en errores controlados.
+     */
     private Long parseUserId(String rawUserId) {
         if (rawUserId == null || rawUserId.isBlank()) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "No autenticado");

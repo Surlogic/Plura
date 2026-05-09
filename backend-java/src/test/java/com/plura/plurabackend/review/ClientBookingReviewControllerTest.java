@@ -17,12 +17,21 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.ResponseEntity;
 
+/**
+ * Tests de resenas y moderacion.
+ * Cubren escenarios de cliente reserva resena controller para documentar el comportamiento esperado y evitar regresiones.
+ * Mantener estos casos alineados con los contratos reales del backend cuando cambie la logica productiva.
+ */
 class ClientBookingReviewControllerTest {
 
     private BookingReviewService bookingReviewService;
     private CurrentActorService currentActorService;
     private ClientBookingReviewController controller;
 
+    /**
+     * Prepara mocks, datos base o configuracion comun antes de cada caso de prueba.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @BeforeEach
     void setUp() {
         bookingReviewService = mock(BookingReviewService.class);
@@ -31,6 +40,10 @@ class ClientBookingReviewControllerTest {
         controller = new ClientBookingReviewController(bookingReviewService, eligibilityService, currentActorService);
     }
 
+    /**
+     * Escenario: get resena verifica que devuelva explicit faltante contract.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void getReviewReturnsExplicitMissingContract() {
         when(currentActorService.currentClientUserId()).thenReturn(10L);
@@ -42,6 +55,10 @@ class ClientBookingReviewControllerTest {
         assertFalse(response.getBody().isExists());
     }
 
+    /**
+     * Escenario: get resena verifica que devuelva explicit encontrado contract.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void getReviewReturnsExplicitFoundContract() {
         when(currentActorService.currentClientUserId()).thenReturn(10L);

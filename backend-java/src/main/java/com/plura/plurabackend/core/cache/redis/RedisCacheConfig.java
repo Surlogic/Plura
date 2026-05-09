@@ -9,10 +9,19 @@ import org.springframework.data.redis.connection.RedisStandaloneConfiguration;
 import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory;
 import org.springframework.data.redis.core.StringRedisTemplate;
 
+/**
+ * RedisCacheConfig es un configuracion Spring del modulo cache / Redis.
+ * Responsabilidad: declarar beans, filtros o parametros transversales que necesita el runtime.
+ * Mantiene separada esta responsabilidad para que el resto del backend use una API clara.
+ * Foco funcional: cache.
+ */
 @Configuration
 @EnableConfigurationProperties(RedisCacheProperties.class)
 public class RedisCacheConfig {
 
+    /**
+     * Crea la conexion Redis usada por los caches distribuidos.
+     */
     @Bean
     @ConditionalOnProperty(
         name = {"cache.enabled", "redis.enabled"},
@@ -29,6 +38,9 @@ public class RedisCacheConfig {
         return new LettuceConnectionFactory(configuration);
     }
 
+    /**
+     * Configura el template Redis con serializacion consistente para claves y valores.
+     */
     @Bean
     @ConditionalOnProperty(
         name = {"cache.enabled", "redis.enabled"},

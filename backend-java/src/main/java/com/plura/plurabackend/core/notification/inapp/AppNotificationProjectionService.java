@@ -7,6 +7,12 @@ import com.plura.plurabackend.core.notification.repository.AppNotificationReposi
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+/**
+ * AppNotificationProjectionService es un servicio de negocio del modulo notificaciones / in-app.
+ * Responsabilidad: coordinar reglas de negocio, validaciones, persistencia e integraciones del caso de uso.
+ * Colabora con: appNotificationRepository.
+ * Foco funcional: notificaciones, servicios.
+ */
 @Service
 public class AppNotificationProjectionService {
 
@@ -16,6 +22,9 @@ public class AppNotificationProjectionService {
         this.appNotificationRepository = appNotificationRepository;
     }
 
+    /**
+     * Ejecuta la logica de project manteniendola encapsulada en este componente.
+     */
     @Transactional
     public AppNotification project(NotificationEvent event, NotificationInAppProjectionCommand projection) {
         if (event == null || projection == null) {
@@ -42,6 +51,10 @@ public class AppNotificationProjectionService {
         return appNotificationRepository.save(appNotification);
     }
 
+    /**
+     * Exige text y corta la ejecucion si falta autorizacion o contexto.
+     * Esta separacion hace explicita la regla de seguridad o negocio que protege el flujo.
+     */
     private String requireText(String value, String field) {
         if (value == null || value.trim().isBlank()) {
             throw new IllegalArgumentException(field + " es obligatorio para proyectar notificacion in-app");
@@ -49,6 +62,9 @@ public class AppNotificationProjectionService {
         return value.trim();
     }
 
+    /**
+     * Normaliza opcional para evitar variantes vacias, invalidas o inconsistentes.
+     */
     private String normalizeOptional(String value) {
         if (value == null) {
             return null;

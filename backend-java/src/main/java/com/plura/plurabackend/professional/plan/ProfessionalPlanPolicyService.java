@@ -4,6 +4,12 @@ import java.util.EnumMap;
 import java.util.Map;
 import org.springframework.stereotype.Service;
 
+/**
+ * ProfessionalPlanPolicyService es un servicio de negocio del modulo profesionales / planes.
+ * Responsabilidad: coordinar reglas de negocio, validaciones, persistencia e integraciones del caso de uso.
+ * Mantiene separada esta responsabilidad para que el resto del backend use una API clara.
+ * Foco funcional: profesionales, servicios, planes.
+ */
 @Service
 public class ProfessionalPlanPolicyService {
 
@@ -19,6 +25,9 @@ public class ProfessionalPlanPolicyService {
         this.entitlementsByPlan = Map.copyOf(entitlements);
     }
 
+    /**
+     * Ejecuta la logica de entitlements for manteniendola encapsulada en este componente.
+     */
     public ProfessionalPlanEntitlements entitlementsFor(ProfessionalPlanCode code) {
         if (code == null) {
             return entitlementsByPlan.get(ProfessionalPlanCode.BASIC);
@@ -26,6 +35,9 @@ public class ProfessionalPlanPolicyService {
         return entitlementsByPlan.getOrDefault(code, entitlementsByPlan.get(ProfessionalPlanCode.BASIC));
     }
 
+    /**
+     * Ejecuta la logica de basic entitlements manteniendola encapsulada en este componente.
+     */
     private ProfessionalPlanEntitlements basicEntitlements() {
         return new ProfessionalPlanEntitlements(
             1,
@@ -55,6 +67,9 @@ public class ProfessionalPlanPolicyService {
         );
     }
 
+    /**
+     * Ejecuta la logica de profesional entitlements manteniendola encapsulada en este componente.
+     */
     private ProfessionalPlanEntitlements profesionalEntitlements() {
         return new ProfessionalPlanEntitlements(
             1,
@@ -84,6 +99,9 @@ public class ProfessionalPlanPolicyService {
         );
     }
 
+    /**
+     * Ejecuta la logica de enterprise entitlements manteniendola encapsulada en este componente.
+     */
     private ProfessionalPlanEntitlements enterpriseEntitlements() {
         return new ProfessionalPlanEntitlements(
             PRACTICAL_UNLIMITED,

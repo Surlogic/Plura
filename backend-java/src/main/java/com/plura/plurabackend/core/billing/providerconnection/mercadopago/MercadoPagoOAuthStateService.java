@@ -14,6 +14,12 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
+/**
+ * MercadoPagoOAuthStateService es un servicio de negocio del modulo billing / conexion de proveedor / Mercado Pago.
+ * Responsabilidad: coordinar reglas de negocio, validaciones, persistencia e integraciones del caso de uso.
+ * Colabora con: billingProperties.
+ * Foco funcional: Mercado Pago, servicios, OAuth, autenticacion y sesiones.
+ */
 @Service
 public class MercadoPagoOAuthStateService {
 
@@ -26,6 +32,9 @@ public class MercadoPagoOAuthStateService {
         this.billingProperties = billingProperties;
     }
 
+    /**
+     * Genera estado con formato estable para uso interno o externo.
+     */
     public GeneratedState generateState(Long professionalId) {
         if (professionalId == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "professionalId es obligatorio");
@@ -43,6 +52,10 @@ public class MercadoPagoOAuthStateService {
         );
     }
 
+    /**
+     * Valida estado y lanza un error controlado si no cumple el contrato.
+     * Esta separacion hace explicita la regla de seguridad o negocio que protege el flujo.
+     */
     public void validateState(String rawState, Long expectedProfessionalId) {
         ParsedState parsedState = parseAndValidateState(rawState);
         if (expectedProfessionalId == null) {
@@ -53,10 +66,16 @@ public class MercadoPagoOAuthStateService {
         }
     }
 
+    /**
+     * Resuelve profesional ID normalizando entradas, defaults y casos borde.
+     */
     public Long resolveProfessionalId(String rawState) {
         return parseAndValidateState(rawState).professionalId();
     }
 
+    /**
+     * Parsea and validate estado y convierte errores de formato en errores controlados.
+     */
     private ParsedState parseAndValidateState(String rawState) {
         if (rawState == null || rawState.isBlank()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "state OAuth es obligatorio");
@@ -102,12 +121,18 @@ public class MercadoPagoOAuthStateService {
         return new ParsedState(professionalId, issuedAtEpoch);
     }
 
+    /**
+     * Ejecuta la logica de random nonce manteniendola encapsulada en este componente.
+     */
     private String randomNonce() {
         byte[] randomBytes = new byte[18];
         secureRandom.nextBytes(randomBytes);
         return Base64.getUrlEncoder().withoutPadding().encodeToString(randomBytes);
     }
 
+    /**
+     * Construye pkce challenge a partir de datos internos ya validados.
+     */
     private PkceChallenge buildPkceChallenge() {
         if (!isPkceEnabled()) {
             return null;
@@ -128,10 +153,16 @@ public class MercadoPagoOAuthStateService {
         }
     }
 
+    /**
+     * Evalua is pkce enabled y devuelve una decision booleana para el llamador.
+     */
     public boolean isPkceEnabled() {
         return billingProperties.getMercadopago().getReservations().getOauth().isPkceEnabled();
     }
 
+    /**
+     * Resuelve signing secret normalizando entradas, defaults y casos borde.
+     */
     private String resolveSigningSecret() {
         BillingProperties.MercadoPago.OAuth oauth = billingProperties.getMercadopago().getReservations().getOauth();
         if (oauth.getStateSigningSecret() != null && !oauth.getStateSigningSecret().isBlank()) {
@@ -149,9 +180,20 @@ public class MercadoPagoOAuthStateService {
         );
     }
 
+    /**
+     * Bloque de datos generated state dentro de la respuesta principal.
+     * Agrupa metricas relacionadas para que el frontend no tenga que reconstruirlas.
+     */
     public record GeneratedState(String value, LocalDateTime expiresAt, PkceChallenge pkceChallenge) {}
 
+    /**
+     * Bloque de datos pkce challenge dentro de la respuesta principal.
+     * Agrupa metricas relacionadas para que el frontend no tenga que reconstruirlas.
+     */
     public record PkceChallenge(String codeVerifier, String codeChallenge, String codeChallengeMethod) {}
 
+    /**
+     * Parsea d estado y convierte errores de formato en errores controlados.
+     */
     private record ParsedState(Long professionalId, long issuedAtEpoch) {}
 }

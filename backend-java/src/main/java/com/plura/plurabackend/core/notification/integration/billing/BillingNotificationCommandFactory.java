@@ -17,9 +17,18 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import org.springframework.stereotype.Component;
 
+/**
+ * BillingNotificationCommandFactory es un componente de dominio del modulo notificaciones / integraciones / billing.
+ * Responsabilidad: encapsular comportamiento propio del modulo y mantenerlo fuera de controllers u otras capas.
+ * Mantiene separada esta responsabilidad para que el resto del backend use una API clara.
+ * Foco funcional: notificaciones, billing.
+ */
 @Component
 public class BillingNotificationCommandFactory {
 
+    /**
+     * Construye pago approved a partir de datos internos ya validados.
+     */
     public NotificationRecordCommand buildPaymentApproved(
         Booking booking,
         PaymentTransaction transaction,
@@ -49,6 +58,9 @@ public class BillingNotificationCommandFactory {
         );
     }
 
+    /**
+     * Construye pago failed a partir de datos internos ya validados.
+     */
     public NotificationRecordCommand buildPaymentFailed(
         Booking booking,
         PaymentTransaction transaction,
@@ -78,6 +90,9 @@ public class BillingNotificationCommandFactory {
         );
     }
 
+    /**
+     * Construye pago refunded a partir de datos internos ya validados.
+     */
     public NotificationRecordCommand buildPaymentRefunded(
         Booking booking,
         PaymentTransaction transaction,
@@ -114,6 +129,9 @@ public class BillingNotificationCommandFactory {
         );
     }
 
+    /**
+     * Construye pago reembolso pending a partir de datos internos ya validados.
+     */
     public NotificationRecordCommand buildPaymentRefundPending(
         Booking booking,
         PaymentTransaction transaction,
@@ -144,6 +162,9 @@ public class BillingNotificationCommandFactory {
         );
     }
 
+    /**
+     * Construye command a partir de datos internos ya validados.
+     */
     private NotificationRecordCommand buildCommand(
         NotificationEventType eventType,
         Booking booking,
@@ -175,6 +196,9 @@ public class BillingNotificationCommandFactory {
         );
     }
 
+    /**
+     * Construye payload compartidos por varias consultas del componente.
+     */
     private Map<String, Object> basePayload(
         Booking booking,
         PaymentTransaction transaction,
@@ -199,6 +223,9 @@ public class BillingNotificationCommandFactory {
         return payload;
     }
 
+    /**
+     * Ejecuta la logica de email projection manteniendola encapsulada en este componente.
+     */
     private NotificationEmailProjectionCommand emailProjection(
         ProfessionalNotificationRecipient recipient,
         String templateKey,
@@ -211,6 +238,9 @@ public class BillingNotificationCommandFactory {
         return new NotificationEmailProjectionCommand(recipient.email(), templateKey, subject, payload);
     }
 
+    /**
+     * Ejecuta la logica de dedupe clave manteniendola encapsulada en este componente.
+     */
     private String dedupeKey(
         NotificationEventType eventType,
         Booking booking,
@@ -235,6 +265,9 @@ public class BillingNotificationCommandFactory {
         return dedupeKey.toString();
     }
 
+    /**
+     * Resuelve aggregate ID normalizando entradas, defaults y casos borde.
+     */
     private String resolveAggregateId(Booking booking, PaymentTransaction transaction) {
         String aggregateId = firstNonBlank(
             transaction == null ? null : transaction.getId(),
@@ -246,6 +279,9 @@ public class BillingNotificationCommandFactory {
         return booking == null || booking.getId() == null ? "unknown" : "booking-" + booking.getId();
     }
 
+    /**
+     * Resuelve reserva reference ID normalizando entradas, defaults y casos borde.
+     */
     private Long resolveBookingReferenceId(Booking booking, ParsedWebhookEvent event) {
         if (booking != null && booking.getId() != null) {
             return booking.getId();
@@ -253,6 +289,9 @@ public class BillingNotificationCommandFactory {
         return event == null ? null : event.bookingId();
     }
 
+    /**
+     * Resuelve occurred at normalizando entradas, defaults y casos borde.
+     */
     private LocalDateTime resolveOccurredAt(
         NotificationEventType eventType,
         PaymentTransaction transaction,
@@ -277,10 +316,16 @@ public class BillingNotificationCommandFactory {
         return transaction.getUpdatedAt() == null ? transaction.getCreatedAt() : transaction.getUpdatedAt();
     }
 
+    /**
+     * Ejecuta la logica de action URL manteniendola encapsulada en este componente.
+     */
     private String actionUrl(Booking booking) {
         return booking == null || booking.getId() == null ? null : "/profesional/dashboard/reservas?bookingId=" + booking.getId();
     }
 
+    /**
+     * Ejecuta la logica de servicio label manteniendola encapsulada en este componente.
+     */
     private String serviceLabel(Booking booking) {
         if (booking == null || booking.getServiceNameSnapshot() == null || booking.getServiceNameSnapshot().isBlank()) {
             return "la reserva";
@@ -288,6 +333,9 @@ public class BillingNotificationCommandFactory {
         return booking.getServiceNameSnapshot().trim();
     }
 
+    /**
+     * Obtiene el primer valor util de non blank ignorando nulos o blancos.
+     */
     private String firstNonBlank(String... values) {
         for (String value : values) {
             if (value != null && !value.isBlank()) {

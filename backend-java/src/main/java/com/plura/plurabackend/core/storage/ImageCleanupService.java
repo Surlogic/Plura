@@ -7,6 +7,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
+/**
+ * ImageCleanupService es un servicio de negocio del modulo storage.
+ * Responsabilidad: coordinar reglas de negocio, validaciones, persistencia e integraciones del caso de uso.
+ * Colabora con: imageStorageService.
+ * Foco funcional: servicios, imagenes.
+ */
 @Service
 public class ImageCleanupService {
 
@@ -19,6 +25,10 @@ public class ImageCleanupService {
         this.imageStorageService = imageStorageService;
     }
 
+    /**
+     * Elimina if changed y limpia relaciones o datos derivados cuando corresponde.
+     * Tambien concentra los efectos secundarios para que el flujo quede en un estado consistente.
+     */
     public void deleteIfChanged(String oldUrl, String newUrl) {
         String normalizedOld = normalizeImageReference(oldUrl);
         if (!isManagedImage(normalizedOld)) {
@@ -31,6 +41,10 @@ public class ImageCleanupService {
         safeDelete(normalizedOld);
     }
 
+    /**
+     * Elimina if removed y limpia relaciones o datos derivados cuando corresponde.
+     * Tambien concentra los efectos secundarios para que el flujo quede en un estado consistente.
+     */
     public void deleteIfRemoved(String oldUrl) {
         String normalizedOld = normalizeImageReference(oldUrl);
         if (!isManagedImage(normalizedOld)) {
@@ -39,6 +53,10 @@ public class ImageCleanupService {
         safeDelete(normalizedOld);
     }
 
+    /**
+     * Elimina removed from listado y limpia relaciones o datos derivados cuando corresponde.
+     * Tambien concentra los efectos secundarios para que el flujo quede en un estado consistente.
+     */
     public void deleteRemovedFromList(List<String> oldUrls, List<String> newUrls) {
         if (oldUrls == null || oldUrls.isEmpty()) {
             return;
@@ -60,6 +78,9 @@ public class ImageCleanupService {
         }
     }
 
+    /**
+     * Evalua is managed imagen y devuelve una decision booleana para el llamador.
+     */
     private boolean isManagedImage(String url) {
         if (url == null || url.isBlank()) {
             return false;
@@ -71,11 +92,17 @@ public class ImageCleanupService {
             || (trimmed.startsWith("professionals/") || trimmed.startsWith("services/"));
     }
 
+    /**
+     * Normaliza imagen reference para evitar variantes vacias, invalidas o inconsistentes.
+     */
     private String normalizeImageReference(String url) {
         String normalized = imageStorageService.normalizeStoredReference(url);
         return normalized == null ? "" : normalized.trim();
     }
 
+    /**
+     * Ejecuta delete atrapando errores para que el flujo principal no falle innecesariamente.
+     */
     private void safeDelete(String url) {
         try {
             boolean deleted = imageStorageService.deleteImage(url);
@@ -90,6 +117,10 @@ public class ImageCleanupService {
         deleteThumbnails(url);
     }
 
+    /**
+     * Elimina thumbnails y limpia relaciones o datos derivados cuando corresponde.
+     * Tambien concentra los efectos secundarios para que el flujo quede en un estado consistente.
+     */
     private void deleteThumbnails(String imageUrl) {
         if (imageUrl == null || imageUrl.isBlank()) {
             return;

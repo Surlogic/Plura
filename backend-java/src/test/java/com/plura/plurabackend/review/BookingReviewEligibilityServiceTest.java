@@ -18,12 +18,21 @@ import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+/**
+ * Tests de resenas y moderacion.
+ * Cubren escenarios de reserva resena elegibilidad servicio para documentar el comportamiento esperado y evitar regresiones.
+ * Mantener estos casos alineados con los contratos reales del backend cuando cambie la logica productiva.
+ */
 class BookingReviewEligibilityServiceTest {
 
     private BookingRepository bookingRepository;
     private BookingReviewRepository bookingReviewRepository;
     private BookingReviewEligibilityService service;
 
+    /**
+     * Prepara mocks, datos base o configuracion comun antes de cada caso de prueba.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @BeforeEach
     void setUp() {
         bookingRepository = mock(BookingRepository.class);
@@ -31,6 +40,10 @@ class BookingReviewEligibilityServiceTest {
         service = new BookingReviewEligibilityService(bookingRepository, bookingReviewRepository, "America/Montevideo");
     }
 
+    /**
+     * Escenario: verifica que devuelva eligible for recent completado reserva sin resena.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void returnsEligibleForRecentCompletedBookingWithoutReview() {
         Booking booking = booking(1L, BookingOperationalStatus.COMPLETED, LocalDateTime.now().minusDays(1));
@@ -43,6 +56,10 @@ class BookingReviewEligibilityServiceTest {
         assertFalse(response.isAlreadyReviewed());
     }
 
+    /**
+     * Escenario: verifica que devuelva ineligible cuando resena window vencido.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void returnsIneligibleWhenReviewWindowExpired() {
         Booking booking = booking(
@@ -59,6 +76,10 @@ class BookingReviewEligibilityServiceTest {
         assertFalse(response.isAlreadyReviewed());
     }
 
+    /**
+     * Escenario: verifica que devuelva ineligible for non completado reserva.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void returnsIneligibleForNonCompletedBooking() {
         Booking booking = booking(1L, BookingOperationalStatus.CONFIRMED, null);

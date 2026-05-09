@@ -5,11 +5,20 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import com.plura.plurabackend.core.auth.model.OtpChallengePurpose;
 import org.junit.jupiter.api.Test;
 
+/**
+ * Tests de autenticacion, sesiones, OTP y recuperacion de cuenta.
+ * Cubren escenarios de plura email template servicio para documentar el comportamiento esperado y evitar regresiones.
+ * Mantener estos casos alineados con los contratos reales del backend cuando cambie la logica productiva.
+ */
 class PluraEmailTemplateServiceTest {
 
     private final PluraEmailTemplateService templateService =
         new PluraEmailTemplateService("Plura", "https://plura.app");
 
+    /**
+     * Escenario: contrasena reset template includes reset call a action y link.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void passwordResetTemplateIncludesResetCallToActionAndLink() {
         TransactionalEmailService.TransactionalEmailMessage email = templateService.buildPasswordResetEmail(
@@ -26,6 +35,10 @@ class PluraEmailTemplateServiceTest {
         assertTrue(email.textBody().contains("30 minutos"));
     }
 
+    /**
+     * Escenario: email verification template highlights code y expiry.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void emailVerificationTemplateHighlightsCodeAndExpiry() {
         TransactionalEmailService.TransactionalEmailMessage email = templateService.buildEmailVerificationEmail(
@@ -41,6 +54,10 @@ class PluraEmailTemplateServiceTest {
         assertTrue(email.textBody().contains("123456"));
     }
 
+    /**
+     * Escenario: OTP template includes purpose code y security note.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void otpTemplateIncludesPurposeCodeAndSecurityNote() {
         TransactionalEmailService.TransactionalEmailMessage email = templateService.buildOtpChallengeEmail(

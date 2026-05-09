@@ -25,6 +25,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.util.UriComponentsBuilder;
 
+/**
+ * MercadoPagoOAuthClient es un cliente de integracion del modulo billing / conexion de proveedor / Mercado Pago.
+ * Responsabilidad: aislar llamadas y payloads de una API externa para no mezclar provider logic con dominio.
+ * Colabora con: billingProperties, objectMapper, httpClient.
+ * Foco funcional: Mercado Pago, clientes, OAuth, autenticacion y sesiones.
+ */
 @Service
 public class MercadoPagoOAuthClient {
 
@@ -48,10 +54,16 @@ public class MercadoPagoOAuthClient {
             .build();
     }
 
+    /**
+     * Construye authorization URL a partir de datos internos ya validados.
+     */
     public String buildAuthorizationUrl(String state) {
         return buildAuthorizationUrl(state, null);
     }
 
+    /**
+     * Construye authorization URL a partir de datos internos ya validados.
+     */
     public String buildAuthorizationUrl(String state, MercadoPagoOAuthStateService.PkceChallenge pkceChallenge) {
         BillingProperties.MercadoPago.OAuth oauth = requireConfiguredAuthorization();
         UriComponentsBuilder builder = UriComponentsBuilder.fromUriString(oauth.getAuthorizationUrl())
@@ -80,10 +92,16 @@ public class MercadoPagoOAuthClient {
         return authorizationUrl;
     }
 
+    /**
+     * Ejecuta la logica de exchange authorization code manteniendola encapsulada en este componente.
+     */
     public TokenResponse exchangeAuthorizationCode(String code) {
         return exchangeAuthorizationCode(code, null);
     }
 
+    /**
+     * Ejecuta la logica de exchange authorization code manteniendola encapsulada en este componente.
+     */
     public TokenResponse exchangeAuthorizationCode(String code, String codeVerifier) {
         if (code == null || code.isBlank()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "code OAuth es obligatorio");
@@ -104,6 +122,9 @@ public class MercadoPagoOAuthClient {
         return exchangeToken(formEncode(payload));
     }
 
+    /**
+     * Refresca acceso token para mantener datos derivados o metricas al dia.
+     */
     public TokenResponse refreshAccessToken(String refreshToken) {
         if (refreshToken == null || refreshToken.isBlank()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "refresh_token OAuth es obligatorio");
@@ -117,6 +138,9 @@ public class MercadoPagoOAuthClient {
         )));
     }
 
+    /**
+     * Ejecuta la logica de exchange token manteniendola encapsulada en este componente.
+     */
     private TokenResponse exchangeToken(String body) {
         BillingProperties.MercadoPago.OAuth oauth = requireConfiguredTokenExchange();
 
@@ -188,6 +212,10 @@ public class MercadoPagoOAuthClient {
         }
     }
 
+    /**
+     * Exige configured authorization y corta la ejecucion si falta autorizacion o contexto.
+     * Esta separacion hace explicita la regla de seguridad o negocio que protege el flujo.
+     */
     private BillingProperties.MercadoPago.OAuth requireConfiguredAuthorization() {
         if (!billingProperties.isEnabled() || !billingProperties.getMercadopago().isEnabled()) {
             throw new ResponseStatusException(
@@ -203,6 +231,10 @@ public class MercadoPagoOAuthClient {
         return oauth;
     }
 
+    /**
+     * Exige configured token exchange y corta la ejecucion si falta autorizacion o contexto.
+     * Esta separacion hace explicita la regla de seguridad o negocio que protege el flujo.
+     */
     private BillingProperties.MercadoPago.OAuth requireConfiguredTokenExchange() {
         BillingProperties.MercadoPago.OAuth oauth = requireConfiguredAuthorization();
         requirePresent(oauth.getClientSecret(), "billing.mercadopago.reservations.oauth.client-secret");
@@ -210,6 +242,10 @@ public class MercadoPagoOAuthClient {
         return oauth;
     }
 
+    /**
+     * Exige present y corta la ejecucion si falta autorizacion o contexto.
+     * Esta separacion hace explicita la regla de seguridad o negocio que protege el flujo.
+     */
     private void requirePresent(String value, String configKey) {
         if (value == null || value.isBlank()) {
             throw new ResponseStatusException(
@@ -219,6 +255,10 @@ public class MercadoPagoOAuthClient {
         }
     }
 
+    /**
+     * Exige backend callback redirect uri y corta la ejecucion si falta autorizacion o contexto.
+     * Esta separacion hace explicita la regla de seguridad o negocio que protege el flujo.
+     */
     private void requireBackendCallbackRedirectUri(String redirectUri) {
         try {
             URI uri = URI.create(redirectUri.trim());
@@ -238,6 +278,9 @@ public class MercadoPagoOAuthClient {
         }
     }
 
+    /**
+     * Ejecuta la logica de form encode manteniendola encapsulada en este componente.
+     */
     private String formEncode(Map<String, String> payload) {
         Map<String, String> orderedPayload = new LinkedHashMap<>(payload);
         StringBuilder builder = new StringBuilder();
@@ -252,6 +295,9 @@ public class MercadoPagoOAuthClient {
         return builder.toString();
     }
 
+    /**
+     * Extrae proveedor message desde una URL, payload o referencia persistida.
+     */
     private String extractProviderMessage(String responseBody) {
         if (responseBody == null || responseBody.isBlank()) {
             return null;
@@ -269,6 +315,9 @@ public class MercadoPagoOAuthClient {
         }
     }
 
+    /**
+     * Ejecuta la logica de text value manteniendola encapsulada en este componente.
+     */
     private String textValue(JsonNode node, String fieldName) {
         if (node == null || node.isMissingNode() || node.isNull()) {
             return null;
@@ -281,6 +330,9 @@ public class MercadoPagoOAuthClient {
         return value == null || value.isBlank() ? null : value.trim();
     }
 
+    /**
+     * Obtiene el primer valor util de non blank ignorando nulos o blancos.
+     */
     private String firstNonBlank(String... values) {
         for (String value : values) {
             if (value != null && !value.isBlank()) {
@@ -290,6 +342,9 @@ public class MercadoPagoOAuthClient {
         return null;
     }
 
+    /**
+     * Ejecuta la logica de long value manteniendola encapsulada en este componente.
+     */
     private Long longValue(String value) {
         if (value == null || value.isBlank()) {
             return null;
@@ -301,6 +356,9 @@ public class MercadoPagoOAuthClient {
         }
     }
 
+    /**
+     * Ejecuta la logica de decimal value manteniendola encapsulada en este componente.
+     */
     private BigDecimal decimalValue(String value) {
         if (value == null || value.isBlank()) {
             return null;
@@ -312,6 +370,9 @@ public class MercadoPagoOAuthClient {
         }
     }
 
+    /**
+     * Ejecuta for logs atrapando errores para que el flujo principal no falle innecesariamente.
+     */
     private String safeForLogs(String value) {
         if (value == null || value.isBlank()) {
             return null;
@@ -323,6 +384,9 @@ public class MercadoPagoOAuthClient {
         return trimmed.substring(0, 8) + "..." + trimmed.substring(trimmed.length() - 4);
     }
 
+    /**
+     * Sanea authorization URL for logs antes de usarlo en storage, URL o persistencia.
+     */
     private String sanitizeAuthorizationUrlForLogs(String authorizationUrl) {
         if (authorizationUrl == null || authorizationUrl.isBlank()) {
             return authorizationUrl;
@@ -337,6 +401,9 @@ public class MercadoPagoOAuthClient {
         return sanitized;
     }
 
+    /**
+     * Ejecuta la logica de mask query param value manteniendola encapsulada en este componente.
+     */
     private String maskQueryParamValue(String url, String paramName) {
         int index = url.indexOf(paramName + "=");
         if (index < 0) {
@@ -352,6 +419,9 @@ public class MercadoPagoOAuthClient {
             + url.substring(nextAmpersand);
     }
 
+    /**
+     * Parsea query params y convierte errores de formato en errores controlados.
+     */
     private Map<String, List<String>> parseQueryParams(String url) {
         Map<String, List<String>> queryParams = new LinkedHashMap<>();
         if (url == null || url.isBlank()) {
@@ -375,6 +445,9 @@ public class MercadoPagoOAuthClient {
         return queryParams;
     }
 
+    /**
+     * Convierte datos internos al formato ken respuesta esperado por el consumidor.
+     */
     public record TokenResponse(
         String accessToken,
         String refreshToken,

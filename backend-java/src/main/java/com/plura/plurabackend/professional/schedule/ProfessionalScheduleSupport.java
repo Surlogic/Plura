@@ -22,6 +22,12 @@ import java.util.function.IntUnaryOperator;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 
+/**
+ * ProfessionalScheduleSupport es un componente de dominio del modulo profesionales / agenda.
+ * Responsabilidad: encapsular comportamiento propio del modulo y mantenerlo fuera de controllers u otras capas.
+ * Mantiene separada esta responsabilidad para que el resto del backend use una API clara.
+ * Foco funcional: profesionales, agenda.
+ */
 public final class ProfessionalScheduleSupport {
 
     private static final List<String> DAY_ORDER = List.of(
@@ -45,6 +51,9 @@ public final class ProfessionalScheduleSupport {
 
     private ProfessionalScheduleSupport() {}
 
+    /**
+     * Lee guardada agenda desde la fuente persistida y aplica defaults si faltan datos.
+     */
     public static ProfesionalScheduleDto readStoredSchedule(
         ObjectMapper objectMapper,
         String rawScheduleJson,
@@ -63,6 +72,9 @@ public final class ProfessionalScheduleSupport {
         }
     }
 
+    /**
+     * Normaliza agenda para evitar variantes vacias, invalidas o inconsistentes.
+     */
     public static ProfesionalScheduleDto normalizeSchedule(
         ProfesionalScheduleDto source,
         int defaultSlotDurationMinutes,
@@ -144,6 +156,10 @@ public final class ProfessionalScheduleSupport {
         );
     }
 
+    /**
+     * Valida agenda y lanza un error controlado si no cumple el contrato.
+     * Esta separacion hace explicita la regla de seguridad o negocio que protege el flujo.
+     */
     public static void validateSchedule(ProfesionalScheduleDto schedule, Consumer<Integer> slotDurationValidator) {
         if (schedule == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Horario inválido");
@@ -173,6 +189,9 @@ public final class ProfessionalScheduleSupport {
         validatePauses(schedule.getPauses());
     }
 
+    /**
+     * Evalua is fecha paused y devuelve una decision booleana para el llamador.
+     */
     public static boolean isDatePaused(LocalDate date, List<ProfesionalSchedulePauseDto> pauses) {
         if (pauses == null || pauses.isEmpty()) {
             return false;
@@ -198,12 +217,19 @@ public final class ProfessionalScheduleSupport {
         return false;
     }
 
+    /**
+     * Crea default agenda validando datos de entrada y persistiendo el resultado.
+     * Tambien concentra los efectos secundarios para que el flujo quede en un estado consistente.
+     */
     private static ProfesionalScheduleDto createDefaultSchedule(int defaultSlotDurationMinutes) {
         List<ProfesionalScheduleDayDto> days = new ArrayList<>();
         DAY_ORDER.forEach(day -> days.add(new ProfesionalScheduleDayDto(day, false, false, new ArrayList<>())));
         return new ProfesionalScheduleDto(days, new ArrayList<>(), defaultSlotDurationMinutes);
     }
 
+    /**
+     * Normaliza dia clave para evitar variantes vacias, invalidas o inconsistentes.
+     */
     private static String normalizeDayKey(String rawDay) {
         if (rawDay == null) {
             return "";
@@ -215,6 +241,10 @@ public final class ProfessionalScheduleSupport {
         return DAY_ALIASES.getOrDefault(normalized, normalized);
     }
 
+    /**
+     * Valida day ranges y lanza un error controlado si no cumple el contrato.
+     * Esta separacion hace explicita la regla de seguridad o negocio que protege el flujo.
+     */
     private static void validateDayRanges(String day, List<ProfesionalScheduleRangeDto> ranges) {
         if (ranges == null) return;
 
@@ -267,6 +297,10 @@ public final class ProfessionalScheduleSupport {
         }
     }
 
+    /**
+     * Valida pauses y lanza un error controlado si no cumple el contrato.
+     * Esta separacion hace explicita la regla de seguridad o negocio que protege el flujo.
+     */
     private static void validatePauses(List<ProfesionalSchedulePauseDto> pauses) {
         if (pauses == null) return;
 
@@ -314,7 +348,15 @@ public final class ProfessionalScheduleSupport {
         }
     }
 
+    /**
+     * Bloque de datos range window usado internamente por esta clase.
+     * Agrupa valores relacionados para que el calculo principal sea mas legible.
+     */
     private record RangeWindow(LocalTime start, LocalTime end) {}
 
+    /**
+     * Bloque de datos pause window usado internamente por esta clase.
+     * Agrupa valores relacionados para que el calculo principal sea mas legible.
+     */
     private record PauseWindow(LocalDate start, LocalDate end) {}
 }

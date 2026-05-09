@@ -29,6 +29,11 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.web.server.ResponseStatusException;
 
+/**
+ * Tests de feedback de la plataforma.
+ * Cubren escenarios de interno app feedback ops servicio para documentar el comportamiento esperado y evitar regresiones.
+ * Mantener estos casos alineados con los contratos reales del backend cuando cambie la logica productiva.
+ */
 class InternalAppFeedbackOpsServiceTest {
 
     private AppFeedbackRepository appFeedbackRepository;
@@ -37,6 +42,10 @@ class InternalAppFeedbackOpsServiceTest {
     private User testUser;
     private AppFeedback sampleFeedback;
 
+    /**
+     * Prepara mocks, datos base o configuracion comun antes de cada caso de prueba.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @BeforeEach
     void setUp() {
         appFeedbackRepository = mock(AppFeedbackRepository.class);
@@ -59,6 +68,10 @@ class InternalAppFeedbackOpsServiceTest {
         sampleFeedback.setUpdatedAt(LocalDateTime.of(2026, 3, 15, 10, 0));
     }
 
+    /**
+     * Escenario: listado verifica que devuelva filtered results.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void listReturnsFilteredResults() {
         Page<AppFeedback> page = new PageImpl<>(List.of(sampleFeedback), PageRequest.of(0, 20), 1);
@@ -78,6 +91,10 @@ class InternalAppFeedbackOpsServiceTest {
         assertEquals("ACTIVE", item.getStatus());
     }
 
+    /**
+     * Escenario: listado clamps page y size.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void listClampsPageAndSize() {
         Page<AppFeedback> page = new PageImpl<>(List.of(), PageRequest.of(0, 100), 0);
@@ -89,6 +106,10 @@ class InternalAppFeedbackOpsServiceTest {
         verify(appFeedbackRepository).findAllFiltered(any(), any(), any(), any(), any(), any(), eq(PageRequest.of(0, 100)));
     }
 
+    /**
+     * Escenario: listado con invalido category verifica que devuelva bad request.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void listWithInvalidCategoryReturnsBadRequest() {
         ResponseStatusException ex = assertThrows(ResponseStatusException.class,
@@ -96,6 +117,10 @@ class InternalAppFeedbackOpsServiceTest {
         assertEquals(400, ex.getStatusCode().value());
     }
 
+    /**
+     * Escenario: listado con invalido date verifica que devuelva bad request.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void listWithInvalidDateReturnsBadRequest() {
         ResponseStatusException ex = assertThrows(ResponseStatusException.class,
@@ -103,6 +128,10 @@ class InternalAppFeedbackOpsServiceTest {
         assertEquals(400, ex.getStatusCode().value());
     }
 
+    /**
+     * Escenario: detalle verifica que devuelva full info.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void detailReturnsFullInfo() {
         when(appFeedbackRepository.findById(100L)).thenReturn(Optional.of(sampleFeedback));
@@ -116,6 +145,10 @@ class InternalAppFeedbackOpsServiceTest {
         assertNotNull(detail.getUpdatedAt());
     }
 
+    /**
+     * Escenario: detalle no encontrado verifica que devuelva 404.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void detailNotFoundReturns404() {
         when(appFeedbackRepository.findById(999L)).thenReturn(Optional.empty());
@@ -125,6 +158,10 @@ class InternalAppFeedbackOpsServiceTest {
         assertEquals(404, ex.getStatusCode().value());
     }
 
+    /**
+     * Escenario: archive changes status a archived.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void archiveChangesStatusToArchived() {
         when(appFeedbackRepository.findById(100L)).thenReturn(Optional.of(sampleFeedback));
@@ -136,6 +173,10 @@ class InternalAppFeedbackOpsServiceTest {
         verify(appFeedbackRepository).save(sampleFeedback);
     }
 
+    /**
+     * Escenario: unarchive changes status a active.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void unarchiveChangesStatusToActive() {
         sampleFeedback.setStatus(FeedbackStatus.ARCHIVED);
@@ -147,6 +188,10 @@ class InternalAppFeedbackOpsServiceTest {
         assertEquals("ACTIVE", result.getStatus());
     }
 
+    /**
+     * Escenario: analytics verifica que devuelva aggregates.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void analyticsReturnsAggregates() {
         when(appFeedbackRepository.countFiltered(any(), any())).thenReturn(10L);
@@ -173,6 +218,10 @@ class InternalAppFeedbackOpsServiceTest {
         assertEquals(4L, result.getCountByRating().get(3));
     }
 
+    /**
+     * Escenario: analytics con date range.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void analyticsWithDateRange() {
         when(appFeedbackRepository.countFiltered(any(), any())).thenReturn(5L);
@@ -188,14 +237,18 @@ class InternalAppFeedbackOpsServiceTest {
         assertEquals(4.0, result.getAverageRating());
     }
 
+    /**
+     * Escenario: feedback interno never exposed publicly.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void feedbackInternalNeverExposedPublicly() {
         // This test verifies at the service level that internal feedback
-        // has no method to return data without auth — the controller
+        // has no method a return data without auth — the controller
         // requires X-Internal-Token. The service itself doesn't have
         // any public endpoint-facing methods.
         // The fact that InternalAppFeedbackOpsService only exists in the
-        // core.feedback.ops package and is only wired to
+        // core.feedback.ops package y is only wired to
         // InternalAppFeedbackOpsController (under /internal/ops/) confirms
         // feedback never appears in public endpoints.
         assertNotNull(service);

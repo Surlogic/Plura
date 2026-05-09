@@ -34,6 +34,13 @@ import lombok.NoArgsConstructor;
         @Index(name = "idx_provider_operation_booking", columnList = "booking_id")
     }
 )
+
+/**
+ * ProviderOperation es un componente de dominio del modulo billing / operaciones de proveedor / modelo.
+ * Responsabilidad: encapsular comportamiento propio del modulo y mantenerlo fuera de controllers u otras capas.
+ * Mantiene separada esta responsabilidad para que el resto del backend use una API clara.
+ * Foco funcional: operaciones asincronicas, proveedores externos.
+ */
 public class ProviderOperation {
 
     @Id

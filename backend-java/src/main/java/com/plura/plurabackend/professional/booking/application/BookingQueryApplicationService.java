@@ -29,6 +29,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+/**
+ * BookingQueryApplicationService es un servicio de negocio del modulo profesionales / reservas / aplicacion.
+ * Responsabilidad: coordinar reglas de negocio, validaciones, persistencia e integraciones del caso de uso.
+ * Colabora con: bookingRepository, bookingFinanceService, bookingPaymentBreakdownService, bookingPaymentsGateway, entre otros.
+ * Foco funcional: reservas, servicios.
+ */
 @Service
 public class BookingQueryApplicationService {
 
@@ -148,6 +154,9 @@ public class BookingQueryApplicationService {
         return bookings;
     }
 
+    /**
+     * Parsea fecha y convierte errores de formato en errores controlados.
+     */
     private LocalDate parseDate(String rawDate, String errorMessage) {
         try {
             return LocalDate.parse(rawDate.trim());
@@ -156,6 +165,9 @@ public class BookingQueryApplicationService {
         }
     }
 
+    /**
+     * Decide si corresponde sincronizar pending pago segun estado actual y reglas del dominio.
+     */
     private boolean shouldSyncPendingPayment(Booking booking) {
         if (booking == null || booking.getId() == null) {
             return false;
@@ -167,6 +179,9 @@ public class BookingQueryApplicationService {
             || booking.getOperationalStatus() == BookingOperationalStatus.CONFIRMED;
     }
 
+    /**
+     * Ejecuta la logica de sincronizar pending pago de forma segura manteniendola encapsulada en este componente.
+     */
     private void syncPendingPaymentSafely(Long bookingId) {
         try {
             bookingPaymentsGateway.syncPendingChargeStatus(bookingId);

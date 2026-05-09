@@ -6,10 +6,19 @@ import java.util.HexFormat;
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 
+/**
+ * SignatureUtils es un componente de dominio del modulo billing / webhooks.
+ * Responsabilidad: encapsular comportamiento propio del modulo y mantenerlo fuera de controllers u otras capas.
+ * Mantiene separada esta responsabilidad para que el resto del backend use una API clara.
+ * Foco funcional: la responsabilidad indicada por su paquete y nombre.
+ */
 public final class SignatureUtils {
 
     private SignatureUtils() {}
 
+    /**
+     * Ejecuta la logica de hmac SHA 256 hex manteniendola encapsulada en este componente.
+     */
     public static String hmacSha256Hex(String secret, String message) {
         try {
             Mac mac = Mac.getInstance("HmacSHA256");
@@ -21,6 +30,9 @@ public final class SignatureUtils {
         }
     }
 
+    /**
+     * Calcula hash SHA para generar identificadores estables o seguros.
+     */
     public static String sha256Hex(String message) {
         try {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
@@ -31,6 +43,9 @@ public final class SignatureUtils {
         }
     }
 
+    /**
+     * Ejecuta la logica de constant hora equals manteniendola encapsulada en este componente.
+     */
     public static boolean constantTimeEquals(String expected, String provided) {
         if (expected == null || provided == null) {
             return false;

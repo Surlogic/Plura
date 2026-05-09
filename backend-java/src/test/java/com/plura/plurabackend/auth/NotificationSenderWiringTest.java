@@ -10,8 +10,17 @@ import com.plura.plurabackend.core.auth.model.OtpChallengePurpose;
 import com.plura.plurabackend.core.user.model.User;
 import org.junit.jupiter.api.Test;
 
+/**
+ * Tests de autenticacion, sesiones, OTP y recuperacion de cuenta.
+ * Cubren escenarios de notificacion sender wiring para documentar el comportamiento esperado y evitar regresiones.
+ * Mantener estos casos alineados con los contratos reales del backend cuando cambie la logica productiva.
+ */
 class NotificationSenderWiringTest {
 
+    /**
+     * Escenario: contrasena reset sender builds contrasena reset email.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void passwordResetSenderBuildsPasswordResetEmail() {
         CapturingTransactionalEmailService delivery = new CapturingTransactionalEmailService();
@@ -32,6 +41,10 @@ class NotificationSenderWiringTest {
         assertEquals("user@plura.com", delivery.lastMessage.toAddress());
     }
 
+    /**
+     * Escenario: email verification sender builds verification email.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void emailVerificationSenderBuildsVerificationEmail() {
         CapturingTransactionalEmailService delivery = new CapturingTransactionalEmailService();
@@ -52,6 +65,10 @@ class NotificationSenderWiringTest {
         assertEquals("user@plura.com", delivery.lastMessage.toAddress());
     }
 
+    /**
+     * Escenario: email verification sender falla cuando delivery does no send.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void emailVerificationSenderFailsWhenDeliveryDoesNotSend() {
         EmailVerificationEmailNotificationSender sender = new EmailVerificationEmailNotificationSender(
@@ -72,6 +89,10 @@ class NotificationSenderWiringTest {
         assertEquals("EMAIL_DELIVERY_UNAVAILABLE", exception.getErrorCode());
     }
 
+    /**
+     * Escenario: email verification sender permite skipped fallback cuando SMTP is disabled.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void emailVerificationSenderAllowsSkippedFallbackWhenSmtpIsDisabled() {
         EmailVerificationEmailNotificationSender sender = new EmailVerificationEmailNotificationSender(
@@ -87,6 +108,10 @@ class NotificationSenderWiringTest {
         ));
     }
 
+    /**
+     * Escenario: OTP challenge sender only usa email delivery for email channel.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void otpChallengeSenderOnlyUsesEmailDeliveryForEmailChannel() {
         CapturingTransactionalEmailService delivery = new CapturingTransactionalEmailService();
@@ -117,6 +142,10 @@ class NotificationSenderWiringTest {
         assertEquals("user@plura.com", delivery.lastMessage.toAddress());
     }
 
+    /**
+     * Escenario: OTP challenge sender falla cuando delivery does no send.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void otpChallengeSenderFailsWhenDeliveryDoesNotSend() {
         OtpChallengeEmailNotificationSender sender = new OtpChallengeEmailNotificationSender(
@@ -139,6 +168,10 @@ class NotificationSenderWiringTest {
         assertEquals("OTP_CHALLENGE_EMAIL_UNAVAILABLE", exception.getErrorCode());
     }
 
+    /**
+     * Escenario: OTP challenge sender falla cuando SMTP fallback would skip delivery.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void otpChallengeSenderFailsWhenSmtpFallbackWouldSkipDelivery() {
         OtpChallengeEmailNotificationSender sender = new OtpChallengeEmailNotificationSender(

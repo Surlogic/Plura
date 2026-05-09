@@ -6,6 +6,12 @@ import java.time.LocalDateTime;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+/**
+ * ProfessionalBookingResponse es un DTO de respuesta del modulo reservas / contratos DTO.
+ * Responsabilidad: definir el contrato que la API devuelve al frontend u otro consumidor.
+ * Contrato: lo consumen web/mobile, asi que renombrar campos puede romper compatibilidad.
+ * Foco funcional: profesionales, reservas.
+ */
 @Data
 @NoArgsConstructor
 public class ProfessionalBookingResponse {
@@ -69,12 +75,18 @@ public class ProfessionalBookingResponse {
         );
     }
 
+    /**
+     * Resuelve effective duration minutes normalizando entradas, defaults y casos borde.
+     */
     public static int resolveEffectiveDurationMinutes(String duration, Integer postBufferMinutes) {
         int baseDuration = parseDurationToMinutes(duration);
         int buffer = postBufferMinutes == null ? 0 : Math.max(0, postBufferMinutes);
         return baseDuration + buffer;
     }
 
+    /**
+     * Parsea duration to minutes y convierte errores de formato en errores controlados.
+     */
     private static int parseDurationToMinutes(String duration) {
         if (duration == null || duration.isBlank()) {
             return 30;

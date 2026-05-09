@@ -15,6 +15,12 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
+/**
+ * ProfessionalSideEffectCoordinator es un componente de dominio del modulo profesionales / aplicacion.
+ * Responsabilidad: encapsular comportamiento propio del modulo y mantenerlo fuera de controllers u otras capas.
+ * Colabora con: availableSlotAsyncDispatcher, availableSlotService, scheduleSummaryService, slotCacheService, entre otros.
+ * Foco funcional: profesionales.
+ */
 @Component
 public class ProfessionalSideEffectCoordinator {
 
@@ -43,6 +49,9 @@ public class ProfessionalSideEffectCoordinator {
         this.searchSyncPublisher = searchSyncPublisher;
     }
 
+    /**
+     * Ejecuta la logica de on perfil changed manteniendola encapsulada en este componente.
+     */
     public void onProfileChanged(ProfessionalProfile profile) {
         if (profile == null || profile.getId() == null) {
             return;
@@ -58,6 +67,9 @@ public class ProfessionalSideEffectCoordinator {
         );
     }
 
+    /**
+     * Ejecuta la logica de on agenda changed manteniendola encapsulada en este componente.
+     */
     public void onScheduleChanged(ProfessionalProfile profile, int days) {
         if (profile == null || profile.getId() == null) {
             return;
@@ -66,10 +78,16 @@ public class ProfessionalSideEffectCoordinator {
         onProfileChanged(profile);
     }
 
+    /**
+     * Ejecuta la logica de on servicio catalog changed manteniendola encapsulada en este componente.
+     */
     public void onServiceCatalogChanged(ProfessionalProfile profile, int days) {
         onScheduleChanged(profile, days);
     }
 
+    /**
+     * Ejecuta la logica de on reserva changed manteniendola encapsulada en este componente.
+     */
     public void onBookingChanged(ProfessionalProfile profile, Set<LocalDate> affectedDates) {
         if (profile == null || profile.getId() == null) {
             return;
@@ -82,6 +100,9 @@ public class ProfessionalSideEffectCoordinator {
         onProfileChanged(profile);
     }
 
+    /**
+     * Ejecuta la logica de evict perfil caches manteniendola encapsulada en este componente.
+     */
     public void evictProfileCaches(ProfessionalProfile profile) {
         if (profile == null || profile.getId() == null) {
             return;
@@ -93,6 +114,9 @@ public class ProfessionalSideEffectCoordinator {
         profileCacheService.evictPublicSummaries();
     }
 
+    /**
+     * Solicita disponibilidad rebuild sin bloquear el flujo principal cuando puede ejecutarse aparte.
+     */
     private void requestAvailabilityRebuild(Long professionalId, int days) {
         runAfterCommitOrNow(
             () -> dispatchAvailabilityRebuild(professionalId, days),
@@ -101,6 +125,9 @@ public class ProfessionalSideEffectCoordinator {
         );
     }
 
+    /**
+     * Solicita disponibilidad rebuild dia sin bloquear el flujo principal cuando puede ejecutarse aparte.
+     */
     private void requestAvailabilityRebuildDay(Long professionalId, LocalDate date) {
         runAfterCommitOrNow(
             () -> dispatchAvailabilityRebuildDay(professionalId, date),
@@ -110,10 +137,16 @@ public class ProfessionalSideEffectCoordinator {
         );
     }
 
+    /**
+     * Ejecuta la logica de run despues commit or now manteniendola encapsulada en este componente.
+     */
     private void runAfterCommitOrNow(Runnable action, String warningMessage, Object... warningArgs) {
         try {
             if (TransactionSynchronizationManager.isSynchronizationActive()) {
                 TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+    /**
+     * Ejecuta la logica de despues commit manteniendola encapsulada en este componente.
+     */
                     @Override
                     public void afterCommit() {
                         action.run();
@@ -130,6 +163,9 @@ public class ProfessionalSideEffectCoordinator {
         }
     }
 
+    /**
+     * Despacha disponibilidad rebuild fuera del flujo principal del request.
+     */
     private void dispatchAvailabilityRebuild(Long professionalId, int days) {
         try {
             availableSlotAsyncDispatcher.rebuildProfessionalNextDays(professionalId, days);
@@ -143,6 +179,9 @@ public class ProfessionalSideEffectCoordinator {
         }
     }
 
+    /**
+     * Despacha disponibilidad rebuild day fuera del flujo principal del request.
+     */
     private void dispatchAvailabilityRebuildDay(Long professionalId, LocalDate date) {
         try {
             // Los cambios de booking necesitan reflejarse enseguida en discovery y agenda.

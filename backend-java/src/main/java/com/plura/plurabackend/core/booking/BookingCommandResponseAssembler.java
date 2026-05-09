@@ -22,6 +22,12 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 import org.springframework.web.server.ResponseStatusException;
 
+/**
+ * BookingCommandResponseAssembler es un componente de dominio del modulo reservas.
+ * Responsabilidad: encapsular comportamiento propio del modulo y mantenerlo fuera de controllers u otras capas.
+ * Colabora con: bookingFinanceService, bookingPaymentBreakdownService, bookingPolicySnapshotService, bookingActionDecisionService, entre otros.
+ * Foco funcional: reservas.
+ */
 @Component
 public class BookingCommandResponseAssembler {
 
@@ -45,6 +51,9 @@ public class BookingCommandResponseAssembler {
         this.bookingDateTimeService = bookingDateTimeService;
     }
 
+    /**
+     * Convierte datos internos al formato command respuesta esperado por el consumidor.
+     */
     public BookingCommandResponse toCommandResponse(
         Booking booking,
         BookingActionDecision decision,
@@ -64,6 +73,9 @@ public class BookingCommandResponseAssembler {
         );
     }
 
+    /**
+     * Convierte datos internos al formato retry liquidacion already completed esperado por el consumidor.
+     */
     public BookingCommandResponse toRetryPayoutAlreadyCompleted(Booking booking, BookingPayoutRecord payoutRecord) {
         BookingFinancialSummary summary = bookingFinanceService.ensureInitializedWithEvidence(booking);
         return new BookingCommandResponse(
@@ -79,6 +91,9 @@ public class BookingCommandResponseAssembler {
         );
     }
 
+    /**
+     * Convierte datos internos al formato retry liquidacion processed esperado por el consumidor.
+     */
     public BookingCommandResponse toRetryPayoutProcessed(Booking booking, BookingFinanceUpdateResult financeResult) {
         return new BookingCommandResponse(
             toProfessionalBookingResponse(booking, financeResult),
@@ -93,6 +108,9 @@ public class BookingCommandResponseAssembler {
         );
     }
 
+    /**
+     * Refresca command respuesta para mantener datos derivados o metricas al dia.
+     */
     public void refreshCommandResponse(
         BookingCommandResponse response,
         Booking booking,
@@ -108,10 +126,16 @@ public class BookingCommandResponseAssembler {
         response.setPayoutRecord(financeResult == null ? null : bookingFinanceService.toResponse(financeResult.payoutRecord()));
     }
 
+    /**
+     * Convierte datos internos al formato profesional reserva respuesta esperado por el consumidor.
+     */
     public ProfessionalBookingResponse toProfessionalBookingResponse(Booking booking) {
         return toProfessionalBookingResponse(booking, null);
     }
 
+    /**
+     * Convierte datos internos al formato profesional reserva respuesta esperado por el consumidor.
+     */
     private ProfessionalBookingResponse toProfessionalBookingResponse(
         Booking booking,
         BookingFinanceUpdateResult financeResult
@@ -160,10 +184,16 @@ public class BookingCommandResponseAssembler {
         return response;
     }
 
+    /**
+     * Resuelve servicio pago tipo normalizando entradas, defaults y casos borde.
+     */
     private ServicePaymentType resolveServicePaymentType(ServicePaymentType paymentType) {
         return paymentType == null ? ServicePaymentType.ON_SITE : paymentType;
     }
 
+    /**
+     * Parsea duration to minutes y convierte errores de formato en errores controlados.
+     */
     private int parseDurationToMinutes(String duration) {
         if (duration == null || duration.isBlank()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Duración del servicio inválida");

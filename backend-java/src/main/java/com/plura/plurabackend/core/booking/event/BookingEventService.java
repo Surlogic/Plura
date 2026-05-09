@@ -10,6 +10,12 @@ import com.plura.plurabackend.core.booking.model.Booking;
 import java.util.Map;
 import org.springframework.stereotype.Service;
 
+/**
+ * BookingEventService es un servicio de negocio del modulo reservas / eventos.
+ * Responsabilidad: coordinar reglas de negocio, validaciones, persistencia e integraciones del caso de uso.
+ * Colabora con: bookingEventRepository, objectMapper.
+ * Foco funcional: reservas, servicios.
+ */
 @Service
 public class BookingEventService {
 
@@ -24,6 +30,9 @@ public class BookingEventService {
         this.objectMapper = objectMapper;
     }
 
+    /**
+     * Registra record para auditoria, historial o notificaciones.
+     */
     public void record(
         Booking booking,
         BookingEventType eventType,
@@ -44,6 +53,9 @@ public class BookingEventService {
         bookingEventRepository.save(event);
     }
 
+    /**
+     * Ejecuta la logica de serialize payload manteniendola encapsulada en este componente.
+     */
     private String serializePayload(Map<String, Object> payload) {
         if (payload == null || payload.isEmpty()) {
             return null;

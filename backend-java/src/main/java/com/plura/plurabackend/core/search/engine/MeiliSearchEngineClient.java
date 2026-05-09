@@ -30,6 +30,12 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
 import org.springframework.stereotype.Component;
 
+/**
+ * MeiliSearchEngineClient es un cliente de integracion del modulo busqueda / motor.
+ * Responsabilidad: aislar llamadas y payloads de una API externa para no mezclar provider logic con dominio.
+ * Colabora con: host, apiKey, indexName, objectMapper, entre otros.
+ * Foco funcional: clientes, busqueda.
+ */
 @Component
 @ConditionalOnExpression("'${app.search-engine.provider:MEILI}'.equalsIgnoreCase('MEILI')")
 public class MeiliSearchEngineClient implements SearchEngineClient {
@@ -65,6 +71,9 @@ public class MeiliSearchEngineClient implements SearchEngineClient {
             .build();
     }
 
+    /**
+     * Ejecuta la logica de busqueda manteniendola encapsulada en este componente.
+     */
     @Override
     public SearchEngineSearchResult search(SearchQueryCriteria criteria) {
         Timer.Sample sample = Timer.start(meterRegistry);
@@ -100,6 +109,9 @@ public class MeiliSearchEngineClient implements SearchEngineClient {
         }
     }
 
+    /**
+     * Ejecuta la logica de suggest manteniendola encapsulada en este componente.
+     */
     @Override
     public SearchSuggestResponse suggest(SearchSuggestCriteria criteria) {
         Timer.Sample sample = Timer.start(meterRegistry);
@@ -169,6 +181,9 @@ public class MeiliSearchEngineClient implements SearchEngineClient {
         }
     }
 
+    /**
+     * Crea o actualiza documents segun exista previamente.
+     */
     @Override
     public void upsertDocuments(List<SearchIndexDocument> documents) {
         if (documents == null || documents.isEmpty()) {
@@ -188,6 +203,9 @@ public class MeiliSearchEngineClient implements SearchEngineClient {
         }
     }
 
+    /**
+     * Ejecuta la logica de ensure index exists manteniendola encapsulada en este componente.
+     */
     private void ensureIndexExists() {
         if (ensuredIndex.get()) {
             return;
@@ -200,6 +218,9 @@ public class MeiliSearchEngineClient implements SearchEngineClient {
         ensuredIndex.set(true);
     }
 
+    /**
+     * Ejecuta la logica de post json manteniendola encapsulada en este componente.
+     */
     private Map<String, Object> postJson(String path, Object payload) {
         try {
             String body = objectMapper.writeValueAsString(payload);
@@ -233,6 +254,9 @@ public class MeiliSearchEngineClient implements SearchEngineClient {
         }
     }
 
+    /**
+     * Lee hits IDs desde la fuente persistida y aplica defaults si faltan datos.
+     */
     private List<Long> readHitsIds(Object hitsRaw) {
         List<Map<String, Object>> hits = toHitMaps(hitsRaw);
         List<Long> ids = new ArrayList<>();
@@ -245,6 +269,9 @@ public class MeiliSearchEngineClient implements SearchEngineClient {
         return ids;
     }
 
+    /**
+     * Convierte datos internos al formato hit maps esperado por el consumidor.
+     */
     private List<Map<String, Object>> toHitMaps(Object hitsRaw) {
         if (!(hitsRaw instanceof List<?> list)) {
             return List.of();
@@ -261,10 +288,16 @@ public class MeiliSearchEngineClient implements SearchEngineClient {
         return hits;
     }
 
+    /**
+     * Ejecuta string atrapando errores para que el flujo principal no falle innecesariamente.
+     */
     private String safeString(Object value) {
         return value == null ? "" : String.valueOf(value).trim();
     }
 
+    /**
+     * Ejecuta la logica de matches suggest text manteniendola encapsulada en este componente.
+     */
     private boolean matchesSuggestText(String value, String normalizedQuery) {
         if (normalizedQuery == null || normalizedQuery.isBlank()) {
             return true;
@@ -273,6 +306,9 @@ public class MeiliSearchEngineClient implements SearchEngineClient {
         return !normalizedValue.isBlank() && normalizedValue.contains(normalizedQuery);
     }
 
+    /**
+     * Lee string listado desde la fuente persistida y aplica defaults si faltan datos.
+     */
     private List<String> readStringList(Object value) {
         if (!(value instanceof List<?> list)) {
             return List.of();
@@ -285,6 +321,9 @@ public class MeiliSearchEngineClient implements SearchEngineClient {
             .toList();
     }
 
+    /**
+     * Convierte datos internos al formato long esperado por el consumidor.
+     */
     private Long toLong(Object value) {
         if (value == null) {
             return null;
@@ -299,21 +338,33 @@ public class MeiliSearchEngineClient implements SearchEngineClient {
         }
     }
 
+    /**
+     * Lee long desde la fuente persistida y aplica defaults si faltan datos.
+     */
     private long readLong(Object value) {
         Long parsed = toLong(value);
         return parsed == null ? 0L : parsed;
     }
 
+    /**
+     * Escapa filter para evitar HTML invalido o inyeccion en templates.
+     */
     private String escapeFilter(String raw) {
         return raw.replace("'", "\\'");
     }
 
+    /**
+     * Ejecuta la logica de slugify manteniendola encapsulada en este componente.
+     */
     private String slugify(String value) {
         return value.toLowerCase(Locale.ROOT)
             .replaceAll("[^a-z0-9]+", "-")
             .replaceAll("(^-+|-+$)", "");
     }
 
+    /**
+     * Normaliza suggest text para evitar variantes vacias, invalidas o inconsistentes.
+     */
     private String normalizeSuggestText(String value) {
         if (value == null) {
             return "";
@@ -322,11 +373,17 @@ public class MeiliSearchEngineClient implements SearchEngineClient {
             .replaceAll("\\p{InCombiningDiacriticalMarks}+", "");
     }
 
+    /**
+     * Normaliza host para evitar variantes vacias, invalidas o inconsistentes.
+     */
     private String normalizeHost(String rawHost) {
         String value = rawHost == null || rawHost.isBlank() ? "http://localhost:7700" : rawHost.trim();
         return value.endsWith("/") ? value.substring(0, value.length() - 1) : value;
     }
 
+    /**
+     * Marca error y actualiza los indicadores relacionados.
+     */
     private void markError(String reason) {
         Counter.builder("plura.search.engine.errors")
             .description("Search engine errors")

@@ -21,6 +21,12 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
+/**
+ * ProviderOperationWorker es un worker asincronico del modulo billing / operaciones de proveedor.
+ * Responsabilidad: procesar tareas pendientes con control de estado, reintentos o leases.
+ * Colabora con: providerOperationService, bookingProviderIntegrationService, batchSize, leaseDuration, entre otros.
+ * Foco funcional: operaciones asincronicas, proveedores externos, trabajadores.
+ */
 @Component
 public class ProviderOperationWorker {
 
@@ -59,11 +65,17 @@ public class ProviderOperationWorker {
         });
     }
 
+    /**
+     * Ejecuta la logica de drain scheduled lote manteniendola encapsulada en este componente.
+     */
     @Scheduled(fixedDelayString = "${app.billing.provider-operation-worker.delay-millis:5000}")
     public void drainScheduledBatch() {
         drainBatch(batchSize);
     }
 
+    /**
+     * Ejecuta la logica de audit aged operaciones manteniendola encapsulada en este componente.
+     */
     @Scheduled(fixedDelayString = "${app.billing.provider-operation-worker.audit-delay-millis:60000}")
     public void auditAgedOperations() {
         LocalDateTime updatedBefore = LocalDateTime.now().minus(staleOperationThreshold);
@@ -95,16 +107,25 @@ public class ProviderOperationWorker {
         }
     }
 
+    /**
+     * Ejecuta la logica de kick operacion asincronico manteniendola encapsulada en este componente.
+     */
     @Async("billingProviderOperationExecutor")
     public CompletableFuture<Boolean> kickOperationAsync(String operationId) {
         return CompletableFuture.completedFuture(claimAndProcess(operationId));
     }
 
+    /**
+     * Ejecuta la logica de process operacion now manteniendola encapsulada en este componente.
+     */
     public ProviderOperation processOperationNow(String operationId) {
         claimAndProcess(operationId);
         return providerOperationService.getRequired(operationId);
     }
 
+    /**
+     * Ejecuta la logica de kick operaciones asincronico manteniendola encapsulada en este componente.
+     */
     @Async("billingProviderOperationExecutor")
     public void kickOperationsAsync(List<String> operationIds) {
         if (operationIds == null) {
@@ -113,6 +134,9 @@ public class ProviderOperationWorker {
         operationIds.forEach(this::claimAndProcess);
     }
 
+    /**
+     * Ejecuta la logica de replay operacion asincronico manteniendola encapsulada en este componente.
+     */
     @Async("billingProviderOperationExecutor")
     public CompletableFuture<Boolean> replayOperationAsync(String operationId, String reason) {
         if (!providerOperationService.requeueOperation(operationId, reason)) {
@@ -121,6 +145,9 @@ public class ProviderOperationWorker {
         return CompletableFuture.completedFuture(claimAndProcess(operationId));
     }
 
+    /**
+     * Ejecuta la logica de await operacion estado manteniendola encapsulada en este componente.
+     */
     public ProviderOperation awaitOperationState(String operationId, Duration maxWait) {
         Duration timeout = maxWait == null || maxWait.isNegative() || maxWait.isZero() ? Duration.ofSeconds(1) : maxWait;
         long deadlineNanos = System.nanoTime() + timeout.toNanos();
@@ -140,6 +167,9 @@ public class ProviderOperationWorker {
         return latest;
     }
 
+    /**
+     * Ejecuta la logica de drain lote manteniendola encapsulada en este componente.
+     */
     private void drainBatch(int limit) {
         List<ProviderOperation> dueOperations = providerOperationService.findDueOperations(limit);
         for (ProviderOperation operation : dueOperations) {
@@ -158,6 +188,9 @@ public class ProviderOperationWorker {
         }
     }
 
+    /**
+     * Ejecuta la logica de claim and process manteniendola encapsulada en este componente.
+     */
     private boolean claimAndProcess(String operationId) {
         ProviderOperation claimed = providerOperationService.claimOperation(
             operationId,
@@ -195,6 +228,9 @@ public class ProviderOperationWorker {
         }
     }
 
+    /**
+     * Ejecuta la logica de shutdown heartbeat executor manteniendola encapsulada en este componente.
+     */
     @PreDestroy
     void shutdownHeartbeatExecutor() {
         heartbeatExecutor.shutdownNow();
@@ -211,6 +247,9 @@ public class ProviderOperationWorker {
         return new LeaseHeartbeat(future);
     }
 
+    /**
+     * Ejecuta la logica de renew lease manteniendola encapsulada en este componente.
+     */
     private void renewLease(String operationId) {
         boolean renewed = providerOperationService.renewLease(
             operationId,
@@ -226,6 +265,9 @@ public class ProviderOperationWorker {
         }
     }
 
+    /**
+     * Evalua is solicitud observable y devuelve una decision booleana para el llamador.
+     */
     private boolean isRequestObservable(ProviderOperation operation) {
         return operation.getStatus() == ProviderOperationStatus.SUCCEEDED
             || operation.getStatus() == ProviderOperationStatus.FAILED
@@ -240,6 +282,9 @@ public class ProviderOperationWorker {
             this.future = future;
         }
 
+    /**
+     * Ejecuta la logica de close manteniendola encapsulada en este componente.
+     */
         @Override
         public void close() {
             if (future != null) {

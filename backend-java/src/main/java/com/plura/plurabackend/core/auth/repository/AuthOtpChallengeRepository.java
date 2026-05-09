@@ -11,6 +11,12 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+/**
+ * AuthOtpChallengeRepository es un contrato interno del modulo autenticacion / persistencia.
+ * Responsabilidad: definir una frontera estable para que otros modulos no dependan de detalles concretos.
+ * Persistencia: concentra queries derivadas o JPQL para que los servicios no conozcan SQL/joins.
+ * Foco funcional: autenticacion y sesiones, OTP.
+ */
 public interface AuthOtpChallengeRepository extends JpaRepository<AuthOtpChallenge, String> {
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)

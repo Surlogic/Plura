@@ -18,8 +18,17 @@ import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
+/**
+ * Tests de busqueda del marketplace.
+ * Cubren escenarios de busqueda servicio para documentar el comportamiento esperado y evitar regresiones.
+ * Mantener estos casos alineados con los contratos reales del backend cuando cambie la logica productiva.
+ */
 class SearchServiceTest {
 
+    /**
+     * Escenario: debe fallback a sql cuando busqueda engine falla.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void shouldFallbackToSqlWhenSearchEngineFails() {
         SearchNativeRepository repository = Mockito.mock(SearchNativeRepository.class);

@@ -28,6 +28,11 @@ import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
+/**
+ * Tests de autenticacion, sesiones, OTP y recuperacion de cuenta.
+ * Cubren escenarios de auth telefono verification integracion para documentar el comportamiento esperado y evitar regresiones.
+ * Mantener estos casos alineados con los contratos reales del backend cuando cambie la logica productiva.
+ */
 @SpringBootTest(properties = {
     "SPRING_DATASOURCE_URL=jdbc:h2:mem:plura-auth-phone-verification-test;MODE=PostgreSQL;DB_CLOSE_DELAY=-1;DATABASE_TO_LOWER=TRUE",
     "SPRING_DATASOURCE_USERNAME=sa",
@@ -70,6 +75,10 @@ class AuthPhoneVerificationIntegrationTest {
     @MockBean
     private PhoneVerificationNotificationSender phoneVerificationNotificationSender;
 
+    /**
+     * Prepara mocks, datos base o configuracion comun antes de cada caso de prueba.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @BeforeEach
     void cleanUp() {
         phoneVerificationChallengeRepository.deleteAll();
@@ -78,6 +87,10 @@ class AuthPhoneVerificationIntegrationTest {
         userRepository.deleteAll();
     }
 
+    /**
+     * Escenario: send y confirm telefono verification code marca usuario como verified.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void sendAndConfirmPhoneVerificationCodeMarksUserAsVerified() throws Exception {
         registerClient("verify-phone@plura.com", "+59812345678", "Password123");
@@ -114,6 +127,10 @@ class AuthPhoneVerificationIntegrationTest {
         Assertions.assertNotNull(updated.getPhoneVerifiedAt());
     }
 
+    /**
+     * Escenario: resend within cooldown verifica que devuelva cooldown sin creating nuevo challenge.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void resendWithinCooldownReturnsCooldownWithoutCreatingNewChallenge() throws Exception {
         registerClient("cooldown-phone@plura.com", "+59811112222", "Password123");
@@ -137,6 +154,10 @@ class AuthPhoneVerificationIntegrationTest {
         verify(phoneVerificationNotificationSender, times(1)).sendVerificationCode(any());
     }
 
+    /**
+     * Escenario: confirm wrong code eventually exceeds attempts y persists attempt conteo.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void confirmWrongCodeEventuallyExceedsAttemptsAndPersistsAttemptCount() throws Exception {
         registerClient("attempts-phone@plura.com", "+59833334444", "Password123");
@@ -178,6 +199,10 @@ class AuthPhoneVerificationIntegrationTest {
         );
     }
 
+    /**
+     * Escenario: vencido code verifica que devuelva code vencido.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void expiredCodeReturnsCodeExpired() throws Exception {
         registerClient("expired-phone@plura.com", "+59855556666", "Password123");
@@ -203,6 +228,10 @@ class AuthPhoneVerificationIntegrationTest {
             .andExpect(jsonPath("$.error").value("CODE_EXPIRED"));
     }
 
+    /**
+     * Escenario: already verified usuario does no get nuevo challenge.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void alreadyVerifiedUserDoesNotGetNewChallenge() throws Exception {
         registerClient("already-phone@plura.com", "+59877778888", "Password123");
@@ -223,6 +252,10 @@ class AuthPhoneVerificationIntegrationTest {
         Assertions.assertEquals(0L, phoneVerificationChallengeRepository.count());
     }
 
+    /**
+     * Escenario: send sin telefono verifica que devuelva telefono faltante.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void sendWithoutPhoneReturnsPhoneMissing() throws Exception {
         registerClient("missing-phone@plura.com", "+59899990000", "Password123");

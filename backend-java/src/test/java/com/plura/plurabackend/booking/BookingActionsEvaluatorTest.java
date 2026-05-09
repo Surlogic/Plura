@@ -22,6 +22,11 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import org.junit.jupiter.api.Test;
 
+/**
+ * Tests de reservas.
+ * Cubren escenarios de reserva actions evaluator para documentar el comportamiento esperado y evitar regresiones.
+ * Mantener estos casos alineados con los contratos reales del backend cuando cambie la logica productiva.
+ */
 class BookingActionsEvaluatorTest {
 
     private final BookingActionsEvaluator evaluator = new BookingActionsEvaluator(
@@ -29,6 +34,10 @@ class BookingActionsEvaluatorTest {
         new BookingDateTimeService("America/Montevideo")
     );
 
+    /**
+     * Escenario: debe permitir free cliente cancellation within window.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void shouldAllowFreeClientCancellationWithinWindow() {
         Booking booking = booking(ServicePaymentType.FULL_PREPAY, BigDecimal.valueOf(1200), null);
@@ -55,6 +64,10 @@ class BookingActionsEvaluatorTest {
         assertEquals(BookingSuggestedAction.NONE, evaluation.suggestedAction());
     }
 
+    /**
+     * Escenario: debe suggest reprogramacion cuando late cancellation would lose deposit.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void shouldSuggestRescheduleWhenLateCancellationWouldLoseDeposit() {
         Booking booking = booking(ServicePaymentType.DEPOSIT, BigDecimal.valueOf(2500), BigDecimal.valueOf(500));
@@ -83,6 +96,10 @@ class BookingActionsEvaluatorTest {
         assertTrue(evaluation.reasonCodes().contains(BookingActionReasonCode.LATE_CANCELLATION_PENALTY_APPLIES));
     }
 
+    /**
+     * Escenario: debe apply partial reembolso inside cancellation window.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void shouldApplyPartialRefundInsideCancellationWindow() {
         Booking booking = booking(ServicePaymentType.FULL_PREPAY, BigDecimal.valueOf(1000), null);
@@ -109,6 +126,10 @@ class BookingActionsEvaluatorTest {
         assertTrue(evaluation.reasonCodes().contains(BookingActionReasonCode.LATE_CANCELLATION_PENALTY_APPLIES));
     }
 
+    /**
+     * Escenario: debe bloquear cliente reprogramacion cuando disabled by politica.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void shouldBlockClientRescheduleWhenDisabledByPolicy() {
         Booking booking = booking(ServicePaymentType.ON_SITE, BigDecimal.ZERO, null);
@@ -132,6 +153,10 @@ class BookingActionsEvaluatorTest {
         assertTrue(evaluation.reasonCodes().contains(BookingActionReasonCode.CLIENT_RESCHEDULE_DISABLED));
     }
 
+    /**
+     * Escenario: debe bloquear cliente reprogramacion cuando max cliente reschedules is zero.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void shouldBlockClientRescheduleWhenMaxClientReschedulesIsZero() {
         Booking booking = booking(ServicePaymentType.ON_SITE, BigDecimal.ZERO, null);
@@ -155,6 +180,10 @@ class BookingActionsEvaluatorTest {
         assertTrue(evaluation.reasonCodes().contains(BookingActionReasonCode.RESCHEDULE_LIMIT_REACHED));
     }
 
+    /**
+     * Escenario: debe permitir cliente reprogramacion cuando max is one y conteo is zero.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void shouldAllowClientRescheduleWhenMaxIsOneAndCountIsZero() {
         Booking booking = booking(ServicePaymentType.ON_SITE, BigDecimal.ZERO, null);
@@ -179,6 +208,10 @@ class BookingActionsEvaluatorTest {
         assertTrue(evaluation.reasonCodes().contains(BookingActionReasonCode.RESCHEDULE_WINDOW_OPEN));
     }
 
+    /**
+     * Escenario: debe bloquear cliente reprogramacion cuando max is one y conteo is one.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void shouldBlockClientRescheduleWhenMaxIsOneAndCountIsOne() {
         Booking booking = booking(ServicePaymentType.ON_SITE, BigDecimal.ZERO, null);
@@ -203,6 +236,10 @@ class BookingActionsEvaluatorTest {
         assertTrue(evaluation.reasonCodes().contains(BookingActionReasonCode.RESCHEDULE_LIMIT_REACHED));
     }
 
+    /**
+     * Escenario: debe bloquear cliente reprogramacion cuando window is closed.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void shouldBlockClientRescheduleWhenWindowIsClosed() {
         Booking booking = booking(ServicePaymentType.ON_SITE, BigDecimal.ZERO, null);
@@ -227,6 +264,10 @@ class BookingActionsEvaluatorTest {
         assertTrue(evaluation.reasonCodes().contains(BookingActionReasonCode.RESCHEDULE_WINDOW_CLOSED));
     }
 
+    /**
+     * Escenario: debe bloquear cliente reprogramacion cuando reserva is no active.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void shouldBlockClientRescheduleWhenBookingIsNotActive() {
         Booking booking = booking(ServicePaymentType.ON_SITE, BigDecimal.ZERO, null);
@@ -251,6 +292,10 @@ class BookingActionsEvaluatorTest {
         assertTrue(evaluation.reasonCodes().contains(BookingActionReasonCode.BOOKING_NOT_ACTIVE));
     }
 
+    /**
+     * Escenario: debe permitir profesional completar only after reserva end.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void shouldAllowProfessionalCompleteOnlyAfterBookingEnd() {
         Booking booking = booking(ServicePaymentType.DEPOSIT, BigDecimal.valueOf(2500), BigDecimal.valueOf(500));
@@ -275,6 +320,10 @@ class BookingActionsEvaluatorTest {
         assertTrue(evaluation.reasonCodes().contains(BookingActionReasonCode.PROFESSIONAL_CAN_MARK_NO_SHOW));
     }
 
+    /**
+     * Escenario: debe bloquear profesional completar before reserva end even if it already started.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void shouldBlockProfessionalCompleteBeforeBookingEndEvenIfItAlreadyStarted() {
         Booking booking = booking(ServicePaymentType.ON_SITE, BigDecimal.ZERO, null);
@@ -294,6 +343,10 @@ class BookingActionsEvaluatorTest {
         assertTrue(evaluation.canMarkNoShow());
     }
 
+    /**
+     * Escenario: debe bloquear profesional completar before start.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void shouldBlockProfessionalCompleteBeforeStart() {
         Booking booking = booking(ServicePaymentType.ON_SITE, BigDecimal.ZERO, null);

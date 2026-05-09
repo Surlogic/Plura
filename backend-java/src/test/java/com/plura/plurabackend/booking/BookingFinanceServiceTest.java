@@ -38,6 +38,11 @@ import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.Test;
 
+/**
+ * Tests de reservas.
+ * Cubren escenarios de reserva finance servicio para documentar el comportamiento esperado y evitar regresiones.
+ * Mantener estos casos alineados con los contratos reales del backend cuando cambie la logica productiva.
+ */
 class BookingFinanceServiceTest {
 
     private final BookingFinancialSummaryRepository summaryRepository = mock(BookingFinancialSummaryRepository.class);
@@ -55,6 +60,10 @@ class BookingFinanceServiceTest {
         new ObjectMapper()
     );
 
+    /**
+     * Escenario: debe initialize prepaid reserva como pago pendiente until proveedor confirms charge.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void shouldInitializePrepaidBookingAsPaymentPendingUntilProviderConfirmsCharge() {
         Booking booking = booking(ServicePaymentType.DEPOSIT, BigDecimal.valueOf(1000), BigDecimal.valueOf(300));
@@ -68,6 +77,10 @@ class BookingFinanceServiceTest {
         assertEquals(BigDecimal.ZERO, summary.getAmountToRefund());
     }
 
+    /**
+     * Escenario: debe crear reembolso record cuando cancellation needs reembolso.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void shouldCreateRefundRecordWhenCancellationNeedsRefund() {
         Booking booking = booking(ServicePaymentType.FULL_PREPAY, BigDecimal.valueOf(1500), null);
@@ -124,6 +137,10 @@ class BookingFinanceServiceTest {
         assertEquals(BookingRefundReasonCode.PROFESSIONAL_CANCELLATION, result.refundRecord().getReasonCode());
     }
 
+    /**
+     * Escenario: debe crear liquidacion record cuando completado reserva has held funds.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void shouldCreatePayoutRecordWhenCompletedBookingHasHeldFunds() {
         Booking booking = booking(ServicePaymentType.FULL_PREPAY, BigDecimal.valueOf(1500), null);
@@ -180,6 +197,10 @@ class BookingFinanceServiceTest {
         assertEquals(BookingPayoutReasonCode.BOOKING_COMPLETED, result.payoutRecord().getReasonCode());
     }
 
+    /**
+     * Escenario: debe crear reembolso y liquidacion cuando late cancellation is partial.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void shouldCreateRefundAndPayoutWhenLateCancellationIsPartial() {
         Booking booking = booking(ServicePaymentType.FULL_PREPAY, BigDecimal.valueOf(1000), null);
@@ -243,6 +264,10 @@ class BookingFinanceServiceTest {
         assertEquals(BookingFinancialStatus.REFUND_PENDING, result.summary().getFinancialStatus());
     }
 
+    /**
+     * Escenario: debe crear liquidacion record for prepaid no show.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void shouldCreatePayoutRecordForPrepaidNoShow() {
         Booking booking = booking(ServicePaymentType.DEPOSIT, BigDecimal.valueOf(2500), BigDecimal.valueOf(500));

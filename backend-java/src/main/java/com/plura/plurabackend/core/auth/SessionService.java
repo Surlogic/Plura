@@ -17,6 +17,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+/**
+ * SessionService es un servicio de negocio del modulo autenticacion.
+ * Responsabilidad: coordinar reglas de negocio, validaciones, persistencia e integraciones del caso de uso.
+ * Colabora con: authSessionRepository, refreshTokenRepository, userRepository.
+ * Foco funcional: sesiones, servicios.
+ */
 @Service
 public class SessionService {
 
@@ -41,6 +47,10 @@ public class SessionService {
         this.userRepository = userRepository;
     }
 
+    /**
+     * Crea sesion validando datos de entrada y persistiendo el resultado.
+     * Tambien concentra los efectos secundarios para que el flujo quede en un estado consistente.
+     */
     @Transactional
     public AuthSession createSession(
         User user,
@@ -62,6 +72,9 @@ public class SessionService {
         return authSessionRepository.save(session);
     }
 
+    /**
+     * Ejecuta la logica de rotate sesion manteniendola encapsulada en este componente.
+     */
     @Transactional
     public AuthSession rotateSession(
         AuthSession session,
@@ -80,12 +93,18 @@ public class SessionService {
         return authSessionRepository.save(session);
     }
 
+    /**
+     * Ejecuta la logica de revoke sesion by refresh token manteniendola encapsulada en este componente.
+     */
     @Transactional
     public void revokeSessionByRefreshToken(String refreshTokenHash, String reason) {
         authSessionRepository.findByRefreshTokenHash(refreshTokenHash)
             .ifPresent(session -> revokeSession(session, reason));
     }
 
+    /**
+     * Ejecuta la logica de revoke sesion manteniendola encapsulada en este componente.
+     */
     @Transactional
     public void revokeSession(AuthSession session, String reason) {
         if (session.getRevokedAt() != null) {
@@ -96,6 +115,9 @@ public class SessionService {
         authSessionRepository.save(session);
     }
 
+    /**
+     * Ejecuta la logica de revoke sesion by ID for usuario manteniendola encapsulada en este componente.
+     */
     @Transactional
     public void revokeSessionByIdForUser(Long userId, String sessionId, String reason) {
         AuthSession session = authSessionRepository.findByIdAndUser_Id(sessionId, userId)
@@ -103,12 +125,18 @@ public class SessionService {
         revokeSession(session, reason);
     }
 
+    /**
+     * Ejecuta la logica de revoke todos sesiones for usuario manteniendola encapsulada en este componente.
+     */
     @Transactional
     public void revokeAllSessionsForUser(Long userId, String reason) {
         authSessionRepository.revokeActiveSessionsByUserId(userId, LocalDateTime.now(), normalizeReason(reason));
         refreshTokenRepository.revokeActiveTokensByUserId(userId, LocalDateTime.now());
     }
 
+    /**
+     * Ejecuta la logica de revoke todos sesiones for usuario manteniendola encapsulada en este componente.
+     */
     @Transactional
     public void revokeAllSessionsForUser(User user, String reason) {
         if (user == null || user.getId() == null) {
@@ -117,12 +145,19 @@ public class SessionService {
         revokeAllSessionsForUser(user.getId(), reason);
     }
 
+    /**
+     * Ejecuta la logica de invalidate todos sesiones for usuario manteniendola encapsulada en este componente.
+     */
     @Transactional
     public void invalidateAllSessionsForUser(Long userId, String reason) {
         incrementSessionVersion(userId);
         revokeAllSessionsForUser(userId, reason);
     }
 
+    /**
+     * Busca sesion by ID aplicando filtros, joins o criterios del caso de uso.
+     * Mantiene la consulta encapsulada para que el resto del codigo no repita filtros ni joins.
+     */
     public Optional<AuthSession> findSessionById(String sessionId) {
         if (sessionId == null || sessionId.isBlank()) {
             return Optional.empty();
@@ -130,6 +165,10 @@ public class SessionService {
         return authSessionRepository.findById(sessionId);
     }
 
+    /**
+     * Busca sesion by refresh token hash aplicando filtros, joins o criterios del caso de uso.
+     * Mantiene la consulta encapsulada para que el resto del codigo no repita filtros ni joins.
+     */
     public Optional<AuthSession> findSessionByRefreshTokenHash(String refreshTokenHash) {
         if (refreshTokenHash == null || refreshTokenHash.isBlank()) {
             return Optional.empty();
@@ -137,6 +176,10 @@ public class SessionService {
         return authSessionRepository.findByRefreshTokenHash(refreshTokenHash);
     }
 
+    /**
+     * Busca tracked refresh token match aplicando filtros, joins o criterios del caso de uso.
+     * Mantiene la consulta encapsulada para que el resto del codigo no repita filtros ni joins.
+     */
     public Optional<TrackedRefreshTokenMatch> findTrackedRefreshTokenMatch(String refreshTokenHash) {
         if (refreshTokenHash == null || refreshTokenHash.isBlank()) {
             return Optional.empty();
@@ -150,6 +193,9 @@ public class SessionService {
             ));
     }
 
+    /**
+     * Marca sesion compromised y actualiza los indicadores relacionados.
+     */
     @Transactional
     public AuthSession markSessionCompromised(AuthSession session, String reason) {
         if (session.getCompromiseDetectedAt() == null) {
@@ -162,12 +208,18 @@ public class SessionService {
         return authSessionRepository.save(session);
     }
 
+    /**
+     * Devuelve el listado de sesiones aplicando permisos y filtros del caso de uso.
+     */
     public List<AuthSessionResponse> listSessions(Long userId, String currentSessionId) {
         return authSessionRepository.findByUser_IdOrderByCreatedAtDesc(userId).stream()
             .map(session -> toResponse(session, session.getId().equals(currentSessionId)))
             .toList();
     }
 
+    /**
+     * Ejecuta la logica de migrate legacy refresh token manteniendola encapsulada en este componente.
+     */
     @Transactional
     public LegacyRefreshMigrationResult migrateLegacyRefreshToken(
         RefreshToken refreshToken,
@@ -193,6 +245,9 @@ public class SessionService {
         return new LegacyRefreshMigrationResult(session, refreshToken);
     }
 
+    /**
+     * Ejecuta la logica de increment sesion version manteniendola encapsulada en este componente.
+     */
     @Transactional
     public void incrementSessionVersion(Long userId) {
         User user = userRepository.findByIdAndDeletedAtIsNull(userId)
@@ -204,30 +259,51 @@ public class SessionService {
         userRepository.save(user);
     }
 
+    /**
+     * Ejecuta la logica de revoke reason logout manteniendola encapsulada en este componente.
+     */
     public String revokeReasonLogout() {
         return REVOKE_REASON_LOGOUT;
     }
 
+    /**
+     * Ejecuta la logica de revoke reason logout todos manteniendola encapsulada en este componente.
+     */
     public String revokeReasonLogoutAll() {
         return REVOKE_REASON_LOGOUT_ALL;
     }
 
+    /**
+     * Ejecuta la logica de revoke reason refresh reuse manteniendola encapsulada en este componente.
+     */
     public String revokeReasonRefreshReuse() {
         return REVOKE_REASON_REFRESH_REUSE;
     }
 
+    /**
+     * Ejecuta la logica de revoke reason cuenta deletion manteniendola encapsulada en este componente.
+     */
     public String revokeReasonAccountDeletion() {
         return REVOKE_REASON_ACCOUNT_DELETION;
     }
 
+    /**
+     * Ejecuta la logica de revoke reason sesion revoked manteniendola encapsulada en este componente.
+     */
     public String revokeReasonSessionRevoked() {
         return REVOKE_REASON_SESSION_REVOKED;
     }
 
+    /**
+     * Ejecuta la logica de revoke reason sesion compromised manteniendola encapsulada en este componente.
+     */
     public String revokeReasonSessionCompromised() {
         return REVOKE_REASON_SESSION_COMPROMISED;
     }
 
+    /**
+     * Convierte datos internos al formato respuesta esperado por el consumidor.
+     */
     private AuthSessionResponse toResponse(AuthSession session, boolean current) {
         return new AuthSessionResponse(
             session.getId(),
@@ -244,6 +320,9 @@ public class SessionService {
         );
     }
 
+    /**
+     * Normaliza device label para evitar variantes vacias, invalidas o inconsistentes.
+     */
     private String normalizeDeviceLabel(String explicitDeviceLabel, String userAgent, AuthSessionType sessionType) {
         String normalized = trimToNull(explicitDeviceLabel);
         if (normalized != null) {
@@ -256,6 +335,9 @@ public class SessionService {
         return sessionType == AuthSessionType.MOBILE ? "Mobile" : "Web";
     }
 
+    /**
+     * Normaliza usuario agent para evitar variantes vacias, invalidas o inconsistentes.
+     */
     private String normalizeUserAgent(String userAgent) {
         String normalized = trimToNull(userAgent);
         if (normalized == null) {
@@ -264,6 +346,9 @@ public class SessionService {
         return normalized.length() <= 500 ? normalized : normalized.substring(0, 500);
     }
 
+    /**
+     * Normaliza ip para evitar variantes vacias, invalidas o inconsistentes.
+     */
     private String normalizeIp(String ipAddress) {
         String normalized = trimToNull(ipAddress);
         if (normalized == null) {
@@ -272,6 +357,9 @@ public class SessionService {
         return normalized.length() <= 64 ? normalized : normalized.substring(0, 64);
     }
 
+    /**
+     * Normaliza reason para evitar variantes vacias, invalidas o inconsistentes.
+     */
     private String normalizeReason(String reason) {
         String normalized = trimToNull(reason);
         if (normalized == null) {
@@ -281,6 +369,9 @@ public class SessionService {
         return upper.length() <= 40 ? upper : upper.substring(0, 40);
     }
 
+    /**
+     * Ejecuta la logica de trim to null manteniendola encapsulada en este componente.
+     */
     private String trimToNull(String value) {
         if (value == null) {
             return null;
@@ -289,11 +380,19 @@ public class SessionService {
         return trimmed.isBlank() ? null : trimmed;
     }
 
+    /**
+     * Bloque de datos legacy refresh migration result dentro de la respuesta principal.
+     * Agrupa metricas relacionadas para que el frontend no tenga que reconstruirlas.
+     */
     public record LegacyRefreshMigrationResult(
         AuthSession session,
         RefreshToken legacyToken
     ) {}
 
+    /**
+     * Bloque de datos tracked refresh token match dentro de la respuesta principal.
+     * Agrupa metricas relacionadas para que el frontend no tenga que reconstruirlas.
+     */
     public record TrackedRefreshTokenMatch(
         AuthSession session,
         RefreshTokenMatchType matchType

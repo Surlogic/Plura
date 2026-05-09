@@ -8,6 +8,12 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+/**
+ * InternalProviderOperationOpsController es un controlador REST del modulo billing / operaciones de proveedor.
+ * Responsabilidad: recibir requests HTTP, validar acceso basico y delegar la operacion al servicio de aplicacion o dominio.
+ * Superficie HTTP: atiende rutas bajo /internal/ops/provider-operations y deja la logica pesada en servicios.
+ * Foco funcional: operaciones asincronicas, proveedores externos, paneles internos.
+ */
 @RestController
 @RequestMapping("/internal/ops/provider-operations")
 public class InternalProviderOperationOpsController {

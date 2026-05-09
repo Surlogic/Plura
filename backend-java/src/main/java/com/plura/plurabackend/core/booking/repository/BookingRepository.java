@@ -15,6 +15,12 @@ import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+/**
+ * BookingRepository es un contrato interno del modulo reservas / persistencia.
+ * Responsabilidad: definir una frontera estable para que otros modulos no dependan de detalles concretos.
+ * Persistencia: concentra queries derivadas o JPQL para que los servicios no conozcan SQL/joins.
+ * Foco funcional: reservas.
+ */
 public interface BookingRepository extends JpaRepository<Booking, Long> {
     @Query(
         """

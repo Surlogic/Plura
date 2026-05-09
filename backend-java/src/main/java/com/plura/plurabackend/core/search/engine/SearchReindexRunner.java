@@ -7,6 +7,12 @@ import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.stereotype.Component;
 
+/**
+ * SearchReindexRunner es un componente de dominio del modulo busqueda / motor.
+ * Responsabilidad: encapsular comportamiento propio del modulo y mantenerlo fuera de controllers u otras capas.
+ * Colabora con: searchIndexer, searchEngineEnabled, reindexOnStartup.
+ * Foco funcional: busqueda.
+ */
 @Component
 public class SearchReindexRunner implements ApplicationRunner {
 
@@ -26,6 +32,9 @@ public class SearchReindexRunner implements ApplicationRunner {
         this.reindexOnStartup = reindexOnStartup;
     }
 
+    /**
+     * Ejecuta el proceso programado o manual asociado a este componente.
+     */
     @Override
     public void run(ApplicationArguments args) {
         if (!searchEngineEnabled || !reindexOnStartup) {

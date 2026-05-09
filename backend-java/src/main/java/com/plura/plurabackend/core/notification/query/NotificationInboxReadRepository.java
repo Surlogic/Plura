@@ -10,6 +10,12 @@ import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Repository;
 
+/**
+ * NotificationInboxReadRepository es un repositorio de datos del modulo notificaciones / consultas.
+ * Responsabilidad: centralizar consultas y escrituras contra la base de datos para el agregado asociado.
+ * Persistencia: concentra queries derivadas o JPQL para que los servicios no conozcan SQL/joins.
+ * Foco funcional: notificaciones.
+ */
 @Repository
 class NotificationInboxReadRepository {
 
@@ -112,6 +118,9 @@ class NotificationInboxReadRepository {
         );
     }
 
+    /**
+     * Convierte datos internos al formato local fecha hora esperado por el consumidor.
+     */
     private LocalDateTime toLocalDateTime(Timestamp timestamp) {
         return timestamp == null ? null : timestamp.toLocalDateTime();
     }

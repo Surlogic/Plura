@@ -25,6 +25,11 @@ import org.springframework.http.MediaType;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.web.servlet.MockMvc;
 
+/**
+ * Tests de autenticacion, sesiones, OTP y recuperacion de cuenta.
+ * Cubren escenarios de auth o auth integracion para documentar el comportamiento esperado y evitar regresiones.
+ * Mantener estos casos alineados con los contratos reales del backend cuando cambie la logica productiva.
+ */
 @SpringBootTest(properties = {
     "SPRING_DATASOURCE_URL=jdbc:h2:mem:plura-auth-oauth-test;MODE=PostgreSQL;DB_CLOSE_DELAY=-1;DATABASE_TO_LOWER=TRUE",
     "SPRING_DATASOURCE_USERNAME=sa",
@@ -69,6 +74,10 @@ class AuthOAuthIntegrationTest {
     @MockBean
     private AppleTokenVerifier appleTokenVerifier;
 
+    /**
+     * Prepara mocks, datos base o configuracion comun antes de cada caso de prueba.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @BeforeEach
     void cleanUp() {
         authSessionRepository.deleteAll();
@@ -77,6 +86,10 @@ class AuthOAuthIntegrationTest {
         userRepository.deleteAll();
     }
 
+    /**
+     * Escenario: OAuth Google crea nuevo usuario.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void oauthGoogleCreatesNewUser() throws Exception {
         when(googleTokenVerifier.verify("x")).thenReturn(
@@ -96,6 +109,10 @@ class AuthOAuthIntegrationTest {
         org.junit.jupiter.api.Assertions.assertNotNull(stored.getEmailVerifiedAt());
     }
 
+    /**
+     * Escenario: OAuth Google crea nuevo profesional cuando desired rol profesional.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void oauthGoogleCreatesNewProfessionalWhenDesiredRoleProfessional() throws Exception {
         when(googleTokenVerifier.verify("pro-google")).thenReturn(
@@ -116,6 +133,10 @@ class AuthOAuthIntegrationTest {
         );
     }
 
+    /**
+     * Escenario: OAuth Google actualiza existente usuario by email.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void oauthGoogleUpdatesExistingUserByEmail() throws Exception {
         User existing = new User();
@@ -142,6 +163,10 @@ class AuthOAuthIntegrationTest {
         org.junit.jupiter.api.Assertions.assertEquals("g999", updated.getProviderId());
     }
 
+    /**
+     * Escenario: OAuth Google promotes existente cliente a profesional cuando desired rol profesional.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void oauthGooglePromotesExistingClientToProfessionalWhenDesiredRoleProfessional() throws Exception {
         User existing = new User();
@@ -171,6 +196,10 @@ class AuthOAuthIntegrationTest {
         );
     }
 
+    /**
+     * Escenario: OAuth Google login does no crear account cuando usuario does no exist.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void oauthGoogleLoginDoesNotCreateAccountWhenUserDoesNotExist() throws Exception {
         when(googleTokenVerifier.verify("google-missing")).thenReturn(
@@ -186,6 +215,10 @@ class AuthOAuthIntegrationTest {
         org.junit.jupiter.api.Assertions.assertEquals(0L, userRepository.count());
     }
 
+    /**
+     * Escenario: OAuth Apple sin email resolves by proveedor id.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void oauthAppleWithoutEmailResolvesByProviderId() throws Exception {
         User existing = new User();
@@ -214,6 +247,10 @@ class AuthOAuthIntegrationTest {
         org.junit.jupiter.api.Assertions.assertNull(updated.getEmailVerifiedAt());
     }
 
+    /**
+     * Escenario: OAuth Apple proveedor mismatch verifica que devuelva conflict.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void oauthAppleProviderMismatchReturnsConflict() throws Exception {
         User existing = new User();
@@ -234,11 +271,15 @@ class AuthOAuthIntegrationTest {
                 .content("{\"provider\":\"apple\",\"token\":\"apple-mismatch\",\"authAction\":\"LOGIN\"}"))
             .andExpect(status().isConflict())
             .andExpect(jsonPath("$.error").value("OAUTH_PROVIDER_MISMATCH"))
-            .andExpect(jsonPath("$.message").value("Email already linked to a different provider"));
+            .andExpect(jsonPath("$.message").value("Email already linked a a different provider"));
 
         org.junit.jupiter.api.Assertions.assertEquals(1L, userRepository.count());
     }
 
+    /**
+     * Escenario: OAuth Apple sin email first login verifica que devuelva bad request.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void oauthAppleWithoutEmailFirstLoginReturnsBadRequest() throws Exception {
         when(appleTokenVerifier.verify("apple-first-without-email")).thenReturn(
@@ -251,12 +292,16 @@ class AuthOAuthIntegrationTest {
             .andExpect(status().isBadRequest())
             .andExpect(jsonPath("$.error").value("APPLE_EMAIL_REQUIRED_FIRST_LOGIN"))
             .andExpect(jsonPath("$.message").value(
-                "Apple did not provide email. Please complete first login from Apple flow that includes email."
+                "Apple did not provide email. Please complete first login desde Apple flow that includes email."
             ));
 
         org.junit.jupiter.api.Assertions.assertEquals(0L, userRepository.count());
     }
 
+    /**
+     * Escenario: OAuth invalido token verifica que devuelva bad request.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void oauthInvalidTokenReturnsBadRequest() throws Exception {
         when(googleTokenVerifier.verify(anyString())).thenThrow(new IllegalArgumentException("Token OAuth inválido"));

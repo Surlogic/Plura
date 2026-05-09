@@ -15,10 +15,19 @@ import java.util.regex.Pattern;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 
+/**
+ * Tests de migraciones y consistencia de base de datos.
+ * Cubren escenarios de Flyway migracion version uniqueness para documentar el comportamiento esperado y evitar regresiones.
+ * Mantener estos casos alineados con los contratos reales del backend cuando cambie la logica productiva.
+ */
 class FlywayMigrationVersionUniquenessTest {
 
     private static final Pattern MIGRATION_PATTERN = Pattern.compile("^V([^_]+(?:_[^_]+)*)__.*\\.sql$");
 
+    /**
+     * Escenario: debe keep Flyway migracion versiones unico.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void shouldKeepFlywayMigrationVersionsUnique() throws IOException, URISyntaxException {
         Path migrationsDir = Path.of(

@@ -7,6 +7,12 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
+/**
+ * AvailableSlotAsyncDispatcher es un despachador asincronico del modulo disponibilidad.
+ * Responsabilidad: encolar o disparar trabajo fuera del flujo principal del request.
+ * Colabora con: availableSlotService, slotRebuildEnabled.
+ * Foco funcional: la responsabilidad indicada por su paquete y nombre.
+ */
 @Service
 public class AvailableSlotAsyncDispatcher {
 
@@ -23,6 +29,9 @@ public class AvailableSlotAsyncDispatcher {
         this.slotRebuildEnabled = slotRebuildEnabled;
     }
 
+    /**
+     * Reconstruye profesional proximos dias a partir de la fuente de verdad actual.
+     */
     @Async("availableSlotExecutor")
     public void rebuildProfessionalNextDays(Long professionalId, int days) {
         if (!slotRebuildEnabled) {
@@ -36,6 +45,9 @@ public class AvailableSlotAsyncDispatcher {
         }
     }
 
+    /**
+     * Reconstruye profesional dia a partir de la fuente de verdad actual.
+     */
     @Async("availableSlotExecutor")
     public void rebuildProfessionalDay(Long professionalId, LocalDate date) {
         if (!slotRebuildEnabled) {
@@ -49,6 +61,9 @@ public class AvailableSlotAsyncDispatcher {
         }
     }
 
+    /**
+     * Reconstruye todos proximos dias a partir de la fuente de verdad actual.
+     */
     @Async("availableSlotExecutor")
     public void rebuildAllNextDays(int days) {
         if (!slotRebuildEnabled) {
@@ -62,6 +77,9 @@ public class AvailableSlotAsyncDispatcher {
         }
     }
 
+    /**
+     * Reconstruye particion proximos dias a partir de la fuente de verdad actual.
+     */
     @Async("availableSlotExecutor")
     public void rebuildShardNextDays(int days, int shardCount, int shardIndex) {
         if (!slotRebuildEnabled) {

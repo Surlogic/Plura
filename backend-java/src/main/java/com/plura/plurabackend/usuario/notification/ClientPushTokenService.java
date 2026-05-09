@@ -13,6 +13,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+/**
+ * ClientPushTokenService es un servicio de negocio del modulo cliente / notificaciones.
+ * Responsabilidad: coordinar reglas de negocio, validaciones, persistencia e integraciones del caso de uso.
+ * Colabora con: clientPushDeviceRepository, userRepository.
+ * Foco funcional: servicios, clientes.
+ */
 @Service
 public class ClientPushTokenService {
 
@@ -27,6 +33,9 @@ public class ClientPushTokenService {
         this.userRepository = userRepository;
     }
 
+    /**
+     * Sincroniza el dato recibido con el estado persistido actual.
+     */
     @Transactional
     public void sync(Long userId, ClientPushTokenUpsertRequest request) {
         String normalizedToken = normalizePushToken(request.pushToken());
@@ -52,6 +61,9 @@ public class ClientPushTokenService {
         clientPushDeviceRepository.save(device);
     }
 
+    /**
+     * Normaliza push token para evitar variantes vacias, invalidas o inconsistentes.
+     */
     private String normalizePushToken(String rawPushToken) {
         if (rawPushToken == null || rawPushToken.trim().isBlank()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "pushToken es obligatorio");
@@ -63,6 +75,9 @@ public class ClientPushTokenService {
         return normalized;
     }
 
+    /**
+     * Normaliza plataforma para evitar variantes vacias, invalidas o inconsistentes.
+     */
     private String normalizePlatform(String rawPlatform) {
         if (rawPlatform == null || rawPlatform.trim().isBlank()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "platform es obligatorio");

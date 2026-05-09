@@ -45,6 +45,11 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.web.server.ResponseStatusException;
 
+/**
+ * Tests de resenas y moderacion.
+ * Cubren escenarios de reserva resena servicio para documentar el comportamiento esperado y evitar regresiones.
+ * Mantener estos casos alineados con los contratos reales del backend cuando cambie la logica productiva.
+ */
 class BookingReviewServiceTest {
 
     private BookingReviewRepository bookingReviewRepository;
@@ -55,6 +60,10 @@ class BookingReviewServiceTest {
     private ReviewNotificationIntegrationService reviewNotificationIntegrationService;
     private BookingReviewService service;
 
+    /**
+     * Prepara mocks, datos base o configuracion comun antes de cada caso de prueba.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @BeforeEach
     void setUp() {
         bookingReviewRepository = mock(BookingReviewRepository.class);
@@ -101,6 +110,10 @@ class BookingReviewServiceTest {
         return profile;
     }
 
+    /**
+     * Escenario: crea resena for eligible reserva.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void createsReviewForEligibleBooking() {
         Booking booking = makeBooking(1L, 10L, 20L, BookingOperationalStatus.COMPLETED);
@@ -131,6 +144,10 @@ class BookingReviewServiceTest {
         verify(reviewNotificationIntegrationService).notifyReviewReceived(any(), eq(booking));
     }
 
+    /**
+     * Escenario: crea resena con only rating.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void createsReviewWithOnlyRating() {
         Booking booking = makeBooking(1L, 10L, 20L, BookingOperationalStatus.COMPLETED);
@@ -155,6 +172,10 @@ class BookingReviewServiceTest {
         assertNull(response.getText());
     }
 
+    /**
+     * Escenario: rechaza resena for other usuarios reserva.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void rejectsReviewForOtherUsersBooking() {
         Booking booking = makeBooking(1L, 10L, 20L, BookingOperationalStatus.COMPLETED);
@@ -168,6 +189,10 @@ class BookingReviewServiceTest {
         verify(bookingReviewRepository, never()).save(any());
     }
 
+    /**
+     * Escenario: rechaza resena for non completado reserva.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void rejectsReviewForNonCompletedBooking() {
         Booking booking = makeBooking(1L, 10L, 20L, BookingOperationalStatus.CONFIRMED);
@@ -181,6 +206,10 @@ class BookingReviewServiceTest {
         verify(bookingReviewRepository, never()).save(any());
     }
 
+    /**
+     * Escenario: rechaza duplicado resena.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void rejectsDuplicateReview() {
         Booking booking = makeBooking(1L, 10L, 20L, BookingOperationalStatus.COMPLETED);
@@ -195,6 +224,10 @@ class BookingReviewServiceTest {
         verify(bookingReviewRepository, never()).save(any());
     }
 
+    /**
+     * Escenario: rechaza resena cuando window vencido.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void rejectsReviewWhenWindowExpired() {
         Booking booking = makeBooking(1L, 10L, 20L, BookingOperationalStatus.COMPLETED);
@@ -209,6 +242,10 @@ class BookingReviewServiceTest {
         verify(bookingReviewRepository, never()).save(any());
     }
 
+    /**
+     * Escenario: actualiza aggregate on crear.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void updatesAggregateOnCreate() {
         Booking booking = makeBooking(1L, 10L, 20L, BookingOperationalStatus.COMPLETED);
@@ -234,6 +271,10 @@ class BookingReviewServiceTest {
         assertEquals(5, captor.getValue().getReviewsCount());
     }
 
+    /**
+     * Escenario: actualiza aggregate on crear cuando repository verifica que devuelva nested row.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void updatesAggregateOnCreateWhenRepositoryReturnsNestedRow() {
         Booking booking = makeBooking(1L, 10L, 20L, BookingOperationalStatus.COMPLETED);
@@ -260,6 +301,10 @@ class BookingReviewServiceTest {
         assertEquals(2, captor.getValue().getReviewsCount());
     }
 
+    /**
+     * Escenario: publico listado hides text cuando hidden.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void publicListHidesTextWhenHidden() {
         ProfessionalProfile profile = makeProfile(20L);
@@ -295,6 +340,10 @@ class BookingReviewServiceTest {
         assertFalse(resp.isReportedByProfessional());
     }
 
+    /**
+     * Escenario: profesional dueno puede hide text.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void professionalOwnerCanHideText() {
         ProfessionalProfile profile = makeProfile(20L);
@@ -317,6 +366,10 @@ class BookingReviewServiceTest {
         verify(bookingReviewRepository).save(review);
     }
 
+    /**
+     * Escenario: profesional no puede hide other profesionales resena.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void professionalCannotHideOtherProfessionalsReview() {
         when(professionalActorLookupGateway.findProfessionalIdByUserId(5L)).thenReturn(Optional.of(99L));
@@ -329,6 +382,10 @@ class BookingReviewServiceTest {
         verify(bookingReviewRepository, never()).save(any());
     }
 
+    /**
+     * Escenario: profesional dueno puede show text.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void professionalOwnerCanShowText() {
         ProfessionalProfile profile = makeProfile(20L);
@@ -352,6 +409,10 @@ class BookingReviewServiceTest {
         verify(bookingReviewRepository).save(review);
     }
 
+    /**
+     * Escenario: concurrent duplicado verifica que devuelva 409 via constraint violation.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void concurrentDuplicateReturns409ViaConstraintViolation() {
         Booking booking = makeBooking(1L, 10L, 20L, BookingOperationalStatus.COMPLETED);
@@ -370,6 +431,10 @@ class BookingReviewServiceTest {
         assertEquals(409, ex.getStatusCode().value());
     }
 
+    /**
+     * Escenario: hide text does no alter aggregate.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void hideTextDoesNotAlterAggregate() {
         ProfessionalProfile profile = makeProfile(20L);
@@ -397,6 +462,10 @@ class BookingReviewServiceTest {
         verify(professionalProfileRepository, never()).save(any());
     }
 
+    /**
+     * Escenario: show text does no alter aggregate.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void showTextDoesNotAlterAggregate() {
         ProfessionalProfile profile = makeProfile(20L);
@@ -423,6 +492,10 @@ class BookingReviewServiceTest {
         verify(professionalProfileRepository, never()).save(any());
     }
 
+    /**
+     * Escenario: profesional no puede show other profesionales resena.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void professionalCannotShowOtherProfessionalsReview() {
         when(professionalActorLookupGateway.findProfessionalIdByUserId(5L)).thenReturn(Optional.of(99L));
@@ -435,6 +508,10 @@ class BookingReviewServiceTest {
         verify(bookingReviewRepository, never()).save(any());
     }
 
+    /**
+     * Escenario: publico listado shows text cuando no hidden.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void publicListShowsTextWhenNotHidden() {
         ProfessionalProfile profile = makeProfile(20L);
@@ -468,6 +545,10 @@ class BookingReviewServiceTest {
         assertFalse(resp.isReportedByProfessional());
     }
 
+    /**
+     * Escenario: notificacion failure does no break resena creation.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void notificationFailureDoesNotBreakReviewCreation() {
         Booking booking = makeBooking(1L, 10L, 20L, BookingOperationalStatus.COMPLETED);
@@ -494,6 +575,10 @@ class BookingReviewServiceTest {
         verify(professionalProfileRepository).save(any(ProfessionalProfile.class));
     }
 
+    /**
+     * Escenario: eliminar resena actualiza aggregates.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void deleteReviewUpdatesAggregates() {
         Booking booking = makeBooking(1L, 10L, 20L, BookingOperationalStatus.COMPLETED);
@@ -516,6 +601,10 @@ class BookingReviewServiceTest {
         assertEquals(3, profile.getReviewsCount());
     }
 
+    /**
+     * Escenario: eliminar last resena leaves aggregates in zero.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void deleteLastReviewLeavesAggregatesInZero() {
         Booking booking = makeBooking(1L, 10L, 20L, BookingOperationalStatus.COMPLETED);
@@ -539,6 +628,10 @@ class BookingReviewServiceTest {
         assertEquals(0, profile.getReviewsCount());
     }
 
+    /**
+     * Escenario: profesional puede report own resena.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void professionalCanReportOwnReview() {
         ProfessionalProfile profile = makeProfile(20L);
@@ -573,6 +666,10 @@ class BookingReviewServiceTest {
         assertEquals(BookingReviewReportStatus.OPEN, response.getStatus());
     }
 
+    /**
+     * Escenario: no puede crear duplicado open report for same resena y profesional.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void cannotCreateDuplicateOpenReportForSameReviewAndProfessional() {
         ProfessionalProfile profile = makeProfile(20L);

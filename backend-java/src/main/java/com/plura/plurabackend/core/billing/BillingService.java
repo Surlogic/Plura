@@ -78,12 +78,8 @@ public class BillingService {
     }
 
     /**
-     * Crea una nueva suscripción para el profesional autenticado.
-     * Valida que billing esté habilitado, resuelve el profesional y el plan,
-     * y delega la creación al servicio de MercadoPago.
-     *
-     * @param request datos de la suscripción con el código del plan
-     * @return respuesta con URL de checkout y datos de la suscripción
+     * Crea subscription validando datos de entrada y persistiendo el resultado.
+     * Tambien concentra los efectos secundarios para que el flujo quede en un estado consistente.
      */
     @Transactional
     public BillingCheckoutResponse createSubscription(BillingCreateSubscriptionRequest request) {
@@ -203,6 +199,9 @@ public class BillingService {
         return Optional.of(subscriptionRepository.save(subscription));
     }
 
+    /**
+     * Cancela subscription for professional id respetando reglas de estado.
+     */
     @Transactional
     public Optional<Subscription> cancelSubscriptionForProfessionalId(Long professionalId, boolean immediate) {
         if (professionalId == null) {
@@ -213,9 +212,8 @@ public class BillingService {
     }
 
     /**
-     * Crea una suscripción a través de MercadoPago.
-     * Prepara la suscripción en estado TRIAL, crea la preapproval en MercadoPago
-     * y devuelve la URL de checkout para que el usuario complete el pago.
+     * Crea Mercado Pago subscription validando datos de entrada y persistiendo el resultado.
+     * Tambien concentra los efectos secundarios para que el flujo quede en un estado consistente.
      */
     private BillingCheckoutResponse createMercadoPagoSubscription(
         ProfessionalProfile professional,
@@ -302,6 +300,9 @@ public class BillingService {
         return subscriptionRepository.saveAndFlush(subscription);
     }
 
+    /**
+     * Ejecuta la logica de assert Mercado Pago subscription can be reused manteniendola encapsulada en este componente.
+     */
     private void assertMercadoPagoSubscriptionCanBeReused(
         Subscription subscription,
         ProfessionalProfile professional,
@@ -341,6 +342,9 @@ public class BillingService {
         );
     }
 
+    /**
+     * Normaliza Mercado Pago subscription estado para evitar variantes vacias, invalidas o inconsistentes.
+     */
     private String normalizeMercadoPagoSubscriptionStatus(String status) {
         if (status == null) {
             return "";
@@ -348,6 +352,9 @@ public class BillingService {
         return status.trim().toLowerCase(Locale.ROOT);
     }
 
+    /**
+     * Evalua is open Mercado Pago subscription estado y devuelve una decision booleana para el llamador.
+     */
     private boolean isOpenMercadoPagoSubscriptionStatus(String status) {
         return "pending".equals(status)
             || "authorized".equals(status)
@@ -355,14 +362,18 @@ public class BillingService {
             || "paused".equals(status);
     }
 
-    /** Verifica que el módulo de facturación esté habilitado. Lanza excepción si no lo está. */
+    /**
+     * Ejecuta la logica de ensure billing enabled manteniendola encapsulada en este componente.
+     */
     private void ensureBillingEnabled() {
         if (!billingProperties.isEnabled()) {
             throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "Billing deshabilitado");
         }
     }
 
-    /** Resuelve el cliente del proveedor de pago. Lanza excepción si no está configurado. */
+    /**
+     * Resuelve proveedor cliente normalizando entradas, defaults y casos borde.
+     */
     private PaymentProviderClient resolveProviderClient(PaymentProvider provider) {
         PaymentProviderClient client = providerClients.get(provider);
         if (client == null) {
@@ -371,22 +382,23 @@ public class BillingService {
         return client;
     }
 
-    /** Carga un perfil profesional activo por ID de usuario. Lanza excepción si no existe o está inhabilitado. */
+    /**
+     * Carga la seccion enabled profesional desde base de datos o datos agregados y la deja lista para la respuesta.
+     * Mantiene la consulta encapsulada para que el resto del codigo no repita filtros ni joins.
+     */
     private ProfessionalProfile loadEnabledProfessional(Long userId) {
         return professionalBillingSubjectGateway.loadEnabledProfessionalByUserId(userId);
     }
 
     /**
-     * Resuelve el ID de usuario del profesional autenticado desde el contexto de seguridad.
-     * Verifica que tenga rol ROLE_PROFESSIONAL y que el token sea válido.
+     * Resuelve authenticated profesional usuario ID normalizando entradas, defaults y casos borde.
      */
     private Long resolveAuthenticatedProfessionalUserId() {
         return roleGuard.requireProfessional();
     }
 
     /**
-     * Convierte una entidad Subscription a su DTO de respuesta.
-     * Calcula si la suscripción premium está habilitada (activa y dentro del período vigente).
+     * Convierte datos internos al formato subscription respuesta esperado por el consumidor.
      */
     private BillingSubscriptionResponse toSubscriptionResponse(Subscription subscription) {
         if (subscription == null) {
@@ -417,6 +429,9 @@ public class BillingService {
         );
     }
 
+    /**
+     * Resuelve profesional payer email normalizando entradas, defaults y casos borde.
+     */
     private String resolveProfessionalPayerEmail(ProfessionalProfile professional) {
         if (professional == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Profesional invalido para iniciar la suscripcion");

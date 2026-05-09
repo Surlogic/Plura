@@ -28,6 +28,13 @@ import lombok.NoArgsConstructor;
         @Index(name = "idx_auth_password_reset_expires", columnList = "expires_at")
     }
 )
+
+/**
+ * PasswordResetToken es un componente de dominio del modulo autenticacion / modelo.
+ * Responsabilidad: encapsular comportamiento propio del modulo y mantenerlo fuera de controllers u otras capas.
+ * Mantiene separada esta responsabilidad para que el resto del backend use una API clara.
+ * Foco funcional: contrasenas.
+ */
 public class PasswordResetToken {
 
     @Id

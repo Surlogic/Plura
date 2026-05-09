@@ -20,6 +20,12 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+/**
+ * EmailVerificationService es un servicio de negocio del modulo autenticacion.
+ * Responsabilidad: coordinar reglas de negocio, validaciones, persistencia e integraciones del caso de uso.
+ * Colabora con: userRepository, emailVerificationChallengeRepository, emailVerificationNotificationSender, authAuditService, entre otros.
+ * Foco funcional: servicios, email transaccional.
+ */
 @Service
 public class EmailVerificationService {
 
@@ -54,6 +60,9 @@ public class EmailVerificationService {
         this.maxAttempts = maxAttempts;
     }
 
+    /**
+     * Envia verification code mediante el canal configurado.
+     */
     @Transactional
     public EmailVerificationSendResponse sendVerificationCode(String rawUserId, String requestedEmail) {
         User user = loadActiveUser(rawUserId);
@@ -124,6 +133,10 @@ public class EmailVerificationService {
         return new EmailVerificationSendResponse("Te enviamos un código de verificación por email.", cooldownSeconds);
     }
 
+    /**
+     * Confirma verification code despues de validar token, codigo o estado previo.
+     * Tambien concentra los efectos secundarios para que el flujo quede en un estado consistente.
+     */
     @Transactional(noRollbackFor = AuthApiException.class)
     public void confirmVerificationCode(String rawUserId, String rawCode) {
         User user = loadActiveUser(rawUserId);
@@ -192,6 +205,10 @@ public class EmailVerificationService {
         );
     }
 
+    /**
+     * Carga la seccion active usuario desde base de datos o datos agregados y la deja lista para la respuesta.
+     * Mantiene la consulta encapsulada para que el resto del codigo no repita filtros ni joins.
+     */
     private User loadActiveUser(String rawUserId) {
         Long userId;
         try {
@@ -203,6 +220,9 @@ public class EmailVerificationService {
             .orElseThrow(() -> new AuthApiException(HttpStatus.UNAUTHORIZED, "UNAUTHORIZED", "Usuario no encontrado."));
     }
 
+    /**
+     * Genera code con formato estable para uso interno o externo.
+     */
     private String generateCode() {
         int value = SECURE_RANDOM.nextInt(900000) + 100000;
         return String.valueOf(value);
@@ -222,6 +242,9 @@ public class EmailVerificationService {
         }
     }
 
+    /**
+     * Normaliza submitted code para evitar variantes vacias, invalidas o inconsistentes.
+     */
     private String normalizeSubmittedCode(String rawCode) {
         if (rawCode == null) {
             throw new AuthApiException(HttpStatus.BAD_REQUEST, "CODE_INVALID", "Código inválido.");
@@ -233,6 +256,9 @@ public class EmailVerificationService {
         return trimmed;
     }
 
+    /**
+     * Normaliza opcional email para evitar variantes vacias, invalidas o inconsistentes.
+     */
     private String normalizeOptionalEmail(String email) {
         if (email == null) {
             return null;
@@ -241,6 +267,9 @@ public class EmailVerificationService {
         return trimmed.isBlank() ? null : trimmed;
     }
 
+    /**
+     * Normaliza email para evitar variantes vacias, invalidas o inconsistentes.
+     */
     private String normalizeEmail(String email) {
         String normalized = normalizeOptionalEmail(email);
         if (normalized == null) {
@@ -249,10 +278,16 @@ public class EmailVerificationService {
         return normalized;
     }
 
+    /**
+     * Evalua has attempts exceeded y devuelve una decision booleana para el llamador.
+     */
     private boolean hasAttemptsExceeded(EmailVerificationChallenge challenge) {
         return (challenge.getAttemptCount() == null ? 0 : challenge.getAttemptCount()) >= resolveMaxAttempts(challenge);
     }
 
+    /**
+     * Resuelve max attempts normalizando entradas, defaults y casos borde.
+     */
     private int resolveMaxAttempts(EmailVerificationChallenge challenge) {
         if (challenge.getMaxAttempts() == null || challenge.getMaxAttempts() <= 0) {
             return maxAttempts;
@@ -260,6 +295,9 @@ public class EmailVerificationService {
         return challenge.getMaxAttempts();
     }
 
+    /**
+     * Ejecuta la logica de audit failure manteniendola encapsulada en este componente.
+     */
     private AuthApiException auditFailure(User user, HttpStatus status, String code, String message) {
         authAuditService.log(
             AuthAuditEventType.EMAIL_VERIFICATION_FAILURE,

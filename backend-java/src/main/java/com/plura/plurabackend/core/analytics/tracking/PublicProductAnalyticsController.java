@@ -9,6 +9,12 @@ import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+/**
+ * PublicProductAnalyticsController es un controlador REST del modulo analytics / tracking.
+ * Responsabilidad: recibir requests HTTP, validar acceso basico y delegar la operacion al servicio de aplicacion o dominio.
+ * Superficie HTTP: atiende rutas bajo /public/product-analytics y deja la logica pesada en servicios.
+ * Foco funcional: analytics, superficie publica.
+ */
 @RestController
 @RequestMapping("/public/product-analytics")
 public class PublicProductAnalyticsController {
@@ -22,8 +28,14 @@ public class PublicProductAnalyticsController {
         this.appProductEventTrackingService = appProductEventTrackingService;
     }
 
+    /**
+     * Ejecuta la logica de track evento manteniendola encapsulada en este componente.
+     */
     @PostMapping("/events")
     public void trackEvent(
+    /**
+     * Resuelve authenticated user id normalizando entradas y defaults del modulo.
+     */
         @RequestBody(required = false) PublicProductAnalyticsEventRequest request,
         @RequestHeader(value = CLIENT_PLATFORM_HEADER, required = false) String clientPlatform,
         @RequestHeader(value = ANALYTICS_SESSION_HEADER, required = false) String analyticsSessionId,

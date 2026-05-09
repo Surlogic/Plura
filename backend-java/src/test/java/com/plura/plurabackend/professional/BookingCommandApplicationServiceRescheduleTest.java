@@ -77,6 +77,11 @@ import java.util.concurrent.Executor;
 import org.junit.jupiter.api.Test;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
+/**
+ * Tests de funciones del profesional.
+ * Cubren escenarios de reserva comando application servicio reprogramacion para documentar el comportamiento esperado y evitar regresiones.
+ * Mantener estos casos alineados con los contratos reales del backend cuando cambie la logica productiva.
+ */
 class BookingCommandApplicationServiceRescheduleTest {
 
     private final ProfessionalProfileRepository professionalProfileRepository = mock(ProfessionalProfileRepository.class);
@@ -159,6 +164,10 @@ class BookingCommandApplicationServiceRescheduleTest {
         "America/Montevideo"
     );
 
+    /**
+     * Escenario: debe reprogramacion cliente reserva y increment reprogramacion conteo.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void shouldRescheduleClientBookingAndIncrementRescheduleCount() throws Exception {
         LocalDate targetDate = LocalDate.now().plusDays(30);

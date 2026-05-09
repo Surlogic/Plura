@@ -7,6 +7,12 @@ import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
+/**
+ * LocalImageThumbnailJobService es un servicio de negocio del modulo storage / miniaturas.
+ * Responsabilidad: coordinar reglas de negocio, validaciones, persistencia e integraciones del caso de uso.
+ * Colabora con: imageStorageService.
+ * Foco funcional: servicios, imagenes.
+ */
 @Service
 public class LocalImageThumbnailJobService implements ImageThumbnailJobService {
 
@@ -19,6 +25,9 @@ public class LocalImageThumbnailJobService implements ImageThumbnailJobService {
         this.imageStorageService = imageStorageService;
     }
 
+    /**
+     * Genera miniaturas asincronico con formato estable para uso interno o externo.
+     */
     @Override
     @Async("imageProcessingExecutor")
     public void generateThumbnailsAsync(String objectKey) {
@@ -35,6 +44,9 @@ public class LocalImageThumbnailJobService implements ImageThumbnailJobService {
         }
     }
 
+    /**
+     * Agrega thumbnail path al valor base manteniendo formato consistente.
+     */
     private String appendThumbnailPath(String key, int size) {
         String sanitized = normalizeKey(key);
         int slash = sanitized.lastIndexOf('/');
@@ -48,6 +60,9 @@ public class LocalImageThumbnailJobService implements ImageThumbnailJobService {
         return basePath + "/" + thumbName;
     }
 
+    /**
+     * Normaliza clave para evitar variantes vacias, invalidas o inconsistentes.
+     */
     private String normalizeKey(String rawKey) {
         if (rawKey == null || rawKey.isBlank()) {
             return "missing";

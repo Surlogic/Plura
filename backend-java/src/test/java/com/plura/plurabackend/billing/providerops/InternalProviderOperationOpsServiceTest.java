@@ -19,6 +19,11 @@ import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 import org.springframework.data.domain.Pageable;
 
+/**
+ * Tests de billing, pagos, webhooks y proveedores / operaciones asincronicas de proveedores.
+ * Cubren escenarios de interno proveedor operacion ops servicio para documentar el comportamiento esperado y evitar regresiones.
+ * Mantener estos casos alineados con los contratos reales del backend cuando cambie la logica productiva.
+ */
 class InternalProviderOperationOpsServiceTest {
 
     private final ProviderOperationRepository providerOperationRepository = Mockito.mock(ProviderOperationRepository.class);
@@ -26,6 +31,10 @@ class InternalProviderOperationOpsServiceTest {
         providerOperationRepository
     );
 
+    /**
+     * Escenario: debe flag todos three operational alerts.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void shouldFlagAllThreeOperationalAlerts() {
         ProviderOperation staleUncertain = operation("unc-1", ProviderOperationStatus.UNCERTAIN);
@@ -75,6 +84,10 @@ class InternalProviderOperationOpsServiceTest {
         assertEquals("worker-1", response.expiredLeases().samples().get(0).lockedBy());
     }
 
+    /**
+     * Escenario: debe skip retryable samples cuando below threshold.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void shouldSkipRetryableSamplesWhenBelowThreshold() {
         when(providerOperationRepository.countByStatusAndUpdatedAtBefore(eq(ProviderOperationStatus.UNCERTAIN), any()))

@@ -27,6 +27,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+/**
+ * ProfessionalPaymentProviderConnectionService es un servicio de negocio del modulo billing / conexion de proveedor.
+ * Responsabilidad: coordinar reglas de negocio, validaciones, persistencia e integraciones del caso de uso.
+ * Colabora con: professionalBillingSubjectGateway, repository, mercadoPagoOAuthStateService, mercadoPagoOAuthClient, entre otros.
+ * Foco funcional: profesionales, proveedores externos, pagos, servicios.
+ */
 @Service
 public class ProfessionalPaymentProviderConnectionService {
 
@@ -68,6 +74,9 @@ public class ProfessionalPaymentProviderConnectionService {
         return toResponse(findConnection(professional.getId()).orElse(null));
     }
 
+    /**
+     * Ejecuta la logica de inicio Mercado Pago o autenticacion manteniendola encapsulada en este componente.
+     */
     @Transactional
     public MercadoPagoOAuthStartResponse startMercadoPagoOAuth(Long professionalUserId) {
         ProfessionalProfile professional = loadProfessional(professionalUserId);
@@ -111,6 +120,9 @@ public class ProfessionalPaymentProviderConnectionService {
         );
     }
 
+    /**
+     * Procesa Mercado Pago o autenticacion callback y coordina la respuesta del flujo.
+     */
     @Transactional
     public ProfessionalPaymentProviderConnectionResponse handleMercadoPagoOAuthCallback(
         Long professionalUserId,
@@ -124,6 +136,9 @@ public class ProfessionalPaymentProviderConnectionService {
         return handleMercadoPagoOAuthCallbackInternal(professional, code, state, error, errorDescription);
     }
 
+    /**
+     * Procesa Mercado Pago o autenticacion callback for profesional ID y coordina la respuesta del flujo.
+     */
     @Transactional
     public ProfessionalPaymentProviderConnectionResponse handleMercadoPagoOAuthCallbackForProfessionalId(
         Long professionalId,
@@ -137,6 +152,9 @@ public class ProfessionalPaymentProviderConnectionService {
         return handleMercadoPagoOAuthCallbackInternal(professional, code, state, error, errorDescription);
     }
 
+    /**
+     * Procesa Mercado Pago o autenticacion callback interno y coordina la respuesta del flujo.
+     */
     private ProfessionalPaymentProviderConnectionResponse handleMercadoPagoOAuthCallbackInternal(
         ProfessionalProfile professional,
         String code,
@@ -268,6 +286,9 @@ public class ProfessionalPaymentProviderConnectionService {
         }
     }
 
+    /**
+     * Ejecuta la logica de disconnect Mercado Pago conexion manteniendola encapsulada en este componente.
+     */
     @Transactional
     public ProfessionalPaymentProviderConnectionResponse disconnectMercadoPagoConnection(Long professionalUserId) {
         ProfessionalProfile professional = loadProfessional(professionalUserId);
@@ -296,6 +317,9 @@ public class ProfessionalPaymentProviderConnectionService {
         return toResponse(repository.save(connection));
     }
 
+    /**
+     * Resuelve Mercado Pago acceso for profesional normalizando entradas, defaults y casos borde.
+     */
     @Transactional
     public MercadoPagoConnectionAccess resolveMercadoPagoAccessForProfessional(Long professionalId) {
         if (professionalId == null) {
@@ -329,6 +353,9 @@ public class ProfessionalPaymentProviderConnectionService {
         );
     }
 
+    /**
+     * Ejecuta la logica de persist o autenticacion error manteniendola encapsulada en este componente.
+     */
     private void persistOAuthError(
         ProfessionalPaymentProviderConnection connection,
         String code,
@@ -354,6 +381,9 @@ public class ProfessionalPaymentProviderConnectionService {
         errorRecorder.recordOAuthError(connection.getId(), errorMessage, preserveConnectedStatus);
     }
 
+    /**
+     * Refresca if needed para mantener datos derivados o metricas al dia.
+     */
     private ProfessionalPaymentProviderConnection refreshIfNeeded(ProfessionalPaymentProviderConnection connection) {
         if (connection.getTokenExpiresAt() == null || connection.getTokenExpiresAt().isAfter(LocalDateTime.now().plusMinutes(2))) {
             return connection;
@@ -403,6 +433,9 @@ public class ProfessionalPaymentProviderConnectionService {
         }
     }
 
+    /**
+     * Ejecuta la logica de ensure proveedor usuario available for profesional manteniendola encapsulada en este componente.
+     */
     private void ensureProviderUserAvailableForProfessional(Long professionalId, String providerUserId) {
         if (providerUserId == null || providerUserId.isBlank()) {
             return;
@@ -429,6 +462,9 @@ public class ProfessionalPaymentProviderConnectionService {
         );
     }
 
+    /**
+     * Evalua is active conexion y devuelve una decision booleana para el llamador.
+     */
     private boolean isActiveConnection(ProfessionalPaymentProviderConnection connection) {
         return connection != null
             && connection.getStatus() != ProfessionalPaymentProviderConnectionStatus.DISCONNECTED
@@ -436,6 +472,9 @@ public class ProfessionalPaymentProviderConnectionService {
             && !connection.getAccessTokenEncrypted().isBlank();
     }
 
+    /**
+     * Evalua is o autenticacion replay after successful conexion y devuelve una decision booleana para el llamador.
+     */
     private boolean isOAuthReplayAfterSuccessfulConnection(ResponseStatusException exception) {
         if (exception == null || exception.getReason() == null) {
             return false;
@@ -446,6 +485,9 @@ public class ProfessionalPaymentProviderConnectionService {
             || normalizedReason.contains("code already used");
     }
 
+    /**
+     * Ejecuta la logica de classify o autenticacion failure code manteniendola encapsulada en este componente.
+     */
     private String classifyOAuthFailureCode(
         String providerError,
         String code,
@@ -482,6 +524,9 @@ public class ProfessionalPaymentProviderConnectionService {
         return "callback_processing_failed";
     }
 
+    /**
+     * Construye error message a partir de datos internos ya validados.
+     */
     private String buildErrorMessage(String code, String message) {
         String normalizedCode = code == null || code.isBlank() ? "oauth_error" : code.trim();
         String normalizedMessage = message == null || message.isBlank() ? "Sin detalle" : message.trim();
@@ -491,6 +536,9 @@ public class ProfessionalPaymentProviderConnectionService {
         );
     }
 
+    /**
+     * Ejecuta la logica de initialize conexion manteniendola encapsulada en este componente.
+     */
     private ProfessionalPaymentProviderConnection initializeConnection(Long professionalId) {
         ProfessionalPaymentProviderConnection connection = new ProfessionalPaymentProviderConnection();
         connection.setProfessionalId(professionalId);
@@ -499,6 +547,9 @@ public class ProfessionalPaymentProviderConnectionService {
         return connection;
     }
 
+    /**
+     * Almacena pending authorization attempt validando contenido, nombre y destino.
+     */
     private void storePendingAuthorizationAttempt(
         ProfessionalPaymentProviderConnection connection,
         MercadoPagoOAuthStateService.GeneratedState state
@@ -514,12 +565,18 @@ public class ProfessionalPaymentProviderConnectionService {
         }
     }
 
+    /**
+     * Ejecuta la logica de clear pending authorization attempt manteniendola encapsulada en este componente.
+     */
     private void clearPendingAuthorizationAttempt(ProfessionalPaymentProviderConnection connection) {
         connection.setPendingOauthState(null);
         connection.setPendingOauthStateExpiresAt(null);
         connection.setPendingOauthCodeVerifierEncrypted(null);
     }
 
+    /**
+     * Marca pending authorization verifier consumed y actualiza los indicadores relacionados.
+     */
     private void markPendingAuthorizationVerifierConsumed(
         ProfessionalPaymentProviderConnection connection,
         String rawState
@@ -531,6 +588,9 @@ public class ProfessionalPaymentProviderConnectionService {
         connection.setPendingOauthCodeVerifierEncrypted(null);
     }
 
+    /**
+     * Ejecuta la logica de ensure pending authorization matches manteniendola encapsulada en este componente.
+     */
     private void ensurePendingAuthorizationMatches(
         ProfessionalPaymentProviderConnection connection,
         String rawState,
@@ -551,6 +611,9 @@ public class ProfessionalPaymentProviderConnectionService {
         }
     }
 
+    /**
+     * Resuelve code verifier for callback normalizando entradas, defaults y casos borde.
+     */
     private String resolveCodeVerifierForCallback(
         ProfessionalPaymentProviderConnection connection,
         String rawState,
@@ -576,10 +639,17 @@ public class ProfessionalPaymentProviderConnectionService {
         return mercadoPagoOAuthTokenCipher.decrypt(connection.getPendingOauthCodeVerifierEncrypted());
     }
 
+    /**
+     * Ejecuta la logica de utc now manteniendola encapsulada en este componente.
+     */
     private LocalDateTime utcNow() {
         return LocalDateTime.now(ZoneOffset.UTC);
     }
 
+    /**
+     * Carga la seccion profesional desde base de datos o datos agregados y la deja lista para la respuesta.
+     * Mantiene la consulta encapsulada para que el resto del codigo no repita filtros ni joins.
+     */
     private ProfessionalProfile loadProfessional(Long professionalUserId) {
         if (professionalUserId == null) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Sesion profesional invalida");
@@ -587,6 +657,10 @@ public class ProfessionalPaymentProviderConnectionService {
         return professionalBillingSubjectGateway.loadEnabledProfessionalByUserId(professionalUserId);
     }
 
+    /**
+     * Carga la seccion profesional by ID desde base de datos o datos agregados y la deja lista para la respuesta.
+     * Mantiene la consulta encapsulada para que el resto del codigo no repita filtros ni joins.
+     */
     private ProfessionalProfile loadProfessionalById(Long professionalId) {
         if (professionalId == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "professionalId es obligatorio");
@@ -595,6 +669,9 @@ public class ProfessionalPaymentProviderConnectionService {
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Profesional no encontrado"));
     }
 
+    /**
+     * Ejecuta la logica de ensure online payments enabled for usuario manteniendola encapsulada en este componente.
+     */
     private void ensureOnlinePaymentsEnabledForUser(Long professionalUserId) {
         planGuardService.requireBooleanCapability(
             String.valueOf(professionalUserId),
@@ -602,6 +679,9 @@ public class ProfessionalPaymentProviderConnectionService {
         );
     }
 
+    /**
+     * Ejecuta la logica de ensure online payments enabled for profesional ID manteniendola encapsulada en este componente.
+     */
     private void ensureOnlinePaymentsEnabledForProfessionalId(Long professionalId) {
         ProfessionalProfile professional = professionalBillingSubjectGateway.findById(professionalId)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Profesional no encontrado"));
@@ -611,10 +691,17 @@ public class ProfessionalPaymentProviderConnectionService {
         ensureOnlinePaymentsEnabledForUser(professional.getUser().getId());
     }
 
+    /**
+     * Busca conexion aplicando filtros, joins o criterios del caso de uso.
+     * Mantiene la consulta encapsulada para que el resto del codigo no repita filtros ni joins.
+     */
     private Optional<ProfessionalPaymentProviderConnection> findConnection(Long professionalId) {
         return repository.findByProfessionalIdAndProvider(professionalId, MERCADO_PAGO_PROVIDER);
     }
 
+    /**
+     * Convierte datos internos al formato respuesta esperado por el consumidor.
+     */
     private ProfessionalPaymentProviderConnectionResponse toResponse(ProfessionalPaymentProviderConnection connection) {
         if (connection == null) {
             return new ProfessionalPaymentProviderConnectionResponse(
@@ -649,6 +736,9 @@ public class ProfessionalPaymentProviderConnectionService {
         );
     }
 
+    /**
+     * Guarda metadata en el formato persistido esperado por el modulo.
+     */
     private String writeMetadata(MercadoPagoOAuthClient.TokenResponse tokenResponse) {
         Map<String, Object> metadata = new LinkedHashMap<>();
         metadata.put("tokenType", tokenResponse.tokenType());
@@ -665,6 +755,9 @@ public class ProfessionalPaymentProviderConnectionService {
         }
     }
 
+    /**
+     * Ejecuta for logs atrapando errores para que el flujo principal no falle innecesariamente.
+     */
     private String safeForLogs(String value) {
         if (value == null || value.isBlank()) {
             return null;
@@ -676,6 +769,10 @@ public class ProfessionalPaymentProviderConnectionService {
         return trimmed.substring(0, 4) + "..." + trimmed.substring(trimmed.length() - 4);
     }
 
+    /**
+     * Bloque de datos mercado pago connection access dentro de la respuesta principal.
+     * Agrupa metricas relacionadas para que el frontend no tenga que reconstruirlas.
+     */
     public record MercadoPagoConnectionAccess(
         Long professionalId,
         String providerAccountId,

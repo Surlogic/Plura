@@ -20,6 +20,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+/**
+ * BookingReviewReminderService es un servicio de negocio del modulo resenas.
+ * Responsabilidad: coordinar reglas de negocio, validaciones, persistencia e integraciones del caso de uso.
+ * Colabora con: bookingRepository, bookingReviewRepository, bookingReviewReminderRepository, systemZoneId.
+ * Foco funcional: reservas, servicios, resenas.
+ */
 @Service
 public class BookingReviewReminderService {
 
@@ -42,6 +48,10 @@ public class BookingReviewReminderService {
         this.systemZoneId = ZoneId.of(appTimezone);
     }
 
+    /**
+     * Busca next reminder aplicando filtros, joins o criterios del caso de uso.
+     * Mantiene la consulta encapsulada para que el resto del codigo no repita filtros ni joins.
+     */
     @Transactional(readOnly = true)
     public Optional<ReviewReminderResponse> findNextReminder(Long clientUserId) {
         LocalDateTime now = LocalDateTime.now(systemZoneId);
@@ -63,6 +73,9 @@ public class BookingReviewReminderService {
         return Optional.empty();
     }
 
+    /**
+     * Marca reminder mostrado y actualiza los indicadores relacionados.
+     */
     @Transactional
     public ReviewReminderShownResponse markReminderShown(Long bookingId, Long clientUserId) {
         LocalDateTime now = LocalDateTime.now(systemZoneId);
@@ -100,12 +113,18 @@ public class BookingReviewReminderService {
         }
     }
 
+    /**
+     * Ejecuta la logica de actual reminder conteo manteniendola encapsulada en este componente.
+     */
     private int currentReminderCount(Long bookingId) {
         return bookingReviewReminderRepository.findByBooking_Id(bookingId)
             .map(this::safeReminderCount)
             .orElse(0);
     }
 
+    /**
+     * Evalua is reminder eligible y devuelve una decision booleana para el llamador.
+     */
     private boolean isReminderEligible(Booking booking, BookingReviewReminder reminder, LocalDateTime now) {
         if (booking.getOperationalStatus() != BookingOperationalStatus.COMPLETED) {
             return false;
@@ -119,6 +138,9 @@ public class BookingReviewReminderService {
         return reminder == null || BookingReviewPolicy.respectsReminderCadence(reminder.getLastRemindedAt(), now);
     }
 
+    /**
+     * Resuelve ineligible reason normalizando entradas, defaults y casos borde.
+     */
     private String resolveIneligibleReason(Booking booking, BookingReviewReminder reminder, LocalDateTime now) {
         if (booking.getOperationalStatus() != BookingOperationalStatus.COMPLETED) {
             return "BOOKING_NOT_COMPLETED";
@@ -135,6 +157,9 @@ public class BookingReviewReminderService {
         return "REMINDER_NOT_ELIGIBLE";
     }
 
+    /**
+     * Convierte datos internos al formato reminder respuesta esperado por el consumidor.
+     */
     private ReviewReminderResponse toReminderResponse(Booking booking, BookingReviewReminder reminder) {
         return new ReviewReminderResponse(
             booking.getId(),
@@ -146,10 +171,16 @@ public class BookingReviewReminderService {
         );
     }
 
+    /**
+     * Ejecuta reminder conteo atrapando errores para que el flujo principal no falle innecesariamente.
+     */
     private int safeReminderCount(BookingReviewReminder reminder) {
         return reminder.getReminderCount() == null ? 0 : Math.max(0, reminder.getReminderCount());
     }
 
+    /**
+     * Obtiene el primer valor util de non blank ignorando nulos o blancos.
+     */
     private String firstNonBlank(String value, String fallback) {
         return value == null || value.isBlank() ? fallback : value;
     }

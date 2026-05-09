@@ -4,6 +4,12 @@ import com.plura.plurabackend.core.auth.model.OtpChallengePurpose;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+/**
+ * PluraEmailTemplateService es un servicio de negocio del modulo autenticacion.
+ * Responsabilidad: coordinar reglas de negocio, validaciones, persistencia e integraciones del caso de uso.
+ * Colabora con: brandName, publicWebUrl.
+ * Foco funcional: servicios, email transaccional.
+ */
 @Service
 public class PluraEmailTemplateService {
 
@@ -11,6 +17,9 @@ public class PluraEmailTemplateService {
     private final String publicWebUrl;
 
     public PluraEmailTemplateService(
+    /**
+     * Construye password reset email a partir de datos internos ya validados.
+     */
         @Value("${app.email.brand-name:Marketplace de cuidado personal}") String brandName,
         @Value("${app.email.public-web-url:http://localhost:3002}") String publicWebUrl
     ) {
@@ -79,6 +88,9 @@ public class PluraEmailTemplateService {
         );
     }
 
+    /**
+     * Construye email verification email a partir de datos internos ya validados.
+     */
     public TransactionalEmailService.TransactionalEmailMessage buildEmailVerificationEmail(
         String toAddress,
         String recipientName,
@@ -126,6 +138,9 @@ public class PluraEmailTemplateService {
         );
     }
 
+    /**
+     * Construye otp challenge email a partir de datos internos ya validados.
+     */
     public TransactionalEmailService.TransactionalEmailMessage buildOtpChallengeEmail(
         String toAddress,
         String recipientName,
@@ -175,6 +190,9 @@ public class PluraEmailTemplateService {
         );
     }
 
+    /**
+     * Envuelve HTML con el layout HTML comun del email.
+     */
     private String wrapHtml(String title, String bodyHtml) {
         return """
             <!doctype html>
@@ -222,6 +240,9 @@ public class PluraEmailTemplateService {
         );
     }
 
+    /**
+     * Construye el HTML del boton usado en templates de email.
+     */
     private String buttonHtml(String label, String url) {
         return """
             <div style="margin:0 0 12px 0;">
@@ -230,6 +251,9 @@ public class PluraEmailTemplateService {
             """.formatted(url, escapeHtml(label));
     }
 
+    /**
+     * Construye el bloque visual para codigos OTP o similares.
+     */
     private String codeBlockHtml(String code) {
         return """
             <div style="margin:0 0 8px 0;padding:18px 20px;border-radius:16px;background:#f8fafc;border:1px solid #dbe4ee;text-align:center;">
@@ -238,6 +262,9 @@ public class PluraEmailTemplateService {
             """.formatted(code);
     }
 
+    /**
+     * Devuelve una descripcion legible de purpose para mensajes al usuario.
+     */
     private String describePurpose(OtpChallengePurpose purpose) {
         if (purpose == null) {
             return "una acción sensible en tu cuenta";
@@ -249,6 +276,9 @@ public class PluraEmailTemplateService {
         };
     }
 
+    /**
+     * Calcula el nombre de saludo a mostrar en emails.
+     */
     private String greetingName(String recipientName) {
         if (recipientName == null || recipientName.trim().isBlank()) {
             return "equipo";
@@ -256,6 +286,9 @@ public class PluraEmailTemplateService {
         return recipientName.trim();
     }
 
+    /**
+     * Normaliza brand nombre para evitar variantes vacias, invalidas o inconsistentes.
+     */
     private String normalizeBrandName(String value) {
         if (value == null || value.trim().isBlank()) {
             return "Marketplace de cuidado personal";
@@ -263,6 +296,9 @@ public class PluraEmailTemplateService {
         return value.trim();
     }
 
+    /**
+     * Normaliza base URL para evitar variantes vacias, invalidas o inconsistentes.
+     */
     private String normalizeBaseUrl(String value) {
         if (value == null || value.trim().isBlank()) {
             return "http://localhost:3002";
@@ -270,6 +306,9 @@ public class PluraEmailTemplateService {
         return value.trim();
     }
 
+    /**
+     * Escapa HTML para evitar HTML invalido o inyeccion en templates.
+     */
     private String escapeHtml(String value) {
         if (value == null) {
             return "";

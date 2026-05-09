@@ -13,6 +13,12 @@ import java.util.Locale;
 import java.util.Set;
 import org.springframework.stereotype.Component;
 
+/**
+ * MercadoPagoWebhookSignatureVerifier es un componente de dominio del modulo billing / webhooks.
+ * Responsabilidad: encapsular comportamiento propio del modulo y mantenerlo fuera de controllers u otras capas.
+ * Colabora con: billingProperties, objectMapper.
+ * Foco funcional: Mercado Pago, webhooks.
+ */
 @Component
 public class MercadoPagoWebhookSignatureVerifier {
 
@@ -27,6 +33,9 @@ public class MercadoPagoWebhookSignatureVerifier {
         this.objectMapper = objectMapper;
     }
 
+    /**
+     * Verifica el token externo del proveedor y devuelve la identidad validada.
+     */
     public boolean verify(String rawPayload, HttpServletRequest request) {
         BillingProperties.MercadoPago config = billingProperties.getMercadopago();
         Set<String> secrets = resolveWebhookSecrets(config);
@@ -75,6 +84,9 @@ public class MercadoPagoWebhookSignatureVerifier {
         return false;
     }
 
+    /**
+     * Resuelve webhook secrets normalizando entradas, defaults y casos borde.
+     */
     private Set<String> resolveWebhookSecrets(BillingProperties.MercadoPago config) {
         Set<String> secrets = new LinkedHashSet<>(new ArrayList<>(2));
         String subscriptionSecret = config.getSubscriptions().getWebhookSecret();
@@ -88,6 +100,9 @@ public class MercadoPagoWebhookSignatureVerifier {
         return secrets;
     }
 
+    /**
+     * Evalua is within replay window y devuelve una decision booleana para el llamador.
+     */
     private boolean isWithinReplayWindow(String ts) {
         try {
             long headerEpochSeconds = Long.parseLong(ts.trim());
@@ -99,6 +114,9 @@ public class MercadoPagoWebhookSignatureVerifier {
         }
     }
 
+    /**
+     * Resuelve data ID normalizando entradas, defaults y casos borde.
+     */
     private String resolveDataId(String rawPayload, HttpServletRequest request) {
         String queryDataId = request.getParameter("data.id");
         if (queryDataId != null && !queryDataId.isBlank()) {
@@ -132,6 +150,9 @@ public class MercadoPagoWebhookSignatureVerifier {
         return null;
     }
 
+    /**
+     * Extrae token desde una URL, payload o referencia persistida.
+     */
     private String extractToken(String signatureHeader, String tokenName) {
         return Arrays.stream(signatureHeader.split(","))
             .map(String::trim)
@@ -143,6 +164,9 @@ public class MercadoPagoWebhookSignatureVerifier {
             .orElse(null);
     }
 
+    /**
+     * Ejecuta la logica de header ignore case manteniendola encapsulada en este componente.
+     */
     private String headerIgnoreCase(HttpServletRequest request, String headerName) {
         Enumeration<String> names = request.getHeaderNames();
         while (names != null && names.hasMoreElements()) {

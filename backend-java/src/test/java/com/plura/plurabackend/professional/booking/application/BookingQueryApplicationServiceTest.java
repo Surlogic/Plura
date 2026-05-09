@@ -29,8 +29,17 @@ import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 
+/**
+ * Tests de funciones del profesional / reservas / casos de uso de aplicacion.
+ * Cubren escenarios de reserva query application servicio para documentar el comportamiento esperado y evitar regresiones.
+ * Mantener estos casos alineados con los contratos reales del backend cuando cambie la logica productiva.
+ */
 class BookingQueryApplicationServiceTest {
 
+    /**
+     * Escenario: permite operational reservation queries across multiple days.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void allowsOperationalReservationQueriesAcrossMultipleDays() {
         BookingRepository bookingRepository = mock(BookingRepository.class);
@@ -71,6 +80,10 @@ class BookingQueryApplicationServiceTest {
         verify(professionalAccessSupport).loadProfessionalByUserId("21");
     }
 
+    /**
+     * Escenario: still loads single day queries.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void stillLoadsSingleDayQueries() {
         BookingRepository bookingRepository = mock(BookingRepository.class);
@@ -111,6 +124,10 @@ class BookingQueryApplicationServiceTest {
         verify(professionalAccessSupport).loadProfessionalByUserId("21");
     }
 
+    /**
+     * Escenario: syncs pendiente prepaid reservas before building profesional listado.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void syncsPendingPrepaidBookingsBeforeBuildingProfessionalList() {
         BookingRepository bookingRepository = mock(BookingRepository.class);
@@ -166,6 +183,10 @@ class BookingQueryApplicationServiceTest {
         verify(bookingPaymentsGateway).syncPendingChargeStatus(44L);
     }
 
+    /**
+     * Escenario: keeps profesional listado disponible cuando pendiente pago sync falla.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void keepsProfessionalListAvailableWhenPendingPaymentSyncFails() {
         BookingRepository bookingRepository = mock(BookingRepository.class);

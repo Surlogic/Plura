@@ -19,6 +19,12 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+/**
+ * PhoneVerificationService es un servicio de negocio del modulo autenticacion.
+ * Responsabilidad: coordinar reglas de negocio, validaciones, persistencia e integraciones del caso de uso.
+ * Colabora con: userRepository, phoneVerificationChallengeRepository, phoneVerificationNotificationSender, authAuditService, entre otros.
+ * Foco funcional: servicios, telefono.
+ */
 @Service
 public class PhoneVerificationService {
 
@@ -53,6 +59,9 @@ public class PhoneVerificationService {
         this.maxAttempts = maxAttempts;
     }
 
+    /**
+     * Envia verification code mediante el canal configurado.
+     */
     @Transactional
     public PhoneVerificationSendResponse sendVerificationCode(String rawUserId, String requestedPhoneNumber) {
         User user = loadActiveUser(rawUserId);
@@ -123,6 +132,10 @@ public class PhoneVerificationService {
         return new PhoneVerificationSendResponse("Te enviamos un código de verificación por SMS.", cooldownSeconds);
     }
 
+    /**
+     * Confirma verification code despues de validar token, codigo o estado previo.
+     * Tambien concentra los efectos secundarios para que el flujo quede en un estado consistente.
+     */
     @Transactional(noRollbackFor = AuthApiException.class)
     public void confirmVerificationCode(String rawUserId, String rawCode) {
         User user = loadActiveUser(rawUserId);
@@ -192,6 +205,10 @@ public class PhoneVerificationService {
         );
     }
 
+    /**
+     * Carga la seccion active usuario desde base de datos o datos agregados y la deja lista para la respuesta.
+     * Mantiene la consulta encapsulada para que el resto del codigo no repita filtros ni joins.
+     */
     private User loadActiveUser(String rawUserId) {
         Long userId;
         try {
@@ -203,6 +220,9 @@ public class PhoneVerificationService {
             .orElseThrow(() -> new AuthApiException(HttpStatus.UNAUTHORIZED, "UNAUTHORIZED", "Usuario no encontrado."));
     }
 
+    /**
+     * Genera code con formato estable para uso interno o externo.
+     */
     private String generateCode() {
         int value = SECURE_RANDOM.nextInt(900000) + 100000;
         return String.valueOf(value);
@@ -222,6 +242,9 @@ public class PhoneVerificationService {
         }
     }
 
+    /**
+     * Normaliza submitted code para evitar variantes vacias, invalidas o inconsistentes.
+     */
     private String normalizeSubmittedCode(String rawCode) {
         if (rawCode == null) {
             throw new AuthApiException(HttpStatus.BAD_REQUEST, "CODE_INVALID", "Código inválido.");
@@ -233,6 +256,9 @@ public class PhoneVerificationService {
         return trimmed;
     }
 
+    /**
+     * Normaliza opcional telefono number para evitar variantes vacias, invalidas o inconsistentes.
+     */
     private String normalizeOptionalPhoneNumber(String rawPhoneNumber) {
         if (rawPhoneNumber == null) {
             return null;
@@ -253,6 +279,9 @@ public class PhoneVerificationService {
         return normalized.toString();
     }
 
+    /**
+     * Normaliza telefono number para evitar variantes vacias, invalidas o inconsistentes.
+     */
     private String normalizePhoneNumber(String rawPhoneNumber) {
         String normalized = normalizeOptionalPhoneNumber(rawPhoneNumber);
         if (normalized == null) {
@@ -265,10 +294,16 @@ public class PhoneVerificationService {
         return normalized;
     }
 
+    /**
+     * Evalua has attempts exceeded y devuelve una decision booleana para el llamador.
+     */
     private boolean hasAttemptsExceeded(PhoneVerificationChallenge challenge) {
         return (challenge.getAttemptCount() == null ? 0 : challenge.getAttemptCount()) >= resolveMaxAttempts(challenge);
     }
 
+    /**
+     * Resuelve max attempts normalizando entradas, defaults y casos borde.
+     */
     private int resolveMaxAttempts(PhoneVerificationChallenge challenge) {
         if (challenge.getMaxAttempts() == null || challenge.getMaxAttempts() <= 0) {
             return maxAttempts;
@@ -276,6 +311,9 @@ public class PhoneVerificationService {
         return challenge.getMaxAttempts();
     }
 
+    /**
+     * Ejecuta la logica de audit failure manteniendola encapsulada en este componente.
+     */
     private AuthApiException auditFailure(User user, HttpStatus status, String code, String message) {
         authAuditService.log(
             AuthAuditEventType.PHONE_VERIFICATION_FAILURE,

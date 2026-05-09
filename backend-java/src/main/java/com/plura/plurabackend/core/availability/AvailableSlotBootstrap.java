@@ -7,6 +7,12 @@ import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 
+/**
+ * AvailableSlotBootstrap es un componente de dominio del modulo disponibilidad.
+ * Responsabilidad: encapsular comportamiento propio del modulo y mantenerlo fuera de controllers u otras capas.
+ * Colabora con: availableSlotAsyncDispatcher, enabled, slotRebuildEnabled, lookaheadDays.
+ * Foco funcional: la responsabilidad indicada por su paquete y nombre.
+ */
 @Component
 public class AvailableSlotBootstrap {
 
@@ -28,6 +34,9 @@ public class AvailableSlotBootstrap {
         this.lookaheadDays = lookaheadDays;
     }
 
+    /**
+     * Ejecuta la inicializacion necesaria cuando Spring termina de levantar el contexto.
+     */
     @EventListener(ApplicationReadyEvent.class)
     public void onStartup() {
         if (!enabled) {

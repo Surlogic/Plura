@@ -30,6 +30,12 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+/**
+ * HomeService es un servicio de negocio del modulo home.
+ * Responsabilidad: coordinar reglas de negocio, validaciones, persistencia e integraciones del caso de uso.
+ * Colabora con: userRepository, professionalHomeGateway, categoryRepository, bookingRepository, entre otros.
+ * Foco funcional: servicios, home publica.
+ */
 @Service
 public class HomeService {
 
@@ -84,6 +90,9 @@ public class HomeService {
         return new HomeResponse(stats, categories, topProfessionals);
     }
 
+    /**
+     * Resuelve professionals conteo by categoria ID normalizando entradas, defaults y casos borde.
+     */
     private Map<UUID, Long> resolveProfessionalsCountByCategoryId(List<Category> activeCategories) {
         if (activeCategories.isEmpty()) {
             return Map.of();
@@ -100,6 +109,9 @@ public class HomeService {
         return professionalHomeGateway.countActiveProfessionalsGroupedByCategoryIds(categoryIds);
     }
 
+    /**
+     * Cuenta monthly reservas sin cargar entidades completas cuando no hace falta.
+     */
     private long countMonthlyBookings() {
         LocalDate monthStartDate = LocalDate.now(appZoneId).withDayOfMonth(1);
         LocalDateTime monthStart = monthStartDate.atStartOfDay();
@@ -111,6 +123,9 @@ public class HomeService {
         );
     }
 
+    /**
+     * Resuelve top professionals normalizando entradas, defaults y casos borde.
+     */
     private List<HomeTopProfessionalResponse> resolveTopProfessionals() {
         List<ProfessionalHomeProfileView> topProfiles = loadTopProfiles();
         return topProfiles.stream()
@@ -118,6 +133,10 @@ public class HomeService {
             .toList();
     }
 
+    /**
+     * Carga la seccion top perfiles desde base de datos o datos agregados y la deja lista para la respuesta.
+     * Mantiene la consulta encapsulada para que el resto del codigo no repita filtros ni joins.
+     */
     private List<ProfessionalHomeProfileView> loadTopProfiles() {
         Pageable limit = PageRequest.of(0, TOP_PROFESSIONALS_LIMIT);
         LocalDateTime since = LocalDate.now(appZoneId).minusMonths(3).atStartOfDay();
@@ -156,6 +175,9 @@ public class HomeService {
         return ordered;
     }
 
+    /**
+     * Mapea top profesional desde el modelo interno al contrato que usa otra capa.
+     */
     private HomeTopProfessionalResponse mapTopProfessional(ProfessionalHomeProfileView profile) {
         String fullName = profile.displayName() == null || profile.displayName().isBlank()
             ? "Profesional"
@@ -180,6 +202,9 @@ public class HomeService {
         );
     }
 
+    /**
+     * Resuelve publico URL normalizando entradas, defaults y casos borde.
+     */
     private String resolvePublicUrl(String value) {
         if (value == null || value.isBlank()) {
             return null;
@@ -187,6 +212,9 @@ public class HomeService {
         return imageStorageService.resolvePublicUrl(value);
     }
 
+    /**
+     * Mapea categoria desde el modelo interno al contrato que usa otra capa.
+     */
     private CategoryResponse mapCategory(Category category, Map<UUID, Long> professionalsCountByCategoryId) {
         return new CategoryResponse(
             category.getId(),

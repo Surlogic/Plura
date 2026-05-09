@@ -22,11 +22,20 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
+/**
+ * Tests de notificaciones, bandejas y emails.
+ * Cubren escenarios de notificacion email template servicio para documentar el comportamiento esperado y evitar regresiones.
+ * Mantener estos casos alineados con los contratos reales del backend cuando cambie la logica productiva.
+ */
 class NotificationEmailTemplateServiceTest {
 
     private final NotificationEmailTemplateService templateService =
         new NotificationEmailTemplateService(new ObjectMapper(), "Plura", "https://app.plura.test");
 
+    /**
+     * Escenario: debe build business template per supported evento.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @ParameterizedTest
     @MethodSource("supportedEventTypes")
     void shouldBuildBusinessTemplatePerSupportedEvent(
@@ -46,6 +55,10 @@ class NotificationEmailTemplateServiceTest {
         assertTrue(message.textBody().contains(expectedSnippet));
     }
 
+    /**
+     * Escenario: debe rechazar unsupported business templates.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @ParameterizedTest
     @MethodSource("unsupportedEventTypes")
     void shouldRejectUnsupportedBusinessTemplates(NotificationEventType eventType) {
@@ -59,6 +72,10 @@ class NotificationEmailTemplateServiceTest {
         assertTrue(exception.getMessage().contains(eventType.name()));
     }
 
+    /**
+     * Escenario: debe build cliente template con cliente copy y cliente action url.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void shouldBuildClientTemplateWithClientCopyAndClientActionUrl() {
         NotificationEmailMessage message = templateService.buildMessage(
@@ -85,6 +102,10 @@ class NotificationEmailTemplateServiceTest {
         assertTrue(message.textBody().contains("/cliente/reservas?bookingId=101"));
     }
 
+    /**
+     * Escenario: debe build cliente cancellation template con matching tone.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void shouldBuildClientCancellationTemplateWithMatchingTone() {
         NotificationEmailMessage message = templateService.buildMessage(
@@ -105,6 +126,10 @@ class NotificationEmailTemplateServiceTest {
         assertTrue(message.textBody().contains("Dirección: Av. Italia 1234, Montevideo"));
     }
 
+    /**
+     * Escenario: debe build profesional template con dashboard reservation action url.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void shouldBuildProfessionalTemplateWithDashboardReservationActionUrl() {
         NotificationEmailMessage message = templateService.buildMessage(
@@ -119,6 +144,10 @@ class NotificationEmailTemplateServiceTest {
         assertTrue(message.textBody().contains("/profesional/dashboard/reservas?bookingId=101"));
     }
 
+    /**
+     * Escenario: debe build reembolso pendiente template con timing notice for cliente.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void shouldBuildRefundPendingTemplateWithTimingNoticeForClient() {
         NotificationEmailMessage message = templateService.buildMessage(
@@ -144,6 +173,10 @@ class NotificationEmailTemplateServiceTest {
         assertTrue(message.textBody().contains("Acreditación estimada:"));
     }
 
+    /**
+     * Escenario: debe build refunded template con timing notice for cliente.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void shouldBuildRefundedTemplateWithTimingNoticeForClient() {
         NotificationEmailMessage message = templateService.buildMessage(

@@ -2,6 +2,12 @@ package com.plura.plurabackend.core.jobs.sqs;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
+/**
+ * SqsProperties es un propiedades de configuracion del modulo jobs / SQS.
+ * Responsabilidad: mapear variables de entorno o application.yml a un objeto tipado.
+ * Mantiene separada esta responsabilidad para que el resto del backend use una API clara.
+ * Foco funcional: la responsabilidad indicada por su paquete y nombre.
+ */
 @ConfigurationProperties(prefix = "app.sqs")
 public class SqsProperties {
 
@@ -15,6 +21,9 @@ public class SqsProperties {
     private int waitTimeSeconds = 10;
     private int maxMessages = 10;
 
+    /**
+     * Evalua is enabled y devuelve una decision booleana para el llamador.
+     */
     public boolean isEnabled() {
         return enabled;
     }

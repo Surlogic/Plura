@@ -12,6 +12,12 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+/**
+ * GeoController es un controlador REST del modulo geolocalizacion.
+ * Responsabilidad: recibir requests HTTP, validar acceso basico y delegar la operacion al servicio de aplicacion o dominio.
+ * Superficie HTTP: atiende rutas bajo /api/geo y deja la logica pesada en servicios.
+ * Foco funcional: geolocalizacion.
+ */
 @RestController
 @RequestMapping("/api/geo")
 public class GeoController {
@@ -29,6 +35,9 @@ public class GeoController {
         this.geoForwardGeocodeService = geoForwardGeocodeService;
     }
 
+    /**
+     * Ejecuta la logica de autocomplete manteniendola encapsulada en este componente.
+     */
     @GetMapping("/autocomplete")
     public ResponseEntity<List<GeoAutocompleteItemResponse>> autocomplete(
         @RequestParam String q,
@@ -38,12 +47,18 @@ public class GeoController {
         return ResponseEntity.ok().cacheControl(GEO_CACHE_CONTROL).body(result);
     }
 
+    /**
+     * Ejecuta la logica de geocode manteniendola encapsulada en este componente.
+     */
     @GetMapping("/geocode")
     public ResponseEntity<GeoForwardGeocodeResponse> geocode(@RequestParam String q) {
         GeoForwardGeocodeResponse result = geoForwardGeocodeService.geocode(q);
         return ResponseEntity.ok().cacheControl(GEO_CACHE_CONTROL).body(result);
     }
 
+    /**
+     * Ejecuta la logica de suggest manteniendola encapsulada en este componente.
+     */
     @GetMapping("/suggest")
     public ResponseEntity<List<GeoLocationSuggestionResponse>> suggest(
         @RequestParam String q,

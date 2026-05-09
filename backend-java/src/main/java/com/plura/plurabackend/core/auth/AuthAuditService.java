@@ -14,6 +14,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
+/**
+ * AuthAuditService es un servicio de negocio del modulo autenticacion.
+ * Responsabilidad: coordinar reglas de negocio, validaciones, persistencia e integraciones del caso de uso.
+ * Colabora con: authAuditLogRepository, objectMapper.
+ * Foco funcional: servicios, auditoria, autenticacion y sesiones.
+ */
 @Service
 public class AuthAuditService {
 
@@ -28,6 +34,9 @@ public class AuthAuditService {
         this.objectMapper = objectMapper;
     }
 
+    /**
+     * Ejecuta la logica de log manteniendola encapsulada en este componente.
+     */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void log(
         AuthAuditEventType eventType,
@@ -63,6 +72,9 @@ public class AuthAuditService {
         return new AuthAuditListResponse(entries);
     }
 
+    /**
+     * Parsea usuario ID y convierte errores de formato en errores controlados.
+     */
     public Long parseUserId(String rawUserId) {
         if (rawUserId == null || rawUserId.isBlank()) {
             return null;
@@ -74,6 +86,9 @@ public class AuthAuditService {
         }
     }
 
+    /**
+     * Convierte datos internos al formato json esperado por el consumidor.
+     */
     private String toJson(Map<String, ?> metadata) {
         if (metadata == null || metadata.isEmpty()) {
             return null;
@@ -85,6 +100,9 @@ public class AuthAuditService {
         }
     }
 
+    /**
+     * Ejecuta la logica de trim manteniendola encapsulada en este componente.
+     */
     private String trim(String value, int maxLength) {
         if (value == null) {
             return null;

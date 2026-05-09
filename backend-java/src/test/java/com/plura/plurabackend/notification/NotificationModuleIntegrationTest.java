@@ -30,6 +30,11 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 
+/**
+ * Tests de notificaciones, bandejas y emails.
+ * Cubren escenarios de notificacion module integracion para documentar el comportamiento esperado y evitar regresiones.
+ * Mantener estos casos alineados con los contratos reales del backend cuando cambie la logica productiva.
+ */
 @SpringBootTest(properties = {
     "SPRING_DATASOURCE_URL=jdbc:h2:mem:notification-module;MODE=PostgreSQL;DB_CLOSE_DELAY=-1;DATABASE_TO_LOWER=TRUE",
     "SPRING_DATASOURCE_USERNAME=sa",
@@ -61,6 +66,10 @@ class NotificationModuleIntegrationTest {
     @Autowired
     private MeterRegistry meterRegistry;
 
+    /**
+     * Prepara mocks, datos base o configuracion comun antes de cada caso de prueba.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @BeforeEach
     void setUp() {
         emailDispatchRepository.deleteAll();
@@ -68,6 +77,10 @@ class NotificationModuleIntegrationTest {
         notificationEventRepository.deleteAll();
     }
 
+    /**
+     * Escenario: debe persist notificacion evento.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void shouldPersistNotificationEvent() {
         double createdBefore = counterValue("plura.notification.events.created");
@@ -90,6 +103,10 @@ class NotificationModuleIntegrationTest {
         assertEquals(createdBefore + 1d, counterValue("plura.notification.events.created"), 0.0001d);
     }
 
+    /**
+     * Escenario: debe deduplicate by dedupe key.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void shouldDeduplicateByDedupeKey() {
         double dedupedBefore = counterValue("plura.notification.events.deduplicated");
@@ -124,6 +141,10 @@ class NotificationModuleIntegrationTest {
         assertEquals(dedupedBefore + 1d, counterValue("plura.notification.events.deduplicated"), 0.0001d);
     }
 
+    /**
+     * Escenario: debe project app notificacion.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void shouldProjectAppNotification() {
         NotificationInAppProjectionCommand inAppProjection = new NotificationInAppProjectionCommand(
@@ -153,6 +174,10 @@ class NotificationModuleIntegrationTest {
         assertNull(appNotification.getArchivedAt());
     }
 
+    /**
+     * Escenario: debe project email dispatch como pendiente.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void shouldProjectEmailDispatchAsPending() {
         NotificationEmailProjectionCommand emailProjection = new NotificationEmailProjectionCommand(

@@ -25,12 +25,21 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
+/**
+ * SecurityConfig es un configuracion Spring del modulo seguridad.
+ * Responsabilidad: declarar beans, filtros o parametros transversales que necesita el runtime.
+ * Mantiene separada esta responsabilidad para que el resto del backend use una API clara.
+ * Foco funcional: seguridad.
+ */
 @Configuration
 @EnableWebSecurity
 public class SecurityConfig {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(SecurityConfig.class);
 
+    /**
+     * Ejecuta la logica de security filter chain manteniendola encapsulada en este componente.
+     */
     @Bean
     public SecurityFilterChain securityFilterChain(
         HttpSecurity http,
@@ -123,6 +132,9 @@ public class SecurityConfig {
         return http.build();
     }
 
+    /**
+     * Ejecuta la logica de cors configuration origen manteniendola encapsulada en este componente.
+     */
     @Bean
     public CorsConfigurationSource corsConfigurationSource(Environment environment) {
         // Orígenes permitidos por env, separados por coma.

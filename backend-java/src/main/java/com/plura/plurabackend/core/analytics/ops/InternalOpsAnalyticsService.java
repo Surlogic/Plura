@@ -16,6 +16,12 @@ import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
+/**
+ * InternalOpsAnalyticsService es un servicio de negocio del modulo analytics / operaciones internas.
+ * Responsabilidad: coordinar reglas de negocio, validaciones, persistencia e integraciones del caso de uso.
+ * Colabora con: jdbcTemplate.
+ * Foco funcional: analytics, paneles internos, servicios.
+ */
 @Service
 public class InternalOpsAnalyticsService {
 
@@ -25,6 +31,10 @@ public class InternalOpsAnalyticsService {
         this.jdbcTemplate = jdbcTemplate;
     }
 
+    /**
+     * Devuelve el resumen del modulo para el rango o filtros recibidos.
+     * Mantiene la consulta encapsulada para que el resto del codigo no repita filtros ni joins.
+     */
     public InternalOpsAnalyticsResponse summary(String from, String to) {
         DateWindow window = resolveDateWindow(from, to);
         MapSqlParameterSource params = baseParams(window.fromDateTime(), window.toDateTime());
@@ -45,6 +55,10 @@ public class InternalOpsAnalyticsService {
         );
     }
 
+    /**
+     * Carga la seccion vista general desde base de datos o datos agregados y la deja lista para la respuesta.
+     * Mantiene la consulta encapsulada para que el resto del codigo no repita filtros ni joins.
+     */
     private InternalOpsAnalyticsResponse.Overview loadOverview(
         DateWindow window,
         MapSqlParameterSource params
@@ -104,6 +118,10 @@ public class InternalOpsAnalyticsService {
         );
     }
 
+    /**
+     * Carga la seccion reserva embudo desde base de datos o datos agregados y la deja lista para la respuesta.
+     * Mantiene la consulta encapsulada para que el resto del codigo no repita filtros ni joins.
+     */
     private InternalOpsAnalyticsResponse.ReservationFunnel loadReservationFunnel(MapSqlParameterSource params) {
         return jdbcTemplate.queryForObject(
             """
@@ -227,6 +245,10 @@ public class InternalOpsAnalyticsService {
         );
     }
 
+    /**
+     * Carga la seccion categoria rendimiento desde base de datos o datos agregados y la deja lista para la respuesta.
+     * Mantiene la consulta encapsulada para que el resto del codigo no repita filtros ni joins.
+     */
     private List<InternalOpsAnalyticsResponse.CategoryPerformance> loadCategoryPerformance(MapSqlParameterSource params) {
         return jdbcTemplate.query(
             """
@@ -270,6 +292,10 @@ public class InternalOpsAnalyticsService {
         );
     }
 
+    /**
+     * Carga la seccion servicio rendimiento desde base de datos o datos agregados y la deja lista para la respuesta.
+     * Mantiene la consulta encapsulada para que el resto del codigo no repita filtros ni joins.
+     */
     private List<InternalOpsAnalyticsResponse.ServicePerformance> loadServicePerformance(MapSqlParameterSource params) {
         return jdbcTemplate.query(
             """
@@ -298,6 +324,10 @@ public class InternalOpsAnalyticsService {
         );
     }
 
+    /**
+     * Carga la seccion embudo by categoria desde base de datos o datos agregados y la deja lista para la respuesta.
+     * Mantiene la consulta encapsulada para que el resto del codigo no repita filtros ni joins.
+     */
     private List<InternalOpsAnalyticsResponse.FunnelByCategory> loadFunnelByCategory(MapSqlParameterSource params) {
         return jdbcTemplate.query(
             """
@@ -369,6 +399,10 @@ public class InternalOpsAnalyticsService {
         );
     }
 
+    /**
+     * Carga la seccion retencion desde base de datos o datos agregados y la deja lista para la respuesta.
+     * Mantiene la consulta encapsulada para que el resto del codigo no repita filtros ni joins.
+     */
     private InternalOpsAnalyticsResponse.RetentionMetrics loadRetention(DateWindow window) {
         MapSqlParameterSource currentParams = baseParams(window.fromDateTime(), window.toDateTime());
         long windowDays = Math.max(1L, ChronoUnit.DAYS.between(window.fromDate(), window.toDateExclusive()));
@@ -466,6 +500,10 @@ public class InternalOpsAnalyticsService {
         );
     }
 
+    /**
+     * Carga la seccion demanda by dia de la semana desde base de datos o datos agregados y la deja lista para la respuesta.
+     * Mantiene la consulta encapsulada para que el resto del codigo no repita filtros ni joins.
+     */
     private List<InternalOpsAnalyticsResponse.DemandPoint> loadDemandByWeekday(MapSqlParameterSource params) {
         Map<Integer, String> labels = new LinkedHashMap<>();
         labels.put(1, "Lunes");
@@ -501,6 +539,10 @@ public class InternalOpsAnalyticsService {
         );
     }
 
+    /**
+     * Carga la seccion demanda by hora desde base de datos o datos agregados y la deja lista para la respuesta.
+     * Mantiene la consulta encapsulada para que el resto del codigo no repita filtros ni joins.
+     */
     private List<InternalOpsAnalyticsResponse.DemandPoint> loadDemandByHour(MapSqlParameterSource params) {
         return jdbcTemplate.query(
             """
@@ -520,6 +562,10 @@ public class InternalOpsAnalyticsService {
         );
     }
 
+    /**
+     * Carga la seccion ciudad rendimiento desde base de datos o datos agregados y la deja lista para la respuesta.
+     * Mantiene la consulta encapsulada para que el resto del codigo no repita filtros ni joins.
+     */
     private List<InternalOpsAnalyticsResponse.CityPerformance> loadCityPerformance(MapSqlParameterSource params) {
         return jdbcTemplate.query(
             """
@@ -585,6 +631,10 @@ public class InternalOpsAnalyticsService {
         );
     }
 
+    /**
+     * Carga la seccion profesional rendimiento desde base de datos o datos agregados y la deja lista para la respuesta.
+     * Mantiene la consulta encapsulada para que el resto del codigo no repita filtros ni joins.
+     */
     private List<InternalOpsAnalyticsResponse.ProfessionalPerformance> loadProfessionalPerformance(MapSqlParameterSource params) {
         return jdbcTemplate.query(
             """
@@ -647,6 +697,10 @@ public class InternalOpsAnalyticsService {
         );
     }
 
+    /**
+     * Carga la seccion plataforma rendimiento desde base de datos o datos agregados y la deja lista para la respuesta.
+     * Mantiene la consulta encapsulada para que el resto del codigo no repita filtros ni joins.
+     */
     private List<InternalOpsAnalyticsResponse.PlatformPerformance> loadPlatformPerformance(MapSqlParameterSource params) {
         return jdbcTemplate.query(
             """
@@ -741,6 +795,10 @@ public class InternalOpsAnalyticsService {
         );
     }
 
+    /**
+     * Carga la seccion pago tipo rendimiento desde base de datos o datos agregados y la deja lista para la respuesta.
+     * Mantiene la consulta encapsulada para que el resto del codigo no repita filtros ni joins.
+     */
     private List<InternalOpsAnalyticsResponse.PaymentTypePerformance> loadPaymentTypePerformance(MapSqlParameterSource params) {
         return jdbcTemplate.query(
             """
@@ -777,12 +835,18 @@ public class InternalOpsAnalyticsService {
         );
     }
 
+    /**
+     * Construye params compartidos por varias consultas del componente.
+     */
     private MapSqlParameterSource baseParams(LocalDateTime from, LocalDateTime to) {
         return new MapSqlParameterSource()
             .addValue("from", Timestamp.valueOf(from))
             .addValue("to", Timestamp.valueOf(to));
     }
 
+    /**
+     * Resuelve fecha window normalizando entradas, defaults y casos borde.
+     */
     private DateWindow resolveDateWindow(String from, String to) {
         LocalDate fromDate = parseDate(from);
         LocalDate toDateInclusive = parseDate(to);
@@ -805,6 +869,9 @@ public class InternalOpsAnalyticsService {
         return new DateWindow(fromDate, toDateInclusive.plusDays(1));
     }
 
+    /**
+     * Parsea fecha y convierte errores de formato en errores controlados.
+     */
     private LocalDate parseDate(String value) {
         if (value == null || value.isBlank()) {
             return null;
@@ -816,10 +883,16 @@ public class InternalOpsAnalyticsService {
         }
     }
 
+    /**
+     * Normaliza dinero al formato numerico esperado por la API.
+     */
     private double roundMoney(double value) {
         return Math.round(value * 100.0d) / 100.0d;
     }
 
+    /**
+     * Normaliza rate al formato numerico esperado por la API.
+     */
     private double roundRate(long numerator, long denominator) {
         if (denominator <= 0 || numerator <= 0) {
             return 0d;
@@ -827,10 +900,17 @@ public class InternalOpsAnalyticsService {
         return roundRate((numerator * 100.0d) / denominator);
     }
 
+    /**
+     * Normaliza rate al formato numerico esperado por la API.
+     */
     private double roundRate(double value) {
         return Math.round(value * 100.0d) / 100.0d;
     }
 
+    /**
+     * Bloque de datos date window usado internamente por esta clase.
+     * Agrupa valores relacionados para que el calculo principal sea mas legible.
+     */
     private record DateWindow(
         LocalDate fromDate,
         LocalDate toDateExclusive
@@ -844,6 +924,10 @@ public class InternalOpsAnalyticsService {
         }
     }
 
+    /**
+     * Bloque de datos overview row usado internamente por esta clase.
+     * Agrupa valores relacionados para que el calculo principal sea mas legible.
+     */
     private record OverviewRow(
         long totalReservations,
         long confirmedReservations,
@@ -855,12 +939,20 @@ public class InternalOpsAnalyticsService {
     ) {
     }
 
+    /**
+     * Bloque de datos event overview row usado internamente por esta clase.
+     * Agrupa valores relacionados para que el calculo principal sea mas legible.
+     */
     private record EventOverviewRow(
         long totalSearches,
         long totalProfileViews
     ) {
     }
 
+    /**
+     * Bloque de datos retention row usado internamente por esta clase.
+     * Agrupa valores relacionados para que el calculo principal sea mas legible.
+     */
     private record RetentionRow(
         long activeClients,
         long returningClients,
@@ -868,6 +960,10 @@ public class InternalOpsAnalyticsService {
     ) {
     }
 
+    /**
+     * Bloque de datos previous retention row usado internamente por esta clase.
+     * Agrupa valores relacionados para que el calculo principal sea mas legible.
+     */
     private record PreviousRetentionRow(
         long previousClients,
         long retainedClients

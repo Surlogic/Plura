@@ -20,6 +20,12 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
+/**
+ * ProfessionalTeamController es un controlador REST del modulo profesionales / trabajadores.
+ * Responsabilidad: recibir requests HTTP, validar acceso basico y delegar la operacion al servicio de aplicacion o dominio.
+ * Superficie HTTP: atiende rutas bajo /profesional/team y deja la logica pesada en servicios.
+ * Foco funcional: profesionales.
+ */
 @RestController
 @RequestMapping("/profesional/team")
 public class ProfessionalTeamController {
@@ -35,11 +41,17 @@ public class ProfessionalTeamController {
         this.roleGuard = roleGuard;
     }
 
+    /**
+     * Devuelve el listado de trabajadores aplicando permisos y filtros del caso de uso.
+     */
     @GetMapping
     public List<ProfessionalWorkerResponse> listWorkers() {
         return professionalTeamService.listWorkers(currentProfessionalUserId());
     }
 
+    /**
+     * Ejecuta la logica de invitacion trabajador manteniendola encapsulada en este componente.
+     */
     @PostMapping("/invitations")
     @ResponseStatus(HttpStatus.CREATED)
     public ProfessionalWorkerInvitationResponse inviteWorker(
@@ -48,6 +60,10 @@ public class ProfessionalTeamController {
         return professionalTeamService.inviteWorker(currentProfessionalUserId(), request);
     }
 
+    /**
+     * Endpoint PATCH /{workerId}: Actualiza trabajador manteniendo reglas de negocio y consistencia de datos.
+     * Valida parametros/autorizacion de entrada y delega la logica de negocio al servicio correspondiente.
+     */
     @PatchMapping("/{workerId}")
     public ProfessionalWorkerResponse updateWorker(
         @PathVariable Long workerId,
@@ -61,6 +77,10 @@ public class ProfessionalTeamController {
         return professionalTeamService.getWorkerSchedule(currentProfessionalUserId(), workerId);
     }
 
+    /**
+     * Endpoint PUT /{workerId}/schedule: Actualiza trabajador agenda manteniendo reglas de negocio y consistencia de datos.
+     * Valida parametros/autorizacion de entrada y delega la logica de negocio al servicio correspondiente.
+     */
     @PutMapping("/{workerId}/schedule")
     public ProfessionalWorkerResponse updateWorkerSchedule(
         @PathVariable Long workerId,
@@ -69,8 +89,15 @@ public class ProfessionalTeamController {
         return professionalTeamService.updateWorkerSchedule(currentProfessionalUserId(), workerId, request);
     }
 
+    /**
+     * Endpoint PUT /{workerId}/services: Actualiza trabajador servicios manteniendo reglas de negocio y consistencia de datos.
+     * Valida parametros/autorizacion de entrada y delega la logica de negocio al servicio correspondiente.
+     */
     @PutMapping("/{workerId}/services")
     public ProfessionalWorkerResponse updateWorkerServices(
+    /**
+     * Obtiene el ID del usuario profesional autenticado desde el contexto actual.
+     */
         @PathVariable Long workerId,
         @Valid @RequestBody ProfessionalWorkerServicesUpdateRequest request
     ) {

@@ -12,6 +12,12 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.scheduling.annotation.AsyncConfigurer;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 
+/**
+ * AsyncConfig es un configuracion Spring del modulo configuracion.
+ * Responsabilidad: declarar beans, filtros o parametros transversales que necesita el runtime.
+ * Mantiene separada esta responsabilidad para que el resto del backend use una API clara.
+ * Foco funcional: la responsabilidad indicada por su paquete y nombre.
+ */
 @Configuration
 public class AsyncConfig implements AsyncConfigurer {
 
@@ -71,6 +77,9 @@ public class AsyncConfig implements AsyncConfigurer {
     @Value("${app.async.notification-email.queue-capacity:500}")
     private int notificationEmailQueueCapacity;
 
+    /**
+     * Ejecuta la logica de available slot executor manteniendola encapsulada en este componente.
+     */
     @Bean(name = "availableSlotExecutor")
     public Executor availableSlotExecutor() {
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
@@ -85,6 +94,9 @@ public class AsyncConfig implements AsyncConfigurer {
         return executor;
     }
 
+    /**
+     * Ejecuta la logica de imagen processing executor manteniendola encapsulada en este componente.
+     */
     @Bean(name = "imageProcessingExecutor")
     public Executor imageProcessingExecutor() {
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
@@ -99,6 +111,9 @@ public class AsyncConfig implements AsyncConfigurer {
         return executor;
     }
 
+    /**
+     * Ejecuta la logica de geocoding executor manteniendola encapsulada en este componente.
+     */
     @Bean(name = "geocodingExecutor")
     public Executor geocodingExecutor() {
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
@@ -113,6 +128,9 @@ public class AsyncConfig implements AsyncConfigurer {
         return executor;
     }
 
+    /**
+     * Ejecuta la logica de billing webhook executor manteniendola encapsulada en este componente.
+     */
     @Bean(name = "billingWebhookExecutor")
     public Executor billingWebhookExecutor() {
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
@@ -127,6 +145,9 @@ public class AsyncConfig implements AsyncConfigurer {
         return executor;
     }
 
+    /**
+     * Ejecuta la logica de billing proveedor operacion executor manteniendola encapsulada en este componente.
+     */
     @Bean(name = "billingProviderOperationExecutor")
     public Executor billingProviderOperationExecutor() {
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
@@ -141,6 +162,9 @@ public class AsyncConfig implements AsyncConfigurer {
         return executor;
     }
 
+    /**
+     * Ejecuta la logica de notificacion email executor manteniendola encapsulada en este componente.
+     */
     @Bean(name = "notificationEmailExecutor")
     public Executor notificationEmailExecutor() {
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
@@ -161,6 +185,9 @@ public class AsyncConfig implements AsyncConfigurer {
     }
 
     private static final class LoggingAsyncUncaughtExceptionHandler implements AsyncUncaughtExceptionHandler {
+    /**
+     * Procesa uncaught exception y coordina la respuesta del flujo.
+     */
         @Override
         public void handleUncaughtException(Throwable ex, Method method, Object... params) {
             LOGGER.error(

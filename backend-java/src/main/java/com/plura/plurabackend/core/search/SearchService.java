@@ -24,6 +24,12 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
+/**
+ * SearchService es un servicio de negocio del modulo busqueda.
+ * Responsabilidad: coordinar reglas de negocio, validaciones, persistencia e integraciones del caso de uso.
+ * Colabora con: searchNativeRepository, searchCacheService, meterRegistry, searchEngineClient, entre otros.
+ * Foco funcional: servicios, busqueda.
+ */
 @Service
 public class SearchService {
 
@@ -171,6 +177,9 @@ public class SearchService {
         }
     }
 
+    /**
+     * Ejecuta la logica de suggest manteniendola encapsulada en este componente.
+     */
     public SearchSuggestResponse suggest(
         String rawQuery,
         Double lat,
@@ -215,6 +224,9 @@ public class SearchService {
         return response;
     }
 
+    /**
+     * Ejecuta la logica de busqueda with best effort manteniendola encapsulada en este componente.
+     */
     private SearchResponse searchWithBestEffort(SearchQueryCriteria criteria) {
         Timer.Sample querySample = Timer.start(meterRegistry);
         try {
@@ -247,6 +259,9 @@ public class SearchService {
         }
     }
 
+    /**
+     * Ejecuta la logica de busqueda using busqueda engine manteniendola encapsulada en este componente.
+     */
     private SearchResponse searchUsingSearchEngine(SearchQueryCriteria criteria, SearchEngineClient client) {
         SearchEngineSearchResult result = client.search(criteria);
         List<Long> ids = result.orderedIds();
@@ -289,6 +304,9 @@ public class SearchService {
         return new SearchResponse(criteria.page(), criteria.size(), result.total(), resolved);
     }
 
+    /**
+     * Ejecuta la logica de suggest with best effort manteniendola encapsulada en este componente.
+     */
     private SearchSuggestResponse suggestWithBestEffort(SearchSuggestCriteria criteria) {
         if (searchEngineEnabled && searchEngineSuggestEnabled && searchEngineClient.isPresent()) {
             try {
@@ -300,6 +318,9 @@ public class SearchService {
         return searchNativeRepository.suggest(criteria);
     }
 
+    /**
+     * Resuelve cover imagen urls normalizando entradas, defaults y casos borde.
+     */
     private List<SearchItemResponse> resolveCoverImageUrls(List<SearchItemResponse> items) {
         if (items == null || items.isEmpty()) {
             return List.of();
@@ -331,6 +352,9 @@ public class SearchService {
             .toList();
     }
 
+    /**
+     * Construye busqueda cache key a partir de datos internos ya validados.
+     */
     private String buildSearchCacheKey(SearchQueryCriteria criteria) {
         String coordinates = (criteria.lat() != null && criteria.lng() != null)
             ? formatDoubleKey(criteria.lat()) + "," + formatDoubleKey(criteria.lng())
@@ -356,6 +380,9 @@ public class SearchService {
             + criteria.size();
     }
 
+    /**
+     * Construye suggest cache key a partir de datos internos ya validados.
+     */
     private String buildSuggestCacheKey(SearchSuggestCriteria criteria) {
         String coordinates = criteria.hasCoordinates()
             ? formatDoubleKey(criteria.lat()) + "," + formatDoubleKey(criteria.lng())
@@ -368,10 +395,16 @@ public class SearchService {
             + "limit=" + criteria.limit();
     }
 
+    /**
+     * Convierte un valor externo al enum o tipo interno correspondiente.
+     */
     private String valueOf(Object value) {
         return value == null ? "" : String.valueOf(value);
     }
 
+    /**
+     * Normaliza clave segment para evitar variantes vacias, invalidas o inconsistentes.
+     */
     private String normalizeKeySegment(Object value) {
         String raw = valueOf(value).trim().toLowerCase(Locale.ROOT);
         if (raw.isBlank()) {
@@ -380,6 +413,9 @@ public class SearchService {
         return raw.replace(":", "_");
     }
 
+    /**
+     * Ejecuta la logica de format double clave manteniendola encapsulada en este componente.
+     */
     private String formatDoubleKey(Double value) {
         if (value == null || !Double.isFinite(value)) {
             return "_";
@@ -387,6 +423,9 @@ public class SearchService {
         return String.format(Locale.ROOT, "%.5f", value);
     }
 
+    /**
+     * Ejecuta la logica de log busqueda engine fallback manteniendola encapsulada en este componente.
+     */
     private void logSearchEngineFallback(RuntimeException exception, boolean searchOperation) {
         AtomicBoolean warned = searchOperation ? searchEngineSearchWarned : searchEngineSuggestWarned;
         String operation = searchOperation ? "search" : "suggest";
@@ -397,6 +436,9 @@ public class SearchService {
         LOGGER.debug("Search engine unavailable in {}, fallback to SQL", operation, exception);
     }
 
+    /**
+     * Decide si corresponde force sql busqueda segun estado actual y reglas del dominio.
+     */
     private boolean shouldForceSqlSearch(SearchQueryCriteria criteria) {
         if (criteria == null) {
             return false;

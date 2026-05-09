@@ -13,6 +13,12 @@ import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+/**
+ * ProfessionalBookingCommandController es un controlador REST del modulo profesionales / reservas.
+ * Responsabilidad: recibir requests HTTP, validar acceso basico y delegar la operacion al servicio de aplicacion o dominio.
+ * Superficie HTTP: atiende rutas bajo /profesional/reservas y deja la logica pesada en servicios.
+ * Foco funcional: profesionales, reservas.
+ */
 @RestController
 @RequestMapping("/profesional/reservas")
 public class ProfessionalBookingCommandController {
@@ -28,6 +34,10 @@ public class ProfessionalBookingCommandController {
         this.roleGuard = roleGuard;
     }
 
+    /**
+     * Endpoint POST /{id}/cancel: Cancela reserva respetando estados validos y efectos secundarios.
+     * Valida parametros/autorizacion de entrada y delega la logica de negocio al servicio correspondiente.
+     */
     @PostMapping("/{id}/cancel")
     public BookingCommandResponse cancelBooking(
         @PathVariable("id") Long bookingId,
@@ -42,6 +52,9 @@ public class ProfessionalBookingCommandController {
         );
     }
 
+    /**
+     * Ejecuta la logica de reschedule reserva manteniendola encapsulada en este componente.
+     */
     @PostMapping("/{id}/reschedule")
     public BookingCommandResponse rescheduleBooking(
         @PathVariable("id") Long bookingId,
@@ -56,6 +69,9 @@ public class ProfessionalBookingCommandController {
         );
     }
 
+    /**
+     * Marca no show y actualiza los indicadores relacionados.
+     */
     @PostMapping("/{id}/no-show")
     public BookingCommandResponse markNoShow(
         @PathVariable("id") Long bookingId,
@@ -64,6 +80,10 @@ public class ProfessionalBookingCommandController {
         return professionalPublicPageService.markBookingNoShow(getProfesionalId(), bookingId, idempotencyKey);
     }
 
+    /**
+     * Endpoint POST /{id}/complete: Completa reserva y deja persistido el estado final del flujo.
+     * Valida parametros/autorizacion de entrada y delega la logica de negocio al servicio correspondiente.
+     */
     @PostMapping("/{id}/complete")
     public BookingCommandResponse completeBooking(
         @PathVariable("id") Long bookingId,

@@ -13,11 +13,20 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 import org.springframework.web.util.ContentCachingResponseWrapper;
 
+/**
+ * SqlQueryCountConfiguration es un componente de dominio del modulo observabilidad.
+ * Responsabilidad: encapsular comportamiento propio del modulo y mantenerlo fuera de controllers u otras capas.
+ * Colabora con: headerEnabled.
+ * Foco funcional: la responsabilidad indicada por su paquete y nombre.
+ */
 @Component
 public class SqlQueryCountConfiguration implements HibernatePropertiesCustomizer {
 
     private final SqlQueryCountStatementInspector inspector = new SqlQueryCountStatementInspector();
 
+    /**
+     * Ejecuta la logica de customize manteniendola encapsulada en este componente.
+     */
     @Override
     public void customize(Map<String, Object> hibernateProperties) {
         hibernateProperties.put(AvailableSettings.STATEMENT_INSPECTOR, inspector);
@@ -34,6 +43,9 @@ public class SqlQueryCountConfiguration implements HibernatePropertiesCustomizer
             this.headerEnabled = headerEnabled;
         }
 
+    /**
+     * Aplica el filtro al request actual antes de continuar la cadena HTTP.
+     */
         @Override
         protected void doFilterInternal(
             HttpServletRequest request,

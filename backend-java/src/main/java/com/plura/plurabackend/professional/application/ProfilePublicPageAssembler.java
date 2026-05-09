@@ -24,6 +24,12 @@ import java.util.List;
 import java.util.Set;
 import org.springframework.stereotype.Component;
 
+/**
+ * ProfilePublicPageAssembler es un componente de dominio del modulo profesionales / aplicacion.
+ * Responsabilidad: encapsular comportamiento propio del modulo y mantenerlo fuera de controllers u otras capas.
+ * Colabora con: businessPhotoRepository, categorySupport, profesionalServiceRepository, bookingPolicySnapshotService, entre otros.
+ * Foco funcional: perfiles, superficie publica.
+ */
 @Component
 public class ProfilePublicPageAssembler {
 
@@ -56,6 +62,9 @@ public class ProfilePublicPageAssembler {
         this.objectMapper = objectMapper;
     }
 
+    /**
+     * Convierte datos internos al formato publico pagina esperado por el consumidor.
+     */
     public ProfesionalPublicPageResponse toPublicPage(ProfessionalProfile profile) {
         User user = profile.getUser();
         ProfesionalScheduleDto schedule = readStoredSchedule(profile.getScheduleJson());
@@ -118,6 +127,9 @@ public class ProfilePublicPageAssembler {
             .build();
     }
 
+    /**
+     * Convierte datos internos al formato resumen esperado por el consumidor.
+     */
     public ProfesionalPublicSummaryResponse toSummary(ProfessionalProfile profile) {
         return new ProfesionalPublicSummaryResponse(
             String.valueOf(profile.getId()),
@@ -133,6 +145,9 @@ public class ProfilePublicPageAssembler {
         );
     }
 
+    /**
+     * Convierte datos internos al formato media presentation esperado por el consumidor.
+     */
     private MediaPresentationDto toMediaPresentation(Double positionX, Double positionY, Double zoom) {
         return new MediaPresentationDto(
             positionX != null ? positionX : 50d,
@@ -141,6 +156,9 @@ public class ProfilePublicPageAssembler {
         );
     }
 
+    /**
+     * Convierte datos internos al formato servicio respuesta esperado por el consumidor.
+     */
     public ProfesionalServiceResponse toServiceResponse(ProfesionalService service) {
         return new ProfesionalServiceResponse(
             service.getId(),
@@ -161,6 +179,9 @@ public class ProfilePublicPageAssembler {
         );
     }
 
+    /**
+     * Convierte datos internos al formato publico servicio respuesta esperado por el consumidor.
+     */
     public ProfesionalServiceResponse toPublicServiceResponse(ProfesionalService service) {
         return new ProfesionalServiceResponse(
             service.getId(),
@@ -181,6 +202,9 @@ public class ProfilePublicPageAssembler {
         );
     }
 
+    /**
+     * Resuelve processing fee mode normalizando entradas, defaults y casos borde.
+     */
     private com.plura.plurabackend.core.booking.model.BookingProcessingFeeMode resolveProcessingFeeMode(
         com.plura.plurabackend.core.booking.model.BookingProcessingFeeMode processingFeeMode
     ) {
@@ -189,6 +213,9 @@ public class ProfilePublicPageAssembler {
             : processingFeeMode;
     }
 
+    /**
+     * Lee guardada agenda desde la fuente persistida y aplica defaults si faltan datos.
+     */
     private ProfesionalScheduleDto readStoredSchedule(String rawScheduleJson) {
         return ProfessionalScheduleSupport.readStoredSchedule(
             objectMapper,
@@ -198,6 +225,9 @@ public class ProfilePublicPageAssembler {
         );
     }
 
+    /**
+     * Resuelve publico gallery photos normalizando entradas, defaults y casos borde.
+     */
     private List<String> resolvePublicGalleryPhotos(
         ProfessionalProfile profile,
         List<ProfesionalServiceResponse> services
@@ -235,6 +265,9 @@ public class ProfilePublicPageAssembler {
         return List.copyOf(photoUrls);
     }
 
+    /**
+     * Normaliza publico photo URL para evitar variantes vacias, invalidas o inconsistentes.
+     */
     private String normalizePublicPhotoUrl(String rawUrl) {
         if (rawUrl == null) {
             return null;
@@ -246,6 +279,9 @@ public class ProfilePublicPageAssembler {
         return imageStorageService.resolvePublicUrl(cleaned);
     }
 
+    /**
+     * Normaliza slot duracion or default para evitar variantes vacias, invalidas o inconsistentes.
+     */
     private int normalizeSlotDurationOrDefault(Integer value) {
         if (value == null || !ALLOWED_SLOT_DURATIONS.contains(value)) {
             return DEFAULT_SLOT_DURATION_MINUTES;
@@ -253,10 +289,16 @@ public class ProfilePublicPageAssembler {
         return value;
     }
 
+    /**
+     * Resuelve slot duration minutes normalizando entradas, defaults y casos borde.
+     */
     private int resolveSlotDurationMinutes(Integer value) {
         return normalizeSlotDurationOrDefault(value);
     }
 
+    /**
+     * Resuelve post buffer minutes normalizando entradas, defaults y casos borde.
+     */
     private int resolvePostBufferMinutes(ProfesionalService service) {
         if (service == null || service.getPostBufferMinutes() == null || service.getPostBufferMinutes() < 0) {
             return 0;
@@ -264,12 +306,18 @@ public class ProfilePublicPageAssembler {
         return service.getPostBufferMinutes();
     }
 
+    /**
+     * Resuelve servicio pago tipo normalizando entradas, defaults y casos borde.
+     */
     private com.plura.plurabackend.core.booking.model.ServicePaymentType resolveServicePaymentType(
         com.plura.plurabackend.core.booking.model.ServicePaymentType paymentType
     ) {
         return paymentType == null ? com.plura.plurabackend.core.booking.model.ServicePaymentType.ON_SITE : paymentType;
     }
 
+    /**
+     * Resuelve servicio currency normalizando entradas, defaults y casos borde.
+     */
     private String resolveServiceCurrency(String currency) {
         if (currency == null || currency.isBlank()) {
             return "UYU";
@@ -277,6 +325,9 @@ public class ProfilePublicPageAssembler {
         return currency.trim().toUpperCase(java.util.Locale.ROOT);
     }
 
+    /**
+     * Normaliza opcional para evitar variantes vacias, invalidas o inconsistentes.
+     */
     private String normalizeOptional(String value) {
         if (value == null) {
             return null;
@@ -285,6 +336,9 @@ public class ProfilePublicPageAssembler {
         return normalized.isBlank() ? null : normalized;
     }
 
+    /**
+     * Resuelve servicio categoria slug normalizando entradas, defaults y casos borde.
+     */
     private String resolveServiceCategorySlug(ProfesionalService service) {
         if (service == null || service.getCategory() == null) {
             return null;
@@ -292,6 +346,9 @@ public class ProfilePublicPageAssembler {
         return normalizeOptional(service.getCategory().getSlug());
     }
 
+    /**
+     * Resuelve servicio categoria name normalizando entradas, defaults y casos borde.
+     */
     private String resolveServiceCategoryName(ProfesionalService service) {
         if (service == null || service.getCategory() == null) {
             return null;

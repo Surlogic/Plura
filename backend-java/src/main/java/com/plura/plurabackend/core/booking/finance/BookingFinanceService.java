@@ -37,6 +37,12 @@ import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+/**
+ * BookingFinanceService es un servicio de negocio del modulo reservas / finanzas.
+ * Responsabilidad: coordinar reglas de negocio, validaciones, persistencia e integraciones del caso de uso.
+ * Colabora con: bookingFinancialSummaryRepository, bookingRefundRecordRepository, bookingPayoutRecordRepository, paymentTransactionRepository, entre otros.
+ * Foco funcional: reservas, servicios.
+ */
 @Service
 public class BookingFinanceService {
 
@@ -66,12 +72,18 @@ public class BookingFinanceService {
         this.objectMapper = objectMapper;
     }
 
+    /**
+     * Ejecuta la logica de ensure initialized manteniendola encapsulada en este componente.
+     */
     @Transactional
     public BookingFinancialSummary ensureInitialized(Booking booking) {
         return bookingFinancialSummaryRepository.findByBooking_Id(booking.getId())
             .orElseGet(() -> bookingFinancialSummaryRepository.save(buildInitialSummary(booking)));
     }
 
+    /**
+     * Aplica decision sobre el modelo actual manteniendo consistencia.
+     */
     @Transactional
     public BookingFinanceUpdateResult applyDecision(
         Booking booking,
@@ -111,12 +123,18 @@ public class BookingFinanceService {
         return new BookingFinanceUpdateResult(savedSummary, refundRecord, payoutRecord);
     }
 
+    /**
+     * Ejecuta la logica de ensure initialized with evidence manteniendola encapsulada en este componente.
+     */
     @Transactional
     public BookingFinancialSummary ensureInitializedWithEvidence(Booking booking) {
         BookingFinancialSummary summary = ensureInitialized(booking);
         return bookingFinancialSummaryRepository.save(recalculateFromEvidence(summary));
     }
 
+    /**
+     * Aplica external pago evidence sobre el modelo actual manteniendo consistencia.
+     */
     @Transactional
     public BookingFinancialSummary applyExternalPaymentEvidence(
         Booking booking,
@@ -129,6 +147,9 @@ public class BookingFinanceService {
         return bookingFinancialSummaryRepository.save(recalculateFromEvidence(summary));
     }
 
+    /**
+     * Aplica reembolso evidence sobre el modelo actual manteniendo consistencia.
+     */
     @Transactional
     public BookingFinancialSummary applyRefundEvidence(
         Booking booking,
@@ -141,6 +162,9 @@ public class BookingFinanceService {
         return bookingFinancialSummaryRepository.save(recalculateFromEvidence(summary));
     }
 
+    /**
+     * Aplica liquidacion evidence sobre el modelo actual manteniendo consistencia.
+     */
     @Transactional
     public BookingFinancialSummary applyPayoutEvidence(
         Booking booking,
@@ -153,6 +177,9 @@ public class BookingFinanceService {
         return bookingFinancialSummaryRepository.save(recalculateFromEvidence(summary));
     }
 
+    /**
+     * Marca reembolso record pending proveedor y actualiza los indicadores relacionados.
+     */
     @Transactional
     public BookingRefundRecord markRefundRecordPendingProvider(
         String refundRecordId,
@@ -165,6 +192,9 @@ public class BookingFinanceService {
         return bookingRefundRecordRepository.save(refundRecord);
     }
 
+    /**
+     * Marca reembolso record completed y actualiza los indicadores relacionados.
+     */
     @Transactional
     public BookingRefundRecord markRefundRecordCompleted(
         String refundRecordId,
@@ -179,6 +209,9 @@ public class BookingFinanceService {
         return bookingRefundRecordRepository.save(refundRecord);
     }
 
+    /**
+     * Marca reembolso record failed y actualiza los indicadores relacionados.
+     */
     @Transactional
     public BookingRefundRecord markRefundRecordFailed(
         String refundRecordId,
@@ -193,6 +226,9 @@ public class BookingFinanceService {
         return bookingRefundRecordRepository.save(refundRecord);
     }
 
+    /**
+     * Marca liquidacion record pending proveedor y actualiza los indicadores relacionados.
+     */
     @Transactional
     public BookingPayoutRecord markPayoutRecordPendingProvider(
         String payoutRecordId,
@@ -211,6 +247,9 @@ public class BookingFinanceService {
         return bookingPayoutRecordRepository.save(payoutRecord);
     }
 
+    /**
+     * Marca liquidacion record completed y actualiza los indicadores relacionados.
+     */
     @Transactional
     public BookingPayoutRecord markPayoutRecordCompleted(
         String payoutRecordId,
@@ -237,6 +276,9 @@ public class BookingFinanceService {
         return bookingPayoutRecordRepository.save(payoutRecord);
     }
 
+    /**
+     * Marca liquidacion record failed y actualiza los indicadores relacionados.
+     */
     @Transactional
     public BookingPayoutRecord markPayoutRecordFailed(
         String payoutRecordId,
@@ -259,6 +301,9 @@ public class BookingFinanceService {
         return bookingPayoutRecordRepository.save(payoutRecord);
     }
 
+    /**
+     * Convierte datos internos al formato respuesta esperado por el consumidor.
+     */
     public BookingFinancialSummaryResponse toResponse(BookingFinancialSummary summary) {
         if (summary == null) {
             return null;
@@ -277,6 +322,10 @@ public class BookingFinanceService {
         );
     }
 
+    /**
+     * Busca respuesta map by reserva IDs aplicando filtros, joins o criterios del caso de uso.
+     * Mantiene la consulta encapsulada para que el resto del codigo no repita filtros ni joins.
+     */
     public Map<Long, BookingFinancialSummaryResponse> findResponseMapByBookingIds(Collection<Long> bookingIds) {
         if (bookingIds == null || bookingIds.isEmpty()) {
             return Collections.emptyMap();
@@ -291,6 +340,10 @@ public class BookingFinanceService {
             ));
     }
 
+    /**
+     * Busca latest reembolso respuesta map by reserva IDs aplicando filtros, joins o criterios del caso de uso.
+     * Mantiene la consulta encapsulada para que el resto del codigo no repita filtros ni joins.
+     */
     public Map<Long, BookingRefundRecordResponse> findLatestRefundResponseMapByBookingIds(Collection<Long> bookingIds) {
         if (bookingIds == null || bookingIds.isEmpty()) {
             return Collections.emptyMap();
@@ -305,6 +358,10 @@ public class BookingFinanceService {
             ));
     }
 
+    /**
+     * Busca latest liquidacion respuesta map by reserva IDs aplicando filtros, joins o criterios del caso de uso.
+     * Mantiene la consulta encapsulada para que el resto del codigo no repita filtros ni joins.
+     */
     public Map<Long, BookingPayoutRecordResponse> findLatestPayoutResponseMapByBookingIds(Collection<Long> bookingIds) {
         if (bookingIds == null || bookingIds.isEmpty()) {
             return Collections.emptyMap();
@@ -319,14 +376,23 @@ public class BookingFinanceService {
             ));
     }
 
+    /**
+     * Resuelve reembolso estado normalizando entradas, defaults y casos borde.
+     */
     public String resolveRefundStatus(BookingRefundRecord refundRecord) {
         return refundRecord == null || refundRecord.getStatus() == null ? "NONE" : refundRecord.getStatus().name();
     }
 
+    /**
+     * Resuelve liquidacion estado normalizando entradas, defaults y casos borde.
+     */
     public String resolvePayoutStatus(BookingPayoutRecord payoutRecord) {
         return payoutRecord == null || payoutRecord.getStatus() == null ? "NONE" : payoutRecord.getStatus().name();
     }
 
+    /**
+     * Convierte datos internos al formato respuesta esperado por el consumidor.
+     */
     public BookingRefundRecordResponse toResponse(BookingRefundRecord refundRecord) {
         if (refundRecord == null) {
             return null;
@@ -347,6 +413,9 @@ public class BookingFinanceService {
         );
     }
 
+    /**
+     * Convierte datos internos al formato respuesta esperado por el consumidor.
+     */
     public BookingPayoutRecordResponse toResponse(BookingPayoutRecord payoutRecord) {
         if (payoutRecord == null) {
             return null;
@@ -369,14 +438,26 @@ public class BookingFinanceService {
         );
     }
 
+    /**
+     * Busca latest reembolso record aplicando filtros, joins o criterios del caso de uso.
+     * Mantiene la consulta encapsulada para que el resto del codigo no repita filtros ni joins.
+     */
     public BookingRefundRecord findLatestRefundRecord(Long bookingId) {
         return bookingRefundRecordRepository.findTopByBooking_IdOrderByCreatedAtDesc(bookingId).orElse(null);
     }
 
+    /**
+     * Busca latest liquidacion record aplicando filtros, joins o criterios del caso de uso.
+     * Mantiene la consulta encapsulada para que el resto del codigo no repita filtros ni joins.
+     */
     public BookingPayoutRecord findLatestPayoutRecord(Long bookingId) {
         return bookingPayoutRecordRepository.findTopByBooking_IdOrderByCreatedAtDesc(bookingId).orElse(null);
     }
 
+    /**
+     * Busca by proveedor reference aplicando filtros, joins o criterios del caso de uso.
+     * Mantiene la consulta encapsulada para que el resto del codigo no repita filtros ni joins.
+     */
     public BookingRefundRecord findByProviderReference(String providerReference) {
         if (providerReference == null || providerReference.isBlank()) {
             return null;
@@ -384,6 +465,10 @@ public class BookingFinanceService {
         return bookingRefundRecordRepository.findByProviderReference(providerReference).orElse(null);
     }
 
+    /**
+     * Busca by ID aplicando filtros, joins o criterios del caso de uso.
+     * Mantiene la consulta encapsulada para que el resto del codigo no repita filtros ni joins.
+     */
     public BookingRefundRecord findById(String refundRecordId) {
         if (refundRecordId == null || refundRecordId.isBlank()) {
             return null;
@@ -391,6 +476,10 @@ public class BookingFinanceService {
         return bookingRefundRecordRepository.findById(refundRecordId).orElse(null);
     }
 
+    /**
+     * Busca liquidacion by proveedor reference aplicando filtros, joins o criterios del caso de uso.
+     * Mantiene la consulta encapsulada para que el resto del codigo no repita filtros ni joins.
+     */
     public BookingPayoutRecord findPayoutByProviderReference(String providerReference) {
         if (providerReference == null || providerReference.isBlank()) {
             return null;
@@ -398,6 +487,10 @@ public class BookingFinanceService {
         return bookingPayoutRecordRepository.findByProviderReference(providerReference).orElse(null);
     }
 
+    /**
+     * Busca liquidacion by ID aplicando filtros, joins o criterios del caso de uso.
+     * Mantiene la consulta encapsulada para que el resto del codigo no repita filtros ni joins.
+     */
     public BookingPayoutRecord findPayoutById(String payoutRecordId) {
         if (payoutRecordId == null || payoutRecordId.isBlank()) {
             return null;
@@ -405,6 +498,9 @@ public class BookingFinanceService {
         return bookingPayoutRecordRepository.findById(payoutRecordId).orElse(null);
     }
 
+    /**
+     * Ejecuta la logica de inspect evidence estado manteniendola encapsulada en este componente.
+     */
     public BookingFinancialEvidenceSnapshot inspectEvidenceState(Booking booking) {
         List<PaymentTransaction> chargeTransactions = paymentTransactionRepository.findByBooking_IdAndTransactionTypeOrderByCreatedAtAsc(
             booking.getId(),
@@ -469,6 +565,9 @@ public class BookingFinanceService {
         );
     }
 
+    /**
+     * Construye initial resumen a partir de datos internos ya validados.
+     */
     private BookingFinancialSummary buildInitialSummary(Booking booking) {
         BookingFinancialSummary summary = new BookingFinancialSummary();
         summary.setBooking(booking);
@@ -483,6 +582,9 @@ public class BookingFinanceService {
         return summary;
     }
 
+    /**
+     * Resuelve initial estado normalizando entradas, defaults y casos borde.
+     */
     private BookingFinancialStatus resolveInitialStatus(Booking booking) {
         BigDecimal expectedPrepaid = bookingMoneyResolver.resolvePrepaidAmount(booking);
         return expectedPrepaid.signum() > 0
@@ -490,6 +592,10 @@ public class BookingFinanceService {
             : BookingFinancialStatus.NOT_REQUIRED;
     }
 
+    /**
+     * Crea reembolso record validando datos de entrada y persistiendo el resultado.
+     * Tambien concentra los efectos secundarios para que el flujo quede en un estado consistente.
+     */
     private BookingRefundRecord createRefundRecord(
         Booking booking,
         BookingActionDecision decision,
@@ -510,6 +616,9 @@ public class BookingFinanceService {
         return bookingRefundRecordRepository.save(refundRecord);
     }
 
+    /**
+     * Resuelve reembolso reason code normalizando entradas, defaults y casos borde.
+     */
     private BookingRefundReasonCode resolveRefundReasonCode(BookingActionDecision decision) {
         if (decision.getActionType() == BookingActionType.CANCEL) {
             return decision.getActorType() == BookingActorType.PROFESSIONAL
@@ -519,6 +628,10 @@ public class BookingFinanceService {
         return BookingRefundReasonCode.OTHER;
     }
 
+    /**
+     * Crea liquidacion record validando datos de entrada y persistiendo el resultado.
+     * Tambien concentra los efectos secundarios para que el flujo quede en un estado consistente.
+     */
     private BookingPayoutRecord createPayoutRecord(
         Booking booking,
         BookingActionDecision decision,
@@ -538,6 +651,9 @@ public class BookingFinanceService {
         return bookingPayoutRecordRepository.save(payoutRecord);
     }
 
+    /**
+     * Resuelve liquidacion reason code normalizando entradas, defaults y casos borde.
+     */
     private BookingPayoutReasonCode resolvePayoutReasonCode(BookingActionDecision decision) {
         return switch (decision.getActionType()) {
             case COMPLETE -> BookingPayoutReasonCode.BOOKING_COMPLETED;
@@ -547,6 +663,9 @@ public class BookingFinanceService {
         };
     }
 
+    /**
+     * Resuelve release target normalizando entradas, defaults y casos borde.
+     */
     private BigDecimal resolveReleaseTarget(
         Booking booking,
         BookingActionDecision decision,
@@ -568,6 +687,9 @@ public class BookingFinanceService {
         };
     }
 
+    /**
+     * Resuelve cancellation release target normalizando entradas, defaults y casos borde.
+     */
     private BigDecimal resolveCancellationReleaseTarget(
         BigDecimal currentlyHeld,
         BigDecimal refundTarget,
@@ -582,6 +704,9 @@ public class BookingFinanceService {
         return currentlyHeld.subtract(refundTarget).max(BigDecimal.ZERO);
     }
 
+    /**
+     * Guarda metadata json en el formato persistido esperado por el modulo.
+     */
     private String writeMetadataJson(Booking booking, BookingActionDecision decision) {
         Map<String, Object> metadata = new LinkedHashMap<>();
         metadata.put("bookingId", booking.getId());
@@ -596,6 +721,9 @@ public class BookingFinanceService {
         }
     }
 
+    /**
+     * Ejecuta la logica de recalculate from evidence manteniendola encapsulada en este componente.
+     */
     private BookingFinancialSummary recalculateFromEvidence(BookingFinancialSummary summary) {
         Booking booking = summary.getBooking();
         BookingFinancialEvidenceSnapshot evidence = inspectEvidenceState(booking);
@@ -609,6 +737,9 @@ public class BookingFinanceService {
         return summary;
     }
 
+    /**
+     * Resuelve financial estado normalizando entradas, defaults y casos borde.
+     */
     private BookingFinancialStatus resolveFinancialStatus(
         Booking booking,
         BigDecimal totalCharged,
@@ -660,6 +791,9 @@ public class BookingFinanceService {
                 : BookingFinancialStatus.NOT_REQUIRED;
     }
 
+    /**
+     * Ejecuta la logica de filter successful transactions manteniendola encapsulada en este componente.
+     */
     private List<PaymentTransaction> filterSuccessfulTransactions(List<PaymentTransaction> transactions) {
         return transactions.stream()
             .filter(transaction -> transaction.getStatus() == PaymentTransactionStatus.APPROVED
@@ -669,6 +803,9 @@ public class BookingFinanceService {
             .toList();
     }
 
+    /**
+     * Ejecuta la logica de filter reembolso transactions manteniendola encapsulada en este componente.
+     */
     private List<PaymentTransaction> filterRefundTransactions(List<PaymentTransaction> transactions) {
         return transactions.stream()
             .filter(transaction -> transaction.getStatus() == PaymentTransactionStatus.APPROVED
@@ -677,6 +814,9 @@ public class BookingFinanceService {
             .toList();
     }
 
+    /**
+     * Ejecuta la logica de filter liquidacion transactions manteniendola encapsulada en este componente.
+     */
     private List<PaymentTransaction> filterPayoutTransactions(List<PaymentTransaction> transactions) {
         return transactions.stream()
             .filter(transaction -> transaction.getStatus() == PaymentTransactionStatus.APPROVED
@@ -684,6 +824,9 @@ public class BookingFinanceService {
             .toList();
     }
 
+    /**
+     * Ejecuta la logica de sum amounts manteniendola encapsulada en este componente.
+     */
     private BigDecimal sumAmounts(List<PaymentTransaction> transactions) {
         return transactions.stream()
             .map(PaymentTransaction::getAmount)

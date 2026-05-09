@@ -11,6 +11,12 @@ import com.plura.plurabackend.usuario.notification.dto.ClientNotificationTimelin
 import com.plura.plurabackend.usuario.notification.dto.ClientNotificationTimelineResponse;
 import org.springframework.stereotype.Component;
 
+/**
+ * ClientNotificationResponseMapper es un mapper del modulo cliente / notificaciones.
+ * Responsabilidad: convertir modelos internos en DTOs o vistas sin filtrar datos en el controller.
+ * Mantiene separada esta responsabilidad para que el resto del backend use una API clara.
+ * Foco funcional: notificaciones, clientes.
+ */
 @Component
 class ClientNotificationResponseMapper {
 
@@ -61,6 +67,9 @@ class ClientNotificationResponseMapper {
         );
     }
 
+    /**
+     * Convierte datos internos al formato item respuesta esperado por el consumidor.
+     */
     private ClientNotificationItemResponse toItemResponse(NotificationInboxItemView item) {
         return new ClientNotificationItemResponse(
             item.id(),
@@ -76,6 +85,9 @@ class ClientNotificationResponseMapper {
         );
     }
 
+    /**
+     * Convierte datos internos al formato timeline item respuesta esperado por el consumidor.
+     */
     private ClientNotificationTimelineItemResponse toTimelineItemResponse(BookingNotificationTimelineItemView item) {
         return new ClientNotificationTimelineItemResponse(
             item.id(),

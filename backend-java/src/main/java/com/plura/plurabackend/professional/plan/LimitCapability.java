@@ -2,6 +2,12 @@ package com.plura.plurabackend.professional.plan;
 
 import java.util.function.ToIntFunction;
 
+/**
+ * LimitCapability es un enum de dominio del modulo profesionales / planes.
+ * Responsabilidad: limitar valores validos para estados, tipos o capacidades usados por el backend.
+ * Colabora con: label, extractor.
+ * Foco funcional: la responsabilidad indicada por su paquete y nombre.
+ */
 public enum LimitCapability {
     MAX_PROFESSIONALS(
         "profesionales activos",
@@ -32,10 +38,16 @@ public enum LimitCapability {
         this.extractor = extractor;
     }
 
+    /**
+     * Resuelve limit normalizando entradas, defaults y casos borde.
+     */
     public int resolveLimit(ProfessionalPlanEntitlements entitlements) {
         return entitlements == null ? 0 : extractor.applyAsInt(entitlements);
     }
 
+    /**
+     * Ejecuta la logica de exceeded message manteniendola encapsulada en este componente.
+     */
     public String exceededMessage(int limit) {
         return "Tu plan permite hasta " + limit + " " + label;
     }

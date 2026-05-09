@@ -41,6 +41,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+/**
+ * ProfileApplicationService es un servicio de negocio del modulo profesionales / aplicacion.
+ * Responsabilidad: coordinar reglas de negocio, validaciones, persistencia e integraciones del caso de uso.
+ * Colabora con: professionalProfileRepository, businessPhotoRepository, categorySupport, userRepository, entre otros.
+ * Foco funcional: perfiles, servicios.
+ */
 @Service
 public class ProfileApplicationService {
 
@@ -126,6 +132,9 @@ public class ProfileApplicationService {
         }
     }
 
+    /**
+     * Devuelve el listado de publico professionals aplicando permisos y filtros del caso de uso.
+     */
     public List<ProfesionalPublicSummaryResponse> listPublicProfessionals(
         Integer limit,
         Integer page,
@@ -188,6 +197,10 @@ public class ProfileApplicationService {
         return profilePublicPageAssembler.toPublicPage(profile);
     }
 
+    /**
+     * Actualiza publico pagina manteniendo reglas de negocio y consistencia de datos.
+     * Tambien concentra los efectos secundarios para que el flujo quede en un estado consistente.
+     */
     @Transactional
     public ProfesionalPublicPageResponse updatePublicPage(
         String rawUserId,
@@ -240,6 +253,10 @@ public class ProfileApplicationService {
         return profilePublicPageAssembler.toPublicPage(profile);
     }
 
+    /**
+     * Actualiza business perfil manteniendo reglas de negocio y consistencia de datos.
+     * Tambien concentra los efectos secundarios para que el flujo quede en un estado consistente.
+     */
     @Transactional
     public void updateBusinessProfile(String rawUserId, ProfesionalBusinessProfileUpdateRequest request) {
         if (request == null) {
@@ -413,6 +430,9 @@ public class ProfileApplicationService {
         }
     }
 
+    /**
+     * Fusiona media presentation para simplificar el calculo posterior.
+     */
     private MediaPresentationDto mergeMediaPresentation(
         MediaPresentationDto request,
         Double currentPositionX,
@@ -431,23 +451,38 @@ public class ProfileApplicationService {
         return profileBookingPolicySupport.getPolicy(profile);
     }
 
+    /**
+     * Actualiza reserva politica manteniendo reglas de negocio y consistencia de datos.
+     * Tambien concentra los efectos secundarios para que el flujo quede en un estado consistente.
+     */
     @Transactional
     public BookingPolicyResponse updateBookingPolicy(String rawUserId, BookingPolicyUpdateRequest request) {
         ProfessionalProfile profile = professionalAccessSupport.loadProfessionalByUserId(rawUserId);
         return profileBookingPolicySupport.updatePolicy(profile, request);
     }
 
+    /**
+     * Devuelve el listado de servicios aplicando permisos y filtros del caso de uso.
+     */
     public List<ProfesionalServiceResponse> listServices(String rawUserId) {
         ProfessionalProfile profile = professionalAccessSupport.loadProfessionalByUserId(rawUserId);
         return profileServiceCatalogSupport.listServices(profile);
     }
 
+    /**
+     * Crea servicio validando datos de entrada y persistiendo el resultado.
+     * Tambien concentra los efectos secundarios para que el flujo quede en un estado consistente.
+     */
     @Transactional
     public ProfesionalServiceResponse createService(String rawUserId, ProfesionalServiceRequest request) {
         ProfessionalProfile profile = professionalAccessSupport.loadProfessionalByUserId(rawUserId);
         return profileServiceCatalogSupport.createService(rawUserId, profile, request);
     }
 
+    /**
+     * Actualiza servicio manteniendo reglas de negocio y consistencia de datos.
+     * Tambien concentra los efectos secundarios para que el flujo quede en un estado consistente.
+     */
     @Transactional
     public ProfesionalServiceResponse updateService(
         String rawUserId,
@@ -458,12 +493,19 @@ public class ProfileApplicationService {
         return profileServiceCatalogSupport.updateService(rawUserId, profile, serviceId, request);
     }
 
+    /**
+     * Elimina servicio y limpia relaciones o datos derivados cuando corresponde.
+     * Tambien concentra los efectos secundarios para que el flujo quede en un estado consistente.
+     */
     @Transactional
     public void deleteService(String rawUserId, String serviceId) {
         ProfessionalProfile profile = professionalAccessSupport.loadProfessionalByUserId(rawUserId);
         profileServiceCatalogSupport.deleteService(profile, serviceId);
     }
 
+    /**
+     * Ejecuta la logica de sincronizar local business photos manteniendola encapsulada en este componente.
+     */
     private void syncLocalBusinessPhotos(ProfessionalProfile profile, List<String> cleanedPhotoUrls) {
         businessPhotoRepository.deleteByProfessional_IdAndType(profile.getId(), BusinessPhotoType.LOCAL);
         if (cleanedPhotoUrls.isEmpty()) {
@@ -481,6 +523,9 @@ public class ProfileApplicationService {
         businessPhotoRepository.saveAll(localPhotos);
     }
 
+    /**
+     * Extrae storage objeto clave desde una URL, payload o referencia persistida.
+     */
     private String extractStorageObjectKey(String urlOrKey) {
         String value = normalizeStoredImageReference(urlOrKey);
         if (value.isBlank()) {
@@ -509,11 +554,17 @@ public class ProfileApplicationService {
         return value;
     }
 
+    /**
+     * Normaliza guardada imagen reference para evitar variantes vacias, invalidas o inconsistentes.
+     */
     private String normalizeStoredImageReference(String urlOrKey) {
         String normalized = imageStorageService.normalizeStoredReference(urlOrKey);
         return normalized == null ? "" : normalized.trim();
     }
 
+    /**
+     * Construye publico resumen cache key a partir de datos internos ya validados.
+     */
     private String buildPublicSummaryCacheKey(
         Integer limit,
         Integer page,
@@ -528,6 +579,9 @@ public class ProfileApplicationService {
             + "|categorySlug=" + (categorySlug == null ? "" : categorySlug);
     }
 
+    /**
+     * Normaliza opcional para evitar variantes vacias, invalidas o inconsistentes.
+     */
     private String normalizeOptional(String value) {
         if (value == null) {
             return null;
@@ -536,6 +590,9 @@ public class ProfileApplicationService {
         return normalized.isBlank() ? null : normalized;
     }
 
+    /**
+     * Evalua has enhanced publico pagina content y devuelve una decision booleana para el llamador.
+     */
     private boolean hasEnhancedPublicPageContent(ProfesionalPublicPageUpdateRequest request) {
         return request != null && (
             isNonBlank(request.getHeadline())
@@ -543,6 +600,9 @@ public class ProfileApplicationService {
         );
     }
 
+    /**
+     * Evalua has enhanced business perfil content y devuelve una decision booleana para el llamador.
+     */
     private boolean hasEnhancedBusinessProfileContent(ProfesionalBusinessProfileUpdateRequest request) {
         return request != null && (
             request.getLogoUrl() != null
@@ -555,6 +615,9 @@ public class ProfileApplicationService {
         );
     }
 
+    /**
+     * Evalua is non blank y devuelve una decision booleana para el llamador.
+     */
     private boolean isNonBlank(String value) {
         return value != null && !value.trim().isBlank();
     }

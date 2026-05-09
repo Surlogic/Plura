@@ -10,6 +10,12 @@ import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
 
+/**
+ * SmtpTransactionalEmailService es un servicio de negocio del modulo autenticacion.
+ * Responsabilidad: coordinar reglas de negocio, validaciones, persistencia e integraciones del caso de uso.
+ * Colabora con: javaMailSender, deliveryEnabled, mailHost, smtpAuthEnabled, entre otros.
+ * Foco funcional: servicios, email transaccional.
+ */
 @Service
 public class SmtpTransactionalEmailService implements TransactionalEmailService {
 
@@ -47,6 +53,9 @@ public class SmtpTransactionalEmailService implements TransactionalEmailService 
         this.replyTo = replyTo;
     }
 
+    /**
+     * Envia send mediante el canal configurado.
+     */
     @Override
     public DeliveryStatus send(TransactionalEmailMessage message) {
         if (message == null || isBlank(message.toAddress()) || isBlank(message.subject())) {
@@ -84,6 +93,9 @@ public class SmtpTransactionalEmailService implements TransactionalEmailService 
         }
     }
 
+    /**
+     * Evalua is configured for delivery y devuelve una decision booleana para el llamador.
+     */
     private boolean isConfiguredForDelivery() {
         return deliveryEnabled
             && !isBlank(mailHost)
@@ -91,6 +103,9 @@ public class SmtpTransactionalEmailService implements TransactionalEmailService 
             && (!smtpAuthEnabled || (!isBlank(mailUsername) && !isBlank(mailPassword)));
     }
 
+    /**
+     * Ejecuta la logica de log fallback manteniendola encapsulada en este componente.
+     */
     private void logFallback(TransactionalEmailMessage message) {
         LOGGER.info(
             "Email transaccional {} hacia {} omitido. Delivery SMTP deshabilitado o incompleto; fallback local activo.",
@@ -99,6 +114,9 @@ public class SmtpTransactionalEmailService implements TransactionalEmailService 
         );
     }
 
+    /**
+     * Ejecuta la logica de mask email manteniendola encapsulada en este componente.
+     */
     private String maskEmail(String email) {
         if (isBlank(email)) {
             return "desconocido";
@@ -110,10 +128,16 @@ public class SmtpTransactionalEmailService implements TransactionalEmailService 
         return email.substring(0, 1) + "***" + email.substring(atIndex);
     }
 
+    /**
+     * Evalua is blank y devuelve una decision booleana para el llamador.
+     */
     private boolean isBlank(String value) {
         return value == null || value.trim().isBlank();
     }
 
+    /**
+     * Ejecuta la logica de default string manteniendola encapsulada en este componente.
+     */
     private String defaultString(String value, String fallback) {
         return value == null ? fallback : value;
     }

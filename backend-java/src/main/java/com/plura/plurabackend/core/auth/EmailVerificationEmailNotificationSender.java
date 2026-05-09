@@ -40,14 +40,7 @@ public class EmailVerificationEmailNotificationSender implements EmailVerificati
     }
 
     /**
-     * Envia el codigo de verificacion de email al usuario.
-     *
-     * <p>Si la notificacion, el usuario o el email son nulos, el metodo retorna
-     * sin hacer nada. En caso de que el servicio de correo no pueda entregar
-     * el mensaje, se lanza una {@link AuthApiException} con estado 503.</p>
-     *
-     * @param notification datos de la notificacion que incluyen usuario, email y codigo
-     * @throws AuthApiException si el correo no pudo ser entregado
+     * Envia verification code mediante el canal configurado.
      */
     @Override
     public void sendVerificationCode(EmailVerificationNotification notification) {

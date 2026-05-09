@@ -12,6 +12,12 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
+/**
+ * BookingReviewEligibilityService es un servicio de negocio del modulo resenas.
+ * Responsabilidad: coordinar reglas de negocio, validaciones, persistencia e integraciones del caso de uso.
+ * Colabora con: bookingRepository, bookingReviewRepository, systemZoneId.
+ * Foco funcional: reservas, servicios, resenas.
+ */
 @Service
 public class BookingReviewEligibilityService {
 

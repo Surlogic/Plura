@@ -4,6 +4,12 @@ import com.plura.plurabackend.core.notification.dispatch.NotificationProjectionD
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+/**
+ * NotificationService es un servicio de negocio del modulo notificaciones / aplicacion.
+ * Responsabilidad: coordinar reglas de negocio, validaciones, persistencia e integraciones del caso de uso.
+ * Colabora con: notificationEventService, notificationProjectionDispatcher.
+ * Foco funcional: notificaciones, servicios.
+ */
 @Service
 public class NotificationService {
 
@@ -18,6 +24,9 @@ public class NotificationService {
         this.notificationProjectionDispatcher = notificationProjectionDispatcher;
     }
 
+    /**
+     * Registra record para auditoria, historial o notificaciones.
+     */
     @Transactional
     public NotificationRegistrationResult record(NotificationRecordCommand command) {
         NotificationEventService.NotificationEventRegistration registration =

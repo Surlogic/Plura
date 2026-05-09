@@ -27,8 +27,17 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
 
+/**
+ * Tests de notificaciones, bandejas y emails / integracion entre modulos.
+ * Cubren escenarios de reserva notificacion integracion servicio para documentar el comportamiento esperado y evitar regresiones.
+ * Mantener estos casos alineados con los contratos reales del backend cuando cambie la logica productiva.
+ */
 class BookingNotificationIntegrationServiceTest {
 
+    /**
+     * Escenario: reserva confirmado usa same dedupe key across different interno origins.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void bookingConfirmedUsesSameDedupeKeyAcrossDifferentInternalOrigins() {
         NotificationService notificationService = Mockito.mock(NotificationService.class);
@@ -64,6 +73,10 @@ class BookingNotificationIntegrationServiceTest {
         assertNotNull(first.emailProjection());
     }
 
+    /**
+     * Escenario: reserva no show mapea a canonical notificacion evento.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void bookingNoShowMapsToCanonicalNotificationEvent() {
         NotificationService notificationService = Mockito.mock(NotificationService.class);
@@ -90,6 +103,10 @@ class BookingNotificationIntegrationServiceTest {
         assertEquals("BOOKING_NO_SHOW:booking:40:recipient:30", captor.getValue().dedupeKey());
     }
 
+    /**
+     * Escenario: reserva confirmado also emits cliente notificacion cuando reserva has cliente usuario.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void bookingConfirmedAlsoEmitsClientNotificationWhenBookingHasClientUser() {
         NotificationService notificationService = Mockito.mock(NotificationService.class);

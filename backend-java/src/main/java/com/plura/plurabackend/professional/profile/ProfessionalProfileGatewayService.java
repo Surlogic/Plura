@@ -23,6 +23,12 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
+/**
+ * ProfessionalProfileGatewayService es un servicio de negocio del modulo profesionales / perfil.
+ * Responsabilidad: coordinar reglas de negocio, validaciones, persistencia e integraciones del caso de uso.
+ * Colabora con: professionalProfileRepository, professionalCategorySupport, profilePublicPageAssembler, searchSyncPublisher.
+ * Foco funcional: profesionales, perfiles, servicios.
+ */
 @Service
 public class ProfessionalProfileGatewayService implements
     ProfessionalPublicReadFacade,
@@ -47,6 +53,10 @@ public class ProfessionalProfileGatewayService implements
         this.searchSyncPublisher = searchSyncPublisher;
     }
 
+    /**
+     * Busca active resumen by slug aplicando filtros, joins o criterios del caso de uso.
+     * Mantiene la consulta encapsulada para que el resto del codigo no repita filtros ni joins.
+     */
     @Override
     public Optional<ProfessionalPublicSummary> findActiveSummaryBySlug(String slug) {
         return professionalProfileRepository.findBySlug(normalizeSlug(slug))
@@ -54,6 +64,10 @@ public class ProfessionalProfileGatewayService implements
             .map(this::toSummary);
     }
 
+    /**
+     * Busca active summaries by IDs aplicando filtros, joins o criterios del caso de uso.
+     * Mantiene la consulta encapsulada para que el resto del codigo no repita filtros ni joins.
+     */
     @Override
     public Map<Long, ProfessionalPublicSummary> findActiveSummariesByIds(Collection<Long> ids) {
         if (ids == null || ids.isEmpty()) {
@@ -66,6 +80,10 @@ public class ProfessionalProfileGatewayService implements
         return summaries;
     }
 
+    /**
+     * Busca active profesional ID by slug aplicando filtros, joins o criterios del caso de uso.
+     * Mantiene la consulta encapsulada para que el resto del codigo no repita filtros ni joins.
+     */
     @Override
     public Optional<Long> findActiveProfessionalIdBySlug(String slug) {
         return professionalProfileRepository.findBySlug(normalizeSlug(slug))
@@ -73,6 +91,10 @@ public class ProfessionalProfileGatewayService implements
             .map(ProfessionalProfile::getId);
     }
 
+    /**
+     * Crea registered perfil validando datos de entrada y persistiendo el resultado.
+     * Tambien concentra los efectos secundarios para que el flujo quede en un estado consistente.
+     */
     @Override
     public ProfessionalProfile createRegisteredProfile(User user, ProfessionalProfileRegistrationCommand command) {
         ProfessionalProfile profile = new ProfessionalProfile();
@@ -95,6 +117,10 @@ public class ProfessionalProfileGatewayService implements
         return saved;
     }
 
+    /**
+     * Carga la seccion or bootstrap perfil desde base de datos o datos agregados y la deja lista para la respuesta.
+     * Mantiene la consulta encapsulada para que el resto del codigo no repita filtros ni joins.
+     */
     @Override
     public ProfessionalProfile loadOrBootstrapProfile(User user) {
         ProfessionalProfile profile = professionalProfileRepository.findByUser_Id(user.getId())
@@ -110,6 +136,18 @@ public class ProfessionalProfileGatewayService implements
     }
 
     @Override
+    public Optional<ProfessionalProfile> findByUserId(Long userId) {
+        if (userId == null) {
+            return Optional.empty();
+        }
+        return professionalProfileRepository.findByUser_Id(userId);
+    }
+
+    /**
+     * Carga la seccion enabled profesional by usuario ID desde base de datos o datos agregados y la deja lista para la respuesta.
+     * Mantiene la consulta encapsulada para que el resto del codigo no repita filtros ni joins.
+     */
+    @Override
     public ProfessionalProfile loadEnabledProfessionalByUserId(Long userId) {
         ProfessionalProfile professional = professionalProfileRepository.findByUser_Id(userId)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.FORBIDDEN, "Perfil profesional no encontrado"));
@@ -119,11 +157,19 @@ public class ProfessionalProfileGatewayService implements
         return professional;
     }
 
+    /**
+     * Busca by ID aplicando filtros, joins o criterios del caso de uso.
+     * Mantiene la consulta encapsulada para que el resto del codigo no repita filtros ni joins.
+     */
     @Override
     public Optional<ProfessionalProfile> findById(Long professionalId) {
         return professionalProfileRepository.findById(professionalId);
     }
 
+    /**
+     * Busca by email ignore case aplicando filtros, joins o criterios del caso de uso.
+     * Mantiene la consulta encapsulada para que el resto del codigo no repita filtros ni joins.
+     */
     @Override
     public Optional<ProfessionalProfile> findByEmailIgnoreCase(String email) {
         if (email == null || email.isBlank()) {
@@ -132,6 +178,10 @@ public class ProfessionalProfileGatewayService implements
         return professionalProfileRepository.findByUser_EmailIgnoreCase(email.trim());
     }
 
+    /**
+     * Busca notificacion destinatario by profesional ID aplicando filtros, joins o criterios del caso de uso.
+     * Mantiene la consulta encapsulada para que el resto del codigo no repita filtros ni joins.
+     */
     @Override
     public Optional<ProfessionalNotificationRecipient> findNotificationRecipientByProfessionalId(Long professionalId) {
         if (professionalId == null) {
@@ -145,6 +195,9 @@ public class ProfessionalProfileGatewayService implements
             ));
     }
 
+    /**
+     * Convierte datos internos al formato resumen esperado por el consumidor.
+     */
     private ProfessionalPublicSummary toSummary(ProfessionalProfile profile) {
         ProfesionalPublicSummaryResponse response = profilePublicPageAssembler.toSummary(profile);
         return new ProfessionalPublicSummary(
@@ -161,6 +214,9 @@ public class ProfessionalProfileGatewayService implements
         );
     }
 
+    /**
+     * Ejecuta la logica de bootstrap missing profesional perfil manteniendola encapsulada en este componente.
+     */
     private ProfessionalProfile bootstrapMissingProfessionalProfile(User user) {
         ProfessionalProfile profile = new ProfessionalProfile();
         profile.setUser(user);
@@ -192,10 +248,16 @@ public class ProfessionalProfileGatewayService implements
         }
     }
 
+    /**
+     * Evalua is active y devuelve una decision booleana para el llamador.
+     */
     private boolean isActive(ProfessionalProfile profile) {
         return profile != null && !Boolean.FALSE.equals(profile.getActive());
     }
 
+    /**
+     * Normaliza slug para evitar variantes vacias, invalidas o inconsistentes.
+     */
     private String normalizeSlug(String slug) {
         return slug == null ? "" : slug.trim().toLowerCase(java.util.Locale.ROOT);
     }

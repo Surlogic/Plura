@@ -15,6 +15,11 @@ import java.time.LocalDate;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
 
+/**
+ * Tests de funciones del profesional / casos de uso de aplicacion.
+ * Cubren escenarios de profesional side efecto coordinador para documentar el comportamiento esperado y evitar regresiones.
+ * Mantener estos casos alineados con los contratos reales del backend cuando cambie la logica productiva.
+ */
 class ProfessionalSideEffectCoordinatorTest {
 
     private final AvailableSlotAsyncDispatcher availableSlotAsyncDispatcher = mock(AvailableSlotAsyncDispatcher.class);
@@ -33,6 +38,10 @@ class ProfessionalSideEffectCoordinatorTest {
         searchSyncPublisher
     );
 
+    /**
+     * Escenario: rebuilds affected day synchronously cuando reserva changes.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void rebuildsAffectedDaySynchronouslyWhenBookingChanges() {
         ProfessionalProfile profile = new ProfessionalProfile();

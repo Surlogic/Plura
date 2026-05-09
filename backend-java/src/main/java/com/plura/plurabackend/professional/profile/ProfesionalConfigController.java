@@ -35,6 +35,12 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
+/**
+ * ProfesionalConfigController es un controlador REST del modulo profesionales / perfil.
+ * Responsabilidad: recibir requests HTTP, validar acceso basico y delegar la operacion al servicio de aplicacion o dominio.
+ * Superficie HTTP: atiende rutas bajo /profesional y deja la logica pesada en servicios.
+ * Foco funcional: la responsabilidad indicada por su paquete y nombre.
+ */
 @RestController
 @RequestMapping("/profesional")
 public class ProfesionalConfigController {
@@ -60,6 +66,10 @@ public class ProfesionalConfigController {
         return professionalPublicPageService.getPublicPageByProfesionalId(getProfesionalId());
     }
 
+    /**
+     * Endpoint PUT /public-page: Actualiza publico pagina configuracion manteniendo reglas de negocio y consistencia de datos.
+     * Valida parametros/autorizacion de entrada y delega la logica de negocio al servicio correspondiente.
+     */
     @PutMapping("/public-page")
     public ProfesionalPublicPageResponse updatePublicPageConfig(
         @Valid @RequestBody ProfesionalPublicPageUpdateRequest request
@@ -67,6 +77,10 @@ public class ProfesionalConfigController {
         return professionalPublicPageService.updatePublicPage(getProfesionalId(), request);
     }
 
+    /**
+     * Endpoint PUT /profile: Actualiza business perfil manteniendo reglas de negocio y consistencia de datos.
+     * Valida parametros/autorizacion de entrada y delega la logica de negocio al servicio correspondiente.
+     */
     @PutMapping("/profile")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void updateBusinessProfile(@Valid @RequestBody ProfesionalBusinessProfileUpdateRequest request) {
@@ -83,33 +97,54 @@ public class ProfesionalConfigController {
         return professionalPublicPageService.getBookingPolicy(getProfesionalId());
     }
 
+    /**
+     * Endpoint PUT /booking-policy: Actualiza reserva politica manteniendo reglas de negocio y consistencia de datos.
+     * Valida parametros/autorizacion de entrada y delega la logica de negocio al servicio correspondiente.
+     */
     @PutMapping("/booking-policy")
     public BookingPolicyResponse updateBookingPolicy(@Valid @RequestBody BookingPolicyUpdateRequest request) {
         return professionalPublicPageService.updateBookingPolicy(getProfesionalId(), request);
     }
 
+    /**
+     * Endpoint PUT /schedule: Actualiza agenda manteniendo reglas de negocio y consistencia de datos.
+     * Valida parametros/autorizacion de entrada y delega la logica de negocio al servicio correspondiente.
+     */
     @PutMapping("/schedule")
     public ProfesionalScheduleDto updateSchedule(@Valid @RequestBody ProfesionalScheduleDto request) {
         return professionalPublicPageService.updateSchedule(getProfesionalId(), request);
     }
 
+    /**
+     * Devuelve el listado de servicios aplicando permisos y filtros del caso de uso.
+     */
     @GetMapping("/services")
     public List<ProfesionalServiceResponse> listServices() {
         return professionalPublicPageService.listServices(getProfesionalId());
     }
 
+    /**
+     * Endpoint POST /services: Crea servicio validando datos de entrada y persistiendo el resultado.
+     * Valida parametros/autorizacion de entrada y delega la logica de negocio al servicio correspondiente.
+     */
     @PostMapping("/services")
     @ResponseStatus(HttpStatus.CREATED)
     public ProfesionalServiceResponse createService(@Valid @RequestBody ProfesionalServiceRequest request) {
         return professionalPublicPageService.createService(getProfesionalId(), request);
     }
 
+    /**
+     * Ejecuta la logica de upload servicio imagen manteniendola encapsulada en este componente.
+     */
     @PostMapping(path = "/services/image", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public Map<String, String> uploadServiceImage(@RequestPart("file") MultipartFile file) {
         String imageUrl = serviceImageStorageService.storeProfessionalImage(file, "services", getProfesionalId());
         return Map.of("imageUrl", imageUrl);
     }
 
+    /**
+     * Ejecuta la logica de upload profesional imagen manteniendola encapsulada en este componente.
+     */
     @PostMapping(path = "/images/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public Map<String, String> uploadProfessionalImage(
         @RequestPart("file") MultipartFile file,
@@ -126,6 +161,10 @@ public class ProfesionalConfigController {
         return Map.of("imageUrl", imageUrl);
     }
 
+    /**
+     * Endpoint PUT /services/{id}: Actualiza servicio manteniendo reglas de negocio y consistencia de datos.
+     * Valida parametros/autorizacion de entrada y delega la logica de negocio al servicio correspondiente.
+     */
     @PutMapping("/services/{id}")
     public ProfesionalServiceResponse updateService(
         @PathVariable("id") String serviceId,
@@ -134,12 +173,19 @@ public class ProfesionalConfigController {
         return professionalPublicPageService.updateService(getProfesionalId(), serviceId, request);
     }
 
+    /**
+     * Endpoint DELETE /services/{id}: Elimina servicio y limpia relaciones o datos derivados cuando corresponde.
+     * Valida parametros/autorizacion de entrada y delega la logica de negocio al servicio correspondiente.
+     */
     @DeleteMapping("/services/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void deleteService(@PathVariable("id") String serviceId) {
         professionalPublicPageService.deleteService(getProfesionalId(), serviceId);
     }
 
+    /**
+     * Devuelve el listado de reservations aplicando permisos y filtros del caso de uso.
+     */
     @GetMapping("/reservas")
     public List<ProfessionalBookingResponse> listReservations(
         @RequestParam(required = false) String date,
@@ -154,6 +200,10 @@ public class ProfesionalConfigController {
         );
     }
 
+    /**
+     * Endpoint POST /reservas: Crea reserva validando datos de entrada y persistiendo el resultado.
+     * Valida parametros/autorizacion de entrada y delega la logica de negocio al servicio correspondiente.
+     */
     @PostMapping("/reservas")
     @ResponseStatus(HttpStatus.CREATED)
     public ProfessionalBookingResponse createReservation(
@@ -167,6 +217,10 @@ public class ProfesionalConfigController {
         }
     }
 
+    /**
+     * Endpoint PUT /reservas/{id}: Actualiza reserva manteniendo reglas de negocio y consistencia de datos.
+     * Valida parametros/autorizacion de entrada y delega la logica de negocio al servicio correspondiente.
+     */
     @PutMapping("/reservas/{id}")
     public ProfessionalBookingResponse updateReservation(
         @PathVariable("id") Long bookingId,

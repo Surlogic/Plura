@@ -4,6 +4,12 @@ import com.plura.plurabackend.core.booking.policy.model.LateCancellationRefundMo
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
+/**
+ * BookingPolicySnapshot es un modelo inmutable del modulo reservas / politicas.
+ * Responsabilidad: agrupar datos de lectura o respuesta con una estructura clara y sin estado mutable.
+ * Contrato: lo consumen web/mobile, asi que renombrar campos puede romper compatibilidad.
+ * Foco funcional: reservas.
+ */
 public record BookingPolicySnapshot(
     String sourcePolicyId,
     Long sourcePolicyVersion,

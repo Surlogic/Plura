@@ -32,6 +32,13 @@ import lombok.NoArgsConstructor;
         @Index(name = "idx_app_feedback_public", columnList = "public_visible, created_at DESC")
     }
 )
+
+/**
+ * AppFeedback es un componente de dominio del modulo feedback / modelo.
+ * Responsabilidad: encapsular comportamiento propio del modulo y mantenerlo fuera de controllers u otras capas.
+ * Mantiene separada esta responsabilidad para que el resto del backend use una API clara.
+ * Foco funcional: feedback.
+ */
 public class AppFeedback {
 
     @Id

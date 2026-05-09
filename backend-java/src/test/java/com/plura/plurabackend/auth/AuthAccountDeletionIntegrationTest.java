@@ -26,6 +26,11 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
+/**
+ * Tests de autenticacion, sesiones, OTP y recuperacion de cuenta.
+ * Cubren escenarios de auth account deletion integracion para documentar el comportamiento esperado y evitar regresiones.
+ * Mantener estos casos alineados con los contratos reales del backend cuando cambie la logica productiva.
+ */
 @SpringBootTest(properties = {
     "SPRING_DATASOURCE_URL=jdbc:h2:mem:plura-auth-delete-test;MODE=PostgreSQL;DB_CLOSE_DELAY=-1;DATABASE_TO_LOWER=TRUE",
     "SPRING_DATASOURCE_USERNAME=sa",
@@ -68,6 +73,10 @@ class AuthAccountDeletionIntegrationTest {
     @MockBean
     private OtpChallengeNotificationSender otpChallengeNotificationSender;
 
+    /**
+     * Prepara mocks, datos base o configuracion comun antes de cada caso de prueba.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @BeforeEach
     void cleanUp() {
         authAuditLogRepository.deleteAll();
@@ -77,6 +86,10 @@ class AuthAccountDeletionIntegrationTest {
         userRepository.deleteAll();
     }
 
+    /**
+     * Escenario: deleted account no puede keep using previous acceso token.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void deletedAccountCannotKeepUsingPreviousAccessToken() throws Exception {
         mockMvc.perform(post("/auth/register/cliente")
@@ -127,6 +140,10 @@ class AuthAccountDeletionIntegrationTest {
         Assertions.assertTrue(userRepository.findAll().isEmpty());
     }
 
+    /**
+     * Escenario: deleted cliente puede registro again con same email even if viejo acceso token is sent.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void deletedClientCanRegisterAgainWithSameEmailEvenIfOldAccessTokenIsSent() throws Exception {
         mockMvc.perform(post("/auth/register/cliente")

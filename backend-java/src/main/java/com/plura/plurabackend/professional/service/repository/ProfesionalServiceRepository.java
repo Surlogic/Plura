@@ -8,6 +8,12 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+/**
+ * ProfesionalServiceRepository es un contrato interno del modulo profesionales / servicios / persistencia.
+ * Responsabilidad: definir una frontera estable para que otros modulos no dependan de detalles concretos.
+ * Persistencia: concentra queries derivadas o JPQL para que los servicios no conozcan SQL/joins.
+ * Foco funcional: servicios.
+ */
 public interface ProfesionalServiceRepository extends JpaRepository<ProfesionalService, String> {
     long countByProfessional_Id(Long professionalId);
 

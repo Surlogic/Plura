@@ -11,6 +11,12 @@ import com.plura.plurabackend.professional.notification.dto.ProfessionalNotifica
 import com.plura.plurabackend.professional.notification.dto.ProfessionalNotificationTimelineResponse;
 import org.springframework.stereotype.Component;
 
+/**
+ * ProfessionalNotificationResponseMapper es un mapper del modulo profesionales / notificaciones.
+ * Responsabilidad: convertir modelos internos en DTOs o vistas sin filtrar datos en el controller.
+ * Mantiene separada esta responsabilidad para que el resto del backend use una API clara.
+ * Foco funcional: profesionales, notificaciones.
+ */
 @Component
 class ProfessionalNotificationResponseMapper {
 
@@ -58,6 +64,9 @@ class ProfessionalNotificationResponseMapper {
         );
     }
 
+    /**
+     * Convierte datos internos al formato item respuesta esperado por el consumidor.
+     */
     private ProfessionalNotificationItemResponse toItemResponse(NotificationInboxItemView item) {
         return new ProfessionalNotificationItemResponse(
             item.id(),
@@ -73,6 +82,9 @@ class ProfessionalNotificationResponseMapper {
         );
     }
 
+    /**
+     * Convierte datos internos al formato timeline item respuesta esperado por el consumidor.
+     */
     private ProfessionalNotificationTimelineItemResponse toTimelineItemResponse(BookingNotificationTimelineItemView item) {
         return new ProfessionalNotificationTimelineItemResponse(
             item.id(),

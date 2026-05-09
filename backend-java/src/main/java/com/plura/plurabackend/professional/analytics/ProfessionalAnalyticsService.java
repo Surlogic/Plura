@@ -23,6 +23,12 @@ import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+/**
+ * ProfessionalAnalyticsService es un servicio de negocio del modulo profesionales / analytics.
+ * Responsabilidad: coordinar reglas de negocio, validaciones, persistencia e integraciones del caso de uso.
+ * Colabora con: bookingRepository, professionalAccessSupport, scheduleApplicationService, planGuardService.
+ * Foco funcional: profesionales, analytics, servicios.
+ */
 @Service
 public class ProfessionalAnalyticsService {
 
@@ -102,6 +108,9 @@ public class ProfessionalAnalyticsService {
         );
     }
 
+    /**
+     * Cuenta reservas for fecha sin cargar entidades completas cuando no hace falta.
+     */
     private int countBookingsForDate(List<ProfessionalBookingResponse> bookings, LocalDate date) {
         return (int) bookings.stream()
             .map(this::parseStartDate)
@@ -109,6 +118,9 @@ public class ProfessionalAnalyticsService {
             .count();
     }
 
+    /**
+     * Cuenta weekly dias with reservations sin cargar entidades completas cuando no hace falta.
+     */
     private int countWeeklyDaysWithReservations(List<ProfessionalBookingResponse> bookings) {
         Set<String> bookedDates = bookings.stream()
             .filter(booking -> !BookingOperationalStatus.CANCELLED.name().equalsIgnoreCase(booking.getStatus()))
@@ -119,6 +131,9 @@ public class ProfessionalAnalyticsService {
         return bookedDates.size();
     }
 
+    /**
+     * Cuenta scheduled dias sin cargar entidades completas cuando no hace falta.
+     */
     private int countScheduledDays(ProfesionalScheduleDto schedule, LocalDate weekStart, LocalDate weekEnd) {
         if (schedule == null || schedule.getDays() == null) {
             return 0;
@@ -141,12 +156,18 @@ public class ProfessionalAnalyticsService {
         return count;
     }
 
+    /**
+     * Cuenta by estado sin cargar entidades completas cuando no hace falta.
+     */
     private int countByStatus(List<ProfessionalBookingResponse> bookings, BookingOperationalStatus status) {
         return (int) bookings.stream()
             .filter(booking -> status.name().equalsIgnoreCase(booking.getStatus()))
             .count();
     }
 
+    /**
+     * Convierte datos internos al formato day key esperado por el consumidor.
+     */
     private String toDayKey(DayOfWeek dayOfWeek) {
         String dayKey = switch (dayOfWeek) {
             case MONDAY -> "mon";
@@ -160,6 +181,9 @@ public class ProfessionalAnalyticsService {
         return dayKey.toLowerCase(Locale.ROOT);
     }
 
+    /**
+     * Parsea start fecha y convierte errores de formato en errores controlados.
+     */
     private LocalDate parseStartDate(ProfessionalBookingResponse booking) {
         if (booking == null || booking.getStartDateTime() == null || booking.getStartDateTime().isBlank()) {
             return null;

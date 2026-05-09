@@ -32,6 +32,11 @@ import org.springframework.http.MediaType;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.web.servlet.MockMvc;
 
+/**
+ * Tests de autenticacion, sesiones, OTP y recuperacion de cuenta.
+ * Cubren escenarios de auth legacy compatibilidad integracion para documentar el comportamiento esperado y evitar regresiones.
+ * Mantener estos casos alineados con los contratos reales del backend cuando cambie la logica productiva.
+ */
 @SpringBootTest(properties = {
     "SPRING_DATASOURCE_URL=jdbc:h2:mem:plura-auth-legacy-test;MODE=PostgreSQL;DB_CLOSE_DELAY=-1;DATABASE_TO_LOWER=TRUE",
     "SPRING_DATASOURCE_USERNAME=sa",
@@ -74,6 +79,10 @@ class AuthLegacyCompatibilityIntegrationTest {
     @Autowired
     private PasswordEncoder passwordEncoder;
 
+    /**
+     * Prepara mocks, datos base o configuracion comun antes de cada caso de prueba.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @BeforeEach
     void cleanUp() {
         authAuditLogRepository.deleteAll();
@@ -82,6 +91,10 @@ class AuthLegacyCompatibilityIntegrationTest {
         userRepository.deleteAll();
     }
 
+    /**
+     * Escenario: legacy refresh fallback disabled rechaza legacy refresh y audits.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void legacyRefreshFallbackDisabledRejectsLegacyRefreshAndAudits() throws Exception {
         User user = createUser("legacy-refresh@plura.com");
@@ -109,6 +122,10 @@ class AuthLegacyCompatibilityIntegrationTest {
             .anyMatch(log -> log.getEventType() == AuthAuditEventType.LEGACY_TOKEN_REJECTED));
     }
 
+    /**
+     * Escenario: legacy jwt disabled rechaza legacy jwt y audits.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void legacyJwtDisabledRejectsLegacyJwtAndAudits() throws Exception {
         User user = createUser("legacy-jwt@plura.com");

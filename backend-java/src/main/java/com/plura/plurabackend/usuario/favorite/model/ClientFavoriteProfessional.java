@@ -31,6 +31,13 @@ import lombok.NoArgsConstructor;
         )
     }
 )
+
+/**
+ * ClientFavoriteProfessional es un componente de dominio del modulo cliente / favoritos / modelo.
+ * Responsabilidad: encapsular comportamiento propio del modulo y mantenerlo fuera de controllers u otras capas.
+ * Mantiene separada esta responsabilidad para que el resto del backend use una API clara.
+ * Foco funcional: profesionales, favoritos, clientes.
+ */
 public class ClientFavoriteProfessional {
 
     @Id

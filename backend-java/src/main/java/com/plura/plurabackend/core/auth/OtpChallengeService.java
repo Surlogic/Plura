@@ -21,6 +21,12 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+/**
+ * OtpChallengeService es un servicio de negocio del modulo autenticacion.
+ * Responsabilidad: coordinar reglas de negocio, validaciones, persistencia e integraciones del caso de uso.
+ * Colabora con: userRepository, authOtpChallengeRepository, otpChallengeNotificationSender, authAuditService, entre otros.
+ * Foco funcional: servicios, OTP.
+ */
 @Service
 public class OtpChallengeService {
 
@@ -55,6 +61,9 @@ public class OtpChallengeService {
         this.maxAttempts = maxAttempts;
     }
 
+    /**
+     * Envia challenge mediante el canal configurado.
+     */
     @Transactional
     public OtpChallengeSendResponse sendChallenge(
         String rawUserId,
@@ -131,6 +140,9 @@ public class OtpChallengeService {
         );
     }
 
+    /**
+     * Ejecuta la logica de verify challenge manteniendola encapsulada en este componente.
+     */
     @Transactional(noRollbackFor = AuthApiException.class)
     public void verifyChallenge(
         String rawUserId,
@@ -217,6 +229,9 @@ public class OtpChallengeService {
     }
 
 
+    /**
+     * Ejecuta la logica de verify challenge or allow previously verified manteniendola encapsulada en este componente.
+     */
     @Transactional(noRollbackFor = AuthApiException.class)
     public void verifyChallengeOrAllowPreviouslyVerified(
         String rawUserId,
@@ -267,6 +282,10 @@ public class OtpChallengeService {
         }
     }
 
+    /**
+     * Carga la seccion active usuario desde base de datos o datos agregados y la deja lista para la respuesta.
+     * Mantiene la consulta encapsulada para que el resto del codigo no repita filtros ni joins.
+     */
     private User loadActiveUser(String rawUserId) {
         Long userId;
         try {
@@ -278,6 +297,9 @@ public class OtpChallengeService {
             .orElseThrow(() -> new AuthApiException(HttpStatus.UNAUTHORIZED, "UNAUTHORIZED", "Usuario no encontrado."));
     }
 
+    /**
+     * Parsea purpose y convierte errores de formato en errores controlados.
+     */
     private OtpChallengePurpose parsePurpose(String rawPurpose) {
         if (rawPurpose == null || rawPurpose.isBlank()) {
             throw new AuthApiException(HttpStatus.BAD_REQUEST, "PURPOSE_INVALID", "Purpose inválido.");
@@ -289,6 +311,9 @@ public class OtpChallengeService {
         }
     }
 
+    /**
+     * Parsea channel y convierte errores de formato en errores controlados.
+     */
     private OtpChallengeChannel parseChannel(String rawChannel) {
         if (rawChannel == null || rawChannel.isBlank()) {
             throw new AuthApiException(HttpStatus.BAD_REQUEST, "CHANNEL_INVALID", "Canal inválido.");
@@ -300,6 +325,9 @@ public class OtpChallengeService {
         }
     }
 
+    /**
+     * Resuelve destination normalizando entradas, defaults y casos borde.
+     */
     private String resolveDestination(User user, OtpChallengeChannel channel) {
         if (channel == OtpChallengeChannel.EMAIL) {
             if (user.getEmail() == null || user.getEmail().isBlank()) {
@@ -317,6 +345,9 @@ public class OtpChallengeService {
         return user.getPhoneNumber().trim();
     }
 
+    /**
+     * Genera code con formato estable para uso interno o externo.
+     */
     private String generateCode() {
         int value = SECURE_RANDOM.nextInt(900000) + 100000;
         return String.valueOf(value);
@@ -336,6 +367,9 @@ public class OtpChallengeService {
         }
     }
 
+    /**
+     * Normaliza challenge ID para evitar variantes vacias, invalidas o inconsistentes.
+     */
     private String normalizeChallengeId(String rawChallengeId) {
         if (rawChallengeId == null || rawChallengeId.isBlank()) {
             throw new AuthApiException(HttpStatus.BAD_REQUEST, "CHALLENGE_INVALID", "Challenge inválido.");
@@ -343,6 +377,9 @@ public class OtpChallengeService {
         return rawChallengeId.trim();
     }
 
+    /**
+     * Normaliza submitted code para evitar variantes vacias, invalidas o inconsistentes.
+     */
     private String normalizeSubmittedCode(String rawCode) {
         if (rawCode == null) {
             throw new AuthApiException(HttpStatus.BAD_REQUEST, "CHALLENGE_INVALID", "Challenge inválido.");
@@ -354,10 +391,16 @@ public class OtpChallengeService {
         return trimmed;
     }
 
+    /**
+     * Evalua has attempts exceeded y devuelve una decision booleana para el llamador.
+     */
     private boolean hasAttemptsExceeded(AuthOtpChallenge challenge) {
         return (challenge.getAttemptCount() == null ? 0 : challenge.getAttemptCount()) >= resolveMaxAttempts(challenge);
     }
 
+    /**
+     * Resuelve max attempts normalizando entradas, defaults y casos borde.
+     */
     private int resolveMaxAttempts(AuthOtpChallenge challenge) {
         if (challenge.getMaxAttempts() == null || challenge.getMaxAttempts() <= 0) {
             return maxAttempts;
@@ -365,6 +408,9 @@ public class OtpChallengeService {
         return challenge.getMaxAttempts();
     }
 
+    /**
+     * Ejecuta la logica de mask destination manteniendola encapsulada en este componente.
+     */
     private String maskDestination(OtpChallengeChannel channel, String destination) {
         if (channel == OtpChallengeChannel.EMAIL) {
             int atIndex = destination.indexOf('@');
@@ -385,6 +431,9 @@ public class OtpChallengeService {
         return "***" + normalized.substring(normalized.length() - visibleDigits);
     }
 
+    /**
+     * Ejecuta la logica de audit failure manteniendola encapsulada en este componente.
+     */
     private AuthApiException auditFailure(
         User user,
         String currentSessionId,

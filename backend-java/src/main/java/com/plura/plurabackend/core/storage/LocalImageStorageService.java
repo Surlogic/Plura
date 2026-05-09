@@ -11,6 +11,12 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
 import org.springframework.stereotype.Service;
 
+/**
+ * LocalImageStorageService es un servicio de negocio del modulo storage.
+ * Responsabilidad: coordinar reglas de negocio, validaciones, persistencia e integraciones del caso de uso.
+ * Colabora con: publicBaseUrl, localBaseDir, meterRegistry.
+ * Foco funcional: storage de archivos, servicios, imagenes.
+ */
 @Service
 @ConditionalOnExpression("'${app.storage.provider:local}'.equalsIgnoreCase('local')")
 public class LocalImageStorageService implements ImageStorageService {
@@ -36,6 +42,9 @@ public class LocalImageStorageService implements ImageStorageService {
         }
     }
 
+    /**
+     * Genera upload URL con formato estable para uso interno o externo.
+     */
     @Override
     public String generateUploadUrl(String objectKey) {
         Timer.Sample sample = Timer.start(meterRegistry);
@@ -51,6 +60,9 @@ public class LocalImageStorageService implements ImageStorageService {
         }
     }
 
+    /**
+     * Normaliza guardada reference para evitar variantes vacias, invalidas o inconsistentes.
+     */
     @Override
     public String normalizeStoredReference(String urlOrStorageKey) {
         if (urlOrStorageKey == null) {
@@ -79,6 +91,9 @@ public class LocalImageStorageService implements ImageStorageService {
         return trimmed;
     }
 
+    /**
+     * Genera publico URL con formato estable para uso interno o externo.
+     */
     @Override
     public String generatePublicUrl(String objectKey) {
         Timer.Sample sample = Timer.start(meterRegistry);
@@ -113,6 +128,9 @@ public class LocalImageStorageService implements ImageStorageService {
         }
     }
 
+    /**
+     * Almacena imagen validando contenido, nombre y destino.
+     */
     @Override
     public String storeImage(byte[] bytes, String objectKey, String contentType) {
         Timer.Sample sample = Timer.start(meterRegistry);
@@ -149,6 +167,10 @@ public class LocalImageStorageService implements ImageStorageService {
         }
     }
 
+    /**
+     * Elimina imagen y limpia relaciones o datos derivados cuando corresponde.
+     * Tambien concentra los efectos secundarios para que el flujo quede en un estado consistente.
+     */
     @Override
     public boolean deleteImage(String objectKeyOrUrl) {
         if (objectKeyOrUrl == null || objectKeyOrUrl.isBlank()) {
@@ -175,6 +197,9 @@ public class LocalImageStorageService implements ImageStorageService {
         }
     }
 
+    /**
+     * Extrae storage clave desde una URL, payload o referencia persistida.
+     */
     private String extractStorageKey(String urlOrKey) {
         String value = urlOrKey.trim();
         if (value.startsWith("r2://")) {
@@ -204,6 +229,9 @@ public class LocalImageStorageService implements ImageStorageService {
         return sanitizeKey(value);
     }
 
+    /**
+     * Sanea clave antes de usarlo en storage, URL o persistencia.
+     */
     private String sanitizeKey(String objectKey) {
         if (objectKey == null || objectKey.isBlank()) {
             return "missing";
@@ -214,6 +242,9 @@ public class LocalImageStorageService implements ImageStorageService {
             .replaceFirst("^/+", "");
     }
 
+    /**
+     * Extrae path desde una URL, payload o referencia persistida.
+     */
     private String extractPath(String value) {
         int schemeSeparator = value.indexOf("://");
         if (schemeSeparator < 0) {
@@ -223,6 +254,9 @@ public class LocalImageStorageService implements ImageStorageService {
         return pathStart >= 0 ? value.substring(pathStart) : "";
     }
 
+    /**
+     * Ejecuta la logica de quitar query and fragmento manteniendola encapsulada en este componente.
+     */
     private String stripQueryAndFragment(String value) {
         String normalized = value == null ? "" : value.trim();
         int queryIndex = normalized.indexOf('?');
@@ -236,6 +270,9 @@ public class LocalImageStorageService implements ImageStorageService {
         return normalized;
     }
 
+    /**
+     * Normaliza base para evitar variantes vacias, invalidas o inconsistentes.
+     */
     private String normalizeBase(String baseUrl) {
         String value = baseUrl == null || baseUrl.isBlank() ? "/uploads" : baseUrl.trim();
         return value.endsWith("/") ? value.substring(0, value.length() - 1) : value;

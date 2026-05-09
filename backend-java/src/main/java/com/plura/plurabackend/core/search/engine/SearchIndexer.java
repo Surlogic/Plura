@@ -8,6 +8,12 @@ import java.util.List;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+/**
+ * SearchIndexer es un componente de dominio del modulo busqueda / motor.
+ * Responsabilidad: encapsular comportamiento propio del modulo y mantenerlo fuera de controllers u otras capas.
+ * Colabora con: searchIndexService, searchEngineClient, meterRegistry, searchEngineEnabled.
+ * Foco funcional: busqueda.
+ */
 @Service
 public class SearchIndexer {
 
@@ -48,6 +54,9 @@ public class SearchIndexer {
         }
     }
 
+    /**
+     * Ejecuta la logica de reindex todos manteniendola encapsulada en este componente.
+     */
     public void reindexAll(int batchSize) {
         if (!searchEngineEnabled) {
             return;
@@ -68,6 +77,9 @@ public class SearchIndexer {
         }
     }
 
+    /**
+     * Marca error y actualiza los indicadores relacionados.
+     */
     private void markError(String operation) {
         Counter.builder("plura.search.indexer.errors")
             .description("Search indexer errors")

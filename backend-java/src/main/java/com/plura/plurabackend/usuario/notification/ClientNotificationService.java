@@ -26,6 +26,12 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
+/**
+ * ClientNotificationService es un servicio de negocio del modulo cliente / notificaciones.
+ * Responsabilidad: coordinar reglas de negocio, validaciones, persistencia e integraciones del caso de uso.
+ * Colabora con: userRepository, bookingRepository, bookingCommandStateSupport, notificationQueryService, entre otros.
+ * Foco funcional: notificaciones, servicios, clientes.
+ */
 @Service
 public class ClientNotificationService {
 
@@ -55,6 +61,9 @@ public class ClientNotificationService {
         this.responseMapper = responseMapper;
     }
 
+    /**
+     * Devuelve el listado de bandeja aplicando permisos y filtros del caso de uso.
+     */
     public ClientNotificationListResponse listInbox(
         String rawUserId,
         String rawStatus,
@@ -81,6 +90,9 @@ public class ClientNotificationService {
         ));
     }
 
+    /**
+     * Ejecuta la logica de no leidas conteo manteniendola encapsulada en este componente.
+     */
     public ClientNotificationUnreadCountResponse unreadCount(String rawUserId) {
         User user = loadClient(rawUserId);
         return new ClientNotificationUnreadCountResponse(
@@ -99,6 +111,9 @@ public class ClientNotificationService {
         );
     }
 
+    /**
+     * Marca como leida y actualiza los indicadores relacionados.
+     */
     public void markAsRead(String rawUserId, String notificationId) {
         User user = loadClient(rawUserId);
         notificationReadService.markAsRead(
@@ -108,6 +123,9 @@ public class ClientNotificationService {
         );
     }
 
+    /**
+     * Marca todos como leida y actualiza los indicadores relacionados.
+     */
     public void markAllAsRead(String rawUserId) {
         User user = loadClient(rawUserId);
         notificationReadService.markAllAsRead(
@@ -131,6 +149,10 @@ public class ClientNotificationService {
         );
     }
 
+    /**
+     * Carga la seccion cliente desde base de datos o datos agregados y la deja lista para la respuesta.
+     * Mantiene la consulta encapsulada para que el resto del codigo no repita filtros ni joins.
+     */
     private User loadClient(String rawUserId) {
         Long userId = parseUserId(rawUserId);
         User user = userRepository.findByIdAndDeletedAtIsNull(userId)
@@ -141,6 +163,9 @@ public class ClientNotificationService {
         return user;
     }
 
+    /**
+     * Parsea usuario ID y convierte errores de formato en errores controlados.
+     */
     private Long parseUserId(String rawUserId) {
         if (rawUserId == null || rawUserId.isBlank()) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "No autenticado");
@@ -152,6 +177,9 @@ public class ClientNotificationService {
         }
     }
 
+    /**
+     * Parsea fecha hora y convierte errores de formato en errores controlados.
+     */
     private LocalDateTime parseDateTime(String rawValue, boolean startOfDay) {
         if (rawValue == null || rawValue.isBlank()) {
             return null;

@@ -18,6 +18,12 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+/**
+ * Booking es un entidad JPA del modulo reservas / modelo.
+ * Responsabilidad: representar una tabla del dominio, sus columnas y los defaults necesarios antes de persistir.
+ * Persistencia: sus campos reflejan columnas reales; cambiar nombres o tipos puede requerir migracion Flyway.
+ * Foco funcional: reservas.
+ */
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -142,6 +148,9 @@ public class Booking {
     @Column(name = "version", nullable = false)
     private Long version;
 
+    /**
+     * Inicializa valores por defecto antes de insertar la entidad en la base de datos.
+     */
     @PrePersist
     void onCreate() {
         if (this.createdAt == null) {

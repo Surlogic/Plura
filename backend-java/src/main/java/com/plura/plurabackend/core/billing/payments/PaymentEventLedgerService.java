@@ -8,6 +8,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
+/**
+ * PaymentEventLedgerService es un servicio de negocio del modulo billing / pagos.
+ * Responsabilidad: coordinar reglas de negocio, validaciones, persistencia e integraciones del caso de uso.
+ * Colabora con: paymentEventRepository.
+ * Foco funcional: pagos, servicios.
+ */
 @Service
 public class PaymentEventLedgerService {
 
@@ -17,6 +23,9 @@ public class PaymentEventLedgerService {
         this.paymentEventRepository = paymentEventRepository;
     }
 
+    /**
+     * Registra un evento de pago recibido para auditoria e idempotencia.
+     */
     @Transactional(
         propagation = Propagation.REQUIRES_NEW,
         noRollbackFor = DataIntegrityViolationException.class
@@ -46,6 +55,9 @@ public class PaymentEventLedgerService {
         }
     }
 
+    /**
+     * Marca failed y actualiza los indicadores relacionados.
+     */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void markFailed(String paymentEventId, String errorMessage) {
         if (paymentEventId == null || paymentEventId.isBlank()) {
@@ -57,6 +69,9 @@ public class PaymentEventLedgerService {
         });
     }
 
+    /**
+     * Ejecuta la logica de truncate manteniendola encapsulada en este componente.
+     */
     private String truncate(String value, int maxLength) {
         if (value == null) {
             return null;
@@ -67,5 +82,9 @@ public class PaymentEventLedgerService {
         return value.substring(0, maxLength);
     }
 
+    /**
+     * Bloque de datos registration result dentro de la respuesta principal.
+     * Agrupa metricas relacionadas para que el frontend no tenga que reconstruirlas.
+     */
     public record RegistrationResult(boolean duplicate, String paymentEventId) {}
 }

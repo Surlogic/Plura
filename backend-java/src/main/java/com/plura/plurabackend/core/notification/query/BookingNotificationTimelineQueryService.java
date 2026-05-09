@@ -7,6 +7,12 @@ import java.util.List;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+/**
+ * BookingNotificationTimelineQueryService es un servicio de negocio del modulo notificaciones / consultas.
+ * Responsabilidad: coordinar reglas de negocio, validaciones, persistencia e integraciones del caso de uso.
+ * Colabora con: notificationEventRepository, notificationViewAssembler.
+ * Foco funcional: notificaciones, reservas, servicios.
+ */
 @Service
 public class BookingNotificationTimelineQueryService {
 
@@ -21,6 +27,9 @@ public class BookingNotificationTimelineQueryService {
         this.notificationViewAssembler = notificationViewAssembler;
     }
 
+    /**
+     * Devuelve el listado de timeline aplicando permisos y filtros del caso de uso.
+     */
     @Transactional(readOnly = true)
     public List<BookingNotificationTimelineItemView> listTimeline(
         NotificationRecipientType recipientType,

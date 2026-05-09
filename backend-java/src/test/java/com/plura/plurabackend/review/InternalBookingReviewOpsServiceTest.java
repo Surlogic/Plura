@@ -34,6 +34,11 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.web.server.ResponseStatusException;
 
+/**
+ * Tests de resenas y moderacion.
+ * Cubren escenarios de interno reserva resena ops servicio para documentar el comportamiento esperado y evitar regresiones.
+ * Mantener estos casos alineados con los contratos reales del backend cuando cambie la logica productiva.
+ */
 class InternalBookingReviewOpsServiceTest {
 
     private BookingReviewRepository bookingReviewRepository;
@@ -46,6 +51,10 @@ class InternalBookingReviewOpsServiceTest {
     private ProfessionalProfile professionalProfile;
     private Booking booking;
 
+    /**
+     * Prepara mocks, datos base o configuracion comun antes de cada caso de prueba.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @BeforeEach
     void setUp() {
         bookingReviewRepository = mock(BookingReviewRepository.class);
@@ -85,6 +94,10 @@ class InternalBookingReviewOpsServiceTest {
 
     // --- list ---
 
+    /**
+     * Escenario: listado verifica que devuelva paged results.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void list_returnsPagedResults() {
         Page<BookingReview> page = new PageImpl<>(List.of(sampleReview), PageRequest.of(0, 20), 1);
@@ -112,6 +125,10 @@ class InternalBookingReviewOpsServiceTest {
         assertEquals(0L, item.getReportCount());
     }
 
+    /**
+     * Escenario: listado clamps size a max 100.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void list_clampsSizeToMax100() {
         when(bookingReviewRepository.findAllFiltered(any(), any(), any(), any(), any(), any(), any()))
@@ -127,6 +144,10 @@ class InternalBookingReviewOpsServiceTest {
 
     // --- detail ---
 
+    /**
+     * Escenario: detalle verifica que devuelva resena detalle.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void detail_returnsReviewDetail() {
         when(bookingReviewRepository.findDetailedById(1L)).thenReturn(Optional.of(sampleReview));
@@ -142,6 +163,10 @@ class InternalBookingReviewOpsServiceTest {
         assertFalse(detail.isReported());
     }
 
+    /**
+     * Escenario: detalle throws no encontrado for faltante resena.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void detail_throwsNotFoundForMissingReview() {
         when(bookingReviewRepository.findDetailedById(999L)).thenReturn(Optional.empty());
@@ -152,6 +177,10 @@ class InternalBookingReviewOpsServiceTest {
 
     // --- hideText ---
 
+    /**
+     * Escenario: hide text setea interno ops flag.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void hideText_setsInternalOpsFlag() {
         when(bookingReviewRepository.findDetailedById(1L)).thenReturn(Optional.of(sampleReview));
@@ -163,6 +192,10 @@ class InternalBookingReviewOpsServiceTest {
         verify(bookingReviewRepository).save(sampleReview);
     }
 
+    /**
+     * Escenario: hide text stores moderation note.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void hideText_storesModerationNote() {
         when(bookingReviewRepository.findDetailedById(1L)).thenReturn(Optional.of(sampleReview));
@@ -174,6 +207,10 @@ class InternalBookingReviewOpsServiceTest {
         assertEquals("Contenido inapropiado", sampleReview.getInternalModerationNote());
     }
 
+    /**
+     * Escenario: hide text does no alter rating.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void hideText_doesNotAlterRating() {
         when(bookingReviewRepository.findDetailedById(1L)).thenReturn(Optional.of(sampleReview));
@@ -184,6 +221,10 @@ class InternalBookingReviewOpsServiceTest {
         assertEquals(4, sampleReview.getRating());
     }
 
+    /**
+     * Escenario: hide text does no alter profesional hide flag.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void hideText_doesNotAlterProfessionalHideFlag() {
         sampleReview.setTextHiddenByProfessional(true);
@@ -198,6 +239,10 @@ class InternalBookingReviewOpsServiceTest {
 
     // --- showText ---
 
+    /**
+     * Escenario: show text clears interno ops flag.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void showText_clearsInternalOpsFlag() {
         sampleReview.setTextHiddenByInternalOps(true);
@@ -212,6 +257,10 @@ class InternalBookingReviewOpsServiceTest {
         verify(bookingReviewRepository).save(sampleReview);
     }
 
+    /**
+     * Escenario: show text does no alter rating.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void showText_doesNotAlterRating() {
         sampleReview.setTextHiddenByInternalOps(true);
@@ -223,6 +272,10 @@ class InternalBookingReviewOpsServiceTest {
         assertEquals(4, sampleReview.getRating());
     }
 
+    /**
+     * Escenario: show text does no alter profesional hide flag.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void showText_doesNotAlterProfessionalHideFlag() {
         sampleReview.setTextHiddenByProfessional(true);
@@ -238,6 +291,10 @@ class InternalBookingReviewOpsServiceTest {
 
     // --- analytics ---
 
+    /**
+     * Escenario: analytics verifica que devuelva aggregated metrics.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void analytics_returnsAggregatedMetrics() {
         when(bookingReviewRepository.countFiltered(any(), any())).thenReturn(50L);
@@ -279,6 +336,10 @@ class InternalBookingReviewOpsServiceTest {
 
     // --- date parsing ---
 
+    /**
+     * Escenario: listado rechaza bad date format.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void list_rejectsBadDateFormat() {
         ResponseStatusException ex = assertThrows(ResponseStatusException.class,
@@ -286,6 +347,10 @@ class InternalBookingReviewOpsServiceTest {
         assertEquals(400, ex.getStatusCode().value());
     }
 
+    /**
+     * Escenario: listado includes report resumen cuando resena was reported.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void list_includesReportSummaryWhenReviewWasReported() {
         BookingReviewReport report = new BookingReviewReport();

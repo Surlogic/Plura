@@ -17,6 +17,11 @@ import org.springframework.http.HttpStatus;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.web.server.ResponseStatusException;
 
+/**
+ * Tests de funciones del profesional / proveedor de pago del profesional.
+ * Cubren escenarios de profesional Mercado Pago conexion security integracion para documentar el comportamiento esperado y evitar regresiones.
+ * Mantener estos casos alineados con los contratos reales del backend cuando cambie la logica productiva.
+ */
 @SpringBootTest(properties = {
     "SPRING_DATASOURCE_URL=jdbc:h2:mem:professional-mercadopago-callback-security;MODE=PostgreSQL;DB_CLOSE_DELAY=-1;DATABASE_TO_LOWER=TRUE",
     "SPRING_DATASOURCE_USERNAME=sa",
@@ -47,6 +52,10 @@ class ProfessionalMercadoPagoConnectionSecurityIntegrationTest {
     @MockBean
     private RoleGuard roleGuard;
 
+    /**
+     * Escenario: callback debe permitir anonymous acceso y redirect frontend.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void callbackShouldAllowAnonymousAccessAndRedirectFrontend() throws Exception {
         when(mercadoPagoOAuthStateService.resolveProfessionalId("state-1"))

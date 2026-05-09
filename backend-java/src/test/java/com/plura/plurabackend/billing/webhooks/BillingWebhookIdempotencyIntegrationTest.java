@@ -27,6 +27,11 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.web.servlet.MockMvc;
 
+/**
+ * Tests de billing, pagos, webhooks y proveedores / webhooks.
+ * Cubren escenarios de billing webhook idempotencia integracion para documentar el comportamiento esperado y evitar regresiones.
+ * Mantener estos casos alineados con los contratos reales del backend cuando cambie la logica productiva.
+ */
 @SpringBootTest(properties = {
     "SPRING_DATASOURCE_URL=jdbc:h2:mem:billing-idempotency;MODE=PostgreSQL;DB_CLOSE_DELAY=-1;DATABASE_TO_LOWER=TRUE",
     "SPRING_DATASOURCE_USERNAME=sa",
@@ -77,6 +82,10 @@ class BillingWebhookIdempotencyIntegrationTest {
 
     private ProfessionalProfile professional;
 
+    /**
+     * Prepara mocks, datos base o configuracion comun antes de cada caso de prueba.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @BeforeEach
     void setUp() {
         paymentTransactionRepository.deleteAll();
@@ -114,6 +123,10 @@ class BillingWebhookIdempotencyIntegrationTest {
         subscriptionRepository.save(subscription);
     }
 
+    /**
+     * Escenario: duplicado webhook must no duplicado activation.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void duplicateWebhookMustNotDuplicateActivation() throws Exception {
         String payload = """

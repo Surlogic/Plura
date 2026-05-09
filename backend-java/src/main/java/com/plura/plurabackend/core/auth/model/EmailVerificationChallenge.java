@@ -29,6 +29,13 @@ import lombok.NoArgsConstructor;
         @Index(name = "idx_auth_email_verification_expires", columnList = "expires_at")
     }
 )
+
+/**
+ * EmailVerificationChallenge es un componente de dominio del modulo autenticacion / modelo.
+ * Responsabilidad: encapsular comportamiento propio del modulo y mantenerlo fuera de controllers u otras capas.
+ * Mantiene separada esta responsabilidad para que el resto del backend use una API clara.
+ * Foco funcional: email transaccional.
+ */
 public class EmailVerificationChallenge {
 
     @Id

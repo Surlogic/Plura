@@ -14,6 +14,12 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
+/**
+ * ClientBookingCommandController es un controlador REST del modulo cliente / reservas.
+ * Responsabilidad: recibir requests HTTP, validar acceso basico y delegar la operacion al servicio de aplicacion o dominio.
+ * Superficie HTTP: atiende rutas bajo /cliente/reservas y deja la logica pesada en servicios.
+ * Foco funcional: reservas, clientes.
+ */
 @RestController
 @RequestMapping("/cliente/reservas")
 public class ClientBookingCommandController {
@@ -26,6 +32,10 @@ public class ClientBookingCommandController {
         this.roleGuard = roleGuard;
     }
 
+    /**
+     * Endpoint POST /{id}/cancel: Cancela reserva respetando estados validos y efectos secundarios.
+     * Valida parametros/autorizacion de entrada y delega la logica de negocio al servicio correspondiente.
+     */
     @PostMapping("/{id}/cancel")
     public BookingCommandResponse cancelBooking(
         @PathVariable("id") Long bookingId,
@@ -35,6 +45,9 @@ public class ClientBookingCommandController {
         return clientBookingCommandService.cancelBooking(getClienteId(), bookingId, request, idempotencyKey);
     }
 
+    /**
+     * Ejecuta la logica de reschedule reserva manteniendola encapsulada en este componente.
+     */
     @PostMapping("/{id}/reschedule")
     @ResponseStatus(HttpStatus.OK)
     public BookingCommandResponse rescheduleBooking(

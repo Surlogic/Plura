@@ -16,6 +16,11 @@ import java.time.LocalDateTime;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 
+/**
+ * Tests de funciones del profesional / planes y limites.
+ * Cubren escenarios de effective profesional plan servicio para documentar el comportamiento esperado y evitar regresiones.
+ * Mantener estos casos alineados con los contratos reales del backend cuando cambie la logica productiva.
+ */
 class EffectiveProfessionalPlanServiceTest {
 
     private final SubscriptionRepository subscriptionRepository = mock(SubscriptionRepository.class);
@@ -25,6 +30,10 @@ class EffectiveProfessionalPlanServiceTest {
         policyService
     );
 
+    /**
+     * Escenario: resolves basic cuando there is no suscripcion.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void resolvesBasicWhenThereIsNoSubscription() {
         ProfessionalProfile profile = new ProfessionalProfile();
@@ -36,6 +45,10 @@ class EffectiveProfessionalPlanServiceTest {
         assertEquals(ProfessionalPlanCode.BASIC, effectivePlan.code());
     }
 
+    /**
+     * Escenario: resolves profesional for active nuevo alias plan code.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void resolvesProfesionalForActiveNewAliasPlanCode() {
         ProfessionalProfile profile = new ProfessionalProfile();
@@ -49,6 +62,10 @@ class EffectiveProfessionalPlanServiceTest {
         assertTrue(effectivePlan.entitlements().allowOnlinePayments());
     }
 
+    /**
+     * Escenario: resolves enterprise for premium plan.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void resolvesEnterpriseForPremiumPlan() {
         ProfessionalProfile profile = new ProfessionalProfile();
@@ -63,6 +80,10 @@ class EffectiveProfessionalPlanServiceTest {
         assertTrue(effectivePlan.entitlements().allowPortfolio());
     }
 
+    /**
+     * Escenario: falls back a basic cuando suscripcion is inactive.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void fallsBackToBasicWhenSubscriptionIsInactive() {
         ProfessionalProfile profile = new ProfessionalProfile();

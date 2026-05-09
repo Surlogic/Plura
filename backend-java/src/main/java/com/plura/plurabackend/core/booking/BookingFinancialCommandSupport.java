@@ -10,6 +10,12 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
+/**
+ * BookingFinancialCommandSupport es un componente de dominio del modulo reservas.
+ * Responsabilidad: encapsular comportamiento propio del modulo y mantenerlo fuera de controllers u otras capas.
+ * Colabora con: bookingFinanceService, bookingPaymentsGateway, providerOperationWorker.
+ * Foco funcional: reservas.
+ */
 @Component
 public class BookingFinancialCommandSupport {
 
@@ -27,6 +33,9 @@ public class BookingFinancialCommandSupport {
         this.providerOperationWorker = providerOperationWorker;
     }
 
+    /**
+     * Ejecuta la logica de process decision manteniendola encapsulada en este componente.
+     */
     public BookingFinanceDispatchPlan processDecision(Booking booking, BookingActionDecision decision) {
         return bookingPaymentsGateway.processPostDecision(
             booking,
@@ -34,10 +43,16 @@ public class BookingFinancialCommandSupport {
         );
     }
 
+    /**
+     * Ejecuta la logica de retry liquidacion manteniendola encapsulada en este componente.
+     */
     public BookingFinanceDispatchPlan retryPayout(Booking booking, com.plura.plurabackend.core.booking.finance.model.BookingPayoutRecord payoutRecord) {
         return bookingPaymentsGateway.retryPayout(booking, payoutRecord);
     }
 
+    /**
+     * Despacha planned operaciones fuera del flujo principal del request.
+     */
     public BookingFinanceUpdateResult dispatchPlannedOperations(
         Booking booking,
         BookingFinanceDispatchPlan plan
@@ -45,6 +60,9 @@ public class BookingFinancialCommandSupport {
         return bookingPaymentsGateway.dispatchPlannedOperations(booking, plan);
     }
 
+    /**
+     * Despacha planned operaciones after commit fuera del flujo principal del request.
+     */
     public void dispatchPlannedOperationsAfterCommit(
         Booking booking,
         BookingFinanceDispatchPlan plan
@@ -55,6 +73,9 @@ public class BookingFinancialCommandSupport {
         Runnable action = () -> providerOperationWorker.kickOperationsAsync(plan.providerOperationIds());
         if (TransactionSynchronizationManager.isSynchronizationActive()) {
             TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+    /**
+     * Ejecuta la logica de despues commit manteniendola encapsulada en este componente.
+     */
                 @Override
                 public void afterCommit() {
                     action.run();

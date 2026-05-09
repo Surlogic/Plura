@@ -8,6 +8,12 @@ import java.util.Optional;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+/**
+ * InMemorySlotCacheService es un servicio de negocio del modulo cache.
+ * Responsabilidad: coordinar reglas de negocio, validaciones, persistencia e integraciones del caso de uso.
+ * Mantiene separada esta responsabilidad para que el resto del backend use una API clara.
+ * Foco funcional: servicios, cache.
+ */
 @Service
 public class InMemorySlotCacheService implements SlotCacheService {
 
@@ -30,6 +36,9 @@ public class InMemorySlotCacheService implements SlotCacheService {
         return Optional.ofNullable(slotCache.getIfPresent(key));
     }
 
+    /**
+     * Ejecuta la logica de put slots manteniendola encapsulada en este componente.
+     */
     @Override
     public void putSlots(String key, List<String> slots) {
         if (key == null || key.isBlank() || slots == null) {
@@ -38,6 +47,9 @@ public class InMemorySlotCacheService implements SlotCacheService {
         slotCache.put(key, List.copyOf(slots));
     }
 
+    /**
+     * Ejecuta la logica de evict by prefix manteniendola encapsulada en este componente.
+     */
     @Override
     public void evictByPrefix(String keyPrefix) {
         if (keyPrefix == null || keyPrefix.isBlank()) {

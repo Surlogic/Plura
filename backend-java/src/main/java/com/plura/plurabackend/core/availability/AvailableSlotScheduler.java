@@ -7,6 +7,12 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
+/**
+ * AvailableSlotScheduler es un scheduler del modulo disponibilidad.
+ * Responsabilidad: ejecutar tareas programadas para mantener datos derivados o procesos periodicos.
+ * Colabora con: availableSlotAsyncDispatcher, distributedLockService, lookaheadDays, slotRebuildShards, entre otros.
+ * Foco funcional: agenda.
+ */
 @Component
 public class AvailableSlotScheduler {
 
@@ -35,6 +41,9 @@ public class AvailableSlotScheduler {
         this.slotRebuildEnabled = slotRebuildEnabled;
     }
 
+    /**
+     * Reconstruye slots nightly a partir de la fuente de verdad actual.
+     */
     @Scheduled(cron = "${app.search.slot-rebuild-cron:0 */30 2-6 * * *}")
     public void rebuildSlotsNightly() {
         if (!slotRebuildEnabled) {
@@ -43,6 +52,9 @@ public class AvailableSlotScheduler {
         distributedLockService.runWithLock(LOCK_ID, "slot-rebuild", this::doRebuild);
     }
 
+    /**
+     * Ejecuta la logica de do rebuild manteniendola encapsulada en este componente.
+     */
     private void doRebuild() {
         int normalizedDays = Math.max(1, lookaheadDays);
         int normalizedShards = Math.max(1, slotRebuildShards);

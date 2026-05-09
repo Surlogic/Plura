@@ -25,6 +25,12 @@ import java.util.Map;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
+/**
+ * ClientBillingNotificationCommandFactory es un componente de dominio del modulo notificaciones / integraciones / billing.
+ * Responsabilidad: encapsular comportamiento propio del modulo y mantenerlo fuera de controllers u otras capas.
+ * Colabora con: objectMapper, appZoneId, refundDateFormatter.
+ * Foco funcional: notificaciones, billing, clientes.
+ */
 @Component
 public class ClientBillingNotificationCommandFactory {
 
@@ -72,6 +78,9 @@ public class ClientBillingNotificationCommandFactory {
         );
     }
 
+    /**
+     * Construye pago failed a partir de datos internos ya validados.
+     */
     public NotificationRecordCommand buildPaymentFailed(
         Booking booking,
         PaymentTransaction transaction,
@@ -101,6 +110,9 @@ public class ClientBillingNotificationCommandFactory {
         );
     }
 
+    /**
+     * Construye pago refunded a partir de datos internos ya validados.
+     */
     public NotificationRecordCommand buildPaymentRefunded(
         Booking booking,
         PaymentTransaction transaction,
@@ -137,6 +149,9 @@ public class ClientBillingNotificationCommandFactory {
         );
     }
 
+    /**
+     * Construye pago reembolso pending a partir de datos internos ya validados.
+     */
     public NotificationRecordCommand buildPaymentRefundPending(
         Booking booking,
         PaymentTransaction transaction,
@@ -167,6 +182,9 @@ public class ClientBillingNotificationCommandFactory {
         );
     }
 
+    /**
+     * Construye command a partir de datos internos ya validados.
+     */
     private NotificationRecordCommand buildCommand(
         NotificationEventType eventType,
         Booking booking,
@@ -198,6 +216,9 @@ public class ClientBillingNotificationCommandFactory {
         );
     }
 
+    /**
+     * Construye payload compartidos por varias consultas del componente.
+     */
     private Map<String, Object> basePayload(
         Booking booking,
         PaymentTransaction transaction,
@@ -225,6 +246,9 @@ public class ClientBillingNotificationCommandFactory {
         return payload;
     }
 
+    /**
+     * Ejecuta la logica de enrich reembolso timing payload manteniendola encapsulada en este componente.
+     */
     private void enrichRefundTimingPayload(
         Map<String, Object> payload,
         PaymentTransaction transaction,
@@ -237,6 +261,9 @@ public class ClientBillingNotificationCommandFactory {
         }
     }
 
+    /**
+     * Construye reembolso timing details a partir de datos internos ya validados.
+     */
     private RefundTimingDetails buildRefundTimingDetails(PaymentTransaction transaction, ParsedWebhookEvent event) {
         String paymentTypeId = firstPresent(
             extractPayloadValue(transaction == null ? null : transaction.getPayloadJson(), "paymentTypeId", "payment_type_id"),
@@ -279,6 +306,9 @@ public class ClientBillingNotificationCommandFactory {
         );
     }
 
+    /**
+     * Resuelve reembolso reference fecha normalizando entradas, defaults y casos borde.
+     */
     private LocalDate resolveRefundReferenceDate(PaymentTransaction transaction, ParsedWebhookEvent event) {
         LocalDateTime reference = event == null ? null : event.eventTime();
         if (reference == null && transaction != null) {
@@ -294,6 +324,9 @@ public class ClientBillingNotificationCommandFactory {
         return reference.toLocalDate();
     }
 
+    /**
+     * Agrega business dias validando que no duplique ni rompa reglas del dominio.
+     */
     private LocalDate addBusinessDays(LocalDate baseDate, int businessDays) {
         LocalDate current = baseDate;
         int remaining = Math.max(0, businessDays);
@@ -307,10 +340,16 @@ public class ClientBillingNotificationCommandFactory {
         return current;
     }
 
+    /**
+     * Ejecuta la logica de format reembolso fecha manteniendola encapsulada en este componente.
+     */
     private String formatRefundDate(LocalDate date) {
         return date.format(refundDateFormatter);
     }
 
+    /**
+     * Ejecuta la logica de pago method label manteniendola encapsulada en este componente.
+     */
     private String paymentMethodLabel(String paymentTypeId, String paymentMethodId) {
         String brandLabel = cardBrandLabel(paymentMethodId);
         return switch (safeLower(paymentTypeId)) {
@@ -322,6 +361,9 @@ public class ClientBillingNotificationCommandFactory {
         };
     }
 
+    /**
+     * Ejecuta la logica de generic card label manteniendola encapsulada en este componente.
+     */
     private String genericCardLabel(String paymentTypeId) {
         return switch (safeLower(paymentTypeId)) {
             case "debit_card" -> "Tarjeta de débito";
@@ -331,6 +373,9 @@ public class ClientBillingNotificationCommandFactory {
         };
     }
 
+    /**
+     * Ejecuta la logica de card brand label manteniendola encapsulada en este componente.
+     */
     private String cardBrandLabel(String paymentMethodId) {
         if (paymentMethodId == null || paymentMethodId.isBlank()) {
             return null;
@@ -348,6 +393,9 @@ public class ClientBillingNotificationCommandFactory {
         };
     }
 
+    /**
+     * Extrae payload value desde una URL, payload o referencia persistida.
+     */
     private String extractPayloadValue(String payloadJson, String... fieldNames) {
         if (payloadJson == null || payloadJson.isBlank() || fieldNames == null) {
             return null;
@@ -372,6 +420,9 @@ public class ClientBillingNotificationCommandFactory {
         return null;
     }
 
+    /**
+     * Obtiene el primer valor util de present ignorando nulos o blancos.
+     */
     private String firstPresent(String... values) {
         if (values == null) {
             return null;
@@ -384,6 +435,9 @@ public class ClientBillingNotificationCommandFactory {
         return null;
     }
 
+    /**
+     * Obtiene el primer valor util de non null ignorando nulos o blancos.
+     */
     private LocalDateTime firstNonNull(LocalDateTime... values) {
         if (values == null) {
             return null;
@@ -396,6 +450,9 @@ public class ClientBillingNotificationCommandFactory {
         return null;
     }
 
+    /**
+     * Ejecuta la logica de title case manteniendola encapsulada en este componente.
+     */
     private String titleCase(String value) {
         if (value == null || value.isBlank()) {
             return null;
@@ -417,13 +474,23 @@ public class ClientBillingNotificationCommandFactory {
         return builder.toString();
     }
 
+    /**
+     * Ejecuta limite inferior atrapando errores para que el flujo principal no falle innecesariamente.
+     */
     private String safeLower(String value) {
         return value == null ? null : value.toLowerCase(Locale.ROOT);
     }
 
+    /**
+     * Bloque de datos refund timing details usado internamente por esta clase.
+     * Agrupa valores relacionados para que el calculo principal sea mas legible.
+     */
     private record RefundTimingDetails(String paymentMethodLabel, String timingHint) {
     }
 
+    /**
+     * Ejecuta la logica de email projection manteniendola encapsulada en este componente.
+     */
     private NotificationEmailProjectionCommand emailProjection(
         ClientNotificationRecipient recipient,
         String templateKey,
@@ -436,6 +503,9 @@ public class ClientBillingNotificationCommandFactory {
         return new NotificationEmailProjectionCommand(recipient.email(), templateKey, subject, payload);
     }
 
+    /**
+     * Ejecuta la logica de dedupe clave manteniendola encapsulada en este componente.
+     */
     private String dedupeKey(
         NotificationEventType eventType,
         Booking booking,
@@ -460,6 +530,9 @@ public class ClientBillingNotificationCommandFactory {
         return dedupeKey.toString();
     }
 
+    /**
+     * Resuelve aggregate ID normalizando entradas, defaults y casos borde.
+     */
     private String resolveAggregateId(Booking booking, PaymentTransaction transaction) {
         String aggregateId = firstNonBlank(
             transaction == null ? null : transaction.getId(),
@@ -471,6 +544,9 @@ public class ClientBillingNotificationCommandFactory {
         return booking == null || booking.getId() == null ? "unknown" : "booking-" + booking.getId();
     }
 
+    /**
+     * Resuelve reserva reference ID normalizando entradas, defaults y casos borde.
+     */
     private Long resolveBookingReferenceId(Booking booking, ParsedWebhookEvent event) {
         if (booking != null && booking.getId() != null) {
             return booking.getId();
@@ -478,6 +554,9 @@ public class ClientBillingNotificationCommandFactory {
         return event == null ? null : event.bookingId();
     }
 
+    /**
+     * Resuelve occurred at normalizando entradas, defaults y casos borde.
+     */
     private LocalDateTime resolveOccurredAt(
         NotificationEventType eventType,
         PaymentTransaction transaction,
@@ -502,10 +581,16 @@ public class ClientBillingNotificationCommandFactory {
         return transaction.getUpdatedAt() == null ? transaction.getCreatedAt() : transaction.getUpdatedAt();
     }
 
+    /**
+     * Ejecuta la logica de action URL manteniendola encapsulada en este componente.
+     */
     private String actionUrl(Booking booking) {
         return booking == null || booking.getId() == null ? null : "/cliente/reservas?bookingId=" + booking.getId();
     }
 
+    /**
+     * Ejecuta la logica de servicio label manteniendola encapsulada en este componente.
+     */
     private String serviceLabel(Booking booking) {
         if (booking == null || booking.getServiceNameSnapshot() == null || booking.getServiceNameSnapshot().isBlank()) {
             return "tu reserva";
@@ -513,6 +598,9 @@ public class ClientBillingNotificationCommandFactory {
         return booking.getServiceNameSnapshot().trim();
     }
 
+    /**
+     * Obtiene el primer valor util de non blank ignorando nulos o blancos.
+     */
     private String firstNonBlank(String... values) {
         for (String value : values) {
             if (value != null && !value.isBlank()) {

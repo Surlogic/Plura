@@ -18,6 +18,12 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+/**
+ * ClientBookingReviewController es un controlador REST del modulo resenas / controladores.
+ * Responsabilidad: recibir requests HTTP, validar acceso basico y delegar la operacion al servicio de aplicacion o dominio.
+ * Superficie HTTP: atiende rutas bajo /cliente/reservas y deja la logica pesada en servicios.
+ * Foco funcional: reservas, clientes, resenas.
+ */
 @RestController
 @RequestMapping("/cliente/reservas")
 public class ClientBookingReviewController {
@@ -36,12 +42,19 @@ public class ClientBookingReviewController {
         this.currentActorService = currentActorService;
     }
 
+    /**
+     * Verifica eligibility y devuelve el resultado de la validacion.
+     */
     @GetMapping("/{bookingId}/review-eligibility")
     public ReviewEligibilityResponse checkEligibility(@PathVariable Long bookingId) {
         Long clientUserId = currentActorService.currentClientUserId();
         return bookingReviewEligibilityService.checkEligibility(bookingId, clientUserId);
     }
 
+    /**
+     * Endpoint POST /{bookingId}/review: Crea resena validando datos de entrada y persistiendo el resultado.
+     * Valida parametros/autorizacion de entrada y delega la logica de negocio al servicio correspondiente.
+     */
     @PostMapping("/{bookingId}/review")
     public ResponseEntity<BookingReviewResponse> createReview(
         @PathVariable Long bookingId,
@@ -52,6 +65,10 @@ public class ClientBookingReviewController {
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
+    /**
+     * Endpoint DELETE /{bookingId}/review: Elimina resena y limpia relaciones o datos derivados cuando corresponde.
+     * Valida parametros/autorizacion de entrada y delega la logica de negocio al servicio correspondiente.
+     */
     @DeleteMapping("/{bookingId}/review")
     public ResponseEntity<Void> deleteReview(@PathVariable Long bookingId) {
         Long clientUserId = currentActorService.currentClientUserId();

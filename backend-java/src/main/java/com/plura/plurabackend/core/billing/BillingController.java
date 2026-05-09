@@ -32,10 +32,8 @@ public class BillingController {
     }
 
     /**
-     * Crea una nueva suscripción para el profesional autenticado.
-     *
-     * @param request datos de la suscripción incluyendo el código del plan
-     * @return respuesta con la URL de checkout y datos de la suscripción creada
+     * Endpoint POST /subscription: Crea subscription validando datos de entrada y persistiendo el resultado.
+     * Valida parametros/autorizacion de entrada y delega la logica de negocio al servicio correspondiente.
      */
     @PostMapping("/subscription")
     public BillingCheckoutResponse createSubscription(

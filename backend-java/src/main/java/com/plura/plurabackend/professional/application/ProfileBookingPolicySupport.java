@@ -13,6 +13,12 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 import org.springframework.web.server.ResponseStatusException;
 
+/**
+ * ProfileBookingPolicySupport es un componente de dominio del modulo profesionales / aplicacion.
+ * Responsabilidad: encapsular comportamiento propio del modulo y mantenerlo fuera de controllers u otras capas.
+ * Colabora con: bookingPolicyRepository.
+ * Foco funcional: reservas, perfiles.
+ */
 @Component
 public class ProfileBookingPolicySupport {
 
@@ -29,6 +35,10 @@ public class ProfileBookingPolicySupport {
         );
     }
 
+    /**
+     * Actualiza politica manteniendo reglas de negocio y consistencia de datos.
+     * Tambien concentra los efectos secundarios para que el flujo quede en un estado consistente.
+     */
     public BookingPolicyResponse updatePolicy(ProfessionalProfile profile, BookingPolicyUpdateRequest request) {
         if (request == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Payload inválido");
@@ -77,11 +87,17 @@ public class ProfileBookingPolicySupport {
         return toBookingPolicyResponse(bookingPolicyRepository.save(policy));
     }
 
+    /**
+     * Resuelve or create reserva politica normalizando entradas, defaults y casos borde.
+     */
     private BookingPolicy resolveOrCreateBookingPolicy(ProfessionalProfile profile) {
         return bookingPolicyRepository.findByProfessionalId(profile.getId())
             .orElseGet(() -> bookingPolicyRepository.save(defaultBookingPolicy(profile)));
     }
 
+    /**
+     * Ejecuta la logica de default reserva politica manteniendola encapsulada en este componente.
+     */
     private BookingPolicy defaultBookingPolicy(ProfessionalProfile profile) {
         BookingPolicy policy = new BookingPolicy();
         policy.setProfessionalId(profile.getId());
@@ -94,6 +110,9 @@ public class ProfileBookingPolicySupport {
         return policy;
     }
 
+    /**
+     * Convierte datos internos al formato reserva politica respuesta esperado por el consumidor.
+     */
     private BookingPolicyResponse toBookingPolicyResponse(BookingPolicy policy) {
         return new BookingPolicyResponse(
             policy.getId(),

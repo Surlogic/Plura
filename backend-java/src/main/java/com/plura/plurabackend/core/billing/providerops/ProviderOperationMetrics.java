@@ -16,6 +16,12 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
+/**
+ * ProviderOperationMetrics es un componente de dominio del modulo billing / operaciones de proveedor.
+ * Responsabilidad: encapsular comportamiento propio del modulo y mantenerlo fuera de controllers u otras capas.
+ * Colabora con: providerOperationRepository, thresholds, meterRegistry.
+ * Foco funcional: operaciones asincronicas, proveedores externos.
+ */
 @Component
 public class ProviderOperationMetrics {
 
@@ -61,6 +67,9 @@ public class ProviderOperationMetrics {
         refreshGauges();
     }
 
+    /**
+     * Refresca gauges para mantener datos derivados o metricas al dia.
+     */
     @Scheduled(fixedDelayString = "${app.billing.provider-operation-alerts.metrics-refresh-millis:30000}")
     @Transactional(readOnly = true)
     public void refreshGauges() {
@@ -105,6 +114,10 @@ public class ProviderOperationMetrics {
         }
     }
 
+    /**
+     * Registra alert gauge y aplica las validaciones de alta correspondientes.
+     * Tambien concentra los efectos secundarios para que el flujo quede en un estado consistente.
+     */
     private void registerAlertGauge(String alertName, long thresholdValue) {
         AtomicLong countGauge = new AtomicLong(0L);
         AtomicLong triggeredGauge = new AtomicLong(0L);
@@ -133,6 +146,9 @@ public class ProviderOperationMetrics {
         alertThresholdValues.get(alertName).set(thresholdValue);
     }
 
+    /**
+     * Resuelve oldest age seconds normalizando entradas, defaults y casos borde.
+     */
     private long resolveOldestAgeSeconds(ProviderOperationStatus status, LocalDateTime now) {
         LocalDateTime oldestUpdatedAt = providerOperationRepository.findOldestUpdatedAtByStatus(status);
         if (oldestUpdatedAt == null) {

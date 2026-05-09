@@ -13,6 +13,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
+/**
+ * ServiceImageStorageService es un servicio de negocio del modulo profesionales / servicios.
+ * Responsabilidad: coordinar reglas de negocio, validaciones, persistencia e integraciones del caso de uso.
+ * Colabora con: imageStorageService.
+ * Foco funcional: storage de archivos, servicios, imagenes.
+ */
 @Service
 public class ServiceImageStorageService {
 
@@ -29,10 +35,16 @@ public class ServiceImageStorageService {
         this.imageStorageService = imageStorageService;
     }
 
+    /**
+     * Almacena servicio imagen validando contenido, nombre y destino.
+     */
     public String storeServiceImage(MultipartFile file) {
         return storeProfessionalImage(file, "services", null);
     }
 
+    /**
+     * Almacena profesional imagen validando contenido, nombre y destino.
+     */
     public String storeProfessionalImage(MultipartFile file, String kind, String professionalId) {
         if (file == null || file.isEmpty()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "La imagen es obligatoria");
@@ -72,6 +84,9 @@ public class ServiceImageStorageService {
         }
     }
 
+    /**
+     * Lee imagen bytes desde la fuente persistida y aplica defaults si faltan datos.
+     */
     private byte[] readImageBytes(MultipartFile file) {
         try {
             return file.getBytes();
@@ -80,6 +95,9 @@ public class ServiceImageStorageService {
         }
     }
 
+    /**
+     * Evalua is valido imagen y devuelve una decision booleana para el llamador.
+     */
     private boolean isValidImage(byte[] imageBytes) {
         try (ByteArrayInputStream inputStream = new ByteArrayInputStream(imageBytes)) {
             BufferedImage image = ImageIO.read(inputStream);
@@ -89,6 +107,9 @@ public class ServiceImageStorageService {
         }
     }
 
+    /**
+     * Resuelve extension normalizando entradas, defaults y casos borde.
+     */
     private String resolveExtension(String contentType) {
         return switch (contentType) {
             case "image/png" -> ".png";
@@ -97,6 +118,9 @@ public class ServiceImageStorageService {
         };
     }
 
+    /**
+     * Sanea tipo antes de usarlo en storage, URL o persistencia.
+     */
     private String sanitizeKind(String kind) {
         if (kind == null || kind.isBlank()) {
             return "misc";
@@ -108,6 +132,9 @@ public class ServiceImageStorageService {
             .replaceAll("/+", "/");
     }
 
+    /**
+     * Sanea profesional ID antes de usarlo en storage, URL o persistencia.
+     */
     private String sanitizeProfessionalId(String professionalId) {
         if (professionalId == null || professionalId.isBlank()) {
             return "";

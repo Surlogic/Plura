@@ -23,6 +23,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+/**
+ * ProfessionalWorkerInvitationService es un servicio de negocio del modulo profesionales / trabajadores.
+ * Responsabilidad: coordinar reglas de negocio, validaciones, persistencia e integraciones del caso de uso.
+ * Colabora con: workerRepository, userRepository, passwordPolicyService, passwordEncoder, entre otros.
+ * Foco funcional: profesionales, servicios, trabajadores.
+ */
 @Service
 public class ProfessionalWorkerInvitationService {
 
@@ -46,6 +52,9 @@ public class ProfessionalWorkerInvitationService {
         this.sideEffectCoordinator = sideEffectCoordinator;
     }
 
+    /**
+     * Busca informacion publica o pendiente sin modificar estado.
+     */
     @Transactional(readOnly = true)
     public ProfessionalWorkerInvitationLookupResponse lookup(String rawToken) {
         ProfessionalWorker worker = loadPendingInvitation(rawToken);
@@ -61,6 +70,9 @@ public class ProfessionalWorkerInvitationService {
         );
     }
 
+    /**
+     * Acepta la invitacion o accion pendiente y persiste el resultado.
+     */
     @Transactional
     public ProfessionalWorkerInvitationAcceptResponse accept(ProfessionalWorkerInvitationAcceptRequest request) {
         if (request == null || request.getToken() == null || request.getToken().isBlank()) {
@@ -93,6 +105,10 @@ public class ProfessionalWorkerInvitationService {
         );
     }
 
+    /**
+     * Carga la seccion pending invitation desde base de datos o datos agregados y la deja lista para la respuesta.
+     * Mantiene la consulta encapsulada para que el resto del codigo no repita filtros ni joins.
+     */
     private ProfessionalWorker loadPendingInvitation(String rawToken) {
         String token = rawToken == null ? "" : rawToken.trim();
         if (token.isBlank()) {
@@ -109,6 +125,10 @@ public class ProfessionalWorkerInvitationService {
         return worker;
     }
 
+    /**
+     * Crea usuario for trabajador validando datos de entrada y persistiendo el resultado.
+     * Tambien concentra los efectos secundarios para que el flujo quede en un estado consistente.
+     */
     private User createUserForWorker(ProfessionalWorker worker, ProfessionalWorkerInvitationAcceptRequest request) {
         String fullName = normalizeRequired(request.getFullName(), "Nombre invÃ¡lido");
         String phoneNumber = normalizeRequired(request.getPhoneNumber(), "TelÃ©fono invÃ¡lido");
@@ -127,6 +147,9 @@ public class ProfessionalWorkerInvitationService {
         }
     }
 
+    /**
+     * Normaliza obligatorio para evitar variantes vacias, invalidas o inconsistentes.
+     */
     private String normalizeRequired(String rawValue, String message) {
         if (rawValue == null || rawValue.trim().isBlank()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, message);
@@ -134,6 +157,9 @@ public class ProfessionalWorkerInvitationService {
         return rawValue.trim();
     }
 
+    /**
+     * Resuelve profesional name normalizando entradas, defaults y casos borde.
+     */
     private String resolveProfessionalName(ProfessionalProfile profile) {
         if (profile == null) {
             return "Plura";
@@ -147,6 +173,9 @@ public class ProfessionalWorkerInvitationService {
         return "Plura";
     }
 
+    /**
+     * Evalua hash token y devuelve una decision booleana para el llamador.
+     */
     private String hashToken(String rawToken) {
         try {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");

@@ -45,6 +45,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+/**
+ * ProfessionalTeamService es un servicio de negocio del modulo profesionales / trabajadores.
+ * Responsabilidad: coordinar reglas de negocio, validaciones, persistencia e integraciones del caso de uso.
+ * Colabora con: professionalAccessSupport, workerRepository, assignmentRepository, profesionalServiceRepository, entre otros.
+ * Foco funcional: profesionales, servicios.
+ */
 @Service
 public class ProfessionalTeamService {
 
@@ -89,6 +95,9 @@ public class ProfessionalTeamService {
         this.publicWebUrl = publicWebUrl;
     }
 
+    /**
+     * Devuelve el listado de trabajadores aplicando permisos y filtros del caso de uso.
+     */
     @Transactional(readOnly = true)
     public List<ProfessionalWorkerResponse> listWorkers(String rawUserId) {
         ProfessionalProfile profile = professionalAccessSupport.loadProfessionalByUserId(rawUserId);
@@ -111,6 +120,9 @@ public class ProfessionalTeamService {
             .toList();
     }
 
+    /**
+     * Ejecuta la logica de invitacion trabajador manteniendola encapsulada en este componente.
+     */
     @Transactional
     public ProfessionalWorkerInvitationResponse inviteWorker(
         String rawUserId,
@@ -155,6 +167,10 @@ public class ProfessionalTeamService {
         );
     }
 
+    /**
+     * Actualiza trabajador manteniendo reglas de negocio y consistencia de datos.
+     * Tambien concentra los efectos secundarios para que el flujo quede en un estado consistente.
+     */
     @Transactional
     public ProfessionalWorkerResponse updateWorker(
         String rawUserId,
@@ -188,6 +204,10 @@ public class ProfessionalTeamService {
         return readStoredSchedule(worker.getScheduleJson());
     }
 
+    /**
+     * Actualiza trabajador agenda manteniendo reglas de negocio y consistencia de datos.
+     * Tambien concentra los efectos secundarios para que el flujo quede en un estado consistente.
+     */
     @Transactional
     public ProfessionalWorkerResponse updateWorkerSchedule(
         String rawUserId,
@@ -204,6 +224,10 @@ public class ProfessionalTeamService {
         return toResponse(saved, activeServiceIds(saved.getId()));
     }
 
+    /**
+     * Actualiza trabajador servicios manteniendo reglas de negocio y consistencia de datos.
+     * Tambien concentra los efectos secundarios para que el flujo quede en un estado consistente.
+     */
     @Transactional
     public ProfessionalWorkerResponse updateWorkerServices(
         String rawUserId,
@@ -218,6 +242,9 @@ public class ProfessionalTeamService {
         return toResponse(worker, normalizeServiceIds(serviceIds));
     }
 
+    /**
+     * Aplica estado change sobre el modelo actual manteniendo consistencia.
+     */
     private void applyStatusChange(
         String rawUserId,
         ProfessionalProfile profile,
@@ -252,6 +279,9 @@ public class ProfessionalTeamService {
         }
     }
 
+    /**
+     * Ejecuta la logica de replace trabajador servicios manteniendola encapsulada en este componente.
+     */
     private void replaceWorkerServices(
         ProfessionalProfile profile,
         ProfessionalWorker worker,
@@ -294,6 +324,10 @@ public class ProfessionalTeamService {
         }
     }
 
+    /**
+     * Carga la seccion owned servicios desde base de datos o datos agregados y la deja lista para la respuesta.
+     * Mantiene la consulta encapsulada para que el resto del codigo no repita filtros ni joins.
+     */
     private Map<String, ProfesionalService> loadOwnedServices(Long professionalId, List<String> serviceIds) {
         if (serviceIds.isEmpty()) {
             return Map.of();
@@ -316,6 +350,10 @@ public class ProfessionalTeamService {
         return servicesById;
     }
 
+    /**
+     * Carga la seccion trabajador desde base de datos o datos agregados y la deja lista para la respuesta.
+     * Mantiene la consulta encapsulada para que el resto del codigo no repita filtros ni joins.
+     */
     private ProfessionalWorker loadWorker(ProfessionalProfile profile, Long workerId) {
         if (workerId == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Trabajador invÃ¡lido");
@@ -328,6 +366,9 @@ public class ProfessionalTeamService {
         return worker;
     }
 
+    /**
+     * Ejecuta la logica de activos servicio IDs manteniendola encapsulada en este componente.
+     */
     private List<String> activeServiceIds(Long workerId) {
         return assignmentRepository.findByWorker_IdAndActiveTrue(workerId)
             .stream()
@@ -336,6 +377,9 @@ public class ProfessionalTeamService {
             .toList();
     }
 
+    /**
+     * Convierte datos internos al formato respuesta esperado por el consumidor.
+     */
     private ProfessionalWorkerResponse toResponse(ProfessionalWorker worker, List<String> serviceIds) {
         return new ProfessionalWorkerResponse(
             worker.getId() == null ? null : String.valueOf(worker.getId()),
@@ -355,6 +399,9 @@ public class ProfessionalTeamService {
         );
     }
 
+    /**
+     * Normaliza agenda or default para evitar variantes vacias, invalidas o inconsistentes.
+     */
     private ProfesionalScheduleDto normalizeScheduleOrDefault(
         ProfesionalScheduleDto request,
         String fallbackScheduleJson
@@ -365,6 +412,9 @@ public class ProfessionalTeamService {
         return readStoredSchedule(fallbackScheduleJson);
     }
 
+    /**
+     * Normaliza agenda para evitar variantes vacias, invalidas o inconsistentes.
+     */
     private ProfesionalScheduleDto normalizeSchedule(ProfesionalScheduleDto request) {
         ProfessionalScheduleSupport.validateSchedule(request, this::validateSlotDuration);
         return ProfessionalScheduleSupport.normalizeSchedule(
@@ -374,6 +424,9 @@ public class ProfessionalTeamService {
         );
     }
 
+    /**
+     * Lee guardada agenda desde la fuente persistida y aplica defaults si faltan datos.
+     */
     private ProfesionalScheduleDto readStoredSchedule(String rawScheduleJson) {
         return ProfessionalScheduleSupport.readStoredSchedule(
             objectMapper,
@@ -383,6 +436,9 @@ public class ProfessionalTeamService {
         );
     }
 
+    /**
+     * Guarda agenda en el formato persistido esperado por el modulo.
+     */
     private String writeSchedule(ProfesionalScheduleDto schedule) {
         try {
             return objectMapper.writeValueAsString(schedule);
@@ -391,6 +447,10 @@ public class ProfessionalTeamService {
         }
     }
 
+    /**
+     * Valida slot duration y lanza un error controlado si no cumple el contrato.
+     * Esta separacion hace explicita la regla de seguridad o negocio que protege el flujo.
+     */
     private void validateSlotDuration(Integer value) {
         if (value == null || !ALLOWED_SLOT_DURATIONS.contains(value)) {
             throw new ResponseStatusException(
@@ -400,6 +460,9 @@ public class ProfessionalTeamService {
         }
     }
 
+    /**
+     * Normaliza slot duracion or default para evitar variantes vacias, invalidas o inconsistentes.
+     */
     private int normalizeSlotDurationOrDefault(Integer value) {
         if (value == null || !ALLOWED_SLOT_DURATIONS.contains(value)) {
             return DEFAULT_SLOT_DURATION_MINUTES;
@@ -407,6 +470,9 @@ public class ProfessionalTeamService {
         return value;
     }
 
+    /**
+     * Envia invitation email mediante el canal configurado.
+     */
     private TransactionalEmailService.DeliveryStatus sendInvitationEmail(
         ProfessionalProfile profile,
         ProfessionalWorker worker,
@@ -435,6 +501,9 @@ public class ProfessionalTeamService {
         ));
     }
 
+    /**
+     * Normaliza d publico web URL para evitar variantes vacias, invalidas o inconsistentes.
+     */
     private String normalizedPublicWebUrl() {
         String normalized = publicWebUrl == null || publicWebUrl.isBlank()
             ? "http://localhost:3002"
@@ -445,6 +514,9 @@ public class ProfessionalTeamService {
         return normalized;
     }
 
+    /**
+     * Normaliza email para evitar variantes vacias, invalidas o inconsistentes.
+     */
     private String normalizeEmail(String rawEmail) {
         if (rawEmail == null || rawEmail.isBlank()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Email invÃ¡lido");
@@ -452,6 +524,9 @@ public class ProfessionalTeamService {
         return rawEmail.trim().toLowerCase(Locale.ROOT);
     }
 
+    /**
+     * Resuelve display name normalizando entradas, defaults y casos borde.
+     */
     private String resolveDisplayName(String rawDisplayName, String email) {
         String displayName = normalizeDisplayName(rawDisplayName);
         if (displayName != null) {
@@ -461,6 +536,9 @@ public class ProfessionalTeamService {
         return atIndex > 0 ? email.substring(0, atIndex) : "Trabajador";
     }
 
+    /**
+     * Normaliza visible nombre para evitar variantes vacias, invalidas o inconsistentes.
+     */
     private String normalizeDisplayName(String rawDisplayName) {
         if (rawDisplayName == null) {
             return null;
@@ -469,6 +547,9 @@ public class ProfessionalTeamService {
         return displayName.isBlank() ? null : displayName;
     }
 
+    /**
+     * Normaliza servicio IDs para evitar variantes vacias, invalidas o inconsistentes.
+     */
     private List<String> normalizeServiceIds(List<String> rawServiceIds) {
         if (rawServiceIds == null || rawServiceIds.isEmpty()) {
             return List.of();
@@ -481,12 +562,18 @@ public class ProfessionalTeamService {
             .toList();
     }
 
+    /**
+     * Genera invitacion token con formato estable para uso interno o externo.
+     */
     private String generateInviteToken() {
         byte[] randomBytes = new byte[48];
         SECURE_RANDOM.nextBytes(randomBytes);
         return Base64.getUrlEncoder().withoutPadding().encodeToString(randomBytes);
     }
 
+    /**
+     * Evalua hash token y devuelve una decision booleana para el llamador.
+     */
     private String hashToken(String rawToken) {
         try {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
@@ -501,6 +588,9 @@ public class ProfessionalTeamService {
         }
     }
 
+    /**
+     * Escapa HTML para evitar HTML invalido o inyeccion en templates.
+     */
     private String escapeHtml(String value) {
         if (value == null) {
             return "";

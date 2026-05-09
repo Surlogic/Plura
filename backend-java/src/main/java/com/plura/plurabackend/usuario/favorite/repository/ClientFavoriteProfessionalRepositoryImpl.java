@@ -6,6 +6,12 @@ import com.plura.plurabackend.usuario.favorite.model.ClientFavoriteProfessional;
 import jakarta.persistence.EntityManager;
 import org.springframework.stereotype.Repository;
 
+/**
+ * ClientFavoriteProfessionalRepositoryImpl es un componente de dominio del modulo cliente / favoritos / persistencia.
+ * Responsabilidad: encapsular comportamiento propio del modulo y mantenerlo fuera de controllers u otras capas.
+ * Persistencia: concentra queries derivadas o JPQL para que los servicios no conozcan SQL/joins.
+ * Foco funcional: profesionales, favoritos, clientes.
+ */
 @Repository
 public class ClientFavoriteProfessionalRepositoryImpl implements ClientFavoriteProfessionalRepositoryCustom {
 
@@ -15,6 +21,9 @@ public class ClientFavoriteProfessionalRepositoryImpl implements ClientFavoriteP
         this.entityManager = entityManager;
     }
 
+    /**
+     * Ejecuta la logica de save reference manteniendola encapsulada en este componente.
+     */
     @Override
     public ClientFavoriteProfessional saveReference(User clientUser, Long professionalId) {
         ClientFavoriteProfessional favorite = new ClientFavoriteProfessional();

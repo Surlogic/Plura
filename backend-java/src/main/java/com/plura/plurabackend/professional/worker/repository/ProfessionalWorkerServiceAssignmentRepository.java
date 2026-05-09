@@ -6,6 +6,12 @@ import java.util.List;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 
+/**
+ * ProfessionalWorkerServiceAssignmentRepository es un contrato interno del modulo profesionales / trabajadores / persistencia.
+ * Responsabilidad: definir una frontera estable para que otros modulos no dependan de detalles concretos.
+ * Persistencia: concentra queries derivadas o JPQL para que los servicios no conozcan SQL/joins.
+ * Foco funcional: profesionales, servicios, trabajadores.
+ */
 public interface ProfessionalWorkerServiceAssignmentRepository
     extends JpaRepository<ProfessionalWorkerServiceAssignment, Long> {
 

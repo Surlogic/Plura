@@ -17,6 +17,12 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+/**
+ * BookingPolicy es un entidad JPA del modulo reservas / politicas / modelo.
+ * Responsabilidad: representar una tabla del dominio, sus columnas y los defaults necesarios antes de persistir.
+ * Persistencia: sus campos reflejan columnas reales; cambiar nombres o tipos puede requerir migracion Flyway.
+ * Foco funcional: reservas.
+ */
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -101,6 +107,9 @@ public class BookingPolicy {
         }
     }
 
+    /**
+     * Actualiza valores derivados antes de guardar cambios en la entidad.
+     */
     @PreUpdate
     void onUpdate() {
         if (this.lateCancellationRefundMode == null) {
@@ -119,6 +128,9 @@ public class BookingPolicy {
             : BookingPolicyDefaults.DEFAULT_LATE_CANCELLATION_REFUND_MODE;
     }
 
+    /**
+     * Ejecuta la logica de default late cancellation value manteniendola encapsulada en este componente.
+     */
     private BigDecimal defaultLateCancellationValue(LateCancellationRefundMode mode) {
         if (mode == LateCancellationRefundMode.NONE) {
             return BigDecimal.ZERO;

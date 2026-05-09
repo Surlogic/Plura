@@ -10,6 +10,12 @@ import java.util.Optional;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+/**
+ * InMemoryProfileCacheService es un servicio de negocio del modulo cache.
+ * Responsabilidad: coordinar reglas de negocio, validaciones, persistencia e integraciones del caso de uso.
+ * Mantiene separada esta responsabilidad para que el resto del backend use una API clara.
+ * Foco funcional: perfiles, servicios, cache.
+ */
 @Service
 public class InMemoryProfileCacheService implements ProfileCacheService {
 
@@ -41,6 +47,9 @@ public class InMemoryProfileCacheService implements ProfileCacheService {
         return Optional.ofNullable(pageCache.getIfPresent(slug));
     }
 
+    /**
+     * Ejecuta la logica de put publico pagina by slug manteniendola encapsulada en este componente.
+     */
     @Override
     public void putPublicPageBySlug(String slug, ProfesionalPublicPageResponse response) {
         if (slug == null || slug.isBlank() || response == null) {
@@ -57,6 +66,9 @@ public class InMemoryProfileCacheService implements ProfileCacheService {
         return Optional.ofNullable(summaryCache.getIfPresent(key));
     }
 
+    /**
+     * Ejecuta la logica de put publico summaries manteniendola encapsulada en este componente.
+     */
     @Override
     public void putPublicSummaries(String key, List<ProfesionalPublicSummaryResponse> response) {
         if (key == null || key.isBlank() || response == null) {
@@ -65,6 +77,9 @@ public class InMemoryProfileCacheService implements ProfileCacheService {
         summaryCache.put(key, List.copyOf(response));
     }
 
+    /**
+     * Ejecuta la logica de evict publico pagina by slug manteniendola encapsulada en este componente.
+     */
     @Override
     public void evictPublicPageBySlug(String slug) {
         if (slug == null || slug.isBlank()) {
@@ -73,6 +88,9 @@ public class InMemoryProfileCacheService implements ProfileCacheService {
         pageCache.invalidate(slug);
     }
 
+    /**
+     * Ejecuta la logica de evict publico summaries manteniendola encapsulada en este componente.
+     */
     @Override
     public void evictPublicSummaries() {
         summaryCache.invalidateAll();

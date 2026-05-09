@@ -10,6 +10,12 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
+/**
+ * AuthAbuseProtectionService es un servicio de negocio del modulo autenticacion / seguridad.
+ * Responsabilidad: coordinar reglas de negocio, validaciones, persistencia e integraciones del caso de uso.
+ * Colabora con: trustForwardedHeaders, loginWindowMillis, loginMaxFailures, loginBaseBlockSeconds, entre otros.
+ * Foco funcional: servicios, autenticacion y sesiones.
+ */
 @Service
 public class AuthAbuseProtectionService {
 
@@ -141,6 +147,10 @@ public class AuthAbuseProtectionService {
 
     // --- Login ---
 
+    /**
+     * Fuerza la regla login allowed antes de permitir que continue el flujo.
+     * Esta separacion hace explicita la regla de seguridad o negocio que protege el flujo.
+     */
     public void enforceLoginAllowed(String email, HttpServletRequest request) {
         String normalizedEmail = normalizeEmail(email);
         String ip = extractClientIp(request);
@@ -161,6 +171,9 @@ public class AuthAbuseProtectionService {
         }
     }
 
+    /**
+     * Registra login failure para auditoria, historial o notificaciones.
+     */
     public void recordLoginFailure(String email, HttpServletRequest request) {
         String normalizedEmail = normalizeEmail(email);
         String ip = extractClientIp(request);
@@ -170,6 +183,9 @@ public class AuthAbuseProtectionService {
         maybeCleanup(now);
     }
 
+    /**
+     * Registra login success para auditoria, historial o notificaciones.
+     */
     public void recordLoginSuccess(String email, HttpServletRequest request) {
         String normalizedEmail = normalizeEmail(email);
         String ip = extractClientIp(request);
@@ -179,6 +195,10 @@ public class AuthAbuseProtectionService {
 
     // --- Registration ---
 
+    /**
+     * Fuerza la regla registration allowed antes de permitir que continue el flujo.
+     * Esta separacion hace explicita la regla de seguridad o negocio que protege el flujo.
+     */
     public void enforceRegistrationAllowed(String email, HttpServletRequest request) {
         String normalizedEmail = normalizeEmail(email);
         String ip = extractClientIp(request);
@@ -203,6 +223,10 @@ public class AuthAbuseProtectionService {
 
     // --- Password Reset ---
 
+    /**
+     * Fuerza la regla contrasena reset allowed antes de permitir que continue el flujo.
+     * Esta separacion hace explicita la regla de seguridad o negocio que protege el flujo.
+     */
     public void enforcePasswordResetAllowed(String email, HttpServletRequest request) {
         String normalizedEmail = normalizeEmail(email);
         String ip = extractClientIp(request);
@@ -227,6 +251,10 @@ public class AuthAbuseProtectionService {
 
     // --- Email Verification Send ---
 
+    /**
+     * Fuerza la regla email verification send allowed antes de permitir que continue el flujo.
+     * Esta separacion hace explicita la regla de seguridad o negocio que protege el flujo.
+     */
     public void enforceEmailVerificationSendAllowed(String userId, HttpServletRequest request) {
         String ip = extractClientIp(request);
         long now = System.currentTimeMillis();
@@ -250,6 +278,10 @@ public class AuthAbuseProtectionService {
 
     // --- Email Verification Confirm ---
 
+    /**
+     * Fuerza la regla email verification confirm allowed antes de permitir que continue el flujo.
+     * Esta separacion hace explicita la regla de seguridad o negocio que protege el flujo.
+     */
     public void enforceEmailVerificationConfirmAllowed(String userId, HttpServletRequest request) {
         String ip = extractClientIp(request);
         long now = System.currentTimeMillis();
@@ -273,6 +305,10 @@ public class AuthAbuseProtectionService {
 
     // --- Phone Verification Send ---
 
+    /**
+     * Fuerza la regla telefono verification send allowed antes de permitir que continue el flujo.
+     * Esta separacion hace explicita la regla de seguridad o negocio que protege el flujo.
+     */
     public void enforcePhoneVerificationSendAllowed(String userId, HttpServletRequest request) {
         String ip = extractClientIp(request);
         long now = System.currentTimeMillis();
@@ -296,6 +332,10 @@ public class AuthAbuseProtectionService {
 
     // --- Phone Verification Confirm ---
 
+    /**
+     * Fuerza la regla telefono verification confirm allowed antes de permitir que continue el flujo.
+     * Esta separacion hace explicita la regla de seguridad o negocio que protege el flujo.
+     */
     public void enforcePhoneVerificationConfirmAllowed(String userId, HttpServletRequest request) {
         String ip = extractClientIp(request);
         long now = System.currentTimeMillis();
@@ -319,6 +359,10 @@ public class AuthAbuseProtectionService {
 
     // --- Challenge Send ---
 
+    /**
+     * Fuerza la regla challenge send allowed antes de permitir que continue el flujo.
+     * Esta separacion hace explicita la regla de seguridad o negocio que protege el flujo.
+     */
     public void enforceChallengeSendAllowed(String userId, HttpServletRequest request) {
         String ip = extractClientIp(request);
         long now = System.currentTimeMillis();
@@ -342,6 +386,10 @@ public class AuthAbuseProtectionService {
 
     // --- Challenge Verify ---
 
+    /**
+     * Fuerza la regla challenge verify allowed antes de permitir que continue el flujo.
+     * Esta separacion hace explicita la regla de seguridad o negocio que protege el flujo.
+     */
     public void enforceChallengeVerifyAllowed(String userId, HttpServletRequest request) {
         String ip = extractClientIp(request);
         long now = System.currentTimeMillis();
@@ -365,6 +413,10 @@ public class AuthAbuseProtectionService {
 
     // --- Refresh ---
 
+    /**
+     * Fuerza la regla refresh allowed antes de permitir que continue el flujo.
+     * Esta separacion hace explicita la regla de seguridad o negocio que protege el flujo.
+     */
     public void enforceRefreshAllowed(String userId, HttpServletRequest request) {
         String ip = extractClientIp(request);
         long now = System.currentTimeMillis();
@@ -390,6 +442,9 @@ public class AuthAbuseProtectionService {
 
     // --- Internal ---
 
+    /**
+     * Ejecuta la logica de blocked until manteniendola encapsulada en este componente.
+     */
     private long blockedUntil(String key, long now) {
         LoginAttemptState state = loginStates.get(key);
         if (state == null) {
@@ -402,6 +457,9 @@ public class AuthAbuseProtectionService {
         return state.blockedUntilMillis;
     }
 
+    /**
+     * Ejecuta la logica de increase failure manteniendola encapsulada en este componente.
+     */
     private void increaseFailure(String key, long now) {
         loginStates.compute(
             key,
@@ -426,6 +484,9 @@ public class AuthAbuseProtectionService {
         );
     }
 
+    /**
+     * Verifica ventana counter y devuelve el resultado de la validacion.
+     */
     private void checkWindowCounter(
         String key,
         int maxAttempts,
@@ -452,6 +513,9 @@ public class AuthAbuseProtectionService {
         );
     }
 
+    /**
+     * Ejecuta la logica de maybe cleanup manteniendola encapsulada en este componente.
+     */
     private void maybeCleanup(long now) {
         long current = operationCounter.incrementAndGet();
         if (current % CLEANUP_EVERY != 0) {
@@ -465,6 +529,9 @@ public class AuthAbuseProtectionService {
         );
     }
 
+    /**
+     * Normaliza email para evitar variantes vacias, invalidas o inconsistentes.
+     */
     private String normalizeEmail(String email) {
         if (email == null) {
             return "";
@@ -490,18 +557,35 @@ public class AuthAbuseProtectionService {
         return request.getRemoteAddr();
     }
 
+    /**
+     * Bloque de datos login attempt state usado internamente por esta clase.
+     * Agrupa valores relacionados para que el calculo principal sea mas legible.
+     */
     private record LoginAttemptState(long windowStartMillis, int failures, long blockedUntilMillis) {}
 
+    /**
+     * Bloque de datos window counter usado internamente por esta clase.
+     * Agrupa valores relacionados para que el calculo principal sea mas legible.
+     */
     private record WindowCounter(long windowStartMillis, int count) {}
 
+    /**
+     * Ejecuta la logica de positive ventana millis manteniendola encapsulada en este componente.
+     */
     private long positiveWindowMillis(long seconds) {
         return Duration.ofSeconds(positiveLong(seconds, 1L)).toMillis();
     }
 
+    /**
+     * Ejecuta la logica de positive int manteniendola encapsulada en este componente.
+     */
     private int positiveInt(int value, int fallback) {
         return value > 0 ? value : fallback;
     }
 
+    /**
+     * Ejecuta la logica de positive long manteniendola encapsulada en este componente.
+     */
     private long positiveLong(long value, long fallback) {
         return value > 0 ? value : fallback;
     }

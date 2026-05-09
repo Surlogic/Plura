@@ -10,6 +10,12 @@ import jakarta.validation.constraints.Size;
 import java.math.BigDecimal;
 import lombok.Data;
 
+/**
+ * ProfesionalServiceRequest es un DTO de entrada del modulo profesionales / servicios / contratos DTO.
+ * Responsabilidad: definir y validar los datos que llegan desde la API.
+ * Validacion: sus anotaciones Bean Validation son parte del contrato publico del endpoint que lo recibe.
+ * Foco funcional: servicios.
+ */
 @Data
 public class ProfesionalServiceRequest {
     @Size(max = 120)

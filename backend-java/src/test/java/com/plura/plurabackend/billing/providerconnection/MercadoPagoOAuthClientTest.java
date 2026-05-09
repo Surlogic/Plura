@@ -23,6 +23,11 @@ import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 
+/**
+ * Tests de billing, pagos, webhooks y proveedores / conexion con proveedores de pago.
+ * Cubren escenarios de Mercado Pago o auth cliente para documentar el comportamiento esperado y evitar regresiones.
+ * Mantener estos casos alineados con los contratos reales del backend cuando cambie la logica productiva.
+ */
 class MercadoPagoOAuthClientTest {
 
     private static final String EXPECTED_REDIRECT_URI =
@@ -30,11 +35,19 @@ class MercadoPagoOAuthClientTest {
 
     private MercadoPagoOAuthClient client;
 
+    /**
+     * Prepara mocks, datos base o configuracion comun antes de cada caso de prueba.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @BeforeEach
     void setUp() {
         client = new MercadoPagoOAuthClient(configuredProperties(), new ObjectMapper());
     }
 
+    /**
+     * Escenario: debe build authorization url sin cliente secret.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void shouldBuildAuthorizationUrlWithoutClientSecret() {
         String authorizationUrl = client.buildAuthorizationUrl("state-123");
@@ -46,6 +59,10 @@ class MercadoPagoOAuthClientTest {
         );
     }
 
+    /**
+     * Escenario: debe include redirect uri query param in authorization url.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void shouldIncludeRedirectUriQueryParamInAuthorizationUrl() {
         String authorizationUrl = client.buildAuthorizationUrl("state-123");
@@ -55,6 +72,10 @@ class MercadoPagoOAuthClientTest {
         assertEquals(EXPECTED_REDIRECT_URI, redirectUri);
     }
 
+    /**
+     * Escenario: debe always include redirect uri in authorization url query string.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void shouldAlwaysIncludeRedirectUriInAuthorizationUrlQueryString() {
         String authorizationUrl = client.buildAuthorizationUrl("state-123");
@@ -64,6 +85,10 @@ class MercadoPagoOAuthClientTest {
         );
     }
 
+    /**
+     * Escenario: debe include pkce params in authorization url cuando enabled.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void shouldIncludePkceParamsInAuthorizationUrlWhenEnabled() {
         BillingProperties properties = configuredProperties();
@@ -80,6 +105,10 @@ class MercadoPagoOAuthClientTest {
         assertEquals("S256", queryParams.get("code_challenge_method"));
     }
 
+    /**
+     * Escenario: debe require cliente secret for authorization code exchange.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void shouldRequireClientSecretForAuthorizationCodeExchange() {
         ResponseStatusException exception = assertThrows(
@@ -91,6 +120,10 @@ class MercadoPagoOAuthClientTest {
         assertEquals("Falta configurar billing.mercadopago.reservations.oauth.client-secret", exception.getReason());
     }
 
+    /**
+     * Escenario: debe require cliente id for authorization url.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void shouldRequireClientIdForAuthorizationUrl() {
         BillingProperties properties = configuredProperties();
@@ -106,6 +139,10 @@ class MercadoPagoOAuthClientTest {
         assertEquals("Falta configurar billing.mercadopago.reservations.oauth.client-id", exception.getReason());
     }
 
+    /**
+     * Escenario: debe require redirect uri for authorization url.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void shouldRequireRedirectUriForAuthorizationUrl() {
         BillingProperties properties = configuredProperties();
@@ -121,6 +158,10 @@ class MercadoPagoOAuthClientTest {
         assertEquals("Falta configurar billing.mercadopago.reservations.oauth.redirect-uri", exception.getReason());
     }
 
+    /**
+     * Escenario: debe rechazar frontend redirect uri for authorization url.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void shouldRejectFrontendRedirectUriForAuthorizationUrl() {
         BillingProperties properties = configuredProperties();
@@ -139,6 +180,10 @@ class MercadoPagoOAuthClientTest {
         );
     }
 
+    /**
+     * Escenario: debe require code verificador cuando pkce enabled.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void shouldRequireCodeVerifierWhenPkceEnabled() {
         BillingProperties properties = configuredProperties();
@@ -155,6 +200,10 @@ class MercadoPagoOAuthClientTest {
         assertEquals("code_verifier OAuth es obligatorio", exception.getReason());
     }
 
+    /**
+     * Escenario: debe send code verificador in token exchange cuando pkce enabled.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void shouldSendCodeVerifierInTokenExchangeWhenPkceEnabled() throws Exception {
         HttpServer server = HttpServer.create(new java.net.InetSocketAddress(0), 0);

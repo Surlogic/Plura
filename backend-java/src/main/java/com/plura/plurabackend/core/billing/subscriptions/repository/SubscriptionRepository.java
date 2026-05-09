@@ -9,6 +9,12 @@ import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+/**
+ * SubscriptionRepository es un contrato interno del modulo billing / suscripciones / persistencia.
+ * Responsabilidad: definir una frontera estable para que otros modulos no dependan de detalles concretos.
+ * Persistencia: concentra queries derivadas o JPQL para que los servicios no conozcan SQL/joins.
+ * Foco funcional: suscripciones.
+ */
 public interface SubscriptionRepository extends JpaRepository<Subscription, String> {
 
     Optional<Subscription> findByProfessionalId(Long professionalId);

@@ -9,6 +9,12 @@ import java.util.ArrayList;
 import java.util.List;
 import org.springframework.data.jpa.domain.Specification;
 
+/**
+ * NotificationInboxSpecifications es un componente de dominio del modulo notificaciones / consultas.
+ * Responsabilidad: encapsular comportamiento propio del modulo y mantenerlo fuera de controllers u otras capas.
+ * Mantiene separada esta responsabilidad para que el resto del backend use una API clara.
+ * Foco funcional: notificaciones.
+ */
 final class NotificationInboxSpecifications {
 
     private NotificationInboxSpecifications() {

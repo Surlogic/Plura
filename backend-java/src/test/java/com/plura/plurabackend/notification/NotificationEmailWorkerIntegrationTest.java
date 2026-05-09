@@ -36,6 +36,11 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 
+/**
+ * Tests de notificaciones, bandejas y emails.
+ * Cubren escenarios de notificacion email trabajador integracion para documentar el comportamiento esperado y evitar regresiones.
+ * Mantener estos casos alineados con los contratos reales del backend cuando cambie la logica productiva.
+ */
 @SpringBootTest(properties = {
     "SPRING_DATASOURCE_URL=jdbc:h2:mem:notification-email-worker;MODE=PostgreSQL;DB_CLOSE_DELAY=-1;DATABASE_TO_LOWER=TRUE",
     "SPRING_DATASOURCE_USERNAME=sa",
@@ -85,6 +90,10 @@ class NotificationEmailWorkerIntegrationTest {
     @MockBean
     private TransactionalEmailService transactionalEmailService;
 
+    /**
+     * Prepara mocks, datos base o configuracion comun antes de cada caso de prueba.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @BeforeEach
     void setUp() {
         emailDispatchRepository.deleteAll();
@@ -92,6 +101,10 @@ class NotificationEmailWorkerIntegrationTest {
         notificationEventRepository.deleteAll();
     }
 
+    /**
+     * Escenario: debe send pendiente dispatch successfully.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void shouldSendPendingDispatchSuccessfully() throws Exception {
         double sentBefore = counterValue("plura.notification.email.sent");
@@ -123,6 +136,10 @@ class NotificationEmailWorkerIntegrationTest {
         verify(transactionalEmailService).send(any());
     }
 
+    /**
+     * Escenario: debe agenda retry cuando SMTP falla.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void shouldScheduleRetryWhenSmtpFails() throws Exception {
         double retriesBefore = counterValue("plura.notification.email.retry.scheduled");
@@ -156,6 +173,10 @@ class NotificationEmailWorkerIntegrationTest {
         verify(transactionalEmailService).send(any());
     }
 
+    /**
+     * Escenario: debe no claim same dispatch twice.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void shouldNotClaimSameDispatchTwice() {
         EmailDispatch dispatch = createEmailDispatch(
@@ -186,6 +207,10 @@ class NotificationEmailWorkerIntegrationTest {
         assertNotNull(updated.getLeaseUntil());
     }
 
+    /**
+     * Escenario: debe recover vencido lease y permitir reclaim.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void shouldRecoverExpiredLeaseAndAllowReclaim() {
         EmailDispatch dispatch = createEmailDispatch(
@@ -212,6 +237,10 @@ class NotificationEmailWorkerIntegrationTest {
         assertEquals("worker-b", reclaimed.getLockedBy());
     }
 
+    /**
+     * Escenario: debe fail cuando retry budget is exhausted.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void shouldFailWhenRetryBudgetIsExhausted() throws Exception {
         double exhaustedBefore = counterValue("plura.notification.email.retries.exhausted");
@@ -238,6 +267,10 @@ class NotificationEmailWorkerIntegrationTest {
         assertEquals(exhaustedBefore + 1d, counterValue("plura.notification.email.retries.exhausted"), 0.0001d);
     }
 
+    /**
+     * Escenario: debe fail unsupported template sin sending.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void shouldFailUnsupportedTemplateWithoutSending() throws Exception {
         double templateFailuresBefore = counterValue("plura.notification.email.template.failures");

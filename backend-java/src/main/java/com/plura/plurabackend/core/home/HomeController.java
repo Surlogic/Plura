@@ -5,6 +5,12 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+/**
+ * HomeController es un controlador REST del modulo home.
+ * Responsabilidad: recibir requests HTTP, validar acceso basico y delegar la operacion al servicio de aplicacion o dominio.
+ * Superficie HTTP: atiende rutas bajo /api/home y deja la logica pesada en servicios.
+ * Foco funcional: home publica.
+ */
 @RestController
 @RequestMapping("/api/home")
 public class HomeController {

@@ -53,6 +53,9 @@ public class DistributedLockService {
         }
     }
 
+    /**
+     * Ejecuta la logica de try acquire manteniendola encapsulada en este componente.
+     */
     private boolean tryAcquire(Connection connection, int lockId) throws Exception {
         try (PreparedStatement ps = connection.prepareStatement("SELECT pg_try_advisory_lock(?)")) {
             ps.setInt(1, lockId);
@@ -62,6 +65,9 @@ public class DistributedLockService {
         }
     }
 
+    /**
+     * Ejecuta la logica de release manteniendola encapsulada en este componente.
+     */
     private void release(Connection connection, int lockId) {
         try (PreparedStatement ps = connection.prepareStatement("SELECT pg_advisory_unlock(?)")) {
             ps.setInt(1, lockId);

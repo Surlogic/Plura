@@ -16,6 +16,12 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 import org.springframework.web.server.ResponseStatusException;
 
+/**
+ * ProfessionalCategorySupport es un componente de dominio del modulo profesionales / perfil.
+ * Responsabilidad: encapsular comportamiento propio del modulo y mantenerlo fuera de controllers u otras capas.
+ * Colabora con: categoryRepository.
+ * Foco funcional: profesionales, categorias.
+ */
 @Component
 public class ProfessionalCategorySupport {
 
@@ -37,6 +43,9 @@ public class ProfessionalCategorySupport {
         this.categoryRepository = categoryRepository;
     }
 
+    /**
+     * Resuelve primary rubro normalizando entradas, defaults y casos borde.
+     */
     public String resolvePrimaryRubro(ProfessionalProfile profile) {
         Set<Category> categories = profile.getCategories();
         if (categories == null || categories.isEmpty()) {
@@ -49,6 +58,9 @@ public class ProfessionalCategorySupport {
             .orElse(profile.getRubro());
     }
 
+    /**
+     * Mapea categories desde el modelo interno al contrato que usa otra capa.
+     */
     public List<CategoryResponse> mapCategories(Set<Category> categories) {
         if (categories == null || categories.isEmpty()) {
             return List.of();
@@ -65,6 +77,9 @@ public class ProfessionalCategorySupport {
             .toList();
     }
 
+    /**
+     * Ejecuta la logica de matches categoria filter manteniendola encapsulada en este componente.
+     */
     public boolean matchesCategoryFilter(
         ProfessionalProfile profile,
         UUID categoryId,
@@ -86,6 +101,9 @@ public class ProfessionalCategorySupport {
         return true;
     }
 
+    /**
+     * Resuelve categories by slugs normalizando entradas, defaults y casos borde.
+     */
     public Set<Category> resolveCategoriesBySlugs(List<String> rawSlugs) {
         if (rawSlugs == null || rawSlugs.isEmpty()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Seleccioná al menos un rubro");
@@ -112,6 +130,9 @@ public class ProfessionalCategorySupport {
         return new LinkedHashSet<>(categories);
     }
 
+    /**
+     * Aplica categories sobre el modelo actual manteniendo consistencia.
+     */
     public void applyCategories(ProfessionalProfile profile, Set<Category> categories) {
         if (categories == null || categories.isEmpty()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Seleccioná al menos un rubro");
@@ -125,10 +146,16 @@ public class ProfessionalCategorySupport {
         profile.setRubro(primary);
     }
 
+    /**
+     * Mapea legacy categoria slug desde el modelo interno al contrato que usa otra capa.
+     */
     private String mapLegacyCategorySlug(String slug) {
         return LEGACY_CATEGORY_ALIASES.getOrDefault(slug, slug);
     }
 
+    /**
+     * Ejecuta la logica de categoria comparator manteniendola encapsulada en este componente.
+     */
     private Comparator<Category> categoryComparator() {
         return Comparator.comparingInt(
             (Category category) -> category.getDisplayOrder() == null ? Integer.MAX_VALUE : category.getDisplayOrder()

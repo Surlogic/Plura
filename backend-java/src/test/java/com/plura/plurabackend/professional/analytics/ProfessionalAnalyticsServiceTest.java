@@ -19,8 +19,17 @@ import java.time.LocalDateTime;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
+/**
+ * Tests de funciones del profesional / analytics.
+ * Cubren escenarios de profesional analytics servicio para documentar el comportamiento esperado y evitar regresiones.
+ * Mantener estos casos alineados con los contratos reales del backend cuando cambie la logica productiva.
+ */
 class ProfessionalAnalyticsServiceTest {
 
+    /**
+     * Escenario: requires advanced tier for advanced view.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void requiresAdvancedTierForAdvancedView() {
         BookingRepository bookingRepository = mock(BookingRepository.class);
@@ -71,6 +80,10 @@ class ProfessionalAnalyticsServiceTest {
         assertEquals(Integer.valueOf(1), response.getCompletedBookings());
     }
 
+    /**
+     * Escenario: requires basic tier for basic view.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void requiresBasicTierForBasicView() {
         BookingRepository bookingRepository = mock(BookingRepository.class);

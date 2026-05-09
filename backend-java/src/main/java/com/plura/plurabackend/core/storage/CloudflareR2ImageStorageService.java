@@ -25,6 +25,12 @@ import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 import software.amazon.awssdk.services.s3.presigner.model.PresignedPutObjectRequest;
 import software.amazon.awssdk.services.s3.presigner.model.PutObjectPresignRequest;
 
+/**
+ * CloudflareR2ImageStorageService es un servicio de negocio del modulo storage.
+ * Responsabilidad: coordinar reglas de negocio, validaciones, persistencia e integraciones del caso de uso.
+ * Colabora con: endpoint, bucket, publicBaseUrl, maxUploadBytes, entre otros.
+ * Foco funcional: storage de archivos, servicios, imagenes.
+ */
 @Service
 @ConditionalOnExpression("'${app.storage.provider:local}'.equalsIgnoreCase('r2')")
 public class CloudflareR2ImageStorageService implements ImageStorageService {
@@ -91,11 +97,17 @@ public class CloudflareR2ImageStorageService implements ImageStorageService {
             .build();
     }
 
+    /**
+     * Genera upload URL con formato estable para uso interno o externo.
+     */
     @Override
     public String generateUploadUrl(String objectKey) {
         return generateUploadUrl(objectKey, DEFAULT_CONTENT_TYPE, 1L);
     }
 
+    /**
+     * Normaliza guardada reference para evitar variantes vacias, invalidas o inconsistentes.
+     */
     @Override
     public String normalizeStoredReference(String urlOrStorageKey) {
         if (urlOrStorageKey == null) {
@@ -115,6 +127,9 @@ public class CloudflareR2ImageStorageService implements ImageStorageService {
         return toStorageUri(trimmed);
     }
 
+    /**
+     * Genera upload URL con formato estable para uso interno o externo.
+     */
     @Override
     public String generateUploadUrl(String objectKey, String contentType, long contentLength) {
         Timer.Sample sample = Timer.start(meterRegistry);
@@ -149,6 +164,9 @@ public class CloudflareR2ImageStorageService implements ImageStorageService {
         }
     }
 
+    /**
+     * Genera publico URL con formato estable para uso interno o externo.
+     */
     @Override
     public String generatePublicUrl(String objectKey) {
         Timer.Sample sample = Timer.start(meterRegistry);
@@ -174,6 +192,9 @@ public class CloudflareR2ImageStorageService implements ImageStorageService {
         }
     }
 
+    /**
+     * Almacena imagen validando contenido, nombre y destino.
+     */
     @Override
     public String storeImage(byte[] bytes, String objectKey, String contentType) {
         Timer.Sample sample = Timer.start(meterRegistry);
@@ -207,6 +228,10 @@ public class CloudflareR2ImageStorageService implements ImageStorageService {
         }
     }
 
+    /**
+     * Elimina imagen y limpia relaciones o datos derivados cuando corresponde.
+     * Tambien concentra los efectos secundarios para que el flujo quede en un estado consistente.
+     */
     @Override
     public boolean deleteImage(String objectKeyOrUrl) {
         if (objectKeyOrUrl == null || objectKeyOrUrl.isBlank()) {
@@ -230,6 +255,9 @@ public class CloudflareR2ImageStorageService implements ImageStorageService {
         }
     }
 
+    /**
+     * Extrae eliminable clave desde una URL, payload o referencia persistida.
+     */
     private String extractDeletableKey(String urlOrKey) {
         String value = urlOrKey.trim();
         if (value.startsWith("r2://")) {
@@ -256,6 +284,10 @@ public class CloudflareR2ImageStorageService implements ImageStorageService {
         return normalizeObjectKey(value);
     }
 
+    /**
+     * Valida upload solicitud y lanza un error controlado si no cumple el contrato.
+     * Esta separacion hace explicita la regla de seguridad o negocio que protege el flujo.
+     */
     private void validateUploadRequest(String contentType, long contentLength) {
         if (contentLength <= 0L || contentLength > maxUploadBytes) {
             throw new IllegalArgumentException("Invalid upload size");
@@ -268,6 +300,9 @@ public class CloudflareR2ImageStorageService implements ImageStorageService {
         }
     }
 
+    /**
+     * Construye publico URL a partir de datos internos ya validados.
+     */
     private String buildPublicUrl(String objectKey) {
         String key = normalizeObjectKey(objectKey);
         if (!publicBaseUrl.isBlank()) {
@@ -276,6 +311,9 @@ public class CloudflareR2ImageStorageService implements ImageStorageService {
         return endpoint + "/" + bucket + "/" + key;
     }
 
+    /**
+     * Extrae gestionada clave from publico URL desde una URL, payload o referencia persistida.
+     */
     private String extractManagedKeyFromPublicUrl(String url) {
         String normalizedUrl = stripQueryAndFragment(url);
         String publicBase = !publicBaseUrl.isBlank() ? publicBaseUrl : endpoint + "/" + bucket;
@@ -286,6 +324,9 @@ public class CloudflareR2ImageStorageService implements ImageStorageService {
         return extractKeyFromBase(normalizedUrl, endpoint + "/" + bucket);
     }
 
+    /**
+     * Extrae clave from base desde una URL, payload o referencia persistida.
+     */
     private String extractKeyFromBase(String url, String base) {
         String normalizedBase = stripQueryAndFragment(base);
         if (normalizedBase.isBlank()) {
@@ -300,6 +341,9 @@ public class CloudflareR2ImageStorageService implements ImageStorageService {
         return normalizeObjectKey(url.substring(normalizedBase.length() + 1));
     }
 
+    /**
+     * Ejecuta la logica de quitar query and fragmento manteniendola encapsulada en este componente.
+     */
     private String stripQueryAndFragment(String value) {
         String normalized = value == null ? "" : value.trim();
         int queryIndex = normalized.indexOf('?');
@@ -313,11 +357,17 @@ public class CloudflareR2ImageStorageService implements ImageStorageService {
         return normalized;
     }
 
+    /**
+     * Convierte datos internos al formato storage uri esperado por el consumidor.
+     */
     private String toStorageUri(String objectKeyOrUrl) {
         String key = normalizeObjectKey(objectKeyOrUrl);
         return key.equals("missing") ? null : "r2://" + bucket + "/" + key;
     }
 
+    /**
+     * Normaliza objeto clave para evitar variantes vacias, invalidas o inconsistentes.
+     */
     private String normalizeObjectKey(String rawObjectKey) {
         if (rawObjectKey == null || rawObjectKey.isBlank()) {
             return "missing";
@@ -340,6 +390,9 @@ public class CloudflareR2ImageStorageService implements ImageStorageService {
             .replaceFirst("^/+", "");
     }
 
+    /**
+     * Normaliza contenido tipo para evitar variantes vacias, invalidas o inconsistentes.
+     */
     private String normalizeContentType(String contentType) {
         if (contentType == null || contentType.isBlank()) {
             return DEFAULT_CONTENT_TYPE;
@@ -347,6 +400,9 @@ public class CloudflareR2ImageStorageService implements ImageStorageService {
         return contentType.trim().toLowerCase(Locale.ROOT);
     }
 
+    /**
+     * Sanea bucket antes de usarlo en storage, URL o persistencia.
+     */
     private String sanitizeBucket(String rawBucket) {
         if (rawBucket == null || rawBucket.isBlank()) {
             return "plura-images";
@@ -354,6 +410,9 @@ public class CloudflareR2ImageStorageService implements ImageStorageService {
         return rawBucket.trim();
     }
 
+    /**
+     * Normaliza endpoint para evitar variantes vacias, invalidas o inconsistentes.
+     */
     private String normalizeEndpoint(String rawEndpoint) {
         if (rawEndpoint == null || rawEndpoint.isBlank()) {
             return "";
@@ -362,6 +421,9 @@ public class CloudflareR2ImageStorageService implements ImageStorageService {
         return value.endsWith("/") ? value.substring(0, value.length() - 1) : value;
     }
 
+    /**
+     * Normaliza publico base URL para evitar variantes vacias, invalidas o inconsistentes.
+     */
     private String normalizePublicBaseUrl(String rawPublicBaseUrl) {
         if (rawPublicBaseUrl == null || rawPublicBaseUrl.isBlank()) {
             return "";
@@ -370,6 +432,9 @@ public class CloudflareR2ImageStorageService implements ImageStorageService {
         return value.endsWith("/") ? value.substring(0, value.length() - 1) : value;
     }
 
+    /**
+     * Marca 2 error y actualiza los indicadores relacionados.
+     */
     private void markR2Error(String operation) {
         Counter.builder("plura.image.r2.errors")
             .description("R2 image storage errors")

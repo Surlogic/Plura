@@ -7,6 +7,12 @@ import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Repository;
 
+/**
+ * GeoAutocompleteRepository es un repositorio de datos del modulo geolocalizacion.
+ * Responsabilidad: centralizar consultas y escrituras contra la base de datos para el agregado asociado.
+ * Persistencia: concentra queries derivadas o JPQL para que los servicios no conozcan SQL/joins.
+ * Foco funcional: geolocalizacion.
+ */
 @Repository
 public class GeoAutocompleteRepository {
 
@@ -16,6 +22,9 @@ public class GeoAutocompleteRepository {
         this.jdbcTemplate = jdbcTemplate;
     }
 
+    /**
+     * Ejecuta la logica de autocomplete manteniendola encapsulada en este componente.
+     */
     public List<GeoAutocompleteItemResponse> autocomplete(String rawQuery, int limit) {
         String query = rawQuery == null ? "" : rawQuery.trim().toLowerCase(Locale.ROOT);
         if (query.isBlank()) {

@@ -15,6 +15,12 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Service;
 
+/**
+ * SqsBackedImageThumbnailJobService es un servicio de negocio del modulo storage / miniaturas.
+ * Responsabilidad: coordinar reglas de negocio, validaciones, persistencia e integraciones del caso de uso.
+ * Colabora con: localImageThumbnailJobService, sqsJobQueueService, objectMapper, sqsEnabled, entre otros.
+ * Foco funcional: servicios, imagenes.
+ */
 @Service
 @Primary
 public class SqsBackedImageThumbnailJobService implements ImageThumbnailJobService {
@@ -41,6 +47,9 @@ public class SqsBackedImageThumbnailJobService implements ImageThumbnailJobServi
         this.thumbnailSqsEnabled = thumbnailSqsEnabled;
     }
 
+    /**
+     * Genera miniaturas asincronico con formato estable para uso interno o externo.
+     */
     @Override
     public void generateThumbnailsAsync(String objectKey) {
         if (objectKey == null || objectKey.isBlank()) {
@@ -68,14 +77,23 @@ public class SqsBackedImageThumbnailJobService implements ImageThumbnailJobServi
         localImageThumbnailJobService.generateThumbnailsAsync(objectKey);
     }
 
+    /**
+     * Lee payload desde la fuente persistida y aplica defaults si faltan datos.
+     */
     public ThumbnailPayload readPayload(String jsonPayload) throws JsonProcessingException {
         return objectMapper.readValue(jsonPayload, ThumbnailPayload.class);
     }
 
+    /**
+     * Genera job ID deterministico para idempotencia o deduplicacion.
+     */
     private String deterministicJobId(String objectKey) {
         return "thumbnail:" + sha256(objectKey);
     }
 
+    /**
+     * Calcula hash SHA para generar identificadores estables o seguros.
+     */
     private String sha256(String value) {
         try {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
@@ -90,5 +108,9 @@ public class SqsBackedImageThumbnailJobService implements ImageThumbnailJobServi
         }
     }
 
+    /**
+     * Bloque de datos thumbnail payload dentro de la respuesta principal.
+     * Agrupa metricas relacionadas para que el frontend no tenga que reconstruirlas.
+     */
     public record ThumbnailPayload(String objectKey) {}
 }

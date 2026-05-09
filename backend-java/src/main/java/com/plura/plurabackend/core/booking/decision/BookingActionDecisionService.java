@@ -17,6 +17,12 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import org.springframework.stereotype.Service;
 
+/**
+ * BookingActionDecisionService es un servicio de negocio del modulo reservas / decisiones.
+ * Responsabilidad: coordinar reglas de negocio, validaciones, persistencia e integraciones del caso de uso.
+ * Colabora con: bookingActionDecisionRepository, objectMapper.
+ * Foco funcional: reservas, servicios.
+ */
 @Service
 public class BookingActionDecisionService {
 
@@ -31,6 +37,9 @@ public class BookingActionDecisionService {
         this.objectMapper = objectMapper;
     }
 
+    /**
+     * Registra record para auditoria, historial o notificaciones.
+     */
     public BookingActionDecision record(
         Booking booking,
         BookingActionType actionType,
@@ -73,6 +82,9 @@ public class BookingActionDecisionService {
         return bookingActionDecisionRepository.save(decision);
     }
 
+    /**
+     * Registra manual para auditoria, historial o notificaciones.
+     */
     public BookingActionDecision recordManual(
         Booking booking,
         BookingActionType actionType,
@@ -121,6 +133,9 @@ public class BookingActionDecisionService {
         return bookingActionDecisionRepository.save(decision);
     }
 
+    /**
+     * Convierte datos internos al formato respuesta esperado por el consumidor.
+     */
     public BookingActionDecisionResponse toResponse(BookingActionDecision decision) {
         if (decision == null) {
             return null;
@@ -143,6 +158,9 @@ public class BookingActionDecisionService {
         );
     }
 
+    /**
+     * Resuelve financial outcome code normalizando entradas, defaults y casos borde.
+     */
     private String resolveFinancialOutcomeCode(BookingActionsEvaluation evaluation) {
         if (evaluation.refundPreviewAmount() != null
             && evaluation.refundPreviewAmount().signum() > 0
@@ -159,6 +177,9 @@ public class BookingActionDecisionService {
         return "NO_FINANCIAL_ACTION";
     }
 
+    /**
+     * Guarda json en el formato persistido esperado por el modulo.
+     */
     private String writeJson(Object payload) {
         if (payload == null) {
             return null;
@@ -170,6 +191,9 @@ public class BookingActionDecisionService {
         }
     }
 
+    /**
+     * Lee string listado desde la fuente persistida y aplica defaults si faltan datos.
+     */
     private List<String> readStringList(String json) {
         if (json == null || json.isBlank()) {
             return List.of();
@@ -181,6 +205,9 @@ public class BookingActionDecisionService {
         }
     }
 
+    /**
+     * Lee string map desde la fuente persistida y aplica defaults si faltan datos.
+     */
     private Map<String, String> readStringMap(String json) {
         if (json == null || json.isBlank()) {
             return Map.of();

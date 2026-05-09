@@ -19,11 +19,20 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
+/**
+ * Tests de billing, pagos, webhooks y proveedores / operaciones asincronicas de proveedores.
+ * Cubren escenarios de proveedor operacion trabajador para documentar el comportamiento esperado y evitar regresiones.
+ * Mantener estos casos alineados con los contratos reales del backend cuando cambie la logica productiva.
+ */
 class ProviderOperationWorkerTest {
 
     private final ProviderOperationService providerOperationService = Mockito.mock(ProviderOperationService.class);
     private final BookingProviderIntegrationService bookingProviderIntegrationService = Mockito.mock(BookingProviderIntegrationService.class);
 
+    /**
+     * Escenario: debe replay operacion cuando requeue succeeds.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void shouldReplayOperationWhenRequeueSucceeds() {
         ProviderOperationWorker worker = new ProviderOperationWorker(
@@ -48,6 +57,10 @@ class ProviderOperationWorkerTest {
         verify(bookingProviderIntegrationService).processClaimedProviderOperation("op-1");
     }
 
+    /**
+     * Escenario: debe skip replay cuando requeue is rejected.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void shouldSkipReplayWhenRequeueIsRejected() {
         ProviderOperationWorker worker = new ProviderOperationWorker(
@@ -67,6 +80,10 @@ class ProviderOperationWorkerTest {
         verify(bookingProviderIntegrationService, never()).processClaimedProviderOperation(anyString());
     }
 
+    /**
+     * Escenario: debe await durable operacion state instead of returning processing immediately.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void shouldAwaitDurableOperationStateInsteadOfReturningProcessingImmediately() {
         ProviderOperationWorker worker = new ProviderOperationWorker(

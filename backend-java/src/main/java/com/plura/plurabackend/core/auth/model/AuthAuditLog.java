@@ -26,6 +26,13 @@ import lombok.NoArgsConstructor;
         @Index(name = "idx_auth_audit_log_event_created", columnList = "event_type, created_at")
     }
 )
+
+/**
+ * AuthAuditLog es un componente de dominio del modulo autenticacion / modelo.
+ * Responsabilidad: encapsular comportamiento propio del modulo y mantenerlo fuera de controllers u otras capas.
+ * Mantiene separada esta responsabilidad para que el resto del backend use una API clara.
+ * Foco funcional: auditoria, autenticacion y sesiones.
+ */
 public class AuthAuditLog {
 
     @Id

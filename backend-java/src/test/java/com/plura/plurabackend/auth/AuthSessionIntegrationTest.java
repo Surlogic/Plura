@@ -30,6 +30,11 @@ import org.springframework.mock.web.MockCookie;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
+/**
+ * Tests de autenticacion, sesiones, OTP y recuperacion de cuenta.
+ * Cubren escenarios de auth sesion integracion para documentar el comportamiento esperado y evitar regresiones.
+ * Mantener estos casos alineados con los contratos reales del backend cuando cambie la logica productiva.
+ */
 @SpringBootTest(properties = {
     "SPRING_DATASOURCE_URL=jdbc:h2:mem:plura-auth-session-test;MODE=PostgreSQL;DB_CLOSE_DELAY=-1;DATABASE_TO_LOWER=TRUE",
     "SPRING_DATASOURCE_USERNAME=sa",
@@ -69,6 +74,10 @@ class AuthSessionIntegrationTest {
     @Autowired
     private AuthAuditLogRepository authAuditLogRepository;
 
+    /**
+     * Prepara mocks, datos base o configuracion comun antes de cada caso de prueba.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @BeforeEach
     void cleanUp() {
         authAuditLogRepository.deleteAll();
@@ -77,6 +86,10 @@ class AuthSessionIntegrationTest {
         userRepository.deleteAll();
     }
 
+    /**
+     * Escenario: web login crea sesion y lista eso.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void webLoginCreatesSessionAndListsIt() throws Exception {
         registerClient("session-web@plura.com");
@@ -108,6 +121,10 @@ class AuthSessionIntegrationTest {
             .andExpect(jsonPath("$.sessions[0].current").value(true));
     }
 
+    /**
+     * Escenario: mobile refresh usa body y rotates refresh token.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void mobileRefreshUsesBodyAndRotatesRefreshToken() throws Exception {
         registerClient("session-mobile@plura.com");
@@ -151,6 +168,10 @@ class AuthSessionIntegrationTest {
         org.junit.jupiter.api.Assertions.assertEquals(1L, authSessionRepository.count());
     }
 
+    /**
+     * Escenario: legacy refresh fallback migrates sesion cuando compatibilidad is enabled.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void legacyRefreshFallbackMigratesSessionWhenCompatibilityIsEnabled() throws Exception {
         registerClient("legacy-fallback@plura.com");
@@ -180,6 +201,10 @@ class AuthSessionIntegrationTest {
         org.junit.jupiter.api.Assertions.assertEquals(1L, authSessionRepository.count());
     }
 
+    /**
+     * Escenario: refresh reuse revokes compromised sesion y permite nuevo clean login.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void refreshReuseRevokesCompromisedSessionAndAllowsNewCleanLogin() throws Exception {
         registerClient("refresh-reuse@plura.com");
@@ -233,6 +258,10 @@ class AuthSessionIntegrationTest {
             .anyMatch(log -> log.getEventType() == AuthAuditEventType.SESSION_REVOKED_COMPROMISED));
     }
 
+    /**
+     * Escenario: logout todos revokes current acceso token by sesion version.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void logoutAllRevokesCurrentAccessTokenBySessionVersion() throws Exception {
         registerClient("logout-all@plura.com");
@@ -263,6 +292,10 @@ class AuthSessionIntegrationTest {
             .andExpect(status().isUnauthorized());
     }
 
+    /**
+     * Escenario: publico health ignores invalido bearer token.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void publicHealthIgnoresInvalidBearerToken() throws Exception {
         mockMvc.perform(get("/health")
@@ -271,6 +304,10 @@ class AuthSessionIntegrationTest {
             .andExpect(jsonPath("$.status").value("ok"));
     }
 
+    /**
+     * Escenario: publico categories ignore invalido acceso cookie.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void publicCategoriesIgnoreInvalidAccessCookie() throws Exception {
         mockMvc.perform(get("/categories")
@@ -278,6 +315,10 @@ class AuthSessionIntegrationTest {
             .andExpect(status().isOk());
     }
 
+    /**
+     * Escenario: refresh con invalido cookies verifica que devuelva no autorizado instead of server error.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void refreshWithInvalidCookiesReturnsUnauthorizedInsteadOfServerError() throws Exception {
         mockMvc.perform(post("/auth/refresh")
@@ -292,6 +333,10 @@ class AuthSessionIntegrationTest {
             .andExpect(jsonPath("$.error").value("REFRESH_TOKEN_INVALID"));
     }
 
+    /**
+     * Escenario: eliminar sesion revokes only requested sesion.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void deleteSessionRevokesOnlyRequestedSession() throws Exception {
         registerClient("delete-session@plura.com");

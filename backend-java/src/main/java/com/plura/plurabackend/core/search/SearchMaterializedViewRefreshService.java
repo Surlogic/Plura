@@ -11,6 +11,12 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
+/**
+ * SearchMaterializedViewRefreshService es un servicio de negocio del modulo busqueda.
+ * Responsabilidad: coordinar reglas de negocio, validaciones, persistencia e integraciones del caso de uso.
+ * Colabora con: jdbcTemplate, distributedLockService, refreshOnStartup, scheduledRefreshEnabled.
+ * Foco funcional: servicios, busqueda.
+ */
 @Service
 public class SearchMaterializedViewRefreshService implements ApplicationRunner {
 
@@ -35,6 +41,9 @@ public class SearchMaterializedViewRefreshService implements ApplicationRunner {
         this.scheduledRefreshEnabled = scheduledRefreshEnabled;
     }
 
+    /**
+     * Ejecuta el proceso programado o manual asociado a este componente.
+     */
     @Override
     public void run(ApplicationArguments args) {
         if (!refreshOnStartup) {
@@ -48,6 +57,9 @@ public class SearchMaterializedViewRefreshService implements ApplicationRunner {
         refreshThread.start();
     }
 
+    /**
+     * Refresca on agenda para mantener datos derivados o metricas al dia.
+     */
     @Scheduled(cron = "${app.search.materialized-view.refresh-cron:0 */10 * * * *}")
     public void refreshOnSchedule() {
         if (!scheduledRefreshEnabled) {

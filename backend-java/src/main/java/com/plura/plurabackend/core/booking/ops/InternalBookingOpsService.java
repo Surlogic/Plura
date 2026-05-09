@@ -60,6 +60,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+/**
+ * InternalBookingOpsService es un servicio de negocio del modulo reservas / operaciones internas.
+ * Responsabilidad: coordinar reglas de negocio, validaciones, persistencia e integraciones del caso de uso.
+ * Colabora con: bookingRepository, bookingFinancialSummaryRepository, bookingRefundRecordRepository, bookingPayoutRecordRepository, entre otros.
+ * Foco funcional: paneles internos, reservas, servicios.
+ */
 @Service
 public class InternalBookingOpsService {
 
@@ -189,6 +195,9 @@ public class InternalBookingOpsService {
         return buildDetail(booking);
     }
 
+    /**
+     * Ejecuta la logica de retry reembolso manteniendola encapsulada en este componente.
+     */
     @Transactional
     public InternalBookingOpsActionResponse retryRefund(Long bookingId) {
         Booking booking = loadBooking(bookingId, true);
@@ -222,6 +231,9 @@ public class InternalBookingOpsService {
         );
     }
 
+    /**
+     * Ejecuta la logica de recompute financial resumen manteniendola encapsulada en este componente.
+     */
     @Transactional
     public InternalBookingOpsActionResponse recomputeFinancialSummary(Long bookingId) {
         Booking booking = loadBooking(bookingId, true);
@@ -244,6 +256,9 @@ public class InternalBookingOpsService {
         );
     }
 
+    /**
+     * Ejecuta la logica de reconcile reserva manteniendola encapsulada en este componente.
+     */
     @Transactional
     public InternalBookingOpsActionResponse reconcileBooking(Long bookingId) {
         Booking booking = loadBooking(bookingId, true);
@@ -279,11 +294,18 @@ public class InternalBookingOpsService {
         );
     }
 
+    /**
+     * Carga la seccion reserva desde base de datos o datos agregados y la deja lista para la respuesta.
+     * Mantiene la consulta encapsulada para que el resto del codigo no repita filtros ni joins.
+     */
     private Booking loadBooking(Long bookingId, boolean forUpdate) {
         return (forUpdate ? bookingRepository.findDetailedByIdForUpdate(bookingId) : bookingRepository.findDetailedById(bookingId))
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Reserva no encontrada"));
     }
 
+    /**
+     * Construye detalle a partir de datos internos ya validados.
+     */
     private InternalBookingOpsDetailResponse buildDetail(Booking booking) {
         Long bookingId = booking.getId();
         BookingFinancialSummary summary = bookingFinancialSummaryRepository.findByBooking_Id(bookingId).orElse(null);
@@ -320,6 +342,9 @@ public class InternalBookingOpsService {
         );
     }
 
+    /**
+     * Mapea reserva desde el modelo interno al contrato que usa otra capa.
+     */
     private ProfessionalBookingResponse mapBooking(Booking booking) {
         int postBufferMinutes = booking.getServicePostBufferMinutesSnapshot() == null
             ? 0
@@ -349,6 +374,9 @@ public class InternalBookingOpsService {
         );
     }
 
+    /**
+     * Convierte datos internos al formato respuesta esperado por el consumidor.
+     */
     private InternalPaymentTransactionResponse toResponse(PaymentTransaction transaction) {
         return new InternalPaymentTransactionResponse(
             transaction.getId(),
@@ -366,6 +394,9 @@ public class InternalBookingOpsService {
         );
     }
 
+    /**
+     * Convierte datos internos al formato respuesta esperado por el consumidor.
+     */
     private InternalPaymentEventResponse toResponse(PaymentEvent event) {
         return new InternalPaymentEventResponse(
             event.getId(),
@@ -380,6 +411,9 @@ public class InternalBookingOpsService {
         );
     }
 
+    /**
+     * Convierte datos internos al formato respuesta esperado por el consumidor.
+     */
     private InternalBookingEventResponse toResponse(BookingEvent event) {
         return new InternalBookingEventResponse(
             event.getId(),
@@ -391,6 +425,9 @@ public class InternalBookingOpsService {
         );
     }
 
+    /**
+     * Ejecuta la logica de inspect consistency manteniendola encapsulada en este componente.
+     */
     private List<InternalBookingConsistencyIssueResponse> inspectConsistency(Booking booking, BookingFinancialSummary summary) {
         List<InternalBookingConsistencyIssueResponse> issues = new ArrayList<>();
         if (summary == null) {
@@ -469,6 +506,9 @@ public class InternalBookingOpsService {
         return issues;
     }
 
+    /**
+     * Ejecuta la logica de compare monto manteniendola encapsulada en este componente.
+     */
     private void compareAmount(
         List<InternalBookingConsistencyIssueResponse> issues,
         String code,
@@ -485,6 +525,9 @@ public class InternalBookingOpsService {
         }
     }
 
+    /**
+     * Ejecuta la logica de inconsistency issue manteniendola encapsulada en este componente.
+     */
     private InternalBookingIssueResponse inconsistencyIssue(Booking booking) {
         BookingFinancialSummary summary = bookingFinancialSummaryRepository.findByBooking_Id(booking.getId()).orElse(null);
         List<InternalBookingConsistencyIssueResponse> issues = inspectConsistency(booking, summary);
@@ -500,6 +543,9 @@ public class InternalBookingOpsService {
         );
     }
 
+    /**
+     * Ejecuta la logica de failed reembolso issue manteniendola encapsulada en este componente.
+     */
     private InternalBookingIssueResponse failedRefundIssue(BookingRefundRecord refundRecord) {
         Booking booking = refundRecord.getBooking();
         if (booking == null) {
@@ -520,6 +566,9 @@ public class InternalBookingOpsService {
         );
     }
 
+    /**
+     * Ejecuta la logica de failed liquidacion issue manteniendola encapsulada en este componente.
+     */
     private InternalBookingIssueResponse failedPayoutIssue(BookingPayoutRecord payoutRecord) {
         Booking booking = payoutRecord.getBooking();
         if (booking == null) {
@@ -540,6 +589,9 @@ public class InternalBookingOpsService {
         );
     }
 
+    /**
+     * Evalua issue from resumen y devuelve una decision booleana para el llamador.
+     */
     private InternalBookingIssueResponse issueFromSummary(
         BookingFinancialSummary summary,
         String code,
@@ -548,6 +600,9 @@ public class InternalBookingOpsService {
         return issueForBooking(summary.getBooking(), summary, code, detail);
     }
 
+    /**
+     * Evalua issue for reserva y devuelve una decision booleana para el llamador.
+     */
     private InternalBookingIssueResponse issueForBooking(
         Booking booking,
         BookingFinancialSummary summary,
@@ -572,6 +627,9 @@ public class InternalBookingOpsService {
         );
     }
 
+    /**
+     * Ejecuta la logica de distinct issues by reserva manteniendola encapsulada en este componente.
+     */
     private List<InternalBookingIssueResponse> distinctIssuesByBooking(List<InternalBookingIssueResponse> issues) {
         Set<Long> seen = new LinkedHashSet<>();
         List<InternalBookingIssueResponse> distinct = new ArrayList<>();

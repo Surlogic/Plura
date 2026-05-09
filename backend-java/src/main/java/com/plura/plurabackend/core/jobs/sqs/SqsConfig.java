@@ -12,10 +12,19 @@ import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.sqs.SqsClient;
 import software.amazon.awssdk.services.sqs.SqsClientBuilder;
 
+/**
+ * SqsConfig es un configuracion Spring del modulo jobs / SQS.
+ * Responsabilidad: declarar beans, filtros o parametros transversales que necesita el runtime.
+ * Mantiene separada esta responsabilidad para que el resto del backend use una API clara.
+ * Foco funcional: la responsabilidad indicada por su paquete y nombre.
+ */
 @Configuration
 @EnableConfigurationProperties(SqsProperties.class)
 public class SqsConfig {
 
+    /**
+     * Ejecuta la logica de sqs cliente manteniendola encapsulada en este componente.
+     */
     @Bean
     @ConditionalOnProperty(name = "app.sqs.enabled", havingValue = "true")
     public SqsClient sqsClient(SqsProperties properties) {

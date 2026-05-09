@@ -30,6 +30,12 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+/**
+ * WebhookEventProcessor es un componente de dominio del modulo billing / webhooks.
+ * Responsabilidad: encapsular comportamiento propio del modulo y mantenerlo fuera de controllers u otras capas.
+ * Colabora con: paymentEventRepository, subscriptionRepository, professionalBillingSubjectGateway, paymentTransactionRepository, entre otros.
+ * Foco funcional: webhooks.
+ */
 @Service
 public class WebhookEventProcessor {
 
@@ -68,6 +74,9 @@ public class WebhookEventProcessor {
         this.providerClients = mapped;
     }
 
+    /**
+     * Ejecuta la logica de process manteniendola encapsulada en este componente.
+     */
     @Transactional
     public void process(String paymentEventId, ParsedWebhookEvent event) {
         PaymentEvent paymentEvent = paymentEventRepository.findById(paymentEventId)
@@ -119,6 +128,9 @@ public class WebhookEventProcessor {
             mercadoPagoSubscriptionService::getSubscription);
     }
 
+    /**
+     * Resuelve profesional normalizando entradas, defaults y casos borde.
+     */
     private ProfessionalProfile resolveProfessional(
         ParsedWebhookEvent event,
         Map<String, MercadoPagoSubscriptionService.SubscriptionSnapshot> snapshotCache
@@ -151,6 +163,9 @@ public class WebhookEventProcessor {
         return null;
     }
 
+    /**
+     * Resuelve subscription normalizando entradas, defaults y casos borde.
+     */
     private Subscription resolveSubscription(ParsedWebhookEvent event, ProfessionalProfile professional) {
         Subscription subscription = null;
         if (event.providerSubscriptionId() != null && !event.providerSubscriptionId().isBlank()) {
@@ -193,6 +208,9 @@ public class WebhookEventProcessor {
         return created;
     }
 
+    /**
+     * Ejecuta la logica de verify against proveedor manteniendola encapsulada en este componente.
+     */
     private void verifyAgainstProvider(
         Subscription subscription,
         ParsedWebhookEvent event,
@@ -258,6 +276,9 @@ public class WebhookEventProcessor {
         }
     }
 
+    /**
+     * Ejecuta la logica de verify Mercado Pago subscription manteniendola encapsulada en este componente.
+     */
     private void verifyMercadoPagoSubscription(
         Subscription subscription,
         ParsedWebhookEvent event,
@@ -295,6 +316,10 @@ public class WebhookEventProcessor {
         }
     }
 
+    /**
+     * Valida expected subscription data y lanza un error controlado si no cumple el contrato.
+     * Esta separacion hace explicita la regla de seguridad o negocio que protege el flujo.
+     */
     private void validateExpectedSubscriptionData(Subscription subscription, ParsedWebhookEvent event) {
         if (event.planCode() != null && !event.planCode().isBlank()
             && subscription.getPlan() != null
@@ -314,6 +339,9 @@ public class WebhookEventProcessor {
         }
     }
 
+    /**
+     * Aplica subscription estado sobre el modelo actual manteniendo consistencia.
+     */
     private void applySubscriptionState(
         Subscription subscription,
         ParsedWebhookEvent event,
@@ -368,6 +396,10 @@ public class WebhookEventProcessor {
         }
     }
 
+    /**
+     * Crea or update transaction validando datos de entrada y persistiendo el resultado.
+     * Tambien concentra los efectos secundarios para que el flujo quede en un estado consistente.
+     */
     private void createOrUpdateTransaction(
         ParsedWebhookEvent event,
         Subscription subscription,
@@ -401,6 +433,9 @@ public class WebhookEventProcessor {
         paymentTransactionRepository.save(transaction);
     }
 
+    /**
+     * Resuelve monto normalizando entradas, defaults y casos borde.
+     */
     private BigDecimal resolveAmount(BigDecimal amountFromEvent, Subscription subscription) {
         if (amountFromEvent != null) {
             return amountFromEvent;
@@ -411,6 +446,9 @@ public class WebhookEventProcessor {
         return BigDecimal.ZERO;
     }
 
+    /**
+     * Resuelve currency normalizando entradas, defaults y casos borde.
+     */
     private String resolveCurrency(String currencyFromEvent, Subscription subscription) {
         if (currencyFromEvent != null && !currencyFromEvent.isBlank()) {
             return currencyFromEvent;
@@ -424,6 +462,9 @@ public class WebhookEventProcessor {
         return "UYU";
     }
 
+    /**
+     * Mapea transaction estado desde el modelo interno al contrato que usa otra capa.
+     */
     private PaymentTransactionStatus mapTransactionStatus(WebhookEventType eventType) {
         return switch (eventType) {
             case SUBSCRIPTION_PENDING -> PaymentTransactionStatus.PENDING;
@@ -440,6 +481,9 @@ public class WebhookEventProcessor {
         };
     }
 
+    /**
+     * Resuelve active or past due estado normalizando entradas, defaults y casos borde.
+     */
     private SubscriptionStatus resolveActiveOrPastDueStatus(
         ParsedWebhookEvent event,
         Map<String, MercadoPagoSubscriptionService.SubscriptionSnapshot> snapshotCache
@@ -459,6 +503,9 @@ public class WebhookEventProcessor {
         };
     }
 
+    /**
+     * Resuelve plan normalizando entradas, defaults y casos borde.
+     */
     private SubscriptionPlanCode resolvePlan(String planCode) {
         if (planCode == null || planCode.isBlank()) {
             return null;

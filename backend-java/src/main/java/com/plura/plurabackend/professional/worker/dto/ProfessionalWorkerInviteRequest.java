@@ -8,6 +8,12 @@ import jakarta.validation.constraints.Size;
 import java.util.List;
 import lombok.Data;
 
+/**
+ * ProfessionalWorkerInviteRequest es un DTO de entrada del modulo profesionales / trabajadores / contratos DTO.
+ * Responsabilidad: definir y validar los datos que llegan desde la API.
+ * Validacion: sus anotaciones Bean Validation son parte del contrato publico del endpoint que lo recibe.
+ * Foco funcional: profesionales, trabajadores.
+ */
 @Data
 public class ProfessionalWorkerInviteRequest {
 

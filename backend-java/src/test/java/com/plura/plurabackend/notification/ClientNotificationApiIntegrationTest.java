@@ -46,6 +46,11 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
+/**
+ * Tests de notificaciones, bandejas y emails.
+ * Cubren escenarios de cliente notificacion api integracion para documentar el comportamiento esperado y evitar regresiones.
+ * Mantener estos casos alineados con los contratos reales del backend cuando cambie la logica productiva.
+ */
 @SpringBootTest(properties = {
     "SPRING_DATASOURCE_URL=jdbc:h2:mem:client-notification-api;MODE=PostgreSQL;DB_CLOSE_DELAY=-1;DATABASE_TO_LOWER=TRUE",
     "SPRING_DATASOURCE_USERNAME=sa",
@@ -92,6 +97,10 @@ class ClientNotificationApiIntegrationTest {
     @Autowired
     private UserRepository userRepository;
 
+    /**
+     * Prepara mocks, datos base o configuracion comun antes de cada caso de prueba.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @BeforeEach
     void setUp() {
         emailDispatchRepository.deleteAll();
@@ -102,6 +111,10 @@ class ClientNotificationApiIntegrationTest {
         userRepository.deleteAll();
     }
 
+    /**
+     * Escenario: inbox no leidas leida detalle y timeline respect cliente ownership y source boundaries.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void inboxUnreadReadDetailAndTimelineRespectClientOwnershipAndSourceBoundaries() throws Exception {
         User professionalUser = saveProfessionalUser("pro1@plura.com", "Profesional Uno");
@@ -261,6 +274,10 @@ class ClientNotificationApiIntegrationTest {
             .andExpect(status().isForbidden());
     }
 
+    /**
+     * Escenario: timeline usa explicit reserva reference for financial eventos even sin payload reserva id.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void timelineUsesExplicitBookingReferenceForFinancialEventsEvenWithoutPayloadBookingId() throws Exception {
         User professionalUser = saveProfessionalUser("pro3@plura.com", "Profesional Tres");

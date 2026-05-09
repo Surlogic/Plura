@@ -40,6 +40,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+/**
+ * ScheduleApplicationService es un servicio de negocio del modulo profesionales / agenda / aplicacion.
+ * Responsabilidad: coordinar reglas de negocio, validaciones, persistencia e integraciones del caso de uso.
+ * Colabora con: professionalProfileRepository, profesionalServiceRepository, bookingRepository, slotCacheService, entre otros.
+ * Foco funcional: agenda, servicios.
+ */
 @Service
 public class ScheduleApplicationService implements BookingSchedulingAvailabilityGateway {
 
@@ -118,6 +124,9 @@ public class ScheduleApplicationService implements BookingSchedulingAvailability
         }
     }
 
+    /**
+     * Evalua is slot available y devuelve una decision booleana para el llamador.
+     */
     @Override
     @Transactional(readOnly = true)
     public boolean isSlotAvailable(
@@ -151,6 +160,10 @@ public class ScheduleApplicationService implements BookingSchedulingAvailability
         return schedule;
     }
 
+    /**
+     * Actualiza agenda manteniendo reglas de negocio y consistencia de datos.
+     * Tambien concentra los efectos secundarios para que el flujo quede en un estado consistente.
+     */
     @Override
     @Transactional
     public ProfesionalScheduleDto updateSchedule(String rawUserId, ProfesionalScheduleDto request) {
@@ -190,6 +203,9 @@ public class ScheduleApplicationService implements BookingSchedulingAvailability
         return normalized;
     }
 
+    /**
+     * Calcula slots a partir de reglas y datos persistidos.
+     */
     private List<String> calculateSlots(
         ProfessionalProfile profile,
         String serviceId,
@@ -218,6 +234,10 @@ public class ScheduleApplicationService implements BookingSchedulingAvailability
         );
     }
 
+    /**
+     * Carga la seccion booked windows desde base de datos o datos agregados y la deja lista para la respuesta.
+     * Mantiene la consulta encapsulada para que el resto del codigo no repita filtros ni joins.
+     */
     private List<BookedWindow> loadBookedWindows(ProfessionalProfile profile, LocalDate date) {
         LocalDateTime dayStart = date.atStartOfDay();
         LocalDateTime dayEnd = date.atTime(LocalTime.MAX);
@@ -232,6 +252,10 @@ public class ScheduleApplicationService implements BookingSchedulingAvailability
             .toList();
     }
 
+    /**
+     * Carga la seccion booked windows desde base de datos o datos agregados y la deja lista para la respuesta.
+     * Mantiene la consulta encapsulada para que el resto del codigo no repita filtros ni joins.
+     */
     private List<BookedWindow> loadBookedWindows(
         ProfessionalProfile profile,
         LocalDate date,
@@ -251,6 +275,9 @@ public class ScheduleApplicationService implements BookingSchedulingAvailability
             .toList();
     }
 
+    /**
+     * Convierte datos internos al formato booked window esperado por el consumidor.
+     */
     private BookedWindow toBookedWindow(Booking booking) {
         LocalDateTime start = booking.getStartDateTime();
         int postBufferMinutes = booking.getServicePostBufferMinutesSnapshot() == null
@@ -260,6 +287,9 @@ public class ScheduleApplicationService implements BookingSchedulingAvailability
         return new BookedWindow(start, start.plusMinutes(effectiveDurationMinutes));
     }
 
+    /**
+     * Calcula available slots a partir de reglas y datos persistidos.
+     */
     private List<String> calculateAvailableSlots(
         LocalDate date,
         ProfesionalService service,
@@ -325,6 +355,9 @@ public class ScheduleApplicationService implements BookingSchedulingAvailability
         return slots.stream().sorted().toList();
     }
 
+    /**
+     * Lee guardada agenda desde la fuente persistida y aplica defaults si faltan datos.
+     */
     private ProfesionalScheduleDto readStoredSchedule(String rawScheduleJson) {
         return ProfessionalScheduleSupport.readStoredSchedule(
             objectMapper,
@@ -334,6 +367,9 @@ public class ScheduleApplicationService implements BookingSchedulingAvailability
         );
     }
 
+    /**
+     * Parsea fecha y convierte errores de formato en errores controlados.
+     */
     private LocalDate parseDate(String rawDate, String errorMessage) {
         try {
             return LocalDate.parse(rawDate.trim());
@@ -342,10 +378,16 @@ public class ScheduleApplicationService implements BookingSchedulingAvailability
         }
     }
 
+    /**
+     * Construye slot cache key a partir de datos internos ya validados.
+     */
     private String buildSlotCacheKey(Long professionalId, String date, String serviceId) {
         return "slots:" + professionalId + ":" + date + ":" + serviceId;
     }
 
+    /**
+     * Ejecuta la logica de dia clave from fecha manteniendola encapsulada en este componente.
+     */
     private String dayKeyFromDate(LocalDate date) {
         DayOfWeek dayOfWeek = date.getDayOfWeek();
         return switch (dayOfWeek) {
@@ -359,10 +401,16 @@ public class ScheduleApplicationService implements BookingSchedulingAvailability
         };
     }
 
+    /**
+     * Ejecuta la logica de now in system zone manteniendola encapsulada en este componente.
+     */
     private LocalDateTime nowInSystemZone() {
         return ZonedDateTime.now(systemZoneId).toLocalDateTime();
     }
 
+    /**
+     * Parsea hora y convierte errores de formato en errores controlados.
+     */
     private LocalTime parseTime(String rawTime) {
         if (rawTime == null || rawTime.isBlank()) {
             return LocalTime.MAX;
@@ -374,6 +422,10 @@ public class ScheduleApplicationService implements BookingSchedulingAvailability
         }
     }
 
+    /**
+     * Valida slot duration y lanza un error controlado si no cumple el contrato.
+     * Esta separacion hace explicita la regla de seguridad o negocio que protege el flujo.
+     */
     private void validateSlotDuration(Integer value) {
         if (value == null || !ALLOWED_SLOT_DURATIONS.contains(value)) {
             throw new ResponseStatusException(
@@ -383,6 +435,9 @@ public class ScheduleApplicationService implements BookingSchedulingAvailability
         }
     }
 
+    /**
+     * Normaliza slot duracion or default para evitar variantes vacias, invalidas o inconsistentes.
+     */
     private int normalizeSlotDurationOrDefault(Integer value) {
         if (value == null || !ALLOWED_SLOT_DURATIONS.contains(value)) {
             return DEFAULT_SLOT_DURATION_MINUTES;
@@ -390,10 +445,16 @@ public class ScheduleApplicationService implements BookingSchedulingAvailability
         return value;
     }
 
+    /**
+     * Resuelve slot duration minutes normalizando entradas, defaults y casos borde.
+     */
     private int resolveSlotDurationMinutes(Integer value) {
         return normalizeSlotDurationOrDefault(value);
     }
 
+    /**
+     * Sanea slot duracion minutes antes de usarlo en storage, URL o persistencia.
+     */
     private int sanitizeSlotDurationMinutes(Integer requested, Integer current) {
         if (requested == null) {
             return resolveSlotDurationMinutes(current);
@@ -402,6 +463,9 @@ public class ScheduleApplicationService implements BookingSchedulingAvailability
         return requested;
     }
 
+    /**
+     * Resuelve effective duration minutes normalizando entradas, defaults y casos borde.
+     */
     private int resolveEffectiveDurationMinutes(ProfesionalService service) {
         int baseDuration = parseDurationToMinutes(service.getDuration());
         Integer rawPostBuffer = service.getPostBufferMinutes();
@@ -409,6 +473,9 @@ public class ScheduleApplicationService implements BookingSchedulingAvailability
         return baseDuration + postBuffer;
     }
 
+    /**
+     * Parsea duration to minutes y convierte errores de formato en errores controlados.
+     */
     private int parseDurationToMinutes(String duration) {
         if (duration == null || duration.isBlank()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Duración del servicio inválida");
@@ -433,6 +500,9 @@ public class ScheduleApplicationService implements BookingSchedulingAvailability
         return minutes;
     }
 
+    /**
+     * Evalua has overlap y devuelve una decision booleana para el llamador.
+     */
     private boolean hasOverlap(
         List<BookedWindow> bookedWindows,
         LocalDateTime candidateStart,
@@ -446,5 +516,9 @@ public class ScheduleApplicationService implements BookingSchedulingAvailability
         return false;
     }
 
+    /**
+     * Bloque de datos booked window usado internamente por esta clase.
+     * Agrupa valores relacionados para que el calculo principal sea mas legible.
+     */
     private record BookedWindow(LocalDateTime start, LocalDateTime end) {}
 }

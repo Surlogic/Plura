@@ -14,6 +14,12 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Service;
 
+/**
+ * ProfileCacheServiceFacade es un componente de dominio del modulo cache.
+ * Responsabilidad: encapsular comportamiento propio del modulo y mantenerlo fuera de controllers u otras capas.
+ * Colabora con: inMemory, redis, meterRegistry, summaryListType, entre otros.
+ * Foco funcional: perfiles, servicios, cache.
+ */
 @Service
 @Primary
 public class ProfileCacheServiceFacade implements ProfileCacheService {
@@ -75,6 +81,9 @@ public class ProfileCacheServiceFacade implements ProfileCacheService {
         return Optional.empty();
     }
 
+    /**
+     * Ejecuta la logica de put publico pagina by slug manteniendola encapsulada en este componente.
+     */
     @Override
     public void putPublicPageBySlug(String slug, ProfesionalPublicPageResponse response) {
         if (!isProfileCacheActive()) {
@@ -111,6 +120,9 @@ public class ProfileCacheServiceFacade implements ProfileCacheService {
         return Optional.empty();
     }
 
+    /**
+     * Ejecuta la logica de put publico summaries manteniendola encapsulada en este componente.
+     */
     @Override
     public void putPublicSummaries(String key, List<ProfesionalPublicSummaryResponse> response) {
         if (!isProfileCacheActive()) {
@@ -120,6 +132,9 @@ public class ProfileCacheServiceFacade implements ProfileCacheService {
         redis.put(SUMMARY_PREFIX + normalize(key), response, SUMMARY_TTL, "profile-summaries");
     }
 
+    /**
+     * Ejecuta la logica de evict publico pagina by slug manteniendola encapsulada en este componente.
+     */
     @Override
     public void evictPublicPageBySlug(String slug) {
         if (!isProfileCacheActive()) {
@@ -129,6 +144,9 @@ public class ProfileCacheServiceFacade implements ProfileCacheService {
         redis.evict("profile:" + normalize(slug), "profile-page");
     }
 
+    /**
+     * Ejecuta la logica de evict publico summaries manteniendola encapsulada en este componente.
+     */
     @Override
     public void evictPublicSummaries() {
         if (!isProfileCacheActive()) {
@@ -138,14 +156,23 @@ public class ProfileCacheServiceFacade implements ProfileCacheService {
         redis.evictByPrefix(SUMMARY_PREFIX, "profile-summaries");
     }
 
+    /**
+     * Evalua is perfil cache active y devuelve una decision booleana para el llamador.
+     */
     private boolean isProfileCacheActive() {
         return cacheEnabled && profileCacheEnabled;
     }
 
+    /**
+     * Normaliza normalizar para evitar variantes vacias, invalidas o inconsistentes.
+     */
     private String normalize(String key) {
         return key == null ? "" : key.trim().toLowerCase();
     }
 
+    /**
+     * Marca hit y actualiza los indicadores relacionados.
+     */
     private void markHit(String cacheName, String backend) {
         Counter.builder("plura.cache.hit")
             .description("Cache hits")
@@ -155,6 +182,9 @@ public class ProfileCacheServiceFacade implements ProfileCacheService {
             .increment();
     }
 
+    /**
+     * Marca miss y actualiza los indicadores relacionados.
+     */
     private void markMiss(String cacheName) {
         Counter.builder("plura.cache.miss")
             .description("Cache misses")

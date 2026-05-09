@@ -13,6 +13,12 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+/**
+ * ProfessionalWorkerInvitationController es un controlador REST del modulo profesionales / trabajadores.
+ * Responsabilidad: recibir requests HTTP, validar acceso basico y delegar la operacion al servicio de aplicacion o dominio.
+ * Superficie HTTP: atiende rutas bajo /auth/worker-invitations y deja la logica pesada en servicios.
+ * Foco funcional: profesionales, trabajadores.
+ */
 @RestController
 @RequestMapping("/auth/worker-invitations")
 public class ProfessionalWorkerInvitationController {
@@ -23,6 +29,9 @@ public class ProfessionalWorkerInvitationController {
         this.invitationService = invitationService;
     }
 
+    /**
+     * Busca informacion publica o pendiente sin modificar estado.
+     */
     @GetMapping
     public ResponseEntity<ProfessionalWorkerInvitationLookupResponse> lookup(@RequestParam String token) {
         return ResponseEntity.ok()
@@ -30,6 +39,9 @@ public class ProfessionalWorkerInvitationController {
             .body(invitationService.lookup(token));
     }
 
+    /**
+     * Acepta la invitacion o accion pendiente y persiste el resultado.
+     */
     @PostMapping("/accept")
     public ResponseEntity<ProfessionalWorkerInvitationAcceptResponse> accept(
         @Valid @RequestBody ProfessionalWorkerInvitationAcceptRequest request

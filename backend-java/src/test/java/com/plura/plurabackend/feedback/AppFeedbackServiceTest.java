@@ -31,6 +31,11 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.web.server.ResponseStatusException;
 
+/**
+ * Tests de feedback de la plataforma.
+ * Cubren escenarios de app feedback servicio para documentar el comportamiento esperado y evitar regresiones.
+ * Mantener estos casos alineados con los contratos reales del backend cuando cambie la logica productiva.
+ */
 class AppFeedbackServiceTest {
 
     private AppFeedbackRepository appFeedbackRepository;
@@ -40,6 +45,10 @@ class AppFeedbackServiceTest {
     private User clientUser;
     private User professionalUser;
 
+    /**
+     * Prepara mocks, datos base o configuracion comun antes de cada caso de prueba.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @BeforeEach
     void setUp() {
         appFeedbackRepository = mock(AppFeedbackRepository.class);
@@ -58,6 +67,10 @@ class AppFeedbackServiceTest {
         when(userRepository.findById(2L)).thenReturn(Optional.of(professionalUser));
     }
 
+    /**
+     * Escenario: cliente puede crear feedback.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void clientCanCreateFeedback() {
         CreateAppFeedbackRequest request = new CreateAppFeedbackRequest(4, "Muy buena app", "UX", "configuracion");
@@ -84,6 +97,10 @@ class AppFeedbackServiceTest {
         assertEquals(clientUser, saved.getAuthor());
     }
 
+    /**
+     * Escenario: profesional puede crear feedback.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void professionalCanCreateFeedback() {
         CreateAppFeedbackRequest request = new CreateAppFeedbackRequest(5, null, null, null);
@@ -107,6 +124,10 @@ class AppFeedbackServiceTest {
         assertEquals(AuthorRole.PROFESSIONAL, captor.getValue().getAuthorRole());
     }
 
+    /**
+     * Escenario: invalido category verifica que devuelva bad request.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void invalidCategoryReturnsBadRequest() {
         CreateAppFeedbackRequest request = new CreateAppFeedbackRequest(3, "Texto", "INVALID_CAT", null);
@@ -118,6 +139,10 @@ class AppFeedbackServiceTest {
         verify(appFeedbackRepository, never()).save(any());
     }
 
+    /**
+     * Escenario: usuario no encontrado verifica que devuelva 404.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void userNotFoundReturns404() {
         when(userRepository.findById(999L)).thenReturn(Optional.empty());
@@ -130,6 +155,10 @@ class AppFeedbackServiceTest {
         assertEquals(404, ex.getStatusCode().value());
     }
 
+    /**
+     * Escenario: listado mine verifica que devuelva only own feedback.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void listMineReturnsOnlyOwnFeedback() {
         AppFeedback fb = new AppFeedback();
@@ -152,6 +181,10 @@ class AppFeedbackServiceTest {
         assertEquals(20L, result.getContent().get(0).getId());
     }
 
+    /**
+     * Escenario: listado mine pagination caps at 50.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void listMinePaginationCapsAt50() {
         Page<AppFeedback> emptyPage = new PageImpl<>(List.of(), PageRequest.of(0, 50), 0);
@@ -163,6 +196,10 @@ class AppFeedbackServiceTest {
         verify(appFeedbackRepository).findByAuthorIdOrderByCreatedAtDescIdDesc(eq(1L), eq(PageRequest.of(0, 50)));
     }
 
+    /**
+     * Escenario: feedback con todos categories.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void feedbackWithAllCategories() {
         for (String cat : List.of("BUG", "UX", "PAYMENTS", "BOOKING", "DISCOVERY", "OTHER")) {
@@ -180,6 +217,10 @@ class AppFeedbackServiceTest {
         }
     }
 
+    /**
+     * Escenario: feedback sin category is valido.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void feedbackWithoutCategoryIsValid() {
         CreateAppFeedbackRequest request = new CreateAppFeedbackRequest(2, "Solo rating y texto", null, null);
@@ -196,6 +237,10 @@ class AppFeedbackServiceTest {
         assertEquals(2, response.getRating());
     }
 
+    /**
+     * Escenario: text is trimmed on crear.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void textIsTrimmedOnCreate() {
         CreateAppFeedbackRequest request = new CreateAppFeedbackRequest(3, "  texto con espacios  ", null, "  fuente  ");
@@ -213,6 +258,10 @@ class AppFeedbackServiceTest {
         assertEquals("fuente", response.getContextSource());
     }
 
+    /**
+     * Escenario: category is trimmed on crear.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void categoryIsTrimmedOnCreate() {
         CreateAppFeedbackRequest request = new CreateAppFeedbackRequest(3, null, "  bug  ", null);
@@ -228,6 +277,10 @@ class AppFeedbackServiceTest {
         assertEquals("BUG", response.getCategory());
     }
 
+    /**
+     * Escenario: negative page clamped a zero.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void negativePageClampedToZero() {
         Page<AppFeedback> emptyPage = new PageImpl<>(List.of(), PageRequest.of(0, 10), 0);
@@ -238,6 +291,10 @@ class AppFeedbackServiceTest {
         verify(appFeedbackRepository).findByAuthorIdOrderByCreatedAtDescIdDesc(eq(1L), eq(PageRequest.of(0, 10)));
     }
 
+    /**
+     * Escenario: zero size clamped a one.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void zeroSizeClampedToOne() {
         Page<AppFeedback> emptyPage = new PageImpl<>(List.of(), PageRequest.of(0, 1), 0);
@@ -248,6 +305,10 @@ class AppFeedbackServiceTest {
         verify(appFeedbackRepository).findByAuthorIdOrderByCreatedAtDescIdDesc(eq(1L), eq(PageRequest.of(0, 1)));
     }
 
+    /**
+     * Escenario: listado mine for different usuario verifica que devuelva vacio.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void listMineForDifferentUserReturnsEmpty() {
         Page<AppFeedback> emptyPage = new PageImpl<>(List.of(), PageRequest.of(0, 10), 0);
@@ -259,6 +320,10 @@ class AppFeedbackServiceTest {
         verify(appFeedbackRepository).findByAuthorIdOrderByCreatedAtDescIdDesc(eq(2L), eq(PageRequest.of(0, 10)));
     }
 
+    /**
+     * Escenario: vacio text becomes null after trim.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void emptyTextBecomesNullAfterTrim() {
         CreateAppFeedbackRequest request = new CreateAppFeedbackRequest(4, "   ", null, null);

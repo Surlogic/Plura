@@ -32,6 +32,13 @@ import lombok.NoArgsConstructor;
         @Index(name = "idx_notification_event_booking_ref", columnList = "recipient_type, recipient_id, booking_reference_id, occurred_at")
     }
 )
+
+/**
+ * NotificationEvent es un evento de dominio del modulo notificaciones / modelo.
+ * Responsabilidad: registrar un hecho relevante para auditoria, notificaciones o integraciones.
+ * Mantiene separada esta responsabilidad para que el resto del backend use una API clara.
+ * Foco funcional: notificaciones.
+ */
 public class NotificationEvent {
 
     @Id

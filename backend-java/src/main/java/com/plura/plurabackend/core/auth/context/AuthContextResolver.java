@@ -1,9 +1,9 @@
 package com.plura.plurabackend.core.auth.context;
 
+import com.plura.plurabackend.core.professional.ProfessionalAccountProfileGateway;
 import com.plura.plurabackend.core.user.model.User;
 import com.plura.plurabackend.core.user.model.UserRole;
 import com.plura.plurabackend.professional.model.ProfessionalProfile;
-import com.plura.plurabackend.professional.repository.ProfessionalProfileRepository;
 import com.plura.plurabackend.professional.worker.model.ProfessionalWorker;
 import com.plura.plurabackend.professional.worker.model.ProfessionalWorkerStatus;
 import com.plura.plurabackend.professional.worker.repository.ProfessionalWorkerRepository;
@@ -12,20 +12,29 @@ import java.util.List;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+/**
+ * AuthContextResolver es un componente de dominio del modulo autenticacion / contexto de sesion.
+ * Responsabilidad: encapsular comportamiento propio del modulo y mantenerlo fuera de controllers u otras capas.
+ * Colabora con: professionalAccountProfileGateway, workerRepository.
+ * Foco funcional: autenticacion y sesiones.
+ */
 @Service
 public class AuthContextResolver {
 
-    private final ProfessionalProfileRepository professionalProfileRepository;
+    private final ProfessionalAccountProfileGateway professionalAccountProfileGateway;
     private final ProfessionalWorkerRepository workerRepository;
 
     public AuthContextResolver(
-        ProfessionalProfileRepository professionalProfileRepository,
+        ProfessionalAccountProfileGateway professionalAccountProfileGateway,
         ProfessionalWorkerRepository workerRepository
     ) {
-        this.professionalProfileRepository = professionalProfileRepository;
+        this.professionalAccountProfileGateway = professionalAccountProfileGateway;
         this.workerRepository = workerRepository;
     }
 
+    /**
+     * Resuelve resolve normalizando entradas, defaults y casos borde.
+     */
     @Transactional(readOnly = true)
     public List<AuthContextDescriptor> resolve(User user) {
         if (user == null || user.getDeletedAt() != null) {
@@ -36,7 +45,7 @@ public class AuthContextResolver {
             contexts.add(new AuthContextDescriptor(AuthContextType.CLIENT, null, null, null, null, null, false));
         }
 
-        ProfessionalProfile profile = professionalProfileRepository.findByUser_Id(user.getId()).orElse(null);
+        ProfessionalProfile profile = professionalAccountProfileGateway.findByUserId(user.getId()).orElse(null);
         if (profile != null && Boolean.TRUE.equals(profile.getActive())) {
             contexts.add(new AuthContextDescriptor(
                 AuthContextType.PROFESSIONAL,
@@ -71,6 +80,9 @@ public class AuthContextResolver {
         return contexts;
     }
 
+    /**
+     * Ejecuta la logica de pick default manteniendola encapsulada en este componente.
+     */
     public AuthContextDescriptor pickDefault(List<AuthContextDescriptor> contexts) {
         if (contexts == null || contexts.isEmpty()) {
             return null;
@@ -88,6 +100,9 @@ public class AuthContextResolver {
         return contexts.get(0);
     }
 
+    /**
+     * Ejecuta la logica de select manteniendola encapsulada en este componente.
+     */
     public AuthContextDescriptor select(
         List<AuthContextDescriptor> contexts,
         AuthContextType type,
@@ -124,6 +139,9 @@ public class AuthContextResolver {
         return null;
     }
 
+    /**
+     * Resuelve profesional name normalizando entradas, defaults y casos borde.
+     */
     private String resolveProfessionalName(ProfessionalProfile profile) {
         if (profile == null) {
             return null;

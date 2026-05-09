@@ -21,6 +21,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
+/**
+ * AppProductEventTrackingService es un servicio de negocio del modulo analytics / tracking.
+ * Responsabilidad: coordinar reglas de negocio, validaciones, persistencia e integraciones del caso de uso.
+ * Colabora con: appProductEventRepository, objectMapper.
+ * Foco funcional: servicios.
+ */
 @Service
 public class AppProductEventTrackingService {
 
@@ -68,6 +74,9 @@ public class AppProductEventTrackingService {
         this.objectMapper = objectMapper;
     }
 
+    /**
+     * Ejecuta la logica de track busqueda manteniendola encapsulada en este componente.
+     */
     public void trackSearch(
         String platform,
         String sessionId,
@@ -129,6 +138,9 @@ public class AppProductEventTrackingService {
             .build());
     }
 
+    /**
+     * Ejecuta la logica de track profesional perfil view manteniendola encapsulada en este componente.
+     */
     public void trackProfessionalProfileView(
         String platform,
         String sessionId,
@@ -169,6 +181,9 @@ public class AppProductEventTrackingService {
             .build());
     }
 
+    /**
+     * Ejecuta la logica de track publico product evento manteniendola encapsulada en este componente.
+     */
     public void trackPublicProductEvent(
         String platform,
         String sessionId,
@@ -203,6 +218,9 @@ public class AppProductEventTrackingService {
             .build());
     }
 
+    /**
+     * Ejecuta la logica de track reserva created manteniendola encapsulada en este componente.
+     */
     public void trackBookingCreated(
         String platform,
         String sessionId,
@@ -218,6 +236,9 @@ public class AppProductEventTrackingService {
         );
     }
 
+    /**
+     * Ejecuta la logica de track pago sesion created manteniendola encapsulada en este componente.
+     */
     public void trackPaymentSessionCreated(
         Booking booking,
         PaymentTransaction transaction,
@@ -242,6 +263,9 @@ public class AppProductEventTrackingService {
         );
     }
 
+    /**
+     * Ejecuta la logica de track reserva confirmed manteniendola encapsulada en este componente.
+     */
     public void trackBookingConfirmed(
         Booking booking,
         BookingActorType actorType,
@@ -258,6 +282,9 @@ public class AppProductEventTrackingService {
         );
     }
 
+    /**
+     * Ejecuta la logica de track reserva cancelled manteniendola encapsulada en este componente.
+     */
     public void trackBookingCancelled(
         Booking booking,
         BookingActorType actorType,
@@ -274,6 +301,9 @@ public class AppProductEventTrackingService {
         );
     }
 
+    /**
+     * Ejecuta la logica de track reserva rescheduled manteniendola encapsulada en este componente.
+     */
     public void trackBookingRescheduled(
         Booking booking,
         BookingActorType actorType,
@@ -290,6 +320,9 @@ public class AppProductEventTrackingService {
         );
     }
 
+    /**
+     * Ejecuta la logica de track reserva completed manteniendola encapsulada en este componente.
+     */
     public void trackBookingCompleted(
         Booking booking,
         BookingActorType actorType,
@@ -306,6 +339,9 @@ public class AppProductEventTrackingService {
         );
     }
 
+    /**
+     * Ejecuta la logica de track reserva no show manteniendola encapsulada en este componente.
+     */
     public void trackBookingNoShow(
         Booking booking,
         BookingActorType actorType,
@@ -322,6 +358,9 @@ public class AppProductEventTrackingService {
         );
     }
 
+    /**
+     * Ejecuta la logica de track reserva lifecycle evento manteniendola encapsulada en este componente.
+     */
     private void trackBookingLifecycleEvent(
         String eventKey,
         String platform,
@@ -360,12 +399,18 @@ public class AppProductEventTrackingService {
             .build());
     }
 
+    /**
+     * Ejecuta la logica de new evento manteniendola encapsulada en este componente.
+     */
     private AppProductEventBuilder newEvent(String eventKey, String platform) {
         return new AppProductEventBuilder()
             .withEventKey(eventKey)
             .withPlatform(normalizePlatform(platform));
     }
 
+    /**
+     * Ejecuta la logica de persist de forma segura manteniendola encapsulada en este componente.
+     */
     private void persistSafely(AppProductEvent event) {
         if (event == null) {
             return;
@@ -377,6 +422,9 @@ public class AppProductEventTrackingService {
         }
     }
 
+    /**
+     * Resuelve reserva usuario ID normalizando entradas, defaults y casos borde.
+     */
     private Long resolveBookingUserId(Booking booking, Long fallbackUserId) {
         if (booking != null && booking.getUser() != null && booking.getUser().getId() != null) {
             return booking.getUser().getId();
@@ -384,6 +432,9 @@ public class AppProductEventTrackingService {
         return fallbackUserId;
     }
 
+    /**
+     * Ejecuta la logica de reserva metadata manteniendola encapsulada en este componente.
+     */
     private Map<String, Object> bookingMetadata(Booking booking) {
         Map<String, Object> metadata = new LinkedHashMap<>();
         if (booking == null) {
@@ -401,6 +452,9 @@ public class AppProductEventTrackingService {
         return metadata;
     }
 
+    /**
+     * Ejecuta la logica de enrich actor metadata manteniendola encapsulada en este componente.
+     */
     private Map<String, Object> enrichActorMetadata(
         Map<String, Object> metadata,
         BookingActorType actorType,
@@ -419,6 +473,9 @@ public class AppProductEventTrackingService {
         return enriched;
     }
 
+    /**
+     * Ejecuta result conteo atrapando errores para que el flujo principal no falle innecesariamente.
+     */
     private Integer safeResultCount(long resultCount) {
         if (resultCount <= 0) {
             return 0;
@@ -426,6 +483,9 @@ public class AppProductEventTrackingService {
         return resultCount > Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) resultCount;
     }
 
+    /**
+     * Normaliza plataforma para evitar variantes vacias, invalidas o inconsistentes.
+     */
     private String normalizePlatform(String platform) {
         String normalized = normalizeOptional(platform);
         if (normalized == null) {
@@ -438,11 +498,17 @@ public class AppProductEventTrackingService {
         };
     }
 
+    /**
+     * Resuelve categoria label normalizando entradas, defaults y casos borde.
+     */
     private String resolveCategoryLabel(String value) {
         String normalized = normalizeOptional(value);
         return normalized == null ? "Sin categoria" : normalized;
     }
 
+    /**
+     * Normaliza opcional para evitar variantes vacias, invalidas o inconsistentes.
+     */
     private String normalizeOptional(String value) {
         if (value == null) {
             return null;
@@ -451,6 +517,9 @@ public class AppProductEventTrackingService {
         return normalized.isBlank() ? null : normalized;
     }
 
+    /**
+     * Normaliza sesion ID para evitar variantes vacias, invalidas o inconsistentes.
+     */
     private String normalizeSessionId(String value) {
         String normalized = normalizeOptional(value);
         if (normalized == null) {
@@ -459,6 +528,9 @@ public class AppProductEventTrackingService {
         return normalized.length() <= 120 ? normalized : normalized.substring(0, 120);
     }
 
+    /**
+     * Normaliza step nombre para evitar variantes vacias, invalidas o inconsistentes.
+     */
     private String normalizeStepName(String value) {
         String normalized = normalizeOptional(value);
         if (normalized == null) {
@@ -467,6 +539,9 @@ public class AppProductEventTrackingService {
         return normalized.length() <= 60 ? normalized : normalized.substring(0, 60);
     }
 
+    /**
+     * Parsea long y convierte errores de formato en errores controlados.
+     */
     private Long parseLong(String value) {
         if (value == null || value.isBlank()) {
             return null;
@@ -478,6 +553,9 @@ public class AppProductEventTrackingService {
         }
     }
 
+    /**
+     * Ejecuta la logica de slugify manteniendola encapsulada en este componente.
+     */
     private String slugify(String value) {
         if (value == null || value.isBlank()) {
             return null;
@@ -490,6 +568,9 @@ public class AppProductEventTrackingService {
         return normalized.isBlank() ? null : normalized;
     }
 
+    /**
+     * Obtiene el primer valor util de non blank ignorando nulos o blancos.
+     */
     private String firstNonBlank(String... values) {
         if (values == null) {
             return null;
@@ -503,6 +584,9 @@ public class AppProductEventTrackingService {
         return null;
     }
 
+    /**
+     * Guarda metadata en el formato persistido esperado por el modulo.
+     */
     private String writeMetadata(Map<String, Object> metadata) {
         if (metadata == null || metadata.isEmpty()) {
             return "{}";

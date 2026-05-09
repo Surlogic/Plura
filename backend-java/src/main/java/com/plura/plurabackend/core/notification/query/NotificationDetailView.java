@@ -8,6 +8,12 @@ import com.plura.plurabackend.core.notification.model.NotificationSeverity;
 import java.time.LocalDateTime;
 import java.util.Map;
 
+/**
+ * NotificationDetailView es un modelo inmutable del modulo notificaciones / consultas.
+ * Responsabilidad: agrupar datos de lectura o respuesta con una estructura clara y sin estado mutable.
+ * Contrato: lo consumen web/mobile, asi que renombrar campos puede romper compatibilidad.
+ * Foco funcional: notificaciones.
+ */
 public record NotificationDetailView(
     String id,
     String notificationEventId,

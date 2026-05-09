@@ -2,6 +2,7 @@ package com.plura.plurabackend.core.auth;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
 /**
  * Implementacion de {@link EmailVerificationNotificationSender} que registra
  * la solicitud de verificacion de email en los logs en lugar de enviar un correo real.

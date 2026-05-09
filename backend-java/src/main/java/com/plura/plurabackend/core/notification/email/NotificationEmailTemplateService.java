@@ -15,6 +15,12 @@ import java.util.Map;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+/**
+ * NotificationEmailTemplateService es un servicio de negocio del modulo notificaciones / email.
+ * Responsabilidad: coordinar reglas de negocio, validaciones, persistencia e integraciones del caso de uso.
+ * Colabora con: objectMapper, brandName, publicWebUrl.
+ * Foco funcional: notificaciones, servicios, email transaccional.
+ */
 @Service
 public class NotificationEmailTemplateService {
 
@@ -57,6 +63,9 @@ public class NotificationEmailTemplateService {
         return buildProfessionalMessage(dispatch, event, payload, subject);
     }
 
+    /**
+     * Construye cliente message a partir de datos internos ya validados.
+     */
     private NotificationEmailMessage buildClientMessage(
         EmailDispatch dispatch,
         NotificationEvent event,
@@ -143,6 +152,9 @@ public class NotificationEmailTemplateService {
         );
     }
 
+    /**
+     * Construye profesional message a partir de datos internos ya validados.
+     */
     private NotificationEmailMessage buildProfessionalMessage(
         EmailDispatch dispatch,
         NotificationEvent event,
@@ -195,6 +207,9 @@ public class NotificationEmailTemplateService {
         );
     }
 
+    /**
+     * Lee payload desde la fuente persistida y aplica defaults si faltan datos.
+     */
     private Map<String, Object> readPayload(String payloadJson) {
         if (isBlank(payloadJson)) {
             return Map.of();
@@ -206,6 +221,9 @@ public class NotificationEmailTemplateService {
         }
     }
 
+    /**
+     * Ejecuta la logica de title for manteniendola encapsulada en este componente.
+     */
     private String titleFor(NotificationEventType eventType, NotificationRecipientType recipientType) {
         return switch (eventType) {
             case BOOKING_CREATED -> recipientType == NotificationRecipientType.CLIENT ? "Reserva creada" : "Nueva reserva";
@@ -222,6 +240,9 @@ public class NotificationEmailTemplateService {
         };
     }
 
+    /**
+     * Ejecuta la logica de cliente title for manteniendola encapsulada en este componente.
+     */
     private String clientTitleFor(NotificationEventType eventType) {
         return switch (eventType) {
             case BOOKING_CREATED -> "Confirmación de reserva";
@@ -238,6 +259,9 @@ public class NotificationEmailTemplateService {
         };
     }
 
+    /**
+     * Ejecuta la logica de cliente lead for manteniendola encapsulada en este componente.
+     */
     private String clientLeadFor(NotificationEventType eventType, Map<String, Object> payload) {
         String serviceName = safeServiceName(payload);
         return switch (eventType) {
@@ -255,6 +279,9 @@ public class NotificationEmailTemplateService {
         };
     }
 
+    /**
+     * Ejecuta la logica de cliente details intro for manteniendola encapsulada en este componente.
+     */
     private String clientDetailsIntroFor(NotificationEventType eventType) {
         return switch (eventType) {
             case PAYMENT_APPROVED, PAYMENT_FAILED, PAYMENT_REFUND_PENDING, PAYMENT_REFUNDED ->
@@ -263,6 +290,9 @@ public class NotificationEmailTemplateService {
         };
     }
 
+    /**
+     * Ejecuta la logica de cliente guidance text manteniendola encapsulada en este componente.
+     */
     private String clientGuidanceText(NotificationEventType eventType) {
         return switch (eventType) {
             case BOOKING_CREATED, BOOKING_CONFIRMED ->
@@ -282,6 +312,9 @@ public class NotificationEmailTemplateService {
         };
     }
 
+    /**
+     * Ejecuta la logica de cliente proximos step line manteniendola encapsulada en este componente.
+     */
     private String clientNextStepLine(NotificationEventType eventType) {
         return switch (eventType) {
             case BOOKING_CREATED, BOOKING_CONFIRMED, BOOKING_RESCHEDULED ->
@@ -290,6 +323,9 @@ public class NotificationEmailTemplateService {
         };
     }
 
+    /**
+     * Ejecuta la logica de cliente action label for manteniendola encapsulada en este componente.
+     */
     private String clientActionLabelFor(NotificationEventType eventType) {
         return switch (eventType) {
             case PAYMENT_APPROVED, PAYMENT_FAILED, PAYMENT_REFUND_PENDING, PAYMENT_REFUNDED -> "Ver tu reserva";
@@ -297,6 +333,9 @@ public class NotificationEmailTemplateService {
         };
     }
 
+    /**
+     * Ejecuta la logica de intro for manteniendola encapsulada en este componente.
+     */
     private String introFor(
         NotificationEventType eventType,
         Map<String, Object> payload,
@@ -337,6 +376,9 @@ public class NotificationEmailTemplateService {
         };
     }
 
+    /**
+     * Ejecuta la logica de cliente details HTML manteniendola encapsulada en este componente.
+     */
     private String clientDetailsHtml(
         NotificationEventType eventType,
         Map<String, Object> payload,
@@ -394,6 +436,9 @@ public class NotificationEmailTemplateService {
         return bookingDetails + paymentDetails;
     }
 
+    /**
+     * Ejecuta la logica de details for manteniendola encapsulada en este componente.
+     */
     private String detailsFor(
         NotificationEventType eventType,
         Map<String, Object> payload,
@@ -458,6 +503,9 @@ public class NotificationEmailTemplateService {
         };
     }
 
+    /**
+     * Ejecuta la logica de cliente plain text details manteniendola encapsulada en este componente.
+     */
     private String clientPlainTextDetails(
         NotificationEventType eventType,
         Map<String, Object> payload,
@@ -499,6 +547,9 @@ public class NotificationEmailTemplateService {
         };
     }
 
+    /**
+     * Ejecuta la logica de plain text details manteniendola encapsulada en este componente.
+     */
     private String plainTextDetails(
         Map<String, Object> payload,
         NotificationEvent event,
@@ -541,6 +592,9 @@ public class NotificationEmailTemplateService {
         };
     }
 
+    /**
+     * Ejecuta la logica de action URL manteniendola encapsulada en este componente.
+     */
     private String actionUrl(Map<String, Object> payload, NotificationEvent event) {
         String actionUrl = stringValue(payload.get("actionUrl"));
         if (!isBlank(actionUrl)) {
@@ -556,6 +610,9 @@ public class NotificationEmailTemplateService {
         return normalizeBaseUrl(publicWebUrl);
     }
 
+    /**
+     * Ejecuta la logica de reserva action URL for destinatario manteniendola encapsulada en este componente.
+     */
     private String bookingActionUrlForRecipient(NotificationRecipientType recipientType, String bookingId) {
         String normalizedBaseUrl = normalizeBaseUrl(publicWebUrl);
         if (recipientType == NotificationRecipientType.CLIENT) {
@@ -564,6 +621,9 @@ public class NotificationEmailTemplateService {
         return normalizedBaseUrl + "/profesional/dashboard/reservas?bookingId=" + bookingId;
     }
 
+    /**
+     * Ejecuta la logica de default subject manteniendola encapsulada en este componente.
+     */
     private String defaultSubject(NotificationEventType eventType, NotificationRecipientType recipientType) {
         if (recipientType == NotificationRecipientType.CLIENT) {
             return switch (eventType) {
@@ -595,6 +655,9 @@ public class NotificationEmailTemplateService {
         };
     }
 
+    /**
+     * Ejecuta la logica de ensure supported evento tipo manteniendola encapsulada en este componente.
+     */
     private void ensureSupportedEventType(NotificationEventType eventType) {
         if (eventType == null) {
             throw new NotificationEmailTemplateException("Notification event sin tipo");
@@ -616,12 +679,18 @@ public class NotificationEmailTemplateService {
         }
     }
 
+    /**
+     * Ejecuta la logica de unsupported template manteniendola encapsulada en este componente.
+     */
     private NotificationEmailTemplateException unsupportedTemplate(NotificationEventType eventType) {
         return new NotificationEmailTemplateException(
             "No hay plantilla de notification email para eventType=%s".formatted(eventType == null ? "null" : eventType.name())
         );
     }
 
+    /**
+     * Ejecuta la logica de action button manteniendola encapsulada en este componente.
+     */
     private String actionButton(String actionUrl, String label) {
         if (isBlank(actionUrl)) {
             return "";
@@ -633,6 +702,9 @@ public class NotificationEmailTemplateService {
             """.formatted(escapeHtml(actionUrl), escapeHtml(firstNonBlank(label, "Ver detalle")));
     }
 
+    /**
+     * Ejecuta la logica de opcional paragraph manteniendola encapsulada en este componente.
+     */
     private String optionalParagraph(String value) {
         if (isBlank(value)) {
             return "";
@@ -642,6 +714,9 @@ public class NotificationEmailTemplateService {
             + "</p>";
     }
 
+    /**
+     * Envuelve HTML con el layout HTML comun del email.
+     */
     private String wrapHtml(String title, String bodyHtml) {
         return """
             <!doctype html>
@@ -689,10 +764,16 @@ public class NotificationEmailTemplateService {
         );
     }
 
+    /**
+     * Ejecuta servicio nombre atrapando errores para que el flujo principal no falle innecesariamente.
+     */
     private String safeServiceName(Map<String, Object> payload) {
         return firstNonBlank(stringValue(payload.get("serviceName")), "el servicio");
     }
 
+    /**
+     * Ejecuta la logica de monto label manteniendola encapsulada en este componente.
+     */
     private String amountLabel(Map<String, Object> payload) {
         Object rawAmount = payload.get("amount");
         String currency = firstNonBlank(stringValue(payload.get("currency")), "UYU");
@@ -708,6 +789,9 @@ public class NotificationEmailTemplateService {
         return "No disponible";
     }
 
+    /**
+     * Ejecuta la logica de reserva fecha hora presentation manteniendola encapsulada en este componente.
+     */
     private BookingDateTimePresentation bookingDateTimePresentation(Map<String, Object> payload) {
         String startDateTime = stringValue(payload.get("startDateTime"));
         if (isBlank(startDateTime)) {
@@ -724,6 +808,9 @@ public class NotificationEmailTemplateService {
         }
     }
 
+    /**
+     * Evalua is pago evento y devuelve una decision booleana para el llamador.
+     */
     private boolean isPaymentEvent(NotificationEventType eventType) {
         return switch (eventType) {
             case PAYMENT_APPROVED, PAYMENT_FAILED, PAYMENT_REFUND_PENDING, PAYMENT_REFUNDED -> true;
@@ -731,10 +818,16 @@ public class NotificationEmailTemplateService {
         };
     }
 
+    /**
+     * Ejecuta la logica de string value manteniendola encapsulada en este componente.
+     */
     private String stringValue(Object value) {
         return value == null ? null : value.toString();
     }
 
+    /**
+     * Obtiene el primer valor util de non blank ignorando nulos o blancos.
+     */
     private String firstNonBlank(String... values) {
         for (String value : values) {
             if (!isBlank(value)) {
@@ -744,6 +837,9 @@ public class NotificationEmailTemplateService {
         return null;
     }
 
+    /**
+     * Normaliza base URL para evitar variantes vacias, invalidas o inconsistentes.
+     */
     private String normalizeBaseUrl(String value) {
         if (isBlank(value)) {
             return "http://localhost:3002";
@@ -751,10 +847,16 @@ public class NotificationEmailTemplateService {
         return value.trim().endsWith("/") ? value.trim().substring(0, value.trim().length() - 1) : value.trim();
     }
 
+    /**
+     * Evalua is blank y devuelve una decision booleana para el llamador.
+     */
     private boolean isBlank(String value) {
         return value == null || value.trim().isBlank();
     }
 
+    /**
+     * Escapa HTML para evitar HTML invalido o inyeccion en templates.
+     */
     private String escapeHtml(String value) {
         if (value == null) {
             return "";
@@ -767,6 +869,10 @@ public class NotificationEmailTemplateService {
             .replace("'", "&#39;");
     }
 
+    /**
+     * Bloque de datos booking date time presentation usado internamente por esta clase.
+     * Agrupa valores relacionados para que el calculo principal sea mas legible.
+     */
     private record BookingDateTimePresentation(String dateLabel, String timeLabel) {
     }
 }

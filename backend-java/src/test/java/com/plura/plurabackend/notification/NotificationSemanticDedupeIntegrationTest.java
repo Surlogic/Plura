@@ -32,6 +32,11 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 
+/**
+ * Tests de notificaciones, bandejas y emails.
+ * Cubren escenarios de notificacion semantic dedupe integracion para documentar el comportamiento esperado y evitar regresiones.
+ * Mantener estos casos alineados con los contratos reales del backend cuando cambie la logica productiva.
+ */
 @SpringBootTest(properties = {
     "SPRING_DATASOURCE_URL=jdbc:h2:mem:notification-semantic-dedupe;MODE=PostgreSQL;DB_CLOSE_DELAY=-1;DATABASE_TO_LOWER=TRUE",
     "SPRING_DATASOURCE_USERNAME=sa",
@@ -69,6 +74,10 @@ class NotificationSemanticDedupeIntegrationTest {
     private final BookingNotificationCommandFactory bookingFactory = new BookingNotificationCommandFactory();
     private final BillingNotificationCommandFactory billingFactory = new BillingNotificationCommandFactory();
 
+    /**
+     * Prepara mocks, datos base o configuracion comun antes de cada caso de prueba.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @BeforeEach
     void setUp() {
         emailDispatchRepository.deleteAll();
@@ -76,6 +85,10 @@ class NotificationSemanticDedupeIntegrationTest {
         notificationEventRepository.deleteAll();
     }
 
+    /**
+     * Escenario: reserva confirmado desde multiple interno paths is deduplicated.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void bookingConfirmedFromMultipleInternalPathsIsDeduplicated() {
         Booking booking = booking();
@@ -100,6 +113,10 @@ class NotificationSemanticDedupeIntegrationTest {
         assertEquals(1, emailDispatchRepository.count());
     }
 
+    /**
+     * Escenario: pago approved desde webhook y sync is deduplicated.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void paymentApprovedFromWebhookAndSyncIsDeduplicated() {
         Booking booking = booking();
@@ -125,6 +142,10 @@ class NotificationSemanticDedupeIntegrationTest {
         assertEquals(1, emailDispatchRepository.count());
     }
 
+    /**
+     * Escenario: pago refunded partial y total remain distinct.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void paymentRefundedPartialAndTotalRemainDistinct() {
         Booking booking = booking();
@@ -148,6 +169,10 @@ class NotificationSemanticDedupeIntegrationTest {
         assertEquals(2, notificationEventRepository.count());
     }
 
+    /**
+     * Escenario: reserva reschedules con different conteos do no collapse.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void bookingReschedulesWithDifferentCountsDoNotCollapse() {
         Booking firstReschedule = booking();
@@ -173,6 +198,10 @@ class NotificationSemanticDedupeIntegrationTest {
         assertEquals(2, notificationEventRepository.count());
     }
 
+    /**
+     * Escenario: created y confirmado remain visible como distinct notificaciones for profesional reservas.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void createdAndConfirmedRemainVisibleAsDistinctNotificationsForProfessionalBookings() {
         Booking booking = booking();

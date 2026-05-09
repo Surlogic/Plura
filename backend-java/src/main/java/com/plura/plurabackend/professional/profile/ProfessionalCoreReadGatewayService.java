@@ -29,6 +29,12 @@ import java.util.stream.Collectors;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 
+/**
+ * ProfessionalCoreReadGatewayService es un servicio de negocio del modulo profesionales / perfil.
+ * Responsabilidad: coordinar reglas de negocio, validaciones, persistencia e integraciones del caso de uso.
+ * Colabora con: professionalProfileRepository, profesionalServiceRepository, businessPhotoRepository.
+ * Foco funcional: profesionales, servicios.
+ */
 @Service
 public class ProfessionalCoreReadGatewayService implements
     ProfessionalHomeGateway,
@@ -49,11 +55,17 @@ public class ProfessionalCoreReadGatewayService implements
         this.businessPhotoRepository = businessPhotoRepository;
     }
 
+    /**
+     * Cuenta activos professionals sin cargar entidades completas cuando no hace falta.
+     */
     @Override
     public long countActiveProfessionals() {
         return professionalProfileRepository.countByActiveTrue();
     }
 
+    /**
+     * Cuenta activos professionals grouped by categoria IDs sin cargar entidades completas cuando no hace falta.
+     */
     @Override
     public Map<UUID, Long> countActiveProfessionalsGroupedByCategoryIds(Collection<UUID> categoryIds) {
         if (categoryIds == null || categoryIds.isEmpty()) {
@@ -69,6 +81,10 @@ public class ProfessionalCoreReadGatewayService implements
         return counts;
     }
 
+    /**
+     * Busca top active perfiles by IDs aplicando filtros, joins o criterios del caso de uso.
+     * Mantiene la consulta encapsulada para que el resto del codigo no repita filtros ni joins.
+     */
     @Override
     public List<ProfessionalHomeProfileView> findTopActiveProfilesByIds(Collection<Long> ids) {
         if (ids == null || ids.isEmpty()) {
@@ -85,6 +101,10 @@ public class ProfessionalCoreReadGatewayService implements
             .toList();
     }
 
+    /**
+     * Busca recent active perfiles aplicando filtros, joins o criterios del caso de uso.
+     * Mantiene la consulta encapsulada para que el resto del codigo no repita filtros ni joins.
+     */
     @Override
     public List<ProfessionalHomeProfileView> findRecentActiveProfiles(int page, int size) {
         List<ProfessionalProfile> profiles = professionalProfileRepository.findByActiveTrueWithRelationsOrderByCreatedAtDesc(
@@ -96,6 +116,10 @@ public class ProfessionalCoreReadGatewayService implements
             .toList();
     }
 
+    /**
+     * Busca active perfiles by IDs aplicando filtros, joins o criterios del caso de uso.
+     * Mantiene la consulta encapsulada para que el resto del codigo no repita filtros ni joins.
+     */
     @Override
     public List<ProfessionalSearchIndexProfileView> findActiveProfilesByIds(Collection<Long> ids) {
         if (ids == null || ids.isEmpty()) {
@@ -107,6 +131,10 @@ public class ProfessionalCoreReadGatewayService implements
             .toList();
     }
 
+    /**
+     * Busca active perfiles pagina aplicando filtros, joins o criterios del caso de uso.
+     * Mantiene la consulta encapsulada para que el resto del codigo no repita filtros ni joins.
+     */
     @Override
     public List<ProfessionalSearchIndexProfileView> findActiveProfilesPage(int page, int size) {
         return professionalProfileRepository.findByActiveTrueWithRelationsOrderByCreatedAtDesc(
@@ -116,6 +144,10 @@ public class ProfessionalCoreReadGatewayService implements
             .toList();
     }
 
+    /**
+     * Busca active servicio names by profesional IDs aplicando filtros, joins o criterios del caso de uso.
+     * Mantiene la consulta encapsulada para que el resto del codigo no repita filtros ni joins.
+     */
     @Override
     public Map<Long, List<String>> findActiveServiceNamesByProfessionalIds(Collection<Long> ids) {
         if (ids == null || ids.isEmpty()) {
@@ -133,6 +165,9 @@ public class ProfessionalCoreReadGatewayService implements
             );
     }
 
+    /**
+     * Resuelve view normalizando entradas, defaults y casos borde.
+     */
     @Override
     public BookingClientProfessionalView resolveView(Booking booking) {
         if (booking == null) {
@@ -146,6 +181,9 @@ public class ProfessionalCoreReadGatewayService implements
         );
     }
 
+    /**
+     * Convierte datos internos al formato home perfil view esperado por el consumidor.
+     */
     private ProfessionalHomeProfileView toHomeProfileView(
         ProfessionalProfile profile,
         String fallbackPhotoUrl
@@ -174,6 +212,9 @@ public class ProfessionalCoreReadGatewayService implements
         );
     }
 
+    /**
+     * Convierte datos internos al formato busqueda perfil view esperado por el consumidor.
+     */
     private ProfessionalSearchIndexProfileView toSearchProfileView(ProfessionalProfile profile) {
         String displayName = profile.getDisplayName();
         if ((displayName == null || displayName.isBlank()) && profile.getUser() != null) {
@@ -203,6 +244,9 @@ public class ProfessionalCoreReadGatewayService implements
         );
     }
 
+    /**
+     * Resuelve primary categoria name normalizando entradas, defaults y casos borde.
+     */
     private String resolvePrimaryCategoryName(ProfessionalProfile profile) {
         Set<Category> categories = profile.getCategories();
         if (categories == null || categories.isEmpty()) {
@@ -215,6 +259,9 @@ public class ProfessionalCoreReadGatewayService implements
             .orElse(profile.getRubro());
     }
 
+    /**
+     * Resuelve fallback photo urls normalizando entradas, defaults y casos borde.
+     */
     private Map<Long, String> resolveFallbackPhotoUrls(List<ProfessionalProfile> profiles) {
         if (profiles == null || profiles.isEmpty()) {
             return Map.of();
@@ -258,6 +305,9 @@ public class ProfessionalCoreReadGatewayService implements
         return resolved;
     }
 
+    /**
+     * Obtiene el primer valor util de valido photo ignorando nulos o blancos.
+     */
     private String firstValidPhoto(List<String> photos) {
         if (photos == null || photos.isEmpty()) {
             return null;
@@ -271,6 +321,9 @@ public class ProfessionalCoreReadGatewayService implements
         return null;
     }
 
+    /**
+     * Normaliza opcional URL para evitar variantes vacias, invalidas o inconsistentes.
+     */
     private String normalizeOptionalUrl(String value) {
         if (value == null) {
             return null;
@@ -279,6 +332,9 @@ public class ProfessionalCoreReadGatewayService implements
         return trimmed.isBlank() ? null : trimmed;
     }
 
+    /**
+     * Convierte datos internos al formato media presentation esperado por el consumidor.
+     */
     private MediaPresentationDto toMediaPresentation(Double positionX, Double positionY, Double zoom) {
         return new MediaPresentationDto(
             positionX != null ? positionX : 50d,
@@ -287,6 +343,9 @@ public class ProfessionalCoreReadGatewayService implements
         );
     }
 
+    /**
+     * Ejecuta la logica de categoria comparator manteniendola encapsulada en este componente.
+     */
     private Comparator<Category> categoryComparator() {
         return Comparator.comparingInt(
             (Category category) -> category.getDisplayOrder() == null ? Integer.MAX_VALUE : category.getDisplayOrder()

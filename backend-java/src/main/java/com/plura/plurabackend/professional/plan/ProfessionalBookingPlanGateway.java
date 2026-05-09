@@ -5,6 +5,12 @@ import com.plura.plurabackend.professional.repository.ProfessionalProfileReposit
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
+/**
+ * ProfessionalBookingPlanGateway es un gateway interno del modulo profesionales / planes.
+ * Responsabilidad: desacoplar un modulo consumidor de la implementacion real de otro modulo.
+ * Colabora con: professionalProfileRepository, effectiveProfessionalPlanService.
+ * Foco funcional: profesionales, reservas, planes.
+ */
 @Service
 public class ProfessionalBookingPlanGateway implements BookingProfessionalPlanGateway {
 
@@ -19,6 +25,9 @@ public class ProfessionalBookingPlanGateway implements BookingProfessionalPlanGa
         this.effectiveProfessionalPlanService = effectiveProfessionalPlanService;
     }
 
+    /**
+     * Ejecuta la logica de allows online payments manteniendola encapsulada en este componente.
+     */
     @Override
     public boolean allowsOnlinePayments(Long professionalId) {
         if (professionalId == null) {

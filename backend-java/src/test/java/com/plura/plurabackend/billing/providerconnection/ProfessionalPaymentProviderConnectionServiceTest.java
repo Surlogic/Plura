@@ -31,6 +31,11 @@ import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 
+/**
+ * Tests de billing, pagos, webhooks y proveedores / conexion con proveedores de pago.
+ * Cubren escenarios de profesional pago proveedor conexion servicio para documentar el comportamiento esperado y evitar regresiones.
+ * Mantener estos casos alineados con los contratos reales del backend cuando cambie la logica productiva.
+ */
 class ProfessionalPaymentProviderConnectionServiceTest {
 
     private final ProfessionalBillingSubjectGateway professionalBillingSubjectGateway = mock(ProfessionalBillingSubjectGateway.class);
@@ -52,6 +57,10 @@ class ProfessionalPaymentProviderConnectionServiceTest {
         errorRecorder
     );
 
+    /**
+     * Escenario: debe start o auth in pendiente authorization.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void shouldStartOAuthInPendingAuthorization() {
         ProfessionalProfile professional = professional();
@@ -71,6 +80,10 @@ class ProfessionalPaymentProviderConnectionServiceTest {
         assertEquals("https://auth.test/mp?state=1", response.authorizationUrl());
     }
 
+    /**
+     * Escenario: debe persist connected tokens after o auth callback.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void shouldPersistConnectedTokensAfterOAuthCallback() {
         ProfessionalProfile professional = professional();
@@ -110,6 +123,10 @@ class ProfessionalPaymentProviderConnectionServiceTest {
         assertEquals("998877", response.providerUserId());
     }
 
+    /**
+     * Escenario: debe rechazar o auth callback sin state.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void shouldRejectOAuthCallbackWithoutState() {
         ProfessionalProfile professional = professional();
@@ -127,6 +144,10 @@ class ProfessionalPaymentProviderConnectionServiceTest {
         assertEquals("state OAuth es obligatorio", exception.getReason());
     }
 
+    /**
+     * Escenario: debe rechazar o auth callback con invalido state.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void shouldRejectOAuthCallbackWithInvalidState() {
         ProfessionalProfile professional = professional();
@@ -144,6 +165,10 @@ class ProfessionalPaymentProviderConnectionServiceTest {
         assertEquals("state OAuth invalido", exception.getReason());
     }
 
+    /**
+     * Escenario: debe rechazar o auth callback cuando Mercado Pago account belongs a another profesional.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void shouldRejectOAuthCallbackWhenMercadoPagoAccountBelongsToAnotherProfessional() {
         ProfessionalProfile professional = professional();
@@ -189,6 +214,10 @@ class ProfessionalPaymentProviderConnectionServiceTest {
         assertEquals("La cuenta de Mercado Pago ya esta vinculada a otro profesional", exception.getReason());
     }
 
+    /**
+     * Escenario: debe treat repeated o auth callback como idempotente cuando conexion is already connected.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void shouldTreatRepeatedOAuthCallbackAsIdempotentWhenConnectionIsAlreadyConnected() {
         ProfessionalProfile professional = professional();
@@ -219,6 +248,10 @@ class ProfessionalPaymentProviderConnectionServiceTest {
         assertEquals("998877", response.providerUserId());
     }
 
+    /**
+     * Escenario: debe propagate token exchange error y persist conexion error.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void shouldPropagateTokenExchangeErrorAndPersistConnectionError() {
         ProfessionalProfile professional = professional();
@@ -254,6 +287,10 @@ class ProfessionalPaymentProviderConnectionServiceTest {
         verify(errorRecorder).recordOAuthError("conn-1", connection.getLastError(), false);
     }
 
+    /**
+     * Escenario: debe persist unexpected callback errores.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void shouldPersistUnexpectedCallbackErrors() {
         ProfessionalProfile professional = professional();
@@ -286,6 +323,10 @@ class ProfessionalPaymentProviderConnectionServiceTest {
         verify(errorRecorder).recordOAuthError("conn-2", connection.getLastError(), false);
     }
 
+    /**
+     * Escenario: debe exchange authorization code con pkce verificador cuando enabled.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void shouldExchangeAuthorizationCodeWithPkceVerifierWhenEnabled() {
         ProfessionalProfile professional = professional();
@@ -329,6 +370,10 @@ class ProfessionalPaymentProviderConnectionServiceTest {
         assertEquals(null, connection.getPendingOauthCodeVerifierEncrypted());
     }
 
+    /**
+     * Escenario: debe rechazar o auth callback sin pkce verificador cuando enabled.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void shouldRejectOAuthCallbackWithoutPkceVerifierWhenEnabled() {
         ProfessionalProfile professional = professional();
@@ -355,6 +400,10 @@ class ProfessionalPaymentProviderConnectionServiceTest {
         assertEquals("No encontramos un code_verifier pendiente para Mercado Pago", exception.getReason());
     }
 
+    /**
+     * Escenario: debe rechazar start o auth sin profesional sesion.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void shouldRejectStartOAuthWithoutProfessionalSession() {
         ResponseStatusException exception = org.junit.jupiter.api.Assertions.assertThrows(
@@ -366,6 +415,10 @@ class ProfessionalPaymentProviderConnectionServiceTest {
         assertEquals("Sesion profesional invalida", exception.getReason());
     }
 
+    /**
+     * Escenario: debe disconnect Mercado Pago conexion y clear linked account data.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void shouldDisconnectMercadoPagoConnectionAndClearLinkedAccountData() {
         ProfessionalProfile professional = professional();
@@ -412,6 +465,10 @@ class ProfessionalPaymentProviderConnectionServiceTest {
         assertEquals(null, connection.getPendingOauthCodeVerifierEncrypted());
     }
 
+    /**
+     * Escenario: debe rechazar resolve acceso after disconnect.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void shouldRejectResolveAccessAfterDisconnect() {
         ProfessionalProfile professional = professional();

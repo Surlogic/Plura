@@ -10,6 +10,12 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+/**
+ * AppNotificationRepository es un contrato interno del modulo notificaciones / persistencia.
+ * Responsabilidad: definir una frontera estable para que otros modulos no dependan de detalles concretos.
+ * Persistencia: concentra queries derivadas o JPQL para que los servicios no conozcan SQL/joins.
+ * Foco funcional: notificaciones.
+ */
 public interface AppNotificationRepository extends JpaRepository<AppNotification, String>, JpaSpecificationExecutor<AppNotification> {
 
     Optional<AppNotification> findByNotificationEvent_Id(String notificationEventId);

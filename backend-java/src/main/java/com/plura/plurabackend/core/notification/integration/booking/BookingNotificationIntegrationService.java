@@ -12,6 +12,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
+/**
+ * BookingNotificationIntegrationService es un servicio de negocio del modulo notificaciones / integraciones / reservas.
+ * Responsabilidad: coordinar reglas de negocio, validaciones, persistencia e integraciones del caso de uso.
+ * Colabora con: notificationService, bookingNotificationCommandFactory, clientBookingNotificationCommandFactory, professionalNotificationRecipientGateway, entre otros.
+ * Foco funcional: notificaciones, reservas, servicios.
+ */
 @Service
 public class BookingNotificationIntegrationService {
 
@@ -37,6 +43,9 @@ public class BookingNotificationIntegrationService {
         this.clientNotificationRecipientGateway = clientNotificationRecipientGateway;
     }
 
+    /**
+     * Registra reserva created para auditoria, historial o notificaciones.
+     */
     public void recordBookingCreated(Booking booking, BookingActorType actorType, Long actorUserId, String sourceAction) {
         recordProfessional(bookingNotificationCommandFactory.buildBookingCreated(
             booking,
@@ -57,6 +66,9 @@ public class BookingNotificationIntegrationService {
         }
     }
 
+    /**
+     * Registra reserva confirmed para auditoria, historial o notificaciones.
+     */
     public void recordBookingConfirmed(Booking booking, BookingActorType actorType, Long actorUserId, String sourceAction) {
         recordProfessional(bookingNotificationCommandFactory.buildBookingConfirmed(
             booking,
@@ -77,6 +89,9 @@ public class BookingNotificationIntegrationService {
         }
     }
 
+    /**
+     * Registra reserva cancelled para auditoria, historial o notificaciones.
+     */
     public void recordBookingCancelled(Booking booking, BookingActorType actorType, Long actorUserId, String sourceAction) {
         recordProfessional(bookingNotificationCommandFactory.buildBookingCancelled(
             booking,
@@ -97,6 +112,9 @@ public class BookingNotificationIntegrationService {
         }
     }
 
+    /**
+     * Registra reserva rescheduled para auditoria, historial o notificaciones.
+     */
     public void recordBookingRescheduled(Booking booking, BookingActorType actorType, Long actorUserId, String sourceAction) {
         recordProfessional(bookingNotificationCommandFactory.buildBookingRescheduled(
             booking,
@@ -117,6 +135,9 @@ public class BookingNotificationIntegrationService {
         }
     }
 
+    /**
+     * Registra reserva completed para auditoria, historial o notificaciones.
+     */
     public void recordBookingCompleted(Booking booking, BookingActorType actorType, Long actorUserId, String sourceAction) {
         recordProfessional(bookingNotificationCommandFactory.buildBookingCompleted(
             booking,
@@ -127,6 +148,9 @@ public class BookingNotificationIntegrationService {
         ));
     }
 
+    /**
+     * Registra reserva no show para auditoria, historial o notificaciones.
+     */
     public void recordBookingNoShow(Booking booking, BookingActorType actorType, Long actorUserId, String sourceAction) {
         recordProfessional(bookingNotificationCommandFactory.buildBookingNoShow(
             booking,
@@ -137,6 +161,9 @@ public class BookingNotificationIntegrationService {
         ));
     }
 
+    /**
+     * Resuelve profesional destinatario normalizando entradas, defaults y casos borde.
+     */
     private ProfessionalNotificationRecipient resolveProfessionalRecipient(Booking booking) {
         if (booking == null || booking.getProfessionalId() == null) {
             throw new IllegalArgumentException("La reserva debe tener professionalId para emitir notificacion");
@@ -152,6 +179,9 @@ public class BookingNotificationIntegrationService {
             });
     }
 
+    /**
+     * Resuelve cliente destinatario normalizando entradas, defaults y casos borde.
+     */
     private ClientNotificationRecipient resolveClientRecipient(Booking booking) {
         if (booking == null || booking.getUser() == null || booking.getUser().getId() == null) {
             LOGGER.warn(
@@ -172,10 +202,16 @@ public class BookingNotificationIntegrationService {
             });
     }
 
+    /**
+     * Registra profesional para auditoria, historial o notificaciones.
+     */
     private void recordProfessional(NotificationRecordCommand command) {
         notificationService.record(command);
     }
 
+    /**
+     * Registra cliente para auditoria, historial o notificaciones.
+     */
     private void recordClient(NotificationRecordCommand command) {
         notificationService.record(command);
     }

@@ -10,6 +10,12 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+/**
+ * ProfessionalWorkerRepository es un contrato interno del modulo profesionales / trabajadores / persistencia.
+ * Responsabilidad: definir una frontera estable para que otros modulos no dependan de detalles concretos.
+ * Persistencia: concentra queries derivadas o JPQL para que los servicios no conozcan SQL/joins.
+ * Foco funcional: profesionales, trabajadores.
+ */
 public interface ProfessionalWorkerRepository extends JpaRepository<ProfessionalWorker, Long> {
 
     @EntityGraph(attributePaths = {"professional", "user"})

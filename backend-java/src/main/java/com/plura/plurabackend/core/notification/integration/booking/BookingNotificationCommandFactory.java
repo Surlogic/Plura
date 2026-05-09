@@ -24,6 +24,9 @@ import org.springframework.stereotype.Component;
 @Component
 public class BookingNotificationCommandFactory {
 
+    /**
+     * Construye reserva created a partir de datos internos ya validados.
+     */
     public NotificationRecordCommand buildBookingCreated(
         Booking booking,
         ProfessionalNotificationRecipient recipient,
@@ -53,6 +56,9 @@ public class BookingNotificationCommandFactory {
         );
     }
 
+    /**
+     * Construye reserva confirmed a partir de datos internos ya validados.
+     */
     public NotificationRecordCommand buildBookingConfirmed(
         Booking booking,
         ProfessionalNotificationRecipient recipient,
@@ -82,6 +88,9 @@ public class BookingNotificationCommandFactory {
         );
     }
 
+    /**
+     * Construye reserva cancelled a partir de datos internos ya validados.
+     */
     public NotificationRecordCommand buildBookingCancelled(
         Booking booking,
         ProfessionalNotificationRecipient recipient,
@@ -111,6 +120,9 @@ public class BookingNotificationCommandFactory {
         );
     }
 
+    /**
+     * Construye reserva rescheduled a partir de datos internos ya validados.
+     */
     public NotificationRecordCommand buildBookingRescheduled(
         Booking booking,
         ProfessionalNotificationRecipient recipient,
@@ -146,6 +158,9 @@ public class BookingNotificationCommandFactory {
         );
     }
 
+    /**
+     * Construye reserva completed a partir de datos internos ya validados.
+     */
     public NotificationRecordCommand buildBookingCompleted(
         Booking booking,
         ProfessionalNotificationRecipient recipient,
@@ -175,6 +190,9 @@ public class BookingNotificationCommandFactory {
         );
     }
 
+    /**
+     * Construye reserva no show a partir de datos internos ya validados.
+     */
     public NotificationRecordCommand buildBookingNoShow(
         Booking booking,
         ProfessionalNotificationRecipient recipient,
@@ -204,6 +222,9 @@ public class BookingNotificationCommandFactory {
         );
     }
 
+    /**
+     * Construye command a partir de datos internos ya validados.
+     */
     private NotificationRecordCommand buildCommand(
         NotificationEventType eventType,
         Booking booking,
@@ -235,6 +256,9 @@ public class BookingNotificationCommandFactory {
         );
     }
 
+    /**
+     * Construye payload compartidos por varias consultas del componente.
+     */
     private Map<String, Object> basePayload(Booking booking, String sourceAction) {
         Map<String, Object> payload = new LinkedHashMap<>();
         payload.put("bookingId", booking.getId());
@@ -249,6 +273,9 @@ public class BookingNotificationCommandFactory {
         return payload;
     }
 
+    /**
+     * Ejecuta la logica de email projection manteniendola encapsulada en este componente.
+     */
     private NotificationEmailProjectionCommand emailProjection(
         ProfessionalNotificationRecipient recipient,
         String templateKey,
@@ -261,6 +288,9 @@ public class BookingNotificationCommandFactory {
         return new NotificationEmailProjectionCommand(recipient.email(), templateKey, subject, payload);
     }
 
+    /**
+     * Ejecuta la logica de reserva dedupe clave manteniendola encapsulada en este componente.
+     */
     private String bookingDedupeKey(
         NotificationEventType eventType,
         Booking booking,
@@ -279,6 +309,9 @@ public class BookingNotificationCommandFactory {
         return dedupeKey.toString();
     }
 
+    /**
+     * Mapea actor tipo desde el modelo interno al contrato que usa otra capa.
+     */
     private NotificationActorType mapActorType(BookingActorType actorType) {
         if (actorType == null) {
             return null;
@@ -290,6 +323,9 @@ public class BookingNotificationCommandFactory {
         };
     }
 
+    /**
+     * Resuelve occurred at normalizando entradas, defaults y casos borde.
+     */
     private LocalDateTime resolveOccurredAt(NotificationEventType eventType, Booking booking) {
         if (booking == null) {
             return LocalDateTime.now();
@@ -304,14 +340,23 @@ public class BookingNotificationCommandFactory {
         };
     }
 
+    /**
+     * Ejecuta reschedule conteo atrapando errores para que el flujo principal no falle innecesariamente.
+     */
     private int safeRescheduleCount(Booking booking) {
         return booking.getRescheduleCount() == null ? 0 : booking.getRescheduleCount();
     }
 
+    /**
+     * Ejecuta la logica de action URL manteniendola encapsulada en este componente.
+     */
     private String actionUrl(Booking booking) {
         return booking.getId() == null ? null : "/profesional/dashboard/reservas?bookingId=" + booking.getId();
     }
 
+    /**
+     * Ejecuta la logica de servicio label manteniendola encapsulada en este componente.
+     */
     private String serviceLabel(Booking booking) {
         if (booking == null || booking.getServiceNameSnapshot() == null || booking.getServiceNameSnapshot().isBlank()) {
             return "la reserva";
@@ -319,10 +364,16 @@ public class BookingNotificationCommandFactory {
         return booking.getServiceNameSnapshot().trim();
     }
 
+    /**
+     * Ejecuta la logica de inicio label manteniendola encapsulada en este componente.
+     */
     private String startLabel(Booking booking) {
         return booking == null || booking.getStartDateTime() == null ? "la fecha indicada" : booking.getStartDateTime().toString();
     }
 
+    /**
+     * Obtiene el primer valor util de non null ignorando nulos o blancos.
+     */
     private LocalDateTime firstNonNull(LocalDateTime... values) {
         for (LocalDateTime value : values) {
             if (value != null) {

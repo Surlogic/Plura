@@ -28,6 +28,11 @@ import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
+/**
+ * Tests de autenticacion, sesiones, OTP y recuperacion de cuenta.
+ * Cubren escenarios de auth email verification integracion para documentar el comportamiento esperado y evitar regresiones.
+ * Mantener estos casos alineados con los contratos reales del backend cuando cambie la logica productiva.
+ */
 @SpringBootTest(properties = {
     "SPRING_DATASOURCE_URL=jdbc:h2:mem:plura-auth-email-verification-test;MODE=PostgreSQL;DB_CLOSE_DELAY=-1;DATABASE_TO_LOWER=TRUE",
     "SPRING_DATASOURCE_USERNAME=sa",
@@ -70,6 +75,10 @@ class AuthEmailVerificationIntegrationTest {
     @MockBean
     private EmailVerificationNotificationSender emailVerificationNotificationSender;
 
+    /**
+     * Prepara mocks, datos base o configuracion comun antes de cada caso de prueba.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @BeforeEach
     void cleanUp() {
         emailVerificationChallengeRepository.deleteAll();
@@ -78,6 +87,10 @@ class AuthEmailVerificationIntegrationTest {
         userRepository.deleteAll();
     }
 
+    /**
+     * Escenario: send y confirm email verification code marca usuario como verified.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void sendAndConfirmEmailVerificationCodeMarksUserAsVerified() throws Exception {
         registerClient("verify-email@plura.com", "Password123");
@@ -114,6 +127,10 @@ class AuthEmailVerificationIntegrationTest {
         org.junit.jupiter.api.Assertions.assertNotNull(updated.getEmailVerifiedAt());
     }
 
+    /**
+     * Escenario: resend within cooldown verifica que devuelva cooldown sin creating nuevo challenge.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void resendWithinCooldownReturnsCooldownWithoutCreatingNewChallenge() throws Exception {
         registerClient("cooldown-email@plura.com", "Password123");
@@ -137,6 +154,10 @@ class AuthEmailVerificationIntegrationTest {
         verify(emailVerificationNotificationSender, times(1)).sendVerificationCode(any());
     }
 
+    /**
+     * Escenario: confirm wrong code eventually exceeds attempts.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void confirmWrongCodeEventuallyExceedsAttempts() throws Exception {
         registerClient("attempts-email@plura.com", "Password123");
@@ -171,6 +192,10 @@ class AuthEmailVerificationIntegrationTest {
             .andExpect(jsonPath("$.error").value("ATTEMPTS_EXCEEDED"));
     }
 
+    /**
+     * Escenario: already verified usuario does no get nuevo challenge.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void alreadyVerifiedUserDoesNotGetNewChallenge() throws Exception {
         registerClient("already-verified@plura.com", "Password123");
@@ -191,6 +216,10 @@ class AuthEmailVerificationIntegrationTest {
         org.junit.jupiter.api.Assertions.assertEquals(0L, emailVerificationChallengeRepository.count());
     }
 
+    /**
+     * Escenario: send email verification verifica que devuelva servicio no disponible cuando delivery falla.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void sendEmailVerificationReturnsServiceUnavailableWhenDeliveryFails() throws Exception {
         registerClient("delivery-failure@plura.com", "Password123");

@@ -10,6 +10,12 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
+/**
+ * InternalOpsAccessService es un servicio de negocio del modulo reservas / operaciones internas.
+ * Responsabilidad: coordinar reglas de negocio, validaciones, persistencia e integraciones del caso de uso.
+ * Colabora con: internalToken, adminClientEmail, currentActorService, userRepository.
+ * Foco funcional: paneles internos, servicios.
+ */
 @Service
 public class InternalOpsAccessService {
 
@@ -19,6 +25,9 @@ public class InternalOpsAccessService {
     private final UserRepository userRepository;
 
     public InternalOpsAccessService(
+    /**
+     * Valida authorized y corta el flujo si no se cumple.
+     */
         @Value("${app.ops.internal-token:}") String internalToken,
         @Value("${app.ops.admin-client-email:admin@surlogicuy.com}") String adminClientEmail,
         CurrentActorService currentActorService,
@@ -45,6 +54,10 @@ public class InternalOpsAccessService {
         }
     }
 
+    /**
+     * Exige authorized or admin cliente sesion y corta la ejecucion si falta autorizacion o contexto.
+     * Esta separacion hace explicita la regla de seguridad o negocio que protege el flujo.
+     */
     public void requireAuthorizedOrAdminClientSession(String providedToken) {
         if (isValidInternalToken(providedToken) || isAuthorizedAdminClientSession()) {
             return;
@@ -64,6 +77,9 @@ public class InternalOpsAccessService {
         throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Acceso interno restringido");
     }
 
+    /**
+     * Evalua is valido interno token y devuelve una decision booleana para el llamador.
+     */
     private boolean isValidInternalToken(String providedToken) {
         if (internalToken.isBlank() || providedToken == null || providedToken.isBlank()) {
             return false;
@@ -74,6 +90,9 @@ public class InternalOpsAccessService {
         );
     }
 
+    /**
+     * Evalua is authorized admin cliente sesion y devuelve una decision booleana para el llamador.
+     */
     private boolean isAuthorizedAdminClientSession() {
         if (adminClientEmail.isBlank()) {
             return false;

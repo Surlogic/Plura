@@ -7,6 +7,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
+/**
+ * ProfessionalPaymentProviderConnectionErrorRecorder es un componente de dominio del modulo billing / conexion de proveedor.
+ * Responsabilidad: encapsular comportamiento propio del modulo y mantenerlo fuera de controllers u otras capas.
+ * Colabora con: repository.
+ * Foco funcional: profesionales, proveedores externos, pagos.
+ */
 @Service
 public class ProfessionalPaymentProviderConnectionErrorRecorder {
 
@@ -18,6 +24,9 @@ public class ProfessionalPaymentProviderConnectionErrorRecorder {
         this.repository = repository;
     }
 
+    /**
+     * Registra o autenticacion error para auditoria, historial o notificaciones.
+     */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void recordOAuthError(
         String connectionId,

@@ -12,8 +12,17 @@ import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 
+/**
+ * Tests de billing, pagos, webhooks y proveedores / conexion con proveedores de pago.
+ * Cubren escenarios de Mercado Pago o auth state servicio para documentar el comportamiento esperado y evitar regresiones.
+ * Mantener estos casos alineados con los contratos reales del backend cuando cambie la logica productiva.
+ */
 class MercadoPagoOAuthStateServiceTest {
 
+    /**
+     * Escenario: debe generate pkce challenge cuando enabled.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void shouldGeneratePkceChallengeWhenEnabled() {
         BillingProperties properties = configuredProperties(true);
@@ -28,6 +37,10 @@ class MercadoPagoOAuthStateServiceTest {
         assertTrue(generatedState.pkceChallenge().codeVerifier().length() >= 43);
     }
 
+    /**
+     * Escenario: debe skip pkce challenge cuando disabled.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void shouldSkipPkceChallengeWhenDisabled() {
         BillingProperties properties = configuredProperties(false);
@@ -38,6 +51,10 @@ class MercadoPagoOAuthStateServiceTest {
         assertNull(generatedState.pkceChallenge());
     }
 
+    /**
+     * Escenario: debe resolve profesional id desde valido state.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void shouldResolveProfessionalIdFromValidState() {
         BillingProperties properties = configuredProperties(false);
@@ -48,6 +65,10 @@ class MercadoPagoOAuthStateServiceTest {
         assertEquals(30L, service.resolveProfessionalId(generatedState.value()));
     }
 
+    /**
+     * Escenario: debe rechazar invalido state.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void shouldRejectInvalidState() {
         BillingProperties properties = configuredProperties(false);

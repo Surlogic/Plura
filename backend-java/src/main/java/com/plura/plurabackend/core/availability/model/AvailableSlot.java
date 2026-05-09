@@ -18,6 +18,12 @@ import java.time.LocalDateTime;
 import lombok.Getter;
 import lombok.Setter;
 
+/**
+ * AvailableSlot es un entidad JPA del modulo disponibilidad / modelo.
+ * Responsabilidad: representar una tabla del dominio, sus columnas y los defaults necesarios antes de persistir.
+ * Persistencia: sus campos reflejan columnas reales; cambiar nombres o tipos puede requerir migracion Flyway.
+ * Foco funcional: la responsabilidad indicada por su paquete y nombre.
+ */
 @Getter
 @Setter
 @Entity

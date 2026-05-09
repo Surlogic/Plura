@@ -28,6 +28,12 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
+/**
+ * ProfesionalPublicController es un controlador REST del modulo profesionales / perfil.
+ * Responsabilidad: recibir requests HTTP, validar acceso basico y delegar la operacion al servicio de aplicacion o dominio.
+ * Superficie HTTP: atiende rutas bajo /public/profesionales y deja la logica pesada en servicios.
+ * Foco funcional: superficie publica.
+ */
 @RestController
 @RequestMapping("/public/profesionales")
 public class ProfesionalPublicController {
@@ -46,6 +52,9 @@ public class ProfesionalPublicController {
         this.appProductEventTrackingService = appProductEventTrackingService;
     }
 
+    /**
+     * Devuelve el listado de profesionales aplicando permisos y filtros del caso de uso.
+     */
     @GetMapping
     public List<ProfesionalPublicSummaryResponse> listProfesionales(
         @RequestParam(required = false) Integer limit,
@@ -83,6 +92,10 @@ public class ProfesionalPublicController {
         return professionalPublicPageService.getAvailableSlots(slug, date, serviceId);
     }
 
+    /**
+     * Endpoint POST /{slug}/reservas: Crea reserva validando datos de entrada y persistiendo el resultado.
+     * Valida parametros/autorizacion de entrada y delega la logica de negocio al servicio correspondiente.
+     */
     @PostMapping("/{slug}/reservas")
     public ResponseEntity<?> createReservation(
         @PathVariable String slug,
@@ -130,6 +143,9 @@ public class ProfesionalPublicController {
         }
     }
 
+    /**
+     * Evalua is reserva slot conflict y devuelve una decision booleana para el llamador.
+     */
     private boolean isBookingSlotConflict(DataIntegrityViolationException exception) {
         if (hasUniqueViolationSqlState(exception)) {
             return true;
@@ -147,6 +163,9 @@ public class ProfesionalPublicController {
                 && (lower.contains("start_date_time") || lower.contains("startdatetime")));
     }
 
+    /**
+     * Evalua has unique violation sql estado y devuelve una decision booleana para el llamador.
+     */
     private boolean hasUniqueViolationSqlState(Throwable throwable) {
         Throwable current = throwable;
         while (current != null) {
@@ -158,6 +177,9 @@ public class ProfesionalPublicController {
         return false;
     }
 
+    /**
+     * Resuelve authenticated usuario ID normalizando entradas, defaults y casos borde.
+     */
     private Long resolveAuthenticatedUserId(Authentication authentication) {
         if (authentication == null
             || !authentication.isAuthenticated()
@@ -172,6 +194,9 @@ public class ProfesionalPublicController {
         }
     }
 
+    /**
+     * Resuelve integrity error message normalizando entradas, defaults y casos borde.
+     */
     private String resolveIntegrityErrorMessage(DataIntegrityViolationException exception) {
         Throwable rootCause = NestedExceptionUtils.getMostSpecificCause(exception);
         if (rootCause == null || rootCause.getMessage() == null || rootCause.getMessage().isBlank()) {

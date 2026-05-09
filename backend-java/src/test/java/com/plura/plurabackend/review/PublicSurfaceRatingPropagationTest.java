@@ -27,10 +27,19 @@ import java.util.Set;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+/**
+ * Tests de resenas y moderacion.
+ * Cubren escenarios de publico superficie rating propagacion para documentar el comportamiento esperado y evitar regresiones.
+ * Mantener estos casos alineados con los contratos reales del backend cuando cambie la logica productiva.
+ */
 class PublicSurfaceRatingPropagationTest {
 
     private ProfilePublicPageAssembler assembler;
 
+    /**
+     * Prepara mocks, datos base o configuracion comun antes de cada caso de prueba.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @BeforeEach
     void setUp() {
         BusinessPhotoRepository businessPhotoRepository = mock(BusinessPhotoRepository.class);
@@ -75,6 +84,10 @@ class PublicSurfaceRatingPropagationTest {
         return profile;
     }
 
+    /**
+     * Escenario: resumen exposes real rating y conteo.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void summaryExposesRealRatingAndCount() {
         ProfessionalProfile profile = makeProfile(4.7, 23);
@@ -85,6 +98,10 @@ class PublicSurfaceRatingPropagationTest {
         assertEquals(23, response.getReviewsCount());
     }
 
+    /**
+     * Escenario: resumen exposes null cuando no resenas.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void summaryExposesNullWhenNoReviews() {
         ProfessionalProfile profile = makeProfile(null, 0);
@@ -95,6 +112,10 @@ class PublicSurfaceRatingPropagationTest {
         assertEquals(0, response.getReviewsCount());
     }
 
+    /**
+     * Escenario: publico page exposes real rating y conteo.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void publicPageExposesRealRatingAndCount() {
         ProfessionalProfile profile = makeProfile(3.8, 15);
@@ -105,6 +126,10 @@ class PublicSurfaceRatingPropagationTest {
         assertEquals(15, response.getReviewsCount());
     }
 
+    /**
+     * Escenario: publico page exposes null rating cuando no resenas.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void publicPageExposesNullRatingWhenNoReviews() {
         ProfessionalProfile profile = makeProfile(null, 0);
@@ -115,6 +140,10 @@ class PublicSurfaceRatingPropagationTest {
         assertEquals(0, response.getReviewsCount());
     }
 
+    /**
+     * Escenario: home perfil view propagates rating y conteo.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void homeProfileViewPropagatesRatingAndCount() {
         ProfessionalHomeProfileView view = new ProfessionalHomeProfileView(
@@ -141,6 +170,10 @@ class PublicSurfaceRatingPropagationTest {
         assertEquals(8, response.getReviewsCount());
     }
 
+    /**
+     * Escenario: home perfil view con null rating.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void homeProfileViewWithNullRating() {
         ProfessionalHomeProfileView view = new ProfessionalHomeProfileView(
@@ -167,6 +200,10 @@ class PublicSurfaceRatingPropagationTest {
         assertEquals(0, response.getReviewsCount());
     }
 
+    /**
+     * Escenario: publico resumen record propagates fields.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void publicSummaryRecordPropagatesFields() {
         ProfessionalPublicSummary summary = new ProfessionalPublicSummary(
@@ -178,6 +215,10 @@ class PublicSurfaceRatingPropagationTest {
         assertEquals(50, summary.reviewsCount());
     }
 
+    /**
+     * Escenario: publico resumen record con null rating.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void publicSummaryRecordWithNullRating() {
         ProfessionalPublicSummary summary = new ProfessionalPublicSummary(

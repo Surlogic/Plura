@@ -43,6 +43,12 @@ import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionTemplate;
 
+/**
+ * AvailableSlotService es un servicio de negocio del modulo disponibilidad.
+ * Responsabilidad: coordinar reglas de negocio, validaciones, persistencia e integraciones del caso de uso.
+ * Colabora con: availableSlotRepository, professionalAvailabilityGateway, bookingRepository, objectMapper, entre otros.
+ * Foco funcional: servicios.
+ */
 @Service
 public class AvailableSlotService {
 
@@ -85,6 +91,10 @@ public class AvailableSlotService {
     private final Timer slotsGenerationTimer;
     private final boolean nextAvailableAtEnabled;
 
+    /**
+     * Bloque de datos booked window usado internamente por esta clase.
+     * Agrupa valores relacionados para que el calculo principal sea mas legible.
+     */
     private record BookedWindow(LocalDateTime start, LocalDateTime end) {}
 
     public AvailableSlotService(
@@ -118,10 +128,16 @@ public class AvailableSlotService {
 
     private static final int REBUILD_BATCH_SIZE = 50;
 
+    /**
+     * Reconstruye todos proximos dias a partir de la fuente de verdad actual.
+     */
     public void rebuildAllNextDays(int days) {
         rebuildFilteredNextDays(days, professionalId -> true);
     }
 
+    /**
+     * Reconstruye particion proximos dias a partir de la fuente de verdad actual.
+     */
     public void rebuildShardNextDays(int days, int shardCount, int shardIndex) {
         int normalizedShardCount = Math.max(1, shardCount);
         if (normalizedShardCount == 1) {
@@ -135,6 +151,9 @@ public class AvailableSlotService {
         );
     }
 
+    /**
+     * Reconstruye filtrados proximos dias a partir de la fuente de verdad actual.
+     */
     private void rebuildFilteredNextDays(int days, LongPredicate includeProfile) {
         int lookaheadDays = normalizeLookahead(days);
         LocalDate from = LocalDate.now(appZoneId);
@@ -157,6 +176,9 @@ public class AvailableSlotService {
         }
     }
 
+    /**
+     * Reconstruye lote a partir de la fuente de verdad actual.
+     */
     protected void rebuildBatch(List<ProfessionalAvailabilityProfileView> profiles, LocalDate from, LocalDate to) {
         List<Long> profileIds = profiles.stream()
             .map(ProfessionalAvailabilityProfileView::professionalId)
@@ -181,10 +203,16 @@ public class AvailableSlotService {
         }
     }
 
+    /**
+     * Reconstruye profesional proximos dias a partir de la fuente de verdad actual.
+     */
     public void rebuildProfessionalNextDays(Long professionalId) {
         rebuildProfessionalNextDays(professionalId, DEFAULT_LOOKAHEAD_DAYS);
     }
 
+    /**
+     * Reconstruye profesional proximos dias a partir de la fuente de verdad actual.
+     */
     public void rebuildProfessionalNextDays(Long professionalId, int days) {
         if (professionalId == null) {
             return;
@@ -199,6 +227,9 @@ public class AvailableSlotService {
             ));
     }
 
+    /**
+     * Reconstruye profesional dia a partir de la fuente de verdad actual.
+     */
     public void rebuildProfessionalDay(Long professionalId, LocalDate date) {
         if (professionalId == null || date == null) {
             return;
@@ -210,10 +241,16 @@ public class AvailableSlotService {
             ));
     }
 
+    /**
+     * Reconstruye for perfil with lock a partir de la fuente de verdad actual.
+     */
     private void rebuildForProfileWithLock(ProfessionalAvailabilityProfileView profile, LocalDate from, LocalDate to) {
         rebuildForProfileWithLock(profile, from, to, null, null);
     }
 
+    /**
+     * Reconstruye for perfil with lock a partir de la fuente de verdad actual.
+     */
     private void rebuildForProfileWithLock(
         ProfessionalAvailabilityProfileView profile,
         LocalDate from,
@@ -239,6 +276,9 @@ public class AvailableSlotService {
         }
     }
 
+    /**
+     * Reconstruye for perfil a partir de la fuente de verdad actual.
+     */
     private void rebuildForProfile(
         ProfessionalAvailabilityProfileView profile,
         LocalDate from,
@@ -355,6 +395,9 @@ public class AvailableSlotService {
         }
     }
 
+    /**
+     * Normaliza lookahead para evitar variantes vacias, invalidas o inconsistentes.
+     */
     private int normalizeLookahead(int days) {
         if (days <= 0) {
             return DEFAULT_LOOKAHEAD_DAYS;
@@ -362,6 +405,10 @@ public class AvailableSlotService {
         return Math.min(days, 60);
     }
 
+    /**
+     * Busca day agenda aplicando filtros, joins o criterios del caso de uso.
+     * Mantiene la consulta encapsulada para que el resto del codigo no repita filtros ni joins.
+     */
     private ProfesionalScheduleDayDto findDaySchedule(ProfesionalScheduleDto schedule, LocalDate date) {
         String dayKey = dayKeyFromDate(date);
         return schedule.getDays().stream()
@@ -370,6 +417,9 @@ public class AvailableSlotService {
             .orElse(null);
     }
 
+    /**
+     * Lee guardada agenda desde la fuente persistida y aplica defaults si faltan datos.
+     */
     private ProfesionalScheduleDto readStoredSchedule(String rawScheduleJson) {
         if (rawScheduleJson == null || rawScheduleJson.isBlank()) {
             return createDefaultSchedule();
@@ -383,6 +433,10 @@ public class AvailableSlotService {
         }
     }
 
+    /**
+     * Crea default agenda validando datos de entrada y persistiendo el resultado.
+     * Tambien concentra los efectos secundarios para que el flujo quede en un estado consistente.
+     */
     private ProfesionalScheduleDto createDefaultSchedule() {
         return new ProfesionalScheduleDto(
             List.of(
@@ -399,6 +453,9 @@ public class AvailableSlotService {
         );
     }
 
+    /**
+     * Normaliza agenda para evitar variantes vacias, invalidas o inconsistentes.
+     */
     private ProfesionalScheduleDto normalizeSchedule(ProfesionalScheduleDto source) {
         if (source == null || source.getDays() == null) {
             return createDefaultSchedule();
@@ -436,6 +493,9 @@ public class AvailableSlotService {
         );
     }
 
+    /**
+     * Evalua is fecha paused y devuelve una decision booleana para el llamador.
+     */
     private boolean isDatePaused(LocalDate date, List<ProfesionalSchedulePauseDto> pauses) {
         if (pauses == null || pauses.isEmpty()) {
             return false;
@@ -460,6 +520,9 @@ public class AvailableSlotService {
         return false;
     }
 
+    /**
+     * Evalua is valido rango y devuelve una decision booleana para el llamador.
+     */
     private boolean isValidRange(ProfesionalScheduleRangeDto range) {
         if (range == null || range.getStart() == null || range.getEnd() == null) {
             return false;
@@ -473,6 +536,9 @@ public class AvailableSlotService {
         }
     }
 
+    /**
+     * Ejecuta la logica de dia clave from fecha manteniendola encapsulada en este componente.
+     */
     private String dayKeyFromDate(LocalDate date) {
         DayOfWeek dayOfWeek = date.getDayOfWeek();
         return switch (dayOfWeek) {
@@ -486,6 +552,9 @@ public class AvailableSlotService {
         };
     }
 
+    /**
+     * Normaliza dia clave para evitar variantes vacias, invalidas o inconsistentes.
+     */
     private String normalizeDayKey(String rawDay) {
         if (rawDay == null) return "";
         String normalized = rawDay.trim().toLowerCase(Locale.ROOT);
@@ -493,10 +562,16 @@ public class AvailableSlotService {
         return DAY_ALIASES.getOrDefault(normalized, normalized);
     }
 
+    /**
+     * Parsea hora y convierte errores de formato en errores controlados.
+     */
     private LocalTime parseTime(String rawTime) {
         return LocalTime.parse(rawTime.trim());
     }
 
+    /**
+     * Parsea duration to minutes y convierte errores de formato en errores controlados.
+     */
     private int parseDurationToMinutes(String rawDuration) {
         if (rawDuration == null || rawDuration.isBlank()) {
             return 30;
@@ -529,6 +604,9 @@ public class AvailableSlotService {
         return minutes > 0 ? minutes : 30;
     }
 
+    /**
+     * Resuelve post buffer minutes normalizando entradas, defaults y casos borde.
+     */
     private int resolvePostBufferMinutes(ProfessionalServiceAvailabilityView service) {
         if (service == null || service.postBufferMinutes() == null) {
             return 0;
@@ -536,10 +614,16 @@ public class AvailableSlotService {
         return Math.max(0, service.postBufferMinutes());
     }
 
+    /**
+     * Resuelve effective duration minutes normalizando entradas, defaults y casos borde.
+     */
     private int resolveEffectiveDurationMinutes(ProfessionalServiceAvailabilityView service) {
         return parseDurationToMinutes(service.duration()) + resolvePostBufferMinutes(service);
     }
 
+    /**
+     * Resuelve slot duration minutes normalizando entradas, defaults y casos borde.
+     */
     private int resolveSlotDurationMinutes(ProfessionalAvailabilityProfileView profile) {
         if (profile == null) {
             return DEFAULT_SLOT_DURATION_MINUTES;
@@ -547,6 +631,9 @@ public class AvailableSlotService {
         return normalizeSlotDurationOrDefault(profile.slotDurationMinutes());
     }
 
+    /**
+     * Normaliza slot duracion or default para evitar variantes vacias, invalidas o inconsistentes.
+     */
     private int normalizeSlotDurationOrDefault(Integer value) {
         if (value == null || !ALLOWED_SLOT_DURATIONS.contains(value)) {
             return DEFAULT_SLOT_DURATION_MINUTES;
@@ -554,6 +641,9 @@ public class AvailableSlotService {
         return value;
     }
 
+    /**
+     * Convierte datos internos al formato booked window esperado por el consumidor.
+     */
     private BookedWindow toBookedWindow(Booking booking) {
         LocalDateTime start = booking.getStartDateTime();
         int effectiveDurationMinutes = parseDurationToMinutes(booking.getServiceDurationSnapshot())
@@ -561,6 +651,9 @@ public class AvailableSlotService {
         return new BookedWindow(start, start.plusMinutes(effectiveDurationMinutes));
     }
 
+    /**
+     * Evalua has overlap y devuelve una decision booleana para el llamador.
+     */
     private boolean hasOverlap(
         List<BookedWindow> bookedWindows,
         LocalDateTime candidateStart,
@@ -577,6 +670,9 @@ public class AvailableSlotService {
         return candidateStart.isBefore(previousWindow.end()) && candidateEnd.isAfter(previousWindow.start());
     }
 
+    /**
+     * Calcula limite by inicio usado como limite del algoritmo.
+     */
     private int lowerBoundByStart(List<BookedWindow> windows, LocalDateTime threshold) {
         int low = 0;
         int high = windows.size();
@@ -591,6 +687,10 @@ public class AvailableSlotService {
         return low;
     }
 
+    /**
+     * Carga la seccion booked windows by profesional IDs desde base de datos o datos agregados y la deja lista para la respuesta.
+     * Mantiene la consulta encapsulada para que el resto del codigo no repita filtros ni joins.
+     */
     private Map<Long, List<BookedWindow>> loadBookedWindowsByProfessionalIds(
         List<Long> profileIds,
         LocalDateTime from,
@@ -617,6 +717,9 @@ public class AvailableSlotService {
         return result;
     }
 
+    /**
+     * Fusiona booked ventanas para simplificar el calculo posterior.
+     */
     private List<BookedWindow> mergeBookedWindows(List<BookedWindow> bookedWindows) {
         if (bookedWindows == null || bookedWindows.isEmpty()) {
             return List.of();
@@ -644,6 +747,10 @@ public class AvailableSlotService {
         return List.copyOf(merged);
     }
 
+    /**
+     * Actualiza disponibilidad resumen manteniendo reglas de negocio y consistencia de datos.
+     * Tambien concentra los efectos secundarios para que el flujo quede en un estado consistente.
+     */
     private void updateAvailabilitySummary(
         Long profileId,
         boolean hasAvailabilityToday,

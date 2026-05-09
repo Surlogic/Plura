@@ -7,6 +7,12 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+/**
+ * ProfessionalAnalyticsController es un controlador REST del modulo profesionales / analytics.
+ * Responsabilidad: recibir requests HTTP, validar acceso basico y delegar la operacion al servicio de aplicacion o dominio.
+ * Superficie HTTP: atiende rutas bajo /profesional/analytics y deja la logica pesada en servicios.
+ * Foco funcional: profesionales, analytics.
+ */
 @RestController
 @RequestMapping("/profesional/analytics")
 public class ProfessionalAnalyticsController {

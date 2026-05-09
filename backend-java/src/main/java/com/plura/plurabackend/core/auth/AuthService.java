@@ -65,6 +65,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+/**
+ * AuthService es un servicio de negocio del modulo autenticacion.
+ * Responsabilidad: coordinar reglas de negocio, validaciones, persistencia e integraciones del caso de uso.
+ * Colabora con: userRepository, categoryRepository, refreshTokenRepository, oAuthService, entre otros.
+ * Foco funcional: servicios, autenticacion y sesiones.
+ */
 @Service
 public class AuthService {
 
@@ -162,14 +168,30 @@ public class AuthService {
         AuthSessionResponse session
     ) {}
 
+    /**
+     * Bloque de datos refresh token issue usado internamente por esta clase.
+     * Agrupa valores relacionados para que el calculo principal sea mas legible.
+     */
     private record RefreshTokenIssue(String rawToken, RefreshToken entity) {}
+    /**
+     * Bloque de datos session token issue usado internamente por esta clase.
+     * Agrupa valores relacionados para que el calculo principal sea mas legible.
+     */
     private record SessionTokenIssue(String rawToken, AuthSession session) {}
+    /**
+     * Bloque de datos session context dentro de la respuesta principal.
+     * Agrupa metricas relacionadas para que el frontend no tenga que reconstruirlas.
+     */
     public record SessionContext(
         AuthSessionType sessionType,
         String userAgent,
         String ipAddress
     ) {}
 
+    /**
+     * Registra cliente y aplica las validaciones de alta correspondientes.
+     * Tambien concentra los efectos secundarios para que el flujo quede en un estado consistente.
+     */
     @Transactional
     public void registerCliente(RegisterRequest request) {
         String normalizedEmail = request.getEmail().trim().toLowerCase(Locale.ROOT);
@@ -192,6 +214,10 @@ public class AuthService {
         }
     }
 
+    /**
+     * Registra profesional y aplica las validaciones de alta correspondientes.
+     * Tambien concentra los efectos secundarios para que el flujo quede en un estado consistente.
+     */
     @Transactional
     public void registerProfesional(RegisterProfesionalRequest request) {
         String normalizedEmail = request.getEmail().trim().toLowerCase(Locale.ROOT);
@@ -249,6 +275,9 @@ public class AuthService {
         );
     }
 
+    /**
+     * Ejecuta la logica de login profesional manteniendola encapsulada en este componente.
+     */
     @Transactional
     public AuthResult loginProfesional(LoginRequest request, SessionContext sessionContext) {
         User user = userRepository.findByEmailAndDeletedAtIsNull(request.getEmail().trim().toLowerCase(Locale.ROOT))
@@ -268,6 +297,9 @@ public class AuthService {
         return issueTokens(user, toUserResponse(user), sessionContext);
     }
 
+    /**
+     * Ejecuta la logica de login cliente manteniendola encapsulada en este componente.
+     */
     @Transactional
     public AuthResult loginCliente(LoginRequest request, SessionContext sessionContext) {
         User user = userRepository.findByEmailAndDeletedAtIsNull(request.getEmail().trim().toLowerCase(Locale.ROOT))
@@ -287,6 +319,9 @@ public class AuthService {
         return issueTokens(user, toUserResponse(user), sessionContext);
     }
 
+    /**
+     * Ejecuta la logica de login with o autenticacion manteniendola encapsulada en este componente.
+     */
     @Transactional
     public AuthResult loginWithOAuth(OAuthLoginRequest request, SessionContext sessionContext) {
         OAuthUserInfo userInfo = oAuthService.verify(request);
@@ -395,6 +430,9 @@ public class AuthService {
         return issueTokens(user, toUserResponse(user), sessionContext);
     }
 
+    /**
+     * Refresca sesion para mantener datos derivados o metricas al dia.
+     */
     @Transactional(noRollbackFor = AuthApiException.class)
     public AuthResult refreshSession(String refreshToken, SessionContext sessionContext) {
         if (refreshToken == null || refreshToken.isBlank()) {
@@ -438,6 +476,9 @@ public class AuthService {
         throw new AuthApiException(HttpStatus.UNAUTHORIZED, "REFRESH_TOKEN_INVALID", "Refresh token inválido.");
     }
 
+    /**
+     * Resuelve refresh owner ID normalizando entradas, defaults y casos borde.
+     */
     @Transactional(readOnly = true)
     public String resolveRefreshOwnerId(String refreshToken) {
         if (refreshToken == null || refreshToken.isBlank()) {
@@ -459,6 +500,9 @@ public class AuthService {
         return String.valueOf(stored.getUser().getId());
     }
 
+    /**
+     * Ejecuta la logica de logout manteniendola encapsulada en este componente.
+     */
     @Transactional
     public void logout(String refreshToken, String rawUserId, String currentSessionId) {
         if (refreshToken != null && !refreshToken.isBlank()) {
@@ -481,6 +525,9 @@ public class AuthService {
         }
     }
 
+    /**
+     * Ejecuta la logica de logout todos sesiones manteniendola encapsulada en este componente.
+     */
     @Transactional
     public void logoutAllSessions(String rawUserId) {
         Long userId = parseUserId(rawUserId);
@@ -488,11 +535,17 @@ public class AuthService {
         sessionService.revokeAllSessionsForUser(userId, sessionService.revokeReasonLogoutAll());
     }
 
+    /**
+     * Devuelve el listado de sesiones aplicando permisos y filtros del caso de uso.
+     */
     @Transactional(readOnly = true)
     public List<AuthSessionResponse> listSessions(String rawUserId, String currentSessionId) {
         return sessionService.listSessions(parseUserId(rawUserId), currentSessionId);
     }
 
+    /**
+     * Ejecuta la logica de revoke sesion manteniendola encapsulada en este componente.
+     */
     @Transactional
     public void revokeSession(String rawUserId, String sessionId) {
         sessionService.revokeSessionByIdForUser(
@@ -502,10 +555,16 @@ public class AuthService {
         );
     }
 
+    /**
+     * Evalua issue tokens y devuelve una decision booleana para el llamador.
+     */
     private AuthResult issueTokens(User user, UserResponse userResponse, SessionContext sessionContext) {
         return issueTokens(user, userResponse, sessionContext, deriveDefaultContextFromRole(user));
     }
 
+    /**
+     * Evalua issue tokens y devuelve una decision booleana para el llamador.
+     */
     private AuthResult issueTokens(
         User user,
         UserResponse userResponse,
@@ -549,10 +608,18 @@ public class AuthService {
         );
     }
 
+    /**
+     * Crea acceso token validando datos de entrada y persistiendo el resultado.
+     * Tambien concentra los efectos secundarios para que el flujo quede en un estado consistente.
+     */
     private String createAccessToken(String userId, String email, UserRole role, String sessionId, Integer sessionVersion) {
         return createAccessToken(userId, email, role, sessionId, sessionVersion, null);
     }
 
+    /**
+     * Crea acceso token validando datos de entrada y persistiendo el resultado.
+     * Tambien concentra los efectos secundarios para que el flujo quede en un estado consistente.
+     */
     private String createAccessToken(
         String userId,
         String email,
@@ -588,6 +655,9 @@ public class AuthService {
         return builder.sign(jwtAlgorithm);
     }
 
+    /**
+     * Refresca tracked sesion para mantener datos derivados o metricas al dia.
+     */
     private AuthResult refreshTrackedSession(
         SessionService.TrackedRefreshTokenMatch trackedMatch,
         SessionContext sessionContext,
@@ -665,6 +735,9 @@ public class AuthService {
         return result;
     }
 
+    /**
+     * Ejecuta la logica de migrate legacy refresh token manteniendola encapsulada en este componente.
+     */
     private AuthResult migrateLegacyRefreshToken(RefreshToken stored, SessionContext sessionContext, LocalDateTime now) {
         if (stored.getRevokedAt() != null) {
             Long userId = stored.getUser() == null ? null : stored.getUser().getId();
@@ -732,6 +805,10 @@ public class AuthService {
         return result;
     }
 
+    /**
+     * Crea refresh token validando datos de entrada y persistiendo el resultado.
+     * Tambien concentra los efectos secundarios para que el flujo quede en un estado consistente.
+     */
     private RefreshTokenIssue createRefreshToken(User user) {
         String rawToken = generateRefreshToken();
         RefreshToken refreshToken = new RefreshToken();
@@ -742,6 +819,10 @@ public class AuthService {
         return new RefreshTokenIssue(rawToken, saved);
     }
 
+    /**
+     * Crea sesion token validando datos de entrada y persistiendo el resultado.
+     * Tambien concentra los efectos secundarios para que el flujo quede en un estado consistente.
+     */
     private SessionTokenIssue createSessionToken(User user, SessionContext sessionContext) {
         String rawToken = generateRefreshToken();
         AuthSession session = sessionService.createSession(
@@ -756,12 +837,18 @@ public class AuthService {
         return new SessionTokenIssue(rawToken, session);
     }
 
+    /**
+     * Genera refresh token con formato estable para uso interno o externo.
+     */
     private String generateRefreshToken() {
         byte[] randomBytes = new byte[64];
         SECURE_RANDOM.nextBytes(randomBytes);
         return Base64.getUrlEncoder().withoutPadding().encodeToString(randomBytes);
     }
 
+    /**
+     * Evalua hash token y devuelve una decision booleana para el llamador.
+     */
     private String hashToken(String rawToken) {
         try {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
@@ -777,17 +864,27 @@ public class AuthService {
         }
     }
 
+    /**
+     * Ejecuta la logica de burn contrasena work factor manteniendola encapsulada en este componente.
+     */
     private void burnPasswordWorkFactor(String rawPassword) {
         String candidate = rawPassword == null ? "" : rawPassword;
         passwordEncoder.matches(candidate, dummyPasswordHash);
     }
 
+    /**
+     * Carga la seccion usuario by raw ID desde base de datos o datos agregados y la deja lista para la respuesta.
+     * Mantiene la consulta encapsulada para que el resto del codigo no repita filtros ni joins.
+     */
     private User loadUserByRawId(String rawUserId) {
         Long userId = parseUserId(rawUserId);
         return userRepository.findByIdAndDeletedAtIsNull(userId)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Usuario no encontrado"));
     }
 
+    /**
+     * Parsea usuario ID y convierte errores de formato en errores controlados.
+     */
     private Long parseUserId(String rawUserId) {
         try {
             return Long.valueOf(rawUserId);
@@ -797,6 +894,9 @@ public class AuthService {
     }
 
 
+    /**
+     * Resuelve sesion tipo normalizando entradas, defaults y casos borde.
+     */
     private AuthSessionType resolveSessionType(SessionContext sessionContext) {
         if (sessionContext == null || sessionContext.sessionType() == null) {
             return AuthSessionType.WEB;
@@ -804,6 +904,9 @@ public class AuthService {
         return sessionContext.sessionType();
     }
 
+    /**
+     * Convierte datos internos al formato autenticacion sesion respuesta esperado por el consumidor.
+     */
     private AuthSessionResponse toAuthSessionResponse(AuthSession session, boolean current) {
         return new AuthSessionResponse(
             session.getId(),
@@ -820,6 +923,9 @@ public class AuthService {
         );
     }
 
+    /**
+     * Normaliza ip address para evitar variantes vacias, invalidas o inconsistentes.
+     */
     private String normalizeIpAddress(String ipAddress) {
         if (ipAddress == null) {
             return null;
@@ -831,11 +937,17 @@ public class AuthService {
         return trimmed.length() <= 64 ? trimmed : trimmed.substring(0, 64);
     }
 
+    /**
+     * Normaliza sesion tipo nombre para evitar variantes vacias, invalidas o inconsistentes.
+     */
     private String normalizeSessionTypeName(AuthSession session) {
         AuthSessionType sessionType = session == null ? null : session.getSessionType();
         return (sessionType == null ? AuthSessionType.WEB : sessionType).name();
     }
 
+    /**
+     * Procesa refresh token reuse y coordina la respuesta del flujo.
+     */
     private void handleRefreshTokenReuse(AuthSession session, SessionContext sessionContext) {
         AuthSession compromisedSession = sessionService.markSessionCompromised(
             session,
@@ -868,6 +980,9 @@ public class AuthService {
         auditRefreshFailure(userId, sessionId, sessionContext, "refresh_token_reuse_detected");
     }
 
+    /**
+     * Ejecuta la logica de audit refresh success manteniendola encapsulada en este componente.
+     */
     private void auditRefreshSuccess(Long userId, String sessionId, SessionContext sessionContext, String mode) {
         authAuditService.log(
             AuthAuditEventType.REFRESH_SUCCESS,
@@ -880,6 +995,9 @@ public class AuthService {
         );
     }
 
+    /**
+     * Ejecuta la logica de audit refresh failure manteniendola encapsulada en este componente.
+     */
     private void auditRefreshFailure(Long userId, String sessionId, SessionContext sessionContext, String reason) {
         authAuditService.log(
             AuthAuditEventType.REFRESH_FAILURE,
@@ -892,6 +1010,9 @@ public class AuthService {
         );
     }
 
+    /**
+     * Ejecuta la logica de sesion usuario ID manteniendola encapsulada en este componente.
+     */
     private Long sessionUserId(AuthSession session) {
         if (session == null || session.getUser() == null) {
             return null;
@@ -943,6 +1064,9 @@ public class AuthService {
         );
     }
 
+    /**
+     * Convierte datos internos al formato media presentation esperado por el consumidor.
+     */
     private MediaPresentationDto toMediaPresentation(Double positionX, Double positionY, Double zoom) {
         return new MediaPresentationDto(
             positionX != null ? positionX : 50d,
@@ -951,6 +1075,10 @@ public class AuthService {
         );
     }
 
+    /**
+     * Completa o autenticacion telefono y deja persistido el estado final del flujo.
+     * Tambien concentra los efectos secundarios para que el flujo quede en un estado consistente.
+     */
     @Transactional
     public void completeOAuthPhone(String rawUserId, CompleteOAuthPhoneRequest request) {
         User user = loadUserByRawId(rawUserId);
@@ -979,26 +1107,41 @@ public class AuthService {
         return toUserResponse(user);
     }
 
+    /**
+     * Ejecuta la logica de ensure profesional usuario manteniendola encapsulada en este componente.
+     */
     private void ensureProfessionalUser(User user) {
         if (!isProfessionalUser(user)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Solo profesionales");
         }
     }
 
+    /**
+     * Ejecuta la logica de ensure cliente usuario manteniendola encapsulada en este componente.
+     */
     private void ensureClientUser(User user) {
         if (!isClientUser(user)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Solo clientes");
         }
     }
 
+    /**
+     * Evalua is profesional usuario y devuelve una decision booleana para el llamador.
+     */
     private boolean isProfessionalUser(User user) {
         return user != null && user.getRole() == UserRole.PROFESSIONAL;
     }
 
+    /**
+     * Evalua is cliente usuario y devuelve una decision booleana para el llamador.
+     */
     private boolean isClientUser(User user) {
         return user != null && user.getRole() == UserRole.USER;
     }
 
+    /**
+     * Convierte datos internos al formato usuario respuesta esperado por el consumidor.
+     */
     private UserResponse toUserResponse(User user) {
         return new UserResponse(
             String.valueOf(user.getId()),
@@ -1011,6 +1154,9 @@ public class AuthService {
         );
     }
 
+    /**
+     * Normaliza telefono number para evitar variantes vacias, invalidas o inconsistentes.
+     */
     private String normalizePhoneNumber(String value) {
         String normalized = normalizeOAuthValue(value);
         if (normalized == null) {
@@ -1030,6 +1176,9 @@ public class AuthService {
         return digits.length() >= 8 && digits.length() <= 20 ? digits : null;
     }
 
+    /**
+     * Aplica trusted email verification sobre el modelo actual manteniendo consistencia.
+     */
     private boolean applyTrustedEmailVerification(User user, String normalizedProvider) {
         if (user == null || normalizedProvider == null) {
             return false;
@@ -1041,6 +1190,9 @@ public class AuthService {
         return true;
     }
 
+    /**
+     * Normaliza o autenticacion email para evitar variantes vacias, invalidas o inconsistentes.
+     */
     private String normalizeOAuthEmail(String email) {
         String normalized = normalizeOAuthValue(email);
         if (normalized == null) {
@@ -1049,6 +1201,9 @@ public class AuthService {
         return normalized.toLowerCase(Locale.ROOT);
     }
 
+    /**
+     * Normaliza o autenticacion proveedor para evitar variantes vacias, invalidas o inconsistentes.
+     */
     private String normalizeOAuthProvider(String provider) {
         String normalized = normalizeOAuthValue(provider);
         if (normalized == null) {
@@ -1057,6 +1212,9 @@ public class AuthService {
         return normalized.toLowerCase(Locale.ROOT);
     }
 
+    /**
+     * Normaliza desired o autenticacion rol para evitar variantes vacias, invalidas o inconsistentes.
+     */
     private UserRole normalizeDesiredOAuthRole(String rawRole) {
         String normalized = normalizeOAuthValue(rawRole);
         if (normalized == null) {
@@ -1069,6 +1227,9 @@ public class AuthService {
         }
     }
 
+    /**
+     * Normaliza o autenticacion autenticacion action para evitar variantes vacias, invalidas o inconsistentes.
+     */
     private OAuthAuthAction normalizeOAuthAuthAction(String rawAction) {
         String normalized = normalizeOAuthValue(rawAction);
         if (normalized == null) {
@@ -1081,6 +1242,9 @@ public class AuthService {
         }
     }
 
+    /**
+     * Normaliza o autenticacion value para evitar variantes vacias, invalidas o inconsistentes.
+     */
     private String normalizeOAuthValue(String value) {
         if (value == null) {
             return null;
@@ -1089,6 +1253,9 @@ public class AuthService {
         return trimmed.isBlank() ? null : trimmed;
     }
 
+    /**
+     * Resuelve o autenticacion display name normalizando entradas, defaults y casos borde.
+     */
     private String resolveOAuthDisplayName(String name, String email) {
         String normalizedName = normalizeOAuthValue(name);
         if (normalizedName != null) {
@@ -1101,6 +1268,9 @@ public class AuthService {
         return "Usuario";
     }
 
+    /**
+     * Ejecuta la logica de ensure profesional perfil manteniendola encapsulada en este componente.
+     */
     private ProfessionalProfile ensureProfessionalProfile(User user) {
         return professionalAccountProfileGateway.loadOrBootstrapProfile(user);
     }
@@ -1110,21 +1280,34 @@ public class AuthService {
         REGISTER
     }
 
+    /**
+     * Normaliza tipo cliente para evitar variantes vacias, invalidas o inconsistentes.
+     */
     private String normalizeTipoCliente(String rawTipoCliente) {
         if (rawTipoCliente == null) return "";
         return rawTipoCliente.trim().toUpperCase();
     }
 
+    /**
+     * Exige s profesional location y corta la ejecucion si falta autorizacion o contexto.
+     * Esta separacion hace explicita la regla de seguridad o negocio que protege el flujo.
+     */
     private boolean requiresProfessionalLocation(String tipoCliente) {
         return "LOCAL".equals(tipoCliente);
     }
 
+    /**
+     * Normaliza location para evitar variantes vacias, invalidas o inconsistentes.
+     */
     private String normalizeLocation(String rawLocation) {
         if (rawLocation == null) return null;
         String trimmed = rawLocation.trim();
         return trimmed.isBlank() ? null : trimmed;
     }
 
+    /**
+     * Normaliza location part para evitar variantes vacias, invalidas o inconsistentes.
+     */
     private String normalizeLocationPart(String rawValue, boolean required, String fieldName) {
         String normalized = normalizeLocation(rawValue);
         if (normalized == null && required) {
@@ -1134,10 +1317,17 @@ public class AuthService {
     }
 
 
+    /**
+     * Ejecuta la logica de compose location manteniendola encapsulada en este componente.
+     */
     private String composeLocation(String fullAddress, String city, String country) {
         return String.join(", ", fullAddress.trim(), city.trim(), country.trim());
     }
 
+    /**
+     * Valida coordinates pair y lanza un error controlado si no cumple el contrato.
+     * Esta separacion hace explicita la regla de seguridad o negocio que protege el flujo.
+     */
     private void validateCoordinatesPair(Double latitude, Double longitude) {
         if ((latitude == null) == (longitude == null)) {
             return;
@@ -1148,6 +1338,9 @@ public class AuthService {
         );
     }
 
+    /**
+     * Normaliza latitude para evitar variantes vacias, invalidas o inconsistentes.
+     */
     private Double normalizeLatitude(Double rawLatitude) {
         if (rawLatitude == null) {
             return null;
@@ -1158,6 +1351,9 @@ public class AuthService {
         return rawLatitude;
     }
 
+    /**
+     * Normaliza longitude para evitar variantes vacias, invalidas o inconsistentes.
+     */
     private Double normalizeLongitude(Double rawLongitude) {
         if (rawLongitude == null) {
             return null;
@@ -1168,6 +1364,9 @@ public class AuthService {
         return rawLongitude;
     }
 
+    /**
+     * Resuelve categories for registration normalizando entradas, defaults y casos borde.
+     */
     private Set<Category> resolveCategoriesForRegistration(RegisterProfesionalRequest request) {
         List<String> incoming = request.getCategorySlugs();
         if (incoming != null && !incoming.isEmpty()) {
@@ -1189,6 +1388,10 @@ public class AuthService {
         return loadCategoriesBySlugs(Set.of(slug));
     }
 
+    /**
+     * Carga la seccion categories by slugs desde base de datos o datos agregados y la deja lista para la respuesta.
+     * Mantiene la consulta encapsulada para que el resto del codigo no repita filtros ni joins.
+     */
     private Set<Category> loadCategoriesBySlugs(Set<String> slugs) {
         List<Category> categories = categoryRepository.findBySlugIn(slugs);
         Set<String> foundSlugs = categories.stream()
@@ -1206,6 +1409,9 @@ public class AuthService {
         return new LinkedHashSet<>(categories);
     }
 
+    /**
+     * Resuelve primary categoria name normalizando entradas, defaults y casos borde.
+     */
     private String resolvePrimaryCategoryName(Set<Category> categories, String legacyRubro) {
         return categories.stream()
             .sorted(categoryComparator())
@@ -1214,16 +1420,25 @@ public class AuthService {
             .orElseGet(() -> legacyRubro == null ? "" : legacyRubro.trim());
     }
 
+    /**
+     * Normaliza slug para evitar variantes vacias, invalidas o inconsistentes.
+     */
     private String normalizeSlug(String rawSlug) {
         if (rawSlug == null) return "";
         String normalized = rawSlug.trim().toLowerCase(Locale.ROOT);
         return mapLegacyCategorySlug(normalized);
     }
 
+    /**
+     * Mapea legacy categoria slug desde el modelo interno al contrato que usa otra capa.
+     */
     private String mapLegacyCategorySlug(String slug) {
         return LEGACY_CATEGORY_ALIASES.getOrDefault(slug, slug);
     }
 
+    /**
+     * Mapea categories desde el modelo interno al contrato que usa otra capa.
+     */
     private List<CategoryResponse> mapCategories(Set<Category> categories) {
         if (categories == null || categories.isEmpty()) {
             return List.of();
@@ -1240,12 +1455,18 @@ public class AuthService {
             .toList();
     }
 
+    /**
+     * Ejecuta la logica de categoria comparator manteniendola encapsulada en este componente.
+     */
     private Comparator<Category> categoryComparator() {
         return Comparator.comparingInt(
             (Category category) -> category.getDisplayOrder() == null ? Integer.MAX_VALUE : category.getDisplayOrder()
         ).thenComparing(Category::getName);
     }
 
+    /**
+     * Ejecuta la logica de login unified manteniendola encapsulada en este componente.
+     */
     @Transactional
     public UnifiedLoginResult loginUnified(UnifiedLoginRequest request, SessionContext sessionContext) {
         String email = request.getEmail() == null ? "" : request.getEmail().trim().toLowerCase(Locale.ROOT);
@@ -1284,6 +1505,9 @@ public class AuthService {
         return new UnifiedLoginResult(tokens, contexts, active, selectionRequired);
     }
 
+    /**
+     * Ejecuta la logica de select contexto manteniendola encapsulada en este componente.
+     */
     @Transactional
     public SelectContextResponse selectContext(
         String rawUserId,
@@ -1335,6 +1559,9 @@ public class AuthService {
         return new AuthMeResponse(toUserResponse(user), active, contexts);
     }
 
+    /**
+     * Ejecuta la logica de derive default contexto from rol manteniendola encapsulada en este componente.
+     */
     private AuthContextDescriptor deriveDefaultContextFromRole(User user) {
         if (user == null || user.getRole() == null) {
             return null;
@@ -1344,6 +1571,10 @@ public class AuthService {
             : new AuthContextDescriptor(AuthContextType.CLIENT, null, null, null, null, null, false);
     }
 
+    /**
+     * Bloque de datos unified login result dentro de la respuesta principal.
+     * Agrupa metricas relacionadas para que el frontend no tenga que reconstruirlas.
+     */
     public record UnifiedLoginResult(
         AuthResult auth,
         List<AuthContextDescriptor> contexts,

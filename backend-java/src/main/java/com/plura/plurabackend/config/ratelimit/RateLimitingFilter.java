@@ -25,6 +25,12 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
+/**
+ * RateLimitingFilter es un filtro HTTP del modulo configuracion / rate limit.
+ * Responsabilidad: aplicar una regla transversal sobre cada request antes de llegar a los controllers.
+ * Colabora con: objectMapper, trustForwardedHeaders, rateLimitEnabled.
+ * Foco funcional: la responsabilidad indicada por su paquete y nombre.
+ */
 @Component
 public class RateLimitingFilter extends OncePerRequestFilter {
 
@@ -50,6 +56,9 @@ public class RateLimitingFilter extends OncePerRequestFilter {
         this.rateLimitEnabled = rateLimitEnabled;
     }
 
+    /**
+     * Aplica el filtro al request actual antes de continuar la cadena HTTP.
+     */
     @Override
     protected void doFilterInternal(
         HttpServletRequest request,
@@ -93,6 +102,9 @@ public class RateLimitingFilter extends OncePerRequestFilter {
         )));
     }
 
+    /**
+     * Ejecuta la logica de new bucket manteniendola encapsulada en este componente.
+     */
     private Bucket newBucket(long capacityPerMinute) {
         Bandwidth bandwidth = Bandwidth.classic(
             capacityPerMinute,
@@ -101,6 +113,9 @@ public class RateLimitingFilter extends OncePerRequestFilter {
         return Bucket.builder().addLimit(bandwidth).build();
     }
 
+    /**
+     * Resuelve target normalizando entradas, defaults y casos borde.
+     */
     private RateLimitTarget resolveTarget(HttpServletRequest request) {
         String method = request.getMethod();
         String path = request.getRequestURI();
@@ -182,6 +197,9 @@ public class RateLimitingFilter extends OncePerRequestFilter {
         return null;
     }
 
+    /**
+     * Resuelve usuario or ip normalizando entradas, defaults y casos borde.
+     */
     private String resolveUserOrIp(HttpServletRequest request) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (
@@ -194,6 +212,9 @@ public class RateLimitingFilter extends OncePerRequestFilter {
         return "ip:" + extractClientIp(request);
     }
 
+    /**
+     * Extrae cliente ip desde una URL, payload o referencia persistida.
+     */
     private String extractClientIp(HttpServletRequest request) {
         if (trustForwardedHeaders) {
             String forwarded = request.getHeader("X-Forwarded-For");
@@ -209,6 +230,9 @@ public class RateLimitingFilter extends OncePerRequestFilter {
         return request.getRemoteAddr();
     }
 
+    /**
+     * Ejecuta la logica de maybe cleanup manteniendola encapsulada en este componente.
+     */
     private void maybeCleanup() {
         long current = requestCount.incrementAndGet();
         if (current % CLEANUP_FREQUENCY != 0) {
@@ -223,6 +247,9 @@ public class RateLimitingFilter extends OncePerRequestFilter {
         });
     }
 
+    /**
+     * Ejecuta la logica de trim if obligatorio manteniendola encapsulada en este componente.
+     */
     private void trimIfRequired() {
         int overflow = buckets.size() - MAX_BUCKETS;
         if (overflow <= 0) {
@@ -264,5 +291,9 @@ public class RateLimitingFilter extends OncePerRequestFilter {
         }
     }
 
+    /**
+     * Bloque de datos rate limit target usado internamente por esta clase.
+     * Agrupa valores relacionados para que el calculo principal sea mas legible.
+     */
     private record RateLimitTarget(String keyPrefix, String identifier, long capacityPerMinute) {}
 }

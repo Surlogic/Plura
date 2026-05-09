@@ -2,6 +2,12 @@ package com.plura.plurabackend.professional.plan;
 
 import java.util.function.Predicate;
 
+/**
+ * BooleanCapability es un enum de dominio del modulo profesionales / planes.
+ * Responsabilidad: limitar valores validos para estados, tipos o capacidades usados por el backend.
+ * Colabora con: label, predicate.
+ * Foco funcional: la responsabilidad indicada por su paquete y nombre.
+ */
 public enum BooleanCapability {
     ONLINE_PAYMENTS(
         "pagos online",
@@ -76,10 +82,16 @@ public enum BooleanCapability {
         this.predicate = predicate;
     }
 
+    /**
+     * Evalua is enabled y devuelve una decision booleana para el llamador.
+     */
     public boolean isEnabled(ProfessionalPlanEntitlements entitlements) {
         return entitlements != null && predicate.test(entitlements);
     }
 
+    /**
+     * Ejecuta la logica de denied message manteniendola encapsulada en este componente.
+     */
     public String deniedMessage() {
         return "Tu plan no permite " + label;
     }

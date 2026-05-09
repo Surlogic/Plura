@@ -5,6 +5,12 @@ import java.time.LocalDateTime;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 
+/**
+ * BillingSubscriptionResponse es un DTO de respuesta del modulo billing / contratos DTO.
+ * Responsabilidad: definir el contrato que la API devuelve al frontend u otro consumidor.
+ * Contrato: lo consumen web/mobile, asi que renombrar campos puede romper compatibilidad.
+ * Foco funcional: suscripciones, billing.
+ */
 @Data
 @AllArgsConstructor
 public class BillingSubscriptionResponse {

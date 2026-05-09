@@ -4,6 +4,12 @@ import com.plura.plurabackend.core.billing.payments.model.PaymentProvider;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
+/**
+ * ParsedWebhookEvent es un modelo inmutable del modulo billing / webhooks.
+ * Responsabilidad: agrupar datos de lectura o respuesta con una estructura clara y sin estado mutable.
+ * Contrato: lo consumen web/mobile, asi que renombrar campos puede romper compatibilidad.
+ * Foco funcional: webhooks.
+ */
 public record ParsedWebhookEvent(
     PaymentProvider provider,
     WebhookEventDomain domain,

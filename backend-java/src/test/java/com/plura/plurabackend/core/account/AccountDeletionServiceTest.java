@@ -33,6 +33,11 @@ import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 
+/**
+ * Tests de servicios core compartidos / cuentas.
+ * Cubren escenarios de account deletion servicio para documentar el comportamiento esperado y evitar regresiones.
+ * Mantener estos casos alineados con los contratos reales del backend cuando cambie la logica productiva.
+ */
 class AccountDeletionServiceTest {
 
     private final UserRepository userRepository = mock(UserRepository.class);
@@ -65,6 +70,10 @@ class AccountDeletionServiceTest {
         "America/Montevideo"
     );
 
+    /**
+     * Escenario: elimina cliente account y purges data.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void deletesClientAccountAndPurgesData() {
         User user = clientUser(10L, "cliente@plura.com");
@@ -126,6 +135,10 @@ class AccountDeletionServiceTest {
         verify(userRepository, never()).delete(any());
     }
 
+    /**
+     * Escenario: elimina profesional account y purges data.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void deletesProfessionalAccountAndPurgesData() {
         User user = professionalUser(30L, "pro@plura.com");

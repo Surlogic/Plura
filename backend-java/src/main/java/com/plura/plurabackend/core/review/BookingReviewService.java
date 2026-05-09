@@ -33,6 +33,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+/**
+ * BookingReviewService es un servicio de negocio del modulo resenas.
+ * Responsabilidad: coordinar reglas de negocio, validaciones, persistencia e integraciones del caso de uso.
+ * Colabora con: bookingReviewRepository, bookingReviewReportRepository, bookingRepository, professionalProfileRepository, entre otros.
+ * Foco funcional: reservas, servicios, resenas.
+ */
 @Service
 public class BookingReviewService {
 
@@ -64,6 +70,10 @@ public class BookingReviewService {
         this.systemZoneId = ZoneId.of(appTimezone);
     }
 
+    /**
+     * Crea resena validando datos de entrada y persistiendo el resultado.
+     * Tambien concentra los efectos secundarios para que el flujo quede en un estado consistente.
+     */
     @Transactional
     public BookingReviewResponse createReview(Long bookingId, Long clientUserId, CreateBookingReviewRequest request) {
         Booking booking = bookingRepository.findDetailedById(bookingId)
@@ -115,6 +125,10 @@ public class BookingReviewService {
         return toClientResponse(review, booking.getUser().getFullName());
     }
 
+    /**
+     * Elimina resena by reserva ID y limpia relaciones o datos derivados cuando corresponde.
+     * Tambien concentra los efectos secundarios para que el flujo quede en un estado consistente.
+     */
     @Transactional
     public void deleteReviewByBookingId(Long bookingId, Long clientUserId) {
         Booking booking = bookingRepository.findDetailedById(bookingId)
@@ -149,6 +163,9 @@ public class BookingReviewService {
             .map(review -> toClientResponse(review, booking.getUser().getFullName()));
     }
 
+    /**
+     * Devuelve el listado de publico resenas aplicando permisos y filtros del caso de uso.
+     */
     @Transactional(readOnly = true)
     public Page<BookingReviewResponse> listPublicReviews(String professionalSlug, Pageable pageable) {
         ProfessionalProfile professional = professionalProfileRepository.findBySlug(professionalSlug)
@@ -158,6 +175,9 @@ public class BookingReviewService {
             .map(this::toPublicResponse);
     }
 
+    /**
+     * Devuelve el listado de profesional resenas aplicando permisos y filtros del caso de uso.
+     */
     @Transactional(readOnly = true)
     public Page<BookingReviewResponse> listProfessionalReviews(Long professionalUserId, Pageable pageable) {
         Long professionalId = professionalActorLookupGateway.findProfessionalIdByUserId(professionalUserId)
@@ -173,6 +193,9 @@ public class BookingReviewService {
         return PageableExecutionUtils.getPage(responses, pageable, reviewsPage::getTotalElements);
     }
 
+    /**
+     * Ejecuta la logica de hide resena text manteniendola encapsulada en este componente.
+     */
     @Transactional
     public void hideReviewText(Long reviewId, Long professionalUserId) {
         Long professionalId = professionalActorLookupGateway.findProfessionalIdByUserId(professionalUserId)
@@ -186,6 +209,9 @@ public class BookingReviewService {
         bookingReviewRepository.save(review);
     }
 
+    /**
+     * Ejecuta la logica de show resena text manteniendola encapsulada en este componente.
+     */
     @Transactional
     public void showReviewText(Long reviewId, Long professionalUserId) {
         Long professionalId = professionalActorLookupGateway.findProfessionalIdByUserId(professionalUserId)
@@ -199,6 +225,9 @@ public class BookingReviewService {
         bookingReviewRepository.save(review);
     }
 
+    /**
+     * Ejecuta la logica de report resena manteniendola encapsulada en este componente.
+     */
     @Transactional
     public BookingReviewReportResponse reportReview(
         Long reviewId,
@@ -238,6 +267,9 @@ public class BookingReviewService {
         return toReportResponse(report);
     }
 
+    /**
+     * Ejecuta la logica de recompute aggregate manteniendola encapsulada en este componente.
+     */
     @Transactional
     public void recomputeAggregate(Long professionalId) {
         Object[] result = normalizeAggregateRow(bookingReviewRepository.findRatingAggregateByProfessionalId(professionalId));
@@ -251,6 +283,9 @@ public class BookingReviewService {
         });
     }
 
+    /**
+     * Ejecuta la logica de recompute todos aggregates manteniendola encapsulada en este componente.
+     */
     @Transactional
     public void recomputeAllAggregates() {
         LOGGER.info("Recomputing review aggregates (batch)");
@@ -258,6 +293,9 @@ public class BookingReviewService {
         LOGGER.info("Review aggregate batch recompute completed, updated {} professionals", updated);
     }
 
+    /**
+     * Convierte datos internos al formato cliente respuesta esperado por el consumidor.
+     */
     private BookingReviewResponse toClientResponse(BookingReview review, String authorDisplayName) {
         return new BookingReviewResponse(
             review.getId(),
@@ -273,6 +311,9 @@ public class BookingReviewService {
         );
     }
 
+    /**
+     * Convierte datos internos al formato publico respuesta esperado por el consumidor.
+     */
     private BookingReviewResponse toPublicResponse(BookingReview review) {
         boolean hiddenByProfessional = Boolean.TRUE.equals(review.getTextHiddenByProfessional());
         boolean hiddenByOps = Boolean.TRUE.equals(review.getTextHiddenByInternalOps());
@@ -291,6 +332,9 @@ public class BookingReviewService {
         );
     }
 
+    /**
+     * Convierte datos internos al formato profesional respuesta esperado por el consumidor.
+     */
     private BookingReviewResponse toProfessionalResponse(BookingReview review, boolean reportedByProfessional) {
         boolean hidden = review.getTextHiddenByProfessional() != null && review.getTextHiddenByProfessional();
         return new BookingReviewResponse(
@@ -307,6 +351,9 @@ public class BookingReviewService {
         );
     }
 
+    /**
+     * Convierte datos internos al formato report respuesta esperado por el consumidor.
+     */
     private BookingReviewReportResponse toReportResponse(BookingReviewReport report) {
         return new BookingReviewReportResponse(
             report.getId(),
@@ -320,6 +367,10 @@ public class BookingReviewService {
         );
     }
 
+    /**
+     * Busca open reported resena IDs aplicando filtros, joins o criterios del caso de uso.
+     * Mantiene la consulta encapsulada para que el resto del codigo no repita filtros ni joins.
+     */
     private Set<Long> findOpenReportedReviewIds(Long professionalId, List<BookingReview> reviews) {
         if (reviews.isEmpty()) {
             return Set.of();
@@ -332,6 +383,9 @@ public class BookingReviewService {
         ));
     }
 
+    /**
+     * Normaliza text para evitar variantes vacias, invalidas o inconsistentes.
+     */
     private String normalizeText(String text) {
         if (text == null) {
             return null;
@@ -340,6 +394,9 @@ public class BookingReviewService {
         return trimmed.isEmpty() ? null : trimmed;
     }
 
+    /**
+     * Normaliza aggregate row para evitar variantes vacias, invalidas o inconsistentes.
+     */
     private Object[] normalizeAggregateRow(Object[] result) {
         if (result == null || result.length == 0) {
             return new Object[]{0d, 0L};

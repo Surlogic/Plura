@@ -75,6 +75,12 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.server.ResponseStatusException;
 
+/**
+ * BookingProviderIntegrationService es un servicio de negocio del modulo reservas / finanzas.
+ * Responsabilidad: coordinar reglas de negocio, validaciones, persistencia e integraciones del caso de uso.
+ * Colabora con: bookingRepository, professionalProfileRepository, sideEffectCoordinator, userRepository, entre otros.
+ * Foco funcional: proveedores externos, reservas, servicios.
+ */
 @Service
 public class BookingProviderIntegrationService {
 
@@ -148,6 +154,10 @@ public class BookingProviderIntegrationService {
         this.providerClients = mapped;
     }
 
+    /**
+     * Crea pago sesion for cliente validando datos de entrada y persistiendo el resultado.
+     * Tambien concentra los efectos secundarios para que el flujo quede en un estado consistente.
+     */
     @Transactional
     public BookingPaymentSessionResponse createPaymentSessionForClient(
         String rawUserId,
@@ -372,6 +382,9 @@ public class BookingProviderIntegrationService {
         );
     }
 
+    /**
+     * Ejecuta la logica de process post decision manteniendola encapsulada en este componente.
+     */
     @Transactional
     public BookingFinanceDispatchPlan processPostDecision(
         Booking booking,
@@ -396,6 +409,9 @@ public class BookingProviderIntegrationService {
         return new BookingFinanceDispatchPlan(current, operationIds);
     }
 
+    /**
+     * Ejecuta la logica de retry reembolso manteniendola encapsulada en este componente.
+     */
     @Transactional
     public BookingFinanceDispatchPlan retryRefund(
         Booking booking,
@@ -418,6 +434,9 @@ public class BookingProviderIntegrationService {
         return initiateBookingRefund(booking, refundRecord, null, true);
     }
 
+    /**
+     * Ejecuta la logica de initiate reserva reembolso manteniendola encapsulada en este componente.
+     */
     private BookingFinanceDispatchPlan initiateBookingRefund(
         Booking booking,
         BookingRefundRecord refundRecord,
@@ -512,6 +531,9 @@ public class BookingProviderIntegrationService {
         );
     }
 
+    /**
+     * Ejecuta la logica de retry liquidacion manteniendola encapsulada en este componente.
+     */
     @Transactional
     public BookingFinanceDispatchPlan retryPayout(
         Booking booking,
@@ -529,6 +551,9 @@ public class BookingProviderIntegrationService {
         return initiateBookingPayout(booking, payoutRecord, null, true);
     }
 
+    /**
+     * Ejecuta la logica de sincronizar pending charge estado manteniendola encapsulada en este componente.
+     */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public boolean syncPendingChargeStatus(Long bookingId) {
         Booking booking = bookingRepository.findDetailedById(bookingId).orElse(null);
@@ -543,6 +568,9 @@ public class BookingProviderIntegrationService {
         }
     }
 
+    /**
+     * Despacha planned operaciones fuera del flujo principal del request.
+     */
     public BookingFinanceUpdateResult dispatchPlannedOperations(
         Booking booking,
         BookingFinanceDispatchPlan plan
@@ -558,6 +586,9 @@ public class BookingProviderIntegrationService {
         return loadCurrentFinanceUpdateResult(booking.getId());
     }
 
+    /**
+     * Despacha proveedor operacion fuera del flujo principal del request.
+     */
     private ProviderOperationDispatchResult dispatchProviderOperation(String operationId) {
         ProviderOperation claimed = providerOperationService.claimOperation(
             operationId,
@@ -570,6 +601,9 @@ public class BookingProviderIntegrationService {
         return processClaimedProviderOperation(operationId);
     }
 
+    /**
+     * Ejecuta la logica de process claimed proveedor operacion manteniendola encapsulada en este componente.
+     */
     public ProviderOperationDispatchResult processClaimedProviderOperation(String operationId) {
         ProviderOperation operation = providerOperationService.getRequired(operationId);
         if (operation.getStatus() != ProviderOperationStatus.PROCESSING) {
@@ -594,6 +628,9 @@ public class BookingProviderIntegrationService {
         };
     }
 
+    /**
+     * Despacha checkout operacion fuera del flujo principal del request.
+     */
     private ProviderOperationDispatchResult dispatchCheckoutOperation(ProviderOperation operation) {
         ProviderOperation activeOperation = refreshActiveProcessingOperation(operation);
         if (activeOperation == null) {
@@ -645,6 +682,9 @@ public class BookingProviderIntegrationService {
         }
     }
 
+    /**
+     * Despacha reembolso operacion fuera del flujo principal del request.
+     */
     private ProviderOperationDispatchResult dispatchRefundOperation(ProviderOperation operation) {
         ProviderOperation activeOperation = refreshActiveProcessingOperation(operation);
         if (activeOperation == null) {
@@ -692,6 +732,9 @@ public class BookingProviderIntegrationService {
         }
     }
 
+    /**
+     * Despacha liquidacion operacion fuera del flujo principal del request.
+     */
     private ProviderOperationDispatchResult dispatchPayoutOperation(ProviderOperation operation) {
         ProviderOperation activeOperation = refreshActiveProcessingOperation(operation);
         if (activeOperation == null) {
@@ -716,6 +759,9 @@ public class BookingProviderIntegrationService {
         }
     }
 
+    /**
+     * Resuelve claimed operacion without calling proveedor normalizando entradas, defaults y casos borde.
+     */
     private boolean resolveClaimedOperationWithoutCallingProvider(ProviderOperation operation) {
         if (operation == null) {
             return true;
@@ -727,6 +773,9 @@ public class BookingProviderIntegrationService {
         };
     }
 
+    /**
+     * Ejecuta la logica de reconcile checkout operacion manteniendola encapsulada en este componente.
+     */
     private boolean reconcileCheckoutOperation(ProviderOperation operation) {
         PaymentTransaction transaction = operation.getPaymentTransactionId() == null
             ? null
@@ -772,6 +821,9 @@ public class BookingProviderIntegrationService {
         return false;
     }
 
+    /**
+     * Ejecuta la logica de reconcile reembolso operacion manteniendola encapsulada en este componente.
+     */
     private boolean reconcileRefundOperation(ProviderOperation operation) {
         PaymentTransaction refundTx = operation.getPaymentTransactionId() == null
             ? null
@@ -803,6 +855,9 @@ public class BookingProviderIntegrationService {
         return false;
     }
 
+    /**
+     * Ejecuta la logica de reconcile liquidacion operacion manteniendola encapsulada en este componente.
+     */
     private boolean reconcilePayoutOperation(ProviderOperation operation) {
         PaymentTransaction payoutTx = operation.getPaymentTransactionId() == null
             ? null
@@ -835,6 +890,10 @@ public class BookingProviderIntegrationService {
         return false;
     }
 
+    /**
+     * Carga la seccion proveedor operacion result desde base de datos o datos agregados y la deja lista para la respuesta.
+     * Mantiene la consulta encapsulada para que el resto del codigo no repita filtros ni joins.
+     */
     private ProviderOperationDispatchResult loadProviderOperationResult(ProviderOperation operation) {
         if (operation.getOperationType() == ProviderOperationType.BOOKING_CHECKOUT
             && operation.getPaymentTransactionId() != null) {
@@ -848,6 +907,9 @@ public class BookingProviderIntegrationService {
         return new ProviderOperationDispatchResult(operation.getId(), operation.getOperationType(), null);
     }
 
+    /**
+     * Aplica checkout dispatch result sobre el modelo actual manteniendo consistencia.
+     */
     private void applyCheckoutDispatchResult(
         BookingPaymentSessionResponse response,
         ProviderOperationDispatchResult dispatchResult
@@ -871,6 +933,9 @@ public class BookingProviderIntegrationService {
         }
     }
 
+    /**
+     * Ejecuta la logica de finalize reembolso dispatch manteniendola encapsulada en este componente.
+     */
     private void finalizeRefundDispatch(
         ProviderOperation operation,
         Long bookingId,
@@ -938,6 +1003,9 @@ public class BookingProviderIntegrationService {
         }
     }
 
+    /**
+     * Ejecuta la logica de finalize liquidacion dispatch manteniendola encapsulada en este componente.
+     */
     private void finalizePayoutDispatch(
         ProviderOperation operation,
         Long bookingId,
@@ -1005,6 +1073,10 @@ public class BookingProviderIntegrationService {
         }
     }
 
+    /**
+     * Carga la seccion actual finance update result desde base de datos o datos agregados y la deja lista para la respuesta.
+     * Mantiene la consulta encapsulada para que el resto del codigo no repita filtros ni joins.
+     */
     private BookingFinanceUpdateResult loadCurrentFinanceUpdateResult(Long bookingId) {
         Booking booking = bookingRepository.findDetailedById(bookingId)
             .orElseThrow(() -> new IllegalStateException("Reserva no encontrada"));
@@ -1016,6 +1088,9 @@ public class BookingProviderIntegrationService {
         );
     }
 
+    /**
+     * Ejecuta la logica de initiate reserva liquidacion manteniendola encapsulada en este componente.
+     */
     private BookingFinanceDispatchPlan initiateBookingPayout(
         Booking booking,
         BookingPayoutRecord payoutRecord,
@@ -1091,6 +1166,9 @@ public class BookingProviderIntegrationService {
         );
     }
 
+    /**
+     * Ejecuta la logica de sincronizar pending charge estado manteniendola encapsulada en este componente.
+     */
     private boolean syncPendingChargeStatus(Booking booking) {
         if (booking == null || booking.getId() == null) {
             return false;
@@ -1171,6 +1249,9 @@ public class BookingProviderIntegrationService {
         return false;
     }
 
+    /**
+     * Ejecuta la logica de recreate pending checkout manteniendola encapsulada en este componente.
+     */
     private ProviderCheckoutSession recreatePendingCheckout(
         PaymentTransaction pendingCharge,
         Booking booking,
@@ -1203,6 +1284,9 @@ public class BookingProviderIntegrationService {
         return session;
     }
 
+    /**
+     * Construye verification payload a partir de datos internos ya validados.
+     */
     private Map<String, Object> buildVerificationPayload(
         PaymentTransaction pendingCharge,
         ProviderVerificationResult verification
@@ -1222,6 +1306,9 @@ public class BookingProviderIntegrationService {
         return verificationPayload;
     }
 
+    /**
+     * Ejecuta la logica de process webhook manteniendola encapsulada en este componente.
+     */
     @Transactional
     public boolean processWebhook(PaymentEvent paymentEvent, ParsedWebhookEvent event) {
         PaymentTransaction transaction = resolveTransaction(event);
@@ -1316,6 +1403,9 @@ public class BookingProviderIntegrationService {
         return true;
     }
 
+    /**
+     * Resuelve reserva normalizando entradas, defaults y casos borde.
+     */
     private Booking resolveBooking(ParsedWebhookEvent event) {
         if (event.bookingId() != null) {
             return bookingRepository.findDetailedById(event.bookingId()).orElse(null);
@@ -1327,6 +1417,9 @@ public class BookingProviderIntegrationService {
         return null;
     }
 
+    /**
+     * Resuelve transaction normalizando entradas, defaults y casos borde.
+     */
     private PaymentTransaction resolveTransaction(ParsedWebhookEvent event) {
         if (event.providerPaymentId() != null && !event.providerPaymentId().isBlank()) {
             PaymentTransaction transaction = paymentTransactionRepository.findByProviderAndProviderPaymentId(
@@ -1358,6 +1451,9 @@ public class BookingProviderIntegrationService {
         return null;
     }
 
+    /**
+     * Construye webhook backfilled charge a partir de datos internos ya validados.
+     */
     private PaymentTransaction buildWebhookBackfilledCharge(Booking booking, ParsedWebhookEvent event) {
         PaymentTransaction transaction = new PaymentTransaction();
         transaction.setProfessionalId(booking.getProfessionalId());
@@ -1375,6 +1471,9 @@ public class BookingProviderIntegrationService {
         return transaction;
     }
 
+    /**
+     * Construye webhook reembolso transaction a partir de datos internos ya validados.
+     */
     private PaymentTransaction buildWebhookRefundTransaction(
         Booking booking,
         BookingRefundRecord refundRecord,
@@ -1397,6 +1496,9 @@ public class BookingProviderIntegrationService {
         return transaction;
     }
 
+    /**
+     * Construye webhook liquidacion transaction a partir de datos internos ya validados.
+     */
     private PaymentTransaction buildWebhookPayoutTransaction(
         Booking booking,
         BookingPayoutRecord payoutRecord,
@@ -1419,6 +1521,9 @@ public class BookingProviderIntegrationService {
         return transaction;
     }
 
+    /**
+     * Aplica charge approved sobre el modelo actual manteniendo consistencia.
+     */
     private void applyChargeApproved(PaymentTransaction transaction, ParsedWebhookEvent event) {
         transaction.setTransactionType(PaymentTransactionType.BOOKING_CHARGE);
         transaction.setProviderPaymentId(firstNonBlank(transaction.getProviderPaymentId(), event.providerPaymentId(), event.providerObjectId()));
@@ -1434,6 +1539,9 @@ public class BookingProviderIntegrationService {
         transaction.setPayloadJson(mergeChargePayload(transaction, event.payloadJson()));
     }
 
+    /**
+     * Aplica charge failed sobre el modelo actual manteniendo consistencia.
+     */
     private void applyChargeFailed(PaymentTransaction transaction, ParsedWebhookEvent event) {
         transaction.setTransactionType(PaymentTransactionType.BOOKING_CHARGE);
         transaction.setProviderPaymentId(firstNonBlank(transaction.getProviderPaymentId(), event.providerPaymentId(), event.providerObjectId()));
@@ -1443,6 +1551,9 @@ public class BookingProviderIntegrationService {
         transaction.setPayloadJson(mergeChargePayload(transaction, event.payloadJson()));
     }
 
+    /**
+     * Aplica reembolso evento sobre el modelo actual manteniendo consistencia.
+     */
     private void applyRefundEvent(PaymentTransaction transaction, Booking booking, ParsedWebhookEvent event) {
         BookingRefundRecord refundRecord = maybeResolveRefundRecord(transaction, event);
         if (refundRecord == null) {
@@ -1496,6 +1607,9 @@ public class BookingProviderIntegrationService {
         }
     }
 
+    /**
+     * Aplica liquidacion evento sobre el modelo actual manteniendo consistencia.
+     */
     private void applyPayoutEvent(PaymentTransaction transaction, Booking booking, ParsedWebhookEvent event) {
         BookingPayoutRecord payoutRecord = maybeResolvePayoutRecord(transaction, event);
         if (payoutRecord == null) {
@@ -1560,6 +1674,9 @@ public class BookingProviderIntegrationService {
         }
     }
 
+    /**
+     * Ejecuta la logica de maybe resolve reembolso record manteniendola encapsulada en este componente.
+     */
     private BookingRefundRecord maybeResolveRefundRecord(PaymentTransaction transaction, ParsedWebhookEvent event) {
         if (transaction != null && transaction.getRefundRecord() != null) {
             return transaction.getRefundRecord();
@@ -1578,6 +1695,9 @@ public class BookingProviderIntegrationService {
         return null;
     }
 
+    /**
+     * Ejecuta la logica de maybe resolve liquidacion record manteniendola encapsulada en este componente.
+     */
     private BookingPayoutRecord maybeResolvePayoutRecord(PaymentTransaction transaction, ParsedWebhookEvent event) {
         if (transaction != null && transaction.getPayoutRecord() != null) {
             return transaction.getPayoutRecord();
@@ -1596,6 +1716,9 @@ public class BookingProviderIntegrationService {
         return null;
     }
 
+    /**
+     * Ejecuta la logica de maybe confirm reserva despues successful charge manteniendola encapsulada en este componente.
+     */
     private void maybeConfirmBookingAfterSuccessfulCharge(
         Booking booking,
         PaymentTransaction transaction,
@@ -1655,6 +1778,9 @@ public class BookingProviderIntegrationService {
     }
 
 
+    /**
+     * Dispara reserva lado efectos despues commit despues de confirmar la operacion principal.
+     */
     private void triggerBookingSideEffectsAfterCommit(Booking booking) {
         if (booking == null || booking.getProfessionalId() == null || booking.getStartDateTime() == null) {
             return;
@@ -1669,6 +1795,9 @@ public class BookingProviderIntegrationService {
         );
     }
 
+    /**
+     * Ejecuta la logica de will confirm reserva manteniendola encapsulada en este componente.
+     */
     private boolean willConfirmBooking(
         Booking booking,
         PaymentTransaction transaction,
@@ -1687,6 +1816,9 @@ public class BookingProviderIntegrationService {
             && booking.getServicePaymentTypeSnapshot() != ServicePaymentType.ON_SITE;
     }
 
+    /**
+     * Ejecuta la logica de emit financial notificacion manteniendola encapsulada en este componente.
+     */
     private void emitFinancialNotification(
         Booking booking,
         PaymentTransaction transaction,
@@ -1724,16 +1856,25 @@ public class BookingProviderIntegrationService {
         }
     }
 
+    /**
+     * Evalua is reembolso settled y devuelve una decision booleana para el llamador.
+     */
     private boolean isRefundSettled(BookingRefundRecord refundRecord) {
         return refundRecord == null
             || refundRecord.getStatus() == BookingRefundStatus.COMPLETED
             || refundRecord.getStatus() == BookingRefundStatus.CANCELLED;
     }
 
+    /**
+     * Evalua is reembolso success evento y devuelve una decision booleana para el llamador.
+     */
     private boolean isRefundSuccessEvent(WebhookEventType eventType) {
         return eventType == WebhookEventType.REFUND_PARTIAL || eventType == WebhookEventType.PAYMENT_REFUNDED;
     }
 
+    /**
+     * Parsea reserva reference y convierte errores de formato en errores controlados.
+     */
     private Long parseBookingReference(String rawReference) {
         if (rawReference == null || rawReference.isBlank() || !rawReference.startsWith("booking:")) {
             return null;
@@ -1745,6 +1886,9 @@ public class BookingProviderIntegrationService {
         }
     }
 
+    /**
+     * Parsea reembolso reference y convierte errores de formato en errores controlados.
+     */
     private String parseRefundReference(String rawReference) {
         if (rawReference == null || rawReference.isBlank() || !rawReference.startsWith("refund:")) {
             return null;
@@ -1753,6 +1897,9 @@ public class BookingProviderIntegrationService {
         return refundRecordId.isBlank() ? null : refundRecordId;
     }
 
+    /**
+     * Parsea liquidacion reference y convierte errores de formato en errores controlados.
+     */
     private String parsePayoutReference(String rawReference) {
         if (rawReference == null || rawReference.isBlank() || !rawReference.startsWith("payout:")) {
             return null;
@@ -1761,6 +1908,9 @@ public class BookingProviderIntegrationService {
         return payoutRecordId.isBlank() ? null : payoutRecordId;
     }
 
+    /**
+     * Construye liquidacion solicitud a partir de datos internos ya validados.
+     */
     private ProviderPayoutRequest buildPayoutRequest(
         Booking booking,
         BookingPayoutRecord payoutRecord,
@@ -1772,6 +1922,9 @@ public class BookingProviderIntegrationService {
         );
     }
 
+    /**
+     * Resuelve liquidacion transaction estado normalizando entradas, defaults y casos borde.
+     */
     private PaymentTransactionStatus resolvePayoutTransactionStatus(
         BookingPayoutRecord payoutRecord,
         BigDecimal releasedAmount
@@ -1784,6 +1937,10 @@ public class BookingProviderIntegrationService {
             : PaymentTransactionStatus.APPROVED;
     }
 
+    /**
+     * Completa split liquidacion y deja persistido el estado final del flujo.
+     * Tambien concentra los efectos secundarios para que el flujo quede en un estado consistente.
+     */
     private BookingFinanceDispatchPlan completeSplitPayout(
         Booking booking,
         BookingPayoutRecord payoutRecord,
@@ -1794,6 +1951,9 @@ public class BookingProviderIntegrationService {
         return new BookingFinanceDispatchPlan(new BookingFinanceUpdateResult(summary, refundRecord, payoutRecord), List.of());
     }
 
+    /**
+     * Resuelve reembolso transaction estado normalizando entradas, defaults y casos borde.
+     */
     private PaymentTransactionStatus resolveRefundTransactionStatus(
         BookingRefundRecord refundRecord,
         BigDecimal refundedAmount
@@ -1806,6 +1966,9 @@ public class BookingProviderIntegrationService {
             : PaymentTransactionStatus.APPROVED;
     }
 
+    /**
+     * Evalua is reembolso final success y devuelve una decision booleana para el llamador.
+     */
     private boolean isRefundFinalSuccess(String status) {
         String normalized = status == null ? "" : status.trim().toUpperCase(Locale.ROOT);
         return "PAID".equals(normalized)
@@ -1815,6 +1978,9 @@ public class BookingProviderIntegrationService {
             || "REFUNDED".equals(normalized);
     }
 
+    /**
+     * Evalua is reembolso failure y devuelve una decision booleana para el llamador.
+     */
     private boolean isRefundFailure(String status) {
         String normalized = status == null ? "" : status.trim().toUpperCase(Locale.ROOT);
         return "REJECTED".equals(normalized)
@@ -1824,16 +1990,25 @@ public class BookingProviderIntegrationService {
             || "DENIED".equals(normalized);
     }
 
+    /**
+     * Evalua is liquidacion final success y devuelve una decision booleana para el llamador.
+     */
     private boolean isPayoutFinalSuccess(String status) {
         String normalized = status == null ? "" : status.trim().toUpperCase(Locale.ROOT);
         return "PAID".equals(normalized) || "DELIVERED".equals(normalized);
     }
 
+    /**
+     * Evalua is liquidacion failure y devuelve una decision booleana para el llamador.
+     */
     private boolean isPayoutFailure(String status) {
         String normalized = status == null ? "" : status.trim().toUpperCase(Locale.ROOT);
         return "REJECTED".equals(normalized) || "CANCELLED".equals(normalized);
     }
 
+    /**
+     * Resuelve proveedor normalizando entradas, defaults y casos borde.
+     */
     private PaymentProvider resolveProvider(String rawProvider) {
         if (rawProvider == null || rawProvider.isBlank()) {
             return PaymentProvider.MERCADOPAGO;
@@ -1848,6 +2023,9 @@ public class BookingProviderIntegrationService {
         return provider;
     }
 
+    /**
+     * Resuelve proveedor cliente normalizando entradas, defaults y casos borde.
+     */
     private PaymentProviderClient resolveProviderClient(PaymentProvider provider) {
         if (isLegacyReadOnlyProvider(provider)) {
             throw new ResponseStatusException(
@@ -1862,10 +2040,16 @@ public class BookingProviderIntegrationService {
         return client;
     }
 
+    /**
+     * Evalua is legacy read only proveedor y devuelve una decision booleana para el llamador.
+     */
     private boolean isLegacyReadOnlyProvider(PaymentProvider provider) {
         return provider != null && provider.isLegacyReadOnly();
     }
 
+    /**
+     * Resuelve webhook URL normalizando entradas, defaults y casos borde.
+     */
     private String resolveWebhookUrl(PaymentProvider provider) {
         String baseUrl = billingProperties.getWebhookBaseUrl();
         if (baseUrl == null || baseUrl.isBlank()) {
@@ -1874,10 +2058,16 @@ public class BookingProviderIntegrationService {
         return baseUrl.replaceAll("/+$", "") + "/webhooks/" + provider.name().toLowerCase(Locale.ROOT);
     }
 
+    /**
+     * Construye reserva description a partir de datos internos ya validados.
+     */
     private String buildBookingDescription(Booking booking) {
         return "Plura booking " + booking.getId() + " - " + booking.getServiceNameSnapshot();
     }
 
+    /**
+     * Guarda checkout payload en el formato persistido esperado por el modulo.
+     */
     private String writeCheckoutPayload(
         PaymentTransaction transaction,
         ProviderCheckoutSession session,
@@ -1899,6 +2089,10 @@ public class BookingProviderIntegrationService {
         return writeJson(payload);
     }
 
+    /**
+     * Busca latest reserva transaction aplicando filtros, joins o criterios del caso de uso.
+     * Mantiene la consulta encapsulada para que el resto del codigo no repita filtros ni joins.
+     */
     private PaymentTransaction findLatestBookingTransaction(
         Long bookingId,
         PaymentTransactionType transactionType,
@@ -1927,6 +2121,9 @@ public class BookingProviderIntegrationService {
             .orElse(null);
     }
 
+    /**
+     * Extrae checkout URL desde una URL, payload o referencia persistida.
+     */
     private String extractCheckoutUrl(PaymentTransaction transaction) {
         if (transaction == null || transaction.getPayloadJson() == null || transaction.getPayloadJson().isBlank()) {
             return null;
@@ -1953,10 +2150,16 @@ public class BookingProviderIntegrationService {
         }
     }
 
+    /**
+     * Extrae split code desde una URL, payload o referencia persistida.
+     */
     private String extractSplitCode(PaymentTransaction transaction) {
         return null;
     }
 
+    /**
+     * Fusiona charge payload para simplificar el calculo posterior.
+     */
     private String mergeChargePayload(PaymentTransaction transaction, String nextPayloadJson) {
         Map<String, Object> payload = new LinkedHashMap<>();
         if (nextPayloadJson != null && !nextPayloadJson.isBlank()) {
@@ -1977,6 +2180,10 @@ public class BookingProviderIntegrationService {
         return writeJson(payload);
     }
 
+    /**
+     * Carga la seccion cliente desde base de datos o datos agregados y la deja lista para la respuesta.
+     * Mantiene la consulta encapsulada para que el resto del codigo no repita filtros ni joins.
+     */
     private User loadClient(String rawUserId) {
         Long userId;
         try {
@@ -1990,12 +2197,18 @@ public class BookingProviderIntegrationService {
         return user;
     }
 
+    /**
+     * Ejecuta la logica de ensure cliente usuario manteniendola encapsulada en este componente.
+     */
     private void ensureClientUser(User user) {
         if (user.getRole() != UserRole.USER) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Solo clientes");
         }
     }
 
+    /**
+     * Guarda json en el formato persistido esperado por el modulo.
+     */
     private String writeJson(Object payload) {
         try {
             return objectMapper.writeValueAsString(payload);
@@ -2004,6 +2217,9 @@ public class BookingProviderIntegrationService {
         }
     }
 
+    /**
+     * Construye verification evento a partir de datos internos ya validados.
+     */
     private ParsedWebhookEvent buildVerificationEvent(
         Booking booking,
         PaymentTransaction transaction,
@@ -2031,6 +2247,9 @@ public class BookingProviderIntegrationService {
         );
     }
 
+    /**
+     * Evalua is failed verification estado y devuelve una decision booleana para el llamador.
+     */
     private boolean isFailedVerificationStatus(String status) {
         if (status == null || status.isBlank()) {
             return false;
@@ -2044,6 +2263,10 @@ public class BookingProviderIntegrationService {
             || normalized.equals("DENIED");
     }
 
+    /**
+     * Registra after commit y aplica las validaciones de alta correspondientes.
+     * Tambien concentra los efectos secundarios para que el flujo quede en un estado consistente.
+     */
     private void registerAfterCommit(Runnable action, boolean propagateFailures) {
         Runnable guarded = () -> {
             try {
@@ -2057,6 +2280,9 @@ public class BookingProviderIntegrationService {
         };
         if (TransactionSynchronizationManager.isSynchronizationActive()) {
             TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+    /**
+     * Ejecuta la logica de despues commit manteniendola encapsulada en este componente.
+     */
                 @Override
                 public void afterCommit() {
                     guarded.run();
@@ -2067,6 +2293,9 @@ public class BookingProviderIntegrationService {
         guarded.run();
     }
 
+    /**
+     * Marca operacion succeeded from transaction y actualiza los indicadores relacionados.
+     */
     private void markOperationSucceededFromTransaction(PaymentTransaction transaction, ParsedWebhookEvent event) {
         if (transaction == null || transaction.getExternalReference() == null || transaction.getExternalReference().isBlank()) {
             return;
@@ -2088,6 +2317,9 @@ public class BookingProviderIntegrationService {
         );
     }
 
+    /**
+     * Refresca activos processing operacion para mantener datos derivados o metricas al dia.
+     */
     private ProviderOperation refreshActiveProcessingOperation(ProviderOperation operation) {
         ProviderOperation latest = providerOperationService.getRequired(operation.getId());
         if (latest.getStatus() != ProviderOperationStatus.PROCESSING) {
@@ -2118,6 +2350,9 @@ public class BookingProviderIntegrationService {
         return latest;
     }
 
+    /**
+     * Registra dispatch failure para auditoria, historial o notificaciones.
+     */
     private void recordDispatchFailure(
         ProviderOperation operation,
         String providerReference,
@@ -2142,6 +2377,9 @@ public class BookingProviderIntegrationService {
         );
     }
 
+    /**
+     * Evalua is retryable proveedor exception y devuelve una decision booleana para el llamador.
+     */
     private boolean isRetryableProviderException(RuntimeException exception) {
         if (exception instanceof ResponseStatusException responseStatusException) {
             int statusCode = responseStatusException.getStatusCode().value();
@@ -2153,6 +2391,9 @@ public class BookingProviderIntegrationService {
         return !(exception instanceof IllegalArgumentException || exception instanceof IllegalStateException);
     }
 
+    /**
+     * Ejecuta la logica de proximos retry at manteniendola encapsulada en este componente.
+     */
     private LocalDateTime nextRetryAt(Integer attemptCount) {
         int attempt = attemptCount == null ? 1 : Math.max(1, attemptCount);
         long delayMinutes = switch (attempt) {
@@ -2165,6 +2406,9 @@ public class BookingProviderIntegrationService {
         return LocalDateTime.now().plusMinutes(delayMinutes);
     }
 
+    /**
+     * Obtiene el primer valor util de non blank ignorando nulos o blancos.
+     */
     private String firstNonBlank(String... values) {
         for (String value : values) {
             if (value != null && !value.isBlank()) {
@@ -2174,6 +2418,10 @@ public class BookingProviderIntegrationService {
         return null;
     }
 
+    /**
+     * Bloque de datos provider operation dispatch result usado internamente por esta clase.
+     * Agrupa valores relacionados para que el calculo principal sea mas legible.
+     */
     private record ProviderOperationDispatchResult(
         String operationId,
         ProviderOperationType operationType,

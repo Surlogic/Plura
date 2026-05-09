@@ -19,6 +19,12 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
+/**
+ * WorkerDashboardController es un controlador REST del modulo profesionales / trabajadores / dashboard.
+ * Responsabilidad: recibir requests HTTP, validar acceso basico y delegar la operacion al servicio de aplicacion o dominio.
+ * Superficie HTTP: atiende rutas bajo /trabajador y deja la logica pesada en servicios.
+ * Foco funcional: trabajadores.
+ */
 @RestController
 @RequestMapping("/trabajador")
 public class WorkerDashboardController {
@@ -37,6 +43,9 @@ public class WorkerDashboardController {
         this.bookingRepository = bookingRepository;
     }
 
+    /**
+     * Devuelve los datos del trabajador autenticado en el contexto actual.
+     */
     @GetMapping("/me")
     public WorkerDashboardSummaryResponse me() {
         ProfessionalWorker worker = loadCurrentWorker();
@@ -53,6 +62,9 @@ public class WorkerDashboardController {
         );
     }
 
+    /**
+     * Devuelve reservas del trabajador o profesional segun filtros de fecha.
+     */
     @GetMapping("/reservas")
     public List<ProfessionalBookingResponse> bookings(
         @RequestParam(required = false) String date,
@@ -87,8 +99,14 @@ public class WorkerDashboardController {
         );
     }
 
+    /**
+     * Devuelve eventos de calendario en el rango solicitado.
+     */
     @GetMapping("/calendario")
     public List<ProfessionalBookingResponse> calendar(
+    /**
+     * Carga y arma la seccion current worker a partir de datos persistidos o consultas agregadas.
+     */
         @RequestParam(required = false) String dateFrom,
         @RequestParam(required = false) String dateTo
     ) {
@@ -105,6 +123,9 @@ public class WorkerDashboardController {
         return worker;
     }
 
+    /**
+     * Parsea fecha y convierte errores de formato en errores controlados.
+     */
     private LocalDate parseDate(String value) {
         try {
             return LocalDate.parse(value);

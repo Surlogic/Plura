@@ -6,6 +6,12 @@ import com.plura.plurabackend.core.notification.inapp.AppNotificationProjectionS
 import com.plura.plurabackend.core.notification.model.NotificationEvent;
 import org.springframework.stereotype.Component;
 
+/**
+ * NotificationProjectionDispatcher es un despachador asincronico del modulo notificaciones / despacho.
+ * Responsabilidad: encolar o disparar trabajo fuera del flujo principal del request.
+ * Colabora con: appNotificationProjectionService, emailDispatchProjectionService.
+ * Foco funcional: notificaciones.
+ */
 @Component
 public class NotificationProjectionDispatcher {
 
@@ -20,6 +26,9 @@ public class NotificationProjectionDispatcher {
         this.emailDispatchProjectionService = emailDispatchProjectionService;
     }
 
+    /**
+     * Despacha dispatch fuera del flujo principal del request.
+     */
     public void dispatch(NotificationEvent event, NotificationRecordCommand command) {
         if (command.inAppProjection() != null) {
             appNotificationProjectionService.project(event, command.inAppProjection());

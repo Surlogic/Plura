@@ -2,6 +2,12 @@ package com.plura.plurabackend.core.analytics.ops.dto;
 
 import java.util.List;
 
+/**
+ * InternalOpsAnalyticsResponse es un modelo inmutable del modulo analytics / operaciones internas / contratos DTO.
+ * Responsabilidad: agrupar datos de lectura o respuesta con una estructura clara y sin estado mutable.
+ * Contrato: lo consumen web/mobile, asi que renombrar campos puede romper compatibilidad.
+ * Foco funcional: analytics, paneles internos.
+ */
 public record InternalOpsAnalyticsResponse(
     Overview overview,
     ReservationFunnel reservationFunnel,
@@ -16,6 +22,10 @@ public record InternalOpsAnalyticsResponse(
     List<PlatformPerformance> platformPerformance,
     List<PaymentTypePerformance> paymentTypePerformance
 ) {
+    /**
+     * Bloque de datos overview dentro de la respuesta principal.
+     * Agrupa metricas relacionadas para que el frontend no tenga que reconstruirlas.
+     */
     public record Overview(
         String from,
         String to,
@@ -31,6 +41,10 @@ public record InternalOpsAnalyticsResponse(
     ) {
     }
 
+    /**
+     * Bloque de datos reservation funnel dentro de la respuesta principal.
+     * Agrupa metricas relacionadas para que el frontend no tenga que reconstruirlas.
+     */
     public record ReservationFunnel(
         long searches,
         long profileViews,
@@ -55,6 +69,10 @@ public record InternalOpsAnalyticsResponse(
     ) {
     }
 
+    /**
+     * Bloque de datos category performance dentro de la respuesta principal.
+     * Agrupa metricas relacionadas para que el frontend no tenga que reconstruirlas.
+     */
     public record CategoryPerformance(
         String categoryKey,
         String categoryLabel,
@@ -71,6 +89,10 @@ public record InternalOpsAnalyticsResponse(
     ) {
     }
 
+    /**
+     * Bloque de datos service performance dentro de la respuesta principal.
+     * Agrupa metricas relacionadas para que el frontend no tenga que reconstruirlas.
+     */
     public record ServicePerformance(
         String serviceId,
         String serviceName,
@@ -81,6 +103,10 @@ public record InternalOpsAnalyticsResponse(
     ) {
     }
 
+    /**
+     * Bloque de datos funnel by category dentro de la respuesta principal.
+     * Agrupa metricas relacionadas para que el frontend no tenga que reconstruirlas.
+     */
     public record FunnelByCategory(
         String categoryKey,
         String categoryLabel,
@@ -93,6 +119,10 @@ public record InternalOpsAnalyticsResponse(
     ) {
     }
 
+    /**
+     * Bloque de datos retention metrics dentro de la respuesta principal.
+     * Agrupa metricas relacionadas para que el frontend no tenga que reconstruirlas.
+     */
     public record RetentionMetrics(
         long activeClients,
         long returningClients,
@@ -105,12 +135,20 @@ public record InternalOpsAnalyticsResponse(
     ) {
     }
 
+    /**
+     * Bloque de datos demand point dentro de la respuesta principal.
+     * Agrupa metricas relacionadas para que el frontend no tenga que reconstruirlas.
+     */
     public record DemandPoint(
         String label,
         long count
     ) {
     }
 
+    /**
+     * Bloque de datos city performance dentro de la respuesta principal.
+     * Agrupa metricas relacionadas para que el frontend no tenga que reconstruirlas.
+     */
     public record CityPerformance(
         String city,
         long searches,
@@ -121,6 +159,10 @@ public record InternalOpsAnalyticsResponse(
     ) {
     }
 
+    /**
+     * Bloque de datos professional performance dentro de la respuesta principal.
+     * Agrupa metricas relacionadas para que el frontend no tenga que reconstruirlas.
+     */
     public record ProfessionalPerformance(
         long professionalId,
         String professionalName,
@@ -136,6 +178,10 @@ public record InternalOpsAnalyticsResponse(
     ) {
     }
 
+    /**
+     * Bloque de datos platform performance dentro de la respuesta principal.
+     * Agrupa metricas relacionadas para que el frontend no tenga que reconstruirlas.
+     */
     public record PlatformPerformance(
         String platform,
         long searches,
@@ -151,6 +197,10 @@ public record InternalOpsAnalyticsResponse(
     ) {
     }
 
+    /**
+     * Bloque de datos payment type performance dentro de la respuesta principal.
+     * Agrupa metricas relacionadas para que el frontend no tenga que reconstruirlas.
+     */
     public record PaymentTypePerformance(
         String paymentType,
         long totalBookings,

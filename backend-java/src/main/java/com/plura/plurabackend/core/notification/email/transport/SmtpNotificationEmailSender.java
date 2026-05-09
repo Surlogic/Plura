@@ -6,6 +6,12 @@ import com.plura.plurabackend.core.notification.email.NotificationEmailSendResul
 import com.plura.plurabackend.core.notification.email.NotificationEmailSender;
 import org.springframework.stereotype.Service;
 
+/**
+ * SmtpNotificationEmailSender es un componente de dominio del modulo notificaciones / email.
+ * Responsabilidad: encapsular comportamiento propio del modulo y mantenerlo fuera de controllers u otras capas.
+ * Colabora con: transactionalEmailService.
+ * Foco funcional: notificaciones, email transaccional.
+ */
 @Service
 public class SmtpNotificationEmailSender implements NotificationEmailSender {
 
@@ -15,6 +21,9 @@ public class SmtpNotificationEmailSender implements NotificationEmailSender {
         this.transactionalEmailService = transactionalEmailService;
     }
 
+    /**
+     * Envia send mediante el canal configurado.
+     */
     @Override
     public NotificationEmailSendResult send(NotificationEmailMessage message) {
         if (message == null || isBlank(message.toAddress()) || isBlank(message.subject())) {
@@ -43,6 +52,9 @@ public class SmtpNotificationEmailSender implements NotificationEmailSender {
         };
     }
 
+    /**
+     * Evalua is blank y devuelve una decision booleana para el llamador.
+     */
     private boolean isBlank(String value) {
         return value == null || value.trim().isBlank();
     }

@@ -9,6 +9,12 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+/**
+ * NotificationEventRepository es un contrato interno del modulo notificaciones / persistencia.
+ * Responsabilidad: definir una frontera estable para que otros modulos no dependan de detalles concretos.
+ * Persistencia: concentra queries derivadas o JPQL para que los servicios no conozcan SQL/joins.
+ * Foco funcional: notificaciones.
+ */
 public interface NotificationEventRepository extends JpaRepository<NotificationEvent, String> {
 
     Optional<NotificationEvent> findByDedupeKey(String dedupeKey);

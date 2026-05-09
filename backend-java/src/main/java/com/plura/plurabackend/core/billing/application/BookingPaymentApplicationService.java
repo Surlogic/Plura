@@ -10,6 +10,12 @@ import com.plura.plurabackend.core.booking.finance.model.BookingPayoutRecord;
 import com.plura.plurabackend.core.booking.model.Booking;
 import org.springframework.stereotype.Service;
 
+/**
+ * BookingPaymentApplicationService es un servicio de negocio del modulo billing / aplicacion.
+ * Responsabilidad: coordinar reglas de negocio, validaciones, persistencia e integraciones del caso de uso.
+ * Colabora con: bookingProviderIntegrationService.
+ * Foco funcional: reservas, pagos, servicios.
+ */
 @Service
 public class BookingPaymentApplicationService implements BookingPaymentsGateway {
 
@@ -19,6 +25,10 @@ public class BookingPaymentApplicationService implements BookingPaymentsGateway 
         this.bookingProviderIntegrationService = bookingProviderIntegrationService;
     }
 
+    /**
+     * Crea pago sesion for cliente validando datos de entrada y persistiendo el resultado.
+     * Tambien concentra los efectos secundarios para que el flujo quede en un estado consistente.
+     */
     @Override
     public BookingPaymentSessionResponse createPaymentSessionForClient(
         String rawUserId,
@@ -28,11 +38,17 @@ public class BookingPaymentApplicationService implements BookingPaymentsGateway 
         return bookingProviderIntegrationService.createPaymentSessionForClient(rawUserId, bookingId, request);
     }
 
+    /**
+     * Ejecuta la logica de sincronizar pending charge estado manteniendola encapsulada en este componente.
+     */
     @Override
     public boolean syncPendingChargeStatus(Long bookingId) {
         return bookingProviderIntegrationService.syncPendingChargeStatus(bookingId);
     }
 
+    /**
+     * Ejecuta la logica de process post decision manteniendola encapsulada en este componente.
+     */
     @Override
     public BookingFinanceDispatchPlan processPostDecision(
         Booking booking,
@@ -41,6 +57,9 @@ public class BookingPaymentApplicationService implements BookingPaymentsGateway 
         return bookingProviderIntegrationService.processPostDecision(booking, financeResult);
     }
 
+    /**
+     * Ejecuta la logica de retry liquidacion manteniendola encapsulada en este componente.
+     */
     @Override
     public BookingFinanceDispatchPlan retryPayout(
         Booking booking,
@@ -49,6 +68,9 @@ public class BookingPaymentApplicationService implements BookingPaymentsGateway 
         return bookingProviderIntegrationService.retryPayout(booking, payoutRecord);
     }
 
+    /**
+     * Despacha planned operaciones fuera del flujo principal del request.
+     */
     @Override
     public BookingFinanceUpdateResult dispatchPlannedOperations(
         Booking booking,

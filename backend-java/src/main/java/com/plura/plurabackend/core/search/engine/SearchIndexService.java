@@ -7,6 +7,12 @@ import java.util.List;
 import java.util.Map;
 import org.springframework.stereotype.Service;
 
+/**
+ * SearchIndexService es un servicio de negocio del modulo busqueda / motor.
+ * Responsabilidad: coordinar reglas de negocio, validaciones, persistencia e integraciones del caso de uso.
+ * Colabora con: professionalSearchIndexGateway.
+ * Foco funcional: servicios, busqueda.
+ */
 @Service
 public class SearchIndexService {
 
@@ -16,6 +22,9 @@ public class SearchIndexService {
         this.professionalSearchIndexGateway = professionalSearchIndexGateway;
     }
 
+    /**
+     * Construye documents by profesional IDs a partir de datos internos ya validados.
+     */
     public List<SearchIndexDocument> buildDocumentsByProfessionalIds(Collection<Long> professionalIds) {
         if (professionalIds == null || professionalIds.isEmpty()) {
             return List.of();
@@ -25,11 +34,17 @@ public class SearchIndexService {
         return mapDocuments(profiles);
     }
 
+    /**
+     * Construye documents pagina a partir de datos internos ya validados.
+     */
     public List<SearchIndexDocument> buildDocumentsPage(int page, int size) {
         List<ProfessionalSearchIndexProfileView> profiles = professionalSearchIndexGateway.findActiveProfilesPage(page, size);
         return mapDocuments(profiles);
     }
 
+    /**
+     * Mapea documents desde el modelo interno al contrato que usa otra capa.
+     */
     private List<SearchIndexDocument> mapDocuments(List<ProfessionalSearchIndexProfileView> profiles) {
         if (profiles == null || profiles.isEmpty()) {
             return List.of();
@@ -46,6 +61,9 @@ public class SearchIndexService {
             .toList();
     }
 
+    /**
+     * Convierte datos internos al formato document esperado por el consumidor.
+     */
     private SearchIndexDocument toDocument(ProfessionalSearchIndexProfileView profile, List<String> services) {
         return new SearchIndexDocument(
             profile.professionalId(),

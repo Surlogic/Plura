@@ -13,6 +13,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
+/**
+ * NotificationEmailDispatchService es un servicio de negocio del modulo notificaciones / email.
+ * Responsabilidad: coordinar reglas de negocio, validaciones, persistencia e integraciones del caso de uso.
+ * Colabora con: emailDispatchRepository, notificationMetricsService.
+ * Foco funcional: notificaciones, servicios, email transaccional.
+ */
 @Service
 public class NotificationEmailDispatchService {
 
@@ -29,6 +35,10 @@ public class NotificationEmailDispatchService {
         this.notificationMetricsService = notificationMetricsService;
     }
 
+    /**
+     * Busca due dispatches aplicando filtros, joins o criterios del caso de uso.
+     * Mantiene la consulta encapsulada para que el resto del codigo no repita filtros ni joins.
+     */
     @Transactional(readOnly = true)
     public List<EmailDispatch> findDueDispatches(int limit) {
         return emailDispatchRepository.findDueDispatches(
@@ -48,6 +58,9 @@ public class NotificationEmailDispatchService {
             .orElseThrow(() -> new IllegalStateException("Email dispatch no encontrado"));
     }
 
+    /**
+     * Ejecuta la logica de claim dispatch manteniendola encapsulada en este componente.
+     */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public EmailDispatch claimDispatch(String dispatchId, String workerId, LocalDateTime leaseUntil) {
         LocalDateTime now = LocalDateTime.now();
@@ -80,6 +93,9 @@ public class NotificationEmailDispatchService {
         return dispatch;
     }
 
+    /**
+     * Ejecuta la logica de renew lease manteniendola encapsulada en este componente.
+     */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public boolean renewLease(String dispatchId, String workerId, LocalDateTime leaseUntil) {
         return emailDispatchRepository.renewLease(
@@ -91,6 +107,9 @@ public class NotificationEmailDispatchService {
         ) > 0;
     }
 
+    /**
+     * Marca sent y actualiza los indicadores relacionados.
+     */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public EmailDispatch markSent(String dispatchId, String providerMessageId) {
         EmailDispatch dispatch = getRequiredDetailed(dispatchId);
@@ -113,6 +132,9 @@ public class NotificationEmailDispatchService {
         return saved;
     }
 
+    /**
+     * Marca retry scheduled y actualiza los indicadores relacionados.
+     */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public EmailDispatch markRetryScheduled(
         String dispatchId,
@@ -141,6 +163,9 @@ public class NotificationEmailDispatchService {
         return saved;
     }
 
+    /**
+     * Marca failed y actualiza los indicadores relacionados.
+     */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public EmailDispatch markFailed(String dispatchId, String errorCode, String errorMessage) {
         EmailDispatch dispatch = getRequiredDetailed(dispatchId);
@@ -163,12 +188,18 @@ public class NotificationEmailDispatchService {
         return saved;
     }
 
+    /**
+     * Ejecuta la logica de clear lease manteniendola encapsulada en este componente.
+     */
     private void clearLease(EmailDispatch dispatch) {
         dispatch.setLockedBy(null);
         dispatch.setLockedAt(null);
         dispatch.setLeaseUntil(null);
     }
 
+    /**
+     * Normaliza normalizar para evitar variantes vacias, invalidas o inconsistentes.
+     */
     private String normalize(String value) {
         if (value == null || value.trim().isBlank()) {
             return null;
@@ -176,6 +207,9 @@ public class NotificationEmailDispatchService {
         return value.trim();
     }
 
+    /**
+     * Ejecuta la logica de truncate manteniendola encapsulada en este componente.
+     */
     private String truncate(String value, int maxLength) {
         if (value == null) {
             return null;

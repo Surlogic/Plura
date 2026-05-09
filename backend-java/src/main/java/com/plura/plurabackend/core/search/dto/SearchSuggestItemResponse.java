@@ -2,6 +2,12 @@ package com.plura.plurabackend.core.search.dto;
 
 import lombok.Data;
 
+/**
+ * SearchSuggestItemResponse es un DTO de respuesta del modulo busqueda / contratos DTO.
+ * Responsabilidad: definir el contrato que la API devuelve al frontend u otro consumidor.
+ * Contrato: lo consumen web/mobile, asi que renombrar campos puede romper compatibilidad.
+ * Foco funcional: busqueda.
+ */
 @Data
 public class SearchSuggestItemResponse {
     private String id;
@@ -31,6 +37,9 @@ public class SearchSuggestItemResponse {
         this(id, name, name, null, null, null);
     }
 
+    /**
+     * Ejecuta la logica de profesional manteniendola encapsulada en este componente.
+     */
     public static SearchSuggestItemResponse professional(String id, String professionalName) {
         return new SearchSuggestItemResponse(
             id,
@@ -42,6 +51,9 @@ public class SearchSuggestItemResponse {
         );
     }
 
+    /**
+     * Ejecuta la logica de local manteniendola encapsulada en este componente.
+     */
     public static SearchSuggestItemResponse local(String id, String businessName) {
         return new SearchSuggestItemResponse(
             id,
@@ -53,6 +65,9 @@ public class SearchSuggestItemResponse {
         );
     }
 
+    /**
+     * Ejecuta la logica de servicio manteniendola encapsulada en este componente.
+     */
     public static SearchSuggestItemResponse service(String id, String serviceName) {
         return new SearchSuggestItemResponse(
             id,

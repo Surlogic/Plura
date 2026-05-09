@@ -18,6 +18,12 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
+/**
+ * BookingCommandIdempotencyService es un servicio de negocio del modulo reservas / idempotencia.
+ * Responsabilidad: coordinar reglas de negocio, validaciones, persistencia e integraciones del caso de uso.
+ * Colabora con: bookingCommandIdempotencyRepository, objectMapper.
+ * Foco funcional: reservas, servicios.
+ */
 @Service
 public class BookingCommandIdempotencyService {
 
@@ -32,6 +38,9 @@ public class BookingCommandIdempotencyService {
         this.objectMapper = objectMapper;
     }
 
+    /**
+     * Ejecuta la logica de execute manteniendola encapsulada en este componente.
+     */
     public BookingCommandResponse execute(
         BookingActionType commandType,
         BookingActorType actorType,
@@ -101,6 +110,10 @@ public class BookingCommandIdempotencyService {
         }
     }
 
+    /**
+     * Crea in progress record validando datos de entrada y persistiendo el resultado.
+     * Tambien concentra los efectos secundarios para que el flujo quede en un estado consistente.
+     */
     private CreateRecordResult createInProgressRecord(
         BookingActionType commandType,
         BookingActorType actorType,
@@ -131,6 +144,10 @@ public class BookingCommandIdempotencyService {
         }
     }
 
+    /**
+     * Valida solicitud hash y lanza un error controlado si no cumple el contrato.
+     * Esta separacion hace explicita la regla de seguridad o negocio que protege el flujo.
+     */
     private void validateRequestHash(BookingCommandIdempotencyRecord record, String requestHash) {
         if (record != null && !record.getRequestHash().equals(requestHash)) {
             throw new ResponseStatusException(
@@ -140,6 +157,9 @@ public class BookingCommandIdempotencyService {
         }
     }
 
+    /**
+     * Lee respuesta desde la fuente persistida y aplica defaults si faltan datos.
+     */
     private BookingCommandResponse readResponse(BookingCommandIdempotencyRecord record) {
         if (record.getResponseJson() == null || record.getResponseJson().isBlank()) {
             throw new ResponseStatusException(
@@ -157,6 +177,9 @@ public class BookingCommandIdempotencyService {
         }
     }
 
+    /**
+     * Construye solicitud hash a partir de datos internos ya validados.
+     */
     private String buildRequestHash(BookingActionType commandType, Long bookingId, Object requestPayload) {
         try {
             String raw = commandType.name()
@@ -171,6 +194,9 @@ public class BookingCommandIdempotencyService {
         }
     }
 
+    /**
+     * Guarda json en el formato persistido esperado por el modulo.
+     */
     private String writeJson(BookingCommandResponse response) {
         try {
             return objectMapper.writeValueAsString(response);
@@ -179,6 +205,9 @@ public class BookingCommandIdempotencyService {
         }
     }
 
+    /**
+     * Ejecuta la logica de truncate message manteniendola encapsulada en este componente.
+     */
     private String truncateMessage(String message) {
         if (message == null || message.isBlank()) {
             return null;
@@ -186,6 +215,9 @@ public class BookingCommandIdempotencyService {
         return message.length() <= 500 ? message : message.substring(0, 500);
     }
 
+    /**
+     * Crea record result validando datos de entrada y persistiendo el resultado.
+     */
     private record CreateRecordResult(
         BookingCommandIdempotencyRecord record,
         boolean created

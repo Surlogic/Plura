@@ -6,6 +6,12 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
+/**
+ * StaticResourceConfig es un configuracion Spring del modulo configuracion.
+ * Responsabilidad: declarar beans, filtros o parametros transversales que necesita el runtime.
+ * Colabora con: uploadRootPath.
+ * Foco funcional: la responsabilidad indicada por su paquete y nombre.
+ */
 @Configuration
 public class StaticResourceConfig implements WebMvcConfigurer {
 
@@ -15,6 +21,9 @@ public class StaticResourceConfig implements WebMvcConfigurer {
         this.uploadRootPath = Path.of(uploadDir).toAbsolutePath().normalize();
     }
 
+    /**
+     * Agrega resource handlers validando que no duplique ni rompa reglas del dominio.
+     */
     @Override
     public void addResourceHandlers(ResourceHandlerRegistry registry) {
         String location = uploadRootPath.toUri().toString();

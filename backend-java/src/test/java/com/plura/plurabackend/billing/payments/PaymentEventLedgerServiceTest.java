@@ -15,8 +15,17 @@ import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 import org.springframework.dao.DataIntegrityViolationException;
 
+/**
+ * Tests de billing, pagos, webhooks y proveedores / pagos.
+ * Cubren escenarios de pago evento ledger servicio para documentar el comportamiento esperado y evitar regresiones.
+ * Mantener estos casos alineados con los contratos reales del backend cuando cambie la logica productiva.
+ */
 class PaymentEventLedgerServiceTest {
 
+    /**
+     * Escenario: debe devuelve duplicado cuando proveedor evento already exists.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void shouldReturnDuplicateWhenProviderEventAlreadyExists() {
         PaymentEventRepository repository = Mockito.mock(PaymentEventRepository.class);

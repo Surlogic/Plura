@@ -203,6 +203,9 @@ public class AuthController {
         );
     }
 
+    /**
+     * Ejecuta la logica de login profesional manteniendola encapsulada en este componente.
+     */
     @PostMapping("/login/profesional")
     public ResponseEntity<RegisterResponse> loginProfesional(
         @Valid @RequestBody LoginRequest request,
@@ -215,6 +218,9 @@ public class AuthController {
         );
     }
 
+    /**
+     * Ejecuta la logica de login unified manteniendola encapsulada en este componente.
+     */
     @PostMapping("/login")
     public ResponseEntity<UnifiedLoginResponse> loginUnified(
         @Valid @RequestBody UnifiedLoginRequest request,
@@ -257,6 +263,9 @@ public class AuthController {
         }
     }
 
+    /**
+     * Devuelve el listado de contextos aplicando permisos y filtros del caso de uso.
+     */
     @GetMapping("/contexts")
     public ResponseEntity<AuthMeResponse> listContexts() {
         Authentication activeAuthentication = requireAuthentication();
@@ -276,6 +285,9 @@ public class AuthController {
         return listContexts();
     }
 
+    /**
+     * Ejecuta la logica de select contexto manteniendola encapsulada en este componente.
+     */
     @PostMapping("/context/select")
     public ResponseEntity<SelectContextResponse> selectContext(
         @Valid @RequestBody SelectContextRequest request,
@@ -300,6 +312,9 @@ public class AuthController {
             .body(payload);
     }
 
+    /**
+     * Ejecuta la logica de login with o autenticacion manteniendola encapsulada en este componente.
+     */
     @PostMapping("/oauth")
     public ResponseEntity<RegisterResponse> loginWithOAuth(
         @Valid @RequestBody OAuthLoginRequest request,
@@ -312,6 +327,10 @@ public class AuthController {
         return buildAuthResponse(result, httpRequest);
     }
 
+    /**
+     * Endpoint POST /oauth/complete-phone: Completa o autenticacion telefono y deja persistido el estado final del flujo.
+     * Valida parametros/autorizacion de entrada y delega la logica de negocio al servicio correspondiente.
+     */
     @PostMapping("/oauth/complete-phone")
     public ResponseEntity<AcceptedMessageResponse> completeOAuthPhone(
         @Valid @RequestBody CompleteOAuthPhoneRequest request,
@@ -324,6 +343,9 @@ public class AuthController {
             .body(new AcceptedMessageResponse("Teléfono guardado correctamente."));
     }
 
+    /**
+     * Refresca sesion para mantener datos derivados o metricas al dia.
+     */
     @PostMapping("/refresh")
     public ResponseEntity<RegisterResponse> refreshSession(
         @CookieValue(name = REFRESH_COOKIE, required = false) String refreshToken,
@@ -347,6 +369,9 @@ public class AuthController {
         return buildAuthResponse(result, httpRequest);
     }
 
+    /**
+     * Ejecuta la logica de logout manteniendola encapsulada en este componente.
+     */
     @PostMapping("/logout")
     public ResponseEntity<Void> logout(
         @CookieValue(name = REFRESH_COOKIE, required = false) String refreshToken,
@@ -371,6 +396,9 @@ public class AuthController {
         return buildClearedSessionResponse();
     }
 
+    /**
+     * Ejecuta la logica de logout todos sesiones manteniendola encapsulada en este componente.
+     */
     @PostMapping("/logout-all")
     public ResponseEntity<Void> logoutAllSessions(Authentication authentication, HttpServletRequest httpRequest) {
         Authentication activeAuthentication = requireAuthentication();
@@ -387,6 +415,9 @@ public class AuthController {
         return buildClearedSessionResponse();
     }
 
+    /**
+     * Ejecuta la logica de change contrasena manteniendola encapsulada en este componente.
+     */
     @PostMapping("/password/change")
     public ResponseEntity<Void> changePassword(
         @Valid @RequestBody ChangePasswordRequest request,
@@ -401,6 +432,9 @@ public class AuthController {
         return buildClearedSessionResponse();
     }
 
+    /**
+     * Ejecuta la logica de forgot contrasena manteniendola encapsulada en este componente.
+     */
     @PostMapping("/password/forgot")
     public ResponseEntity<AcceptedMessageResponse> forgotPassword(
         @Valid @RequestBody ForgotPasswordRequest request,
@@ -434,6 +468,9 @@ public class AuthController {
             ));
     }
 
+    /**
+     * Ejecuta la logica de reset contrasena manteniendola encapsulada en este componente.
+     */
     @PostMapping("/password/reset")
     public ResponseEntity<PasswordResetCompletedResponse> resetPassword(
         @Valid @RequestBody ResetPasswordRequest request
@@ -442,6 +479,9 @@ public class AuthController {
         return buildClearedSessionResponse(new PasswordResetCompletedResponse(role.name()));
     }
 
+    /**
+     * Ejecuta la logica de inicio contrasena recovery manteniendola encapsulada en este componente.
+     */
     @PostMapping("/password/recovery/start")
     public ResponseEntity<AcceptedMessageResponse> startPasswordRecovery(
         @Valid @RequestBody PasswordRecoveryStartRequest request,
@@ -459,6 +499,9 @@ public class AuthController {
             ));
     }
 
+    /**
+     * Ejecuta la logica de verify contrasena recovery telefono manteniendola encapsulada en este componente.
+     */
     @PostMapping("/password/recovery/verify-phone")
     public ResponseEntity<PasswordRecoveryVerifyPhoneResponse> verifyPasswordRecoveryPhone(
         @Valid @RequestBody PasswordRecoveryVerifyPhoneRequest request,
@@ -476,6 +519,10 @@ public class AuthController {
             .body(response);
     }
 
+    /**
+     * Endpoint POST /password/recovery/confirm: Confirma contrasena recovery despues de validar token, codigo o estado previo.
+     * Valida parametros/autorizacion de entrada y delega la logica de negocio al servicio correspondiente.
+     */
     @PostMapping("/password/recovery/confirm")
     public ResponseEntity<PasswordResetCompletedResponse> confirmPasswordRecovery(
         @Valid @RequestBody PasswordRecoveryConfirmRequest request,
@@ -494,6 +541,10 @@ public class AuthController {
         return buildClearedSessionResponse(new PasswordResetCompletedResponse(role.name()));
     }
 
+    /**
+     * Endpoint POST /verify/email/send: Envia email verification mediante el canal configurado.
+     * Valida parametros/autorizacion de entrada y delega la logica de negocio al servicio correspondiente.
+     */
     @PostMapping("/verify/email/send")
     public ResponseEntity<EmailVerificationSendResponse> sendEmailVerification(
         @RequestBody(required = false) SendEmailVerificationRequest request,
@@ -518,6 +569,10 @@ public class AuthController {
             .body(response);
     }
 
+    /**
+     * Endpoint POST /verify/email/confirm: Confirma email verification despues de validar token, codigo o estado previo.
+     * Valida parametros/autorizacion de entrada y delega la logica de negocio al servicio correspondiente.
+     */
     @PostMapping("/verify/email/confirm")
     public ResponseEntity<Void> confirmEmailVerification(
         @RequestBody(required = false) ConfirmEmailVerificationRequest request,
@@ -542,6 +597,10 @@ public class AuthController {
             .build();
     }
 
+    /**
+     * Endpoint POST /verify/phone/send: Envia telefono verification mediante el canal configurado.
+     * Valida parametros/autorizacion de entrada y delega la logica de negocio al servicio correspondiente.
+     */
     @PostMapping("/verify/phone/send")
     public ResponseEntity<PhoneVerificationSendResponse> sendPhoneVerification(
         @RequestBody(required = false) SendPhoneVerificationRequest request,
@@ -566,6 +625,10 @@ public class AuthController {
             .body(response);
     }
 
+    /**
+     * Endpoint POST /verify/phone/confirm: Confirma telefono verification despues de validar token, codigo o estado previo.
+     * Valida parametros/autorizacion de entrada y delega la logica de negocio al servicio correspondiente.
+     */
     @PostMapping("/verify/phone/confirm")
     public ResponseEntity<Void> confirmPhoneVerification(
         @RequestBody(required = false) ConfirmPhoneVerificationRequest request,
@@ -590,6 +653,10 @@ public class AuthController {
             .build();
     }
 
+    /**
+     * Endpoint POST /challenge/send: Envia otp challenge mediante el canal configurado.
+     * Valida parametros/autorizacion de entrada y delega la logica de negocio al servicio correspondiente.
+     */
     @PostMapping("/challenge/send")
     public ResponseEntity<OtpChallengeSendResponse> sendOtpChallenge(
         @Valid @RequestBody OtpChallengeSendRequest request,
@@ -618,6 +685,9 @@ public class AuthController {
             .body(response);
     }
 
+    /**
+     * Ejecuta la logica de verify otp challenge manteniendola encapsulada en este componente.
+     */
     @PostMapping("/challenge/verify")
     public ResponseEntity<OtpChallengeVerifyResponse> verifyOtpChallenge(
         @RequestBody(required = false) OtpChallengeVerifyRequest request,
@@ -647,6 +717,9 @@ public class AuthController {
             .body(new OtpChallengeVerifyResponse(true));
     }
 
+    /**
+     * Devuelve el listado de sesiones aplicando permisos y filtros del caso de uso.
+     */
     @GetMapping("/sessions")
     public AuthSessionListResponse listSessions(Authentication authentication) {
         Authentication activeAuthentication = requireAuthentication();
@@ -658,6 +731,9 @@ public class AuthController {
         );
     }
 
+    /**
+     * Ejecuta la logica de revoke sesion manteniendola encapsulada en este componente.
+     */
     @DeleteMapping("/sessions/{sessionId}")
     public ResponseEntity<Void> revokeSession(
         @PathVariable String sessionId,
@@ -674,6 +750,10 @@ public class AuthController {
             .build();
     }
 
+    /**
+     * Endpoint DELETE /me: Elimina la cuenta actual y limpia relaciones o datos derivados cuando corresponde.
+     * Valida parametros/autorizacion de entrada y delega la logica de negocio al servicio correspondiente.
+     */
     @DeleteMapping("/me")
     public ResponseEntity<Void> deleteCurrentAccount(
         @RequestBody(required = false) DeleteAccountRequest request,
@@ -756,6 +836,9 @@ public class AuthController {
         return authService.getClienteProfile(clienteId);
     }
 
+    /**
+     * Construye unified autenticacion respuesta a partir de datos internos ya validados.
+     */
     private ResponseEntity<UnifiedLoginResponse> buildUnifiedAuthResponse(
         AuthService.UnifiedLoginResult result,
         HttpServletRequest request
@@ -782,6 +865,9 @@ public class AuthController {
             .body(payload);
     }
 
+    /**
+     * Construye autenticacion respuesta a partir de datos internos ya validados.
+     */
     private ResponseEntity<RegisterResponse> buildAuthResponse(AuthService.AuthResult result, HttpServletRequest request) {
         ResponseCookie accessCookie = buildAccessCookie(result.accessToken());
         ResponseCookie refreshCookie = buildRefreshCookie(result.refreshToken());
@@ -803,6 +889,9 @@ public class AuthController {
             .body(payload);
     }
 
+    /**
+     * Construye acceso cookie a partir de datos internos ya validados.
+     */
     private ResponseCookie buildAccessCookie(String token) {
         return ResponseCookie.from(ACCESS_COOKIE, token)
             .httpOnly(true)
@@ -813,6 +902,9 @@ public class AuthController {
             .build();
     }
 
+    /**
+     * Construye refresh cookie a partir de datos internos ya validados.
+     */
     private ResponseCookie buildRefreshCookie(String token) {
         return ResponseCookie.from(REFRESH_COOKIE, token)
             .httpOnly(true)
@@ -823,6 +915,9 @@ public class AuthController {
             .build();
     }
 
+    /**
+     * Ejecuta la logica de clear cookie manteniendola encapsulada en este componente.
+     */
     private ResponseCookie clearCookie(String name, String path) {
         return ResponseCookie.from(name, "")
             .httpOnly(true)
@@ -833,6 +928,9 @@ public class AuthController {
             .build();
     }
 
+    /**
+     * Construye cleared sesion respuesta a partir de datos internos ya validados.
+     */
     private ResponseEntity<Void> buildClearedSessionResponse() {
         return ResponseEntity.noContent()
             .header(HttpHeaders.CACHE_CONTROL, "no-store")
@@ -841,6 +939,9 @@ public class AuthController {
             .build();
     }
 
+    /**
+     * Construye cleared sesion respuesta a partir de datos internos ya validados.
+     */
     private <T> ResponseEntity<T> buildClearedSessionResponse(T body) {
         return ResponseEntity.ok()
             .header(HttpHeaders.CACHE_CONTROL, "no-store")
@@ -849,6 +950,9 @@ public class AuthController {
             .body(body);
     }
 
+    /**
+     * Ejecuta la logica de authenticate login manteniendola encapsulada en este componente.
+     */
     private ResponseEntity<RegisterResponse> authenticateLogin(
         LoginRequest request,
         HttpServletRequest httpRequest,
@@ -891,6 +995,9 @@ public class AuthController {
         }
     }
 
+    /**
+     * Construye sesion contexto a partir de datos internos ya validados.
+     */
     private AuthService.SessionContext buildSessionContext(HttpServletRequest request) {
         return new AuthService.SessionContext(
             resolveSessionType(request),
@@ -899,6 +1006,9 @@ public class AuthController {
         );
     }
 
+    /**
+     * Resuelve sesion tipo normalizando entradas, defaults y casos borde.
+     */
     private AuthSessionType resolveSessionType(HttpServletRequest request) {
         String rawPlatform = request == null ? null : request.getHeader(CLIENT_PLATFORM_HEADER);
         if (rawPlatform == null || rawPlatform.isBlank()) {
@@ -911,6 +1021,9 @@ public class AuthController {
         return AuthSessionType.WEB;
     }
 
+    /**
+     * Resuelve sesion transport normalizando entradas, defaults y casos borde.
+     */
     private SessionTransport resolveSessionTransport(HttpServletRequest request) {
         String rawTransport = request == null ? null : request.getHeader(SESSION_TRANSPORT_HEADER);
         if (rawTransport == null || rawTransport.isBlank()) {
@@ -923,6 +1036,9 @@ public class AuthController {
         return SessionTransport.COOKIE;
     }
 
+    /**
+     * Resuelve refresh token normalizando entradas, defaults y casos borde.
+     */
     private String resolveRefreshToken(String cookieRefreshToken, RefreshSessionRequest requestBody) {
         if (requestBody != null && requestBody.getRefreshToken() != null && !requestBody.getRefreshToken().isBlank()) {
             return requestBody.getRefreshToken().trim();
@@ -930,6 +1046,9 @@ public class AuthController {
         return cookieRefreshToken;
     }
 
+    /**
+     * Resuelve refresh token normalizando entradas, defaults y casos borde.
+     */
     private String resolveRefreshToken(String cookieRefreshToken, LogoutRequest requestBody) {
         if (requestBody != null && requestBody.getRefreshToken() != null && !requestBody.getRefreshToken().isBlank()) {
             return requestBody.getRefreshToken().trim();
@@ -937,6 +1056,9 @@ public class AuthController {
         return cookieRefreshToken;
     }
 
+    /**
+     * Resuelve authenticated usuario ID normalizando entradas, defaults y casos borde.
+     */
     private String resolveAuthenticatedUserId(Authentication authentication) {
         if (authentication == null || authentication.getPrincipal() == null) {
             return null;
@@ -944,6 +1066,9 @@ public class AuthController {
         return authentication.getPrincipal().toString();
     }
 
+    /**
+     * Resuelve authenticated sesion ID normalizando entradas, defaults y casos borde.
+     */
     private String resolveAuthenticatedSessionId(Authentication authentication) {
         if (authentication == null) {
             return null;
@@ -955,6 +1080,9 @@ public class AuthController {
         return null;
     }
 
+    /**
+     * Extrae cliente ip desde una URL, payload o referencia persistida.
+     */
     private String extractClientIp(HttpServletRequest request) {
         if (request == null) {
             return null;
@@ -968,6 +1096,10 @@ public class AuthController {
         return remoteAddr == null || remoteAddr.isBlank() ? null : remoteAddr.trim();
     }
 
+    /**
+     * Exige authentication y corta la ejecucion si falta autorizacion o contexto.
+     * Esta separacion hace explicita la regla de seguridad o negocio que protege el flujo.
+     */
     private Authentication requireAuthentication() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (
@@ -981,11 +1113,18 @@ public class AuthController {
         return authentication;
     }
 
+    /**
+     * Resuelve authenticated rol normalizando entradas, defaults y casos borde.
+     */
     private UserRole resolveAuthenticatedRole(Authentication authentication) {
         requireAuthentication();
         return currentActorService.currentRole();
     }
 
+    /**
+     * Fuerza la regla registration with audit antes de permitir que continue el flujo.
+     * Esta separacion hace explicita la regla de seguridad o negocio que protege el flujo.
+     */
     private void enforceRegistrationWithAudit(String email, HttpServletRequest httpRequest) {
         try {
             authAbuseProtectionService.enforceRegistrationAllowed(email, httpRequest);
@@ -1005,6 +1144,10 @@ public class AuthController {
         }
     }
 
+    /**
+     * Fuerza la regla authenticated rate limit antes de permitir que continue el flujo.
+     * Esta separacion hace explicita la regla de seguridad o negocio que protege el flujo.
+     */
     private void enforceAuthenticatedRateLimit(
         AbuseCheck abuseCheck,
         AuthAuditEventType eventType,

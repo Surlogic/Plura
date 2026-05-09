@@ -41,6 +41,11 @@ import org.junit.jupiter.api.Test;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.server.ResponseStatusException;
 
+/**
+ * Tests de funciones del profesional.
+ * Cubren escenarios de reserva comando application servicio completar para documentar el comportamiento esperado y evitar regresiones.
+ * Mantener estos casos alineados con los contratos reales del backend cuando cambie la logica productiva.
+ */
 class BookingCommandApplicationServiceCompleteTest {
 
     private final ProfessionalProfileRepository professionalProfileRepository = mock(ProfessionalProfileRepository.class);
@@ -110,6 +115,10 @@ class BookingCommandApplicationServiceCompleteTest {
         "America/Montevideo"
     );
 
+    /**
+     * Escenario: rechaza completar before reserva ends.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void rejectsCompleteBeforeBookingEnds() {
         User professionalUser = new User();

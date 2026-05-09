@@ -6,6 +6,12 @@ import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * BookingActionsEvaluation es un modelo inmutable del modulo reservas / acciones.
+ * Responsabilidad: agrupar datos de lectura o respuesta con una estructura clara y sin estado mutable.
+ * Contrato: lo consumen web/mobile, asi que renombrar campos puede romper compatibilidad.
+ * Foco funcional: reservas.
+ */
 public record BookingActionsEvaluation(
     boolean canCancel,
     boolean canReschedule,

@@ -33,6 +33,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+/**
+ * AccountDeletionService es un servicio de negocio del modulo cuentas.
+ * Responsabilidad: coordinar reglas de negocio, validaciones, persistencia e integraciones del caso de uso.
+ * Colabora con: userRepository, professionalAccountLifecycleGateway, bookingRepository, billingService, entre otros.
+ * Foco funcional: cuentas, servicios.
+ */
 @Service
 public class AccountDeletionService {
 
@@ -85,6 +91,10 @@ public class AccountDeletionService {
         this.appZoneId = ZoneId.of(appTimezone);
     }
 
+    /**
+     * Elimina la cuenta actual y limpia relaciones o datos derivados cuando corresponde.
+     * Tambien concentra los efectos secundarios para que el flujo quede en un estado consistente.
+     */
     @Transactional
     public void deleteCurrentAccount(String rawUserId, UserRole role) {
         Long userId = parseUserId(rawUserId);
@@ -105,6 +115,10 @@ public class AccountDeletionService {
         }
     }
 
+    /**
+     * Elimina la cuenta de cliente y limpia relaciones o datos derivados cuando corresponde.
+     * Tambien concentra los efectos secundarios para que el flujo quede en un estado consistente.
+     */
     private void deleteClientAccount(User user, LocalDateTime now) {
         List<BookingAvailabilityImpact> futureBookingImpacts = snapshotBookingAvailabilityImpacts(
             bookingRepository.findByUser_IdAndOperationalStatusInAndStartDateTimeGreaterThanEqual(
@@ -132,6 +146,10 @@ public class AccountDeletionService {
         refreshAvailabilityAfterClientBookingRemoval(futureBookingImpacts);
     }
 
+    /**
+     * Elimina la cuenta profesional y limpia relaciones o datos derivados cuando corresponde.
+     * Tambien concentra los efectos secundarios para que el flujo quede en un estado consistente.
+     */
     private void deleteProfessionalAccount(User user) {
         ProfessionalAccountSubject subject = professionalAccountLifecycleGateway.findByUserId(user.getId())
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.CONFLICT, "Perfil profesional no encontrado"));
@@ -167,6 +185,9 @@ public class AccountDeletionService {
         searchSyncPublisher.publishProfileChanged(subject.professionalId());
     }
 
+    /**
+     * Ejecuta la logica de snapshot reserva disponibilidad impactos manteniendola encapsulada en este componente.
+     */
     private List<BookingAvailabilityImpact> snapshotBookingAvailabilityImpacts(List<Booking> bookings) {
         if (bookings == null || bookings.isEmpty()) {
             return List.of();
@@ -186,6 +207,9 @@ public class AccountDeletionService {
         return snapshots;
     }
 
+    /**
+     * Refresca disponibilidad despues cliente reserva removal para mantener datos derivados o metricas al dia.
+     */
     private void refreshAvailabilityAfterClientBookingRemoval(List<BookingAvailabilityImpact> impacts) {
         if (impacts == null || impacts.isEmpty()) {
             return;
@@ -222,6 +246,10 @@ public class AccountDeletionService {
         searchSyncPublisher.publishProfilesChanged(new ArrayList<>(datesByProfessionalId.keySet()));
     }
 
+    /**
+     * Limpia definitivamente reserva graph como parte de un flujo de baja o mantenimiento.
+     * Tambien concentra los efectos secundarios para que el flujo quede en un estado consistente.
+     */
     private void purgeBookingGraph(List<Long> bookingIds) {
         if (bookingIds == null || bookingIds.isEmpty()) {
             return;
@@ -238,6 +266,10 @@ public class AccountDeletionService {
         bulkDelete("DELETE FROM Booking booking WHERE booking.id IN :bookingIds", "bookingIds", bookingIds);
     }
 
+    /**
+     * Limpia definitivamente notificacion artefactos for reservas como parte de un flujo de baja o mantenimiento.
+     * Tambien concentra los efectos secundarios para que el flujo quede en un estado consistente.
+     */
     private void purgeNotificationArtifactsForBookings(List<Long> bookingIds) {
         if (bookingIds == null || bookingIds.isEmpty()) {
             return;
@@ -253,6 +285,10 @@ public class AccountDeletionService {
         deleteNotificationArtifactsByEventIds(eventIds);
     }
 
+    /**
+     * Limpia definitivamente notificacion artefactos for destinatario como parte de un flujo de baja o mantenimiento.
+     * Tambien concentra los efectos secundarios para que el flujo quede en un estado consistente.
+     */
     private void purgeNotificationArtifactsForRecipient(
         NotificationRecipientType recipientType,
         String recipientId,
@@ -283,6 +319,10 @@ public class AccountDeletionService {
         }
     }
 
+    /**
+     * Elimina notificacion artefactos by evento IDs y limpia relaciones o datos derivados cuando corresponde.
+     * Tambien concentra los efectos secundarios para que el flujo quede en un estado consistente.
+     */
     private void deleteNotificationArtifactsByEventIds(List<String> eventIds) {
         if (eventIds == null || eventIds.isEmpty()) {
             return;
@@ -301,6 +341,10 @@ public class AccountDeletionService {
         bulkDelete("DELETE FROM NotificationEvent event WHERE event.id IN :eventIds", "eventIds", eventIds);
     }
 
+    /**
+     * Limpia definitivamente usuario autenticacion artefactos como parte de un flujo de baja o mantenimiento.
+     * Tambien concentra los efectos secundarios para que el flujo quede en un estado consistente.
+     */
     private void purgeUserAuthArtifacts(Long userId) {
         bulkDelete("DELETE FROM AuthSession session WHERE session.user.id = :userId", "userId", userId);
         bulkDelete("DELETE FROM AuthOtpChallenge challenge WHERE challenge.user.id = :userId", "userId", userId);
@@ -310,11 +354,19 @@ public class AccountDeletionService {
         bulkDelete("DELETE FROM RefreshToken token WHERE token.user.id = :userId", "userId", userId);
     }
 
+    /**
+     * Limpia definitivamente usuario owned artefactos como parte de un flujo de baja o mantenimiento.
+     * Tambien concentra los efectos secundarios para que el flujo quede en un estado consistente.
+     */
     private void purgeUserOwnedArtifacts(Long userId) {
         bulkDelete("DELETE FROM ClientFavoriteProfessional favorite WHERE favorite.clientUser.id = :userId", "userId", userId);
         bulkDelete("DELETE FROM AppFeedback feedback WHERE feedback.author.id = :userId", "userId", userId);
     }
 
+    /**
+     * Limpia definitivamente profesional owned artefactos como parte de un flujo de baja o mantenimiento.
+     * Tambien concentra los efectos secundarios para que el flujo quede en un estado consistente.
+     */
     private void purgeProfessionalOwnedArtifacts(Long professionalId) {
         bulkDelete(
             "DELETE FROM ProfessionalPaymentProviderConnection connection WHERE connection.professionalId = :professionalId",
@@ -339,19 +391,34 @@ public class AccountDeletionService {
         );
     }
 
+    /**
+     * Elimina profesional perfil y limpia relaciones o datos derivados cuando corresponde.
+     * Tambien concentra los efectos secundarios para que el flujo quede en un estado consistente.
+     */
     private void deleteProfessionalProfile(Long professionalId) {
         bulkDelete("DELETE FROM ProfessionalProfile profile WHERE profile.id = :professionalId", "professionalId", professionalId);
     }
 
+    /**
+     * Elimina usuario by ID y limpia relaciones o datos derivados cuando corresponde.
+     * Tambien concentra los efectos secundarios para que el flujo quede en un estado consistente.
+     */
     private void deleteUserById(Long userId) {
         bulkDelete("DELETE FROM User user WHERE user.id = :userId", "userId", userId);
     }
 
+    /**
+     * Fuerza flush/clear del contexto de persistencia para evitar entidades stale.
+     */
     private void flushAndClearPersistenceContext() {
         entityManager.flush();
         entityManager.clear();
     }
 
+    /**
+     * Busca reserva IDs for usuario aplicando filtros, joins o criterios del caso de uso.
+     * Mantiene la consulta encapsulada para que el resto del codigo no repita filtros ni joins.
+     */
     private List<Long> findBookingIdsForUser(Long userId) {
         return entityManager.createQuery(
             "SELECT booking.id FROM Booking booking WHERE booking.user.id = :userId",
@@ -361,6 +428,10 @@ public class AccountDeletionService {
             .getResultList();
     }
 
+    /**
+     * Busca reserva IDs for profesional aplicando filtros, joins o criterios del caso de uso.
+     * Mantiene la consulta encapsulada para que el resto del codigo no repita filtros ni joins.
+     */
     private List<Long> findBookingIdsForProfessional(Long professionalId) {
         return entityManager.createQuery(
             "SELECT booking.id FROM Booking booking WHERE booking.professionalId = :professionalId",
@@ -370,12 +441,18 @@ public class AccountDeletionService {
             .getResultList();
     }
 
+    /**
+     * Ejecuta delete en lote para limpiar datos relacionados eficientemente.
+     */
     private void bulkDelete(String jpql, String parameterName, Object value) {
         entityManager.createQuery(jpql)
             .setParameter(parameterName, value)
             .executeUpdate();
     }
 
+    /**
+     * Ejecuta delete en lote para limpiar datos relacionados eficientemente.
+     */
     private void bulkDelete(String jpql, Map<String, Object> parameters) {
         var query = entityManager.createQuery(jpql);
         for (Map.Entry<String, Object> entry : parameters.entrySet()) {
@@ -384,6 +461,9 @@ public class AccountDeletionService {
         query.executeUpdate();
     }
 
+    /**
+     * Parsea usuario ID y convierte errores de formato en errores controlados.
+     */
     private Long parseUserId(String rawUserId) {
         if (rawUserId == null || rawUserId.isBlank()) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Sin sesión activa");
@@ -395,5 +475,9 @@ public class AccountDeletionService {
         }
     }
 
+    /**
+     * Bloque de datos booking availability impact usado internamente por esta clase.
+     * Agrupa valores relacionados para que el calculo principal sea mas legible.
+     */
     private record BookingAvailabilityImpact(Long professionalId, String slug, LocalDate date) {}
 }

@@ -23,6 +23,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+/**
+ * InternalBookingReviewOpsService es un servicio de negocio del modulo resenas / operaciones internas.
+ * Responsabilidad: coordinar reglas de negocio, validaciones, persistencia e integraciones del caso de uso.
+ * Colabora con: bookingReviewRepository, bookingReviewReportRepository.
+ * Foco funcional: paneles internos, reservas, servicios, resenas.
+ */
 @Service
 public class InternalBookingReviewOpsService {
 
@@ -37,6 +43,10 @@ public class InternalBookingReviewOpsService {
         this.bookingReviewReportRepository = bookingReviewReportRepository;
     }
 
+    /**
+     * Devuelve un listado de elementos del modulo aplicando los filtros disponibles.
+     * Mantiene la consulta encapsulada para que el resto del codigo no repita filtros ni joins.
+     */
     @Transactional(readOnly = true)
     public Page<InternalReviewListItemResponse> list(
         int page, int size,
@@ -60,6 +70,9 @@ public class InternalBookingReviewOpsService {
         return PageableExecutionUtils.getPage(items, reviewsPage.getPageable(), reviewsPage::getTotalElements);
     }
 
+    /**
+     * Devuelve el detalle de un elemento puntual con los datos necesarios para la pantalla o API.
+     */
     @Transactional(readOnly = true)
     public InternalReviewDetailResponse detail(Long id) {
         BookingReview review = bookingReviewRepository.findDetailedById(id)
@@ -67,6 +80,9 @@ public class InternalBookingReviewOpsService {
         return toDetail(review, loadReportBundle(review.getId()));
     }
 
+    /**
+     * Ejecuta la logica de hide text manteniendola encapsulada en este componente.
+     */
     @Transactional
     public InternalReviewDetailResponse hideText(Long id, String note) {
         BookingReview review = bookingReviewRepository.findDetailedById(id)
@@ -79,6 +95,9 @@ public class InternalBookingReviewOpsService {
         return toDetail(review, loadReportBundle(review.getId()));
     }
 
+    /**
+     * Ejecuta la logica de show text manteniendola encapsulada en este componente.
+     */
     @Transactional
     public InternalReviewDetailResponse showText(Long id) {
         BookingReview review = bookingReviewRepository.findDetailedById(id)
@@ -88,6 +107,9 @@ public class InternalBookingReviewOpsService {
         return toDetail(review, loadReportBundle(review.getId()));
     }
 
+    /**
+     * Ejecuta la logica de analytics manteniendola encapsulada en este componente.
+     */
     @Transactional(readOnly = true)
     public InternalReviewAnalyticsResponse analytics(String from, String to) {
         LocalDateTime fromDate = parseDate(from);
@@ -144,10 +166,16 @@ public class InternalBookingReviewOpsService {
         );
     }
 
+    /**
+     * Convierte datos internos al formato listado item esperado por el consumidor.
+     */
     private InternalReviewListItemResponse toListItem(BookingReview r) {
         return toListItem(r, null);
     }
 
+    /**
+     * Convierte datos internos al formato listado item esperado por el consumidor.
+     */
     private InternalReviewListItemResponse toListItem(BookingReview r, ReviewReportBundle reportBundle) {
         return new InternalReviewListItemResponse(
             r.getId(),
@@ -169,6 +197,9 @@ public class InternalBookingReviewOpsService {
         );
     }
 
+    /**
+     * Convierte datos internos al formato detalle esperado por el consumidor.
+     */
     private InternalReviewDetailResponse toDetail(BookingReview r, ReviewReportBundle reportBundle) {
         return new InternalReviewDetailResponse(
             r.getId(),
@@ -192,6 +223,10 @@ public class InternalBookingReviewOpsService {
         );
     }
 
+    /**
+     * Carga la seccion report bundles desde base de datos o datos agregados y la deja lista para la respuesta.
+     * Mantiene la consulta encapsulada para que el resto del codigo no repita filtros ni joins.
+     */
     private Map<Long, ReviewReportBundle> loadReportBundles(Collection<BookingReview> reviews) {
         if (reviews == null || reviews.isEmpty()) {
             return Map.of();
@@ -214,6 +249,10 @@ public class InternalBookingReviewOpsService {
         return bundles;
     }
 
+    /**
+     * Carga la seccion report bundle desde base de datos o datos agregados y la deja lista para la respuesta.
+     * Mantiene la consulta encapsulada para que el resto del codigo no repita filtros ni joins.
+     */
     private ReviewReportBundle loadReportBundle(Long reviewId) {
         if (reviewId == null) {
             return null;
@@ -225,6 +264,9 @@ public class InternalBookingReviewOpsService {
         return new ReviewReportBundle(true, reports.size(), toSummary(reports.get(0)));
     }
 
+    /**
+     * Convierte datos internos al formato resumen esperado por el consumidor.
+     */
     private ReviewReportSummaryResponse toSummary(BookingReviewReport report) {
         return new ReviewReportSummaryResponse(
             report.getId(),
@@ -236,6 +278,9 @@ public class InternalBookingReviewOpsService {
         );
     }
 
+    /**
+     * Parsea fecha y convierte errores de formato en errores controlados.
+     */
     private LocalDateTime parseDate(String date) {
         if (date == null || date.isBlank()) return null;
         try {
@@ -245,6 +290,9 @@ public class InternalBookingReviewOpsService {
         }
     }
 
+    /**
+     * Parsea fecha end y convierte errores de formato en errores controlados.
+     */
     private LocalDateTime parseDateEnd(String date) {
         if (date == null || date.isBlank()) return null;
         try {
@@ -254,6 +302,10 @@ public class InternalBookingReviewOpsService {
         }
     }
 
+    /**
+     * Bloque de datos review report bundle usado internamente por esta clase.
+     * Agrupa valores relacionados para que el calculo principal sea mas legible.
+     */
     private record ReviewReportBundle(
         boolean reported,
         long reportCount,

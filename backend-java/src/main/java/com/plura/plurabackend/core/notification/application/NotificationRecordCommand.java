@@ -8,6 +8,12 @@ import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
+/**
+ * NotificationRecordCommand es un modelo inmutable del modulo notificaciones / aplicacion.
+ * Responsabilidad: agrupar datos de lectura o respuesta con una estructura clara y sin estado mutable.
+ * Contrato: lo consumen web/mobile, asi que renombrar campos puede romper compatibilidad.
+ * Foco funcional: notificaciones.
+ */
 public record NotificationRecordCommand(
     NotificationEventType eventType,
     NotificationAggregateType aggregateType,

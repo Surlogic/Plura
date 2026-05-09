@@ -7,6 +7,12 @@ import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
 
+/**
+ * CategoryRepository es un contrato interno del modulo categorias / persistencia.
+ * Responsabilidad: definir una frontera estable para que otros modulos no dependan de detalles concretos.
+ * Persistencia: concentra queries derivadas o JPQL para que los servicios no conozcan SQL/joins.
+ * Foco funcional: categorias.
+ */
 public interface CategoryRepository extends JpaRepository<Category, UUID> {
     Optional<Category> findBySlug(String slug);
 

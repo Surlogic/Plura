@@ -6,6 +6,12 @@ import com.plura.plurabackend.core.booking.dto.BookingCommandResponse;
 import com.plura.plurabackend.core.booking.dto.BookingRescheduleRequest;
 import org.springframework.stereotype.Service;
 
+/**
+ * ClientBookingCommandService es un servicio de negocio del modulo cliente / reservas.
+ * Responsabilidad: coordinar reglas de negocio, validaciones, persistencia e integraciones del caso de uso.
+ * Colabora con: bookingCommandWorkflowService.
+ * Foco funcional: reservas, servicios, clientes.
+ */
 @Service
 public class ClientBookingCommandService {
 
@@ -15,6 +21,9 @@ public class ClientBookingCommandService {
         this.bookingCommandWorkflowService = bookingCommandWorkflowService;
     }
 
+    /**
+     * Cancela booking respetando reglas de estado.
+     */
     public BookingCommandResponse cancelBooking(
         String rawUserId,
         Long bookingId,
@@ -24,6 +33,9 @@ public class ClientBookingCommandService {
         return bookingCommandWorkflowService.cancelBookingAsClient(rawUserId, bookingId, request, idempotencyKey);
     }
 
+    /**
+     * Ejecuta la logica de reschedule reserva manteniendola encapsulada en este componente.
+     */
     public BookingCommandResponse rescheduleBooking(
         String rawUserId,
         Long bookingId,

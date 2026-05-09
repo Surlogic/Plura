@@ -11,6 +11,12 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
+/**
+ * MercadoPagoSubscriptionService es un servicio de negocio del modulo billing / Mercado Pago.
+ * Responsabilidad: coordinar reglas de negocio, validaciones, persistencia e integraciones del caso de uso.
+ * Colabora con: billingProperties, mercadoPagoClient.
+ * Foco funcional: suscripciones, Mercado Pago, servicios.
+ */
 @Service
 public class MercadoPagoSubscriptionService {
 
@@ -28,6 +34,10 @@ public class MercadoPagoSubscriptionService {
         this.mercadoPagoClient = mercadoPagoClient;
     }
 
+    /**
+     * Crea subscription validando datos de entrada y persistiendo el resultado.
+     * Tambien concentra los efectos secundarios para que el flujo quede en un estado consistente.
+     */
     public SubscriptionCheckoutSession createSubscription(CreateSubscriptionCommand command) {
         if (!billingProperties.getMercadopago().isEnabled()) {
             throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "Mercado Pago deshabilitado");
@@ -90,6 +100,9 @@ public class MercadoPagoSubscriptionService {
         );
     }
 
+    /**
+     * Cancela subscription respetando reglas de estado.
+     */
     public SubscriptionSnapshot cancelSubscription(String providerSubscriptionId) {
         MercadoPagoClient.MercadoPagoPreapproval preapproval =
             mercadoPagoClient.updatePreapprovalStatus(providerSubscriptionId, "cancelled");
@@ -104,6 +117,9 @@ public class MercadoPagoSubscriptionService {
         );
     }
 
+    /**
+     * Resuelve or create plan normalizando entradas, defaults y casos borde.
+     */
     private HostedPlanTarget resolveOrCreatePlan(
         SubscriptionPlanCode plan,
         BigDecimal amount,
@@ -148,6 +164,9 @@ public class MercadoPagoSubscriptionService {
         }
     }
 
+    /**
+     * Resuelve notificacion URL normalizando entradas, defaults y casos borde.
+     */
     private String resolveNotificationUrl() {
         String webhookBaseUrl = billingProperties.getWebhookBaseUrl();
         if (webhookBaseUrl != null && !webhookBaseUrl.isBlank()) {
@@ -157,6 +176,9 @@ public class MercadoPagoSubscriptionService {
         return null;
     }
 
+    /**
+     * Resuelve back URL normalizando entradas, defaults y casos borde.
+     */
     private String resolveBackUrl() {
         String explicitBackUrl = billingProperties.getMercadopago().getSubscriptionBackUrl();
         if (explicitBackUrl != null && !explicitBackUrl.isBlank()) {
@@ -180,6 +202,9 @@ public class MercadoPagoSubscriptionService {
         );
     }
 
+    /**
+     * Convierte datos internos al formato number esperado por el consumidor.
+     */
     private Number toNumber(BigDecimal amount) {
         if (amount == null) {
             return 0;
@@ -190,6 +215,9 @@ public class MercadoPagoSubscriptionService {
         return amount.doubleValue();
     }
 
+    /**
+     * Construye hosted plan checkout URL a partir de datos internos ya validados.
+     */
     private String buildHostedPlanCheckoutUrl(String planId) {
         if (planId == null || planId.isBlank()) {
             return null;
@@ -202,6 +230,9 @@ public class MercadoPagoSubscriptionService {
         return null;
     }
 
+    /**
+     * Obtiene el primer valor util de non blank ignorando nulos o blancos.
+     */
     private String firstNonBlank(String... values) {
         for (String value : values) {
             if (value != null && !value.isBlank()) {
@@ -211,6 +242,9 @@ public class MercadoPagoSubscriptionService {
         return null;
     }
 
+    /**
+     * Crea subscription command validando datos de entrada y persistiendo el resultado.
+     */
     public record CreateSubscriptionCommand(
         String localSubscriptionId,
         Long professionalId,
@@ -220,12 +254,20 @@ public class MercadoPagoSubscriptionService {
         String currency
     ) {}
 
+    /**
+     * Bloque de datos subscription checkout session dentro de la respuesta principal.
+     * Agrupa metricas relacionadas para que el frontend no tenga que reconstruirlas.
+     */
     public record SubscriptionCheckoutSession(
         String providerSubscriptionId,
         String checkoutUrl,
         String preapprovalPlanId
     ) {}
 
+    /**
+     * Bloque de datos subscription snapshot dentro de la respuesta principal.
+     * Agrupa metricas relacionadas para que el frontend no tenga que reconstruirlas.
+     */
     public record SubscriptionSnapshot(
         String providerSubscriptionId,
         String status,
@@ -236,6 +278,10 @@ public class MercadoPagoSubscriptionService {
         String reason
     ) {}
 
+    /**
+     * Bloque de datos hosted plan target usado internamente por esta clase.
+     * Agrupa valores relacionados para que el calculo principal sea mas legible.
+     */
     private record HostedPlanTarget(
         String planId,
         String checkoutUrl

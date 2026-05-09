@@ -15,6 +15,12 @@ import java.util.concurrent.atomic.AtomicLong;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
+/**
+ * NotificationMetricsService es un servicio de negocio del modulo notificaciones / metricas.
+ * Responsabilidad: coordinar reglas de negocio, validaciones, persistencia e integraciones del caso de uso.
+ * Colabora con: meterRegistry, emailDispatchRepository, notificationEventRepository.
+ * Foco funcional: notificaciones, servicios.
+ */
 @Service
 public class NotificationMetricsService {
 
@@ -44,6 +50,9 @@ public class NotificationMetricsService {
         refreshGauges();
     }
 
+    /**
+     * Registra notificacion created para auditoria, historial o notificaciones.
+     */
     public void recordNotificationCreated(NotificationEvent event) {
         Counter.builder("plura.notification.events.created")
             .tag("event_type", event.getEventType().name())
@@ -53,6 +62,9 @@ public class NotificationMetricsService {
         refreshNotificationEventGauge();
     }
 
+    /**
+     * Registra notificacion deduplicated para auditoria, historial o notificaciones.
+     */
     public void recordNotificationDeduplicated(NotificationEventType eventType, String sourceModule) {
         Counter.builder("plura.notification.events.deduplicated")
             .tag("event_type", eventType == null ? "UNKNOWN" : eventType.name())
@@ -61,6 +73,9 @@ public class NotificationMetricsService {
             .increment();
     }
 
+    /**
+     * Registra email sent para auditoria, historial o notificaciones.
+     */
     public void recordEmailSent(EmailDispatch dispatch) {
         Counter.builder("plura.notification.email.sent")
             .tag("event_type", dispatch.getNotificationEvent().getEventType().name())
@@ -70,6 +85,9 @@ public class NotificationMetricsService {
         refreshEmailDispatchStatusGauges();
     }
 
+    /**
+     * Registra email retry scheduled para auditoria, historial o notificaciones.
+     */
     public void recordEmailRetryScheduled(EmailDispatch dispatch, String errorCode) {
         Counter.builder("plura.notification.email.retry.scheduled")
             .tag("event_type", dispatch.getNotificationEvent().getEventType().name())
@@ -81,6 +99,9 @@ public class NotificationMetricsService {
         refreshEmailDispatchStatusGauges();
     }
 
+    /**
+     * Registra email failed para auditoria, historial o notificaciones.
+     */
     public void recordEmailFailed(EmailDispatch dispatch, String errorCode) {
         Counter.builder("plura.notification.email.failed")
             .tag("event_type", dispatch.getNotificationEvent().getEventType().name())
@@ -92,6 +113,9 @@ public class NotificationMetricsService {
         refreshEmailDispatchStatusGauges();
     }
 
+    /**
+     * Registra email retries exhausted para auditoria, historial o notificaciones.
+     */
     public void recordEmailRetriesExhausted(EmailDispatch dispatch, String errorCode) {
         Counter.builder("plura.notification.email.retries.exhausted")
             .tag("event_type", dispatch.getNotificationEvent().getEventType().name())
@@ -101,22 +125,34 @@ public class NotificationMetricsService {
             .increment();
     }
 
+    /**
+     * Refresca email dispatch estado gauges para mantener datos derivados o metricas al dia.
+     */
     public void refreshEmailDispatchStatusGauges() {
         for (EmailDispatchStatus status : EmailDispatchStatus.values()) {
             emailDispatchStatusGauges.get(status).set(emailDispatchRepository.countByStatus(status));
         }
     }
 
+    /**
+     * Refresca gauges para mantener datos derivados o metricas al dia.
+     */
     @Scheduled(fixedDelayString = "${app.notification.metrics.refresh-millis:30000}")
     public void refreshGauges() {
         refreshEmailDispatchStatusGauges();
         refreshNotificationEventGauge();
     }
 
+    /**
+     * Refresca notificacion evento gauge para mantener datos derivados o metricas al dia.
+     */
     private void refreshNotificationEventGauge() {
         notificationEventCountGauge.set(notificationEventRepository.count());
     }
 
+    /**
+     * Registra categorized failure para auditoria, historial o notificaciones.
+     */
     private void recordCategorizedFailure(String errorCode) {
         String normalizedErrorCode = normalizeTag(errorCode);
         if ("template_render_error".equals(normalizedErrorCode)) {
@@ -133,6 +169,9 @@ public class NotificationMetricsService {
         }
     }
 
+    /**
+     * Normaliza tag para evitar variantes vacias, invalidas o inconsistentes.
+     */
     private String normalizeTag(String value) {
         if (value == null || value.trim().isBlank()) {
             return "unknown";

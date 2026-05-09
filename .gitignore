@@ -12,6 +12,9 @@ node_modules/
 dist/
 build/
 .gradle/
+backend-java/build/
+backend-java/.gradle/
+backend-java/bin/
 .out/
 **/.next
 **/.next/

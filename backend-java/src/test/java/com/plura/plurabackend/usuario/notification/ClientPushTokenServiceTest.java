@@ -16,6 +16,11 @@ import com.plura.plurabackend.usuario.notification.repository.ClientPushDeviceRe
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 
+/**
+ * Tests de funciones del cliente final / notificaciones, bandejas y emails.
+ * Cubren escenarios de cliente push token servicio para documentar el comportamiento esperado y evitar regresiones.
+ * Mantener estos casos alineados con los contratos reales del backend cuando cambie la logica productiva.
+ */
 class ClientPushTokenServiceTest {
 
     private final ClientPushDeviceRepository clientPushDeviceRepository = mock(ClientPushDeviceRepository.class);
@@ -25,6 +30,10 @@ class ClientPushTokenServiceTest {
         userRepository
     );
 
+    /**
+     * Escenario: debe ignore faltante device cuando disabling token.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void shouldIgnoreMissingDeviceWhenDisablingToken() {
         when(clientPushDeviceRepository.findByPushToken("ExponentPushToken[abc]")).thenReturn(Optional.empty());
@@ -35,6 +44,10 @@ class ClientPushTokenServiceTest {
         verify(clientPushDeviceRepository, never()).save(any());
     }
 
+    /**
+     * Escenario: debe persist enabled device for existente usuario.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void shouldPersistEnabledDeviceForExistingUser() {
         User user = sampleUser();
@@ -46,6 +59,10 @@ class ClientPushTokenServiceTest {
         verify(clientPushDeviceRepository).save(any(ClientPushDevice.class));
     }
 
+    /**
+     * Escenario: debe disable existente device sin changing token.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void shouldDisableExistingDeviceWithoutChangingToken() {
         User user = sampleUser();

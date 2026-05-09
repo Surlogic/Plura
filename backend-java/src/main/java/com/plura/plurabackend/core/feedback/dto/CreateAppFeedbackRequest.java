@@ -8,6 +8,12 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+/**
+ * CreateAppFeedbackRequest es un DTO de entrada del modulo feedback / contratos DTO.
+ * Responsabilidad: definir y validar los datos que llegan desde la API.
+ * Validacion: sus anotaciones Bean Validation son parte del contrato publico del endpoint que lo recibe.
+ * Foco funcional: feedback.
+ */
 @Data
 @NoArgsConstructor
 @AllArgsConstructor

@@ -18,6 +18,12 @@ import software.amazon.awssdk.services.sqs.model.Message;
 import software.amazon.awssdk.services.sqs.model.ReceiveMessageRequest;
 import software.amazon.awssdk.services.sqs.model.SendMessageRequest;
 
+/**
+ * SqsJobQueueService es un servicio de negocio del modulo jobs / SQS.
+ * Responsabilidad: coordinar reglas de negocio, validaciones, persistencia e integraciones del caso de uso.
+ * Colabora con: sqsClient, properties, objectMapper, meterRegistry.
+ * Foco funcional: servicios.
+ */
 @Service
 public class SqsJobQueueService {
 
@@ -40,10 +46,16 @@ public class SqsJobQueueService {
         this.meterRegistry = meterRegistry;
     }
 
+    /**
+     * Evalua is enabled y devuelve una decision booleana para el llamador.
+     */
     public boolean isEnabled() {
         return properties.isEnabled() && sqsClient.isPresent() && hasText(properties.getQueueUrl());
     }
 
+    /**
+     * Publica publish para que otros procesos reaccionen al cambio.
+     */
     public boolean publish(QueueJobMessage message) {
         if (!isEnabled() || message == null) {
             return false;
@@ -71,6 +83,9 @@ public class SqsJobQueueService {
         }
     }
 
+    /**
+     * Ejecuta la logica de poll manteniendola encapsulada en este componente.
+     */
     public List<ReceivedJob> poll() {
         if (!isEnabled()) {
             return List.of();
@@ -112,6 +127,9 @@ public class SqsJobQueueService {
         }
     }
 
+    /**
+     * Ejecuta la logica de ack manteniendola encapsulada en este componente.
+     */
     public void ack(String receiptHandle) {
         if (!isEnabled() || !hasText(receiptHandle)) {
             return;
@@ -129,6 +147,9 @@ public class SqsJobQueueService {
         }
     }
 
+    /**
+     * Ejecuta la logica de move to dlq manteniendola encapsulada en este componente.
+     */
     public void moveToDlq(QueueJobMessage message, String reason) {
         if (message == null) {
             return;
@@ -142,6 +163,9 @@ public class SqsJobQueueService {
         }
     }
 
+    /**
+     * Ejecuta la logica de move to dlq raw manteniendola encapsulada en este componente.
+     */
     private void moveToDlqRaw(String body, String reason) {
         if (!isEnabled() || !hasText(properties.getDlqUrl())) {
             return;
@@ -164,6 +188,9 @@ public class SqsJobQueueService {
         }
     }
 
+    /**
+     * Marca error y actualiza los indicadores relacionados.
+     */
     private void markError(String operation) {
         Counter.builder("plura.sqs.errors")
             .description("SQS errors")
@@ -172,11 +199,22 @@ public class SqsJobQueueService {
             .increment();
     }
 
+    /**
+     * Evalua has text y devuelve una decision booleana para el llamador.
+     */
     private boolean hasText(String value) {
         return value != null && !value.isBlank();
     }
 
+    /**
+     * Bloque de datos dlq payload usado internamente por esta clase.
+     * Agrupa valores relacionados para que el calculo principal sea mas legible.
+     */
     private record DlqPayload(String reason, QueueJobMessage message) {}
 
+    /**
+     * Bloque de datos received job dentro de la respuesta principal.
+     * Agrupa metricas relacionadas para que el frontend no tenga que reconstruirlas.
+     */
     public record ReceivedJob(QueueJobMessage message, String receiptHandle) {}
 }

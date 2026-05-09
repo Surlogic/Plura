@@ -7,6 +7,12 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+/**
+ * BookingActionsController es un controlador REST del modulo reservas.
+ * Responsabilidad: recibir requests HTTP, validar acceso basico y delegar la operacion al servicio de aplicacion o dominio.
+ * Superficie HTTP: traduce requests/responses y evita mezclar reglas de negocio en la capa web.
+ * Foco funcional: reservas.
+ */
 @RestController
 @RequestMapping({"/reservas", "/bookings"})
 public class BookingActionsController {

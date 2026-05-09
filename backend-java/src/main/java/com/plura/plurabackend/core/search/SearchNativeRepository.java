@@ -23,6 +23,12 @@ import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Repository;
 
+/**
+ * SearchNativeRepository es un repositorio de datos del modulo busqueda.
+ * Responsabilidad: centralizar consultas y escrituras contra la base de datos para el agregado asociado.
+ * Persistencia: concentra queries derivadas o JPQL para que los servicios no conozcan SQL/joins.
+ * Foco funcional: busqueda.
+ */
 @Repository
 public class SearchNativeRepository {
 
@@ -38,6 +44,9 @@ public class SearchNativeRepository {
         this.jdbcTemplate = jdbcTemplate;
     }
 
+    /**
+     * Ejecuta la logica de busqueda manteniendola encapsulada en este componente.
+     */
     public SearchPageResult search(
         SearchQueryCriteria criteria,
         boolean searchNoCountModeEnabled,
@@ -114,6 +123,9 @@ public class SearchNativeRepository {
         return new SearchPageResult(totalEstimate, items, hasNext);
     }
 
+    /**
+     * Ejecuta la logica de suggest manteniendola encapsulada en este componente.
+     */
     public SearchSuggestResponse suggest(SearchSuggestCriteria criteria) {
         MapSqlParameterSource params = buildSuggestParams(criteria);
         String professionalLocationClause = buildLocationClause("doc");
@@ -246,6 +258,9 @@ public class SearchNativeRepository {
         return new SearchSuggestResponse(categories, services, professionals, locals, popularNearby);
     }
 
+    /**
+     * Ejecuta la logica de hydrate by IDs ordered manteniendola encapsulada en este componente.
+     */
     public List<SearchItemResponse> hydrateByIdsOrdered(List<Long> professionalIds, SearchQueryCriteria criteria) {
         if (professionalIds == null || professionalIds.isEmpty()) {
             return List.of();
@@ -308,6 +323,9 @@ public class SearchNativeRepository {
         return ordered;
     }
 
+    /**
+     * Construye busqueda where clause a partir de datos internos ya validados.
+     */
     private String buildSearchWhereClause(String dateMatchExpression, String availableNowMatchExpression) {
         return " WHERE 1 = 1 "
             + " AND (:categorySlug = '' OR doc.category_slugs::text[] @> ARRAY[:categorySlug]::text[] OR doc.rubro_slug = :categorySlug) "
@@ -365,6 +383,9 @@ public class SearchNativeRepository {
             + " ))";
     }
 
+    /**
+     * Construye busqueda relevance expression a partir de datos internos ya validados.
+     */
     private String buildSearchRelevanceExpression(String alias) {
         return "CASE "
             + "  WHEN :type = 'RUBRO' THEN GREATEST("
@@ -403,6 +424,9 @@ public class SearchNativeRepository {
             + "END";
     }
 
+    /**
+     * Construye sort clause a partir de datos internos ya validados.
+     */
     private String buildSortClause(SearchQueryCriteria criteria) {
         String availabilitySortPrefix = buildAvailabilitySortPrefix(criteria);
         SearchSort sort = criteria.sort();
@@ -426,6 +450,9 @@ public class SearchNativeRepository {
             + "relevance DESC, rating DESC, reviews_count DESC, name ASC";
     }
 
+    /**
+     * Construye disponibilidad sort prefix a partir de datos internos ya validados.
+     */
     private String buildAvailabilitySortPrefix(SearchQueryCriteria criteria) {
         StringBuilder sortPrefix = new StringBuilder();
         if (criteria.availableNow()) {
@@ -437,6 +464,9 @@ public class SearchNativeRepository {
         return sortPrefix.toString();
     }
 
+    /**
+     * Construye fecha match expression a partir de datos internos ya validados.
+     */
     private String buildDateMatchExpression(String alias, String availabilitySource, boolean nextAvailableAtEnabled) {
         return "EXISTS ("
             + "SELECT 1 FROM available_slot a "
@@ -447,6 +477,9 @@ public class SearchNativeRepository {
             + ")";
     }
 
+    /**
+     * Construye available now match expression a partir de datos internos ya validados.
+     */
     private String buildAvailableNowMatchExpression(String alias, String availabilitySource) {
         return "EXISTS ("
             + "SELECT 1 FROM available_slot a "
@@ -457,6 +490,9 @@ public class SearchNativeRepository {
             + ")";
     }
 
+    /**
+     * Construye location clause a partir de datos internos ya validados.
+     */
     private String buildLocationClause(String alias) {
         return " AND ("
             + "   :city = '' "
@@ -471,6 +507,9 @@ public class SearchNativeRepository {
             + " ) ";
     }
 
+    /**
+     * Construye distance expression a partir de datos internos ya validados.
+     */
     private String buildDistanceExpression(String alias) {
         return "CASE "
             + "  WHEN :hasCoords = true AND " + alias + ".geom IS NOT NULL THEN ROUND((ST_Distance(" + alias + ".geom, ST_SetSRID(ST_MakePoint(:lng, :lat), 4326)::geography) / 1000.0)::numeric, 2)::double precision "
@@ -482,6 +521,9 @@ public class SearchNativeRepository {
             + "END";
     }
 
+    /**
+     * Construye result kind expression a partir de datos internos ya validados.
+     */
     private String buildResultKindExpression(String alias) {
         return "CASE "
             + "  WHEN :type = 'LOCAL' THEN 'LOCAL' "
@@ -492,6 +534,9 @@ public class SearchNativeRepository {
             + "END";
     }
 
+    /**
+     * Construye params a partir de datos internos ya validados.
+     */
     private MapSqlParameterSource buildParams(SearchQueryCriteria criteria) {
         String query = normalize(criteria.query());
         String city = normalize(criteria.city());
@@ -523,6 +568,9 @@ public class SearchNativeRepository {
         return params;
     }
 
+    /**
+     * Construye suggest params a partir de datos internos ya validados.
+     */
     private MapSqlParameterSource buildSuggestParams(SearchSuggestCriteria criteria) {
         String query = normalize(criteria.query());
         String city = normalize(criteria.city());
@@ -548,6 +596,9 @@ public class SearchNativeRepository {
         return params;
     }
 
+    /**
+     * Normaliza normalizar para evitar variantes vacias, invalidas o inconsistentes.
+     */
     private String normalize(String value) {
         if (value == null) {
             return "";
@@ -557,6 +608,10 @@ public class SearchNativeRepository {
             .replaceAll("\\p{InCombiningDiacriticalMarks}+", "");
     }
 
+    /**
+     * Bloque de datos suggest profile candidate usado internamente por esta clase.
+     * Agrupa valores relacionados para que el calculo principal sea mas legible.
+     */
     private record SuggestProfileCandidate(
         String id,
         String fullName,
@@ -568,6 +623,9 @@ public class SearchNativeRepository {
     ) {}
 
     private static final RowMapper<SearchItemResponse> SEARCH_ROW_MAPPER = new RowMapper<>() {
+    /**
+     * Mapea row desde el modelo interno al contrato que usa otra capa.
+     */
         @Override
         public SearchItemResponse mapRow(ResultSet rs, int rowNum) throws SQLException {
             return new SearchItemResponse(
@@ -603,6 +661,9 @@ public class SearchNativeRepository {
             );
         }
 
+    /**
+     * Ejecuta la logica de media presentation manteniendola encapsulada en este componente.
+     */
         private com.plura.plurabackend.professional.dto.MediaPresentationDto mediaPresentation(
             Double positionX,
             Double positionY,
@@ -615,6 +676,9 @@ public class SearchNativeRepository {
             );
         }
 
+    /**
+     * Lee categoria slugs desde la fuente persistida y aplica defaults si faltan datos.
+     */
         private List<String> readCategorySlugs(Array array) throws SQLException {
             if (array == null) {
                 return List.of();
@@ -632,5 +696,9 @@ public class SearchNativeRepository {
     private static final RowMapper<SearchSuggestItemResponse> SEARCH_SUGGEST_ITEM_ROW_MAPPER =
         (rs, rowNum) -> SearchSuggestItemResponse.service(rs.getString("id"), rs.getString("name"));
 
+    /**
+     * Bloque de datos search page result dentro de la respuesta principal.
+     * Agrupa metricas relacionadas para que el frontend no tenga que reconstruirlas.
+     */
     public record SearchPageResult(long total, List<SearchItemResponse> items, boolean hasNext) {}
 }

@@ -3,6 +3,7 @@ package com.plura.plurabackend.core.auth;
 import com.plura.plurabackend.core.auth.model.OtpChallengeChannel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
 /**
  * Implementacion de {@link OtpChallengeNotificationSender} que registra
  * el desafio OTP en los logs en lugar de enviarlo por un canal real (email o SMS).

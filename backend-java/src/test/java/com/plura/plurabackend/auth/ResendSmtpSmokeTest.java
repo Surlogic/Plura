@@ -8,8 +8,17 @@ import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
 import org.springframework.mail.javamail.JavaMailSenderImpl;
 
+/**
+ * Tests de autenticacion, sesiones, OTP y recuperacion de cuenta.
+ * Cubren escenarios de resend SMTP smoke para documentar el comportamiento esperado y evitar regresiones.
+ * Mantener estos casos alineados con los contratos reales del backend cuando cambie la logica productiva.
+ */
 class ResendSmtpSmokeTest {
 
+    /**
+     * Escenario: sends real email verification template through configured SMTP proveedor.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void sendsRealEmailVerificationTemplateThroughConfiguredSmtpProvider() {
         Assumptions.assumeTrue(isEnabled("RUN_REAL_EMAIL_SMOKE_TEST"), "Manual SMTP smoke test disabled");

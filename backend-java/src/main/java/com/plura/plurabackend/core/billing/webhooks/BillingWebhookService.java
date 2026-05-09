@@ -26,6 +26,12 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
+/**
+ * BillingWebhookService es un servicio de negocio del modulo billing / webhooks.
+ * Responsabilidad: coordinar reglas de negocio, validaciones, persistencia e integraciones del caso de uso.
+ * Colabora con: billingProperties, mercadoPagoSignatureVerifier, paymentEventLedgerService, webhookEventProcessor, entre otros.
+ * Foco funcional: billing, webhooks, servicios.
+ */
 @Service
 public class BillingWebhookService {
 
@@ -65,6 +71,9 @@ public class BillingWebhookService {
         return processPreparedWebhook(dispatch);
     }
 
+    /**
+     * Ejecuta la logica de prepare Mercado Pago dispatch manteniendola encapsulada en este componente.
+     */
     public PreparedWebhookDispatch prepareMercadoPagoDispatch(HttpServletRequest request, String rawPayload) {
         if (!billingProperties.isEnabled() || !billingProperties.getMercadopago().isEnabled()) {
             return null;
@@ -84,10 +93,17 @@ public class BillingWebhookService {
         return new PreparedWebhookDispatch(event, requestId);
     }
 
+    /**
+     * Ejecuta la logica de process prepared webhook manteniendola encapsulada en este componente.
+     */
     public WebhookHandleResult processPreparedWebhook(PreparedWebhookDispatch dispatch) {
         return registerAndProcess(dispatch.event(), dispatch.requestId());
     }
 
+    /**
+     * Registra and process y aplica las validaciones de alta correspondientes.
+     * Tambien concentra los efectos secundarios para que el flujo quede en un estado consistente.
+     */
     private WebhookHandleResult registerAndProcess(ParsedWebhookEvent event, String requestId) {
         PaymentEventLedgerService.RegistrationResult registration = paymentEventLedgerService.registerReceived(event);
         if (registration.duplicate()) {
@@ -126,8 +142,15 @@ public class BillingWebhookService {
         }
     }
 
+    /**
+     * Bloque de datos prepared webhook dispatch dentro de la respuesta principal.
+     * Agrupa metricas relacionadas para que el frontend no tenga que reconstruirlas.
+     */
     public record PreparedWebhookDispatch(ParsedWebhookEvent event, String requestId) {}
 
+    /**
+     * Parsea Mercado Pago evento y convierte errores de formato en errores controlados.
+     */
     private ParsedWebhookEvent parseMercadoPagoEvent(String payload, HttpServletRequest request) {
         try {
             JsonNode root = objectMapper.readTree(payload);
@@ -226,6 +249,9 @@ public class BillingWebhookService {
         }
     }
 
+    /**
+     * Resuelve evento tipo normalizando entradas, defaults y casos borde.
+     */
     private WebhookEventType resolveEventType(String eventType, String status) {
         String type = eventType == null ? "" : eventType;
         String paymentStatus = status == null ? "" : status;
@@ -267,12 +293,18 @@ public class BillingWebhookService {
         return WebhookEventType.UNKNOWN;
     }
 
+    /**
+     * Evalua is reembolso evento y devuelve una decision booleana para el llamador.
+     */
     private boolean isRefundEvent(WebhookEventType eventType) {
         return eventType == WebhookEventType.PAYMENT_REFUNDED
             || eventType == WebhookEventType.REFUND_PARTIAL
             || eventType == WebhookEventType.REFUND_FAILED;
     }
 
+    /**
+     * Resuelve Mercado Pago domain normalizando entradas, defaults y casos borde.
+     */
     private WebhookEventDomain resolveMercadoPagoDomain(
         JsonNode root,
         String externalReference,
@@ -308,6 +340,9 @@ public class BillingWebhookService {
         return WebhookEventDomain.UNKNOWN;
     }
 
+    /**
+     * Evalua is subscription action y devuelve una decision booleana para el llamador.
+     */
     private boolean isSubscriptionAction(String action) {
         if (action == null) {
             return false;
@@ -315,6 +350,9 @@ public class BillingWebhookService {
         return containsAny(action, "preapproval", "subscription", "recurring");
     }
 
+    /**
+     * Ejecuta la logica de contains any manteniendola encapsulada en este componente.
+     */
     private boolean containsAny(String value, String... expectedTokens) {
         if (value == null || value.isBlank()) {
             return false;
@@ -328,6 +366,9 @@ public class BillingWebhookService {
         return false;
     }
 
+    /**
+     * Parsea long y convierte errores de formato en errores controlados.
+     */
     private Long parseLong(String value) {
         if (value == null || value.isBlank()) {
             return null;
@@ -339,6 +380,9 @@ public class BillingWebhookService {
         }
     }
 
+    /**
+     * Parsea profesional ID y convierte errores de formato en errores controlados.
+     */
     private Long parseProfessionalId(String value) {
         if (value == null || value.isBlank()) {
             return null;
@@ -355,6 +399,9 @@ public class BillingWebhookService {
         return parseLong(value);
     }
 
+    /**
+     * Parsea reserva ID y convierte errores de formato en errores controlados.
+     */
     private Long parseBookingId(String value) {
         if (value == null || value.isBlank()) {
             return null;
@@ -366,6 +413,9 @@ public class BillingWebhookService {
         return parseLong(normalized.substring("booking:".length()));
     }
 
+    /**
+     * Parsea decimal y convierte errores de formato en errores controlados.
+     */
     private BigDecimal parseDecimal(String value) {
         if (value == null || value.isBlank()) {
             return null;
@@ -377,6 +427,9 @@ public class BillingWebhookService {
         }
     }
 
+    /**
+     * Parsea fecha hora y convierte errores de formato en errores controlados.
+     */
     private LocalDateTime parseDateTime(String rawValue) {
         if (rawValue == null || rawValue.isBlank()) {
             return null;
@@ -405,6 +458,9 @@ public class BillingWebhookService {
         return null;
     }
 
+    /**
+     * Obtiene el primer valor util de non blank ignorando nulos o blancos.
+     */
     private String firstNonBlank(String... values) {
         for (String value : values) {
             if (value != null && !value.isBlank()) {
@@ -414,10 +470,16 @@ public class BillingWebhookService {
         return null;
     }
 
+    /**
+     * Ejecuta limite inferior atrapando errores para que el flujo principal no falle innecesariamente.
+     */
     private String safeLower(String value) {
         return value == null ? null : value.toLowerCase(Locale.ROOT);
     }
 
+    /**
+     * Construye safe payload a partir de datos internos ya validados.
+     */
     private String buildSafePayload(JsonNode root) {
         ObjectNode safe = objectMapper.createObjectNode();
         copyIfPresent(root, safe, "id");
@@ -440,6 +502,9 @@ public class BillingWebhookService {
         return safe.toString();
     }
 
+    /**
+     * Ejecuta la logica de copy if present manteniendola encapsulada en este componente.
+     */
     private void copyIfPresent(JsonNode source, ObjectNode target, String fieldName) {
         JsonNode value = source.get(fieldName);
         if (value != null && !value.isNull()) {
@@ -447,6 +512,9 @@ public class BillingWebhookService {
         }
     }
 
+    /**
+     * Construye deterministic evento ID a partir de datos internos ya validados.
+     */
     private String buildDeterministicEventId(
         PaymentProvider provider,
         String payload,
@@ -460,6 +528,9 @@ public class BillingWebhookService {
         return SignatureUtils.sha256Hex(source);
     }
 
+    /**
+     * Ejecuta la logica de increment manteniendola encapsulada en este componente.
+     */
     private void increment(String outcome, PaymentProvider provider) {
         meterRegistry.counter(
             "billing.webhook.events",
@@ -468,6 +539,9 @@ public class BillingWebhookService {
         ).increment();
     }
 
+    /**
+     * Resuelve solicitud ID normalizando entradas, defaults y casos borde.
+     */
     private String resolveRequestId(HttpServletRequest request) {
         String requestId = firstNonBlank(
             request.getHeader("X-Request-Id"),

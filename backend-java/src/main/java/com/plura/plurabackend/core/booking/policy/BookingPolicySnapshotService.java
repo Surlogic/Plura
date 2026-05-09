@@ -11,6 +11,12 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import org.springframework.stereotype.Service;
 
+/**
+ * BookingPolicySnapshotService es un servicio de negocio del modulo reservas / politicas.
+ * Responsabilidad: coordinar reglas de negocio, validaciones, persistencia e integraciones del caso de uso.
+ * Colabora con: bookingPolicyRepository, objectMapper.
+ * Foco funcional: reservas, servicios.
+ */
 @Service
 public class BookingPolicySnapshotService {
 
@@ -25,6 +31,9 @@ public class BookingPolicySnapshotService {
         this.objectMapper = objectMapper;
     }
 
+    /**
+     * Construye for profesional ID a partir de datos internos ya validados.
+     */
     public BookingPolicySnapshot buildForProfessionalId(Long professionalId) {
         BookingPolicy policy = bookingPolicyRepository.findByProfessionalId(professionalId)
             .orElse(null);
@@ -46,6 +55,9 @@ public class BookingPolicySnapshotService {
         ));
     }
 
+    /**
+     * Aplica snapshot sobre el modelo actual manteniendo consistencia.
+     */
     public void applySnapshot(Booking booking, BookingPolicySnapshot snapshot) {
         if (booking == null || snapshot == null) {
             return;
@@ -57,6 +69,9 @@ public class BookingPolicySnapshotService {
         }
     }
 
+    /**
+     * Resuelve for reserva normalizando entradas, defaults y casos borde.
+     */
     public ResolvedBookingPolicy resolveForBooking(Booking booking) {
         if (booking == null) {
             throw new IllegalArgumentException("booking es obligatorio");
@@ -81,6 +96,9 @@ public class BookingPolicySnapshotService {
         return new ResolvedBookingPolicy(liveSnapshot, ResolvedBookingPolicy.PolicySnapshotSource.LIVE_FALLBACK);
     }
 
+    /**
+     * Convierte datos internos al formato respuesta esperado por el consumidor.
+     */
     public BookingPolicySnapshotResponse toResponse(ResolvedBookingPolicy resolvedPolicy) {
         if (resolvedPolicy == null || resolvedPolicy.snapshot() == null) {
             return null;
@@ -88,10 +106,16 @@ public class BookingPolicySnapshotService {
         return toResponse(resolvedPolicy.snapshot(), resolvedPolicy.source().name());
     }
 
+    /**
+     * Convierte datos internos al formato respuesta esperado por el consumidor.
+     */
     public BookingPolicySnapshotResponse toResponse(BookingPolicySnapshot snapshot) {
         return toResponse(snapshot, null);
     }
 
+    /**
+     * Normaliza snapshot para evitar variantes vacias, invalidas o inconsistentes.
+     */
     private BookingPolicySnapshot normalizeSnapshot(BookingPolicySnapshot snapshot) {
         if (snapshot == null) {
             return null;
@@ -130,6 +154,9 @@ public class BookingPolicySnapshotService {
         );
     }
 
+    /**
+     * Convierte datos internos al formato respuesta esperado por el consumidor.
+     */
     private BookingPolicySnapshotResponse toResponse(BookingPolicySnapshot snapshot, String policySource) {
         if (snapshot == null) {
             return null;
@@ -151,6 +178,9 @@ public class BookingPolicySnapshotService {
         );
     }
 
+    /**
+     * Resuelve late cancellation reembolso mode normalizando entradas, defaults y casos borde.
+     */
     private LateCancellationRefundMode resolveLateCancellationRefundMode(BookingPolicy policy) {
         if (policy == null || policy.getLateCancellationRefundMode() == null) {
             return policy != null && Boolean.TRUE.equals(policy.getRetainDepositOnLateCancellation())
@@ -160,6 +190,9 @@ public class BookingPolicySnapshotService {
         return policy.getLateCancellationRefundMode();
     }
 
+    /**
+     * Resuelve late cancellation reembolso value normalizando entradas, defaults y casos borde.
+     */
     private BigDecimal resolveLateCancellationRefundValue(BookingPolicy policy) {
         if (policy == null) {
             return BookingPolicyDefaults.DEFAULT_LATE_CANCELLATION_REFUND_VALUE;
@@ -170,10 +203,16 @@ public class BookingPolicySnapshotService {
         );
     }
 
+    /**
+     * Normaliza reembolso mode para evitar variantes vacias, invalidas o inconsistentes.
+     */
     private LateCancellationRefundMode normalizeRefundMode(LateCancellationRefundMode mode) {
         return mode == null ? BookingPolicyDefaults.DEFAULT_LATE_CANCELLATION_REFUND_MODE : mode;
     }
 
+    /**
+     * Normaliza reembolso value para evitar variantes vacias, invalidas o inconsistentes.
+     */
     private BigDecimal normalizeRefundValue(LateCancellationRefundMode mode, BigDecimal value) {
         if (mode == null) {
             mode = BookingPolicyDefaults.DEFAULT_LATE_CANCELLATION_REFUND_MODE;

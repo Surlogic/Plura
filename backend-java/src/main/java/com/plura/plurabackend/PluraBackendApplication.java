@@ -40,6 +40,9 @@ public class PluraBackendApplication {
 		SpringApplication.run(PluraBackendApplication.class, args);
 	}
 
+    /**
+     * Aplica datasource compatibility sobre el modelo actual manteniendo consistencia.
+     */
 	private static void applyDatasourceCompatibility() {
 		String configuredUrl = firstNonBlank(
 			currentValue("SPRING_DATASOURCE_URL"),
@@ -79,6 +82,10 @@ public class PluraBackendApplication {
 		applyResolvedPropertyIfBlank("SPRING_FLYWAY_DRIVER_CLASS_NAME", datasourceDriverClassName);
 	}
 
+    /**
+     * Carga la seccion dotenv values desde base de datos o datos agregados y la deja lista para la respuesta.
+     * Mantiene la consulta encapsulada para que el resto del codigo no repita filtros ni joins.
+     */
 	private static Map<String, String> loadDotenvValues() {
 		Path cwd = Path.of("").toAbsolutePath().normalize();
 		List<Path> candidates = List.of(
@@ -98,28 +105,43 @@ public class PluraBackendApplication {
 		return values;
 	}
 
+    /**
+     * Aplica dotenv fallback sobre el modelo actual manteniendo consistencia.
+     */
 	private static void applyDotenvFallback(String key, String value) {
 		if (isBlank(currentValue(key)) && !isBlank(value)) {
 			System.setProperty(key, value);
 		}
 	}
 
+    /**
+     * Aplica resolved property sobre el modelo actual manteniendo consistencia.
+     */
 	private static void applyResolvedProperty(String key, String value) {
 		if (!isBlank(value) && !value.equals(currentValue(key))) {
 			System.setProperty(key, value);
 		}
 	}
 
+    /**
+     * Aplica resolved property if blank sobre el modelo actual manteniendo consistencia.
+     */
 	private static void applyResolvedPropertyIfBlank(String key, String value) {
 		if (isBlank(currentValue(key))) {
 			applyResolvedProperty(key, value);
 		}
 	}
 
+    /**
+     * Ejecuta la logica de actual value manteniendola encapsulada en este componente.
+     */
 	private static String currentValue(String key) {
 		return firstNonBlank(System.getProperty(key), System.getenv(key));
 	}
 
+    /**
+     * Normaliza datasource para evitar variantes vacias, invalidas o inconsistentes.
+     */
 	private static ParsedDatasource normalizeDatasource(String rawUrl) {
 		if (isBlank(rawUrl) || rawUrl.startsWith("jdbc:")) {
 			return new ParsedDatasource(rawUrl, null, null, resolveDriverClassName(rawUrl));
@@ -157,6 +179,9 @@ public class PluraBackendApplication {
 		);
 	}
 
+    /**
+     * Resuelve driver class name normalizando entradas, defaults y casos borde.
+     */
 	private static String resolveDriverClassName(String url) {
 		if (isBlank(url)) {
 			return null;
@@ -172,16 +197,25 @@ public class PluraBackendApplication {
 		return null;
 	}
 
+    /**
+     * Decodifica URL component recibido en formato URL o externo.
+     */
 	private static String decodeUrlComponent(String value) {
 		return URLDecoder.decode(value, StandardCharsets.UTF_8);
 	}
 
 	/** Verifica si un string es nulo o vacío. */
+    /**
+     * Evalua is blank y devuelve una decision booleana para el llamador.
+     */
 	private static boolean isBlank(String value) {
 		return value == null || value.isBlank();
 	}
 
 	/** Retorna el primer valor no vacío de la lista, o null si todos son vacíos. */
+    /**
+     * Obtiene el primer valor util de non blank ignorando nulos o blancos.
+     */
 	private static String firstNonBlank(String... values) {
 		for (String value : values) {
 			if (!isBlank(value)) {
@@ -191,6 +225,9 @@ public class PluraBackendApplication {
 		return null;
 	}
 
+    /**
+     * Parsea d datasource y convierte errores de formato en errores controlados.
+     */
 	private record ParsedDatasource(
 		String jdbcUrl,
 		String username,

@@ -12,6 +12,12 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 import org.springframework.web.server.ResponseStatusException;
 
+/**
+ * BookingCommandStateSupport es un componente de dominio del modulo reservas.
+ * Responsabilidad: encapsular comportamiento propio del modulo y mantenerlo fuera de controllers u otras capas.
+ * Colabora con: bookingDateTimeService.
+ * Foco funcional: reservas.
+ */
 @Component
 public class BookingCommandStateSupport {
 
@@ -21,6 +27,10 @@ public class BookingCommandStateSupport {
         this.bookingDateTimeService = bookingDateTimeService;
     }
 
+    /**
+     * Exige allowed action y corta la ejecucion si falta autorizacion o contexto.
+     * Esta separacion hace explicita la regla de seguridad o negocio que protege el flujo.
+     */
     public void requireAllowedAction(boolean allowed, BookingActionsEvaluation evaluation) {
         if (allowed) {
             return;
@@ -33,18 +43,28 @@ public class BookingCommandStateSupport {
         );
     }
 
+    /**
+     * Ejecuta la logica de ensure cliente owns reserva manteniendola encapsulada en este componente.
+     */
     public void ensureClientOwnsBooking(Long clientUserId, Booking booking) {
         if (booking.getUser() == null || !clientUserId.equals(booking.getUser().getId())) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "No autorizado");
         }
     }
 
+    /**
+     * Ejecuta la logica de ensure profesional owns reserva manteniendola encapsulada en este componente.
+     */
     public void ensureProfessionalOwnsBooking(Long professionalId, Booking booking) {
         if (booking.getProfessionalId() == null || !professionalId.equals(booking.getProfessionalId())) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "No autorizado");
         }
     }
 
+    /**
+     * Valida reserva estado transition y lanza un error controlado si no cumple el contrato.
+     * Esta separacion hace explicita la regla de seguridad o negocio que protege el flujo.
+     */
     public void validateBookingStatusTransition(BookingOperationalStatus current, BookingOperationalStatus next) {
         if (current == null || next == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Estado de reserva inválido");
@@ -65,6 +85,9 @@ public class BookingCommandStateSupport {
         }
     }
 
+    /**
+     * Construye affected dates a partir de datos internos ya validados.
+     */
     public Set<LocalDate> buildAffectedDates(LocalDate previousDate, LocalDate nextDate) {
         Set<LocalDate> affectedDates = new LinkedHashSet<>();
         affectedDates.add(previousDate);
@@ -72,6 +95,9 @@ public class BookingCommandStateSupport {
         return affectedDates;
     }
 
+    /**
+     * Resuelve reserva timezone for reschedule normalizando entradas, defaults y casos borde.
+     */
     public String resolveBookingTimezoneForReschedule(
         Booking booking,
         BookingRescheduleRequest request,

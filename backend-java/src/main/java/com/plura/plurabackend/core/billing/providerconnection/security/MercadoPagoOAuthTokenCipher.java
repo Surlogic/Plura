@@ -14,6 +14,12 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
+/**
+ * MercadoPagoOAuthTokenCipher es un componente de dominio del modulo billing / conexion de proveedor / seguridad.
+ * Responsabilidad: encapsular comportamiento propio del modulo y mantenerlo fuera de controllers u otras capas.
+ * Colabora con: billingProperties.
+ * Foco funcional: Mercado Pago, OAuth, autenticacion y sesiones.
+ */
 @Service
 public class MercadoPagoOAuthTokenCipher {
 
@@ -27,6 +33,9 @@ public class MercadoPagoOAuthTokenCipher {
         this.billingProperties = billingProperties;
     }
 
+    /**
+     * Ejecuta la logica de encrypt manteniendola encapsulada en este componente.
+     */
     public String encrypt(String plainText) {
         if (plainText == null || plainText.isBlank()) {
             return null;
@@ -49,6 +58,9 @@ public class MercadoPagoOAuthTokenCipher {
         }
     }
 
+    /**
+     * Ejecuta la logica de decrypt manteniendola encapsulada en este componente.
+     */
     public String decrypt(String cipherText) {
         if (cipherText == null || cipherText.isBlank()) {
             return null;
@@ -74,6 +86,9 @@ public class MercadoPagoOAuthTokenCipher {
         }
     }
 
+    /**
+     * Construye key a partir de datos internos ya validados.
+     */
     private SecretKeySpec buildKey() {
         String keyMaterial = resolveKeyMaterial();
         try {
@@ -88,6 +103,9 @@ public class MercadoPagoOAuthTokenCipher {
         }
     }
 
+    /**
+     * Resuelve key material normalizando entradas, defaults y casos borde.
+     */
     private String resolveKeyMaterial() {
         BillingProperties.MercadoPago.OAuth oauth = billingProperties.getMercadopago().getReservations().getOauth();
         String explicitKey = oauth.getTokenEncryptionKey();

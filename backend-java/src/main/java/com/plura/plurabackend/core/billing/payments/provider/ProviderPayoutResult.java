@@ -2,6 +2,12 @@ package com.plura.plurabackend.core.billing.payments.provider;
 
 import java.math.BigDecimal;
 
+/**
+ * ProviderPayoutResult es un modelo inmutable del modulo billing / pagos.
+ * Responsabilidad: agrupar datos de lectura o respuesta con una estructura clara y sin estado mutable.
+ * Contrato: lo consumen web/mobile, asi que renombrar campos puede romper compatibilidad.
+ * Foco funcional: proveedores externos.
+ */
 public record ProviderPayoutResult(
     String providerPayoutId,
     String status,

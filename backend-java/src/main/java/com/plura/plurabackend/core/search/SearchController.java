@@ -13,6 +13,12 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+/**
+ * SearchController es un controlador REST del modulo busqueda.
+ * Responsabilidad: recibir requests HTTP, validar acceso basico y delegar la operacion al servicio de aplicacion o dominio.
+ * Superficie HTTP: atiende rutas bajo /api/search y deja la logica pesada en servicios.
+ * Foco funcional: busqueda.
+ */
 @RestController
 @RequestMapping("/api/search")
 public class SearchController {
@@ -28,8 +34,14 @@ public class SearchController {
         this.appProductEventTrackingService = appProductEventTrackingService;
     }
 
+    /**
+     * Ejecuta la logica de busqueda manteniendola encapsulada en este componente.
+     */
     @GetMapping
     public SearchResponse search(
+    /**
+     * Resuelve authenticated user id normalizando entradas y defaults del modulo.
+     */
         @RequestParam(required = false) String type,
         @RequestParam(required = false) String query,
         @RequestParam(required = false) String categorySlug,
@@ -100,6 +112,9 @@ public class SearchController {
         }
     }
 
+    /**
+     * Ejecuta la logica de suggest manteniendola encapsulada en este componente.
+     */
     @GetMapping("/suggest")
     public SearchSuggestResponse suggest(
         @RequestParam(required = false) String q,

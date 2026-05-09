@@ -20,6 +20,12 @@ import java.util.List;
 import java.util.Map;
 import org.springframework.stereotype.Service;
 
+/**
+ * BookingActionsEvaluator es un componente de dominio del modulo reservas / acciones.
+ * Responsabilidad: encapsular comportamiento propio del modulo y mantenerlo fuera de controllers u otras capas.
+ * Colabora con: bookingMoneyResolver, bookingDateTimeService.
+ * Foco funcional: reservas.
+ */
 @Service
 public class BookingActionsEvaluator {
 
@@ -34,6 +40,9 @@ public class BookingActionsEvaluator {
         this.bookingDateTimeService = bookingDateTimeService;
     }
 
+    /**
+     * Evalua evaluate y devuelve la decision que usa el flujo llamador.
+     */
     public BookingActionsEvaluation evaluate(
         Booking booking,
         BookingActionActor actor,
@@ -242,6 +251,9 @@ public class BookingActionsEvaluator {
         );
     }
 
+    /**
+     * Construye build a partir de datos internos ya validados.
+     */
     private BookingActionsEvaluation build(
         Booking booking,
         BookingActionActor actor,
@@ -273,6 +285,9 @@ public class BookingActionsEvaluator {
         );
     }
 
+    /**
+     * Resuelve late cancellation reembolso normalizando entradas, defaults y casos borde.
+     */
     private BigDecimal resolveLateCancellationRefund(
         BigDecimal prepaidAmount,
         BookingPolicySnapshot policy

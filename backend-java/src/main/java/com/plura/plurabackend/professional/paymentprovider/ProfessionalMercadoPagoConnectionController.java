@@ -21,6 +21,12 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.util.UriComponentsBuilder;
 
+/**
+ * ProfessionalMercadoPagoConnectionController es un controlador REST del modulo profesionales / proveedor de pago.
+ * Responsabilidad: recibir requests HTTP, validar acceso basico y delegar la operacion al servicio de aplicacion o dominio.
+ * Superficie HTTP: atiende rutas bajo /profesional/payment-providers/mercadopago y deja la logica pesada en servicios.
+ * Foco funcional: profesionales, Mercado Pago.
+ */
 @RestController
 @RequestMapping("/profesional/payment-providers/mercadopago")
 public class ProfessionalMercadoPagoConnectionController {
@@ -52,11 +58,18 @@ public class ProfessionalMercadoPagoConnectionController {
         return connectionService.getMercadoPagoConnection(roleGuard.requireProfessional());
     }
 
+    /**
+     * Ejecuta la logica de inicio o autenticacion manteniendola encapsulada en este componente.
+     */
     @PostMapping("/oauth/start")
     public MercadoPagoOAuthStartResponse startOAuth() {
         return connectionService.startMercadoPagoOAuth(roleGuard.requireProfessional());
     }
 
+    /**
+     * Endpoint GET /oauth/callback: Procesa o autenticacion callback y coordina la respuesta del flujo.
+     * Valida parametros/autorizacion de entrada y delega la logica de negocio al servicio correspondiente.
+     */
     @GetMapping("/oauth/callback")
     public ResponseEntity<Void> handleOAuthCallback(
         @RequestParam(value = "code", required = false) String code,
@@ -107,11 +120,17 @@ public class ProfessionalMercadoPagoConnectionController {
         }
     }
 
+    /**
+     * Ejecuta la logica de disconnect manteniendola encapsulada en este componente.
+     */
     @DeleteMapping("/connection")
     public ProfessionalPaymentProviderConnectionResponse disconnect() {
         return connectionService.disconnectMercadoPagoConnection(roleGuard.requireProfessional());
     }
 
+    /**
+     * Ejecuta la logica de redirect frontend manteniendola encapsulada en este componente.
+     */
     private ResponseEntity<Void> redirectFrontend(String result, String reason) {
         URI redirectUri = UriComponentsBuilder.fromUriString(resolveFrontendRedirectUrl())
             .replaceQuery(null)
@@ -124,6 +143,9 @@ public class ProfessionalMercadoPagoConnectionController {
             .build();
     }
 
+    /**
+     * Resuelve frontend redirect URL normalizando entradas, defaults y casos borde.
+     */
     private String resolveFrontendRedirectUrl() {
         BillingProperties.MercadoPago.OAuth oauth = billingProperties.getMercadopago().getReservations().getOauth();
         String configured = oauth.getFrontendRedirectUrl();
@@ -137,6 +159,9 @@ public class ProfessionalMercadoPagoConnectionController {
         return normalizedPublicWebUrl + "/oauth/mercadopago/callback";
     }
 
+    /**
+     * Resuelve result normalizando entradas, defaults y casos borde.
+     */
     private String resolveResult(String providerError, ResponseStatusException exception) {
         if (providerError != null && providerError.trim().equalsIgnoreCase("access_denied")) {
             return "cancelled";
@@ -144,6 +169,9 @@ public class ProfessionalMercadoPagoConnectionController {
         return "error";
     }
 
+    /**
+     * Resuelve reason normalizando entradas, defaults y casos borde.
+     */
     private String resolveReason(String providerError, ResponseStatusException exception) {
         if (providerError != null && providerError.trim().equalsIgnoreCase("access_denied")) {
             return "access_denied";
@@ -186,6 +214,9 @@ public class ProfessionalMercadoPagoConnectionController {
         return "oauth_failed";
     }
 
+    /**
+     * Ejecuta for logs atrapando errores para que el flujo principal no falle innecesariamente.
+     */
     private String safeForLogs(String value) {
         if (value == null || value.isBlank()) {
             return null;

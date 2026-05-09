@@ -57,6 +57,9 @@ public class OAuthLoginRequest {
         return hasText(token) || hasText(authorizationCode);
     }
 
+    /**
+     * Evalua has text y devuelve una decision booleana para el llamador.
+     */
     private boolean hasText(String value) {
         return value != null && !value.trim().isEmpty();
     }

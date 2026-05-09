@@ -12,6 +12,11 @@ import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 
+/**
+ * Tests de funciones del profesional / planes y limites.
+ * Cubren escenarios de plan guard servicio para documentar el comportamiento esperado y evitar regresiones.
+ * Mantener estos casos alineados con los contratos reales del backend cuando cambie la logica productiva.
+ */
 class PlanGuardServiceTest {
 
     private final CurrentActorService currentActorService = mock(CurrentActorService.class);
@@ -24,6 +29,10 @@ class PlanGuardServiceTest {
         effectiveProfessionalPlanService
     );
 
+    /**
+     * Escenario: bloquea capability cuando current plan does no permitir it.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void blocksCapabilityWhenCurrentPlanDoesNotAllowIt() {
         ProfessionalProfile profile = currentProfile(31L);
@@ -38,6 +47,10 @@ class PlanGuardServiceTest {
         assertEquals("Tu plan no permite pagos online", exception.getReason());
     }
 
+    /**
+     * Escenario: permite at least comparison for higher plan.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void allowsAtLeastComparisonForHigherPlan() {
         ProfessionalProfile profile = currentProfile(32L);
@@ -46,6 +59,10 @@ class PlanGuardServiceTest {
         assertDoesNotThrow(() -> service.requireAtLeast(ProfessionalPlanCode.PROFESIONAL));
     }
 
+    /**
+     * Escenario: bloquea cuando limit is exceeded.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void blocksWhenLimitIsExceeded() {
         ProfessionalProfile profile = currentProfile(33L);
@@ -60,6 +77,10 @@ class PlanGuardServiceTest {
         assertEquals("Tu plan permite hasta 3 fotos del negocio", exception.getReason());
     }
 
+    /**
+     * Escenario: keeps daily agenda range blocked for basic.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void keepsDailyScheduleRangeBlockedForBasic() {
         ProfessionalProfile profile = currentProfile(34L);
@@ -74,6 +95,10 @@ class PlanGuardServiceTest {
         assertEquals("Tu plan actual solo permite consultar agenda diaria", exception.getReason());
     }
 
+    /**
+     * Escenario: permite weekly agenda range for profesional plan.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void allowsWeeklyScheduleRangeForProfesionalPlan() {
         ProfessionalProfile profile = currentProfile(35L);

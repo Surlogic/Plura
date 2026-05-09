@@ -9,6 +9,12 @@ import org.springframework.cache.caffeine.CaffeineCacheManager;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
+/**
+ * CacheConfig es un configuracion Spring del modulo configuracion.
+ * Responsabilidad: declarar beans, filtros o parametros transversales que necesita el runtime.
+ * Mantiene separada esta responsabilidad para que el resto del backend use una API clara.
+ * Foco funcional: cache.
+ */
 @Configuration
 @EnableCaching
 public class CacheConfig {
@@ -19,6 +25,9 @@ public class CacheConfig {
     @Value("${APP_CACHE_MAX_SIZE:1000}")
     private long cacheMaximumSize;
 
+    /**
+     * Ejecuta la logica de cache manager manteniendola encapsulada en este componente.
+     */
     @Bean
     public CacheManager cacheManager() {
         CaffeineCacheManager manager = new CaffeineCacheManager("homeData", "activeCategories");

@@ -8,6 +8,12 @@ import com.plura.plurabackend.core.notification.model.NotificationEvent;
 import java.util.Map;
 import org.springframework.stereotype.Component;
 
+/**
+ * NotificationViewAssembler es un componente de dominio del modulo notificaciones / consultas.
+ * Responsabilidad: encapsular comportamiento propio del modulo y mantenerlo fuera de controllers u otras capas.
+ * Colabora con: objectMapper.
+ * Foco funcional: notificaciones.
+ */
 @Component
 class NotificationViewAssembler {
 
@@ -88,6 +94,9 @@ class NotificationViewAssembler {
         );
     }
 
+    /**
+     * Lee payload desde la fuente persistida y aplica defaults si faltan datos.
+     */
     private Map<String, Object> readPayload(NotificationEvent event) {
         if (event == null || event.getPayloadJson() == null || event.getPayloadJson().isBlank()) {
             return Map.of();
@@ -99,6 +108,9 @@ class NotificationViewAssembler {
         }
     }
 
+    /**
+     * Resuelve reserva ID normalizando entradas, defaults y casos borde.
+     */
     private Long resolveBookingId(NotificationEvent event, Map<String, Object> payload) {
         if (event != null && event.getBookingReferenceId() != null) {
             return event.getBookingReferenceId();
@@ -112,6 +124,9 @@ class NotificationViewAssembler {
         return parseLong(payload.get("bookingId"));
     }
 
+    /**
+     * Parsea long y convierte errores de formato en errores controlados.
+     */
     private Long parseLong(Object value) {
         if (value == null) {
             return null;

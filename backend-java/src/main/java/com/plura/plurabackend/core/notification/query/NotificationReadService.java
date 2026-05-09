@@ -9,6 +9,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+/**
+ * NotificationReadService es un servicio de negocio del modulo notificaciones / consultas.
+ * Responsabilidad: coordinar reglas de negocio, validaciones, persistencia e integraciones del caso de uso.
+ * Colabora con: appNotificationRepository, notificationViewAssembler.
+ * Foco funcional: notificaciones, servicios.
+ */
 @Service
 public class NotificationReadService {
 
@@ -32,6 +38,9 @@ public class NotificationReadService {
         return notificationViewAssembler.toDetail(loadOwnedNotification(recipientType, recipientId, notificationId));
     }
 
+    /**
+     * Marca como leida y actualiza los indicadores relacionados.
+     */
     @Transactional
     public void markAsRead(
         NotificationRecipientType recipientType,
@@ -53,11 +62,18 @@ public class NotificationReadService {
         }
     }
 
+    /**
+     * Marca todos como leida y actualiza los indicadores relacionados.
+     */
     @Transactional
     public int markAllAsRead(NotificationRecipientType recipientType, String recipientId) {
         return appNotificationRepository.markAllAsRead(recipientType, recipientId.trim(), LocalDateTime.now());
     }
 
+    /**
+     * Carga la seccion owned notificacion desde base de datos o datos agregados y la deja lista para la respuesta.
+     * Mantiene la consulta encapsulada para que el resto del codigo no repita filtros ni joins.
+     */
     private AppNotification loadOwnedNotification(
         NotificationRecipientType recipientType,
         String recipientId,

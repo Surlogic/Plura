@@ -28,6 +28,12 @@ import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 import lombok.ToString;
 
+/**
+ * ProfessionalProfile es un entidad JPA del modulo profesionales / modelo.
+ * Responsabilidad: representar una tabla del dominio, sus columnas y los defaults necesarios antes de persistir.
+ * Persistencia: sus campos reflejan columnas reales; cambiar nombres o tipos puede requerir migracion Flyway.
+ * Foco funcional: profesionales, perfiles.
+ */
 @Data
 @NoArgsConstructor
 @AllArgsConstructor

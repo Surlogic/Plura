@@ -12,6 +12,12 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+/**
+ * InternalProviderOperationOpsService es un servicio de negocio del modulo billing / operaciones de proveedor.
+ * Responsabilidad: coordinar reglas de negocio, validaciones, persistencia e integraciones del caso de uso.
+ * Colabora con: providerOperationRepository.
+ * Foco funcional: operaciones asincronicas, proveedores externos, paneles internos, servicios.
+ */
 @Service
 public class InternalProviderOperationOpsService {
 
@@ -96,6 +102,9 @@ public class InternalProviderOperationOpsService {
         );
     }
 
+    /**
+     * Convierte datos internos al formato issue esperado por el consumidor.
+     */
     private InternalProviderOperationIssueResponse toIssue(ProviderOperation operation) {
         return new InternalProviderOperationIssueResponse(
             operation.getId(),

@@ -23,6 +23,12 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 import org.springframework.web.server.ResponseStatusException;
 
+/**
+ * GoogleTokenVerifier es un componente de dominio del modulo autenticacion / OAuth / proveedores.
+ * Responsabilidad: encapsular comportamiento propio del modulo y mantenerlo fuera de controllers u otras capas.
+ * Colabora con: googleClientId, googleClientSecret, acceptedAudiences, allowedRedirectUris, entre otros.
+ * Foco funcional: la responsabilidad indicada por su paquete y nombre.
+ */
 @Component
 public class GoogleTokenVerifier {
 
@@ -44,6 +50,9 @@ public class GoogleTokenVerifier {
     private final HttpClient httpClient;
 
     public GoogleTokenVerifier(
+    /**
+     * Verifica el token externo del proveedor y devuelve la identidad validada.
+     */
         @Value("${oauth.google.client-id:}") String googleClientId,
         @Value("${oauth.google.android-client-id:}") String googleAndroidClientId,
         @Value("${oauth.google.ios-client-id:}") String googleIosClientId,
@@ -90,6 +99,9 @@ public class GoogleTokenVerifier {
         return verifyAccessToken(token);
     }
 
+    /**
+     * Ejecuta la logica de verify authorization code manteniendola encapsulada en este componente.
+     */
     public OAuthUserInfo verifyAuthorizationCode(
         String authorizationCode,
         String codeVerifier,
@@ -111,6 +123,9 @@ public class GoogleTokenVerifier {
         return verify(exchangedToken);
     }
 
+    /**
+     * Extrae from ID token desde una URL, payload o referencia persistida.
+     */
     private OAuthUserInfo extractFromIdToken(GoogleIdToken verified) {
         GoogleIdToken.Payload payload = verified.getPayload();
         String email = normalize(payload.getEmail());
@@ -136,6 +151,9 @@ public class GoogleTokenVerifier {
         );
     }
 
+    /**
+     * Ejecuta la logica de verify acceso token manteniendola encapsulada en este componente.
+     */
     private OAuthUserInfo verifyAccessToken(String accessToken) {
         verifyAccessTokenMetadata(accessToken);
 
@@ -187,6 +205,9 @@ public class GoogleTokenVerifier {
         );
     }
 
+    /**
+     * Ejecuta la logica de verify acceso token metadata manteniendola encapsulada en este componente.
+     */
     private void verifyAccessTokenMetadata(String accessToken) {
         HttpRequest request = HttpRequest.newBuilder()
             .uri(URI.create(GOOGLE_TOKENINFO_URL + "?access_token=" + encodeForm(accessToken)))
@@ -220,6 +241,9 @@ public class GoogleTokenVerifier {
         }
     }
 
+    /**
+     * Ejecuta la logica de exchange authorization code manteniendola encapsulada en este componente.
+     */
     private String exchangeAuthorizationCode(
         String authorizationCode,
         String codeVerifier,
@@ -273,6 +297,9 @@ public class GoogleTokenVerifier {
         throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Google no devolvió token en el canje OAuth");
     }
 
+    /**
+     * Extrae google error description desde una URL, payload o referencia persistida.
+     */
     private String extractGoogleErrorDescription(String body) {
         if (body == null || body.isBlank()) return null;
         try {
@@ -291,6 +318,9 @@ public class GoogleTokenVerifier {
         }
     }
 
+    /**
+     * Ejecuta la logica de encode form manteniendola encapsulada en este componente.
+     */
     private String encodeForm(String value) {
         try {
             return java.net.URLEncoder.encode(value, java.nio.charset.StandardCharsets.UTF_8);
@@ -299,6 +329,10 @@ public class GoogleTokenVerifier {
         }
     }
 
+    /**
+     * Exige token verification configured y corta la ejecucion si falta autorizacion o contexto.
+     * Esta separacion hace explicita la regla de seguridad o negocio que protege el flujo.
+     */
     private void requireTokenVerificationConfigured() {
         if (acceptedAudiences.isEmpty()) {
             throw new ResponseStatusException(
@@ -308,6 +342,10 @@ public class GoogleTokenVerifier {
         }
     }
 
+    /**
+     * Exige authorization code configured y corta la ejecucion si falta autorizacion o contexto.
+     * Esta separacion hace explicita la regla de seguridad o negocio que protege el flujo.
+     */
     private void requireAuthorizationCodeConfigured() {
         if (googleClientId.isBlank()) {
             throw new ResponseStatusException(
@@ -317,6 +355,10 @@ public class GoogleTokenVerifier {
         }
     }
 
+    /**
+     * Valida redirect uri y lanza un error controlado si no cumple el contrato.
+     * Esta separacion hace explicita la regla de seguridad o negocio que protege el flujo.
+     */
     private void validateRedirectUri(String redirectUri) {
         if (allowedRedirectUris.isEmpty()) {
             throw new ResponseStatusException(
@@ -340,6 +382,9 @@ public class GoogleTokenVerifier {
         }
     }
 
+    /**
+     * Parsea allowed redirect uris y convierte errores de formato en errores controlados.
+     */
     private Set<String> parseAllowedRedirectUris(String rawAllowedRedirectUris) {
         if (rawAllowedRedirectUris == null || rawAllowedRedirectUris.isBlank()) {
             return Set.of();
@@ -354,6 +399,9 @@ public class GoogleTokenVerifier {
         return Set.copyOf(parsed);
     }
 
+    /**
+     * Parsea accepted audiences y convierte errores de formato en errores controlados.
+     */
     private Set<String> parseAcceptedAudiences(String... clientIds) {
         Set<String> parsed = new HashSet<>();
         for (String clientId : clientIds) {
@@ -365,12 +413,18 @@ public class GoogleTokenVerifier {
         return Set.copyOf(parsed);
     }
 
+    /**
+     * Evalua is allowed audience y devuelve una decision booleana para el llamador.
+     */
     private boolean isAllowedAudience(String aud, String issuedTo, String azp) {
         return acceptedAudiences.contains(aud)
             || acceptedAudiences.contains(issuedTo)
             || acceptedAudiences.contains(azp);
     }
 
+    /**
+     * Normaliza normalizar para evitar variantes vacias, invalidas o inconsistentes.
+     */
     private String normalize(String value) {
         if (value == null) {
             return null;
@@ -379,6 +433,9 @@ public class GoogleTokenVerifier {
         return trimmed.isBlank() ? null : trimmed;
     }
 
+    /**
+     * Ejecuta la logica de fallback nombre manteniendola encapsulada en este componente.
+     */
     private String fallbackName(String email) {
         int atIndex = email.indexOf('@');
         if (atIndex <= 0) {

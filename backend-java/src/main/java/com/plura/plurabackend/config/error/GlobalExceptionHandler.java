@@ -18,11 +18,20 @@ import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.server.ResponseStatusException;
 
+/**
+ * GlobalExceptionHandler es un componente de dominio del modulo configuracion / errores.
+ * Responsabilidad: encapsular comportamiento propio del modulo y mantenerlo fuera de controllers u otras capas.
+ * Mantiene separada esta responsabilidad para que el resto del backend use una API clara.
+ * Foco funcional: la responsabilidad indicada por su paquete y nombre.
+ */
 @ControllerAdvice
 public class GlobalExceptionHandler {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
+    /**
+     * Procesa method argument not valido y coordina la respuesta del flujo.
+     */
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ApiErrorResponse> handleMethodArgumentNotValid(
         MethodArgumentNotValidException exception,
@@ -37,6 +46,9 @@ public class GlobalExceptionHandler {
         return buildErrorResponse(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", message, request);
     }
 
+    /**
+     * Procesa constraint violation y coordina la respuesta del flujo.
+     */
     @ExceptionHandler(ConstraintViolationException.class)
     public ResponseEntity<ApiErrorResponse> handleConstraintViolation(
         ConstraintViolationException exception,
@@ -51,6 +63,9 @@ public class GlobalExceptionHandler {
         return buildErrorResponse(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", message, request);
     }
 
+    /**
+     * Procesa illegal argument y coordina la respuesta del flujo.
+     */
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<ApiErrorResponse> handleIllegalArgument(
         IllegalArgumentException exception,
@@ -62,6 +77,9 @@ public class GlobalExceptionHandler {
         return buildErrorResponse(HttpStatus.BAD_REQUEST, "ILLEGAL_ARGUMENT", message, request);
     }
 
+    /**
+     * Procesa entity not found y coordina la respuesta del flujo.
+     */
     @ExceptionHandler(EntityNotFoundException.class)
     public ResponseEntity<ApiErrorResponse> handleEntityNotFound(
         EntityNotFoundException exception,
@@ -73,6 +91,9 @@ public class GlobalExceptionHandler {
         return buildErrorResponse(HttpStatus.NOT_FOUND, "ENTITY_NOT_FOUND", message, request);
     }
 
+    /**
+     * Procesa o autenticacion proveedor mismatch y coordina la respuesta del flujo.
+     */
     @ExceptionHandler(OAuthProviderMismatchException.class)
     public ResponseEntity<ApiErrorResponse> handleOAuthProviderMismatch(
         OAuthProviderMismatchException exception,
@@ -84,6 +105,9 @@ public class GlobalExceptionHandler {
         return buildErrorResponse(HttpStatus.CONFLICT, "OAUTH_PROVIDER_MISMATCH", message, request);
     }
 
+    /**
+     * Procesa apple email required first login y coordina la respuesta del flujo.
+     */
     @ExceptionHandler(AppleEmailRequiredFirstLoginException.class)
     public ResponseEntity<ApiErrorResponse> handleAppleEmailRequiredFirstLogin(
         AppleEmailRequiredFirstLoginException exception,
@@ -95,6 +119,9 @@ public class GlobalExceptionHandler {
         return buildErrorResponse(HttpStatus.BAD_REQUEST, "APPLE_EMAIL_REQUIRED_FIRST_LOGIN", message, request);
     }
 
+    /**
+     * Procesa autenticacion api exception y coordina la respuesta del flujo.
+     */
     @ExceptionHandler(AuthApiException.class)
     public ResponseEntity<ApiErrorResponse> handleAuthApiException(
         AuthApiException exception,
@@ -103,6 +130,9 @@ public class GlobalExceptionHandler {
         return buildErrorResponse(exception.getStatus(), exception.getErrorCode(), exception.getMessage(), request);
     }
 
+    /**
+     * Procesa respuesta estado y coordina la respuesta del flujo.
+     */
     @ExceptionHandler(ResponseStatusException.class)
     public ResponseEntity<ApiErrorResponse> handleResponseStatus(
         ResponseStatusException exception,
@@ -120,6 +150,9 @@ public class GlobalExceptionHandler {
         return buildErrorResponse(status, error, message, request);
     }
 
+    /**
+     * Procesa unexpected exception y coordina la respuesta del flujo.
+     */
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiErrorResponse> handleUnexpectedException(
         Exception exception,
@@ -134,12 +167,18 @@ public class GlobalExceptionHandler {
         );
     }
 
+    /**
+     * Ejecuta la logica de format field error manteniendola encapsulada en este componente.
+     */
     private String formatFieldError(FieldError fieldError) {
         String field = fieldError.getField() == null ? "field" : fieldError.getField();
         String message = fieldError.getDefaultMessage() == null ? "invalid value" : fieldError.getDefaultMessage();
         return field + ": " + message;
     }
 
+    /**
+     * Construye error respuesta a partir de datos internos ya validados.
+     */
     private ResponseEntity<ApiErrorResponse> buildErrorResponse(
         HttpStatus status,
         String error,
@@ -156,6 +195,10 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(status).body(response);
     }
 
+    /**
+     * Bloque de datos api error response dentro de la respuesta principal.
+     * Agrupa metricas relacionadas para que el frontend no tenga que reconstruirlas.
+     */
     public record ApiErrorResponse(
         String timestamp,
         int status,

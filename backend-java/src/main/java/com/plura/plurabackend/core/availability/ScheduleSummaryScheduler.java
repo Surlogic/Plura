@@ -5,6 +5,12 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
+/**
+ * ScheduleSummaryScheduler es un scheduler del modulo disponibilidad.
+ * Responsabilidad: ejecutar tareas programadas para mantener datos derivados o procesos periodicos.
+ * Colabora con: scheduleSummaryService, distributedLockService, summaryEnabled.
+ * Foco funcional: agenda.
+ */
 @Component
 public class ScheduleSummaryScheduler {
 
@@ -24,6 +30,9 @@ public class ScheduleSummaryScheduler {
         this.summaryEnabled = summaryEnabled;
     }
 
+    /**
+     * Reconstruye incremental a partir de la fuente de verdad actual.
+     */
     @Scheduled(cron = "${app.availability.summary-cron:0 */30 * * * *}")
     public void rebuildIncremental() {
         if (!summaryEnabled) {

@@ -5,6 +5,12 @@ import java.util.Map;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 
+/**
+ * InternalReviewAnalyticsResponse es un DTO de respuesta del modulo resenas / operaciones internas / contratos DTO.
+ * Responsabilidad: definir el contrato que la API devuelve al frontend u otro consumidor.
+ * Contrato: lo consumen web/mobile, asi que renombrar campos puede romper compatibilidad.
+ * Foco funcional: analytics, paneles internos, resenas.
+ */
 @Data
 @AllArgsConstructor
 public class InternalReviewAnalyticsResponse {

@@ -27,6 +27,13 @@ import lombok.NoArgsConstructor;
         @Index(name = "idx_email_dispatch_status_due", columnList = "status, next_attempt_at, lease_until")
     }
 )
+
+/**
+ * EmailDispatch es un componente de dominio del modulo notificaciones / modelo.
+ * Responsabilidad: encapsular comportamiento propio del modulo y mantenerlo fuera de controllers u otras capas.
+ * Mantiene separada esta responsabilidad para que el resto del backend use una API clara.
+ * Foco funcional: email transaccional.
+ */
 public class EmailDispatch {
 
     @Id

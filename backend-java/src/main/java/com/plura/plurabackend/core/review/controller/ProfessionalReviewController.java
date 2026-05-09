@@ -19,6 +19,12 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+/**
+ * ProfessionalReviewController es un controlador REST del modulo resenas / controladores.
+ * Responsabilidad: recibir requests HTTP, validar acceso basico y delegar la operacion al servicio de aplicacion o dominio.
+ * Superficie HTTP: atiende rutas bajo /profesional/reviews y deja la logica pesada en servicios.
+ * Foco funcional: profesionales, resenas.
+ */
 @RestController
 @RequestMapping("/profesional/reviews")
 public class ProfessionalReviewController {
@@ -34,6 +40,9 @@ public class ProfessionalReviewController {
         this.currentActorService = currentActorService;
     }
 
+    /**
+     * Devuelve el listado de resenas aplicando permisos y filtros del caso de uso.
+     */
     @GetMapping
     public Page<BookingReviewResponse> listReviews(
         @RequestParam(defaultValue = "0") int page,
@@ -44,6 +53,9 @@ public class ProfessionalReviewController {
         return bookingReviewService.listProfessionalReviews(professionalUserId, PageRequest.of(page, safeSize));
     }
 
+    /**
+     * Ejecuta la logica de hide text manteniendola encapsulada en este componente.
+     */
     @PatchMapping("/{reviewId}/hide-text")
     public ResponseEntity<Void> hideText(@PathVariable Long reviewId) {
         Long professionalUserId = currentActorService.currentProfessionalUserId();
@@ -51,6 +63,9 @@ public class ProfessionalReviewController {
         return ResponseEntity.noContent().build();
     }
 
+    /**
+     * Ejecuta la logica de show text manteniendola encapsulada en este componente.
+     */
     @PatchMapping("/{reviewId}/show-text")
     public ResponseEntity<Void> showText(@PathVariable Long reviewId) {
         Long professionalUserId = currentActorService.currentProfessionalUserId();
@@ -58,6 +73,9 @@ public class ProfessionalReviewController {
         return ResponseEntity.noContent().build();
     }
 
+    /**
+     * Ejecuta la logica de report resena manteniendola encapsulada en este componente.
+     */
     @PostMapping("/{reviewId}/report")
     public ResponseEntity<BookingReviewReportResponse> reportReview(
         @PathVariable Long reviewId,

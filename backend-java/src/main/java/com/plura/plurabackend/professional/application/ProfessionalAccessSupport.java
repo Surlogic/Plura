@@ -11,6 +11,12 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 import org.springframework.web.server.ResponseStatusException;
 
+/**
+ * ProfessionalAccessSupport es un componente de dominio del modulo profesionales / aplicacion.
+ * Responsabilidad: encapsular comportamiento propio del modulo y mantenerlo fuera de controllers u otras capas.
+ * Colabora con: professionalProfileRepository, userRepository.
+ * Foco funcional: profesionales.
+ */
 @Component
 public class ProfessionalAccessSupport {
 
@@ -25,6 +31,10 @@ public class ProfessionalAccessSupport {
         this.userRepository = userRepository;
     }
 
+    /**
+     * Carga la seccion profesional by usuario ID desde base de datos o datos agregados y la deja lista para la respuesta.
+     * Mantiene la consulta encapsulada para que el resto del codigo no repita filtros ni joins.
+     */
     public ProfessionalProfile loadProfessionalByUserId(String rawUserId) {
         Long userId = parseUserId(rawUserId);
         ProfessionalProfile profile = professionalProfileRepository.findByUser_Id(userId)
@@ -35,6 +45,10 @@ public class ProfessionalAccessSupport {
         return profile;
     }
 
+    /**
+     * Carga la seccion cliente by usuario ID desde base de datos o datos agregados y la deja lista para la respuesta.
+     * Mantiene la consulta encapsulada para que el resto del codigo no repita filtros ni joins.
+     */
     public User loadClientByUserId(String rawUserId) {
         Long userId = parseUserId(rawUserId);
         User user = userRepository.findByIdAndDeletedAtIsNull(userId)
@@ -45,12 +59,19 @@ public class ProfessionalAccessSupport {
         return user;
     }
 
+    /**
+     * Carga la seccion active usuario desde base de datos o datos agregados y la deja lista para la respuesta.
+     * Mantiene la consulta encapsulada para que el resto del codigo no repita filtros ni joins.
+     */
     public User loadActiveUser(String rawUserId, String notFoundMessage) {
         Long userId = parseUserId(rawUserId);
         return userRepository.findByIdAndDeletedAtIsNull(userId)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, notFoundMessage));
     }
 
+    /**
+     * Parsea usuario ID y convierte errores de formato en errores controlados.
+     */
     public Long parseUserId(String rawUserId) {
         try {
             return Long.valueOf(rawUserId);
@@ -59,6 +80,9 @@ public class ProfessionalAccessSupport {
         }
     }
 
+    /**
+     * Ejecuta la logica de ensure slug manteniendola encapsulada en este componente.
+     */
     public void ensureSlug(ProfessionalProfile profile) {
         if (profile.getSlug() != null && !profile.getSlug().isBlank()) {
             return;
@@ -68,6 +92,9 @@ public class ProfessionalAccessSupport {
         profile.setSlug(slug);
     }
 
+    /**
+     * Ejecuta la logica de ensure publico profesional is activos manteniendola encapsulada en este componente.
+     */
     public void ensurePublicProfessionalIsActive(ProfessionalProfile profile) {
         if (!Boolean.FALSE.equals(profile.getActive())) {
             return;
@@ -75,6 +102,9 @@ public class ProfessionalAccessSupport {
         throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Profesional no encontrado");
     }
 
+    /**
+     * Ejecuta la logica de ensure profesional reservable manteniendola encapsulada en este componente.
+     */
     public void ensureProfessionalReservable(ProfessionalProfile profile) {
         if (!Boolean.FALSE.equals(profile.getActive())) {
             return;
@@ -82,6 +112,9 @@ public class ProfessionalAccessSupport {
         throw new ResponseStatusException(HttpStatus.CONFLICT, "El profesional está inactivo.");
     }
 
+    /**
+     * Ejecuta la logica de ensure servicio reservable manteniendola encapsulada en este componente.
+     */
     public void ensureServiceReservable(ProfesionalService service) {
         if (!Boolean.FALSE.equals(service.getActive())) {
             return;

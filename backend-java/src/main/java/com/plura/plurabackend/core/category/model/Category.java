@@ -15,6 +15,12 @@ import java.util.UUID;
 import lombok.Getter;
 import lombok.Setter;
 
+/**
+ * Category es un entidad JPA del modulo categorias / modelo.
+ * Responsabilidad: representar una tabla del dominio, sus columnas y los defaults necesarios antes de persistir.
+ * Persistencia: sus campos reflejan columnas reales; cambiar nombres o tipos puede requerir migracion Flyway.
+ * Foco funcional: categorias.
+ */
 @Getter
 @Setter
 @Entity

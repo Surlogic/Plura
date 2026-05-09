@@ -23,6 +23,12 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 import org.springframework.web.server.ResponseStatusException;
 
+/**
+ * ProfileGeocodingSupport es un componente de dominio del modulo profesionales / aplicacion.
+ * Responsabilidad: encapsular comportamiento propio del modulo y mantenerlo fuera de controllers u otras capas.
+ * Colabora con: professionalProfileRepository, objectMapper, geocodingExecutor, mapboxToken.
+ * Foco funcional: perfiles, geolocalizacion.
+ */
 @Component
 public class ProfileGeocodingSupport {
 
@@ -81,10 +87,16 @@ public class ProfileGeocodingSupport {
         return profile;
     }
 
+    /**
+     * Evalua has any structured location input y devuelve una decision booleana para el llamador.
+     */
     public boolean hasAnyStructuredLocationInput(ProfesionalBusinessProfileUpdateRequest request) {
         return request.getCountry() != null || request.getCity() != null || request.getFullAddress() != null;
     }
 
+    /**
+     * Normaliza location part para evitar variantes vacias, invalidas o inconsistentes.
+     */
     public String normalizeLocationPart(String value) {
         if (value == null) {
             return null;
@@ -93,10 +105,17 @@ public class ProfileGeocodingSupport {
         return normalized.isBlank() ? null : normalized;
     }
 
+    /**
+     * Ejecuta la logica de compose location manteniendola encapsulada en este componente.
+     */
     public String composeLocation(String fullAddress, String city, String country) {
         return String.join(", ", fullAddress.trim(), city.trim(), country.trim());
     }
 
+    /**
+     * Valida coordinates pair y lanza un error controlado si no cumple el contrato.
+     * Esta separacion hace explicita la regla de seguridad o negocio que protege el flujo.
+     */
     public void validateCoordinatesPair(Double latitude, Double longitude) {
         if ((latitude == null) == (longitude == null)) {
             return;
@@ -104,6 +123,9 @@ public class ProfileGeocodingSupport {
         throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "latitude y longitude deben enviarse juntas");
     }
 
+    /**
+     * Normaliza latitude para evitar variantes vacias, invalidas o inconsistentes.
+     */
     public Double normalizeLatitude(Double rawLatitude) {
         if (rawLatitude == null) {
             return null;
@@ -114,6 +136,9 @@ public class ProfileGeocodingSupport {
         return rawLatitude;
     }
 
+    /**
+     * Normaliza longitude para evitar variantes vacias, invalidas o inconsistentes.
+     */
     public Double normalizeLongitude(Double rawLongitude) {
         if (rawLongitude == null) {
             return null;
@@ -124,6 +149,9 @@ public class ProfileGeocodingSupport {
         return rawLongitude;
     }
 
+    /**
+     * Ejecuta la logica de geocode location manteniendola encapsulada en este componente.
+     */
     private Coordinates geocodeLocation(String rawLocation) {
         try {
             String encodedLocation = URLEncoder.encode(rawLocation.trim(), StandardCharsets.UTF_8);
@@ -173,6 +201,9 @@ public class ProfileGeocodingSupport {
         }
     }
 
+    /**
+     * Convierte datos internos al formato double esperado por el consumidor.
+     */
     private Double toDouble(Object value) {
         if (value instanceof Number number) {
             double parsed = number.doubleValue();
@@ -189,5 +220,9 @@ public class ProfileGeocodingSupport {
         return null;
     }
 
+    /**
+     * Bloque de datos coordinates usado internamente por esta clase.
+     * Agrupa valores relacionados para que el calculo principal sea mas legible.
+     */
     private record Coordinates(Double latitude, Double longitude) {}
 }

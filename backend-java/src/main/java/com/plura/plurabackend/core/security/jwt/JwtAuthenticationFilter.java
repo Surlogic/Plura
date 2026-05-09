@@ -30,6 +30,12 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
+/**
+ * JwtAuthenticationFilter es un filtro HTTP del modulo seguridad.
+ * Responsabilidad: aplicar una regla transversal sobre cada request antes de llegar a los controllers.
+ * Colabora con: verifier, userRepository, sessionService, authAuditService, entre otros.
+ * Foco funcional: autenticacion y sesiones, JWT.
+ */
 @Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
@@ -65,6 +71,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         this.allowLegacyJwt = allowLegacyJwt;
     }
 
+    /**
+     * Aplica el filtro al request actual antes de continuar la cadena HTTP.
+     */
     @Override
     protected void doFilterInternal(
         HttpServletRequest request,
@@ -185,6 +194,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         }
     }
 
+    /**
+     * Carga la seccion active usuario desde base de datos o datos agregados y la deja lista para la respuesta.
+     * Mantiene la consulta encapsulada para que el resto del codigo no repita filtros ni joins.
+     */
     private User loadActiveUser(
         String rawUserId,
         HttpServletResponse response,
@@ -216,6 +229,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         return user;
     }
 
+    /**
+     * Evalua is rol consistent y devuelve una decision booleana para el llamador.
+     */
     private boolean isRoleConsistent(String tokenRole, UserRole persistedRole) {
         if (tokenRole == null || tokenRole.isBlank() || persistedRole == null) {
             return false;
@@ -223,6 +239,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         return persistedRole.name().equals(tokenRole.trim());
     }
 
+    /**
+     * Evalua is sesion version consistent y devuelve una decision booleana para el llamador.
+     */
     private boolean isSessionVersionConsistent(Integer tokenSessionVersion, Integer persistedSessionVersion) {
         if (tokenSessionVersion == null || persistedSessionVersion == null) {
             return false;
@@ -230,10 +249,16 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         return persistedSessionVersion.equals(tokenSessionVersion);
     }
 
+    /**
+     * Evalua is legacy token y devuelve una decision booleana para el llamador.
+     */
     private boolean isLegacyToken(String sessionId, Integer sessionVersion) {
         return sessionId == null || sessionId.isBlank() || sessionVersion == null;
     }
 
+    /**
+     * Parsea contexto y convierte errores de formato en errores controlados.
+     */
     private AuthContextType parseContext(String rawContext) {
         if (rawContext == null || rawContext.isBlank()) {
             return null;
@@ -245,6 +270,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         }
     }
 
+    /**
+     * Normaliza string claim para evitar variantes vacias, invalidas o inconsistentes.
+     */
     private String normalizeStringClaim(String value) {
         if (value == null) {
             return null;
@@ -253,6 +281,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         return trimmed.isBlank() ? null : trimmed;
     }
 
+    /**
+     * Ejecuta la logica de reject legacy token manteniendola encapsulada en este componente.
+     */
     private void rejectLegacyToken(
         User user,
         HttpServletRequest request,
@@ -276,6 +307,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Token legacy no admitido");
     }
 
+    /**
+     * Carga la seccion valido sesion desde base de datos o datos agregados y la deja lista para la respuesta.
+     * Mantiene la consulta encapsulada para que el resto del codigo no repita filtros ni joins.
+     */
     private AuthSession loadValidSession(
         String sessionId,
         User user,
@@ -313,6 +348,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         return session;
     }
 
+    /**
+     * Evalua is publico route y devuelve una decision booleana para el llamador.
+     */
     private boolean isPublicRoute(HttpServletRequest request) {
         if (request != null && "OPTIONS".equalsIgnoreCase(request.getMethod())) {
             return true;
@@ -350,6 +388,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             || path.equals("/auth/logout");
     }
 
+    /**
+     * Extrae token from cookie desde una URL, payload o referencia persistida.
+     */
     private String extractTokenFromCookie(HttpServletRequest request) {
         Cookie[] cookies = request.getCookies();
         if (cookies == null || cookies.length == 0) {
@@ -370,6 +411,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         return null;
     }
 
+    /**
+     * Extrae cliente ip desde una URL, payload o referencia persistida.
+     */
     private String extractClientIp(HttpServletRequest request) {
         if (request == null) {
             return null;

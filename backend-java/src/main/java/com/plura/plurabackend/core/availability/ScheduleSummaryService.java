@@ -27,6 +27,12 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+/**
+ * ScheduleSummaryService es un servicio de negocio del modulo disponibilidad.
+ * Responsabilidad: coordinar reglas de negocio, validaciones, persistencia e integraciones del caso de uso.
+ * Colabora con: availableSlotRepository, professionalAvailabilityGateway, sqsJobQueueService, objectMapper, entre otros.
+ * Foco funcional: agenda, servicios.
+ */
 @Service
 public class ScheduleSummaryService {
 
@@ -72,10 +78,16 @@ public class ScheduleSummaryService {
             .register(meterRegistry);
     }
 
+    /**
+     * Evalua is resumen enabled y devuelve una decision booleana para el llamador.
+     */
     public boolean isSummaryEnabled() {
         return summaryEnabled;
     }
 
+    /**
+     * Solicita rebuild sin bloquear el flujo principal cuando puede ejecutarse aparte.
+     */
     public void requestRebuild(Long professionalId) {
         if (!summaryEnabled || professionalId == null) {
             return;
@@ -100,6 +112,9 @@ public class ScheduleSummaryService {
         rebuildProfessionalSummary(professionalId);
     }
 
+    /**
+     * Procesa queued rebuild payload y coordina la respuesta del flujo.
+     */
     public void handleQueuedRebuildPayload(String payload) throws JsonProcessingException {
         ScheduleSummaryPayload parsed = objectMapper.readValue(payload, ScheduleSummaryPayload.class);
         if (parsed != null && parsed.professionalId() != null) {
@@ -107,6 +122,9 @@ public class ScheduleSummaryService {
         }
     }
 
+    /**
+     * Reconstruye profesional resumen a partir de la fuente de verdad actual.
+     */
     @Transactional
     public void rebuildProfessionalSummary(Long professionalId) {
         if (!summaryEnabled || professionalId == null) {
@@ -143,6 +161,9 @@ public class ScheduleSummaryService {
         }
     }
 
+    /**
+     * Reconstruye todos incremental a partir de la fuente de verdad actual.
+     */
     @Transactional
     public void rebuildAllIncremental(int pageSize) {
         if (!summaryEnabled) {
@@ -167,6 +188,9 @@ public class ScheduleSummaryService {
         refreshNullRatioGauge();
     }
 
+    /**
+     * Refresca null ratio gauge para mantener datos derivados o metricas al dia.
+     */
     public void refreshNullRatioGauge() {
         long active = professionalAvailabilityGateway.countActiveProfessionals();
         if (active <= 0) {
@@ -177,6 +201,9 @@ public class ScheduleSummaryService {
         nullRatioGauge.set((double) withoutNextAvailable / (double) active);
     }
 
+    /**
+     * Marca error y actualiza los indicadores relacionados.
+     */
     private void markError(String operation) {
         Counter.builder("plura.schedule.summary.rebuild.errors")
             .description("Schedule summary rebuild errors")
@@ -185,10 +212,16 @@ public class ScheduleSummaryService {
             .increment();
     }
 
+    /**
+     * Genera job ID deterministico para idempotencia o deduplicacion.
+     */
     private String deterministicJobId(Long professionalId) {
         return "schedule-summary:" + sha256(String.valueOf(professionalId));
     }
 
+    /**
+     * Calcula hash SHA para generar identificadores estables o seguros.
+     */
     private String sha256(String value) {
         try {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
@@ -203,5 +236,9 @@ public class ScheduleSummaryService {
         }
     }
 
+    /**
+     * Bloque de datos schedule summary payload dentro de la respuesta principal.
+     * Agrupa metricas relacionadas para que el frontend no tenga que reconstruirlas.
+     */
     public record ScheduleSummaryPayload(Long professionalId) {}
 }

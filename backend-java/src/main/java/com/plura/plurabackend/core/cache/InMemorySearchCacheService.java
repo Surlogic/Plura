@@ -9,6 +9,12 @@ import java.util.Optional;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+/**
+ * InMemorySearchCacheService es un servicio de negocio del modulo cache.
+ * Responsabilidad: coordinar reglas de negocio, validaciones, persistencia e integraciones del caso de uso.
+ * Mantiene separada esta responsabilidad para que el resto del backend use una API clara.
+ * Foco funcional: servicios, busqueda, cache.
+ */
 @Service
 public class InMemorySearchCacheService implements SearchCacheService {
 
@@ -40,6 +46,9 @@ public class InMemorySearchCacheService implements SearchCacheService {
         return Optional.ofNullable(searchCache.getIfPresent(key));
     }
 
+    /**
+     * Ejecuta la logica de put busqueda manteniendola encapsulada en este componente.
+     */
     @Override
     public void putSearch(String key, SearchResponse response) {
         if (key == null || key.isBlank() || response == null) {
@@ -56,6 +65,9 @@ public class InMemorySearchCacheService implements SearchCacheService {
         return Optional.ofNullable(suggestCache.getIfPresent(key));
     }
 
+    /**
+     * Ejecuta la logica de put suggest manteniendola encapsulada en este componente.
+     */
     @Override
     public void putSuggest(String key, SearchSuggestResponse response) {
         if (key == null || key.isBlank() || response == null) {
@@ -64,6 +76,9 @@ public class InMemorySearchCacheService implements SearchCacheService {
         suggestCache.put(key, response);
     }
 
+    /**
+     * Ejecuta la logica de evict todos manteniendola encapsulada en este componente.
+     */
     @Override
     public void evictAll() {
         searchCache.invalidateAll();

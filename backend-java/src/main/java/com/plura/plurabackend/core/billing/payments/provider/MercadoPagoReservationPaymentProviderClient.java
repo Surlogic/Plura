@@ -24,6 +24,12 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 import org.springframework.web.server.ResponseStatusException;
 
+/**
+ * MercadoPagoReservationPaymentProviderClient es un cliente de integracion del modulo billing / pagos.
+ * Responsabilidad: aislar llamadas y payloads de una API externa para no mezclar provider logic con dominio.
+ * Colabora con: billingProperties, connectionService, objectMapper, httpClient.
+ * Foco funcional: Mercado Pago, proveedores externos, pagos, clientes.
+ */
 @Component
 public class MercadoPagoReservationPaymentProviderClient implements PaymentProviderClient {
 
@@ -47,21 +53,35 @@ public class MercadoPagoReservationPaymentProviderClient implements PaymentProvi
             .build();
     }
 
+    /**
+     * Ejecuta la logica de proveedor manteniendola encapsulada en este componente.
+     */
     @Override
     public PaymentProvider provider() {
         return PaymentProvider.MERCADOPAGO;
     }
 
+    /**
+     * Crea checkout validando datos de entrada y persistiendo el resultado.
+     * Tambien concentra los efectos secundarios para que el flujo quede en un estado consistente.
+     */
     @Override
     public ProviderCheckoutSession createCheckout(ProviderCheckoutRequest request) {
         throw new UnsupportedOperationException("Checkout de suscripciones se maneja fuera del provider de reservas");
     }
 
+    /**
+     * Cancela subscription respetando reglas de estado.
+     */
     @Override
     public void cancelSubscription(String providerSubscriptionId, boolean immediate) {
         throw new UnsupportedOperationException("Las suscripciones se manejan fuera del provider de reservas");
     }
 
+    /**
+     * Crea reserva checkout validando datos de entrada y persistiendo el resultado.
+     * Tambien concentra los efectos secundarios para que el flujo quede en un estado consistente.
+     */
     @Override
     public ProviderCheckoutSession createBookingCheckout(BookingProviderCheckoutRequest request) {
         ProfessionalPaymentProviderConnectionService.MercadoPagoConnectionAccess access =
@@ -114,6 +134,9 @@ public class MercadoPagoReservationPaymentProviderClient implements PaymentProvi
         );
     }
 
+    /**
+     * Ejecuta la logica de verify pago manteniendola encapsulada en este componente.
+     */
     @Override
     public ProviderVerificationResult verifyPayment(ProviderVerificationRequest request) {
         Long professionalId = request.expectedProfessionalId();
@@ -155,6 +178,10 @@ public class MercadoPagoReservationPaymentProviderClient implements PaymentProvi
         );
     }
 
+    /**
+     * Crea reembolso validando datos de entrada y persistiendo el resultado.
+     * Tambien concentra los efectos secundarios para que el flujo quede en un estado consistente.
+     */
     @Override
     public ProviderRefundResult createRefund(ProviderRefundRequest request) {
         throwIfBlank(request.providerPaymentId(), "providerPaymentId es obligatorio para refund");
@@ -181,6 +208,9 @@ public class MercadoPagoReservationPaymentProviderClient implements PaymentProvi
         );
     }
 
+    /**
+     * Ejecuta la logica de fetch pago manteniendola encapsulada en este componente.
+     */
     private JsonNode fetchPayment(String accessToken, ProviderVerificationRequest request) {
         if (request.providerPaymentId() != null && !request.providerPaymentId().isBlank()) {
             return sendRequest(
@@ -212,6 +242,9 @@ public class MercadoPagoReservationPaymentProviderClient implements PaymentProvi
         return results.isArray() && !results.isEmpty() ? results.get(0) : null;
     }
 
+    /**
+     * Envia plataforma solicitud mediante el canal configurado.
+     */
     private JsonNode sendPlatformRequest(
         Long professionalId,
         String providerPaymentId,
@@ -245,6 +278,9 @@ public class MercadoPagoReservationPaymentProviderClient implements PaymentProvi
         return sendRequest(access.accessToken(), method, path, null, body, failureMessage);
     }
 
+    /**
+     * Envia solicitud mediante el canal configurado.
+     */
     private JsonNode sendRequest(
         String accessToken,
         HttpMethod method,
@@ -280,6 +316,9 @@ public class MercadoPagoReservationPaymentProviderClient implements PaymentProvi
         }
     }
 
+    /**
+     * Construye solicitud a partir de datos internos ya validados.
+     */
     private HttpRequest buildRequest(String accessToken, HttpMethod method, String endpoint, Object body) {
         if (accessToken == null || accessToken.isBlank()) {
             throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "Falta access token de Mercado Pago");
@@ -303,6 +342,9 @@ public class MercadoPagoReservationPaymentProviderClient implements PaymentProvi
         }
     }
 
+    /**
+     * Construye endpoint a partir de datos internos ya validados.
+     */
     private String buildEndpoint(String path, Map<String, String> queryParams) {
         StringBuilder endpoint = new StringBuilder(billingProperties.getMercadopago().getBaseUrl()).append(path);
         if (queryParams == null || queryParams.isEmpty()) {
@@ -322,6 +364,9 @@ public class MercadoPagoReservationPaymentProviderClient implements PaymentProvi
         return endpoint.toString();
     }
 
+    /**
+     * Construye back urls a partir de datos internos ya validados.
+     */
     private Map<String, String> buildBackUrls() {
         Map<String, String> backUrls = new LinkedHashMap<>();
         putIfPresent(backUrls, "success", billingProperties.getMercadopago().getSuccessUrl());
@@ -330,24 +375,39 @@ public class MercadoPagoReservationPaymentProviderClient implements PaymentProvi
         return backUrls;
     }
 
+    /**
+     * Ejecuta la logica de put if present manteniendola encapsulada en este componente.
+     */
     private void putIfPresent(Map<String, String> target, String key, String value) {
         if (value != null && !value.isBlank()) {
             target.put(key, value.trim());
         }
     }
 
+    /**
+     * Ejecuta la logica de reserva external reference manteniendola encapsulada en este componente.
+     */
     private String bookingExternalReference(Long bookingId) {
         return "booking:" + bookingId;
     }
 
+    /**
+     * Evalua is approved estado y devuelve una decision booleana para el llamador.
+     */
     private boolean isApprovedStatus(String status) {
         return "APPROVED".equals(status) || "AUTHORIZED".equals(status) || "ACREDITADO".equals(status);
     }
 
+    /**
+     * Normaliza currency para evitar variantes vacias, invalidas o inconsistentes.
+     */
     private String normalizeCurrency(String currency) {
         return currency == null ? null : currency.trim().toUpperCase();
     }
 
+    /**
+     * Convierte datos internos al formato number esperado por el consumidor.
+     */
     private Number toNumber(BigDecimal amount) {
         if (amount == null) {
             return BigDecimal.ZERO;
@@ -355,6 +415,9 @@ public class MercadoPagoReservationPaymentProviderClient implements PaymentProvi
         return amount.stripTrailingZeros().scale() <= 0 ? amount.longValue() : amount.doubleValue();
     }
 
+    /**
+     * Ejecuta la logica de decimal value manteniendola encapsulada en este componente.
+     */
     private BigDecimal decimalValue(String rawValue) {
         if (rawValue == null || rawValue.isBlank()) {
             return null;
@@ -366,6 +429,9 @@ public class MercadoPagoReservationPaymentProviderClient implements PaymentProvi
         }
     }
 
+    /**
+     * Extrae proveedor message desde una URL, payload o referencia persistida.
+     */
     private String extractProviderMessage(String responseBody) {
         if (responseBody == null || responseBody.isBlank()) {
             return null;
@@ -383,6 +449,9 @@ public class MercadoPagoReservationPaymentProviderClient implements PaymentProvi
         }
     }
 
+    /**
+     * Convierte datos internos al formato json esperado por el consumidor.
+     */
     private String toJson(JsonNode jsonNode) {
         try {
             return objectMapper.writeValueAsString(jsonNode);
@@ -391,6 +460,9 @@ public class MercadoPagoReservationPaymentProviderClient implements PaymentProvi
         }
     }
 
+    /**
+     * Ejecuta la logica de text value manteniendola encapsulada en este componente.
+     */
     private String textValue(JsonNode node, String fieldName) {
         if (node == null || node.isMissingNode() || node.isNull()) {
             return null;
@@ -403,6 +475,9 @@ public class MercadoPagoReservationPaymentProviderClient implements PaymentProvi
         return value == null || value.isBlank() ? null : value.trim();
     }
 
+    /**
+     * Obtiene el primer valor util de non blank ignorando nulos o blancos.
+     */
     private String firstNonBlank(String... values) {
         for (String value : values) {
             if (value != null && !value.isBlank()) {
@@ -412,6 +487,9 @@ public class MercadoPagoReservationPaymentProviderClient implements PaymentProvi
         return null;
     }
 
+    /**
+     * Parsea long y convierte errores de formato en errores controlados.
+     */
     private Long parseLong(String rawValue) {
         if (rawValue == null || rawValue.isBlank()) {
             return null;
@@ -423,6 +501,9 @@ public class MercadoPagoReservationPaymentProviderClient implements PaymentProvi
         }
     }
 
+    /**
+     * Extrae profesional ID desde una URL, payload o referencia persistida.
+     */
     private String extractProfessionalId(String externalReference) {
         if (externalReference == null || externalReference.isBlank()) {
             return null;
@@ -436,6 +517,9 @@ public class MercadoPagoReservationPaymentProviderClient implements PaymentProvi
         return externalReference.trim();
     }
 
+    /**
+     * Extrae reserva ID desde una URL, payload o referencia persistida.
+     */
     private String extractBookingId(String externalReference) {
         if (externalReference == null || externalReference.isBlank()) {
             return null;
@@ -446,10 +530,16 @@ public class MercadoPagoReservationPaymentProviderClient implements PaymentProvi
         return null;
     }
 
+    /**
+     * Ejecuta upper atrapando errores para que el flujo principal no falle innecesariamente.
+     */
     private String safeUpper(String value) {
         return value == null ? null : value.trim().toUpperCase();
     }
 
+    /**
+     * Ejecuta la logica de throw if blank manteniendola encapsulada en este componente.
+     */
     private void throwIfBlank(String value, String message) {
         if (value == null || value.isBlank()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, message);

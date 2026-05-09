@@ -68,6 +68,12 @@ import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.server.ResponseStatusException;
 
+/**
+ * BookingCommandApplicationService es un servicio de negocio del modulo profesionales / reservas / aplicacion.
+ * Responsabilidad: coordinar reglas de negocio, validaciones, persistencia e integraciones del caso de uso.
+ * Colabora con: professionalProfileRepository, profesionalServiceRepository, bookingRepository, bookingPolicySnapshotService, entre otros.
+ * Foco funcional: reservas, servicios.
+ */
 @Service
 public class BookingCommandApplicationService {
 
@@ -142,6 +148,10 @@ public class BookingCommandApplicationService {
         this.systemZoneId = ZoneId.of(appTimezone);
     }
 
+    /**
+     * Crea publico reserva validando datos de entrada y persistiendo el resultado.
+     * Tambien concentra los efectos secundarios para que el flujo quede en un estado consistente.
+     */
     @Transactional
     public PublicBookingResponse createPublicBooking(
         String slug,
@@ -242,6 +252,10 @@ public class BookingCommandApplicationService {
         }
     }
 
+    /**
+     * Crea profesional reserva validando datos de entrada y persistiendo el resultado.
+     * Tambien concentra los efectos secundarios para que el flujo quede en un estado consistente.
+     */
     @Transactional
     public ProfessionalBookingResponse createProfessionalBooking(
         String rawUserId,
@@ -296,6 +310,10 @@ public class BookingCommandApplicationService {
         return bookingCommandResponseAssembler.toProfessionalBookingResponse(booking);
     }
 
+    /**
+     * Actualiza profesional reserva manteniendo reglas de negocio y consistencia de datos.
+     * Tambien concentra los efectos secundarios para que el flujo quede en un estado consistente.
+     */
     @Transactional
     public ProfessionalBookingResponse updateProfessionalBooking(
         String rawUserId,
@@ -313,6 +331,9 @@ public class BookingCommandApplicationService {
         throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Payload inválido");
     }
 
+    /**
+     * Cancela booking as client respetando reglas de estado.
+     */
     @Transactional
     public BookingCommandResponse cancelBookingAsClient(
         String rawUserId,
@@ -375,6 +396,9 @@ public class BookingCommandApplicationService {
         return response;
     }
 
+    /**
+     * Cancela booking as professional respetando reglas de estado.
+     */
     @Transactional
     public BookingCommandResponse cancelBookingAsProfessional(
         String rawUserId,
@@ -437,6 +461,9 @@ public class BookingCommandApplicationService {
         return response;
     }
 
+    /**
+     * Ejecuta la logica de reschedule reserva como cliente manteniendola encapsulada en este componente.
+     */
     @Transactional
     public BookingCommandResponse rescheduleBookingAsClient(
         String rawUserId,
@@ -460,6 +487,9 @@ public class BookingCommandApplicationService {
         return performReschedule(booking, request, now, BookingActorType.CLIENT, client.getId(), evaluated);
     }
 
+    /**
+     * Ejecuta la logica de reschedule reserva como profesional manteniendola encapsulada en este componente.
+     */
     @Transactional
     public BookingCommandResponse rescheduleBookingAsProfessional(
         String rawUserId,
@@ -483,6 +513,9 @@ public class BookingCommandApplicationService {
         return performReschedule(booking, request, now, BookingActorType.PROFESSIONAL, profile.getUser().getId(), evaluated);
     }
 
+    /**
+     * Marca reserva no show y actualiza los indicadores relacionados.
+     */
     @Transactional
     public BookingCommandResponse markBookingNoShow(String rawUserId, Long bookingId) {
         ProfessionalProfile profile = professionalAccessSupport.loadProfessionalByUserId(rawUserId);
@@ -563,6 +596,10 @@ public class BookingCommandApplicationService {
         return response;
     }
 
+    /**
+     * Completa reserva y deja persistido el estado final del flujo.
+     * Tambien concentra los efectos secundarios para que el flujo quede en un estado consistente.
+     */
     @Transactional
     public BookingCommandResponse completeBooking(String rawUserId, Long bookingId) {
         ProfessionalProfile profile = professionalAccessSupport.loadProfessionalByUserId(rawUserId);
@@ -640,6 +677,10 @@ public class BookingCommandApplicationService {
         return response;
     }
 
+    /**
+     * Actualiza reserva estado as profesional manteniendo reglas de negocio y consistencia de datos.
+     * Tambien concentra los efectos secundarios para que el flujo quede en un estado consistente.
+     */
     private ProfessionalBookingResponse updateBookingStatusAsProfessional(
         String rawUserId,
         Long bookingId,
@@ -659,6 +700,9 @@ public class BookingCommandApplicationService {
         return bookingCommandResponseAssembler.toProfessionalBookingResponse(saved);
     }
 
+    /**
+     * Ejecuta reschedule como paso central del flujo de negocio.
+     */
     private BookingCommandResponse performReschedule(
         Booking booking,
         BookingRescheduleRequest request,
@@ -776,6 +820,9 @@ public class BookingCommandApplicationService {
         return response;
     }
 
+    /**
+     * Evalua reserva action y devuelve la decision que usa el flujo llamador.
+     */
     private EvaluatedBookingAction evaluateBookingAction(
         Booking booking,
         BookingActionActor actor,
@@ -813,6 +860,9 @@ public class BookingCommandApplicationService {
         return new EvaluatedBookingAction(resolvedPolicy, evaluation);
     }
 
+    /**
+     * Construye cancellation decision snapshot a partir de datos internos ya validados.
+     */
     private Map<String, Object> buildCancellationDecisionSnapshot(
         Booking booking,
         ResolvedBookingPolicy resolvedPolicy,
@@ -828,6 +878,9 @@ public class BookingCommandApplicationService {
         return snapshot;
     }
 
+    /**
+     * Construye cancellation evento payload a partir de datos internos ya validados.
+     */
     private Map<String, Object> buildCancellationEventPayload(
         Booking booking,
         BookingOperationalStatus previousStatus,
@@ -846,6 +899,9 @@ public class BookingCommandApplicationService {
         return payload;
     }
 
+    /**
+     * Construye reschedule decision snapshot a partir de datos internos ya validados.
+     */
     private Map<String, Object> buildRescheduleDecisionSnapshot(
         ResolvedBookingPolicy resolvedPolicy,
         LocalDateTime previousStartDateTime,
@@ -866,10 +922,16 @@ public class BookingCommandApplicationService {
         return snapshot;
     }
 
+    /**
+     * Ejecuta la logica de now in system zone manteniendola encapsulada en este componente.
+     */
     private LocalDateTime nowInSystemZone() {
         return LocalDateTime.now(systemZoneId);
     }
 
+    /**
+     * Resuelve or create manual cliente normalizando entradas, defaults y casos borde.
+     */
     private Long resolveOrCreateManualClient(ProfessionalBookingCreateRequest request) {
         String clientName = request.getClientName() == null ? "" : request.getClientName().trim();
         if (clientName.isBlank()) {
@@ -913,6 +975,9 @@ public class BookingCommandApplicationService {
         return userRepository.save(newUser).getId();
     }
 
+    /**
+     * Normaliza opcional para evitar variantes vacias, invalidas o inconsistentes.
+     */
     private String normalizeOptional(String value) {
         if (value == null) {
             return null;
@@ -921,10 +986,16 @@ public class BookingCommandApplicationService {
         return normalized.isBlank() ? null : normalized;
     }
 
+    /**
+     * Genera manual cliente email con formato estable para uso interno o externo.
+     */
     private String generateManualClientEmail() {
         return "manual+" + UUID.randomUUID().toString().replace("-", "") + "@plura.local";
     }
 
+    /**
+     * Ejecuta la logica de capture servicio snapshot manteniendola encapsulada en este componente.
+     */
     private void captureServiceSnapshot(Booking booking, ProfesionalService service) {
         BookingPaymentBreakdownService.BookingPaymentBreakdown paymentBreakdown =
             bookingPaymentBreakdownService.quoteForService(service);
@@ -956,6 +1027,9 @@ public class BookingCommandApplicationService {
         }
     }
 
+    /**
+     * Resuelve post buffer minutes normalizando entradas, defaults y casos borde.
+     */
     private int resolvePostBufferMinutes(ProfesionalService service) {
         if (service == null || service.getPostBufferMinutes() == null || service.getPostBufferMinutes() < 0) {
             return 0;
@@ -963,14 +1037,23 @@ public class BookingCommandApplicationService {
         return service.getPostBufferMinutes();
     }
 
+    /**
+     * Resuelve servicio pago tipo normalizando entradas, defaults y casos borde.
+     */
     private ServicePaymentType resolveServicePaymentType(ServicePaymentType paymentType) {
         return paymentType == null ? ServicePaymentType.ON_SITE : paymentType;
     }
 
+    /**
+     * Resuelve processing fee mode normalizando entradas, defaults y casos borde.
+     */
     private BookingProcessingFeeMode resolveProcessingFeeMode(BookingProcessingFeeMode processingFeeMode) {
         return processingFeeMode == null ? BookingProcessingFeeMode.INSTANT : processingFeeMode;
     }
 
+    /**
+     * Resuelve servicio currency normalizando entradas, defaults y casos borde.
+     */
     private String resolveServiceCurrency(String currency) {
         if (currency == null || currency.isBlank()) {
             return "UYU";
@@ -978,6 +1061,9 @@ public class BookingCommandApplicationService {
         return currency.trim().toUpperCase(Locale.ROOT);
     }
 
+    /**
+     * Parsea precio snapshot y convierte errores de formato en errores controlados.
+     */
     private BigDecimal parsePriceSnapshot(String price) {
         if (price == null || price.isBlank()) {
             return null;
@@ -989,6 +1075,9 @@ public class BookingCommandApplicationService {
         }
     }
 
+    /**
+     * Normaliza origen plataforma para evitar variantes vacias, invalidas o inconsistentes.
+     */
     private String normalizeSourcePlatform(String sourcePlatform) {
         if (sourcePlatform == null || sourcePlatform.isBlank()) {
             return "UNKNOWN";
@@ -1001,6 +1090,9 @@ public class BookingCommandApplicationService {
     }
 
 
+    /**
+     * Dispara reserva lado efectos despues commit despues de confirmar la operacion principal.
+     */
     private void triggerBookingSideEffectsAfterCommit(
         ProfessionalProfile profile,
         Set<LocalDate> affectedDates
@@ -1012,12 +1104,19 @@ public class BookingCommandApplicationService {
         registerAfterCommit(() -> sideEffectCoordinator.onBookingChanged(profile, normalizedDates));
     }
 
+    /**
+     * Registra after commit y aplica las validaciones de alta correspondientes.
+     * Tambien concentra los efectos secundarios para que el flujo quede en un estado consistente.
+     */
     private void registerAfterCommit(Runnable action) {
         if (action == null) {
             return;
         }
         if (TransactionSynchronizationManager.isSynchronizationActive()) {
             TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+    /**
+     * Ejecuta la logica de despues commit manteniendola encapsulada en este componente.
+     */
                 @Override
                 public void afterCommit() {
                     action.run();
@@ -1028,6 +1127,10 @@ public class BookingCommandApplicationService {
         action.run();
     }
 
+    /**
+     * Carga la seccion profesional for reserva desde base de datos o datos agregados y la deja lista para la respuesta.
+     * Mantiene la consulta encapsulada para que el resto del codigo no repita filtros ni joins.
+     */
     private ProfessionalProfile loadProfessionalForBooking(Booking booking) {
         if (booking == null || booking.getProfessionalId() == null) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Profesional no encontrado");
@@ -1036,6 +1139,9 @@ public class BookingCommandApplicationService {
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Profesional no encontrado"));
     }
 
+    /**
+     * Registra operational estado evento para auditoria, historial o notificaciones.
+     */
     private void recordOperationalStatusEvent(
         Booking booking,
         BookingOperationalStatus previousStatus,
@@ -1135,6 +1241,10 @@ public class BookingCommandApplicationService {
         }
     }
 
+    /**
+     * Bloque de datos evaluated booking action usado internamente por esta clase.
+     * Agrupa valores relacionados para que el calculo principal sea mas legible.
+     */
     private record EvaluatedBookingAction(
         ResolvedBookingPolicy resolvedPolicy,
         BookingActionsEvaluation evaluation

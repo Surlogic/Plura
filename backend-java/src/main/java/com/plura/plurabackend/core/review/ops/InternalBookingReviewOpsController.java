@@ -13,6 +13,12 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+/**
+ * InternalBookingReviewOpsController es un controlador REST del modulo resenas / operaciones internas.
+ * Responsabilidad: recibir requests HTTP, validar acceso basico y delegar la operacion al servicio de aplicacion o dominio.
+ * Superficie HTTP: atiende rutas bajo /internal/ops/reviews y deja la logica pesada en servicios.
+ * Foco funcional: paneles internos, reservas, resenas.
+ */
 @RestController
 @RequestMapping("/internal/ops/reviews")
 public class InternalBookingReviewOpsController {
@@ -28,6 +34,10 @@ public class InternalBookingReviewOpsController {
         this.reviewOpsService = reviewOpsService;
     }
 
+    /**
+     * Endpoint GET: Devuelve un listado de elementos del modulo aplicando los filtros disponibles.
+     * Valida parametros/autorizacion de entrada y delega la logica de negocio al servicio correspondiente.
+     */
     @GetMapping
     public Page<InternalReviewListItemResponse> list(
         @RequestHeader("X-Internal-Token") String internalToken,
@@ -44,6 +54,10 @@ public class InternalBookingReviewOpsController {
         return reviewOpsService.list(page, size, professionalId, rating, hasText, textHidden, from, to);
     }
 
+    /**
+     * Endpoint GET /{id}: Devuelve el detalle de un elemento puntual con los datos necesarios para la pantalla o API.
+     * Valida parametros/autorizacion de entrada y delega la logica de negocio al servicio correspondiente.
+     */
     @GetMapping("/{id}")
     public InternalReviewDetailResponse detail(
         @RequestHeader("X-Internal-Token") String internalToken,
@@ -53,6 +67,9 @@ public class InternalBookingReviewOpsController {
         return reviewOpsService.detail(id);
     }
 
+    /**
+     * Ejecuta la logica de hide text manteniendola encapsulada en este componente.
+     */
     @PatchMapping("/{id}/hide-text")
     public InternalReviewDetailResponse hideText(
         @RequestHeader("X-Internal-Token") String internalToken,
@@ -63,6 +80,9 @@ public class InternalBookingReviewOpsController {
         return reviewOpsService.hideText(id, note);
     }
 
+    /**
+     * Ejecuta la logica de show text manteniendola encapsulada en este componente.
+     */
     @PatchMapping("/{id}/show-text")
     public InternalReviewDetailResponse showText(
         @RequestHeader("X-Internal-Token") String internalToken,
@@ -72,6 +92,9 @@ public class InternalBookingReviewOpsController {
         return reviewOpsService.showText(id);
     }
 
+    /**
+     * Ejecuta la logica de analytics manteniendola encapsulada en este componente.
+     */
     @GetMapping("/analytics")
     public InternalReviewAnalyticsResponse analytics(
         @RequestHeader("X-Internal-Token") String internalToken,

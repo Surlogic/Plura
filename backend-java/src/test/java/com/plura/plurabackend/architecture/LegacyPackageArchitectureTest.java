@@ -9,8 +9,17 @@ import java.nio.file.Path;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
 
+/**
+ * Tests de arquitectura y limites entre paquetes.
+ * Cubren escenarios de legacy package architecture para documentar el comportamiento esperado y evitar regresiones.
+ * Mantener estos casos alineados con los contratos reales del backend cuando cambie la logica productiva.
+ */
 class LegacyPackageArchitectureTest {
 
+    /**
+     * Escenario: debe no contain legacy product plan package.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void shouldNotContainLegacyProductPlanPackage() {
         var importedClasses = new ClassFileImporter()
@@ -23,6 +32,10 @@ class LegacyPackageArchitectureTest {
         assertTrue(!hasLegacyPackage, "No debe reaparecer el package legacy productplan");
     }
 
+    /**
+     * Escenario: debe keep only allowed top level packages.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void shouldKeepOnlyAllowedTopLevelPackages() {
         var importedClasses = new ClassFileImporter()
@@ -43,6 +56,10 @@ class LegacyPackageArchitectureTest {
         assertTrue(!hasUnexpectedRoot, "No deben quedar paquetes funcionales fuera de core/usuario/professional");
     }
 
+    /**
+     * Escenario: debe no contain legacy scheduling directory.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void shouldNotContainLegacySchedulingDirectory() {
         Path schedulingRoot = Path.of(

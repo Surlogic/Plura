@@ -17,6 +17,12 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+/**
+ * SearchSyncPublisher es un componente de dominio del modulo busqueda / motor.
+ * Responsabilidad: encapsular comportamiento propio del modulo y mantenerlo fuera de controllers u otras capas.
+ * Colabora con: sqsJobQueueService, searchIndexer, searchCacheService, objectMapper, entre otros.
+ * Foco funcional: busqueda.
+ */
 @Service
 public class SearchSyncPublisher {
 
@@ -55,6 +61,9 @@ public class SearchSyncPublisher {
         publishProfilesChanged(Set.of(professionalId));
     }
 
+    /**
+     * Publica perfiles changed para que otros procesos reaccionen al cambio.
+     */
     public void publishProfilesChanged(Collection<Long> professionalIds) {
         if (professionalIds == null || professionalIds.isEmpty()) {
             return;
@@ -94,11 +103,17 @@ public class SearchSyncPublisher {
         }
     }
 
+    /**
+     * Genera job ID deterministico para idempotencia o deduplicacion.
+     */
     private String deterministicJobId(Set<Long> ids) {
         String raw = ids.stream().sorted().map(String::valueOf).reduce((left, right) -> left + "," + right).orElse("none");
         return "search-index:" + sha256(raw);
     }
 
+    /**
+     * Calcula hash SHA para generar identificadores estables o seguros.
+     */
     private String sha256(String value) {
         try {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
@@ -113,5 +128,9 @@ public class SearchSyncPublisher {
         }
     }
 
+    /**
+     * Bloque de datos search sync payload dentro de la respuesta principal.
+     * Agrupa metricas relacionadas para que el frontend no tenga que reconstruirlas.
+     */
     public record SearchSyncPayload(Set<Long> professionalIds) {}
 }

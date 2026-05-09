@@ -21,6 +21,12 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 import org.springframework.web.server.ResponseStatusException;
 
+/**
+ * ProfileServiceCatalogSupport es un componente de dominio del modulo profesionales / aplicacion.
+ * Responsabilidad: encapsular comportamiento propio del modulo y mantenerlo fuera de controllers u otras capas.
+ * Colabora con: profesionalServiceRepository, profilePublicPageAssembler, sideEffectCoordinator, categoryRepository, entre otros.
+ * Foco funcional: perfiles, servicios.
+ */
 @Component
 public class ProfileServiceCatalogSupport {
 
@@ -50,6 +56,9 @@ public class ProfileServiceCatalogSupport {
         this.imageStorageService = imageStorageService;
     }
 
+    /**
+     * Devuelve el listado de servicios aplicando permisos y filtros del caso de uso.
+     */
     public List<ProfesionalServiceResponse> listServices(ProfessionalProfile profile) {
         return profesionalServiceRepository.findByProfessional_IdOrderByCreatedAtDesc(profile.getId())
             .stream()
@@ -57,6 +66,10 @@ public class ProfileServiceCatalogSupport {
             .toList();
     }
 
+    /**
+     * Crea servicio validando datos de entrada y persistiendo el resultado.
+     * Tambien concentra los efectos secundarios para que el flujo quede en un estado consistente.
+     */
     public ProfesionalServiceResponse createService(
         String rawUserId,
         ProfessionalProfile profile,
@@ -90,6 +103,10 @@ public class ProfileServiceCatalogSupport {
         return profilePublicPageAssembler.toServiceResponse(saved);
     }
 
+    /**
+     * Actualiza servicio manteniendo reglas de negocio y consistencia de datos.
+     * Tambien concentra los efectos secundarios para que el flujo quede en un estado consistente.
+     */
     public ProfesionalServiceResponse updateService(
         String rawUserId,
         ProfessionalProfile profile,
@@ -156,6 +173,10 @@ public class ProfileServiceCatalogSupport {
         return profilePublicPageAssembler.toServiceResponse(saved);
     }
 
+    /**
+     * Elimina servicio y limpia relaciones o datos derivados cuando corresponde.
+     * Tambien concentra los efectos secundarios para que el flujo quede en un estado consistente.
+     */
     public void deleteService(ProfessionalProfile profile, String serviceId) {
         ProfesionalService service = profesionalServiceRepository.findById(serviceId)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Servicio no encontrado"));
@@ -168,12 +189,18 @@ public class ProfileServiceCatalogSupport {
         imageCleanupService.deleteIfRemoved(imageUrl);
     }
 
+    /**
+     * Ejecuta la logica de ensure owned by manteniendola encapsulada en este componente.
+     */
     private void ensureOwnedBy(ProfessionalProfile profile, ProfesionalService service) {
         if (service.getProfessional() == null || !service.getProfessional().getId().equals(profile.getId())) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "No autorizado");
         }
     }
 
+    /**
+     * Sanea post buffer minutes antes de usarlo en storage, URL o persistencia.
+     */
     private int sanitizePostBufferMinutes(Integer value) {
         int normalized = value == null ? 0 : value;
         if (normalized < 0) {
@@ -182,14 +209,23 @@ public class ProfileServiceCatalogSupport {
         return normalized;
     }
 
+    /**
+     * Resuelve servicio pago tipo normalizando entradas, defaults y casos borde.
+     */
     private ServicePaymentType resolveServicePaymentType(ServicePaymentType paymentType) {
         return paymentType == null ? ServicePaymentType.ON_SITE : paymentType;
     }
 
+    /**
+     * Resuelve processing fee mode normalizando entradas, defaults y casos borde.
+     */
     private BookingProcessingFeeMode resolveProcessingFeeMode(BookingProcessingFeeMode processingFeeMode) {
         return processingFeeMode == null ? BookingProcessingFeeMode.INSTANT : processingFeeMode;
     }
 
+    /**
+     * Ejecuta la logica de ensure pago tipo allowed manteniendola encapsulada en este componente.
+     */
     private void ensurePaymentTypeAllowed(String rawUserId, ServicePaymentType paymentType) {
         if (paymentType == null || paymentType == ServicePaymentType.ON_SITE) {
             return;
@@ -197,6 +233,9 @@ public class ProfileServiceCatalogSupport {
         planGuardService.requireBooleanCapability(rawUserId, BooleanCapability.ONLINE_PAYMENTS);
     }
 
+    /**
+     * Resuelve servicio deposit monto normalizando entradas, defaults y casos borde.
+     */
     private BigDecimal resolveServiceDepositAmount(
         ServicePaymentType paymentType,
         BigDecimal requestedDepositAmount,
@@ -219,6 +258,9 @@ public class ProfileServiceCatalogSupport {
         return resolvedDepositAmount;
     }
 
+    /**
+     * Resuelve servicio currency normalizando entradas, defaults y casos borde.
+     */
     private String resolveServiceCurrency(String currency) {
         if (currency == null || currency.isBlank()) {
             return "UYU";
@@ -226,6 +268,9 @@ public class ProfileServiceCatalogSupport {
         return currency.trim().toUpperCase(Locale.ROOT);
     }
 
+    /**
+     * Parsea precio snapshot y convierte errores de formato en errores controlados.
+     */
     private BigDecimal parsePriceSnapshot(String price) {
         if (price == null || price.isBlank()) {
             return null;
@@ -237,6 +282,9 @@ public class ProfileServiceCatalogSupport {
         }
     }
 
+    /**
+     * Normaliza opcional para evitar variantes vacias, invalidas o inconsistentes.
+     */
     private String normalizeOptional(String value) {
         if (value == null) {
             return null;
@@ -245,10 +293,16 @@ public class ProfileServiceCatalogSupport {
         return normalized.isBlank() ? null : normalized;
     }
 
+    /**
+     * Normaliza guardada imagen reference para evitar variantes vacias, invalidas o inconsistentes.
+     */
     private String normalizeStoredImageReference(String value) {
         return normalizeOptional(imageStorageService.normalizeStoredReference(value));
     }
 
+    /**
+     * Resuelve requested categoria normalizando entradas, defaults y casos borde.
+     */
     private Category resolveRequestedCategory(String rawSlug) {
         String slug = normalizeOptional(rawSlug);
         if (slug == null) {

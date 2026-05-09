@@ -22,6 +22,12 @@ import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 import lombok.ToString;
 
+/**
+ * ProfessionalWorker es un entidad JPA del modulo profesionales / trabajadores / modelo.
+ * Responsabilidad: representar una tabla del dominio, sus columnas y los defaults necesarios antes de persistir.
+ * Persistencia: sus campos reflejan columnas reales; cambiar nombres o tipos puede requerir migracion Flyway.
+ * Foco funcional: profesionales, trabajadores.
+ */
 @Data
 @NoArgsConstructor
 @AllArgsConstructor

@@ -28,6 +28,13 @@ import lombok.NoArgsConstructor;
         @Index(name = "idx_app_notification_recipient_read", columnList = "recipient_type, recipient_id, read_at")
     }
 )
+
+/**
+ * AppNotification es un componente de dominio del modulo notificaciones / modelo.
+ * Responsabilidad: encapsular comportamiento propio del modulo y mantenerlo fuera de controllers u otras capas.
+ * Mantiene separada esta responsabilidad para que el resto del backend use una API clara.
+ * Foco funcional: notificaciones.
+ */
 public class AppNotification {
 
     @Id

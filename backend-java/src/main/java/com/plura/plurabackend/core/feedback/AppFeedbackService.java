@@ -18,6 +18,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+/**
+ * AppFeedbackService es un servicio de negocio del modulo feedback.
+ * Responsabilidad: coordinar reglas de negocio, validaciones, persistencia e integraciones del caso de uso.
+ * Colabora con: appFeedbackRepository, userRepository.
+ * Foco funcional: feedback, servicios.
+ */
 @Service
 public class AppFeedbackService {
 
@@ -31,6 +37,10 @@ public class AppFeedbackService {
         this.userRepository = userRepository;
     }
 
+    /**
+     * Crea create validando datos de entrada y persistiendo el resultado.
+     * Tambien concentra los efectos secundarios para que el flujo quede en un estado consistente.
+     */
     @Transactional
     public AppFeedbackResponse create(Long userId, AuthorRole authorRole, CreateAppFeedbackRequest request) {
         User user = userRepository.findById(userId)
@@ -64,6 +74,9 @@ public class AppFeedbackService {
         return toResponse(feedback);
     }
 
+    /**
+     * Devuelve el listado de mine aplicando permisos y filtros del caso de uso.
+     */
     @Transactional(readOnly = true)
     public Page<AppFeedbackResponse> listMine(Long userId, int page, int size) {
         int safeSize = Math.min(Math.max(size, 1), 50);
@@ -74,6 +87,10 @@ public class AppFeedbackService {
         return feedbackPage.map(this::toResponse);
     }
 
+    /**
+     * Elimina mine y limpia relaciones o datos derivados cuando corresponde.
+     * Tambien concentra los efectos secundarios para que el flujo quede en un estado consistente.
+     */
     @Transactional
     public void deleteMine(Long feedbackId, Long userId) {
         AppFeedback feedback = appFeedbackRepository.findById(feedbackId)
@@ -89,6 +106,9 @@ public class AppFeedbackService {
         LOGGER.info("App feedback deleted by author: id={} userId={}", feedbackId, userId);
     }
 
+    /**
+     * Devuelve el listado de publico aplicando permisos y filtros del caso de uso.
+     */
     @Transactional(readOnly = true)
     public List<AppFeedbackResponse> listPublic(int limit) {
         int safeLimit = Math.min(Math.max(limit, 1), 20);
@@ -99,6 +119,9 @@ public class AppFeedbackService {
             .toList();
     }
 
+    /**
+     * Convierte datos internos al formato respuesta esperado por el consumidor.
+     */
     private AppFeedbackResponse toResponse(AppFeedback feedback) {
         return new AppFeedbackResponse(
             feedback.getId(),
@@ -113,6 +136,9 @@ public class AppFeedbackService {
         );
     }
 
+    /**
+     * Construye publico author display name a partir de datos internos ya validados.
+     */
     private String buildPublicAuthorDisplayName(String fullName) {
         if (fullName == null || fullName.isBlank()) {
             return null;
@@ -128,6 +154,9 @@ public class AppFeedbackService {
         return firstName + " " + lastInitial + ".";
     }
 
+    /**
+     * Normaliza text para evitar variantes vacias, invalidas o inconsistentes.
+     */
     private String normalizeText(String text) {
         if (text == null) {
             return null;
@@ -136,6 +165,9 @@ public class AppFeedbackService {
         return trimmed.isEmpty() ? null : trimmed;
     }
 
+    /**
+     * Normaliza nullable para evitar variantes vacias, invalidas o inconsistentes.
+     */
     private String normalizeNullable(String value) {
         if (value == null) {
             return null;

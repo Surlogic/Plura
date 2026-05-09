@@ -25,6 +25,12 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
+/**
+ * ProfessionalNotificationService es un servicio de negocio del modulo profesionales / notificaciones.
+ * Responsabilidad: coordinar reglas de negocio, validaciones, persistencia e integraciones del caso de uso.
+ * Colabora con: professionalAccessSupport, bookingRepository, bookingCommandStateSupport, notificationQueryService, entre otros.
+ * Foco funcional: profesionales, notificaciones, servicios.
+ */
 @Service
 public class ProfessionalNotificationService {
 
@@ -54,6 +60,9 @@ public class ProfessionalNotificationService {
         this.responseMapper = responseMapper;
     }
 
+    /**
+     * Devuelve el listado de bandeja aplicando permisos y filtros del caso de uso.
+     */
     public ProfessionalNotificationListResponse listInbox(
         String rawUserId,
         String rawStatus,
@@ -80,6 +89,9 @@ public class ProfessionalNotificationService {
         ));
     }
 
+    /**
+     * Ejecuta la logica de no leidas conteo manteniendola encapsulada en este componente.
+     */
     public ProfessionalNotificationUnreadCountResponse unreadCount(String rawUserId) {
         ProfessionalProfile profile = professionalAccessSupport.loadProfessionalByUserId(rawUserId);
         return new ProfessionalNotificationUnreadCountResponse(
@@ -98,6 +110,9 @@ public class ProfessionalNotificationService {
         );
     }
 
+    /**
+     * Marca como leida y actualiza los indicadores relacionados.
+     */
     public void markAsRead(String rawUserId, String notificationId) {
         ProfessionalProfile profile = professionalAccessSupport.loadProfessionalByUserId(rawUserId);
         notificationReadService.markAsRead(
@@ -107,6 +122,9 @@ public class ProfessionalNotificationService {
         );
     }
 
+    /**
+     * Marca todos como leida y actualiza los indicadores relacionados.
+     */
     public void markAllAsRead(String rawUserId) {
         ProfessionalProfile profile = professionalAccessSupport.loadProfessionalByUserId(rawUserId);
         notificationReadService.markAllAsRead(
@@ -130,6 +148,9 @@ public class ProfessionalNotificationService {
         );
     }
 
+    /**
+     * Parsea fecha hora y convierte errores de formato en errores controlados.
+     */
     private LocalDateTime parseDateTime(String rawValue, boolean startOfDay) {
         if (rawValue == null || rawValue.isBlank()) {
             return null;

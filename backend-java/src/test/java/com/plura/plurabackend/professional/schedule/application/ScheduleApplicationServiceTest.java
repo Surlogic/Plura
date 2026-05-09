@@ -34,6 +34,11 @@ import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 
+/**
+ * Tests de funciones del profesional / agenda / casos de uso de aplicacion.
+ * Cubren escenarios de agenda application servicio para documentar el comportamiento esperado y evitar regresiones.
+ * Mantener estos casos alineados con los contratos reales del backend cuando cambie la logica productiva.
+ */
 class ScheduleApplicationServiceTest {
 
     private final ProfessionalProfileRepository professionalProfileRepository = mock(ProfessionalProfileRepository.class);
@@ -60,6 +65,10 @@ class ScheduleApplicationServiceTest {
         "America/Montevideo"
     );
 
+    /**
+     * Escenario: pendiente reserva bloquea slot y cancelado reserva releases eso.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void pendingBookingBlocksSlotAndCancelledBookingReleasesIt() throws Exception {
         LocalDate targetDate = LocalDate.now(ZoneId.of("America/Montevideo")).plusDays(10);
@@ -91,6 +100,10 @@ class ScheduleApplicationServiceTest {
         assertTrue(releasedSlots.contains("10:00"));
     }
 
+    /**
+     * Escenario: post buffer keeps following slot blocked.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void postBufferKeepsFollowingSlotBlocked() throws Exception {
         LocalDate targetDate = LocalDate.now(ZoneId.of("America/Montevideo")).plusDays(10);

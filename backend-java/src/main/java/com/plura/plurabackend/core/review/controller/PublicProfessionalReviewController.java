@@ -10,6 +10,12 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+/**
+ * PublicProfessionalReviewController es un controlador REST del modulo resenas / controladores.
+ * Responsabilidad: recibir requests HTTP, validar acceso basico y delegar la operacion al servicio de aplicacion o dominio.
+ * Superficie HTTP: atiende rutas bajo /public/profesionales y deja la logica pesada en servicios.
+ * Foco funcional: profesionales, resenas, superficie publica.
+ */
 @RestController
 @RequestMapping("/public/profesionales")
 public class PublicProfessionalReviewController {
@@ -20,6 +26,9 @@ public class PublicProfessionalReviewController {
         this.bookingReviewService = bookingReviewService;
     }
 
+    /**
+     * Devuelve el listado de resenas aplicando permisos y filtros del caso de uso.
+     */
     @GetMapping("/{slug}/reviews")
     public Page<BookingReviewResponse> listReviews(
         @PathVariable String slug,

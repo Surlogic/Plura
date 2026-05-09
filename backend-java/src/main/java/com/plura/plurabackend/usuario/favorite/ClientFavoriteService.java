@@ -15,6 +15,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+/**
+ * ClientFavoriteService es un servicio de negocio del modulo cliente / favoritos.
+ * Responsabilidad: coordinar reglas de negocio, validaciones, persistencia e integraciones del caso de uso.
+ * Colabora con: favoriteRepository, userRepository, professionalPublicReadFacade.
+ * Foco funcional: favoritos, servicios, clientes.
+ */
 @Service
 public class ClientFavoriteService {
 
@@ -32,6 +38,9 @@ public class ClientFavoriteService {
         this.professionalPublicReadFacade = professionalPublicReadFacade;
     }
 
+    /**
+     * Devuelve el listado de favoritos aplicando permisos y filtros del caso de uso.
+     */
     @Transactional(readOnly = true)
     public List<ProfesionalPublicSummaryResponse> listFavorites(String rawUserId) {
         User user = resolveClientUser(rawUserId);
@@ -44,6 +53,9 @@ public class ClientFavoriteService {
             .toList();
     }
 
+    /**
+     * Agrega favorito validando que no duplique ni rompa reglas del dominio.
+     */
     @Transactional
     public ProfesionalPublicSummaryResponse addFavorite(String rawUserId, String rawSlug) {
         User user = resolveClientUser(rawUserId);
@@ -56,6 +68,9 @@ public class ClientFavoriteService {
         return toResponse(summary);
     }
 
+    /**
+     * Quita favorito y deja persistido el cambio de estado.
+     */
     @Transactional
     public void removeFavorite(String rawUserId, String rawSlug) {
         User user = resolveClientUser(rawUserId);
@@ -69,6 +84,9 @@ public class ClientFavoriteService {
         );
     }
 
+    /**
+     * Convierte datos internos al formato respuesta esperado por el consumidor.
+     */
     private ProfesionalPublicSummaryResponse toResponse(ProfessionalPublicSummary summary) {
         return new ProfesionalPublicSummaryResponse(
             String.valueOf(summary.professionalId()),
@@ -84,6 +102,9 @@ public class ClientFavoriteService {
         );
     }
 
+    /**
+     * Resuelve cliente usuario normalizando entradas, defaults y casos borde.
+     */
     private User resolveClientUser(String rawUserId) {
         Long userId = parseUserId(rawUserId);
         User user = userRepository.findByIdAndDeletedAtIsNull(userId)
@@ -93,12 +114,18 @@ public class ClientFavoriteService {
         return user;
     }
 
+    /**
+     * Ejecuta la logica de ensure cliente usuario manteniendola encapsulada en este componente.
+     */
     private void ensureClientUser(User user) {
         if (user.getRole() != UserRole.USER) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Solo clientes");
         }
     }
 
+    /**
+     * Parsea usuario ID y convierte errores de formato en errores controlados.
+     */
     private Long parseUserId(String rawUserId) {
         if (rawUserId == null || rawUserId.isBlank()) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "No autenticado");
@@ -110,6 +137,9 @@ public class ClientFavoriteService {
         }
     }
 
+    /**
+     * Normaliza slug para evitar variantes vacias, invalidas o inconsistentes.
+     */
     private String normalizeSlug(String rawSlug) {
         if (rawSlug == null) return "";
         return rawSlug.trim().toLowerCase(Locale.ROOT);

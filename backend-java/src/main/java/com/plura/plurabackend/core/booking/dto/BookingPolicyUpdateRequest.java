@@ -7,6 +7,12 @@ import jakarta.validation.constraints.DecimalMin;
 import java.math.BigDecimal;
 import lombok.Data;
 
+/**
+ * BookingPolicyUpdateRequest es un DTO de entrada del modulo reservas / contratos DTO.
+ * Responsabilidad: definir y validar los datos que llegan desde la API.
+ * Validacion: sus anotaciones Bean Validation son parte del contrato publico del endpoint que lo recibe.
+ * Foco funcional: reservas.
+ */
 @Data
 public class BookingPolicyUpdateRequest {
 

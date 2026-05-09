@@ -12,6 +12,12 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+/**
+ * NotificationEventService es un servicio de negocio del modulo notificaciones / aplicacion.
+ * Responsabilidad: coordinar reglas de negocio, validaciones, persistencia e integraciones del caso de uso.
+ * Colabora con: notificationEventRepository, notificationDedupeService, objectMapper, notificationMetricsService.
+ * Foco funcional: notificaciones, servicios.
+ */
 @Service
 public class NotificationEventService {
 
@@ -32,6 +38,9 @@ public class NotificationEventService {
         this.notificationMetricsService = notificationMetricsService;
     }
 
+    /**
+     * Registra canonical evento para auditoria, historial o notificaciones.
+     */
     @Transactional
     public NotificationEventRegistration recordCanonicalEvent(NotificationRecordCommand command) {
         validate(command);
@@ -73,6 +82,10 @@ public class NotificationEventService {
         }
     }
 
+    /**
+     * Valida validate y lanza un error controlado si no cumple el contrato.
+     * Esta separacion hace explicita la regla de seguridad o negocio que protege el flujo.
+     */
     private void validate(NotificationRecordCommand command) {
         if (command == null) {
             throw new IllegalArgumentException("NotificationRecordCommand es obligatorio");
@@ -100,6 +113,9 @@ public class NotificationEventService {
         }
     }
 
+    /**
+     * Guarda json en el formato persistido esperado por el modulo.
+     */
     private String writeJson(Object payload) {
         if (payload == null) {
             return null;
@@ -111,6 +127,9 @@ public class NotificationEventService {
         }
     }
 
+    /**
+     * Normaliza opcional para evitar variantes vacias, invalidas o inconsistentes.
+     */
     private String normalizeOptional(String value) {
         if (value == null) {
             return null;
@@ -119,6 +138,9 @@ public class NotificationEventService {
         return normalized.isBlank() ? null : normalized;
     }
 
+    /**
+     * Resuelve reserva reference ID normalizando entradas, defaults y casos borde.
+     */
     private Long resolveBookingReferenceId(NotificationRecordCommand command) {
         if (command.bookingReferenceId() != null) {
             return command.bookingReferenceId();
@@ -132,6 +154,9 @@ public class NotificationEventService {
         return parseLong(command.payload().get("bookingId"));
     }
 
+    /**
+     * Parsea long y convierte errores de formato en errores controlados.
+     */
     private Long parseLong(Object value) {
         if (value == null) {
             return null;
@@ -146,9 +171,16 @@ public class NotificationEventService {
         }
     }
 
+    /**
+     * Evalua is blank y devuelve una decision booleana para el llamador.
+     */
     private boolean isBlank(String value) {
         return value == null || value.trim().isBlank();
     }
 
+    /**
+     * Bloque de datos notification event registration dentro de la respuesta principal.
+     * Agrupa metricas relacionadas para que el frontend no tenga que reconstruirlas.
+     */
     public record NotificationEventRegistration(NotificationEvent event, boolean created) {}
 }

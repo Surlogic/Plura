@@ -25,6 +25,11 @@ import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+/**
+ * Tests de resenas y moderacion.
+ * Cubren escenarios de reserva resena reminder servicio para documentar el comportamiento esperado y evitar regresiones.
+ * Mantener estos casos alineados con los contratos reales del backend cuando cambie la logica productiva.
+ */
 class BookingReviewReminderServiceTest {
 
     private BookingRepository bookingRepository;
@@ -32,6 +37,10 @@ class BookingReviewReminderServiceTest {
     private BookingReviewReminderRepository bookingReviewReminderRepository;
     private BookingReviewReminderService service;
 
+    /**
+     * Prepara mocks, datos base o configuracion comun antes de cada caso de prueba.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @BeforeEach
     void setUp() {
         bookingRepository = mock(BookingRepository.class);
@@ -45,6 +54,10 @@ class BookingReviewReminderServiceTest {
         );
     }
 
+    /**
+     * Escenario: finds next reminder for eligible completado reserva.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void findsNextReminderForEligibleCompletedBooking() {
         Booking booking = booking(1L, LocalDateTime.now().minusDays(1));
@@ -58,6 +71,10 @@ class BookingReviewReminderServiceTest {
         assertEquals(1L, reminder.get().bookingId());
     }
 
+    /**
+     * Escenario: does no devuelve reminder cuando window vencido.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void doesNotReturnReminderWhenWindowExpired() {
         Booking booking = booking(1L, LocalDateTime.now().minusDays(BookingReviewPolicy.REVIEW_WINDOW_DAYS + 1L));
@@ -70,6 +87,10 @@ class BookingReviewReminderServiceTest {
         assertTrue(reminder.isEmpty());
     }
 
+    /**
+     * Escenario: does no devuelve reminder cuando limit was reached.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void doesNotReturnReminderWhenLimitWasReached() {
         Booking booking = booking(1L, LocalDateTime.now().minusDays(1));
@@ -87,6 +108,10 @@ class BookingReviewReminderServiceTest {
         assertTrue(reminder.isEmpty());
     }
 
+    /**
+     * Escenario: does no devuelve reminder cuando daily cadence is still active.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void doesNotReturnReminderWhenDailyCadenceIsStillActive() {
         Booking booking = booking(1L, LocalDateTime.now().minusDays(1));
@@ -100,6 +125,10 @@ class BookingReviewReminderServiceTest {
         assertTrue(reminder.isEmpty());
     }
 
+    /**
+     * Escenario: does no record reminder if reserva already reviewed.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void doesNotRecordReminderIfBookingAlreadyReviewed() {
         Booking booking = booking(1L, LocalDateTime.now().minusDays(1));

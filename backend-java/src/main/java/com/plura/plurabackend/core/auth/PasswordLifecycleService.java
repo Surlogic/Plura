@@ -25,6 +25,12 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+/**
+ * PasswordLifecycleService es un servicio de negocio del modulo autenticacion.
+ * Responsabilidad: coordinar reglas de negocio, validaciones, persistencia e integraciones del caso de uso.
+ * Colabora con: userRepository, passwordResetTokenRepository, passwordEncoder, passwordPolicyService, entre otros.
+ * Foco funcional: contrasenas, servicios.
+ */
 @Service
 public class PasswordLifecycleService {
 
@@ -79,6 +85,9 @@ public class PasswordLifecycleService {
         this.passwordRecoveryOtpMaxAttempts = passwordRecoveryOtpMaxAttempts;
     }
 
+    /**
+     * Ejecuta la logica de change contrasena manteniendola encapsulada en este componente.
+     */
     @Transactional
     public void changePassword(String rawUserId, String currentPassword, String newPassword) {
         User user = loadActiveUser(rawUserId);
@@ -113,6 +122,9 @@ public class PasswordLifecycleService {
         );
     }
 
+    /**
+     * Ejecuta la logica de inicio contrasena recovery manteniendola encapsulada en este componente.
+     */
     @Transactional
     public void startPasswordRecovery(String email, String ipAddress, String userAgent) {
         String normalizedEmail = normalizeEmail(email);
@@ -130,6 +142,9 @@ public class PasswordLifecycleService {
         );
     }
 
+    /**
+     * Ejecuta la logica de verify recovery telefono and send code manteniendola encapsulada en este componente.
+     */
     @Transactional
     public PasswordRecoveryVerifyPhoneResponse verifyRecoveryPhoneAndSendCode(
         String email,
@@ -185,6 +200,10 @@ public class PasswordLifecycleService {
         );
     }
 
+    /**
+     * Confirma contrasena recovery despues de validar token, codigo o estado previo.
+     * Tambien concentra los efectos secundarios para que el flujo quede en un estado consistente.
+     */
     @Transactional
     public UserRole confirmPasswordRecovery(
         String email,
@@ -260,6 +279,9 @@ public class PasswordLifecycleService {
         return user.getRole();
     }
 
+    /**
+     * Solicita contrasena reset sin bloquear el flujo principal cuando puede ejecutarse aparte.
+     */
     @Transactional
     public void requestPasswordReset(String email, String ipAddress, String userAgent) {
         String normalizedEmail = normalizeEmail(email);
@@ -299,6 +321,9 @@ public class PasswordLifecycleService {
         );
     }
 
+    /**
+     * Ejecuta la logica de reset contrasena manteniendola encapsulada en este componente.
+     */
     @Transactional
     public UserRole resetPassword(String rawToken, String newPassword) {
         String normalizedToken = normalizeSubmittedToken(rawToken);
@@ -343,6 +368,10 @@ public class PasswordLifecycleService {
         return user.getRole();
     }
 
+    /**
+     * Carga la seccion active usuario desde base de datos o datos agregados y la deja lista para la respuesta.
+     * Mantiene la consulta encapsulada para que el resto del codigo no repita filtros ni joins.
+     */
     private User loadActiveUser(String rawUserId) {
         Long userId;
         try {
@@ -354,6 +383,9 @@ public class PasswordLifecycleService {
             .orElseThrow(() -> new AuthApiException(HttpStatus.UNAUTHORIZED, "UNAUTHORIZED", "Usuario no encontrado."));
     }
 
+    /**
+     * Evalua is eligible for contrasena reset y devuelve una decision booleana para el llamador.
+     */
     private boolean isEligibleForPasswordReset(User user) {
         if (user.getPassword() == null || user.getPassword().isBlank()) {
             return false;
@@ -361,6 +393,9 @@ public class PasswordLifecycleService {
         return user.getProvider() == null || user.getPasswordChangedAt() != null;
     }
 
+    /**
+     * Evalua is eligible for contrasena recovery y devuelve una decision booleana para el llamador.
+     */
     private boolean isEligibleForPasswordRecovery(User user) {
         return user != null
             && user.getDeletedAt() == null
@@ -370,6 +405,9 @@ public class PasswordLifecycleService {
             && !user.getPhoneNumber().isBlank();
     }
 
+    /**
+     * Construye reset URL a partir de datos internos ya validados.
+     */
     private String buildResetUrl(String rawToken) {
         String trimmedBaseUrl = passwordResetPublicBaseUrl == null ? "" : passwordResetPublicBaseUrl.trim();
         String sanitizedBaseUrl = trimmedBaseUrl.endsWith("/")
@@ -378,12 +416,18 @@ public class PasswordLifecycleService {
         return sanitizedBaseUrl + "/auth/reset-password?token=" + rawToken;
     }
 
+    /**
+     * Genera reset token con formato estable para uso interno o externo.
+     */
     private String generateResetToken() {
         byte[] randomBytes = new byte[48];
         SECURE_RANDOM.nextBytes(randomBytes);
         return Base64.getUrlEncoder().withoutPadding().encodeToString(randomBytes);
     }
 
+    /**
+     * Evalua hash token y devuelve una decision booleana para el llamador.
+     */
     private String hashToken(String rawToken) {
         try {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
@@ -399,6 +443,9 @@ public class PasswordLifecycleService {
         }
     }
 
+    /**
+     * Normaliza email para evitar variantes vacias, invalidas o inconsistentes.
+     */
     private String normalizeEmail(String email) {
         if (email == null) {
             return null;
@@ -407,6 +454,9 @@ public class PasswordLifecycleService {
         return trimmed.isBlank() ? null : trimmed;
     }
 
+    /**
+     * Normaliza ip para evitar variantes vacias, invalidas o inconsistentes.
+     */
     private String normalizeIp(String ipAddress) {
         if (ipAddress == null) {
             return null;
@@ -418,6 +468,9 @@ public class PasswordLifecycleService {
         return trimmed.length() <= 64 ? trimmed : trimmed.substring(0, 64);
     }
 
+    /**
+     * Normaliza usuario agent para evitar variantes vacias, invalidas o inconsistentes.
+     */
     private String normalizeUserAgent(String userAgent) {
         if (userAgent == null) {
             return null;
@@ -429,6 +482,10 @@ public class PasswordLifecycleService {
         return trimmed.length() <= 500 ? trimmed : trimmed.substring(0, 500);
     }
 
+    /**
+     * Carga la seccion eligible recovery usuario desde base de datos o datos agregados y la deja lista para la respuesta.
+     * Mantiene la consulta encapsulada para que el resto del codigo no repita filtros ni joins.
+     */
     private User loadEligibleRecoveryUser(String email, String phoneNumber) {
         String normalizedEmail = normalizeEmail(email);
         String normalizedPhone = normalizePhone(phoneNumber);
@@ -450,6 +507,9 @@ public class PasswordLifecycleService {
         return user;
     }
 
+    /**
+     * Normaliza telefono para evitar variantes vacias, invalidas o inconsistentes.
+     */
     private String normalizePhone(String phoneNumber) {
         if (phoneNumber == null) {
             return null;
@@ -471,6 +531,9 @@ public class PasswordLifecycleService {
         return digits.length() >= 8 && digits.length() <= 20 ? digits : null;
     }
 
+    /**
+     * Normaliza challenge ID para evitar variantes vacias, invalidas o inconsistentes.
+     */
     private String normalizeChallengeId(String rawChallengeId) {
         if (rawChallengeId == null) {
             throw new AuthApiException(HttpStatus.BAD_REQUEST, "CHALLENGE_INVALID", "Código inválido.");
@@ -482,6 +545,9 @@ public class PasswordLifecycleService {
         return trimmed;
     }
 
+    /**
+     * Normaliza submitted code para evitar variantes vacias, invalidas o inconsistentes.
+     */
     private String normalizeSubmittedCode(String rawCode) {
         if (rawCode == null) {
             throw new AuthApiException(HttpStatus.BAD_REQUEST, "CHALLENGE_INVALID", "Código inválido.");
@@ -493,11 +559,17 @@ public class PasswordLifecycleService {
         return digits;
     }
 
+    /**
+     * Genera numeric code con formato estable para uso interno o externo.
+     */
     private String generateNumericCode() {
         int value = SECURE_RANDOM.nextInt(900000) + 100000;
         return String.valueOf(value);
     }
 
+    /**
+     * Ejecuta la logica de mask email manteniendola encapsulada en este componente.
+     */
     private String maskEmail(String email) {
         if (email == null || email.isBlank()) {
             return "correo desconocido";
@@ -509,6 +581,9 @@ public class PasswordLifecycleService {
         return email.substring(0, 1) + "***" + email.substring(atIndex);
     }
 
+    /**
+     * Normaliza submitted token para evitar variantes vacias, invalidas o inconsistentes.
+     */
     private String normalizeSubmittedToken(String rawToken) {
         if (rawToken == null) {
             throw new AuthApiException(HttpStatus.BAD_REQUEST, "TOKEN_INVALID", "Token inválido.");

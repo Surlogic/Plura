@@ -5,6 +5,12 @@ import com.github.benmanes.caffeine.cache.Caffeine;
 import java.time.Duration;
 import org.springframework.stereotype.Service;
 
+/**
+ * JobIdempotencyService es un servicio de negocio del modulo jobs.
+ * Responsabilidad: coordinar reglas de negocio, validaciones, persistencia e integraciones del caso de uso.
+ * Mantiene separada esta responsabilidad para que el resto del backend use una API clara.
+ * Foco funcional: servicios.
+ */
 @Service
 public class JobIdempotencyService {
 
@@ -13,6 +19,9 @@ public class JobIdempotencyService {
         .expireAfterWrite(Duration.ofHours(24))
         .build();
 
+    /**
+     * Decide si corresponde process segun estado actual y reglas del dominio.
+     */
     public boolean shouldProcess(String jobId) {
         if (jobId == null || jobId.isBlank()) {
             return true;

@@ -9,6 +9,12 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+/**
+ * ProfesionalScheduleDto es un DTO del modulo profesionales / agenda / contratos DTO.
+ * Responsabilidad: transportar datos entre capas sin exponer entidades JPA.
+ * Mantiene separada esta responsabilidad para que el resto del backend use una API clara.
+ * Foco funcional: agenda.
+ */
 @Data
 @NoArgsConstructor
 @AllArgsConstructor

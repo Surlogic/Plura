@@ -27,6 +27,13 @@ import lombok.NoArgsConstructor;
         @Index(name = "idx_refresh_token_user", columnList = "user_id")
     }
 )
+
+/**
+ * RefreshToken es un componente de dominio del modulo autenticacion / modelo.
+ * Responsabilidad: encapsular comportamiento propio del modulo y mantenerlo fuera de controllers u otras capas.
+ * Mantiene separada esta responsabilidad para que el resto del backend use una API clara.
+ * Foco funcional: la responsabilidad indicada por su paquete y nombre.
+ */
 public class RefreshToken {
 
     @Id

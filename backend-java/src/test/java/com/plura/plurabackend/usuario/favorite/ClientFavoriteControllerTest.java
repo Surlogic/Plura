@@ -14,12 +14,21 @@ import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
+/**
+ * Tests de funciones del cliente final / favoritos.
+ * Cubren escenarios de cliente favorito controller para documentar el comportamiento esperado y evitar regresiones.
+ * Mantener estos casos alineados con los contratos reales del backend cuando cambie la logica productiva.
+ */
 class ClientFavoriteControllerTest {
 
     private final ClientFavoriteService clientFavoriteService = mock(ClientFavoriteService.class);
     private final RoleGuard roleGuard = mock(RoleGuard.class);
     private final ClientFavoriteController controller = new ClientFavoriteController(clientFavoriteService, roleGuard);
 
+    /**
+     * Escenario: debe listado favoritos for current cliente.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void shouldListFavoritesForCurrentClient() {
         when(roleGuard.requireUser()).thenReturn(42L);
@@ -32,6 +41,10 @@ class ClientFavoriteControllerTest {
         verify(clientFavoriteService).listFavorites("42");
     }
 
+    /**
+     * Escenario: debe add favorito for current cliente.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void shouldAddFavoriteForCurrentClient() {
         when(roleGuard.requireUser()).thenReturn(42L);
@@ -45,6 +58,10 @@ class ClientFavoriteControllerTest {
         verify(clientFavoriteService).addFavorite("42", "ana-garcia");
     }
 
+    /**
+     * Escenario: debe remove favorito for current cliente.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void shouldRemoveFavoriteForCurrentClient() {
         when(roleGuard.requireUser()).thenReturn(42L);

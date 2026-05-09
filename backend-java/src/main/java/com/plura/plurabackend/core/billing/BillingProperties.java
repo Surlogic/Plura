@@ -69,10 +69,7 @@ public class BillingProperties {
     }
 
     /**
-     * Resuelve la configuración de un plan de suscripción.
-     *
-     * @param plan el plan a resolver (BASIC, PROFESIONAL o ENTERPRISE)
-     * @return la configuración del plan con precio y moneda
+     * Resuelve plan normalizando entradas, defaults y casos borde.
      */
     public PlanConfig resolvePlan(SubscriptionPlanCode plan) {
         return switch (plan) {
@@ -92,9 +89,8 @@ public class BillingProperties {
     }
 
     /**
-     * Valida la configuración de un plan individual.
-     * Verifica que tenga precio válido y moneda configurada.
-     * El PLAN_BASIC puede tener precio cero; los demás deben tener precio mayor a cero.
+     * Valida plan y lanza un error controlado si no cumple el contrato.
+     * Esta separacion hace explicita la regla de seguridad o negocio que protege el flujo.
      */
     private void validatePlan(String name, PlanConfig plan) {
         if (plan == null) {
@@ -112,10 +108,7 @@ public class BillingProperties {
     }
 
     /**
-     * Resuelve el ID del plan en MercadoPago según el plan de suscripción interno.
-     *
-     * @param plan el plan de suscripción
-     * @return el ID del plan configurado en MercadoPago
+     * Resuelve Mercado Pago plan ID normalizando entradas, defaults y casos borde.
      */
     public String resolveMercadoPagoPlanId(SubscriptionPlanCode plan) {
         return switch (plan) {
@@ -125,12 +118,20 @@ public class BillingProperties {
         };
     }
 
+    /**
+     * Exige present y corta la ejecucion si falta autorizacion o contexto.
+     * Esta separacion hace explicita la regla de seguridad o negocio que protege el flujo.
+     */
     private void requirePresent(String value, String fieldName) {
         if (value == null || value.isBlank()) {
             throw new IllegalStateException(fieldName + " no está configurado");
         }
     }
 
+    /**
+     * Valida processing fee y lanza un error controlado si no cumple el contrato.
+     * Esta separacion hace explicita la regla de seguridad o negocio que protege el flujo.
+     */
     private void validateProcessingFee(MercadoPago.ProcessingFee processingFee) {
         if (processingFee == null || !processingFee.isEnabled()) {
             return;
@@ -243,6 +244,9 @@ public class BillingProperties {
         private SubscriptionCredentials subscriptions = new SubscriptionCredentials();
         private Reservations reservations = new Reservations();
 
+    /**
+     * Evalua is enabled y devuelve una decision booleana para el llamador.
+     */
         public boolean isEnabled() {
             return enabled;
         }
@@ -339,6 +343,9 @@ public class BillingProperties {
             this.reservationRefundPath = reservationRefundPath;
         }
 
+    /**
+     * Evalua is sandbox only body signature fallback y devuelve una decision booleana para el llamador.
+     */
         public boolean isSandboxOnlyBodySignatureFallback() {
             return sandboxOnlyBodySignatureFallback;
         }
@@ -480,6 +487,9 @@ public class BillingProperties {
             private BigDecimal taxPercent = BigDecimal.ZERO;
             private BigDecimal platformFeePercent = BigDecimal.ZERO;
 
+    /**
+     * Evalua is enabled y devuelve una decision booleana para el llamador.
+     */
             public boolean isEnabled() {
                 return enabled;
             }
@@ -528,6 +538,9 @@ public class BillingProperties {
                 this.platformFeePercent = platformFeePercent == null ? BigDecimal.ZERO : platformFeePercent;
             }
 
+    /**
+     * Resuelve proveedor fee percent normalizando entradas, defaults y casos borde.
+     */
             public BigDecimal resolveProviderFeePercent(BookingProcessingFeeMode mode) {
                 return mode == BookingProcessingFeeMode.DELAYED_21_DAYS
                     ? delayedProviderFeePercent
@@ -610,6 +623,9 @@ public class BillingProperties {
                 this.tokenEncryptionKey = tokenEncryptionKey;
             }
 
+    /**
+     * Evalua is pkce enabled y devuelve una decision booleana para el llamador.
+     */
             public boolean isPkceEnabled() {
                 return pkceEnabled;
             }
@@ -620,6 +636,9 @@ public class BillingProperties {
         }
     }
 
+    /**
+     * Evalua is enabled y devuelve una decision booleana para el llamador.
+     */
     public boolean isEnabled() {
         return enabled;
     }
@@ -644,6 +663,9 @@ public class BillingProperties {
         this.webhookAllowedSkewSeconds = webhookAllowedSkewSeconds;
     }
 
+    /**
+     * Evalua is proveedor verification enabled y devuelve una decision booleana para el llamador.
+     */
     public boolean isProviderVerificationEnabled() {
         return providerVerificationEnabled;
     }

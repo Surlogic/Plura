@@ -64,6 +64,11 @@ import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
+/**
+ * Tests de funciones del profesional.
+ * Cubren escenarios de reserva comando application servicio cancelacion para documentar el comportamiento esperado y evitar regresiones.
+ * Mantener estos casos alineados con los contratos reales del backend cuando cambie la logica productiva.
+ */
 class BookingCommandApplicationServiceCancelTest {
 
     private final ProfessionalProfileRepository professionalProfileRepository = mock(ProfessionalProfileRepository.class);
@@ -133,6 +138,10 @@ class BookingCommandApplicationServiceCancelTest {
         "America/Montevideo"
     );
 
+    /**
+     * Escenario: debe cancelacion cliente reserva y trigger reembolso cuando cancellation is eligible.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void shouldCancelClientBookingAndTriggerRefundWhenCancellationIsEligible() {
         User client = new User();

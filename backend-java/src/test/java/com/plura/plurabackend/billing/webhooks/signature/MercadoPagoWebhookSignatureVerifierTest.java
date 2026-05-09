@@ -9,8 +9,17 @@ import java.time.Instant;
 import org.junit.jupiter.api.Test;
 import org.springframework.mock.web.MockHttpServletRequest;
 
+/**
+ * Tests de billing, pagos, webhooks y proveedores / webhooks.
+ * Cubren escenarios de Mercado Pago webhook firma verificador para documentar el comportamiento esperado y evitar regresiones.
+ * Mantener estos casos alineados con los contratos reales del backend cuando cambie la logica productiva.
+ */
 class MercadoPagoWebhookSignatureVerifierTest {
 
+    /**
+     * Escenario: debe validar official manifest firma.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void shouldValidateOfficialManifestSignature() {
         BillingProperties properties = new BillingProperties();
@@ -34,6 +43,10 @@ class MercadoPagoWebhookSignatureVerifierTest {
         assertTrue(verifier.verify(payload, request));
     }
 
+    /**
+     * Escenario: debe rechazar invalido firma.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void shouldRejectInvalidSignature() {
         BillingProperties properties = new BillingProperties();
@@ -51,6 +64,10 @@ class MercadoPagoWebhookSignatureVerifierTest {
         assertFalse(verifier.verify("{\"data\":{\"id\":\"pay-123\"}}", request));
     }
 
+    /**
+     * Escenario: debe rechazar vencido timestamp outside replay window.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void shouldRejectExpiredTimestampOutsideReplayWindow() {
         BillingProperties properties = new BillingProperties();
@@ -73,6 +90,10 @@ class MercadoPagoWebhookSignatureVerifierTest {
         assertFalse(verifier.verify("{\"data\":{\"id\":\"pay-123\"}}", request));
     }
 
+    /**
+     * Escenario: debe validar manifest firma con reservation webhook secret.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void shouldValidateManifestSignatureWithReservationWebhookSecret() {
         BillingProperties properties = new BillingProperties();

@@ -10,11 +10,20 @@ import java.math.BigDecimal;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+/**
+ * Tests de reservas.
+ * Cubren escenarios de reserva pago breakdown servicio para documentar el comportamiento esperado y evitar regresiones.
+ * Mantener estos casos alineados con los contratos reales del backend cuando cambie la logica productiva.
+ */
 class BookingPaymentBreakdownServiceTest {
 
     private final BillingProperties billingProperties = new BillingProperties();
     private final BookingPaymentBreakdownService service = new BookingPaymentBreakdownService(billingProperties);
 
+    /**
+     * Prepara mocks, datos base o configuracion comun antes de cada caso de prueba.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @BeforeEach
     void setUp() {
         billingProperties.setEnabled(true);
@@ -35,6 +44,10 @@ class BookingPaymentBreakdownServiceTest {
         );
     }
 
+    /**
+     * Escenario: debe gross up full prepay using configured processing fee.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void shouldGrossUpFullPrepayUsingConfiguredProcessingFee() {
         Booking booking = booking(ServicePaymentType.FULL_PREPAY, new BigDecimal("100.00"), null);
@@ -47,6 +60,10 @@ class BookingPaymentBreakdownServiceTest {
         assertEquals("UYU", breakdown.currency());
     }
 
+    /**
+     * Escenario: debe use delayed processing fee mode cuando reserva snapshot requires it.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void shouldUseDelayedProcessingFeeModeWhenBookingSnapshotRequiresIt() {
         Booking booking = booking(ServicePaymentType.FULL_PREPAY, new BigDecimal("100.00"), null);
@@ -65,6 +82,10 @@ class BookingPaymentBreakdownServiceTest {
         );
     }
 
+    /**
+     * Escenario: debe reuse snapshot amounts cuando reserva already stored them.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void shouldReuseSnapshotAmountsWhenBookingAlreadyStoredThem() {
         Booking booking = booking(ServicePaymentType.DEPOSIT, new BigDecimal("100.00"), new BigDecimal("30.00"));
@@ -78,6 +99,10 @@ class BookingPaymentBreakdownServiceTest {
         assertMoney("32.37", breakdown.totalAmount());
     }
 
+    /**
+     * Escenario: debe devuelve zero fee for on site reservas.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
     @Test
     void shouldReturnZeroFeeForOnSiteBookings() {
         Booking booking = booking(ServicePaymentType.ON_SITE, new BigDecimal("100.00"), null);

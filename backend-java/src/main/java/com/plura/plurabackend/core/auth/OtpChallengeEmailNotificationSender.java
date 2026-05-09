@@ -7,6 +7,12 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 
+/**
+ * OtpChallengeEmailNotificationSender es un componente de dominio del modulo autenticacion.
+ * Responsabilidad: encapsular comportamiento propio del modulo y mantenerlo fuera de controllers u otras capas.
+ * Colabora con: transactionalEmailService, templateService, ttlMinutes.
+ * Foco funcional: notificaciones, email transaccional, OTP.
+ */
 @Component
 public class OtpChallengeEmailNotificationSender implements OtpChallengeNotificationSender {
 
@@ -26,6 +32,9 @@ public class OtpChallengeEmailNotificationSender implements OtpChallengeNotifica
         this.ttlMinutes = ttlMinutes;
     }
 
+    /**
+     * Envia challenge mediante el canal configurado.
+     */
     @Override
     public void sendChallenge(OtpChallengeNotification notification) {
         if (notification == null || notification.user() == null || notification.destination() == null) {
@@ -57,6 +66,9 @@ public class OtpChallengeEmailNotificationSender implements OtpChallengeNotifica
         }
     }
 
+    /**
+     * Ejecuta la logica de mask destination manteniendola encapsulada en este componente.
+     */
     private String maskDestination(String destination) {
         if (destination == null || destination.isBlank()) {
             return "desconocido";

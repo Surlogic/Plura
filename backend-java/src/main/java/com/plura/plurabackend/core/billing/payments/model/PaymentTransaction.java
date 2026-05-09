@@ -39,6 +39,13 @@ import lombok.NoArgsConstructor;
         @Index(name = "idx_payment_transaction_created_at", columnList = "created_at")
     }
 )
+
+/**
+ * PaymentTransaction es un componente de dominio del modulo billing / pagos / modelo.
+ * Responsabilidad: encapsular comportamiento propio del modulo y mantenerlo fuera de controllers u otras capas.
+ * Mantiene separada esta responsabilidad para que el resto del backend use una API clara.
+ * Foco funcional: pagos.
+ */
 public class PaymentTransaction {
 
     @Id

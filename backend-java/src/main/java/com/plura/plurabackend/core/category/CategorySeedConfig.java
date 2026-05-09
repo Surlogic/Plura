@@ -7,9 +7,19 @@ import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
+/**
+ * CategorySeedConfig es un configuracion Spring del modulo categorias.
+ * Responsabilidad: declarar beans, filtros o parametros transversales que necesita el runtime.
+ * Mantiene separada esta responsabilidad para que el resto del backend use una API clara.
+ * Foco funcional: categorias.
+ */
 @Configuration
 public class CategorySeedConfig {
 
+    /**
+     * Bloque de datos seed category usado internamente por esta clase.
+     * Agrupa valores relacionados para que el calculo principal sea mas legible.
+     */
     private record SeedCategory(
         String name,
         String slug,

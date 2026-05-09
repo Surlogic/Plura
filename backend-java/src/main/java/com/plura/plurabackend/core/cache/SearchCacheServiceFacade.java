@@ -11,6 +11,12 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Service;
 
+/**
+ * SearchCacheServiceFacade es un componente de dominio del modulo cache.
+ * Responsabilidad: encapsular comportamiento propio del modulo y mantenerlo fuera de controllers u otras capas.
+ * Colabora con: inMemory, redis, meterRegistry, cacheEnabled, entre otros.
+ * Foco funcional: servicios, busqueda, cache.
+ */
 @Service
 @Primary
 public class SearchCacheServiceFacade implements SearchCacheService {
@@ -61,6 +67,9 @@ public class SearchCacheServiceFacade implements SearchCacheService {
         return Optional.empty();
     }
 
+    /**
+     * Ejecuta la logica de put busqueda manteniendola encapsulada en este componente.
+     */
     @Override
     public void putSearch(String key, SearchResponse response) {
         if (!isSearchCacheActive()) {
@@ -90,6 +99,9 @@ public class SearchCacheServiceFacade implements SearchCacheService {
         return Optional.empty();
     }
 
+    /**
+     * Ejecuta la logica de put suggest manteniendola encapsulada en este componente.
+     */
     @Override
     public void putSuggest(String key, SearchSuggestResponse response) {
         if (!isSuggestCacheActive()) {
@@ -99,6 +111,9 @@ public class SearchCacheServiceFacade implements SearchCacheService {
         redis.put(key, response, SUGGEST_TTL, "suggest");
     }
 
+    /**
+     * Ejecuta la logica de evict todos manteniendola encapsulada en este componente.
+     */
     @Override
     public void evictAll() {
         inMemory.evictAll();
@@ -106,14 +121,23 @@ public class SearchCacheServiceFacade implements SearchCacheService {
         redis.evictByPrefix("suggest:", "suggest");
     }
 
+    /**
+     * Evalua is busqueda cache active y devuelve una decision booleana para el llamador.
+     */
     private boolean isSearchCacheActive() {
         return cacheEnabled && searchCacheEnabled;
     }
 
+    /**
+     * Evalua is suggest cache active y devuelve una decision booleana para el llamador.
+     */
     private boolean isSuggestCacheActive() {
         return cacheEnabled && suggestCacheEnabled;
     }
 
+    /**
+     * Marca hit y actualiza los indicadores relacionados.
+     */
     private void markHit(String cacheName, String backend) {
         Counter.builder("plura.cache.hit")
             .description("Cache hits")
@@ -123,6 +147,9 @@ public class SearchCacheServiceFacade implements SearchCacheService {
             .increment();
     }
 
+    /**
+     * Marca miss y actualiza los indicadores relacionados.
+     */
     private void markMiss(String cacheName) {
         Counter.builder("plura.cache.miss")
             .description("Cache misses")

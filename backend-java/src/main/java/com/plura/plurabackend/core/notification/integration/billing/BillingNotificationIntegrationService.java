@@ -13,6 +13,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
+/**
+ * BillingNotificationIntegrationService es un servicio de negocio del modulo notificaciones / integraciones / billing.
+ * Responsabilidad: coordinar reglas de negocio, validaciones, persistencia e integraciones del caso de uso.
+ * Colabora con: notificationService, billingNotificationCommandFactory, clientBillingNotificationCommandFactory, professionalNotificationRecipientGateway, entre otros.
+ * Foco funcional: notificaciones, billing, servicios.
+ */
 @Service
 public class BillingNotificationIntegrationService {
 
@@ -38,6 +44,9 @@ public class BillingNotificationIntegrationService {
         this.clientNotificationRecipientGateway = clientNotificationRecipientGateway;
     }
 
+    /**
+     * Registra pago approved para auditoria, historial o notificaciones.
+     */
     public void recordPaymentApproved(Booking booking, PaymentTransaction transaction, ParsedWebhookEvent event, String sourceAction) {
         recordProfessional(billingNotificationCommandFactory.buildPaymentApproved(
             booking,
@@ -58,6 +67,9 @@ public class BillingNotificationIntegrationService {
         }
     }
 
+    /**
+     * Registra pago failed para auditoria, historial o notificaciones.
+     */
     public void recordPaymentFailed(Booking booking, PaymentTransaction transaction, ParsedWebhookEvent event, String sourceAction) {
         recordProfessional(billingNotificationCommandFactory.buildPaymentFailed(
             booking,
@@ -78,6 +90,9 @@ public class BillingNotificationIntegrationService {
         }
     }
 
+    /**
+     * Registra pago refunded para auditoria, historial o notificaciones.
+     */
     public void recordPaymentRefunded(Booking booking, PaymentTransaction transaction, ParsedWebhookEvent event, String sourceAction) {
         ClientNotificationRecipient clientRecipient = resolveClientRecipient(booking, transaction);
         if (clientRecipient != null) {
@@ -91,6 +106,9 @@ public class BillingNotificationIntegrationService {
         }
     }
 
+    /**
+     * Registra pago reembolso pending para auditoria, historial o notificaciones.
+     */
     public void recordPaymentRefundPending(Booking booking, PaymentTransaction transaction, ParsedWebhookEvent event, String sourceAction) {
         ClientNotificationRecipient clientRecipient = resolveClientRecipient(booking, transaction);
         if (clientRecipient != null) {
@@ -104,6 +122,9 @@ public class BillingNotificationIntegrationService {
         }
     }
 
+    /**
+     * Resuelve profesional destinatario normalizando entradas, defaults y casos borde.
+     */
     private ProfessionalNotificationRecipient resolveProfessionalRecipient(Booking booking, PaymentTransaction transaction) {
         Long professionalId = booking != null && booking.getProfessionalId() != null
             ? booking.getProfessionalId()
@@ -123,6 +144,9 @@ public class BillingNotificationIntegrationService {
             });
     }
 
+    /**
+     * Resuelve cliente destinatario normalizando entradas, defaults y casos borde.
+     */
     private ClientNotificationRecipient resolveClientRecipient(Booking booking, PaymentTransaction transaction) {
         if (booking == null || booking.getUser() == null || booking.getUser().getId() == null) {
             LOGGER.warn(
@@ -145,10 +169,16 @@ public class BillingNotificationIntegrationService {
             });
     }
 
+    /**
+     * Registra profesional para auditoria, historial o notificaciones.
+     */
     private void recordProfessional(NotificationRecordCommand command) {
         notificationService.record(command);
     }
 
+    /**
+     * Registra cliente para auditoria, historial o notificaciones.
+     */
     private void recordClient(NotificationRecordCommand command) {
         notificationService.record(command);
     }

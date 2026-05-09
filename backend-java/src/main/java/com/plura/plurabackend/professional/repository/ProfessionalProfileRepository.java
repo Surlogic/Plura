@@ -16,6 +16,12 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.repository.query.Param;
 
+/**
+ * ProfessionalProfileRepository es un contrato interno del modulo profesionales / persistencia.
+ * Responsabilidad: definir una frontera estable para que otros modulos no dependan de detalles concretos.
+ * Persistencia: concentra queries derivadas o JPQL para que los servicios no conozcan SQL/joins.
+ * Foco funcional: profesionales, perfiles.
+ */
 public interface ProfessionalProfileRepository extends JpaRepository<ProfessionalProfile, Long> {
     @EntityGraph(attributePaths = {"user", "categories"})
     Optional<ProfessionalProfile> findBySlug(String slug);

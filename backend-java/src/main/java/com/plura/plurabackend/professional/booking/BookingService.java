@@ -19,6 +19,12 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
+/**
+ * BookingService es un servicio de negocio del modulo profesionales / reservas.
+ * Responsabilidad: coordinar reglas de negocio, validaciones, persistencia e integraciones del caso de uso.
+ * Colabora con: bookingCommandApplicationService, bookingQueryApplicationService, bookingCommandIdempotencyService.
+ * Foco funcional: reservas, servicios.
+ */
 @Service
 public class BookingService implements BookingCommandWorkflowService {
 
@@ -36,10 +42,18 @@ public class BookingService implements BookingCommandWorkflowService {
         this.bookingCommandIdempotencyService = bookingCommandIdempotencyService;
     }
 
+    /**
+     * Crea publico reserva validando datos de entrada y persistiendo el resultado.
+     * Tambien concentra los efectos secundarios para que el flujo quede en un estado consistente.
+     */
     public PublicBookingResponse createPublicBooking(String slug, PublicBookingRequest request, String rawUserId) {
         return createPublicBooking(slug, request, rawUserId, null);
     }
 
+    /**
+     * Crea publico reserva validando datos de entrada y persistiendo el resultado.
+     * Tambien concentra los efectos secundarios para que el flujo quede en un estado consistente.
+     */
     public PublicBookingResponse createPublicBooking(
         String slug,
         PublicBookingRequest request,
@@ -49,6 +63,10 @@ public class BookingService implements BookingCommandWorkflowService {
         return bookingCommandApplicationService.createPublicBooking(slug, request, rawUserId, sourcePlatform, null);
     }
 
+    /**
+     * Crea publico reserva validando datos de entrada y persistiendo el resultado.
+     * Tambien concentra los efectos secundarios para que el flujo quede en un estado consistente.
+     */
     public PublicBookingResponse createPublicBooking(
         String slug,
         PublicBookingRequest request,
@@ -74,6 +92,10 @@ public class BookingService implements BookingCommandWorkflowService {
         return bookingQueryApplicationService.getProfessionalBookings(rawUserId, rawDate, rawDateFrom, rawDateTo);
     }
 
+    /**
+     * Crea profesional reserva validando datos de entrada y persistiendo el resultado.
+     * Tambien concentra los efectos secundarios para que el flujo quede en un estado consistente.
+     */
     public ProfessionalBookingResponse createProfessionalBooking(
         String rawUserId,
         ProfessionalBookingCreateRequest request
@@ -81,6 +103,10 @@ public class BookingService implements BookingCommandWorkflowService {
         return bookingCommandApplicationService.createProfessionalBooking(rawUserId, request);
     }
 
+    /**
+     * Actualiza profesional reserva manteniendo reglas de negocio y consistencia de datos.
+     * Tambien concentra los efectos secundarios para que el flujo quede en un estado consistente.
+     */
     public ProfessionalBookingResponse updateProfessionalBooking(
         String rawUserId,
         Long bookingId,
@@ -89,6 +115,9 @@ public class BookingService implements BookingCommandWorkflowService {
         return bookingCommandApplicationService.updateProfessionalBooking(rawUserId, bookingId, request);
     }
 
+    /**
+     * Cancela booking as client respetando reglas de estado.
+     */
     @Override
     public BookingCommandResponse cancelBookingAsClient(
         String rawUserId,
@@ -108,6 +137,9 @@ public class BookingService implements BookingCommandWorkflowService {
         );
     }
 
+    /**
+     * Ejecuta la logica de reschedule reserva como cliente manteniendola encapsulada en este componente.
+     */
     @Override
     public BookingCommandResponse rescheduleBookingAsClient(
         String rawUserId,
@@ -127,6 +159,9 @@ public class BookingService implements BookingCommandWorkflowService {
         );
     }
 
+    /**
+     * Cancela booking as professional respetando reglas de estado.
+     */
     public BookingCommandResponse cancelBookingAsProfessional(
         String rawUserId,
         Long bookingId,
@@ -145,6 +180,9 @@ public class BookingService implements BookingCommandWorkflowService {
         );
     }
 
+    /**
+     * Ejecuta la logica de reschedule reserva como profesional manteniendola encapsulada en este componente.
+     */
     public BookingCommandResponse rescheduleBookingAsProfessional(
         String rawUserId,
         Long bookingId,
@@ -163,6 +201,9 @@ public class BookingService implements BookingCommandWorkflowService {
         );
     }
 
+    /**
+     * Marca reserva no show y actualiza los indicadores relacionados.
+     */
     public BookingCommandResponse markBookingNoShow(
         String rawUserId,
         Long bookingId,
@@ -180,6 +221,10 @@ public class BookingService implements BookingCommandWorkflowService {
         );
     }
 
+    /**
+     * Completa reserva y deja persistido el estado final del flujo.
+     * Tambien concentra los efectos secundarios para que el flujo quede en un estado consistente.
+     */
     public BookingCommandResponse completeBooking(
         String rawUserId,
         Long bookingId,
@@ -197,6 +242,9 @@ public class BookingService implements BookingCommandWorkflowService {
         );
     }
 
+    /**
+     * Parsea usuario ID y convierte errores de formato en errores controlados.
+     */
     private Long parseUserId(String rawUserId) {
         try {
             return Long.valueOf(rawUserId);

@@ -339,7 +339,7 @@ const badgeToneClassNames = {
   default: 'border-[#D9E2EC] bg-[#F8FAFC] text-[#475569]',
   accent: 'border-[#D9ECE8] bg-[#F0FDFA] text-[#0F766E]',
   success: 'border-[#BFEDE7] bg-[#F0FDFA] text-[#0F766E]',
-  warning: 'border-[#F6D6A8] bg-[#FFF7E8] text-[#B45309]',
+  warning: 'border-[#E2E8F0] bg-white text-[#475569]',
 };
 
 export const DashboardHeaderBadge = memo(function DashboardHeaderBadge({
@@ -369,11 +369,11 @@ type DashboardStatCardProps = {
 
 const statToneClassNames = {
   default:
-    'border-[#E2E8F0] bg-white text-[color:var(--ink)]',
+    'border-[#E2E8F0] bg-white text-[#0F172A]',
   accent:
-    'border-[#D9ECE8] bg-[#F0FDFA] text-[color:var(--ink)]',
+    'border-[#E2E8F0] bg-white text-[#0F172A]',
   warm:
-    'border-[#F3DEC0] bg-[#FFF9F1] text-[color:var(--ink)]',
+    'border-[#E2E8F0] bg-white text-[#0F172A]',
   dark:
     'border-white/12 bg-[linear-gradient(160deg,var(--brand-navy)_0%,var(--brand-navy-soft)_54%,var(--brand-navy-elevated)_100%)] text-[color:var(--text-on-dark)]',
 };
@@ -389,7 +389,7 @@ export const DashboardStatCard = memo(function DashboardStatCard({
   return (
     <div
       className={cn(
-        'rounded-[16px] border p-3 shadow-[0_1px_3px_rgba(15,23,42,0.05)]',
+        'min-h-[104px] rounded-[16px] border p-3 shadow-[0_1px_2px_rgba(15,23,42,0.04)]',
         statToneClassNames[tone],
         className,
       )}
@@ -397,29 +397,29 @@ export const DashboardStatCard = memo(function DashboardStatCard({
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className={cn(
-          'text-[0.65rem] font-semibold uppercase tracking-[0.22em]',
-          tone === 'dark' ? 'text-[color:var(--text-on-dark-secondary)]' : 'text-[color:var(--ink-muted)]',
+          'text-[0.65rem] font-semibold uppercase tracking-[0.18em]',
+          tone === 'dark' ? 'text-[color:var(--text-on-dark-secondary)]' : 'text-[#64748B]',
           )}>
             {label}
           </p>
           <p className={cn(
-            'mt-2 text-[1.35rem] font-semibold tracking-[-0.04em] sm:text-[1.55rem]',
-            tone === 'dark' ? 'text-[color:var(--text-on-dark)]' : 'text-[color:var(--ink)]',
+            'mt-2 text-[1.3rem] font-semibold tracking-[-0.03em] text-[#0F172A] sm:text-[1.45rem]',
+            tone === 'dark' && 'text-[color:var(--text-on-dark)]',
           )}>
             {value}
           </p>
           {detail ? (
             <p className={cn(
-              'mt-1 text-[0.76rem] sm:text-[0.8rem]',
-              tone === 'dark' ? 'text-[color:var(--text-on-dark-secondary)]' : 'text-[color:var(--ink-muted)]',
+              'mt-1 line-clamp-2 text-[0.74rem] leading-snug sm:text-[0.78rem]',
+              tone === 'dark' ? 'text-[color:var(--text-on-dark-secondary)]' : 'text-[#64748B]',
             )}>
               {detail}
             </p>
           ) : null}
         </div>
         <span className={cn(
-          'inline-flex h-9 w-9 items-center justify-center rounded-[12px]',
-          tone === 'dark' ? 'border border-white/14 bg-white/10 text-[color:var(--text-on-dark)]' : 'border border-[#E2E8F0] bg-white text-[color:var(--primary)]',
+          'inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-[12px]',
+          tone === 'dark' ? 'border border-white/14 bg-white/10 text-[color:var(--text-on-dark)]' : 'border border-[#D9F3ED] bg-[#ECFDF5] text-[#0F766E]',
         )}>
           <DashboardIcon name={icon} className="h-[18px] w-[18px]" />
         </span>

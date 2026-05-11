@@ -14,7 +14,6 @@ import { useProfessionalDashboardUnsavedSection } from '@/context/ProfessionalDa
 import api from '@/services/api';
 import {
   DashboardIcon,
-  DashboardHeaderBadge,
   DashboardPageHeader,
   DashboardSectionHeading,
   DashboardStatCard,
@@ -415,10 +414,10 @@ const WeekCalendarBoard = memo(function WeekCalendarBoard({
   onReservationOpen: (reservation: ProfessionalReservation) => void;
 }) {
   return (
-    <div className="mt-3 min-h-[520px] overflow-x-auto lg:mt-2 lg:h-full lg:min-h-0 lg:overflow-x-visible">
-      <div className="min-h-[520px] min-w-[860px] overflow-hidden rounded-[18px] border border-[#E2E8F0] bg-white shadow-[0_1px_3px_rgba(15,23,42,0.05)] lg:flex lg:h-full lg:min-h-[calc(100vh-250px)] lg:min-w-0 lg:flex-col">
+    <div className="mt-3 h-[500px] overflow-x-auto lg:h-full lg:overflow-x-visible">
+      <div className="h-full min-w-[860px] overflow-hidden rounded-[16px] border border-[#E2E8F0] bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04)] lg:flex lg:min-w-0 lg:flex-col">
         <div className="flex border-b border-[#E2E8F0] bg-[#F8FAFC]">
-          <div className="sticky left-0 z-20 w-16 shrink-0 bg-[#F8FAFC] px-3 py-3 text-[0.6rem] uppercase tracking-[0.24em] text-[#94A3B8] lg:w-[72px]">
+          <div className="sticky left-0 z-20 w-16 shrink-0 bg-[#F8FAFC] px-3 py-2.5 text-[0.6rem] uppercase tracking-[0.22em] text-[#94A3B8] lg:w-[64px]">
             Hora
           </div>
           <div className="grid flex-1 grid-cols-7">
@@ -428,11 +427,11 @@ const WeekCalendarBoard = memo(function WeekCalendarBoard({
               return (
                 <div
                   key={day.dateKey}
-                  className={`px-3 py-3 text-xs lg:px-4 ${
+                  className={`px-3 py-2.5 text-xs lg:px-3 ${
                     index < weekDays.length - 1 ? 'border-r border-[#E2E7EC]' : ''
                   } ${isToday ? 'bg-[#F2FFFB]' : ''}`}
                 >
-                  <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-start justify-between gap-2">
                     <div>
                       <p className="text-[0.6rem] uppercase tracking-[0.3em] text-[#94A3B8]">
                         {dayLabelsShort[day.dayKey]}
@@ -465,7 +464,7 @@ const WeekCalendarBoard = memo(function WeekCalendarBoard({
           className="flex overflow-y-auto overscroll-contain scroll-smooth lg:min-h-0 lg:flex-1"
           style={{ height: '100%' }}
         >
-          <div className="sticky left-0 z-10 w-16 shrink-0 border-r border-[#E2E8F0] bg-white shadow-[2px_0_6px_rgba(15,23,42,0.04)] lg:w-[72px]">
+          <div className="sticky left-0 z-10 w-16 shrink-0 border-r border-[#E2E8F0] bg-white shadow-[2px_0_6px_rgba(15,23,42,0.04)] lg:w-[64px]">
             <div className="relative" style={{ height: visibleCalendarRange.calendarHeight }}>
               {visibleCalendarRange.labelMarkers.map((markerMinutes) => {
                 const top = Math.min(
@@ -573,7 +572,7 @@ const WeekCalendarBoard = memo(function WeekCalendarBoard({
                       >
                         <div
                           className={`group relative flex h-full min-h-[44px] flex-col overflow-hidden rounded-[10px] border px-2.5 py-2 text-left shadow-[0_1px_3px_rgba(15,23,42,0.06)] transition hover:-translate-y-0.5 hover:shadow-[0_6px_16px_rgba(15,23,42,0.10)] ${palette.card} ${
-                            isToday ? 'ring-1 ring-[#FFD9B0]' : ''
+                            isToday ? 'ring-1 ring-[#99F6E4]' : ''
                           }`}
                         >
                           <span
@@ -626,7 +625,7 @@ const MonthCalendarBoard = memo(function MonthCalendarBoard({
   monthLabel: string;
 }) {
   return (
-    <div className="mt-6 overflow-hidden rounded-[18px] border border-[#E2E7EC] bg-white shadow-[0_4px_14px_rgba(15,23,42,0.04)]">
+    <div className="mt-3 overflow-hidden rounded-[16px] border border-[#E2E8F0] bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
       <div className="grid grid-cols-7 gap-1 border-b border-[#E2E7EC] bg-[#F8FAFC] px-2 text-center">
         {['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'].map((dayLabel) => (
           <div key={dayLabel} className="py-2 text-xs font-semibold text-[#94A3B8]">
@@ -811,16 +810,6 @@ export default function ProfesionalDashboardPage() {
     return `${monthNames[firstOfMonth.getMonth()]} ${firstOfMonth.getFullYear()}`;
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [monthOffset]);
-  const todayHeadlineLabel = useMemo(
-    () =>
-      new Intl.DateTimeFormat('es-AR', {
-        weekday: 'long',
-        day: 'numeric',
-        month: 'long',
-      }).format(clockNow),
-    [clockNow],
-  );
-
   const agendaReservations = useMemo(
     () => reservations.filter((reservation) => (reservation.status ?? 'pending') !== 'cancelled'),
     [reservations],
@@ -1238,25 +1227,6 @@ export default function ProfesionalDashboardPage() {
     setWeekOffset(0);
     setMonthOffset(0);
   };
-  const handleJumpToDaySegment = useCallback((segment: 'lateNight' | 'morning' | 'afternoon' | 'evening' | 'now') => {
-    if (calendarView !== 'week') return;
-
-    const targetMinutes = segment === 'lateNight'
-      ? 0
-      : segment === 'morning'
-        ? 6 * 60
-        : segment === 'afternoon'
-          ? 12 * 60
-          : segment === 'evening'
-            ? 18 * 60
-            : new Date().getHours() * 60 + new Date().getMinutes();
-
-    scrollWeekCalendarToMinute(targetMinutes, {
-      behavior: 'smooth',
-      align: segment === 'now' ? 'center' : 'start',
-    });
-  }, [calendarView, scrollWeekCalendarToMinute]);
-
   const handleOpenReservation = useCallback((reservation: ProfessionalReservation) => {
     setSelectedReservation(reservation);
   }, []);
@@ -1308,33 +1278,15 @@ export default function ProfesionalDashboardPage() {
       profile={profile}
       active="Agenda"
       maxWidthClassName="max-w-none"
-      contentClassName="py-3 sm:py-4"
+      contentClassName="py-4 sm:py-5"
     >
       <div className="flex flex-col gap-4">
                 <section className="space-y-3 lg:shrink-0">
                   <DashboardPageHeader
                     title="Dashboard"
                     description="Resumen operativo de tu agenda y reservas"
-                    className="py-1"
+                    className="rounded-[18px] border border-[#E2E8F0] bg-white px-4 py-4 shadow-[0_1px_2px_rgba(15,23,42,0.04)] sm:px-5"
                     withDivider={false}
-                    meta={
-                      <>
-                        <DashboardHeaderBadge tone="accent">
-                          {todayHeadlineLabel}
-                        </DashboardHeaderBadge>
-                        <DashboardHeaderBadge tone="success">
-                          {todayCount} reservas hoy
-                        </DashboardHeaderBadge>
-                        <DashboardHeaderBadge tone={todayPendingCount > 0 ? 'warning' : 'default'}>
-                          {todayPendingCount} pendientes
-                        </DashboardHeaderBadge>
-                        {nextReservation ? (
-                          <DashboardHeaderBadge>
-                            Próxima: {nextReservation.time}
-                          </DashboardHeaderBadge>
-                        ) : null}
-                      </>
-                    }
                     actions={
                       <>
                         <Button
@@ -1388,7 +1340,7 @@ export default function ProfesionalDashboardPage() {
                   ) : null}
 
                   {statusMessage ? (
-                    <p className="rounded-full border border-[#E2E8F0] bg-white/90 px-4 py-2 text-sm text-[#64748B] shadow-[var(--shadow-card)]">
+                    <p className="rounded-[14px] border border-[#E2E8F0] bg-white px-4 py-2 text-sm text-[#64748B] shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
                       {statusMessage}
                     </p>
                   ) : null}
@@ -1406,16 +1358,16 @@ export default function ProfesionalDashboardPage() {
                       ))}
                   </div>
                 </section>
-                <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_360px] lg:items-start">
-                  <section className="min-w-0 flex flex-col">
-                    <DashboardSectionHeading
-                      eyebrow="Agenda"
-                      title={calendarView === 'week' ? 'Agenda semanal' : 'Calendario mensual'}
-                      description={calendarView === 'week' ? calendarWeekLabel : monthLabel}
-                    />
+                <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_340px] xl:grid-cols-[minmax(0,1fr)_360px] lg:items-start">
+                  <section className="min-w-0 rounded-[18px] border border-[#E2E8F0] bg-white p-4 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
+                    <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                      <DashboardSectionHeading
+                        title={calendarView === 'week' ? 'Agenda semanal' : 'Calendario mensual'}
+                        description={calendarView === 'week' ? calendarWeekLabel : monthLabel}
+                        className="gap-2"
+                      />
 
-                    <div className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-[16px] border border-[#E2E8F0] bg-white px-3 py-3 shadow-[0_1px_3px_rgba(15,23,42,0.05)]">
-                      <div className="flex flex-wrap items-center gap-2">
+                      <div className="flex flex-wrap items-center gap-2 lg:justify-end">
                         <div className="flex rounded-full border border-[#E2E8F0] bg-[#F8FAFC] p-0.5">
                           <button
                             type="button"
@@ -1511,34 +1463,7 @@ export default function ProfesionalDashboardPage() {
                     </div>
 
                     {calendarView === 'week' ? (
-                      <div className="mt-2.5 flex flex-wrap items-center justify-between gap-3 rounded-[16px] border border-[#E2E8F0] bg-[#F8FAFC] px-3 py-2">
-                        <div className="flex flex-wrap gap-2">
-                          {[
-                            { label: 'Madrugada', value: 'lateNight' as const },
-                            { label: 'Mañana', value: 'morning' as const },
-                            { label: 'Tarde', value: 'afternoon' as const },
-                            { label: 'Noche', value: 'evening' as const },
-                            { label: 'Ahora', value: 'now' as const },
-                          ].map((segment) => (
-                            <button
-                              key={segment.value}
-                              type="button"
-                              onClick={() => handleJumpToDaySegment(segment.value)}
-                              className="rounded-full border border-[#D9E2EC] bg-white px-3 py-1.5 text-[0.72rem] font-semibold text-[#475569] transition hover:border-[#BFD3E4] hover:bg-[#FDFEFF]"
-                            >
-                              {segment.label}
-                            </button>
-                          ))}
-                        </div>
-                        <p className="text-[0.72rem] text-[#64748B]">
-                          Base 24h con foco inicial
-                          {weekFocusWindow.isFallback ? ' por fallback' : ' según horarios y reservas'}
-                        </p>
-                      </div>
-                    ) : null}
-
-                    {calendarView === 'week' ? (
-                      <div className="min-h-[520px] lg:h-[min(76vh,900px)]">
+                      <div className="h-[500px] min-h-0 lg:h-[calc(100vh-330px)] lg:min-h-[430px] lg:max-h-[560px]">
                         <WeekCalendarBoard
                           weekDays={weekDays}
                           todayKey={todayKey}
@@ -1551,7 +1476,7 @@ export default function ProfesionalDashboardPage() {
                         />
                       </div>
                     ) : (
-                      <div className="min-h-[520px] lg:max-h-[min(76vh,900px)] lg:overflow-auto">
+                      <div className="max-h-[560px] overflow-auto">
                         <MonthCalendarBoard
                           monthGridDays={monthGridDays}
                           reservationsByDate={reservationsByDate}
@@ -1561,11 +1486,12 @@ export default function ProfesionalDashboardPage() {
                     )}
                   </section>
 
-                  <aside className="space-y-3 lg:sticky lg:top-3">
-                    <Card className="rounded-[18px] border-[#E2E8F0] bg-white p-4 shadow-[0_1px_3px_rgba(15,23,42,0.05)]">
+                  <aside className="space-y-3 lg:sticky lg:top-5">
+                    <Card className="rounded-[18px] border-[#E2E8F0] bg-white p-4 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
                       <DashboardSectionHeading
                         title="Reservas próximas"
-                        description="Lo inmediato del rango visible."
+                        description={nextReservation ? `Próxima atención ${nextReservation.time}` : 'Lo inmediato del rango visible.'}
+                        className="[&_h2]:text-base [&_p]:text-xs"
                         action={(
                           <Button
                             type="button"
@@ -1578,7 +1504,7 @@ export default function ProfesionalDashboardPage() {
                           </Button>
                         )}
                       />
-                      <div className="mt-4 space-y-2.5">
+                      <div className="mt-3 space-y-2">
                         {upcomingReservations.length === 0 ? (
                           <div className="rounded-[14px] border border-dashed border-[#D9E2EC] bg-[#F8FAFC] px-3 py-4 text-sm text-[#64748B]">
                             No hay reservas próximas para mostrar.
@@ -1591,7 +1517,7 @@ export default function ProfesionalDashboardPage() {
                                 key={reservation.id}
                                 type="button"
                                 onClick={() => handleOpenReservation(reservation)}
-                                className="flex w-full items-start gap-3 rounded-[14px] border border-[#E2E8F0] bg-white px-3 py-3 text-left transition hover:border-[#CBD5E1] hover:bg-[#F8FAFC]"
+                                className="flex w-full items-start gap-3 rounded-[14px] border border-[#E2E8F0] bg-white px-3 py-2.5 text-left transition hover:border-[#CBD5E1] hover:bg-[#F8FAFC]"
                               >
                                 <div className="w-14 shrink-0">
                                   <p className="text-sm font-semibold text-[#0E2A47]">
@@ -1602,7 +1528,7 @@ export default function ProfesionalDashboardPage() {
                                   </p>
                                 </div>
                                 <div className="min-w-0 flex-1">
-                                  <p className="truncate text-sm font-semibold text-[#0E2A47]">
+                                  <p className="truncate text-sm font-semibold text-[#0F172A]">
                                     {reservation.clientName || 'Cliente'}
                                   </p>
                                   <p className="mt-0.5 truncate text-[0.78rem] text-[#64748B]">
@@ -1620,42 +1546,42 @@ export default function ProfesionalDashboardPage() {
                     </Card>
 
                     <LockedFeature requiredPlan="PROFESIONAL" currentPlan={profile?.professionalPlan}>
-                      <Card className="rounded-[18px] border-[#E2E8F0] bg-white p-4 shadow-[0_1px_3px_rgba(15,23,42,0.05)]">
+                      <Card className="rounded-[18px] border-[#E2E8F0] bg-white p-4 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
                         <DashboardSectionHeading
-                          title="Pulso semanal"
-                          description="Ocupación y actividad comercial como panel secundario."
+                          title="Resumen operativo"
+                          description="Actividad semanal compacta."
+                          className="[&_h2]:text-base [&_p]:text-xs"
                           action={
                             canViewAnalytics && !featureAccess.advancedAnalytics ? (
-                              <span className="rounded-full border border-[color:var(--premium-soft)] bg-[color:var(--premium-soft)] px-2.5 py-1 text-[0.65rem] font-semibold text-[color:var(--premium-strong)]">
-                                Analytics básicos
+                              <span className="rounded-full border border-[#E2E8F0] bg-[#F8FAFC] px-2.5 py-1 text-[0.62rem] font-semibold text-[#64748B]">
+                                Básico
                               </span>
                             ) : null
                           }
                         />
 
                         {canViewAnalytics ? (
-                          <div className="mt-4 space-y-2.5">
+                          <div className="mt-3 grid gap-2">
                             {stats.map((item, index) => (
                               <div
                                 key={item.label}
                                 className={cn(
-                                  'rounded-[14px] border px-3 py-3',
-                                  index === 0
-                                    ? 'border-[#F3DEC0] bg-[#FFF9F1]'
-                                    : index === 1
-                                      ? 'border-[#CDEEE9] bg-[#F0FFFC]'
-                                      : 'border-[#E2E8F0] bg-[#F8FAFC]',
+                                  'rounded-[14px] border border-[#E2E8F0] bg-[#F8FAFC] px-3 py-2.5',
                                 )}
                               >
-                                <p className="text-[0.58rem] uppercase tracking-[0.22em] text-[#94A3B8]">
-                                  {item.label}
-                                </p>
-                                <p className="mt-1.5 text-xl font-semibold leading-none text-[#0E2A47]">
-                                  {item.value}
-                                </p>
-                                <p className="mt-1 text-[0.74rem] leading-snug text-[#64748B]">
-                                  {item.detail}
-                                </p>
+                                <div className="flex items-start justify-between gap-3">
+                                  <div className="min-w-0">
+                                    <p className="text-[0.58rem] uppercase tracking-[0.18em] text-[#94A3B8]">
+                                      {item.label}
+                                    </p>
+                                    <p className="mt-1 text-[0.74rem] leading-snug text-[#64748B]">
+                                      {item.detail}
+                                    </p>
+                                  </div>
+                                  <p className="shrink-0 text-lg font-semibold leading-none text-[#0F172A]">
+                                    {item.value}
+                                  </p>
+                                </div>
                               </div>
                             ))}
                           </div>

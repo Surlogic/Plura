@@ -7,6 +7,7 @@ Este documento cruza el stack tecnico actual con las necesidades del producto de
 - Monorepo `pnpm`
 - Web: `Next.js 16`, `React 19`, `TypeScript`
 - Mobile: `Expo 54`, `React Native 0.81`, `expo-router`
+- el `package.json` raiz usa `pnpm.overrides` para fijar versiones parcheadas de dependencias transitivas auditadas por seguridad sin subir de SDK Expo ni cambiar contratos de runtime
 - Backend: `Spring Boot 3.5`, `Java 17`, `JPA`, `Spring Security`
 - Base de datos: PostgreSQL
 - Migraciones: Flyway

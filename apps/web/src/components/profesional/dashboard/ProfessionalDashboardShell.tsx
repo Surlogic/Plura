@@ -26,15 +26,15 @@ export default function ProfessionalDashboardShell({
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   return (
-    <div className="app-shell min-h-screen bg-[#F8FAFC] text-[#0F172A]">
-      <div className="flex min-h-screen">
-        <aside className="hidden w-[268px] shrink-0 bg-white lg:block">
-          <div className="sticky top-0 h-screen overflow-y-auto overscroll-contain">
+    <div className="app-shell min-h-screen bg-[#F8FAFC] text-[#0F172A] lg:h-screen lg:overflow-hidden">
+      <div className="flex min-h-screen lg:h-screen lg:min-h-0">
+        <aside className="hidden w-[244px] shrink-0 bg-white lg:block">
+          <div className="h-screen overflow-y-auto overscroll-contain">
             <ProfesionalSidebar profile={profile} active={active} />
           </div>
         </aside>
 
-        <div className={cn('flex min-w-0 flex-1 flex-col bg-[#F8FAFC]', className)}>
+        <div className={cn('flex min-w-0 flex-1 flex-col bg-[#F8FAFC] lg:min-h-0 lg:overflow-hidden', className)}>
           <div className="border-b border-[#E2E8F0] bg-white px-4 py-3 sm:px-6 lg:hidden">
             <Button type="button" size="sm" onClick={() => setIsMenuOpen((prev) => !prev)}>
               {isMenuOpen ? 'Cerrar menu' : 'Abrir menu'}
@@ -49,7 +49,7 @@ export default function ProfessionalDashboardShell({
 
           <main
             className={cn(
-              'flex w-full flex-1 flex-col px-4 py-3 sm:px-6 sm:py-4 lg:px-7 lg:py-5 xl:px-8',
+              'flex w-full flex-1 flex-col px-4 py-3 sm:px-6 sm:py-4 lg:min-h-0 lg:overflow-hidden lg:px-7 lg:py-5 xl:px-8',
               maxWidthClassName,
               contentClassName,
             )}

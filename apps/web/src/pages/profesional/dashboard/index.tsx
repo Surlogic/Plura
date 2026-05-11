@@ -99,13 +99,13 @@ const parseDurationToMinutes = (value?: string) => {
 
 const fullDayStartMinutes = 0;
 const fullDayEndMinutes = 24 * 60;
-const defaultCalendarStartMinutes = 9 * 60;
-const defaultCalendarEndMinutes = 18 * 60;
+const defaultCalendarStartMinutes = 8 * 60;
+const defaultCalendarEndMinutes = 20 * 60;
 const calendarStepMinutes = 30;
 const calendarLabelStepMinutes = 60;
 const calendarMarginMinutes = 30;
 const minCalendarSpanMinutes = 3 * 60;
-const hourRowHeight = 56;
+const hourRowHeight = 68;
 const formatMinutesLabel = (minutes: number) => {
   const safeMinutes = Math.max(0, Math.round(minutes));
   const hours = Math.floor(safeMinutes / 60) % 24;
@@ -291,22 +291,22 @@ const buildWeekFocusWindow = (
     });
   });
 
-  if (relevantMinutes.length === 0) {
-    return {
-      startMinutes: defaultCalendarStartMinutes,
-      endMinutes: defaultCalendarEndMinutes,
-      isFallback: true,
-    } satisfies CalendarFocusWindow;
+  let rawStartMinutes = defaultCalendarStartMinutes;
+  let rawEndMinutes = defaultCalendarEndMinutes;
+
+  if (relevantMinutes.length > 0) {
+    const firstRelevantMinute = Math.min(...relevantMinutes);
+    const lastRelevantMinute = Math.max(...relevantMinutes);
+    if (firstRelevantMinute < defaultCalendarStartMinutes) {
+      rawStartMinutes = Math.max(firstRelevantMinute - calendarMarginMinutes, fullDayStartMinutes);
+    }
+    if (lastRelevantMinute > defaultCalendarEndMinutes) {
+      rawEndMinutes = Math.min(lastRelevantMinute + calendarMarginMinutes, fullDayEndMinutes);
+    }
   }
 
-  let startMinutes = roundDownToStep(
-    Math.max(Math.min(...relevantMinutes) - calendarMarginMinutes, fullDayStartMinutes),
-    calendarStepMinutes,
-  );
-  let endMinutes = roundUpToStep(
-    Math.min(Math.max(...relevantMinutes) + calendarMarginMinutes, fullDayEndMinutes),
-    calendarStepMinutes,
-  );
+  let startMinutes = roundDownToStep(rawStartMinutes, calendarStepMinutes);
+  let endMinutes = roundUpToStep(rawEndMinutes, calendarStepMinutes);
 
   if (endMinutes - startMinutes < minCalendarSpanMinutes) {
     const missingMinutes = minCalendarSpanMinutes - (endMinutes - startMinutes);
@@ -325,7 +325,7 @@ const buildWeekFocusWindow = (
   return {
     startMinutes,
     endMinutes,
-    isFallback: false,
+    isFallback: relevantMinutes.length === 0,
   } satisfies CalendarFocusWindow;
 };
 
@@ -395,7 +395,6 @@ const buildDayLayouts = (items: ProfessionalReservation[]) => {
 const WeekCalendarBoard = memo(function WeekCalendarBoard({
   weekDays,
   todayKey,
-  reservationsByDate,
   visibleCalendarRange,
   dayLayoutsByDate,
   currentTimeIndicator,
@@ -404,7 +403,6 @@ const WeekCalendarBoard = memo(function WeekCalendarBoard({
 }: {
   weekDays: WeekCalendarDay[];
   todayKey: string;
-  reservationsByDate: Map<string, ProfessionalReservation[]>;
   visibleCalendarRange: VisibleCalendarRange;
   dayLayoutsByDate: Map<string, ReservationLayout[]>;
   currentTimeIndicator: CurrentTimeIndicator | null;
@@ -412,39 +410,31 @@ const WeekCalendarBoard = memo(function WeekCalendarBoard({
   onReservationOpen: (reservation: ProfessionalReservation) => void;
 }) {
   return (
-    <div className="h-[500px] overflow-x-auto lg:h-full lg:overflow-x-visible">
-      <div className="h-full min-w-[860px] overflow-hidden bg-white lg:flex lg:min-w-0 lg:flex-col">
-        <div className="flex border-b border-[#E2E8F0] bg-[#F8FAFC]">
-          <div className="sticky left-0 z-20 w-16 shrink-0 bg-[#F8FAFC] px-3 py-2.5 lg:w-[64px]" aria-hidden="true" />
-          <div className="grid flex-1 grid-cols-7">
-            {weekDays.map((day, index) => {
-              const isToday = day.dateKey === todayKey;
-              return (
-                <div
-                  key={day.dateKey}
-                  className={`px-3 py-3 text-xs lg:px-3 ${
-                    index < weekDays.length - 1 ? 'border-r border-[#E2E7EC]' : ''
-                  } ${isToday ? 'bg-[#F2FFFB]' : ''}`}
-                >
-                  <p className={`text-center text-sm font-semibold ${isToday ? 'text-[#0F766E]' : 'text-[#0F172A]'}`}>
-                    {dayLabelsShort[day.dayKey]} {day.dayNumber}
-                    <span className="ml-1 text-[0.68rem] font-medium uppercase text-[#64748B]">
-                      {day.monthLabel}
-                    </span>
-                  </p>
-                </div>
-              );
-            })}
-          </div>
+    <div className="overflow-x-auto">
+      <div className="min-w-[860px] bg-white lg:min-w-0">
+        <div className="grid grid-cols-[60px_repeat(7,minmax(0,1fr))] border-b border-[#E2E8F0] bg-white">
+          <div className="bg-[#F8FAFC] p-3" aria-hidden="true" />
+          {weekDays.map((day) => {
+            const isToday = day.dateKey === todayKey;
+            return (
+              <div
+                key={day.dateKey}
+                className={`border-l border-[#E2E8F0] p-3 text-center ${isToday ? 'bg-[#ECFDF5]/70' : ''}`}
+              >
+                <p className={`text-sm font-medium ${isToday ? 'text-[#0F766E]' : 'text-[#0F172A]'}`}>
+                  {dayLabelsShort[day.dayKey]} {day.dayNumber}
+                </p>
+              </div>
+            );
+          })}
         </div>
 
         <div
           ref={scrollContainerRef}
-          className="flex overflow-y-auto overscroll-contain scroll-smooth lg:min-h-0 lg:flex-1"
-          style={{ height: '100%' }}
+          className="relative max-h-[600px] overflow-y-auto overscroll-contain scroll-smooth"
         >
-          <div className="sticky left-0 z-10 w-16 shrink-0 border-r border-[#E2E8F0] bg-white shadow-[2px_0_6px_rgba(15,23,42,0.04)] lg:w-[64px]">
-            <div className="relative" style={{ height: visibleCalendarRange.calendarHeight }}>
+          <div className="grid grid-cols-[60px_repeat(7,minmax(0,1fr))]">
+            <div className="relative border-r border-[#E2E8F0] bg-white" style={{ height: visibleCalendarRange.calendarHeight }}>
               {visibleCalendarRange.labelMarkers.map((markerMinutes) => {
                 const top = Math.min(
                   ((markerMinutes - visibleCalendarRange.startMinutes)
@@ -455,7 +445,7 @@ const WeekCalendarBoard = memo(function WeekCalendarBoard({
                 return (
                   <div
                     key={`hour-${markerMinutes}`}
-                    className="absolute right-3 text-[0.65rem] font-medium text-[#94A3B8]"
+                    className="absolute right-2 text-xs text-[#64748B]"
                     style={{ top }}
                   >
                     {formatMinutesLabel(markerMinutes)}
@@ -463,9 +453,7 @@ const WeekCalendarBoard = memo(function WeekCalendarBoard({
                 );
               })}
             </div>
-          </div>
 
-          <div className="grid flex-1 grid-cols-7">
             {weekDays.map((day, index) => {
               const dayLayouts = dayLayoutsByDate.get(day.dateKey) ?? [];
               const isToday = day.dateKey === todayKey;
@@ -473,9 +461,9 @@ const WeekCalendarBoard = memo(function WeekCalendarBoard({
               return (
                 <div
                   key={day.dateKey}
-                  className={`relative ${
-                    index < weekDays.length - 1 ? 'border-r border-[#E2E7EC]' : ''
-                  } ${isToday ? 'bg-[#F2FFFB]' : baseBackground}`}
+                  className={`relative border-l border-[#E2E8F0] ${
+                    isToday ? 'bg-[#ECFDF5]/30' : baseBackground
+                  }`}
                   style={{ height: visibleCalendarRange.calendarHeight }}
                 >
                   <div className="pointer-events-none absolute inset-0">
@@ -484,8 +472,8 @@ const WeekCalendarBoard = memo(function WeekCalendarBoard({
                         key={`${day.dateKey}-${markerMinutes}`}
                         className={`absolute left-0 right-0 border-b ${
                           markerMinutes % calendarLabelStepMinutes === 0
-                            ? 'border-[#D7E3EE]'
-                            : 'border-dashed border-[#EEF2F6]'
+                            ? 'border-[#E2E8F0]'
+                            : 'border-dashed border-[#EEF2F7]'
                         }`}
                         style={{
                           top: ((markerMinutes - visibleCalendarRange.startMinutes)
@@ -504,14 +492,6 @@ const WeekCalendarBoard = memo(function WeekCalendarBoard({
                     ) : null}
                   </div>
 
-                  {dayLayouts.length === 0 ? (
-                    isToday ? (
-                      <div className="absolute left-3 top-3 rounded-full border border-dashed border-[#D7E6DF] bg-white/92 px-3 py-1 text-[0.65rem] text-[#94A3B8]">
-                        Sin reservas
-                      </div>
-                    ) : null
-                  ) : null}
-
                   {dayLayouts.map((layout) => {
                     const dayStartMinutes = visibleCalendarRange.startMinutes;
                     const dayEndMinutes = visibleCalendarRange.endMinutes;
@@ -523,60 +503,48 @@ const WeekCalendarBoard = memo(function WeekCalendarBoard({
 
                     const offsetMinutes = clampedStart - dayStartMinutes;
                     const clampedMinutes = clampedEnd - clampedStart;
-                    const timeRangeLabel = `${formatMinutesLabel(layout.startMinutes)} – ${formatMinutesLabel(layout.endMinutes)}`;
                     const top = (offsetMinutes / visibleCalendarRange.calendarTotalMinutes) *
                       visibleCalendarRange.calendarHeight;
                     const height = Math.max(
                       (clampedMinutes / visibleCalendarRange.calendarTotalMinutes) *
                         visibleCalendarRange.calendarHeight,
-                      44,
+                      58,
                     );
-                    const showClient = height >= 56;
-                    const showStatus = height >= 90;
-                    const isCompact = height < 56;
-                    const gap = 8;
+                    const isCompact = height < 68;
+                    const gap = 6;
                     const columns = Math.max(layout.columns, 1);
                     const width = `calc((100% - ${(columns - 1) * gap}px) / ${columns})`;
                     const left = `calc(${layout.column} * ((100% - ${(columns - 1) * gap}px) / ${columns} + ${gap}px))`;
                     const palette = getReservationStatusPalette(layout.reservation.status);
-                    const statusBadge = getReservationStatusBadge(layout.reservation.status);
+                    const statusTextClassName = layout.reservation.status === 'pending'
+                      ? 'text-[#92400E]'
+                      : layout.reservation.status === 'cancelled'
+                        ? 'text-[#B91C1C]'
+                        : layout.reservation.status === 'completed'
+                          ? 'text-[#475569]'
+                          : layout.reservation.status === 'no_show'
+                            ? 'text-[#6D28D9]'
+                            : 'text-[#0F766E]';
 
                     return (
                       <button
                         type="button"
                         key={layout.reservation.id}
-                        className="absolute z-[2] cursor-pointer text-left"
+                        className="absolute z-[2] cursor-pointer px-1 text-left"
                         style={{ top, height, width, left }}
                         onClick={() => onReservationOpen(layout.reservation)}
                       >
                         <div
-                          className={`group relative flex h-full min-h-[44px] flex-col overflow-hidden rounded-[10px] border px-2.5 py-2 text-left shadow-[0_1px_3px_rgba(15,23,42,0.06)] transition hover:-translate-y-0.5 hover:shadow-[0_6px_16px_rgba(15,23,42,0.10)] ${palette.card} ${
-                            isToday ? 'ring-1 ring-[#99F6E4]' : ''
-                          }`}
+                          className={`h-full overflow-hidden rounded-lg border p-2 text-left shadow-[0_1px_2px_rgba(15,23,42,0.05)] transition hover:shadow-sm ${palette.card}`}
                         >
-                          <span
-                            className={`absolute left-0 top-0 h-full w-1 rounded-l-[10px] ${palette.accent}`}
-                          />
-                          <div className="flex items-start justify-between gap-2 pl-1.5">
-                            <span className="text-[12px] font-medium leading-none text-[#475569]">
-                              {timeRangeLabel}
-                            </span>
-                            {showStatus ? (
-                              <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${statusBadge.className}`}>
-                                {statusBadge.label}
-                              </span>
-                            ) : (
-                              <span
-                                className={`mt-0.5 h-2.5 w-2.5 shrink-0 rounded-full ${palette.dot}`}
-                                aria-hidden="true"
-                              />
-                            )}
-                          </div>
-                          <p className={`mt-1 pl-1.5 font-semibold text-[#0F172A] ${isCompact ? 'text-[13px] leading-tight' : 'text-[14px] leading-snug'}`}>
+                          <p className="text-xs font-semibold leading-none text-[#0F172A]">
+                            {layout.reservation.time || '--:--'}
+                          </p>
+                          <p className={`mt-1 truncate text-xs font-semibold ${statusTextClassName}`}>
                             {layout.reservation.serviceName || 'Servicio'}
                           </p>
-                          {showClient && layout.reservation.clientName ? (
-                            <p className="mt-1 line-clamp-2 pl-1.5 text-[12px] leading-snug text-[#334155]">
+                          {!isCompact && layout.reservation.clientName ? (
+                            <p className="mt-0.5 truncate text-xs text-[#64748B]">
                               {layout.reservation.clientName}
                             </p>
                           ) : null}
@@ -694,7 +662,6 @@ export default function ProfesionalDashboardPage() {
   const [drawerVisible, setDrawerVisible] = useState(false);
   const closeTimeoutRef = useRef<number | null>(null);
   const weekCalendarScrollRef = useRef<HTMLDivElement | null>(null);
-  const lastAutoFocusKeyRef = useRef<string | null>(null);
 
   const { requestNavigation } = useProfessionalDashboardUnsavedSection({
     sectionId: 'agenda-dashboard',
@@ -1036,56 +1003,6 @@ export default function ProfesionalDashboardPage() {
     };
   }, [calendarView, clockNow, visibleCalendarRange, weekOffset]);
 
-  const scrollWeekCalendarToMinute = useCallback((
-    targetMinutes: number,
-    options?: { behavior?: ScrollBehavior; align?: 'start' | 'center' },
-  ) => {
-    const container = weekCalendarScrollRef.current;
-    if (!container) return;
-
-    const align = options?.align ?? 'start';
-    const boundedMinutes = clamp(targetMinutes, visibleCalendarRange.startMinutes, visibleCalendarRange.endMinutes);
-    const minuteOffset = boundedMinutes - visibleCalendarRange.startMinutes;
-    const top = (minuteOffset / visibleCalendarRange.calendarTotalMinutes) * visibleCalendarRange.calendarHeight;
-    const nextScrollTop = align === 'center'
-      ? top - (container.clientHeight / 2)
-      : top;
-
-    const maxScrollTop = Math.max(visibleCalendarRange.calendarHeight - container.clientHeight, 0);
-    container.scrollTo({
-      top: clamp(nextScrollTop, 0, maxScrollTop),
-      behavior: options?.behavior ?? 'smooth',
-    });
-  }, [visibleCalendarRange]);
-
-  useEffect(() => {
-    if (calendarView !== 'week') return;
-
-    const focusKey = `${weekOffset}:${weekDays.map((day) => day.dateKey).join('|')}:${weekFocusWindow.startMinutes}:${weekFocusWindow.endMinutes}`;
-    if (lastAutoFocusKeyRef.current === focusKey) return;
-
-    const container = weekCalendarScrollRef.current;
-    if (!container) return;
-
-    lastAutoFocusKeyRef.current = focusKey;
-    const frame = requestAnimationFrame(() => {
-      const visibleMinutes = (container.clientHeight / visibleCalendarRange.calendarHeight)
-        * visibleCalendarRange.calendarTotalMinutes;
-      const focusCenter = (weekFocusWindow.startMinutes + weekFocusWindow.endMinutes) / 2;
-      const targetMinute = clamp(
-        focusCenter - (visibleMinutes / 2),
-        visibleCalendarRange.startMinutes,
-        Math.max(visibleCalendarRange.endMinutes - visibleMinutes, visibleCalendarRange.startMinutes),
-      );
-      scrollWeekCalendarToMinute(targetMinute, {
-        behavior: 'auto',
-        align: 'start',
-      });
-    });
-
-    return () => cancelAnimationFrame(frame);
-  }, [calendarView, scrollWeekCalendarToMinute, visibleCalendarRange, weekDays, weekFocusWindow, weekOffset]);
-
   const stats = useMemo(() => [
     {
       label: 'Reservas hoy',
@@ -1256,9 +1173,8 @@ export default function ProfesionalDashboardPage() {
     <ProfessionalDashboardShell
       profile={profile}
       active="Agenda"
-      className="h-screen overflow-hidden"
       maxWidthClassName="max-w-none"
-      contentClassName="min-h-0 overflow-hidden px-0 py-0 sm:px-0 sm:py-0 lg:px-0 lg:py-0 xl:px-0"
+      contentClassName="px-0 py-0 sm:px-0 sm:py-0 lg:min-h-0 lg:overflow-hidden lg:px-0 lg:py-0 xl:px-0"
     >
       <div className="flex min-h-0 flex-1 flex-col bg-[#F8FAFC]">
         <header className="shrink-0 border-b border-[#E2E8F0] bg-white">
@@ -1437,11 +1353,10 @@ export default function ProfesionalDashboardPage() {
                     </div>
 
                     {calendarView === 'week' ? (
-                      <div className="h-[500px] min-h-0 lg:h-[calc(100vh-386px)] lg:min-h-[360px] lg:max-h-[560px]">
+                      <div className="min-h-0">
                         <WeekCalendarBoard
                           weekDays={weekDays}
                           todayKey={todayKey}
-                          reservationsByDate={reservationsByDate}
                           visibleCalendarRange={visibleCalendarRange}
                           dayLayoutsByDate={dayLayoutsByDate}
                           currentTimeIndicator={currentTimeIndicator}

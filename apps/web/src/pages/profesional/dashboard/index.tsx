@@ -7,14 +7,12 @@ import EmailVerificationPanel from '@/components/auth/EmailVerificationPanel';
 import ProfessionalDashboardShell from '@/components/profesional/dashboard/ProfessionalDashboardShell';
 import Button from '@/components/ui/Button';
 import Card from '@/components/ui/Card';
-import { cn } from '@/components/ui/cn';
 import { resolveProfessionalFeatureAccess } from '@/lib/billing/featureGuards';
 import { useProfessionalProfile } from '@/hooks/useProfessionalProfile';
 import { useProfessionalDashboardUnsavedSection } from '@/context/ProfessionalDashboardUnsavedChangesContext';
 import api from '@/services/api';
 import {
   DashboardIcon,
-  DashboardPageHeader,
   DashboardSectionHeading,
   DashboardStatCard,
 } from '@/components/profesional/dashboard/DashboardUI';
@@ -171,10 +169,10 @@ const reservationStatusPalette: Record<ReservationStatus, {
   },
   pending: {
     accent: 'bg-[#F59E0B]',
-    card: 'bg-[#FFF7E8] border-[#F6D6A8] hover:bg-[#FDECC8]',
+    card: 'bg-white border-[#CBD5E1] hover:bg-[#F8FAFC]',
     dot: 'bg-[#F59E0B]',
-    monthCard: 'border border-[#F6D6A8] bg-[#FFF7E8] text-[#B45309]',
-    monthCardToday: 'border border-[#F7D27A] bg-[#FFF1CC] text-[#92400E]',
+    monthCard: 'border border-[#CBD5E1] bg-white text-[#92400E]',
+    monthCardToday: 'border border-[#FDBA74] bg-white text-[#92400E]',
   },
   cancelled: {
     accent: 'bg-[#EF4444]',
@@ -414,45 +412,26 @@ const WeekCalendarBoard = memo(function WeekCalendarBoard({
   onReservationOpen: (reservation: ProfessionalReservation) => void;
 }) {
   return (
-    <div className="mt-3 h-[500px] overflow-x-auto lg:h-full lg:overflow-x-visible">
-      <div className="h-full min-w-[860px] overflow-hidden rounded-[16px] border border-[#E2E8F0] bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04)] lg:flex lg:min-w-0 lg:flex-col">
+    <div className="h-[500px] overflow-x-auto lg:h-full lg:overflow-x-visible">
+      <div className="h-full min-w-[860px] overflow-hidden bg-white lg:flex lg:min-w-0 lg:flex-col">
         <div className="flex border-b border-[#E2E8F0] bg-[#F8FAFC]">
-          <div className="sticky left-0 z-20 w-16 shrink-0 bg-[#F8FAFC] px-3 py-2.5 text-[0.6rem] uppercase tracking-[0.22em] text-[#94A3B8] lg:w-[64px]">
-            Hora
-          </div>
+          <div className="sticky left-0 z-20 w-16 shrink-0 bg-[#F8FAFC] px-3 py-2.5 lg:w-[64px]" aria-hidden="true" />
           <div className="grid flex-1 grid-cols-7">
             {weekDays.map((day, index) => {
               const isToday = day.dateKey === todayKey;
-              const reservationCount = reservationsByDate.get(day.dateKey)?.length ?? 0;
               return (
                 <div
                   key={day.dateKey}
-                  className={`px-3 py-2.5 text-xs lg:px-3 ${
+                  className={`px-3 py-3 text-xs lg:px-3 ${
                     index < weekDays.length - 1 ? 'border-r border-[#E2E7EC]' : ''
                   } ${isToday ? 'bg-[#F2FFFB]' : ''}`}
                 >
-                  <div className="flex items-start justify-between gap-2">
-                    <div>
-                      <p className="text-[0.6rem] uppercase tracking-[0.3em] text-[#94A3B8]">
-                        {dayLabelsShort[day.dayKey]}
-                      </p>
-                      <p className="mt-1 text-sm font-semibold text-[#0E2A47]">
-                        {day.dayNumber}
-                        <span className="ml-1 text-[0.6rem] uppercase text-[#94A3B8]">
-                          {day.monthLabel}
-                        </span>
-                      </p>
-                    </div>
-                    <span
-                      className={`rounded-full px-2 py-1 text-[0.62rem] font-semibold ${
-                        reservationCount > 0
-                          ? 'bg-[#1FB6A6]/10 text-[#1FB6A6]'
-                          : 'bg-[#F3F6F9] text-[#94A3B8]'
-                      }`}
-                    >
-                      {reservationCount > 0 ? `${reservationCount} res.` : 'Libre'}
+                  <p className={`text-center text-sm font-semibold ${isToday ? 'text-[#0F766E]' : 'text-[#0F172A]'}`}>
+                    {dayLabelsShort[day.dayKey]} {day.dayNumber}
+                    <span className="ml-1 text-[0.68rem] font-medium uppercase text-[#64748B]">
+                      {day.monthLabel}
                     </span>
-                  </div>
+                  </p>
                 </div>
               );
             })}
@@ -517,10 +496,10 @@ const WeekCalendarBoard = memo(function WeekCalendarBoard({
                     ))}
                     {currentTimeIndicator && currentTimeIndicator.dateKey === day.dateKey ? (
                       <div
-                        className="absolute left-0 right-0 z-[1] border-t border-[#F97316]"
+                        className="absolute left-0 right-0 z-[1] border-t border-[#0F766E]"
                         style={{ top: currentTimeIndicator.top }}
                       >
-                        <span className="absolute -left-1.5 -top-1.5 h-3 w-3 rounded-full border-2 border-white bg-[#F97316] shadow-sm" />
+                        <span className="absolute -left-1.5 -top-1.5 h-3 w-3 rounded-full border-2 border-white bg-[#0F766E] shadow-sm" />
                       </div>
                     ) : null}
                   </div>
@@ -1278,92 +1257,95 @@ export default function ProfesionalDashboardPage() {
       profile={profile}
       active="Agenda"
       maxWidthClassName="max-w-none"
-      contentClassName="py-4 sm:py-5"
+      contentClassName="px-0 py-0 sm:px-0 sm:py-0 lg:px-0 lg:py-0 xl:px-0"
     >
-      <div className="flex flex-col gap-4">
-                <section className="space-y-3 lg:shrink-0">
-                  <DashboardPageHeader
-                    title="Dashboard"
-                    description="Resumen operativo de tu agenda y reservas"
-                    className="rounded-[18px] border border-[#E2E8F0] bg-white px-4 py-4 shadow-[0_1px_2px_rgba(15,23,42,0.04)] sm:px-5"
-                    withDivider={false}
-                    actions={
-                      <>
-                        <Button
-                          type="button"
-                          size="sm"
-                          onClick={handleToday}
-                          className="bg-white"
-                        >
-                          Hoy
-                        </Button>
-                        <Button
-                          type="button"
-                          size="sm"
-                          aria-label="Abrir notificaciones"
-                          onClick={() => {
-                            requestNavigation('/profesional/notificaciones');
-                          }}
-                          className="relative h-9 w-9 px-0"
-                        >
-                          <DashboardIcon name="notificaciones" className="h-4 w-4" />
-                          {unreadNotificationCount > 0 ? (
-                            <span className="absolute -right-1 -top-1 inline-flex min-w-[18px] items-center justify-center rounded-full bg-[#0F766E] px-1 text-[0.58rem] font-semibold leading-[18px] text-white">
-                              {unreadNotificationCount > 99 ? '99+' : unreadNotificationCount}
-                            </span>
-                          ) : null}
-                        </Button>
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="primary"
-                          onClick={() => {
-                            requestNavigation('/profesional/dashboard/reservas');
-                          }}
-                        >
-                          Nueva reserva
-                        </Button>
-                      </>
-                    }
-                  />
+      <div className="min-h-screen bg-[#F8FAFC]">
+        <header className="border-b border-[#E2E8F0] bg-white">
+          <div className="flex flex-col gap-3 px-4 py-5 sm:px-6 lg:flex-row lg:items-center lg:justify-between lg:px-10">
+            <div className="min-w-0">
+              <h1 className="text-2xl font-semibold text-[#0F172A]">
+                Dashboard
+              </h1>
+              <p className="mt-1 text-sm text-[#64748B]">
+                Resumen operativo de tu agenda y reservas
+              </p>
+            </div>
+            <div className="flex shrink-0 flex-wrap items-center gap-3">
+              <Button
+                type="button"
+                size="sm"
+                onClick={handleToday}
+                className="h-10 rounded-[14px] border-[#E2E8F0] bg-white px-4 text-[#0F172A] shadow-none hover:bg-[#F8FAFC]"
+              >
+                Hoy
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                aria-label="Abrir notificaciones"
+                onClick={() => {
+                  requestNavigation('/profesional/notificaciones');
+                }}
+                className="relative h-10 w-10 rounded-[14px] border-[#E2E8F0] bg-white px-0 text-[#0F172A] shadow-none hover:bg-[#F8FAFC]"
+              >
+                <DashboardIcon name="notificaciones" className="h-4 w-4" />
+                {unreadNotificationCount > 0 ? (
+                  <span className="absolute right-2 top-2 h-2.5 w-2.5 rounded-full border-2 border-white bg-[#0F766E]" />
+                ) : null}
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant="primary"
+                onClick={() => {
+                  requestNavigation('/profesional/dashboard/reservas');
+                }}
+                className="h-10 rounded-[14px] px-4"
+              >
+                Nueva reserva
+              </Button>
+            </div>
+          </div>
+        </header>
 
-                  {profile && !profile.emailVerified ? (
-                    <EmailVerificationPanel
-                      email={profile.email}
-                      emailVerified={profile.emailVerified}
-                      onStatusChanged={refreshProfile}
-                      tone="professional"
-                      variant="banner"
-                      title="Tu email profesional todavía está pendiente"
-                      description="Verificalo desde el dashboard para reforzar la identidad de la cuenta y asegurarte de recibir recuperaciones y comunicaciones críticas sin tener que recargar la página."
-                    />
-                  ) : null}
+        <div className="space-y-4 px-4 py-4 sm:px-6 lg:px-10">
+          {profile && !profile.emailVerified ? (
+            <EmailVerificationPanel
+              email={profile.email}
+              emailVerified={profile.emailVerified}
+              onStatusChanged={refreshProfile}
+              tone="professional"
+              variant="banner"
+              title="Tu email profesional todavía está pendiente"
+              description="Verificalo desde el dashboard para reforzar la identidad de la cuenta y asegurarte de recibir recuperaciones y comunicaciones críticas sin tener que recargar la página."
+            />
+          ) : null}
 
-                  {statusMessage ? (
-                    <p className="rounded-[14px] border border-[#E2E8F0] bg-white px-4 py-2 text-sm text-[#64748B] shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
-                      {statusMessage}
-                    </p>
-                  ) : null}
+          {statusMessage ? (
+            <p className="rounded-[14px] border border-[#E2E8F0] bg-white px-4 py-2 text-sm text-[#64748B] shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
+              {statusMessage}
+            </p>
+          ) : null}
 
-                  <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-                      {agendaOverviewCards.map((item) => (
-                        <DashboardStatCard
-                          key={item.label}
-                          label={item.label}
-                          value={item.value}
-                          detail={item.detail}
-                          icon={item.icon}
-                          tone={item.tone}
-                        />
-                      ))}
-                  </div>
-                </section>
-                <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_340px] xl:grid-cols-[minmax(0,1fr)_360px] lg:items-start">
+          <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            {agendaOverviewCards.map((item) => (
+              <DashboardStatCard
+                key={item.label}
+                label={item.label}
+                value={item.value}
+                detail={item.detail}
+                icon={item.icon}
+                tone={item.tone}
+              />
+            ))}
+          </section>
+
+          <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_340px] xl:grid-cols-[minmax(0,1fr)_360px] lg:items-start">
                   <section className="min-w-0 rounded-[18px] border border-[#E2E8F0] bg-white p-4 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
                     <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
                       <DashboardSectionHeading
                         title={calendarView === 'week' ? 'Agenda semanal' : 'Calendario mensual'}
-                        description={calendarView === 'week' ? calendarWeekLabel : monthLabel}
+                        description={calendarView === 'week' ? 'Semana actual' : monthLabel}
                         className="gap-2"
                       />
 
@@ -1562,12 +1544,10 @@ export default function ProfesionalDashboardPage() {
 
                         {canViewAnalytics ? (
                           <div className="mt-3 grid gap-2">
-                            {stats.map((item, index) => (
+                            {stats.map((item) => (
                               <div
                                 key={item.label}
-                                className={cn(
-                                  'rounded-[14px] border border-[#E2E8F0] bg-[#F8FAFC] px-3 py-2.5',
-                                )}
+                                className="rounded-[14px] border border-[#E2E8F0] bg-[#F8FAFC] px-3 py-2.5"
                               >
                                 <div className="flex items-start justify-between gap-3">
                                   <div className="min-w-0">
@@ -1593,8 +1573,9 @@ export default function ProfesionalDashboardPage() {
                       </Card>
                     </LockedFeature>
                   </aside>
-                </div>
-              </div>
+          </div>
+        </div>
+      </div>
       {selectedReservation ? (
         <div className="fixed inset-0 z-50 flex justify-end">
           <button

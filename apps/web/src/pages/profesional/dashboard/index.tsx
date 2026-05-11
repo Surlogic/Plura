@@ -6,17 +6,14 @@ import Link from 'next/link';
 import EmailVerificationPanel from '@/components/auth/EmailVerificationPanel';
 import ProfessionalDashboardShell from '@/components/profesional/dashboard/ProfessionalDashboardShell';
 import Button from '@/components/ui/Button';
-import Card from '@/components/ui/Card';
 import { resolveProfessionalFeatureAccess } from '@/lib/billing/featureGuards';
 import { useProfessionalProfile } from '@/hooks/useProfessionalProfile';
 import { useProfessionalDashboardUnsavedSection } from '@/context/ProfessionalDashboardUnsavedChangesContext';
 import api from '@/services/api';
 import {
   DashboardIcon,
-  DashboardSectionHeading,
   DashboardStatCard,
 } from '@/components/profesional/dashboard/DashboardUI';
-import LockedFeature from '@/components/ui/LockedFeature';
 import { useProfessionalNotificationUnreadCount } from '@/hooks/useProfessionalNotificationUnreadCount';
 import {
   getProfessionalReservationsForDates,
@@ -409,6 +406,18 @@ const WeekCalendarBoard = memo(function WeekCalendarBoard({
   scrollContainerRef: RefObject<HTMLDivElement | null>;
   onReservationOpen: (reservation: ProfessionalReservation) => void;
 }) {
+  const rowStartMinutes = roundDownToStep(visibleCalendarRange.startMinutes, calendarLabelStepMinutes);
+  const rowEndMinutes = roundUpToStep(visibleCalendarRange.endMinutes, calendarLabelStepMinutes);
+  const hourMarkers = Array.from(
+    { length: Math.floor((rowEndMinutes - rowStartMinutes) / calendarLabelStepMinutes) + 1 },
+    (_, index) => rowStartMinutes + (index * calendarLabelStepMinutes),
+  );
+  const currentIndicatorMinutes = currentTimeIndicator
+    ? visibleCalendarRange.startMinutes
+      + ((currentTimeIndicator.top / visibleCalendarRange.calendarHeight)
+        * visibleCalendarRange.calendarTotalMinutes)
+    : null;
+
   return (
     <div className="overflow-x-auto">
       <div className="min-w-[860px] bg-white lg:min-w-0">
@@ -433,129 +442,84 @@ const WeekCalendarBoard = memo(function WeekCalendarBoard({
           ref={scrollContainerRef}
           className="relative max-h-[600px] overflow-y-auto overscroll-contain scroll-smooth"
         >
-          <div className="grid grid-cols-[60px_repeat(7,minmax(0,1fr))]">
-            <div className="relative border-r border-[#E2E8F0] bg-white" style={{ height: visibleCalendarRange.calendarHeight }}>
-              {visibleCalendarRange.labelMarkers.map((markerMinutes) => {
-                const top = Math.min(
-                  ((markerMinutes - visibleCalendarRange.startMinutes)
-                    / visibleCalendarRange.calendarTotalMinutes)
-                    * visibleCalendarRange.calendarHeight,
-                  visibleCalendarRange.calendarHeight - 14,
+          {hourMarkers.map((hourStartMinutes) => (
+            <div
+              key={hourStartMinutes}
+              className="grid grid-cols-[60px_repeat(7,minmax(0,1fr))] border-b border-[#E2E8F0] last:border-b-0"
+            >
+              <div className="min-h-[68px] bg-white p-3 pr-2 text-right text-xs text-[#64748B]">
+                {formatMinutesLabel(hourStartMinutes)}
+              </div>
+              {weekDays.map((day, index) => {
+                const isToday = day.dateKey === todayKey;
+                const baseBackground = index % 2 === 0 ? 'bg-white' : 'bg-[#FBFCFD]';
+                const dayLayouts = dayLayoutsByDate.get(day.dateKey) ?? [];
+                const reservationsInHour = dayLayouts.filter(
+                  (layout) =>
+                    layout.startMinutes >= hourStartMinutes
+                    && layout.startMinutes < hourStartMinutes + calendarLabelStepMinutes,
                 );
+                const showNowLine = currentTimeIndicator?.dateKey === day.dateKey
+                  && currentIndicatorMinutes !== null
+                  && currentIndicatorMinutes >= hourStartMinutes
+                  && currentIndicatorMinutes < hourStartMinutes + calendarLabelStepMinutes;
+                const nowLineTop = currentIndicatorMinutes === null
+                  ? 0
+                  : ((currentIndicatorMinutes - hourStartMinutes) / calendarLabelStepMinutes) * hourRowHeight;
+
                 return (
                   <div
-                    key={`hour-${markerMinutes}`}
-                    className="absolute right-2 text-xs text-[#64748B]"
-                    style={{ top }}
+                    key={`${day.dateKey}-${hourStartMinutes}`}
+                    className={`relative min-h-[68px] border-l border-[#E2E8F0] p-1 ${
+                      isToday ? 'bg-[#ECFDF5]/30' : baseBackground
+                    }`}
                   >
-                    {formatMinutesLabel(markerMinutes)}
+                    {showNowLine ? (
+                      <div
+                        className="pointer-events-none absolute left-0 right-0 z-[1] border-t border-[#0F766E]"
+                        style={{ top: nowLineTop }}
+                      />
+                    ) : null}
+                    <div className="relative z-[2] space-y-1">
+                      {reservationsInHour.map((layout) => {
+                        const palette = getReservationStatusPalette(layout.reservation.status);
+                        const statusTextClassName = layout.reservation.status === 'pending'
+                          ? 'text-[#92400E]'
+                          : layout.reservation.status === 'cancelled'
+                            ? 'text-[#B91C1C]'
+                            : layout.reservation.status === 'completed'
+                              ? 'text-[#475569]'
+                              : layout.reservation.status === 'no_show'
+                                ? 'text-[#6D28D9]'
+                                : 'text-[#0F766E]';
+
+                        return (
+                          <button
+                            type="button"
+                            key={layout.reservation.id}
+                            onClick={() => onReservationOpen(layout.reservation)}
+                            className={`w-full rounded-lg border p-2 text-left shadow-[0_1px_2px_rgba(15,23,42,0.05)] transition hover:shadow-sm ${palette.card}`}
+                          >
+                            <p className="text-xs font-semibold leading-none text-[#0F172A]">
+                              {layout.reservation.time || '--:--'}
+                            </p>
+                            <p className={`mt-1 truncate text-xs font-semibold ${statusTextClassName}`}>
+                              {layout.reservation.serviceName || 'Servicio'}
+                            </p>
+                            {layout.reservation.clientName ? (
+                              <p className="mt-0.5 truncate text-xs text-[#64748B]">
+                                {layout.reservation.clientName}
+                              </p>
+                            ) : null}
+                          </button>
+                        );
+                      })}
+                    </div>
                   </div>
                 );
               })}
             </div>
-
-            {weekDays.map((day, index) => {
-              const dayLayouts = dayLayoutsByDate.get(day.dateKey) ?? [];
-              const isToday = day.dateKey === todayKey;
-              const baseBackground = index % 2 === 0 ? 'bg-white' : 'bg-[#FBFCFD]';
-              return (
-                <div
-                  key={day.dateKey}
-                  className={`relative border-l border-[#E2E8F0] ${
-                    isToday ? 'bg-[#ECFDF5]/30' : baseBackground
-                  }`}
-                  style={{ height: visibleCalendarRange.calendarHeight }}
-                >
-                  <div className="pointer-events-none absolute inset-0">
-                    {visibleCalendarRange.lineMarkers.slice(0, -1).map((markerMinutes) => (
-                      <div
-                        key={`${day.dateKey}-${markerMinutes}`}
-                        className={`absolute left-0 right-0 border-b ${
-                          markerMinutes % calendarLabelStepMinutes === 0
-                            ? 'border-[#E2E8F0]'
-                            : 'border-dashed border-[#EEF2F7]'
-                        }`}
-                        style={{
-                          top: ((markerMinutes - visibleCalendarRange.startMinutes)
-                            / visibleCalendarRange.calendarTotalMinutes)
-                            * visibleCalendarRange.calendarHeight,
-                        }}
-                      />
-                    ))}
-                    {currentTimeIndicator && currentTimeIndicator.dateKey === day.dateKey ? (
-                      <div
-                        className="absolute left-0 right-0 z-[1] border-t border-[#0F766E]"
-                        style={{ top: currentTimeIndicator.top }}
-                      >
-                        <span className="absolute -left-1.5 -top-1.5 h-3 w-3 rounded-full border-2 border-white bg-[#0F766E] shadow-sm" />
-                      </div>
-                    ) : null}
-                  </div>
-
-                  {dayLayouts.map((layout) => {
-                    const dayStartMinutes = visibleCalendarRange.startMinutes;
-                    const dayEndMinutes = visibleCalendarRange.endMinutes;
-                    const clampedStart = Math.max(layout.startMinutes, dayStartMinutes);
-                    const clampedEnd = Math.min(layout.endMinutes, dayEndMinutes);
-                    if (clampedEnd <= dayStartMinutes || clampedStart >= dayEndMinutes) {
-                      return null;
-                    }
-
-                    const offsetMinutes = clampedStart - dayStartMinutes;
-                    const clampedMinutes = clampedEnd - clampedStart;
-                    const top = (offsetMinutes / visibleCalendarRange.calendarTotalMinutes) *
-                      visibleCalendarRange.calendarHeight;
-                    const height = Math.max(
-                      (clampedMinutes / visibleCalendarRange.calendarTotalMinutes) *
-                        visibleCalendarRange.calendarHeight,
-                      58,
-                    );
-                    const isCompact = height < 68;
-                    const gap = 6;
-                    const columns = Math.max(layout.columns, 1);
-                    const width = `calc((100% - ${(columns - 1) * gap}px) / ${columns})`;
-                    const left = `calc(${layout.column} * ((100% - ${(columns - 1) * gap}px) / ${columns} + ${gap}px))`;
-                    const palette = getReservationStatusPalette(layout.reservation.status);
-                    const statusTextClassName = layout.reservation.status === 'pending'
-                      ? 'text-[#92400E]'
-                      : layout.reservation.status === 'cancelled'
-                        ? 'text-[#B91C1C]'
-                        : layout.reservation.status === 'completed'
-                          ? 'text-[#475569]'
-                          : layout.reservation.status === 'no_show'
-                            ? 'text-[#6D28D9]'
-                            : 'text-[#0F766E]';
-
-                    return (
-                      <button
-                        type="button"
-                        key={layout.reservation.id}
-                        className="absolute z-[2] cursor-pointer px-1 text-left"
-                        style={{ top, height, width, left }}
-                        onClick={() => onReservationOpen(layout.reservation)}
-                      >
-                        <div
-                          className={`h-full overflow-hidden rounded-lg border p-2 text-left shadow-[0_1px_2px_rgba(15,23,42,0.05)] transition hover:shadow-sm ${palette.card}`}
-                        >
-                          <p className="text-xs font-semibold leading-none text-[#0F172A]">
-                            {layout.reservation.time || '--:--'}
-                          </p>
-                          <p className={`mt-1 truncate text-xs font-semibold ${statusTextClassName}`}>
-                            {layout.reservation.serviceName || 'Servicio'}
-                          </p>
-                          {!isCompact && layout.reservation.clientName ? (
-                            <p className="mt-0.5 truncate text-xs text-[#64748B]">
-                              {layout.reservation.clientName}
-                            </p>
-                          ) : null}
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
-              );
-            })}
-          </div>
+          ))}
         </div>
       </div>
     </div>
@@ -681,7 +645,7 @@ export default function ProfesionalDashboardPage() {
     return undefined;
   }, [selectedReservation]);
 
-  const { today, todayKey, currentMinutes, yesterdayKey, currentWeekStart, weekStartKey, weekEndKey } = useMemo(() => {
+  const { today, todayKey, yesterdayKey, currentWeekStart } = useMemo(() => {
     const t = new Date();
     const tKey = toLocalDateKey(t);
     const y = new Date(t);
@@ -692,11 +656,8 @@ export default function ProfesionalDashboardPage() {
     return {
       today: t,
       todayKey: tKey,
-      currentMinutes: t.getHours() * 60 + t.getMinutes(),
       yesterdayKey: toLocalDateKey(y),
       currentWeekStart: wStart,
-      weekStartKey: toLocalDateKey(wStart),
-      weekEndKey: toLocalDateKey(wEnd),
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -747,7 +708,10 @@ export default function ProfesionalDashboardPage() {
     const end = new Date(base);
     end.setDate(base.getDate() + 6);
     const fmt = (d: Date) => `${d.getDate()} ${monthNamesShort[d.getMonth()]}`;
-    return weekOffset === 0 ? 'Semana actual' : `${fmt(base)} – ${fmt(end)}`;
+    if (base.getMonth() === end.getMonth() && base.getFullYear() === end.getFullYear()) {
+      return `${base.getDate()} - ${end.getDate()} ${monthNamesShort[end.getMonth()]} ${end.getFullYear()}`;
+    }
+    return `${fmt(base)} - ${fmt(end)} ${end.getFullYear()}`;
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [weekOffset]);
 
@@ -779,19 +743,15 @@ export default function ProfesionalDashboardPage() {
     return map;
   }, [agendaReservations]);
 
-  const { todayCount, todayDiff, uniqueClientsWeek } = useMemo(() => {
+  const { todayCount, todayDiff } = useMemo(() => {
     let tc = 0;
     let yc = 0;
-    const weekClients = new Set<string>();
     for (const r of agendaReservations) {
       if (r.date === todayKey) tc++;
       if (r.date === yesterdayKey) yc++;
-      if (r.date >= weekStartKey && r.date <= weekEndKey && r.clientName) {
-        weekClients.add(r.clientName);
-      }
     }
-    return { todayCount: tc, todayDiff: tc - yc, uniqueClientsWeek: weekClients.size };
-  }, [agendaReservations, todayKey, yesterdayKey, weekStartKey, weekEndKey]);
+    return { todayCount: tc, todayDiff: tc - yc };
+  }, [agendaReservations, todayKey, yesterdayKey]);
 
   const monthlyRevenue = useMemo(() => {
     const monthPrefix = todayKey.slice(0, 7);
@@ -907,14 +867,13 @@ export default function ProfesionalDashboardPage() {
     }
   }, [calendarView, canUseMonthlyCalendar]);
 
-  const { daysWithReservations, occupancyValue, occupancyDetail } = useMemo(() => {
+  const { occupancyValue, occupancyDetail } = useMemo(() => {
     const daysWithRes = currentWeekDays.filter((day) => {
       if (!scheduleDaySet.has(day.dayKey)) return false;
       return (reservationsByDate.get(day.dateKey)?.length ?? 0) > 0;
     }).length;
 
     return {
-      daysWithReservations: daysWithRes,
       occupancyValue: scheduleDays.length > 0
         ? `${Math.round((daysWithRes / scheduleDays.length) * 100)}%`
         : 'Sin horario',
@@ -1003,46 +962,6 @@ export default function ProfesionalDashboardPage() {
     };
   }, [calendarView, clockNow, visibleCalendarRange, weekOffset]);
 
-  const stats = useMemo(() => [
-    {
-      label: 'Reservas hoy',
-      value: `${analyticsSummary?.todayBookings ?? todayCount}`,
-      detail:
-        (analyticsSummary?.todayDelta ?? todayDiff) === 0
-          ? 'Igual que ayer'
-          : `${(analyticsSummary?.todayDelta ?? todayDiff) > 0 ? '+' : ''}${analyticsSummary?.todayDelta ?? todayDiff} vs ayer`,
-    },
-    {
-      label: 'Ocupación semanal',
-      value: analyticsSummary ? `${analyticsSummary.weeklyOccupancyRate}%` : occupancyValue,
-      detail: analyticsSummary
-        ? `Días con reservas: ${analyticsSummary.weeklyDaysWithReservations}/${analyticsSummary.weeklyScheduledDays}`
-        : occupancyDetail,
-    },
-    {
-      label: 'Clientes nuevos',
-      value: `${analyticsSummary?.weeklyUniqueClients ?? uniqueClientsWeek}`,
-      detail: 'Últimos 7 días',
-    },
-  ], [analyticsSummary, todayCount, todayDiff, occupancyValue, occupancyDetail, uniqueClientsWeek]);
-  const nextReservation = useMemo(() => {
-    let best: (typeof agendaReservations)[number] | null = null;
-    let bestKey = '';
-    for (const reservation of agendaReservations) {
-      if (!reservation.date) continue;
-      if (reservation.date < todayKey) continue;
-      if (reservation.date === todayKey) {
-        const minutes = parseTimeToMinutes(reservation.time);
-        if (minutes === null || minutes < currentMinutes) continue;
-      }
-      const sortKey = `${reservation.date}T${reservation.time || '00:00'}`;
-      if (!best || sortKey < bestKey) {
-        best = reservation;
-        bestKey = sortKey;
-      }
-    }
-    return best;
-  }, [agendaReservations, currentMinutes, todayKey]);
   const todayPendingCount = useMemo(
     () => agendaReservations.filter(
       (reservation) => reservation.date === todayKey && (reservation.status ?? 'pending') === 'pending',
@@ -1084,24 +1003,48 @@ export default function ProfesionalDashboardPage() {
       tone: 'default' as const,
     },
   ], [analyticsSummary, todayCount, todayDiff, todayPendingCount, monthlyRevenue, occupancyValue, occupancyDetail]);
-  const upcomingReservations = useMemo(() => {
+  const todayReservations = useMemo(() => {
     return [...agendaReservations]
-      .filter((reservation) => {
-        if (!reservation.date) return false;
-        if (reservation.date < todayKey) return false;
-        if (reservation.date === todayKey) {
-          const minutes = parseTimeToMinutes(reservation.time);
-          if (minutes === null || minutes < currentMinutes) return false;
-        }
-        return true;
-      })
+      .filter((reservation) => reservation.date === todayKey)
       .sort((a, b) => {
-        const aKey = `${a.date}T${a.time || '00:00'}`;
-        const bKey = `${b.date}T${b.time || '00:00'}`;
-        return aKey.localeCompare(bKey);
-      })
-      .slice(0, 5);
-  }, [agendaReservations, currentMinutes, todayKey]);
+        const aMinutes = a.time ? parseTimeToMinutes(a.time) ?? 0 : 0;
+        const bMinutes = b.time ? parseTimeToMinutes(b.time) ?? 0 : 0;
+        return aMinutes - bMinutes;
+      });
+  }, [agendaReservations, todayKey]);
+
+  const topRequestedServices = useMemo(() => {
+    const counts = new Map<string, number>();
+    agendaReservations.forEach((reservation) => {
+      const name = reservation.serviceName || 'Servicio';
+      counts.set(name, (counts.get(name) ?? 0) + 1);
+    });
+    const total = Array.from(counts.values()).reduce((sum, count) => sum + count, 0);
+    if (total === 0) return [];
+    return Array.from(counts.entries())
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 4)
+      .map(([name, count]) => ({
+        name,
+        count,
+        percent: Math.round((count / total) * 100),
+      }));
+  }, [agendaReservations]);
+
+  const todayConfirmedRevenueReservations = useMemo(
+    () => todayReservations.filter((reservation) => {
+      const status = reservation.status ?? 'pending';
+      return status === 'confirmed' || status === 'completed';
+    }),
+    [todayReservations],
+  );
+  const todayEstimatedRevenue = useMemo(
+    () => todayConfirmedRevenueReservations.reduce(
+      (total, reservation) => total + parseMoneyValue(reservation.price),
+      0,
+    ),
+    [todayConfirmedRevenueReservations],
+  );
 
   const handlePrev = () => {
     if (!canNavigateCalendar) return;
@@ -1180,11 +1123,11 @@ export default function ProfesionalDashboardPage() {
         <header className="shrink-0 border-b border-[#E2E8F0] bg-white">
           <div className="flex flex-col gap-3 px-4 py-5 sm:px-6 lg:flex-row lg:items-start lg:justify-between lg:px-8 lg:py-6">
             <div className="min-w-0">
-              <h1 className="text-2xl font-semibold text-[#0F172A]">
-                Dashboard
+              <h1 className="text-2xl font-medium leading-normal text-[#0F172A]">
+                Agenda
               </h1>
               <p className="mt-1 text-sm text-[#64748B]">
-                Resumen operativo de tu agenda y reservas
+                Gestiona tus reservas y visualiza tu calendario semanal
               </p>
             </div>
             <div className="flex shrink-0 flex-wrap items-center gap-3">
@@ -1194,6 +1137,7 @@ export default function ProfesionalDashboardPage() {
                 onClick={handleToday}
                 className="h-10 rounded-[14px] border-[#E2E8F0] bg-white px-4 text-[#0F172A] shadow-none hover:bg-[#F8FAFC]"
               >
+                <DashboardIcon name="agenda" className="mr-2 h-4 w-4" />
                 Hoy
               </Button>
               <Button
@@ -1219,6 +1163,7 @@ export default function ProfesionalDashboardPage() {
                 }}
                 className="h-10 rounded-[14px] px-4"
               >
+                <span className="mr-2 text-base leading-none">+</span>
                 Nueva reserva
               </Button>
             </div>
@@ -1258,229 +1203,198 @@ export default function ProfesionalDashboardPage() {
             ))}
           </section>
 
-          <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_340px] xl:grid-cols-[minmax(0,1fr)_360px] lg:items-start">
-                  <section className="min-w-0 overflow-hidden rounded-[16px] border border-[#E2E8F0] bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
-                    <div className="flex flex-col gap-3 border-b border-[#E2E8F0] px-4 py-4 lg:flex-row lg:items-center lg:justify-between lg:px-6">
-                      <DashboardSectionHeading
-                        title={calendarView === 'week' ? 'Agenda semanal' : 'Calendario mensual'}
-                        description={calendarView === 'week' ? 'Semana actual' : monthLabel}
-                        className="gap-2 [&_h2]:text-xl [&_p]:text-sm"
-                      />
+          <section className="overflow-hidden rounded-xl border border-[#E2E8F0] bg-white">
+            <div className="flex flex-col gap-3 border-b border-[#E2E8F0] px-4 py-4 lg:flex-row lg:items-center lg:justify-between lg:px-6">
+              <h2 className="text-xl font-medium text-[#0F172A]">
+                {calendarView === 'week' ? 'Agenda semanal' : 'Calendario mensual'}
+              </h2>
 
-                      <div className="flex flex-wrap items-center gap-3 lg:justify-end">
-                        <div className="flex items-center gap-2">
-                          <button
-                            type="button"
-                            onClick={() => handleSetView('week')}
-                            className={`rounded-lg px-3 py-1.5 text-sm font-semibold transition ${
-                              calendarView === 'week'
-                                ? 'bg-[#0F766E] text-white shadow-sm'
-                                : 'text-[#64748B] hover:bg-[#ECFDF5] hover:text-[#0F172A]'
-                            }`}
-                          >
-                            Semana
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleSetView('month')}
-                            disabled={!canUseMonthlyCalendar}
-                            className={`relative rounded-lg px-3 py-1.5 text-sm font-semibold transition ${
-                              calendarView === 'month'
-                                ? 'bg-[#0F766E] text-white shadow-sm'
-                                : 'text-[#64748B] hover:bg-[#ECFDF5] hover:text-[#0F172A]'
-                            } ${!canUseMonthlyCalendar ? 'cursor-not-allowed opacity-45' : ''}`}
-                          >
-                            Mes
-                            {!canUseMonthlyCalendar && (
-                              <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-[color:var(--premium-soft)] text-[color:var(--premium-strong)]">
-                                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
-                                  <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-                                </svg>
+              <div className="flex flex-wrap items-center gap-4 lg:justify-end">
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => handleSetView('week')}
+                    className={`rounded-lg px-3 py-1.5 text-sm font-medium transition ${
+                      calendarView === 'week'
+                        ? 'bg-[#0F766E] text-white'
+                        : 'text-[#64748B] hover:bg-[#ECFDF5] hover:text-[#0F172A]'
+                    }`}
+                  >
+                    Semana
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleSetView('month')}
+                    disabled={!canUseMonthlyCalendar}
+                    className={`relative rounded-lg px-3 py-1.5 text-sm font-medium transition ${
+                      calendarView === 'month'
+                        ? 'bg-[#0F766E] text-white'
+                        : 'text-[#64748B] hover:bg-[#ECFDF5] hover:text-[#0F172A]'
+                    } ${!canUseMonthlyCalendar ? 'cursor-not-allowed opacity-45' : ''}`}
+                  >
+                    Mes
+                  </button>
+                </div>
+
+                <div className="flex items-center gap-2 border-l border-[#E2E8F0] pl-4">
+                  <span className="text-xs text-[#64748B]">Inicia:</span>
+                  <span className="rounded-md bg-[#0F766E] px-2.5 py-1 text-xs font-medium text-white">
+                    Lun
+                  </span>
+                  <span className="rounded-md px-2.5 py-1 text-xs font-medium text-[#64748B]">
+                    Dom
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={handlePrev}
+                    disabled={!canNavigateCalendar}
+                    aria-label="Semana anterior"
+                    className={`rounded-lg p-1.5 transition ${
+                      canNavigateCalendar
+                        ? 'text-[#0F172A] hover:bg-[#ECFDF5]'
+                        : 'cursor-not-allowed text-[color:var(--ink-faint)] opacity-45'
+                    }`}
+                  >
+                    ‹
+                  </button>
+                  <span className="min-w-[120px] text-center text-sm text-[#64748B]">
+                    {calendarView === 'week' ? calendarWeekLabel : monthLabel}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={handleNext}
+                    disabled={!canNavigateCalendar}
+                    aria-label="Semana siguiente"
+                    className={`rounded-lg p-1.5 transition ${
+                      canNavigateCalendar
+                        ? 'text-[#0F172A] hover:bg-[#ECFDF5]'
+                        : 'cursor-not-allowed text-[color:var(--ink-faint)] opacity-45'
+                    }`}
+                  >
+                    ›
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {calendarView === 'week' ? (
+              <WeekCalendarBoard
+                weekDays={weekDays}
+                todayKey={todayKey}
+                visibleCalendarRange={visibleCalendarRange}
+                dayLayoutsByDate={dayLayoutsByDate}
+                currentTimeIndicator={currentTimeIndicator}
+                scrollContainerRef={weekCalendarScrollRef}
+                onReservationOpen={handleOpenReservation}
+              />
+            ) : (
+              <div className="max-h-[600px] overflow-auto">
+                <MonthCalendarBoard
+                  monthGridDays={monthGridDays}
+                  reservationsByDate={reservationsByDate}
+                  monthLabel={monthLabel}
+                />
+              </div>
+            )}
+          </section>
+
+          <section className="grid gap-6 lg:grid-cols-3">
+            <div className="overflow-hidden rounded-xl border border-[#E2E8F0] bg-white">
+              <div className="flex items-center justify-between border-b border-[#E2E8F0] px-4 py-3">
+                <div className="flex items-center gap-2">
+                  <DashboardIcon name="agenda" className="h-4 w-4 text-[#0F766E]" />
+                  <h3 className="text-sm font-medium text-[#0F172A]">Reservas de hoy</h3>
+                </div>
+                <span className="text-xs text-[#64748B]">{todayReservations.length} total</span>
+              </div>
+              <div className="max-h-[280px] space-y-1 overflow-y-auto p-2">
+                {todayReservations.length === 0 ? (
+                  <p className="rounded-lg border border-dashed border-[#E2E8F0] bg-[#F8FAFC] p-3 text-sm text-[#64748B]">
+                    No hay reservas para hoy.
+                  </p>
+                ) : (
+                  todayReservations.map((reservation) => {
+                    const statusBadge = getReservationStatusBadge(reservation.status);
+                    return (
+                      <button
+                        key={reservation.id}
+                        type="button"
+                        onClick={() => handleOpenReservation(reservation)}
+                        className="group w-full rounded-lg p-3 text-left transition hover:bg-[#ECFDF5]"
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm font-medium text-[#0F172A]">
+                                {reservation.time || '--:--'}
                               </span>
-                            )}
-                          </button>
-                        </div>
-
-                        <div className="relative flex items-center gap-2 border-l border-[#E2E8F0] pl-3">
-                          <button
-                            type="button"
-                            onClick={handlePrev}
-                            disabled={!canNavigateCalendar}
-                            aria-label="Semana anterior"
-                            className={`rounded-lg p-1.5 text-sm transition ${
-                              canNavigateCalendar
-                                ? 'text-[#0F172A] hover:bg-[#ECFDF5]'
-                                : 'cursor-not-allowed text-[color:var(--ink-faint)] opacity-45'
-                            }`}
-                          >
-                            ‹
-                          </button>
-                          <span className="min-w-[122px] text-center text-sm font-medium text-[#64748B]">
-                            {calendarView === 'week' ? calendarWeekLabel : monthLabel}
-                          </span>
-                          <button
-                            type="button"
-                            onClick={handleNext}
-                            disabled={!canNavigateCalendar}
-                            aria-label="Semana siguiente"
-                            className={`rounded-lg p-1.5 text-sm transition ${
-                              canNavigateCalendar
-                                ? 'text-[#0F172A] hover:bg-[#ECFDF5]'
-                                : 'cursor-not-allowed text-[color:var(--ink-faint)] opacity-45'
-                            }`}
-                          >
+                              <span className={`rounded-full px-2 py-0.5 text-[0.62rem] font-semibold ${statusBadge.className}`}>
+                                {statusBadge.label}
+                              </span>
+                            </div>
+                            <p className="mt-1 truncate text-sm text-[#0F172A]">
+                              {reservation.serviceName || 'Servicio'}
+                            </p>
+                            <p className="mt-0.5 truncate text-xs text-[#64748B]">
+                              {reservation.clientName || 'Cliente'}
+                            </p>
+                          </div>
+                          <span className="shrink-0 text-[#94A3B8] opacity-0 transition group-hover:opacity-100">
                             ›
-                          </button>
-                          {!canNavigateCalendar && (
-                            <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-[color:var(--premium-soft)] text-[color:var(--premium-strong)]">
-                              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                                <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
-                                <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-                              </svg>
-                            </span>
-                          )}
+                          </span>
                         </div>
+                      </button>
+                    );
+                  })
+                )}
+              </div>
+            </div>
 
-                        <button
-                          type="button"
-                          onClick={handleToday}
-                          className="rounded-lg border border-[#E2E8F0] bg-white px-3 py-1.5 text-sm font-semibold text-[#64748B] transition hover:bg-[#ECFDF5] hover:text-[#0F172A]"
-                        >
-                          Hoy
-                        </button>
+            <div className="rounded-xl border border-[#E2E8F0] bg-white p-4">
+              <div className="mb-4 flex items-center gap-2">
+                <DashboardIcon name="analytics" className="h-4 w-4 text-[#0F766E]" />
+                <h3 className="text-sm font-medium text-[#0F172A]">Servicios más solicitados</h3>
+              </div>
+              {topRequestedServices.length === 0 ? (
+                <p className="rounded-lg border border-dashed border-[#E2E8F0] bg-[#F8FAFC] p-3 text-sm text-[#64748B]">
+                  Todavía no hay servicios con reservas en el rango cargado.
+                </p>
+              ) : (
+                <div className="space-y-3">
+                  {topRequestedServices.map((service) => (
+                    <div key={service.name}>
+                      <div className="mb-1 flex items-center justify-between gap-3">
+                        <span className="truncate text-xs text-[#0F172A]">{service.name}</span>
+                        <span className="text-xs text-[#64748B]">{service.percent}%</span>
+                      </div>
+                      <div className="h-1.5 overflow-hidden rounded-full bg-[#ECFDF5]">
+                        <div
+                          className="h-full rounded-full bg-[#0F766E]"
+                          style={{ width: `${service.percent}%` }}
+                        />
                       </div>
                     </div>
+                  ))}
+                </div>
+              )}
+            </div>
 
-                    {calendarView === 'week' ? (
-                      <div className="min-h-0">
-                        <WeekCalendarBoard
-                          weekDays={weekDays}
-                          todayKey={todayKey}
-                          visibleCalendarRange={visibleCalendarRange}
-                          dayLayoutsByDate={dayLayoutsByDate}
-                          currentTimeIndicator={currentTimeIndicator}
-                          scrollContainerRef={weekCalendarScrollRef}
-                          onReservationOpen={handleOpenReservation}
-                        />
-                      </div>
-                    ) : (
-                      <div className="max-h-[560px] overflow-auto">
-                        <MonthCalendarBoard
-                          monthGridDays={monthGridDays}
-                          reservationsByDate={reservationsByDate}
-                          monthLabel={monthLabel}
-                        />
-                      </div>
-                    )}
-                  </section>
-
-                  <aside className="space-y-3 lg:sticky lg:top-5">
-                    <Card className="rounded-[18px] border-[#E2E8F0] bg-white p-4 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
-                      <DashboardSectionHeading
-                        title="Reservas próximas"
-                        description={nextReservation ? `Próxima atención ${nextReservation.time}` : 'Lo inmediato del rango visible.'}
-                        className="[&_h2]:text-base [&_p]:text-xs"
-                        action={(
-                          <Button
-                            type="button"
-                            size="sm"
-                            onClick={() => {
-                              requestNavigation('/profesional/dashboard/reservas');
-                            }}
-                          >
-                            Ver todas
-                          </Button>
-                        )}
-                      />
-                      <div className="mt-3 space-y-2">
-                        {upcomingReservations.length === 0 ? (
-                          <div className="rounded-[14px] border border-dashed border-[#D9E2EC] bg-[#F8FAFC] px-3 py-4 text-sm text-[#64748B]">
-                            No hay reservas próximas para mostrar.
-                          </div>
-                        ) : (
-                          upcomingReservations.map((reservation) => {
-                            const statusBadge = getReservationStatusBadge(reservation.status);
-                            return (
-                              <button
-                                key={reservation.id}
-                                type="button"
-                                onClick={() => handleOpenReservation(reservation)}
-                                className="flex w-full items-start gap-3 rounded-[14px] border border-[#E2E8F0] bg-white px-3 py-2.5 text-left transition hover:border-[#CBD5E1] hover:bg-[#F8FAFC]"
-                              >
-                                <div className="w-14 shrink-0">
-                                  <p className="text-sm font-semibold text-[#0E2A47]">
-                                    {reservation.time || '--:--'}
-                                  </p>
-                                  <p className="mt-0.5 text-[0.72rem] text-[#64748B]">
-                                    {formatDateShort(reservation.date)}
-                                  </p>
-                                </div>
-                                <div className="min-w-0 flex-1">
-                                  <p className="truncate text-sm font-semibold text-[#0F172A]">
-                                    {reservation.clientName || 'Cliente'}
-                                  </p>
-                                  <p className="mt-0.5 truncate text-[0.78rem] text-[#64748B]">
-                                    {reservation.serviceName || 'Servicio'}
-                                  </p>
-                                </div>
-                                <span className={`shrink-0 rounded-full px-2.5 py-1 text-[0.68rem] font-semibold ${statusBadge.className}`}>
-                                  {statusBadge.label}
-                                </span>
-                              </button>
-                            );
-                          })
-                        )}
-                      </div>
-                    </Card>
-
-                    <LockedFeature requiredPlan="PROFESIONAL" currentPlan={profile?.professionalPlan}>
-                      <Card className="rounded-[18px] border-[#E2E8F0] bg-white p-4 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
-                        <DashboardSectionHeading
-                          title="Resumen operativo"
-                          description="Actividad semanal compacta."
-                          className="[&_h2]:text-base [&_p]:text-xs"
-                          action={
-                            canViewAnalytics && !featureAccess.advancedAnalytics ? (
-                              <span className="rounded-full border border-[#E2E8F0] bg-[#F8FAFC] px-2.5 py-1 text-[0.62rem] font-semibold text-[#64748B]">
-                                Básico
-                              </span>
-                            ) : null
-                          }
-                        />
-
-                        {canViewAnalytics ? (
-                          <div className="mt-3 grid gap-2">
-                            {stats.map((item) => (
-                              <div
-                                key={item.label}
-                                className="rounded-[14px] border border-[#E2E8F0] bg-[#F8FAFC] px-3 py-2.5"
-                              >
-                                <div className="flex items-start justify-between gap-3">
-                                  <div className="min-w-0">
-                                    <p className="text-[0.58rem] uppercase tracking-[0.18em] text-[#94A3B8]">
-                                      {item.label}
-                                    </p>
-                                    <p className="mt-1 text-[0.74rem] leading-snug text-[#64748B]">
-                                      {item.detail}
-                                    </p>
-                                  </div>
-                                  <p className="shrink-0 text-lg font-semibold leading-none text-[#0F172A]">
-                                    {item.value}
-                                  </p>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        ) : (
-                          <div className="mt-4 rounded-[14px] border border-dashed border-[#D9E2EC] bg-[#F8FAFC] px-3 py-3 text-xs text-[#64748B]">
-                            Analytics todavía no activos para este plan. La agenda sigue mostrando los turnos reales del rango visible.
-                          </div>
-                        )}
-                      </Card>
-                    </LockedFeature>
-                  </aside>
-          </div>
+            <div className="rounded-xl border border-[#E2E8F0] bg-white p-4">
+              <div className="mb-3 flex items-center gap-2">
+                <DashboardIcon name="analytics" className="h-4 w-4 text-[#0F766E]" />
+                <h3 className="text-sm font-medium text-[#0F172A]">Ingresos estimados hoy</h3>
+              </div>
+              <p className="mb-1 text-[1.75rem] font-medium leading-none text-[#0F172A]">
+                {todayEstimatedRevenue > 0 ? formatMoneyValue(todayEstimatedRevenue) : '$0'}
+              </p>
+              <p className="text-xs text-[#64748B]">
+                De {todayConfirmedRevenueReservations.length} reservas confirmadas y completadas
+              </p>
+            </div>
+          </section>
         </div>
       </div>
       {selectedReservation ? (

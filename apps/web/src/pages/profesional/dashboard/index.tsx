@@ -1116,6 +1116,7 @@ export default function ProfesionalDashboardPage() {
     <ProfessionalDashboardShell
       profile={profile}
       active="Agenda"
+      containedViewport
       maxWidthClassName="max-w-none"
       contentClassName="px-0 py-0 sm:px-0 sm:py-0 lg:min-h-0 lg:overflow-hidden lg:px-0 lg:py-0 xl:px-0"
     >

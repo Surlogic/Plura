@@ -11,6 +11,7 @@ type ProfessionalDashboardShellProps = {
   profile?: ProfessionalProfile | null;
   children: ReactNode;
   className?: string;
+  containedViewport?: boolean;
   contentClassName?: string;
   maxWidthClassName?: string;
 };
@@ -20,21 +21,33 @@ export default function ProfessionalDashboardShell({
   profile,
   children,
   className,
+  containedViewport = false,
   contentClassName,
   maxWidthClassName = 'max-w-none',
 }: ProfessionalDashboardShellProps) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   return (
-    <div className="app-shell min-h-screen bg-[#F8FAFC] text-[#0F172A] lg:h-screen lg:overflow-hidden">
-      <div className="flex min-h-screen lg:h-screen lg:min-h-0">
+    <div
+      className={cn(
+        'app-shell min-h-screen bg-[#F8FAFC] text-[#0F172A]',
+        containedViewport && 'lg:h-screen lg:overflow-hidden',
+      )}
+    >
+      <div className={cn('flex min-h-screen', containedViewport && 'lg:h-screen lg:min-h-0')}>
         <aside className="hidden w-[244px] shrink-0 bg-white lg:block">
           <div className="h-screen overflow-y-auto overscroll-contain">
             <ProfesionalSidebar profile={profile} active={active} />
           </div>
         </aside>
 
-        <div className={cn('flex min-w-0 flex-1 flex-col bg-[#F8FAFC] lg:min-h-0 lg:overflow-hidden', className)}>
+        <div
+          className={cn(
+            'flex min-w-0 flex-1 flex-col bg-[#F8FAFC]',
+            containedViewport && 'lg:min-h-0 lg:overflow-hidden',
+            className,
+          )}
+        >
           <div className="border-b border-[#E2E8F0] bg-white px-4 py-3 sm:px-6 lg:hidden">
             <Button type="button" size="sm" onClick={() => setIsMenuOpen((prev) => !prev)}>
               {isMenuOpen ? 'Cerrar menu' : 'Abrir menu'}
@@ -49,7 +62,8 @@ export default function ProfessionalDashboardShell({
 
           <main
             className={cn(
-              'flex w-full flex-1 flex-col px-4 py-3 sm:px-6 sm:py-4 lg:min-h-0 lg:overflow-hidden lg:px-7 lg:py-5 xl:px-8',
+              'flex w-full flex-1 flex-col px-4 py-3 sm:px-6 sm:py-4 lg:px-7 lg:py-5 xl:px-8',
+              containedViewport && 'lg:min-h-0 lg:overflow-hidden',
               maxWidthClassName,
               contentClassName,
             )}

@@ -134,31 +134,28 @@ function ProfesionalSidebar({ profile, active }: SidebarProps) {
   return (
     <aside
       ref={rootRef}
-      className="relative min-h-full overflow-x-hidden border-r border-[#E5E7EB] bg-white px-3 py-3 pb-5 text-[color:var(--ink)] [scrollbar-color:#CBD5E1_transparent] [scrollbar-gutter:stable] [scrollbar-width:thin]"
+      className="relative min-h-full overflow-x-hidden border-r border-[#E2E8F0] bg-white px-4 py-4 pb-5 text-[#0F172A] [scrollbar-color:#CBD5E1_transparent] [scrollbar-gutter:stable] [scrollbar-width:thin]"
     >
-      <div className="border-b border-[#EEF2F7] pb-2.5">
-        <div className="flex items-center justify-between gap-2 px-1">
+      <div className="border-b border-[#E2E8F0] pb-4">
+        <div className="flex items-center justify-between gap-2">
           <Link
             href="/"
             aria-label="Ir al inicio de la app"
-            className="group inline-flex min-w-0 items-center gap-2 rounded-[8px] px-1.5 py-1 text-[0.84rem] font-semibold leading-none text-[#111827] transition hover:bg-[#F8FAFC] focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--focus-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-white"
+            className="group inline-flex min-w-0 items-center gap-2 rounded-[10px] px-2 py-1.5 text-[0.86rem] font-semibold leading-none text-[#0F172A] transition hover:bg-[#F8FAFC] focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--focus-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-white"
             onClick={(event) => {
               event.preventDefault();
               requestNavigation('/');
             }}
           >
-            <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-[7px] bg-[#ECFDF5] text-[#0F766E] transition group-hover:bg-[#DFF8EE]">
+            <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[9px] bg-[#ECFDF5] text-[#0F766E] transition group-hover:bg-[#DFF8EE]">
               <DashboardIcon name="agenda" className="h-[15px] w-[15px]" />
             </span>
             <span className="truncate">Inicio</span>
           </Link>
-          <span className="shrink-0 rounded-full bg-[#F0FDF9] px-1.5 py-0.5 text-[0.48rem] font-semibold uppercase leading-none tracking-[0.08em] text-[#0F766E]">
-            {planLabel}
-          </span>
         </div>
 
-        <div className="mt-2.5 flex items-center gap-2.5 rounded-[8px] bg-[#F8FAFC] px-2.5 py-2 ring-1 ring-[#EEF2F7]">
-          <div className="relative flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-[8px] bg-white text-xs font-semibold text-[color:var(--primary)] ring-1 ring-[#E5E7EB]">
+        <div className="mt-3 flex items-center gap-3 rounded-[14px] border border-[#E2E8F0] bg-[#F8FAFC] px-3 py-3 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
+          <div className="relative flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-[12px] bg-white text-xs font-semibold text-[#0F766E] ring-1 ring-[#E2E8F0]">
             {resolvedLogoUrl ? (
               <Image
                 src={resolvedLogoUrl}
@@ -173,19 +170,22 @@ function ProfesionalSidebar({ profile, active }: SidebarProps) {
             )}
           </div>
           <div className="min-w-0 flex-1">
-            <p className="min-w-0 truncate text-[0.86rem] font-semibold leading-5 text-[#111827]">{displayName}</p>
-            <p className="min-w-0 truncate text-[0.7rem] leading-4 text-[color:var(--ink-muted)]">{displayMeta}</p>
+            <p className="min-w-0 truncate text-[0.9rem] font-semibold leading-5 text-[#0F172A]">{displayName}</p>
+            <p className="min-w-0 truncate text-[0.72rem] leading-4 text-[#64748B]">{displayMeta}</p>
+            <span className="mt-1.5 inline-flex rounded-full bg-[#ECFDF5] px-2 py-0.5 text-[0.62rem] font-semibold leading-none text-[#0F766E]">
+              {planLabel}
+            </span>
           </div>
         </div>
       </div>
 
-      <div className="relative mt-3 space-y-3">
+      <div className="relative mt-4 space-y-4">
         {menuSections.map((section) => (
           <div key={section.label}>
-            <p className="px-1.5 text-[0.52rem] font-semibold uppercase leading-3 tracking-[0.14em] text-[#94A3B8]">
+            <p className="px-1.5 text-[0.58rem] font-semibold uppercase leading-3 tracking-[0.14em] text-[#94A3B8]">
               {section.label}
             </p>
-            <nav className="mt-1 space-y-0.5">
+            <nav className="mt-1.5 space-y-1">
               {section.items.map((item) => {
                 const isActive = item.label === active;
                 const hintedPlan = item.featureKey ? requiredPlanForFeature(item.featureKey) : null;
@@ -197,9 +197,9 @@ function ProfesionalSidebar({ profile, active }: SidebarProps) {
                   : false;
                 const isDisabled = item.disabled || isLocked;
                 const itemClassName = cn(
-                  'group relative flex min-h-[42px] w-full items-center gap-2 rounded-[8px] px-2 py-1.5 text-left transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--focus-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-white',
+                  'group relative flex min-h-[42px] w-full items-center gap-2 rounded-[10px] px-2.5 py-1.5 text-left transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--focus-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-white',
                   isActive && !isLocked
-                    ? 'bg-[#ECFDF5] text-[#0F3D35]'
+                    ? 'bg-[#ECFDF5] text-[#0F3D35] shadow-[inset_0_0_0_1px_rgba(15,118,110,0.08)]'
                     : isDisabled
                       ? 'cursor-not-allowed bg-transparent text-[color:var(--ink-faint)]'
                       : 'bg-transparent text-[#334155] hover:bg-[#F8FAFC] hover:text-[#0F172A]',
@@ -212,7 +212,7 @@ function ProfesionalSidebar({ profile, active }: SidebarProps) {
                     ) : null}
                     <span
                       className={cn(
-                        'inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-[7px]',
+                        'inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-[8px]',
                         isActive && !isLocked
                           ? 'bg-white text-[#0F766E] shadow-[0_1px_2px_rgba(15,23,42,0.05)]'
                           : isLocked

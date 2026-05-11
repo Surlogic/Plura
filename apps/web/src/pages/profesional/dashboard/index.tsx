@@ -13,12 +13,14 @@ import { useProfessionalProfile } from '@/hooks/useProfessionalProfile';
 import { useProfessionalDashboardUnsavedSection } from '@/context/ProfessionalDashboardUnsavedChangesContext';
 import api from '@/services/api';
 import {
+  DashboardIcon,
   DashboardHeaderBadge,
   DashboardPageHeader,
   DashboardSectionHeading,
   DashboardStatCard,
 } from '@/components/profesional/dashboard/DashboardUI';
 import LockedFeature from '@/components/ui/LockedFeature';
+import { useProfessionalNotificationUnreadCount } from '@/hooks/useProfessionalNotificationUnreadCount';
 import {
   getProfessionalReservationsForDates,
   updateProfessionalReservationStatus,
@@ -121,6 +123,22 @@ const formatDateShort = (dateKey: string) => {
     month: 'short',
   }).format(date);
 };
+const parseMoneyValue = (value?: string) => {
+  if (!value) return 0;
+  const normalized = value
+    .replace(/\s/g, '')
+    .replace(/[^0-9,.-]/g, '')
+    .replace(/\.(?=\d{3}(?:\D|$))/g, '')
+    .replace(',', '.');
+  const parsed = Number(normalized);
+  return Number.isFinite(parsed) ? parsed : 0;
+};
+const formatMoneyValue = (value: number) =>
+  new Intl.NumberFormat('es-AR', {
+    style: 'currency',
+    currency: 'ARS',
+    maximumFractionDigits: 0,
+  }).format(value);
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
 const roundDownToStep = (value: number, step: number) => Math.floor(value / step) * step;
 const roundUpToStep = (value: number, step: number) => Math.ceil(value / step) * step;
@@ -682,6 +700,7 @@ const MonthCalendarBoard = memo(function MonthCalendarBoard({
 
 export default function ProfesionalDashboardPage() {
   const { profile, refreshProfile } = useProfessionalProfile();
+  const { count: unreadNotificationCount } = useProfessionalNotificationUnreadCount();
   const featureAccess = resolveProfessionalFeatureAccess(profile);
   const [reservations, setReservations] = useState<ProfessionalReservation[]>([]);
   const [schedule, setSchedule] = useState<ProfessionalSchedule | null>(null);
@@ -838,6 +857,15 @@ export default function ProfesionalDashboardPage() {
     }
     return { todayCount: tc, todayDiff: tc - yc, uniqueClientsWeek: weekClients.size };
   }, [agendaReservations, todayKey, yesterdayKey, weekStartKey, weekEndKey]);
+
+  const monthlyRevenue = useMemo(() => {
+    const monthPrefix = todayKey.slice(0, 7);
+    return agendaReservations.reduce((total, reservation) => {
+      if (!reservation.date?.startsWith(monthPrefix)) return total;
+      if ((reservation.status ?? 'pending') === 'cancelled') return total;
+      return total + parseMoneyValue(reservation.price);
+    }, 0);
+  }, [agendaReservations, todayKey]);
 
   const { scheduleDays, scheduleDaySet } = useMemo(() => {
     const days = schedule?.days.filter((day) => day.enabled && !day.paused) ?? [];
@@ -1148,29 +1176,29 @@ export default function ProfesionalDashboardPage() {
       tone: 'accent' as const,
     },
     {
-      label: 'Pendientes hoy',
+      label: 'Pendientes',
       value: `${todayPendingCount}`,
       detail: todayPendingCount > 0 ? 'Turnos por confirmar' : 'Nada por validar',
       icon: 'warning' as const,
       tone: 'warm' as const,
     },
     {
-      label: 'Próxima atención',
-      value: nextReservation?.time || '--:--',
-      detail: nextReservation
-        ? `${nextReservation.clientName || 'Cliente'} · ${nextReservation.serviceName || 'Servicio'}`
-        : 'Sin reservas próximas',
-      icon: 'agenda' as const,
-      tone: 'accent' as const,
-    },
-    {
-      label: 'Clientes semana',
-      value: `${analyticsSummary?.weeklyUniqueClients ?? uniqueClientsWeek}`,
-      detail: 'Atendidos o por atender esta semana',
-      icon: 'share' as const,
+      label: 'Ingresos del mes',
+      value: monthlyRevenue > 0 ? formatMoneyValue(monthlyRevenue) : '$0',
+      detail: 'Según reservas cargadas',
+      icon: 'analytics' as const,
       tone: 'default' as const,
     },
-  ], [analyticsSummary, todayCount, todayDiff, todayPendingCount, nextReservation, uniqueClientsWeek]);
+    {
+      label: 'Ocupación semanal',
+      value: analyticsSummary ? `${analyticsSummary.weeklyOccupancyRate}%` : occupancyValue,
+      detail: analyticsSummary
+        ? `Días con reservas: ${analyticsSummary.weeklyDaysWithReservations}/${analyticsSummary.weeklyScheduledDays}`
+        : occupancyDetail,
+      icon: 'agenda' as const,
+      tone: 'default' as const,
+    },
+  ], [analyticsSummary, todayCount, todayDiff, todayPendingCount, monthlyRevenue, occupancyValue, occupancyDetail]);
   const upcomingReservations = useMemo(() => {
     return [...agendaReservations]
       .filter((reservation) => {
@@ -1282,12 +1310,13 @@ export default function ProfesionalDashboardPage() {
       maxWidthClassName="max-w-none"
       contentClassName="py-3 sm:py-4"
     >
-      <div className="flex flex-col gap-3">
-                <section className="space-y-2.5 lg:shrink-0">
+      <div className="flex flex-col gap-4">
+                <section className="space-y-3 lg:shrink-0">
                   <DashboardPageHeader
-                    eyebrow="Centro operativo"
-                    title={profile?.fullName ? `${profile.fullName}, este es tu tablero de hoy` : 'Tu tablero operativo de hoy'}
-                    description="La agenda queda al frente con el contexto justo para resolver pendientes, próximos turnos y disponibilidad semanal."
+                    title="Dashboard"
+                    description="Resumen operativo de tu agenda y reservas"
+                    className="py-1"
+                    withDivider={false}
                     meta={
                       <>
                         <DashboardHeaderBadge tone="accent">
@@ -1310,20 +1339,37 @@ export default function ProfesionalDashboardPage() {
                       <>
                         <Button
                           type="button"
+                          size="sm"
+                          onClick={handleToday}
+                          className="bg-white"
+                        >
+                          Hoy
+                        </Button>
+                        <Button
+                          type="button"
+                          size="sm"
+                          aria-label="Abrir notificaciones"
+                          onClick={() => {
+                            requestNavigation('/profesional/notificaciones');
+                          }}
+                          className="relative h-9 w-9 px-0"
+                        >
+                          <DashboardIcon name="notificaciones" className="h-4 w-4" />
+                          {unreadNotificationCount > 0 ? (
+                            <span className="absolute -right-1 -top-1 inline-flex min-w-[18px] items-center justify-center rounded-full bg-[#0F766E] px-1 text-[0.58rem] font-semibold leading-[18px] text-white">
+                              {unreadNotificationCount > 99 ? '99+' : unreadNotificationCount}
+                            </span>
+                          ) : null}
+                        </Button>
+                        <Button
+                          type="button"
+                          size="sm"
                           variant="primary"
                           onClick={() => {
                             requestNavigation('/profesional/dashboard/reservas');
                           }}
                         >
-                          Ver reservas
-                        </Button>
-                        <Button
-                          type="button"
-                          onClick={() => {
-                            requestNavigation('/profesional/dashboard/horarios');
-                          }}
-                        >
-                          Ajustar horarios
+                          Nueva reserva
                         </Button>
                       </>
                     }
@@ -1347,7 +1393,7 @@ export default function ProfesionalDashboardPage() {
                     </p>
                   ) : null}
 
-                  <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+                  <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
                       {agendaOverviewCards.map((item) => (
                         <DashboardStatCard
                           key={item.label}
@@ -1360,27 +1406,27 @@ export default function ProfesionalDashboardPage() {
                       ))}
                   </div>
                 </section>
-                <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_340px] lg:items-start">
-                  <section className="flex flex-col rounded-[18px] border border-[#E2E8F0] bg-white p-4 shadow-[0_1px_3px_rgba(15,23,42,0.05)]">
+                <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_360px] lg:items-start">
+                  <section className="min-w-0 flex flex-col">
                     <DashboardSectionHeading
                       eyebrow="Agenda"
                       title={calendarView === 'week' ? 'Agenda semanal' : 'Calendario mensual'}
                       description={calendarView === 'week' ? calendarWeekLabel : monthLabel}
                     />
 
-                    <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+                    <div className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-[16px] border border-[#E2E8F0] bg-white px-3 py-3 shadow-[0_1px_3px_rgba(15,23,42,0.05)]">
                       <div className="flex flex-wrap items-center gap-2">
-                        <div className="flex rounded-full border border-[#E2E8F0] bg-white p-0.5">
+                        <div className="flex rounded-full border border-[#E2E8F0] bg-[#F8FAFC] p-0.5">
                           <button
                             type="button"
                               onClick={() => handleSetView('week')}
                               className={`rounded-full px-4 py-1.5 text-xs font-semibold transition ${
                                 calendarView === 'week'
-                                ? 'bg-[color:var(--primary)] text-white'
-                                : 'text-[color:var(--ink-faint)] hover:text-[color:var(--ink-muted)]'
+                                ? 'bg-[#0F766E] text-white shadow-sm'
+                                : 'text-[#64748B] hover:text-[#0F172A]'
                               }`}
                           >
-                            Semanal
+                            Semana
                           </button>
                           <button
                             type="button"
@@ -1388,11 +1434,11 @@ export default function ProfesionalDashboardPage() {
                             disabled={!canUseMonthlyCalendar}
                             className={`relative rounded-full px-4 py-1.5 text-xs font-semibold transition ${
                               calendarView === 'month'
-                                ? 'bg-[color:var(--primary)] text-white'
-                                : 'text-[color:var(--ink-faint)] hover:text-[color:var(--ink-muted)]'
+                                ? 'bg-[#0F766E] text-white shadow-sm'
+                                : 'text-[#64748B] hover:text-[#0F172A]'
                             } ${!canUseMonthlyCalendar ? 'cursor-not-allowed opacity-45' : ''}`}
                           >
-                            Mensual
+                            Mes
                             {!canUseMonthlyCalendar && (
                               <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-[color:var(--premium-soft)] text-[color:var(--premium-strong)]">
                                 <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -1457,7 +1503,7 @@ export default function ProfesionalDashboardPage() {
                         <button
                           type="button"
                           onClick={handleToday}
-                          className="rounded-full border border-[#E2E7EC] bg-white px-3 py-1.5 text-xs font-semibold text-[#64748B] transition hover:-translate-y-0.5 hover:shadow-sm"
+                          className="rounded-full border border-[#E2E7EC] bg-white px-3 py-1.5 text-xs font-semibold text-[#64748B] transition hover:border-[#CBD5E1] hover:bg-[#F8FAFC]"
                         >
                           Hoy
                         </button>

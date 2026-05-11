@@ -26,9 +26,9 @@ export default function ProfessionalDashboardShell({
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   return (
-    <div className="app-shell min-h-screen bg-[#F7F9FB] text-[color:var(--ink)]">
+    <div className="app-shell min-h-screen bg-[#F8FAFC] text-[#0F172A]">
       <div className="flex min-h-screen">
-        <aside className="hidden w-[244px] shrink-0 bg-white lg:block">
+        <aside className="hidden w-[268px] shrink-0 bg-white lg:block">
           <div className="sticky top-0 h-screen overflow-y-auto overscroll-contain">
             <ProfesionalSidebar profile={profile} active={active} />
           </div>
@@ -49,7 +49,7 @@ export default function ProfessionalDashboardShell({
 
           <main
             className={cn(
-              'flex w-full flex-1 flex-col px-4 py-3 sm:px-6 sm:py-4 lg:px-6 lg:py-3 xl:px-8',
+              'flex w-full flex-1 flex-col px-4 py-3 sm:px-6 sm:py-4 lg:px-7 lg:py-5 xl:px-8',
               maxWidthClassName,
               contentClassName,
             )}

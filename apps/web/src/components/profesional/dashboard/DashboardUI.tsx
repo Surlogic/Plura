@@ -392,28 +392,28 @@ export const DashboardStatCard = memo(function DashboardStatCard({
     return (
       <div
         className={cn(
-          'min-h-[150px] rounded-[16px] border border-[#E2E8F0] bg-white p-4 text-[#0F172A] shadow-[0_1px_2px_rgba(15,23,42,0.04)] transition-shadow hover:shadow-[0_4px_12px_rgba(15,23,42,0.06)]',
+          'rounded-xl border border-[#E2E8F0] bg-white p-4 text-[#0F172A] transition-shadow hover:shadow-sm',
           className,
         )}
       >
         <span
           className={cn(
-            'inline-flex h-10 w-10 items-center justify-center rounded-[12px]',
+            'inline-flex h-8 w-8 items-center justify-center rounded-lg',
             tone === 'warm'
               ? 'bg-[#FFFBEB] text-[#D97706]'
               : 'bg-[#ECFDF5] text-[#0F766E]',
           )}
         >
-          <DashboardIcon name={icon} className="h-5 w-5" />
+          <DashboardIcon name={icon} className="h-4 w-4" />
         </span>
-        <p className="mt-4 text-sm font-medium text-[#64748B]">
+        <p className="mt-3 text-xs text-[#64748B]">
           {label}
         </p>
-        <p className="mt-1 text-[1.75rem] font-semibold leading-tight text-[#0F172A]">
+        <p className="mt-1 text-[1.75rem] font-medium leading-[1.2] text-[#0F172A]">
           {value}
         </p>
         {detail ? (
-          <p className="mt-1 line-clamp-2 text-sm leading-snug text-[#64748B]">
+          <p className="mt-1 line-clamp-2 text-xs leading-snug text-[#64748B]">
             {detail}
           </p>
         ) : null}

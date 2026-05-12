@@ -14,7 +14,6 @@ import {
   DashboardHeaderBadge,
   DashboardPageHeader,
   DashboardSectionHeading,
-  DashboardStatCard,
 } from '@/components/profesional/dashboard/DashboardUI';
 import {
   cancelProfessionalBooking,
@@ -59,8 +58,6 @@ type ReservationCreateForm = {
   time: string;
 };
 
-const ACTIVE_STATUSES: ReservationStatus[] = ['pending', 'confirmed'];
-
 const toLocalDateKey = (date: Date) => {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -97,6 +94,22 @@ const sortByDateTimeAsc = (a: ProfessionalReservation, b: ProfessionalReservatio
 
 const sortByDateTimeDesc = (a: ProfessionalReservation, b: ProfessionalReservation) =>
   (parseReservationDate(b)?.getTime() ?? 0) - (parseReservationDate(a)?.getTime() ?? 0);
+
+type ReservationColumnTone = 'today' | 'pending' | 'confirmed' | 'cancelled';
+
+const reservationColumnToneClasses: Record<ReservationColumnTone, string> = {
+  today: 'border-[#BFDBFE] bg-gradient-to-b from-[#EFF6FF] to-white',
+  pending: 'border-[#FDE68A] bg-gradient-to-b from-[#FFFBEB] to-white',
+  confirmed: 'border-[#BBF7D0] bg-gradient-to-b from-[#F0FDF4] to-white',
+  cancelled: 'border-[#FECACA] bg-gradient-to-b from-[#FEF2F2] to-white',
+};
+
+const reservationColumnCountClasses: Record<ReservationColumnTone, string> = {
+  today: 'bg-[#DBEAFE] text-[#1D4ED8]',
+  pending: 'bg-[#FEF3C7] text-[#B45309]',
+  confirmed: 'bg-[#DCFCE7] text-[#15803D]',
+  cancelled: 'bg-[#FEE2E2] text-[#B91C1C]',
+};
 
 const buildDateWindow = (daysPast: number, daysFuture: number) => {
   const today = new Date();
@@ -385,13 +398,13 @@ export default function ProfesionalReservationsPage() {
 
   const {
     todayReservations,
-    upcomingReservations,
-    closedReservations,
+    pendingReservations,
+    upcomingConfirmedReservations,
     cancelledReservations,
   } = useMemo(() => {
     const today: ProfessionalReservation[] = [];
-    const upcoming: ProfessionalReservation[] = [];
-    const closed: ProfessionalReservation[] = [];
+    const pending: ProfessionalReservation[] = [];
+    const upcomingConfirmed: ProfessionalReservation[] = [];
     const cancelled: ProfessionalReservation[] = [];
 
     reservations.forEach((reservation) => {
@@ -403,28 +416,23 @@ export default function ProfesionalReservationsPage() {
         return;
       }
 
-      if (reservation.status === 'completed' || reservation.status === 'no_show') {
-        closed.push(reservation);
-        return;
-      }
-
-      if (reservation.date === todayKey && ACTIVE_STATUSES.includes(reservation.status ?? 'pending')) {
+      if (reservation.date === todayKey) {
         today.push(reservation);
-        return;
       }
 
-      if (reservationDate > now && ACTIVE_STATUSES.includes(reservation.status ?? 'pending')) {
-        upcoming.push(reservation);
-        return;
+      if (reservation.status === 'pending') {
+        pending.push(reservation);
       }
 
-      closed.push(reservation);
+      if (reservationDate > now && reservation.status === 'confirmed') {
+        upcomingConfirmed.push(reservation);
+      }
     });
 
     return {
       todayReservations: today.sort(sortByDateTimeAsc),
-      upcomingReservations: upcoming.sort(sortByDateTimeAsc),
-      closedReservations: closed.sort(sortByDateTimeDesc),
+      pendingReservations: pending.sort(sortByDateTimeAsc),
+      upcomingConfirmedReservations: upcomingConfirmed.sort(sortByDateTimeAsc),
       cancelledReservations: cancelled.sort(sortByDateTimeDesc),
     };
   }, [now, reservations, todayKey]);
@@ -516,7 +524,8 @@ export default function ProfesionalReservationsPage() {
 
   const runReservationAction = async (
     action: () => Promise<unknown>,
-    fallbackMessage: string,
+    successMessage: string,
+    errorFallback = 'No se pudo completar la acción.',
   ) => {
     setIsSubmittingAction(true);
     setStatusMessage(null);
@@ -528,14 +537,14 @@ export default function ProfesionalReservationsPage() {
         response && typeof response === 'object' && 'plainTextFallback' in response
           ? (response as { plainTextFallback?: string | null }).plainTextFallback
           : null;
-      setStatusMessage(plainTextFallback || fallbackMessage);
+      setStatusMessage(plainTextFallback || successMessage);
       setShowRescheduleForm(false);
       setRescheduleTime('');
       setCancelReason('');
       await loadReservations();
       setTimelineRefreshToken((current) => current + 1);
     } catch (error) {
-      setActionError(extractApiMessage(error, fallbackMessage));
+      setActionError(extractApiMessage(error, errorFallback));
     } finally {
       setIsSubmittingAction(false);
     }
@@ -547,33 +556,72 @@ export default function ProfesionalReservationsPage() {
     isSaving: isSubmittingAction || isCreatingReservation,
   });
 
-  const renderReservationCard = (reservation: ProfessionalReservation) => {
+  const handleQuickConfirm = (reservation: ProfessionalReservation) => {
+    handleSelectReservation(reservation.id);
+    void runReservationAction(
+      () => updateProfessionalReservationStatus(reservation.id, 'confirmed'),
+      'Reserva confirmada correctamente.',
+      'No se pudo confirmar la reserva.',
+    );
+  };
+
+  const handleQuickCancel = (reservation: ProfessionalReservation) => {
+    handleSelectReservation(reservation.id);
+    void runReservationAction(
+      async () => {
+        const actionState = await getProfessionalBookingActions(reservation.id);
+        if (!actionState.canCancel) {
+          throw new Error(actionState.plainTextFallback || 'Esta reserva no admite cancelación desde el panel.');
+        }
+        return cancelProfessionalBooking(reservation.id);
+      },
+      'Reserva cancelada correctamente.',
+      'No se pudo cancelar la reserva.',
+    );
+  };
+
+  const handleQuickReschedule = (reservation: ProfessionalReservation) => {
+    handleSelectReservation(reservation.id);
+    setShowRescheduleForm(true);
+  };
+
+  const renderReservationCard = (
+    reservation: ProfessionalReservation,
+    columnTone: ReservationColumnTone,
+  ) => {
     const financialCopy = getProfessionalFinancialStatusCopy(
       reservation.paymentType,
       reservation.financialSummary,
     );
     const status = reservation.status ?? 'pending';
     const reservationDateLabel = getReservationDisplayDate(reservation);
+    const reservationTimeLabel = getReservationDisplayTime(reservation);
+    const showConfirmAction = columnTone === 'pending' && canProfessionalConfirmReservation(status);
+    const showCancelAction =
+      columnTone !== 'cancelled' && (status === 'pending' || status === 'confirmed');
+    const showRescheduleAction =
+      (columnTone === 'today' || columnTone === 'confirmed') &&
+      status === 'confirmed' &&
+      Boolean(profile?.slug && reservation.serviceId);
 
     return (
-      <button
+      <article
         key={reservation.id}
-        type="button"
-        onClick={() => handleSelectReservation(reservation.id)}
-        className={`flex w-full items-center justify-between gap-4 rounded-[16px] border px-4 py-3 text-left transition ${
+        className={`rounded-[16px] border p-4 transition ${
           reservation.id === selectedReservationId
             ? 'border-[#1FB6A6]/40 bg-[#F0FDFA]'
             : 'border-[#E2E7EC] bg-white hover:border-[#CBD5E1]'
         }`}
       >
-        <div className="min-w-0">
-          <p className="text-sm font-semibold text-[#0E2A47]">
-            {reservation.time || '--:--'} · {reservation.serviceName || 'Servicio'}
+        <div className="min-w-0 space-y-2">
+          <p className="text-[0.95rem] font-semibold leading-tight text-[#0E2A47]">
+            {reservationTimeLabel || reservation.time || '--:--'} · {reservation.serviceName || 'Servicio'}
           </p>
-          <p className="mt-1 truncate text-sm text-[#475569]">
+          <p className="truncate text-sm text-[#475569]">
             {reservation.clientName || 'Cliente'}
           </p>
-          <div className="mt-2 flex flex-wrap gap-2">
+          <p className="text-xs font-medium text-[#64748B]">{reservationDateLabel}</p>
+          <div className="flex flex-wrap gap-2">
             <span className={`rounded-full px-3 py-1 text-[0.72rem] font-semibold ${operationalStatusTone[status]}`}>
               {operationalStatusLabel[status]}
             </span>
@@ -585,10 +633,85 @@ export default function ProfesionalReservationsPage() {
             </span>
           </div>
         </div>
-        <span className="shrink-0 text-xs text-[#64748B]">{reservationDateLabel}</span>
-      </button>
+
+        <div className="mt-4 flex flex-wrap gap-2">
+          {showConfirmAction ? (
+            <button
+              type="button"
+              disabled={isSubmittingAction}
+              onClick={() => handleQuickConfirm(reservation)}
+              className="rounded-full bg-[#D1FAE5] px-3 py-1.5 text-xs font-semibold text-[#047857] transition hover:bg-[#A7F3D0] disabled:opacity-60"
+            >
+              Confirmar
+            </button>
+          ) : null}
+          {showCancelAction ? (
+            <button
+              type="button"
+              disabled={isSubmittingAction}
+              onClick={() => handleQuickCancel(reservation)}
+              className="rounded-full border border-[#FECACA] bg-[#FEF2F2] px-3 py-1.5 text-xs font-semibold text-[#B91C1C] transition hover:bg-[#FEE2E2] disabled:opacity-60"
+            >
+              Cancelar
+            </button>
+          ) : null}
+          {showRescheduleAction ? (
+            <button
+              type="button"
+              onClick={() => handleQuickReschedule(reservation)}
+              className="rounded-full border border-[#E2E7EC] bg-white px-3 py-1.5 text-xs font-semibold text-[#475569] transition hover:border-[#CBD5E1]"
+            >
+              Reagendar
+            </button>
+          ) : null}
+          <button
+            type="button"
+            onClick={() => handleSelectReservation(reservation.id)}
+            className="rounded-full border border-[#E2E7EC] bg-white px-3 py-1.5 text-xs font-semibold text-[#0E2A47] transition hover:border-[#CBD5E1]"
+          >
+            Ver detalle
+          </button>
+        </div>
+      </article>
     );
   };
+
+  const renderReservationColumn = ({
+    title,
+    subtitle,
+    reservations: columnReservations,
+    emptyText,
+    tone,
+  }: {
+    title: string;
+    subtitle: string;
+    reservations: ProfessionalReservation[];
+    emptyText: string;
+    tone: ReservationColumnTone;
+  }) => (
+    <section className={`flex min-h-[520px] min-w-0 flex-col rounded-[18px] border shadow-[0_4px_14px_rgba(15,23,42,0.04)] ${reservationColumnToneClasses[tone]}`}>
+      <div className="flex items-start justify-between gap-3 border-b border-white/70 px-4 py-4">
+        <div className="min-w-0">
+          <h2 className="text-base font-semibold text-[#0E2A47]">{title}</h2>
+          <p className="mt-1 text-sm leading-5 text-[#64748B]">{subtitle}</p>
+        </div>
+        <span className={`shrink-0 rounded-full px-3 py-1 text-sm font-semibold ${reservationColumnCountClasses[tone]}`}>
+          {columnReservations.length}
+        </span>
+      </div>
+      <div className="min-h-0 flex-1 overflow-y-auto px-3 py-3">
+        {columnReservations.length === 0 ? (
+          <div className="flex min-h-[260px] items-center justify-center rounded-[16px] border border-dashed border-[#CBD5E1] bg-white/75 px-4 py-6 text-center text-sm text-[#64748B]">
+            {emptyText}
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {columnReservations.map((reservation) => renderReservationCard(reservation, tone))}
+          </div>
+        )}
+      </div>
+    </section>
+  );
 
   return (
     <ProfessionalDashboardShell profile={profile} active="Reservas">
@@ -603,7 +726,7 @@ export default function ProfesionalReservationsPage() {
                       {todayReservations.length} para hoy
                     </DashboardHeaderBadge>
                     <DashboardHeaderBadge>
-                      {upcomingReservations.length} próximas
+                      {pendingReservations.length} pendientes
                     </DashboardHeaderBadge>
                     {selectedReservation ? (
                       <DashboardHeaderBadge tone="accent">
@@ -742,103 +865,39 @@ export default function ProfesionalReservationsPage() {
                 </div>
               ) : (
                 <>
-                  <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-                    <DashboardStatCard
-                      label="Hoy"
-                      value={`${todayReservations.length}`}
-                      detail="Reservas activas del día"
-                      icon="agenda"
-                      tone="warm"
-                    />
-                    <DashboardStatCard
-                      label="Próximas"
-                      value={`${upcomingReservations.length}`}
-                      detail="Agenda futura activa"
-                      icon="reservas"
-                      tone="accent"
-                    />
-                    <DashboardStatCard
-                      label="Cerradas"
-                      value={`${closedReservations.length}`}
-                      detail="Completadas o no-show"
-                      icon="check"
-                    />
-                    <DashboardStatCard
-                      label="Canceladas"
-                      value={`${cancelledReservations.length}`}
-                      detail="Historial de cancelación"
-                      icon="warning"
-                    />
-                  </div>
-
-                  <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_420px]">
-                    <div className="space-y-6">
-                      <Card className="rounded-[18px] border-white/70 bg-white/95 p-5 shadow-[0_4px_14px_rgba(15,23,42,0.04)]">
-                        <DashboardSectionHeading
-                          title="Reservas de hoy"
-                          description="Prioridad operativa y financiera para lo inmediato."
-                        />
-                        <div className="mt-4 space-y-3">
-                          {todayReservations.length === 0 ? (
-                            <div className="rounded-[18px] border border-dashed border-[#CBD5F5] bg-white/70 px-4 py-4 text-sm text-[#64748B]">
-                              No tenés reservas activas para hoy.
-                            </div>
-                          ) : (
-                            todayReservations.map(renderReservationCard)
-                          )}
-                        </div>
-                      </Card>
-
-                      <Card className="rounded-[18px] border-white/70 bg-white/95 p-5 shadow-[0_4px_14px_rgba(15,23,42,0.04)]">
-                        <DashboardSectionHeading
-                          title="Próximas reservas"
-                          description="Reservas futuras activas con su estado financiero."
-                        />
-                        <div className="mt-4 space-y-3">
-                          {upcomingReservations.length === 0 ? (
-                            <div className="rounded-[18px] border border-dashed border-[#CBD5F5] bg-white/70 px-4 py-4 text-sm text-[#64748B]">
-                              No hay reservas futuras activas.
-                            </div>
-                          ) : (
-                            upcomingReservations.map(renderReservationCard)
-                          )}
-                        </div>
-                      </Card>
-
-                      <Card className="rounded-[18px] border-white/70 bg-white/95 p-5 shadow-[0_4px_14px_rgba(15,23,42,0.04)]">
-                        <DashboardSectionHeading
-                          title="Reservas cerradas"
-                          description="Completadas o marcadas como no-show."
-                        />
-                        <div className="mt-4 space-y-3">
-                          {closedReservations.length === 0 ? (
-                            <div className="rounded-[18px] border border-dashed border-[#CBD5F5] bg-white/70 px-4 py-4 text-sm text-[#64748B]">
-                              Todavía no hay reservas cerradas.
-                            </div>
-                          ) : (
-                            closedReservations.map(renderReservationCard)
-                          )}
-                        </div>
-                      </Card>
-
-                      <Card className="rounded-[18px] border-white/70 bg-white/95 p-5 shadow-[0_4px_14px_rgba(15,23,42,0.04)]">
-                        <DashboardSectionHeading
-                          title="Canceladas"
-                          description="Seguimiento de cancelaciones ya cerradas."
-                        />
-                        <div className="mt-4 space-y-3">
-                          {cancelledReservations.length === 0 ? (
-                            <div className="rounded-[18px] border border-dashed border-[#CBD5F5] bg-white/70 px-4 py-4 text-sm text-[#64748B]">
-                              No hay reservas canceladas.
-                            </div>
-                          ) : (
-                            cancelledReservations.map(renderReservationCard)
-                          )}
-                        </div>
-                      </Card>
+                  <div className="space-y-5">
+                    <div className="grid min-w-0 gap-4 md:grid-cols-2 xl:grid-cols-4">
+                      {renderReservationColumn({
+                        title: 'Reservas de hoy',
+                        subtitle: 'Turnos de hoy que no están cancelados.',
+                        reservations: todayReservations,
+                        emptyText: 'No tenés reservas activas para hoy.',
+                        tone: 'today',
+                      })}
+                      {renderReservationColumn({
+                        title: 'Pendientes de confirmación',
+                        subtitle: 'Reservas que necesitan confirmación del negocio.',
+                        reservations: pendingReservations,
+                        emptyText: 'No hay reservas pendientes de confirmación.',
+                        tone: 'pending',
+                      })}
+                      {renderReservationColumn({
+                        title: 'Próximas reservas confirmadas',
+                        subtitle: 'Turnos futuros ya confirmados en agenda.',
+                        reservations: upcomingConfirmedReservations,
+                        emptyText: 'No hay reservas futuras confirmadas.',
+                        tone: 'confirmed',
+                      })}
+                      {renderReservationColumn({
+                        title: 'Canceladas',
+                        subtitle: 'Reservas canceladas y su seguimiento.',
+                        reservations: cancelledReservations,
+                        emptyText: 'No hay reservas canceladas.',
+                        tone: 'cancelled',
+                      })}
                     </div>
 
-                    <aside className="xl:sticky xl:top-24 xl:self-start">
+                    <aside>
                       <Card className="rounded-[18px] border-white/70 bg-white/95 p-5 shadow-[0_4px_14px_rgba(15,23,42,0.04)]">
                         {!selectedReservation ? (
                           <div className="rounded-[18px] border border-dashed border-[#CBD5F5] bg-white/70 px-4 py-4 text-sm text-[#64748B]">
@@ -986,6 +1045,7 @@ export default function ProfesionalReservationsPage() {
                                   onClick={() =>
                                     runReservationAction(
                                       () => cancelProfessionalBooking(selectedReservation.id, cancelReason),
+                                      'Reserva cancelada correctamente.',
                                       'No se pudo cancelar la reserva.',
                                     )
                                   }
@@ -1061,6 +1121,7 @@ export default function ProfesionalReservationsPage() {
                                             selectedReservation.id,
                                             `${rescheduleDate}T${rescheduleTime}:00`,
                                           ),
+                                          'Reserva reagendada correctamente.',
                                           'No se pudo reagendar la reserva.',
                                         )
                                       }
@@ -1080,6 +1141,7 @@ export default function ProfesionalReservationsPage() {
                                   onClick={() =>
                                     runReservationAction(
                                       () => updateProfessionalReservationStatus(selectedReservation.id, 'confirmed'),
+                                      'Reserva confirmada correctamente.',
                                       'No se pudo confirmar la reserva.',
                                     )
                                   }
@@ -1096,6 +1158,7 @@ export default function ProfesionalReservationsPage() {
                                   onClick={() =>
                                     runReservationAction(
                                       () => completeProfessionalBooking(selectedReservation.id),
+                                      'Reserva marcada como completada.',
                                       'No se pudo completar la reserva.',
                                     )
                                   }
@@ -1112,6 +1175,7 @@ export default function ProfesionalReservationsPage() {
                                   onClick={() =>
                                     runReservationAction(
                                       () => markProfessionalBookingNoShow(selectedReservation.id),
+                                      'Reserva marcada como no-show.',
                                       'No se pudo marcar no-show.',
                                     )
                                   }

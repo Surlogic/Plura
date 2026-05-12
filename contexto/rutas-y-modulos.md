@@ -243,6 +243,7 @@ Lectura de producto:
 - `/profesional/notificaciones` ya funciona como centro real de inbox: lista paginada con `cargar mas`, filtros basicos y navegacion contextual por `actionUrl`
 - la navegacion contextual de notificaciones profesional apunta a la UX real de reservas en `/profesional/dashboard/reservas?bookingId={id}` y el panel selecciona la reserva desde query string
 - `/profesional/dashboard/reservas` ya usa su panel lateral de detalle como experiencia real de reserva e incluye timeline de actividad e historial por `bookingId`
+- `/profesional/dashboard/reservas` organiza la vista principal como tablero operativo responsive de `4` columnas (`Reservas de hoy`, `Pendientes de confirmación`, `Próximas reservas confirmadas`, `Canceladas`) con contador integrado por columna; el detalle/timeline y acciones avanzadas quedan debajo al seleccionar una reserva para no dominar el tablero
 - `/profesional/dashboard/reservas` mantiene auto-refresh para estados pendientes, pero ahora pausa polling con la pestaña oculta y aplica backoff para reducir trafico redundante
 - `/profesional/dashboard/reservas` ahora paraleliza reservas y servicios al entrar, y prefetch-ea `actions + timeline` de la seleccion activa para acortar la cascada inicial
 - `/profesional/dashboard/reservas` debe seguir disponible para `Free/BASIC` como modulo operativo de reservas

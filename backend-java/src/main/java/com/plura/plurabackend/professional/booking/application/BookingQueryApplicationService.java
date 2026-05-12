@@ -15,6 +15,7 @@ import com.plura.plurabackend.core.booking.repository.BookingRepository;
 import com.plura.plurabackend.core.booking.time.BookingDateTimeService;
 import com.plura.plurabackend.professional.application.ProfessionalAccessSupport;
 import com.plura.plurabackend.professional.model.ProfessionalProfile;
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.format.DateTimeParseException;
@@ -139,6 +140,7 @@ public class BookingQueryApplicationService {
             Booking bookingEntity = resolvedBookingEntities.get(booking.getId());
             if (bookingEntity != null) {
                 booking.setStatus(bookingEntity.getOperationalStatus().name());
+                booking.setPrice(formatMoneySnapshot(bookingEntity.getServicePriceSnapshot()));
                 booking.setStartDateTimeUtc(bookingDateTimeService.toUtcString(bookingEntity));
                 booking.setPaymentBreakdown(
                     bookingPaymentBreakdownService.toResponse(
@@ -152,6 +154,10 @@ public class BookingQueryApplicationService {
         });
 
         return bookings;
+    }
+
+    private String formatMoneySnapshot(BigDecimal value) {
+        return value == null ? null : value.stripTrailingZeros().toPlainString();
     }
 
     /**

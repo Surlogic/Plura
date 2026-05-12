@@ -134,6 +134,7 @@ export type ProfessionalBookingDtoBase<
   clientName: string;
   serviceId: string;
   serviceName: string;
+  price?: string | null;
   startDateTime: string;
   startDateTimeUtc?: string | null;
   timezone?: string | null;
@@ -171,6 +172,7 @@ export type ProfessionalReservationBase<
   clientName: string;
   date: string;
   time: string;
+  price?: string;
   duration?: string;
   postBufferMinutes?: number;
   effectiveDurationMinutes?: number;
@@ -375,6 +377,7 @@ export const mapProfessionalBookingBase = <
     clientName: booking.clientName,
     date,
     time,
+    price: booking.price || undefined,
     duration: booking.duration,
     postBufferMinutes: booking.postBufferMinutes ?? 0,
     effectiveDurationMinutes: booking.effectiveDurationMinutes,

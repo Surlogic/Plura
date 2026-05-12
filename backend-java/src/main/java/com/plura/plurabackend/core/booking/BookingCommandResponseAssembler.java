@@ -13,6 +13,7 @@ import com.plura.plurabackend.core.booking.model.Booking;
 import com.plura.plurabackend.core.booking.model.ServicePaymentType;
 import com.plura.plurabackend.core.booking.policy.BookingPolicySnapshotService;
 import com.plura.plurabackend.core.booking.time.BookingDateTimeService;
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -178,6 +179,7 @@ public class BookingCommandResponseAssembler {
             paymentBreakdown,
             bookingFinanceService.toResponse(summary)
         );
+        response.setPrice(formatMoneySnapshot(booking.getServicePriceSnapshot()));
         response.setLatestRefund(bookingFinanceService.toResponse(latestRefund));
         response.setLatestPayout(bookingFinanceService.toResponse(latestPayout));
         response.setPolicySnapshot(bookingPolicySnapshotService.toResponse(bookingPolicySnapshotService.resolveForBooking(booking)));
@@ -189,6 +191,10 @@ public class BookingCommandResponseAssembler {
      */
     private ServicePaymentType resolveServicePaymentType(ServicePaymentType paymentType) {
         return paymentType == null ? ServicePaymentType.ON_SITE : paymentType;
+    }
+
+    private String formatMoneySnapshot(BigDecimal value) {
+        return value == null ? null : value.stripTrailingZeros().toPlainString();
     }
 
     /**

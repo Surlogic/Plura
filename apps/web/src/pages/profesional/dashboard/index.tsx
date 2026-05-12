@@ -73,6 +73,16 @@ const startOfWeek = (date: Date) => {
   return result;
 };
 
+const getMonthDateKeys = (date: Date) => {
+  const firstDay = new Date(date.getFullYear(), date.getMonth(), 1);
+  const lastDay = new Date(date.getFullYear(), date.getMonth() + 1, 0);
+  return Array.from({ length: lastDay.getDate() }, (_, index) => {
+    const current = new Date(firstDay);
+    current.setDate(firstDay.getDate() + index);
+    return toLocalDateKey(current);
+  });
+};
+
 const parseTimeToMinutes = (value: string) => {
   const [hours, minutes] = value.split(':').map(Number);
   if (!Number.isFinite(hours) || !Number.isFinite(minutes)) return null;
@@ -780,7 +790,7 @@ export default function ProfesionalDashboardPage() {
 
   const requiredReservationDatesRef = useRef<string[]>([]);
   const requiredReservationDates = useMemo(() => {
-    const dateKeys = new Set<string>([todayKey]);
+    const dateKeys = new Set<string>([todayKey, ...getMonthDateKeys(today)]);
     currentWeekDays.forEach((day) => dateKeys.add(day.dateKey));
     if (calendarView === 'month' && canUseMonthlyCalendar) {
       monthGridDays.forEach((day) => dateKeys.add(day.dateKey));
@@ -792,7 +802,7 @@ export default function ProfesionalDashboardPage() {
     if (prev.length === next.length && prev.every((d, i) => d === next[i])) return prev;
     requiredReservationDatesRef.current = next;
     return next;
-  }, [todayKey, currentWeekDays, calendarView, canUseMonthlyCalendar, monthGridDays, weekDays]);
+  }, [today, todayKey, currentWeekDays, calendarView, canUseMonthlyCalendar, monthGridDays, weekDays]);
 
   const canViewAnalytics = featureAccess.basicAnalytics;
 

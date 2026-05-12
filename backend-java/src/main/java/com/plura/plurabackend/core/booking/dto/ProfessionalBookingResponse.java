@@ -20,6 +20,7 @@ public class ProfessionalBookingResponse {
     private String clientName;
     private String serviceId;
     private String serviceName;
+    private String price;
     private String startDateTime;
     private String startDateTimeUtc;
     private String timezone;

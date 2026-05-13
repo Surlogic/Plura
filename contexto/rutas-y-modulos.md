@@ -5,6 +5,13 @@ Este documento mezcla dos lecturas:
 - que rutas y modulos existen hoy en el repo
 - como se relacionan con `usuario`, `Free`, `Pro` y `Premium`
 
+## Nota de integración con backend
+
+- Las rutas frontend no deben depender de URLs hardcodeadas dispersas.
+- Las llamadas a backend deben centralizarse en clientes API o helpers existentes.
+- Toda nueva integración con backend debe usar endpoints versionados cuando existan.
+- Este trabajo no cambia rutas visuales del frontend.
+
 ## Resumen de producto por superficie
 
 ### Usuario

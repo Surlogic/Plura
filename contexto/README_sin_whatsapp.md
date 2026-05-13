@@ -140,6 +140,7 @@ Plan para crecimiento, reputacion visual y operacion multiequipo. Precio objetiv
 
 Base transversal que ordena el producto y la arquitectura:
 
+- versionado de API adoptado como regla operativa para proteger producción, web y mobile frente a cambios de contrato; la política inicial es documentar y aplicar hacia adelante, y las migraciones concretas a rutas versionadas se harán en tareas separadas sin asumir que `/api/v1` ya exista en todo el backend
 - autenticacion y seguridad: registro, login, recuperacion, sesiones y OAuth; hoy web y mobile exponen Google como login social activo, mientras backend conserva soporte OAuth mas amplio a nivel modulo auth; conviven dos recuperaciones de contraseña (`/auth/password/forgot` + `/auth/password/reset` como flujo legacy por token y `/auth/password/recovery/*` como flujo escalonado email + telefono + OTP por email); al confirmar cualquiera de los resets, backend devuelve el `role` recuperado (`USER` o `PROFESSIONAL`) para redirigir al login correcto y limpiar sesion previa; login OAuth puede requerir completar telefono via `POST /auth/oauth/complete-phone`; eliminacion de cuenta requiere challenge OTP por email (`/auth/challenge/send` con purpose `ACCOUNT_DELETION`) antes de ejecutar `DELETE /auth/me` con `challengeId + code`
 - onboarding inicial del negocio o profesional cuando este listo
 - roles y permisos

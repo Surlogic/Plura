@@ -82,6 +82,21 @@ Si la documentación no coincide con el código, corregir la documentación en l
 - Infra, env, docker, deploy, compose -> `contexto/infra-y-configuracion_sin_whatsapp.md`
 - Estado general del sistema -> `contexto/README_sin_whatsapp.md`
 
+## Regla de versionado de API
+
+Todo endpoint público consumido por web, mobile o integraciones externas debe vivir bajo un prefijo versionado: `/api/v1`, `/api/v2`, etc.
+
+- La versión estable inicial será `/api/v1`.
+- No se debe romper una versión existente con cambios incompatibles.
+- Si hay que cambiar un contrato de forma incompatible, se debe crear una versión nueva en paralelo.
+- Los endpoints viejos solo pueden eliminarse después de una etapa explícita de deprecación documentada.
+- No devolver entidades internas/JPA como contrato público cuando aplique; usar DTOs/Responses estables.
+- Agregar campos opcionales normalmente no requiere nueva versión.
+- Renombrar campos, borrar campos, cambiar tipos, cambiar estados, cambiar paginación o cambiar semántica sí requiere nueva versión.
+- Cualquier cambio de endpoint, contrato, ruta o comportamiento público debe actualizar `contexto/backend-endpoints.md` y, si corresponde, `contexto/rutas-y-modulos.md`.
+- Si el cambio afecta deploy, env o configuración, actualizar `contexto/infra-y-configuracion_sin_whatsapp.md`.
+- Mantener compatibilidad hacia atrás es prioridad para no romper producción ni apps instaladas.
+
 ## Forma de respuesta esperada
 Responder con foco en:
 - qué se cambió

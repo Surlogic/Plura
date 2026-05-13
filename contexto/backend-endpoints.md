@@ -7,6 +7,53 @@ Este documento describe el backend desde dos capas:
 - endpoints y dominios disponibles hoy
 - lectura de producto segun `core`, `Usuario`, `Free`, `Pro` y `Premium`
 
+## Política de versionado de API
+
+Plura adopta versionado de API como regla operativa hacia adelante. Esta sección define la política recomendada; no implica que todos los endpoints actuales ya estén migrados a una versión.
+
+Estándar recomendado:
+
+- `/api/v1/{modulo}`
+
+Ejemplos de rutas versionadas objetivo:
+
+- `/api/v1/reservas`
+- `/api/v1/profesionales`
+- `/api/v1/search`
+- `/api/v1/agenda`
+- `/api/v1/notificaciones`
+- `/api/v1/pagos`
+
+Criterio para crear `/api/v2`:
+
+- crear una versión nueva cuando un cambio rompa compatibilidad de contrato, semántica o comportamiento público de una versión existente
+- ejemplos: renombrar campos, borrar campos, cambiar tipos, cambiar estados, cambiar paginación, cambiar códigos/errores relevantes o cambiar el significado de una respuesta
+- agregar campos opcionales normalmente no requiere nueva versión si los clientes existentes pueden ignorarlos sin romperse
+
+Criterio para mantener aliases legacy temporalmente:
+
+- mantener aliases legacy cuando web, mobile, integraciones externas o apps instaladas todavía dependan de rutas anteriores
+- documentar el alias como `legacy` o `deprecado`, su ruta versionada equivalente si existe, consumidores conocidos y condición de retiro
+- no eliminar un endpoint legacy sin una etapa explícita de deprecación documentada
+
+Criterio para marcar endpoints:
+
+- `activo`: ruta vigente recomendada para nuevas integraciones
+- `legacy`: ruta anterior mantenida por compatibilidad temporal, sin uso recomendado para nuevas integraciones
+- `deprecado`: ruta con retiro planificado o condicionado, con alternativa documentada
+
+Plantilla para documentar cada endpoint:
+
+- Método:
+- URL:
+- Versión:
+- Estado: `activo | legacy | deprecado`
+- Request:
+- Response:
+- Estados/errores:
+- Consumidores: `web | mobile | interno | externo`
+- Notas de compatibilidad:
+
 ## Lectura ejecutiva
 
 El backend ya cubre gran parte del nucleo operativo del MVP:

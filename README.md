@@ -13,7 +13,7 @@ Monorepo con frontend web (Next.js), app mobile (Expo) y backend API (Spring Boo
 
 - Node.js `>=20`
 - pnpm
-- Java 17
+- Java 25 LTS
 - PostgreSQL
 
 ## Desarrollo

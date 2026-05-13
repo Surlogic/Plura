@@ -1,5 +1,5 @@
 # Etapa 1: Construcción (Builder)
-FROM eclipse-temurin:17-jdk-jammy AS builder
+FROM eclipse-temurin:25-jdk-jammy AS builder
 WORKDIR /app
 
 # Copiamos los archivos necesarios de Gradle
@@ -20,7 +20,7 @@ COPY src/ src/
 RUN ./gradlew bootJar --no-daemon -x test
 
 # Etapa 2: Ejecución (Runtime)
-FROM eclipse-temurin:17-jre-jammy
+FROM eclipse-temurin:25-jre-jammy
 WORKDIR /app
 
 # Copiamos el .jar generado desde la etapa de construcción

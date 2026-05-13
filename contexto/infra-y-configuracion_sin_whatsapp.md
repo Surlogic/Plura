@@ -8,7 +8,7 @@ Este documento cruza el stack tecnico actual con las necesidades del producto de
 - Web: `Next.js 16`, `React 19`, `TypeScript`
 - Mobile: `Expo 54`, `React Native 0.81`, `expo-router`
 - el `package.json` raiz usa `pnpm.overrides` para fijar versiones parcheadas de dependencias transitivas auditadas por seguridad sin subir de SDK Expo ni cambiar contratos de runtime
-- Backend: `Spring Boot 3.5`, `Java 17`, `JPA`, `Spring Security`
+- Backend: `Spring Boot 3.5`, `Java 25 LTS`, `JPA`, `Spring Security`
 - Base de datos: PostgreSQL
 - Migraciones: Flyway
 - hardening Supabase Data API aplicado desde Flyway (`V70`): `public` deja de ser el schema expuesto por PostgREST y se reserva `api_public` para futuras vistas/funciones publicas auditadas
@@ -423,7 +423,7 @@ Notas reales de deploy:
 - para Supabase PostgreSQL se usan `SPRING_DATASOURCE_URL`, `SPRING_DATASOURCE_USERNAME`, `SPRING_DATASOURCE_PASSWORD`, `SPRING_FLYWAY_URL`, `SPRING_FLYWAY_USER`, `SPRING_FLYWAY_PASSWORD` y drivers PostgreSQL
 - para OAuth Mercado Pago del profesional, el backend Fly necesita `BILLING_MERCADOPAGO_RESERVATIONS_*`, incluido `OAUTH_REDIRECT_URI=https://plura.fly.dev/profesional/payment-providers/mercadopago/oauth/callback` y `OAUTH_FRONTEND_REDIRECT_URL=https://plura-web-a6ka.vercel.app/oauth/mercadopago/callback`
 - para suscripciones Mercado Pago, el backend Fly necesita `BILLING_MERCADOPAGO_SUBSCRIPTIONS_ACCESS_TOKEN` y `BILLING_MERCADOPAGO_SUBSCRIPTIONS_WEBHOOK_SECRET`
-- el backend compila para Java 17; cualquier uso de APIs de virtual threads de Java 21 rompe el `bootJar` del deploy
+- el backend compila para Java 25 LTS; Docker local y deploy usan imagenes `eclipse-temurin:25-*`, y Gradle usa `org.gradle.toolchains.foojay-resolver-convention` para resolver el toolchain si la maquina local no tiene JDK 25 instalado
 
 ## Integraciones externas detectadas
 
@@ -474,7 +474,7 @@ Notas reales de deploy:
 - `.env.backend` sigue siendo el archivo plano de importacion de env para local/docker y hoy ya usa `SPRING_DATASOURCE_*` + `SPRING_FLYWAY_*` apuntando al Session Pooler de Supabase; no deberia volver a cargar `DATABASE_URL` de una base vieja como fuente principal
 - `backend-java/fly.toml` fija `primary_region = "gru"` para priorizar Sao Paulo mientras Fly presenta incidentes de provision en otras regiones; si la plataforma se estabiliza y conviene volver a otra region, hay que redeployar con esa region explicita
 - `backend-java/fly.toml` ya no declara `processes = ["app"]` bajo `[http_service]`; se removio como workaround del incidente de Fly.io "flyctl deploy creating new app instances" sin tocar otros valores del deploy
-- el repo ahora incluye `.github/workflows/deploy-fly-backend.yml`: despliega el backend a Fly solo cuando el `push` a `main` toca `backend-java/**` o el propio workflow, y tambien permite corrida manual (`workflow_dispatch`); usa `flyctl deploy --config backend-java/fly.toml --remote-only` y requiere el secret de GitHub Actions `FLY_API_TOKEN`
+- el repo ahora incluye `.github/workflows/deploy-fly-backend.yml`: despliega el backend a Fly solo cuando el `push` a `main` toca `backend-java/**` o el propio workflow, y tambien permite corrida manual (`workflow_dispatch`); antes del deploy corre `./gradlew test` con Temurin 25 y despues usa `flyctl deploy backend-java --config backend-java/fly.toml --remote-only`; requiere el secret de GitHub Actions `FLY_API_TOKEN`
 - `backend-java/fly.toml` expone `internal_port = 3000` y define `http_service.checks` sobre `GET /health` con `grace_period = 180s`; esto es necesario porque el backend puede tardar mas de 2 minutos en abrir Tomcat mientras inicializa DB, Flyway y JPA
 - `backend-java/fly.toml` tambien deja explicito `BILLING_MERCADOPAGO_ENABLED=true`; `BILLING_ENABLED=true` solo no alcanza para dejar operativo Mercado Pago en runtime
 - si Fly reporta `The app is not listening on the expected address` y en la VM solo aparece `/.fly/hallpass`, no asumir primero un problema de `PORT`: con la configuracion actual (`server.address=0.0.0.0`, `server.port=${PORT:3000}`) eso suele indicar que el proceso Java murio en startup por secrets faltantes o fallo temprano de datasource antes de bindear el socket

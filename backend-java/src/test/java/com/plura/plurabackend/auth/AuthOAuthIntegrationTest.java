@@ -271,7 +271,7 @@ class AuthOAuthIntegrationTest {
                 .content("{\"provider\":\"apple\",\"token\":\"apple-mismatch\",\"authAction\":\"LOGIN\"}"))
             .andExpect(status().isConflict())
             .andExpect(jsonPath("$.error").value("OAUTH_PROVIDER_MISMATCH"))
-            .andExpect(jsonPath("$.message").value("Email already linked a a different provider"));
+            .andExpect(jsonPath("$.message").value("Email already linked to a different provider"));
 
         org.junit.jupiter.api.Assertions.assertEquals(1L, userRepository.count());
     }
@@ -292,7 +292,7 @@ class AuthOAuthIntegrationTest {
             .andExpect(status().isBadRequest())
             .andExpect(jsonPath("$.error").value("APPLE_EMAIL_REQUIRED_FIRST_LOGIN"))
             .andExpect(jsonPath("$.message").value(
-                "Apple did not provide email. Please complete first login desde Apple flow that includes email."
+                "Apple did not provide email. Please complete first login from Apple flow that includes email."
             ));
 
         org.junit.jupiter.api.Assertions.assertEquals(0L, userRepository.count());

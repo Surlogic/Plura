@@ -2,7 +2,7 @@ name: plura-dev
 
 services:
   backend:
-    image: eclipse-temurin:17-jdk-jammy
+    image: eclipse-temurin:25-jdk-jammy
     working_dir: /workspace/backend-java
     env_file:
       - .env.backend

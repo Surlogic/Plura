@@ -174,6 +174,7 @@ Notas reales de binding local:
 
 - el backend no depende solo del `.env` del cwd: ahora intenta leer `./.env` y tambien `./backend-java/.env`
 - si se ejecuta el backend desde la raiz del monorepo, `backend-java/.env` sigue siendo tomado como fallback
+- el script local `pnpm dev:backend-java` carga `.env.backend` y despues `backend-java/.env`, manteniendo la misma precedencia que `docker-compose.yml` y evitando diferencias entre Windows nativo y Docker
 - `backend-java/fly.toml` ya fija los env no secretos principales para Fly (`APP_PUBLIC_WEB_URL`, `CORS_ALLOWED_ORIGINS`, cookies auth, SMTP habilitado, storage `r2`, billing base y redirects OAuth/callback de Mercado Pago); los secretos sensibles siguen yendo por `fly secrets`
 - para evitar desalineos entre placeholders de `application.yml` y beans que leen propiedades ya resueltas (`SecurityConfig`, `CookieOriginProtectionFilter`, rate limiting), `backend-java/fly.toml` expone tambien `APP_CORS_ALLOWED_ORIGINS` y `APP_SECURITY_TRUST_FORWARDED_HEADERS` ademas de los aliases legacy/no anidados; esto corrige preflights CORS reales contra `https://plura-web-a6ka.vercel.app`
 - el backend acepta `X-Internal-Token` dentro de los headers CORS permitidos; esto es obligatorio para usar desde web los paneles internos `/internal/ops/*` (feedback, reviews) sin que falle el preflight
@@ -391,13 +392,17 @@ Variables nuevas relevantes de performance:
 Comandos esperados:
 
 ```bash
+corepack enable
 pnpm install
 pnpm dev
 pnpm dev:web
 pnpm dev:backend-java
+pnpm dev:backend:remote
 ```
 
-El script `scripts/predev.sh`:
+En Windows, ejecutar desde PowerShell o CMD en la raiz del repo. `pnpm dev` levanta web y backend, pero no crea una base PostgreSQL local; el backend necesita `SPRING_DATASOURCE_URL` o `DATABASE_URL` en `.env.backend`, `backend-java/.env` o variables del entorno.
+
+El script `scripts/predev.cjs`:
 
 - limpia artefactos de Next en web
 - mata procesos previos ocupando `3000` o `3002` cuando corresponde

@@ -4,11 +4,13 @@ const { spawn } = require("node:child_process");
 
 const repoRoot = path.resolve(__dirname, "..");
 const backendDir = path.join(repoRoot, "backend-java");
-const envFile = path.join(backendDir, ".env");
+const rootBackendEnvFile = path.join(repoRoot, ".env.backend");
+const backendEnvFile = path.join(backendDir, ".env");
 
 const isWindows = process.platform === "win32";
 const command = isWindows ? "gradlew.bat" : "./gradlew";
 const gradleArgs = process.argv.slice(2);
+const isBootRun = gradleArgs.length === 0 || gradleArgs.includes("bootRun");
 
 function loadDotEnv(filePath) {
   if (!fs.existsSync(filePath)) {
@@ -46,18 +48,22 @@ function loadDotEnv(filePath) {
   return env;
 }
 
-const fileEnv = loadDotEnv(envFile);
+const rootBackendEnv = isBootRun ? loadDotEnv(rootBackendEnvFile) : {};
+const backendEnv = loadDotEnv(backendEnvFile);
 
 const childEnv = {
-  ...fileEnv,
+  ...rootBackendEnv,
+  ...backendEnv,
   ...process.env,
   SPRING_FLYWAY_VALIDATE_ON_MIGRATE:
     process.env.SPRING_FLYWAY_VALIDATE_ON_MIGRATE ??
-    fileEnv.SPRING_FLYWAY_VALIDATE_ON_MIGRATE ??
+    backendEnv.SPRING_FLYWAY_VALIDATE_ON_MIGRATE ??
+    rootBackendEnv.SPRING_FLYWAY_VALIDATE_ON_MIGRATE ??
     "false",
   SPRING_JPA_DDL_AUTO:
     process.env.SPRING_JPA_DDL_AUTO ??
-    fileEnv.SPRING_JPA_DDL_AUTO ??
+    backendEnv.SPRING_JPA_DDL_AUTO ??
+    rootBackendEnv.SPRING_JPA_DDL_AUTO ??
     "none",
 };
 

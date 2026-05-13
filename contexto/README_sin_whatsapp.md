@@ -468,10 +468,12 @@ La configuracion principal vive en `backend-java/src/main/resources/application.
 ## Comandos utiles
 
 ```bash
+corepack enable
 pnpm install
 pnpm dev
 pnpm dev:web
 pnpm dev:backend-java
+pnpm dev:backend:remote
 pnpm build
 pnpm lint
 ```

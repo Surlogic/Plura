@@ -13,7 +13,7 @@
     "android:mobile": "pnpm -C apps/mobile android",
     "dev:backend": "pnpm dev:backend-java",
     "dev:backend-java": "node ./scripts/dev-backend-java.cjs",
-    "dev:backend:remote": "cd backend-java && SPRING_FLYWAY_VALIDATE_ON_MIGRATE=false ./gradlew bootRun",
+    "dev:backend:remote": "node ./scripts/dev-backend-java.cjs",
     "build": "pnpm -r build",
     "build:backend-java": "node ./scripts/dev-backend-java.cjs build",
     "lint": "pnpm -r lint"

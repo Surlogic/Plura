@@ -21,6 +21,7 @@ Monorepo con frontend web (Next.js), app mobile (Expo) y backend API (Spring Boo
 Instalar dependencias del workspace:
 
 ```bash
+corepack enable
 pnpm install
 ```
 
@@ -30,12 +31,19 @@ Levantar web + backend:
 pnpm dev
 ```
 
-Por defecto, `pnpm dev` arranca una base PostgreSQL local con PostGIS en `127.0.0.1:5433`
-para el backend Java. Si necesitás usar una base remota definida en `backend-java/.env`,
-ejecutá:
+En Windows usar PowerShell o CMD desde la raiz del repo. `pnpm dev` arranca:
+
+- backend Java en `http://localhost:3000`
+- web Next.js en `http://localhost:3002`
+
+El backend toma variables desde `.env.backend` y `backend-java/.env`; si ambos existen,
+`backend-java/.env` pisa valores de `.env.backend`. La base PostgreSQL no se levanta sola:
+`SPRING_DATASOURCE_URL` o `DATABASE_URL` debe venir configurada en esos archivos o en el entorno.
+
+Si preferís levantarlo con Docker Desktop:
 
 ```bash
-pnpm dev:backend:remote
+docker compose up --build
 ```
 
 Comandos individuales:
@@ -43,6 +51,7 @@ Comandos individuales:
 ```bash
 pnpm dev:web
 pnpm dev:backend-java
+pnpm dev:backend:remote
 ```
 
 ## Puertos por defecto

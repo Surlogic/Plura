@@ -12,18 +12,18 @@ export type ProfessionalFeatureKey =
   | 'advancedAnalytics';
 
 const FEATURE_REQUIRED_PLAN: Record<ProfessionalFeatureKey, ProfessionalPlanCode> = {
-  enhancedPublicProfile: 'BASIC',
-  onlinePayments: 'PROFESIONAL',
-  weeklyCalendarNavigation: 'BASIC',
-  monthlyCalendar: 'BASIC',
-  basicAnalytics: 'PROFESIONAL',
+  enhancedPublicProfile: 'PROFESSIONAL',
+  onlinePayments: 'LOCAL',
+  weeklyCalendarNavigation: 'PROFESSIONAL',
+  monthlyCalendar: 'PROFESSIONAL',
+  basicAnalytics: 'LOCAL',
   advancedAnalytics: 'ENTERPRISE',
 };
 
 export const professionalFeatureRequiredPlan = FEATURE_REQUIRED_PLAN;
 
 export const resolveProfessionalFeatureAccess = (profile?: ProfessionalProfile | null) => {
-  const currentPlan = profile?.professionalPlan ?? 'BASIC';
+  const currentPlan = profile?.professionalPlan ?? 'PROFESSIONAL';
   const entitlements = profile?.professionalEntitlements;
 
   return {
@@ -32,12 +32,12 @@ export const resolveProfessionalFeatureAccess = (profile?: ProfessionalProfile |
       : hasPlanAccess(currentPlan, FEATURE_REQUIRED_PLAN.enhancedPublicProfile),
     onlinePayments: entitlements
       ? entitlements.allowOnlinePayments
-      : hasPlanAccess(currentPlan, 'PROFESIONAL'),
+      : hasPlanAccess(currentPlan, 'LOCAL'),
     weeklyCalendarNavigation: true,
     monthlyCalendar: true,
     basicAnalytics: entitlements
       ? entitlements.analyticsTier !== 'NONE'
-      : hasPlanAccess(currentPlan, 'PROFESIONAL'),
+      : hasPlanAccess(currentPlan, 'LOCAL'),
     advancedAnalytics: entitlements
       ? entitlements.analyticsTier === 'ADVANCED'
       : hasPlanAccess(currentPlan, 'ENTERPRISE'),

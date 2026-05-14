@@ -31,34 +31,34 @@ class EffectiveProfessionalPlanServiceTest {
     );
 
     /**
-     * Escenario: resolves basic cuando there is no suscripcion.
+     * Escenario: resolves professional cuando there is no suscripcion.
      * El objetivo es dejar explicita la regla que protege este test.
      */
     @Test
-    void resolvesBasicWhenThereIsNoSubscription() {
+    void resolvesProfessionalWhenThereIsNoSubscription() {
         ProfessionalProfile profile = new ProfessionalProfile();
         profile.setId(10L);
         when(subscriptionRepository.findByProfessionalId(10L)).thenReturn(Optional.empty());
 
         EffectiveProfessionalPlan effectivePlan = service.resolveForProfessional(profile);
 
-        assertEquals(ProfessionalPlanCode.BASIC, effectivePlan.code());
+        assertEquals(ProfessionalPlanCode.PROFESSIONAL, effectivePlan.code());
     }
 
     /**
-     * Escenario: resolves profesional for active nuevo alias plan code.
+     * Escenario: resolves local for active plan code.
      * El objetivo es dejar explicita la regla que protege este test.
      */
     @Test
-    void resolvesProfesionalForActiveNewAliasPlanCode() {
+    void resolvesLocalForActivePlanCode() {
         ProfessionalProfile profile = new ProfessionalProfile();
         profile.setId(20L);
         when(subscriptionRepository.findByProfessionalId(20L))
-            .thenReturn(Optional.of(activeSubscription(SubscriptionPlanCode.PLAN_PROFESIONAL)));
+            .thenReturn(Optional.of(activeSubscription(SubscriptionPlanCode.PLAN_LOCAL)));
 
         EffectiveProfessionalPlan effectivePlan = service.resolveForProfessional(profile);
 
-        assertEquals(ProfessionalPlanCode.PROFESIONAL, effectivePlan.code());
+        assertEquals(ProfessionalPlanCode.LOCAL, effectivePlan.code());
         assertTrue(effectivePlan.entitlements().allowOnlinePayments());
     }
 
@@ -81,11 +81,11 @@ class EffectiveProfessionalPlanServiceTest {
     }
 
     /**
-     * Escenario: falls back a basic cuando suscripcion is inactive.
+     * Escenario: falls back a professional cuando suscripcion is inactive.
      * El objetivo es dejar explicita la regla que protege este test.
      */
     @Test
-    void fallsBackToBasicWhenSubscriptionIsInactive() {
+    void fallsBackToProfessionalWhenSubscriptionIsInactive() {
         ProfessionalProfile profile = new ProfessionalProfile();
         profile.setId(40L);
         Subscription subscription = activeSubscription(SubscriptionPlanCode.PLAN_ENTERPRISE);
@@ -94,7 +94,7 @@ class EffectiveProfessionalPlanServiceTest {
 
         EffectiveProfessionalPlan effectivePlan = service.resolveForProfessional(profile);
 
-        assertEquals(ProfessionalPlanCode.BASIC, effectivePlan.code());
+        assertEquals(ProfessionalPlanCode.PROFESSIONAL, effectivePlan.code());
     }
 
     private Subscription activeSubscription(SubscriptionPlanCode plan) {

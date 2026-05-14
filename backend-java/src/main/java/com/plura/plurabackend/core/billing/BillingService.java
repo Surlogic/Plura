@@ -219,8 +219,8 @@ public class BillingService {
         ProfessionalProfile professional,
         SubscriptionPlanCode plan
     ) {
-        if (plan == SubscriptionPlanCode.PLAN_BASIC) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "PLAN_BASIC no requiere checkout");
+        if (plan == SubscriptionPlanCode.PLAN_PROFESSIONAL) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "PLAN_PROFESSIONAL no requiere checkout");
         }
         if (!billingProperties.getMercadopago().isEnabled()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Mercado Pago no habilitado");
@@ -411,7 +411,7 @@ public class BillingService {
             );
         }
         LocalDateTime now = LocalDateTime.now();
-        boolean premiumEnabled = subscription.getStatus() == SubscriptionStatus.ACTIVE
+        boolean planEnabled = subscription.getStatus() == SubscriptionStatus.ACTIVE
             && subscription.getCurrentPeriodEnd() != null
             && !subscription.getCurrentPeriodEnd().isBefore(now);
 
@@ -425,7 +425,7 @@ public class BillingService {
             subscription.getCurrentPeriodStart(),
             subscription.getCurrentPeriodEnd(),
             subscription.getCancelAtPeriodEnd(),
-            premiumEnabled
+            planEnabled
         );
     }
 

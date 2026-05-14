@@ -55,11 +55,11 @@ const buildProfile = (
   rubro: 'Belleza',
   location: 'Montevideo',
   tipoCliente: 'PROFESSIONAL',
-  professionalPlan: 'BASIC',
+  professionalPlan: 'PROFESSIONAL',
   ...overrides,
 });
 
-test('resolveProfessionalFeatureAccess falls back to BASIC plan defaults', () => {
+test('resolveProfessionalFeatureAccess falls back to PROFESSIONAL plan defaults', () => {
   const access = resolveProfessionalFeatureAccess(buildProfile());
 
   assert.deepEqual(access, {
@@ -72,9 +72,9 @@ test('resolveProfessionalFeatureAccess falls back to BASIC plan defaults', () =>
   });
 });
 
-test('resolveProfessionalFeatureAccess falls back to PROFESSIONAL plan defaults', () => {
+test('resolveProfessionalFeatureAccess falls back to LOCAL plan defaults', () => {
   const access = resolveProfessionalFeatureAccess(buildProfile({
-    professionalPlan: 'PROFESIONAL',
+    professionalPlan: 'LOCAL',
   }));
 
   assert.deepEqual(access, {
@@ -122,15 +122,15 @@ test('resolveProfessionalFeatureAccess prefers entitlements over plan code when 
 });
 
 test('planIncludesProfessionalFeature matches the expected paywall boundaries', () => {
-  assert.equal(planIncludesProfessionalFeature('BASIC', 'onlinePayments'), false);
-  assert.equal(planIncludesProfessionalFeature('PROFESIONAL', 'onlinePayments'), true);
-  assert.equal(planIncludesProfessionalFeature('BASIC', 'weeklyCalendarNavigation'), true);
-  assert.equal(planIncludesProfessionalFeature('BASIC', 'monthlyCalendar'), true);
-  assert.equal(planIncludesProfessionalFeature('PROFESIONAL', 'monthlyCalendar'), true);
+  assert.equal(planIncludesProfessionalFeature('PROFESSIONAL', 'onlinePayments'), false);
+  assert.equal(planIncludesProfessionalFeature('LOCAL', 'onlinePayments'), true);
+  assert.equal(planIncludesProfessionalFeature('PROFESSIONAL', 'weeklyCalendarNavigation'), true);
+  assert.equal(planIncludesProfessionalFeature('PROFESSIONAL', 'monthlyCalendar'), true);
+  assert.equal(planIncludesProfessionalFeature('LOCAL', 'monthlyCalendar'), true);
   assert.equal(planIncludesProfessionalFeature('ENTERPRISE', 'monthlyCalendar'), true);
 });
 
 test('requiredPlanForFeature exposes the correct minimum plan', () => {
-  assert.equal(requiredPlanForFeature('enhancedPublicProfile'), 'BASIC');
+  assert.equal(requiredPlanForFeature('enhancedPublicProfile'), 'PROFESSIONAL');
   assert.equal(requiredPlanForFeature('advancedAnalytics'), 'ENTERPRISE');
 });

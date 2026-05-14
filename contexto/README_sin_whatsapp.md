@@ -23,10 +23,10 @@ La app tiene dos grandes actores:
 
 Definicion cerrada de monetizacion:
 
-- el profesional se registra directo en `Free`
+- el profesional se registra directo en `Profesional`
 - el upgrade aparece dentro del producto cuando necesita una funcion bloqueada
-- `Pro` se activa con `30` dias gratis desde la app
-- si deja de pagar, conserva cuenta y datos, pero vuelve al comportamiento base de `Free`
+- `Local` se activa con `30` dias gratis desde la app
+- si deja de pagar, conserva cuenta y datos, pero vuelve al comportamiento base de `Profesional`
 - el modelo principal sigue siendo suscripcion mensual; en reservas prepagas el checkout puede sumar al cliente un cargo de procesamiento segun el servicio para cubrir fee de Mercado Pago + IVA + `1%` de plataforma
 
 ## Planes de producto
@@ -34,17 +34,17 @@ Definicion cerrada de monetizacion:
 Naming objetivo de negocio:
 
 - `Usuario`: gratis
-- `Free`: puerta de entrada operativa
-- `Pro`: operar mejor con una sola agenda activa
-- `Premium`: crecer con equipo, fidelizacion y automatizacion avanzada
+- `Profesional`: puerta de entrada operativa
+- `Local`: operar mejor con una sola agenda activa
+- `Enterprise`: crecer con equipo, fidelizacion y automatizacion avanzada
 
-Naming actual detectado en el repo:
+Contratos actuales:
 
-- `Free` <-> `BASIC`
-- `Pro` <-> `PROFESIONAL`
-- `Premium` <-> `ENTERPRISE`
+- `Profesional` <-> `PROFESSIONAL`
+- `Local` <-> `LOCAL`
+- `Enterprise` <-> `ENTERPRISE`
 
-Esta diferencia de naming hoy es importante para leer codigo, billing y permisos sin mezclar la narrativa de producto con la implementacion actual.
+Los contratos legacy `BASIC` y `PROFESIONAL` quedan solo como aliases de lectura transicional para no romper datos viejos.
 
 ## Alcance por plan
 
@@ -61,7 +61,7 @@ Siempre gratis. Objetivo: bajar friccion para reservar y volver.
 - notificaciones de reserva y cambios en app con email de respaldo
 - acceso a beneficios activados por el negocio como puntos, gift cards, paquetes o ultima hora
 
-### Free
+### Profesional
 
 Plan de entrada para validar valor real sin regalar toda la operacion.
 
@@ -81,8 +81,8 @@ Plan de entrada para validar valor real sin regalar toda la operacion.
 
 Lectura operativa actual:
 
-- `Free/BASIC` ya puede usar la agenda del dashboard sin bloqueos de vista semanal o mensual
-- `Free/BASIC` debe poder entrar a `/profesional/dashboard/reservas`, ver reservas operativas y ejecutar acciones base desde panel segun estado y politica
+- `Profesional/PROFESSIONAL` ya puede usar la agenda del dashboard sin bloqueos de vista semanal o mensual
+- `Profesional/PROFESSIONAL` debe poder entrar a `/profesional/dashboard/reservas`, ver reservas operativas y ejecutar acciones base desde panel segun estado y politica
 - en `/profesional/dashboard`, incluso con `scheduleTier=DAILY`, la semana visible debe cargar y mostrar todas las reservas no canceladas del rango visible para no marcar huecos falsos ni permitir lectura engañosa de disponibilidad
 - la agenda profesional web diferencia visualmente `pending`, `confirmed`, `completed` y `no_show` con color por estado tanto en la grilla semanal como en el resumen mensual; `cancelled` no se renderiza en agenda
 - la agenda semanal del dashboard usa base completa de `24h` con scroll vertical interno, pero el viewport visible muestra aproximadamente `12h`; el foco inicial inteligente usa horario laboral y reservas visibles, y el fallback solo define a que franja abrir si faltan datos
@@ -98,11 +98,11 @@ Bloqueos esperados en producto:
 - sin automatizaciones avanzadas
 - sin portfolio avanzado (galería básica ya existe), puntos, ultima hora, paquetes, tienda ni badge verificado
 
-### Pro
+### Local
 
 Plan para ahorrar tiempo y profesionalizar una sola agenda activa. Precio objetivo actual: `$590 UYU / mes`.
 
-- todo lo de `Free`
+- todo lo de `Profesional`
 - hasta `6` fotos de galeria del negocio
 - hasta `30` servicios publicos con `1` foto por servicio
 - perfil publico con portada, logo, descripcion larga, mapa y metodos de pago
@@ -117,11 +117,11 @@ Limite clave:
 
 - sigue siendo un plan para una sola agenda activa
 
-### Premium
+### Enterprise
 
 Plan para crecimiento, reputacion visual y operacion multiequipo. Precio objetivo actual: `$1.290 UYU / mes`.
 
-- todo lo de `Pro`
+- todo lo de `Local`
 - hasta `10` fotos de galeria del negocio
 - servicios publicos ilimitados
 - multiples profesionales y multiples locales
@@ -258,8 +258,8 @@ Senales que condicionan el roadmap:
 Conclusion operativa:
 
 - el MVP tiene que demostrar agenda, confirmacion y reserva real
-- `Pro` debe justificar pago con ahorro de tiempo y mejor operacion
-- `Premium` debe concentrar crecimiento, fidelizacion y multi-sede o multi-profesional
+- `Local` debe justificar pago con ahorro de tiempo y mejor operacion
+- `Enterprise` debe concentrar crecimiento, fidelizacion y multi-sede o multi-profesional
 
 ## Roadmap de producto recomendado
 
@@ -278,7 +278,7 @@ Objetivo: validar reservas reales.
 - estados del turno
 - notificaciones in-app
 
-### Fase 2 - Operacion Pro
+### Fase 2 - Operacion Local
 
 Objetivo: hacer que pagar ordene la operacion.
 
@@ -301,9 +301,9 @@ Objetivo: aumentar recurrencia y valor percibido.
 - campanas basicas
 - mejor seguimiento del cliente
 
-### Fase 4 - Premium
+### Fase 4 - Enterprise
 
-Objetivo: construir el plan premium real.
+Objetivo: construir el plan Enterprise real.
 
 - portfolio visual
 - fidelizacion
@@ -385,8 +385,8 @@ Capacidades de producto definidas pero no necesariamente cerradas en UI o API pu
 - respuesta publica del negocio a reseñas (reseñas ya cerradas con moderacion, ocultamiento y analytics en backend + web)
 - analytics de producto y reporting orientado a plan; ademas ya existe una primera capa interna de `Ops Analytics` separada de cliente/profesional para negocio y marketplace
 - bloqueo visible de features por plan dentro de toda la experiencia
-- funciones Premium como multi-profesional, fidelizacion, ultima hora, portfolio y tienda
-- base backend inicial de multitrabajador Premium: schema `professional_worker` + `professional_worker_service`, `worker_id` opcional en reservas/slots, trabajador dueño backfilleado para cada local existente, endpoints admin `/profesional/team*` para invitar/listar/editar agenda/servicios y endpoints publicos `/auth/worker-invitations*` para aceptar invitaciones; todavia falta conectar disponibilidad publica, reserva por trabajador, dashboards de trabajador y login unificado por contexto
+- funciones Enterprise como multi-profesional, fidelizacion, ultima hora, portfolio y tienda
+- base backend inicial de multitrabajador Enterprise: schema `professional_worker` + `professional_worker_service`, `worker_id` opcional en reservas/slots, trabajador dueño backfilleado para cada local existente, endpoints admin `/profesional/team*` para invitar/listar/editar agenda/servicios y endpoints publicos `/auth/worker-invitations*` para aceptar invitaciones; todavia falta conectar disponibilidad publica, reserva por trabajador, dashboards de trabajador y login unificado por contexto
 
 ## Arquitectura resumida
 

@@ -75,7 +75,7 @@ export default function ProfesionalBillingPage() {
   );
 
   const connectionCopy = getMercadoPagoConnectionStatusCopy(connection);
-  const mercadoPagoBadge = canUseOnlinePayments ? connectionCopy.badge : 'Disponible desde Pro';
+  const mercadoPagoBadge = canUseOnlinePayments ? connectionCopy.badge : 'Disponible desde Local';
   const mercadoPagoTitle = canUseOnlinePayments
     ? connectionCopy.title
     : 'Tu plan actual no habilita cobros online';
@@ -151,7 +151,7 @@ export default function ProfesionalBillingPage() {
   }, [disconnect]);
 
   const handleCancelPlan = useCallback(() => {
-    void handleSelectPlan('BASIC');
+    void handleSelectPlan('PROFESSIONAL');
   }, [handleSelectPlan]);
 
   const handleVerifyBillingStatus = useCallback(() => {
@@ -287,7 +287,7 @@ export default function ProfesionalBillingPage() {
                       cancelAtPeriodEnd={Boolean(subscription?.cancelAtPeriodEnd)}
                       canCancel={
                         Boolean(subscription)
-                        && currentPlanId !== 'BASIC'
+                        && currentPlanId !== 'PROFESSIONAL'
                         && currentStatus !== 'CANCELLED'
                         && !subscription?.cancelAtPeriodEnd
                       }
@@ -311,7 +311,7 @@ export default function ProfesionalBillingPage() {
                         >
                           <DashboardSectionHeading
                             title="Planes disponibles"
-                            description="Free funciona como base gratuita. Pro y Premium abren checkout en Mercado Pago para la suscripción del marketplace."
+                            description="Profesional funciona como base gratuita. Local y Enterprise abren checkout en Mercado Pago para la suscripción del marketplace."
                             action={isLoadingBilling ? (
                               <span className="text-xs font-semibold text-[#94A3B8]">
                                 Cargando...

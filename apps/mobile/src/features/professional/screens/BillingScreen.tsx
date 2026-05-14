@@ -79,7 +79,7 @@ export default function BillingScreen() {
     return 'Sin suscripcion';
   }, [currentStatus]);
   const currentAmountLabel = useMemo(() => {
-    if (currentPlanId === 'BASIC') return currentPlan.priceLabel;
+    if (currentPlanId === 'PROFESSIONAL') return currentPlan.priceLabel;
     return formatBillingAmount(subscription?.amount ?? currentPlan.priceMonthly, subscription?.currency || 'UYU');
   }, [currentPlan, currentPlanId, subscription]);
 
@@ -89,7 +89,7 @@ export default function BillingScreen() {
       return;
     }
 
-    if (currentPlanId === 'BASIC' || canUseOnlinePayments) {
+    if (currentPlanId === 'PROFESSIONAL' || canUseOnlinePayments) {
       profileSyncSignatureRef.current = null;
       return;
     }
@@ -172,7 +172,7 @@ export default function BillingScreen() {
               <Text className="mt-1 text-sm text-gray-500">{plan.priceLabel}</Text>
               <Text className="mt-2 text-xs text-gray-500">{plan.benefits.join(' • ')}</Text>
 
-              {plan.id !== 'BASIC' ? (
+              {plan.id !== 'PROFESSIONAL' ? (
                 <TouchableOpacity
                   disabled={isSubmitting || (currentPlanId === plan.id && currentStatus === 'ACTIVE')}
                   onPress={async () => {
@@ -202,7 +202,7 @@ export default function BillingScreen() {
             </View>
           ))}
 
-          {subscription && currentPlanId !== 'BASIC' && currentStatus !== 'CANCELLED' && !subscription.cancelAtPeriodEnd ? (
+          {subscription && currentPlanId !== 'PROFESSIONAL' && currentStatus !== 'CANCELLED' && !subscription.cancelAtPeriodEnd ? (
             <TouchableOpacity
               disabled={isSubmitting}
               onPress={async () => {
@@ -300,7 +300,7 @@ export default function BillingScreen() {
             </>
           ) : (
             <>
-              <Text className="mt-2 text-lg font-bold text-secondary">Disponible desde Pro</Text>
+              <Text className="mt-2 text-lg font-bold text-secondary">Disponible desde Local</Text>
               <Text className="mt-1 text-sm text-gray-500">Tu plan actual no habilita cobros online.</Text>
               <Text className="mt-2 text-sm text-gray-500">
                 Cuando subas de plan vas a poder conectar tu cuenta de Mercado Pago y cobrar reservas online desde el marketplace.

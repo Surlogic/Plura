@@ -54,7 +54,7 @@ export default function SettingsScreen() {
           icon="settings-outline"
           badges={[
             { label: 'Perfil profesional', tone: 'light' },
-            { label: profile?.professionalPlan || 'BASIC', tone: 'light' },
+            { label: profile?.professionalPlan || 'PROFESSIONAL', tone: 'light' },
           ]}
         />
 

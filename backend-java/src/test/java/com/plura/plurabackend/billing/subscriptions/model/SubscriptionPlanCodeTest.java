@@ -17,12 +17,15 @@ class SubscriptionPlanCodeTest {
      * El objetivo es dejar explicita la regla que protege este test.
      */
     @Test
-    void acceptsOnlyCanonicalCodes() {
-        assertEquals(SubscriptionPlanCode.PLAN_BASIC, SubscriptionPlanCode.fromCode("PLAN_BASIC"));
-        assertEquals(SubscriptionPlanCode.PLAN_PROFESIONAL, SubscriptionPlanCode.fromCode("PLAN_PROFESIONAL"));
+    void acceptsCanonicalCodesAndLegacyAliases() {
+        assertEquals(SubscriptionPlanCode.PLAN_PROFESSIONAL, SubscriptionPlanCode.fromCode("PLAN_PROFESSIONAL"));
+        assertEquals(SubscriptionPlanCode.PLAN_LOCAL, SubscriptionPlanCode.fromCode("PLAN_LOCAL"));
         assertEquals(SubscriptionPlanCode.PLAN_ENTERPRISE, SubscriptionPlanCode.fromCode("PLAN_ENTERPRISE"));
-        assertThrows(IllegalArgumentException.class, () -> SubscriptionPlanCode.fromCode("PLAN_PRO"));
-        assertThrows(IllegalArgumentException.class, () -> SubscriptionPlanCode.fromCode("PLAN_PREMIUM"));
+        assertEquals(SubscriptionPlanCode.PLAN_PROFESSIONAL, SubscriptionPlanCode.fromCode("PLAN_BASIC"));
+        assertEquals(SubscriptionPlanCode.PLAN_LOCAL, SubscriptionPlanCode.fromCode("PLAN_PRO"));
+        assertEquals(SubscriptionPlanCode.PLAN_LOCAL, SubscriptionPlanCode.fromCode("PLAN_PROFESIONAL"));
+        assertEquals(SubscriptionPlanCode.PLAN_ENTERPRISE, SubscriptionPlanCode.fromCode("PLAN_PREMIUM"));
+        assertThrows(IllegalArgumentException.class, () -> SubscriptionPlanCode.fromCode("PLAN_INVALID"));
     }
 
     /**
@@ -31,8 +34,8 @@ class SubscriptionPlanCodeTest {
      */
     @Test
     void exposesCanonicalCodesForResponses() {
-        assertEquals("PLAN_BASIC", SubscriptionPlanCode.PLAN_BASIC.canonicalCode());
-        assertEquals("PLAN_PROFESIONAL", SubscriptionPlanCode.PLAN_PROFESIONAL.canonicalCode());
+        assertEquals("PLAN_PROFESSIONAL", SubscriptionPlanCode.PLAN_PROFESSIONAL.canonicalCode());
+        assertEquals("PLAN_LOCAL", SubscriptionPlanCode.PLAN_LOCAL.canonicalCode());
         assertEquals("PLAN_ENTERPRISE", SubscriptionPlanCode.PLAN_ENTERPRISE.canonicalCode());
     }
 }

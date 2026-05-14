@@ -23,7 +23,7 @@ export type BillingSubscription = {
   currentPeriodStart: string | null;
   currentPeriodEnd: string | null;
   cancelAtPeriodEnd: boolean | null;
-  premiumEnabled: boolean;
+  planEnabled: boolean;
 };
 
 type BillingCheckoutResponse = {

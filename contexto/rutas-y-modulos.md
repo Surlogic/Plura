@@ -3,7 +3,7 @@
 Este documento mezcla dos lecturas:
 
 - que rutas y modulos existen hoy en el repo
-- como se relacionan con `usuario`, `Free`, `Pro` y `Premium`
+- como se relacionan con `usuario`, `Profesional`, `Local` y `Enterprise`
 
 ## Nota de integración con backend
 
@@ -38,7 +38,7 @@ Huecos o maduracion pendiente:
 - beneficios tipo puntos, gift cards o ultima hora
 - settings y preferencias visibles para cliente
 
-### Free / Pro / Premium
+### Profesional / Local / Enterprise
 
 Experiencia esperada:
 
@@ -59,8 +59,8 @@ Huecos o maduracion pendiente:
 
 - onboarding inicial guiado
 - gating completo por plan en toda la UX
-- UI y flujo completo Premium de multiequipo: ya existen el backend de equipo, login unificado con selector de contexto, pantalla de aceptacion de invitacion, dashboard admin de equipo y dashboard basico de trabajador (calendario y reservas). Pendiente: editor de horarios por trabajador en UI admin, calendario completo (no solo lista por dias) en UI trabajador y reserva publica que use `worker_id` con autoasignacion.
-- modulos Premium de fidelizacion, portfolio, tienda y automatizacion avanzada
+- UI y flujo completo Enterprise de multiequipo: ya existen el backend de equipo, login unificado con selector de contexto, pantalla de aceptacion de invitacion, dashboard admin de equipo y dashboard basico de trabajador (calendario y reservas). Pendiente: editor de horarios por trabajador en UI admin, calendario completo (no solo lista por dias) en UI trabajador y reserva publica que use `worker_id` con autoasignacion.
+- modulos Enterprise de fidelizacion, portfolio, tienda y automatizacion avanzada
 
 ## Web
 
@@ -184,8 +184,8 @@ Lectura de producto:
 - `/profesional/dashboard/acceso`
 - `/profesional/dashboard/configuracion`
 - `/profesional/dashboard/resenas`
-- `/profesional/dashboard/pagina-publica` — ahora incluye galería de fotos del negocio con upload vía `ImageUploader` (kind="gallery"), máximo según `maxBusinessPhotos` del plan (`BASIC=3`, `PROFESIONAL=6`, `ENTERPRISE=10`), preview en iframe; esas fotos son las que consume la galería pública del perfil y ya no se mezclan con imágenes de servicios; headline y about ya se editan también desde `BASIC`
-- `/profesional/dashboard/perfil-negocio` — ahora soporta upload de logo (kind="logo", variant="circle") y banner (kind="banner", variant="banner") desde `BASIC`; también deja editar redes/contacto público sin bloquear por plan
+- `/profesional/dashboard/pagina-publica` — ahora incluye galería de fotos del negocio con upload vía `ImageUploader` (kind="gallery"), máximo según `maxBusinessPhotos` del plan (`PROFESSIONAL=3`, `LOCAL=6`, `ENTERPRISE=10`), preview en iframe; esas fotos son las que consume la galería pública del perfil y ya no se mezclan con imágenes de servicios; headline y about ya se editan también desde `PROFESSIONAL`
+- `/profesional/dashboard/perfil-negocio` — ahora soporta upload de logo (kind="logo", variant="circle") y banner (kind="banner", variant="banner") desde `PROFESSIONAL`; también deja editar redes/contacto público sin bloquear por plan
 - `/profesional/dashboard/billing`
 - `/profesional/notificaciones`
 
@@ -221,7 +221,7 @@ Backend relacionado:
 
 Lectura de producto:
 
-- esta area concentra el valor de `Free` y buena parte de `Pro`
+- esta area concentra el valor de `Profesional` y buena parte de `Local`
 - `servicios`, `horarios`, `reservas`, `perfil-negocio` y `notificaciones` son el corazon operativo
 - `acceso`, `billing` y `configuracion` viven separados dentro del grupo `Cuenta` del sidebar; `acceso` concentra email, slug publico, sesion actual y logout, mientras `configuracion` queda para seguridad, politicas, apariencia y acciones sensibles
 - el multiequipo ya tiene puntos clave armados en web y mobile:
@@ -238,14 +238,14 @@ Lectura de producto:
 - los autocompletes de ubicacion en `/profesional/auth/register` y `/profesional/dashboard/perfil-negocio` ya seleccionan sugerencias por click normal sin depender de `mouseDown`, evitando opciones que parecian clickeables pero no confirmaban bien al navegar con teclado o blur
 - `/profesional/auth/register` y `/profesional/dashboard/perfil-negocio` ya comparten el mismo selector internacional de telefono con bandera + codigo; evita cargar el prefijo a mano y deja el numero persistido listo para backend
 - `/profesional/dashboard/reservas` tambien usa selector internacional cuando el profesional carga una reserva manual con telefono de cliente opcional
-- `billing` ya existe, pero el naming de codigo sigue siendo `BASIC / PROFESIONAL / ENTERPRISE`
+- `billing` ya existe y usa contratos `PROFESSIONAL / LOCAL / ENTERPRISE`
 - `/profesional/dashboard/billing` ya separa dos bloques: `Mi plan` y `Cobros de reservas con Mercado Pago`
 - la web profesional ya consume `GET/POST/DELETE /profesional/payment-providers/mercadopago/*` y no usa `payout-config`
 - el retorno OAuth de Mercado Pago mantiene pantalla propia en `/oauth/mercadopago/callback`, pero ya no procesa `code/state` en frontend: Mercado Pago vuelve al callback backend y este redirige a la web con un resultado final
 - el frontend del billing profesional no implementa PKCE ni almacena `code_verifier`; todo el flujo PKCE de Mercado Pago queda resuelto en backend y la web solo inicia el onboarding y muestra el resultado final
 - el callback OAuth backend tampoco depende ya de la sesion web del profesional para cerrar la vinculacion; esto evita `401` al volver desde Mercado Pago por dominios externos o tuneles tipo `ngrok`
-- en `/profesional/dashboard/billing`, `BASIC` ya no intenta conectar Mercado Pago: muestra un bloque de upgrade y reserva la conexion OAuth solo para `PROFESIONAL / ENTERPRISE`
-- `/profesional/dashboard/billing` no promociona visualmente `PROFESIONAL / ENTERPRISE` mientras la suscripcion siga en `TRIAL`; el plan visible solo cambia cuando el backend ya la ve `ACTIVE`, es decir, despues de la confirmacion via webhook
+- en `/profesional/dashboard/billing`, `PROFESSIONAL` ya no intenta conectar Mercado Pago: muestra un bloque de upgrade y reserva la conexion OAuth solo para `LOCAL / ENTERPRISE`
+- `/profesional/dashboard/billing` no promociona visualmente `LOCAL / ENTERPRISE` mientras la suscripcion siga en `TRIAL`; el plan visible solo cambia cuando el backend ya la ve `ACTIVE`, es decir, despues de la confirmacion via webhook
 - `/profesional/dashboard/billing` evita cargar el estado de conexion de Mercado Pago cuando la pantalla ya va a redirigir al callback OAuth, difiere el montaje inicial de comparativa/planes y carga la conexion de cobros recien al acercarse a esa seccion para bajar trabajo al entrar; sus bloques principales de plan/comparativa/cobros quedan aislados para no rerenderizar toda la superficie ante banners o estados transitorios de billing
 - `/profesional/notificaciones` ya funciona como centro real de inbox: lista paginada con `cargar mas`, filtros basicos y navegacion contextual por `actionUrl`
 - la navegacion contextual de notificaciones profesional apunta a la UX real de reservas en `/profesional/dashboard/reservas?bookingId={id}` y el panel selecciona la reserva desde query string
@@ -253,13 +253,13 @@ Lectura de producto:
 - `/profesional/dashboard/reservas` organiza la vista principal como tablero operativo responsive de `4` columnas (`Reservas de hoy`, `Pendientes de confirmación`, `Próximas reservas confirmadas`, `Canceladas`) con contador integrado por columna; el detalle/timeline y acciones avanzadas quedan debajo al seleccionar una reserva para no dominar el tablero
 - `/profesional/dashboard/reservas` mantiene auto-refresh para estados pendientes, pero ahora pausa polling con la pestaña oculta y aplica backoff para reducir trafico redundante
 - `/profesional/dashboard/reservas` ahora paraleliza reservas y servicios al entrar, y prefetch-ea `actions + timeline` de la seleccion activa para acortar la cascada inicial
-- `/profesional/dashboard/reservas` debe seguir disponible para `Free/BASIC` como modulo operativo de reservas
+- `/profesional/dashboard/reservas` debe seguir disponible para `Profesional/PROFESSIONAL` como modulo operativo de reservas
 - la web profesional vuelve a exponer la accion manual `Marcar completada` para reservas `CONFIRMED` cuyo turno ya termino; convive con confirmacion, cancelacion, no-show, reagendamiento y timeline sin mezclar reglas
 - `/profesional/dashboard/reservas` usa `GET /reservas/{id}/actions` para decidir acciones; ese contrato ahora expone tambien `canComplete`
 - `/profesional/dashboard` recorta trabajo de agenda en cliente: la grilla semanal y mensual quedaron separadas para evitar rerenders pesados al abrir el drawer, y la carga de reservas ya no expande fechas dispersas a un unico rango continuo cuando el dashboard combina semana actual con una semana o mes navegados
 - `/profesional/dashboard` debe mostrar en agenda todas las reservas no canceladas del rango visible, incluyendo `pending`, `confirmed`, `completed` y `no_show`; `cancelled` queda fuera para no bloquear visualmente huecos liberados
 - `/profesional/dashboard` distingue visualmente el estado operativo de cada reserva en agenda: semanal usa tarjeta, acento lateral y badge por estado; mensual reutiliza chips por color para `pending`, `confirmed`, `completed` y `no_show`
-- `/profesional/dashboard` ya no limita la carga de bookings a `today` cuando el plan es `DAILY/BASIC`; la agenda semanal y mensual queda visible tambien en `Free/BASIC` y usa los bookings reales del rango visible para evitar huecos falsos
+- `/profesional/dashboard` ya no limita la carga de bookings a `today` cuando el plan es `DAILY/PROFESSIONAL`; la agenda semanal y mensual queda visible tambien en `Profesional/PROFESSIONAL` y usa los bookings reales del rango visible para evitar huecos falsos
 - `services/professionalBookings.ts` ahora mapea `date/time` de reservas profesionales a claves operativas `YYYY-MM-DD` y `HH:mm`, no a labels humanizados; la presentacion visible de fechas queda en la UI para no romper la grilla de agenda
 - `/profesional/dashboard` compacta el bloque de `Pulso semanal` para no empujar la agenda; cuando no hay analytics muestra una nota breve en lugar de tarjetas altas vacias
 - `/profesional/dashboard` en vista semanal usa una base completa de `24h` con scroll vertical interno dentro del calendario; el viewport visible queda contenido para no alargar todo el dashboard, el foco inicial se calcula en frontend con horarios configurados y reservas visibles de la semana, agrega margen corto y solo cae a fallback `09:00-18:00` para posicionamiento inicial si no hay datos suficientes; el eje horario visible marca horas de una en una y deja subdivisiones de `30m` como referencia sutil
@@ -279,7 +279,7 @@ Notas recientes:
 Huecos relevantes contra el objetivo:
 
 - onboarding inicial del negocio
-- ficha del cliente orientada a `Pro`
+- ficha del cliente orientada a `Local`
 - analytics mas visibles
 - chat interno
 - editor de horarios por trabajador en UI admin web/mobile (los endpoints `/profesional/team/{id}/schedule` ya existen)
@@ -409,20 +409,20 @@ Lectura de producto:
 Lectura de producto:
 
 - reproduce parte del panel profesional en mobile
-- responde bien al objetivo `Free` y `Pro` de operar una agenda desde el telefono
+- responde bien al objetivo `Profesional` y `Local` de operar una agenda desde el telefono
 - `app/dashboard` ya no contiene implementacion de negocio: queda como routing fino de Expo y delega en `src/features/professional/screens/*`
 - `/dashboard` redirige segun sesion: profesional va a `/dashboard/agenda`; otros casos vuelven a tabs o login
 - `app/dashboard/_layout.tsx` ahora reubica cualquier sesion no profesional autenticada en `/(tabs)` para evitar que cliente vea vistas operativas del profesional como `Turnos y reservas`
 - el dashboard profesional mobile ahora monta una barra inferior persistente propia con accesos a `agenda`, `servicios`, `perfil`, `cobros` y `ajustes`; ya no depende de links sueltos dentro de cada pantalla para moverse entre modulos y su implementacion base ya vive bajo `src/features/professional/navigation/ProfessionalBottomNav.tsx`
 - `dashboard/billing` ya no usa `payout-config`; muestra el plan del marketplace y el estado de conexion OAuth de `Mercado Pago` como unico provider vigente para cobros
-- `dashboard/billing` en mobile ya respeta el gating principal de web: si el perfil no tiene `allowOnlinePayments`, no intenta conectar `Mercado Pago` y deja la conexion reservada para `PROFESIONAL / ENTERPRISE`
+- `dashboard/billing` en mobile ya respeta el gating principal de web: si el perfil no tiene `allowOnlinePayments`, no intenta conectar `Mercado Pago` y deja la conexion reservada para `LOCAL / ENTERPRISE`
 - `dashboard/billing` refresca perfil + suscripcion al volver a foreground para bajar desfasajes despues del checkout del plan o del flujo OAuth
 - `dashboard/billing` ahora abre el checkout del plan y la autorizacion OAuth de `Mercado Pago` dentro de un browser embebido de Expo; al cerrar esa vista vuelve a refrescar perfil + billing
 - `dashboard/services` en mobile ya bloquea `DEPOSIT` y `FULL_PREPAY` cuando el perfil no tiene `allowOnlinePayments`, alineando la configuracion de servicios con web; ademas respeta el tope de servicios por plan (`15/30/ilimitado`)
 - `dashboard/agenda` en mobile ya no expone las acciones manuales `completar` ni `retry payout`; queda alineado con la UX operativa web basada en confirmacion, cancelacion, no-show y reagendamiento
 - `dashboard/agenda` ya usa selector internacional para el telefono opcional al crear reservas manuales desde mobile
 - `dashboard/settings` ahora expone tambien el cierre de sesion visible dentro del propio dashboard profesional mobile y un acceso explicito a `dashboard/schedule`, sin depender de links legacy o de volver a la experiencia cliente
-- no expone aun el set completo de capacidades `Premium`
+- no expone aun el set completo de capacidades `Enterprise`
 - `dashboard/business-profile` ya usa el mismo selector internacional de telefono que auth para editar el contacto del negocio sin pedir prefijo manual
 
 ### Otras pantallas mobile
@@ -502,6 +502,6 @@ Uso actual:
 
 Lectura de producto:
 
-- `billing/plans.ts` ya modela los planes, pero con naming tecnico `BASIC / PROFESIONAL / ENTERPRISE`
+- `billing/plans.ts` ya modela los planes con naming tecnico `PROFESSIONAL / LOCAL / ENTERPRISE`
 - `types/professional.ts` ya contiene entitlements como pagos online, client profile, portfolio, loyalty, last minute, store y shipping
-- eso indica que parte del modelo de permisos para `Pro` y `Premium` ya esta pensado, aunque no toda la UX este cerrada
+- eso indica que parte del modelo de permisos para `Local` y `Enterprise` ya esta pensado, aunque no toda la UX este cerrada

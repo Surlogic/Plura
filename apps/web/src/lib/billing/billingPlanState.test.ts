@@ -8,7 +8,7 @@ import {
 const buildSubscription = (
   overrides: Partial<BillingPlanStateSubscription> = {},
 ): BillingPlanStateSubscription => ({
-  planCode: 'PLAN_PROFESIONAL',
+  planCode: 'PLAN_LOCAL',
   status: 'TRIAL',
   cancelAtPeriodEnd: false,
   ...overrides,
@@ -16,32 +16,32 @@ const buildSubscription = (
 
 test('resolveCurrentBillingPlanStateId does not promote a TRIAL subscription before webhook confirmation', () => {
   const currentPlanId = resolveCurrentBillingPlanStateId({
-    profilePlanCode: 'BASIC',
+    profilePlanCode: 'PROFESSIONAL',
     subscription: buildSubscription(),
   });
 
-  assert.equal(currentPlanId, 'BASIC');
+  assert.equal(currentPlanId, 'PROFESSIONAL');
 });
 
 test('resolveCurrentBillingPlanStateId keeps the paid plan when the subscription is active', () => {
   const currentPlanId = resolveCurrentBillingPlanStateId({
-    profilePlanCode: 'BASIC',
+    profilePlanCode: 'PROFESSIONAL',
     subscription: buildSubscription({
       status: 'ACTIVE',
     }),
   });
 
-  assert.equal(currentPlanId, 'PROFESIONAL');
+  assert.equal(currentPlanId, 'LOCAL');
 });
 
 test('resolveCurrentBillingPlanStateId keeps the paid plan while cancellation is scheduled', () => {
   const currentPlanId = resolveCurrentBillingPlanStateId({
-    profilePlanCode: 'BASIC',
+    profilePlanCode: 'PROFESSIONAL',
     subscription: buildSubscription({
       status: 'ACTIVE',
       cancelAtPeriodEnd: true,
     }),
   });
 
-  assert.equal(currentPlanId, 'PROFESIONAL');
+  assert.equal(currentPlanId, 'LOCAL');
 });

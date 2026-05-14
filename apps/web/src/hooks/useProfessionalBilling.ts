@@ -219,7 +219,7 @@ export function useProfessionalBilling({
     const profilePlanId = resolveBillingPlanFromProfilePlanCode(profile?.professionalPlan);
     const missingOnlinePaymentsEntitlement =
       subscriptionPlanId !== null
-      && subscriptionPlanId !== 'BASIC'
+      && subscriptionPlanId !== 'PROFESSIONAL'
       && !profile?.professionalEntitlements?.allowOnlinePayments;
 
     if (subscriptionPlanId === null || (subscriptionPlanId === profilePlanId && !missingOnlinePaymentsEntitlement)) {
@@ -260,7 +260,7 @@ export function useProfessionalBilling({
   );
 
   const renewalLabel = useMemo(() => {
-    if (currentPlanId === 'BASIC' && !subscription) return 'No aplica';
+    if (currentPlanId === 'PROFESSIONAL' && !subscription) return 'No aplica';
     if (subscription?.cancelAtPeriodEnd) {
       return subscription.currentPeriodEnd
         ? `Finaliza el ${formatBillingDate(subscription.currentPeriodEnd)}`
@@ -270,7 +270,7 @@ export function useProfessionalBilling({
   }, [currentPlanId, subscription]);
 
   const currentAmountLabel = useMemo(() => {
-    if (currentPlanId === 'BASIC') {
+    if (currentPlanId === 'PROFESSIONAL') {
       return currentPlan.priceLabel;
     }
     return formatBillingAmount(
@@ -580,13 +580,13 @@ export function useProfessionalBilling({
   }, []);
 
   const handleSelectPlan = useCallback(async (planId: BillingUiPlanId) => {
-    if (planId === 'BASIC') {
-      if (!subscription || currentPlanId === 'BASIC' || subscription.cancelAtPeriodEnd) return;
+    if (planId === 'PROFESSIONAL') {
+      if (!subscription || currentPlanId === 'PROFESSIONAL' || subscription.cancelAtPeriodEnd) return;
 
       const isMercadoPago = subscription.provider?.toUpperCase() === 'MERCADOPAGO';
       const confirmMessage = isMercadoPago
-        ? 'La suscripcion se cancelara de inmediato y volveras a Free. ¿Deseas continuar?'
-        : 'Tu suscripcion seguira activa hasta el fin del periodo actual y luego volvera a Free.';
+        ? 'La suscripcion se cancelara de inmediato y volveras a Profesional. ¿Deseas continuar?'
+        : 'Tu suscripcion seguira activa hasta el fin del periodo actual y luego volvera a Profesional.';
       const confirmed = window.confirm(confirmMessage);
       if (!confirmed) return;
 
@@ -600,12 +600,12 @@ export function useProfessionalBilling({
           type: 'CANCEL_END',
           banner: {
             tone: 'success',
-            title: isMercadoPago ? 'Suscripcion cancelada' : 'Cambio a Free programado',
+            title: isMercadoPago ? 'Suscripcion cancelada' : 'Cambio a Profesional programado',
             description: isMercadoPago
-              ? 'Tu suscripcion fue cancelada y ahora estas en el plan Free.'
+              ? 'Tu suscripcion fue cancelada y ahora estas en el plan Profesional.'
               : nextSubscription.currentPeriodEnd
                 ? `Tu plan superior seguira activo hasta ${formatBillingDate(nextSubscription.currentPeriodEnd)}.`
-                : 'La suscripcion quedo marcada para volver a Free al final del periodo.',
+                : 'La suscripcion quedo marcada para volver a Profesional al final del periodo.',
           },
         });
       } catch (error) {
@@ -613,7 +613,7 @@ export function useProfessionalBilling({
           type: 'CANCEL_END',
           banner: {
             tone: 'error',
-            title: 'No se pudo cambiar a Free',
+            title: 'No se pudo cambiar a Profesional',
             description: resolveBackendMessage(error, 'No se pudo cancelar la suscripcion actual.'),
           },
         });

@@ -23,5 +23,5 @@ public class BillingSubscriptionResponse {
     private LocalDateTime currentPeriodStart;
     private LocalDateTime currentPeriodEnd;
     private Boolean cancelAtPeriodEnd;
-    private boolean premiumEnabled;
+    private boolean planEnabled;
 }

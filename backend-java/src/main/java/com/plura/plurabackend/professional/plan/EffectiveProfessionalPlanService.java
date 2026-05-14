@@ -48,7 +48,7 @@ public class EffectiveProfessionalPlanService {
      * Resuelve default normalizando entradas, defaults y casos borde.
      */
     public EffectiveProfessionalPlan resolveDefault() {
-        ProfessionalPlanCode code = ProfessionalPlanCode.BASIC;
+        ProfessionalPlanCode code = ProfessionalPlanCode.PROFESSIONAL;
         return new EffectiveProfessionalPlan(code, professionalPlanPolicyService.entitlementsFor(code));
     }
 

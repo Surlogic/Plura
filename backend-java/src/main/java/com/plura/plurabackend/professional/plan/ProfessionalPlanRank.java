@@ -18,8 +18,8 @@ public final class ProfessionalPlanRank {
             return 0;
         }
         return switch (code) {
-            case BASIC -> 0;
-            case PROFESIONAL -> 1;
+            case PROFESSIONAL -> 0;
+            case LOCAL -> 1;
             case ENTERPRISE -> 2;
         };
     }

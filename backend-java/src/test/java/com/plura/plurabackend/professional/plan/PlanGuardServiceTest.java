@@ -36,7 +36,7 @@ class PlanGuardServiceTest {
     @Test
     void blocksCapabilityWhenCurrentPlanDoesNotAllowIt() {
         ProfessionalProfile profile = currentProfile(31L);
-        stubPlan(profile, ProfessionalPlanCode.BASIC);
+        stubPlan(profile, ProfessionalPlanCode.PROFESSIONAL);
 
         ResponseStatusException exception = assertThrows(
             ResponseStatusException.class,
@@ -56,7 +56,7 @@ class PlanGuardServiceTest {
         ProfessionalProfile profile = currentProfile(32L);
         stubPlan(profile, ProfessionalPlanCode.ENTERPRISE);
 
-        assertDoesNotThrow(() -> service.requireAtLeast(ProfessionalPlanCode.PROFESIONAL));
+        assertDoesNotThrow(() -> service.requireAtLeast(ProfessionalPlanCode.LOCAL));
     }
 
     /**
@@ -66,7 +66,7 @@ class PlanGuardServiceTest {
     @Test
     void blocksWhenLimitIsExceeded() {
         ProfessionalProfile profile = currentProfile(33L);
-        stubPlan(profile, ProfessionalPlanCode.BASIC);
+        stubPlan(profile, ProfessionalPlanCode.PROFESSIONAL);
 
         ResponseStatusException exception = assertThrows(
             ResponseStatusException.class,
@@ -84,7 +84,7 @@ class PlanGuardServiceTest {
     @Test
     void keepsDailyScheduleRangeBlockedForBasic() {
         ProfessionalProfile profile = currentProfile(34L);
-        stubPlan(profile, ProfessionalPlanCode.BASIC);
+        stubPlan(profile, ProfessionalPlanCode.PROFESSIONAL);
 
         ResponseStatusException exception = assertThrows(
             ResponseStatusException.class,
@@ -102,7 +102,7 @@ class PlanGuardServiceTest {
     @Test
     void allowsWeeklyScheduleRangeForProfesionalPlan() {
         ProfessionalProfile profile = currentProfile(35L);
-        stubPlan(profile, ProfessionalPlanCode.PROFESIONAL);
+        stubPlan(profile, ProfessionalPlanCode.LOCAL);
 
         assertDoesNotThrow(() -> service.requireScheduleRange("35", 7));
     }

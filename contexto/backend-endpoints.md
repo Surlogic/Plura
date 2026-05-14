@@ -5,7 +5,7 @@ Base de codigo: `backend-java/src/main/java/com/plura/plurabackend`
 Este documento describe el backend desde dos capas:
 
 - endpoints y dominios disponibles hoy
-- lectura de producto segun `core`, `Usuario`, `Free`, `Pro` y `Premium`
+- lectura de producto segun `core`, `Usuario`, `Profesional`, `Local` y `Enterprise`
 
 ## Política de versionado de API
 
@@ -92,7 +92,7 @@ Todavia no se ve como superficie publica madura todo el set de:
 Lectura de producto:
 
 - base para home, categorias y marketplace
-- relevante para `Usuario` y para la visibilidad del plan `Free`
+- relevante para `Usuario` y para la visibilidad del plan `Profesional`
 - `GET /api/home` ahora se consume via SSR (`getServerSideProps`); devuelve categorias, stats (usuarios, profesionales, categorias, reservas mensuales) y top professionals rankeados por volumen de reservas confirmadas/completadas de los ultimos 3 meses
 - dentro de `GET /api/home`, cada categoria ahora incluye `professionalsCount` con la cantidad de profesionales activos asociados (0 cuando no hay)
 - `GET /api/home` ahora expone branding de card publica por profesional: `bannerUrl`, `bannerMedia`, `logoUrl`, `logoMedia` y `fallbackPhotoUrl`; `imageUrl` se mantiene como compatibilidad y ya prioriza `banner` o primera foto real del negocio en vez de categorias genericas
@@ -149,7 +149,7 @@ El dominio `auth` incluye:
 Lectura de producto:
 
 - cubre el bloque `CORE` de autenticacion y seguridad
-- soporta registro directo del profesional en `Free`
+- soporta registro directo del profesional en `Profesional`
 - ya da base para login social y gestion de sesiones
 - `POST /auth/oauth/complete-phone` cierra el faltante de telefono cuando el alta/login OAuth no lo trae y hoy tiene pantallas dedicadas tanto en web como en mobile para cliente y profesional
 - `POST /auth/password/forgot` + `POST /auth/password/reset` siguen como flujo legacy por token y hoy quedan como compatibilidad de enlaces viejos o soporte manual
@@ -218,7 +218,7 @@ Lectura de producto:
 
 - circuito publico central del MVP
 - soporta perfil publico, disponibilidad real y reserva sin pasar por panel privado
-- es la base de `Usuario` y del valor visible de `Free`
+- es la base de `Usuario` y del valor visible de `Profesional`
 - `GET /public/profesionales/{slug}` devuelve la pagina publica del profesional sin tracking de analytics de producto.
 - `POST /public/profesionales/{slug}/reservas` crea la reserva operativa normal y registra eventos de dominio/notificaciones; ya no persiste analytics de producto.
 - `GET /public/profesionales/{slug}` mantiene cache de perfil publico y ahora registra timing tecnico. Devuelve `rating` y `reviewsCount` reales
@@ -280,13 +280,13 @@ Lectura de producto:
 - cubre constructor de servicios, imagen principal, duracion y precio
 - cubre horarios de trabajo y politicas de reserva
 - cubre carga manual de turnos desde panel
-- `PUT /profesional/profile` y `PUT /profesional/public-page` ya permiten que `Free/BASIC` gestione logo, banner, headline y about del perfil publico; la diferencia entre planes para la pagina publica queda en limites de capacidad, no en bloqueo de esos textos/base visual
+- `PUT /profesional/profile` y `PUT /profesional/public-page` ya permiten que `Profesional/PROFESSIONAL` gestione logo, banner, headline y about del perfil publico; la diferencia entre planes para la pagina publica queda en limites de capacidad, no en bloqueo de esos textos/base visual
 - `PUT /profesional/profile` ahora acepta opcionalmente `logoMedia` y `bannerMedia` con `{ positionX, positionY, zoom }` para persistir el encuadre visual del logo y del banner; `GET /auth/me/profesional` y `GET /profesional/public-page` exponen esos mismos metadatos normalizados para rehidratar el editor y la preview
 - `PUT /profesional/profile`, `PUT /profesional/public-page` y `POST/PUT /profesional/services` ahora canonizan referencias de imágenes antes de persistirlas: si reciben una URL pública del CDN/R2 o de `/uploads`, la convierten otra vez a referencia interna de storage para no dejar metadatos inconsistentes en DB
-- `POST /profesional/services` ahora corta por capacidad de plan: `BASIC` hasta `15` servicios, `PROFESIONAL` hasta `30`, `ENTERPRISE` sin tope practico; cada servicio mantiene una sola imagen publica
+- `POST /profesional/services` ahora corta por capacidad de plan: `PROFESSIONAL` hasta `15` servicios, `LOCAL` hasta `30`, `ENTERPRISE` sin tope practico; cada servicio mantiene una sola imagen publica
 - `GET /profesional/services`, `POST /profesional/services`, `PUT /profesional/services/{id}` y `GET /public/profesionales/{slug}` ya exponen/persisten `processingFeeMode` por servicio para pagos online; hoy las variantes operativas son `INSTANT` (`5,99% + IVA`) y `DELAYED_21_DAYS` (`4,99% + IVA`)
-- `GET /profesional/reservas` sostiene gestion operativa de reservas para `Free/BASIC` y no debe confundirse con gating de agenda semanal o mensual
-- la base backend de multitrabajador ya existe para el plan `Premium`: `professional_worker`, asignaciones `professional_worker_service`, agenda propia por trabajador, invitacion por email y `worker_id` opcional en `booking` y `available_slot`; el flujo publico de reserva todavia sigue operando contra el local/perfil general hasta completar la fase de disponibilidad por trabajador
+- `GET /profesional/reservas` sostiene gestion operativa de reservas para `Profesional/PROFESSIONAL` y no debe confundirse con gating de agenda semanal o mensual
+- la base backend de multitrabajador ya existe para el plan `Enterprise`: `professional_worker`, asignaciones `professional_worker_service`, agenda propia por trabajador, invitacion por email y `worker_id` opcional en `booking` y `available_slot`; el flujo publico de reserva todavia sigue operando contra el local/perfil general hasta completar la fase de disponibilidad por trabajador
 - al migrar, cada `professional_profile` existente recibe un trabajador dueño activo con la agenda legacy, todos los servicios y las reservas/slots existentes asignados; cuando se edita `/profesional/schedule`, tambien se sincroniza la agenda del trabajador dueño
 - `POST /public/profesionales/{slug}/reservas` crea siempre en `PENDING`; guarda snapshot de servicio/politica, registra `BOOKING_CREATED`, inicializa finanzas y solo dispara notificacion de `booking created` inmediata cuando el servicio es `ON_SITE`
 - `GET /public/profesionales/{slug}` y `GET /profesional/services` ahora exponen `paymentBreakdown` por servicio (`prepaidBaseAmount`, `processingFeeAmount`, `totalAmount`, `currency`, `processingFeeLabel`, `processingFeeMode`, `providerFeePercent`, `taxPercent`, `platformFeePercent`) cuando el pago es online; frontend debe consumir ese desglose en vez de recalcular porcentajes
@@ -306,7 +306,7 @@ Lectura de producto:
 - `POST /profesional/reservas/{id}/complete` existe en runtime, queda protegido por `/profesional/**` en Spring Security y delega a `BookingService.completeBooking(...)`; solo permite completar reservas `CONFIRMED` cuyo turno ya termino (`booking.endDateTime <= now`, incluyendo post-buffer)
 - `PUT /profesional/reservas/{id}` con `status=COMPLETED` tambien reutiliza la misma logica de `completeBooking(...)`, pero el endpoint explicito `/complete` es la ruta operativa recomendada para UI/QA
 - `GET /reservas/{id}/actions` ahora devuelve `canComplete` ademas de `canCancel`, `canReschedule` y `canMarkNoShow`; `canComplete` se habilita solo cuando la reserva `CONFIRMED` ya termino, mientras `canMarkNoShow` sigue habilitandose desde que el turno ya empezo
-- `POST /profesional/payment-providers/mercadopago/oauth/start` y `GET /profesional/payment-providers/mercadopago/oauth/callback` ahora exigen capacidad `ONLINE_PAYMENTS`; `BASIC` no puede iniciar ni completar la conexion OAuth
+- `POST /profesional/payment-providers/mercadopago/oauth/start` y `GET /profesional/payment-providers/mercadopago/oauth/callback` ahora exigen capacidad `ONLINE_PAYMENTS`; `PROFESSIONAL` no puede iniciar ni completar la conexion OAuth
 - `POST /profesional/payment-providers/mercadopago/oauth/start` solo necesita la configuracion minima para abrir Mercado Pago: `client-id`, `redirect-uri` y `authorization-url`
 - si `billing.mercadopago.reservations.oauth.pkce-enabled=true`, `POST /profesional/payment-providers/mercadopago/oauth/start` genera ademas `code_verifier`, `code_challenge` y `code_challenge_method=S256`; el `verifier` queda almacenado temporalmente en backend y nunca pasa por frontend
 - `billing.mercadopago.reservations.oauth.redirect-uri` debe apuntar al callback backend exacto `/profesional/payment-providers/mercadopago/oauth/callback`; el frontend ya no recibe `code/state` crudos de Mercado Pago
@@ -432,7 +432,7 @@ Prefijo: `/profesional/analytics`
 
 Lectura de producto:
 
-- base de analytics basicos para `Pro`
+- base de analytics basicos para `Local`
 - el servicio `ProfessionalAnalyticsService` calcula el resumen por profesional
 - requiere autenticacion y rol profesional via `RoleGuard`
 
@@ -457,7 +457,7 @@ Prefijo: `/profesional/reservas`
 Lectura de producto:
 
 - confirma que el backend ya contempla estados operativos clave
-- cubre buena parte de agenda diaria y gestion de reservas de `Free`
+- cubre buena parte de agenda diaria y gestion de reservas de `Profesional`
 - `no-show` sigue expuesto como accion operativa dedicada; la completitud de reservas ya no vive como endpoint publico separado en esta superficie
 
 ### Favoritos
@@ -515,8 +515,8 @@ Lectura de producto:
 
 Nota de naming:
 
-- el codigo actual usa `PLAN_BASIC`, `PLAN_PROFESIONAL` y `PLAN_ENTERPRISE`
-- a nivel de producto la lectura objetivo es `Free`, `Pro` y `Premium`
+- el codigo actual usa `PLAN_PROFESSIONAL`, `PLAN_LOCAL` y `PLAN_ENTERPRISE`; `PLAN_BASIC` y `PLAN_PROFESIONAL` quedan como aliases legacy de entrada
+- a nivel de producto la lectura objetivo es `Profesional`, `Local` y `Enterprise`
 
 ### Endpoints internos de operaciones
 
@@ -595,7 +595,7 @@ Capacidad ya muy visible en backend:
 - marketplace publico
 - favoritos
 
-### Fase 2 - Operacion Pro
+### Fase 2 - Operacion Local
 
 Capacidad ya visible o encaminada:
 
@@ -611,7 +611,7 @@ Capacidad aun no consolidada como superficie clara:
 - automatizaciones transaccionales mas completas
 - chat interno
 
-### Fase 3 y 4 - Retencion / Premium
+### Fase 3 y 4 - Retencion / Enterprise
 
 Capacidad que no aparece aun como dominio publico consolidado:
 

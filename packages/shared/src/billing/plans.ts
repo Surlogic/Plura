@@ -1,8 +1,8 @@
 import type { ProfessionalPlanCode } from '../types/professional';
 
-export type BillingUiPlanId = 'BASIC' | 'PROFESIONAL' | 'ENTERPRISE';
-export type BillingBackendPlanCode = 'PLAN_BASIC' | 'PLAN_PROFESIONAL' | 'PLAN_ENTERPRISE';
-export type PaidBillingUiPlanId = Exclude<BillingUiPlanId, 'BASIC'>;
+export type BillingUiPlanId = 'PROFESSIONAL' | 'LOCAL' | 'ENTERPRISE';
+export type BillingBackendPlanCode = 'PLAN_PROFESSIONAL' | 'PLAN_LOCAL' | 'PLAN_ENTERPRISE';
+export type PaidBillingUiPlanId = Exclude<BillingUiPlanId, 'PROFESSIONAL'>;
 
 export type SharedBillingPlanDefinition = {
   id: BillingUiPlanId;
@@ -17,19 +17,19 @@ export type SharedBillingPlanDefinition = {
 
 export const sharedBillingPlans: SharedBillingPlanDefinition[] = [
   {
-    id: 'BASIC',
-    label: 'Free',
-    backendPlanCode: 'PLAN_BASIC',
-    profilePlanCode: 'BASIC',
+    id: 'PROFESSIONAL',
+    label: 'Profesional',
+    backendPlanCode: 'PLAN_PROFESSIONAL',
+    profilePlanCode: 'PROFESSIONAL',
     priceMonthly: 0,
     priceLabel: 'Gratis',
     benefits: ['Logo, banner y textos publicos', 'Hasta 3 fotos en galeria', 'Hasta 15 servicios con 1 foto'],
   },
   {
-    id: 'PROFESIONAL',
-    label: 'Pro',
-    backendPlanCode: 'PLAN_PROFESIONAL',
-    profilePlanCode: 'PROFESIONAL',
+    id: 'LOCAL',
+    label: 'Local',
+    backendPlanCode: 'PLAN_LOCAL',
+    profilePlanCode: 'LOCAL',
     priceMonthly: 590,
     priceLabel: '$590 UYU / mes',
     benefits: ['Hasta 6 fotos en galeria', 'Hasta 30 servicios con 1 foto', 'Pagos online', 'Analytics basicos'],
@@ -37,12 +37,12 @@ export const sharedBillingPlans: SharedBillingPlanDefinition[] = [
   },
   {
     id: 'ENTERPRISE',
-    label: 'Premium',
+    label: 'Enterprise',
     backendPlanCode: 'PLAN_ENTERPRISE',
     profilePlanCode: 'ENTERPRISE',
     priceMonthly: 1290,
     priceLabel: '$1.290 UYU / mes',
-    benefits: ['Hasta 10 fotos en galeria', 'Servicios ilimitados', 'Todo lo de Pro', 'Mayor capacidad operativa'],
+    benefits: ['Hasta 10 fotos en galeria', 'Servicios ilimitados', 'Todo lo de Local', 'Mayor capacidad operativa'],
   },
 ];
 
@@ -52,8 +52,8 @@ export const sharedBillingPlanById = sharedBillingPlans.reduce<Record<BillingUiP
     return accumulator;
   },
   {
-    BASIC: sharedBillingPlans[0],
-    PROFESIONAL: sharedBillingPlans[1],
+    PROFESSIONAL: sharedBillingPlans[0],
+    LOCAL: sharedBillingPlans[1],
     ENTERPRISE: sharedBillingPlans[2],
   },
 );
@@ -63,12 +63,14 @@ export const resolveBillingPlanFromProfilePlanCode = (
 ): BillingUiPlanId => {
   switch (planCode?.toUpperCase()) {
     case 'PROFESIONAL':
-      return 'PROFESIONAL';
+    case 'LOCAL':
+      return 'LOCAL';
     case 'ENTERPRISE':
       return 'ENTERPRISE';
     case 'BASIC':
+    case 'PROFESSIONAL':
     default:
-      return 'BASIC';
+      return 'PROFESSIONAL';
   }
 };
 
@@ -77,9 +79,16 @@ export const resolveBillingPlanFromBackendPlanCode = (
 ): BillingUiPlanId | null => {
   switch (planCode?.toUpperCase()) {
     case 'PLAN_BASIC':
-      return 'BASIC';
+      return 'PROFESSIONAL';
+    case 'PLAN_PRO':
     case 'PLAN_PROFESIONAL':
-      return 'PROFESIONAL';
+      return 'LOCAL';
+    case 'PLAN_PREMIUM':
+      return 'ENTERPRISE';
+    case 'PLAN_PROFESSIONAL':
+      return 'PROFESSIONAL';
+    case 'PLAN_LOCAL':
+      return 'LOCAL';
     case 'PLAN_ENTERPRISE':
       return 'ENTERPRISE';
     default:

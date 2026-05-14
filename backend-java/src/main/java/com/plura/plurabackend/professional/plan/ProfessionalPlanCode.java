@@ -7,7 +7,7 @@ package com.plura.plurabackend.professional.plan;
  * Foco funcional: profesionales, planes.
  */
 public enum ProfessionalPlanCode {
-    BASIC,
-    PROFESIONAL,
+    PROFESSIONAL,
+    LOCAL,
     ENTERPRISE
 }

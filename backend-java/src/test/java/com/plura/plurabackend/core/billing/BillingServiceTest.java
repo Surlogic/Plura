@@ -64,10 +64,10 @@ class BillingServiceTest {
     void setUp() {
         billingProperties.setEnabled(true);
         billingProperties.getMercadopago().setEnabled(true);
-        billingProperties.getPlans().getPlanBasic().setPrice(BigDecimal.ZERO);
-        billingProperties.getPlans().getPlanBasic().setCurrency("UYU");
-        billingProperties.getPlans().getPlanProfesional().setPrice(new BigDecimal("100.00"));
-        billingProperties.getPlans().getPlanProfesional().setCurrency("UYU");
+        billingProperties.getPlans().getPlanProfessional().setPrice(BigDecimal.ZERO);
+        billingProperties.getPlans().getPlanProfessional().setCurrency("UYU");
+        billingProperties.getPlans().getPlanLocal().setPrice(new BigDecimal("100.00"));
+        billingProperties.getPlans().getPlanLocal().setCurrency("UYU");
         billingProperties.getPlans().getPlanEnterprise().setPrice(new BigDecimal("200.00"));
         billingProperties.getPlans().getPlanEnterprise().setCurrency("UYU");
 
@@ -91,7 +91,7 @@ class BillingServiceTest {
             .thenReturn(snapshot("preapproval-open", remoteStatus));
 
         ResponseStatusException error = assertThrows(ResponseStatusException.class, () ->
-            service.createSubscription(createRequest(SubscriptionPlanCode.PLAN_PROFESIONAL.canonicalCode()))
+            service.createSubscription(createRequest(SubscriptionPlanCode.PLAN_LOCAL.canonicalCode()))
         );
 
         assertEquals(HttpStatus.CONFLICT, error.getStatusCode());
@@ -116,7 +116,7 @@ class BillingServiceTest {
             ));
 
         BillingCheckoutResponse response =
-            service.createSubscription(createRequest(SubscriptionPlanCode.PLAN_PROFESIONAL.canonicalCode()));
+            service.createSubscription(createRequest(SubscriptionPlanCode.PLAN_LOCAL.canonicalCode()));
 
         assertEquals("https://mp.test/checkout", response.getCheckoutUrl());
         assertEquals("preapproval-new", existing.getProviderSubscriptionId());
@@ -134,7 +134,7 @@ class BillingServiceTest {
         Subscription subscription = new Subscription();
         subscription.setId("sub-1");
         subscription.setProfessionalId(30L);
-        subscription.setPlan(SubscriptionPlanCode.PLAN_PROFESIONAL);
+        subscription.setPlan(SubscriptionPlanCode.PLAN_LOCAL);
         subscription.setStatus(SubscriptionStatus.TRIAL);
         subscription.setProvider(com.plura.plurabackend.core.billing.payments.model.PaymentProvider.MERCADOPAGO);
         subscription.setProviderSubscriptionId(providerSubscriptionId);

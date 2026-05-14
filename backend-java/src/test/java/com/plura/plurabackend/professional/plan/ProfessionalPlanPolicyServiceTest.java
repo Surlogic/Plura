@@ -16,48 +16,48 @@ class ProfessionalPlanPolicyServiceTest {
     private final ProfessionalPlanPolicyService service = new ProfessionalPlanPolicyService();
 
     /**
-     * Escenario: basic plan matches commercial matrix.
+     * Escenario: professional plan matches commercial matrix.
      * El objetivo es dejar explicita la regla que protege este test.
      */
     @Test
-    void basicPlanMatchesCommercialMatrix() {
-        ProfessionalPlanEntitlements basic = service.entitlementsFor(ProfessionalPlanCode.BASIC);
+    void professionalPlanMatchesCommercialMatrix() {
+        ProfessionalPlanEntitlements professional = service.entitlementsFor(ProfessionalPlanCode.PROFESSIONAL);
 
-        assertEquals(1, basic.maxProfessionals());
-        assertEquals(1, basic.maxLocations());
-        assertEquals(3, basic.maxBusinessPhotos());
-        assertEquals(15, basic.maxServices());
-        assertEquals(PublicProfileTier.ENHANCED, basic.publicProfileTier());
-        assertEquals(ScheduleTier.DAILY, basic.scheduleTier());
-        assertEquals(AnalyticsTier.NONE, basic.analyticsTier());
-        assertFalse(basic.allowOnlinePayments());
-        assertFalse(basic.allowInternalChat());
-        assertFalse(basic.allowStore());
+        assertEquals(1, professional.maxProfessionals());
+        assertEquals(1, professional.maxLocations());
+        assertEquals(3, professional.maxBusinessPhotos());
+        assertEquals(15, professional.maxServices());
+        assertEquals(PublicProfileTier.ENHANCED, professional.publicProfileTier());
+        assertEquals(ScheduleTier.DAILY, professional.scheduleTier());
+        assertEquals(AnalyticsTier.NONE, professional.analyticsTier());
+        assertFalse(professional.allowOnlinePayments());
+        assertFalse(professional.allowInternalChat());
+        assertFalse(professional.allowStore());
     }
 
     /**
-     * Escenario: profesional plan enables operational capabilities sin changing structure limites.
+     * Escenario: local plan enables operational capabilities sin changing structure limites.
      * El objetivo es dejar explicita la regla que protege este test.
      */
     @Test
-    void profesionalPlanEnablesOperationalCapabilitiesWithoutChangingStructureLimits() {
-        ProfessionalPlanEntitlements basic = service.entitlementsFor(ProfessionalPlanCode.BASIC);
-        ProfessionalPlanEntitlements profesional = service.entitlementsFor(ProfessionalPlanCode.PROFESIONAL);
+    void localPlanEnablesOperationalCapabilitiesWithoutChangingStructureLimits() {
+        ProfessionalPlanEntitlements professional = service.entitlementsFor(ProfessionalPlanCode.PROFESSIONAL);
+        ProfessionalPlanEntitlements local = service.entitlementsFor(ProfessionalPlanCode.LOCAL);
 
-        assertEquals(basic.maxProfessionals(), profesional.maxProfessionals());
-        assertEquals(basic.maxLocations(), profesional.maxLocations());
-        assertEquals(6, profesional.maxBusinessPhotos());
-        assertEquals(30, profesional.maxServices());
-        assertEquals(PublicProfileTier.ENHANCED, profesional.publicProfileTier());
-        assertEquals(ScheduleTier.WEEKLY, profesional.scheduleTier());
-        assertEquals(AnalyticsTier.BASIC, profesional.analyticsTier());
-        assertTrue(profesional.allowOnlinePayments());
-        assertTrue(profesional.allowClientProfile());
-        assertTrue(profesional.allowInternalClientNotes());
-        assertTrue(profesional.allowVisitHistory());
-        assertTrue(profesional.allowPostServiceFollowup());
-        assertTrue(profesional.allowAutomations());
-        assertTrue(profesional.allowInternalChat());
+        assertEquals(professional.maxProfessionals(), local.maxProfessionals());
+        assertEquals(professional.maxLocations(), local.maxLocations());
+        assertEquals(6, local.maxBusinessPhotos());
+        assertEquals(30, local.maxServices());
+        assertEquals(PublicProfileTier.ENHANCED, local.publicProfileTier());
+        assertEquals(ScheduleTier.WEEKLY, local.scheduleTier());
+        assertEquals(AnalyticsTier.BASIC, local.analyticsTier());
+        assertTrue(local.allowOnlinePayments());
+        assertTrue(local.allowClientProfile());
+        assertTrue(local.allowInternalClientNotes());
+        assertTrue(local.allowVisitHistory());
+        assertTrue(local.allowPostServiceFollowup());
+        assertTrue(local.allowAutomations());
+        assertTrue(local.allowInternalChat());
     }
 
     /**

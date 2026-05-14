@@ -49,10 +49,10 @@ import org.springframework.test.web.servlet.MockMvc;
     "BILLING_MODE=sandbox",
     "BILLING_PROVIDER_VERIFICATION_ENABLED=false",
     "BILLING_WEBHOOK_BASE_URL=http://localhost:3000",
-    "BILLING_PLAN_BASIC_PRICE=990",
-    "BILLING_PLAN_BASIC_CURRENCY=UYU",
-    "BILLING_PLAN_PROFESIONAL_PRICE=1990",
-    "BILLING_PLAN_PROFESIONAL_CURRENCY=UYU",
+    "BILLING_PLAN_PROFESSIONAL_PRICE=990",
+    "BILLING_PLAN_PROFESSIONAL_CURRENCY=UYU",
+    "BILLING_PLAN_LOCAL_PRICE=1990",
+    "BILLING_PLAN_LOCAL_CURRENCY=UYU",
     "BILLING_PLAN_ENTERPRISE_PRICE=2990",
     "BILLING_PLAN_ENTERPRISE_CURRENCY=UYU",
     "BILLING_MERCADOPAGO_ENABLED=true",
@@ -112,7 +112,7 @@ class BillingWebhookIdempotencyIntegrationTest {
 
         Subscription subscription = new Subscription();
         subscription.setProfessionalId(professional.getId());
-        subscription.setPlan(SubscriptionPlanCode.PLAN_PROFESIONAL);
+        subscription.setPlan(SubscriptionPlanCode.PLAN_LOCAL);
         subscription.setStatus(SubscriptionStatus.TRIAL);
         subscription.setProvider(PaymentProvider.MERCADOPAGO);
         subscription.setProviderSubscriptionId("sub-1");
@@ -136,7 +136,7 @@ class BillingWebhookIdempotencyIntegrationTest {
               "action":"payment.updated",
               "status":"approved",
               "external_reference":"subscription:%d",
-              "metadata":{"planCode":"PLAN_PROFESIONAL"},
+              "metadata":{"planCode":"PLAN_LOCAL"},
               "data":{"id":"pay-1"},
               "date_created":"2026-03-05T12:00:00Z"
             }

@@ -1,6 +1,6 @@
 # Infra Y Configuracion
 
-Este documento cruza el stack tecnico actual con las necesidades del producto definido para `Usuario`, `Free`, `Pro` y `Premium`.
+Este documento cruza el stack tecnico actual con las necesidades del producto definido para `Usuario`, `Profesional`, `Local` y `Enterprise`.
 
 ## Stack principal
 
@@ -219,7 +219,7 @@ Necesario para:
 - recordatorios
 - cambios de estado
 - pedido de reseñas
-- automatizaciones Pro y Premium
+- automatizaciones Local y Enterprise
 
 Infra actual detectada:
 
@@ -237,8 +237,8 @@ Capacidad pendiente o no claramente documentada:
 
 Necesario para:
 
-- analytics basicos en `Pro`
-- analytics avanzados en `Premium`
+- analytics basicos en `Local`
+- analytics avanzados en `Enterprise`
 - entendimiento de embudo marketplace -> reserva -> retorno
 
 Infra actual detectada:
@@ -466,9 +466,9 @@ Notas reales de deploy:
 - datasource y Flyway quedaron cerrados sobre la misma base por default: si el backend recibe `DATABASE_URL` en formato `postgres://` o `postgresql://`, el bootstrap la normaliza a JDBC, extrae credenciales embebidas y rellena tambien `SPRING_FLYWAY_*` para evitar que migraciones y JPA apunten a bases distintas
 - el backend expone `server.port=${PORT:3000}` y ahora fija `server.address=0.0.0.0` por default para Fly.io y contenedores locales
 - `auth_refresh_token` sigue siendo una tabla legacy de soporte para refresh fallback, pero su schema real mantiene `id BIGSERIAL`; el modelo JPA ya quedo alineado a ese contrato para que `ddl-auto=validate` no tumbe el arranque
-- el naming de planes en codigo sigue siendo `BASIC / PROFESIONAL / ENTERPRISE`; el contexto de producto actualizado usa `Free / Pro / Premium`.
+- el naming de planes en codigo quedo alineado como `PROFESSIONAL / LOCAL / ENTERPRISE`.
 - Flyway conserva migraciones historicas de dLocal (`V34`, `V37`) solo por continuidad de schema; el runtime vigente ya es Mercado Pago only y `V47` elimina los campos legacy del dominio profesional.
-- billing de suscripciones requiere que el schema de `subscription` acepte `PLAN_BASIC`, `PLAN_PROFESIONAL` y `PLAN_ENTERPRISE`; `V51` alinea el constraint legacy que todavia admitia `PLAN_PRO` y `PLAN_PREMIUM`
+- billing de suscripciones requiere que el schema de `subscription` acepte `PLAN_PROFESSIONAL`, `PLAN_LOCAL` y `PLAN_ENTERPRISE`; `V80` migra datos legacy desde `PLAN_BASIC`/`PLAN_PROFESIONAL` y actualiza el constraint
 - `V57` agrega columna `public_visible` (boolean, default false) a `app_feedback` con indice `idx_app_feedback_public` sobre `(public_visible, created_at DESC)`; backfill a `true` para feedback ACTIVE con texto existente
 - `V60` alinea `app_feedback.rating` a `INTEGER`; `V54` lo habia creado como `SMALLINT`, pero el modelo JPA real de `core.feedback` usa `Integer` y con `ddl-auto=validate` el backend no llega a abrir puerto si esa correccion no corre
 - `.env.backend` sigue siendo el archivo plano de importacion de env para local/docker y hoy ya usa `SPRING_DATASOURCE_*` + `SPRING_FLYWAY_*` apuntando al Session Pooler de Supabase; no deberia volver a cargar `DATABASE_URL` de una base vieja como fuente principal

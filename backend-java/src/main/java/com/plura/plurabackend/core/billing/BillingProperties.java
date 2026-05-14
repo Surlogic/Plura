@@ -41,8 +41,8 @@ public class BillingProperties {
             throw new IllegalStateException("BILLING_WEBHOOK_ALLOWED_SKEW_SECONDS debe ser > 0");
         }
 
-        validatePlan("PLAN_BASIC", plans.planBasic);
-        validatePlan("PLAN_PROFESIONAL", plans.planProfesional);
+        validatePlan("PLAN_PROFESSIONAL", plans.planProfessional);
+        validatePlan("PLAN_LOCAL", plans.planLocal);
         validatePlan("PLAN_ENTERPRISE", plans.planEnterprise);
 
         if (mercadopago.enabled) {
@@ -73,8 +73,8 @@ public class BillingProperties {
      */
     public PlanConfig resolvePlan(SubscriptionPlanCode plan) {
         return switch (plan) {
-            case PLAN_BASIC -> plans.planBasic;
-            case PLAN_PROFESIONAL -> plans.planProfesional;
+            case PLAN_PROFESSIONAL -> plans.planProfessional;
+            case PLAN_LOCAL -> plans.planLocal;
             case PLAN_ENTERPRISE -> plans.planEnterprise;
         };
     }
@@ -99,9 +99,9 @@ public class BillingProperties {
         if (plan.price == null) {
             throw new IllegalStateException(name + " requiere precio");
         }
-        boolean allowFreePlan = "PLAN_BASIC".equals(name);
-        if ((!allowFreePlan && plan.price.compareTo(BigDecimal.ZERO) <= 0)
-            || (allowFreePlan && plan.price.compareTo(BigDecimal.ZERO) < 0)) {
+        boolean allowZeroPricePlan = "PLAN_PROFESSIONAL".equals(name);
+        if ((!allowZeroPricePlan && plan.price.compareTo(BigDecimal.ZERO) <= 0)
+            || (allowZeroPricePlan && plan.price.compareTo(BigDecimal.ZERO) < 0)) {
             throw new IllegalStateException(name + " tiene precio invalido");
         }
         requirePresent(plan.currency, name + " currency");
@@ -112,8 +112,8 @@ public class BillingProperties {
      */
     public String resolveMercadoPagoPlanId(SubscriptionPlanCode plan) {
         return switch (plan) {
-            case PLAN_BASIC -> mercadopago.planBasicId;
-            case PLAN_PROFESIONAL -> mercadopago.planProfesionalId;
+            case PLAN_PROFESSIONAL -> mercadopago.planProfessionalId;
+            case PLAN_LOCAL -> mercadopago.planLocalId;
             case PLAN_ENTERPRISE -> mercadopago.planEnterpriseId;
         };
     }
@@ -162,24 +162,24 @@ public class BillingProperties {
      * Contenedor de la configuración de los tres planes de suscripción disponibles.
      */
     public static class Plans {
-        private PlanConfig planBasic = new PlanConfig();
-        private PlanConfig planProfesional = new PlanConfig();
+        private PlanConfig planProfessional = new PlanConfig();
+        private PlanConfig planLocal = new PlanConfig();
         private PlanConfig planEnterprise = new PlanConfig();
 
-        public PlanConfig getPlanBasic() {
-            return planBasic;
+        public PlanConfig getPlanProfessional() {
+            return planProfessional;
         }
 
-        public void setPlanBasic(PlanConfig planBasic) {
-            this.planBasic = planBasic;
+        public void setPlanProfessional(PlanConfig planProfessional) {
+            this.planProfessional = planProfessional;
         }
 
-        public PlanConfig getPlanProfesional() {
-            return planProfesional;
+        public PlanConfig getPlanLocal() {
+            return planLocal;
         }
 
-        public void setPlanProfesional(PlanConfig planProfesional) {
-            this.planProfesional = planProfesional;
+        public void setPlanLocal(PlanConfig planLocal) {
+            this.planLocal = planLocal;
         }
 
         public PlanConfig getPlanEnterprise() {
@@ -237,8 +237,8 @@ public class BillingProperties {
         private String successUrl = "";
         private String failureUrl = "";
         private String pendingUrl = "";
-        private String planBasicId = "";
-        private String planProfesionalId = "";
+        private String planProfessionalId = "";
+        private String planLocalId = "";
         private String planEnterpriseId = "";
         private int timeoutMillis = 5000;
         private SubscriptionCredentials subscriptions = new SubscriptionCredentials();
@@ -386,20 +386,20 @@ public class BillingProperties {
             this.pendingUrl = pendingUrl;
         }
 
-        public String getPlanBasicId() {
-            return planBasicId;
+        public String getPlanProfessionalId() {
+            return planProfessionalId;
         }
 
-        public void setPlanBasicId(String planBasicId) {
-            this.planBasicId = planBasicId;
+        public void setPlanProfessionalId(String planProfessionalId) {
+            this.planProfessionalId = planProfessionalId;
         }
 
-        public String getPlanProfesionalId() {
-            return planProfesionalId;
+        public String getPlanLocalId() {
+            return planLocalId;
         }
 
-        public void setPlanProfesionalId(String planProfesionalId) {
-            this.planProfesionalId = planProfesionalId;
+        public void setPlanLocalId(String planLocalId) {
+            this.planLocalId = planLocalId;
         }
 
         public String getPlanEnterpriseId() {

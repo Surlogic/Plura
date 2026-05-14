@@ -236,7 +236,7 @@ export default function ServicesScreen() {
                     disabled={isLockedOption}
                     onPress={() => {
                       if (isLockedOption) {
-                        setMessage('Los pagos online se habilitan desde el plan Pro.');
+                        setMessage('Los pagos online se habilitan desde el plan Local.');
                         return;
                       }
                       setDraft((prev) => ({ ...prev, paymentType: option.value }));
@@ -247,7 +247,7 @@ export default function ServicesScreen() {
             </View>
             {!canUseOnlinePayments ? (
               <Text className="text-xs text-gray-500">
-                La seña online y el prepago total se habilitan en el plan Pro.
+                La seña online y el prepago total se habilitan en el plan Local.
               </Text>
             ) : null}
           </View>

@@ -21,7 +21,7 @@ export type BillingSubscription = {
   currentPeriodStart: string | null;
   currentPeriodEnd: string | null;
   cancelAtPeriodEnd: boolean | null;
-  premiumEnabled: boolean;
+  planEnabled: boolean;
 };
 
 type BillingCheckoutResponse = {
@@ -177,13 +177,14 @@ export const getPendingCheckoutState = (): PendingCheckoutState | null => {
   if (!raw) return null;
 
   try {
-    const parsed = JSON.parse(raw) as Partial<PendingCheckoutState>;
+    const parsed = JSON.parse(raw) as { planId?: string; createdAt?: unknown };
+    const normalizedPlanId = parsed.planId === 'PROFESIONAL' ? 'LOCAL' : parsed.planId;
     if (
-      (parsed.planId === 'PROFESIONAL' || parsed.planId === 'ENTERPRISE')
+      (normalizedPlanId === 'LOCAL' || normalizedPlanId === 'ENTERPRISE')
       && typeof parsed.createdAt === 'number'
     ) {
       return {
-        planId: parsed.planId,
+        planId: normalizedPlanId,
         createdAt: parsed.createdAt,
       };
     }

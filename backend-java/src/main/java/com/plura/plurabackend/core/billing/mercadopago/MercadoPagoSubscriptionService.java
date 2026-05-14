@@ -42,8 +42,8 @@ public class MercadoPagoSubscriptionService {
         if (!billingProperties.getMercadopago().isEnabled()) {
             throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "Mercado Pago deshabilitado");
         }
-        if (command.plan() == SubscriptionPlanCode.PLAN_BASIC) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "PLAN_BASIC no requiere suscripcion");
+        if (command.plan() == SubscriptionPlanCode.PLAN_PROFESSIONAL) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "PLAN_PROFESSIONAL no requiere suscripcion");
         }
 
         String backUrl = resolveBackUrl();

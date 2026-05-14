@@ -26,11 +26,11 @@ const resolveButtonLabel = ({
     return 'Plan actual';
   }
 
-  if (planId === 'BASIC') {
-    return cancelAtPeriodEnd ? 'Cambio programado' : 'Cambiar a Free';
+  if (planId === 'PROFESSIONAL') {
+    return cancelAtPeriodEnd ? 'Cambio programado' : 'Cambiar a Profesional';
   }
 
-  if (currentPlanId === 'BASIC') {
+  if (currentPlanId === 'PROFESSIONAL') {
     return 'Suscribirme';
   }
 
@@ -62,7 +62,7 @@ function BillingPlansGrid({
 
         const disabled =
           isCurrent
-          || (plan.id === 'BASIC' && cancelAtPeriodEnd);
+          || (plan.id === 'PROFESSIONAL' && cancelAtPeriodEnd);
 
         return (
           <BillingPlanCard

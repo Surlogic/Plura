@@ -19,8 +19,8 @@ public class ProfessionalPlanPolicyService {
 
     public ProfessionalPlanPolicyService() {
         Map<ProfessionalPlanCode, ProfessionalPlanEntitlements> entitlements = new EnumMap<>(ProfessionalPlanCode.class);
-        entitlements.put(ProfessionalPlanCode.BASIC, basicEntitlements());
-        entitlements.put(ProfessionalPlanCode.PROFESIONAL, profesionalEntitlements());
+        entitlements.put(ProfessionalPlanCode.PROFESSIONAL, professionalEntitlements());
+        entitlements.put(ProfessionalPlanCode.LOCAL, localEntitlements());
         entitlements.put(ProfessionalPlanCode.ENTERPRISE, enterpriseEntitlements());
         this.entitlementsByPlan = Map.copyOf(entitlements);
     }
@@ -30,15 +30,15 @@ public class ProfessionalPlanPolicyService {
      */
     public ProfessionalPlanEntitlements entitlementsFor(ProfessionalPlanCode code) {
         if (code == null) {
-            return entitlementsByPlan.get(ProfessionalPlanCode.BASIC);
+            return entitlementsByPlan.get(ProfessionalPlanCode.PROFESSIONAL);
         }
-        return entitlementsByPlan.getOrDefault(code, entitlementsByPlan.get(ProfessionalPlanCode.BASIC));
+        return entitlementsByPlan.getOrDefault(code, entitlementsByPlan.get(ProfessionalPlanCode.PROFESSIONAL));
     }
 
     /**
-     * Ejecuta la logica de basic entitlements manteniendola encapsulada en este componente.
+     * Ejecuta la logica de professional entitlements manteniendola encapsulada en este componente.
      */
-    private ProfessionalPlanEntitlements basicEntitlements() {
+    private ProfessionalPlanEntitlements professionalEntitlements() {
         return new ProfessionalPlanEntitlements(
             1,
             1,
@@ -68,9 +68,9 @@ public class ProfessionalPlanPolicyService {
     }
 
     /**
-     * Ejecuta la logica de profesional entitlements manteniendola encapsulada en este componente.
+     * Ejecuta la logica de local entitlements manteniendola encapsulada en este componente.
      */
-    private ProfessionalPlanEntitlements profesionalEntitlements() {
+    private ProfessionalPlanEntitlements localEntitlements() {
         return new ProfessionalPlanEntitlements(
             1,
             1,

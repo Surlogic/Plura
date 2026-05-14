@@ -9,24 +9,24 @@ type BillingFeatureComparisonProps = {
   currentPlanId: BillingUiPlanId;
 };
 
-const planColumnOrder: BillingUiPlanId[] = ['BASIC', 'PROFESIONAL', 'ENTERPRISE'];
+const planColumnOrder: BillingUiPlanId[] = ['PROFESSIONAL', 'LOCAL', 'ENTERPRISE'];
 
 const comparisonRows = [
   {
     label: 'Perfil publico mejorado',
     detail: 'Logo, redes, headline y texto de presentacion.',
     values: {
-      BASIC: false,
-      PROFESIONAL: true,
-      ENTERPRISE: true,
+      PROFESSIONAL: planIncludesProfessionalFeature('PROFESSIONAL', 'enhancedPublicProfile'),
+      LOCAL: planIncludesProfessionalFeature('LOCAL', 'enhancedPublicProfile'),
+      ENTERPRISE: planIncludesProfessionalFeature('ENTERPRISE', 'enhancedPublicProfile'),
     } as Record<BillingUiPlanId, boolean>,
   },
   {
     label: 'Pagos online en servicios',
     detail: 'Seña online o prepago completo.',
     values: {
-      BASIC: planIncludesProfessionalFeature('BASIC', 'onlinePayments'),
-      PROFESIONAL: planIncludesProfessionalFeature('PROFESIONAL', 'onlinePayments'),
+      PROFESSIONAL: planIncludesProfessionalFeature('PROFESSIONAL', 'onlinePayments'),
+      LOCAL: planIncludesProfessionalFeature('LOCAL', 'onlinePayments'),
       ENTERPRISE: planIncludesProfessionalFeature('ENTERPRISE', 'onlinePayments'),
     } as Record<BillingUiPlanId, boolean>,
   },
@@ -34,8 +34,8 @@ const comparisonRows = [
     label: 'Agenda navegable',
     detail: 'Moverte por semanas futuras y pasadas.',
     values: {
-      BASIC: planIncludesProfessionalFeature('BASIC', 'weeklyCalendarNavigation'),
-      PROFESIONAL: planIncludesProfessionalFeature('PROFESIONAL', 'weeklyCalendarNavigation'),
+      PROFESSIONAL: planIncludesProfessionalFeature('PROFESSIONAL', 'weeklyCalendarNavigation'),
+      LOCAL: planIncludesProfessionalFeature('LOCAL', 'weeklyCalendarNavigation'),
       ENTERPRISE: planIncludesProfessionalFeature('ENTERPRISE', 'weeklyCalendarNavigation'),
     } as Record<BillingUiPlanId, boolean>,
   },
@@ -43,8 +43,8 @@ const comparisonRows = [
     label: 'Vista mensual',
     detail: 'Calendario mensual dentro del dashboard.',
     values: {
-      BASIC: planIncludesProfessionalFeature('BASIC', 'monthlyCalendar'),
-      PROFESIONAL: planIncludesProfessionalFeature('PROFESIONAL', 'monthlyCalendar'),
+      PROFESSIONAL: planIncludesProfessionalFeature('PROFESSIONAL', 'monthlyCalendar'),
+      LOCAL: planIncludesProfessionalFeature('LOCAL', 'monthlyCalendar'),
       ENTERPRISE: planIncludesProfessionalFeature('ENTERPRISE', 'monthlyCalendar'),
     } as Record<BillingUiPlanId, boolean>,
   },
@@ -52,8 +52,8 @@ const comparisonRows = [
     label: 'Analytics',
     detail: 'Lectura operativa y tendencia del negocio.',
     values: {
-      BASIC: 'Sin analytics',
-      PROFESIONAL: 'Basicos',
+      PROFESSIONAL: 'Sin analytics',
+      LOCAL: 'Basicos',
       ENTERPRISE: 'Avanzados',
     } as Record<BillingUiPlanId, string>,
   },
@@ -61,9 +61,9 @@ const comparisonRows = [
     label: 'Fotos del negocio',
     detail: 'Limite cargable en la pagina publica.',
     values: {
-      BASIC: 'Hasta 5',
-      PROFESIONAL: 'Hasta 15',
-      ENTERPRISE: 'Hasta 30',
+      PROFESSIONAL: 'Hasta 3',
+      LOCAL: 'Hasta 6',
+      ENTERPRISE: 'Hasta 10',
     } as Record<BillingUiPlanId, string>,
   },
 ];

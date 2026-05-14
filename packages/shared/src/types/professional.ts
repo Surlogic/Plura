@@ -1,4 +1,4 @@
-export type ProfessionalPlanCode = 'BASIC' | 'PROFESIONAL' | 'ENTERPRISE';
+export type ProfessionalPlanCode = 'PROFESSIONAL' | 'LOCAL' | 'ENTERPRISE';
 
 export type ProfessionalMediaPresentation = {
   positionX: number;

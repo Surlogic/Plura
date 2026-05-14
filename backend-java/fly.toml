@@ -67,15 +67,15 @@ primary_region = "gru"
   min_machines_running = 1
 
   [[http_service.checks]]
-    grace_period = "180s"
-    interval = "15s"
+    grace_period = "360s"
+    interval = "30s"
     method = "get"
     path = "/health"
     protocol = "http"
-    timeout = "10s"
+    timeout = "15s"
 
 [[vm]]
   cpu_kind = "shared"
   cpus = 1
-  memory = "1gb"
-  memory_mb = 1024
+  memory = "2gb"
+  memory_mb = 2048

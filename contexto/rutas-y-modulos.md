@@ -237,6 +237,7 @@ Lectura de producto:
 - `/profesional/dashboard/perfil-negocio` ahora incluye constructor visual para `logo` y `banner` dentro de un modal: se abre al terminar una subida/reemplazo y también desde `Editar encuadre`; ese encuadre queda persistido y se aplica también en la ficha pública
 - los autocompletes de ubicacion en `/profesional/auth/register` y `/profesional/dashboard/perfil-negocio` ya seleccionan sugerencias por click normal sin depender de `mouseDown`, evitando opciones que parecian clickeables pero no confirmaban bien al navegar con teclado o blur
 - `/profesional/auth/register` y `/profesional/dashboard/perfil-negocio` ya comparten el mismo selector internacional de telefono con bandera + codigo; evita cargar el prefijo a mano y deja el numero persistido listo para backend
+- `/profesional/auth/register` ahora usa un onboarding guiado por pasos en desktop: cuenta/Google, tipo de perfil, datos públicos con preview, rubros, modalidad, ubicación si aplica, horarios base, primer servicio y preview final antes de enviar el alta al backend. Mantiene el endpoint existente `POST /auth/register/profesional`; horarios y primer servicio se guardan como draft local para handoff posterior al dashboard.
 - `/profesional/dashboard/reservas` tambien usa selector internacional cuando el profesional carga una reserva manual con telefono de cliente opcional
 - `billing` ya existe y usa contratos `PROFESSIONAL / LOCAL / ENTERPRISE`
 - `/profesional/dashboard/billing` ya separa dos bloques: `Mi plan` y `Cobros de reservas con Mercado Pago`

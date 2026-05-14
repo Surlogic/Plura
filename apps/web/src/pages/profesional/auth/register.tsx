@@ -7,7 +7,6 @@ import { useRouter } from 'next/router';
 import axios from 'axios';
 import AuthTopBar from '@/components/auth/AuthTopBar';
 import AuthLoadingOverlay from '@/components/auth/AuthLoadingOverlay';
-import Footer from '@/components/shared/Footer';
 import GoogleLoginButton from '@/components/auth/GoogleLoginButton';
 import Badge from '@/components/ui/Badge';
 import Button from '@/components/ui/Button';
@@ -19,7 +18,6 @@ import { mapboxForwardGeocode } from '@/services/mapbox';
 import { getGeoLocationSuggestions, type GeoLocationSuggestion } from '@/services/geo';
 import { useProfessionalProfileContext } from '@/context/ProfessionalProfileContext';
 import type { OAuthLoginResult } from '@/lib/auth/oauthLogin';
-
 
 const extractApiMessage = (error: unknown, fallback: string) => {
   if (axios.isAxiosError(error)) {
@@ -51,57 +49,235 @@ const extractApiMessage = (error: unknown, fallback: string) => {
   return fallback;
 };
 
+type RegisterForm = {
+  email: string;
+  confirmEmail: string;
+  password: string;
+  confirmPassword: string;
+  profileType: 'INDEPENDENT' | 'LOCAL';
+  fullName: string;
+  phoneNumber: string;
+  description: string;
+  categorySlugs: string[];
+  tipoCliente: 'LOCAL' | 'A_DOMICILIO' | 'SIN_LOCAL';
+  country: string;
+  city: string;
+  fullAddress: string;
+  serviceName: string;
+  serviceCategorySlug: string;
+  serviceDuration: string;
+  servicePrice: string;
+  serviceDescription: string;
+};
+
+type TouchedState = Record<keyof RegisterForm, boolean>;
+
+type ScheduleDay = {
+  id: string;
+  label: string;
+  active: boolean;
+  open: string;
+  close: string;
+};
+
+const wizardSteps = [
+  'Cuenta',
+  'Perfil',
+  'Datos',
+  'Rubros',
+  'Atención',
+  'Ubicación',
+  'Horarios',
+  'Servicio',
+  'Preview',
+] as const;
+
+const initialSchedule: ScheduleDay[] = [
+  { id: 'monday', label: 'Lunes', active: true, open: '09:00', close: '18:00' },
+  { id: 'tuesday', label: 'Martes', active: true, open: '09:00', close: '18:00' },
+  { id: 'wednesday', label: 'Miércoles', active: true, open: '09:00', close: '18:00' },
+  { id: 'thursday', label: 'Jueves', active: true, open: '09:00', close: '18:00' },
+  { id: 'friday', label: 'Viernes', active: true, open: '09:00', close: '18:00' },
+  { id: 'saturday', label: 'Sábado', active: false, open: '09:00', close: '13:00' },
+  { id: 'sunday', label: 'Domingo', active: false, open: '09:00', close: '13:00' },
+];
+
+const defaultTouched: TouchedState = {
+  email: false,
+  confirmEmail: false,
+  password: false,
+  confirmPassword: false,
+  profileType: false,
+  fullName: false,
+  phoneNumber: false,
+  description: false,
+  categorySlugs: false,
+  tipoCliente: false,
+  country: false,
+  city: false,
+  fullAddress: false,
+  serviceName: false,
+  serviceCategorySlug: false,
+  serviceDuration: false,
+  servicePrice: false,
+  serviceDescription: false,
+};
+
+const inputBaseClassName =
+  'h-12 w-full rounded-[18px] border border-[color:var(--border-soft)] bg-[color:var(--surface-strong)] px-4 text-sm text-[color:var(--ink)] placeholder:text-[color:var(--ink-faint)] shadow-[var(--shadow-card)] transition focus:outline-none focus:ring-4 focus:ring-[color:var(--focus-ring)]';
+const textAreaClassName =
+  'min-h-28 w-full resize-none rounded-[18px] border border-[color:var(--border-soft)] bg-[color:var(--surface-strong)] px-4 py-3 text-sm text-[color:var(--ink)] placeholder:text-[color:var(--ink-faint)] shadow-[var(--shadow-card)] transition focus:outline-none focus:ring-4 focus:ring-[color:var(--focus-ring)]';
+
 export default function ProfesionalRegisterPage() {
   const router = useRouter();
   const { refreshProfile } = useProfessionalProfileContext();
-
-  type RegisterResponse = {
-    accessToken: string;
-    user: {
-      id: string;
-      email: string;
-      fullName: string;
-      createdAt: string;
-    };
-  };
-
-  const inputClassName =
-    'h-12 w-full rounded-[18px] border border-[color:var(--border-soft)] bg-white/90 px-4 text-sm text-[color:var(--ink)] placeholder:text-[color:var(--ink-faint)] focus:outline-none focus:ring-4 focus:ring-[color:var(--focus-ring)]';
   const { categories, isLoading: categoriesLoading } = useCategories();
-  const [form, setForm] = useState({
-    fullName: '',
-    categorySlugs: [] as string[],
+
+  const [step, setStep] = useState(0);
+  const [form, setForm] = useState<RegisterForm>({
     email: '',
     confirmEmail: '',
-    phoneNumber: '',
-    tipoCliente: 'LOCAL',
-    country: '',
-    city: '',
-    fullAddress: '',
     password: '',
     confirmPassword: '',
+    profileType: 'INDEPENDENT',
+    fullName: '',
+    phoneNumber: '',
+    description: '',
+    categorySlugs: [],
+    tipoCliente: 'SIN_LOCAL',
+    country: 'Uruguay',
+    city: 'Montevideo',
+    fullAddress: '',
+    serviceName: '',
+    serviceCategorySlug: '',
+    serviceDuration: '60',
+    servicePrice: '',
+    serviceDescription: '',
   });
-  const [touched, setTouched] = useState({
-    fullName: false,
-    categorySlugs: false,
-    email: false,
-    confirmEmail: false,
-    phoneNumber: false,
-    tipoCliente: false,
-    country: false,
-    city: false,
-    fullAddress: false,
-    password: false,
-    confirmPassword: false,
-  });
+  const [touched, setTouched] = useState<TouchedState>(defaultTouched);
+  const [schedule, setSchedule] = useState<ScheduleDay[]>(initialSchedule);
+  const [categorySearch, setCategorySearch] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [isGeoSuggesting, setIsGeoSuggesting] = useState(false);
   const [activeGeoField, setActiveGeoField] = useState<'country' | 'city' | 'fullAddress' | null>(null);
   const [geoSuggestions, setGeoSuggestions] = useState<GeoLocationSuggestion[]>([]);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const isBusy = isSubmitting || isGoogleLoading;
+  const visibleStepNumber = Math.min(step + 1, 8);
+
+  const emailValue = form.email.trim().toLowerCase();
+  const confirmEmailValue = form.confirmEmail.trim().toLowerCase();
+  const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  const requiresLocation = form.tipoCliente === 'LOCAL';
+
+  const categoryNameBySlug = useMemo(
+    () => new Map(categories.map((category) => [category.slug, category.name])),
+    [categories],
+  );
+
+  const selectedCategoryNames = form.categorySlugs
+    .map((slug) => categoryNameBySlug.get(slug))
+    .filter(Boolean) as string[];
+  const primaryCategoryName = selectedCategoryNames[0] || 'Estética Facial';
+  const serviceCategoryName = categoryNameBySlug.get(form.serviceCategorySlug) || primaryCategoryName;
+  const filteredCategories = categories.filter((category) => {
+    const query = categorySearch.trim().toLowerCase();
+    if (!query) return true;
+    return category.name.toLowerCase().includes(query) || category.slug.toLowerCase().includes(query);
+  });
+
+  const passwordValid = form.password.length >= 8;
+  const validationErrors: Record<keyof RegisterForm, string> = {
+    email: emailPattern.test(emailValue) ? '' : 'Email inválido.',
+    confirmEmail: confirmEmailValue.length > 0 && confirmEmailValue === emailValue
+      ? ''
+      : 'Los correos no coinciden.',
+    password: passwordValid ? '' : 'Mínimo 8 caracteres.',
+    confirmPassword: form.confirmPassword.length > 0 && form.confirmPassword === form.password
+      ? ''
+      : 'Las contraseñas no coinciden.',
+    profileType: form.profileType ? '' : 'Seleccioná un tipo de perfil.',
+    fullName: form.fullName.trim().length >= 3 ? '' : 'Mínimo 3 caracteres.',
+    phoneNumber: form.phoneNumber.replace(/\D/g, '').length >= 8 ? '' : 'Ingresá un número válido.',
+    description: form.description.trim().length > 150 ? 'Máximo 150 caracteres.' : '',
+    categorySlugs: form.categorySlugs.length > 0 ? '' : 'Seleccioná al menos un rubro.',
+    tipoCliente: form.tipoCliente ? '' : 'Seleccioná una modalidad.',
+    country: requiresLocation && form.country.trim().length === 0 ? 'Indicá el país.' : '',
+    city: requiresLocation && form.city.trim().length === 0 ? 'Indicá la ciudad.' : '',
+    fullAddress: requiresLocation && form.fullAddress.trim().length === 0
+      ? 'Indicá la dirección completa.'
+      : '',
+    serviceName: form.serviceName.trim().length >= 3 ? '' : 'Indicá el nombre del servicio.',
+    serviceCategorySlug: form.serviceCategorySlug || form.categorySlugs[0] ? '' : 'Elegí el rubro del servicio.',
+    serviceDuration: Number(form.serviceDuration) > 0 ? '' : 'Indicá una duración válida.',
+    servicePrice: form.servicePrice.trim().length > 0 ? '' : 'Indicá un precio.',
+    serviceDescription: form.serviceDescription.trim().length > 180 ? 'Máximo 180 caracteres.' : '',
+  };
+
+  const inputClass = (field: keyof RegisterForm) =>
+    `${inputBaseClassName}${touched[field] && validationErrors[field] ? ' border-red-300 focus:ring-red-200' : ''}`;
+  const textAreaClass = (field: keyof RegisterForm) =>
+    `${textAreaClassName}${touched[field] && validationErrors[field] ? ' border-red-300 focus:ring-red-200' : ''}`;
+
+  const markTouched = (fields: Array<keyof RegisterForm>) => {
+    setTouched((prev) => {
+      const next = { ...prev };
+      fields.forEach((field) => {
+        next[field] = true;
+      });
+      return next;
+    });
+  };
+
+  const stepFields = (currentStep: number): Array<keyof RegisterForm> => {
+    switch (currentStep) {
+      case 0:
+        return ['email', 'confirmEmail', 'password', 'confirmPassword'];
+      case 1:
+        return ['profileType'];
+      case 2:
+        return ['fullName', 'phoneNumber', 'description'];
+      case 3:
+        return ['categorySlugs'];
+      case 4:
+        return ['tipoCliente'];
+      case 5:
+        return requiresLocation ? ['country', 'city', 'fullAddress'] : [];
+      case 7:
+        return ['serviceName', 'serviceCategorySlug', 'serviceDuration', 'servicePrice', 'serviceDescription'];
+      default:
+        return [];
+    }
+  };
+
+  const currentStepIsValid = (currentStep: number) => {
+    const fields = stepFields(currentStep);
+    return fields.every((field) => validationErrors[field] === '');
+  };
+
+  const setField = <K extends keyof RegisterForm>(field: K, value: RegisterForm[K]) => {
+    setForm((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const handleChange = (event: ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+    const { name, value } = event.target;
+    const normalizedValue = name === 'email' || name === 'confirmEmail' ? value.toLowerCase() : value;
+    setForm((prev) => ({ ...prev, [name]: normalizedValue }));
+  };
+
+  const handleBlur = (event: ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+    const { name } = event.target;
+    setTouched((prev) => ({ ...prev, [name]: true }));
+  };
+
+  const handlePhoneChange = (nextPhoneNumber: string) => {
+    setForm((prev) => ({ ...prev, phoneNumber: nextPhoneNumber }));
+  };
+
+  const handlePhoneBlur = () => {
+    setTouched((prev) => ({ ...prev, phoneNumber: true }));
+  };
 
   const handleOAuthAuthenticated = async (result: OAuthLoginResult) => {
     setErrorMessage(null);
@@ -116,25 +292,6 @@ export default function ProfesionalRegisterPage() {
     }
     await refreshProfile();
     router.push('/profesional/dashboard');
-  };
-
-  const handleChange = (event: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value } = event.target;
-    const normalizedValue = name === 'email' || name === 'confirmEmail' ? value.toLowerCase() : value;
-    setForm((prev) => ({ ...prev, [name]: normalizedValue }));
-  };
-
-  const handleBlur = (event: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name } = event.target;
-    setTouched((prev) => ({ ...prev, [name]: true }));
-  };
-
-  const handlePhoneChange = (nextPhoneNumber: string) => {
-    setForm((prev) => ({ ...prev, phoneNumber: nextPhoneNumber }));
-  };
-
-  const handlePhoneBlur = () => {
-    setTouched((prev) => ({ ...prev, phoneNumber: true }));
   };
 
   const handleGeoFieldChange = async (
@@ -159,119 +316,106 @@ export default function ProfesionalRegisterPage() {
     const country = (suggestion.country || '').trim();
     const city = (suggestion.city || '').trim();
     const fullAddress = (suggestion.fullAddress || '').trim();
-    const composedLocation = [fullAddress, city, country].filter(Boolean).join(', ');
     setForm((prev) => ({
       ...prev,
       country: country || prev.country,
       city: city || prev.city,
       fullAddress: fullAddress || prev.fullAddress,
     }));
-    if (composedLocation) {
-      setForm((prev) => ({ ...prev, location: composedLocation }));
-    }
     setGeoSuggestions([]);
     setActiveGeoField(null);
   };
 
-  const requiresLocation = form.tipoCliente === 'LOCAL';
-  const emailValue = form.email.trim().toLowerCase();
-  const confirmEmailValue = form.confirmEmail.trim().toLowerCase();
-  const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  const passwordRules: Array<{
-    id: string;
-    label: string;
-    test: (value: string) => boolean;
-  }> = [
-    {
-      id: 'length',
-      label: 'Minimo 8 caracteres.',
-      test: (value: string) => value.length >= 8,
-    },
-  ];
-  const passwordChecks = passwordRules.map((rule) => ({
-    ...rule,
-    valid: rule.test(form.password),
-  }));
-  const passwordValid = passwordChecks.every((rule) => rule.valid);
-  const validationErrors = {
-    fullName: form.fullName.trim().length >= 3 ? '' : 'Mínimo 3 caracteres.',
-    categorySlugs: form.categorySlugs.length > 0 ? '' : 'Seleccioná al menos un rubro.',
-    email: emailPattern.test(emailValue) ? '' : 'Email inválido.',
-    confirmEmail: confirmEmailValue.length > 0 && confirmEmailValue === emailValue
-      ? ''
-      : 'Los correos no coinciden.',
-    phoneNumber: form.phoneNumber.replace(/\D/g, '').length >= 8 ? '' : 'Ingresá un número válido.',
-    tipoCliente: form.tipoCliente ? '' : 'Seleccioná una modalidad.',
-    country: requiresLocation && form.country.trim().length === 0 ? 'Indicá el país.' : '',
-    city: requiresLocation && form.city.trim().length === 0 ? 'Indicá la ciudad.' : '',
-    fullAddress: requiresLocation && form.fullAddress.trim().length === 0
-      ? 'Indicá la dirección completa.'
-      : '',
-    password: passwordValid ? '' : 'La contraseña no cumple los requisitos.',
-    confirmPassword: form.confirmPassword.length > 0 && form.confirmPassword === form.password
-      ? ''
-      : 'Las contraseñas no coinciden.',
+  const chooseProfileType = (profileType: RegisterForm['profileType']) => {
+    setForm((prev) => ({
+      ...prev,
+      profileType,
+      tipoCliente: profileType === 'LOCAL' ? 'LOCAL' : 'SIN_LOCAL',
+    }));
+    setTouched((prev) => ({ ...prev, profileType: true, tipoCliente: true }));
   };
-  const isFormValid = Object.values(validationErrors).every((value) => value === '');
-
-  const inputClass = (field: keyof typeof validationErrors) =>
-    `${inputClassName}${
-      touched[field] && validationErrors[field] ? ' border-red-300 focus:ring-red-200' : ''
-    }`;
-  const categoryNameBySlug = useMemo(
-    () => new Map(categories.map((category) => [category.slug, category.name])),
-    [categories],
-  );
 
   const toggleCategory = (slug: string) => {
     setTouched((prev) => ({ ...prev, categorySlugs: true }));
     setForm((prev) => {
       const selected = prev.categorySlugs.includes(slug);
+      if (!selected && prev.categorySlugs.length >= 5) {
+        return prev;
+      }
+      const nextSlugs = selected
+        ? prev.categorySlugs.filter((value) => value !== slug)
+        : [...prev.categorySlugs, slug];
       return {
         ...prev,
-        categorySlugs: selected
-          ? prev.categorySlugs.filter((value) => value !== slug)
-          : [...prev.categorySlugs, slug],
+        categorySlugs: nextSlugs,
+        serviceCategorySlug: prev.serviceCategorySlug || nextSlugs[0] || '',
       };
     });
   };
 
-  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
+  const updateScheduleDay = (id: string, patch: Partial<ScheduleDay>) => {
+    setSchedule((prev) => prev.map((day) => (day.id === id ? { ...day, ...patch } : day)));
+  };
+
+  const applyWeekSchedule = () => {
+    setSchedule((prev) => prev.map((day) => ({
+      ...day,
+      active: day.id !== 'sunday',
+      open: '09:00',
+      close: day.id === 'saturday' ? '13:00' : '18:00',
+    })));
+  };
+
+  const goNext = () => {
     setErrorMessage(null);
-    setSuccessMessage(null);
+    const fields = stepFields(step);
+    markTouched(fields);
+    if (!currentStepIsValid(step)) {
+      setErrorMessage('Revisá los datos marcados para continuar.');
+      return;
+    }
+    setStep((prev) => Math.min(prev + 1, wizardSteps.length - 1));
+  };
 
-    if (form.email !== form.confirmEmail) {
-      setErrorMessage('Los correos no coinciden.');
+  const goBack = () => {
+    setErrorMessage(null);
+    setStep((prev) => Math.max(prev - 1, 0));
+  };
+
+  const saveDraftAfterRegister = () => {
+    if (typeof window === 'undefined') return;
+    window.localStorage.setItem(
+      'plura:professional-onboarding-draft',
+      JSON.stringify({
+        schedule,
+        firstService: {
+          name: form.serviceName.trim(),
+          categorySlug: form.serviceCategorySlug || form.categorySlugs[0] || '',
+          durationMinutes: Number(form.serviceDuration) || 60,
+          price: form.servicePrice.trim(),
+          description: form.serviceDescription.trim(),
+        },
+        publicPreview: {
+          description: form.description.trim(),
+          selectedCategorySlugs: form.categorySlugs,
+        },
+      }),
+    );
+  };
+
+  const handleSubmit = async (event?: FormEvent<HTMLFormElement>) => {
+    event?.preventDefault();
+    setErrorMessage(null);
+    const allFields = Object.keys(validationErrors) as Array<keyof RegisterForm>;
+    markTouched(allFields);
+
+    const blockingFields = allFields.filter((field) => validationErrors[field] !== '');
+    if (blockingFields.length > 0) {
+      setErrorMessage('Faltan datos obligatorios para publicar el perfil.');
       return;
     }
 
-    if (form.password !== form.confirmPassword) {
-      setErrorMessage('Las contraseñas no coinciden.');
-      return;
-    }
-
-    if (form.password.length < 8) {
-      setErrorMessage('La contraseña debe tener al menos 8 caracteres.');
-      return;
-    }
-
-    if (!passwordValid) {
-      setErrorMessage('La contraseña no cumple los requisitos.');
-      return;
-    }
-
-    if (requiresLocation && (!form.country.trim() || !form.city.trim() || !form.fullAddress.trim())) {
-      setErrorMessage('Completá país, ciudad y dirección completa.');
-      return;
-    }
-    if (form.categorySlugs.length === 0) {
-      setErrorMessage('Seleccioná al menos un rubro.');
-      return;
-    }
-
-    const primaryCategoryName = categoryNameBySlug.get(form.categorySlugs[0]) || '';
-
+    const primaryRubro = categoryNameBySlug.get(form.categorySlugs[0]) || '';
     setIsSubmitting(true);
     try {
       const normalizedCountry = requiresLocation ? form.country.trim() : '';
@@ -283,6 +427,7 @@ export default function ProfesionalRegisterPage() {
       const geocodedLocation = requiresLocation
         ? await mapboxForwardGeocode(normalizedLocation)
         : null;
+
       if (requiresLocation && !geocodedLocation) {
         setErrorMessage('No pudimos ubicar esa dirección. Revisala e intentá de nuevo.');
         return;
@@ -290,7 +435,7 @@ export default function ProfesionalRegisterPage() {
 
       const payload = {
         fullName: form.fullName.trim(),
-        rubro: primaryCategoryName,
+        rubro: primaryRubro,
         categorySlugs: form.categorySlugs,
         email: form.email.trim().toLowerCase(),
         phoneNumber: form.phoneNumber.trim(),
@@ -304,7 +449,8 @@ export default function ProfesionalRegisterPage() {
         password: form.password,
       };
 
-      await api.post<RegisterResponse>('/auth/register/profesional', payload);
+      await api.post('/auth/register/profesional', payload);
+      saveDraftAfterRegister();
       await router.push({
         pathname: '/profesional/auth/login',
         query: {
@@ -312,7 +458,6 @@ export default function ProfesionalRegisterPage() {
           email: payload.email,
         },
       });
-      return;
     } catch (error) {
       if (axios.isAxiosError(error) && !error.response) {
         setErrorMessage('No se pudo conectar con el servidor.');
@@ -324,373 +469,660 @@ export default function ProfesionalRegisterPage() {
     }
   };
 
-  return (
-    <div className="app-shell min-h-screen bg-[color:var(--background)] text-[color:var(--ink)]">
-      <AuthTopBar tone="professional" />
-      <main className="mx-auto flex w-full max-w-6xl flex-1 items-center justify-center px-4 py-16">
-        <Card tone="default" padding="lg" className="w-full max-w-md space-y-6 rounded-[32px] text-[color:var(--ink)]">
-          <div className="space-y-2">
-            <Badge variant="success">Registro</Badge>
-            <h1 className="text-2xl font-semibold text-[color:var(--ink)]">
-              Registro profesional
-            </h1>
-            <p className="text-sm text-[color:var(--ink-muted)]">
-              Completá tus datos para gestionar tu negocio en el marketplace.
+  const renderError = (field: keyof RegisterForm) => (
+    touched[field] && validationErrors[field] ? (
+      <p className="text-xs text-red-600">{validationErrors[field]}</p>
+    ) : null
+  );
+
+  const stepHeader = (
+    <div className="mx-auto flex max-w-xl flex-col items-center gap-3 text-center">
+      <span className="text-sm font-semibold text-[color:var(--ink)]">
+        {step >= 8 ? 'Listo para publicar' : `Paso ${visibleStepNumber} de 8`}
+      </span>
+      <div className="flex items-center gap-3" aria-label="Progreso del registro profesional">
+        {wizardSteps.slice(0, 8).map((item, index) => (
+          <span
+            key={item}
+            className={`h-2.5 w-2.5 rounded-full border transition ${
+              index <= Math.min(step, 7)
+                ? 'border-[color:var(--primary)] bg-[color:var(--primary)]'
+                : 'border-[color:var(--border-strong)] bg-transparent'
+            }`}
+          />
+        ))}
+      </div>
+    </div>
+  );
+
+  const ProfilePreviewCard = ({ compact = false }: { compact?: boolean }) => (
+    <div className="overflow-hidden rounded-[28px] border border-[color:var(--border-soft)] bg-[color:var(--surface-strong)] shadow-[var(--shadow-lift)]">
+      <div className="h-36 bg-[linear-gradient(135deg,rgba(223,196,161,0.72),rgba(255,250,244,0.9)),radial-gradient(circle_at_80%_20%,rgba(10,122,67,0.16),transparent_30%)]" />
+      <div className="relative space-y-4 px-6 pb-6 pt-12">
+        <div className="absolute -top-12 left-6 flex h-24 w-24 items-center justify-center rounded-full border-4 border-[color:var(--surface-strong)] bg-[color:var(--surface-soft)] text-center text-xs font-semibold uppercase tracking-[0.2em] text-[color:var(--primary)] shadow-[var(--shadow-card)]">
+          {(form.fullName.trim() || 'EB')
+            .split(' ')
+            .slice(0, 2)
+            .map((part) => part[0])
+            .join('') || 'EB'}
+        </div>
+        <div>
+          <h3 className="text-2xl font-semibold tracking-[-0.03em] text-[color:var(--ink)]">
+            {form.fullName.trim() || 'Estudio Belleza'}
+          </h3>
+          <p className="text-sm text-[color:var(--ink-muted)]">
+            {primaryCategoryName} · {requiresLocation ? form.city || 'Montevideo' : 'Atención flexible'}
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2 text-sm">
+          <span className="font-semibold text-[color:var(--ink)]">4.9</span>
+          <span className="text-amber-500">★★★★★</span>
+          <span className="text-[color:var(--ink-muted)]">(126 reseñas)</span>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {(selectedCategoryNames.length ? selectedCategoryNames : ['Estética Facial', 'Masajes', 'Depilación'])
+            .slice(0, compact ? 3 : 5)
+            .map((name) => (
+              <span key={name} className="rounded-full border border-[color:var(--border-soft)] bg-[color:var(--surface-soft)] px-3 py-1 text-xs text-[color:var(--ink-muted)]">
+                {name}
+              </span>
+            ))}
+        </div>
+        {!compact ? (
+          <div className="space-y-2 border-t border-[color:var(--border-soft)] pt-4">
+            <p className="text-sm font-semibold text-[color:var(--ink)]">Sobre mí</p>
+            <p className="text-sm leading-6 text-[color:var(--ink-muted)]">
+              {form.description.trim() || 'Ofrecemos tratamientos personalizados para que te sientas bien, por dentro y por fuera.'}
             </p>
           </div>
+        ) : null}
+        <Button type="button" variant="primary" className="w-full">
+          Reservar
+        </Button>
+      </div>
+    </div>
+  );
 
-          <div className="space-y-3">
-            <div className="flex items-center gap-3">
-              <div className="h-px flex-1 bg-[color:var(--border-soft)]" />
-              <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[color:var(--ink-faint)]">
-                Registrate con
-              </span>
-              <div className="h-px flex-1 bg-[color:var(--border-soft)]" />
-            </div>
-            <div className="space-y-2">
-              <GoogleLoginButton
-                authAction="REGISTER"
-                intendedRole="PROFESSIONAL"
-                onAuthenticated={handleOAuthAuthenticated}
-                onError={setErrorMessage}
-                buttonLabel="Continuar con Google"
-                loadingLabel="Registrando..."
-                onLoadingChange={setIsGoogleLoading}
-              />
-            </div>
+  const renderAccountStep = () => (
+    <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(360px,440px)] lg:items-start">
+      <div className="space-y-6">
+        <div className="space-y-3">
+          <Badge variant="success">Registro</Badge>
+          <h1 className="text-4xl font-semibold tracking-[-0.04em] text-[color:var(--ink)]">
+            Creá tu cuenta profesional
+          </h1>
+          <p className="max-w-xl text-base text-[color:var(--ink-muted)]">
+            Empezá a configurar tu perfil para recibir reservas en Plura.
+          </p>
+        </div>
+        <GoogleLoginButton
+          authAction="REGISTER"
+          intendedRole="PROFESSIONAL"
+          onAuthenticated={handleOAuthAuthenticated}
+          onError={setErrorMessage}
+          buttonLabel="Continuar con Google"
+          loadingLabel="Registrando..."
+          onLoadingChange={setIsGoogleLoading}
+        />
+        <div className="flex items-center gap-3">
+          <div className="h-px flex-1 bg-[color:var(--border-soft)]" />
+          <span className="text-xs font-semibold uppercase tracking-[0.16em] text-[color:var(--ink-faint)]">o con email</span>
+          <div className="h-px flex-1 bg-[color:var(--border-soft)]" />
+        </div>
+        <div className="grid gap-4">
+          <div className="space-y-2">
+            <label className="text-sm font-semibold text-[color:var(--ink)]">Email</label>
+            <input
+              className={inputClass('email')}
+              placeholder="tucorreo@gmail.com"
+              type="email"
+              name="email"
+              value={form.email}
+              onChange={handleChange}
+              onBlur={handleBlur}
+            />
+            {renderError('email')}
           </div>
-
-          <div className="flex items-center gap-3">
-            <div className="h-px flex-1 bg-[color:var(--border-soft)]" />
-            <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[color:var(--ink-faint)]">
-              o con email
-            </span>
-            <div className="h-px flex-1 bg-[color:var(--border-soft)]" />
+          <div className="space-y-2">
+            <label className="text-sm font-semibold text-[color:var(--ink)]">Confirmar email</label>
+            <input
+              className={inputClass('confirmEmail')}
+              placeholder="tucorreo@gmail.com"
+              type="email"
+              name="confirmEmail"
+              value={form.confirmEmail}
+              onChange={handleChange}
+              onBlur={handleBlur}
+            />
+            {renderError('confirmEmail')}
           </div>
-
-          <form className="space-y-4" onSubmit={handleSubmit}>
+          <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
-              <label className="text-sm font-medium text-[color:var(--ink)]">
-                Nombre o empresa
-              </label>
+              <label className="text-sm font-semibold text-[color:var(--ink)]">Contraseña</label>
               <input
-                className={inputClass('fullName')}
-                placeholder="Nombre del profesional o empresa"
-                name="fullName"
-                value={form.fullName}
-                onChange={handleChange}
-                onBlur={handleBlur}
-                required
-                minLength={3}
-              />
-              {touched.fullName && validationErrors.fullName ? (
-                <p className="text-xs text-red-600">{validationErrors.fullName}</p>
-              ) : null}
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-[color:var(--ink)]">Rubros</label>
-              <div className="grid gap-2 sm:grid-cols-2">
-                {categories.map((category) => {
-                  const checked = form.categorySlugs.includes(category.slug);
-                  return (
-                    <label
-                      key={category.id}
-                      className={`flex cursor-pointer items-center gap-2 rounded-[12px] border px-3 py-2 text-sm transition ${
-                        checked
-                          ? 'border-[color:var(--primary)] bg-[color:var(--primary-soft)] text-[color:var(--primary-strong)]'
-                          : 'border-[color:var(--border-soft)] bg-white text-[color:var(--ink-muted)] hover:bg-[color:var(--surface-soft)]'
-                      }`}
-                    >
-                      <input
-                        type="checkbox"
-                        className="h-4 w-4 rounded border-[color:var(--border-strong)] text-[color:var(--primary)] focus:ring-[color:var(--focus-ring)]"
-                        checked={checked}
-                        onChange={() => toggleCategory(category.slug)}
-                      />
-                      <span>{category.name}</span>
-                    </label>
-                  );
-                })}
-              </div>
-              {categoriesLoading ? (
-                <p className="text-xs text-[color:var(--ink-muted)]">Cargando rubros...</p>
-              ) : null}
-              {touched.categorySlugs && validationErrors.categorySlugs ? (
-                <p className="text-xs text-red-600">{validationErrors.categorySlugs}</p>
-              ) : null}
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-[color:var(--ink)]">Gmail</label>
-              <input
-                className={inputClass('email')}
-                placeholder="tucorreo@gmail.com"
-                type="email"
-                name="email"
-                value={form.email}
-                onChange={handleChange}
-                onBlur={handleBlur}
-                required
-              />
-              {touched.email && validationErrors.email ? (
-                <p className="text-xs text-red-600">{validationErrors.email}</p>
-              ) : null}
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-[color:var(--ink)]">Confirmar Gmail</label>
-              <input
-                className={inputClass('confirmEmail')}
-                placeholder="tucorreo@gmail.com"
-                type="email"
-                name="confirmEmail"
-                value={form.confirmEmail}
-                onChange={handleChange}
-                onBlur={handleBlur}
-                required
-              />
-              {touched.confirmEmail && validationErrors.confirmEmail ? (
-                <p className="text-xs text-red-600">{validationErrors.confirmEmail}</p>
-              ) : null}
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-[color:var(--ink)]">Número</label>
-              <InternationalPhoneField
-                value={form.phoneNumber}
-                onChange={handlePhoneChange}
-                onBlur={handlePhoneBlur}
-                required
-                selectClassName={inputClass('phoneNumber')}
-                inputClassName={inputClass('phoneNumber')}
-                inputPlaceholder="11 2345 6789"
-              />
-              <p className="text-xs text-[color:var(--ink-faint)]">
-                Seleccioná el país y completá el número sin repetir el prefijo internacional.
-              </p>
-              {touched.phoneNumber && validationErrors.phoneNumber ? (
-                <p className="text-xs text-red-600">{validationErrors.phoneNumber}</p>
-              ) : null}
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-[color:var(--ink)]">
-                Modalidad de atención
-              </label>
-              <select
-                className={inputClass('tipoCliente')}
-                name="tipoCliente"
-                value={form.tipoCliente}
-                onChange={handleChange}
-                onBlur={handleBlur}
-                required
-              >
-                <option value="LOCAL">Con local</option>
-                <option value="A_DOMICILIO">A domicilio</option>
-                <option value="SIN_LOCAL">Sin local físico</option>
-              </select>
-              <p className="text-xs text-[color:var(--ink-muted)]">
-                Elegí cómo atendés. Solo se pide ubicación si trabajás con local.
-              </p>
-            </div>
-
-            {requiresLocation ? (
-              <>
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-[color:var(--ink)]">País</label>
-                  <input
-                    className={inputClass('country')}
-                    placeholder="Ej: Argentina"
-                    name="country"
-                    value={form.country}
-                    onChange={(event) => void handleGeoFieldChange('country', event.target.value)}
-                    onBlur={handleBlur}
-                    required={requiresLocation}
-                  />
-                  {activeGeoField === 'country' && geoSuggestions.length > 0 ? (
-                    <div className="mt-2 max-h-48 overflow-auto rounded-xl border border-[color:var(--border-soft)] bg-white">
-                      {geoSuggestions.map((item, index) => (
-                        <button
-                          key={`${item.placeName || item.fullAddress || 'suggestion'}-${index}`}
-                          type="button"
-                          className="block w-full border-b border-[color:var(--border-soft)] px-3 py-2 text-left text-sm text-[color:var(--ink)] last:border-b-0 hover:bg-[color:var(--surface-soft)]"
-                          onMouseDown={(event) => {
-                            event.preventDefault();
-                          }}
-                          onClick={() => applyGeoSuggestion(item)}
-                        >
-                          {(item.country || item.city || item.fullAddress || item.placeName || '').trim()}
-                        </button>
-                      ))}
-                    </div>
-                  ) : null}
-                  {touched.country && validationErrors.country ? (
-                    <p className="text-xs text-red-600">{validationErrors.country}</p>
-                  ) : null}
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-[color:var(--ink)]">Ciudad</label>
-                  <input
-                    className={inputClass('city')}
-                    placeholder="Ej: Buenos Aires"
-                    name="city"
-                    value={form.city}
-                    onChange={(event) => void handleGeoFieldChange('city', event.target.value)}
-                    onBlur={handleBlur}
-                    required={requiresLocation}
-                  />
-                  {activeGeoField === 'city' && geoSuggestions.length > 0 ? (
-                    <div className="mt-2 max-h-48 overflow-auto rounded-xl border border-[color:var(--border-soft)] bg-white">
-                      {geoSuggestions.map((item, index) => (
-                        <button
-                          key={`${item.placeName || item.fullAddress || 'suggestion'}-${index}`}
-                          type="button"
-                          className="block w-full border-b border-[color:var(--border-soft)] px-3 py-2 text-left text-sm text-[color:var(--ink)] last:border-b-0 hover:bg-[color:var(--surface-soft)]"
-                          onMouseDown={(event) => {
-                            event.preventDefault();
-                          }}
-                          onClick={() => applyGeoSuggestion(item)}
-                        >
-                          {(item.city || item.fullAddress || item.placeName || '').trim()}
-                        </button>
-                      ))}
-                    </div>
-                  ) : null}
-                  {touched.city && validationErrors.city ? (
-                    <p className="text-xs text-red-600">{validationErrors.city}</p>
-                  ) : null}
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-[color:var(--ink)]">Dirección completa</label>
-                  <input
-                    className={inputClass('fullAddress')}
-                    placeholder="Ej: Av. Santa Fe 1234"
-                    name="fullAddress"
-                    value={form.fullAddress}
-                    onChange={(event) => void handleGeoFieldChange('fullAddress', event.target.value)}
-                    onBlur={handleBlur}
-                    required={requiresLocation}
-                  />
-                  {activeGeoField === 'fullAddress' && (geoSuggestions.length > 0 || isGeoSuggesting) ? (
-                    <div className="mt-2 max-h-52 overflow-auto rounded-xl border border-[color:var(--border-soft)] bg-white">
-                      {isGeoSuggesting ? (
-                        <p className="px-3 py-2 text-xs text-[color:var(--ink-muted)]">Buscando sugerencias...</p>
-                      ) : null}
-                      {geoSuggestions.map((item, index) => (
-                        <button
-                          key={`${item.placeName || item.fullAddress || 'suggestion'}-${index}`}
-                          type="button"
-                          className="block w-full border-b border-[color:var(--border-soft)] px-3 py-2 text-left text-sm text-[color:var(--ink)] last:border-b-0 hover:bg-[color:var(--surface-soft)]"
-                          onMouseDown={(event) => {
-                            event.preventDefault();
-                          }}
-                          onClick={() => applyGeoSuggestion(item)}
-                        >
-                          <span className="block font-medium">
-                            {(item.fullAddress || item.placeName || '').trim() || 'Dirección sugerida'}
-                          </span>
-                          <span className="block text-xs text-[color:var(--ink-muted)]">
-                            {[item.city, item.country].filter(Boolean).join(', ')}
-                          </span>
-                        </button>
-                      ))}
-                    </div>
-                  ) : null}
-                  {touched.fullAddress && validationErrors.fullAddress ? (
-                    <p className="text-xs text-red-600">{validationErrors.fullAddress}</p>
-                  ) : null}
-                </div>
-              </>
-            ) : null}
-
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-[color:var(--ink)]">Contraseña</label>
-              <input
-                type="password"
                 className={inputClass('password')}
-                placeholder="••••••••"
+                placeholder="mínimo 8 caracteres"
+                type="password"
                 name="password"
                 value={form.password}
                 onChange={handleChange}
                 onBlur={handleBlur}
-                required
-                minLength={8}
               />
-              <ul className="space-y-1 text-xs">
-                {passwordChecks.map((rule) => (
-                  <li
-                    key={rule.id}
-                    className={rule.valid ? 'text-[color:var(--primary)]' : 'text-[color:var(--ink-faint)]'}
-                  >
-                    <span
-                      className={`mr-2 inline-block h-2 w-2 rounded-full ${
-                        rule.valid ? 'bg-[color:var(--primary)]' : 'bg-[color:var(--border-strong)]'
-                      }`}
-                    />
-                    {rule.label}
-                  </li>
-                ))}
-              </ul>
-              {touched.password && validationErrors.password ? (
-                <p className="text-xs text-red-600">{validationErrors.password}</p>
-              ) : null}
+              {renderError('password')}
             </div>
-
             <div className="space-y-2">
-              <label className="text-sm font-medium text-[color:var(--ink)]">
-                Confirmar contraseña
-              </label>
+              <label className="text-sm font-semibold text-[color:var(--ink)]">Confirmar contraseña</label>
               <input
-                type="password"
                 className={inputClass('confirmPassword')}
-                placeholder="••••••••"
+                placeholder="repetir contraseña"
+                type="password"
                 name="confirmPassword"
                 value={form.confirmPassword}
                 onChange={handleChange}
                 onBlur={handleBlur}
-                required
-                minLength={8}
               />
-              {touched.confirmPassword && validationErrors.confirmPassword ? (
-                <p className="text-xs text-red-600">{validationErrors.confirmPassword}</p>
-              ) : null}
+              {renderError('confirmPassword')}
             </div>
+          </div>
+        </div>
+        <p className="text-center text-sm text-[color:var(--ink-muted)]">
+          ¿Ya tenés cuenta?{' '}
+          <Link href="/profesional/auth/login" className="font-semibold text-[color:var(--primary)]">
+            Iniciar sesión profesional
+          </Link>
+        </p>
+      </div>
+      <div className="space-y-4">
+        <h2 className="text-center text-xl font-semibold text-[color:var(--ink)]">Así te verán tus clientes</h2>
+        <ProfilePreviewCard />
+        <p className="text-center text-xs text-[color:var(--ink-faint)]">Este es un ejemplo de cómo se verá tu perfil público.</p>
+      </div>
+    </div>
+  );
+
+  const renderTypeStep = () => (
+    <div className="space-y-10 text-center">
+      <div className="space-y-3">
+        <Badge variant="success">Registro</Badge>
+        <h1 className="text-4xl font-semibold tracking-[-0.04em] text-[color:var(--ink)]">Elegí tu tipo de perfil</h1>
+        <p className="text-base text-[color:var(--ink-muted)]">Seleccioná cómo trabajás en Plura.</p>
+      </div>
+      <div className="grid gap-6 md:grid-cols-2">
+        {[
+          {
+            id: 'INDEPENDENT' as const,
+            title: 'Profesional independiente',
+            description: 'Atendés de forma independiente y gestionás tu propia agenda.',
+            icon: '👤',
+          },
+          {
+            id: 'LOCAL' as const,
+            title: 'Profesional con local',
+            description: 'Tenés un espacio físico donde recibís a tus clientes.',
+            icon: '🏪',
+          },
+        ].map((option) => {
+          const selected = form.profileType === option.id;
+          return (
+            <button
+              key={option.id}
+              type="button"
+              onClick={() => chooseProfileType(option.id)}
+              className={`relative min-h-64 rounded-[32px] border p-8 text-center transition hover:-translate-y-0.5 ${
+                selected
+                  ? 'border-[color:var(--primary)] bg-[color:var(--primary-soft)] shadow-[var(--shadow-lift)]'
+                  : 'border-[color:var(--border-soft)] bg-[color:var(--surface-strong)] shadow-[var(--shadow-card)]'
+              }`}
+            >
+              {selected ? (
+                <span className="absolute right-6 top-6 flex h-9 w-9 items-center justify-center rounded-full bg-[color:var(--primary)] text-white">✓</span>
+              ) : null}
+              <span className="mx-auto flex h-24 w-24 items-center justify-center rounded-full bg-[color:var(--surface-soft)] text-5xl shadow-[var(--shadow-card)]">
+                {option.icon}
+              </span>
+              <h2 className="mt-7 text-2xl font-semibold tracking-[-0.03em] text-[color:var(--ink)]">{option.title}</h2>
+              <p className="mx-auto mt-3 max-w-xs text-base leading-7 text-[color:var(--ink-muted)]">{option.description}</p>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+
+  const renderProfileStep = () => (
+    <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(360px,440px)] lg:items-center">
+      <div className="space-y-6">
+        <div className="space-y-3">
+          <Badge variant="success">Perfil</Badge>
+          <h1 className="text-4xl font-semibold tracking-[-0.04em] text-[color:var(--ink)]">Contanos cómo querés aparecer en Plura</h1>
+          <p className="text-base text-[color:var(--ink-muted)]">Estos datos se verán en tu perfil público.</p>
+        </div>
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <label className="text-sm font-semibold text-[color:var(--ink)]">Nombre profesional o del negocio</label>
+            <input
+              className={inputClass('fullName')}
+              placeholder="Estudio Belleza"
+              name="fullName"
+              value={form.fullName}
+              onChange={handleChange}
+              onBlur={handleBlur}
+            />
+            {renderError('fullName')}
+          </div>
+          <div className="space-y-2">
+            <label className="text-sm font-semibold text-[color:var(--ink)]">Teléfono de contacto</label>
+            <InternationalPhoneField
+              value={form.phoneNumber}
+              onChange={handlePhoneChange}
+              onBlur={handlePhoneBlur}
+              selectClassName={inputClass('phoneNumber')}
+              inputClassName={inputClass('phoneNumber')}
+              inputPlaceholder="91 234 567"
+            />
+            {renderError('phoneNumber')}
+          </div>
+          <div className="space-y-2">
+            <label className="text-sm font-semibold text-[color:var(--ink)]">Descripción corta</label>
+            <textarea
+              className={textAreaClass('description')}
+              placeholder="Tratamientos faciales, depilación y masajes en un espacio cálido y profesional."
+              name="description"
+              value={form.description}
+              onChange={handleChange}
+              onBlur={handleBlur}
+              maxLength={150}
+            />
+            <p className="text-right text-xs text-[color:var(--ink-faint)]">{form.description.length}/150</p>
+            {renderError('description')}
+          </div>
+        </div>
+      </div>
+      <div className="space-y-4">
+        <h2 className="text-center text-xl font-semibold text-[color:var(--ink)]">Vista previa</h2>
+        <ProfilePreviewCard compact />
+      </div>
+    </div>
+  );
+
+  const renderCategoriesStep = () => (
+    <div className="mx-auto max-w-5xl space-y-8 text-center">
+      <div className="space-y-3">
+        <Badge variant="success">Registro</Badge>
+        <h1 className="text-4xl font-semibold tracking-[-0.04em] text-[color:var(--ink)]">Elegí tus rubros principales</h1>
+        <p className="text-base text-[color:var(--ink-muted)]">Seleccioná hasta 5 rubros. Después vas a poder cambiarlos.</p>
+      </div>
+      <input
+        className={inputBaseClassName}
+        placeholder="Buscar rubro..."
+        value={categorySearch}
+        onChange={(event) => setCategorySearch(event.target.value)}
+      />
+      <div className="text-left">
+        <p className="mb-3 text-sm font-semibold text-[color:var(--ink)]">Seleccionados</p>
+        <div className="flex min-h-12 flex-wrap gap-3">
+          {selectedCategoryNames.length > 0 ? selectedCategoryNames.map((name, index) => (
+            <button
+              key={name}
+              type="button"
+              onClick={() => toggleCategory(form.categorySlugs[index])}
+              className="rounded-full border border-[color:var(--primary-soft)] bg-[color:var(--primary-soft)] px-4 py-2 text-sm font-semibold text-[color:var(--primary)]"
+            >
+              {name} ×
+            </button>
+          )) : (
+            <span className="text-sm text-[color:var(--ink-faint)]">Todavía no seleccionaste rubros.</span>
+          )}
+        </div>
+        {renderError('categorySlugs')}
+      </div>
+      <div className="border-t border-[color:var(--border-soft)] pt-6">
+        {categoriesLoading ? (
+          <p className="text-sm text-[color:var(--ink-muted)]">Cargando rubros...</p>
+        ) : null}
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {filteredCategories.map((category) => {
+            const selected = form.categorySlugs.includes(category.slug);
+            return (
+              <button
+                key={category.id}
+                type="button"
+                onClick={() => toggleCategory(category.slug)}
+                className={`rounded-[18px] border px-4 py-4 text-sm font-semibold transition hover:-translate-y-0.5 ${
+                  selected
+                    ? 'border-[color:var(--primary)] bg-[color:var(--primary-soft)] text-[color:var(--primary)] shadow-[var(--shadow-card)]'
+                    : 'border-[color:var(--border-soft)] bg-[color:var(--surface-strong)] text-[color:var(--ink)] hover:bg-[color:var(--surface-soft)]'
+                }`}
+              >
+                {category.name}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderModalityStep = () => (
+    <div className="mx-auto max-w-5xl space-y-8 text-center">
+      <div className="space-y-3">
+        <Badge variant="success">Registro</Badge>
+        <h1 className="text-4xl font-semibold tracking-[-0.04em] text-[color:var(--ink)]">¿Cómo atendés a tus clientes?</h1>
+        <p className="text-base text-[color:var(--ink-muted)]">Elegí la modalidad principal. Después vas a poder cambiarla.</p>
+      </div>
+      <div className="grid gap-6 md:grid-cols-3">
+        {[
+          { id: 'LOCAL' as const, title: 'En mi local', description: 'Los clientes van a una dirección física.', icon: '🏪' },
+          { id: 'A_DOMICILIO' as const, title: 'A domicilio', description: 'Vos vas a la ubicación del cliente.', icon: '🏠' },
+          { id: 'SIN_LOCAL' as const, title: 'Sin local fijo', description: 'Atendés online, en espacios alquilados o coordinás por zona.', icon: '💻' },
+        ].map((option) => {
+          const selected = form.tipoCliente === option.id;
+          return (
+            <button
+              key={option.id}
+              type="button"
+              onClick={() => setField('tipoCliente', option.id)}
+              className={`relative rounded-[28px] border p-7 text-center transition hover:-translate-y-0.5 ${
+                selected
+                  ? 'border-[color:var(--primary)] bg-[color:var(--primary-soft)] shadow-[var(--shadow-lift)]'
+                  : 'border-[color:var(--border-soft)] bg-[color:var(--surface-strong)] shadow-[var(--shadow-card)]'
+              }`}
+            >
+              {selected ? <span className="absolute right-5 top-5 rounded-full bg-[color:var(--primary)] px-2 py-1 text-xs text-white">✓</span> : null}
+              <span className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-[color:var(--surface-soft)] text-4xl">{option.icon}</span>
+              <h2 className="mt-5 text-xl font-semibold text-[color:var(--ink)]">{option.title}</h2>
+              <p className="mt-2 text-sm leading-6 text-[color:var(--ink-muted)]">{option.description}</p>
+            </button>
+          );
+        })}
+      </div>
+      {form.tipoCliente !== 'LOCAL' ? (
+        <p className="rounded-[18px] border border-[color:var(--border-soft)] bg-[color:var(--surface-soft)] px-4 py-3 text-sm text-[color:var(--ink-muted)]">
+          Para esta modalidad no pedimos dirección pública ahora. Podés completarla luego desde el dashboard.
+        </p>
+      ) : null}
+    </div>
+  );
+
+  const renderLocationStep = () => {
+    if (!requiresLocation) {
+      return (
+        <div className="mx-auto max-w-2xl space-y-6 text-center">
+          <Badge variant="success">Ubicación</Badge>
+          <h1 className="text-4xl font-semibold tracking-[-0.04em] text-[color:var(--ink)]">Ubicación no obligatoria</h1>
+          <p className="text-base leading-7 text-[color:var(--ink-muted)]">
+            Como elegiste una modalidad sin local fijo, podés avanzar ahora y completar zonas de cobertura más adelante desde el dashboard.
+          </p>
+          <div className="rounded-[28px] border border-[color:var(--border-soft)] bg-[color:var(--surface-soft)] p-8 text-left shadow-[var(--shadow-card)]">
+            <p className="text-sm font-semibold text-[color:var(--ink)]">Cómo se verá</p>
+            <p className="mt-2 text-sm text-[color:var(--ink-muted)]">Tu perfil mostrará atención flexible hasta que configures una ubicación o zonas de cobertura.</p>
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(360px,480px)] lg:items-center">
+        <div className="space-y-6">
+          <div className="space-y-3">
+            <Badge variant="success">Registro</Badge>
+            <h1 className="text-4xl font-semibold tracking-[-0.04em] text-[color:var(--ink)]">¿Dónde atendés?</h1>
+            <p className="text-base text-[color:var(--ink-muted)]">Ingresá la ubicación de tu local.</p>
+          </div>
+          <div className="space-y-4">
+            {(['country', 'city', 'fullAddress'] as const).map((field) => (
+              <div key={field} className="relative space-y-2">
+                <label className="text-sm font-semibold text-[color:var(--ink)]">
+                  {field === 'country' ? 'País' : field === 'city' ? 'Ciudad' : 'Dirección completa'}
+                </label>
+                <input
+                  className={inputClass(field)}
+                  placeholder={field === 'country' ? 'Uruguay' : field === 'city' ? 'Montevideo' : 'Av. Italia 1234'}
+                  name={field}
+                  value={form[field]}
+                  onChange={(event) => void handleGeoFieldChange(field, event.target.value)}
+                  onBlur={handleBlur}
+                />
+                {activeGeoField === field && (geoSuggestions.length > 0 || isGeoSuggesting) ? (
+                  <div className="absolute z-20 mt-2 max-h-52 w-full overflow-auto rounded-2xl border border-[color:var(--border-soft)] bg-[color:var(--surface-strong)] shadow-[var(--shadow-lift)]">
+                    {isGeoSuggesting ? <p className="px-4 py-3 text-xs text-[color:var(--ink-muted)]">Buscando sugerencias...</p> : null}
+                    {geoSuggestions.map((item, index) => (
+                      <button
+                        key={`${item.placeName || item.fullAddress || 'suggestion'}-${index}`}
+                        type="button"
+                        className="block w-full border-b border-[color:var(--border-soft)] px-4 py-3 text-left text-sm text-[color:var(--ink)] last:border-b-0 hover:bg-[color:var(--surface-soft)]"
+                        onMouseDown={(event) => event.preventDefault()}
+                        onClick={() => applyGeoSuggestion(item)}
+                      >
+                        <span className="block font-semibold">{(item.fullAddress || item.city || item.country || item.placeName || '').trim()}</span>
+                        <span className="block text-xs text-[color:var(--ink-muted)]">{[item.city, item.country].filter(Boolean).join(', ')}</span>
+                      </button>
+                    ))}
+                  </div>
+                ) : null}
+                {renderError(field)}
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="overflow-hidden rounded-[30px] border border-[color:var(--border-soft)] bg-[color:var(--surface-soft)] shadow-[var(--shadow-lift)]">
+          <div className="relative h-96 bg-[linear-gradient(45deg,rgba(15,23,42,0.08)_25%,transparent_25%),linear-gradient(-45deg,rgba(15,23,42,0.08)_25%,transparent_25%),linear-gradient(45deg,transparent_75%,rgba(15,23,42,0.08)_75%),linear-gradient(-45deg,transparent_75%,rgba(15,23,42,0.08)_75%)] bg-[length:42px_42px] bg-[position:0_0,0_21px,21px_-21px,-21px_0]">
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_45%,rgba(10,122,67,0.18),transparent_28%)]" />
+            <div className="absolute left-1/2 top-1/2 flex h-20 w-20 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-[color:var(--primary)] text-4xl text-white shadow-[var(--shadow-lift)]">⌖</div>
+            <div className="absolute bottom-6 left-6 right-6 rounded-[22px] border border-[color:var(--border-soft)] bg-[color:var(--surface)] p-5 shadow-[var(--shadow-card)] backdrop-blur">
+              <p className="font-semibold text-[color:var(--ink)]">Ubicación del perfil</p>
+              <p className="text-sm text-[color:var(--ink-muted)]">Así verán tu local tus clientes.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const renderScheduleStep = () => (
+    <div className="mx-auto max-w-5xl space-y-7 text-center">
+      <div className="space-y-3">
+        <Badge variant="success">Registro</Badge>
+        <h1 className="text-4xl font-semibold tracking-[-0.04em] text-[color:var(--ink)]">Definí tus horarios de atención</h1>
+        <p className="text-base text-[color:var(--ink-muted)]">Estos horarios se usarán como base inicial de tu agenda.</p>
+      </div>
+      <div className="flex flex-wrap justify-center gap-3">
+        <Button type="button" variant="secondary" onClick={applyWeekSchedule}>Aplicar horario a todos</Button>
+        <Button type="button" variant="secondary">Agregar descanso</Button>
+      </div>
+      <div className="overflow-hidden rounded-[24px] border border-[color:var(--border-soft)] bg-[color:var(--surface-strong)] text-left shadow-[var(--shadow-card)]">
+        <div className="grid grid-cols-[1.3fr_0.8fr_1fr_1fr] gap-4 border-b border-[color:var(--border-soft)] px-6 py-4 text-sm font-semibold text-[color:var(--ink-muted)]">
+          <span>Día</span>
+          <span>Activo</span>
+          <span>Apertura</span>
+          <span>Cierre</span>
+        </div>
+        {schedule.map((day) => (
+          <div key={day.id} className="grid grid-cols-[1.3fr_0.8fr_1fr_1fr] items-center gap-4 border-b border-[color:var(--border-soft)] px-6 py-3 last:border-b-0">
+            <span className="font-semibold text-[color:var(--ink)]">{day.label}</span>
+            <button
+              type="button"
+              onClick={() => updateScheduleDay(day.id, { active: !day.active })}
+              className={`h-7 w-12 rounded-full p-1 transition ${day.active ? 'bg-[color:var(--primary)]' : 'bg-[color:var(--border-strong)]'}`}
+              aria-label={`Activar ${day.label}`}
+            >
+              <span className={`block h-5 w-5 rounded-full bg-white transition ${day.active ? 'translate-x-5' : ''}`} />
+            </button>
+            {day.active ? (
+              <input
+                type="time"
+                className="h-10 rounded-[14px] border border-[color:var(--border-soft)] bg-[color:var(--surface-muted)] px-3 text-sm text-[color:var(--ink)]"
+                value={day.open}
+                onChange={(event) => updateScheduleDay(day.id, { open: event.target.value })}
+              />
+            ) : <span className="text-sm text-[color:var(--ink-faint)]">—</span>}
+            {day.active ? (
+              <input
+                type="time"
+                className="h-10 rounded-[14px] border border-[color:var(--border-soft)] bg-[color:var(--surface-muted)] px-3 text-sm text-[color:var(--ink)]"
+                value={day.close}
+                onChange={(event) => updateScheduleDay(day.id, { close: event.target.value })}
+              />
+            ) : <span className="text-sm text-[color:var(--ink-faint)]">Cerrado</span>}
+          </div>
+        ))}
+      </div>
+      <p className="text-left text-sm text-[color:var(--ink-muted)]">Sin horarios, los clientes no podrán reservar automáticamente.</p>
+    </div>
+  );
+
+  const renderServiceStep = () => (
+    <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(360px,430px)] lg:items-start">
+      <div className="space-y-6">
+        <div className="space-y-3">
+          <Badge variant="success">Registro</Badge>
+          <h1 className="text-4xl font-semibold tracking-[-0.04em] text-[color:var(--ink)]">Agregá tu primer servicio</h1>
+          <p className="text-base text-[color:var(--ink-muted)]">Los clientes van a reservar a partir de tus servicios publicados.</p>
+        </div>
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <label className="text-sm font-semibold text-[color:var(--ink)]">Nombre del servicio</label>
+            <input className={inputClass('serviceName')} name="serviceName" value={form.serviceName} onChange={handleChange} onBlur={handleBlur} placeholder="Limpieza facial profunda" />
+            {renderError('serviceName')}
+          </div>
+          <div className="grid gap-4 sm:grid-cols-3">
+            <div className="space-y-2">
+              <label className="text-sm font-semibold text-[color:var(--ink)]">Rubro</label>
+              <select className={inputClass('serviceCategorySlug')} name="serviceCategorySlug" value={form.serviceCategorySlug || form.categorySlugs[0] || ''} onChange={handleChange} onBlur={handleBlur}>
+                <option value="">Elegir</option>
+                {form.categorySlugs.map((slug) => (
+                  <option key={slug} value={slug}>{categoryNameBySlug.get(slug) || slug}</option>
+                ))}
+              </select>
+              {renderError('serviceCategorySlug')}
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-semibold text-[color:var(--ink)]">Duración</label>
+              <select className={inputClass('serviceDuration')} name="serviceDuration" value={form.serviceDuration} onChange={handleChange} onBlur={handleBlur}>
+                <option value="30">30 minutos</option>
+                <option value="45">45 minutos</option>
+                <option value="60">60 minutos</option>
+                <option value="90">90 minutos</option>
+                <option value="120">120 minutos</option>
+              </select>
+              {renderError('serviceDuration')}
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-semibold text-[color:var(--ink)]">Precio</label>
+              <input className={inputClass('servicePrice')} name="servicePrice" value={form.servicePrice} onChange={handleChange} onBlur={handleBlur} placeholder="$1.200" />
+              {renderError('servicePrice')}
+            </div>
+          </div>
+          <div className="space-y-2">
+            <label className="text-sm font-semibold text-[color:var(--ink)]">Descripción opcional</label>
+            <textarea className={textAreaClass('serviceDescription')} name="serviceDescription" value={form.serviceDescription} onChange={handleChange} onBlur={handleBlur} placeholder="Tratamiento facial para limpiar, hidratar y revitalizar la piel." />
+            {renderError('serviceDescription')}
+          </div>
+          <button type="button" className="w-full rounded-[18px] border border-dashed border-[color:var(--border-strong)] px-4 py-3 text-sm font-semibold text-[color:var(--ink-muted)]">
+            + Agregar otro servicio
+          </button>
+        </div>
+      </div>
+      <div className="space-y-4">
+        <h2 className="text-center text-xl font-semibold text-[color:var(--ink)]">Vista previa del servicio</h2>
+        <div className="overflow-hidden rounded-[28px] border border-[color:var(--border-soft)] bg-[color:var(--surface-strong)] shadow-[var(--shadow-lift)]">
+          <div className="h-56 bg-[linear-gradient(135deg,rgba(223,196,161,0.72),rgba(255,250,244,0.9)),radial-gradient(circle_at_25%_25%,rgba(10,122,67,0.16),transparent_30%)]" />
+          <div className="space-y-4 p-6">
+            <span className="inline-flex rounded-full bg-[color:var(--primary-soft)] px-3 py-1 text-xs font-semibold text-[color:var(--primary)]">Destacado</span>
+            <h3 className="text-2xl font-semibold text-[color:var(--ink)]">{form.serviceName || 'Limpieza facial profunda'}</h3>
+            <p className="text-sm text-[color:var(--ink-muted)]">{form.serviceDuration || 60} minutos · {serviceCategoryName}</p>
+            <p className="text-2xl font-semibold text-[color:var(--ink)]">{form.servicePrice || '$1.200'}</p>
+            <p className="border-t border-[color:var(--border-soft)] pt-4 text-sm leading-6 text-[color:var(--ink-muted)]">
+              {form.serviceDescription || 'Tratamiento facial para limpiar, hidratar y revitalizar la piel.'}
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderPreviewStep = () => (
+    <div className="mx-auto max-w-5xl space-y-8 text-center">
+      <div className="space-y-3">
+        <Badge variant="success">Listo para publicar</Badge>
+        <h1 className="text-4xl font-semibold tracking-[-0.04em] text-[color:var(--ink)]">Revisá tu perfil antes de publicarlo</h1>
+        <p className="text-base text-[color:var(--ink-muted)]">Así se va a ver tu perfil público en Plura.</p>
+      </div>
+      <div className="mx-auto max-w-3xl">
+        <ProfilePreviewCard />
+      </div>
+      <div className="mx-auto grid max-w-3xl gap-4 md:grid-cols-2">
+        <div className="rounded-[24px] border border-[color:var(--border-soft)] bg-[color:var(--surface-soft)] p-5 text-left">
+          <p className="text-sm font-semibold text-[color:var(--ink)]">Primer servicio</p>
+          <p className="mt-2 text-lg font-semibold text-[color:var(--ink)]">{form.serviceName}</p>
+          <p className="text-sm text-[color:var(--ink-muted)]">{form.serviceDuration} min · {form.servicePrice}</p>
+        </div>
+        <div className="rounded-[24px] border border-[color:var(--border-soft)] bg-[color:var(--surface-soft)] p-5 text-left">
+          <p className="text-sm font-semibold text-[color:var(--ink)]">Agenda inicial</p>
+          <p className="mt-2 text-lg font-semibold text-[color:var(--ink)]">{schedule.filter((day) => day.active).length} días activos</p>
+          <p className="text-sm text-[color:var(--ink-muted)]">Editable luego desde el dashboard.</p>
+        </div>
+      </div>
+      <p className="text-sm text-[color:var(--ink-faint)]">Tu perfil no será visible hasta que completes el alta.</p>
+    </div>
+  );
+
+  const renderCurrentStep = () => {
+    switch (step) {
+      case 0:
+        return renderAccountStep();
+      case 1:
+        return renderTypeStep();
+      case 2:
+        return renderProfileStep();
+      case 3:
+        return renderCategoriesStep();
+      case 4:
+        return renderModalityStep();
+      case 5:
+        return renderLocationStep();
+      case 6:
+        return renderScheduleStep();
+      case 7:
+        return renderServiceStep();
+      default:
+        return renderPreviewStep();
+    }
+  };
+
+  return (
+    <div className="app-shell min-h-screen bg-[color:var(--background)] text-[color:var(--ink)]">
+      <AuthTopBar tone="professional" />
+      <main className="mx-auto flex w-full max-w-7xl flex-1 items-center justify-center px-4 py-10 sm:px-6 lg:py-12">
+        <form className="w-full" onSubmit={(event) => void handleSubmit(event)}>
+          <Card tone="default" padding="lg" className="mx-auto w-full max-w-6xl space-y-10 rounded-[36px] border-[color:var(--border-soft)] bg-[color:var(--surface)] p-6 shadow-[var(--shadow-glass)] sm:p-10 lg:p-14">
+            {stepHeader}
+            {renderCurrentStep()}
 
             {errorMessage ? (
-              <p className="rounded-[12px] border border-[color:var(--error-soft)] bg-[color:var(--error-soft)] px-3 py-2 text-xs text-[color:var(--error)]">
+              <p className="mx-auto max-w-3xl rounded-[16px] border border-[color:var(--error-soft)] bg-[color:var(--error-soft)] px-4 py-3 text-sm text-[color:var(--error)]">
                 {errorMessage}
               </p>
             ) : null}
-            {successMessage ? (
-              <p className="rounded-[12px] border border-[color:var(--success-soft)] bg-[color:var(--success-soft)] px-3 py-2 text-xs text-[color:var(--primary)]">
-                {successMessage}
-              </p>
-            ) : null}
 
-            <Button
-              type="submit"
-              variant="brand"
-              size="lg"
-              className="w-full"
-              disabled={isSubmitting || !isFormValid}
-            >
-              {isSubmitting ? 'Creando cuenta...' : 'Crear cuenta'}
-            </Button>
-          </form>
-
-          <p className="text-center text-xs text-[color:var(--ink-muted)]">
-            ¿Ya tenés cuenta?{' '}
-            <Link
-              href="/profesional/auth/login"
-              className="font-semibold text-[color:var(--primary)]"
-            >
-              Iniciar sesión profesional
-            </Link>
-          </p>
-        </Card>
+            <div className="flex flex-col gap-3 border-t border-[color:var(--border-soft)] pt-6 sm:flex-row sm:items-center sm:justify-center">
+              {step > 0 ? (
+                <Button type="button" variant="secondary" size="lg" className="min-w-56" onClick={goBack}>
+                  Volver
+                </Button>
+              ) : null}
+              {step < wizardSteps.length - 1 ? (
+                <Button type="button" variant={step === 0 ? 'brand' : 'primary'} size="lg" className="min-w-72" onClick={goNext}>
+                  Continuar
+                </Button>
+              ) : (
+                <Button type="submit" variant="primary" size="lg" className="min-w-72" disabled={isSubmitting}>
+                  {isSubmitting ? 'Creando perfil...' : 'Publicar perfil'}
+                </Button>
+              )}
+            </div>
+          </Card>
+        </form>
       </main>
       <AuthLoadingOverlay
         visible={isBusy}
@@ -701,7 +1133,6 @@ export default function ProfesionalRegisterPage() {
             : 'Guardando tus datos y preparando tu perfil profesional.'
         }
       />
-      <Footer />
     </div>
   );
 }

@@ -351,6 +351,7 @@ Variables criticas sin las que el backend puede fallar o degradarse:
 
 Notas operativas de performance hoy:
 
+- web monta `@vercel/speed-insights` desde `apps/web/src/pages/_app.tsx` para recolectar Speed Insights en despliegues Vercel
 - `GET /cliente/reservas/me` queda mejor cubierto con el indice Flyway `idx_booking_user_start` sobre `booking(user_id, start_date_time)`
 - search, perfil publico, slots, inbox y unread ya tienen timings tecnicos listos para enganchar a dashboards
 - `V65__internal_ops_business_analytics.sql` y `V66__app_product_event_funnel_fields.sql` quedan como historial Flyway aplicado; `V79__remove_internal_product_analytics.sql` remueve la tabla `app_product_event`.

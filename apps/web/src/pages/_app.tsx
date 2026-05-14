@@ -1,5 +1,6 @@
 import type { AppProps } from 'next/app';
 import Head from 'next/head';
+import { SpeedInsights } from '@vercel/speed-insights/next';
 import { useMemo } from 'react';
 import { Instrument_Sans } from 'next/font/google';
 import { useRouter } from 'next/router';
@@ -195,6 +196,7 @@ export default function App({ Component, pageProps }: AppProps) {
       <LogoutTransitionProvider>
         {content}
         <LogoutLoadingOverlay />
+        <SpeedInsights />
       </LogoutTransitionProvider>
     </ThemeProvider>
   );

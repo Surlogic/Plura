@@ -35,8 +35,8 @@ export default function ProfessionalDashboardShell({
       )}
     >
       <div className={cn('flex min-h-screen', containedViewport && 'lg:h-screen lg:min-h-0')}>
-        <aside className="hidden w-[244px] shrink-0 bg-white lg:block">
-          <div className="h-screen overflow-y-auto overscroll-contain">
+        <aside className="hidden w-[244px] shrink-0 bg-white lg:sticky lg:top-0 lg:block lg:h-screen">
+          <div className="h-full overflow-y-auto overscroll-contain">
             <ProfesionalSidebar profile={profile} active={active} />
           </div>
         </aside>

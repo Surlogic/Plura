@@ -123,11 +123,16 @@ export default function GoogleLoginButton({
     }
   }, []);
 
+  const finishLoading = useCallback(() => {
+    onLoadingChange?.(false);
+    setIsLoading(false);
+  }, [onLoadingChange]);
+
   const resetPendingFlow = useCallback(() => {
     clearResultTimeout();
     popupRef.current = null;
-    setIsLoading(false);
-  }, [clearResultTimeout]);
+    finishLoading();
+  }, [clearResultTimeout, finishLoading]);
 
   useEffect(() => {
     onLoadingChange?.(isLoading);
@@ -147,7 +152,7 @@ export default function GoogleLoginButton({
 
     if (!pendingRequest) {
       onError('La sesión OAuth expiró o no es válida. Intentá nuevamente.');
-      setIsLoading(false);
+      finishLoading();
       return;
     }
 
@@ -157,13 +162,13 @@ export default function GoogleLoginButton({
           ? 'Acceso denegado por el usuario.'
           : 'No se recibió autorización de Google.',
       );
-      setIsLoading(false);
+      finishLoading();
       return;
     }
 
     if (!payload.state || payload.state !== pendingRequest.state) {
       onError('No se pudo validar el estado de seguridad OAuth.');
-      setIsLoading(false);
+      finishLoading();
       return;
     }
 
@@ -190,9 +195,9 @@ export default function GoogleLoginButton({
     } catch (error) {
       onError(resolveApiErrorMessage(error, authAction === 'REGISTER' ? 'No se pudo completar el registro con Google.' : 'No se pudo iniciar sesión con Google.'));
     } finally {
-      setIsLoading(false);
+      finishLoading();
     }
-  }, [authAction, intendedRole, onAuthenticated, onError, clearResultTimeout]);
+  }, [authAction, intendedRole, onAuthenticated, onError, clearResultTimeout, finishLoading]);
 
   useEffect(() => {
     if (mode !== 'redirect') return;

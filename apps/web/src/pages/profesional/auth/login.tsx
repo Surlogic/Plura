@@ -109,10 +109,12 @@ export default function ProfesionalLoginPage() {
     setErrorMessage(null);
 
     if (result.role !== 'PROFESSIONAL') {
+      setIsGoogleLoading(false);
       setErrorMessage('Esta cuenta no quedó asociada como profesional. Usá acceso cliente o volvé a registrarte como profesional.');
       return;
     }
 
+    setIsGoogleLoading(false);
     await completeProfessionalLoginFlow();
   };
 
@@ -271,7 +273,10 @@ export default function ProfesionalLoginPage() {
                   <GoogleLoginButton
                     intendedRole="PROFESSIONAL"
                     onAuthenticated={handleOAuthAuthenticated}
-                    onError={setErrorMessage}
+                    onError={(message) => {
+                      setIsGoogleLoading(false);
+                      setErrorMessage(message);
+                    }}
                     buttonLabel="Continuar con Google"
                     loadingLabel="Iniciando..."
                     onLoadingChange={setIsGoogleLoading}

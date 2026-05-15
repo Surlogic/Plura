@@ -300,6 +300,7 @@ export default function ProfesionalRegisterPage() {
     setSuccessMessage(null);
 
     if (result.role !== 'PROFESSIONAL') {
+      setIsGoogleLoading(false);
       setErrorMessage('No pudimos completar el alta profesional con esa cuenta. Intentá nuevamente desde este flujo.');
       return;
     }
@@ -325,6 +326,7 @@ export default function ProfesionalRegisterPage() {
       password: true,
       confirmPassword: true,
     }));
+    setIsGoogleLoading(false);
     setStep(1);
     setSuccessMessage(
       oauthPhoneNumber
@@ -647,7 +649,10 @@ export default function ProfesionalRegisterPage() {
           intendedRole="PROFESSIONAL"
           mode="redirect"
           onAuthenticated={handleOAuthAuthenticated}
-          onError={setErrorMessage}
+          onError={(message) => {
+            setIsGoogleLoading(false);
+            setErrorMessage(message);
+          }}
           buttonLabel="Continuar con Google"
           loadingLabel="Registrando..."
           onLoadingChange={setIsGoogleLoading}

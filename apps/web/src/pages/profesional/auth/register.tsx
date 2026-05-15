@@ -19,6 +19,7 @@ import { getGeoLocationSuggestions, type GeoLocationSuggestion } from '@/service
 import { useProfessionalProfileContext } from '@/context/ProfessionalProfileContext';
 import type { OAuthLoginResult } from '@/lib/auth/oauthLogin';
 import { setAuthAccessToken } from '@/services/session';
+import { getGoogleOAuthAppOrigin } from '@/lib/auth/googleOAuth';
 
 const extractApiMessage = (error: unknown, fallback: string) => {
   if (axios.isAxiosError(error)) {
@@ -175,6 +176,16 @@ export default function ProfesionalRegisterPage() {
   const confirmEmailValue = form.confirmEmail.trim().toLowerCase();
   const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   const requiresLocation = form.tipoCliente === 'LOCAL';
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const appOrigin = getGoogleOAuthAppOrigin();
+    if (!appOrigin) return;
+    const normalizedCurrentOrigin = window.location.origin.replace(/\/+$/, '');
+    const normalizedAppOrigin = appOrigin.replace(/\/+$/, '');
+    if (normalizedCurrentOrigin === normalizedAppOrigin) return;
+    window.location.replace(`${normalizedAppOrigin}${window.location.pathname}${window.location.search}${window.location.hash}`);
+  }, []);
 
   const categoryNameBySlug = useMemo(
     () => new Map(categories.map((category) => [category.slug, category.name])),

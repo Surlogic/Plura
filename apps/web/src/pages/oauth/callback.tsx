@@ -56,8 +56,8 @@ export default function OAuthCallbackPage() {
   }, []);
 
   return (
-    <div className="flex min-h-screen items-center justify-center">
-      <p className="text-sm text-[#64748B]">Completando autenticacion...</p>
+    <div className="flex min-h-screen items-center justify-center bg-[color:var(--background)]">
+      <p className="text-sm text-[color:var(--ink-muted)]">Completando autenticacion...</p>
     </div>
   );
 }

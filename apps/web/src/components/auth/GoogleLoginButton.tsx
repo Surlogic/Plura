@@ -11,11 +11,14 @@ import { oauthLogin } from '@/lib/auth/oauthLogin';
 import {
   GOOGLE_AUTH_URL,
   GOOGLE_OAUTH_CHANNEL,
+  buildGoogleOAuthReturnTo,
   clearGoogleOAuthRedirectResult,
   clearGoogleOAuthRequest,
   createCodeChallenge,
   createGoogleOAuthRequest,
+  getGoogleOAuthAppOrigin,
   getGoogleOAuthRedirectResult,
+  getGoogleOAuthRedirectUri,
   getGoogleOAuthRequest,
   saveGoogleOAuthRequest,
   type GoogleOAuthMode,
@@ -37,6 +40,8 @@ const GOOGLE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || '';
 const OAUTH_RESULT_TIMEOUT_MS = 2 * 60 * 1000; // 2 minutos
 const OAUTH_EXCHANGE_TIMEOUT_MS = 35 * 1000;
 const OAUTH_AUTHENTICATED_CALLBACK_TIMEOUT_MS = 20 * 1000;
+
+const normalizeOrigin = (value: string) => value.trim().replace(/\/+$/, '');
 
 const resolveApiErrorMessage = (error: unknown, fallback: string) => {
   if (error instanceof Error && error.message.trim()) {
@@ -163,7 +168,7 @@ export default function GoogleLoginButton({
     }
 
     try {
-      const redirectUri = `${window.location.origin}/oauth/callback`;
+      const redirectUri = pendingRequest.redirectUri || getGoogleOAuthRedirectUri();
 
       const result = await withTimeout(
         oauthLogin('google', payload.code, {
@@ -251,12 +256,21 @@ export default function GoogleLoginButton({
   const handleClick = async () => {
     if (isLoading) return;
 
+    const appOrigin = getGoogleOAuthAppOrigin();
+    if (mode === 'redirect' && appOrigin && normalizeOrigin(window.location.origin) !== normalizeOrigin(appOrigin)) {
+      const returnPath = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+      window.location.assign(buildGoogleOAuthReturnTo(returnPath));
+      return;
+    }
+
     setIsLoading(true);
     handledResultRef.current = false;
     clearResultTimeout();
 
-    const returnTo = `${window.location.pathname}${window.location.search}${window.location.hash}`;
-    const oauthRequest = createGoogleOAuthRequest({ mode, returnTo });
+    const returnPath = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+    const returnTo = buildGoogleOAuthReturnTo(returnPath);
+    const redirectUri = getGoogleOAuthRedirectUri();
+    const oauthRequest = createGoogleOAuthRequest({ mode, returnTo, redirectUri });
     saveGoogleOAuthRequest(oauthRequest);
 
     let codeChallenge = '';
@@ -268,8 +282,6 @@ export default function GoogleLoginButton({
       onError('No se pudo preparar OAuth seguro (PKCE).');
       return;
     }
-
-    const redirectUri = `${window.location.origin}/oauth/callback`;
 
     const params = new URLSearchParams({
       client_id: GOOGLE_CLIENT_ID,

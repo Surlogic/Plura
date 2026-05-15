@@ -14,6 +14,7 @@ export type GoogleOAuthRequest = {
   createdAt: number;
   mode?: GoogleOAuthMode;
   returnTo?: string;
+  redirectUri?: string;
 };
 
 export type GoogleOAuthResultPayload = {
@@ -22,6 +23,37 @@ export type GoogleOAuthResultPayload = {
   state: string | null;
   error: string | null;
   ts: number;
+};
+
+const normalizeOrigin = (value: string) => value.trim().replace(/\/+$/, '');
+
+export const getGoogleOAuthAppOrigin = () => {
+  const configuredOrigin = process.env.NEXT_PUBLIC_APP_URL?.trim();
+  if (configuredOrigin) {
+    try {
+      return normalizeOrigin(new URL(configuredOrigin).origin);
+    } catch {
+      return normalizeOrigin(configuredOrigin);
+    }
+  }
+
+  if (typeof window !== 'undefined') {
+    return normalizeOrigin(window.location.origin);
+  }
+
+  return '';
+};
+
+export const getGoogleOAuthRedirectUri = () => {
+  const origin = getGoogleOAuthAppOrigin();
+  return `${origin}/oauth/callback`;
+};
+
+export const buildGoogleOAuthReturnTo = (pathWithQueryAndHash: string) => {
+  const origin = getGoogleOAuthAppOrigin();
+  if (!origin) return pathWithQueryAndHash || '/';
+  if (!pathWithQueryAndHash || pathWithQueryAndHash === '/') return `${origin}/`;
+  return `${origin}${pathWithQueryAndHash.startsWith('/') ? '' : '/'}${pathWithQueryAndHash}`;
 };
 
 const createRandomString = (size = 32) => {
@@ -33,13 +65,14 @@ const createRandomString = (size = 32) => {
 };
 
 export const createGoogleOAuthRequest = (
-  options: { mode?: GoogleOAuthMode; returnTo?: string } = {},
+  options: { mode?: GoogleOAuthMode; returnTo?: string; redirectUri?: string } = {},
 ): GoogleOAuthRequest => ({
   state: createRandomString(16),
   codeVerifier: createRandomString(64),
   createdAt: Date.now(),
   mode: options.mode || 'popup',
   returnTo: options.returnTo,
+  redirectUri: options.redirectUri,
 });
 
 export const saveGoogleOAuthRequest = (payload: GoogleOAuthRequest) => {
@@ -67,6 +100,7 @@ export const getGoogleOAuthRequest = (): GoogleOAuthRequest | null => {
       createdAt: parsed.createdAt,
       mode: parsed.mode === 'redirect' ? 'redirect' : 'popup',
       returnTo: typeof parsed.returnTo === 'string' ? parsed.returnTo : undefined,
+      redirectUri: typeof parsed.redirectUri === 'string' ? parsed.redirectUri : undefined,
     };
   } catch {
     return null;

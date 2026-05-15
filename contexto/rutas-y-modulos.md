@@ -514,4 +514,5 @@ Lectura de producto:
 
 - `/profesional/auth/register`: el registro profesional usa wizard único para email y Google; el teléfono es obligatorio dentro del paso de datos básicos. Google continúa el mismo wizard desde tipo de perfil y el frontend corta el loading OAuth si `/auth/oauth` o el cierre del callback queda pendiente, evitando que el registro quede cargando indefinidamente.
 - `/profesional/auth/register`: el botón de Google del wizard profesional usa OAuth en la misma pestaña (`mode="redirect"`), vuelve por `/oauth/callback` y continúa el mismo wizard sin popup. El teléfono sigue siendo obligatorio dentro del paso de datos básicos.
+- `/profesional/auth/register`: Google usa OAuth en la misma pestaña (`mode="redirect"`) con `NEXT_PUBLIC_APP_URL` como origen canónico HTTPS para `redirect_uri`; el callback vuelve inmediatamente al wizard sin dejar visible `code` en la URL. Configurar Google Cloud con el mismo `/oauth/callback` canónico.
 

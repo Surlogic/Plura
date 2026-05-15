@@ -104,6 +104,7 @@ Prefijo: `/auth`
 
 - `POST /auth/register/cliente`
 - `POST /auth/register/profesional`
+- los registros siguen permitiendo un solo usuario activo por email; desde `V81`, un usuario con `deleted_at` ya no bloquea volver a registrar el mismo email ni el mismo `provider/provider_id`
 - `POST /auth/login/cliente`
 - `POST /auth/login/profesional`
 - `POST /auth/login` — login unificado: autentica con email/password y resuelve los contextos disponibles del usuario (`CLIENT`, `PROFESSIONAL`, `WORKER`). Devuelve `accessToken` + `activeContext` + `contexts` + `contextSelectionRequired`. Si solo hay un contexto se elige por defecto; si hay varios, frontend muestra selector. Acepta `desiredContext`/`desiredWorkerId`/`desiredProfessionalId` opcionales.

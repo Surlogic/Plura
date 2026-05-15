@@ -66,6 +66,7 @@ export default function ReservationAuthOverlay({
   const [loginForm, setLoginForm] = useState(loginFormInitial);
   const [registerForm, setRegisterForm] = useState(registerFormInitial);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -176,6 +177,7 @@ export default function ReservationAuthOverlay({
   const handleLoginSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setErrorMessage(null);
+    setSuccessMessage(null);
 
     try {
       setIsSubmitting(true);
@@ -197,6 +199,7 @@ export default function ReservationAuthOverlay({
   const handleRegisterSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setErrorMessage(null);
+    setSuccessMessage(null);
 
     const validationErrors = Object.values(registerValidation).filter(Boolean);
     if (validationErrors.length > 0) {
@@ -216,12 +219,14 @@ export default function ReservationAuthOverlay({
         phoneNumber: registerForm.phoneNumber.trim(),
       });
 
-      const loginResponse = await api.post<{ accessToken?: string | null }>('/auth/login/cliente', {
+      setLoginForm((current) => ({
+        ...current,
         email,
-        password,
-      });
-      setAuthAccessToken(loginResponse.data?.accessToken ?? null, 'CLIENT');
-      await continueAuthenticatedFlow();
+        password: '',
+      }));
+      setRegisterForm(registerFormInitial);
+      setMode('login');
+      setSuccessMessage('Si el email no estaba registrado, la cuenta fue creada. Iniciá sesión para confirmar la reserva.');
     } catch (error) {
       setErrorMessage(
         resolveApiMessage(error, 'No pudimos crear tu cuenta. Revisá los datos e intentá otra vez.'),
@@ -287,6 +292,7 @@ export default function ReservationAuthOverlay({
                 onClick={() => {
                   setMode('register');
                   setErrorMessage(null);
+                  setSuccessMessage(null);
                 }}
                 disabled={isBusy}
               >
@@ -302,6 +308,7 @@ export default function ReservationAuthOverlay({
                 onClick={() => {
                   setMode('login');
                   setErrorMessage(null);
+                  setSuccessMessage(null);
                 }}
                 disabled={isBusy}
               >
@@ -474,6 +481,12 @@ export default function ReservationAuthOverlay({
                 </Button>
               </form>
             )}
+
+            {successMessage ? (
+              <p className="mt-4 rounded-[18px] border border-[#cdeee9] bg-[#f0fffc] px-4 py-3 text-sm font-medium text-[#1FB6A6]">
+                {successMessage}
+              </p>
+            ) : null}
 
             {errorMessage ? (
               <p className="mt-4 rounded-[18px] border border-[#FECACA] bg-[#FEF2F2] px-4 py-3 text-sm font-medium text-[#DC2626]">

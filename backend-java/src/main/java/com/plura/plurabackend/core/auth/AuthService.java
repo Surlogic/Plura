@@ -221,12 +221,6 @@ public class AuthService {
     @Transactional
     public void registerProfesional(RegisterProfesionalRequest request) {
         String normalizedEmail = request.getEmail().trim().toLowerCase(Locale.ROOT);
-        User existingUser = userRepository.findByEmailAndDeletedAtIsNull(normalizedEmail).orElse(null);
-        if (existingUser != null) {
-            burnPasswordWorkFactor(request.getPassword());
-            return;
-        }
-
         String tipoCliente = normalizeTipoCliente(request.getTipoCliente());
         boolean requiresLocation = requiresProfessionalLocation(tipoCliente);
         String country = normalizeLocationPart(request.getCountry(), requiresLocation, "country");
@@ -236,6 +230,13 @@ public class AuthService {
         Double latitude = requiresLocation ? normalizeLatitude(request.getLatitude()) : null;
         Double longitude = requiresLocation ? normalizeLongitude(request.getLongitude()) : null;
         validateCoordinatesPair(latitude, longitude);
+        Set<Category> categories = resolveCategoriesForRegistration(request);
+
+        User existingUser = userRepository.findByEmailAndDeletedAtIsNull(normalizedEmail).orElse(null);
+        if (existingUser != null) {
+            burnPasswordWorkFactor(request.getPassword());
+            return;
+        }
 
         User user = new User();
         user.setFullName(request.getFullName().trim());
@@ -249,13 +250,12 @@ public class AuthService {
         } catch (DataIntegrityViolationException exception) {
             burnPasswordWorkFactor(request.getPassword());
             User duplicatedUser = userRepository.findByEmailAndDeletedAtIsNull(normalizedEmail).orElse(null);
-            if (duplicatedUser != null && isProfessionalUser(duplicatedUser)) {
-                throw new ResponseStatusException(HttpStatus.CONFLICT, PROFESSIONAL_ACCOUNT_EXISTS_MESSAGE);
+            if (duplicatedUser != null) {
+                return;
             }
-            throw new ResponseStatusException(HttpStatus.CONFLICT, CLIENT_ACCOUNT_EXISTS_FOR_PROFESSIONAL_MESSAGE);
+            throw exception;
         }
 
-        Set<Category> categories = resolveCategoriesForRegistration(request);
         professionalAccountProfileGateway.createRegisteredProfile(
             savedUser,
             new ProfessionalProfileRegistrationCommand(

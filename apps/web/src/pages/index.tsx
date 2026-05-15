@@ -8,8 +8,10 @@ import TopBusinesses from '@/components/home/TopBusinesses';
 import HowItWorksSection from '@/components/home/HowItWorksSection';
 import ReviewsSection from '@/components/home/ReviewsSection';
 import FinalCtaSection from '@/components/home/FinalCtaSection';
+import SeoHead from '@/components/seo/SeoHead';
 import type { HomeResponse } from '@/types/home';
 import type { Category } from '@/types/category';
+import { buildAbsoluteUrl } from '@/lib/seo';
 
 type HomePageProps = {
   homeData: HomeResponse | null;
@@ -113,9 +115,53 @@ export default function HomePage({
   const categories: Category[] = resolvedHomeData?.categories ?? [];
   const topProfessionals = resolvedHomeData?.topProfessionals ?? [];
   const isInitialHomeLoading = isLoadingHomeData && !hasRenderableHomeData(resolvedHomeData);
+  const categoryNames = categories.map((category) => category.name).filter(Boolean).slice(0, 8);
+  const homeDescription = categoryNames.length > 0
+    ? `Reservá turnos online en salones, profesionales y locales de ${categoryNames.join(', ')}. Encontrá servicios cerca tuyo en Plura.`
+    : 'Reservá turnos online en salones de belleza, profesionales, locales y servicios cerca tuyo. Encontrá disponibilidad en Plura.';
+  const homeStructuredData = [
+    {
+      '@context': 'https://schema.org',
+      '@type': 'Organization',
+      name: 'Plura',
+      url: buildAbsoluteUrl('/'),
+      logo: buildAbsoluteUrl('/logo.png'),
+    },
+    {
+      '@context': 'https://schema.org',
+      '@type': 'WebSite',
+      name: 'Plura',
+      url: buildAbsoluteUrl('/'),
+      potentialAction: {
+        '@type': 'SearchAction',
+        target: `${buildAbsoluteUrl('/explorar')}?query={search_term_string}`,
+        'query-input': 'required name=search_term_string',
+      },
+    },
+    categories.length > 0
+      ? {
+          '@context': 'https://schema.org',
+          '@type': 'ItemList',
+          name: 'Rubros disponibles en Plura',
+          itemListElement: categories.slice(0, 12).map((category, index) => ({
+            '@type': 'ListItem',
+            position: index + 1,
+            name: category.name,
+            url: buildAbsoluteUrl(`/explorar/${encodeURIComponent(category.slug)}`),
+          })),
+        }
+      : null,
+  ].filter(Boolean);
 
   return (
     <div className="relative min-h-screen bg-[color:var(--background)] text-[color:var(--ink)]">
+      <SeoHead
+        title="Plura | Reservas online para belleza, bienestar y servicios"
+        description={homeDescription}
+        canonicalPath="/"
+        imageUrl="/logo.png"
+        structuredData={homeStructuredData}
+      />
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(54,200,244,0.1),transparent_58%)]" />
       <div className="pointer-events-none absolute inset-x-0 top-0 h-[520px] bg-[linear-gradient(180deg,rgba(15,23,42,0.03),transparent)]" />
       <div className="relative z-10">

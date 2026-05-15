@@ -2,6 +2,7 @@ import type { AppProps } from 'next/app';
 import { SpeedInsights } from '@vercel/speed-insights/next';
 import { useMemo } from 'react';
 import { Instrument_Sans } from 'next/font/google';
+import Head from 'next/head';
 import { useRouter } from 'next/router';
 import '@/pages/globals.css';
 import LogoutLoadingOverlay from '@/components/auth/LogoutLoadingOverlay';
@@ -179,6 +180,11 @@ export default function App({ Component, pageProps }: AppProps) {
 
   return (
     <ThemeProvider>
+      <Head>
+        <link rel="icon" href="/favicon.ico" sizes="any" />
+        <link rel="icon" href="/logo-symbol.png" type="image/png" />
+        <link rel="apple-touch-icon" href="/logo-symbol.png" />
+      </Head>
       <LogoutTransitionProvider>
         {content}
         <LogoutLoadingOverlay />

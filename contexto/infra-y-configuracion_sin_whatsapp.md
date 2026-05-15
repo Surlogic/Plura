@@ -269,11 +269,13 @@ Variables detectadas en uso:
 - `NEXT_IMAGE_REMOTE_HOSTS`
 - `NEXT_BUILD_DIR`
 - `NEXT_PUBLIC_IMAGE_CDN_BASE_URL` — dominio CDN para imágenes R2 (default: `https://img.surlogicuy.com`)
+- `NEXT_PUBLIC_SITE_URL` — URL canonica publica para metadata SEO y sitemap (default: `https://pluraapp.com`)
 - `ANALYZE`
 
 Lectura de producto:
 
 - cubre API, mapa y login social en web
+- la metadata SEO publica usa `NEXT_PUBLIC_SITE_URL` si existe; si no, cae a `https://pluraapp.com`
 - el repo ya trae `pnpm -C apps/web analyze` para abrir el analisis de chunks sin agregar tooling nuevo
 - `.env.frontend` quedo alineado a despliegue `Vercel -> Fly` con `NEXT_PUBLIC_API_URL=https://plura.fly.dev`; para probar localmente OAuth profesional de Mercado Pago end-to-end hay que sobreescribir temporalmente esa variable a `http://localhost:3000`
 

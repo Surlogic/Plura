@@ -1,0 +1,9 @@
+User-agent: *
+Allow: /
+Disallow: /internal/
+Disallow: /cliente/
+Disallow: /profesional/dashboard/
+Disallow: /profesional/notificaciones/
+Disallow: /trabajador/
+
+Sitemap: https://pluraapp.com/sitemap.xml

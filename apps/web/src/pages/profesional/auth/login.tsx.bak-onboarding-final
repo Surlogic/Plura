@@ -45,6 +45,13 @@ const extractApiMessage = (error: unknown, fallback: string) => {
 export default function ProfesionalLoginPage() {
   const router = useRouter();
   const { refreshProfile } = useProfessionalProfileContext();
+  const shouldResumeOnboarding = (() => {
+    const rawValue = router.query.onboarding;
+    if (Array.isArray(rawValue)) {
+      return rawValue[0]?.trim() === '1';
+    }
+    return rawValue?.trim() === '1';
+  })();
 
   const passwordResetCompleted = (() => {
     const rawValue = router.query.passwordReset;
@@ -96,6 +103,10 @@ export default function ProfesionalLoginPage() {
   const completeProfessionalLoginFlow = async () => {
     await api.get('/auth/me/profesional');
     await refreshProfile();
+    if (shouldResumeOnboarding) {
+      router.push('/profesional/auth/register?resume=1');
+      return;
+    }
     router.push('/profesional/dashboard');
   };
 
@@ -108,8 +119,12 @@ export default function ProfesionalLoginPage() {
     }
 
     const requiresPhoneCompletion = !(result.user.phoneNumber ?? '').trim();
+    if (requiresPhoneCompletion && shouldResumeOnboarding) {
+      router.push('/profesional/auth/register?resume=1');
+      return;
+    }
     if (requiresPhoneCompletion) {
-      router.push('/profesional/auth/register&needsPhone=1');
+      router.push('/profesional/auth/register?resume=1&needsPhone=1');
       return;
     }
 
@@ -277,7 +292,7 @@ export default function ProfesionalLoginPage() {
               <p className="mt-6 text-center text-xs text-[color:var(--ink-muted)]">
                 ¿No tenés cuenta?{' '}
                 <Link
-                  href="/profesional/auth/register"
+                  href={shouldResumeOnboarding ? "/profesional/auth/register?resume=1" : "/profesional/auth/register"}
                   className="font-semibold text-[color:var(--primary)] underline decoration-[color:var(--primary-soft)] underline-offset-4"
                 >
                   Crear cuenta profesional

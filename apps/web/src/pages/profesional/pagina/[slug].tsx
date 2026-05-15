@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/router';
 import Navbar from '@/components/shared/Navbar';
 import Footer from '@/components/shared/Footer';
+import SeoHead from '@/components/seo/SeoHead';
 import BusinessGallery from '@/components/profesional/BusinessGallery';
 import ServiceDetailModal from '@/components/profesional/ServiceDetailModal';
 import PublicReviewsList from '@/components/profesional/PublicReviewsList';
@@ -28,6 +29,7 @@ import {
   resolveServiceCategoryLabel,
 } from '@/components/profesional/public-page/servicePresentation';
 import { resolveAssetUrl } from '@/utils/assetUrl';
+import { buildAbsoluteUrl } from '@/lib/seo';
 import type {
   ProfessionalMediaPresentation,
   ProfessionalSchedule,
@@ -612,7 +614,6 @@ export default function ProfesionalDetailPage({
     [facebookHref, instagramHref, tiktokHref, websiteHref],
   );
   const favoriteImage = galleryPhotos[0] || merged.logoUrl || undefined;
-
   const hasPublicContent = Boolean(
     merged.name ||
       merged.headline ||
@@ -626,6 +627,74 @@ export default function ProfesionalDetailPage({
       (Array.isArray(merged.photos) && merged.photos.some(Boolean)) ||
       displayServices.length > 0,
   );
+  const seoCategory = merged.category || 'servicios';
+  const seoLocation = cityLine || addressLine || '';
+  const seoTitle = merged.name
+    ? `${merged.name} | ${seoCategory}${seoLocation ? ` en ${seoLocation}` : ''} | Plura`
+    : 'Perfil profesional | Reservas online en Plura';
+  const seoDescription = merged.headline?.trim()
+    || aboutValue
+    || (merged.name
+      ? `Reservá online con ${merged.name}${seoCategory ? `, ${seoCategory}` : ''}${seoLocation ? ` en ${seoLocation}` : ''}. Conocé servicios, horarios, reseñas y disponibilidad en Plura.`
+      : 'Conocé servicios, horarios, reseñas y disponibilidad para reservar online en Plura.');
+  const seoImageUrl = merged.bannerUrl || galleryPhotos[0] || merged.logoUrl || '/logo.png';
+  const seoCanonicalPath = professionalSlug
+    ? `/profesional/pagina/${encodeURIComponent(professionalSlug)}`
+    : '/explorar';
+  const businessStructuredData = hasPublicContent
+    ? {
+        '@context': 'https://schema.org',
+        '@type': 'LocalBusiness',
+        name: merged.name || 'Profesional en Plura',
+        description: seoDescription,
+        url: buildAbsoluteUrl(seoCanonicalPath),
+        image: buildAbsoluteUrl(seoImageUrl),
+        logo: merged.logoUrl ? buildAbsoluteUrl(merged.logoUrl) : buildAbsoluteUrl('/logo-symbol.png'),
+        telephone: phoneValue || undefined,
+        address: addressValue || undefined,
+        priceRange: displayServices.some((service) => service.price)
+          ? displayServices
+              .map((service) => service.price)
+              .filter(Boolean)
+              .slice(0, 3)
+              .join(' · ')
+          : undefined,
+        aggregateRating:
+          typeof data?.rating === 'number' && typeof data?.reviewsCount === 'number' && data.reviewsCount > 0
+            ? {
+                '@type': 'AggregateRating',
+                ratingValue: data.rating,
+                reviewCount: data.reviewsCount,
+              }
+            : undefined,
+        geo:
+          typeof (data?.latitude ?? data?.lat) === 'number' && typeof (data?.longitude ?? data?.lng) === 'number'
+            ? {
+                '@type': 'GeoCoordinates',
+                latitude: data?.latitude ?? data?.lat,
+                longitude: data?.longitude ?? data?.lng,
+              }
+            : undefined,
+        hasOfferCatalog:
+          displayServices.length > 0
+            ? {
+                '@type': 'OfferCatalog',
+                name: `Servicios de ${merged.name || 'Plura'}`,
+                itemListElement: displayServices.slice(0, 20).map((service) => ({
+                  '@type': 'Offer',
+                  itemOffered: {
+                    '@type': 'Service',
+                    name: service.name,
+                    description: service.description || undefined,
+                    serviceType: service.categoryName || service.categorySlug || seoCategory,
+                  },
+                  price: service.price || undefined,
+                  priceCurrency: service.currency || undefined,
+                })),
+              }
+            : undefined,
+      }
+    : null;
 
   const toggleFavoriteHandler = () => {
     if (!professionalSlug) return;
@@ -654,6 +723,14 @@ export default function ProfesionalDetailPage({
           : 'bg-[linear-gradient(180deg,#f4f7f4_0%,#eef2ef_42%,#f8faf9_100%)]'
       }`}
     >
+      <SeoHead
+        title={seoTitle}
+        description={seoDescription}
+        canonicalPath={seoCanonicalPath}
+        imageUrl={seoImageUrl}
+        noindex={isPreview || !hasPublicContent}
+        structuredData={businessStructuredData}
+      />
       {isPreview ? null : <Navbar />}
 
       <main

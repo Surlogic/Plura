@@ -7,6 +7,7 @@ import ExploreFilters from '@/components/explorar/ExploreFilters';
 import ExploreCard from '@/components/explorar/ExploreCard';
 import ExploreSortDropdown from '@/components/explorar/ExploreSortDropdown';
 import ClientDashboardNavbar from '@/components/dashboard/ClientDashboardNavbar';
+import SeoHead from '@/components/seo/SeoHead';
 import {
   SEARCH_DEFAULT_PAGE,
   SEARCH_DEFAULT_RADIUS_KM,
@@ -28,6 +29,7 @@ import {
   getSearchResultPrimaryName,
 } from '@/utils/searchResultPresentation';
 import { normalizeSearchText } from '@/utils/searchQuery';
+import { buildAbsoluteUrl, humanizeSlugForSeo } from '@/lib/seo';
 
 const AUTO_GEOLOCATION_TIMEOUT_MS = 4000;
 const AUTO_GEOLOCATION_SAMPLE_DURATION_MS = 1500;
@@ -1005,6 +1007,51 @@ export default function ExplorarPage() {
 
   const activeMapItemId = selectedMapItemId || hoveredMapItemId;
   const hasResultsWithoutMapCoordinates = searchResults.length > mapResults.length;
+  const seoCategoryName = categorySlug ? humanizeSlugForSeo(categorySlug) : '';
+  const seoSearchLabel = seoCategoryName || query.trim();
+  const seoLocationLabel = city || (hasAppliedLocationFilter ? 'cerca tuyo' : '');
+  const seoTitle = seoSearchLabel
+    ? `${seoSearchLabel}${seoLocationLabel ? ` en ${seoLocationLabel}` : ''} | Reservas online en Plura`
+    : 'Explorá profesionales, salones y servicios | Plura';
+  const seoDescription = seoSearchLabel
+    ? `Encontrá ${seoSearchLabel.toLowerCase()}${seoLocationLabel ? ` en ${seoLocationLabel}` : ''}, compará profesionales y reservá turnos online en Plura.`
+    : 'Buscá salones de belleza, bienestar, profesionales y servicios por rubro, zona, fecha o disponibilidad. Reservá online en Plura.';
+  const seoCanonicalParams = new URLSearchParams();
+  if (!categorySlug && query) seoCanonicalParams.set('query', query);
+  if (city) seoCanonicalParams.set('city', city);
+  const seoCanonicalPathBase = categorySlug
+    ? `/explorar/${encodeURIComponent(categorySlug)}`
+    : '/explorar';
+  const seoCanonicalQuery = seoCanonicalParams.toString();
+  const seoCanonicalPath = seoCanonicalQuery
+    ? `${seoCanonicalPathBase}?${seoCanonicalQuery}`
+    : seoCanonicalPathBase;
+  const seoStructuredData = [
+    {
+      '@context': 'https://schema.org',
+      '@type': 'CollectionPage',
+      name: seoTitle,
+      description: seoDescription,
+      url: buildAbsoluteUrl(seoCanonicalPath),
+    },
+    searchResults.length > 0
+      ? {
+          '@context': 'https://schema.org',
+          '@type': 'ItemList',
+          name: seoSearchLabel
+            ? `Resultados de ${seoSearchLabel} en Plura`
+            : 'Resultados destacados en Plura',
+          itemListElement: searchResults.slice(0, 12).map((item, index) => ({
+            '@type': 'ListItem',
+            position: index + 1,
+            name: getSearchResultPrimaryName(item),
+            url: item.slug
+              ? buildAbsoluteUrl(`/profesional/pagina/${encodeURIComponent(item.slug)}`)
+              : buildAbsoluteUrl('/explorar'),
+          })),
+        }
+      : null,
+  ].filter(Boolean);
   const exploreViewToggle = (
     <div className="inline-flex rounded-full border border-[color:var(--border-soft)] bg-[color:var(--surface-muted)] p-0.5 shadow-[var(--shadow-card)]">
       <button
@@ -1089,6 +1136,12 @@ export default function ExplorarPage() {
   if (isMapView) {
     return (
       <div className="flex h-[100dvh] flex-col overflow-hidden bg-[color:var(--bg-soft)] text-[color:var(--ink)]">
+        <SeoHead
+          title={seoTitle}
+          description={seoDescription}
+          canonicalPath={seoCanonicalPath}
+          structuredData={seoStructuredData}
+        />
         {navbar}
         <main className="relative isolate h-0 min-h-0 w-full flex-1 overflow-hidden">
           <section className="relative z-0 flex h-full min-h-0 w-full flex-col gap-px overflow-hidden bg-[color:var(--border-soft)] lg:flex-row">
@@ -1305,6 +1358,12 @@ export default function ExplorarPage() {
 
   return (
     <div className="flex h-[100dvh] flex-col overflow-hidden bg-[color:var(--bg-soft)] text-[color:var(--ink)]">
+      <SeoHead
+        title={seoTitle}
+        description={seoDescription}
+        canonicalPath={seoCanonicalPath}
+        structuredData={seoStructuredData}
+      />
       {navbar}
       <main className="relative isolate mx-auto flex min-h-0 w-full max-w-[1400px] flex-1 flex-col overflow-hidden px-4 pt-0 sm:px-6 lg:px-10">
         <header className="relative z-[70] shrink-0 -mx-4 overflow-visible border-b border-[color:var(--border-soft)] bg-[color:var(--bg-soft)]/94 px-4 py-1.5 shadow-[0_14px_30px_-34px_rgba(13,35,58,0.32)] backdrop-blur-xl sm:-mx-6 sm:px-6 sm:py-2 lg:-mx-10 lg:px-10">

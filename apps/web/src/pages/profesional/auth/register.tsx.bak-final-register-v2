@@ -81,7 +81,8 @@ type ScheduleDay = {
   close: string;
 };
 
-const REGISTER_HANDOFF_KEY = 'plura:professional-register-handoff';
+const ONBOARDING_DRAFT_KEY = 'plura:professional-register-wizard-draft';
+const ONBOARDING_HANDOFF_KEY = 'plura:professional-onboarding-draft';
 
 const wizardSteps = [
   'Cuenta',
@@ -160,6 +161,7 @@ export default function ProfesionalRegisterPage() {
   const [touched, setTouched] = useState<TouchedState>(defaultTouched);
   const [schedule, setSchedule] = useState<ScheduleDay[]>(initialSchedule);
   const [isOAuthSetup, setIsOAuthSetup] = useState(false);
+  const [hasHydratedOnboardingDraft, setHasHydratedOnboardingDraft] = useState(false);
   const [categorySearch, setCategorySearch] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
@@ -192,6 +194,57 @@ export default function ProfesionalRegisterPage() {
     return category.name.toLowerCase().includes(query) || category.slug.toLowerCase().includes(query);
   });
 
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      setHasHydratedOnboardingDraft(true);
+      return;
+    }
+
+    const rawDraft = window.localStorage.getItem(ONBOARDING_DRAFT_KEY);
+    if (!rawDraft) {
+      setHasHydratedOnboardingDraft(true);
+      return;
+    }
+
+    try {
+      const parsed = JSON.parse(rawDraft) as {
+        form?: Partial<RegisterForm>;
+        schedule?: ScheduleDay[];
+        step?: number;
+        isOAuthSetup?: boolean;
+      };
+      if (parsed.form) {
+        setForm((prev) => ({ ...prev, ...parsed.form }));
+      }
+      if (Array.isArray(parsed.schedule) && parsed.schedule.length > 0) {
+        setSchedule(parsed.schedule);
+      }
+      if (typeof parsed.step === 'number' && Number.isFinite(parsed.step)) {
+        setStep(Math.max(0, Math.min(parsed.step, wizardSteps.length - 1)));
+      }
+      if (parsed.isOAuthSetup) {
+        setIsOAuthSetup(true);
+      }
+    } catch {
+      window.localStorage.removeItem(ONBOARDING_DRAFT_KEY);
+    } finally {
+      setHasHydratedOnboardingDraft(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || !hasHydratedOnboardingDraft) return;
+    window.localStorage.setItem(
+      ONBOARDING_DRAFT_KEY,
+      JSON.stringify({
+        form,
+        schedule,
+        step,
+        isOAuthSetup,
+        updatedAt: Date.now(),
+      }),
+    );
+  }, [form, schedule, step, isOAuthSetup, hasHydratedOnboardingDraft]);
 
   useEffect(() => {
     if (authStatus !== 'authenticated' || !profile) return;
@@ -229,7 +282,7 @@ export default function ProfesionalRegisterPage() {
       confirmPassword: true,
     }));
     setStep((prev) => (prev === 0 ? 2 : prev));
-    setSuccessMessage('Sesión profesional activa. Terminá la configuración para dejar tu perfil listo.');
+    setSuccessMessage('Sesión profesional activa. Terminá el onboarding para dejar tu perfil listo.');
   }, [authStatus, profile]);
 
   const passwordValid = form.password.length >= 8;
@@ -455,7 +508,7 @@ export default function ProfesionalRegisterPage() {
   const saveDraftAfterRegister = () => {
     if (typeof window === 'undefined') return;
     window.localStorage.setItem(
-      REGISTER_HANDOFF_KEY,
+      ONBOARDING_HANDOFF_KEY,
       JSON.stringify({
         schedule,
         firstService: {
@@ -544,16 +597,22 @@ export default function ProfesionalRegisterPage() {
         }
 
         saveDraftAfterRegister();
+        if (typeof window !== 'undefined') {
+          window.localStorage.removeItem(ONBOARDING_DRAFT_KEY);
+        }
         await refreshProfile();
-        await router.push('/profesional/dashboard');
+        await router.push('/profesional/dashboard?onboarding=1');
         return;
       }
 
       const response = await api.post<{ accessToken?: string | null }>('/auth/register/profesional', payload);
       setAuthAccessToken(response.data?.accessToken ?? null, 'PROFESSIONAL');
       saveDraftAfterRegister();
+      if (typeof window !== 'undefined') {
+        window.localStorage.removeItem(ONBOARDING_DRAFT_KEY);
+      }
       await refreshProfile();
-      await router.push('/profesional/dashboard');
+      await router.push('/profesional/dashboard?onboarding=1');
     } catch (error) {
       if (axios.isAxiosError(error) && !error.response) {
         setErrorMessage('No se pudo conectar con el servidor.');
@@ -565,10 +624,17 @@ export default function ProfesionalRegisterPage() {
           /existe|registrad|already|duplicad|email/i.test(apiMessage);
 
         if (!isOAuthSetup && looksLikeExistingAccount) {
+          if (typeof window !== 'undefined') {
+            window.localStorage.setItem(
+              ONBOARDING_DRAFT_KEY,
+              JSON.stringify({ form, schedule, step, isOAuthSetup: false, updatedAt: Date.now() }),
+            );
+          }
           await router.push({
             pathname: '/profesional/auth/login',
             query: {
               email: normalizedEmail,
+              onboarding: '1',
               reason: 'existing-account',
             },
           });

@@ -107,12 +107,6 @@ export default function ProfesionalLoginPage() {
       return;
     }
 
-    const requiresPhoneCompletion = !(result.user.phoneNumber ?? '').trim();
-    if (requiresPhoneCompletion) {
-      router.push('/profesional/auth/register&needsPhone=1');
-      return;
-    }
-
     await completeProfessionalLoginFlow();
   };
 

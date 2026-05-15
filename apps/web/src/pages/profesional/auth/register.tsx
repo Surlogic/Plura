@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import type { ChangeEvent, FormEvent } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
@@ -133,7 +133,7 @@ const textAreaClassName =
 
 export default function ProfesionalRegisterPage() {
   const router = useRouter();
-  const { profile, authStatus, refreshProfile } = useProfessionalProfileContext();
+  const { refreshProfile } = useProfessionalProfileContext();
   const { categories, isLoading: categoriesLoading } = useCategories();
 
   const [step, setStep] = useState(0);
@@ -191,46 +191,6 @@ export default function ProfesionalRegisterPage() {
     if (!query) return true;
     return category.name.toLowerCase().includes(query) || category.slug.toLowerCase().includes(query);
   });
-
-
-  useEffect(() => {
-    if (authStatus !== 'authenticated' || !profile) return;
-
-    const profileCategorySlugs = Array.isArray(profile.categories)
-      ? profile.categories.map((category) => category.slug).filter(Boolean)
-      : [];
-    const restoredTipoCliente = profile.tipoCliente === 'LOCAL'
-      ? 'LOCAL'
-      : profile.tipoCliente === 'A_DOMICILIO'
-        ? 'A_DOMICILIO'
-        : 'SIN_LOCAL';
-
-    setIsOAuthSetup(true);
-    setForm((prev) => ({
-      ...prev,
-      email: profile.email?.trim().toLowerCase() || prev.email,
-      confirmEmail: profile.email?.trim().toLowerCase() || prev.confirmEmail,
-      fullName: profile.fullName?.trim() || prev.fullName,
-      phoneNumber: profile.phoneNumber?.trim() || prev.phoneNumber,
-      categorySlugs: prev.categorySlugs.length > 0 ? prev.categorySlugs : profileCategorySlugs,
-      tipoCliente: prev.tipoCliente || restoredTipoCliente,
-      country: profile.country?.trim() || prev.country,
-      city: profile.city?.trim() || prev.city,
-      fullAddress: profile.fullAddress?.trim() || prev.fullAddress,
-      password: '',
-      confirmPassword: '',
-    }));
-    setTouched((prev) => ({
-      ...prev,
-      email: true,
-      confirmEmail: true,
-      phoneNumber: Boolean(profile.phoneNumber?.trim()) || prev.phoneNumber,
-      password: true,
-      confirmPassword: true,
-    }));
-    setStep((prev) => (prev === 0 ? 2 : prev));
-    setSuccessMessage('Sesión profesional activa. Terminá la configuración para dejar tu perfil listo.');
-  }, [authStatus, profile]);
 
   const passwordValid = form.password.length >= 8;
   const validationErrors: Record<keyof RegisterForm, string> = {
@@ -355,11 +315,11 @@ export default function ProfesionalRegisterPage() {
       password: true,
       confirmPassword: true,
     }));
-    setStep(2);
+    setStep(1);
     setSuccessMessage(
       oauthPhoneNumber
-        ? 'Cuenta creada con Google. Terminá de configurar tu perfil profesional.'
-        : 'Cuenta creada con Google. Completá tu teléfono y seguí configurando tu perfil.',
+        ? 'Cuenta conectada con Google. Continuá el mismo registro profesional.'
+        : 'Cuenta conectada con Google. El teléfono se completa en el paso de datos básicos.',
     );
     await refreshProfile();
   };
@@ -677,67 +637,78 @@ export default function ProfesionalRegisterPage() {
           loadingLabel="Registrando..."
           onLoadingChange={setIsGoogleLoading}
         />
-        <div className="flex items-center gap-3">
-          <div className="h-px flex-1 bg-[color:var(--border-soft)]" />
-          <span className="text-xs font-semibold uppercase tracking-[0.16em] text-[color:var(--ink-faint)]">o con email</span>
-          <div className="h-px flex-1 bg-[color:var(--border-soft)]" />
-        </div>
-        <div className="grid gap-4">
-          <div className="space-y-2">
-            <label className="text-sm font-semibold text-[color:var(--ink)]">Email</label>
-            <input
-              className={inputClass('email')}
-              placeholder="tucorreo@gmail.com"
-              type="email"
-              name="email"
-              value={form.email}
-              onChange={handleChange}
-              onBlur={handleBlur}
-            />
-            {renderError('email')}
+        {isOAuthSetup ? (
+          <div className="rounded-[24px] border border-[color:var(--primary-soft)] bg-[color:var(--primary-soft)] p-5 text-sm text-[color:var(--primary-strong)]">
+            <p className="font-semibold">Cuenta Google conectada</p>
+            <p className="mt-1 text-[color:var(--ink-muted)]">
+              {form.email || 'Tu cuenta de Google'} quedó asociada al registro. Continuá con el mismo wizard: tipo de perfil, datos básicos, teléfono, rubros y publicación.
+            </p>
           </div>
-          <div className="space-y-2">
-            <label className="text-sm font-semibold text-[color:var(--ink)]">Confirmar email</label>
-            <input
-              className={inputClass('confirmEmail')}
-              placeholder="tucorreo@gmail.com"
-              type="email"
-              name="confirmEmail"
-              value={form.confirmEmail}
-              onChange={handleChange}
-              onBlur={handleBlur}
-            />
-            {renderError('confirmEmail')}
-          </div>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-2">
-              <label className="text-sm font-semibold text-[color:var(--ink)]">Contraseña</label>
-              <input
-                className={inputClass('password')}
-                placeholder="mínimo 8 caracteres"
-                type="password"
-                name="password"
-                value={form.password}
-                onChange={handleChange}
-                onBlur={handleBlur}
-              />
-              {renderError('password')}
+        ) : (
+          <>
+            <div className="flex items-center gap-3">
+              <div className="h-px flex-1 bg-[color:var(--border-soft)]" />
+              <span className="text-xs font-semibold uppercase tracking-[0.16em] text-[color:var(--ink-faint)]">o con email</span>
+              <div className="h-px flex-1 bg-[color:var(--border-soft)]" />
             </div>
-            <div className="space-y-2">
-              <label className="text-sm font-semibold text-[color:var(--ink)]">Confirmar contraseña</label>
-              <input
-                className={inputClass('confirmPassword')}
-                placeholder="repetir contraseña"
-                type="password"
-                name="confirmPassword"
-                value={form.confirmPassword}
-                onChange={handleChange}
-                onBlur={handleBlur}
-              />
-              {renderError('confirmPassword')}
+            <div className="grid gap-4">
+              <div className="space-y-2">
+                <label className="text-sm font-semibold text-[color:var(--ink)]">Email</label>
+                <input
+                  className={inputClass('email')}
+                  placeholder="tucorreo@gmail.com"
+                  type="email"
+                  name="email"
+                  value={form.email}
+                  onChange={handleChange}
+                  onBlur={handleBlur}
+                />
+                {renderError('email')}
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-semibold text-[color:var(--ink)]">Confirmar email</label>
+                <input
+                  className={inputClass('confirmEmail')}
+                  placeholder="tucorreo@gmail.com"
+                  type="email"
+                  name="confirmEmail"
+                  value={form.confirmEmail}
+                  onChange={handleChange}
+                  onBlur={handleBlur}
+                />
+                {renderError('confirmEmail')}
+              </div>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <label className="text-sm font-semibold text-[color:var(--ink)]">Contraseña</label>
+                  <input
+                    className={inputClass('password')}
+                    placeholder="mínimo 8 caracteres"
+                    type="password"
+                    name="password"
+                    value={form.password}
+                    onChange={handleChange}
+                    onBlur={handleBlur}
+                  />
+                  {renderError('password')}
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-semibold text-[color:var(--ink)]">Confirmar contraseña</label>
+                  <input
+                    className={inputClass('confirmPassword')}
+                    placeholder="repetir contraseña"
+                    type="password"
+                    name="confirmPassword"
+                    value={form.confirmPassword}
+                    onChange={handleChange}
+                    onBlur={handleBlur}
+                  />
+                  {renderError('confirmPassword')}
+                </div>
+              </div>
             </div>
-          </div>
-        </div>
+          </>
+        )}
         <p className="text-center text-sm text-[color:var(--ink-muted)]">
           ¿Ya tenés cuenta?{' '}
           <Link href="/profesional/auth/login" className="font-semibold text-[color:var(--primary)]">
@@ -824,7 +795,7 @@ export default function ProfesionalRegisterPage() {
             {renderError('fullName')}
           </div>
           <div className="space-y-2">
-            <label className="text-sm font-semibold text-[color:var(--ink)]">Teléfono de contacto</label>
+            <label className="text-sm font-semibold text-[color:var(--ink)]">Teléfono de contacto <span className="text-[color:var(--error)]">*</span></label>
             <InternationalPhoneField
               value={form.phoneNumber}
               onChange={handlePhoneChange}

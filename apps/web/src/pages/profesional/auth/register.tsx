@@ -4,10 +4,12 @@ import { useEffect, useMemo, useState } from 'react';
 import type { ChangeEvent, FormEvent } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
+import { Marker } from 'react-map-gl/mapbox';
 import axios from 'axios';
 import AuthTopBar from '@/components/auth/AuthTopBar';
 import AuthLoadingOverlay from '@/components/auth/AuthLoadingOverlay';
 import GoogleLoginButton from '@/components/auth/GoogleLoginButton';
+import MapView from '@/components/map/MapView';
 import Badge from '@/components/ui/Badge';
 import Button from '@/components/ui/Button';
 import Card from '@/components/ui/Card';
@@ -79,6 +81,12 @@ type ScheduleDay = {
   active: boolean;
   open: string;
   close: string;
+};
+
+type LocationPreview = {
+  latitude: number;
+  longitude: number;
+  placeName: string;
 };
 
 const REGISTER_HANDOFF_KEY = 'plura:professional-register-handoff';
@@ -166,6 +174,8 @@ export default function ProfesionalRegisterPage() {
   const [isGeoSuggesting, setIsGeoSuggesting] = useState(false);
   const [activeGeoField, setActiveGeoField] = useState<'country' | 'city' | 'fullAddress' | null>(null);
   const [geoSuggestions, setGeoSuggestions] = useState<GeoLocationSuggestion[]>([]);
+  const [locationPreview, setLocationPreview] = useState<LocationPreview | null>(null);
+  const [isLocationPreviewLoading, setIsLocationPreviewLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const isBusy = isSubmitting || isGoogleLoading;
@@ -201,6 +211,45 @@ export default function ProfesionalRegisterPage() {
     if (!query) return true;
     return category.name.toLowerCase().includes(query) || category.slug.toLowerCase().includes(query);
   });
+
+  useEffect(() => {
+    if (!requiresLocation) {
+      setLocationPreview(null);
+      setIsLocationPreviewLoading(false);
+      return undefined;
+    }
+
+    const country = form.country.trim();
+    const city = form.city.trim();
+    const fullAddress = form.fullAddress.trim();
+
+    if (!country || !city || fullAddress.length < 4) {
+      setLocationPreview(null);
+      setIsLocationPreviewLoading(false);
+      return undefined;
+    }
+
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => {
+      setIsLocationPreviewLoading(true);
+      void mapboxForwardGeocode(`${fullAddress}, ${city}, ${country}`, controller.signal)
+        .then((result) => {
+          if (!result) {
+            setLocationPreview(null);
+            return;
+          }
+          setLocationPreview(result);
+        })
+        .finally(() => {
+          setIsLocationPreviewLoading(false);
+        });
+    }, 650);
+
+    return () => {
+      window.clearTimeout(timeout);
+      controller.abort();
+    };
+  }, [form.country, form.city, form.fullAddress, requiresLocation]);
 
   const passwordValid = form.password.length >= 8;
   const validationErrors: Record<keyof RegisterForm, string> = {
@@ -364,6 +413,20 @@ export default function ProfesionalRegisterPage() {
       city: city || prev.city,
       fullAddress: fullAddress || prev.fullAddress,
     }));
+
+    if (
+      typeof suggestion.latitude === 'number'
+      && Number.isFinite(suggestion.latitude)
+      && typeof suggestion.longitude === 'number'
+      && Number.isFinite(suggestion.longitude)
+    ) {
+      setLocationPreview({
+        latitude: suggestion.latitude,
+        longitude: suggestion.longitude,
+        placeName: (suggestion.placeName || suggestion.fullAddress || fullAddress || city || country || '').trim(),
+      });
+    }
+
     setGeoSuggestions([]);
     setActiveGeoField(null);
   };
@@ -907,6 +970,21 @@ export default function ProfesionalRegisterPage() {
     </div>
   );
 
+  const LocationMapFallback = () => (
+    <div className="relative h-full w-full bg-[linear-gradient(45deg,rgba(15,23,42,0.08)_25%,transparent_25%),linear-gradient(-45deg,rgba(15,23,42,0.08)_25%,transparent_25%),linear-gradient(45deg,transparent_75%,rgba(15,23,42,0.08)_75%),linear-gradient(-45deg,transparent_75%,rgba(15,23,42,0.08)_75%)] bg-[length:42px_42px] bg-[position:0_0,0_21px,21px_-21px,-21px_0]">
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_45%,rgba(10,122,67,0.18),transparent_28%)]" />
+      <div className="absolute left-1/2 top-1/2 flex h-20 w-20 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-[color:var(--primary)] text-4xl text-white shadow-[var(--shadow-lift)]">⌖</div>
+      <div className="absolute bottom-6 left-6 right-6 rounded-[22px] border border-[color:var(--border-soft)] bg-[color:var(--surface)] p-5 shadow-[var(--shadow-card)] backdrop-blur">
+        <p className="font-semibold text-[color:var(--ink)]">Ubicación del perfil</p>
+        <p className="text-sm text-[color:var(--ink-muted)]">
+          {isLocationPreviewLoading
+            ? 'Buscando la dirección...'
+            : locationPreview?.placeName || 'Ingresá una dirección para previsualizar el mapa.'}
+        </p>
+      </div>
+    </div>
+  );
+
   const renderModalityStep = () => (
     <div className="mx-auto max-w-5xl space-y-8 text-center">
       <div className="space-y-3">
@@ -1010,13 +1088,49 @@ export default function ProfesionalRegisterPage() {
           </div>
         </div>
         <div className="overflow-hidden rounded-[30px] border border-[color:var(--border-soft)] bg-[color:var(--surface-soft)] shadow-[var(--shadow-lift)]">
-          <div className="relative h-96 bg-[linear-gradient(45deg,rgba(15,23,42,0.08)_25%,transparent_25%),linear-gradient(-45deg,rgba(15,23,42,0.08)_25%,transparent_25%),linear-gradient(45deg,transparent_75%,rgba(15,23,42,0.08)_75%),linear-gradient(-45deg,transparent_75%,rgba(15,23,42,0.08)_75%)] bg-[length:42px_42px] bg-[position:0_0,0_21px,21px_-21px,-21px_0]">
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_45%,rgba(10,122,67,0.18),transparent_28%)]" />
-            <div className="absolute left-1/2 top-1/2 flex h-20 w-20 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-[color:var(--primary)] text-4xl text-white shadow-[var(--shadow-lift)]">⌖</div>
-            <div className="absolute bottom-6 left-6 right-6 rounded-[22px] border border-[color:var(--border-soft)] bg-[color:var(--surface)] p-5 shadow-[var(--shadow-card)] backdrop-blur">
-              <p className="font-semibold text-[color:var(--ink)]">Ubicación del perfil</p>
-              <p className="text-sm text-[color:var(--ink-muted)]">Así verán tu local tus clientes.</p>
-            </div>
+          <div className="relative h-96">
+            {locationPreview ? (
+              <MapView
+                initialViewState={{
+                  latitude: locationPreview.latitude,
+                  longitude: locationPreview.longitude,
+                  zoom: 15,
+                }}
+                longitude={locationPreview.longitude}
+                latitude={locationPreview.latitude}
+                zoom={15}
+                dragPan={false}
+                scrollZoom={false}
+                doubleClickZoom={false}
+                touchZoomRotate={false}
+                attributionControl={false}
+                cooperativeGestures={false}
+                reuseMaps
+                resetKey={`${locationPreview.latitude}-${locationPreview.longitude}`}
+                fallbackMessage="Falta NEXT_PUBLIC_MAPBOX_TOKEN para mostrar el mapa."
+                webglFallbackNode={<LocationMapFallback />}
+              >
+                <Marker
+                  latitude={locationPreview.latitude}
+                  longitude={locationPreview.longitude}
+                  anchor="center"
+                >
+                  <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[color:var(--primary)] text-3xl text-white shadow-[var(--shadow-lift)]">
+                    ⌖
+                  </div>
+                </Marker>
+              </MapView>
+            ) : (
+              <LocationMapFallback />
+            )}
+            {locationPreview ? (
+              <div className="pointer-events-none absolute bottom-6 left-6 right-6 rounded-[22px] border border-[color:var(--border-soft)] bg-[color:var(--surface)] p-5 shadow-[var(--shadow-card)] backdrop-blur">
+                <p className="font-semibold text-[color:var(--ink)]">Ubicación del perfil</p>
+                <p className="text-sm text-[color:var(--ink-muted)]">
+                  {isLocationPreviewLoading ? 'Actualizando mapa...' : locationPreview.placeName || 'Así verán tu local tus clientes.'}
+                </p>
+              </div>
+            ) : null}
           </div>
         </div>
       </div>

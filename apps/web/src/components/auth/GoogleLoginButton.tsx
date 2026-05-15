@@ -31,6 +31,24 @@ type GoogleLoginButtonProps = {
 
 const GOOGLE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || '';
 const OAUTH_RESULT_TIMEOUT_MS = 2 * 60 * 1000; // 2 minutos
+const OAUTH_BACKEND_TIMEOUT_MS = 35 * 1000; // evita loading infinito si backend/OAuth queda pending
+const OAUTH_AUTHENTICATED_CALLBACK_TIMEOUT_MS = 12 * 1000;
+
+const withTimeout = async <T,>(promise: Promise<T>, timeoutMs: number, message: string): Promise<T> => {
+  let timeoutId: ReturnType<typeof setTimeout> | null = null;
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<T>((_, reject) => {
+        timeoutId = setTimeout(() => reject(new Error(message)), timeoutMs);
+      }),
+    ]);
+  } finally {
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+    }
+  }
+};
 
 const resolveApiErrorMessage = (error: unknown, fallback: string) => {
   if (isAxiosError(error)) {
@@ -130,15 +148,25 @@ export default function GoogleLoginButton({
       try {
         const redirectUri = `${window.location.origin}/oauth/callback`;
 
-        const result = await oauthLogin('google', payload.code, {
-          grantType: 'authorization_code',
-          codeVerifier: pendingRequest.codeVerifier,
-          redirectUri,
-          intendedRole,
-          authAction,
-        });
+        const result = await withTimeout(
+          oauthLogin('google', payload.code, {
+            grantType: 'authorization_code',
+            codeVerifier: pendingRequest.codeVerifier,
+            redirectUri,
+            intendedRole,
+            authAction,
+          }),
+          OAUTH_BACKEND_TIMEOUT_MS,
+          authAction === 'REGISTER'
+            ? 'El registro con Google tardó demasiado. Intentá nuevamente.'
+            : 'El inicio de sesión con Google tardó demasiado. Intentá nuevamente.',
+        );
 
-        await onAuthenticated(result);
+        await withTimeout(
+          Promise.resolve(onAuthenticated(result)),
+          OAUTH_AUTHENTICATED_CALLBACK_TIMEOUT_MS,
+          'Google respondió correctamente, pero no pudimos cerrar el flujo. Actualizá la página e intentá nuevamente.',
+        );
       } catch (error) {
         onError(resolveApiErrorMessage(error, authAction === 'REGISTER' ? 'No se pudo completar el registro con Google.' : 'No se pudo iniciar sesión con Google.'));
       } finally {

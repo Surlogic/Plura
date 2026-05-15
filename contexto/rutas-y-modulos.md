@@ -511,3 +511,5 @@ Lectura de producto:
 - `billing/plans.ts` ya modela los planes con naming tecnico `PROFESSIONAL / LOCAL / ENTERPRISE`
 - `types/professional.ts` ya contiene entitlements como pagos online, client profile, portfolio, loyalty, last minute, store y shipping
 - eso indica que parte del modelo de permisos para `Local` y `Enterprise` ya esta pensado, aunque no toda la UX este cerrada
+
+- `/profesional/auth/register`: el registro profesional usa wizard único para email y Google; el teléfono es obligatorio dentro del paso de datos básicos. Google continúa el mismo wizard desde tipo de perfil y el frontend corta el loading OAuth si `/auth/oauth` o el cierre del callback queda pendiente, evitando que el registro quede cargando indefinidamente.

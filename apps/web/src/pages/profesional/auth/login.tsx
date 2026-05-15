@@ -94,8 +94,7 @@ export default function ProfesionalLoginPage() {
   };
 
   const completeProfessionalLoginFlow = async () => {
-    await api.get('/auth/me/profesional');
-    await refreshProfile();
+    void refreshProfile().catch(() => undefined);
     router.push('/profesional/dashboard');
   };
 

@@ -321,7 +321,7 @@ export default function ProfesionalRegisterPage() {
         ? 'Cuenta conectada con Google. Continuá el mismo registro profesional.'
         : 'Cuenta conectada con Google. El teléfono se completa en el paso de datos básicos.',
     );
-    await refreshProfile();
+    void refreshProfile().catch(() => undefined);
   };
 
   const handleGeoFieldChange = async (

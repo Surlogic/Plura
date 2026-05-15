@@ -1126,9 +1126,8 @@ export default function ProfesionalDashboardPage() {
     <ProfessionalDashboardShell
       profile={profile}
       active="Agenda"
-      containedViewport
       maxWidthClassName="max-w-none"
-      contentClassName="px-0 py-0 sm:px-0 sm:py-0 lg:min-h-0 lg:overflow-hidden lg:px-0 lg:py-0 xl:px-0"
+      contentClassName="px-0 py-0 sm:px-0 sm:py-0 lg:px-0 lg:py-0 xl:px-0"
     >
       <div className="flex min-h-0 flex-1 flex-col bg-[#F8FAFC]">
         <header className="shrink-0 border-b border-[#E2E8F0] bg-white">
@@ -1181,7 +1180,7 @@ export default function ProfesionalDashboardPage() {
           </div>
         </header>
 
-        <div className="min-h-0 flex-1 space-y-6 overflow-auto px-4 py-5 sm:px-6 lg:px-8 lg:py-6">
+        <div className="flex-1 space-y-6 px-4 py-5 sm:px-6 lg:px-8 lg:py-6">
           {profile && !profile.emailVerified ? (
             <EmailVerificationPanel
               email={profile.email}

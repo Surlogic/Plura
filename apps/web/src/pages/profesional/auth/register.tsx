@@ -539,6 +539,7 @@ export default function ProfesionalRegisterPage() {
     }
 
     const primaryRubro = categoryNameBySlug.get(form.categorySlugs[0]) || '';
+    const normalizedEmail = form.email.trim().toLowerCase();
     setIsSubmitting(true);
     try {
       const normalizedCountry = requiresLocation ? form.country.trim() : '';
@@ -560,7 +561,7 @@ export default function ProfesionalRegisterPage() {
         fullName: form.fullName.trim(),
         rubro: primaryRubro,
         categorySlugs: form.categorySlugs,
-        email: form.email.trim().toLowerCase(),
+        email: normalizedEmail,
         phoneNumber: form.phoneNumber.trim(),
         country: normalizedCountry,
         city: normalizedCity,
@@ -632,7 +633,7 @@ export default function ProfesionalRegisterPage() {
           await router.push({
             pathname: '/profesional/auth/login',
             query: {
-              email: payload.email,
+              email: normalizedEmail,
               onboarding: '1',
               reason: 'existing-account',
             },

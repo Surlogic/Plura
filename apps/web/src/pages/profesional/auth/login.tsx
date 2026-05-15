@@ -124,7 +124,7 @@ export default function ProfesionalLoginPage() {
       return;
     }
     if (requiresPhoneCompletion) {
-      router.push('/profesional/auth/complete-phone');
+      router.push('/profesional/auth/register?resume=1&needsPhone=1');
       return;
     }
 

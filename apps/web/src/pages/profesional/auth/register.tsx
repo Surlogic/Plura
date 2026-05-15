@@ -89,6 +89,44 @@ type LocationPreview = {
   placeName: string;
 };
 
+type ProfessionalSchedulePayload = {
+  days: Array<{
+    day: string;
+    enabled: boolean;
+    paused: boolean;
+    ranges: Array<{
+      id: string;
+      start: string;
+      end: string;
+    }>;
+  }>;
+  pauses: never[];
+  slotDurationMinutes: number;
+};
+
+type ProfessionalServicePayload = {
+  name: string;
+  description: string;
+  categorySlug: string;
+  imageUrl: string;
+  price: string;
+  depositAmount: null;
+  duration: string;
+  postBufferMinutes: number;
+  paymentType: 'ON_SITE';
+  processingFeeMode: 'INSTANT';
+  currency: 'UYU';
+  active: boolean;
+};
+
+type ProfessionalRegisterHandoff = {
+  schedule: ProfessionalSchedulePayload;
+  firstService: ProfessionalServicePayload | null;
+  publicPage: {
+    about: string;
+  };
+};
+
 const REGISTER_HANDOFF_KEY = 'plura:professional-register-handoff';
 
 const wizardSteps = [
@@ -471,6 +509,68 @@ export default function ProfesionalRegisterPage() {
     })));
   };
 
+  const buildSchedulePayload = (): ProfessionalSchedulePayload => ({
+    days: schedule.map((day) => ({
+      day: day.id,
+      enabled: day.active,
+      paused: false,
+      ranges: day.active
+        ? [{
+          id: `${day.id}-main`,
+          start: day.open,
+          end: day.close,
+        }]
+        : [],
+    })),
+    pauses: [],
+    slotDurationMinutes: Math.max(15, Number(form.serviceDuration) || 60),
+  });
+
+  const buildFirstServicePayload = (): ProfessionalServicePayload | null => {
+    const name = form.serviceName.trim();
+    const price = form.servicePrice.trim();
+    const duration = form.serviceDuration.trim();
+
+    if (!name || !price || !duration) return null;
+
+    return {
+      name,
+      description: form.serviceDescription.trim(),
+      categorySlug: form.serviceCategorySlug || form.categorySlugs[0] || '',
+      imageUrl: '',
+      price,
+      depositAmount: null,
+      duration,
+      postBufferMinutes: 0,
+      paymentType: 'ON_SITE',
+      processingFeeMode: 'INSTANT',
+      currency: 'UYU',
+      active: true,
+    };
+  };
+
+  const buildRegisterHandoff = (): ProfessionalRegisterHandoff => ({
+    schedule: buildSchedulePayload(),
+    firstService: buildFirstServicePayload(),
+    publicPage: {
+      about: form.description.trim(),
+    },
+  });
+
+  const applyRegisterHandoff = async (handoff: ProfessionalRegisterHandoff) => {
+    if (handoff.publicPage.about) {
+      await api.put('/profesional/public-page', {
+        about: handoff.publicPage.about,
+      });
+    }
+
+    await api.put('/profesional/schedule', handoff.schedule);
+
+    if (handoff.firstService) {
+      await api.post('/profesional/services', handoff.firstService);
+    }
+  };
+
   const goNext = () => {
     setErrorMessage(null);
     const fields = stepFields(step);
@@ -491,20 +591,7 @@ export default function ProfesionalRegisterPage() {
     if (typeof window === 'undefined') return;
     window.localStorage.setItem(
       REGISTER_HANDOFF_KEY,
-      JSON.stringify({
-        schedule,
-        firstService: {
-          name: form.serviceName.trim(),
-          categorySlug: form.serviceCategorySlug || form.categorySlugs[0] || '',
-          durationMinutes: Number(form.serviceDuration) || 60,
-          price: form.servicePrice.trim(),
-          description: form.serviceDescription.trim(),
-        },
-        publicPreview: {
-          description: form.description.trim(),
-          selectedCategorySlugs: form.categorySlugs,
-        },
-      }),
+      JSON.stringify(buildRegisterHandoff()),
     );
   };
 
@@ -578,7 +665,18 @@ export default function ProfesionalRegisterPage() {
           // El telefono queda guardado y el draft conserva horarios/primer servicio para el dashboard.
         }
 
+        const handoff = buildRegisterHandoff();
         saveDraftAfterRegister();
+        try {
+          await applyRegisterHandoff(handoff);
+          if (typeof window !== 'undefined') {
+            window.localStorage.removeItem(REGISTER_HANDOFF_KEY);
+          }
+        } catch {
+          setErrorMessage('La cuenta quedó conectada, pero no pudimos cargar toda la configuración inicial. Revisá conexión y volvé a intentar.');
+          return;
+        }
+
         await refreshProfile();
         await router.push('/profesional/dashboard');
         return;

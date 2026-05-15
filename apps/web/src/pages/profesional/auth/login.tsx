@@ -16,6 +16,42 @@ import { useProfessionalProfileContext } from '@/context/ProfessionalProfileCont
 import { setAuthAccessToken } from '@/services/session';
 
 
+const REGISTER_HANDOFF_KEY = 'plura:professional-register-handoff';
+
+type ProfessionalRegisterHandoff = {
+  schedule?: {
+    days?: Array<{
+      day?: string;
+      enabled?: boolean;
+      paused?: boolean;
+      ranges?: Array<{
+        id?: string;
+        start?: string;
+        end?: string;
+      }>;
+    }>;
+    pauses?: unknown[];
+    slotDurationMinutes?: number;
+  };
+  firstService?: {
+    name?: string;
+    description?: string;
+    categorySlug?: string;
+    imageUrl?: string;
+    price?: string;
+    depositAmount?: null;
+    duration?: string;
+    postBufferMinutes?: number;
+    paymentType?: 'ON_SITE';
+    processingFeeMode?: 'INSTANT';
+    currency?: 'UYU';
+    active?: boolean;
+  } | null;
+  publicPage?: {
+    about?: string;
+  };
+};
+
 const extractApiMessage = (error: unknown, fallback: string) => {
   if (isAxiosError(error)) {
     const responseData = error.response?.data;
@@ -100,7 +136,66 @@ export default function ProfesionalLoginPage() {
     }
   };
 
+  const applyPendingRegisterHandoff = async () => {
+    if (typeof window === 'undefined') return;
+
+    const raw = window.localStorage.getItem(REGISTER_HANDOFF_KEY);
+    if (!raw) return;
+
+    let handoff: ProfessionalRegisterHandoff | null = null;
+    try {
+      handoff = JSON.parse(raw) as ProfessionalRegisterHandoff;
+    } catch {
+      window.localStorage.removeItem(REGISTER_HANDOFF_KEY);
+      return;
+    }
+
+    if (!handoff || typeof handoff !== 'object') {
+      window.localStorage.removeItem(REGISTER_HANDOFF_KEY);
+      return;
+    }
+
+    if (handoff.publicPage?.about?.trim()) {
+      await api.put('/profesional/public-page', {
+        about: handoff.publicPage.about.trim(),
+      });
+    }
+
+    if (handoff.schedule?.days?.length) {
+      await api.put('/profesional/schedule', {
+        days: handoff.schedule.days,
+        pauses: [],
+        slotDurationMinutes: Math.max(15, Number(handoff.schedule.slotDurationMinutes) || 60),
+      });
+    }
+
+    const firstService = handoff.firstService;
+    if (firstService?.name?.trim() && firstService.price?.trim() && firstService.duration?.trim()) {
+      await api.post('/profesional/services', {
+        name: firstService.name.trim(),
+        description: firstService.description?.trim() || '',
+        categorySlug: firstService.categorySlug?.trim() || '',
+        imageUrl: firstService.imageUrl?.trim() || '',
+        price: firstService.price.trim(),
+        depositAmount: null,
+        duration: firstService.duration.trim(),
+        postBufferMinutes: Number(firstService.postBufferMinutes) || 0,
+        paymentType: 'ON_SITE',
+        processingFeeMode: 'INSTANT',
+        currency: 'UYU',
+        active: firstService.active !== false,
+      });
+    }
+
+    window.localStorage.removeItem(REGISTER_HANDOFF_KEY);
+  };
+
   const completeProfessionalLoginFlow = async () => {
+    try {
+      await applyPendingRegisterHandoff();
+    } catch {
+      // Si la carga inicial falla no bloqueamos el login: el dashboard permite corregir configuración.
+    }
     void refreshProfile().catch(() => undefined);
     router.push('/profesional/dashboard');
   };

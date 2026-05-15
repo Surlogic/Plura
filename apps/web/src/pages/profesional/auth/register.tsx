@@ -631,6 +631,7 @@ export default function ProfesionalRegisterPage() {
         <GoogleLoginButton
           authAction="REGISTER"
           intendedRole="PROFESSIONAL"
+          mode="redirect"
           onAuthenticated={handleOAuthAuthenticated}
           onError={setErrorMessage}
           buttonLabel="Continuar con Google"

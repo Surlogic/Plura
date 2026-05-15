@@ -1,13 +1,19 @@
 export const GOOGLE_AUTH_URL = 'https://accounts.google.com/o/oauth2/v2/auth';
 export const GOOGLE_OAUTH_CHANNEL = 'plura_google_oauth_channel';
 export const GOOGLE_OAUTH_REQUEST_KEY = 'plura_google_oauth_request';
+export const GOOGLE_OAUTH_REDIRECT_RESULT_KEY = 'plura_google_oauth_redirect_result';
 
 const OAUTH_REQUEST_MAX_AGE_MS = 10 * 60 * 1000;
+const OAUTH_RESULT_MAX_AGE_MS = 2 * 60 * 1000;
+
+export type GoogleOAuthMode = 'popup' | 'redirect';
 
 export type GoogleOAuthRequest = {
   state: string;
   codeVerifier: string;
   createdAt: number;
+  mode?: GoogleOAuthMode;
+  returnTo?: string;
 };
 
 export type GoogleOAuthResultPayload = {
@@ -26,10 +32,14 @@ const createRandomString = (size = 32) => {
     .join('');
 };
 
-export const createGoogleOAuthRequest = (): GoogleOAuthRequest => ({
+export const createGoogleOAuthRequest = (
+  options: { mode?: GoogleOAuthMode; returnTo?: string } = {},
+): GoogleOAuthRequest => ({
   state: createRandomString(16),
   codeVerifier: createRandomString(64),
   createdAt: Date.now(),
+  mode: options.mode || 'popup',
+  returnTo: options.returnTo,
 });
 
 export const saveGoogleOAuthRequest = (payload: GoogleOAuthRequest) => {
@@ -55,6 +65,8 @@ export const getGoogleOAuthRequest = (): GoogleOAuthRequest | null => {
       state: parsed.state,
       codeVerifier: parsed.codeVerifier,
       createdAt: parsed.createdAt,
+      mode: parsed.mode === 'redirect' ? 'redirect' : 'popup',
+      returnTo: typeof parsed.returnTo === 'string' ? parsed.returnTo : undefined,
     };
   } catch {
     return null;
@@ -63,6 +75,36 @@ export const getGoogleOAuthRequest = (): GoogleOAuthRequest | null => {
 
 export const clearGoogleOAuthRequest = () => {
   sessionStorage.removeItem(GOOGLE_OAUTH_REQUEST_KEY);
+};
+
+export const saveGoogleOAuthRedirectResult = (payload: GoogleOAuthResultPayload) => {
+  sessionStorage.setItem(GOOGLE_OAUTH_REDIRECT_RESULT_KEY, JSON.stringify(payload));
+};
+
+export const getGoogleOAuthRedirectResult = (): GoogleOAuthResultPayload | null => {
+  const raw = sessionStorage.getItem(GOOGLE_OAUTH_REDIRECT_RESULT_KEY);
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw) as Partial<GoogleOAuthResultPayload>;
+    if (parsed.type !== 'GOOGLE_OAUTH_RESULT') return null;
+    const ts = typeof parsed.ts === 'number' ? parsed.ts : 0;
+    if (!ts || Date.now() - ts > OAUTH_RESULT_MAX_AGE_MS) {
+      return null;
+    }
+    return {
+      type: 'GOOGLE_OAUTH_RESULT',
+      code: typeof parsed.code === 'string' ? parsed.code : null,
+      state: typeof parsed.state === 'string' ? parsed.state : null,
+      error: typeof parsed.error === 'string' ? parsed.error : null,
+      ts,
+    };
+  } catch {
+    return null;
+  }
+};
+
+export const clearGoogleOAuthRedirectResult = () => {
+  sessionStorage.removeItem(GOOGLE_OAUTH_REDIRECT_RESULT_KEY);
 };
 
 const base64UrlEncode = (bytes: Uint8Array) => {

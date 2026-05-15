@@ -1,6 +1,8 @@
 import { useEffect } from 'react';
 import {
   GOOGLE_OAUTH_CHANNEL,
+  getGoogleOAuthRequest,
+  saveGoogleOAuthRedirectResult,
   type GoogleOAuthResultPayload,
 } from '@/lib/auth/googleOAuth';
 
@@ -17,6 +19,17 @@ export default function OAuthCallbackPage() {
       error,
       ts: Date.now(),
     };
+
+    const pendingRequest = getGoogleOAuthRequest();
+    const isRedirectFlow = pendingRequest?.mode === 'redirect';
+
+    if (isRedirectFlow) {
+      saveGoogleOAuthRedirectResult(payload);
+      const returnTo = pendingRequest?.returnTo || '/';
+      window.history.replaceState(null, '', window.location.pathname);
+      window.location.replace(returnTo);
+      return;
+    }
 
     if (window.opener) {
       window.opener.postMessage(payload, window.location.origin);

@@ -11,11 +11,14 @@ import { oauthLogin } from '@/lib/auth/oauthLogin';
 import {
   GOOGLE_AUTH_URL,
   GOOGLE_OAUTH_CHANNEL,
+  clearGoogleOAuthRedirectResult,
   clearGoogleOAuthRequest,
   createCodeChallenge,
   createGoogleOAuthRequest,
+  getGoogleOAuthRedirectResult,
   getGoogleOAuthRequest,
   saveGoogleOAuthRequest,
+  type GoogleOAuthMode,
   type GoogleOAuthResultPayload,
 } from '@/lib/auth/googleOAuth';
 
@@ -27,30 +30,24 @@ type GoogleLoginButtonProps = {
   buttonLabel?: string;
   loadingLabel?: string;
   onLoadingChange?: (isLoading: boolean) => void;
+  mode?: GoogleOAuthMode;
 };
 
 const GOOGLE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || '';
 const OAUTH_RESULT_TIMEOUT_MS = 2 * 60 * 1000; // 2 minutos
-const OAUTH_BACKEND_TIMEOUT_MS = 35 * 1000; // evita loading infinito si backend/OAuth queda pending
-const OAUTH_AUTHENTICATED_CALLBACK_TIMEOUT_MS = 12 * 1000;
-
-const withTimeout = async <T,>(promise: Promise<T>, timeoutMs: number, message: string): Promise<T> => {
-  let timeoutId: ReturnType<typeof setTimeout> | null = null;
-  try {
-    return await Promise.race([
-      promise,
-      new Promise<T>((_, reject) => {
-        timeoutId = setTimeout(() => reject(new Error(message)), timeoutMs);
-      }),
-    ]);
-  } finally {
-    if (timeoutId) {
-      clearTimeout(timeoutId);
-    }
-  }
-};
+const OAUTH_EXCHANGE_TIMEOUT_MS = 35 * 1000;
+const OAUTH_AUTHENTICATED_CALLBACK_TIMEOUT_MS = 20 * 1000;
 
 const resolveApiErrorMessage = (error: unknown, fallback: string) => {
+  if (error instanceof Error && error.message.trim()) {
+    if (error.message === 'OAUTH_EXCHANGE_TIMEOUT') {
+      return 'Google respondió, pero el servidor tardó demasiado en completar el acceso. Intentá nuevamente.';
+    }
+    if (error.message === 'OAUTH_CALLBACK_TIMEOUT') {
+      return 'Google inició sesión, pero la pantalla tardó demasiado en continuar. Recargá e intentá nuevamente.';
+    }
+  }
+
   if (isAxiosError(error)) {
     const responseData = error.response?.data;
 
@@ -80,6 +77,24 @@ const resolveApiErrorMessage = (error: unknown, fallback: string) => {
   return fallback;
 };
 
+const withTimeout = async <T,>(
+  promise: Promise<T>,
+  timeoutMs: number,
+  errorMessage: string,
+): Promise<T> => {
+  let timeoutId: ReturnType<typeof setTimeout> | null = null;
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<T>((_, reject) => {
+        timeoutId = setTimeout(() => reject(new Error(errorMessage)), timeoutMs);
+      }),
+    ]);
+  } finally {
+    if (timeoutId) clearTimeout(timeoutId);
+  }
+};
+
 export default function GoogleLoginButton({
   onAuthenticated,
   onError,
@@ -88,6 +103,7 @@ export default function GoogleLoginButton({
   buttonLabel,
   loadingLabel,
   onLoadingChange,
+  mode = 'popup',
 }: GoogleLoginButtonProps) {
   const [isLoading, setIsLoading] = useState(false);
 
@@ -112,67 +128,76 @@ export default function GoogleLoginButton({
     onLoadingChange?.(isLoading);
   }, [isLoading, onLoadingChange]);
 
+  const handleOAuthResult = useCallback(async (payload: GoogleOAuthResultPayload) => {
+    if (handledResultRef.current) return;
+    handledResultRef.current = true;
+
+    setIsLoading(true);
+    clearResultTimeout();
+    popupRef.current = null;
+
+    const pendingRequest = getGoogleOAuthRequest();
+    clearGoogleOAuthRedirectResult();
+    clearGoogleOAuthRequest();
+
+    if (!pendingRequest) {
+      onError('La sesión OAuth expiró o no es válida. Intentá nuevamente.');
+      setIsLoading(false);
+      return;
+    }
+
+    if (payload.error || !payload.code) {
+      onError(
+        payload.error === 'access_denied'
+          ? 'Acceso denegado por el usuario.'
+          : 'No se recibió autorización de Google.',
+      );
+      setIsLoading(false);
+      return;
+    }
+
+    if (!payload.state || payload.state !== pendingRequest.state) {
+      onError('No se pudo validar el estado de seguridad OAuth.');
+      setIsLoading(false);
+      return;
+    }
+
+    try {
+      const redirectUri = `${window.location.origin}/oauth/callback`;
+
+      const result = await withTimeout(
+        oauthLogin('google', payload.code, {
+          grantType: 'authorization_code',
+          codeVerifier: pendingRequest.codeVerifier,
+          redirectUri,
+          intendedRole,
+          authAction,
+        }),
+        OAUTH_EXCHANGE_TIMEOUT_MS,
+        'OAUTH_EXCHANGE_TIMEOUT',
+      );
+
+      await withTimeout(
+        Promise.resolve(onAuthenticated(result)),
+        OAUTH_AUTHENTICATED_CALLBACK_TIMEOUT_MS,
+        'OAUTH_CALLBACK_TIMEOUT',
+      );
+    } catch (error) {
+      onError(resolveApiErrorMessage(error, authAction === 'REGISTER' ? 'No se pudo completar el registro con Google.' : 'No se pudo iniciar sesión con Google.'));
+    } finally {
+      setIsLoading(false);
+    }
+  }, [authAction, intendedRole, onAuthenticated, onError, clearResultTimeout]);
+
   useEffect(() => {
-    const handleOAuthResult = async (payload: GoogleOAuthResultPayload) => {
-      if (handledResultRef.current) return;
-      handledResultRef.current = true;
+    if (mode !== 'redirect') return;
+    const redirectPayload = getGoogleOAuthRedirectResult();
+    if (!redirectPayload) return;
+    void handleOAuthResult(redirectPayload);
+  }, [mode, handleOAuthResult]);
 
-      clearResultTimeout();
-      popupRef.current = null;
-
-      const pendingRequest = getGoogleOAuthRequest();
-      clearGoogleOAuthRequest();
-
-      if (!pendingRequest) {
-        onError('La sesión OAuth expiró o no es válida. Intentá nuevamente.');
-        setIsLoading(false);
-        return;
-      }
-
-      if (payload.error || !payload.code) {
-        onError(
-          payload.error === 'access_denied'
-            ? 'Acceso denegado por el usuario.'
-            : 'No se recibió autorización de Google.',
-        );
-        setIsLoading(false);
-        return;
-      }
-
-      if (!payload.state || payload.state !== pendingRequest.state) {
-        onError('No se pudo validar el estado de seguridad OAuth.');
-        setIsLoading(false);
-        return;
-      }
-
-      try {
-        const redirectUri = `${window.location.origin}/oauth/callback`;
-
-        const result = await withTimeout(
-          oauthLogin('google', payload.code, {
-            grantType: 'authorization_code',
-            codeVerifier: pendingRequest.codeVerifier,
-            redirectUri,
-            intendedRole,
-            authAction,
-          }),
-          OAUTH_BACKEND_TIMEOUT_MS,
-          authAction === 'REGISTER'
-            ? 'El registro con Google tardó demasiado. Intentá nuevamente.'
-            : 'El inicio de sesión con Google tardó demasiado. Intentá nuevamente.',
-        );
-
-        await withTimeout(
-          Promise.resolve(onAuthenticated(result)),
-          OAUTH_AUTHENTICATED_CALLBACK_TIMEOUT_MS,
-          'Google respondió correctamente, pero no pudimos cerrar el flujo. Actualizá la página e intentá nuevamente.',
-        );
-      } catch (error) {
-        onError(resolveApiErrorMessage(error, authAction === 'REGISTER' ? 'No se pudo completar el registro con Google.' : 'No se pudo iniciar sesión con Google.'));
-      } finally {
-        setIsLoading(false);
-      }
-    };
+  useEffect(() => {
+    if (mode !== 'popup') return;
 
     const handleMessage = async (event: MessageEvent) => {
       if (event.origin !== window.location.origin) return;
@@ -209,7 +234,7 @@ export default function GoogleLoginButton({
       channel?.removeEventListener('message', handleChannelMessage);
       channel?.close();
     };
-  }, [authAction, intendedRole, onAuthenticated, onError, clearResultTimeout]);
+  }, [mode, handleOAuthResult, clearResultTimeout]);
 
   if (!GOOGLE_CLIENT_ID) {
     return (
@@ -230,7 +255,8 @@ export default function GoogleLoginButton({
     handledResultRef.current = false;
     clearResultTimeout();
 
-    const oauthRequest = createGoogleOAuthRequest();
+    const returnTo = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+    const oauthRequest = createGoogleOAuthRequest({ mode, returnTo });
     saveGoogleOAuthRequest(oauthRequest);
 
     let codeChallenge = '';
@@ -257,13 +283,20 @@ export default function GoogleLoginButton({
       code_challenge_method: 'S256',
     });
 
+    const oauthUrl = `${GOOGLE_AUTH_URL}?${params.toString()}`;
+
+    if (mode === 'redirect') {
+      window.location.assign(oauthUrl);
+      return;
+    }
+
     const width = Math.max(960, Math.floor(window.screen.availWidth * 0.92));
     const height = Math.max(720, Math.floor(window.screen.availHeight * 0.9));
     const left = window.screenX + Math.max(0, Math.floor((window.outerWidth - width) / 2));
     const top = window.screenY + Math.max(0, Math.floor((window.outerHeight - height) / 2));
 
     const popup = window.open(
-      `${GOOGLE_AUTH_URL}?${params.toString()}`,
+      oauthUrl,
       'google-oauth',
       `width=${width},height=${height},left=${left},top=${top},scrollbars=yes,resizable=yes`,
     );

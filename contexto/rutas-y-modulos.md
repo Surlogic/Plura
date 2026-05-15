@@ -513,3 +513,5 @@ Lectura de producto:
 - eso indica que parte del modelo de permisos para `Local` y `Enterprise` ya esta pensado, aunque no toda la UX este cerrada
 
 - `/profesional/auth/register`: el registro profesional usa wizard único para email y Google; el teléfono es obligatorio dentro del paso de datos básicos. Google continúa el mismo wizard desde tipo de perfil y el frontend corta el loading OAuth si `/auth/oauth` o el cierre del callback queda pendiente, evitando que el registro quede cargando indefinidamente.
+- `/profesional/auth/register`: el botón de Google del wizard profesional usa OAuth en la misma pestaña (`mode="redirect"`), vuelve por `/oauth/callback` y continúa el mismo wizard sin popup. El teléfono sigue siendo obligatorio dentro del paso de datos básicos.
+

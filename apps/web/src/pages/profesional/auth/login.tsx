@@ -53,6 +53,13 @@ export default function ProfesionalLoginPage() {
     }
     return rawValue?.trim() === '1';
   })();
+  const registrationAccepted = (() => {
+    const rawValue = router.query.registered;
+    if (Array.isArray(rawValue)) {
+      return rawValue[0]?.trim() === '1';
+    }
+    return rawValue?.trim() === '1';
+  })();
   const [form, setForm] = useState({ email: '', password: '' });
   useEffect(() => {
     const emailQuery = router.query.email;
@@ -199,6 +206,11 @@ export default function ProfesionalLoginPage() {
                 {passwordResetCompleted ? (
                   <p className="rounded-[12px] border border-[#cdeee9] bg-[#f0fffc] px-3 py-2 text-xs text-[#1FB6A6]">
                     Tu contraseña ya fue actualizada. Iniciá sesión para continuar.
+                  </p>
+                ) : null}
+                {registrationAccepted ? (
+                  <p className="rounded-[12px] border border-[#cdeee9] bg-[#f0fffc] px-3 py-2 text-xs text-[#1FB6A6]">
+                    Si el email no estaba registrado, la cuenta profesional fue creada. Iniciá sesión para entrar al panel.
                   </p>
                 ) : null}
 

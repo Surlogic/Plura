@@ -224,10 +224,7 @@ public class AuthService {
         User existingUser = userRepository.findByEmailAndDeletedAtIsNull(normalizedEmail).orElse(null);
         if (existingUser != null) {
             burnPasswordWorkFactor(request.getPassword());
-            if (isProfessionalUser(existingUser)) {
-                throw new ResponseStatusException(HttpStatus.CONFLICT, PROFESSIONAL_ACCOUNT_EXISTS_MESSAGE);
-            }
-            throw new ResponseStatusException(HttpStatus.CONFLICT, CLIENT_ACCOUNT_EXISTS_FOR_PROFESSIONAL_MESSAGE);
+            return;
         }
 
         String tipoCliente = normalizeTipoCliente(request.getTipoCliente());

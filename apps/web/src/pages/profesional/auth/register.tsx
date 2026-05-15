@@ -18,7 +18,6 @@ import { mapboxForwardGeocode } from '@/services/mapbox';
 import { getGeoLocationSuggestions, type GeoLocationSuggestion } from '@/services/geo';
 import { useProfessionalProfileContext } from '@/context/ProfessionalProfileContext';
 import type { OAuthLoginResult } from '@/lib/auth/oauthLogin';
-import { setAuthAccessToken } from '@/services/session';
 import { getGoogleOAuthAppOrigin } from '@/lib/auth/googleOAuth';
 
 const extractApiMessage = (error: unknown, fallback: string) => {
@@ -520,11 +519,15 @@ export default function ProfesionalRegisterPage() {
         return;
       }
 
-      const response = await api.post<{ accessToken?: string | null }>('/auth/register/profesional', payload);
-      setAuthAccessToken(response.data?.accessToken ?? null, 'PROFESSIONAL');
+      await api.post('/auth/register/profesional', payload);
       saveDraftAfterRegister();
-      await refreshProfile();
-      await router.push('/profesional/dashboard');
+      await router.push({
+        pathname: '/profesional/auth/login',
+        query: {
+          email: normalizedEmail,
+          registered: '1',
+        },
+      });
     } catch (error) {
       if (axios.isAxiosError(error) && !error.response) {
         setErrorMessage('No se pudo conectar con el servidor.');

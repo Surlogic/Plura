@@ -180,7 +180,7 @@ export default function ProfesionalBillingPage() {
               <DashboardPageHeader
                 eyebrow="Facturación"
                 title="Facturación y cobros"
-                description="Mantené separado el plan del marketplace de la cuenta de Mercado Pago usada para cobrar reservas."
+                description="Mantené separado el plan de Plura de la cuenta de Mercado Pago usada para cobrar reservas."
                 meta={
                   <>
                     <DashboardHeaderBadge tone="accent">
@@ -244,7 +244,7 @@ export default function ProfesionalBillingPage() {
                     <DashboardStatCard
                       label="Plan actual"
                       value={currentPlan.label}
-                      detail="Tu nivel vigente dentro del marketplace"
+                      detail="Tu nivel vigente dentro de Plura"
                       icon="plan"
                       tone="accent"
                     />
@@ -273,8 +273,8 @@ export default function ProfesionalBillingPage() {
 
                   <section ref={planDetailsRef} className="space-y-4">
                     <DashboardSectionHeading
-                      title="Mi plan"
-                      description="Esta sección representa tu suscripción al marketplace. No mezcla la cuenta que usás para cobrar reservas."
+                      title="Mi plan de Plura"
+                      description="Esta sección representa tu suscripción a Plura. No mezcla la cuenta que usás para cobrar reservas."
                     />
 
                     <BillingCurrentPlanCard
@@ -311,7 +311,7 @@ export default function ProfesionalBillingPage() {
                         >
                           <DashboardSectionHeading
                             title="Planes disponibles"
-                            description="Profesional funciona como base gratuita. Local y Enterprise abren checkout en Mercado Pago para la suscripción del marketplace."
+                            description="Profesional funciona como base gratuita. Local y Enterprise abren checkout en Mercado Pago para la suscripción de Plura."
                             action={isLoadingBilling ? (
                               <span className="text-xs font-semibold text-[#94A3B8]">
                                 Cargando...
@@ -346,8 +346,8 @@ export default function ProfesionalBillingPage() {
                     <DashboardSectionHeading
                       title="Cobros de reservas con Mercado Pago"
                       description={canUseOnlinePayments
-                        ? 'Esta sección representa la cuenta del profesional para cobrar reservas online. No cambia tu plan del marketplace.'
-                        : 'Esta sección queda disponible cuando tu plan habilita pagos online. No cambia tu suscripción al marketplace.'}
+                        ? 'Esta sección representa la cuenta del profesional para cobrar reservas online. No cambia tu plan de Plura.'
+                        : 'Esta sección queda disponible cuando tu plan habilita pagos online. No cambia tu suscripción a Plura.'}
                     />
 
                     {canUseOnlinePayments ? (

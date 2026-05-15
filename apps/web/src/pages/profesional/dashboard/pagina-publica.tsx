@@ -57,7 +57,7 @@ export default function ProfesionalPublicPageBuilder() {
   const featureAccess = resolveProfessionalFeatureAccess(profile);
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
   const [iframeReady, setIframeReady] = useState(false);
-  const [origin, setOrigin] = useState('');
+  const [origin, setOrigin] = useState('https://plura.com');
   const [isSaving, setIsSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
   const [saveError, setSaveError] = useState(false);

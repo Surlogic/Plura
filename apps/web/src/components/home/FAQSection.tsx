@@ -1,5 +1,5 @@
 const faqs = [
-  '¿Cómo reservo un turno?',
+  '¿Cómo reservo un turno en Plura?',
   '¿Puedo cancelar o reprogramar una reserva?',
   '¿Cómo encuentro profesionales cerca de mí?',
   '¿Qué métodos de pago se aceptan?',

@@ -64,7 +64,7 @@ export default function ClienteInicioPage() {
             tone="client"
             variant="banner"
             title="Verificá tu email para asegurar tu cuenta"
-            description="Confirmá tu casilla principal desde acá mismo. No bloquea el uso de la app, pero deja mejor preparada tu cuenta para recuperaciones y avisos importantes."
+            description="Confirmá tu casilla principal desde acá mismo. No bloquea el uso de Plura, pero deja mejor preparada tu cuenta para recuperaciones y avisos importantes."
           />
         ) : null}
         <ClientReviewReminderCard />

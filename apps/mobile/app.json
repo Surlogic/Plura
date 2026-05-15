@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "Marketplace de cuidado personal",
+    "name": "Plura",
     "slug": "mobile",
     "scheme": "plura",
     "version": "1.0.0",
@@ -35,7 +35,7 @@
       [
         "expo-location",
         {
-          "locationWhenInUsePermission": "Marketplace de cuidado personal usa tu ubicacion para mostrar profesionales cercanos y ordenar resultados por distancia."
+          "locationWhenInUsePermission": "Plura usa tu ubicacion para mostrar profesionales cercanos y ordenar resultados por distancia."
         }
       ],
       "expo-notifications",

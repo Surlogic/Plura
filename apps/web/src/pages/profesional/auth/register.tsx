@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { ChangeEvent, FormEvent } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
@@ -18,6 +18,7 @@ import { mapboxForwardGeocode } from '@/services/mapbox';
 import { getGeoLocationSuggestions, type GeoLocationSuggestion } from '@/services/geo';
 import { useProfessionalProfileContext } from '@/context/ProfessionalProfileContext';
 import type { OAuthLoginResult } from '@/lib/auth/oauthLogin';
+import { setAuthAccessToken } from '@/services/session';
 
 const extractApiMessage = (error: unknown, fallback: string) => {
   if (axios.isAxiosError(error)) {
@@ -80,6 +81,9 @@ type ScheduleDay = {
   close: string;
 };
 
+const ONBOARDING_DRAFT_KEY = 'plura:professional-register-wizard-draft';
+const ONBOARDING_HANDOFF_KEY = 'plura:professional-onboarding-draft';
+
 const wizardSteps = [
   'Cuenta',
   'Perfil',
@@ -130,7 +134,7 @@ const textAreaClassName =
 
 export default function ProfesionalRegisterPage() {
   const router = useRouter();
-  const { refreshProfile } = useProfessionalProfileContext();
+  const { profile, authStatus, refreshProfile } = useProfessionalProfileContext();
   const { categories, isLoading: categoriesLoading } = useCategories();
 
   const [step, setStep] = useState(0);
@@ -156,6 +160,8 @@ export default function ProfesionalRegisterPage() {
   });
   const [touched, setTouched] = useState<TouchedState>(defaultTouched);
   const [schedule, setSchedule] = useState<ScheduleDay[]>(initialSchedule);
+  const [isOAuthSetup, setIsOAuthSetup] = useState(false);
+  const [hasHydratedOnboardingDraft, setHasHydratedOnboardingDraft] = useState(false);
   const [categorySearch, setCategorySearch] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
@@ -163,6 +169,7 @@ export default function ProfesionalRegisterPage() {
   const [activeGeoField, setActiveGeoField] = useState<'country' | 'city' | 'fullAddress' | null>(null);
   const [geoSuggestions, setGeoSuggestions] = useState<GeoLocationSuggestion[]>([]);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const isBusy = isSubmitting || isGoogleLoading;
   const visibleStepNumber = Math.min(step + 1, 8);
 
@@ -187,14 +194,105 @@ export default function ProfesionalRegisterPage() {
     return category.name.toLowerCase().includes(query) || category.slug.toLowerCase().includes(query);
   });
 
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      setHasHydratedOnboardingDraft(true);
+      return;
+    }
+
+    const rawDraft = window.localStorage.getItem(ONBOARDING_DRAFT_KEY);
+    if (!rawDraft) {
+      setHasHydratedOnboardingDraft(true);
+      return;
+    }
+
+    try {
+      const parsed = JSON.parse(rawDraft) as {
+        form?: Partial<RegisterForm>;
+        schedule?: ScheduleDay[];
+        step?: number;
+        isOAuthSetup?: boolean;
+      };
+      if (parsed.form) {
+        setForm((prev) => ({ ...prev, ...parsed.form }));
+      }
+      if (Array.isArray(parsed.schedule) && parsed.schedule.length > 0) {
+        setSchedule(parsed.schedule);
+      }
+      if (typeof parsed.step === 'number' && Number.isFinite(parsed.step)) {
+        setStep(Math.max(0, Math.min(parsed.step, wizardSteps.length - 1)));
+      }
+      if (parsed.isOAuthSetup) {
+        setIsOAuthSetup(true);
+      }
+    } catch {
+      window.localStorage.removeItem(ONBOARDING_DRAFT_KEY);
+    } finally {
+      setHasHydratedOnboardingDraft(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || !hasHydratedOnboardingDraft) return;
+    window.localStorage.setItem(
+      ONBOARDING_DRAFT_KEY,
+      JSON.stringify({
+        form,
+        schedule,
+        step,
+        isOAuthSetup,
+        updatedAt: Date.now(),
+      }),
+    );
+  }, [form, schedule, step, isOAuthSetup, hasHydratedOnboardingDraft]);
+
+  useEffect(() => {
+    if (authStatus !== 'authenticated' || !profile) return;
+
+    const profileCategorySlugs = Array.isArray(profile.categories)
+      ? profile.categories.map((category) => category.slug).filter(Boolean)
+      : [];
+    const restoredTipoCliente = profile.tipoCliente === 'LOCAL'
+      ? 'LOCAL'
+      : profile.tipoCliente === 'A_DOMICILIO'
+        ? 'A_DOMICILIO'
+        : 'SIN_LOCAL';
+
+    setIsOAuthSetup(true);
+    setForm((prev) => ({
+      ...prev,
+      email: profile.email?.trim().toLowerCase() || prev.email,
+      confirmEmail: profile.email?.trim().toLowerCase() || prev.confirmEmail,
+      fullName: profile.fullName?.trim() || prev.fullName,
+      phoneNumber: profile.phoneNumber?.trim() || prev.phoneNumber,
+      categorySlugs: prev.categorySlugs.length > 0 ? prev.categorySlugs : profileCategorySlugs,
+      tipoCliente: prev.tipoCliente || restoredTipoCliente,
+      country: profile.country?.trim() || prev.country,
+      city: profile.city?.trim() || prev.city,
+      fullAddress: profile.fullAddress?.trim() || prev.fullAddress,
+      password: '',
+      confirmPassword: '',
+    }));
+    setTouched((prev) => ({
+      ...prev,
+      email: true,
+      confirmEmail: true,
+      phoneNumber: Boolean(profile.phoneNumber?.trim()) || prev.phoneNumber,
+      password: true,
+      confirmPassword: true,
+    }));
+    setStep((prev) => (prev === 0 ? 2 : prev));
+    setSuccessMessage('Sesión profesional activa. Terminá el onboarding para dejar tu perfil listo.');
+  }, [authStatus, profile]);
+
   const passwordValid = form.password.length >= 8;
   const validationErrors: Record<keyof RegisterForm, string> = {
     email: emailPattern.test(emailValue) ? '' : 'Email inválido.',
     confirmEmail: confirmEmailValue.length > 0 && confirmEmailValue === emailValue
       ? ''
       : 'Los correos no coinciden.',
-    password: passwordValid ? '' : 'Mínimo 8 caracteres.',
-    confirmPassword: form.confirmPassword.length > 0 && form.confirmPassword === form.password
+    password: isOAuthSetup || passwordValid ? '' : 'Mínimo 8 caracteres.',
+    confirmPassword: isOAuthSetup || (form.confirmPassword.length > 0 && form.confirmPassword === form.password)
       ? ''
       : 'Las contraseñas no coinciden.',
     profileType: form.profileType ? '' : 'Seleccioná un tipo de perfil.',
@@ -233,7 +331,7 @@ export default function ProfesionalRegisterPage() {
   const stepFields = (currentStep: number): Array<keyof RegisterForm> => {
     switch (currentStep) {
       case 0:
-        return ['email', 'confirmEmail', 'password', 'confirmPassword'];
+        return isOAuthSetup ? [] : ['email', 'confirmEmail', 'password', 'confirmPassword'];
       case 1:
         return ['profileType'];
       case 2:
@@ -264,6 +362,7 @@ export default function ProfesionalRegisterPage() {
     const { name, value } = event.target;
     const normalizedValue = name === 'email' || name === 'confirmEmail' ? value.toLowerCase() : value;
     setForm((prev) => ({ ...prev, [name]: normalizedValue }));
+    setSuccessMessage(null);
   };
 
   const handleBlur = (event: ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
@@ -281,17 +380,41 @@ export default function ProfesionalRegisterPage() {
 
   const handleOAuthAuthenticated = async (result: OAuthLoginResult) => {
     setErrorMessage(null);
+    setSuccessMessage(null);
+
     if (result.role !== 'PROFESSIONAL') {
       setErrorMessage('No pudimos completar el alta profesional con esa cuenta. Intentá nuevamente desde este flujo.');
       return;
     }
-    const requiresPhoneCompletion = !(result.user.phoneNumber ?? '').trim();
-    if (requiresPhoneCompletion) {
-      router.push('/profesional/auth/complete-phone');
-      return;
-    }
+
+    const oauthEmail = result.user.email?.trim().toLowerCase() || '';
+    const oauthPhoneNumber = (result.user.phoneNumber ?? '').trim();
+
+    setIsOAuthSetup(true);
+    setForm((prev) => ({
+      ...prev,
+      fullName: result.user.fullName?.trim() || prev.fullName,
+      email: oauthEmail || prev.email,
+      confirmEmail: oauthEmail || prev.confirmEmail,
+      phoneNumber: oauthPhoneNumber || prev.phoneNumber,
+      password: '',
+      confirmPassword: '',
+    }));
+    setTouched((prev) => ({
+      ...prev,
+      email: Boolean(oauthEmail),
+      confirmEmail: Boolean(oauthEmail),
+      phoneNumber: Boolean(oauthPhoneNumber),
+      password: true,
+      confirmPassword: true,
+    }));
+    setStep(2);
+    setSuccessMessage(
+      oauthPhoneNumber
+        ? 'Cuenta creada con Google. Terminá de configurar tu perfil profesional.'
+        : 'Cuenta creada con Google. Completá tu teléfono y seguí configurando tu perfil.',
+    );
     await refreshProfile();
-    router.push('/profesional/dashboard');
   };
 
   const handleGeoFieldChange = async (
@@ -385,7 +508,7 @@ export default function ProfesionalRegisterPage() {
   const saveDraftAfterRegister = () => {
     if (typeof window === 'undefined') return;
     window.localStorage.setItem(
-      'plura:professional-onboarding-draft',
+      ONBOARDING_HANDOFF_KEY,
       JSON.stringify({
         schedule,
         firstService: {
@@ -449,20 +572,75 @@ export default function ProfesionalRegisterPage() {
         password: form.password,
       };
 
-      await api.post('/auth/register/profesional', payload);
+      if (isOAuthSetup) {
+        await api.post('/auth/oauth/complete-phone', {
+          phoneNumber: payload.phoneNumber,
+        });
+
+        try {
+          await api.put('/profesional/profile', {
+            fullName: payload.fullName,
+            rubro: payload.rubro,
+            categorySlugs: payload.categorySlugs,
+            location: payload.location || '',
+            country: payload.country,
+            city: payload.city,
+            fullAddress: payload.fullAddress,
+            latitude: payload.latitude,
+            longitude: payload.longitude,
+            phoneNumber: payload.phoneNumber,
+          });
+        } catch {
+          // No cortamos el onboarding si el backend rechaza una actualizacion parcial.
+          // El telefono queda guardado y el draft conserva horarios/primer servicio para el dashboard.
+        }
+
+        saveDraftAfterRegister();
+        if (typeof window !== 'undefined') {
+          window.localStorage.removeItem(ONBOARDING_DRAFT_KEY);
+        }
+        await refreshProfile();
+        await router.push('/profesional/dashboard?onboarding=1');
+        return;
+      }
+
+      const response = await api.post<{ accessToken?: string | null }>('/auth/register/profesional', payload);
+      setAuthAccessToken(response.data?.accessToken ?? null, 'PROFESSIONAL');
       saveDraftAfterRegister();
-      await router.push({
-        pathname: '/profesional/auth/login',
-        query: {
-          registered: '1',
-          email: payload.email,
-        },
-      });
+      if (typeof window !== 'undefined') {
+        window.localStorage.removeItem(ONBOARDING_DRAFT_KEY);
+      }
+      await refreshProfile();
+      await router.push('/profesional/dashboard?onboarding=1');
     } catch (error) {
       if (axios.isAxiosError(error) && !error.response) {
         setErrorMessage('No se pudo conectar con el servidor.');
       } else {
-        setErrorMessage(extractApiMessage(error, 'No se pudo crear la cuenta profesional.'));
+        const apiMessage = extractApiMessage(error, 'No se pudo crear la cuenta profesional.');
+        const status = axios.isAxiosError(error) ? error.response?.status : undefined;
+        const looksLikeExistingAccount =
+          status === 409 ||
+          /existe|registrad|already|duplicad|email/i.test(apiMessage);
+
+        if (!isOAuthSetup && looksLikeExistingAccount) {
+          if (typeof window !== 'undefined') {
+            window.localStorage.setItem(
+              ONBOARDING_DRAFT_KEY,
+              JSON.stringify({ form, schedule, step, isOAuthSetup: false, updatedAt: Date.now() }),
+            );
+          }
+          await router.push({
+            pathname: '/profesional/auth/login',
+            query: {
+              email: payload.email,
+              onboarding: '1',
+              reason: 'existing-account',
+            },
+          });
+          return;
+        }
+
+        setErrorMessage(apiMessage);
       }
     } finally {
       setIsSubmitting(false);
@@ -1099,6 +1277,12 @@ export default function ProfesionalRegisterPage() {
             {stepHeader}
             {renderCurrentStep()}
 
+            {successMessage ? (
+              <p className="mx-auto max-w-3xl rounded-[16px] border border-[color:var(--success-soft)] bg-[color:var(--success-soft)] px-4 py-3 text-sm text-[color:var(--primary)]">
+                {successMessage}
+              </p>
+            ) : null}
+
             {errorMessage ? (
               <p className="mx-auto max-w-3xl rounded-[16px] border border-[color:var(--error-soft)] bg-[color:var(--error-soft)] px-4 py-3 text-sm text-[color:var(--error)]">
                 {errorMessage}
@@ -1117,7 +1301,13 @@ export default function ProfesionalRegisterPage() {
                 </Button>
               ) : (
                 <Button type="submit" variant="primary" size="lg" className="min-w-72" disabled={isSubmitting}>
-                  {isSubmitting ? 'Creando perfil...' : 'Publicar perfil'}
+                  {isSubmitting
+                    ? isOAuthSetup
+                      ? 'Guardando configuración...'
+                      : 'Creando perfil...'
+                    : isOAuthSetup
+                      ? 'Guardar y entrar al dashboard'
+                      : 'Publicar perfil'}
                 </Button>
               )}
             </div>

@@ -182,7 +182,7 @@ export function UnifiedLoginScreen() {
               className="rounded-[30px] px-6 py-6"
             >
               <Text className="text-xs font-bold uppercase tracking-[2px] text-secondary/70">
-                Acceso
+                Acceso a Plura
               </Text>
               <Text className="mt-3 text-3xl font-semibold text-secondary">
                 Iniciar sesion

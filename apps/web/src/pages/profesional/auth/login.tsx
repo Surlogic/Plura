@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { useRouter } from 'next/router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { ChangeEvent, FormEvent } from 'react';
 import { isAxiosError } from 'axios';
 import AuthTopBar from '@/components/auth/AuthTopBar';
@@ -45,6 +45,14 @@ const extractApiMessage = (error: unknown, fallback: string) => {
 export default function ProfesionalLoginPage() {
   const router = useRouter();
   const { refreshProfile } = useProfessionalProfileContext();
+  const shouldResumeOnboarding = (() => {
+    const rawValue = router.query.onboarding;
+    if (Array.isArray(rawValue)) {
+      return rawValue[0]?.trim() === '1';
+    }
+    return rawValue?.trim() === '1';
+  })();
+
   const passwordResetCompleted = (() => {
     const rawValue = router.query.passwordReset;
     if (Array.isArray(rawValue)) {
@@ -53,6 +61,16 @@ export default function ProfesionalLoginPage() {
     return rawValue?.trim() === '1';
   })();
   const [form, setForm] = useState({ email: '', password: '' });
+  useEffect(() => {
+    const emailQuery = router.query.email;
+    const email = Array.isArray(emailQuery) ? emailQuery[0] : emailQuery;
+    if (!email || typeof email !== 'string') return;
+    setForm((prev) => ({
+      ...prev,
+      email: prev.email || email.trim().toLowerCase(),
+    }));
+  }, [router.query.email]);
+
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
@@ -85,6 +103,10 @@ export default function ProfesionalLoginPage() {
   const completeProfessionalLoginFlow = async () => {
     await api.get('/auth/me/profesional');
     await refreshProfile();
+    if (shouldResumeOnboarding) {
+      router.push('/profesional/auth/register?resume=1');
+      return;
+    }
     router.push('/profesional/dashboard');
   };
 
@@ -97,6 +119,10 @@ export default function ProfesionalLoginPage() {
     }
 
     const requiresPhoneCompletion = !(result.user.phoneNumber ?? '').trim();
+    if (requiresPhoneCompletion && shouldResumeOnboarding) {
+      router.push('/profesional/auth/register?resume=1');
+      return;
+    }
     if (requiresPhoneCompletion) {
       router.push('/profesional/auth/complete-phone');
       return;
@@ -181,7 +207,7 @@ export default function ProfesionalLoginPage() {
                   Iniciar sesión
                 </h1>
                 <p className="text-sm text-[color:var(--ink-muted)]">
-                  Administrá tu negocio, servicios y reservas desde el marketplace.
+                  Administrá tu negocio, servicios y reservas desde Plura.
                 </p>
                 <Link
                   href="/cliente/auth/login"
@@ -266,7 +292,7 @@ export default function ProfesionalLoginPage() {
               <p className="mt-6 text-center text-xs text-[color:var(--ink-muted)]">
                 ¿No tenés cuenta?{' '}
                 <Link
-                  href="/profesional/auth/register"
+                  href={shouldResumeOnboarding ? "/profesional/auth/register?resume=1" : "/profesional/auth/register"}
                   className="font-semibold text-[color:var(--primary)] underline decoration-[color:var(--primary-soft)] underline-offset-4"
                 >
                   Crear cuenta profesional

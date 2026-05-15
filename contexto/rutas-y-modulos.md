@@ -233,14 +233,15 @@ Lectura de producto:
   - pantalla de cuenta del trabajador en mobile permite cambiar de contexto (entrar como cliente o como dueno de otro local) sin volver a loguearse
   - Pendiente: editor de horarios por trabajador en UI admin (web/mobile), vista de calendario completo (no solo lista por dias) en UI trabajador y reserva publica con `worker_id` autoasignado.
 - el login unificado expone `/auth/login` y permite que un mismo email use varios contextos (`CLIENT`, `PROFESSIONAL`, `WORKER`); el JWT lleva claim `ctx` con el contexto activo y `pid`/`wid` cuando aplica. Las pantallas legacy `/cliente/auth/login`, `/profesional/auth/login` y sus equivalentes mobile siguen funcionando como compatibilidad.
-- el email de invitacion usa la ruta `/trabajador/invitacion?token=...`; en mobile el deep-link queda en `/(auth)/worker-invitation?token=...`. Ambas pantallas chequean si el email ya tiene cuenta y, si hace falta, piden nombre/telefono/password antes de aceptar.
+- el email de invitacion usa la ruta `/trabajador/invitacion?token=...`; en mobile el deep-link queda en `/(auth)/worker-invitation?token=...`. Ambas pantallas chequean si el email ya tiene cuenta en Plura y, si hace falta, piden nombre/telefono/password antes de aceptar.
 - `/profesional/dashboard/perfil-negocio` ahora incluye constructor visual para `logo` y `banner` dentro de un modal: se abre al terminar una subida/reemplazo y también desde `Editar encuadre`; ese encuadre queda persistido y se aplica también en la ficha pública
 - los autocompletes de ubicacion en `/profesional/auth/register` y `/profesional/dashboard/perfil-negocio` ya seleccionan sugerencias por click normal sin depender de `mouseDown`, evitando opciones que parecian clickeables pero no confirmaban bien al navegar con teclado o blur
+- `/profesional/auth/register` conserva el onboarding profesional aunque la cuenta ya exista o haya sido creada por Google: si hay sesión profesional activa hidrata el wizard desde `/auth/me/profesional`, pide el teléfono dentro del flujo cuando Google no lo trae, guarda el teléfono con `POST /auth/oauth/complete-phone`, mantiene draft local del progreso y al finalizar entra al dashboard con `?onboarding=1`. Si el alta por email detecta una cuenta existente, deriva al login profesional con `onboarding=1` para autenticar y volver al wizard sin duplicar cuentas.
 - `/profesional/auth/register` y `/profesional/dashboard/perfil-negocio` ya comparten el mismo selector internacional de telefono con bandera + codigo; evita cargar el prefijo a mano y deja el numero persistido listo para backend
 - `/profesional/auth/register` ahora usa un onboarding guiado por pasos en desktop: cuenta/Google, tipo de perfil, datos públicos con preview, rubros, modalidad, ubicación si aplica, horarios base, primer servicio y preview final antes de enviar el alta al backend. Mantiene el endpoint existente `POST /auth/register/profesional`; horarios y primer servicio se guardan como draft local para handoff posterior al dashboard.
 - `/profesional/dashboard/reservas` tambien usa selector internacional cuando el profesional carga una reserva manual con telefono de cliente opcional
 - `billing` ya existe y usa contratos `PROFESSIONAL / LOCAL / ENTERPRISE`
-- `/profesional/dashboard/billing` ya separa dos bloques: `Mi plan` y `Cobros de reservas con Mercado Pago`
+- `/profesional/dashboard/billing` ya separa dos bloques: `Mi plan de Plura` y `Cobros de reservas con Mercado Pago`
 - la web profesional ya consume `GET/POST/DELETE /profesional/payment-providers/mercadopago/*` y no usa `payout-config`
 - el retorno OAuth de Mercado Pago mantiene pantalla propia en `/oauth/mercadopago/callback`, pero ya no procesa `code/state` en frontend: Mercado Pago vuelve al callback backend y este redirige a la web con un resultado final
 - el frontend del billing profesional no implementa PKCE ni almacena `code_verifier`; todo el flujo PKCE de Mercado Pago queda resuelto en backend y la web solo inicia el onboarding y muestra el resultado final
@@ -344,7 +345,7 @@ Base: `apps/mobile/app`
 
 ### Entrada y layout
 
-- `app/index.tsx`: si hay sesion profesional redirige a `/dashboard`, si hay sesion cliente entra al shell principal por `/(tabs)` para dejar que Expo Router resuelva la tab inicial sin exponer `index` en el deep link, y si no hay sesion muestra una portada mobile con nombre generico de app y CTAs `Iniciar como cliente` / `Iniciar como profesional`.
+- `app/index.tsx`: si hay sesion profesional redirige a `/dashboard`, si hay sesion cliente entra al shell principal por `/(tabs)` para dejar que Expo Router resuelva la tab inicial sin exponer `index` en el deep link, y si no hay sesion muestra una portada mobile con logo Plura y CTAs `Iniciar como cliente` / `Iniciar como profesional`.
 - `app/_layout.tsx`: monta `AuthSessionProvider` desde `src/context/auth/AuthSessionContext.tsx` y el stack principal.
 - el logout mobile ahora deriva al login correcto por rol activo (`/(auth)/login-client` o `/(auth)/login-professional`) para no mezclar los accesos despues de limpiar sesion
 - `app/+native-intent.tsx` y `app/+not-found.tsx` ahora normalizan entradas nativas vacias o stale (`plura:///`, `plura://index`, `plura:///(tabs)/index`) para que el arranque release no caiga en `Unmatched Route`
@@ -415,7 +416,7 @@ Lectura de producto:
 - `/dashboard` redirige segun sesion: profesional va a `/dashboard/agenda`; otros casos vuelven a tabs o login
 - `app/dashboard/_layout.tsx` ahora reubica cualquier sesion no profesional autenticada en `/(tabs)` para evitar que cliente vea vistas operativas del profesional como `Turnos y reservas`
 - el dashboard profesional mobile ahora monta una barra inferior persistente propia con accesos a `agenda`, `servicios`, `perfil`, `cobros` y `ajustes`; ya no depende de links sueltos dentro de cada pantalla para moverse entre modulos y su implementacion base ya vive bajo `src/features/professional/navigation/ProfessionalBottomNav.tsx`
-- `dashboard/billing` ya no usa `payout-config`; muestra el plan del marketplace y el estado de conexion OAuth de `Mercado Pago` como unico provider vigente para cobros
+- `dashboard/billing` ya no usa `payout-config`; muestra el plan de Plura y el estado de conexion OAuth de `Mercado Pago` como unico provider vigente para cobros
 - `dashboard/billing` en mobile ya respeta el gating principal de web: si el perfil no tiene `allowOnlinePayments`, no intenta conectar `Mercado Pago` y deja la conexion reservada para `LOCAL / ENTERPRISE`
 - `dashboard/billing` refresca perfil + suscripcion al volver a foreground para bajar desfasajes despues del checkout del plan o del flujo OAuth
 - `dashboard/billing` ahora abre el checkout del plan y la autorizacion OAuth de `Mercado Pago` dentro de un browser embebido de Expo; al cerrar esa vista vuelve a refrescar perfil + billing

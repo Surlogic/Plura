@@ -1,10 +1,10 @@
-# Contexto General De La App
+# Contexto General De Plura
 
 Generado el `2026-03-18`.
 
 ## Que es esta app
 
-La app es un monorepo para un marketplace de servicios de estética, bienestar y cuidado personal en LATAM.
+Plura es un monorepo para una plataforma de reservas orientada a belleza y bienestar en LATAM.
 
 La propuesta de producto no es solo "agenda online". El objetivo es convertirse en infraestructura digital de confianza para profesionales y negocios que hoy operan con mensajería, Instagram, llamadas, papel y herramientas sueltas.
 
@@ -16,7 +16,7 @@ El nucleo de valor validado hoy es:
 
 ## Modelo de negocio y roles
 
-La app tiene dos grandes actores:
+Plura tiene dos grandes actores:
 
 - `usuario` o `cliente`: siempre gratis; descubre, reserva, reprograma, cancela segun politica y deja reseñas.
 - `negocio` o `profesional`: entra por un plan gratuito y luego destraba operacion y crecimiento con planes pagos.
@@ -76,7 +76,7 @@ Plan de entrada para validar valor real sin regalar toda la operacion.
 - confirmacion y cancelacion desde panel
 - carga manual de turnos
 - aparicion en marketplace
-- recepcion de reservas desde la app
+- recepcion de reservas desde Plura
 - notificaciones in-app y recordatorio basico
 
 Lectura operativa actual:

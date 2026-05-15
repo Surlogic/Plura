@@ -201,7 +201,7 @@ export default function InternalOpsReviewsPage() {
   return (
     <>
       <Head>
-        <title>Moderación de reseñas | Ops</title>
+        <title>Moderación de reseñas | Plura Ops</title>
         <meta name="robots" content="noindex,nofollow" />
       </Head>
       <div className="min-h-screen bg-[color:var(--background)] px-4 py-8">

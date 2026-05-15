@@ -420,7 +420,7 @@ export default function ClienteConfiguracionPage() {
         <article className={panelClassName}>
           <div className="space-y-4">
             <div>
-              <p className="text-sm font-semibold text-[color:var(--ink)]">Feedback sobre la app</p>
+              <p className="text-sm font-semibold text-[color:var(--ink)]">Feedback sobre Plura</p>
               <p className="text-xs text-[color:var(--ink-muted)]">Contanos como es tu experiencia usando la plataforma.</p>
             </div>
             <AppFeedbackForm

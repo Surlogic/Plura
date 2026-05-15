@@ -203,7 +203,7 @@ export default function ClienteRegisterPage() {
             <Badge variant="warm">Registro</Badge>
             <h1 className="text-2xl font-semibold text-[color:var(--ink)]">Crear cuenta</h1>
             <p className="text-sm text-[color:var(--ink-muted)]">
-              Completá tus datos para comenzar a reservar.
+              Completá tus datos para comenzar en Plura.
             </p>
           </div>
 

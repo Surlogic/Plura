@@ -61,7 +61,7 @@ function MercadoPagoConnectionCard({
         ? 'Consultando el estado más reciente de tu conexión.'
         : isConnected
           ? 'Si necesitás usar otra cuenta, podés volver a conectar Mercado Pago.'
-          : 'Conectá tu cuenta para cobrar reservas online sin mezclarlo con tu plan del marketplace.';
+          : 'Conectá tu cuenta para cobrar reservas online sin mezclarlo con tu plan de Plura.';
 
   return (
     <Card className={tone.card}>
@@ -101,7 +101,7 @@ function MercadoPagoConnectionCard({
           </div>
 
           <div className="mt-5 rounded-[18px] border border-[#DDE7F0] bg-white px-4 py-3 text-sm text-[#516072]">
-            Conectá tu cuenta de Mercado Pago para cobrar reservas online. Tus clientes pagarán sus reservas desde el marketplace y el cobro se procesará con tu cuenta conectada.
+            Conectá tu cuenta de Mercado Pago para cobrar reservas online. Tus clientes pagarán sus reservas desde Plura y el cobro se procesará con tu cuenta conectada.
           </div>
 
           {connection?.lastError ? (

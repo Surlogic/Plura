@@ -31,7 +31,7 @@ export default memo(function Hero({ categories: _categories, stats, isLoading = 
       <div className="relative z-10 mx-auto max-w-[1140px]">
         <div className="mb-6 flex justify-center sm:mb-7 lg:mb-8">
           <p className="w-fit bg-[linear-gradient(90deg,var(--brand-cyan)_0%,var(--primary)_100%)] bg-clip-text text-center text-[0.82rem] font-semibold uppercase tracking-[0.22em] text-transparent sm:text-[0.9rem]">
-            Marketplace de cuidado personal
+            Marketplace de estética y cuidado personal
           </p>
         </div>
 
@@ -44,7 +44,7 @@ export default memo(function Hero({ categories: _categories, stats, isLoading = 
               </h1>
 
               <p className="mx-auto max-w-[34rem] text-center text-[0.98rem] leading-6 text-[color:var(--ink-muted)] sm:text-[1.04rem] sm:leading-7">
-                Reservá servicios de estética, bienestar y cuidado personal.
+                Tu servicio ideal te está esperando…
               </p>
             </div>
           </div>

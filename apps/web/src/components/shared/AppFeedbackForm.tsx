@@ -86,7 +86,7 @@ export default function AppFeedbackForm({ onSubmit, contextSource }: Props) {
       <div className="space-y-3">
         <div className="rounded-[16px] border border-[color:var(--success-soft)] bg-[color:var(--surface)] px-4 py-3">
           <p className="text-sm font-semibold text-[color:var(--success)]">Gracias por tu feedback</p>
-          <p className="mt-1 text-xs text-[color:var(--ink-muted)]">Tu opinion nos ayuda a mejorar la app.</p>
+          <p className="mt-1 text-xs text-[color:var(--ink-muted)]">Tu opinion nos ayuda a mejorar Plura.</p>
         </div>
         <button
           type="button"

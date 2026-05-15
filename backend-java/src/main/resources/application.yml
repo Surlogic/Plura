@@ -124,10 +124,10 @@ app:
   email:
     delivery-enabled: ${EMAIL_DELIVERY_ENABLED:false}
     from-address: ${EMAIL_FROM_ADDRESS:}
-    from-name: ${EMAIL_FROM_NAME:Marketplace de cuidado personal}
+    from-name: ${EMAIL_FROM_NAME:Plura}
     reply-to: ${EMAIL_REPLY_TO:}
     public-web-url: ${APP_PUBLIC_WEB_URL:http://localhost:3002}
-    brand-name: ${APP_BRAND_NAME:Marketplace de cuidado personal}
+    brand-name: ${APP_BRAND_NAME:Plura}
   ops:
     internal-token: ${OPS_INTERNAL_TOKEN:}
     admin-client-email: ${OPS_ADMIN_CLIENT_EMAIL:admin@surlogicuy.com}

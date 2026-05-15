@@ -1,5 +1,4 @@
 import type { AppProps } from 'next/app';
-import Head from 'next/head';
 import { SpeedInsights } from '@vercel/speed-insights/next';
 import { useMemo } from 'react';
 import { Instrument_Sans } from 'next/font/google';
@@ -128,19 +127,6 @@ export default function App({ Component, pageProps }: AppProps) {
     <div
       className={`${instrumentSans.variable} ${instrumentSans.className} font-sans antialiased`}
     >
-      <Head>
-        <title>Marketplace de cuidado personal</title>
-        <meta
-          name="description"
-          content="Reservá servicios de estética, bienestar y cuidado personal."
-        />
-        <meta property="og:title" content="Marketplace de cuidado personal" />
-        <meta
-          property="og:description"
-          content="Reservá servicios de estética, bienestar y cuidado personal."
-        />
-        <meta name="application-name" content="Marketplace de cuidado personal" />
-      </Head>
       {/* eslint-disable-next-line no-restricted-syntax -- Next App entrypoint passes page props dynamically */}
       <Component {...pageProps} />
     </div>

@@ -275,7 +275,7 @@ export function WorkerInvitationScreen() {
                     </>
                   ) : (
                     <Text className="mt-4 text-sm leading-6 text-muted">
-                      Ya tenes cuenta con este email. Aceptamos la invitacion para
+                      Ya tenes cuenta en Plura con este email. Aceptamos la invitacion para
                       conectar tu cuenta como trabajador del local.
                     </Text>
                   )}

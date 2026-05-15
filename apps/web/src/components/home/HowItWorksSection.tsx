@@ -60,7 +60,7 @@ export default memo(function HowItWorksSection() {
           <SectionHeading
             align="center"
             title="Cómo funciona"
-            description="Reservar es simple."
+            description="Reservar en Plura es simple."
             className="mx-auto"
           />
 

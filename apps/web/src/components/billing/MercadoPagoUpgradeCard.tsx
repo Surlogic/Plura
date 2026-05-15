@@ -43,7 +43,7 @@ export default function MercadoPagoUpgradeCard({
           </div>
 
           <div className="mt-5 rounded-[18px] border border-[#F3E1BC] bg-white px-4 py-3 text-sm text-[#516072]">
-            Cuando subas de plan vas a poder conectar tu cuenta de Mercado Pago y cobrar reservas online desde el marketplace.
+            Cuando subas de plan vas a poder conectar tu cuenta de Mercado Pago y cobrar reservas online desde Plura.
           </div>
         </div>
 

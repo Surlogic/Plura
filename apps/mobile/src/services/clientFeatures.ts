@@ -167,7 +167,7 @@ export const buildClientNotifications = async (): Promise<MobileNotification[]> 
   const items: MobileNotification[] = [
     {
       id: 'system-welcome',
-      title: 'Bienvenido al marketplace',
+      title: 'Bienvenido a Plura Mobile',
       body: 'Tu experiencia mobile ya incluye exploracion, reservas y panel profesional.',
       type: 'system',
       createdAt: new Date().toISOString(),

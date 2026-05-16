@@ -149,7 +149,7 @@ public class BillingProperties {
     }
 
     /**
-     * Contenedor de la configuración de los tres planes de suscripción disponibles.
+     * Contenedor de la configuración de la suscripción Core.
      */
     public static class Plans {
         private PlanConfig core = new PlanConfig();
@@ -175,7 +175,7 @@ public class BillingProperties {
         }
 
         public void setPlanLocal(PlanConfig planLocal) {
-            // Legacy binding accepted as no-op. Local is not an active plan.
+            // Binding legacy aceptado como no-op. Local no es un plan activo.
         }
 
         public PlanConfig getPlanEnterprise() {
@@ -183,13 +183,12 @@ public class BillingProperties {
         }
 
         public void setPlanEnterprise(PlanConfig planEnterprise) {
-            // Legacy binding accepted as no-op. Enterprise is not an active plan.
+            // Binding legacy aceptado como no-op. Enterprise no es un plan activo.
         }
     }
 
     /**
-     * Configuración individual de un plan de suscripción.
-     * Define el precio y la moneda del plan.
+     * Configuración de precio y moneda de Plura Core.
      */
     public static class PlanConfig {
         private BigDecimal price = BigDecimal.ZERO;
@@ -215,7 +214,7 @@ public class BillingProperties {
     /**
      * Configuración específica del proveedor MercadoPago.
      * Incluye credenciales, URLs de la API, rutas de endpoints,
-     * IDs de planes y configuración de sandbox.
+     * ID de Core, aliases legacy y configuración de sandbox.
      */
     public static class MercadoPago {
         private boolean enabled = false;

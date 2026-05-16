@@ -6,8 +6,7 @@ import type {
   ProfessionalProfile,
 } from '@/types/professional';
 import {
-  planIncludesProfessionalFeature,
-  requiredPlanForFeature,
+  isProfessionalCoreFeature,
   resolveProfessionalFeatureAccess,
 } from './featureGuards';
 
@@ -59,7 +58,7 @@ const buildProfile = (
   ...overrides,
 });
 
-test('resolveProfessionalFeatureAccess falls back to CORE defaults', () => {
+test('resolveProfessionalFeatureAccess falls back to Core defaults', () => {
   const access = resolveProfessionalFeatureAccess(buildProfile());
 
   assert.deepEqual(access, {
@@ -72,22 +71,7 @@ test('resolveProfessionalFeatureAccess falls back to CORE defaults', () => {
   });
 });
 
-test('resolveProfessionalFeatureAccess treats LOCAL legacy as Core defaults', () => {
-  const access = resolveProfessionalFeatureAccess(buildProfile({
-    professionalPlan: 'LOCAL' as unknown as ProfessionalPlanCode,
-  }));
-
-  assert.deepEqual(access, {
-    enhancedPublicProfile: true,
-    onlinePayments: true,
-    weeklyCalendarNavigation: true,
-    monthlyCalendar: true,
-    basicAnalytics: false,
-    advancedAnalytics: false,
-  });
-});
-
-test('resolveProfessionalFeatureAccess treats ENTERPRISE legacy as Core defaults', () => {
+test('resolveProfessionalFeatureAccess treats legacy plan strings as Core defaults', () => {
   const access = resolveProfessionalFeatureAccess(buildProfile({
     professionalPlan: 'ENTERPRISE' as unknown as ProfessionalPlanCode,
   }));
@@ -102,7 +86,7 @@ test('resolveProfessionalFeatureAccess treats ENTERPRISE legacy as Core defaults
   });
 });
 
-test('resolveProfessionalFeatureAccess prefers entitlements over plan code when present', () => {
+test('resolveProfessionalFeatureAccess prefers entitlements over profile plan code when present', () => {
   const access = resolveProfessionalFeatureAccess(buildProfile({
     professionalPlan: 'ENTERPRISE' as unknown as ProfessionalPlanCode,
     professionalEntitlements: buildEntitlements({
@@ -121,14 +105,10 @@ test('resolveProfessionalFeatureAccess prefers entitlements over plan code when 
   assert.equal(access.advancedAnalytics, false);
 });
 
-test('planIncludesProfessionalFeature matches the expected paywall boundaries', () => {
-  assert.equal(planIncludesProfessionalFeature('CORE', 'onlinePayments'), true);
-  assert.equal(planIncludesProfessionalFeature('CORE', 'weeklyCalendarNavigation'), true);
-  assert.equal(planIncludesProfessionalFeature('CORE', 'monthlyCalendar'), true);
-  assert.equal(planIncludesProfessionalFeature('CORE', 'advancedAnalytics'), false);
-});
-
-test('requiredPlanForFeature exposes the correct minimum plan', () => {
-  assert.equal(requiredPlanForFeature('enhancedPublicProfile'), 'CORE');
-  assert.equal(requiredPlanForFeature('advancedAnalytics'), 'CORE');
+test('isProfessionalCoreFeature only marks Core MVP features as included', () => {
+  assert.equal(isProfessionalCoreFeature('onlinePayments'), true);
+  assert.equal(isProfessionalCoreFeature('weeklyCalendarNavigation'), true);
+  assert.equal(isProfessionalCoreFeature('monthlyCalendar'), true);
+  assert.equal(isProfessionalCoreFeature('basicAnalytics'), false);
+  assert.equal(isProfessionalCoreFeature('advancedAnalytics'), false);
 });

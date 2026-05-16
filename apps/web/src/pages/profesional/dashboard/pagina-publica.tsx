@@ -19,7 +19,6 @@ import {
 import {
   normalizeProfessionalMediaPresentation,
 } from '@/utils/professionalMediaPresentation';
-import { nextPlanFor, PLAN_LABELS } from '../../../../../../packages/shared/src/billing/planAccess';
 import type {
   ProfessionalSchedule,
   PublicService,
@@ -406,11 +405,7 @@ export default function ProfesionalPublicPageBuilder() {
                     <div className="flex items-center justify-between">
                       <DashboardSectionHeading
                         title="Fotos del negocio o trabajos"
-                        description={`Máximo ${maxBusinessPhotos} fotos. Estas son las únicas fotos que se muestran en la galería pública.${
-                          nextPlanFor(profile?.professionalPlan)
-                            ? ` Con el plan ${PLAN_LABELS[nextPlanFor(profile?.professionalPlan)!]} podés subir más.`
-                            : ''
-                        }`}
+                        description={`Máximo ${maxBusinessPhotos} fotos. Estas son las únicas fotos que se muestran en la galería pública.`}
                       />
                       <button
                         type="button"

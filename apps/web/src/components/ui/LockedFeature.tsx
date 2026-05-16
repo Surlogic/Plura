@@ -1,29 +1,23 @@
 'use client';
 
 import { useState, useRef, type ReactNode } from 'react';
-import type { ProfessionalPlanCode } from '../../../../../packages/shared/src/types/professional';
-import { hasPlanAccess } from '../../../../../packages/shared/src/billing/planAccess';
 import { cn } from '@/components/ui/cn';
 
 type LockedFeatureProps = {
   children: ReactNode;
-  requiredPlan: ProfessionalPlanCode;
-  currentPlan?: ProfessionalPlanCode | null;
+  available?: boolean;
   className?: string;
 };
 
 export default function LockedFeature({
   children,
-  requiredPlan,
-  currentPlan,
+  available = false,
   className,
 }: LockedFeatureProps) {
   const [showTooltip, setShowTooltip] = useState(false);
   const badgeRef = useRef<HTMLSpanElement>(null);
 
-  const hasAccess = hasPlanAccess(currentPlan, requiredPlan);
-
-  if (hasAccess) {
+  if (available) {
     return <>{children}</>;
   }
 

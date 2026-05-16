@@ -1,7 +1,4 @@
-import type { BillingUiPlanId } from '@/config/billingPlans';
 import type { ProfessionalProfile } from '@/types/professional';
-import type { ProfessionalPlanCode } from '../../../../../packages/shared/src/types/professional';
-import { hasPlanAccess } from '../../../../../packages/shared/src/billing/planAccess';
 
 export type ProfessionalFeatureKey =
   | 'enhancedPublicProfile'
@@ -11,36 +8,35 @@ export type ProfessionalFeatureKey =
   | 'basicAnalytics'
   | 'advancedAnalytics';
 
-const FEATURE_REQUIRED_PLAN: Record<ProfessionalFeatureKey, ProfessionalPlanCode> = {
-  enhancedPublicProfile: 'CORE',
-  onlinePayments: 'CORE',
-  weeklyCalendarNavigation: 'CORE',
-  monthlyCalendar: 'CORE',
-  basicAnalytics: 'CORE',
-  advancedAnalytics: 'CORE',
+const CORE_FEATURE_ACCESS: Record<ProfessionalFeatureKey, boolean> = {
+  enhancedPublicProfile: true,
+  onlinePayments: true,
+  weeklyCalendarNavigation: true,
+  monthlyCalendar: true,
+  basicAnalytics: false,
+  advancedAnalytics: false,
 };
 
-export const professionalFeatureRequiredPlan = FEATURE_REQUIRED_PLAN;
+export const professionalCoreFeatureAccess = CORE_FEATURE_ACCESS;
 
 export const resolveProfessionalFeatureAccess = (profile?: ProfessionalProfile | null) => {
-  const currentPlan = profile?.professionalPlan ?? 'CORE';
   const entitlements = profile?.professionalEntitlements;
 
   return {
     enhancedPublicProfile: entitlements
       ? entitlements.publicProfileTier === 'ENHANCED'
-      : hasPlanAccess(currentPlan, FEATURE_REQUIRED_PLAN.enhancedPublicProfile),
+      : CORE_FEATURE_ACCESS.enhancedPublicProfile,
     onlinePayments: entitlements
       ? entitlements.allowOnlinePayments
-      : true,
-    weeklyCalendarNavigation: true,
-    monthlyCalendar: true,
+      : CORE_FEATURE_ACCESS.onlinePayments,
+    weeklyCalendarNavigation: CORE_FEATURE_ACCESS.weeklyCalendarNavigation,
+    monthlyCalendar: CORE_FEATURE_ACCESS.monthlyCalendar,
     basicAnalytics: entitlements
       ? entitlements.analyticsTier !== 'NONE'
-      : false,
+      : CORE_FEATURE_ACCESS.basicAnalytics,
     advancedAnalytics: entitlements
       ? entitlements.analyticsTier === 'ADVANCED'
-      : false,
+      : CORE_FEATURE_ACCESS.advancedAnalytics,
   };
 };
 
@@ -49,14 +45,5 @@ export const canAccessProfessionalFeature = (
   feature: ProfessionalFeatureKey,
 ) => resolveProfessionalFeatureAccess(profile)[feature];
 
-export const planIncludesProfessionalFeature = (
-  planId: BillingUiPlanId,
-  feature: ProfessionalFeatureKey,
-) => {
-  if (feature === 'basicAnalytics' || feature === 'advancedAnalytics') return false;
-  return hasPlanAccess(planId, FEATURE_REQUIRED_PLAN[feature]);
-};
-
-export const requiredPlanForFeature = (
-  feature: ProfessionalFeatureKey,
-): ProfessionalPlanCode => FEATURE_REQUIRED_PLAN[feature];
+export const isProfessionalCoreFeature = (feature: ProfessionalFeatureKey): boolean =>
+  CORE_FEATURE_ACCESS[feature];

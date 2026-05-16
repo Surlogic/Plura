@@ -2,8 +2,6 @@ import type { LegacyProfessionalPlanCode, ProfessionalPlanCode } from '../types/
 
 export type BillingUiPlanId = 'CORE';
 export type BillingBackendPlanCode = 'PLAN_CORE';
-export type PaidBillingUiPlanId = 'CORE';
-export type LegacyBillingUiPlanId = LegacyProfessionalPlanCode;
 export type LegacyBillingBackendPlanCode =
   | 'PLAN_BASIC'
   | 'PLAN_PRO'

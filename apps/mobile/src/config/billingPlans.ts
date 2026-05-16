@@ -8,7 +8,6 @@ import {
 export type {
   BillingBackendPlanCode,
   BillingUiPlanId,
-  PaidBillingUiPlanId,
   SharedBillingPlanDefinition as BillingPlanDefinition,
 } from '../../../../packages/shared/src/billing/plans';
 

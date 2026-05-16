@@ -2,11 +2,8 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { memo, useEffect, useMemo, useRef } from 'react';
 import type { ProfessionalProfile } from '@/types/professional';
-import type { ProfessionalPlanCode } from '../../../../../packages/shared/src/types/professional';
-import { hasPlanAccess } from '../../../../../packages/shared/src/billing/planAccess';
 import {
   canAccessProfessionalFeature,
-  requiredPlanForFeature,
   type ProfessionalFeatureKey,
 } from '@/lib/billing/featureGuards';
 import { useProfessionalDashboardUnsavedChanges } from '@/context/ProfessionalDashboardUnsavedChangesContext';
@@ -24,7 +21,6 @@ type MenuItem = {
   href: string;
   icon: DashboardIconName;
   disabled?: boolean;
-  requiredPlan?: ProfessionalPlanCode;
   featureKey?: ProfessionalFeatureKey;
 };
 
@@ -181,17 +177,13 @@ function ProfesionalSidebar({ profile, active }: SidebarProps) {
             <div className="space-y-1">
               {section.items.map((item) => {
                 const isActive = item.label === active;
-                const hintedPlan = item.featureKey ? requiredPlanForFeature(item.featureKey) : null;
                 const showsFeatureHint = item.featureKey
                   ? !canAccessProfessionalFeature(profile, item.featureKey)
                   : false;
-                const isLocked = item.requiredPlan
-                  ? !hasPlanAccess(profile?.professionalPlan, item.requiredPlan)
-                  : false;
-                const isDisabled = item.disabled || isLocked;
+                const isDisabled = Boolean(item.disabled);
                 const itemClassName = cn(
                   'group relative flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--focus-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-white',
-                  isActive && !isLocked
+                  isActive && !isDisabled
                     ? 'bg-[#ECFDF5] text-[#0F766E]'
                     : isDisabled
                       ? 'cursor-not-allowed bg-transparent text-[color:var(--ink-faint)]'
@@ -200,22 +192,22 @@ function ProfesionalSidebar({ profile, active }: SidebarProps) {
 
                 const content = (
                   <>
-                    {isActive && !isLocked ? (
+                    {isActive && !isDisabled ? (
                       <span className="absolute left-0 top-1/2 h-5 w-1 -translate-y-1/2 rounded-r-full bg-[#0F766E]" />
                     ) : null}
                     <span
                       className={cn(
                         'inline-flex h-4 w-4 shrink-0 items-center justify-center',
-                        isActive && !isLocked
+                        isActive && !isDisabled
                           ? 'text-[#0F766E]'
-                          : isLocked
+                          : isDisabled
                             ? 'bg-transparent text-[color:var(--ink-faint)]'
                             : 'bg-transparent text-[#0F172A]',
                       )}
                     >
                       <DashboardIcon name={item.icon} className="h-4 w-4" />
                     </span>
-                    <span className={cn('min-w-0 flex-1 truncate text-sm', isLocked && 'opacity-60')}>
+                    <span className={cn('min-w-0 flex-1 truncate text-sm', isDisabled && 'opacity-60')}>
                       {item.label}
                     </span>
                     {item.label === 'Notificaciones' && notificationBadgeCount ? (
@@ -223,7 +215,7 @@ function ProfesionalSidebar({ profile, active }: SidebarProps) {
                         {notificationBadgeCount}
                       </span>
                     ) : null}
-                    {(isLocked && item.requiredPlan) || (showsFeatureHint && hintedPlan) ? (
+                    {showsFeatureHint ? (
                       <span
                         className="inline-flex items-center gap-1 rounded-full border border-[color:var(--premium-soft)] bg-[color:var(--premium-soft)] px-2 py-0.5 text-[0.5rem] font-semibold uppercase tracking-[0.1em] text-[color:var(--premium-strong)]"
                         title="Funcionalidad no disponible en el MVP"

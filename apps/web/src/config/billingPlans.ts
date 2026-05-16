@@ -11,7 +11,6 @@ import {
 export type {
   BillingBackendPlanCode,
   BillingUiPlanId,
-  PaidBillingUiPlanId,
 } from '../../../../packages/shared/src/billing/plans';
 
 export type BillingPlanDefinition = SharedBillingPlanDefinition & {

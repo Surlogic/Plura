@@ -7,8 +7,11 @@ package com.plura.plurabackend.core.billing.subscriptions.model;
  * Foco funcional: suscripciones.
  */
 public enum SubscriptionStatus {
+    CHECKOUT_PENDING,
+    TRIALING,
     TRIAL,
     ACTIVE,
     PAST_DUE,
-    CANCELLED
+    CANCELLED,
+    EXPIRED
 }

@@ -130,10 +130,15 @@ Infra actual detectada:
 Lectura real del backend hoy:
 
 - el modelo comercial visible para profesionales/locales es `Plura Core` unico; `Profesional`, `Local` y `Enterprise` quedan como aliases legacy internos
-- el checkout de cambio de plan a Local/Enterprise no se ofrece en UI y el backend lo bloquea durante el MVP
+- `POST /billing/subscription` permite iniciar solo `PLAN_CORE`; Local/Enterprise/Pro/Premium siguen bloqueados durante el MVP
+- `Plura Core` persiste prueba gratuita local de `2` meses en `subscription.trial_start_at`, `subscription.trial_end_at`, `subscription.payment_method_attached_at` y `subscription.trial_source`
+- el backend usa estados de suscripcion `CHECKOUT_PENDING`, `TRIALING`, `ACTIVE`, `PAST_DUE`, `CANCELLED`, `EXPIRED`; `TRIAL` queda como compatibilidad de lectura para datos historicos
+- el checkout de cambio de plan a Local/Enterprise no se ofrece en UI ni backend durante el MVP
 - `Enterprise` queda futuro/personalizado para empresas con varios locales y no requiere configuracion de compra actual
 
 - `Mercado Pago` esta conectado al billing de suscripciones de plataforma
+- para suscripciones Core, cuando backend crea un `preapproval_plan` remoto agrega `auto_recurring.free_trial = { frequency: 2, frequency_type: "months" }`
+- si se usa un `BILLING_MERCADOPAGO_PLAN_*`/plan remoto preconfigurado, el trial real de Mercado Pago depende de como este creado ese plan remoto; backend no puede modificarlo y mantiene de todos modos el trial local de Plura
 - `Mercado Pago` ya tiene ademas configuracion OAuth para conectar cuentas de profesionales
 - `Mercado Pago` tambien esta conectado al checkout real de reservas y refunds usando OAuth del profesional
 - ya existe storage de OAuth para cuentas Mercado Pago de profesionales en `professional_payment_provider_connection`
@@ -206,7 +211,7 @@ Notas reales de binding local:
 - `backend-java/fly.toml` ahora fuerza un pool mas chico en Fly (`HIKARI_MAX_POOL_SIZE=4`, `HIKARI_MIN_IDLE=0`), desactiva `SEARCH_MV_REFRESH_ON_STARTUP` y usa `[deploy].strategy = "immediate"` para no agotar el Session Pooler de Supabase durante updates donde una machine nueva compite por conexiones con la release anterior
 - el repo ahora incluye `backend-java/scripts/check_fly_runtime_env.sh` para validar desde shell las variables minimas de arranque segun el `fly.toml` actual y separar faltantes fatales de advertencias operativas
 - `V68__service_processing_fee_mode.sql` agrega `processing_fee_mode` a `professional_service` y `prepaid_processing_fee_mode_snapshot` a `booking`; `V69__booking_prepaid_processing_fee_snapshot.sql` agrega en `booking` los snapshots `prepaid_processing_fee_amount_snapshot` y `prepaid_total_amount_snapshot`
-- la secuencia real de migraciones Flyway del backend llega a `V80`; `V79__remove_internal_product_analytics.sql` elimina la tabla vieja `app_product_event` y `V80__rename_subscription_plan_contracts.sql` normaliza codigos legacy de planes si existe la tabla `subscription`; las migraciones anteriores se mantienen como historial Flyway aplicado.
+- la secuencia real de migraciones Flyway del backend llega a `V82`; `V79__remove_internal_product_analytics.sql` elimina la tabla vieja `app_product_event`, `V80__rename_subscription_plan_contracts.sql` normaliza codigos legacy de planes si existe la tabla `subscription`, `V81__active_user_unique_identity.sql` ajusta unicidad de usuarios activos y `V82__subscription_core_trial_fields.sql` agrega columnas de trial/Core y actualiza constraints de plan/status cuando existen.
 - el backend fija `search_path=public,extensions` en `spring.datasource.hikari.connection-init-sql` para que funciones y casts PostGIS sigan resolviendo despues de mover `postgis` fuera de `public`
 - el repo ahora incluye `backend-java/src/test/java/com/plura/plurabackend/db/FlywayMigrationVersionUniquenessTest.java` para detectar versiones Flyway duplicadas antes de romper un deploy
 - el backend mantiene fallback a los nombres legacy `BILLING_MERCADOPAGO_ACCESS_TOKEN`, `BILLING_MERCADOPAGO_WEBHOOK_SECRET` y `BILLING_MERCADOPAGO_OAUTH_*`, pero el naming operativo recomendado ya es explicito por dominio: `SUBSCRIPTIONS_*` para planes y `RESERVATIONS_*` para cobros/OAuth profesional
@@ -498,7 +503,7 @@ Notas reales de deploy:
 - `auth_refresh_token` sigue siendo una tabla legacy de soporte para refresh fallback, pero su schema real mantiene `id BIGSERIAL`; el modelo JPA ya quedo alineado a ese contrato para que `ddl-auto=validate` no tumbe el arranque
 - el naming comercial visible quedo en `CORE`; `PROFESSIONAL / LOCAL / ENTERPRISE` se conservan como aliases legacy internos.
 - Flyway conserva migraciones historicas de dLocal (`V34`, `V37`) solo por continuidad de schema; el runtime vigente ya es Mercado Pago only y `V47` elimina los campos legacy del dominio profesional.
-- billing de suscripciones requiere que el schema de `subscription` acepte `PLAN_PROFESSIONAL`, `PLAN_LOCAL` y `PLAN_ENTERPRISE`; `V80` migra datos legacy desde `PLAN_BASIC`/`PLAN_PROFESIONAL` y actualiza el constraint cuando la tabla legacy existe, y queda como no-op idempotente en ambientes donde `subscription` no esta presente aunque Flyway tenga historial previo aplicado
+- billing de suscripciones requiere que el schema de `subscription` acepte `PLAN_CORE` y aliases legacy `PLAN_PROFESSIONAL`, `PLAN_LOCAL` y `PLAN_ENTERPRISE`; `V80` migra datos legacy desde `PLAN_BASIC`/`PLAN_PROFESIONAL` y `V82` agrega columnas de trial y actualiza constraints de plan/status cuando la tabla legacy existe, quedando como no-op idempotente donde `subscription` no esta presente
 - `V57` agrega columna `public_visible` (boolean, default false) a `app_feedback` con indice `idx_app_feedback_public` sobre `(public_visible, created_at DESC)`; backfill a `true` para feedback ACTIVE con texto existente
 - `V60` alinea `app_feedback.rating` a `INTEGER`; `V54` lo habia creado como `SMALLINT`, pero el modelo JPA real de `core.feedback` usa `Integer` y con `ddl-auto=validate` el backend no llega a abrir puerto si esa correccion no corre
 - `.env.backend` sigue siendo el archivo plano de importacion de env para local/docker y hoy ya usa `SPRING_DATASOURCE_*` + `SPRING_FLYWAY_*` apuntando al Session Pooler de Supabase; no deberia volver a cargar `DATABASE_URL` de una base vieja como fuente principal

@@ -42,8 +42,8 @@ public class MercadoPagoSubscriptionService {
         if (!billingProperties.getMercadopago().isEnabled()) {
             throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "Mercado Pago deshabilitado");
         }
-        if (command.plan() == SubscriptionPlanCode.PLAN_PROFESSIONAL) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "PLAN_PROFESSIONAL no requiere suscripcion");
+        if (command.plan() != SubscriptionPlanCode.PLAN_CORE) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Solo Plura Core puede iniciar suscripcion");
         }
 
         String backUrl = resolveBackUrl();
@@ -150,7 +150,8 @@ public class MercadoPagoSubscriptionService {
                         1,
                         "months",
                         toNumber(amount),
-                        currency
+                        currency,
+                        resolveFreeTrial(plan)
                     ),
                     "active"
                 )
@@ -213,6 +214,13 @@ public class MercadoPagoSubscriptionService {
             return amount.longValue();
         }
         return amount.doubleValue();
+    }
+
+    private MercadoPagoClient.FreeTrial resolveFreeTrial(SubscriptionPlanCode plan) {
+        if (plan == SubscriptionPlanCode.PLAN_CORE) {
+            return new MercadoPagoClient.FreeTrial(2, "months");
+        }
+        return null;
     }
 
     /**

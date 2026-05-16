@@ -1,7 +1,10 @@
 package com.plura.plurabackend.core.billing;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -9,7 +12,10 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.plura.plurabackend.core.billing.dto.BillingCreateSubscriptionRequest;
+import com.plura.plurabackend.core.billing.dto.BillingCheckoutResponse;
+import com.plura.plurabackend.core.billing.dto.BillingSubscriptionResponse;
 import com.plura.plurabackend.core.billing.mercadopago.MercadoPagoSubscriptionService;
+import com.plura.plurabackend.core.billing.payments.model.PaymentProvider;
 import com.plura.plurabackend.core.billing.payments.provider.PaymentProviderClient;
 import com.plura.plurabackend.core.billing.subscriptions.model.Subscription;
 import com.plura.plurabackend.core.billing.subscriptions.model.SubscriptionPlanCode;
@@ -24,6 +30,7 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
@@ -61,7 +68,7 @@ class BillingServiceTest {
     void setUp() {
         billingProperties.setEnabled(true);
         billingProperties.getMercadopago().setEnabled(true);
-        billingProperties.getPlans().getPlanProfessional().setPrice(BigDecimal.ZERO);
+        billingProperties.getPlans().getPlanProfessional().setPrice(new BigDecimal("990.00"));
         billingProperties.getPlans().getPlanProfessional().setCurrency("UYU");
         billingProperties.getPlans().getPlanLocal().setPrice(new BigDecimal("100.00"));
         billingProperties.getPlans().getPlanLocal().setCurrency("UYU");
@@ -72,7 +79,13 @@ class BillingServiceTest {
         when(professionalBillingSubjectGateway.loadEnabledProfessionalByUserId(10L))
             .thenReturn(professional(30L, "pro@plura.com"));
         when(subscriptionRepository.saveAndFlush(any(Subscription.class)))
-            .thenAnswer(invocation -> invocation.getArgument(0));
+            .thenAnswer(invocation -> {
+                Subscription subscription = invocation.getArgument(0);
+                if (subscription.getId() == null) {
+                    subscription.setId(UUID.randomUUID().toString());
+                }
+                return subscription;
+            });
     }
 
     /**
@@ -80,32 +93,104 @@ class BillingServiceTest {
      * El objetivo es dejar explicita la regla que protege este test.
      */
     @Test
-    void blocksPlanCheckoutDuringCoreMvp() {
-        Subscription existing = existingSubscription("preapproval-open");
-        when(subscriptionRepository.findByProfessionalIdForUpdate(30L)).thenReturn(Optional.of(existing));
-
+    void rejectsNonCorePlanDuringMvp() {
         ResponseStatusException error = assertThrows(ResponseStatusException.class, () ->
             service.createSubscription(createRequest(SubscriptionPlanCode.PLAN_LOCAL.canonicalCode()))
         );
 
         assertEquals(HttpStatus.BAD_REQUEST, error.getStatusCode());
-        assertEquals("El cambio de plan no está disponible durante el MVP", error.getReason());
+        assertEquals("Solo Plura Core está disponible durante el MVP", error.getReason());
         verify(subscriptionRepository, never()).findByProfessionalIdForUpdate(30L);
         verify(mercadoPagoSubscriptionService, never()).createSubscription(any());
     }
 
-    /**
-     * Escenario: permite nuevo checkout cuando previous Mercado Pago suscripcion is already cancelado.
-     * El objetivo es dejar explicita la regla que protege este test.
-     */
     @Test
-    void allowsNewCheckoutWhenPreviousMercadoPagoSubscriptionIsAlreadyCancelled() {
+    void allowsCorePlanAndCreatesTwoMonthTrialWithCheckoutPending() {
+        when(subscriptionRepository.findByProfessionalIdForUpdate(30L)).thenReturn(Optional.empty());
+        when(mercadoPagoSubscriptionService.createSubscription(any()))
+            .thenReturn(new MercadoPagoSubscriptionService.SubscriptionCheckoutSession(
+                "mp-sub-1",
+                "https://checkout.test",
+                "plan-core"
+            ));
+
+        BillingCheckoutResponse response = service.createSubscription(createRequest("PLAN_CORE"));
+
+        assertEquals("https://checkout.test", response.getCheckoutUrl());
+        assertEquals("MERCADOPAGO", response.getProvider());
+        assertEquals("PLAN_CORE", response.getPlanCode());
+        assertEquals("CHECKOUT_PENDING", response.getStatus());
+        assertTrue(response.getRequiresCheckout());
+        assertNotNull(response.getTrialStartAt());
+        assertNotNull(response.getTrialEndAt());
+        assertEquals(response.getTrialStartAt().plusMonths(2).toLocalDate(), response.getTrialEndAt().toLocalDate());
+    }
+
+    @Test
+    void avoidsSecondTrialWhenTrialWasAlreadyUsed() {
+        Subscription existing = existingSubscription("sub-old");
+        existing.setStatus(SubscriptionStatus.CANCELLED);
+        existing.setTrialStartAt(LocalDateTime.now().minusMonths(3));
+        existing.setTrialEndAt(LocalDateTime.now().minusMonths(1));
+        when(subscriptionRepository.findByProfessionalIdForUpdate(30L)).thenReturn(Optional.of(existing));
+
         ResponseStatusException error = assertThrows(ResponseStatusException.class, () ->
-            service.createSubscription(createRequest(SubscriptionPlanCode.PLAN_LOCAL.canonicalCode()))
+            service.createSubscription(createRequest("PLAN_CORE"))
         );
 
-        assertEquals(HttpStatus.BAD_REQUEST, error.getStatusCode());
+        assertEquals(HttpStatus.CONFLICT, error.getStatusCode());
+        assertEquals("La prueba gratuita ya fue utilizada para esta cuenta.", error.getReason());
         verify(mercadoPagoSubscriptionService, never()).createSubscription(any());
+    }
+
+    @Test
+    void getSubscriptionReturnsActiveTrialFieldsAndPlanEnabled() {
+        Subscription subscription = existingSubscription("mp-sub-1");
+        subscription.setPlan(SubscriptionPlanCode.PLAN_CORE);
+        subscription.setStatus(SubscriptionStatus.TRIALING);
+        subscription.setTrialStartAt(LocalDateTime.now().minusDays(1));
+        subscription.setTrialEndAt(LocalDateTime.now().plusDays(10));
+        when(subscriptionRepository.findByProfessionalId(30L)).thenReturn(Optional.of(subscription));
+
+        BillingSubscriptionResponse response = service.getCurrentSubscription();
+
+        assertEquals("PLAN_CORE", response.getPlanCode());
+        assertTrue(response.getTrialActive());
+        assertTrue(response.getTrialDaysRemaining() > 0);
+        assertTrue(response.isPlanEnabled());
+        assertFalse(response.getPaymentMethodAttached());
+    }
+
+    @Test
+    void getSubscriptionReturnsInactiveTrialWhenExpired() {
+        Subscription subscription = existingSubscription("mp-sub-1");
+        subscription.setPlan(SubscriptionPlanCode.PLAN_CORE);
+        subscription.setStatus(SubscriptionStatus.TRIALING);
+        subscription.setTrialStartAt(LocalDateTime.now().minusMonths(3));
+        subscription.setTrialEndAt(LocalDateTime.now().minusDays(1));
+        when(subscriptionRepository.findByProfessionalId(30L)).thenReturn(Optional.of(subscription));
+
+        BillingSubscriptionResponse response = service.getCurrentSubscription();
+
+        assertFalse(response.getTrialActive());
+        assertEquals(0L, response.getTrialDaysRemaining());
+        assertFalse(response.isPlanEnabled());
+    }
+
+    @Test
+    void getSubscriptionMarksPaymentMethodAttached() {
+        Subscription subscription = existingSubscription("mp-sub-1");
+        subscription.setPlan(SubscriptionPlanCode.PLAN_CORE);
+        subscription.setStatus(SubscriptionStatus.CHECKOUT_PENDING);
+        subscription.setTrialStartAt(LocalDateTime.now());
+        subscription.setTrialEndAt(LocalDateTime.now().plusMonths(2));
+        subscription.setPaymentMethodAttachedAt(LocalDateTime.now());
+        when(subscriptionRepository.findByProfessionalId(30L)).thenReturn(Optional.of(subscription));
+
+        BillingSubscriptionResponse response = service.getCurrentSubscription();
+
+        assertTrue(response.getPaymentMethodAttached());
+        assertFalse(response.isPlanEnabled());
     }
 
     private BillingCreateSubscriptionRequest createRequest(String planCode) {
@@ -118,9 +203,9 @@ class BillingServiceTest {
         Subscription subscription = new Subscription();
         subscription.setId("sub-1");
         subscription.setProfessionalId(30L);
-        subscription.setPlan(SubscriptionPlanCode.PLAN_LOCAL);
-        subscription.setStatus(SubscriptionStatus.TRIAL);
-        subscription.setProvider(com.plura.plurabackend.core.billing.payments.model.PaymentProvider.MERCADOPAGO);
+        subscription.setPlan(SubscriptionPlanCode.PLAN_CORE);
+        subscription.setStatus(SubscriptionStatus.CHECKOUT_PENDING);
+        subscription.setProvider(PaymentProvider.MERCADOPAGO);
         subscription.setProviderSubscriptionId(providerSubscriptionId);
         subscription.setPlanAmount(new BigDecimal("100.00"));
         subscription.setCurrency("UYU");

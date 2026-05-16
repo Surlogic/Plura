@@ -198,11 +198,11 @@ public class BillingWebhookService {
             String providerSubscriptionId = firstNonBlank(
                 root.path("preapproval_id").asText(null),
                 root.path("subscription_id").asText(null),
-                isSubscriptionAction(action) ? providerObjectId : null
+                isSubscriptionAction(action) && !isSubscriptionAuthorizedPaymentAction(action) ? providerObjectId : null
             );
             String providerPaymentId = firstNonBlank(
                 root.path("payment_id").asText(null),
-                !isSubscriptionAction(action) ? providerObjectId : null
+                isSubscriptionAuthorizedPaymentAction(action) || !isSubscriptionAction(action) ? providerObjectId : null
             );
             String orderReference = firstNonBlank(
                 root.path("external_id").asText(null),
@@ -348,6 +348,10 @@ public class BillingWebhookService {
             return false;
         }
         return containsAny(action, "preapproval", "subscription", "recurring");
+    }
+
+    private boolean isSubscriptionAuthorizedPaymentAction(String action) {
+        return containsAny(action, "subscription_authorized_payment");
     }
 
     /**

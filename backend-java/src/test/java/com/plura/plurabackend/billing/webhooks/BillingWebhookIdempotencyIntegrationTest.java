@@ -112,12 +112,14 @@ class BillingWebhookIdempotencyIntegrationTest {
 
         Subscription subscription = new Subscription();
         subscription.setProfessionalId(professional.getId());
-        subscription.setPlan(SubscriptionPlanCode.PLAN_LOCAL);
-        subscription.setStatus(SubscriptionStatus.TRIAL);
+        subscription.setPlan(SubscriptionPlanCode.PLAN_CORE);
+        subscription.setStatus(SubscriptionStatus.CHECKOUT_PENDING);
         subscription.setProvider(PaymentProvider.MERCADOPAGO);
         subscription.setProviderSubscriptionId("sub-1");
-        subscription.setPlanAmount(new BigDecimal("1990"));
+        subscription.setPlanAmount(new BigDecimal("990"));
         subscription.setCurrency("UYU");
+        subscription.setTrialStartAt(LocalDateTime.now().minusDays(1));
+        subscription.setTrialEndAt(LocalDateTime.now().plusMonths(2));
         subscription.setCurrentPeriodStart(LocalDateTime.now());
         subscription.setCurrentPeriodEnd(LocalDateTime.now().plusMonths(1));
         subscriptionRepository.save(subscription);
@@ -136,7 +138,7 @@ class BillingWebhookIdempotencyIntegrationTest {
               "action":"payment.updated",
               "status":"approved",
               "external_reference":"subscription:%d",
-              "metadata":{"planCode":"PLAN_LOCAL"},
+              "metadata":{"planCode":"PLAN_CORE"},
               "data":{"id":"pay-1"},
               "date_created":"2026-03-05T12:00:00Z"
             }
@@ -175,6 +177,89 @@ class BillingWebhookIdempotencyIntegrationTest {
         );
     }
 
+    @Test
+    void duplicatePreapprovalAuthorizedKeepsTrialingAndAttachesPaymentMethod() throws Exception {
+        String payload = """
+            {
+              "id":"evt-auth-1",
+              "type":"preapproval",
+              "action":"preapproval.updated",
+              "status":"authorized",
+              "metadata":{"planCode":"PLAN_CORE"},
+              "data":{"id":"sub-1"},
+              "date_created":"2026-03-05T12:00:00Z"
+            }
+            """;
+
+        String ts = String.valueOf(Instant.now().getEpochSecond());
+        String requestId = "req-auth-1";
+        String manifest = "id:sub-1;request-id:req-auth-1;ts:" + ts + ";";
+        String signature = SignatureUtils.hmacSha256Hex("mp-webhook-secret", manifest);
+
+        mockMvc.perform(post("/webhooks/mercadopago")
+                .contentType("application/json")
+                .header("X-Request-Id", requestId)
+                .header("X-Signature", "ts=" + ts + ",v1=" + signature)
+                .content(payload))
+            .andExpect(status().isOk());
+
+        mockMvc.perform(post("/webhooks/mercadopago")
+                .contentType("application/json")
+                .header("X-Request-Id", requestId)
+                .header("X-Signature", "ts=" + ts + ",v1=" + signature)
+                .content(payload))
+            .andExpect(status().isOk());
+
+        waitUntilAuthorizedProcessed();
+
+        Subscription updated = subscriptionRepository.findByProfessionalId(professional.getId()).orElseThrow();
+        org.junit.jupiter.api.Assertions.assertEquals(SubscriptionStatus.TRIALING, updated.getStatus());
+        org.junit.jupiter.api.Assertions.assertNotNull(updated.getPaymentMethodAttachedAt());
+        org.junit.jupiter.api.Assertions.assertEquals(
+            1,
+            paymentEventRepository.countByProviderAndProviderEventId(PaymentProvider.MERCADOPAGO, "evt-auth-1")
+        );
+    }
+
+    @Test
+    void subscriptionAuthorizedPaymentMarksActiveAndCreatesTransaction() throws Exception {
+        String payload = """
+            {
+              "id":"evt-payment-2",
+              "type":"subscription_authorized_payment",
+              "action":"subscription_authorized_payment.created",
+              "status":"approved",
+              "preapproval_id":"sub-1",
+              "metadata":{"planCode":"PLAN_CORE"},
+              "transaction_amount":990,
+              "currency_id":"UYU",
+              "data":{"id":"pay-2"},
+              "date_created":"2026-03-05T12:00:00Z"
+            }
+            """;
+
+        String ts = String.valueOf(Instant.now().getEpochSecond());
+        String requestId = "req-payment-2";
+        String manifest = "id:pay-2;request-id:req-payment-2;ts:" + ts + ";";
+        String signature = SignatureUtils.hmacSha256Hex("mp-webhook-secret", manifest);
+
+        mockMvc.perform(post("/webhooks/mercadopago")
+                .contentType("application/json")
+                .header("X-Request-Id", requestId)
+                .header("X-Signature", "ts=" + ts + ",v1=" + signature)
+                .content(payload))
+            .andExpect(status().isOk());
+
+        waitUntilPaymentProcessed("pay-2");
+
+        Subscription updated = subscriptionRepository.findByProfessionalId(professional.getId()).orElseThrow();
+        org.junit.jupiter.api.Assertions.assertEquals(SubscriptionStatus.ACTIVE, updated.getStatus());
+        org.junit.jupiter.api.Assertions.assertEquals(
+            1,
+            paymentTransactionRepository.countByProviderAndProviderPaymentId(PaymentProvider.MERCADOPAGO, "pay-2")
+        );
+    }
+
     private void waitUntilProcessed() throws InterruptedException {
         Instant deadline = Instant.now().plus(Duration.ofSeconds(5));
         while (Instant.now().isBefore(deadline)) {
@@ -193,5 +278,45 @@ class BillingWebhookIdempotencyIntegrationTest {
         }
 
         throw new AssertionError("Webhook async processing did not finish within timeout");
+    }
+
+    private void waitUntilAuthorizedProcessed() throws InterruptedException {
+        Instant deadline = Instant.now().plus(Duration.ofSeconds(5));
+        while (Instant.now().isBefore(deadline)) {
+            Subscription subscription = subscriptionRepository.findByProfessionalId(professional.getId()).orElseThrow();
+            long events = paymentEventRepository.countByProviderAndProviderEventId(
+                PaymentProvider.MERCADOPAGO,
+                "evt-auth-1"
+            );
+
+            if (subscription.getStatus() == SubscriptionStatus.TRIALING
+                && subscription.getPaymentMethodAttachedAt() != null
+                && events == 1) {
+                return;
+            }
+
+            Thread.sleep(100);
+        }
+
+        throw new AssertionError("Webhook authorized async processing did not finish within timeout");
+    }
+
+    private void waitUntilPaymentProcessed(String providerPaymentId) throws InterruptedException {
+        Instant deadline = Instant.now().plus(Duration.ofSeconds(5));
+        while (Instant.now().isBefore(deadline)) {
+            Subscription subscription = subscriptionRepository.findByProfessionalId(professional.getId()).orElseThrow();
+            long transactions = paymentTransactionRepository.countByProviderAndProviderPaymentId(
+                PaymentProvider.MERCADOPAGO,
+                providerPaymentId
+            );
+
+            if (subscription.getStatus() == SubscriptionStatus.ACTIVE && transactions == 1) {
+                return;
+            }
+
+            Thread.sleep(100);
+        }
+
+        throw new AssertionError("Webhook payment async processing did not finish within timeout");
     }
 }

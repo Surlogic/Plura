@@ -71,6 +71,7 @@ public class BillingProperties {
      */
     public PlanConfig resolvePlan(SubscriptionPlanCode plan) {
         return switch (plan) {
+            case PLAN_CORE -> plans.planProfessional;
             case PLAN_PROFESSIONAL -> plans.planProfessional;
             case PLAN_LOCAL -> plans.planProfessional;
             case PLAN_ENTERPRISE -> plans.planProfessional;
@@ -110,6 +111,7 @@ public class BillingProperties {
      */
     public String resolveMercadoPagoPlanId(SubscriptionPlanCode plan) {
         return switch (plan) {
+            case PLAN_CORE -> mercadopago.planProfessionalId;
             case PLAN_PROFESSIONAL -> mercadopago.planProfessionalId;
             case PLAN_LOCAL -> mercadopago.planLocalId;
             case PLAN_ENTERPRISE -> mercadopago.planEnterpriseId;

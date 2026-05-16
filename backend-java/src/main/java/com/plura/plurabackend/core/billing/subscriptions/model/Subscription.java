@@ -61,6 +61,18 @@ public class Subscription {
     @Column(name = "current_period_end")
     private LocalDateTime currentPeriodEnd;
 
+    @Column(name = "trial_start_at")
+    private LocalDateTime trialStartAt;
+
+    @Column(name = "trial_end_at")
+    private LocalDateTime trialEndAt;
+
+    @Column(name = "payment_method_attached_at")
+    private LocalDateTime paymentMethodAttachedAt;
+
+    @Column(name = "trial_source", length = 40)
+    private String trialSource;
+
     @Column(name = "cancel_at_period_end", nullable = false)
     private Boolean cancelAtPeriodEnd;
 
@@ -95,7 +107,7 @@ public class Subscription {
             this.cancelAtPeriodEnd = false;
         }
         if (this.status == null) {
-            this.status = SubscriptionStatus.TRIAL;
+            this.status = SubscriptionStatus.CHECKOUT_PENDING;
         }
         if (this.expectedAmount == null) {
             this.expectedAmount = this.planAmount;

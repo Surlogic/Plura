@@ -514,12 +514,19 @@ Estado real detectado en codigo:
 
 - suscripciones de plataforma: `Mercado Pago`
 - conexion OAuth del profesional a Mercado Pago: ya existe en `/profesional/payment-providers/mercadopago/*`
-- `POST /billing/*` hoy resuelve billing mensual del profesional y no checkout de reservas
+- `POST /billing/subscription` hoy inicia solo `Plura Core` con request `{ "planCode": "PLAN_CORE" }`; rechaza `PLAN_LOCAL`, `PLAN_ENTERPRISE`, `PLAN_PROFESSIONAL`, `PLAN_PRO`, `PLAN_PREMIUM` y cualquier plan no Core con `400`
+- `POST /billing/subscription` devuelve `subscriptionId`, `checkoutUrl`, `provider`, `planCode`, `status`, `trialStartAt`, `trialEndAt` y `requiresCheckout`; si Mercado Pago entrega URL queda `CHECKOUT_PENDING`, y si no requiere checkout queda `TRIALING`
+- `GET /billing/subscription` devuelve estado de suscripcion y agrega `trialStartAt`, `trialEndAt`, `trialDaysRemaining`, `trialActive` y `paymentMethodAttached`
+- `planEnabled` en `GET /billing/subscription` es `true` solo para `ACTIVE` vigente o `TRIALING` con `trialEndAt` futuro; `CHECKOUT_PENDING`, `PAST_DUE`, `CANCELLED` y `EXPIRED` no habilitan el plan
+- estados vigentes de suscripcion: `CHECKOUT_PENDING`, `TRIALING`, `ACTIVE`, `PAST_DUE`, `CANCELLED`, `EXPIRED`; `TRIAL` se conserva como estado legacy de lectura
+- `POST /billing/*` resuelve billing mensual del profesional y no checkout de reservas
 - pagos reales de reservas y refunds: `Mercado Pago` via `booking` + `providerops`
 - `/webhooks/mercadopago` procesa suscripciones y reservas con routing interno por dominio
 - `/cliente/reservas/{id}/payment-session` sigue siendo la entrada real para checkout de reservas
-- si `Mercado Pago` responde `card_token_id is required` al crear el `preapproval`, el backend hace fallback al checkout hosted del `preapproval_plan` y devuelve igual una `checkoutUrl`
-- `POST /billing/subscription` ahora toma lock pesimista sobre la suscripción del profesional y rechaza crear un segundo `preapproval` de `Mercado Pago` mientras el anterior siga `pending`, `authorized`, `active` o `paused`; esto evita dobles suscripciones/cobros por reintentos sobre la misma cuenta
+- `Plura Core` persiste prueba gratuita local de `2` meses (`trialStartAt`, `trialEndAt`, `trialSource=BILLING`) y no permite una segunda prueba si la cuenta ya tiene historial de trial
+- Mercado Pago crea `preapproval_plan` con `auto_recurring.free_trial` de `2 months` cuando no hay plan remoto configurado; si `Mercado Pago` responde `card_token_id is required` al crear el `preapproval`, el backend hace fallback al checkout hosted del `preapproval_plan` y devuelve igual una `checkoutUrl`
+- `POST /billing/subscription` toma lock pesimista sobre la suscripción del profesional y rechaza duplicados si ya hay suscripcion activa, trial vigente o checkout pendiente
+- webhooks de suscripcion Mercado Pago: autorizacion/activacion adjunta medio de pago (`paymentMethodAttachedAt`) y conserva `TRIALING` si el trial local sigue vigente; pagos exitosos posteriores pasan a `ACTIVE`; fallos pasan a `PAST_DUE`; cancelaciones a `CANCELLED`
 
 Lectura de producto:
 

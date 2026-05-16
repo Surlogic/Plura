@@ -24,4 +24,9 @@ public class BillingSubscriptionResponse {
     private LocalDateTime currentPeriodEnd;
     private Boolean cancelAtPeriodEnd;
     private boolean planEnabled;
+    private LocalDateTime trialStartAt;
+    private LocalDateTime trialEndAt;
+    private Long trialDaysRemaining;
+    private Boolean trialActive;
+    private Boolean paymentMethodAttached;
 }

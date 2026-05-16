@@ -197,7 +197,7 @@ public class WebhookEventProcessor {
         created.setProfessionalId(professional.getId());
         created.setPlan(plan);
         created.setProvider(event.provider());
-        created.setStatus(SubscriptionStatus.TRIAL);
+        created.setStatus(SubscriptionStatus.CHECKOUT_PENDING);
         created.setPlanAmount(planConfig.getPrice());
         created.setCurrency(planConfig.getCurrency());
         created.setExpectedAmount(planConfig.getPrice());
@@ -370,13 +370,27 @@ public class WebhookEventProcessor {
 
         switch (event.eventType()) {
             case SUBSCRIPTION_PENDING -> {
-                subscription.setStatus(SubscriptionStatus.TRIAL);
+                if (subscription.getStatus() != SubscriptionStatus.ACTIVE
+                    && subscription.getStatus() != SubscriptionStatus.TRIALING) {
+                    subscription.setStatus(SubscriptionStatus.CHECKOUT_PENDING);
+                }
                 subscription.setCancelAtPeriodEnd(false);
             }
             case PAYMENT_SUCCEEDED, SUBSCRIPTION_RENEWED -> {
-                subscription.setStatus(resolveActiveOrPastDueStatus(event, snapshotCache));
-                subscription.setCurrentPeriodStart(effectiveTime);
-                subscription.setCurrentPeriodEnd(effectiveTime.plusMonths(1));
+                if (isSubscriptionAuthorizationEvent(event)) {
+                    subscription.setPaymentMethodAttachedAt(effectiveTime);
+                    if (subscription.getTrialEndAt() != null && subscription.getTrialEndAt().isAfter(effectiveTime)) {
+                        subscription.setStatus(SubscriptionStatus.TRIALING);
+                    } else {
+                        subscription.setStatus(resolveActiveOrPastDueStatus(event, snapshotCache));
+                        subscription.setCurrentPeriodStart(effectiveTime);
+                        subscription.setCurrentPeriodEnd(effectiveTime.plusMonths(1));
+                    }
+                } else {
+                    subscription.setStatus(resolveActiveOrPastDueStatus(event, snapshotCache));
+                    subscription.setCurrentPeriodStart(effectiveTime);
+                    subscription.setCurrentPeriodEnd(effectiveTime.plusMonths(1));
+                }
                 subscription.setCancelAtPeriodEnd(false);
             }
             case PAYMENT_FAILED -> subscription.setStatus(SubscriptionStatus.PAST_DUE);
@@ -394,6 +408,12 @@ public class WebhookEventProcessor {
                 // Evento reconocido pero sin impacto en estado de suscripción.
             }
         }
+    }
+
+    private boolean isSubscriptionAuthorizationEvent(ParsedWebhookEvent event) {
+        return event.providerSubscriptionId() != null
+            && !event.providerSubscriptionId().isBlank()
+            && (event.providerPaymentId() == null || event.providerPaymentId().isBlank());
     }
 
     /**
@@ -489,6 +509,9 @@ public class WebhookEventProcessor {
         Map<String, MercadoPagoSubscriptionService.SubscriptionSnapshot> snapshotCache
     ) {
         if (event.provider() != PaymentProvider.MERCADOPAGO || event.providerSubscriptionId() == null) {
+            return SubscriptionStatus.ACTIVE;
+        }
+        if (event.providerPaymentId() != null && !event.providerPaymentId().isBlank()) {
             return SubscriptionStatus.ACTIVE;
         }
 

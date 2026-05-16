@@ -33,7 +33,7 @@ Definicion vigente de monetizacion para MVP:
 Naming vigente de negocio:
 
 - `Usuario`: gratis
-- `Plura Core`: suscripcion unica para profesionales y locales durante el MVP
+- `Plura Core`: suscripcion unica para profesionales y locales durante el MVP, con prueba gratuita de `2` meses iniciable desde backend billing
 - `Enterprise`: futuro/personalizado para empresas con varios locales, sin UI ni opcion de compra actual
 
 Contratos actuales de compatibilidad:
@@ -61,6 +61,7 @@ Siempre gratis. Objetivo: bajar friccion para reservar y volver.
 
 Suscripcion unica para el MVP operativo de profesionales y locales.
 
+- prueba gratuita de `2` meses antes del cobro mensual de Core
 - una sola agenda activa
 - un solo profesional activo
 - un solo local

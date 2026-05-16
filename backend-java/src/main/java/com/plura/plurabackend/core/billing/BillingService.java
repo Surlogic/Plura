@@ -16,6 +16,7 @@ import com.plura.plurabackend.core.security.RoleGuard;
 import com.plura.plurabackend.core.user.model.User;
 import com.plura.plurabackend.professional.model.ProfessionalProfile;
 import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
@@ -88,10 +89,13 @@ public class BillingService {
         Long userId = resolveAuthenticatedProfessionalUserId();
         ProfessionalProfile professional = loadEnabledProfessional(userId);
         SubscriptionPlanCode plan = SubscriptionPlanCode.fromCode(request.getPlanCode());
-        throw new ResponseStatusException(
-            HttpStatus.BAD_REQUEST,
-            "El cambio de plan no está disponible durante el MVP"
-        );
+        if (plan != SubscriptionPlanCode.PLAN_CORE) {
+            throw new ResponseStatusException(
+                HttpStatus.BAD_REQUEST,
+                "Solo Plura Core está disponible durante el MVP"
+            );
+        }
+        return createCoreSubscription(professional);
     }
 
     /**
@@ -202,103 +206,94 @@ public class BillingService {
      * Crea Mercado Pago subscription validando datos de entrada y persistiendo el resultado.
      * Tambien concentra los efectos secundarios para que el flujo quede en un estado consistente.
      */
-    private BillingCheckoutResponse createMercadoPagoSubscription(
-        ProfessionalProfile professional,
-        SubscriptionPlanCode plan
-    ) {
-        if (plan == SubscriptionPlanCode.PLAN_PROFESSIONAL) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "PLAN_PROFESSIONAL no requiere checkout");
-        }
-        if (!billingProperties.getMercadopago().isEnabled()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Mercado Pago no habilitado");
-        }
-
-        BillingProperties.PlanConfig planConfig = billingProperties.resolvePlan(plan);
-        Subscription subscription = prepareTrialSubscription(
-            professional,
-            plan,
-            PaymentProvider.MERCADOPAGO,
-            planConfig
-        );
-        String payerEmail = resolveProfessionalPayerEmail(professional);
-
-        MercadoPagoSubscriptionService.SubscriptionCheckoutSession session =
-            mercadoPagoSubscriptionService.createSubscription(
-                new MercadoPagoSubscriptionService.CreateSubscriptionCommand(
-                    subscription.getId(),
-                    professional.getId(),
-                    payerEmail,
-                    plan,
-                    planConfig.getPrice(),
-                    planConfig.getCurrency()
-                )
-            );
-
-        subscription.setProviderSubscriptionId(session.providerSubscriptionId());
-        subscriptionRepository.saveAndFlush(subscription);
-
-        return new BillingCheckoutResponse(
-            subscription.getId(),
-            session.checkoutUrl(),
-            PaymentProvider.MERCADOPAGO.name(),
-            plan.canonicalCode()
-        );
-    }
-
-    /**
-     * Prepara o actualiza una suscripción en estado TRIAL.
-     * Si ya existe una suscripción activa vigente, lanza excepción de conflicto.
-     * Si no existe, crea una nueva; si existe pero no está activa, la reutiliza.
-     */
-    private Subscription prepareTrialSubscription(
-        ProfessionalProfile professional,
-        SubscriptionPlanCode plan,
-        PaymentProvider provider,
-        BillingProperties.PlanConfig planConfig
-    ) {
+    private BillingCheckoutResponse createCoreSubscription(ProfessionalProfile professional) {
+        BillingProperties.PlanConfig planConfig = billingProperties.resolvePlan(SubscriptionPlanCode.PLAN_CORE);
         Subscription subscription = subscriptionRepository.findByProfessionalIdForUpdate(professional.getId())
             .orElseGet(Subscription::new);
 
-        if (subscription.getId() != null
-            && subscription.getStatus() == SubscriptionStatus.ACTIVE
-            && subscription.getCurrentPeriodEnd() != null
-            && subscription.getCurrentPeriodEnd().isAfter(LocalDateTime.now())) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT,
-                "Ya tienes una suscripción activa hasta " + subscription.getCurrentPeriodEnd());
-        }
+        validateCoreSubscriptionCanStart(subscription, professional);
 
-        assertMercadoPagoSubscriptionCanBeReused(subscription, professional, plan, provider);
+        LocalDateTime trialStartAt = LocalDateTime.now();
+        LocalDateTime trialEndAt = trialStartAt.plusMonths(2);
 
         subscription.setProfessionalId(professional.getId());
-        subscription.setPlan(plan);
-        subscription.setStatus(SubscriptionStatus.TRIAL);
-        subscription.setProvider(provider);
+        subscription.setPlan(SubscriptionPlanCode.PLAN_CORE);
+        subscription.setStatus(SubscriptionStatus.TRIALING);
+        subscription.setProvider(PaymentProvider.MERCADOPAGO);
         subscription.setPlanAmount(planConfig.getPrice());
         subscription.setCurrency(planConfig.getCurrency());
         subscription.setExpectedAmount(planConfig.getPrice());
         subscription.setExpectedCurrency(planConfig.getCurrency());
+        subscription.setTrialStartAt(trialStartAt);
+        subscription.setTrialEndAt(trialEndAt);
+        subscription.setPaymentMethodAttachedAt(null);
+        subscription.setTrialSource("BILLING");
         subscription.setCurrentPeriodStart(null);
         subscription.setCurrentPeriodEnd(null);
         subscription.setCancelAtPeriodEnd(false);
-        if (provider != PaymentProvider.MERCADOPAGO) {
-            subscription.setProviderSubscriptionId(null);
-        }
         subscription.setProviderCustomerId(null);
-        return subscriptionRepository.saveAndFlush(subscription);
+        subscription.setProviderSubscriptionId(null);
+        subscription = subscriptionRepository.saveAndFlush(subscription);
+
+        String checkoutUrl = null;
+        boolean requiresCheckout = false;
+        if (billingProperties.getMercadopago().isEnabled()) {
+            String payerEmail = resolveProfessionalPayerEmail(professional);
+            MercadoPagoSubscriptionService.SubscriptionCheckoutSession session =
+                mercadoPagoSubscriptionService.createSubscription(
+                    new MercadoPagoSubscriptionService.CreateSubscriptionCommand(
+                        subscription.getId(),
+                        professional.getId(),
+                        payerEmail,
+                        SubscriptionPlanCode.PLAN_CORE,
+                        planConfig.getPrice(),
+                        planConfig.getCurrency()
+                    )
+                );
+            subscription.setProviderSubscriptionId(session.providerSubscriptionId());
+            checkoutUrl = session.checkoutUrl();
+            requiresCheckout = checkoutUrl != null && !checkoutUrl.isBlank();
+            if (requiresCheckout) {
+                subscription.setStatus(SubscriptionStatus.CHECKOUT_PENDING);
+            }
+            subscription = subscriptionRepository.saveAndFlush(subscription);
+        }
+
+        return toCheckoutResponse(subscription, checkoutUrl, requiresCheckout);
     }
 
-    /**
-     * Ejecuta la logica de assert Mercado Pago subscription can be reused manteniendola encapsulada en este componente.
-     */
-    private void assertMercadoPagoSubscriptionCanBeReused(
-        Subscription subscription,
-        ProfessionalProfile professional,
-        SubscriptionPlanCode requestedPlan,
-        PaymentProvider requestedProvider
-    ) {
-        if (subscription.getId() == null
-            || subscription.getProvider() != PaymentProvider.MERCADOPAGO
-            || requestedProvider != PaymentProvider.MERCADOPAGO) {
+    private void validateCoreSubscriptionCanStart(Subscription subscription, ProfessionalProfile professional) {
+        if (subscription.getId() == null) {
+            return;
+        }
+
+        LocalDateTime now = LocalDateTime.now();
+        if (isActiveStatus(subscription, now)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Ya tenés una suscripción activa.");
+        }
+
+        if (isTrialingStatus(subscription, now)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Ya tenés una prueba gratuita activa.");
+        }
+
+        if (subscription.getStatus() == SubscriptionStatus.CHECKOUT_PENDING) {
+            assertNoOpenMercadoPagoSubscription(subscription, professional);
+            throw new ResponseStatusException(
+                HttpStatus.CONFLICT,
+                "Ya hay un checkout de Plura Core pendiente para esta cuenta."
+            );
+        }
+
+        if (subscription.getTrialStartAt() != null || subscription.getTrialEndAt() != null) {
+            throw new ResponseStatusException(
+                HttpStatus.CONFLICT,
+                "La prueba gratuita ya fue utilizada para esta cuenta."
+            );
+        }
+    }
+
+    private void assertNoOpenMercadoPagoSubscription(Subscription subscription, ProfessionalProfile professional) {
+        if (subscription.getProvider() != PaymentProvider.MERCADOPAGO) {
             return;
         }
 
@@ -321,7 +316,7 @@ public class BillingService {
             providerSubscriptionId,
             remoteStatus,
             subscription.getPlan(),
-            requestedPlan
+            SubscriptionPlanCode.PLAN_CORE
         );
         throw new ResponseStatusException(
             HttpStatus.CONFLICT,
@@ -347,6 +342,17 @@ public class BillingService {
             || "authorized".equals(status)
             || "active".equals(status)
             || "paused".equals(status);
+    }
+
+    private boolean isActiveStatus(Subscription subscription, LocalDateTime now) {
+        return subscription.getStatus() == SubscriptionStatus.ACTIVE
+            && (subscription.getCurrentPeriodEnd() == null || !subscription.getCurrentPeriodEnd().isBefore(now));
+    }
+
+    private boolean isTrialingStatus(Subscription subscription, LocalDateTime now) {
+        return (subscription.getStatus() == SubscriptionStatus.TRIALING || subscription.getStatus() == SubscriptionStatus.TRIAL)
+            && subscription.getTrialEndAt() != null
+            && subscription.getTrialEndAt().isAfter(now);
     }
 
     /**
@@ -398,9 +404,12 @@ public class BillingService {
             );
         }
         LocalDateTime now = LocalDateTime.now();
-        boolean planEnabled = subscription.getStatus() == SubscriptionStatus.ACTIVE
-            && subscription.getCurrentPeriodEnd() != null
-            && !subscription.getCurrentPeriodEnd().isBefore(now);
+        boolean trialActive = subscription.getTrialEndAt() != null && subscription.getTrialEndAt().isAfter(now);
+        long trialDaysRemaining = trialActive
+            ? Math.max(0, ChronoUnit.DAYS.between(now.toLocalDate(), subscription.getTrialEndAt().toLocalDate()))
+            : 0;
+        boolean planEnabled = isActiveStatus(subscription, now)
+            || (subscription.getStatus() == SubscriptionStatus.TRIALING && trialActive);
 
         return new BillingSubscriptionResponse(
             subscription.getId(),
@@ -412,7 +421,29 @@ public class BillingService {
             subscription.getCurrentPeriodStart(),
             subscription.getCurrentPeriodEnd(),
             subscription.getCancelAtPeriodEnd(),
-            planEnabled
+            planEnabled,
+            subscription.getTrialStartAt(),
+            subscription.getTrialEndAt(),
+            trialDaysRemaining,
+            trialActive,
+            subscription.getPaymentMethodAttachedAt() != null
+        );
+    }
+
+    private BillingCheckoutResponse toCheckoutResponse(
+        Subscription subscription,
+        String checkoutUrl,
+        boolean requiresCheckout
+    ) {
+        return new BillingCheckoutResponse(
+            subscription.getId(),
+            checkoutUrl,
+            subscription.getProvider().name(),
+            subscription.getPlan().canonicalCode(),
+            subscription.getStatus().name(),
+            subscription.getTrialStartAt(),
+            subscription.getTrialEndAt(),
+            requiresCheckout
         );
     }
 

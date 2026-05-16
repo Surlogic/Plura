@@ -20,6 +20,7 @@ public final class SubscriptionPlanMapper {
             return ProfessionalPlanCode.CORE;
         }
         return switch (subscriptionPlan) {
+            case PLAN_CORE -> ProfessionalPlanCode.CORE;
             case PLAN_PROFESSIONAL -> ProfessionalPlanCode.CORE;
             case PLAN_LOCAL -> ProfessionalPlanCode.CORE;
             case PLAN_ENTERPRISE -> ProfessionalPlanCode.CORE;

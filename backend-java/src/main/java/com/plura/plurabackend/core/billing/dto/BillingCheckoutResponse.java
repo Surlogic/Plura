@@ -1,5 +1,6 @@
 package com.plura.plurabackend.core.billing.dto;
 
+import java.time.LocalDateTime;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 
@@ -16,4 +17,8 @@ public class BillingCheckoutResponse {
     private String checkoutUrl;
     private String provider;
     private String planCode;
+    private String status;
+    private LocalDateTime trialStartAt;
+    private LocalDateTime trialEndAt;
+    private Boolean requiresCheckout;
 }

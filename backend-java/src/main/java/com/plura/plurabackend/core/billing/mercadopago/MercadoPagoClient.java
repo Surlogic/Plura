@@ -356,7 +356,23 @@ public class MercadoPagoClient {
         Integer frequency,
         String frequency_type,
         Number transaction_amount,
-        String currency_id
+        String currency_id,
+        FreeTrial free_trial
+    ) {
+        public AutoRecurring(
+            Integer frequency,
+            String frequency_type,
+            Number transaction_amount,
+            String currency_id
+        ) {
+            this(frequency, frequency_type, transaction_amount, currency_id, null);
+        }
+    }
+
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    public record FreeTrial(
+        Integer frequency,
+        String frequency_type
     ) {}
 
     /**

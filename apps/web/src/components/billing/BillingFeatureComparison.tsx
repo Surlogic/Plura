@@ -9,61 +9,49 @@ type BillingFeatureComparisonProps = {
   currentPlanId: BillingUiPlanId;
 };
 
-const planColumnOrder: BillingUiPlanId[] = ['PROFESSIONAL', 'LOCAL', 'ENTERPRISE'];
+const planColumnOrder: BillingUiPlanId[] = ['CORE'];
 
 const comparisonRows = [
   {
     label: 'Perfil publico mejorado',
     detail: 'Logo, redes, headline y texto de presentacion.',
     values: {
-      PROFESSIONAL: planIncludesProfessionalFeature('PROFESSIONAL', 'enhancedPublicProfile'),
-      LOCAL: planIncludesProfessionalFeature('LOCAL', 'enhancedPublicProfile'),
-      ENTERPRISE: planIncludesProfessionalFeature('ENTERPRISE', 'enhancedPublicProfile'),
+      CORE: planIncludesProfessionalFeature('CORE', 'enhancedPublicProfile'),
     } as Record<BillingUiPlanId, boolean>,
   },
   {
     label: 'Pagos online en servicios',
     detail: 'Seña online o prepago completo.',
     values: {
-      PROFESSIONAL: planIncludesProfessionalFeature('PROFESSIONAL', 'onlinePayments'),
-      LOCAL: planIncludesProfessionalFeature('LOCAL', 'onlinePayments'),
-      ENTERPRISE: planIncludesProfessionalFeature('ENTERPRISE', 'onlinePayments'),
+      CORE: planIncludesProfessionalFeature('CORE', 'onlinePayments'),
     } as Record<BillingUiPlanId, boolean>,
   },
   {
     label: 'Agenda navegable',
     detail: 'Moverte por semanas futuras y pasadas.',
     values: {
-      PROFESSIONAL: planIncludesProfessionalFeature('PROFESSIONAL', 'weeklyCalendarNavigation'),
-      LOCAL: planIncludesProfessionalFeature('LOCAL', 'weeklyCalendarNavigation'),
-      ENTERPRISE: planIncludesProfessionalFeature('ENTERPRISE', 'weeklyCalendarNavigation'),
+      CORE: planIncludesProfessionalFeature('CORE', 'weeklyCalendarNavigation'),
     } as Record<BillingUiPlanId, boolean>,
   },
   {
     label: 'Vista mensual',
     detail: 'Calendario mensual dentro del dashboard.',
     values: {
-      PROFESSIONAL: planIncludesProfessionalFeature('PROFESSIONAL', 'monthlyCalendar'),
-      LOCAL: planIncludesProfessionalFeature('LOCAL', 'monthlyCalendar'),
-      ENTERPRISE: planIncludesProfessionalFeature('ENTERPRISE', 'monthlyCalendar'),
+      CORE: planIncludesProfessionalFeature('CORE', 'monthlyCalendar'),
     } as Record<BillingUiPlanId, boolean>,
   },
   {
     label: 'Analytics',
     detail: 'Lectura operativa y tendencia del negocio.',
     values: {
-      PROFESSIONAL: 'Sin analytics',
-      LOCAL: 'Basicos',
-      ENTERPRISE: 'Avanzados',
+      CORE: 'Sin analytics',
     } as Record<BillingUiPlanId, string>,
   },
   {
     label: 'Fotos del negocio',
     detail: 'Limite cargable en la pagina publica.',
     values: {
-      PROFESSIONAL: 'Hasta 3',
-      LOCAL: 'Hasta 6',
-      ENTERPRISE: 'Hasta 10',
+      CORE: 'Hasta 6',
     } as Record<BillingUiPlanId, string>,
   },
 ];
@@ -109,8 +97,8 @@ function BillingFeatureComparison({
       </div>
 
       <div className="mt-6 overflow-x-auto">
-        <div className="min-w-[760px]">
-          <div className="grid grid-cols-[1.45fr_repeat(3,0.85fr)] gap-3">
+        <div className="min-w-[520px]">
+          <div className="grid grid-cols-[1.45fr_0.85fr] gap-3">
             <div className="rounded-[18px] border border-transparent px-4 py-3" />
             {planColumnOrder.map((planId) => {
               const plan = billingPlanById[planId];

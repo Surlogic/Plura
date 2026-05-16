@@ -41,7 +41,7 @@ public class BillingProperties {
             throw new IllegalStateException("BILLING_WEBHOOK_ALLOWED_SKEW_SECONDS debe ser > 0");
         }
 
-        validatePlan("PLAN_CORE", plans.planProfessional);
+        validatePlan("PLAN_CORE", plans.core);
 
         if (mercadopago.enabled) {
             requirePresent(
@@ -70,12 +70,7 @@ public class BillingProperties {
      * Resuelve plan normalizando entradas, defaults y casos borde.
      */
     public PlanConfig resolvePlan(SubscriptionPlanCode plan) {
-        return switch (plan) {
-            case PLAN_CORE -> plans.planProfessional;
-            case PLAN_PROFESSIONAL -> plans.planProfessional;
-            case PLAN_LOCAL -> plans.planProfessional;
-            case PLAN_ENTERPRISE -> plans.planProfessional;
-        };
+        return plans.core;
     }
 
     /**
@@ -98,7 +93,7 @@ public class BillingProperties {
         if (plan.price == null) {
             throw new IllegalStateException(name + " requiere precio");
         }
-        boolean allowZeroPricePlan = "PLAN_CORE".equals(name) || "PLAN_PROFESSIONAL".equals(name);
+        boolean allowZeroPricePlan = "PLAN_CORE".equals(name);
         if ((!allowZeroPricePlan && plan.price.compareTo(BigDecimal.ZERO) <= 0)
             || (allowZeroPricePlan && plan.price.compareTo(BigDecimal.ZERO) < 0)) {
             throw new IllegalStateException(name + " tiene precio invalido");
@@ -110,12 +105,7 @@ public class BillingProperties {
      * Resuelve Mercado Pago plan ID normalizando entradas, defaults y casos borde.
      */
     public String resolveMercadoPagoPlanId(SubscriptionPlanCode plan) {
-        return switch (plan) {
-            case PLAN_CORE -> mercadopago.planProfessionalId;
-            case PLAN_PROFESSIONAL -> mercadopago.planProfessionalId;
-            case PLAN_LOCAL -> mercadopago.planLocalId;
-            case PLAN_ENTERPRISE -> mercadopago.planEnterpriseId;
-        };
+        return mercadopago.getPlanProfessionalId();
     }
 
     /**
@@ -162,32 +152,38 @@ public class BillingProperties {
      * Contenedor de la configuración de los tres planes de suscripción disponibles.
      */
     public static class Plans {
-        private PlanConfig planProfessional = new PlanConfig();
-        private PlanConfig planLocal = new PlanConfig();
-        private PlanConfig planEnterprise = new PlanConfig();
+        private PlanConfig core = new PlanConfig();
+
+        public PlanConfig getCore() {
+            return core;
+        }
+
+        public void setCore(PlanConfig core) {
+            this.core = core == null ? new PlanConfig() : core;
+        }
 
         public PlanConfig getPlanProfessional() {
-            return planProfessional;
+            return core;
         }
 
         public void setPlanProfessional(PlanConfig planProfessional) {
-            this.planProfessional = planProfessional;
+            this.core = planProfessional == null ? new PlanConfig() : planProfessional;
         }
 
         public PlanConfig getPlanLocal() {
-            return planLocal;
+            return new PlanConfig();
         }
 
         public void setPlanLocal(PlanConfig planLocal) {
-            this.planLocal = planLocal;
+            // Legacy binding accepted as no-op. Local is not an active plan.
         }
 
         public PlanConfig getPlanEnterprise() {
-            return planEnterprise;
+            return new PlanConfig();
         }
 
         public void setPlanEnterprise(PlanConfig planEnterprise) {
-            this.planEnterprise = planEnterprise;
+            // Legacy binding accepted as no-op. Enterprise is not an active plan.
         }
     }
 
@@ -237,6 +233,7 @@ public class BillingProperties {
         private String successUrl = "";
         private String failureUrl = "";
         private String pendingUrl = "";
+        private String planCoreId = "";
         private String planProfessionalId = "";
         private String planLocalId = "";
         private String planEnterpriseId = "";
@@ -387,11 +384,19 @@ public class BillingProperties {
         }
 
         public String getPlanProfessionalId() {
-            return planProfessionalId;
+            return planCoreId.isBlank() ? planProfessionalId : planCoreId;
         }
 
         public void setPlanProfessionalId(String planProfessionalId) {
             this.planProfessionalId = planProfessionalId;
+        }
+
+        public String getPlanCoreId() {
+            return planCoreId;
+        }
+
+        public void setPlanCoreId(String planCoreId) {
+            this.planCoreId = planCoreId == null ? "" : planCoreId;
         }
 
         public String getPlanLocalId() {
@@ -687,7 +692,7 @@ public class BillingProperties {
     }
 
     public void setPlans(Plans plans) {
-        this.plans = plans;
+        this.plans = plans == null ? new Plans() : plans;
     }
 
     public MercadoPago getMercadopago() {
@@ -695,6 +700,6 @@ public class BillingProperties {
     }
 
     public void setMercadopago(MercadoPago mercadopago) {
-        this.mercadopago = mercadopago;
+        this.mercadopago = mercadopago == null ? new MercadoPago() : mercadopago;
     }
 }

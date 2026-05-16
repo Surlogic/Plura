@@ -1,8 +1,17 @@
-import type { ProfessionalPlanCode } from '../types/professional';
+import type { LegacyProfessionalPlanCode, ProfessionalPlanCode } from '../types/professional';
 
-export type BillingUiPlanId = 'CORE' | 'PROFESSIONAL' | 'LOCAL' | 'ENTERPRISE';
-export type BillingBackendPlanCode = 'PLAN_CORE' | 'PLAN_PROFESSIONAL' | 'PLAN_LOCAL' | 'PLAN_ENTERPRISE';
-export type PaidBillingUiPlanId = 'LOCAL' | 'ENTERPRISE';
+export type BillingUiPlanId = 'CORE';
+export type BillingBackendPlanCode = 'PLAN_CORE';
+export type PaidBillingUiPlanId = 'CORE';
+export type LegacyBillingUiPlanId = LegacyProfessionalPlanCode;
+export type LegacyBillingBackendPlanCode =
+  | 'PLAN_BASIC'
+  | 'PLAN_PRO'
+  | 'PLAN_PROFESIONAL'
+  | 'PLAN_PREMIUM'
+  | 'PLAN_PROFESSIONAL'
+  | 'PLAN_LOCAL'
+  | 'PLAN_ENTERPRISE';
 
 export type SharedBillingPlanDefinition = {
   id: BillingUiPlanId;
@@ -22,7 +31,7 @@ export const sharedBillingPlans: SharedBillingPlanDefinition[] = [
     backendPlanCode: 'PLAN_CORE',
     profilePlanCode: 'CORE',
     priceMonthly: 590,
-    priceLabel: 'Suscripcion unica',
+    priceLabel: '2 meses gratis, luego suscripcion mensual',
     benefits: [
       'Pagina publica, marketplace y reservas online',
       'Agenda, calendario, horarios y bloqueos',
@@ -37,13 +46,10 @@ export const sharedBillingPlans: SharedBillingPlanDefinition[] = [
 
 export const sharedBillingPlanById: Record<BillingUiPlanId, SharedBillingPlanDefinition> = {
   CORE: sharedBillingPlans[0],
-  PROFESSIONAL: sharedBillingPlans[0],
-  LOCAL: sharedBillingPlans[0],
-  ENTERPRISE: sharedBillingPlans[0],
 };
 
 export const resolveBillingPlanFromProfilePlanCode = (
-  planCode?: ProfessionalPlanCode | string | null,
+  planCode?: ProfessionalPlanCode | LegacyProfessionalPlanCode | string | null,
 ): BillingUiPlanId => {
   switch (planCode?.toUpperCase()) {
     case 'CORE':
@@ -58,7 +64,7 @@ export const resolveBillingPlanFromProfilePlanCode = (
 };
 
 export const resolveBillingPlanFromBackendPlanCode = (
-  planCode?: string | null,
+  planCode?: BillingBackendPlanCode | LegacyBillingBackendPlanCode | string | null,
 ): BillingUiPlanId | null => {
   switch (planCode?.toUpperCase()) {
     case 'PLAN_CORE':

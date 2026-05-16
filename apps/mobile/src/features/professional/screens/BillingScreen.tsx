@@ -71,11 +71,14 @@ export default function BillingScreen() {
   );
   const currentStatusLabel = useMemo(() => {
     if (currentStatus === 'ACTIVE') return 'Activa';
-    if (currentStatus === 'TRIAL') return 'Pago pendiente';
+    if (currentStatus === 'TRIALING') return 'Prueba gratuita';
+    if (currentStatus === 'TRIAL') return subscription?.trialActive ? 'Prueba gratuita' : 'Pago pendiente';
+    if (currentStatus === 'CHECKOUT_PENDING') return 'Activacion pendiente';
     if (currentStatus === 'PAST_DUE') return 'Pago fallido';
     if (currentStatus === 'CANCELLED') return 'Cancelada';
+    if (currentStatus === 'EXPIRED') return 'Prueba vencida';
     return 'Sin suscripcion';
-  }, [currentStatus]);
+  }, [currentStatus, subscription?.trialActive]);
   const currentAmountLabel = useMemo(() => {
     if (currentPlanId === 'CORE') return currentPlan.priceLabel;
     return formatBillingAmount(subscription?.amount ?? currentPlan.priceMonthly, subscription?.currency || 'UYU');

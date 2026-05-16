@@ -19,11 +19,6 @@ public final class SubscriptionPlanMapper {
         if (subscriptionPlan == null) {
             return ProfessionalPlanCode.CORE;
         }
-        return switch (subscriptionPlan) {
-            case PLAN_CORE -> ProfessionalPlanCode.CORE;
-            case PLAN_PROFESSIONAL -> ProfessionalPlanCode.CORE;
-            case PLAN_LOCAL -> ProfessionalPlanCode.CORE;
-            case PLAN_ENTERPRISE -> ProfessionalPlanCode.CORE;
-        };
+        return ProfessionalPlanCode.CORE;
     }
 }

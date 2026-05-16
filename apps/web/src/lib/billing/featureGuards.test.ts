@@ -43,7 +43,7 @@ const buildEntitlements = (
 
 const buildProfile = (
   overrides: Partial<ProfessionalProfile> & {
-    professionalPlan?: ProfessionalPlanCode;
+    professionalPlan?: ProfessionalPlanCode | string;
   } = {},
 ): ProfessionalProfile => ({
   id: 'professional-1',
@@ -74,7 +74,7 @@ test('resolveProfessionalFeatureAccess falls back to CORE defaults', () => {
 
 test('resolveProfessionalFeatureAccess treats LOCAL legacy as Core defaults', () => {
   const access = resolveProfessionalFeatureAccess(buildProfile({
-    professionalPlan: 'LOCAL',
+    professionalPlan: 'LOCAL' as unknown as ProfessionalPlanCode,
   }));
 
   assert.deepEqual(access, {
@@ -89,7 +89,7 @@ test('resolveProfessionalFeatureAccess treats LOCAL legacy as Core defaults', ()
 
 test('resolveProfessionalFeatureAccess treats ENTERPRISE legacy as Core defaults', () => {
   const access = resolveProfessionalFeatureAccess(buildProfile({
-    professionalPlan: 'ENTERPRISE',
+    professionalPlan: 'ENTERPRISE' as unknown as ProfessionalPlanCode,
   }));
 
   assert.deepEqual(access, {
@@ -104,7 +104,7 @@ test('resolveProfessionalFeatureAccess treats ENTERPRISE legacy as Core defaults
 
 test('resolveProfessionalFeatureAccess prefers entitlements over plan code when present', () => {
   const access = resolveProfessionalFeatureAccess(buildProfile({
-    professionalPlan: 'ENTERPRISE',
+    professionalPlan: 'ENTERPRISE' as unknown as ProfessionalPlanCode,
     professionalEntitlements: buildEntitlements({
       publicProfileTier: 'BASIC',
       scheduleTier: 'WEEKLY',
@@ -123,15 +123,12 @@ test('resolveProfessionalFeatureAccess prefers entitlements over plan code when 
 
 test('planIncludesProfessionalFeature matches the expected paywall boundaries', () => {
   assert.equal(planIncludesProfessionalFeature('CORE', 'onlinePayments'), true);
-  assert.equal(planIncludesProfessionalFeature('LOCAL', 'onlinePayments'), true);
   assert.equal(planIncludesProfessionalFeature('CORE', 'weeklyCalendarNavigation'), true);
   assert.equal(planIncludesProfessionalFeature('CORE', 'monthlyCalendar'), true);
-  assert.equal(planIncludesProfessionalFeature('LOCAL', 'monthlyCalendar'), true);
-  assert.equal(planIncludesProfessionalFeature('ENTERPRISE', 'monthlyCalendar'), true);
-  assert.equal(planIncludesProfessionalFeature('ENTERPRISE', 'advancedAnalytics'), false);
+  assert.equal(planIncludesProfessionalFeature('CORE', 'advancedAnalytics'), false);
 });
 
 test('requiredPlanForFeature exposes the correct minimum plan', () => {
   assert.equal(requiredPlanForFeature('enhancedPublicProfile'), 'CORE');
-  assert.equal(requiredPlanForFeature('advancedAnalytics'), 'ENTERPRISE');
+  assert.equal(requiredPlanForFeature('advancedAnalytics'), 'CORE');
 });

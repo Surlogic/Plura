@@ -32,21 +32,8 @@ class ProfessionalPlanPolicyServiceTest {
         assertTrue(core.allowOnlinePayments());
     }
 
-    /**
-     * Escenario: local plan enables operational capabilities sin changing structure limites.
-     * El objetivo es dejar explicita la regla que protege este test.
-     */
     @Test
-    void legacyPlansResolveToCoreEntitlements() {
-        ProfessionalPlanEntitlements core = service.entitlementsFor(ProfessionalPlanCode.CORE);
-        ProfessionalPlanEntitlements professional = service.entitlementsFor(ProfessionalPlanCode.PROFESSIONAL);
-        ProfessionalPlanEntitlements local = service.entitlementsFor(ProfessionalPlanCode.LOCAL);
-        ProfessionalPlanEntitlements enterprise = service.entitlementsFor(ProfessionalPlanCode.ENTERPRISE);
-
-        assertEquals(core, professional);
-        assertEquals(core, local);
-        assertEquals(core, enterprise);
-        assertEquals(professional.maxProfessionals(), local.maxProfessionals());
-        assertEquals(professional.maxLocations(), local.maxLocations());
+    void nullPlanResolvesToCoreEntitlements() {
+        assertEquals(service.entitlementsFor(ProfessionalPlanCode.CORE), service.entitlementsFor(null));
     }
 }

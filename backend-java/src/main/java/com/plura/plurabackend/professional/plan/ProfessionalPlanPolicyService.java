@@ -1,7 +1,5 @@
 package com.plura.plurabackend.professional.plan;
 
-import java.util.EnumMap;
-import java.util.Map;
 import org.springframework.stereotype.Service;
 
 /**
@@ -13,32 +11,23 @@ import org.springframework.stereotype.Service;
 @Service
 public class ProfessionalPlanPolicyService {
 
-    private final Map<ProfessionalPlanCode, ProfessionalPlanEntitlements> entitlementsByPlan;
+    private final ProfessionalPlanEntitlements coreEntitlements;
 
     public ProfessionalPlanPolicyService() {
-        Map<ProfessionalPlanCode, ProfessionalPlanEntitlements> entitlements = new EnumMap<>(ProfessionalPlanCode.class);
-        ProfessionalPlanEntitlements coreEntitlements = coreEntitlements();
-        entitlements.put(ProfessionalPlanCode.CORE, coreEntitlements);
-        entitlements.put(ProfessionalPlanCode.PROFESSIONAL, coreEntitlements);
-        entitlements.put(ProfessionalPlanCode.LOCAL, coreEntitlements);
-        entitlements.put(ProfessionalPlanCode.ENTERPRISE, coreEntitlements);
-        this.entitlementsByPlan = Map.copyOf(entitlements);
+        this.coreEntitlements = buildCoreEntitlements();
     }
 
     /**
      * Ejecuta la logica de entitlements for manteniendola encapsulada en este componente.
      */
     public ProfessionalPlanEntitlements entitlementsFor(ProfessionalPlanCode code) {
-        if (code == null) {
-            return entitlementsByPlan.get(ProfessionalPlanCode.CORE);
-        }
-        return entitlementsByPlan.getOrDefault(code, entitlementsByPlan.get(ProfessionalPlanCode.CORE));
+        return coreEntitlements;
     }
 
     /**
      * Ejecuta la logica de professional entitlements manteniendola encapsulada en este componente.
      */
-    private ProfessionalPlanEntitlements coreEntitlements() {
+    private ProfessionalPlanEntitlements buildCoreEntitlements() {
         return new ProfessionalPlanEntitlements(
             1,
             1,

@@ -9,10 +9,7 @@ import java.util.Locale;
  * Foco funcional: suscripciones, planes.
  */
 public enum SubscriptionPlanCode {
-    PLAN_CORE,
-    PLAN_PROFESSIONAL,
-    PLAN_LOCAL,
-    PLAN_ENTERPRISE;
+    PLAN_CORE;
 
     /**
      * Construye el valor interno a partir de code recibido como entrada.
@@ -23,12 +20,15 @@ public enum SubscriptionPlanCode {
         }
         String normalized = value.trim().toUpperCase(Locale.ROOT);
         return switch (normalized) {
-            case "PLAN_CORE", "CORE", "PLAN_BASIC" -> PLAN_CORE;
-            case "PLAN_PRO", "PLAN_PROFESIONAL" -> PLAN_LOCAL;
-            case "PLAN_PREMIUM" -> PLAN_ENTERPRISE;
-            case "PLAN_PROFESSIONAL" -> PLAN_PROFESSIONAL;
-            case "PLAN_LOCAL" -> PLAN_LOCAL;
-            case "PLAN_ENTERPRISE" -> PLAN_ENTERPRISE;
+            case "PLAN_CORE",
+                "CORE",
+                "PLAN_BASIC",
+                "PLAN_PRO",
+                "PLAN_PROFESIONAL",
+                "PLAN_PREMIUM",
+                "PLAN_PROFESSIONAL",
+                "PLAN_LOCAL",
+                "PLAN_ENTERPRISE" -> PLAN_CORE;
             default -> throw new IllegalArgumentException("planCode inválido: " + value);
         };
     }
@@ -37,10 +37,6 @@ public enum SubscriptionPlanCode {
      * Evalua canonical code y devuelve una decision booleana para el llamador.
      */
     public String canonicalCode() {
-        return switch (this) {
-            case PLAN_CORE, PLAN_PROFESSIONAL -> "PLAN_CORE";
-            case PLAN_LOCAL -> "PLAN_LOCAL";
-            case PLAN_ENTERPRISE -> "PLAN_ENTERPRISE";
-        };
+        return "PLAN_CORE";
     }
 }

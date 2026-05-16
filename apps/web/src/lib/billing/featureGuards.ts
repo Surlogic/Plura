@@ -16,14 +16,14 @@ const FEATURE_REQUIRED_PLAN: Record<ProfessionalFeatureKey, ProfessionalPlanCode
   onlinePayments: 'CORE',
   weeklyCalendarNavigation: 'CORE',
   monthlyCalendar: 'CORE',
-  basicAnalytics: 'ENTERPRISE',
-  advancedAnalytics: 'ENTERPRISE',
+  basicAnalytics: 'CORE',
+  advancedAnalytics: 'CORE',
 };
 
 export const professionalFeatureRequiredPlan = FEATURE_REQUIRED_PLAN;
 
 export const resolveProfessionalFeatureAccess = (profile?: ProfessionalProfile | null) => {
-  const currentPlan = profile?.professionalPlan ?? 'PROFESSIONAL';
+  const currentPlan = profile?.professionalPlan ?? 'CORE';
   const entitlements = profile?.professionalEntitlements;
 
   return {

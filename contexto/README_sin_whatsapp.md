@@ -24,6 +24,7 @@ Plura tiene dos grandes actores:
 Definicion vigente de monetizacion para MVP:
 
 - el profesional/local se registra directo en `Plura Core`
+- el wizard web de registro profesional cierra con activacion de `Plura Core`: crea o completa la cuenta, aplica configuracion inicial de perfil/horarios/primer servicio y llama billing para iniciar la prueba gratuita; si Mercado Pago devuelve checkout, redirige en la misma pestaña para autorizar el medio de pago
 - no se venden ni se muestran planes por niveles, upgrades a Local/Enterprise ni comparativas de planes
 - `INDEPENDENT` y `LOCAL` no son planes comerciales: son tipos operativos de perfil para definir modalidad, ubicacion, landing y datos publicos
 - el modelo principal sigue siendo suscripcion mensual unica; en reservas prepagas el checkout puede sumar al cliente un cargo de procesamiento segun el servicio para cubrir fee de Mercado Pago + IVA + `1%` de plataforma
@@ -34,13 +35,14 @@ Naming vigente de negocio:
 
 - `Usuario`: gratis
 - `Plura Core`: suscripcion unica para profesionales y locales durante el MVP, con prueba gratuita de `2` meses iniciable desde backend billing
-- `Enterprise`: futuro/personalizado para empresas con varios locales, sin UI ni opcion de compra actual
+- `Enterprise`: futuro/personalizado para empresas con varios locales, sin UI, opcion de compra ni plan tecnico activo
 
 Contratos actuales de compatibilidad:
 
-- `Plura Core` <-> `CORE`
-- `PROFESSIONAL`, `LOCAL` y `ENTERPRISE` quedan como aliases legacy internos de lectura para no romper datos existentes
-- `BASIC`, `PROFESIONAL`, `PLAN_PRO`, `PLAN_PREMIUM` y otros codigos viejos quedan solo como aliases transicionales
+- `Plura Core` <-> `CORE` <-> `PLAN_CORE`
+- `PLAN_CORE` es el unico codigo canonico activo de suscripcion
+- `PROFESSIONAL`, `LOCAL`, `ENTERPRISE`, `BASIC`, `PROFESIONAL`, `PLAN_BASIC`, `PLAN_PRO`, `PLAN_PROFESIONAL`, `PLAN_PREMIUM`, `PLAN_PROFESSIONAL`, `PLAN_LOCAL` y `PLAN_ENTERPRISE` quedan solo como aliases legacy de entrada transicional
+- todo alias legacy se normaliza a `CORE` / `PLAN_CORE` en salidas y capacidades efectivas
 
 ## Alcance por plan
 
@@ -62,6 +64,7 @@ Siempre gratis. Objetivo: bajar friccion para reservar y volver.
 Suscripcion unica para el MVP operativo de profesionales y locales.
 
 - prueba gratuita de `2` meses antes del cobro mensual de Core
+- el dashboard de facturacion muestra trial activo, dias restantes, activacion pendiente de Mercado Pago, prueba vencida y estados de suscripcion Core sin exponer otros planes comprables
 - una sola agenda activa
 - un solo profesional activo
 - un solo local

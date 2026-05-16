@@ -10,8 +10,10 @@ import {
 import {
   billingStatusClassNames,
   billingStatusLabels,
+  armPendingCheckoutReturnState,
   clearPendingCheckoutState,
   clearPendingCheckoutReturnState,
+  createCoreSubscription,
   fetchCurrentSubscription,
   formatBillingAmount,
   formatBillingDate,
@@ -20,6 +22,7 @@ import {
   resolveBackendMessage,
   resolveCurrentBillingPlanId,
   resolveCurrentBillingStatus,
+  setPendingCheckoutState,
   type BillingSubscription,
 } from '@/lib/billing/billing';
 import { invalidateCachedGet } from '@/services/cachedGet';
@@ -47,17 +50,23 @@ const SOFT_POLL_MAX_MS = 45000;
 const MAX_POLL_ATTEMPTS = 20;
 const MAX_PENDING_CHECKOUT_AGE_MS = 5 * 60 * 1000;
 
+const isSubscriptionAccessEnabled = (subscription: BillingSubscription | null) =>
+  subscription?.status === 'ACTIVE' ||
+  subscription?.status === 'TRIALING' ||
+  (subscription?.status === 'TRIAL' && subscription.trialActive === true) ||
+  subscription?.planEnabled === true;
+
 const refreshProfessionalCaches = async (refreshProfile: () => Promise<void>) => {
   invalidateCachedGet('/auth/me/profesional');
   await refreshProfile();
 };
 
-const buildTrialBanner = (hasPendingCheckout: boolean): BillingBannerState => ({
+const buildPendingCheckoutBanner = (hasPendingCheckout: boolean): BillingBannerState => ({
   tone: 'info',
-  title: 'Pago pendiente',
+  title: 'Activacion pendiente',
   description: hasPendingCheckout
-    ? 'La suscripcion Core fue iniciada y seguimos esperando la confirmacion del webhook.'
-    : 'La suscripcion Core todavia no fue confirmada. Puedes seguir navegando y volver a verificar el estado.',
+    ? 'Termina la autorizacion en Mercado Pago para activar la prueba gratuita.'
+    : 'La activacion de Core todavia no fue confirmada. Puedes volver a verificar el estado.',
 });
 
 // --- Consolidated UI state via useReducer ---
@@ -117,7 +126,7 @@ function billingUiReducer(state: BillingUiState, action: BillingUiAction): Billi
       return {
         ...state,
         isRedirectingToCheckout: true,
-        banner: { tone: 'loading', title: 'Procesando pago...', description: 'Te estamos redirigiendo a Mercado Pago.' },
+        banner: { tone: 'loading', title: 'Redirigiendo a Mercado Pago...', description: 'Te llevamos a autorizar Plura Core.' },
       };
     case 'CHECKOUT_REDIRECT_FAIL':
       return { ...state, isRedirectingToCheckout: false, banner: action.banner };
@@ -197,7 +206,7 @@ export function useProfessionalBilling({
   }, [loadSubscription, profile?.id]);
 
   useEffect(() => {
-    if (!profile?.id || !subscription || subscription.status !== 'ACTIVE') {
+    if (!profile?.id || !subscription || !isSubscriptionAccessEnabled(subscription)) {
       profileSyncSignatureRef.current = null;
       return;
     }
@@ -285,24 +294,37 @@ export function useProfessionalBilling({
     nextSubscription: BillingSubscription | null,
     source: BillingStatusCheckSource,
   ) => {
-    if (nextSubscription?.status === 'ACTIVE') {
+    if (nextSubscription?.status === 'ACTIVE' || nextSubscription?.status === 'TRIALING') {
       clearPendingCheckout();
       stopPollingCheckout();
       dispatch({
         type: 'SET_BANNER',
-        banner: { tone: 'success', title: 'Suscripcion activada', description: 'Plura Core ya esta disponible en el dashboard.' },
+        banner: nextSubscription.status === 'TRIALING'
+          ? { tone: 'success', title: 'Prueba gratuita activa', description: 'Plura Core ya esta disponible en el dashboard.' }
+          : { tone: 'success', title: 'Suscripcion activada', description: 'Plura Core ya esta disponible en el dashboard.' },
       });
       await refreshProfessionalCaches(refreshProfileRef.current);
       return;
     }
 
-    if (nextSubscription?.status === 'TRIAL') {
+    if (nextSubscription?.status === 'TRIAL' && nextSubscription.trialActive === true) {
+      clearPendingCheckout();
+      stopPollingCheckout();
+      dispatch({
+        type: 'SET_BANNER',
+        banner: { tone: 'success', title: 'Prueba gratuita activa', description: 'Plura Core ya esta disponible en el dashboard.' },
+      });
+      await refreshProfessionalCaches(refreshProfileRef.current);
+      return;
+    }
+
+    if (nextSubscription?.status === 'TRIAL' || nextSubscription?.status === 'CHECKOUT_PENDING') {
       if (source === 'checkout-return') {
         setPollRestartTrigger((n) => n + 1);
-        dispatch({ type: 'SET_BANNER', banner: buildTrialBanner(true) });
+        dispatch({ type: 'SET_BANNER', banner: buildPendingCheckoutBanner(true) });
         return;
       }
-      dispatch({ type: 'SET_BANNER', banner: buildTrialBanner(pendingCheckoutRef.current !== null) });
+      dispatch({ type: 'SET_BANNER', banner: buildPendingCheckoutBanner(pendingCheckoutRef.current !== null) });
       return;
     }
 
@@ -320,7 +342,7 @@ export function useProfessionalBilling({
           stopPollingCheckout();
           dispatch({
             type: 'SET_BANNER',
-            banner: { tone: 'info', title: 'Suscripcion Core sin confirmar', description: 'No vimos un pago confirmado. Puedes seguir navegando y volver a verificar el estado.' },
+            banner: { tone: 'info', title: 'Activacion Core sin confirmar', description: 'Todavia no vimos la autorizacion confirmada. Puedes volver a verificar el estado.' },
           });
         }
         return;
@@ -330,10 +352,10 @@ export function useProfessionalBilling({
         type: 'SET_BANNER',
         banner: {
           tone: source === 'manual' ? 'info' : 'loading',
-          title: source === 'manual' ? 'Seguimos validando el pago' : 'Procesando pago...',
+          title: source === 'manual' ? 'Seguimos validando la activacion' : 'Procesando activacion...',
           description: source === 'manual'
-            ? 'Todavia no vemos la suscripcion confirmada. Puedes volver a revisar en unos minutos.'
-            : 'Estamos esperando la confirmacion de la suscripcion Core.',
+            ? 'Todavia no vemos Core confirmado. Puedes volver a revisar en unos minutos.'
+            : 'Estamos esperando la confirmacion de Plura Core.',
         },
       });
       return;
@@ -354,6 +376,16 @@ export function useProfessionalBilling({
       dispatch({
         type: 'STOP_POLLING_WITH_BANNER',
         banner: { tone: 'warning', title: 'Suscripcion cancelada', description: 'La suscripcion Core fue cancelada. Puedes seguir navegando y revisar el estado mas adelante.' },
+      });
+      stopPolling();
+      return;
+    }
+
+    if (nextSubscription.status === 'EXPIRED') {
+      clearPendingCheckout();
+      dispatch({
+        type: 'STOP_POLLING_WITH_BANNER',
+        banner: { tone: 'warning', title: 'Prueba vencida', description: 'La prueba de Plura Core vencio. Puedes reintentar la activacion desde Facturacion.' },
       });
       stopPolling();
     }
@@ -421,7 +453,7 @@ export function useProfessionalBilling({
     if (pollAttemptRef.current >= MAX_POLL_ATTEMPTS) {
       dispatch({
         type: 'STOP_POLLING_WITH_BANNER',
-        banner: { tone: 'info', title: 'Todavia estamos esperando la confirmacion del pago', description: 'Puedes volver a revisar en unos minutos.' },
+        banner: { tone: 'info', title: 'Todavia estamos esperando la confirmacion', description: 'Puedes volver a revisar en unos minutos.' },
       });
       return;
     }
@@ -448,7 +480,7 @@ export function useProfessionalBilling({
     dispatch({ type: 'SET_POLLING', value: true });
     dispatch({
       type: 'SET_BANNER',
-      banner: { tone: 'info', title: 'Seguimos validando el pago', description: 'El webhook puede tardar un poco mas.' },
+      banner: { tone: 'info', title: 'Seguimos validando la activacion', description: 'El webhook puede tardar un poco mas.' },
     });
 
     schedulePollWithBackoff(SOFT_POLL_BASE_MS, SOFT_POLL_MAX_MS);
@@ -457,7 +489,7 @@ export function useProfessionalBilling({
       stopPollingCheckout();
       dispatch({
         type: 'SET_BANNER',
-        banner: { tone: 'info', title: 'Todavia estamos esperando la confirmacion del pago', description: 'Puedes volver a revisar en unos minutos.' },
+        banner: { tone: 'info', title: 'Todavia estamos esperando la confirmacion', description: 'Puedes volver a revisar en unos minutos.' },
       });
     }, remainingMs);
   }, [schedulePollWithBackoff, stopPolling, stopPollingCheckout]);
@@ -478,7 +510,7 @@ export function useProfessionalBilling({
     dispatch({ type: 'SET_POLLING', value: true });
     dispatch({
       type: 'SET_BANNER',
-      banner: { tone: 'loading', title: 'Procesando pago...', description: 'Estamos esperando la confirmacion de Mercado Pago.' },
+      banner: { tone: 'loading', title: 'Procesando activacion...', description: 'Estamos esperando la confirmacion de Mercado Pago.' },
     });
 
     schedulePollWithBackoff(INTENSIVE_POLL_BASE_MS, INTENSIVE_POLL_MAX_MS);
@@ -511,7 +543,7 @@ export function useProfessionalBilling({
       stopPollingCheckout();
       dispatch({
         type: 'SET_BANNER',
-        banner: { tone: 'info', title: 'Todavia estamos esperando la confirmacion del pago', description: 'Puedes volver a revisar en unos minutos.' },
+        banner: { tone: 'info', title: 'Todavia estamos esperando la confirmacion', description: 'Puedes volver a revisar en unos minutos.' },
       });
       return;
     }
@@ -566,15 +598,52 @@ export function useProfessionalBilling({
   }, []);
 
   const handleSelectPlan = useCallback(async (planId: BillingUiPlanId) => {
-    dispatch({
-      type: 'SET_BANNER',
-      banner: {
-        tone: 'info',
-        title: 'Plura Core es la suscripcion disponible',
-        description: 'Los cambios de suscripcion no estan disponibles durante el MVP.',
-      },
-    });
-  }, []);
+    if (planId !== 'CORE') {
+      dispatch({
+        type: 'SET_BANNER',
+        banner: {
+          tone: 'info',
+          title: 'Plura Core es la suscripcion disponible',
+          description: 'Los cambios de suscripcion no estan disponibles durante el MVP.',
+        },
+      });
+      return;
+    }
+
+    dispatch({ type: 'CHECKOUT_REDIRECT_START' });
+    try {
+      const checkout = await createCoreSubscription();
+      if (checkout.checkoutUrl) {
+        const nextPendingCheckout = { planId: 'CORE' as const, createdAt: Date.now() };
+        clearPendingCheckoutState();
+        setPendingCheckoutState(nextPendingCheckout);
+        setPendingCheckout(nextPendingCheckout);
+        armPendingCheckoutReturnState();
+        window.location.assign(checkout.checkoutUrl);
+        return;
+      }
+
+      clearPendingCheckout();
+      await loadSubscription();
+      await refreshProfessionalCaches(refreshProfileRef.current);
+      dispatch({ type: 'SET_REDIRECTING', value: false });
+      dispatch({
+        type: 'SET_BANNER',
+        banner: checkout.status === 'TRIALING' || checkout.status === 'TRIAL'
+          ? { tone: 'success', title: 'Prueba gratuita activa', description: 'Plura Core ya esta disponible en el dashboard.' }
+          : { tone: 'success', title: 'Core actualizado', description: 'Actualizamos el estado de tu suscripcion.' },
+      });
+    } catch (error) {
+      dispatch({
+        type: 'CHECKOUT_REDIRECT_FAIL',
+        banner: {
+          tone: 'error',
+          title: 'No pudimos activar Plura Core',
+          description: resolveBackendMessage(error, 'Podes volver a intentarlo desde Facturacion.'),
+        },
+      });
+    }
+  }, [clearPendingCheckout, loadSubscription]);
 
   const dismissBanner = useCallback(() => {
     dispatch({ type: 'SET_BANNER', banner: null });

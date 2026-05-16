@@ -45,33 +45,12 @@ class EffectiveProfessionalPlanServiceTest {
         assertEquals(ProfessionalPlanCode.CORE, effectivePlan.code());
     }
 
-    /**
-     * Escenario: resolves local for active plan code.
-     * El objetivo es dejar explicita la regla que protege este test.
-     */
     @Test
-    void resolvesCoreForActiveLegacyLocalPlanCode() {
-        ProfessionalProfile profile = new ProfessionalProfile();
-        profile.setId(20L);
-        when(subscriptionRepository.findByProfessionalId(20L))
-            .thenReturn(Optional.of(activeSubscription(SubscriptionPlanCode.PLAN_LOCAL)));
-
-        EffectiveProfessionalPlan effectivePlan = service.resolveForProfessional(profile);
-
-        assertEquals(ProfessionalPlanCode.CORE, effectivePlan.code());
-        assertTrue(effectivePlan.entitlements().allowOnlinePayments());
-    }
-
-    /**
-     * Escenario: resolves enterprise for premium plan.
-     * El objetivo es dejar explicita la regla que protege este test.
-     */
-    @Test
-    void resolvesCoreForActiveLegacyEnterprisePlan() {
+    void resolvesCoreForActivePlan() {
         ProfessionalProfile profile = new ProfessionalProfile();
         profile.setId(30L);
         when(subscriptionRepository.findByProfessionalId(30L))
-            .thenReturn(Optional.of(activeSubscription(SubscriptionPlanCode.PLAN_ENTERPRISE)));
+            .thenReturn(Optional.of(activeSubscription(SubscriptionPlanCode.PLAN_CORE)));
 
         EffectiveProfessionalPlan effectivePlan = service.resolveForProfessional(profile);
 
@@ -87,7 +66,7 @@ class EffectiveProfessionalPlanServiceTest {
     void fallsBackToProfessionalWhenSubscriptionIsInactive() {
         ProfessionalProfile profile = new ProfessionalProfile();
         profile.setId(40L);
-        Subscription subscription = activeSubscription(SubscriptionPlanCode.PLAN_ENTERPRISE);
+        Subscription subscription = activeSubscription(SubscriptionPlanCode.PLAN_CORE);
         subscription.setStatus(SubscriptionStatus.CANCELLED);
         when(subscriptionRepository.findByProfessionalId(40L)).thenReturn(Optional.of(subscription));
 

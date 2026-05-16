@@ -3,26 +3,33 @@ import {
   resolveBillingPlanFromProfilePlanCode,
   type BillingUiPlanId,
 } from '../../config/billingPlans';
-import type { ProfessionalPlanCode } from '../../types/professional';
 
 export type BillingPlanStateSubscription = {
   planCode: string;
-  status: 'ACTIVE' | 'PAST_DUE' | 'CANCELLED' | 'TRIAL';
+  status: 'CHECKOUT_PENDING' | 'TRIALING' | 'TRIAL' | 'ACTIVE' | 'PAST_DUE' | 'CANCELLED' | 'EXPIRED';
   cancelAtPeriodEnd: boolean | null;
+  trialActive?: boolean | null;
+  planEnabled?: boolean | null;
 };
 
 export const resolveCurrentBillingPlanStateId = ({
   profilePlanCode,
   subscription,
 }: {
-  profilePlanCode?: ProfessionalPlanCode | null;
+  profilePlanCode?: string | null;
   subscription: BillingPlanStateSubscription | null;
 }): BillingUiPlanId => {
   if (subscription) {
     const subscriptionPlan = resolveBillingPlanFromBackendPlanCode(subscription.planCode);
     if (
       subscriptionPlan &&
-      (subscription.status === 'ACTIVE' || Boolean(subscription.cancelAtPeriodEnd))
+      (
+        subscription.status === 'ACTIVE' ||
+        subscription.status === 'TRIALING' ||
+        (subscription.status === 'TRIAL' && subscription.trialActive === true) ||
+        subscription.planEnabled === true ||
+        Boolean(subscription.cancelAtPeriodEnd)
+      )
     ) {
       return subscriptionPlan;
     }

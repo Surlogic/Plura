@@ -129,12 +129,12 @@ Infra actual detectada:
 
 Lectura real del backend hoy:
 
-- el modelo comercial visible para profesionales/locales es `Plura Core` unico; `Profesional`, `Local` y `Enterprise` quedan como aliases legacy internos
-- `POST /billing/subscription` permite iniciar solo `PLAN_CORE`; Local/Enterprise/Pro/Premium siguen bloqueados durante el MVP
+- el modelo comercial visible para profesionales/locales es `Plura Core` unico; `Profesional`, `Local` y `Enterprise` no son planes tecnicos activos
+- `POST /billing/subscription` permite iniciar solo `PLAN_CORE`; Local/Enterprise/Pro/Premium se aceptan solo como aliases legacy de entrada y se normalizan a `PLAN_CORE`
 - `Plura Core` persiste prueba gratuita local de `2` meses en `subscription.trial_start_at`, `subscription.trial_end_at`, `subscription.payment_method_attached_at` y `subscription.trial_source`
 - el backend usa estados de suscripcion `CHECKOUT_PENDING`, `TRIALING`, `ACTIVE`, `PAST_DUE`, `CANCELLED`, `EXPIRED`; `TRIAL` queda como compatibilidad de lectura para datos historicos
 - el checkout de cambio de plan a Local/Enterprise no se ofrece en UI ni backend durante el MVP
-- `Enterprise` queda futuro/personalizado para empresas con varios locales y no requiere configuracion de compra actual
+- `Enterprise` queda futuro/personalizado para empresas con varios locales y no requiere configuracion de compra actual ni enum/capacidad activa
 
 - `Mercado Pago` esta conectado al billing de suscripciones de plataforma
 - para suscripciones Core, cuando backend crea un `preapproval_plan` remoto agrega `auto_recurring.free_trial = { frequency: 2, frequency_type: "months" }`
@@ -165,7 +165,7 @@ Variables de backend para suscripcion Core:
 - `BILLING_CORE_PRICE`
 - `BILLING_CORE_CURRENCY`
 
-Estas variables tienen fallback a `BILLING_PLAN_PROFESSIONAL_PRICE` / `BILLING_PLAN_PROFESSIONAL_CURRENCY` y luego a los nombres legacy `BILLING_PLAN_BASIC_*`. Las variables legacy de Local/Enterprise pueden quedar en ambientes existentes, pero no impulsan checkout visible del MVP.
+Estas variables deben estar configuradas con precio positivo cuando billing/Mercado Pago esta habilitado; si `BILLING_CORE_PRICE` queda ausente o en `0`, Mercado Pago puede rechazar el `preapproval_plan` por monto invalido. Tienen fallback a `BILLING_PLAN_PROFESSIONAL_PRICE` / `BILLING_PLAN_PROFESSIONAL_CURRENCY` y luego a los nombres legacy `BILLING_PLAN_BASIC_*`. El fallback compatible usa `PROFESSIONAL` con doble `S`; `BILLING_PLAN_PROFESIONAL_PRICE` esta mal escrito y no debe usarse. Las variables legacy de Local/Enterprise pueden quedar en ambientes existentes, pero no impulsan checkout visible del MVP.
 
 Variables de backend para Mercado Pago de reservas y OAuth profesional:
 
@@ -211,7 +211,7 @@ Notas reales de binding local:
 - `backend-java/fly.toml` ahora fuerza un pool mas chico en Fly (`HIKARI_MAX_POOL_SIZE=4`, `HIKARI_MIN_IDLE=0`), desactiva `SEARCH_MV_REFRESH_ON_STARTUP` y usa `[deploy].strategy = "immediate"` para no agotar el Session Pooler de Supabase durante updates donde una machine nueva compite por conexiones con la release anterior
 - el repo ahora incluye `backend-java/scripts/check_fly_runtime_env.sh` para validar desde shell las variables minimas de arranque segun el `fly.toml` actual y separar faltantes fatales de advertencias operativas
 - `V68__service_processing_fee_mode.sql` agrega `processing_fee_mode` a `professional_service` y `prepaid_processing_fee_mode_snapshot` a `booking`; `V69__booking_prepaid_processing_fee_snapshot.sql` agrega en `booking` los snapshots `prepaid_processing_fee_amount_snapshot` y `prepaid_total_amount_snapshot`
-- la secuencia real de migraciones Flyway del backend llega a `V82`; `V79__remove_internal_product_analytics.sql` elimina la tabla vieja `app_product_event`, `V80__rename_subscription_plan_contracts.sql` normaliza codigos legacy de planes si existe la tabla `subscription`, `V81__active_user_unique_identity.sql` ajusta unicidad de usuarios activos y `V82__subscription_core_trial_fields.sql` agrega columnas de trial/Core y actualiza constraints de plan/status cuando existen.
+- la secuencia real de migraciones Flyway del backend llega a `V83`; `V79__remove_internal_product_analytics.sql` elimina la tabla vieja `app_product_event`, `V80__rename_subscription_plan_contracts.sql` normaliza codigos legacy de planes si existe la tabla `subscription`, `V81__active_user_unique_identity.sql` ajusta unicidad de usuarios activos, `V82__subscription_core_trial_fields.sql` agrega columnas de trial/Core y `V83__normalize_subscription_plan_core.sql` normaliza `subscription.plan` a `PLAN_CORE` y deja el constraint aceptando solo `PLAN_CORE` cuando la tabla existe.
 - el backend fija `search_path=public,extensions` en `spring.datasource.hikari.connection-init-sql` para que funciones y casts PostGIS sigan resolviendo despues de mover `postgis` fuera de `public`
 - el repo ahora incluye `backend-java/src/test/java/com/plura/plurabackend/db/FlywayMigrationVersionUniquenessTest.java` para detectar versiones Flyway duplicadas antes de romper un deploy
 - el backend mantiene fallback a los nombres legacy `BILLING_MERCADOPAGO_ACCESS_TOKEN`, `BILLING_MERCADOPAGO_WEBHOOK_SECRET` y `BILLING_MERCADOPAGO_OAUTH_*`, pero el naming operativo recomendado ya es explicito por dominio: `SUBSCRIPTIONS_*` para planes y `RESERVATIONS_*` para cobros/OAuth profesional
@@ -374,7 +374,7 @@ Variables criticas sin las que el backend puede fallar o degradarse:
 - variables de billing si se habilitan pagos reales
 - variables OAuth de Mercado Pago si se quiere conectar la cuenta del profesional desde billing
 - SMTP operativo si se quiere usar recovery escalonado y otros OTP por email sin degradacion
-- en Fly, ademas de los env no secretos versionados en `backend-java/fly.toml`, siguen siendo obligatorios como secrets al menos: `SPRING_DATASOURCE_PASSWORD`, `SPRING_FLYWAY_PASSWORD`, `JWT_SECRET`, `JWT_REFRESH_PEPPER`, `GOOGLE_CLIENT_ID`, `GOOGLE_ANDROID_CLIENT_ID`, `GOOGLE_IOS_CLIENT_ID` si se va a aceptar OAuth mobile iOS, `GOOGLE_CLIENT_SECRET`, `EMAIL_FROM_ADDRESS`, `EMAIL_SMTP_USERNAME`, `EMAIL_SMTP_PASSWORD`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `BILLING_MERCADOPAGO_SUBSCRIPTIONS_ACCESS_TOKEN`, `BILLING_MERCADOPAGO_SUBSCRIPTIONS_WEBHOOK_SECRET`, `BILLING_MERCADOPAGO_RESERVATIONS_PLATFORM_ACCESS_TOKEN`, `BILLING_MERCADOPAGO_RESERVATIONS_WEBHOOK_SECRET`, `BILLING_MERCADOPAGO_RESERVATIONS_OAUTH_CLIENT_ID`, `BILLING_MERCADOPAGO_RESERVATIONS_OAUTH_CLIENT_SECRET`, `BILLING_MERCADOPAGO_RESERVATIONS_OAUTH_STATE_SIGNING_SECRET`, `BILLING_MERCADOPAGO_RESERVATIONS_OAUTH_TOKEN_ENCRYPTION_KEY`
+- en Fly, ademas de los env no secretos gestionados fuera del repo, siguen siendo obligatorios como secrets al menos: `SPRING_DATASOURCE_PASSWORD`, `SPRING_FLYWAY_PASSWORD`, `JWT_SECRET`, `JWT_REFRESH_PEPPER`, `GOOGLE_CLIENT_ID`, `GOOGLE_ANDROID_CLIENT_ID`, `GOOGLE_IOS_CLIENT_ID` si se va a aceptar OAuth mobile iOS, `GOOGLE_CLIENT_SECRET`, `EMAIL_FROM_ADDRESS`, `EMAIL_SMTP_USERNAME`, `EMAIL_SMTP_PASSWORD`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `BILLING_CORE_PRICE`, `BILLING_CORE_CURRENCY`, `BILLING_MERCADOPAGO_SUBSCRIPTIONS_ACCESS_TOKEN`, `BILLING_MERCADOPAGO_SUBSCRIPTIONS_WEBHOOK_SECRET`, `BILLING_MERCADOPAGO_RESERVATIONS_PLATFORM_ACCESS_TOKEN`, `BILLING_MERCADOPAGO_RESERVATIONS_WEBHOOK_SECRET`, `BILLING_MERCADOPAGO_RESERVATIONS_OAUTH_CLIENT_ID`, `BILLING_MERCADOPAGO_RESERVATIONS_OAUTH_CLIENT_SECRET`, `BILLING_MERCADOPAGO_RESERVATIONS_OAUTH_STATE_SIGNING_SECRET`, `BILLING_MERCADOPAGO_RESERVATIONS_OAUTH_TOKEN_ENCRYPTION_KEY`
 - para el pooler de Supabase hoy la dupla operativa recomendada queda fija y sin fallback silencioso: `SPRING_DATASOURCE_URL=jdbc:postgresql://aws-1-sa-east-1.pooler.supabase.com:5432/postgres` + `SPRING_DATASOURCE_USERNAME=postgres.owzzpcnuzzekqvqdimpr`; `SPRING_DATASOURCE_PASSWORD` y `SPRING_FLYWAY_PASSWORD` van como secret aparte
 - Flyway ahora puede declararse explicito con `SPRING_FLYWAY_URL`, `SPRING_FLYWAY_USER`, `SPRING_FLYWAY_PASSWORD` y `SPRING_FLYWAY_DRIVER_CLASS_NAME`, pero si no vienen informados el bootstrap los alinea automaticamente al mismo datasource ya resuelto
 - `backend-java/scripts/check_fly_runtime_env.sh` ya trata como faltante fatal cualquier deploy Fly donde la URL PostgreSQL no embeba credenciales y falten `SPRING_DATASOURCE_USERNAME` o `SPRING_DATASOURCE_PASSWORD`; esto refleja el patron real con Supabase pooler y evita falsos "bind errors" cuando en realidad el proceso cae antes de abrir Tomcat
@@ -454,10 +454,13 @@ Notas reales de deploy:
 - `.github/workflows/backend-ci.yml` corre `./gradlew test` en PRs hacia `test` o `prod` y en pushes a `test`, para validar antes de promover cambios
 - la metodologia operativa completa de ramas, features, fixes y hotfixes vive en `contexto/metodologia-git-y-produccion.md`
 - el backend Fly debe declarar `APP_PUBLIC_WEB_URL` apuntando a la URL pública de Vercel para links/callbacks absolutos
-- `backend-java/fly.toml` versiona los env no secretos principales; los secretos se cargan con `fly secrets`
+- `backend-java/fly.toml` no debe versionar secretos ni valores productivos de billing; la configuracion runtime se carga con `fly secrets`/entorno de la app
 - para Supabase PostgreSQL se usan `SPRING_DATASOURCE_URL`, `SPRING_DATASOURCE_USERNAME`, `SPRING_DATASOURCE_PASSWORD`, `SPRING_FLYWAY_URL`, `SPRING_FLYWAY_USER`, `SPRING_FLYWAY_PASSWORD` y drivers PostgreSQL
 - para OAuth Mercado Pago del profesional, el backend Fly necesita `BILLING_MERCADOPAGO_RESERVATIONS_*`, incluido `OAUTH_REDIRECT_URI=https://plura.fly.dev/profesional/payment-providers/mercadopago/oauth/callback` y `OAUTH_FRONTEND_REDIRECT_URL=https://plura-web-a6ka.vercel.app/oauth/mercadopago/callback`
 - para suscripciones Mercado Pago, el backend Fly necesita `BILLING_MERCADOPAGO_SUBSCRIPTIONS_ACCESS_TOKEN` y `BILLING_MERCADOPAGO_SUBSCRIPTIONS_WEBHOOK_SECRET`
+- para Core/trial, el backend Fly necesita `BILLING_CORE_PRICE` positivo y `BILLING_CORE_CURRENCY=UYU`; si se conserva fallback compatible, usar `BILLING_PLAN_PROFESSIONAL_PRICE` / `BILLING_PLAN_PROFESSIONAL_CURRENCY` con `PROFESSIONAL` de doble `S`
+- comando operativo recomendado para precio Core de sandbox/test:
+  `fly secrets set BILLING_CORE_PRICE=100 BILLING_CORE_CURRENCY=UYU BILLING_PLAN_PROFESSIONAL_PRICE=100 BILLING_PLAN_PROFESSIONAL_CURRENCY=UYU -a <NOMBRE_APP_BACKEND>`
 - el backend compila para Java 25 LTS; Docker local y deploy usan imagenes `eclipse-temurin:25-*`, y Gradle usa `org.gradle.toolchains.foojay-resolver-convention` para resolver el toolchain si la maquina local no tiene JDK 25 instalado
 
 ## Integraciones externas detectadas
@@ -501,9 +504,9 @@ Notas reales de deploy:
 - datasource y Flyway quedaron cerrados sobre la misma base por default: si el backend recibe `DATABASE_URL` en formato `postgres://` o `postgresql://`, el bootstrap la normaliza a JDBC, extrae credenciales embebidas y rellena tambien `SPRING_FLYWAY_*` para evitar que migraciones y JPA apunten a bases distintas
 - el backend expone `server.port=${PORT:3000}` y ahora fija `server.address=0.0.0.0` por default para Fly.io y contenedores locales
 - `auth_refresh_token` sigue siendo una tabla legacy de soporte para refresh fallback, pero su schema real mantiene `id BIGSERIAL`; el modelo JPA ya quedo alineado a ese contrato para que `ddl-auto=validate` no tumbe el arranque
-- el naming comercial visible quedo en `CORE`; `PROFESSIONAL / LOCAL / ENTERPRISE` se conservan como aliases legacy internos.
+- el naming comercial visible y tecnico activo quedo en `CORE` / `PLAN_CORE`; `PROFESSIONAL / LOCAL / ENTERPRISE` se conservan solo como aliases legacy de entrada.
 - Flyway conserva migraciones historicas de dLocal (`V34`, `V37`) solo por continuidad de schema; el runtime vigente ya es Mercado Pago only y `V47` elimina los campos legacy del dominio profesional.
-- billing de suscripciones requiere que el schema de `subscription` acepte `PLAN_CORE` y aliases legacy `PLAN_PROFESSIONAL`, `PLAN_LOCAL` y `PLAN_ENTERPRISE`; `V80` migra datos legacy desde `PLAN_BASIC`/`PLAN_PROFESIONAL` y `V82` agrega columnas de trial y actualiza constraints de plan/status cuando la tabla legacy existe, quedando como no-op idempotente donde `subscription` no esta presente
+- billing de suscripciones requiere que el schema de `subscription` acepte solo `PLAN_CORE` como valor persistido; `V83` migra datos legacy desde `PLAN_BASIC`, `PLAN_PRO`, `PLAN_PROFESIONAL`, `PLAN_PREMIUM`, `PLAN_PROFESSIONAL`, `PLAN_LOCAL` y `PLAN_ENTERPRISE` a `PLAN_CORE`, quedando como no-op seguro donde `subscription` o `subscription.plan` no exista
 - `V57` agrega columna `public_visible` (boolean, default false) a `app_feedback` con indice `idx_app_feedback_public` sobre `(public_visible, created_at DESC)`; backfill a `true` para feedback ACTIVE con texto existente
 - `V60` alinea `app_feedback.rating` a `INTEGER`; `V54` lo habia creado como `SMALLINT`, pero el modelo JPA real de `core.feedback` usa `Integer` y con `ddl-auto=validate` el backend no llega a abrir puerto si esa correccion no corre
 - `.env.backend` sigue siendo el archivo plano de importacion de env para local/docker y hoy ya usa `SPRING_DATASOURCE_*` + `SPRING_FLYWAY_*` apuntando al Session Pooler de Supabase; no deberia volver a cargar `DATABASE_URL` de una base vieja como fuente principal

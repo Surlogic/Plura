@@ -26,15 +26,7 @@ const resolveButtonLabel = ({
     return 'Plan actual';
   }
 
-  if (planId === 'PROFESSIONAL') {
-    return cancelAtPeriodEnd ? 'Cambio programado' : 'Cambiar a Profesional';
-  }
-
-  if (currentPlanId === 'PROFESSIONAL') {
-    return 'Suscribirme';
-  }
-
-  return `Cambiar a ${planId}`;
+  return cancelAtPeriodEnd ? 'Cambio programado' : 'Activar Core';
 };
 
 function BillingPlansGrid({
@@ -60,9 +52,7 @@ function BillingPlansGrid({
           && currentSubscriptionStatus !== 'CANCELLED'
           && !cancelAtPeriodEnd;
 
-        const disabled =
-          isCurrent
-          || (plan.id === 'PROFESSIONAL' && cancelAtPeriodEnd);
+        const disabled = isCurrent || cancelAtPeriodEnd;
 
         return (
           <BillingPlanCard

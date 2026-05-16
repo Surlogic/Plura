@@ -266,8 +266,9 @@ Lectura vigente de planes y billing profesional:
 - el MVP opera con `Plura Core` unico para profesionales/locales
 - `INDEPENDENT` y `LOCAL` siguen siendo tipos operativos de perfil, no planes comerciales
 - `GET /billing/subscription` se mantiene para estado de suscripcion y compatibilidad de datos legacy
-- `POST /billing/subscription` ya no debe usarse para cambio visible de plan; el backend responde que el cambio de plan no esta disponible durante el MVP
-- codigos legacy `PLAN_PROFESSIONAL`, `PLAN_LOCAL`, `PLAN_ENTERPRISE` se conservan para lectura/compatibilidad y se resuelven como Core a nivel de capacidades efectivas
+- `POST /billing/subscription` ya no debe usarse para cambio visible de plan; el backend inicia Core y normaliza cualquier plan legacy permitido a `PLAN_CORE`
+- `PLAN_CORE` es el unico codigo canonico activo de `subscription.plan`
+- codigos legacy `PLAN_BASIC`, `PLAN_PRO`, `PLAN_PROFESIONAL`, `PLAN_PREMIUM`, `PLAN_PROFESSIONAL`, `PLAN_LOCAL` y `PLAN_ENTERPRISE` se aceptan solo como entrada transicional y se resuelven como Core
 - los limites Core protegen equipo/multilocal: `maxProfessionals=1` y `maxLocations=1`
 - analytics y add-ons futuros siguen deshabilitados por capability, no por una comparativa comercial visible
 
@@ -514,7 +515,7 @@ Estado real detectado en codigo:
 
 - suscripciones de plataforma: `Mercado Pago`
 - conexion OAuth del profesional a Mercado Pago: ya existe en `/profesional/payment-providers/mercadopago/*`
-- `POST /billing/subscription` hoy inicia solo `Plura Core` con request `{ "planCode": "PLAN_CORE" }`; rechaza `PLAN_LOCAL`, `PLAN_ENTERPRISE`, `PLAN_PROFESSIONAL`, `PLAN_PRO`, `PLAN_PREMIUM` y cualquier plan no Core con `400`
+- `POST /billing/subscription` hoy inicia solo `Plura Core` con request recomendado `{ "planCode": "PLAN_CORE" }`; si recibe codigos legacy de planes (`PLAN_BASIC`, `PLAN_PRO`, `PLAN_PROFESIONAL`, `PLAN_PREMIUM`, `PLAN_PROFESSIONAL`, `PLAN_LOCAL`, `PLAN_ENTERPRISE`) los acepta por compatibilidad y los normaliza a `PLAN_CORE`
 - `POST /billing/subscription` devuelve `subscriptionId`, `checkoutUrl`, `provider`, `planCode`, `status`, `trialStartAt`, `trialEndAt` y `requiresCheckout`; si Mercado Pago entrega URL queda `CHECKOUT_PENDING`, y si no requiere checkout queda `TRIALING`
 - `GET /billing/subscription` devuelve estado de suscripcion y agrega `trialStartAt`, `trialEndAt`, `trialDaysRemaining`, `trialActive` y `paymentMethodAttached`
 - `planEnabled` en `GET /billing/subscription` es `true` solo para `ACTIVE` vigente o `TRIALING` con `trialEndAt` futuro; `CHECKOUT_PENDING`, `PAST_DUE`, `CANCELLED` y `EXPIRED` no habilitan el plan
@@ -536,7 +537,7 @@ Lectura de producto:
 
 Nota de naming:
 
-- el codigo actual conserva `PLAN_PROFESSIONAL`, `PLAN_LOCAL` y `PLAN_ENTERPRISE` para compatibilidad; `PLAN_CORE`, `PLAN_BASIC` y `PLAN_PROFESIONAL` quedan como aliases de entrada
+- el codigo actual conserva los planes legacy solo como aliases de parsing; toda respuesta nueva devuelve `PLAN_CORE`
 - a nivel de producto la lectura objetivo visible es `Plura Core`
 
 ### Endpoints internos de operaciones

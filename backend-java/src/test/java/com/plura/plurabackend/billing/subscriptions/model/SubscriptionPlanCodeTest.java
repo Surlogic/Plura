@@ -19,13 +19,13 @@ class SubscriptionPlanCodeTest {
     @Test
     void acceptsCanonicalCodesAndLegacyAliases() {
         assertEquals(SubscriptionPlanCode.PLAN_CORE, SubscriptionPlanCode.fromCode("PLAN_CORE"));
-        assertEquals(SubscriptionPlanCode.PLAN_LOCAL, SubscriptionPlanCode.fromCode("PLAN_LOCAL"));
-        assertEquals(SubscriptionPlanCode.PLAN_ENTERPRISE, SubscriptionPlanCode.fromCode("PLAN_ENTERPRISE"));
-        assertEquals(SubscriptionPlanCode.PLAN_PROFESSIONAL, SubscriptionPlanCode.fromCode("PLAN_PROFESSIONAL"));
+        assertEquals(SubscriptionPlanCode.PLAN_CORE, SubscriptionPlanCode.fromCode("PLAN_LOCAL"));
+        assertEquals(SubscriptionPlanCode.PLAN_CORE, SubscriptionPlanCode.fromCode("PLAN_ENTERPRISE"));
+        assertEquals(SubscriptionPlanCode.PLAN_CORE, SubscriptionPlanCode.fromCode("PLAN_PROFESSIONAL"));
         assertEquals(SubscriptionPlanCode.PLAN_CORE, SubscriptionPlanCode.fromCode("PLAN_BASIC"));
-        assertEquals(SubscriptionPlanCode.PLAN_LOCAL, SubscriptionPlanCode.fromCode("PLAN_PRO"));
-        assertEquals(SubscriptionPlanCode.PLAN_LOCAL, SubscriptionPlanCode.fromCode("PLAN_PROFESIONAL"));
-        assertEquals(SubscriptionPlanCode.PLAN_ENTERPRISE, SubscriptionPlanCode.fromCode("PLAN_PREMIUM"));
+        assertEquals(SubscriptionPlanCode.PLAN_CORE, SubscriptionPlanCode.fromCode("PLAN_PRO"));
+        assertEquals(SubscriptionPlanCode.PLAN_CORE, SubscriptionPlanCode.fromCode("PLAN_PROFESIONAL"));
+        assertEquals(SubscriptionPlanCode.PLAN_CORE, SubscriptionPlanCode.fromCode("PLAN_PREMIUM"));
         assertThrows(IllegalArgumentException.class, () -> SubscriptionPlanCode.fromCode("PLAN_INVALID"));
     }
 
@@ -36,8 +36,5 @@ class SubscriptionPlanCodeTest {
     @Test
     void exposesCanonicalCodesForResponses() {
         assertEquals("PLAN_CORE", SubscriptionPlanCode.PLAN_CORE.canonicalCode());
-        assertEquals("PLAN_CORE", SubscriptionPlanCode.PLAN_PROFESSIONAL.canonicalCode());
-        assertEquals("PLAN_LOCAL", SubscriptionPlanCode.PLAN_LOCAL.canonicalCode());
-        assertEquals("PLAN_ENTERPRISE", SubscriptionPlanCode.PLAN_ENTERPRISE.canonicalCode());
     }
 }

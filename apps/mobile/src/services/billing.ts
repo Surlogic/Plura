@@ -5,10 +5,16 @@ import {
   resolveBillingPlanFromProfilePlanCode,
   type BillingUiPlanId,
 } from '../config/billingPlans';
-import type { ProfessionalPlanCode } from '../types/professional';
 import { isAllowedMercadoPagoUrl } from './mercadoPagoBrowser';
 
-export type BillingSubscriptionStatus = 'ACTIVE' | 'PAST_DUE' | 'CANCELLED' | 'TRIAL';
+export type BillingSubscriptionStatus =
+  | 'CHECKOUT_PENDING'
+  | 'TRIALING'
+  | 'TRIAL'
+  | 'ACTIVE'
+  | 'PAST_DUE'
+  | 'CANCELLED'
+  | 'EXPIRED';
 export type BillingUiStatus = BillingSubscriptionStatus | 'NONE';
 
 export type BillingSubscription = {
@@ -21,6 +27,11 @@ export type BillingSubscription = {
   currentPeriodStart: string | null;
   currentPeriodEnd: string | null;
   cancelAtPeriodEnd: boolean | null;
+  trialStartAt?: string | null;
+  trialEndAt?: string | null;
+  trialDaysRemaining?: number | null;
+  trialActive?: boolean | null;
+  paymentMethodAttached?: boolean | null;
   planEnabled: boolean;
 };
 
@@ -96,7 +107,7 @@ export const resolveCurrentBillingPlanId = ({
   profilePlanCode,
   subscription,
 }: {
-  profilePlanCode?: ProfessionalPlanCode | null;
+  profilePlanCode?: string | null;
   subscription: BillingSubscription | null;
 }): BillingUiPlanId => {
   if (subscription) {

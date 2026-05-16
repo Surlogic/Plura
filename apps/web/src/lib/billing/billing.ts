@@ -3,10 +3,16 @@ import api from '@/services/api';
 import {
   type BillingUiPlanId,
 } from '@/config/billingPlans';
-import type { ProfessionalPlanCode } from '@/types/professional';
 import { resolveCurrentBillingPlanStateId } from './billingPlanState';
 
-export type BillingSubscriptionStatus = 'ACTIVE' | 'PAST_DUE' | 'CANCELLED' | 'TRIAL';
+export type BillingSubscriptionStatus =
+  | 'CHECKOUT_PENDING'
+  | 'TRIALING'
+  | 'TRIAL'
+  | 'ACTIVE'
+  | 'PAST_DUE'
+  | 'CANCELLED'
+  | 'EXPIRED';
 export type BillingUiStatus = BillingSubscriptionStatus | 'NONE';
 
 export type BillingSubscription = {
@@ -19,11 +25,27 @@ export type BillingSubscription = {
   currentPeriodStart: string | null;
   currentPeriodEnd: string | null;
   cancelAtPeriodEnd: boolean | null;
+  trialStartAt: string | null;
+  trialEndAt: string | null;
+  trialDaysRemaining: number | null;
+  trialActive: boolean | null;
+  paymentMethodAttached: boolean | null;
   planEnabled: boolean;
 };
 
+export type BillingCheckoutResponse = {
+  subscriptionId: string;
+  checkoutUrl: string | null;
+  provider: string;
+  planCode: 'PLAN_CORE' | string;
+  status: BillingSubscriptionStatus;
+  trialStartAt: string | null;
+  trialEndAt: string | null;
+  requiresCheckout: boolean;
+};
+
 type PendingCheckoutState = {
-  planId: 'LOCAL' | 'ENTERPRISE';
+  planId: 'CORE';
   createdAt: number;
 };
 
@@ -32,18 +54,24 @@ export const BILLING_PENDING_CHECKOUT_RETURN_KEY = 'plura.billing.pending-checko
 
 export const billingStatusLabels: Record<BillingUiStatus, string> = {
   NONE: 'Sin suscripcion',
+  CHECKOUT_PENDING: 'Activacion pendiente',
+  TRIALING: 'Prueba gratuita',
+  TRIAL: 'Prueba gratuita',
   ACTIVE: 'Activa',
-  TRIAL: 'Pago pendiente',
   PAST_DUE: 'Pago fallido',
   CANCELLED: 'Cancelada',
+  EXPIRED: 'Prueba vencida',
 };
 
 export const billingStatusClassNames: Record<BillingUiStatus, string> = {
   NONE: 'bg-[#E2E8F0] text-[#475569]',
-  ACTIVE: 'bg-[#DCFCE7] text-[#166534]',
+  CHECKOUT_PENDING: 'bg-[#FEF3C7] text-[#B45309]',
+  TRIALING: 'bg-[#DBEAFE] text-[#1D4ED8]',
   TRIAL: 'bg-[#DBEAFE] text-[#1D4ED8]',
+  ACTIVE: 'bg-[#DCFCE7] text-[#166534]',
   PAST_DUE: 'bg-[#FEF3C7] text-[#B45309]',
   CANCELLED: 'bg-[#FEE2E2] text-[#B91C1C]',
+  EXPIRED: 'bg-[#FEE2E2] text-[#B91C1C]',
 };
 
 export const resolveBackendMessage = (error: unknown, fallback: string) => {
@@ -96,11 +124,18 @@ export const fetchCurrentSubscription = async (): Promise<BillingSubscription | 
   }
 };
 
+export const createCoreSubscription = async (): Promise<BillingCheckoutResponse> => {
+  const response = await api.post<BillingCheckoutResponse>('/billing/subscription', {
+    planCode: 'PLAN_CORE',
+  });
+  return response.data;
+};
+
 export const resolveCurrentBillingPlanId = ({
   profilePlanCode,
   subscription,
 }: {
-  profilePlanCode?: ProfessionalPlanCode | null;
+  profilePlanCode?: string | null;
   subscription: BillingSubscription | null;
 }): BillingUiPlanId =>
   resolveCurrentBillingPlanStateId({
@@ -127,13 +162,12 @@ export const getPendingCheckoutState = (): PendingCheckoutState | null => {
 
   try {
     const parsed = JSON.parse(raw) as { planId?: string; createdAt?: unknown };
-    const normalizedPlanId = parsed.planId === 'PROFESIONAL' ? 'LOCAL' : parsed.planId;
     if (
-      (normalizedPlanId === 'LOCAL' || normalizedPlanId === 'ENTERPRISE')
+      parsed.planId === 'CORE'
       && typeof parsed.createdAt === 'number'
     ) {
       return {
-        planId: normalizedPlanId,
+        planId: 'CORE',
         createdAt: parsed.createdAt,
       };
     }

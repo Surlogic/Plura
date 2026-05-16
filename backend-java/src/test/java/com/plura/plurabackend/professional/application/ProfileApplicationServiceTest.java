@@ -60,8 +60,8 @@ class ProfileApplicationServiceTest {
             .thenReturn(profile);
         org.mockito.Mockito.when(planGuardService.effectivePlanForProfessionalUserId("21"))
             .thenReturn(new EffectiveProfessionalPlan(
-                ProfessionalPlanCode.PROFESSIONAL,
-                policyService.entitlementsFor(ProfessionalPlanCode.PROFESSIONAL)
+                ProfessionalPlanCode.CORE,
+                policyService.entitlementsFor(ProfessionalPlanCode.CORE)
             ));
 
         ProfileApplicationService service = new ProfileApplicationService(
@@ -120,8 +120,8 @@ class ProfileApplicationServiceTest {
         org.mockito.Mockito.when(professionalProfileRepository.save(profile)).thenReturn(profile);
         org.mockito.Mockito.when(planGuardService.effectivePlanForProfessionalUserId("21"))
             .thenReturn(new EffectiveProfessionalPlan(
-                ProfessionalPlanCode.PROFESSIONAL,
-                new ProfessionalPlanPolicyService().entitlementsFor(ProfessionalPlanCode.PROFESSIONAL)
+                ProfessionalPlanCode.CORE,
+                new ProfessionalPlanPolicyService().entitlementsFor(ProfessionalPlanCode.CORE)
             ));
 
         ProfileApplicationService service = new ProfileApplicationService(

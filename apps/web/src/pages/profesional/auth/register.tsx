@@ -16,6 +16,13 @@ import Card from '@/components/ui/Card';
 import InternationalPhoneField from '@/components/ui/InternationalPhoneField';
 import api from '@/services/api';
 import {
+  armPendingCheckoutReturnState,
+  clearPendingCheckoutState,
+  createCoreSubscription,
+  setPendingCheckoutState,
+} from '@/lib/billing/billing';
+import { setAuthAccessToken } from '@/services/session';
+import {
   confirmRegistrationPhoneVerification,
   sendRegistrationPhoneVerification,
 } from '@/services/registrationPhoneVerification';
@@ -142,7 +149,7 @@ const wizardSteps = [
   'Ubicación',
   'Horarios',
   'Servicio',
-  'Preview',
+  'Core',
 ] as const;
 
 const initialSchedule: ScheduleDay[] = [
@@ -212,6 +219,8 @@ export default function ProfesionalRegisterPage() {
   const [isOAuthSetup, setIsOAuthSetup] = useState(false);
   const [categorySearch, setCategorySearch] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isRedirectingToCheckout, setIsRedirectingToCheckout] = useState(false);
+  const [billingRecoveryAvailable, setBillingRecoveryAvailable] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [isSendingPhoneCode, setIsSendingPhoneCode] = useState(false);
   const [isConfirmingPhoneCode, setIsConfirmingPhoneCode] = useState(false);
@@ -225,7 +234,7 @@ export default function ProfesionalRegisterPage() {
   const [isLocationPreviewLoading, setIsLocationPreviewLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
-  const isBusy = isSubmitting || isGoogleLoading;
+  const isBusy = isSubmitting || isGoogleLoading || isRedirectingToCheckout;
   const visibleStepNumber = Math.min(step + 1, 8);
 
   const emailValue = form.email.trim().toLowerCase();
@@ -638,9 +647,28 @@ export default function ProfesionalRegisterPage() {
     );
   };
 
+  const activateCoreSubscription = async () => {
+    const checkout = await createCoreSubscription();
+    if (checkout.checkoutUrl) {
+      if (typeof window !== 'undefined') {
+        const pendingCheckout = { planId: 'CORE' as const, createdAt: Date.now() };
+        clearPendingCheckoutState();
+        setPendingCheckoutState(pendingCheckout);
+        armPendingCheckoutReturnState();
+        setIsRedirectingToCheckout(true);
+        window.location.assign(checkout.checkoutUrl);
+      }
+      return;
+    }
+
+    await refreshProfile();
+    await router.push('/profesional/dashboard/billing');
+  };
+
   const handleSubmit = async (event?: FormEvent<HTMLFormElement>) => {
     event?.preventDefault();
     setErrorMessage(null);
+    setBillingRecoveryAvailable(false);
     const allFields = Object.keys(validationErrors) as Array<keyof RegisterForm>;
     markTouched(allFields);
 
@@ -728,19 +756,55 @@ export default function ProfesionalRegisterPage() {
         }
 
         await refreshProfile();
-        await router.push('/profesional/dashboard');
+        try {
+          await activateCoreSubscription();
+        } catch {
+          setBillingRecoveryAvailable(true);
+          setErrorMessage('La cuenta quedó creada, pero no pudimos activar Plura Core. Podés intentarlo desde Facturación.');
+        }
         return;
       }
 
       await api.post('/auth/register/profesional', payload);
       saveDraftAfterRegister();
-      await router.push({
-        pathname: '/profesional/auth/login',
-        query: {
+
+      try {
+        const loginResponse = await api.post<{ accessToken?: string | null }>('/auth/login/profesional', {
           email: normalizedEmail,
-          registered: '1',
-        },
-      });
+          password: form.password,
+        });
+        setAuthAccessToken(loginResponse.data?.accessToken ?? null, 'PROFESSIONAL');
+      } catch {
+        await router.push({
+          pathname: '/profesional/auth/login',
+          query: {
+            email: normalizedEmail,
+            registered: '1',
+            billing: 'pending',
+          },
+        });
+        return;
+      }
+
+      await refreshProfile();
+
+      const handoff = buildRegisterHandoff();
+      try {
+        await applyRegisterHandoff(handoff);
+        if (typeof window !== 'undefined') {
+          window.localStorage.removeItem(REGISTER_HANDOFF_KEY);
+        }
+      } catch {
+        setErrorMessage('La cuenta quedó creada, pero no pudimos cargar toda la configuración inicial. Revisá conexión y volvé a intentar.');
+        return;
+      }
+
+      try {
+        await activateCoreSubscription();
+      } catch {
+        setBillingRecoveryAvailable(true);
+        setErrorMessage('La cuenta quedó creada, pero no pudimos activar Plura Core. Podés intentarlo desde Facturación.');
+      }
     } catch (error) {
       if (axios.isAxiosError(error) && !error.response) {
         setErrorMessage('No se pudo conectar con el servidor.');
@@ -778,7 +842,7 @@ export default function ProfesionalRegisterPage() {
   const stepHeader = (
     <div className="mx-auto flex max-w-xl flex-col items-center gap-3 text-center">
       <span className="text-sm font-semibold text-[color:var(--ink)]">
-        {step >= 8 ? 'Listo para publicar' : `Paso ${visibleStepNumber} de 8`}
+        {step >= 8 ? 'Activar Plura Core' : `Paso ${visibleStepNumber} de 8`}
       </span>
       <div className="flex items-center gap-3" aria-label="Progreso del registro profesional">
         {wizardSteps.slice(0, 8).map((item, index) => (
@@ -1444,16 +1508,29 @@ export default function ProfesionalRegisterPage() {
   );
 
   const renderPreviewStep = () => (
-    <div className="mx-auto max-w-5xl space-y-8 text-center">
+    <div className="mx-auto max-w-5xl space-y-8">
       <div className="space-y-3">
-        <Badge variant="success">Listo para publicar</Badge>
-        <h1 className="text-4xl font-semibold tracking-[-0.04em] text-[color:var(--ink)]">Revisá tu perfil antes de publicarlo</h1>
-        <p className="text-base text-[color:var(--ink-muted)]">Así se va a ver tu perfil público en Plura.</p>
+        <Badge variant="success">2 meses gratis</Badge>
+        <h1 className="text-4xl font-semibold tracking-[-0.04em] text-[color:var(--ink)]">Activá Plura Core</h1>
+        <p className="max-w-3xl text-base text-[color:var(--ink-muted)]">
+          Tu perfil queda listo para publicarse. Tenés 2 meses gratis para probar Plura Core.
+          Luego continúa la suscripción mensual.
+        </p>
       </div>
-      <div className="mx-auto max-w-3xl">
+      <div className="grid gap-6 lg:grid-cols-[0.95fr_1.05fr]">
+        <div className="space-y-4 rounded-[28px] border border-[color:var(--border-soft)] bg-[color:var(--surface-strong)] p-6 shadow-[var(--shadow-card)]">
+          <p className="text-sm font-semibold uppercase tracking-[0.16em] text-[color:var(--primary)]">Plura Core</p>
+          <h2 className="text-2xl font-semibold text-[color:var(--ink)]">Incluye la operación base del MVP</h2>
+          <ul className="space-y-3 text-sm leading-6 text-[color:var(--ink-muted)]">
+            <li>Marketplace, agenda, servicios, reservas y perfil público.</li>
+            <li>Perfil público con logo, banner, descripción y fotos.</li>
+            <li>Pagos online con Mercado Pago cuando completes la autorización.</li>
+            <li>Mercado Pago puede pedirte autorizar el medio de pago para mantener Core al finalizar la prueba.</li>
+          </ul>
+        </div>
         <ProfilePreviewCard />
       </div>
-      <div className="mx-auto grid max-w-3xl gap-4 md:grid-cols-2">
+      <div className="grid gap-4 md:grid-cols-2">
         <div className="rounded-[24px] border border-[color:var(--border-soft)] bg-[color:var(--surface-soft)] p-5 text-left">
           <p className="text-sm font-semibold text-[color:var(--ink)]">Primer servicio</p>
           <p className="mt-2 text-lg font-semibold text-[color:var(--ink)]">{form.serviceName}</p>
@@ -1465,7 +1542,7 @@ export default function ProfesionalRegisterPage() {
           <p className="text-sm text-[color:var(--ink-muted)]">Editable luego desde el dashboard.</p>
         </div>
       </div>
-      <p className="text-sm text-[color:var(--ink-faint)]">Tu perfil no será visible hasta que completes el alta.</p>
+      <p className="text-sm text-[color:var(--ink-faint)]">Tu perfil no será visible hasta que completes el alta y la activación.</p>
     </div>
   );
 
@@ -1508,9 +1585,19 @@ export default function ProfesionalRegisterPage() {
             ) : null}
 
             {errorMessage ? (
-              <p className="mx-auto max-w-3xl rounded-[16px] border border-[color:var(--error-soft)] bg-[color:var(--error-soft)] px-4 py-3 text-sm text-[color:var(--error)]">
-                {errorMessage}
-              </p>
+              <div className="mx-auto max-w-3xl rounded-[16px] border border-[color:var(--error-soft)] bg-[color:var(--error-soft)] px-4 py-3 text-sm text-[color:var(--error)]">
+                <p>{errorMessage}</p>
+                {billingRecoveryAvailable ? (
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    className="mt-3"
+                    onClick={() => void router.push('/profesional/dashboard/billing')}
+                  >
+                    Ir a Facturación
+                  </Button>
+                ) : null}
+              </div>
             ) : null}
 
             <div className="flex flex-col gap-3 border-t border-[color:var(--border-soft)] pt-6 sm:flex-row sm:items-center sm:justify-center">
@@ -1524,14 +1611,14 @@ export default function ProfesionalRegisterPage() {
                   Continuar
                 </Button>
               ) : (
-                <Button type="submit" variant="primary" size="lg" className="min-w-72" disabled={isSubmitting}>
-                  {isSubmitting
-                    ? isOAuthSetup
-                      ? 'Guardando configuración...'
-                      : 'Creando perfil...'
-                    : isOAuthSetup
-                      ? 'Guardar y entrar al dashboard'
-                      : 'Publicar perfil'}
+                <Button type="submit" variant="primary" size="lg" className="min-w-72" disabled={isSubmitting || isRedirectingToCheckout}>
+                  {isRedirectingToCheckout
+                    ? 'Redirigiendo a Mercado Pago...'
+                    : isSubmitting
+                      ? isOAuthSetup
+                        ? 'Activando Plura Core...'
+                        : 'Creando perfil...'
+                      : 'Activar prueba gratuita'}
                 </Button>
               )}
             </div>
@@ -1544,7 +1631,9 @@ export default function ProfesionalRegisterPage() {
         description={
           isGoogleLoading
             ? 'Creando tu cuenta profesional con Google.'
-            : 'Guardando tus datos y preparando tu perfil profesional.'
+            : isRedirectingToCheckout
+              ? 'Redirigiendo a Mercado Pago para autorizar Plura Core.'
+              : 'Guardando tus datos y preparando Plura Core.'
         }
       />
     </div>

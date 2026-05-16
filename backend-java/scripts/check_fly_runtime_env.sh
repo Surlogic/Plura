@@ -55,6 +55,23 @@ warn_if_blank() {
   fi
 }
 
+require_positive_number() {
+  local key="$1"
+  local value
+  value="$(resolve_var "${key}")"
+  if [[ -z "${value}" ]]; then
+    fatal_missing+=("${key}")
+    return
+  fi
+  if [[ ! "${value}" =~ ^[0-9]+([.][0-9]+)?$ ]]; then
+    fatal_missing+=("${key} debe ser un numero positivo")
+    return
+  fi
+  if ! awk -v value="${value}" 'BEGIN { exit !(value + 0 > 0) }'; then
+    fatal_missing+=("${key} debe ser un numero positivo")
+  fi
+}
+
 require_present "JWT_SECRET"
 require_present "JWT_REFRESH_PEPPER"
 
@@ -138,17 +155,21 @@ fi
 
 billing_enabled="$(lower "$(resolve_var "BILLING_ENABLED")")"
 mercadopago_enabled="$(lower "$(resolve_var "BILLING_MERCADOPAGO_ENABLED")")"
-if [[ "${billing_enabled}" == "true" && "${mercadopago_enabled}" == "true" ]]; then
-  require_present "BILLING_MERCADOPAGO_SUBSCRIPTIONS_ACCESS_TOKEN"
-  require_present "BILLING_MERCADOPAGO_SUBSCRIPTIONS_WEBHOOK_SECRET"
-  warn_if_blank "BILLING_MERCADOPAGO_RESERVATIONS_PLATFORM_ACCESS_TOKEN" "Falta BILLING_MERCADOPAGO_RESERVATIONS_PLATFORM_ACCESS_TOKEN; el backend arranca, pero checkout/refunds de reservas no quedan operativos."
-  warn_if_blank "BILLING_MERCADOPAGO_RESERVATIONS_WEBHOOK_SECRET" "Falta BILLING_MERCADOPAGO_RESERVATIONS_WEBHOOK_SECRET; los webhooks de reservas no quedan verificados."
-  warn_if_blank "BILLING_MERCADOPAGO_RESERVATIONS_OAUTH_CLIENT_ID" "Falta BILLING_MERCADOPAGO_RESERVATIONS_OAUTH_CLIENT_ID; el onboarding OAuth profesional no se puede iniciar."
-  warn_if_blank "BILLING_MERCADOPAGO_RESERVATIONS_OAUTH_CLIENT_SECRET" "Falta BILLING_MERCADOPAGO_RESERVATIONS_OAUTH_CLIENT_SECRET; el callback OAuth profesional no se puede completar."
-  warn_if_blank "BILLING_MERCADOPAGO_RESERVATIONS_OAUTH_STATE_SIGNING_SECRET" "Falta BILLING_MERCADOPAGO_RESERVATIONS_OAUTH_STATE_SIGNING_SECRET; el backend hace fallback, pero no es la configuracion recomendada."
-  warn_if_blank "BILLING_MERCADOPAGO_RESERVATIONS_OAUTH_TOKEN_ENCRYPTION_KEY" "Falta BILLING_MERCADOPAGO_RESERVATIONS_OAUTH_TOKEN_ENCRYPTION_KEY; no deberias dejar OAuth productivo sin esta clave."
-elif [[ "${billing_enabled}" == "true" ]]; then
-  warnings+=("BILLING_ENABLED=true pero BILLING_MERCADOPAGO_ENABLED no esta en true; el backend puede arrancar, pero Mercado Pago no queda operativo.")
+if [[ "${billing_enabled}" == "true" ]]; then
+  require_positive_number "BILLING_CORE_PRICE"
+  require_present "BILLING_CORE_CURRENCY"
+  if [[ "${mercadopago_enabled}" == "true" ]]; then
+    require_present "BILLING_MERCADOPAGO_SUBSCRIPTIONS_ACCESS_TOKEN"
+    require_present "BILLING_MERCADOPAGO_SUBSCRIPTIONS_WEBHOOK_SECRET"
+    warn_if_blank "BILLING_MERCADOPAGO_RESERVATIONS_PLATFORM_ACCESS_TOKEN" "Falta BILLING_MERCADOPAGO_RESERVATIONS_PLATFORM_ACCESS_TOKEN; el backend arranca, pero checkout/refunds de reservas no quedan operativos."
+    warn_if_blank "BILLING_MERCADOPAGO_RESERVATIONS_WEBHOOK_SECRET" "Falta BILLING_MERCADOPAGO_RESERVATIONS_WEBHOOK_SECRET; los webhooks de reservas no quedan verificados."
+    warn_if_blank "BILLING_MERCADOPAGO_RESERVATIONS_OAUTH_CLIENT_ID" "Falta BILLING_MERCADOPAGO_RESERVATIONS_OAUTH_CLIENT_ID; el onboarding OAuth profesional no se puede iniciar."
+    warn_if_blank "BILLING_MERCADOPAGO_RESERVATIONS_OAUTH_CLIENT_SECRET" "Falta BILLING_MERCADOPAGO_RESERVATIONS_OAUTH_CLIENT_SECRET; el callback OAuth profesional no se puede completar."
+    warn_if_blank "BILLING_MERCADOPAGO_RESERVATIONS_OAUTH_STATE_SIGNING_SECRET" "Falta BILLING_MERCADOPAGO_RESERVATIONS_OAUTH_STATE_SIGNING_SECRET; el backend hace fallback, pero no es la configuracion recomendada."
+    warn_if_blank "BILLING_MERCADOPAGO_RESERVATIONS_OAUTH_TOKEN_ENCRYPTION_KEY" "Falta BILLING_MERCADOPAGO_RESERVATIONS_OAUTH_TOKEN_ENCRYPTION_KEY; no deberias dejar OAuth productivo sin esta clave."
+  else
+    warnings+=("BILLING_ENABLED=true pero BILLING_MERCADOPAGO_ENABLED no esta en true; el backend puede arrancar, pero Mercado Pago no queda operativo.")
+  fi
 fi
 
 email_delivery_enabled="$(lower "$(resolve_var "EMAIL_DELIVERY_ENABLED")")"

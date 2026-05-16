@@ -1,4 +1,5 @@
-export type ProfessionalPlanCode = 'CORE' | 'PROFESSIONAL' | 'LOCAL' | 'ENTERPRISE';
+export type ProfessionalPlanCode = 'CORE';
+export type LegacyProfessionalPlanCode = 'BASIC' | 'PROFESIONAL' | 'PROFESSIONAL' | 'LOCAL' | 'ENTERPRISE';
 
 export type ProfessionalMediaPresentation = {
   positionX: number;

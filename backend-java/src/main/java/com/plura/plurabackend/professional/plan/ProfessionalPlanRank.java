@@ -17,11 +17,6 @@ public final class ProfessionalPlanRank {
         if (code == null) {
             return 0;
         }
-        return switch (code) {
-            case CORE -> 0;
-            case PROFESSIONAL -> 0;
-            case LOCAL -> 0;
-            case ENTERPRISE -> 0;
-        };
+        return 0;
     }
 }

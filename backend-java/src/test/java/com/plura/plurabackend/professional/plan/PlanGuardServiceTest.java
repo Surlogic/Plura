@@ -42,15 +42,15 @@ class PlanGuardServiceTest {
     }
 
     /**
-     * Escenario: permite at least comparison for higher plan.
+     * Escenario: permite at least comparison para Core unico.
      * El objetivo es dejar explicita la regla que protege este test.
      */
     @Test
-    void allowsAtLeastComparisonForHigherPlan() {
+    void allowsAtLeastComparisonForCorePlan() {
         ProfessionalProfile profile = currentProfile(32L);
         stubPlan(profile, ProfessionalPlanCode.CORE);
 
-        assertDoesNotThrow(() -> service.requireAtLeast(ProfessionalPlanCode.LOCAL));
+        assertDoesNotThrow(() -> service.requireAtLeast(ProfessionalPlanCode.CORE));
     }
 
     /**

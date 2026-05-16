@@ -11,6 +11,8 @@ import {
 import BillingCurrentPlanCard from '@/components/billing/BillingCurrentPlanCard';
 import BillingStatusBanner from '@/components/billing/BillingStatusBanner';
 import MercadoPagoConnectionCard from '@/components/billing/MercadoPagoConnectionCard';
+import Button from '@/components/ui/Button';
+import { formatBillingDate } from '@/lib/billing/billing';
 import { resolveProfessionalFeatureAccess } from '@/lib/billing/featureGuards';
 import { getMercadoPagoConnectionStatusCopy } from '@/lib/billing/professionalMercadoPagoConnection';
 import { useProfessionalMercadoPagoConnection } from '@/hooks/useProfessionalMercadoPagoConnection';
@@ -39,8 +41,10 @@ export default function ProfesionalBillingPage() {
     enabledCapabilities,
     banner,
     isCancelling,
+    isRedirectingToCheckout,
     hasPendingCheckout,
     isRefreshingSubscriptionStatus,
+    handleSelectPlan,
     dismissBanner,
     refreshSubscriptionStatus,
   } = useProfessionalBilling({
@@ -69,6 +73,16 @@ export default function ProfesionalBillingPage() {
     : 'Cobros online proximamente';
 
   const showSkeleton = !hasLoaded || (isLoading && !profile);
+  const hasValidCoreAccess =
+    currentStatus === 'ACTIVE'
+    || currentStatus === 'TRIALING'
+    || (currentStatus === 'TRIAL' && subscription?.trialActive === true)
+    || subscription?.planEnabled === true;
+  const showTrialDetails =
+    currentStatus === 'TRIALING'
+    || (currentStatus === 'TRIAL' && subscription?.trialActive === true);
+  const showCheckoutPending = currentStatus === 'CHECKOUT_PENDING';
+  const showExpired = currentStatus === 'EXPIRED';
 
   const handleDisconnectMercadoPago = useCallback(async () => {
     const confirmed = window.confirm(
@@ -85,6 +99,10 @@ export default function ProfesionalBillingPage() {
   const handleStartMercadoPagoOAuth = useCallback(() => {
     void startOAuth();
   }, [startOAuth]);
+
+  const handleActivateCore = useCallback(() => {
+    void handleSelectPlan('CORE');
+  }, [handleSelectPlan]);
 
   const handleRefreshMercadoPagoConnection = useCallback(() => {
     void reloadConnection();
@@ -172,8 +190,8 @@ export default function ProfesionalBillingPage() {
                       label="Suscripción"
                       value={currentStatusLabel}
                       detail={subscription?.cancelAtPeriodEnd ? 'Cancelación al fin del período' : 'Estado comercial de Core'}
-                      icon={currentStatus === 'ACTIVE' || currentStatus === 'NONE' ? 'spark' : 'warning'}
-                      tone={currentStatus === 'ACTIVE' || currentStatus === 'NONE' ? 'default' : 'warm'}
+                      icon={hasValidCoreAccess || currentStatus === 'NONE' ? 'spark' : 'warning'}
+                      tone={hasValidCoreAccess || currentStatus === 'NONE' ? 'default' : 'warm'}
                     />
                     <DashboardStatCard
                       label="Mercado Pago"
@@ -210,10 +228,65 @@ export default function ProfesionalBillingPage() {
                       }
                       isCancelling={isCancelling}
                       capabilities={enabledCapabilities.map((feature) => feature.label)}
-                      showVerifyStatusButton={hasPendingCheckout}
+                      showVerifyStatusButton={hasPendingCheckout || showCheckoutPending}
                       isVerifyingStatus={isRefreshingSubscriptionStatus}
                       onVerifyStatus={handleVerifyBillingStatus}
                     />
+
+                    {showTrialDetails ? (
+                      <div className="rounded-[18px] border border-[#BFDBFE] bg-[#EFF6FF] p-5 text-sm text-[#1D4ED8]">
+                        <p className="font-semibold">Prueba gratuita activa</p>
+                        <p className="mt-2">Finaliza: {formatBillingDate(subscription?.trialEndAt)}</p>
+                        <p className="mt-1">Dias restantes: {subscription?.trialDaysRemaining ?? 'No disponible'}</p>
+                        <p className="mt-1">Luego: suscripcion mensual de Plura Core.</p>
+                        {subscription?.paymentMethodAttached === false ? (
+                          <p className="mt-3 rounded-[14px] border border-[#FDE68A] bg-[#FFFBEB] px-3 py-2 text-[#B45309]">
+                            Falta autorizar el medio de pago para mantener Plura Core al finalizar la prueba.
+                          </p>
+                        ) : null}
+                      </div>
+                    ) : null}
+
+                    {showCheckoutPending ? (
+                      <div className="rounded-[18px] border border-[#FDE68A] bg-[#FFFBEB] p-5 text-sm text-[#92400E]">
+                        <p className="font-semibold">Activacion pendiente</p>
+                        <p className="mt-2">Termina la autorizacion en Mercado Pago para activar la prueba.</p>
+                        <div className="mt-4 flex flex-wrap gap-3">
+                          <Button
+                            type="button"
+                            variant="primary"
+                            onClick={handleActivateCore}
+                            disabled={isRedirectingToCheckout}
+                          >
+                            {isRedirectingToCheckout ? 'Redirigiendo a Mercado Pago...' : 'Reintentar activacion'}
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="secondary"
+                            onClick={handleVerifyBillingStatus}
+                            disabled={isRefreshingSubscriptionStatus}
+                          >
+                            {isRefreshingSubscriptionStatus ? 'Verificando...' : 'Verificar estado'}
+                          </Button>
+                        </div>
+                      </div>
+                    ) : null}
+
+                    {showExpired ? (
+                      <div className="rounded-[18px] border border-[#FECACA] bg-[#FEF2F2] p-5 text-sm text-[#991B1B]">
+                        <p className="font-semibold">Prueba vencida</p>
+                        <p className="mt-2">Activa Plura Core para mantener la suscripcion mensual.</p>
+                        <Button
+                          type="button"
+                          variant="primary"
+                          className="mt-4"
+                          onClick={handleActivateCore}
+                          disabled={isRedirectingToCheckout}
+                        >
+                          {isRedirectingToCheckout ? 'Redirigiendo a Mercado Pago...' : 'Activar Plura Core'}
+                        </Button>
+                      </div>
+                    ) : null}
                   </section>
 
                   <section ref={paymentsSectionRef} className="space-y-4">

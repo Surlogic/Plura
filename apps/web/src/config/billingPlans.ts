@@ -26,9 +26,6 @@ export const billingPlans: BillingPlanDefinition[] = sharedBillingPlans.map((pla
 
 export const billingPlanById: Record<keyof typeof sharedBillingPlanById, BillingPlanDefinition> = {
   CORE: billingPlans[0],
-  PROFESSIONAL: billingPlans[0],
-  LOCAL: billingPlans[0],
-  ENTERPRISE: billingPlans[0],
 };
 
 export { resolveBillingPlanFromBackendPlanCode, resolveBillingPlanFromProfilePlanCode };

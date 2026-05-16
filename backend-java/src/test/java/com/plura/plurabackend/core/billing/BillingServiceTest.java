@@ -68,12 +68,8 @@ class BillingServiceTest {
     void setUp() {
         billingProperties.setEnabled(true);
         billingProperties.getMercadopago().setEnabled(true);
-        billingProperties.getPlans().getPlanProfessional().setPrice(new BigDecimal("990.00"));
-        billingProperties.getPlans().getPlanProfessional().setCurrency("UYU");
-        billingProperties.getPlans().getPlanLocal().setPrice(new BigDecimal("100.00"));
-        billingProperties.getPlans().getPlanLocal().setCurrency("UYU");
-        billingProperties.getPlans().getPlanEnterprise().setPrice(new BigDecimal("200.00"));
-        billingProperties.getPlans().getPlanEnterprise().setCurrency("UYU");
+        billingProperties.getPlans().getCore().setPrice(new BigDecimal("990.00"));
+        billingProperties.getPlans().getCore().setCurrency("UYU");
 
         when(roleGuard.requireProfessional()).thenReturn(10L);
         when(professionalBillingSubjectGateway.loadEnabledProfessionalByUserId(10L))
@@ -93,15 +89,19 @@ class BillingServiceTest {
      * El objetivo es dejar explicita la regla que protege este test.
      */
     @Test
-    void rejectsNonCorePlanDuringMvp() {
-        ResponseStatusException error = assertThrows(ResponseStatusException.class, () ->
-            service.createSubscription(createRequest(SubscriptionPlanCode.PLAN_LOCAL.canonicalCode()))
-        );
+    void acceptsLegacyPlanCodeAndCreatesCoreSubscription() {
+        when(subscriptionRepository.findByProfessionalIdForUpdate(30L)).thenReturn(Optional.empty());
+        when(mercadoPagoSubscriptionService.createSubscription(any()))
+            .thenReturn(new MercadoPagoSubscriptionService.SubscriptionCheckoutSession(
+                "mp-sub-legacy",
+                "https://checkout.test",
+                "plan-core"
+            ));
 
-        assertEquals(HttpStatus.BAD_REQUEST, error.getStatusCode());
-        assertEquals("Solo Plura Core está disponible durante el MVP", error.getReason());
-        verify(subscriptionRepository, never()).findByProfessionalIdForUpdate(30L);
-        verify(mercadoPagoSubscriptionService, never()).createSubscription(any());
+        BillingCheckoutResponse response = service.createSubscription(createRequest("PLAN_LOCAL"));
+
+        assertEquals("PLAN_CORE", response.getPlanCode());
+        assertEquals("CHECKOUT_PENDING", response.getStatus());
     }
 
     @Test

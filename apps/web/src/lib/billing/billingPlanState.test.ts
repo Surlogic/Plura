@@ -8,7 +8,7 @@ import {
 const buildSubscription = (
   overrides: Partial<BillingPlanStateSubscription> = {},
 ): BillingPlanStateSubscription => ({
-  planCode: 'PLAN_LOCAL',
+  planCode: 'PLAN_CORE',
   status: 'TRIAL',
   cancelAtPeriodEnd: false,
   ...overrides,

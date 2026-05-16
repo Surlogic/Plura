@@ -22,7 +22,6 @@ import { useClientProfileContext } from '@/context/ClientProfileContext';
 import { useProfessionalProfileContext } from '@/context/ProfessionalProfileContext';
 import type { OAuthLoginResult } from '@/lib/auth/oauthLogin';
 
-
 const resolvePhoneVerificationError = (error: unknown, fallback: string) => {
   if (axios.isAxiosError<{ message?: string }>(error)) {
     return error.response?.data?.message || fallback;
@@ -121,7 +120,7 @@ export default function ClienteRegisterPage() {
   }> = [
     {
       id: 'length',
-      label: 'Minimo 8 caracteres.',
+      label: 'Mínimo 8 caracteres.',
       test: (value: string) => value.length >= 8,
     },
   ];
@@ -174,6 +173,11 @@ export default function ClienteRegisterPage() {
       return;
     }
 
+    if (!phoneVerificationToken) {
+      setErrorMessage('Verificá el celular antes de crear la cuenta.');
+      return;
+    }
+
     const payload = {
       fullName: form.fullName.trim(),
       email: form.email.trim().toLowerCase(),
@@ -223,7 +227,7 @@ export default function ClienteRegisterPage() {
       const response = await sendRegistrationPhoneVerification(form.phoneNumber.trim());
       setPhoneVerificationMessage(response.message);
     } catch (error) {
-      setErrorMessage(resolvePhoneVerificationError(error, 'No se pudo enviar el c?digo.'));
+      setErrorMessage(resolvePhoneVerificationError(error, 'No se pudo enviar el código.'));
     } finally {
       setIsSendingPhoneCode(false);
     }
@@ -240,7 +244,7 @@ export default function ClienteRegisterPage() {
       setPhoneVerificationToken(response.verificationToken);
       setPhoneVerificationMessage('Celular verificado correctamente.');
     } catch (error) {
-      setErrorMessage(resolvePhoneVerificationError(error, 'No se pudo verificar el c?digo.'));
+      setErrorMessage(resolvePhoneVerificationError(error, 'No se pudo verificar el código.'));
     } finally {
       setIsConfirmingPhoneCode(false);
     }
@@ -360,7 +364,7 @@ export default function ClienteRegisterPage() {
               <div className="grid gap-2 sm:grid-cols-[1fr_auto]">
                 <input
                   className={inputClassName}
-                  placeholder="C?digo SMS"
+                  placeholder="Código SMS"
                   value={phoneVerificationCode}
                   onChange={(event) => setPhoneVerificationCode(event.target.value)}
                   inputMode="numeric"

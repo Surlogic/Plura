@@ -3,7 +3,7 @@ name: Backend CI
 on:
   pull_request:
     branches:
-      - main
+      - test
       - prod
     paths:
       - backend-java/**
@@ -11,7 +11,7 @@ on:
       - .github/workflows/deploy-fly-backend.yml
   push:
     branches:
-      - main
+      - test
     paths:
       - backend-java/**
       - .github/workflows/backend-ci.yml

@@ -3,7 +3,7 @@ name: Deploy Backend to Fly
 on:
   push:
     branches:
-      - main
+      - test
     paths:
       - backend-java/**
       - .github/workflows/deploy-fly-backend.yml

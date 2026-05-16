@@ -128,6 +128,10 @@ Infra actual detectada:
 
 Lectura real del backend hoy:
 
+- el modelo comercial visible para profesionales/locales es `Plura Core` unico; `Profesional`, `Local` y `Enterprise` quedan como aliases legacy internos
+- el checkout de cambio de plan a Local/Enterprise no se ofrece en UI y el backend lo bloquea durante el MVP
+- `Enterprise` queda futuro/personalizado para empresas con varios locales y no requiere configuracion de compra actual
+
 - `Mercado Pago` esta conectado al billing de suscripciones de plataforma
 - `Mercado Pago` ya tiene ademas configuracion OAuth para conectar cuentas de profesionales
 - `Mercado Pago` tambien esta conectado al checkout real de reservas y refunds usando OAuth del profesional
@@ -149,6 +153,13 @@ Variables de backend para Mercado Pago de suscripciones:
 
 - `BILLING_MERCADOPAGO_SUBSCRIPTIONS_ACCESS_TOKEN`
 - `BILLING_MERCADOPAGO_SUBSCRIPTIONS_WEBHOOK_SECRET`
+
+Variables de backend para suscripcion Core:
+
+- `BILLING_CORE_PRICE`
+- `BILLING_CORE_CURRENCY`
+
+Estas variables tienen fallback a `BILLING_PLAN_PROFESSIONAL_PRICE` / `BILLING_PLAN_PROFESSIONAL_CURRENCY` y luego a los nombres legacy `BILLING_PLAN_BASIC_*`. Las variables legacy de Local/Enterprise pueden quedar en ambientes existentes, pero no impulsan checkout visible del MVP.
 
 Variables de backend para Mercado Pago de reservas y OAuth profesional:
 
@@ -175,8 +186,8 @@ Notas reales de binding local:
 - el backend no depende solo del `.env` del cwd: ahora intenta leer `./.env` y tambien `./backend-java/.env`
 - si se ejecuta el backend desde la raiz del monorepo, `backend-java/.env` sigue siendo tomado como fallback
 - el script local `pnpm dev:backend-java` carga `.env.backend` y despues `backend-java/.env`, manteniendo la misma precedencia que `docker-compose.yml` y evitando diferencias entre Windows nativo y Docker
-- `backend-java/fly.toml` ya fija los env no secretos principales para Fly (`APP_PUBLIC_WEB_URL`, `CORS_ALLOWED_ORIGINS`, cookies auth, SMTP habilitado, storage `r2`, billing base y redirects OAuth/callback de Mercado Pago); los secretos sensibles siguen yendo por `fly secrets`
-- para evitar desalineos entre placeholders de `application.yml` y beans que leen propiedades ya resueltas (`SecurityConfig`, `CookieOriginProtectionFilter`, rate limiting), `backend-java/fly.toml` expone tambien `APP_CORS_ALLOWED_ORIGINS` y `APP_SECURITY_TRUST_FORWARDED_HEADERS` ademas de los aliases legacy/no anidados; esto corrige preflights CORS reales contra `https://plura-web-a6ka.vercel.app`
+- `backend-java/fly.toml` ya no versiona variables productivas en `[env]`; la configuracion runtime de Fly, incluidas variables no secretas y secretas, se administra fuera del repo mediante `fly secrets`/entorno de la app.
+- para evitar exponer configuracion de produccion en el repo, aliases como `APP_CORS_ALLOWED_ORIGINS` y `APP_SECURITY_TRUST_FORWARDED_HEADERS` tambien deben mantenerse en Fly y no en `backend-java/fly.toml`.
 - el backend acepta `X-Internal-Token` dentro de los headers CORS permitidos; esto es obligatorio para usar desde web los paneles internos `/internal/ops/*` (feedback, reviews) sin que falle el preflight
 - el backend ya no expone el tracking interno de analytics de producto ni el header `X-Plura-Analytics-Session-Id`.
 - cuando Fly muestra `Proxy not finding machines to route requests` para este backend, el primer chequeo no deberia ser el puerto: el codigo ya expone `server.address=0.0.0.0` y `server.port=${PORT:3000}`; el fallo mas probable pasa por machine caida, `healthcheck` sin pasar o secrets faltantes de DB/JWT/R2

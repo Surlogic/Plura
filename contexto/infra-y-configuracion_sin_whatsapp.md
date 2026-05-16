@@ -421,6 +421,10 @@ Deploy vigente:
 
 Notas reales de deploy:
 
+- la rama productiva del repo queda definida como `prod`; `main` pasa a ser la rama de integracion estable del trabajo normal
+- `.github/workflows/deploy-fly-backend.yml` despliega el backend productivo solo cuando un `push` a `prod` toca `backend-java/**` o el propio workflow; el job referencia el environment `production`
+- `.github/workflows/backend-ci.yml` corre `./gradlew test` en PRs hacia `main` o `prod` y en pushes a `main`, para validar antes de promover cambios
+- la metodologia operativa completa de ramas, features, fixes y hotfixes vive en `contexto/metodologia-git-y-produccion.md`
 - el backend Fly debe declarar `APP_PUBLIC_WEB_URL` apuntando a la URL pública de Vercel para links/callbacks absolutos
 - `backend-java/fly.toml` versiona los env no secretos principales; los secretos se cargan con `fly secrets`
 - para Supabase PostgreSQL se usan `SPRING_DATASOURCE_URL`, `SPRING_DATASOURCE_USERNAME`, `SPRING_DATASOURCE_PASSWORD`, `SPRING_FLYWAY_URL`, `SPRING_FLYWAY_USER`, `SPRING_FLYWAY_PASSWORD` y drivers PostgreSQL
@@ -477,7 +481,7 @@ Notas reales de deploy:
 - `.env.backend` sigue siendo el archivo plano de importacion de env para local/docker y hoy ya usa `SPRING_DATASOURCE_*` + `SPRING_FLYWAY_*` apuntando al Session Pooler de Supabase; no deberia volver a cargar `DATABASE_URL` de una base vieja como fuente principal
 - `backend-java/fly.toml` fija `primary_region = "gru"` para priorizar Sao Paulo mientras Fly presenta incidentes de provision en otras regiones; si la plataforma se estabiliza y conviene volver a otra region, hay que redeployar con esa region explicita
 - `backend-java/fly.toml` ya no declara `processes = ["app"]` bajo `[http_service]`; se removio como workaround del incidente de Fly.io "flyctl deploy creating new app instances" sin tocar otros valores del deploy
-- el repo ahora incluye `.github/workflows/deploy-fly-backend.yml`: despliega el backend a Fly solo cuando el `push` a `main` toca `backend-java/**` o el propio workflow, y tambien permite corrida manual (`workflow_dispatch`); antes del deploy corre `./gradlew test` con Temurin 25 y despues usa `flyctl deploy backend-java --config backend-java/fly.toml --remote-only`; requiere el secret de GitHub Actions `FLY_API_TOKEN`
+- el repo ahora incluye `.github/workflows/deploy-fly-backend.yml`: despliega el backend a Fly solo cuando el `push` a `prod` toca `backend-java/**` o el propio workflow, y tambien permite corrida manual (`workflow_dispatch`); antes del deploy corre `./gradlew test` con Temurin 25 y despues usa `flyctl deploy backend-java --config backend-java/fly.toml --remote-only`; requiere el secret de GitHub Actions `FLY_API_TOKEN` dentro del environment `production`
 - `backend-java/fly.toml` expone `internal_port = 3000` y define `http_service.checks` sobre `GET /health` con `grace_period = 180s`; esto es necesario porque el backend puede tardar mas de 2 minutos en abrir Tomcat mientras inicializa DB, Flyway y JPA
 - `backend-java/fly.toml` tambien deja explicito `BILLING_MERCADOPAGO_ENABLED=true`; `BILLING_ENABLED=true` solo no alcanza para dejar operativo Mercado Pago en runtime
 - si Fly reporta `The app is not listening on the expected address` y en la VM solo aparece `/.fly/hallpass`, no asumir primero un problema de `PORT`: con la configuracion actual (`server.address=0.0.0.0`, `server.port=${PORT:3000}`) eso suele indicar que el proceso Java murio en startup por secrets faltantes o fallo temprano de datasource antes de bindear el socket

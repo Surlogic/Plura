@@ -13,6 +13,7 @@ La prioridad es resolver la funcionalidad o corrección pedida con el menor alca
 - `contexto/rutas-y-modulos.md`
 - `contexto/backend-endpoints.md`
 - `contexto/infra-y-configuracion_sin_whatsapp.md`
+- `contexto/metodologia-git-y-produccion.md`
 
 ## Regla obligatoria
 No responder ambiguedades asi no gastamos tokens, solo responder o preguntar lo esencial y los cambios hechos y como quedó en el resumen.

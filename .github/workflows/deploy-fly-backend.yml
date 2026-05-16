@@ -3,7 +3,7 @@ name: Deploy Backend to Fly
 on:
   push:
     branches:
-      - main
+      - prod
     paths:
       - backend-java/**
       - .github/workflows/deploy-fly-backend.yml
@@ -17,6 +17,7 @@ jobs:
   deploy:
     name: Deploy backend
     runs-on: ubuntu-latest
+    environment: production
     permissions:
       contents: read
 

@@ -776,8 +776,9 @@ export default function ProfesionalRegisterPage() {
         setAuthAccessToken(loginResponse.data?.accessToken ?? null, 'PROFESSIONAL');
       } catch {
         await router.push({
-          pathname: '/profesional/auth/login',
+          pathname: '/login',
           query: {
+            intent: 'professional',
             email: normalizedEmail,
             registered: '1',
             billing: 'pending',
@@ -817,8 +818,9 @@ export default function ProfesionalRegisterPage() {
 
         if (!isOAuthSetup && looksLikeExistingAccount) {
           await router.push({
-            pathname: '/profesional/auth/login',
+            pathname: '/login',
             query: {
+              intent: 'professional',
               email: normalizedEmail,
               reason: 'existing-account',
             },
@@ -1006,7 +1008,7 @@ export default function ProfesionalRegisterPage() {
         )}
         <p className="text-center text-sm text-[color:var(--ink-muted)]">
           ¿Ya tenés cuenta?{' '}
-          <Link href="/profesional/auth/login" className="font-semibold text-[color:var(--primary)]">
+          <Link href="/login?intent=professional" className="font-semibold text-[color:var(--primary)]">
             Iniciar sesión profesional
           </Link>
         </p>

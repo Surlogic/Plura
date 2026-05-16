@@ -135,7 +135,7 @@ export default memo(function Navbar({
                 Iniciar sesión
               </Button>
               <Button
-                href="/profesional/auth/login"
+                href="/profesional/auth/register"
                 variant="primary"
                 size="md"
                 className={navButtonClassName}

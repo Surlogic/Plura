@@ -523,3 +523,11 @@ Lectura de producto:
 - `/profesional/auth/login`: al completar Google OAuth se apaga explícitamente `isGoogleLoading` antes de navegar al dashboard o mostrar error para evitar overlay fijo. `GoogleLoginButton` fuerza `onLoadingChange(false)` al finalizar/error.
 - `/profesional/auth/register`: el paso de ubicación del wizard usa `MapView` con Mapbox para previsualizar la dirección del local; geocodifica país/ciudad/dirección con debounce y mantiene un fallback visual si falta `NEXT_PUBLIC_MAPBOX_TOKEN` o WebGL no inicializa.
 - Wizard de registro profesional: el paso final ahora transforma la configuración del wizard (descripción pública, agenda y primer servicio) a payloads reales de `/profesional/public-page`, `/profesional/schedule` y `/profesional/services`. En OAuth se carga antes de entrar al dashboard; en email/password se guarda un handoff local y el login profesional lo consume después de autenticar.
+
+### Auth web unificado
+
+- `/login` es el inicio de sesión real para cliente, profesional y trabajador; resuelve el contexto con `/auth/login` y `/auth/context/select`.
+- `/profesional/auth/login` queda como ruta legacy de compatibilidad y redirige a `/login?intent=professional`, preservando `email`, `registered`, `billing=pending` y otros query params.
+- `/profesional/auth/register` es el wizard profesional y el destino de CTAs públicos como `Soy profesional` y `Registrá tu negocio`.
+- Si el wizard profesional crea la cuenta pero falla el login automático, deriva a `/login?intent=professional&billing=pending`; al iniciar sesión como profesional, `/login` aplica el handoff pendiente y activa `Plura Core`.
+

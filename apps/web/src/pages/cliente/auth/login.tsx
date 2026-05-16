@@ -179,7 +179,7 @@ export default function ClienteLoginPage() {
                 Descubrí profesionales y reservá tu turno en segundos.
               </p>
               <Link
-                href="/profesional/auth/login"
+                href="/login?intent=professional"
                 className="inline-flex text-xs font-semibold text-[color:var(--accent-strong)] underline decoration-[color:var(--accent-soft)] underline-offset-4 transition hover:text-[color:var(--accent)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--accent-soft)]"
               >
                 Ir a acceso profesional

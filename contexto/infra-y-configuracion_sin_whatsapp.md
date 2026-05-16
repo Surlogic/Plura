@@ -44,7 +44,8 @@ Lectura operativa actual:
 - `apps/web/src/services/session.ts` ahora persiste tambien `plura_auth_session_role` (`CLIENT` o `PROFESSIONAL`) para bootstrap de sesion en rutas publicas sin adivinar el perfil a cargar
 - el backend soporta dos recuperaciones de contraseña en paralelo: legacy por token (`/auth/password/forgot` + `/auth/password/reset`) y recovery escalonado (`/auth/password/recovery/start|verify-phone|confirm`)
 - el recovery escalonado por OTP depende de entrega real de email: si SMTP falla o no esta operativo, `verify-phone` devuelve error y no deja challenges activos a medias
-- despues de OAuth, el backend puede exigir completar telefono con `POST /auth/oauth/complete-phone` antes de considerar cerrada la cuenta para ciertos flujos
+- el registro por email ya tiene flujo OTP previo al alta con Twilio Verify (`/auth/register/phone/send|confirm`); al activar `AUTH_REGISTRATION_PHONE_VERIFICATION_REQUIRED=true`, cliente y profesional solo se crean con telefono verificado una vez y ese telefono verificado no se reutiliza en otra cuenta activa
+- despues de OAuth, el backend puede exigir completar telefono con `POST /auth/oauth/complete-phone`; ese cierre ya acepta el mismo `phoneVerificationToken` emitido tras Twilio Verify para dejar el numero validado en el acto
 - las invitaciones de trabajadores usan endpoints publicos bajo `/auth/worker-invitations`; el token se guarda hasheado en `professional_worker`, vence a los `14` dias y al aceptarlo vincula o crea un `app_user` de base `USER` para que luego pueda entrar por el futuro login unificado/contextual
 
 ### Marketplace, ubicacion y mapa
@@ -174,6 +175,17 @@ Variables de backend para Mercado Pago de reservas y OAuth profesional:
 - `BILLING_MERCADOPAGO_RESERVATIONS_OAUTH_STATE_SIGNING_SECRET`
 - `BILLING_MERCADOPAGO_RESERVATIONS_OAUTH_TOKEN_ENCRYPTION_KEY`
 - `BILLING_MERCADOPAGO_RESERVATIONS_OAUTH_PKCE_ENABLED`
+
+Variables de backend para OTP SMS de registro con Twilio Verify:
+
+- `TWILIO_VERIFY_ENABLED`
+- `TWILIO_ACCOUNT_SID`
+- `TWILIO_AUTH_TOKEN`
+- `TWILIO_VERIFY_SERVICE_SID`
+- `AUTH_REGISTRATION_PHONE_VERIFICATION_REQUIRED`
+- `AUTH_REGISTRATION_PHONE_VERIFICATION_TOKEN_SECRET`
+- `AUTH_REGISTRATION_PHONE_VERIFICATION_TOKEN_TTL_MINUTES`
+- `AUTH_REGISTRATION_PHONE_VERIFICATION_COOLDOWN_SECONDS`
 - `BILLING_MERCADOPAGO_RESERVATIONS_PROCESSING_FEE_ENABLED`
 - `BILLING_MERCADOPAGO_RESERVATIONS_PROCESSING_FEE_LABEL`
 - `BILLING_MERCADOPAGO_RESERVATIONS_PROCESSING_FEE_INSTANT_PROVIDER_FEE_PERCENT`

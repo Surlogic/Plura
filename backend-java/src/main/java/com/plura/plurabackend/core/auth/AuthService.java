@@ -84,6 +84,7 @@ public class AuthService {
     private final EffectiveProfessionalPlanService effectiveProfessionalPlanService;
     private final AuthContextResolver authContextResolver;
     private final PasswordEncoder passwordEncoder;
+    private final RegistrationPhoneVerificationService registrationPhoneVerificationService;
     private final Algorithm jwtAlgorithm;
     private final long jwtExpirationMinutes;
     private final long refreshTokenDays;
@@ -128,6 +129,7 @@ public class AuthService {
         EffectiveProfessionalPlanService effectiveProfessionalPlanService,
         AuthContextResolver authContextResolver,
         PasswordEncoder passwordEncoder,
+        RegistrationPhoneVerificationService registrationPhoneVerificationService,
         @Value("${jwt.secret}") String jwtSecret,
         @Value("${jwt.expiration-minutes:30}") long jwtExpirationMinutes,
         @Value("${jwt.refresh-days:30}") long refreshTokenDays,
@@ -151,6 +153,7 @@ public class AuthService {
         this.effectiveProfessionalPlanService = effectiveProfessionalPlanService;
         this.authContextResolver = authContextResolver;
         this.passwordEncoder = passwordEncoder;
+        this.registrationPhoneVerificationService = registrationPhoneVerificationService;
         this.jwtAlgorithm = Algorithm.HMAC256(jwtSecret);
         this.jwtExpirationMinutes = jwtExpirationMinutes;
         this.refreshTokenDays = refreshTokenDays;
@@ -199,13 +202,24 @@ public class AuthService {
             burnPasswordWorkFactor(request.getPassword());
             return;
         }
+        RegistrationPhoneVerificationService.VerificationResult phoneVerification =
+            registrationPhoneVerificationService.resolveForRegistration(
+                request.getPhoneNumber(),
+                request.getPhoneVerificationToken()
+            );
+        if (phoneVerification.verified()) {
+            ensurePhoneAvailable(phoneVerification.phoneNumber(), null);
+        }
 
         User user = new User();
         user.setFullName(request.getFullName().trim());
         user.setEmail(normalizedEmail);
-        user.setPhoneNumber(request.getPhoneNumber().trim());
+        user.setPhoneNumber(phoneVerification.phoneNumber());
         user.setPassword(passwordEncoder.encode(request.getPassword()));
         user.setRole(UserRole.USER);
+        if (phoneVerification.verified()) {
+            user.setPhoneVerifiedAt(LocalDateTime.now());
+        }
 
         try {
             userRepository.save(user);
@@ -237,13 +251,24 @@ public class AuthService {
             burnPasswordWorkFactor(request.getPassword());
             return;
         }
+        RegistrationPhoneVerificationService.VerificationResult phoneVerification =
+            registrationPhoneVerificationService.resolveForRegistration(
+                request.getPhoneNumber(),
+                request.getPhoneVerificationToken()
+            );
+        if (phoneVerification.verified()) {
+            ensurePhoneAvailable(phoneVerification.phoneNumber(), null);
+        }
 
         User user = new User();
         user.setFullName(request.getFullName().trim());
         user.setEmail(normalizedEmail);
-        user.setPhoneNumber(request.getPhoneNumber().trim());
+        user.setPhoneNumber(phoneVerification.phoneNumber());
         user.setPassword(passwordEncoder.encode(request.getPassword()));
         user.setRole(UserRole.PROFESSIONAL);
+        if (phoneVerification.verified()) {
+            user.setPhoneVerifiedAt(LocalDateTime.now());
+        }
         User savedUser;
         try {
             savedUser = userRepository.save(user);
@@ -1083,18 +1108,27 @@ public class AuthService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Teléfono inválido");
         }
 
-        String normalizedPhone = normalizePhoneNumber(request.getPhoneNumber());
-        if (normalizedPhone == null) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Teléfono inválido");
-        }
+        RegistrationPhoneVerificationService.VerificationResult phoneVerification =
+            registrationPhoneVerificationService.resolveForRegistration(
+                request.getPhoneNumber(),
+                request.getPhoneVerificationToken()
+            );
+        String normalizedPhone = phoneVerification.phoneNumber();
 
         String currentPhone = normalizePhoneNumber(user.getPhoneNumber());
         if (normalizedPhone.equals(currentPhone)) {
+            if (phoneVerification.verified() && user.getPhoneVerifiedAt() == null) {
+                user.setPhoneVerifiedAt(LocalDateTime.now());
+                userRepository.save(user);
+            }
             return;
         }
 
+        if (phoneVerification.verified()) {
+            ensurePhoneAvailable(normalizedPhone, user.getId());
+        }
         user.setPhoneNumber(normalizedPhone);
-        user.setPhoneVerifiedAt(null);
+        user.setPhoneVerifiedAt(phoneVerification.verified() ? LocalDateTime.now() : null);
         userRepository.save(user);
     }
 
@@ -1171,6 +1205,26 @@ public class AuthService {
         }
         String digits = collapsed.replaceAll("\\D", "");
         return digits.length() >= 8 && digits.length() <= 20 ? digits : null;
+    }
+
+    private void ensurePhoneAvailable(String normalizedPhone, Long currentUserId) {
+        if (normalizedPhone == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Telefono invalido");
+        }
+        if (!userRepository.existsByPhoneNumberAndDeletedAtIsNull(normalizedPhone)) {
+            return;
+        }
+        if (currentUserId != null) {
+            User currentUser = userRepository.findByIdAndDeletedAtIsNull(currentUserId).orElse(null);
+            if (currentUser != null && normalizedPhone.equals(currentUser.getPhoneNumber())) {
+                return;
+            }
+        }
+        throw new AuthApiException(
+            HttpStatus.CONFLICT,
+            "PHONE_ALREADY_IN_USE",
+            "Ese telefono ya esta asociado a otra cuenta."
+        );
     }
 
     /**

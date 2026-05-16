@@ -10,6 +10,10 @@ import Button from '@/components/ui/Button';
 import Card from '@/components/ui/Card';
 import InternationalPhoneField from '@/components/ui/InternationalPhoneField';
 import api from '@/services/api';
+import {
+  confirmRegistrationPhoneVerification,
+  sendRegistrationPhoneVerification,
+} from '@/services/registrationPhoneVerification';
 import { useClientProfileContext } from '@/context/ClientProfileContext';
 import { getPendingReservation } from '@/services/pendingReservation';
 
@@ -28,8 +32,41 @@ export default function ClienteCompletePhonePage() {
     : router.query.redirect;
   const [phoneNumber, setPhoneNumber] = useState('');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [phoneVerificationCode, setPhoneVerificationCode] = useState('');
+  const [phoneVerificationToken, setPhoneVerificationToken] = useState('');
+  const [phoneVerificationMessage, setPhoneVerificationMessage] = useState<string | null>(null);
+  const [isSendingPhoneCode, setIsSendingPhoneCode] = useState(false);
+  const [isConfirmingPhoneCode, setIsConfirmingPhoneCode] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const canSubmit = phoneNumber.replace(/\D/g, '').length >= 8;
+  const canSubmit = phoneNumber.replace(/\D/g, '').length >= 8 && Boolean(phoneVerificationToken);
+
+  const handleSendPhoneCode = async () => {
+    setErrorMessage(null);
+    setPhoneVerificationMessage(null);
+    try {
+      setIsSendingPhoneCode(true);
+      const response = await sendRegistrationPhoneVerification(phoneNumber.trim());
+      setPhoneVerificationMessage(response.message);
+    } catch (error) {
+      setErrorMessage(resolveApiMessage(error, 'No pudimos enviar el c?digo.'));
+    } finally {
+      setIsSendingPhoneCode(false);
+    }
+  };
+
+  const handleConfirmPhoneCode = async () => {
+    setErrorMessage(null);
+    try {
+      setIsConfirmingPhoneCode(true);
+      const response = await confirmRegistrationPhoneVerification(phoneNumber.trim(), phoneVerificationCode.trim());
+      setPhoneVerificationToken(response.verificationToken);
+      setPhoneVerificationMessage('Tel?fono verificado correctamente.');
+    } catch (error) {
+      setErrorMessage(resolveApiMessage(error, 'No pudimos verificar el c?digo.'));
+    } finally {
+      setIsConfirmingPhoneCode(false);
+    }
+  };
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -39,6 +76,7 @@ export default function ClienteCompletePhonePage() {
       setIsSubmitting(true);
       await api.post('/auth/oauth/complete-phone', {
         phoneNumber,
+        phoneVerificationToken,
       });
       await refreshProfile();
       if (redirectIntent === 'confirm-reservation') {
@@ -81,7 +119,12 @@ export default function ClienteCompletePhonePage() {
               <label className="text-sm font-medium text-[color:var(--ink)]">Número de teléfono</label>
               <InternationalPhoneField
                 value={phoneNumber}
-                onChange={setPhoneNumber}
+                onChange={(value) => {
+                  setPhoneNumber(value);
+                  setPhoneVerificationCode('');
+                  setPhoneVerificationToken('');
+                  setPhoneVerificationMessage(null);
+                }}
                 required
                 selectClassName="h-12 w-full rounded-[18px] border border-[color:var(--border-soft)] bg-white/90 px-4 text-sm text-[color:var(--ink)] focus:border-[color:var(--accent)] focus:outline-none focus:ring-2 focus:ring-[color:var(--accent-soft)]"
                 inputClassName="h-12 w-full rounded-[18px] border border-[color:var(--border-soft)] bg-white/90 px-4 text-sm text-[color:var(--ink)] focus:border-[color:var(--accent)] focus:outline-none focus:ring-2 focus:ring-[color:var(--accent-soft)]"
@@ -90,6 +133,35 @@ export default function ClienteCompletePhonePage() {
               <p className="text-xs text-[color:var(--ink-faint)]">
                 Elegí tu país y cargá el número sin el prefijo internacional.
               </p>
+              <div className="grid gap-2 sm:grid-cols-[1fr_auto]">
+                <input
+                  className="h-12 w-full rounded-[18px] border border-[color:var(--border-soft)] bg-white/90 px-4 text-sm text-[color:var(--ink)]"
+                  placeholder="Código SMS"
+                  value={phoneVerificationCode}
+                  onChange={(event) => setPhoneVerificationCode(event.target.value)}
+                  inputMode="numeric"
+                  maxLength={10}
+                />
+                <Button
+                  type="button"
+                  variant="quiet"
+                  onClick={() => void (phoneVerificationCode ? handleConfirmPhoneCode() : handleSendPhoneCode())}
+                  disabled={isSendingPhoneCode || isConfirmingPhoneCode || Boolean(phoneVerificationToken)}
+                >
+                  {phoneVerificationToken
+                    ? 'Verificado'
+                    : phoneVerificationCode
+                      ? isConfirmingPhoneCode
+                        ? 'Verificando...'
+                        : 'Confirmar'
+                      : isSendingPhoneCode
+                        ? 'Enviando...'
+                        : 'Enviar OTP'}
+                </Button>
+              </div>
+              {phoneVerificationMessage ? (
+                <p className="text-xs font-semibold text-[color:var(--primary)]">{phoneVerificationMessage}</p>
+              ) : null}
             </div>
 
             {errorMessage ? (

@@ -18,6 +18,8 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     Optional<User> findByIdAndDeletedAtIsNull(Long id);
 
+    boolean existsByPhoneNumberAndDeletedAtIsNull(String phoneNumber);
+
     long countByRoleAndDeletedAtIsNull(UserRole role);
 
     default Optional<User> findByEmail(String email) {

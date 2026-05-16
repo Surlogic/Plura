@@ -104,6 +104,8 @@ Prefijo: `/auth`
 
 - `POST /auth/register/cliente`
 - `POST /auth/register/profesional`
+- `POST /auth/register/phone/send` — inicia OTP SMS previo al alta usando Twilio Verify
+- `POST /auth/register/phone/confirm` — valida OTP SMS y devuelve `verificationToken` corto para adjuntar al submit final del registro
 - los registros siguen permitiendo un solo usuario activo por email; desde `V81`, un usuario con `deleted_at` ya no bloquea volver a registrar el mismo email ni el mismo `provider/provider_id`
 - `POST /auth/login/cliente`
 - `POST /auth/login/profesional`
@@ -152,7 +154,8 @@ Lectura de producto:
 - cubre el bloque `CORE` de autenticacion y seguridad
 - soporta registro directo del profesional en `Profesional`
 - ya da base para login social y gestion de sesiones
-- `POST /auth/oauth/complete-phone` cierra el faltante de telefono cuando el alta/login OAuth no lo trae y hoy tiene pantallas dedicadas tanto en web como en mobile para cliente y profesional
+- `POST /auth/register/cliente` y `POST /auth/register/profesional` aceptan `phoneVerificationToken`; cuando `AUTH_REGISTRATION_PHONE_VERIFICATION_REQUIRED=true`, ese token pasa a ser obligatorio, el alta queda con `phoneVerified=true` desde el inicio y el mismo telefono verificado no puede reutilizarse en otra cuenta activa
+- `POST /auth/oauth/complete-phone` cierra el faltante de telefono cuando el alta/login OAuth no lo trae; tambien acepta `phoneVerificationToken` para dejar el telefono verificado en el mismo paso
 - `POST /auth/password/forgot` + `POST /auth/password/reset` siguen como flujo legacy por token y hoy quedan como compatibilidad de enlaces viejos o soporte manual
 - `POST /auth/password/recovery/start|verify-phone|confirm` son el flujo vigente de recuperacion escalonada que ya usan web y mobile
 - `POST /auth/password/reset` y `POST /auth/password/recovery/confirm` ya no cierran con `204` vacio: ahora devuelven `200` con `role` (`USER` o `PROFESSIONAL`) y limpian cookies/sesion para que frontend redirija al login correcto segun la cuenta recuperada

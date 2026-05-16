@@ -16,4 +16,7 @@ public class CompleteOAuthPhoneRequest {
     @NotBlank
     @Size(max = 40)
     private String phoneNumber;
+
+    @Size(max = 4096)
+    private String phoneVerificationToken;
 }

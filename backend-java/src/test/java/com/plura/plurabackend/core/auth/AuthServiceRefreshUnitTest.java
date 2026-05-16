@@ -66,6 +66,9 @@ class AuthServiceRefreshUnitTest {
     @Mock
     private com.plura.plurabackend.core.auth.context.AuthContextResolver authContextResolver;
 
+    @Mock
+    private RegistrationPhoneVerificationService registrationPhoneVerificationService;
+
     private AuthService authService;
 
     /**
@@ -86,6 +89,7 @@ class AuthServiceRefreshUnitTest {
             effectiveProfessionalPlanService,
             authContextResolver,
             passwordEncoder,
+            registrationPhoneVerificationService,
             "unit-test-jwt-secret",
             30,
             30,

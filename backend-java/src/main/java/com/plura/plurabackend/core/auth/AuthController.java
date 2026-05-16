@@ -27,6 +27,8 @@ import com.plura.plurabackend.core.auth.dto.PasswordRecoveryVerifyPhoneRequest;
 import com.plura.plurabackend.core.auth.dto.PasswordRecoveryVerifyPhoneResponse;
 import com.plura.plurabackend.core.auth.dto.PhoneVerificationSendResponse;
 import com.plura.plurabackend.core.auth.dto.ProfesionalProfileResponse;
+import com.plura.plurabackend.core.auth.dto.RegistrationPhoneVerificationConfirmRequest;
+import com.plura.plurabackend.core.auth.dto.RegistrationPhoneVerificationConfirmResponse;
 import com.plura.plurabackend.core.auth.dto.OtpChallengeSendRequest;
 import com.plura.plurabackend.core.auth.dto.OtpChallengeSendResponse;
 import com.plura.plurabackend.core.auth.dto.OtpChallengeVerifyRequest;
@@ -105,6 +107,7 @@ public class AuthController {
     private final PasswordLifecycleService passwordLifecycleService;
     private final EmailVerificationService emailVerificationService;
     private final PhoneVerificationService phoneVerificationService;
+    private final RegistrationPhoneVerificationService registrationPhoneVerificationService;
     private final OtpChallengeService otpChallengeService;
     private final AuthAuditService authAuditService;
     private final AccountDeletionService accountDeletionService;
@@ -132,6 +135,7 @@ public class AuthController {
         PasswordLifecycleService passwordLifecycleService,
         EmailVerificationService emailVerificationService,
         PhoneVerificationService phoneVerificationService,
+        RegistrationPhoneVerificationService registrationPhoneVerificationService,
         OtpChallengeService otpChallengeService,
         AuthAuditService authAuditService,
         AccountDeletionService accountDeletionService,
@@ -142,6 +146,7 @@ public class AuthController {
         this.passwordLifecycleService = passwordLifecycleService;
         this.emailVerificationService = emailVerificationService;
         this.phoneVerificationService = phoneVerificationService;
+        this.registrationPhoneVerificationService = registrationPhoneVerificationService;
         this.otpChallengeService = otpChallengeService;
         this.authAuditService = authAuditService;
         this.accountDeletionService = accountDeletionService;
@@ -184,6 +189,24 @@ public class AuthController {
             .body(new RegistrationAcceptedResponse(
                 "Si el email no estaba registrado, la cuenta fue creada. Si ya existía, podés iniciar sesión."
             ));
+    }
+
+    @PostMapping("/register/phone/send")
+    public ResponseEntity<PhoneVerificationSendResponse> sendRegistrationPhoneVerification(
+        @Valid @RequestBody SendPhoneVerificationRequest request
+    ) {
+        return ResponseEntity.accepted()
+            .header(HttpHeaders.CACHE_CONTROL, "no-store")
+            .body(registrationPhoneVerificationService.sendCode(request.getPhoneNumber()));
+    }
+
+    @PostMapping("/register/phone/confirm")
+    public ResponseEntity<RegistrationPhoneVerificationConfirmResponse> confirmRegistrationPhoneVerification(
+        @Valid @RequestBody RegistrationPhoneVerificationConfirmRequest request
+    ) {
+        return ResponseEntity.ok()
+            .header(HttpHeaders.CACHE_CONTROL, "no-store")
+            .body(registrationPhoneVerificationService.confirmCode(request.getPhoneNumber(), request.getCode()));
     }
 
     /**

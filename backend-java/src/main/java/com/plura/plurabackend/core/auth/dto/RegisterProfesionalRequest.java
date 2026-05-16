@@ -38,6 +38,10 @@ public class RegisterProfesionalRequest {
     @Pattern(regexp = "^[+0-9()\\-\\s]{3,30}$")
     private String phoneNumber;
 
+    /** Token corto emitido tras validar el OTP previo al alta. */
+    @Size(max = 4096)
+    private String phoneVerificationToken;
+
     /** País donde opera el negocio cuando atiende con local. */
     @Size(max = 80)
     private String country;

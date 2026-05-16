@@ -14,9 +14,21 @@ import Button from '@/components/ui/Button';
 import Card from '@/components/ui/Card';
 import InternationalPhoneField from '@/components/ui/InternationalPhoneField';
 import api from '@/services/api';
+import {
+  confirmRegistrationPhoneVerification,
+  sendRegistrationPhoneVerification,
+} from '@/services/registrationPhoneVerification';
 import { useClientProfileContext } from '@/context/ClientProfileContext';
 import { useProfessionalProfileContext } from '@/context/ProfessionalProfileContext';
 import type { OAuthLoginResult } from '@/lib/auth/oauthLogin';
+
+
+const resolvePhoneVerificationError = (error: unknown, fallback: string) => {
+  if (axios.isAxiosError<{ message?: string }>(error)) {
+    return error.response?.data?.message || fallback;
+  }
+  return fallback;
+};
 
 export default function ClienteRegisterPage() {
   const router = useRouter();
@@ -48,6 +60,11 @@ export default function ClienteRegisterPage() {
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+  const [isSendingPhoneCode, setIsSendingPhoneCode] = useState(false);
+  const [isConfirmingPhoneCode, setIsConfirmingPhoneCode] = useState(false);
+  const [phoneVerificationCode, setPhoneVerificationCode] = useState('');
+  const [phoneVerificationToken, setPhoneVerificationToken] = useState('');
+  const [phoneVerificationMessage, setPhoneVerificationMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const isBusy = isSubmitting || isGoogleLoading;
@@ -85,6 +102,9 @@ export default function ClienteRegisterPage() {
 
   const handlePhoneChange = (nextPhoneNumber: string) => {
     setForm((prev) => ({ ...prev, phoneNumber: nextPhoneNumber }));
+    setPhoneVerificationToken('');
+    setPhoneVerificationCode('');
+    setPhoneVerificationMessage(null);
   };
 
   const handlePhoneBlur = () => {
@@ -158,6 +178,7 @@ export default function ClienteRegisterPage() {
       fullName: form.fullName.trim(),
       email: form.email.trim().toLowerCase(),
       phoneNumber: form.phoneNumber.trim(),
+      phoneVerificationToken,
       password: form.password,
     };
 
@@ -191,6 +212,37 @@ export default function ClienteRegisterPage() {
       }
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleSendPhoneCode = async () => {
+    setErrorMessage(null);
+    setPhoneVerificationMessage(null);
+    try {
+      setIsSendingPhoneCode(true);
+      const response = await sendRegistrationPhoneVerification(form.phoneNumber.trim());
+      setPhoneVerificationMessage(response.message);
+    } catch (error) {
+      setErrorMessage(resolvePhoneVerificationError(error, 'No se pudo enviar el c?digo.'));
+    } finally {
+      setIsSendingPhoneCode(false);
+    }
+  };
+
+  const handleConfirmPhoneCode = async () => {
+    setErrorMessage(null);
+    try {
+      setIsConfirmingPhoneCode(true);
+      const response = await confirmRegistrationPhoneVerification(
+        form.phoneNumber.trim(),
+        phoneVerificationCode.trim(),
+      );
+      setPhoneVerificationToken(response.verificationToken);
+      setPhoneVerificationMessage('Celular verificado correctamente.');
+    } catch (error) {
+      setErrorMessage(resolvePhoneVerificationError(error, 'No se pudo verificar el c?digo.'));
+    } finally {
+      setIsConfirmingPhoneCode(false);
     }
   };
 
@@ -305,6 +357,40 @@ export default function ClienteRegisterPage() {
               {touched.phoneNumber && validationErrors.phoneNumber ? (
                 <p className="text-xs text-red-600">{validationErrors.phoneNumber}</p>
               ) : null}
+              <div className="grid gap-2 sm:grid-cols-[1fr_auto]">
+                <input
+                  className={inputClassName}
+                  placeholder="C?digo SMS"
+                  value={phoneVerificationCode}
+                  onChange={(event) => setPhoneVerificationCode(event.target.value)}
+                  inputMode="numeric"
+                  maxLength={10}
+                />
+                <Button
+                  type="button"
+                  variant="quiet"
+                  onClick={() => void (phoneVerificationCode ? handleConfirmPhoneCode() : handleSendPhoneCode())}
+                  disabled={
+                    Boolean(validationErrors.phoneNumber) ||
+                    isSendingPhoneCode ||
+                    isConfirmingPhoneCode ||
+                    Boolean(phoneVerificationToken)
+                  }
+                >
+                  {phoneVerificationToken
+                    ? 'Verificado'
+                    : phoneVerificationCode
+                      ? isConfirmingPhoneCode
+                        ? 'Verificando...'
+                        : 'Confirmar'
+                      : isSendingPhoneCode
+                        ? 'Enviando...'
+                        : 'Enviar OTP'}
+                </Button>
+              </div>
+              {phoneVerificationMessage ? (
+                <p className="text-xs text-[color:var(--primary)]">{phoneVerificationMessage}</p>
+              ) : null}
             </div>
 
             <div className="space-y-2">
@@ -374,7 +460,7 @@ export default function ClienteRegisterPage() {
               variant="brand"
               size="lg"
               className="w-full"
-              disabled={isSubmitting || !isFormValid}
+              disabled={isSubmitting || !isFormValid || !phoneVerificationToken}
             >
               {isSubmitting ? 'Creando cuenta...' : 'Crear cuenta'}
             </Button>

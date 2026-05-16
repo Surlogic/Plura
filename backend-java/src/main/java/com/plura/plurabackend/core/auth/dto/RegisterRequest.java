@@ -30,6 +30,10 @@ public class RegisterRequest {
     @Pattern(regexp = "^[+0-9()\\-\\s]{3,30}$")
     private String phoneNumber;
 
+    /** Token corto emitido tras validar el OTP previo al alta. */
+    @Size(max = 4096)
+    private String phoneVerificationToken;
+
     /** Contrasena en texto plano (se hashea al persistir). */
     @NotBlank
     @Size(min = 8, max = 100)

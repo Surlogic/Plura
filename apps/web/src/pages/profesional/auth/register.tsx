@@ -15,6 +15,10 @@ import Button from '@/components/ui/Button';
 import Card from '@/components/ui/Card';
 import InternationalPhoneField from '@/components/ui/InternationalPhoneField';
 import api from '@/services/api';
+import {
+  confirmRegistrationPhoneVerification,
+  sendRegistrationPhoneVerification,
+} from '@/services/registrationPhoneVerification';
 import { useCategories } from '@/hooks/useCategories';
 import { mapboxForwardGeocode } from '@/services/mapbox';
 import { getGeoLocationSuggestions, type GeoLocationSuggestion } from '@/services/geo';
@@ -209,6 +213,11 @@ export default function ProfesionalRegisterPage() {
   const [categorySearch, setCategorySearch] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+  const [isSendingPhoneCode, setIsSendingPhoneCode] = useState(false);
+  const [isConfirmingPhoneCode, setIsConfirmingPhoneCode] = useState(false);
+  const [phoneVerificationCode, setPhoneVerificationCode] = useState('');
+  const [phoneVerificationToken, setPhoneVerificationToken] = useState('');
+  const [phoneVerificationMessage, setPhoneVerificationMessage] = useState<string | null>(null);
   const [isGeoSuggesting, setIsGeoSuggesting] = useState(false);
   const [activeGeoField, setActiveGeoField] = useState<'country' | 'city' | 'fullAddress' | null>(null);
   const [geoSuggestions, setGeoSuggestions] = useState<GeoLocationSuggestion[]>([]);
@@ -376,10 +385,44 @@ export default function ProfesionalRegisterPage() {
 
   const handlePhoneChange = (nextPhoneNumber: string) => {
     setForm((prev) => ({ ...prev, phoneNumber: nextPhoneNumber }));
+    setPhoneVerificationToken('');
+    setPhoneVerificationCode('');
+    setPhoneVerificationMessage(null);
   };
 
   const handlePhoneBlur = () => {
     setTouched((prev) => ({ ...prev, phoneNumber: true }));
+  };
+
+  const handleSendPhoneCode = async () => {
+    setErrorMessage(null);
+    setPhoneVerificationMessage(null);
+    try {
+      setIsSendingPhoneCode(true);
+      const response = await sendRegistrationPhoneVerification(form.phoneNumber.trim());
+      setPhoneVerificationMessage(response.message);
+    } catch (error) {
+      setErrorMessage(extractApiMessage(error, 'No se pudo enviar el c?digo.'));
+    } finally {
+      setIsSendingPhoneCode(false);
+    }
+  };
+
+  const handleConfirmPhoneCode = async () => {
+    setErrorMessage(null);
+    try {
+      setIsConfirmingPhoneCode(true);
+      const response = await confirmRegistrationPhoneVerification(
+        form.phoneNumber.trim(),
+        phoneVerificationCode.trim(),
+      );
+      setPhoneVerificationToken(response.verificationToken);
+      setPhoneVerificationMessage('Tel?fono verificado correctamente.');
+    } catch (error) {
+      setErrorMessage(extractApiMessage(error, 'No se pudo verificar el c?digo.'));
+    } finally {
+      setIsConfirmingPhoneCode(false);
+    }
   };
 
   const handleOAuthAuthenticated = async (result: OAuthLoginResult) => {
@@ -607,6 +650,11 @@ export default function ProfesionalRegisterPage() {
       return;
     }
 
+    if (!phoneVerificationToken) {
+      setErrorMessage('Verific? el tel?fono antes de publicar el perfil.');
+      return;
+    }
+
     const primaryRubro = categoryNameBySlug.get(form.categorySlugs[0]) || '';
     const normalizedEmail = form.email.trim().toLowerCase();
     setIsSubmitting(true);
@@ -632,6 +680,7 @@ export default function ProfesionalRegisterPage() {
         categorySlugs: form.categorySlugs,
         email: normalizedEmail,
         phoneNumber: form.phoneNumber.trim(),
+        phoneVerificationToken,
         country: normalizedCountry,
         city: normalizedCity,
         fullAddress: normalizedFullAddress,
@@ -645,6 +694,7 @@ export default function ProfesionalRegisterPage() {
       if (isOAuthSetup) {
         await api.post('/auth/oauth/complete-phone', {
           phoneNumber: payload.phoneNumber,
+          phoneVerificationToken,
         });
 
         try {
@@ -988,6 +1038,40 @@ export default function ProfesionalRegisterPage() {
               inputPlaceholder="91 234 567"
             />
             {renderError('phoneNumber')}
+            <div className="grid gap-2 sm:grid-cols-[1fr_auto]">
+              <input
+                className={inputBaseClassName}
+                placeholder="C?digo SMS"
+                value={phoneVerificationCode}
+                onChange={(event) => setPhoneVerificationCode(event.target.value)}
+                inputMode="numeric"
+                maxLength={10}
+              />
+              <Button
+                type="button"
+                variant="quiet"
+                onClick={() => void (phoneVerificationCode ? handleConfirmPhoneCode() : handleSendPhoneCode())}
+                disabled={
+                  Boolean(validationErrors.phoneNumber) ||
+                  isSendingPhoneCode ||
+                  isConfirmingPhoneCode ||
+                  Boolean(phoneVerificationToken)
+                }
+              >
+                {phoneVerificationToken
+                  ? 'Verificado'
+                  : phoneVerificationCode
+                    ? isConfirmingPhoneCode
+                      ? 'Verificando...'
+                      : 'Confirmar'
+                    : isSendingPhoneCode
+                      ? 'Enviando...'
+                      : 'Enviar OTP'}
+              </Button>
+            </div>
+            {phoneVerificationMessage ? (
+              <p className="text-xs font-medium text-[color:var(--primary)]">{phoneVerificationMessage}</p>
+            ) : null}
           </div>
           <div className="space-y-2">
             <label className="text-sm font-semibold text-[color:var(--ink)]">Descripción corta</label>

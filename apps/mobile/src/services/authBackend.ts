@@ -30,6 +30,11 @@ export type PasswordRecoveryVerifyPhoneResponse = {
   maskedDestination: string;
 };
 
+export type RegistrationPhoneVerificationConfirmResponse = {
+  verificationToken: string;
+  expiresAt: string;
+};
+
 export const oauthLoginWithAuthorizationCode = async (
   provider: OAuthProvider,
   authorizationCode: string,
@@ -76,10 +81,30 @@ export const oauthLoginWithToken = async (
   };
 };
 
-export const completeOAuthPhone = async (phoneNumber: string) => {
+export const completeOAuthPhone = async (phoneNumber: string, phoneVerificationToken?: string) => {
   const response = await api.post<{ message: string }>('/auth/oauth/complete-phone', {
     phoneNumber,
+    phoneVerificationToken,
   });
+  return response.data;
+};
+
+export const sendRegistrationPhoneVerification = async (phoneNumber: string) => {
+  const response = await api.post<{ message: string; cooldownSeconds: number }>(
+    '/auth/register/phone/send',
+    { phoneNumber },
+  );
+  return response.data;
+};
+
+export const confirmRegistrationPhoneVerification = async (
+  phoneNumber: string,
+  code: string,
+) => {
+  const response = await api.post<RegistrationPhoneVerificationConfirmResponse>(
+    '/auth/register/phone/confirm',
+    { phoneNumber, code },
+  );
   return response.data;
 };
 

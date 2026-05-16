@@ -126,6 +126,12 @@ public class RateLimitingFilter extends OncePerRequestFilter {
         if ("POST".equals(method) && "/auth/oauth".equals(path)) {
             return new RateLimitTarget("oauth-ip", extractClientIp(request), 20);
         }
+        if ("POST".equals(method) && "/auth/register/phone/send".equals(path)) {
+            return new RateLimitTarget("register-phone-send-ip", extractClientIp(request), 10);
+        }
+        if ("POST".equals(method) && "/auth/register/phone/confirm".equals(path)) {
+            return new RateLimitTarget("register-phone-confirm-ip", extractClientIp(request), 20);
+        }
         if ("POST".equals(method) && path.startsWith("/auth/register/")) {
             return new RateLimitTarget("register-ip", extractClientIp(request), 20);
         }

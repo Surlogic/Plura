@@ -8,8 +8,8 @@ Mantener un flujo simple para un equipo chico sin mezclar trabajo diario con cod
 
 La regla central queda asi:
 
-- `prod` = estado exacto que puede ir a produccion.
-- `main` = integracion estable de los proximos cambios.
+- `prod` = rama reservada para el estado exacto que puede ir a produccion.
+- `main` = integracion estable y rama de test actual.
 - las ramas cortas salen de `main`, salvo hotfixes urgentes.
 
 Esta metodologia prioriza simplicidad, PRs chicos y una promocion explicita a produccion. No agrega una rama `develop` porque hoy seria ceremonia extra sin aportar seguridad real.
@@ -18,7 +18,7 @@ Esta metodologia prioriza simplicidad, PRs chicos y una promocion explicita a pr
 
 ### `prod`
 
-- unica rama autorizada para deploy productivo.
+- rama reservada para deploy productivo cuando exista el ambiente real de produccion.
 - no se trabaja directo sobre ella.
 - solo recibe:
   - promociones desde `main`
@@ -26,7 +26,7 @@ Esta metodologia prioriza simplicidad, PRs chicos y una promocion explicita a pr
 
 ### `main`
 
-- rama base del trabajo normal.
+- rama base del trabajo normal y del ambiente de test actual.
 - debe mantenerse estable y deployable.
 - recibe features y fixes comunes mediante PR.
 
@@ -50,7 +50,7 @@ Ejemplos:
 4. Pasar CI y revision.
 5. Merge a `main`.
 6. Cuando haya un grupo listo para salir, abrir PR `main -> prod`.
-7. Mergear a `prod`; ese merge dispara el deploy productivo.
+7. Mergear a `prod`; cuando exista el ambiente productivo separado, ese merge debera disparar el deploy productivo.
 
 Reglas:
 
@@ -81,9 +81,10 @@ Regla:
 
 ## Regla de deploy
 
-- Backend productivo: solo desde `prod`.
-- `main` valida por CI, pero no despliega produccion.
-- Web productiva: debera configurarse tambien para desplegar desde `prod`.
+- Backend de test actual: despliega desde `main` al Fly existente.
+- Backend productivo futuro: debera desplegar solo desde `prod`, pero ese workflow no debe activarse hasta crear el ambiente productivo separado.
+- `main` valida por CI y sigue siendo la rama de prueba operativa.
+- Web productiva futura: debera configurarse tambien para desplegar desde `prod`.
 - Antes de cada promocion `main -> prod`, revisar migraciones, variables nuevas, contratos y checklist de QA afectado.
 
 ## Requisitos para mergear
@@ -127,16 +128,19 @@ Estos pasos no viven en el repo y deben configurarse en GitHub/Vercel:
    - exigir PR
    - exigir checks verdes
 2. Proteger `main` con las mismas reglas base.
-3. Crear el environment `production` en GitHub Actions y guardar ahi `FLY_API_TOKEN`.
-4. Restringir el environment `production` para que solo pueda desplegar desde `prod`.
-5. Configurar Vercel para que la rama de produccion sea `prod` y no `main`.
-6. Definir quien puede aprobar promociones `main -> prod` y hotfixes.
+3. Crear el ambiente productivo real separado del ambiente de test actual.
+4. Crear el environment `production` en GitHub Actions y guardar ahi el token del Fly productivo cuando exista.
+5. Agregar el workflow productivo desde `prod` solo cuando el Fly productivo exista.
+6. Restringir el environment `production` para que solo pueda desplegar desde `prod`.
+7. Configurar Vercel para que la rama de produccion sea `prod` y no `main` cuando se cree la web productiva.
+8. Definir quien puede aprobar promociones `main -> prod` y hotfixes.
 
 ## Resumen operativo
 
 ```text
-feature/* o fix/* -> main -> prod -> produccion
-hotfix/* desde prod -> prod -> produccion -> retorno a main
+feature/* o fix/* -> main -> test actual
+main -> prod -> produccion futura
+hotfix/* desde prod -> prod -> produccion futura -> retorno a main
 ```
 
 Es el flujo mas simple que hoy separa bien desarrollo, release y emergencia sin sumar ramas permanentes innecesarias.

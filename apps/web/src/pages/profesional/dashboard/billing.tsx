@@ -251,18 +251,11 @@ export default function ProfesionalBillingPage() {
                       <div className="rounded-[18px] border border-[#FDE68A] bg-[#FFFBEB] p-5 text-sm text-[#92400E]">
                         <p className="font-semibold">Activacion pendiente</p>
                         <p className="mt-2">Termina la autorizacion en Mercado Pago para activar la prueba.</p>
+                        <p className="mt-2">Si ya completaste Mercado Pago, verificá el estado. El webhook puede tardar unos minutos.</p>
                         <div className="mt-4 flex flex-wrap gap-3">
                           <Button
                             type="button"
                             variant="primary"
-                            onClick={handleActivateCore}
-                            disabled={isRedirectingToCheckout}
-                          >
-                            {isRedirectingToCheckout ? 'Redirigiendo a Mercado Pago...' : 'Reintentar activacion'}
-                          </Button>
-                          <Button
-                            type="button"
-                            variant="secondary"
                             onClick={handleVerifyBillingStatus}
                             disabled={isRefreshingSubscriptionStatus}
                           >

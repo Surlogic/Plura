@@ -14,6 +14,12 @@ import api from '@/services/api';
 import type { OAuthLoginResult } from '@/lib/auth/oauthLogin';
 import { useProfessionalProfileContext } from '@/context/ProfessionalProfileContext';
 import { setAuthAccessToken } from '@/services/session';
+import {
+  armPendingCheckoutReturnState,
+  clearPendingCheckoutState,
+  createCoreSubscription,
+  setPendingCheckoutState,
+} from '@/lib/billing/billing';
 
 
 const REGISTER_HANDOFF_KEY = 'plura:professional-register-handoff';
@@ -95,6 +101,13 @@ export default function ProfesionalLoginPage() {
       return rawValue[0]?.trim() === '1';
     }
     return rawValue?.trim() === '1';
+  })();
+  const shouldActivatePendingBilling = (() => {
+    const rawValue = router.query.billing;
+    if (Array.isArray(rawValue)) {
+      return rawValue[0]?.trim() === 'pending';
+    }
+    return rawValue?.trim() === 'pending';
   })();
   const [form, setForm] = useState({ email: '', password: '' });
   useEffect(() => {
@@ -190,14 +203,44 @@ export default function ProfesionalLoginPage() {
     window.localStorage.removeItem(REGISTER_HANDOFF_KEY);
   };
 
+  const activatePendingCoreSubscription = async () => {
+    const checkout = await createCoreSubscription();
+
+    if (checkout.checkoutUrl) {
+      if (typeof window !== 'undefined') {
+        const pendingCheckout = { planId: 'CORE' as const, createdAt: Date.now() };
+        clearPendingCheckoutState();
+        setPendingCheckoutState(pendingCheckout);
+        armPendingCheckoutReturnState();
+        window.location.assign(checkout.checkoutUrl);
+      }
+      return;
+    }
+
+    await refreshProfile();
+    await router.push('/profesional/dashboard/billing');
+  };
+
   const completeProfessionalLoginFlow = async () => {
     try {
       await applyPendingRegisterHandoff();
     } catch {
       // Si la carga inicial falla no bloqueamos el login: el dashboard permite corregir configuración.
     }
+
+    if (shouldActivatePendingBilling) {
+      try {
+        await activatePendingCoreSubscription();
+        return;
+      } catch {
+        void refreshProfile().catch(() => undefined);
+        await router.push('/profesional/dashboard/billing');
+        return;
+      }
+    }
+
     void refreshProfile().catch(() => undefined);
-    router.push('/profesional/dashboard');
+    await router.push('/profesional/dashboard');
   };
 
   const handleOAuthAuthenticated = async (result: OAuthLoginResult) => {

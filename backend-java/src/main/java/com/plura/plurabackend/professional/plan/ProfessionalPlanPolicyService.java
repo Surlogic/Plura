@@ -13,15 +13,15 @@ import org.springframework.stereotype.Service;
 @Service
 public class ProfessionalPlanPolicyService {
 
-    private static final int PRACTICAL_UNLIMITED = 9999;
-
     private final Map<ProfessionalPlanCode, ProfessionalPlanEntitlements> entitlementsByPlan;
 
     public ProfessionalPlanPolicyService() {
         Map<ProfessionalPlanCode, ProfessionalPlanEntitlements> entitlements = new EnumMap<>(ProfessionalPlanCode.class);
-        entitlements.put(ProfessionalPlanCode.PROFESSIONAL, professionalEntitlements());
-        entitlements.put(ProfessionalPlanCode.LOCAL, localEntitlements());
-        entitlements.put(ProfessionalPlanCode.ENTERPRISE, enterpriseEntitlements());
+        ProfessionalPlanEntitlements coreEntitlements = coreEntitlements();
+        entitlements.put(ProfessionalPlanCode.CORE, coreEntitlements);
+        entitlements.put(ProfessionalPlanCode.PROFESSIONAL, coreEntitlements);
+        entitlements.put(ProfessionalPlanCode.LOCAL, coreEntitlements);
+        entitlements.put(ProfessionalPlanCode.ENTERPRISE, coreEntitlements);
         this.entitlementsByPlan = Map.copyOf(entitlements);
     }
 
@@ -30,47 +30,15 @@ public class ProfessionalPlanPolicyService {
      */
     public ProfessionalPlanEntitlements entitlementsFor(ProfessionalPlanCode code) {
         if (code == null) {
-            return entitlementsByPlan.get(ProfessionalPlanCode.PROFESSIONAL);
+            return entitlementsByPlan.get(ProfessionalPlanCode.CORE);
         }
-        return entitlementsByPlan.getOrDefault(code, entitlementsByPlan.get(ProfessionalPlanCode.PROFESSIONAL));
+        return entitlementsByPlan.getOrDefault(code, entitlementsByPlan.get(ProfessionalPlanCode.CORE));
     }
 
     /**
      * Ejecuta la logica de professional entitlements manteniendola encapsulada en este componente.
      */
-    private ProfessionalPlanEntitlements professionalEntitlements() {
-        return new ProfessionalPlanEntitlements(
-            1,
-            1,
-            3,
-            1,
-            15,
-            PublicProfileTier.ENHANCED,
-            ScheduleTier.DAILY,
-            AnalyticsTier.NONE,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false
-        );
-    }
-
-    /**
-     * Ejecuta la logica de local entitlements manteniendola encapsulada en este componente.
-     */
-    private ProfessionalPlanEntitlements localEntitlements() {
+    private ProfessionalPlanEntitlements coreEntitlements() {
         return new ProfessionalPlanEntitlements(
             1,
             1,
@@ -78,15 +46,15 @@ public class ProfessionalPlanPolicyService {
             1,
             30,
             PublicProfileTier.ENHANCED,
-            ScheduleTier.WEEKLY,
-            AnalyticsTier.BASIC,
+            ScheduleTier.MASTER,
+            AnalyticsTier.NONE,
             true,
-            true,
-            true,
-            true,
-            true,
-            true,
-            true,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
             false,
             false,
             false,
@@ -96,38 +64,6 @@ public class ProfessionalPlanPolicyService {
             false,
             false,
             false
-        );
-    }
-
-    /**
-     * Ejecuta la logica de enterprise entitlements manteniendola encapsulada en este componente.
-     */
-    private ProfessionalPlanEntitlements enterpriseEntitlements() {
-        return new ProfessionalPlanEntitlements(
-            PRACTICAL_UNLIMITED,
-            PRACTICAL_UNLIMITED,
-            10,
-            1,
-            PRACTICAL_UNLIMITED,
-            PublicProfileTier.ENHANCED,
-            ScheduleTier.MASTER,
-            AnalyticsTier.ADVANCED,
-            true,
-            true,
-            true,
-            true,
-            true,
-            true,
-            true,
-            true,
-            true,
-            true,
-            true,
-            true,
-            true,
-            true,
-            true,
-            true
         );
     }
 }

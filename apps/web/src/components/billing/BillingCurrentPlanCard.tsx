@@ -16,8 +16,8 @@ type BillingCurrentPlanCardProps = {
   showVerifyStatusButton: boolean;
   isVerifyingStatus: boolean;
   capabilities: string[];
-  onCancel: () => void;
-  onBrowsePlans: () => void;
+  onCancel?: () => void;
+  onBrowsePlans?: () => void;
   onVerifyStatus: () => void;
 };
 
@@ -61,7 +61,7 @@ function BillingCurrentPlanCard({
               {plan.label}
             </h2>
             <p className="mt-2 text-sm text-[#64748B]">
-              Gestiona tu nivel actual, la proxima renovacion y el cambio de plan sin salir del dashboard.
+              Suscripcion unica para operar reservas, agenda, pagina publica, servicios y dashboard.
             </p>
           </div>
 
@@ -82,7 +82,7 @@ function BillingCurrentPlanCard({
 
           <div className="mt-5">
             <p className="text-xs uppercase tracking-[0.3em] text-[#94A3B8]">
-              Beneficios activos
+              Core activo
             </p>
             <div className="mt-3 flex flex-wrap gap-2">
               {capabilities.length > 0 ? (
@@ -96,7 +96,7 @@ function BillingCurrentPlanCard({
                 ))
               ) : (
                 <span className="text-sm text-[#64748B]">
-                  Este plan no habilita capacidades extra dentro del dashboard.
+                  Plura Core mantiene activos los modulos operativos del MVP.
                 </span>
               )}
             </div>
@@ -104,14 +104,6 @@ function BillingCurrentPlanCard({
         </div>
 
         <div className="flex w-full max-w-sm flex-col gap-3">
-          <Button
-            type="button"
-            size="lg"
-            variant="primary"
-            onClick={onBrowsePlans}
-          >
-            Cambiar plan
-          </Button>
           {showVerifyStatusButton ? (
             <Button
               type="button"

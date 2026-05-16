@@ -37,10 +37,7 @@ public class EffectiveProfessionalPlanService {
 
         return subscriptionRepository.findByProfessionalId(profile.getId())
             .filter(this::isSubscriptionActiveForCapabilities)
-            .map(subscription -> {
-                ProfessionalPlanCode code = SubscriptionPlanMapper.toProfessionalPlan(subscription.getPlan());
-                return new EffectiveProfessionalPlan(code, professionalPlanPolicyService.entitlementsFor(code));
-            })
+            .map(subscription -> resolveDefault())
             .orElseGet(this::resolveDefault);
     }
 
@@ -48,7 +45,7 @@ public class EffectiveProfessionalPlanService {
      * Resuelve default normalizando entradas, defaults y casos borde.
      */
     public EffectiveProfessionalPlan resolveDefault() {
-        ProfessionalPlanCode code = ProfessionalPlanCode.PROFESSIONAL;
+        ProfessionalPlanCode code = ProfessionalPlanCode.CORE;
         return new EffectiveProfessionalPlan(code, professionalPlanPolicyService.entitlementsFor(code));
     }
 

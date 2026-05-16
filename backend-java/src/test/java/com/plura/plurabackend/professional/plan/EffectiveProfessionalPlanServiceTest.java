@@ -42,7 +42,7 @@ class EffectiveProfessionalPlanServiceTest {
 
         EffectiveProfessionalPlan effectivePlan = service.resolveForProfessional(profile);
 
-        assertEquals(ProfessionalPlanCode.PROFESSIONAL, effectivePlan.code());
+        assertEquals(ProfessionalPlanCode.CORE, effectivePlan.code());
     }
 
     /**
@@ -50,7 +50,7 @@ class EffectiveProfessionalPlanServiceTest {
      * El objetivo es dejar explicita la regla que protege este test.
      */
     @Test
-    void resolvesLocalForActivePlanCode() {
+    void resolvesCoreForActiveLegacyLocalPlanCode() {
         ProfessionalProfile profile = new ProfessionalProfile();
         profile.setId(20L);
         when(subscriptionRepository.findByProfessionalId(20L))
@@ -58,7 +58,7 @@ class EffectiveProfessionalPlanServiceTest {
 
         EffectiveProfessionalPlan effectivePlan = service.resolveForProfessional(profile);
 
-        assertEquals(ProfessionalPlanCode.LOCAL, effectivePlan.code());
+        assertEquals(ProfessionalPlanCode.CORE, effectivePlan.code());
         assertTrue(effectivePlan.entitlements().allowOnlinePayments());
     }
 
@@ -67,7 +67,7 @@ class EffectiveProfessionalPlanServiceTest {
      * El objetivo es dejar explicita la regla que protege este test.
      */
     @Test
-    void resolvesEnterpriseForPremiumPlan() {
+    void resolvesCoreForActiveLegacyEnterprisePlan() {
         ProfessionalProfile profile = new ProfessionalProfile();
         profile.setId(30L);
         when(subscriptionRepository.findByProfessionalId(30L))
@@ -75,9 +75,8 @@ class EffectiveProfessionalPlanServiceTest {
 
         EffectiveProfessionalPlan effectivePlan = service.resolveForProfessional(profile);
 
-        assertEquals(ProfessionalPlanCode.ENTERPRISE, effectivePlan.code());
-        assertTrue(effectivePlan.entitlements().allowStore());
-        assertTrue(effectivePlan.entitlements().allowPortfolio());
+        assertEquals(ProfessionalPlanCode.CORE, effectivePlan.code());
+        assertTrue(effectivePlan.entitlements().allowOnlinePayments());
     }
 
     /**
@@ -94,7 +93,7 @@ class EffectiveProfessionalPlanServiceTest {
 
         EffectiveProfessionalPlan effectivePlan = service.resolveForProfessional(profile);
 
-        assertEquals(ProfessionalPlanCode.PROFESSIONAL, effectivePlan.code());
+        assertEquals(ProfessionalPlanCode.CORE, effectivePlan.code());
     }
 
     private Subscription activeSubscription(SubscriptionPlanCode plan) {

@@ -6,10 +6,8 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { billingPlans, type PaidBillingUiPlanId } from '../../../config/billingPlans';
+import { billingPlans } from '../../../config/billingPlans';
 import {
-  cancelBillingSubscription,
-  createBillingCheckout,
   disconnectProfessionalMercadoPagoConnection,
   fetchCurrentSubscription,
   formatMercadoPagoConnectionDate,
@@ -79,7 +77,7 @@ export default function BillingScreen() {
     return 'Sin suscripcion';
   }, [currentStatus]);
   const currentAmountLabel = useMemo(() => {
-    if (currentPlanId === 'PROFESSIONAL') return currentPlan.priceLabel;
+    if (currentPlanId === 'CORE') return currentPlan.priceLabel;
     return formatBillingAmount(subscription?.amount ?? currentPlan.priceMonthly, subscription?.currency || 'UYU');
   }, [currentPlan, currentPlanId, subscription]);
 
@@ -89,7 +87,7 @@ export default function BillingScreen() {
       return;
     }
 
-    if (currentPlanId === 'PROFESSIONAL' || canUseOnlinePayments) {
+    if (currentPlanId === 'CORE' || canUseOnlinePayments) {
       profileSyncSignatureRef.current = null;
       return;
     }
@@ -140,8 +138,8 @@ export default function BillingScreen() {
     <AppScreen scroll edges={['top']} contentContainerStyle={{ padding: 24, paddingBottom: 144 }}>
         <ScreenHero
           eyebrow="Facturacion"
-          title="Plan y cobros"
-          description="Gestiona tu suscripcion y la conexion con Mercado Pago desde una vista mas clara."
+          title="Core y cobros"
+          description="Plura Core es la suscripcion unica del MVP para operar reservas, agenda, pagina publica y dashboard."
           icon="card-outline"
           badges={[
             { label: currentPlan.label, tone: 'light' },
@@ -151,7 +149,7 @@ export default function BillingScreen() {
 
         <SectionCard style={{ marginTop: 20 }}>
           <Text className="text-xs font-semibold uppercase tracking-[2px] text-gray-500">Estado</Text>
-          <Text className="mt-2 text-lg font-bold text-secondary">Plan actual: {currentPlan.label}</Text>
+          <Text className="mt-2 text-lg font-bold text-secondary">Suscripcion: {currentPlan.label}</Text>
           <Text className="mt-1 text-sm text-gray-500">Estado: {currentStatusLabel}</Text>
           <Text className="mt-1 text-sm text-gray-500">
             Monto: {currentAmountLabel}
@@ -159,71 +157,11 @@ export default function BillingScreen() {
         </SectionCard>
 
         <SectionCard style={{ marginTop: 20 }}>
-          <Text className="text-xs font-semibold uppercase tracking-[2px] text-gray-500">Planes</Text>
-
-          {billingPlans.map((plan) => (
-            <View key={plan.id} className="mt-4 rounded-xl border border-secondary/10 p-4">
-              <View className="flex-row items-center justify-between">
-                <Text className="text-base font-bold text-secondary">{plan.label}</Text>
-                {plan.recommended ? (
-                  <Text className="text-[10px] font-bold text-primary">RECOMENDADO</Text>
-                ) : null}
-              </View>
-              <Text className="mt-1 text-sm text-gray-500">{plan.priceLabel}</Text>
-              <Text className="mt-2 text-xs text-gray-500">{plan.benefits.join(' • ')}</Text>
-
-              {plan.id !== 'PROFESSIONAL' ? (
-                <TouchableOpacity
-                  disabled={isSubmitting || (currentPlanId === plan.id && currentStatus === 'ACTIVE')}
-                  onPress={async () => {
-                    setIsSubmitting(true);
-                    setMessage(null);
-                    try {
-                      const checkout = await createBillingCheckout(plan.id as PaidBillingUiPlanId);
-                      await openMercadoPagoInAppBrowser(checkout.checkoutUrl);
-                      await refreshProfile();
-                      await loadBilling();
-                      setMessage('Checkout cerrado. Refrescamos el estado de tu plan.');
-                    } catch (error) {
-                      setMessage(resolveBackendMessage(error, 'No se pudo iniciar checkout.'));
-                    } finally {
-                      setIsSubmitting(false);
-                    }
-                  }}
-                  className={`mt-3 h-11 items-center justify-center rounded-full ${
-                    currentPlanId === plan.id && currentStatus === 'ACTIVE' ? 'bg-gray-300' : 'bg-secondary'
-                  }`}
-                >
-                  <Text className="font-bold text-white">
-                    {currentPlanId === plan.id && currentStatus === 'ACTIVE' ? 'Plan actual' : `Elegir ${plan.label}`}
-                  </Text>
-                </TouchableOpacity>
-              ) : null}
-            </View>
+          <Text className="text-xs font-semibold uppercase tracking-[2px] text-gray-500">Plura Core</Text>
+          <Text className="mt-2 text-lg font-bold text-secondary">Incluido en el MVP</Text>
+          {billingPlans[0].benefits.map((benefit) => (
+            <Text key={benefit} className="mt-2 text-sm text-gray-500">• {benefit}</Text>
           ))}
-
-          {subscription && currentPlanId !== 'PROFESSIONAL' && currentStatus !== 'CANCELLED' && !subscription.cancelAtPeriodEnd ? (
-            <TouchableOpacity
-              disabled={isSubmitting}
-              onPress={async () => {
-                setIsSubmitting(true);
-                setMessage(null);
-                try {
-                  await cancelBillingSubscription();
-                  setMessage('Cancelacion programada al final del periodo.');
-                  await refreshProfile();
-                  await loadBilling();
-                } catch (error) {
-                  setMessage(resolveBackendMessage(error, 'No se pudo cancelar la suscripcion.'));
-                } finally {
-                  setIsSubmitting(false);
-                }
-              }}
-              className="mt-4 h-11 items-center justify-center rounded-full border border-red-200 bg-red-50"
-            >
-              <Text className="font-bold text-red-600">Cancelar suscripcion</Text>
-            </TouchableOpacity>
-          ) : null}
         </SectionCard>
 
         <SectionCard style={{ marginTop: 20 }}>
@@ -300,10 +238,10 @@ export default function BillingScreen() {
             </>
           ) : (
             <>
-              <Text className="mt-2 text-lg font-bold text-secondary">Disponible desde Local</Text>
-              <Text className="mt-1 text-sm text-gray-500">Tu plan actual no habilita cobros online.</Text>
+              <Text className="mt-2 text-lg font-bold text-secondary">Cobros online proximamente</Text>
+              <Text className="mt-1 text-sm text-gray-500">Esta funcionalidad todavia no esta disponible para esta cuenta.</Text>
               <Text className="mt-2 text-sm text-gray-500">
-                Cuando subas de plan vas a poder conectar tu cuenta de Mercado Pago y cobrar reservas online desde Plura.
+                No hay cambios de plan durante el MVP.
               </Text>
             </>
           )}

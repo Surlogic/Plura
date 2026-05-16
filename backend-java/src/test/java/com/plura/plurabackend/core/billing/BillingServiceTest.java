@@ -8,7 +8,6 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import com.plura.plurabackend.core.billing.dto.BillingCheckoutResponse;
 import com.plura.plurabackend.core.billing.dto.BillingCreateSubscriptionRequest;
 import com.plura.plurabackend.core.billing.mercadopago.MercadoPagoSubscriptionService;
 import com.plura.plurabackend.core.billing.payments.provider.PaymentProviderClient;
@@ -26,8 +25,6 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.ValueSource;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
@@ -82,19 +79,18 @@ class BillingServiceTest {
      * Escenario: bloquea duplicado Mercado Pago checkout cuando remote suscripcion is still open.
      * El objetivo es dejar explicita la regla que protege este test.
      */
-    @ParameterizedTest
-    @ValueSource(strings = {"pending", "authorized", "active", "paused"})
-    void blocksDuplicateMercadoPagoCheckoutWhenRemoteSubscriptionIsStillOpen(String remoteStatus) {
+    @Test
+    void blocksPlanCheckoutDuringCoreMvp() {
         Subscription existing = existingSubscription("preapproval-open");
         when(subscriptionRepository.findByProfessionalIdForUpdate(30L)).thenReturn(Optional.of(existing));
-        when(mercadoPagoSubscriptionService.getSubscription("preapproval-open"))
-            .thenReturn(snapshot("preapproval-open", remoteStatus));
 
         ResponseStatusException error = assertThrows(ResponseStatusException.class, () ->
             service.createSubscription(createRequest(SubscriptionPlanCode.PLAN_LOCAL.canonicalCode()))
         );
 
-        assertEquals(HttpStatus.CONFLICT, error.getStatusCode());
+        assertEquals(HttpStatus.BAD_REQUEST, error.getStatusCode());
+        assertEquals("El cambio de plan no está disponible durante el MVP", error.getReason());
+        verify(subscriptionRepository, never()).findByProfessionalIdForUpdate(30L);
         verify(mercadoPagoSubscriptionService, never()).createSubscription(any());
     }
 
@@ -104,24 +100,12 @@ class BillingServiceTest {
      */
     @Test
     void allowsNewCheckoutWhenPreviousMercadoPagoSubscriptionIsAlreadyCancelled() {
-        Subscription existing = existingSubscription("preapproval-cancelled");
-        when(subscriptionRepository.findByProfessionalIdForUpdate(30L)).thenReturn(Optional.of(existing));
-        when(mercadoPagoSubscriptionService.getSubscription("preapproval-cancelled"))
-            .thenReturn(snapshot("preapproval-cancelled", "cancelled"));
-        when(mercadoPagoSubscriptionService.createSubscription(any()))
-            .thenReturn(new MercadoPagoSubscriptionService.SubscriptionCheckoutSession(
-                "preapproval-new",
-                "https://mp.test/checkout",
-                "plan-pro"
-            ));
+        ResponseStatusException error = assertThrows(ResponseStatusException.class, () ->
+            service.createSubscription(createRequest(SubscriptionPlanCode.PLAN_LOCAL.canonicalCode()))
+        );
 
-        BillingCheckoutResponse response =
-            service.createSubscription(createRequest(SubscriptionPlanCode.PLAN_LOCAL.canonicalCode()));
-
-        assertEquals("https://mp.test/checkout", response.getCheckoutUrl());
-        assertEquals("preapproval-new", existing.getProviderSubscriptionId());
-        assertEquals(SubscriptionStatus.TRIAL, existing.getStatus());
-        verify(mercadoPagoSubscriptionService).createSubscription(any());
+        assertEquals(HttpStatus.BAD_REQUEST, error.getStatusCode());
+        verify(mercadoPagoSubscriptionService, never()).createSubscription(any());
     }
 
     private BillingCreateSubscriptionRequest createRequest(String planCode) {
@@ -146,21 +130,6 @@ class BillingServiceTest {
         subscription.setCurrentPeriodEnd(LocalDateTime.now().plusDays(29));
         subscription.setCancelAtPeriodEnd(false);
         return subscription;
-    }
-
-    private MercadoPagoSubscriptionService.SubscriptionSnapshot snapshot(
-        String providerSubscriptionId,
-        String status
-    ) {
-        return new MercadoPagoSubscriptionService.SubscriptionSnapshot(
-            providerSubscriptionId,
-            status,
-            new BigDecimal("100.00"),
-            "UYU",
-            30L,
-            "pro@plura.com",
-            "Plura PLAN_PRO"
-        );
     }
 
     private ProfessionalProfile professional(Long professionalId, String email) {

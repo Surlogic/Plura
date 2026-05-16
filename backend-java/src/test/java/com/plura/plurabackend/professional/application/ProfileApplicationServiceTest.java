@@ -88,7 +88,10 @@ class ProfileApplicationServiceTest {
             "https://cdn.example/1.jpg",
             "https://cdn.example/2.jpg",
             "https://cdn.example/3.jpg",
-            "https://cdn.example/4.jpg"
+            "https://cdn.example/4.jpg",
+            "https://cdn.example/5.jpg",
+            "https://cdn.example/6.jpg",
+            "https://cdn.example/7.jpg"
         ));
 
         ResponseStatusException exception = assertThrows(
@@ -97,7 +100,7 @@ class ProfileApplicationServiceTest {
         );
 
         assertEquals(HttpStatus.BAD_REQUEST, exception.getStatusCode());
-        assertEquals("Tu plan permite hasta 3 fotos del negocio", exception.getReason());
+        assertEquals("Plura Core permite hasta 6 fotos del negocio", exception.getReason());
     }
 
     /**

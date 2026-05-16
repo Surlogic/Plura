@@ -19,6 +19,7 @@ class SubscriptionPlanCodeTest {
     @Test
     void acceptsCanonicalCodesAndLegacyAliases() {
         assertEquals(SubscriptionPlanCode.PLAN_PROFESSIONAL, SubscriptionPlanCode.fromCode("PLAN_PROFESSIONAL"));
+        assertEquals(SubscriptionPlanCode.PLAN_PROFESSIONAL, SubscriptionPlanCode.fromCode("PLAN_CORE"));
         assertEquals(SubscriptionPlanCode.PLAN_LOCAL, SubscriptionPlanCode.fromCode("PLAN_LOCAL"));
         assertEquals(SubscriptionPlanCode.PLAN_ENTERPRISE, SubscriptionPlanCode.fromCode("PLAN_ENTERPRISE"));
         assertEquals(SubscriptionPlanCode.PLAN_PROFESSIONAL, SubscriptionPlanCode.fromCode("PLAN_BASIC"));

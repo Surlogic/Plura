@@ -22,7 +22,7 @@ public enum SubscriptionPlanCode {
         }
         String normalized = value.trim().toUpperCase(Locale.ROOT);
         return switch (normalized) {
-            case "PLAN_BASIC" -> PLAN_PROFESSIONAL;
+            case "PLAN_CORE", "PLAN_BASIC" -> PLAN_PROFESSIONAL;
             case "PLAN_PRO", "PLAN_PROFESIONAL" -> PLAN_LOCAL;
             case "PLAN_PREMIUM" -> PLAN_ENTERPRISE;
             case "PLAN_PROFESSIONAL" -> PLAN_PROFESSIONAL;

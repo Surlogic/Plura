@@ -69,7 +69,7 @@ public class PlanGuardService {
         if (ProfessionalPlanRank.valueOf(effectivePlan.code()) < ProfessionalPlanRank.valueOf(minimumPlan)) {
             throw new ResponseStatusException(
                 HttpStatus.FORBIDDEN,
-                "Tu plan actual no alcanza para esta funcionalidad"
+                "Esta funcionalidad todavía no está disponible"
             );
         }
     }
@@ -129,7 +129,7 @@ public class PlanGuardService {
         if (entitlements.publicProfileTier().compareTo(minimumTier) < 0) {
             throw new ResponseStatusException(
                 HttpStatus.FORBIDDEN,
-                "Tu plan actual no permite personalizar ese nivel de perfil publico"
+                "Esta funcionalidad todavía no está disponible"
             );
         }
     }
@@ -149,11 +149,7 @@ public class PlanGuardService {
         if (!allowed) {
             throw new ResponseStatusException(
                 HttpStatus.FORBIDDEN,
-                switch (scheduleTier) {
-                    case DAILY -> "Tu plan actual solo permite consultar agenda diaria";
-                    case WEEKLY -> "Tu plan actual solo permite consultar agenda semanal";
-                    case MASTER -> "Tu plan actual no permite ese rango";
-                }
+                "Esta funcionalidad todavía no está disponible"
             );
         }
     }
@@ -167,7 +163,7 @@ public class PlanGuardService {
         if (entitlements.analyticsTier().compareTo(minimumTier) < 0) {
             throw new ResponseStatusException(
                 HttpStatus.FORBIDDEN,
-                "Tu plan actual no permite ese nivel de analytics"
+                "Esta funcionalidad todavía no está disponible"
             );
         }
     }

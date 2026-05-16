@@ -19,32 +19,28 @@ El nucleo de valor validado hoy es:
 Plura tiene dos grandes actores:
 
 - `usuario` o `cliente`: siempre gratis; descubre, reserva, reprograma, cancela segun politica y deja reseñas.
-- `negocio` o `profesional`: entra por un plan gratuito y luego destraba operacion y crecimiento con planes pagos.
+- `negocio` o `profesional`: entra al MVP con una suscripcion unica llamada `Plura Core`.
 
-Definicion cerrada de monetizacion:
+Definicion vigente de monetizacion para MVP:
 
-- el profesional se registra directo en `Profesional`
-- el upgrade aparece dentro del producto cuando necesita una funcion bloqueada
-- `Local` se activa con `30` dias gratis desde la app
-- si deja de pagar, conserva cuenta y datos, pero vuelve al comportamiento base de `Profesional`
-- el modelo principal sigue siendo suscripcion mensual; en reservas prepagas el checkout puede sumar al cliente un cargo de procesamiento segun el servicio para cubrir fee de Mercado Pago + IVA + `1%` de plataforma
+- el profesional/local se registra directo en `Plura Core`
+- no se venden ni se muestran planes por niveles, upgrades a Local/Enterprise ni comparativas de planes
+- `INDEPENDENT` y `LOCAL` no son planes comerciales: son tipos operativos de perfil para definir modalidad, ubicacion, landing y datos publicos
+- el modelo principal sigue siendo suscripcion mensual unica; en reservas prepagas el checkout puede sumar al cliente un cargo de procesamiento segun el servicio para cubrir fee de Mercado Pago + IVA + `1%` de plataforma
 
 ## Planes de producto
 
-Naming objetivo de negocio:
+Naming vigente de negocio:
 
 - `Usuario`: gratis
-- `Profesional`: puerta de entrada operativa
-- `Local`: operar mejor con una sola agenda activa
-- `Enterprise`: crecer con equipo, fidelizacion y automatizacion avanzada
+- `Plura Core`: suscripcion unica para profesionales y locales durante el MVP
+- `Enterprise`: futuro/personalizado para empresas con varios locales, sin UI ni opcion de compra actual
 
-Contratos actuales:
+Contratos actuales de compatibilidad:
 
-- `Profesional` <-> `PROFESSIONAL`
-- `Local` <-> `LOCAL`
-- `Enterprise` <-> `ENTERPRISE`
-
-Los contratos legacy `BASIC` y `PROFESIONAL` quedan solo como aliases de lectura transicional para no romper datos viejos.
+- `Plura Core` <-> `CORE`
+- `PROFESSIONAL`, `LOCAL` y `ENTERPRISE` quedan como aliases legacy internos de lectura para no romper datos existentes
+- `BASIC`, `PROFESIONAL`, `PLAN_PRO`, `PLAN_PREMIUM` y otros codigos viejos quedan solo como aliases transicionales
 
 ## Alcance por plan
 
@@ -61,69 +57,50 @@ Siempre gratis. Objetivo: bajar friccion para reservar y volver.
 - notificaciones de reserva y cambios en app con email de respaldo
 - acceso a beneficios activados por el negocio como puntos, gift cards, paquetes o ultima hora
 
-### Profesional
+### Plura Core
 
-Plan de entrada para validar valor real sin regalar toda la operacion.
+Suscripcion unica para el MVP operativo de profesionales y locales.
 
 - una sola agenda activa
 - un solo profesional activo
 - un solo local
 - perfil publico con logo, banner y textos visibles
-- hasta `3` fotos de galeria del negocio
-- hasta `15` servicios publicos con nombre, duracion, precio y `1` foto por servicio
+- hasta `6` fotos de galeria del negocio
+- hasta `30` servicios publicos con nombre, duracion, precio y `1` foto por servicio
 - agenda completa en dashboard web
+- calendario, horarios y bloqueos
 - bloqueo de horarios
 - confirmacion y cancelacion desde panel
+- reprogramacion basica
 - carga manual de turnos
 - aparicion en marketplace
 - recepcion de reservas desde Plura
 - notificaciones in-app y recordatorio basico
+- pagina publica / landing y dashboard profesional/local
+- pagos online con Mercado Pago si la integracion esta configurada
 
 Lectura operativa actual:
 
-- `Profesional/PROFESSIONAL` ya puede usar la agenda del dashboard sin bloqueos de vista semanal o mensual
-- `Profesional/PROFESSIONAL` debe poder entrar a `/profesional/dashboard/reservas`, ver reservas operativas y ejecutar acciones base desde panel segun estado y politica
+- `Plura Core/CORE` ya puede usar la agenda del dashboard sin bloqueos de vista semanal o mensual
+- `Plura Core/CORE` debe poder entrar a `/profesional/dashboard/reservas`, ver reservas operativas y ejecutar acciones base desde panel segun estado y politica
 - en `/profesional/dashboard`, incluso con `scheduleTier=DAILY`, la semana visible debe cargar y mostrar todas las reservas no canceladas del rango visible para no marcar huecos falsos ni permitir lectura engañosa de disponibilidad
 - la agenda profesional web diferencia visualmente `pending`, `confirmed`, `completed` y `no_show` con color por estado tanto en la grilla semanal como en el resumen mensual; `cancelled` no se renderiza en agenda
 - la agenda semanal del dashboard usa base completa de `24h` con scroll vertical interno, pero el viewport visible muestra aproximadamente `12h`; el foco inicial inteligente usa horario laboral y reservas visibles, y el fallback solo define a que franja abrir si faltan datos
 - en desktop, `/profesional/dashboard` prioriza layout estable y agenda visible: mantiene scroll de pagina normal para la pantalla completa y reserva el scroll interno al cuerpo de la agenda semanal, evitando truncar la grilla por un shell full-height demasiado estricto
 
-Bloqueos esperados en producto:
+Extras futuros no vendidos ni visibles como plan ahora:
 
-- sin pagos online
-- sin ficha de cliente
+- ficha de cliente
 - sin analytics
 - sin chat interno
 - sin multiequipo
 - sin automatizaciones avanzadas
 - sin portfolio avanzado (galería básica ya existe), puntos, ultima hora, paquetes, tienda ni badge verificado
 
-### Local
-
-Plan para ahorrar tiempo y profesionalizar una sola agenda activa. Precio objetivo actual: `$590 UYU / mes`.
-
-- todo lo de `Profesional`
-- hasta `6` fotos de galeria del negocio
-- hasta `30` servicios publicos con `1` foto por servicio
-- perfil publico con portada, logo, descripcion larga, mapa y metodos de pago
-- pagos online configurables y cobro en local o al reservar
-- historial completo y reprogramacion mas completa
-- ficha del cliente, notas, historial de visitas y seguimiento basico
-- analytics basicos
-- automatizaciones transaccionales in-app y email
-- chat interno cliente-negocio
-
-Limite clave:
-
-- sigue siendo un plan para una sola agenda activa
-
 ### Enterprise
 
-Plan para crecimiento, reputacion visual y operacion multiequipo. Precio objetivo actual: `$1.290 UYU / mes`.
+Futuro/personalizado para empresas con varios locales. No se muestra en UI ni existe como opcion de compra actual.
 
-- todo lo de `Local`
-- hasta `10` fotos de galeria del negocio
-- servicios publicos ilimitados
 - multiples profesionales y multiples locales
 - agenda maestra
 - reportes por profesional y por local
@@ -258,8 +235,8 @@ Senales que condicionan el roadmap:
 Conclusion operativa:
 
 - el MVP tiene que demostrar agenda, confirmacion y reserva real
-- `Local` debe justificar pago con ahorro de tiempo y mejor operacion
-- `Enterprise` debe concentrar crecimiento, fidelizacion y multi-sede o multi-profesional
+- `Plura Core` debe justificar pago con ahorro de tiempo y mejor operacion
+- `Enterprise` queda como linea futura/personalizada para multi-sede o multi-profesional
 
 ## Roadmap de producto recomendado
 
@@ -278,13 +255,13 @@ Objetivo: validar reservas reales.
 - estados del turno
 - notificaciones in-app
 
-### Fase 2 - Operacion Local
+### Fase 2 - Operacion Core
 
 Objetivo: hacer que pagar ordene la operacion.
 
 - pagos online
 - agenda semanal
-- ficha del cliente
+- ficha del cliente si se define como add-on futuro
 - historial
 - reprogramacion
 - analytics basicos
@@ -303,7 +280,7 @@ Objetivo: aumentar recurrencia y valor percibido.
 
 ### Fase 4 - Enterprise
 
-Objetivo: construir el plan Enterprise real.
+Objetivo: construir la oferta Enterprise personalizada futura.
 
 - portfolio visual
 - fidelizacion
@@ -335,7 +312,7 @@ Objetivo: abrir nuevos motores de crecimiento sin romper el nucleo.
 
 ### Mediano plazo
 
-- web completa con planes antes de `2026-04-30`
+- web completa con Plura Core antes de `2026-04-30`
 - app mobile completa antes de `2026-05-31`
 - mas de `500` profesionales en Montevideo y `1000` en Uruguay antes de `2026-07-01`
 - oficina antes de `2026-08-01`
@@ -383,10 +360,10 @@ Capacidades de producto definidas pero no necesariamente cerradas en UI o API pu
 - onboarding inicial del negocio
 - timeline cliente dentro del detalle de reserva
 - respuesta publica del negocio a reseñas (reseñas ya cerradas con moderacion, ocultamiento y analytics en backend + web)
-- analytics de producto y reporting orientado a plan; ademas ya existe una primera capa interna de `Ops Analytics` separada de cliente/profesional para negocio y marketplace
-- bloqueo visible de features por plan dentro de toda la experiencia
-- funciones Enterprise como multi-profesional, fidelizacion, ultima hora, portfolio y tienda
-- base backend inicial de multitrabajador Enterprise: schema `professional_worker` + `professional_worker_service`, `worker_id` opcional en reservas/slots, trabajador dueño backfilleado para cada local existente, endpoints admin `/profesional/team*` para invitar/listar/editar agenda/servicios y endpoints publicos `/auth/worker-invitations*` para aceptar invitaciones; todavia falta conectar disponibilidad publica, reserva por trabajador, dashboards de trabajador y login unificado por contexto
+- analytics de producto y reporting interno; analytics comerciales para profesionales quedan fuera de Core
+- add-ons futuros sin bloqueo visible por plan comercial
+- funciones futuras como multi-profesional, fidelizacion, ultima hora, portfolio avanzado y tienda
+- base backend inicial de multitrabajador futuro: schema `professional_worker` + `professional_worker_service`, `worker_id` opcional en reservas/slots, trabajador dueño backfilleado para cada local existente, endpoints admin `/profesional/team*` para invitar/listar/editar agenda/servicios y endpoints publicos `/auth/worker-invitations*` para aceptar invitaciones; todavia falta conectar disponibilidad publica, reserva por trabajador, dashboards de trabajador y login unificado por contexto
 
 ## Arquitectura resumida
 

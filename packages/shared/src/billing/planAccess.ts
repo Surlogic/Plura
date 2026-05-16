@@ -1,23 +1,24 @@
 import type { ProfessionalPlanCode } from '../types/professional';
 
 const PLAN_ORDER: Record<ProfessionalPlanCode, number> = {
+  CORE: 0,
   PROFESSIONAL: 0,
-  LOCAL: 1,
-  ENTERPRISE: 2,
+  LOCAL: 0,
+  ENTERPRISE: 0,
 };
 
 export const normalizeProfessionalPlanCode = (
   plan: ProfessionalPlanCode | string | undefined | null,
 ): ProfessionalPlanCode | null => {
   switch (plan?.toUpperCase()) {
+    case 'CORE':
+      return 'CORE';
     case 'BASIC':
     case 'PROFESSIONAL':
-      return 'PROFESSIONAL';
     case 'PROFESIONAL':
     case 'LOCAL':
-      return 'LOCAL';
     case 'ENTERPRISE':
-      return 'ENTERPRISE';
+      return 'CORE';
     default:
       return null;
   }
@@ -36,17 +37,14 @@ export const nextPlanFor = (
   currentPlan: ProfessionalPlanCode | string | undefined | null,
 ): ProfessionalPlanCode | null => {
   switch (normalizeProfessionalPlanCode(currentPlan)) {
-    case 'PROFESSIONAL':
-      return 'LOCAL';
-    case 'LOCAL':
-      return 'ENTERPRISE';
     default:
       return null;
   }
 };
 
 export const PLAN_LABELS: Record<ProfessionalPlanCode, string> = {
-  PROFESSIONAL: 'Profesional',
-  LOCAL: 'Local',
-  ENTERPRISE: 'Enterprise',
+  CORE: 'Plura Core',
+  PROFESSIONAL: 'Plura Core',
+  LOCAL: 'Plura Core',
+  ENTERPRISE: 'Plura Core',
 };

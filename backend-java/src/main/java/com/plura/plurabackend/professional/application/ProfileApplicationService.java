@@ -230,7 +230,7 @@ public class ProfileApplicationService {
             if (cleaned.size() > maxBusinessPhotos) {
                 throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
-                    "Tu plan permite hasta " + maxBusinessPhotos + " fotos del negocio"
+                    "Plura Core permite hasta " + maxBusinessPhotos + " fotos del negocio"
                 );
             }
             profile.getPublicPhotos().clear();

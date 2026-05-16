@@ -1,8 +1,7 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useRef } from 'react';
 import ProfessionalDashboardShell from '@/components/profesional/dashboard/ProfessionalDashboardShell';
-import Button from '@/components/ui/Button';
 import {
   DashboardHeaderBadge,
   DashboardPageHeader,
@@ -10,11 +9,8 @@ import {
   DashboardStatCard,
 } from '@/components/profesional/dashboard/DashboardUI';
 import BillingCurrentPlanCard from '@/components/billing/BillingCurrentPlanCard';
-import BillingFeatureComparison from '@/components/billing/BillingFeatureComparison';
-import BillingPlansGrid from '@/components/billing/BillingPlansGrid';
 import BillingStatusBanner from '@/components/billing/BillingStatusBanner';
 import MercadoPagoConnectionCard from '@/components/billing/MercadoPagoConnectionCard';
-import MercadoPagoUpgradeCard from '@/components/billing/MercadoPagoUpgradeCard';
 import { resolveProfessionalFeatureAccess } from '@/lib/billing/featureGuards';
 import { getMercadoPagoConnectionStatusCopy } from '@/lib/billing/professionalMercadoPagoConnection';
 import { useProfessionalMercadoPagoConnection } from '@/hooks/useProfessionalMercadoPagoConnection';
@@ -23,36 +19,28 @@ import { useProfessionalBilling } from '@/hooks/useProfessionalBilling';
 
 export default function ProfesionalBillingPage() {
   const { profile, isLoading, hasLoaded, refreshProfile } = useProfessionalProfile();
-  const plansRef = useRef<HTMLDivElement | null>(null);
   const planDetailsRef = useRef<HTMLDivElement | null>(null);
   const paymentsSectionRef = useRef<HTMLElement | null>(null);
-  const [showDeferredPlanDetails, setShowDeferredPlanDetails] = useState(false);
-  const [showPaymentsSection, setShowPaymentsSection] = useState(false);
   const featureAccess = resolveProfessionalFeatureAccess(profile);
   const canUseOnlinePayments = featureAccess.onlinePayments;
   const shouldLoadMercadoPagoConnection =
     Boolean(profile?.id)
     && canUseOnlinePayments
-    && showPaymentsSection;
+    && true;
 
   const {
     subscription,
     currentPlan,
-    currentPlanId,
     currentStatus,
     currentStatusLabel,
     currentStatusClassName,
     renewalLabel,
     currentAmountLabel,
     enabledCapabilities,
-    plans,
     banner,
-    isLoading: isLoadingBilling,
     isCancelling,
-    isRedirectingToCheckout,
     hasPendingCheckout,
     isRefreshingSubscriptionStatus,
-    handleSelectPlan,
     dismissBanner,
     refreshSubscriptionStatus,
   } = useProfessionalBilling({
@@ -75,72 +63,12 @@ export default function ProfesionalBillingPage() {
   );
 
   const connectionCopy = getMercadoPagoConnectionStatusCopy(connection);
-  const mercadoPagoBadge = canUseOnlinePayments ? connectionCopy.badge : 'Disponible desde Local';
+  const mercadoPagoBadge = canUseOnlinePayments ? connectionCopy.badge : 'Proximamente';
   const mercadoPagoTitle = canUseOnlinePayments
     ? connectionCopy.title
-    : 'Tu plan actual no habilita cobros online';
+    : 'Cobros online proximamente';
 
   const showSkeleton = !hasLoaded || (isLoading && !profile);
-
-  useEffect(() => {
-    if (showDeferredPlanDetails) return undefined;
-    if (typeof window === 'undefined') return undefined;
-
-    let timeoutId: number | null = null;
-    let idleId: number | null = null;
-
-    const reveal = () => setShowDeferredPlanDetails(true);
-
-    if (typeof window.requestIdleCallback === 'function') {
-      idleId = window.requestIdleCallback(() => reveal(), { timeout: 300 });
-    } else {
-      timeoutId = window.setTimeout(reveal, 180);
-    }
-
-    return () => {
-      if (idleId !== null && typeof window.cancelIdleCallback === 'function') {
-        window.cancelIdleCallback(idleId);
-      }
-      if (timeoutId !== null) {
-        window.clearTimeout(timeoutId);
-      }
-    };
-  }, [showDeferredPlanDetails]);
-
-  useEffect(() => {
-    if (showPaymentsSection || !canUseOnlinePayments) {
-      if (!canUseOnlinePayments) {
-        setShowPaymentsSection(true);
-      }
-      return undefined;
-    }
-
-    const section = paymentsSectionRef.current;
-    if (!section || typeof IntersectionObserver === 'undefined') {
-      setShowPaymentsSection(true);
-      return undefined;
-    }
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries.some((entry) => entry.isIntersecting)) {
-          setShowPaymentsSection(true);
-          observer.disconnect();
-        }
-      },
-      { rootMargin: '240px 0px' },
-    );
-
-    observer.observe(section);
-    return () => observer.disconnect();
-  }, [canUseOnlinePayments, showPaymentsSection]);
-
-  const scrollToPlans = useCallback(() => {
-    plansRef.current?.scrollIntoView({
-      behavior: 'smooth',
-      block: 'start',
-    });
-  }, []);
 
   const handleDisconnectMercadoPago = useCallback(async () => {
     const confirmed = window.confirm(
@@ -150,17 +78,9 @@ export default function ProfesionalBillingPage() {
     await disconnect();
   }, [disconnect]);
 
-  const handleCancelPlan = useCallback(() => {
-    void handleSelectPlan('PROFESSIONAL');
-  }, [handleSelectPlan]);
-
   const handleVerifyBillingStatus = useCallback(() => {
     void refreshSubscriptionStatus();
   }, [refreshSubscriptionStatus]);
-
-  const handleSelectBillingPlan = useCallback((planId: typeof currentPlanId) => {
-    void handleSelectPlan(planId);
-  }, [handleSelectPlan]);
 
   const handleStartMercadoPagoOAuth = useCallback(() => {
     void startOAuth();
@@ -179,12 +99,12 @@ export default function ProfesionalBillingPage() {
       <div className="space-y-6">
               <DashboardPageHeader
                 eyebrow="Facturación"
-                title="Facturación y cobros"
-                description="Mantené separado el plan de Plura de la cuenta de Mercado Pago usada para cobrar reservas."
+                title="Suscripción Core y cobros"
+                description="Plura Core es la suscripción única del MVP para operar reservas, agenda, página pública y dashboard."
                 meta={
                   <>
                     <DashboardHeaderBadge tone="accent">
-                      Plan {currentPlan.label}
+                      {currentPlan.label}
                     </DashboardHeaderBadge>
                     <DashboardHeaderBadge tone={connection?.connected ? 'success' : 'default'}>
                       Cobros: {mercadoPagoBadge}
@@ -244,14 +164,14 @@ export default function ProfesionalBillingPage() {
                     <DashboardStatCard
                       label="Plan actual"
                       value={currentPlan.label}
-                      detail="Tu nivel vigente dentro de Plura"
+                      detail="Suscripción única del MVP"
                       icon="plan"
                       tone="accent"
                     />
                     <DashboardStatCard
                       label="Suscripción"
                       value={currentStatusLabel}
-                      detail={subscription?.cancelAtPeriodEnd ? 'Cancelación al fin del período' : 'Estado comercial del plan'}
+                      detail={subscription?.cancelAtPeriodEnd ? 'Cancelación al fin del período' : 'Estado comercial de Core'}
                       icon={currentStatus === 'ACTIVE' || currentStatus === 'NONE' ? 'spark' : 'warning'}
                       tone={currentStatus === 'ACTIVE' || currentStatus === 'NONE' ? 'default' : 'warm'}
                     />
@@ -265,7 +185,7 @@ export default function ProfesionalBillingPage() {
                     <DashboardStatCard
                       label="Capacidades activas"
                       value={String(enabledCapabilities.length)}
-                      detail="Funciones habilitadas por tu plan"
+                      detail="Extras operativos disponibles"
                       icon="reservas"
                       tone="default"
                     />
@@ -274,7 +194,7 @@ export default function ProfesionalBillingPage() {
                   <section ref={planDetailsRef} className="space-y-4">
                     <DashboardSectionHeading
                       title="Mi plan de Plura"
-                      description="Esta sección representa tu suscripción a Plura. No mezcla la cuenta que usás para cobrar reservas."
+                      description="Core concentra la operación inicial de Plura. No hay niveles ni cambios de plan visibles en el MVP."
                     />
 
                     <BillingCurrentPlanCard
@@ -286,96 +206,38 @@ export default function ProfesionalBillingPage() {
                       providerLabel={subscription?.provider || 'No aplica'}
                       cancelAtPeriodEnd={Boolean(subscription?.cancelAtPeriodEnd)}
                       canCancel={
-                        Boolean(subscription)
-                        && currentPlanId !== 'PROFESSIONAL'
-                        && currentStatus !== 'CANCELLED'
-                        && !subscription?.cancelAtPeriodEnd
+                        false
                       }
                       isCancelling={isCancelling}
                       capabilities={enabledCapabilities.map((feature) => feature.label)}
                       showVerifyStatusButton={hasPendingCheckout}
                       isVerifyingStatus={isRefreshingSubscriptionStatus}
-                      onCancel={handleCancelPlan}
-                      onBrowsePlans={scrollToPlans}
                       onVerifyStatus={handleVerifyBillingStatus}
                     />
-
-                    {showDeferredPlanDetails ? (
-                      <>
-                        <BillingFeatureComparison currentPlanId={currentPlanId} />
-
-                        <section
-                          id="billing-plans"
-                          ref={plansRef}
-                          className="rounded-[18px] border border-white/70 bg-white/95 p-5 shadow-[0_4px_14px_rgba(15,23,42,0.04)]"
-                        >
-                          <DashboardSectionHeading
-                            title="Planes disponibles"
-                            description="Profesional funciona como base gratuita. Local y Enterprise abren checkout en Mercado Pago para la suscripción de Plura."
-                            action={isLoadingBilling ? (
-                              <span className="text-xs font-semibold text-[#94A3B8]">
-                                Cargando...
-                              </span>
-                            ) : null}
-                          />
-
-                          <div className="mt-5">
-                            <BillingPlansGrid
-                              plans={plans}
-                              currentPlanId={currentPlanId}
-                              currentSubscriptionStatus={currentStatus}
-                              cancelAtPeriodEnd={Boolean(subscription?.cancelAtPeriodEnd)}
-                              isBusy={isCancelling || isRedirectingToCheckout}
-                              onSelectPlan={handleSelectBillingPlan}
-                            />
-                          </div>
-                        </section>
-                      </>
-                    ) : (
-                      <div className="rounded-[18px] border border-white/70 bg-white/95 p-5 shadow-[0_4px_14px_rgba(15,23,42,0.04)]">
-                        <div className="h-5 w-40 rounded-full bg-[#E2E7EC]" />
-                        <div className="mt-4 space-y-3">
-                          <div className="h-24 rounded-[20px] bg-[#F1F5F9]" />
-                          <div className="h-40 rounded-[20px] bg-[#F1F5F9]" />
-                        </div>
-                      </div>
-                    )}
                   </section>
 
                   <section ref={paymentsSectionRef} className="space-y-4">
                     <DashboardSectionHeading
                       title="Cobros de reservas con Mercado Pago"
                       description={canUseOnlinePayments
-                        ? 'Esta sección representa la cuenta del profesional para cobrar reservas online. No cambia tu plan de Plura.'
-                        : 'Esta sección queda disponible cuando tu plan habilita pagos online. No cambia tu suscripción a Plura.'}
+                        ? 'Conectá la cuenta del profesional para cobrar reservas online. Esto no cambia tu suscripción Core.'
+                        : 'Cobros online queda como extra no disponible en el MVP para esta cuenta.'}
                     />
 
                     {canUseOnlinePayments ? (
-                      showPaymentsSection ? (
-                        <MercadoPagoConnectionCard
-                          connection={connection}
-                          isLoading={isLoadingConnection}
-                          isStartingOAuth={isStartingOAuth}
-                          isDisconnecting={isDisconnecting}
-                          onConnect={handleStartMercadoPagoOAuth}
-                          onDisconnect={handleDisconnectMercadoPagoConnection}
-                          onRefresh={handleRefreshMercadoPagoConnection}
-                        />
-                      ) : (
-                        <div className="rounded-[18px] border border-white/70 bg-white/95 p-5 shadow-[0_4px_14px_rgba(15,23,42,0.04)]">
-                          <div className="h-5 w-56 rounded-full bg-[#E2E7EC]" />
-                          <div className="mt-4 grid gap-4 sm:grid-cols-3">
-                            <div className="h-24 rounded-[20px] bg-[#F1F5F9]" />
-                            <div className="h-24 rounded-[20px] bg-[#F1F5F9]" />
-                            <div className="h-24 rounded-[20px] bg-[#F1F5F9]" />
-                          </div>
-                        </div>
-                      )
-                    ) : (
-                      <MercadoPagoUpgradeCard
-                        currentPlanLabel={currentPlan.label}
-                        onBrowsePlans={scrollToPlans}
+                      <MercadoPagoConnectionCard
+                        connection={connection}
+                        isLoading={isLoadingConnection}
+                        isStartingOAuth={isStartingOAuth}
+                        isDisconnecting={isDisconnecting}
+                        onConnect={handleStartMercadoPagoOAuth}
+                        onDisconnect={handleDisconnectMercadoPagoConnection}
+                        onRefresh={handleRefreshMercadoPagoConnection}
                       />
+                    ) : (
+                      <div className="rounded-[18px] border border-white/70 bg-white/95 p-5 text-sm text-[#64748B] shadow-[0_4px_14px_rgba(15,23,42,0.04)]">
+                        Cobros online proximamente.
+                      </div>
                     )}
                   </section>
                 </div>

@@ -675,14 +675,14 @@ export default function ProfesionalSettingsPage() {
                       <div className={sectionCardClassName}>
                         <DashboardSectionHeading
                           title="Facturación"
-                          description="Plan, suscripcion, cambios de nivel y seguimiento del webhook ahora viven en una seccion dedicada."
+                          description="Suscripción Core, cobros y seguimiento del estado comercial viven en una sección dedicada."
                         />
                         <div className="mt-4 rounded-[18px] border border-[color:var(--border-soft)] bg-[color:var(--surface-soft)] p-4">
                           <p className="text-sm font-semibold text-[color:var(--ink)]">
                             Gestion comercial separada del resto de la cuenta
                           </p>
                           <p className="mt-1 text-sm text-[color:var(--ink-muted)]">
-                            Usa Facturación para cambiar a Profesional, abrir checkout de Local o Enterprise y seguir la activación del pago.
+                            Usa Facturación para revisar Plura Core, el estado de suscripción y la conexión de cobros.
                           </p>
                           <Button
                             href="/profesional/dashboard/billing"

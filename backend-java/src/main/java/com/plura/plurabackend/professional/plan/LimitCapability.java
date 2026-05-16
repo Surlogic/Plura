@@ -49,6 +49,6 @@ public enum LimitCapability {
      * Ejecuta la logica de exceeded message manteniendola encapsulada en este componente.
      */
     public String exceededMessage(int limit) {
-        return "Tu plan permite hasta " + limit + " " + label;
+        return "Plura Core permite hasta " + limit + " " + label;
     }
 }

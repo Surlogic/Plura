@@ -3,7 +3,7 @@ import Image from 'next/image';
 import { memo, useEffect, useMemo, useRef } from 'react';
 import type { ProfessionalProfile } from '@/types/professional';
 import type { ProfessionalPlanCode } from '../../../../../packages/shared/src/types/professional';
-import { hasPlanAccess, PLAN_LABELS } from '../../../../../packages/shared/src/billing/planAccess';
+import { hasPlanAccess } from '../../../../../packages/shared/src/billing/planAccess';
 import {
   canAccessProfessionalFeature,
   requiredPlanForFeature,
@@ -46,11 +46,6 @@ const menuSections: MenuSection[] = [
         href: '/profesional/dashboard/servicios',
         icon: 'servicios',
         featureKey: 'onlinePayments',
-      },
-      {
-        label: 'Equipo',
-        href: '/profesional/dashboard/equipo',
-        icon: 'equipo',
       },
     ],
   },
@@ -116,9 +111,7 @@ function ProfesionalSidebar({ profile, active }: SidebarProps) {
   const displayMeta = profile?.rubro || 'Cuenta profesional';
   const resolvedLogoUrl = resolveAssetUrl(profile?.logoUrl);
 
-  const planLabel = profile?.professionalPlan
-    ? PLAN_LABELS[profile.professionalPlan]
-    : 'Beta';
+  const planLabel = 'Core';
   const notificationBadgeCount = formatNotificationBadgeCount(unreadNotificationCount);
 
   useEffect(() => {
@@ -233,13 +226,13 @@ function ProfesionalSidebar({ profile, active }: SidebarProps) {
                     {(isLocked && item.requiredPlan) || (showsFeatureHint && hintedPlan) ? (
                       <span
                         className="inline-flex items-center gap-1 rounded-full border border-[color:var(--premium-soft)] bg-[color:var(--premium-soft)] px-2 py-0.5 text-[0.5rem] font-semibold uppercase tracking-[0.1em] text-[color:var(--premium-strong)]"
-                        title={`Disponible en el plan ${PLAN_LABELS[(item.requiredPlan || hintedPlan)!]}`}
+                        title="Funcionalidad no disponible en el MVP"
                       >
                         <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                           <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
                           <path d="M7 11V7a5 5 0 0 1 10 0v4" />
                         </svg>
-                        {PLAN_LABELS[(item.requiredPlan || hintedPlan)!]}
+                        Próximamente
                       </span>
                     ) : null}
                   </>

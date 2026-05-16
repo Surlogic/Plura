@@ -1,11 +1,9 @@
 import { isAxiosError } from 'axios';
 import api from './api';
 import {
-  billingPlanById,
   resolveBillingPlanFromBackendPlanCode,
   resolveBillingPlanFromProfilePlanCode,
   type BillingUiPlanId,
-  type PaidBillingUiPlanId,
 } from '../config/billingPlans';
 import type { ProfessionalPlanCode } from '../types/professional';
 import { isAllowedMercadoPagoUrl } from './mercadoPagoBrowser';
@@ -24,13 +22,6 @@ export type BillingSubscription = {
   currentPeriodEnd: string | null;
   cancelAtPeriodEnd: boolean | null;
   planEnabled: boolean;
-};
-
-type BillingCheckoutResponse = {
-  subscriptionId: string;
-  checkoutUrl: string;
-  provider: string;
-  planCode: string;
 };
 
 export type ProfessionalMercadoPagoConnectionStatus =
@@ -99,28 +90,6 @@ export const fetchCurrentSubscription = async (): Promise<BillingSubscription | 
     }
     throw error;
   }
-};
-
-export const createBillingCheckout = async (
-  planId: PaidBillingUiPlanId,
-): Promise<BillingCheckoutResponse> => {
-  const plan = billingPlanById[planId];
-  const response = await api.post<BillingCheckoutResponse>('/billing/subscription', {
-    planCode: plan.backendPlanCode,
-  });
-
-  if (!isAllowedMercadoPagoUrl(response.data.checkoutUrl)) {
-    throw new Error('URL de checkout no permitida');
-  }
-
-  return response.data;
-};
-
-export const cancelBillingSubscription = async (): Promise<BillingSubscription> => {
-  const response = await api.post<BillingSubscription>('/billing/cancel', {
-    immediate: false,
-  });
-  return response.data;
 };
 
 export const resolveCurrentBillingPlanId = ({
@@ -214,7 +183,7 @@ export const getMercadoPagoConnectionStatusCopy = (
     badge: 'No conectado',
     title: 'Conecta tu cuenta para cobrar reservas online',
     description:
-      'Vincula tu cuenta de Mercado Pago para aceptar pagos de reservas sin mezclarlo con tu plan de Plura.',
+      'Vincula tu cuenta de Mercado Pago para aceptar pagos de reservas sin mezclarlo con tu suscripcion de Plura.',
   };
 };
 

@@ -88,23 +88,10 @@ public class BillingService {
         Long userId = resolveAuthenticatedProfessionalUserId();
         ProfessionalProfile professional = loadEnabledProfessional(userId);
         SubscriptionPlanCode plan = SubscriptionPlanCode.fromCode(request.getPlanCode());
-        try {
-            return createMercadoPagoSubscription(professional, plan);
-        } catch (ResponseStatusException exception) {
-            throw exception;
-        } catch (RuntimeException exception) {
-            LOGGER.error(
-                "Unexpected billing subscription error professionalUserId={} professionalId={} plan={}",
-                userId,
-                professional == null ? null : professional.getId(),
-                plan,
-                exception
-            );
-            throw new ResponseStatusException(
-                HttpStatus.INTERNAL_SERVER_ERROR,
-                "No se pudo iniciar la suscripcion. Revisá que el profesional tenga email valido y que la configuracion de Mercado Pago este completa."
-            );
-        }
+        throw new ResponseStatusException(
+            HttpStatus.BAD_REQUEST,
+            "El cambio de plan no está disponible durante el MVP"
+        );
     }
 
     /**

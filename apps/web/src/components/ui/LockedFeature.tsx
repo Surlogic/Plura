@@ -2,7 +2,7 @@
 
 import { useState, useRef, type ReactNode } from 'react';
 import type { ProfessionalPlanCode } from '../../../../../packages/shared/src/types/professional';
-import { hasPlanAccess, PLAN_LABELS } from '../../../../../packages/shared/src/billing/planAccess';
+import { hasPlanAccess } from '../../../../../packages/shared/src/billing/planAccess';
 import { cn } from '@/components/ui/cn';
 
 type LockedFeatureProps = {
@@ -52,10 +52,10 @@ export default function LockedFeature({
             <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
             <path d="M7 11V7a5 5 0 0 1 10 0v4" />
           </svg>
-          {PLAN_LABELS[requiredPlan]}
+          Próximamente
           {showTooltip && (
             <span className="absolute -bottom-9 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-lg bg-[#0E2A47] px-3 py-1.5 text-[0.6rem] font-medium normal-case tracking-normal text-white shadow-md">
-              Disponible en el plan {PLAN_LABELS[requiredPlan]}
+              Funcionalidad no disponible en el MVP.
             </span>
           )}
         </span>

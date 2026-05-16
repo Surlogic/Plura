@@ -6,16 +6,12 @@ import {
   resolveBillingPlanFromBackendPlanCode,
   resolveBillingPlanFromProfilePlanCode,
   type BillingUiPlanId,
-  type PaidBillingUiPlanId,
 } from '@/config/billingPlans';
 import {
-  armPendingCheckoutReturnState,
   billingStatusClassNames,
   billingStatusLabels,
-  cancelBillingSubscription,
   clearPendingCheckoutState,
   clearPendingCheckoutReturnState,
-  createBillingCheckout,
   fetchCurrentSubscription,
   formatBillingAmount,
   formatBillingDate,
@@ -24,7 +20,6 @@ import {
   resolveBackendMessage,
   resolveCurrentBillingPlanId,
   resolveCurrentBillingStatus,
-  setPendingCheckoutState,
   type BillingSubscription,
 } from '@/lib/billing/billing';
 import { invalidateCachedGet } from '@/services/cachedGet';
@@ -41,15 +36,7 @@ export type BillingBannerState = {
 };
 
 const featureLabels: Array<{ key: string; label: string }> = [
-  { key: 'analyticsTier', label: 'Analytics' },
   { key: 'allowOnlinePayments', label: 'Pagos online' },
-  { key: 'allowAutomations', label: 'Automatizaciones' },
-  { key: 'allowLoyalty', label: 'Fidelizacion' },
-  { key: 'allowStore', label: 'Tienda' },
-  { key: 'allowInternalChat', label: 'Chat' },
-  { key: 'allowClientProfile', label: 'Ficha de cliente' },
-  { key: 'allowVisitHistory', label: 'Historial de visitas' },
-  { key: 'allowPortfolio', label: 'Portfolio visual' },
 ];
 
 const INTENSIVE_POLL_BASE_MS = 5000;
@@ -219,7 +206,6 @@ export function useProfessionalBilling({
     const profilePlanId = resolveBillingPlanFromProfilePlanCode(profile?.professionalPlan);
     const missingOnlinePaymentsEntitlement =
       subscriptionPlanId !== null
-      && subscriptionPlanId !== 'PROFESSIONAL'
       && !profile?.professionalEntitlements?.allowOnlinePayments;
 
     if (subscriptionPlanId === null || (subscriptionPlanId === profilePlanId && !missingOnlinePaymentsEntitlement)) {
@@ -260,7 +246,7 @@ export function useProfessionalBilling({
   );
 
   const renewalLabel = useMemo(() => {
-    if (currentPlanId === 'PROFESSIONAL' && !subscription) return 'No aplica';
+    if (currentPlanId === 'CORE' && !subscription) return 'No aplica';
     if (subscription?.cancelAtPeriodEnd) {
       return subscription.currentPeriodEnd
         ? `Finaliza el ${formatBillingDate(subscription.currentPeriodEnd)}`
@@ -270,7 +256,7 @@ export function useProfessionalBilling({
   }, [currentPlanId, subscription]);
 
   const currentAmountLabel = useMemo(() => {
-    if (currentPlanId === 'PROFESSIONAL') {
+    if (currentPlanId === 'CORE') {
       return currentPlan.priceLabel;
     }
     return formatBillingAmount(
@@ -304,7 +290,7 @@ export function useProfessionalBilling({
       stopPollingCheckout();
       dispatch({
         type: 'SET_BANNER',
-        banner: { tone: 'success', title: 'Suscripcion activada', description: 'Tu plan ya esta disponible en el dashboard.' },
+        banner: { tone: 'success', title: 'Suscripcion activada', description: 'Plura Core ya esta disponible en el dashboard.' },
       });
       await refreshProfessionalCaches(refreshProfileRef.current);
       return;
@@ -580,70 +566,15 @@ export function useProfessionalBilling({
   }, []);
 
   const handleSelectPlan = useCallback(async (planId: BillingUiPlanId) => {
-    if (planId === 'PROFESSIONAL') {
-      if (!subscription || currentPlanId === 'PROFESSIONAL' || subscription.cancelAtPeriodEnd) return;
-
-      const isMercadoPago = subscription.provider?.toUpperCase() === 'MERCADOPAGO';
-      const confirmMessage = isMercadoPago
-        ? 'La suscripcion se cancelara de inmediato y volveras a Profesional. ¿Deseas continuar?'
-        : 'Tu suscripcion seguira activa hasta el fin del periodo actual y luego volvera a Profesional.';
-      const confirmed = window.confirm(confirmMessage);
-      if (!confirmed) return;
-
-      dispatch({ type: 'CANCEL_START' });
-
-      try {
-        const nextSubscription = await cancelBillingSubscription();
-        setSubscription(nextSubscription);
-        await refreshProfessionalCaches(refreshProfileRef.current);
-        dispatch({
-          type: 'CANCEL_END',
-          banner: {
-            tone: 'success',
-            title: isMercadoPago ? 'Suscripcion cancelada' : 'Cambio a Profesional programado',
-            description: isMercadoPago
-              ? 'Tu suscripcion fue cancelada y ahora estas en el plan Profesional.'
-              : nextSubscription.currentPeriodEnd
-                ? `Tu plan superior seguira activo hasta ${formatBillingDate(nextSubscription.currentPeriodEnd)}.`
-                : 'La suscripcion quedo marcada para volver a Profesional al final del periodo.',
-          },
-        });
-      } catch (error) {
-        dispatch({
-          type: 'CANCEL_END',
-          banner: {
-            tone: 'error',
-            title: 'No se pudo cambiar a Profesional',
-            description: resolveBackendMessage(error, 'No se pudo cancelar la suscripcion actual.'),
-          },
-        });
-      }
-      return;
-    }
-
-    dispatch({ type: 'CHECKOUT_REDIRECT_START' });
-
-    try {
-      const response = await createBillingCheckout(planId as PaidBillingUiPlanId);
-      const nextPendingCheckout = {
-        planId: planId as PaidBillingUiPlanId,
-        createdAt: Date.now(),
-      };
-      setPendingCheckoutState(nextPendingCheckout);
-      armPendingCheckoutReturnState();
-      setPendingCheckout(nextPendingCheckout);
-      window.location.href = response.checkoutUrl;
-    } catch (error) {
-      dispatch({
-        type: 'CHECKOUT_REDIRECT_FAIL',
-        banner: {
-          tone: 'error',
-          title: 'No se pudo iniciar el checkout',
-          description: resolveBackendMessage(error, 'No se pudo crear la sesion de pago.'),
-        },
-      });
-    }
-  }, [currentPlanId, subscription]);
+    dispatch({
+      type: 'SET_BANNER',
+      banner: {
+        tone: 'info',
+        title: 'Plura Core es la suscripcion disponible',
+        description: 'Los cambios de plan no estan disponibles durante el MVP.',
+      },
+    });
+  }, []);
 
   const dismissBanner = useCallback(() => {
     dispatch({ type: 'SET_BANNER', banner: null });

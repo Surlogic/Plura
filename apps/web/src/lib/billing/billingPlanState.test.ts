@@ -20,7 +20,7 @@ test('resolveCurrentBillingPlanStateId does not promote a TRIAL subscription bef
     subscription: buildSubscription(),
   });
 
-  assert.equal(currentPlanId, 'PROFESSIONAL');
+  assert.equal(currentPlanId, 'CORE');
 });
 
 test('resolveCurrentBillingPlanStateId keeps the paid plan when the subscription is active', () => {
@@ -31,7 +31,7 @@ test('resolveCurrentBillingPlanStateId keeps the paid plan when the subscription
     }),
   });
 
-  assert.equal(currentPlanId, 'LOCAL');
+  assert.equal(currentPlanId, 'CORE');
 });
 
 test('resolveCurrentBillingPlanStateId keeps the paid plan while cancellation is scheduled', () => {
@@ -43,5 +43,5 @@ test('resolveCurrentBillingPlanStateId keeps the paid plan while cancellation is
     }),
   });
 
-  assert.equal(currentPlanId, 'LOCAL');
+  assert.equal(currentPlanId, 'CORE');
 });

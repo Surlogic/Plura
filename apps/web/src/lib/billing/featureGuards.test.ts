@@ -16,13 +16,13 @@ const buildEntitlements = (
 ): ProfessionalPlanEntitlements => ({
   maxProfessionals: 1,
   maxLocations: 1,
-  maxBusinessPhotos: 3,
+  maxBusinessPhotos: 6,
   maxServiceImagesPerService: 1,
-  maxServices: 15,
+  maxServices: 30,
   publicProfileTier: 'ENHANCED',
-  scheduleTier: 'DAILY',
+  scheduleTier: 'MASTER',
   analyticsTier: 'NONE',
-  allowOnlinePayments: false,
+  allowOnlinePayments: true,
   allowClientProfile: false,
   allowInternalClientNotes: false,
   allowVisitHistory: false,
@@ -55,16 +55,16 @@ const buildProfile = (
   rubro: 'Belleza',
   location: 'Montevideo',
   tipoCliente: 'PROFESSIONAL',
-  professionalPlan: 'PROFESSIONAL',
+  professionalPlan: 'CORE',
   ...overrides,
 });
 
-test('resolveProfessionalFeatureAccess falls back to PROFESSIONAL plan defaults', () => {
+test('resolveProfessionalFeatureAccess falls back to CORE defaults', () => {
   const access = resolveProfessionalFeatureAccess(buildProfile());
 
   assert.deepEqual(access, {
     enhancedPublicProfile: true,
-    onlinePayments: false,
+    onlinePayments: true,
     weeklyCalendarNavigation: true,
     monthlyCalendar: true,
     basicAnalytics: false,
@@ -72,7 +72,7 @@ test('resolveProfessionalFeatureAccess falls back to PROFESSIONAL plan defaults'
   });
 });
 
-test('resolveProfessionalFeatureAccess falls back to LOCAL plan defaults', () => {
+test('resolveProfessionalFeatureAccess treats LOCAL legacy as Core defaults', () => {
   const access = resolveProfessionalFeatureAccess(buildProfile({
     professionalPlan: 'LOCAL',
   }));
@@ -82,12 +82,12 @@ test('resolveProfessionalFeatureAccess falls back to LOCAL plan defaults', () =>
     onlinePayments: true,
     weeklyCalendarNavigation: true,
     monthlyCalendar: true,
-    basicAnalytics: true,
+    basicAnalytics: false,
     advancedAnalytics: false,
   });
 });
 
-test('resolveProfessionalFeatureAccess falls back to ENTERPRISE plan defaults', () => {
+test('resolveProfessionalFeatureAccess treats ENTERPRISE legacy as Core defaults', () => {
   const access = resolveProfessionalFeatureAccess(buildProfile({
     professionalPlan: 'ENTERPRISE',
   }));
@@ -97,8 +97,8 @@ test('resolveProfessionalFeatureAccess falls back to ENTERPRISE plan defaults', 
     onlinePayments: true,
     weeklyCalendarNavigation: true,
     monthlyCalendar: true,
-    basicAnalytics: true,
-    advancedAnalytics: true,
+    basicAnalytics: false,
+    advancedAnalytics: false,
   });
 });
 
@@ -122,15 +122,16 @@ test('resolveProfessionalFeatureAccess prefers entitlements over plan code when 
 });
 
 test('planIncludesProfessionalFeature matches the expected paywall boundaries', () => {
-  assert.equal(planIncludesProfessionalFeature('PROFESSIONAL', 'onlinePayments'), false);
+  assert.equal(planIncludesProfessionalFeature('CORE', 'onlinePayments'), true);
   assert.equal(planIncludesProfessionalFeature('LOCAL', 'onlinePayments'), true);
-  assert.equal(planIncludesProfessionalFeature('PROFESSIONAL', 'weeklyCalendarNavigation'), true);
-  assert.equal(planIncludesProfessionalFeature('PROFESSIONAL', 'monthlyCalendar'), true);
+  assert.equal(planIncludesProfessionalFeature('CORE', 'weeklyCalendarNavigation'), true);
+  assert.equal(planIncludesProfessionalFeature('CORE', 'monthlyCalendar'), true);
   assert.equal(planIncludesProfessionalFeature('LOCAL', 'monthlyCalendar'), true);
   assert.equal(planIncludesProfessionalFeature('ENTERPRISE', 'monthlyCalendar'), true);
+  assert.equal(planIncludesProfessionalFeature('ENTERPRISE', 'advancedAnalytics'), false);
 });
 
 test('requiredPlanForFeature exposes the correct minimum plan', () => {
-  assert.equal(requiredPlanForFeature('enhancedPublicProfile'), 'PROFESSIONAL');
+  assert.equal(requiredPlanForFeature('enhancedPublicProfile'), 'CORE');
   assert.equal(requiredPlanForFeature('advancedAnalytics'), 'ENTERPRISE');
 });

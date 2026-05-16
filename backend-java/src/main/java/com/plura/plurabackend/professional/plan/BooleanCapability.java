@@ -93,6 +93,6 @@ public enum BooleanCapability {
      * Ejecuta la logica de denied message manteniendola encapsulada en este componente.
      */
     public String deniedMessage() {
-        return "Tu plan no permite " + label;
+        return "Este extra no está habilitado";
     }
 }

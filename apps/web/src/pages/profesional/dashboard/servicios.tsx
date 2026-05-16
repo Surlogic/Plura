@@ -319,7 +319,7 @@ export default function ProfesionalServicesBuilderPage() {
   const handleSubmitService = async (): Promise<boolean> => {
     if (isSubmitting) return false;
     if (!editingId && services.length >= maxServices) {
-      setSaveMessage(`Tu plan permite hasta ${maxServices} servicios.`);
+      setSaveMessage(`Plura Core permite hasta ${maxServices} servicios.`);
       setSaveError(true);
       return false;
     }
@@ -331,7 +331,7 @@ export default function ProfesionalServicesBuilderPage() {
 
     if (!canUseOnlinePayments && draft.paymentType !== 'ON_SITE') {
       setSaveMessage(
-        'Tu plan actual no permite seña online ni pago total online. Cambiá la modalidad a pago en el local o actualizá tu plan.',
+        'Los cobros online todavia no estan disponibles para esta cuenta. Cambia la modalidad a pago en el local.',
       );
       setSaveError(true);
       return false;
@@ -886,7 +886,7 @@ export default function ProfesionalServicesBuilderPage() {
                                     onClick={() => {
                                       if (isLockedOption) {
                                         setSaveMessage(
-                                          'Los pagos online se habilitan desde el plan Local.',
+                                          'Los cobros online todavia no estan disponibles para esta cuenta.',
                                         );
                                         setSaveError(true);
                                         return;
@@ -914,7 +914,7 @@ export default function ProfesionalServicesBuilderPage() {
                                             <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
                                             <path d="M7 11V7a5 5 0 0 1 10 0v4" />
                                           </svg>
-                                          Local
+                                          Próximamente
                                         </span>
                                       ) : null}
                                     </div>
@@ -927,7 +927,7 @@ export default function ProfesionalServicesBuilderPage() {
                             </div>
                             {!canUseOnlinePayments ? (
                               <p className="mt-3 rounded-[16px] border border-[color:var(--premium-soft)] bg-[color:var(--premium-soft)] px-3 py-2 text-xs text-[color:var(--premium-strong)]">
-                                La seña online y el prepago total se habilitan en el plan Local.
+                                La seña online y el prepago total todavia no estan disponibles para esta cuenta.
                               </p>
                             ) : null}
                           </div>

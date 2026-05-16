@@ -1,8 +1,6 @@
 import { isAxiosError } from 'axios';
 import api from '@/services/api';
 import {
-  billingPlanById,
-  type PaidBillingUiPlanId,
   type BillingUiPlanId,
 } from '@/config/billingPlans';
 import type { ProfessionalPlanCode } from '@/types/professional';
@@ -24,15 +22,8 @@ export type BillingSubscription = {
   planEnabled: boolean;
 };
 
-type BillingCheckoutResponse = {
-  subscriptionId: string;
-  checkoutUrl: string;
-  provider: string;
-  planCode: string;
-};
-
 type PendingCheckoutState = {
-  planId: PaidBillingUiPlanId;
+  planId: 'LOCAL' | 'ENTERPRISE';
   createdAt: number;
 };
 
@@ -103,48 +94,6 @@ export const fetchCurrentSubscription = async (): Promise<BillingSubscription | 
     }
     throw error;
   }
-};
-
-const ALLOWED_CHECKOUT_DOMAINS = [
-  'https://www.mercadopago.com',
-  'https://www.mercadopago.com.uy',
-  'https://www.mercadopago.com.ar',
-  'https://sandbox.mercadopago.com',
-  'https://sandbox.mercadopago.com.uy',
-  'https://sandbox.mercadopago.com.ar',
-];
-
-const isAllowedCheckoutUrl = (url: string): boolean => {
-  try {
-    const parsed = new URL(url);
-    return ALLOWED_CHECKOUT_DOMAINS.some(
-      (domain) => parsed.origin === new URL(domain).origin,
-    );
-  } catch {
-    return false;
-  }
-};
-
-export const createBillingCheckout = async (
-  planId: PaidBillingUiPlanId,
-): Promise<BillingCheckoutResponse> => {
-  const plan = billingPlanById[planId];
-  const response = await api.post<BillingCheckoutResponse>('/billing/subscription', {
-    planCode: plan.backendPlanCode,
-  });
-
-  if (!isAllowedCheckoutUrl(response.data.checkoutUrl)) {
-    throw new Error('URL de checkout no permitida');
-  }
-
-  return response.data;
-};
-
-export const cancelBillingSubscription = async (): Promise<BillingSubscription> => {
-  const response = await api.post<BillingSubscription>('/billing/cancel', {
-    immediate: false,
-  });
-  return response.data;
 };
 
 export const resolveCurrentBillingPlanId = ({

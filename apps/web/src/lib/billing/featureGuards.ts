@@ -12,11 +12,11 @@ export type ProfessionalFeatureKey =
   | 'advancedAnalytics';
 
 const FEATURE_REQUIRED_PLAN: Record<ProfessionalFeatureKey, ProfessionalPlanCode> = {
-  enhancedPublicProfile: 'PROFESSIONAL',
-  onlinePayments: 'LOCAL',
-  weeklyCalendarNavigation: 'PROFESSIONAL',
-  monthlyCalendar: 'PROFESSIONAL',
-  basicAnalytics: 'LOCAL',
+  enhancedPublicProfile: 'CORE',
+  onlinePayments: 'CORE',
+  weeklyCalendarNavigation: 'CORE',
+  monthlyCalendar: 'CORE',
+  basicAnalytics: 'ENTERPRISE',
   advancedAnalytics: 'ENTERPRISE',
 };
 
@@ -32,7 +32,7 @@ export const resolveProfessionalFeatureAccess = (profile?: ProfessionalProfile |
       : hasPlanAccess(currentPlan, FEATURE_REQUIRED_PLAN.enhancedPublicProfile),
     onlinePayments: entitlements
       ? entitlements.allowOnlinePayments
-      : hasPlanAccess(currentPlan, 'LOCAL'),
+      : true,
     weeklyCalendarNavigation: true,
     monthlyCalendar: true,
     basicAnalytics: entitlements
@@ -52,7 +52,10 @@ export const canAccessProfessionalFeature = (
 export const planIncludesProfessionalFeature = (
   planId: BillingUiPlanId,
   feature: ProfessionalFeatureKey,
-) => hasPlanAccess(planId, FEATURE_REQUIRED_PLAN[feature]);
+) => {
+  if (feature === 'basicAnalytics' || feature === 'advancedAnalytics') return false;
+  return hasPlanAccess(planId, FEATURE_REQUIRED_PLAN[feature]);
+};
 
 export const requiredPlanForFeature = (
   feature: ProfessionalFeatureKey,

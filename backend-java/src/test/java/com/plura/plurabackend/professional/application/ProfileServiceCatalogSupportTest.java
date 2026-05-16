@@ -37,7 +37,7 @@ class ProfileServiceCatalogSupportTest {
         ProfesionalServiceRepository repository = mock(ProfesionalServiceRepository.class);
 
         org.mockito.Mockito.when(repository.countByProfessional_Id(11L)).thenReturn(15L);
-        org.mockito.Mockito.doThrow(new ResponseStatusException(HttpStatus.BAD_REQUEST, "Tu plan permite hasta 15 servicios"))
+        org.mockito.Mockito.doThrow(new ResponseStatusException(HttpStatus.BAD_REQUEST, "Plura Core permite hasta 30 servicios"))
             .when(planGuardService)
             .requireLimitNotExceeded("11", LimitCapability.MAX_SERVICES, 16L);
 
@@ -62,7 +62,7 @@ class ProfileServiceCatalogSupportTest {
         );
 
         assertEquals(HttpStatus.BAD_REQUEST, exception.getStatusCode());
-        assertEquals("Tu plan permite hasta 15 servicios", exception.getReason());
+        assertEquals("Plura Core permite hasta 30 servicios", exception.getReason());
     }
 
     /**
@@ -75,7 +75,7 @@ class ProfileServiceCatalogSupportTest {
         ProfessionalProfile profile = new ProfessionalProfile();
         profile.setId(11L);
 
-        org.mockito.Mockito.doThrow(new ResponseStatusException(HttpStatus.FORBIDDEN, "Tu plan no permite pagos online"))
+        org.mockito.Mockito.doThrow(new ResponseStatusException(HttpStatus.FORBIDDEN, "Este extra no está habilitado"))
             .when(planGuardService)
             .requireBooleanCapability("11", BooleanCapability.ONLINE_PAYMENTS);
 
@@ -102,6 +102,6 @@ class ProfileServiceCatalogSupportTest {
         );
 
         assertEquals(HttpStatus.FORBIDDEN, exception.getStatusCode());
-        assertEquals("Tu plan no permite pagos online", exception.getReason());
+        assertEquals("Este extra no está habilitado", exception.getReason());
     }
 }

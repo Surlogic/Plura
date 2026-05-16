@@ -3,7 +3,7 @@ import Card from '@/components/ui/Card';
 
 type MercadoPagoUpgradeCardProps = {
   currentPlanLabel: string;
-  onBrowsePlans: () => void;
+  onBrowsePlans?: () => void;
 };
 
 export default function MercadoPagoUpgradeCard({
@@ -15,16 +15,16 @@ export default function MercadoPagoUpgradeCard({
       <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
         <div className="max-w-3xl">
           <span className="inline-flex rounded-full border border-[#F2D6A8] bg-[#FFF7E8] px-3 py-1 text-xs font-semibold text-[#B45309]">
-            Disponible desde Local
+            Próximamente
           </span>
 
           <h3 className="mt-4 text-[1.9rem] font-semibold tracking-[-0.04em] text-[#0E2A47]">
-            Tu plan actual no habilita cobros online
+            Cobros online todavía no están disponibles
           </h3>
 
           <p className="mt-2 text-sm text-[#516072]">
-            En {currentPlanLabel} podés gestionar tu operación, pero para cobrar reservas online con Mercado Pago
-            necesitás pasar a Local o Enterprise.
+            En {currentPlanLabel} podés gestionar tu operación. Los cobros online quedan como extra futuro
+            si no están habilitados para tu cuenta.
           </p>
 
           <div className="mt-5 grid gap-4 sm:grid-cols-3">
@@ -37,27 +37,28 @@ export default function MercadoPagoUpgradeCard({
               <p className="mt-2 text-sm font-semibold text-[#0E2A47]">No disponibles</p>
             </div>
             <div className="rounded-[20px] border border-[#E7D9B8] bg-white/90 p-4">
-              <p className="text-xs uppercase tracking-[0.3em] text-[#94A3B8]">Upgrade</p>
-              <p className="mt-2 text-sm font-semibold text-[#0E2A47]">Local o Enterprise</p>
+              <p className="text-xs uppercase tracking-[0.3em] text-[#94A3B8]">Extra</p>
+              <p className="mt-2 text-sm font-semibold text-[#0E2A47]">No disponible</p>
             </div>
           </div>
 
           <div className="mt-5 rounded-[18px] border border-[#F3E1BC] bg-white px-4 py-3 text-sm text-[#516072]">
-            Cuando subas de plan vas a poder conectar tu cuenta de Mercado Pago y cobrar reservas online desde Plura.
+            Cuando esta funcionalidad esté habilitada vas a poder conectar tu cuenta de Mercado Pago y cobrar reservas online desde Plura.
           </div>
         </div>
 
         <div className="flex w-full max-w-sm flex-col gap-3">
-          <Button
-            type="button"
-            size="lg"
-            onClick={onBrowsePlans}
-          >
-            Ver planes con cobros online
-          </Button>
+          {onBrowsePlans ? (
+            <Button
+              type="button"
+              size="lg"
+              onClick={onBrowsePlans}
+            >
+              Ver suscripción
+            </Button>
+          ) : null}
           <p className="text-sm text-[#516072]">
-            Mientras tu plan siga en Profesional no intentamos iniciar la conexión OAuth, así evitamos errores y estados
-            confusos.
+            No hay upgrades por plan durante el MVP.
           </p>
         </div>
       </div>

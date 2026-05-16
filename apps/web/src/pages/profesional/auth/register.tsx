@@ -909,8 +909,10 @@ export default function ProfesionalRegisterPage() {
     <div className="space-y-10 text-center">
       <div className="space-y-3">
         <Badge variant="success">Registro</Badge>
-        <h1 className="text-4xl font-semibold tracking-[-0.04em] text-[color:var(--ink)]">Elegí tu tipo de perfil</h1>
-        <p className="text-base text-[color:var(--ink-muted)]">Seleccioná cómo trabajás en Plura.</p>
+        <h1 className="text-4xl font-semibold tracking-[-0.04em] text-[color:var(--ink)]">¿Cómo trabajás?</h1>
+        <p className="text-base text-[color:var(--ink-muted)]">
+          Esto solo configura tu perfil y modalidad de atención; no cambia tu suscripción.
+        </p>
       </div>
       <div className="grid gap-6 md:grid-cols-2">
         {[
@@ -922,7 +924,7 @@ export default function ProfesionalRegisterPage() {
           },
           {
             id: 'LOCAL' as const,
-            title: 'Profesional con local',
+            title: 'Tengo local físico',
             description: 'Tenés un espacio físico donde recibís a tus clientes.',
             icon: '🏪',
           },

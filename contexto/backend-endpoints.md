@@ -92,7 +92,7 @@ Todavia no se ve como superficie publica madura todo el set de:
 Lectura de producto:
 
 - base para home, categorias y marketplace
-- relevante para `Usuario` y para la visibilidad del plan `Profesional`
+- relevante para `Usuario` y para la visibilidad de perfiles en `Plura Core`
 - `GET /api/home` ahora se consume via SSR (`getServerSideProps`); devuelve categorias, stats (usuarios, profesionales, categorias, reservas mensuales) y top professionals rankeados por volumen de reservas confirmadas/completadas de los ultimos 3 meses
 - dentro de `GET /api/home`, cada categoria ahora incluye `professionalsCount` con la cantidad de profesionales activos asociados (0 cuando no hay)
 - `GET /api/home` ahora expone branding de card publica por profesional: `bannerUrl`, `bannerMedia`, `logoUrl`, `logoMedia` y `fallbackPhotoUrl`; `imageUrl` se mantiene como compatibilidad y ya prioriza `banner` o primera foto real del negocio en vez de categorias genericas
@@ -258,6 +258,16 @@ Prefijo: `/profesional`
 - `PUT /profesional/team/{workerId}/schedule`
 - `PUT /profesional/team/{workerId}/services`
 
+Lectura vigente de planes y billing profesional:
+
+- el MVP opera con `Plura Core` unico para profesionales/locales
+- `INDEPENDENT` y `LOCAL` siguen siendo tipos operativos de perfil, no planes comerciales
+- `GET /billing/subscription` se mantiene para estado de suscripcion y compatibilidad de datos legacy
+- `POST /billing/subscription` ya no debe usarse para cambio visible de plan; el backend responde que el cambio de plan no esta disponible durante el MVP
+- codigos legacy `PLAN_PROFESSIONAL`, `PLAN_LOCAL`, `PLAN_ENTERPRISE` se conservan para lectura/compatibilidad y se resuelven como Core a nivel de capacidades efectivas
+- los limites Core protegen equipo/multilocal: `maxProfessionals=1` y `maxLocations=1`
+- analytics y add-ons futuros siguen deshabilitados por capability, no por una comparativa comercial visible
+
 Endpoints del trabajador autenticado (requieren JWT con `ctx=WORKER`):
 
 - `GET /trabajador/me` — datos basicos del trabajador y del local donde trabaja.
@@ -281,13 +291,13 @@ Lectura de producto:
 - cubre constructor de servicios, imagen principal, duracion y precio
 - cubre horarios de trabajo y politicas de reserva
 - cubre carga manual de turnos desde panel
-- `PUT /profesional/profile` y `PUT /profesional/public-page` ya permiten que `Profesional/PROFESSIONAL` gestione logo, banner, headline y about del perfil publico; la diferencia entre planes para la pagina publica queda en limites de capacidad, no en bloqueo de esos textos/base visual
+- `PUT /profesional/profile` y `PUT /profesional/public-page` permiten que `Plura Core/CORE` gestione logo, banner, headline y about del perfil publico; `PROFESSIONAL` queda como alias legacy
 - `PUT /profesional/profile` ahora acepta opcionalmente `logoMedia` y `bannerMedia` con `{ positionX, positionY, zoom }` para persistir el encuadre visual del logo y del banner; `GET /auth/me/profesional` y `GET /profesional/public-page` exponen esos mismos metadatos normalizados para rehidratar el editor y la preview
 - `PUT /profesional/profile`, `PUT /profesional/public-page` y `POST/PUT /profesional/services` ahora canonizan referencias de imágenes antes de persistirlas: si reciben una URL pública del CDN/R2 o de `/uploads`, la convierten otra vez a referencia interna de storage para no dejar metadatos inconsistentes en DB
-- `POST /profesional/services` ahora corta por capacidad de plan: `PROFESSIONAL` hasta `15` servicios, `LOCAL` hasta `30`, `ENTERPRISE` sin tope practico; cada servicio mantiene una sola imagen publica
+- `POST /profesional/services` corta por capacidad Core: hasta `30` servicios; cada servicio mantiene una sola imagen publica
 - `GET /profesional/services`, `POST /profesional/services`, `PUT /profesional/services/{id}` y `GET /public/profesionales/{slug}` ya exponen/persisten `processingFeeMode` por servicio para pagos online; hoy las variantes operativas son `INSTANT` (`5,99% + IVA`) y `DELAYED_21_DAYS` (`4,99% + IVA`)
-- `GET /profesional/reservas` sostiene gestion operativa de reservas para `Profesional/PROFESSIONAL` y no debe confundirse con gating de agenda semanal o mensual
-- la base backend de multitrabajador ya existe para el plan `Enterprise`: `professional_worker`, asignaciones `professional_worker_service`, agenda propia por trabajador, invitacion por email y `worker_id` opcional en `booking` y `available_slot`; el flujo publico de reserva todavia sigue operando contra el local/perfil general hasta completar la fase de disponibilidad por trabajador
+- `GET /profesional/reservas` sostiene gestion operativa de reservas para `Plura Core/CORE` y no debe confundirse con gating de agenda semanal o mensual
+- la base backend de multitrabajador ya existe para una fase futura/personalizada: `professional_worker`, asignaciones `professional_worker_service`, agenda propia por trabajador, invitacion por email y `worker_id` opcional en `booking` y `available_slot`; el flujo publico de reserva todavia sigue operando contra el local/perfil general hasta completar la fase de disponibilidad por trabajador
 - al migrar, cada `professional_profile` existente recibe un trabajador dueño activo con la agenda legacy, todos los servicios y las reservas/slots existentes asignados; cuando se edita `/profesional/schedule`, tambien se sincroniza la agenda del trabajador dueño
 - `POST /public/profesionales/{slug}/reservas` crea siempre en `PENDING`; guarda snapshot de servicio/politica, registra `BOOKING_CREATED`, inicializa finanzas y solo dispara notificacion de `booking created` inmediata cuando el servicio es `ON_SITE`
 - `GET /public/profesionales/{slug}` y `GET /profesional/services` ahora exponen `paymentBreakdown` por servicio (`prepaidBaseAmount`, `processingFeeAmount`, `totalAmount`, `currency`, `processingFeeLabel`, `processingFeeMode`, `providerFeePercent`, `taxPercent`, `platformFeePercent`) cuando el pago es online; frontend debe consumir ese desglose en vez de recalcular porcentajes
@@ -326,7 +336,7 @@ Notas:
 
 - `POST /profesional/services/image` confirma que el repo ya integra carga de imagenes en servicios
 - `POST /profesional/images/upload` es el endpoint genérico recomendado para subir logos, banners, galería y fotos de servicio; organiza los archivos por `professionals/{professionalId}/{kind}/` en R2 o filesystem local
-- `GET /profesional/public-page` y `PUT /profesional/public-page` incluyen campo `photos` para la galería pública; el request admite hasta `10` por validación estructural, pero el límite efectivo se aplica por plan en runtime (`3 / 6 / 10`); en la página pública la resolución final prioriza `business_photo` de galería (`LOCAL`, `WORK`) y fallback `publicPhotos`, y deja después las fotos ligadas a servicios (`SERVICE` + imagen principal del servicio), deduplicando sin cambiar el contrato
+- `GET /profesional/public-page` y `PUT /profesional/public-page` incluyen campo `photos` para la galería pública; el request admite hasta `10` por validación estructural, pero el límite efectivo Core es `6`; en la página pública la resolución final prioriza `business_photo` de galería (`LOCAL`, `WORK`) y fallback `publicPhotos`, y deja después las fotos ligadas a servicios (`SERVICE` + imagen principal del servicio), deduplicando sin cambiar el contrato
 - la capa de cleanup de imágenes también normaliza referencias antes de comparar o borrar; si una misma imagen reaparece como `r2://...` o como URL pública del CDN, backend la trata como el mismo asset administrado
 - `PUT /profesional/profile` soporta `logoUrl` y `bannerUrl` para la identidad pública del negocio desde cualquier plan actual
 - la capa de categorias existe en el sistema, pero el nivel exacto de etiquetas y reglas por servicio requiere revisar dominio y UI puntual
@@ -433,7 +443,7 @@ Prefijo: `/profesional/analytics`
 
 Lectura de producto:
 
-- base de analytics basicos para `Local`
+- base tecnica de analytics; no entra en Core visible para profesionales durante el MVP
 - el servicio `ProfessionalAnalyticsService` calcula el resumen por profesional
 - requiere autenticacion y rol profesional via `RoleGuard`
 
@@ -516,8 +526,8 @@ Lectura de producto:
 
 Nota de naming:
 
-- el codigo actual usa `PLAN_PROFESSIONAL`, `PLAN_LOCAL` y `PLAN_ENTERPRISE`; `PLAN_BASIC` y `PLAN_PROFESIONAL` quedan como aliases legacy de entrada
-- a nivel de producto la lectura objetivo es `Profesional`, `Local` y `Enterprise`
+- el codigo actual conserva `PLAN_PROFESSIONAL`, `PLAN_LOCAL` y `PLAN_ENTERPRISE` para compatibilidad; `PLAN_CORE`, `PLAN_BASIC` y `PLAN_PROFESIONAL` quedan como aliases de entrada
+- a nivel de producto la lectura objetivo visible es `Plura Core`
 
 ### Endpoints internos de operaciones
 

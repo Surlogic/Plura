@@ -182,7 +182,7 @@ public class BookingProviderIntegrationService {
         if (!bookingProfessionalPlanGateway.allowsOnlinePayments(professionalId)) {
             throw new ResponseStatusException(
                 HttpStatus.FORBIDDEN,
-                "Tu plan no permite pagos online"
+                "Este extra no está habilitado"
             );
         }
 

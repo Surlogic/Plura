@@ -34,17 +34,11 @@ class PlanGuardServiceTest {
      * El objetivo es dejar explicita la regla que protege este test.
      */
     @Test
-    void blocksCapabilityWhenCurrentPlanDoesNotAllowIt() {
+    void allowsCoreOnlinePaymentsCapability() {
         ProfessionalProfile profile = currentProfile(31L);
-        stubPlan(profile, ProfessionalPlanCode.PROFESSIONAL);
+        stubPlan(profile, ProfessionalPlanCode.CORE);
 
-        ResponseStatusException exception = assertThrows(
-            ResponseStatusException.class,
-            () -> service.requireBooleanCapability(BooleanCapability.ONLINE_PAYMENTS)
-        );
-
-        assertEquals(HttpStatus.FORBIDDEN, exception.getStatusCode());
-        assertEquals("Tu plan no permite pagos online", exception.getReason());
+        assertDoesNotThrow(() -> service.requireBooleanCapability(BooleanCapability.ONLINE_PAYMENTS));
     }
 
     /**
@@ -54,7 +48,7 @@ class PlanGuardServiceTest {
     @Test
     void allowsAtLeastComparisonForHigherPlan() {
         ProfessionalProfile profile = currentProfile(32L);
-        stubPlan(profile, ProfessionalPlanCode.ENTERPRISE);
+        stubPlan(profile, ProfessionalPlanCode.CORE);
 
         assertDoesNotThrow(() -> service.requireAtLeast(ProfessionalPlanCode.LOCAL));
     }
@@ -66,15 +60,15 @@ class PlanGuardServiceTest {
     @Test
     void blocksWhenLimitIsExceeded() {
         ProfessionalProfile profile = currentProfile(33L);
-        stubPlan(profile, ProfessionalPlanCode.PROFESSIONAL);
+        stubPlan(profile, ProfessionalPlanCode.CORE);
 
         ResponseStatusException exception = assertThrows(
             ResponseStatusException.class,
-            () -> service.requireLimitNotExceeded(LimitCapability.MAX_BUSINESS_PHOTOS, 4)
+            () -> service.requireLimitNotExceeded(LimitCapability.MAX_BUSINESS_PHOTOS, 7)
         );
 
         assertEquals(HttpStatus.BAD_REQUEST, exception.getStatusCode());
-        assertEquals("Tu plan permite hasta 3 fotos del negocio", exception.getReason());
+        assertEquals("Plura Core permite hasta 6 fotos del negocio", exception.getReason());
     }
 
     /**
@@ -82,17 +76,11 @@ class PlanGuardServiceTest {
      * El objetivo es dejar explicita la regla que protege este test.
      */
     @Test
-    void keepsDailyScheduleRangeBlockedForBasic() {
+    void allowsMonthlyScheduleRangeForCore() {
         ProfessionalProfile profile = currentProfile(34L);
-        stubPlan(profile, ProfessionalPlanCode.PROFESSIONAL);
+        stubPlan(profile, ProfessionalPlanCode.CORE);
 
-        ResponseStatusException exception = assertThrows(
-            ResponseStatusException.class,
-            () -> service.requireScheduleRange("34", 2)
-        );
-
-        assertEquals(HttpStatus.FORBIDDEN, exception.getStatusCode());
-        assertEquals("Tu plan actual solo permite consultar agenda diaria", exception.getReason());
+        assertDoesNotThrow(() -> service.requireScheduleRange("34", 31));
     }
 
     /**
@@ -102,7 +90,7 @@ class PlanGuardServiceTest {
     @Test
     void allowsWeeklyScheduleRangeForProfesionalPlan() {
         ProfessionalProfile profile = currentProfile(35L);
-        stubPlan(profile, ProfessionalPlanCode.LOCAL);
+        stubPlan(profile, ProfessionalPlanCode.CORE);
 
         assertDoesNotThrow(() -> service.requireScheduleRange("35", 7));
     }

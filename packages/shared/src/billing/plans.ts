@@ -1,8 +1,8 @@
 import type { ProfessionalPlanCode } from '../types/professional';
 
-export type BillingUiPlanId = 'PROFESSIONAL' | 'LOCAL' | 'ENTERPRISE';
-export type BillingBackendPlanCode = 'PLAN_PROFESSIONAL' | 'PLAN_LOCAL' | 'PLAN_ENTERPRISE';
-export type PaidBillingUiPlanId = Exclude<BillingUiPlanId, 'PROFESSIONAL'>;
+export type BillingUiPlanId = 'CORE' | 'PROFESSIONAL' | 'LOCAL' | 'ENTERPRISE';
+export type BillingBackendPlanCode = 'PLAN_CORE' | 'PLAN_PROFESSIONAL' | 'PLAN_LOCAL' | 'PLAN_ENTERPRISE';
+export type PaidBillingUiPlanId = 'LOCAL' | 'ENTERPRISE';
 
 export type SharedBillingPlanDefinition = {
   id: BillingUiPlanId;
@@ -17,60 +17,43 @@ export type SharedBillingPlanDefinition = {
 
 export const sharedBillingPlans: SharedBillingPlanDefinition[] = [
   {
-    id: 'PROFESSIONAL',
-    label: 'Profesional',
-    backendPlanCode: 'PLAN_PROFESSIONAL',
-    profilePlanCode: 'PROFESSIONAL',
-    priceMonthly: 0,
-    priceLabel: 'Gratis',
-    benefits: ['Logo, banner y textos publicos', 'Hasta 3 fotos en galeria', 'Hasta 15 servicios con 1 foto'],
-  },
-  {
-    id: 'LOCAL',
-    label: 'Local',
-    backendPlanCode: 'PLAN_LOCAL',
-    profilePlanCode: 'LOCAL',
+    id: 'CORE',
+    label: 'Plura Core',
+    backendPlanCode: 'PLAN_CORE',
+    profilePlanCode: 'CORE',
     priceMonthly: 590,
-    priceLabel: '$590 UYU / mes',
-    benefits: ['Hasta 6 fotos en galeria', 'Hasta 30 servicios con 1 foto', 'Pagos online', 'Analytics basicos'],
+    priceLabel: 'Suscripcion unica',
+    benefits: [
+      'Pagina publica, marketplace y reservas online',
+      'Agenda, calendario, horarios y bloqueos',
+      'Servicios, dashboard y notificaciones',
+      'Perfil publico con logo, banner, descripcion y fotos',
+      '1 profesional y 1 local incluidos',
+      'Cobros online con Mercado Pago',
+    ],
     recommended: true,
-  },
-  {
-    id: 'ENTERPRISE',
-    label: 'Enterprise',
-    backendPlanCode: 'PLAN_ENTERPRISE',
-    profilePlanCode: 'ENTERPRISE',
-    priceMonthly: 1290,
-    priceLabel: '$1.290 UYU / mes',
-    benefits: ['Hasta 10 fotos en galeria', 'Servicios ilimitados', 'Todo lo de Local', 'Mayor capacidad operativa'],
   },
 ];
 
-export const sharedBillingPlanById = sharedBillingPlans.reduce<Record<BillingUiPlanId, SharedBillingPlanDefinition>>(
-  (accumulator, plan) => {
-    accumulator[plan.id] = plan;
-    return accumulator;
-  },
-  {
-    PROFESSIONAL: sharedBillingPlans[0],
-    LOCAL: sharedBillingPlans[1],
-    ENTERPRISE: sharedBillingPlans[2],
-  },
-);
+export const sharedBillingPlanById: Record<BillingUiPlanId, SharedBillingPlanDefinition> = {
+  CORE: sharedBillingPlans[0],
+  PROFESSIONAL: sharedBillingPlans[0],
+  LOCAL: sharedBillingPlans[0],
+  ENTERPRISE: sharedBillingPlans[0],
+};
 
 export const resolveBillingPlanFromProfilePlanCode = (
   planCode?: ProfessionalPlanCode | string | null,
 ): BillingUiPlanId => {
   switch (planCode?.toUpperCase()) {
+    case 'CORE':
     case 'PROFESIONAL':
     case 'LOCAL':
-      return 'LOCAL';
     case 'ENTERPRISE':
-      return 'ENTERPRISE';
     case 'BASIC':
     case 'PROFESSIONAL':
     default:
-      return 'PROFESSIONAL';
+      return 'CORE';
   }
 };
 
@@ -78,19 +61,15 @@ export const resolveBillingPlanFromBackendPlanCode = (
   planCode?: string | null,
 ): BillingUiPlanId | null => {
   switch (planCode?.toUpperCase()) {
+    case 'PLAN_CORE':
     case 'PLAN_BASIC':
-      return 'PROFESSIONAL';
     case 'PLAN_PRO':
     case 'PLAN_PROFESIONAL':
-      return 'LOCAL';
     case 'PLAN_PREMIUM':
-      return 'ENTERPRISE';
     case 'PLAN_PROFESSIONAL':
-      return 'PROFESSIONAL';
     case 'PLAN_LOCAL':
-      return 'LOCAL';
     case 'PLAN_ENTERPRISE':
-      return 'ENTERPRISE';
+      return 'CORE';
     default:
       return null;
   }

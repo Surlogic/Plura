@@ -17,12 +17,12 @@ public final class SubscriptionPlanMapper {
      */
     public static ProfessionalPlanCode toProfessionalPlan(SubscriptionPlanCode subscriptionPlan) {
         if (subscriptionPlan == null) {
-            return ProfessionalPlanCode.PROFESSIONAL;
+            return ProfessionalPlanCode.CORE;
         }
         return switch (subscriptionPlan) {
-            case PLAN_PROFESSIONAL -> ProfessionalPlanCode.PROFESSIONAL;
-            case PLAN_LOCAL -> ProfessionalPlanCode.LOCAL;
-            case PLAN_ENTERPRISE -> ProfessionalPlanCode.ENTERPRISE;
+            case PLAN_PROFESSIONAL -> ProfessionalPlanCode.CORE;
+            case PLAN_LOCAL -> ProfessionalPlanCode.CORE;
+            case PLAN_ENTERPRISE -> ProfessionalPlanCode.CORE;
         };
     }
 }

@@ -230,7 +230,7 @@ Necesario para:
 - recordatorios
 - cambios de estado
 - pedido de reseñas
-- automatizaciones Local y Enterprise
+- automatizaciones futuras fuera de Core
 
 Infra actual detectada:
 
@@ -248,8 +248,8 @@ Capacidad pendiente o no claramente documentada:
 
 Necesario para:
 
-- analytics basicos en `Local`
-- analytics avanzados en `Enterprise`
+- analytics profesional como add-on futuro fuera de Core
+- reporting avanzado personalizado para Enterprise futuro
 - entendimiento de embudo marketplace -> reserva -> retorno
 
 Infra actual detectada:
@@ -312,7 +312,7 @@ Lectura de producto:
 - mobile ya tiene base para API, mapa y login Google
 - el login Google mobile hoy es mixto: Android usa `@react-native-google-signin/google-signin` y necesita especialmente `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID` para pedir `idToken`; iOS/web usan `expo-auth-session`; `EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID` y `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID` siguen siendo las variables recomendadas, mientras `EXPO_PUBLIC_GOOGLE_CLIENT_ID` queda como fallback general
 - para el mapa del perfil publico mobile, la variable operativa recomendada pasa a ser `EXPO_PUBLIC_MAPBOX_TOKEN`; `MAPBOX_TOKEN` queda como fallback legacy local
-- mobile usa `expo-web-browser` para abrir checkout de reservas, checkout de plan y OAuth de `Mercado Pago` dentro de la app sin sacar al usuario a un navegador externo completo
+- mobile usa `expo-web-browser` para abrir checkout de reservas y OAuth de `Mercado Pago` dentro de la app sin sacar al usuario a un navegador externo completo; no abre checkout de cambio de plan durante el MVP
 - mobile ahora tambien depende de `expo-location` y `expo-notifications` para pedir permisos nativos de ubicacion y notificaciones
 - `app.json` ya declara el plugin `expo-location` con texto de permiso foreground y habilita `expo-notifications` para el permiso del sistema en runtime
 - mobile ya no consume `Ionicons` directo desde `@expo/vector-icons`: usa un wrapper local en `apps/mobile/src/lib/icons.ts` con `Ionicons.ttf` embebido en `apps/mobile/assets/fonts/Ionicons.ttf`, y `apps/mobile/app/_layout.tsx` lo precarga antes de renderizar pantallas para evitar fallas de `ExpoAsset.downloadAsync` en dev client
@@ -484,7 +484,7 @@ Notas reales de deploy:
 - datasource y Flyway quedaron cerrados sobre la misma base por default: si el backend recibe `DATABASE_URL` en formato `postgres://` o `postgresql://`, el bootstrap la normaliza a JDBC, extrae credenciales embebidas y rellena tambien `SPRING_FLYWAY_*` para evitar que migraciones y JPA apunten a bases distintas
 - el backend expone `server.port=${PORT:3000}` y ahora fija `server.address=0.0.0.0` por default para Fly.io y contenedores locales
 - `auth_refresh_token` sigue siendo una tabla legacy de soporte para refresh fallback, pero su schema real mantiene `id BIGSERIAL`; el modelo JPA ya quedo alineado a ese contrato para que `ddl-auto=validate` no tumbe el arranque
-- el naming de planes en codigo quedo alineado como `PROFESSIONAL / LOCAL / ENTERPRISE`.
+- el naming comercial visible quedo en `CORE`; `PROFESSIONAL / LOCAL / ENTERPRISE` se conservan como aliases legacy internos.
 - Flyway conserva migraciones historicas de dLocal (`V34`, `V37`) solo por continuidad de schema; el runtime vigente ya es Mercado Pago only y `V47` elimina los campos legacy del dominio profesional.
 - billing de suscripciones requiere que el schema de `subscription` acepte `PLAN_PROFESSIONAL`, `PLAN_LOCAL` y `PLAN_ENTERPRISE`; `V80` migra datos legacy desde `PLAN_BASIC`/`PLAN_PROFESIONAL` y actualiza el constraint cuando la tabla legacy existe, y queda como no-op idempotente en ambientes donde `subscription` no esta presente aunque Flyway tenga historial previo aplicado
 - `V57` agrega columna `public_visible` (boolean, default false) a `app_feedback` con indice `idx_app_feedback_public` sobre `(public_visible, created_at DESC)`; backfill a `true` para feedback ACTIVE con texto existente

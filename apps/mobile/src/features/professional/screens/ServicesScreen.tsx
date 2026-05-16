@@ -236,7 +236,7 @@ export default function ServicesScreen() {
                     disabled={isLockedOption}
                     onPress={() => {
                       if (isLockedOption) {
-                        setMessage('Los pagos online se habilitan desde el plan Local.');
+                        setMessage('Los cobros online todavia no estan disponibles para esta cuenta.');
                         return;
                       }
                       setDraft((prev) => ({ ...prev, paymentType: option.value }));
@@ -247,7 +247,7 @@ export default function ServicesScreen() {
             </View>
             {!canUseOnlinePayments ? (
               <Text className="text-xs text-gray-500">
-                La seña online y el prepago total se habilitan en el plan Local.
+                La seña online y el prepago total todavia no estan disponibles para esta cuenta.
               </Text>
             ) : null}
           </View>
@@ -292,13 +292,13 @@ export default function ServicesScreen() {
               setMessage(null);
               try {
                 if (!editingId && services.length >= maxServices) {
-                  setMessage(`Tu plan permite hasta ${maxServices} servicios.`);
+                  setMessage(`Plura Core permite hasta ${maxServices} servicios.`);
                   setIsSaving(false);
                   return;
                 }
 
                 if (!canUseOnlinePayments && draft.paymentType !== 'ON_SITE') {
-                  setMessage('Tu plan actual no permite seña online ni pago total online.');
+                  setMessage('Los cobros online todavia no estan disponibles para esta cuenta.');
                   setIsSaving(false);
                   return;
                 }

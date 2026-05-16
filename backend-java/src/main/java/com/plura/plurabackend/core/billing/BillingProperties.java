@@ -41,9 +41,7 @@ public class BillingProperties {
             throw new IllegalStateException("BILLING_WEBHOOK_ALLOWED_SKEW_SECONDS debe ser > 0");
         }
 
-        validatePlan("PLAN_PROFESSIONAL", plans.planProfessional);
-        validatePlan("PLAN_LOCAL", plans.planLocal);
-        validatePlan("PLAN_ENTERPRISE", plans.planEnterprise);
+        validatePlan("PLAN_CORE", plans.planProfessional);
 
         if (mercadopago.enabled) {
             requirePresent(
@@ -74,8 +72,8 @@ public class BillingProperties {
     public PlanConfig resolvePlan(SubscriptionPlanCode plan) {
         return switch (plan) {
             case PLAN_PROFESSIONAL -> plans.planProfessional;
-            case PLAN_LOCAL -> plans.planLocal;
-            case PLAN_ENTERPRISE -> plans.planEnterprise;
+            case PLAN_LOCAL -> plans.planProfessional;
+            case PLAN_ENTERPRISE -> plans.planProfessional;
         };
     }
 
@@ -99,7 +97,7 @@ public class BillingProperties {
         if (plan.price == null) {
             throw new IllegalStateException(name + " requiere precio");
         }
-        boolean allowZeroPricePlan = "PLAN_PROFESSIONAL".equals(name);
+        boolean allowZeroPricePlan = "PLAN_CORE".equals(name) || "PLAN_PROFESSIONAL".equals(name);
         if ((!allowZeroPricePlan && plan.price.compareTo(BigDecimal.ZERO) <= 0)
             || (allowZeroPricePlan && plan.price.compareTo(BigDecimal.ZERO) < 0)) {
             throw new IllegalStateException(name + " tiene precio invalido");

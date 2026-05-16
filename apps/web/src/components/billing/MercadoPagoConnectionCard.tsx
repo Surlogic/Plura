@@ -61,7 +61,7 @@ function MercadoPagoConnectionCard({
         ? 'Consultando el estado más reciente de tu conexión.'
         : isConnected
           ? 'Si necesitás usar otra cuenta, podés volver a conectar Mercado Pago.'
-          : 'Conectá tu cuenta para cobrar reservas online sin mezclarlo con tu plan de Plura.';
+          : 'Conectá tu cuenta para cobrar reservas online sin mezclarlo con tu suscripción de Plura.';
 
   return (
     <Card className={tone.card}>

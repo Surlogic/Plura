@@ -12,7 +12,7 @@ import org.springframework.stereotype.Component;
 /**
  * Propiedades de configuración del módulo de facturación.
  * Se cargan desde el prefijo "billing" en application.properties/yml.
- * Contiene la configuración de planes y del proveedor Mercado Pago,
+ * Contiene la configuración de Plura Core y del proveedor Mercado Pago,
  * modo de operación (sandbox/production) y parámetros de seguridad para webhooks.
  */
 @Component
@@ -29,7 +29,7 @@ public class BillingProperties {
 
     /**
      * Valida la configuración al iniciar la aplicación.
-     * Verifica que los planes, proveedores y credenciales estén correctamente configurados.
+     * Verifica que Plura Core, proveedores y credenciales estén correctamente configurados.
      * Solo se ejecuta si billing está habilitado.
      */
     @PostConstruct
@@ -105,7 +105,7 @@ public class BillingProperties {
      * Resuelve Mercado Pago plan ID normalizando entradas, defaults y casos borde.
      */
     public String resolveMercadoPagoPlanId(SubscriptionPlanCode plan) {
-        return mercadopago.getPlanProfessionalId();
+        return mercadopago.getPlanCoreId();
     }
 
     /**
@@ -161,30 +161,6 @@ public class BillingProperties {
         public void setCore(PlanConfig core) {
             this.core = core == null ? new PlanConfig() : core;
         }
-
-        public PlanConfig getPlanProfessional() {
-            return core;
-        }
-
-        public void setPlanProfessional(PlanConfig planProfessional) {
-            this.core = planProfessional == null ? new PlanConfig() : planProfessional;
-        }
-
-        public PlanConfig getPlanLocal() {
-            return new PlanConfig();
-        }
-
-        public void setPlanLocal(PlanConfig planLocal) {
-            // Binding legacy aceptado como no-op. Local no es un plan activo.
-        }
-
-        public PlanConfig getPlanEnterprise() {
-            return new PlanConfig();
-        }
-
-        public void setPlanEnterprise(PlanConfig planEnterprise) {
-            // Binding legacy aceptado como no-op. Enterprise no es un plan activo.
-        }
     }
 
     /**
@@ -214,7 +190,7 @@ public class BillingProperties {
     /**
      * Configuración específica del proveedor MercadoPago.
      * Incluye credenciales, URLs de la API, rutas de endpoints,
-     * ID de Core, aliases legacy y configuración de sandbox.
+     * ID de Plura Core y configuración de sandbox.
      */
     public static class MercadoPago {
         private boolean enabled = false;
@@ -233,9 +209,6 @@ public class BillingProperties {
         private String failureUrl = "";
         private String pendingUrl = "";
         private String planCoreId = "";
-        private String planProfessionalId = "";
-        private String planLocalId = "";
-        private String planEnterpriseId = "";
         private int timeoutMillis = 5000;
         private SubscriptionCredentials subscriptions = new SubscriptionCredentials();
         private Reservations reservations = new Reservations();
@@ -382,36 +355,12 @@ public class BillingProperties {
             this.pendingUrl = pendingUrl;
         }
 
-        public String getPlanProfessionalId() {
-            return planCoreId.isBlank() ? planProfessionalId : planCoreId;
-        }
-
-        public void setPlanProfessionalId(String planProfessionalId) {
-            this.planProfessionalId = planProfessionalId;
-        }
-
         public String getPlanCoreId() {
             return planCoreId;
         }
 
         public void setPlanCoreId(String planCoreId) {
             this.planCoreId = planCoreId == null ? "" : planCoreId;
-        }
-
-        public String getPlanLocalId() {
-            return planLocalId;
-        }
-
-        public void setPlanLocalId(String planLocalId) {
-            this.planLocalId = planLocalId;
-        }
-
-        public String getPlanEnterpriseId() {
-            return planEnterpriseId;
-        }
-
-        public void setPlanEnterpriseId(String planEnterpriseId) {
-            this.planEnterpriseId = planEnterpriseId;
         }
 
         public int getTimeoutMillis() {

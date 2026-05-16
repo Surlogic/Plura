@@ -164,8 +164,21 @@ Variables de backend para suscripcion Core:
 
 - `BILLING_CORE_PRICE`
 - `BILLING_CORE_CURRENCY`
+- `BILLING_MERCADOPAGO_PLAN_CORE_ID`
 
-Estas variables deben estar configuradas con precio positivo cuando billing/Mercado Pago esta habilitado; si `BILLING_CORE_PRICE` queda ausente o en `0`, Mercado Pago puede rechazar el `preapproval_plan` por monto invalido. Tienen fallback a `BILLING_PLAN_PROFESSIONAL_PRICE` / `BILLING_PLAN_PROFESSIONAL_CURRENCY` y luego a los nombres legacy `BILLING_PLAN_BASIC_*`. El fallback compatible usa `PROFESSIONAL` con doble `S`; `BILLING_PLAN_PROFESIONAL_PRICE` esta mal escrito y no debe usarse. Las variables legacy de Local/Enterprise pueden quedar en ambientes existentes, pero no impulsan checkout visible del MVP.
+Estas variables son las unicas variables operativas de plan/suscripcion Core. Deben estar configuradas con precio positivo cuando billing/Mercado Pago esta habilitado; si `BILLING_CORE_PRICE` queda ausente o en `0`, Mercado Pago puede rechazar el `preapproval_plan` por monto invalido.
+
+Variables legacy removidas como fallback de configuracion:
+
+- `BILLING_PLAN_PROFESSIONAL_PRICE`
+- `BILLING_PLAN_BASIC_PRICE`
+- `BILLING_PLAN_PROFESSIONAL_CURRENCY`
+- `BILLING_PLAN_BASIC_CURRENCY`
+- `BILLING_MERCADOPAGO_PLAN_PROFESSIONAL_ID`
+- `BILLING_MERCADOPAGO_PLAN_BASIC_ID`
+- variables equivalentes de Local/Enterprise
+
+Si algun ambiente todavia dependia de esos nombres, debe migrarse a `BILLING_CORE_PRICE`, `BILLING_CORE_CURRENCY` y `BILLING_MERCADOPAGO_PLAN_CORE_ID` antes de habilitar billing de suscripciones.
 
 Variables de backend para Mercado Pago de reservas y OAuth profesional:
 

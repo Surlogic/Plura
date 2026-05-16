@@ -525,3 +525,4 @@ Este sistema debe funcionar como producto profesional real con usuarios concurre
 - `rutas-y-modulos.md`: mapa de rutas, modulos y lectura por rol o plan.
 - `backend-endpoints.md`: resumen de endpoints y dominios del backend leidos desde producto.
 - `infra-y-configuracion_sin_whatsapp.md`: variables, integraciones y notas operativas cruzadas con roadmap.
+hola engo 

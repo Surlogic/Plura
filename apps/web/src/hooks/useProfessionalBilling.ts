@@ -56,8 +56,8 @@ const buildTrialBanner = (hasPendingCheckout: boolean): BillingBannerState => ({
   tone: 'info',
   title: 'Pago pendiente',
   description: hasPendingCheckout
-    ? 'El checkout fue iniciado y seguimos esperando la confirmacion del webhook.'
-    : 'El checkout fue iniciado, pero el pago todavia no fue confirmado. Puedes seguir navegando o cambiar de plan.',
+    ? 'La suscripcion Core fue iniciada y seguimos esperando la confirmacion del webhook.'
+    : 'La suscripcion Core todavia no fue confirmada. Puedes seguir navegando y volver a verificar el estado.',
 });
 
 // --- Consolidated UI state via useReducer ---
@@ -320,7 +320,7 @@ export function useProfessionalBilling({
           stopPollingCheckout();
           dispatch({
             type: 'SET_BANNER',
-            banner: { tone: 'info', title: 'Checkout sin confirmar', description: 'No vimos un pago confirmado. Puedes seguir navegando o iniciar otro checkout.' },
+            banner: { tone: 'info', title: 'Suscripcion Core sin confirmar', description: 'No vimos un pago confirmado. Puedes seguir navegando y volver a verificar el estado.' },
           });
         }
         return;
@@ -333,7 +333,7 @@ export function useProfessionalBilling({
           title: source === 'manual' ? 'Seguimos validando el pago' : 'Procesando pago...',
           description: source === 'manual'
             ? 'Todavia no vemos la suscripcion confirmada. Puedes volver a revisar en unos minutos.'
-            : 'Estamos esperando la confirmacion del checkout.',
+            : 'Estamos esperando la confirmacion de la suscripcion Core.',
         },
       });
       return;
@@ -343,7 +343,7 @@ export function useProfessionalBilling({
       clearPendingCheckout();
       dispatch({
         type: 'STOP_POLLING_WITH_BANNER',
-        banner: { tone: 'warning', title: 'Pago fallido', description: 'Mercado Pago informo que el cobro no pudo confirmarse. Puedes seguir navegando o iniciar un nuevo checkout.' },
+        banner: { tone: 'warning', title: 'Pago fallido', description: 'Mercado Pago informo que el cobro no pudo confirmarse. Puedes seguir navegando y volver a verificar el estado de la suscripcion.' },
       });
       stopPolling();
       return;
@@ -353,7 +353,7 @@ export function useProfessionalBilling({
       clearPendingCheckout();
       dispatch({
         type: 'STOP_POLLING_WITH_BANNER',
-        banner: { tone: 'warning', title: 'Suscripcion cancelada', description: 'La suscripcion fue cancelada. Puedes seguir navegando o iniciar un nuevo checkout.' },
+        banner: { tone: 'warning', title: 'Suscripcion cancelada', description: 'La suscripcion Core fue cancelada. Puedes seguir navegando y revisar el estado mas adelante.' },
       });
       stopPolling();
     }
@@ -385,7 +385,7 @@ export function useProfessionalBilling({
           banner: {
             tone: 'error',
             title: 'No se pudo verificar el pago',
-            description: resolveBackendMessage(error, 'No pudimos confirmar el estado del checkout.'),
+            description: resolveBackendMessage(error, 'No pudimos confirmar el estado de la suscripcion.'),
           },
         });
       } else {
@@ -395,7 +395,7 @@ export function useProfessionalBilling({
           banner: {
             tone: 'error',
             title: 'No se pudo verificar el pago',
-            description: resolveBackendMessage(error, 'No pudimos confirmar el estado del checkout. Puedes volver a verificarlo manualmente.'),
+            description: resolveBackendMessage(error, 'No pudimos confirmar el estado de la suscripcion. Puedes volver a verificarlo manualmente.'),
           },
         });
       }
@@ -571,7 +571,7 @@ export function useProfessionalBilling({
       banner: {
         tone: 'info',
         title: 'Plura Core es la suscripcion disponible',
-        description: 'Los cambios de plan no estan disponibles durante el MVP.',
+        description: 'Los cambios de suscripcion no estan disponibles durante el MVP.',
       },
     });
   }, []);

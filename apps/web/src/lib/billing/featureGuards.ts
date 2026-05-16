@@ -37,10 +37,10 @@ export const resolveProfessionalFeatureAccess = (profile?: ProfessionalProfile |
     monthlyCalendar: true,
     basicAnalytics: entitlements
       ? entitlements.analyticsTier !== 'NONE'
-      : hasPlanAccess(currentPlan, 'LOCAL'),
+      : false,
     advancedAnalytics: entitlements
       ? entitlements.analyticsTier === 'ADVANCED'
-      : hasPlanAccess(currentPlan, 'ENTERPRISE'),
+      : false,
   };
 };
 

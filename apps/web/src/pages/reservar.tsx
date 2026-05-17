@@ -23,6 +23,10 @@ import {
   getPublicSlots,
   type PublicProfessionalPage,
 } from '@/services/publicBookings';
+import {
+  confirmPhoneVerification,
+  sendPhoneVerification,
+} from '@/services/phoneVerification';
 import { describeBookingPolicy, isPrepaidBooking } from '@/utils/bookings';
 import {
   type CheckoutOpenResult,
@@ -100,8 +104,12 @@ const resolveInitialDate = (
 
 export default function ReservationPage() {
   const router = useRouter();
-  const { profile: clientProfile, hasLoaded: clientHasLoaded, isLoading: clientLoading } =
-    useClientProfileContext();
+  const {
+    profile: clientProfile,
+    hasLoaded: clientHasLoaded,
+    isLoading: clientLoading,
+    refreshProfile: refreshClientProfile,
+  } = useClientProfileContext();
   const [professional, setProfessional] = useState<PublicProfessionalPage | null>(null);
   const [selectedServiceId, setSelectedServiceId] = useState<string | null>(null);
   const [confirmedServiceId, setConfirmedServiceId] = useState<string | null>(null);
@@ -119,6 +127,11 @@ export default function ReservationPage() {
   const [activeStep, setActiveStep] = useState<ReservationStep>(1);
   const [isEditingServiceSelection, setIsEditingServiceSelection] = useState(false);
   const [isAuthOverlayOpen, setIsAuthOverlayOpen] = useState(false);
+  const [reservationPhoneCode, setReservationPhoneCode] = useState('');
+  const [reservationPhoneMessage, setReservationPhoneMessage] = useState<string | null>(null);
+  const [isSendingReservationPhoneCode, setIsSendingReservationPhoneCode] = useState(false);
+  const [isConfirmingReservationPhoneCode, setIsConfirmingReservationPhoneCode] = useState(false);
+  const [phoneVerifiedInReservation, setPhoneVerifiedInReservation] = useState(false);
 
   const professionalSlug = resolveQueryValue(router.query.profesional).trim();
   const serviceId =
@@ -247,6 +260,8 @@ export default function ReservationPage() {
     : null;
 
   const canSubmit = Boolean(confirmedService?.id && confirmedDate && selectedTime);
+  const clientPhoneVerified = Boolean(clientProfile?.phoneVerified || phoneVerifiedInReservation);
+  const clientNeedsPhoneVerification = Boolean(clientProfile && !clientPhoneVerified);
   const knownSessionRole = getKnownAuthSessionRole();
   const shouldWaitForClientSession =
     hasKnownAuthSession() && (knownSessionRole === 'CLIENT' || knownSessionRole === null);
@@ -517,6 +532,20 @@ export default function ReservationPage() {
     setSaveMessage(null);
   };
 
+  useEffect(() => {
+    if (!clientProfile) {
+      setPhoneVerifiedInReservation(false);
+      setReservationPhoneCode('');
+      setReservationPhoneMessage(null);
+      return;
+    }
+    if (clientProfile.phoneVerified) {
+      setPhoneVerifiedInReservation(false);
+      setReservationPhoneCode('');
+      setReservationPhoneMessage(null);
+    }
+  }, [clientProfile?.id, clientProfile?.phoneVerified]);
+
   const handleSelectService = (serviceSelectionId: string) => {
     setSelectedServiceId(normalizeServiceId(serviceSelectionId) || null);
     resetMessages();
@@ -722,9 +751,9 @@ export default function ReservationPage() {
       return;
     }
 
-    if (!clientProfile.phoneVerified) {
+    if (!clientPhoneVerified) {
       setSaveMessage(null);
-      setSaveError('Necesitás verificar tu celular antes de confirmar la reserva. Podés hacerlo desde tu perfil de cliente.');
+      setSaveError('Necesitás verificar tu celular antes de confirmar la reserva. Ingresá el código SMS en este paso para continuar.');
       return;
     }
 
@@ -742,13 +771,59 @@ export default function ReservationPage() {
       return;
     }
 
-    if (!resolvedClientProfile.phoneVerified) {
+    if (!resolvedClientProfile.phoneVerified && !phoneVerifiedInReservation) {
       setSaveMessage(null);
-      setSaveError('Necesitás verificar tu celular antes de confirmar la reserva. Podés hacerlo desde tu perfil de cliente.');
+      setSaveError('Necesitás verificar tu celular antes de confirmar la reserva. Ingresá el código SMS en este paso para continuar.');
       return;
     }
 
     await submitReservation();
+  };
+
+  const handleSendReservationPhoneCode = async () => {
+    if (!clientProfile?.phoneNumber) {
+      setSaveMessage(null);
+      setSaveError('Tu cuenta no tiene un celular cargado para verificar.');
+      return;
+    }
+
+    setSaveError(null);
+    setReservationPhoneMessage(null);
+
+    try {
+      setIsSendingReservationPhoneCode(true);
+      const response = await sendPhoneVerification(clientProfile.phoneNumber);
+      setReservationPhoneMessage(response.message);
+    } catch (error) {
+      setSaveError(extractApiMessage(error, 'No se pudo enviar el código SMS.'));
+    } finally {
+      setIsSendingReservationPhoneCode(false);
+    }
+  };
+
+  const handleConfirmReservationPhoneCode = async () => {
+    const code = reservationPhoneCode.trim();
+
+    if (!code) {
+      setSaveMessage(null);
+      setSaveError('Ingresá el código SMS para verificar tu celular.');
+      return;
+    }
+
+    setSaveError(null);
+
+    try {
+      setIsConfirmingReservationPhoneCode(true);
+      await confirmPhoneVerification(code);
+      setPhoneVerifiedInReservation(true);
+      setReservationPhoneCode('');
+      setReservationPhoneMessage('Celular verificado correctamente. Ya podés confirmar la reserva.');
+      await refreshClientProfile();
+    } catch (error) {
+      setSaveError(extractApiMessage(error, 'No se pudo verificar el código SMS.'));
+    } finally {
+      setIsConfirmingReservationPhoneCode(false);
+    }
   };
 
   const policyDescription = describeBookingPolicy(professional?.bookingPolicy);
@@ -836,7 +911,58 @@ export default function ReservationPage() {
           ) : null}
 
           {activeStep === 3 ? (
-            <ReservationSummaryCard
+            <>
+              {clientNeedsPhoneVerification ? (
+                <div className="rounded-[28px] border border-[color:var(--border-soft)] bg-white/92 p-5 shadow-[var(--shadow-card)]">
+                  <div className="space-y-2">
+                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[color:var(--ink-faint)]">
+                      Verificación requerida
+                    </p>
+                    <h2 className="text-lg font-semibold text-[color:var(--ink)]">
+                      Verificá tu celular para reservar
+                    </h2>
+                    <p className="text-sm leading-6 text-[color:var(--ink-muted)]">
+                      Para confirmar esta reserva necesitamos validar el celular asociado a tu cuenta
+                      {clientProfile?.phoneNumber ? ` (${clientProfile.phoneNumber})` : ''}.
+                    </p>
+                  </div>
+
+                  <div className="mt-4 grid gap-3 sm:grid-cols-[1fr_auto_auto]">
+                    <input
+                      className="h-12 w-full rounded-[18px] border border-[color:var(--border-soft)] bg-white/90 px-4 text-sm text-[color:var(--ink)] placeholder:text-[color:var(--ink-faint)] focus:outline-none focus:ring-4 focus:ring-[color:var(--focus-ring)]"
+                      inputMode="numeric"
+                      maxLength={10}
+                      onChange={(event) => setReservationPhoneCode(event.target.value)}
+                      placeholder="Código SMS"
+                      value={reservationPhoneCode}
+                    />
+                    <Button
+                      type="button"
+                      variant="quiet"
+                      onClick={() => void handleSendReservationPhoneCode()}
+                      disabled={isSendingReservationPhoneCode || isConfirmingReservationPhoneCode}
+                    >
+                      {isSendingReservationPhoneCode ? 'Enviando...' : 'Enviar código'}
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="brand"
+                      onClick={() => void handleConfirmReservationPhoneCode()}
+                      disabled={isSendingReservationPhoneCode || isConfirmingReservationPhoneCode || !reservationPhoneCode.trim()}
+                    >
+                      {isConfirmingReservationPhoneCode ? 'Verificando...' : 'Verificar'}
+                    </Button>
+                  </div>
+
+                  {reservationPhoneMessage ? (
+                    <p className="mt-3 text-sm font-medium text-[color:var(--primary)]">
+                      {reservationPhoneMessage}
+                    </p>
+                  ) : null}
+                </div>
+              ) : null}
+
+              <ReservationSummaryCard
               canSubmit={canSubmit}
               isLoadingContext={isLoadingContext}
               requiresAuthentication={!clientProfile}
@@ -853,6 +979,7 @@ export default function ReservationPage() {
               selectedService={confirmedService}
               selectedTime={selectedTime}
             />
+            </>
           ) : null}
         </section>
       </main>

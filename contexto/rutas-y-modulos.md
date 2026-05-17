@@ -77,6 +77,7 @@ Base: `apps/web/src/pages`
 - `/robots.txt`: archivo publico estatico; permite indexar superficies publicas y bloquea areas internas/protegidas (`/internal`, `/cliente`, dashboard/notificaciones profesional y trabajador).
 - `/profesional/[slug]`: redirect temporal de compatibilidad hacia `/profesional/pagina/[slug]`; no contiene implementacion propia.
 - `/reservar`: flujo publico de reserva paso a paso desde el perfil publico.
+- `/reservar`: si el cliente autenticado no tiene celular verificado, muestra verificación OTP SMS inline antes de confirmar.
 - `/reserva-confirmada`: ruta legacy de confirmacion; hoy no forma parte del circuito principal de reserva web.
 - `/login`: acceso general.
 - `/oauth/callback`: callback de OAuth.

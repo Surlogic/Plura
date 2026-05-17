@@ -667,3 +667,5 @@ Capacidad que no aparece aun como dominio publico consolidado:
   - availability
   - service categories
   - galería de fotos del negocio (`business_photo`) y banner del perfil (`V58`)
+
+- `POST /auth/verify/phone/send` y `POST /auth/verify/phone/confirm`: verificación SMS autenticada del teléfono actual; `/reservar` los usa para permitir confirmar reserva sin salir del flujo.

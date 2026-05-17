@@ -11,6 +11,7 @@ import Card from '@/components/ui/Card';
 import InternationalPhoneField from '@/components/ui/InternationalPhoneField';
 import { useClientProfileContext } from '@/context/ClientProfileContext';
 import type { OAuthLoginResult } from '@/lib/auth/oauthLogin';
+import type { ClientProfile } from '@/types/client';
 import api from '@/services/api';
 import {
   confirmRegistrationPhoneVerification,
@@ -27,7 +28,7 @@ type AuthMode = 'register' | 'login';
 
 type ReservationAuthOverlayProps = {
   isOpen: boolean;
-  onAuthenticated: () => Promise<void> | void;
+  onAuthenticated: (profile?: ClientProfile) => Promise<void> | void;
   onClose: () => void;
 };
 
@@ -174,9 +175,9 @@ export default function ReservationAuthOverlay({
 
   const continueAuthenticatedFlow = async () => {
     await ensureAuthContext('CLIENT');
-    await api.get('/auth/me/cliente');
+    const response = await api.get<ClientProfile>('/auth/me/cliente');
     await refreshProfile();
-    await onAuthenticated();
+    await onAuthenticated(response.data);
   };
 
   const handleOAuthAuthenticated = async (result: OAuthLoginResult) => {

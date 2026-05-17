@@ -19,8 +19,8 @@ import {
   sendRegistrationPhoneVerification,
 } from '@/services/registrationPhoneVerification';
 import { useClientProfileContext } from '@/context/ClientProfileContext';
-import { useProfessionalProfileContext } from '@/context/ProfessionalProfileContext';
 import type { OAuthLoginResult } from '@/lib/auth/oauthLogin';
+import { ensureAuthContext } from '@/lib/auth/contexts';
 
 const resolvePhoneVerificationError = (error: unknown, fallback: string) => {
   if (axios.isAxiosError<{ message?: string }>(error)) {
@@ -32,7 +32,6 @@ const resolvePhoneVerificationError = (error: unknown, fallback: string) => {
 export default function ClienteRegisterPage() {
   const router = useRouter();
   const { refreshProfile: refreshClientProfile } = useClientProfileContext();
-  const { refreshProfile: refreshProfessionalProfile } = useProfessionalProfileContext();
   const redirectIntent = Array.isArray(router.query.redirect)
     ? router.query.redirect[0]
     : router.query.redirect;
@@ -71,19 +70,11 @@ export default function ClienteRegisterPage() {
   const handleOAuthAuthenticated = async (result: OAuthLoginResult) => {
     setErrorMessage(null);
     const requiresPhoneCompletion = !(result.user.phoneNumber ?? '').trim();
-    if (result.role === 'PROFESSIONAL') {
-      if (requiresPhoneCompletion) {
-        router.push('/profesional/auth/complete-phone');
-        return;
-      }
-      await refreshProfessionalProfile();
-      router.push('/profesional/dashboard');
-      return;
-    }
     if (requiresPhoneCompletion) {
       router.push('/cliente/auth/complete-phone');
       return;
     }
+    await ensureAuthContext('CLIENT');
     await refreshClientProfile();
     router.push('/cliente/inicio');
   };

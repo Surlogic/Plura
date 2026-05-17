@@ -32,6 +32,11 @@ import { getGeoLocationSuggestions, type GeoLocationSuggestion } from '@/service
 import { useProfessionalProfileContext } from '@/context/ProfessionalProfileContext';
 import type { OAuthLoginResult } from '@/lib/auth/oauthLogin';
 import { getGoogleOAuthAppOrigin } from '@/lib/auth/googleOAuth';
+import {
+  activateProfessionalProfile,
+  fetchAuthMe,
+  selectAuthContext,
+} from '@/lib/auth/contexts';
 
 const extractApiMessage = (error: unknown, fallback: string) => {
   if (axios.isAxiosError(error)) {
@@ -138,7 +143,13 @@ type ProfessionalRegisterHandoff = {
   };
 };
 
+type ProfessionalOnboardingDraft = {
+  form: Omit<RegisterForm, 'password' | 'confirmPassword'>;
+  schedule: ScheduleDay[];
+};
+
 const REGISTER_HANDOFF_KEY = 'plura:professional-register-handoff';
+const PROFESSIONAL_ONBOARDING_DRAFT_KEY = 'plura:professional-onboarding-draft';
 
 const wizardSteps = [
   'Cuenta',
@@ -217,6 +228,8 @@ export default function ProfesionalRegisterPage() {
   const [touched, setTouched] = useState<TouchedState>(defaultTouched);
   const [schedule, setSchedule] = useState<ScheduleDay[]>(initialSchedule);
   const [isOAuthSetup, setIsOAuthSetup] = useState(false);
+  const [hasAuthenticatedBaseAccount, setHasAuthenticatedBaseAccount] = useState(false);
+  const [authenticatedPhoneNumber, setAuthenticatedPhoneNumber] = useState('');
   const [categorySearch, setCategorySearch] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isRedirectingToCheckout, setIsRedirectingToCheckout] = useState(false);
@@ -250,6 +263,80 @@ export default function ProfesionalRegisterPage() {
     const normalizedAppOrigin = appOrigin.replace(/\/+$/, '');
     if (normalizedCurrentOrigin === normalizedAppOrigin) return;
     window.location.replace(`${normalizedAppOrigin}${window.location.pathname}${window.location.search}${window.location.hash}`);
+  }, []);
+
+  useEffect(() => {
+    if (!router.isReady) return;
+    const queryEmail = Array.isArray(router.query.email)
+      ? router.query.email[0]
+      : router.query.email;
+    if (queryEmail?.trim()) {
+      const normalizedEmail = queryEmail.trim().toLowerCase();
+      setForm((prev) => ({
+        ...prev,
+        email: prev.email || normalizedEmail,
+        confirmEmail: prev.confirmEmail || normalizedEmail,
+      }));
+    }
+  }, [router.isReady, router.query.email]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const raw = window.localStorage.getItem(PROFESSIONAL_ONBOARDING_DRAFT_KEY);
+    if (!raw) return;
+
+    try {
+      const draft = JSON.parse(raw) as Partial<ProfessionalOnboardingDraft>;
+      if (draft.form && typeof draft.form === 'object') {
+        setForm((prev) => ({
+          ...prev,
+          ...draft.form,
+          password: '',
+          confirmPassword: '',
+        }));
+      }
+      if (Array.isArray(draft.schedule) && draft.schedule.length > 0) {
+        setSchedule(draft.schedule);
+      }
+    } catch {
+      window.localStorage.removeItem(PROFESSIONAL_ONBOARDING_DRAFT_KEY);
+    }
+  }, []);
+
+  useEffect(() => {
+    let isActive = true;
+    void fetchAuthMe()
+      .then((me) => {
+        if (!isActive) return;
+        setHasAuthenticatedBaseAccount(true);
+        const email = me.user?.email?.trim().toLowerCase() || '';
+        const phoneNumber = (me.user?.phoneNumber ?? '').trim();
+        setAuthenticatedPhoneNumber(phoneNumber);
+        setForm((prev) => ({
+          ...prev,
+          email: prev.email || email,
+          confirmEmail: prev.confirmEmail || email,
+          fullName: prev.fullName || me.user?.fullName?.trim() || '',
+          phoneNumber: prev.phoneNumber || phoneNumber,
+          password: '',
+          confirmPassword: '',
+        }));
+        setTouched((prev) => ({
+          ...prev,
+          email: Boolean(email),
+          confirmEmail: Boolean(email),
+          fullName: Boolean(me.user?.fullName?.trim()),
+          phoneNumber: Boolean(phoneNumber),
+          password: true,
+          confirmPassword: true,
+        }));
+        setIsOAuthSetup(true);
+      })
+      .catch(() => undefined);
+
+    return () => {
+      isActive = false;
+    };
   }, []);
 
   const categoryNameBySlug = useMemo(
@@ -438,16 +525,12 @@ export default function ProfesionalRegisterPage() {
     setErrorMessage(null);
     setSuccessMessage(null);
 
-    if (result.role !== 'PROFESSIONAL') {
-      setIsGoogleLoading(false);
-      setErrorMessage('No pudimos completar el alta profesional con esa cuenta. Intentá nuevamente desde este flujo.');
-      return;
-    }
-
     const oauthEmail = result.user.email?.trim().toLowerCase() || '';
     const oauthPhoneNumber = (result.user.phoneNumber ?? '').trim();
 
     setIsOAuthSetup(true);
+    setHasAuthenticatedBaseAccount(true);
+    setAuthenticatedPhoneNumber(oauthPhoneNumber);
     setForm((prev) => ({
       ...prev,
       fullName: result.user.fullName?.trim() || prev.fullName,
@@ -469,8 +552,8 @@ export default function ProfesionalRegisterPage() {
     setStep(1);
     setSuccessMessage(
       oauthPhoneNumber
-        ? 'Cuenta conectada con Google. Continuá el mismo registro profesional.'
-        : 'Cuenta conectada con Google. El teléfono se completa en el paso de datos básicos.',
+        ? 'Cuenta Google conectada. Continuá el onboarding profesional sobre este mismo email.'
+        : 'Cuenta Google conectada. El teléfono se completa en el paso de datos básicos.',
     );
     void refreshProfile().catch(() => undefined);
   };
@@ -647,6 +730,18 @@ export default function ProfesionalRegisterPage() {
     );
   };
 
+  const saveOnboardingDraftForLogin = () => {
+    if (typeof window === 'undefined') return;
+    const { password: _password, confirmPassword: _confirmPassword, ...safeForm } = form;
+    window.localStorage.setItem(
+      PROFESSIONAL_ONBOARDING_DRAFT_KEY,
+      JSON.stringify({
+        form: safeForm,
+        schedule,
+      } satisfies ProfessionalOnboardingDraft),
+    );
+  };
+
   const activateCoreSubscription = async () => {
     const checkout = await createCoreSubscription();
     if (checkout.checkoutUrl) {
@@ -665,6 +760,80 @@ export default function ProfesionalRegisterPage() {
     await router.push('/profesional/dashboard/billing');
   };
 
+  const completeProfessionalSetup = async () => {
+    const handoff = buildRegisterHandoff();
+    saveDraftAfterRegister();
+    try {
+      await applyRegisterHandoff(handoff);
+      if (typeof window !== 'undefined') {
+        window.localStorage.removeItem(REGISTER_HANDOFF_KEY);
+        window.localStorage.removeItem(PROFESSIONAL_ONBOARDING_DRAFT_KEY);
+      }
+    } catch {
+      setErrorMessage('La cuenta quedó conectada, pero no pudimos cargar toda la configuración inicial. Revisá conexión y volvé a intentar.');
+      return;
+    }
+
+    await refreshProfile();
+    try {
+      await activateCoreSubscription();
+    } catch {
+      setBillingRecoveryAvailable(true);
+      setErrorMessage('La cuenta quedó creada, pero no pudimos activar Plura Core. Podés intentarlo desde Facturación.');
+    }
+  };
+
+  const activateProfessionalForCurrentAccount = async (
+    payload: {
+      rubro: string;
+      categorySlugs: string[];
+      country: string;
+      city: string;
+      fullAddress: string;
+      location: string | null;
+      latitude: number | null;
+      longitude: number | null;
+      tipoCliente: RegisterForm['tipoCliente'];
+      phoneNumber: string;
+      fullName: string;
+    },
+  ) => {
+    const me = await activateProfessionalProfile({
+      rubro: payload.rubro,
+      categorySlugs: payload.categorySlugs,
+      country: payload.country,
+      city: payload.city,
+      fullAddress: payload.fullAddress,
+      location: payload.location,
+      latitude: payload.latitude,
+      longitude: payload.longitude,
+      tipoCliente: payload.tipoCliente,
+    });
+    const professionalContext = me.contexts?.find((context) => context.type === 'PROFESSIONAL');
+    if (professionalContext) {
+      await selectAuthContext(professionalContext);
+    } else {
+      await selectAuthContext('PROFESSIONAL');
+    }
+
+    try {
+      await api.put('/profesional/profile', {
+        fullName: payload.fullName,
+        rubro: payload.rubro,
+        categorySlugs: payload.categorySlugs,
+        location: payload.location || '',
+        country: payload.country,
+        city: payload.city,
+        fullAddress: payload.fullAddress,
+        latitude: payload.latitude,
+        longitude: payload.longitude,
+        phoneNumber: payload.phoneNumber,
+      });
+    } catch {
+      // El perfil ya queda activo; el dashboard permite completar ajustes de datos si esta actualizacion parcial falla.
+    }
+  };
+
   const handleSubmit = async (event?: FormEvent<HTMLFormElement>) => {
     event?.preventDefault();
     setErrorMessage(null);
@@ -678,7 +847,12 @@ export default function ProfesionalRegisterPage() {
       return;
     }
 
-    if (!phoneVerificationToken) {
+    const phoneMatchesAuthenticatedAccount =
+      hasAuthenticatedBaseAccount &&
+      authenticatedPhoneNumber.trim() &&
+      authenticatedPhoneNumber.trim() === form.phoneNumber.trim();
+
+    if (!phoneVerificationToken && !phoneMatchesAuthenticatedAccount) {
       setErrorMessage('Verific? el tel?fono antes de publicar el perfil.');
       return;
     }
@@ -719,62 +893,60 @@ export default function ProfesionalRegisterPage() {
         password: form.password,
       };
 
-      if (isOAuthSetup) {
-        await api.post('/auth/oauth/complete-phone', {
-          phoneNumber: payload.phoneNumber,
-          phoneVerificationToken,
-        });
-
-        try {
-          await api.put('/profesional/profile', {
-            fullName: payload.fullName,
-            rubro: payload.rubro,
-            categorySlugs: payload.categorySlugs,
-            location: payload.location || '',
-            country: payload.country,
-            city: payload.city,
-            fullAddress: payload.fullAddress,
-            latitude: payload.latitude,
-            longitude: payload.longitude,
+      if (hasAuthenticatedBaseAccount || isOAuthSetup) {
+        if (phoneVerificationToken && !phoneMatchesAuthenticatedAccount) {
+          await api.post('/auth/oauth/complete-phone', {
             phoneNumber: payload.phoneNumber,
+            phoneVerificationToken,
           });
-        } catch {
-          // No cortamos el onboarding si el backend rechaza una actualizacion parcial.
-          // El telefono queda guardado y el draft conserva horarios/primer servicio para el dashboard.
         }
 
-        const handoff = buildRegisterHandoff();
-        saveDraftAfterRegister();
-        try {
-          await applyRegisterHandoff(handoff);
-          if (typeof window !== 'undefined') {
-            window.localStorage.removeItem(REGISTER_HANDOFF_KEY);
-          }
-        } catch {
-          setErrorMessage('La cuenta quedó conectada, pero no pudimos cargar toda la configuración inicial. Revisá conexión y volvé a intentar.');
-          return;
-        }
-
-        await refreshProfile();
-        try {
-          await activateCoreSubscription();
-        } catch {
-          setBillingRecoveryAvailable(true);
-          setErrorMessage('La cuenta quedó creada, pero no pudimos activar Plura Core. Podés intentarlo desde Facturación.');
-        }
+        await activateProfessionalForCurrentAccount(payload);
+        await completeProfessionalSetup();
         return;
       }
 
       await api.post('/auth/register/profesional', payload);
-      saveDraftAfterRegister();
 
       try {
-        const loginResponse = await api.post<{ accessToken?: string | null }>('/auth/login/profesional', {
+        const loginResponse = await api.post<{
+          accessToken?: string | null;
+          activeContext?: { type: 'PROFESSIONAL' };
+        }>('/auth/login', {
           email: normalizedEmail,
           password: form.password,
+          desiredContext: 'PROFESSIONAL',
         });
         setAuthAccessToken(loginResponse.data?.accessToken ?? null, 'PROFESSIONAL');
-      } catch {
+      } catch (loginError) {
+        const apiMessage = extractApiMessage(loginError, '');
+        const contextUnavailable =
+          axios.isAxiosError(loginError) &&
+          loginError.response?.status === 400 &&
+          /contexto.*no disponible|contexto deseado/i.test(apiMessage);
+
+        if (contextUnavailable) {
+          try {
+            const fallbackLogin = await api.post<{
+              accessToken?: string | null;
+              activeContext?: { type: 'CLIENT' };
+            }>('/auth/login', {
+              email: normalizedEmail,
+              password: form.password,
+              desiredContext: 'CLIENT',
+            });
+            setAuthAccessToken(fallbackLogin.data?.accessToken ?? null, 'CLIENT');
+            setHasAuthenticatedBaseAccount(true);
+            await activateProfessionalForCurrentAccount(payload);
+            await completeProfessionalSetup();
+            return;
+          } catch {
+            // Si tampoco pudo autenticar como cliente, pedimos login explicito y retomamos onboarding.
+          }
+        }
+
+        saveDraftAfterRegister();
+        saveOnboardingDraftForLogin();
         await router.push({
           pathname: '/login',
           query: {
@@ -788,24 +960,7 @@ export default function ProfesionalRegisterPage() {
       }
 
       await refreshProfile();
-
-      const handoff = buildRegisterHandoff();
-      try {
-        await applyRegisterHandoff(handoff);
-        if (typeof window !== 'undefined') {
-          window.localStorage.removeItem(REGISTER_HANDOFF_KEY);
-        }
-      } catch {
-        setErrorMessage('La cuenta quedó creada, pero no pudimos cargar toda la configuración inicial. Revisá conexión y volvé a intentar.');
-        return;
-      }
-
-      try {
-        await activateCoreSubscription();
-      } catch {
-        setBillingRecoveryAvailable(true);
-        setErrorMessage('La cuenta quedó creada, pero no pudimos activar Plura Core. Podés intentarlo desde Facturación.');
-      }
+      await completeProfessionalSetup();
     } catch (error) {
       if (axios.isAxiosError(error) && !error.response) {
         setErrorMessage('No se pudo conectar con el servidor.');

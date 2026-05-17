@@ -96,12 +96,13 @@ Lectura de producto:
 - `/reservar` sigue siendo compatible con `pendingReservation`: en el paso final, si falta sesion cliente, primero abre una pantalla embebida de registro/login dentro del flujo para no sacar al usuario de la reserva; ese overlay hoy reutiliza credenciales propias y Google; si aun asi deriva a login, registro o `complete-phone` completos, al volver retoma el resumen final listo para confirmar, pero si la URL trae un `serviceId` explicito ese valor tiene prioridad sobre el servicio guardado en storage
 - `/reservar` tambien refleja `serviceId`, `date`, `time` y `step` en la URL con `router.replace(..., { shallow: true })` para que un refresh del navegador no rompa el progreso local del flujo
 - `/reservar` no debe bloquear el CTA final cuando el visitante es anonimo y no existe una sesion cliente conocida; en ese caso abre directo el acceso embebido del paso final
+- `/reservar` y su acceso embebido ya seleccionan `ctx=CLIENT` antes de confirmar; una cuenta profesional autenticada puede reservar como cliente sin ser rechazada por `role=PROFESSIONAL`
 - `/reservar` ya prioriza un layout publico centrado y limpio: mantiene navbar, elimina el header superior grande y el sidebar de progreso, y deja un unico resumen final en la etapa de confirmacion
 - el `Navbar` compartido de rutas publicas (`/`, `/explorar`, `/profesional/pagina/[slug]`, `/profesional/[slug]` como redirect temporal, `/reservar`) ya no muestra un pill `Cargando...` por bootstrap de auth: mientras el perfil se hidrata, degrada visualmente a la variante publica y luego promueve al estado real si encuentra sesion valida
 - el paso final de `/reservar` no promete confirmacion falsa: la reserva sigue naciendo en `PENDING`; si hay pago online, la confirmacion final depende del backend y Mercado Pago
 - `/explorar` y `/profesional/pagina/[slug]` ya no fuerzan auth refresh ni favoritos en 401 cuando el cliente no tiene una sesion conocida; las features auth-only se habilitan recien con hint de sesion valida
 - cuando existe sesion conocida del cliente, `/explorar` y `/profesional/pagina/[slug]` hidratan el perfil cliente para mantener navbar y favoritos coherentes en la navegacion publica; `/profesional/[slug]` queda solo como redirect temporal de compatibilidad
-- `_app.tsx` ya usa un `session hint` con rol (`CLIENT` o `PROFESSIONAL`) para rehidratar el perfil correcto tambien en `/` y otras rutas publicas al reabrir navegador; si falta ese hint pero queda un access token fallback en storage, deriva el rol desde el JWT antes de decidir que perfil hidratar y evita probar ambos `/auth/me/*` a ciegas. El bootstrap publico solo intenta hidratar si ese access token fallback sigue usable; si `auth/me` responde `401`, la web no fuerza `refresh` automatico y limpia el hint local para no entrar en loop con sesiones viejas
+- `_app.tsx` ya usa un `session hint` con rol/contexto (`CLIENT`, `PROFESSIONAL` o `WORKER`) para rehidratar el perfil correcto tambien en `/` y otras rutas publicas al reabrir navegador; si falta ese hint pero queda un access token fallback en storage, deriva primero `ctx` del JWT y solo usa `role` como compatibilidad antes de decidir que perfil hidratar. El bootstrap publico solo intenta hidratar si ese access token fallback sigue usable; si `auth/me` responde `401`, la web no fuerza `refresh` automatico y limpia el hint local para no entrar en loop con sesiones viejas
 - el logout web se unifico en un flujo comun (`useAuthLogout` + `LogoutTransitionProvider`): muestra overlay de `Cerrando sesión`, limpia perfiles/cache local y deriva al login especifico del rol real
 - aunque no haya sync reciente en memoria, el toggle de favoritos en web revalida contra backend en la primera interaccion util para evitar dobles clicks o estados viejos del cache local
 - `/explorar` ya usa la fecha como filtro real de disponibilidad y no solo como ordenador; `Disponible ahora` tambien se apoya en disponibilidad real
@@ -174,6 +175,7 @@ Lectura de producto:
 - feedback de app integrado en `/cliente/configuracion` con formulario de rating, categoria opcional y texto libre; incluye historial paginado de feedback propio
 - `/cliente/configuracion` ahora requiere challenge OTP por email para eliminar cuenta; muestra codigo enmascarado y advierte sobre cancelacion de reservas e irreversibilidad
 - `ClientNotificationsContext` ya no rompe fuera del provider; devuelve defaults seguros (unreadCount=0, noop callbacks) para degradar sin crash en rutas publicas
+- `/cliente/auth/login`, `/cliente/auth/register` y el overlay de reserva ya no redirigen por `role=PROFESSIONAL`; fuerzan o seleccionan `ctx=CLIENT` cuando la intención es reservar o entrar al área cliente
 - todavia faltan piezas visibles para beneficios y settings de notificaciones
 
 ### Rutas del profesional
@@ -214,6 +216,8 @@ Modulos relevantes:
 - `services/professionalMercadoPagoConnection.ts`: operaciones de conexion OAuth Mercado Pago del profesional.
 - `services/professionalReviews.ts`: gestion de reseñas recibidas por el profesional; incluye listado, ocultamiento de texto, reporte por incumplimiento e invalidacion tambien de `/auth/me/profesional` para mantener KPIs sincronizados.
 - `services/publicReviews.ts`: reseñas publicas para perfil publico del profesional.
+- `/profesional/auth/register`: si hay sesión base autenticada, activa/reactiva `ProfessionalProfile` con `POST /auth/professional-profile/activate`, selecciona `ctx=PROFESSIONAL` y continúa con carga inicial de perfil/agenda/servicio/billing sin pedir otro email.
+- `/login?intent=professional`: usa login unificado con intención profesional; si la cuenta valida todavía no tiene contexto profesional, autentica como `CLIENT` y retoma el onboarding profesional sobre esa misma cuenta.
 
 Backend relacionado:
 

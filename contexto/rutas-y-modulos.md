@@ -243,14 +243,14 @@ Lectura de producto:
 - `/profesional/auth/register` funciona como wizard de alta: email/password no crea cuenta hasta el submit final de publicacion; Google continua dentro del wizard, el telefono se pide ahi mismo y si el usuario sale antes de terminar debe empezar otra vez. El registro y `/profesional/dashboard/perfil-negocio` comparten selector internacional de telefono con bandera + codigo; evita cargar el prefijo a mano y deja el numero persistido listo para backend
 - `/profesional/auth/register` ahora usa un onboarding guiado por pasos en desktop: cuenta/Google, tipo de perfil, datos públicos con preview, rubros, modalidad, ubicación si aplica, horarios base, primer servicio y activación final de `Plura Core`. Mantiene `POST /auth/register/profesional` para email/password, inicia sesión automáticamente si puede, aplica el handoff de página pública/horarios/primer servicio y luego llama `POST /billing/subscription` con `PLAN_CORE`; Google/OAuth completa teléfono/perfil, aplica el mismo handoff y activa Core. Si billing devuelve `checkoutUrl`, la web guarda pending checkout y redirige a Mercado Pago en la misma pestaña; si no, entra a facturación/dashboard con el estado de trial.
 - `/profesional/dashboard/reservas` tambien usa selector internacional cuando el profesional carga una reserva manual con telefono de cliente opcional
-- `billing` existe como pantalla de `Plura Core` y cobros; `PROFESSIONAL / LOCAL / ENTERPRISE` no son planes activos y quedan solo como aliases legacy de entrada normalizados a Core
+- `billing` existe como pantalla de `Plura Core` y cobros; `PROFESSIONAL / LOCAL / ENTERPRISE` no son planes activos ni aliases aceptados por billing
 - `/profesional/dashboard/billing` separa dos bloques: `Plura Core` y `Cobros de reservas con Mercado Pago`; no muestra planes disponibles, comparativa ni upgrade a Local/Enterprise. Muestra estados `CHECKOUT_PENDING`, `TRIALING`, `TRIAL`, `ACTIVE`, `PAST_DUE`, `CANCELLED` y `EXPIRED`; para trial activo muestra fin de prueba, días restantes y aviso si falta autorizar medio de pago.
 - la web profesional ya consume `GET/POST/DELETE /profesional/payment-providers/mercadopago/*` y no usa `payout-config`
 - el retorno OAuth de Mercado Pago mantiene pantalla propia en `/oauth/mercadopago/callback`, pero ya no procesa `code/state` en frontend: Mercado Pago vuelve al callback backend y este redirige a la web con un resultado final
 - el frontend del billing profesional no implementa PKCE ni almacena `code_verifier`; todo el flujo PKCE de Mercado Pago queda resuelto en backend y la web solo inicia el onboarding y muestra el resultado final
 - el callback OAuth backend tampoco depende ya de la sesion web del profesional para cerrar la vinculacion; esto evita `401` al volver desde Mercado Pago por dominios externos o tuneles tipo `ngrok`
 - en `/profesional/dashboard/billing`, Mercado Pago se muestra como conexion de cobros de reservas dentro de Core cuando el entitlement lo habilita; no se presenta como beneficio de Local/Enterprise
-- `/profesional/dashboard/billing` no promociona visualmente `LOCAL / ENTERPRISE`; cualquier suscripcion legacy se lee como Core para la experiencia MVP
+- `/profesional/dashboard/billing` no promociona visualmente `LOCAL / ENTERPRISE`; el backend persiste suscripciones solo como `PLAN_CORE`
 - `/profesional/dashboard/billing` muestra directamente Core y la conexion de cobros; ya no monta comparativa ni grilla de planes
 - `/profesional/notificaciones` ya funciona como centro real de inbox: lista paginada con `cargar mas`, filtros basicos y navegacion contextual por `actionUrl`
 - la navegacion contextual de notificaciones profesional apunta a la UX real de reservas en `/profesional/dashboard/reservas?bookingId={id}` y el panel selecciona la reserva desde query string
@@ -258,7 +258,7 @@ Lectura de producto:
 - `/profesional/dashboard/reservas` organiza la vista principal como tablero operativo responsive de `4` columnas (`Reservas de hoy`, `Pendientes de confirmación`, `Próximas reservas confirmadas`, `Canceladas`) con contador integrado por columna; el detalle/timeline y acciones avanzadas quedan debajo al seleccionar una reserva para no dominar el tablero
 - `/profesional/dashboard/reservas` mantiene auto-refresh para estados pendientes, pero ahora pausa polling con la pestaña oculta y aplica backoff para reducir trafico redundante
 - `/profesional/dashboard/reservas` ahora paraleliza reservas y servicios al entrar, y prefetch-ea `actions + timeline` de la seleccion activa para acortar la cascada inicial
-- `/profesional/dashboard/reservas` debe seguir disponible para `Plura Core/CORE` como modulo operativo de reservas; `PROFESSIONAL` se conserva solo como alias legacy
+- `/profesional/dashboard/reservas` debe seguir disponible para `Plura Core/CORE` como modulo operativo de reservas; `PROFESSIONAL` no es plan de billing aceptado
 - la web profesional vuelve a exponer la accion manual `Marcar completada` para reservas `CONFIRMED` cuyo turno ya termino; convive con confirmacion, cancelacion, no-show, reagendamiento y timeline sin mezclar reglas
 - `/profesional/dashboard/reservas` usa `GET /reservas/{id}/actions` para decidir acciones; ese contrato ahora expone tambien `canComplete`
 - `/profesional/dashboard` recorta trabajo de agenda en cliente: la grilla semanal y mensual quedaron separadas para evitar rerenders pesados al abrir el drawer, y la carga de reservas ya no expande fechas dispersas a un unico rango continuo cuando el dashboard combina semana actual con una semana o mes navegados
@@ -508,7 +508,7 @@ Uso actual:
 
 Lectura de producto:
 
-- `billing/plans.ts` modela comercialmente solo `CORE`; los aliases legacy de planes viven separados como compatibilidad de parsing y siempre resuelven a Core
+- `billing/plans.ts` modela comercialmente solo `CORE`; los aliases comerciales legacy ya no deben aceptarse como planes de billing
 - `types/professional.ts` ya contiene entitlements como pagos online, client profile, portfolio, loyalty, last minute, store y shipping
 - eso indica que parte del modelo de permisos para add-ons futuros ya esta pensado, aunque no se venda como plan visible en el MVP
 
@@ -530,4 +530,3 @@ Lectura de producto:
 - `/profesional/auth/login` queda como ruta legacy de compatibilidad y redirige a `/login?intent=professional`, preservando `email`, `registered`, `billing=pending` y otros query params.
 - `/profesional/auth/register` es el wizard profesional y el destino de CTAs públicos como `Soy profesional` y `Registrá tu negocio`.
 - Si el wizard profesional crea la cuenta pero falla el login automático, deriva a `/login?intent=professional&billing=pending`; al iniciar sesión como profesional, `/login` aplica el handoff pendiente y activa `Plura Core`.
-

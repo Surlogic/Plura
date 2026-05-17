@@ -6,14 +6,8 @@ Object.defineProperty(exports, "resolveBillingPlanFromBackendPlanCode", { enumer
 Object.defineProperty(exports, "resolveBillingPlanFromProfilePlanCode", { enumerable: true, get: function () { return plans_1.resolveBillingPlanFromProfilePlanCode; } });
 exports.billingPlans = plans_1.sharedBillingPlans.map((plan) => ({
     ...plan,
-    accent: plan.id === 'PROFESIONAL'
-        ? 'accent'
-        : plan.id === 'ENTERPRISE'
-            ? 'warm'
-            : 'default',
+    accent: 'accent',
 }));
 exports.billingPlanById = {
-    BASIC: exports.billingPlans[0],
-    PROFESIONAL: exports.billingPlans[1],
-    ENTERPRISE: exports.billingPlans[2],
+    CORE: exports.billingPlans[0],
 };

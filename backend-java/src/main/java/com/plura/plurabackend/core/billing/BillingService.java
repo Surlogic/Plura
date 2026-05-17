@@ -85,16 +85,10 @@ public class BillingService {
     @Transactional
     public BillingCheckoutResponse createSubscription(BillingCreateSubscriptionRequest request) {
         ensureBillingEnabled();
+        resolveRequestedCorePlan(request);
 
         Long userId = resolveAuthenticatedProfessionalUserId();
         ProfessionalProfile professional = loadEnabledProfessional(userId);
-        SubscriptionPlanCode plan = SubscriptionPlanCode.fromCode(request.getPlanCode());
-        if (plan != SubscriptionPlanCode.PLAN_CORE) {
-            throw new ResponseStatusException(
-                HttpStatus.BAD_REQUEST,
-                "Solo Plura Core está disponible durante el MVP"
-            );
-        }
         return createCoreSubscription(professional);
     }
 
@@ -361,6 +355,17 @@ public class BillingService {
     private void ensureBillingEnabled() {
         if (!billingProperties.isEnabled()) {
             throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "Billing deshabilitado");
+        }
+    }
+
+    private SubscriptionPlanCode resolveRequestedCorePlan(BillingCreateSubscriptionRequest request) {
+        try {
+            return SubscriptionPlanCode.fromCode(request == null ? null : request.getPlanCode());
+        } catch (IllegalArgumentException exception) {
+            throw new ResponseStatusException(
+                HttpStatus.BAD_REQUEST,
+                exception.getMessage()
+            );
         }
     }
 

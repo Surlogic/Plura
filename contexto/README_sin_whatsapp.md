@@ -41,8 +41,9 @@ Contratos actuales de compatibilidad:
 
 - `Plura Core` <-> `CORE` <-> `PLAN_CORE`
 - `PLAN_CORE` es el unico codigo canonico activo de suscripcion
-- `PROFESSIONAL`, `LOCAL`, `ENTERPRISE`, `BASIC`, `PROFESIONAL`, `PLAN_BASIC`, `PLAN_PRO`, `PLAN_PROFESIONAL`, `PLAN_PREMIUM`, `PLAN_PROFESSIONAL`, `PLAN_LOCAL` y `PLAN_ENTERPRISE` quedan solo como aliases legacy de entrada transicional
-- todo alias legacy se normaliza a `CORE` / `PLAN_CORE` en salidas y capacidades efectivas
+- `POST /billing/subscription` acepta solo `PLAN_CORE` y `CORE`; cualquier alias comercial legacy devuelve `400`
+- `PROFESSIONAL`, `LOCAL`, `ENTERPRISE`, `BASIC`, `PROFESIONAL`, `PLAN_BASIC`, `PLAN_PRO`, `PLAN_PROFESIONAL`, `PLAN_PROFESSIONAL`, `PLAN_PREMIUM`, `PLAN_LOCAL` y `PLAN_ENTERPRISE` no son planes de billing válidos
+- `Local`, `Professional` y `Enterprise` quedan como tipos operativos o conceptos futuros fuera de billing; `subscription.plan` queda restringido en DB a `PLAN_CORE`
 
 ## Alcance por plan
 

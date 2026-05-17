@@ -89,23 +89,21 @@ class BillingServiceTest {
      * El objetivo es dejar explicita la regla que protege este test.
      */
     @Test
-    void acceptsLegacyPlanCodeAndCreatesCoreSubscription() {
+    void rejectsLegacyPlanCodeWithBadRequest() {
         when(subscriptionRepository.findByProfessionalIdForUpdate(30L)).thenReturn(Optional.empty());
-        when(mercadoPagoSubscriptionService.createSubscription(any()))
-            .thenReturn(new MercadoPagoSubscriptionService.SubscriptionCheckoutSession(
-                "mp-sub-legacy",
-                "https://checkout.test",
-                "plan-core"
-            ));
 
-        BillingCheckoutResponse response = service.createSubscription(createRequest("PLAN_LOCAL"));
+        ResponseStatusException error = assertThrows(ResponseStatusException.class, () ->
+            service.createSubscription(createRequest("PLAN_LOCAL"))
+        );
 
-        assertEquals("PLAN_CORE", response.getPlanCode());
-        assertEquals("CHECKOUT_PENDING", response.getStatus());
+        assertEquals(HttpStatus.BAD_REQUEST, error.getStatusCode());
+        assertEquals("planCode inválido: PLAN_LOCAL", error.getReason());
+        verify(subscriptionRepository, never()).saveAndFlush(any());
+        verify(mercadoPagoSubscriptionService, never()).createSubscription(any());
     }
 
     @Test
-    void allowsCorePlanAndCreatesTwoMonthTrialWithCheckoutPending() {
+    void allowsCoreAliasAndCreatesTwoMonthTrialWithCheckoutPending() {
         when(subscriptionRepository.findByProfessionalIdForUpdate(30L)).thenReturn(Optional.empty());
         when(mercadoPagoSubscriptionService.createSubscription(any()))
             .thenReturn(new MercadoPagoSubscriptionService.SubscriptionCheckoutSession(
@@ -114,7 +112,7 @@ class BillingServiceTest {
                 "plan-core"
             ));
 
-        BillingCheckoutResponse response = service.createSubscription(createRequest("PLAN_CORE"));
+        BillingCheckoutResponse response = service.createSubscription(createRequest("CORE"));
 
         assertEquals("https://checkout.test", response.getCheckoutUrl());
         assertEquals("MERCADOPAGO", response.getProvider());

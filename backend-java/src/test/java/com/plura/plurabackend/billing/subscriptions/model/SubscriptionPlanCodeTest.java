@@ -17,15 +17,24 @@ class SubscriptionPlanCodeTest {
      * El objetivo es dejar explicita la regla que protege este test.
      */
     @Test
-    void acceptsCanonicalCodesAndLegacyAliases() {
+    void acceptsOnlyCoreCodes() {
         assertEquals(SubscriptionPlanCode.PLAN_CORE, SubscriptionPlanCode.fromCode("PLAN_CORE"));
-        assertEquals(SubscriptionPlanCode.PLAN_CORE, SubscriptionPlanCode.fromCode("PLAN_LOCAL"));
-        assertEquals(SubscriptionPlanCode.PLAN_CORE, SubscriptionPlanCode.fromCode("PLAN_ENTERPRISE"));
-        assertEquals(SubscriptionPlanCode.PLAN_CORE, SubscriptionPlanCode.fromCode("PLAN_PROFESSIONAL"));
-        assertEquals(SubscriptionPlanCode.PLAN_CORE, SubscriptionPlanCode.fromCode("PLAN_BASIC"));
-        assertEquals(SubscriptionPlanCode.PLAN_CORE, SubscriptionPlanCode.fromCode("PLAN_PRO"));
-        assertEquals(SubscriptionPlanCode.PLAN_CORE, SubscriptionPlanCode.fromCode("PLAN_PROFESIONAL"));
-        assertEquals(SubscriptionPlanCode.PLAN_CORE, SubscriptionPlanCode.fromCode("PLAN_PREMIUM"));
+        assertEquals(SubscriptionPlanCode.PLAN_CORE, SubscriptionPlanCode.fromCode("CORE"));
+        assertEquals(SubscriptionPlanCode.PLAN_CORE, SubscriptionPlanCode.fromCode(" core "));
+    }
+
+    @Test
+    void rejectsLegacyPlanAliases() {
+        assertThrows(IllegalArgumentException.class, () -> SubscriptionPlanCode.fromCode("PLAN_LOCAL"));
+        assertThrows(IllegalArgumentException.class, () -> SubscriptionPlanCode.fromCode("LOCAL"));
+        assertThrows(IllegalArgumentException.class, () -> SubscriptionPlanCode.fromCode("PLAN_ENTERPRISE"));
+        assertThrows(IllegalArgumentException.class, () -> SubscriptionPlanCode.fromCode("ENTERPRISE"));
+        assertThrows(IllegalArgumentException.class, () -> SubscriptionPlanCode.fromCode("PLAN_PROFESSIONAL"));
+        assertThrows(IllegalArgumentException.class, () -> SubscriptionPlanCode.fromCode("PROFESSIONAL"));
+        assertThrows(IllegalArgumentException.class, () -> SubscriptionPlanCode.fromCode("PLAN_PROFESIONAL"));
+        assertThrows(IllegalArgumentException.class, () -> SubscriptionPlanCode.fromCode("PLAN_BASIC"));
+        assertThrows(IllegalArgumentException.class, () -> SubscriptionPlanCode.fromCode("PLAN_PRO"));
+        assertThrows(IllegalArgumentException.class, () -> SubscriptionPlanCode.fromCode("PLAN_PREMIUM"));
         assertThrows(IllegalArgumentException.class, () -> SubscriptionPlanCode.fromCode("PLAN_INVALID"));
     }
 

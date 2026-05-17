@@ -266,9 +266,9 @@ Lectura vigente de planes y billing profesional:
 - el MVP opera con `Plura Core` unico para profesionales/locales
 - `INDEPENDENT` y `LOCAL` siguen siendo tipos operativos de perfil, no planes comerciales
 - `GET /billing/subscription` se mantiene para estado de suscripcion y compatibilidad de datos legacy
-- `POST /billing/subscription` ya no debe usarse para cambio visible de plan; el backend inicia Core y normaliza cualquier plan legacy permitido a `PLAN_CORE`
-- `PLAN_CORE` es el unico codigo canonico activo de `subscription.plan`
-- codigos legacy `PLAN_BASIC`, `PLAN_PRO`, `PLAN_PROFESIONAL`, `PLAN_PREMIUM`, `PLAN_PROFESSIONAL`, `PLAN_LOCAL` y `PLAN_ENTERPRISE` se aceptan solo como entrada transicional y se resuelven como Core
+- `POST /billing/subscription` no es cambio visible de plan; durante el MVP inicia solo Core
+- `POST /billing/subscription` acepta solo `PLAN_CORE` o `CORE`; `PLAN_BASIC`, `PLAN_PRO`, `PLAN_PROFESIONAL`, `PLAN_PROFESSIONAL`, `PROFESSIONAL`, `PLAN_PREMIUM`, `PLAN_LOCAL`, `LOCAL`, `PLAN_ENTERPRISE` y `ENTERPRISE` devuelven `400`
+- `PLAN_CORE` es el unico codigo canonico activo de `subscription.plan`, y la DB queda con constraint core-only
 - los limites Core protegen equipo/multilocal: `maxProfessionals=1` y `maxLocations=1`
 - analytics y add-ons futuros siguen deshabilitados por capability, no por una comparativa comercial visible
 
@@ -295,7 +295,7 @@ Lectura de producto:
 - cubre constructor de servicios, imagen principal, duracion y precio
 - cubre horarios de trabajo y politicas de reserva
 - cubre carga manual de turnos desde panel
-- `PUT /profesional/profile` y `PUT /profesional/public-page` permiten que `Plura Core/CORE` gestione logo, banner, headline y about del perfil publico; `PROFESSIONAL` queda como alias legacy
+- `PUT /profesional/profile` y `PUT /profesional/public-page` permiten que `Plura Core/CORE` gestione logo, banner, headline y about del perfil publico; `PROFESSIONAL` no es plan de billing vigente
 - `PUT /profesional/profile` ahora acepta opcionalmente `logoMedia` y `bannerMedia` con `{ positionX, positionY, zoom }` para persistir el encuadre visual del logo y del banner; `GET /auth/me/profesional` y `GET /profesional/public-page` exponen esos mismos metadatos normalizados para rehidratar el editor y la preview
 - `PUT /profesional/profile`, `PUT /profesional/public-page` y `POST/PUT /profesional/services` ahora canonizan referencias de imágenes antes de persistirlas: si reciben una URL pública del CDN/R2 o de `/uploads`, la convierten otra vez a referencia interna de storage para no dejar metadatos inconsistentes en DB
 - `POST /profesional/services` corta por capacidad Core: hasta `30` servicios; cada servicio mantiene una sola imagen publica
@@ -515,7 +515,7 @@ Estado real detectado en codigo:
 
 - suscripciones de plataforma: `Mercado Pago`
 - conexion OAuth del profesional a Mercado Pago: ya existe en `/profesional/payment-providers/mercadopago/*`
-- `POST /billing/subscription` hoy inicia solo `Plura Core` con request recomendado `{ "planCode": "PLAN_CORE" }`; si recibe codigos legacy de planes (`PLAN_BASIC`, `PLAN_PRO`, `PLAN_PROFESIONAL`, `PLAN_PREMIUM`, `PLAN_PROFESSIONAL`, `PLAN_LOCAL`, `PLAN_ENTERPRISE`) los acepta por compatibilidad y los normaliza a `PLAN_CORE`
+- `POST /billing/subscription` hoy inicia solo `Plura Core` con request recomendado `{ "planCode": "PLAN_CORE" }` o `{ "planCode": "CORE" }`; cualquier codigo legacy de plan devuelve `400`
 - `POST /billing/subscription` devuelve `subscriptionId`, `checkoutUrl`, `provider`, `planCode`, `status`, `trialStartAt`, `trialEndAt` y `requiresCheckout`; si Mercado Pago entrega URL queda `CHECKOUT_PENDING`, y si no requiere checkout queda `TRIALING`
 - `GET /billing/subscription` devuelve estado de suscripcion y agrega `trialStartAt`, `trialEndAt`, `trialDaysRemaining`, `trialActive` y `paymentMethodAttached`
 - `planEnabled` en `GET /billing/subscription` es `true` solo para `ACTIVE` vigente o `TRIALING` con `trialEndAt` futuro; `CHECKOUT_PENDING`, `PAST_DUE`, `CANCELLED` y `EXPIRED` no habilitan el plan

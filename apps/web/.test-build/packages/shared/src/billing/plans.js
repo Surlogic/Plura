@@ -3,62 +3,50 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.resolveBillingPlanFromBackendPlanCode = exports.resolveBillingPlanFromProfilePlanCode = exports.sharedBillingPlanById = exports.sharedBillingPlans = void 0;
 exports.sharedBillingPlans = [
     {
-        id: 'BASIC',
-        label: 'Free',
-        backendPlanCode: 'PLAN_BASIC',
-        profilePlanCode: 'BASIC',
-        priceMonthly: 0,
-        priceLabel: 'Gratis',
-        benefits: ['Perfil publico', 'Agenda basica', 'Reservas manuales'],
-    },
-    {
-        id: 'PROFESIONAL',
-        label: 'Pro',
-        backendPlanCode: 'PLAN_PROFESIONAL',
-        profilePlanCode: 'PROFESIONAL',
+        id: 'CORE',
+        label: 'Plura Core',
+        backendPlanCode: 'PLAN_CORE',
+        profilePlanCode: 'CORE',
         priceMonthly: 590,
-        priceLabel: '$590 UYU / mes',
-        benefits: ['Pagos online', 'Analytics basicos', 'Automatizaciones', 'Perfil mejorado'],
+        priceLabel: '2 meses gratis, luego suscripcion mensual',
+        benefits: [
+            'Pagina publica, marketplace y reservas online',
+            'Agenda, calendario, horarios y bloqueos',
+            'Servicios, dashboard y notificaciones',
+            'Perfil publico con logo, banner, descripcion y fotos',
+            '1 profesional y 1 local incluidos',
+            'Cobros online con Mercado Pago',
+        ],
         recommended: true,
     },
-    {
-        id: 'ENTERPRISE',
-        label: 'Premium',
-        backendPlanCode: 'PLAN_ENTERPRISE',
-        profilePlanCode: 'ENTERPRISE',
-        priceMonthly: 1290,
-        priceLabel: '$1.290 UYU / mes',
-        benefits: ['Todo lo de Pro', 'Tienda', 'Chat interno', 'Mayor capacidad operativa'],
-    },
 ];
-exports.sharedBillingPlanById = exports.sharedBillingPlans.reduce((accumulator, plan) => {
-    accumulator[plan.id] = plan;
-    return accumulator;
-}, {
-    BASIC: exports.sharedBillingPlans[0],
-    PROFESIONAL: exports.sharedBillingPlans[1],
-    ENTERPRISE: exports.sharedBillingPlans[2],
-});
+exports.sharedBillingPlanById = {
+    CORE: exports.sharedBillingPlans[0],
+};
 const resolveBillingPlanFromProfilePlanCode = (planCode) => {
     switch (planCode?.toUpperCase()) {
+        case 'CORE':
         case 'PROFESIONAL':
-            return 'PROFESIONAL';
+        case 'LOCAL':
         case 'ENTERPRISE':
-            return 'ENTERPRISE';
         case 'BASIC':
+        case 'PROFESSIONAL':
         default:
-            return 'BASIC';
+            return 'CORE';
     }
 };
 exports.resolveBillingPlanFromProfilePlanCode = resolveBillingPlanFromProfilePlanCode;
 const resolveBillingPlanFromBackendPlanCode = (planCode) => {
     switch (planCode?.toUpperCase()) {
+        case 'PLAN_CORE':
         case 'PLAN_BASIC':
-            return 'BASIC';
+        case 'PLAN_PRO':
         case 'PLAN_PROFESIONAL':
-            return 'PROFESIONAL';
+        case 'PLAN_PREMIUM':
+        case 'PLAN_PROFESSIONAL':
+        case 'PLAN_LOCAL':
         case 'PLAN_ENTERPRISE':
-            return 'ENTERPRISE';
+            return 'CORE';
         default:
             return null;
     }

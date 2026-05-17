@@ -1,6 +1,7 @@
 package com.plura.plurabackend.db;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
 import java.net.URISyntaxException;
@@ -62,5 +63,30 @@ class FlywayMigrationVersionUniquenessTest {
         }
 
         assertEquals(List.of(), duplicates, () -> "Migraciones Flyway duplicadas: " + duplicates);
+    }
+
+    @Test
+    void subscriptionPlanCoreOnlyMigrationNormalizesLegacyValuesAndLocksConstraint() throws IOException, URISyntaxException {
+        Path migrationsDir = Path.of(
+            Objects.requireNonNull(
+                FlywayMigrationVersionUniquenessTest.class.getClassLoader().getResource("db/migration"),
+                "No se encontro el directorio de migraciones Flyway"
+            ).toURI()
+        );
+        String migration = Files.readString(migrationsDir.resolve("V84__subscription_plan_core_only.sql"));
+
+        assertTrue(migration.contains("DROP CONSTRAINT IF EXISTS subscription_plan_check"));
+        assertTrue(migration.contains("SET \"plan\" = 'PLAN_CORE'"));
+        assertTrue(migration.contains("'PLAN_BASIC'"));
+        assertTrue(migration.contains("'PLAN_PRO'"));
+        assertTrue(migration.contains("'PLAN_PROFESIONAL'"));
+        assertTrue(migration.contains("'PLAN_PROFESSIONAL'"));
+        assertTrue(migration.contains("'PROFESSIONAL'"));
+        assertTrue(migration.contains("'PLAN_PREMIUM'"));
+        assertTrue(migration.contains("'PLAN_LOCAL'"));
+        assertTrue(migration.contains("'LOCAL'"));
+        assertTrue(migration.contains("'PLAN_ENTERPRISE'"));
+        assertTrue(migration.contains("'ENTERPRISE'"));
+        assertTrue(migration.contains("CHECK (\"plan\" IN ('PLAN_CORE'))"));
     }
 }

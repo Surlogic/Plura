@@ -685,6 +685,8 @@ export default function ReservationPage() {
         persistPendingReservation();
         setSaveError('Necesitás iniciar sesión como cliente para confirmar esta reserva.');
         setIsAuthOverlayOpen(true);
+      } else if (isAxiosError(error) && error.response?.status === 403) {
+        setSaveError(extractApiMessage(error, 'Necesitás verificar tu celular antes de reservar.'));
       } else {
         setSaveError(extractApiMessage(error, RESERVATION_ERROR_FALLBACK));
       }
@@ -716,6 +718,12 @@ export default function ReservationPage() {
       setSaveMessage(null);
       setSaveError(null);
       setIsAuthOverlayOpen(true);
+      return;
+    }
+
+    if (!clientProfile.phoneVerified) {
+      setSaveMessage(null);
+      setSaveError('Necesitás verificar tu celular antes de confirmar la reserva. Podés hacerlo desde tu perfil de cliente.');
       return;
     }
 

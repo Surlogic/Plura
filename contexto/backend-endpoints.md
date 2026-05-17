@@ -209,6 +209,7 @@ Prefijo: `/public/profesionales`
 - `GET /public/profesionales/{slug}`
 - `GET /public/profesionales/{slug}/slots`
 - `POST /public/profesionales/{slug}/reservas`
+- `POST /public/profesionales/{slug}/reservas` ahora exige cliente autenticado con `phoneVerified=true`; si `phoneVerifiedAt` es null responde `403` y no crea la reserva.
 - `GET /public/profesionales/{slug}/reviews` — listado paginado de reseñas publicas (text null si oculto por profesional o internal ops)
 
 ### Feedback publico de app

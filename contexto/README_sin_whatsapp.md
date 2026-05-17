@@ -533,3 +533,8 @@ Este sistema debe funcionar como producto profesional real con usuarios concurre
 - `infra-y-configuracion_sin_whatsapp.md`: variables, integraciones y notas operativas cruzadas con roadmap.
 hola engo 
 hola gurises
+
+
+### Verificación celular
+
+- Regla de seguridad: los clientes pueden navegar e iniciar el flujo, pero no pueden confirmar reservas sin celular verificado (`phoneVerified=true`); profesionales y OAuth deben completar OTP antes de continuar con alta/activación.

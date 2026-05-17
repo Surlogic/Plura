@@ -165,8 +165,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Rol de token inválido");
                 return;
             }
+            if (contextType == AuthContextType.CLIENT) {
+                addAuthorityIfMissing(authorities, "ROLE_USER");
+            } else if (contextType == AuthContextType.PROFESSIONAL) {
+                addAuthorityIfMissing(authorities, "ROLE_PROFESSIONAL");
+            }
             if (contextType == AuthContextType.WORKER) {
-                authorities.add(new SimpleGrantedAuthority("ROLE_WORKER"));
+                addAuthorityIfMissing(authorities, "ROLE_WORKER");
             }
 
             // Crea la autenticación con el subject del JWT.
@@ -279,6 +284,14 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         }
         String trimmed = value.trim();
         return trimmed.isBlank() ? null : trimmed;
+    }
+
+    private void addAuthorityIfMissing(List<GrantedAuthority> authorities, String authority) {
+        boolean exists = authorities.stream()
+            .anyMatch(existing -> authority.equals(existing.getAuthority()));
+        if (!exists) {
+            authorities.add(new SimpleGrantedAuthority(authority));
+        }
     }
 
     /**

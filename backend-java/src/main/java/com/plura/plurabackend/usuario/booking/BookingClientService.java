@@ -14,7 +14,6 @@ import com.plura.plurabackend.core.booking.policy.BookingPolicySnapshotService;
 import com.plura.plurabackend.core.booking.repository.BookingRepository;
 import com.plura.plurabackend.core.booking.time.BookingDateTimeService;
 import com.plura.plurabackend.core.user.model.User;
-import com.plura.plurabackend.core.user.model.UserRole;
 import com.plura.plurabackend.core.user.repository.UserRepository;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Timer;
@@ -175,17 +174,7 @@ public class BookingClientService {
         User user = userRepository.findByIdAndDeletedAtIsNull(userId)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Usuario no encontrado"));
 
-        ensureClientUser(user);
         return user;
-    }
-
-    /**
-     * Ejecuta la logica de ensure cliente usuario manteniendola encapsulada en este componente.
-     */
-    private void ensureClientUser(User user) {
-        if (user.getRole() != UserRole.USER) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Solo clientes");
-        }
     }
 
     /**

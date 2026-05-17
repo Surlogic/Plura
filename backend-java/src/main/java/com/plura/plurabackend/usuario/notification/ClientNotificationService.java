@@ -10,7 +10,6 @@ import com.plura.plurabackend.core.notification.query.NotificationInboxQuery;
 import com.plura.plurabackend.core.notification.query.NotificationQueryService;
 import com.plura.plurabackend.core.notification.query.NotificationReadService;
 import com.plura.plurabackend.core.user.model.User;
-import com.plura.plurabackend.core.user.model.UserRole;
 import com.plura.plurabackend.core.user.repository.UserRepository;
 import com.plura.plurabackend.usuario.notification.dto.ClientNotificationDetailResponse;
 import com.plura.plurabackend.usuario.notification.dto.ClientNotificationListResponse;
@@ -155,12 +154,8 @@ public class ClientNotificationService {
      */
     private User loadClient(String rawUserId) {
         Long userId = parseUserId(rawUserId);
-        User user = userRepository.findByIdAndDeletedAtIsNull(userId)
+        return userRepository.findByIdAndDeletedAtIsNull(userId)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Cliente no encontrado"));
-        if (user.getRole() != UserRole.USER) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Solo clientes");
-        }
-        return user;
     }
 
     /**

@@ -5,7 +5,6 @@ import com.plura.plurabackend.core.professional.ProfessionalPublicSummary;
 import com.plura.plurabackend.usuario.favorite.repository.ClientFavoriteProfessionalRepository;
 import com.plura.plurabackend.professional.dto.ProfesionalPublicSummaryResponse;
 import com.plura.plurabackend.core.user.model.User;
-import com.plura.plurabackend.core.user.model.UserRole;
 import com.plura.plurabackend.core.user.repository.UserRepository;
 import java.util.List;
 import java.util.Locale;
@@ -110,17 +109,7 @@ public class ClientFavoriteService {
         User user = userRepository.findByIdAndDeletedAtIsNull(userId)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Usuario no encontrado"));
 
-        ensureClientUser(user);
         return user;
-    }
-
-    /**
-     * Ejecuta la logica de ensure cliente usuario manteniendola encapsulada en este componente.
-     */
-    private void ensureClientUser(User user) {
-        if (user.getRole() != UserRole.USER) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Solo clientes");
-        }
     }
 
     /**

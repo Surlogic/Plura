@@ -387,7 +387,8 @@ public class AuthController {
         );
         AuthService.AuthResult result = authService.refreshSession(
             resolvedRefreshToken,
-            buildSessionContext(httpRequest)
+            buildSessionContext(httpRequest),
+            authentication == null ? null : currentActorService.currentTokenDetails()
         );
         return buildAuthResponse(result, httpRequest);
     }

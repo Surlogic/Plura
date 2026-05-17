@@ -26,6 +26,7 @@ import com.plura.plurabackend.core.auth.oauth.AppleEmailRequiredFirstLoginExcept
 import com.plura.plurabackend.core.auth.oauth.OAuthService;
 import com.plura.plurabackend.core.auth.oauth.OAuthProviderMismatchException;
 import com.plura.plurabackend.core.auth.oauth.OAuthUserInfo;
+import com.plura.plurabackend.core.security.jwt.AuthenticatedTokenDetails;
 import com.plura.plurabackend.core.category.dto.CategoryResponse;
 import com.plura.plurabackend.core.category.model.Category;
 import com.plura.plurabackend.core.category.repository.CategoryRepository;
@@ -457,6 +458,18 @@ public class AuthService {
      */
     @Transactional(noRollbackFor = AuthApiException.class)
     public AuthResult refreshSession(String refreshToken, SessionContext sessionContext) {
+        return refreshSession(refreshToken, sessionContext, null);
+    }
+
+    /**
+     * Refresca sesion preservando el contexto activo cuando el access token vigente lo expone.
+     */
+    @Transactional(noRollbackFor = AuthApiException.class)
+    public AuthResult refreshSession(
+        String refreshToken,
+        SessionContext sessionContext,
+        AuthenticatedTokenDetails activeTokenDetails
+    ) {
         if (refreshToken == null || refreshToken.isBlank()) {
             auditRefreshFailure(null, null, sessionContext, "missing_refresh_token");
             throw new AuthApiException(HttpStatus.UNAUTHORIZED, "REFRESH_TOKEN_INVALID", "Refresh token faltante.");
@@ -468,7 +481,7 @@ public class AuthService {
         SessionService.TrackedRefreshTokenMatch trackedMatch = sessionService.findTrackedRefreshTokenMatch(tokenHash)
             .orElse(null);
         if (trackedMatch != null) {
-            return refreshTrackedSession(trackedMatch, sessionContext, now);
+            return refreshTrackedSession(trackedMatch, sessionContext, now, activeTokenDetails);
         }
 
         RefreshToken stored = refreshTokenRepository.findByToken(tokenHash).orElse(null);
@@ -491,7 +504,7 @@ public class AuthService {
                     "La sesión requiere volver a iniciar sesión."
                 );
             }
-            return migrateLegacyRefreshToken(stored, sessionContext, now);
+            return migrateLegacyRefreshToken(stored, sessionContext, now, activeTokenDetails);
         }
 
         auditRefreshFailure(null, null, sessionContext, "refresh_token_invalid");
@@ -581,7 +594,7 @@ public class AuthService {
      * Evalua issue tokens y devuelve una decision booleana para el llamador.
      */
     private AuthResult issueTokens(User user, UserResponse userResponse, SessionContext sessionContext) {
-        return issueTokens(user, userResponse, sessionContext, deriveDefaultContextFromRole(user));
+        return issueTokens(user, userResponse, sessionContext, resolveDefaultContext(user));
     }
 
     /**
@@ -683,7 +696,8 @@ public class AuthService {
     private AuthResult refreshTrackedSession(
         SessionService.TrackedRefreshTokenMatch trackedMatch,
         SessionContext sessionContext,
-        LocalDateTime now
+        LocalDateTime now,
+        AuthenticatedTokenDetails activeTokenDetails
     ) {
         AuthSession session = trackedMatch.session();
         if (session.getRevokedAt() != null) {
@@ -744,7 +758,8 @@ public class AuthService {
             user.getEmail(),
             user.getRole(),
             rotated.getId(),
-            user.getSessionVersion()
+            user.getSessionVersion(),
+            resolveRefreshContext(user, activeTokenDetails)
         );
         AuthResult result = new AuthResult(
             accessToken,
@@ -760,7 +775,12 @@ public class AuthService {
     /**
      * Ejecuta la logica de migrate legacy refresh token manteniendola encapsulada en este componente.
      */
-    private AuthResult migrateLegacyRefreshToken(RefreshToken stored, SessionContext sessionContext, LocalDateTime now) {
+    private AuthResult migrateLegacyRefreshToken(
+        RefreshToken stored,
+        SessionContext sessionContext,
+        LocalDateTime now,
+        AuthenticatedTokenDetails activeTokenDetails
+    ) {
         if (stored.getRevokedAt() != null) {
             Long userId = stored.getUser() == null ? null : stored.getUser().getId();
             auditRefreshFailure(userId, null, sessionContext, "legacy_refresh_revoked");
@@ -814,7 +834,8 @@ public class AuthService {
             user.getEmail(),
             user.getRole(),
             migration.session().getId(),
-            user.getSessionVersion()
+            user.getSessionVersion(),
+            resolveRefreshContext(user, activeTokenDetails)
         );
         AuthResult result = new AuthResult(
             accessToken,
@@ -1044,9 +1065,11 @@ public class AuthService {
 
     public ProfesionalProfileResponse getProfesionalProfile(String rawUserId) {
         User user = loadUserByRawId(rawUserId);
-        ensureProfessionalUser(user);
-
-        ProfessionalProfile profile = professionalAccountProfileGateway.loadOrBootstrapProfile(user);
+        ProfessionalProfile profile = professionalAccountProfileGateway.findByUserId(user.getId())
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.FORBIDDEN, "Perfil profesional no encontrado"));
+        if (!Boolean.TRUE.equals(profile.getActive())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Profesional inhabilitado");
+        }
 
         EffectiveProfessionalPlan effectivePlan = effectiveProfessionalPlanService.resolveForProfessional(profile);
         return new ProfesionalProfileResponse(
@@ -1134,7 +1157,6 @@ public class AuthService {
 
     public UserResponse getClienteProfile(String rawUserId) {
         User user = loadUserByRawId(rawUserId);
-        ensureClientUser(user);
         return toUserResponse(user);
     }
 
@@ -1611,15 +1633,36 @@ public class AuthService {
     }
 
     /**
-     * Ejecuta la logica de derive default contexto from rol manteniendola encapsulada en este componente.
+     * Resuelve contexto default desde capacidades reales, dejando UserRole solo como compatibilidad.
      */
-    private AuthContextDescriptor deriveDefaultContextFromRole(User user) {
-        if (user == null || user.getRole() == null) {
+    private AuthContextDescriptor resolveDefaultContext(User user) {
+        List<AuthContextDescriptor> contexts = authContextResolver.resolve(user);
+        if (contexts == null || contexts.isEmpty()) {
             return null;
         }
-        return user.getRole() == UserRole.PROFESSIONAL
-            ? new AuthContextDescriptor(AuthContextType.PROFESSIONAL, null, null, null, null, null, true)
-            : new AuthContextDescriptor(AuthContextType.CLIENT, null, null, null, null, null, false);
+        return authContextResolver.pickDefault(contexts);
+    }
+
+    /**
+     * Preserva el contexto del access token vigente durante refresh cuando sigue disponible.
+     */
+    private AuthContextDescriptor resolveRefreshContext(User user, AuthenticatedTokenDetails activeTokenDetails) {
+        List<AuthContextDescriptor> contexts = authContextResolver.resolve(user);
+        if (contexts == null || contexts.isEmpty()) {
+            return null;
+        }
+        if (activeTokenDetails != null && activeTokenDetails.contextType() != null) {
+            AuthContextDescriptor selected = authContextResolver.select(
+                contexts,
+                activeTokenDetails.contextType(),
+                activeTokenDetails.workerId(),
+                activeTokenDetails.professionalId()
+            );
+            if (selected != null) {
+                return selected;
+            }
+        }
+        return authContextResolver.pickDefault(contexts);
     }
 
     /**

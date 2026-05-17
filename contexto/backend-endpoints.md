@@ -110,13 +110,13 @@ Prefijo: `/auth`
 - `POST /auth/login/cliente`
 - `POST /auth/login/profesional`
 - `POST /auth/login` — login unificado: autentica con email/password y resuelve los contextos disponibles del usuario (`CLIENT`, `PROFESSIONAL`, `WORKER`). Devuelve `accessToken` + `activeContext` + `contexts` + `contextSelectionRequired`. Si solo hay un contexto se elige por defecto; si hay varios, frontend muestra selector. Acepta `desiredContext`/`desiredWorkerId`/`desiredProfessionalId` opcionales.
-- `GET /auth/me` y `GET /auth/contexts` — alias autenticados que devuelven el `UserResponse`, el contexto activo derivado del JWT y todos los contextos disponibles para la cuenta.
+- `GET /auth/me` y `GET /auth/contexts` — alias autenticados que devuelven el `UserResponse`, el contexto activo derivado del JWT y todos los contextos disponibles para la cuenta. `CLIENT` es una capacidad disponible para toda cuenta activa; `PROFESSIONAL` se expone solo si existe `ProfessionalProfile.active=true`.
 - `POST /auth/context/select` — cambia el contexto activo emitiendo solo un nuevo access token (sin rotar refresh). Body: `type` (`CLIENT|PROFESSIONAL|WORKER`) + `workerId?` + `professionalId?`.
 - `POST /auth/oauth`
 - `POST /auth/oauth/complete-phone`
 - `GET /auth/worker-invitations?token={token}` — consulta publica de una invitacion de trabajador pendiente, sin sesion, para mostrar email/local y si requiere crear cuenta.
 - `POST /auth/worker-invitations/accept` — acepta una invitacion de trabajador por token; si el email no existe crea una cuenta `USER`, vincula el `professional_worker` y lo activa.
-- `POST /auth/refresh`
+- `POST /auth/refresh` — rota la sesión y, si el access token vigente trae `ctx`, preserva ese contexto cuando sigue disponible; si no, vuelve al default de contextos disponibles.
 - `POST /auth/logout`
 - `POST /auth/logout-all`
 - `POST /auth/password/change`
@@ -135,8 +135,8 @@ Prefijo: `/auth`
 - `DELETE /auth/sessions/{sessionId}`
 - `DELETE /auth/me` — ahora requiere `challengeId` + `code` OTP en el body; el challenge se obtiene previamente con `POST /auth/challenge/send` (purpose `ACCOUNT_DELETION`, channel `EMAIL`)
 - `GET /auth/audit`
-- `GET /auth/me/profesional`
-- `GET /auth/me/cliente`
+- `GET /auth/me/profesional` — requiere JWT con `ctx=PROFESSIONAL` y `ProfessionalProfile.active=true`; no crea perfiles profesionales implícitamente.
+- `GET /auth/me/cliente` — requiere JWT con `ctx=CLIENT`; no bloquea por `UserRole.PROFESSIONAL` legacy.
 
 El dominio `auth` incluye:
 

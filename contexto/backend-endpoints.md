@@ -102,6 +102,8 @@ Lectura de producto:
 
 Prefijo: `/auth`
 
+- `POST /auth/register/profesional` y `POST /auth/oauth/complete-phone` exigen `phoneVerificationToken` validado por OTP SMS; no dependen del flag runtime para permitir saltar la verificacion celular en altas o cierre de telefono OAuth.
+
 - `POST /auth/register/cliente`
 - `POST /auth/register/profesional`
 - `POST /auth/register/phone/send` — inicia OTP SMS previo al alta usando Twilio Verify

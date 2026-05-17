@@ -269,6 +269,13 @@ public class AuthService {
                 "Ya existe una cuenta activa con este email. Iniciá sesión para continuar."
             );
         }
+        if (request.getPhoneVerificationToken() == null || request.getPhoneVerificationToken().isBlank()) {
+            throw new AuthApiException(
+                HttpStatus.BAD_REQUEST,
+                "PHONE_VERIFICATION_REQUIRED",
+                "Necesitas verificar tu teléfono antes de continuar."
+            );
+        }
         RegistrationPhoneVerificationService.VerificationResult phoneVerification =
             registrationPhoneVerificationService.resolveForRegistration(
                 request.getPhoneNumber(),
@@ -1193,6 +1200,13 @@ public class AuthService {
         User user = loadUserByRawId(rawUserId);
         if (request == null || request.getPhoneNumber() == null || request.getPhoneNumber().isBlank()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Teléfono inválido");
+        }
+        if (request.getPhoneVerificationToken() == null || request.getPhoneVerificationToken().isBlank()) {
+            throw new AuthApiException(
+                HttpStatus.BAD_REQUEST,
+                "PHONE_VERIFICATION_REQUIRED",
+                "Necesitas verificar tu teléfono antes de continuar."
+            );
         }
 
         RegistrationPhoneVerificationService.VerificationResult phoneVerification =

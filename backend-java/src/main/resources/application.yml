@@ -179,12 +179,13 @@ app:
       cooldown-seconds: ${AUTH_REGISTRATION_PHONE_VERIFICATION_COOLDOWN_SECONDS:60}
       token-ttl-minutes: ${AUTH_REGISTRATION_PHONE_VERIFICATION_TOKEN_TTL_MINUTES:15}
       token-secret: ${AUTH_REGISTRATION_PHONE_VERIFICATION_TOKEN_SECRET:${JWT_REFRESH_PEPPER}}
-    twilio-verify:
-      enabled: ${TWILIO_VERIFY_ENABLED:false}
-      base-url: ${TWILIO_VERIFY_BASE_URL:https://verify.twilio.com}
-      account-sid: ${TWILIO_ACCOUNT_SID:}
-      auth-token: ${TWILIO_AUTH_TOKEN:}
-      service-sid: ${TWILIO_VERIFY_SERVICE_SID:}
+    vonage-verify:
+      enabled: ${VONAGE_VERIFY_ENABLED:false}
+      base-url: ${VONAGE_VERIFY_BASE_URL:https://api.nexmo.com}
+      api-key: ${VONAGE_API_KEY:}
+      api-secret: ${VONAGE_API_SECRET:}
+      brand: ${VONAGE_VERIFY_BRAND:Plura}
+      code-length: ${VONAGE_VERIFY_CODE_LENGTH:6}
     otp-challenge:
       ttl-minutes: ${AUTH_OTP_CHALLENGE_TTL_MINUTES:10}
       cooldown-seconds: ${AUTH_OTP_CHALLENGE_COOLDOWN_SECONDS:60}

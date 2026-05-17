@@ -6,15 +6,20 @@ import com.auth0.jwt.exceptions.JWTVerificationException;
 import com.auth0.jwt.interfaces.DecodedJWT;
 import com.plura.plurabackend.core.auth.dto.PhoneVerificationSendResponse;
 import com.plura.plurabackend.core.auth.dto.RegistrationPhoneVerificationConfirmResponse;
+import com.plura.plurabackend.core.auth.model.RegistrationPhoneVerificationAttempt;
+import com.plura.plurabackend.core.auth.repository.RegistrationPhoneVerificationAttemptRepository;
+import java.time.Duration;
 import java.time.Instant;
+import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.Date;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Verificacion telefonica previa al alta. Twilio valida el OTP y backend emite
+ * Verificacion telefonica previa al alta. Vonage valida el OTP y backend emite
  * un token corto para atar esa aprobacion al submit final del registro.
  */
 @Service
@@ -22,14 +27,16 @@ public class RegistrationPhoneVerificationService {
 
     private static final String TOKEN_PURPOSE = "registration_phone";
 
-    private final TwilioVerifyClient twilioVerifyClient;
+    private final VonageVerifyClient vonageVerifyClient;
+    private final RegistrationPhoneVerificationAttemptRepository attemptRepository;
     private final Algorithm tokenAlgorithm;
     private final boolean required;
     private final long tokenTtlMinutes;
     private final long resendCooldownSeconds;
 
     public RegistrationPhoneVerificationService(
-        TwilioVerifyClient twilioVerifyClient,
+        VonageVerifyClient vonageVerifyClient,
+        RegistrationPhoneVerificationAttemptRepository attemptRepository,
         @Value("${app.auth.registration-phone-verification.required:false}") boolean required,
         @Value("${app.auth.registration-phone-verification.token-secret:${jwt.refresh-pepper}}") String tokenSecret,
         @Value("${app.auth.registration-phone-verification.token-ttl-minutes:15}") long tokenTtlMinutes,
@@ -38,28 +45,86 @@ public class RegistrationPhoneVerificationService {
         if (tokenSecret == null || tokenSecret.isBlank()) {
             throw new IllegalStateException("AUTH_REGISTRATION_PHONE_VERIFICATION_TOKEN_SECRET no esta configurado");
         }
-        this.twilioVerifyClient = twilioVerifyClient;
+        this.vonageVerifyClient = vonageVerifyClient;
+        this.attemptRepository = attemptRepository;
         this.tokenAlgorithm = Algorithm.HMAC256(tokenSecret);
         this.required = required;
         this.tokenTtlMinutes = tokenTtlMinutes;
         this.resendCooldownSeconds = resendCooldownSeconds;
     }
 
+    @Transactional
     public PhoneVerificationSendResponse sendCode(String rawPhoneNumber) {
         String normalizedPhone = normalizeRequiredPhoneNumber(rawPhoneNumber);
-        twilioVerifyClient.startSmsVerification(normalizedPhone);
+        LocalDateTime now = LocalDateTime.now();
+        RegistrationPhoneVerificationAttempt activeAttempt = attemptRepository
+            .findFirstByPhoneNumberAndConsumedAtIsNullOrderByCreatedAtDesc(normalizedPhone)
+            .orElse(null);
+
+        if (activeAttempt != null && activeAttempt.getExpiresAt().isBefore(now)) {
+            activeAttempt.setConsumedAt(now);
+            attemptRepository.save(activeAttempt);
+            activeAttempt = null;
+        }
+
+        if (activeAttempt != null) {
+            LocalDateTime availableAt = activeAttempt.getCreatedAt().plusSeconds(resendCooldownSeconds);
+            if (availableAt.isAfter(now)) {
+                long remaining = Duration.between(now, availableAt).getSeconds();
+                return new PhoneVerificationSendResponse(
+                    "Ya te enviamos un codigo recientemente. Espera unos segundos antes de reenviar.",
+                    Math.max(1L, remaining)
+                );
+            }
+            activeAttempt.setConsumedAt(now);
+            attemptRepository.save(activeAttempt);
+        }
+
+        attemptRepository.consumeActiveAttemptsByPhoneNumber(normalizedPhone, now);
+        String providerRequestId = vonageVerifyClient.startSmsVerification(normalizedPhone);
+        RegistrationPhoneVerificationAttempt attempt = new RegistrationPhoneVerificationAttempt();
+        attempt.setPhoneNumber(normalizedPhone);
+        attempt.setProviderRequestId(providerRequestId);
+        attempt.setExpiresAt(now.plusMinutes(tokenTtlMinutes));
+        attemptRepository.save(attempt);
         return new PhoneVerificationSendResponse(
             "Te enviamos un codigo de verificacion por SMS.",
             resendCooldownSeconds
         );
     }
 
+    @Transactional(noRollbackFor = AuthApiException.class)
     public RegistrationPhoneVerificationConfirmResponse confirmCode(String rawPhoneNumber, String rawCode) {
         String normalizedPhone = normalizeRequiredPhoneNumber(rawPhoneNumber);
         String normalizedCode = normalizeSubmittedCode(rawCode);
-        if (!twilioVerifyClient.checkSmsVerification(normalizedPhone, normalizedCode)) {
+        LocalDateTime now = LocalDateTime.now();
+        RegistrationPhoneVerificationAttempt attempt = attemptRepository
+            .findFirstByPhoneNumberAndConsumedAtIsNullOrderByCreatedAtDesc(normalizedPhone)
+            .orElse(null);
+
+        if (attempt == null) {
+            RegistrationPhoneVerificationAttempt latestAttempt = attemptRepository
+                .findFirstByPhoneNumberOrderByCreatedAtDesc(normalizedPhone)
+                .orElse(null);
+            if (latestAttempt != null && latestAttempt.getExpiresAt().isBefore(now)) {
+                throw new AuthApiException(HttpStatus.BAD_REQUEST, "CODE_EXPIRED", "Codigo expirado.");
+            }
             throw new AuthApiException(HttpStatus.BAD_REQUEST, "CODE_INVALID", "Codigo invalido.");
         }
+
+        if (attempt.getExpiresAt().isBefore(now)) {
+            attempt.setConsumedAt(now);
+            attemptRepository.save(attempt);
+            throw new AuthApiException(HttpStatus.BAD_REQUEST, "CODE_EXPIRED", "Codigo expirado.");
+        }
+
+        if (!vonageVerifyClient.checkSmsVerification(attempt.getProviderRequestId(), normalizedCode)) {
+            throw new AuthApiException(HttpStatus.BAD_REQUEST, "CODE_INVALID", "Codigo invalido.");
+        }
+        attempt.setConsumedAt(now);
+        attemptRepository.save(attempt);
+        attemptRepository.consumeActiveAttemptsByPhoneNumber(normalizedPhone, now);
+
         Instant expiresAt = Instant.now().plus(tokenTtlMinutes, ChronoUnit.MINUTES);
         String token = JWT.create()
             .withSubject(normalizedPhone)

@@ -44,8 +44,8 @@ Lectura operativa actual:
 - `apps/web/src/services/session.ts` ahora persiste tambien `plura_auth_session_role` (`CLIENT` o `PROFESSIONAL`) para bootstrap de sesion en rutas publicas sin adivinar el perfil a cargar
 - el backend soporta dos recuperaciones de contraseña en paralelo: legacy por token (`/auth/password/forgot` + `/auth/password/reset`) y recovery escalonado (`/auth/password/recovery/start|verify-phone|confirm`)
 - el recovery escalonado por OTP depende de entrega real de email: si SMTP falla o no esta operativo, `verify-phone` devuelve error y no deja challenges activos a medias
-- el registro por email ya tiene flujo OTP previo al alta con Twilio Verify (`/auth/register/phone/send|confirm`); al activar `AUTH_REGISTRATION_PHONE_VERIFICATION_REQUIRED=true`, cliente y profesional solo se crean con telefono verificado una vez y ese telefono verificado no se reutiliza en otra cuenta activa
-- despues de OAuth, el backend puede exigir completar telefono con `POST /auth/oauth/complete-phone`; ese cierre ya acepta el mismo `phoneVerificationToken` emitido tras Twilio Verify para dejar el numero validado en el acto
+- el registro por email ya tiene flujo OTP previo al alta con Vonage Verify API (`/auth/register/phone/send|confirm`); el backend persiste internamente el `request_id` de Vonage para mantener estable el contrato publico `telefono + codigo`; al activar `AUTH_REGISTRATION_PHONE_VERIFICATION_REQUIRED=true`, cliente y profesional solo se crean con telefono verificado una vez y ese telefono verificado no se reutiliza en otra cuenta activa
+- despues de OAuth, el backend puede exigir completar telefono con `POST /auth/oauth/complete-phone`; ese cierre ya acepta el mismo `phoneVerificationToken` emitido tras Vonage Verify para dejar el numero validado en el acto
 - las invitaciones de trabajadores usan endpoints publicos bajo `/auth/worker-invitations`; el token se guarda hasheado en `professional_worker`, vence a los `14` dias y al aceptarlo vincula o crea un `app_user` de base `USER` para que luego pueda entrar por el futuro login unificado/contextual
 
 ### Marketplace, ubicacion y mapa
@@ -194,12 +194,14 @@ Variables de backend para Mercado Pago de reservas y OAuth profesional:
 - `BILLING_MERCADOPAGO_RESERVATIONS_OAUTH_TOKEN_ENCRYPTION_KEY`
 - `BILLING_MERCADOPAGO_RESERVATIONS_OAUTH_PKCE_ENABLED`
 
-Variables de backend para OTP SMS de registro con Twilio Verify:
+Variables de backend para OTP SMS de registro con Vonage Verify API:
 
-- `TWILIO_VERIFY_ENABLED`
-- `TWILIO_ACCOUNT_SID`
-- `TWILIO_AUTH_TOKEN`
-- `TWILIO_VERIFY_SERVICE_SID`
+- `VONAGE_VERIFY_ENABLED`
+- `VONAGE_VERIFY_BASE_URL`
+- `VONAGE_API_KEY`
+- `VONAGE_API_SECRET`
+- `VONAGE_VERIFY_BRAND`
+- `VONAGE_VERIFY_CODE_LENGTH`
 - `AUTH_REGISTRATION_PHONE_VERIFICATION_REQUIRED`
 - `AUTH_REGISTRATION_PHONE_VERIFICATION_TOKEN_SECRET`
 - `AUTH_REGISTRATION_PHONE_VERIFICATION_TOKEN_TTL_MINUTES`
@@ -387,7 +389,7 @@ Variables criticas sin las que el backend puede fallar o degradarse:
 - variables de billing si se habilitan pagos reales
 - variables OAuth de Mercado Pago si se quiere conectar la cuenta del profesional desde billing
 - SMTP operativo si se quiere usar recovery escalonado y otros OTP por email sin degradacion
-- en Fly, ademas de los env no secretos gestionados fuera del repo, siguen siendo obligatorios como secrets al menos: `SPRING_DATASOURCE_PASSWORD`, `SPRING_FLYWAY_PASSWORD`, `JWT_SECRET`, `JWT_REFRESH_PEPPER`, `GOOGLE_CLIENT_ID`, `GOOGLE_ANDROID_CLIENT_ID`, `GOOGLE_IOS_CLIENT_ID` si se va a aceptar OAuth mobile iOS, `GOOGLE_CLIENT_SECRET`, `EMAIL_FROM_ADDRESS`, `EMAIL_SMTP_USERNAME`, `EMAIL_SMTP_PASSWORD`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `BILLING_CORE_PRICE`, `BILLING_CORE_CURRENCY`, `BILLING_MERCADOPAGO_SUBSCRIPTIONS_ACCESS_TOKEN`, `BILLING_MERCADOPAGO_SUBSCRIPTIONS_WEBHOOK_SECRET`, `BILLING_MERCADOPAGO_RESERVATIONS_PLATFORM_ACCESS_TOKEN`, `BILLING_MERCADOPAGO_RESERVATIONS_WEBHOOK_SECRET`, `BILLING_MERCADOPAGO_RESERVATIONS_OAUTH_CLIENT_ID`, `BILLING_MERCADOPAGO_RESERVATIONS_OAUTH_CLIENT_SECRET`, `BILLING_MERCADOPAGO_RESERVATIONS_OAUTH_STATE_SIGNING_SECRET`, `BILLING_MERCADOPAGO_RESERVATIONS_OAUTH_TOKEN_ENCRYPTION_KEY`
+- en Fly, ademas de los env no secretos gestionados fuera del repo, siguen siendo obligatorios como secrets al menos: `SPRING_DATASOURCE_PASSWORD`, `SPRING_FLYWAY_PASSWORD`, `JWT_SECRET`, `JWT_REFRESH_PEPPER`, `GOOGLE_CLIENT_ID`, `GOOGLE_ANDROID_CLIENT_ID`, `GOOGLE_IOS_CLIENT_ID` si se va a aceptar OAuth mobile iOS, `GOOGLE_CLIENT_SECRET`, `EMAIL_FROM_ADDRESS`, `EMAIL_SMTP_USERNAME`, `EMAIL_SMTP_PASSWORD`, `VONAGE_API_KEY`, `VONAGE_API_SECRET`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `BILLING_CORE_PRICE`, `BILLING_CORE_CURRENCY`, `BILLING_MERCADOPAGO_SUBSCRIPTIONS_ACCESS_TOKEN`, `BILLING_MERCADOPAGO_SUBSCRIPTIONS_WEBHOOK_SECRET`, `BILLING_MERCADOPAGO_RESERVATIONS_PLATFORM_ACCESS_TOKEN`, `BILLING_MERCADOPAGO_RESERVATIONS_WEBHOOK_SECRET`, `BILLING_MERCADOPAGO_RESERVATIONS_OAUTH_CLIENT_ID`, `BILLING_MERCADOPAGO_RESERVATIONS_OAUTH_CLIENT_SECRET`, `BILLING_MERCADOPAGO_RESERVATIONS_OAUTH_STATE_SIGNING_SECRET`, `BILLING_MERCADOPAGO_RESERVATIONS_OAUTH_TOKEN_ENCRYPTION_KEY`
 - para el pooler de Supabase hoy la dupla operativa recomendada queda fija y sin fallback silencioso: `SPRING_DATASOURCE_URL=jdbc:postgresql://aws-1-sa-east-1.pooler.supabase.com:5432/postgres` + `SPRING_DATASOURCE_USERNAME=postgres.owzzpcnuzzekqvqdimpr`; `SPRING_DATASOURCE_PASSWORD` y `SPRING_FLYWAY_PASSWORD` van como secret aparte
 - Flyway ahora puede declararse explicito con `SPRING_FLYWAY_URL`, `SPRING_FLYWAY_USER`, `SPRING_FLYWAY_PASSWORD` y `SPRING_FLYWAY_DRIVER_CLASS_NAME`, pero si no vienen informados el bootstrap los alinea automaticamente al mismo datasource ya resuelto
 - `backend-java/scripts/check_fly_runtime_env.sh` ya trata como faltante fatal cualquier deploy Fly donde la URL PostgreSQL no embeba credenciales y falten `SPRING_DATASOURCE_USERNAME` o `SPRING_DATASOURCE_PASSWORD`; esto refleja el patron real con Supabase pooler y evita falsos "bind errors" cuando en realidad el proceso cae antes de abrir Tomcat

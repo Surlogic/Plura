@@ -9,7 +9,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.plura.plurabackend.core.auth.TwilioVerifyClient;
+import com.plura.plurabackend.core.auth.VonageVerifyClient;
 import com.plura.plurabackend.core.user.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -32,7 +32,7 @@ import org.springframework.test.web.servlet.MockMvc;
     "SPRING_FLYWAY_ENABLED=false",
     "APP_RATE_LIMIT_ENABLED=false",
     "AUTH_REGISTRATION_PHONE_VERIFICATION_REQUIRED=true",
-    "TWILIO_VERIFY_ENABLED=true",
+    "VONAGE_VERIFY_ENABLED=true",
     "SWAGGER_ENABLED=false",
     "SQS_ENABLED=false",
 })
@@ -49,7 +49,7 @@ class AuthRegistrationPhoneVerificationIntegrationTest {
     private UserRepository userRepository;
 
     @MockBean
-    private TwilioVerifyClient twilioVerifyClient;
+    private VonageVerifyClient vonageVerifyClient;
 
     @BeforeEach
     void cleanUp() {
@@ -58,7 +58,8 @@ class AuthRegistrationPhoneVerificationIntegrationTest {
 
     @Test
     void verifiedPhoneTokenAllowsRegistrationAndMarksPhoneVerified() throws Exception {
-        when(twilioVerifyClient.checkSmsVerification(eq("+59899123456"), eq("123456"))).thenReturn(true);
+        when(vonageVerifyClient.startSmsVerification(eq("+59899123456"))).thenReturn("req-123");
+        when(vonageVerifyClient.checkSmsVerification(eq("req-123"), eq("123456"))).thenReturn(true);
 
         mockMvc.perform(post("/auth/register/phone/send")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -66,7 +67,7 @@ class AuthRegistrationPhoneVerificationIntegrationTest {
                     {"phoneNumber":"+59899123456"}
                     """))
             .andExpect(status().isAccepted());
-        verify(twilioVerifyClient).startSmsVerification("+59899123456");
+        verify(vonageVerifyClient).startSmsVerification("+59899123456");
 
         String confirmBody = mockMvc.perform(post("/auth/register/phone/confirm")
                 .contentType(MediaType.APPLICATION_JSON)

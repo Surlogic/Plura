@@ -104,7 +104,7 @@ Prefijo: `/auth`
 
 - `POST /auth/register/cliente`
 - `POST /auth/register/profesional`
-- `POST /auth/register/phone/send` — inicia OTP SMS previo al alta usando Twilio Verify
+- `POST /auth/register/phone/send` — inicia OTP SMS previo al alta usando Vonage Verify API
 - `POST /auth/register/phone/confirm` — valida OTP SMS y devuelve `verificationToken` corto para adjuntar al submit final del registro
 - los registros siguen permitiendo un solo usuario activo por email; desde `V81`, un usuario con `deleted_at` ya no bloquea volver a registrar el mismo email ni el mismo `provider/provider_id`
 - `POST /auth/login/cliente`

@@ -71,6 +71,7 @@ export default function ReservationAuthOverlay({
   const router = useRouter();
   const { refreshProfile } = useClientProfileContext();
   const firstInputRef = useRef<HTMLInputElement | null>(null);
+  const autoContinueAttemptedRef = useRef(false);
   const [mode, setMode] = useState<AuthMode>('register');
   const [loginForm, setLoginForm] = useState(loginFormInitial);
   const [registerForm, setRegisterForm] = useState(registerFormInitial);
@@ -123,11 +124,13 @@ export default function ReservationAuthOverlay({
       setErrorMessage(null);
       setIsGoogleLoading(false);
       setIsSubmitting(false);
+      autoContinueAttemptedRef.current = false;
     }
   }, [isOpen]);
 
   useEffect(() => {
-    if (!isOpen || isBusy || !getUsableAuthAccessToken()) return;
+    if (!isOpen || isBusy || autoContinueAttemptedRef.current || !getUsableAuthAccessToken()) return;
+    autoContinueAttemptedRef.current = true;
     let isActive = true;
     setIsSubmitting(true);
     void continueAuthenticatedFlow()

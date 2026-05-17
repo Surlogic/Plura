@@ -33,6 +33,7 @@ public class PhoneVerificationService {
     private final UserRepository userRepository;
     private final PhoneVerificationChallengeRepository phoneVerificationChallengeRepository;
     private final PhoneVerificationNotificationSender phoneVerificationNotificationSender;
+    private final TwilioVerifyClient twilioVerifyClient;
     private final AuthAuditService authAuditService;
     private final String phoneVerificationPepper;
     private final long ttlMinutes;
@@ -43,6 +44,7 @@ public class PhoneVerificationService {
         UserRepository userRepository,
         PhoneVerificationChallengeRepository phoneVerificationChallengeRepository,
         PhoneVerificationNotificationSender phoneVerificationNotificationSender,
+        TwilioVerifyClient twilioVerifyClient,
         AuthAuditService authAuditService,
         @Value("${app.auth.phone-verification.pepper:${jwt.refresh-pepper}}") String phoneVerificationPepper,
         @Value("${app.auth.phone-verification.ttl-minutes:10}") long ttlMinutes,
@@ -52,6 +54,7 @@ public class PhoneVerificationService {
         this.userRepository = userRepository;
         this.phoneVerificationChallengeRepository = phoneVerificationChallengeRepository;
         this.phoneVerificationNotificationSender = phoneVerificationNotificationSender;
+        this.twilioVerifyClient = twilioVerifyClient;
         this.authAuditService = authAuditService;
         this.phoneVerificationPepper = phoneVerificationPepper;
         this.ttlMinutes = ttlMinutes;
@@ -105,20 +108,17 @@ public class PhoneVerificationService {
 
         phoneVerificationChallengeRepository.consumeActiveChallengesByUserId(user.getId(), now);
 
-        String rawCode = generateCode();
         PhoneVerificationChallenge challenge = new PhoneVerificationChallenge();
         challenge.setUser(user);
         challenge.setPhoneNumber(currentPhoneNumber);
-        challenge.setCodeHash(hashCode(rawCode));
+        challenge.setCodeHash(hashCode("TWILIO_VERIFY_MANAGED"));
         challenge.setExpiresAt(now.plusMinutes(ttlMinutes));
         challenge.setAttemptCount(0);
         challenge.setMaxAttempts(maxAttempts);
         challenge.setChannel(PhoneVerificationChannel.SMS);
         phoneVerificationChallengeRepository.save(challenge);
 
-        phoneVerificationNotificationSender.sendVerificationCode(
-            new PhoneVerificationNotificationSender.PhoneVerificationNotification(user, currentPhoneNumber, rawCode)
-        );
+        twilioVerifyClient.startSmsVerification(currentPhoneNumber);
         authAuditService.log(
             AuthAuditEventType.PHONE_VERIFICATION_SENT,
             AuthAuditStatus.SUCCESS,
@@ -176,7 +176,7 @@ public class PhoneVerificationService {
             throw auditFailure(user, HttpStatus.BAD_REQUEST, "ATTEMPTS_EXCEEDED", "Superaste la cantidad máxima de intentos. Solicitá un nuevo código.");
         }
 
-        if (!hashCode(normalizedCode).equals(challenge.getCodeHash())) {
+        if (!twilioVerifyClient.checkSmsVerification(currentPhoneNumber, normalizedCode)) {
             int nextAttemptCount = (challenge.getAttemptCount() == null ? 0 : challenge.getAttemptCount()) + 1;
             challenge.setAttemptCount(nextAttemptCount);
             int configuredMaxAttempts = resolveMaxAttempts(challenge);
@@ -187,6 +187,18 @@ public class PhoneVerificationService {
             }
             phoneVerificationChallengeRepository.save(challenge);
             throw auditFailure(user, HttpStatus.BAD_REQUEST, "CODE_INVALID", "Código inválido.");
+        }
+
+        User verifiedOwner = userRepository
+            .findFirstByPhoneNumberAndPhoneVerifiedAtIsNotNullAndDeletedAtIsNull(currentPhoneNumber)
+            .orElse(null);
+        if (verifiedOwner != null && verifiedOwner.getId() != null && !verifiedOwner.getId().equals(user.getId())) {
+            throw auditFailure(
+                user,
+                HttpStatus.CONFLICT,
+                "PHONE_ALREADY_VERIFIED_BY_ANOTHER_ACCOUNT",
+                "Ese teléfono ya fue verificado por otra cuenta activa."
+            );
         }
 
         user.setPhoneVerifiedAt(now);

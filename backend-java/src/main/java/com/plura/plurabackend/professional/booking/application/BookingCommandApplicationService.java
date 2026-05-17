@@ -158,6 +158,12 @@ public class BookingCommandApplicationService {
         Timer.Sample sample = Timer.start(meterRegistry);
         try {
             User user = professionalAccessSupport.loadActiveUser(rawUserId, "Usuario no encontrado");
+            if (user.getRole() != UserRole.USER) {
+                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Solo clientes pueden reservar");
+            }
+            if (user.getPhoneVerifiedAt() == null) {
+                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Necesitás verificar tu celular antes de reservar.");
+            }
 
             ProfessionalProfile profile = professionalProfileRepository.findBySlugForUpdate(slug)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Profesional no encontrado"));

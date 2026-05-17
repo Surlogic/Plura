@@ -202,8 +202,20 @@ public class AuthService {
         String normalizedEmail = request.getEmail().trim().toLowerCase(Locale.ROOT);
         if (userRepository.findByEmailAndDeletedAtIsNull(normalizedEmail).isPresent()) {
             burnPasswordWorkFactor(request.getPassword());
-            return;
+            throw new AuthApiException(
+                HttpStatus.CONFLICT,
+                "EMAIL_ALREADY_EXISTS",
+                "Ya existe una cuenta activa con este email. Iniciá sesión para continuar."
+            );
         }
+        if (request.getPhoneVerificationToken() == null || request.getPhoneVerificationToken().isBlank()) {
+            throw new AuthApiException(
+                HttpStatus.BAD_REQUEST,
+                "PHONE_VERIFICATION_REQUIRED",
+                "Necesitas verificar tu teléfono antes de continuar."
+            );
+        }
+
         RegistrationPhoneVerificationService.VerificationResult phoneVerification =
             registrationPhoneVerificationService.resolveForRegistration(
                 request.getPhoneNumber(),
@@ -251,7 +263,11 @@ public class AuthService {
         User existingUser = userRepository.findByEmailAndDeletedAtIsNull(normalizedEmail).orElse(null);
         if (existingUser != null) {
             burnPasswordWorkFactor(request.getPassword());
-            return;
+            throw new AuthApiException(
+                HttpStatus.CONFLICT,
+                "EMAIL_ALREADY_EXISTS",
+                "Ya existe una cuenta activa con este email. Iniciá sesión para continuar."
+            );
         }
         RegistrationPhoneVerificationService.VerificationResult phoneVerification =
             registrationPhoneVerificationService.resolveForRegistration(
@@ -278,7 +294,11 @@ public class AuthService {
             burnPasswordWorkFactor(request.getPassword());
             User duplicatedUser = userRepository.findByEmailAndDeletedAtIsNull(normalizedEmail).orElse(null);
             if (duplicatedUser != null) {
-                return;
+                throw new AuthApiException(
+                    HttpStatus.CONFLICT,
+                    "EMAIL_ALREADY_EXISTS",
+                    "Ya existe una cuenta activa con este email. Iniciá sesión para continuar."
+                );
             }
             throw exception;
         }
@@ -1275,21 +1295,21 @@ public class AuthService {
 
     private void ensurePhoneAvailable(String normalizedPhone, Long currentUserId) {
         if (normalizedPhone == null) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Telefono invalido");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Teléfono inválido");
         }
-        if (!userRepository.existsByPhoneNumberAndDeletedAtIsNull(normalizedPhone)) {
+        User owner = userRepository
+            .findFirstByPhoneNumberAndPhoneVerifiedAtIsNotNullAndDeletedAtIsNull(normalizedPhone)
+            .orElse(null);
+        if (owner == null) {
             return;
         }
-        if (currentUserId != null) {
-            User currentUser = userRepository.findByIdAndDeletedAtIsNull(currentUserId).orElse(null);
-            if (currentUser != null && normalizedPhone.equals(currentUser.getPhoneNumber())) {
-                return;
-            }
+        if (currentUserId != null && owner.getId() != null && owner.getId().equals(currentUserId)) {
+            return;
         }
         throw new AuthApiException(
             HttpStatus.CONFLICT,
-            "PHONE_ALREADY_IN_USE",
-            "Ese telefono ya esta asociado a otra cuenta."
+            "PHONE_ALREADY_VERIFIED_BY_ANOTHER_ACCOUNT",
+            "Ese teléfono ya fue verificado por otra cuenta activa."
         );
     }
 

@@ -14,6 +14,7 @@ import {
   getProfessionalBookingPolicy,
   updateProfessionalBookingPolicy,
 } from '@/services/professionalBookingPolicy';
+import { ensureAuthContext } from '@/lib/auth/contexts';
 import api from '@/services/api';
 import { clearFavoriteProfessionals } from '@/services/clientFeatures';
 import { clearAuthAccessToken } from '@/services/session';
@@ -102,7 +103,7 @@ const isDigitsOnly = (value: string) => /^\d*$/.test(value.trim());
 export default function ProfesionalSettingsPage() {
   const router = useRouter();
   const { profile, isLoading, hasLoaded } = useProfessionalProfile();
-  const { clearProfile: clearClientProfile } = useClientProfileContext();
+  const { clearProfile: clearClientProfile, refreshProfile: refreshClientProfile } = useClientProfileContext();
   const { clearProfile, refreshProfile } = useProfessionalProfileContext();
   const [settingsMessage, setSettingsMessage] = useState<string | null>(null);
   const [isSettingsError, setIsSettingsError] = useState(false);
@@ -183,7 +184,7 @@ export default function ProfesionalSettingsPage() {
     setIsDeleteChallengeVerified(false);
   };
 
-  const handleDeleteAccount = async () => {
+  const handleCloseProfessionalProfile = async () => {
     if (isDeletingAccount) return;
     if (!deleteChallengeId || !deleteChallengeCode.trim()) {
       setSettingsMessage('Primero enviá y validá el código recibido por email.');
@@ -191,12 +192,12 @@ export default function ProfesionalSettingsPage() {
       return;
     }
     if (!isDeleteChallengeVerified) {
-      setSettingsMessage('Primero validá el código antes de eliminar la cuenta.');
+      setSettingsMessage('Primero validá el código antes de cerrar el perfil profesional.');
       setIsSettingsError(true);
       return;
     }
     const confirmed = window.confirm(
-      'Se cancelara la suscripcion activa, se daran de baja tus proximas reservas y la cuenta quedara eliminada. Esta accion no se puede deshacer.',
+      'Tu landing, servicios, agenda y visibilidad pública se cerrarán. Tu cuenta cliente y reservas como cliente se conservan.',
     );
     if (!confirmed) return;
 
@@ -206,19 +207,25 @@ export default function ProfesionalSettingsPage() {
     setDeleteSuccessMessage(null);
 
     try {
-      await api.delete('/auth/me', {
+      await api.delete('/auth/professional-profile', {
         data: {
           challengeId: deleteChallengeId,
           code: deleteChallengeCode.trim(),
         },
       });
-      clearAuthAccessToken();
-      clearFavoriteProfessionals();
       clearProfile();
-      await router.replace('/profesional/auth/login');
+      try {
+        await ensureAuthContext('CLIENT');
+        await refreshClientProfile();
+        await router.replace('/cliente/inicio');
+      } catch {
+        clearAuthAccessToken();
+        clearClientProfile();
+        await router.replace('/cliente/auth/login');
+      }
     } catch (error) {
       setSettingsMessage(
-        resolveBackendMessage(error, 'No se pudo eliminar la cuenta.'),
+        resolveBackendMessage(error, 'No se pudo cerrar el perfil profesional.'),
       );
       setIsSettingsError(true);
     } finally {
@@ -250,7 +257,7 @@ export default function ProfesionalSettingsPage() {
       );
     } catch (error) {
       setSettingsMessage(
-        resolveBackendMessage(error, 'No se pudo enviar el código de eliminación por email.'),
+        resolveBackendMessage(error, 'No se pudo enviar el código para cerrar el perfil profesional.'),
       );
       setIsSettingsError(true);
     } finally {
@@ -282,7 +289,7 @@ export default function ProfesionalSettingsPage() {
         code: deleteChallengeCode.trim(),
       });
       setIsDeleteChallengeVerified(true);
-      setDeleteSuccessMessage('Código validado correctamente. Ya podés eliminar la cuenta.');
+      setDeleteSuccessMessage('Código validado correctamente. Ya podés cerrar el perfil profesional.');
     } catch (error) {
       setIsDeleteChallengeVerified(false);
       setSettingsMessage(
@@ -986,10 +993,10 @@ export default function ProfesionalSettingsPage() {
                               Zona sensible
                             </p>
                             <h2 className="mt-2 text-lg font-semibold text-[#7F1D1D]">
-                              Eliminar cuenta profesional
+                              Cerrar perfil profesional
                             </h2>
                             <p className="mt-2 text-sm text-[#9F1239]">
-                              Se intentara cancelar la suscripcion activa, se daran de baja las proximas reservas y tu perfil dejara de estar disponible.
+                              Tu landing, servicios, agenda y visibilidad pública se cerrarán. Tu cuenta cliente y reservas como cliente se conservan.
                             </p>
                           </div>
                           <Button
@@ -1009,14 +1016,14 @@ export default function ProfesionalSettingsPage() {
                             disabled={isDeletingAccount || isSendingDeleteChallenge || isVerifyingDeleteChallenge}
                             className="border-[#FCA5A5] bg-white text-[#B91C1C] hover:bg-[#FEE2E2]"
                           >
-                            {isDeleteFlowOpen ? 'Cancelar' : 'Eliminar cuenta'}
+                            {isDeleteFlowOpen ? 'Cancelar' : 'Cerrar perfil profesional'}
                           </Button>
                         </div>
 
                         {isDeleteFlowOpen ? (
                           <div className="mt-5 space-y-4">
                             <p className="text-sm text-[#9F1239]">
-                              Por seguridad, el flujo tiene 3 pasos: enviar código, validarlo y recién después confirmar la eliminación.
+                              Por seguridad, el flujo tiene 3 pasos: enviar código, validarlo y recién después confirmar el cierre del perfil profesional.
                             </p>
 
                             <div className="grid gap-3 md:grid-cols-3">
@@ -1087,21 +1094,21 @@ export default function ProfesionalSettingsPage() {
                                   Paso 3
                                 </p>
                                 <p className="mt-1 text-sm font-semibold text-[#7F1D1D]">
-                                  Confirmar eliminación
+                                  Confirmar cierre
                                 </p>
                                 <p className="mt-1 text-xs text-[#9F1239]">
-                                  Este paso da de baja reservas, intenta cancelar la suscripción y no se puede deshacer.
+                                  Tu landing, servicios, agenda y visibilidad pública se cerrarán. Tu cuenta cliente y reservas como cliente se conservan.
                                 </p>
                                 <Button
                                   type="button"
                                   size="md"
                                   onClick={() => {
-                                    void handleDeleteAccount();
+                                    void handleCloseProfessionalProfile();
                                   }}
                                   disabled={!isDeleteChallengeVerified || isDeletingAccount}
                                   className="mt-4 border-[#FCA5A5] bg-white text-[#B91C1C] hover:bg-[#FEE2E2]"
                                 >
-                                  {isDeletingAccount ? 'Eliminando...' : 'Eliminar cuenta ahora'}
+                                  {isDeletingAccount ? 'Cerrando...' : 'Cerrar perfil profesional'}
                                 </Button>
                               </div>
                             </div>

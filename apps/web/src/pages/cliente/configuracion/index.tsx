@@ -115,7 +115,7 @@ export default function ClienteConfiguracionPage() {
       return;
     }
     const confirmed = window.confirm(
-      'Se cancelarán tus próximas reservas y la cuenta quedará eliminada. Esta acción no se puede deshacer.',
+      'Esto elimina tu cuenta Plura completa, incluyendo cliente, profesional, sesiones y datos asociados. Esta acción no se puede deshacer.',
     );
     if (!confirmed) return;
 
@@ -125,6 +125,7 @@ export default function ClienteConfiguracionPage() {
     try {
       await api.delete('/auth/me', {
         data: {
+          scope: 'TOTAL',
           challengeId: deleteChallengeId,
           code: deleteChallengeCode.trim(),
         },
@@ -438,9 +439,9 @@ export default function ClienteConfiguracionPage() {
         <article className={dangerPanelClassName}>
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div className="max-w-xl">
-              <p className="text-sm font-semibold text-[color:var(--error)]">Eliminar cuenta</p>
+              <p className="text-sm font-semibold text-[color:var(--error)]">Eliminar cuenta completa</p>
               <p className="mt-1 text-xs text-[color:var(--ink-muted)]">
-                Se cancelarán tus próximas reservas y cerraremos tu sesión en todos los dispositivos.
+                Esto elimina tu cuenta Plura completa, incluyendo cliente, profesional, sesiones y datos asociados.
               </p>
             </div>
             <button
@@ -458,7 +459,7 @@ export default function ClienteConfiguracionPage() {
               disabled={isDeletingAccount || isSendingDeleteChallenge || isVerifyingDeleteChallenge}
               className={dangerButtonClassName}
             >
-              {isDeleteFlowOpen ? 'Cancelar' : 'Eliminar cuenta'}
+              {isDeleteFlowOpen ? 'Cancelar' : 'Eliminar cuenta completa'}
             </button>
           </div>
 
@@ -526,7 +527,7 @@ export default function ClienteConfiguracionPage() {
                   <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[color:var(--ink-faint)]">Paso 3</p>
                   <p className="mt-1 text-sm font-semibold text-[color:var(--ink)]">Confirmar eliminación</p>
                   <p className="mt-1 text-xs text-[color:var(--ink-muted)]">
-                    Este paso cancela próximas reservas y no se puede deshacer.
+                    Esto elimina tu cuenta Plura completa, incluyendo cliente, profesional, sesiones y datos asociados.
                   </p>
                   <button
                     type="button"
@@ -536,7 +537,7 @@ export default function ClienteConfiguracionPage() {
                     disabled={!isDeleteChallengeVerified || isDeletingAccount}
                     className={`${dangerButtonClassName} mt-4`}
                   >
-                    {isDeletingAccount ? 'Eliminando...' : 'Eliminar cuenta ahora'}
+                    {isDeletingAccount ? 'Eliminando...' : 'Eliminar cuenta completa'}
                   </button>
                 </div>
               </div>

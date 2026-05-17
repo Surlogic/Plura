@@ -13,7 +13,10 @@ import com.plura.plurabackend.core.auth.repository.AuthAuditLogRepository;
 import com.plura.plurabackend.core.auth.repository.AuthOtpChallengeRepository;
 import com.plura.plurabackend.core.auth.repository.AuthSessionRepository;
 import com.plura.plurabackend.core.auth.repository.RefreshTokenRepository;
+import com.plura.plurabackend.core.user.model.User;
 import com.plura.plurabackend.core.user.repository.UserRepository;
+import com.plura.plurabackend.professional.model.ProfessionalProfile;
+import com.plura.plurabackend.professional.repository.ProfessionalProfileRepository;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -59,6 +62,9 @@ class AuthAccountDeletionIntegrationTest {
     private UserRepository userRepository;
 
     @Autowired
+    private ProfessionalProfileRepository professionalProfileRepository;
+
+    @Autowired
     private RefreshTokenRepository refreshTokenRepository;
 
     @Autowired
@@ -83,6 +89,7 @@ class AuthAccountDeletionIntegrationTest {
         authOtpChallengeRepository.deleteAll();
         authSessionRepository.deleteAll();
         refreshTokenRepository.deleteAll();
+        professionalProfileRepository.deleteAll();
         userRepository.deleteAll();
     }
 
@@ -127,6 +134,7 @@ class AuthAccountDeletionIntegrationTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
                     {
+                      "scope": "TOTAL",
                       "challengeId": "%s",
                       "code": "%s"
                     }
@@ -181,6 +189,7 @@ class AuthAccountDeletionIntegrationTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
                     {
+                      "scope": "TOTAL",
                       "challengeId": "%s",
                       "code": "%s"
                     }
@@ -214,6 +223,116 @@ class AuthAccountDeletionIntegrationTest {
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.accessToken").isNotEmpty())
             .andExpect(jsonPath("$.user.email").value("cliente-to-pro@plura.com"));
+    }
+
+    @Test
+    void deleteCurrentAccountRequiresTotalScopeAndDoesNotDeleteWithoutIt() throws Exception {
+        mockMvc.perform(post("/auth/register/cliente")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "fullName": "Cliente Demo",
+                      "email": "cliente-scope@plura.com",
+                      "phoneNumber": "+5491111111111",
+                      "password": "Password123"
+                    }
+                    """))
+            .andExpect(status().isAccepted());
+
+        MvcResult loginResult = mockMvc.perform(post("/auth/login/cliente")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "email": "cliente-scope@plura.com",
+                      "password": "Password123"
+                    }
+                    """))
+            .andExpect(status().isOk())
+            .andReturn();
+        String accessToken = objectMapper.readTree(loginResult.getResponse().getContentAsString())
+            .path("accessToken")
+            .asText();
+        String deletionCode = requestDeletionChallenge(accessToken, "EMAIL");
+
+        mockMvc.perform(delete("/auth/me")
+                .header("Authorization", "Bearer " + accessToken)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "challengeId": "%s",
+                      "code": "%s"
+                    }
+                    """.formatted(latestChallengeId(), deletionCode)))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.error").value("DELETE_SCOPE_REQUIRED"));
+
+        Assertions.assertTrue(userRepository.findByEmailAndDeletedAtIsNull("cliente-scope@plura.com").isPresent());
+    }
+
+    @Test
+    void closeProfessionalProfileKeepsBaseUserAndClientContext() throws Exception {
+        mockMvc.perform(post("/auth/register/cliente")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "fullName": "Cuenta Dual",
+                      "email": "dual-close@plura.com",
+                      "phoneNumber": "+5491111111111",
+                      "password": "Password123"
+                    }
+                    """))
+            .andExpect(status().isAccepted());
+
+        User user = userRepository.findByEmailAndDeletedAtIsNull("dual-close@plura.com").orElseThrow();
+        ProfessionalProfile profile = new ProfessionalProfile();
+        profile.setUser(user);
+        profile.setRubro("Cabello");
+        profile.setDisplayName("Cuenta Dual");
+        profile.setSlug("dual-close");
+        profile.setTipoCliente("SIN_LOCAL");
+        profile.setActive(true);
+        professionalProfileRepository.save(profile);
+
+        MvcResult loginResult = mockMvc.perform(post("/auth/login/cliente")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "email": "dual-close@plura.com",
+                      "password": "Password123"
+                    }
+                    """))
+            .andExpect(status().isOk())
+            .andReturn();
+        String accessToken = objectMapper.readTree(loginResult.getResponse().getContentAsString())
+            .path("accessToken")
+            .asText();
+
+        mockMvc.perform(get("/auth/me")
+                .header("Authorization", "Bearer " + accessToken))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.contexts[?(@.type == 'CLIENT')]").exists())
+            .andExpect(jsonPath("$.contexts[?(@.type == 'PROFESSIONAL')]").exists());
+
+        String deletionCode = requestDeletionChallenge(accessToken, "EMAIL");
+        mockMvc.perform(delete("/auth/professional-profile")
+                .header("Authorization", "Bearer " + accessToken)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "challengeId": "%s",
+                      "code": "%s"
+                    }
+                    """.formatted(latestChallengeId(), deletionCode)))
+            .andExpect(status().isNoContent());
+
+        Assertions.assertTrue(userRepository.findByEmailAndDeletedAtIsNull("dual-close@plura.com").isPresent());
+        Assertions.assertFalse(Boolean.TRUE.equals(professionalProfileRepository.findByUser_Id(user.getId()).orElseThrow().getActive()));
+
+        mockMvc.perform(get("/auth/me")
+                .header("Authorization", "Bearer " + accessToken))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.contexts[?(@.type == 'CLIENT')]").exists())
+            .andExpect(jsonPath("$.contexts[?(@.type == 'PROFESSIONAL')]").doesNotExist());
     }
 
     private String requestDeletionChallenge(String accessToken, String channel) throws Exception {

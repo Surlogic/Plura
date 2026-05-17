@@ -159,6 +159,7 @@ Backend relacionado:
 - `backend-java/src/main/java/com/plura/plurabackend/professional/paymentprovider`: endpoints OAuth de Mercado Pago para conectar la cuenta del profesional.
 - `backend-java/src/main/java/com/plura/plurabackend/core/billing/providerconnection`: persistencia y servicio de conexiones OAuth del provider.
 - `backend-java/src/main/java/com/plura/plurabackend/core/auth`: `POST /auth/professional-profile/activate` permite que una cuenta cliente autenticada active o reactive `ProfessionalProfile` sobre el mismo `app_user`; el frontend debe usarlo durante onboarding profesional despues de login cuando el email ya existe.
+- `backend-java/src/main/java/com/plura/plurabackend/core/account`: `DELETE /auth/professional-profile` cierra solo la faceta profesional con OTP y conserva la cuenta cliente; `DELETE /auth/me` queda reservado para eliminacion total explicita con `scope=TOTAL`.
 
 Lectura de producto:
 

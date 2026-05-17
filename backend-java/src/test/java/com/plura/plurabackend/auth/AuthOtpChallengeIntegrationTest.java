@@ -142,14 +142,14 @@ class AuthOtpChallengeIntegrationTest {
      * El objetivo es dejar explicita la regla que protege este test.
      */
     @Test
-    void deleteAccountWithoutChallengeReturnsChallengeRequired() throws Exception {
+    void deleteAccountWithoutScopeReturnsScopeRequired() throws Exception {
         registerClient();
         String accessToken = loginClient();
 
         mockMvc.perform(delete("/auth/me")
                 .header("Authorization", "Bearer " + accessToken))
-            .andExpect(status().isConflict())
-            .andExpect(jsonPath("$.error").value("CHALLENGE_REQUIRED"));
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.error").value("DELETE_SCOPE_REQUIRED"));
     }
 
     private void registerClient() throws Exception {

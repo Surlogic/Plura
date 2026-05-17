@@ -8,6 +8,7 @@ import com.plura.plurabackend.core.auth.dto.AcceptedMessageResponse;
 import com.plura.plurabackend.core.auth.dto.AuthAuditListResponse;
 import com.plura.plurabackend.core.auth.dto.AuthMeResponse;
 import com.plura.plurabackend.core.auth.dto.ChangePasswordRequest;
+import com.plura.plurabackend.core.auth.dto.CloseProfessionalProfileRequest;
 import com.plura.plurabackend.core.auth.dto.SelectContextRequest;
 import com.plura.plurabackend.core.auth.dto.SelectContextResponse;
 import com.plura.plurabackend.core.auth.dto.UnifiedLoginRequest;
@@ -805,6 +806,13 @@ public class AuthController {
     ) {
         Authentication activeAuthentication = requireAuthentication();
         UserRole role = resolveAuthenticatedRole(activeAuthentication);
+        if (request == null || request.getScope() == null || !"TOTAL".equalsIgnoreCase(request.getScope().trim())) {
+            throw new AuthApiException(
+                HttpStatus.BAD_REQUEST,
+                "DELETE_SCOPE_REQUIRED",
+                "Para eliminar la cuenta completa tenés que confirmar scope=TOTAL."
+            );
+        }
         if (request == null || request.getChallengeId() == null || request.getCode() == null) {
             throw new AuthApiException(
                 HttpStatus.CONFLICT,
@@ -832,7 +840,7 @@ public class AuthController {
             Map.of("role", role.name())
         );
         try {
-            accountDeletionService.deleteCurrentAccount(activeAuthentication.getPrincipal().toString(), role);
+            accountDeletionService.deleteCurrentAccount(activeAuthentication.getPrincipal().toString());
         } catch (RuntimeException exception) {
             authAuditService.log(
                 AuthAuditEventType.ACCOUNT_DELETION_FAILED,
@@ -855,6 +863,38 @@ public class AuthController {
             Map.of("role", role.name())
         );
         return buildClearedSessionResponse();
+    }
+
+    /**
+     * Endpoint DELETE /professional-profile: cierra solo la faceta profesional de la cuenta actual.
+     */
+    @DeleteMapping("/professional-profile")
+    public ResponseEntity<Void> closeProfessionalProfile(
+        @RequestBody(required = false) CloseProfessionalProfileRequest request,
+        Authentication authentication,
+        HttpServletRequest httpRequest
+    ) {
+        Authentication activeAuthentication = requireAuthentication();
+        if (request == null || request.getChallengeId() == null || request.getCode() == null) {
+            throw new AuthApiException(
+                HttpStatus.CONFLICT,
+                "CHALLENGE_REQUIRED",
+                "Necesitás verificar un challenge OTP para cerrar el perfil profesional."
+            );
+        }
+        otpChallengeService.verifyChallengeOrAllowPreviouslyVerified(
+            activeAuthentication.getPrincipal().toString(),
+            resolveAuthenticatedSessionId(activeAuthentication),
+            request.getChallengeId(),
+            request.getCode(),
+            OtpChallengePurpose.ACCOUNT_DELETION,
+            extractClientIp(httpRequest),
+            httpRequest == null ? null : httpRequest.getHeader("User-Agent")
+        );
+        accountDeletionService.closeProfessionalProfile(activeAuthentication.getPrincipal().toString());
+        return ResponseEntity.noContent()
+            .header(HttpHeaders.CACHE_CONTROL, "no-store")
+            .build();
     }
 
     @GetMapping("/audit")

@@ -113,6 +113,7 @@ Prefijo: `/auth`
 - `GET /auth/me` y `GET /auth/contexts` — alias autenticados que devuelven el `UserResponse`, el contexto activo derivado del JWT y todos los contextos disponibles para la cuenta. `CLIENT` es una capacidad disponible para toda cuenta activa; `PROFESSIONAL` se expone solo si existe `ProfessionalProfile.active=true`.
 - `POST /auth/context/select` — cambia el contexto activo emitiendo solo un nuevo access token (sin rotar refresh). Body: `type` (`CLIENT|PROFESSIONAL|WORKER`) + `workerId?` + `professionalId?`.
 - `POST /auth/professional-profile/activate` — endpoint autenticado para activar o reactivar la capacidad profesional sobre el `app_user` actual, sin crear otro usuario ni aceptar email/password. Body: `categorySlugs` o `rubro`, `tipoCliente` (`LOCAL|A_DOMICILIO|SIN_LOCAL`) y, para `LOCAL`, `country`, `city`, `fullAddress` y coordenadas opcionales en par. Devuelve `AuthMeResponse` con `contexts` actualizados; si el perfil ya estaba activo responde de forma idempotente sin duplicarlo.
+- `DELETE /auth/professional-profile` — endpoint autenticado para cerrar solo la faceta profesional del `app_user` actual. Requiere body `{ "challengeId": "...", "code": "..." }` validado contra un challenge OTP `ACCOUNT_DELETION`; desactiva `ProfessionalProfile`, cancela suscripcion profesional, limpia datos/medios profesionales, slots futuros y caches publicas, pero no elimina `app_user`, sesiones base ni datos cliente.
 - `POST /auth/oauth`
 - `POST /auth/oauth/complete-phone`
 - `GET /auth/worker-invitations?token={token}` — consulta publica de una invitacion de trabajador pendiente, sin sesion, para mostrar email/local y si requiere crear cuenta.
@@ -134,7 +135,7 @@ Prefijo: `/auth`
 - `POST /auth/challenge/verify`
 - `GET /auth/sessions`
 - `DELETE /auth/sessions/{sessionId}`
-- `DELETE /auth/me` — ahora requiere `challengeId` + `code` OTP en el body; el challenge se obtiene previamente con `POST /auth/challenge/send` (purpose `ACCOUNT_DELETION`, channel `EMAIL`)
+- `DELETE /auth/me` — eliminacion total explicita de cuenta. Requiere body `{ "scope": "TOTAL", "challengeId": "...", "code": "..." }`; si `scope` falta o no es `TOTAL` responde `400 DELETE_SCOPE_REQUIRED` y no borra nada. El challenge se obtiene previamente con `POST /auth/challenge/send` (purpose `ACCOUNT_DELETION`, channel `EMAIL`). La eliminacion total borra la cuenta base y las facetas cliente/profesional existentes.
 - `GET /auth/audit`
 - `GET /auth/me/profesional` — requiere JWT con `ctx=PROFESSIONAL` y `ProfessionalProfile.active=true`; no crea perfiles profesionales implícitamente.
 - `GET /auth/me/cliente` — requiere JWT con `ctx=CLIENT`; no bloquea por `UserRole.PROFESSIONAL` legacy.

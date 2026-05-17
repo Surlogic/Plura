@@ -104,6 +104,7 @@ public class SecurityConfig {
                 .requestMatchers("/public/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/profesional/payment-providers/mercadopago/oauth/callback").permitAll()
                 .requestMatchers(HttpMethod.DELETE, "/auth/me").hasAnyRole("PROFESSIONAL", "USER")
+                .requestMatchers(HttpMethod.DELETE, "/auth/professional-profile").hasAnyRole("PROFESSIONAL", "USER")
                 .requestMatchers(HttpMethod.POST, "/auth/password/change").hasAnyRole("PROFESSIONAL", "USER")
                 .requestMatchers(HttpMethod.POST, "/auth/oauth/complete-phone").hasAnyRole("PROFESSIONAL", "USER")
                 .requestMatchers(HttpMethod.POST, "/auth/professional-profile/activate").hasAnyRole("PROFESSIONAL", "USER")

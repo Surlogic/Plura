@@ -15,7 +15,6 @@ import com.plura.plurabackend.core.professional.ProfessionalAccountSubject;
 import com.plura.plurabackend.core.search.engine.SearchSyncPublisher;
 import com.plura.plurabackend.core.storage.ImageCleanupService;
 import com.plura.plurabackend.core.user.model.User;
-import com.plura.plurabackend.core.user.model.UserRole;
 import com.plura.plurabackend.core.user.repository.UserRepository;
 import jakarta.persistence.EntityManager;
 import java.time.LocalDate;
@@ -26,6 +25,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
@@ -96,30 +96,12 @@ public class AccountDeletionService {
      * Tambien concentra los efectos secundarios para que el flujo quede en un estado consistente.
      */
     @Transactional
-    public void deleteCurrentAccount(String rawUserId, UserRole role) {
+    public void deleteCurrentAccount(String rawUserId) {
         Long userId = parseUserId(rawUserId);
         User user = userRepository.findByIdAndDeletedAtIsNull(userId)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Usuario no encontrado"));
 
-        if (user.getRole() != role) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Acceso denegado");
-        }
-
         LocalDateTime now = LocalDateTime.now(appZoneId);
-        if (role == UserRole.PROFESSIONAL) {
-            deleteProfessionalAccount(user);
-        } else if (role == UserRole.USER) {
-            deleteClientAccount(user, now);
-        } else {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Rol no soportado");
-        }
-    }
-
-    /**
-     * Elimina la cuenta de cliente y limpia relaciones o datos derivados cuando corresponde.
-     * Tambien concentra los efectos secundarios para que el flujo quede en un estado consistente.
-     */
-    private void deleteClientAccount(User user, LocalDateTime now) {
         List<BookingAvailabilityImpact> futureBookingImpacts = snapshotBookingAvailabilityImpacts(
             bookingRepository.findByUser_IdAndOperationalStatusInAndStartDateTimeGreaterThanEqual(
                 user.getId(),
@@ -127,6 +109,29 @@ public class AccountDeletionService {
                 now
             )
         );
+        findProfessionalSubjectByUserId(user.getId())
+            .ifPresent(subject -> deleteProfessionalFacetForTotalAccount(user, subject));
+        deleteClientFacetForTotalAccount(user, futureBookingImpacts);
+    }
+
+    /**
+     * Cierra la faceta profesional de la cuenta actual sin eliminar el usuario base ni datos cliente.
+     */
+    @Transactional
+    public void closeProfessionalProfile(String rawUserId) {
+        Long userId = parseUserId(rawUserId);
+        User user = userRepository.findByIdAndDeletedAtIsNull(userId)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Usuario no encontrado"));
+
+        findProfessionalSubjectByUserId(user.getId())
+            .ifPresent(subject -> closeProfessionalFacet(user, subject));
+    }
+
+    /**
+     * Elimina la cuenta de cliente y limpia relaciones o datos derivados cuando corresponde.
+     * Tambien concentra los efectos secundarios para que el flujo quede en un estado consistente.
+     */
+    private void deleteClientFacetForTotalAccount(User user, List<BookingAvailabilityImpact> futureBookingImpacts) {
         List<Long> bookingIds = findBookingIdsForUser(user.getId());
 
         purgeBookingGraph(bookingIds);
@@ -150,39 +155,48 @@ public class AccountDeletionService {
      * Elimina la cuenta profesional y limpia relaciones o datos derivados cuando corresponde.
      * Tambien concentra los efectos secundarios para que el flujo quede en un estado consistente.
      */
-    private void deleteProfessionalAccount(User user) {
-        ProfessionalAccountSubject subject = professionalAccountLifecycleGateway.findByUserId(user.getId())
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.CONFLICT, "Perfil profesional no encontrado"));
-
-        billingService.cancelSubscriptionForProfessionalId(subject.professionalId(), true);
-
+    private void deleteProfessionalFacetForTotalAccount(User user, ProfessionalAccountSubject subject) {
         List<Long> bookingIds = findBookingIdsForProfessional(subject.professionalId());
 
-        professionalAccountLifecycleGateway.cleanupProfessionalMedia(subject.professionalId());
-        imageCleanupService.deleteIfRemoved(user.getAvatar());
+        cleanupProfessionalFacet(user, subject, true);
 
         purgeBookingGraph(bookingIds);
+
+        flushAndClearPersistenceContext();
+        deleteProfessionalProfile(subject.professionalId());
+
+        searchSyncPublisher.publishProfileChanged(subject.professionalId());
+    }
+
+    /**
+     * Cierra faceta profesional sin tocar cuenta base ni reservas/favoritos del usuario como cliente.
+     */
+    private void closeProfessionalFacet(User user, ProfessionalAccountSubject subject) {
+        cleanupProfessionalFacet(user, subject, false);
+        flushAndClearPersistenceContext();
+        professionalAccountLifecycleGateway.deactivateProfessionalProfile(subject);
+        searchSyncPublisher.publishProfileChanged(subject.professionalId());
+    }
+
+    /**
+     * Limpia datos y derivados propios de la faceta profesional.
+     */
+    private void cleanupProfessionalFacet(User user, ProfessionalAccountSubject subject, boolean purgeRecipientEmailDispatches) {
+        billingService.cancelSubscriptionForProfessionalId(subject.professionalId(), true);
+        professionalAccountLifecycleGateway.cleanupProfessionalMedia(subject.professionalId());
         purgeNotificationArtifactsForRecipient(
             NotificationRecipientType.PROFESSIONAL,
             String.valueOf(subject.professionalId()),
-            user.getEmail()
+            user.getEmail(),
+            purgeRecipientEmailDispatches
         );
-        purgeUserAuthArtifacts(user.getId());
-        purgeUserOwnedArtifacts(user.getId());
         purgeProfessionalOwnedArtifacts(subject.professionalId());
-
         availableSlotRepository.deleteByProfessionalId(subject.professionalId());
         slotCacheService.evictByPrefix("slots:" + subject.professionalId() + ":");
         if (subject.slug() != null && !subject.slug().isBlank()) {
             profileCacheService.evictPublicPageBySlug(subject.slug());
         }
         profileCacheService.evictPublicSummaries();
-
-        flushAndClearPersistenceContext();
-        deleteProfessionalProfile(subject.professionalId());
-        deleteUserById(user.getId());
-
-        searchSyncPublisher.publishProfileChanged(subject.professionalId());
     }
 
     /**
@@ -294,6 +308,15 @@ public class AccountDeletionService {
         String recipientId,
         String recipientEmail
     ) {
+        purgeNotificationArtifactsForRecipient(recipientType, recipientId, recipientEmail, true);
+    }
+
+    private void purgeNotificationArtifactsForRecipient(
+        NotificationRecipientType recipientType,
+        String recipientId,
+        String recipientEmail,
+        boolean purgeRecipientEmailDispatches
+    ) {
         if (recipientType == null || recipientId == null || recipientId.isBlank()) {
             return;
         }
@@ -311,7 +334,7 @@ public class AccountDeletionService {
             "DELETE FROM AppNotification notification WHERE notification.recipientType = :recipientType AND notification.recipientId = :recipientId",
             Map.of("recipientType", recipientType, "recipientId", recipientId)
         );
-        if (recipientEmail != null && !recipientEmail.isBlank()) {
+        if (purgeRecipientEmailDispatches && recipientEmail != null && !recipientEmail.isBlank()) {
             bulkDelete(
                 "DELETE FROM EmailDispatch dispatch WHERE dispatch.recipientEmail = :recipientEmail",
                 Map.of("recipientEmail", recipientEmail)
@@ -439,6 +462,11 @@ public class AccountDeletionService {
         )
             .setParameter("professionalId", professionalId)
             .getResultList();
+    }
+
+    private Optional<ProfessionalAccountSubject> findProfessionalSubjectByUserId(Long userId) {
+        Optional<ProfessionalAccountSubject> subject = professionalAccountLifecycleGateway.findByUserId(userId);
+        return subject == null ? Optional.empty() : subject;
     }
 
     /**

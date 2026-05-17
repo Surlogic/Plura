@@ -8,6 +8,7 @@ import ReservationScheduleStep from '@/components/reservation/ReservationSchedul
 import ReservationServiceSelector from '@/components/reservation/ReservationServiceSelector';
 import ReservationSummaryCard from '@/components/reservation/ReservationSummaryCard';
 import Button from '@/components/ui/Button';
+import type { ClientProfile } from '@/types/client';
 import { useClientProfileContext } from '@/context/ClientProfileContext';
 import { getBookingPaymentSessionMessage } from '@/lib/bookings/paymentSession';
 import { createClientBookingPaymentSession } from '@/services/clientBookings';
@@ -730,11 +731,18 @@ export default function ReservationPage() {
     await submitReservation();
   };
 
-  const handleAuthenticatedReservation = async () => {
+  const handleAuthenticatedReservation = async (authenticatedProfile?: ClientProfile) => {
     setSaveMessage('Sesión lista. Estamos confirmando tu reserva...');
     setSaveError(null);
 
-    if (clientProfile && !clientProfile.phoneVerified) {
+    const resolvedClientProfile = authenticatedProfile ?? clientProfile;
+    if (!resolvedClientProfile) {
+      setSaveMessage(null);
+      setSaveError('Estamos verificando tu sesión de cliente. Intentá confirmar nuevamente.');
+      return;
+    }
+
+    if (!resolvedClientProfile.phoneVerified) {
       setSaveMessage(null);
       setSaveError('Necesitás verificar tu celular antes de confirmar la reserva. Podés hacerlo desde tu perfil de cliente.');
       return;

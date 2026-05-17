@@ -17,7 +17,6 @@ import {
   fetchAuthMe,
   hasContext,
   persistAccessTokenForContext,
-  selectAuthContext,
   sessionRoleForContext,
   type AuthContextDescriptor,
   type AuthContextType,
@@ -276,7 +275,6 @@ export default function UnifiedLoginPage() {
       const loginPayload = {
         email: form.email.trim().toLowerCase(),
         password: form.password,
-        ...(desiredContext ? { desiredContext } : {}),
       };
       const response = await api.post<UnifiedLoginResponse>('/auth/login', loginPayload);
       const data = response.data ?? {};
@@ -340,23 +338,9 @@ export default function UnifiedLoginPage() {
         contexts: result.contexts,
       } : await fetchAuthMe();
       const list = Array.isArray(data.contexts) ? data.contexts : [];
-      if (desiredContext === 'PROFESSIONAL') {
-        const professionalContext = list.find((context) => context.type === 'PROFESSIONAL');
-        if (professionalContext) {
-          const selected = await selectAuthContext(professionalContext);
-          await completeLoginForContext(selected);
-          return;
-        }
+      if (desiredContext === 'PROFESSIONAL' && !hasContext(list, 'PROFESSIONAL')) {
         await continueProfessionalOnboarding(result.user.email);
         return;
-      }
-      if (desiredContext === 'CLIENT') {
-        const clientContext = list.find((context) => context.type === 'CLIENT');
-        if (clientContext) {
-          const selected = await selectAuthContext(clientContext);
-          await completeLoginForContext(selected);
-          return;
-        }
       }
       if (list.length > 1) {
         setContexts(list);

@@ -535,5 +535,6 @@ Lectura de producto:
 
 - `/login` es el inicio de sesión real para cliente, profesional y trabajador; resuelve el contexto con `/auth/login` y `/auth/context/select`.
 - `/profesional/auth/login` queda como ruta legacy de compatibilidad y redirige a `/login?intent=professional`, preservando `email`, `registered`, `billing=pending` y otros query params.
-- `/profesional/auth/register` es el wizard profesional y el destino de CTAs públicos como `Soy profesional` y `Registrá tu negocio`.
+- `/login?intent=professional` es el destino del CTA público `Soy profesional`; conserva el acceso unificado y, si la cuenta tiene varios contextos, deja que el usuario elija antes de entrar.
+- `/profesional/auth/register` es el wizard profesional y sigue siendo el destino de CTAs de alta como `Registrá tu negocio`.
 - Si el wizard profesional crea la cuenta pero falla el login automático, deriva a `/login?intent=professional&billing=pending`; al iniciar sesión como profesional, `/login` aplica el handoff pendiente y activa `Plura Core`.

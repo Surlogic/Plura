@@ -217,6 +217,26 @@ class AuthSessionIntegrationTest {
     }
 
     @Test
+    void professionalAccountWithoutDesiredContextRequiresExplicitSelection() throws Exception {
+        registerProfessional("dual-selection@plura.com");
+
+        mockMvc.perform(post("/auth/login")
+                .header("X-Plura-Client-Platform", "MOBILE")
+                .header("X-Plura-Session-Transport", "BODY")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "email": "dual-selection@plura.com",
+                      "password": "Password123"
+                    }
+                    """))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.contextSelectionRequired").value(true))
+            .andExpect(jsonPath("$.contexts[?(@.type == 'CLIENT')]").exists())
+            .andExpect(jsonPath("$.contexts[?(@.type == 'PROFESSIONAL')]").exists());
+    }
+
+    @Test
     void contextSelectClientWorksForProfessionalAccount() throws Exception {
         registerProfessional("select-client@plura.com");
         JsonNode loginPayload = loginUnifiedMobile("select-client@plura.com");

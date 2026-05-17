@@ -14,6 +14,8 @@ import com.plura.plurabackend.core.auth.model.RefreshToken;
 import com.plura.plurabackend.core.auth.repository.AuthAuditLogRepository;
 import com.plura.plurabackend.core.auth.repository.AuthSessionRepository;
 import com.plura.plurabackend.core.auth.repository.RefreshTokenRepository;
+import com.plura.plurabackend.core.category.model.Category;
+import com.plura.plurabackend.core.category.repository.CategoryRepository;
 import com.plura.plurabackend.core.user.model.User;
 import com.plura.plurabackend.core.user.model.UserRole;
 import com.plura.plurabackend.core.user.repository.UserRepository;
@@ -82,6 +84,9 @@ class AuthSessionIntegrationTest {
     private ProfessionalProfileRepository professionalProfileRepository;
 
     @Autowired
+    private CategoryRepository categoryRepository;
+
+    @Autowired
     private PasswordEncoder passwordEncoder;
 
     /**
@@ -94,6 +99,7 @@ class AuthSessionIntegrationTest {
         authSessionRepository.deleteAll();
         refreshTokenRepository.deleteAll();
         professionalProfileRepository.deleteAll();
+        categoryRepository.deleteAll();
         userRepository.deleteAll();
     }
 
@@ -290,6 +296,111 @@ class AuthSessionIntegrationTest {
         mockMvc.perform(get("/auth/me/cliente")
                 .header("Authorization", "Bearer " + refreshPayload.path("accessToken").asText()))
             .andExpect(status().isOk());
+    }
+
+    @Test
+    void authenticatedClientActivatesProfessionalProfileOnSameAccount() throws Exception {
+        ensureCategory("cabello", "Cabello");
+        registerClient("activate-professional@plura.com");
+        JsonNode loginPayload = loginMobile("activate-professional@plura.com");
+
+        mockMvc.perform(post("/auth/professional-profile/activate")
+                .header("Authorization", "Bearer " + loginPayload.path("accessToken").asText())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "categorySlugs": ["cabello"],
+                      "tipoCliente": "SIN_LOCAL"
+                    }
+                    """))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.activeContext.type").value("CLIENT"))
+            .andExpect(jsonPath("$.contexts[?(@.type == 'CLIENT')]").exists())
+            .andExpect(jsonPath("$.contexts[?(@.type == 'PROFESSIONAL')]").exists());
+
+        User user = userRepository.findByEmailAndDeletedAtIsNull("activate-professional@plura.com").orElseThrow();
+        org.junit.jupiter.api.Assertions.assertEquals(1L, userRepository.count());
+        ProfessionalProfile profile = professionalProfileRepository.findByUser_Id(user.getId()).orElseThrow();
+        org.junit.jupiter.api.Assertions.assertTrue(Boolean.TRUE.equals(profile.getActive()));
+        org.junit.jupiter.api.Assertions.assertEquals("Cabello", profile.getRubro());
+    }
+
+    @Test
+    void professionalProfileActivationIsIdempotentForActiveProfile() throws Exception {
+        ensureCategory("cabello", "Cabello");
+        registerClient("activate-twice@plura.com");
+        JsonNode loginPayload = loginMobile("activate-twice@plura.com");
+
+        String payload = """
+            {
+              "categorySlugs": ["cabello"],
+              "tipoCliente": "SIN_LOCAL"
+            }
+            """;
+        mockMvc.perform(post("/auth/professional-profile/activate")
+                .header("Authorization", "Bearer " + loginPayload.path("accessToken").asText())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(payload))
+            .andExpect(status().isOk());
+        Long profileId = professionalProfileRepository.findAll().getFirst().getId();
+
+        mockMvc.perform(post("/auth/professional-profile/activate")
+                .header("Authorization", "Bearer " + loginPayload.path("accessToken").asText())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(payload))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.contexts[?(@.type == 'PROFESSIONAL')]").exists());
+
+        org.junit.jupiter.api.Assertions.assertEquals(1L, professionalProfileRepository.count());
+        org.junit.jupiter.api.Assertions.assertEquals(profileId, professionalProfileRepository.findAll().getFirst().getId());
+    }
+
+    @Test
+    void professionalProfileActivationRequiresAuthenticatedUser() throws Exception {
+        ensureCategory("cabello", "Cabello");
+
+        mockMvc.perform(post("/auth/professional-profile/activate")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "categorySlugs": ["cabello"],
+                      "tipoCliente": "SIN_LOCAL"
+                    }
+                    """))
+            .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void professionalProfileActivationReactivatesInactiveProfile() throws Exception {
+        ensureCategory("cabello", "Cabello");
+        registerClient("reactivate-professional@plura.com");
+        User user = userRepository.findByEmailAndDeletedAtIsNull("reactivate-professional@plura.com").orElseThrow();
+
+        ProfessionalProfile inactive = new ProfessionalProfile();
+        inactive.setUser(user);
+        inactive.setRubro("Legacy");
+        inactive.setDisplayName("Cliente Demo");
+        inactive.setSlug("reactivate-professional");
+        inactive.setTipoCliente("SIN_LOCAL");
+        inactive.setActive(false);
+        Long profileId = professionalProfileRepository.save(inactive).getId();
+
+        JsonNode loginPayload = loginMobile("reactivate-professional@plura.com");
+        mockMvc.perform(post("/auth/professional-profile/activate")
+                .header("Authorization", "Bearer " + loginPayload.path("accessToken").asText())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "categorySlugs": ["cabello"],
+                      "tipoCliente": "SIN_LOCAL"
+                    }
+                    """))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.contexts[?(@.type == 'PROFESSIONAL')]").exists());
+
+        ProfessionalProfile profile = professionalProfileRepository.findById(profileId).orElseThrow();
+        org.junit.jupiter.api.Assertions.assertTrue(Boolean.TRUE.equals(profile.getActive()));
+        org.junit.jupiter.api.Assertions.assertEquals(1L, professionalProfileRepository.count());
     }
 
     /**
@@ -523,6 +634,17 @@ class AuthSessionIntegrationTest {
         profile.setTipoCliente("SIN_LOCAL");
         profile.setActive(true);
         professionalProfileRepository.save(profile);
+    }
+
+    private Category ensureCategory(String slug, String name) {
+        return categoryRepository.findBySlug(slug).orElseGet(() -> {
+            Category category = new Category();
+            category.setSlug(slug);
+            category.setName(name);
+            category.setDisplayOrder(1);
+            category.setActive(true);
+            return categoryRepository.save(category);
+        });
     }
 
     private JsonNode loginUnifiedMobile(String email) throws Exception {

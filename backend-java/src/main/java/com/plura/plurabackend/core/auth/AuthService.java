@@ -5,6 +5,7 @@ import com.auth0.jwt.algorithms.Algorithm;
 import com.plura.plurabackend.core.auth.context.AuthContextDescriptor;
 import com.plura.plurabackend.core.auth.context.AuthContextResolver;
 import com.plura.plurabackend.core.auth.context.AuthContextType;
+import com.plura.plurabackend.core.auth.dto.ActivateProfessionalProfileRequest;
 import com.plura.plurabackend.core.auth.dto.AuthMeResponse;
 import com.plura.plurabackend.core.auth.dto.LoginRequest;
 import com.plura.plurabackend.core.auth.dto.ProfesionalProfileResponse;
@@ -295,6 +296,49 @@ public class AuthService {
                 longitude,
                 tipoCliente
             )
+        );
+    }
+
+    @Transactional
+    public AuthMeResponse activateProfessionalProfile(
+        String rawUserId,
+        ActivateProfessionalProfileRequest request,
+        AuthContextType activeContextType,
+        String activeProfessionalId,
+        String activeWorkerId
+    ) {
+        User user = loadUserByRawId(rawUserId);
+        String tipoCliente = normalizeTipoCliente(request.getTipoCliente());
+        boolean requiresLocation = requiresProfessionalLocation(tipoCliente);
+        String country = normalizeLocationPart(request.getCountry(), requiresLocation, "country");
+        String city = normalizeLocationPart(request.getCity(), requiresLocation, "city");
+        String fullAddress = normalizeLocationPart(request.getFullAddress(), requiresLocation, "fullAddress");
+        String location = requiresLocation ? composeLocation(fullAddress, city, country) : null;
+        Double latitude = requiresLocation ? normalizeLatitude(request.getLatitude()) : null;
+        Double longitude = requiresLocation ? normalizeLongitude(request.getLongitude()) : null;
+        validateCoordinatesPair(latitude, longitude);
+        Set<Category> categories = resolveCategories(request.getCategorySlugs(), request.getRubro());
+
+        ProfessionalProfile profile = professionalAccountProfileGateway.activateProfile(
+            user,
+            new ProfessionalProfileRegistrationCommand(
+                categories,
+                resolvePrimaryCategoryName(categories, request.getRubro()),
+                country,
+                city,
+                fullAddress,
+                location,
+                latitude,
+                longitude,
+                tipoCliente
+            )
+        );
+
+        return getMe(
+            String.valueOf(user.getId()),
+            activeContextType,
+            activeProfessionalId == null ? String.valueOf(profile.getId()) : activeProfessionalId,
+            activeWorkerId
         );
     }
 
@@ -1441,7 +1485,11 @@ public class AuthService {
      * Resuelve categories for registration normalizando entradas, defaults y casos borde.
      */
     private Set<Category> resolveCategoriesForRegistration(RegisterProfesionalRequest request) {
-        List<String> incoming = request.getCategorySlugs();
+        return resolveCategories(request.getCategorySlugs(), request.getRubro());
+    }
+
+    private Set<Category> resolveCategories(List<String> categorySlugs, String rubro) {
+        List<String> incoming = categorySlugs;
         if (incoming != null && !incoming.isEmpty()) {
             Set<String> normalizedSlugs = incoming.stream()
                 .map(this::normalizeSlug)
@@ -1453,7 +1501,7 @@ public class AuthService {
             return loadCategoriesBySlugs(normalizedSlugs);
         }
 
-        String legacyRubro = request.getRubro() == null ? "" : request.getRubro().trim();
+        String legacyRubro = rubro == null ? "" : rubro.trim();
         if (legacyRubro.isBlank()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Seleccioná al menos un rubro");
         }

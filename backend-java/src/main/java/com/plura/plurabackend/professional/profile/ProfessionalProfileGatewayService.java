@@ -99,10 +99,37 @@ public class ProfessionalProfileGatewayService implements
     public ProfessionalProfile createRegisteredProfile(User user, ProfessionalProfileRegistrationCommand command) {
         ProfessionalProfile profile = new ProfessionalProfile();
         profile.setUser(user);
+        applyRegistrationCommand(profile, user, command);
+        profile.setSlug(SlugUtils.generateUniqueSlug(user.getFullName(), professionalProfileRepository::existsBySlug));
+        ProfessionalProfile saved = saveActivatedProfile(profile, command);
+        return saved;
+    }
+
+    @Override
+    public ProfessionalProfile activateProfile(User user, ProfessionalProfileRegistrationCommand command) {
+        ProfessionalProfile profile = professionalProfileRepository.findByUser_Id(user.getId()).orElse(null);
+        if (profile == null) {
+            return createRegisteredProfile(user, command);
+        }
+        if (isActive(profile)) {
+            return profile;
+        }
+
+        applyRegistrationCommand(profile, user, command);
+        if (profile.getSlug() == null || profile.getSlug().isBlank()) {
+            profile.setSlug(SlugUtils.generateUniqueSlug(user.getFullName(), professionalProfileRepository::existsBySlug));
+        }
+        return saveActivatedProfile(profile, command);
+    }
+
+    private void applyRegistrationCommand(
+        ProfessionalProfile profile,
+        User user,
+        ProfessionalProfileRegistrationCommand command
+    ) {
         profile.setCategories(command.categories());
         profile.setRubro(command.rubro());
         profile.setDisplayName(user.getFullName());
-        profile.setSlug(SlugUtils.generateUniqueSlug(user.getFullName(), professionalProfileRepository::existsBySlug));
         profile.setCountry(command.country());
         profile.setCity(command.city());
         profile.setFullAddress(command.fullAddress());
@@ -111,8 +138,17 @@ public class ProfessionalProfileGatewayService implements
         profile.setLatitude(command.latitude());
         profile.setLongitude(command.longitude());
         profile.setTipoCliente(command.tipoCliente());
+        profile.setActive(true);
+    }
+
+    private ProfessionalProfile saveActivatedProfile(
+        ProfessionalProfile profile,
+        ProfessionalProfileRegistrationCommand command
+    ) {
         ProfessionalProfile saved = professionalProfileRepository.save(profile);
-        professionalProfileRepository.updateCoordinates(saved.getId(), command.latitude(), command.longitude());
+        if (command.latitude() != null || command.longitude() != null) {
+            professionalProfileRepository.updateCoordinates(saved.getId(), command.latitude(), command.longitude());
+        }
         searchSyncPublisher.publishProfileChanged(saved.getId());
         return saved;
     }

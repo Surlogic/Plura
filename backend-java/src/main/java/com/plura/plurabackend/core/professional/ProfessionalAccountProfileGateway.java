@@ -14,6 +14,8 @@ public interface ProfessionalAccountProfileGateway {
 
     ProfessionalProfile createRegisteredProfile(User user, ProfessionalProfileRegistrationCommand command);
 
+    ProfessionalProfile activateProfile(User user, ProfessionalProfileRegistrationCommand command);
+
     ProfessionalProfile loadOrBootstrapProfile(User user);
 
     Optional<ProfessionalProfile> findByUserId(Long userId);

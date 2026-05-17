@@ -3,6 +3,7 @@ package com.plura.plurabackend.core.auth;
 import com.plura.plurabackend.core.account.AccountDeletionService;
 import com.plura.plurabackend.core.auth.context.AuthContextDescriptor;
 import com.plura.plurabackend.core.auth.context.AuthContextType;
+import com.plura.plurabackend.core.auth.dto.ActivateProfessionalProfileRequest;
 import com.plura.plurabackend.core.auth.dto.AcceptedMessageResponse;
 import com.plura.plurabackend.core.auth.dto.AuthAuditListResponse;
 import com.plura.plurabackend.core.auth.dto.AuthMeResponse;
@@ -189,6 +190,24 @@ public class AuthController {
             .body(new RegistrationAcceptedResponse(
                 "Si el email no estaba registrado, la cuenta fue creada. Si ya existía, podés iniciar sesión."
             ));
+    }
+
+    @PostMapping("/professional-profile/activate")
+    public ResponseEntity<AuthMeResponse> activateProfessionalProfile(
+        @Valid @RequestBody ActivateProfessionalProfileRequest request
+    ) {
+        Authentication activeAuthentication = requireAuthentication();
+        AuthenticatedTokenDetails tokenDetails = currentActorService.currentTokenDetails();
+        AuthMeResponse response = authService.activateProfessionalProfile(
+            activeAuthentication.getPrincipal().toString(),
+            request,
+            tokenDetails == null ? null : tokenDetails.contextType(),
+            tokenDetails == null ? null : tokenDetails.professionalId(),
+            tokenDetails == null ? null : tokenDetails.workerId()
+        );
+        return ResponseEntity.ok()
+            .header(HttpHeaders.CACHE_CONTROL, "no-store")
+            .body(response);
     }
 
     @PostMapping("/register/phone/send")

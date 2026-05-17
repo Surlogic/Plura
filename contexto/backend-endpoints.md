@@ -112,6 +112,7 @@ Prefijo: `/auth`
 - `POST /auth/login` — login unificado: autentica con email/password y resuelve los contextos disponibles del usuario (`CLIENT`, `PROFESSIONAL`, `WORKER`). Devuelve `accessToken` + `activeContext` + `contexts` + `contextSelectionRequired`. Si solo hay un contexto se elige por defecto; si hay varios, frontend muestra selector. Acepta `desiredContext`/`desiredWorkerId`/`desiredProfessionalId` opcionales.
 - `GET /auth/me` y `GET /auth/contexts` — alias autenticados que devuelven el `UserResponse`, el contexto activo derivado del JWT y todos los contextos disponibles para la cuenta. `CLIENT` es una capacidad disponible para toda cuenta activa; `PROFESSIONAL` se expone solo si existe `ProfessionalProfile.active=true`.
 - `POST /auth/context/select` — cambia el contexto activo emitiendo solo un nuevo access token (sin rotar refresh). Body: `type` (`CLIENT|PROFESSIONAL|WORKER`) + `workerId?` + `professionalId?`.
+- `POST /auth/professional-profile/activate` — endpoint autenticado para activar o reactivar la capacidad profesional sobre el `app_user` actual, sin crear otro usuario ni aceptar email/password. Body: `categorySlugs` o `rubro`, `tipoCliente` (`LOCAL|A_DOMICILIO|SIN_LOCAL`) y, para `LOCAL`, `country`, `city`, `fullAddress` y coordenadas opcionales en par. Devuelve `AuthMeResponse` con `contexts` actualizados; si el perfil ya estaba activo responde de forma idempotente sin duplicarlo.
 - `POST /auth/oauth`
 - `POST /auth/oauth/complete-phone`
 - `GET /auth/worker-invitations?token={token}` — consulta publica de una invitacion de trabajador pendiente, sin sesion, para mostrar email/local y si requiere crear cuenta.
@@ -156,6 +157,7 @@ Lectura de producto:
 - ya da base para login social y gestion de sesiones
 - `POST /auth/register/cliente` y `POST /auth/register/profesional` aceptan `phoneVerificationToken`; cuando `AUTH_REGISTRATION_PHONE_VERIFICATION_REQUIRED=true`, ese token pasa a ser obligatorio, el alta queda con `phoneVerified=true` desde el inicio y el mismo telefono verificado no puede reutilizarse en otra cuenta activa
 - `POST /auth/oauth/complete-phone` cierra el faltante de telefono cuando el alta/login OAuth no lo trae; tambien acepta `phoneVerificationToken` para dejar el telefono verificado en el mismo paso
+- `POST /auth/professional-profile/activate` es el flujo backend vigente para que una cuenta cliente autenticada active perfil profesional sobre el mismo email; si el email ya existe sin sesion, el registro profesional publico sigue sin crear ni tomar control de esa cuenta y debe pedir login antes de continuar onboarding
 - `POST /auth/password/forgot` + `POST /auth/password/reset` siguen como flujo legacy por token y hoy quedan como compatibilidad de enlaces viejos o soporte manual
 - `POST /auth/password/recovery/start|verify-phone|confirm` son el flujo vigente de recuperacion escalonada que ya usan web y mobile
 - `POST /auth/password/reset` y `POST /auth/password/recovery/confirm` ya no cierran con `204` vacio: ahora devuelven `200` con `role` (`USER` o `PROFESSIONAL`) y limpian cookies/sesion para que frontend redirija al login correcto segun la cuenta recuperada

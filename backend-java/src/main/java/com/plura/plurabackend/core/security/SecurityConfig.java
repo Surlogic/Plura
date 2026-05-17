@@ -106,6 +106,7 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.DELETE, "/auth/me").hasAnyRole("PROFESSIONAL", "USER")
                 .requestMatchers(HttpMethod.POST, "/auth/password/change").hasAnyRole("PROFESSIONAL", "USER")
                 .requestMatchers(HttpMethod.POST, "/auth/oauth/complete-phone").hasAnyRole("PROFESSIONAL", "USER")
+                .requestMatchers(HttpMethod.POST, "/auth/professional-profile/activate").hasAnyRole("PROFESSIONAL", "USER")
                 .requestMatchers("/auth/challenge/**").hasAnyRole("PROFESSIONAL", "USER")
                 .requestMatchers("/auth/verify/**").hasAnyRole("PROFESSIONAL", "USER")
                 .requestMatchers("/auth/me/profesional").hasAnyRole("PROFESSIONAL", "USER")

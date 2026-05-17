@@ -733,6 +733,13 @@ export default function ReservationPage() {
   const handleAuthenticatedReservation = async () => {
     setSaveMessage('Sesión lista. Estamos confirmando tu reserva...');
     setSaveError(null);
+
+    if (clientProfile && !clientProfile.phoneVerified) {
+      setSaveMessage(null);
+      setSaveError('Necesitás verificar tu celular antes de confirmar la reserva. Podés hacerlo desde tu perfil de cliente.');
+      return;
+    }
+
     await submitReservation();
   };
 

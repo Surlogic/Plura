@@ -538,3 +538,9 @@ hola gurises
 ### Verificación celular
 
 - Regla de seguridad: los clientes pueden navegar e iniciar el flujo, pero no pueden confirmar reservas sin celular verificado (`phoneVerified=true`); profesionales y OAuth deben completar OTP antes de continuar con alta/activación.
+
+## Regla producto vigente de celular verificado
+
+- Cliente: puede navegar y autenticarse, pero no puede confirmar reservas si `phoneVerified=false` o `phone_verified_at` está vacío. `/reservar` debe cortar antes del submit y el backend mantiene la validación final en `POST /public/profesionales/{slug}/reservas`.
+- Profesional/local: el registro y el cierre de teléfono OAuth requieren OTP SMS real y `phoneVerificationToken`; cambiar el teléfono limpia la verificación hasta completar una nueva validación.
+- El mismo teléfono verificado no debe quedar validado en otra cuenta activa distinta; el backend rechaza la verificación con conflicto.

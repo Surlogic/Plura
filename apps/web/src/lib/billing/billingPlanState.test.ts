@@ -16,11 +16,20 @@ const buildSubscription = (
 
 test('resolveCurrentBillingPlanStateId does not promote a TRIAL subscription before webhook confirmation', () => {
   const currentPlanId = resolveCurrentBillingPlanStateId({
-    profilePlanCode: 'PROFESSIONAL',
+    profilePlanCode: 'CORE',
     subscription: buildSubscription(),
   });
 
   assert.equal(currentPlanId, 'CORE');
+});
+
+test('resolveCurrentBillingPlanStateId does not normalize legacy profile plans to Core', () => {
+  const currentPlanId = resolveCurrentBillingPlanStateId({
+    profilePlanCode: 'PROFESSIONAL',
+    subscription: buildSubscription(),
+  });
+
+  assert.equal(currentPlanId, null);
 });
 
 test('resolveCurrentBillingPlanStateId keeps the paid plan when the subscription is active', () => {
@@ -34,9 +43,21 @@ test('resolveCurrentBillingPlanStateId keeps the paid plan when the subscription
   assert.equal(currentPlanId, 'CORE');
 });
 
+test('resolveCurrentBillingPlanStateId does not normalize legacy active subscription plans to Core', () => {
+  const currentPlanId = resolveCurrentBillingPlanStateId({
+    profilePlanCode: null,
+    subscription: buildSubscription({
+      planCode: 'PLAN_LOCAL',
+      status: 'ACTIVE',
+    }),
+  });
+
+  assert.equal(currentPlanId, null);
+});
+
 test('resolveCurrentBillingPlanStateId keeps the paid plan while cancellation is scheduled', () => {
   const currentPlanId = resolveCurrentBillingPlanStateId({
-    profilePlanCode: 'PROFESSIONAL',
+    profilePlanCode: 'CORE',
     subscription: buildSubscription({
       status: 'ACTIVE',
       cancelAtPeriodEnd: true,

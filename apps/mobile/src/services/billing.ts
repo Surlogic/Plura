@@ -109,18 +109,28 @@ export const resolveCurrentBillingPlanId = ({
 }: {
   profilePlanCode?: string | null;
   subscription: BillingSubscription | null;
-}): BillingUiPlanId => {
+}): BillingUiPlanId | null => {
   if (subscription) {
     const subscriptionPlan = resolveBillingPlanFromBackendPlanCode(subscription.planCode);
+    const subscriptionAccessEnabled =
+      subscription.status === 'ACTIVE'
+      || subscription.status === 'TRIALING'
+      || (subscription.status === 'TRIAL' && subscription.trialActive === true)
+      || subscription.planEnabled === true
+      || Boolean(subscription.cancelAtPeriodEnd);
     if (
       subscriptionPlan
-      && (subscription.status === 'ACTIVE' || Boolean(subscription.cancelAtPeriodEnd))
+      && subscriptionAccessEnabled
     ) {
       return subscriptionPlan;
     }
+    if (!subscriptionPlan && subscriptionAccessEnabled) return null;
   }
 
-  return resolveBillingPlanFromProfilePlanCode(profilePlanCode);
+  const profilePlan = resolveBillingPlanFromProfilePlanCode(profilePlanCode);
+  if (profilePlan) return profilePlan;
+
+  return profilePlanCode ? null : 'CORE';
 };
 
 export const resolveCurrentBillingStatus = (

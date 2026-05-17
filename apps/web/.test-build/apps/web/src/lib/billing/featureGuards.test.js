@@ -57,15 +57,15 @@ const buildProfile = (overrides = {}) => ({
         advancedAnalytics: false,
     });
 });
-(0, node_test_1.default)('resolveProfessionalFeatureAccess treats legacy plan strings as Core defaults', () => {
+(0, node_test_1.default)('resolveProfessionalFeatureAccess does not treat legacy plan strings as Core defaults', () => {
     const access = (0, featureGuards_1.resolveProfessionalFeatureAccess)(buildProfile({
         professionalPlan: 'ENTERPRISE',
     }));
     strict_1.default.deepEqual(access, {
-        enhancedPublicProfile: true,
-        onlinePayments: true,
-        weeklyCalendarNavigation: true,
-        monthlyCalendar: true,
+        enhancedPublicProfile: false,
+        onlinePayments: false,
+        weeklyCalendarNavigation: false,
+        monthlyCalendar: false,
         basicAnalytics: false,
         advancedAnalytics: false,
     });
@@ -83,7 +83,7 @@ const buildProfile = (overrides = {}) => ({
     strict_1.default.equal(access.enhancedPublicProfile, false);
     strict_1.default.equal(access.onlinePayments, false);
     strict_1.default.equal(access.weeklyCalendarNavigation, true);
-    strict_1.default.equal(access.monthlyCalendar, true);
+    strict_1.default.equal(access.monthlyCalendar, false);
     strict_1.default.equal(access.basicAnalytics, true);
     strict_1.default.equal(access.advancedAnalytics, false);
 });

@@ -537,7 +537,10 @@ Lectura de producto:
 
 Nota de naming:
 
-- el codigo actual conserva los planes legacy solo como aliases de parsing; toda respuesta nueva devuelve `PLAN_CORE`
+- backend/API acepta solo `PLAN_CORE` y `CORE` como entrada de plan vigente
+- los aliases legacy fueron eliminados como entrada valida; si llegan `PLAN_BASIC`, `PLAN_PRO`, `PLAN_PROFESIONAL`, `PLAN_PROFESSIONAL`, `PROFESSIONAL`, `PLAN_PREMIUM`, `PLAN_LOCAL`, `LOCAL`, `PLAN_ENTERPRISE`, `ENTERPRISE`, `BASIC` o `PROFESIONAL`, se rechazan
+- `subscription.plan` queda core-only por migracion `V84`
+- cualquier mencion legacy solo puede existir en migraciones historicas o tests de rechazo
 - a nivel de producto la lectura objetivo visible es `Plura Core`
 
 ### Endpoints internos de operaciones

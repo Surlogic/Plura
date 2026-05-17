@@ -137,7 +137,7 @@ export const resolveCurrentBillingPlanId = ({
 }: {
   profilePlanCode?: string | null;
   subscription: BillingSubscription | null;
-}): BillingUiPlanId =>
+}): BillingUiPlanId | null =>
   resolveCurrentBillingPlanStateId({
     profilePlanCode,
     subscription,

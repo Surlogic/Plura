@@ -493,7 +493,6 @@ Base: `packages/shared/src`
 Modulos compartidos actuales:
 
 - `billing/plans.ts`
-- `billing/planAccess.ts`
 - `bookings/idempotency.ts`
 - `bookings/mappers.ts`
 - `bookings/professionalReservationActions.ts`

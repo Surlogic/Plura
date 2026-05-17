@@ -1,4 +1,5 @@
 import type { ProfessionalProfile } from '@/types/professional';
+import { resolveBillingPlanFromProfilePlanCode } from '../../config/billingPlans';
 
 export type ProfessionalFeatureKey =
   | 'enhancedPublicProfile'
@@ -21,22 +22,28 @@ export const professionalCoreFeatureAccess = CORE_FEATURE_ACCESS;
 
 export const resolveProfessionalFeatureAccess = (profile?: ProfessionalProfile | null) => {
   const entitlements = profile?.professionalEntitlements;
+  const profilePlan = resolveBillingPlanFromProfilePlanCode(profile?.professionalPlan);
+  const canUseCoreDefaults = !profile || !profile.professionalPlan || profilePlan === 'CORE';
 
   return {
     enhancedPublicProfile: entitlements
       ? entitlements.publicProfileTier === 'ENHANCED'
-      : CORE_FEATURE_ACCESS.enhancedPublicProfile,
+      : canUseCoreDefaults && CORE_FEATURE_ACCESS.enhancedPublicProfile,
     onlinePayments: entitlements
       ? entitlements.allowOnlinePayments
-      : CORE_FEATURE_ACCESS.onlinePayments,
-    weeklyCalendarNavigation: CORE_FEATURE_ACCESS.weeklyCalendarNavigation,
-    monthlyCalendar: CORE_FEATURE_ACCESS.monthlyCalendar,
+      : canUseCoreDefaults && CORE_FEATURE_ACCESS.onlinePayments,
+    weeklyCalendarNavigation: entitlements
+      ? entitlements.scheduleTier === 'WEEKLY' || entitlements.scheduleTier === 'MASTER'
+      : canUseCoreDefaults && CORE_FEATURE_ACCESS.weeklyCalendarNavigation,
+    monthlyCalendar: entitlements
+      ? entitlements.scheduleTier === 'MASTER'
+      : canUseCoreDefaults && CORE_FEATURE_ACCESS.monthlyCalendar,
     basicAnalytics: entitlements
       ? entitlements.analyticsTier !== 'NONE'
-      : CORE_FEATURE_ACCESS.basicAnalytics,
+      : canUseCoreDefaults && CORE_FEATURE_ACCESS.basicAnalytics,
     advancedAnalytics: entitlements
       ? entitlements.analyticsTier === 'ADVANCED'
-      : CORE_FEATURE_ACCESS.advancedAnalytics,
+      : canUseCoreDefaults && CORE_FEATURE_ACCESS.advancedAnalytics,
   };
 };
 

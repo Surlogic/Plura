@@ -23,29 +23,11 @@ exports.sharedBillingPlans = [
 exports.sharedBillingPlanById = {
     CORE: exports.sharedBillingPlans[0],
 };
-const resolveBillingPlanFromProfilePlanCode = (planCode) => {
-    switch (planCode?.toUpperCase()) {
-        case 'CORE':
-        case 'PROFESIONAL':
-        case 'LOCAL':
-        case 'ENTERPRISE':
-        case 'BASIC':
-        case 'PROFESSIONAL':
-        default:
-            return 'CORE';
-    }
-};
+const resolveBillingPlanFromProfilePlanCode = (planCode) => (planCode?.toUpperCase() === 'CORE' ? 'CORE' : null);
 exports.resolveBillingPlanFromProfilePlanCode = resolveBillingPlanFromProfilePlanCode;
 const resolveBillingPlanFromBackendPlanCode = (planCode) => {
     switch (planCode?.toUpperCase()) {
         case 'PLAN_CORE':
-        case 'PLAN_BASIC':
-        case 'PLAN_PRO':
-        case 'PLAN_PROFESIONAL':
-        case 'PLAN_PREMIUM':
-        case 'PLAN_PROFESSIONAL':
-        case 'PLAN_LOCAL':
-        case 'PLAN_ENTERPRISE':
             return 'CORE';
         default:
             return null;

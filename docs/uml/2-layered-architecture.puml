@@ -20,7 +20,7 @@ package "apps/mobile" #E3F2FD {
 }
 
 package "packages/shared" #F3E5F5 {
-  [billing/plans.ts\nbilling/planAccess.ts] as SharedPlans
+  [billing/plans.ts] as SharedPlans
   [publicBookings/contracts.ts\nsearch/service.ts\ntypes/*] as SharedContracts
 }
 

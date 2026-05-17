@@ -963,22 +963,22 @@ export default function ReservationPage() {
               ) : null}
 
               <ReservationSummaryCard
-              canSubmit={canSubmit}
-              isLoadingContext={isLoadingContext}
-              requiresAuthentication={!clientProfile}
-              isSaving={isSaving}
-              onCancel={handleCancelReservation}
-              onConfirm={handleConfirm}
-              onEditSchedule={handleEditSchedule}
-              onEditService={handleEditService}
-              policyDescription={policyDescription}
-              professional={professional}
-              saveError={saveError}
-              saveMessage={saveMessage}
-              selectedDateLabel={confirmedDateLabel}
-              selectedService={confirmedService}
-              selectedTime={selectedTime}
-            />
+                canSubmit={canSubmit}
+                isLoadingContext={isLoadingContext}
+                requiresAuthentication={!clientProfile}
+                isSaving={isSaving}
+                onCancel={handleCancelReservation}
+                onConfirm={handleConfirm}
+                onEditSchedule={handleEditSchedule}
+                onEditService={handleEditService}
+                policyDescription={policyDescription}
+                professional={professional}
+                saveError={saveError}
+                saveMessage={saveMessage}
+                selectedDateLabel={confirmedDateLabel}
+                selectedService={confirmedService}
+                selectedTime={selectedTime}
+              />
             </>
           ) : null}
         </section>

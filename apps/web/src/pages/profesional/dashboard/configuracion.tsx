@@ -14,6 +14,7 @@ import {
   getProfessionalBookingPolicy,
   updateProfessionalBookingPolicy,
 } from '@/services/professionalBookingPolicy';
+import { ensureAuthContext } from '@/lib/auth/contexts';
 import api from '@/services/api';
 import { clearFavoriteProfessionals } from '@/services/clientFeatures';
 import { clearAuthAccessToken } from '@/services/session';
@@ -102,19 +103,19 @@ const isDigitsOnly = (value: string) => /^\d*$/.test(value.trim());
 export default function ProfesionalSettingsPage() {
   const router = useRouter();
   const { profile, isLoading, hasLoaded } = useProfessionalProfile();
-  const { clearProfile: clearClientProfile } = useClientProfileContext();
+  const { clearProfile: clearClientProfile, refreshProfile: refreshClientProfile } = useClientProfileContext();
   const { clearProfile, refreshProfile } = useProfessionalProfileContext();
   const [settingsMessage, setSettingsMessage] = useState<string | null>(null);
   const [isSettingsError, setIsSettingsError] = useState(false);
-  const [isDeletingAccount, setIsDeletingAccount] = useState(false);
-  const [isDeleteFlowOpen, setIsDeleteFlowOpen] = useState(false);
-  const [deleteChallengeId, setDeleteChallengeId] = useState<string | null>(null);
-  const [deleteChallengeCode, setDeleteChallengeCode] = useState('');
-  const [deleteChallengeMessage, setDeleteChallengeMessage] = useState<string | null>(null);
-  const [deleteSuccessMessage, setDeleteSuccessMessage] = useState<string | null>(null);
-  const [isSendingDeleteChallenge, setIsSendingDeleteChallenge] = useState(false);
-  const [isVerifyingDeleteChallenge, setIsVerifyingDeleteChallenge] = useState(false);
-  const [isDeleteChallengeVerified, setIsDeleteChallengeVerified] = useState(false);
+  const [isClosingProfessionalProfile, setIsClosingProfessionalProfile] = useState(false);
+  const [isCloseProfileFlowOpen, setIsCloseProfileFlowOpen] = useState(false);
+  const [closeProfileChallengeId, setCloseProfileChallengeId] = useState<string | null>(null);
+  const [closeProfileChallengeCode, setCloseProfileChallengeCode] = useState('');
+  const [closeProfileChallengeMessage, setCloseProfileChallengeMessage] = useState<string | null>(null);
+  const [closeProfileSuccessMessage, setCloseProfileSuccessMessage] = useState<string | null>(null);
+  const [isSendingCloseProfileChallenge, setIsSendingCloseProfileChallenge] = useState(false);
+  const [isVerifyingCloseProfileChallenge, setIsVerifyingCloseProfileChallenge] = useState(false);
+  const [isCloseProfileChallengeVerified, setIsCloseProfileChallengeVerified] = useState(false);
   const [passwordForm, setPasswordForm] = useState({
     currentPassword: '',
     newPassword: '',
@@ -139,7 +140,7 @@ export default function ProfesionalSettingsPage() {
   useProfessionalDashboardUnsavedSection({
     sectionId: 'settings-account',
     isDirty: false,
-    isSaving: isDeletingAccount,
+    isSaving: isClosingProfessionalProfile,
   });
 
   useEffect(() => {
@@ -175,67 +176,73 @@ export default function ProfesionalSettingsPage() {
     };
   }, [profile?.id]);
 
-  const resetDeleteFlowState = () => {
-    setDeleteChallengeId(null);
-    setDeleteChallengeCode('');
-    setDeleteChallengeMessage(null);
-    setDeleteSuccessMessage(null);
-    setIsDeleteChallengeVerified(false);
+  const resetCloseProfileFlowState = () => {
+    setCloseProfileChallengeId(null);
+    setCloseProfileChallengeCode('');
+    setCloseProfileChallengeMessage(null);
+    setCloseProfileSuccessMessage(null);
+    setIsCloseProfileChallengeVerified(false);
   };
 
-  const handleDeleteAccount = async () => {
-    if (isDeletingAccount) return;
-    if (!deleteChallengeId || !deleteChallengeCode.trim()) {
+  const handleCloseProfessionalProfile = async () => {
+    if (isClosingProfessionalProfile) return;
+    if (!closeProfileChallengeId || !closeProfileChallengeCode.trim()) {
       setSettingsMessage('Primero enviá y validá el código recibido por email.');
       setIsSettingsError(true);
       return;
     }
-    if (!isDeleteChallengeVerified) {
-      setSettingsMessage('Primero validá el código antes de eliminar la cuenta.');
+    if (!isCloseProfileChallengeVerified) {
+      setSettingsMessage('Primero validá el código antes de cerrar el perfil profesional.');
       setIsSettingsError(true);
       return;
     }
     const confirmed = window.confirm(
-      'Se cancelara la suscripcion activa, se daran de baja tus proximas reservas y la cuenta quedara eliminada. Esta accion no se puede deshacer.',
+      'Tu landing, servicios, agenda y visibilidad pública se cerrarán. Tu cuenta cliente y reservas como cliente se conservan.',
     );
     if (!confirmed) return;
 
-    setIsDeletingAccount(true);
+    setIsClosingProfessionalProfile(true);
     setSettingsMessage(null);
     setIsSettingsError(false);
-    setDeleteSuccessMessage(null);
+    setCloseProfileSuccessMessage(null);
 
     try {
-      await api.delete('/auth/me', {
+      await api.delete('/auth/professional-profile', {
         data: {
-          challengeId: deleteChallengeId,
-          code: deleteChallengeCode.trim(),
+          challengeId: closeProfileChallengeId,
+          code: closeProfileChallengeCode.trim(),
         },
       });
-      clearAuthAccessToken();
-      clearFavoriteProfessionals();
       clearProfile();
-      await router.replace('/profesional/auth/login');
+      try {
+        await ensureAuthContext('CLIENT');
+        await refreshClientProfile();
+        await router.replace('/cliente/inicio');
+      } catch {
+        clearAuthAccessToken();
+        clearClientProfile();
+        await router.replace('/cliente/auth/login');
+      }
     } catch (error) {
       setSettingsMessage(
-        resolveBackendMessage(error, 'No se pudo eliminar la cuenta.'),
+        resolveBackendMessage(error, 'No se pudo cerrar el perfil profesional.'),
       );
       setIsSettingsError(true);
     } finally {
-      setIsDeletingAccount(false);
+      setIsClosingProfessionalProfile(false);
     }
   };
 
-  const handleSendDeleteChallenge = async () => {
-    if (isSendingDeleteChallenge) return;
+  const handleSendCloseProfileChallenge = async () => {
+    if (isSendingCloseProfileChallenge) return;
     setSettingsMessage(null);
     setIsSettingsError(false);
-    setDeleteChallengeMessage(null);
-    setDeleteSuccessMessage(null);
-    setIsDeleteChallengeVerified(false);
+    setCloseProfileChallengeMessage(null);
+    setCloseProfileSuccessMessage(null);
+    setIsCloseProfileChallengeVerified(false);
 
     try {
-      setIsSendingDeleteChallenge(true);
+      setIsSendingCloseProfileChallenge(true);
       const response = await api.post<{ challengeId: string; expiresAt: string; maskedDestination: string }>(
         '/auth/challenge/send',
         {
@@ -243,29 +250,29 @@ export default function ProfesionalSettingsPage() {
           channel: 'EMAIL',
         },
       );
-      setDeleteChallengeId(response.data.challengeId);
-      setDeleteChallengeCode('');
-      setDeleteChallengeMessage(
+      setCloseProfileChallengeId(response.data.challengeId);
+      setCloseProfileChallengeCode('');
+      setCloseProfileChallengeMessage(
         `Te enviamos un código por email a ${response.data.maskedDestination}. Puede demorar hasta 1 o 2 minutos. Revisá también spam o promociones. El código vence en 10 minutos.`,
       );
     } catch (error) {
       setSettingsMessage(
-        resolveBackendMessage(error, 'No se pudo enviar el código de eliminación por email.'),
+        resolveBackendMessage(error, 'No se pudo enviar el código para cerrar el perfil profesional.'),
       );
       setIsSettingsError(true);
     } finally {
-      setIsSendingDeleteChallenge(false);
+      setIsSendingCloseProfileChallenge(false);
     }
   };
 
-  const handleVerifyDeleteChallenge = async () => {
-    if (isVerifyingDeleteChallenge) return;
-    if (!deleteChallengeId) {
+  const handleVerifyCloseProfileChallenge = async () => {
+    if (isVerifyingCloseProfileChallenge) return;
+    if (!closeProfileChallengeId) {
       setSettingsMessage('Primero enviá el código por email.');
       setIsSettingsError(true);
       return;
     }
-    if (!deleteChallengeCode.trim()) {
+    if (!closeProfileChallengeCode.trim()) {
       setSettingsMessage('Ingresá el código recibido para validarlo.');
       setIsSettingsError(true);
       return;
@@ -273,24 +280,24 @@ export default function ProfesionalSettingsPage() {
 
     setSettingsMessage(null);
     setIsSettingsError(false);
-    setDeleteSuccessMessage(null);
+    setCloseProfileSuccessMessage(null);
 
     try {
-      setIsVerifyingDeleteChallenge(true);
+      setIsVerifyingCloseProfileChallenge(true);
       await api.post('/auth/challenge/verify', {
-        challengeId: deleteChallengeId,
-        code: deleteChallengeCode.trim(),
+        challengeId: closeProfileChallengeId,
+        code: closeProfileChallengeCode.trim(),
       });
-      setIsDeleteChallengeVerified(true);
-      setDeleteSuccessMessage('Código validado correctamente. Ya podés eliminar la cuenta.');
+      setIsCloseProfileChallengeVerified(true);
+      setCloseProfileSuccessMessage('Código validado correctamente. Ya podés cerrar el perfil profesional.');
     } catch (error) {
-      setIsDeleteChallengeVerified(false);
+      setIsCloseProfileChallengeVerified(false);
       setSettingsMessage(
         resolveBackendMessage(error, 'No se pudo validar el código.'),
       );
       setIsSettingsError(true);
     } finally {
-      setIsVerifyingDeleteChallenge(false);
+      setIsVerifyingCloseProfileChallenge(false);
     }
   };
 
@@ -986,37 +993,37 @@ export default function ProfesionalSettingsPage() {
                               Zona sensible
                             </p>
                             <h2 className="mt-2 text-lg font-semibold text-[#7F1D1D]">
-                              Eliminar cuenta profesional
+                              Cerrar perfil profesional
                             </h2>
                             <p className="mt-2 text-sm text-[#9F1239]">
-                              Se intentara cancelar la suscripcion activa, se daran de baja las proximas reservas y tu perfil dejara de estar disponible.
+                              Tu landing, servicios, agenda y visibilidad pública se cerrarán. Tu cuenta cliente y reservas como cliente se conservan.
                             </p>
                           </div>
                           <Button
                             type="button"
                             size="md"
                             onClick={() => {
-                              if (isDeleteFlowOpen) {
-                                setIsDeleteFlowOpen(false);
-                                resetDeleteFlowState();
+                              if (isCloseProfileFlowOpen) {
+                                setIsCloseProfileFlowOpen(false);
+                                resetCloseProfileFlowState();
                                 return;
                               }
-                              setIsDeleteFlowOpen(true);
+                              setIsCloseProfileFlowOpen(true);
                               setSettingsMessage(null);
                               setIsSettingsError(false);
-                              setDeleteSuccessMessage(null);
+                              setCloseProfileSuccessMessage(null);
                             }}
-                            disabled={isDeletingAccount || isSendingDeleteChallenge || isVerifyingDeleteChallenge}
+                            disabled={isClosingProfessionalProfile || isSendingCloseProfileChallenge || isVerifyingCloseProfileChallenge}
                             className="border-[#FCA5A5] bg-white text-[#B91C1C] hover:bg-[#FEE2E2]"
                           >
-                            {isDeleteFlowOpen ? 'Cancelar' : 'Eliminar cuenta'}
+                            {isCloseProfileFlowOpen ? 'Cancelar' : 'Cerrar perfil profesional'}
                           </Button>
                         </div>
 
-                        {isDeleteFlowOpen ? (
+                        {isCloseProfileFlowOpen ? (
                           <div className="mt-5 space-y-4">
                             <p className="text-sm text-[#9F1239]">
-                              Por seguridad, el flujo tiene 3 pasos: enviar código, validarlo y recién después confirmar la eliminación.
+                              Por seguridad, el flujo tiene 3 pasos: enviar código, validarlo y recién después confirmar el cierre del perfil profesional.
                             </p>
 
                             <div className="grid gap-3 md:grid-cols-3">
@@ -1034,12 +1041,12 @@ export default function ProfesionalSettingsPage() {
                                   type="button"
                                   size="md"
                                   onClick={() => {
-                                    void handleSendDeleteChallenge();
+                                    void handleSendCloseProfileChallenge();
                                   }}
-                                  disabled={isSendingDeleteChallenge}
+                                  disabled={isSendingCloseProfileChallenge}
                                   className="mt-4 border-[#FCA5A5] bg-white text-[#B91C1C] hover:bg-[#FEE2E2]"
                                 >
-                                  {isSendingDeleteChallenge ? 'Enviando...' : deleteChallengeId ? 'Reenviar código' : 'Enviar código por email'}
+                                  {isSendingCloseProfileChallenge ? 'Enviando...' : closeProfileChallengeId ? 'Reenviar código' : 'Enviar código por email'}
                                 </Button>
                               </div>
 
@@ -1053,30 +1060,30 @@ export default function ProfesionalSettingsPage() {
                                 <input
                                   type="text"
                                   inputMode="numeric"
-                                  value={deleteChallengeCode}
+                                  value={closeProfileChallengeCode}
                                   onChange={(event) => {
-                                    setDeleteChallengeCode(event.target.value.replace(/\D/g, '').slice(0, 6));
-                                    if (isDeleteChallengeVerified) {
-                                      setIsDeleteChallengeVerified(false);
-                                      setDeleteSuccessMessage(null);
+                                    setCloseProfileChallengeCode(event.target.value.replace(/\D/g, '').slice(0, 6));
+                                    if (isCloseProfileChallengeVerified) {
+                                      setIsCloseProfileChallengeVerified(false);
+                                      setCloseProfileSuccessMessage(null);
                                     }
                                   }}
                                   placeholder="Código OTP de 6 dígitos"
-                                  disabled={!deleteChallengeId || isDeleteChallengeVerified}
+                                  disabled={!closeProfileChallengeId || isCloseProfileChallengeVerified}
                                   className="mt-3 h-11 w-full rounded-[16px] border border-[#FECACA] bg-white px-4 text-sm text-[#7F1D1D] focus:border-[#EF4444] focus:outline-none disabled:cursor-not-allowed disabled:opacity-60"
                                 />
                                 <Button
                                   type="button"
                                   size="md"
                                   onClick={() => {
-                                    void handleVerifyDeleteChallenge();
+                                    void handleVerifyCloseProfileChallenge();
                                   }}
-                                  disabled={!deleteChallengeId || isVerifyingDeleteChallenge || isDeleteChallengeVerified}
+                                  disabled={!closeProfileChallengeId || isVerifyingCloseProfileChallenge || isCloseProfileChallengeVerified}
                                   className="mt-4 border-[#FCA5A5] bg-white text-[#B91C1C] hover:bg-[#FEE2E2]"
                                 >
-                                  {isDeleteChallengeVerified
+                                  {isCloseProfileChallengeVerified
                                     ? 'Código validado'
-                                    : isVerifyingDeleteChallenge
+                                    : isVerifyingCloseProfileChallenge
                                       ? 'Validando...'
                                       : 'Validar código'}
                                 </Button>
@@ -1087,33 +1094,33 @@ export default function ProfesionalSettingsPage() {
                                   Paso 3
                                 </p>
                                 <p className="mt-1 text-sm font-semibold text-[#7F1D1D]">
-                                  Confirmar eliminación
+                                  Confirmar cierre
                                 </p>
                                 <p className="mt-1 text-xs text-[#9F1239]">
-                                  Este paso da de baja reservas, intenta cancelar la suscripción y no se puede deshacer.
+                                  Tu landing, servicios, agenda y visibilidad pública se cerrarán. Tu cuenta cliente y reservas como cliente se conservan.
                                 </p>
                                 <Button
                                   type="button"
                                   size="md"
                                   onClick={() => {
-                                    void handleDeleteAccount();
+                                    void handleCloseProfessionalProfile();
                                   }}
-                                  disabled={!isDeleteChallengeVerified || isDeletingAccount}
+                                  disabled={!isCloseProfileChallengeVerified || isClosingProfessionalProfile}
                                   className="mt-4 border-[#FCA5A5] bg-white text-[#B91C1C] hover:bg-[#FEE2E2]"
                                 >
-                                  {isDeletingAccount ? 'Eliminando...' : 'Eliminar cuenta ahora'}
+                                  {isClosingProfessionalProfile ? 'Cerrando...' : 'Cerrar perfil profesional'}
                                 </Button>
                               </div>
                             </div>
 
-                            {deleteChallengeMessage ? (
+                            {closeProfileChallengeMessage ? (
                               <p className="text-xs font-semibold text-[#B91C1C]">
-                                {deleteChallengeMessage}
+                                {closeProfileChallengeMessage}
                               </p>
                             ) : null}
-                            {deleteSuccessMessage ? (
+                            {closeProfileSuccessMessage ? (
                               <p className="text-xs font-semibold text-[#047857]">
-                                {deleteSuccessMessage}
+                                {closeProfileSuccessMessage}
                               </p>
                             ) : null}
                           </div>

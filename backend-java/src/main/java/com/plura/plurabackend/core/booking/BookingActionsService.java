@@ -11,8 +11,8 @@ import com.plura.plurabackend.core.booking.policy.BookingPolicySnapshotService;
 import com.plura.plurabackend.core.booking.policy.ResolvedBookingPolicy;
 import com.plura.plurabackend.core.booking.repository.BookingRepository;
 import com.plura.plurabackend.core.booking.time.BookingDateTimeService;
+import com.plura.plurabackend.core.auth.context.AuthContextType;
 import com.plura.plurabackend.core.security.CurrentActorService;
-import com.plura.plurabackend.core.user.model.UserRole;
 import java.time.LocalDateTime;
 import java.util.List;
 import org.springframework.http.HttpStatus;
@@ -107,16 +107,17 @@ public class BookingActionsService {
         }
 
         Long userId = currentActorService.currentUserId();
-        UserRole role = currentActorService.currentRole();
+        AuthContextType contextType = currentActorService.currentContextType();
 
-        if (role == UserRole.USER) {
+        if (contextType == AuthContextType.CLIENT) {
             if (booking.getUser() == null || !userId.equals(booking.getUser().getId())) {
                 throw new ResponseStatusException(HttpStatus.FORBIDDEN, "No autorizado");
             }
             return new BookingActionActor(BookingActionActor.BookingActionActorType.CLIENT, userId, null);
         }
 
-        if (role == UserRole.PROFESSIONAL) {
+        if (contextType == AuthContextType.PROFESSIONAL) {
+            currentActorService.currentProfessionalUserId();
             Long professionalId = professionalActorLookupGateway.findProfessionalIdByUserId(userId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.FORBIDDEN, "Perfil profesional no encontrado"));
             if (booking.getProfessionalId() == null || !professionalId.equals(booking.getProfessionalId())) {
@@ -129,6 +130,6 @@ public class BookingActionsService {
             );
         }
 
-        throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Rol no soportado");
+        throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Contexto no soportado");
     }
 }

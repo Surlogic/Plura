@@ -1,40 +1,43 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.requiredPlanForFeature = exports.planIncludesProfessionalFeature = exports.canAccessProfessionalFeature = exports.resolveProfessionalFeatureAccess = exports.professionalFeatureRequiredPlan = void 0;
-const planAccess_1 = require("../../../../../packages/shared/src/billing/planAccess");
-const FEATURE_REQUIRED_PLAN = {
-    enhancedPublicProfile: 'PROFESIONAL',
-    onlinePayments: 'PROFESIONAL',
-    weeklyCalendarNavigation: 'BASIC',
-    monthlyCalendar: 'BASIC',
-    basicAnalytics: 'PROFESIONAL',
-    advancedAnalytics: 'ENTERPRISE',
+exports.isProfessionalCoreFeature = exports.canAccessProfessionalFeature = exports.resolveProfessionalFeatureAccess = exports.professionalCoreFeatureAccess = void 0;
+const billingPlans_1 = require("../../config/billingPlans");
+const CORE_FEATURE_ACCESS = {
+    enhancedPublicProfile: true,
+    onlinePayments: true,
+    weeklyCalendarNavigation: true,
+    monthlyCalendar: true,
+    basicAnalytics: false,
+    advancedAnalytics: false,
 };
-exports.professionalFeatureRequiredPlan = FEATURE_REQUIRED_PLAN;
+exports.professionalCoreFeatureAccess = CORE_FEATURE_ACCESS;
 const resolveProfessionalFeatureAccess = (profile) => {
-    const currentPlan = profile?.professionalPlan ?? 'BASIC';
     const entitlements = profile?.professionalEntitlements;
+    const profilePlan = (0, billingPlans_1.resolveBillingPlanFromProfilePlanCode)(profile?.professionalPlan);
+    const canUseCoreDefaults = !profile || !profile.professionalPlan || profilePlan === 'CORE';
     return {
         enhancedPublicProfile: entitlements
             ? entitlements.publicProfileTier === 'ENHANCED'
-            : (0, planAccess_1.hasPlanAccess)(currentPlan, 'PROFESIONAL'),
+            : canUseCoreDefaults && CORE_FEATURE_ACCESS.enhancedPublicProfile,
         onlinePayments: entitlements
             ? entitlements.allowOnlinePayments
-            : (0, planAccess_1.hasPlanAccess)(currentPlan, 'PROFESIONAL'),
-        weeklyCalendarNavigation: true,
-        monthlyCalendar: true,
+            : canUseCoreDefaults && CORE_FEATURE_ACCESS.onlinePayments,
+        weeklyCalendarNavigation: entitlements
+            ? entitlements.scheduleTier === 'WEEKLY' || entitlements.scheduleTier === 'MASTER'
+            : canUseCoreDefaults && CORE_FEATURE_ACCESS.weeklyCalendarNavigation,
+        monthlyCalendar: entitlements
+            ? entitlements.scheduleTier === 'MASTER'
+            : canUseCoreDefaults && CORE_FEATURE_ACCESS.monthlyCalendar,
         basicAnalytics: entitlements
             ? entitlements.analyticsTier !== 'NONE'
-            : (0, planAccess_1.hasPlanAccess)(currentPlan, 'PROFESIONAL'),
+            : canUseCoreDefaults && CORE_FEATURE_ACCESS.basicAnalytics,
         advancedAnalytics: entitlements
             ? entitlements.analyticsTier === 'ADVANCED'
-            : (0, planAccess_1.hasPlanAccess)(currentPlan, 'ENTERPRISE'),
+            : canUseCoreDefaults && CORE_FEATURE_ACCESS.advancedAnalytics,
     };
 };
 exports.resolveProfessionalFeatureAccess = resolveProfessionalFeatureAccess;
 const canAccessProfessionalFeature = (profile, feature) => (0, exports.resolveProfessionalFeatureAccess)(profile)[feature];
 exports.canAccessProfessionalFeature = canAccessProfessionalFeature;
-const planIncludesProfessionalFeature = (planId, feature) => (0, planAccess_1.hasPlanAccess)(planId, FEATURE_REQUIRED_PLAN[feature]);
-exports.planIncludesProfessionalFeature = planIncludesProfessionalFeature;
-const requiredPlanForFeature = (feature) => FEATURE_REQUIRED_PLAN[feature];
-exports.requiredPlanForFeature = requiredPlanForFeature;
+const isProfessionalCoreFeature = (feature) => CORE_FEATURE_ACCESS[feature];
+exports.isProfessionalCoreFeature = isProfessionalCoreFeature;

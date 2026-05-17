@@ -161,6 +161,9 @@ public class BookingCommandApplicationService {
             if (user.getRole() != UserRole.USER) {
                 throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Solo clientes pueden reservar");
             }
+            if (user.getPhoneVerifiedAt() == null) {
+                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Necesitás verificar tu celular antes de reservar.");
+            }
 
             ProfessionalProfile profile = professionalProfileRepository.findBySlugForUpdate(slug)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Profesional no encontrado"));
@@ -884,9 +887,6 @@ public class BookingCommandApplicationService {
         if (clientEmail != null) {
             User existing = userRepository.findByEmailAndDeletedAtIsNull(clientEmail).orElse(null);
             if (existing != null) {
-                if (existing.getRole() != UserRole.USER) {
-                    throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "El email pertenece a una cuenta no cliente");
-                }
                 boolean changed = false;
                 if (!clientName.equals(existing.getFullName())) {
                     existing.setFullName(clientName);

@@ -43,7 +43,7 @@ class PaymentEventLedgerServiceTest {
             null,
             BigDecimal.TEN,
             "UYU",
-            "PLAN_LOCAL",
+            "PLAN_CORE",
             false,
             LocalDateTime.now(),
             "abc",

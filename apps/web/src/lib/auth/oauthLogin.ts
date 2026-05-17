@@ -1,5 +1,10 @@
 import api from '@/services/api';
 import { setAuthAccessToken, type KnownAuthSessionRole } from '@/services/session';
+import {
+  fetchAuthMe,
+  persistAccessTokenForContext,
+  type AuthContextDescriptor,
+} from '@/lib/auth/contexts';
 
 export type OAuthProvider = 'google' | 'apple';
 export type OAuthRole = 'USER' | 'PROFESSIONAL' | null;
@@ -22,6 +27,8 @@ type OAuthResponse = {
 
 export type OAuthLoginResult = OAuthResponse & {
   role: OAuthRole;
+  activeContext?: AuthContextDescriptor | null;
+  contexts?: AuthContextDescriptor[];
 };
 
 type OAuthIntentOptions = {
@@ -99,8 +106,20 @@ export async function oauthLogin(
   const data = response.data;
   const role = extractRoleFromAccessToken(data.accessToken);
   setAuthAccessToken(data.accessToken, toKnownSessionRole(role));
+  let activeContext: AuthContextDescriptor | null | undefined;
+  let contexts: AuthContextDescriptor[] | undefined;
+  try {
+    const me = await fetchAuthMe();
+    activeContext = me.activeContext ?? null;
+    contexts = Array.isArray(me.contexts) ? me.contexts : [];
+    persistAccessTokenForContext(data.accessToken, activeContext);
+  } catch {
+    // Si /auth/me falla por completar datos pendientes, conservamos compatibilidad por JWT.
+  }
   return {
     ...data,
     role,
+    activeContext,
+    contexts,
   };
 }

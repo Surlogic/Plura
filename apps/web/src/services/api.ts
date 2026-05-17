@@ -57,7 +57,11 @@ const roleFromAccessToken = (token?: string | null): KnownAuthSessionRole | unde
     const parts = token.split('.');
     if (parts.length < 2) return undefined;
     const payloadRaw = decodeBase64Url(parts[1]);
-    const payload = JSON.parse(payloadRaw) as { role?: unknown };
+    const payload = JSON.parse(payloadRaw) as { role?: unknown; ctx?: unknown };
+    if (payload.ctx === 'WORKER') return 'WORKER';
+    if (payload.ctx === 'PROFESSIONAL') return 'PROFESSIONAL';
+    if (payload.ctx === 'CLIENT') return 'CLIENT';
+    // Compatibilidad para tokens legacy sin ctx.
     if (payload.role === 'USER') return 'CLIENT';
     if (payload.role === 'PROFESSIONAL') return 'PROFESSIONAL';
     return undefined;

@@ -1,9 +1,11 @@
 package com.plura.plurabackend.core.auth;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -20,7 +22,6 @@ import java.time.LocalDateTime;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -73,7 +74,7 @@ class AuthPhoneVerificationIntegrationTest {
     private PhoneVerificationChallengeRepository phoneVerificationChallengeRepository;
 
     @MockBean
-    private PhoneVerificationNotificationSender phoneVerificationNotificationSender;
+    private VonageVerifyClient vonageVerifyClient;
 
     /**
      * Prepara mocks, datos base o configuracion comun antes de cada caso de prueba.
@@ -96,6 +97,8 @@ class AuthPhoneVerificationIntegrationTest {
         registerClient("verify-phone@plura.com", "+59812345678", "Password123");
         JsonNode loginPayload = loginClient("verify-phone@plura.com", "Password123");
         String accessToken = loginPayload.path("accessToken").asText();
+        when(vonageVerifyClient.startSmsVerification(eq("+59812345678"))).thenReturn("req-verify-phone");
+        when(vonageVerifyClient.checkSmsVerification(eq("req-verify-phone"), eq("123456"))).thenReturn(true);
 
         mockMvc.perform(post("/auth/verify/phone/send")
                 .header("Authorization", "Bearer " + accessToken)
@@ -104,18 +107,14 @@ class AuthPhoneVerificationIntegrationTest {
             .andExpect(status().isAccepted())
             .andExpect(jsonPath("$.message").value("Te enviamos un código de verificación por SMS."));
 
-        ArgumentCaptor<PhoneVerificationNotificationSender.PhoneVerificationNotification> captor =
-            ArgumentCaptor.forClass(PhoneVerificationNotificationSender.PhoneVerificationNotification.class);
-        verify(phoneVerificationNotificationSender, times(1)).sendVerificationCode(captor.capture());
-
         mockMvc.perform(post("/auth/verify/phone/confirm")
                 .header("Authorization", "Bearer " + accessToken)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
                     {
-                      "code": "%s"
+                      "code": "123456"
                     }
-                    """.formatted(captor.getValue().code())))
+                    """))
             .andExpect(status().isNoContent());
 
         mockMvc.perform(get("/auth/me/cliente")
@@ -136,6 +135,7 @@ class AuthPhoneVerificationIntegrationTest {
         registerClient("cooldown-phone@plura.com", "+59811112222", "Password123");
         JsonNode loginPayload = loginClient("cooldown-phone@plura.com", "Password123");
         String accessToken = loginPayload.path("accessToken").asText();
+        when(vonageVerifyClient.startSmsVerification(eq("+59811112222"))).thenReturn("req-cooldown");
 
         mockMvc.perform(post("/auth/verify/phone/send")
                 .header("Authorization", "Bearer " + accessToken)
@@ -151,7 +151,7 @@ class AuthPhoneVerificationIntegrationTest {
             .andExpect(jsonPath("$.cooldownSeconds").isNumber());
 
         Assertions.assertEquals(1L, phoneVerificationChallengeRepository.count());
-        verify(phoneVerificationNotificationSender, times(1)).sendVerificationCode(any());
+        verify(vonageVerifyClient, times(1)).startSmsVerification("+59811112222");
     }
 
     /**
@@ -163,6 +163,7 @@ class AuthPhoneVerificationIntegrationTest {
         registerClient("attempts-phone@plura.com", "+59833334444", "Password123");
         JsonNode loginPayload = loginClient("attempts-phone@plura.com", "Password123");
         String accessToken = loginPayload.path("accessToken").asText();
+        when(vonageVerifyClient.startSmsVerification(eq("+59833334444"))).thenReturn("req-attempts");
 
         mockMvc.perform(post("/auth/verify/phone/send")
                 .header("Authorization", "Bearer " + accessToken)
@@ -208,6 +209,7 @@ class AuthPhoneVerificationIntegrationTest {
         registerClient("expired-phone@plura.com", "+59855556666", "Password123");
         JsonNode loginPayload = loginClient("expired-phone@plura.com", "Password123");
         String accessToken = loginPayload.path("accessToken").asText();
+        when(vonageVerifyClient.startSmsVerification(eq("+59855556666"))).thenReturn("req-expired");
 
         mockMvc.perform(post("/auth/verify/phone/send")
                 .header("Authorization", "Bearer " + accessToken)
@@ -248,7 +250,7 @@ class AuthPhoneVerificationIntegrationTest {
             .andExpect(status().isAccepted())
             .andExpect(jsonPath("$.message").value("El teléfono ya está verificado."));
 
-        verify(phoneVerificationNotificationSender, never()).sendVerificationCode(any());
+        verify(vonageVerifyClient, never()).startSmsVerification(any());
         Assertions.assertEquals(0L, phoneVerificationChallengeRepository.count());
     }
 

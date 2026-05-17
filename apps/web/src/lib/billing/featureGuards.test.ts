@@ -71,16 +71,16 @@ test('resolveProfessionalFeatureAccess falls back to Core defaults', () => {
   });
 });
 
-test('resolveProfessionalFeatureAccess treats legacy plan strings as Core defaults', () => {
+test('resolveProfessionalFeatureAccess does not treat legacy plan strings as Core defaults', () => {
   const access = resolveProfessionalFeatureAccess(buildProfile({
     professionalPlan: 'ENTERPRISE' as unknown as ProfessionalPlanCode,
   }));
 
   assert.deepEqual(access, {
-    enhancedPublicProfile: true,
-    onlinePayments: true,
-    weeklyCalendarNavigation: true,
-    monthlyCalendar: true,
+    enhancedPublicProfile: false,
+    onlinePayments: false,
+    weeklyCalendarNavigation: false,
+    monthlyCalendar: false,
     basicAnalytics: false,
     advancedAnalytics: false,
   });
@@ -100,7 +100,7 @@ test('resolveProfessionalFeatureAccess prefers entitlements over profile plan co
   assert.equal(access.enhancedPublicProfile, false);
   assert.equal(access.onlinePayments, false);
   assert.equal(access.weeklyCalendarNavigation, true);
-  assert.equal(access.monthlyCalendar, true);
+  assert.equal(access.monthlyCalendar, false);
   assert.equal(access.basicAnalytics, true);
   assert.equal(access.advancedAnalytics, false);
 });

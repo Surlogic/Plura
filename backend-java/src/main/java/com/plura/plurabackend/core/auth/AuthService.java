@@ -5,6 +5,7 @@ import com.auth0.jwt.algorithms.Algorithm;
 import com.plura.plurabackend.core.auth.context.AuthContextDescriptor;
 import com.plura.plurabackend.core.auth.context.AuthContextResolver;
 import com.plura.plurabackend.core.auth.context.AuthContextType;
+import com.plura.plurabackend.core.auth.dto.ActivateProfessionalProfileRequest;
 import com.plura.plurabackend.core.auth.dto.AuthMeResponse;
 import com.plura.plurabackend.core.auth.dto.LoginRequest;
 import com.plura.plurabackend.core.auth.dto.ProfesionalProfileResponse;
@@ -26,6 +27,7 @@ import com.plura.plurabackend.core.auth.oauth.AppleEmailRequiredFirstLoginExcept
 import com.plura.plurabackend.core.auth.oauth.OAuthService;
 import com.plura.plurabackend.core.auth.oauth.OAuthProviderMismatchException;
 import com.plura.plurabackend.core.auth.oauth.OAuthUserInfo;
+import com.plura.plurabackend.core.security.jwt.AuthenticatedTokenDetails;
 import com.plura.plurabackend.core.category.dto.CategoryResponse;
 import com.plura.plurabackend.core.category.model.Category;
 import com.plura.plurabackend.core.category.repository.CategoryRepository;
@@ -200,7 +202,11 @@ public class AuthService {
         String normalizedEmail = request.getEmail().trim().toLowerCase(Locale.ROOT);
         if (userRepository.findByEmailAndDeletedAtIsNull(normalizedEmail).isPresent()) {
             burnPasswordWorkFactor(request.getPassword());
-            return;
+            throw new AuthApiException(
+                HttpStatus.CONFLICT,
+                "EMAIL_ALREADY_EXISTS",
+                "Ya existe una cuenta activa con este email. Iniciá sesión para continuar."
+            );
         }
         RegistrationPhoneVerificationService.VerificationResult phoneVerification =
             registrationPhoneVerificationService.resolveForRegistration(
@@ -249,7 +255,11 @@ public class AuthService {
         User existingUser = userRepository.findByEmailAndDeletedAtIsNull(normalizedEmail).orElse(null);
         if (existingUser != null) {
             burnPasswordWorkFactor(request.getPassword());
-            return;
+            throw new AuthApiException(
+                HttpStatus.CONFLICT,
+                "EMAIL_ALREADY_EXISTS",
+                "Ya existe una cuenta activa con este email. Iniciá sesión para continuar."
+            );
         }
         RegistrationPhoneVerificationService.VerificationResult phoneVerification =
             registrationPhoneVerificationService.resolveForRegistration(
@@ -276,7 +286,11 @@ public class AuthService {
             burnPasswordWorkFactor(request.getPassword());
             User duplicatedUser = userRepository.findByEmailAndDeletedAtIsNull(normalizedEmail).orElse(null);
             if (duplicatedUser != null) {
-                return;
+                throw new AuthApiException(
+                    HttpStatus.CONFLICT,
+                    "EMAIL_ALREADY_EXISTS",
+                    "Ya existe una cuenta activa con este email. Iniciá sesión para continuar."
+                );
             }
             throw exception;
         }
@@ -294,6 +308,49 @@ public class AuthService {
                 longitude,
                 tipoCliente
             )
+        );
+    }
+
+    @Transactional
+    public AuthMeResponse activateProfessionalProfile(
+        String rawUserId,
+        ActivateProfessionalProfileRequest request,
+        AuthContextType activeContextType,
+        String activeProfessionalId,
+        String activeWorkerId
+    ) {
+        User user = loadUserByRawId(rawUserId);
+        String tipoCliente = normalizeTipoCliente(request.getTipoCliente());
+        boolean requiresLocation = requiresProfessionalLocation(tipoCliente);
+        String country = normalizeLocationPart(request.getCountry(), requiresLocation, "country");
+        String city = normalizeLocationPart(request.getCity(), requiresLocation, "city");
+        String fullAddress = normalizeLocationPart(request.getFullAddress(), requiresLocation, "fullAddress");
+        String location = requiresLocation ? composeLocation(fullAddress, city, country) : null;
+        Double latitude = requiresLocation ? normalizeLatitude(request.getLatitude()) : null;
+        Double longitude = requiresLocation ? normalizeLongitude(request.getLongitude()) : null;
+        validateCoordinatesPair(latitude, longitude);
+        Set<Category> categories = resolveCategories(request.getCategorySlugs(), request.getRubro());
+
+        ProfessionalProfile profile = professionalAccountProfileGateway.activateProfile(
+            user,
+            new ProfessionalProfileRegistrationCommand(
+                categories,
+                resolvePrimaryCategoryName(categories, request.getRubro()),
+                country,
+                city,
+                fullAddress,
+                location,
+                latitude,
+                longitude,
+                tipoCliente
+            )
+        );
+
+        return getMe(
+            String.valueOf(user.getId()),
+            activeContextType,
+            activeProfessionalId == null ? String.valueOf(profile.getId()) : activeProfessionalId,
+            activeWorkerId
         );
     }
 
@@ -457,6 +514,18 @@ public class AuthService {
      */
     @Transactional(noRollbackFor = AuthApiException.class)
     public AuthResult refreshSession(String refreshToken, SessionContext sessionContext) {
+        return refreshSession(refreshToken, sessionContext, null);
+    }
+
+    /**
+     * Refresca sesion preservando el contexto activo cuando el access token vigente lo expone.
+     */
+    @Transactional(noRollbackFor = AuthApiException.class)
+    public AuthResult refreshSession(
+        String refreshToken,
+        SessionContext sessionContext,
+        AuthenticatedTokenDetails activeTokenDetails
+    ) {
         if (refreshToken == null || refreshToken.isBlank()) {
             auditRefreshFailure(null, null, sessionContext, "missing_refresh_token");
             throw new AuthApiException(HttpStatus.UNAUTHORIZED, "REFRESH_TOKEN_INVALID", "Refresh token faltante.");
@@ -468,7 +537,7 @@ public class AuthService {
         SessionService.TrackedRefreshTokenMatch trackedMatch = sessionService.findTrackedRefreshTokenMatch(tokenHash)
             .orElse(null);
         if (trackedMatch != null) {
-            return refreshTrackedSession(trackedMatch, sessionContext, now);
+            return refreshTrackedSession(trackedMatch, sessionContext, now, activeTokenDetails);
         }
 
         RefreshToken stored = refreshTokenRepository.findByToken(tokenHash).orElse(null);
@@ -491,7 +560,7 @@ public class AuthService {
                     "La sesión requiere volver a iniciar sesión."
                 );
             }
-            return migrateLegacyRefreshToken(stored, sessionContext, now);
+            return migrateLegacyRefreshToken(stored, sessionContext, now, activeTokenDetails);
         }
 
         auditRefreshFailure(null, null, sessionContext, "refresh_token_invalid");
@@ -581,7 +650,7 @@ public class AuthService {
      * Evalua issue tokens y devuelve una decision booleana para el llamador.
      */
     private AuthResult issueTokens(User user, UserResponse userResponse, SessionContext sessionContext) {
-        return issueTokens(user, userResponse, sessionContext, deriveDefaultContextFromRole(user));
+        return issueTokens(user, userResponse, sessionContext, resolveDefaultContext(user));
     }
 
     /**
@@ -683,7 +752,8 @@ public class AuthService {
     private AuthResult refreshTrackedSession(
         SessionService.TrackedRefreshTokenMatch trackedMatch,
         SessionContext sessionContext,
-        LocalDateTime now
+        LocalDateTime now,
+        AuthenticatedTokenDetails activeTokenDetails
     ) {
         AuthSession session = trackedMatch.session();
         if (session.getRevokedAt() != null) {
@@ -744,7 +814,8 @@ public class AuthService {
             user.getEmail(),
             user.getRole(),
             rotated.getId(),
-            user.getSessionVersion()
+            user.getSessionVersion(),
+            resolveRefreshContext(user, activeTokenDetails)
         );
         AuthResult result = new AuthResult(
             accessToken,
@@ -760,7 +831,12 @@ public class AuthService {
     /**
      * Ejecuta la logica de migrate legacy refresh token manteniendola encapsulada en este componente.
      */
-    private AuthResult migrateLegacyRefreshToken(RefreshToken stored, SessionContext sessionContext, LocalDateTime now) {
+    private AuthResult migrateLegacyRefreshToken(
+        RefreshToken stored,
+        SessionContext sessionContext,
+        LocalDateTime now,
+        AuthenticatedTokenDetails activeTokenDetails
+    ) {
         if (stored.getRevokedAt() != null) {
             Long userId = stored.getUser() == null ? null : stored.getUser().getId();
             auditRefreshFailure(userId, null, sessionContext, "legacy_refresh_revoked");
@@ -814,7 +890,8 @@ public class AuthService {
             user.getEmail(),
             user.getRole(),
             migration.session().getId(),
-            user.getSessionVersion()
+            user.getSessionVersion(),
+            resolveRefreshContext(user, activeTokenDetails)
         );
         AuthResult result = new AuthResult(
             accessToken,
@@ -1044,9 +1121,11 @@ public class AuthService {
 
     public ProfesionalProfileResponse getProfesionalProfile(String rawUserId) {
         User user = loadUserByRawId(rawUserId);
-        ensureProfessionalUser(user);
-
-        ProfessionalProfile profile = professionalAccountProfileGateway.loadOrBootstrapProfile(user);
+        ProfessionalProfile profile = professionalAccountProfileGateway.findByUserId(user.getId())
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.FORBIDDEN, "Perfil profesional no encontrado"));
+        if (!Boolean.TRUE.equals(profile.getActive())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Profesional inhabilitado");
+        }
 
         EffectiveProfessionalPlan effectivePlan = effectiveProfessionalPlanService.resolveForProfessional(profile);
         return new ProfesionalProfileResponse(
@@ -1107,7 +1186,6 @@ public class AuthService {
         if (request == null || request.getPhoneNumber() == null || request.getPhoneNumber().isBlank()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Teléfono inválido");
         }
-
         RegistrationPhoneVerificationService.VerificationResult phoneVerification =
             registrationPhoneVerificationService.resolveForRegistration(
                 request.getPhoneNumber(),
@@ -1134,7 +1212,6 @@ public class AuthService {
 
     public UserResponse getClienteProfile(String rawUserId) {
         User user = loadUserByRawId(rawUserId);
-        ensureClientUser(user);
         return toUserResponse(user);
     }
 
@@ -1209,21 +1286,21 @@ public class AuthService {
 
     private void ensurePhoneAvailable(String normalizedPhone, Long currentUserId) {
         if (normalizedPhone == null) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Telefono invalido");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Teléfono inválido");
         }
-        if (!userRepository.existsByPhoneNumberAndDeletedAtIsNull(normalizedPhone)) {
+        User owner = userRepository
+            .findFirstByPhoneNumberAndPhoneVerifiedAtIsNotNullAndDeletedAtIsNull(normalizedPhone)
+            .orElse(null);
+        if (owner == null) {
             return;
         }
-        if (currentUserId != null) {
-            User currentUser = userRepository.findByIdAndDeletedAtIsNull(currentUserId).orElse(null);
-            if (currentUser != null && normalizedPhone.equals(currentUser.getPhoneNumber())) {
-                return;
-            }
+        if (currentUserId != null && owner.getId() != null && owner.getId().equals(currentUserId)) {
+            return;
         }
         throw new AuthApiException(
             HttpStatus.CONFLICT,
-            "PHONE_ALREADY_IN_USE",
-            "Ese telefono ya esta asociado a otra cuenta."
+            "PHONE_ALREADY_VERIFIED_BY_ANOTHER_ACCOUNT",
+            "Ese teléfono ya fue verificado por otra cuenta activa."
         );
     }
 
@@ -1419,7 +1496,11 @@ public class AuthService {
      * Resuelve categories for registration normalizando entradas, defaults y casos borde.
      */
     private Set<Category> resolveCategoriesForRegistration(RegisterProfesionalRequest request) {
-        List<String> incoming = request.getCategorySlugs();
+        return resolveCategories(request.getCategorySlugs(), request.getRubro());
+    }
+
+    private Set<Category> resolveCategories(List<String> categorySlugs, String rubro) {
+        List<String> incoming = categorySlugs;
         if (incoming != null && !incoming.isEmpty()) {
             Set<String> normalizedSlugs = incoming.stream()
                 .map(this::normalizeSlug)
@@ -1431,7 +1512,7 @@ public class AuthService {
             return loadCategoriesBySlugs(normalizedSlugs);
         }
 
-        String legacyRubro = request.getRubro() == null ? "" : request.getRubro().trim();
+        String legacyRubro = rubro == null ? "" : rubro.trim();
         if (legacyRubro.isBlank()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Seleccioná al menos un rubro");
         }
@@ -1611,15 +1692,36 @@ public class AuthService {
     }
 
     /**
-     * Ejecuta la logica de derive default contexto from rol manteniendola encapsulada en este componente.
+     * Resuelve contexto default desde capacidades reales, dejando UserRole solo como compatibilidad.
      */
-    private AuthContextDescriptor deriveDefaultContextFromRole(User user) {
-        if (user == null || user.getRole() == null) {
+    private AuthContextDescriptor resolveDefaultContext(User user) {
+        List<AuthContextDescriptor> contexts = authContextResolver.resolve(user);
+        if (contexts == null || contexts.isEmpty()) {
             return null;
         }
-        return user.getRole() == UserRole.PROFESSIONAL
-            ? new AuthContextDescriptor(AuthContextType.PROFESSIONAL, null, null, null, null, null, true)
-            : new AuthContextDescriptor(AuthContextType.CLIENT, null, null, null, null, null, false);
+        return authContextResolver.pickDefault(contexts);
+    }
+
+    /**
+     * Preserva el contexto del access token vigente durante refresh cuando sigue disponible.
+     */
+    private AuthContextDescriptor resolveRefreshContext(User user, AuthenticatedTokenDetails activeTokenDetails) {
+        List<AuthContextDescriptor> contexts = authContextResolver.resolve(user);
+        if (contexts == null || contexts.isEmpty()) {
+            return null;
+        }
+        if (activeTokenDetails != null && activeTokenDetails.contextType() != null) {
+            AuthContextDescriptor selected = authContextResolver.select(
+                contexts,
+                activeTokenDetails.contextType(),
+                activeTokenDetails.workerId(),
+                activeTokenDetails.professionalId()
+            );
+            if (selected != null) {
+                return selected;
+            }
+        }
+        return authContextResolver.pickDefault(contexts);
     }
 
     /**

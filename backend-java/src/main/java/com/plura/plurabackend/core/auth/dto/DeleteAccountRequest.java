@@ -10,6 +10,7 @@ import lombok.Data;
  */
 @Data
 public class DeleteAccountRequest {
+    private String scope;
     private String challengeId;
     private String code;
 }

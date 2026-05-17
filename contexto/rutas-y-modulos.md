@@ -70,6 +70,7 @@ Base: `apps/web/src/pages`
 
 - `/`: home SSG con revalidacion de `5` minutos (`getStaticProps`) con hero + buscador unificado en variante simplificada, categorias visuales, top businesses, bloque editorial de `como funciona` en formato timeline de `4` pasos, ReviewsSection (testimonios publicos de feedback de app via `GET /public/app-feedback`) y CTA final centrado con titulo `¡Unite a nuestra comunidad!`; `Reservá ya` deriva a `/explorar` y `Registrá tu negocio` al registro existente `/profesional/auth/register`; si la regeneracion no trae data util, mantiene retry client-side. El hero ahora arma una composicion superior `texto + visual` y ubica la columna izquierda como `titulo/subtitulo -> buscador -> metricas`, con mas aire vertical entre buscador y stats para que no quede pegado a `Explorá por categoría`; la pieza visual es una sola card animada que rota automaticamente imagenes de todos los rubros publicos disponibles en `homeData.categories`, usando `category.imageUrl` cuando existe y placeholders SVG locales por slug/nombre como fallback, sin tocar la logica compartida del buscador. Las cards destacadas ya usan `banner` como media principal, `logo` superpuesto y fallback a foto real del negocio antes de cualquier placeholder.
 - `/explorar`: buscador principal con vistas `Páginas` y `Mapa`. El selector principal `Páginas / Mapa` vive en el navbar solo dentro de esta ruta, conserva los filtros/query actuales al cambiar de modo, precarga el chunk del mapa para bajar la espera del primer cambio y muestra el estado visual de la vista apenas se toca el toggle. Si el navbar cliente se monta en esta ruta, el logo vuelve al home público `/` igual que en el resto de la navegación pública. Debajo del buscador queda solo `Ordenar`. En `Páginas`, navbar + buscador quedan visibles, el footer no se renderiza y el único scroll vertical vive dentro del contenedor de resultados/cards. En `Mapa`, también se oculta el footer y toda la pantalla usa un shell fijo de viewport: arriba quedan navbar + buscador + `Ordenar` y abajo un split estable con listado scrolleable a la izquierda (~`25%`) y mapa a la derecha (~`75%`) sin scroll vertical global. Las cards de resultados ya comparten la misma jerarquía visual del home (`banner + logo`, fallback a foto real del negocio, placeholder elegante si no hay assets) y tanto el popup del marcador como el listado lateral navegan primero a la landing pública `/profesional/pagina/{slug}`; recién desde esa landing los CTAs de cada servicio entran a `/reservar` con `serviceId`.
+- `/reservar`: antes de confirmar, el frontend bloquea clientes con `phoneVerified=false` y muestra mensaje claro; el backend también lo valida en `POST /public/profesionales/{slug}/reservas`.
 - `/explorar/[slug]`: vista detallada de exploracion por slug.
 - `/profesional/pagina/[slug]`: ruta publica canonica de la pagina del profesional/local.
 - `/sitemap.xml`: sitemap dinamico server-side; lista rutas publicas base, rubros desde `/api/home` como `/explorar/{slug}` y profesionales destacados como `/profesional/pagina/{slug}`.
@@ -96,12 +97,13 @@ Lectura de producto:
 - `/reservar` sigue siendo compatible con `pendingReservation`: en el paso final, si falta sesion cliente, primero abre una pantalla embebida de registro/login dentro del flujo para no sacar al usuario de la reserva; ese overlay hoy reutiliza credenciales propias y Google; si aun asi deriva a login, registro o `complete-phone` completos, al volver retoma el resumen final listo para confirmar, pero si la URL trae un `serviceId` explicito ese valor tiene prioridad sobre el servicio guardado en storage
 - `/reservar` tambien refleja `serviceId`, `date`, `time` y `step` en la URL con `router.replace(..., { shallow: true })` para que un refresh del navegador no rompa el progreso local del flujo
 - `/reservar` no debe bloquear el CTA final cuando el visitante es anonimo y no existe una sesion cliente conocida; en ese caso abre directo el acceso embebido del paso final
+- `/reservar` y su acceso embebido ya seleccionan `ctx=CLIENT` antes de confirmar; una cuenta profesional autenticada puede reservar como cliente sin ser rechazada por `role=PROFESSIONAL`
 - `/reservar` ya prioriza un layout publico centrado y limpio: mantiene navbar, elimina el header superior grande y el sidebar de progreso, y deja un unico resumen final en la etapa de confirmacion
 - el `Navbar` compartido de rutas publicas (`/`, `/explorar`, `/profesional/pagina/[slug]`, `/profesional/[slug]` como redirect temporal, `/reservar`) ya no muestra un pill `Cargando...` por bootstrap de auth: mientras el perfil se hidrata, degrada visualmente a la variante publica y luego promueve al estado real si encuentra sesion valida
 - el paso final de `/reservar` no promete confirmacion falsa: la reserva sigue naciendo en `PENDING`; si hay pago online, la confirmacion final depende del backend y Mercado Pago
 - `/explorar` y `/profesional/pagina/[slug]` ya no fuerzan auth refresh ni favoritos en 401 cuando el cliente no tiene una sesion conocida; las features auth-only se habilitan recien con hint de sesion valida
 - cuando existe sesion conocida del cliente, `/explorar` y `/profesional/pagina/[slug]` hidratan el perfil cliente para mantener navbar y favoritos coherentes en la navegacion publica; `/profesional/[slug]` queda solo como redirect temporal de compatibilidad
-- `_app.tsx` ya usa un `session hint` con rol (`CLIENT` o `PROFESSIONAL`) para rehidratar el perfil correcto tambien en `/` y otras rutas publicas al reabrir navegador; si falta ese hint pero queda un access token fallback en storage, deriva el rol desde el JWT antes de decidir que perfil hidratar y evita probar ambos `/auth/me/*` a ciegas. El bootstrap publico solo intenta hidratar si ese access token fallback sigue usable; si `auth/me` responde `401`, la web no fuerza `refresh` automatico y limpia el hint local para no entrar en loop con sesiones viejas
+- `_app.tsx` ya usa un `session hint` con rol/contexto (`CLIENT`, `PROFESSIONAL` o `WORKER`) para rehidratar el perfil correcto tambien en `/` y otras rutas publicas al reabrir navegador; si falta ese hint pero queda un access token fallback en storage, deriva primero `ctx` del JWT y solo usa `role` como compatibilidad antes de decidir que perfil hidratar. El bootstrap publico solo intenta hidratar si ese access token fallback sigue usable; si `auth/me` responde `401`, la web no fuerza `refresh` automatico y limpia el hint local para no entrar en loop con sesiones viejas
 - el logout web se unifico en un flujo comun (`useAuthLogout` + `LogoutTransitionProvider`): muestra overlay de `Cerrando sesión`, limpia perfiles/cache local y deriva al login especifico del rol real
 - aunque no haya sync reciente en memoria, el toggle de favoritos en web revalida contra backend en la primera interaccion util para evitar dobles clicks o estados viejos del cache local
 - `/explorar` ya usa la fecha como filtro real de disponibilidad y no solo como ordenador; `Disponible ahora` tambien se apoya en disponibilidad real
@@ -157,6 +159,8 @@ Backend relacionado:
 - `backend-java/src/main/java/com/plura/plurabackend/core/notification`: modulo transaccional compartido entre profesional y cliente.
 - `backend-java/src/main/java/com/plura/plurabackend/professional/paymentprovider`: endpoints OAuth de Mercado Pago para conectar la cuenta del profesional.
 - `backend-java/src/main/java/com/plura/plurabackend/core/billing/providerconnection`: persistencia y servicio de conexiones OAuth del provider.
+- `backend-java/src/main/java/com/plura/plurabackend/core/auth`: `POST /auth/professional-profile/activate` permite que una cuenta cliente autenticada active o reactive `ProfessionalProfile` sobre el mismo `app_user`; el frontend debe usarlo durante onboarding profesional despues de login cuando el email ya existe.
+- `backend-java/src/main/java/com/plura/plurabackend/core/account`: `DELETE /auth/professional-profile` cierra solo la faceta profesional con OTP y conserva la cuenta cliente; `DELETE /auth/me` queda reservado para eliminacion total explicita con `scope=TOTAL`.
 
 Lectura de producto:
 
@@ -171,8 +175,9 @@ Lectura de producto:
 - reseñas implementadas: CTA en sidebar de reserva `COMPLETED`, formulario con rating `1-5` y texto opcional, review existente visible con opcion de eliminar; proteccion contra race conditions con patron `isActive`; la elegibilidad real sigue viniendo de backend y exige ownership + ausencia de reseña previa + `booking.status == COMPLETED` + ventana de `7` dias desde `completedAt`
 - la web cliente ahora muestra un reminder in-app de reseña en `/cliente/inicio` y `/cliente/reservas` con `components/cliente/reviews/ClientReviewReminderCard`; la card navega a `/cliente/reservas?bookingId={id}`, deja `Mas tarde` como cierre local de la vista actual y delega toda la cadencia en backend: maximo `1` reminder por dia, `3` por reserva y solo dentro de la misma ventana de `7` dias
 - feedback de app integrado en `/cliente/configuracion` con formulario de rating, categoria opcional y texto libre; incluye historial paginado de feedback propio
-- `/cliente/configuracion` ahora requiere challenge OTP por email para eliminar cuenta; muestra codigo enmascarado y advierte sobre cancelacion de reservas e irreversibilidad
+- `/cliente/configuracion` ahora requiere challenge OTP por email para eliminar la cuenta completa; llama `DELETE /auth/me` con `scope=TOTAL`, muestra codigo enmascarado y advierte que elimina la cuenta Plura completa, incluyendo cliente, profesional, sesiones y datos asociados.
 - `ClientNotificationsContext` ya no rompe fuera del provider; devuelve defaults seguros (unreadCount=0, noop callbacks) para degradar sin crash en rutas publicas
+- `/cliente/auth/login`, `/cliente/auth/register` y el overlay de reserva ya no redirigen por `role=PROFESSIONAL`; fuerzan o seleccionan `ctx=CLIENT` cuando la intención es reservar o entrar al área cliente
 - todavia faltan piezas visibles para beneficios y settings de notificaciones
 
 ### Rutas del profesional
@@ -213,6 +218,8 @@ Modulos relevantes:
 - `services/professionalMercadoPagoConnection.ts`: operaciones de conexion OAuth Mercado Pago del profesional.
 - `services/professionalReviews.ts`: gestion de reseñas recibidas por el profesional; incluye listado, ocultamiento de texto, reporte por incumplimiento e invalidacion tambien de `/auth/me/profesional` para mantener KPIs sincronizados.
 - `services/publicReviews.ts`: reseñas publicas para perfil publico del profesional.
+- `/profesional/auth/register`: si hay sesión base autenticada, activa/reactiva `ProfessionalProfile` con `POST /auth/professional-profile/activate`, selecciona `ctx=PROFESSIONAL` y continúa con carga inicial de perfil/agenda/servicio/billing sin pedir otro email.
+- `/login?intent=professional`: usa login unificado con intención profesional; si la cuenta valida todavía no tiene contexto profesional, autentica como `CLIENT` y retoma el onboarding profesional sobre esa misma cuenta.
 
 Backend relacionado:
 
@@ -235,7 +242,7 @@ Lectura de producto:
   - login unificado `/login` (web) y `/(auth)/login` (mobile) con selector de contexto cuando el email tiene mas de un acceso
   - pantalla de cuenta del trabajador en mobile permite cambiar de contexto (entrar como cliente o como dueno de otro local) sin volver a loguearse
   - Pendiente: editor de horarios por trabajador en UI admin (web/mobile), vista de calendario completo (no solo lista por dias) en UI trabajador y reserva publica con `worker_id` autoasignado.
-- el login unificado expone `/auth/login` y permite que un mismo email use varios contextos (`CLIENT`, `PROFESSIONAL`, `WORKER`); el JWT lleva claim `ctx` con el contexto activo y `pid`/`wid` cuando aplica. Las pantallas legacy `/cliente/auth/login`, `/profesional/auth/login` y sus equivalentes mobile siguen funcionando como compatibilidad.
+- el login unificado expone `/auth/login` y permite que un mismo email use varios contextos (`CLIENT`, `PROFESSIONAL`, `WORKER`); el JWT lleva claim `ctx` con el contexto activo y `pid`/`wid` cuando aplica. Backend autoriza cliente por `ctx=CLIENT` aunque el `UserRole` legacy sea `PROFESSIONAL`, y autoriza profesional por `ctx=PROFESSIONAL` solo si hay `ProfessionalProfile.active=true`. Las pantallas legacy `/cliente/auth/login`, `/profesional/auth/login` y sus equivalentes mobile siguen funcionando como compatibilidad.
 - el email de invitacion usa la ruta `/trabajador/invitacion?token=...`; en mobile el deep-link queda en `/(auth)/worker-invitation?token=...`. Ambas pantallas chequean si el email ya tiene cuenta en Plura y, si hace falta, piden nombre/telefono/password antes de aceptar.
 - `/profesional/dashboard/perfil-negocio` ahora incluye constructor visual para `logo` y `banner` dentro de un modal: se abre al terminar una subida/reemplazo y también desde `Editar encuadre`; ese encuadre queda persistido y se aplica también en la ficha pública
 - los autocompletes de ubicacion en `/profesional/auth/register` y `/profesional/dashboard/perfil-negocio` ya seleccionan sugerencias por click normal sin depender de `mouseDown`, evitando opciones que parecian clickeables pero no confirmaban bien al navegar con teclado o blur
@@ -243,14 +250,14 @@ Lectura de producto:
 - `/profesional/auth/register` funciona como wizard de alta: email/password no crea cuenta hasta el submit final de publicacion; Google continua dentro del wizard, el telefono se pide ahi mismo y si el usuario sale antes de terminar debe empezar otra vez. El registro y `/profesional/dashboard/perfil-negocio` comparten selector internacional de telefono con bandera + codigo; evita cargar el prefijo a mano y deja el numero persistido listo para backend
 - `/profesional/auth/register` ahora usa un onboarding guiado por pasos en desktop: cuenta/Google, tipo de perfil, datos públicos con preview, rubros, modalidad, ubicación si aplica, horarios base, primer servicio y activación final de `Plura Core`. Mantiene `POST /auth/register/profesional` para email/password, inicia sesión automáticamente si puede, aplica el handoff de página pública/horarios/primer servicio y luego llama `POST /billing/subscription` con `PLAN_CORE`; Google/OAuth completa teléfono/perfil, aplica el mismo handoff y activa Core. Si billing devuelve `checkoutUrl`, la web guarda pending checkout y redirige a Mercado Pago en la misma pestaña; si no, entra a facturación/dashboard con el estado de trial.
 - `/profesional/dashboard/reservas` tambien usa selector internacional cuando el profesional carga una reserva manual con telefono de cliente opcional
-- `billing` existe como pantalla de `Plura Core` y cobros; `PROFESSIONAL / LOCAL / ENTERPRISE` no son planes activos y quedan solo como aliases legacy de entrada normalizados a Core
+- `billing` existe como pantalla de `Plura Core` y cobros; `PROFESSIONAL / LOCAL / ENTERPRISE` no son planes activos ni aliases aceptados por billing
 - `/profesional/dashboard/billing` separa dos bloques: `Plura Core` y `Cobros de reservas con Mercado Pago`; no muestra planes disponibles, comparativa ni upgrade a Local/Enterprise. Muestra estados `CHECKOUT_PENDING`, `TRIALING`, `TRIAL`, `ACTIVE`, `PAST_DUE`, `CANCELLED` y `EXPIRED`; para trial activo muestra fin de prueba, días restantes y aviso si falta autorizar medio de pago.
 - la web profesional ya consume `GET/POST/DELETE /profesional/payment-providers/mercadopago/*` y no usa `payout-config`
 - el retorno OAuth de Mercado Pago mantiene pantalla propia en `/oauth/mercadopago/callback`, pero ya no procesa `code/state` en frontend: Mercado Pago vuelve al callback backend y este redirige a la web con un resultado final
 - el frontend del billing profesional no implementa PKCE ni almacena `code_verifier`; todo el flujo PKCE de Mercado Pago queda resuelto en backend y la web solo inicia el onboarding y muestra el resultado final
 - el callback OAuth backend tampoco depende ya de la sesion web del profesional para cerrar la vinculacion; esto evita `401` al volver desde Mercado Pago por dominios externos o tuneles tipo `ngrok`
 - en `/profesional/dashboard/billing`, Mercado Pago se muestra como conexion de cobros de reservas dentro de Core cuando el entitlement lo habilita; no se presenta como beneficio de Local/Enterprise
-- `/profesional/dashboard/billing` no promociona visualmente `LOCAL / ENTERPRISE`; cualquier suscripcion legacy se lee como Core para la experiencia MVP
+- `/profesional/dashboard/billing` no promociona visualmente `LOCAL / ENTERPRISE`; el backend persiste suscripciones solo como `PLAN_CORE`
 - `/profesional/dashboard/billing` muestra directamente Core y la conexion de cobros; ya no monta comparativa ni grilla de planes
 - `/profesional/notificaciones` ya funciona como centro real de inbox: lista paginada con `cargar mas`, filtros basicos y navegacion contextual por `actionUrl`
 - la navegacion contextual de notificaciones profesional apunta a la UX real de reservas en `/profesional/dashboard/reservas?bookingId={id}` y el panel selecciona la reserva desde query string
@@ -258,7 +265,7 @@ Lectura de producto:
 - `/profesional/dashboard/reservas` organiza la vista principal como tablero operativo responsive de `4` columnas (`Reservas de hoy`, `Pendientes de confirmación`, `Próximas reservas confirmadas`, `Canceladas`) con contador integrado por columna; el detalle/timeline y acciones avanzadas quedan debajo al seleccionar una reserva para no dominar el tablero
 - `/profesional/dashboard/reservas` mantiene auto-refresh para estados pendientes, pero ahora pausa polling con la pestaña oculta y aplica backoff para reducir trafico redundante
 - `/profesional/dashboard/reservas` ahora paraleliza reservas y servicios al entrar, y prefetch-ea `actions + timeline` de la seleccion activa para acortar la cascada inicial
-- `/profesional/dashboard/reservas` debe seguir disponible para `Plura Core/CORE` como modulo operativo de reservas; `PROFESSIONAL` se conserva solo como alias legacy
+- `/profesional/dashboard/reservas` debe seguir disponible para `Plura Core/CORE` como modulo operativo de reservas; `PROFESSIONAL` no es plan de billing aceptado
 - la web profesional vuelve a exponer la accion manual `Marcar completada` para reservas `CONFIRMED` cuyo turno ya termino; convive con confirmacion, cancelacion, no-show, reagendamiento y timeline sin mezclar reglas
 - `/profesional/dashboard/reservas` usa `GET /reservas/{id}/actions` para decidir acciones; ese contrato ahora expone tambien `canComplete`
 - `/profesional/dashboard` recorta trabajo de agenda en cliente: la grilla semanal y mensual quedaron separadas para evitar rerenders pesados al abrir el drawer, y la carga de reservas ya no expande fechas dispersas a un unico rango continuo cuando el dashboard combina semana actual con una semana o mes navegados
@@ -276,7 +283,7 @@ Notas recientes:
 
 - feedback de app integrado en `/profesional/dashboard/configuracion` con formulario de rating, categoria opcional y texto libre; incluye historial paginado de feedback propio; modulo backend separado `core.feedback`
 - `/profesional/dashboard/resenas` es la pagina de gestion de reseñas del profesional: muestra stats agregados (rating, total), lista paginada de reseñas recibidas con toggle de hide/show del texto publico y flujo inline para reportar incumplimientos; ya no permite eliminar reseñas; el texto oculto sigue visible para el profesional con indicador visual amarillo y los KPIs se refrescan contra `ProfessionalProfileContext` despues de las mutaciones
-- `/profesional/dashboard/configuracion` ahora requiere challenge OTP por email para eliminar cuenta; advierte sobre cancelacion de suscripcion y reservas pendientes
+- `/profesional/dashboard/configuracion` ahora requiere challenge OTP por email para cerrar solo el perfil profesional; llama `DELETE /auth/professional-profile`, selecciona `ctx=CLIENT` al finalizar y redirige al area cliente conservando la cuenta base y datos cliente.
 - `PublicReviewsList` ahora resuelve la sección `Confianza y ubicación`: resumen centrado de rating + total con CTA `Leer reseñas` que abre modal paginado, y bloque lateral de mapa/ubicación con CTA `Cómo llegar`; sigue respetando ocultamiento del texto publico
 - `/profesional/pagina/[slug]` renderiza `logo` y `banner` con `object-position + zoom` persistidos desde perfil del negocio, manteniendo la misma composición visual que ve el profesional al editar; `/profesional/[slug]` redirige temporalmente a esta ruta canonica
 - `apps/web/src/utils/publicBusinessMedia.ts`: presenter compartido para cards y superficies publicas; resuelve prioridad visual `banner -> foto real del negocio -> legacy image -> service image` (solo fallback extremo), deduplica URLs y reaplica `logo/bannerMedia` en web
@@ -493,7 +500,6 @@ Base: `packages/shared/src`
 Modulos compartidos actuales:
 
 - `billing/plans.ts`
-- `billing/planAccess.ts`
 - `bookings/idempotency.ts`
 - `bookings/mappers.ts`
 - `bookings/professionalReservationActions.ts`
@@ -508,7 +514,7 @@ Uso actual:
 
 Lectura de producto:
 
-- `billing/plans.ts` modela comercialmente solo `CORE`; los aliases legacy de planes viven separados como compatibilidad de parsing y siempre resuelven a Core
+- `billing/plans.ts` modela comercialmente solo `CORE`; los aliases comerciales legacy ya no deben aceptarse como planes de billing
 - `types/professional.ts` ya contiene entitlements como pagos online, client profile, portfolio, loyalty, last minute, store y shipping
 - eso indica que parte del modelo de permisos para add-ons futuros ya esta pensado, aunque no se venda como plan visible en el MVP
 
@@ -530,4 +536,3 @@ Lectura de producto:
 - `/profesional/auth/login` queda como ruta legacy de compatibilidad y redirige a `/login?intent=professional`, preservando `email`, `registered`, `billing=pending` y otros query params.
 - `/profesional/auth/register` es el wizard profesional y el destino de CTAs públicos como `Soy profesional` y `Registrá tu negocio`.
 - Si el wizard profesional crea la cuenta pero falla el login automático, deriva a `/login?intent=professional&billing=pending`; al iniciar sesión como profesional, `/login` aplica el handoff pendiente y activa `Plura Core`.
-

@@ -82,6 +82,7 @@ class AccountDeletionServiceTest {
         Booking booking = booking(100L, user, professional, LocalDateTime.now().plusDays(2));
 
         when(userRepository.findByIdAndDeletedAtIsNull(10L)).thenReturn(Optional.of(user));
+        when(professionalAccountLifecycleGateway.findByUserId(10L)).thenReturn(Optional.empty());
         when(bookingRepository.findByUser_IdAndOperationalStatusInAndStartDateTimeGreaterThanEqual(
             eq(10L),
             any(),
@@ -123,11 +124,11 @@ class AccountDeletionServiceTest {
         mockExecuteUpdateQuery("DELETE FROM AppFeedback feedback WHERE feedback.author.id = :userId");
         mockExecuteUpdateQuery("DELETE FROM User user WHERE user.id = :userId");
 
-        service.deleteCurrentAccount("10", UserRole.USER);
+        service.deleteCurrentAccount("10");
 
         verify(imageCleanupService).deleteIfRemoved("r2://plura-images/avatars/10/photo.jpg");
-        verify(entityManager).flush();
-        verify(entityManager).clear();
+        verify(entityManager, atLeastOnce()).flush();
+        verify(entityManager, atLeastOnce()).clear();
         verify(availableSlotAsyncDispatcher).rebuildProfessionalDay(eq(20L), eq(booking.getStartDateTime().toLocalDate()));
         verify(scheduleSummaryService).requestRebuild(20L);
         verify(searchSyncPublisher).publishProfilesChanged(List.of(20L));
@@ -147,10 +148,19 @@ class AccountDeletionServiceTest {
         when(userRepository.findByIdAndDeletedAtIsNull(30L)).thenReturn(Optional.of(user));
         when(professionalAccountLifecycleGateway.findByUserId(30L))
             .thenReturn(Optional.of(new ProfessionalAccountSubject(40L, "pro-slug")));
+        when(bookingRepository.findByUser_IdAndOperationalStatusInAndStartDateTimeGreaterThanEqual(
+            eq(30L),
+            any(),
+            any()
+        )).thenReturn(List.of());
 
         mockLongListQuery(
             "SELECT booking.id FROM Booking booking WHERE booking.professionalId = :professionalId",
             List.of(101L)
+        );
+        mockLongListQuery(
+            "SELECT booking.id FROM Booking booking WHERE booking.user.id = :userId",
+            List.of()
         );
         mockStringListQuery(
             "SELECT event.id FROM NotificationEvent event WHERE event.bookingReferenceId IN :bookingIds",
@@ -195,7 +205,7 @@ class AccountDeletionServiceTest {
         mockExecuteUpdateQuery("DELETE FROM ProfessionalProfile profile WHERE profile.id = :professionalId");
         mockExecuteUpdateQuery("DELETE FROM User user WHERE user.id = :userId");
 
-        service.deleteCurrentAccount("30", UserRole.PROFESSIONAL);
+        service.deleteCurrentAccount("30");
 
         verify(billingService).cancelSubscriptionForProfessionalId(40L, true);
         verify(professionalAccountLifecycleGateway).cleanupProfessionalMedia(40L);
@@ -204,11 +214,56 @@ class AccountDeletionServiceTest {
         verify(profileCacheService).evictPublicPageBySlug("pro-slug");
         verify(profileCacheService).evictPublicSummaries();
         verify(slotCacheService).evictByPrefix("slots:40:");
-        verify(entityManager).flush();
-        verify(entityManager).clear();
+        verify(entityManager, atLeastOnce()).flush();
+        verify(entityManager, atLeastOnce()).clear();
         verify(searchSyncPublisher).publishProfileChanged(40L);
         verify(entityManager, atLeastOnce()).createQuery(any(String.class));
         verify(userRepository, never()).delete(any());
+    }
+
+    /**
+     * Escenario: cierra solo perfil profesional y conserva usuario base.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
+    @Test
+    void closesProfessionalProfileWithoutDeletingUserOrClientArtifacts() {
+        User user = professionalUser(50L, "dual@plura.com");
+        when(userRepository.findByIdAndDeletedAtIsNull(50L)).thenReturn(Optional.of(user));
+        when(professionalAccountLifecycleGateway.findByUserId(50L))
+            .thenReturn(Optional.of(new ProfessionalAccountSubject(60L, "dual-slug")));
+
+        mockStringListQuery(
+            "SELECT event.id FROM NotificationEvent event WHERE event.recipientType = :recipientType AND event.recipientId = :recipientId",
+            List.of()
+        );
+        mockExecuteUpdateQuery(
+            "DELETE FROM AppNotification notification WHERE notification.recipientType = :recipientType AND notification.recipientId = :recipientId"
+        );
+        mockExecuteUpdateQuery(
+            "DELETE FROM ProfessionalPaymentProviderConnection connection WHERE connection.professionalId = :professionalId"
+        );
+        mockExecuteUpdateQuery("DELETE FROM Subscription subscription WHERE subscription.professionalId = :professionalId");
+        mockExecuteUpdateQuery(
+            "DELETE FROM ClientFavoriteProfessional favorite WHERE favorite.professional.id = :professionalId"
+        );
+        mockExecuteUpdateQuery(
+            "DELETE FROM ProfesionalService service WHERE service.professional.id = :professionalId"
+        );
+        mockExecuteUpdateQuery("DELETE FROM BusinessPhoto photo WHERE photo.professional.id = :professionalId");
+
+        service.closeProfessionalProfile("50");
+
+        verify(billingService).cancelSubscriptionForProfessionalId(60L, true);
+        verify(professionalAccountLifecycleGateway).cleanupProfessionalMedia(60L);
+        verify(professionalAccountLifecycleGateway).deactivateProfessionalProfile(new ProfessionalAccountSubject(60L, "dual-slug"));
+        verify(availableSlotRepository).deleteByProfessionalId(60L);
+        verify(profileCacheService).evictPublicPageBySlug("dual-slug");
+        verify(profileCacheService).evictPublicSummaries();
+        verify(slotCacheService).evictByPrefix("slots:60:");
+        verify(searchSyncPublisher).publishProfileChanged(60L);
+        verify(imageCleanupService, never()).deleteIfRemoved(any());
+        verify(entityManager, never()).createQuery("DELETE FROM User user WHERE user.id = :userId");
+        verify(entityManager, never()).createQuery("DELETE FROM AuthSession session WHERE session.user.id = :userId");
     }
 
     private void mockLongListQuery(String jpql, List<Long> result) {

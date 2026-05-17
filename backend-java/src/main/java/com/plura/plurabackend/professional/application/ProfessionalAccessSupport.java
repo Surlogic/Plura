@@ -5,7 +5,6 @@ import com.plura.plurabackend.professional.model.ProfessionalProfile;
 import com.plura.plurabackend.professional.repository.ProfessionalProfileRepository;
 import com.plura.plurabackend.professional.service.model.ProfesionalService;
 import com.plura.plurabackend.core.user.model.User;
-import com.plura.plurabackend.core.user.model.UserRole;
 import com.plura.plurabackend.core.user.repository.UserRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
@@ -51,12 +50,8 @@ public class ProfessionalAccessSupport {
      */
     public User loadClientByUserId(String rawUserId) {
         Long userId = parseUserId(rawUserId);
-        User user = userRepository.findByIdAndDeletedAtIsNull(userId)
+        return userRepository.findByIdAndDeletedAtIsNull(userId)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Cliente no encontrado"));
-        if (user.getRole() != UserRole.USER) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Solo clientes");
-        }
-        return user;
     }
 
     /**

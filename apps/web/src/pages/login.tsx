@@ -13,6 +13,17 @@ import Card from '@/components/ui/Card';
 import api from '@/services/api';
 import { setAuthAccessToken, setKnownAuthSessionRole } from '@/services/session';
 import type { OAuthLoginResult } from '@/lib/auth/oauthLogin';
+import {
+  fetchAuthMe,
+  hasContext,
+  persistAccessTokenForContext,
+  selectAuthContext,
+  sessionRoleForContext,
+  type AuthContextDescriptor,
+  type AuthContextType,
+  type SelectContextResponse,
+  type UnifiedLoginResponse,
+} from '@/lib/auth/contexts';
 import { useProfessionalProfileContext } from '@/context/ProfessionalProfileContext';
 import {
   armPendingCheckoutReturnState,
@@ -20,36 +31,6 @@ import {
   createCoreSubscription,
   setPendingCheckoutState,
 } from '@/lib/billing/billing';
-
-type AuthContextType = 'CLIENT' | 'PROFESSIONAL' | 'WORKER';
-
-type AuthContextDescriptor = {
-  type: AuthContextType;
-  professionalId?: string | null;
-  professionalName?: string | null;
-  professionalSlug?: string | null;
-  workerId?: string | null;
-  workerDisplayName?: string | null;
-  owner?: boolean;
-};
-
-type UnifiedLoginResponse = {
-  accessToken?: string | null;
-  refreshToken?: string | null;
-  activeContext?: AuthContextDescriptor | null;
-  contexts?: AuthContextDescriptor[];
-  contextSelectionRequired?: boolean;
-};
-
-type SelectContextResponse = {
-  accessToken?: string | null;
-  activeContext?: AuthContextDescriptor | null;
-};
-
-type AuthMeResponse = {
-  activeContext?: AuthContextDescriptor | null;
-  contexts?: AuthContextDescriptor[];
-};
 
 const REGISTER_HANDOFF_KEY = 'plura:professional-register-handoff';
 
@@ -108,17 +89,6 @@ const extractApiMessage = (error: unknown, fallback: string) => {
   return fallback;
 };
 
-const sessionRoleForContext = (type: AuthContextType): 'CLIENT' | 'PROFESSIONAL' | 'WORKER' => {
-  switch (type) {
-    case 'PROFESSIONAL':
-      return 'PROFESSIONAL';
-    case 'WORKER':
-      return 'WORKER';
-    default:
-      return 'CLIENT';
-  }
-};
-
 const dashboardForContext = (descriptor: AuthContextDescriptor): string => {
   switch (descriptor.type) {
     case 'PROFESSIONAL':
@@ -168,6 +138,9 @@ export default function UnifiedLoginPage() {
   const [selectingContext, setSelectingContext] = useState<string | null>(null);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const shouldActivatePendingBilling = resolveQueryValue(router.query.billing).trim() === 'pending';
+  const loginIntent = resolveQueryValue(router.query.intent).trim().toLowerCase();
+  const desiredContext: AuthContextType | null =
+    loginIntent === 'professional' ? 'PROFESSIONAL' : loginIntent === 'client' ? 'CLIENT' : null;
 
   useEffect(() => {
     const email = resolveQueryValue(router.query.email).trim().toLowerCase();
@@ -272,6 +245,17 @@ export default function UnifiedLoginPage() {
     }
   };
 
+  const continueProfessionalOnboarding = async (email?: string) => {
+    await router.push({
+      pathname: '/profesional/auth/register',
+      query: {
+        ...(email ? { email } : {}),
+        resume: '1',
+        billing: shouldActivatePendingBilling ? 'pending' : undefined,
+      },
+    });
+  };
+
   const completeLoginForContext = async (descriptor: AuthContextDescriptor) => {
     const role = sessionRoleForContext(descriptor.type);
     setKnownAuthSessionRole(role);
@@ -289,10 +273,12 @@ export default function UnifiedLoginPage() {
     setErrorMessage(null);
     try {
       setIsSubmitting(true);
-      const response = await api.post<UnifiedLoginResponse>('/auth/login', {
+      const loginPayload = {
         email: form.email.trim().toLowerCase(),
         password: form.password,
-      });
+        ...(desiredContext ? { desiredContext } : {}),
+      };
+      const response = await api.post<UnifiedLoginResponse>('/auth/login', loginPayload);
       const data = response.data ?? {};
       if (data.accessToken) {
         const role = data.activeContext
@@ -301,6 +287,10 @@ export default function UnifiedLoginPage() {
         setAuthAccessToken(data.accessToken, role);
       }
       const list = Array.isArray(data.contexts) ? data.contexts : [];
+      if (desiredContext === 'PROFESSIONAL' && !hasContext(list, 'PROFESSIONAL')) {
+        await continueProfessionalOnboarding(form.email.trim().toLowerCase());
+        return;
+      }
       if (data.contextSelectionRequired && list.length > 1) {
         setContexts(list);
         return;
@@ -311,6 +301,31 @@ export default function UnifiedLoginPage() {
       }
       await router.push('/cliente/inicio');
     } catch (error) {
+      const apiMessage = extractApiMessage(error, 'Credenciales inválidas o error de servidor.');
+      const shouldContinueProfessionalOnboarding =
+        desiredContext === 'PROFESSIONAL' &&
+        isAxiosError(error) &&
+        error.response?.status === 400 &&
+        /contexto.*no disponible|contexto deseado/i.test(apiMessage);
+
+      if (shouldContinueProfessionalOnboarding) {
+        try {
+          const fallback = await api.post<UnifiedLoginResponse>('/auth/login', {
+            email: form.email.trim().toLowerCase(),
+            password: form.password,
+            desiredContext: 'CLIENT',
+          });
+          persistAccessTokenForContext(
+            fallback.data?.accessToken ?? null,
+            fallback.data?.activeContext ?? { type: 'CLIENT' },
+          );
+          await continueProfessionalOnboarding(form.email.trim().toLowerCase());
+          return;
+        } catch (fallbackError) {
+          setErrorMessage(extractApiMessage(fallbackError, 'Credenciales inválidas o error de servidor.'));
+          return;
+        }
+      }
       setErrorMessage(extractApiMessage(error, 'Credenciales inválidas o error de servidor.'));
     } finally {
       setIsSubmitting(false);
@@ -319,15 +334,30 @@ export default function UnifiedLoginPage() {
 
   const handleOAuthAuthenticated = async (result: OAuthLoginResult) => {
     setErrorMessage(null);
-    if (result.role === 'PROFESSIONAL') {
-      setKnownAuthSessionRole('PROFESSIONAL');
-    } else if (result.role === 'USER') {
-      setKnownAuthSessionRole('CLIENT');
-    }
     try {
-      const response = await api.get<AuthMeResponse>('/auth/me');
-      const data = response.data ?? {};
+      const data = result.contexts ? {
+        activeContext: result.activeContext,
+        contexts: result.contexts,
+      } : await fetchAuthMe();
       const list = Array.isArray(data.contexts) ? data.contexts : [];
+      if (desiredContext === 'PROFESSIONAL') {
+        const professionalContext = list.find((context) => context.type === 'PROFESSIONAL');
+        if (professionalContext) {
+          const selected = await selectAuthContext(professionalContext);
+          await completeLoginForContext(selected);
+          return;
+        }
+        await continueProfessionalOnboarding(result.user.email);
+        return;
+      }
+      if (desiredContext === 'CLIENT') {
+        const clientContext = list.find((context) => context.type === 'CLIENT');
+        if (clientContext) {
+          const selected = await selectAuthContext(clientContext);
+          await completeLoginForContext(selected);
+          return;
+        }
+      }
       if (list.length > 1) {
         setContexts(list);
         return;
@@ -338,7 +368,7 @@ export default function UnifiedLoginPage() {
       }
       await router.push('/cliente/inicio');
     } catch {
-      if (result.role === 'PROFESSIONAL') {
+      if (desiredContext === 'PROFESSIONAL' || result.activeContext?.type === 'PROFESSIONAL') {
         if (shouldActivatePendingBilling) {
           await completeProfessionalPendingBilling();
           return;

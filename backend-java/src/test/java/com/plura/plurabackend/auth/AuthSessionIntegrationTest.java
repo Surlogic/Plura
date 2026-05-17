@@ -14,8 +14,13 @@ import com.plura.plurabackend.core.auth.model.RefreshToken;
 import com.plura.plurabackend.core.auth.repository.AuthAuditLogRepository;
 import com.plura.plurabackend.core.auth.repository.AuthSessionRepository;
 import com.plura.plurabackend.core.auth.repository.RefreshTokenRepository;
+import com.plura.plurabackend.core.category.model.Category;
+import com.plura.plurabackend.core.category.repository.CategoryRepository;
 import com.plura.plurabackend.core.user.model.User;
+import com.plura.plurabackend.core.user.model.UserRole;
 import com.plura.plurabackend.core.user.repository.UserRepository;
+import com.plura.plurabackend.professional.model.ProfessionalProfile;
+import com.plura.plurabackend.professional.repository.ProfessionalProfileRepository;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.time.LocalDateTime;
@@ -27,6 +32,7 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockCookie;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
@@ -74,6 +80,15 @@ class AuthSessionIntegrationTest {
     @Autowired
     private AuthAuditLogRepository authAuditLogRepository;
 
+    @Autowired
+    private ProfessionalProfileRepository professionalProfileRepository;
+
+    @Autowired
+    private CategoryRepository categoryRepository;
+
+    @Autowired
+    private PasswordEncoder passwordEncoder;
+
     /**
      * Prepara mocks, datos base o configuracion comun antes de cada caso de prueba.
      * El objetivo es dejar explicita la regla que protege este test.
@@ -83,6 +98,8 @@ class AuthSessionIntegrationTest {
         authAuditLogRepository.deleteAll();
         authSessionRepository.deleteAll();
         refreshTokenRepository.deleteAll();
+        professionalProfileRepository.deleteAll();
+        categoryRepository.deleteAll();
         userRepository.deleteAll();
     }
 
@@ -166,6 +183,224 @@ class AuthSessionIntegrationTest {
         JsonNode refreshPayload = objectMapper.readTree(refreshResult.getResponse().getContentAsString());
         org.junit.jupiter.api.Assertions.assertNotEquals(refreshToken, refreshPayload.path("refreshToken").asText());
         org.junit.jupiter.api.Assertions.assertEquals(1L, authSessionRepository.count());
+    }
+
+    @Test
+    void professionalAccountCanSelectClientContextAndLoadClientProfile() throws Exception {
+        registerProfessional("dual-client@plura.com");
+
+        MvcResult loginResult = mockMvc.perform(post("/auth/login")
+                .header("X-Plura-Client-Platform", "MOBILE")
+                .header("X-Plura-Session-Transport", "BODY")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "email": "dual-client@plura.com",
+                      "password": "Password123",
+                      "desiredContext": "CLIENT"
+                    }
+                    """))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.activeContext.type").value("CLIENT"))
+            .andExpect(jsonPath("$.contexts[?(@.type == 'CLIENT')]").exists())
+            .andExpect(jsonPath("$.contexts[?(@.type == 'PROFESSIONAL')]").exists())
+            .andReturn();
+
+        String accessToken = objectMapper.readTree(loginResult.getResponse().getContentAsString())
+            .path("accessToken")
+            .asText();
+
+        mockMvc.perform(get("/auth/me/cliente")
+                .header("Authorization", "Bearer " + accessToken))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.email").value("dual-client@plura.com"));
+    }
+
+    @Test
+    void contextSelectClientWorksForProfessionalAccount() throws Exception {
+        registerProfessional("select-client@plura.com");
+        JsonNode loginPayload = loginUnifiedMobile("select-client@plura.com");
+
+        MvcResult selectResult = mockMvc.perform(post("/auth/context/select")
+                .header("Authorization", "Bearer " + loginPayload.path("accessToken").asText())
+                .header("X-Plura-Session-Transport", "BODY")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "type": "CLIENT"
+                    }
+                    """))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.activeContext.type").value("CLIENT"))
+            .andExpect(jsonPath("$.accessToken").isNotEmpty())
+            .andReturn();
+
+        String clientAccessToken = objectMapper.readTree(selectResult.getResponse().getContentAsString())
+            .path("accessToken")
+            .asText();
+
+        mockMvc.perform(get("/auth/me/cliente")
+                .header("Authorization", "Bearer " + clientAccessToken))
+            .andExpect(status().isOk());
+    }
+
+    @Test
+    void professionalProfileRequiresActiveProfile() throws Exception {
+        registerProfessional("inactive-profile@plura.com");
+        User user = userRepository.findByEmailAndDeletedAtIsNull("inactive-profile@plura.com").orElseThrow();
+        professionalProfileRepository.findByUser_Id(user.getId()).ifPresent(profile -> {
+            profile.setActive(false);
+            professionalProfileRepository.save(profile);
+        });
+
+        JsonNode loginPayload = loginUnifiedMobile("inactive-profile@plura.com");
+
+        mockMvc.perform(get("/auth/me/profesional")
+                .header("Authorization", "Bearer " + loginPayload.path("accessToken").asText()))
+            .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void refreshPreservesClientContextWhenAccessTokenCarriesIt() throws Exception {
+        registerProfessional("refresh-client-context@plura.com");
+
+        MvcResult loginResult = mockMvc.perform(post("/auth/login")
+                .header("X-Plura-Client-Platform", "MOBILE")
+                .header("X-Plura-Session-Transport", "BODY")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "email": "refresh-client-context@plura.com",
+                      "password": "Password123",
+                      "desiredContext": "CLIENT"
+                    }
+                    """))
+            .andExpect(status().isOk())
+            .andReturn();
+        JsonNode loginPayload = objectMapper.readTree(loginResult.getResponse().getContentAsString());
+
+        MvcResult refreshResult = mockMvc.perform(post("/auth/refresh")
+                .header("X-Plura-Client-Platform", "MOBILE")
+                .header("X-Plura-Session-Transport", "BODY")
+                .header("Authorization", "Bearer " + loginPayload.path("accessToken").asText())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "refreshToken": "%s"
+                    }
+                    """.formatted(loginPayload.path("refreshToken").asText())))
+            .andExpect(status().isOk())
+            .andReturn();
+        JsonNode refreshPayload = objectMapper.readTree(refreshResult.getResponse().getContentAsString());
+
+        mockMvc.perform(get("/auth/me/cliente")
+                .header("Authorization", "Bearer " + refreshPayload.path("accessToken").asText()))
+            .andExpect(status().isOk());
+    }
+
+    @Test
+    void authenticatedClientActivatesProfessionalProfileOnSameAccount() throws Exception {
+        ensureCategory("cabello", "Cabello");
+        registerClient("activate-professional@plura.com");
+        JsonNode loginPayload = loginMobile("activate-professional@plura.com");
+
+        mockMvc.perform(post("/auth/professional-profile/activate")
+                .header("Authorization", "Bearer " + loginPayload.path("accessToken").asText())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "categorySlugs": ["cabello"],
+                      "tipoCliente": "SIN_LOCAL"
+                    }
+                    """))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.activeContext.type").value("CLIENT"))
+            .andExpect(jsonPath("$.contexts[?(@.type == 'CLIENT')]").exists())
+            .andExpect(jsonPath("$.contexts[?(@.type == 'PROFESSIONAL')]").exists());
+
+        User user = userRepository.findByEmailAndDeletedAtIsNull("activate-professional@plura.com").orElseThrow();
+        org.junit.jupiter.api.Assertions.assertEquals(1L, userRepository.count());
+        ProfessionalProfile profile = professionalProfileRepository.findByUser_Id(user.getId()).orElseThrow();
+        org.junit.jupiter.api.Assertions.assertTrue(Boolean.TRUE.equals(profile.getActive()));
+        org.junit.jupiter.api.Assertions.assertEquals("Cabello", profile.getRubro());
+    }
+
+    @Test
+    void professionalProfileActivationIsIdempotentForActiveProfile() throws Exception {
+        ensureCategory("cabello", "Cabello");
+        registerClient("activate-twice@plura.com");
+        JsonNode loginPayload = loginMobile("activate-twice@plura.com");
+
+        String payload = """
+            {
+              "categorySlugs": ["cabello"],
+              "tipoCliente": "SIN_LOCAL"
+            }
+            """;
+        mockMvc.perform(post("/auth/professional-profile/activate")
+                .header("Authorization", "Bearer " + loginPayload.path("accessToken").asText())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(payload))
+            .andExpect(status().isOk());
+        Long profileId = professionalProfileRepository.findAll().getFirst().getId();
+
+        mockMvc.perform(post("/auth/professional-profile/activate")
+                .header("Authorization", "Bearer " + loginPayload.path("accessToken").asText())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(payload))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.contexts[?(@.type == 'PROFESSIONAL')]").exists());
+
+        org.junit.jupiter.api.Assertions.assertEquals(1L, professionalProfileRepository.count());
+        org.junit.jupiter.api.Assertions.assertEquals(profileId, professionalProfileRepository.findAll().getFirst().getId());
+    }
+
+    @Test
+    void professionalProfileActivationRequiresAuthenticatedUser() throws Exception {
+        ensureCategory("cabello", "Cabello");
+
+        mockMvc.perform(post("/auth/professional-profile/activate")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "categorySlugs": ["cabello"],
+                      "tipoCliente": "SIN_LOCAL"
+                    }
+                    """))
+            .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void professionalProfileActivationReactivatesInactiveProfile() throws Exception {
+        ensureCategory("cabello", "Cabello");
+        registerClient("reactivate-professional@plura.com");
+        User user = userRepository.findByEmailAndDeletedAtIsNull("reactivate-professional@plura.com").orElseThrow();
+
+        ProfessionalProfile inactive = new ProfessionalProfile();
+        inactive.setUser(user);
+        inactive.setRubro("Legacy");
+        inactive.setDisplayName("Cliente Demo");
+        inactive.setSlug("reactivate-professional");
+        inactive.setTipoCliente("SIN_LOCAL");
+        inactive.setActive(false);
+        Long profileId = professionalProfileRepository.save(inactive).getId();
+
+        JsonNode loginPayload = loginMobile("reactivate-professional@plura.com");
+        mockMvc.perform(post("/auth/professional-profile/activate")
+                .header("Authorization", "Bearer " + loginPayload.path("accessToken").asText())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "categorySlugs": ["cabello"],
+                      "tipoCliente": "SIN_LOCAL"
+                    }
+                    """))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.contexts[?(@.type == 'PROFESSIONAL')]").exists());
+
+        ProfessionalProfile profile = professionalProfileRepository.findById(profileId).orElseThrow();
+        org.junit.jupiter.api.Assertions.assertTrue(Boolean.TRUE.equals(profile.getActive()));
+        org.junit.jupiter.api.Assertions.assertEquals(1L, professionalProfileRepository.count());
     }
 
     /**
@@ -379,6 +614,53 @@ class AuthSessionIntegrationTest {
                     }
                     """.formatted(email)))
             .andExpect(status().isAccepted());
+    }
+
+    private void registerProfessional(String email) {
+        User user = new User();
+        user.setFullName("Profesional Demo");
+        user.setEmail(email);
+        user.setPhoneNumber("+5491111111111");
+        user.setPassword(passwordEncoder.encode("Password123"));
+        user.setRole(UserRole.PROFESSIONAL);
+        user.setSessionVersion(1);
+        User savedUser = userRepository.save(user);
+
+        ProfessionalProfile profile = new ProfessionalProfile();
+        profile.setUser(savedUser);
+        profile.setRubro("Cabello");
+        profile.setDisplayName("Profesional Demo");
+        profile.setSlug(email.replace("@", "-").replace(".", "-"));
+        profile.setTipoCliente("SIN_LOCAL");
+        profile.setActive(true);
+        professionalProfileRepository.save(profile);
+    }
+
+    private Category ensureCategory(String slug, String name) {
+        return categoryRepository.findBySlug(slug).orElseGet(() -> {
+            Category category = new Category();
+            category.setSlug(slug);
+            category.setName(name);
+            category.setDisplayOrder(1);
+            category.setActive(true);
+            return categoryRepository.save(category);
+        });
+    }
+
+    private JsonNode loginUnifiedMobile(String email) throws Exception {
+        MvcResult loginResult = mockMvc.perform(post("/auth/login")
+                .header("X-Plura-Client-Platform", "MOBILE")
+                .header("X-Plura-Session-Transport", "BODY")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "email": "%s",
+                      "password": "Password123"
+                    }
+                    """.formatted(email)))
+            .andExpect(status().isOk())
+            .andReturn();
+        return objectMapper.readTree(loginResult.getResponse().getContentAsString());
     }
 
     private JsonNode loginMobile(String email) throws Exception {

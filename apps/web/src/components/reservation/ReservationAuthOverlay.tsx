@@ -16,7 +16,12 @@ import {
   confirmRegistrationPhoneVerification,
   sendRegistrationPhoneVerification,
 } from '@/services/registrationPhoneVerification';
-import { setAuthAccessToken } from '@/services/session';
+import {
+  ensureAuthContext,
+  persistAccessTokenForContext,
+  type UnifiedLoginResponse,
+} from '@/lib/auth/contexts';
+import { getUsableAuthAccessToken } from '@/services/session';
 
 type AuthMode = 'register' | 'login';
 
@@ -66,6 +71,7 @@ export default function ReservationAuthOverlay({
   const router = useRouter();
   const { refreshProfile } = useClientProfileContext();
   const firstInputRef = useRef<HTMLInputElement | null>(null);
+  const autoContinueAttemptedRef = useRef(false);
   const [mode, setMode] = useState<AuthMode>('register');
   const [loginForm, setLoginForm] = useState(loginFormInitial);
   const [registerForm, setRegisterForm] = useState(registerFormInitial);
@@ -118,8 +124,27 @@ export default function ReservationAuthOverlay({
       setErrorMessage(null);
       setIsGoogleLoading(false);
       setIsSubmitting(false);
+      autoContinueAttemptedRef.current = false;
     }
   }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen || isBusy || autoContinueAttemptedRef.current || !getUsableAuthAccessToken()) return;
+    autoContinueAttemptedRef.current = true;
+    let isActive = true;
+    setIsSubmitting(true);
+    void continueAuthenticatedFlow()
+      .catch(() => undefined)
+      .finally(() => {
+        if (isActive) {
+          setIsSubmitting(false);
+        }
+      });
+
+    return () => {
+      isActive = false;
+    };
+  }, [isBusy, isOpen]);
 
   const registerValidation = useMemo(() => {
     const email = registerForm.email.trim().toLowerCase();
@@ -148,6 +173,7 @@ export default function ReservationAuthOverlay({
   }, [registerForm]);
 
   const continueAuthenticatedFlow = async () => {
+    await ensureAuthContext('CLIENT');
     await api.get('/auth/me/cliente');
     await refreshProfile();
     await onAuthenticated();
@@ -155,11 +181,6 @@ export default function ReservationAuthOverlay({
 
   const handleOAuthAuthenticated = async (result: OAuthLoginResult) => {
     setErrorMessage(null);
-
-    if (result.role === 'PROFESSIONAL') {
-      setErrorMessage('Esta cuenta está registrada como profesional. Usá una cuenta cliente para reservar.');
-      return;
-    }
 
     const requiresPhoneCompletion = !(result.user.phoneNumber ?? '').trim();
     if (requiresPhoneCompletion) {
@@ -229,11 +250,15 @@ export default function ReservationAuthOverlay({
 
     try {
       setIsSubmitting(true);
-      const response = await api.post<{ accessToken?: string | null }>('/auth/login/cliente', {
+      const response = await api.post<UnifiedLoginResponse>('/auth/login', {
         email: loginForm.email.trim().toLowerCase(),
         password: loginForm.password,
+        desiredContext: 'CLIENT',
       });
-      setAuthAccessToken(response.data?.accessToken ?? null, 'CLIENT');
+      persistAccessTokenForContext(
+        response.data?.accessToken ?? null,
+        response.data?.activeContext ?? { type: 'CLIENT' },
+      );
       await continueAuthenticatedFlow();
     } catch (error) {
       setErrorMessage(

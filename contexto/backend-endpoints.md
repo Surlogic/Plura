@@ -102,6 +102,8 @@ Lectura de producto:
 
 Prefijo: `/auth`
 
+- `POST /auth/register/profesional` y `POST /auth/oauth/complete-phone` exigen `phoneVerificationToken` validado por OTP SMS; no dependen del flag runtime para permitir saltar la verificacion celular en altas o cierre de telefono OAuth.
+
 - `POST /auth/register/cliente`
 - `POST /auth/register/profesional`
 - `POST /auth/register/phone/send` — inicia OTP SMS previo al alta usando Vonage Verify API
@@ -110,13 +112,15 @@ Prefijo: `/auth`
 - `POST /auth/login/cliente`
 - `POST /auth/login/profesional`
 - `POST /auth/login` — login unificado: autentica con email/password y resuelve los contextos disponibles del usuario (`CLIENT`, `PROFESSIONAL`, `WORKER`). Devuelve `accessToken` + `activeContext` + `contexts` + `contextSelectionRequired`. Si solo hay un contexto se elige por defecto; si hay varios, frontend muestra selector. Acepta `desiredContext`/`desiredWorkerId`/`desiredProfessionalId` opcionales.
-- `GET /auth/me` y `GET /auth/contexts` — alias autenticados que devuelven el `UserResponse`, el contexto activo derivado del JWT y todos los contextos disponibles para la cuenta.
+- `GET /auth/me` y `GET /auth/contexts` — alias autenticados que devuelven el `UserResponse`, el contexto activo derivado del JWT y todos los contextos disponibles para la cuenta. `CLIENT` es una capacidad disponible para toda cuenta activa; `PROFESSIONAL` se expone solo si existe `ProfessionalProfile.active=true`.
 - `POST /auth/context/select` — cambia el contexto activo emitiendo solo un nuevo access token (sin rotar refresh). Body: `type` (`CLIENT|PROFESSIONAL|WORKER`) + `workerId?` + `professionalId?`.
+- `POST /auth/professional-profile/activate` — endpoint autenticado para activar o reactivar la capacidad profesional sobre el `app_user` actual, sin crear otro usuario ni aceptar email/password. Body: `categorySlugs` o `rubro`, `tipoCliente` (`LOCAL|A_DOMICILIO|SIN_LOCAL`) y, para `LOCAL`, `country`, `city`, `fullAddress` y coordenadas opcionales en par. Devuelve `AuthMeResponse` con `contexts` actualizados; si el perfil ya estaba activo responde de forma idempotente sin duplicarlo.
+- `DELETE /auth/professional-profile` — endpoint autenticado para cerrar solo la faceta profesional del `app_user` actual. Requiere body `{ "challengeId": "...", "code": "..." }` validado contra un challenge OTP `ACCOUNT_DELETION`; desactiva `ProfessionalProfile`, cancela suscripcion profesional, limpia datos/medios profesionales, slots futuros y caches publicas, pero no elimina `app_user`, sesiones base ni datos cliente.
 - `POST /auth/oauth`
 - `POST /auth/oauth/complete-phone`
 - `GET /auth/worker-invitations?token={token}` — consulta publica de una invitacion de trabajador pendiente, sin sesion, para mostrar email/local y si requiere crear cuenta.
 - `POST /auth/worker-invitations/accept` — acepta una invitacion de trabajador por token; si el email no existe crea una cuenta `USER`, vincula el `professional_worker` y lo activa.
-- `POST /auth/refresh`
+- `POST /auth/refresh` — rota la sesión y, si el access token vigente trae `ctx`, preserva ese contexto cuando sigue disponible; si no, vuelve al default de contextos disponibles.
 - `POST /auth/logout`
 - `POST /auth/logout-all`
 - `POST /auth/password/change`
@@ -133,10 +137,10 @@ Prefijo: `/auth`
 - `POST /auth/challenge/verify`
 - `GET /auth/sessions`
 - `DELETE /auth/sessions/{sessionId}`
-- `DELETE /auth/me` — ahora requiere `challengeId` + `code` OTP en el body; el challenge se obtiene previamente con `POST /auth/challenge/send` (purpose `ACCOUNT_DELETION`, channel `EMAIL`)
+- `DELETE /auth/me` — eliminacion total explicita de cuenta. Requiere body `{ "scope": "TOTAL", "challengeId": "...", "code": "..." }`; si `scope` falta o no es `TOTAL` responde `400 DELETE_SCOPE_REQUIRED` y no borra nada. El challenge se obtiene previamente con `POST /auth/challenge/send` (purpose `ACCOUNT_DELETION`, channel `EMAIL`). La eliminacion total borra la cuenta base y las facetas cliente/profesional existentes.
 - `GET /auth/audit`
-- `GET /auth/me/profesional`
-- `GET /auth/me/cliente`
+- `GET /auth/me/profesional` — requiere JWT con `ctx=PROFESSIONAL` y `ProfessionalProfile.active=true`; no crea perfiles profesionales implícitamente.
+- `GET /auth/me/cliente` — requiere JWT con `ctx=CLIENT`; no bloquea por `UserRole.PROFESSIONAL` legacy.
 
 El dominio `auth` incluye:
 
@@ -155,7 +159,9 @@ Lectura de producto:
 - soporta registro directo del profesional en `Profesional`
 - ya da base para login social y gestion de sesiones
 - `POST /auth/register/cliente` y `POST /auth/register/profesional` aceptan `phoneVerificationToken`; cuando `AUTH_REGISTRATION_PHONE_VERIFICATION_REQUIRED=true`, ese token pasa a ser obligatorio, el alta queda con `phoneVerified=true` desde el inicio y el mismo telefono verificado no puede reutilizarse en otra cuenta activa
+- Regla vigente de verificación celular: `POST /auth/register/cliente`, `POST /auth/register/profesional` y `POST /auth/oauth/complete-phone` exigen `phoneVerificationToken` válido de forma explícita. Además, `POST /public/profesionales/{slug}/reservas` bloquea clientes con `phoneVerified=false`/`phone_verified_at IS NULL` y devuelve `403` con mensaje claro.
 - `POST /auth/oauth/complete-phone` cierra el faltante de telefono cuando el alta/login OAuth no lo trae; tambien acepta `phoneVerificationToken` para dejar el telefono verificado en el mismo paso
+- `POST /auth/professional-profile/activate` es el flujo backend vigente para que una cuenta cliente autenticada active perfil profesional sobre el mismo email; si el email ya existe sin sesion, el registro profesional publico sigue sin crear ni tomar control de esa cuenta y debe pedir login antes de continuar onboarding
 - `POST /auth/password/forgot` + `POST /auth/password/reset` siguen como flujo legacy por token y hoy quedan como compatibilidad de enlaces viejos o soporte manual
 - `POST /auth/password/recovery/start|verify-phone|confirm` son el flujo vigente de recuperacion escalonada que ya usan web y mobile
 - `POST /auth/password/reset` y `POST /auth/password/recovery/confirm` ya no cierran con `204` vacio: ahora devuelven `200` con `role` (`USER` o `PROFESSIONAL`) y limpian cookies/sesion para que frontend redirija al login correcto segun la cuenta recuperada
@@ -204,6 +210,7 @@ Prefijo: `/public/profesionales`
 - `GET /public/profesionales/{slug}`
 - `GET /public/profesionales/{slug}/slots`
 - `POST /public/profesionales/{slug}/reservas`
+- `POST /public/profesionales/{slug}/reservas` ahora exige cliente autenticado con `phoneVerified=true`; si `phoneVerifiedAt` es null responde `403` y no crea la reserva.
 - `GET /public/profesionales/{slug}/reviews` — listado paginado de reseñas publicas (text null si oculto por profesional o internal ops)
 
 ### Feedback publico de app
@@ -266,9 +273,9 @@ Lectura vigente de planes y billing profesional:
 - el MVP opera con `Plura Core` unico para profesionales/locales
 - `INDEPENDENT` y `LOCAL` siguen siendo tipos operativos de perfil, no planes comerciales
 - `GET /billing/subscription` se mantiene para estado de suscripcion y compatibilidad de datos legacy
-- `POST /billing/subscription` ya no debe usarse para cambio visible de plan; el backend inicia Core y normaliza cualquier plan legacy permitido a `PLAN_CORE`
-- `PLAN_CORE` es el unico codigo canonico activo de `subscription.plan`
-- codigos legacy `PLAN_BASIC`, `PLAN_PRO`, `PLAN_PROFESIONAL`, `PLAN_PREMIUM`, `PLAN_PROFESSIONAL`, `PLAN_LOCAL` y `PLAN_ENTERPRISE` se aceptan solo como entrada transicional y se resuelven como Core
+- `POST /billing/subscription` no es cambio visible de plan; durante el MVP inicia solo Core
+- `POST /billing/subscription` acepta solo `PLAN_CORE` o `CORE`; `PLAN_BASIC`, `PLAN_PRO`, `PLAN_PROFESIONAL`, `PLAN_PROFESSIONAL`, `PROFESSIONAL`, `PLAN_PREMIUM`, `PLAN_LOCAL`, `LOCAL`, `PLAN_ENTERPRISE` y `ENTERPRISE` devuelven `400`
+- `PLAN_CORE` es el unico codigo canonico activo de `subscription.plan`, y la DB queda con constraint core-only
 - los limites Core protegen equipo/multilocal: `maxProfessionals=1` y `maxLocations=1`
 - analytics y add-ons futuros siguen deshabilitados por capability, no por una comparativa comercial visible
 
@@ -295,7 +302,7 @@ Lectura de producto:
 - cubre constructor de servicios, imagen principal, duracion y precio
 - cubre horarios de trabajo y politicas de reserva
 - cubre carga manual de turnos desde panel
-- `PUT /profesional/profile` y `PUT /profesional/public-page` permiten que `Plura Core/CORE` gestione logo, banner, headline y about del perfil publico; `PROFESSIONAL` queda como alias legacy
+- `PUT /profesional/profile` y `PUT /profesional/public-page` permiten que `Plura Core/CORE` gestione logo, banner, headline y about del perfil publico; `PROFESSIONAL` no es plan de billing vigente
 - `PUT /profesional/profile` ahora acepta opcionalmente `logoMedia` y `bannerMedia` con `{ positionX, positionY, zoom }` para persistir el encuadre visual del logo y del banner; `GET /auth/me/profesional` y `GET /profesional/public-page` exponen esos mismos metadatos normalizados para rehidratar el editor y la preview
 - `PUT /profesional/profile`, `PUT /profesional/public-page` y `POST/PUT /profesional/services` ahora canonizan referencias de imágenes antes de persistirlas: si reciben una URL pública del CDN/R2 o de `/uploads`, la convierten otra vez a referencia interna de storage para no dejar metadatos inconsistentes en DB
 - `POST /profesional/services` corta por capacidad Core: hasta `30` servicios; cada servicio mantiene una sola imagen publica
@@ -515,7 +522,7 @@ Estado real detectado en codigo:
 
 - suscripciones de plataforma: `Mercado Pago`
 - conexion OAuth del profesional a Mercado Pago: ya existe en `/profesional/payment-providers/mercadopago/*`
-- `POST /billing/subscription` hoy inicia solo `Plura Core` con request recomendado `{ "planCode": "PLAN_CORE" }`; si recibe codigos legacy de planes (`PLAN_BASIC`, `PLAN_PRO`, `PLAN_PROFESIONAL`, `PLAN_PREMIUM`, `PLAN_PROFESSIONAL`, `PLAN_LOCAL`, `PLAN_ENTERPRISE`) los acepta por compatibilidad y los normaliza a `PLAN_CORE`
+- `POST /billing/subscription` hoy inicia solo `Plura Core` con request recomendado `{ "planCode": "PLAN_CORE" }` o `{ "planCode": "CORE" }`; cualquier codigo legacy de plan devuelve `400`
 - `POST /billing/subscription` devuelve `subscriptionId`, `checkoutUrl`, `provider`, `planCode`, `status`, `trialStartAt`, `trialEndAt` y `requiresCheckout`; si Mercado Pago entrega URL queda `CHECKOUT_PENDING`, y si no requiere checkout queda `TRIALING`
 - `GET /billing/subscription` devuelve estado de suscripcion y agrega `trialStartAt`, `trialEndAt`, `trialDaysRemaining`, `trialActive` y `paymentMethodAttached`
 - `planEnabled` en `GET /billing/subscription` es `true` solo para `ACTIVE` vigente o `TRIALING` con `trialEndAt` futuro; `CHECKOUT_PENDING`, `PAST_DUE`, `CANCELLED` y `EXPIRED` no habilitan el plan
@@ -537,7 +544,10 @@ Lectura de producto:
 
 Nota de naming:
 
-- el codigo actual conserva los planes legacy solo como aliases de parsing; toda respuesta nueva devuelve `PLAN_CORE`
+- backend/API acepta solo `PLAN_CORE` y `CORE` como entrada de plan vigente
+- los aliases legacy fueron eliminados como entrada valida; si llegan `PLAN_BASIC`, `PLAN_PRO`, `PLAN_PROFESIONAL`, `PLAN_PROFESSIONAL`, `PROFESSIONAL`, `PLAN_PREMIUM`, `PLAN_LOCAL`, `LOCAL`, `PLAN_ENTERPRISE`, `ENTERPRISE`, `BASIC` o `PROFESIONAL`, se rechazan
+- `subscription.plan` queda core-only por migracion `V84`
+- cualquier mencion legacy solo puede existir en migraciones historicas o tests de rechazo
 - a nivel de producto la lectura objetivo visible es `Plura Core`
 
 ### Endpoints internos de operaciones

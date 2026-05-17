@@ -49,6 +49,9 @@ public class PhoneVerificationChallenge {
     @Column(name = "phone_number", nullable = false, length = 30)
     private String phoneNumber;
 
+    @Column(name = "provider_request_id", nullable = false, length = 100)
+    private String providerRequestId;
+
     @Column(name = "code_hash", nullable = false, length = 64)
     private String codeHash;
 

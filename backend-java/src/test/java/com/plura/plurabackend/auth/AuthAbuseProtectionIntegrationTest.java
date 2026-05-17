@@ -4,6 +4,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -27,6 +29,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
@@ -66,6 +69,7 @@ class AuthAbuseProtectionIntegrationTest {
     @Autowired private PhoneVerificationChallengeRepository phoneVerificationChallengeRepository;
     @Autowired private AuthOtpChallengeRepository authOtpChallengeRepository;
     @Autowired private PasswordResetTokenRepository passwordResetTokenRepository;
+    @MockBean private VonageVerifyClient vonageVerifyClient;
 
     /**
      * Prepara mocks, datos base o configuracion comun antes de cada caso de prueba.
@@ -81,6 +85,7 @@ class AuthAbuseProtectionIntegrationTest {
         authSessionRepository.deleteAll();
         refreshTokenRepository.deleteAll();
         userRepository.deleteAll();
+        when(vonageVerifyClient.startSmsVerification(anyString())).thenReturn("req-abuse");
     }
 
     // --- Login rate limiting ---

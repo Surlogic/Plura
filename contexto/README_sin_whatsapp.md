@@ -41,8 +41,9 @@ Contratos actuales de compatibilidad:
 
 - `Plura Core` <-> `CORE` <-> `PLAN_CORE`
 - `PLAN_CORE` es el unico codigo canonico activo de suscripcion
-- `PROFESSIONAL`, `LOCAL`, `ENTERPRISE`, `BASIC`, `PROFESIONAL`, `PLAN_BASIC`, `PLAN_PRO`, `PLAN_PROFESIONAL`, `PLAN_PREMIUM`, `PLAN_PROFESSIONAL`, `PLAN_LOCAL` y `PLAN_ENTERPRISE` quedan solo como aliases legacy de entrada transicional
-- todo alias legacy se normaliza a `CORE` / `PLAN_CORE` en salidas y capacidades efectivas
+- `POST /billing/subscription` acepta solo `PLAN_CORE` y `CORE`; cualquier alias comercial legacy devuelve `400`
+- `PROFESSIONAL`, `LOCAL`, `ENTERPRISE`, `BASIC`, `PROFESIONAL`, `PLAN_BASIC`, `PLAN_PRO`, `PLAN_PROFESIONAL`, `PLAN_PROFESSIONAL`, `PLAN_PREMIUM`, `PLAN_LOCAL` y `PLAN_ENTERPRISE` no son planes de billing válidos
+- `Local`, `Professional` y `Enterprise` quedan como tipos operativos o conceptos futuros fuera de billing; `subscription.plan` queda restringido en DB a `PLAN_CORE`
 
 ## Alcance por plan
 
@@ -122,7 +123,7 @@ Futuro/personalizado para empresas con varios locales. No se muestra en UI ni ex
 Base transversal que ordena el producto y la arquitectura:
 
 - versionado de API adoptado como regla operativa para proteger producción, web y mobile frente a cambios de contrato; la política inicial es documentar y aplicar hacia adelante, y las migraciones concretas a rutas versionadas se harán en tareas separadas sin asumir que `/api/v1` ya exista en todo el backend
-- autenticacion y seguridad: registro, login, recuperacion, sesiones y OAuth; hoy web y mobile exponen Google como login social activo, mientras backend conserva soporte OAuth mas amplio a nivel modulo auth; conviven dos recuperaciones de contraseña (`/auth/password/forgot` + `/auth/password/reset` como flujo legacy por token y `/auth/password/recovery/*` como flujo escalonado email + telefono + OTP por email); al confirmar cualquiera de los resets, backend devuelve el `role` recuperado (`USER` o `PROFESSIONAL`) para redirigir al login correcto y limpiar sesion previa; el registro por email ya soporta OTP SMS unico previo al alta con Vonage Verify API y, al activarlo por env, deja el telefono verificado desde el inicio; login OAuth puede requerir completar telefono via `POST /auth/oauth/complete-phone`; eliminacion de cuenta requiere challenge OTP por email (`/auth/challenge/send` con purpose `ACCOUNT_DELETION`) antes de ejecutar `DELETE /auth/me` con `challengeId + code`
+- autenticacion y seguridad: registro, login, recuperacion, sesiones y OAuth; hoy web y mobile exponen Google como login social activo, mientras backend conserva soporte OAuth mas amplio a nivel modulo auth; conviven dos recuperaciones de contraseña (`/auth/password/forgot` + `/auth/password/reset` como flujo legacy por token y `/auth/password/recovery/*` como flujo escalonado email + telefono + OTP por email); al confirmar cualquiera de los resets, backend devuelve el `role` recuperado (`USER` o `PROFESSIONAL`) para redirigir al login correcto y limpiar sesion previa; el backend ya autoriza superficies cliente/profesional por contexto activo del JWT (`ctx=CLIENT` o `ctx=PROFESSIONAL`) y no por `UserRole` legacy: toda cuenta activa puede operar como cliente y el contexto profesional exige `ProfessionalProfile.active=true`; una cuenta autenticada puede activar o reactivar su capacidad profesional con `POST /auth/professional-profile/activate` sin crear otro `app_user` ni tomar control de emails ajenos; el registro por email ya soporta OTP SMS unico previo al alta con Vonage Verify API y, al activarlo por env, deja el telefono verificado desde el inicio; login OAuth puede requerir completar telefono via `POST /auth/oauth/complete-phone`; cierre de perfil profesional usa `DELETE /auth/professional-profile` con challenge OTP `ACCOUNT_DELETION` y no elimina la cuenta base ni datos cliente; eliminacion total de cuenta usa `DELETE /auth/me` con `scope=TOTAL`, `challengeId` y `code`
 - onboarding inicial del negocio o profesional cuando este listo
 - roles y permisos
 - perfil editable del negocio o profesional
@@ -160,6 +161,7 @@ Notas operativas recientes:
 - en rutas publicas como `/reservar`, si no existe una sesion conocida del cliente, la UI ya no queda trabada esperando `auth/me`: el CTA final puede abrir el acceso embebido de reserva directamente; ademas, el navbar compartido ya no expone un pill `Cargando...` por bootstrap de auth en superficies publicas y degrada a opciones publicas hasta que el perfil real termine de hidratar
 - el backend ahora tambien degrada a anonimo en superficies publicas (`/health`, `/categories`, `/api/home`, `/api/search`, `/api/geo/*`, `/public/**`, uploads y webhooks) si llega un JWT o cookie auth invalido/vencido; no debe responder `401` solo por credenciales viejas mientras la ruta siga siendo publica
 - la web ahora persiste un `session hint` con rol (`CLIENT` o `PROFESSIONAL`) para poder rehidratar el perfil correcto tambien en `/` y otras rutas publicas despues de cerrar y reabrir el navegador
+- la web ya prioriza contexto/intencion por sobre `role` legacy en los accesos principales: login cliente y reserva usan `/auth/login` o `/auth/context/select` con `ctx=CLIENT`; login/onboarding profesional usan `ctx=PROFESSIONAL` cuando existe y, si la cuenta autenticada aun no lo tiene, activan `ProfessionalProfile` con `POST /auth/professional-profile/activate` sobre el mismo `app_user`
 - los reloads de web ya no deben cerrar sesion por un `5xx` o una falla transitoria de refresh/auth me; la sesion solo cae automaticamente ante `401/403` reales
 - al cerrar sesion desde la web, la UI ahora muestra un overlay transitorio de `Cerrando sesión` y redirige al login correcto por rol (`/cliente/auth/login` o `/profesional/auth/login`) en vez de dejar la pantalla sin feedback mientras limpia estado local
 - el inbox de notificaciones se apoya en una ruta de lectura mas liviana para bajar latencia de lista sin cambiar la UX ni los contratos
@@ -531,3 +533,14 @@ Este sistema debe funcionar como producto profesional real con usuarios concurre
 - `infra-y-configuracion_sin_whatsapp.md`: variables, integraciones y notas operativas cruzadas con roadmap.
 hola engo 
 hola gurises
+
+
+### Verificación celular
+
+- Regla de seguridad: los clientes pueden navegar e iniciar el flujo, pero no pueden confirmar reservas sin celular verificado (`phoneVerified=true`); profesionales y OAuth deben completar OTP antes de continuar con alta/activación.
+
+## Regla producto vigente de celular verificado
+
+- Cliente: puede navegar y autenticarse, pero no puede confirmar reservas si `phoneVerified=false` o `phone_verified_at` está vacío. `/reservar` debe cortar antes del submit y el backend mantiene la validación final en `POST /public/profesionales/{slug}/reservas`.
+- Profesional/local: el registro y el cierre de teléfono OAuth requieren OTP SMS real y `phoneVerificationToken`; cambiar el teléfono limpia la verificación hasta completar una nueva validación.
+- El mismo teléfono verificado no debe quedar validado en otra cuenta activa distinta; el backend rechaza la verificación con conflicto.

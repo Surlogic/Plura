@@ -1,8 +1,10 @@
 package com.plura.plurabackend.core.security;
 
 import com.plura.plurabackend.core.auth.context.AuthContextType;
+import com.plura.plurabackend.core.professional.ProfessionalAccountProfileGateway;
 import com.plura.plurabackend.core.security.jwt.AuthenticatedTokenDetails;
 import com.plura.plurabackend.core.user.model.UserRole;
+import com.plura.plurabackend.professional.model.ProfessionalProfile;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -17,6 +19,12 @@ import org.springframework.web.server.ResponseStatusException;
  */
 @Service
 public class CurrentActorService {
+
+    private final ProfessionalAccountProfileGateway professionalAccountProfileGateway;
+
+    public CurrentActorService(ProfessionalAccountProfileGateway professionalAccountProfileGateway) {
+        this.professionalAccountProfileGateway = professionalAccountProfileGateway;
+    }
 
     /**
      * Exige authentication y corta la ejecucion si falta autorizacion o contexto.
@@ -82,10 +90,13 @@ public class CurrentActorService {
         if (ctx != AuthContextType.PROFESSIONAL) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Solo profesionales");
         }
-        if (currentRole() != UserRole.PROFESSIONAL) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Solo profesionales");
+        Long userId = currentUserId();
+        ProfessionalProfile profile = professionalAccountProfileGateway.findByUserId(userId)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.FORBIDDEN, "Perfil profesional no encontrado"));
+        if (!Boolean.TRUE.equals(profile.getActive())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Profesional inhabilitado");
         }
-        return currentUserId();
+        return userId;
     }
 
     /**
@@ -94,9 +105,6 @@ public class CurrentActorService {
     public Long currentClientUserId() {
         AuthContextType ctx = currentContextType();
         if (ctx != AuthContextType.CLIENT) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Solo clientes");
-        }
-        if (currentRole() != UserRole.USER) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Solo clientes");
         }
         return currentUserId();

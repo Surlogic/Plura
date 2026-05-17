@@ -45,7 +45,6 @@ import com.plura.plurabackend.core.notification.integration.billing.BillingNotif
 import com.plura.plurabackend.core.notification.integration.booking.BookingNotificationIntegrationService;
 import com.plura.plurabackend.core.booking.repository.BookingRepository;
 import com.plura.plurabackend.core.user.model.User;
-import com.plura.plurabackend.core.user.model.UserRole;
 import com.plura.plurabackend.core.user.repository.UserRepository;
 import com.plura.plurabackend.professional.application.ProfessionalSideEffectCoordinator;
 import com.plura.plurabackend.professional.model.ProfessionalProfile;
@@ -2146,19 +2145,8 @@ public class BookingProviderIntegrationService {
         } catch (NumberFormatException exception) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Sesión inválida");
         }
-        User user = userRepository.findByIdAndDeletedAtIsNull(userId)
+        return userRepository.findByIdAndDeletedAtIsNull(userId)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Usuario no encontrado"));
-        ensureClientUser(user);
-        return user;
-    }
-
-    /**
-     * Ejecuta la logica de ensure cliente usuario manteniendola encapsulada en este componente.
-     */
-    private void ensureClientUser(User user) {
-        if (user.getRole() != UserRole.USER) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Solo clientes");
-        }
     }
 
     /**

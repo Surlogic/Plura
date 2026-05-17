@@ -33,6 +33,8 @@ import org.springframework.test.web.servlet.MockMvc;
     "APP_RATE_LIMIT_ENABLED=false",
     "AUTH_REGISTRATION_PHONE_VERIFICATION_REQUIRED=true",
     "VONAGE_VERIFY_ENABLED=true",
+    "VONAGE_API_KEY=test-api-key",
+    "VONAGE_API_SECRET=test-api-secret",
     "SWAGGER_ENABLED=false",
     "SQS_ENABLED=false",
 })

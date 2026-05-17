@@ -10,11 +10,14 @@ import Footer from '@/components/shared/Footer';
 import Badge from '@/components/ui/Badge';
 import Button from '@/components/ui/Button';
 import Card from '@/components/ui/Card';
-import { useProfessionalProfileContext } from '@/context/ProfessionalProfileContext';
 import api from '@/services/api';
 import { useClientProfileContext } from '@/context/ClientProfileContext';
 import type { OAuthLoginResult } from '@/lib/auth/oauthLogin';
-import { setAuthAccessToken } from '@/services/session';
+import {
+  ensureAuthContext,
+  persistAccessTokenForContext,
+  type UnifiedLoginResponse,
+} from '@/lib/auth/contexts';
 import {
   getPendingReservation,
 } from '@/services/pendingReservation';
@@ -50,7 +53,6 @@ const extractApiMessage = (error: unknown, fallback: string) => {
 export default function ClienteLoginPage() {
   const router = useRouter();
   const { refreshProfile } = useClientProfileContext();
-  const { refreshProfile: refreshProfessionalProfile } = useProfessionalProfileContext();
   const redirectIntent = resolveQueryValue(router.query.redirect).trim();
   const passwordResetCompleted = resolveQueryValue(router.query.passwordReset).trim() === '1';
   const shouldConfirmReservationAfterLogin = redirectIntent === 'confirm-reservation';
@@ -74,11 +76,15 @@ export default function ClienteLoginPage() {
     setErrorMessage(null);
     try {
       setIsSubmitting(true);
-      const response = await api.post<{ accessToken?: string | null }>('/auth/login/cliente', {
+      const response = await api.post<UnifiedLoginResponse>('/auth/login', {
         email: form.email.trim().toLowerCase(),
         password: form.password,
+        desiredContext: 'CLIENT',
       });
-      setAuthAccessToken(response.data?.accessToken ?? null, 'CLIENT');
+      persistAccessTokenForContext(
+        response.data?.accessToken ?? null,
+        response.data?.activeContext ?? { type: 'CLIENT' },
+      );
       await completeClientLoginFlow();
     } catch (error) {
       setErrorMessage(
@@ -121,21 +127,12 @@ export default function ClienteLoginPage() {
 
     const requiresPhoneCompletion = !(result.user.phoneNumber ?? '').trim();
 
-    if (result.role === 'PROFESSIONAL') {
-      if (requiresPhoneCompletion) {
-        router.push('/profesional/auth/complete-phone');
-        return;
-      }
-      await refreshProfessionalProfile();
-      router.push('/profesional/dashboard');
-      return;
-    }
-
     if (requiresPhoneCompletion) {
       router.push('/cliente/auth/complete-phone');
       return;
     }
 
+    await ensureAuthContext('CLIENT');
     await completeClientLoginFlow();
   };
 

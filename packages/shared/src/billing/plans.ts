@@ -1,15 +1,7 @@
-import type { LegacyProfessionalPlanCode, ProfessionalPlanCode } from '../types/professional';
+import type { ProfessionalPlanCode } from '../types/professional';
 
 export type BillingUiPlanId = 'CORE';
 export type BillingBackendPlanCode = 'PLAN_CORE';
-export type LegacyBillingBackendPlanCode =
-  | 'PLAN_BASIC'
-  | 'PLAN_PRO'
-  | 'PLAN_PROFESIONAL'
-  | 'PLAN_PREMIUM'
-  | 'PLAN_PROFESSIONAL'
-  | 'PLAN_LOCAL'
-  | 'PLAN_ENTERPRISE';
 
 export type SharedBillingPlanDefinition = {
   id: BillingUiPlanId;
@@ -47,32 +39,14 @@ export const sharedBillingPlanById: Record<BillingUiPlanId, SharedBillingPlanDef
 };
 
 export const resolveBillingPlanFromProfilePlanCode = (
-  planCode?: ProfessionalPlanCode | LegacyProfessionalPlanCode | string | null,
-): BillingUiPlanId => {
-  switch (planCode?.toUpperCase()) {
-    case 'CORE':
-    case 'PROFESIONAL':
-    case 'LOCAL':
-    case 'ENTERPRISE':
-    case 'BASIC':
-    case 'PROFESSIONAL':
-    default:
-      return 'CORE';
-  }
-};
+  planCode?: ProfessionalPlanCode | string | null,
+): BillingUiPlanId | null => (planCode?.toUpperCase() === 'CORE' ? 'CORE' : null);
 
 export const resolveBillingPlanFromBackendPlanCode = (
-  planCode?: BillingBackendPlanCode | LegacyBillingBackendPlanCode | string | null,
+  planCode?: BillingBackendPlanCode | string | null,
 ): BillingUiPlanId | null => {
   switch (planCode?.toUpperCase()) {
     case 'PLAN_CORE':
-    case 'PLAN_BASIC':
-    case 'PLAN_PRO':
-    case 'PLAN_PROFESIONAL':
-    case 'PLAN_PREMIUM':
-    case 'PLAN_PROFESSIONAL':
-    case 'PLAN_LOCAL':
-    case 'PLAN_ENTERPRISE':
       return 'CORE';
     default:
       return null;

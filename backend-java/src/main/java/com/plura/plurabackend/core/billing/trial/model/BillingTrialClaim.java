@@ -10,7 +10,7 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
-import java.time.LocalDateTime;
+import java.time.Instant;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -46,12 +46,12 @@ public class BillingTrialClaim {
     private Long firstProfessionalId;
 
     @Column(name = "claimed_at", nullable = false)
-    private LocalDateTime claimedAt;
+    private Instant claimedAt;
 
     @PrePersist
     void onCreate() {
         if (this.claimedAt == null) {
-            this.claimedAt = LocalDateTime.now();
+            this.claimedAt = Instant.now();
         }
     }
 }

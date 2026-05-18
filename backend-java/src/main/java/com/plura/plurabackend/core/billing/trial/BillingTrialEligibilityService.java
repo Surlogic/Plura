@@ -7,7 +7,7 @@ import com.plura.plurabackend.core.user.model.User;
 import com.plura.plurabackend.professional.model.ProfessionalProfile;
 import jakarta.annotation.PostConstruct;
 import java.nio.charset.StandardCharsets;
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.HexFormat;
 import java.util.Locale;
 import javax.crypto.Mac;
@@ -60,7 +60,7 @@ public class BillingTrialEligibilityService {
         claim.setOauthIdentityHash(identity.oauthIdentityHash());
         claim.setFirstUserId(identity.userId());
         claim.setFirstProfessionalId(professional.getId());
-        claim.setClaimedAt(LocalDateTime.now());
+        claim.setClaimedAt(Instant.now());
         try {
             return billingTrialClaimRepository.saveAndFlush(claim);
         } catch (DataIntegrityViolationException exception) {

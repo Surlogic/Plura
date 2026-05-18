@@ -87,11 +87,11 @@ class AuthOAuthIntegrationTest {
     }
 
     /**
-     * Escenario: OAuth Google crea nuevo usuario.
+     * Escenario: OAuth Google registro sin desiredRole no crea usuario por default.
      * El objetivo es dejar explicita la regla que protege este test.
      */
     @Test
-    void oauthGoogleCreatesNewUser() throws Exception {
+    void oauthGoogleRegisterWithoutDesiredRoleReturnsBadRequestAndDoesNotCreateUser() throws Exception {
         when(googleTokenVerifier.verify("x")).thenReturn(
             new OAuthUserInfo("google", "g123", "new@plura.com", "New User", "http://img")
         );
@@ -99,14 +99,37 @@ class AuthOAuthIntegrationTest {
         mockMvc.perform(post("/auth/oauth")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"provider\":\"google\",\"token\":\"x\",\"authAction\":\"REGISTER\"}"))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.message").value("desiredRole es obligatorio para registro OAuth"));
+
+        org.junit.jupiter.api.Assertions.assertEquals(0L, userRepository.count());
+    }
+
+    /**
+     * Escenario: OAuth Google crea nuevo cliente cuando desired rol user.
+     * El objetivo es dejar explicita la regla que protege este test.
+     */
+    @Test
+    void oauthGoogleRegisterWithDesiredRoleUserCreatesUser() throws Exception {
+        when(googleTokenVerifier.verify("client-google")).thenReturn(
+            new OAuthUserInfo("google", "g-client", "client@plura.com", "Client User", "http://img")
+        );
+
+        mockMvc.perform(post("/auth/oauth")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"provider\":\"google\",\"token\":\"client-google\",\"desiredRole\":\"USER\",\"authAction\":\"REGISTER\"}"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.accessToken").isNotEmpty())
-            .andExpect(jsonPath("$.user.email").value("new@plura.com"));
+            .andExpect(jsonPath("$.user.email").value("client@plura.com"));
 
-        User stored = userRepository.findByEmail("new@plura.com").orElseThrow();
+        User stored = userRepository.findByEmail("client@plura.com").orElseThrow();
+        org.junit.jupiter.api.Assertions.assertEquals(UserRole.USER, stored.getRole());
         org.junit.jupiter.api.Assertions.assertEquals("google", stored.getProvider());
-        org.junit.jupiter.api.Assertions.assertEquals("g123", stored.getProviderId());
+        org.junit.jupiter.api.Assertions.assertEquals("g-client", stored.getProviderId());
         org.junit.jupiter.api.Assertions.assertNotNull(stored.getEmailVerifiedAt());
+        org.junit.jupiter.api.Assertions.assertTrue(
+            professionalProfileRepository.findByUser_Id(stored.getId()).isEmpty()
+        );
     }
 
     /**
@@ -127,9 +150,9 @@ class AuthOAuthIntegrationTest {
             .andExpect(jsonPath("$.user.email").value("pro@plura.com"));
 
         User stored = userRepository.findByEmail("pro@plura.com").orElseThrow();
-        org.junit.jupiter.api.Assertions.assertEquals(UserRole.USER, stored.getRole());
+        org.junit.jupiter.api.Assertions.assertEquals(UserRole.PROFESSIONAL, stored.getRole());
         org.junit.jupiter.api.Assertions.assertTrue(
-            professionalProfileRepository.findByUser_Id(stored.getId()).isEmpty()
+            professionalProfileRepository.findByUser_Id(stored.getId()).isPresent()
         );
     }
 
@@ -288,7 +311,7 @@ class AuthOAuthIntegrationTest {
 
         mockMvc.perform(post("/auth/oauth")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"provider\":\"apple\",\"token\":\"apple-first-without-email\",\"authAction\":\"REGISTER\"}"))
+                .content("{\"provider\":\"apple\",\"token\":\"apple-first-without-email\",\"desiredRole\":\"USER\",\"authAction\":\"REGISTER\"}"))
             .andExpect(status().isBadRequest())
             .andExpect(jsonPath("$.error").value("APPLE_EMAIL_REQUIRED_FIRST_LOGIN"))
             .andExpect(jsonPath("$.message").value(

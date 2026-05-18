@@ -406,6 +406,10 @@ public class AuthService {
         UserRole desiredRole = normalizeDesiredOAuthRole(request.getDesiredRole());
         OAuthAuthAction authAction = normalizeOAuthAuthAction(request.getAuthAction());
 
+        if (authAction == OAuthAuthAction.REGISTER && desiredRole == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "desiredRole es obligatorio para registro OAuth");
+        }
+
         if (providerId == null) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Token OAuth sin providerId");
         }
@@ -441,7 +445,7 @@ public class AuthService {
             user = new User();
             boolean professionalOnboardingRegister =
                 authAction == OAuthAuthAction.REGISTER && desiredRole == UserRole.PROFESSIONAL;
-            user.setRole(professionalOnboardingRegister ? UserRole.USER : (desiredRole == null ? UserRole.USER : desiredRole));
+            user.setRole(professionalOnboardingRegister ? UserRole.PROFESSIONAL : desiredRole);
             user.setEmail(email);
             user.setPassword(passwordEncoder.encode(UUID.randomUUID().toString()));
             user.setFullName(resolveOAuthDisplayName(userInfo.name(), user.getEmail()));
@@ -450,6 +454,9 @@ public class AuthService {
             user.setAvatar(normalizeOAuthValue(userInfo.avatar()));
             applyTrustedEmailVerification(user, normalizedProvider);
             user = userRepository.save(user);
+            if (professionalOnboardingRegister) {
+                ensureProfessionalProfile(user);
+            }
         } else {
             boolean professionalOnboardingRegister =
                 authAction == OAuthAuthAction.REGISTER && desiredRole == UserRole.PROFESSIONAL;

@@ -7,6 +7,8 @@ const OAUTH_REQUEST_MAX_AGE_MS = 10 * 60 * 1000;
 const OAUTH_RESULT_MAX_AGE_MS = 2 * 60 * 1000;
 
 export type GoogleOAuthMode = 'popup' | 'redirect';
+export type GoogleOAuthIntendedRole = 'USER' | 'PROFESSIONAL';
+export type GoogleOAuthAuthAction = 'LOGIN' | 'REGISTER';
 
 export type GoogleOAuthRequest = {
   state: string;
@@ -15,6 +17,8 @@ export type GoogleOAuthRequest = {
   mode?: GoogleOAuthMode;
   returnTo?: string;
   redirectUri?: string;
+  intendedRole?: GoogleOAuthIntendedRole;
+  authAction?: GoogleOAuthAuthAction;
 };
 
 export type GoogleOAuthResultPayload = {
@@ -65,7 +69,13 @@ const createRandomString = (size = 32) => {
 };
 
 export const createGoogleOAuthRequest = (
-  options: { mode?: GoogleOAuthMode; returnTo?: string; redirectUri?: string } = {},
+  options: {
+    mode?: GoogleOAuthMode;
+    returnTo?: string;
+    redirectUri?: string;
+    intendedRole?: GoogleOAuthIntendedRole;
+    authAction?: GoogleOAuthAuthAction;
+  } = {},
 ): GoogleOAuthRequest => ({
   state: createRandomString(16),
   codeVerifier: createRandomString(64),
@@ -73,6 +83,8 @@ export const createGoogleOAuthRequest = (
   mode: options.mode || 'popup',
   returnTo: options.returnTo,
   redirectUri: options.redirectUri,
+  intendedRole: options.intendedRole,
+  authAction: options.authAction,
 });
 
 export const saveGoogleOAuthRequest = (payload: GoogleOAuthRequest) => {
@@ -101,6 +113,14 @@ export const getGoogleOAuthRequest = (): GoogleOAuthRequest | null => {
       mode: parsed.mode === 'redirect' ? 'redirect' : 'popup',
       returnTo: typeof parsed.returnTo === 'string' ? parsed.returnTo : undefined,
       redirectUri: typeof parsed.redirectUri === 'string' ? parsed.redirectUri : undefined,
+      intendedRole:
+        parsed.intendedRole === 'USER' || parsed.intendedRole === 'PROFESSIONAL'
+          ? parsed.intendedRole
+          : undefined,
+      authAction:
+        parsed.authAction === 'LOGIN' || parsed.authAction === 'REGISTER'
+          ? parsed.authAction
+          : undefined,
     };
   } catch {
     return null;

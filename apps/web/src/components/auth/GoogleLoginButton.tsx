@@ -172,6 +172,15 @@ export default function GoogleLoginButton({
       return;
     }
 
+    const resolvedIntendedRole = pendingRequest.intendedRole ?? intendedRole;
+    const resolvedAuthAction = pendingRequest.authAction ?? authAction;
+
+    if (resolvedAuthAction === 'REGISTER' && !resolvedIntendedRole) {
+      onError('No se pudo confirmar si el registro es cliente o profesional. Intentá nuevamente.');
+      finishLoading();
+      return;
+    }
+
     try {
       const redirectUri = pendingRequest.redirectUri || getGoogleOAuthRedirectUri();
 
@@ -180,8 +189,8 @@ export default function GoogleLoginButton({
           grantType: 'authorization_code',
           codeVerifier: pendingRequest.codeVerifier,
           redirectUri,
-          intendedRole,
-          authAction,
+          intendedRole: resolvedIntendedRole,
+          authAction: resolvedAuthAction,
         }),
         OAUTH_EXCHANGE_TIMEOUT_MS,
         'OAUTH_EXCHANGE_TIMEOUT',
@@ -193,7 +202,7 @@ export default function GoogleLoginButton({
         'OAUTH_CALLBACK_TIMEOUT',
       );
     } catch (error) {
-      onError(resolveApiErrorMessage(error, authAction === 'REGISTER' ? 'No se pudo completar el registro con Google.' : 'No se pudo iniciar sesión con Google.'));
+      onError(resolveApiErrorMessage(error, resolvedAuthAction === 'REGISTER' ? 'No se pudo completar el registro con Google.' : 'No se pudo iniciar sesión con Google.'));
     } finally {
       finishLoading();
     }
@@ -275,7 +284,13 @@ export default function GoogleLoginButton({
     const returnPath = `${window.location.pathname}${window.location.search}${window.location.hash}`;
     const returnTo = buildGoogleOAuthReturnTo(returnPath);
     const redirectUri = getGoogleOAuthRedirectUri();
-    const oauthRequest = createGoogleOAuthRequest({ mode, returnTo, redirectUri });
+    const oauthRequest = createGoogleOAuthRequest({
+      mode,
+      returnTo,
+      redirectUri,
+      intendedRole,
+      authAction,
+    });
     saveGoogleOAuthRequest(oauthRequest);
 
     let codeChallenge = '';

@@ -1,9 +1,10 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { ChangeEvent, FormEvent } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
+import type { MapRef } from 'react-map-gl/mapbox';
 import axios from 'axios';
 import AuthTopBar from '@/components/auth/AuthTopBar';
 import GoogleLoginButton from '@/components/auth/GoogleLoginButton';
@@ -144,6 +145,12 @@ type ProfessionalOnboardingDraft = {
 
 const PROFESSIONAL_ONBOARDING_DRAFT_KEY = 'plura:professional-onboarding-draft';
 
+const DEFAULT_LOCATION_PREVIEW: LocationPreview = {
+  latitude: -34.9011,
+  longitude: -56.1645,
+  placeName: 'Montevideo, Uruguay',
+};
+
 const wizardSteps = [
   'Cuenta',
   'Datos',
@@ -227,12 +234,16 @@ export default function ProfesionalRegisterPage() {
   const [activeGeoField, setActiveGeoField] = useState<'country' | 'city' | 'fullAddress' | null>(null);
   const [geoSuggestions, setGeoSuggestions] = useState<GeoLocationSuggestion[]>([]);
   const [locationPreview, setLocationPreview] = useState<LocationPreview | null>(null);
+  const [mapCenter, setMapCenter] = useState<LocationPreview>(DEFAULT_LOCATION_PREVIEW);
   const [isLocationPreviewLoading, setIsLocationPreviewLoading] = useState(false);
   const [isBrowserLocationLoading, setIsBrowserLocationLoading] = useState(false);
   const [isReverseGeocodingLocation, setIsReverseGeocodingLocation] = useState(false);
   const [locationSelectionSource, setLocationSelectionSource] = useState<LocationSelectionSource | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const locationMapRef = useRef<MapRef | null>(null);
+  const initialLocationRequestDoneRef = useRef(false);
+  const programmaticMapCenterRef = useRef<LocationPreview | null>(null);
   const visibleStepNumber = Math.min(step + 1, wizardSteps.length);
 
   const emailValue = form.email.trim().toLowerCase();
@@ -342,6 +353,7 @@ export default function ProfesionalRegisterPage() {
   useEffect(() => {
     if (!requiresLocation) {
       setLocationPreview(null);
+      setMapCenter(DEFAULT_LOCATION_PREVIEW);
       setIsLocationPreviewLoading(false);
       return undefined;
     }
@@ -377,6 +389,54 @@ export default function ProfesionalRegisterPage() {
       controller.abort();
     };
   }, [form.country, form.city, form.fullAddress, requiresLocation]);
+
+  useEffect(() => {
+    if (!requiresLocation || step !== 4 || initialLocationRequestDoneRef.current) {
+      return;
+    }
+    initialLocationRequestDoneRef.current = true;
+
+    if (typeof navigator === 'undefined' || !navigator.geolocation) {
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        void reverseLookupAndApplyLocation(
+          position.coords.latitude,
+          position.coords.longitude,
+          'browser',
+          { silent: true },
+        );
+      },
+      () => undefined,
+      {
+        enableHighAccuracy: true,
+        timeout: 8000,
+        maximumAge: 60000,
+      },
+    );
+  // La geolocalización inicial debe correr una sola vez al entrar a este paso.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [requiresLocation, step]);
+
+  useEffect(() => {
+    if (!requiresLocation || locationSelectionSource === 'map') {
+      return;
+    }
+
+    const map = locationMapRef.current;
+    if (!map) {
+      return;
+    }
+
+    programmaticMapCenterRef.current = mapCenter;
+    map.flyTo({
+      center: [mapCenter.longitude, mapCenter.latitude],
+      zoom: 15,
+      duration: 500,
+    });
+  }, [locationSelectionSource, mapCenter, requiresLocation]);
 
   const passwordValid = form.password.length >= 8;
   const validationErrors: Record<keyof RegisterForm, string> = {
@@ -536,6 +596,11 @@ export default function ProfesionalRegisterPage() {
     const updateAddressFields = options.updateAddressFields ?? true;
     const nextPlaceName = result.placeName?.trim() || 'Ubicación seleccionada en el mapa';
 
+    setMapCenter({
+      latitude: result.latitude,
+      longitude: result.longitude,
+      placeName: nextPlaceName,
+    });
     setLocationPreview({
       latitude: result.latitude,
       longitude: result.longitude,
@@ -566,9 +631,12 @@ export default function ProfesionalRegisterPage() {
     latitude: number,
     longitude: number,
     source: LocationSelectionSource,
+    options: { silent?: boolean } = {},
   ) => {
     setIsReverseGeocodingLocation(true);
-    setErrorMessage(null);
+    if (!options.silent) {
+      setErrorMessage(null);
+    }
 
     try {
       const result = await mapboxReverseGeocode(latitude, longitude);
@@ -581,6 +649,10 @@ export default function ProfesionalRegisterPage() {
         },
         source,
       );
+    } catch {
+      if (!options.silent) {
+        setErrorMessage('No pudimos actualizar esa ubicación. Probá mover el mapa o escribir la dirección.');
+      }
     } finally {
       setIsReverseGeocodingLocation(false);
     }
@@ -631,6 +703,22 @@ export default function ProfesionalRegisterPage() {
       return;
     }
 
+    const programmaticCenter = programmaticMapCenterRef.current;
+    if (
+      programmaticCenter
+      && Math.abs(programmaticCenter.latitude - latitude) < 0.00005
+      && Math.abs(programmaticCenter.longitude - longitude) < 0.00005
+    ) {
+      programmaticMapCenterRef.current = null;
+      return;
+    }
+    programmaticMapCenterRef.current = null;
+
+    setMapCenter({
+      latitude,
+      longitude,
+      placeName: 'Ubicación seleccionada en el mapa',
+    });
     void reverseLookupAndApplyLocation(latitude, longitude, 'map');
   };
 
@@ -771,7 +859,23 @@ export default function ProfesionalRegisterPage() {
 
   const saveOnboardingDraftForLogin = () => {
     if (typeof window === 'undefined') return;
-    const { password: _password, confirmPassword: _confirmPassword, ...safeForm } = form;
+    const safeForm = {
+      email: form.email,
+      confirmEmail: form.confirmEmail,
+      fullName: form.fullName,
+      phoneNumber: form.phoneNumber,
+      description: form.description,
+      categorySlugs: form.categorySlugs,
+      tipoCliente: form.tipoCliente,
+      country: form.country,
+      city: form.city,
+      fullAddress: form.fullAddress,
+      serviceName: form.serviceName,
+      serviceCategorySlug: form.serviceCategorySlug,
+      serviceDuration: form.serviceDuration,
+      servicePrice: form.servicePrice,
+      serviceDescription: form.serviceDescription,
+    };
     window.localStorage.setItem(
       PROFESSIONAL_ONBOARDING_DRAFT_KEY,
       JSON.stringify({
@@ -1326,7 +1430,7 @@ export default function ProfesionalRegisterPage() {
         <p className="text-sm text-[color:var(--ink-muted)]">
           {isLocationPreviewLoading
             ? 'Buscando la dirección...'
-            : locationPreview?.placeName || 'Ingresá una dirección para previsualizar el mapa.'}
+            : locationPreview?.placeName || 'Mové el mapa o usá tu ubicación para ajustar el punto.'}
         </p>
       </div>
     </div>
@@ -1389,6 +1493,8 @@ export default function ProfesionalRegisterPage() {
         </div>
       );
     }
+
+    const visibleMapCenter = locationPreview ?? mapCenter;
 
     return (
       <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(360px,480px)] lg:items-center">
@@ -1453,47 +1559,40 @@ export default function ProfesionalRegisterPage() {
                 </Button>
               </div>
             </div>
-            {locationPreview ? (
-              <>
-                <MapView
-                  initialViewState={{
-                    latitude: locationPreview.latitude,
-                    longitude: locationPreview.longitude,
-                    zoom: 15,
-                  }}
-                  dragPan
-                  scrollZoom
-                  doubleClickZoom
-                  touchZoomRotate
-                  attributionControl={false}
-                  cooperativeGestures={false}
-                  onMoveEnd={handleMapMoveEnd}
-                  reuseMaps
-                  fallbackMessage="Falta NEXT_PUBLIC_MAPBOX_TOKEN para mostrar el mapa."
-                  webglFallbackNode={<LocationMapFallback />}
-                />
-                <div className="pointer-events-none absolute left-1/2 top-1/2 z-10 -translate-x-1/2 -translate-y-full">
-                  <div className="relative flex flex-col items-center drop-shadow-[0_10px_16px_rgba(15,23,42,0.24)]">
-                    <div className="flex h-7 w-7 items-center justify-center rounded-full bg-[color:var(--primary)] ring-[3px] ring-white">
-                      <span className="h-2 w-2 rounded-full bg-white" />
-                    </div>
-                    <div className="-mt-1 h-2.5 w-2.5 rotate-45 rounded-[2px] bg-[color:var(--primary)]" />
-                  </div>
+            <MapView
+              mapRef={locationMapRef}
+              initialViewState={{
+                latitude: visibleMapCenter.latitude,
+                longitude: visibleMapCenter.longitude,
+                zoom: 15,
+              }}
+              dragPan
+              scrollZoom
+              doubleClickZoom
+              touchZoomRotate
+              attributionControl={false}
+              cooperativeGestures={false}
+              onMoveEnd={handleMapMoveEnd}
+              reuseMaps
+              fallbackMessage="Falta NEXT_PUBLIC_MAPBOX_TOKEN para mostrar el mapa."
+              webglFallbackNode={<LocationMapFallback />}
+            />
+            <div className="pointer-events-none absolute left-1/2 top-1/2 z-10 -translate-x-1/2 -translate-y-full">
+              <div className="relative flex flex-col items-center drop-shadow-[0_10px_16px_rgba(15,23,42,0.24)]">
+                <div className="flex h-7 w-7 items-center justify-center rounded-full bg-[color:var(--primary)] ring-[3px] ring-white">
+                  <span className="h-2 w-2 rounded-full bg-white" />
                 </div>
-              </>
-            ) : (
-              <LocationMapFallback />
-            )}
-            {locationPreview ? (
-              <div className="pointer-events-none absolute bottom-6 left-6 right-6 rounded-[22px] border border-[color:var(--border-soft)] bg-[color:var(--surface)] p-5 shadow-[var(--shadow-card)] backdrop-blur">
-                <p className="font-semibold text-[color:var(--ink)]">Ubicación del perfil</p>
-                <p className="text-sm text-[color:var(--ink-muted)]">
-                  {isLocationPreviewLoading || isReverseGeocodingLocation
-                    ? 'Actualizando mapa...'
-                    : locationPreview.placeName || 'Así verán tu local tus clientes.'}
-                </p>
+                <div className="-mt-1 h-2.5 w-2.5 rotate-45 rounded-[2px] bg-[color:var(--primary)]" />
               </div>
-            ) : null}
+            </div>
+            <div className="pointer-events-none absolute bottom-6 left-6 right-6 rounded-[22px] border border-[color:var(--border-soft)] bg-[color:var(--surface)] p-5 shadow-[var(--shadow-card)] backdrop-blur">
+              <p className="font-semibold text-[color:var(--ink)]">Ubicación del perfil</p>
+              <p className="text-sm text-[color:var(--ink-muted)]">
+                {isLocationPreviewLoading || isReverseGeocodingLocation
+                  ? 'Actualizando mapa...'
+                  : locationPreview?.placeName || 'Mové el mapa o usá tu ubicación para ajustar el punto.'}
+              </p>
+            </div>
           </div>
         </div>
       </div>

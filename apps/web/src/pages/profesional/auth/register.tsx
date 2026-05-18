@@ -29,7 +29,7 @@ import {
 } from '@/lib/professional/registerHandoff';
 import { setAuthAccessToken } from '@/services/session';
 import { useCategories } from '@/hooks/useCategories';
-import { mapboxForwardGeocode } from '@/services/mapbox';
+import { mapboxForwardGeocode, mapboxReverseGeocode } from '@/services/mapbox';
 import { getGeoLocationSuggestions, type GeoLocationSuggestion } from '@/services/geo';
 import { useProfessionalProfileContext } from '@/context/ProfessionalProfileContext';
 import type { OAuthLoginResult } from '@/lib/auth/oauthLogin';
@@ -106,6 +106,8 @@ type LocationPreview = {
   placeName: string;
 };
 
+
+type LocationSelectionSource = 'manual' | 'browser' | 'map';
 type ProfessionalSchedulePayload = {
   days: Array<{
     day: string;
@@ -227,6 +229,9 @@ export default function ProfesionalRegisterPage() {
   const [geoSuggestions, setGeoSuggestions] = useState<GeoLocationSuggestion[]>([]);
   const [locationPreview, setLocationPreview] = useState<LocationPreview | null>(null);
   const [isLocationPreviewLoading, setIsLocationPreviewLoading] = useState(false);
+  const [isBrowserLocationLoading, setIsBrowserLocationLoading] = useState(false);
+  const [isReverseGeocodingLocation, setIsReverseGeocodingLocation] = useState(false);
+  const [locationSelectionSource, setLocationSelectionSource] = useState<LocationSelectionSource | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const visibleStepNumber = Math.min(step + 1, wizardSteps.length);
@@ -361,7 +366,7 @@ export default function ProfesionalRegisterPage() {
             setLocationPreview(null);
             return;
           }
-          setLocationPreview(result);
+          applyLocationSelection(result, 'manual', { updateAddressFields: false });
         })
         .finally(() => {
           setIsLocationPreviewLoading(false);
@@ -517,6 +522,119 @@ export default function ProfesionalRegisterPage() {
     setIsGeoSuggesting(false);
   };
 
+  const applyLocationSelection = (
+    result: {
+      latitude: number;
+      longitude: number;
+      placeName: string;
+      country?: string;
+      city?: string;
+      fullAddress?: string;
+    },
+    source: LocationSelectionSource,
+    options: { updateAddressFields?: boolean } = {},
+  ) => {
+    const updateAddressFields = options.updateAddressFields ?? true;
+    const nextPlaceName = result.placeName?.trim() || 'Ubicación seleccionada en el mapa';
+
+    setLocationPreview({
+      latitude: result.latitude,
+      longitude: result.longitude,
+      placeName: nextPlaceName,
+    });
+    setLocationSelectionSource(source);
+
+    if (updateAddressFields) {
+      setForm((prev) => ({
+        ...prev,
+        country: result.country?.trim() || prev.country,
+        city: result.city?.trim() || prev.city,
+        fullAddress: result.fullAddress?.trim() || prev.fullAddress || nextPlaceName,
+      }));
+      setTouched((prev) => ({
+        ...prev,
+        country: true,
+        city: true,
+        fullAddress: true,
+      }));
+    }
+
+    setGeoSuggestions([]);
+    setActiveGeoField(null);
+  };
+
+  const reverseLookupAndApplyLocation = async (
+    latitude: number,
+    longitude: number,
+    source: LocationSelectionSource,
+  ) => {
+    setIsReverseGeocodingLocation(true);
+    setErrorMessage(null);
+
+    try {
+      const result = await mapboxReverseGeocode(latitude, longitude);
+      applyLocationSelection(
+        result || {
+          latitude,
+          longitude,
+          placeName: 'Ubicación seleccionada en el mapa',
+          fullAddress: 'Ubicación seleccionada en el mapa',
+        },
+        source,
+      );
+    } finally {
+      setIsReverseGeocodingLocation(false);
+    }
+  };
+
+  const handleUseBrowserLocation = () => {
+    setErrorMessage(null);
+
+    if (typeof navigator === 'undefined' || !navigator.geolocation) {
+      setErrorMessage('Tu navegador no permite obtener la ubicación automáticamente.');
+      return;
+    }
+
+    setIsBrowserLocationLoading(true);
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setIsBrowserLocationLoading(false);
+        void reverseLookupAndApplyLocation(
+          position.coords.latitude,
+          position.coords.longitude,
+          'browser',
+        );
+      },
+      () => {
+        setIsBrowserLocationLoading(false);
+        setErrorMessage('No pudimos obtener tu ubicación. Podés escribirla o seleccionarla en el mapa.');
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 60000,
+      },
+    );
+  };
+
+  const handleMapClick = (event: unknown) => {
+    const lngLat = (event as { lngLat?: { lng?: number; lat?: number } }).lngLat;
+    const latitude = lngLat?.lat;
+    const longitude = lngLat?.lng;
+
+    if (
+      typeof latitude !== 'number' ||
+      typeof longitude !== 'number' ||
+      !Number.isFinite(latitude) ||
+      !Number.isFinite(longitude)
+    ) {
+      return;
+    }
+
+    void reverseLookupAndApplyLocation(latitude, longitude, 'map');
+  };
+
+
   const applyGeoSuggestion = (suggestion: GeoLocationSuggestion) => {
     const country = (suggestion.country || '').trim();
     const city = (suggestion.city || '').trim();
@@ -534,11 +652,17 @@ export default function ProfesionalRegisterPage() {
       && typeof suggestion.longitude === 'number'
       && Number.isFinite(suggestion.longitude)
     ) {
-      setLocationPreview({
-        latitude: suggestion.latitude,
-        longitude: suggestion.longitude,
-        placeName: (suggestion.placeName || suggestion.fullAddress || fullAddress || city || country || '').trim(),
-      });
+      applyLocationSelection(
+        {
+          latitude: suggestion.latitude,
+          longitude: suggestion.longitude,
+          placeName: (suggestion.placeName || suggestion.fullAddress || fullAddress || city || country || '').trim(),
+          country,
+          city,
+          fullAddress,
+        },
+        'manual',
+      );
     }
 
     setGeoSuggestions([]);
@@ -780,11 +904,11 @@ export default function ProfesionalRegisterPage() {
         ? `${normalizedFullAddress}, ${normalizedCity}, ${normalizedCountry}`
         : '';
       const geocodedLocation = requiresLocation
-        ? await mapboxForwardGeocode(normalizedLocation)
+        ? locationPreview || await mapboxForwardGeocode(normalizedLocation)
         : null;
 
       if (requiresLocation && !geocodedLocation) {
-        setErrorMessage('No pudimos ubicar esa dirección. Revisala e intentá de nuevo.');
+        setErrorMessage('No pudimos ubicar esa dirección. Escribí una dirección más precisa o seleccioná el punto en el mapa.');
         return;
       }
 
@@ -1312,6 +1436,23 @@ export default function ProfesionalRegisterPage() {
         </div>
         <div className="overflow-hidden rounded-[30px] border border-[color:var(--border-soft)] bg-[color:var(--surface-soft)] shadow-[var(--shadow-lift)]">
           <div className="relative h-96">
+            <div className="absolute left-4 right-4 top-4 z-10 rounded-[22px] border border-[color:var(--border-soft)] bg-[color:var(--surface)]/95 p-4 shadow-[var(--shadow-card)] backdrop-blur">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p className="text-sm font-semibold text-[color:var(--ink)]">Ajustá la ubicación</p>
+                  <p className="text-xs text-[color:var(--ink-muted)]">Usá tu ubicación actual o hacé click en el mapa.</p>
+                </div>
+                <Button
+                  type="button"
+                  variant="quiet"
+                  onClick={handleUseBrowserLocation}
+                  disabled={isBrowserLocationLoading || isReverseGeocodingLocation}
+                  className="shrink-0"
+                >
+                  {isBrowserLocationLoading ? 'Detectando...' : 'Usar mi ubicación'}
+                </Button>
+              </div>
+            </div>
             {locationPreview ? (
               <MapView
                 initialViewState={{
@@ -1322,12 +1463,13 @@ export default function ProfesionalRegisterPage() {
                 longitude={locationPreview.longitude}
                 latitude={locationPreview.latitude}
                 zoom={15}
-                dragPan={false}
-                scrollZoom={false}
-                doubleClickZoom={false}
-                touchZoomRotate={false}
+                dragPan
+                scrollZoom
+                doubleClickZoom
+                touchZoomRotate
                 attributionControl={false}
                 cooperativeGestures={false}
+                onClick={handleMapClick}
                 reuseMaps
                 resetKey={`${locationPreview.latitude}-${locationPreview.longitude}`}
                 fallbackMessage="Falta NEXT_PUBLIC_MAPBOX_TOKEN para mostrar el mapa."
@@ -1350,7 +1492,9 @@ export default function ProfesionalRegisterPage() {
               <div className="pointer-events-none absolute bottom-6 left-6 right-6 rounded-[22px] border border-[color:var(--border-soft)] bg-[color:var(--surface)] p-5 shadow-[var(--shadow-card)] backdrop-blur">
                 <p className="font-semibold text-[color:var(--ink)]">Ubicación del perfil</p>
                 <p className="text-sm text-[color:var(--ink-muted)]">
-                  {isLocationPreviewLoading ? 'Actualizando mapa...' : locationPreview.placeName || 'Así verán tu local tus clientes.'}
+                  {isLocationPreviewLoading || isReverseGeocodingLocation
+                    ? 'Actualizando mapa...'
+                    : locationPreview.placeName || 'Así verán tu local tus clientes.'}
                 </p>
               </div>
             ) : null}

@@ -23,6 +23,12 @@ type ForwardGeocodeResult = {
   placeName: string;
 };
 
+export type ReverseGeocodeResult = ForwardGeocodeResult & {
+  country?: string;
+  city?: string;
+  fullAddress?: string;
+};
+
 const MAPBOX_TOKEN = (process.env.NEXT_PUBLIC_MAPBOX_TOKEN || '').trim();
 const MAPBOX_GEOCODING_BASE_URL = 'https://api.mapbox.com/geocoding/v5/mapbox.places';
 const MAPBOX_LANGUAGE = 'es';
@@ -41,6 +47,32 @@ const extractCity = (feature: MapboxFeature) => {
   const region = feature.context.find((item) => item.id?.startsWith('region.'))?.text || '';
   return [city, region].filter(Boolean).join(', ');
 };
+
+const getContextText = (feature: MapboxFeature, prefix: string) => {
+  if (!Array.isArray(feature.context)) return '';
+  return feature.context.find((item) => item.id?.startsWith(prefix))?.text || '';
+};
+
+const extractCountry = (feature: MapboxFeature) => getContextText(feature, 'country.');
+
+const extractReverseCity = (feature: MapboxFeature) => {
+  const place = getContextText(feature, 'place.');
+  const locality = getContextText(feature, 'locality.');
+  const neighborhood = getContextText(feature, 'neighborhood.');
+  const region = getContextText(feature, 'region.');
+  return place || locality || neighborhood || region;
+};
+
+const extractReverseAddress = (feature: MapboxFeature) => {
+  const text = (feature.text || '').trim();
+  if (text) return text;
+
+  const placeName = (feature.place_name || '').trim();
+  if (!placeName) return '';
+
+  return placeName.split(',')[0]?.trim() || '';
+};
+
 
 const fetchMapboxGeocoding = async (
   query: string,
@@ -149,3 +181,48 @@ export const mapboxForwardGeocode = async (
     placeName: (first.place_name || first.text || address).trim(),
   };
 };
+
+export const mapboxReverseGeocode = async (
+  latitude: number,
+  longitude: number,
+  signal?: AbortSignal,
+): Promise<ReverseGeocodeResult | null> => {
+  if (
+    !MAPBOX_TOKEN ||
+    !Number.isFinite(latitude) ||
+    !Number.isFinite(longitude)
+  ) {
+    return null;
+  }
+
+  const features = await fetchMapboxGeocoding(`${longitude},${latitude}`, {
+    limit: 1,
+    types: 'address,poi,place,locality,neighborhood',
+    signal,
+  });
+
+  const first = features.find(hasUsableCoordinates);
+  if (!first || !first.center) {
+    return {
+      latitude,
+      longitude,
+      placeName: 'Ubicación seleccionada en el mapa',
+      fullAddress: 'Ubicación seleccionada en el mapa',
+    };
+  }
+
+  const country = extractCountry(first);
+  const city = extractReverseCity(first);
+  const fullAddress = extractReverseAddress(first);
+  const placeName = (first.place_name || first.text || fullAddress || city || country || 'Ubicación seleccionada en el mapa').trim();
+
+  return {
+    latitude: first.center[1],
+    longitude: first.center[0],
+    placeName,
+    country: country || undefined,
+    city: city || undefined,
+    fullAddress: fullAddress || placeName || undefined,
+  };
+};
+

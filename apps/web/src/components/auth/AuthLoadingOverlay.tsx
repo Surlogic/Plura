@@ -16,21 +16,25 @@ export default function AuthLoadingOverlay({
   if (!visible) return null;
 
   return (
-    <div className="fixed inset-0 z-[120] flex items-center justify-center bg-[rgba(4,18,31,0.72)] backdrop-blur-sm">
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(31,182,166,0.34),_transparent_42%),linear-gradient(140deg,rgba(8,27,47,0.98)_0%,rgba(14,42,71,0.98)_48%,rgba(31,182,166,0.9)_100%)]" />
-      <div className="relative flex max-w-md flex-col items-center px-6 text-center text-white">
-        <div className="logo-breathe flex h-40 w-40 items-center justify-center rounded-full border border-white/15 bg-white/10 shadow-[0_24px_80px_rgba(0,0,0,0.28)]">
-          <Logo
-            size={112}
-            priority
-            variant="symbol"
-            symbolClassName="drop-shadow-[0_10px_30px_rgba(255,255,255,0.28)]"
-          />
+    <div
+      className="fixed inset-0 z-[120] flex items-center justify-center bg-[rgba(255,250,244,0.18)] px-4 backdrop-blur-[1px]"
+      role="dialog"
+      aria-modal="true"
+      aria-live="polite"
+    >
+      <div className="relative w-full max-w-[340px] rounded-[28px] border border-[color:var(--border-soft)] bg-[color:var(--surface-strong)] px-6 py-6 text-center shadow-[0_24px_70px_-44px_rgba(13,35,58,0.55),0_12px_28px_-24px_rgba(13,35,58,0.35)] ring-1 ring-black/5">
+        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl border border-[color:var(--border-soft)] bg-[color:var(--surface-soft)] shadow-[var(--shadow-card)]">
+          <div className="logo-breathe">
+            <Logo size={34} priority variant="symbol" />
+          </div>
         </div>
-        <h2 className="mt-8 text-3xl font-semibold leading-tight">{title}</h2>
-        {description ? (
-          <p className="mt-4 text-base leading-7 text-white/80">{description}</p>
-        ) : null}
+        <div className="mx-auto mt-5 h-7 w-7 animate-spin rounded-full border-[3px] border-[color:var(--border-soft)] border-t-[color:var(--primary)]" />
+        <div className="mt-5">
+          <h2 className="text-lg font-semibold leading-tight text-[color:var(--ink)]">{title}</h2>
+          {description ? (
+            <p className="mt-2 text-sm leading-6 text-[color:var(--ink-muted)]">{description}</p>
+          ) : null}
+        </div>
       </div>
     </div>
   );

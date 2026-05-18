@@ -213,9 +213,7 @@ public class AuthService {
                 request.getPhoneNumber(),
                 request.getPhoneVerificationToken()
             );
-        if (phoneVerification.verified()) {
-            ensurePhoneAvailable(phoneVerification.phoneNumber(), null);
-        }
+        ensurePhoneAvailable(phoneVerification.phoneNumber(), null);
 
         User user = new User();
         user.setFullName(request.getFullName().trim());
@@ -266,9 +264,7 @@ public class AuthService {
                 request.getPhoneNumber(),
                 request.getPhoneVerificationToken()
             );
-        if (phoneVerification.verified()) {
-            ensurePhoneAvailable(phoneVerification.phoneNumber(), null);
-        }
+        ensurePhoneAvailable(phoneVerification.phoneNumber(), null);
 
         User user = new User();
         user.setFullName(request.getFullName().trim());
@@ -320,6 +316,10 @@ public class AuthService {
         String activeWorkerId
     ) {
         User user = loadUserByRawId(rawUserId);
+        if (user.getRole() != UserRole.PROFESSIONAL) {
+            user.setRole(UserRole.PROFESSIONAL);
+            user = userRepository.save(user);
+        }
         String tipoCliente = normalizeTipoCliente(request.getTipoCliente());
         boolean requiresLocation = requiresProfessionalLocation(tipoCliente);
         String country = normalizeLocationPart(request.getCountry(), requiresLocation, "country");
@@ -439,7 +439,9 @@ public class AuthService {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "OAuth email es obligatorio");
             }
             user = new User();
-            user.setRole(desiredRole == null ? UserRole.USER : desiredRole);
+            boolean professionalOnboardingRegister =
+                authAction == OAuthAuthAction.REGISTER && desiredRole == UserRole.PROFESSIONAL;
+            user.setRole(professionalOnboardingRegister ? UserRole.USER : (desiredRole == null ? UserRole.USER : desiredRole));
             user.setEmail(email);
             user.setPassword(passwordEncoder.encode(UUID.randomUUID().toString()));
             user.setFullName(resolveOAuthDisplayName(userInfo.name(), user.getEmail()));
@@ -448,32 +450,28 @@ public class AuthService {
             user.setAvatar(normalizeOAuthValue(userInfo.avatar()));
             applyTrustedEmailVerification(user, normalizedProvider);
             user = userRepository.save(user);
-            if (authAction == OAuthAuthAction.REGISTER && isProfessionalUser(user)) {
-                ensureProfessionalProfile(user);
-            }
         } else {
-            boolean promoteExistingClientToProfessional =
-                authAction == OAuthAuthAction.REGISTER
-                    && desiredRole == UserRole.PROFESSIONAL
-                    && isClientUser(user)
-                    && !isProfessionalUser(user);
+            boolean professionalOnboardingRegister =
+                authAction == OAuthAuthAction.REGISTER && desiredRole == UserRole.PROFESSIONAL;
 
             boolean changed = false;
-            if (promoteExistingClientToProfessional) {
-                user.setRole(UserRole.PROFESSIONAL);
-                changed = true;
-                ensureProfessionalProfile(user);
-            } else if (authAction == OAuthAuthAction.REGISTER) {
-                if (desiredRole == UserRole.USER && !isClientUser(user)) {
-                    throw new ResponseStatusException(HttpStatus.CONFLICT, PROFESSIONAL_ACCOUNT_EXISTS_MESSAGE);
+            if (authAction == OAuthAuthAction.REGISTER) {
+                if (professionalOnboardingRegister) {
+                    if (isProfessionalUser(user)) {
+                        throw new ResponseStatusException(HttpStatus.CONFLICT, PROFESSIONAL_ACCOUNT_EXISTS_MESSAGE);
+                    }
+                } else {
+                    if (desiredRole == UserRole.USER && !isClientUser(user)) {
+                        throw new ResponseStatusException(HttpStatus.CONFLICT, PROFESSIONAL_ACCOUNT_EXISTS_MESSAGE);
+                    }
+                    if (isProfessionalUser(user)) {
+                        throw new ResponseStatusException(HttpStatus.CONFLICT, PROFESSIONAL_ACCOUNT_EXISTS_MESSAGE);
+                    }
+                    throw new ResponseStatusException(HttpStatus.CONFLICT, CLIENT_ACCOUNT_EXISTS_MESSAGE);
                 }
-                if (isProfessionalUser(user)) {
-                    throw new ResponseStatusException(HttpStatus.CONFLICT, PROFESSIONAL_ACCOUNT_EXISTS_MESSAGE);
-                }
-                throw new ResponseStatusException(HttpStatus.CONFLICT, CLIENT_ACCOUNT_EXISTS_MESSAGE);
             }
 
-            if (desiredRole == UserRole.PROFESSIONAL && !isProfessionalUser(user)) {
+            if (authAction == OAuthAuthAction.LOGIN && desiredRole == UserRole.PROFESSIONAL && !isProfessionalUser(user)) {
                 throw new ResponseStatusException(HttpStatus.CONFLICT, CLIENT_ACCOUNT_EXISTS_FOR_PROFESSIONAL_MESSAGE);
             }
             if ((user.getProvider() == null || user.getProvider().isBlank()) || normalizedProvider.equals(user.getProvider())) {
@@ -497,12 +495,13 @@ public class AuthService {
             if (changed) {
                 user = userRepository.save(user);
             }
-            if (authAction == OAuthAuthAction.REGISTER && isProfessionalUser(user)) {
-                ensureProfessionalProfile(user);
-            }
         }
 
-        return issueTokens(user, toUserResponse(user), sessionContext, resolveOAuthInitialContext(user, desiredRole));
+        UserRole initialContextRole =
+            authAction == OAuthAuthAction.REGISTER && desiredRole == UserRole.PROFESSIONAL && !isProfessionalUser(user)
+                ? UserRole.USER
+                : desiredRole;
+        return issueTokens(user, toUserResponse(user), sessionContext, resolveOAuthInitialContext(user, initialContextRole));
     }
 
     /**
@@ -1209,9 +1208,7 @@ public class AuthService {
             return;
         }
 
-        if (phoneVerification.verified()) {
-            ensurePhoneAvailable(normalizedPhone, user.getId());
-        }
+        ensurePhoneAvailable(normalizedPhone, user.getId());
         user.setPhoneNumber(normalizedPhone);
         user.setPhoneVerifiedAt(phoneVerification.verified() ? LocalDateTime.now() : null);
         userRepository.save(user);
@@ -1296,7 +1293,7 @@ public class AuthService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Teléfono inválido");
         }
         User owner = userRepository
-            .findFirstByPhoneNumberAndPhoneVerifiedAtIsNotNullAndDeletedAtIsNull(normalizedPhone)
+            .findFirstByPhoneNumberAndDeletedAtIsNull(normalizedPhone)
             .orElse(null);
         if (owner == null) {
             return;
@@ -1306,8 +1303,8 @@ public class AuthService {
         }
         throw new AuthApiException(
             HttpStatus.CONFLICT,
-            "PHONE_ALREADY_VERIFIED_BY_ANOTHER_ACCOUNT",
-            "Ese teléfono ya fue verificado por otra cuenta activa."
+            "PHONE_ALREADY_IN_USE",
+            "Ese teléfono ya pertenece a otra cuenta activa."
         );
     }
 

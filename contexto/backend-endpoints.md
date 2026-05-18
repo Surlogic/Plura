@@ -102,13 +102,13 @@ Lectura de producto:
 
 Prefijo: `/auth`
 
-- `POST /auth/register/profesional` conserva `phoneNumber` como telefono de contacto y acepta `phoneVerificationToken` si llega, pero ya no lo exige para el alta profesional; `POST /auth/oauth/complete-phone` mantiene la capacidad de guardar/verificar telefono OAuth segun el contrato del endpoint.
+- `POST /auth/register/profesional` conserva `phoneNumber` como telefono de contacto y acepta `phoneVerificationToken` si llega, pero ya no lo exige para el alta profesional; valida que el telefono no pertenezca a otra cuenta activa. `POST /auth/oauth/complete-phone` mantiene la capacidad de guardar/verificar telefono OAuth y tambien valida unicidad de telefono activo.
 
 - `POST /auth/register/cliente`
 - `POST /auth/register/profesional`
 - `POST /auth/register/phone/send` — inicia OTP SMS previo al alta usando Vonage Verify API
 - `POST /auth/register/phone/confirm` — valida OTP SMS y devuelve `verificationToken` corto para adjuntar al submit final del registro
-- los registros siguen permitiendo un solo usuario activo por email; desde `V81`, un usuario con `deleted_at` ya no bloquea volver a registrar el mismo email ni el mismo `provider/provider_id`
+- los registros permiten un solo usuario activo por email y un solo usuario activo por telefono normalizado; si email o telefono ya existen, responden error controlado (`EMAIL_ALREADY_EXISTS` o `PHONE_ALREADY_IN_USE`). Desde `V81`, un usuario con `deleted_at` ya no bloquea volver a registrar el mismo email ni el mismo `provider/provider_id`.
 - `POST /auth/login/cliente` — wrapper legacy compatible con mobile/versiones anteriores: autentica igual que el login unificado y emite JWT con `ctx=CLIENT` si la cuenta puede operar como cliente, incluyendo cuentas `PROFESSIONAL`.
 - `POST /auth/login/profesional` — wrapper legacy compatible: autentica igual que el login unificado y emite JWT con `ctx=PROFESSIONAL` solo si existe `ProfessionalProfile.active=true`.
 - `POST /auth/login` — login unificado: autentica con email/password y resuelve los contextos disponibles del usuario (`CLIENT`, `PROFESSIONAL`, `WORKER`). Devuelve `accessToken` + `activeContext` + `contexts` + `contextSelectionRequired`. Si solo hay un contexto se elige por defecto; si hay varios, frontend muestra selector. Acepta `desiredContext`/`desiredWorkerId`/`desiredProfessionalId` opcionales.

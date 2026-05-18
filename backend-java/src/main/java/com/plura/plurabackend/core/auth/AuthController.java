@@ -158,7 +158,7 @@ public class AuthController {
 
     /**
      * Registra un nuevo cliente.
-     * Siempre retorna 202 Accepted para no revelar si el email ya existe (seguridad).
+     * Retorna 202 Accepted cuando el alta se acepta y errores controlados si email/telefono ya existen.
      * Aplica protección contra abuso (rate limiting) antes de procesar.
      */
     @PostMapping("/register/cliente")
@@ -177,7 +177,7 @@ public class AuthController {
 
     /**
      * Registra un nuevo profesional con datos adicionales (categoría, ubicación, etc.).
-     * Misma lógica de seguridad que registerCliente: retorna 202 sin revelar existencia.
+     * Retorna 202 Accepted cuando el alta se acepta y errores controlados si email/telefono ya existen.
      */
     @PostMapping("/register/profesional")
     public ResponseEntity<RegistrationAcceptedResponse> registerProfesional(

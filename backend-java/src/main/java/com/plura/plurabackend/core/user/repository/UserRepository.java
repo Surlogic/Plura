@@ -22,6 +22,8 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     Optional<User> findFirstByPhoneNumberAndPhoneVerifiedAtIsNotNullAndDeletedAtIsNull(String phoneNumber);
 
+    Optional<User> findFirstByPhoneNumberAndDeletedAtIsNull(String phoneNumber);
+
     long countByRoleAndDeletedAtIsNull(UserRole role);
 
     default Optional<User> findByEmail(String email) {

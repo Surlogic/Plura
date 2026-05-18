@@ -607,12 +607,18 @@ class AuthAbuseProtectionIntegrationTest {
     // --- Helpers ---
 
     private void registerClient(String email) throws Exception {
+        String phone = uniquePhoneFor(email);
         mockMvc.perform(post("/auth/register/cliente")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
-                    {"fullName":"Test User","email":"%s","phoneNumber":"+5491111111111","password":"Password123"}
-                    """.formatted(email)))
+                    {"fullName":"Test User","email":"%s","phoneNumber":"%s","password":"Password123"}
+                    """.formatted(email, phone)))
             .andExpect(status().isAccepted());
+    }
+
+    private String uniquePhoneFor(String email) {
+        String suffix = String.format("%08d", Math.abs((long) email.hashCode()) % 100_000_000L);
+        return "+54911" + suffix;
     }
 
     private String loginAndGetAccessToken(String email) throws Exception {

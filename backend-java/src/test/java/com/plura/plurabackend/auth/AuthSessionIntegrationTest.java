@@ -363,9 +363,10 @@ class AuthSessionIntegrationTest {
                 .content(payload))
             .andExpect(status().isOk());
         Long profileId = professionalProfileRepository.findAll().getFirst().getId();
+        JsonNode professionalLoginPayload = loginProfessionalMobile("activate-twice@plura.com");
 
         mockMvc.perform(post("/auth/professional-profile/activate")
-                .header("Authorization", "Bearer " + loginPayload.path("accessToken").asText())
+                .header("Authorization", "Bearer " + professionalLoginPayload.path("accessToken").asText())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(payload))
             .andExpect(status().isOk())
@@ -623,17 +624,23 @@ class AuthSessionIntegrationTest {
     }
 
     private void registerClient(String email) throws Exception {
+        String phone = uniquePhoneFor(email);
         mockMvc.perform(post("/auth/register/cliente")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
                     {
                       "fullName": "Cliente Demo",
                       "email": "%s",
-                      "phoneNumber": "+5491111111111",
+                      "phoneNumber": "%s",
                       "password": "Password123"
                     }
-                    """.formatted(email)))
+                    """.formatted(email, phone)))
             .andExpect(status().isAccepted());
+    }
+
+    private String uniquePhoneFor(String email) {
+        String suffix = String.format("%08d", Math.abs((long) email.hashCode()) % 100_000_000L);
+        return "+54911" + suffix;
     }
 
     private void registerProfessional(String email) {
@@ -692,6 +699,23 @@ class AuthSessionIntegrationTest {
                     {
                       "email": "%s",
                       "password": "Password123"
+                    }
+                    """.formatted(email)))
+            .andExpect(status().isOk())
+            .andReturn();
+        return objectMapper.readTree(loginResult.getResponse().getContentAsString());
+    }
+
+    private JsonNode loginProfessionalMobile(String email) throws Exception {
+        MvcResult loginResult = mockMvc.perform(post("/auth/login")
+                .header("X-Plura-Client-Platform", "MOBILE")
+                .header("X-Plura-Session-Transport", "BODY")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "email": "%s",
+                      "password": "Password123",
+                      "desiredContext": "PROFESSIONAL"
                     }
                     """.formatted(email)))
             .andExpect(status().isOk())

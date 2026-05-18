@@ -127,9 +127,9 @@ class AuthOAuthIntegrationTest {
             .andExpect(jsonPath("$.user.email").value("pro@plura.com"));
 
         User stored = userRepository.findByEmail("pro@plura.com").orElseThrow();
-        org.junit.jupiter.api.Assertions.assertEquals(UserRole.PROFESSIONAL, stored.getRole());
+        org.junit.jupiter.api.Assertions.assertEquals(UserRole.USER, stored.getRole());
         org.junit.jupiter.api.Assertions.assertTrue(
-            professionalProfileRepository.findByUser_Id(stored.getId()).isPresent()
+            professionalProfileRepository.findByUser_Id(stored.getId()).isEmpty()
         );
     }
 
@@ -188,11 +188,11 @@ class AuthOAuthIntegrationTest {
             .andExpect(jsonPath("$.user.email").value("upgrade@plura.com"));
 
         User updated = userRepository.findByEmail("upgrade@plura.com").orElseThrow();
-        org.junit.jupiter.api.Assertions.assertEquals(UserRole.PROFESSIONAL, updated.getRole());
+        org.junit.jupiter.api.Assertions.assertEquals(UserRole.USER, updated.getRole());
         org.junit.jupiter.api.Assertions.assertEquals("google", updated.getProvider());
         org.junit.jupiter.api.Assertions.assertEquals("g-upgrade", updated.getProviderId());
         org.junit.jupiter.api.Assertions.assertTrue(
-            professionalProfileRepository.findByUser_Id(updated.getId()).isPresent()
+            professionalProfileRepository.findByUser_Id(updated.getId()).isEmpty()
         );
     }
 

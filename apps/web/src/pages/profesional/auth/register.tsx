@@ -617,7 +617,7 @@ export default function ProfesionalRegisterPage() {
     );
   };
 
-  const handleMapClick = (event: unknown) => {
+  const handleMarkerDragEnd = (event: unknown) => {
     const lngLat = (event as { lngLat?: { lng?: number; lat?: number } }).lngLat;
     const latitude = lngLat?.lat;
     const longitude = lngLat?.lng;
@@ -1440,7 +1440,7 @@ export default function ProfesionalRegisterPage() {
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <p className="text-sm font-semibold text-[color:var(--ink)]">Ajustá la ubicación</p>
-                  <p className="text-xs text-[color:var(--ink-muted)]">Usá tu ubicación actual o hacé click en el mapa.</p>
+                  <p className="text-xs text-[color:var(--ink-muted)]">Mové el mapa, hacé zoom y arrastrá el pin hasta la entrada exacta.</p>
                 </div>
                 <Button
                   type="button"
@@ -1460,28 +1460,31 @@ export default function ProfesionalRegisterPage() {
                   longitude: locationPreview.longitude,
                   zoom: 15,
                 }}
-                longitude={locationPreview.longitude}
-                latitude={locationPreview.latitude}
-                zoom={15}
                 dragPan
                 scrollZoom
                 doubleClickZoom
                 touchZoomRotate
                 attributionControl={false}
                 cooperativeGestures={false}
-                onClick={handleMapClick}
                 reuseMaps
-                resetKey={`${locationPreview.latitude}-${locationPreview.longitude}`}
                 fallbackMessage="Falta NEXT_PUBLIC_MAPBOX_TOKEN para mostrar el mapa."
                 webglFallbackNode={<LocationMapFallback />}
               >
                 <Marker
                   latitude={locationPreview.latitude}
                   longitude={locationPreview.longitude}
-                  anchor="center"
+                  anchor="bottom"
+                  draggable
+                  onDragEnd={handleMarkerDragEnd}
                 >
-                  <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[color:var(--primary)] text-3xl text-white shadow-[var(--shadow-lift)]">
-                    ⌖
+                  <div className="relative flex -translate-y-1 flex-col items-center">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[color:var(--primary)] shadow-[var(--shadow-lift)] ring-4 ring-white">
+                      <span className="h-3 w-3 rounded-full bg-white" />
+                    </div>
+                    <div className="-mt-2 h-4 w-4 rotate-45 rounded-[3px] bg-[color:var(--primary)] shadow-[var(--shadow-card)]" />
+                    <span className="mt-1 rounded-full bg-[color:var(--surface)]/95 px-2 py-0.5 text-[10px] font-semibold text-[color:var(--ink-muted)] shadow-[var(--shadow-card)]">
+                      Arrastrar
+                    </span>
                   </div>
                 </Marker>
               </MapView>

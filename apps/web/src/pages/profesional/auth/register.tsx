@@ -4,7 +4,6 @@ import { useEffect, useMemo, useState } from 'react';
 import type { ChangeEvent, FormEvent } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
-import { Marker } from 'react-map-gl/mapbox';
 import axios from 'axios';
 import AuthTopBar from '@/components/auth/AuthTopBar';
 import GoogleLoginButton from '@/components/auth/GoogleLoginButton';
@@ -617,10 +616,11 @@ export default function ProfesionalRegisterPage() {
     );
   };
 
-  const handleMarkerDragEnd = (event: unknown) => {
-    const lngLat = (event as { lngLat?: { lng?: number; lat?: number } }).lngLat;
-    const latitude = lngLat?.lat;
-    const longitude = lngLat?.lng;
+  const handleMapMoveEnd = (event: unknown) => {
+    const target = (event as { target?: { getCenter?: () => { lng: number; lat: number } } }).target;
+    const center = target?.getCenter?.();
+    const latitude = center?.lat;
+    const longitude = center?.lng;
 
     if (
       typeof latitude !== 'number' ||
@@ -1440,7 +1440,7 @@ export default function ProfesionalRegisterPage() {
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <p className="text-sm font-semibold text-[color:var(--ink)]">Ajustá la ubicación</p>
-                  <p className="text-xs text-[color:var(--ink-muted)]">Mové el mapa, hacé zoom y arrastrá el pin hasta la entrada exacta.</p>
+                  <p className="text-xs text-[color:var(--ink-muted)]">Mové el mapa y hacé zoom hasta que el pin quede sobre la entrada exacta.</p>
                 </div>
                 <Button
                   type="button"
@@ -1454,40 +1454,33 @@ export default function ProfesionalRegisterPage() {
               </div>
             </div>
             {locationPreview ? (
-              <MapView
-                initialViewState={{
-                  latitude: locationPreview.latitude,
-                  longitude: locationPreview.longitude,
-                  zoom: 15,
-                }}
-                dragPan
-                scrollZoom
-                doubleClickZoom
-                touchZoomRotate
-                attributionControl={false}
-                cooperativeGestures={false}
-                reuseMaps
-                fallbackMessage="Falta NEXT_PUBLIC_MAPBOX_TOKEN para mostrar el mapa."
-                webglFallbackNode={<LocationMapFallback />}
-              >
-                <Marker
-                  latitude={locationPreview.latitude}
-                  longitude={locationPreview.longitude}
-                  anchor="bottom"
-                  draggable
-                  onDragEnd={handleMarkerDragEnd}
-                >
-                  <div className="relative flex -translate-y-1 flex-col items-center">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[color:var(--primary)] shadow-[var(--shadow-lift)] ring-4 ring-white">
-                      <span className="h-3 w-3 rounded-full bg-white" />
+              <>
+                <MapView
+                  initialViewState={{
+                    latitude: locationPreview.latitude,
+                    longitude: locationPreview.longitude,
+                    zoom: 15,
+                  }}
+                  dragPan
+                  scrollZoom
+                  doubleClickZoom
+                  touchZoomRotate
+                  attributionControl={false}
+                  cooperativeGestures={false}
+                  onMoveEnd={handleMapMoveEnd}
+                  reuseMaps
+                  fallbackMessage="Falta NEXT_PUBLIC_MAPBOX_TOKEN para mostrar el mapa."
+                  webglFallbackNode={<LocationMapFallback />}
+                />
+                <div className="pointer-events-none absolute left-1/2 top-1/2 z-10 -translate-x-1/2 -translate-y-full">
+                  <div className="relative flex flex-col items-center drop-shadow-[0_10px_16px_rgba(15,23,42,0.24)]">
+                    <div className="flex h-7 w-7 items-center justify-center rounded-full bg-[color:var(--primary)] ring-[3px] ring-white">
+                      <span className="h-2 w-2 rounded-full bg-white" />
                     </div>
-                    <div className="-mt-2 h-4 w-4 rotate-45 rounded-[3px] bg-[color:var(--primary)] shadow-[var(--shadow-card)]" />
-                    <span className="mt-1 rounded-full bg-[color:var(--surface)]/95 px-2 py-0.5 text-[10px] font-semibold text-[color:var(--ink-muted)] shadow-[var(--shadow-card)]">
-                      Arrastrar
-                    </span>
+                    <div className="-mt-1 h-2.5 w-2.5 rotate-45 rounded-[2px] bg-[color:var(--primary)]" />
                   </div>
-                </Marker>
-              </MapView>
+                </div>
+              </>
             ) : (
               <LocationMapFallback />
             )}

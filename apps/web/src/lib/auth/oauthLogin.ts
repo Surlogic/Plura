@@ -64,7 +64,10 @@ const extractRoleFromAccessToken = (accessToken: string | null | undefined): OAu
     const parts = accessToken.split('.');
     if (parts.length < 2) return null;
     const payloadRaw = decodeBase64Url(parts[1]);
-    const payload = JSON.parse(payloadRaw) as { role?: unknown };
+    const payload = JSON.parse(payloadRaw) as { role?: unknown; ctx?: unknown };
+    if (payload.ctx === 'CLIENT') return 'USER';
+    if (payload.ctx === 'PROFESSIONAL') return 'PROFESSIONAL';
+    if (payload.ctx === 'WORKER') return 'USER';
     if (payload.role === 'PROFESSIONAL') return 'PROFESSIONAL';
     if (payload.role === 'USER') return 'USER';
     return null;

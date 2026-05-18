@@ -9,6 +9,9 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.auth0.jwt.JWT;
+import com.plura.plurabackend.core.auth.context.AuthContextDescriptor;
+import com.plura.plurabackend.core.auth.context.AuthContextType;
 import com.plura.plurabackend.core.auth.model.AuthSession;
 import com.plura.plurabackend.core.auth.model.AuthSessionType;
 import com.plura.plurabackend.core.auth.model.RefreshToken;
@@ -108,6 +111,16 @@ class AuthServiceRefreshUnitTest {
         User user = buildUser();
         AuthSession session = buildSession(user);
         session.setSessionType(null);
+        session.setActiveContextType(AuthContextType.CLIENT);
+        AuthContextDescriptor client = new AuthContextDescriptor(
+            AuthContextType.CLIENT,
+            null,
+            null,
+            null,
+            null,
+            null,
+            false
+        );
 
         when(sessionService.findTrackedRefreshTokenMatch(anyString()))
             .thenReturn(Optional.of(new SessionService.TrackedRefreshTokenMatch(session, SessionService.RefreshTokenMatchType.CURRENT)));
@@ -119,6 +132,8 @@ class AuthServiceRefreshUnitTest {
                 session.setExpiresAt(invocation.getArgument(4, LocalDateTime.class));
                 return session;
             });
+        when(authContextResolver.resolve(user)).thenReturn(java.util.List.of(client));
+        when(authContextResolver.select(java.util.List.of(client), AuthContextType.CLIENT, null, null)).thenReturn(client);
 
         AuthService.AuthResult result = authService.refreshSession(
             "tracked-refresh-token",
@@ -127,6 +142,7 @@ class AuthServiceRefreshUnitTest {
 
         assertEquals("WEB", result.session().getSessionType());
         assertEquals(AuthSessionType.WEB, session.getSessionType());
+        assertEquals("CLIENT", JWT.decode(result.accessToken()).getClaim("ctx").asString());
         assertFalse(result.refreshToken().isBlank());
     }
 

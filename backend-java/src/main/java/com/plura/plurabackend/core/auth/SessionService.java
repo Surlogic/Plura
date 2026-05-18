@@ -1,6 +1,7 @@
 package com.plura.plurabackend.core.auth;
 
 import com.plura.plurabackend.core.auth.dto.AuthSessionResponse;
+import com.plura.plurabackend.core.auth.context.AuthContextDescriptor;
 import com.plura.plurabackend.core.auth.model.AuthSession;
 import com.plura.plurabackend.core.auth.model.AuthSessionType;
 import com.plura.plurabackend.core.auth.model.RefreshToken;
@@ -90,6 +91,17 @@ public class SessionService {
         session.setUserAgent(normalizeUserAgent(userAgent));
         session.setIpAddress(normalizeIp(ipAddress));
         session.setExpiresAt(expiresAt);
+        return authSessionRepository.save(session);
+    }
+
+    @Transactional
+    public AuthSession updateActiveContext(AuthSession session, AuthContextDescriptor context) {
+        if (session == null || context == null || context.type() == null) {
+            return session;
+        }
+        session.setActiveContextType(context.type());
+        session.setActiveProfessionalId(context.professionalId());
+        session.setActiveWorkerId(context.workerId());
         return authSessionRepository.save(session);
     }
 

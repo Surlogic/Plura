@@ -70,6 +70,7 @@ export function ProfessionalLoginScreen() {
       const response = await api.post(professionalAuthCopy.loginEndpoint, {
         email: form.email.trim().toLowerCase(),
         password: form.password,
+        desiredContext: 'PROFESSIONAL',
       });
 
       const accessToken = response.data?.accessToken || response.data?.token;

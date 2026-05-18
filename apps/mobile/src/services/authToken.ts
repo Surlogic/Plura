@@ -33,6 +33,9 @@ export const extractRoleFromAccessToken = (
 ): BackendAuthRole | null => {
   const payload = parsePayload(accessToken);
   if (!payload) return null;
+  if (payload.ctx === 'CLIENT') return 'USER';
+  if (payload.ctx === 'PROFESSIONAL') return 'PROFESSIONAL';
+  if (payload.ctx === 'WORKER') return 'USER';
   if (payload.role === 'PROFESSIONAL') return 'PROFESSIONAL';
   if (payload.role === 'USER') return 'USER';
   return null;

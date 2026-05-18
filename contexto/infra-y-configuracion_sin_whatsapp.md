@@ -40,7 +40,7 @@ Lectura operativa actual:
 
 - `auth_session` es la ruta principal de sesiones persistidas
 - `auth_refresh_token` queda como compatibilidad legacy del modelo anterior, pero el fallback por default ya no viene habilitado en `application.yml`
-- el access token JWT usa `ctx` como fuente del contexto activo (`CLIENT`, `PROFESSIONAL`, `WORKER`); durante `POST /auth/refresh`, si el request trae un access token vigente con `ctx`, backend conserva ese contexto cuando sigue disponible y mantiene `pid`/`wid` para los contextos que lo requieren
+- el access token JWT usa `ctx` como fuente del contexto activo (`CLIENT`, `PROFESSIONAL`, `WORKER`); `auth_session` persiste `active_context_type`, `active_professional_id` y `active_worker_id` para que `POST /auth/refresh` conserve el contexto elegido aunque el request no traiga un access token usable, siempre que el contexto siga disponible
 - en web, el interceptor de refresh y los providers de perfil ya no degradan cualquier error a logout: solo `401/403` invalidan la sesion; errores de red, timeout o `5xx` quedan como fallas transitorias sin limpiar credenciales locales
 - `apps/web/src/services/session.ts` ahora persiste tambien `plura_auth_session_role` (`CLIENT`, `PROFESSIONAL` o `WORKER`) para bootstrap de sesion en rutas publicas; deriva primero `ctx` del access token y solo usa `role` como fallback legacy
 - el backend soporta dos recuperaciones de contraseña en paralelo: legacy por token (`/auth/password/forgot` + `/auth/password/reset`) y recovery escalonado (`/auth/password/recovery/start|verify-phone|confirm`)

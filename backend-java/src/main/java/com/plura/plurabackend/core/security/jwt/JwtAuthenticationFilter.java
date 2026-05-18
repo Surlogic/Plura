@@ -155,23 +155,24 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             }
             List<GrantedAuthority> authorities = new ArrayList<>();
 
-            // Mapea el rol actual persistido a authorities de Spring Security.
-            if (user.getRole() == UserRole.PROFESSIONAL) {
-                authorities.add(new SimpleGrantedAuthority("ROLE_PROFESSIONAL"));
-            } else if (user.getRole() == UserRole.USER) {
-                authorities.add(new SimpleGrantedAuthority("ROLE_USER"));
-            } else {
+            if (user.getRole() == null) {
                 SecurityContextHolder.clearContext();
                 response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Rol de token inválido");
                 return;
             }
-            if (contextType == AuthContextType.CLIENT) {
-                addAuthorityIfMissing(authorities, "ROLE_USER");
-            } else if (contextType == AuthContextType.PROFESSIONAL) {
+
+            if (contextType != null) {
+                if (contextType == AuthContextType.CLIENT) {
+                    addAuthorityIfMissing(authorities, "ROLE_USER");
+                } else if (contextType == AuthContextType.PROFESSIONAL) {
+                    addAuthorityIfMissing(authorities, "ROLE_PROFESSIONAL");
+                } else if (contextType == AuthContextType.WORKER) {
+                    addAuthorityIfMissing(authorities, "ROLE_WORKER");
+                }
+            } else if (user.getRole() == UserRole.PROFESSIONAL) {
                 addAuthorityIfMissing(authorities, "ROLE_PROFESSIONAL");
-            }
-            if (contextType == AuthContextType.WORKER) {
-                addAuthorityIfMissing(authorities, "ROLE_WORKER");
+            } else if (user.getRole() == UserRole.USER) {
+                addAuthorityIfMissing(authorities, "ROLE_USER");
             }
 
             // Crea la autenticación con el subject del JWT.

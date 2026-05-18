@@ -19,7 +19,7 @@ export const clientAuthCopy = {
   alternateLoginLabel: 'Ir a acceso profesional',
   registerLinkLabel: 'Crear cuenta cliente',
   loginLinkLabel: 'Iniciar sesion como cliente',
-  loginEndpoint: '/auth/login/cliente' as const,
+  loginEndpoint: '/auth/login' as const,
   registerEndpoint: '/auth/register/cliente' as const,
 };
 

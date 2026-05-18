@@ -72,6 +72,7 @@ export function ClientLoginScreen() {
       const response = await api.post(clientAuthCopy.loginEndpoint, {
         email: form.email.trim().toLowerCase(),
         password: form.password,
+        desiredContext: 'CLIENT',
       });
 
       const accessToken = response.data?.accessToken || response.data?.token;

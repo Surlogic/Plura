@@ -1,6 +1,7 @@
 package com.plura.plurabackend.core.auth.model;
 
 import com.plura.plurabackend.core.user.model.User;
+import com.plura.plurabackend.core.auth.context.AuthContextType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -61,6 +62,16 @@ public class AuthSession {
 
     @Column(name = "device_label", length = 120)
     private String deviceLabel;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "active_context_type", length = 20)
+    private AuthContextType activeContextType;
+
+    @Column(name = "active_professional_id", length = 40)
+    private String activeProfessionalId;
+
+    @Column(name = "active_worker_id", length = 40)
+    private String activeWorkerId;
 
     @Column(name = "user_agent", length = 500)
     private String userAgent;

@@ -19,6 +19,8 @@ import com.plura.plurabackend.core.auth.repository.RefreshTokenRepository;
 import com.plura.plurabackend.core.user.model.User;
 import com.plura.plurabackend.core.user.model.UserRole;
 import com.plura.plurabackend.core.user.repository.UserRepository;
+import com.plura.plurabackend.professional.model.ProfessionalProfile;
+import com.plura.plurabackend.professional.repository.ProfessionalProfileRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -66,6 +68,9 @@ class AuthPasswordLifecycleIntegrationTest {
     private UserRepository userRepository;
 
     @Autowired
+    private ProfessionalProfileRepository professionalProfileRepository;
+
+    @Autowired
     private AuthSessionRepository authSessionRepository;
 
     @Autowired
@@ -96,6 +101,7 @@ class AuthPasswordLifecycleIntegrationTest {
         passwordResetTokenRepository.deleteAll();
         authSessionRepository.deleteAll();
         refreshTokenRepository.deleteAll();
+        professionalProfileRepository.deleteAll();
         userRepository.deleteAll();
     }
 
@@ -422,7 +428,16 @@ class AuthPasswordLifecycleIntegrationTest {
         professional.setPhoneNumber(phoneNumber);
         professional.setPassword(passwordEncoder.encode(password));
         professional.setRole(UserRole.PROFESSIONAL);
-        userRepository.save(professional);
+        User saved = userRepository.save(professional);
+
+        ProfessionalProfile profile = new ProfessionalProfile();
+        profile.setUser(saved);
+        profile.setRubro("Peluquería");
+        profile.setDisplayName(saved.getFullName());
+        profile.setSlug("profesional-demo-" + saved.getId());
+        profile.setTipoCliente("SIN_LOCAL");
+        profile.setActive(true);
+        professionalProfileRepository.save(profile);
     }
 
     private JsonNode loginClient(String email, String password) throws Exception {

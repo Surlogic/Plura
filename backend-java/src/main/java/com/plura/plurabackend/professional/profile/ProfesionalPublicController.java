@@ -2,6 +2,7 @@ package com.plura.plurabackend.professional.profile;
 
 import com.plura.plurabackend.core.booking.dto.PublicBookingRequest;
 import com.plura.plurabackend.core.booking.dto.PublicBookingResponse;
+import com.plura.plurabackend.core.security.RoleGuard;
 import jakarta.validation.Valid;
 import com.plura.plurabackend.professional.dto.ProfesionalPublicPageResponse;
 import com.plura.plurabackend.professional.dto.ProfesionalPublicSummaryResponse;
@@ -40,9 +41,14 @@ public class ProfesionalPublicController {
     private static final Logger LOGGER = LoggerFactory.getLogger(ProfesionalPublicController.class);
     private static final String BOOKING_SLOT_CONSTRAINT = "uq_professional_start";
     private final ProfessionalPublicPageService professionalPublicPageService;
+    private final RoleGuard roleGuard;
 
-    public ProfesionalPublicController(ProfessionalPublicPageService professionalPublicPageService) {
+    public ProfesionalPublicController(
+        ProfessionalPublicPageService professionalPublicPageService,
+        RoleGuard roleGuard
+    ) {
         this.professionalPublicPageService = professionalPublicPageService;
+        this.roleGuard = roleGuard;
     }
 
     /**
@@ -97,7 +103,7 @@ public class ProfesionalPublicController {
             PublicBookingResponse response = professionalPublicPageService.createPublicBooking(
                 slug,
                 request,
-                authentication.getPrincipal().toString(),
+                String.valueOf(roleGuard.requireUser()),
                 clientPlatform
             );
             return ResponseEntity.status(HttpStatus.CREATED).body(response);

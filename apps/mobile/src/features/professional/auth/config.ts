@@ -17,7 +17,7 @@ export const professionalAuthCopy = {
   alternateLoginLabel: 'Ir a acceso cliente',
   registerLinkLabel: 'Crear cuenta profesional',
   loginLinkLabel: 'Iniciar sesion profesional',
-  loginEndpoint: '/auth/login/profesional' as const,
+  loginEndpoint: '/auth/login' as const,
   registerEndpoint: '/auth/register/profesional' as const,
   homeRoute: PROFESSIONAL_HOME_ROUTE,
 };

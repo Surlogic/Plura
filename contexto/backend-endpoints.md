@@ -109,8 +109,8 @@ Prefijo: `/auth`
 - `POST /auth/register/phone/send` — inicia OTP SMS previo al alta usando Vonage Verify API
 - `POST /auth/register/phone/confirm` — valida OTP SMS y devuelve `verificationToken` corto para adjuntar al submit final del registro
 - los registros siguen permitiendo un solo usuario activo por email; desde `V81`, un usuario con `deleted_at` ya no bloquea volver a registrar el mismo email ni el mismo `provider/provider_id`
-- `POST /auth/login/cliente`
-- `POST /auth/login/profesional`
+- `POST /auth/login/cliente` — wrapper legacy compatible con mobile/versiones anteriores: autentica igual que el login unificado y emite JWT con `ctx=CLIENT` si la cuenta puede operar como cliente, incluyendo cuentas `PROFESSIONAL`.
+- `POST /auth/login/profesional` — wrapper legacy compatible: autentica igual que el login unificado y emite JWT con `ctx=PROFESSIONAL` solo si existe `ProfessionalProfile.active=true`.
 - `POST /auth/login` — login unificado: autentica con email/password y resuelve los contextos disponibles del usuario (`CLIENT`, `PROFESSIONAL`, `WORKER`). Devuelve `accessToken` + `activeContext` + `contexts` + `contextSelectionRequired`. Si solo hay un contexto se elige por defecto; si hay varios, frontend muestra selector. Acepta `desiredContext`/`desiredWorkerId`/`desiredProfessionalId` opcionales.
 - `GET /auth/me` y `GET /auth/contexts` — alias autenticados que devuelven el `UserResponse`, el contexto activo derivado del JWT y todos los contextos disponibles para la cuenta. `CLIENT` se expone si `app_user.client_active=true`; `PROFESSIONAL` se expone solo si existe `ProfessionalProfile.active=true`.
 - `POST /auth/context/select` — cambia el contexto activo emitiendo solo un nuevo access token (sin rotar refresh). Body: `type` (`CLIENT|PROFESSIONAL|WORKER`) + `workerId?` + `professionalId?`.
@@ -121,7 +121,7 @@ Prefijo: `/auth`
 - `POST /auth/oauth/complete-phone`
 - `GET /auth/worker-invitations?token={token}` — consulta publica de una invitacion de trabajador pendiente, sin sesion, para mostrar email/local y si requiere crear cuenta.
 - `POST /auth/worker-invitations/accept` — acepta una invitacion de trabajador por token; si el email no existe crea una cuenta `USER`, vincula el `professional_worker` y lo activa.
-- `POST /auth/refresh` — rota la sesión y, si el access token vigente trae `ctx`, preserva ese contexto cuando sigue disponible; si no, vuelve al default de contextos disponibles.
+- `POST /auth/refresh` — rota la sesión y preserva el contexto activo elegido (`ctx`, `pid`, `wid`) desde el access token vigente o desde `auth_session.active_context_*`; si ya no está disponible, vuelve al default de contextos reales.
 - `POST /auth/logout`
 - `POST /auth/logout-all`
 - `POST /auth/password/change`

@@ -366,14 +366,12 @@ public class AuthService {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Credenciales inválidas");
         }
 
-        if (!isProfessionalUser(user)) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, CLIENT_ACCOUNT_LOGIN_MISMATCH_MESSAGE);
-        }
         if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Credenciales inválidas");
         }
 
-        return issueTokens(user, toUserResponse(user), sessionContext);
+        AuthContextDescriptor professionalContext = resolveRequiredContext(user, AuthContextType.PROFESSIONAL, null, null);
+        return issueTokens(user, toUserResponse(user), sessionContext, professionalContext);
     }
 
     /**
@@ -388,14 +386,12 @@ public class AuthService {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Credenciales inválidas");
         }
 
-        if (!isClientUser(user)) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, PROFESSIONAL_ACCOUNT_LOGIN_MISMATCH_MESSAGE);
-        }
         if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Credenciales inválidas");
         }
 
-        return issueTokens(user, toUserResponse(user), sessionContext);
+        AuthContextDescriptor clientContext = resolveRequiredContext(user, AuthContextType.CLIENT, null, null);
+        return issueTokens(user, toUserResponse(user), sessionContext, clientContext);
     }
 
     /**
@@ -452,7 +448,7 @@ public class AuthService {
             user.setAvatar(normalizeOAuthValue(userInfo.avatar()));
             applyTrustedEmailVerification(user, normalizedProvider);
             user = userRepository.save(user);
-            if (isProfessionalUser(user)) {
+            if (authAction == OAuthAuthAction.REGISTER && isProfessionalUser(user)) {
                 ensureProfessionalProfile(user);
             }
         } else {
@@ -501,12 +497,12 @@ public class AuthService {
             if (changed) {
                 user = userRepository.save(user);
             }
-            if (isProfessionalUser(user)) {
+            if (authAction == OAuthAuthAction.REGISTER && isProfessionalUser(user)) {
                 ensureProfessionalProfile(user);
             }
         }
 
-        return issueTokens(user, toUserResponse(user), sessionContext);
+        return issueTokens(user, toUserResponse(user), sessionContext, resolveOAuthInitialContext(user, desiredRole));
     }
 
     /**
@@ -670,6 +666,9 @@ public class AuthService {
         }
         User savedUser = userRepository.save(user);
         SessionTokenIssue sessionToken = createSessionToken(savedUser, sessionContext);
+        if (context != null) {
+            sessionService.updateActiveContext(sessionToken.session(), context);
+        }
         String accessToken = createAccessToken(
             userId,
             savedUser.getEmail(),
@@ -809,13 +808,17 @@ public class AuthService {
             sessionContext == null ? null : sessionContext.ipAddress(),
             newExpiry
         );
+        AuthContextDescriptor refreshContext = resolveRefreshContext(user, activeTokenDetails, rotated);
+        if (refreshContext != null) {
+            sessionService.updateActiveContext(rotated, refreshContext);
+        }
         String accessToken = createAccessToken(
             String.valueOf(user.getId()),
             user.getEmail(),
             user.getRole(),
             rotated.getId(),
             user.getSessionVersion(),
-            resolveRefreshContext(user, activeTokenDetails)
+            refreshContext
         );
         AuthResult result = new AuthResult(
             accessToken,
@@ -885,13 +888,17 @@ public class AuthService {
             sessionContext == null ? null : sessionContext.ipAddress(),
             now.plusDays(refreshTokenDays)
         );
+        AuthContextDescriptor refreshContext = resolveRefreshContext(user, activeTokenDetails, migration.session());
+        if (refreshContext != null) {
+            sessionService.updateActiveContext(migration.session(), refreshContext);
+        }
         String accessToken = createAccessToken(
             String.valueOf(user.getId()),
             user.getEmail(),
             user.getRole(),
             migration.session().getId(),
             user.getSessionVersion(),
-            resolveRefreshContext(user, activeTokenDetails)
+            refreshContext
         );
         AuthResult result = new AuthResult(
             accessToken,
@@ -1666,6 +1673,9 @@ public class AuthService {
             userRepository.save(user);
             sessionVersion = 1;
         }
+        sessionService.findSessionById(currentSessionId)
+            .filter(session -> session.getUser() != null && session.getUser().getId().equals(user.getId()))
+            .ifPresent(session -> sessionService.updateActiveContext(session, selected));
         String accessToken = createAccessToken(
             String.valueOf(user.getId()),
             user.getEmail(),
@@ -1702,10 +1712,38 @@ public class AuthService {
         return authContextResolver.pickDefault(contexts);
     }
 
+    private AuthContextDescriptor resolveRequiredContext(
+        User user,
+        AuthContextType type,
+        String workerId,
+        String professionalId
+    ) {
+        List<AuthContextDescriptor> contexts = authContextResolver.resolve(user);
+        AuthContextDescriptor selected = authContextResolver.select(contexts, type, workerId, professionalId);
+        if (selected == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Contexto deseado no disponible");
+        }
+        return selected;
+    }
+
+    private AuthContextDescriptor resolveOAuthInitialContext(User user, UserRole desiredRole) {
+        if (desiredRole == UserRole.USER) {
+            return resolveRequiredContext(user, AuthContextType.CLIENT, null, null);
+        }
+        if (desiredRole == UserRole.PROFESSIONAL) {
+            return resolveRequiredContext(user, AuthContextType.PROFESSIONAL, null, null);
+        }
+        return resolveDefaultContext(user);
+    }
+
     /**
      * Preserva el contexto del access token vigente durante refresh cuando sigue disponible.
      */
-    private AuthContextDescriptor resolveRefreshContext(User user, AuthenticatedTokenDetails activeTokenDetails) {
+    private AuthContextDescriptor resolveRefreshContext(
+        User user,
+        AuthenticatedTokenDetails activeTokenDetails,
+        AuthSession session
+    ) {
         List<AuthContextDescriptor> contexts = authContextResolver.resolve(user);
         if (contexts == null || contexts.isEmpty()) {
             return null;
@@ -1716,6 +1754,17 @@ public class AuthService {
                 activeTokenDetails.contextType(),
                 activeTokenDetails.workerId(),
                 activeTokenDetails.professionalId()
+            );
+            if (selected != null) {
+                return selected;
+            }
+        }
+        if (session != null && session.getActiveContextType() != null) {
+            AuthContextDescriptor selected = authContextResolver.select(
+                contexts,
+                session.getActiveContextType(),
+                session.getActiveWorkerId(),
+                session.getActiveProfessionalId()
             );
             if (selected != null) {
                 return selected;

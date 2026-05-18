@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Alert, Linking } from 'react-native';
+import { router } from 'expo-router';
 import { usePushNotifications } from '../../../hooks/usePushNotifications';
 import { useClientSession } from '../session/useClientSession';
 import {
@@ -8,6 +9,13 @@ import {
 } from '../../../services/clientFeatures';
 import api from '../../../services/api';
 import { getApiErrorMessage } from '../../../services/errors';
+import {
+  fetchAuthMe,
+  selectContext,
+  type AuthContextDescriptor,
+} from '../../../services/authContext';
+import { setSession } from '../../../services/session';
+import { homeRouteForContext } from '../../shared/auth/routes';
 
 export type ClientPreferences = {
   emailReminders: boolean;
@@ -43,6 +51,22 @@ export const useClientSettings = () => {
     marketing: false,
   });
   const pushNotifications = usePushNotifications();
+
+  const switchToRemainingContext = async (): Promise<boolean> => {
+    const me = await fetchAuthMe();
+    const remainingContext = (me.contexts ?? []).find(
+      (descriptor) => descriptor.type !== 'CLIENT',
+    );
+    if (!remainingContext) return false;
+
+    const response = await selectContext(toSelectContextPayload(remainingContext));
+    if (response.accessToken) {
+      await setSession({ accessToken: response.accessToken });
+    }
+    await session.refreshProfile();
+    router.replace(homeRouteForContext(response.activeContext ?? remainingContext));
+    return true;
+  };
 
   useEffect(() => {
     const load = async () => {
@@ -141,9 +165,15 @@ export const useClientSettings = () => {
       return;
     }
 
+    const hasAnotherContext = session.contexts.some(
+      (descriptor) => descriptor.type !== 'CLIENT',
+    );
+
     Alert.alert(
-      'Eliminar cuenta',
-      'Se cancelaran tus proximas reservas antes de eliminar tu cuenta. Esta accion no se puede deshacer.',
+      hasAnotherContext ? 'Eliminar perfil cliente' : 'Eliminar cuenta',
+      hasAnotherContext
+        ? 'Se cancelaran tus proximas reservas antes de eliminar tu perfil cliente. Tus otros accesos se conservan.'
+        : 'Se cancelaran tus proximas reservas antes de eliminar tu cuenta. Esta accion no se puede deshacer.',
       [
         { text: 'Cancelar', style: 'cancel' },
         {
@@ -152,16 +182,21 @@ export const useClientSettings = () => {
           onPress: async () => {
             setIsDeletingAccount(true);
             try {
-              await api.delete('/auth/me', {
+              await api.delete(hasAnotherContext ? '/auth/client-profile' : '/auth/me', {
                 data: {
+                  ...(hasAnotherContext ? {} : { scope: 'TOTAL' }),
                   challengeId: deleteChallengeId,
                   code: deleteChallengeCode.trim(),
                 },
               });
-              await session.logout();
+              if (!hasAnotherContext || !(await switchToRemainingContext())) {
+                await session.logout();
+              }
             } catch (error) {
               Alert.alert(
-                'No se pudo eliminar la cuenta',
+                hasAnotherContext
+                  ? 'No se pudo eliminar el perfil cliente'
+                  : 'No se pudo eliminar la cuenta',
                 getApiErrorMessage(error, 'Intenta nuevamente en unos minutos.'),
               );
             } finally {
@@ -275,3 +310,9 @@ export const useClientSettings = () => {
     confirmPhoneVerification,
   };
 };
+
+const toSelectContextPayload = (descriptor: AuthContextDescriptor) => ({
+  type: descriptor.type,
+  workerId: descriptor.workerId ?? undefined,
+  professionalId: descriptor.professionalId ?? undefined,
+});

@@ -3,7 +3,9 @@ package com.plura.plurabackend.core.security;
 import com.plura.plurabackend.core.auth.context.AuthContextType;
 import com.plura.plurabackend.core.professional.ProfessionalAccountProfileGateway;
 import com.plura.plurabackend.core.security.jwt.AuthenticatedTokenDetails;
+import com.plura.plurabackend.core.user.model.User;
 import com.plura.plurabackend.core.user.model.UserRole;
+import com.plura.plurabackend.core.user.repository.UserRepository;
 import com.plura.plurabackend.professional.model.ProfessionalProfile;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
@@ -21,9 +23,14 @@ import org.springframework.web.server.ResponseStatusException;
 public class CurrentActorService {
 
     private final ProfessionalAccountProfileGateway professionalAccountProfileGateway;
+    private final UserRepository userRepository;
 
-    public CurrentActorService(ProfessionalAccountProfileGateway professionalAccountProfileGateway) {
+    public CurrentActorService(
+        ProfessionalAccountProfileGateway professionalAccountProfileGateway,
+        UserRepository userRepository
+    ) {
         this.professionalAccountProfileGateway = professionalAccountProfileGateway;
+        this.userRepository = userRepository;
     }
 
     /**
@@ -107,7 +114,13 @@ public class CurrentActorService {
         if (ctx != AuthContextType.CLIENT) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Solo clientes");
         }
-        return currentUserId();
+        Long userId = currentUserId();
+        User user = userRepository.findByIdAndDeletedAtIsNull(userId)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Usuario no encontrado"));
+        if (Boolean.FALSE.equals(user.getClientActive())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Perfil cliente inhabilitado");
+        }
+        return userId;
     }
 
     /**

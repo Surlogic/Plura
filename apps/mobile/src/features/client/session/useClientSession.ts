@@ -5,6 +5,8 @@ export const useClientSession = () => {
 
   return {
     clientProfile: session.clientProfile,
+    activeContext: session.activeContext,
+    contexts: session.contexts,
     hasLoaded: session.hasLoaded,
     isAuthenticated: session.isAuthenticated,
     isClient: session.role === 'client',

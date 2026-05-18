@@ -10,6 +10,9 @@ import static org.mockito.Mockito.when;
 
 import com.plura.plurabackend.core.availability.AvailableSlotAsyncDispatcher;
 import com.plura.plurabackend.core.availability.ScheduleSummaryService;
+import com.plura.plurabackend.core.auth.context.AuthContextDescriptor;
+import com.plura.plurabackend.core.auth.context.AuthContextResolver;
+import com.plura.plurabackend.core.auth.context.AuthContextType;
 import com.plura.plurabackend.core.availability.repository.AvailableSlotRepository;
 import com.plura.plurabackend.core.billing.BillingService;
 import com.plura.plurabackend.core.booking.model.Booking;
@@ -41,6 +44,7 @@ import org.junit.jupiter.api.Test;
 class AccountDeletionServiceTest {
 
     private final UserRepository userRepository = mock(UserRepository.class);
+    private final AuthContextResolver authContextResolver = mock(AuthContextResolver.class);
     private final ProfessionalAccountLifecycleGateway professionalAccountLifecycleGateway =
         mock(ProfessionalAccountLifecycleGateway.class);
     private final BookingRepository bookingRepository = mock(BookingRepository.class);
@@ -56,6 +60,7 @@ class AccountDeletionServiceTest {
 
     private final AccountDeletionService service = new AccountDeletionService(
         userRepository,
+        authContextResolver,
         professionalAccountLifecycleGateway,
         bookingRepository,
         billingService,
@@ -121,6 +126,7 @@ class AccountDeletionServiceTest {
         mockExecuteUpdateQuery("DELETE FROM PasswordResetToken token WHERE token.user.id = :userId");
         mockExecuteUpdateQuery("DELETE FROM RefreshToken token WHERE token.user.id = :userId");
         mockExecuteUpdateQuery("DELETE FROM ClientFavoriteProfessional favorite WHERE favorite.clientUser.id = :userId");
+        mockExecuteUpdateQuery("DELETE FROM ClientPushDevice device WHERE device.user.id = :userId");
         mockExecuteUpdateQuery("DELETE FROM AppFeedback feedback WHERE feedback.author.id = :userId");
         mockExecuteUpdateQuery("DELETE FROM User user WHERE user.id = :userId");
 
@@ -190,6 +196,7 @@ class AccountDeletionServiceTest {
         mockExecuteUpdateQuery("DELETE FROM PasswordResetToken token WHERE token.user.id = :userId");
         mockExecuteUpdateQuery("DELETE FROM RefreshToken token WHERE token.user.id = :userId");
         mockExecuteUpdateQuery("DELETE FROM ClientFavoriteProfessional favorite WHERE favorite.clientUser.id = :userId");
+        mockExecuteUpdateQuery("DELETE FROM ClientPushDevice device WHERE device.user.id = :userId");
         mockExecuteUpdateQuery("DELETE FROM AppFeedback feedback WHERE feedback.author.id = :userId");
         mockExecuteUpdateQuery(
             "DELETE FROM ProfessionalPaymentProviderConnection connection WHERE connection.professionalId = :professionalId"
@@ -262,6 +269,47 @@ class AccountDeletionServiceTest {
         verify(slotCacheService).evictByPrefix("slots:60:");
         verify(searchSyncPublisher).publishProfileChanged(60L);
         verify(imageCleanupService, never()).deleteIfRemoved(any());
+        verify(entityManager, never()).createQuery("DELETE FROM User user WHERE user.id = :userId");
+        verify(entityManager, never()).createQuery("DELETE FROM AuthSession session WHERE session.user.id = :userId");
+    }
+
+    @Test
+    void closesClientProfileWithoutDeletingUserOrProfessionalArtifacts() {
+        User user = professionalUser(70L, "dual-client@plura.com");
+        user.setClientActive(true);
+        when(userRepository.findByIdAndDeletedAtIsNull(70L)).thenReturn(Optional.of(user));
+        when(authContextResolver.resolve(user)).thenReturn(List.of(
+            new AuthContextDescriptor(AuthContextType.CLIENT, null, null, null, null, null, false),
+            new AuthContextDescriptor(AuthContextType.PROFESSIONAL, "80", "Dual", "dual", null, null, true)
+        ));
+        when(bookingRepository.findByUser_IdAndOperationalStatusInAndStartDateTimeGreaterThanEqual(
+            eq(70L),
+            any(),
+            any()
+        )).thenReturn(List.of());
+
+        mockLongListQuery(
+            "SELECT booking.id FROM Booking booking WHERE booking.user.id = :userId",
+            List.of()
+        );
+        mockStringListQuery(
+            "SELECT event.id FROM NotificationEvent event WHERE event.recipientType = :recipientType AND event.recipientId = :recipientId",
+            List.of()
+        );
+        mockExecuteUpdateQuery(
+            "DELETE FROM AppNotification notification WHERE notification.recipientType = :recipientType AND notification.recipientId = :recipientId"
+        );
+        mockExecuteUpdateQuery("DELETE FROM ClientFavoriteProfessional favorite WHERE favorite.clientUser.id = :userId");
+        mockExecuteUpdateQuery("DELETE FROM ClientPushDevice device WHERE device.user.id = :userId");
+        mockExecuteUpdateQuery(
+            "DELETE FROM AppFeedback feedback WHERE feedback.author.id = :userId AND feedback.authorRole = :authorRole"
+        );
+
+        service.closeClientProfile("70");
+
+        verify(userRepository).save(user);
+        verify(billingService, never()).cancelSubscriptionForProfessionalId(any(), eq(true));
+        verify(professionalAccountLifecycleGateway, never()).cleanupProfessionalMedia(any());
         verify(entityManager, never()).createQuery("DELETE FROM User user WHERE user.id = :userId");
         verify(entityManager, never()).createQuery("DELETE FROM AuthSession session WHERE session.user.id = :userId");
     }

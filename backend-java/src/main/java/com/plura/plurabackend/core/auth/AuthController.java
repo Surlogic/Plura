@@ -875,6 +875,9 @@ public class AuthController {
         HttpServletRequest httpRequest
     ) {
         Authentication activeAuthentication = requireAuthentication();
+        if (currentActorService.currentContextType() != AuthContextType.PROFESSIONAL) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Solo podés cerrar el perfil profesional desde el contexto profesional");
+        }
         if (request == null || request.getChallengeId() == null || request.getCode() == null) {
             throw new AuthApiException(
                 HttpStatus.CONFLICT,
@@ -892,6 +895,41 @@ public class AuthController {
             httpRequest == null ? null : httpRequest.getHeader("User-Agent")
         );
         accountDeletionService.closeProfessionalProfile(activeAuthentication.getPrincipal().toString());
+        return ResponseEntity.noContent()
+            .header(HttpHeaders.CACHE_CONTROL, "no-store")
+            .build();
+    }
+
+    /**
+     * Endpoint DELETE /client-profile: cierra solo la faceta cliente de la cuenta actual.
+     */
+    @DeleteMapping("/client-profile")
+    public ResponseEntity<Void> closeClientProfile(
+        @RequestBody(required = false) CloseProfessionalProfileRequest request,
+        Authentication authentication,
+        HttpServletRequest httpRequest
+    ) {
+        Authentication activeAuthentication = requireAuthentication();
+        if (currentActorService.currentContextType() != AuthContextType.CLIENT) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Solo podés cerrar el perfil cliente desde el contexto cliente");
+        }
+        if (request == null || request.getChallengeId() == null || request.getCode() == null) {
+            throw new AuthApiException(
+                HttpStatus.CONFLICT,
+                "CHALLENGE_REQUIRED",
+                "Necesitás verificar un challenge OTP para cerrar el perfil cliente."
+            );
+        }
+        otpChallengeService.verifyChallengeOrAllowPreviouslyVerified(
+            activeAuthentication.getPrincipal().toString(),
+            resolveAuthenticatedSessionId(activeAuthentication),
+            request.getChallengeId(),
+            request.getCode(),
+            OtpChallengePurpose.ACCOUNT_DELETION,
+            extractClientIp(httpRequest),
+            httpRequest == null ? null : httpRequest.getHeader("User-Agent")
+        );
+        accountDeletionService.closeClientProfile(activeAuthentication.getPrincipal().toString());
         return ResponseEntity.noContent()
             .header(HttpHeaders.CACHE_CONTROL, "no-store")
             .build();

@@ -14,7 +14,7 @@ import {
   getProfessionalBookingPolicy,
   updateProfessionalBookingPolicy,
 } from '@/services/professionalBookingPolicy';
-import { ensureAuthContext } from '@/lib/auth/contexts';
+import { selectAuthContext } from '@/lib/auth/contexts';
 import api from '@/services/api';
 import { clearFavoriteProfessionals } from '@/services/clientFeatures';
 import { clearAuthAccessToken } from '@/services/session';
@@ -215,7 +215,7 @@ export default function ProfesionalSettingsPage() {
       });
       clearProfile();
       try {
-        await ensureAuthContext('CLIENT');
+        await selectAuthContext('CLIENT');
         await refreshClientProfile();
         await router.replace('/cliente/inicio');
       } catch {

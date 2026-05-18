@@ -1,12 +1,20 @@
 import { useEffect, useState } from 'react';
 import { Alert } from 'react-native';
+import { router } from 'expo-router';
 import { useProfessionalSession } from '../session/useProfessionalSession';
 import api from '../../../services/api';
 import { getApiErrorMessage } from '../../../services/errors';
 import {
+  fetchAuthMe,
+  selectContext,
+  type AuthContextDescriptor,
+} from '../../../services/authContext';
+import { setSession } from '../../../services/session';
+import {
   getProfessionalBookingPolicy,
   updateProfessionalBookingPolicy,
 } from '../../../services/bookingPolicy';
+import { homeRouteForContext } from '../../shared/auth/routes';
 import type { ProfessionalBookingPolicy } from '../../../types/bookings';
 
 export const useProfessionalSettings = () => {
@@ -34,6 +42,22 @@ export const useProfessionalSettings = () => {
   const [isLoadingBookingPolicy, setIsLoadingBookingPolicy] = useState(false);
   const [isSavingBookingPolicy, setIsSavingBookingPolicy] = useState(false);
   const [bookingPolicyMessage, setBookingPolicyMessage] = useState<string | null>(null);
+
+  const switchToRemainingContext = async (): Promise<boolean> => {
+    const me = await fetchAuthMe();
+    const remainingContext = (me.contexts ?? []).find(
+      (descriptor) => descriptor.type !== 'PROFESSIONAL',
+    );
+    if (!remainingContext) return false;
+
+    const response = await selectContext(toSelectContextPayload(remainingContext));
+    if (response.accessToken) {
+      await setSession({ accessToken: response.accessToken });
+    }
+    await session.refreshProfile();
+    router.replace(homeRouteForContext(response.activeContext ?? remainingContext));
+    return true;
+  };
 
   useEffect(() => {
     const loadPolicy = async () => {
@@ -86,8 +110,8 @@ export const useProfessionalSettings = () => {
     }
 
     Alert.alert(
-      'Eliminar cuenta',
-      'Si tienes una suscripcion activa, se dara de baja antes de eliminar tu cuenta. Esta accion no se puede deshacer.',
+      'Eliminar perfil profesional',
+      'Si tienes una suscripcion activa, se dara de baja antes de eliminar tu perfil profesional. Tu cuenta cliente se conserva.',
       [
         { text: 'Cancelar', style: 'cancel' },
         {
@@ -96,16 +120,18 @@ export const useProfessionalSettings = () => {
           onPress: async () => {
             setIsDeletingAccount(true);
             try {
-              await api.delete('/auth/me', {
+              await api.delete('/auth/professional-profile', {
                 data: {
                   challengeId: deleteChallengeId,
                   code: deleteChallengeCode.trim(),
                 },
               });
-              await session.logout();
+              if (!(await switchToRemainingContext())) {
+                await session.logout();
+              }
             } catch (error) {
               Alert.alert(
-                'No se pudo eliminar la cuenta',
+                'No se pudo eliminar el perfil profesional',
                 getApiErrorMessage(error, 'Intenta nuevamente en unos minutos.'),
               );
             } finally {
@@ -243,3 +269,9 @@ export const useProfessionalSettings = () => {
     saveBookingPolicy,
   };
 };
+
+const toSelectContextPayload = (descriptor: AuthContextDescriptor) => ({
+  type: descriptor.type,
+  workerId: descriptor.workerId ?? undefined,
+  professionalId: descriptor.professionalId ?? undefined,
+});

@@ -41,7 +41,10 @@ public class AuthContextResolver {
             return List.of();
         }
         List<AuthContextDescriptor> contexts = new ArrayList<>();
-        if (user.getRole() == UserRole.USER || user.getRole() == UserRole.PROFESSIONAL) {
+        if (
+            (user.getRole() == UserRole.USER || user.getRole() == UserRole.PROFESSIONAL)
+                && !Boolean.FALSE.equals(user.getClientActive())
+        ) {
             contexts.add(new AuthContextDescriptor(AuthContextType.CLIENT, null, null, null, null, null, false));
         }
 

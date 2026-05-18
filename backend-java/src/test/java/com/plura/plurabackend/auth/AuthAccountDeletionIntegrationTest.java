@@ -293,12 +293,13 @@ class AuthAccountDeletionIntegrationTest {
         profile.setActive(true);
         professionalProfileRepository.save(profile);
 
-        MvcResult loginResult = mockMvc.perform(post("/auth/login/cliente")
+        MvcResult loginResult = mockMvc.perform(post("/auth/login")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
                     {
                       "email": "dual-close@plura.com",
-                      "password": "Password123"
+                      "password": "Password123",
+                      "desiredContext": "PROFESSIONAL"
                     }
                     """))
             .andExpect(status().isOk())
@@ -333,6 +334,75 @@ class AuthAccountDeletionIntegrationTest {
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.contexts[?(@.type == 'CLIENT')]").exists())
             .andExpect(jsonPath("$.contexts[?(@.type == 'PROFESSIONAL')]").doesNotExist());
+    }
+
+    @Test
+    void closeClientProfileKeepsBaseUserAndProfessionalContext() throws Exception {
+        mockMvc.perform(post("/auth/register/cliente")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "fullName": "Cuenta Dual",
+                      "email": "dual-client-close@plura.com",
+                      "phoneNumber": "+5491111111111",
+                      "password": "Password123"
+                    }
+                    """))
+            .andExpect(status().isAccepted());
+
+        User user = userRepository.findByEmailAndDeletedAtIsNull("dual-client-close@plura.com").orElseThrow();
+        ProfessionalProfile profile = new ProfessionalProfile();
+        profile.setUser(user);
+        profile.setRubro("Cabello");
+        profile.setDisplayName("Cuenta Dual");
+        profile.setSlug("dual-client-close");
+        profile.setTipoCliente("SIN_LOCAL");
+        profile.setActive(true);
+        professionalProfileRepository.save(profile);
+
+        MvcResult loginResult = mockMvc.perform(post("/auth/login")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "email": "dual-client-close@plura.com",
+                      "password": "Password123",
+                      "desiredContext": "CLIENT"
+                    }
+                    """))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.activeContext.type").value("CLIENT"))
+            .andReturn();
+        String accessToken = objectMapper.readTree(loginResult.getResponse().getContentAsString())
+            .path("accessToken")
+            .asText();
+
+        String deletionCode = requestDeletionChallenge(accessToken, "EMAIL");
+        mockMvc.perform(delete("/auth/client-profile")
+                .header("Authorization", "Bearer " + accessToken)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "challengeId": "%s",
+                      "code": "%s"
+                    }
+                    """.formatted(latestChallengeId(), deletionCode)))
+            .andExpect(status().isNoContent());
+
+        User persistedUser = userRepository.findByEmailAndDeletedAtIsNull("dual-client-close@plura.com").orElseThrow();
+        Assertions.assertFalse(Boolean.TRUE.equals(persistedUser.getClientActive()));
+        Assertions.assertTrue(Boolean.TRUE.equals(
+            professionalProfileRepository.findByUser_Id(user.getId()).orElseThrow().getActive()
+        ));
+
+        mockMvc.perform(get("/auth/me")
+                .header("Authorization", "Bearer " + accessToken))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.contexts[?(@.type == 'CLIENT')]").doesNotExist())
+            .andExpect(jsonPath("$.contexts[?(@.type == 'PROFESSIONAL')]").exists());
+
+        mockMvc.perform(get("/auth/me/cliente")
+                .header("Authorization", "Bearer " + accessToken))
+            .andExpect(status().isForbidden());
     }
 
     private String requestDeletionChallenge(String accessToken, String channel) throws Exception {

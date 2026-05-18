@@ -161,7 +161,7 @@ Backend relacionado:
 - `backend-java/src/main/java/com/plura/plurabackend/professional/paymentprovider`: endpoints OAuth de Mercado Pago para conectar la cuenta del profesional.
 - `backend-java/src/main/java/com/plura/plurabackend/core/billing/providerconnection`: persistencia y servicio de conexiones OAuth del provider.
 - `backend-java/src/main/java/com/plura/plurabackend/core/auth`: `POST /auth/professional-profile/activate` permite que una cuenta cliente autenticada active o reactive `ProfessionalProfile` sobre el mismo `app_user`; el frontend debe usarlo durante onboarding profesional despues de login cuando el email ya existe.
-- `backend-java/src/main/java/com/plura/plurabackend/core/account`: `DELETE /auth/professional-profile` cierra solo la faceta profesional con OTP y conserva la cuenta cliente; `DELETE /auth/me` queda reservado para eliminacion total explicita con `scope=TOTAL`.
+- `backend-java/src/main/java/com/plura/plurabackend/core/account`: `DELETE /auth/professional-profile` cierra solo la faceta profesional con OTP, `DELETE /auth/client-profile` cierra solo la faceta cliente cuando queda otro contexto activo y `DELETE /auth/me` queda reservado para eliminacion total explicita con `scope=TOTAL`.
 
 Lectura de producto:
 
@@ -176,7 +176,7 @@ Lectura de producto:
 - reseñas implementadas: CTA en sidebar de reserva `COMPLETED`, formulario con rating `1-5` y texto opcional, review existente visible con opcion de eliminar; proteccion contra race conditions con patron `isActive`; la elegibilidad real sigue viniendo de backend y exige ownership + ausencia de reseña previa + `booking.status == COMPLETED` + ventana de `7` dias desde `completedAt`
 - la web cliente ahora muestra un reminder in-app de reseña en `/cliente/inicio` y `/cliente/reservas` con `components/cliente/reviews/ClientReviewReminderCard`; la card navega a `/cliente/reservas?bookingId={id}`, deja `Mas tarde` como cierre local de la vista actual y delega toda la cadencia en backend: maximo `1` reminder por dia, `3` por reserva y solo dentro de la misma ventana de `7` dias
 - feedback de app integrado en `/cliente/configuracion` con formulario de rating, categoria opcional y texto libre; incluye historial paginado de feedback propio
-- `/cliente/configuracion` ahora requiere challenge OTP por email para eliminar la cuenta completa; llama `DELETE /auth/me` con `scope=TOTAL`, muestra codigo enmascarado y advierte que elimina la cuenta Plura completa, incluyendo cliente, profesional, sesiones y datos asociados.
+- `/cliente/configuracion` ahora requiere challenge OTP por email para bajas sensibles: si la cuenta solo tiene contexto cliente llama `DELETE /auth/me` con `scope=TOTAL`; si conserva otro contexto activo, llama `DELETE /auth/client-profile`, borra solo la faceta cliente y deriva al contexto restante.
 - `ClientNotificationsContext` ya no rompe fuera del provider; devuelve defaults seguros (unreadCount=0, noop callbacks) para degradar sin crash en rutas publicas
 - `/cliente/auth/login`, `/cliente/auth/register` y el overlay de reserva ya no redirigen por `role=PROFESSIONAL`; fuerzan o seleccionan `ctx=CLIENT` cuando la intención es reservar o entrar al área cliente
 - todavia faltan piezas visibles para beneficios y settings de notificaciones
@@ -235,6 +235,7 @@ Lectura de producto:
 - esta area concentra el valor de `Profesional` y buena parte de `Local`
 - `servicios`, `horarios`, `reservas`, `perfil-negocio` y `notificaciones` son el corazon operativo
 - `acceso`, `billing` y `configuracion` viven separados dentro del grupo `Cuenta` del sidebar; `acceso` concentra email, slug publico, sesion actual y logout, mientras `configuracion` queda para seguridad, politicas, apariencia y acciones sensibles
+- `/profesional/dashboard/configuracion` cierra solo la faceta profesional con `DELETE /auth/professional-profile` desde `ctx=PROFESSIONAL`; si la misma cuenta tambien conserva cliente, cambia explicitamente a `ctx=CLIENT` al terminar.
 - el multiequipo ya tiene puntos clave armados en web y mobile:
   - backend de equipo (`/profesional/team*`)
   - pantalla aceptar invitacion `/trabajador/invitacion` (web) y `/(auth)/worker-invitation` (mobile)
@@ -359,7 +360,7 @@ Base: `apps/mobile/app`
 
 - `app/index.tsx`: si hay sesion profesional redirige a `/dashboard`, si hay sesion cliente entra al shell principal por `/(tabs)` para dejar que Expo Router resuelva la tab inicial sin exponer `index` en el deep link, y si no hay sesion muestra una portada mobile con logo Plura y CTAs `Iniciar como cliente` / `Iniciar como profesional`.
 - `app/_layout.tsx`: monta `AuthSessionProvider` desde `src/context/auth/AuthSessionContext.tsx` y el stack principal.
-- el logout mobile ahora deriva al login correcto por rol activo (`/(auth)/login-client` o `/(auth)/login-professional`) para no mezclar los accesos despues de limpiar sesion
+- el logout mobile limpia sesion y vuelve a la portada publica `/`, desde donde el acceso vuelve a pasar por el login unificado.
 - `app/+native-intent.tsx` y `app/+not-found.tsx` ahora normalizan entradas nativas vacias o stale (`plura:///`, `plura://index`, `plura:///(tabs)/index`) para que el arranque release no caiga en `Unmatched Route`
 
 ### Grupo `(tabs)`
@@ -443,7 +444,7 @@ Lectura de producto:
 
 - `/profesional/[slug]`: redirect temporal al perfil publico canonico `/profesional/pagina/[slug]`.
 - `/reservar`: flujo de reserva.
-- `/(tabs)/settings`: configuración cliente dentro del shell cliente, con preferencias, push, seguridad y baja de cuenta, sin una rama `/client` aparte.
+- `/(tabs)/settings`: configuración cliente dentro del shell cliente, con preferencias, push, seguridad y baja de cuenta; si la identidad conserva otro contexto, elimina solo la faceta cliente y cambia al contexto restante, y si no queda otro acceso usa la baja total.
 
 ### Modulos transversales mobile
 
@@ -468,12 +469,12 @@ Lectura de producto:
 - `src/features/client/navigation/ClientTabsLayout.tsx`: barra inferior y guard de tabs cliente, separada del routing Expo.
 - `src/features/client/screens/*`: implementaciones reales de `home`, `explore`, `favorites`, `bookings`, `notifications` y `profile` del cliente.
 - `src/features/client/screens/SettingsScreen.tsx`: preferencias, push, verificaciones, seguridad y baja de cuenta del cliente.
-- `src/features/client/hooks/useClientSettings.ts`: estado, efectos y mutaciones de configuración cliente fuera de la screen.
+- `src/features/client/hooks/useClientSettings.ts`: estado, efectos y mutaciones de configuración cliente fuera de la screen, incluida la baja por contexto (`/auth/client-profile`) o total (`/auth/me`) según accesos restantes.
 - `src/features/client/session/useClientSession.ts`: facade de sesion cliente; expone solo estado y acciones del lado usuario para no arrastrar `profile` profesional dentro de features cliente.
 - `src/features/professional/auth/*`: login, registro y complete-phone profesional con salida directa a `/dashboard`.
 - `src/features/professional/screens/*`: implementaciones reales de `agenda`, `services`, `business-profile`, `billing`, `schedule`, `settings`, `notifications` y redirect inicial del dashboard profesional.
 - `src/features/professional/screens/SettingsScreen.tsx`: ya no toca preferencias cliente; queda reservado a seguridad/verificaciones del profesional y política de reservas.
-- `src/features/professional/hooks/useProfessionalSettings.ts`: estado, efectos y mutaciones de configuración profesional fuera de la screen.
+- `src/features/professional/hooks/useProfessionalSettings.ts`: estado, efectos y mutaciones de configuración profesional fuera de la screen; la baja usa `/auth/professional-profile` y deriva al contexto restante sin borrar la identidad base.
 - `src/features/professional/hooks/useProfessionalAgenda.ts`: estado, carga, acciones y formularios operativos de agenda/reservas fuera de la screen.
 - `src/features/professional/session/useProfessionalSession.ts`: facade de sesion profesional; expone solo estado y acciones del lado negocio para no arrastrar `clientProfile` dentro de features profesionales.
 - `src/hooks/useGoogleOAuth.ts`: en Android usa `@react-native-google-signin/google-signin` para evitar `invalid_request` del flujo web y forzar chooser nativo de cuentas; en iOS/web mantiene `expo-auth-session` y soporta token directo o authorization code segun lo que devuelva Google

@@ -82,6 +82,9 @@ public class User {
     @Column(name = "deleted_at")
     private LocalDateTime deletedAt;
 
+    @Column(name = "client_active", nullable = false)
+    private Boolean clientActive = true;
+
     @PrePersist
     void onCreate() {
         if (this.createdAt == null) {
@@ -89,6 +92,9 @@ public class User {
         }
         if (this.sessionVersion == null || this.sessionVersion < 1) {
             this.sessionVersion = 1;
+        }
+        if (this.clientActive == null) {
+            this.clientActive = true;
         }
     }
 }

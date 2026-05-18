@@ -7,6 +7,8 @@ import static org.mockito.Mockito.when;
 import com.plura.plurabackend.core.auth.context.AuthContextType;
 import com.plura.plurabackend.core.professional.ProfessionalAccountProfileGateway;
 import com.plura.plurabackend.core.security.jwt.AuthenticatedTokenDetails;
+import com.plura.plurabackend.core.user.model.User;
+import com.plura.plurabackend.core.user.repository.UserRepository;
 import com.plura.plurabackend.professional.model.ProfessionalProfile;
 import java.util.List;
 import java.util.Optional;
@@ -26,6 +28,8 @@ class CurrentActorServiceTest {
 
     @Mock
     private ProfessionalAccountProfileGateway professionalAccountProfileGateway;
+    @Mock
+    private UserRepository userRepository;
 
     @AfterEach
     void clearSecurityContext() {
@@ -34,19 +38,23 @@ class CurrentActorServiceTest {
 
     @Test
     void professionalRoleWithClientContextCanActAsClient() {
-        CurrentActorService service = new CurrentActorService(professionalAccountProfileGateway);
+        CurrentActorService service = new CurrentActorService(professionalAccountProfileGateway, userRepository);
         authenticate(
             "42",
             "ROLE_PROFESSIONAL",
             new AuthenticatedTokenDetails("session", 1, false, AuthContextType.CLIENT, null, null)
         );
+        User user = new User();
+        user.setId(42L);
+        user.setClientActive(true);
+        when(userRepository.findByIdAndDeletedAtIsNull(42L)).thenReturn(Optional.of(user));
 
         assertEquals(42L, service.currentClientUserId());
     }
 
     @Test
     void professionalContextWithActiveProfileCanActAsProfessional() {
-        CurrentActorService service = new CurrentActorService(professionalAccountProfileGateway);
+        CurrentActorService service = new CurrentActorService(professionalAccountProfileGateway, userRepository);
         authenticate(
             "42",
             "ROLE_USER",
@@ -62,7 +70,7 @@ class CurrentActorServiceTest {
 
     @Test
     void professionalContextWithoutActiveProfileFails() {
-        CurrentActorService service = new CurrentActorService(professionalAccountProfileGateway);
+        CurrentActorService service = new CurrentActorService(professionalAccountProfileGateway, userRepository);
         authenticate(
             "42",
             "ROLE_USER",

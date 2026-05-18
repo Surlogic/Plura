@@ -2,6 +2,8 @@ package com.plura.plurabackend.core.account;
 
 import com.plura.plurabackend.core.availability.AvailableSlotAsyncDispatcher;
 import com.plura.plurabackend.core.availability.ScheduleSummaryService;
+import com.plura.plurabackend.core.auth.context.AuthContextResolver;
+import com.plura.plurabackend.core.auth.context.AuthContextType;
 import com.plura.plurabackend.core.availability.repository.AvailableSlotRepository;
 import com.plura.plurabackend.core.billing.BillingService;
 import com.plura.plurabackend.core.booking.model.Booking;
@@ -9,6 +11,7 @@ import com.plura.plurabackend.core.booking.model.BookingOperationalStatus;
 import com.plura.plurabackend.core.booking.repository.BookingRepository;
 import com.plura.plurabackend.core.cache.ProfileCacheService;
 import com.plura.plurabackend.core.cache.SlotCacheService;
+import com.plura.plurabackend.core.feedback.model.AuthorRole;
 import com.plura.plurabackend.core.notification.model.NotificationRecipientType;
 import com.plura.plurabackend.core.professional.ProfessionalAccountLifecycleGateway;
 import com.plura.plurabackend.core.professional.ProfessionalAccountSubject;
@@ -48,6 +51,7 @@ public class AccountDeletionService {
     );
 
     private final UserRepository userRepository;
+    private final AuthContextResolver authContextResolver;
     private final ProfessionalAccountLifecycleGateway professionalAccountLifecycleGateway;
     private final BookingRepository bookingRepository;
     private final BillingService billingService;
@@ -63,6 +67,7 @@ public class AccountDeletionService {
 
     public AccountDeletionService(
         UserRepository userRepository,
+        AuthContextResolver authContextResolver,
         ProfessionalAccountLifecycleGateway professionalAccountLifecycleGateway,
         BookingRepository bookingRepository,
         BillingService billingService,
@@ -77,6 +82,7 @@ public class AccountDeletionService {
         @Value("${app.timezone:America/Montevideo}") String appTimezone
     ) {
         this.userRepository = userRepository;
+        this.authContextResolver = authContextResolver;
         this.professionalAccountLifecycleGateway = professionalAccountLifecycleGateway;
         this.bookingRepository = bookingRepository;
         this.billingService = billingService;
@@ -128,6 +134,38 @@ public class AccountDeletionService {
     }
 
     /**
+     * Cierra la faceta cliente sin borrar la cuenta base cuando queda otro contexto disponible.
+     */
+    @Transactional
+    public void closeClientProfile(String rawUserId) {
+        Long userId = parseUserId(rawUserId);
+        User user = userRepository.findByIdAndDeletedAtIsNull(userId)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Usuario no encontrado"));
+
+        boolean hasAlternativeContext = authContextResolver.resolve(user).stream()
+            .anyMatch(context -> context.type() != AuthContextType.CLIENT);
+        if (!hasAlternativeContext) {
+            throw new ResponseStatusException(
+                HttpStatus.CONFLICT,
+                "No podés cerrar el perfil cliente si es el único contexto activo"
+            );
+        }
+        if (Boolean.FALSE.equals(user.getClientActive())) {
+            return;
+        }
+
+        LocalDateTime now = LocalDateTime.now(appZoneId);
+        List<BookingAvailabilityImpact> futureBookingImpacts = snapshotBookingAvailabilityImpacts(
+            bookingRepository.findByUser_IdAndOperationalStatusInAndStartDateTimeGreaterThanEqual(
+                user.getId(),
+                ACTIVE_BOOKING_STATUSES,
+                now
+            )
+        );
+        closeClientFacet(user, futureBookingImpacts);
+    }
+
+    /**
      * Elimina la cuenta de cliente y limpia relaciones o datos derivados cuando corresponde.
      * Tambien concentra los efectos secundarios para que el flujo quede en un estado consistente.
      */
@@ -176,6 +214,27 @@ public class AccountDeletionService {
         flushAndClearPersistenceContext();
         professionalAccountLifecycleGateway.deactivateProfessionalProfile(subject);
         searchSyncPublisher.publishProfileChanged(subject.professionalId());
+    }
+
+    /**
+     * Cierra faceta cliente sin tocar cuenta base ni datos profesionales.
+     */
+    private void closeClientFacet(User user, List<BookingAvailabilityImpact> futureBookingImpacts) {
+        List<Long> bookingIds = findBookingIdsForUser(user.getId());
+
+        purgeBookingGraph(bookingIds);
+        purgeNotificationArtifactsForRecipient(
+            NotificationRecipientType.CLIENT,
+            String.valueOf(user.getId()),
+            user.getEmail(),
+            false
+        );
+        purgeClientOwnedArtifacts(user.getId());
+
+        user.setClientActive(false);
+        userRepository.save(user);
+
+        refreshAvailabilityAfterClientBookingRemoval(futureBookingImpacts);
     }
 
     /**
@@ -383,7 +442,20 @@ public class AccountDeletionService {
      */
     private void purgeUserOwnedArtifacts(Long userId) {
         bulkDelete("DELETE FROM ClientFavoriteProfessional favorite WHERE favorite.clientUser.id = :userId", "userId", userId);
+        bulkDelete("DELETE FROM ClientPushDevice device WHERE device.user.id = :userId", "userId", userId);
         bulkDelete("DELETE FROM AppFeedback feedback WHERE feedback.author.id = :userId", "userId", userId);
+    }
+
+    /**
+     * Limpia datos propios de la faceta cliente sin tocar artefactos profesionales del mismo usuario.
+     */
+    private void purgeClientOwnedArtifacts(Long userId) {
+        bulkDelete("DELETE FROM ClientFavoriteProfessional favorite WHERE favorite.clientUser.id = :userId", "userId", userId);
+        bulkDelete("DELETE FROM ClientPushDevice device WHERE device.user.id = :userId", "userId", userId);
+        bulkDelete(
+            "DELETE FROM AppFeedback feedback WHERE feedback.author.id = :userId AND feedback.authorRole = :authorRole",
+            Map.of("userId", userId, "authorRole", AuthorRole.CLIENT)
+        );
     }
 
     /**

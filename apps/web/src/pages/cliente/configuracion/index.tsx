@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { isAxiosError } from 'axios';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
@@ -13,6 +13,19 @@ import AppFeedbackHistory from '@/components/shared/AppFeedbackHistory';
 import { clearFavoriteProfessionals } from '@/services/clientFeatures';
 import api from '@/services/api';
 import { clearAuthAccessToken } from '@/services/session';
+import {
+  fetchAuthMe,
+  selectAuthContext,
+  type AuthContextDescriptor,
+} from '@/lib/auth/contexts';
+
+type ClientDeletionMode = 'CLIENT_ONLY' | 'TOTAL';
+
+const dashboardForContext = (context: AuthContextDescriptor) => {
+  if (context.type === 'PROFESSIONAL') return '/profesional/dashboard';
+  if (context.type === 'WORKER') return '/trabajador/calendario';
+  return '/login';
+};
 
 export default function ClienteConfiguracionPage() {
   const router = useRouter();
@@ -42,6 +55,9 @@ export default function ClienteConfiguracionPage() {
   const [phoneVerificationError, setPhoneVerificationError] = useState<string | null>(null);
   const [isSendingPhoneVerification, setIsSendingPhoneVerification] = useState(false);
   const [isConfirmingPhoneVerification, setIsConfirmingPhoneVerification] = useState(false);
+  const [clientDeletionMode, setClientDeletionMode] = useState<ClientDeletionMode | null>(null);
+  const [remainingContextAfterClientClose, setRemainingContextAfterClientClose] =
+    useState<AuthContextDescriptor | null>(null);
   const panelClassName =
     'rounded-[24px] border border-[color:var(--border-soft)] bg-[color:var(--surface)] p-5 shadow-[var(--shadow-card)]';
   const fieldClassName =
@@ -70,6 +86,26 @@ export default function ClienteConfiguracionPage() {
     setDeleteChallengeMessage(null);
     setIsDeleteChallengeVerified(false);
   };
+
+  useEffect(() => {
+    let cancelled = false;
+
+    fetchAuthMe()
+      .then((response) => {
+        if (cancelled) return;
+        const remainingContext = response.contexts?.find((context) => context.type !== 'CLIENT') ?? null;
+        setRemainingContextAfterClientClose(remainingContext);
+        setClientDeletionMode(remainingContext ? 'CLIENT_ONLY' : 'TOTAL');
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setDeleteError('No pudimos verificar tus contextos disponibles. Recargá la página e intentá de nuevo.');
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const handleChangePassword = async () => {
     if (isChangingPassword) return;
@@ -114,8 +150,14 @@ export default function ClienteConfiguracionPage() {
       setDeleteError('Primero validá el código antes de eliminar la cuenta.');
       return;
     }
+    if (!clientDeletionMode) {
+      setDeleteError('Todavía estamos verificando tus contextos disponibles.');
+      return;
+    }
     const confirmed = window.confirm(
-      'Esto elimina tu cuenta Plura completa, incluyendo cliente, profesional, sesiones y datos asociados. Esta acción no se puede deshacer.',
+      clientDeletionMode === 'CLIENT_ONLY'
+        ? 'Esto elimina solo tu perfil cliente, tus reservas, favoritos y datos asociados como cliente. Tu otro contexto se conserva. Esta acción no se puede deshacer.'
+        : 'Esto elimina tu cuenta Plura completa, incluyendo cliente, profesional, sesiones y datos asociados. Esta acción no se puede deshacer.',
     );
     if (!confirmed) return;
 
@@ -123,16 +165,34 @@ export default function ClienteConfiguracionPage() {
     setDeleteError(null);
     setDeleteSuccessMessage(null);
     try {
-      await api.delete('/auth/me', {
-        data: {
-          scope: 'TOTAL',
-          challengeId: deleteChallengeId,
-          code: deleteChallengeCode.trim(),
-        },
-      });
-      clearAuthAccessToken();
+      if (clientDeletionMode === 'CLIENT_ONLY') {
+        await api.delete('/auth/client-profile', {
+          data: {
+            challengeId: deleteChallengeId,
+            code: deleteChallengeCode.trim(),
+          },
+        });
+      } else {
+        await api.delete('/auth/me', {
+          data: {
+            scope: 'TOTAL',
+            challengeId: deleteChallengeId,
+            code: deleteChallengeCode.trim(),
+          },
+        });
+      }
       clearFavoriteProfessionals();
       clearProfile();
+      if (clientDeletionMode === 'CLIENT_ONLY' && remainingContextAfterClientClose) {
+        try {
+          await selectAuthContext(remainingContextAfterClientClose);
+          await router.replace(dashboardForContext(remainingContextAfterClientClose));
+          return;
+        } catch {
+          // Si el cambio de contexto falla, volvemos al login unificado.
+        }
+      }
+      clearAuthAccessToken();
       await router.replace('/login');
     } catch (error) {
       setDeleteError(
@@ -439,9 +499,13 @@ export default function ClienteConfiguracionPage() {
         <article className={dangerPanelClassName}>
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div className="max-w-xl">
-              <p className="text-sm font-semibold text-[color:var(--error)]">Eliminar cuenta completa</p>
+              <p className="text-sm font-semibold text-[color:var(--error)]">
+                {clientDeletionMode === 'CLIENT_ONLY' ? 'Eliminar perfil cliente' : 'Eliminar cuenta completa'}
+              </p>
               <p className="mt-1 text-xs text-[color:var(--ink-muted)]">
-                Esto elimina tu cuenta Plura completa, incluyendo cliente, profesional, sesiones y datos asociados.
+                {clientDeletionMode === 'CLIENT_ONLY'
+                  ? 'Esto elimina solo tu perfil cliente, reservas, favoritos y datos asociados como cliente. Tu otro contexto se conserva.'
+                  : 'Esto elimina tu cuenta Plura completa, incluyendo cliente, profesional, sesiones y datos asociados.'}
               </p>
             </div>
             <button
@@ -456,10 +520,14 @@ export default function ClienteConfiguracionPage() {
                 setDeleteError(null);
                 setDeleteSuccessMessage(null);
               }}
-              disabled={isDeletingAccount || isSendingDeleteChallenge || isVerifyingDeleteChallenge}
+              disabled={!clientDeletionMode || isDeletingAccount || isSendingDeleteChallenge || isVerifyingDeleteChallenge}
               className={dangerButtonClassName}
             >
-              {isDeleteFlowOpen ? 'Cancelar' : 'Eliminar cuenta completa'}
+              {isDeleteFlowOpen
+                ? 'Cancelar'
+                : clientDeletionMode === 'CLIENT_ONLY'
+                  ? 'Eliminar perfil cliente'
+                  : 'Eliminar cuenta completa'}
             </button>
           </div>
 
@@ -527,7 +595,9 @@ export default function ClienteConfiguracionPage() {
                   <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[color:var(--ink-faint)]">Paso 3</p>
                   <p className="mt-1 text-sm font-semibold text-[color:var(--ink)]">Confirmar eliminación</p>
                   <p className="mt-1 text-xs text-[color:var(--ink-muted)]">
-                    Esto elimina tu cuenta Plura completa, incluyendo cliente, profesional, sesiones y datos asociados.
+                    {clientDeletionMode === 'CLIENT_ONLY'
+                      ? 'Esto elimina solo tu perfil cliente. Tu otro contexto se conserva.'
+                      : 'Esto elimina tu cuenta Plura completa, incluyendo cliente, profesional, sesiones y datos asociados.'}
                   </p>
                   <button
                     type="button"
@@ -537,7 +607,11 @@ export default function ClienteConfiguracionPage() {
                     disabled={!isDeleteChallengeVerified || isDeletingAccount}
                     className={`${dangerButtonClassName} mt-4`}
                   >
-                    {isDeletingAccount ? 'Eliminando...' : 'Eliminar cuenta completa'}
+                    {isDeletingAccount
+                      ? 'Eliminando...'
+                      : clientDeletionMode === 'CLIENT_ONLY'
+                        ? 'Eliminar perfil cliente'
+                        : 'Eliminar cuenta completa'}
                   </button>
                 </div>
               </div>

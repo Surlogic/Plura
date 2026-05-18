@@ -359,15 +359,21 @@ public class AuthController {
      * Ejecuta la logica de login with o autenticacion manteniendola encapsulada en este componente.
      */
     @PostMapping("/oauth")
-    public ResponseEntity<RegisterResponse> loginWithOAuth(
+    public ResponseEntity<?> loginWithOAuth(
         @Valid @RequestBody OAuthLoginRequest request,
         HttpServletRequest httpRequest
     ) {
-        AuthService.AuthResult result = authService.loginWithOAuth(
+        AuthService.OAuthResult result = authService.loginWithOAuth(
             request,
             buildSessionContext(httpRequest)
         );
-        return buildAuthResponse(result, httpRequest);
+        if (result.isPendingRegistration()) {
+            return ResponseEntity.ok()
+                .header(HttpHeaders.CACHE_CONTROL, "no-store, no-cache, max-age=0, must-revalidate")
+                .header("Pragma", "no-cache")
+                .body(result.pendingRegistration());
+        }
+        return buildAuthResponse(result.auth(), httpRequest);
     }
 
     /**

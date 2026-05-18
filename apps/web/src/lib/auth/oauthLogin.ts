@@ -21,7 +21,9 @@ type OAuthUser = {
 };
 
 type OAuthResponse = {
-  accessToken: string | null;
+  accessToken?: string | null;
+  oauthRegistrationPending?: boolean;
+  oauthRegistrationToken?: string | null;
   user: OAuthUser;
 };
 
@@ -107,6 +109,15 @@ export async function oauthLogin(
   const response = await api.post<OAuthResponse>('/auth/oauth', payload);
 
   const data = response.data;
+  if (data.oauthRegistrationPending) {
+    return {
+      ...data,
+      accessToken: null,
+      role: null,
+      activeContext: null,
+      contexts: [],
+    };
+  }
   const role = extractRoleFromAccessToken(data.accessToken);
   setAuthAccessToken(data.accessToken, toKnownSessionRole(role));
   let activeContext: AuthContextDescriptor | null | undefined;

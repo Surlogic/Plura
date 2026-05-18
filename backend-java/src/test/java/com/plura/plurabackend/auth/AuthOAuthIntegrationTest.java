@@ -6,11 +6,14 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.jayway.jsonpath.JsonPath;
 import com.plura.plurabackend.core.auth.oauth.OAuthUserInfo;
 import com.plura.plurabackend.core.auth.oauth.providers.AppleTokenVerifier;
 import com.plura.plurabackend.core.auth.oauth.providers.GoogleTokenVerifier;
 import com.plura.plurabackend.core.auth.repository.AuthSessionRepository;
 import com.plura.plurabackend.core.auth.repository.RefreshTokenRepository;
+import com.plura.plurabackend.core.category.model.Category;
+import com.plura.plurabackend.core.category.repository.CategoryRepository;
 import com.plura.plurabackend.professional.repository.ProfessionalProfileRepository;
 import com.plura.plurabackend.core.user.model.User;
 import com.plura.plurabackend.core.user.model.UserRole;
@@ -24,6 +27,7 @@ import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
 
 /**
  * Tests de autenticacion, sesiones, OTP y recuperacion de cuenta.
@@ -66,6 +70,9 @@ class AuthOAuthIntegrationTest {
     private ProfessionalProfileRepository professionalProfileRepository;
 
     @Autowired
+    private CategoryRepository categoryRepository;
+
+    @Autowired
     private PasswordEncoder passwordEncoder;
 
     @MockBean
@@ -84,6 +91,7 @@ class AuthOAuthIntegrationTest {
         refreshTokenRepository.deleteAll();
         professionalProfileRepository.deleteAll();
         userRepository.deleteAll();
+        categoryRepository.deleteAll();
     }
 
     /**
@@ -133,11 +141,11 @@ class AuthOAuthIntegrationTest {
     }
 
     /**
-     * Escenario: OAuth Google crea nuevo profesional cuando desired rol profesional.
+     * Escenario: OAuth Google para registro profesional solo devuelve identidad temporal.
      * El objetivo es dejar explicita la regla que protege este test.
      */
     @Test
-    void oauthGoogleCreatesNewProfessionalWhenDesiredRoleProfessional() throws Exception {
+    void oauthGoogleRegisterWithDesiredRoleProfessionalDoesNotCreateUserOrProfile() throws Exception {
         when(googleTokenVerifier.verify("pro-google")).thenReturn(
             new OAuthUserInfo("google", "g-prof", "pro@plura.com", "Pro User", "http://img")
         );
@@ -146,14 +154,12 @@ class AuthOAuthIntegrationTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"provider\":\"google\",\"token\":\"pro-google\",\"desiredRole\":\"PROFESSIONAL\",\"authAction\":\"REGISTER\"}"))
             .andExpect(status().isOk())
-            .andExpect(jsonPath("$.accessToken").isNotEmpty())
+            .andExpect(jsonPath("$.oauthRegistrationPending").value(true))
+            .andExpect(jsonPath("$.oauthRegistrationToken").isNotEmpty())
             .andExpect(jsonPath("$.user.email").value("pro@plura.com"));
 
-        User stored = userRepository.findByEmail("pro@plura.com").orElseThrow();
-        org.junit.jupiter.api.Assertions.assertEquals(UserRole.PROFESSIONAL, stored.getRole());
-        org.junit.jupiter.api.Assertions.assertTrue(
-            professionalProfileRepository.findByUser_Id(stored.getId()).isPresent()
-        );
+        org.junit.jupiter.api.Assertions.assertEquals(0L, userRepository.count());
+        org.junit.jupiter.api.Assertions.assertEquals(0L, professionalProfileRepository.count());
     }
 
     /**
@@ -187,11 +193,11 @@ class AuthOAuthIntegrationTest {
     }
 
     /**
-     * Escenario: OAuth Google promotes existente cliente a profesional cuando desired rol profesional.
+     * Escenario: OAuth Google no promueve cliente existente durante registro profesional nuevo.
      * El objetivo es dejar explicita la regla que protege este test.
      */
     @Test
-    void oauthGooglePromotesExistingClientToProfessionalWhenDesiredRoleProfessional() throws Exception {
+    void oauthGoogleRegisterProfessionalWithExistingClientReturnsConflict() throws Exception {
         User existing = new User();
         existing.setFullName("Existing Client");
         existing.setEmail("upgrade@plura.com");
@@ -206,17 +212,102 @@ class AuthOAuthIntegrationTest {
         mockMvc.perform(post("/auth/oauth")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"provider\":\"google\",\"token\":\"google-upgrade\",\"desiredRole\":\"PROFESSIONAL\",\"authAction\":\"REGISTER\"}"))
-            .andExpect(status().isOk())
-            .andExpect(jsonPath("$.accessToken").isNotEmpty())
-            .andExpect(jsonPath("$.user.email").value("upgrade@plura.com"));
+            .andExpect(status().isConflict())
+            .andExpect(jsonPath("$.message").value("Existe una cuenta como cliente con este email. Creá una nueva para profesional o eliminá la cuenta de cliente antes de continuar."));
 
         User updated = userRepository.findByEmail("upgrade@plura.com").orElseThrow();
         org.junit.jupiter.api.Assertions.assertEquals(UserRole.USER, updated.getRole());
-        org.junit.jupiter.api.Assertions.assertEquals("google", updated.getProvider());
-        org.junit.jupiter.api.Assertions.assertEquals("g-upgrade", updated.getProviderId());
+        org.junit.jupiter.api.Assertions.assertNull(updated.getProvider());
+        org.junit.jupiter.api.Assertions.assertNull(updated.getProviderId());
         org.junit.jupiter.api.Assertions.assertTrue(
             professionalProfileRepository.findByUser_Id(updated.getId()).isEmpty()
         );
+    }
+
+    @Test
+    void registerProfessionalWithEmailPasswordCreatesProfessionalAndProfile() throws Exception {
+        seedCategory();
+
+        mockMvc.perform(post("/auth/register/profesional")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "fullName": "Pro Email",
+                      "email": "pro-email@plura.com",
+                      "phoneNumber": "+59899111222",
+                      "password": "secret-1234",
+                      "tipoCliente": "SIN_LOCAL",
+                      "categorySlugs": ["belleza"]
+                    }
+                    """))
+            .andExpect(status().isAccepted());
+
+        User stored = userRepository.findByEmail("pro-email@plura.com").orElseThrow();
+        org.junit.jupiter.api.Assertions.assertEquals(UserRole.PROFESSIONAL, stored.getRole());
+        org.junit.jupiter.api.Assertions.assertTrue(
+            professionalProfileRepository.findByUser_Id(stored.getId()).isPresent()
+        );
+    }
+
+    @Test
+    void registerProfessionalWithGoogleTokenCreatesProfessionalOnlyOnFinalSubmit() throws Exception {
+        seedCategory();
+        when(googleTokenVerifier.verify("pro-google-final")).thenReturn(
+            new OAuthUserInfo("google", "g-final", "pro-google-final@plura.com", "Pro Google", "http://img")
+        );
+
+        MvcResult oauthResult = mockMvc.perform(post("/auth/oauth")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"provider\":\"google\",\"token\":\"pro-google-final\",\"desiredRole\":\"PROFESSIONAL\",\"authAction\":\"REGISTER\"}"))
+            .andExpect(status().isOk())
+            .andReturn();
+
+        org.junit.jupiter.api.Assertions.assertEquals(0L, userRepository.count());
+        String oauthRegistrationToken = JsonPath.read(
+            oauthResult.getResponse().getContentAsString(),
+            "$.oauthRegistrationToken"
+        );
+
+        mockMvc.perform(post("/auth/register/profesional")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "fullName": "Pro Google",
+                      "email": "pro-google-final@plura.com",
+                      "phoneNumber": "+59899111333",
+                      "tipoCliente": "SIN_LOCAL",
+                      "categorySlugs": ["belleza"],
+                      "oauthRegistrationToken": "%s"
+                    }
+                    """.formatted(oauthRegistrationToken)))
+            .andExpect(status().isAccepted());
+
+        User stored = userRepository.findByEmail("pro-google-final@plura.com").orElseThrow();
+        org.junit.jupiter.api.Assertions.assertEquals(UserRole.PROFESSIONAL, stored.getRole());
+        org.junit.jupiter.api.Assertions.assertEquals("google", stored.getProvider());
+        org.junit.jupiter.api.Assertions.assertEquals("g-final", stored.getProviderId());
+        org.junit.jupiter.api.Assertions.assertTrue(
+            professionalProfileRepository.findByUser_Id(stored.getId()).isPresent()
+        );
+    }
+
+    @Test
+    void registerProfessionalWithMissingRequiredDataDoesNotCreateUser() throws Exception {
+        mockMvc.perform(post("/auth/register/profesional")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "fullName": "Pro Invalid",
+                      "email": "pro-invalid@plura.com",
+                      "phoneNumber": "+59899111444",
+                      "password": "secret-1234",
+                      "tipoCliente": "SIN_LOCAL"
+                    }
+                    """))
+            .andExpect(status().isBadRequest());
+
+        org.junit.jupiter.api.Assertions.assertEquals(0L, userRepository.count());
+        org.junit.jupiter.api.Assertions.assertEquals(0L, professionalProfileRepository.count());
     }
 
     /**
@@ -337,5 +428,13 @@ class AuthOAuthIntegrationTest {
             .andExpect(jsonPath("$.message").value("Token OAuth inválido"));
 
         org.junit.jupiter.api.Assertions.assertEquals(0L, userRepository.count());
+    }
+
+    private void seedCategory() {
+        Category category = new Category();
+        category.setName("Belleza");
+        category.setSlug("belleza");
+        category.setActive(true);
+        categoryRepository.save(category);
     }
 }

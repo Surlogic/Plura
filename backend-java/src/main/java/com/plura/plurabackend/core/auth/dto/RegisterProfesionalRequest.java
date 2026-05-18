@@ -69,7 +69,10 @@ public class RegisterProfesionalRequest {
     private String tipoCliente;
 
     /** Contrasena en texto plano (se hashea al persistir). */
-    @NotBlank
-    @Size(min = 8, max = 100)
+    @Size(max = 100)
     private String password;
+
+    /** Token temporal firmado de identidad OAuth para finalizar registro profesional. */
+    @Size(max = 4096)
+    private String oauthRegistrationToken;
 }

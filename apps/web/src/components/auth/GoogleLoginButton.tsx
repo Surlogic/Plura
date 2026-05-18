@@ -269,6 +269,10 @@ export default function GoogleLoginButton({
 
   const handleClick = async () => {
     if (isLoading) return;
+    if (authAction === 'REGISTER' && !intendedRole) {
+      onError('No se pudo confirmar si el registro es cliente o profesional. Intentá nuevamente.');
+      return;
+    }
 
     const appOrigin = getGoogleOAuthAppOrigin();
     if (mode === 'redirect' && appOrigin && normalizeOrigin(window.location.origin) !== normalizeOrigin(appOrigin)) {

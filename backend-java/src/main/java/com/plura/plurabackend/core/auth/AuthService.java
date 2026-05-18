@@ -1,13 +1,18 @@
 package com.plura.plurabackend.core.auth;
 
 import com.auth0.jwt.JWT;
+import com.auth0.jwt.JWTVerifier;
+import com.auth0.jwt.JWTCreator;
 import com.auth0.jwt.algorithms.Algorithm;
+import com.auth0.jwt.exceptions.JWTVerificationException;
+import com.auth0.jwt.interfaces.DecodedJWT;
 import com.plura.plurabackend.core.auth.context.AuthContextDescriptor;
 import com.plura.plurabackend.core.auth.context.AuthContextResolver;
 import com.plura.plurabackend.core.auth.context.AuthContextType;
 import com.plura.plurabackend.core.auth.dto.ActivateProfessionalProfileRequest;
 import com.plura.plurabackend.core.auth.dto.AuthMeResponse;
 import com.plura.plurabackend.core.auth.dto.LoginRequest;
+import com.plura.plurabackend.core.auth.dto.OAuthPendingRegistrationResponse;
 import com.plura.plurabackend.core.auth.dto.ProfesionalProfileResponse;
 import com.plura.plurabackend.core.auth.dto.RegisterProfesionalRequest;
 import com.plura.plurabackend.core.auth.dto.RegisterRequest;
@@ -94,6 +99,7 @@ public class AuthService {
     private final String jwtIssuer;
     private final String dummyPasswordHash;
     private final boolean allowLegacyRefreshFallback;
+    private static final String PROFESSIONAL_OAUTH_REGISTRATION_TOKEN_TYPE = "professional_oauth_registration";
     private static final SecureRandom SECURE_RANDOM = new SecureRandom();
     private static final Map<String, String> LEGACY_CATEGORY_ALIASES = Map.ofEntries(
         Map.entry("peluqueria", "cabello"),
@@ -173,6 +179,23 @@ public class AuthService {
         AuthSessionResponse session
     ) {}
 
+    public record OAuthResult(
+        AuthResult auth,
+        OAuthPendingRegistrationResponse pendingRegistration
+    ) {
+        public boolean isPendingRegistration() {
+            return pendingRegistration != null;
+        }
+    }
+
+    private record ProfessionalOAuthRegistrationIdentity(
+        String provider,
+        String providerId,
+        String email,
+        String fullName,
+        String avatar
+    ) {}
+
     /**
      * Bloque de datos refresh token issue usado internamente por esta clase.
      * Agrupa valores relacionados para que el calculo principal sea mas legible.
@@ -239,6 +262,15 @@ public class AuthService {
     @Transactional
     public void registerProfesional(RegisterProfesionalRequest request) {
         String normalizedEmail = request.getEmail().trim().toLowerCase(Locale.ROOT);
+        ProfessionalOAuthRegistrationIdentity oauthIdentity =
+            resolveProfessionalOAuthRegistrationIdentity(request.getOauthRegistrationToken(), normalizedEmail);
+        String rawPassword = request.getPassword() == null ? "" : request.getPassword();
+        if (oauthIdentity == null && rawPassword.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "password es obligatorio");
+        }
+        if (oauthIdentity == null && rawPassword.length() < 8) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "password debe tener al menos 8 caracteres");
+        }
         String tipoCliente = normalizeTipoCliente(request.getTipoCliente());
         boolean requiresLocation = requiresProfessionalLocation(tipoCliente);
         String country = normalizeLocationPart(request.getCountry(), requiresLocation, "country");
@@ -252,7 +284,7 @@ public class AuthService {
 
         User existingUser = userRepository.findByEmailAndDeletedAtIsNull(normalizedEmail).orElse(null);
         if (existingUser != null) {
-            burnPasswordWorkFactor(request.getPassword());
+            burnPasswordWorkFactor(rawPassword);
             throw new AuthApiException(
                 HttpStatus.CONFLICT,
                 "EMAIL_ALREADY_EXISTS",
@@ -270,8 +302,14 @@ public class AuthService {
         user.setFullName(request.getFullName().trim());
         user.setEmail(normalizedEmail);
         user.setPhoneNumber(phoneVerification.phoneNumber());
-        user.setPassword(passwordEncoder.encode(request.getPassword()));
+        user.setPassword(passwordEncoder.encode(oauthIdentity == null ? rawPassword : UUID.randomUUID().toString()));
         user.setRole(UserRole.PROFESSIONAL);
+        if (oauthIdentity != null) {
+            user.setProvider(oauthIdentity.provider());
+            user.setProviderId(oauthIdentity.providerId());
+            user.setAvatar(oauthIdentity.avatar());
+            user.setEmailVerifiedAt(LocalDateTime.now());
+        }
         if (phoneVerification.verified()) {
             user.setPhoneVerifiedAt(LocalDateTime.now());
         }
@@ -279,7 +317,7 @@ public class AuthService {
         try {
             savedUser = userRepository.save(user);
         } catch (DataIntegrityViolationException exception) {
-            burnPasswordWorkFactor(request.getPassword());
+            burnPasswordWorkFactor(rawPassword);
             User duplicatedUser = userRepository.findByEmailAndDeletedAtIsNull(normalizedEmail).orElse(null);
             if (duplicatedUser != null) {
                 throw new AuthApiException(
@@ -398,7 +436,7 @@ public class AuthService {
      * Ejecuta la logica de login with o autenticacion manteniendola encapsulada en este componente.
      */
     @Transactional
-    public AuthResult loginWithOAuth(OAuthLoginRequest request, SessionContext sessionContext) {
+    public OAuthResult loginWithOAuth(OAuthLoginRequest request, SessionContext sessionContext) {
         OAuthUserInfo userInfo = oAuthService.verify(request);
         String normalizedProvider = normalizeOAuthProvider(userInfo.provider());
         String providerId = normalizeOAuthValue(userInfo.providerId());
@@ -442,10 +480,16 @@ public class AuthService {
             if (email == null) {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "OAuth email es obligatorio");
             }
+            if (authAction == OAuthAuthAction.REGISTER && desiredRole == UserRole.PROFESSIONAL) {
+                return new OAuthResult(null, buildProfessionalOAuthPendingRegistration(
+                    normalizedProvider,
+                    providerId,
+                    email,
+                    userInfo
+                ));
+            }
             user = new User();
-            boolean professionalOnboardingRegister =
-                authAction == OAuthAuthAction.REGISTER && desiredRole == UserRole.PROFESSIONAL;
-            user.setRole(professionalOnboardingRegister ? UserRole.PROFESSIONAL : desiredRole);
+            user.setRole(desiredRole);
             user.setEmail(email);
             user.setPassword(passwordEncoder.encode(UUID.randomUUID().toString()));
             user.setFullName(resolveOAuthDisplayName(userInfo.name(), user.getEmail()));
@@ -454,9 +498,6 @@ public class AuthService {
             user.setAvatar(normalizeOAuthValue(userInfo.avatar()));
             applyTrustedEmailVerification(user, normalizedProvider);
             user = userRepository.save(user);
-            if (professionalOnboardingRegister) {
-                ensureProfessionalProfile(user);
-            }
         } else {
             boolean professionalOnboardingRegister =
                 authAction == OAuthAuthAction.REGISTER && desiredRole == UserRole.PROFESSIONAL;
@@ -464,9 +505,10 @@ public class AuthService {
             boolean changed = false;
             if (authAction == OAuthAuthAction.REGISTER) {
                 if (professionalOnboardingRegister) {
-                    if (isProfessionalUser(user)) {
-                        throw new ResponseStatusException(HttpStatus.CONFLICT, PROFESSIONAL_ACCOUNT_EXISTS_MESSAGE);
-                    }
+                    throw new ResponseStatusException(
+                        HttpStatus.CONFLICT,
+                        isProfessionalUser(user) ? PROFESSIONAL_ACCOUNT_EXISTS_MESSAGE : CLIENT_ACCOUNT_EXISTS_FOR_PROFESSIONAL_MESSAGE
+                    );
                 } else {
                     if (desiredRole == UserRole.USER && !isClientUser(user)) {
                         throw new ResponseStatusException(HttpStatus.CONFLICT, PROFESSIONAL_ACCOUNT_EXISTS_MESSAGE);
@@ -508,7 +550,10 @@ public class AuthService {
             authAction == OAuthAuthAction.REGISTER && desiredRole == UserRole.PROFESSIONAL && !isProfessionalUser(user)
                 ? UserRole.USER
                 : desiredRole;
-        return issueTokens(user, toUserResponse(user), sessionContext, resolveOAuthInitialContext(user, initialContextRole));
+        return new OAuthResult(
+            issueTokens(user, toUserResponse(user), sessionContext, resolveOAuthInitialContext(user, initialContextRole)),
+            null
+        );
     }
 
     /**
@@ -1405,6 +1450,67 @@ public class AuthService {
             return email.substring(0, atIndex);
         }
         return "Usuario";
+    }
+
+    private OAuthPendingRegistrationResponse buildProfessionalOAuthPendingRegistration(
+        String provider,
+        String providerId,
+        String email,
+        OAuthUserInfo userInfo
+    ) {
+        String fullName = resolveOAuthDisplayName(userInfo.name(), email);
+        String avatar = normalizeOAuthValue(userInfo.avatar());
+        JWTCreator.Builder tokenBuilder = JWT.create()
+            .withIssuer(jwtIssuer)
+            .withSubject(email)
+            .withClaim("typ", PROFESSIONAL_OAUTH_REGISTRATION_TOKEN_TYPE)
+            .withClaim("provider", provider)
+            .withClaim("providerId", providerId)
+            .withClaim("email", email)
+            .withClaim("fullName", fullName)
+            .withIssuedAt(new Date())
+            .withExpiresAt(Date.from(Instant.now().plus(10, ChronoUnit.MINUTES)));
+        if (avatar != null) {
+            tokenBuilder.withClaim("avatar", avatar);
+        }
+        String token = tokenBuilder.sign(jwtAlgorithm);
+        return new OAuthPendingRegistrationResponse(
+            true,
+            token,
+            new UserResponse(null, email, fullName, true, null, false, null)
+        );
+    }
+
+    private ProfessionalOAuthRegistrationIdentity resolveProfessionalOAuthRegistrationIdentity(
+        String rawToken,
+        String expectedEmail
+    ) {
+        String token = normalizeOAuthValue(rawToken);
+        if (token == null) {
+            return null;
+        }
+        try {
+            JWTVerifier verifier = JWT.require(jwtAlgorithm)
+                .withIssuer(jwtIssuer)
+                .withClaim("typ", PROFESSIONAL_OAUTH_REGISTRATION_TOKEN_TYPE)
+                .build();
+            DecodedJWT decoded = verifier.verify(token);
+            String email = normalizeOAuthEmail(decoded.getClaim("email").asString());
+            String provider = normalizeOAuthProvider(decoded.getClaim("provider").asString());
+            String providerId = normalizeOAuthValue(decoded.getClaim("providerId").asString());
+            if (email == null || !email.equals(expectedEmail) || providerId == null) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Token OAuth de registro inválido");
+            }
+            return new ProfessionalOAuthRegistrationIdentity(
+                provider,
+                providerId,
+                email,
+                resolveOAuthDisplayName(decoded.getClaim("fullName").asString(), email),
+                normalizeOAuthValue(decoded.getClaim("avatar").asString())
+            );
+        } catch (JWTVerificationException exception) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Token OAuth de registro inválido");
+        }
     }
 
     /**

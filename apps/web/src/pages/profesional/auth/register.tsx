@@ -225,6 +225,7 @@ export default function ProfesionalRegisterPage() {
   const [touched, setTouched] = useState<TouchedState>(defaultTouched);
   const [schedule, setSchedule] = useState<ScheduleDay[]>(initialSchedule);
   const [isOAuthSetup, setIsOAuthSetup] = useState(false);
+  const [oauthRegistrationToken, setOauthRegistrationToken] = useState<string | null>(null);
   const [hasAuthenticatedBaseAccount, setHasAuthenticatedBaseAccount] = useState(false);
   const [categorySearch, setCategorySearch] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -536,7 +537,7 @@ export default function ProfesionalRegisterPage() {
     const oauthPhoneNumber = (result.user.phoneNumber ?? '').trim();
 
     setIsOAuthSetup(true);
-    setHasAuthenticatedBaseAccount(true);
+    setOauthRegistrationToken(result.oauthRegistrationToken?.trim() || null);
     setForm((prev) => ({
       ...prev,
       fullName: result.user.fullName?.trim() || prev.fullName,
@@ -557,10 +558,9 @@ export default function ProfesionalRegisterPage() {
     setStep(1);
     setSuccessMessage(
       oauthPhoneNumber
-        ? 'Cuenta Google conectada. Continuá el onboarding profesional sobre este mismo email.'
-        : 'Cuenta Google conectada. El teléfono se completa en el paso de datos básicos.',
+        ? 'Identidad Google verificada. Continuá el onboarding profesional sobre este mismo email.'
+        : 'Identidad Google verificada. El teléfono se completa en el paso de datos básicos.',
     );
-    void refreshProfile().catch(() => undefined);
   };
 
   const handleGeoFieldChange = async (
@@ -1034,10 +1034,11 @@ export default function ProfesionalRegisterPage() {
         latitude: geocodedLocation?.latitude ?? null,
         longitude: geocodedLocation?.longitude ?? null,
         tipoCliente: form.tipoCliente,
-        password: form.password,
+        password: isOAuthSetup ? undefined : form.password,
+        oauthRegistrationToken: oauthRegistrationToken ?? undefined,
       };
 
-      if (hasAuthenticatedBaseAccount || isOAuthSetup) {
+      if (hasAuthenticatedBaseAccount) {
         await activateProfessionalForCurrentAccount(payload);
         await completeProfessionalSetup();
         return;
@@ -1224,9 +1225,9 @@ export default function ProfesionalRegisterPage() {
         />
         {isOAuthSetup ? (
           <div className="rounded-[24px] border border-[color:var(--primary-soft)] bg-[color:var(--primary-soft)] p-5 text-sm text-[color:var(--primary-strong)]">
-            <p className="font-semibold">Cuenta Google conectada</p>
+            <p className="font-semibold">Identidad Google verificada</p>
             <p className="mt-1 text-[color:var(--ink-muted)]">
-              {form.email || 'Tu cuenta de Google'} quedó asociada al registro. Continuá con el mismo wizard: tipo de perfil, datos básicos, teléfono, rubros y publicación.
+              {form.email || 'Tu cuenta de Google'} se usará al finalizar el registro. Continuá con el mismo wizard: tipo de perfil, datos básicos, teléfono, rubros y publicación.
             </p>
           </div>
         ) : (

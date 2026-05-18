@@ -113,6 +113,13 @@ const isLogoutRoute = (url?: string) => {
   return url.includes('/auth/logout');
 };
 
+const isOAuthRegistrationPendingResponse = (responseData: unknown): boolean =>
+  Boolean(
+    responseData &&
+    typeof responseData === 'object' &&
+    (responseData as { oauthRegistrationPending?: unknown }).oauthRegistrationPending === true
+  );
+
 const isRouteOrChild = (path: string, route: string) =>
   path === route || path.startsWith(`${route}/`);
 
@@ -194,6 +201,8 @@ api.interceptors.response.use(
       setAuthAccessToken(token, roleFromAccessToken(token));
     } else if (isSessionMutatingAuthRoute(response.config.url)) {
       if (isLogoutRoute(response.config.url)) {
+        clearAuthAccessToken();
+      } else if (isOAuthRegistrationPendingResponse(response.data)) {
         clearAuthAccessToken();
       } else {
         setKnownAuthSession(true);

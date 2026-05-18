@@ -81,6 +81,7 @@ Base: `apps/web/src/pages`
 - `/reserva-confirmada`: ruta legacy de confirmacion; hoy no forma parte del circuito principal de reserva web.
 - `/login`: acceso general.
 - `/oauth/callback`: callback de OAuth.
+- `/profesional/auth/register`: el botón Google del registro profesional solo verifica identidad y guarda una intención OAuth temporal; no autentica como cliente ni crea cuenta. La cuenta profesional se crea recién al enviar el wizard final contra `/auth/register/profesional`.
 - `/oauth/mercadopago/callback`: retorno dedicado para conexion OAuth de Mercado Pago del profesional.
 - `/auth/forgot-password`
 - `/auth/reset-password`

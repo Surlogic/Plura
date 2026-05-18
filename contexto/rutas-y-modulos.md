@@ -534,6 +534,7 @@ Lectura de producto:
 ### Auth web unificado
 
 - `/login` es el inicio de sesión real para cliente, profesional y trabajador; resuelve el contexto con `/auth/login` y `/auth/context/select`.
+- logout, expiración de sesión y guards de áreas privadas web vuelven al login unificado `/login`, no a pantallas separadas por rol.
 - `/profesional/auth/login` queda como ruta legacy de compatibilidad y redirige a `/login?intent=professional`, preservando `email`, `registered`, `billing=pending` y otros query params.
 - `/login?intent=professional` es el destino del CTA público `Soy profesional`; conserva el acceso unificado y, si la cuenta tiene varios contextos, deja que el usuario elija antes de entrar.
 - `/profesional/auth/register` es el wizard profesional y sigue siendo el destino de CTAs de alta como `Registrá tu negocio`.

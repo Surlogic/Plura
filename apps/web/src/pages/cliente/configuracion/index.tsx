@@ -94,7 +94,7 @@ export default function ClienteConfiguracionPage() {
       clearAuthAccessToken();
       clearFavoriteProfessionals();
       clearProfile();
-      await router.replace('/cliente/auth/login');
+      await router.replace('/login');
     } catch (error) {
       setPasswordError(
         resolveBackendMessage(error, 'No se pudo actualizar la contraseña.'),
@@ -133,7 +133,7 @@ export default function ClienteConfiguracionPage() {
       clearAuthAccessToken();
       clearFavoriteProfessionals();
       clearProfile();
-      await router.replace('/cliente/auth/login');
+      await router.replace('/login');
     } catch (error) {
       setDeleteError(
         resolveBackendMessage(error, 'No se pudo eliminar la cuenta. Verificá el código e intentá nuevamente.'),

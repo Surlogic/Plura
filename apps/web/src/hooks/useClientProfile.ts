@@ -9,7 +9,7 @@ export const useClientProfile = () => {
   useEffect(() => {
     if (hasLoaded && !isLoading && !profile && authStatus === 'unauthenticated') {
       clearProfile();
-      router.push('/cliente/auth/login');
+      router.push('/login');
     }
   }, [router, hasLoaded, isLoading, profile, authStatus, clearProfile]);
 

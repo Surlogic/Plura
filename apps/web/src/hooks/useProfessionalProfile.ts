@@ -17,7 +17,7 @@ export const useProfessionalProfile = () => {
   useEffect(() => {
     if (hasLoaded && !isLoading && !profile && authStatus === 'unauthenticated') {
       clearProfile();
-      router.push('/profesional/auth/login');
+      router.push('/login');
     }
   }, [router, hasLoaded, isLoading, profile, authStatus, clearProfile]);
 

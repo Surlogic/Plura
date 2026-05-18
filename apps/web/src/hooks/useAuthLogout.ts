@@ -28,12 +28,7 @@ const resolveRoleFromPath = (path: string): KnownAuthSessionRole | null => {
   return null;
 };
 
-const resolveRedirectPath = (role: KnownAuthSessionRole | null, path: string) => {
-  if (role === 'PROFESSIONAL') return '/profesional/auth/login';
-  if (role === 'CLIENT') return '/cliente/auth/login';
-  if (isProfessionalPath(path)) return '/profesional/auth/login';
-  return '/cliente/auth/login';
-};
+const UNIFIED_LOGIN_PATH = '/login';
 
 export const useAuthLogout = () => {
   const router = useRouter();
@@ -58,7 +53,7 @@ export const useAuthLogout = () => {
       (clientProfile ? 'CLIENT' : null) ||
       getKnownAuthSessionRole() ||
       resolveRoleFromPath(currentPath);
-    const redirectPath = resolveRedirectPath(resolvedRole, currentPath);
+    const redirectPath = UNIFIED_LOGIN_PATH;
 
     startTransition(resolvedRole);
 

@@ -221,7 +221,7 @@ export default function ProfesionalSettingsPage() {
       } catch {
         clearAuthAccessToken();
         clearClientProfile();
-        await router.replace('/cliente/auth/login');
+        await router.replace('/login');
       }
     } catch (error) {
       setSettingsMessage(
@@ -328,7 +328,7 @@ export default function ProfesionalSettingsPage() {
       clearFavoriteProfessionals();
       clearProfile();
       clearClientProfile();
-      await router.replace('/profesional/auth/login');
+      await router.replace('/login');
     } catch (error) {
       setSettingsMessage(
         resolveBackendMessage(error, 'No se pudo actualizar la contraseña.'),

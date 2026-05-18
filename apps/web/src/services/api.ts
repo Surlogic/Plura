@@ -129,12 +129,8 @@ const isClientProtectedPath = (path: string) =>
 const redirectToLogin = () => {
   if (typeof window === 'undefined') return;
   const path = window.location.pathname;
-  if (isProfessionalProtectedPath(path)) {
-    window.location.href = '/profesional/auth/login';
-    return;
-  }
-  if (isClientProtectedPath(path)) {
-    window.location.href = '/cliente/auth/login';
+  if (isProfessionalProtectedPath(path) || isClientProtectedPath(path)) {
+    window.location.href = '/login';
   }
 };
 

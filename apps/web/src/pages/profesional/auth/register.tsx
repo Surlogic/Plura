@@ -75,7 +75,6 @@ type RegisterForm = {
   confirmEmail: string;
   password: string;
   confirmPassword: string;
-  profileType: 'INDEPENDENT' | 'LOCAL';
   fullName: string;
   phoneNumber: string;
   description: string;
@@ -146,7 +145,6 @@ const PROFESSIONAL_ONBOARDING_DRAFT_KEY = 'plura:professional-onboarding-draft';
 
 const wizardSteps = [
   'Cuenta',
-  'Perfil',
   'Datos',
   'Rubros',
   'Atención',
@@ -171,7 +169,6 @@ const defaultTouched: TouchedState = {
   confirmEmail: false,
   password: false,
   confirmPassword: false,
-  profileType: false,
   fullName: false,
   phoneNumber: false,
   description: false,
@@ -203,7 +200,6 @@ export default function ProfesionalRegisterPage() {
     confirmEmail: '',
     password: '',
     confirmPassword: '',
-    profileType: 'INDEPENDENT',
     fullName: '',
     phoneNumber: '',
     description: '',
@@ -233,7 +229,7 @@ export default function ProfesionalRegisterPage() {
   const [isLocationPreviewLoading, setIsLocationPreviewLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
-  const visibleStepNumber = Math.min(step + 1, 8);
+  const visibleStepNumber = Math.min(step + 1, wizardSteps.length);
 
   const emailValue = form.email.trim().toLowerCase();
   const confirmEmailValue = form.confirmEmail.trim().toLowerCase();
@@ -388,7 +384,6 @@ export default function ProfesionalRegisterPage() {
     confirmPassword: isOAuthSetup || (form.confirmPassword.length > 0 && form.confirmPassword === form.password)
       ? ''
       : 'Las contraseñas no coinciden.',
-    profileType: form.profileType ? '' : 'Seleccioná un tipo de perfil.',
     fullName: form.fullName.trim().length >= 3 ? '' : 'Mínimo 3 caracteres.',
     phoneNumber: form.phoneNumber.replace(/\D/g, '').length >= 8 ? '' : 'Ingresá un número válido.',
     description: form.description.trim().length > 150 ? 'Máximo 150 caracteres.' : '',
@@ -426,16 +421,14 @@ export default function ProfesionalRegisterPage() {
       case 0:
         return isOAuthSetup ? [] : ['email', 'confirmEmail', 'password', 'confirmPassword'];
       case 1:
-        return ['profileType'];
-      case 2:
         return ['fullName', 'phoneNumber', 'description'];
-      case 3:
+      case 2:
         return ['categorySlugs'];
-      case 4:
+      case 3:
         return ['tipoCliente'];
-      case 5:
+      case 4:
         return requiresLocation ? ['country', 'city', 'fullAddress'] : [];
-      case 7:
+      case 6:
         return ['serviceName', 'serviceCategorySlug', 'serviceDuration', 'servicePrice', 'serviceDescription'];
       default:
         return [];
@@ -552,14 +545,6 @@ export default function ProfesionalRegisterPage() {
     setActiveGeoField(null);
   };
 
-  const chooseProfileType = (profileType: RegisterForm['profileType']) => {
-    setForm((prev) => ({
-      ...prev,
-      profileType,
-      tipoCliente: profileType === 'LOCAL' ? 'LOCAL' : 'SIN_LOCAL',
-    }));
-    setTouched((prev) => ({ ...prev, profileType: true, tipoCliente: true }));
-  };
 
   const toggleCategory = (slug: string) => {
     setTouched((prev) => ({ ...prev, categorySlugs: true }));
@@ -918,10 +903,10 @@ export default function ProfesionalRegisterPage() {
   const stepHeader = (
     <div className="mx-auto flex max-w-xl flex-col items-center gap-3 text-center">
       <span className="text-sm font-semibold text-[color:var(--ink)]">
-        {step >= 8 ? 'Activar Plura Core' : `Paso ${visibleStepNumber} de 8`}
+        {step >= wizardSteps.length - 1 ? 'Activar Plura Core' : `Paso ${visibleStepNumber} de ${wizardSteps.length}`}
       </span>
       <div className="flex items-center gap-3" aria-label="Progreso del registro profesional">
-        {wizardSteps.slice(0, 8).map((item, index) => (
+        {wizardSteps.map((item, index) => (
           <span
             key={item}
             className={`h-2.5 w-2.5 rounded-full border transition ${
@@ -1087,57 +1072,6 @@ export default function ProfesionalRegisterPage() {
         <h2 className="text-center text-xl font-semibold text-[color:var(--ink)]">Así te verán tus clientes</h2>
         <ProfilePreviewCard />
         <p className="text-center text-xs text-[color:var(--ink-faint)]">Este es un ejemplo de cómo se verá tu perfil público.</p>
-      </div>
-    </div>
-  );
-
-  const renderTypeStep = () => (
-    <div className="space-y-10 text-center">
-      <div className="space-y-3">
-        <Badge variant="success">Registro</Badge>
-        <h1 className="text-4xl font-semibold tracking-[-0.04em] text-[color:var(--ink)]">¿Cómo trabajás?</h1>
-        <p className="text-base text-[color:var(--ink-muted)]">
-          Esto solo configura tu perfil y modalidad de atención; no cambia tu suscripción.
-        </p>
-      </div>
-      <div className="grid gap-6 md:grid-cols-2">
-        {[
-          {
-            id: 'INDEPENDENT' as const,
-            title: 'Profesional independiente',
-            description: 'Atendés de forma independiente y gestionás tu propia agenda.',
-            icon: '👤',
-          },
-          {
-            id: 'LOCAL' as const,
-            title: 'Tengo local físico',
-            description: 'Tenés un espacio físico donde recibís a tus clientes.',
-            icon: '🏪',
-          },
-        ].map((option) => {
-          const selected = form.profileType === option.id;
-          return (
-            <button
-              key={option.id}
-              type="button"
-              onClick={() => chooseProfileType(option.id)}
-              className={`relative min-h-64 rounded-[32px] border p-8 text-center transition hover:-translate-y-0.5 ${
-                selected
-                  ? 'border-[color:var(--primary)] bg-[color:var(--primary-soft)] shadow-[var(--shadow-lift)]'
-                  : 'border-[color:var(--border-soft)] bg-[color:var(--surface-strong)] shadow-[var(--shadow-card)]'
-              }`}
-            >
-              {selected ? (
-                <span className="absolute right-6 top-6 flex h-9 w-9 items-center justify-center rounded-full bg-[color:var(--primary)] text-white">✓</span>
-              ) : null}
-              <span className="mx-auto flex h-24 w-24 items-center justify-center rounded-full bg-[color:var(--surface-soft)] text-5xl shadow-[var(--shadow-card)]">
-                {option.icon}
-              </span>
-              <h2 className="mt-7 text-2xl font-semibold tracking-[-0.03em] text-[color:var(--ink)]">{option.title}</h2>
-              <p className="mx-auto mt-3 max-w-xs text-base leading-7 text-[color:var(--ink-muted)]">{option.description}</p>
-            </button>
-          );
-        })}
       </div>
     </div>
   );
@@ -1592,18 +1526,16 @@ export default function ProfesionalRegisterPage() {
       case 0:
         return renderAccountStep();
       case 1:
-        return renderTypeStep();
-      case 2:
         return renderProfileStep();
-      case 3:
+      case 2:
         return renderCategoriesStep();
-      case 4:
+      case 3:
         return renderModalityStep();
-      case 5:
+      case 4:
         return renderLocationStep();
-      case 6:
+      case 5:
         return renderScheduleStep();
-      case 7:
+      case 6:
         return renderServiceStep();
       default:
         return renderPreviewStep();

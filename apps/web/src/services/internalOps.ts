@@ -179,3 +179,72 @@ export const fetchReviewAnalytics = (from?: string, to?: string) => {
   const qs = searchParams.toString();
   return opsFetch<InternalReviewAnalytics>(`/internal/ops/reviews/analytics${qs ? `?${qs}` : ''}`);
 };
+
+// ── App Error Ops ──
+
+type InternalAppErrorListItem = {
+  id: number;
+  source: string;
+  severity: string;
+  errorType: string | null;
+  message: string | null;
+  route: string | null;
+  httpMethod: string | null;
+  httpStatus: number | null;
+  traceId: string | null;
+  occurrenceCount: number;
+  firstSeenAt: string;
+  lastSeenAt: string;
+  resolvedAt: string | null;
+};
+
+type InternalAppErrorDetail = InternalAppErrorListItem & {
+  fingerprint: string;
+  stackTrace: string | null;
+  clientSessionId: string | null;
+  contextJson: string | null;
+};
+
+type InternalAppErrorAnalytics = {
+  totalIncidents: number;
+  openIncidents: number;
+  incidentsSeenInRange: number;
+  countBySource: Record<string, number>;
+  countBySeverity: Record<string, number>;
+};
+
+type InternalAppErrorListPage = {
+  content: InternalAppErrorListItem[];
+  totalElements: number;
+  totalPages: number;
+  number: number;
+  first: boolean;
+  last: boolean;
+  empty: boolean;
+};
+
+export type {
+  InternalAppErrorListItem,
+  InternalAppErrorDetail,
+  InternalAppErrorAnalytics,
+  InternalAppErrorListPage,
+};
+
+export const fetchAppErrorList = (params: Record<string, string | number | boolean | undefined>) => {
+  const searchParams = new URLSearchParams();
+  Object.entries(params).forEach(([k, v]) => {
+    if (v != null && v !== '') searchParams.set(k, String(v));
+  });
+  return opsFetch<InternalAppErrorListPage>(`/internal/ops/app-errors?${searchParams.toString()}`);
+};
+
+export const fetchAppErrorDetail = (id: number) =>
+  opsFetch<InternalAppErrorDetail>(`/internal/ops/app-errors/${id}`);
+
+export const fetchAppErrorAnalytics = (from?: string, to?: string) => {
+  const searchParams = new URLSearchParams();
+  if (from) searchParams.set('from', from);
+  if (to) searchParams.set('to', to);
+  const qs = searchParams.toString();
+  return opsFetch<InternalAppErrorAnalytics>(`/internal/ops/app-errors/analytics${qs ? `?${qs}` : ''}`);
+};

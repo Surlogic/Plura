@@ -378,7 +378,7 @@ Areas de configuracion principales en `application.yml`:
 - SQS
 - search engine externo
 - billing
-- healthcheck via Actuator y timers tecnicos internos con Micrometer
+- healthcheck via Actuator, timers tecnicos internos con Micrometer y tracking de errores persistido (`app_error_incident`)
 
 Variables criticas sin las que el backend puede fallar o degradarse:
 
@@ -402,9 +402,13 @@ Notas operativas de performance hoy:
 - search, perfil publico, slots, inbox y unread ya tienen timings tecnicos listos para enganchar a dashboards
 - `V65__internal_ops_business_analytics.sql` y `V66__app_product_event_funnel_fields.sql` quedan como historial Flyway aplicado; `V79__remove_internal_product_analytics.sql` remueve la tabla `app_product_event`.
 - `QUERY_COUNT_HEADER_ENABLED=true` expone `X-Plura-Sql-Query-Count` para requests HTTP y cuenta sentencias Hibernate/JPA por request; no cubre consultas JDBC directas como search o el nuevo inbox read path
+- `X-Plura-Trace-Id` se genera o propaga en todo request backend, vuelve en la respuesta y permite correlacionar errores entre backend, web y mobile
+- `ERROR_TRACKING_ENABLED` controla el tracking persistido de incidentes (default `true`); cada incidente agregado queda en `app_error_incident` y se consulta por `/internal/ops/app-errors*`
+- `POST /api/v1/telemetry/client-errors` queda publico para web/mobile pero rate-limited por IP para evitar ruido o abuso de telemetria
 - `V50__scale_hardening_indexes.sql` limpia indices sin uso claro en `email_dispatch`, `provider_operation` y `booking`, y agrega cobertura para lecturas por `provider_operation(status, updated_at|lease_until)` y `payment_transaction(external_reference, created_at)`
 - `provider_operation.findDueOperations()` ahora evita leer operaciones con `lease_until` todavia activo, para bajar churn del worker bajo concurrencia
 - `V70__supabase_data_api_hardening.sql` ya dejo `public` bloqueado para Data API (`authenticator -> pgrst.db_schemas=api_public`), con RLS y policy deny-all sobre tablas propias del proyecto en `public`
+- `V90__app_error_incidents.sql` agrega la tabla agregada `app_error_incident` para errores de backend, async, web y mobile
 - `V73__move_relocatable_extensions_out_of_public.sql` mueve `pg_trgm` y `unaccent` al schema `extensions` y redefine `public.immutable_unaccent()` para dejar de depender de `public.unaccent`
 - `postgis` sigue siendo el unico hallazgo de extensiones que no se puede cerrar solo con Flyway normal: en Supabase viene no relocatable y moverlo fuera de `public` requiere privilegio sobre `pg_extension` o intervención de soporte, por lo que `public.spatial_ref_sys` puede seguir apareciendo en Advisor hasta completar ese paso
 - los defaults del backend quedaron mas conservadores para scale-out:
@@ -433,6 +437,7 @@ Variables nuevas relevantes de performance:
 - `SEARCH_MV_REFRESH_ON_STARTUP`
 - `SEARCH_MV_REFRESH_CRON`
 - `QUERY_COUNT_HEADER_ENABLED`
+- `ERROR_TRACKING_ENABLED`
 
 ## Desarrollo local
 
@@ -519,6 +524,7 @@ Notas reales de deploy:
 - el backend ya no contempla H2 como fallback de arranque en runtime; si falta `SPRING_DATASOURCE_URL` o `DATABASE_URL`, la aplicacion debe fallar temprano para no ocultar una configuracion rota de PostgreSQL
 - datasource y Flyway quedaron cerrados sobre la misma base por default: si el backend recibe `DATABASE_URL` en formato `postgres://` o `postgresql://`, el bootstrap la normaliza a JDBC, extrae credenciales embebidas y rellena tambien `SPRING_FLYWAY_*` para evitar que migraciones y JPA apunten a bases distintas
 - el backend expone `server.port=${PORT:3000}` y ahora fija `server.address=0.0.0.0` por default para Fly.io y contenedores locales
+- los `5xx` backend ya devuelven `traceId` en el body de error y header `X-Plura-Trace-Id`; web/mobile tambien reportan errores cliente a `POST /api/v1/telemetry/client-errors`
 - `auth_refresh_token` sigue siendo una tabla legacy de soporte para refresh fallback, pero su schema real mantiene `id BIGSERIAL`; el modelo JPA ya quedo alineado a ese contrato para que `ddl-auto=validate` no tumbe el arranque
 - el naming comercial visible y tecnico activo quedo en `CORE` / `PLAN_CORE`; `PROFESSIONAL / LOCAL / ENTERPRISE` no son planes de billing aceptados.
 - Flyway conserva migraciones historicas de dLocal (`V34`, `V37`) solo por continuidad de schema; el runtime vigente ya es Mercado Pago only y `V47` elimina los campos legacy del dominio profesional.

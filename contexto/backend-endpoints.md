@@ -98,6 +98,16 @@ Lectura de producto:
 - `GET /api/home` ahora expone branding de card publica por profesional: `bannerUrl`, `bannerMedia`, `logoUrl`, `logoMedia` y `fallbackPhotoUrl`; `imageUrl` se mantiene como compatibilidad y ya prioriza `banner` o primera foto real del negocio en vez de categorias genericas
 - estas superficies publicas ya no deben caer en `401` si el navegador arrastra un access token o cookie auth invalido/vencido; backend degrada a anonimo y responde el payload publico igual
 
+### Telemetria de errores cliente
+
+- `POST /api/v1/telemetry/client-errors` - endpoint publico versionado para reportes desde web/mobile; acepta `source`, `severity?`, `errorType?`, `message`, `stackTrace?`, `route?`, `httpMethod?`, `httpStatus?`, `traceId?`, `sessionId?` y `context?`; responde `202` y queda rate-limited por IP
+
+Lectura de producto:
+
+- captura errores de runtime y fallas API del frontend sin exigir sesion
+- permite correlacionar con backend mediante `traceId`
+- web y mobile lo usan como complemento del tracking backend global
+
 ### Auth y sesiones
 
 Prefijo: `/auth`
@@ -565,6 +575,20 @@ Lectura de producto:
 - esto no es visible al usuario final, pero si es importante para operar pagos y reservas con confiabilidad
 - refuerza la tesis de "infraestructura de confianza" mas alla del simple booking flow
 
+### Endpoints internos de errores de app
+
+Prefijo: `/internal/ops/app-errors`
+
+- `GET /internal/ops/app-errors` - listado paginado con filtros (`source`, `severity`, `resolved`, `from`, `to`)
+- `GET /internal/ops/app-errors/{id}` - detalle con `fingerprint`, ultimo `traceId`, contexto y stack trace
+- `GET /internal/ops/app-errors/analytics` - totales, abiertos, vistos en rango y conteos por fuente/severidad
+
+Lectura de producto:
+
+- backoffice operativo para incidentes agregados de `BACKEND`, `ASYNC`, `WEB` y `MOBILE`
+- protegido por `X-Internal-Token`
+- centraliza `5xx`, errores asincronicos no capturados y fallos tragados por workers clave
+
 ### Endpoints internos de feedback de app
 
 Prefijo: `/internal/ops/app-feedback`
@@ -659,7 +683,8 @@ Capacidad que no aparece aun como dominio publico consolidado:
 ## Persistencia
 
 - Flyway usa `backend-java/src/main/resources/db/migration`
-- hay `58` migraciones versionadas
+- la secuencia real de migraciones llega a `V90`
+- observabilidad agrega la tabla agregada `app_error_incident` (`V90`)
 - los nombres muestran evolucion fuerte en:
   - billing
   - booking

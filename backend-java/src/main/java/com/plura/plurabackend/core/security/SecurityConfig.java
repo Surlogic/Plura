@@ -93,6 +93,7 @@ public class SecurityConfig {
                     "/api/geo/autocomplete",
                     "/api/geo/geocode",
                     "/api/geo/suggest",
+                    "/api/v1/telemetry/client-errors",
                     "/categories",
                     "/api/categories",
                     "/health",
@@ -172,9 +173,11 @@ public class SecurityConfig {
             "X-Requested-With",
             "X-Plura-Client-Platform",
             "X-Plura-Session-Transport",
+            "X-Plura-Trace-Id",
             "Idempotency-Key",
             "idempotency-key"
         ));
+        configuration.setExposedHeaders(List.of("X-Plura-Trace-Id"));
         configuration.setAllowCredentials(true);
         configuration.setMaxAge(corsMaxAgeSeconds);
 

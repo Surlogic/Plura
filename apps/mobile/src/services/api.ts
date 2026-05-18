@@ -14,6 +14,7 @@ import {
 import { getAnalyticsSessionId } from './analyticsSession';
 import { isRetryableNetworkError } from './errors';
 import { logWarn } from './logger';
+import { TRACE_ID_HEADER, createTraceId, reportMobileError } from './errorTelemetry';
 
 type RetryableConfig = {
   _retryAttempt?: number;
@@ -117,6 +118,10 @@ const applyClientHeaders = (
 ): InternalAxiosRequestConfig => {
   setHeaderValue(config, CLIENT_PLATFORM_HEADER, 'MOBILE');
   setHeaderValue(config, ANALYTICS_SESSION_HEADER, getAnalyticsSessionId());
+  const existingTraceId = (config.headers as Record<string, unknown> | undefined)?.[TRACE_ID_HEADER];
+  if (typeof existingTraceId !== 'string' || !existingTraceId.trim()) {
+    setHeaderValue(config, TRACE_ID_HEADER, createTraceId());
+  }
   if (isAuthRoute(config.url)) {
     setHeaderValue(config, SESSION_TRANSPORT_HEADER, 'BODY');
   }
@@ -221,11 +226,49 @@ api.interceptors.response.use(
     }
 
     if (!isRetryableNetworkError(error) || !isIdempotent) {
+      if (
+        !config.url?.includes('/api/v1/telemetry/client-errors')
+        && (status == null || status >= 500)
+      ) {
+        const traceId =
+          typeof (config.headers as Record<string, unknown> | undefined)?.[TRACE_ID_HEADER] === 'string'
+            ? (config.headers as Record<string, unknown>)[TRACE_ID_HEADER] as string
+            : undefined;
+        void reportMobileError({
+          errorType: error.name || 'AxiosError',
+          message: error.message || 'API request failed',
+          stackTrace: error.stack,
+          route: config.url,
+          httpMethod: method,
+          httpStatus: status,
+          traceId,
+          context: { origin: 'api-response-interceptor' },
+        });
+      }
       return Promise.reject(error);
     }
 
     const retryAttempt = config._retryAttempt ?? 0;
     if (retryAttempt >= MAX_RETRY_ATTEMPTS) {
+      if (
+        !config.url?.includes('/api/v1/telemetry/client-errors')
+        && (status == null || status >= 500)
+      ) {
+        const traceId =
+          typeof (config.headers as Record<string, unknown> | undefined)?.[TRACE_ID_HEADER] === 'string'
+            ? (config.headers as Record<string, unknown>)[TRACE_ID_HEADER] as string
+            : undefined;
+        void reportMobileError({
+          errorType: error.name || 'AxiosError',
+          message: error.message || 'API request failed after retry',
+          stackTrace: error.stack,
+          route: config.url,
+          httpMethod: method,
+          httpStatus: status,
+          traceId,
+          context: { origin: 'api-response-interceptor', retryAttempt },
+        });
+      }
       return Promise.reject(error);
     }
 

@@ -1,9 +1,11 @@
 package com.plura.plurabackend.core.auth;
 
+import com.plura.plurabackend.core.observability.AppErrorRecorder;
 import jakarta.mail.internet.MimeMessage;
 import java.nio.charset.StandardCharsets;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.MailException;
 import org.springframework.mail.javamail.JavaMailSender;
@@ -30,7 +32,9 @@ public class SmtpTransactionalEmailService implements TransactionalEmailService 
     private final String fromAddress;
     private final String fromName;
     private final String replyTo;
+    private final AppErrorRecorder appErrorRecorder;
 
+    @Autowired
     public SmtpTransactionalEmailService(
         JavaMailSender javaMailSender,
         @Value("${app.email.delivery-enabled:false}") boolean deliveryEnabled,
@@ -40,7 +44,8 @@ public class SmtpTransactionalEmailService implements TransactionalEmailService 
         @Value("${spring.mail.password:}") String mailPassword,
         @Value("${app.email.from-address:}") String fromAddress,
         @Value("${app.email.from-name:Plura}") String fromName,
-        @Value("${app.email.reply-to:}") String replyTo
+        @Value("${app.email.reply-to:}") String replyTo,
+        AppErrorRecorder appErrorRecorder
     ) {
         this.javaMailSender = javaMailSender;
         this.deliveryEnabled = deliveryEnabled;
@@ -51,6 +56,32 @@ public class SmtpTransactionalEmailService implements TransactionalEmailService 
         this.fromAddress = fromAddress;
         this.fromName = fromName;
         this.replyTo = replyTo;
+        this.appErrorRecorder = appErrorRecorder;
+    }
+
+    public SmtpTransactionalEmailService(
+        JavaMailSender javaMailSender,
+        boolean deliveryEnabled,
+        String mailHost,
+        boolean smtpAuthEnabled,
+        String mailUsername,
+        String mailPassword,
+        String fromAddress,
+        String fromName,
+        String replyTo
+    ) {
+        this(
+            javaMailSender,
+            deliveryEnabled,
+            mailHost,
+            smtpAuthEnabled,
+            mailUsername,
+            mailPassword,
+            fromAddress,
+            fromName,
+            replyTo,
+            null
+        );
     }
 
     /**
@@ -89,6 +120,16 @@ public class SmtpTransactionalEmailService implements TransactionalEmailService 
                 maskEmail(message.toAddress()),
                 exception.getMessage()
             );
+            if (appErrorRecorder != null) {
+                appErrorRecorder.recordBackgroundException(
+                    exception,
+                    "auth.transactional-email.send",
+                    java.util.Map.of(
+                        "templateKey", defaultString(message.templateKey(), "unknown"),
+                        "recipient", maskEmail(message.toAddress())
+                    )
+                );
+            }
             return DeliveryStatus.FAILED;
         }
     }

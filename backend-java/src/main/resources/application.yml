@@ -243,6 +243,8 @@ app:
     rate-limit-enabled: ${APP_RATE_LIMIT_ENABLED:true}
   observability:
     query-count-header-enabled: ${QUERY_COUNT_HEADER_ENABLED:false}
+    error-tracking:
+      enabled: ${ERROR_TRACKING_ENABLED:true}
   storage:
     upload-dir: ${APP_UPLOAD_DIR:uploads}
     provider: ${IMAGE_STORAGE_PROVIDER:${STORAGE_PROVIDER:local}}

@@ -1,4 +1,5 @@
 import { Component, type ErrorInfo, type ReactNode } from 'react';
+import { reportWebError } from '@/services/errorTelemetry';
 
 type Props = { children: ReactNode };
 type State = { hasError: boolean };
@@ -15,6 +16,12 @@ export default class ErrorBoundary extends Component<Props, State> {
 
   componentDidCatch(error: Error, info: ErrorInfo) {
     console.error('ErrorBoundary caught:', error, info.componentStack);
+    void reportWebError({
+      errorType: error.name,
+      message: error.message || 'React render error',
+      stackTrace: [error.stack, info.componentStack].filter(Boolean).join('\n'),
+      context: { origin: 'react-error-boundary' },
+    });
   }
 
   render() {

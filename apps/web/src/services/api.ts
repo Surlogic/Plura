@@ -14,6 +14,12 @@ import {
   setAuthAccessToken,
 } from '@/services/session';
 import { isAuthSessionError } from '@/lib/auth/sessionErrors';
+import {
+  TRACE_ID_HEADER,
+  createTraceId,
+  readTraceIdFromHeaders,
+  reportWebError,
+} from '@/services/errorTelemetry';
 
 const api = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000',
@@ -146,6 +152,9 @@ const attachAuthHeader = (
   }
   if (config.headers instanceof AxiosHeaders) {
     config.headers.set(CLIENT_PLATFORM_HEADER, 'WEB');
+    if (!config.headers.has(TRACE_ID_HEADER)) {
+      config.headers.set(TRACE_ID_HEADER, createTraceId());
+    }
     if (isAuthRoute(config.url)) {
       config.headers.set(SESSION_TRANSPORT_HEADER, 'COOKIE');
     }
@@ -153,6 +162,7 @@ const attachAuthHeader = (
     config.headers = AxiosHeaders.from({
       ...(config.headers as AxiosRequestHeaders | undefined),
       [CLIENT_PLATFORM_HEADER]: 'WEB',
+      [TRACE_ID_HEADER]: createTraceId(),
       ...(isAuthRoute(config.url) ? { [SESSION_TRANSPORT_HEADER]: 'COOKIE' } : {}),
     });
   }
@@ -244,6 +254,34 @@ api.interceptors.response.use(
         }
         return Promise.reject(refreshError ?? error);
       }
+    }
+
+    if (
+      !isAuthRoute(originalRequest?.url)
+      && !originalRequest?.url?.includes('/api/v1/telemetry/client-errors')
+      && (status == null || status >= 500)
+    ) {
+      const requestHeaders = originalRequest?.headers as Record<string, unknown> | undefined;
+      const traceId =
+        readTraceIdFromHeaders(error.response?.headers)
+        ?? (typeof requestHeaders?.[TRACE_ID_HEADER] === 'string'
+          ? requestHeaders[TRACE_ID_HEADER] as string
+          : typeof requestHeaders?.[TRACE_ID_HEADER.toLowerCase()] === 'string'
+            ? requestHeaders[TRACE_ID_HEADER.toLowerCase()] as string
+            : undefined);
+      void reportWebError({
+        errorType: error.name || 'AxiosError',
+        message: error.message || 'API request failed',
+        stackTrace: error.stack,
+        route: getUrlPathname(originalRequest?.url),
+        httpMethod: originalRequest?.method?.toUpperCase(),
+        httpStatus: status,
+        traceId,
+        context: {
+          origin: 'api-response-interceptor',
+          requestUrl: originalRequest?.url,
+        },
+      });
     }
 
     return Promise.reject(error);

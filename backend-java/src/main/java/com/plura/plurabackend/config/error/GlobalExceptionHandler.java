@@ -3,6 +3,8 @@ package com.plura.plurabackend.config.error;
 import com.plura.plurabackend.core.auth.AuthApiException;
 import com.plura.plurabackend.core.auth.oauth.AppleEmailRequiredFirstLoginException;
 import com.plura.plurabackend.core.auth.oauth.OAuthProviderMismatchException;
+import com.plura.plurabackend.core.observability.AppErrorRecorder;
+import com.plura.plurabackend.core.observability.trace.TraceContext;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolationException;
@@ -28,6 +30,11 @@ import org.springframework.web.server.ResponseStatusException;
 public class GlobalExceptionHandler {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(GlobalExceptionHandler.class);
+    private final AppErrorRecorder appErrorRecorder;
+
+    public GlobalExceptionHandler(AppErrorRecorder appErrorRecorder) {
+        this.appErrorRecorder = appErrorRecorder;
+    }
 
     /**
      * Procesa method argument not valido y coordina la respuesta del flujo.
@@ -147,6 +154,9 @@ public class GlobalExceptionHandler {
             message = status.getReasonPhrase();
         }
         String error = status.name();
+        if (status.is5xxServerError()) {
+            appErrorRecorder.recordBackendException(exception, request, status.value());
+        }
         return buildErrorResponse(status, error, message, request);
     }
 
@@ -159,6 +169,7 @@ public class GlobalExceptionHandler {
         HttpServletRequest request
     ) {
         LOGGER.error("Unhandled exception path={}", request.getRequestURI(), exception);
+        appErrorRecorder.recordBackendException(exception, request, HttpStatus.INTERNAL_SERVER_ERROR.value());
         return buildErrorResponse(
             HttpStatus.INTERNAL_SERVER_ERROR,
             "INTERNAL_SERVER_ERROR",
@@ -190,7 +201,8 @@ public class GlobalExceptionHandler {
             status.value(),
             error,
             message,
-            request.getRequestURI()
+            request.getRequestURI(),
+            TraceContext.currentTraceId()
         );
         return ResponseEntity.status(status).body(response);
     }
@@ -204,6 +216,7 @@ public class GlobalExceptionHandler {
         int status,
         String error,
         String message,
-        String path
+        String path,
+        String traceId
     ) {}
 }

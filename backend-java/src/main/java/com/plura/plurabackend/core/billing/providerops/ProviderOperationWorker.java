@@ -3,6 +3,7 @@ package com.plura.plurabackend.core.billing.providerops;
 import com.plura.plurabackend.core.billing.providerops.model.ProviderOperation;
 import com.plura.plurabackend.core.billing.providerops.model.ProviderOperationStatus;
 import com.plura.plurabackend.core.booking.finance.BookingProviderIntegrationService;
+import com.plura.plurabackend.core.observability.AppErrorRecorder;
 import jakarta.annotation.PreDestroy;
 import java.lang.management.ManagementFactory;
 import java.time.Duration;
@@ -16,6 +17,7 @@ import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -34,6 +36,7 @@ public class ProviderOperationWorker {
 
     private final ProviderOperationService providerOperationService;
     private final BookingProviderIntegrationService bookingProviderIntegrationService;
+    private final AppErrorRecorder appErrorRecorder;
     private final int batchSize;
     private final Duration leaseDuration;
     private final Duration heartbeatInterval;
@@ -42,9 +45,11 @@ public class ProviderOperationWorker {
     private final String workerId;
     private final ScheduledExecutorService heartbeatExecutor;
 
+    @Autowired
     public ProviderOperationWorker(
         ProviderOperationService providerOperationService,
         BookingProviderIntegrationService bookingProviderIntegrationService,
+        AppErrorRecorder appErrorRecorder,
         @Value("${app.billing.provider-operation-worker.batch-size:10}") int batchSize,
         @Value("${app.billing.provider-operation-worker.lease-seconds:120}") long leaseSeconds,
         @Value("${app.billing.provider-operation-worker.stale-minutes:30}") long staleMinutes,
@@ -52,6 +57,7 @@ public class ProviderOperationWorker {
     ) {
         this.providerOperationService = providerOperationService;
         this.bookingProviderIntegrationService = bookingProviderIntegrationService;
+        this.appErrorRecorder = appErrorRecorder;
         this.batchSize = Math.max(1, batchSize);
         this.leaseDuration = Duration.ofSeconds(Math.max(30L, leaseSeconds));
         this.heartbeatInterval = Duration.ofSeconds(Math.max(10L, Math.max(leaseSeconds / 3L, 10L)));
@@ -63,6 +69,25 @@ public class ProviderOperationWorker {
             thread.setDaemon(true);
             return thread;
         });
+    }
+
+    public ProviderOperationWorker(
+        ProviderOperationService providerOperationService,
+        BookingProviderIntegrationService bookingProviderIntegrationService,
+        int batchSize,
+        long leaseSeconds,
+        long staleMinutes,
+        int staleAuditBatchSize
+    ) {
+        this(
+            providerOperationService,
+            bookingProviderIntegrationService,
+            null,
+            batchSize,
+            leaseSeconds,
+            staleMinutes,
+            staleAuditBatchSize
+        );
     }
 
     /**
@@ -184,6 +209,17 @@ public class ProviderOperationWorker {
                     workerId,
                     exception
                 );
+                if (appErrorRecorder != null) {
+                    appErrorRecorder.recordBackgroundException(
+                        exception,
+                        "provider-operation.scheduled-batch",
+                        java.util.Map.of(
+                            "operationId", operation.getId(),
+                            "operationType", String.valueOf(operation.getOperationType()),
+                            "externalReference", String.valueOf(operation.getExternalReference())
+                        )
+                    );
+                }
             }
         }
     }

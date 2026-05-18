@@ -174,6 +174,9 @@ public class RateLimitingFilter extends OncePerRequestFilter {
         if ("POST".equals(method) && "/auth/challenge/verify".equals(path)) {
             return new RateLimitTarget("challenge-verify", resolveUserOrIp(request), 50);
         }
+        if ("POST".equals(method) && "/api/v1/telemetry/client-errors".equals(path)) {
+            return new RateLimitTarget("client-error-telemetry-ip", extractClientIp(request), 120);
+        }
         if ("POST".equals(method) && path.matches("^/public/profesionales/[^/]+/reservas$")) {
             return new RateLimitTarget("booking-user", resolveUserOrIp(request), 10);
         }

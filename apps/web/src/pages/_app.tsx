@@ -1,6 +1,6 @@
 import type { AppProps } from 'next/app';
 import { SpeedInsights } from '@vercel/speed-insights/next';
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import { Instrument_Sans } from 'next/font/google';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
@@ -15,6 +15,8 @@ import { ProfessionalNotificationsProvider } from '@/context/ProfessionalNotific
 import { ThemeProvider } from '@/components/theme/ThemeProvider';
 import { getKnownAuthSessionRole, getUsableAuthAccessToken } from '@/services/session';
 import UnsavedChangesOverlay from '@/components/profesional/dashboard/UnsavedChangesOverlay';
+import ErrorBoundary from '@/components/shared/ErrorBoundary';
+import { reportWebError } from '@/services/errorTelemetry';
 export function reportWebVitals(metric: {
   id: string;
   name: string;
@@ -124,6 +126,37 @@ export default function App({ Component, pageProps }: AppProps) {
     shouldMountProfessionalNotifications,
   } = routeFlags;
 
+  useEffect(() => {
+    const handleWindowError = (event: ErrorEvent) => {
+      void reportWebError({
+        errorType: event.error instanceof Error ? event.error.name : 'WindowError',
+        message: event.message || 'Unhandled window error',
+        stackTrace: event.error instanceof Error ? event.error.stack : undefined,
+        context: {
+          origin: 'window.error',
+          filename: event.filename,
+          lineno: event.lineno,
+          colno: event.colno,
+        },
+      });
+    };
+    const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
+      const reason = event.reason;
+      void reportWebError({
+        errorType: reason instanceof Error ? reason.name : 'UnhandledRejection',
+        message: reason instanceof Error ? reason.message : String(reason ?? 'Unhandled promise rejection'),
+        stackTrace: reason instanceof Error ? reason.stack : undefined,
+        context: { origin: 'window.unhandledrejection' },
+      });
+    };
+    window.addEventListener('error', handleWindowError);
+    window.addEventListener('unhandledrejection', handleUnhandledRejection);
+    return () => {
+      window.removeEventListener('error', handleWindowError);
+      window.removeEventListener('unhandledrejection', handleUnhandledRejection);
+    };
+  }, []);
+
   let content = (
     <div
       className={`${instrumentSans.variable} ${instrumentSans.className} font-sans antialiased`}
@@ -186,7 +219,7 @@ export default function App({ Component, pageProps }: AppProps) {
         <link rel="apple-touch-icon" href="/logo-symbol.png" />
       </Head>
       <LogoutTransitionProvider>
-        {content}
+        <ErrorBoundary>{content}</ErrorBoundary>
         <LogoutLoadingOverlay />
         <SpeedInsights />
       </LogoutTransitionProvider>

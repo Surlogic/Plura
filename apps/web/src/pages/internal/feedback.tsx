@@ -219,6 +219,12 @@ export default function InternalFeedbackPage() {
             </div>
             <div className="flex items-center gap-3">
               <Link
+                href="/internal/ops/errors"
+                className="rounded-full border border-[#E2E7EC] bg-white px-4 py-2 text-xs font-semibold text-[#475569] transition hover:-translate-y-0.5 hover:shadow-sm"
+              >
+                Ir a errores
+              </Link>
+              <Link
                 href="/internal/ops/reviews"
                 className="rounded-full border border-[#E2E7EC] bg-white px-4 py-2 text-xs font-semibold text-[#475569] transition hover:-translate-y-0.5 hover:shadow-sm"
               >

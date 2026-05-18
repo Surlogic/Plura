@@ -9,6 +9,7 @@ import com.plura.plurabackend.core.notification.email.NotificationEmailTemplateE
 import com.plura.plurabackend.core.notification.email.NotificationEmailTemplateService;
 import com.plura.plurabackend.core.notification.metrics.NotificationMetricsService;
 import com.plura.plurabackend.core.notification.model.EmailDispatch;
+import com.plura.plurabackend.core.observability.AppErrorRecorder;
 import java.lang.management.ManagementFactory;
 import java.time.Duration;
 import java.time.LocalDateTime;
@@ -38,6 +39,7 @@ public class NotificationEmailWorker {
     private final NotificationEmailSender notificationEmailSender;
     private final NotificationEmailRetryPolicy notificationEmailRetryPolicy;
     private final NotificationMetricsService notificationMetricsService;
+    private final AppErrorRecorder appErrorRecorder;
     private final int batchSize;
     private final Duration leaseDuration;
     private final String workerId;
@@ -48,6 +50,7 @@ public class NotificationEmailWorker {
         NotificationEmailSender notificationEmailSender,
         NotificationEmailRetryPolicy notificationEmailRetryPolicy,
         NotificationMetricsService notificationMetricsService,
+        AppErrorRecorder appErrorRecorder,
         @Value("${app.notification.email-worker.batch-size:10}") int batchSize,
         @Value("${app.notification.email-worker.lease-seconds:120}") long leaseSeconds
     ) {
@@ -56,6 +59,7 @@ public class NotificationEmailWorker {
         this.notificationEmailSender = notificationEmailSender;
         this.notificationEmailRetryPolicy = notificationEmailRetryPolicy;
         this.notificationMetricsService = notificationMetricsService;
+        this.appErrorRecorder = appErrorRecorder;
         this.batchSize = Math.max(1, batchSize);
         this.leaseDuration = Duration.ofSeconds(Math.max(30L, leaseSeconds));
         this.workerId = ManagementFactory.getRuntimeMXBean().getName() + ":notification-email:" + UUID.randomUUID();
@@ -76,6 +80,14 @@ public class NotificationEmailWorker {
                     dueDispatch.getId(),
                     dueDispatch.getTemplateKey(),
                     exception
+                );
+                appErrorRecorder.recordBackgroundException(
+                    exception,
+                    "notification-email.schedule",
+                    java.util.Map.of(
+                        "dispatchId", dueDispatch.getId(),
+                        "templateKey", String.valueOf(dueDispatch.getTemplateKey())
+                    )
                 );
             }
         }
@@ -113,10 +125,26 @@ public class NotificationEmailWorker {
             applySendResult(claimed, sendResult);
             return true;
         } catch (NotificationEmailTemplateException exception) {
+            appErrorRecorder.recordBackgroundException(
+                exception,
+                "notification-email.template",
+                java.util.Map.of(
+                    "dispatchId", claimed.getId(),
+                    "templateKey", String.valueOf(claimed.getTemplateKey())
+                )
+            );
             notificationMetricsService.recordEmailRetriesExhausted(claimed, "template_render_error");
             notificationEmailDispatchService.markFailed(claimed.getId(), "template_render_error", exception.getMessage());
             return false;
         } catch (RuntimeException exception) {
+            appErrorRecorder.recordBackgroundException(
+                exception,
+                "notification-email.worker",
+                java.util.Map.of(
+                    "dispatchId", claimed.getId(),
+                    "templateKey", String.valueOf(claimed.getTemplateKey())
+                )
+            );
             scheduleRetryOrFail(claimed, "worker_unexpected_error", exception.getMessage());
             return false;
         }

@@ -1,3 +1,5 @@
+import { reportMobileError } from './errorTelemetry';
+
 const formatScope = (scope: string) => `[${scope}]`;
 
 export const logInfo = (scope: string, message: string, extra?: unknown) => {
@@ -19,6 +21,11 @@ export const logWarn = (scope: string, message: string, extra?: unknown) => {
 };
 
 export const logError = (scope: string, message: string, extra?: unknown) => {
+  void reportMobileError({
+    errorType: 'MobileLogError',
+    message,
+    context: { scope, extra: typeof extra === 'undefined' ? null : String(extra) },
+  });
   if (!__DEV__) return;
   if (typeof extra === 'undefined') {
     console.error(formatScope(scope), message);

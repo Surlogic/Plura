@@ -1,5 +1,6 @@
 package com.plura.plurabackend.config;
 
+import com.plura.plurabackend.core.observability.AppErrorRecorder;
 import java.lang.reflect.Method;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ThreadPoolExecutor;
@@ -22,6 +23,11 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 public class AsyncConfig implements AsyncConfigurer {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(AsyncConfig.class);
+    private final AppErrorRecorder appErrorRecorder;
+
+    public AsyncConfig(AppErrorRecorder appErrorRecorder) {
+        this.appErrorRecorder = appErrorRecorder;
+    }
 
     @Value("${app.async.available-slot.core-pool-size:8}")
     private int availableSlotCorePoolSize;
@@ -181,10 +187,16 @@ public class AsyncConfig implements AsyncConfigurer {
 
     @Override
     public AsyncUncaughtExceptionHandler getAsyncUncaughtExceptionHandler() {
-        return new LoggingAsyncUncaughtExceptionHandler();
+        return new LoggingAsyncUncaughtExceptionHandler(appErrorRecorder);
     }
 
     private static final class LoggingAsyncUncaughtExceptionHandler implements AsyncUncaughtExceptionHandler {
+        private final AppErrorRecorder appErrorRecorder;
+
+        private LoggingAsyncUncaughtExceptionHandler(AppErrorRecorder appErrorRecorder) {
+            this.appErrorRecorder = appErrorRecorder;
+        }
+
     /**
      * Procesa uncaught exception y coordina la respuesta del flujo.
      */
@@ -196,6 +208,7 @@ public class AsyncConfig implements AsyncConfigurer {
                 params,
                 ex
             );
+            appErrorRecorder.recordAsyncException(ex, method, params);
         }
     }
 }

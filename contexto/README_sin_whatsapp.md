@@ -141,6 +141,7 @@ Base transversal que ordena el producto y la arquitectura:
 - notificaciones in-app, email y motor de eventos transaccionales
 - reseñas implementadas con tres variantes de respuesta: publica (respeta ocultamiento por profesional e internal ops), profesional (ve todo su texto y puede reportar incumplimientos), cliente (ve y puede eliminar su propia reseña); rating y reviewsCount propagados a todas las superficies publicas (home, explorar, mapa, favoritos, marketplace); notificacion automatica al profesional al recibir reseña; recomputo batch de agregados que deja `rating=0` y `reviewsCount=0` cuando un profesional queda sin reseñas; analytics de reseñas para internal ops con bandera de reportes; ocultamiento publico del texto por profesional e internal ops; respuesta publica del negocio pendiente
 - feedback interno de app implementado (cliente y profesional pueden enviar rating + texto + categoria opcional hacia la plataforma; modulo separado `core.feedback`; historial paginado propio en configuracion; backoffice interno dedicado bajo la UI web `/internal/feedback`, consumiendo `/internal/ops/app-feedback` con listado, filtros, archive/unarchive y analytics basicos protegido por `X-Internal-Token`); feedback con texto se marca automaticamente `publicVisible=true` y queda expuesto via `GET /public/app-feedback` sin auth para testimonios publicos en la web; el nombre del autor se muestra abreviado ("Nombre I.") por privacidad
+- observabilidad de errores operativa: cada request backend lleva `X-Plura-Trace-Id`, los `5xx` y fallas asincronicas relevantes se agregan en `app_error_incident`, web/mobile reportan errores runtime y fallas API via `POST /api/v1/telemetry/client-errors`, y existe backoffice interno en `/internal/ops/errors` sobre `/internal/ops/app-errors*` para ver fuente, frecuencia, ultimo `traceId`, contexto y stack trace
 - moderacion interna de reseñas separada del feedback de producto: la UI vive en `/internal/ops/reviews`, consume los endpoints `/internal/ops/reviews*` y muestra reportes hechos por profesionales sin mezclar ese dominio con feedback de app
 - panel administrativo y configuracion general
 - pagos online configurables y metodos de pago visibles
@@ -335,9 +336,9 @@ Nota: el input original mencionaba `31/04/2026`, fecha invalida; en este context
 
 ## Foto rapida del repo
 
-- `apps/web`: app web con `Pages Router`, `36` pages y `80` componentes.
+- `apps/web`: app web con `Pages Router`, `37` pages y `80` componentes.
 - `apps/mobile`: app Expo con `31` pantallas y `21` servicios cliente.
-- `backend-java`: API principal con `594` archivos Java y `58` migraciones SQL.
+- `backend-java`: API principal con trazabilidad de errores persistida y migraciones Flyway hasta `V90`.
 - `packages/shared`: utilidades, contratos y definiciones de billing compartidas.
 - `scripts`: helpers de desarrollo del workspace.
 

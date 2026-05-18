@@ -6,7 +6,6 @@ import Link from 'next/link';
 import { useRouter } from 'next/router';
 import axios from 'axios';
 import AuthTopBar from '@/components/auth/AuthTopBar';
-import AuthLoadingOverlay from '@/components/auth/AuthLoadingOverlay';
 import Footer from '@/components/shared/Footer';
 import GoogleLoginButton from '@/components/auth/GoogleLoginButton';
 import Badge from '@/components/ui/Badge';
@@ -57,7 +56,6 @@ export default function ClienteRegisterPage() {
     confirmPassword: false,
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [isSendingPhoneCode, setIsSendingPhoneCode] = useState(false);
   const [isConfirmingPhoneCode, setIsConfirmingPhoneCode] = useState(false);
   const [phoneVerificationCode, setPhoneVerificationCode] = useState('');
@@ -269,7 +267,6 @@ export default function ClienteRegisterPage() {
                 onError={setErrorMessage}
                 buttonLabel="Continuar con Google"
                 loadingLabel="Registrando..."
-                onLoadingChange={setIsGoogleLoading}
               />
             </div>
           </div>
@@ -473,11 +470,6 @@ export default function ClienteRegisterPage() {
           </p>
         </Card>
       </main>
-      <AuthLoadingOverlay
-        visible={isGoogleLoading}
-        title="Registrando cuenta"
-        description="Creando tu cuenta de cliente con Google."
-      />
       <Footer />
     </div>
   );

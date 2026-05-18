@@ -1,6 +1,5 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/router';
-import AuthLoadingOverlay from '@/components/auth/AuthLoadingOverlay';
 import AuthTopBar from '@/components/auth/AuthTopBar';
 import Footer from '@/components/shared/Footer';
 
@@ -22,11 +21,11 @@ export default function ProfesionalLoginRedirectPage() {
   return (
     <div className="app-shell min-h-screen bg-[color:var(--background)] text-[color:var(--ink)]">
       <AuthTopBar tone="professional" />
-      <AuthLoadingOverlay
-        visible
-        title="Redirigiendo al acceso"
-        description="El inicio de sesión ahora se realiza desde una única pantalla."
-      />
+      <main className="mx-auto flex min-h-[55vh] w-full max-w-md items-center justify-center px-4 text-center">
+        <p className="text-sm font-semibold text-[color:var(--ink-muted)]">
+          Redirigiendo al acceso...
+        </p>
+      </main>
       <Footer />
     </div>
   );

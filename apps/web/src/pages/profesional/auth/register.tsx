@@ -7,7 +7,6 @@ import { useRouter } from 'next/router';
 import { Marker } from 'react-map-gl/mapbox';
 import axios from 'axios';
 import AuthTopBar from '@/components/auth/AuthTopBar';
-import AuthLoadingOverlay from '@/components/auth/AuthLoadingOverlay';
 import GoogleLoginButton from '@/components/auth/GoogleLoginButton';
 import MapView from '@/components/map/MapView';
 import Badge from '@/components/ui/Badge';
@@ -234,7 +233,6 @@ export default function ProfesionalRegisterPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isRedirectingToCheckout, setIsRedirectingToCheckout] = useState(false);
   const [billingRecoveryAvailable, setBillingRecoveryAvailable] = useState(false);
-  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [isSendingPhoneCode, setIsSendingPhoneCode] = useState(false);
   const [isConfirmingPhoneCode, setIsConfirmingPhoneCode] = useState(false);
   const [phoneVerificationCode, setPhoneVerificationCode] = useState('');
@@ -547,7 +545,6 @@ export default function ProfesionalRegisterPage() {
       password: true,
       confirmPassword: true,
     }));
-    setIsGoogleLoading(false);
     setStep(1);
     setSuccessMessage(
       oauthPhoneNumber
@@ -1080,13 +1077,9 @@ export default function ProfesionalRegisterPage() {
           intendedRole="PROFESSIONAL"
           mode="redirect"
           onAuthenticated={handleOAuthAuthenticated}
-          onError={(message) => {
-            setIsGoogleLoading(false);
-            setErrorMessage(message);
-          }}
+          onError={setErrorMessage}
           buttonLabel="Continuar con Google"
           loadingLabel="Registrando..."
-          onLoadingChange={setIsGoogleLoading}
         />
         {isOAuthSetup ? (
           <div className="rounded-[24px] border border-[color:var(--primary-soft)] bg-[color:var(--primary-soft)] p-5 text-sm text-[color:var(--primary-strong)]">
@@ -1773,8 +1766,14 @@ export default function ProfesionalRegisterPage() {
                   size="lg"
                   className="min-w-72"
                   disabled={isRedirectingToCheckout}
-                  loading={isSubmitting && !isRedirectingToCheckout}
-                  loadingLabel={isOAuthSetup ? 'Activando Plura Core...' : 'Creando perfil...'}
+                  loading={isSubmitting || isRedirectingToCheckout}
+                  loadingLabel={
+                    isRedirectingToCheckout
+                      ? 'Redirigiendo a Mercado Pago...'
+                      : isOAuthSetup
+                        ? 'Activando Plura Core...'
+                        : 'Creando perfil...'
+                  }
                 >
                   Activar prueba gratuita
                 </Button>
@@ -1783,15 +1782,6 @@ export default function ProfesionalRegisterPage() {
           </Card>
         </form>
       </main>
-      <AuthLoadingOverlay
-        visible={isGoogleLoading || isRedirectingToCheckout}
-        title={isRedirectingToCheckout ? 'Redirigiendo a Mercado Pago' : 'Registrando cuenta'}
-        description={
-          isGoogleLoading
-            ? 'Creando tu cuenta profesional con Google.'
-            : 'Redirigiendo a Mercado Pago para autorizar Plura Core.'
-        }
-      />
     </div>
   );
 }

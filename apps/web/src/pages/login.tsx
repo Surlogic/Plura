@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react';
 import type { ChangeEvent, FormEvent } from 'react';
 import { isAxiosError } from 'axios';
 import AuthTopBar from '@/components/auth/AuthTopBar';
-import AuthLoadingOverlay from '@/components/auth/AuthLoadingOverlay';
 import GoogleLoginButton from '@/components/auth/GoogleLoginButton';
 import Footer from '@/components/shared/Footer';
 import Badge from '@/components/ui/Badge';
@@ -558,15 +557,6 @@ export default function UnifiedLoginPage() {
           </Card>
         </div>
       </main>
-      <AuthLoadingOverlay
-        visible={isGoogleLoading || Boolean(selectingContext)}
-        title={selectingContext ? 'Cambiando de contexto' : 'Iniciando sesión'}
-        description={
-          isGoogleLoading
-            ? 'Conectando tu cuenta de Google.'
-            : 'Preparando el acceso seleccionado.'
-        }
-      />
       <Footer />
     </div>
   );

@@ -4,7 +4,6 @@ import { useState } from 'react';
 import type { ChangeEvent, FormEvent } from 'react';
 import { isAxiosError } from 'axios';
 import AuthTopBar from '@/components/auth/AuthTopBar';
-import AuthLoadingOverlay from '@/components/auth/AuthLoadingOverlay';
 import GoogleLoginButton from '@/components/auth/GoogleLoginButton';
 import Footer from '@/components/shared/Footer';
 import Badge from '@/components/ui/Badge';
@@ -63,7 +62,6 @@ export default function ClienteLoginPage() {
   const [form, setForm] = useState({ email: '', password: '' });
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
 
   const handleChange = (event: ChangeEvent<HTMLInputElement>) => {
     const { name, value } = event.target;
@@ -256,7 +254,6 @@ export default function ClienteLoginPage() {
                   onError={setErrorMessage}
                   buttonLabel="Continuar con Google"
                   loadingLabel="Iniciando..."
-                  onLoadingChange={setIsGoogleLoading}
                 />
               </div>
             </div>
@@ -273,11 +270,6 @@ export default function ClienteLoginPage() {
           </Card>
         </div>
       </main>
-      <AuthLoadingOverlay
-        visible={isGoogleLoading}
-        title="Iniciando sesión"
-        description="Conectando tu cuenta de Google como cliente."
-      />
       <Footer />
     </div>
   );

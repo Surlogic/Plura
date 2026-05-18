@@ -247,7 +247,6 @@ export default function ProfesionalRegisterPage() {
   const [isLocationPreviewLoading, setIsLocationPreviewLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
-  const isBusy = isSubmitting || isGoogleLoading || isRedirectingToCheckout;
   const visibleStepNumber = Math.min(step + 1, 8);
 
   const emailValue = form.email.trim().toLowerCase();
@@ -1768,14 +1767,16 @@ export default function ProfesionalRegisterPage() {
                   Continuar
                 </Button>
               ) : (
-                <Button type="submit" variant="primary" size="lg" className="min-w-72" disabled={isSubmitting || isRedirectingToCheckout}>
-                  {isRedirectingToCheckout
-                    ? 'Redirigiendo a Mercado Pago...'
-                    : isSubmitting
-                      ? isOAuthSetup
-                        ? 'Activando Plura Core...'
-                        : 'Creando perfil...'
-                      : 'Activar prueba gratuita'}
+                <Button
+                  type="submit"
+                  variant="primary"
+                  size="lg"
+                  className="min-w-72"
+                  disabled={isRedirectingToCheckout}
+                  loading={isSubmitting && !isRedirectingToCheckout}
+                  loadingLabel={isOAuthSetup ? 'Activando Plura Core...' : 'Creando perfil...'}
+                >
+                  Activar prueba gratuita
                 </Button>
               )}
             </div>
@@ -1783,14 +1784,12 @@ export default function ProfesionalRegisterPage() {
         </form>
       </main>
       <AuthLoadingOverlay
-        visible={isBusy}
-        title="Registrando cuenta"
+        visible={isGoogleLoading || isRedirectingToCheckout}
+        title={isRedirectingToCheckout ? 'Redirigiendo a Mercado Pago' : 'Registrando cuenta'}
         description={
           isGoogleLoading
             ? 'Creando tu cuenta profesional con Google.'
-            : isRedirectingToCheckout
-              ? 'Redirigiendo a Mercado Pago para autorizar Plura Core.'
-              : 'Guardando tus datos y preparando Plura Core.'
+            : 'Redirigiendo a Mercado Pago para autorizar Plura Core.'
         }
       />
     </div>

@@ -65,7 +65,6 @@ export default function ClienteRegisterPage() {
   const [phoneVerificationMessage, setPhoneVerificationMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
-  const isBusy = isSubmitting || isGoogleLoading;
 
   const handleOAuthAuthenticated = async (result: OAuthLoginResult) => {
     setErrorMessage(null);
@@ -456,8 +455,10 @@ export default function ClienteRegisterPage() {
               size="lg"
               className="w-full"
               disabled={isSubmitting || !isFormValid || !phoneVerificationToken}
+              loading={isSubmitting}
+              loadingLabel="Creando cuenta..."
             >
-              {isSubmitting ? 'Creando cuenta...' : 'Crear cuenta'}
+              Crear cuenta
             </Button>
           </form>
 
@@ -473,13 +474,9 @@ export default function ClienteRegisterPage() {
         </Card>
       </main>
       <AuthLoadingOverlay
-        visible={isBusy}
+        visible={isGoogleLoading}
         title="Registrando cuenta"
-        description={
-          isGoogleLoading
-            ? 'Creando tu cuenta de cliente con Google.'
-            : 'Guardando tus datos para crear tu cuenta de cliente.'
-        }
+        description="Creando tu cuenta de cliente con Google."
       />
       <Footer />
     </div>

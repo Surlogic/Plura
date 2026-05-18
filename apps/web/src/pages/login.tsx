@@ -451,8 +451,16 @@ export default function UnifiedLoginPage() {
                     </p>
                   ) : null}
 
-                  <Button type="submit" variant="brand" size="lg" className="w-full" disabled={isSubmitting || isGoogleLoading}>
-                    {isSubmitting ? 'Ingresando...' : 'Iniciar sesión'}
+                  <Button
+                    type="submit"
+                    variant="brand"
+                    size="lg"
+                    className="w-full"
+                    disabled={isGoogleLoading}
+                    loading={isSubmitting}
+                    loadingLabel="Iniciando sesión..."
+                  >
+                    Iniciar sesión
                   </Button>
                 </form>
 
@@ -551,12 +559,12 @@ export default function UnifiedLoginPage() {
         </div>
       </main>
       <AuthLoadingOverlay
-        visible={isSubmitting || isGoogleLoading || Boolean(selectingContext)}
+        visible={isGoogleLoading || Boolean(selectingContext)}
         title={selectingContext ? 'Cambiando de contexto' : 'Iniciando sesión'}
         description={
           isGoogleLoading
             ? 'Conectando tu cuenta de Google.'
-            : 'Validando credenciales y preparando tu acceso.'
+            : 'Preparando el acceso seleccionado.'
         }
       />
       <Footer />

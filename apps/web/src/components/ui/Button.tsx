@@ -20,6 +20,8 @@ type ButtonSize = 'sm' | 'md' | 'lg';
 type CommonProps = {
   children: ReactNode;
   className?: string;
+  loading?: boolean;
+  loadingLabel?: string;
   variant?: ButtonVariant;
   size?: ButtonSize;
 };
@@ -66,6 +68,8 @@ const variantClassNames: Record<ButtonVariant, string> = {
 export default function Button({
   children,
   className,
+  loading = false,
+  loadingLabel,
   variant = 'secondary',
   size = 'md',
   ...props
@@ -77,21 +81,33 @@ export default function Button({
     className,
   );
 
+  const content = (
+    <>
+      {loading ? (
+        <span
+          className="mr-2 inline-block h-4 w-4 shrink-0 animate-spin rounded-full border-2 border-current border-t-transparent"
+          aria-hidden="true"
+        />
+      ) : null}
+      {loading ? loadingLabel || children : children}
+    </>
+  );
+
   if ('href' in props && props.href) {
     const { href, ...linkProps } = props as LinkButtonProps;
     return (
       // eslint-disable-next-line no-restricted-syntax -- Este wrapper necesita reenviar props validas de Link.
-      <Link href={href} {...linkProps} className={resolvedClassName}>
-        {children}
+      <Link href={href} {...linkProps} className={resolvedClassName} aria-disabled={loading || linkProps['aria-disabled']}>
+        {content}
       </Link>
     );
   }
 
-  const buttonProps = props as NativeButtonProps;
+  const { disabled, ...buttonProps } = props as NativeButtonProps;
   return (
     // eslint-disable-next-line no-restricted-syntax -- Este wrapper necesita reenviar props nativas del boton.
-    <button {...buttonProps} className={resolvedClassName}>
-      {children}
+    <button {...buttonProps} className={resolvedClassName} disabled={disabled || loading}>
+      {content}
     </button>
   );
 }

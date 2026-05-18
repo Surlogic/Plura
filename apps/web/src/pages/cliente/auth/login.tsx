@@ -138,7 +138,6 @@ export default function ClienteLoginPage() {
 
   const inputClassName =
     'h-12 w-full rounded-[18px] border border-[color:var(--border-soft)] bg-white/90 px-4 text-sm text-[color:var(--ink)] placeholder:text-[color:var(--ink-faint)] transition focus:border-[color:var(--accent)] focus:outline-none focus:ring-4 focus:ring-[color:var(--focus-ring)]';
-  const isBusy = isSubmitting || isGoogleLoading;
 
   return (
     <div className="app-shell min-h-screen bg-[color:var(--background)] text-[color:var(--ink)]">
@@ -230,8 +229,15 @@ export default function ClienteLoginPage() {
                 </p>
               ) : null}
 
-              <Button type="submit" variant="brand" size="lg" className="w-full" disabled={isSubmitting}>
-                {isSubmitting ? 'Ingresando...' : 'Iniciar sesión'}
+              <Button
+                type="submit"
+                variant="brand"
+                size="lg"
+                className="w-full"
+                loading={isSubmitting}
+                loadingLabel="Iniciando sesión..."
+              >
+                Iniciar sesión
               </Button>
             </form>
 
@@ -268,13 +274,9 @@ export default function ClienteLoginPage() {
         </div>
       </main>
       <AuthLoadingOverlay
-        visible={isBusy}
+        visible={isGoogleLoading}
         title="Iniciando sesión"
-        description={
-          isGoogleLoading
-            ? 'Conectando tu cuenta de Google como cliente.'
-            : 'Validando tus credenciales de cliente.'
-        }
+        description="Conectando tu cuenta de Google como cliente."
       />
       <Footer />
     </div>

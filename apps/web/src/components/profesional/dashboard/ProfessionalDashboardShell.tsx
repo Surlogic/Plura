@@ -4,6 +4,7 @@ import { useState, type ReactNode } from 'react';
 import ProfesionalSidebar from '@/components/profesional/Sidebar';
 import Button from '@/components/ui/Button';
 import { cn } from '@/components/ui/cn';
+import { useProfessionalCoreAccessGate } from '@/hooks/useProfessionalCoreAccessGate';
 import type { ProfessionalProfile } from '@/types/professional';
 
 type ProfessionalDashboardShellProps = {
@@ -26,6 +27,7 @@ export default function ProfessionalDashboardShell({
   maxWidthClassName = 'max-w-none',
 }: ProfessionalDashboardShellProps) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  useProfessionalCoreAccessGate();
 
   return (
     <div

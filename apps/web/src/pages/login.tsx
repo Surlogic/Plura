@@ -27,44 +27,11 @@ import {
   armPendingCheckoutReturnState,
   clearPendingCheckoutState,
   createCoreSubscription,
+  isCoreSubscriptionEnabled,
+  fetchCurrentSubscription,
   setPendingCheckoutState,
 } from '@/lib/billing/billing';
-
-const REGISTER_HANDOFF_KEY = 'plura:professional-register-handoff';
-
-type ProfessionalRegisterHandoff = {
-  schedule?: {
-    days?: Array<{
-      day?: string;
-      enabled?: boolean;
-      paused?: boolean;
-      ranges?: Array<{
-        id?: string;
-        start?: string;
-        end?: string;
-      }>;
-    }>;
-    pauses?: unknown[];
-    slotDurationMinutes?: number;
-  };
-  firstService?: {
-    name?: string;
-    description?: string;
-    categorySlug?: string;
-    imageUrl?: string;
-    price?: string;
-    depositAmount?: null;
-    duration?: string;
-    postBufferMinutes?: number;
-    paymentType?: 'ON_SITE';
-    processingFeeMode?: 'INSTANT';
-    currency?: 'UYU';
-    active?: boolean;
-  } | null;
-  publicPage?: {
-    about?: string;
-  };
-};
+import { applyPendingProfessionalRegisterHandoff } from '@/lib/professional/registerHandoff';
 
 const resolveQueryValue = (value: string | string[] | undefined) => {
   if (Array.isArray(value)) return value[0] ?? '';
@@ -156,60 +123,6 @@ export default function UnifiedLoginPage() {
   };
 
 
-  const applyPendingRegisterHandoff = async () => {
-    if (typeof window === 'undefined') return;
-
-    const raw = window.localStorage.getItem(REGISTER_HANDOFF_KEY);
-    if (!raw) return;
-
-    let handoff: ProfessionalRegisterHandoff | null = null;
-    try {
-      handoff = JSON.parse(raw) as ProfessionalRegisterHandoff;
-    } catch {
-      window.localStorage.removeItem(REGISTER_HANDOFF_KEY);
-      return;
-    }
-
-    if (!handoff || typeof handoff !== 'object') {
-      window.localStorage.removeItem(REGISTER_HANDOFF_KEY);
-      return;
-    }
-
-    if (handoff.publicPage?.about?.trim()) {
-      await api.put('/profesional/public-page', {
-        about: handoff.publicPage.about.trim(),
-      });
-    }
-
-    if (handoff.schedule?.days?.length) {
-      await api.put('/profesional/schedule', {
-        days: handoff.schedule.days,
-        pauses: [],
-        slotDurationMinutes: Math.max(15, Number(handoff.schedule.slotDurationMinutes) || 60),
-      });
-    }
-
-    const firstService = handoff.firstService;
-    if (firstService?.name?.trim() && firstService.price?.trim() && firstService.duration?.trim()) {
-      await api.post('/profesional/services', {
-        name: firstService.name.trim(),
-        description: firstService.description?.trim() || '',
-        categorySlug: firstService.categorySlug?.trim() || '',
-        imageUrl: firstService.imageUrl?.trim() || '',
-        price: firstService.price.trim(),
-        depositAmount: null,
-        duration: firstService.duration.trim(),
-        postBufferMinutes: Number(firstService.postBufferMinutes) || 0,
-        paymentType: 'ON_SITE',
-        processingFeeMode: 'INSTANT',
-        currency: 'UYU',
-        active: firstService.active !== false,
-      });
-    }
-
-    window.localStorage.removeItem(REGISTER_HANDOFF_KEY);
-  };
-
   const activatePendingCoreSubscription = async () => {
     const checkout = await createCoreSubscription();
 
@@ -221,22 +134,20 @@ export default function UnifiedLoginPage() {
         armPendingCheckoutReturnState();
         window.location.assign(checkout.checkoutUrl);
       }
-      return;
+      return false;
     }
 
-    await refreshProfessionalProfile();
-    await router.push('/profesional/dashboard/billing');
+    return isCoreSubscriptionEnabled(checkout);
   };
 
   const completeProfessionalPendingBilling = async () => {
     try {
-      await applyPendingRegisterHandoff();
-    } catch {
-      // Si la carga inicial falla no bloqueamos el login: Facturación permite recuperar el flujo.
-    }
-
-    try {
-      await activatePendingCoreSubscription();
+      const coreActivated = await activatePendingCoreSubscription();
+      if (coreActivated) {
+        await applyPendingProfessionalRegisterHandoff();
+        await refreshProfessionalProfile();
+      }
+      await router.push('/profesional/dashboard/billing');
     } catch {
       void refreshProfessionalProfile().catch(() => undefined);
       await router.push('/profesional/dashboard/billing');
@@ -261,6 +172,19 @@ export default function UnifiedLoginPage() {
     if (descriptor.type === 'PROFESSIONAL' && shouldActivatePendingBilling) {
       await completeProfessionalPendingBilling();
       return;
+    }
+
+    if (descriptor.type === 'PROFESSIONAL') {
+      let subscription = null;
+      try {
+        subscription = await fetchCurrentSubscription();
+      } catch {
+        subscription = null;
+      }
+      if (!isCoreSubscriptionEnabled(subscription)) {
+        await router.push('/profesional/dashboard/billing');
+        return;
+      }
     }
 
     await router.push(dashboardForContext(descriptor));

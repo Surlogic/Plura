@@ -18,8 +18,15 @@ import {
   armPendingCheckoutReturnState,
   clearPendingCheckoutState,
   createCoreSubscription,
+  isCoreSubscriptionEnabled,
   setPendingCheckoutState,
 } from '@/lib/billing/billing';
+import {
+  applyProfessionalRegisterHandoff,
+  clearPendingProfessionalRegisterHandoff,
+  savePendingProfessionalRegisterHandoff,
+  type ProfessionalRegisterHandoff,
+} from '@/lib/professional/registerHandoff';
 import { setAuthAccessToken } from '@/services/session';
 import {
   confirmRegistrationPhoneVerification,
@@ -134,20 +141,11 @@ type ProfessionalServicePayload = {
   active: boolean;
 };
 
-type ProfessionalRegisterHandoff = {
-  schedule: ProfessionalSchedulePayload;
-  firstService: ProfessionalServicePayload | null;
-  publicPage: {
-    about: string;
-  };
-};
-
 type ProfessionalOnboardingDraft = {
   form: Omit<RegisterForm, 'password' | 'confirmPassword'>;
   schedule: ScheduleDay[];
 };
 
-const REGISTER_HANDOFF_KEY = 'plura:professional-register-handoff';
 const PROFESSIONAL_ONBOARDING_DRAFT_KEY = 'plura:professional-onboarding-draft';
 
 const wizardSteps = [
@@ -688,20 +686,6 @@ export default function ProfesionalRegisterPage() {
     },
   });
 
-  const applyRegisterHandoff = async (handoff: ProfessionalRegisterHandoff) => {
-    if (handoff.publicPage.about) {
-      await api.put('/profesional/public-page', {
-        about: handoff.publicPage.about,
-      });
-    }
-
-    await api.put('/profesional/schedule', handoff.schedule);
-
-    if (handoff.firstService) {
-      await api.post('/profesional/services', handoff.firstService);
-    }
-  };
-
   const goNext = () => {
     setErrorMessage(null);
     const fields = stepFields(step);
@@ -719,11 +703,7 @@ export default function ProfesionalRegisterPage() {
   };
 
   const saveDraftAfterRegister = () => {
-    if (typeof window === 'undefined') return;
-    window.localStorage.setItem(
-      REGISTER_HANDOFF_KEY,
-      JSON.stringify(buildRegisterHandoff()),
-    );
+    savePendingProfessionalRegisterHandoff(buildRegisterHandoff());
   };
 
   const saveOnboardingDraftForLogin = () => {
@@ -749,33 +729,40 @@ export default function ProfesionalRegisterPage() {
         setIsRedirectingToCheckout(true);
         window.location.assign(checkout.checkoutUrl);
       }
-      return;
+      return false;
     }
 
-    await refreshProfile();
-    await router.push('/profesional/dashboard/billing');
+    return isCoreSubscriptionEnabled(checkout);
   };
 
   const completeProfessionalSetup = async () => {
     const handoff = buildRegisterHandoff();
-    saveDraftAfterRegister();
+    savePendingProfessionalRegisterHandoff(handoff);
+
+    let coreActivated = false;
     try {
-      await applyRegisterHandoff(handoff);
-      if (typeof window !== 'undefined') {
-        window.localStorage.removeItem(REGISTER_HANDOFF_KEY);
-        window.localStorage.removeItem(PROFESSIONAL_ONBOARDING_DRAFT_KEY);
-      }
+      coreActivated = await activateCoreSubscription();
     } catch {
-      setErrorMessage('La cuenta quedó conectada, pero no pudimos cargar toda la configuración inicial. Revisá conexión y volvé a intentar.');
+      setBillingRecoveryAvailable(true);
+      setErrorMessage('No pudimos activar Plura Core. El perfil, agenda y servicio no se publicaron; podés reintentar desde Facturación.');
       return;
     }
 
-    await refreshProfile();
+    if (!coreActivated) {
+      return;
+    }
+
     try {
-      await activateCoreSubscription();
+      await applyProfessionalRegisterHandoff(handoff);
+      if (typeof window !== 'undefined') {
+        clearPendingProfessionalRegisterHandoff();
+        window.localStorage.removeItem(PROFESSIONAL_ONBOARDING_DRAFT_KEY);
+      }
+      await refreshProfile();
+      await router.push('/profesional/dashboard/billing');
     } catch {
       setBillingRecoveryAvailable(true);
-      setErrorMessage('La cuenta quedó creada, pero no pudimos activar Plura Core. Podés intentarlo desde Facturación.');
+      setErrorMessage('Plura Core quedó activo, pero no pudimos publicar la configuración inicial. Podés reintentar desde Facturación.');
     }
   };
 

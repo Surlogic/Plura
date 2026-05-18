@@ -131,6 +131,21 @@ export const createCoreSubscription = async (): Promise<BillingCheckoutResponse>
   return response.data;
 };
 
+export const isCoreSubscriptionEnabled = (
+  subscription?: BillingSubscription | BillingCheckoutResponse | null,
+) =>
+  subscription?.status === 'ACTIVE' ||
+  subscription?.status === 'TRIALING' ||
+  (
+    subscription?.status === 'TRIAL' &&
+    'trialActive' in subscription &&
+    subscription.trialActive === true
+  ) ||
+  (
+    'planEnabled' in (subscription ?? {}) &&
+    (subscription as BillingSubscription).planEnabled === true
+  );
+
 export const resolveCurrentBillingPlanId = ({
   profilePlanCode,
   subscription,

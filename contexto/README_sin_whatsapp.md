@@ -24,7 +24,7 @@ Plura tiene dos grandes actores:
 Definicion vigente de monetizacion para MVP:
 
 - el profesional/local se registra directo en `Plura Core`
-- el wizard web de registro profesional cierra con activacion de `Plura Core`: crea o completa la cuenta, aplica configuracion inicial de perfil/horarios/primer servicio y llama billing para iniciar la prueba gratuita; si Mercado Pago devuelve checkout, redirige en la misma pestaña para autorizar el medio de pago
+- el wizard web de registro profesional cierra con activacion de `Plura Core`: crea o completa la cuenta base profesional solo en el submit final, inicia billing para la prueba gratuita y recien cuando Core queda habilitado aplica la configuracion inicial de perfil/horarios/primer servicio; si Mercado Pago devuelve checkout, redirige en la misma pestaña y conserva el handoff pendiente hasta la confirmacion
 - no se venden ni se muestran planes por niveles, upgrades a Local/Enterprise ni comparativas de planes
 - `INDEPENDENT` y `LOCAL` no son planes comerciales: son tipos operativos de perfil para definir modalidad, ubicacion, landing y datos publicos
 - el modelo principal sigue siendo suscripcion mensual unica; en reservas prepagas el checkout puede sumar al cliente un cargo de procesamiento segun el servicio para cubrir fee de Mercado Pago + IVA + `1%` de plataforma

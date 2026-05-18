@@ -19,12 +19,14 @@ import {
   formatBillingDate,
   getPendingCheckoutState,
   hasPendingCheckoutReturnState,
+  isCoreSubscriptionEnabled,
   resolveBackendMessage,
   resolveCurrentBillingPlanId,
   resolveCurrentBillingStatus,
   setPendingCheckoutState,
   type BillingSubscription,
 } from '@/lib/billing/billing';
+import { applyPendingProfessionalRegisterHandoff } from '@/lib/professional/registerHandoff';
 import { invalidateCachedGet } from '@/services/cachedGet';
 import type { ProfessionalProfile } from '@/types/professional';
 
@@ -49,12 +51,6 @@ const SOFT_POLL_BASE_MS = 15000;
 const SOFT_POLL_MAX_MS = 45000;
 const MAX_POLL_ATTEMPTS = 20;
 const MAX_PENDING_CHECKOUT_AGE_MS = 5 * 60 * 1000;
-
-const isSubscriptionAccessEnabled = (subscription: BillingSubscription | null) =>
-  subscription?.status === 'ACTIVE' ||
-  subscription?.status === 'TRIALING' ||
-  (subscription?.status === 'TRIAL' && subscription.trialActive === true) ||
-  subscription?.planEnabled === true;
 
 const refreshProfessionalCaches = async (refreshProfile: () => Promise<void>) => {
   invalidateCachedGet('/auth/me/profesional');
@@ -206,7 +202,7 @@ export function useProfessionalBilling({
   }, [loadSubscription, profile?.id]);
 
   useEffect(() => {
-    if (!profile?.id || !subscription || !isSubscriptionAccessEnabled(subscription)) {
+    if (!profile?.id || !subscription || !isCoreSubscriptionEnabled(subscription)) {
       profileSyncSignatureRef.current = null;
       return;
     }
@@ -303,6 +299,7 @@ export function useProfessionalBilling({
           ? { tone: 'success', title: 'Prueba gratuita activa', description: 'Plura Core ya esta disponible en el dashboard.' }
           : { tone: 'success', title: 'Suscripcion activada', description: 'Plura Core ya esta disponible en el dashboard.' },
       });
+      await applyPendingProfessionalRegisterHandoff();
       await refreshProfessionalCaches(refreshProfileRef.current);
       return;
     }
@@ -314,6 +311,7 @@ export function useProfessionalBilling({
         type: 'SET_BANNER',
         banner: { tone: 'success', title: 'Prueba gratuita activa', description: 'Plura Core ya esta disponible en el dashboard.' },
       });
+      await applyPendingProfessionalRegisterHandoff();
       await refreshProfessionalCaches(refreshProfileRef.current);
       return;
     }
@@ -625,6 +623,9 @@ export function useProfessionalBilling({
 
       clearPendingCheckout();
       await loadSubscription();
+      if (isCoreSubscriptionEnabled(checkout)) {
+        await applyPendingProfessionalRegisterHandoff();
+      }
       await refreshProfessionalCaches(refreshProfileRef.current);
       dispatch({ type: 'SET_REDIRECTING', value: false });
       dispatch({

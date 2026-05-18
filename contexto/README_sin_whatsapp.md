@@ -34,7 +34,7 @@ Definicion vigente de monetizacion para MVP:
 Naming vigente de negocio:
 
 - `Usuario`: gratis
-- `Plura Core`: suscripcion unica para profesionales y locales durante el MVP, con prueba gratuita de `2` meses iniciable desde backend billing
+- `Plura Core`: suscripcion unica para profesionales y locales durante el MVP, con prueba gratuita de `30` días iniciable desde backend billing
 - `Enterprise`: futuro/personalizado para empresas con varios locales, sin UI, opcion de compra ni plan tecnico activo
 
 Contratos actuales de compatibilidad:
@@ -64,7 +64,7 @@ Siempre gratis. Objetivo: bajar friccion para reservar y volver.
 
 Suscripcion unica para el MVP operativo de profesionales y locales.
 
-- prueba gratuita de `2` meses antes del cobro mensual de Core
+- prueba gratuita de `30` días antes del cobro mensual de Core
 - el dashboard de facturacion muestra trial activo, dias restantes, activacion pendiente de Mercado Pago, prueba vencida y estados de suscripcion Core sin exponer otros planes comprables
 - una sola agenda activa
 - un solo profesional activo

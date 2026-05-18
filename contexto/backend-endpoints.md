@@ -542,8 +542,8 @@ Estado real detectado en codigo:
 - pagos reales de reservas y refunds: `Mercado Pago` via `booking` + `providerops`
 - `/webhooks/mercadopago` procesa suscripciones y reservas con routing interno por dominio
 - `/cliente/reservas/{id}/payment-session` sigue siendo la entrada real para checkout de reservas
-- `Plura Core` persiste prueba gratuita local de `2` meses (`trialStartAt`, `trialEndAt`, `trialSource=BILLING`) y no permite una segunda prueba si la cuenta ya tiene historial de trial
-- Mercado Pago crea `preapproval_plan` con `auto_recurring.free_trial` de `2 months` cuando no hay plan remoto configurado; si `Mercado Pago` responde `card_token_id is required` al crear el `preapproval`, el backend hace fallback al checkout hosted del `preapproval_plan` y devuelve igual una `checkoutUrl`
+- `Plura Core` persiste prueba gratuita local de `30` días (`trialStartAt`, `trialEndAt`, `trialSource=BILLING`) y la protege con identidad histórica hasheada por HMAC (`billing_trial_claim`) para email, teléfono y OAuth; eliminar cuenta o cerrar el perfil profesional no reinicia la prueba gratuita
+- Mercado Pago crea `preapproval_plan` con `auto_recurring.free_trial` de `30 days` cuando no hay plan remoto configurado; si `Mercado Pago` responde `card_token_id is required` al crear el `preapproval`, el backend hace fallback al checkout hosted del `preapproval_plan` y devuelve igual una `checkoutUrl`
 - `POST /billing/subscription` toma lock pesimista sobre la suscripción del profesional y rechaza duplicados si ya hay suscripcion activa, trial vigente o checkout pendiente
 - webhooks de suscripcion Mercado Pago: autorizacion/activacion adjunta medio de pago (`paymentMethodAttachedAt`) y conserva `TRIALING` si el trial local sigue vigente; pagos exitosos posteriores pasan a `ACTIVE`; fallos pasan a `PAST_DUE`; cancelaciones a `CANCELLED`
 

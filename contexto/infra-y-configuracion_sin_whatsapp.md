@@ -132,13 +132,14 @@ Lectura real del backend hoy:
 
 - el modelo comercial visible para profesionales/locales es `Plura Core` unico; `Profesional`, `Local` y `Enterprise` no son planes tecnicos activos
 - `POST /billing/subscription` permite iniciar solo `PLAN_CORE` o `CORE`; Local/Enterprise/Professional/Pro/Premium/Basic ya no se aceptan como aliases de entrada
-- `Plura Core` persiste prueba gratuita local de `2` meses en `subscription.trial_start_at`, `subscription.trial_end_at`, `subscription.payment_method_attached_at` y `subscription.trial_source`
+- `Plura Core` persiste prueba gratuita local de `30` días en `subscription.trial_start_at`, `subscription.trial_end_at`, `subscription.payment_method_attached_at` y `subscription.trial_source`; el historial anti-abuso vive en `billing_trial_claim` con hashes HMAC y no se borra al eliminar cuenta o cerrar perfil profesional
 - el backend usa estados de suscripcion `CHECKOUT_PENDING`, `TRIALING`, `ACTIVE`, `PAST_DUE`, `CANCELLED`, `EXPIRED`; `TRIAL` queda como compatibilidad de lectura para datos historicos
 - el checkout de cambio de plan a Local/Enterprise no se ofrece en UI ni backend durante el MVP
 - `Enterprise` queda futuro/personalizado para empresas con varios locales y no requiere configuracion de compra actual ni enum/capacidad activa
 
 - `Mercado Pago` esta conectado al billing de suscripciones de plataforma
-- para suscripciones Core, cuando backend crea un `preapproval_plan` remoto agrega `auto_recurring.free_trial = { frequency: 2, frequency_type: "months" }`
+- para suscripciones Core, cuando backend crea un `preapproval_plan` remoto agrega `auto_recurring.free_trial = { frequency: 30, frequency_type: "days" }`
+- `BILLING_TRIAL_IDENTITY_PEPPER` es obligatoria para iniciar el backend: se usa como pepper del HMAC-SHA256 de email, teléfono e identidad OAuth en `billing_trial_claim`
 - si se usa un `BILLING_MERCADOPAGO_PLAN_*`/plan remoto preconfigurado, el trial real de Mercado Pago depende de como este creado ese plan remoto; backend no puede modificarlo y mantiene de todos modos el trial local de Plura
 - `Mercado Pago` ya tiene ademas configuracion OAuth para conectar cuentas de profesionales
 - `Mercado Pago` tambien esta conectado al checkout real de reservas y refunds usando OAuth del profesional

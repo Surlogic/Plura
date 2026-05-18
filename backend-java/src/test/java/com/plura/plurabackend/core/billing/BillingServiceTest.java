@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -21,6 +22,7 @@ import com.plura.plurabackend.core.billing.subscriptions.model.Subscription;
 import com.plura.plurabackend.core.billing.subscriptions.model.SubscriptionPlanCode;
 import com.plura.plurabackend.core.billing.subscriptions.model.SubscriptionStatus;
 import com.plura.plurabackend.core.billing.subscriptions.repository.SubscriptionRepository;
+import com.plura.plurabackend.core.billing.trial.BillingTrialEligibilityService;
 import com.plura.plurabackend.core.professional.ProfessionalBillingSubjectGateway;
 import com.plura.plurabackend.core.security.RoleGuard;
 import com.plura.plurabackend.core.user.model.User;
@@ -47,6 +49,7 @@ class BillingServiceTest {
     private final ProfessionalBillingSubjectGateway professionalBillingSubjectGateway =
         mock(ProfessionalBillingSubjectGateway.class);
     private final SubscriptionRepository subscriptionRepository = mock(SubscriptionRepository.class);
+    private final BillingTrialEligibilityService billingTrialEligibilityService = mock(BillingTrialEligibilityService.class);
     private final MercadoPagoSubscriptionService mercadoPagoSubscriptionService =
         mock(MercadoPagoSubscriptionService.class);
     private final RoleGuard roleGuard = mock(RoleGuard.class);
@@ -55,6 +58,7 @@ class BillingServiceTest {
         billingProperties,
         professionalBillingSubjectGateway,
         subscriptionRepository,
+        billingTrialEligibilityService,
         mercadoPagoSubscriptionService,
         roleGuard,
         List.<PaymentProviderClient>of()
@@ -103,7 +107,7 @@ class BillingServiceTest {
     }
 
     @Test
-    void allowsCoreAliasAndCreatesTwoMonthTrialWithCheckoutPending() {
+    void allowsCoreAliasCreatesClaimAndCreatesThirtyDayTrialWithCheckoutPending() {
         when(subscriptionRepository.findByProfessionalIdForUpdate(30L)).thenReturn(Optional.empty());
         when(mercadoPagoSubscriptionService.createSubscription(any()))
             .thenReturn(new MercadoPagoSubscriptionService.SubscriptionCheckoutSession(
@@ -121,11 +125,13 @@ class BillingServiceTest {
         assertTrue(response.getRequiresCheckout());
         assertNotNull(response.getTrialStartAt());
         assertNotNull(response.getTrialEndAt());
-        assertEquals(response.getTrialStartAt().plusMonths(2).toLocalDate(), response.getTrialEndAt().toLocalDate());
+        assertEquals(response.getTrialStartAt().plusDays(30), response.getTrialEndAt());
+        verify(billingTrialEligibilityService).assertEligible(eq(SubscriptionPlanCode.PLAN_CORE), any(ProfessionalProfile.class));
+        verify(billingTrialEligibilityService).claimTrialStarted(eq(SubscriptionPlanCode.PLAN_CORE), any(ProfessionalProfile.class));
     }
 
     @Test
-    void avoidsSecondTrialWhenTrialWasAlreadyUsed() {
+    void avoidsSecondTrialWhenSubscriptionHistoryAlreadyUsedTrial() {
         Subscription existing = existingSubscription("sub-old");
         existing.setStatus(SubscriptionStatus.CANCELLED);
         existing.setTrialStartAt(LocalDateTime.now().minusMonths(3));
@@ -137,7 +143,26 @@ class BillingServiceTest {
         );
 
         assertEquals(HttpStatus.CONFLICT, error.getStatusCode());
-        assertEquals("La prueba gratuita ya fue utilizada para esta cuenta.", error.getReason());
+        assertEquals("La prueba gratuita ya fue utilizada para esta identidad.", error.getReason());
+        verify(billingTrialEligibilityService, never()).claimTrialStarted(any(), any());
+        verify(mercadoPagoSubscriptionService, never()).createSubscription(any());
+    }
+
+    @Test
+    void avoidsSecondTrialWhenHistoricalIdentityAlreadyClaimedTrial() {
+        when(subscriptionRepository.findByProfessionalIdForUpdate(30L)).thenReturn(Optional.empty());
+        org.mockito.Mockito.doThrow(new ResponseStatusException(
+            HttpStatus.CONFLICT,
+            "La prueba gratuita ya fue utilizada para esta identidad."
+        )).when(billingTrialEligibilityService).assertEligible(eq(SubscriptionPlanCode.PLAN_CORE), any(ProfessionalProfile.class));
+
+        ResponseStatusException error = assertThrows(ResponseStatusException.class, () ->
+            service.createSubscription(createRequest("PLAN_CORE"))
+        );
+
+        assertEquals(HttpStatus.CONFLICT, error.getStatusCode());
+        assertEquals("La prueba gratuita ya fue utilizada para esta identidad.", error.getReason());
+        verify(billingTrialEligibilityService, never()).claimTrialStarted(any(), any());
         verify(mercadoPagoSubscriptionService, never()).createSubscription(any());
     }
 
@@ -181,7 +206,7 @@ class BillingServiceTest {
         subscription.setPlan(SubscriptionPlanCode.PLAN_CORE);
         subscription.setStatus(SubscriptionStatus.CHECKOUT_PENDING);
         subscription.setTrialStartAt(LocalDateTime.now());
-        subscription.setTrialEndAt(LocalDateTime.now().plusMonths(2));
+        subscription.setTrialEndAt(LocalDateTime.now().plusDays(30));
         subscription.setPaymentMethodAttachedAt(LocalDateTime.now());
         when(subscriptionRepository.findByProfessionalId(30L)).thenReturn(Optional.of(subscription));
 
@@ -219,6 +244,7 @@ class BillingServiceTest {
         User user = new User();
         user.setId(10L);
         user.setEmail(email);
+        user.setPhoneNumber("+59899123456");
         user.setFullName("Profesional Demo");
         user.setPassword("secret");
         user.setRole(UserRole.PROFESSIONAL);

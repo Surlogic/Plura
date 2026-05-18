@@ -362,6 +362,8 @@ billing:
   provider-verification-enabled: ${BILLING_PROVIDER_VERIFICATION_ENABLED:true}
   webhook-allowed-skew-seconds: ${BILLING_WEBHOOK_ALLOWED_SKEW_SECONDS:300}
   webhook-base-url: ${BILLING_WEBHOOK_BASE_URL:}
+  trial:
+    identity-pepper: ${BILLING_TRIAL_IDENTITY_PEPPER:}
   plans:
     core:
       price: ${BILLING_CORE_PRICE:0}

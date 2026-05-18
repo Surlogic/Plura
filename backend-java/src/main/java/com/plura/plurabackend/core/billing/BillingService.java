@@ -11,6 +11,7 @@ import com.plura.plurabackend.core.billing.subscriptions.model.Subscription;
 import com.plura.plurabackend.core.billing.subscriptions.model.SubscriptionPlanCode;
 import com.plura.plurabackend.core.billing.subscriptions.model.SubscriptionStatus;
 import com.plura.plurabackend.core.billing.subscriptions.repository.SubscriptionRepository;
+import com.plura.plurabackend.core.billing.trial.BillingTrialEligibilityService;
 import com.plura.plurabackend.core.professional.ProfessionalBillingSubjectGateway;
 import com.plura.plurabackend.core.security.RoleGuard;
 import com.plura.plurabackend.core.user.model.User;
@@ -43,6 +44,7 @@ public class BillingService {
     private final BillingProperties billingProperties;
     private final ProfessionalBillingSubjectGateway professionalBillingSubjectGateway;
     private final SubscriptionRepository subscriptionRepository;
+    private final BillingTrialEligibilityService billingTrialEligibilityService;
     private final MercadoPagoSubscriptionService mercadoPagoSubscriptionService;
     private final RoleGuard roleGuard;
     /** Mapa de clientes de proveedores de pago indexado por tipo de proveedor */
@@ -61,6 +63,7 @@ public class BillingService {
         BillingProperties billingProperties,
         ProfessionalBillingSubjectGateway professionalBillingSubjectGateway,
         SubscriptionRepository subscriptionRepository,
+        BillingTrialEligibilityService billingTrialEligibilityService,
         MercadoPagoSubscriptionService mercadoPagoSubscriptionService,
         RoleGuard roleGuard,
         List<PaymentProviderClient> clients
@@ -68,6 +71,7 @@ public class BillingService {
         this.billingProperties = billingProperties;
         this.professionalBillingSubjectGateway = professionalBillingSubjectGateway;
         this.subscriptionRepository = subscriptionRepository;
+        this.billingTrialEligibilityService = billingTrialEligibilityService;
         this.mercadoPagoSubscriptionService = mercadoPagoSubscriptionService;
         this.roleGuard = roleGuard;
 
@@ -206,9 +210,10 @@ public class BillingService {
             .orElseGet(Subscription::new);
 
         validateCoreSubscriptionCanStart(subscription, professional);
+        billingTrialEligibilityService.assertEligible(SubscriptionPlanCode.PLAN_CORE, professional);
 
         LocalDateTime trialStartAt = LocalDateTime.now();
-        LocalDateTime trialEndAt = trialStartAt.plusMonths(2);
+        LocalDateTime trialEndAt = trialStartAt.plusDays(30);
 
         subscription.setProfessionalId(professional.getId());
         subscription.setPlan(SubscriptionPlanCode.PLAN_CORE);
@@ -228,6 +233,7 @@ public class BillingService {
         subscription.setProviderCustomerId(null);
         subscription.setProviderSubscriptionId(null);
         subscription = subscriptionRepository.saveAndFlush(subscription);
+        billingTrialEligibilityService.claimTrialStarted(SubscriptionPlanCode.PLAN_CORE, professional);
 
         String checkoutUrl = null;
         boolean requiresCheckout = false;
@@ -281,7 +287,7 @@ public class BillingService {
         if (subscription.getTrialStartAt() != null || subscription.getTrialEndAt() != null) {
             throw new ResponseStatusException(
                 HttpStatus.CONFLICT,
-                "La prueba gratuita ya fue utilizada para esta cuenta."
+                "La prueba gratuita ya fue utilizada para esta identidad."
             );
         }
     }

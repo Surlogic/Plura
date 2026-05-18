@@ -116,7 +116,7 @@ class BillingWebhookIdempotencyIntegrationTest {
         subscription.setPlanAmount(new BigDecimal("990"));
         subscription.setCurrency("UYU");
         subscription.setTrialStartAt(LocalDateTime.now().minusDays(1));
-        subscription.setTrialEndAt(LocalDateTime.now().plusMonths(2));
+        subscription.setTrialEndAt(LocalDateTime.now().plusDays(30));
         subscription.setCurrentPeriodStart(LocalDateTime.now());
         subscription.setCurrentPeriodEnd(LocalDateTime.now().plusMonths(1));
         subscriptionRepository.save(subscription);

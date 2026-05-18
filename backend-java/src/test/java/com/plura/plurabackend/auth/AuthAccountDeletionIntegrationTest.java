@@ -45,6 +45,7 @@ import org.springframework.test.web.servlet.MvcResult;
     "CACHE_ENABLED=false",
     "SPRING_FLYWAY_ENABLED=false",
     "APP_RATE_LIMIT_ENABLED=false",
+    "BILLING_TRIAL_IDENTITY_PEPPER=test-billing-trial-pepper",
     "AUTH_EXPOSE_ACCESS_TOKEN=true",
     "SWAGGER_ENABLED=false",
     "SQS_ENABLED=false",

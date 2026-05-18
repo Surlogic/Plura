@@ -1730,10 +1730,10 @@ export default function ProfesionalRegisterPage() {
   const renderPreviewStep = () => (
     <div className="mx-auto max-w-5xl space-y-8">
       <div className="space-y-3">
-        <Badge variant="success">2 meses gratis</Badge>
+        <Badge variant="success">30 días gratis</Badge>
         <h1 className="text-4xl font-semibold tracking-[-0.04em] text-[color:var(--ink)]">Activá Plura Core</h1>
         <p className="max-w-3xl text-base text-[color:var(--ink-muted)]">
-          Tu perfil queda listo para publicarse. Tenés 2 meses gratis para probar Plura Core.
+          Tu perfil queda listo para publicarse. Tenés 30 días gratis para probar Plura Core.
           Luego continúa la suscripción mensual.
         </p>
       </div>

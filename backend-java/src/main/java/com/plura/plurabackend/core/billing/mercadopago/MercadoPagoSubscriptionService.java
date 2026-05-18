@@ -218,7 +218,7 @@ public class MercadoPagoSubscriptionService {
 
     private MercadoPagoClient.FreeTrial resolveFreeTrial(SubscriptionPlanCode plan) {
         if (plan == SubscriptionPlanCode.PLAN_CORE) {
-            return new MercadoPagoClient.FreeTrial(2, "months");
+            return new MercadoPagoClient.FreeTrial(30, "days");
         }
         return null;
     }

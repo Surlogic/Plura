@@ -1,26 +1,33 @@
-app = "plura"
-primary_region = "gru"
+# fly.toml app configuration file generated for plura on 2026-05-18T19:18:02Z
+#
+# See https://fly.io/docs/reference/configuration/ for information about how to use this file.
+#
+
+app = 'plura'
+primary_region = 'gru'
+
+[build]
 
 [deploy]
-  strategy = "rolling"
+  strategy = 'rolling'
 
 [http_service]
-  auto_start_machines = true
-  auto_stop_machines = "off"
+  internal_port = 8080
   force_https = true
-  internal_port = 3000
+  auto_stop_machines = 'off'
+  auto_start_machines = true
   min_machines_running = 1
 
   [[http_service.checks]]
-    grace_period = "360s"
-    interval = "30s"
-    method = "get"
-    path = "/health"
-    protocol = "http"
-    timeout = "15s"
+    interval = '30s'
+    timeout = '15s'
+    grace_period = '6m0s'
+    method = 'get'
+    path = '/health'
+    protocol = 'http'
 
 [[vm]]
-  cpu_kind = "shared"
+  memory = '2gb'
+  cpu_kind = 'shared'
   cpus = 1
-  memory = "2gb"
   memory_mb = 2048

@@ -425,6 +425,24 @@ a:hover {
   will-change: transform;
 }
 
+@keyframes plura-button-spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+.plura-button-spinner {
+  animation: plura-button-spin 0.75s linear infinite;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-top-color: transparent;
+  transform-origin: center;
+  will-change: transform;
+}
+
 @keyframes home-hero-visual-enter {
   0% {
     opacity: 0;

@@ -85,7 +85,7 @@ export default function Button({
     <>
       {loading ? (
         <span
-          className="mr-2 inline-block h-4 w-4 shrink-0 animate-spin rounded-full border-2 border-current border-t-transparent"
+          className="plura-button-spinner mr-2 inline-block h-4 w-4 shrink-0 rounded-full"
           aria-hidden="true"
         />
       ) : null}

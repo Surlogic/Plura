@@ -371,7 +371,7 @@ export default function GoogleLoginButton({
       </svg>
       {isLoading ? (
         <span
-          className="-ml-1 inline-block h-4 w-4 shrink-0 animate-spin rounded-full border-2 border-current border-t-transparent"
+          className="plura-button-spinner -ml-1 inline-block h-4 w-4 shrink-0 rounded-full"
           aria-hidden="true"
         />
       ) : null}

@@ -262,7 +262,7 @@ public class AuthService {
             );
         }
         RegistrationPhoneVerificationService.VerificationResult phoneVerification =
-            registrationPhoneVerificationService.resolveForRegistration(
+            registrationPhoneVerificationService.resolveOptionalForRegistration(
                 request.getPhoneNumber(),
                 request.getPhoneVerificationToken()
             );

@@ -10,7 +10,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.plura.plurabackend.core.auth.VonageVerifyClient;
+import com.plura.plurabackend.core.category.model.Category;
+import com.plura.plurabackend.core.category.repository.CategoryRepository;
 import com.plura.plurabackend.core.user.repository.UserRepository;
+import com.plura.plurabackend.professional.repository.ProfessionalProfileRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -50,11 +53,18 @@ class AuthRegistrationPhoneVerificationIntegrationTest {
     @Autowired
     private UserRepository userRepository;
 
+    @Autowired
+    private CategoryRepository categoryRepository;
+
+    @Autowired
+    private ProfessionalProfileRepository professionalProfileRepository;
+
     @MockBean
     private VonageVerifyClient vonageVerifyClient;
 
     @BeforeEach
     void cleanUp() {
+        professionalProfileRepository.deleteAll();
         userRepository.deleteAll();
     }
 
@@ -115,5 +125,40 @@ class AuthRegistrationPhoneVerificationIntegrationTest {
                     """))
             .andExpect(status().isBadRequest())
             .andExpect(jsonPath("$.error").value("PHONE_VERIFICATION_REQUIRED"));
+    }
+
+    @Test
+    void professionalRegistrationAllowsContactPhoneWithoutVerificationToken() throws Exception {
+        ensureCategory("cabello", "Cabello");
+
+        mockMvc.perform(post("/auth/register/profesional")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "fullName":"Profesional Sin Token",
+                      "email":"professional-missing-token@plura.com",
+                      "phoneNumber":"+59899123458",
+                      "rubro":"Cabello",
+                      "categorySlugs":["cabello"],
+                      "tipoCliente":"SIN_LOCAL",
+                      "password":"Password123"
+                    }
+                    """))
+            .andExpect(status().isAccepted());
+
+        org.junit.jupiter.api.Assertions.assertNull(
+            userRepository.findByEmail("professional-missing-token@plura.com").orElseThrow().getPhoneVerifiedAt()
+        );
+    }
+
+    private Category ensureCategory(String slug, String name) {
+        return categoryRepository.findBySlug(slug).orElseGet(() -> {
+            Category category = new Category();
+            category.setSlug(slug);
+            category.setName(name);
+            category.setDisplayOrder(1);
+            category.setActive(true);
+            return categoryRepository.save(category);
+        });
     }
 }

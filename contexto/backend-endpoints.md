@@ -102,7 +102,7 @@ Lectura de producto:
 
 Prefijo: `/auth`
 
-- `POST /auth/register/profesional` y `POST /auth/oauth/complete-phone` exigen `phoneVerificationToken` validado por OTP SMS; no dependen del flag runtime para permitir saltar la verificacion celular en altas o cierre de telefono OAuth.
+- `POST /auth/register/profesional` conserva `phoneNumber` como telefono de contacto y acepta `phoneVerificationToken` si llega, pero ya no lo exige para el alta profesional; `POST /auth/oauth/complete-phone` mantiene la capacidad de guardar/verificar telefono OAuth segun el contrato del endpoint.
 
 - `POST /auth/register/cliente`
 - `POST /auth/register/profesional`
@@ -158,8 +158,8 @@ Lectura de producto:
 - cubre el bloque `CORE` de autenticacion y seguridad
 - soporta registro directo del profesional en `Profesional`
 - ya da base para login social y gestion de sesiones
-- `POST /auth/register/cliente` y `POST /auth/register/profesional` aceptan `phoneVerificationToken`; cuando `AUTH_REGISTRATION_PHONE_VERIFICATION_REQUIRED=true`, ese token pasa a ser obligatorio, el alta queda con `phoneVerified=true` desde el inicio y el mismo telefono verificado no puede reutilizarse en otra cuenta activa
-- Regla vigente de verificación celular: `POST /auth/register/cliente`, `POST /auth/register/profesional` y `POST /auth/oauth/complete-phone` exigen `phoneVerificationToken` válido de forma explícita. Además, `POST /public/profesionales/{slug}/reservas` bloquea clientes con `phoneVerified=false`/`phone_verified_at IS NULL` y devuelve `403` con mensaje claro.
+- `POST /auth/register/cliente` y `POST /auth/register/profesional` aceptan `phoneVerificationToken`; cuando `AUTH_REGISTRATION_PHONE_VERIFICATION_REQUIRED=true`, el token pasa a ser obligatorio para cliente, mientras el alta profesional puede guardar el telefono como contacto sin marcarlo verificado. Cuando el token llega y es valido, el alta queda con `phoneVerified=true` desde el inicio y el mismo telefono verificado no puede reutilizarse en otra cuenta activa
+- Regla vigente de verificación celular: `POST /auth/register/cliente` exige `phoneVerificationToken` válido si la verificacion de registro está activada; `POST /auth/register/profesional` no lo exige desde el wizard profesional y deja la verificacion pendiente. Además, `POST /public/profesionales/{slug}/reservas` bloquea clientes con `phoneVerified=false`/`phone_verified_at IS NULL` y devuelve `403` con mensaje claro.
 - `POST /auth/oauth/complete-phone` cierra el faltante de telefono cuando el alta/login OAuth no lo trae; tambien acepta `phoneVerificationToken` para dejar el telefono verificado en el mismo paso
 - `POST /auth/professional-profile/activate` es el flujo backend vigente para que una cuenta cliente autenticada active perfil profesional sobre el mismo email; si el email ya existe sin sesion, el registro profesional publico sigue sin crear ni tomar control de esa cuenta y debe pedir login antes de continuar onboarding
 - `POST /auth/password/forgot` + `POST /auth/password/reset` siguen como flujo legacy por token y hoy quedan como compatibilidad de enlaces viejos o soporte manual

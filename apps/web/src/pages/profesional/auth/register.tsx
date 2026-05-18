@@ -28,10 +28,6 @@ import {
   type ProfessionalRegisterHandoff,
 } from '@/lib/professional/registerHandoff';
 import { setAuthAccessToken } from '@/services/session';
-import {
-  confirmRegistrationPhoneVerification,
-  sendRegistrationPhoneVerification,
-} from '@/services/registrationPhoneVerification';
 import { useCategories } from '@/hooks/useCategories';
 import { mapboxForwardGeocode } from '@/services/mapbox';
 import { getGeoLocationSuggestions, type GeoLocationSuggestion } from '@/services/geo';
@@ -226,16 +222,10 @@ export default function ProfesionalRegisterPage() {
   const [schedule, setSchedule] = useState<ScheduleDay[]>(initialSchedule);
   const [isOAuthSetup, setIsOAuthSetup] = useState(false);
   const [hasAuthenticatedBaseAccount, setHasAuthenticatedBaseAccount] = useState(false);
-  const [authenticatedPhoneNumber, setAuthenticatedPhoneNumber] = useState('');
   const [categorySearch, setCategorySearch] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isRedirectingToCheckout, setIsRedirectingToCheckout] = useState(false);
   const [billingRecoveryAvailable, setBillingRecoveryAvailable] = useState(false);
-  const [isSendingPhoneCode, setIsSendingPhoneCode] = useState(false);
-  const [isConfirmingPhoneCode, setIsConfirmingPhoneCode] = useState(false);
-  const [phoneVerificationCode, setPhoneVerificationCode] = useState('');
-  const [phoneVerificationToken, setPhoneVerificationToken] = useState('');
-  const [phoneVerificationMessage, setPhoneVerificationMessage] = useState<string | null>(null);
   const [isGeoSuggesting, setIsGeoSuggesting] = useState(false);
   const [activeGeoField, setActiveGeoField] = useState<'country' | 'city' | 'fullAddress' | null>(null);
   const [geoSuggestions, setGeoSuggestions] = useState<GeoLocationSuggestion[]>([]);
@@ -306,7 +296,6 @@ export default function ProfesionalRegisterPage() {
         setHasAuthenticatedBaseAccount(true);
         const email = me.user?.email?.trim().toLowerCase() || '';
         const phoneNumber = (me.user?.phoneNumber ?? '').trim();
-        setAuthenticatedPhoneNumber(phoneNumber);
         setForm((prev) => ({
           ...prev,
           email: prev.email || email,
@@ -476,44 +465,10 @@ export default function ProfesionalRegisterPage() {
 
   const handlePhoneChange = (nextPhoneNumber: string) => {
     setForm((prev) => ({ ...prev, phoneNumber: nextPhoneNumber }));
-    setPhoneVerificationToken('');
-    setPhoneVerificationCode('');
-    setPhoneVerificationMessage(null);
   };
 
   const handlePhoneBlur = () => {
     setTouched((prev) => ({ ...prev, phoneNumber: true }));
-  };
-
-  const handleSendPhoneCode = async () => {
-    setErrorMessage(null);
-    setPhoneVerificationMessage(null);
-    try {
-      setIsSendingPhoneCode(true);
-      const response = await sendRegistrationPhoneVerification(form.phoneNumber.trim());
-      setPhoneVerificationMessage(response.message);
-    } catch (error) {
-      setErrorMessage(extractApiMessage(error, 'No se pudo enviar el c?digo.'));
-    } finally {
-      setIsSendingPhoneCode(false);
-    }
-  };
-
-  const handleConfirmPhoneCode = async () => {
-    setErrorMessage(null);
-    try {
-      setIsConfirmingPhoneCode(true);
-      const response = await confirmRegistrationPhoneVerification(
-        form.phoneNumber.trim(),
-        phoneVerificationCode.trim(),
-      );
-      setPhoneVerificationToken(response.verificationToken);
-      setPhoneVerificationMessage('Tel?fono verificado correctamente.');
-    } catch (error) {
-      setErrorMessage(extractApiMessage(error, 'No se pudo verificar el c?digo.'));
-    } finally {
-      setIsConfirmingPhoneCode(false);
-    }
   };
 
   const handleOAuthAuthenticated = async (result: OAuthLoginResult) => {
@@ -525,7 +480,6 @@ export default function ProfesionalRegisterPage() {
 
     setIsOAuthSetup(true);
     setHasAuthenticatedBaseAccount(true);
-    setAuthenticatedPhoneNumber(oauthPhoneNumber);
     setForm((prev) => ({
       ...prev,
       fullName: result.user.fullName?.trim() || prev.fullName,
@@ -830,16 +784,6 @@ export default function ProfesionalRegisterPage() {
       return;
     }
 
-    const phoneMatchesAuthenticatedAccount =
-      hasAuthenticatedBaseAccount &&
-      authenticatedPhoneNumber.trim() &&
-      authenticatedPhoneNumber.trim() === form.phoneNumber.trim();
-
-    if (!phoneVerificationToken && !phoneMatchesAuthenticatedAccount) {
-      setErrorMessage('Verific? el tel?fono antes de publicar el perfil.');
-      return;
-    }
-
     const primaryRubro = categoryNameBySlug.get(form.categorySlugs[0]) || '';
     const normalizedEmail = form.email.trim().toLowerCase();
     setIsSubmitting(true);
@@ -865,7 +809,6 @@ export default function ProfesionalRegisterPage() {
         categorySlugs: form.categorySlugs,
         email: normalizedEmail,
         phoneNumber: form.phoneNumber.trim(),
-        phoneVerificationToken,
         country: normalizedCountry,
         city: normalizedCity,
         fullAddress: normalizedFullAddress,
@@ -877,13 +820,6 @@ export default function ProfesionalRegisterPage() {
       };
 
       if (hasAuthenticatedBaseAccount || isOAuthSetup) {
-        if (phoneVerificationToken && !phoneMatchesAuthenticatedAccount) {
-          await api.post('/auth/oauth/complete-phone', {
-            phoneNumber: payload.phoneNumber,
-            phoneVerificationToken,
-          });
-        }
-
         await activateProfessionalForCurrentAccount(payload);
         await completeProfessionalSetup();
         return;
@@ -1238,40 +1174,9 @@ export default function ProfesionalRegisterPage() {
               inputPlaceholder="91 234 567"
             />
             {renderError('phoneNumber')}
-            <div className="grid gap-2 sm:grid-cols-[1fr_auto]">
-              <input
-                className={inputBaseClassName}
-                placeholder="C?digo SMS"
-                value={phoneVerificationCode}
-                onChange={(event) => setPhoneVerificationCode(event.target.value)}
-                inputMode="numeric"
-                maxLength={10}
-              />
-              <Button
-                type="button"
-                variant="quiet"
-                onClick={() => void (phoneVerificationCode ? handleConfirmPhoneCode() : handleSendPhoneCode())}
-                disabled={
-                  Boolean(validationErrors.phoneNumber) ||
-                  isSendingPhoneCode ||
-                  isConfirmingPhoneCode ||
-                  Boolean(phoneVerificationToken)
-                }
-              >
-                {phoneVerificationToken
-                  ? 'Verificado'
-                  : phoneVerificationCode
-                    ? isConfirmingPhoneCode
-                      ? 'Verificando...'
-                      : 'Confirmar'
-                    : isSendingPhoneCode
-                      ? 'Enviando...'
-                      : 'Enviar OTP'}
-              </Button>
-            </div>
-            {phoneVerificationMessage ? (
-              <p className="text-xs font-medium text-[color:var(--primary)]">{phoneVerificationMessage}</p>
-            ) : null}
+            <p className="text-xs text-[color:var(--ink-muted)]">
+              Usaremos este teléfono como contacto visible/operativo del perfil.
+            </p>
           </div>
           <div className="space-y-2">
             <label className="text-sm font-semibold text-[color:var(--ink)]">Descripción corta</label>

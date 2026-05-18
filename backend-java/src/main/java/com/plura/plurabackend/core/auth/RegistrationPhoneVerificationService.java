@@ -158,6 +158,22 @@ public class RegistrationPhoneVerificationService {
         return new VerificationResult(normalizedPhone, true);
     }
 
+    public VerificationResult resolveOptionalForRegistration(String rawPhoneNumber, String token) {
+        String normalizedPhone = normalizeRequiredPhoneNumber(rawPhoneNumber);
+        if (token == null || token.isBlank()) {
+            return new VerificationResult(normalizedPhone, false);
+        }
+        DecodedJWT decoded = verifyToken(token);
+        if (!TOKEN_PURPOSE.equals(decoded.getClaim("purpose").asString()) || !normalizedPhone.equals(decoded.getSubject())) {
+            throw new AuthApiException(
+                HttpStatus.BAD_REQUEST,
+                "PHONE_VERIFICATION_INVALID",
+                "La verificacion del telefono no coincide con el numero enviado."
+            );
+        }
+        return new VerificationResult(normalizedPhone, true);
+    }
+
     private DecodedJWT verifyToken(String token) {
         try {
             return JWT.require(tokenAlgorithm).build().verify(token.trim());

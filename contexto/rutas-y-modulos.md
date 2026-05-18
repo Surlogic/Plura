@@ -184,7 +184,7 @@ Lectura de producto:
 ### Rutas del profesional
 
 - `/profesional/auth/login`
-- `/profesional/auth/register` — wizard de alta profesional; en el paso de ubicación para modalidad `LOCAL` muestra un mapa real desde el primer render cuando Mapbox/WebGL están disponibles, centrado primero en geolocalización del navegador y con fallback visual en Montevideo, con pin fijo al centro y reverse geocode al soltar el mapa.
+- `/profesional/auth/register` — wizard de alta profesional; en el paso de ubicación para modalidad `LOCAL` muestra un mapa real desde el primer render cuando Mapbox/WebGL están disponibles, centrado primero en geolocalización del navegador y con fallback visual en Montevideo, con pin fijo al centro y reverse geocode al soltar el mapa sin recentrar después de movimientos manuales.
 - `/profesional/auth/complete-phone`
 - `/profesional/dashboard`
 - `/profesional/dashboard/servicios`

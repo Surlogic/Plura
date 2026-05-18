@@ -591,16 +591,19 @@ export default function ProfesionalRegisterPage() {
       fullAddress?: string;
     },
     source: LocationSelectionSource,
-    options: { updateAddressFields?: boolean } = {},
+    options: { updateAddressFields?: boolean; recenterMap?: boolean } = {},
   ) => {
     const updateAddressFields = options.updateAddressFields ?? true;
+    const recenterMap = options.recenterMap ?? source !== 'map';
     const nextPlaceName = result.placeName?.trim() || 'Ubicación seleccionada en el mapa';
 
-    setMapCenter({
-      latitude: result.latitude,
-      longitude: result.longitude,
-      placeName: nextPlaceName,
-    });
+    if (recenterMap) {
+      setMapCenter({
+        latitude: result.latitude,
+        longitude: result.longitude,
+        placeName: nextPlaceName,
+      });
+    }
     setLocationPreview({
       latitude: result.latitude,
       longitude: result.longitude,
@@ -631,7 +634,7 @@ export default function ProfesionalRegisterPage() {
     latitude: number,
     longitude: number,
     source: LocationSelectionSource,
-    options: { silent?: boolean } = {},
+    options: { silent?: boolean; recenterMap?: boolean } = {},
   ) => {
     setIsReverseGeocodingLocation(true);
     if (!options.silent) {
@@ -648,6 +651,7 @@ export default function ProfesionalRegisterPage() {
           fullAddress: 'Ubicación seleccionada en el mapa',
         },
         source,
+        { recenterMap: options.recenterMap },
       );
     } catch {
       if (!options.silent) {
@@ -714,12 +718,13 @@ export default function ProfesionalRegisterPage() {
     }
     programmaticMapCenterRef.current = null;
 
-    setMapCenter({
+    setLocationPreview({
       latitude,
       longitude,
       placeName: 'Ubicación seleccionada en el mapa',
     });
-    void reverseLookupAndApplyLocation(latitude, longitude, 'map');
+    setLocationSelectionSource('map');
+    void reverseLookupAndApplyLocation(latitude, longitude, 'map', { recenterMap: false });
   };
 
 
@@ -1494,7 +1499,7 @@ export default function ProfesionalRegisterPage() {
       );
     }
 
-    const visibleMapCenter = locationPreview ?? mapCenter;
+    const visibleMapCenter = mapCenter;
 
     return (
       <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(360px,480px)] lg:items-center">

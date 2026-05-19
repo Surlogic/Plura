@@ -195,7 +195,9 @@ const defaultTouched: TouchedState = {
 const inputBaseClassName =
   'h-12 w-full rounded-[18px] border border-[color:var(--border-soft)] bg-[color:var(--surface-strong)] px-4 text-sm text-[color:var(--ink)] placeholder:text-[color:var(--ink-faint)] shadow-[var(--shadow-card)] transition focus:outline-none focus:ring-4 focus:ring-[color:var(--focus-ring)]';
 const textAreaClassName =
-  'min-h-28 w-full resize-none rounded-[18px] border border-[color:var(--border-soft)] bg-[color:var(--surface-strong)] px-4 py-3 text-sm text-[color:var(--ink)] placeholder:text-[color:var(--ink-faint)] shadow-[var(--shadow-card)] transition focus:outline-none focus:ring-4 focus:ring-[color:var(--focus-ring)]';
+  'min-h-24 w-full resize-none rounded-[18px] border border-[color:var(--border-soft)] bg-[color:var(--surface-strong)] px-4 py-3 text-sm text-[color:var(--ink)] placeholder:text-[color:var(--ink-faint)] shadow-[var(--shadow-card)] transition focus:outline-none focus:ring-4 focus:ring-[color:var(--focus-ring)]';
+const wizardTitleClassName =
+  'text-3xl font-semibold tracking-[-0.04em] text-[color:var(--ink)] sm:text-4xl';
 
 export default function ProfesionalRegisterPage() {
   const router = useRouter();
@@ -1146,7 +1148,7 @@ export default function ProfesionalRegisterPage() {
   );
 
   const stepHeader = (
-    <div className="mx-auto flex max-w-xl flex-col items-center gap-3 text-center">
+    <div className="mx-auto flex max-w-xl flex-col items-center gap-2 text-center">
       <span className="text-sm font-semibold text-[color:var(--ink)]">
         {step >= wizardSteps.length - 1 ? 'Activar Plura Core' : `Paso ${visibleStepNumber} de ${wizardSteps.length}`}
       </span>
@@ -1167,9 +1169,9 @@ export default function ProfesionalRegisterPage() {
 
   const ProfilePreviewCard = ({ compact = false }: { compact?: boolean }) => (
     <div className="overflow-hidden rounded-[28px] border border-[color:var(--border-soft)] bg-[color:var(--surface-strong)] shadow-[var(--shadow-lift)]">
-      <div className="h-36 bg-[linear-gradient(135deg,rgba(223,196,161,0.72),rgba(255,250,244,0.9)),radial-gradient(circle_at_80%_20%,rgba(10,122,67,0.16),transparent_30%)]" />
-      <div className="relative space-y-4 px-6 pb-6 pt-12">
-        <div className="absolute -top-12 left-6 flex h-24 w-24 items-center justify-center rounded-full border-4 border-[color:var(--surface-strong)] bg-[color:var(--surface-soft)] text-center text-xs font-semibold uppercase tracking-[0.2em] text-[color:var(--primary)] shadow-[var(--shadow-card)]">
+      <div className={`${compact ? 'h-20 sm:h-28' : 'h-24 sm:h-32'} bg-[linear-gradient(135deg,rgba(223,196,161,0.72),rgba(255,250,244,0.9)),radial-gradient(circle_at_80%_20%,rgba(10,122,67,0.16),transparent_30%)]`} />
+      <div className={`${compact ? 'space-y-3 px-4 pb-4 pt-9 sm:px-5' : 'space-y-3 px-4 pb-5 pt-10 sm:px-6 sm:pb-6 sm:pt-11'} relative`}>
+        <div className={`${compact ? '-top-8 h-16 w-16 text-[10px]' : '-top-10 h-20 w-20 text-xs'} absolute left-5 flex items-center justify-center rounded-full border-4 border-[color:var(--surface-strong)] bg-[color:var(--surface-soft)] text-center font-semibold uppercase tracking-[0.18em] text-[color:var(--primary)] shadow-[var(--shadow-card)] sm:left-6`}>
           {(form.fullName.trim() || 'EB')
             .split(' ')
             .slice(0, 2)
@@ -1177,7 +1179,7 @@ export default function ProfesionalRegisterPage() {
             .join('') || 'EB'}
         </div>
         <div>
-          <h3 className="text-2xl font-semibold tracking-[-0.03em] text-[color:var(--ink)]">
+          <h3 className="text-xl font-semibold tracking-[-0.03em] text-[color:var(--ink)] sm:text-2xl">
             {form.fullName.trim() || 'Estudio Belleza'}
           </h3>
           <p className="text-sm text-[color:var(--ink-muted)]">
@@ -1201,7 +1203,7 @@ export default function ProfesionalRegisterPage() {
         {!compact ? (
           <div className="space-y-2 border-t border-[color:var(--border-soft)] pt-4">
             <p className="text-sm font-semibold text-[color:var(--ink)]">Sobre mí</p>
-            <p className="text-sm leading-6 text-[color:var(--ink-muted)]">
+            <p className="max-h-20 overflow-hidden text-sm leading-6 text-[color:var(--ink-muted)]">
               {form.description.trim() || 'Ofrecemos tratamientos personalizados para que te sientas bien, por dentro y por fuera.'}
             </p>
           </div>
@@ -1214,11 +1216,11 @@ export default function ProfesionalRegisterPage() {
   );
 
   const renderAccountStep = () => (
-    <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(360px,440px)] lg:items-start">
+    <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(320px,380px)] lg:items-start xl:grid-cols-[minmax(0,1fr)_minmax(360px,420px)]">
       <div className="space-y-6">
         <div className="space-y-3">
           <Badge variant="success">Registro</Badge>
-          <h1 className="text-4xl font-semibold tracking-[-0.04em] text-[color:var(--ink)]">
+          <h1 className={wizardTitleClassName}>
             Creá tu cuenta profesional
           </h1>
           <p className="max-w-xl text-base text-[color:var(--ink-muted)]">
@@ -1313,7 +1315,7 @@ export default function ProfesionalRegisterPage() {
           </Link>
         </p>
       </div>
-      <div className="space-y-4">
+      <div className="hidden space-y-4 lg:block">
         <h2 className="text-center text-xl font-semibold text-[color:var(--ink)]">Así te verán tus clientes</h2>
         <ProfilePreviewCard />
         <p className="text-center text-xs text-[color:var(--ink-faint)]">Este es un ejemplo de cómo se verá tu perfil público.</p>
@@ -1322,11 +1324,11 @@ export default function ProfesionalRegisterPage() {
   );
 
   const renderProfileStep = () => (
-    <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(360px,440px)] lg:items-center">
+    <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(320px,380px)] lg:items-center xl:grid-cols-[minmax(0,1fr)_minmax(360px,420px)]">
       <div className="space-y-6">
         <div className="space-y-3">
           <Badge variant="success">Perfil</Badge>
-          <h1 className="text-4xl font-semibold tracking-[-0.04em] text-[color:var(--ink)]">Contanos cómo querés aparecer en Plura</h1>
+          <h1 className={wizardTitleClassName}>Contanos cómo querés aparecer en Plura</h1>
           <p className="text-base text-[color:var(--ink-muted)]">Estos datos se verán en tu perfil público.</p>
         </div>
         <div className="space-y-4">
@@ -1373,7 +1375,7 @@ export default function ProfesionalRegisterPage() {
           </div>
         </div>
       </div>
-      <div className="space-y-4">
+      <div className="hidden space-y-4 lg:block">
         <h2 className="text-center text-xl font-semibold text-[color:var(--ink)]">Vista previa</h2>
         <ProfilePreviewCard compact />
       </div>
@@ -1381,10 +1383,10 @@ export default function ProfesionalRegisterPage() {
   );
 
   const renderCategoriesStep = () => (
-    <div className="mx-auto max-w-5xl space-y-8 text-center">
+    <div className="mx-auto max-w-5xl space-y-6 text-center">
       <div className="space-y-3">
         <Badge variant="success">Registro</Badge>
-        <h1 className="text-4xl font-semibold tracking-[-0.04em] text-[color:var(--ink)]">Elegí tus rubros principales</h1>
+        <h1 className={wizardTitleClassName}>Elegí tus rubros principales</h1>
         <p className="text-base text-[color:var(--ink-muted)]">Seleccioná hasta 5 rubros. Después vas a poder cambiarlos.</p>
       </div>
       <input
@@ -1415,7 +1417,7 @@ export default function ProfesionalRegisterPage() {
         {categoriesLoading ? (
           <p className="text-sm text-[color:var(--ink-muted)]">Cargando rubros...</p>
         ) : null}
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid max-h-[min(42dvh,420px)] gap-3 overflow-y-auto pr-1 sm:grid-cols-2 lg:grid-cols-4">
           {filteredCategories.map((category) => {
             const selected = form.categorySlugs.includes(category.slug);
             return (
@@ -1423,7 +1425,7 @@ export default function ProfesionalRegisterPage() {
                 key={category.id}
                 type="button"
                 onClick={() => toggleCategory(category.slug)}
-                className={`rounded-[18px] border px-4 py-4 text-sm font-semibold transition hover:-translate-y-0.5 ${
+                className={`rounded-[18px] border px-4 py-3 text-sm font-semibold transition hover:-translate-y-0.5 ${
                   selected
                     ? 'border-[color:var(--primary)] bg-[color:var(--primary-soft)] text-[color:var(--primary)] shadow-[var(--shadow-card)]'
                     : 'border-[color:var(--border-soft)] bg-[color:var(--surface-strong)] text-[color:var(--ink)] hover:bg-[color:var(--surface-soft)]'
@@ -1456,10 +1458,10 @@ export default function ProfesionalRegisterPage() {
   );
 
   const renderModalityStep = () => (
-    <div className="mx-auto max-w-5xl space-y-8 text-center">
+    <div className="mx-auto max-w-5xl space-y-6 text-center">
       <div className="space-y-3">
         <Badge variant="success">Registro</Badge>
-        <h1 className="text-4xl font-semibold tracking-[-0.04em] text-[color:var(--ink)]">¿Cómo atendés a tus clientes?</h1>
+        <h1 className={wizardTitleClassName}>¿Cómo atendés a tus clientes?</h1>
         <p className="text-base text-[color:var(--ink-muted)]">Elegí la modalidad principal. Después vas a poder cambiarla.</p>
       </div>
       <div className="grid gap-6 md:grid-cols-3">
@@ -1474,15 +1476,15 @@ export default function ProfesionalRegisterPage() {
               key={option.id}
               type="button"
               onClick={() => setField('tipoCliente', option.id)}
-              className={`relative rounded-[28px] border p-7 text-center transition hover:-translate-y-0.5 ${
+              className={`relative rounded-[24px] border p-5 text-center transition hover:-translate-y-0.5 sm:p-6 ${
                 selected
                   ? 'border-[color:var(--primary)] bg-[color:var(--primary-soft)] shadow-[var(--shadow-lift)]'
                   : 'border-[color:var(--border-soft)] bg-[color:var(--surface-strong)] shadow-[var(--shadow-card)]'
               }`}
             >
               {selected ? <span className="absolute right-5 top-5 rounded-full bg-[color:var(--primary)] px-2 py-1 text-xs text-white">✓</span> : null}
-              <span className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-[color:var(--surface-soft)] text-4xl">{option.icon}</span>
-              <h2 className="mt-5 text-xl font-semibold text-[color:var(--ink)]">{option.title}</h2>
+              <span className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-[color:var(--surface-soft)] text-3xl sm:h-20 sm:w-20 sm:text-4xl">{option.icon}</span>
+              <h2 className="mt-4 text-lg font-semibold text-[color:var(--ink)] sm:text-xl">{option.title}</h2>
               <p className="mt-2 text-sm leading-6 text-[color:var(--ink-muted)]">{option.description}</p>
             </button>
           );
@@ -1499,9 +1501,9 @@ export default function ProfesionalRegisterPage() {
   const renderLocationStep = () => {
     if (!requiresLocation) {
       return (
-        <div className="mx-auto max-w-2xl space-y-6 text-center">
+        <div className="mx-auto max-w-2xl space-y-5 text-center">
           <Badge variant="success">Ubicación</Badge>
-          <h1 className="text-4xl font-semibold tracking-[-0.04em] text-[color:var(--ink)]">Ubicación no obligatoria</h1>
+          <h1 className={wizardTitleClassName}>Ubicación no obligatoria</h1>
           <p className="text-base leading-7 text-[color:var(--ink-muted)]">
             Como elegiste una modalidad sin local fijo, podés avanzar ahora y completar zonas de cobertura más adelante desde el dashboard.
           </p>
@@ -1517,11 +1519,11 @@ export default function ProfesionalRegisterPage() {
     const selectedMapLocation = locationPreview || mapCenter;
 
     return (
-      <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(360px,480px)] lg:items-center">
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(320px,440px)] lg:items-center xl:grid-cols-[minmax(0,1fr)_minmax(360px,480px)]">
         <div className="space-y-6">
           <div className="space-y-3">
             <Badge variant="success">Registro</Badge>
-            <h1 className="text-4xl font-semibold tracking-[-0.04em] text-[color:var(--ink)]">¿Dónde atendés?</h1>
+            <h1 className={wizardTitleClassName}>¿Dónde atendés?</h1>
             <p className="text-base text-[color:var(--ink-muted)]">Ingresá la ubicación de tu local.</p>
           </div>
           <div className="space-y-4">
@@ -1561,8 +1563,8 @@ export default function ProfesionalRegisterPage() {
           </div>
         </div>
         <div className="overflow-hidden rounded-[30px] border border-[color:var(--border-soft)] bg-[color:var(--surface-soft)] shadow-[var(--shadow-lift)]">
-          <div className="relative h-96">
-            <div className="absolute left-4 right-4 top-4 z-10 rounded-[22px] border border-[color:var(--border-soft)] bg-[color:var(--surface)]/95 p-4 shadow-[var(--shadow-card)] backdrop-blur">
+          <div className="relative h-[min(42dvh,24rem)] min-h-72">
+            <div className="absolute left-3 right-3 top-3 z-10 rounded-[20px] border border-[color:var(--border-soft)] bg-[color:var(--surface)]/95 p-3 shadow-[var(--shadow-card)] backdrop-blur sm:left-4 sm:right-4 sm:top-4 sm:p-4">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <p className="text-sm font-semibold text-[color:var(--ink)]">Ajustá la ubicación</p>
@@ -1612,7 +1614,7 @@ export default function ProfesionalRegisterPage() {
                 </div>
               </Marker>
             </MapView>
-            <div className="pointer-events-none absolute bottom-6 left-6 right-6 rounded-[22px] border border-[color:var(--border-soft)] bg-[color:var(--surface)] p-5 shadow-[var(--shadow-card)] backdrop-blur">
+            <div className="pointer-events-none absolute bottom-3 left-3 right-3 rounded-[20px] border border-[color:var(--border-soft)] bg-[color:var(--surface)] p-3 shadow-[var(--shadow-card)] backdrop-blur sm:bottom-4 sm:left-4 sm:right-4 sm:p-4">
               <p className="font-semibold text-[color:var(--ink)]">Ubicación del perfil</p>
               <p className="text-sm text-[color:var(--ink-muted)]">
                 {isLocationPreviewLoading || isReverseGeocodingLocation
@@ -1629,63 +1631,65 @@ export default function ProfesionalRegisterPage() {
   };
 
   const renderScheduleStep = () => (
-    <div className="mx-auto max-w-5xl space-y-7 text-center">
+    <div className="mx-auto max-w-5xl space-y-5 text-center">
       <div className="space-y-3">
         <Badge variant="success">Registro</Badge>
-        <h1 className="text-4xl font-semibold tracking-[-0.04em] text-[color:var(--ink)]">Definí tus horarios de atención</h1>
+        <h1 className={wizardTitleClassName}>Definí tus horarios de atención</h1>
         <p className="text-base text-[color:var(--ink-muted)]">Estos horarios se usarán como base inicial de tu agenda.</p>
       </div>
       <div className="flex flex-wrap justify-center gap-3">
         <Button type="button" variant="secondary" onClick={applyWeekSchedule}>Aplicar horario a todos</Button>
         <Button type="button" variant="secondary">Agregar descanso</Button>
       </div>
-      <div className="overflow-hidden rounded-[24px] border border-[color:var(--border-soft)] bg-[color:var(--surface-strong)] text-left shadow-[var(--shadow-card)]">
-        <div className="grid grid-cols-[1.3fr_0.8fr_1fr_1fr] gap-4 border-b border-[color:var(--border-soft)] px-6 py-4 text-sm font-semibold text-[color:var(--ink-muted)]">
-          <span>Día</span>
-          <span>Activo</span>
-          <span>Apertura</span>
-          <span>Cierre</span>
-        </div>
-        {schedule.map((day) => (
-          <div key={day.id} className="grid grid-cols-[1.3fr_0.8fr_1fr_1fr] items-center gap-4 border-b border-[color:var(--border-soft)] px-6 py-3 last:border-b-0">
-            <span className="font-semibold text-[color:var(--ink)]">{day.label}</span>
-            <button
-              type="button"
-              onClick={() => updateScheduleDay(day.id, { active: !day.active })}
-              className={`h-7 w-12 rounded-full p-1 transition ${day.active ? 'bg-[color:var(--primary)]' : 'bg-[color:var(--border-strong)]'}`}
-              aria-label={`Activar ${day.label}`}
-            >
-              <span className={`block h-5 w-5 rounded-full bg-white transition ${day.active ? 'translate-x-5' : ''}`} />
-            </button>
-            {day.active ? (
-              <input
-                type="time"
-                className="h-10 rounded-[14px] border border-[color:var(--border-soft)] bg-[color:var(--surface-muted)] px-3 text-sm text-[color:var(--ink)]"
-                value={day.open}
-                onChange={(event) => updateScheduleDay(day.id, { open: event.target.value })}
-              />
-            ) : <span className="text-sm text-[color:var(--ink-faint)]">—</span>}
-            {day.active ? (
-              <input
-                type="time"
-                className="h-10 rounded-[14px] border border-[color:var(--border-soft)] bg-[color:var(--surface-muted)] px-3 text-sm text-[color:var(--ink)]"
-                value={day.close}
-                onChange={(event) => updateScheduleDay(day.id, { close: event.target.value })}
-              />
-            ) : <span className="text-sm text-[color:var(--ink-faint)]">Cerrado</span>}
+      <div className="overflow-x-auto rounded-[24px] border border-[color:var(--border-soft)] bg-[color:var(--surface-strong)] text-left shadow-[var(--shadow-card)]">
+        <div className="min-w-[560px]">
+          <div className="grid grid-cols-[1.3fr_0.8fr_1fr_1fr] gap-4 border-b border-[color:var(--border-soft)] px-5 py-3 text-sm font-semibold text-[color:var(--ink-muted)]">
+            <span>Día</span>
+            <span>Activo</span>
+            <span>Apertura</span>
+            <span>Cierre</span>
           </div>
-        ))}
+          {schedule.map((day) => (
+            <div key={day.id} className="grid grid-cols-[1.3fr_0.8fr_1fr_1fr] items-center gap-4 border-b border-[color:var(--border-soft)] px-5 py-2.5 last:border-b-0">
+              <span className="font-semibold text-[color:var(--ink)]">{day.label}</span>
+              <button
+                type="button"
+                onClick={() => updateScheduleDay(day.id, { active: !day.active })}
+                className={`h-7 w-12 rounded-full p-1 transition ${day.active ? 'bg-[color:var(--primary)]' : 'bg-[color:var(--border-strong)]'}`}
+                aria-label={`Activar ${day.label}`}
+              >
+                <span className={`block h-5 w-5 rounded-full bg-white transition ${day.active ? 'translate-x-5' : ''}`} />
+              </button>
+              {day.active ? (
+                <input
+                  type="time"
+                  className="h-10 rounded-[14px] border border-[color:var(--border-soft)] bg-[color:var(--surface-muted)] px-3 text-sm text-[color:var(--ink)]"
+                  value={day.open}
+                  onChange={(event) => updateScheduleDay(day.id, { open: event.target.value })}
+                />
+              ) : <span className="text-sm text-[color:var(--ink-faint)]">—</span>}
+              {day.active ? (
+                <input
+                  type="time"
+                  className="h-10 rounded-[14px] border border-[color:var(--border-soft)] bg-[color:var(--surface-muted)] px-3 text-sm text-[color:var(--ink)]"
+                  value={day.close}
+                  onChange={(event) => updateScheduleDay(day.id, { close: event.target.value })}
+                />
+              ) : <span className="text-sm text-[color:var(--ink-faint)]">Cerrado</span>}
+            </div>
+          ))}
+        </div>
       </div>
       <p className="text-left text-sm text-[color:var(--ink-muted)]">Sin horarios, los clientes no podrán reservar automáticamente.</p>
     </div>
   );
 
   const renderServiceStep = () => (
-    <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(360px,430px)] lg:items-start">
+    <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(320px,380px)] lg:items-start xl:grid-cols-[minmax(0,1fr)_minmax(360px,410px)]">
       <div className="space-y-6">
         <div className="space-y-3">
           <Badge variant="success">Registro</Badge>
-          <h1 className="text-4xl font-semibold tracking-[-0.04em] text-[color:var(--ink)]">Agregá tu primer servicio</h1>
+          <h1 className={wizardTitleClassName}>Agregá tu primer servicio</h1>
           <p className="text-base text-[color:var(--ink-muted)]">Los clientes van a reservar a partir de tus servicios publicados.</p>
         </div>
         <div className="space-y-4">
@@ -1732,11 +1736,11 @@ export default function ProfesionalRegisterPage() {
           </button>
         </div>
       </div>
-      <div className="space-y-4">
+      <div className="hidden space-y-4 lg:block">
         <h2 className="text-center text-xl font-semibold text-[color:var(--ink)]">Vista previa del servicio</h2>
         <div className="overflow-hidden rounded-[28px] border border-[color:var(--border-soft)] bg-[color:var(--surface-strong)] shadow-[var(--shadow-lift)]">
-          <div className="h-56 bg-[linear-gradient(135deg,rgba(223,196,161,0.72),rgba(255,250,244,0.9)),radial-gradient(circle_at_25%_25%,rgba(10,122,67,0.16),transparent_30%)]" />
-          <div className="space-y-4 p-6">
+          <div className="h-36 bg-[linear-gradient(135deg,rgba(223,196,161,0.72),rgba(255,250,244,0.9)),radial-gradient(circle_at_25%_25%,rgba(10,122,67,0.16),transparent_30%)]" />
+          <div className="space-y-3 p-5">
             <span className="inline-flex rounded-full bg-[color:var(--primary-soft)] px-3 py-1 text-xs font-semibold text-[color:var(--primary)]">Destacado</span>
             <h3 className="text-2xl font-semibold text-[color:var(--ink)]">{form.serviceName || 'Limpieza facial profunda'}</h3>
             <p className="text-sm text-[color:var(--ink-muted)]">{form.serviceDuration || 60} minutos · {serviceCategoryName}</p>
@@ -1751,10 +1755,10 @@ export default function ProfesionalRegisterPage() {
   );
 
   const renderPreviewStep = () => (
-    <div className="mx-auto max-w-5xl space-y-8">
+    <div className="mx-auto max-w-5xl space-y-6">
       <div className="space-y-3">
         <Badge variant="success">30 días gratis</Badge>
-        <h1 className="text-4xl font-semibold tracking-[-0.04em] text-[color:var(--ink)]">Activá Plura Core</h1>
+        <h1 className={wizardTitleClassName}>Activá Plura Core</h1>
         <p className="max-w-3xl text-base text-[color:var(--ink-muted)]">
           Tu perfil queda listo para publicarse. Tenés 30 días gratis para probar Plura Core.
           Luego continúa la suscripción mensual.
@@ -1813,63 +1817,70 @@ export default function ProfesionalRegisterPage() {
   return (
     <div className="app-shell min-h-screen bg-[color:var(--background)] text-[color:var(--ink)]">
       <AuthTopBar tone="professional" />
-      <main className="mx-auto flex w-full max-w-7xl flex-1 items-center justify-center px-4 py-10 sm:px-6 lg:py-12">
+      <main className="mx-auto flex min-h-[calc(100dvh-4.75rem)] w-full max-w-7xl items-start justify-center px-3 py-3 sm:px-6 sm:py-4 lg:py-5">
         <form className="w-full" onSubmit={(event) => void handleSubmit(event)}>
-          <Card tone="default" padding="lg" className="mx-auto w-full max-w-6xl space-y-10 rounded-[36px] border-[color:var(--border-soft)] bg-[color:var(--surface)] p-6 shadow-[var(--shadow-glass)] sm:p-10 lg:p-14">
-            {stepHeader}
-            {renderCurrentStep()}
+          <Card tone="default" padding="none" className="mx-auto flex max-h-[calc(100dvh-6rem)] w-full max-w-6xl flex-col overflow-hidden rounded-[28px] border-[color:var(--border-soft)] bg-[color:var(--surface)] shadow-[var(--shadow-glass)] sm:rounded-[32px]">
+            <div className="shrink-0 border-b border-[color:var(--border-soft)] px-4 py-4 sm:px-6 lg:px-8">
+              {stepHeader}
+            </div>
 
-            {successMessage ? (
-              <p className="mx-auto max-w-3xl rounded-[16px] border border-[color:var(--success-soft)] bg-[color:var(--success-soft)] px-4 py-3 text-sm text-[color:var(--primary)]">
-                {successMessage}
-              </p>
-            ) : null}
+            <div className="min-h-0 flex-1 space-y-6 overflow-y-auto px-4 py-5 sm:px-6 lg:px-8 lg:py-6">
+              {renderCurrentStep()}
 
-            {errorMessage ? (
-              <div className="mx-auto max-w-3xl rounded-[16px] border border-[color:var(--error-soft)] bg-[color:var(--error-soft)] px-4 py-3 text-sm text-[color:var(--error)]">
-                <p>{errorMessage}</p>
-                {billingRecoveryAvailable ? (
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    className="mt-3"
-                    onClick={() => void router.push('/profesional/dashboard/billing')}
-                  >
-                    Ir a Facturación
+              {successMessage ? (
+                <p className="mx-auto max-w-3xl rounded-[16px] border border-[color:var(--success-soft)] bg-[color:var(--success-soft)] px-4 py-3 text-sm text-[color:var(--primary)]">
+                  {successMessage}
+                </p>
+              ) : null}
+
+              {errorMessage ? (
+                <div className="mx-auto max-w-3xl rounded-[16px] border border-[color:var(--error-soft)] bg-[color:var(--error-soft)] px-4 py-3 text-sm text-[color:var(--error)]">
+                  <p>{errorMessage}</p>
+                  {billingRecoveryAvailable ? (
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      className="mt-3"
+                      onClick={() => void router.push('/profesional/dashboard/billing')}
+                    >
+                      Ir a Facturación
+                    </Button>
+                  ) : null}
+                </div>
+              ) : null}
+            </div>
+
+            <div className="shrink-0 border-t border-[color:var(--border-soft)] bg-[color:var(--surface)]/95 px-4 py-3 backdrop-blur sm:px-6 lg:px-8">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-center">
+                {step > 0 ? (
+                  <Button type="button" variant="secondary" size="lg" className="w-full sm:w-auto sm:min-w-44" onClick={goBack}>
+                    Volver
                   </Button>
                 ) : null}
+                {step < wizardSteps.length - 1 ? (
+                  <Button type="button" variant={step === 0 ? 'brand' : 'primary'} size="lg" className="w-full sm:w-auto sm:min-w-56" onClick={goNext}>
+                    Continuar
+                  </Button>
+                ) : (
+                  <Button
+                    type="submit"
+                    variant="primary"
+                    size="lg"
+                    className="w-full sm:w-auto sm:min-w-56"
+                    disabled={isRedirectingToCheckout}
+                    loading={isSubmitting || isRedirectingToCheckout}
+                    loadingLabel={
+                      isRedirectingToCheckout
+                        ? 'Redirigiendo a Mercado Pago...'
+                        : isOAuthSetup
+                          ? 'Activando Plura Core...'
+                          : 'Creando perfil...'
+                    }
+                  >
+                    Activar prueba gratuita
+                  </Button>
+                )}
               </div>
-            ) : null}
-
-            <div className="flex flex-col gap-3 border-t border-[color:var(--border-soft)] pt-6 sm:flex-row sm:items-center sm:justify-center">
-              {step > 0 ? (
-                <Button type="button" variant="secondary" size="lg" className="min-w-56" onClick={goBack}>
-                  Volver
-                </Button>
-              ) : null}
-              {step < wizardSteps.length - 1 ? (
-                <Button type="button" variant={step === 0 ? 'brand' : 'primary'} size="lg" className="min-w-72" onClick={goNext}>
-                  Continuar
-                </Button>
-              ) : (
-                <Button
-                  type="submit"
-                  variant="primary"
-                  size="lg"
-                  className="min-w-72"
-                  disabled={isRedirectingToCheckout}
-                  loading={isSubmitting || isRedirectingToCheckout}
-                  loadingLabel={
-                    isRedirectingToCheckout
-                      ? 'Redirigiendo a Mercado Pago...'
-                      : isOAuthSetup
-                        ? 'Activando Plura Core...'
-                        : 'Creando perfil...'
-                  }
-                >
-                  Activar prueba gratuita
-                </Button>
-              )}
             </div>
           </Card>
         </form>

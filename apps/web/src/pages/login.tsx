@@ -16,10 +16,10 @@ import {
   fetchAuthMe,
   hasContext,
   persistAccessTokenForContext,
+  selectAuthContext,
   sessionRoleForContext,
   type AuthContextDescriptor,
   type AuthContextType,
-  type SelectContextResponse,
   type UnifiedLoginResponse,
 } from '@/lib/auth/contexts';
 import { useProfessionalProfileContext } from '@/context/ProfessionalProfileContext';
@@ -32,10 +32,29 @@ import {
   setPendingCheckoutState,
 } from '@/lib/billing/billing';
 import { applyPendingProfessionalRegisterHandoff } from '@/lib/professional/registerHandoff';
+import { getPendingReservation } from '@/services/pendingReservation';
 
 const resolveQueryValue = (value: string | string[] | undefined) => {
   if (Array.isArray(value)) return value[0] ?? '';
   return value ?? '';
+};
+
+const resolveSafeRedirectPath = (value: string) => {
+  const trimmed = value.trim();
+  if (!trimmed || trimmed === 'confirm-reservation') return null;
+  if (!trimmed.startsWith('/') || trimmed.startsWith('//')) return null;
+  return trimmed;
+};
+
+const contextKey = (descriptor: AuthContextDescriptor) =>
+  `${descriptor.type}-${descriptor.workerId ?? descriptor.professionalId ?? 'self'}`;
+
+const isSameContext = (
+  left?: AuthContextDescriptor | null,
+  right?: AuthContextDescriptor | null,
+) => {
+  if (!left || !right) return false;
+  return contextKey(left) === contextKey(right);
 };
 
 const extractApiMessage = (error: unknown, fallback: string) => {
@@ -103,6 +122,9 @@ export default function UnifiedLoginPage() {
   const [selectingContext, setSelectingContext] = useState<string | null>(null);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const shouldActivatePendingBilling = resolveQueryValue(router.query.billing).trim() === 'pending';
+  const redirectIntent = resolveQueryValue(router.query.redirect).trim();
+  const shouldConfirmReservationAfterLogin = redirectIntent === 'confirm-reservation';
+  const safeRedirectPath = resolveSafeRedirectPath(redirectIntent);
   const loginIntent = resolveQueryValue(router.query.intent).trim().toLowerCase();
   const desiredContext: AuthContextType | null =
     loginIntent === 'professional' ? 'PROFESSIONAL' : loginIntent === 'client' ? 'CLIENT' : null;
@@ -165,6 +187,30 @@ export default function UnifiedLoginPage() {
     });
   };
 
+  const completeClientLoginFlow = async () => {
+    if (safeRedirectPath) {
+      await router.push(safeRedirectPath);
+      return;
+    }
+
+    if (shouldConfirmReservationAfterLogin) {
+      const pendingReservation = getPendingReservation();
+      if (pendingReservation) {
+        await router.push({
+          pathname: '/reservar',
+          query: {
+            profesional: pendingReservation.professionalSlug,
+            serviceId: pendingReservation.serviceId,
+            resume: '1',
+          },
+        });
+        return;
+      }
+    }
+
+    await router.push('/cliente/inicio');
+  };
+
   const completeLoginForContext = async (descriptor: AuthContextDescriptor) => {
     const role = sessionRoleForContext(descriptor.type);
     setKnownAuthSessionRole(role);
@@ -187,7 +233,70 @@ export default function UnifiedLoginPage() {
       }
     }
 
+    if (descriptor.type === 'CLIENT') {
+      await completeClientLoginFlow();
+      return;
+    }
+
     await router.push(dashboardForContext(descriptor));
+  };
+
+  const selectAndCompleteContext = async (descriptor: AuthContextDescriptor) => {
+    const active = await selectAuthContext(descriptor);
+    await completeLoginForContext(active);
+  };
+
+  const completeAuthenticatedLogin = async (
+    data: Pick<UnifiedLoginResponse, 'activeContext' | 'contexts'>,
+    email?: string,
+  ) => {
+    const list = Array.isArray(data.contexts) ? data.contexts : [];
+    const activeContext = data.activeContext ?? null;
+    const availableContexts = list.length > 0 || !activeContext ? list : [activeContext];
+
+    if (desiredContext === 'PROFESSIONAL' && !hasContext(availableContexts, 'PROFESSIONAL')) {
+      await continueProfessionalOnboarding(email);
+      return;
+    }
+
+    if (desiredContext === 'CLIENT' && !hasContext(availableContexts, 'CLIENT')) {
+      if (availableContexts.length > 0) {
+        setContexts(availableContexts);
+        setErrorMessage('Esta cuenta no tiene acceso cliente. Elegí otro contexto para continuar.');
+        return;
+      }
+      setErrorMessage('Esta cuenta no tiene un acceso cliente disponible.');
+      return;
+    }
+
+    if (desiredContext) {
+      const descriptor = availableContexts.find((context) => context.type === desiredContext);
+      if (descriptor) {
+        if (isSameContext(activeContext, descriptor)) {
+          await completeLoginForContext(activeContext);
+          return;
+        }
+        await selectAndCompleteContext(descriptor);
+        return;
+      }
+    }
+
+    if (!desiredContext && availableContexts.length > 1) {
+      setContexts(availableContexts);
+      return;
+    }
+
+    if (activeContext) {
+      await completeLoginForContext(activeContext);
+      return;
+    }
+
+    if (availableContexts.length === 1) {
+      await selectAndCompleteContext(availableContexts[0]);
+      return;
+    }
+
+    setErrorMessage('No encontramos un acceso disponible para esta cuenta.');
   };
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
@@ -207,20 +316,7 @@ export default function UnifiedLoginPage() {
           : 'CLIENT';
         setAuthAccessToken(data.accessToken, role);
       }
-      const list = Array.isArray(data.contexts) ? data.contexts : [];
-      if (desiredContext === 'PROFESSIONAL' && !hasContext(list, 'PROFESSIONAL')) {
-        await continueProfessionalOnboarding(form.email.trim().toLowerCase());
-        return;
-      }
-      if (data.contextSelectionRequired && list.length > 1) {
-        setContexts(list);
-        return;
-      }
-      if (data.activeContext) {
-        await completeLoginForContext(data.activeContext);
-        return;
-      }
-      await router.push('/cliente/inicio');
+      await completeAuthenticatedLogin(data, form.email.trim().toLowerCase());
     } catch (error) {
       const apiMessage = extractApiMessage(error, 'Credenciales inválidas o error de servidor.');
       const shouldContinueProfessionalOnboarding =
@@ -260,51 +356,24 @@ export default function UnifiedLoginPage() {
         activeContext: result.activeContext,
         contexts: result.contexts,
       } : await fetchAuthMe();
-      const list = Array.isArray(data.contexts) ? data.contexts : [];
-      if (desiredContext === 'PROFESSIONAL' && !hasContext(list, 'PROFESSIONAL')) {
-        await continueProfessionalOnboarding(result.user.email);
-        return;
-      }
-      if (list.length > 1) {
-        setContexts(list);
-        return;
-      }
-      if (data.activeContext) {
-        await completeLoginForContext(data.activeContext);
-        return;
-      }
-      await router.push('/cliente/inicio');
-    } catch {
-      if (desiredContext === 'PROFESSIONAL' || result.activeContext?.type === 'PROFESSIONAL') {
-        if (shouldActivatePendingBilling) {
-          await completeProfessionalPendingBilling();
-          return;
-        }
-        await router.push('/profesional/dashboard');
-      } else {
+      await completeAuthenticatedLogin(data, result.user.email);
+    } catch (error) {
+      if (result.activeContext) {
+        await completeLoginForContext(result.activeContext);
+      } else if (!desiredContext) {
         await router.push('/cliente/inicio');
+      } else {
+        setErrorMessage(extractApiMessage(error, 'No pudimos completar el acceso con Google.'));
       }
     }
   };
 
   const handleSelect = async (descriptor: AuthContextDescriptor) => {
     setErrorMessage(null);
-    const key = `${descriptor.type}-${descriptor.workerId ?? descriptor.professionalId ?? 'self'}`;
+    const key = contextKey(descriptor);
     try {
       setSelectingContext(key);
-      const response = await api.post<SelectContextResponse>('/auth/context/select', {
-        type: descriptor.type,
-        workerId: descriptor.workerId ?? undefined,
-        professionalId: descriptor.professionalId ?? undefined,
-      });
-      const data = response.data ?? {};
-      const active = data.activeContext ?? descriptor;
-      if (data.accessToken) {
-        setAuthAccessToken(data.accessToken, sessionRoleForContext(active.type));
-      } else {
-        setKnownAuthSessionRole(sessionRoleForContext(active.type));
-      }
-      await completeLoginForContext(active);
+      await selectAndCompleteContext(descriptor);
     } catch (error) {
       setErrorMessage(extractApiMessage(error, 'No pudimos cambiar de contexto.'));
     } finally {
@@ -440,7 +509,7 @@ export default function UnifiedLoginPage() {
 
                 <div className="grid gap-3">
                   {contexts.map((descriptor) => {
-                    const key = `${descriptor.type}-${descriptor.workerId ?? descriptor.professionalId ?? 'self'}`;
+                    const key = contextKey(descriptor);
                     const busy = selectingContext === key;
                     return (
                       <button

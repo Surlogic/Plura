@@ -79,7 +79,7 @@ Base: `apps/web/src/pages`
 - `/reservar`: flujo publico de reserva paso a paso desde el perfil publico.
 - `/reservar`: si el cliente autenticado no tiene celular verificado, muestra verificación OTP SMS inline antes de confirmar.
 - `/reserva-confirmada`: ruta legacy de confirmacion; hoy no forma parte del circuito principal de reserva web.
-- `/login`: acceso general.
+- `/login`: unico inicio de sesion real para cliente, profesional y trabajador; acepta `intent=client` o `intent=professional` para entrar directo a ese contexto cuando la cuenta lo tiene.
 - `/oauth/callback`: callback de OAuth.
 - `/profesional/auth/register`: el botón Google del registro profesional solo verifica identidad y guarda una intención OAuth temporal; no autentica como cliente ni crea cuenta. La cuenta profesional se crea recién al enviar el wizard final contra `/auth/register/profesional`.
 - `/oauth/mercadopago/callback`: retorno dedicado para conexion OAuth de Mercado Pago del profesional.
@@ -123,7 +123,7 @@ Lectura de producto:
 
 ### Rutas del cliente
 
-- `/cliente/auth/login`
+- `/cliente/auth/login` — redirect legacy de compatibilidad hacia `/login?intent=client`, preservando query params.
 - `/cliente/auth/register`
 - `/cliente/auth/complete-phone`
 - `/cliente/inicio`
@@ -184,7 +184,7 @@ Lectura de producto:
 
 ### Rutas del profesional
 
-- `/profesional/auth/login`
+- `/profesional/auth/login` — redirect legacy de compatibilidad hacia `/login?intent=professional`, preservando query params.
 - `/profesional/auth/register` — wizard de alta profesional; en el paso de ubicación para modalidad `LOCAL` muestra un mapa real desde el primer render cuando Mapbox/WebGL están disponibles, centrado primero en geolocalización del navegador y con fallback visual en Montevideo; la dirección geocodificada se usa como sugerencia inicial y el pin se puede ajustar manualmente arrastrándolo o tocando el mapa sin forzar de nuevo el zoom.
 - `/profesional/auth/complete-phone`
 - `/profesional/dashboard`
@@ -540,7 +540,9 @@ Lectura de producto:
 
 - `/login` es el inicio de sesión real para cliente, profesional y trabajador; resuelve el contexto con `/auth/login` y `/auth/context/select`.
 - logout, expiración de sesión y guards de áreas privadas web vuelven al login unificado `/login`, no a pantallas separadas por rol.
+- `/cliente/auth/login` queda como ruta legacy de compatibilidad y redirige a `/login?intent=client`, preservando `redirect=confirm-reservation`, `passwordReset` y otros query params.
 - `/profesional/auth/login` queda como ruta legacy de compatibilidad y redirige a `/login?intent=professional`, preservando `email`, `registered`, `billing=pending` y otros query params.
-- `/login?intent=professional` es el destino del CTA público `Soy profesional`; conserva el acceso unificado y, si la cuenta tiene varios contextos, deja que el usuario elija antes de entrar.
+- `/login` sin intent muestra selector cuando la cuenta tiene varios contextos; `/login?intent=client` y `/login?intent=professional` seleccionan ese contexto automaticamente si existe.
+- `/login?intent=professional` es el destino del CTA público `Soy profesional`; si la cuenta no tiene contexto profesional, retoma el onboarding profesional sobre esa misma cuenta.
 - `/profesional/auth/register` es el wizard profesional y sigue siendo el destino de CTAs de alta como `Registrá tu negocio`.
 - Si el wizard profesional crea la cuenta pero falla el login automático, deriva a `/login?intent=professional&billing=pending`; al iniciar sesión como profesional, `/login` activa `Plura Core` y recién después consume el handoff pendiente.

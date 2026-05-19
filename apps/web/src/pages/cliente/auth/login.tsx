@@ -1,274 +1,30 @@
-import Link from 'next/link';
+import { useEffect } from 'react';
 import { useRouter } from 'next/router';
-import { useState } from 'react';
-import type { ChangeEvent, FormEvent } from 'react';
-import { isAxiosError } from 'axios';
 import AuthTopBar from '@/components/auth/AuthTopBar';
-import GoogleLoginButton from '@/components/auth/GoogleLoginButton';
 import Footer from '@/components/shared/Footer';
-import Badge from '@/components/ui/Badge';
-import Button from '@/components/ui/Button';
-import Card from '@/components/ui/Card';
-import api from '@/services/api';
-import { useClientProfileContext } from '@/context/ClientProfileContext';
-import type { OAuthLoginResult } from '@/lib/auth/oauthLogin';
-import {
-  ensureAuthContext,
-  persistAccessTokenForContext,
-  type UnifiedLoginResponse,
-} from '@/lib/auth/contexts';
-import {
-  getPendingReservation,
-} from '@/services/pendingReservation';
 
-const resolveQueryValue = (value: string | string[] | undefined) => {
-  if (Array.isArray(value)) return value[0] ?? '';
-  return value ?? '';
-};
-
-const resolveSafeRedirectPath = (value: string) => {
-  const trimmed = value.trim();
-  if (!trimmed || trimmed === 'confirm-reservation') return null;
-  if (!trimmed.startsWith('/') || trimmed.startsWith('//')) return null;
-  return trimmed;
-};
-
-const extractApiMessage = (error: unknown, fallback: string) => {
-  if (isAxiosError(error)) {
-    const responseData = error.response?.data;
-    if (typeof responseData === 'string' && responseData.trim()) {
-      return responseData.trim();
-    }
-    if (responseData && typeof responseData === 'object') {
-      const message = (responseData as { message?: unknown }).message;
-      if (typeof message === 'string' && message.trim()) {
-        return message.trim();
-      }
-    }
-  }
-  return fallback;
-};
-
-export default function ClienteLoginPage() {
+export default function ClienteLoginRedirectPage() {
   const router = useRouter();
-  const { refreshProfile } = useClientProfileContext();
-  const redirectIntent = resolveQueryValue(router.query.redirect).trim();
-  const passwordResetCompleted = resolveQueryValue(router.query.passwordReset).trim() === '1';
-  const shouldConfirmReservationAfterLogin = redirectIntent === 'confirm-reservation';
-  const safeRedirectPath = resolveSafeRedirectPath(redirectIntent);
-  const registerHref = shouldConfirmReservationAfterLogin
-    ? '/cliente/auth/register?redirect=confirm-reservation'
-    : '/cliente/auth/register';
-  const [form, setForm] = useState({ email: '', password: '' });
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleChange = (event: ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = event.target;
-    const normalizedValue = name === 'email' || name === 'confirmEmail' ? value.toLowerCase() : value;
-    setForm((prev) => ({ ...prev, [name]: normalizedValue }));
-  };
+  useEffect(() => {
+    if (!router.isReady) return;
 
-  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    setErrorMessage(null);
-    try {
-      setIsSubmitting(true);
-      const response = await api.post<UnifiedLoginResponse>('/auth/login', {
-        email: form.email.trim().toLowerCase(),
-        password: form.password,
-        desiredContext: 'CLIENT',
-      });
-      persistAccessTokenForContext(
-        response.data?.accessToken ?? null,
-        response.data?.activeContext ?? { type: 'CLIENT' },
-      );
-      await completeClientLoginFlow();
-    } catch (error) {
-      setErrorMessage(
-        extractApiMessage(error, 'Credenciales inválidas o error de servidor.'),
-      );
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const completeClientLoginFlow = async () => {
-    await api.get('/auth/me/cliente');
-    await refreshProfile();
-
-    if (safeRedirectPath) {
-      router.push(safeRedirectPath);
-      return;
-    }
-
-    if (shouldConfirmReservationAfterLogin) {
-      const pendingReservation = getPendingReservation();
-      if (pendingReservation) {
-        router.push({
-          pathname: '/reservar',
-          query: {
-            profesional: pendingReservation.professionalSlug,
-            serviceId: pendingReservation.serviceId,
-            resume: '1',
-          },
-        });
-        return;
-      }
-    }
-
-    router.push('/cliente/inicio');
-  };
-
-  const handleOAuthAuthenticated = async (result: OAuthLoginResult) => {
-    setErrorMessage(null);
-
-    const requiresPhoneCompletion = !(result.user.phoneNumber ?? '').trim();
-
-    if (requiresPhoneCompletion) {
-      router.push('/cliente/auth/complete-phone');
-      return;
-    }
-
-    await ensureAuthContext('CLIENT');
-    await completeClientLoginFlow();
-  };
-
-  const inputClassName =
-    'h-12 w-full rounded-[18px] border border-[color:var(--border-soft)] bg-white/90 px-4 text-sm text-[color:var(--ink)] placeholder:text-[color:var(--ink-faint)] transition focus:border-[color:var(--accent)] focus:outline-none focus:ring-4 focus:ring-[color:var(--focus-ring)]';
+    void router.replace({
+      pathname: '/login',
+      query: {
+        ...router.query,
+        intent: 'client',
+      },
+    });
+  }, [router]);
 
   return (
     <div className="app-shell min-h-screen bg-[color:var(--background)] text-[color:var(--ink)]">
       <AuthTopBar tone="client" />
-      <main className="mx-auto flex w-full max-w-5xl items-center justify-center px-4 py-10 sm:px-6 sm:py-14">
-        <div className="w-full max-w-md space-y-5">
-          <Card tone="glass" className="relative overflow-hidden">
-            <div className="pointer-events-none absolute -left-10 -top-12 h-28 w-28 rounded-full bg-[color:var(--accent)]/20 blur-2xl" />
-            <div className="pointer-events-none absolute -bottom-12 right-0 h-28 w-28 rounded-full bg-[color:var(--premium)]/24 blur-2xl" />
-            <div className="relative space-y-4">
-              <Badge variant="info">Reservar y descubrir</Badge>
-              <h2 className="text-2xl font-semibold leading-tight text-[color:var(--ink)]">
-                Encontrá tu próximo turno con una experiencia más clara.
-              </h2>
-              <div className="grid gap-3 sm:grid-cols-2">
-                <Card tone="default" className="rounded-[22px] bg-white/80 p-4">
-                  <p className="text-xs uppercase tracking-[0.14em] text-[color:var(--accent-strong)]">Explorar</p>
-                  <p className="mt-1 text-sm font-semibold text-[color:var(--ink)]">Profesionales verificados</p>
-                </Card>
-                <Card tone="default" className="rounded-[22px] bg-white/80 p-4">
-                  <p className="text-xs uppercase tracking-[0.14em] text-[color:var(--premium-strong)]">Reservar</p>
-                  <p className="mt-1 text-sm font-semibold text-[color:var(--ink)]">Turnos en segundos</p>
-                </Card>
-              </div>
-            </div>
-          </Card>
-
-          <Card tone="default" padding="lg" className="rounded-[32px]">
-            <div className="space-y-3">
-              <Badge variant="warm">Cuenta cliente</Badge>
-              <h1 className="text-3xl font-semibold leading-tight text-[color:var(--ink)]">
-                Iniciar sesión
-              </h1>
-              <p className="text-sm text-[color:var(--ink-muted)]">
-                Descubrí profesionales y reservá tu turno en segundos.
-              </p>
-              <Link
-                href="/login?intent=professional"
-                className="inline-flex text-xs font-semibold text-[color:var(--accent-strong)] underline decoration-[color:var(--accent-soft)] underline-offset-4 transition hover:text-[color:var(--accent)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--accent-soft)]"
-              >
-                Ir a acceso profesional
-              </Link>
-            </div>
-
-            <form className="mt-6 space-y-4" onSubmit={handleSubmit}>
-              {passwordResetCompleted ? (
-                <p className="rounded-[12px] border border-[#cdeee9] bg-[#f0fffc] px-3 py-2 text-xs text-[#1FB6A6]">
-                  Tu contraseña ya fue actualizada. Iniciá sesión para continuar.
-                </p>
-              ) : null}
-
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-[color:var(--ink)]">Gmail</label>
-                <input
-                  className={inputClassName}
-                  placeholder="tucorreo@gmail.com"
-                  type="email"
-                  name="email"
-                  value={form.email}
-                  onChange={handleChange}
-                  required
-                />
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-[color:var(--ink)]">Contraseña</label>
-                <input
-                  type="password"
-                  className={inputClassName}
-                  placeholder="••••••••"
-                  name="password"
-                  value={form.password}
-                  onChange={handleChange}
-                  required
-                />
-                <div className="flex justify-end">
-                  <Link
-                    href="/auth/forgot-password"
-                    className="text-xs font-semibold text-[color:var(--accent-strong)] underline underline-offset-4"
-                  >
-                    Olvidé mi contraseña
-                  </Link>
-                </div>
-              </div>
-
-              {errorMessage ? (
-                <p className="rounded-[12px] border border-[color:var(--error-soft)] bg-[color:var(--error-soft)] px-3 py-2 text-xs text-[color:var(--error)]">
-                  {errorMessage}
-                </p>
-              ) : null}
-
-              <Button
-                type="submit"
-                variant="brand"
-                size="lg"
-                className="w-full"
-                loading={isSubmitting}
-                loadingLabel="Iniciando sesión..."
-              >
-                Iniciar sesión
-              </Button>
-            </form>
-
-            <div className="mt-5 space-y-3">
-              <div className="flex items-center gap-3">
-                <div className="h-px flex-1 bg-[color:var(--border-soft)]" />
-                <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[color:var(--ink-faint)]">
-                  o continuar con
-                </span>
-                <div className="h-px flex-1 bg-[color:var(--border-soft)]" />
-              </div>
-              <div className="space-y-2">
-                <GoogleLoginButton
-                  intendedRole="USER"
-                  onAuthenticated={handleOAuthAuthenticated}
-                  onError={setErrorMessage}
-                  buttonLabel="Continuar con Google"
-                  loadingLabel="Iniciando..."
-                />
-              </div>
-            </div>
-
-            <p className="mt-6 text-center text-xs text-[color:var(--ink-muted)]">
-              ¿No tenés cuenta?{' '}
-              <Link
-                href={registerHref}
-                className="font-semibold text-[color:var(--accent-strong)] underline decoration-[color:var(--accent-soft)] underline-offset-4"
-              >
-                Crear cuenta
-              </Link>
-            </p>
-          </Card>
-        </div>
+      <main className="mx-auto flex min-h-[55vh] w-full max-w-md items-center justify-center px-4 text-center">
+        <p className="text-sm font-semibold text-[color:var(--ink-muted)]">
+          Redirigiendo al acceso...
+        </p>
       </main>
       <Footer />
     </div>

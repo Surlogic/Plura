@@ -50,6 +50,7 @@ export type ActivateProfessionalProfileRequest = {
   longitude?: number | null;
   phoneNumber?: string | null;
   tipoCliente: 'LOCAL' | 'A_DOMICILIO' | 'SIN_LOCAL';
+  billingCheckoutToken?: string | null;
 };
 
 export const sessionRoleForContext = (type?: AuthContextType | null): KnownAuthSessionRole => {

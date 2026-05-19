@@ -138,6 +138,9 @@ public class ProfessionalProfileGatewayService implements
         profile.setLatitude(command.latitude());
         profile.setLongitude(command.longitude());
         profile.setTipoCliente(command.tipoCliente());
+        if (command.phoneNumber() != null) {
+            profile.setWhatsapp(command.phoneNumber());
+        }
         profile.setActive(true);
     }
 
@@ -177,6 +180,14 @@ public class ProfessionalProfileGatewayService implements
             return Optional.empty();
         }
         return professionalProfileRepository.findByUser_Id(userId);
+    }
+
+    @Override
+    public Optional<ProfessionalProfile> findActiveByPhoneNumber(String phoneNumber) {
+        if (phoneNumber == null || phoneNumber.isBlank()) {
+            return Optional.empty();
+        }
+        return professionalProfileRepository.findFirstByWhatsappAndActiveTrue(phoneNumber);
     }
 
     /**

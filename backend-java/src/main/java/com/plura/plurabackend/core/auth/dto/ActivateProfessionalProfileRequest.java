@@ -29,6 +29,10 @@ public class ActivateProfessionalProfileRequest {
 
     private Double longitude;
 
+    @Size(max = 30)
+    @Pattern(regexp = "^[+0-9()\\-\\s]{3,30}$")
+    private String phoneNumber;
+
     @NotBlank
     @Pattern(regexp = "^(?i)(LOCAL|A_DOMICILIO|SIN_LOCAL)$")
     private String tipoCliente;

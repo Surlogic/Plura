@@ -20,6 +20,8 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     boolean existsByPhoneNumberAndDeletedAtIsNull(String phoneNumber);
 
+    Optional<User> findFirstByPhoneNumberAndClientActiveTrueAndDeletedAtIsNull(String phoneNumber);
+
     Optional<User> findFirstByPhoneNumberAndPhoneVerifiedAtIsNotNullAndDeletedAtIsNull(String phoneNumber);
 
     Optional<User> findFirstByPhoneNumberAndDeletedAtIsNull(String phoneNumber);

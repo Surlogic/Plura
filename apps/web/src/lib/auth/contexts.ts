@@ -48,6 +48,7 @@ export type ActivateProfessionalProfileRequest = {
   location?: string | null;
   latitude?: number | null;
   longitude?: number | null;
+  phoneNumber?: string | null;
   tipoCliente: 'LOCAL' | 'A_DOMICILIO' | 'SIN_LOCAL';
 };
 

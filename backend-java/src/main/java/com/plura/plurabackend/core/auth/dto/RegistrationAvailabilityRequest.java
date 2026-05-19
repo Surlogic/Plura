@@ -2,6 +2,7 @@ package com.plura.plurabackend.core.auth.dto;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.Size;
+import com.plura.plurabackend.core.auth.context.AuthContextType;
 import lombok.Data;
 
 /**
@@ -16,4 +17,6 @@ public class RegistrationAvailabilityRequest {
 
     @Size(max = 30)
     private String phoneNumber;
+
+    private AuthContextType desiredContext;
 }

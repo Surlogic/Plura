@@ -19,4 +19,6 @@ public interface ProfessionalAccountProfileGateway {
     ProfessionalProfile loadOrBootstrapProfile(User user);
 
     Optional<ProfessionalProfile> findByUserId(Long userId);
+
+    Optional<ProfessionalProfile> findActiveByPhoneNumber(String phoneNumber);
 }

@@ -37,6 +37,7 @@ import { getGoogleOAuthAppOrigin } from '@/lib/auth/googleOAuth';
 import {
   activateProfessionalProfile,
   fetchAuthMe,
+  hasContext,
   selectAuthContext,
 } from '@/lib/auth/contexts';
 
@@ -193,6 +194,8 @@ export default function ProfesionalRegisterPage() {
   const router = useRouter();
   const { refreshProfile } = useProfessionalProfileContext();
   const { categories, isLoading: categoriesLoading } = useCategories();
+  const controlledAddProfessionalFlow =
+    router.query.mode === 'add-professional' || router.query.resume === '1';
 
   const [step, setStep] = useState(0);
   const [form, setForm] = useState<RegisterForm>({
@@ -294,19 +297,35 @@ export default function ProfesionalRegisterPage() {
   }, []);
 
   useEffect(() => {
+    if (!router.isReady) return;
     let isActive = true;
     void fetchAuthMe()
       .then((me) => {
         if (!isActive) return;
+        if (!controlledAddProfessionalFlow) {
+          const activeType = me.activeContext?.type;
+          if (activeType === 'CLIENT') {
+            void router.replace('/cliente/inicio');
+            return;
+          }
+          if (activeType === 'WORKER') {
+            void router.replace('/trabajador/calendario');
+            return;
+          }
+          void router.replace('/profesional/dashboard');
+          return;
+        }
+        if (hasContext(me.contexts, 'PROFESSIONAL')) {
+          void router.replace('/profesional/dashboard');
+          return;
+        }
         setHasAuthenticatedBaseAccount(true);
         const email = me.user?.email?.trim().toLowerCase() || '';
-        const phoneNumber = (me.user?.phoneNumber ?? '').trim();
         setForm((prev) => ({
           ...prev,
           email: prev.email || email,
           confirmEmail: prev.confirmEmail || email,
           fullName: prev.fullName || me.user?.fullName?.trim() || '',
-          phoneNumber: prev.phoneNumber || phoneNumber,
           password: '',
           confirmPassword: '',
         }));
@@ -315,7 +334,6 @@ export default function ProfesionalRegisterPage() {
           email: Boolean(email),
           confirmEmail: Boolean(email),
           fullName: Boolean(me.user?.fullName?.trim()),
-          phoneNumber: Boolean(phoneNumber),
           password: true,
           confirmPassword: true,
         }));
@@ -326,7 +344,7 @@ export default function ProfesionalRegisterPage() {
     return () => {
       isActive = false;
     };
-  }, []);
+  }, [controlledAddProfessionalFlow, router]);
 
   const categoryNameBySlug = useMemo(
     () => new Map(categories.map((category) => [category.slug, category.name])),
@@ -831,6 +849,7 @@ export default function ProfesionalRegisterPage() {
     const response = await api.post<RegistrationAvailabilityResponse>('/auth/register/availability', {
       email: fields.includes('email') ? emailValue : undefined,
       phoneNumber: fields.includes('phoneNumber') ? form.phoneNumber.trim() : undefined,
+      desiredContext: 'PROFESSIONAL',
     });
     const nextErrors: Partial<Record<keyof RegisterForm, string>> = {};
     if (fields.includes('email') && !response.data.emailAvailable) {
@@ -990,6 +1009,7 @@ export default function ProfesionalRegisterPage() {
       latitude: payload.latitude,
       longitude: payload.longitude,
       tipoCliente: payload.tipoCliente,
+      phoneNumber: payload.phoneNumber,
     });
     const professionalContext = me.contexts?.find((context) => context.type === 'PROFESSIONAL');
     if (professionalContext) {
@@ -1009,7 +1029,7 @@ export default function ProfesionalRegisterPage() {
         fullAddress: payload.fullAddress,
         latitude: payload.latitude,
         longitude: payload.longitude,
-        phoneNumber: payload.phoneNumber,
+        whatsapp: payload.phoneNumber,
       });
     } catch {
       // El perfil ya queda activo; el dashboard permite completar ajustes de datos si esta actualizacion parcial falla.

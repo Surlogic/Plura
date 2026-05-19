@@ -6,6 +6,7 @@ import DashboardHero from '@/components/dashboard/DashboardHero';
 import CategoryChips from '@/components/dashboard/CategoryChips';
 import NextBookingSection from '@/components/dashboard/NextBookingSection';
 import SuggestedSection from '@/components/dashboard/SuggestedSection';
+import Button from '@/components/ui/Button';
 import { useClientProfileContext } from '@/context/ClientProfileContext';
 import { useClientProfile } from '@/hooks/useClientProfile';
 import { useCategories } from '@/hooks/useCategories';
@@ -56,6 +57,19 @@ export default function ClienteInicioPage() {
     <ClientShell name={displayName} active="inicio">
       <main className="space-y-14">
         <DashboardHero name={displayName} location="" />
+        <section className="flex flex-col gap-3 rounded-[18px] border border-[color:var(--border-soft)] bg-white/90 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h2 className="text-sm font-semibold text-[color:var(--ink)]">¿Tenés un negocio o servicio?</h2>
+            <p className="text-sm text-[color:var(--ink-muted)]">Sumá el contexto profesional a esta misma cuenta.</p>
+          </div>
+          <Button
+            href="/profesional/auth/register?mode=add-professional"
+            variant="secondary"
+            className="w-full sm:w-auto"
+          >
+            Quiero sumarme como negocio
+          </Button>
+        </section>
         {profile && !profile.emailVerified ? (
           <EmailVerificationPanel
             email={profile.email}

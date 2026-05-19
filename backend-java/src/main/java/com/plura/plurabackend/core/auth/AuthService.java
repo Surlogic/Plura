@@ -127,10 +127,16 @@ public class AuthService {
         "Ya existe una cuenta cliente con este email. Iniciá sesión o recuperá tu contraseña si la olvidaste.";
     private static final String PROFESSIONAL_ACCOUNT_EXISTS_MESSAGE =
         "Ya existe una cuenta profesional con este email. Iniciá sesión o recuperá tu contraseña si la olvidaste.";
+    private static final String EXISTING_ACCOUNT_PASSWORD_MISMATCH_MESSAGE =
+        "Ya existe una cuenta con este email. Iniciá sesión para sumar el nuevo contexto.";
     private static final String EMAIL_ALREADY_EXISTS_MESSAGE =
         "Ya existe una cuenta activa con este email. Iniciá sesión para continuar.";
     private static final String PHONE_ALREADY_IN_USE_MESSAGE =
         "Ese teléfono ya pertenece a otra cuenta activa.";
+    private static final String CLIENT_PHONE_ALREADY_IN_USE_MESSAGE =
+        "Ese teléfono ya está asociado a otra cuenta cliente activa.";
+    private static final String PROFESSIONAL_PHONE_ALREADY_IN_USE_MESSAGE =
+        "Ese teléfono ya está asociado a otra cuenta profesional activa.";
 
     public AuthService(
         UserRepository userRepository,
@@ -232,28 +238,43 @@ public class AuthService {
 
         boolean emailAvailable = true;
         boolean phoneAvailable = true;
+        AuthContextType desiredContext = request == null ? null : request.getDesiredContext();
 
         if (normalizedEmail != null) {
             User owner = userRepository.findByEmailAndDeletedAtIsNull(normalizedEmail).orElse(null);
-            emailAvailable = owner == null || isSameUser(owner, currentUserId);
+            if (desiredContext == AuthContextType.CLIENT) {
+                emailAvailable = owner == null || !hasClientContext(owner) || isSameUser(owner, currentUserId);
+            } else if (desiredContext == AuthContextType.PROFESSIONAL) {
+                emailAvailable = owner == null || !hasProfessionalContext(owner) || isSameUser(owner, currentUserId);
+            } else {
+                emailAvailable = owner == null || isSameUser(owner, currentUserId);
+            }
         }
         if (normalizedPhone != null) {
-            User owner = userRepository.findFirstByPhoneNumberAndDeletedAtIsNull(normalizedPhone).orElse(null);
-            phoneAvailable = owner == null || isSameUser(owner, currentUserId);
+            if (desiredContext == AuthContextType.PROFESSIONAL) {
+                ProfessionalProfile owner = professionalAccountProfileGateway.findActiveByPhoneNumber(normalizedPhone).orElse(null);
+                phoneAvailable = owner == null || isSameUser(owner.getUser(), currentUserId);
+            } else if (desiredContext == AuthContextType.CLIENT) {
+                User owner = userRepository.findFirstByPhoneNumberAndClientActiveTrueAndDeletedAtIsNull(normalizedPhone).orElse(null);
+                phoneAvailable = owner == null || isSameUser(owner, currentUserId);
+            } else {
+                User owner = userRepository.findFirstByPhoneNumberAndDeletedAtIsNull(normalizedPhone).orElse(null);
+                phoneAvailable = owner == null || isSameUser(owner, currentUserId);
+            }
         }
 
         return new RegistrationAvailabilityResponse(
             emailAvailable,
             phoneAvailable,
-            emailAvailable ? null : EMAIL_ALREADY_EXISTS_MESSAGE,
-            phoneAvailable ? null : PHONE_ALREADY_IN_USE_MESSAGE
+            emailAvailable ? null : availabilityEmailError(desiredContext),
+            phoneAvailable ? null : availabilityPhoneError(desiredContext)
         );
     }
 
     @Transactional(readOnly = true)
     public void ensureRegistrationPhoneAvailable(String rawPhoneNumber, Long currentUserId) {
         String normalizedPhone = normalizePhoneNumber(rawPhoneNumber);
-        ensurePhoneAvailable(normalizedPhone, currentUserId);
+        ensureClientPhoneAvailable(normalizedPhone, currentUserId);
     }
 
     /**
@@ -263,20 +284,33 @@ public class AuthService {
     @Transactional
     public void registerCliente(RegisterRequest request) {
         String normalizedEmail = request.getEmail().trim().toLowerCase(Locale.ROOT);
-        if (userRepository.findByEmailAndDeletedAtIsNull(normalizedEmail).isPresent()) {
-            burnPasswordWorkFactor(request.getPassword());
-            throw new AuthApiException(
-                HttpStatus.CONFLICT,
-                "EMAIL_ALREADY_EXISTS",
-                EMAIL_ALREADY_EXISTS_MESSAGE
-            );
-        }
+        User existingUser = userRepository.findByEmailAndDeletedAtIsNull(normalizedEmail).orElse(null);
         RegistrationPhoneVerificationService.VerificationResult phoneVerification =
             registrationPhoneVerificationService.resolveForRegistration(
                 request.getPhoneNumber(),
                 request.getPhoneVerificationToken()
             );
-        ensurePhoneAvailable(phoneVerification.phoneNumber(), null);
+
+        if (existingUser != null) {
+            if (hasClientContext(existingUser)) {
+                burnPasswordWorkFactor(request.getPassword());
+                throw new AuthApiException(
+                    HttpStatus.CONFLICT,
+                    "CLIENT_CONTEXT_ALREADY_EXISTS",
+                    CLIENT_ACCOUNT_EXISTS_MESSAGE
+                );
+            }
+            ensureExistingAccountPassword(existingUser, request.getPassword());
+            ensureClientPhoneAvailable(phoneVerification.phoneNumber(), existingUser.getId());
+            existingUser.setClientActive(true);
+            existingUser.setFullName(request.getFullName().trim());
+            existingUser.setPhoneNumber(phoneVerification.phoneNumber());
+            existingUser.setPhoneVerifiedAt(phoneVerification.verified() ? LocalDateTime.now() : null);
+            userRepository.save(existingUser);
+            return;
+        }
+
+        ensureClientPhoneAvailable(phoneVerification.phoneNumber(), null);
 
         User user = new User();
         user.setFullName(request.getFullName().trim());
@@ -284,6 +318,7 @@ public class AuthService {
         user.setPhoneNumber(phoneVerification.phoneNumber());
         user.setPassword(passwordEncoder.encode(request.getPassword()));
         user.setRole(UserRole.USER);
+        user.setClientActive(true);
         if (phoneVerification.verified()) {
             user.setPhoneVerifiedAt(LocalDateTime.now());
         }
@@ -324,34 +359,63 @@ public class AuthService {
 
         User existingUser = userRepository.findByEmailAndDeletedAtIsNull(normalizedEmail).orElse(null);
         if (existingUser != null) {
-            burnPasswordWorkFactor(rawPassword);
-            throw new AuthApiException(
-                HttpStatus.CONFLICT,
-                "EMAIL_ALREADY_EXISTS",
-                EMAIL_ALREADY_EXISTS_MESSAGE
-            );
+            if (hasProfessionalContext(existingUser)) {
+                burnPasswordWorkFactor(rawPassword);
+                throw new AuthApiException(
+                    HttpStatus.CONFLICT,
+                    "PROFESSIONAL_CONTEXT_ALREADY_EXISTS",
+                    PROFESSIONAL_ACCOUNT_EXISTS_MESSAGE
+                );
+            }
         }
         RegistrationPhoneVerificationService.VerificationResult phoneVerification =
             registrationPhoneVerificationService.resolveOptionalForRegistration(
                 request.getPhoneNumber(),
                 request.getPhoneVerificationToken()
             );
-        ensurePhoneAvailable(phoneVerification.phoneNumber(), null);
+        if (existingUser != null) {
+            if (oauthIdentity == null) {
+                ensureExistingAccountPassword(existingUser, rawPassword);
+            } else {
+                attachOAuthIdentityIfAllowed(existingUser, oauthIdentity);
+            }
+            ensureProfessionalPhoneAvailable(phoneVerification.phoneNumber(), existingUser.getId());
+            existingUser.setFullName(request.getFullName().trim());
+            existingUser.setRole(UserRole.PROFESSIONAL);
+            if (oauthIdentity != null && existingUser.getEmailVerifiedAt() == null) {
+                existingUser.setEmailVerifiedAt(LocalDateTime.now());
+            }
+            User savedExistingUser = userRepository.save(existingUser);
+            professionalAccountProfileGateway.activateProfile(
+                savedExistingUser,
+                new ProfessionalProfileRegistrationCommand(
+                    categories,
+                    resolvePrimaryCategoryName(categories, request.getRubro()),
+                    country,
+                    city,
+                    fullAddress,
+                    location,
+                    latitude,
+                    longitude,
+                    tipoCliente,
+                    phoneVerification.phoneNumber()
+                )
+            );
+            return;
+        }
+        ensureProfessionalPhoneAvailable(phoneVerification.phoneNumber(), null);
 
         User user = new User();
         user.setFullName(request.getFullName().trim());
         user.setEmail(normalizedEmail);
-        user.setPhoneNumber(phoneVerification.phoneNumber());
         user.setPassword(passwordEncoder.encode(oauthIdentity == null ? rawPassword : UUID.randomUUID().toString()));
         user.setRole(UserRole.PROFESSIONAL);
+        user.setClientActive(false);
         if (oauthIdentity != null) {
             user.setProvider(oauthIdentity.provider());
             user.setProviderId(oauthIdentity.providerId());
             user.setAvatar(oauthIdentity.avatar());
             user.setEmailVerifiedAt(LocalDateTime.now());
-        }
-        if (phoneVerification.verified()) {
-            user.setPhoneVerifiedAt(LocalDateTime.now());
         }
         User savedUser;
         try {
@@ -380,7 +444,8 @@ public class AuthService {
                 location,
                 latitude,
                 longitude,
-                tipoCliente
+                tipoCliente,
+                phoneVerification.phoneNumber()
             )
         );
     }
@@ -408,6 +473,10 @@ public class AuthService {
         Double longitude = requiresLocation ? normalizeLongitude(request.getLongitude()) : null;
         validateCoordinatesPair(latitude, longitude);
         Set<Category> categories = resolveCategories(request.getCategorySlugs(), request.getRubro());
+        String professionalPhoneNumber = normalizePhoneNumber(request.getPhoneNumber());
+        if (professionalPhoneNumber != null) {
+            ensureProfessionalPhoneAvailable(professionalPhoneNumber, user.getId());
+        }
 
         ProfessionalProfile profile = professionalAccountProfileGateway.activateProfile(
             user,
@@ -420,7 +489,8 @@ public class AuthService {
                 location,
                 latitude,
                 longitude,
-                tipoCliente
+                tipoCliente,
+                professionalPhoneNumber
             )
         );
 
@@ -1300,7 +1370,7 @@ public class AuthService {
             return;
         }
 
-        ensurePhoneAvailable(normalizedPhone, user.getId());
+        ensureClientPhoneAvailable(normalizedPhone, user.getId());
         user.setPhoneNumber(normalizedPhone);
         user.setPhoneVerifiedAt(phoneVerification.verified() ? LocalDateTime.now() : null);
         userRepository.save(user);
@@ -1333,14 +1403,14 @@ public class AuthService {
      * Evalua is profesional usuario y devuelve una decision booleana para el llamador.
      */
     private boolean isProfessionalUser(User user) {
-        return user != null && user.getRole() == UserRole.PROFESSIONAL;
+        return hasProfessionalContext(user);
     }
 
     /**
      * Evalua is cliente usuario y devuelve una decision booleana para el llamador.
      */
     private boolean isClientUser(User user) {
-        return user != null && user.getRole() == UserRole.USER;
+        return hasClientContext(user);
     }
 
     /**
@@ -1398,6 +1468,95 @@ public class AuthService {
             "PHONE_ALREADY_IN_USE",
             PHONE_ALREADY_IN_USE_MESSAGE
         );
+    }
+
+    private void ensureClientPhoneAvailable(String normalizedPhone, Long currentUserId) {
+        if (normalizedPhone == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Teléfono inválido");
+        }
+        User owner = userRepository
+            .findFirstByPhoneNumberAndClientActiveTrueAndDeletedAtIsNull(normalizedPhone)
+            .orElse(null);
+        if (owner == null || isSameUser(owner, currentUserId)) {
+            return;
+        }
+        throw new AuthApiException(
+            HttpStatus.CONFLICT,
+            "CLIENT_PHONE_ALREADY_IN_USE",
+            CLIENT_PHONE_ALREADY_IN_USE_MESSAGE
+        );
+    }
+
+    private void ensureProfessionalPhoneAvailable(String normalizedPhone, Long currentUserId) {
+        if (normalizedPhone == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Teléfono inválido");
+        }
+        ProfessionalProfile owner = professionalAccountProfileGateway.findActiveByPhoneNumber(normalizedPhone).orElse(null);
+        if (owner == null || isSameUser(owner.getUser(), currentUserId)) {
+            return;
+        }
+        throw new AuthApiException(
+            HttpStatus.CONFLICT,
+            "PROFESSIONAL_PHONE_ALREADY_IN_USE",
+            PROFESSIONAL_PHONE_ALREADY_IN_USE_MESSAGE
+        );
+    }
+
+    private boolean hasClientContext(User user) {
+        return user != null && user.getDeletedAt() == null && !Boolean.FALSE.equals(user.getClientActive());
+    }
+
+    private boolean hasProfessionalContext(User user) {
+        if (user == null || user.getDeletedAt() != null || user.getId() == null) {
+            return false;
+        }
+        return professionalAccountProfileGateway.findByUserId(user.getId())
+            .filter(profile -> Boolean.TRUE.equals(profile.getActive()))
+            .isPresent();
+    }
+
+    private void ensureExistingAccountPassword(User user, String rawPassword) {
+        if (user == null || rawPassword == null || !passwordEncoder.matches(rawPassword, user.getPassword())) {
+            burnPasswordWorkFactor(rawPassword);
+            throw new AuthApiException(
+                HttpStatus.UNAUTHORIZED,
+                "EXISTING_ACCOUNT_REAUTH_REQUIRED",
+                EXISTING_ACCOUNT_PASSWORD_MISMATCH_MESSAGE
+            );
+        }
+    }
+
+    private void attachOAuthIdentityIfAllowed(User user, ProfessionalOAuthRegistrationIdentity oauthIdentity) {
+        if (user == null || oauthIdentity == null) {
+            return;
+        }
+        String existingProvider = normalizeOAuthValue(user.getProvider());
+        if (existingProvider != null && !oauthIdentity.provider().equalsIgnoreCase(existingProvider)) {
+            throw new OAuthProviderMismatchException();
+        }
+        user.setProvider(oauthIdentity.provider());
+        user.setProviderId(oauthIdentity.providerId());
+        user.setAvatar(oauthIdentity.avatar());
+    }
+
+    private String availabilityEmailError(AuthContextType desiredContext) {
+        if (desiredContext == AuthContextType.CLIENT) {
+            return CLIENT_ACCOUNT_EXISTS_MESSAGE;
+        }
+        if (desiredContext == AuthContextType.PROFESSIONAL) {
+            return PROFESSIONAL_ACCOUNT_EXISTS_MESSAGE;
+        }
+        return EMAIL_ALREADY_EXISTS_MESSAGE;
+    }
+
+    private String availabilityPhoneError(AuthContextType desiredContext) {
+        if (desiredContext == AuthContextType.CLIENT) {
+            return CLIENT_PHONE_ALREADY_IN_USE_MESSAGE;
+        }
+        if (desiredContext == AuthContextType.PROFESSIONAL) {
+            return PROFESSIONAL_PHONE_ALREADY_IN_USE_MESSAGE;
+        }
+        return PHONE_ALREADY_IN_USE_MESSAGE;
     }
 
     private boolean isSameUser(User owner, Long currentUserId) {

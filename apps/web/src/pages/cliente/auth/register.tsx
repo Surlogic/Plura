@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { ChangeEvent, FormEvent } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
@@ -19,7 +19,7 @@ import {
 } from '@/services/registrationPhoneVerification';
 import { useClientProfileContext } from '@/context/ClientProfileContext';
 import type { OAuthLoginResult } from '@/lib/auth/oauthLogin';
-import { ensureAuthContext } from '@/lib/auth/contexts';
+import { ensureAuthContext, fetchAuthMe } from '@/lib/auth/contexts';
 
 const resolvePhoneVerificationError = (error: unknown, fallback: string) => {
   if (axios.isAxiosError<{ message?: string }>(error)) {
@@ -35,8 +35,8 @@ export default function ClienteRegisterPage() {
     ? router.query.redirect[0]
     : router.query.redirect;
   const loginHref = redirectIntent === 'confirm-reservation'
-    ? '/cliente/auth/login?redirect=confirm-reservation'
-    : '/cliente/auth/login';
+    ? '/login?intent=client&redirect=confirm-reservation'
+    : '/login?intent=client';
   const inputClassName =
     'h-12 w-full rounded-[18px] border border-[color:var(--border-soft)] bg-white/90 px-4 text-sm text-[color:var(--ink)] placeholder:text-[color:var(--ink-faint)] focus:outline-none focus:ring-4 focus:ring-[color:var(--focus-ring)]';
   const [form, setForm] = useState({
@@ -63,6 +63,30 @@ export default function ClienteRegisterPage() {
   const [phoneVerificationMessage, setPhoneVerificationMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!router.isReady) return;
+    let isActive = true;
+    void fetchAuthMe()
+      .then((me) => {
+        if (!isActive) return;
+        const activeType = me.activeContext?.type;
+        if (activeType === 'PROFESSIONAL') {
+          void router.replace('/profesional/dashboard');
+          return;
+        }
+        if (activeType === 'WORKER') {
+          void router.replace('/trabajador/calendario');
+          return;
+        }
+        void router.replace('/cliente/inicio');
+      })
+      .catch(() => undefined);
+
+    return () => {
+      isActive = false;
+    };
+  }, [router]);
 
   const handleOAuthAuthenticated = async (result: OAuthLoginResult) => {
     setErrorMessage(null);
@@ -178,8 +202,10 @@ export default function ClienteRegisterPage() {
       setIsSubmitting(true);
       await api.post('/auth/register/cliente', payload);
       await router.push({
-        pathname: loginHref,
+        pathname: '/login',
         query: {
+          intent: 'client',
+          ...(redirectIntent === 'confirm-reservation' ? { redirect: 'confirm-reservation' } : {}),
           registered: '1',
           email: payload.email,
         },
@@ -191,8 +217,17 @@ export default function ClienteRegisterPage() {
           setErrorMessage('No se pudo conectar con el servidor.');
         } else {
           const status = error.response.status;
+          const apiMessage = error.response.data?.message;
           if (status === 400) {
             setErrorMessage('Los datos ingresados no son válidos. Verificá el formulario.');
+          } else if (status === 401) {
+            setErrorMessage('Ya existe una cuenta con este email. Iniciá sesión para sumar el contexto cliente.');
+          } else if (status === 409) {
+            setErrorMessage(
+              typeof apiMessage === 'string' && apiMessage.trim()
+                ? apiMessage
+                : 'Ya existe una cuenta cliente con estos datos. Iniciá sesión.',
+            );
           } else if (status >= 500) {
             setErrorMessage('Error del servidor. Intentá de nuevo más tarde.');
           } else {

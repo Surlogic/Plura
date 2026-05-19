@@ -43,6 +43,8 @@ public interface ProfessionalProfileRepository extends JpaRepository<Professiona
     @EntityGraph(attributePaths = {"user", "categories"})
     Optional<ProfessionalProfile> findByUser_EmailIgnoreCase(String email);
 
+    Optional<ProfessionalProfile> findFirstByWhatsappAndActiveTrue(String whatsapp);
+
     long countByActiveTrue();
 
     List<ProfessionalProfile> findByIdInAndActiveTrue(Collection<Long> ids);

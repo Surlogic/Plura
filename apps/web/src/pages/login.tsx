@@ -307,6 +307,7 @@ export default function UnifiedLoginPage() {
       const loginPayload = {
         email: form.email.trim().toLowerCase(),
         password: form.password,
+        ...(desiredContext ? { desiredContext } : {}),
       };
       const response = await api.post<UnifiedLoginResponse>('/auth/login', loginPayload);
       const data = response.data ?? {};

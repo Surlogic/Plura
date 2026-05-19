@@ -18,5 +18,6 @@ public record ProfessionalProfileRegistrationCommand(
     String location,
     Double latitude,
     Double longitude,
-    String tipoCliente
+    String tipoCliente,
+    String phoneNumber
 ) {}

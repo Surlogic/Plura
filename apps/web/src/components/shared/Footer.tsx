@@ -111,8 +111,8 @@ export default function Footer() {
             </div>
             <div className={`space-y-2 text-sm ${secondaryTextClassName}`}>
               <p className={strongTextClassName}>Profesionales</p>
-              <Link href="/profesional/auth/login" className={linkClassName}>
-                Soy profesional
+              <Link href="/profesional/auth/register" className={linkClassName}>
+                Sumá tu negocio
               </Link>
               <Link href="/explorar" className={linkClassName}>
                 Ver perfiles

@@ -272,7 +272,7 @@ export default function UnifiedLoginPage() {
     if (desiredContext) {
       const descriptor = availableContexts.find((context) => context.type === desiredContext);
       if (descriptor) {
-        if (isSameContext(activeContext, descriptor)) {
+        if (activeContext && isSameContext(activeContext, descriptor)) {
           await completeLoginForContext(activeContext);
           return;
         }

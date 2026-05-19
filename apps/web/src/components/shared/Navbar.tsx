@@ -135,12 +135,12 @@ export default memo(function Navbar({
                 Iniciar sesión
               </Button>
               <Button
-                href="/login?intent=professional"
+                href="/profesional/auth/register"
                 variant="primary"
                 size="md"
                 className={navButtonClassName}
               >
-                Soy profesional
+                Sumá tu negocio
               </Button>
               <ThemeSwitcher
                 variant="compact"

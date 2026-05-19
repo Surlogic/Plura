@@ -25,7 +25,7 @@ export default memo(function FinalCtaSection() {
                 Reservá ya
               </Button>
               <Button href="/profesional/auth/register" variant="secondary" size="lg" className="min-w-[10.5rem] border-white/70 bg-white/88">
-                Registrá tu negocio
+                Sumá tu negocio
               </Button>
             </div>
           </div>

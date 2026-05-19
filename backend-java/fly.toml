@@ -10,6 +10,7 @@ primary_region = 'gru'
 
 [deploy]
   strategy = 'rolling'
+  wait_timeout = '15m'
 
 [http_service]
   internal_port = 3000

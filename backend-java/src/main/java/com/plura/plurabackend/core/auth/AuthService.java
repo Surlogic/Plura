@@ -405,7 +405,7 @@ public class AuthService {
                 existingUser.setEmailVerifiedAt(LocalDateTime.now());
             }
             User savedExistingUser = userRepository.save(existingUser);
-            professionalAccountProfileGateway.activateProfile(
+            ProfessionalProfile profile = professionalAccountProfileGateway.activateProfile(
                 savedExistingUser,
                 new ProfessionalProfileRegistrationCommand(
                     categories,
@@ -419,6 +419,10 @@ public class AuthService {
                     tipoCliente,
                     phoneVerification.phoneNumber()
                 )
+            );
+            professionalRegistrationCheckoutService.attachConfirmedCheckoutToProfessional(
+                request.getBillingCheckoutToken(),
+                profile
             );
             if (oauthIdentity != null) {
                 return new ProfessionalRegistrationResult(issueUnifiedTokensForContext(
@@ -459,7 +463,7 @@ public class AuthService {
             throw exception;
         }
 
-        professionalAccountProfileGateway.createRegisteredProfile(
+        ProfessionalProfile profile = professionalAccountProfileGateway.createRegisteredProfile(
             savedUser,
             new ProfessionalProfileRegistrationCommand(
                 categories,
@@ -473,6 +477,10 @@ public class AuthService {
                 tipoCliente,
                 phoneVerification.phoneNumber()
             )
+        );
+        professionalRegistrationCheckoutService.attachConfirmedCheckoutToProfessional(
+            request.getBillingCheckoutToken(),
+            profile
         );
         if (oauthIdentity != null) {
             return new ProfessionalRegistrationResult(issueUnifiedTokensForContext(
@@ -530,6 +538,10 @@ public class AuthService {
                 tipoCliente,
                 professionalPhoneNumber
             )
+        );
+        professionalRegistrationCheckoutService.attachConfirmedCheckoutToProfessional(
+            request.getBillingCheckoutToken(),
+            profile
         );
 
         return getMe(

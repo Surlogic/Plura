@@ -16,6 +16,8 @@ import com.plura.plurabackend.core.billing.subscriptions.model.SubscriptionStatu
 import com.plura.plurabackend.core.billing.subscriptions.repository.SubscriptionRepository;
 import com.plura.plurabackend.core.professional.ProfessionalBillingSubjectGateway;
 import com.plura.plurabackend.core.security.RoleGuard;
+import com.plura.plurabackend.core.user.model.User;
+import com.plura.plurabackend.core.user.repository.UserRepository;
 import com.plura.plurabackend.professional.model.ProfessionalProfile;
 import java.time.Instant;
 import java.time.LocalDateTime;
@@ -26,6 +28,7 @@ import java.util.UUID;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 @Service
@@ -38,6 +41,7 @@ public class ProfessionalRegistrationCheckoutService {
     private final SubscriptionRepository subscriptionRepository;
     private final ProfessionalBillingSubjectGateway professionalBillingSubjectGateway;
     private final RoleGuard roleGuard;
+    private final UserRepository userRepository;
     private final Algorithm tokenAlgorithm;
     private final String jwtIssuer;
 
@@ -47,6 +51,7 @@ public class ProfessionalRegistrationCheckoutService {
         SubscriptionRepository subscriptionRepository,
         ProfessionalBillingSubjectGateway professionalBillingSubjectGateway,
         RoleGuard roleGuard,
+        UserRepository userRepository,
         @Value("${jwt.refresh-pepper}") String tokenSecret,
         @Value("${jwt.issuer:plura-backend}") String jwtIssuer
     ) {
@@ -58,6 +63,7 @@ public class ProfessionalRegistrationCheckoutService {
         this.subscriptionRepository = subscriptionRepository;
         this.professionalBillingSubjectGateway = professionalBillingSubjectGateway;
         this.roleGuard = roleGuard;
+        this.userRepository = userRepository;
         this.tokenAlgorithm = Algorithm.HMAC256(tokenSecret);
         this.jwtIssuer = jwtIssuer;
     }
@@ -67,6 +73,7 @@ public class ProfessionalRegistrationCheckoutService {
         SubscriptionPlanCode plan = resolveRequestedCorePlan(request.getPlanCode());
         BillingProperties.PlanConfig planConfig = billingProperties.resolvePlan(plan);
         String email = normalizeEmail(request.getEmail());
+        ensureEmailDoesNotHaveActiveProfessional(email);
         String registrationReference = "professional-registration:" + UUID.randomUUID();
 
         MercadoPagoSubscriptionService.SubscriptionCheckoutSession session =
@@ -83,9 +90,14 @@ public class ProfessionalRegistrationCheckoutService {
                 )
             );
 
-        String checkoutToken = session.providerSubscriptionId() == null || session.providerSubscriptionId().isBlank()
-            ? null
-            : buildCheckoutToken(email, session.providerSubscriptionId(), plan);
+        if (session.providerSubscriptionId() == null || session.providerSubscriptionId().isBlank()) {
+            throw new ResponseStatusException(
+                HttpStatus.BAD_GATEWAY,
+                "Mercado Pago no devolvió una suscripción verificable. Reintentá la activación."
+            );
+        }
+
+        String checkoutToken = buildCheckoutToken(email, session.providerSubscriptionId(), plan);
 
         return new ProfessionalRegistrationCheckoutResponse(
             session.checkoutUrl(),
@@ -138,9 +150,23 @@ public class ProfessionalRegistrationCheckoutService {
         requireConfirmedCheckoutForEmail(checkoutToken, rawEmail);
     }
 
+    @Transactional
     public ProfessionalRegistrationCheckoutResponse attachConfirmedCheckoutToAuthenticatedProfessional(
         String checkoutToken
     ) {
+        Long userId = roleGuard.requireProfessional();
+        ProfessionalProfile professional = professionalBillingSubjectGateway.loadEnabledProfessionalByUserId(userId);
+        return attachConfirmedCheckoutToProfessional(checkoutToken, professional);
+    }
+
+    @Transactional
+    public ProfessionalRegistrationCheckoutResponse attachConfirmedCheckoutToProfessional(
+        String checkoutToken,
+        ProfessionalProfile professional
+    ) {
+        if (professional == null || professional.getId() == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Perfil profesional inválido");
+        }
         CheckoutToken token = verifyCheckoutToken(checkoutToken);
         MercadoPagoSubscriptionService.SubscriptionSnapshot snapshot =
             mercadoPagoSubscriptionService.getSubscription(token.providerSubscriptionId());
@@ -149,16 +175,22 @@ public class ProfessionalRegistrationCheckoutService {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Mercado Pago todavía no confirmó la suscripción");
         }
 
-        Long userId = roleGuard.requireProfessional();
-        ProfessionalProfile professional = professionalBillingSubjectGateway.loadEnabledProfessionalByUserId(userId);
         String professionalEmail = professional.getUser() == null ? null : normalizeEmail(professional.getUser().getEmail());
         if (professionalEmail == null || !professionalEmail.equals(token.email())) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "El checkout confirmado no pertenece a este profesional");
         }
         BillingProperties.PlanConfig planConfig = billingProperties.resolvePlan(token.plan());
         LocalDateTime now = LocalDateTime.now();
-        Subscription subscription = subscriptionRepository.findByProfessionalIdForUpdate(professional.getId())
-            .orElseGet(Subscription::new);
+        Subscription subscription = subscriptionRepository
+            .findByProviderAndProviderSubscriptionIdForUpdate(PaymentProvider.MERCADOPAGO, token.providerSubscriptionId())
+            .orElse(null);
+        if (subscription != null && !professional.getId().equals(subscription.getProfessionalId())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "La suscripción ya está asociada a otro profesional");
+        }
+        if (subscription == null) {
+            subscription = subscriptionRepository.findByProfessionalIdForUpdate(professional.getId())
+                .orElseGet(Subscription::new);
+        }
 
         subscription.setProfessionalId(professional.getId());
         subscription.setPlan(token.plan());
@@ -186,6 +218,20 @@ public class ProfessionalRegistrationCheckoutService {
             false,
             true
         );
+    }
+
+    private void ensureEmailDoesNotHaveActiveProfessional(String email) {
+        User user = userRepository.findByEmailAndDeletedAtIsNull(email).orElse(null);
+        if (user == null) {
+            return;
+        }
+        ProfessionalProfile profile = professionalBillingSubjectGateway.findByEmailIgnoreCase(email).orElse(null);
+        if (profile != null && Boolean.TRUE.equals(profile.getActive())) {
+            throw new ResponseStatusException(
+                HttpStatus.CONFLICT,
+                "Ya existe una cuenta profesional con este email. Iniciá sesión."
+            );
+        }
     }
 
     private String buildCheckoutToken(

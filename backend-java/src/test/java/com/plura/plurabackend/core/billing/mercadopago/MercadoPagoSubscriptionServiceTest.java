@@ -28,19 +28,19 @@ class MercadoPagoSubscriptionServiceTest {
                 "months",
                 990,
                 "UYU",
-                new MercadoPagoClient.FreeTrial(2, "months")
+                new MercadoPagoClient.FreeTrial(30, "days")
             ),
             "active"
         );
 
         JsonNode json = objectMapper.readTree(objectMapper.writeValueAsString(request));
 
-        assertEquals(2, json.at("/auto_recurring/free_trial/frequency").asInt());
-        assertEquals("months", json.at("/auto_recurring/free_trial/frequency_type").asText());
+        assertEquals(30, json.at("/auto_recurring/free_trial/frequency").asInt());
+        assertEquals("days", json.at("/auto_recurring/free_trial/frequency_type").asText());
     }
 
     @Test
-    void createsCorePreapprovalPlanWithTwoMonthFreeTrialWhenNoConfiguredPlanId() {
+    void createsCorePreapprovalPlanWithThirtyDayFreeTrialWhenNoConfiguredPlanId() {
         BillingProperties properties = new BillingProperties();
         properties.setEnabled(true);
         properties.setWebhookBaseUrl("https://api.test");
@@ -81,7 +81,7 @@ class MercadoPagoSubscriptionServiceTest {
         assertEquals("months", autoRecurring.frequency_type());
         assertEquals("UYU", autoRecurring.currency_id());
         assertTrue(new BigDecimal(autoRecurring.transaction_amount().toString()).compareTo(new BigDecimal("990")) == 0);
-        assertEquals(2, autoRecurring.free_trial().frequency());
-        assertEquals("months", autoRecurring.free_trial().frequency_type());
+        assertEquals(30, autoRecurring.free_trial().frequency());
+        assertEquals("days", autoRecurring.free_trial().frequency_type());
     }
 }

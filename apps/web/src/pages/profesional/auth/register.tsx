@@ -15,8 +15,8 @@ import Card from '@/components/ui/Card';
 import InternationalPhoneField from '@/components/ui/InternationalPhoneField';
 import api from '@/services/api';
 import {
-  attachProfessionalRegistrationCheckout,
   createProfessionalRegistrationCheckout,
+  fetchCurrentSubscription,
   verifyProfessionalRegistrationCheckout,
 } from '@/lib/billing/billing';
 import {
@@ -1099,7 +1099,10 @@ export default function ProfesionalRegisterPage() {
       setAuthAccessToken(loginResponse.data?.accessToken ?? null, 'PROFESSIONAL');
     }
 
-    await attachProfessionalRegistrationCheckout(checkoutToken);
+    const subscription = await fetchCurrentSubscription();
+    if (subscription?.status !== 'ACTIVE') {
+      throw new Error('La cuenta profesional se creó, pero la suscripción Core todavía no quedó activa. Reintentá desde billing.');
+    }
 
     await applyProfessionalRegisterHandoff(handoff);
     clearPendingProfessionalRegisterHandoff();

@@ -156,9 +156,9 @@ Prefijo: `/auth`
 
 ### Billing de registro profesional
 
-- `POST /api/v1/billing/professional-registration/checkout` — endpoint publico versionado para iniciar Mercado Pago desde el wizard profesional antes de crear cuenta/contexto/perfil profesional. Request: `planCode=PLAN_CORE`, `email`, `returnUrl?`. Devuelve `checkoutUrl`, `checkoutToken?`, `status=CHECKOUT_PENDING` y `confirmed=false`.
+- `POST /api/v1/billing/professional-registration/checkout` — endpoint publico versionado para iniciar Mercado Pago desde el wizard profesional antes de crear cuenta/contexto/perfil profesional. Request: `planCode=PLAN_CORE`, `email`, `returnUrl?`. Si el email ya tiene perfil profesional activo devuelve `409` y no inicia Mercado Pago. Si Mercado Pago no devuelve `providerSubscriptionId`, responde error y no entrega `checkoutUrl` porque no se puede emitir un `checkoutToken` verificable. En exito devuelve `checkoutUrl`, `checkoutToken`, `status=CHECKOUT_PENDING` y `confirmed=false`.
 - `POST /api/v1/billing/professional-registration/verify` — endpoint publico versionado para verificar el `checkoutToken` contra Mercado Pago. Solo devuelve `confirmed=true` cuando la suscripcion remota esta `authorized` o `active`; no crea usuario ni perfil.
-- `POST /billing/professional-registration/attach` — endpoint autenticado `ctx=PROFESSIONAL` que vincula el checkout de registro ya confirmado al profesional recien creado y crea la suscripcion local activa. Si Mercado Pago no esta confirmado responde conflicto y no habilita Core.
+- `POST /billing/professional-registration/attach` — endpoint autenticado `ctx=PROFESSIONAL` de fallback/recovery idempotente que vincula un checkout de registro ya confirmado y crea/actualiza la suscripcion local activa. El flujo principal ya adjunta esa suscripcion dentro de `/auth/register/profesional` o `/auth/professional-profile/activate`; si Mercado Pago no esta confirmado responde conflicto y no habilita Core.
 
 Regla de producto: el wizard profesional no debe llamar `/auth/register/profesional`, `/auth/professional-profile/activate` ni publicar handoff de agenda/pagina publica hasta que `/api/v1/billing/professional-registration/verify` confirme Mercado Pago.
 
@@ -549,7 +549,7 @@ Estado real detectado en codigo:
 - suscripciones de plataforma: `Mercado Pago`
 - conexion OAuth del profesional a Mercado Pago: ya existe en `/profesional/payment-providers/mercadopago/*`
 - `POST /billing/subscription` hoy inicia solo `Plura Core` con request recomendado `{ "planCode": "PLAN_CORE" }` o `{ "planCode": "CORE" }`; cualquier codigo legacy de plan devuelve `400`
-- `POST /api/v1/billing/professional-registration/checkout` inicia Mercado Pago para el wizard profesional sin requerir ni crear `ProfessionalProfile`; `verify` confirma contra Mercado Pago y `attach` vincula el checkout ya confirmado recien despues de que existe `ctx=PROFESSIONAL`
+- `POST /api/v1/billing/professional-registration/checkout` inicia Mercado Pago para el wizard profesional sin requerir ni crear `ProfessionalProfile`; bloquea emails con profesional activo y exige una suscripcion remota verificable para devolver `checkoutUrl`. `verify` confirma contra Mercado Pago. `/auth/register/profesional` y `/auth/professional-profile/activate` vinculan el checkout confirmado y crean la suscripcion local `ACTIVE` en la misma transaccion que crea/activa `ProfessionalProfile`; `attach` queda como fallback/recovery autenticado.
 - `POST /billing/subscription` devuelve `subscriptionId`, `checkoutUrl`, `provider`, `planCode`, `status`, `trialStartAt`, `trialEndAt`, `requiresCheckout`, `trialEligible`, `trialPreviouslyUsed` y `activationMode`; si la identidad ya uso trial no devuelve `409` por ese caso normal, crea checkout directo sin `trialStartAt/trialEndAt` y `activationMode=CHECKOUT`
 - `GET /billing/subscription` devuelve estado de suscripcion y agrega `trialStartAt`, `trialEndAt`, `trialDaysRemaining`, `trialActive` y `paymentMethodAttached`
 - `planEnabled` en `GET /billing/subscription` es `true` solo para `ACTIVE` vigente o `TRIALING` con `trialEndAt` futuro; `CHECKOUT_PENDING`, `PAST_DUE`, `CANCELLED` y `EXPIRED` no habilitan el plan
@@ -559,7 +559,7 @@ Estado real detectado en codigo:
 - `/webhooks/mercadopago` procesa suscripciones y reservas con routing interno por dominio
 - `/cliente/reservas/{id}/payment-session` sigue siendo la entrada real para checkout de reservas
 - `Plura Core` persiste prueba gratuita local de `30` días (`trialStartAt`, `trialEndAt`, `trialSource=BILLING`) y la protege con identidad histórica hasheada por HMAC (`billing_trial_claim`) para email, teléfono y OAuth; eliminar cuenta o cerrar el perfil profesional no borra el claim ni reinicia la prueba gratuita
-- Mercado Pago crea `preapproval_plan` con `auto_recurring.free_trial` de `30 days` cuando no hay plan remoto configurado; si `Mercado Pago` responde `card_token_id is required` al crear el `preapproval`, el backend hace fallback al checkout hosted del `preapproval_plan` y devuelve igual una `checkoutUrl`
+- Mercado Pago crea `preapproval_plan` con `auto_recurring.free_trial` de `30 days` cuando no hay plan remoto configurado. En el checkout publico de registro profesional no se devuelve `checkoutUrl` si no existe `providerSubscriptionId`, porque sin ese dato no hay `checkoutToken` verificable para el retorno.
 - `POST /billing/subscription` toma lock pesimista sobre la suscripción del profesional y rechaza duplicados si ya hay suscripcion activa, trial vigente o checkout pendiente
 - webhooks de suscripcion Mercado Pago: autorizacion/activacion adjunta medio de pago (`paymentMethodAttachedAt`) y conserva `TRIALING` si el trial local sigue vigente; pagos exitosos posteriores pasan a `ACTIVE`; fallos pasan a `PAST_DUE`; cancelaciones a `CANCELLED`
 

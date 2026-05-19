@@ -16,7 +16,6 @@ import InternationalPhoneField from '@/components/ui/InternationalPhoneField';
 import api from '@/services/api';
 import {
   createProfessionalRegistrationCheckout,
-  fetchCurrentSubscription,
   verifyProfessionalRegistrationCheckout,
 } from '@/lib/billing/billing';
 import {
@@ -1099,12 +1098,13 @@ export default function ProfesionalRegisterPage() {
       setAuthAccessToken(loginResponse.data?.accessToken ?? null, 'PROFESSIONAL');
     }
 
-    const subscription = await fetchCurrentSubscription();
-    if (subscription?.status !== 'ACTIVE') {
-      throw new Error('La cuenta profesional se creó, pero la suscripción Core todavía no quedó activa. Reintentá desde billing.');
+    try {
+      await applyProfessionalRegisterHandoff(handoff);
+    } catch {
+      setErrorMessage('Plura Core quedó activo, pero no pudimos publicar la configuración inicial. Podés reintentar desde Facturación.');
+      return;
     }
 
-    await applyProfessionalRegisterHandoff(handoff);
     clearPendingProfessionalRegisterHandoff();
     clearPendingCheckoutRegistration();
     if (typeof window !== 'undefined') {

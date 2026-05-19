@@ -123,21 +123,6 @@ type ProfessionalSchedulePayload = {
   slotDurationMinutes: number;
 };
 
-type ProfessionalServicePayload = {
-  name: string;
-  description: string;
-  categorySlug: string;
-  imageUrl: string;
-  price: string;
-  depositAmount: null;
-  duration: string;
-  postBufferMinutes: number;
-  paymentType: 'ON_SITE';
-  processingFeeMode: 'INSTANT';
-  currency: 'UYU';
-  active: boolean;
-};
-
 type ProfessionalOnboardingDraft = {
   form: Omit<RegisterForm, 'password' | 'confirmPassword'>;
   schedule: ScheduleDay[];
@@ -158,7 +143,6 @@ const wizardSteps = [
   'Atención',
   'Ubicación',
   'Horarios',
-  'Servicio',
   'Core',
 ] as const;
 
@@ -345,7 +329,6 @@ export default function ProfesionalRegisterPage() {
     .map((slug) => categoryNameBySlug.get(slug))
     .filter(Boolean) as string[];
   const primaryCategoryName = selectedCategoryNames[0] || 'Estética Facial';
-  const serviceCategoryName = categoryNameBySlug.get(form.serviceCategorySlug) || primaryCategoryName;
   const filteredCategories = categories.filter((category) => {
     const query = categorySearch.trim().toLowerCase();
     if (!query) return true;
@@ -465,11 +448,11 @@ export default function ProfesionalRegisterPage() {
     fullAddress: requiresLocation && form.fullAddress.trim().length === 0
       ? 'Indicá la dirección completa.'
       : '',
-    serviceName: form.serviceName.trim().length >= 3 ? '' : 'Indicá el nombre del servicio.',
-    serviceCategorySlug: form.serviceCategorySlug || form.categorySlugs[0] ? '' : 'Elegí el rubro del servicio.',
-    serviceDuration: Number(form.serviceDuration) > 0 ? '' : 'Indicá una duración válida.',
-    servicePrice: form.servicePrice.trim().length > 0 ? '' : 'Indicá un precio.',
-    serviceDescription: form.serviceDescription.trim().length > 180 ? 'Máximo 180 caracteres.' : '',
+    serviceName: '',
+    serviceCategorySlug: '',
+    serviceDuration: '',
+    servicePrice: '',
+    serviceDescription: '',
   };
 
   const inputClass = (field: keyof RegisterForm) =>
@@ -499,8 +482,6 @@ export default function ProfesionalRegisterPage() {
         return ['tipoCliente'];
       case 4:
         return requiresLocation ? ['country', 'city', 'fullAddress'] : [];
-      case 6:
-        return ['serviceName', 'serviceCategorySlug', 'serviceDuration', 'servicePrice', 'serviceDescription'];
       default:
         return [];
     }
@@ -824,32 +805,9 @@ export default function ProfesionalRegisterPage() {
     slotDurationMinutes: Math.max(15, Number(form.serviceDuration) || 60),
   });
 
-  const buildFirstServicePayload = (): ProfessionalServicePayload | null => {
-    const name = form.serviceName.trim();
-    const price = form.servicePrice.trim();
-    const duration = form.serviceDuration.trim();
-
-    if (!name || !price || !duration) return null;
-
-    return {
-      name,
-      description: form.serviceDescription.trim(),
-      categorySlug: form.serviceCategorySlug || form.categorySlugs[0] || '',
-      imageUrl: '',
-      price,
-      depositAmount: null,
-      duration,
-      postBufferMinutes: 0,
-      paymentType: 'ON_SITE',
-      processingFeeMode: 'INSTANT',
-      currency: 'UYU',
-      active: true,
-    };
-  };
-
   const buildRegisterHandoff = (): ProfessionalRegisterHandoff => ({
     schedule: buildSchedulePayload(),
-    firstService: buildFirstServicePayload(),
+    firstService: null,
     publicPage: {
       about: form.description.trim(),
     },
@@ -929,7 +887,7 @@ export default function ProfesionalRegisterPage() {
       coreActivated = await activateCoreSubscription();
     } catch {
       setBillingRecoveryAvailable(true);
-      setErrorMessage('No pudimos activar Plura Core. El perfil, agenda y servicio no se publicaron; podés reintentar desde Facturación.');
+      setErrorMessage('No pudimos activar Plura Core. El perfil y la agenda inicial no se publicaron; podés reintentar desde Facturación.');
       return;
     }
 
@@ -1415,7 +1373,7 @@ export default function ProfesionalRegisterPage() {
         {categoriesLoading ? (
           <p className="text-sm text-[color:var(--ink-muted)]">Cargando rubros...</p>
         ) : null}
-        <div className="grid max-h-[min(38dvh,360px)] gap-3 overflow-y-auto pr-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5">
+        <div className="grid gap-3 pr-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5">
           {filteredCategories.map((category) => {
             const selected = form.categorySlugs.includes(category.slug);
             return (
@@ -1629,39 +1587,41 @@ export default function ProfesionalRegisterPage() {
   };
 
   const renderScheduleStep = () => (
-    <div className="mx-auto max-w-6xl space-y-4 text-center">
-      <div className="space-y-2">
-        <Badge variant="success">Registro</Badge>
-        <h1 className={wizardTitleClassName}>Definí tus horarios de atención</h1>
-        <p className="text-base text-[color:var(--ink-muted)]">Estos horarios se usarán como base inicial de tu agenda.</p>
+    <div className="mx-auto flex min-h-full max-w-6xl flex-col gap-3 text-center">
+      <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end lg:text-left">
+        <div className="space-y-1.5">
+          <Badge variant="success">Registro</Badge>
+          <h1 className="text-2xl font-semibold tracking-[-0.04em] text-[color:var(--ink)] sm:text-3xl">Definí tus horarios de atención</h1>
+          <p className="text-sm text-[color:var(--ink-muted)] sm:text-base">Estos horarios se usarán como base inicial de tu agenda.</p>
+        </div>
+        <div className="flex flex-wrap justify-center gap-2 lg:justify-end">
+          <Button type="button" variant="secondary" size="sm" onClick={applyWeekSchedule}>Aplicar horario a todos</Button>
+          <Button type="button" variant="secondary" size="sm">Agregar descanso</Button>
+        </div>
       </div>
-      <div className="flex flex-wrap justify-center gap-2">
-        <Button type="button" variant="secondary" onClick={applyWeekSchedule}>Aplicar horario a todos</Button>
-        <Button type="button" variant="secondary">Agregar descanso</Button>
-      </div>
-      <div className="overflow-x-auto rounded-[24px] border border-[color:var(--border-soft)] bg-[color:var(--surface-strong)] text-left shadow-[var(--shadow-card)]">
-        <div className="min-w-[520px]">
-          <div className="grid grid-cols-[1.2fr_0.7fr_1fr_1fr] gap-3 border-b border-[color:var(--border-soft)] px-4 py-2.5 text-sm font-semibold text-[color:var(--ink-muted)]">
+      <div className="min-h-0 overflow-x-auto rounded-[22px] border border-[color:var(--border-soft)] bg-[color:var(--surface-strong)] text-left shadow-[var(--shadow-card)]">
+        <div className="min-w-[500px]">
+          <div className="grid grid-cols-[1.1fr_0.62fr_1fr_1fr] gap-3 border-b border-[color:var(--border-soft)] px-4 py-2 text-xs font-semibold uppercase tracking-[0.08em] text-[color:var(--ink-muted)]">
             <span>Día</span>
             <span>Activo</span>
             <span>Apertura</span>
             <span>Cierre</span>
           </div>
           {schedule.map((day) => (
-            <div key={day.id} className="grid grid-cols-[1.2fr_0.7fr_1fr_1fr] items-center gap-3 border-b border-[color:var(--border-soft)] px-4 py-2 last:border-b-0">
+            <div key={day.id} className="grid grid-cols-[1.1fr_0.62fr_1fr_1fr] items-center gap-3 border-b border-[color:var(--border-soft)] px-4 py-1.5 last:border-b-0">
               <span className="font-semibold text-[color:var(--ink)]">{day.label}</span>
               <button
                 type="button"
                 onClick={() => updateScheduleDay(day.id, { active: !day.active })}
-                className={`h-7 w-12 rounded-full p-1 transition ${day.active ? 'bg-[color:var(--primary)]' : 'bg-[color:var(--border-strong)]'}`}
+                className={`h-6 w-11 rounded-full p-1 transition ${day.active ? 'bg-[color:var(--primary)]' : 'bg-[color:var(--border-strong)]'}`}
                 aria-label={`Activar ${day.label}`}
               >
-                <span className={`block h-5 w-5 rounded-full bg-white transition ${day.active ? 'translate-x-5' : ''}`} />
+                <span className={`block h-4 w-4 rounded-full bg-white transition ${day.active ? 'translate-x-5' : ''}`} />
               </button>
               {day.active ? (
                 <input
                   type="time"
-                  className="h-9 rounded-[14px] border border-[color:var(--border-soft)] bg-[color:var(--surface-muted)] px-3 text-sm text-[color:var(--ink)]"
+                  className="h-8 rounded-[12px] border border-[color:var(--border-soft)] bg-[color:var(--surface-muted)] px-3 text-sm text-[color:var(--ink)]"
                   value={day.open}
                   onChange={(event) => updateScheduleDay(day.id, { open: event.target.value })}
                 />
@@ -1669,7 +1629,7 @@ export default function ProfesionalRegisterPage() {
               {day.active ? (
                 <input
                   type="time"
-                  className="h-9 rounded-[14px] border border-[color:var(--border-soft)] bg-[color:var(--surface-muted)] px-3 text-sm text-[color:var(--ink)]"
+                  className="h-8 rounded-[12px] border border-[color:var(--border-soft)] bg-[color:var(--surface-muted)] px-3 text-sm text-[color:var(--ink)]"
                   value={day.close}
                   onChange={(event) => updateScheduleDay(day.id, { close: event.target.value })}
                 />
@@ -1678,77 +1638,7 @@ export default function ProfesionalRegisterPage() {
           ))}
         </div>
       </div>
-      <p className="text-left text-sm text-[color:var(--ink-muted)]">Sin horarios, los clientes no podrán reservar automáticamente.</p>
-    </div>
-  );
-
-  const renderServiceStep = () => (
-    <div className="grid gap-6 lg:grid-cols-[minmax(0,1.35fr)_minmax(300px,0.65fr)] lg:items-start xl:grid-cols-[minmax(0,1.45fr)_minmax(340px,0.7fr)]">
-      <div className="space-y-5">
-        <div className="space-y-2">
-          <Badge variant="success">Registro</Badge>
-          <h1 className={wizardTitleClassName}>Agregá tu primer servicio</h1>
-          <p className="text-base text-[color:var(--ink-muted)]">Los clientes van a reservar a partir de tus servicios publicados.</p>
-        </div>
-        <div className="grid gap-4 xl:grid-cols-3">
-          <div className="space-y-2">
-            <label className="text-sm font-semibold text-[color:var(--ink)]">Nombre del servicio</label>
-            <input className={inputClass('serviceName')} name="serviceName" value={form.serviceName} onChange={handleChange} onBlur={handleBlur} placeholder="Limpieza facial profunda" />
-            {renderError('serviceName')}
-          </div>
-          <div className="space-y-2">
-            <label className="text-sm font-semibold text-[color:var(--ink)]">Rubro</label>
-            <select className={inputClass('serviceCategorySlug')} name="serviceCategorySlug" value={form.serviceCategorySlug || form.categorySlugs[0] || ''} onChange={handleChange} onBlur={handleBlur}>
-              <option value="">Elegir</option>
-              {form.categorySlugs.map((slug) => (
-                <option key={slug} value={slug}>{categoryNameBySlug.get(slug) || slug}</option>
-              ))}
-            </select>
-            {renderError('serviceCategorySlug')}
-          </div>
-          <div className="grid gap-4 sm:grid-cols-2 xl:col-span-1 xl:grid-cols-2">
-            <div className="space-y-2">
-              <label className="text-sm font-semibold text-[color:var(--ink)]">Duración</label>
-              <select className={inputClass('serviceDuration')} name="serviceDuration" value={form.serviceDuration} onChange={handleChange} onBlur={handleBlur}>
-                <option value="30">30 minutos</option>
-                <option value="45">45 minutos</option>
-                <option value="60">60 minutos</option>
-                <option value="90">90 minutos</option>
-                <option value="120">120 minutos</option>
-              </select>
-              {renderError('serviceDuration')}
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-semibold text-[color:var(--ink)]">Precio</label>
-              <input className={inputClass('servicePrice')} name="servicePrice" value={form.servicePrice} onChange={handleChange} onBlur={handleBlur} placeholder="$1.200" />
-              {renderError('servicePrice')}
-            </div>
-          </div>
-          <div className="space-y-2 xl:col-span-3">
-            <label className="text-sm font-semibold text-[color:var(--ink)]">Descripción opcional</label>
-            <textarea className={textAreaClass('serviceDescription')} name="serviceDescription" value={form.serviceDescription} onChange={handleChange} onBlur={handleBlur} placeholder="Tratamiento facial para limpiar, hidratar y revitalizar la piel." />
-            {renderError('serviceDescription')}
-          </div>
-          <button type="button" className="w-full rounded-[18px] border border-dashed border-[color:var(--border-strong)] px-4 py-3 text-sm font-semibold text-[color:var(--ink-muted)] xl:col-span-3">
-            + Agregar otro servicio
-          </button>
-        </div>
-      </div>
-      <div className="hidden space-y-4 lg:block">
-        <h2 className="text-center text-xl font-semibold text-[color:var(--ink)]">Vista previa del servicio</h2>
-        <div className="overflow-hidden rounded-[28px] border border-[color:var(--border-soft)] bg-[color:var(--surface-strong)] shadow-[var(--shadow-lift)]">
-          <div className="h-36 bg-[linear-gradient(135deg,rgba(223,196,161,0.72),rgba(255,250,244,0.9)),radial-gradient(circle_at_25%_25%,rgba(10,122,67,0.16),transparent_30%)]" />
-          <div className="space-y-3 p-5">
-            <span className="inline-flex rounded-full bg-[color:var(--primary-soft)] px-3 py-1 text-xs font-semibold text-[color:var(--primary)]">Destacado</span>
-            <h3 className="text-2xl font-semibold text-[color:var(--ink)]">{form.serviceName || 'Limpieza facial profunda'}</h3>
-            <p className="text-sm text-[color:var(--ink-muted)]">{form.serviceDuration || 60} minutos · {serviceCategoryName}</p>
-            <p className="text-2xl font-semibold text-[color:var(--ink)]">{form.servicePrice || '$1.200'}</p>
-            <p className="border-t border-[color:var(--border-soft)] pt-4 text-sm leading-6 text-[color:var(--ink-muted)]">
-              {form.serviceDescription || 'Tratamiento facial para limpiar, hidratar y revitalizar la piel.'}
-            </p>
-          </div>
-        </div>
-      </div>
+      <p className="text-left text-xs text-[color:var(--ink-muted)] sm:text-sm">Sin horarios, los clientes no podrán reservar automáticamente.</p>
     </div>
   );
 
@@ -1777,14 +1667,14 @@ export default function ProfesionalRegisterPage() {
       </div>
       <div className="grid gap-4 md:grid-cols-2">
         <div className="rounded-[24px] border border-[color:var(--border-soft)] bg-[color:var(--surface-soft)] p-5 text-left">
-          <p className="text-sm font-semibold text-[color:var(--ink)]">Primer servicio</p>
-          <p className="mt-2 text-lg font-semibold text-[color:var(--ink)]">{form.serviceName}</p>
-          <p className="text-sm text-[color:var(--ink-muted)]">{form.serviceDuration} min · {form.servicePrice}</p>
-        </div>
-        <div className="rounded-[24px] border border-[color:var(--border-soft)] bg-[color:var(--surface-soft)] p-5 text-left">
           <p className="text-sm font-semibold text-[color:var(--ink)]">Agenda inicial</p>
           <p className="mt-2 text-lg font-semibold text-[color:var(--ink)]">{schedule.filter((day) => day.active).length} días activos</p>
           <p className="text-sm text-[color:var(--ink-muted)]">Editable luego desde el dashboard.</p>
+        </div>
+        <div className="rounded-[24px] border border-[color:var(--border-soft)] bg-[color:var(--surface-soft)] p-5 text-left">
+          <p className="text-sm font-semibold text-[color:var(--ink)]">Servicios</p>
+          <p className="mt-2 text-lg font-semibold text-[color:var(--ink)]">Se configuran en el dashboard</p>
+          <p className="text-sm text-[color:var(--ink-muted)]">El alta inicial no publica servicios automáticamente.</p>
         </div>
       </div>
       <p className="text-sm text-[color:var(--ink-faint)]">Tu perfil no será visible hasta que completes el alta y la activación.</p>
@@ -1805,19 +1695,17 @@ export default function ProfesionalRegisterPage() {
         return renderLocationStep();
       case 5:
         return renderScheduleStep();
-      case 6:
-        return renderServiceStep();
       default:
         return renderPreviewStep();
     }
   };
 
   return (
-    <div className="app-shell min-h-screen bg-[color:var(--background)] text-[color:var(--ink)]">
+    <div className="app-shell flex h-dvh flex-col overflow-hidden bg-[color:var(--background)] text-[color:var(--ink)]">
       <AuthTopBar tone="professional" />
-      <main className="mx-auto flex min-h-[calc(100dvh-4.75rem)] w-full max-w-[96rem] items-start justify-center px-3 py-3 sm:px-6 sm:py-4 lg:py-5">
-        <form className="w-full" onSubmit={(event) => void handleSubmit(event)}>
-          <Card tone="default" padding="none" className="mx-auto flex max-h-[calc(100dvh-6rem)] w-full max-w-[90rem] flex-col overflow-hidden rounded-[28px] border-[color:var(--border-soft)] bg-[color:var(--surface)] shadow-[var(--shadow-glass)] sm:rounded-[32px]">
+      <main className="mx-auto flex min-h-0 w-full max-w-[96rem] flex-1 items-start justify-center overflow-hidden px-3 py-3 sm:px-6 sm:py-4 lg:py-5">
+        <form className="h-full w-full" onSubmit={(event) => void handleSubmit(event)}>
+          <Card tone="default" padding="none" className="mx-auto flex h-full w-full max-w-[90rem] flex-col overflow-hidden rounded-[28px] border-[color:var(--border-soft)] bg-[color:var(--surface)] shadow-[var(--shadow-glass)] sm:rounded-[32px]">
             <div className="shrink-0 border-b border-[color:var(--border-soft)] px-4 py-3 sm:px-6 lg:px-8">
               {stepHeader}
             </div>

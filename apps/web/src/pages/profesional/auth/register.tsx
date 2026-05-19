@@ -193,11 +193,11 @@ const defaultTouched: TouchedState = {
 };
 
 const inputBaseClassName =
-  'h-12 w-full rounded-[18px] border border-[color:var(--border-soft)] bg-[color:var(--surface-strong)] px-4 text-sm text-[color:var(--ink)] placeholder:text-[color:var(--ink-faint)] shadow-[var(--shadow-card)] transition focus:outline-none focus:ring-4 focus:ring-[color:var(--focus-ring)]';
+  'h-11 w-full rounded-[16px] border border-[color:var(--border-soft)] bg-[color:var(--surface-strong)] px-4 text-sm text-[color:var(--ink)] placeholder:text-[color:var(--ink-faint)] shadow-[var(--shadow-card)] transition focus:outline-none focus:ring-4 focus:ring-[color:var(--focus-ring)] sm:h-12 sm:rounded-[18px]';
 const textAreaClassName =
-  'min-h-24 w-full resize-none rounded-[18px] border border-[color:var(--border-soft)] bg-[color:var(--surface-strong)] px-4 py-3 text-sm text-[color:var(--ink)] placeholder:text-[color:var(--ink-faint)] shadow-[var(--shadow-card)] transition focus:outline-none focus:ring-4 focus:ring-[color:var(--focus-ring)]';
+  'min-h-20 w-full resize-none rounded-[16px] border border-[color:var(--border-soft)] bg-[color:var(--surface-strong)] px-4 py-3 text-sm text-[color:var(--ink)] placeholder:text-[color:var(--ink-faint)] shadow-[var(--shadow-card)] transition focus:outline-none focus:ring-4 focus:ring-[color:var(--focus-ring)] sm:min-h-24 sm:rounded-[18px]';
 const wizardTitleClassName =
-  'text-3xl font-semibold tracking-[-0.04em] text-[color:var(--ink)] sm:text-4xl';
+  'text-2xl font-semibold tracking-[-0.04em] text-[color:var(--ink)] sm:text-3xl xl:text-4xl';
 
 export default function ProfesionalRegisterPage() {
   const router = useRouter();
@@ -1216,9 +1216,9 @@ export default function ProfesionalRegisterPage() {
   );
 
   const renderAccountStep = () => (
-    <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(320px,380px)] lg:items-start xl:grid-cols-[minmax(0,1fr)_minmax(360px,420px)]">
-      <div className="space-y-6">
-        <div className="space-y-3">
+    <div className="grid gap-6 lg:grid-cols-[minmax(0,1.35fr)_minmax(300px,0.65fr)] lg:items-start xl:grid-cols-[minmax(0,1.45fr)_minmax(340px,0.7fr)]">
+      <div className="space-y-5">
+        <div className="space-y-2">
           <Badge variant="success">Registro</Badge>
           <h1 className={wizardTitleClassName}>
             Creá tu cuenta profesional
@@ -1250,7 +1250,7 @@ export default function ProfesionalRegisterPage() {
               <span className="text-xs font-semibold uppercase tracking-[0.16em] text-[color:var(--ink-faint)]">o con email</span>
               <div className="h-px flex-1 bg-[color:var(--border-soft)]" />
             </div>
-            <div className="grid gap-4">
+            <div className="grid gap-3 xl:grid-cols-2 xl:gap-4">
               <div className="space-y-2">
                 <label className="text-sm font-semibold text-[color:var(--ink)]">Email</label>
                 <input
@@ -1277,33 +1277,31 @@ export default function ProfesionalRegisterPage() {
                 />
                 {renderError('confirmEmail')}
               </div>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <label className="text-sm font-semibold text-[color:var(--ink)]">Contraseña</label>
-                  <input
-                    className={inputClass('password')}
-                    placeholder="mínimo 8 caracteres"
-                    type="password"
-                    name="password"
-                    value={form.password}
-                    onChange={handleChange}
-                    onBlur={handleBlur}
-                  />
-                  {renderError('password')}
-                </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-semibold text-[color:var(--ink)]">Confirmar contraseña</label>
-                  <input
-                    className={inputClass('confirmPassword')}
-                    placeholder="repetir contraseña"
-                    type="password"
-                    name="confirmPassword"
-                    value={form.confirmPassword}
-                    onChange={handleChange}
-                    onBlur={handleBlur}
-                  />
-                  {renderError('confirmPassword')}
-                </div>
+              <div className="space-y-2">
+                <label className="text-sm font-semibold text-[color:var(--ink)]">Contraseña</label>
+                <input
+                  className={inputClass('password')}
+                  placeholder="mínimo 8 caracteres"
+                  type="password"
+                  name="password"
+                  value={form.password}
+                  onChange={handleChange}
+                  onBlur={handleBlur}
+                />
+                {renderError('password')}
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-semibold text-[color:var(--ink)]">Confirmar contraseña</label>
+                <input
+                  className={inputClass('confirmPassword')}
+                  placeholder="repetir contraseña"
+                  type="password"
+                  name="confirmPassword"
+                  value={form.confirmPassword}
+                  onChange={handleChange}
+                  onBlur={handleBlur}
+                />
+                {renderError('confirmPassword')}
               </div>
             </div>
           </>
@@ -1317,21 +1315,21 @@ export default function ProfesionalRegisterPage() {
       </div>
       <div className="hidden space-y-4 lg:block">
         <h2 className="text-center text-xl font-semibold text-[color:var(--ink)]">Así te verán tus clientes</h2>
-        <ProfilePreviewCard />
+        <ProfilePreviewCard compact />
         <p className="text-center text-xs text-[color:var(--ink-faint)]">Este es un ejemplo de cómo se verá tu perfil público.</p>
       </div>
     </div>
   );
 
   const renderProfileStep = () => (
-    <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(320px,380px)] lg:items-center xl:grid-cols-[minmax(0,1fr)_minmax(360px,420px)]">
-      <div className="space-y-6">
-        <div className="space-y-3">
+    <div className="grid gap-6 lg:grid-cols-[minmax(0,1.35fr)_minmax(300px,0.65fr)] lg:items-center xl:grid-cols-[minmax(0,1.45fr)_minmax(340px,0.7fr)]">
+      <div className="space-y-5">
+        <div className="space-y-2">
           <Badge variant="success">Perfil</Badge>
           <h1 className={wizardTitleClassName}>Contanos cómo querés aparecer en Plura</h1>
           <p className="text-base text-[color:var(--ink-muted)]">Estos datos se verán en tu perfil público.</p>
         </div>
-        <div className="space-y-4">
+        <div className="grid gap-4 xl:grid-cols-2">
           <div className="space-y-2">
             <label className="text-sm font-semibold text-[color:var(--ink)]">Nombre profesional o del negocio</label>
             <input
@@ -1359,7 +1357,7 @@ export default function ProfesionalRegisterPage() {
               Usaremos este teléfono como contacto visible/operativo del perfil.
             </p>
           </div>
-          <div className="space-y-2">
+          <div className="space-y-2 xl:col-span-2">
             <label className="text-sm font-semibold text-[color:var(--ink)]">Descripción corta</label>
             <textarea
               className={textAreaClass('description')}
@@ -1383,8 +1381,8 @@ export default function ProfesionalRegisterPage() {
   );
 
   const renderCategoriesStep = () => (
-    <div className="mx-auto max-w-5xl space-y-6 text-center">
-      <div className="space-y-3">
+    <div className="mx-auto max-w-6xl space-y-5 text-center">
+      <div className="space-y-2">
         <Badge variant="success">Registro</Badge>
         <h1 className={wizardTitleClassName}>Elegí tus rubros principales</h1>
         <p className="text-base text-[color:var(--ink-muted)]">Seleccioná hasta 5 rubros. Después vas a poder cambiarlos.</p>
@@ -1417,7 +1415,7 @@ export default function ProfesionalRegisterPage() {
         {categoriesLoading ? (
           <p className="text-sm text-[color:var(--ink-muted)]">Cargando rubros...</p>
         ) : null}
-        <div className="grid max-h-[min(42dvh,420px)] gap-3 overflow-y-auto pr-1 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid max-h-[min(38dvh,360px)] gap-3 overflow-y-auto pr-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5">
           {filteredCategories.map((category) => {
             const selected = form.categorySlugs.includes(category.slug);
             return (
@@ -1458,13 +1456,13 @@ export default function ProfesionalRegisterPage() {
   );
 
   const renderModalityStep = () => (
-    <div className="mx-auto max-w-5xl space-y-6 text-center">
-      <div className="space-y-3">
+    <div className="mx-auto max-w-6xl space-y-5 text-center">
+      <div className="space-y-2">
         <Badge variant="success">Registro</Badge>
         <h1 className={wizardTitleClassName}>¿Cómo atendés a tus clientes?</h1>
         <p className="text-base text-[color:var(--ink-muted)]">Elegí la modalidad principal. Después vas a poder cambiarla.</p>
       </div>
-      <div className="grid gap-6 md:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-3">
         {[
           { id: 'LOCAL' as const, title: 'En mi local', description: 'Los clientes van a una dirección física.', icon: '🏪' },
           { id: 'A_DOMICILIO' as const, title: 'A domicilio', description: 'Vos vas a la ubicación del cliente.', icon: '🏠' },
@@ -1476,16 +1474,16 @@ export default function ProfesionalRegisterPage() {
               key={option.id}
               type="button"
               onClick={() => setField('tipoCliente', option.id)}
-              className={`relative rounded-[24px] border p-5 text-center transition hover:-translate-y-0.5 sm:p-6 ${
+              className={`relative rounded-[22px] border p-4 text-center transition hover:-translate-y-0.5 sm:p-5 ${
                 selected
                   ? 'border-[color:var(--primary)] bg-[color:var(--primary-soft)] shadow-[var(--shadow-lift)]'
                   : 'border-[color:var(--border-soft)] bg-[color:var(--surface-strong)] shadow-[var(--shadow-card)]'
               }`}
             >
               {selected ? <span className="absolute right-5 top-5 rounded-full bg-[color:var(--primary)] px-2 py-1 text-xs text-white">✓</span> : null}
-              <span className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-[color:var(--surface-soft)] text-3xl sm:h-20 sm:w-20 sm:text-4xl">{option.icon}</span>
-              <h2 className="mt-4 text-lg font-semibold text-[color:var(--ink)] sm:text-xl">{option.title}</h2>
-              <p className="mt-2 text-sm leading-6 text-[color:var(--ink-muted)]">{option.description}</p>
+              <span className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-[color:var(--surface-soft)] text-3xl sm:h-16 sm:w-16">{option.icon}</span>
+              <h2 className="mt-3 text-lg font-semibold text-[color:var(--ink)]">{option.title}</h2>
+              <p className="mt-2 text-sm leading-5 text-[color:var(--ink-muted)]">{option.description}</p>
             </button>
           );
         })}
@@ -1501,7 +1499,7 @@ export default function ProfesionalRegisterPage() {
   const renderLocationStep = () => {
     if (!requiresLocation) {
       return (
-        <div className="mx-auto max-w-2xl space-y-5 text-center">
+        <div className="mx-auto max-w-2xl space-y-4 text-center">
           <Badge variant="success">Ubicación</Badge>
           <h1 className={wizardTitleClassName}>Ubicación no obligatoria</h1>
           <p className="text-base leading-7 text-[color:var(--ink-muted)]">
@@ -1519,16 +1517,16 @@ export default function ProfesionalRegisterPage() {
     const selectedMapLocation = locationPreview || mapCenter;
 
     return (
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(320px,440px)] lg:items-center xl:grid-cols-[minmax(0,1fr)_minmax(360px,480px)]">
-        <div className="space-y-6">
-          <div className="space-y-3">
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1.1fr)_minmax(360px,0.9fr)] lg:items-center xl:grid-cols-[minmax(0,1fr)_minmax(460px,0.95fr)]">
+        <div className="space-y-5">
+          <div className="space-y-2">
             <Badge variant="success">Registro</Badge>
             <h1 className={wizardTitleClassName}>¿Dónde atendés?</h1>
             <p className="text-base text-[color:var(--ink-muted)]">Ingresá la ubicación de tu local.</p>
           </div>
-          <div className="space-y-4">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
             {(['country', 'city', 'fullAddress'] as const).map((field) => (
-              <div key={field} className="relative space-y-2">
+              <div key={field} className={`relative space-y-2 ${field === 'fullAddress' ? 'sm:col-span-2 lg:col-span-1 xl:col-span-2' : ''}`}>
                 <label className="text-sm font-semibold text-[color:var(--ink)]">
                   {field === 'country' ? 'País' : field === 'city' ? 'Ciudad' : 'Dirección completa'}
                 </label>
@@ -1563,7 +1561,7 @@ export default function ProfesionalRegisterPage() {
           </div>
         </div>
         <div className="overflow-hidden rounded-[30px] border border-[color:var(--border-soft)] bg-[color:var(--surface-soft)] shadow-[var(--shadow-lift)]">
-          <div className="relative h-[min(42dvh,24rem)] min-h-72">
+          <div className="relative h-[min(38dvh,22rem)] min-h-64">
             <div className="absolute left-3 right-3 top-3 z-10 rounded-[20px] border border-[color:var(--border-soft)] bg-[color:var(--surface)]/95 p-3 shadow-[var(--shadow-card)] backdrop-blur sm:left-4 sm:right-4 sm:top-4 sm:p-4">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
@@ -1631,26 +1629,26 @@ export default function ProfesionalRegisterPage() {
   };
 
   const renderScheduleStep = () => (
-    <div className="mx-auto max-w-5xl space-y-5 text-center">
-      <div className="space-y-3">
+    <div className="mx-auto max-w-6xl space-y-4 text-center">
+      <div className="space-y-2">
         <Badge variant="success">Registro</Badge>
         <h1 className={wizardTitleClassName}>Definí tus horarios de atención</h1>
         <p className="text-base text-[color:var(--ink-muted)]">Estos horarios se usarán como base inicial de tu agenda.</p>
       </div>
-      <div className="flex flex-wrap justify-center gap-3">
+      <div className="flex flex-wrap justify-center gap-2">
         <Button type="button" variant="secondary" onClick={applyWeekSchedule}>Aplicar horario a todos</Button>
         <Button type="button" variant="secondary">Agregar descanso</Button>
       </div>
       <div className="overflow-x-auto rounded-[24px] border border-[color:var(--border-soft)] bg-[color:var(--surface-strong)] text-left shadow-[var(--shadow-card)]">
-        <div className="min-w-[560px]">
-          <div className="grid grid-cols-[1.3fr_0.8fr_1fr_1fr] gap-4 border-b border-[color:var(--border-soft)] px-5 py-3 text-sm font-semibold text-[color:var(--ink-muted)]">
+        <div className="min-w-[520px]">
+          <div className="grid grid-cols-[1.2fr_0.7fr_1fr_1fr] gap-3 border-b border-[color:var(--border-soft)] px-4 py-2.5 text-sm font-semibold text-[color:var(--ink-muted)]">
             <span>Día</span>
             <span>Activo</span>
             <span>Apertura</span>
             <span>Cierre</span>
           </div>
           {schedule.map((day) => (
-            <div key={day.id} className="grid grid-cols-[1.3fr_0.8fr_1fr_1fr] items-center gap-4 border-b border-[color:var(--border-soft)] px-5 py-2.5 last:border-b-0">
+            <div key={day.id} className="grid grid-cols-[1.2fr_0.7fr_1fr_1fr] items-center gap-3 border-b border-[color:var(--border-soft)] px-4 py-2 last:border-b-0">
               <span className="font-semibold text-[color:var(--ink)]">{day.label}</span>
               <button
                 type="button"
@@ -1663,7 +1661,7 @@ export default function ProfesionalRegisterPage() {
               {day.active ? (
                 <input
                   type="time"
-                  className="h-10 rounded-[14px] border border-[color:var(--border-soft)] bg-[color:var(--surface-muted)] px-3 text-sm text-[color:var(--ink)]"
+                  className="h-9 rounded-[14px] border border-[color:var(--border-soft)] bg-[color:var(--surface-muted)] px-3 text-sm text-[color:var(--ink)]"
                   value={day.open}
                   onChange={(event) => updateScheduleDay(day.id, { open: event.target.value })}
                 />
@@ -1671,7 +1669,7 @@ export default function ProfesionalRegisterPage() {
               {day.active ? (
                 <input
                   type="time"
-                  className="h-10 rounded-[14px] border border-[color:var(--border-soft)] bg-[color:var(--surface-muted)] px-3 text-sm text-[color:var(--ink)]"
+                  className="h-9 rounded-[14px] border border-[color:var(--border-soft)] bg-[color:var(--surface-muted)] px-3 text-sm text-[color:var(--ink)]"
                   value={day.close}
                   onChange={(event) => updateScheduleDay(day.id, { close: event.target.value })}
                 />
@@ -1685,30 +1683,30 @@ export default function ProfesionalRegisterPage() {
   );
 
   const renderServiceStep = () => (
-    <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(320px,380px)] lg:items-start xl:grid-cols-[minmax(0,1fr)_minmax(360px,410px)]">
-      <div className="space-y-6">
-        <div className="space-y-3">
+    <div className="grid gap-6 lg:grid-cols-[minmax(0,1.35fr)_minmax(300px,0.65fr)] lg:items-start xl:grid-cols-[minmax(0,1.45fr)_minmax(340px,0.7fr)]">
+      <div className="space-y-5">
+        <div className="space-y-2">
           <Badge variant="success">Registro</Badge>
           <h1 className={wizardTitleClassName}>Agregá tu primer servicio</h1>
           <p className="text-base text-[color:var(--ink-muted)]">Los clientes van a reservar a partir de tus servicios publicados.</p>
         </div>
-        <div className="space-y-4">
+        <div className="grid gap-4 xl:grid-cols-3">
           <div className="space-y-2">
             <label className="text-sm font-semibold text-[color:var(--ink)]">Nombre del servicio</label>
             <input className={inputClass('serviceName')} name="serviceName" value={form.serviceName} onChange={handleChange} onBlur={handleBlur} placeholder="Limpieza facial profunda" />
             {renderError('serviceName')}
           </div>
-          <div className="grid gap-4 sm:grid-cols-3">
-            <div className="space-y-2">
-              <label className="text-sm font-semibold text-[color:var(--ink)]">Rubro</label>
-              <select className={inputClass('serviceCategorySlug')} name="serviceCategorySlug" value={form.serviceCategorySlug || form.categorySlugs[0] || ''} onChange={handleChange} onBlur={handleBlur}>
-                <option value="">Elegir</option>
-                {form.categorySlugs.map((slug) => (
-                  <option key={slug} value={slug}>{categoryNameBySlug.get(slug) || slug}</option>
-                ))}
-              </select>
-              {renderError('serviceCategorySlug')}
-            </div>
+          <div className="space-y-2">
+            <label className="text-sm font-semibold text-[color:var(--ink)]">Rubro</label>
+            <select className={inputClass('serviceCategorySlug')} name="serviceCategorySlug" value={form.serviceCategorySlug || form.categorySlugs[0] || ''} onChange={handleChange} onBlur={handleBlur}>
+              <option value="">Elegir</option>
+              {form.categorySlugs.map((slug) => (
+                <option key={slug} value={slug}>{categoryNameBySlug.get(slug) || slug}</option>
+              ))}
+            </select>
+            {renderError('serviceCategorySlug')}
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2 xl:col-span-1 xl:grid-cols-2">
             <div className="space-y-2">
               <label className="text-sm font-semibold text-[color:var(--ink)]">Duración</label>
               <select className={inputClass('serviceDuration')} name="serviceDuration" value={form.serviceDuration} onChange={handleChange} onBlur={handleBlur}>
@@ -1726,12 +1724,12 @@ export default function ProfesionalRegisterPage() {
               {renderError('servicePrice')}
             </div>
           </div>
-          <div className="space-y-2">
+          <div className="space-y-2 xl:col-span-3">
             <label className="text-sm font-semibold text-[color:var(--ink)]">Descripción opcional</label>
             <textarea className={textAreaClass('serviceDescription')} name="serviceDescription" value={form.serviceDescription} onChange={handleChange} onBlur={handleBlur} placeholder="Tratamiento facial para limpiar, hidratar y revitalizar la piel." />
             {renderError('serviceDescription')}
           </div>
-          <button type="button" className="w-full rounded-[18px] border border-dashed border-[color:var(--border-strong)] px-4 py-3 text-sm font-semibold text-[color:var(--ink-muted)]">
+          <button type="button" className="w-full rounded-[18px] border border-dashed border-[color:var(--border-strong)] px-4 py-3 text-sm font-semibold text-[color:var(--ink-muted)] xl:col-span-3">
             + Agregar otro servicio
           </button>
         </div>
@@ -1755,8 +1753,8 @@ export default function ProfesionalRegisterPage() {
   );
 
   const renderPreviewStep = () => (
-    <div className="mx-auto max-w-5xl space-y-6">
-      <div className="space-y-3">
+    <div className="mx-auto max-w-6xl space-y-5">
+      <div className="space-y-2">
         <Badge variant="success">30 días gratis</Badge>
         <h1 className={wizardTitleClassName}>Activá Plura Core</h1>
         <p className="max-w-3xl text-base text-[color:var(--ink-muted)]">
@@ -1764,7 +1762,7 @@ export default function ProfesionalRegisterPage() {
           Luego continúa la suscripción mensual.
         </p>
       </div>
-      <div className="grid gap-6 lg:grid-cols-[0.95fr_1.05fr]">
+      <div className="grid gap-5 lg:grid-cols-[1.1fr_0.9fr]">
         <div className="space-y-4 rounded-[28px] border border-[color:var(--border-soft)] bg-[color:var(--surface-strong)] p-6 shadow-[var(--shadow-card)]">
           <p className="text-sm font-semibold uppercase tracking-[0.16em] text-[color:var(--primary)]">Plura Core</p>
           <h2 className="text-2xl font-semibold text-[color:var(--ink)]">Incluye la operación base del MVP</h2>
@@ -1817,14 +1815,14 @@ export default function ProfesionalRegisterPage() {
   return (
     <div className="app-shell min-h-screen bg-[color:var(--background)] text-[color:var(--ink)]">
       <AuthTopBar tone="professional" />
-      <main className="mx-auto flex min-h-[calc(100dvh-4.75rem)] w-full max-w-7xl items-start justify-center px-3 py-3 sm:px-6 sm:py-4 lg:py-5">
+      <main className="mx-auto flex min-h-[calc(100dvh-4.75rem)] w-full max-w-[96rem] items-start justify-center px-3 py-3 sm:px-6 sm:py-4 lg:py-5">
         <form className="w-full" onSubmit={(event) => void handleSubmit(event)}>
-          <Card tone="default" padding="none" className="mx-auto flex max-h-[calc(100dvh-6rem)] w-full max-w-6xl flex-col overflow-hidden rounded-[28px] border-[color:var(--border-soft)] bg-[color:var(--surface)] shadow-[var(--shadow-glass)] sm:rounded-[32px]">
-            <div className="shrink-0 border-b border-[color:var(--border-soft)] px-4 py-4 sm:px-6 lg:px-8">
+          <Card tone="default" padding="none" className="mx-auto flex max-h-[calc(100dvh-6rem)] w-full max-w-[90rem] flex-col overflow-hidden rounded-[28px] border-[color:var(--border-soft)] bg-[color:var(--surface)] shadow-[var(--shadow-glass)] sm:rounded-[32px]">
+            <div className="shrink-0 border-b border-[color:var(--border-soft)] px-4 py-3 sm:px-6 lg:px-8">
               {stepHeader}
             </div>
 
-            <div className="min-h-0 flex-1 space-y-6 overflow-y-auto px-4 py-5 sm:px-6 lg:px-8 lg:py-6">
+            <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-4 py-4 sm:px-6 lg:px-8">
               {renderCurrentStep()}
 
               {successMessage ? (

@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import type { ChangeEvent, FormEvent } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
-import type { MapRef } from 'react-map-gl/mapbox';
+import { Marker, type MapRef } from 'react-map-gl/mapbox';
 import axios from 'axios';
 import AuthTopBar from '@/components/auth/AuthTopBar';
 import GoogleLoginButton from '@/components/auth/GoogleLoginButton';
@@ -107,7 +107,7 @@ type LocationPreview = {
 };
 
 
-type LocationSelectionSource = 'manual' | 'browser' | 'map';
+type LocationSelectionSource = 'address' | 'browser' | 'map';
 type ProfessionalSchedulePayload = {
   days: Array<{
     day: string;
@@ -244,7 +244,6 @@ export default function ProfesionalRegisterPage() {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const locationMapRef = useRef<MapRef | null>(null);
   const initialLocationRequestDoneRef = useRef(false);
-  const programmaticMapCenterRef = useRef<LocationPreview | null>(null);
   const visibleStepNumber = Math.min(step + 1, wizardSteps.length);
 
   const emailValue = form.email.trim().toLowerCase();
@@ -364,7 +363,14 @@ export default function ProfesionalRegisterPage() {
     const fullAddress = form.fullAddress.trim();
 
     if (!country || !city || fullAddress.length < 4) {
-      setLocationPreview(null);
+      if (locationSelectionSource !== 'map') {
+        setLocationPreview(null);
+      }
+      setIsLocationPreviewLoading(false);
+      return undefined;
+    }
+
+    if (locationSelectionSource === 'map') {
       setIsLocationPreviewLoading(false);
       return undefined;
     }
@@ -378,7 +384,7 @@ export default function ProfesionalRegisterPage() {
             setLocationPreview(null);
             return;
           }
-          applyLocationSelection(result, 'manual', { updateAddressFields: false });
+          applyLocationSelection(result, 'address', { updateAddressFields: false });
         })
         .finally(() => {
           setIsLocationPreviewLoading(false);
@@ -389,7 +395,7 @@ export default function ProfesionalRegisterPage() {
       window.clearTimeout(timeout);
       controller.abort();
     };
-  }, [form.country, form.city, form.fullAddress, requiresLocation]);
+  }, [form.country, form.city, form.fullAddress, locationSelectionSource, requiresLocation]);
 
   useEffect(() => {
     if (!requiresLocation || step !== 4 || initialLocationRequestDoneRef.current) {
@@ -431,10 +437,8 @@ export default function ProfesionalRegisterPage() {
       return;
     }
 
-    programmaticMapCenterRef.current = mapCenter;
     map.flyTo({
       center: [mapCenter.longitude, mapCenter.latitude],
-      zoom: 15,
       duration: 500,
     });
   }, [locationSelectionSource, mapCenter, requiresLocation]);
@@ -568,6 +572,7 @@ export default function ProfesionalRegisterPage() {
     value: string,
   ) => {
     setForm((prev) => ({ ...prev, [field]: value }));
+    setLocationSelectionSource(null);
     setActiveGeoField(field);
     if (value.trim().length < 2) {
       setIsGeoSuggesting(false);
@@ -692,12 +697,20 @@ export default function ProfesionalRegisterPage() {
     );
   };
 
-  const handleMapMoveEnd = (event: unknown) => {
-    const target = (event as { target?: { getCenter?: () => { lng: number; lat: number } } }).target;
-    const center = target?.getCenter?.();
-    const latitude = center?.lat;
-    const longitude = center?.lng;
+  const updateLocationFromMapPoint = (latitude: number, longitude: number) => {
+    setLocationPreview({
+      latitude,
+      longitude,
+      placeName: 'Pin ajustado manualmente. Esta será la ubicación publicada.',
+    });
+    setLocationSelectionSource('map');
+    void reverseLookupAndApplyLocation(latitude, longitude, 'map', { recenterMap: false });
+  };
 
+  const handleMapClick = (event: unknown) => {
+    const lngLat = (event as { lngLat?: { lng?: number; lat?: number } }).lngLat;
+    const latitude = lngLat?.lat;
+    const longitude = lngLat?.lng;
     if (
       typeof latitude !== 'number' ||
       typeof longitude !== 'number' ||
@@ -707,26 +720,24 @@ export default function ProfesionalRegisterPage() {
       return;
     }
 
-    const programmaticCenter = programmaticMapCenterRef.current;
-    if (
-      programmaticCenter
-      && Math.abs(programmaticCenter.latitude - latitude) < 0.00005
-      && Math.abs(programmaticCenter.longitude - longitude) < 0.00005
-    ) {
-      programmaticMapCenterRef.current = null;
-      return;
-    }
-    programmaticMapCenterRef.current = null;
-
-    setLocationPreview({
-      latitude,
-      longitude,
-      placeName: 'Ubicación seleccionada en el mapa',
-    });
-    setLocationSelectionSource('map');
-    void reverseLookupAndApplyLocation(latitude, longitude, 'map', { recenterMap: false });
+    updateLocationFromMapPoint(latitude, longitude);
   };
 
+  const handleMarkerDragEnd = (event: unknown) => {
+    const lngLat = (event as { lngLat?: { lng?: number; lat?: number } }).lngLat;
+    const latitude = lngLat?.lat;
+    const longitude = lngLat?.lng;
+    if (
+      typeof latitude !== 'number' ||
+      typeof longitude !== 'number' ||
+      !Number.isFinite(latitude) ||
+      !Number.isFinite(longitude)
+    ) {
+      return;
+    }
+
+    updateLocationFromMapPoint(latitude, longitude);
+  };
 
   const applyGeoSuggestion = (suggestion: GeoLocationSuggestion) => {
     const country = (suggestion.country || '').trim();
@@ -754,7 +765,7 @@ export default function ProfesionalRegisterPage() {
           city,
           fullAddress,
         },
-        'manual',
+        'address',
       );
     }
 
@@ -1436,7 +1447,9 @@ export default function ProfesionalRegisterPage() {
         <p className="text-sm text-[color:var(--ink-muted)]">
           {isLocationPreviewLoading
             ? 'Buscando la dirección...'
-            : locationPreview?.placeName || 'Mové el mapa o usá tu ubicación para ajustar el punto.'}
+            : locationSelectionSource === 'map'
+              ? 'Pin ajustado manualmente. Esta será la ubicación publicada.'
+              : locationPreview?.placeName || 'Mové el mapa o usá tu ubicación para ajustar el punto.'}
         </p>
       </div>
     </div>
@@ -1501,6 +1514,7 @@ export default function ProfesionalRegisterPage() {
     }
 
     const visibleMapCenter = mapCenter;
+    const selectedMapLocation = locationPreview || mapCenter;
 
     return (
       <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(360px,480px)] lg:items-center">
@@ -1578,25 +1592,34 @@ export default function ProfesionalRegisterPage() {
               touchZoomRotate
               attributionControl={false}
               cooperativeGestures={false}
-              onMoveEnd={handleMapMoveEnd}
+              onClick={handleMapClick}
               reuseMaps
               fallbackMessage="Falta NEXT_PUBLIC_MAPBOX_TOKEN para mostrar el mapa."
               webglFallbackNode={<LocationMapFallback />}
-            />
-            <div className="pointer-events-none absolute left-1/2 top-1/2 z-10 -translate-x-1/2 -translate-y-full">
-              <div className="relative flex flex-col items-center drop-shadow-[0_10px_16px_rgba(15,23,42,0.24)]">
-                <div className="flex h-7 w-7 items-center justify-center rounded-full bg-[color:var(--primary)] ring-[3px] ring-white">
-                  <span className="h-2 w-2 rounded-full bg-white" />
+            >
+              <Marker
+                latitude={selectedMapLocation.latitude}
+                longitude={selectedMapLocation.longitude}
+                anchor="bottom"
+                draggable
+                onDragEnd={handleMarkerDragEnd}
+              >
+                <div className="relative flex cursor-grab flex-col items-center drop-shadow-[0_10px_16px_rgba(15,23,42,0.24)] active:cursor-grabbing">
+                  <div className="flex h-7 w-7 items-center justify-center rounded-full bg-[color:var(--primary)] ring-[3px] ring-white">
+                    <span className="h-2 w-2 rounded-full bg-white" />
+                  </div>
+                  <div className="-mt-1 h-2.5 w-2.5 rotate-45 rounded-[2px] bg-[color:var(--primary)]" />
                 </div>
-                <div className="-mt-1 h-2.5 w-2.5 rotate-45 rounded-[2px] bg-[color:var(--primary)]" />
-              </div>
-            </div>
+              </Marker>
+            </MapView>
             <div className="pointer-events-none absolute bottom-6 left-6 right-6 rounded-[22px] border border-[color:var(--border-soft)] bg-[color:var(--surface)] p-5 shadow-[var(--shadow-card)] backdrop-blur">
               <p className="font-semibold text-[color:var(--ink)]">Ubicación del perfil</p>
               <p className="text-sm text-[color:var(--ink-muted)]">
                 {isLocationPreviewLoading || isReverseGeocodingLocation
                   ? 'Actualizando mapa...'
-                  : locationPreview?.placeName || 'Mové el mapa o usá tu ubicación para ajustar el punto.'}
+                  : locationSelectionSource === 'map'
+                    ? 'Pin ajustado manualmente. Esta será la ubicación publicada.'
+                    : locationPreview?.placeName || 'Mové el pin, tocá el mapa o usá tu ubicación para ajustar el punto.'}
               </p>
             </div>
           </div>

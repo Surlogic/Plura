@@ -139,6 +139,7 @@ class AccountDeletionServiceTest {
         verify(scheduleSummaryService).requestRebuild(20L);
         verify(searchSyncPublisher).publishProfilesChanged(List.of(20L));
         verify(billingService, never()).cancelSubscriptionForProfessionalId(any(), eq(true));
+        verify(billingService, never()).ensureTrialClaimBeforeAccountDeletion(any(), any());
         verify(userRepository, never()).delete(any());
     }
 
@@ -214,6 +215,7 @@ class AccountDeletionServiceTest {
 
         service.deleteCurrentAccount("30");
 
+        verify(billingService).ensureTrialClaimBeforeAccountDeletion(40L, user);
         verify(billingService).cancelSubscriptionForProfessionalId(40L, true);
         verify(professionalAccountLifecycleGateway).cleanupProfessionalMedia(40L);
         verify(imageCleanupService).deleteIfRemoved("r2://plura-images/avatars/30/photo.jpg");

@@ -42,24 +42,37 @@ public class BillingTrialEligibilityService {
         }
     }
 
-    public void assertEligible(SubscriptionPlanCode planCode, ProfessionalProfile professional) {
+    public TrialEligibility evaluateEligibility(SubscriptionPlanCode planCode, ProfessionalProfile professional) {
         TrialIdentity identity = resolveIdentity(professional);
-        if ((identity.emailHash() != null && billingTrialClaimRepository.existsByPlanCodeAndEmailHash(planCode, identity.emailHash()))
-            || (identity.phoneHash() != null && billingTrialClaimRepository.existsByPlanCodeAndPhoneHash(planCode, identity.phoneHash()))
-            || (identity.oauthIdentityHash() != null && billingTrialClaimRepository.existsByPlanCodeAndOauthIdentityHash(planCode, identity.oauthIdentityHash()))) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, TRIAL_ALREADY_USED_MESSAGE);
-        }
+        boolean previouslyUsed = hasExistingClaim(planCode, identity);
+        return new TrialEligibility(!previouslyUsed, previouslyUsed);
     }
 
     public BillingTrialClaim claimTrialStarted(SubscriptionPlanCode planCode, ProfessionalProfile professional) {
         TrialIdentity identity = resolveIdentity(professional);
+        return createClaim(planCode, identity, professional.getId());
+    }
+
+    public boolean ensureTrialClaim(SubscriptionPlanCode planCode, User user, Long professionalId) {
+        TrialIdentity identity = resolveIdentity(user);
+        if (hasExistingClaim(planCode, identity)) {
+            return false;
+        }
+        createClaim(planCode, identity, professionalId);
+        return true;
+    }
+
+    private BillingTrialClaim createClaim(SubscriptionPlanCode planCode, TrialIdentity identity, Long professionalId) {
+        if (professionalId == null) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Profesional inválido para registrar prueba gratuita");
+        }
         BillingTrialClaim claim = new BillingTrialClaim();
         claim.setPlanCode(planCode);
         claim.setEmailHash(identity.emailHash());
         claim.setPhoneHash(identity.phoneHash());
         claim.setOauthIdentityHash(identity.oauthIdentityHash());
         claim.setFirstUserId(identity.userId());
-        claim.setFirstProfessionalId(professional.getId());
+        claim.setFirstProfessionalId(professionalId);
         claim.setClaimedAt(Instant.now());
         try {
             return billingTrialClaimRepository.saveAndFlush(claim);
@@ -72,7 +85,13 @@ public class BillingTrialEligibilityService {
         if (professional == null || professional.getId() == null || professional.getUser() == null) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Profesional inválido para validar prueba gratuita");
         }
-        User user = professional.getUser();
+        return resolveIdentity(professional.getUser());
+    }
+
+    private TrialIdentity resolveIdentity(User user) {
+        if (user == null) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Usuario inválido para validar prueba gratuita");
+        }
         if (user.getId() == null) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Usuario inválido para validar prueba gratuita");
         }
@@ -89,6 +108,12 @@ public class BillingTrialEligibilityService {
         }
 
         return new TrialIdentity(user.getId(), emailHash, phoneHash, oauthIdentityHash);
+    }
+
+    private boolean hasExistingClaim(SubscriptionPlanCode planCode, TrialIdentity identity) {
+        return (identity.emailHash() != null && billingTrialClaimRepository.existsByPlanCodeAndEmailHash(planCode, identity.emailHash()))
+            || (identity.phoneHash() != null && billingTrialClaimRepository.existsByPlanCodeAndPhoneHash(planCode, identity.phoneHash()))
+            || (identity.oauthIdentityHash() != null && billingTrialClaimRepository.existsByPlanCodeAndOauthIdentityHash(planCode, identity.oauthIdentityHash()));
     }
 
     private String normalizeEmail(String email) {
@@ -137,5 +162,8 @@ public class BillingTrialEligibilityService {
     }
 
     private record TrialIdentity(Long userId, String emailHash, String phoneHash, String oauthIdentityHash) {
+    }
+
+    public record TrialEligibility(boolean trialEligible, boolean trialPreviouslyUsed) {
     }
 }

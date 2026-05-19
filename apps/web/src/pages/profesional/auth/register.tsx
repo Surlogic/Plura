@@ -917,6 +917,9 @@ export default function ProfesionalRegisterPage() {
   const activateCoreSubscription = async () => {
     const checkout = await createCoreSubscription();
     if (checkout.checkoutUrl) {
+      if (checkout.trialPreviouslyUsed || checkout.activationMode === 'CHECKOUT') {
+        setSuccessMessage('Esta identidad ya utilizó la prueba gratuita. Para activar Plura Core, continuá con el pago.');
+      }
       if (typeof window !== 'undefined') {
         const pendingCheckout = { planId: 'CORE' as const, createdAt: Date.now() };
         clearPendingCheckoutState();

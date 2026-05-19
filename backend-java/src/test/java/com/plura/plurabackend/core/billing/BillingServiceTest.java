@@ -23,6 +23,7 @@ import com.plura.plurabackend.core.billing.subscriptions.model.SubscriptionPlanC
 import com.plura.plurabackend.core.billing.subscriptions.model.SubscriptionStatus;
 import com.plura.plurabackend.core.billing.subscriptions.repository.SubscriptionRepository;
 import com.plura.plurabackend.core.billing.trial.BillingTrialEligibilityService;
+import com.plura.plurabackend.core.billing.trial.BillingTrialEligibilityService.TrialEligibility;
 import com.plura.plurabackend.core.professional.ProfessionalBillingSubjectGateway;
 import com.plura.plurabackend.core.security.RoleGuard;
 import com.plura.plurabackend.core.user.model.User;
@@ -86,6 +87,8 @@ class BillingServiceTest {
                 }
                 return subscription;
             });
+        when(billingTrialEligibilityService.evaluateEligibility(eq(SubscriptionPlanCode.PLAN_CORE), any(ProfessionalProfile.class)))
+            .thenReturn(new TrialEligibility(true, false));
     }
 
     /**
@@ -126,44 +129,70 @@ class BillingServiceTest {
         assertNotNull(response.getTrialStartAt());
         assertNotNull(response.getTrialEndAt());
         assertEquals(response.getTrialStartAt().plusDays(30), response.getTrialEndAt());
-        verify(billingTrialEligibilityService).assertEligible(eq(SubscriptionPlanCode.PLAN_CORE), any(ProfessionalProfile.class));
+        assertEquals(Boolean.TRUE, response.getTrialEligible());
+        assertEquals(Boolean.FALSE, response.getTrialPreviouslyUsed());
+        assertEquals("TRIAL", response.getActivationMode());
+        verify(billingTrialEligibilityService).evaluateEligibility(eq(SubscriptionPlanCode.PLAN_CORE), any(ProfessionalProfile.class));
         verify(billingTrialEligibilityService).claimTrialStarted(eq(SubscriptionPlanCode.PLAN_CORE), any(ProfessionalProfile.class));
     }
 
     @Test
-    void avoidsSecondTrialWhenSubscriptionHistoryAlreadyUsedTrial() {
+    void repeatedTrialFromSubscriptionHistoryCreatesDirectCheckout() {
         Subscription existing = existingSubscription("sub-old");
         existing.setStatus(SubscriptionStatus.CANCELLED);
         existing.setTrialStartAt(LocalDateTime.now().minusMonths(3));
         existing.setTrialEndAt(LocalDateTime.now().minusMonths(1));
         when(subscriptionRepository.findByProfessionalIdForUpdate(30L)).thenReturn(Optional.of(existing));
+        when(mercadoPagoSubscriptionService.createSubscription(any()))
+            .thenReturn(new MercadoPagoSubscriptionService.SubscriptionCheckoutSession(
+                "mp-sub-direct-1",
+                "https://checkout-direct.test",
+                "plan-core"
+            ));
 
-        ResponseStatusException error = assertThrows(ResponseStatusException.class, () ->
-            service.createSubscription(createRequest("PLAN_CORE"))
+        BillingCheckoutResponse response = service.createSubscription(createRequest("PLAN_CORE"));
+
+        assertEquals("https://checkout-direct.test", response.getCheckoutUrl());
+        assertEquals("CHECKOUT_PENDING", response.getStatus());
+        assertTrue(response.getRequiresCheckout());
+        assertEquals(Boolean.FALSE, response.getTrialEligible());
+        assertEquals(Boolean.TRUE, response.getTrialPreviouslyUsed());
+        assertEquals("CHECKOUT", response.getActivationMode());
+        assertEquals(null, response.getTrialStartAt());
+        assertEquals(null, response.getTrialEndAt());
+        verify(billingTrialEligibilityService).ensureTrialClaim(
+            eq(SubscriptionPlanCode.PLAN_CORE),
+            any(User.class),
+            eq(30L)
         );
-
-        assertEquals(HttpStatus.CONFLICT, error.getStatusCode());
-        assertEquals("La prueba gratuita ya fue utilizada para esta identidad.", error.getReason());
         verify(billingTrialEligibilityService, never()).claimTrialStarted(any(), any());
-        verify(mercadoPagoSubscriptionService, never()).createSubscription(any());
+        verify(mercadoPagoSubscriptionService).createSubscription(any());
     }
 
     @Test
-    void avoidsSecondTrialWhenHistoricalIdentityAlreadyClaimedTrial() {
+    void repeatedTrialFromHistoricalIdentityCreatesDirectCheckout() {
         when(subscriptionRepository.findByProfessionalIdForUpdate(30L)).thenReturn(Optional.empty());
-        org.mockito.Mockito.doThrow(new ResponseStatusException(
-            HttpStatus.CONFLICT,
-            "La prueba gratuita ya fue utilizada para esta identidad."
-        )).when(billingTrialEligibilityService).assertEligible(eq(SubscriptionPlanCode.PLAN_CORE), any(ProfessionalProfile.class));
+        when(billingTrialEligibilityService.evaluateEligibility(eq(SubscriptionPlanCode.PLAN_CORE), any(ProfessionalProfile.class)))
+            .thenReturn(new TrialEligibility(false, true));
+        when(mercadoPagoSubscriptionService.createSubscription(any()))
+            .thenReturn(new MercadoPagoSubscriptionService.SubscriptionCheckoutSession(
+                "mp-sub-direct-2",
+                "https://checkout-used-identity.test",
+                "plan-core"
+            ));
 
-        ResponseStatusException error = assertThrows(ResponseStatusException.class, () ->
-            service.createSubscription(createRequest("PLAN_CORE"))
-        );
+        BillingCheckoutResponse response = service.createSubscription(createRequest("PLAN_CORE"));
 
-        assertEquals(HttpStatus.CONFLICT, error.getStatusCode());
-        assertEquals("La prueba gratuita ya fue utilizada para esta identidad.", error.getReason());
+        assertEquals("https://checkout-used-identity.test", response.getCheckoutUrl());
+        assertEquals("CHECKOUT_PENDING", response.getStatus());
+        assertEquals(Boolean.FALSE, response.getTrialEligible());
+        assertEquals(Boolean.TRUE, response.getTrialPreviouslyUsed());
+        assertEquals("CHECKOUT", response.getActivationMode());
+        assertEquals(null, response.getTrialStartAt());
+        assertEquals(null, response.getTrialEndAt());
+        verify(billingTrialEligibilityService, never()).ensureTrialClaim(any(), any(), any());
         verify(billingTrialEligibilityService, never()).claimTrialStarted(any(), any());
-        verify(mercadoPagoSubscriptionService, never()).createSubscription(any());
+        verify(mercadoPagoSubscriptionService).createSubscription(any());
     }
 
     @Test

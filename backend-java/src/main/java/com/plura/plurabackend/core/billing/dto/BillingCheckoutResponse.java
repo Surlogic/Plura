@@ -21,4 +21,7 @@ public class BillingCheckoutResponse {
     private LocalDateTime trialStartAt;
     private LocalDateTime trialEndAt;
     private Boolean requiresCheckout;
+    private Boolean trialEligible;
+    private Boolean trialPreviouslyUsed;
+    private String activationMode;
 }

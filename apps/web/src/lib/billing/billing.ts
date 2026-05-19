@@ -42,6 +42,9 @@ export type BillingCheckoutResponse = {
   trialStartAt: string | null;
   trialEndAt: string | null;
   requiresCheckout: boolean;
+  trialEligible?: boolean;
+  trialPreviouslyUsed?: boolean;
+  activationMode?: 'TRIAL' | 'CHECKOUT';
 };
 
 type PendingCheckoutState = {

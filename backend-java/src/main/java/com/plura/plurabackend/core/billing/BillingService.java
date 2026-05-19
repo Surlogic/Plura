@@ -12,6 +12,7 @@ import com.plura.plurabackend.core.billing.subscriptions.model.SubscriptionPlanC
 import com.plura.plurabackend.core.billing.subscriptions.model.SubscriptionStatus;
 import com.plura.plurabackend.core.billing.subscriptions.repository.SubscriptionRepository;
 import com.plura.plurabackend.core.billing.trial.BillingTrialEligibilityService;
+import com.plura.plurabackend.core.billing.trial.BillingTrialEligibilityService.TrialEligibility;
 import com.plura.plurabackend.core.professional.ProfessionalBillingSubjectGateway;
 import com.plura.plurabackend.core.security.RoleGuard;
 import com.plura.plurabackend.core.user.model.User;
@@ -210,14 +211,26 @@ public class BillingService {
             .orElseGet(Subscription::new);
 
         validateCoreSubscriptionCanStart(subscription, professional);
-        billingTrialEligibilityService.assertEligible(SubscriptionPlanCode.PLAN_CORE, professional);
+        TrialEligibility trialEligibility = billingTrialEligibilityService.evaluateEligibility(
+            SubscriptionPlanCode.PLAN_CORE,
+            professional
+        );
+        boolean trialAlreadyUsedBySubscription = hasUsedTrial(subscription);
+        boolean shouldStartTrial = trialEligibility.trialEligible() && !trialAlreadyUsedBySubscription;
+        if (trialAlreadyUsedBySubscription && trialEligibility.trialEligible()) {
+            billingTrialEligibilityService.ensureTrialClaim(
+                SubscriptionPlanCode.PLAN_CORE,
+                professional.getUser(),
+                professional.getId()
+            );
+        }
 
-        LocalDateTime trialStartAt = LocalDateTime.now();
-        LocalDateTime trialEndAt = trialStartAt.plusDays(30);
+        LocalDateTime trialStartAt = shouldStartTrial ? LocalDateTime.now() : null;
+        LocalDateTime trialEndAt = shouldStartTrial ? trialStartAt.plusDays(30) : null;
 
         subscription.setProfessionalId(professional.getId());
         subscription.setPlan(SubscriptionPlanCode.PLAN_CORE);
-        subscription.setStatus(SubscriptionStatus.TRIALING);
+        subscription.setStatus(shouldStartTrial ? SubscriptionStatus.TRIALING : SubscriptionStatus.CHECKOUT_PENDING);
         subscription.setProvider(PaymentProvider.MERCADOPAGO);
         subscription.setPlanAmount(planConfig.getPrice());
         subscription.setCurrency(planConfig.getCurrency());
@@ -233,7 +246,9 @@ public class BillingService {
         subscription.setProviderCustomerId(null);
         subscription.setProviderSubscriptionId(null);
         subscription = subscriptionRepository.saveAndFlush(subscription);
-        billingTrialEligibilityService.claimTrialStarted(SubscriptionPlanCode.PLAN_CORE, professional);
+        if (shouldStartTrial) {
+            billingTrialEligibilityService.claimTrialStarted(SubscriptionPlanCode.PLAN_CORE, professional);
+        }
 
         String checkoutUrl = null;
         boolean requiresCheckout = false;
@@ -259,7 +274,14 @@ public class BillingService {
             subscription = subscriptionRepository.saveAndFlush(subscription);
         }
 
-        return toCheckoutResponse(subscription, checkoutUrl, requiresCheckout);
+        return toCheckoutResponse(
+            subscription,
+            checkoutUrl,
+            requiresCheckout,
+            shouldStartTrial,
+            !shouldStartTrial,
+            shouldStartTrial ? "TRIAL" : "CHECKOUT"
+        );
     }
 
     private void validateCoreSubscriptionCanStart(Subscription subscription, ProfessionalProfile professional) {
@@ -284,12 +306,23 @@ public class BillingService {
             );
         }
 
-        if (subscription.getTrialStartAt() != null || subscription.getTrialEndAt() != null) {
-            throw new ResponseStatusException(
-                HttpStatus.CONFLICT,
-                "La prueba gratuita ya fue utilizada para esta identidad."
-            );
+    }
+
+    @Transactional
+    public void ensureTrialClaimBeforeAccountDeletion(Long professionalId, User user) {
+        if (professionalId == null || user == null || user.getId() == null) {
+            return;
         }
+        subscriptionRepository.findByProfessionalId(professionalId)
+            .filter(this::hasUsedTrial)
+            .ifPresent(subscription ->
+                billingTrialEligibilityService.ensureTrialClaim(SubscriptionPlanCode.PLAN_CORE, user, professionalId)
+            );
+    }
+
+    private boolean hasUsedTrial(Subscription subscription) {
+        return subscription != null
+            && (subscription.getTrialStartAt() != null || subscription.getTrialEndAt() != null);
     }
 
     private void assertNoOpenMercadoPagoSubscription(Subscription subscription, ProfessionalProfile professional) {
@@ -444,7 +477,10 @@ public class BillingService {
     private BillingCheckoutResponse toCheckoutResponse(
         Subscription subscription,
         String checkoutUrl,
-        boolean requiresCheckout
+        boolean requiresCheckout,
+        boolean trialEligible,
+        boolean trialPreviouslyUsed,
+        String activationMode
     ) {
         return new BillingCheckoutResponse(
             subscription.getId(),
@@ -454,7 +490,10 @@ public class BillingService {
             subscription.getStatus().name(),
             subscription.getTrialStartAt(),
             subscription.getTrialEndAt(),
-            requiresCheckout
+            requiresCheckout,
+            trialEligible,
+            trialPreviouslyUsed,
+            activationMode
         );
     }
 

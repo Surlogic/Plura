@@ -115,8 +115,11 @@ public class AccountDeletionService {
                 now
             )
         );
-        findProfessionalSubjectByUserId(user.getId())
-            .ifPresent(subject -> deleteProfessionalFacetForTotalAccount(user, subject));
+        Optional<ProfessionalAccountSubject> professionalSubject = findProfessionalSubjectByUserId(user.getId());
+        professionalSubject.ifPresent(subject ->
+            billingService.ensureTrialClaimBeforeAccountDeletion(subject.professionalId(), user)
+        );
+        professionalSubject.ifPresent(subject -> deleteProfessionalFacetForTotalAccount(user, subject));
         deleteClientFacetForTotalAccount(user, futureBookingImpacts);
     }
 

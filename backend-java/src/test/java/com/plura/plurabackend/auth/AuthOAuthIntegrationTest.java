@@ -47,6 +47,7 @@ import org.springframework.test.web.servlet.MvcResult;
     "APP_RATE_LIMIT_ENABLED=false",
     "AUTH_EXPOSE_ACCESS_TOKEN=true",
     "AUTH_OAUTH_GOOGLE_ALLOW_DIRECT_TOKEN=true",
+    "BILLING_TRIAL_IDENTITY_PEPPER=test-billing-trial-pepper",
     "HIKARI_CONNECTION_INIT_SQL=SELECT 1",
     "SWAGGER_ENABLED=false",
     "SQS_ENABLED=false",
@@ -193,11 +194,12 @@ class AuthOAuthIntegrationTest {
     }
 
     /**
-     * Escenario: OAuth Google no promueve cliente existente durante registro profesional nuevo.
+     * Escenario: OAuth Google permite sumar profesional sobre cliente existente solo al submit final.
      * El objetivo es dejar explicita la regla que protege este test.
      */
     @Test
-    void oauthGoogleRegisterProfessionalWithExistingClientReturnsConflict() throws Exception {
+    void oauthGoogleRegisterProfessionalWithExistingClientReturnsPendingRegistration() throws Exception {
+        seedCategory();
         User existing = new User();
         existing.setFullName("Existing Client");
         existing.setEmail("upgrade@plura.com");
@@ -209,11 +211,14 @@ class AuthOAuthIntegrationTest {
             new OAuthUserInfo("google", "g-upgrade", "upgrade@plura.com", "Existing Client", "http://img2")
         );
 
-        mockMvc.perform(post("/auth/oauth")
+        MvcResult oauthResult = mockMvc.perform(post("/auth/oauth")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"provider\":\"google\",\"token\":\"google-upgrade\",\"desiredRole\":\"PROFESSIONAL\",\"authAction\":\"REGISTER\"}"))
-            .andExpect(status().isConflict())
-            .andExpect(jsonPath("$.message").value("Existe una cuenta como cliente con este email. Creá una nueva para profesional o eliminá la cuenta de cliente antes de continuar."));
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.oauthRegistrationPending").value(true))
+            .andExpect(jsonPath("$.oauthRegistrationToken").isNotEmpty())
+            .andExpect(jsonPath("$.user.email").value("upgrade@plura.com"))
+            .andReturn();
 
         User updated = userRepository.findByEmail("upgrade@plura.com").orElseThrow();
         org.junit.jupiter.api.Assertions.assertEquals(UserRole.USER, updated.getRole());
@@ -221,6 +226,36 @@ class AuthOAuthIntegrationTest {
         org.junit.jupiter.api.Assertions.assertNull(updated.getProviderId());
         org.junit.jupiter.api.Assertions.assertTrue(
             professionalProfileRepository.findByUser_Id(updated.getId()).isEmpty()
+        );
+
+        String oauthRegistrationToken = JsonPath.read(
+            oauthResult.getResponse().getContentAsString(),
+            "$.oauthRegistrationToken"
+        );
+
+        mockMvc.perform(post("/auth/register/profesional")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "fullName": "Existing Client Pro",
+                      "email": "upgrade@plura.com",
+                      "phoneNumber": "+59899111334",
+                      "tipoCliente": "SIN_LOCAL",
+                      "categorySlugs": ["belleza"],
+                      "oauthRegistrationToken": "%s"
+                    }
+                    """.formatted(oauthRegistrationToken)))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.accessToken").isNotEmpty())
+            .andExpect(jsonPath("$.activeContext.type").value("PROFESSIONAL"));
+
+        User promoted = userRepository.findByEmail("upgrade@plura.com").orElseThrow();
+        org.junit.jupiter.api.Assertions.assertEquals(existing.getId(), promoted.getId());
+        org.junit.jupiter.api.Assertions.assertEquals(UserRole.PROFESSIONAL, promoted.getRole());
+        org.junit.jupiter.api.Assertions.assertEquals("google", promoted.getProvider());
+        org.junit.jupiter.api.Assertions.assertEquals("g-upgrade", promoted.getProviderId());
+        org.junit.jupiter.api.Assertions.assertTrue(
+            professionalProfileRepository.findByUser_Id(promoted.getId()).isPresent()
         );
     }
 
@@ -280,7 +315,9 @@ class AuthOAuthIntegrationTest {
                       "oauthRegistrationToken": "%s"
                     }
                     """.formatted(oauthRegistrationToken)))
-            .andExpect(status().isAccepted());
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.accessToken").isNotEmpty())
+            .andExpect(jsonPath("$.activeContext.type").value("PROFESSIONAL"));
 
         User stored = userRepository.findByEmail("pro-google-final@plura.com").orElseThrow();
         org.junit.jupiter.api.Assertions.assertEquals(UserRole.PROFESSIONAL, stored.getRole());

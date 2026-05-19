@@ -118,7 +118,7 @@ public class AuthService {
         Map.entry("bienestar-holistico", "bienestar-holistico")
     );
     private static final String CLIENT_ACCOUNT_EXISTS_FOR_PROFESSIONAL_MESSAGE =
-        "Existe una cuenta como cliente con este email. Creá una nueva para profesional o eliminá la cuenta de cliente antes de continuar.";
+        "Ya existe una cuenta cliente con este email. Podés sumar el contexto profesional sobre la misma cuenta.";
     private static final String CLIENT_ACCOUNT_LOGIN_MISMATCH_MESSAGE =
         "Esta cuenta es de cliente. Iniciá sesión desde el acceso de clientes.";
     private static final String PROFESSIONAL_ACCOUNT_LOGIN_MISMATCH_MESSAGE =
@@ -126,7 +126,7 @@ public class AuthService {
     private static final String CLIENT_ACCOUNT_EXISTS_MESSAGE =
         "Ya existe una cuenta cliente con este email. Iniciá sesión o recuperá tu contraseña si la olvidaste.";
     private static final String PROFESSIONAL_ACCOUNT_EXISTS_MESSAGE =
-        "Ya existe una cuenta profesional con este email. Iniciá sesión o recuperá tu contraseña si la olvidaste.";
+        "Ya existe una cuenta profesional con este email. Iniciá sesión.";
     private static final String EXISTING_ACCOUNT_PASSWORD_MISMATCH_MESSAGE =
         "Ya existe una cuenta con este email. Iniciá sesión para sumar el nuevo contexto.";
     private static final String EMAIL_ALREADY_EXISTS_MESSAGE =
@@ -197,6 +197,14 @@ public class AuthService {
     ) {
         public boolean isPendingRegistration() {
             return pendingRegistration != null;
+        }
+    }
+
+    public record ProfessionalRegistrationResult(
+        UnifiedLoginResult auth
+    ) {
+        public boolean hasAuth() {
+            return auth != null;
         }
     }
 
@@ -335,7 +343,10 @@ public class AuthService {
      * Tambien concentra los efectos secundarios para que el flujo quede en un estado consistente.
      */
     @Transactional
-    public void registerProfesional(RegisterProfesionalRequest request) {
+    public ProfessionalRegistrationResult registerProfesional(
+        RegisterProfesionalRequest request,
+        SessionContext sessionContext
+    ) {
         String normalizedEmail = request.getEmail().trim().toLowerCase(Locale.ROOT);
         ProfessionalOAuthRegistrationIdentity oauthIdentity =
             resolveProfessionalOAuthRegistrationIdentity(request.getOauthRegistrationToken(), normalizedEmail);
@@ -401,7 +412,14 @@ public class AuthService {
                     phoneVerification.phoneNumber()
                 )
             );
-            return;
+            if (oauthIdentity != null) {
+                return new ProfessionalRegistrationResult(issueUnifiedTokensForContext(
+                    savedExistingUser,
+                    sessionContext,
+                    AuthContextType.PROFESSIONAL
+                ));
+            }
+            return new ProfessionalRegistrationResult(null);
         }
         ensureProfessionalPhoneAvailable(phoneVerification.phoneNumber(), null);
 
@@ -448,6 +466,14 @@ public class AuthService {
                 phoneVerification.phoneNumber()
             )
         );
+        if (oauthIdentity != null) {
+            return new ProfessionalRegistrationResult(issueUnifiedTokensForContext(
+                savedUser,
+                sessionContext,
+                AuthContextType.PROFESSIONAL
+            ));
+        }
+        return new ProfessionalRegistrationResult(null);
     }
 
     @Transactional
@@ -615,10 +641,23 @@ public class AuthService {
             boolean changed = false;
             if (authAction == OAuthAuthAction.REGISTER) {
                 if (professionalOnboardingRegister) {
-                    throw new ResponseStatusException(
-                        HttpStatus.CONFLICT,
-                        isProfessionalUser(user) ? PROFESSIONAL_ACCOUNT_EXISTS_MESSAGE : CLIENT_ACCOUNT_EXISTS_FOR_PROFESSIONAL_MESSAGE
-                    );
+                    if (hasProfessionalContext(user)) {
+                        throw new AuthApiException(
+                            HttpStatus.CONFLICT,
+                            "PROFESSIONAL_CONTEXT_ALREADY_EXISTS",
+                            PROFESSIONAL_ACCOUNT_EXISTS_MESSAGE
+                        );
+                    }
+                    ensureOAuthIdentityCanBeAssociated(user, normalizedProvider);
+                    if (email == null) {
+                        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "OAuth email es obligatorio");
+                    }
+                    return new OAuthResult(null, buildProfessionalOAuthPendingRegistration(
+                        normalizedProvider,
+                        providerId,
+                        email,
+                        userInfo
+                    ));
                 } else {
                     if (desiredRole == UserRole.USER && !isClientUser(user)) {
                         throw new ResponseStatusException(HttpStatus.CONFLICT, PROFESSIONAL_ACCOUNT_EXISTS_MESSAGE);
@@ -1530,13 +1569,20 @@ public class AuthService {
         if (user == null || oauthIdentity == null) {
             return;
         }
-        String existingProvider = normalizeOAuthValue(user.getProvider());
-        if (existingProvider != null && !oauthIdentity.provider().equalsIgnoreCase(existingProvider)) {
-            throw new OAuthProviderMismatchException();
-        }
+        ensureOAuthIdentityCanBeAssociated(user, oauthIdentity.provider());
         user.setProvider(oauthIdentity.provider());
         user.setProviderId(oauthIdentity.providerId());
         user.setAvatar(oauthIdentity.avatar());
+    }
+
+    private void ensureOAuthIdentityCanBeAssociated(User user, String provider) {
+        if (user == null) {
+            return;
+        }
+        String existingProvider = normalizeOAuthValue(user.getProvider());
+        if (existingProvider != null && !provider.equalsIgnoreCase(existingProvider)) {
+            throw new OAuthProviderMismatchException();
+        }
     }
 
     private String availabilityEmailError(AuthContextType desiredContext) {
@@ -2052,6 +2098,20 @@ public class AuthService {
             return resolveRequiredContext(user, AuthContextType.PROFESSIONAL, null, null);
         }
         return resolveDefaultContext(user);
+    }
+
+    private UnifiedLoginResult issueUnifiedTokensForContext(
+        User user,
+        SessionContext sessionContext,
+        AuthContextType desiredContext
+    ) {
+        List<AuthContextDescriptor> contexts = authContextResolver.resolve(user);
+        AuthContextDescriptor active = authContextResolver.select(contexts, desiredContext, null, null);
+        if (active == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Contexto deseado no disponible");
+        }
+        AuthResult tokens = issueTokens(user, toUserResponse(user), sessionContext, active);
+        return new UnifiedLoginResult(tokens, contexts, active, false);
     }
 
     /**

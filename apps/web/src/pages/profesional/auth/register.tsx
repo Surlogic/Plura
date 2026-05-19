@@ -38,7 +38,9 @@ import {
   activateProfessionalProfile,
   fetchAuthMe,
   hasContext,
+  persistAccessTokenForContext,
   selectAuthContext,
+  type UnifiedLoginResponse,
 } from '@/lib/auth/contexts';
 
 const extractApiMessage = (error: unknown, fallback: string) => {
@@ -1087,6 +1089,24 @@ export default function ProfesionalRegisterPage() {
 
       if (hasAuthenticatedBaseAccount) {
         await activateProfessionalForCurrentAccount(payload);
+        await completeProfessionalSetup();
+        return;
+      }
+
+      if (isOAuthSetup) {
+        if (!oauthRegistrationToken) {
+          setErrorMessage('No pudimos validar la identidad Google. Volvé a iniciar el registro con Google.');
+          return;
+        }
+
+        const registerResponse = await api.post<UnifiedLoginResponse>('/auth/register/profesional', payload);
+        const activeContext = registerResponse.data?.activeContext ?? null;
+        if (activeContext?.type !== 'PROFESSIONAL') {
+          setErrorMessage('La cuenta profesional se creó, pero no pudimos iniciar sesión profesional automáticamente. Iniciá sesión con Google para continuar.');
+          return;
+        }
+        persistAccessTokenForContext(registerResponse.data?.accessToken ?? null, activeContext);
+        await refreshProfile();
         await completeProfessionalSetup();
         return;
       }

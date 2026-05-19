@@ -182,12 +182,18 @@ public class AuthController {
      * Retorna 202 Accepted cuando el alta se acepta y errores controlados si email/telefono ya existen.
      */
     @PostMapping("/register/profesional")
-    public ResponseEntity<RegistrationAcceptedResponse> registerProfesional(
+    public ResponseEntity<?> registerProfesional(
         @Valid @RequestBody RegisterProfesionalRequest request,
         HttpServletRequest httpRequest
     ) {
         enforceRegistrationWithAudit(request.getEmail(), httpRequest);
-        authService.registerProfesional(request);
+        AuthService.ProfessionalRegistrationResult result = authService.registerProfesional(
+            request,
+            buildSessionContext(httpRequest)
+        );
+        if (result.hasAuth()) {
+            return buildUnifiedAuthResponse(result.auth(), httpRequest);
+        }
         return ResponseEntity.accepted()
             .header(HttpHeaders.CACHE_CONTROL, "no-store")
             .body(new RegistrationAcceptedResponse(

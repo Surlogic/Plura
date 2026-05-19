@@ -22,6 +22,7 @@ import {
 import { listServiceCategories } from '../../../../services/professionalConfig';
 import api from '../../../../services/api';
 import {
+  checkRegistrationAvailability,
   confirmRegistrationPhoneVerification,
   sendRegistrationPhoneVerification,
   type OAuthResult,
@@ -134,12 +135,34 @@ export function ProfessionalRegisterScreen() {
     },
   });
 
+  const validateAvailability = async (payload: { email?: string; phoneNumber?: string }) => {
+    const availability = await checkRegistrationAvailability(payload);
+    if (payload.email && !availability.emailAvailable) {
+      setErrorMessage(availability.emailError || 'Ya existe una cuenta activa con este email. Iniciá sesión para continuar.');
+      return false;
+    }
+    if (payload.phoneNumber && !availability.phoneAvailable) {
+      setErrorMessage(availability.phoneError || 'Ese teléfono ya pertenece a otra cuenta activa.');
+      return false;
+    }
+    return true;
+  };
+
   const handleSendPhoneCode = async () => {
     setErrorMessage(null);
     setPhoneVerificationMessage(null);
     try {
       setIsSendingPhoneCode(true);
-      const response = await sendRegistrationPhoneVerification(form.phoneNumber.trim());
+      const phoneNumber = form.phoneNumber.trim();
+      if (!hasMinimumPhoneDigits(phoneNumber)) {
+        setErrorMessage('Ingresa un telefono valido.');
+        return;
+      }
+      const phoneAvailable = await validateAvailability({ phoneNumber });
+      if (!phoneAvailable) {
+        return;
+      }
+      const response = await sendRegistrationPhoneVerification(phoneNumber);
       setPhoneVerificationMessage(response.message);
     } catch (error: unknown) {
       setErrorMessage(getApiErrorMessage(error, 'No se pudo enviar el codigo.'));
@@ -263,6 +286,10 @@ export function ProfessionalRegisterScreen() {
 
     try {
       setIsSubmitting(true);
+      const available = await validateAvailability({ email, phoneNumber });
+      if (!available) {
+        return;
+      }
       const location = requiresLocation ? `${fullAddress}, ${city}, ${country}` : '';
       const geocoded = requiresLocation ? await geocodeAddress(location) : null;
 

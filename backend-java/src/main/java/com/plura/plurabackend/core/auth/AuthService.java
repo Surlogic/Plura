@@ -16,6 +16,8 @@ import com.plura.plurabackend.core.auth.dto.OAuthPendingRegistrationResponse;
 import com.plura.plurabackend.core.auth.dto.ProfesionalProfileResponse;
 import com.plura.plurabackend.core.auth.dto.RegisterProfesionalRequest;
 import com.plura.plurabackend.core.auth.dto.RegisterRequest;
+import com.plura.plurabackend.core.auth.dto.RegistrationAvailabilityRequest;
+import com.plura.plurabackend.core.auth.dto.RegistrationAvailabilityResponse;
 import com.plura.plurabackend.core.auth.dto.SelectContextRequest;
 import com.plura.plurabackend.core.auth.dto.SelectContextResponse;
 import com.plura.plurabackend.core.auth.dto.UnifiedLoginRequest;
@@ -125,6 +127,10 @@ public class AuthService {
         "Ya existe una cuenta cliente con este email. Iniciá sesión o recuperá tu contraseña si la olvidaste.";
     private static final String PROFESSIONAL_ACCOUNT_EXISTS_MESSAGE =
         "Ya existe una cuenta profesional con este email. Iniciá sesión o recuperá tu contraseña si la olvidaste.";
+    private static final String EMAIL_ALREADY_EXISTS_MESSAGE =
+        "Ya existe una cuenta activa con este email. Iniciá sesión para continuar.";
+    private static final String PHONE_ALREADY_IN_USE_MESSAGE =
+        "Ese teléfono ya pertenece a otra cuenta activa.";
 
     public AuthService(
         UserRepository userRepository,
@@ -216,6 +222,40 @@ public class AuthService {
         String ipAddress
     ) {}
 
+    @Transactional(readOnly = true)
+    public RegistrationAvailabilityResponse checkRegistrationAvailability(
+        RegistrationAvailabilityRequest request,
+        Long currentUserId
+    ) {
+        String normalizedEmail = normalizeEmailForAvailability(request == null ? null : request.getEmail());
+        String normalizedPhone = normalizePhoneNumber(request == null ? null : request.getPhoneNumber());
+
+        boolean emailAvailable = true;
+        boolean phoneAvailable = true;
+
+        if (normalizedEmail != null) {
+            User owner = userRepository.findByEmailAndDeletedAtIsNull(normalizedEmail).orElse(null);
+            emailAvailable = owner == null || isSameUser(owner, currentUserId);
+        }
+        if (normalizedPhone != null) {
+            User owner = userRepository.findFirstByPhoneNumberAndDeletedAtIsNull(normalizedPhone).orElse(null);
+            phoneAvailable = owner == null || isSameUser(owner, currentUserId);
+        }
+
+        return new RegistrationAvailabilityResponse(
+            emailAvailable,
+            phoneAvailable,
+            emailAvailable ? null : EMAIL_ALREADY_EXISTS_MESSAGE,
+            phoneAvailable ? null : PHONE_ALREADY_IN_USE_MESSAGE
+        );
+    }
+
+    @Transactional(readOnly = true)
+    public void ensureRegistrationPhoneAvailable(String rawPhoneNumber, Long currentUserId) {
+        String normalizedPhone = normalizePhoneNumber(rawPhoneNumber);
+        ensurePhoneAvailable(normalizedPhone, currentUserId);
+    }
+
     /**
      * Registra cliente y aplica las validaciones de alta correspondientes.
      * Tambien concentra los efectos secundarios para que el flujo quede en un estado consistente.
@@ -228,7 +268,7 @@ public class AuthService {
             throw new AuthApiException(
                 HttpStatus.CONFLICT,
                 "EMAIL_ALREADY_EXISTS",
-                "Ya existe una cuenta activa con este email. Iniciá sesión para continuar."
+                EMAIL_ALREADY_EXISTS_MESSAGE
             );
         }
         RegistrationPhoneVerificationService.VerificationResult phoneVerification =
@@ -288,7 +328,7 @@ public class AuthService {
             throw new AuthApiException(
                 HttpStatus.CONFLICT,
                 "EMAIL_ALREADY_EXISTS",
-                "Ya existe una cuenta activa con este email. Iniciá sesión para continuar."
+                EMAIL_ALREADY_EXISTS_MESSAGE
             );
         }
         RegistrationPhoneVerificationService.VerificationResult phoneVerification =
@@ -323,7 +363,7 @@ public class AuthService {
                 throw new AuthApiException(
                     HttpStatus.CONFLICT,
                     "EMAIL_ALREADY_EXISTS",
-                    "Ya existe una cuenta activa con este email. Iniciá sesión para continuar."
+                    EMAIL_ALREADY_EXISTS_MESSAGE
                 );
             }
             throw exception;
@@ -1350,14 +1390,23 @@ public class AuthService {
         if (owner == null) {
             return;
         }
-        if (currentUserId != null && owner.getId() != null && owner.getId().equals(currentUserId)) {
+        if (isSameUser(owner, currentUserId)) {
             return;
         }
         throw new AuthApiException(
             HttpStatus.CONFLICT,
             "PHONE_ALREADY_IN_USE",
-            "Ese teléfono ya pertenece a otra cuenta activa."
+            PHONE_ALREADY_IN_USE_MESSAGE
         );
+    }
+
+    private boolean isSameUser(User owner, Long currentUserId) {
+        return currentUserId != null && owner != null && owner.getId() != null && owner.getId().equals(currentUserId);
+    }
+
+    private String normalizeEmailForAvailability(String rawEmail) {
+        String normalized = normalizeOAuthValue(rawEmail);
+        return normalized == null ? null : normalized.toLowerCase(Locale.ROOT);
     }
 
     /**

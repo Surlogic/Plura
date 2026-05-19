@@ -36,6 +36,8 @@ import com.plura.plurabackend.core.auth.dto.OtpChallengeSendResponse;
 import com.plura.plurabackend.core.auth.dto.OtpChallengeVerifyRequest;
 import com.plura.plurabackend.core.auth.dto.OtpChallengeVerifyResponse;
 import com.plura.plurabackend.core.auth.dto.RefreshSessionRequest;
+import com.plura.plurabackend.core.auth.dto.RegistrationAvailabilityRequest;
+import com.plura.plurabackend.core.auth.dto.RegistrationAvailabilityResponse;
 import com.plura.plurabackend.core.auth.dto.RegistrationAcceptedResponse;
 import com.plura.plurabackend.core.auth.dto.RegisterProfesionalRequest;
 import com.plura.plurabackend.core.auth.dto.RegisterRequest;
@@ -215,9 +217,19 @@ public class AuthController {
     public ResponseEntity<PhoneVerificationSendResponse> sendRegistrationPhoneVerification(
         @Valid @RequestBody SendPhoneVerificationRequest request
     ) {
+        authService.ensureRegistrationPhoneAvailable(request.getPhoneNumber(), resolveOptionalAuthenticatedUserId());
         return ResponseEntity.accepted()
             .header(HttpHeaders.CACHE_CONTROL, "no-store")
             .body(registrationPhoneVerificationService.sendCode(request.getPhoneNumber()));
+    }
+
+    @PostMapping("/register/availability")
+    public ResponseEntity<RegistrationAvailabilityResponse> checkRegistrationAvailability(
+        @Valid @RequestBody RegistrationAvailabilityRequest request
+    ) {
+        return ResponseEntity.ok()
+            .header(HttpHeaders.CACHE_CONTROL, "no-store")
+            .body(authService.checkRegistrationAvailability(request, resolveOptionalAuthenticatedUserId()));
     }
 
     @PostMapping("/register/phone/confirm")
@@ -1238,6 +1250,19 @@ public class AuthController {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "No autenticado");
         }
         return authentication;
+    }
+
+    private Long resolveOptionalAuthenticatedUserId() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (
+            authentication == null
+                || !authentication.isAuthenticated()
+                || authentication.getPrincipal() == null
+                || authentication instanceof AnonymousAuthenticationToken
+        ) {
+            return null;
+        }
+        return authAuditService.parseUserId(authentication.getPrincipal().toString());
     }
 
     /**

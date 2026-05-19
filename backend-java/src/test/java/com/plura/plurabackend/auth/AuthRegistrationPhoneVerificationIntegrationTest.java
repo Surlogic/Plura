@@ -1,6 +1,7 @@
 package com.plura.plurabackend.auth;
 
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -12,6 +13,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.plura.plurabackend.core.auth.VonageVerifyClient;
 import com.plura.plurabackend.core.category.model.Category;
 import com.plura.plurabackend.core.category.repository.CategoryRepository;
+import com.plura.plurabackend.core.user.model.User;
+import com.plura.plurabackend.core.user.model.UserRole;
 import com.plura.plurabackend.core.user.repository.UserRepository;
 import com.plura.plurabackend.professional.repository.ProfessionalProfileRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -151,6 +154,38 @@ class AuthRegistrationPhoneVerificationIntegrationTest {
         );
     }
 
+    @Test
+    void availabilityReportsExistingActiveEmailAndPhone() throws Exception {
+        saveActiveUser("taken@plura.com", "+59899123459");
+
+        mockMvc.perform(post("/auth/register/availability")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {"email":"taken@plura.com","phoneNumber":"+59899123459"}
+                    """))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.emailAvailable").value(false))
+            .andExpect(jsonPath("$.phoneAvailable").value(false))
+            .andExpect(jsonPath("$.emailError").value("Ya existe una cuenta activa con este email. Iniciá sesión para continuar."))
+            .andExpect(jsonPath("$.phoneError").value("Ese teléfono ya pertenece a otra cuenta activa."));
+    }
+
+    @Test
+    void phoneSendDoesNotStartSmsWhenPhoneBelongsToActiveAccount() throws Exception {
+        saveActiveUser("phone-owner@plura.com", "+59899123460");
+
+        mockMvc.perform(post("/auth/register/phone/send")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {"phoneNumber":"+59899123460"}
+                    """))
+            .andExpect(status().isConflict())
+            .andExpect(jsonPath("$.error").value("PHONE_ALREADY_IN_USE"))
+            .andExpect(jsonPath("$.message").value("Ese teléfono ya pertenece a otra cuenta activa."));
+
+        verify(vonageVerifyClient, never()).startSmsVerification(eq("+59899123460"));
+    }
+
     private Category ensureCategory(String slug, String name) {
         return categoryRepository.findBySlug(slug).orElseGet(() -> {
             Category category = new Category();
@@ -160,5 +195,15 @@ class AuthRegistrationPhoneVerificationIntegrationTest {
             category.setActive(true);
             return categoryRepository.save(category);
         });
+    }
+
+    private User saveActiveUser(String email, String phoneNumber) {
+        User user = new User();
+        user.setFullName("Cuenta Existente");
+        user.setEmail(email);
+        user.setPhoneNumber(phoneNumber);
+        user.setPassword("hashed-password");
+        user.setRole(UserRole.USER);
+        return userRepository.save(user);
     }
 }

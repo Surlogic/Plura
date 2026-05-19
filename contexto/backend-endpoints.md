@@ -116,6 +116,7 @@ Prefijo: `/auth`
 
 - `POST /auth/register/cliente`
 - `POST /auth/register/profesional`
+- `POST /auth/register/availability` — endpoint publico para validacion temprana del wizard de registro; acepta `email?` y `phoneNumber?`, responde `emailAvailable`, `phoneAvailable`, `emailError?` y `phoneError?`. Si llega sesion autenticada, no marca como duplicados los datos que pertenecen a esa misma cuenta, para mantener compatible la activacion profesional sobre cuenta cliente existente.
 - `POST /auth/register/phone/send` — inicia OTP SMS previo al alta usando Vonage Verify API
 - `POST /auth/register/phone/confirm` — valida OTP SMS y devuelve `verificationToken` corto para adjuntar al submit final del registro
 - los registros permiten un solo usuario activo por email y un solo usuario activo por telefono normalizado; si email o telefono ya existen, responden error controlado (`EMAIL_ALREADY_EXISTS` o `PHONE_ALREADY_IN_USE`). Desde `V81`, un usuario con `deleted_at` ya no bloquea volver a registrar el mismo email ni el mismo `provider/provider_id`.

@@ -106,6 +106,12 @@ type LocationPreview = {
   placeName: string;
 };
 
+type RegistrationAvailabilityResponse = {
+  emailAvailable: boolean;
+  phoneAvailable: boolean;
+  emailError?: string | null;
+  phoneError?: string | null;
+};
 
 type LocationSelectionSource = 'address' | 'browser' | 'map';
 type ProfessionalSchedulePayload = {
@@ -215,6 +221,7 @@ export default function ProfesionalRegisterPage() {
   const [hasAuthenticatedBaseAccount, setHasAuthenticatedBaseAccount] = useState(false);
   const [categorySearch, setCategorySearch] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isCheckingAvailability, setIsCheckingAvailability] = useState(false);
   const [isRedirectingToCheckout, setIsRedirectingToCheckout] = useState(false);
   const [billingRecoveryAvailable, setBillingRecoveryAvailable] = useState(false);
   const [isGeoSuggesting, setIsGeoSuggesting] = useState(false);
@@ -227,6 +234,7 @@ export default function ProfesionalRegisterPage() {
   const [isReverseGeocodingLocation, setIsReverseGeocodingLocation] = useState(false);
   const [locationSelectionSource, setLocationSelectionSource] = useState<LocationSelectionSource | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [remoteFieldErrors, setRemoteFieldErrors] = useState<Partial<Record<keyof RegisterForm, string>>>({});
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const locationMapRef = useRef<MapRef | null>(null);
   const initialLocationRequestDoneRef = useRef(false);
@@ -430,7 +438,7 @@ export default function ProfesionalRegisterPage() {
 
   const passwordValid = form.password.length >= 8;
   const validationErrors: Record<keyof RegisterForm, string> = {
-    email: emailPattern.test(emailValue) ? '' : 'Email inválido.',
+    email: emailPattern.test(emailValue) ? remoteFieldErrors.email || '' : 'Email inválido.',
     confirmEmail: confirmEmailValue.length > 0 && confirmEmailValue === emailValue
       ? ''
       : 'Los correos no coinciden.',
@@ -439,7 +447,9 @@ export default function ProfesionalRegisterPage() {
       ? ''
       : 'Las contraseñas no coinciden.',
     fullName: form.fullName.trim().length >= 3 ? '' : 'Mínimo 3 caracteres.',
-    phoneNumber: form.phoneNumber.replace(/\D/g, '').length >= 8 ? '' : 'Ingresá un número válido.',
+    phoneNumber: form.phoneNumber.replace(/\D/g, '').length >= 8
+      ? remoteFieldErrors.phoneNumber || ''
+      : 'Ingresá un número válido.',
     description: form.description.trim().length > 150 ? 'Máximo 150 caracteres.' : '',
     categorySlugs: form.categorySlugs.length > 0 ? '' : 'Seleccioná al menos un rubro.',
     tipoCliente: form.tipoCliente ? '' : 'Seleccioná una modalidad.',
@@ -500,6 +510,9 @@ export default function ProfesionalRegisterPage() {
     const { name, value } = event.target;
     const normalizedValue = name === 'email' || name === 'confirmEmail' ? value.toLowerCase() : value;
     setForm((prev) => ({ ...prev, [name]: normalizedValue }));
+    if (name === 'email') {
+      setRemoteFieldErrors((prev) => ({ ...prev, email: undefined }));
+    }
     setSuccessMessage(null);
   };
 
@@ -510,6 +523,7 @@ export default function ProfesionalRegisterPage() {
 
   const handlePhoneChange = (nextPhoneNumber: string) => {
     setForm((prev) => ({ ...prev, phoneNumber: nextPhoneNumber }));
+    setRemoteFieldErrors((prev) => ({ ...prev, phoneNumber: undefined }));
   };
 
   const handlePhoneBlur = () => {
@@ -813,13 +827,52 @@ export default function ProfesionalRegisterPage() {
     },
   });
 
-  const goNext = () => {
+  const checkRegistrationAvailability = async (fields: Array<'email' | 'phoneNumber'>) => {
+    const response = await api.post<RegistrationAvailabilityResponse>('/auth/register/availability', {
+      email: fields.includes('email') ? emailValue : undefined,
+      phoneNumber: fields.includes('phoneNumber') ? form.phoneNumber.trim() : undefined,
+    });
+    const nextErrors: Partial<Record<keyof RegisterForm, string>> = {};
+    if (fields.includes('email') && !response.data.emailAvailable) {
+      nextErrors.email = response.data.emailError || 'Ya existe una cuenta activa con este email. Iniciá sesión para continuar.';
+    }
+    if (fields.includes('phoneNumber') && !response.data.phoneAvailable) {
+      nextErrors.phoneNumber = response.data.phoneError || 'Ese teléfono ya pertenece a otra cuenta activa.';
+    }
+    setRemoteFieldErrors((prev) => ({ ...prev, ...nextErrors }));
+    return Object.keys(nextErrors).length === 0;
+  };
+
+  const goNext = async () => {
     setErrorMessage(null);
     const fields = stepFields(step);
     markTouched(fields);
     if (!currentStepIsValid(step)) {
       setErrorMessage('Revisá los datos marcados para continuar.');
       return;
+    }
+    const availabilityFields: Array<'email' | 'phoneNumber'> = [];
+    if (step === 0 && !isOAuthSetup) {
+      availabilityFields.push('email');
+    }
+    if (step === 1) {
+      availabilityFields.push('phoneNumber');
+    }
+    if (availabilityFields.length > 0) {
+      setIsCheckingAvailability(true);
+      try {
+        const available = await checkRegistrationAvailability(availabilityFields);
+        if (!available) {
+          markTouched(availabilityFields);
+          setErrorMessage('Revisá los datos marcados para continuar.');
+          return;
+        }
+      } catch (error) {
+        setErrorMessage(extractApiMessage(error, 'No pudimos validar si esos datos ya están registrados.'));
+        return;
+      } finally {
+        setIsCheckingAvailability(false);
+      }
     }
     setStep((prev) => Math.min(prev + 1, wizardSteps.length - 1));
   };
@@ -1744,7 +1797,16 @@ export default function ProfesionalRegisterPage() {
                   </Button>
                 ) : null}
                 {step < wizardSteps.length - 1 ? (
-                  <Button type="button" variant={step === 0 ? 'brand' : 'primary'} size="lg" className="w-full sm:w-auto sm:min-w-56" onClick={goNext}>
+                  <Button
+                    type="button"
+                    variant={step === 0 ? 'brand' : 'primary'}
+                    size="lg"
+                    className="w-full sm:w-auto sm:min-w-56"
+                    onClick={() => void goNext()}
+                    disabled={isCheckingAvailability}
+                    loading={isCheckingAvailability}
+                    loadingLabel="Validando..."
+                  >
                     Continuar
                   </Button>
                 ) : (

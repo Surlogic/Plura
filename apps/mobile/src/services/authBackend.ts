@@ -35,6 +35,13 @@ export type RegistrationPhoneVerificationConfirmResponse = {
   expiresAt: string;
 };
 
+export type RegistrationAvailabilityResponse = {
+  emailAvailable: boolean;
+  phoneAvailable: boolean;
+  emailError?: string | null;
+  phoneError?: string | null;
+};
+
 export const oauthLoginWithAuthorizationCode = async (
   provider: OAuthProvider,
   authorizationCode: string,
@@ -86,6 +93,17 @@ export const completeOAuthPhone = async (phoneNumber: string, phoneVerificationT
     phoneNumber,
     phoneVerificationToken,
   });
+  return response.data;
+};
+
+export const checkRegistrationAvailability = async (payload: {
+  email?: string;
+  phoneNumber?: string;
+}) => {
+  const response = await api.post<RegistrationAvailabilityResponse>(
+    '/auth/register/availability',
+    payload,
+  );
   return response.data;
 };
 

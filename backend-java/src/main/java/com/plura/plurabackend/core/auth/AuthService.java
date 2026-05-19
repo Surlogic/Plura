@@ -23,6 +23,7 @@ import com.plura.plurabackend.core.auth.dto.SelectContextResponse;
 import com.plura.plurabackend.core.auth.dto.UnifiedLoginRequest;
 import com.plura.plurabackend.core.auth.dto.UnifiedLoginResponse;
 import com.plura.plurabackend.core.auth.dto.UserResponse;
+import com.plura.plurabackend.core.billing.ProfessionalRegistrationCheckoutService;
 import com.plura.plurabackend.core.auth.dto.AuthSessionResponse;
 import com.plura.plurabackend.core.auth.dto.CompleteOAuthPhoneRequest;
 import com.plura.plurabackend.core.auth.model.AuthAuditEventType;
@@ -94,6 +95,7 @@ public class AuthService {
     private final AuthContextResolver authContextResolver;
     private final PasswordEncoder passwordEncoder;
     private final RegistrationPhoneVerificationService registrationPhoneVerificationService;
+    private final ProfessionalRegistrationCheckoutService professionalRegistrationCheckoutService;
     private final Algorithm jwtAlgorithm;
     private final long jwtExpirationMinutes;
     private final long refreshTokenDays;
@@ -150,6 +152,7 @@ public class AuthService {
         AuthContextResolver authContextResolver,
         PasswordEncoder passwordEncoder,
         RegistrationPhoneVerificationService registrationPhoneVerificationService,
+        ProfessionalRegistrationCheckoutService professionalRegistrationCheckoutService,
         @Value("${jwt.secret}") String jwtSecret,
         @Value("${jwt.expiration-minutes:30}") long jwtExpirationMinutes,
         @Value("${jwt.refresh-days:30}") long refreshTokenDays,
@@ -174,6 +177,7 @@ public class AuthService {
         this.authContextResolver = authContextResolver;
         this.passwordEncoder = passwordEncoder;
         this.registrationPhoneVerificationService = registrationPhoneVerificationService;
+        this.professionalRegistrationCheckoutService = professionalRegistrationCheckoutService;
         this.jwtAlgorithm = Algorithm.HMAC256(jwtSecret);
         this.jwtExpirationMinutes = jwtExpirationMinutes;
         this.refreshTokenDays = refreshTokenDays;
@@ -348,6 +352,10 @@ public class AuthService {
         SessionContext sessionContext
     ) {
         String normalizedEmail = request.getEmail().trim().toLowerCase(Locale.ROOT);
+        professionalRegistrationCheckoutService.requireConfirmedCheckoutForEmail(
+            request.getBillingCheckoutToken(),
+            normalizedEmail
+        );
         ProfessionalOAuthRegistrationIdentity oauthIdentity =
             resolveProfessionalOAuthRegistrationIdentity(request.getOauthRegistrationToken(), normalizedEmail);
         String rawPassword = request.getPassword() == null ? "" : request.getPassword();
@@ -485,6 +493,10 @@ public class AuthService {
         String activeWorkerId
     ) {
         User user = loadUserByRawId(rawUserId);
+        professionalRegistrationCheckoutService.requireConfirmedCheckoutForEmail(
+            request.getBillingCheckoutToken(),
+            user.getEmail()
+        );
         if (user.getRole() != UserRole.PROFESSIONAL) {
             user.setRole(UserRole.PROFESSIONAL);
             user = userRepository.save(user);

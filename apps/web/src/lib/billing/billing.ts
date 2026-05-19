@@ -47,6 +47,18 @@ export type BillingCheckoutResponse = {
   activationMode?: 'TRIAL' | 'CHECKOUT';
 };
 
+export type ProfessionalRegistrationCheckoutResponse = {
+  checkoutUrl: string | null;
+  checkoutToken: string | null;
+  provider: string;
+  planCode: 'PLAN_CORE' | string;
+  status: BillingSubscriptionStatus;
+  trialStartAt: string | null;
+  trialEndAt: string | null;
+  requiresCheckout: boolean;
+  confirmed: boolean;
+};
+
 type PendingCheckoutState = {
   planId: 'CORE';
   createdAt: number;
@@ -131,6 +143,44 @@ export const createCoreSubscription = async (): Promise<BillingCheckoutResponse>
   const response = await api.post<BillingCheckoutResponse>('/billing/subscription', {
     planCode: 'PLAN_CORE',
   });
+  return response.data;
+};
+
+export const createProfessionalRegistrationCheckout = async ({
+  email,
+  returnUrl,
+}: {
+  email: string;
+  returnUrl?: string;
+}): Promise<ProfessionalRegistrationCheckoutResponse> => {
+  const response = await api.post<ProfessionalRegistrationCheckoutResponse>(
+    '/api/v1/billing/professional-registration/checkout',
+    {
+      planCode: 'PLAN_CORE',
+      email,
+      returnUrl,
+    },
+  );
+  return response.data;
+};
+
+export const verifyProfessionalRegistrationCheckout = async (
+  checkoutToken: string,
+): Promise<ProfessionalRegistrationCheckoutResponse> => {
+  const response = await api.post<ProfessionalRegistrationCheckoutResponse>(
+    '/api/v1/billing/professional-registration/verify',
+    { checkoutToken },
+  );
+  return response.data;
+};
+
+export const attachProfessionalRegistrationCheckout = async (
+  checkoutToken: string,
+): Promise<ProfessionalRegistrationCheckoutResponse> => {
+  const response = await api.post<ProfessionalRegistrationCheckoutResponse>(
+    '/billing/professional-registration/attach',
+    { checkoutToken },
+  );
   return response.data;
 };
 

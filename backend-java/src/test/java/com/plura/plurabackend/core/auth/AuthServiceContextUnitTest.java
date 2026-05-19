@@ -21,6 +21,7 @@ import com.plura.plurabackend.core.auth.model.AuthSession;
 import com.plura.plurabackend.core.auth.model.AuthSessionType;
 import com.plura.plurabackend.core.auth.oauth.OAuthService;
 import com.plura.plurabackend.core.auth.repository.RefreshTokenRepository;
+import com.plura.plurabackend.core.billing.ProfessionalRegistrationCheckoutService;
 import com.plura.plurabackend.core.category.repository.CategoryRepository;
 import com.plura.plurabackend.core.professional.ProfessionalAccountProfileGateway;
 import com.plura.plurabackend.core.user.model.User;
@@ -52,6 +53,7 @@ class AuthServiceContextUnitTest {
     @Mock private EffectiveProfessionalPlanService effectiveProfessionalPlanService;
     @Mock private AuthContextResolver authContextResolver;
     @Mock private RegistrationPhoneVerificationService registrationPhoneVerificationService;
+    @Mock private ProfessionalRegistrationCheckoutService professionalRegistrationCheckoutService;
 
     private PasswordEncoder passwordEncoder;
     private AuthService authService;
@@ -71,6 +73,7 @@ class AuthServiceContextUnitTest {
             authContextResolver,
             passwordEncoder,
             registrationPhoneVerificationService,
+            professionalRegistrationCheckoutService,
             "unit-test-jwt-secret",
             30,
             30,

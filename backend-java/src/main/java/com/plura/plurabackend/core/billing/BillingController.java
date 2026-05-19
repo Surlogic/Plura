@@ -4,6 +4,8 @@ import com.plura.plurabackend.core.billing.dto.BillingCancelRequest;
 import com.plura.plurabackend.core.billing.dto.BillingCheckoutResponse;
 import com.plura.plurabackend.core.billing.dto.BillingCreateSubscriptionRequest;
 import com.plura.plurabackend.core.billing.dto.BillingSubscriptionResponse;
+import com.plura.plurabackend.core.billing.dto.ProfessionalRegistrationCheckoutResponse;
+import com.plura.plurabackend.core.billing.dto.ProfessionalRegistrationCheckoutVerifyRequest;
 import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -21,14 +23,19 @@ import org.springframework.web.bind.annotation.RestController;
 public class BillingController {
 
     private final BillingService billingService;
+    private final ProfessionalRegistrationCheckoutService professionalRegistrationCheckoutService;
 
     /**
      * Constructor que inyecta el servicio de facturación.
      *
      * @param billingService servicio principal de lógica de facturación
      */
-    public BillingController(BillingService billingService) {
+    public BillingController(
+        BillingService billingService,
+        ProfessionalRegistrationCheckoutService professionalRegistrationCheckoutService
+    ) {
         this.billingService = billingService;
+        this.professionalRegistrationCheckoutService = professionalRegistrationCheckoutService;
     }
 
     /**
@@ -64,5 +71,14 @@ public class BillingController {
         @RequestBody(required = false) BillingCancelRequest request
     ) {
         return billingService.cancelSubscription(request == null ? new BillingCancelRequest() : request);
+    }
+
+    @PostMapping("/professional-registration/attach")
+    public ProfessionalRegistrationCheckoutResponse attachProfessionalRegistrationCheckout(
+        @Valid @RequestBody ProfessionalRegistrationCheckoutVerifyRequest request
+    ) {
+        return professionalRegistrationCheckoutService.attachConfirmedCheckoutToAuthenticatedProfessional(
+            request.getCheckoutToken()
+        );
     }
 }

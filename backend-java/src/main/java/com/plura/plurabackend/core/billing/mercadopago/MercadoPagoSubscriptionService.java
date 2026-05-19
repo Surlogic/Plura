@@ -46,7 +46,7 @@ public class MercadoPagoSubscriptionService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Solo Plura Core puede iniciar suscripcion");
         }
 
-        String backUrl = resolveBackUrl();
+        String backUrl = firstNonBlank(command.backUrl(), resolveBackUrl());
         HostedPlanTarget hostedPlan = resolveOrCreatePlan(command.plan(), command.amount(), command.currency(), backUrl);
 
         try {
@@ -57,7 +57,7 @@ public class MercadoPagoSubscriptionService {
                     command.payerEmail(),
                     backUrl,
                     "pending",
-                    "subscription:" + command.professionalId(),
+                    command.externalReference(),
                     "Plura " + command.plan().name(),
                     notificationUrl
                 )
@@ -80,7 +80,7 @@ public class MercadoPagoSubscriptionService {
             LOGGER.warn(
                 "Mercado Pago requirio card_token_id para preapproval. Usando init_point de preapproval_plan plan={} professionalId={}",
                 command.plan(),
-                command.professionalId()
+                command.logSubjectId()
             );
 
             return new SubscriptionCheckoutSession(null, hostedPlan.checkoutUrl(), hostedPlan.planId());
@@ -255,12 +255,34 @@ public class MercadoPagoSubscriptionService {
      */
     public record CreateSubscriptionCommand(
         String localSubscriptionId,
-        Long professionalId,
+        String externalReference,
+        String logSubjectId,
         String payerEmail,
         SubscriptionPlanCode plan,
         BigDecimal amount,
-        String currency
-    ) {}
+        String currency,
+        String backUrl
+    ) {
+        public CreateSubscriptionCommand(
+            String localSubscriptionId,
+            Long professionalId,
+            String payerEmail,
+            SubscriptionPlanCode plan,
+            BigDecimal amount,
+            String currency
+        ) {
+            this(
+                localSubscriptionId,
+                "subscription:" + professionalId,
+                professionalId == null ? null : String.valueOf(professionalId),
+                payerEmail,
+                plan,
+                amount,
+                currency,
+                null
+            );
+        }
+    }
 
     /**
      * Bloque de datos subscription checkout session dentro de la respuesta principal.

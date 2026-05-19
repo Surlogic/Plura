@@ -75,4 +75,8 @@ public class RegisterProfesionalRequest {
     /** Token temporal firmado de identidad OAuth para finalizar registro profesional. */
     @Size(max = 4096)
     private String oauthRegistrationToken;
+
+    /** Token de checkout profesional confirmado contra Mercado Pago. */
+    @Size(max = 4096)
+    private String billingCheckoutToken;
 }

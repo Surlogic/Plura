@@ -94,6 +94,7 @@ public class SecurityConfig {
                     "/api/geo/geocode",
                     "/api/geo/suggest",
                     "/api/v1/telemetry/client-errors",
+                    "/api/v1/billing/professional-registration/**",
                     "/categories",
                     "/api/categories",
                     "/health",

@@ -383,6 +383,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             || path.equals("/error")
             || path.startsWith("/api/search")
             || path.startsWith("/api/geo/")
+            || path.startsWith("/api/v1/billing/professional-registration/")
             || path.startsWith("/public/")
             || path.startsWith("/uploads/")
             || path.startsWith("/webhooks/")

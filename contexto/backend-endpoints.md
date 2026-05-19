@@ -112,7 +112,7 @@ Lectura de producto:
 
 Prefijo: `/auth`
 
-- `POST /auth/register/profesional` conserva `phoneNumber` como telefono comercial/de contacto del perfil profesional (`professional_profile.whatsapp`) y acepta `phoneVerificationToken` si llega, pero ya no lo exige para el alta profesional. Bloquea solo si el email ya tiene contexto profesional activo o si ese telefono ya pertenece a otro perfil profesional activo. Si el email existe solo como cliente, exige la misma password de la cuenta base, activa `ProfessionalProfile` sobre ese `app_user` y no pisa el telefono cliente (`app_user.phone_number`). Si el alta profesional viene desde Google, consume `oauthRegistrationToken` temporal emitido por `/auth/oauth` y recien en este submit final crea o activa el contexto profesional; antes de este punto no existe cuenta parcial. En modo OAuth exitoso devuelve sesion autenticada con `activeContext=PROFESSIONAL` y cookies/tokens como `/auth/login`; en modo password conserva `202 Accepted`.
+- `POST /auth/register/profesional` conserva `phoneNumber` como telefono comercial/de contacto del perfil profesional (`professional_profile.whatsapp`) y acepta `phoneVerificationToken` si llega, pero ya no lo exige para el alta profesional. Requiere `billingCheckoutToken` confirmado por Mercado Pago antes de crear o activar cualquier contexto profesional. Bloquea solo si el email ya tiene contexto profesional activo o si ese telefono ya pertenece a otro perfil profesional activo. Si el email existe solo como cliente, exige la misma password de la cuenta base, activa `ProfessionalProfile` sobre ese `app_user` y no pisa el telefono cliente (`app_user.phone_number`). Si el alta profesional viene desde Google, consume `oauthRegistrationToken` temporal emitido por `/auth/oauth` y recien en este submit final crea o activa el contexto profesional; antes de este punto no existe cuenta parcial. En modo OAuth exitoso devuelve sesion autenticada con `activeContext=PROFESSIONAL` y cookies/tokens como `/auth/login`; en modo password conserva `202 Accepted`.
 
 - `POST /auth/register/cliente` — crea contexto cliente nuevo o, si el email existe solo como profesional, agrega `CLIENT` al mismo `app_user` validando la password de la cuenta base. Bloquea si ese email ya tiene contexto cliente activo. El telefono cliente se guarda en `app_user.phone_number` y se valida solo contra otros clientes activos.
 - `POST /auth/register/profesional`
@@ -125,7 +125,7 @@ Prefijo: `/auth`
 - `POST /auth/login` — login unificado: autentica con email/password y resuelve los contextos disponibles del usuario (`CLIENT`, `PROFESSIONAL`, `WORKER`). Devuelve `accessToken` + `activeContext` + `contexts` + `contextSelectionRequired`. Si solo hay un contexto se elige por defecto; si hay varios, frontend muestra selector cuando no llega `desiredContext`. Acepta `desiredContext`/`desiredWorkerId`/`desiredProfessionalId` opcionales desde el primer request.
 - `GET /auth/me` y `GET /auth/contexts` — alias autenticados que devuelven el `UserResponse`, el contexto activo derivado del JWT y todos los contextos disponibles para la cuenta. `CLIENT` se expone si `app_user.client_active=true`; `PROFESSIONAL` se expone solo si existe `ProfessionalProfile.active=true`.
 - `POST /auth/context/select` — cambia el contexto activo emitiendo solo un nuevo access token (sin rotar refresh). Body: `type` (`CLIENT|PROFESSIONAL|WORKER`) + `workerId?` + `professionalId?`.
-- `POST /auth/professional-profile/activate` — endpoint autenticado para activar o reactivar la capacidad profesional sobre el `app_user` actual, sin crear otro usuario ni aceptar email/password. Body: `categorySlugs` o `rubro`, `tipoCliente` (`LOCAL|A_DOMICILIO|SIN_LOCAL`), `phoneNumber?` como telefono profesional/comercial y, para `LOCAL`, `country`, `city`, `fullAddress` y coordenadas opcionales en par. Devuelve `AuthMeResponse` con `contexts` actualizados; si el perfil ya estaba activo responde de forma idempotente sin duplicarlo.
+- `POST /auth/professional-profile/activate` — endpoint autenticado para activar o reactivar la capacidad profesional sobre el `app_user` actual, sin crear otro usuario ni aceptar email/password. Requiere `billingCheckoutToken` confirmado para el email autenticado. Body: `categorySlugs` o `rubro`, `tipoCliente` (`LOCAL|A_DOMICILIO|SIN_LOCAL`), `phoneNumber?` como telefono profesional/comercial y, para `LOCAL`, `country`, `city`, `fullAddress` y coordenadas opcionales en par. Devuelve `AuthMeResponse` con `contexts` actualizados; si el perfil ya estaba activo responde de forma idempotente sin duplicarlo.
 - `DELETE /auth/professional-profile` — endpoint autenticado para cerrar solo la faceta profesional del `app_user` actual desde `ctx=PROFESSIONAL`. Requiere body `{ "challengeId": "...", "code": "..." }` validado contra un challenge OTP `ACCOUNT_DELETION`; desactiva `ProfessionalProfile`, cancela suscripcion profesional, limpia datos/medios profesionales, slots futuros y caches publicas, pero no elimina `app_user`, sesiones base ni datos cliente.
 - `DELETE /auth/client-profile` — endpoint autenticado para cerrar solo la faceta cliente desde `ctx=CLIENT` cuando la cuenta conserva otro contexto activo. Requiere body `{ "challengeId": "...", "code": "..." }`; elimina reservas, favoritos, notificaciones y feedback propios de cliente, marca `client_active=false` y conserva la cuenta base y la faceta profesional/trabajador restante.
 - `POST /auth/oauth` — login/registro OAuth Google/Apple. Para `authAction=REGISTER`, `desiredRole` es obligatorio (`USER` o `PROFESSIONAL`); si falta, responde `400` y no crea usuario. Con `desiredRole=PROFESSIONAL` no crea `User` ni `ProfessionalProfile`: devuelve identidad verificada y `oauthRegistrationToken` temporal para continuar el wizard profesional hasta `/auth/register/profesional`. Si el email Google ya existe solo como cliente, tambien devuelve ese token pendiente para sumar `PROFESSIONAL` sobre el mismo `app_user`; si ya tiene profesional activo responde conflicto. `authAction=LOGIN` mantiene compatibilidad y no exige `desiredRole`.
@@ -153,6 +153,14 @@ Prefijo: `/auth`
 - `GET /auth/audit`
 - `GET /auth/me/profesional` — requiere JWT con `ctx=PROFESSIONAL` y `ProfessionalProfile.active=true`; no crea perfiles profesionales implícitamente.
 - `GET /auth/me/cliente` — requiere JWT con `ctx=CLIENT`; no bloquea por `UserRole.PROFESSIONAL` legacy.
+
+### Billing de registro profesional
+
+- `POST /api/v1/billing/professional-registration/checkout` — endpoint publico versionado para iniciar Mercado Pago desde el wizard profesional antes de crear cuenta/contexto/perfil profesional. Request: `planCode=PLAN_CORE`, `email`, `returnUrl?`. Devuelve `checkoutUrl`, `checkoutToken?`, `status=CHECKOUT_PENDING` y `confirmed=false`.
+- `POST /api/v1/billing/professional-registration/verify` — endpoint publico versionado para verificar el `checkoutToken` contra Mercado Pago. Solo devuelve `confirmed=true` cuando la suscripcion remota esta `authorized` o `active`; no crea usuario ni perfil.
+- `POST /billing/professional-registration/attach` — endpoint autenticado `ctx=PROFESSIONAL` que vincula el checkout de registro ya confirmado al profesional recien creado y crea la suscripcion local activa. Si Mercado Pago no esta confirmado responde conflicto y no habilita Core.
+
+Regla de producto: el wizard profesional no debe llamar `/auth/register/profesional`, `/auth/professional-profile/activate` ni publicar handoff de agenda/pagina publica hasta que `/api/v1/billing/professional-registration/verify` confirme Mercado Pago.
 
 El dominio `auth` incluye:
 
@@ -514,6 +522,12 @@ Prefijo: `/billing`
 - `POST /billing/subscription`
 - `GET /billing/subscription`
 - `POST /billing/cancel`
+- `POST /billing/professional-registration/attach`
+
+Prefijo publico versionado: `/api/v1/billing/professional-registration`
+
+- `POST /api/v1/billing/professional-registration/checkout`
+- `POST /api/v1/billing/professional-registration/verify`
 
 Webhooks:
 
@@ -535,6 +549,7 @@ Estado real detectado en codigo:
 - suscripciones de plataforma: `Mercado Pago`
 - conexion OAuth del profesional a Mercado Pago: ya existe en `/profesional/payment-providers/mercadopago/*`
 - `POST /billing/subscription` hoy inicia solo `Plura Core` con request recomendado `{ "planCode": "PLAN_CORE" }` o `{ "planCode": "CORE" }`; cualquier codigo legacy de plan devuelve `400`
+- `POST /api/v1/billing/professional-registration/checkout` inicia Mercado Pago para el wizard profesional sin requerir ni crear `ProfessionalProfile`; `verify` confirma contra Mercado Pago y `attach` vincula el checkout ya confirmado recien despues de que existe `ctx=PROFESSIONAL`
 - `POST /billing/subscription` devuelve `subscriptionId`, `checkoutUrl`, `provider`, `planCode`, `status`, `trialStartAt`, `trialEndAt`, `requiresCheckout`, `trialEligible`, `trialPreviouslyUsed` y `activationMode`; si la identidad ya uso trial no devuelve `409` por ese caso normal, crea checkout directo sin `trialStartAt/trialEndAt` y `activationMode=CHECKOUT`
 - `GET /billing/subscription` devuelve estado de suscripcion y agrega `trialStartAt`, `trialEndAt`, `trialDaysRemaining`, `trialActive` y `paymentMethodAttached`
 - `planEnabled` en `GET /billing/subscription` es `true` solo para `ACTIVE` vigente o `TRIALING` con `trialEndAt` futuro; `CHECKOUT_PENDING`, `PAST_DUE`, `CANCELLED` y `EXPIRED` no habilitan el plan

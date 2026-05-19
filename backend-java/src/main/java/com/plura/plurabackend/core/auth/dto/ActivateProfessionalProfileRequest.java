@@ -36,4 +36,7 @@ public class ActivateProfessionalProfileRequest {
     @NotBlank
     @Pattern(regexp = "^(?i)(LOCAL|A_DOMICILIO|SIN_LOCAL)$")
     private String tipoCliente;
+
+    @Size(max = 4096)
+    private String billingCheckoutToken;
 }

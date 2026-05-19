@@ -16,6 +16,7 @@ import com.plura.plurabackend.core.auth.model.AuthSession;
 import com.plura.plurabackend.core.auth.model.AuthSessionType;
 import com.plura.plurabackend.core.auth.model.RefreshToken;
 import com.plura.plurabackend.core.auth.oauth.OAuthService;
+import com.plura.plurabackend.core.billing.ProfessionalRegistrationCheckoutService;
 import com.plura.plurabackend.core.category.repository.CategoryRepository;
 import com.plura.plurabackend.core.professional.ProfessionalAccountProfileGateway;
 import com.plura.plurabackend.core.user.model.User;
@@ -71,6 +72,8 @@ class AuthServiceRefreshUnitTest {
 
     @Mock
     private RegistrationPhoneVerificationService registrationPhoneVerificationService;
+    @Mock
+    private ProfessionalRegistrationCheckoutService professionalRegistrationCheckoutService;
 
     private AuthService authService;
 
@@ -93,6 +96,7 @@ class AuthServiceRefreshUnitTest {
             authContextResolver,
             passwordEncoder,
             registrationPhoneVerificationService,
+            professionalRegistrationCheckoutService,
             "unit-test-jwt-secret",
             30,
             30,

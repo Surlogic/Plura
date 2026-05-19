@@ -15,11 +15,9 @@ import Card from '@/components/ui/Card';
 import InternationalPhoneField from '@/components/ui/InternationalPhoneField';
 import api from '@/services/api';
 import {
-  armPendingCheckoutReturnState,
-  clearPendingCheckoutState,
-  createCoreSubscription,
-  isCoreSubscriptionEnabled,
-  setPendingCheckoutState,
+  attachProfessionalRegistrationCheckout,
+  createProfessionalRegistrationCheckout,
+  verifyProfessionalRegistrationCheckout,
 } from '@/lib/billing/billing';
 import {
   applyProfessionalRegisterHandoff,
@@ -137,7 +135,34 @@ type ProfessionalOnboardingDraft = {
   schedule: ScheduleDay[];
 };
 
+type ProfessionalRegistrationPayload = {
+  fullName: string;
+  rubro: string;
+  categorySlugs: string[];
+  email: string;
+  phoneNumber: string;
+  country: string;
+  city: string;
+  fullAddress: string;
+  location: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  tipoCliente: RegisterForm['tipoCliente'];
+  password?: string;
+  oauthRegistrationToken?: string;
+  billingCheckoutToken?: string;
+};
+
+type PendingProfessionalRegistrationCheckout = {
+  checkoutToken: string | null;
+  payload: ProfessionalRegistrationPayload;
+  handoff: ProfessionalRegisterHandoff;
+  hasAuthenticatedBaseAccount: boolean;
+  createdAt: number;
+};
+
 const PROFESSIONAL_ONBOARDING_DRAFT_KEY = 'plura:professional-onboarding-draft';
+const PROFESSIONAL_REGISTRATION_CHECKOUT_KEY = 'plura:professional-registration-checkout';
 
 const DEFAULT_LOCATION_PREVIEW: LocationPreview = {
   latitude: -34.9011,
@@ -297,6 +322,57 @@ export default function ProfesionalRegisterPage() {
       window.localStorage.removeItem(PROFESSIONAL_ONBOARDING_DRAFT_KEY);
     }
   }, []);
+
+  useEffect(() => {
+    if (!router.isReady || typeof window === 'undefined') return;
+    const raw = window.sessionStorage.getItem(PROFESSIONAL_REGISTRATION_CHECKOUT_KEY);
+    if (!raw) return;
+
+    let pending: PendingProfessionalRegistrationCheckout | null = null;
+    try {
+      pending = JSON.parse(raw) as PendingProfessionalRegistrationCheckout;
+    } catch {
+      window.sessionStorage.removeItem(PROFESSIONAL_REGISTRATION_CHECKOUT_KEY);
+      return;
+    }
+
+    if (!pending?.payload || !pending.handoff) {
+      window.sessionStorage.removeItem(PROFESSIONAL_REGISTRATION_CHECKOUT_KEY);
+      return;
+    }
+
+    const resumePendingCheckout = async () => {
+      setIsSubmitting(true);
+      setErrorMessage(null);
+      try {
+        if (!pending.checkoutToken) {
+          setErrorMessage('No pudimos asociar la autorización de Mercado Pago. No se creó el perfil profesional; podés reintentar Core desde el wizard.');
+          return;
+        }
+
+        const verification = await verifyProfessionalRegistrationCheckout(pending.checkoutToken);
+        if (!verification.confirmed) {
+          setErrorMessage('Mercado Pago todavía no confirmó la suscripción. No se creó el perfil profesional; podés reintentar cuando quieras.');
+          return;
+        }
+
+        await createProfessionalAfterConfirmed(
+          pending.payload,
+          pending.handoff,
+          pending.hasAuthenticatedBaseAccount,
+          pending.checkoutToken,
+        );
+      } catch (error) {
+        setErrorMessage(extractApiMessage(error, 'No pudimos confirmar Mercado Pago. No se creó el perfil profesional.'));
+      } finally {
+        setIsSubmitting(false);
+      }
+    };
+
+    void resumePendingCheckout();
+  // Se ejecuta solo al volver/cargar la pagina con un checkout pendiente.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [router.isReady]);
 
   useEffect(() => {
     if (!router.isReady) return;
@@ -903,10 +979,6 @@ export default function ProfesionalRegisterPage() {
     setStep((prev) => Math.max(prev - 1, 0));
   };
 
-  const saveDraftAfterRegister = () => {
-    savePendingProfessionalRegisterHandoff(buildRegisterHandoff());
-  };
-
   const saveOnboardingDraftForLogin = () => {
     if (typeof window === 'undefined') return;
     const safeForm = {
@@ -935,71 +1007,20 @@ export default function ProfesionalRegisterPage() {
     );
   };
 
-  const activateCoreSubscription = async () => {
-    const checkout = await createCoreSubscription();
-    if (checkout.checkoutUrl) {
-      if (checkout.trialPreviouslyUsed || checkout.activationMode === 'CHECKOUT') {
-        setSuccessMessage('Esta identidad ya utilizó la prueba gratuita. Para activar Plura Core, continuá con el pago.');
-      }
-      if (typeof window !== 'undefined') {
-        const pendingCheckout = { planId: 'CORE' as const, createdAt: Date.now() };
-        clearPendingCheckoutState();
-        setPendingCheckoutState(pendingCheckout);
-        armPendingCheckoutReturnState();
-        setIsRedirectingToCheckout(true);
-        window.location.assign(checkout.checkoutUrl);
-      }
-      return false;
-    }
-
-    return isCoreSubscriptionEnabled(checkout);
+  const savePendingCheckoutRegistration = (
+    pending: PendingProfessionalRegistrationCheckout,
+  ) => {
+    if (typeof window === 'undefined') return;
+    window.sessionStorage.setItem(PROFESSIONAL_REGISTRATION_CHECKOUT_KEY, JSON.stringify(pending));
   };
 
-  const completeProfessionalSetup = async () => {
-    const handoff = buildRegisterHandoff();
-    savePendingProfessionalRegisterHandoff(handoff);
-
-    let coreActivated = false;
-    try {
-      coreActivated = await activateCoreSubscription();
-    } catch {
-      setBillingRecoveryAvailable(true);
-      setErrorMessage('No pudimos activar Plura Core. El perfil y la agenda inicial no se publicaron; podés reintentar desde Facturación.');
-      return;
-    }
-
-    if (!coreActivated) {
-      return;
-    }
-
-    try {
-      await applyProfessionalRegisterHandoff(handoff);
-      if (typeof window !== 'undefined') {
-        clearPendingProfessionalRegisterHandoff();
-        window.localStorage.removeItem(PROFESSIONAL_ONBOARDING_DRAFT_KEY);
-      }
-      await refreshProfile();
-      await router.push('/profesional/dashboard/billing');
-    } catch {
-      setBillingRecoveryAvailable(true);
-      setErrorMessage('Plura Core quedó activo, pero no pudimos publicar la configuración inicial. Podés reintentar desde Facturación.');
-    }
+  const clearPendingCheckoutRegistration = () => {
+    if (typeof window === 'undefined') return;
+    window.sessionStorage.removeItem(PROFESSIONAL_REGISTRATION_CHECKOUT_KEY);
   };
 
   const activateProfessionalForCurrentAccount = async (
-    payload: {
-      rubro: string;
-      categorySlugs: string[];
-      country: string;
-      city: string;
-      fullAddress: string;
-      location: string | null;
-      latitude: number | null;
-      longitude: number | null;
-      tipoCliente: RegisterForm['tipoCliente'];
-      phoneNumber: string;
-      fullName: string;
-    },
+    payload: ProfessionalRegistrationPayload,
   ) => {
     const me = await activateProfessionalProfile({
       rubro: payload.rubro,
@@ -1012,6 +1033,7 @@ export default function ProfesionalRegisterPage() {
       longitude: payload.longitude,
       tipoCliente: payload.tipoCliente,
       phoneNumber: payload.phoneNumber,
+      billingCheckoutToken: payload.billingCheckoutToken,
     });
     const professionalContext = me.contexts?.find((context) => context.type === 'PROFESSIONAL');
     if (professionalContext) {
@@ -1036,6 +1058,57 @@ export default function ProfesionalRegisterPage() {
     } catch {
       // El perfil ya queda activo; el dashboard permite completar ajustes de datos si esta actualizacion parcial falla.
     }
+  };
+
+  const createProfessionalAfterConfirmed = async (
+    payload: ProfessionalRegistrationPayload,
+    handoff: ProfessionalRegisterHandoff,
+    useCurrentAccount: boolean,
+    checkoutToken: string,
+  ) => {
+    savePendingProfessionalRegisterHandoff(handoff);
+
+    const confirmedPayload = {
+      ...payload,
+      billingCheckoutToken: checkoutToken,
+    };
+
+    if (useCurrentAccount) {
+      await activateProfessionalForCurrentAccount(confirmedPayload);
+    } else if (payload.oauthRegistrationToken) {
+      const registerResponse = await api.post<UnifiedLoginResponse>('/auth/register/profesional', {
+        ...confirmedPayload,
+      });
+      const activeContext = registerResponse.data?.activeContext ?? null;
+      if (activeContext?.type !== 'PROFESSIONAL') {
+        throw new Error('La cuenta profesional se creó, pero no pudimos iniciar sesión profesional automáticamente.');
+      }
+      persistAccessTokenForContext(registerResponse.data?.accessToken ?? null, activeContext);
+    } else {
+      await api.post('/auth/register/profesional', {
+        ...confirmedPayload,
+      });
+      const loginResponse = await api.post<{
+        accessToken?: string | null;
+        activeContext?: { type: 'PROFESSIONAL' };
+      }>('/auth/login', {
+        email: payload.email,
+        password: payload.password,
+        desiredContext: 'PROFESSIONAL',
+      });
+      setAuthAccessToken(loginResponse.data?.accessToken ?? null, 'PROFESSIONAL');
+    }
+
+    await attachProfessionalRegistrationCheckout(checkoutToken);
+
+    await applyProfessionalRegisterHandoff(handoff);
+    clearPendingProfessionalRegisterHandoff();
+    clearPendingCheckoutRegistration();
+    if (typeof window !== 'undefined') {
+      window.localStorage.removeItem(PROFESSIONAL_ONBOARDING_DRAFT_KEY);
+    }
+    await refreshProfile();
+    await router.push('/profesional/dashboard/billing');
   };
 
   const handleSubmit = async (event?: FormEvent<HTMLFormElement>) => {
@@ -1085,87 +1158,40 @@ export default function ProfesionalRegisterPage() {
         tipoCliente: form.tipoCliente,
         password: isOAuthSetup ? undefined : form.password,
         oauthRegistrationToken: oauthRegistrationToken ?? undefined,
-      };
+      } satisfies ProfessionalRegistrationPayload;
 
-      if (hasAuthenticatedBaseAccount) {
-        await activateProfessionalForCurrentAccount(payload);
-        await completeProfessionalSetup();
+      if (isOAuthSetup && !oauthRegistrationToken && !hasAuthenticatedBaseAccount) {
+        setErrorMessage('No pudimos validar la identidad Google. Volvé a iniciar el registro con Google.');
         return;
       }
 
-      if (isOAuthSetup) {
-        if (!oauthRegistrationToken) {
-          setErrorMessage('No pudimos validar la identidad Google. Volvé a iniciar el registro con Google.');
-          return;
-        }
+      const handoff = buildRegisterHandoff();
+      savePendingProfessionalRegisterHandoff(handoff);
+      saveOnboardingDraftForLogin();
 
-        const registerResponse = await api.post<UnifiedLoginResponse>('/auth/register/profesional', payload);
-        const activeContext = registerResponse.data?.activeContext ?? null;
-        if (activeContext?.type !== 'PROFESSIONAL') {
-          setErrorMessage('La cuenta profesional se creó, pero no pudimos iniciar sesión profesional automáticamente. Iniciá sesión con Google para continuar.');
-          return;
-        }
-        persistAccessTokenForContext(registerResponse.data?.accessToken ?? null, activeContext);
-        await refreshProfile();
-        await completeProfessionalSetup();
+      const checkout = await createProfessionalRegistrationCheckout({
+        email: normalizedEmail,
+        returnUrl: typeof window !== 'undefined'
+          ? `${window.location.origin}/profesional/auth/register?resume=1&billingReturn=1`
+          : undefined,
+      });
+
+      savePendingCheckoutRegistration({
+        checkoutToken: checkout.checkoutToken,
+        payload,
+        handoff,
+        hasAuthenticatedBaseAccount,
+        createdAt: Date.now(),
+      });
+
+      if (!checkout.checkoutUrl) {
+        setBillingRecoveryAvailable(true);
+        setErrorMessage('No pudimos iniciar Mercado Pago. No se creó el perfil profesional; podés reintentar.');
         return;
       }
 
-      await api.post('/auth/register/profesional', payload);
-
-      try {
-        const loginResponse = await api.post<{
-          accessToken?: string | null;
-          activeContext?: { type: 'PROFESSIONAL' };
-        }>('/auth/login', {
-          email: normalizedEmail,
-          password: form.password,
-          desiredContext: 'PROFESSIONAL',
-        });
-        setAuthAccessToken(loginResponse.data?.accessToken ?? null, 'PROFESSIONAL');
-      } catch (loginError) {
-        const apiMessage = extractApiMessage(loginError, '');
-        const contextUnavailable =
-          axios.isAxiosError(loginError) &&
-          loginError.response?.status === 400 &&
-          /contexto.*no disponible|contexto deseado/i.test(apiMessage);
-
-        if (contextUnavailable) {
-          try {
-            const fallbackLogin = await api.post<{
-              accessToken?: string | null;
-              activeContext?: { type: 'CLIENT' };
-            }>('/auth/login', {
-              email: normalizedEmail,
-              password: form.password,
-              desiredContext: 'CLIENT',
-            });
-            setAuthAccessToken(fallbackLogin.data?.accessToken ?? null, 'CLIENT');
-            setHasAuthenticatedBaseAccount(true);
-            await activateProfessionalForCurrentAccount(payload);
-            await completeProfessionalSetup();
-            return;
-          } catch {
-            // Si tampoco pudo autenticar como cliente, pedimos login explicito y retomamos onboarding.
-          }
-        }
-
-        saveDraftAfterRegister();
-        saveOnboardingDraftForLogin();
-        await router.push({
-          pathname: '/login',
-          query: {
-            intent: 'professional',
-            email: normalizedEmail,
-            registered: '1',
-            billing: 'pending',
-          },
-        });
-        return;
-      }
-
-      await refreshProfile();
-      await completeProfessionalSetup();
+      setIsRedirectingToCheckout(true);
+      window.location.assign(checkout.checkoutUrl);
     } catch (error) {
       if (axios.isAxiosError(error) && !error.response) {
         setErrorMessage('No se pudo conectar con el servidor.');
@@ -1823,9 +1849,9 @@ export default function ProfesionalRegisterPage() {
                       type="button"
                       variant="secondary"
                       className="mt-3"
-                      onClick={() => void router.push('/profesional/dashboard/billing')}
+                      onClick={() => void handleSubmit()}
                     >
-                      Ir a Facturación
+                      Reintentar activación
                     </Button>
                   ) : null}
                 </div>

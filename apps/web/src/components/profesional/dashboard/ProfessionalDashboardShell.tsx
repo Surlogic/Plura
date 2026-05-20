@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import ProfesionalSidebar from '@/components/profesional/Sidebar';
 import Button from '@/components/ui/Button';
 import { cn } from '@/components/ui/cn';
@@ -27,7 +27,20 @@ export default function ProfessionalDashboardShell({
   maxWidthClassName = 'max-w-none',
 }: ProfessionalDashboardShellProps) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isSidebarHidden, setIsSidebarHidden] = useState(false);
   useProfessionalCoreAccessGate();
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    setIsSidebarHidden(window.localStorage.getItem('plura:professional-sidebar-hidden') === 'true');
+  }, []);
+
+  const updateSidebarHidden = (nextValue: boolean) => {
+    setIsSidebarHidden(nextValue);
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem('plura:professional-sidebar-hidden', String(nextValue));
+    }
+  };
 
   return (
     <div
@@ -37,11 +50,30 @@ export default function ProfessionalDashboardShell({
       )}
     >
       <div className={cn('flex min-h-screen', containedViewport && 'lg:h-screen lg:min-h-0')}>
-        <aside className="hidden w-[244px] shrink-0 bg-white lg:sticky lg:top-0 lg:block lg:h-screen">
-          <div className="h-full overflow-y-auto overscroll-contain">
-            <ProfesionalSidebar profile={profile} active={active} />
+        {!isSidebarHidden ? (
+          <aside className="hidden w-[244px] shrink-0 bg-white lg:sticky lg:top-0 lg:block lg:h-screen">
+            <div className="h-full overflow-y-auto overscroll-contain">
+              <ProfesionalSidebar
+                profile={profile}
+                active={active}
+                onRequestHide={() => updateSidebarHidden(true)}
+              />
+            </div>
+          </aside>
+        ) : null}
+
+        {isSidebarHidden ? (
+          <div className="hidden border-r border-[#E2E8F0] bg-white px-3 py-4 lg:block">
+            <Button
+              type="button"
+              size="sm"
+              variant="secondary"
+              onClick={() => updateSidebarHidden(false)}
+            >
+              Mostrar menú
+            </Button>
           </div>
-        </aside>
+        ) : null}
 
         <div
           className={cn(

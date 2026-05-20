@@ -83,9 +83,10 @@ const formatNotificationBadgeCount = (count: number) => {
 type SidebarProps = {
   profile?: ProfessionalProfile | null;
   active: string;
+  onRequestHide?: () => void;
 };
 
-function ProfesionalSidebar({ profile, active }: SidebarProps) {
+function ProfesionalSidebar({ profile, active, onRequestHide }: SidebarProps) {
   const router = useRouter();
   const { requestNavigation } = useProfessionalDashboardUnsavedChanges();
   const { clearProfile: clearProfessionalProfile } = useProfessionalProfileContext();
@@ -300,6 +301,24 @@ function ProfesionalSidebar({ profile, active }: SidebarProps) {
           </div>
         ))}
       </nav>
+
+      {onRequestHide ? (
+        <div className="border-t border-[#E2E8F0] px-3 py-4">
+          <button
+            type="button"
+            onClick={onRequestHide}
+            className="group relative flex w-full items-center gap-3 rounded-lg bg-transparent px-3 py-2 text-left text-[#64748B] transition hover:bg-[#ECFDF5]/50 hover:text-[#0F766E] focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--focus-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-white"
+          >
+            <span className="inline-flex h-4 w-4 shrink-0 items-center justify-center text-current">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="h-4 w-4">
+                <path d="m11 7-5 5 5 5" />
+                <path d="m18 7-5 5 5 5" />
+              </svg>
+            </span>
+            <span className="min-w-0 flex-1 truncate text-sm">Ocultar menú</span>
+          </button>
+        </div>
+      ) : null}
     </aside>
   );
 }

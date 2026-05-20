@@ -1,6 +1,7 @@
 package com.plura.plurabackend.core.billing.mercadopago;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
@@ -14,6 +15,8 @@ import com.plura.plurabackend.core.billing.subscriptions.model.SubscriptionPlanC
 import java.math.BigDecimal;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 
 class MercadoPagoSubscriptionServiceTest {
 
@@ -83,5 +86,40 @@ class MercadoPagoSubscriptionServiceTest {
         assertTrue(new BigDecimal(autoRecurring.transaction_amount().toString()).compareTo(new BigDecimal("990")) == 0);
         assertEquals(30, autoRecurring.free_trial().frequency());
         assertEquals("days", autoRecurring.free_trial().frequency_type());
+    }
+
+    @Test
+    void returnsHostedCheckoutWhenMercadoPagoRequiresCardTokenBeforePreapprovalId() {
+        BillingProperties properties = new BillingProperties();
+        properties.setEnabled(true);
+        properties.setWebhookBaseUrl("https://api.test");
+        properties.getMercadopago().setEnabled(true);
+        properties.getMercadopago().setSubscriptionBackUrl("https://app.test/billing");
+        properties.getMercadopago().setBaseUrl("https://api.mercadopago.com");
+        MercadoPagoClient client = mock(MercadoPagoClient.class);
+        when(client.createPreapprovalPlan(any()))
+            .thenReturn(new MercadoPagoClient.MercadoPagoPreapprovalPlan("plan-core", "https://checkout.plan/start"));
+        when(client.createPreapproval(any()))
+            .thenThrow(new ResponseStatusException(HttpStatus.BAD_GATEWAY, "card_token_id is required"));
+        MercadoPagoSubscriptionService service = new MercadoPagoSubscriptionService(properties, client);
+
+        MercadoPagoSubscriptionService.SubscriptionCheckoutSession session = service.createSubscription(
+            new MercadoPagoSubscriptionService.CreateSubscriptionCommand(
+                null,
+                "professional-registration:abc",
+                "professional-registration:abc",
+                "pro@test.com",
+                SubscriptionPlanCode.PLAN_CORE,
+                new BigDecimal("990"),
+                "UYU",
+                "https://app.test/return"
+            )
+        );
+
+        assertNull(session.providerSubscriptionId());
+        assertEquals("plan-core", session.preapprovalPlanId());
+        assertTrue(session.checkoutUrl().startsWith("https://checkout.plan/start?"));
+        assertTrue(session.checkoutUrl().contains("external_reference=professional-registration%3Aabc"));
+        assertTrue(session.checkoutUrl().contains("payer_email=pro%40test.com"));
     }
 }

@@ -1,16 +1,19 @@
 package com.plura.plurabackend.core.billing.mercadopago;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.plura.plurabackend.core.billing.BillingProperties;
-import com.fasterxml.jackson.annotation.JsonInclude;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.net.URI;
+import java.net.URLEncoder;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.util.Optional;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -95,6 +98,30 @@ public class MercadoPagoClient {
         return toPreapproval(response, false);
     }
 
+    public Optional<MercadoPagoPreapproval> findPreapprovalByReference(
+        String externalReference,
+        String payerEmail,
+        String preapprovalPlanId
+    ) {
+        String path = buildPreapprovalSearchPath(externalReference, payerEmail, preapprovalPlanId);
+        JsonNode response = sendRequest(
+            HttpMethod.GET,
+            path,
+            null,
+            "No se pudo buscar la suscripcion en Mercado Pago"
+        );
+        JsonNode results = response.path("results");
+        if (!results.isArray()) {
+            return Optional.empty();
+        }
+        for (JsonNode result : results) {
+            if (matchesPreapprovalSearchResult(result, externalReference, payerEmail, preapprovalPlanId)) {
+                return Optional.of(toPreapproval(result, false));
+            }
+        }
+        return Optional.empty();
+    }
+
     /**
      * Actualiza preapproval estado manteniendo reglas de negocio y consistencia de datos.
      * Tambien concentra los efectos secundarios para que el flujo quede en un estado consistente.
@@ -176,6 +203,50 @@ public class MercadoPagoClient {
         } catch (IOException exception) {
             throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "No se pudo serializar request a Mercado Pago");
         }
+    }
+
+    private String buildPreapprovalSearchPath(String externalReference, String payerEmail, String preapprovalPlanId) {
+        StringBuilder path = new StringBuilder(billingProperties.getMercadopago().getPreapprovalSearchPath());
+        boolean hasQuery = path.indexOf("?") >= 0;
+        if (externalReference != null && !externalReference.isBlank()) {
+            hasQuery = appendQueryParam(path, hasQuery, "q", externalReference);
+        }
+        if (payerEmail != null && !payerEmail.isBlank()) {
+            hasQuery = appendQueryParam(path, hasQuery, "payer_email", payerEmail);
+        }
+        if (preapprovalPlanId != null && !preapprovalPlanId.isBlank()) {
+            appendQueryParam(path, hasQuery, "preapproval_plan_id", preapprovalPlanId);
+        }
+        return path.toString();
+    }
+
+    private boolean appendQueryParam(StringBuilder path, boolean hasQuery, String name, String value) {
+        path.append(hasQuery ? '&' : '?')
+            .append(name)
+            .append('=')
+            .append(URLEncoder.encode(value.trim(), StandardCharsets.UTF_8));
+        return true;
+    }
+
+    private boolean matchesPreapprovalSearchResult(
+        JsonNode result,
+        String externalReference,
+        String payerEmail,
+        String preapprovalPlanId
+    ) {
+        boolean referenceMatches = externalReference == null
+            || externalReference.isBlank()
+            || externalReference.equals(textValue(result, "external_reference"));
+        boolean emailMatches = payerEmail == null
+            || payerEmail.isBlank()
+            || payerEmail.equalsIgnoreCase(firstNonBlank(
+                textValue(result, "payer_email"),
+                textValue(result.at("/payer"), "email")
+            ));
+        boolean planMatches = preapprovalPlanId == null
+            || preapprovalPlanId.isBlank()
+            || preapprovalPlanId.equals(textValue(result, "preapproval_plan_id"));
+        return referenceMatches && emailMatches && planMatches && textValue(result, "id") != null;
     }
 
     /**

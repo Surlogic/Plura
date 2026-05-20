@@ -197,6 +197,7 @@ public class BillingProperties {
         private String baseUrl = "https://api.mercadopago.com";
         private String preapprovalPlanPath = "/preapproval_plan";
         private String preapprovalPath = "/preapproval";
+        private String preapprovalSearchPath = "/preapproval/search";
         private String cancelPath = "/preapproval/{id}";
         private String subscriptionStatusPath = "/preapproval/{id}";
         private String reservationPreferencePath = "/checkout/preferences";
@@ -262,6 +263,14 @@ public class BillingProperties {
 
         public void setPreapprovalPath(String preapprovalPath) {
             this.preapprovalPath = preapprovalPath;
+        }
+
+        public String getPreapprovalSearchPath() {
+            return preapprovalSearchPath;
+        }
+
+        public void setPreapprovalSearchPath(String preapprovalSearchPath) {
+            this.preapprovalSearchPath = preapprovalSearchPath;
         }
 
         public String getCancelPath() {

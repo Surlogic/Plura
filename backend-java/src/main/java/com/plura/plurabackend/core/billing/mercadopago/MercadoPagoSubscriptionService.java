@@ -3,7 +3,10 @@ package com.plura.plurabackend.core.billing.mercadopago;
 import com.plura.plurabackend.core.billing.BillingProperties;
 import com.plura.plurabackend.core.billing.subscriptions.model.SubscriptionPlanCode;
 import java.math.BigDecimal;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -83,21 +86,24 @@ public class MercadoPagoSubscriptionService {
                 command.logSubjectId()
             );
 
-            return new SubscriptionCheckoutSession(null, hostedPlan.checkoutUrl(), hostedPlan.planId());
+            String checkoutUrl = appendQueryParameter(hostedPlan.checkoutUrl(), "external_reference", command.externalReference());
+            checkoutUrl = appendQueryParameter(checkoutUrl, "payer_email", command.payerEmail());
+            return new SubscriptionCheckoutSession(null, checkoutUrl, hostedPlan.planId());
         }
     }
 
     public SubscriptionSnapshot getSubscription(String providerSubscriptionId) {
         MercadoPagoClient.MercadoPagoPreapproval preapproval = mercadoPagoClient.getPreapproval(providerSubscriptionId);
-        return new SubscriptionSnapshot(
-            preapproval.id(),
-            preapproval.status(),
-            preapproval.amount(),
-            preapproval.currency(),
-            preapproval.professionalId(),
-            preapproval.payerEmail(),
-            preapproval.reason()
-        );
+        return toSnapshot(preapproval);
+    }
+
+    public Optional<SubscriptionSnapshot> findSubscriptionByRegistrationReference(
+        String registrationReference,
+        String payerEmail,
+        String preapprovalPlanId
+    ) {
+        return mercadoPagoClient.findPreapprovalByReference(registrationReference, payerEmail, preapprovalPlanId)
+            .map(this::toSnapshot);
     }
 
     /**
@@ -106,6 +112,10 @@ public class MercadoPagoSubscriptionService {
     public SubscriptionSnapshot cancelSubscription(String providerSubscriptionId) {
         MercadoPagoClient.MercadoPagoPreapproval preapproval =
             mercadoPagoClient.updatePreapprovalStatus(providerSubscriptionId, "cancelled");
+        return toSnapshot(preapproval);
+    }
+
+    private SubscriptionSnapshot toSnapshot(MercadoPagoClient.MercadoPagoPreapproval preapproval) {
         return new SubscriptionSnapshot(
             preapproval.id(),
             preapproval.status(),
@@ -236,6 +246,14 @@ public class MercadoPagoSubscriptionService {
             return "https://www.mercadopago.com/subscriptions/checkout?preapproval_plan_id=" + planId;
         }
         return null;
+    }
+
+    private String appendQueryParameter(String url, String name, String value) {
+        if (url == null || url.isBlank() || value == null || value.isBlank()) {
+            return url;
+        }
+        char separator = url.contains("?") ? '&' : '?';
+        return url + separator + name + "=" + URLEncoder.encode(value.trim(), StandardCharsets.UTF_8);
     }
 
     /**

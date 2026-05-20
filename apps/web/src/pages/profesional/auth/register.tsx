@@ -372,11 +372,12 @@ export default function ProfesionalRegisterPage() {
           return;
         }
 
+        const confirmedCheckoutToken = verification.checkoutToken || pending.checkoutToken;
         await createProfessionalAfterConfirmed(
           pending.payload,
           pending.handoff,
           pending.hasAuthenticatedBaseAccount,
-          pending.checkoutToken,
+          confirmedCheckoutToken,
         );
       } catch (error) {
         setErrorMessage(extractApiMessage(error, 'No pudimos confirmar Mercado Pago. No se creó el perfil profesional.'));

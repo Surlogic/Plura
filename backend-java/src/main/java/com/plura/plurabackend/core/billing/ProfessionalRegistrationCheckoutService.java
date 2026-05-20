@@ -90,14 +90,21 @@ public class ProfessionalRegistrationCheckoutService {
                 )
             );
 
-        if (session.providerSubscriptionId() == null || session.providerSubscriptionId().isBlank()) {
+        if ((session.checkoutUrl() == null || session.checkoutUrl().isBlank())
+            && (session.providerSubscriptionId() == null || session.providerSubscriptionId().isBlank())) {
             throw new ResponseStatusException(
                 HttpStatus.BAD_GATEWAY,
-                "Mercado Pago no devolvió una suscripción verificable. Reintentá la activación."
+                "Mercado Pago no devolvió checkout para autorizar la suscripción. Reintentá la activación."
             );
         }
 
-        String checkoutToken = buildCheckoutToken(email, session.providerSubscriptionId(), plan);
+        String checkoutToken = buildCheckoutToken(
+            email,
+            session.providerSubscriptionId(),
+            registrationReference,
+            session.preapprovalPlanId(),
+            plan
+        );
 
         return new ProfessionalRegistrationCheckoutResponse(
             session.checkoutUrl(),
@@ -114,14 +121,22 @@ public class ProfessionalRegistrationCheckoutService {
 
     public ProfessionalRegistrationCheckoutResponse verifyCheckout(String checkoutToken) {
         CheckoutToken token = verifyCheckoutToken(checkoutToken);
-        MercadoPagoSubscriptionService.SubscriptionSnapshot snapshot =
-            mercadoPagoSubscriptionService.getSubscription(token.providerSubscriptionId());
-        String status = normalizeStatus(snapshot.status());
-        boolean confirmed = "authorized".equals(status) || "active".equals(status);
+        MercadoPagoSubscriptionService.SubscriptionSnapshot snapshot = resolveCheckoutSnapshot(token);
+        String status = snapshot == null ? "" : normalizeStatus(snapshot.status());
+        boolean confirmed = isConfirmedSubscriptionStatus(status) && hasText(snapshot.providerSubscriptionId());
+        String responseToken = confirmed && !hasText(token.providerSubscriptionId())
+            ? buildCheckoutToken(
+                token.email(),
+                snapshot.providerSubscriptionId(),
+                token.registrationReference(),
+                token.preapprovalPlanId(),
+                token.plan()
+            )
+            : checkoutToken;
 
         return new ProfessionalRegistrationCheckoutResponse(
             null,
-            checkoutToken,
+            responseToken,
             "MERCADOPAGO",
             token.plan().canonicalCode(),
             confirmed ? "ACTIVE" : "CHECKOUT_PENDING",
@@ -138,12 +153,7 @@ public class ProfessionalRegistrationCheckoutService {
         if (!expectedEmail.equals(token.email())) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "El checkout confirmado no pertenece a este email");
         }
-        MercadoPagoSubscriptionService.SubscriptionSnapshot snapshot =
-            mercadoPagoSubscriptionService.getSubscription(token.providerSubscriptionId());
-        String status = normalizeStatus(snapshot.status());
-        if (!"authorized".equals(status) && !"active".equals(status)) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Mercado Pago todavía no confirmó la suscripción");
-        }
+        requireConfirmedSnapshot(token);
     }
 
     public void requireConfirmedCheckoutForAuthenticatedEmail(String checkoutToken, String rawEmail) {
@@ -168,12 +178,8 @@ public class ProfessionalRegistrationCheckoutService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Perfil profesional inválido");
         }
         CheckoutToken token = verifyCheckoutToken(checkoutToken);
-        MercadoPagoSubscriptionService.SubscriptionSnapshot snapshot =
-            mercadoPagoSubscriptionService.getSubscription(token.providerSubscriptionId());
-        String status = normalizeStatus(snapshot.status());
-        if (!"authorized".equals(status) && !"active".equals(status)) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Mercado Pago todavía no confirmó la suscripción");
-        }
+        MercadoPagoSubscriptionService.SubscriptionSnapshot snapshot = requireConfirmedSnapshot(token);
+        String providerSubscriptionId = snapshot.providerSubscriptionId();
 
         String professionalEmail = professional.getUser() == null ? null : normalizeEmail(professional.getUser().getEmail());
         if (professionalEmail == null || !professionalEmail.equals(token.email())) {
@@ -182,7 +188,7 @@ public class ProfessionalRegistrationCheckoutService {
         BillingProperties.PlanConfig planConfig = billingProperties.resolvePlan(token.plan());
         LocalDateTime now = LocalDateTime.now();
         Subscription subscription = subscriptionRepository
-            .findByProviderAndProviderSubscriptionIdForUpdate(PaymentProvider.MERCADOPAGO, token.providerSubscriptionId())
+            .findByProviderAndProviderSubscriptionIdForUpdate(PaymentProvider.MERCADOPAGO, providerSubscriptionId)
             .orElse(null);
         if (subscription != null && !professional.getId().equals(subscription.getProfessionalId())) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "La suscripción ya está asociada a otro profesional");
@@ -200,7 +206,7 @@ public class ProfessionalRegistrationCheckoutService {
         subscription.setCurrency(planConfig.getCurrency());
         subscription.setExpectedAmount(planConfig.getPrice());
         subscription.setExpectedCurrency(planConfig.getCurrency());
-        subscription.setProviderSubscriptionId(token.providerSubscriptionId());
+        subscription.setProviderSubscriptionId(providerSubscriptionId);
         subscription.setPaymentMethodAttachedAt(now);
         subscription.setCurrentPeriodStart(now);
         subscription.setCurrentPeriodEnd(now.plusMonths(1));
@@ -209,7 +215,15 @@ public class ProfessionalRegistrationCheckoutService {
 
         return new ProfessionalRegistrationCheckoutResponse(
             null,
-            checkoutToken,
+            hasText(token.providerSubscriptionId())
+                ? checkoutToken
+                : buildCheckoutToken(
+                    token.email(),
+                    providerSubscriptionId,
+                    token.registrationReference(),
+                    token.preapprovalPlanId(),
+                    token.plan()
+                ),
             "MERCADOPAGO",
             token.plan().canonicalCode(),
             "ACTIVE",
@@ -237,6 +251,8 @@ public class ProfessionalRegistrationCheckoutService {
     private String buildCheckoutToken(
         String email,
         String providerSubscriptionId,
+        String registrationReference,
+        String preapprovalPlanId,
         SubscriptionPlanCode plan
     ) {
         JWTCreator.Builder tokenBuilder = JWT.create()
@@ -245,10 +261,18 @@ public class ProfessionalRegistrationCheckoutService {
             .withClaim("typ", TOKEN_TYPE)
             .withClaim("email", email)
             .withClaim("provider", "MERCADOPAGO")
-            .withClaim("providerSubscriptionId", providerSubscriptionId)
             .withClaim("planCode", plan.canonicalCode())
             .withIssuedAt(new Date())
             .withExpiresAt(Date.from(Instant.now().plus(2, ChronoUnit.HOURS)));
+        if (hasText(providerSubscriptionId)) {
+            tokenBuilder.withClaim("providerSubscriptionId", providerSubscriptionId.trim());
+        }
+        if (hasText(registrationReference)) {
+            tokenBuilder.withClaim("registrationReference", registrationReference.trim());
+        }
+        if (hasText(preapprovalPlanId)) {
+            tokenBuilder.withClaim("preapprovalPlanId", preapprovalPlanId.trim());
+        }
         return tokenBuilder.sign(tokenAlgorithm);
     }
 
@@ -263,15 +287,56 @@ public class ProfessionalRegistrationCheckoutService {
                 .build();
             DecodedJWT decoded = verifier.verify(rawToken);
             String providerSubscriptionId = decoded.getClaim("providerSubscriptionId").asString();
+            String registrationReference = decoded.getClaim("registrationReference").asString();
+            String preapprovalPlanId = decoded.getClaim("preapprovalPlanId").asString();
             String email = normalizeEmail(decoded.getClaim("email").asString());
             SubscriptionPlanCode plan = SubscriptionPlanCode.fromCode(decoded.getClaim("planCode").asString());
-            if (providerSubscriptionId == null || providerSubscriptionId.isBlank()) {
+            if (!hasText(providerSubscriptionId) && !hasText(registrationReference)) {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "checkoutToken inválido");
             }
-            return new CheckoutToken(providerSubscriptionId, email, plan);
+            return new CheckoutToken(
+                hasText(providerSubscriptionId) ? providerSubscriptionId.trim() : null,
+                hasText(registrationReference) ? registrationReference.trim() : null,
+                hasText(preapprovalPlanId) ? preapprovalPlanId.trim() : null,
+                email,
+                plan
+            );
         } catch (JWTVerificationException | IllegalArgumentException exception) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "checkoutToken inválido");
         }
+    }
+
+    private MercadoPagoSubscriptionService.SubscriptionSnapshot requireConfirmedSnapshot(CheckoutToken token) {
+        MercadoPagoSubscriptionService.SubscriptionSnapshot snapshot = resolveCheckoutSnapshot(token);
+        if (snapshot == null
+            || !hasText(snapshot.providerSubscriptionId())
+            || !isConfirmedSubscriptionStatus(normalizeStatus(snapshot.status()))) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Mercado Pago todavía no confirmó la suscripción");
+        }
+        return snapshot;
+    }
+
+    private MercadoPagoSubscriptionService.SubscriptionSnapshot resolveCheckoutSnapshot(CheckoutToken token) {
+        if (hasText(token.providerSubscriptionId())) {
+            return mercadoPagoSubscriptionService.getSubscription(token.providerSubscriptionId());
+        }
+        if (!hasText(token.registrationReference())) {
+            return null;
+        }
+        return mercadoPagoSubscriptionService
+            .findSubscriptionByRegistrationReference(
+                token.registrationReference(),
+                token.email(),
+                token.preapprovalPlanId()
+            )
+            .orElse(null);
+    }
+
+    private boolean isConfirmedSubscriptionStatus(String status) {
+        return "authorized".equals(status)
+            || "active".equals(status)
+            || "trial".equals(status)
+            || "trialing".equals(status);
     }
 
     private void ensureBillingEnabled() {
@@ -315,5 +380,15 @@ public class ProfessionalRegistrationCheckoutService {
         return rawStatus == null ? "" : rawStatus.trim().toLowerCase(Locale.ROOT);
     }
 
-    private record CheckoutToken(String providerSubscriptionId, String email, SubscriptionPlanCode plan) {}
+    private boolean hasText(String value) {
+        return value != null && !value.isBlank();
+    }
+
+    private record CheckoutToken(
+        String providerSubscriptionId,
+        String registrationReference,
+        String preapprovalPlanId,
+        String email,
+        SubscriptionPlanCode plan
+    ) {}
 }

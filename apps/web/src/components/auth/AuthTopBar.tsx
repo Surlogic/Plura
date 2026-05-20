@@ -1,9 +1,12 @@
 import Button from '@/components/ui/Button';
 import BrandLogo from '@/components/ui/BrandLogo';
 import ThemeSwitcher from '@/components/theme/ThemeSwitcher';
+import { cn } from '@/components/ui/cn';
 
 type AuthTopBarProps = {
   tone: 'professional' | 'client';
+  maxWidthClassName?: string;
+  containerClassName?: string;
 };
 
 const toneStyles = {
@@ -19,12 +22,16 @@ const toneStyles = {
   },
 } as const;
 
-export default function AuthTopBar({ tone }: AuthTopBarProps) {
+export default function AuthTopBar({
+  tone,
+  maxWidthClassName = 'max-w-6xl',
+  containerClassName,
+}: AuthTopBarProps) {
   const styles = toneStyles[tone];
 
   return (
     <header className={`sticky top-0 z-40 border-b backdrop-blur ${styles.header}`}>
-      <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-4 py-4 sm:px-6">
+      <div className={cn('mx-auto flex w-full items-center justify-between px-4 py-4 sm:px-6', maxWidthClassName, containerClassName)}>
         <BrandLogo href="/" variant="auth" priority />
         <div className="flex items-center gap-3">
           <ThemeSwitcher variant="compact" showLabel={false} />

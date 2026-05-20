@@ -11,7 +11,6 @@ import GoogleLoginButton from '@/components/auth/GoogleLoginButton';
 import MapView from '@/components/map/MapView';
 import Badge from '@/components/ui/Badge';
 import Button from '@/components/ui/Button';
-import Card from '@/components/ui/Card';
 import InternationalPhoneField from '@/components/ui/InternationalPhoneField';
 import api from '@/services/api';
 import {
@@ -1807,7 +1806,7 @@ export default function ProfesionalRegisterPage() {
   );
 
   const renderCategoriesStep = () => (
-    <div className="mx-auto max-w-6xl space-y-5 text-center">
+    <div className="mx-auto w-full max-w-[88rem] space-y-5 text-center">
       <div className="space-y-2">
         <Badge variant="success">Registro</Badge>
         <h1 className={wizardTitleClassName}>Elegí tus rubros principales</h1>
@@ -1837,11 +1836,11 @@ export default function ProfesionalRegisterPage() {
         </div>
         {renderError('categorySlugs')}
       </div>
-      <div className="border-t border-[color:var(--border-soft)] pt-6">
+      <div className="border-t border-[color:var(--border-soft)] pb-2 pt-6">
         {categoriesLoading ? (
           <p className="text-sm text-[color:var(--ink-muted)]">Cargando rubros...</p>
         ) : null}
-        <div className="grid gap-3 pr-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
           {filteredCategories.map((category) => {
             const selected = form.categorySlugs.includes(category.slug);
             return (
@@ -1849,7 +1848,7 @@ export default function ProfesionalRegisterPage() {
                 key={category.id}
                 type="button"
                 onClick={() => toggleCategory(category.slug)}
-                className={`rounded-[18px] border px-4 py-3 text-sm font-semibold transition hover:-translate-y-0.5 ${
+                className={`min-h-12 rounded-[18px] border px-4 py-3 text-sm font-semibold transition hover:-translate-y-0.5 ${
                   selected
                     ? 'border-[color:var(--primary)] bg-[color:var(--primary-soft)] text-[color:var(--primary)] shadow-[var(--shadow-card)]'
                     : 'border-[color:var(--border-soft)] bg-[color:var(--surface-strong)] text-[color:var(--ink)] hover:bg-[color:var(--surface-soft)]'
@@ -2055,7 +2054,7 @@ export default function ProfesionalRegisterPage() {
   };
 
   const renderScheduleStep = () => (
-    <div className="mx-auto flex min-h-full w-full max-w-7xl flex-col gap-4 text-center">
+    <div className="mx-auto flex min-h-full w-full max-w-[88rem] flex-col gap-5 text-center">
       <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end lg:text-left">
         <div className="space-y-1.5">
           <Badge variant="success">Registro</Badge>
@@ -2067,7 +2066,7 @@ export default function ProfesionalRegisterPage() {
           <Button type="button" variant="secondary" size="sm" onClick={addSchedulePause}>Agregar descanso</Button>
         </div>
       </div>
-      <div className="grid gap-4 xl:grid-cols-[minmax(0,1.35fr)_minmax(320px,0.65fr)]">
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,1.45fr)_minmax(360px,0.75fr)]">
         <div className="overflow-x-auto rounded-[22px] border border-[color:var(--border-soft)] bg-[color:var(--surface-strong)] text-left shadow-[var(--shadow-card)]">
           <div className="min-w-[680px]">
             <div className="grid grid-cols-[1.2fr_0.65fr_1fr_1fr] gap-4 border-b border-[color:var(--border-soft)] px-5 py-3 text-xs font-semibold uppercase tracking-[0.08em] text-[color:var(--ink-muted)]">
@@ -2179,7 +2178,7 @@ export default function ProfesionalRegisterPage() {
   );
 
   const renderPreviewStep = () => (
-    <div className="mx-auto max-w-6xl space-y-5">
+    <div className="mx-auto w-full max-w-[88rem] space-y-5">
       <div className="space-y-2">
         <Badge variant="success">30 días gratis</Badge>
         <h1 className={wizardTitleClassName}>Activá Plura Core</h1>
@@ -2188,7 +2187,7 @@ export default function ProfesionalRegisterPage() {
           Luego continúa la suscripción mensual.
         </p>
       </div>
-      <div className="grid gap-5 lg:grid-cols-[1.1fr_0.9fr]">
+      <div className="grid gap-5 xl:grid-cols-[minmax(0,1.15fr)_minmax(380px,0.85fr)]">
         <div className="space-y-4 rounded-[28px] border border-[color:var(--border-soft)] bg-[color:var(--surface-strong)] p-6 shadow-[var(--shadow-card)]">
           <p className="text-sm font-semibold uppercase tracking-[0.16em] text-[color:var(--primary)]">Plura Core</p>
           <h2 className="text-2xl font-semibold text-[color:var(--ink)]">Incluye la operación base del MVP</h2>
@@ -2237,16 +2236,18 @@ export default function ProfesionalRegisterPage() {
   };
 
   return (
-    <div className="app-shell flex h-dvh flex-col overflow-hidden bg-[color:var(--background)] text-[color:var(--ink)]">
-      <AuthTopBar tone="professional" />
-      <main className="mx-auto flex min-h-0 w-full max-w-[96rem] flex-1 items-start justify-center overflow-hidden px-3 py-3 sm:px-6 sm:py-4 lg:py-5">
-        <form className="h-full w-full" onSubmit={(event) => event.preventDefault()}>
-          <Card tone="default" padding="none" className="mx-auto flex h-full w-full max-w-[90rem] flex-col overflow-hidden rounded-[28px] border-[color:var(--border-soft)] bg-[color:var(--surface)] shadow-[var(--shadow-glass)] sm:rounded-[32px]">
-            <div className="shrink-0 border-b border-[color:var(--border-soft)] px-4 py-3 sm:px-6 lg:px-8">
-              {stepHeader}
-            </div>
+    <div className="app-shell flex h-dvh min-h-dvh flex-col overflow-hidden bg-[color:var(--background)] text-[color:var(--ink)]">
+      <AuthTopBar tone="professional" maxWidthClassName="max-w-[96rem]" />
+      <form className="flex min-h-0 flex-1 flex-col" onSubmit={(event) => event.preventDefault()}>
+        <div className="shrink-0 border-b border-[color:var(--border-soft)] bg-[color:var(--background)]/92 px-4 py-3 backdrop-blur sm:px-6 lg:px-8">
+          <div className="mx-auto w-full max-w-[96rem]">
+            {stepHeader}
+          </div>
+        </div>
 
-            <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-4 py-4 sm:px-6 lg:px-8">
+        <main className="min-h-0 flex-1 overflow-y-auto">
+          <div className="mx-auto w-full max-w-[96rem] px-4 py-5 pb-28 sm:px-6 sm:py-6 sm:pb-32 lg:px-8 lg:py-8">
+            <div className="space-y-5">
               {renderCurrentStep()}
 
               {successMessage ? (
@@ -2306,54 +2307,54 @@ export default function ProfesionalRegisterPage() {
                 </div>
               ) : null}
             </div>
+          </div>
+        </main>
 
-            <div className="shrink-0 border-t border-[color:var(--border-soft)] bg-[color:var(--surface)]/95 px-4 py-3 backdrop-blur sm:px-6 lg:px-8">
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-center">
-                {step > 0 ? (
-                  <Button type="button" variant="secondary" size="lg" className="w-full sm:w-auto sm:min-w-44" onClick={goBack}>
-                    Volver
-                  </Button>
-                ) : null}
-                {step < wizardSteps.length - 1 ? (
-                  <Button
-                    type="button"
-                    variant={step === 0 ? 'brand' : 'primary'}
-                    size="lg"
-                    className="w-full sm:w-auto sm:min-w-56"
-                    onClick={() => void goNext()}
-                    disabled={isCheckingAvailability}
-                    loading={isCheckingAvailability}
-                    loadingLabel="Validando..."
-                  >
-                    Continuar
-                  </Button>
-                ) : (
-                  <Button
-                    type="button"
-                    variant="primary"
-                    size="lg"
-                    className="w-full sm:w-auto sm:min-w-56"
-                    disabled={isRedirectingToCheckout}
-                    loading={isSubmitting || isRedirectingToCheckout}
-                    loadingLabel={
-                      isRedirectingToCheckout
-                        ? 'Redirigiendo a Mercado Pago...'
-                        : checkoutConfirmationMessage
-                          ? checkoutConfirmationMessage
-                        : isOAuthSetup
-                          ? 'Activando Plura Core...'
-                          : 'Creando perfil...'
-                    }
-                    onClick={() => void handleSubmit()}
-                  >
-                    Activar prueba gratuita
-                  </Button>
-                )}
-              </div>
-            </div>
-          </Card>
-        </form>
-      </main>
+        <div className="shrink-0 border-t border-[color:var(--border-soft)] bg-[color:var(--background)]/94 px-4 py-3 backdrop-blur sm:px-6 lg:px-8">
+          <div className="mx-auto flex w-full max-w-[96rem] flex-col gap-3 sm:flex-row sm:items-center sm:justify-center">
+            {step > 0 ? (
+              <Button type="button" variant="secondary" size="lg" className="w-full sm:w-auto sm:min-w-44" onClick={goBack}>
+                Volver
+              </Button>
+            ) : null}
+            {step < wizardSteps.length - 1 ? (
+              <Button
+                type="button"
+                variant={step === 0 ? 'brand' : 'primary'}
+                size="lg"
+                className="w-full sm:w-auto sm:min-w-56"
+                onClick={() => void goNext()}
+                disabled={isCheckingAvailability}
+                loading={isCheckingAvailability}
+                loadingLabel="Validando..."
+              >
+                Continuar
+              </Button>
+            ) : (
+              <Button
+                type="button"
+                variant="primary"
+                size="lg"
+                className="w-full sm:w-auto sm:min-w-56"
+                disabled={isRedirectingToCheckout}
+                loading={isSubmitting || isRedirectingToCheckout}
+                loadingLabel={
+                  isRedirectingToCheckout
+                    ? 'Redirigiendo a Mercado Pago...'
+                    : checkoutConfirmationMessage
+                      ? checkoutConfirmationMessage
+                    : isOAuthSetup
+                      ? 'Activando Plura Core...'
+                      : 'Creando perfil...'
+                }
+                onClick={() => void handleSubmit()}
+              >
+                Activar prueba gratuita
+              </Button>
+            )}
+          </div>
+        </div>
+      </form>
     </div>
   );
 }

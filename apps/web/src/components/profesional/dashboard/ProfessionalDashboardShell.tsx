@@ -58,8 +58,8 @@ export default function ProfessionalDashboardShell({
       <div className={cn('flex min-h-screen', containedViewport && 'lg:h-screen lg:min-h-0')}>
         <aside
           className={cn(
-            'hidden shrink-0 bg-white transition-[width] duration-200 lg:sticky lg:top-0 lg:block lg:h-screen',
-            isSidebarCollapsed ? 'w-[76px]' : 'w-[244px]',
+            'hidden shrink-0 bg-[#F8FAFC] p-3 transition-[width] duration-200 lg:sticky lg:top-0 lg:block lg:h-screen',
+            isSidebarCollapsed ? 'w-[112px]' : 'w-[352px]',
           )}
         >
           <div className="h-full overflow-y-auto overscroll-contain">

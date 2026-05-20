@@ -55,7 +55,7 @@ const menuSections: MenuSection[] = [
       {
         label: 'Presencia pública',
         href: '/profesional/dashboard/presencia-publica',
-        icon: 'publica',
+        icon: 'negocio',
         featureKey: 'enhancedPublicProfile',
       },
       {
@@ -68,7 +68,7 @@ const menuSections: MenuSection[] = [
   {
     label: 'Cuenta',
     items: [
-      { label: 'Facturación', href: '/profesional/dashboard/billing', icon: 'plan' },
+      { label: 'Facturación', href: '/profesional/dashboard/billing', icon: 'facturacion' },
       { label: 'Configuración', href: '/profesional/dashboard/configuracion', icon: 'configuracion' },
     ],
   },
@@ -170,15 +170,15 @@ function ProfesionalSidebar({
   return (
     <aside
       ref={rootRef}
-      className="relative flex min-h-full flex-col overflow-x-hidden border-r border-[#E2E8F0] bg-white text-[#0F172A] [scrollbar-color:#CBD5E1_transparent] [scrollbar-gutter:stable] [scrollbar-width:thin]"
+      className="relative flex min-h-full flex-col overflow-x-hidden rounded-2xl border border-[#E2E8F0] bg-white text-[#0F172A] shadow-[0_18px_55px_rgba(15,23,42,0.06)] [scrollbar-color:#CBD5E1_transparent] [scrollbar-gutter:stable] [scrollbar-width:thin]"
     >
-      <div className={cn('border-b border-[#E2E8F0] py-4', collapsed ? 'px-0' : 'px-4')}>
-        <div className={cn(collapsed ? 'flex justify-center' : 'rounded-xl border border-[#E2E8F0] bg-white p-3')}>
-          <div className={cn('flex items-center gap-3', collapsed ? 'justify-center' : 'mb-2')}>
+      <div className={cn('border-b border-[#E2E8F0]', collapsed ? 'px-0 py-7' : 'px-7 py-7')}>
+        <div className={cn(collapsed ? 'flex justify-center' : 'flex items-start gap-5')}>
+          <div className={cn('flex items-center', collapsed ? 'justify-center' : 'flex-col gap-4')}>
             <div
               className={cn(
-                'relative flex shrink-0 items-center justify-center overflow-hidden bg-[#ECFDF5] text-xs font-semibold text-[#0F766E]',
-                collapsed ? 'h-11 w-11 rounded-xl shadow-[inset_0_0_0_1px_#D1FAE5]' : 'h-10 w-10 rounded-lg',
+                'relative flex shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-[#DFFBF2] font-semibold text-[#087A62]',
+                collapsed ? 'h-14 w-14 text-xl' : 'h-16 w-16 text-2xl',
               )}
             >
             {resolvedLogoUrl ? (
@@ -186,7 +186,7 @@ function ProfesionalSidebar({
                 src={resolvedLogoUrl}
                 alt={`Logo de ${displayName}`}
                 fill
-                sizes={collapsed ? '44px' : '40px'}
+                sizes={collapsed ? '56px' : '64px'}
                 className="object-cover"
                 style={buildProfessionalMediaStyle(profile?.logoMedia)}
               />
@@ -194,27 +194,26 @@ function ProfesionalSidebar({
               initials
             )}
             </div>
-            <div className={cn('min-w-0 flex-1 transition-[max-width,opacity] duration-200', collapsed && 'max-w-0 overflow-hidden opacity-0')}>
-              <p className="truncate text-sm font-medium text-[#0F172A]">{displayName}</p>
-              <p className="truncate text-xs text-[#64748B]">{displayMeta}</p>
-            </div>
+            <span className={cn('inline-flex rounded-lg bg-[#DFFBF2] px-4 py-1.5 text-base font-semibold leading-none text-[#087A62]', collapsed && 'sr-only')}>
+              {planLabel}
+            </span>
           </div>
-          <span className={cn('inline-flex rounded-md bg-[#ECFDF5] px-2 py-0.5 text-xs font-medium text-[#0F766E]', collapsed && 'sr-only')}>
-            {planLabel}
-          </span>
+          <div className={cn('min-w-0 flex-1 pt-1 transition-[max-width,opacity] duration-200', collapsed && 'max-w-0 overflow-hidden opacity-0')}>
+            <p className="whitespace-normal text-2xl font-semibold leading-tight text-[#111827]">{displayName}</p>
+          </div>
         </div>
       </div>
 
-      <nav className={cn('flex-1 overflow-y-auto', collapsed ? 'px-3 py-3' : 'px-3 py-4')}>
+      <nav className={cn('flex-1 overflow-y-auto', collapsed ? 'px-5 py-8' : 'px-5 py-8')}>
         {menuSections.map((section, sectionIndex) => (
-          <div key={section.label} className={cn(collapsed ? 'mb-3' : 'mb-6')}>
+          <div key={section.label} className={cn(collapsed ? 'mb-8' : 'mb-8')}>
             {collapsed && sectionIndex > 0 ? (
-              <div className="mx-auto mb-3 h-px w-8 bg-[#E2E8F0]" />
+              <div className="mx-auto mb-8 h-px w-16 bg-[#E2E8F0]" />
             ) : null}
-            <p className={cn('mb-2 px-3 text-xs uppercase tracking-wider text-[#64748B]', collapsed && 'sr-only')}>
+            <p className={cn('mb-5 px-3 text-base font-semibold uppercase tracking-normal text-[#64748B]', collapsed && 'sr-only')}>
               {section.label}
             </p>
-            <div className={cn(collapsed ? 'space-y-2' : 'space-y-1')}>
+            <div className={cn(collapsed ? 'space-y-6' : 'space-y-3')}>
               {section.items.map((item) => {
                 const isActive = item.label === active;
                 const showsFeatureHint = item.featureKey
@@ -223,9 +222,12 @@ function ProfesionalSidebar({
                 const isDisabled = Boolean(item.disabled);
                 const itemClassName = cn(
                   'group relative flex items-center text-left transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--focus-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-white',
-                  collapsed ? 'mx-auto h-11 w-11 justify-center rounded-xl p-0' : 'w-full gap-3 rounded-lg px-3 py-2',
+                  collapsed ? 'mx-auto h-14 w-14 justify-center rounded-2xl p-0' : 'w-full gap-5 rounded-xl px-5 py-4',
                   isActive && !isDisabled
-                    ? cn('bg-[#ECFDF5] text-[#0F766E]', collapsed && 'shadow-[inset_3px_0_0_#0F766E]')
+                    ? cn(
+                        'bg-[#ECFDF5] text-[#087A62]',
+                        collapsed ? 'shadow-none' : 'shadow-[inset_5px_0_0_#07966F]',
+                      )
                     : isDisabled
                       ? 'cursor-not-allowed bg-transparent text-[color:var(--ink-faint)]'
                       : 'bg-transparent text-[#0F172A] hover:bg-[#ECFDF5]/50',
@@ -239,19 +241,19 @@ function ProfesionalSidebar({
                     <span
                       className={cn(
                         'inline-flex shrink-0 items-center justify-center',
-                        collapsed ? 'h-5 w-5' : 'h-4 w-4',
+                        collapsed ? 'h-7 w-7' : 'h-7 w-7',
                         isActive && !isDisabled
-                          ? 'text-[#0F766E]'
+                          ? 'text-[#087A62]'
                           : isDisabled
                             ? 'bg-transparent text-[color:var(--ink-faint)]'
                             : 'bg-transparent text-[#0F172A]',
                       )}
                     >
-                      <DashboardIcon name={item.icon} className={collapsed ? 'h-[18px] w-[18px]' : 'h-4 w-4'} />
+                      <DashboardIcon name={item.icon} className="h-7 w-7" />
                     </span>
                     <span
                       className={cn(
-                        'min-w-0 flex-1 truncate text-sm transition-[max-width,opacity] duration-200',
+                        'min-w-0 flex-1 truncate text-xl transition-[max-width,opacity] duration-200',
                         isDisabled && 'opacity-60',
                         collapsed && 'max-w-0 opacity-0',
                       )}
@@ -312,28 +314,28 @@ function ProfesionalSidebar({
         ))}
       </nav>
 
-      <div className={cn('mt-auto py-4', collapsed ? 'px-3' : 'border-t border-[#E2E8F0] px-3')}>
-        {collapsed ? <div className="mx-auto mb-3 h-px w-8 bg-[#E2E8F0]" /> : null}
-        <div className={cn(collapsed ? 'space-y-2' : 'space-y-1')}>
+      <div className={cn('mt-auto py-7', collapsed ? 'px-5' : 'px-5')}>
+        <div className={cn('mx-auto mb-6 h-px bg-[#E2E8F0]', collapsed ? 'w-16' : 'w-full')} />
+        <div className={cn(collapsed ? 'space-y-6' : 'space-y-3')}>
           {onToggleCollapsed ? (
             <button
               type="button"
               onClick={onToggleCollapsed}
               className={cn(
                 'group relative flex items-center bg-transparent text-left text-[#64748B] transition hover:bg-[#ECFDF5]/50 hover:text-[#0F766E] focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--focus-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-white',
-                collapsed ? 'mx-auto h-11 w-11 justify-center rounded-xl p-0' : 'w-full gap-3 rounded-lg px-3 py-2',
+                collapsed ? 'mx-auto h-14 w-14 justify-center rounded-2xl p-0' : 'w-full gap-5 rounded-xl px-5 py-3.5',
               )}
               aria-label={collapsed ? 'Expandir menú' : 'Contraer menú'}
               aria-pressed={collapsed}
               title={collapsed ? 'Expandir menú' : undefined}
             >
-              <span className="inline-flex h-4 w-4 shrink-0 items-center justify-center text-current">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className={cn('h-4 w-4 transition-transform', collapsed && 'rotate-180')}>
+              <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center text-current">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className={cn('h-7 w-7 transition-transform', collapsed && 'rotate-180')}>
                   <path d="m11 7-5 5 5 5" />
                   <path d="m18 7-5 5 5 5" />
                 </svg>
               </span>
-              <span className={cn('min-w-0 flex-1 truncate text-sm transition-[max-width,opacity] duration-200', collapsed && 'max-w-0 opacity-0')}>
+              <span className={cn('min-w-0 flex-1 truncate text-xl transition-[max-width,opacity] duration-200', collapsed && 'max-w-0 opacity-0')}>
                 Contraer menú
               </span>
             </button>
@@ -344,16 +346,16 @@ function ProfesionalSidebar({
               type="button"
               className={cn(
                 'group relative flex items-center bg-transparent text-left text-[#0F172A] transition hover:bg-[#ECFDF5]/50 focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--focus-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:cursor-wait disabled:opacity-70',
-                collapsed ? 'mx-auto h-11 w-11 justify-center rounded-xl p-0' : 'w-full gap-3 rounded-lg px-3 py-2',
+                collapsed ? 'mx-auto h-14 w-14 justify-center rounded-2xl p-0' : 'w-full gap-5 rounded-xl px-5 py-3.5',
               )}
               onClick={handleEnterAsClient}
               disabled={isSwitchingContext}
               title={collapsed ? 'Entrar como cliente' : undefined}
             >
-              <span className="inline-flex h-4 w-4 shrink-0 items-center justify-center bg-transparent text-[#0F172A]">
-                <DashboardIcon name="configuracion" className="h-4 w-4" />
+              <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center bg-transparent text-[#0F172A]">
+                <DashboardIcon name="entrarCliente" className="h-7 w-7" />
               </span>
-              <span className={cn('min-w-0 flex-1 truncate text-sm transition-[max-width,opacity] duration-200', collapsed && 'max-w-0 opacity-0')}>
+              <span className={cn('min-w-0 flex-1 truncate text-xl transition-[max-width,opacity] duration-200', collapsed && 'max-w-0 opacity-0')}>
                 {isSwitchingContext ? 'Cambiando...' : 'Entrar como cliente'}
               </span>
             </button>
@@ -365,18 +367,18 @@ function ProfesionalSidebar({
             disabled={isLoggingOut}
             className={cn(
               'group relative flex items-center bg-transparent text-left text-[#0F172A] transition hover:bg-[#ECFDF5]/50 hover:text-[#0F766E] focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--focus-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:cursor-wait disabled:opacity-70',
-              collapsed ? 'mx-auto h-11 w-11 justify-center rounded-xl p-0' : 'w-full gap-3 rounded-lg px-3 py-2',
+              collapsed ? 'mx-auto h-14 w-14 justify-center rounded-2xl p-0' : 'w-full gap-5 rounded-xl px-5 py-3.5',
             )}
             title={collapsed ? 'Cerrar sesión' : undefined}
           >
-            <span className="inline-flex h-4 w-4 shrink-0 items-center justify-center text-current">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="h-4 w-4">
+            <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center text-current">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="h-7 w-7">
                 <path d="M10 6H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h4" />
                 <path d="M14 16l4-4-4-4" />
                 <path d="M18 12H9" />
               </svg>
             </span>
-            <span className={cn('min-w-0 flex-1 truncate text-sm transition-[max-width,opacity] duration-200', collapsed && 'max-w-0 opacity-0')}>
+            <span className={cn('min-w-0 flex-1 truncate text-xl transition-[max-width,opacity] duration-200', collapsed && 'max-w-0 opacity-0')}>
               {isLoggingOut ? 'Cerrando sesión...' : 'Cerrar sesión'}
             </span>
           </button>

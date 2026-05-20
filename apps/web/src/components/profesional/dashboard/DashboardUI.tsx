@@ -17,8 +17,10 @@ export type DashboardIconName =
   | 'spark'
   | 'share'
   | 'plan'
+  | 'facturacion'
   | 'danger'
   | 'equipo'
+  | 'entrarCliente'
   | 'resenas';
 
 type IconProps = SVGProps<SVGSVGElement> & {
@@ -118,6 +120,14 @@ const iconPathByName: Record<DashboardIconName, ReactNode> = {
       <path d="M4 12h16" />
     </>
   ),
+  facturacion: (
+    <>
+      <path d="M7 3.5h8.5L19 7v13.5H7z" />
+      <path d="M15.5 3.5V7H19" />
+      <path d="M12 8v8" />
+      <path d="M14.5 10.2c-.45-.55-1.1-.85-2-.85-1.15 0-2 .62-2 1.55 0 1.05.95 1.35 2.1 1.65 1.05.28 2.05.62 2.05 1.72 0 .93-.83 1.63-2.05 1.63-1 0-1.75-.35-2.25-1" />
+    </>
+  ),
   danger: (
     <>
       <path d="M8 4h8" />
@@ -136,6 +146,14 @@ const iconPathByName: Record<DashboardIconName, ReactNode> = {
       <circle cx="17" cy="10" r="2" />
       <path d="M3.5 19c0-2.6 2.5-4.5 5.5-4.5s5.5 1.9 5.5 4.5" />
       <path d="M14.5 16.5c1-1.2 2.5-2 4-2 1.5 0 3 .8 3.5 2" />
+    </>
+  ),
+  entrarCliente: (
+    <>
+      <circle cx="8" cy="8" r="3" />
+      <path d="M3.5 20c0-3.2 2-5.2 4.5-5.2 1.4 0 2.6.55 3.4 1.55" />
+      <path d="M15 8h5" />
+      <path d="m18 5 3 3-3 3" />
     </>
   ),
 };

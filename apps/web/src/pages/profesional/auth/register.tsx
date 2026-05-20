@@ -100,6 +100,13 @@ type ScheduleDay = {
   close: string;
 };
 
+type SchedulePause = {
+  id: string;
+  dayId: string;
+  start: string;
+  end: string;
+};
+
 type LocationPreview = {
   latitude: number;
   longitude: number;
@@ -125,13 +132,19 @@ type ProfessionalSchedulePayload = {
       end: string;
     }>;
   }>;
-  pauses: never[];
+  pauses: Array<{
+    id: string;
+    startDate: string;
+    endDate: string;
+    note?: string;
+  }>;
   slotDurationMinutes: number;
 };
 
 type ProfessionalOnboardingDraft = {
   form: Omit<RegisterForm, 'password' | 'confirmPassword'>;
   schedule: ScheduleDay[];
+  schedulePauses?: SchedulePause[];
 };
 
 type ProfessionalRegistrationPayload = {
@@ -245,6 +258,7 @@ export default function ProfesionalRegisterPage() {
   });
   const [touched, setTouched] = useState<TouchedState>(defaultTouched);
   const [schedule, setSchedule] = useState<ScheduleDay[]>(initialSchedule);
+  const [schedulePauses, setSchedulePauses] = useState<SchedulePause[]>([]);
   const [isOAuthSetup, setIsOAuthSetup] = useState(false);
   const [oauthRegistrationToken, setOauthRegistrationToken] = useState<string | null>(null);
   const [hasAuthenticatedBaseAccount, setHasAuthenticatedBaseAccount] = useState(false);
@@ -316,6 +330,9 @@ export default function ProfesionalRegisterPage() {
       }
       if (Array.isArray(draft.schedule) && draft.schedule.length > 0) {
         setSchedule(draft.schedule);
+      }
+      if (Array.isArray(draft.schedulePauses)) {
+        setSchedulePauses(draft.schedulePauses);
       }
     } catch {
       window.localStorage.removeItem(PROFESSIONAL_ONBOARDING_DRAFT_KEY);
@@ -888,6 +905,34 @@ export default function ProfesionalRegisterPage() {
     setSchedule((prev) => prev.map((day) => (day.id === id ? { ...day, ...patch } : day)));
   };
 
+  const addSchedulePause = () => {
+    const defaultDayId = schedule.find((day) => day.active)?.id || 'monday';
+    setSchedulePauses((prev) => [
+      ...prev,
+      {
+        id: `pause-${Date.now()}`,
+        dayId: defaultDayId,
+        start: '12:00',
+        end: '13:00',
+      },
+    ]);
+  };
+
+  const updateSchedulePause = (id: string, patch: Partial<SchedulePause>) => {
+    setSchedulePauses((prev) => prev.map((pause) => {
+      if (pause.id !== id) return pause;
+      const nextPause = { ...pause, ...patch };
+      if (nextPause.start >= nextPause.end) {
+        return pause;
+      }
+      return nextPause;
+    }));
+  };
+
+  const removeSchedulePause = (id: string) => {
+    setSchedulePauses((prev) => prev.filter((pause) => pause.id !== id));
+  };
+
   const applyWeekSchedule = () => {
     setSchedule((prev) => prev.map((day) => ({
       ...day,
@@ -897,25 +942,63 @@ export default function ProfesionalRegisterPage() {
     })));
   };
 
+  const buildDayRanges = (day: ScheduleDay) => {
+    if (!day.active) return [];
+    const dayPauses = schedulePauses
+      .filter((pause) => (
+        pause.dayId === day.id
+        && pause.start < pause.end
+        && pause.start > day.open
+        && pause.end < day.close
+      ))
+      .sort((first, second) => first.start.localeCompare(second.start));
+
+    if (dayPauses.length === 0) {
+      return [{
+        id: `${day.id}-main`,
+        start: day.open,
+        end: day.close,
+      }];
+    }
+
+    const ranges: Array<{ id: string; start: string; end: string }> = [];
+    let cursor = day.open;
+    dayPauses.forEach((pause) => {
+      if (cursor < pause.start) {
+        ranges.push({
+          id: `${day.id}-${ranges.length + 1}`,
+          start: cursor,
+          end: pause.start,
+        });
+      }
+      if (pause.end > cursor) {
+        cursor = pause.end;
+      }
+    });
+    if (cursor < day.close) {
+      ranges.push({
+        id: `${day.id}-${ranges.length + 1}`,
+        start: cursor,
+        end: day.close,
+      });
+    }
+
+    return ranges;
+  };
+
   const buildSchedulePayload = (): ProfessionalSchedulePayload => ({
     days: schedule.map((day) => ({
       day: day.id,
       enabled: day.active,
       paused: false,
-      ranges: day.active
-        ? [{
-          id: `${day.id}-main`,
-          start: day.open,
-          end: day.close,
-        }]
-        : [],
+      ranges: buildDayRanges(day),
     })),
     pauses: [],
     slotDurationMinutes: Math.max(15, Number(form.serviceDuration) || 60),
   });
 
   const buildRegisterHandoff = (): ProfessionalRegisterHandoff => ({
-    schedule: buildSchedulePayload(),
+    schedule: buildSchedulePayload() as ProfessionalRegisterHandoff['schedule'],
     firstService: null,
     publicPage: {
       about: form.description.trim(),
@@ -1002,6 +1085,7 @@ export default function ProfesionalRegisterPage() {
       JSON.stringify({
         form: safeForm,
         schedule,
+        schedulePauses,
       } satisfies ProfessionalOnboardingDraft),
     );
   };
@@ -1712,7 +1796,7 @@ export default function ProfesionalRegisterPage() {
   };
 
   const renderScheduleStep = () => (
-    <div className="mx-auto flex min-h-full max-w-6xl flex-col gap-3 text-center">
+    <div className="mx-auto flex min-h-full w-full max-w-7xl flex-col gap-4 text-center">
       <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end lg:text-left">
         <div className="space-y-1.5">
           <Badge variant="success">Registro</Badge>
@@ -1721,46 +1805,114 @@ export default function ProfesionalRegisterPage() {
         </div>
         <div className="flex flex-wrap justify-center gap-2 lg:justify-end">
           <Button type="button" variant="secondary" size="sm" onClick={applyWeekSchedule}>Aplicar horario a todos</Button>
-          <Button type="button" variant="secondary" size="sm">Agregar descanso</Button>
+          <Button type="button" variant="secondary" size="sm" onClick={addSchedulePause}>Agregar descanso</Button>
         </div>
       </div>
-      <div className="min-h-0 overflow-x-auto rounded-[22px] border border-[color:var(--border-soft)] bg-[color:var(--surface-strong)] text-left shadow-[var(--shadow-card)]">
-        <div className="min-w-[500px]">
-          <div className="grid grid-cols-[1.1fr_0.62fr_1fr_1fr] gap-3 border-b border-[color:var(--border-soft)] px-4 py-2 text-xs font-semibold uppercase tracking-[0.08em] text-[color:var(--ink-muted)]">
-            <span>Día</span>
-            <span>Activo</span>
-            <span>Apertura</span>
-            <span>Cierre</span>
-          </div>
-          {schedule.map((day) => (
-            <div key={day.id} className="grid grid-cols-[1.1fr_0.62fr_1fr_1fr] items-center gap-3 border-b border-[color:var(--border-soft)] px-4 py-1.5 last:border-b-0">
-              <span className="font-semibold text-[color:var(--ink)]">{day.label}</span>
-              <button
-                type="button"
-                onClick={() => updateScheduleDay(day.id, { active: !day.active })}
-                className={`h-6 w-11 rounded-full p-1 transition ${day.active ? 'bg-[color:var(--primary)]' : 'bg-[color:var(--border-strong)]'}`}
-                aria-label={`Activar ${day.label}`}
-              >
-                <span className={`block h-4 w-4 rounded-full bg-white transition ${day.active ? 'translate-x-5' : ''}`} />
-              </button>
-              {day.active ? (
-                <input
-                  type="time"
-                  className="h-8 rounded-[12px] border border-[color:var(--border-soft)] bg-[color:var(--surface-muted)] px-3 text-sm text-[color:var(--ink)]"
-                  value={day.open}
-                  onChange={(event) => updateScheduleDay(day.id, { open: event.target.value })}
-                />
-              ) : <span className="text-sm text-[color:var(--ink-faint)]">—</span>}
-              {day.active ? (
-                <input
-                  type="time"
-                  className="h-8 rounded-[12px] border border-[color:var(--border-soft)] bg-[color:var(--surface-muted)] px-3 text-sm text-[color:var(--ink)]"
-                  value={day.close}
-                  onChange={(event) => updateScheduleDay(day.id, { close: event.target.value })}
-                />
-              ) : <span className="text-sm text-[color:var(--ink-faint)]">Cerrado</span>}
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,1.35fr)_minmax(320px,0.65fr)]">
+        <div className="overflow-x-auto rounded-[22px] border border-[color:var(--border-soft)] bg-[color:var(--surface-strong)] text-left shadow-[var(--shadow-card)]">
+          <div className="min-w-[680px]">
+            <div className="grid grid-cols-[1.2fr_0.65fr_1fr_1fr] gap-4 border-b border-[color:var(--border-soft)] px-5 py-3 text-xs font-semibold uppercase tracking-[0.08em] text-[color:var(--ink-muted)]">
+              <span>Día</span>
+              <span>Activo</span>
+              <span>Apertura</span>
+              <span>Cierre</span>
             </div>
-          ))}
+            {schedule.map((day) => (
+              <div key={day.id} className="grid grid-cols-[1.2fr_0.65fr_1fr_1fr] items-center gap-4 border-b border-[color:var(--border-soft)] px-5 py-2.5 last:border-b-0">
+                <span className="font-semibold text-[color:var(--ink)]">{day.label}</span>
+                <button
+                  type="button"
+                  onClick={() => updateScheduleDay(day.id, { active: !day.active })}
+                  className={`h-6 w-11 rounded-full p-1 transition ${day.active ? 'bg-[color:var(--primary)]' : 'bg-[color:var(--border-strong)]'}`}
+                  aria-label={`Activar ${day.label}`}
+                >
+                  <span className={`block h-4 w-4 rounded-full bg-white transition ${day.active ? 'translate-x-5' : ''}`} />
+                </button>
+                {day.active ? (
+                  <input
+                    type="time"
+                    className="h-9 rounded-[12px] border border-[color:var(--border-soft)] bg-[color:var(--surface-muted)] px-3 text-sm text-[color:var(--ink)]"
+                    value={day.open}
+                    onChange={(event) => updateScheduleDay(day.id, { open: event.target.value })}
+                  />
+                ) : <span className="text-sm text-[color:var(--ink-faint)]">—</span>}
+                {day.active ? (
+                  <input
+                    type="time"
+                    className="h-9 rounded-[12px] border border-[color:var(--border-soft)] bg-[color:var(--surface-muted)] px-3 text-sm text-[color:var(--ink)]"
+                    value={day.close}
+                    onChange={(event) => updateScheduleDay(day.id, { close: event.target.value })}
+                  />
+                ) : <span className="text-sm text-[color:var(--ink-faint)]">Cerrado</span>}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="rounded-[22px] border border-[color:var(--border-soft)] bg-[color:var(--surface-strong)] p-4 text-left shadow-[var(--shadow-card)] sm:p-5">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.08em] text-[color:var(--ink-muted)]">Descansos</p>
+              <p className="mt-1 text-sm text-[color:var(--ink-muted)]">Bloquean un tramo dentro del horario del día.</p>
+            </div>
+            <Button type="button" variant="secondary" size="sm" onClick={addSchedulePause}>Agregar</Button>
+          </div>
+          <div className="mt-4 space-y-3">
+            {schedulePauses.length === 0 ? (
+              <p className="rounded-[16px] bg-[color:var(--surface-muted)] px-3 py-3 text-sm text-[color:var(--ink-muted)]">
+                Sin descansos configurados.
+              </p>
+            ) : (
+              schedulePauses.map((pause) => (
+                <div key={pause.id} className="grid gap-3 rounded-[16px] border border-[color:var(--border-soft)] bg-[color:var(--surface-muted)] p-3">
+                  <div className="grid gap-2 sm:grid-cols-[1.2fr_1fr_1fr]">
+                    <label className="grid gap-1 text-xs font-semibold text-[color:var(--ink-muted)]">
+                      Día
+                      <select
+                        className="h-9 rounded-[12px] border border-[color:var(--border-soft)] bg-[color:var(--surface-strong)] px-3 text-sm font-normal text-[color:var(--ink)]"
+                        value={pause.dayId}
+                        onChange={(event) => updateSchedulePause(pause.id, { dayId: event.target.value })}
+                      >
+                        {schedule.map((day) => (
+                          <option key={day.id} value={day.id}>{day.label}</option>
+                        ))}
+                      </select>
+                    </label>
+                    <label className="grid gap-1 text-xs font-semibold text-[color:var(--ink-muted)]">
+                      Inicio
+                      <input
+                        type="time"
+                        className="h-9 rounded-[12px] border border-[color:var(--border-soft)] bg-[color:var(--surface-strong)] px-3 text-sm font-normal text-[color:var(--ink)]"
+                        value={pause.start}
+                        max={pause.end}
+                        onChange={(event) => updateSchedulePause(pause.id, { start: event.target.value })}
+                      />
+                    </label>
+                    <label className="grid gap-1 text-xs font-semibold text-[color:var(--ink-muted)]">
+                      Fin
+                      <input
+                        type="time"
+                        className="h-9 rounded-[12px] border border-[color:var(--border-soft)] bg-[color:var(--surface-strong)] px-3 text-sm font-normal text-[color:var(--ink)]"
+                        value={pause.end}
+                        min={pause.start}
+                        onChange={(event) => updateSchedulePause(pause.id, { end: event.target.value })}
+                      />
+                    </label>
+                  </div>
+                  <div className="flex items-center justify-between gap-3 text-xs text-[color:var(--ink-muted)]">
+                    <span>{pause.start} a {pause.end}</span>
+                    <button
+                      type="button"
+                      className="font-semibold text-red-600 transition hover:text-red-700"
+                      onClick={() => removeSchedulePause(pause.id)}
+                    >
+                      Eliminar
+                    </button>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
         </div>
       </div>
       <p className="text-left text-xs text-[color:var(--ink-muted)] sm:text-sm">Sin horarios, los clientes no podrán reservar automáticamente.</p>

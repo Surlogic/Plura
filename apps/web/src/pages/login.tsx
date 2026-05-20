@@ -225,12 +225,17 @@ export default function UnifiedLoginPage() {
   };
 
   const completeAuthenticatedLogin = async (
-    data: Pick<UnifiedLoginResponse, 'activeContext' | 'contexts'>,
+    data: Pick<UnifiedLoginResponse, 'activeContext' | 'contexts' | 'contextSelectionRequired'>,
     email?: string,
   ) => {
     const list = Array.isArray(data.contexts) ? data.contexts : [];
     const activeContext = data.activeContext ?? null;
     const availableContexts = list.length > 0 || !activeContext ? list : [activeContext];
+    const contextSelectionPending = requiresContextSelection({
+      activeContext,
+      contexts: availableContexts,
+      contextSelectionRequired: data.contextSelectionRequired,
+    });
 
     if (desiredContext === 'PROFESSIONAL' && !hasContext(availableContexts, 'PROFESSIONAL')) {
       await continueProfessionalOnboarding(email);
@@ -256,6 +261,14 @@ export default function UnifiedLoginPage() {
         await selectAndCompleteContext(descriptor);
         return;
       }
+    }
+
+    if (!desiredContext && contextSelectionPending && availableContexts.length > 1) {
+      setAuthContextSelectionPending(true);
+      setKnownAuthSessionRole(null);
+      setContexts(availableContexts);
+      setProfessionalOnlyContext(null);
+      return;
     }
 
     if (!desiredContext && availableContexts.length > 1) {
@@ -345,9 +358,10 @@ export default function UnifiedLoginPage() {
     setContexts(null);
     setProfessionalOnlyContext(null);
     try {
-      const data = result.contexts ? {
+      const data = result.contextSelectionRequired || result.contexts ? {
         activeContext: result.activeContext,
         contexts: result.contexts,
+        contextSelectionRequired: result.contextSelectionRequired,
       } : await fetchAuthMe();
       await completeAuthenticatedLogin(data, result.user.email);
     } catch (error) {

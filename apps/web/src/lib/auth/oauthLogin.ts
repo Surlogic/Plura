@@ -137,7 +137,6 @@ export async function oauthLogin(
       contexts: [],
     };
   }
-  const role = extractRoleFromAccessToken(data.accessToken);
   const hasContextPayload =
     Object.prototype.hasOwnProperty.call(data, 'activeContext') ||
     Array.isArray(data.contexts) ||
@@ -149,15 +148,21 @@ export async function oauthLogin(
   let contextSelectionRequired = requiresContextSelection(data);
 
   if (hasContextPayload) {
-    if (activeContext) {
+    if (contextSelectionRequired) {
+      activeContext = null;
+      setKnownAuthSessionRole(null);
+      setAuthContextSelectionPending(true);
+      setAuthAccessToken(data.accessToken, null);
+    } else if (activeContext) {
       setAuthContextSelectionPending(false);
       persistAccessTokenForContext(data.accessToken, activeContext);
     } else {
       setKnownAuthSessionRole(null);
-      setAuthContextSelectionPending(contextSelectionRequired);
+      setAuthContextSelectionPending(false);
       setAuthAccessToken(data.accessToken, null);
     }
   } else {
+    const role = extractRoleFromAccessToken(data.accessToken);
     setAuthAccessToken(data.accessToken, toKnownSessionRole(role));
     try {
       const me = await fetchAuthMe();
@@ -167,21 +172,27 @@ export async function oauthLogin(
         activeContext,
         contexts,
       });
-      if (activeContext) {
+      if (contextSelectionRequired) {
+        activeContext = null;
+        setKnownAuthSessionRole(null);
+        setAuthContextSelectionPending(true);
+        setAuthAccessToken(data.accessToken, null);
+      } else if (activeContext) {
         setAuthContextSelectionPending(false);
         persistAccessTokenForContext(data.accessToken, activeContext);
       } else {
         setKnownAuthSessionRole(null);
-        setAuthContextSelectionPending(contextSelectionRequired);
+        setAuthContextSelectionPending(false);
         setAuthAccessToken(data.accessToken, null);
       }
     } catch {
       // Si /auth/me falla por completar datos pendientes, conservamos compatibilidad por JWT.
     }
   }
+  const role = contextSelectionRequired ? null : extractRoleFromAccessToken(data.accessToken);
   return {
     ...data,
-    role: contextSelectionRequired ? null : role,
+    role,
     activeContext,
     contexts,
     contextSelectionRequired,

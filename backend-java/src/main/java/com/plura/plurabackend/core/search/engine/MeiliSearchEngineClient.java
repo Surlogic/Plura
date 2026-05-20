@@ -80,6 +80,7 @@ public class MeiliSearchEngineClient implements SearchEngineClient {
         try {
             ensureIndexExists();
             List<String> filters = new ArrayList<>();
+            filters.add("services IS NOT EMPTY");
             if (criteria.categorySlug() != null && !criteria.categorySlug().isBlank()) {
                 filters.add("categories = '" + escapeFilter(criteria.categorySlug()) + "'");
             }
@@ -117,11 +118,14 @@ public class MeiliSearchEngineClient implements SearchEngineClient {
         Timer.Sample sample = Timer.start(meterRegistry);
         try {
             ensureIndexExists();
+            List<String> filters = new ArrayList<>();
+            filters.add("services IS NOT EMPTY");
             Map<String, Object> body = Map.of(
                 "q", criteria.query() == null ? "" : criteria.query(),
                 "offset", 0,
                 "limit", Math.max(10, criteria.limit() * 6),
-                "attributesToRetrieve", List.of("id", "displayName", "locationText", "categories", "services")
+                "attributesToRetrieve", List.of("id", "displayName", "locationText", "categories", "services"),
+                "filter", filters
             );
             Map<String, Object> response = postJson("/indexes/" + indexName + "/search", body);
 
@@ -138,12 +142,16 @@ public class MeiliSearchEngineClient implements SearchEngineClient {
             for (Map<String, Object> hit : hits) {
                 Long id = toLong(hit.get("id"));
                 String displayName = safeString(hit.get("displayName"));
+                List<String> hitServices = readStringList(hit.get("services"));
+                if (hitServices.isEmpty()) {
+                    continue;
+                }
                 boolean displayNameMatches = queryBlank || matchesSuggestText(displayName, normalizedQuery);
 
                 readStringList(hit.get("categories")).stream()
                     .filter(name -> queryBlank || matchesSuggestText(name, normalizedQuery))
                     .forEach(categories::add);
-                readStringList(hit.get("services")).stream()
+                hitServices.stream()
                     .filter(name -> queryBlank || matchesSuggestText(name, normalizedQuery))
                     .forEach(services::add);
 

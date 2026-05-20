@@ -45,9 +45,36 @@ public interface ProfessionalProfileRepository extends JpaRepository<Professiona
 
     Optional<ProfessionalProfile> findFirstByWhatsappAndActiveTrue(String whatsapp);
 
+    @Query(
+        """
+        SELECT COUNT(DISTINCT p.id)
+        FROM ProfessionalProfile p
+        WHERE p.active = true
+            AND EXISTS (
+                SELECT 1
+                FROM ProfesionalService service
+                WHERE service.professional = p
+                    AND service.active = true
+            )
+        """
+    )
     long countByActiveTrue();
 
-    List<ProfessionalProfile> findByIdInAndActiveTrue(Collection<Long> ids);
+    @Query(
+        """
+        SELECT p
+        FROM ProfessionalProfile p
+        WHERE p.id IN :ids
+            AND p.active = true
+            AND EXISTS (
+                SELECT 1
+                FROM ProfesionalService service
+                WHERE service.professional = p
+                    AND service.active = true
+            )
+        """
+    )
+    List<ProfessionalProfile> findByIdInAndActiveTrue(@Param("ids") Collection<Long> ids);
 
     @Query(
         """
@@ -55,14 +82,48 @@ public interface ProfessionalProfileRepository extends JpaRepository<Professiona
         FROM ProfessionalProfile p
         LEFT JOIN FETCH p.user
         LEFT JOIN FETCH p.categories
-        WHERE p.id IN :ids AND p.active = true
+        WHERE p.id IN :ids
+            AND p.active = true
+            AND EXISTS (
+                SELECT 1
+                FROM ProfesionalService service
+                WHERE service.professional = p
+                    AND service.active = true
+            )
         """
     )
     List<ProfessionalProfile> findByIdInAndActiveTrueWithRelations(@Param("ids") Collection<Long> ids);
 
+    @Query(
+        """
+        SELECT p
+        FROM ProfessionalProfile p
+        WHERE p.active = true
+            AND EXISTS (
+                SELECT 1
+                FROM ProfesionalService service
+                WHERE service.professional = p
+                    AND service.active = true
+            )
+        ORDER BY p.createdAt DESC
+        """
+    )
     List<ProfessionalProfile> findByActiveTrueOrderByCreatedAtDesc(Pageable pageable);
 
-    @Query("SELECT p.id FROM ProfessionalProfile p WHERE p.active = true ORDER BY p.createdAt DESC")
+    @Query(
+        """
+        SELECT p.id
+        FROM ProfessionalProfile p
+        WHERE p.active = true
+            AND EXISTS (
+                SELECT 1
+                FROM ProfesionalService service
+                WHERE service.professional = p
+                    AND service.active = true
+            )
+        ORDER BY p.createdAt DESC
+        """
+    )
     List<Long> findActiveIdsPaged(Pageable pageable);
 
     @Query(
@@ -72,6 +133,12 @@ public interface ProfessionalProfileRepository extends JpaRepository<Professiona
         LEFT JOIN FETCH p.user
         LEFT JOIN FETCH p.categories
         WHERE p.active = true
+            AND EXISTS (
+                SELECT 1
+                FROM ProfesionalService service
+                WHERE service.professional = p
+                    AND service.active = true
+            )
         ORDER BY p.createdAt DESC
         """
     )

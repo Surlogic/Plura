@@ -6,6 +6,8 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -15,6 +17,8 @@ import com.plura.plurabackend.core.auth.context.AuthContextDescriptor;
 import com.plura.plurabackend.core.auth.context.AuthContextResolver;
 import com.plura.plurabackend.core.auth.context.AuthContextType;
 import com.plura.plurabackend.core.auth.dto.LoginRequest;
+import com.plura.plurabackend.core.auth.dto.ActivateProfessionalProfileRequest;
+import com.plura.plurabackend.core.auth.dto.RegisterProfesionalRequest;
 import com.plura.plurabackend.core.auth.dto.SelectContextRequest;
 import com.plura.plurabackend.core.auth.dto.UnifiedLoginRequest;
 import com.plura.plurabackend.core.auth.model.AuthSession;
@@ -176,6 +180,43 @@ class AuthServiceContextUnitTest {
         verify(professionalAccountProfileGateway, never()).loadOrBootstrapProfile(any());
     }
 
+    @Test
+    void registerProfesionalWithoutConfirmedCheckoutDoesNotCreateProfessionalProfile() {
+        RegisterProfesionalRequest request = professionalRegistrationRequest("checkout-pending");
+        doThrow(new ResponseStatusException(HttpStatus.CONFLICT, "checkout no confirmado"))
+            .when(professionalRegistrationCheckoutService)
+            .requireConfirmedCheckoutForEmail(eq("checkout-pending"), eq("unit@plura.com"));
+
+        ResponseStatusException exception = assertThrows(
+            ResponseStatusException.class,
+            () -> authService.registerProfesional(request, sessionContext())
+        );
+
+        assertEquals(HttpStatus.CONFLICT, exception.getStatusCode());
+        verify(userRepository, never()).save(any(User.class));
+        verify(professionalAccountProfileGateway, never()).createRegisteredProfile(any(), any());
+        verify(professionalAccountProfileGateway, never()).activateProfile(any(), any());
+    }
+
+    @Test
+    void activateProfessionalProfileWithoutConfirmedCheckoutDoesNotActivateProfile() {
+        User user = user(30L, UserRole.USER);
+        ActivateProfessionalProfileRequest request = activateProfessionalRequest("checkout-pending");
+        when(userRepository.findByIdAndDeletedAtIsNull(30L)).thenReturn(Optional.of(user));
+        doThrow(new ResponseStatusException(HttpStatus.CONFLICT, "checkout no confirmado"))
+            .when(professionalRegistrationCheckoutService)
+            .requireConfirmedCheckoutForEmail(eq("checkout-pending"), eq("unit@plura.com"));
+
+        ResponseStatusException exception = assertThrows(
+            ResponseStatusException.class,
+            () -> authService.activateProfessionalProfile("30", request, AuthContextType.CLIENT, null, null)
+        );
+
+        assertEquals(HttpStatus.CONFLICT, exception.getStatusCode());
+        verify(userRepository, never()).save(any(User.class));
+        verify(professionalAccountProfileGateway, never()).activateProfile(any(), any());
+    }
+
     private void stubLoginUser(User user) {
         when(userRepository.findByEmailAndDeletedAtIsNull("unit@plura.com")).thenReturn(Optional.of(user));
     }
@@ -211,6 +252,27 @@ class AuthServiceContextUnitTest {
         LoginRequest request = new LoginRequest();
         request.setEmail("unit@plura.com");
         request.setPassword("password-123");
+        return request;
+    }
+
+    private RegisterProfesionalRequest professionalRegistrationRequest(String checkoutToken) {
+        RegisterProfesionalRequest request = new RegisterProfesionalRequest();
+        request.setFullName("Unit Pro");
+        request.setEmail("unit@plura.com");
+        request.setPassword("password-123");
+        request.setPhoneNumber("+5491100000000");
+        request.setTipoCliente("SIN_LOCAL");
+        request.setCategorySlugs(List.of("test"));
+        request.setBillingCheckoutToken(checkoutToken);
+        return request;
+    }
+
+    private ActivateProfessionalProfileRequest activateProfessionalRequest(String checkoutToken) {
+        ActivateProfessionalProfileRequest request = new ActivateProfessionalProfileRequest();
+        request.setTipoCliente("SIN_LOCAL");
+        request.setPhoneNumber("+5491100000000");
+        request.setCategorySlugs(List.of("test"));
+        request.setBillingCheckoutToken(checkoutToken);
         return request;
     }
 

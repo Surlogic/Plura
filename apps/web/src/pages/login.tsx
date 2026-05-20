@@ -112,6 +112,7 @@ export default function UnifiedLoginPage() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [contexts, setContexts] = useState<AuthContextDescriptor[] | null>(null);
+  const [professionalOnlyContext, setProfessionalOnlyContext] = useState<AuthContextDescriptor | null>(null);
   const [selectingContext, setSelectingContext] = useState<string | null>(null);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const redirectIntent = resolveQueryValue(router.query.redirect).trim();
@@ -143,6 +144,17 @@ export default function UnifiedLoginPage() {
       query: {
         ...(email ? { email } : {}),
         resume: '1',
+      },
+    });
+  };
+
+  const continueClientContextRegistration = async (email?: string) => {
+    await router.push({
+      pathname: '/cliente/auth/register',
+      query: {
+        addContext: 'client',
+        ...(email ? { email } : {}),
+        ...(shouldConfirmReservationAfterLogin ? { redirect: 'confirm-reservation' } : {}),
       },
     });
   };
@@ -215,9 +227,8 @@ export default function UnifiedLoginPage() {
     }
 
     if (desiredContext === 'CLIENT' && !hasContext(availableContexts, 'CLIENT')) {
-      if (availableContexts.length > 0) {
-        setContexts(availableContexts);
-        setErrorMessage('Esta cuenta no tiene acceso cliente. Elegí otro contexto para continuar.');
+      if (hasContext(availableContexts, 'PROFESSIONAL')) {
+        await continueClientContextRegistration(email);
         return;
       }
       setErrorMessage('Esta cuenta no tiene un acceso cliente disponible.');
@@ -241,6 +252,11 @@ export default function UnifiedLoginPage() {
       return;
     }
 
+    if (!desiredContext && availableContexts.length === 1 && availableContexts[0].type === 'PROFESSIONAL') {
+      setProfessionalOnlyContext(availableContexts[0]);
+      return;
+    }
+
     if (activeContext) {
       await completeLoginForContext(activeContext);
       return;
@@ -257,6 +273,8 @@ export default function UnifiedLoginPage() {
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setErrorMessage(null);
+    setContexts(null);
+    setProfessionalOnlyContext(null);
     try {
       setIsSubmitting(true);
       const loginPayload = {
@@ -307,6 +325,8 @@ export default function UnifiedLoginPage() {
 
   const handleOAuthAuthenticated = async (result: OAuthLoginResult) => {
     setErrorMessage(null);
+    setContexts(null);
+    setProfessionalOnlyContext(null);
     try {
       const data = result.contexts ? {
         activeContext: result.activeContext,
@@ -316,11 +336,9 @@ export default function UnifiedLoginPage() {
     } catch (error) {
       if (result.activeContext) {
         await completeLoginForContext(result.activeContext);
-      } else if (!desiredContext) {
-        await router.push('/cliente/inicio');
-      } else {
-        setErrorMessage(extractApiMessage(error, 'No pudimos completar el acceso con Google.'));
+        return;
       }
+      setErrorMessage(extractApiMessage(error, 'No pudimos completar el acceso con Google.'));
     }
   };
 
@@ -346,7 +364,7 @@ export default function UnifiedLoginPage() {
       <main className="mx-auto flex w-full max-w-3xl items-center justify-center px-4 py-10 sm:px-6 sm:py-14">
         <div className="w-full max-w-md space-y-5">
           <Card tone="default" padding="lg" className="rounded-[32px]">
-            {!contexts ? (
+            {!contexts && !professionalOnlyContext ? (
               <>
                 <div className="space-y-3">
                   <Badge variant="info">Acceso a Plura</Badge>
@@ -425,6 +443,7 @@ export default function UnifiedLoginPage() {
                     onError={(message) => setErrorMessage(message)}
                     onLoadingChange={setIsGoogleLoading}
                     authAction="LOGIN"
+                    desiredContext={desiredContext ?? undefined}
                     buttonLabel="Continuar con Google"
                     loadingLabel="Iniciando..."
                   />
@@ -447,6 +466,67 @@ export default function UnifiedLoginPage() {
                   </Link>
                 </p>
               </>
+            ) : professionalOnlyContext ? (
+              <div className="space-y-4">
+                <Badge variant="info">Elegí cómo continuar</Badge>
+                <h2 className="text-2xl font-semibold leading-tight text-[color:var(--ink)]">
+                  ¿Qué querés hacer ahora?
+                </h2>
+                <p className="text-sm text-[color:var(--ink-muted)]">
+                  Esta cuenta tiene acceso profesional. También podés sumar el acceso cliente para reservar turnos.
+                </p>
+
+                {errorMessage ? (
+                  <p className="rounded-[12px] border border-[color:var(--error-soft)] bg-[color:var(--error-soft)] px-3 py-2 text-xs text-[color:var(--error)]">
+                    {errorMessage}
+                  </p>
+                ) : null}
+
+                <div className="grid gap-3">
+                  <button
+                    type="button"
+                    onClick={() => handleSelect(professionalOnlyContext)}
+                    disabled={selectingContext === contextKey(professionalOnlyContext)}
+                    className="group flex flex-col gap-1 rounded-[22px] border border-[color:var(--border-soft)] bg-white/90 px-4 py-3 text-left transition hover:border-[color:var(--accent)] hover:shadow-md disabled:opacity-60"
+                  >
+                    <span className="text-sm font-semibold text-[color:var(--ink)]">
+                      Entrar al área profesional
+                    </span>
+                    <span className="text-xs text-[color:var(--ink-muted)]">
+                      Agenda, reservas, equipo y configuración del local.
+                    </span>
+                    {selectingContext === contextKey(professionalOnlyContext) ? (
+                      <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[color:var(--accent-strong)]">
+                        Cargando…
+                      </span>
+                    ) : null}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => continueClientContextRegistration(form.email.trim().toLowerCase())}
+                    className="group flex flex-col gap-1 rounded-[22px] border border-[color:var(--border-soft)] bg-white/90 px-4 py-3 text-left transition hover:border-[color:var(--accent)] hover:shadow-md"
+                  >
+                    <span className="text-sm font-semibold text-[color:var(--ink)]">
+                      Quiero reservar como cliente
+                    </span>
+                    <span className="text-xs text-[color:var(--ink-muted)]">
+                      Sumá el acceso cliente a esta misma cuenta.
+                    </span>
+                  </button>
+                </div>
+
+                <button
+                  type="button"
+                  className="text-xs font-semibold text-[color:var(--accent-strong)] underline underline-offset-4"
+                  onClick={() => {
+                    setProfessionalOnlyContext(null);
+                    setForm((prev) => ({ ...prev, password: '' }));
+                  }}
+                >
+                  Volver al login
+                </button>
+              </div>
             ) : (
               <div className="space-y-4">
                 <Badge variant="info">Elegí cómo continuar</Badge>
@@ -464,7 +544,7 @@ export default function UnifiedLoginPage() {
                 ) : null}
 
                 <div className="grid gap-3">
-                  {contexts.map((descriptor) => {
+                  {(contexts ?? []).map((descriptor) => {
                     const key = contextKey(descriptor);
                     const busy = selectingContext === key;
                     return (

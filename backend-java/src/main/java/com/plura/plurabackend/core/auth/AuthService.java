@@ -196,7 +196,7 @@ public class AuthService {
     ) {}
 
     public record OAuthResult(
-        AuthResult auth,
+        UnifiedLoginResult auth,
         OAuthPendingRegistrationResponse pendingRegistration
     ) {
         public boolean isPendingRegistration() {
@@ -603,6 +603,7 @@ public class AuthService {
         String email = normalizeOAuthEmail(userInfo.email());
         UserRole desiredRole = normalizeDesiredOAuthRole(request.getDesiredRole());
         OAuthAuthAction authAction = normalizeOAuthAuthAction(request.getAuthAction());
+        AuthContextType desiredContext = authAction == OAuthAuthAction.LOGIN ? request.getDesiredContext() : null;
 
         if (authAction == OAuthAuthAction.REGISTER && desiredRole == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "desiredRole es obligatorio para registro OAuth");
@@ -719,12 +720,8 @@ public class AuthService {
             }
         }
 
-        UserRole initialContextRole =
-            authAction == OAuthAuthAction.REGISTER && desiredRole == UserRole.PROFESSIONAL && !isProfessionalUser(user)
-                ? UserRole.USER
-                : desiredRole;
         return new OAuthResult(
-            issueTokens(user, toUserResponse(user), sessionContext, resolveOAuthInitialContext(user, initialContextRole)),
+            issueOAuthLoginTokens(user, sessionContext, authAction, desiredRole, desiredContext),
             null
         );
     }
@@ -2114,14 +2111,51 @@ public class AuthService {
         return selected;
     }
 
-    private AuthContextDescriptor resolveOAuthInitialContext(User user, UserRole desiredRole) {
+    private UnifiedLoginResult issueOAuthLoginTokens(
+        User user,
+        SessionContext sessionContext,
+        OAuthAuthAction authAction,
+        UserRole desiredRole,
+        AuthContextType desiredContext
+    ) {
+        List<AuthContextDescriptor> contexts = authContextResolver.resolve(user);
+        if (contexts == null || contexts.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "No hay contextos disponibles para esta cuenta");
+        }
+
+        AuthContextType requestedContext = desiredContext != null
+            ? desiredContext
+            : resolveOAuthContextFromRole(user, authAction, desiredRole);
+        AuthContextDescriptor active = null;
+        if (requestedContext != null) {
+            active = authContextResolver.select(contexts, requestedContext, null, null);
+            if (active == null) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Contexto deseado no disponible");
+            }
+        } else if (contexts.size() == 1) {
+            active = contexts.get(0);
+        }
+
+        AuthResult tokens = issueTokens(user, toUserResponse(user), sessionContext, active);
+        boolean selectionRequired = active == null && contexts.size() > 1;
+        return new UnifiedLoginResult(tokens, contexts, active, selectionRequired);
+    }
+
+    private AuthContextType resolveOAuthContextFromRole(
+        User user,
+        OAuthAuthAction authAction,
+        UserRole desiredRole
+    ) {
         if (desiredRole == UserRole.USER) {
-            return resolveRequiredContext(user, AuthContextType.CLIENT, null, null);
+            return AuthContextType.CLIENT;
         }
         if (desiredRole == UserRole.PROFESSIONAL) {
-            return resolveRequiredContext(user, AuthContextType.PROFESSIONAL, null, null);
+            if (authAction == OAuthAuthAction.REGISTER && !isProfessionalUser(user)) {
+                return AuthContextType.CLIENT;
+            }
+            return AuthContextType.PROFESSIONAL;
         }
-        return resolveDefaultContext(user);
+        return null;
     }
 
     private UnifiedLoginResult issueUnifiedTokensForContext(

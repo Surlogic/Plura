@@ -391,7 +391,7 @@ public class AuthController {
                 .header("Pragma", "no-cache")
                 .body(result.pendingRegistration());
         }
-        return buildAuthResponse(result.auth(), httpRequest);
+        return buildUnifiedAuthResponse(result.auth(), httpRequest);
     }
 
     /**

@@ -1,9 +1,14 @@
 import api from '@/services/api';
-import { setAuthAccessToken, type KnownAuthSessionRole } from '@/services/session';
+import {
+  setAuthAccessToken,
+  setKnownAuthSessionRole,
+  type KnownAuthSessionRole,
+} from '@/services/session';
 import {
   fetchAuthMe,
   persistAccessTokenForContext,
   type AuthContextDescriptor,
+  type AuthContextType,
 } from '@/lib/auth/contexts';
 
 export type OAuthProvider = 'google' | 'apple';
@@ -25,17 +30,22 @@ type OAuthResponse = {
   oauthRegistrationPending?: boolean;
   oauthRegistrationToken?: string | null;
   user: OAuthUser;
+  activeContext?: AuthContextDescriptor | null;
+  contexts?: AuthContextDescriptor[];
+  contextSelectionRequired?: boolean;
 };
 
 export type OAuthLoginResult = OAuthResponse & {
   role: OAuthRole;
   activeContext?: AuthContextDescriptor | null;
   contexts?: AuthContextDescriptor[];
+  contextSelectionRequired?: boolean;
 };
 
 type OAuthIntentOptions = {
   intendedRole?: OAuthDesiredRole;
   authAction?: OAuthAuthAction;
+  desiredContext?: AuthContextType;
 };
 
 type OAuthAuthorizationCodeOptions = OAuthIntentOptions & {
@@ -98,12 +108,14 @@ export async function oauthLogin(
           redirectUri: options.redirectUri,
           desiredRole: options.intendedRole,
           authAction: options.authAction,
+          desiredContext: options.desiredContext,
         }
       : {
           provider,
           token: tokenOrCode,
           desiredRole: options.intendedRole,
           authAction: options.authAction,
+          desiredContext: options.desiredContext,
         };
 
   const response = await api.post<OAuthResponse>('/auth/oauth', payload);
@@ -119,16 +131,32 @@ export async function oauthLogin(
     };
   }
   const role = extractRoleFromAccessToken(data.accessToken);
-  setAuthAccessToken(data.accessToken, toKnownSessionRole(role));
-  let activeContext: AuthContextDescriptor | null | undefined;
-  let contexts: AuthContextDescriptor[] | undefined;
-  try {
-    const me = await fetchAuthMe();
-    activeContext = me.activeContext ?? null;
-    contexts = Array.isArray(me.contexts) ? me.contexts : [];
-    persistAccessTokenForContext(data.accessToken, activeContext);
-  } catch {
-    // Si /auth/me falla por completar datos pendientes, conservamos compatibilidad por JWT.
+  const hasContextPayload =
+    Object.prototype.hasOwnProperty.call(data, 'activeContext') ||
+    Array.isArray(data.contexts) ||
+    typeof data.contextSelectionRequired === 'boolean';
+  let activeContext: AuthContextDescriptor | null | undefined = data.activeContext;
+  let contexts: AuthContextDescriptor[] | undefined = Array.isArray(data.contexts)
+    ? data.contexts
+    : undefined;
+
+  if (hasContextPayload) {
+    if (activeContext) {
+      persistAccessTokenForContext(data.accessToken, activeContext);
+    } else {
+      setKnownAuthSessionRole(null);
+      setAuthAccessToken(data.accessToken);
+    }
+  } else {
+    setAuthAccessToken(data.accessToken, toKnownSessionRole(role));
+    try {
+      const me = await fetchAuthMe();
+      activeContext = me.activeContext ?? null;
+      contexts = Array.isArray(me.contexts) ? me.contexts : [];
+      persistAccessTokenForContext(data.accessToken, activeContext);
+    } catch {
+      // Si /auth/me falla por completar datos pendientes, conservamos compatibilidad por JWT.
+    }
   }
   return {
     ...data,

@@ -1,5 +1,6 @@
 package com.plura.plurabackend.core.auth.oauth.dto;
 
+import com.plura.plurabackend.core.auth.context.AuthContextType;
 import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
@@ -45,6 +46,9 @@ public class OAuthLoginRequest {
     /** Accion de autenticacion: "LOGIN" para iniciar sesion, "REGISTER" para registrarse. */
     @Pattern(regexp = "^(LOGIN|REGISTER)$", message = "authAction inválido")
     private String authAction;
+
+    /** Contexto deseado para login OAuth: CLIENT, PROFESSIONAL o WORKER. */
+    private AuthContextType desiredContext;
 
     /**
      * Validacion personalizada que verifica que se haya proporcionado

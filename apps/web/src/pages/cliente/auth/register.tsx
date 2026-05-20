@@ -19,7 +19,13 @@ import {
 } from '@/services/registrationPhoneVerification';
 import { useClientProfileContext } from '@/context/ClientProfileContext';
 import type { OAuthLoginResult } from '@/lib/auth/oauthLogin';
-import { ensureAuthContext, fetchAuthMe } from '@/lib/auth/contexts';
+import {
+  ensureAuthContext,
+  fetchAuthMe,
+  persistAccessTokenForContext,
+  type UnifiedLoginResponse,
+} from '@/lib/auth/contexts';
+import { getPendingReservation } from '@/services/pendingReservation';
 
 const resolvePhoneVerificationError = (error: unknown, fallback: string) => {
   if (axios.isAxiosError<{ message?: string }>(error)) {
@@ -34,6 +40,10 @@ export default function ClienteRegisterPage() {
   const redirectIntent = Array.isArray(router.query.redirect)
     ? router.query.redirect[0]
     : router.query.redirect;
+  const addContextIntent = Array.isArray(router.query.addContext)
+    ? router.query.addContext[0]
+    : router.query.addContext;
+  const isAddingClientContext = addContextIntent === 'client';
   const loginHref = redirectIntent === 'confirm-reservation'
     ? '/login?intent=client&redirect=confirm-reservation'
     : '/login?intent=client';
@@ -71,6 +81,13 @@ export default function ClienteRegisterPage() {
       .then((me) => {
         if (!isActive) return;
         const activeType = me.activeContext?.type;
+        if (isAddingClientContext && activeType === 'PROFESSIONAL') {
+          return;
+        }
+        if (isAddingClientContext && activeType === 'CLIENT') {
+          void router.replace('/cliente/inicio');
+          return;
+        }
         if (activeType === 'PROFESSIONAL') {
           void router.replace('/profesional/dashboard');
           return;
@@ -86,7 +103,21 @@ export default function ClienteRegisterPage() {
     return () => {
       isActive = false;
     };
-  }, [router]);
+  }, [isAddingClientContext, router]);
+
+  useEffect(() => {
+    if (!router.isReady) return;
+    const queryEmail = Array.isArray(router.query.email)
+      ? router.query.email[0]
+      : router.query.email;
+    if (!queryEmail?.trim()) return;
+    const normalizedEmail = queryEmail.trim().toLowerCase();
+    setForm((prev) => ({
+      ...prev,
+      email: prev.email || normalizedEmail,
+      confirmEmail: prev.confirmEmail || normalizedEmail,
+    }));
+  }, [router.isReady, router.query.email]);
 
   const handleOAuthAuthenticated = async (result: OAuthLoginResult) => {
     setErrorMessage(null);
@@ -201,6 +232,37 @@ export default function ClienteRegisterPage() {
     try {
       setIsSubmitting(true);
       await api.post('/auth/register/cliente', payload);
+      if (isAddingClientContext) {
+        const loginResponse = await api.post<UnifiedLoginResponse>('/auth/login', {
+          email: payload.email,
+          password: form.password,
+          desiredContext: 'CLIENT',
+        });
+        persistAccessTokenForContext(
+          loginResponse.data?.accessToken ?? null,
+          loginResponse.data?.activeContext ?? { type: 'CLIENT' },
+        );
+        await ensureAuthContext('CLIENT');
+        await refreshClientProfile();
+
+        if (redirectIntent === 'confirm-reservation') {
+          const pendingReservation = getPendingReservation();
+          if (pendingReservation) {
+            await router.push({
+              pathname: '/reservar',
+              query: {
+                profesional: pendingReservation.professionalSlug,
+                serviceId: pendingReservation.serviceId,
+                resume: '1',
+              },
+            });
+            return;
+          }
+        }
+
+        await router.push('/cliente/inicio');
+        return;
+      }
       await router.push({
         pathname: '/login',
         query: {
@@ -279,37 +341,43 @@ export default function ClienteRegisterPage() {
       <main className="mx-auto flex w-full max-w-6xl flex-1 items-center justify-center px-4 py-16">
         <Card tone="default" padding="lg" className="w-full max-w-md space-y-6 rounded-[32px]">
           <div className="space-y-2">
-            <Badge variant="warm">Registro</Badge>
-            <h1 className="text-2xl font-semibold text-[color:var(--ink)]">Crear cuenta</h1>
+            <Badge variant="warm">{isAddingClientContext ? 'Acceso cliente' : 'Registro'}</Badge>
+            <h1 className="text-2xl font-semibold text-[color:var(--ink)]">
+              {isAddingClientContext ? 'Sumar acceso cliente' : 'Crear cuenta'}
+            </h1>
             <p className="text-sm text-[color:var(--ink-muted)]">
-              Completá tus datos para comenzar en Plura.
+              {isAddingClientContext
+                ? 'Completá tus datos para reservar turnos con esta misma cuenta.'
+                : 'Completá tus datos para comenzar en Plura.'}
             </p>
           </div>
 
-          <div className="space-y-3">
-            <div className="flex items-center gap-3">
-              <div className="h-px flex-1 bg-[color:var(--border-soft)]" />
-              <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[color:var(--ink-faint)]">
-                Registrate con
-              </span>
-              <div className="h-px flex-1 bg-[color:var(--border-soft)]" />
+          {!isAddingClientContext ? (
+            <div className="space-y-3">
+              <div className="flex items-center gap-3">
+                <div className="h-px flex-1 bg-[color:var(--border-soft)]" />
+                <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[color:var(--ink-faint)]">
+                  Registrate con
+                </span>
+                <div className="h-px flex-1 bg-[color:var(--border-soft)]" />
+              </div>
+              <div className="space-y-2">
+                <GoogleLoginButton
+                  authAction="REGISTER"
+                  intendedRole="USER"
+                  onAuthenticated={handleOAuthAuthenticated}
+                  onError={setErrorMessage}
+                  buttonLabel="Continuar con Google"
+                  loadingLabel="Registrando..."
+                />
+              </div>
             </div>
-            <div className="space-y-2">
-              <GoogleLoginButton
-                authAction="REGISTER"
-                intendedRole="USER"
-                onAuthenticated={handleOAuthAuthenticated}
-                onError={setErrorMessage}
-                buttonLabel="Continuar con Google"
-                loadingLabel="Registrando..."
-              />
-            </div>
-          </div>
+          ) : null}
 
           <div className="flex items-center gap-3">
             <div className="h-px flex-1 bg-[color:var(--border-soft)]" />
             <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[color:var(--ink-faint)]">
-              o con email
+              {isAddingClientContext ? 'Confirmá tus datos' : 'o con email'}
             </span>
             <div className="h-px flex-1 bg-[color:var(--border-soft)]" />
           </div>
@@ -488,9 +556,9 @@ export default function ClienteRegisterPage() {
               className="w-full"
               disabled={isSubmitting || !isFormValid || !phoneVerificationToken}
               loading={isSubmitting}
-              loadingLabel="Creando cuenta..."
+              loadingLabel={isAddingClientContext ? 'Sumando acceso...' : 'Creando cuenta...'}
             >
-              Crear cuenta
+              {isAddingClientContext ? 'Sumar acceso cliente' : 'Crear cuenta'}
             </Button>
           </form>
 

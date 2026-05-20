@@ -8,6 +8,7 @@ import type {
   OAuthLoginResult,
 } from '@/lib/auth/oauthLogin';
 import { oauthLogin } from '@/lib/auth/oauthLogin';
+import type { AuthContextType } from '@/lib/auth/contexts';
 import {
   GOOGLE_AUTH_URL,
   GOOGLE_OAUTH_CHANNEL,
@@ -30,6 +31,7 @@ type GoogleLoginButtonProps = {
   onError: (message: string) => void;
   intendedRole?: OAuthDesiredRole;
   authAction?: OAuthAuthAction;
+  desiredContext?: AuthContextType;
   buttonLabel?: string;
   loadingLabel?: string;
   onLoadingChange?: (isLoading: boolean) => void;
@@ -105,6 +107,7 @@ export default function GoogleLoginButton({
   onError,
   intendedRole,
   authAction = 'LOGIN',
+  desiredContext,
   buttonLabel,
   loadingLabel,
   onLoadingChange,
@@ -191,6 +194,7 @@ export default function GoogleLoginButton({
           redirectUri,
           intendedRole: resolvedIntendedRole,
           authAction: resolvedAuthAction,
+          desiredContext: resolvedAuthAction === 'LOGIN' ? desiredContext : undefined,
         }),
         OAUTH_EXCHANGE_TIMEOUT_MS,
         'OAUTH_EXCHANGE_TIMEOUT',
@@ -206,7 +210,7 @@ export default function GoogleLoginButton({
     } finally {
       finishLoading();
     }
-  }, [authAction, intendedRole, onAuthenticated, onError, clearResultTimeout, finishLoading]);
+  }, [authAction, desiredContext, intendedRole, onAuthenticated, onError, clearResultTimeout, finishLoading]);
 
   useEffect(() => {
     if (mode !== 'redirect') return;

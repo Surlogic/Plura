@@ -9,6 +9,7 @@ import com.auth0.jwt.interfaces.DecodedJWT;
 import com.plura.plurabackend.core.auth.context.AuthContextDescriptor;
 import com.plura.plurabackend.core.auth.context.AuthContextResolver;
 import com.plura.plurabackend.core.auth.context.AuthContextType;
+import com.plura.plurabackend.core.auth.dto.ActivateClientProfileRequest;
 import com.plura.plurabackend.core.auth.dto.ActivateProfessionalProfileRequest;
 import com.plura.plurabackend.core.auth.dto.AuthMeResponse;
 import com.plura.plurabackend.core.auth.dto.LoginRequest;
@@ -550,6 +551,35 @@ public class AuthService {
             activeProfessionalId == null ? String.valueOf(profile.getId()) : activeProfessionalId,
             activeWorkerId
         );
+    }
+
+    @Transactional
+    public AuthMeResponse activateClientProfile(
+        String rawUserId,
+        ActivateClientProfileRequest request,
+        String activeProfessionalId,
+        String activeWorkerId
+    ) {
+        User user = loadUserByRawId(rawUserId);
+        if (hasClientContext(user)) {
+            return getMe(String.valueOf(user.getId()), AuthContextType.CLIENT, activeProfessionalId, activeWorkerId);
+        }
+        if (!hasProfessionalContext(user)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "La cuenta autenticada no tiene contexto profesional activo.");
+        }
+
+        String normalizedPhone = normalizePhoneNumber(request == null ? null : request.getPhoneNumber());
+        ensureClientPhoneAvailable(normalizedPhone, user.getId());
+        String previousPhone = normalizePhoneNumber(user.getPhoneNumber());
+
+        user.setClientActive(true);
+        user.setPhoneNumber(normalizedPhone);
+        if (!normalizedPhone.equals(previousPhone)) {
+            user.setPhoneVerifiedAt(null);
+        }
+        userRepository.save(user);
+
+        return getMe(String.valueOf(user.getId()), AuthContextType.CLIENT, activeProfessionalId, activeWorkerId);
     }
 
     /**

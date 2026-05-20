@@ -53,6 +53,10 @@ export type ActivateProfessionalProfileRequest = {
   billingCheckoutToken?: string | null;
 };
 
+export type ActivateClientProfileRequest = {
+  phoneNumber: string;
+};
+
 export const sessionRoleForContext = (type?: AuthContextType | null): KnownAuthSessionRole => {
   switch (type) {
     case 'PROFESSIONAL':
@@ -121,5 +125,12 @@ export const activateProfessionalProfile = async (
   payload: ActivateProfessionalProfileRequest,
 ): Promise<AuthMeResponse> => {
   const response = await api.post<AuthMeResponse>('/auth/professional-profile/activate', payload);
+  return response.data ?? {};
+};
+
+export const activateClientProfile = async (
+  payload: ActivateClientProfileRequest,
+): Promise<AuthMeResponse> => {
+  const response = await api.post<AuthMeResponse>('/auth/client-profile/activate', payload);
   return response.data ?? {};
 };

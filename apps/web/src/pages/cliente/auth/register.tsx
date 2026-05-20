@@ -20,10 +20,11 @@ import {
 import { useClientProfileContext } from '@/context/ClientProfileContext';
 import type { OAuthLoginResult } from '@/lib/auth/oauthLogin';
 import {
+  activateClientProfile,
   ensureAuthContext,
   fetchAuthMe,
-  persistAccessTokenForContext,
-  type UnifiedLoginResponse,
+  selectAuthContext,
+  type AuthMeResponse,
 } from '@/lib/auth/contexts';
 import { getPendingReservation } from '@/services/pendingReservation';
 
@@ -73,19 +74,38 @@ export default function ClienteRegisterPage() {
   const [phoneVerificationMessage, setPhoneVerificationMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [authMe, setAuthMe] = useState<AuthMeResponse | null>(null);
+  const [isCheckingSession, setIsCheckingSession] = useState(false);
 
   useEffect(() => {
     if (!router.isReady) return;
     let isActive = true;
+    setIsCheckingSession(isAddingClientContext);
     void fetchAuthMe()
       .then((me) => {
         if (!isActive) return;
         const activeType = me.activeContext?.type;
-        if (isAddingClientContext && activeType === 'PROFESSIONAL') {
+        const hasClientContext = me.contexts?.some((context) => context.type === 'CLIENT') || activeType === 'CLIENT';
+        const hasProfessionalContext =
+          me.contexts?.some((context) => context.type === 'PROFESSIONAL') || activeType === 'PROFESSIONAL';
+        if (isAddingClientContext && hasClientContext) {
+          void router.replace('/cliente/inicio');
           return;
         }
-        if (isAddingClientContext && activeType === 'CLIENT') {
-          void router.replace('/cliente/inicio');
+        if (isAddingClientContext && hasProfessionalContext) {
+          setAuthMe(me);
+          const email = me.user?.email?.trim().toLowerCase() ?? '';
+          const fullName = me.user?.fullName?.trim() ?? '';
+          setForm((prev) => ({
+            ...prev,
+            fullName,
+            email,
+            confirmEmail: email,
+          }));
+          return;
+        }
+        if (isAddingClientContext) {
+          void router.replace(loginHref);
           return;
         }
         if (activeType === 'PROFESSIONAL') {
@@ -98,12 +118,21 @@ export default function ClienteRegisterPage() {
         }
         void router.replace('/cliente/inicio');
       })
-      .catch(() => undefined);
+      .catch(() => {
+        if (isActive && isAddingClientContext) {
+          void router.replace(loginHref);
+        }
+      })
+      .finally(() => {
+        if (isActive) {
+          setIsCheckingSession(false);
+        }
+      });
 
     return () => {
       isActive = false;
     };
-  }, [isAddingClientContext, router]);
+  }, [isAddingClientContext, loginHref, router]);
 
   useEffect(() => {
     if (!router.isReady) return;
@@ -173,14 +202,14 @@ export default function ClienteRegisterPage() {
   }));
   const passwordValid = passwordChecks.every((rule) => rule.valid);
   const validationErrors = {
-    fullName: form.fullName.trim().length >= 3 ? '' : 'Mínimo 3 caracteres.',
-    email: emailPattern.test(emailValue) ? '' : 'Email inválido.',
-    confirmEmail: confirmEmailValue.length > 0 && confirmEmailValue === emailValue
+    fullName: isAddingClientContext || form.fullName.trim().length >= 3 ? '' : 'Mínimo 3 caracteres.',
+    email: isAddingClientContext || emailPattern.test(emailValue) ? '' : 'Email inválido.',
+    confirmEmail: isAddingClientContext || (confirmEmailValue.length > 0 && confirmEmailValue === emailValue)
       ? ''
       : 'Los correos no coinciden.',
     phoneNumber: form.phoneNumber.replace(/\D/g, '').length >= 8 ? '' : 'Ingresá un número válido.',
-    password: passwordValid ? '' : 'La contraseña no cumple los requisitos.',
-    confirmPassword: form.confirmPassword.length > 0 && form.confirmPassword === form.password
+    password: isAddingClientContext || passwordValid ? '' : 'La contraseña no cumple los requisitos.',
+    confirmPassword: isAddingClientContext || (form.confirmPassword.length > 0 && form.confirmPassword === form.password)
       ? ''
       : 'Las contraseñas no coinciden.',
   };
@@ -191,10 +220,71 @@ export default function ClienteRegisterPage() {
       touched[field] && validationErrors[field] ? ' border-red-300 focus:ring-red-200' : ''
     }`;
 
+  const redirectAfterClientContextSelected = async () => {
+    if (redirectIntent === 'confirm-reservation') {
+      const pendingReservation = getPendingReservation();
+      if (pendingReservation) {
+        await router.push({
+          pathname: '/reservar',
+          query: {
+            profesional: pendingReservation.professionalSlug,
+            serviceId: pendingReservation.serviceId,
+            resume: '1',
+          },
+        });
+        return;
+      }
+    }
+
+    await router.push('/cliente/inicio');
+  };
+
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setErrorMessage(null);
     setSuccessMessage(null);
+
+    if (isAddingClientContext) {
+      if (!authMe?.user?.email) {
+        setErrorMessage('No pudimos validar tu sesión. Iniciá sesión nuevamente.');
+        return;
+      }
+      if (validationErrors.phoneNumber) {
+        setTouched((prev) => ({ ...prev, phoneNumber: true }));
+        setErrorMessage('Ingresá un número de celular válido.');
+        return;
+      }
+
+      try {
+        setIsSubmitting(true);
+        await activateClientProfile({ phoneNumber: form.phoneNumber.trim() });
+        await selectAuthContext('CLIENT');
+        await refreshClientProfile();
+        await redirectAfterClientContextSelected();
+      } catch (error) {
+        if (axios.isAxiosError(error)) {
+          if (!error.response) {
+            setErrorMessage('No se pudo conectar con el servidor.');
+          } else if (error.response.status === 401) {
+            setErrorMessage('Sesión vencida. Iniciá sesión nuevamente.');
+          } else if (error.response.status === 409) {
+            const apiMessage = error.response.data?.message;
+            setErrorMessage(
+              typeof apiMessage === 'string' && apiMessage.trim()
+                ? apiMessage
+                : 'Ese celular ya está asociado a otra cuenta cliente activa.',
+            );
+          } else {
+            setErrorMessage('No se pudo sumar el acceso cliente. Verificá el celular e intentá de nuevo.');
+          }
+        } else {
+          setErrorMessage('No se pudo sumar el acceso cliente. Verificá el celular e intentá de nuevo.');
+        }
+      } finally {
+        setIsSubmitting(false);
+      }
+      return;
+    }
 
     if (form.email !== form.confirmEmail) {
       setErrorMessage('Los correos no coinciden.');
@@ -232,37 +322,6 @@ export default function ClienteRegisterPage() {
     try {
       setIsSubmitting(true);
       await api.post('/auth/register/cliente', payload);
-      if (isAddingClientContext) {
-        const loginResponse = await api.post<UnifiedLoginResponse>('/auth/login', {
-          email: payload.email,
-          password: form.password,
-          desiredContext: 'CLIENT',
-        });
-        persistAccessTokenForContext(
-          loginResponse.data?.accessToken ?? null,
-          loginResponse.data?.activeContext ?? { type: 'CLIENT' },
-        );
-        await ensureAuthContext('CLIENT');
-        await refreshClientProfile();
-
-        if (redirectIntent === 'confirm-reservation') {
-          const pendingReservation = getPendingReservation();
-          if (pendingReservation) {
-            await router.push({
-              pathname: '/reservar',
-              query: {
-                profesional: pendingReservation.professionalSlug,
-                serviceId: pendingReservation.serviceId,
-                resume: '1',
-              },
-            });
-            return;
-          }
-        }
-
-        await router.push('/cliente/inicio');
-        return;
-      }
       await router.push({
         pathname: '/login',
         query: {
@@ -347,7 +406,7 @@ export default function ClienteRegisterPage() {
             </h1>
             <p className="text-sm text-[color:var(--ink-muted)]">
               {isAddingClientContext
-                ? 'Completá tus datos para reservar turnos con esta misma cuenta.'
+                ? 'Solo necesitamos tu celular cliente para reservar con esta misma cuenta.'
                 : 'Completá tus datos para comenzar en Plura.'}
             </p>
           </div>
@@ -383,160 +442,216 @@ export default function ClienteRegisterPage() {
           </div>
 
           <form className="space-y-4" onSubmit={handleSubmit}>
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-[color:var(--ink)]">Nombre completo</label>
-              <input
-                className={inputClass('fullName')}
-                placeholder="Tu nombre y apellido"
-                name="fullName"
-                value={form.fullName}
-                onChange={handleChange}
-                onBlur={handleBlur}
-                required
-                minLength={3}
-              />
-              {touched.fullName && validationErrors.fullName ? (
-                <p className="text-xs text-red-600">{validationErrors.fullName}</p>
-              ) : null}
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-[color:var(--ink)]">Gmail</label>
-              <input
-                className={inputClass('email')}
-                placeholder="tucorreo@gmail.com"
-                type="email"
-                name="email"
-                value={form.email}
-                onChange={handleChange}
-                onBlur={handleBlur}
-                required
-              />
-              {touched.email && validationErrors.email ? (
-                <p className="text-xs text-red-600">{validationErrors.email}</p>
-              ) : null}
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-[color:var(--ink)]">Confirmar Gmail</label>
-              <input
-                className={inputClass('confirmEmail')}
-                placeholder="tucorreo@gmail.com"
-                type="email"
-                name="confirmEmail"
-                value={form.confirmEmail}
-                onChange={handleChange}
-                onBlur={handleBlur}
-                required
-              />
-              {touched.confirmEmail && validationErrors.confirmEmail ? (
-                <p className="text-xs text-red-600">{validationErrors.confirmEmail}</p>
-              ) : null}
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-[color:var(--ink)]">Celular</label>
-              <InternationalPhoneField
-                value={form.phoneNumber}
-                onChange={handlePhoneChange}
-                onBlur={handlePhoneBlur}
-                required
-                selectClassName={inputClass('phoneNumber')}
-                inputClassName={inputClass('phoneNumber')}
-                inputPlaceholder="11 2345 6789"
-              />
-              <p className="text-xs text-[color:var(--ink-faint)]">
-                Seleccioná tu país y escribí el número sin el código internacional.
-              </p>
-              {touched.phoneNumber && validationErrors.phoneNumber ? (
-                <p className="text-xs text-red-600">{validationErrors.phoneNumber}</p>
-              ) : null}
-              <div className="grid gap-2 sm:grid-cols-[1fr_auto]">
-                <input
-                  className={inputClassName}
-                  placeholder="Código SMS"
-                  value={phoneVerificationCode}
-                  onChange={(event) => setPhoneVerificationCode(event.target.value)}
-                  inputMode="numeric"
-                  maxLength={10}
-                />
-                <Button
-                  type="button"
-                  variant="quiet"
-                  onClick={() => void (phoneVerificationCode ? handleConfirmPhoneCode() : handleSendPhoneCode())}
-                  disabled={
-                    Boolean(validationErrors.phoneNumber) ||
-                    isSendingPhoneCode ||
-                    isConfirmingPhoneCode ||
-                    Boolean(phoneVerificationToken)
-                  }
-                >
-                  {phoneVerificationToken
-                    ? 'Verificado'
-                    : phoneVerificationCode
-                      ? isConfirmingPhoneCode
-                        ? 'Verificando...'
-                        : 'Confirmar'
-                      : isSendingPhoneCode
-                        ? 'Enviando...'
-                        : 'Enviar OTP'}
-                </Button>
-              </div>
-              {phoneVerificationMessage ? (
-                <p className="text-xs text-[color:var(--primary)]">{phoneVerificationMessage}</p>
-              ) : null}
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-[color:var(--ink)]">Contraseña</label>
-              <input
-                type="password"
-                className={inputClass('password')}
-                placeholder="••••••••"
-                name="password"
-                value={form.password}
-                onChange={handleChange}
-                onBlur={handleBlur}
-                required
-                minLength={8}
-              />
-              <ul className="space-y-1 text-xs">
-                {passwordChecks.map((rule) => (
-                  <li
-                    key={rule.id}
-                    className={rule.valid ? 'text-[color:var(--primary)]' : 'text-[color:var(--ink-faint)]'}
-                  >
-                    <span
-                      className={`mr-2 inline-block h-2 w-2 rounded-full ${
-                        rule.valid ? 'bg-[color:var(--primary)]' : 'bg-[color:var(--border-strong)]'
-                      }`}
+            {isAddingClientContext ? (
+              isCheckingSession ? (
+                <p className="rounded-[12px] border border-[color:var(--border-soft)] bg-white/80 px-3 py-2 text-xs text-[color:var(--ink-muted)]">
+                  Validando sesión...
+                </p>
+              ) : (
+                <>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-[color:var(--ink)]">Nombre</label>
+                    <input
+                      className={`${inputClassName} bg-[color:var(--surface-muted)]`}
+                      placeholder="Sin nombre registrado"
+                      name="fullName"
+                      value={form.fullName}
+                      readOnly
+                      aria-readonly="true"
                     />
-                    {rule.label}
-                  </li>
-                ))}
-              </ul>
-              {touched.password && validationErrors.password ? (
-                <p className="text-xs text-red-600">{validationErrors.password}</p>
-              ) : null}
-            </div>
+                  </div>
 
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-[color:var(--ink)]">Confirmar contraseña</label>
-              <input
-                type="password"
-                className={inputClass('confirmPassword')}
-                placeholder="••••••••"
-                name="confirmPassword"
-                value={form.confirmPassword}
-                onChange={handleChange}
-                onBlur={handleBlur}
-                required
-                minLength={8}
-              />
-              {touched.confirmPassword && validationErrors.confirmPassword ? (
-                <p className="text-xs text-red-600">{validationErrors.confirmPassword}</p>
-              ) : null}
-            </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-[color:var(--ink)]">Gmail</label>
+                    <input
+                      className={`${inputClassName} bg-[color:var(--surface-muted)]`}
+                      placeholder="tucorreo@gmail.com"
+                      type="email"
+                      name="email"
+                      value={form.email}
+                      readOnly
+                      aria-readonly="true"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-[color:var(--ink)]">Celular cliente</label>
+                    <InternationalPhoneField
+                      value={form.phoneNumber}
+                      onChange={handlePhoneChange}
+                      onBlur={handlePhoneBlur}
+                      required
+                      selectClassName={inputClass('phoneNumber')}
+                      inputClassName={inputClass('phoneNumber')}
+                      inputPlaceholder="11 2345 6789"
+                    />
+                    <p className="text-xs text-[color:var(--ink-faint)]">
+                      Seleccioná tu país y escribí el número sin el código internacional.
+                    </p>
+                    {touched.phoneNumber && validationErrors.phoneNumber ? (
+                      <p className="text-xs text-red-600">{validationErrors.phoneNumber}</p>
+                    ) : null}
+                  </div>
+                </>
+              )
+            ) : (
+              <>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-[color:var(--ink)]">Nombre completo</label>
+                  <input
+                    className={inputClass('fullName')}
+                    placeholder="Tu nombre y apellido"
+                    name="fullName"
+                    value={form.fullName}
+                    onChange={handleChange}
+                    onBlur={handleBlur}
+                    required
+                    minLength={3}
+                  />
+                  {touched.fullName && validationErrors.fullName ? (
+                    <p className="text-xs text-red-600">{validationErrors.fullName}</p>
+                  ) : null}
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-[color:var(--ink)]">Gmail</label>
+                  <input
+                    className={inputClass('email')}
+                    placeholder="tucorreo@gmail.com"
+                    type="email"
+                    name="email"
+                    value={form.email}
+                    onChange={handleChange}
+                    onBlur={handleBlur}
+                    required
+                  />
+                  {touched.email && validationErrors.email ? (
+                    <p className="text-xs text-red-600">{validationErrors.email}</p>
+                  ) : null}
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-[color:var(--ink)]">Confirmar Gmail</label>
+                  <input
+                    className={inputClass('confirmEmail')}
+                    placeholder="tucorreo@gmail.com"
+                    type="email"
+                    name="confirmEmail"
+                    value={form.confirmEmail}
+                    onChange={handleChange}
+                    onBlur={handleBlur}
+                    required
+                  />
+                  {touched.confirmEmail && validationErrors.confirmEmail ? (
+                    <p className="text-xs text-red-600">{validationErrors.confirmEmail}</p>
+                  ) : null}
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-[color:var(--ink)]">Celular</label>
+                  <InternationalPhoneField
+                    value={form.phoneNumber}
+                    onChange={handlePhoneChange}
+                    onBlur={handlePhoneBlur}
+                    required
+                    selectClassName={inputClass('phoneNumber')}
+                    inputClassName={inputClass('phoneNumber')}
+                    inputPlaceholder="11 2345 6789"
+                  />
+                  <p className="text-xs text-[color:var(--ink-faint)]">
+                    Seleccioná tu país y escribí el número sin el código internacional.
+                  </p>
+                  {touched.phoneNumber && validationErrors.phoneNumber ? (
+                    <p className="text-xs text-red-600">{validationErrors.phoneNumber}</p>
+                  ) : null}
+                  <div className="grid gap-2 sm:grid-cols-[1fr_auto]">
+                    <input
+                      className={inputClassName}
+                      placeholder="Código SMS"
+                      value={phoneVerificationCode}
+                      onChange={(event) => setPhoneVerificationCode(event.target.value)}
+                      inputMode="numeric"
+                      maxLength={10}
+                    />
+                    <Button
+                      type="button"
+                      variant="quiet"
+                      onClick={() => void (phoneVerificationCode ? handleConfirmPhoneCode() : handleSendPhoneCode())}
+                      disabled={
+                        Boolean(validationErrors.phoneNumber) ||
+                        isSendingPhoneCode ||
+                        isConfirmingPhoneCode ||
+                        Boolean(phoneVerificationToken)
+                      }
+                    >
+                      {phoneVerificationToken
+                        ? 'Verificado'
+                        : phoneVerificationCode
+                          ? isConfirmingPhoneCode
+                            ? 'Verificando...'
+                            : 'Confirmar'
+                          : isSendingPhoneCode
+                            ? 'Enviando...'
+                            : 'Enviar OTP'}
+                    </Button>
+                  </div>
+                  {phoneVerificationMessage ? (
+                    <p className="text-xs text-[color:var(--primary)]">{phoneVerificationMessage}</p>
+                  ) : null}
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-[color:var(--ink)]">Contraseña</label>
+                  <input
+                    type="password"
+                    className={inputClass('password')}
+                    placeholder="••••••••"
+                    name="password"
+                    value={form.password}
+                    onChange={handleChange}
+                    onBlur={handleBlur}
+                    required
+                    minLength={8}
+                  />
+                  <ul className="space-y-1 text-xs">
+                    {passwordChecks.map((rule) => (
+                      <li
+                        key={rule.id}
+                        className={rule.valid ? 'text-[color:var(--primary)]' : 'text-[color:var(--ink-faint)]'}
+                      >
+                        <span
+                          className={`mr-2 inline-block h-2 w-2 rounded-full ${
+                            rule.valid ? 'bg-[color:var(--primary)]' : 'bg-[color:var(--border-strong)]'
+                          }`}
+                        />
+                        {rule.label}
+                      </li>
+                    ))}
+                  </ul>
+                  {touched.password && validationErrors.password ? (
+                    <p className="text-xs text-red-600">{validationErrors.password}</p>
+                  ) : null}
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-[color:var(--ink)]">Confirmar contraseña</label>
+                  <input
+                    type="password"
+                    className={inputClass('confirmPassword')}
+                    placeholder="••••••••"
+                    name="confirmPassword"
+                    value={form.confirmPassword}
+                    onChange={handleChange}
+                    onBlur={handleBlur}
+                    required
+                    minLength={8}
+                  />
+                  {touched.confirmPassword && validationErrors.confirmPassword ? (
+                    <p className="text-xs text-red-600">{validationErrors.confirmPassword}</p>
+                  ) : null}
+                </div>
+              </>
+            )}
 
             {errorMessage ? (
               <p className="rounded-[12px] border border-[color:var(--error-soft)] bg-[color:var(--error-soft)] px-3 py-2 text-xs text-[color:var(--error)]">
@@ -554,7 +669,7 @@ export default function ClienteRegisterPage() {
               variant="brand"
               size="lg"
               className="w-full"
-              disabled={isSubmitting || !isFormValid || !phoneVerificationToken}
+              disabled={isSubmitting || isCheckingSession || !isFormValid || (!isAddingClientContext && !phoneVerificationToken)}
               loading={isSubmitting}
               loadingLabel={isAddingClientContext ? 'Sumando acceso...' : 'Creando cuenta...'}
             >

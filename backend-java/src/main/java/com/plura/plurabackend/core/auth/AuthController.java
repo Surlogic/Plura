@@ -3,6 +3,7 @@ package com.plura.plurabackend.core.auth;
 import com.plura.plurabackend.core.account.AccountDeletionService;
 import com.plura.plurabackend.core.auth.context.AuthContextDescriptor;
 import com.plura.plurabackend.core.auth.context.AuthContextType;
+import com.plura.plurabackend.core.auth.dto.ActivateClientProfileRequest;
 import com.plura.plurabackend.core.auth.dto.ActivateProfessionalProfileRequest;
 import com.plura.plurabackend.core.auth.dto.AcceptedMessageResponse;
 import com.plura.plurabackend.core.auth.dto.AuthAuditListResponse;
@@ -211,6 +212,23 @@ public class AuthController {
             activeAuthentication.getPrincipal().toString(),
             request,
             tokenDetails == null ? null : tokenDetails.contextType(),
+            tokenDetails == null ? null : tokenDetails.professionalId(),
+            tokenDetails == null ? null : tokenDetails.workerId()
+        );
+        return ResponseEntity.ok()
+            .header(HttpHeaders.CACHE_CONTROL, "no-store")
+            .body(response);
+    }
+
+    @PostMapping("/client-profile/activate")
+    public ResponseEntity<AuthMeResponse> activateClientProfile(
+        @Valid @RequestBody ActivateClientProfileRequest request
+    ) {
+        Authentication activeAuthentication = requireAuthentication();
+        AuthenticatedTokenDetails tokenDetails = currentActorService.currentTokenDetails();
+        AuthMeResponse response = authService.activateClientProfile(
+            activeAuthentication.getPrincipal().toString(),
+            request,
             tokenDetails == null ? null : tokenDetails.professionalId(),
             tokenDetails == null ? null : tokenDetails.workerId()
         );

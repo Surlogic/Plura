@@ -11,6 +11,7 @@ export type BillingSubscriptionStatus =
   | 'TRIAL'
   | 'ACTIVE'
   | 'PAST_DUE'
+  | 'REJECTED'
   | 'CANCELLED'
   | 'EXPIRED';
 export type BillingUiStatus = BillingSubscriptionStatus | 'NONE';
@@ -50,6 +51,7 @@ export type BillingCheckoutResponse = {
 export type ProfessionalRegistrationCheckoutResponse = {
   checkoutUrl: string | null;
   checkoutToken: string | null;
+  checkoutRef: string | null;
   provider: string;
   planCode: 'PLAN_CORE' | string;
   status: BillingSubscriptionStatus;
@@ -74,6 +76,7 @@ export const billingStatusLabels: Record<BillingUiStatus, string> = {
   TRIAL: 'Prueba gratuita',
   ACTIVE: 'Activa',
   PAST_DUE: 'Pago fallido',
+  REJECTED: 'Rechazada',
   CANCELLED: 'Cancelada',
   EXPIRED: 'Prueba vencida',
 };
@@ -85,6 +88,7 @@ export const billingStatusClassNames: Record<BillingUiStatus, string> = {
   TRIAL: 'bg-[#DBEAFE] text-[#1D4ED8]',
   ACTIVE: 'bg-[#DCFCE7] text-[#166534]',
   PAST_DUE: 'bg-[#FEF3C7] text-[#B45309]',
+  REJECTED: 'bg-[#FEE2E2] text-[#B91C1C]',
   CANCELLED: 'bg-[#FEE2E2] text-[#B91C1C]',
   EXPIRED: 'bg-[#FEE2E2] text-[#B91C1C]',
 };
@@ -164,13 +168,34 @@ export const createProfessionalRegistrationCheckout = async ({
   return response.data;
 };
 
+type ProfessionalRegistrationCheckoutVerifyInput =
+  | string
+  | {
+    checkoutToken?: string | null;
+    checkoutRef?: string | null;
+  };
+
 export const verifyProfessionalRegistrationCheckout = async (
+<<<<<<< HEAD
   checkoutToken: string,
   providerSubscriptionId?: string | null,
+=======
+  input: ProfessionalRegistrationCheckoutVerifyInput,
+>>>>>>> b06abbb4 (arreglando registro de profesional con mercado pago)
 ): Promise<ProfessionalRegistrationCheckoutResponse> => {
+  const payload = typeof input === 'string'
+    ? { checkoutToken: input }
+    : {
+      checkoutToken: input.checkoutToken || undefined,
+      checkoutRef: input.checkoutRef || undefined,
+    };
   const response = await api.post<ProfessionalRegistrationCheckoutResponse>(
     '/api/v1/billing/professional-registration/verify',
+<<<<<<< HEAD
     { checkoutToken, providerSubscriptionId: providerSubscriptionId || undefined },
+=======
+    payload,
+>>>>>>> b06abbb4 (arreglando registro de profesional con mercado pago)
   );
   return response.data;
 };

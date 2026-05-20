@@ -22,16 +22,10 @@ import {
   type AuthContextType,
   type UnifiedLoginResponse,
 } from '@/lib/auth/contexts';
-import { useProfessionalProfileContext } from '@/context/ProfessionalProfileContext';
 import {
-  armPendingCheckoutReturnState,
-  clearPendingCheckoutState,
-  createCoreSubscription,
   isCoreSubscriptionEnabled,
   fetchCurrentSubscription,
-  setPendingCheckoutState,
 } from '@/lib/billing/billing';
-import { applyPendingProfessionalRegisterHandoff } from '@/lib/professional/registerHandoff';
 import { getPendingReservation } from '@/services/pendingReservation';
 
 const resolveQueryValue = (value: string | string[] | undefined) => {
@@ -114,14 +108,12 @@ const contextDescription = (descriptor: AuthContextDescriptor): string => {
 
 export default function UnifiedLoginPage() {
   const router = useRouter();
-  const { refreshProfile: refreshProfessionalProfile } = useProfessionalProfileContext();
   const [form, setForm] = useState({ email: '', password: '' });
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [contexts, setContexts] = useState<AuthContextDescriptor[] | null>(null);
   const [selectingContext, setSelectingContext] = useState<string | null>(null);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
-  const shouldActivatePendingBilling = resolveQueryValue(router.query.billing).trim() === 'pending';
   const redirectIntent = resolveQueryValue(router.query.redirect).trim();
   const shouldConfirmReservationAfterLogin = redirectIntent === 'confirm-reservation';
   const safeRedirectPath = resolveSafeRedirectPath(redirectIntent);
@@ -145,44 +137,12 @@ export default function UnifiedLoginPage() {
   };
 
 
-  const activatePendingCoreSubscription = async () => {
-    const checkout = await createCoreSubscription();
-
-    if (checkout.checkoutUrl) {
-      if (typeof window !== 'undefined') {
-        const pendingCheckout = { planId: 'CORE' as const, createdAt: Date.now() };
-        clearPendingCheckoutState();
-        setPendingCheckoutState(pendingCheckout);
-        armPendingCheckoutReturnState();
-        window.location.assign(checkout.checkoutUrl);
-      }
-      return false;
-    }
-
-    return isCoreSubscriptionEnabled(checkout);
-  };
-
-  const completeProfessionalPendingBilling = async () => {
-    try {
-      const coreActivated = await activatePendingCoreSubscription();
-      if (coreActivated) {
-        await applyPendingProfessionalRegisterHandoff();
-        await refreshProfessionalProfile();
-      }
-      await router.push('/profesional/dashboard/billing');
-    } catch {
-      void refreshProfessionalProfile().catch(() => undefined);
-      await router.push('/profesional/dashboard/billing');
-    }
-  };
-
   const continueProfessionalOnboarding = async (email?: string) => {
     await router.push({
       pathname: '/profesional/auth/register',
       query: {
         ...(email ? { email } : {}),
         resume: '1',
-        billing: shouldActivatePendingBilling ? 'pending' : undefined,
       },
     });
   };
@@ -214,11 +174,6 @@ export default function UnifiedLoginPage() {
   const completeLoginForContext = async (descriptor: AuthContextDescriptor) => {
     const role = sessionRoleForContext(descriptor.type);
     setKnownAuthSessionRole(role);
-
-    if (descriptor.type === 'PROFESSIONAL' && shouldActivatePendingBilling) {
-      await completeProfessionalPendingBilling();
-      return;
-    }
 
     if (descriptor.type === 'PROFESSIONAL') {
       let subscription = null;

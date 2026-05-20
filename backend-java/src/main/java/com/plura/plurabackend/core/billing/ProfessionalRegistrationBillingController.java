@@ -34,7 +34,11 @@ public class ProfessionalRegistrationBillingController {
     ) {
         return professionalRegistrationCheckoutService.verifyCheckout(
             request.getCheckoutToken(),
+<<<<<<< HEAD
             request.getProviderSubscriptionId()
+=======
+            request.getCheckoutRef()
+>>>>>>> b06abbb4 (arreglando registro de profesional con mercado pago)
         );
     }
 }

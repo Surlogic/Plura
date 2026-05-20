@@ -6,7 +6,7 @@ import {
 
 export type BillingPlanStateSubscription = {
   planCode: string;
-  status: 'CHECKOUT_PENDING' | 'TRIALING' | 'TRIAL' | 'ACTIVE' | 'PAST_DUE' | 'CANCELLED' | 'EXPIRED';
+  status: 'CHECKOUT_PENDING' | 'TRIALING' | 'TRIAL' | 'ACTIVE' | 'PAST_DUE' | 'REJECTED' | 'CANCELLED' | 'EXPIRED';
   cancelAtPeriodEnd: boolean | null;
   trialActive?: boolean | null;
   planEnabled?: boolean | null;

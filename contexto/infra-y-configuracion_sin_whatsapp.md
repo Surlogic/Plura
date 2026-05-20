@@ -161,6 +161,7 @@ Variables de backend para Mercado Pago de suscripciones:
 
 - `BILLING_MERCADOPAGO_SUBSCRIPTIONS_ACCESS_TOKEN`
 - `BILLING_MERCADOPAGO_SUBSCRIPTIONS_WEBHOOK_SECRET`
+- `BILLING_MERCADOPAGO_SUBSCRIPTION_BACK_URL`
 
 Variables de backend para suscripcion Core:
 
@@ -168,7 +169,7 @@ Variables de backend para suscripcion Core:
 - `BILLING_CORE_CURRENCY`
 - `BILLING_MERCADOPAGO_PLAN_CORE_ID`
 
-Estas variables son las unicas variables operativas de plan/suscripcion Core. Deben estar configuradas con precio positivo cuando billing/Mercado Pago esta habilitado; si `BILLING_CORE_PRICE` queda ausente o en `0`, Mercado Pago puede rechazar el `preapproval_plan` por monto invalido.
+Estas variables son las unicas variables operativas de plan/suscripcion Core. Deben estar configuradas con precio positivo cuando billing/Mercado Pago esta habilitado; si `BILLING_CORE_PRICE` queda ausente o en `0`, Mercado Pago puede rechazar el `preapproval_plan` por monto invalido. `BILLING_MERCADOPAGO_SUBSCRIPTION_BACK_URL` debe apuntar a `/profesional/auth/register` en el origen web publico y se usa como origen permitido para armar el retorno `billingReturn=1&checkoutRef=...` del checkout profesional.
 
 Variables legacy removidas como fallback de configuracion:
 
@@ -479,7 +480,7 @@ Notas reales de deploy:
 - `backend-java/fly.toml` no debe versionar secretos ni valores productivos de billing; la configuracion runtime se carga con `fly secrets`/entorno de la app
 - para Supabase PostgreSQL se usan `SPRING_DATASOURCE_URL`, `SPRING_DATASOURCE_USERNAME`, `SPRING_DATASOURCE_PASSWORD`, `SPRING_FLYWAY_URL`, `SPRING_FLYWAY_USER`, `SPRING_FLYWAY_PASSWORD` y drivers PostgreSQL
 - para OAuth Mercado Pago del profesional, el backend Fly necesita `BILLING_MERCADOPAGO_RESERVATIONS_*`, incluido `OAUTH_REDIRECT_URI=https://plura.fly.dev/profesional/payment-providers/mercadopago/oauth/callback` y `OAUTH_FRONTEND_REDIRECT_URL=https://plura-web-a6ka.vercel.app/oauth/mercadopago/callback`
-- para suscripciones Mercado Pago, el backend Fly necesita `BILLING_MERCADOPAGO_SUBSCRIPTIONS_ACCESS_TOKEN` y `BILLING_MERCADOPAGO_SUBSCRIPTIONS_WEBHOOK_SECRET`
+- para suscripciones Mercado Pago, el backend Fly necesita `BILLING_MERCADOPAGO_SUBSCRIPTIONS_ACCESS_TOKEN`, `BILLING_MERCADOPAGO_SUBSCRIPTIONS_WEBHOOK_SECRET` y `BILLING_MERCADOPAGO_SUBSCRIPTION_BACK_URL`
 - para Core/trial, el backend Fly necesita `BILLING_CORE_PRICE` positivo y `BILLING_CORE_CURRENCY=UYU`; no hay fallback vigente de variables legacy de planes
 - comando operativo recomendado para precio Core de sandbox/test:
   `fly secrets set BILLING_CORE_PRICE=100 BILLING_CORE_CURRENCY=UYU -a <NOMBRE_APP_BACKEND>`

@@ -1,6 +1,7 @@
 package com.plura.plurabackend.core.billing.webhooks;
 
 import com.plura.plurabackend.core.billing.BillingProperties;
+import com.plura.plurabackend.core.billing.ProfessionalRegistrationCheckoutService;
 import com.plura.plurabackend.core.billing.mercadopago.MercadoPagoSubscriptionService;
 import com.plura.plurabackend.core.billing.payments.model.PaymentEvent;
 import com.plura.plurabackend.core.billing.payments.model.PaymentProvider;
@@ -48,6 +49,7 @@ public class WebhookEventProcessor {
     private final BookingProviderIntegrationService bookingProviderIntegrationService;
     private final BillingProperties billingProperties;
     private final MercadoPagoSubscriptionService mercadoPagoSubscriptionService;
+    private final ProfessionalRegistrationCheckoutService professionalRegistrationCheckoutService;
     private final Map<PaymentProvider, PaymentProviderClient> providerClients;
 
     public WebhookEventProcessor(
@@ -58,6 +60,7 @@ public class WebhookEventProcessor {
         BookingProviderIntegrationService bookingProviderIntegrationService,
         BillingProperties billingProperties,
         MercadoPagoSubscriptionService mercadoPagoSubscriptionService,
+        ProfessionalRegistrationCheckoutService professionalRegistrationCheckoutService,
         List<PaymentProviderClient> clients
     ) {
         this.paymentEventRepository = paymentEventRepository;
@@ -67,6 +70,7 @@ public class WebhookEventProcessor {
         this.bookingProviderIntegrationService = bookingProviderIntegrationService;
         this.billingProperties = billingProperties;
         this.mercadoPagoSubscriptionService = mercadoPagoSubscriptionService;
+        this.professionalRegistrationCheckoutService = professionalRegistrationCheckoutService;
         Map<PaymentProvider, PaymentProviderClient> mapped = new EnumMap<>(PaymentProvider.class);
         for (PaymentProviderClient client : clients) {
             mapped.put(client.provider(), client);
@@ -93,6 +97,20 @@ public class WebhookEventProcessor {
         }
         if (event.domain() == WebhookEventDomain.RESERVATION) {
             throw new IllegalStateException("No se pudo resolver el webhook de reserva con la metadata recibida");
+        }
+
+        if (event.provider() == PaymentProvider.MERCADOPAGO
+            && event.domain() == WebhookEventDomain.SUBSCRIPTION) {
+            try {
+                professionalRegistrationCheckoutService.applyMercadoPagoWebhookEvent(event);
+            } catch (RuntimeException exception) {
+                LOGGER.warn(
+                    "No se pudo actualizar checkout intent de registro profesional para evento {}. providerSubscriptionId={}",
+                    paymentEventId,
+                    event.providerSubscriptionId(),
+                    exception
+                );
+            }
         }
 
         Map<String, MercadoPagoSubscriptionService.SubscriptionSnapshot> snapshotCache = new HashMap<>();

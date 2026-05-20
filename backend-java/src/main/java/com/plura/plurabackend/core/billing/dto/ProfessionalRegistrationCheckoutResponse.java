@@ -9,6 +9,7 @@ import lombok.Data;
 public class ProfessionalRegistrationCheckoutResponse {
     private String checkoutUrl;
     private String checkoutToken;
+    private String checkoutRef;
     private String provider;
     private String planCode;
     private String status;

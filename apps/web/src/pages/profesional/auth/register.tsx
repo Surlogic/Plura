@@ -16,6 +16,8 @@ import InternationalPhoneField from '@/components/ui/InternationalPhoneField';
 import api from '@/services/api';
 import {
   createProfessionalRegistrationCheckout,
+  fetchCurrentSubscription,
+  isCoreSubscriptionEnabled,
   verifyProfessionalRegistrationCheckout,
 } from '@/lib/billing/billing';
 import {
@@ -167,14 +169,23 @@ type ProfessionalRegistrationPayload = {
 
 type PendingProfessionalRegistrationCheckout = {
   checkoutToken: string | null;
+  checkoutRef: string | null;
+  checkoutUrl: string | null;
   payload: ProfessionalRegistrationPayload;
   handoff: ProfessionalRegisterHandoff;
   hasAuthenticatedBaseAccount: boolean;
   createdAt: number;
 };
 
+type PendingCheckoutAction = {
+  checkoutToken: string | null;
+  checkoutRef: string | null;
+  checkoutUrl: string | null;
+};
+
 const PROFESSIONAL_ONBOARDING_DRAFT_KEY = 'plura:professional-onboarding-draft';
 const PROFESSIONAL_REGISTRATION_CHECKOUT_KEY = 'plura:professional-registration-checkout';
+const PROFESSIONAL_REGISTRATION_CHECKOUT_TTL_MS = 2 * 60 * 60 * 1000;
 const PROFESSIONAL_CHECKOUT_VERIFY_MAX_ATTEMPTS = 5;
 const PROFESSIONAL_CHECKOUT_VERIFY_RETRY_DELAY_MS = 2000;
 
@@ -186,10 +197,75 @@ const hasQueryFlag = (value: string | string[] | undefined) => (
   Array.isArray(value) ? value.includes('1') : value === '1'
 );
 
+<<<<<<< HEAD
 const resolveQueryValue = (value: string | string[] | undefined) => (
   Array.isArray(value) ? value[0] || '' : value || ''
 );
 
+=======
+const getQueryStringValue = (value: string | string[] | undefined) => (
+  Array.isArray(value) ? value[0] ?? null : value ?? null
+);
+
+const normalizeOptionalString = (value: unknown) => (
+  typeof value === 'string' && value.trim().length > 0 ? value.trim() : null
+);
+
+const isRecord = (value: unknown): value is Record<string, unknown> => (
+  typeof value === 'object' && value !== null && !Array.isArray(value)
+);
+
+const isExpiredPendingCheckout = (createdAt: unknown) => (
+  typeof createdAt === 'number' &&
+  Number.isFinite(createdAt) &&
+  Date.now() - createdAt > PROFESSIONAL_REGISTRATION_CHECKOUT_TTL_MS
+);
+
+const isCompletePendingCheckout = (
+  value: unknown,
+): value is PendingProfessionalRegistrationCheckout => {
+  if (!isRecord(value)) return false;
+  const hasCheckoutIdentifier =
+    normalizeOptionalString(value.checkoutToken) !== null ||
+    normalizeOptionalString(value.checkoutRef) !== null;
+
+  return (
+    hasCheckoutIdentifier &&
+    (
+      value.checkoutUrl === null ||
+      value.checkoutUrl === undefined ||
+      typeof value.checkoutUrl === 'string'
+    ) &&
+    isRecord(value.payload) &&
+    isRecord(value.handoff) &&
+    typeof value.hasAuthenticatedBaseAccount === 'boolean' &&
+    typeof value.createdAt === 'number' &&
+    Number.isFinite(value.createdAt) &&
+    value.createdAt <= Date.now() + 60_000 &&
+    Date.now() - value.createdAt <= PROFESSIONAL_REGISTRATION_CHECKOUT_TTL_MS
+  );
+};
+
+const isTerminalCheckoutStatus = (status?: string | null) => (
+  status === 'REJECTED' ||
+  status === 'CANCELLED' ||
+  status === 'EXPIRED'
+);
+
+const resolveCheckoutStatusMessage = (status?: string | null) => {
+  if (status === 'REJECTED') {
+    return 'Mercado Pago rechazó la suscripción. No se creó el perfil profesional; podés intentar la activación nuevamente.';
+  }
+  if (status === 'CANCELLED') {
+    return 'La activación de Mercado Pago fue cancelada. No se creó el perfil profesional; podés intentar nuevamente.';
+  }
+  if (status === 'EXPIRED') {
+    return 'La activación pendiente de Mercado Pago venció. No se creó el perfil profesional; podés reintentar desde el wizard.';
+  }
+  return 'Mercado Pago todavía no confirmó la suscripción. No se creó el perfil profesional; podés reintentar la verificación cuando quieras.';
+};
+
+>>>>>>> b06abbb4 (arreglando registro de profesional con mercado pago)
 const DEFAULT_LOCATION_PREVIEW: LocationPreview = {
   latitude: -34.9011,
   longitude: -56.1645,
@@ -291,10 +367,12 @@ export default function ProfesionalRegisterPage() {
   const [locationSelectionSource, setLocationSelectionSource] = useState<LocationSelectionSource | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [checkoutConfirmationMessage, setCheckoutConfirmationMessage] = useState<string | null>(null);
+  const [pendingCheckoutAction, setPendingCheckoutAction] = useState<PendingCheckoutAction | null>(null);
   const [remoteFieldErrors, setRemoteFieldErrors] = useState<Partial<Record<keyof RegisterForm, string>>>({});
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const locationMapRef = useRef<MapRef | null>(null);
   const initialLocationRequestDoneRef = useRef(false);
+  const billingReturnHandledRef = useRef(false);
   const visibleStepNumber = Math.min(step + 1, wizardSteps.length);
 
   const emailValue = form.email.trim().toLowerCase();
@@ -355,40 +433,34 @@ export default function ProfesionalRegisterPage() {
 
   useEffect(() => {
     if (!router.isReady || typeof window === 'undefined') return;
-    const isBillingReturn = hasQueryFlag(router.query.billingReturn) || hasQueryFlag(router.query.resume);
+    const isBillingReturn = hasQueryFlag(router.query.billingReturn);
     if (!isBillingReturn) return;
+    if (billingReturnHandledRef.current) return;
+    billingReturnHandledRef.current = true;
+    const checkoutRefFromUrl = normalizeOptionalString(getQueryStringValue(router.query.checkoutRef));
 
-    const raw = window.sessionStorage.getItem(PROFESSIONAL_REGISTRATION_CHECKOUT_KEY);
-    if (!raw) {
-      setErrorMessage('No encontramos una activación pendiente de Mercado Pago. No se creó el perfil profesional; podés reintentar desde el wizard.');
-      return;
-    }
+    const clearBillingReturnQuery = () => {
+      void router.replace('/profesional/auth/register', undefined, { shallow: true });
+    };
+
+    const pending = readPendingCheckoutRegistration();
+    const checkoutToken = pending?.checkoutToken ?? null;
+    const checkoutRef = checkoutRefFromUrl ?? pending?.checkoutRef ?? null;
     let isActive = true;
 
-    let pending: PendingProfessionalRegistrationCheckout | null = null;
-    try {
-      pending = JSON.parse(raw) as PendingProfessionalRegistrationCheckout;
-    } catch {
-      window.sessionStorage.removeItem(PROFESSIONAL_REGISTRATION_CHECKOUT_KEY);
-      setErrorMessage('No pudimos recuperar la activación pendiente de Mercado Pago. No se creó el perfil profesional; podés reintentar desde el wizard.');
-      return;
-    }
-
-    if (!pending?.payload || !pending.handoff) {
-      window.sessionStorage.removeItem(PROFESSIONAL_REGISTRATION_CHECKOUT_KEY);
-      setErrorMessage('La activación pendiente de Mercado Pago quedó incompleta. No se creó el perfil profesional; podés reintentar desde el wizard.');
+    if (!checkoutToken && !checkoutRef) {
+      clearBillingReturnQuery();
+      setErrorMessage('No encontramos una activación pendiente de Mercado Pago. No se creó el perfil profesional; podés reintentar desde el wizard.');
       return;
     }
 
     const resumePendingCheckout = async () => {
       setIsSubmitting(true);
       setErrorMessage(null);
+      setPendingCheckoutAction(null);
       setCheckoutConfirmationMessage('Confirmando activación con Mercado Pago...');
       try {
-        if (!pending.checkoutToken) {
-          setErrorMessage('No pudimos asociar la autorización de Mercado Pago. No se creó el perfil profesional; podés reintentar Core desde el wizard.');
-          return;
-        }
+        clearBillingReturnQuery();
 
         const returnedProviderSubscriptionId = [
           router.query.preapproval_id,
@@ -402,15 +474,30 @@ export default function ProfesionalRegisterPage() {
           ?.trim();
 
         let confirmedCheckoutToken: string | null = null;
+        let lastStatus: string | null = null;
+        let lastCheckoutUrl: string | null = pending?.checkoutUrl ?? null;
         for (let attempt = 1; attempt <= PROFESSIONAL_CHECKOUT_VERIFY_MAX_ATTEMPTS; attempt += 1) {
+<<<<<<< HEAD
           const verification = await verifyProfessionalRegistrationCheckout(
             pending.checkoutToken,
             returnedProviderSubscriptionId,
           );
+=======
+          const verification = await verifyProfessionalRegistrationCheckout({
+            checkoutToken,
+            checkoutRef,
+          });
+>>>>>>> b06abbb4 (arreglando registro de profesional con mercado pago)
           if (!isActive) return;
+          lastStatus = verification.status;
+          lastCheckoutUrl = verification.checkoutUrl || lastCheckoutUrl;
 
           if (verification.confirmed) {
-            confirmedCheckoutToken = verification.checkoutToken || pending.checkoutToken;
+            confirmedCheckoutToken = verification.checkoutToken || checkoutToken;
+            break;
+          }
+
+          if (isTerminalCheckoutStatus(verification.status)) {
             break;
           }
 
@@ -421,7 +508,17 @@ export default function ProfesionalRegisterPage() {
         }
 
         if (!confirmedCheckoutToken) {
-          setErrorMessage('Mercado Pago todavía no confirmó la suscripción. No se creó el perfil profesional; podés reintentar cuando quieras.');
+          setPendingCheckoutAction({
+            checkoutToken,
+            checkoutRef,
+            checkoutUrl: lastCheckoutUrl,
+          });
+          setErrorMessage(resolveCheckoutStatusMessage(lastStatus));
+          return;
+        }
+
+        if (!pending) {
+          setErrorMessage('Mercado Pago confirmó Core, pero no encontramos los datos del wizard en este navegador. Volvé a completar el alta; no se abrirá Mercado Pago automáticamente.');
           return;
         }
 
@@ -1156,6 +1253,28 @@ export default function ProfesionalRegisterPage() {
     window.sessionStorage.setItem(PROFESSIONAL_REGISTRATION_CHECKOUT_KEY, JSON.stringify(pending));
   };
 
+  const readPendingCheckoutRegistration = () => {
+    if (typeof window === 'undefined') return null;
+    const raw = window.sessionStorage.getItem(PROFESSIONAL_REGISTRATION_CHECKOUT_KEY);
+    if (!raw) return null;
+
+    try {
+      const parsed = JSON.parse(raw) as unknown;
+      if (isExpiredPendingCheckout(isRecord(parsed) ? parsed.createdAt : undefined)) {
+        window.sessionStorage.removeItem(PROFESSIONAL_REGISTRATION_CHECKOUT_KEY);
+        return null;
+      }
+      if (!isCompletePendingCheckout(parsed)) {
+        window.sessionStorage.removeItem(PROFESSIONAL_REGISTRATION_CHECKOUT_KEY);
+        return null;
+      }
+      return parsed;
+    } catch {
+      window.sessionStorage.removeItem(PROFESSIONAL_REGISTRATION_CHECKOUT_KEY);
+      return null;
+    }
+  };
+
   const clearPendingCheckoutRegistration = () => {
     if (typeof window === 'undefined') return;
     window.sessionStorage.removeItem(PROFESSIONAL_REGISTRATION_CHECKOUT_KEY);
@@ -1241,10 +1360,25 @@ export default function ProfesionalRegisterPage() {
       setAuthAccessToken(loginResponse.data?.accessToken ?? null, 'PROFESSIONAL');
     }
 
+    const subscription = await fetchCurrentSubscription();
+    if (!isCoreSubscriptionEnabled(subscription)) {
+      throw new Error('Mercado Pago fue confirmado, pero la suscripción local todavía no quedó activa. Volvé a intentar en unos segundos.');
+    }
+
     try {
       await applyProfessionalRegisterHandoff(handoff);
     } catch {
+      clearPendingProfessionalRegisterHandoff();
+      clearPendingCheckoutRegistration();
+      if (typeof window !== 'undefined') {
+        window.localStorage.removeItem(PROFESSIONAL_ONBOARDING_DRAFT_KEY);
+      }
       setErrorMessage('Plura Core quedó activo, pero no pudimos publicar la configuración inicial. Podés reintentar desde Facturación.');
+      await refreshProfile();
+      await router.push({
+        pathname: '/profesional/dashboard/billing',
+        query: { setup: 'pending' },
+      });
       return;
     }
 
@@ -1260,6 +1394,7 @@ export default function ProfesionalRegisterPage() {
   const handleSubmit = async (event?: FormEvent<HTMLFormElement>) => {
     event?.preventDefault();
     setErrorMessage(null);
+    setPendingCheckoutAction(null);
     setCheckoutConfirmationMessage(null);
     const allFields = Object.keys(validationErrors) as Array<keyof RegisterForm>;
     markTouched(allFields);
@@ -1318,17 +1453,27 @@ export default function ProfesionalRegisterPage() {
       const checkout = await createProfessionalRegistrationCheckout({
         email: normalizedEmail,
         returnUrl: typeof window !== 'undefined'
-          ? `${window.location.origin}/profesional/auth/register?resume=1&billingReturn=1`
+          ? `${window.location.origin}/profesional/auth/register?billingReturn=1`
           : undefined,
       });
+      const checkoutToken = normalizeOptionalString(checkout.checkoutToken);
+      const checkoutRef = normalizeOptionalString(checkout.checkoutRef);
 
       savePendingCheckoutRegistration({
-        checkoutToken: checkout.checkoutToken,
+        checkoutToken,
+        checkoutRef,
+        checkoutUrl: checkout.checkoutUrl,
         payload,
         handoff,
         hasAuthenticatedBaseAccount,
         createdAt: Date.now(),
       });
+
+      if (!checkoutToken && !checkoutRef) {
+        clearPendingCheckoutRegistration();
+        setErrorMessage('No pudimos crear una referencia de activación válida. No se creó el perfil profesional; podés reintentar.');
+        return;
+      }
 
       if (!checkout.checkoutUrl) {
         setErrorMessage('No pudimos iniciar Mercado Pago. No se creó el perfil profesional; podés reintentar.');
@@ -1362,6 +1507,57 @@ export default function ProfesionalRegisterPage() {
         setErrorMessage(apiMessage);
       }
     } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleRetryCheckoutVerification = async () => {
+    const checkoutAction = pendingCheckoutAction;
+    if (!checkoutAction?.checkoutToken && !checkoutAction?.checkoutRef) return;
+    setIsSubmitting(true);
+    setErrorMessage(null);
+    setCheckoutConfirmationMessage('Reintentando verificación con Mercado Pago...');
+    try {
+      const verification = await verifyProfessionalRegistrationCheckout({
+        checkoutToken: checkoutAction.checkoutToken,
+        checkoutRef: checkoutAction.checkoutRef,
+      });
+      const nextAction = {
+        checkoutToken: verification.checkoutToken || checkoutAction.checkoutToken,
+        checkoutRef: verification.checkoutRef || checkoutAction.checkoutRef,
+        checkoutUrl: verification.checkoutUrl || checkoutAction.checkoutUrl,
+      };
+
+      if (!verification.confirmed) {
+        setPendingCheckoutAction(nextAction);
+        setErrorMessage(resolveCheckoutStatusMessage(verification.status));
+        return;
+      }
+
+      const confirmedCheckoutToken = verification.checkoutToken || checkoutAction.checkoutToken;
+      if (!confirmedCheckoutToken) {
+        setPendingCheckoutAction(nextAction);
+        setErrorMessage('Mercado Pago confirmó Core, pero no recibimos una credencial válida para crear el perfil. Reintentá la verificación.');
+        return;
+      }
+
+      const pending = readPendingCheckoutRegistration();
+      if (!pending) {
+        setPendingCheckoutAction(null);
+        setErrorMessage('Mercado Pago confirmó Core, pero no encontramos los datos del wizard en este navegador. Volvé a completar el alta; no se abrirá Mercado Pago automáticamente.');
+        return;
+      }
+
+      await createProfessionalAfterConfirmed(
+        pending.payload,
+        pending.handoff,
+        pending.hasAuthenticatedBaseAccount,
+        confirmedCheckoutToken,
+      );
+    } catch (error) {
+      setErrorMessage(extractApiMessage(error, 'No pudimos confirmar Mercado Pago. No se creó el perfil profesional.'));
+    } finally {
+      setCheckoutConfirmationMessage(null);
       setIsSubmitting(false);
     }
   };
@@ -2063,6 +2259,45 @@ export default function ProfesionalRegisterPage() {
               {errorMessage ? (
                 <div className="mx-auto max-w-3xl rounded-[16px] border border-[color:var(--error-soft)] bg-[color:var(--error-soft)] px-4 py-3 text-sm text-[color:var(--error)]">
                   <p>{errorMessage}</p>
+                </div>
+              ) : null}
+
+              {pendingCheckoutAction ? (
+                <div className="mx-auto flex max-w-3xl flex-col gap-3 rounded-[16px] border border-[color:var(--border-soft)] bg-[color:var(--surface-strong)] px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+                  <p className="text-sm text-[color:var(--ink-muted)]">
+                    La activación está pendiente de confirmación.
+                  </p>
+                  <div className="flex flex-col gap-2 sm:flex-row">
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="sm"
+                      disabled={isSubmitting}
+                      loading={isSubmitting}
+                      loadingLabel="Verificando..."
+                      onClick={() => void handleRetryCheckoutVerification()}
+                    >
+                      Reintentar verificación
+                    </Button>
+                    {pendingCheckoutAction.checkoutUrl ? (
+                      <Button
+                        type="button"
+                        variant="primary"
+                        size="sm"
+                        disabled={isRedirectingToCheckout}
+                        loading={isRedirectingToCheckout}
+                        loadingLabel="Abriendo..."
+                        onClick={() => {
+                          const checkoutUrl = pendingCheckoutAction.checkoutUrl;
+                          if (!checkoutUrl) return;
+                          setIsRedirectingToCheckout(true);
+                          window.location.assign(checkoutUrl);
+                        }}
+                      >
+                        Volver a Mercado Pago
+                      </Button>
+                    ) : null}
+                  </div>
                 </div>
               ) : null}
             </div>

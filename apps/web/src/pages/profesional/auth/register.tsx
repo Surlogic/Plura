@@ -197,12 +197,6 @@ const hasQueryFlag = (value: string | string[] | undefined) => (
   Array.isArray(value) ? value.includes('1') : value === '1'
 );
 
-<<<<<<< HEAD
-const resolveQueryValue = (value: string | string[] | undefined) => (
-  Array.isArray(value) ? value[0] || '' : value || ''
-);
-
-=======
 const getQueryStringValue = (value: string | string[] | undefined) => (
   Array.isArray(value) ? value[0] ?? null : value ?? null
 );
@@ -264,8 +258,6 @@ const resolveCheckoutStatusMessage = (status?: string | null) => {
   }
   return 'Mercado Pago todavía no confirmó la suscripción. No se creó el perfil profesional; podés reintentar la verificación cuando quieras.';
 };
-
->>>>>>> b06abbb4 (arreglando registro de profesional con mercado pago)
 const DEFAULT_LOCATION_PREVIEW: LocationPreview = {
   latitude: -34.9011,
   longitude: -56.1645,
@@ -477,17 +469,10 @@ export default function ProfesionalRegisterPage() {
         let lastStatus: string | null = null;
         let lastCheckoutUrl: string | null = pending?.checkoutUrl ?? null;
         for (let attempt = 1; attempt <= PROFESSIONAL_CHECKOUT_VERIFY_MAX_ATTEMPTS; attempt += 1) {
-<<<<<<< HEAD
-          const verification = await verifyProfessionalRegistrationCheckout(
-            pending.checkoutToken,
-            returnedProviderSubscriptionId,
-          );
-=======
           const verification = await verifyProfessionalRegistrationCheckout({
             checkoutToken,
             checkoutRef,
           });
->>>>>>> b06abbb4 (arreglando registro de profesional con mercado pago)
           if (!isActive) return;
           lastStatus = verification.status;
           lastCheckoutUrl = verification.checkoutUrl || lastCheckoutUrl;

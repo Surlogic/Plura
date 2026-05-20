@@ -176,12 +176,7 @@ type ProfessionalRegistrationCheckoutVerifyInput =
   };
 
 export const verifyProfessionalRegistrationCheckout = async (
-<<<<<<< HEAD
-  checkoutToken: string,
-  providerSubscriptionId?: string | null,
-=======
   input: ProfessionalRegistrationCheckoutVerifyInput,
->>>>>>> b06abbb4 (arreglando registro de profesional con mercado pago)
 ): Promise<ProfessionalRegistrationCheckoutResponse> => {
   const payload = typeof input === 'string'
     ? { checkoutToken: input }
@@ -189,13 +184,10 @@ export const verifyProfessionalRegistrationCheckout = async (
       checkoutToken: input.checkoutToken || undefined,
       checkoutRef: input.checkoutRef || undefined,
     };
+
   const response = await api.post<ProfessionalRegistrationCheckoutResponse>(
     '/api/v1/billing/professional-registration/verify',
-<<<<<<< HEAD
-    { checkoutToken, providerSubscriptionId: providerSubscriptionId || undefined },
-=======
     payload,
->>>>>>> b06abbb4 (arreglando registro de profesional con mercado pago)
   );
   return response.data;
 };

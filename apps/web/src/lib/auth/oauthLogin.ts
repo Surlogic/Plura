@@ -1,6 +1,7 @@
 import api from '@/services/api';
 import {
   setAuthAccessToken,
+  setAuthContextSelectionPending,
   setKnownAuthSessionRole,
   type KnownAuthSessionRole,
 } from '@/services/session';
@@ -94,6 +95,12 @@ const toKnownSessionRole = (role: OAuthRole): KnownAuthSessionRole | undefined =
   return undefined;
 };
 
+const requiresContextSelection = (
+  data: Pick<OAuthResponse, 'activeContext' | 'contexts' | 'contextSelectionRequired'>,
+) =>
+  Boolean(data.contextSelectionRequired) ||
+  (!data.activeContext && Array.isArray(data.contexts) && data.contexts.length > 1);
+
 export async function oauthLogin(
   provider: OAuthProvider,
   tokenOrCode: string,
@@ -139,13 +146,16 @@ export async function oauthLogin(
   let contexts: AuthContextDescriptor[] | undefined = Array.isArray(data.contexts)
     ? data.contexts
     : undefined;
+  let contextSelectionRequired = requiresContextSelection(data);
 
   if (hasContextPayload) {
     if (activeContext) {
+      setAuthContextSelectionPending(false);
       persistAccessTokenForContext(data.accessToken, activeContext);
     } else {
       setKnownAuthSessionRole(null);
-      setAuthAccessToken(data.accessToken);
+      setAuthContextSelectionPending(contextSelectionRequired);
+      setAuthAccessToken(data.accessToken, null);
     }
   } else {
     setAuthAccessToken(data.accessToken, toKnownSessionRole(role));
@@ -153,15 +163,27 @@ export async function oauthLogin(
       const me = await fetchAuthMe();
       activeContext = me.activeContext ?? null;
       contexts = Array.isArray(me.contexts) ? me.contexts : [];
-      persistAccessTokenForContext(data.accessToken, activeContext);
+      contextSelectionRequired = requiresContextSelection({
+        activeContext,
+        contexts,
+      });
+      if (activeContext) {
+        setAuthContextSelectionPending(false);
+        persistAccessTokenForContext(data.accessToken, activeContext);
+      } else {
+        setKnownAuthSessionRole(null);
+        setAuthContextSelectionPending(contextSelectionRequired);
+        setAuthAccessToken(data.accessToken, null);
+      }
     } catch {
       // Si /auth/me falla por completar datos pendientes, conservamos compatibilidad por JWT.
     }
   }
   return {
     ...data,
-    role,
+    role: contextSelectionRequired ? null : role,
     activeContext,
     contexts,
+    contextSelectionRequired,
   };
 }

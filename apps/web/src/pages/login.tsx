@@ -10,7 +10,12 @@ import Badge from '@/components/ui/Badge';
 import Button from '@/components/ui/Button';
 import Card from '@/components/ui/Card';
 import api from '@/services/api';
-import { setAuthAccessToken, setKnownAuthSessionRole } from '@/services/session';
+import {
+  isAuthContextSelectionPending,
+  setAuthAccessToken,
+  setAuthContextSelectionPending,
+  setKnownAuthSessionRole,
+} from '@/services/session';
 import type { OAuthLoginResult } from '@/lib/auth/oauthLogin';
 import {
   fetchAuthMe,
@@ -105,6 +110,12 @@ const contextDescription = (descriptor: AuthContextDescriptor): string => {
       return 'Buscar profesionales y reservar tus turnos.';
   }
 };
+
+const requiresContextSelection = (
+  data: Pick<UnifiedLoginResponse, 'activeContext' | 'contexts' | 'contextSelectionRequired'>,
+) =>
+  Boolean(data.contextSelectionRequired) ||
+  (!data.activeContext && Array.isArray(data.contexts) && data.contexts.length > 1);
 
 export default function UnifiedLoginPage() {
   const router = useRouter();
@@ -285,10 +296,16 @@ export default function UnifiedLoginPage() {
       const response = await api.post<UnifiedLoginResponse>('/auth/login', loginPayload);
       const data = response.data ?? {};
       if (data.accessToken) {
-        const role = data.activeContext
-          ? sessionRoleForContext(data.activeContext.type)
-          : 'CLIENT';
-        setAuthAccessToken(data.accessToken, role);
+        const contextSelectionPending = requiresContextSelection(data);
+        if (contextSelectionPending) {
+          setAuthContextSelectionPending(true);
+          setAuthAccessToken(data.accessToken, null);
+        } else if (data.activeContext) {
+          setAuthContextSelectionPending(false);
+          setAuthAccessToken(data.accessToken, sessionRoleForContext(data.activeContext.type));
+        } else {
+          setAuthAccessToken(data.accessToken, null);
+        }
       }
       await completeAuthenticatedLogin(data, form.email.trim().toLowerCase());
     } catch (error) {
@@ -341,6 +358,31 @@ export default function UnifiedLoginPage() {
       setErrorMessage(extractApiMessage(error, 'No pudimos completar el acceso con Google.'));
     }
   };
+
+  useEffect(() => {
+    if (!router.isReady || desiredContext || !isAuthContextSelectionPending()) return undefined;
+
+    let cancelled = false;
+    void fetchAuthMe()
+      .then((data) => {
+        if (cancelled) return;
+        const list = Array.isArray(data.contexts) ? data.contexts : [];
+        const activeContext = data.activeContext ?? null;
+        const availableContexts = list.length > 0 || !activeContext ? list : [activeContext];
+        if (availableContexts.length > 1) {
+          setContexts(availableContexts);
+          setProfessionalOnlyContext(null);
+          setErrorMessage(null);
+        }
+      })
+      .catch(() => {
+        // Si el token pendiente ya no sirve, el formulario queda disponible para reintentar login.
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [router.isReady, desiredContext]);
 
   const handleSelect = async (descriptor: AuthContextDescriptor) => {
     setErrorMessage(null);

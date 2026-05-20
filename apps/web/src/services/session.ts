@@ -1,12 +1,14 @@
 const ACCESS_TOKEN_STORAGE_KEY = 'plura_access_token_fallback';
 const SESSION_HINT_STORAGE_KEY = 'plura_auth_session_hint';
 const SESSION_ROLE_STORAGE_KEY = 'plura_auth_session_role';
+const CONTEXT_SELECTION_PENDING_STORAGE_KEY = 'plura_auth_context_selection_pending';
 
 export type KnownAuthSessionRole = 'CLIENT' | 'PROFESSIONAL' | 'WORKER';
 
 let inMemoryAccessToken: string | null = null;
 let inMemorySessionHint: boolean | null = null;
 let inMemorySessionRole: KnownAuthSessionRole | null | undefined;
+let inMemoryContextSelectionPending: boolean | null = null;
 const ACCESS_TOKEN_EXPIRY_SKEW_MS = 30_000;
 
 const normalizeToken = (token?: string | null) => {
@@ -87,6 +89,10 @@ export const getUsableAuthAccessToken = (): string | null => {
 };
 
 export const getKnownAuthSessionRole = (): KnownAuthSessionRole | null => {
+  if (isAuthContextSelectionPending()) {
+    inMemorySessionRole = null;
+    return null;
+  }
   if (typeof inMemorySessionRole !== 'undefined') {
     return inMemorySessionRole;
   }
@@ -109,6 +115,35 @@ export const getKnownAuthSessionRole = (): KnownAuthSessionRole | null => {
   return derivedRole;
 };
 
+export const isAuthContextSelectionPending = (): boolean => {
+  if (inMemoryContextSelectionPending !== null) {
+    return inMemoryContextSelectionPending;
+  }
+  if (typeof window === 'undefined') {
+    inMemoryContextSelectionPending = false;
+    return false;
+  }
+  const stored = window.localStorage.getItem(CONTEXT_SELECTION_PENDING_STORAGE_KEY) === '1';
+  inMemoryContextSelectionPending = stored;
+  return stored;
+};
+
+export const setAuthContextSelectionPending = (value: boolean) => {
+  inMemoryContextSelectionPending = value;
+  if (value) {
+    inMemorySessionRole = null;
+    inMemorySessionHint = true;
+  }
+  if (typeof window === 'undefined') return;
+  if (value) {
+    window.localStorage.setItem(CONTEXT_SELECTION_PENDING_STORAGE_KEY, '1');
+    window.localStorage.removeItem(SESSION_ROLE_STORAGE_KEY);
+    window.localStorage.setItem(SESSION_HINT_STORAGE_KEY, '1');
+  } else {
+    window.localStorage.removeItem(CONTEXT_SELECTION_PENDING_STORAGE_KEY);
+  }
+};
+
 export const hasKnownAuthSession = (): boolean => {
   if (getUsableAuthAccessToken()) return true;
   if (getKnownAuthSessionRole()) return true;
@@ -126,8 +161,10 @@ export const setKnownAuthSession = (
   inMemorySessionHint = value;
   if (!value) {
     inMemorySessionRole = null;
+    inMemoryContextSelectionPending = false;
   } else if (role) {
     inMemorySessionRole = role;
+    inMemoryContextSelectionPending = false;
   }
   if (typeof window === 'undefined') return;
   if (value) {
@@ -140,6 +177,10 @@ export const setKnownAuthSession = (
     window.localStorage.removeItem(SESSION_ROLE_STORAGE_KEY);
   } else if (role) {
     window.localStorage.setItem(SESSION_ROLE_STORAGE_KEY, role);
+    window.localStorage.removeItem(CONTEXT_SELECTION_PENDING_STORAGE_KEY);
+  }
+  if (!value) {
+    window.localStorage.removeItem(CONTEXT_SELECTION_PENDING_STORAGE_KEY);
   }
 };
 
@@ -147,11 +188,13 @@ export const setKnownAuthSessionRole = (role?: KnownAuthSessionRole | null) => {
   inMemorySessionRole = role ?? null;
   if (role) {
     inMemorySessionHint = true;
+    inMemoryContextSelectionPending = false;
   }
   if (typeof window === 'undefined') return;
   if (role) {
     window.localStorage.setItem(SESSION_ROLE_STORAGE_KEY, role);
     window.localStorage.setItem(SESSION_HINT_STORAGE_KEY, '1');
+    window.localStorage.removeItem(CONTEXT_SELECTION_PENDING_STORAGE_KEY);
   } else {
     window.localStorage.removeItem(SESSION_ROLE_STORAGE_KEY);
   }
@@ -167,6 +210,9 @@ export const setAuthAccessToken = (
     inMemorySessionHint = true;
     if (role) {
       inMemorySessionRole = role;
+      inMemoryContextSelectionPending = false;
+    } else if (role === null) {
+      inMemorySessionRole = null;
     }
   }
   if (typeof window === 'undefined') return;
@@ -175,6 +221,9 @@ export const setAuthAccessToken = (
     window.localStorage.setItem(SESSION_HINT_STORAGE_KEY, '1');
     if (role) {
       window.localStorage.setItem(SESSION_ROLE_STORAGE_KEY, role);
+      window.localStorage.removeItem(CONTEXT_SELECTION_PENDING_STORAGE_KEY);
+    } else if (role === null) {
+      window.localStorage.removeItem(SESSION_ROLE_STORAGE_KEY);
     }
   } else {
     window.localStorage.removeItem(ACCESS_TOKEN_STORAGE_KEY);
@@ -188,8 +237,10 @@ export const clearAuthAccessToken = () => {
   inMemoryAccessToken = null;
   inMemorySessionHint = false;
   inMemorySessionRole = null;
+  inMemoryContextSelectionPending = false;
   if (typeof window === 'undefined') return;
   window.localStorage.removeItem(ACCESS_TOKEN_STORAGE_KEY);
   window.localStorage.removeItem(SESSION_HINT_STORAGE_KEY);
   window.localStorage.removeItem(SESSION_ROLE_STORAGE_KEY);
+  window.localStorage.removeItem(CONTEXT_SELECTION_PENDING_STORAGE_KEY);
 };

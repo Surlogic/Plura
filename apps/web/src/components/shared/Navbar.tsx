@@ -12,6 +12,7 @@ type NavbarProps = {
   showMenuButton?: boolean;
   onMenuClick?: () => void;
   exploreViewToggle?: ReactNode;
+  professionalDashboardScope?: boolean;
 };
 
 const getInitials = (name: string) =>
@@ -28,6 +29,7 @@ export default memo(function Navbar({
   showMenuButton = false,
   onMenuClick,
   exploreViewToggle,
+  professionalDashboardScope = false,
 }: NavbarProps) {
   const { profile: professionalProfile } = useProfessionalProfileContext();
   const { profile: clientProfile } = useClientProfileContext();
@@ -41,6 +43,8 @@ export default memo(function Navbar({
   const initials = getInitials(displayName || 'Perfil');
 
   const isDashboard = variant === 'dashboard';
+  const hasProfessionalDashboardScope = professionalDashboardScope && role === 'PROFESSIONAL';
+  const brandHref = hasProfessionalDashboardScope ? '/profesional/dashboard' : '/';
   const headerClassName = isDashboard
     ? 'border-b border-[color:var(--border-soft)] bg-[color:var(--surface)]/88 backdrop-blur-xl'
     : 'sticky top-0 z-50 border-b border-[color:var(--border-soft)] bg-[color:var(--surface)]/84 backdrop-blur-xl';
@@ -57,7 +61,7 @@ export default memo(function Navbar({
               Menú
             </Button>
           ) : null}
-          <BrandLogo href="/" variant="navbar" priority />
+          <BrandLogo href={brandHref} variant="navbar" priority />
         </div>
         {exploreViewToggle ? (
           <div className="order-3 flex w-full justify-center lg:order-2 lg:w-auto lg:flex-1">
@@ -78,9 +82,11 @@ export default memo(function Navbar({
           ) : null}
           {role === 'PROFESSIONAL' ? (
             <>
-              <Button href="/explorar" size="md" className={navButtonClassName}>
-                Explorar
-              </Button>
+              {hasProfessionalDashboardScope ? null : (
+                <Button href="/explorar" size="md" className={navButtonClassName}>
+                  Explorar
+                </Button>
+              )}
               <Button href="/profesional/dashboard" size="md" className={navButtonClassName}>
                 Mi dashboard
               </Button>

@@ -81,6 +81,7 @@ export default function ProfesionalPublicPageBuilder() {
     [resolvedSlug],
   );
   const publicUrl = `${origin}/profesional/pagina/${slug || 'profesional'}`;
+  const reviewUrl = `${publicUrl}?fromDashboard=1`;
   const showSkeleton = !hasLoaded || (isLoading && !profile);
   const previewServices: PublicService[] = useMemo(
     () =>
@@ -468,7 +469,7 @@ export default function ProfesionalPublicPageBuilder() {
                       description="El resultado final se actualiza a medida que ajustás textos, fotos y narrativa."
                       action={(
                         <a
-                          href={publicUrl}
+                          href={reviewUrl}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="rounded-full border border-[#E2E7EC] bg-white px-4 py-2 text-xs font-semibold text-[#0E2A47] transition hover:-translate-y-0.5 hover:shadow-sm"

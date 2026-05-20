@@ -248,6 +248,9 @@ export default function ProfesionalDetailPage({
   const isPreview = Array.isArray(router.query.preview)
     ? router.query.preview[0] === '1'
     : router.query.preview === '1';
+  const isFromDashboard = Array.isArray(router.query.fromDashboard)
+    ? router.query.fromDashboard[0] === '1'
+    : router.query.fromDashboard === '1';
 
   const [preview, setPreview] = useState<PreviewPayload | null>(null);
   const [data, setData] = useState<PublicProfessional | null>(
@@ -731,7 +734,7 @@ export default function ProfesionalDetailPage({
         noindex={isPreview || !hasPublicContent}
         structuredData={businessStructuredData}
       />
-      {isPreview ? null : <Navbar />}
+      {isPreview ? null : <Navbar professionalDashboardScope={isFromDashboard} />}
 
       <main
         className={`mx-auto w-full max-w-[1500px] px-4 sm:px-6 lg:px-8 ${

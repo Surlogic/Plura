@@ -24,15 +24,21 @@ export default function ProfesionalBienvenidoPage() {
     const validateProfessionalSession = async () => {
       try {
         await ensureAuthContext('PROFESSIONAL');
-        await refreshProfile();
-
-        if (isActive) {
-          setIsCheckingSession(false);
-        }
       } catch {
         if (isActive) {
           void router.replace('/login?intent=professional');
         }
+        return;
+      }
+
+      try {
+        await refreshProfile();
+      } catch {
+        // La bienvenida solo requiere una sesión profesional válida.
+      }
+
+      if (isActive) {
+        setIsCheckingSession(false);
       }
     };
 

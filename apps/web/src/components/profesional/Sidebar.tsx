@@ -1,12 +1,15 @@
 import Link from 'next/link';
 import Image from 'next/image';
-import { memo, useEffect, useMemo, useRef } from 'react';
+import { useRouter } from 'next/router';
+import { memo, useEffect, useMemo, useRef, useState } from 'react';
 import type { ProfessionalProfile } from '@/types/professional';
 import {
   canAccessProfessionalFeature,
   type ProfessionalFeatureKey,
 } from '@/lib/billing/featureGuards';
 import { useProfessionalDashboardUnsavedChanges } from '@/context/ProfessionalDashboardUnsavedChangesContext';
+import { useProfessionalProfileContext } from '@/context/ProfessionalProfileContext';
+import { fetchAuthMe, hasContext, selectAuthContext } from '@/lib/auth/contexts';
 import { cn } from '@/components/ui/cn';
 import {
   DashboardIcon,
@@ -89,9 +92,13 @@ type SidebarProps = {
 };
 
 function ProfesionalSidebar({ profile, active }: SidebarProps) {
+  const router = useRouter();
   const { requestNavigation } = useProfessionalDashboardUnsavedChanges();
+  const { clearProfile: clearProfessionalProfile } = useProfessionalProfileContext();
   const rootRef = useRef<HTMLElement | null>(null);
   const { count: unreadNotificationCount } = useProfessionalNotificationUnreadCount();
+  const [canEnterAsClient, setCanEnterAsClient] = useState(false);
+  const [isSwitchingContext, setIsSwitchingContext] = useState(false);
 
   const initials = useMemo(() => {
     if (!profile?.fullName) return 'PR';
@@ -119,6 +126,44 @@ function ProfesionalSidebar({ profile, active }: SidebarProps) {
     });
     return () => cancelAnimationFrame(id);
   }, [active]);
+
+  useEffect(() => {
+    let isActive = true;
+
+    const loadAvailableContexts = async () => {
+      try {
+        const me = await fetchAuthMe();
+        if (isActive) {
+          setCanEnterAsClient(hasContext(me.contexts, 'CLIENT'));
+        }
+      } catch {
+        if (isActive) {
+          setCanEnterAsClient(false);
+        }
+      }
+    };
+
+    void loadAvailableContexts();
+
+    return () => {
+      isActive = false;
+    };
+  }, []);
+
+  const handleEnterAsClient = async () => {
+    if (isSwitchingContext) {
+      return;
+    }
+
+    setIsSwitchingContext(true);
+    try {
+      await selectAuthContext('CLIENT');
+      clearProfessionalProfile();
+      await router.push('/cliente/inicio');
+    } catch {
+      setIsSwitchingContext(false);
+    }
+  };
 
   return (
     <aside
@@ -257,6 +302,21 @@ function ProfesionalSidebar({ profile, active }: SidebarProps) {
                   </Link>
                 );
               })}
+              {section.label === 'Cuenta' && canEnterAsClient ? (
+                <button
+                  type="button"
+                  className="group relative flex w-full items-center gap-3 rounded-lg bg-transparent px-3 py-2 text-left text-[#0F172A] transition hover:bg-[#ECFDF5]/50 focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--focus-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:cursor-wait disabled:opacity-70"
+                  onClick={handleEnterAsClient}
+                  disabled={isSwitchingContext}
+                >
+                  <span className="inline-flex h-4 w-4 shrink-0 items-center justify-center bg-transparent text-[#0F172A]">
+                    <DashboardIcon name="configuracion" className="h-4 w-4" />
+                  </span>
+                  <span className="min-w-0 flex-1 truncate text-sm">
+                    {isSwitchingContext ? 'Cambiando...' : 'Entrar como cliente'}
+                  </span>
+                </button>
+              ) : null}
             </div>
           </div>
         ))}

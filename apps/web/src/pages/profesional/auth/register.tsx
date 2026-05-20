@@ -1379,6 +1379,8 @@ export default function ProfesionalRegisterPage() {
       setAuthAccessToken(loginResponse.data?.accessToken ?? null, 'PROFESSIONAL');
     }
 
+    await selectAuthContext('PROFESSIONAL');
+
     const subscription = await fetchCurrentCoreSubscriptionWithRetry();
     if (!subscription) {
       throw new Error(PROFESSIONAL_SUBSCRIPTION_READ_PENDING_MESSAGE);
@@ -1393,7 +1395,11 @@ export default function ProfesionalRegisterPage() {
         window.localStorage.removeItem(PROFESSIONAL_ONBOARDING_DRAFT_KEY);
       }
       setErrorMessage('Plura Core quedó activo, pero no pudimos publicar la configuración inicial. Podés reintentar desde Facturación.');
-      await refreshProfile();
+      try {
+        await refreshProfile();
+      } catch {
+        // No bloquear la recuperación profesional si falla la hidratación local.
+      }
       await router.push({
         pathname: '/profesional/dashboard/billing',
         query: { setup: 'pending' },
@@ -1406,8 +1412,12 @@ export default function ProfesionalRegisterPage() {
     if (typeof window !== 'undefined') {
       window.localStorage.removeItem(PROFESSIONAL_ONBOARDING_DRAFT_KEY);
     }
-    await refreshProfile();
-    await router.push('/profesional/dashboard');
+    try {
+      await refreshProfile();
+    } catch {
+      // La bienvenida puede cargar con la sesión profesional ya persistida.
+    }
+    await router.push('/profesional/auth/bienvenido');
   };
 
   const handleSubmit = async (event?: FormEvent<HTMLFormElement>) => {

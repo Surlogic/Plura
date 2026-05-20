@@ -1,6 +1,9 @@
-import type { ReactElement } from 'react';
+import { useEffect, useState, type ReactElement } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/router';
 import Card from '@/components/ui/Card';
+import { useClientProfileContext } from '@/context/ClientProfileContext';
+import { fetchAuthMe, hasContext, selectAuthContext } from '@/lib/auth/contexts';
 
 type IconProps = {
   className?: string;
@@ -61,6 +64,13 @@ const SettingsIcon = ({ className }: IconProps) => (
   </svg>
 );
 
+const BriefcaseIcon = ({ className }: IconProps) => (
+  <svg viewBox="0 0 24 24" fill="none" className={className} aria-hidden="true">
+    <rect x="3" y="7" width="18" height="13" rx="2.5" stroke="currentColor" strokeWidth="1.8" />
+    <path d="M9 7V5.8A1.8 1.8 0 0 1 10.8 4h2.4A1.8 1.8 0 0 1 15 5.8V7M3 12h18M10 12v1.2h4V12" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
+
 const sidebarItems: SidebarItem[] = [
   { id: 'inicio', label: 'Inicio', href: '/cliente/inicio', icon: HomeIcon },
   { id: 'reservas', label: 'Mis reservas', href: '/cliente/reservas', icon: CalendarIcon },
@@ -85,7 +95,50 @@ export default function ClientSidebar({
   onToggleCollapsed,
   onNavigate,
 }: ClientSidebarProps) {
+  const router = useRouter();
+  const { clearProfile: clearClientProfile } = useClientProfileContext();
   const isCollapsed = collapsed && !mobile;
+  const [canEnterAsProfessional, setCanEnterAsProfessional] = useState(false);
+  const [isSwitchingContext, setIsSwitchingContext] = useState(false);
+
+  useEffect(() => {
+    let isActive = true;
+
+    const loadAvailableContexts = async () => {
+      try {
+        const me = await fetchAuthMe();
+        if (isActive) {
+          setCanEnterAsProfessional(hasContext(me.contexts, 'PROFESSIONAL'));
+        }
+      } catch {
+        if (isActive) {
+          setCanEnterAsProfessional(false);
+        }
+      }
+    };
+
+    void loadAvailableContexts();
+
+    return () => {
+      isActive = false;
+    };
+  }, []);
+
+  const handleEnterAsProfessional = async () => {
+    if (isSwitchingContext) {
+      return;
+    }
+
+    setIsSwitchingContext(true);
+    try {
+      await selectAuthContext('PROFESSIONAL');
+      clearClientProfile();
+      onNavigate?.();
+      await router.push('/profesional/dashboard');
+    } catch {
+      setIsSwitchingContext(false);
+    }
+  };
 
   return (
     <Card
@@ -181,6 +234,40 @@ export default function ClientSidebar({
             </Link>
           );
         })}
+        {canEnterAsProfessional ? (
+          <button
+            type="button"
+            onClick={handleEnterAsProfessional}
+            disabled={isSwitchingContext}
+            className={`group relative flex w-full items-center rounded-[14px] py-2 text-sm font-semibold text-[color:var(--ink)] transition hover:bg-white/82 disabled:cursor-wait disabled:opacity-70 ${
+              isCollapsed ? 'justify-center px-2' : 'justify-start px-3'
+            }`}
+            title={isCollapsed ? 'Entrar como profesional' : undefined}
+          >
+            <span
+              className="flex h-8 w-8 items-center justify-center rounded-full bg-white text-[color:var(--ink-muted)] transition"
+              aria-hidden="true"
+            >
+              <BriefcaseIcon className="h-4 w-4" />
+            </span>
+            <span
+              className={`overflow-hidden whitespace-nowrap transition-[max-width,opacity,margin] duration-300 ${
+                isCollapsed ? 'ml-0 max-w-0 opacity-0' : 'ml-2 max-w-[170px] opacity-100'
+              }`}
+            >
+              {isSwitchingContext ? 'Cambiando...' : 'Entrar como profesional'}
+            </span>
+
+            {isCollapsed ? (
+              <span className="pointer-events-none absolute left-[calc(100%+12px)] top-1/2 z-20 -translate-y-1/2 rounded-md bg-[color:var(--primary)] px-2 py-1 text-xs font-semibold text-white opacity-0 shadow-[var(--shadow-card)] transition group-hover:opacity-100">
+                Entrar como profesional
+              </span>
+            ) : null}
+            {isCollapsed ? (
+              <span className="pointer-events-none absolute left-[calc(100%+8px)] top-1/2 z-10 h-2 w-2 -translate-y-1/2 rotate-45 bg-[color:var(--primary)] opacity-0 transition group-hover:opacity-100" />
+            ) : null}
+          </button>
+        ) : null}
       </nav>
     </Card>
   );

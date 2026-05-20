@@ -45,6 +45,7 @@ BEGIN
         JOIN pg_namespace n ON n.oid = c.relnamespace
         WHERE n.nspname = 'public'
           AND c.relkind IN ('r', 'p')
+          AND c.relname <> 'flyway_schema_history'
           AND pg_get_userbyid(c.relowner) = current_user
     LOOP
         EXECUTE format(

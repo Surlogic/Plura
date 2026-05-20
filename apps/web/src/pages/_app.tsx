@@ -16,10 +16,12 @@ import { ThemeProvider } from '@/components/theme/ThemeProvider';
 import {
   getKnownAuthSessionRole,
   getUsableAuthAccessToken,
+  type KnownAuthSessionRole,
   subscribeAuthSessionChange,
 } from '@/services/session';
 import { invalidateCachedGet } from '@/services/cachedGet';
 import { clearFavoriteProfessionals } from '@/services/clientFeatures';
+import { fetchCurrentSubscription, isCoreSubscriptionEnabled } from '@/lib/billing/billing';
 import UnsavedChangesOverlay from '@/components/profesional/dashboard/UnsavedChangesOverlay';
 import ErrorBoundary from '@/components/shared/ErrorBoundary';
 import { reportWebError } from '@/services/errorTelemetry';
@@ -87,10 +89,33 @@ const isProfessionalProtectedPath = (path: string) =>
   isRouteOrChild(path, '/profesional/dashboard') ||
   isRouteOrChild(path, '/profesional/notificaciones');
 
+const isAuthEntryPath = (path: string) =>
+  path === '/login' ||
+  path === '/cliente/auth/login' ||
+  path === '/profesional/auth/login' ||
+  path === '/cliente/auth/register' ||
+  path === '/profesional/auth/register';
+
 const invalidateAuthProfileCaches = () => {
   invalidateCachedGet('/auth/me');
   invalidateCachedGet('/auth/me/cliente');
   invalidateCachedGet('/auth/me/profesional');
+};
+
+const dashboardPathForRole = async (role: KnownAuthSessionRole) => {
+  if (role === 'CLIENT') return '/cliente/inicio';
+  if (role === 'WORKER') return '/trabajador/calendario';
+
+  try {
+    const subscription = await fetchCurrentSubscription();
+    if (!isCoreSubscriptionEnabled(subscription)) {
+      return '/profesional/dashboard/billing';
+    }
+  } catch {
+    return '/profesional/dashboard';
+  }
+
+  return '/profesional/dashboard';
 };
 
 export default function App({ Component, pageProps }: AppProps) {
@@ -147,18 +172,46 @@ export default function App({ Component, pageProps }: AppProps) {
   } = routeFlags;
 
   useEffect(() => {
-    return subscribeAuthSessionChange(({ snapshot }) => {
+    let isMounted = true;
+    const unsubscribe = subscribeAuthSessionChange(({ snapshot, isExternal }) => {
       invalidateAuthProfileCaches();
       clearFavoriteProfessionals();
       setSessionVersion((version) => version + 1);
 
       const currentPath = window.location.pathname;
+      const hasSession = Boolean(snapshot.accessToken || snapshot.hasSessionHint);
+      const activeRole = snapshot.contextSelectionPending ? null : snapshot.role;
+      const hasActiveSession = hasSession && Boolean(activeRole);
+
+      if (isExternal && hasActiveSession && activeRole) {
+        void dashboardPathForRole(activeRole).then((targetPath) => {
+          if (!isMounted) return;
+          const latestPath = window.location.pathname;
+          const latestHref = window.location.href;
+          const latestIsClientPath = isClientProtectedPath(latestPath);
+          const latestIsProfessionalPath = isProfessionalProtectedPath(latestPath);
+          const latestIsProtectedPath = latestIsClientPath || latestIsProfessionalPath;
+          const latestIsAuthEntryPath = isAuthEntryPath(latestPath);
+          const isCompatibleProtectedPath =
+            (latestIsClientPath && activeRole === 'CLIENT') ||
+            (latestIsProfessionalPath && activeRole === 'PROFESSIONAL');
+
+          if (latestIsAuthEntryPath || (latestIsProtectedPath && !isCompatibleProtectedPath)) {
+            void router.replace(targetPath);
+            return;
+          }
+
+          if (latestIsProtectedPath && isCompatibleProtectedPath) {
+            window.location.assign(latestHref);
+          }
+        });
+        return;
+      }
+
       const isClientPath = isClientProtectedPath(currentPath);
       const isProfessionalPath = isProfessionalProtectedPath(currentPath);
       if (!isClientPath && !isProfessionalPath) return;
 
-      const hasSession = Boolean(snapshot.accessToken || snapshot.hasSessionHint);
-      const activeRole = snapshot.contextSelectionPending ? null : snapshot.role;
       const isCompatibleProtectedPath =
         (isClientPath && activeRole === 'CLIENT') ||
         (isProfessionalPath && activeRole === 'PROFESSIONAL');
@@ -167,6 +220,11 @@ export default function App({ Component, pageProps }: AppProps) {
         void router.replace('/login');
       }
     });
+
+    return () => {
+      isMounted = false;
+      unsubscribe();
+    };
   }, [router]);
 
   useEffect(() => {

@@ -19,6 +19,7 @@ export type AuthSessionSnapshot = {
 export type AuthSessionChangeEvent = {
   reason: AuthSessionChangeReason;
   snapshot: AuthSessionSnapshot;
+  isExternal?: boolean;
 };
 
 type AuthSessionSyncMessage = AuthSessionChangeEvent & {
@@ -176,7 +177,7 @@ const emitAuthSessionChange = (reason: AuthSessionChangeReason) => {
     version: Date.now(),
   };
 
-  notifyAuthSessionListeners({ reason, snapshot });
+  notifyAuthSessionListeners({ reason, snapshot, isExternal: false });
 
   try {
     getSessionSyncBroadcastChannel()?.postMessage(message);
@@ -209,6 +210,7 @@ const handleExternalAuthSessionMessage = (message: unknown) => {
   notifyAuthSessionListeners({
     reason: message.reason,
     snapshot: message.snapshot,
+    isExternal: true,
   });
 };
 
@@ -219,6 +221,7 @@ const syncAuthSessionSnapshotFromStorage = () => {
   notifyAuthSessionListeners({
     reason: snapshot.hasSessionHint ? 'session' : 'logout',
     snapshot,
+    isExternal: true,
   });
 };
 

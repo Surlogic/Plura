@@ -14,7 +14,6 @@ import {
   DashboardHeaderBadge,
   DashboardPageHeader,
   DashboardSectionHeading,
-  DashboardStatCard,
 } from '@/components/profesional/dashboard/DashboardUI';
 import {
   cancelProfessionalBooking,
@@ -99,10 +98,10 @@ const sortByDateTimeDesc = (a: ProfessionalReservation, b: ProfessionalReservati
 type ReservationColumnTone = 'today' | 'pending' | 'confirmed' | 'cancelled';
 
 const reservationColumnToneClasses: Record<ReservationColumnTone, string> = {
-  today: 'border-[#D9E2EC] bg-white',
-  pending: 'border-[#FDE68A] bg-[#FFFBEB]',
-  confirmed: 'border-[#BFEDE7] bg-[#F8FFFD]',
-  cancelled: 'border-[#FECACA] bg-[#FFF7F7]',
+  today: 'border-[#BFDBFE] bg-gradient-to-b from-[#EFF6FF] to-white',
+  pending: 'border-[#FDE68A] bg-gradient-to-b from-[#FFFBEB] to-white',
+  confirmed: 'border-[#BBF7D0] bg-gradient-to-b from-[#F0FDF4] to-white',
+  cancelled: 'border-[#FECACA] bg-gradient-to-b from-[#FEF2F2] to-white',
 };
 
 const reservationColumnCountClasses: Record<ReservationColumnTone, string> = {
@@ -718,9 +717,9 @@ export default function ProfesionalReservationsPage() {
     <ProfessionalDashboardShell profile={profile} active="Reservas">
       <div className="space-y-6">
               <DashboardPageHeader
-                eyebrow="OPERACIÓN"
-                title="Reservas"
-                description="Gestioná confirmaciones, cambios y seguimiento de turnos."
+                eyebrow="Reservas"
+                title="Panel de reservas"
+                description="Listado, detalle, acciones y timeline en una misma vista operativa."
                 meta={(
                   <>
                     <DashboardHeaderBadge tone="success">
@@ -754,40 +753,11 @@ export default function ProfesionalReservationsPage() {
                 </Card>
               ) : null}
 
-              <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-                <DashboardStatCard
-                  label="Para hoy"
-                  value={`${todayReservations.length}`}
-                  detail="Reservas activas del día"
-                  icon="agenda"
-                  tone="accent"
-                />
-                <DashboardStatCard
-                  label="Pendientes"
-                  value={`${pendingReservations.length}`}
-                  detail="Necesitan confirmación"
-                  icon="warning"
-                  tone="warm"
-                />
-                <DashboardStatCard
-                  label="Confirmadas próximas"
-                  value={`${upcomingConfirmedReservations.length}`}
-                  detail="Turnos futuros en agenda"
-                  icon="check"
-                />
-                <DashboardStatCard
-                  label="Canceladas"
-                  value={`${cancelledReservations.length}`}
-                  detail="Con seguimiento disponible"
-                  icon="reservas"
-                />
-              </div>
-
               {showCreateForm ? (
                 <Card className="border-white/70 bg-white/95 p-5">
                   <DashboardSectionHeading
                     title="Reserva manual"
-                    description="Cargá un turno desde el panel sin duplicar pasos para el cliente."
+                    description="Sigue disponible para carga operativa, sin duplicar lógica de pagos en frontend."
                   />
                   <div className="mt-4 grid gap-4 md:grid-cols-2">
                     <label className="text-xs font-semibold uppercase tracking-[0.2em] text-[#64748B]">
@@ -895,8 +865,8 @@ export default function ProfesionalReservationsPage() {
                 </div>
               ) : (
                 <>
-                  <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_380px] xl:items-start">
-                    <div className="grid min-w-0 gap-4 md:grid-cols-2 2xl:grid-cols-4">
+                  <div className="space-y-5">
+                    <div className="grid min-w-0 gap-4 md:grid-cols-2 xl:grid-cols-4">
                       {renderReservationColumn({
                         title: 'Reservas de hoy',
                         subtitle: 'Turnos de hoy que no están cancelados.',
@@ -927,7 +897,7 @@ export default function ProfesionalReservationsPage() {
                       })}
                     </div>
 
-                    <aside className="xl:sticky xl:top-5">
+                    <aside>
                       <Card className="rounded-[18px] border-white/70 bg-white/95 p-5 shadow-[0_4px_14px_rgba(15,23,42,0.04)]">
                         {!selectedReservation ? (
                           <div className="rounded-[18px] border border-dashed border-[#CBD5F5] bg-white/70 px-4 py-4 text-sm text-[#64748B]">
@@ -1004,7 +974,7 @@ export default function ProfesionalReservationsPage() {
                                   </p>
                                 ) : null}
                                 <p>
-                                  Devolución:{' '}
+                                  Refund:{' '}
                                   <span className="font-semibold text-[#0E2A47]">
                                     {getRefundStatusCopy(selectedReservation.refundStatus)}
                                   </span>
@@ -1026,7 +996,7 @@ export default function ProfesionalReservationsPage() {
 
                             <div className="mt-4 rounded-[18px] border border-[#E2E7EC] bg-white p-4">
                               <p className="text-xs uppercase tracking-[0.25em] text-[#94A3B8]">
-                                Impacto de esta acción
+                                Consecuencias backend
                               </p>
                               {isLoadingActions ? (
                                 <p className="mt-3 text-sm text-[#64748B]">Cargando acciones…</p>

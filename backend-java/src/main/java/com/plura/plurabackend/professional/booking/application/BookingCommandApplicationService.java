@@ -161,6 +161,8 @@ public class BookingCommandApplicationService {
             if (user.getPhoneVerifiedAt() == null) {
                 throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Necesitás verificar tu celular antes de reservar.");
             }
+            boolean emailVerificationRequired =
+                bookingRepository.countByUser_Id(user.getId()) == 0 && user.getEmailVerifiedAt() == null;
 
             ProfessionalProfile profile = professionalProfileRepository.findBySlugForUpdate(slug)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Profesional no encontrado"));
@@ -231,7 +233,8 @@ public class BookingCommandApplicationService {
                 saved.getTimezone(),
                 saved.getServiceId(),
                 String.valueOf(saved.getProfessionalId()),
-                String.valueOf(saved.getUser().getId())
+                String.valueOf(saved.getUser().getId()),
+                emailVerificationRequired
             );
         } finally {
             sample.stop(

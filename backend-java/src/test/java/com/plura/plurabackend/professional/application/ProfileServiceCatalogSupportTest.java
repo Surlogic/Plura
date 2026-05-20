@@ -74,13 +74,15 @@ class ProfileServiceCatalogSupportTest {
         PlanGuardService planGuardService = mock(PlanGuardService.class);
         ProfessionalProfile profile = new ProfessionalProfile();
         profile.setId(11L);
+        ProfesionalServiceRepository repository = mock(ProfesionalServiceRepository.class);
 
+        org.mockito.Mockito.when(repository.countByProfessional_Id(11L)).thenReturn(1L);
         org.mockito.Mockito.doThrow(new ResponseStatusException(HttpStatus.FORBIDDEN, "Este extra no está habilitado"))
             .when(planGuardService)
             .requireBooleanCapability("11", BooleanCapability.ONLINE_PAYMENTS);
 
         ProfileServiceCatalogSupport support = new ProfileServiceCatalogSupport(
-            mock(ProfesionalServiceRepository.class),
+            repository,
             mock(ProfilePublicPageAssembler.class),
             mock(ProfessionalSideEffectCoordinator.class),
             mock(CategoryRepository.class),

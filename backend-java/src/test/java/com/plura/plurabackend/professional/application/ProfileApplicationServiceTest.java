@@ -22,6 +22,7 @@ import com.plura.plurabackend.professional.plan.PlanGuardService;
 import com.plura.plurabackend.professional.plan.ProfessionalPlanCode;
 import com.plura.plurabackend.professional.plan.ProfessionalPlanPolicyService;
 import com.plura.plurabackend.professional.repository.ProfessionalProfileRepository;
+import com.plura.plurabackend.professional.service.repository.ProfesionalServiceRepository;
 import com.plura.plurabackend.core.storage.thumbnail.ImageThumbnailJobService;
 import com.plura.plurabackend.core.user.model.User;
 import com.plura.plurabackend.core.user.repository.UserRepository;
@@ -80,6 +81,7 @@ class ProfileApplicationServiceTest {
             mock(ProfileBookingPolicySupport.class),
             mock(ProfileServiceCatalogSupport.class),
             mock(ProfileGeocodingSupport.class),
+            mock(ProfesionalServiceRepository.class),
             new SimpleMeterRegistry()
         );
 
@@ -140,6 +142,7 @@ class ProfileApplicationServiceTest {
             mock(ProfileBookingPolicySupport.class),
             mock(ProfileServiceCatalogSupport.class),
             mock(ProfileGeocodingSupport.class),
+            mock(ProfesionalServiceRepository.class),
             new SimpleMeterRegistry()
         );
 
@@ -188,6 +191,7 @@ class ProfileApplicationServiceTest {
             mock(ProfileBookingPolicySupport.class),
             mock(ProfileServiceCatalogSupport.class),
             mock(ProfileGeocodingSupport.class),
+            mock(ProfesionalServiceRepository.class),
             new SimpleMeterRegistry()
         );
 
@@ -236,6 +240,7 @@ class ProfileApplicationServiceTest {
             mock(ProfileBookingPolicySupport.class),
             mock(ProfileServiceCatalogSupport.class),
             mock(ProfileGeocodingSupport.class),
+            mock(ProfesionalServiceRepository.class),
             new SimpleMeterRegistry()
         );
 

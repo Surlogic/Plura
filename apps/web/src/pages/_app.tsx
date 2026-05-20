@@ -216,8 +216,33 @@ export default function App({ Component, pageProps }: AppProps) {
         (isClientPath && activeRole === 'CLIENT') ||
         (isProfessionalPath && activeRole === 'PROFESSIONAL');
 
-      if (!hasSession || !isCompatibleProtectedPath) {
+      if (!hasSession) {
         void router.replace('/login');
+        return;
+      }
+
+      if (!activeRole) {
+        return;
+      }
+
+      if (!isCompatibleProtectedPath) {
+        void dashboardPathForRole(activeRole).then((targetPath) => {
+          if (!isMounted) return;
+          const latestPath = window.location.pathname;
+          const latestIsClientPath = isClientProtectedPath(latestPath);
+          const latestIsProfessionalPath = isProfessionalProtectedPath(latestPath);
+          const latestIsProtectedPath = latestIsClientPath || latestIsProfessionalPath;
+          const latestIsCompatibleProtectedPath =
+            (latestIsClientPath && activeRole === 'CLIENT') ||
+            (latestIsProfessionalPath && activeRole === 'PROFESSIONAL');
+
+          if (
+            latestIsProtectedPath &&
+            (!latestIsCompatibleProtectedPath || latestPath !== targetPath)
+          ) {
+            void router.replace(targetPath);
+          }
+        });
       }
     });
 

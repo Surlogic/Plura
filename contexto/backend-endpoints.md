@@ -180,7 +180,7 @@ Lectura de producto:
 - soporta registro directo del profesional en `Profesional`
 - ya da base para login social y gestion de sesiones
 - `POST /auth/register/cliente` y `POST /auth/register/profesional` aceptan `phoneVerificationToken`; cuando `AUTH_REGISTRATION_PHONE_VERIFICATION_REQUIRED=true`, el token pasa a ser obligatorio para cliente, mientras el alta profesional puede guardar el telefono como contacto sin marcarlo verificado. El telefono cliente y el telefono profesional pueden ser distintos en la misma cuenta y se validan por contexto, no de forma global.
-- Regla vigente de verificación celular: `POST /auth/register/cliente` exige `phoneVerificationToken` válido si la verificacion de registro está activada; `POST /auth/register/profesional` no lo exige desde el wizard profesional y deja la verificacion pendiente. Además, `POST /public/profesionales/{slug}/reservas` bloquea clientes con `phoneVerified=false`/`phone_verified_at IS NULL` y devuelve `403` con mensaje claro.
+- Regla vigente de verificación celular: `POST /auth/register/cliente` exige `phoneVerificationToken` válido si la verificacion de registro está activada; `POST /auth/register/profesional` no lo exige desde el wizard profesional y deja la verificacion pendiente. El telefono verificable por `/auth/verify/phone/send` es `app_user.phone_number`; en alta/activacion profesional se persiste ahi el telefono de registro cuando falta, sin pisar `professional_profile.whatsapp`, y un `phoneVerificationToken` válido deja `phoneVerifiedAt` seteado. Además, `POST /public/profesionales/{slug}/reservas` bloquea clientes con `phoneVerified=false`/`phone_verified_at IS NULL` y devuelve `403` con mensaje claro.
 - `POST /auth/oauth/complete-phone` cierra el faltante de telefono cuando el alta/login OAuth no lo trae; tambien acepta `phoneVerificationToken` para dejar el telefono verificado en el mismo paso
 - `POST /auth/client-profile/activate` es el flujo backend vigente para que una cuenta profesional autenticada sume contexto cliente sobre el mismo `app_user`; pide solo `phoneNumber`, no exige password, confirmacion de email ni `phoneVerificationToken`.
 - `POST /auth/professional-profile/activate` es el flujo backend vigente para que una cuenta cliente autenticada active perfil profesional sobre el mismo email desde un flujo controlado. Si el email ya existe solo como cliente y no hay sesion, `POST /auth/register/profesional` puede sumar el contexto profesional solo reautenticando con la password de esa cuenta base.
@@ -233,6 +233,7 @@ Prefijo: `/public/profesionales`
 - `GET /public/profesionales/{slug}/slots`
 - `POST /public/profesionales/{slug}/reservas`
 - `POST /public/profesionales/{slug}/reservas` ahora exige cliente autenticado con `phoneVerified=true`; si `phoneVerifiedAt` es null responde `403` y no crea la reserva.
+- `POST /public/profesionales/{slug}/reservas` puede devolver el campo opcional `emailVerificationRequired=true` si era la primera reserva del cliente y su email no estaba verificado; no bloquea la creación de reserva por email.
 - `GET /public/profesionales/{slug}/reviews` — listado paginado de reseñas publicas (text null si oculto por profesional o internal ops)
 
 ### Feedback publico de app
@@ -252,6 +253,8 @@ Lectura de producto:
 - circuito publico central del MVP
 - soporta perfil publico, disponibilidad real y reserva sin pasar por panel privado
 - es la base de `Usuario` y del valor visible de `Profesional`
+- `GET /public/profesionales` lista solo profesionales activos con al menos un servicio activo.
+- `GET /public/profesionales/{slug}` responde `404` si el profesional no tiene al menos un servicio activo, aunque su vista interna de dashboard siga disponible.
 - `GET /public/profesionales/{slug}` devuelve la pagina publica del profesional sin tracking de analytics de producto.
 - `POST /public/profesionales/{slug}/reservas` crea la reserva operativa normal y registra eventos de dominio/notificaciones; ya no persiste analytics de producto.
 - `GET /public/profesionales/{slug}` mantiene cache de perfil publico y ahora registra timing tecnico. Devuelve `rating` y `reviewsCount` reales
@@ -328,6 +331,7 @@ Lectura de producto:
 - `PUT /profesional/profile` ahora acepta opcionalmente `logoMedia` y `bannerMedia` con `{ positionX, positionY, zoom }` para persistir el encuadre visual del logo y del banner; `GET /auth/me/profesional` y `GET /profesional/public-page` exponen esos mismos metadatos normalizados para rehidratar el editor y la preview
 - `PUT /profesional/profile`, `PUT /profesional/public-page` y `POST/PUT /profesional/services` ahora canonizan referencias de imágenes antes de persistirlas: si reciben una URL pública del CDN/R2 o de `/uploads`, la convierten otra vez a referencia interna de storage para no dejar metadatos inconsistentes en DB
 - `POST /profesional/services` corta por capacidad Core: hasta `30` servicios; cada servicio mantiene una sola imagen publica
+- `POST /profesional/services` exige email y telefono verificados solo cuando crea el primer servicio del profesional; si falta alguno responde `403` con mensaje claro. `PUT` y `DELETE` de servicios existentes no aplican esta regla.
 - `GET /profesional/services`, `POST /profesional/services`, `PUT /profesional/services/{id}` y `GET /public/profesionales/{slug}` ya exponen/persisten `processingFeeMode` por servicio para pagos online; hoy las variantes operativas son `INSTANT` (`5,99% + IVA`) y `DELAYED_21_DAYS` (`4,99% + IVA`)
 - `GET /profesional/reservas` sostiene gestion operativa de reservas para `Plura Core/CORE` y no debe confundirse con gating de agenda semanal o mensual
 - la base backend de multitrabajador ya existe para una fase futura/personalizada: `professional_worker`, asignaciones `professional_worker_service`, agenda propia por trabajador, invitacion por email y `worker_id` opcional en `booking` y `available_slot`; el flujo publico de reserva todavia sigue operando contra el local/perfil general hasta completar la fase de disponibilidad por trabajador

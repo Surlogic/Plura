@@ -51,6 +51,8 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
         LocalDateTime startDateTime
     );
 
+    long countByUser_Id(Long userId);
+
     @Query(
         """
         SELECT b FROM Booking b JOIN FETCH b.user u

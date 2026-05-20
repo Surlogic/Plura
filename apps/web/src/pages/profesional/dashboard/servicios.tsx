@@ -1,14 +1,18 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { isAxiosError } from 'axios';
+import EmailVerificationPanel from '@/components/auth/EmailVerificationPanel';
 import ProfessionalDashboardShell from '@/components/profesional/dashboard/ProfessionalDashboardShell';
 import Button from '@/components/ui/Button';
+import { useProfessionalProfileContext } from '@/context/ProfessionalProfileContext';
 import { useCategories } from '@/hooks/useCategories';
 import { useProfessionalProfile } from '@/hooks/useProfessionalProfile';
 import { useProfessionalDashboardUnsavedSection } from '@/context/ProfessionalDashboardUnsavedChangesContext';
 import { resolveProfessionalFeatureAccess } from '@/lib/billing/featureGuards';
 import api from '@/services/api';
 import { cachedGet, invalidateCachedGet } from '@/services/cachedGet';
+import { confirmPhoneVerification, sendPhoneVerification } from '@/services/phoneVerification';
 import type { BookingProcessingFeeMode, ServicePaymentType } from '@/types/professional';
 import { resolveAssetUrl } from '@/utils/assetUrl';
 import {
@@ -158,8 +162,17 @@ const formatDepositAmount = (value?: number | null) => {
 
 const PRACTICAL_UNLIMITED = 9999;
 
+const extractServiceApiMessage = (error: unknown, fallback: string) => {
+  if (isAxiosError<{ message?: string }>(error)) {
+    const message = error.response?.data?.message;
+    if (typeof message === 'string' && message.trim()) return message;
+  }
+  return fallback;
+};
+
 export default function ProfesionalServicesBuilderPage() {
   const { profile, isLoading, hasLoaded } = useProfessionalProfile();
+  const { refreshProfile } = useProfessionalProfileContext();
   const featureAccess = resolveProfessionalFeatureAccess(profile);
   const { categories, isLoading: isLoadingCategories, error: categoriesError } = useCategories();
   const [services, setServices] = useState<ProfesionalServiceItem[]>([]);
@@ -173,6 +186,10 @@ export default function ProfesionalServicesBuilderPage() {
   const [saveError, setSaveError] = useState(false);
   const [selectedImageFile, setSelectedImageFile] = useState<File | null>(null);
   const [selectedImagePreview, setSelectedImagePreview] = useState<string>('');
+  const [phoneVerificationCode, setPhoneVerificationCode] = useState('');
+  const [phoneVerificationMessage, setPhoneVerificationMessage] = useState<string | null>(null);
+  const [isSendingPhoneVerification, setIsSendingPhoneVerification] = useState(false);
+  const [isConfirmingPhoneVerification, setIsConfirmingPhoneVerification] = useState(false);
   const canUseOnlinePayments = featureAccess.onlinePayments;
   const maxServices = profile?.professionalEntitlements?.maxServices ?? 15;
 
@@ -323,6 +340,11 @@ export default function ProfesionalServicesBuilderPage() {
       setSaveError(true);
       return false;
     }
+    if (!editingId && services.length === 0 && (!profile?.emailVerified || !profile?.phoneVerified)) {
+      setSaveMessage('Verificá email y teléfono antes de crear tu primer servicio.');
+      setSaveError(true);
+      return false;
+    }
     if (!draft.name.trim() || !draft.price.trim() || !draft.duration.trim()) {
       setSaveMessage('Completá nombre, precio y duración.');
       setSaveError(true);
@@ -442,8 +464,8 @@ export default function ProfesionalServicesBuilderPage() {
       setSaveError(false);
       resetDraft();
       return true;
-    } catch {
-      setSaveMessage('No se pudo guardar el servicio.');
+    } catch (error) {
+      setSaveMessage(extractServiceApiMessage(error, 'No se pudo guardar el servicio.'));
       setSaveError(true);
       return false;
     } finally {
@@ -491,6 +513,8 @@ export default function ProfesionalServicesBuilderPage() {
   );
   const serviceCapacityLabel = maxServices >= PRACTICAL_UNLIMITED ? 'Ilimitados' : `${serviceCount}/${maxServices}`;
   const hasReachedServiceLimit = !editingId && services.length >= maxServices;
+  const requiresFirstServiceVerification =
+    !editingId && serviceCount === 0 && (!profile?.emailVerified || !profile?.phoneVerified);
   const isDirty = useMemo(() => {
     const hasDifferentMode = editingId !== initialEditingId;
     const hasDifferentDraft =
@@ -515,6 +539,45 @@ export default function ProfesionalServicesBuilderPage() {
     setSaveMessage(null);
     setSaveError(false);
   }, [clearImageSelection, initialDraft, initialEditingId]);
+
+  const handleSendPhoneVerification = async () => {
+    if (!profile?.phoneNumber) {
+      setPhoneVerificationMessage('Tu cuenta no tiene un teléfono cargado para verificar.');
+      return;
+    }
+
+    setIsSendingPhoneVerification(true);
+    setPhoneVerificationMessage(null);
+    try {
+      const response = await sendPhoneVerification(profile.phoneNumber);
+      setPhoneVerificationMessage(response.message);
+    } catch (error) {
+      setPhoneVerificationMessage(extractServiceApiMessage(error, 'No se pudo enviar el código.'));
+    } finally {
+      setIsSendingPhoneVerification(false);
+    }
+  };
+
+  const handleConfirmPhoneVerification = async () => {
+    const code = phoneVerificationCode.trim();
+    if (!code) {
+      setPhoneVerificationMessage('Ingresá el código recibido.');
+      return;
+    }
+
+    setIsConfirmingPhoneVerification(true);
+    setPhoneVerificationMessage(null);
+    try {
+      await confirmPhoneVerification(code);
+      setPhoneVerificationCode('');
+      setPhoneVerificationMessage('Teléfono verificado correctamente.');
+      await refreshProfile();
+    } catch (error) {
+      setPhoneVerificationMessage(extractServiceApiMessage(error, 'No se pudo verificar el código.'));
+    } finally {
+      setIsConfirmingPhoneVerification(false);
+    }
+  };
 
   const fallbackServiceCategoryName = useMemo(() => {
     const profileCategoryName = profile?.categories?.[0]?.name?.trim();
@@ -750,6 +813,67 @@ export default function ProfesionalServicesBuilderPage() {
                           }`}>
                             Límite del plan: {serviceCount}/{maxServices} servicios. Cada servicio puede tener 1 foto pública.
                           </p>
+                        ) : null}
+                        {requiresFirstServiceVerification ? (
+                          <div className="mt-4 space-y-4 rounded-[18px] border border-amber-200 bg-amber-50/70 p-4">
+                            {!profile?.emailVerified ? (
+                              <EmailVerificationPanel
+                                email={profile?.email}
+                                emailVerified={profile?.emailVerified}
+                                onStatusChanged={refreshProfile}
+                                tone="professional"
+                                variant="banner"
+                                title="Verificá tu email"
+                                description="Necesitás verificar tu email antes de crear tu primer servicio."
+                              />
+                            ) : null}
+
+                            {!profile?.phoneVerified ? (
+                              <div className="rounded-[16px] border border-white/80 bg-white/90 p-4">
+                                <p className="text-sm font-semibold text-[#0E2A47]">
+                                  Verificá tu teléfono
+                                </p>
+                                <p className="mt-1 text-xs text-[#64748B]">
+                                  Necesitás verificar el teléfono de tu cuenta antes de crear tu primer servicio.
+                                </p>
+                                <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+                                  <Button
+                                    type="button"
+                                    variant="quiet"
+                                    onClick={() => void handleSendPhoneVerification()}
+                                    disabled={isSendingPhoneVerification || isConfirmingPhoneVerification}
+                                  >
+                                    {isSendingPhoneVerification ? 'Enviando...' : 'Enviar código'}
+                                  </Button>
+                                  <input
+                                    className={inputClassName}
+                                    inputMode="numeric"
+                                    maxLength={10}
+                                    value={phoneVerificationCode}
+                                    onChange={(event) => setPhoneVerificationCode(event.target.value)}
+                                    placeholder="Código SMS"
+                                  />
+                                  <Button
+                                    type="button"
+                                    variant="brand"
+                                    onClick={() => void handleConfirmPhoneVerification()}
+                                    disabled={
+                                      isSendingPhoneVerification
+                                      || isConfirmingPhoneVerification
+                                      || !phoneVerificationCode.trim()
+                                    }
+                                  >
+                                    {isConfirmingPhoneVerification ? 'Verificando...' : 'Verificar'}
+                                  </Button>
+                                </div>
+                                {phoneVerificationMessage ? (
+                                  <p className="mt-2 text-xs font-medium text-[#0E2A47]">
+                                    {phoneVerificationMessage}
+                                  </p>
+                                ) : null}
+                              </div>
+                            ) : null}
+                          </div>
                         ) : null}
                         <div className="mt-4 grid gap-4">
                           <div>
@@ -1030,7 +1154,7 @@ export default function ProfesionalServicesBuilderPage() {
                             type="button"
                             onClick={() => void handleSubmitService()}
                             className="rounded-full bg-[#1FB6A6] px-4 py-2 text-xs font-semibold text-white transition hover:-translate-y-0.5 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-70"
-                            disabled={isSubmitting || hasReachedServiceLimit}
+                            disabled={isSubmitting || hasReachedServiceLimit || requiresFirstServiceVerification}
                           >
                             {isSubmitting
                               ? 'Guardando...'

@@ -6,6 +6,7 @@ import com.plura.plurabackend.core.booking.model.BookingProcessingFeeMode;
 import com.plura.plurabackend.core.booking.model.ServicePaymentType;
 import com.plura.plurabackend.core.category.model.Category;
 import com.plura.plurabackend.core.category.repository.CategoryRepository;
+import com.plura.plurabackend.core.user.model.User;
 import com.plura.plurabackend.professional.model.ProfessionalProfile;
 import com.plura.plurabackend.professional.plan.BooleanCapability;
 import com.plura.plurabackend.professional.plan.LimitCapability;
@@ -75,7 +76,11 @@ public class ProfileServiceCatalogSupport {
         ProfessionalProfile profile,
         ProfesionalServiceRequest request
     ) {
-        long nextServiceCount = profesionalServiceRepository.countByProfessional_Id(profile.getId()) + 1;
+        long currentServiceCount = profesionalServiceRepository.countByProfessional_Id(profile.getId());
+        if (currentServiceCount == 0) {
+            ensureFirstServiceCreationIsVerified(profile);
+        }
+        long nextServiceCount = currentServiceCount + 1;
         planGuardService.requireLimitNotExceeded(rawUserId, LimitCapability.MAX_SERVICES, nextServiceCount);
 
         ServicePaymentType paymentType = resolveServicePaymentType(request.getPaymentType());
@@ -195,6 +200,16 @@ public class ProfileServiceCatalogSupport {
     private void ensureOwnedBy(ProfessionalProfile profile, ProfesionalService service) {
         if (service.getProfessional() == null || !service.getProfessional().getId().equals(profile.getId())) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "No autorizado");
+        }
+    }
+
+    private void ensureFirstServiceCreationIsVerified(ProfessionalProfile profile) {
+        User user = profile.getUser();
+        if (user == null || user.getEmailVerifiedAt() == null) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Verificá tu email antes de crear tu primer servicio.");
+        }
+        if (user.getPhoneVerifiedAt() == null) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Verificá tu teléfono antes de crear tu primer servicio.");
         }
     }
 

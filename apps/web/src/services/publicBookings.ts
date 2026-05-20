@@ -24,7 +24,9 @@ export type PublicProfessionalPage = PublicProfessionalPageBase<
 
 export type { PublicBookingStatus, PublicBookingRequest };
 
-type PublicBookingResponse = PublicBookingResponseBase;
+type PublicBookingResponse = PublicBookingResponseBase & {
+  emailVerificationRequired?: boolean;
+};
 
 const PUBLIC_PROFILE_TIMEOUT_MS = 10000;
 const PUBLIC_SLOTS_TIMEOUT_MS = 10000;

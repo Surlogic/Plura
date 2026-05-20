@@ -170,21 +170,6 @@ function ProfesionalSidebar({ profile, active }: SidebarProps) {
       ref={rootRef}
       className="relative flex min-h-full flex-col overflow-x-hidden border-r border-[#E2E8F0] bg-white text-[#0F172A] [scrollbar-color:#CBD5E1_transparent] [scrollbar-gutter:stable] [scrollbar-width:thin]"
     >
-      <div className="border-b border-[#E2E8F0] p-4">
-        <Link
-          href="/"
-          aria-label="Ir al inicio de la app"
-          className="group flex w-full min-w-0 items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-[#0F172A] transition hover:bg-[#ECFDF5] focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--focus-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-white"
-          onClick={(event) => {
-            event.preventDefault();
-            requestNavigation('/');
-          }}
-        >
-          <DashboardIcon name="agenda" className="h-5 w-5 shrink-0 text-[#0F172A]" />
-          <span className="truncate">Inicio</span>
-        </Link>
-      </div>
-
       <div className="border-b border-[#E2E8F0] px-4 py-4">
         <div className="rounded-xl border border-[#E2E8F0] bg-white p-3">
           <div className="mb-2 flex items-center gap-3">

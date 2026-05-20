@@ -22,6 +22,7 @@ import com.plura.plurabackend.professional.plan.PublicProfileTier;
 import com.plura.plurabackend.professional.repository.ProfessionalProfileRepository;
 import com.plura.plurabackend.professional.service.dto.ProfesionalServiceRequest;
 import com.plura.plurabackend.professional.service.dto.ProfesionalServiceResponse;
+import com.plura.plurabackend.professional.service.repository.ProfesionalServiceRepository;
 import com.plura.plurabackend.core.storage.thumbnail.ImageThumbnailJobService;
 import com.plura.plurabackend.core.user.model.User;
 import com.plura.plurabackend.core.user.repository.UserRepository;
@@ -65,6 +66,7 @@ public class ProfileApplicationService {
     private final ProfileBookingPolicySupport profileBookingPolicySupport;
     private final ProfileServiceCatalogSupport profileServiceCatalogSupport;
     private final ProfileGeocodingSupport profileGeocodingSupport;
+    private final ProfesionalServiceRepository profesionalServiceRepository;
     private final MeterRegistry meterRegistry;
 
     public ProfileApplicationService(
@@ -83,6 +85,7 @@ public class ProfileApplicationService {
         ProfileBookingPolicySupport profileBookingPolicySupport,
         ProfileServiceCatalogSupport profileServiceCatalogSupport,
         ProfileGeocodingSupport profileGeocodingSupport,
+        ProfesionalServiceRepository profesionalServiceRepository,
         MeterRegistry meterRegistry
     ) {
         this.professionalProfileRepository = professionalProfileRepository;
@@ -100,12 +103,21 @@ public class ProfileApplicationService {
         this.profileBookingPolicySupport = profileBookingPolicySupport;
         this.profileServiceCatalogSupport = profileServiceCatalogSupport;
         this.profileGeocodingSupport = profileGeocodingSupport;
+        this.profesionalServiceRepository = profesionalServiceRepository;
         this.meterRegistry = meterRegistry;
     }
 
     public ProfesionalPublicPageResponse getPublicPageBySlug(String slug) {
         Timer.Sample sample = Timer.start(meterRegistry);
         try {
+            ProfessionalProfile profile = professionalProfileRepository.findBySlug(slug)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Profesional no encontrado"));
+            professionalAccessSupport.ensurePublicProfessionalIsActive(profile);
+            if (!profesionalServiceRepository.existsByProfessional_IdAndActiveTrue(profile.getId())) {
+                profileCacheService.evictPublicPageBySlug(slug);
+                throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Profesional no encontrado");
+            }
+
             var profileCached = profileCacheService.getPublicPageBySlug(slug);
             if (profileCached.isPresent()) {
                 ProfesionalPublicPageResponse cachedResponse = profileCached.get();
@@ -115,9 +127,6 @@ public class ProfileApplicationService {
                 profileCacheService.evictPublicPageBySlug(slug);
             }
 
-            ProfessionalProfile profile = professionalProfileRepository.findBySlug(slug)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Profesional no encontrado"));
-            professionalAccessSupport.ensurePublicProfessionalIsActive(profile);
             profile = profileGeocodingSupport.ensurePublicCoordinates(profile);
             ProfesionalPublicPageResponse response = profilePublicPageAssembler.toPublicPage(profile);
             profileCacheService.putPublicPageBySlug(slug, response);

@@ -400,6 +400,7 @@ public class AuthService {
                 attachOAuthIdentityIfAllowed(existingUser, oauthIdentity);
             }
             ensureProfessionalPhoneAvailable(phoneVerification.phoneNumber(), existingUser.getId());
+            applyProfessionalRegistrationPhoneToUser(existingUser, phoneVerification);
             existingUser.setFullName(request.getFullName().trim());
             existingUser.setRole(UserRole.PROFESSIONAL);
             if (oauthIdentity != null && existingUser.getEmailVerifiedAt() == null) {
@@ -442,6 +443,7 @@ public class AuthService {
         user.setPassword(passwordEncoder.encode(oauthIdentity == null ? rawPassword : UUID.randomUUID().toString()));
         user.setRole(UserRole.PROFESSIONAL);
         user.setClientActive(false);
+        applyProfessionalRegistrationPhoneToUser(user, phoneVerification);
         if (oauthIdentity != null) {
             user.setProvider(oauthIdentity.provider());
             user.setProviderId(oauthIdentity.providerId());
@@ -523,6 +525,10 @@ public class AuthService {
         String professionalPhoneNumber = normalizePhoneNumber(request.getPhoneNumber());
         if (professionalPhoneNumber != null) {
             ensureProfessionalPhoneAvailable(professionalPhoneNumber, user.getId());
+            if (normalizePhoneNumber(user.getPhoneNumber()) == null) {
+                user.setPhoneNumber(professionalPhoneNumber);
+                user = userRepository.save(user);
+            }
         }
 
         ProfessionalProfile profile = professionalAccountProfileGateway.activateProfile(
@@ -1464,6 +1470,28 @@ public class AuthService {
         user.setPhoneNumber(normalizedPhone);
         user.setPhoneVerifiedAt(phoneVerification.verified() ? LocalDateTime.now() : null);
         userRepository.save(user);
+    }
+
+    private void applyProfessionalRegistrationPhoneToUser(
+        User user,
+        RegistrationPhoneVerificationService.VerificationResult phoneVerification
+    ) {
+        if (user == null || phoneVerification == null) {
+            return;
+        }
+        String phoneNumber = normalizePhoneNumber(phoneVerification.phoneNumber());
+        if (phoneNumber == null) {
+            return;
+        }
+        String currentPhone = normalizePhoneNumber(user.getPhoneNumber());
+        if (currentPhone == null) {
+            user.setPhoneNumber(phoneNumber);
+            user.setPhoneVerifiedAt(phoneVerification.verified() ? LocalDateTime.now() : null);
+            return;
+        }
+        if (currentPhone.equals(phoneNumber) && phoneVerification.verified() && user.getPhoneVerifiedAt() == null) {
+            user.setPhoneVerifiedAt(LocalDateTime.now());
+        }
     }
 
     public UserResponse getClienteProfile(String rawUserId) {

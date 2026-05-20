@@ -17,6 +17,8 @@ import org.springframework.data.repository.query.Param;
 public interface ProfesionalServiceRepository extends JpaRepository<ProfesionalService, String> {
     long countByProfessional_Id(Long professionalId);
 
+    boolean existsByProfessional_IdAndActiveTrue(Long professionalId);
+
     List<ProfesionalService> findByProfessional_IdOrderByCreatedAtDesc(Long professionalId);
 
     List<ProfesionalService> findByProfessional_IdAndActiveTrueOrderByCreatedAtDesc(Long professionalId);

@@ -1,6 +1,5 @@
 package com.plura.plurabackend.core.booking.dto;
 
-import lombok.AllArgsConstructor;
 import lombok.Data;
 
 /**
@@ -10,7 +9,6 @@ import lombok.Data;
  * Foco funcional: reservas, superficie publica.
  */
 @Data
-@AllArgsConstructor
 public class PublicBookingResponse {
     private Long id;
     private String status;
@@ -19,4 +17,37 @@ public class PublicBookingResponse {
     private String serviceId;
     private String professionalId;
     private String userId;
+    private Boolean emailVerificationRequired;
+
+    public PublicBookingResponse(
+        Long id,
+        String status,
+        String startDateTime,
+        String timezone,
+        String serviceId,
+        String professionalId,
+        String userId
+    ) {
+        this(id, status, startDateTime, timezone, serviceId, professionalId, userId, null);
+    }
+
+    public PublicBookingResponse(
+        Long id,
+        String status,
+        String startDateTime,
+        String timezone,
+        String serviceId,
+        String professionalId,
+        String userId,
+        Boolean emailVerificationRequired
+    ) {
+        this.id = id;
+        this.status = status;
+        this.startDateTime = startDateTime;
+        this.timezone = timezone;
+        this.serviceId = serviceId;
+        this.professionalId = professionalId;
+        this.userId = userId;
+        this.emailVerificationRequired = emailVerificationRequired;
+    }
 }

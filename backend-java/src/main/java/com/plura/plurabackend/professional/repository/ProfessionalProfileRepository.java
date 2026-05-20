@@ -82,6 +82,12 @@ public interface ProfessionalProfileRepository extends JpaRepository<Professiona
         SELECT p.id
         FROM ProfessionalProfile p
         WHERE p.active = true
+            AND EXISTS (
+                SELECT 1
+                FROM ProfesionalService service
+                WHERE service.professional = p
+                    AND service.active = true
+            )
             AND (
                 :categoryId IS NULL
                 OR EXISTS (
@@ -114,6 +120,12 @@ public interface ProfessionalProfileRepository extends JpaRepository<Professiona
         FROM ProfessionalProfile p
         JOIN p.categories c
         WHERE p.active = true
+          AND EXISTS (
+              SELECT 1
+              FROM ProfesionalService service
+              WHERE service.professional = p
+                AND service.active = true
+          )
           AND c.id IN :categoryIds
         GROUP BY c.id
         """

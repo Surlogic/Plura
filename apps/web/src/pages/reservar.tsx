@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/router';
 import { isAxiosError } from 'axios';
+import EmailVerificationPanel from '@/components/auth/EmailVerificationPanel';
 import Footer from '@/components/shared/Footer';
 import ReservationAuthOverlay from '@/components/reservation/ReservationAuthOverlay';
 import Navbar from '@/components/shared/Navbar';
@@ -132,6 +133,11 @@ export default function ReservationPage() {
   const [isSendingReservationPhoneCode, setIsSendingReservationPhoneCode] = useState(false);
   const [isConfirmingReservationPhoneCode, setIsConfirmingReservationPhoneCode] = useState(false);
   const [phoneVerifiedInReservation, setPhoneVerifiedInReservation] = useState(false);
+  const [emailVerificationPromptBooking, setEmailVerificationPromptBooking] = useState<{
+    bookingId: number;
+    requiresCheckout: boolean;
+  } | null>(null);
+  const [isContinuingAfterEmailPrompt, setIsContinuingAfterEmailPrompt] = useState(false);
 
   const professionalSlug = resolveQueryValue(router.query.profesional).trim();
   const serviceId =
@@ -621,12 +627,72 @@ export default function ReservationPage() {
   const handleCancelReservation = () => {
     clearPendingReservation();
     setIsAuthOverlayOpen(false);
+    setEmailVerificationPromptBooking(null);
     resetMessages();
     void router.push(
       professionalSlug
         ? `/profesional/pagina/${encodeURIComponent(professionalSlug)}`
         : '/explorar',
     );
+  };
+
+  const continueAfterCreatedBooking = async (bookingId: number, requiresCheckout: boolean) => {
+    setEmailVerificationPromptBooking(null);
+
+    if (requiresCheckout) {
+      const paymentSession = await createClientBookingPaymentSession(String(bookingId));
+      const hasCheckoutUrl = Boolean(paymentSession.checkoutUrl);
+      let checkoutMode: 'started' | 'failed' | 'synced' = hasCheckoutUrl ? 'started' : 'synced';
+      let checkoutOpenResult: CheckoutOpenResult = 'blocked';
+
+      if (paymentSession.checkoutUrl) {
+        checkoutOpenResult = openCheckoutUrl(paymentSession.checkoutUrl);
+        if (checkoutOpenResult === 'blocked') {
+          checkoutMode = 'failed';
+        }
+      }
+
+      setSaveMessage(getBookingPaymentSessionMessage(paymentSession));
+      if (checkoutMode === 'started' && checkoutOpenResult === 'current-tab') {
+        return;
+      }
+
+      void router.push({
+        pathname: '/cliente/reservas',
+        query: {
+          bookingId: String(bookingId),
+          checkout: checkoutMode,
+        },
+      });
+      return;
+    }
+
+    setSaveMessage('Reserva creada. Te llevamos al estado de la reserva.');
+    void router.push({
+      pathname: '/cliente/reservas',
+      query: {
+        bookingId: String(bookingId),
+        created: '1',
+      },
+    });
+  };
+
+  const handleContinueAfterEmailPrompt = async () => {
+    if (!emailVerificationPromptBooking) return;
+
+    setIsContinuingAfterEmailPrompt(true);
+    setSaveError(null);
+    try {
+      await continueAfterCreatedBooking(
+        emailVerificationPromptBooking.bookingId,
+        emailVerificationPromptBooking.requiresCheckout,
+      );
+    } catch (error) {
+      setSaveMessage(null);
+      setSaveError(extractApiMessage(error, RESERVATION_ERROR_FALLBACK));
+    } finally {
+      setIsContinuingAfterEmailPrompt(false);
+    }
   };
 
   const submitReservation = async () => {
@@ -640,6 +706,7 @@ export default function ReservationPage() {
     setIsAuthOverlayOpen(false);
     setSaveError(null);
     setSaveMessage(null);
+    setEmailVerificationPromptBooking(null);
 
     const requiresCheckout = isPrepaidBooking(confirmedService.paymentType);
 
@@ -659,42 +726,13 @@ export default function ReservationPage() {
       clearPendingReservation();
       setIsAuthOverlayOpen(false);
 
-      if (requiresCheckout) {
-        const paymentSession = await createClientBookingPaymentSession(String(created.id));
-        const hasCheckoutUrl = Boolean(paymentSession.checkoutUrl);
-        let checkoutMode: 'started' | 'failed' | 'synced' = hasCheckoutUrl ? 'started' : 'synced';
-        let checkoutOpenResult: CheckoutOpenResult = 'blocked';
-
-        if (paymentSession.checkoutUrl) {
-          checkoutOpenResult = openCheckoutUrl(paymentSession.checkoutUrl);
-          if (checkoutOpenResult === 'blocked') {
-            checkoutMode = 'failed';
-          }
-        }
-
-        setSaveMessage(getBookingPaymentSessionMessage(paymentSession));
-        if (checkoutMode === 'started' && checkoutOpenResult === 'current-tab') {
-          return;
-        }
-
-        void router.push({
-          pathname: '/cliente/reservas',
-          query: {
-            bookingId: String(created.id),
-            checkout: checkoutMode,
-          },
-        });
+      if (created.emailVerificationRequired) {
+        setEmailVerificationPromptBooking({ bookingId: created.id, requiresCheckout });
+        setSaveMessage('Reserva creada. Verificá tu email para completar tu cuenta.');
         return;
       }
 
-      setSaveMessage('Reserva creada. Te llevamos al estado de la reserva.');
-      void router.push({
-        pathname: '/cliente/reservas',
-        query: {
-          bookingId: String(created.id),
-          created: '1',
-        },
-      });
+      await continueAfterCreatedBooking(created.id, requiresCheckout);
     } catch (error) {
       if (createdBookingId !== null) {
         void router.push({
@@ -962,23 +1000,67 @@ export default function ReservationPage() {
                 </div>
               ) : null}
 
-              <ReservationSummaryCard
-                canSubmit={canSubmit}
-                isLoadingContext={isLoadingContext}
-                requiresAuthentication={!clientProfile}
-                isSaving={isSaving}
-                onCancel={handleCancelReservation}
-                onConfirm={handleConfirm}
-                onEditSchedule={handleEditSchedule}
-                onEditService={handleEditService}
-                policyDescription={policyDescription}
-                professional={professional}
-                saveError={saveError}
-                saveMessage={saveMessage}
-                selectedDateLabel={confirmedDateLabel}
-                selectedService={confirmedService}
-                selectedTime={selectedTime}
-              />
+              {emailVerificationPromptBooking ? (
+                <div className="rounded-[28px] border border-[color:var(--border-soft)] bg-white/92 p-5 shadow-[var(--shadow-card)]">
+                  <EmailVerificationPanel
+                    email={clientProfile?.email}
+                    emailVerified={clientProfile?.emailVerified}
+                    onStatusChanged={refreshClientProfile}
+                    tone="client"
+                    variant="banner"
+                    title="Verificá tu email"
+                    description="Tu reserva ya fue creada. Confirmá tu email para completar tu cuenta."
+                  />
+
+                  {saveMessage ? (
+                    <div className="mt-4 rounded-[18px] border border-[color:var(--success-soft)] bg-[color:var(--success-soft)]/55 px-4 py-3 text-sm font-medium text-[color:var(--success)]">
+                      {saveMessage}
+                    </div>
+                  ) : null}
+
+                  {saveError ? (
+                    <div className="mt-4 rounded-[18px] border border-[#FECACA] bg-[#FEF2F2] px-4 py-3 text-sm font-medium text-[#DC2626]">
+                      {saveError}
+                    </div>
+                  ) : null}
+
+                  <div className="mt-4 flex flex-wrap gap-3">
+                    <Button
+                      type="button"
+                      variant="brand"
+                      onClick={() => void handleContinueAfterEmailPrompt()}
+                      disabled={isContinuingAfterEmailPrompt || isSaving}
+                    >
+                      {isContinuingAfterEmailPrompt
+                        ? 'Continuando...'
+                        : emailVerificationPromptBooking.requiresCheckout
+                          ? 'Continuar al pago'
+                          : 'Ver mi reserva'}
+                    </Button>
+                    <Button type="button" variant="quiet" onClick={handleCancelReservation}>
+                      Salir
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <ReservationSummaryCard
+                  canSubmit={canSubmit}
+                  isLoadingContext={isLoadingContext}
+                  requiresAuthentication={!clientProfile}
+                  isSaving={isSaving}
+                  onCancel={handleCancelReservation}
+                  onConfirm={handleConfirm}
+                  onEditSchedule={handleEditSchedule}
+                  onEditService={handleEditService}
+                  policyDescription={policyDescription}
+                  professional={professional}
+                  saveError={saveError}
+                  saveMessage={saveMessage}
+                  selectedDateLabel={confirmedDateLabel}
+                  selectedService={confirmedService}
+                  selectedTime={selectedTime}
+                />
+              )}
             </>
           ) : null}
         </section>

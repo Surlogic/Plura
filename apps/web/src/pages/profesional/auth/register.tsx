@@ -394,7 +394,6 @@ export default function ProfesionalRegisterPage() {
   const [checkoutConfirmationMessage, setCheckoutConfirmationMessage] = useState<string | null>(null);
   const [pendingCheckoutAction, setPendingCheckoutAction] = useState<PendingCheckoutAction | null>(null);
   const [remoteFieldErrors, setRemoteFieldErrors] = useState<Partial<Record<keyof RegisterForm, string>>>({});
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const locationMapRef = useRef<MapRef | null>(null);
   const initialLocationRequestDoneRef = useRef(false);
   const billingReturnHandledRef = useRef(false);
@@ -800,7 +799,6 @@ export default function ProfesionalRegisterPage() {
     if (name === 'email') {
       setRemoteFieldErrors((prev) => ({ ...prev, email: undefined }));
     }
-    setSuccessMessage(null);
   };
 
   const handleBlur = (event: ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
@@ -819,7 +817,6 @@ export default function ProfesionalRegisterPage() {
 
   const handleOAuthAuthenticated = async (result: OAuthLoginResult) => {
     setErrorMessage(null);
-    setSuccessMessage(null);
 
     const oauthEmail = result.user.email?.trim().toLowerCase() || '';
     const oauthPhoneNumber = (result.user.phoneNumber ?? '').trim();
@@ -844,11 +841,6 @@ export default function ProfesionalRegisterPage() {
       confirmPassword: true,
     }));
     setStep(1);
-    setSuccessMessage(
-      oauthPhoneNumber
-        ? 'Identidad Google verificada. Continuá el onboarding profesional sobre este mismo email.'
-        : 'Identidad Google verificada. El teléfono se completa en el paso de datos básicos.',
-    );
   };
 
   const handleGeoFieldChange = async (
@@ -1671,42 +1663,48 @@ export default function ProfesionalRegisterPage() {
     </div>
   );
 
-  const renderAccountStep = () => (
-    <div className="grid gap-6 lg:grid-cols-[minmax(0,1.35fr)_minmax(300px,0.65fr)] lg:items-start xl:grid-cols-[minmax(0,1.45fr)_minmax(340px,0.7fr)]">
-      <div className="space-y-5">
-        <div className="space-y-2">
-          <Badge variant="success">Registro</Badge>
-          <h1 className={wizardTitleClassName}>
-            Creá tu cuenta profesional
-          </h1>
-          <p className="max-w-xl text-base text-[color:var(--ink-muted)]">
-            Empezá a configurar tu perfil para recibir reservas en Plura.
-          </p>
-        </div>
-        <GoogleLoginButton
-          authAction="REGISTER"
-          intendedRole="PROFESSIONAL"
-          mode="redirect"
-          onAuthenticated={handleOAuthAuthenticated}
-          onError={setErrorMessage}
-          buttonLabel="Continuar con Google"
-          loadingLabel="Registrando..."
-        />
-        {isOAuthSetup ? (
-          <div className="rounded-[24px] border border-[color:var(--primary-soft)] bg-[color:var(--primary-soft)] p-5 text-sm text-[color:var(--primary-strong)]">
-            <p className="font-semibold">Identidad Google verificada</p>
-            <p className="mt-1 text-[color:var(--ink-muted)]">
-              {form.email || 'Tu cuenta de Google'} se usará al finalizar el registro. Continuá con el mismo wizard: tipo de perfil, datos básicos, teléfono, rubros y publicación.
+  const renderAccountStep = () => {
+    const hasVerifiedAccountForRegistration = isOAuthSetup || hasAuthenticatedBaseAccount;
+    const registrationEmail = form.email.trim();
+
+    return (
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1.35fr)_minmax(300px,0.65fr)] lg:items-start xl:grid-cols-[minmax(0,1.45fr)_minmax(340px,0.7fr)]">
+        <div className="space-y-5">
+          <div className="space-y-2">
+            <Badge variant="success">Registro</Badge>
+            <h1 className={wizardTitleClassName}>
+              Creá tu cuenta profesional
+            </h1>
+            <p className="max-w-xl text-base text-[color:var(--ink-muted)]">
+              Empezá a configurar tu perfil para recibir reservas en Plura.
             </p>
           </div>
-        ) : (
-          <>
-            <div className="flex items-center gap-3">
-              <div className="h-px flex-1 bg-[color:var(--border-soft)]" />
-              <span className="text-xs font-semibold uppercase tracking-[0.16em] text-[color:var(--ink-faint)]">o con email</span>
-              <div className="h-px flex-1 bg-[color:var(--border-soft)]" />
+          {hasVerifiedAccountForRegistration ? (
+            <div className="rounded-[16px] border border-[color:var(--border-soft)] bg-[color:var(--surface-soft)] px-4 py-3 text-sm">
+              <p className="font-semibold text-[color:var(--ink)]">Cuenta usada para el registro</p>
+              <p className="mt-1 text-[color:var(--ink-muted)]">
+                {registrationEmail
+                  ? `Estás continuando con ${registrationEmail}`
+                  : 'Estás continuando con la cuenta autenticada.'}
+              </p>
             </div>
-            <div className="grid gap-3 xl:grid-cols-2 xl:gap-4">
+          ) : (
+            <>
+              <GoogleLoginButton
+                authAction="REGISTER"
+                intendedRole="PROFESSIONAL"
+                mode="redirect"
+                onAuthenticated={handleOAuthAuthenticated}
+                onError={setErrorMessage}
+                buttonLabel="Continuar con Google"
+                loadingLabel="Registrando..."
+              />
+              <div className="flex items-center gap-3">
+                <div className="h-px flex-1 bg-[color:var(--border-soft)]" />
+                <span className="text-xs font-semibold uppercase tracking-[0.16em] text-[color:var(--ink-faint)]">o con email</span>
+                <div className="h-px flex-1 bg-[color:var(--border-soft)]" />
+              </div>
+              <div className="grid gap-3 xl:grid-cols-2 xl:gap-4">
               <div className="space-y-2">
                 <label className="text-sm font-semibold text-[color:var(--ink)]">Email</label>
                 <input
@@ -1762,20 +1760,21 @@ export default function ProfesionalRegisterPage() {
             </div>
           </>
         )}
-        <p className="text-center text-sm text-[color:var(--ink-muted)]">
-          ¿Ya tenés cuenta?{' '}
-          <Link href="/login?intent=professional" className="font-semibold text-[color:var(--primary)]">
-            Iniciar sesión profesional
-          </Link>
-        </p>
+          <p className="text-center text-sm text-[color:var(--ink-muted)]">
+            ¿Ya tenés cuenta?{' '}
+            <Link href="/login?intent=professional" className="font-semibold text-[color:var(--primary)]">
+              Iniciar sesión profesional
+            </Link>
+          </p>
+        </div>
+        <div className="hidden space-y-4 lg:block">
+          <h2 className="text-center text-xl font-semibold text-[color:var(--ink)]">Así te verán tus clientes</h2>
+          <ProfilePreviewCard compact />
+          <p className="text-center text-xs text-[color:var(--ink-faint)]">Este es un ejemplo de cómo se verá tu perfil público.</p>
+        </div>
       </div>
-      <div className="hidden space-y-4 lg:block">
-        <h2 className="text-center text-xl font-semibold text-[color:var(--ink)]">Así te verán tus clientes</h2>
-        <ProfilePreviewCard compact />
-        <p className="text-center text-xs text-[color:var(--ink-faint)]">Este es un ejemplo de cómo se verá tu perfil público.</p>
-      </div>
-    </div>
-  );
+    );
+  };
 
   const renderProfileStep = () => (
     <div className="grid gap-6 lg:grid-cols-[minmax(0,1.35fr)_minmax(300px,0.65fr)] lg:items-center xl:grid-cols-[minmax(0,1.45fr)_minmax(340px,0.7fr)]">
@@ -2280,12 +2279,6 @@ export default function ProfesionalRegisterPage() {
           <div className="mx-auto w-full max-w-[96rem] px-4 py-5 pb-28 sm:px-6 sm:py-6 sm:pb-32 lg:px-8 lg:py-8">
             <div className="space-y-5">
               {renderCurrentStep()}
-
-              {successMessage ? (
-                <p className="mx-auto max-w-3xl rounded-[16px] border border-[color:var(--success-soft)] bg-[color:var(--success-soft)] px-4 py-3 text-sm text-[color:var(--primary)]">
-                  {successMessage}
-                </p>
-              ) : null}
 
               {checkoutConfirmationMessage ? (
                 <p className="mx-auto max-w-3xl rounded-[16px] border border-[color:var(--border-soft)] bg-[color:var(--surface-strong)] px-4 py-3 text-sm text-[color:var(--ink-muted)]">

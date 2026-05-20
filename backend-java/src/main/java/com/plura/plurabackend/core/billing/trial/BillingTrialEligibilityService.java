@@ -1,5 +1,6 @@
 package com.plura.plurabackend.core.billing.trial;
 
+import com.plura.plurabackend.core.billing.BillingProperties;
 import com.plura.plurabackend.core.billing.subscriptions.model.SubscriptionPlanCode;
 import com.plura.plurabackend.core.billing.trial.model.BillingTrialClaim;
 import com.plura.plurabackend.core.billing.trial.repository.BillingTrialClaimRepository;
@@ -25,19 +26,22 @@ public class BillingTrialEligibilityService {
     private static final String TRIAL_ALREADY_USED_MESSAGE = "La prueba gratuita ya fue utilizada para esta identidad.";
 
     private final BillingTrialClaimRepository billingTrialClaimRepository;
+    private final BillingProperties billingProperties;
     private final String identityPepper;
 
     public BillingTrialEligibilityService(
         BillingTrialClaimRepository billingTrialClaimRepository,
+        BillingProperties billingProperties,
         @Value("${billing.trial.identity-pepper:}") String identityPepper
     ) {
         this.billingTrialClaimRepository = billingTrialClaimRepository;
+        this.billingProperties = billingProperties;
         this.identityPepper = identityPepper == null ? "" : identityPepper.trim();
     }
 
     @PostConstruct
     void validateConfiguration() {
-        if (identityPepper.isBlank()) {
+        if (billingProperties.isEnabled() && identityPepper.isBlank()) {
             throw new IllegalStateException("BILLING_TRIAL_IDENTITY_PEPPER no está configurado");
         }
     }

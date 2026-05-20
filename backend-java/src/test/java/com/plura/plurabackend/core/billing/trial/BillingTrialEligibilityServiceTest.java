@@ -12,6 +12,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.plura.plurabackend.core.billing.BillingProperties;
 import com.plura.plurabackend.core.billing.subscriptions.model.SubscriptionPlanCode;
 import com.plura.plurabackend.core.billing.trial.BillingTrialEligibilityService.TrialEligibility;
 import com.plura.plurabackend.core.billing.trial.model.BillingTrialClaim;
@@ -26,8 +27,9 @@ import org.mockito.ArgumentCaptor;
 class BillingTrialEligibilityServiceTest {
 
     private final BillingTrialClaimRepository repository = mock(BillingTrialClaimRepository.class);
+    private final BillingProperties billingProperties = new BillingProperties();
     private final BillingTrialEligibilityService service =
-        new BillingTrialEligibilityService(repository, "pepper-de-test-con-suficiente-entropia");
+        new BillingTrialEligibilityService(repository, billingProperties, "pepper-de-test-con-suficiente-entropia");
 
     @BeforeEach
     void setUp() {

@@ -139,7 +139,7 @@ Lectura real del backend hoy:
 
 - `Mercado Pago` esta conectado al billing de suscripciones de plataforma
 - para suscripciones Core, cuando backend crea un `preapproval_plan` remoto agrega `auto_recurring.free_trial = { frequency: 30, frequency_type: "days" }`
-- `BILLING_TRIAL_IDENTITY_PEPPER` es obligatoria para iniciar el backend: se usa como pepper del HMAC-SHA256 de email, teléfono e identidad OAuth en `billing_trial_claim`
+- `BILLING_TRIAL_IDENTITY_PEPPER` es obligatoria cuando `BILLING_ENABLED=true`: se usa como pepper del HMAC-SHA256 de email, teléfono e identidad OAuth en `billing_trial_claim`; con billing deshabilitado no debe tumbar el arranque ni los tests de contexto
 - si se usa un `BILLING_MERCADOPAGO_PLAN_*`/plan remoto preconfigurado, el trial real de Mercado Pago depende de como este creado ese plan remoto; backend no puede modificarlo y mantiene de todos modos el trial local de Plura
 - `Mercado Pago` ya tiene ademas configuracion OAuth para conectar cuentas de profesionales
 - `Mercado Pago` tambien esta conectado al checkout real de reservas y refunds usando OAuth del profesional
